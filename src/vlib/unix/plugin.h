@@ -81,8 +81,8 @@ typedef struct
 typedef struct
 {
   char *name;
-  u8 is_disabled;
-  u8 is_enabled;
+  bool is_disabled;
+  bool is_enabled;
   u8 skip_version_check;
 } plugin_config_t;
 

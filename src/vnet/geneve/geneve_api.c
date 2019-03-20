@@ -118,7 +118,7 @@ static void send_geneve_tunnel_details
   vl_api_geneve_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
-  u8 is_ipv6 = !ip46_address_is_ip4 (&t->remote);
+  bool is_ipv6 = !ip46_address_is_ip4 (&t->remote);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));

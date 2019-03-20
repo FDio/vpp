@@ -15,6 +15,8 @@
 
 option version = "1.0.0";
 
+import "vnet/ethernet/ethernet_types.api";
+
 /** \brief Create host-interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -28,7 +30,7 @@ define af_packet_create
   u32 context;
 
   u8 host_if_name[64];
-  u8 hw_addr[6];
+  vl_api_mac_address_t hw_addr;
   u8 use_random_hw_addr;
 };
 

@@ -143,6 +143,9 @@ typedef struct
   ipsec_integ_alg_t integ_alg;
   ipsec_key_t integ_key;
 
+  bool is_tunnel;
+  bool is_tunnel_ip6;
+  u8 udp_encap;
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
 

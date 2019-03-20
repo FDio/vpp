@@ -70,7 +70,7 @@ typedef struct vxlan_gpe_ioam_main_
 
   /* Array of function pointers to iOAM option handling routines */
   int (*options[256]) (vlib_buffer_t * b, vxlan_gpe_ioam_option_t * opt,
-		       u8 is_ipv4, u8 use_adj);
+		       bool is_ipv4, u8 use_adj);
   u8 *(*trace[256]) (u8 * s, vxlan_gpe_ioam_option_t * opt);
 
   /* API message ID base */
@@ -146,7 +146,7 @@ int vxlan_gpe_add_unregister_option (u8 option);
 int vxlan_gpe_ioam_register_option (u8 option,
 				    int options (vlib_buffer_t * b,
 						 vxlan_gpe_ioam_option_t *
-						 opt, u8 is_ipv4, u8 use_adj),
+						 opt, bool is_ipv4, u8 use_adj),
 				    u8 * trace (u8 * s,
 						vxlan_gpe_ioam_option_t *
 						opt));
@@ -160,7 +160,7 @@ int
 vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 					ip46_address_t dst_addr,
 					u32 outer_fib_index,
-					u8 is_ipv4, u8 is_add);
+					bool is_ipv4, bool is_add);
 int vxlan_gpe_ioam_disable_for_dest
   (vlib_main_t * vm, ip46_address_t dst_addr, u32 outer_fib_index,
    u8 ipv4_set);

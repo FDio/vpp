@@ -97,7 +97,7 @@ typedef void (ip6_add_del_interface_address_function_t)
    uword opaque,
    u32 sw_if_index,
    ip6_address_t * address,
-   u32 address_length, u32 if_address_index, u32 is_del);
+   u32 address_length, u32 if_address_index, bool is_del);
 
 typedef struct
 {
@@ -366,7 +366,7 @@ ip6_interface_address_matching_destination (ip6_main_t * im,
 clib_error_t *ip6_add_del_interface_address (vlib_main_t * vm,
 					     u32 sw_if_index,
 					     ip6_address_t * address,
-					     u32 address_length, u32 is_del);
+					     u32 address_length, bool is_del);
 void ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
 
 /**
@@ -463,7 +463,7 @@ u8 *format_ip6_forward_next_trace (u8 * s, va_list * args);
 
 u32 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
 
-void ip6_punt_policer_add_del (u8 is_add, u32 policer_index);
+void ip6_punt_policer_add_del (bool is_add, u32 policer_index);
 void ip6_punt_redirect_add (u32 rx_sw_if_index,
 			    u32 tx_sw_if_index, ip46_address_t * nh);
 void ip6_punt_redirect_del (u32 rx_sw_if_index);

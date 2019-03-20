@@ -1001,7 +1001,7 @@ vppcom_app_destroy (void)
 }
 
 int
-vppcom_session_create (u8 proto, u8 is_nonblocking)
+vppcom_session_create (u8 proto, bool is_nonblocking)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session;
@@ -1032,7 +1032,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
   u32 next_sh, vep_sh;
   int rv = VPPCOM_OK;
   u64 vpp_handle;
-  u8 is_vep;
+  bool is_vep;
 
   is_vep = session->is_vep;
   next_sh = session->vep.next_sh;
@@ -1292,7 +1292,7 @@ vppcom_session_accept (uint32_t listen_session_handle, vppcom_endpt_t * ep,
   vcl_session_msg_t *evt;
   svm_msg_q_msg_t msg;
   session_event_t *e;
-  u8 is_nonblocking;
+  bool is_nonblocking;
   int rv;
 
   listen_session = vcl_session_get_w_handle (wrk, listen_session_handle);
@@ -1457,7 +1457,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 }
 
 static u8
-vcl_is_rx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
+vcl_is_rx_evt_for_session (session_event_t * e, u32 sid, bool is_ct)
 {
   return (e->event_type == SESSION_IO_EVT_RX && e->session_index == sid);
 }
@@ -1473,7 +1473,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   svm_msg_q_msg_t msg;
   session_event_t *e;
   svm_msg_q_t *mq;
-  u8 is_ct;
+  bool is_ct;
 
   if (PREDICT_FALSE (!buf))
     return VPPCOM_EINVAL;
@@ -1559,7 +1559,7 @@ vppcom_session_read_segments (uint32_t session_handle,
   svm_msg_q_msg_t msg;
   session_event_t *e;
   svm_msg_q_t *mq;
-  u8 is_ct;
+  bool is_ct;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
   if (PREDICT_FALSE (!s || s->is_vep))
@@ -1637,14 +1637,14 @@ vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds, u32 max_bytes)
 }
 
 static u8
-vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
+vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, bool is_ct)
 {
   return (e->event_type == SESSION_IO_EVT_TX && e->session_index == sid);
 }
 
 static inline int
 vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
-			     u8 is_flush)
+			     bool is_flush)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   int n_write, is_nonblocking;
@@ -1654,7 +1654,7 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   svm_fifo_t *tx_fifo;
   session_event_t *e;
   svm_msg_q_t *mq;
-  u8 is_ct;
+  bool is_ct;
 
   if (PREDICT_FALSE (!buf))
     return VPPCOM_EINVAL;

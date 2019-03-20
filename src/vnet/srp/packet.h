@@ -71,7 +71,7 @@ typedef union {
     u8 ttl;
 
 #if CLIB_ARCH_IS_BIG_ENDIAN
-    u8 is_inner_ring : 1;
+    bool is_inner_ring : 1;
     u8 mode : 3;
     u8 priority : 3;
     u8 parity : 1;
@@ -80,7 +80,7 @@ typedef union {
     u8 parity : 1;
     u8 priority : 3;
     u8 mode : 3;
-    u8 is_inner_ring : 1;
+    bool is_inner_ring : 1;
 #endif
   };
 } srp_header_t;
@@ -187,12 +187,12 @@ typedef struct {
     struct {
 #if CLIB_ARCH_IS_BIG_ENDIAN
       u8 request_type : 4;
-      u8 is_long_path : 1;
+      bool is_long_path : 1;
       u8 status : 3;
 #endif
 #if CLIB_ARCH_IS_LITTLE_ENDIAN
       u8 status : 3;
-      u8 is_long_path : 1;
+      bool is_long_path : 1;
       u8 request_type : 4;
 #endif
     };

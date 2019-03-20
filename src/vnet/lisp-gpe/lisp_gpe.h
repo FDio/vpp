@@ -131,7 +131,7 @@ typedef struct lisp_gpe_main
   /** Free vlib hw_if_indices */
   u32 *free_tunnel_hw_if_indices;
 
-  u8 is_en;
+  bool is_en;
 
   /* L3 data structures
    * ================== */
@@ -209,7 +209,7 @@ extern u32 lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id,
 
 typedef struct
 {
-  u8 is_en;
+  bool is_en;
 } vnet_lisp_gpe_enable_disable_args_t;
 
 clib_error_t
@@ -229,12 +229,12 @@ typedef struct
   /** forwarding entry index of */
   u32 fwd_entry_index;
 
-  u8 is_src_dst;
+  bool is_src_dst;
 
-  u8 is_add;
+  bool is_add;
 
   /** type of mapping */
-  u8 is_negative;
+  bool is_negative;
 
   /** action for negative mappings */
   negative_fwd_actions_e action;
@@ -277,7 +277,7 @@ typedef struct
 typedef struct
 {
   fib_route_path_t rpath;
-  u8 is_add;
+  bool is_add;
 } vnet_gpe_native_fwd_rpath_args_t;
 
 typedef struct

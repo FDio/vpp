@@ -253,7 +253,7 @@ session_enqueue_discard_chain_bytes (vlib_main_t * vm, vlib_buffer_t * b,
  */
 always_inline int
 session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
-			    u32 offset, u8 is_in_order)
+			    u32 offset, bool is_in_order)
 {
   vlib_buffer_t *chain_b;
   u32 chain_bi, len, diff;
@@ -341,7 +341,7 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
 int
 session_enqueue_stream_connection (transport_connection_t * tc,
 				   vlib_buffer_t * b, u32 offset,
-				   u8 queue_event, u8 is_in_order)
+				   u8 queue_event, bool is_in_order)
 {
   session_t *s;
   int enqueued = 0, rv, in_order_off;
@@ -585,7 +585,7 @@ session_main_flush_all_enqueue_events (u8 transport_proto)
 }
 
 int
-session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+session_stream_connect_notify (transport_connection_t * tc, bool is_fail)
 {
   u32 opaque = 0, new_ti, new_si;
   app_worker_t *app_wrk;
@@ -1236,7 +1236,7 @@ static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
  */
 void
 session_register_transport (transport_proto_t transport_proto,
-			    const transport_proto_vft_t * vft, u8 is_ip4,
+			    const transport_proto_vft_t * vft, bool is_ip4,
 			    u32 output_node)
 {
   session_main_t *smm = &session_main;
@@ -1373,7 +1373,7 @@ session_manager_main_enable (vlib_main_t * vm)
 }
 
 void
-session_node_enable_disable (u8 is_en)
+session_node_enable_disable (bool is_en)
 {
   u8 state = is_en ? VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
@@ -1407,7 +1407,7 @@ session_node_enable_disable (u8 is_en)
 }
 
 clib_error_t *
-vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
+vnet_session_enable_disable (vlib_main_t * vm, bool is_en)
 {
   clib_error_t *error = 0;
   if (is_en)

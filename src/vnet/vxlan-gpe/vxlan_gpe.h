@@ -235,8 +235,8 @@ u8 *format_vxlan_gpe_encap_trace (u8 * s, va_list * args);
 /** Struct for VXLAN GPE add/del args */
 typedef struct
 {
-  u8 is_add;
-  u8 is_ip6;
+  bool is_add;
+  bool is_ip6;
   ip46_address_t local, remote;
   u8 protocol;
   u32 mcast_sw_if_index;
@@ -273,8 +273,8 @@ void vxlan_gpe_unregister_decap_protocol (u8 protocol_id,
 void vxlan_gpe_register_decap_protocol (u8 protocol_id,
 					uword next_node_index);
 
-void vnet_int_vxlan_gpe_bypass_mode (u32 sw_if_index, u8 is_ip6,
-				     u8 is_enable);
+void vnet_int_vxlan_gpe_bypass_mode (u32 sw_if_index, bool is_ip6,
+				     bool is_enable);
 
 #endif /* included_vnet_vxlan_gpe_h */
 

@@ -67,7 +67,7 @@ typedef struct _session_rules_table_add_del_args
   u16 rmt_port;
   u32 action_index;
   u8 *tag;
-  u8 is_add;
+  bool is_add;
 } session_rule_table_add_del_args_t;
 
 typedef struct _rule_tag
@@ -110,11 +110,11 @@ void session_rules_table_show_rule (vlib_main_t * vm,
 				    session_rules_table_t * srt,
 				    ip46_address_t * lcl_ip, u16 lcl_port,
 				    ip46_address_t * rmt_ip, u16 rmt_port,
-				    u8 is_ip4);
+				    bool is_ip4);
 int session_rules_table_add_del (session_rules_table_t * srt,
 				 session_rule_table_add_del_args_t * args);
 u8 *session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri,
-				  u8 is_ip4);
+				  bool is_ip4);
 void session_rules_table_init (session_rules_table_t * srt);
 #endif /* SRC_VNET_SESSION_SESSION_RULES_TABLE_H_ */
 /*

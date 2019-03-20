@@ -62,7 +62,7 @@ nat66_init (vlib_main_t * vm)
 }
 
 int
-nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
+nat66_interface_add_del (u32 sw_if_index, bool is_inside, bool is_add)
 {
   nat66_main_t *nm = &nat66_main;
   snat_interface_t *interface = 0, *i;
@@ -119,7 +119,7 @@ nat66_interfaces_walk (nat66_interface_walk_fn_t fn, void *ctx)
 }
 
 nat66_static_mapping_t *
-nat66_static_mapping_get (ip6_address_t * addr, u32 fib_index, u8 is_local)
+nat66_static_mapping_get (ip6_address_t * addr, u32 fib_index, bool is_local)
 {
   nat66_main_t *nm = &nat66_main;
   nat66_static_mapping_t *sm = 0;
@@ -144,7 +144,7 @@ nat66_static_mapping_get (ip6_address_t * addr, u32 fib_index, u8 is_local)
 
 int
 nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
-			      u32 vrf_id, u8 is_add)
+			      u32 vrf_id, bool is_add)
 {
   nat66_main_t *nm = &nat66_main;
   int rv = 0;

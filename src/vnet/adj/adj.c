@@ -404,7 +404,7 @@ adj_feature_update_walk_cb (adj_index_t ai,
 void
 adj_feature_update (u32 sw_if_index,
                     u8 arc_index,
-                    u8 is_enable)
+                    bool is_enable)
 {
     /*
      * Walk all the adjacencies on the interface to update the cached

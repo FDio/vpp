@@ -93,7 +93,7 @@ typedef struct
 
   u32 fib_table;			/**< FIB table */
 
-  u8 is_encap;				/**< Mode (0 is SRH insert, 1 Encaps) */
+  bool is_encap;				/**< Mode (0 is SRH insert, 1 Encaps) */
 } ip6_sr_policy_t;
 
 /**
@@ -258,7 +258,7 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 
 extern int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
-	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap);
+	       u32 weight, u8 behavior, u32 fib_table, bool is_encap);
 extern int
 sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 	       u8 operation, ip6_address_t * segments, u32 sl_index,
@@ -266,13 +266,13 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
 extern int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (bool is_del, ip6_address_t * localsid_addr,
 		 char end_psp, u8 behavior, u32 sw_if_index,
 		 u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
 		 void *ls_plugin_mem);
 
 extern int
-sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
+sr_steering_policy (bool is_del, ip6_address_t * bsid, u32 sr_policy_index,
 		    u32 table_id, ip46_address_t * prefix, u32 mask_width,
 		    u32 sw_if_index, u8 traffic_type);
 

@@ -93,7 +93,7 @@ static_always_inline u8 *
 format_fa_session_l4_key(u8 * s, va_list * args)
 {
   fa_session_l4_key_t *l4 = va_arg (*args, fa_session_l4_key_t *);
-  int is_input = (l4->l4_flags & FA_SK_L4_FLAG_IS_INPUT) ? 1 : 0;
+  bool is_input = (l4->l4_flags & FA_SK_L4_FLAG_IS_INPUT) ? 1 : 0;
   int is_slowpath = (l4->l4_flags & FA_SK_L4_FLAG_IS_SLOWPATH) ? 1 : 0;
 
   return (format (s, "l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_flags 0x%02x port %d -> %d",
@@ -110,7 +110,7 @@ typedef struct {
     u8 as_u8[2];
     u16 as_u16;
   } tcp_flags_seen; ;     /* +2 bytes = 62 */
-  u16 thread_index;          /* +2 bytes = 64 */
+  u16 thread_index;       /* +2 bytes = 64 */
   u64 link_enqueue_time;  /* 8 byte = 8 */
   u32 link_prev_idx;      /* +4 bytes = 12 */
   u32 link_next_idx;      /* +4 bytes = 16 */
@@ -247,7 +247,7 @@ typedef enum
   ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX,
 } acl_fa_cleaner_process_event_e;
 
-void acl_fa_enable_disable(u32 sw_if_index, int is_input, int enable_disable);
+void acl_fa_enable_disable(u32 sw_if_index, bool is_input, int enable_disable);
 
 void show_fa_sessions_hash(vlib_main_t * vm, u32 verbose);
 

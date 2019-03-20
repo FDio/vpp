@@ -104,7 +104,7 @@ static inline void
 segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
 {
   svm_fifo_segment_private_t *fs;
-  u8 is_prealloc;
+  bool is_prealloc;
 
   clib_rwlock_writer_lock (&sm->segments_rwlock);
   fs = segment_manager_get_segment (sm, fs_index);

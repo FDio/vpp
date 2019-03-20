@@ -462,7 +462,7 @@ VLIB_REGISTER_NODE (udp6_local_node) = {
 #ifndef CLIB_MARCH_VARIANT
 static void
 add_dst_port (udp_main_t * um,
-	      udp_dst_port_t dst_port, char *dst_port_name, u8 is_ip4)
+	      udp_dst_port_t dst_port, char *dst_port_name, bool is_ip4)
 {
   udp_dst_port_info_t *pi;
   u32 i;
@@ -482,7 +482,7 @@ add_dst_port (udp_main_t * um,
 
 void
 udp_register_dst_port (vlib_main_t * vm,
-		       udp_dst_port_t dst_port, u32 node_index, u8 is_ip4)
+		       udp_dst_port_t dst_port, u32 node_index, bool is_ip4)
 {
   udp_main_t *um = &udp_main;
   udp_dst_port_info_t *pi;
@@ -519,7 +519,7 @@ udp_register_dst_port (vlib_main_t * vm,
 }
 
 void
-udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, u8 is_ip4)
+udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, bool is_ip4)
 {
   udp_main_t *um = &udp_main;
   udp_dst_port_info_t *pi;
@@ -542,7 +542,7 @@ udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, u8 is_ip4)
 }
 
 bool
-udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4)
+udp_is_valid_dst_port (udp_dst_port_t dst_port, bool is_ip4)
 {
   udp_main_t *um = &udp_main;
   u16 *n;
@@ -558,7 +558,7 @@ udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4)
 }
 
 void
-udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
+udp_punt_unknown (vlib_main_t * vm, bool is_ip4, bool is_add)
 {
   udp_main_t *um = &udp_main;
   {

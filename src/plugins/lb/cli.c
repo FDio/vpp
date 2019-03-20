@@ -408,14 +408,14 @@ static clib_error_t *
 lb_set_interface_nat_command_fn (vlib_main_t * vm,
                                  unformat_input_t * input,
                                  vlib_cli_command_t * cmd,
-                                 u8 is_nat6)
+                                 bool is_nat6)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t * vnm = vnet_get_main();
   clib_error_t * error = 0;
   u32 _sw_if_index, *sw_if_index = &_sw_if_index;
   u32 * inside_sw_if_indices = 0;
-  int is_del = 0;
+  bool is_del = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))

@@ -122,7 +122,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
   struct rte_cryptodev_sym_session *session = 0;
   u32 ret, last_sa_index = ~0;
   u8 numa = rte_socket_id ();
-  u8 is_aead = 0;
+  bool is_aead = 0;
   crypto_worker_main_t *cwm =
     vec_elt_at_index (dcm->workers_main, thread_idx);
   struct rte_crypto_op **ops = cwm->ops;

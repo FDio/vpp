@@ -436,7 +436,7 @@ clib_error_t *next_by_ethertype_register (next_by_ethertype_t * l3_next,
 					  u32 ethertype, u32 next_index);
 
 int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
-				    u8 is_specified, u32 user_instance);
+				    bool is_specified, u32 user_instance);
 int vnet_delete_loopback_interface (u32 sw_if_index);
 int vnet_delete_sub_interface (u32 sw_if_index);
 

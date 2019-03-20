@@ -344,7 +344,8 @@ abf_itf_attach_cmd (vlib_main_t * vm,
 {
   u32 policy_id, sw_if_index;
   fib_protocol_t fproto;
-  u32 is_del, priority;
+  bool is_del;
+  u32 priority;
   vnet_main_t *vnm;
 
   is_del = 0;

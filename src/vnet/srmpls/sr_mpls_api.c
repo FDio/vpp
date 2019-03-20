@@ -114,9 +114,9 @@ static void vl_api_sr_mpls_steering_add_del_t_handler
   ip46_address_t prefix;
   clib_memset (&prefix, 0, sizeof (ip46_address_t));
   if (mp->traffic_type == SR_STEER_IPV4)
-    memcpy (&prefix.ip4, mp->prefix_addr, sizeof (prefix.ip4));
+    memcpy (&prefix.ip4, &mp->prefix_addr, sizeof (prefix.ip4));
   else
-    memcpy (&prefix, mp->prefix_addr, sizeof (prefix.ip6));
+    memcpy (&prefix, &mp->prefix_addr, sizeof (prefix.ip6));
 
   int rv = 0;
   if (mp->is_del)

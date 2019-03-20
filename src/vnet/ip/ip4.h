@@ -66,7 +66,7 @@ typedef void (ip4_add_del_interface_address_function_t)
    uword opaque,
    u32 sw_if_index,
    ip4_address_t * address,
-   u32 address_length, u32 if_address_index, u32 is_del);
+   u32 address_length, u32 if_address_index, bool is_del);
 
 typedef struct
 {
@@ -250,7 +250,7 @@ ip4_address_t *ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
 clib_error_t *ip4_add_del_interface_address (vlib_main_t * vm,
 					     u32 sw_if_index,
 					     ip4_address_t * address,
-					     u32 address_length, u32 is_del);
+					     u32 address_length, bool is_del);
 
 void ip4_directed_broadcast (u32 sw_if_index, u8 enable);
 
@@ -284,7 +284,7 @@ int vnet_set_ip4_flow_hash (u32 table_id,
 int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);
 
-void ip4_punt_policer_add_del (u8 is_add, u32 policer_index);
+void ip4_punt_policer_add_del (bool is_add, u32 policer_index);
 
 void ip4_punt_redirect_add (u32 rx_sw_if_index,
 			    u32 tx_sw_if_index, ip46_address_t * nh);

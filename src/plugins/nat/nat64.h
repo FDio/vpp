@@ -61,7 +61,7 @@ typedef struct
   u32 fib_index;
   u32 thread_index;
   u8 proto;
-  u8 is_add;
+  bool is_add;
   u8 done;
 } nat64_static_bib_to_update_t;
 
@@ -139,7 +139,7 @@ extern vlib_node_registration_t nat64_out2in_node;
  * @returns 0 on success, non-zero value otherwise.
  */
 int nat64_add_del_pool_addr (u32 thread_index,
-			     ip4_address_t * addr, u32 vrf_id, u8 is_add);
+			     ip4_address_t * addr, u32 vrf_id, bool is_add);
 
 /**
  * @brief Call back function when walking addresses in NAT64 pool, non-zero
@@ -174,7 +174,7 @@ int nat64_add_interface_address (u32 sw_if_index, int is_add);
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add);
+int nat64_add_del_interface (u32 sw_if_index, bool is_inside, bool is_add);
 
 /**
  * @brief Call back function when walking interfaces with NAT64 feature,
@@ -215,7 +215,7 @@ clib_error_t *nat64_init (vlib_main_t * vm);
 int nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 				    ip4_address_t * out_addr, u16 in_port,
 				    u16 out_port, u8 proto, u32 vrf_id,
-				    u8 is_add);
+				    bool is_add);
 
 /**
  * @brief Alloce IPv4 address and port pair from NAT64 pool.
@@ -305,7 +305,7 @@ void nat64_session_reset_timeout (nat64_db_st_entry_t * ste,
  * @param is_ip6 1 if IPv6 packet, 0 if IPv4.
  */
 void nat64_tcp_session_set_state (nat64_db_st_entry_t * ste,
-				  tcp_header_t * tcp, u8 is_ip6);
+				  tcp_header_t * tcp, bool is_ip6);
 
 /**
  * @brief Add/delete NAT64 prefix.
@@ -318,7 +318,7 @@ void nat64_tcp_session_set_state (nat64_db_st_entry_t * ste,
  * @returns 0 on success, non-zero value otherwise.
  */
 int nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id,
-			  u8 is_add);
+			  bool is_add);
 
 /**
  * @brief Call back function when walking addresses in NAT64 prefixes, non-zero

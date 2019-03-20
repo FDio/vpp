@@ -180,7 +180,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 	  ethernet_header_t *e_h0;
 	  u8 client_src_mac[6];
 	  dhcp_vss_t *vss;
-	  u8 is_solicit = 0;
+	  bool is_solicit = 0;
 
 	  bi0 = from[0];
 	  from += 1;
@@ -846,7 +846,7 @@ VLIB_INIT_FUNCTION (dhcp6_proxy_init);
 int
 dhcp6_proxy_set_server (ip46_address_t * addr,
 			ip46_address_t * src_addr,
-			u32 rx_table_id, u32 server_table_id, int is_del)
+			u32 rx_table_id, u32 server_table_id, bool is_del)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 rx_fib_index = 0;
@@ -940,7 +940,7 @@ dhcpv6_proxy_set_command_fn (vlib_main_t * vm,
   ip46_address_t addr, src_addr;
   int set_server = 0, set_src_address = 0;
   u32 rx_table_id = 0, server_table_id = 0;
-  int is_del = 0;
+  bool is_del = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1067,7 +1067,8 @@ static clib_error_t *
 dhcpv6_vss_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u8 is_del = 0, vss_type = VSS_TYPE_DEFAULT;
+  bool is_del = 0;
+  u8 vss_type = VSS_TYPE_DEFAULT;
   u8 *vpn_ascii_id = 0;
   u32 oui = 0, fib_id = 0, tbl_id = ~0;
 

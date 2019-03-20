@@ -555,7 +555,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
   u32 bd_index = 0;
   u32 sw_if_index = 8;
   u32 is_add = 0;
-  u32 is_del = 0;
+  bool is_del = 0;
   u32 is_check = 0;
   u32 count = 1;
   int mac_set = 0;

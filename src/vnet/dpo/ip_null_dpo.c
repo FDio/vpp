@@ -180,7 +180,7 @@ always_inline uword
 ip_null_dpo_switch (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * frame,
-		    u8 is_ip4)
+		    bool is_ip4)
 {
     u32 n_left_from, next_index, *from, *to_next;
     static f64 time_last_seed_change = -1e100;

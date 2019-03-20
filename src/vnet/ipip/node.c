@@ -42,7 +42,7 @@ typedef struct
   u32 length;
   ip46_address_t src;
   ip46_address_t dst;
-  u8 is_ipv6;
+  bool is_ipv6;
 } ipip_rx_trace_t;
 
 static u8 *

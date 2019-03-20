@@ -38,8 +38,8 @@ mpls_sw_interface_is_enabled (u32 sw_if_index)
 int
 mpls_sw_interface_enable_disable (mpls_main_t * mm,
                                   u32 sw_if_index,
-                                  u8 is_enable,
-                                  u8 is_api)
+                                  bool is_enable,
+                                  bool is_api)
 {
   fib_node_index_t lfib_index;
 

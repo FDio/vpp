@@ -37,7 +37,7 @@ autoreply define udp_ping_add_del {
   u16 start_dst_port;
   u16 end_dst_port;
   u16 interval;
-  u8 is_ipv4;
+  bool is_ipv4;
   u8 dis;
   u8 fault_det;
   u8 reserve[3];

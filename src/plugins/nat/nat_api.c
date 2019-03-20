@@ -31,6 +31,7 @@
 
 #include <nat/nat_msg_enum.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip_types_api.h>
 
 #define vl_api_nat44_lb_addr_port_t_endian vl_noop_handler
 #define vl_api_nat44_add_del_lb_static_mapping_t_endian vl_noop_handler
@@ -354,8 +355,8 @@ nat_ip4_reass_walk_api (nat_reass_ip4_t * reass, void *arg)
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_NAT_REASS_DETAILS + sm->msg_id_base);
   rmp->context = ctx->context;
-  clib_memcpy (rmp->src_addr, &(reass->key.src), 4);
-  clib_memcpy (rmp->dst_addr, &(reass->key.dst), 4);
+  clib_memcpy (&rmp->src_addr, &(reass->key.src), 4);
+  clib_memcpy (&rmp->dst_addr, &(reass->key.dst), 4);
   rmp->proto = reass->key.proto;
   rmp->frag_id = ntohl (reass->key.frag_id);
   rmp->frag_n = reass->frag_n;
@@ -377,8 +378,8 @@ nat_ip6_reass_walk_api (nat_reass_ip6_t * reass, void *arg)
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_NAT_REASS_DETAILS + sm->msg_id_base);
   rmp->context = ctx->context;
-  clib_memcpy (rmp->src_addr, &(reass->key.src), 16);
-  clib_memcpy (rmp->dst_addr, &(reass->key.dst), 16);
+  clib_memcpy (&rmp->src_addr, &(reass->key.src), 16);
+  clib_memcpy (&rmp->dst_addr, &(reass->key.dst), 16);
   rmp->proto = reass->key.proto;
   rmp->frag_id = ntohl (reass->key.frag_id);
   rmp->frag_n = reass->frag_n;
@@ -971,7 +972,7 @@ static void
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_interface_add_del_feature_reply_t *rmp;
-  u8 is_del = mp->is_add == 0;
+  bool is_del = mp->is_add == 0;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   int rv = 0;
 
@@ -1052,7 +1053,7 @@ static void
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_interface_add_del_output_feature_reply_t *rmp;
-  u8 is_del = mp->is_add == 0;
+  bool is_del = mp->is_add == 0;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   int rv = 0;
 
@@ -1491,7 +1492,7 @@ static void
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_add_del_interface_addr_reply_t *rmp;
-  u8 is_del = mp->is_add == 0;
+  bool is_del = mp->is_add == 0;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   int rv = 0;
 
@@ -2123,10 +2124,10 @@ vl_api_nat_det_add_del_map_t_handler (vl_api_nat_det_add_del_map_t * mp)
       goto send_reply;
     }
 
-  clib_memcpy (&in_addr, mp->in_addr, 4);
-  clib_memcpy (&out_addr, mp->out_addr, 4);
-  rv = snat_det_add_map (sm, &in_addr, mp->in_plen, &out_addr,
-			 mp->out_plen, mp->is_add);
+  clib_memcpy (&in_addr, &mp->in_addr.prefix, 4);
+  clib_memcpy (&out_addr, &mp->out_addr.prefix, 4);
+  rv = snat_det_add_map (sm, &in_addr, mp->in_addr.len, &out_addr,
+			 mp->out_addr.len, mp->is_add);
 
 send_reply:
   REPLY_MACRO (VL_API_NAT_DET_ADD_DEL_MAP_REPLY);
@@ -2139,9 +2140,11 @@ vl_api_nat_det_add_del_map_t_print (vl_api_nat_det_add_del_map_t * mp,
   u8 *s;
 
   s = format (0, "SCRIPT: nat_det_add_del_map ");
-  s = format (s, "inside address %U/%d outside address %U/%d\n",
-	      format_ip4_address, mp->in_addr, mp->in_plen,
-	      format_ip4_address, mp->out_addr, mp->out_plen);
+  s = format (s, "%s%sinside address %U/%d outside address %U/%d\n",
+          mp->is_nat44 ? "nat44 " : "",
+          mp->is_add ? "add " : "del ",
+	      format_ip4_address, mp->in_addr.prefix, mp->in_addr.len,
+	      format_ip4_address, mp->out_addr.prefix, mp->out_addr.len);
 
   FINISH;
 }
@@ -2171,7 +2174,7 @@ vl_api_nat_det_forward_t_handler (vl_api_nat_det_forward_t * mp)
     }
 
   out_addr.as_u32 = 0;
-  clib_memcpy (&in_addr, mp->in_addr, 4);
+  clib_memcpy (&in_addr, &mp->in_addr, 4);
   dm = snat_det_map_by_user (sm, &in_addr);
   if (!dm)
     {
@@ -2221,7 +2224,7 @@ vl_api_nat_det_reverse_t_handler (vl_api_nat_det_reverse_t * mp)
     }
 
   in_addr.as_u32 = 0;
-  clib_memcpy (&out_addr, mp->out_addr, 4);
+  clib_memcpy (&out_addr, &mp->out_addr, 4);
   dm = snat_det_map_by_out (sm, &out_addr);
   if (!dm)
     {
@@ -2236,8 +2239,8 @@ send_reply:
   REPLY_MACRO2 (VL_API_NAT_DET_REVERSE_REPLY,
   ({
     rmp->is_nat44 = 1;
-    clib_memset (rmp->in_addr, 0, 16);
-    clib_memcpy (rmp->in_addr, &in_addr, 4);
+    clib_memset (&rmp->in_addr, 0, 16);
+    clib_memcpy (&rmp->in_addr, &in_addr, 4);
   }))
   /* *INDENT-ON* */
 }
@@ -2871,10 +2874,10 @@ vl_api_nat64_add_del_prefix_t_handler (vl_api_nat64_add_del_prefix_t * mp)
   ip6_address_t prefix;
   int rv = 0;
 
-  memcpy (&prefix.as_u8, mp->prefix, 16);
+  memcpy (&prefix.as_u8, &mp->prefix.address, 16);
 
   rv =
-    nat64_add_del_prefix (&prefix, mp->prefix_len,
+    nat64_add_del_prefix (&prefix, mp->prefix.address_length,
 			  clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
   REPLY_MACRO (VL_API_NAT64_ADD_DEL_PREFIX_REPLY);
 }
@@ -2886,7 +2889,7 @@ vl_api_nat64_add_del_prefix_t_print (vl_api_nat64_add_del_prefix_t * mp,
   u8 *s;
 
   s = format (0, "SCRIPT: nat64_add_del_prefix %U/%u vrf_id %u %s\n",
-	      format_ip6_address, mp->prefix, mp->prefix_len,
+	      format_ip6_address, mp->prefix.address, mp->prefix.address_length,
 	      ntohl (mp->vrf_id), mp->is_add ? "" : "del");
 
   FINISH;
@@ -2902,7 +2905,7 @@ nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_NAT64_PREFIX_DETAILS + sm->msg_id_base);
-  clib_memcpy (rmp->prefix, &(p->prefix), 16);
+  clib_memcpy (&rmp->prefix, &(p->prefix), 16);
   rmp->prefix_len = p->plen;
   rmp->vrf_id = ntohl (p->vrf_id);
   rmp->context = ctx->context;

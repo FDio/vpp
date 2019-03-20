@@ -94,7 +94,7 @@ extern vnet_device_class_t ipsec_gre_device_class;
 */
 typedef struct
 {
-  u8 is_add; /**< 1 - add, 0 - delete */
+  bool is_add; /**< 1 - add, 0 - delete */
 
   ip4_address_t src; /**< tunnel IPv4 src address */
   ip4_address_t dst; /**< tunnel IPv4 dst address */

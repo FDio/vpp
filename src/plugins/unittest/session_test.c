@@ -54,7 +54,7 @@ volatile u32 connected_session_index = ~0;
 volatile u32 connected_session_thread = ~0;
 int
 dummy_session_connected_callback (u32 app_index, u32 api_context,
-				  session_t * s, u8 is_fail)
+				  session_t * s, bool is_fail)
 {
   if (s)
     {
@@ -229,7 +229,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 static void
 session_add_del_route_via_lookup_in_table (u32 in_table_id, u32 via_table_id,
 					   ip4_address_t * ip, u8 mask,
-					   u8 is_add)
+					   bool is_add)
 {
   fib_route_path_t *rpaths = 0, *rpath;
   u32 in_fib_index, via_fib_index;
@@ -1017,7 +1017,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   u32 dummy_server_api_index = ~0;
   transport_connection_t *tc;
   u32 dummy_port = 1111;
-  u8 is_filtered = 0, *ns_id = format (0, "appns1");
+  /* Can't be boolean. Takes on value of 2.*/
+  u8 is_filtered = 0;
+  u8 *ns_id = format (0, "appns1");
   session_t *listener, *s;
   app_namespace_t *default_ns = app_namespace_get_default ();
   u32 local_ns_index = default_ns->local_table_index;
@@ -1579,6 +1581,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   unformat_input_t tmp_input;
   u32 server_index, app_index;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
+  /* Can't be boolean. Takes on value of 2.*/
   u8 is_filtered = 0;
   session_t *s;
   transport_connection_t *tc;

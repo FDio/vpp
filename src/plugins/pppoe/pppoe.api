@@ -14,6 +14,7 @@
  */
 
 option version = "1.0.0";
+import "vnet/ethernet/ethernet_types.api";
 
 /** \brief Set or delete an PPPOE session
     @param client_index - opaque cookie to identify the sender
@@ -29,12 +30,12 @@ define pppoe_add_del_session
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
+  bool is_add;
+  bool is_ipv6;
   u16 session_id;
   u8 client_ip[16];
   u32 decap_vrf_id;
-  u8 client_mac[6];
+  vl_api_mac_address_t client_mac;
 };
 
 /** \brief reply for set or delete an PPPOE session
@@ -76,13 +77,13 @@ define pppoe_session_details
 {
   u32 context;
   u32 sw_if_index;
-  u8 is_ipv6;
+  bool is_ipv6;
   u16 session_id;
   u8 client_ip[16];
   u32 encap_if_index;
   u32 decap_vrf_id;
-  u8 local_mac[6];
-  u8 client_mac[6];
+  vl_api_mac_address_t local_mac;
+  vl_api_mac_address_t client_mac;
 };
 
 /*

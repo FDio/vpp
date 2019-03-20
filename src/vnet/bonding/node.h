@@ -94,8 +94,8 @@ typedef struct
   u32 slave;
   /* bond's sw_if_index */
   u32 group;
-  u8 is_passive;
-  u8 is_long_timeout;
+  bool is_passive;
+  bool is_long_timeout;
   /* return */
   int rv;
   clib_error_t *error;
@@ -126,8 +126,8 @@ typedef struct
 {
   u32 sw_if_index;
   u8 interface_name[64];
-  u8 is_passive;
-  u8 is_long_timeout;
+  bool is_passive;
+  bool is_long_timeout;
   u32 active_slaves;
 } slave_interface_details_t;
 
@@ -201,7 +201,7 @@ typedef struct
   f32 ttl_in_seconds;
 
   /* 1 = interface is configured with long timeout (60s) */
-  u8 is_long_timeout;
+  bool is_long_timeout;
 
   /* 1 = debug is on; 0 = debug is off */
   u8 debug;
@@ -225,7 +225,7 @@ typedef struct
   u32 hw_if_index;
 
   /* actor does not initiate the protocol exchange */
-  u8 is_passive;
+  bool is_passive;
 
   /* Partner port information */
   lacp_port_info_t partner;

@@ -174,7 +174,7 @@ lb_node_get_other_ports6 (ip6_header_t *ip60)
 }
 
 static_always_inline void
-lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4,
+lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, bool is_input_v4,
                   u32 *hash, u32 *vip_idx, u8 per_port_vip)
 {
   vip_port_key_t key;
@@ -255,7 +255,7 @@ static_always_inline uword
 lb_node_fn (vlib_main_t * vm,
             vlib_node_runtime_t * node,
             vlib_frame_t * frame,
-            u8 is_input_v4, //Compile-time parameter stating that is input is v4 (or v6)
+            bool is_input_v4, //Compile-time parameter stating that is input is v4 (or v6)
             lb_encap_type_t encap_type, //Compile-time parameter is GRE4/GRE6/L3DSR/NAT4/NAT6
             u8 per_port_vip) //Compile-time parameter stating that is per_port_vip or not
 {
@@ -582,7 +582,7 @@ format_nodeport_lb_trace (u8 * s, va_list * args)
 
 static uword
 lb_nodeport_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-                     vlib_frame_t * frame, u8 is_input_v4)
+                     vlib_frame_t * frame, bool is_input_v4)
 {
   lb_main_t *lbm = &lb_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;

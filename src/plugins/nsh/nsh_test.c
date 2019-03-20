@@ -137,7 +137,7 @@ static int api_nsh_add_del_entry (vat_main_t * vam)
     nsh_test_main_t * sm = &nsh_test_main;
     unformat_input_t * line_input = vam->input;
     f64 timeout;
-    u8 is_add = 1;
+    bool is_add = 1;
     u8 ver_o_c = 0;
     u8 length = 0;
     u8 md_type = 0;
@@ -262,7 +262,7 @@ static int api_nsh_add_del_map (vat_main_t * vam)
     nsh_test_main_t * sm = &nsh_test_main;
     unformat_input_t * line_input = vam->input;
     f64 timeout;
-    u8 is_add = 1;
+    bool is_add = 1;
     u32 nsp, nsi, mapped_nsp, mapped_nsi;
     int nsp_set = 0, nsi_set = 0, mapped_nsp_set = 0, mapped_nsi_set = 0;
     u32 next_node = ~0;

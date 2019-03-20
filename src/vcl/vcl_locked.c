@@ -283,7 +283,7 @@ vls_is_shared_by_wrk (vcl_locked_session_t * vls, u32 wrk_index)
 }
 
 static void
-vls_listener_wrk_set (vcl_locked_session_t * vls, u32 wrk_index, u8 is_active)
+vls_listener_wrk_set (vcl_locked_session_t * vls, u32 wrk_index, bool is_active)
 {
   clib_bitmap_set (vls->listeners, wrk_index, is_active);
 }

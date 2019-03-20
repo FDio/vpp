@@ -64,7 +64,7 @@ typedef struct
   u32 private_segment_count;		/**< Number of private fifo segs */
   u32 private_segment_size;		/**< size of private fifo segs */
   u32 tls_engine;			/**< TLS engine mbedtls/openssl */
-  u8 is_dgram;
+  bool is_dgram;
   u32 no_copy;				/**< Don't memcpy data to tx fifo */
 
   /*
@@ -91,7 +91,7 @@ typedef struct
   /*
    * Flags
    */
-  u8 is_init;
+  bool is_init;
   u8 test_client_attached;
   u8 no_return;
   u8 test_return_packets;

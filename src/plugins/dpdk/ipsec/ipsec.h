@@ -173,7 +173,7 @@ void crypto_auto_placement (void);
 
 clib_error_t *create_sym_session (struct rte_cryptodev_sym_session **session,
 				  u32 sa_idx, crypto_resource_t * res,
-				  crypto_worker_main_t * cwm, u8 is_outbound);
+				  crypto_worker_main_t * cwm, bool is_outbound);
 
 static_always_inline u32
 crypto_op_len (void)
@@ -231,7 +231,7 @@ static_always_inline clib_error_t *
 crypto_get_session (struct rte_cryptodev_sym_session ** session,
 		    u32 sa_idx,
 		    crypto_resource_t * res,
-		    crypto_worker_main_t * cwm, u8 is_outbound)
+		    crypto_worker_main_t * cwm, bool is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data;
@@ -253,7 +253,7 @@ get_resource (crypto_worker_main_t * cwm, ipsec_sa_t * sa)
 {
   u16 cipher_res = cwm->cipher_resource_idx[sa->crypto_alg];
   u16 auth_res = cwm->auth_resource_idx[sa->integ_alg];
-  u8 is_aead;
+  bool is_aead;
 
   /* Not allowed to setup SA with no-aead-cipher/NULL or NULL/NULL */
 
@@ -344,7 +344,7 @@ crypto_set_icb (dpdk_gcm_cnt_blk * icb, u32 salt, u32 seq, u32 seq_hi)
 }
 
 static_always_inline void
-crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
+crypto_op_setup (bool is_aead, struct rte_mbuf *mb0,
 		 struct rte_crypto_op *op, void *session,
 		 u32 cipher_off, u32 cipher_len,
 		 u32 auth_off, u32 auth_len,

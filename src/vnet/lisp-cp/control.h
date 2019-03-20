@@ -50,7 +50,7 @@ typedef struct
   gid_address_t dst;
   u32 retries_num;
   f64 time_to_expire;
-  u8 is_smr_invoked;
+  bool is_smr_invoked;
   u64 *nonces;
   u8 to_be_removed;
 } pending_map_request_t;
@@ -64,7 +64,7 @@ typedef struct
 {
   gid_address_t leid;
   gid_address_t reid;
-  u8 is_src_dst;
+  bool is_src_dst;
   locator_pair_t *locator_pairs;
 } fwd_entry_t;
 
@@ -83,7 +83,7 @@ typedef enum
 /* map-server/map-resolver structure */
 typedef struct
 {
-  u8 is_down;
+  bool is_down;
   f64 last_update;
   ip_address_t address;
   char *key;
@@ -152,9 +152,9 @@ typedef enum
 typedef struct
 {
   u64 nonce;
-  u8 is_rloc_probe;
+  bool is_rloc_probe;
   mapping_t *mappings;
-  volatile u8 is_free;
+  volatile bool is_free;
 } map_records_arg_t;
 
 typedef struct
@@ -162,7 +162,7 @@ typedef struct
   u32 flags;
 
   /* LISP feature status */
-  u8 is_enabled;
+  bool is_enabled;
 
   /* eid table */
   gid_dictionary_t mapping_index_by_gid;
@@ -310,7 +310,7 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
   union
   {
     u8 *name;
@@ -329,7 +329,7 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
   gid_address_t eid;
   u32 locator_set_index;
 
@@ -338,7 +338,7 @@ typedef struct
   u8 authoritative;
 
   u8 local;
-  u8 is_static;
+  bool is_static;
   u8 *key;
   u8 key_id;
 } vnet_lisp_add_del_mapping_args_t;
@@ -353,7 +353,7 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
 int
 vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
 		       locator_t * rlocs, u32 * res_map_index,
-		       u8 * is_changed);
+		       bool * is_changed);
 
 int vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index);
 
@@ -361,30 +361,30 @@ typedef struct
 {
   gid_address_t reid;
   gid_address_t leid;
-  u8 is_add;
+  bool is_add;
 } vnet_lisp_add_del_adjacency_args_t;
 
 int vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a);
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
   ip_address_t address;
 } vnet_lisp_add_del_map_resolver_args_t;
 
 int
 vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a);
-int vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add);
+int vnet_lisp_add_del_map_server (ip_address_t * addr, bool is_add);
 
-clib_error_t *vnet_lisp_enable_disable (u8 is_enabled);
+clib_error_t *vnet_lisp_enable_disable (bool is_enabled);
 u8 vnet_lisp_enable_disable_status (void);
 
-int vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add);
-int vnet_lisp_use_petr (ip_address_t * ip, u8 is_add);
+int vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, bool is_add);
+int vnet_lisp_use_petr (ip_address_t * ip, bool is_add);
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
   u8 *locator_set_name;
 } vnet_lisp_add_del_mreq_itr_rloc_args_t;
 
@@ -393,21 +393,21 @@ vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a);
 
 int vnet_lisp_clear_all_remote_adjacencies (void);
 
-int vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_l2, u8 is_add);
+int vnet_lisp_eid_table_map (u32 vni, u32 vrf, bool is_l2, bool is_add);
 int vnet_lisp_add_del_map_table_key (gid_address_t * eid, char *key,
-				     u8 is_add);
+				     bool is_add);
 int vnet_lisp_set_map_request_mode (u8 mode);
 u8 vnet_lisp_get_map_request_mode (void);
 lisp_adjacency_t *vnet_lisp_adjacencies_get_by_vni (u32 vni);
-int vnet_lisp_rloc_probe_enable_disable (u8 is_enable);
-int vnet_lisp_map_register_enable_disable (u8 is_enable);
+int vnet_lisp_rloc_probe_enable_disable (bool is_enable);
+int vnet_lisp_map_register_enable_disable (bool is_enable);
 u8 vnet_lisp_map_register_state_get (void);
 u8 vnet_lisp_rloc_probe_state_get (void);
 int vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac,
-					u8 is_add);
+					bool is_add);
 u32 *vnet_lisp_l2_arp_bds_get (void);
 lisp_api_l2_arp_entry_t *vnet_lisp_l2_arp_entries_get_by_bd (u32 bd);
-int vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add);
+int vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, bool is_add);
 int vnet_lisp_map_register_set_ttl (u32 ttl);
 u32 vnet_lisp_map_register_get_ttl (void);
 int vnet_lisp_map_register_fallback_threshold_set (u32 value);
@@ -417,9 +417,9 @@ lisp_api_ndp_entry_t *vnet_lisp_ndp_entries_get_by_bd (u32 bd);
 u32 vnet_lisp_set_transport_protocol (u8 protocol);
 lisp_transport_protocol_t vnet_lisp_get_transport_protocol (void);
 
-extern int vnet_lisp_enable_disable_xtr_mode (u8 is_enabled);
-extern int vnet_lisp_enable_disable_pitr_mode (u8 is_enabled);
-extern int vnet_lisp_enable_disable_petr_mode (u8 is_enabled);
+extern int vnet_lisp_enable_disable_xtr_mode (bool is_enabled);
+extern int vnet_lisp_enable_disable_pitr_mode (bool is_enabled);
+extern int vnet_lisp_enable_disable_petr_mode (bool is_enabled);
 extern u8 vnet_lisp_get_xtr_mode (void);
 extern u8 vnet_lisp_get_pitr_mode (void);
 extern u8 vnet_lisp_get_petr_mode (void);

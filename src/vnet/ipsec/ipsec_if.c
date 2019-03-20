@@ -547,7 +547,7 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 
 int
 ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
-			u8 is_outbound)
+			bool is_outbound)
 {
   ipsec_main_t *im = &ipsec_main;
   vnet_hw_interface_t *hi;

@@ -71,7 +71,7 @@ void
   (vl_api_memif_socket_filename_add_del_t * mp)
 {
   memif_main_t *mm = &memif_main;
-  u8 is_add;
+  bool is_add;
   u32 socket_id;
   u32 len;
   u8 *socket_filename;

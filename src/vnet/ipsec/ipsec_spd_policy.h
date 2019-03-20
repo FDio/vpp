@@ -61,7 +61,7 @@ typedef struct ipsec_policy_t_
   ipsec_spd_policy_type_t type;
 
   // Selector
-  u8 is_ipv6;
+  bool is_ipv6;
   ip46_address_range_t laddr;
   ip46_address_range_t raddr;
   u8 protocol;

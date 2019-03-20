@@ -160,7 +160,7 @@ static void
 vts_server_start_stop (vcl_test_server_worker_t * wrk,
 		       vcl_test_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
 {
-  u8 is_bi = rx_cfg->test == VCL_TEST_TYPE_BI;
+  bool is_bi = rx_cfg->test == VCL_TEST_TYPE_BI;
   vcl_test_server_conn_t *tc;
   char buf[64];
   int i;

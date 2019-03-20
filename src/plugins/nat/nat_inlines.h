@@ -132,7 +132,7 @@ nat_send_all_to_node (vlib_main_t * vm, u32 * bi_vector,
 }
 
 always_inline void
-user_session_increment (snat_main_t * sm, snat_user_t * u, u8 is_static)
+user_session_increment (snat_main_t * sm, snat_user_t * u, bool is_static)
 {
   if (u->nsessions + u->nstaticsessions < sm->max_translations_per_user)
     {

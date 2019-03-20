@@ -153,7 +153,7 @@ api_ikev2_profile_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_add_del_t *mp;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 *name = 0;
   int ret;
 
@@ -203,7 +203,7 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
   u8 *name = 0;
   u8 *data = 0;
   u32 auth_method = 0;
-  u8 is_hex = 0;
+  bool is_hex = 0;
   int ret;
 
   const char *valid_chars = "a-zA-Z0-9_";
@@ -272,7 +272,7 @@ api_ikev2_profile_set_id (vat_main_t * vam)
   vl_api_ikev2_profile_set_id_t *mp;
   u8 *name = 0;
   u8 *data = 0;
-  u8 is_local = 0;
+  bool is_local = 0;
   u32 id_type = 0;
   ip4_address_t ip4;
   int ret;
@@ -350,7 +350,7 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_set_ts_t *mp;
   u8 *name = 0;
-  u8 is_local = 0;
+  bool is_local = 0;
   u32 proto = 0, start_port = 0, end_port = (u32) ~ 0;
   ip4_address_t start_addr, end_addr;
 

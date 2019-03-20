@@ -86,7 +86,7 @@ unformat_function_t unformat_pg_mpls_header;
 
 int mpls_sw_interface_enable_disable (mpls_main_t * mm,
 				      u32 sw_if_index,
-				      u8 is_enable, u8 is_api);
+				      bool is_enable, bool is_api);
 
 u8 mpls_sw_interface_is_enabled (u32 sw_if_index);
 
@@ -98,8 +98,8 @@ int mpls_fib_index_cmp (void *a1, void *a2);
 
 int mpls_label_cmp (void *a1, void *a2);
 
-void mpls_table_create (u32 table_id, u8 is_api, const u8 * name);
-void mpls_table_delete (u32 table_id, u8 is_api);
+void mpls_table_create (u32 table_id, bool is_api, const u8 * name);
+void mpls_table_delete (u32 table_id, bool is_api);
 
 #endif /* included_vnet_mpls_h */
 

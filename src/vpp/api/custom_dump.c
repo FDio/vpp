@@ -1462,11 +1462,11 @@ static void *vl_api_sr_steering_add_del_t_print
       break;
     case SR_STEER_IPV4:
       s = format (s, "Traffic type: IPv4 %U/%u", format_ip4_address,
-		  (ip4_address_t *) mp->prefix_addr, ntohl (mp->mask_width));
+		  (ip4_address_t *) &mp->prefix_addr, ntohl (mp->mask_width));
       break;
     case SR_STEER_IPV6:
       s = format (s, "Traffic type: IPv6 %U/%u", format_ip6_address,
-		  (ip6_address_t *) mp->prefix_addr, ntohl (mp->mask_width));
+		  (ip6_address_t *) &mp->prefix_addr, ntohl (mp->mask_width));
       break;
     default:
       s = format (s, "Traffic type: Unknown(%u)", mp->traffic_type);
@@ -1787,7 +1787,7 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
   ip46_address_t src = to_ip46 (mp->is_ipv6, mp->src_address);
   ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->dst_address);
 
-  u8 is_grp = ip46_address_is_multicast (&dst);
+  bool is_grp = ip46_address_is_multicast (&dst);
   char *dst_name = is_grp ? "group" : "dst";
 
   s = format (s, "src %U ", format_ip46_address, &src, IP46_TYPE_ANY);
@@ -1896,7 +1896,7 @@ static void *vl_api_geneve_add_del_tunnel_t_print
   ip46_address_t local = to_ip46 (mp->is_ipv6, mp->local_address);
   ip46_address_t remote = to_ip46 (mp->is_ipv6, mp->remote_address);
 
-  u8 is_grp = ip46_address_is_multicast (&remote);
+  bool is_grp = ip46_address_is_multicast (&remote);
   char *remote_name = is_grp ? "group" : "dst";
 
   s = format (s, "src %U ", format_ip46_address, &local, IP46_TYPE_ANY);
@@ -2198,7 +2198,7 @@ static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
   ip46_address_t local = to_ip46 (mp->is_ipv6, mp->local);
   ip46_address_t remote = to_ip46 (mp->is_ipv6, mp->remote);
 
-  u8 is_grp = ip46_address_is_multicast (&remote);
+  bool is_grp = ip46_address_is_multicast (&remote);
   char *remote_name = is_grp ? "group" : "remote";
 
   s = format (s, "local %U ", format_ip46_address, &local, IP46_TYPE_ANY);

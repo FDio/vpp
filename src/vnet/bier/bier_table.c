@@ -549,7 +549,7 @@ void
 bier_table_route_path_update_i (const bier_table_id_t *btid,
                                 bier_bp_t bp,
                                 fib_route_path_t *brps,
-                                u8 is_replace)
+                                bool is_replace)
 {
     index_t bfmi, bti, bei, *bfmip, *bfmis = NULL;
     fib_route_path_t *brp;

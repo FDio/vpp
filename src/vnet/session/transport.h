@@ -33,7 +33,7 @@ typedef struct _transport_proto_vft
   int (*connect) (transport_endpoint_cfg_t * rmt);
   void (*close) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
-  clib_error_t *(*enable) (vlib_main_t * vm, u8 is_en);
+  clib_error_t *(*enable) (vlib_main_t * vm, bool is_en);
 
   /*
    * Transmission
@@ -122,7 +122,7 @@ int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,
 				    ip46_address_t * lcl_addr,
 				    u16 * lcl_port);
 void transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port);
-void transport_enable_disable (vlib_main_t * vm, u8 is_en);
+void transport_enable_disable (vlib_main_t * vm, bool is_en);
 void transport_init (void);
 
 always_inline u32

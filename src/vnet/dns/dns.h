@@ -29,7 +29,7 @@ typedef struct
   u32 request_type;
   u32 client_index;
   u32 client_context;
-  u8 is_ip6;
+  bool is_ip6;
   u16 dst_port;
   u16 id;
   u16 pad;

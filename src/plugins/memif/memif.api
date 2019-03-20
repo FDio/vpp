@@ -15,6 +15,8 @@
 
 option version = "2.0.0";
 
+import "vnet/ethernet/ethernet_types.api";
+
 /** \brief Create or remove named socket file for memif interfaces
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -28,7 +30,7 @@ autoreply define memif_socket_filename_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;		/* 0 = remove, 1 = add association */
+  bool is_add;		/* 0 = remove, 1 = add association */
   u32 socket_id;	/* unique non-0 id for given socket file name */
   u8 socket_filename[128];	/* NUL terminated filename */
 };
@@ -62,7 +64,7 @@ define memif_create
   u8 secret[24]; /* optional, default is "" */
   u32 ring_size; /* optional, default is 1024 entries, must be power of 2 */
   u16 buffer_size; /* optional, default is 2048 bytes */
-  u8 hw_addr[6]; /* optional, randomly generated if not defined */
+  vl_api_mac_address_t hw_addr; /* optional, randomly generated if not defined */
 };
 
 /** \brief Create memory interface response
@@ -134,7 +136,7 @@ define memif_details
 
   u32 sw_if_index;
   u8 if_name[64];
-  u8 hw_addr[6];
+  vl_api_mac_address_t hw_addr;
 
   /* memif specific parameters */
   u32 id;

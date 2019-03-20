@@ -1458,7 +1458,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
 int
 vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      const char *sock_filename,
-		      u8 is_server,
+		      bool is_server,
 		      u32 * sw_if_index,
 		      u64 feature_mask,
 		      u8 renumber, u32 custom_dev_instance, u8 * hwaddr)
@@ -1521,7 +1521,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 int
 vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      const char *sock_filename,
-		      u8 is_server,
+		      bool is_server,
 		      u32 sw_if_index,
 		      u64 feature_mask, u8 renumber, u32 custom_dev_instance)
 {
@@ -1577,7 +1577,7 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *sock_filename = NULL;
   u32 sw_if_index;
-  u8 is_server = 0;
+  bool is_server = 0;
   u64 feature_mask = (u64) ~ (0ULL);
   u8 renumber = 0;
   u32 custom_dev_instance = ~0;

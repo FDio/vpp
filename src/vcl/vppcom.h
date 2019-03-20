@@ -16,6 +16,7 @@
 #ifndef included_vppcom_h
 #define included_vppcom_h
 
+#include <stdbool.h>
 #include <netdb.h>
 #include <errno.h>
 #include <sys/poll.h>
@@ -244,7 +245,7 @@ vppcom_retval_str (int retval)
 extern int vppcom_app_create (char *app_name);
 extern void vppcom_app_destroy (void);
 
-extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
+extern int vppcom_session_create (uint8_t proto, bool is_nonblocking);
 extern int vppcom_session_close (uint32_t session_handle);
 extern int vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep);
 extern int vppcom_session_listen (uint32_t session_handle, uint32_t q_len);

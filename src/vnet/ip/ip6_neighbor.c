@@ -402,7 +402,7 @@ ip6_neighbor_adj_fib_remove (ip6_neighbor_t * n, u32 fib_index)
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
   ip_neighbor_flags_t flags;
   mac_address_t mac;
   u32 sw_if_index;
@@ -1097,7 +1097,7 @@ set_ip6_neighbor (vlib_main_t * vm,
   ip6_address_t addr;
   mac_address_t mac;
   int addr_valid = 0;
-  int is_del = 0;
+  bool is_del = 0;
   u32 sw_if_index;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -3403,7 +3403,7 @@ ip6_neighbor_ra_config (vlib_main_t * vm, u32 sw_if_index,
 			u8 ll_option, u8 send_unicast, u8 cease,
 			u8 use_lifetime, u32 lifetime,
 			u32 initial_count, u32 initial_interval,
-			u32 max_interval, u32 min_interval, u8 is_no)
+			u32 max_interval, u32 min_interval, bool is_no)
 {
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   int error;
@@ -3504,7 +3504,7 @@ ip6_neighbor_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
 			ip6_address_t * prefix_addr, u8 prefix_len,
 			u8 use_default, u32 val_lifetime, u32 pref_lifetime,
 			u8 no_advertise, u8 off_link, u8 no_autoconfig,
-			u8 no_onlink, u8 is_no)
+			u8 no_onlink, bool is_no)
 {
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   int error;
@@ -3643,7 +3643,7 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
   vnet_main_t *vnm = vnet_get_main ();
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   clib_error_t *error = 0;
-  u8 is_no = 0;
+  bool is_no = 0;
   u8 suppress = 0, managed = 0, other = 0;
   u8 suppress_ll_option = 0, send_unicast = 0, cease = 0;
   u8 use_lifetime = 0;
@@ -4494,7 +4494,7 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
 					u32 sw_if_index,
 					ip6_address_t * address,
 					u32 address_length,
-					u32 if_address_index, u32 is_delete)
+					u32 if_address_index, bool is_delete)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
@@ -4838,7 +4838,7 @@ vnet_ip6_nd_term (vlib_main_t * vm,
 }
 
 int
-ip6_neighbor_proxy_add_del (u32 sw_if_index, ip6_address_t * addr, u8 is_del)
+ip6_neighbor_proxy_add_del (u32 sw_if_index, ip6_address_t * addr, bool is_del)
 {
   u32 fib_index;
 
@@ -4892,7 +4892,7 @@ set_ip6_nd_proxy_cmd (vlib_main_t * vm,
   clib_error_t *error = 0;
   ip6_address_t addr;
   u32 sw_if_index;
-  u8 is_del = 0;
+  bool is_del = 0;
 
   if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
     {

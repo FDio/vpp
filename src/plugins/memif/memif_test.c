@@ -121,7 +121,7 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_memif_socket_filename_add_del_t *mp;
-  u8 is_add;
+  bool is_add;
   u32 socket_id;
   u8 *socket_filename;
   int ret;

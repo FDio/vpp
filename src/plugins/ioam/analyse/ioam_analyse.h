@@ -47,7 +47,7 @@ typedef struct
   u8 trace_type;
 
   /** Flag to indicate whether node is allocated. */
-  u8 is_free;
+  bool is_free;
 
   u8 pad[5];
 
@@ -98,7 +98,7 @@ typedef struct ioam_analyser_data_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-  u8 is_free;
+  bool is_free;
   u8 pad[3];
 
   /** Num of pkts sent for this flow. */

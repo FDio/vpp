@@ -159,7 +159,7 @@ VNET_FEATURE_INIT (ip6_drop_end_of_arc, static) = {
 
 #ifndef CLIB_MARCH_VARIANT
 void
-ip6_punt_policer_add_del (u8 is_add, u32 policer_index)
+ip6_punt_policer_add_del (bool is_add, u32 policer_index)
 {
   ip6_punt_policer_cfg.policer_index = policer_index;
 
@@ -176,7 +176,7 @@ ip6_punt_police_cmd (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u32 policer_index;
-  u8 is_add = 1;
+  bool is_add = 1;
 
   policer_index = ~0;
 
@@ -325,7 +325,7 @@ ip6_punt_redirect_cmd (vlib_main_t * vm,
   u32 tx_sw_if_index = 0;
   ip46_address_t nh;
   vnet_main_t *vnm;
-  u8 is_add;
+  bool is_add;
 
   is_add = 1;
   vnm = vnet_get_main ();

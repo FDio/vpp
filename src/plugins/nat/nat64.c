@@ -66,7 +66,7 @@ nat64_ip4_add_del_interface_address_cb (ip4_main_t * im, uword opaque,
 					u32 sw_if_index,
 					ip4_address_t * address,
 					u32 address_length,
-					u32 if_address_index, u32 is_delete)
+					u32 if_address_index, bool is_delete)
 {
   nat64_main_t *nm = &nat64_main;
   int i, j;
@@ -313,7 +313,7 @@ nat64_set_hash (u32 bib_buckets, u32 bib_memory_size, u32 st_buckets,
 
 int
 nat64_add_del_pool_addr (u32 thread_index,
-			 ip4_address_t * addr, u32 vrf_id, u8 is_add)
+			 ip4_address_t * addr, u32 vrf_id, bool is_add)
 {
   nat64_main_t *nm = &nat64_main;
   snat_address_t *a = 0;
@@ -450,7 +450,7 @@ nat64_add_interface_address (u32 sw_if_index, int is_add)
 }
 
 int
-nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
+nat64_add_del_interface (u32 sw_if_index, bool is_inside, bool is_add)
 {
   nat64_main_t *nm = &nat64_main;
   snat_interface_t *interface = 0, *i;
@@ -683,7 +683,7 @@ VLIB_REGISTER_NODE (nat64_static_bib_worker_node, static) = {
 int
 nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 				ip4_address_t * out_addr, u16 in_port,
-				u16 out_port, u8 proto, u32 vrf_id, u8 is_add)
+				u16 out_port, u8 proto, u32 vrf_id, bool is_add)
 {
   nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
@@ -933,7 +933,7 @@ nat64_session_reset_timeout (nat64_db_st_entry_t * ste, vlib_main_t * vm)
 
 void
 nat64_tcp_session_set_state (nat64_db_st_entry_t * ste, tcp_header_t * tcp,
-			     u8 is_ip6)
+			     bool is_ip6)
 {
   switch (ste->tcp_state)
     {
@@ -999,7 +999,7 @@ nat64_tcp_session_set_state (nat64_db_st_entry_t * ste, tcp_header_t * tcp,
 }
 
 int
-nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id, u8 is_add)
+nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id, bool is_add)
 {
   nat64_main_t *nm = &nat64_main;
   nat64_prefix_t *p = 0;

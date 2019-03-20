@@ -64,7 +64,7 @@ static void tuntap_nopunt_frame (vlib_main_t * vm,
 typedef struct
 {
   u32 sw_if_index;
-  u8 is_v6;
+  bool is_v6;
   u8 addr[16];
 } subif_address_t;
 
@@ -690,7 +690,7 @@ VLIB_CONFIG_FUNCTION (tuntap_config, "tuntap");
  * @param opaque - uword
  * @param sw_if_index - u32
  * @param *address - ip4_address_t
- * @param is_delete - u32
+ * @param is_delete - bool
  *
  */
 void
@@ -699,7 +699,7 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
 				      u32 sw_if_index,
 				      ip4_address_t * address,
 				      u32 address_length,
-				      u32 if_address_index, u32 is_delete)
+				      u32 if_address_index, bool is_delete)
 {
   tuntap_main_t *tm = &tuntap_main;
   struct ifreq ifr;
@@ -806,7 +806,7 @@ struct in6_ifreq
  * @param *address - ip6_address_t
  * @param address_length - u32
  * @param if_address_index - u32
- * @param is_delete - u32
+ * @param is_delete - bool
  */
 void
 tuntap_ip6_add_del_interface_address (ip6_main_t * im,
@@ -814,7 +814,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
 				      u32 sw_if_index,
 				      ip6_address_t * address,
 				      u32 address_length,
-				      u32 if_address_index, u32 is_delete)
+				      u32 if_address_index, bool is_delete)
 {
   tuntap_main_t *tm = &tuntap_main;
   struct ifreq ifr;

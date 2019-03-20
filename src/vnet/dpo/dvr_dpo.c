@@ -243,7 +243,7 @@ always_inline uword
 dvr_dpo_inline (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame,
-                u8 is_ip6)
+                bool is_ip6)
 {
     u32 n_left_from, next_index, * from, * to_next;
     ip_lookup_main_t *lm = (is_ip6?

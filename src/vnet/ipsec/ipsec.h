@@ -27,7 +27,7 @@
 #include <vnet/ipsec/ipsec_sa.h>
 #include <vnet/ipsec/ipsec_if.h>
 
-typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
+typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, bool is_add);
 typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
 
 typedef struct
@@ -157,7 +157,7 @@ typedef struct
 extern ipsec_main_t ipsec_main;
 
 clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
-					u8 is_add);
+					bool is_add);
 
 clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
 

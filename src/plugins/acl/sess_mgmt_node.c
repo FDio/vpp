@@ -856,7 +856,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 
 void
-acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
+acl_fa_enable_disable (u32 sw_if_index, bool is_input, int enable_disable)
 {
   acl_main_t *am = &acl_main;
   if (enable_disable)

@@ -197,11 +197,11 @@ u8 *format_vxlan_encap_trace (u8 * s, va_list * args);
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
 
   /* we normally use is_ip4, but since this adds to the
    * structure, this seems less of a breaking change */
-  u8 is_ip6;
+  bool is_ip6;
   u32 instance;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
@@ -213,7 +213,7 @@ typedef struct
 int vnet_vxlan_add_del_tunnel
   (vnet_vxlan_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
 
-void vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
+void vnet_int_vxlan_bypass_mode (u32 sw_if_index, bool is_ip6, bool is_enable);
 
 int vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_imdex, int is_add);
 

@@ -103,11 +103,11 @@ typedef enum
 } virtio_net_feature_t;
 
 int vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
-			  const char *sock_filename, u8 is_server,
+			  const char *sock_filename, bool is_server,
 			  u32 * sw_if_index, u64 feature_mask,
 			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr);
 int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
-			  const char *sock_filename, u8 is_server,
+			  const char *sock_filename, bool is_server,
 			  u32 sw_if_index, u64 feature_mask,
 			  u8 renumber, u32 custom_dev_instance);
 int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
@@ -365,7 +365,7 @@ typedef struct
   u32 sw_if_index;
   u32 virtio_net_hdr_sz;
   u64 features;
-  u8 is_server;
+  bool is_server;
   u8 sock_filename[256];
   u32 num_regions;
   int sock_errno;

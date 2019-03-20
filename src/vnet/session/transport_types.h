@@ -69,7 +69,7 @@ typedef struct _transport_connection
       ip46_address_t lcl_ip;	/**< Local IP */
       u16 rmt_port;		/**< Remote port */
       u16 lcl_port;		/**< Local port */
-      u8 is_ip4;		/**< Flag if IP4 connection */
+      bool is_ip4;		/**< Flag if IP4 connection */
       u8 proto;			/**< Protocol id */
       u32 fib_index;		/**< Network namespace */
     };

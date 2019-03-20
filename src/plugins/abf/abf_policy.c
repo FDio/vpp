@@ -241,7 +241,7 @@ abf_policy_cmd (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 acl_index, policy_id;
   fib_route_path_t *rpaths = NULL, rpath;
-  u32 is_del;
+  bool is_del;
 
   is_del = 0;
   acl_index = INDEX_INVALID;

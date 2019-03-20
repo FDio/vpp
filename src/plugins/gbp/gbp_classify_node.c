@@ -378,7 +378,7 @@ always_inline uword
 gbp_lpm_classify_inline (vlib_main_t * vm,
 			 vlib_node_runtime_t * node,
 			 vlib_frame_t * frame,
-			 dpo_proto_t dproto, u8 is_recirc)
+			 dpo_proto_t dproto, bool is_recirc)
 {
   gbp_src_classify_main_t *gscm = &gbp_src_classify_main;
   u32 n_left_from, *from, *to_next;

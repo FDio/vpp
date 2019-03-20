@@ -391,7 +391,7 @@ find_catchup_from_file_descriptor (mc_socket_main_t * msm,
 }
 
 static clib_error_t *
-catchup_socket_read_ready (clib_file_t * uf, int is_server)
+catchup_socket_read_ready (clib_file_t * uf, bool is_server)
 {
   clib_file_main_t *um = &file_main;
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
@@ -461,7 +461,7 @@ catchup_client_read_ready (clib_file_t * uf)
 }
 
 static clib_error_t *
-catchup_socket_write_ready (clib_file_t * uf, int is_server)
+catchup_socket_write_ready (clib_file_t * uf, bool is_server)
 {
   clib_file_main_t *um = &file_main;
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;

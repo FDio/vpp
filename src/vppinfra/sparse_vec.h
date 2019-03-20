@@ -38,6 +38,8 @@
 #ifndef included_sparse_vec_h
 #define included_sparse_vec_h
 
+#include <stdbool.h>
+
 #include <vppinfra/vec.h>
 #include <vppinfra/bitops.h>
 
@@ -104,7 +106,7 @@ sparse_vec_index_internal (void *v,
 {
   sparse_vec_header_t *h;
   uword i, b, d, w;
-  u8 is_member;
+  bool is_member;
 
   h = sparse_vec_header (v);
   i = sparse_index / BITS (h->is_member_bitmap[0]);
@@ -125,7 +127,7 @@ sparse_vec_index_internal (void *v,
   if (maybe_range)
     {
       u8 r = h->range_flags[d];
-      u8 is_range, is_valid_range;
+      bool is_range, is_valid_range;
 
       is_range = maybe_range & (r & SPARSE_VEC_IS_RANGE);
       is_valid_range = (r & SPARSE_VEC_IS_VALID_RANGE) != 0;
@@ -168,7 +170,7 @@ sparse_vec_index2 (void *v,
   sparse_vec_header_t *h;
   uword b0, b1, w0, w1, v0, v1;
   u32 i0, i1, d0, d1;
-  u8 is_member0, is_member1;
+  bool is_member0, is_member1;
 
   h = sparse_vec_header (v);
 

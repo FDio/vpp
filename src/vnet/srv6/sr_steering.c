@@ -57,7 +57,7 @@
  * @return 0 if correct, else error
  */
 int
-sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
+sr_steering_policy (bool is_del, ip6_address_t * bsid, u32 sr_policy_index,
 		    u32 table_id, ip46_address_t * prefix, u32 mask_width,
 		    u32 sw_if_index, u8 traffic_type)
 {
@@ -366,7 +366,7 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   vnet_main_t *vnm = vnet_get_main ();
 
-  int is_del = 0;
+  bool is_del = 0;
 
   ip46_address_t prefix;
   u32 dst_mask_width = 0;

@@ -180,7 +180,7 @@ build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 {
   gid_address_t _seid, * seid = &_seid;
   gid_address_t _deid, * deid = &_deid;
-  u8 is_smr_invoked = 1;
+  bool is_smr_invoked = 1;
   u8 rloc_probe_set = 0;
   u64 nonce = 0;
   map_request_hdr_t * h = 0;

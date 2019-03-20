@@ -19,8 +19,8 @@ define geneve_add_del_tunnel
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
+  bool is_add;
+  bool is_ipv6;
   u8 local_address[16];
   u8 remote_address[16];
   u32 mcast_sw_if_index;
@@ -53,7 +53,7 @@ define geneve_tunnel_details
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
-  u8 is_ipv6;
+  bool is_ipv6;
 };
 
 /** \brief Interface set geneve-bypass request
@@ -68,6 +68,6 @@ autoreply define sw_interface_set_geneve_bypass
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-  u8 is_ipv6;
+  bool is_ipv6;
   u8 enable;
 };

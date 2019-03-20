@@ -44,7 +44,7 @@ nsh_md2_ioam_main_t nsh_md2_ioam_main;
 static void
 nsh_md2_ioam_set_clear_output_feature_on_intf (vlib_main_t * vm,
 						    u32 sw_if_index0,
-						    u8 is_add)
+						    bool is_add)
 {
 
 
@@ -80,7 +80,7 @@ int
 nsh_md2_ioam_enable_disable_for_dest (vlib_main_t * vm,
 					   ip46_address_t dst_addr,
 					   u32 outer_fib_index,
-					   u8 is_ipv4, u8 is_add)
+					   bool is_ipv4, bool is_add)
 {
   nsh_md2_ioam_main_t *hm = &nsh_md2_ioam_main;
   u32 fib_index0 = 0;

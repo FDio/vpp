@@ -554,7 +554,7 @@ static clib_error_t *
 ip4_add_del_interface_address_internal (vlib_main_t * vm,
 					u32 sw_if_index,
 					ip4_address_t * address,
-					u32 address_length, u32 is_del)
+					u32 address_length, bool is_del)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip4_main_t *im = &ip4_main;
@@ -660,7 +660,7 @@ clib_error_t *
 ip4_add_del_interface_address (vlib_main_t * vm,
 			       u32 sw_if_index,
 			       ip4_address_t * address,
-			       u32 address_length, u32 is_del)
+			       u32 address_length, bool is_del)
 {
   return ip4_add_del_interface_address_internal
     (vm, sw_if_index, address, address_length, is_del);
@@ -1220,7 +1220,7 @@ VNET_FEATURE_ARC_INIT (ip4_local) =
 
 static inline void
 ip4_local_l4_csum_validate (vlib_main_t * vm, vlib_buffer_t * p,
-			    ip4_header_t * ip, u8 is_udp, u8 * error,
+			    ip4_header_t * ip, bool is_udp, u8 * error,
 			    u8 * good_tcp_udp)
 {
   u32 flags0;
@@ -1258,7 +1258,8 @@ static inline void
 ip4_local_check_l4_csum (vlib_main_t * vm, vlib_buffer_t * b,
 			 ip4_header_t * ih, u8 * error)
 {
-  u8 is_udp, is_tcp_udp, good_tcp_udp;
+  bool is_udp, is_tcp_udp;
+  u8 good_tcp_udp;
 
   is_udp = ih->protocol == IP_PROTOCOL_UDP;
   is_tcp_udp = is_udp || ih->protocol == IP_PROTOCOL_TCP;
@@ -1277,7 +1278,8 @@ static inline void
 ip4_local_check_l4_csum_x2 (vlib_main_t * vm, vlib_buffer_t ** b,
 			    ip4_header_t ** ih, u8 * error)
 {
-  u8 is_udp[2], is_tcp_udp[2], good_tcp_udp[2];
+  bool is_udp[2], is_tcp_udp[2];
+  u8 good_tcp_udp[2];
 
   is_udp[0] = ih[0]->protocol == IP_PROTOCOL_UDP;
   is_udp[1] = ih[1]->protocol == IP_PROTOCOL_UDP;

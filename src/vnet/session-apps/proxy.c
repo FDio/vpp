@@ -169,7 +169,7 @@ proxy_reset_callback (session_t * s)
 
 static int
 proxy_connected_callback (u32 app_index, u32 api_context,
-			  session_t * s, u8 is_fail)
+			  session_t * s, bool is_fail)
 {
   clib_warning ("called...");
   return -1;
@@ -273,7 +273,7 @@ static session_cb_vft_t proxy_session_cb_vft = {
 
 static int
 active_open_connected_callback (u32 app_index, u32 opaque,
-				session_t * s, u8 is_fail)
+				session_t * s, bool is_fail)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_t *ps;

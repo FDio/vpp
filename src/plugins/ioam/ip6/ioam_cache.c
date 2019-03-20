@@ -96,7 +96,7 @@ ioam_e2e_cache_trace_handler (u8 * s, ip6_hop_by_hop_option_t * opt)
 /* Action function shared between message handler and debug CLI */
 int
 ioam_cache_ip6_enable_disable (ioam_cache_main_t * em,
-			       ip6_address_t * sr_localsid, u8 is_disable)
+			       ip6_address_t * sr_localsid, bool is_disable)
 {
   vlib_main_t *vm = em->vlib_main;
 
@@ -131,7 +131,7 @@ ioam_tunnel_select_ip6_enable_disable (ioam_cache_main_t * em,
 				       u8 criteria,
 				       u8 no_of_responses,
 				       ip6_address_t * sr_localsid,
-				       u8 is_disable)
+				       bool is_disable)
 {
   vlib_main_t *vm = em->vlib_main;
 
@@ -220,7 +220,7 @@ set_ioam_cache_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   ioam_cache_main_t *em = &ioam_cache_main;
-  u8 is_disable = 0;
+  bool is_disable = 0;
   ip6_address_t sr_localsid;
   u8 address_set = 0;
 
@@ -259,7 +259,7 @@ set_ioam_tunnel_select_command_fn (vlib_main_t * vm,
 				   vlib_cli_command_t * cmd)
 {
   ioam_cache_main_t *em = &ioam_cache_main;
-  u8 is_disable = 0;
+  bool is_disable = 0;
   u8 one_way = 0;
   ip6_address_t sr_localsid;
   u8 address_set = 0;

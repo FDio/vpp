@@ -288,7 +288,7 @@ VNET_FEATURE_INIT (acl_out_l2_nonip_fa_feature, static) =
 
 
 always_inline u16
-get_current_policy_epoch (acl_main_t * am, int is_input, u32 sw_if_index0)
+get_current_policy_epoch (acl_main_t * am, bool is_input, u32 sw_if_index0)
 {
   u32 **p_epoch_vec =
     is_input ? &am->input_policy_epoch_by_sw_if_index :
@@ -327,7 +327,7 @@ maybe_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 
 always_inline int
-stale_session_deleted (acl_main_t * am, int is_input,
+stale_session_deleted (acl_main_t * am, bool is_input,
 		       acl_fa_per_worker_data_t * pw, u64 now,
 		       u32 sw_if_index0, fa_full_session_id_t f_sess_id)
 {
@@ -360,7 +360,7 @@ stale_session_deleted (acl_main_t * am, int is_input,
 
 
 always_inline void
-get_sw_if_index_xN (int vector_sz, int is_input, vlib_buffer_t ** b,
+get_sw_if_index_xN (int vector_sz, bool is_input, vlib_buffer_t ** b,
 		    u32 * out_sw_if_index)
 {
   int ii;
@@ -372,7 +372,7 @@ get_sw_if_index_xN (int vector_sz, int is_input, vlib_buffer_t ** b,
 }
 
 always_inline void
-fill_5tuple_xN (int vector_sz, acl_main_t * am, int is_ip6, int is_input,
+fill_5tuple_xN (int vector_sz, acl_main_t * am, bool is_ip6, bool is_input,
 		int is_l2_path, vlib_buffer_t ** b, u32 * sw_if_index,
 		fa_5tuple_t * out_fa_5tuple)
 {
@@ -403,7 +403,7 @@ prefetch_session_entry (acl_main_t * am, fa_full_session_id_t f_sess_id)
 
 always_inline u8
 process_established_session (vlib_main_t * vm, acl_main_t * am,
-			     u32 counter_node_index, int is_input, u64 now,
+			     u32 counter_node_index, bool is_input, u64 now,
 			     fa_full_session_id_t f_sess_id,
 			     u32 * sw_if_index, fa_5tuple_t * fa_5tuple,
 			     u32 pkt_len, int node_trace_on,
@@ -455,7 +455,7 @@ process_established_session (vlib_main_t * vm, acl_main_t * am,
 always_inline void
 acl_fa_node_common_prepare_fn (vlib_main_t * vm,
 			       vlib_node_runtime_t * node,
-			       vlib_frame_t * frame, int is_ip6, int is_input,
+			       vlib_frame_t * frame, bool is_ip6, bool is_input,
 			       int is_l2_path, int with_stateful_datapath)
 	/* , int node_trace_on,
 	   int reclassify_sessions) */
@@ -544,7 +544,7 @@ acl_fa_node_common_prepare_fn (vlib_main_t * vm,
 always_inline uword
 acl_fa_inner_node_fn (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame,
-		      int is_ip6, int is_input, int is_l2_path,
+		      bool is_ip6, bool is_input, int is_l2_path,
 		      int with_stateful_datapath, int node_trace_on,
 		      int reclassify_sessions)
 {
@@ -794,7 +794,7 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 always_inline uword
 acl_fa_outer_node_fn (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame,
-		      int is_ip6, int is_input, int is_l2_path,
+		      bool is_ip6, bool is_input, int is_l2_path,
 		      int do_stateful_datapath)
 {
   acl_main_t *am = &acl_main;
@@ -829,8 +829,8 @@ acl_fa_outer_node_fn (vlib_main_t * vm,
 
 always_inline uword
 acl_fa_node_fn (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame, int is_ip6,
-		int is_input, int is_l2_path)
+		vlib_node_runtime_t * node, vlib_frame_t * frame, bool is_ip6,
+		bool is_input, int is_l2_path)
 {
   /* select the reclassify/no-reclassify version of the datapath */
   acl_main_t *am = &acl_main;

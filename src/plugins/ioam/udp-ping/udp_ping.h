@@ -126,7 +126,7 @@ void
 ip46_udp_ping_set_flow (ip46_address_t src, ip46_address_t dst,
 			u16 start_src_port, u16 end_src_port,
 			u16 start_dst_port, u16 end_dst_port,
-			u16 interval, u8 fault_det, u8 is_disable);
+			u16 interval, u8 fault_det, bool is_disable);
 
 clib_error_t *udp_ping_flow_create (u8 del);
 

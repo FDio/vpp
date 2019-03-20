@@ -112,7 +112,7 @@ svm_queue_is_full (svm_queue_t * q)
 }
 
 static inline void
-svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
+svm_queue_send_signal (svm_queue_t * q, bool is_prod)
 {
   if (q->producer_evtfd == -1)
     {

@@ -125,7 +125,7 @@ typedef struct
   u8 arp_term;
   u8 mac_age;
   u8 *bd_tag;
-  u8 is_add;
+  bool is_add;
 } l2_bridge_domain_add_del_args_t;
 
 /* Return 1 if bridge domain has been initialized */
@@ -202,7 +202,7 @@ bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id)
 u32 bd_add_del_ip_mac (u32 bd_index,
 		       ip46_type_t type,
 		       const ip46_address_t * ip_addr,
-		       const mac_address_t * mac, u8 is_add);
+		       const mac_address_t * mac, bool is_add);
 
 void bd_flush_ip_mac (u32 bd_index);
 

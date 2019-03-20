@@ -101,7 +101,7 @@ typedef struct
   /* next retry time */
   f64 retry_timer;
   /* 1 if HA resync */
-  u8 is_resync;
+  bool is_resync;
   /* packet data */
   u8 *data;
 } nat_ha_resend_entry_t;
@@ -184,7 +184,7 @@ nat_ha_resync_fin (void)
 
 /* cache HA NAT data waiting for ACK */
 static int
-nat_ha_resend_queue_add (u32 seq, u8 * data, u8 data_len, u8 is_resync,
+nat_ha_resend_queue_add (u32 seq, u8 * data, u8 data_len, bool is_resync,
 			 u32 thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
@@ -540,7 +540,7 @@ nat_ha_header_create (vlib_buffer_t * b, u32 * offset, u32 thread_index)
 }
 
 static inline void
-nat_ha_send (vlib_frame_t * f, vlib_buffer_t * b, u8 is_resync,
+nat_ha_send (vlib_frame_t * f, vlib_buffer_t * b, bool is_resync,
 	     u32 thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
@@ -569,7 +569,7 @@ nat_ha_send (vlib_frame_t * f, vlib_buffer_t * b, u8 is_resync,
 /* add NAT HA protocol event */
 static_always_inline void
 nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
-		  u8 is_resync)
+		  bool is_resync)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   nat_ha_per_thread_data_t *td = &ha->per_thread_data[thread_index];
@@ -671,7 +671,7 @@ do {                                \
 } while (0)
 
 void
-nat_ha_flush (u8 is_resync)
+nat_ha_flush (bool is_resync)
 {
   skip_if_disabled ();
   nat_ha_event_add (0, 1, 0, is_resync);
@@ -681,7 +681,7 @@ void
 nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
 	     u16 out_port, ip4_address_t * eh_addr, u16 eh_port,
 	     ip4_address_t * ehn_addr, u16 ehn_port, u8 proto, u32 fib_index,
-	     u16 flags, u32 thread_index, u8 is_resync)
+	     u16 flags, u32 thread_index, bool is_resync)
 {
   nat_ha_event_t event;
 

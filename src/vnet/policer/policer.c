@@ -22,7 +22,7 @@ clib_error_t *
 policer_add_del (vlib_main_t * vm,
 		 u8 * name,
 		 sse2_qos_pol_cfg_params_st * cfg,
-		 u32 * policer_index, u8 is_add)
+		 u32 * policer_index, bool is_add)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
   policer_read_response_type_st test_policer;
@@ -425,7 +425,7 @@ configure_policer_command_fn (vlib_main_t * vm,
 {
   sse2_qos_pol_cfg_params_st c;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 *name = 0;
   u32 pi;
   clib_error_t *error = NULL;

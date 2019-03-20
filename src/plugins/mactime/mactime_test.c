@@ -156,7 +156,7 @@ api_mactime_add_del_range (vat_main_t * vam)
   clib_timebase_range_t *rp = 0;
   int name_set = 0;
   int mac_set = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 allow = 0;
   u8 drop = 0;
   int ret;

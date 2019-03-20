@@ -163,7 +163,7 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
 			    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   u32 nsp, nsi, mapped_nsp, mapped_nsi, nsh_action;
   int nsp_set = 0, nsi_set = 0, mapped_nsp_set = 0, mapped_nsi_set = 0;
   int nsh_action_set = 0;
@@ -341,7 +341,7 @@ nsh_add_del_entry_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 ver_o_c = 0;
   u8 ttl = 63;
   u8 length = 0;

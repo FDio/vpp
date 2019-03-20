@@ -105,7 +105,7 @@ format_vxlan_gpe_with_length (u8 * s, va_list * args)
 always_inline uword
 vxlan_gpe_input (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame, u8 is_ip4)
+		 vlib_frame_t * from_frame, bool is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
   vxlan_gpe_main_t *nngm = &vxlan_gpe_main;

@@ -180,7 +180,7 @@ typedef struct session_
 } session_t;
 
 always_inline session_type_t
-session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
+session_type_from_proto_and_ip (transport_proto_t proto, bool is_ip4)
 {
   return (proto << 1 | is_ip4);
 }
@@ -206,7 +206,7 @@ session_get_transport_proto (session_t * s)
 always_inline fib_protocol_t
 session_get_fib_proto (session_t * s)
 {
-  u8 is_ip4 = s->session_type & 1;
+  bool is_ip4 = s->session_type & 1;
   return (is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
 }
 
@@ -340,7 +340,7 @@ typedef struct session_dgram_header_
   ip46_address_t lcl_ip;
   u16 rmt_port;
   u16 lcl_port;
-  u8 is_ip4;
+  bool is_ip4;
 } __clib_packed session_dgram_hdr_t;
 
 #define SESSION_CONN_ID_LEN 37

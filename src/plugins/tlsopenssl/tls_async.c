@@ -425,7 +425,7 @@ openssl_async_polling ()
 }
 
 void
-openssl_async_node_enable_disable (u8 is_en)
+openssl_async_node_enable_disable (bool is_en)
 {
   u8 state = is_en ? VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED;
   /* *INDENT-OFF* */

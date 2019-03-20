@@ -68,8 +68,8 @@ format_nat44_handoff_trace (u8 * s, va_list * args)
 
 static inline uword
 nat44_worker_handoff_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame, u8 is_output,
-				u8 is_in2out)
+				vlib_frame_t * frame, bool is_output,
+				bool is_in2out)
 {
   snat_main_t *sm = &snat_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;

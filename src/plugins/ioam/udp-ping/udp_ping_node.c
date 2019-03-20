@@ -132,7 +132,7 @@ void
 ip46_udp_ping_set_flow (ip46_address_t src, ip46_address_t dst,
 			u16 start_src_port, u16 end_src_port,
 			u16 start_dst_port, u16 end_dst_port,
-			u16 interval, u8 fault_det, u8 is_disable)
+			u16 interval, u8 fault_det, bool is_disable)
 {
   u8 found = 0;
   ip46_udp_ping_flow *flow = NULL;
@@ -266,7 +266,7 @@ set_udp_ping_command_fn (vlib_main_t * vm,
   u16 start_src_port, end_src_port;
   u16 start_dst_port, end_dst_port;
   u32 interval;
-  u8 is_disable = 0;
+  bool is_disable = 0;
   u8 fault_det = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)

@@ -91,7 +91,7 @@ ethernet_build_rewrite (vnet_main_t * vnm,
   ethernet_type_t type;
   uword n_bytes = sizeof (h[0]);
   u8 *rewrite = NULL;
-  u8 is_p2p = 0;
+  bool is_p2p = 0;
 
   if ((sub_sw->type == VNET_SW_INTERFACE_TYPE_P2P) ||
       (sub_sw->type == VNET_SW_INTERFACE_TYPE_PIPE))
@@ -665,7 +665,7 @@ VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
 #define LOOPBACK_MAX_INSTANCE		(16 * 1024)
 
 static u32
-loopback_instance_alloc (u8 is_specified, u32 want)
+loopback_instance_alloc (bool is_specified, u32 want)
 {
   ethernet_main_t *em = &ethernet_main;
 
@@ -733,7 +733,7 @@ loopback_instance_free (u32 instance)
 
 int
 vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
-				u8 is_specified, u32 user_instance)
+				bool is_specified, u32 user_instance)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -818,7 +818,7 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
   int rv;
   u32 sw_if_index;
   u8 mac_address[6];
-  u8 is_specified = 0;
+  bool is_specified = 0;
   u32 user_instance = 0;
 
   clib_memset (mac_address, 0, sizeof (mac_address));

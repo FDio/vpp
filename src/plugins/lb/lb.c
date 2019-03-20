@@ -1319,7 +1319,7 @@ lb_fib_node_back_walk_notify (fib_node_t *node,
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }
 
-int lb_nat4_interface_add_del (u32 sw_if_index, int is_del)
+int lb_nat4_interface_add_del (u32 sw_if_index, bool is_del)
 {
   if (is_del)
     {
@@ -1335,7 +1335,7 @@ int lb_nat4_interface_add_del (u32 sw_if_index, int is_del)
   return 0;
 }
 
-int lb_nat6_interface_add_del (u32 sw_if_index, int is_del)
+int lb_nat6_interface_add_del (u32 sw_if_index, bool is_del)
 {
   if (is_del)
     {

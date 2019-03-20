@@ -27,7 +27,7 @@ typedef struct
 {
   u32 sw_if_index;
   u32 next_index;
-  u8 is_slow_path;
+  bool is_slow_path;
 } nat64_in2out_trace_t;
 
 static u8 *
@@ -959,7 +959,7 @@ nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 
 static inline uword
 nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     vlib_frame_t * frame, u8 is_slow_path)
+			     vlib_frame_t * frame, bool is_slow_path)
 {
   u32 n_left_from, *from, *to_next;
   nat64_in2out_next_t next_index;

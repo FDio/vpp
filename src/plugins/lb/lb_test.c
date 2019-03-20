@@ -244,7 +244,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
     }
 
   M(LB_ADD_DEL_VIP, mp);
-  clib_memcpy (mp->ip_prefix, &ip_prefix, sizeof (ip_prefix));
+  clib_memcpy (&mp->ip_prefix, &ip_prefix, sizeof (ip_prefix));
   mp->prefix_length = prefix_length;
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
@@ -272,8 +272,8 @@ static int api_lb_add_del_as (vat_main_t * vam)
   u32 vip_index;
   u32 port = 0;
   u8 protocol = 0;
-  u8 is_del = 0;
-  u8 is_flush = 0;
+  bool is_del = 0;
+  bool is_flush = 0;
 
   if (!unformat(line_input, "%U", unformat_ip46_prefix,
                 &vip_prefix, &vip_plen, IP46_TYPE_ANY))

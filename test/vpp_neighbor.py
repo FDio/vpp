@@ -51,21 +51,25 @@ class VppNeighbor(VppObject):
 
     def add_vpp_config(self):
         r = self._test.vapi.ip_neighbor_add_del(
-            self.sw_if_index,
-            self.mac_addr,
-            self.nbr_addr,
+            neighbor={'sw_if_index': self.sw_if_index,
+                      'ip_address': self.nbr_addr,
+                      'mac_address': self.mac_addr,
+                      'flags': self.flags
+                      },
             is_add=1,
-            flags=self.flags)
+            )
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.ip_neighbor_add_del(
-            self.sw_if_index,
-            self.mac_addr,
-            self.nbr_addr,
+            neighbor={'sw_if_index': self.sw_if_index,
+                      'ip_address': self.nbr_addr,
+                      'mac_address': self.mac_addr,
+                      'flags': self.flags
+                      },
             is_add=0,
-            flags=self.flags)
+          )
 
     def is_static(self):
         e = VppEnum.vl_api_ip_neighbor_flags_t

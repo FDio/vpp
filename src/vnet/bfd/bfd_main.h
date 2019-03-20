@@ -226,7 +226,7 @@ typedef struct bfd_session_s
      * set to 1 if delayed action is pending, which might be activation
      * of authentication, change of key or deactivation
      */
-    u8 is_delayed;
+    bool is_delayed;
   } auth;
 
   /** transport type for this session */
@@ -425,8 +425,8 @@ u8 *format_bfd_auth_key (u8 * s, va_list * args);
 void bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down);
 unsigned bfd_auth_type_supported (bfd_auth_type_e auth_type);
 vnet_api_error_t bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
-				    u8 bfd_key_id, u8 is_delayed);
-vnet_api_error_t bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed);
+				    u8 bfd_key_id, bool is_delayed);
+vnet_api_error_t bfd_auth_deactivate (bfd_session_t * bs, bool is_delayed);
 vnet_api_error_t bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
 					 u32 desired_min_tx_usec,
 					 u32 required_min_rx_usec,

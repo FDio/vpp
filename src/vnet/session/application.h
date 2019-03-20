@@ -156,7 +156,7 @@ typedef struct _vnet_app_worker_add_del_args
   ssvm_private_t *segment;	/**< First segment in segment manager */
   u64 segment_handle;		/**< Handle for the segment */
   svm_msg_q_t *evt_q;		/**< Worker message queue */
-  u8 is_add;			/**< Flag set if addition */
+  bool is_add;			/**< Flag set if addition */
 } vnet_app_worker_add_del_args_t;
 
 #define APP_INVALID_INDEX ((u32)~0)

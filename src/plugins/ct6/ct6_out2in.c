@@ -76,7 +76,7 @@ typedef enum
 always_inline uword
 ct6_out2in_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame,
-		   int is_trace)
+		   bool is_trace)
 {
   u32 n_left_from, *from;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;

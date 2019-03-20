@@ -646,8 +646,8 @@ snat_feature_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   u32 *inside_sw_if_indices = 0;
   u32 *outside_sw_if_indices = 0;
-  u8 is_output_feature = 0;
-  int is_del = 0;
+  bool is_output_feature = 0;
+  bool is_del = 0;
   int i;
 
   sw_if_index = ~0;
@@ -1217,7 +1217,7 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index;
   int rv;
-  int is_del = 0;
+  bool is_del = 0;
   clib_error_t *error = 0;
   u8 twice_nat = 0;
 
@@ -1465,7 +1465,7 @@ snat_det_map_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t in_addr, out_addr;
   u32 in_plen, out_plen;
-  int is_add = 1, rv;
+  bool is_add = 1, rv;
   clib_error_t *error = 0;
 
   if (!sm->deterministic)

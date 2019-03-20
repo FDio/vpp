@@ -158,7 +158,7 @@ typedef enum
  */
 typedef vxlan_gbp_input_next_t (*vxlan_bgp_no_tunnel_t) (vlib_buffer_t * b,
 							 u32 thread_index,
-							 u8 is_ip6);
+							 bool is_ip6);
 
 typedef struct
 {
@@ -204,8 +204,8 @@ u8 *format_vxlan_gbp_encap_trace (u8 * s, va_list * args);
 
 typedef struct
 {
-  u8 is_add;
-  u8 is_ip6;
+  bool is_add;
+  bool is_ip6;
   u32 instance;
   vxlan_gbp_tunnel_mode_t mode;
   ip46_address_t src, dst;
@@ -218,8 +218,8 @@ int vnet_vxlan_gbp_tunnel_add_del
   (vnet_vxlan_gbp_tunnel_add_del_args_t * a, u32 * sw_if_indexp);
 int vnet_vxlan_gbp_tunnel_del (u32 sw_if_indexp);
 
-void vnet_int_vxlan_gbp_bypass_mode (u32 sw_if_index, u8 is_ip6,
-				     u8 is_enable);
+void vnet_int_vxlan_gbp_bypass_mode (u32 sw_if_index, bool is_ip6,
+				     bool is_enable);
 
 #endif /* included_vnet_vxlan_gbp_h */
 

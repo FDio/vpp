@@ -14,6 +14,7 @@
  */
 
 option version = "1.0.0";
+import "vnet/ip/ip_types.api";
 
 /** \brief configure global parameter for LLDP
     @param client_index - opaque cookie to identify the sender
@@ -48,8 +49,8 @@ autoreply define sw_interface_set_lldp
   u32 context;
   u32 sw_if_index;
   u8 port_desc[256];
-  u8 mgmt_ip4[4];
-  u8 mgmt_ip6[16];
+  vl_api_ip4_address_t mgmt_ip4;
+  vl_api_ip6_address_t mgmt_ip6;
   u8 mgmt_oid[128];
   u8 enable;
 };

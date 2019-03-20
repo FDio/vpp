@@ -238,7 +238,7 @@ transport_register_protocol (transport_proto_t transport_proto,
 			     const transport_proto_vft_t * vft,
 			     fib_protocol_t fib_proto, u32 output_node)
 {
-  u8 is_ip4 = fib_proto == FIB_PROTOCOL_IP4;
+  bool is_ip4 = fib_proto == FIB_PROTOCOL_IP4;
 
   vec_validate (tp_vfts, transport_proto);
   tp_vfts[transport_proto] = *vft;
@@ -398,7 +398,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 }
 
 static clib_error_t *
-transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
+transport_get_interface_ip (u32 sw_if_index, bool is_ip4, ip46_address_t * addr)
 {
   if (is_ip4)
     {
@@ -663,7 +663,7 @@ transport_update_time (f64 time_now, u8 thread_index)
 }
 
 void
-transport_enable_disable (vlib_main_t * vm, u8 is_en)
+transport_enable_disable (vlib_main_t * vm, bool is_en)
 {
   transport_proto_vft_t *vft;
   vec_foreach (vft, tp_vfts)

@@ -60,7 +60,7 @@ extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
 
 void
-mpls_table_delete (u32 table_id, u8 is_api)
+mpls_table_delete (u32 table_id, bool is_api)
 {
   u32 fib_index;
 
@@ -282,7 +282,7 @@ vl_api_mpls_route_add_del_t_handler (vl_api_mpls_route_add_del_t * mp)
 }
 
 void
-mpls_table_create (u32 table_id, u8 is_api, const u8 * name)
+mpls_table_create (u32 table_id, bool is_api, const u8 * name)
 {
   u32 fib_index;
 

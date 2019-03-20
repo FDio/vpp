@@ -56,7 +56,7 @@ autoreply define pg_capture
   u32 client_index;
   u32 context;
   u32 interface_id;
-  u8 is_enabled;
+  bool is_enabled;
   u32 count;
   u32 pcap_name_length;
   u8 pcap_file_name[pcap_name_length];
@@ -72,7 +72,7 @@ autoreply define pg_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_enabled;
+  bool is_enabled;
   u32 stream_name_length;
   u8 stream_name[stream_name_length];
 };

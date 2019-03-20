@@ -170,7 +170,7 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u32 iaid;
 	  u8 client_id_present = 0;
 	  u8 discard = 0;
-	  u8 is_pd_packet = 0;
+	  bool is_pd_packet = 0;
 
 	  dhcp6_ia_na_client_state_t *ia_na_client_state = NULL;
 	  dhcp6_pd_client_state_t *pd_client_state = NULL;

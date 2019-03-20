@@ -292,7 +292,7 @@ punt_socket_unregister (bool is_ip4, u8 protocol, u16 port)
 typedef struct
 {
   punt_client_t client;
-  u8 is_midchain;
+  bool is_midchain;
 } udp_punt_trace_t;
 
 static u8 *
@@ -1017,7 +1017,7 @@ static clib_error_t *
 punt_socket_show_cmd (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u8 is_ipv6;
+  bool is_ipv6;
   punt_main_t *pm = &punt_main;
   clib_error_t *error = NULL;
 

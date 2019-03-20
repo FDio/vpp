@@ -133,7 +133,7 @@ typedef struct
 
 u32
 gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u64 value,
-			u8 is_add);
+			bool is_add);
 
 u64 gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key);
 u32 gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,

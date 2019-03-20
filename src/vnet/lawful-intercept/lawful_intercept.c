@@ -28,7 +28,7 @@ set_li_command_fn (vlib_main_t * vm,
   u8 src_set = 0;
   u32 tmp;
   u16 udp_port = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   int i;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)

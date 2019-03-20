@@ -20,6 +20,7 @@
 */
 
 option version = "1.0.1";
+import "vnet/ethernet/ethernet_types.api";
 
 /** \brief Get the plugin version
     @param client_index - opaque cookie to identify the sender
@@ -109,7 +110,7 @@ define acl_plugin_get_conn_table_max_entries_reply
 typeonly manual_print define acl_rule
 {
   u8 is_permit;
-  u8 is_ipv6;
+  bool is_ipv6;
   u8 src_ip_addr[16];
   u8 src_ip_prefix_len;
   u8 dst_ip_addr[16];
@@ -153,7 +154,7 @@ typeonly manual_print define acl_rule
 typeonly manual_print define macip_acl_rule
 {
   u8 is_permit;
-  u8 is_ipv6;
+  bool is_ipv6;
 /*
  * The source mac of the packet ANDed with src_mac_mask.
  * The source ip[46] address in the packet is matched
@@ -163,7 +164,7 @@ typeonly manual_print define macip_acl_rule
  * (src_mac_mask, src_ip_prefix_len) combinations
  * in a MACIP ACL.
  */
-  u8 src_mac[6];
+  vl_api_mac_address_t src_mac;
   u8 src_mac_mask[6];
   u8 src_ip_addr[16];
   u8 src_ip_prefix_len;
@@ -234,7 +235,7 @@ autoreply manual_print define acl_interface_add_del
  * is_input = 0 => ACL applied on interface egress
  * is_input = 1 => ACL applied on interface ingress
  */
-  u8 is_input;
+  bool is_input;
   u32 sw_if_index;
   u32 acl_index;
 };

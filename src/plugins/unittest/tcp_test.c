@@ -1640,7 +1640,9 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   transport_connection_t _tc1, *tc1 = &_tc1, _tc2, *tc2 = &_tc2, *tconn;
   tcp_connection_t *tc;
   session_t *s, *s1;
-  u8 cmp = 0, is_filtered = 0;
+  u8 cmp = 0;
+  /* Can't be boolean. Takes on value of 2.*/
+  u8 is_filtered = 0;
   u32 sidx;
 
   /*

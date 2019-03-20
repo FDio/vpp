@@ -361,7 +361,7 @@ typedef struct
   u8 authoritative:1;
   u8 local:1;
   /* valid only for remote mappings */
-  u8 is_static:1;
+  bool is_static:1;
   u8 pitr_set:1;
   u8 nsh_set:1;
   u8 almost_expired:1;

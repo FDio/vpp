@@ -37,7 +37,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 				       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   ip_address_t lloc, rloc;
   clib_error_t *error = 0;
   gid_address_t _reid, *reid = &_reid, _leid, *leid = &_leid;
@@ -322,7 +322,7 @@ lisp_gpe_enable_disable_command_fn (vlib_main_t * vm,
 				    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_en = 1;
+  bool is_en = 1;
   vnet_lisp_gpe_enable_disable_args_t _a, *a = &_a;
   clib_error_t *error = NULL;
 
@@ -496,7 +496,7 @@ gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
   fib_route_path_t rpath;
   u32 table_id = ~0;
   vnet_gpe_native_fwd_rpath_args_t _a, *a = &_a;
-  u8 is_add = 1;
+  bool is_add = 1;
   clib_error_t *error = 0;
 
   /* Get a line of input. */

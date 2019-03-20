@@ -177,7 +177,8 @@ app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
 	   vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 0, *ns_id = 0, secret_set = 0, sw_if_index_set = 0;
+  bool is_add = 0;
+  u8 *ns_id = 0, secret_set = 0, sw_if_index_set = 0;
   u32 sw_if_index, fib_id = APP_NAMESPACE_INVALID_INDEX;
   u64 secret;
   clib_error_t *error = 0;

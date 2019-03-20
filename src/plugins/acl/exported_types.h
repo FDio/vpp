@@ -63,12 +63,12 @@ typedef void (*acl_plugin_put_lookup_context_index_fn_t) (u32 lc_index);
 
 typedef int (*acl_plugin_set_acl_vec_for_context_fn_t) (u32 lc_index, u32 *acl_list);
 
-typedef void (*acl_plugin_fill_5tuple_fn_t) (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
+typedef void (*acl_plugin_fill_5tuple_fn_t) (u32 lc_index, vlib_buffer_t * b0, bool is_ip6, bool is_input,
                                 int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt);
 
 typedef int (*acl_plugin_match_5tuple_fn_t) (u32 lc_index,
                                            fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
+                                           bool is_ip6, u8 * r_action,
                                            u32 * r_acl_pos_p,
                                            u32 * r_acl_match_p,
                                            u32 * r_rule_match_p,

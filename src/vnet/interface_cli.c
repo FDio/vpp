@@ -72,7 +72,8 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_hw_interface_t *hi;
   u32 hw_if_index, *hw_if_indices = 0;
-  int i, verbose = -1, is_show, show_bond = 0;
+  int i, verbose = -1, show_bond = 0;
+  bool is_show;
 
   is_show = strstr (cmd->path, "show") != 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1568,7 +1569,7 @@ VLIB_CLI_COMMAND (show_interface_rx_placement, static) = {
 
 clib_error_t *
 set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
-			       u32 thread_index, u8 is_main)
+			       u32 thread_index, bool is_main)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
@@ -1612,7 +1613,7 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) 0;
   u32 thread_index = (u32) ~ 0;
-  u8 is_main = 0;
+  bool is_main = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;

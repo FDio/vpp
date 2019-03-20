@@ -40,8 +40,8 @@ typedef struct
 
 typedef struct
 {
-  u8 is_add;
-  u8 is_ip6;
+  bool is_ip6;
+  bool is_add;
   u8 esn;
   u8 anti_replay;
   ip46_address_t local_ip, remote_ip;
@@ -94,7 +94,7 @@ typedef CLIB_PACKED
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
   u32 local_sa_id;
   u32 remote_sa_id;
   ip4_address_t local_ip;
@@ -113,7 +113,7 @@ extern int ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 				    ipsec_if_set_key_type_t type,
 				    u8 alg, u8 * key);
 extern int ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index,
-				   u32 sa_id, u8 is_outbound);
+				   u32 sa_id, bool is_outbound);
 
 #endif /* __IPSEC_IF_H__ */
 

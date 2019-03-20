@@ -309,7 +309,7 @@ int
 dhcp_proxy_set_vss (fib_protocol_t proto,
 		    u32 tbl_id,
 		    u8 vss_type,
-		    u8 * vpn_ascii_id, u32 oui, u32 vpn_index, u8 is_del)
+		    u8 * vpn_ascii_id, u32 oui, u32 vpn_index, bool is_del)
 {
   dhcp_proxy_main_t *dm = &dhcp_proxy_main;
   dhcp_vss_t *v = NULL;

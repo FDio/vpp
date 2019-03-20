@@ -534,7 +534,7 @@ static void
       m_args->is_static = 1;
       m_args->ttl = ~0;
       m_args->authoritative = 0;
-      rv = vnet_lisp_add_mapping (m_args, rlocs, NULL, NULL);
+      rv = vnet_lisp_add_mapping (m_args, rlocs, NULL, false);
     }
   else
     {
@@ -1231,7 +1231,7 @@ vl_api_show_lisp_pitr_t_handler (vl_api_show_lisp_pitr_t * mp)
   u8 *tmp_str = 0;
   int rv = 0;
 
-  u8 is_enabled = (lcm->flags & LISP_FLAG_PITR_MODE)
+  bool is_enabled = (lcm->flags & LISP_FLAG_PITR_MODE)
     && lcm->pitr_map_index != ~0;
 
   if (!is_enabled)

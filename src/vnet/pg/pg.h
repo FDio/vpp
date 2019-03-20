@@ -372,7 +372,7 @@ typedef struct
 {
   u32 hw_if_index;
   u32 dev_instance;
-  u8 is_enabled;
+  bool is_enabled;
   u8 *pcap_file_name;
   u32 count;
 } pg_capture_args_t;

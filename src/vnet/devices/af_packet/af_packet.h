@@ -46,7 +46,7 @@ typedef struct
   u32 next_tx_frame;
 
   u32 per_interface_next_index;
-  u8 is_admin_up;
+  bool is_admin_up;
 } af_packet_if_t;
 
 typedef struct

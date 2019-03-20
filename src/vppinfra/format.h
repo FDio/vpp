@@ -39,6 +39,7 @@
 #define included_format_h
 
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include <vppinfra/clib.h>	/* for CLIB_UNIX, etc. */
 #include <vppinfra/vec.h>

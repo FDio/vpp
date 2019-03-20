@@ -140,7 +140,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 	  u32 rx_sw_if_index;
 	  dhcp_option_t *o, *end;
 	  u32 len = 0;
-	  u8 is_discover = 0;
+	  bool is_discover = 0;
 	  int space_left;
 
 	  bi0 = from[0];
@@ -782,7 +782,7 @@ VLIB_INIT_FUNCTION (dhcp4_proxy_init);
 int
 dhcp4_proxy_set_server (ip46_address_t * addr,
 			ip46_address_t * src_addr,
-			u32 rx_table_id, u32 server_table_id, int is_del)
+			u32 rx_table_id, u32 server_table_id, bool is_del)
 {
   u32 rx_fib_index = 0;
   int rc = 0;
@@ -839,7 +839,7 @@ dhcp4_proxy_set_command_fn (vlib_main_t * vm,
 {
   ip46_address_t server_addr, src_addr;
   u32 server_table_id = 0, rx_table_id = 0;
-  int is_del = 0;
+  bool is_del = 0;
   int set_src = 0, set_server = 0;
 
   clib_memset (&server_addr, 0, sizeof (server_addr));
@@ -966,7 +966,8 @@ static clib_error_t *
 dhcp_option_82_vss_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u8 is_del = 0, vss_type = VSS_TYPE_DEFAULT;
+  bool is_del = 0;
+  u8 vss_type = VSS_TYPE_DEFAULT;
   u32 oui = 0, fib_id = 0, tbl_id = ~0;
   u8 *vpn_ascii_id = 0;
 

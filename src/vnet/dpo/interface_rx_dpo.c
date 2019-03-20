@@ -242,7 +242,7 @@ always_inline uword
 interface_rx_dpo_inline (vlib_main_t * vm,
                          vlib_node_runtime_t * node,
                          vlib_frame_t * from_frame,
-			 u8 is_l2)
+			 bool is_l2)
 {
     u32 n_left_from, next_index, * from, * to_next;
     u32 thread_index = vm->thread_index;

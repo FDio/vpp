@@ -621,7 +621,7 @@ memif_delete_socket_file (u32 sock_id)
 }
 
 int
-memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
+memif_socket_filename_add_del (bool is_add, u32 sock_id, u8 * sock_filename)
 {
   char *dir = 0, *tmp;
   u32 idx = 0;

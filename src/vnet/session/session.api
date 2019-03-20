@@ -215,7 +215,7 @@ autoreply define bind_sock {
   u32 context;
   u32 wrk_index;
   u32 vrf;
-  u8 is_ip4;
+  bool is_ip4;
   u8 ip[16];
   u16 port;
   u8 proto;
@@ -258,7 +258,7 @@ autoreply define connect_sock {
   u64 client_queue_address;
   u64 options[16];
   u32 vrf;
-  u8 is_ip4;
+  bool is_ip4;
   u8 ip[16];
   u16 port;
   u8 proto;
@@ -302,7 +302,7 @@ define app_worker_add_del
   u32 context;
   u32 app_index;
   u32 wrk_index;
-  u8 is_add;
+  bool is_add;
 };
 
 /** \brief Reply for app worker add/del
@@ -328,7 +328,7 @@ define app_worker_add_del_reply
   u8 segment_name_length;
   u8 segment_name[128];
   u64 segment_handle;
-  u8 is_add;
+  bool is_add;
 };
 
 /** \brief enable/disable session layer
@@ -340,7 +340,7 @@ define app_worker_add_del_reply
 autoreply define session_enable_disable {
   u32 client_index;
   u32 context;
-  u8 is_enable;
+  bool is_enable;
 };
 
 /** \brief add/del application namespace
@@ -403,7 +403,7 @@ autoreply define session_rule_add_del {
   u32 client_index;
   u32 context;
   u8 transport_proto;
-  u8 is_ip4;
+  bool is_ip4;
   u8 lcl_ip[16];
   u8 lcl_plen;
   u8 rmt_ip[16];
@@ -411,7 +411,7 @@ autoreply define session_rule_add_del {
   u16 lcl_port;
   u16 rmt_port;
   u32 action_index;
-  u8 is_add;
+  bool is_add;
   u32 appns_index;
   u8 scope;
   u8 tag[64];
@@ -447,7 +447,7 @@ define session_rules_details
 {
   u32 context;
   u8 transport_proto;
-  u8 is_ip4;
+  bool is_ip4;
   u8 lcl_ip[16];
   u8 lcl_plen;
   u8 rmt_ip[16];

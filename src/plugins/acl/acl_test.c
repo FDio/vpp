@@ -797,7 +797,7 @@ static int api_acl_interface_add_del (vat_main_t * vam)
     vl_api_acl_interface_add_del_t * mp;
     u32 sw_if_index = ~0;
     u32 acl_index = ~0;
-    u8 is_input = 0;
+    bool is_input = 0;
     u8 is_add = 0;
     int ret;
 
@@ -918,7 +918,7 @@ static int api_acl_interface_set_acl_list (vat_main_t * vam)
     u32 acl_index = ~0;
     u32 *inacls = 0;
     u32 *outacls = 0;
-    u8 is_input = 0;
+    bool is_input = 0;
     int ret;
 
 //  acl_interface_set_acl_list <intfc> | sw_if_index <if-idx> input [acl-idx list] output [acl-idx list]
@@ -976,7 +976,7 @@ static int api_acl_interface_set_etype_whitelist (vat_main_t * vam)
     u32 ethertype = ~0;
     u16 *etypes_in = 0;
     u16 *etypes_out = 0;
-    u8 is_input = 1;
+    bool is_input = 1;
     int ret;
 
 //  acl_interface_set_etype_whitelist <intfc> | sw_if_index <if-idx> input [ethertype list] output [ethertype list]

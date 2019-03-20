@@ -21,6 +21,8 @@
 
 option version = "1.0.0";
 
+import "vnet/ip/ip_types.api";
+
 /** \brief Dump lacp interfaces request */
 define sw_interface_lacp_dump
 {

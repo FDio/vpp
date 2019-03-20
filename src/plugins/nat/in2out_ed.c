@@ -728,7 +728,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
   snat_session_t *s;
   u32 outside_fib_index = sm->outside_fib_index;
   int i;
-  u8 is_sm = 0;
+  bool is_sm = 0;
   nat_outside_fib_t *outside_fib;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   fib_prefix_t pfx = {

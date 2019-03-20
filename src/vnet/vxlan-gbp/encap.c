@@ -72,7 +72,7 @@ format_vxlan_gbp_encap_trace (u8 * s, va_list * args)
 always_inline uword
 vxlan_gbp_encap_inline (vlib_main_t * vm,
 			vlib_node_runtime_t * node,
-			vlib_frame_t * from_frame, u8 is_ip4, u8 csum_offload)
+			vlib_frame_t * from_frame, bool is_ip4, u8 csum_offload)
 {
   u32 n_left_from, next_index, *from, *to_next;
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;

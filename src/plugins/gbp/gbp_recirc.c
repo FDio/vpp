@@ -59,7 +59,7 @@ format_gbp_recirc (u8 * s, va_list * args)
 }
 
 int
-gbp_recirc_add (u32 sw_if_index, sclass_t sclass, u8 is_ext)
+gbp_recirc_add (u32 sw_if_index, sclass_t sclass, bool is_ext)
 {
   gbp_recirc_t *gr;
   index_t gri;

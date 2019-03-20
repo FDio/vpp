@@ -297,7 +297,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
  */
 static inline ip6_sr_sl_t *
 create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
-	   u8 is_encap)
+	   bool is_encap)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
@@ -551,7 +551,7 @@ update_replicate (ip6_sr_policy_t * sr_policy)
  */
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
-	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
+	       u32 weight, u8 behavior, u32 fib_table, bool is_encap)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -825,15 +825,15 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		      vlib_cli_command_t * cmd)
 {
   int rv = -1;
-  char is_del = 0, is_add = 0, is_mod = 0;
-  char policy_set = 0;
+  bool is_del = 0, is_add = 0, is_mod = 0;
+  bool policy_set = 0;
   ip6_address_t bsid, next_address;
   u32 sr_policy_index = (u32) ~ 0, sl_index = (u32) ~ 0;
   u32 weight = (u32) ~ 0, fib_table = (u32) ~ 0;
   ip6_address_t *segments = 0, *this_seg;
   u8 operation = 0;
-  char is_encap = 1;
-  char is_spray = 0;
+  bool is_encap = 1;
+  bool is_spray = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

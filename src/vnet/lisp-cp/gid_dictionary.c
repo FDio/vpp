@@ -498,7 +498,7 @@ ip4_compute_prefix_lengths_in_search_order (gid_ip4_table_t * db)
 
 static u32
 add_del_ip4_key (gid_ip4_table_t * db, u32 vni, ip_prefix_t * pref, u32 val,
-		 u8 is_add)
+		 bool is_add)
 {
   BVT (clib_bihash_kv) kv, value;
   u32 old_val = ~0;
@@ -586,7 +586,7 @@ ip4_lookup_init (gid_ip4_table_t * db)
 
 static u32
 add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
-		    ip_prefix_t * src_pref, u32 val, u8 is_add)
+		    ip_prefix_t * src_pref, u32 val, bool is_add)
 {
   u32 sfi, old_val = ~0;
   gid_ip4_table_t *sfib;
@@ -670,7 +670,7 @@ ip6_compute_prefix_lengths_in_search_order (gid_ip6_table_t * db)
 
 static u32
 add_del_ip6_key (gid_ip6_table_t * db, u32 vni, ip_prefix_t * pref, u32 val,
-		 u8 is_add)
+		 bool is_add)
 {
   BVT (clib_bihash_kv) kv, value;
   u32 old_val = ~0;
@@ -726,7 +726,7 @@ add_del_ip6_key (gid_ip6_table_t * db, u32 vni, ip_prefix_t * pref, u32 val,
 
 static u32
 add_del_mac (gid_mac_table_t * db, u32 vni, u8 * dst_mac, u8 * src_mac,
-	     u32 val, u8 is_add)
+	     u32 val, bool is_add)
 {
   BVT (clib_bihash_kv) kv, value;
   u32 old_val = ~0;
@@ -789,7 +789,7 @@ ip6_lookup_init (gid_ip6_table_t * db)
 
 static u32
 add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
-		    ip_prefix_t * src_pref, u32 val, u8 is_add)
+		    ip_prefix_t * src_pref, u32 val, bool is_add)
 {
   u32 sfi, old_val = ~0;
   gid_ip6_table_t *sfib;
@@ -860,7 +860,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 
 static u32
 add_del_ip (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_key,
-	    ip_prefix_t * src_key, u32 value, u8 is_add)
+	    ip_prefix_t * src_key, u32 value, bool is_add)
 {
   switch (ip_prefix_version (dst_key))
     {
@@ -880,7 +880,7 @@ add_del_ip (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_key,
 
 static u32
 add_del_sd (gid_dictionary_t * db, u32 vni, source_dest_t * key, u32 value,
-	    u8 is_add)
+	    bool is_add)
 {
   switch (sd_dst_type (key))
     {
@@ -902,7 +902,7 @@ add_del_sd (gid_dictionary_t * db, u32 vni, source_dest_t * key, u32 value,
 
 static u64
 add_del_arp_ndp (gid_l2_arp_ndp_table_t * db, u32 bd, ip_address_t * key,
-		 u64 value, u8 is_add)
+		 u64 value, bool is_add)
 {
   BVT (clib_bihash_kv) kv, result;
   u32 old_val = ~0;
@@ -929,7 +929,7 @@ add_del_arp_ndp (gid_l2_arp_ndp_table_t * db, u32 bd, ip_address_t * key,
 
 static u32
 add_del_nsh (gid_nsh_table_t * db, u32 vni, u32 spi, u8 si, u32 value,
-	     u8 is_add)
+	     bool is_add)
 {
   BVT (clib_bihash_kv) kv, result;
   u32 old_val = ~0;
@@ -954,7 +954,7 @@ add_del_nsh (gid_nsh_table_t * db, u32 vni, u32 spi, u8 si, u32 value,
 
 u32
 gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u64 value,
-			u8 is_add)
+			bool is_add)
 {
   switch (gid_address_type (key))
     {

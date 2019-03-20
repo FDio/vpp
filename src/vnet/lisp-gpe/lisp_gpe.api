@@ -22,7 +22,7 @@ option version = "1.0.0";
 */
 typeonly manual_print manual_endian define gpe_locator
 {
-  u8 is_ip4;
+  bool is_ip4;
   u8 weight;
   u8 addr[16];
 };
@@ -49,7 +49,7 @@ manual_print manual_endian define gpe_add_del_fwd_entry
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   u8 eid_type;
   u8 rmt_eid[16];
   u8 lcl_eid[16];
@@ -78,7 +78,7 @@ autoreply define gpe_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 is_en;
+  bool is_en;
 };
 
 /** \brief add or delete gpe_iface
@@ -90,8 +90,8 @@ autoreply define gpe_add_del_iface
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_l2;
+  bool is_add;
+  bool is_l2;
   u32 dp_table;
   u32 vni;
 };
@@ -200,10 +200,10 @@ autoreply define gpe_add_del_native_fwd_rpath
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   u32 table_id;
   u32 nh_sw_if_index;
-  u8 is_ip4;
+  bool is_ip4;
   u8 nh_addr[16];
 };
 
@@ -215,7 +215,7 @@ define gpe_native_fwd_rpaths_get
 {
   u32 client_index;
   u32 context;
-  u8 is_ip4;
+  bool is_ip4;
 };
 
 /** \brief Reply for get native fwd rpath
@@ -229,7 +229,7 @@ typeonly manual_print manual_endian define gpe_native_fwd_rpath
 {
   u32 fib_index;
   u32 nh_sw_if_index;
-  u8 is_ip4;
+  bool is_ip4;
   u8 nh_addr[16];
 };
 

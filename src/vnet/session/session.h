@@ -141,7 +141,7 @@ typedef struct session_main_
    */
 
   /** Session manager is enabled */
-  u8 is_enabled;
+  bool is_enabled;
 
   /** vpp fifo event queue configured length */
   u32 configured_event_queue_length;
@@ -350,12 +350,12 @@ uword unformat_transport_connection (unformat_input_t * input,
 
 int session_enqueue_stream_connection (transport_connection_t * tc,
 				       vlib_buffer_t * b, u32 offset,
-				       u8 queue_event, u8 is_in_order);
+				       u8 queue_event, bool is_in_order);
 int session_enqueue_dgram_connection (session_t * s,
 				      session_dgram_hdr_t * hdr,
 				      vlib_buffer_t * b, u8 proto,
 				      u8 queue_event);
-int session_stream_connect_notify (transport_connection_t * tc, u8 is_fail);
+int session_stream_connect_notify (transport_connection_t * tc, bool is_fail);
 int session_dgram_connect_notify (transport_connection_t * tc,
 				  u32 old_thread_index,
 				  session_t ** new_session);
@@ -367,7 +367,7 @@ void session_transport_reset_notify (transport_connection_t * tc);
 int session_stream_accept (transport_connection_t * tc, u32 listener_index,
 			   u8 notify);
 void session_register_transport (transport_proto_t transport_proto,
-				 const transport_proto_vft_t * vft, u8 is_ip4,
+				 const transport_proto_vft_t * vft, bool is_ip4,
 				 u32 output_node);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
@@ -515,8 +515,8 @@ int session_main_flush_enqueue_events (u8 proto, u32 thread_index);
 int session_main_flush_all_enqueue_events (u8 transport_proto);
 void session_flush_frames_main_thread (vlib_main_t * vm);
 ssvm_private_t *session_main_get_evt_q_segment (void);
-void session_node_enable_disable (u8 is_en);
-clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
+void session_node_enable_disable (bool is_en);
+clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, bool is_en);
 
 #endif /* __included_session_h__ */
 

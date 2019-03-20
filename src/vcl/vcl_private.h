@@ -98,7 +98,7 @@ STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (vcl_si_set),
 
 typedef struct
 {
-  u8 is_ip4;
+  bool is_ip4;
   ip46_address_t ip46;
 } vppcom_ip46_t;
 
@@ -166,8 +166,8 @@ typedef struct
   svm_fifo_t *ct_tx_fifo;
 
   /* Socket configuration state */
-  u8 is_vep;
-  u8 is_vep_session;
+  bool is_vep;
+  bool is_vep_session;
   u8 has_rx_evt;
   u32 attr;
   vppcom_epoll_t vep;
@@ -293,7 +293,7 @@ typedef struct vcl_worker_
 
 typedef struct vppcom_main_t_
 {
-  u8 is_init;
+  bool is_init;
   u32 debug;
   pthread_t main_cpu;
 
@@ -572,7 +572,7 @@ void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
  */
 int vppcom_connect_to_vpp (char *app_name);
 void vppcom_init_error_string_table (void);
-void vppcom_send_session_enable_disable (u8 is_enable);
+void vppcom_send_session_enable_disable (bool is_enable);
 void vppcom_app_send_attach (void);
 void vppcom_app_send_detach (void);
 void vppcom_send_connect_sock (vcl_session_t * session);
@@ -584,7 +584,7 @@ void vppcom_send_application_tls_cert_add (vcl_session_t * session,
 					   char *cert, u32 cert_len);
 void vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
 					  u32 key_len);
-void vcl_send_app_worker_add_del (u8 is_add);
+void vcl_send_app_worker_add_del (bool is_add);
 void vcl_send_child_worker_del (vcl_worker_t * wrk);
 
 u32 vcl_max_nsid_len (void);

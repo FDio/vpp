@@ -34,7 +34,7 @@ typedef struct _stream_session_cb_vft
 
   /** Connection request callback */
   int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
-				     session_t * s, u8 code);
+				     session_t * s, bool code);
 
   /** Notify app that session is closing */
   void (*session_disconnect_callback) (session_t * s);
@@ -231,7 +231,7 @@ typedef struct app_session_transport_
   ip46_address_t lcl_ip;	/**< local ip */
   u16 rmt_port;			/**< remote port (network order) */
   u16 lcl_port;			/**< local port (network order) */
-  u8 is_ip4;			/**< set if uses ip4 networking */
+  bool is_ip4;			/**< set if uses ip4 networking */
 } app_session_transport_t;
 
 #define foreach_app_session_field					\
@@ -284,7 +284,7 @@ typedef struct session_accepted_msg_
   u64 segment_handle;
   uword vpp_event_queue_address;
   u16 port;
-  u8 is_ip4;
+  bool is_ip4;
   u8 ip[16];
 } __clib_packed session_accepted_msg_t;
 
@@ -315,7 +315,7 @@ typedef struct session_connected_msg_
   u8 segment_name_length;
   u8 segment_name[64];
   u8 lcl_ip[16];
-  u8 is_ip4;
+  bool is_ip4;
   u16 lcl_port;
 } __clib_packed session_connected_msg_t;
 

@@ -200,10 +200,10 @@ typedef struct
 
   /** Whether the session is interactive or not.
    * Controls things like initial banner, the CLI prompt etc.  */
-  u8 is_interactive;
+  bool is_interactive;
 
   /** Whether the session is attached to a socket. */
-  u8 is_socket;
+  bool is_socket;
 
   /** If EPIPE has been detected, prevent further write-related
    * activity on the descriptor.

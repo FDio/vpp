@@ -133,7 +133,7 @@ api_pppoe_add_del_session (vat_main_t * vam)
   vl_api_pppoe_add_del_session_t *mp;
   u16 session_id = 0;
   ip46_address_t client_ip;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 client_ip_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;

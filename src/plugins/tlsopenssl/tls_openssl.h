@@ -68,7 +68,7 @@ int vpp_add_async_run_event (tls_ctx_t * ctx, openssl_resume_handler *
 int tls_async_openssl_callback (SSL * s, void *evt);
 void openssl_polling_start (ENGINE * engine);
 int openssl_engine_register (char *engine, char *alg);
-void openssl_async_node_enable_disable (u8 is_en);
+void openssl_async_node_enable_disable (bool is_en);
 
 /*
  * fd.io coding-style-patch-verification: ON

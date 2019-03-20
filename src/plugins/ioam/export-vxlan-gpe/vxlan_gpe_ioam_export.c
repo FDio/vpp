@@ -66,7 +66,7 @@ extern void vxlan_gpe_set_next_override (uword next);
 /* Action function shared between message handler and debug CLI */
 int
 vxlan_gpe_ioam_export_enable_disable (ioam_export_main_t * em,
-				      u8 is_disable,
+				      bool is_disable,
 				      ip4_address_t * collector_address,
 				      ip4_address_t * src_address)
 {
@@ -175,7 +175,7 @@ set_vxlan_gpe_ioam_export_ipfix_command_fn (vlib_main_t * vm,
 {
   ioam_export_main_t *em = &vxlan_gpe_ioam_export_main;
   ip4_address_t collector, src;
-  u8 is_disable = 0;
+  bool is_disable = 0;
 
   collector.as_u32 = 0;
   src.as_u32 = 0;

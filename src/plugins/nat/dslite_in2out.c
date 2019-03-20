@@ -235,7 +235,7 @@ done:
 
 static inline uword
 dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vlib_frame_t * frame, u8 is_slow_path)
+			      vlib_frame_t * frame, bool is_slow_path)
 {
   u32 n_left_from, *from, *to_next;
   dslite_in2out_next_t next_index;

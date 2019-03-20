@@ -183,7 +183,7 @@ typedef struct _sack_scoreboard_hole
   u32 prev;		/**< Index for previous entry in linked list */
   u32 start;		/**< Start sequence number */
   u32 end;		/**< End sequence number */
-  u8 is_lost;		/**< Mark hole as lost */
+  bool is_lost;		/**< Mark hole as lost */
 } sack_scoreboard_hole_t;
 
 typedef struct _sack_scoreboard
@@ -483,7 +483,7 @@ typedef struct _tcp_main
    */
 
   /* Flag that indicates if stack is on or off */
-  u8 is_enabled;
+  bool is_enabled;
 
   /** Max rx fifo size for a session. It is used in to compute the
    *  rfc 7323 window scaling factor */
@@ -559,9 +559,9 @@ tcp_buffer_hdr (vlib_buffer_t * b)
 #define tcp_trajectory_add_start(b, start)
 #endif
 
-clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
+clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, bool is_en);
 
-void tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
+void tcp_punt_unknown (vlib_main_t * vm, bool is_ip4, bool is_add);
 
 always_inline tcp_connection_t *
 tcp_connection_get (u32 conn_index, u32 thread_index)
@@ -631,7 +631,7 @@ tcp_half_open_connection_get (u32 conn_index)
 void tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b);
 void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
-			   u32 thread_index, u8 is_ip4);
+			   u32 thread_index, bool is_ip4);
 void tcp_send_reset (tcp_connection_t * tc);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_synack (tcp_connection_t * tc);
@@ -639,7 +639,7 @@ void tcp_send_fin (tcp_connection_t * tc);
 void tcp_init_mss (tcp_connection_t * tc);
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
-void tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, u8 is_ip4);
+void tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, bool is_ip4);
 void tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk);
 void tcp_program_fastretransmit (tcp_worker_ctx_t * wrk,
 				 tcp_connection_t * tc);

@@ -32,7 +32,7 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
   u32 start_host_order, end_host_order;
   int i, count, rv;
   u32 vrf_id = ~0;
-  u8 is_add = 1;
+  bool is_add = 1;
   clib_error_t *error = 0;
 
   /* Get a line of input. */
@@ -146,7 +146,7 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   u32 *inside_sw_if_indices = 0;
   u32 *outside_sw_if_indices = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   int i, rv;
 
   /* Get a line of input. */
@@ -282,7 +282,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   ip6_address_t in_addr;
   ip4_address_t out_addr;
   u32 in_port = 0;
@@ -564,7 +564,7 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   u32 vrf_id = 0, sw_if_index = ~0;
   ip6_address_t prefix;
   u32 plen = 0;

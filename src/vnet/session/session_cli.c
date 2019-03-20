@@ -167,7 +167,7 @@ unformat_session (unformat_input_t * input, va_list * args)
   ip46_address_t lcl, rmt;
   session_t *s;
   u8 proto = ~0;
-  u8 is_ip4 = 0;
+  bool is_ip4 = 0;
 
   if (!unformat (input, "%U", unformat_stream_session_id, &proto, &fib_index,
 		 &lcl, &rmt, &lcl_port, &rmt_port, &is_ip4))
@@ -199,7 +199,7 @@ unformat_transport_connection (unformat_input_t * input, va_list * args)
   u8 proto = ~0;
   ip46_address_t lcl, rmt;
   u32 lcl_port = 0, rmt_port = 0, fib_index = 0;
-  u8 is_ip4 = 0;
+  bool is_ip4 = 0;
 
   if (!unformat (input, "%U", unformat_stream_session_id, &fib_index, &proto,
 		 &lcl, &rmt, &lcl_port, &rmt_port, &is_ip4))
@@ -437,7 +437,8 @@ show_session_fifo_trace_command_fn (vlib_main_t * vm,
 				    vlib_cli_command_t * cmd)
 {
   session_t *s = 0;
-  u8 is_rx = 0, *str = 0;
+  bool is_rx = 0;
+  u8 *str = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -486,7 +487,8 @@ session_replay_fifo_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				vlib_cli_command_t * cmd)
 {
   session_t *s = 0;
-  u8 is_rx = 0, *str = 0;
+  bool is_rx = 0;
+  u8 *str = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -533,7 +535,7 @@ session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_en = 1;
+  bool is_en = 1;
   clib_error_t *error;
 
   if (!unformat_user (input, unformat_line_input, line_input))

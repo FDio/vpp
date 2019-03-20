@@ -665,7 +665,7 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip46_address_t local, remote;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 local_set = 0;
   u8 remote_set = 0;
   u8 grp_set = 0;
@@ -929,7 +929,7 @@ VLIB_CLI_COMMAND (show_geneve_tunnel_command, static) = {
 
 
 void
-vnet_int_geneve_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
+vnet_int_geneve_bypass_mode (u32 sw_if_index, bool is_ip6, bool is_enable)
 {
   if (is_ip6)
     vnet_feature_enable_disable ("ip6-unicast", "ip6-geneve-bypass",

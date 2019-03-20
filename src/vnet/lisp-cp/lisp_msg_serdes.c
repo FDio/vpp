@@ -180,7 +180,7 @@ lisp_msg_put_map_register (vlib_buffer_t * b, mapping_t * records,
 void *
 lisp_msg_put_mreq (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 		   gid_address_t * seid, gid_address_t * deid,
-		   gid_address_t * rlocs, u8 is_smr_invoked,
+		   gid_address_t * rlocs, bool is_smr_invoked,
 		   u8 rloc_probe_set, u64 * nonce)
 {
   u8 loc_count = 0;

@@ -187,7 +187,7 @@ vxlan_gbp_tunnel_get_next (const vxlan_gbp_tunnel_t * t, vlib_buffer_t * b0)
 always_inline uword
 vxlan_gbp_input (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame, u8 is_ip4)
+		 vlib_frame_t * from_frame, bool is_ip4)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
   vnet_main_t *vnm = vxm->vnet_main;

@@ -122,7 +122,7 @@ int
 vxlan_gpe_ioam_register_option (u8 option,
 				int options (vlib_buffer_t * b,
 					     vxlan_gpe_ioam_option_t * opt,
-					     u8 is_ipv4, u8 use_adj),
+					     bool is_ipv4, u8 use_adj),
 				u8 * trace (u8 * s,
 					    vxlan_gpe_ioam_option_t * opt))
 {
@@ -252,7 +252,7 @@ vxlan_gpe_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
 int
 vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
 					vxlan_gpe_ioam_option_t * opt,
-					u8 is_ipv4, u8 use_adj)
+					bool is_ipv4, u8 use_adj)
 {
   u8 elt_index = 0;
   vxlan_gpe_ioam_trace_option_t *trace =

@@ -20,6 +20,7 @@
 */
 
 option version = "1.0.0";
+import "vnet/ip/ip_types.api";
 
 /** \brief OAM event structure
     @param dst_address[] - 
@@ -27,7 +28,7 @@ option version = "1.0.0";
 */
 define oam_event
 {
-  u8 dst_address[4];
+  vl_api_ip4_address_t dst_address;
   u8 state;
 };
 
@@ -63,9 +64,9 @@ autoreply define oam_add_del
   u32 client_index;
   u32 context;
   u32 vrf_id;
-  u8 src_address[4];
-  u8 dst_address[4];
-  u8 is_add;
+  vl_api_ip4_address_t src_address;
+  vl_api_ip4_address_t dst_address;
+  bool is_add;
 };
 
 /*

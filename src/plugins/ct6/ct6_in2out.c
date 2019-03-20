@@ -138,7 +138,7 @@ ct6_create_or_recycle_session (ct6_main_t * cmp,
 always_inline uword
 ct6_in2out_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame,
-		   int is_trace)
+		   bool is_trace)
 {
   u32 n_left_from, *from;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;

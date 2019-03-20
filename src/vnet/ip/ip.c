@@ -17,7 +17,7 @@
 #include <vnet/fib/fib_table.h>
 
 u8
-ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4)
+ip_is_zero (ip46_address_t * ip46_address, bool is_ip4)
 {
   if (is_ip4)
     return (ip46_address->ip4.as_u32 == 0);
@@ -26,7 +26,7 @@ ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4)
 }
 
 u8
-ip_is_local_host (ip46_address_t * ip46_address, u8 is_ip4)
+ip_is_local_host (ip46_address_t * ip46_address, bool is_ip4)
 {
   if (is_ip4)
     return (ip46_address->ip4.as_u8[0] == 127);
@@ -52,7 +52,7 @@ ip6_is_local_host (ip6_address_t * ip6_address)
  * Checks that an ip is local to the requested fib
  */
 u8
-ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4)
+ip_is_local (u32 fib_index, ip46_address_t * ip46_address, bool is_ip4)
 {
   fib_node_index_t fei;
   fib_entry_flag_t flags;
@@ -78,7 +78,7 @@ ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4)
 }
 
 void
-ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4)
+ip_copy (ip46_address_t * dst, ip46_address_t * src, bool is_ip4)
 {
   if (is_ip4)
     dst->ip4.as_u32 = src->ip4.as_u32;
@@ -87,7 +87,7 @@ ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4)
 }
 
 void
-ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
+ip_set (ip46_address_t * dst, void *src, bool is_ip4)
 {
   if (is_ip4)
     dst->ip4.as_u32 = ((ip4_address_t *) src)->as_u32;
@@ -97,7 +97,7 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 }
 
 u8
-ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, u8 is_ip4)
+ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, bool is_ip4)
 {
   ip_interface_address_t *ia = 0;
 
@@ -131,7 +131,7 @@ ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, u8 is_ip4)
 }
 
 void *
-ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
+ip_interface_get_first_ip (u32 sw_if_index, bool is_ip4)
 {
   ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
   ip_lookup_main_t *lm6 = &ip6_main.lookup_main;

@@ -168,7 +168,7 @@ vxlan_gpe_ioam_set (vxlan_gpe_tunnel_t * t,
 
 static void
 vxlan_gpe_set_clear_output_feature_on_intf (vlib_main_t * vm,
-					    u32 sw_if_index0, u8 is_add)
+					    u32 sw_if_index0, bool is_add)
 {
 
 
@@ -203,7 +203,7 @@ int
 vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 					ip46_address_t dst_addr,
 					u32 outer_fib_index,
-					u8 is_ipv4, u8 is_add)
+					bool is_ipv4, bool is_add)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   u32 fib_index0 = 0;

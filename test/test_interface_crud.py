@@ -13,20 +13,23 @@
 
 import unittest
 
+from parameterized import parameterized
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether
 
 from framework import VppTestCase, VppTestRunner
 
 
-class TestLoopbackInterfaceCRUD(VppTestCase):
-    """CRUD Loopback
+
+
+class TestInterfaceCRUD(VppTestCase):
+    """Interface CRUDL Tests
 
     """
 
     @classmethod
     def setUpClass(cls):
-        super(TestLoopbackInterfaceCRUD, cls).setUpClass()
+        super(TestInterfaceCRUD, cls).setUpClass()
         try:
             cls.create_pg_interfaces(range(1))
             for i in cls.pg_interfaces:
@@ -77,8 +80,9 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
             info = (i.local_ip4, request_src_if.remote_ip4, 0, i.sw_if_index)
             self.assertIn(info, rcvd_icmp_pkts)
 
-    def test_crud(self):
-        # create
+    @parameterized.expand(['loopback'])
+    def test_crud(self, iface_type):
+        """create interface test """
         loopbacks = self.create_loopback_interfaces(20)
         for i in loopbacks:
             i.local_ip4_prefix_len = 32

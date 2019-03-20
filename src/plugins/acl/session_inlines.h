@@ -274,7 +274,7 @@ is_ip6_5tuple (fa_5tuple_t * p5t)
 }
 
 always_inline u8
-acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
+acl_fa_track_session (acl_main_t * am, bool is_input, u32 sw_if_index, u64 now,
 		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple,
 		      u32 pkt_len)
 {
@@ -292,7 +292,7 @@ acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 }
 
 always_inline u64
-reverse_l4_u64_fastpath (u64 l4, int is_ip6)
+reverse_l4_u64_fastpath (u64 l4, bool is_ip6)
 {
   fa_session_l4_key_t l4i = {.as_u64 = l4 };
   fa_session_l4_key_t l4o;
@@ -306,7 +306,7 @@ reverse_l4_u64_fastpath (u64 l4, int is_ip6)
 }
 
 always_inline int
-reverse_l4_u64_slowpath_valid (u64 l4, int is_ip6, u64 * out)
+reverse_l4_u64_slowpath_valid (u64 l4, bool is_ip6, u64 * out)
 {
   fa_session_l4_key_t l4i = {.as_u64 = l4 };
   fa_session_l4_key_t l4o;
@@ -466,7 +466,7 @@ acl_fa_two_stage_delete_session (acl_main_t * am, u32 sw_if_index,
 }
 
 always_inline int
-acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
+acl_fa_can_add_session (acl_main_t * am, bool is_input, u32 sw_if_index)
 {
   u64 curr_sess_count;
   curr_sess_count = am->fa_session_total_adds - am->fa_session_total_dels;
@@ -476,7 +476,7 @@ acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
 
 
 always_inline void
-acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
+acl_fa_try_recycle_session (acl_main_t * am, bool is_input, u16 thread_index,
 			    u32 sw_if_index, u64 now)
 {
   /* try to recycle a TCP transient session */
@@ -516,7 +516,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
 
 
 always_inline fa_full_session_id_t
-acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
+acl_fa_add_session (acl_main_t * am, bool is_input, bool is_ip6,
 		    u32 sw_if_index, u64 now, fa_5tuple_t * p5tuple,
 		    u16 current_policy_epoch)
 {
@@ -587,7 +587,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
 }
 
 always_inline int
-acl_fa_find_session (acl_main_t * am, int is_ip6, u32 sw_if_index0,
+acl_fa_find_session (acl_main_t * am, bool is_ip6, u32 sw_if_index0,
 		     fa_5tuple_t * p5tuple, u64 * pvalue_sess)
 {
   int res = 0;
@@ -609,7 +609,7 @@ acl_fa_find_session (acl_main_t * am, int is_ip6, u32 sw_if_index0,
 }
 
 always_inline u64
-acl_fa_make_session_hash (acl_main_t * am, int is_ip6, u32 sw_if_index0,
+acl_fa_make_session_hash (acl_main_t * am, bool is_ip6, u32 sw_if_index0,
 			  fa_5tuple_t * p5tuple)
 {
   if (is_ip6)
@@ -619,7 +619,7 @@ acl_fa_make_session_hash (acl_main_t * am, int is_ip6, u32 sw_if_index0,
 }
 
 always_inline void
-acl_fa_prefetch_session_bucket_for_hash (acl_main_t * am, int is_ip6,
+acl_fa_prefetch_session_bucket_for_hash (acl_main_t * am, bool is_ip6,
 					 u64 hash)
 {
   if (is_ip6)
@@ -629,7 +629,7 @@ acl_fa_prefetch_session_bucket_for_hash (acl_main_t * am, int is_ip6,
 }
 
 always_inline void
-acl_fa_prefetch_session_data_for_hash (acl_main_t * am, int is_ip6, u64 hash)
+acl_fa_prefetch_session_data_for_hash (acl_main_t * am, bool is_ip6, u64 hash)
 {
   if (is_ip6)
     clib_bihash_prefetch_data_40_8 (&am->fa_ip6_sessions_hash, hash);
@@ -638,7 +638,7 @@ acl_fa_prefetch_session_data_for_hash (acl_main_t * am, int is_ip6, u64 hash)
 }
 
 always_inline int
-acl_fa_find_session_with_hash (acl_main_t * am, int is_ip6, u32 sw_if_index0,
+acl_fa_find_session_with_hash (acl_main_t * am, bool is_ip6, u32 sw_if_index0,
 			       u64 hash, fa_5tuple_t * p5tuple,
 			       u64 * pvalue_sess)
 {

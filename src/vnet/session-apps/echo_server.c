@@ -42,7 +42,7 @@ typedef struct
   u32 private_segment_size;	/**< Size of private segments  */
   char *server_uri;		/**< Server URI */
   u32 tls_engine;		/**< TLS engine: mbedtls/openssl */
-  u8 is_dgram;			/**< set if transport is dgram */
+  bool is_dgram;			/**< set if transport is dgram */
   /*
    * Test state
    */
@@ -94,7 +94,7 @@ echo_server_session_reset_callback (session_t * s)
 
 int
 echo_server_session_connected_callback (u32 app_index, u32 api_context,
-					session_t * s, u8 is_fail)
+					session_t * s, bool is_fail)
 {
   clib_warning ("called...");
   return -1;

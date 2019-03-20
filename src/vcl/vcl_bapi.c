@@ -388,7 +388,7 @@ vppcom_api_hookup (void)
  * VPP-API message functions
  */
 void
-vppcom_send_session_enable_disable (u8 is_enable)
+vppcom_send_session_enable_disable (bool is_enable)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_session_enable_disable_t *bmp;
@@ -458,7 +458,7 @@ vppcom_app_send_detach (void)
 }
 
 void
-vcl_send_app_worker_add_del (u8 is_add)
+vcl_send_app_worker_add_del (bool is_add)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_app_worker_add_del_t *mp;

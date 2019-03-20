@@ -59,7 +59,7 @@ typedef struct gpb_recirc_t_
   index_t gr_ep;
 } gbp_recirc_t;
 
-extern int gbp_recirc_add (u32 sw_if_index, sclass_t sclass, u8 is_ext);
+extern int gbp_recirc_add (u32 sw_if_index, sclass_t sclass, bool is_ext);
 extern int gbp_recirc_delete (u32 sw_if_index);
 
 typedef walk_rc_t (*gbp_recirc_cb_t) (gbp_recirc_t * gbpe, void *ctx);

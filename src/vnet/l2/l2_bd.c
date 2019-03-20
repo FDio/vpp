@@ -742,7 +742,7 @@ u32
 bd_add_del_ip_mac (u32 bd_index,
 		   ip46_type_t type,
 		   const ip46_address_t * ip,
-		   const mac_address_t * mac, u8 is_add)
+		   const mac_address_t * mac, bool is_add)
 {
   l2_bridge_domain_t *bd_cfg = l2input_bd_config (bd_index);
   u64 new_mac = mac_address_as_u64 (mac);
@@ -841,7 +841,7 @@ bd_arp_entry (vlib_main_t * vm,
   clib_error_t *error = 0;
   u32 bd_index, bd_id;
   mac_address_t mac;
-  u8 is_add = 1;
+  bool is_add = 1;
   uword *p;
 
   if (!unformat (input, "%d", &bd_id))
@@ -1265,7 +1265,7 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   u32 bd_id = ~0;
   u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term = 0;
   u32 mac_age = 0;

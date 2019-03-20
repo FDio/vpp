@@ -54,7 +54,7 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
 			   ip6_address_t * in_addr,
 			   ip4_address_t * out_addr, u16 in_port,
 			   u16 out_port, u32 fib_index, u8 proto,
-			   u8 is_static)
+			   bool is_static)
 {
   nat64_db_bib_entry_t *bibe;
   nat64_db_bib_entry_key_t bibe_key;
@@ -207,7 +207,7 @@ nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
 
 nat64_db_bib_entry_t *
 nat64_db_bib_entry_find (nat64_db_t * db, ip46_address_t * addr, u16 port,
-			 u8 proto, u32 fib_index, u8 is_ip6)
+			 u8 proto, u32 fib_index, bool is_ip6)
 {
   nat64_db_bib_entry_t *bibe = 0;
   nat64_db_bib_entry_key_t bibe_key;
@@ -556,7 +556,7 @@ nat64_db_st_entry_free (u32 thread_index,
 nat64_db_st_entry_t *
 nat64_db_st_entry_find (nat64_db_t * db, ip46_address_t * l_addr,
 			ip46_address_t * r_addr, u16 l_port, u16 r_port,
-			u8 proto, u32 fib_index, u8 is_ip6)
+			u8 proto, u32 fib_index, bool is_ip6)
 {
   nat64_db_st_entry_t *ste = 0;
   nat64_db_st_entry_t *st;

@@ -667,7 +667,7 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip46_address_t src, dst;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 src_set = 0;
   u8 dst_set = 0;
   u8 grp_set = 0;
@@ -917,7 +917,7 @@ VLIB_CLI_COMMAND (show_gtpu_tunnel_command, static) = {
 /* *INDENT-ON* */
 
 void
-vnet_int_gtpu_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
+vnet_int_gtpu_bypass_mode (u32 sw_if_index, bool is_ip6, bool is_enable)
 {
   if (is_ip6)
     vnet_feature_enable_disable ("ip6-unicast", "ip6-gtpu-bypass",

@@ -127,7 +127,7 @@ api_udp_ping_add_del (vat_main_t * vam)
   u32 start_src_port, end_src_port;
   u32 start_dst_port, end_dst_port;
   u32 interval;
-  u8 is_disable = 0;
+  bool is_disable = 0;
   f64 timeout;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)

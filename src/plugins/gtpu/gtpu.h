@@ -244,8 +244,8 @@ u8 *format_gtpu_encap_trace (u8 * s, va_list * args);
 
 typedef struct
 {
-  u8 is_add;
-  u8 is_ip6;
+  bool is_add;
+  bool is_ip6;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
@@ -262,7 +262,7 @@ typedef struct
   u32 teid;
 } gtpu_encap_trace_t;
 
-void vnet_int_gtpu_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
+void vnet_int_gtpu_bypass_mode (u32 sw_if_index, bool is_ip6, bool is_enable);
 #endif /* included_vnet_gtpu_h */
 
 

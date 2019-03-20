@@ -750,7 +750,7 @@ bfd_cli_udp_session_auth_activate (vlib_main_t * vm,
 
   foreach_bfd_cli_udp_session_auth_activate_cli_param (CHECK_MANDATORY);
 
-  u8 is_delayed = 0;
+  bool is_delayed = 0;
   if (have_delayed_token)
     {
       static const char yes[] = "yes";
@@ -845,7 +845,7 @@ bfd_cli_udp_session_auth_deactivate (vlib_main_t *vm, unformat_input_t *input,
 
   foreach_bfd_cli_udp_session_auth_deactivate_cli_param (CHECK_MANDATORY);
 
-  u8 is_delayed = 0;
+  bool is_delayed = 0;
   if (have_delayed_token)
     {
       static const char yes[] = "yes";

@@ -253,7 +253,7 @@ call_elf_section_interface_callbacks (vnet_main_t * vnm, u32 if_index,
 
 static clib_error_t *
 call_hw_interface_add_del_callbacks (vnet_main_t * vnm, u32 hw_if_index,
-				     u32 is_create)
+				     bool is_create)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_hw_interface_class_t *hw_class =
@@ -281,7 +281,7 @@ call_hw_interface_add_del_callbacks (vnet_main_t * vnm, u32 hw_if_index,
 
 static clib_error_t *
 call_sw_interface_add_del_callbacks (vnet_main_t * vnm, u32 sw_if_index,
-				     u32 is_create)
+				     bool is_create)
 {
   return call_elf_section_interface_callbacks
     (vnm, sw_if_index, is_create, vnm->sw_interface_add_del_functions);
@@ -301,7 +301,7 @@ vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index,
     vnet_get_hw_interface_class (vnm, hi->hw_class_index);
   u32 mask;
   clib_error_t *error = 0;
-  u32 is_create =
+  bool is_create =
     (helper_flags & VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE) != 0;
 
   mask =
@@ -348,7 +348,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
   u32 mask;
   clib_error_t *error = 0;
-  u32 is_create =
+  bool is_create =
     (helper_flags & VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE) != 0;
   u32 old_flags;
 

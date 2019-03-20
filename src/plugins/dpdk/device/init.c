@@ -930,7 +930,7 @@ dpdk_bind_vmbus_devices_to_uio (dpdk_config_main_t * conf)
 
 static clib_error_t *
 dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
-		    unformat_input_t * input, u8 is_default)
+		    unformat_input_t * input, bool is_default)
 {
   clib_error_t *error = 0;
   uword *p;

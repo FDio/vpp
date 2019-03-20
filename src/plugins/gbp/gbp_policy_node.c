@@ -109,7 +109,7 @@ gbp_policy_is_ethertype_allowed (const gbp_contract_t * gc0, u16 ethertype)
 static uword
 gbp_policy_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, u8 is_port_based)
+		   vlib_frame_t * frame, bool is_port_based)
 {
   gbp_main_t *gm = &gbp_main;
   gbp_policy_main_t *gpm = &gbp_policy_main;
@@ -207,7 +207,9 @@ gbp_policy_inline (vlib_main_t * vm,
 		      u32 rule_match_p0, trace_bitmap0;
 		      fa_5tuple_opaque_t pkt_5tuple0;
 		      u32 acl_pos_p0, acl_match_p0;
-		      u8 is_ip60, l2_len0, action0;
+		      bool is_ip60;
+		      u8 action0;
+		      u8 l2_len0;
 		      const gbp_rule_t *gu;
 		      u16 ether_type0;
 		      const u8 *h0;

@@ -113,7 +113,7 @@ netmap_worker_thread_disable ()
 
 int
 netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
-		  u8 is_pipe, u8 is_master, u32 * sw_if_index)
+		  bool is_pipe, bool is_master, u32 * sw_if_index)
 {
   netmap_main_t *nm = &netmap_main;
   int ret = 0;

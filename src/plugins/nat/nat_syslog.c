@@ -61,7 +61,7 @@
 static inline void
 nat_syslog_nat44_apmap (u32 ssubix, u32 sfibix, ip4_address_t * isaddr,
 			u16 isport, ip4_address_t * xsaddr, u16 xsport,
-			snat_protocol_t proto, u8 is_add,
+			snat_protocol_t proto, bool is_add,
 			ip6_address_t * sv6enc)
 {
   syslog_msg_t syslog_msg;
@@ -148,7 +148,7 @@ nat_syslog_nat44_sess (u32 ssubix, u32 sfibix, ip4_address_t * isaddr,
 		       u16 isport, ip4_address_t * xsaddr, u16 xsport,
 		       ip4_address_t * idaddr, u16 idport,
 		       ip4_address_t * xdaddr, u16 xdport,
-		       snat_protocol_t proto, u8 is_add, u8 is_twicenat)
+		       snat_protocol_t proto, bool is_add, bool is_twicenat)
 {
   syslog_msg_t syslog_msg;
   fib_table_t *fib;
@@ -200,7 +200,7 @@ nat_syslog_nat44_sadd (u32 ssubix, u32 sfibix, ip4_address_t * isaddr,
 		       u16 isport, ip4_address_t * idaddr, u16 idport,
 		       ip4_address_t * xsaddr, u16 xsport,
 		       ip4_address_t * xdaddr, u16 xdport,
-		       snat_protocol_t proto, u8 is_twicenat)
+		       snat_protocol_t proto, bool is_twicenat)
 {
   nat_syslog_nat44_sess (ssubix, sfibix, isaddr, isport, xsaddr, xsport,
 			 idaddr, idport, xdaddr, xdport, proto, 1,
@@ -212,7 +212,7 @@ nat_syslog_nat44_sdel (u32 ssubix, u32 sfibix, ip4_address_t * isaddr,
 		       u16 isport, ip4_address_t * idaddr, u16 idport,
 		       ip4_address_t * xsaddr, u16 xsport,
 		       ip4_address_t * xdaddr, u16 xdport,
-		       snat_protocol_t proto, u8 is_twicenat)
+		       snat_protocol_t proto, bool is_twicenat)
 {
   nat_syslog_nat44_sess (ssubix, sfibix, isaddr, isport, xsaddr, xsport,
 			 idaddr, idport, xdaddr, xdport, proto, 0,
@@ -223,7 +223,7 @@ static inline void
 nat_syslog_nat64_sess (u32 sfibix, ip6_address_t * isaddr, u16 isport,
 		       ip4_address_t * xsaddr, u16 xsport,
 		       ip4_address_t * xdaddr, u16 xdport,
-		       snat_protocol_t proto, u8 is_add)
+		       snat_protocol_t proto, bool is_add)
 {
   syslog_msg_t syslog_msg;
   fib_table_t *fib;

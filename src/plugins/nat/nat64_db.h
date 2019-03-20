@@ -50,7 +50,7 @@ typedef CLIB_PACKED(struct
   u32 fib_index;
   u32 ses_num;
   u8 proto;
-  u8 is_static;
+  bool is_static;
 }) nat64_db_bib_entry_t;
 /* *INDENT-ON* */
 
@@ -178,7 +178,7 @@ nat64_db_bib_entry_t *nat64_db_bib_entry_create (u32 thread_index,
 						 ip4_address_t * out_addr,
 						 u16 in_port, u16 out_port,
 						 u32 fib_index, u8 proto,
-						 u8 is_static);
+						 bool is_static);
 
 /**
  * @brief Free NAT64 BIB entry.
@@ -229,7 +229,7 @@ nat64_db_bib_entry_t *nat64_db_bib_entry_find (nat64_db_t * db,
 					       ip46_address_t * addr,
 					       u16 port,
 					       u8 proto,
-					       u32 fib_index, u8 is_ip6);
+					       u32 fib_index, bool is_ip6);
 
 /**
  * @brief Get BIB entry by index and protocol.
@@ -290,7 +290,7 @@ nat64_db_st_entry_t *nat64_db_st_entry_find (nat64_db_t * db,
 					     ip46_address_t * r_addr,
 					     u16 l_port, u16 r_port,
 					     u8 proto,
-					     u32 fib_index, u8 is_ip6);
+					     u32 fib_index, bool is_ip6);
 
 /**
  * @brief Call back function when walking NAT64 session table, non-zero

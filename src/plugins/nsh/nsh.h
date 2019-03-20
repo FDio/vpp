@@ -52,7 +52,7 @@ typedef struct {
 } nsh_entry_t;
 
 typedef struct {
-  u8 is_add;
+  bool is_add;
   nsh_entry_t nsh_entry;
 } nsh_add_del_entry_args_t;
 
@@ -86,7 +86,7 @@ typedef struct {
 } nsh_map_t;
 
 typedef struct {
-  u8 is_add;
+  bool is_add;
   nsh_map_t map;
 } nsh_add_del_map_args_t;
 

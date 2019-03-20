@@ -40,7 +40,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   transport_connection_t connection;	/**< must be first */
   clib_spinlock_t rx_lock;		/**< rx fifo lock */
-  u8 is_connected;			/**< connected mode */
+  bool is_connected;			/**< connected mode */
 } udp_connection_t;
 
 #define foreach_udp4_dst_port			\
@@ -239,7 +239,7 @@ udp_connection_clone_safe (u32 connection_index, u32 thread_index)
 
 
 always_inline udp_dst_port_info_t *
-udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
+udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, bool is_ip4)
 {
   uword *p = hash_get (um->dst_port_info_by_dst_port[is_ip4], dst_port);
   return p ? vec_elt_at_index (um->dst_port_infos[is_ip4], p[0]) : 0;
@@ -251,12 +251,12 @@ unformat_function_t unformat_udp_header;
 
 void udp_register_dst_port (vlib_main_t * vm,
 			    udp_dst_port_t dst_port,
-			    u32 node_index, u8 is_ip4);
+			    u32 node_index, bool is_ip4);
 void udp_unregister_dst_port (vlib_main_t * vm,
-			      udp_dst_port_t dst_port, u8 is_ip4);
-bool udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4);
+			      udp_dst_port_t dst_port, bool is_ip4);
+bool udp_is_valid_dst_port (udp_dst_port_t dst_port, bool is_ip4);
 
-void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
+void udp_punt_unknown (vlib_main_t * vm, bool is_ip4, bool is_add);
 
 always_inline void *
 vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
@@ -280,7 +280,7 @@ vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
 }
 
 always_inline void
-ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
+ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, bool is_ip4)
 {
   u16 new_l0;
   udp_header_t *udp0;
@@ -335,7 +335,7 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
 
 always_inline void
 ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
-		  u8 is_ip4)
+		  bool is_ip4)
 {
   vlib_buffer_advance (b0, -ec_len);
 
@@ -363,7 +363,7 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
 
 always_inline void
 ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
-		  u8 * ec0, u8 * ec1, word ec_len, u8 is_v4)
+		  u8 * ec0, u8 * ec1, word ec_len, bool is_v4)
 {
   u16 new_l0, new_l1;
   udp_header_t *udp0, *udp1;

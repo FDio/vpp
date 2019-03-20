@@ -195,11 +195,11 @@ u8 *format_geneve_encap_trace (u8 * s, va_list * args);
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
 
   /* we normally use is_ip4, but since this adds to the
    * structure, this seems less of abreaking change */
-  u8 is_ip6;
+  bool is_ip6;
   ip46_address_t local, remote;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
@@ -210,7 +210,7 @@ typedef struct
 int vnet_geneve_add_del_tunnel
   (vnet_geneve_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
 
-void vnet_int_geneve_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
+void vnet_int_geneve_bypass_mode (u32 sw_if_index, bool is_ip6, bool is_enable);
 #endif /* included_vnet_geneve_h */
 
 /*

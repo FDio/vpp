@@ -177,7 +177,7 @@ VLIB_PLUGIN_REGISTER () = {
 
 void
 nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
-		       u8 is_ha)
+		       bool is_ha)
 {
   snat_session_key_t key;
   clib_bihash_kv_8_8_t kv;
@@ -1158,7 +1158,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 int
 nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 				 snat_protocol_t proto,
-				 nat44_lb_addr_port_t * locals, u8 is_add,
+				 nat44_lb_addr_port_t * locals, bool is_add,
 				 twice_nat_type_t twice_nat, u8 out2in_only,
 				 u8 * tag, u32 affinity)
 {
@@ -1435,7 +1435,7 @@ int
 nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 				       ip4_address_t l_addr, u16 l_port,
 				       snat_protocol_t proto, u32 vrf_id,
-				       u8 probability, u8 is_add)
+				       u8 probability, bool is_add)
 {
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m = 0;
@@ -1729,7 +1729,7 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
 }
 
 int
-snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
+snat_interface_add_del (u32 sw_if_index, bool is_inside, bool is_del)
 {
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
@@ -1979,7 +1979,7 @@ fib:
 
 int
 snat_interface_add_del_output_feature (u32 sw_if_index,
-				       u8 is_inside, int is_del)
+				       bool is_inside, bool is_del)
 {
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
@@ -2167,7 +2167,7 @@ snat_update_outside_fib (u32 sw_if_index, u32 new_fib_index,
   snat_main_t *sm = &snat_main;
   nat_outside_fib_t *outside_fib;
   snat_interface_t *i;
-  u8 is_add = 1;
+  bool is_add = 1;
 
   if (new_fib_index == old_fib_index)
     return;
@@ -2226,7 +2226,8 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
 				       u32 sw_if_index,
 				       ip4_address_t * address,
 				       u32 address_length,
-				       u32 if_address_index, u32 is_delete);
+				       u32 if_address_index,
+				       bool is_delete);
 
 static void
 nat_ip4_add_del_addr_only_sm_cb (ip4_main_t * im,
@@ -2234,7 +2235,8 @@ nat_ip4_add_del_addr_only_sm_cb (ip4_main_t * im,
 				 u32 sw_if_index,
 				 ip4_address_t * address,
 				 u32 address_length,
-				 u32 if_address_index, u32 is_delete);
+				 u32 if_address_index,
+				 bool is_delete);
 
 static int
 nat_alloc_addr_and_port_default (snat_address_t * addresses,
@@ -2830,7 +2832,7 @@ exhausted:
 }
 
 void
-nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add)
+nat44_add_del_address_dpo (ip4_address_t addr, bool is_add)
 {
   dpo_id_t dpo_v4 = DPO_INVALID;
   fib_prefix_t pfx = {
@@ -3711,7 +3713,8 @@ nat_ip4_add_del_addr_only_sm_cb (ip4_main_t * im,
 				 u32 sw_if_index,
 				 ip4_address_t * address,
 				 u32 address_length,
-				 u32 if_address_index, u32 is_delete)
+				 u32 if_address_index,
+				 bool is_delete)
 {
   snat_main_t *sm = &snat_main;
   snat_static_map_resolve_t *rp;
@@ -3779,7 +3782,8 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
 				       u32 sw_if_index,
 				       ip4_address_t * address,
 				       u32 address_length,
-				       u32 if_address_index, u32 is_delete)
+				       u32 if_address_index,
+				       bool is_delete)
 {
   snat_main_t *sm = &snat_main;
   snat_static_map_resolve_t *rp;
@@ -3855,7 +3859,7 @@ match:
 
 
 int
-snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
+snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, bool is_del,
 			    u8 twice_nat)
 {
   ip4_main_t *ip4_main = sm->ip4_main;

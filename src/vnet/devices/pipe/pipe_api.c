@@ -50,7 +50,7 @@ vl_api_pipe_create_t_handler (vl_api_pipe_create_t * mp)
   u32 parent_sw_if_index;
   u32 pipe_sw_if_index[2];
   int rv;
-  u8 is_specified = mp->is_specified;
+  bool is_specified = mp->is_specified;
   u32 user_instance = ntohl (mp->user_instance);
 
   rv = vnet_create_pipe_interface (is_specified, user_instance,

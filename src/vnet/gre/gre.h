@@ -346,9 +346,9 @@ gre_register_input_protocol (vlib_main_t * vm, gre_protocol_t protocol,
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
   u8 tunnel_type;
-  u8 is_ipv6;
+  bool is_ipv6;
   u32 instance;
   ip46_address_t src, dst;
   u32 outer_fib_id;

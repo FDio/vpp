@@ -241,7 +241,7 @@ auth_cap_to_alg (const struct rte_cryptodev_capabilities *cap, u8 trunc_size)
 
 static void
 crypto_set_aead_xform (struct rte_crypto_sym_xform *xform,
-		       ipsec_sa_t * sa, u8 is_outbound)
+		       ipsec_sa_t * sa, bool is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_alg_t *c;
@@ -269,7 +269,7 @@ crypto_set_aead_xform (struct rte_crypto_sym_xform *xform,
 
 static void
 crypto_set_cipher_xform (struct rte_crypto_sym_xform *xform,
-			 ipsec_sa_t * sa, u8 is_outbound)
+			 ipsec_sa_t * sa, bool is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_alg_t *c;
@@ -295,7 +295,7 @@ crypto_set_cipher_xform (struct rte_crypto_sym_xform *xform,
 
 static void
 crypto_set_auth_xform (struct rte_crypto_sym_xform *xform,
-		       ipsec_sa_t * sa, u8 is_outbound)
+		       ipsec_sa_t * sa, bool is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_alg_t *a;
@@ -321,7 +321,7 @@ clib_error_t *
 create_sym_session (struct rte_cryptodev_sym_session **session,
 		    u32 sa_idx,
 		    crypto_resource_t * res,
-		    crypto_worker_main_t * cwm, u8 is_outbound)
+		    crypto_worker_main_t * cwm, bool is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   ipsec_main_t *im = &ipsec_main;
@@ -492,7 +492,7 @@ dpdk_crypto_session_disposal (crypto_session_disposal_t * v, u64 ts)
 }
 
 static clib_error_t *
-add_del_sa_session (u32 sa_index, u8 is_add)
+add_del_sa_session (u32 sa_index, bool is_add)
 {
   ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;

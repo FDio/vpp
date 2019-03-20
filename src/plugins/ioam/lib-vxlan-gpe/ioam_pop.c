@@ -228,7 +228,7 @@ vxlan_gpe_pop_ioam_v4_two_inline (vlib_main_t * vm,
 static uword
 vxlan_gpe_pop_ioam (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame, u8 is_ipv6)
+		    vlib_frame_t * from_frame, bool is_ipv6)
 {
   u32 n_left_from, next_index, *from, *to_next;
   vxlan_gpe_main_t *ngm = &vxlan_gpe_main;

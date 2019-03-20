@@ -98,7 +98,7 @@ typedef struct
 
   /* If set then the DSLite component behaves as CPE/B4
    * otherwise it behaves as AFTR */
-  u8 is_ce;
+  bool is_ce;
 } dslite_main_t;
 
 typedef struct
@@ -146,7 +146,7 @@ int dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
 int dslite_set_aftr_ip4_addr (dslite_main_t * dm, ip4_address_t * addr);
 int dslite_set_b4_ip4_addr (dslite_main_t * dm, ip4_address_t * addr);
 int dslite_add_del_pool_addr (dslite_main_t * dm, ip4_address_t * addr,
-			      u8 is_add);
+			      bool is_add);
 u8 *format_dslite_trace (u8 * s, va_list * args);
 u8 *format_dslite_ce_trace (u8 * s, va_list * args);
 

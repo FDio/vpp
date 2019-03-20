@@ -219,7 +219,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
 }
 
 int
-tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
+tls_notify_app_connected (tls_ctx_t * ctx, bool is_failed)
 {
   session_t *app_session;
   app_worker_t *app_wrk;
@@ -421,7 +421,7 @@ tls_app_rx_callback (session_t * tls_session)
 
 int
 tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
-				session_t * tls_session, u8 is_fail)
+				session_t * tls_session, bool is_fail)
 {
   session_t *app_session;
   tls_ctx_t *ho_ctx, *ctx;
@@ -431,7 +431,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   if (is_fail)
     {
-      int (*cb_fn) (u32, u32, session_t *, u8), rv = 0;
+      int (*cb_fn) (u32, u32, session_t *, bool), rv = 0;
       u32 wrk_index, api_context;
       app_worker_t *app_wrk;
       application_t *app;

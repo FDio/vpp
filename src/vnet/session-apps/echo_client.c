@@ -358,7 +358,7 @@ echo_clients_init (vlib_main_t * vm)
 
 static int
 echo_clients_session_connected_callback (u32 app_index, u32 api_context,
-					 session_t * s, u8 is_fail)
+					 session_t * s, bool is_fail)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *session;

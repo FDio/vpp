@@ -31,8 +31,8 @@ define gre_add_del_tunnel
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
+  bool is_add;
+  bool is_ipv6;
   u8 tunnel_type;
   u32 instance;		/* If non-~0, specifies a custom dev instance */
   u8 src_address[16];
@@ -60,7 +60,7 @@ define gre_tunnel_details
   u32 context;
   u32 sw_if_index;
   u32 instance;
-  u8 is_ipv6;
+  bool is_ipv6;
   u8 tunnel_type;
   u8 src_address[16];
   u8 dst_address[16];

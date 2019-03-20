@@ -874,7 +874,7 @@ int
 socket (int domain, int type, int protocol)
 {
   int rv, sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
-  u8 is_nonblocking = type & SOCK_NONBLOCK ? 1 : 0;
+  bool is_nonblocking = type & SOCK_NONBLOCK ? 1 : 0;
   vls_handle_t vlsh;
 
   if ((errno = -ldp_init ()))

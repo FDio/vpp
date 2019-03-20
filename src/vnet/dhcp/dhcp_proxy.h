@@ -179,7 +179,7 @@ int dhcp_vss_show_walk (dhcp_vss_t * vss, u32 rx_table_id, void *ctx);
 int dhcp_proxy_set_vss (fib_protocol_t proto,
 			u32 tbl_id,
 			u8 vss_type,
-			u8 * vpn_ascii_id, u32 oui, u32 vpn_index, u8 is_del);
+			u8 * vpn_ascii_id, u32 oui, u32 vpn_index, bool is_del);
 
 /**
  * @brief Dump the proxy configs to the API
@@ -284,10 +284,10 @@ dhcp_get_proxy (dhcp_proxy_main_t * dm,
 
 int dhcp6_proxy_set_server (ip46_address_t * addr,
 			    ip46_address_t * src_addr,
-			    u32 rx_table_id, u32 server_table_id, int is_del);
+			    u32 rx_table_id, u32 server_table_id, bool is_del);
 int dhcp4_proxy_set_server (ip46_address_t * addr,
 			    ip46_address_t * src_addr,
-			    u32 rx_table_id, u32 server_table_id, int is_del);
+			    u32 rx_table_id, u32 server_table_id, bool is_del);
 
 #endif /* included_dhcp_proxy_h */
 

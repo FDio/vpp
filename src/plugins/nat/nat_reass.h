@@ -152,7 +152,7 @@ typedef struct
  * @returns 0 on success, non-zero value otherwise.
  */
 int nat_reass_set (u32 timeout, u16 max_reass, u8 max_frag, u8 drop_frag,
-		   u8 is_ip6);
+		   bool is_ip6);
 
 /**
  * @brief Get reassembly timeout.
@@ -161,7 +161,7 @@ int nat_reass_set (u32 timeout, u16 max_reass, u8 max_frag, u8 drop_frag,
  *
  * @returns reassembly timeout.
  */
-u32 nat_reass_get_timeout (u8 is_ip6);
+u32 nat_reass_get_timeout (bool is_ip6);
 
 /**
  * @brief Get maximum number of concurrent reassemblies.
@@ -170,7 +170,7 @@ u32 nat_reass_get_timeout (u8 is_ip6);
  *
  * @returns maximum number of concurrent reassemblies.
  */
-u16 nat_reass_get_max_reass (u8 is_ip6);
+u16 nat_reass_get_max_reass (bool is_ip6);
 
 /**
  * @brief Get maximum number of fragmets per reassembly.
@@ -179,7 +179,7 @@ u16 nat_reass_get_max_reass (u8 is_ip6);
  *
  * @returns maximum number of fragmets per reassembly.
  */
-u8 nat_reass_get_max_frag (u8 is_ip6);
+u8 nat_reass_get_max_frag (bool is_ip6);
 
 /**
  * @brief Get status of virtual fragmentation reassembly.
@@ -188,7 +188,7 @@ u8 nat_reass_get_max_frag (u8 is_ip6);
  *
  * @returns zero if translate fragments, non-zero value if drop fragments.
  */
-u8 nat_reass_is_drop_frag (u8 is_ip6);
+u8 nat_reass_is_drop_frag (bool is_ip6);
 
 /**
  * @brief Initialize NAT virtual fragmentation reassembly.

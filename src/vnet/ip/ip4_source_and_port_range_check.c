@@ -662,7 +662,7 @@ set_ip_source_and_port_range_check_fn (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   ip4_main_t *im = &ip4_main;
   clib_error_t *error = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   u32 sw_if_index = ~0;
   u32 vrf_id[IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS];
   u32 fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS];

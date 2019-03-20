@@ -134,7 +134,7 @@ sctp_lookup_is_valid (transport_connection_t * trans_conn,
   if (!sctp_conn)
     return 1;
 
-  u8 is_valid = (trans_conn->lcl_port == sctp_hdr->dst_port
+  bool is_valid = (trans_conn->lcl_port == sctp_hdr->dst_port
 		 && (sctp_conn->state == SCTP_STATE_CLOSED
 		     || trans_conn->rmt_port == sctp_hdr->src_port));
 
@@ -146,13 +146,15 @@ sctp_lookup_is_valid (transport_connection_t * trans_conn,
  */
 static sctp_connection_t *
 sctp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
-			u8 is_ip4)
+			bool is_ip4)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
   sctp_header_t *sctp_hdr;
   transport_connection_t *trans_conn;
   sctp_connection_t *sctp_conn;
-  u8 is_filtered, i;
+  u8 is_filtered;
+  u8 i;
+
   if (is_ip4)
     {
       ip4_header_t *ip4_hdr;
@@ -243,7 +245,7 @@ static void
 sctp_set_rx_trace_data (sctp_rx_trace_t * rx_trace,
 			sctp_connection_t * sctp_conn,
 			sctp_header_t * sctp_hdr, vlib_buffer_t * b0,
-			u8 is_ip4)
+			bool is_ip4)
 {
   if (sctp_conn)
     {
@@ -260,7 +262,7 @@ sctp_set_rx_trace_data (sctp_rx_trace_t * rx_trace,
 
 always_inline u16
 sctp_calculate_implied_length (ip4_header_t * ip4_hdr, ip6_header_t * ip6_hdr,
-			       int is_ip4)
+			       bool is_ip4)
 {
   u16 sctp_implied_packet_length = 0;
 
@@ -717,7 +719,7 @@ sctp_session_enqueue_data (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 }
 
 always_inline u8
-sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, u8 is_gapping)
+sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, bool is_gapping)
 {
   if (sctp_conn->conn_config.never_delay_sack)
     {
@@ -755,7 +757,7 @@ sctp_is_sack_delayable (sctp_connection_t * sctp_conn, u8 idx, u8 is_gapping)
 
 always_inline void
 sctp_is_connection_gapping (sctp_connection_t * sctp_conn, u32 tsn,
-			    u8 * gapping)
+			    bool * is_gapping)
 {
   if (sctp_conn->next_tsn_expected != tsn)	// It means data transmission is GAPPING
     {
@@ -765,7 +767,7 @@ sctp_is_connection_gapping (sctp_connection_t * sctp_conn, u32 tsn,
 	 sctp_conn->next_tsn_expected, tsn,
 	 sctp_conn->next_tsn_expected - tsn);
 
-      *gapping = 1;
+      *is_gapping = 1;
     }
 }
 
@@ -775,7 +777,7 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 		  u16 * next0)
 {
   u32 error = 0, n_data_bytes;
-  u8 is_gapping = 0;
+  bool is_gapping = 0;
 
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_data_chunk->sctp_hdr.verification_tag)
@@ -1592,7 +1594,7 @@ sctp_handle_heartbeat_ack (sctp_hb_ack_chunk_t * sctp_hb_ack_chunk,
 
 always_inline void
 sctp_node_inc_counter (vlib_main_t * vm, u32 sctp4_node, u32 sctp6_node,
-		       u8 is_ip4, u8 evt, u8 val)
+		       bool is_ip4, u8 evt, u8 val)
 {
   if (PREDICT_TRUE (!val))
     return;
@@ -1606,7 +1608,7 @@ sctp_node_inc_counter (vlib_main_t * vm, u32 sctp4_node, u32 sctp6_node,
 always_inline uword
 sctp46_listen_process_inline (vlib_main_t * vm,
 			      vlib_node_runtime_t * node,
-			      vlib_frame_t * from_frame, int is_ip4)
+			      vlib_frame_t * from_frame, bool is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index;
@@ -1810,7 +1812,7 @@ VLIB_NODE_FN (sctp6_listen_phase_node) (vlib_main_t * vm,
 
 always_inline uword
 sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-				 vlib_frame_t * from_frame, int is_ip4)
+				 vlib_frame_t * from_frame, bool is_ip4)
 {
   sctp_main_t *sm = vnet_get_sctp_main ();
   u32 n_left_from, next_index, *from, *to_next;
@@ -2076,7 +2078,7 @@ VLIB_REGISTER_NODE (sctp6_established_phase_node) =
  */
 always_inline uword
 sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame, int is_ip4)
+			 vlib_frame_t * from_frame, bool is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index;

@@ -185,7 +185,7 @@ dslite_set_b4_ip4_addr (dslite_main_t * dm, ip4_address_t * addr)
 }
 
 int
-dslite_add_del_pool_addr (dslite_main_t * dm, ip4_address_t * addr, u8 is_add)
+dslite_add_del_pool_addr (dslite_main_t * dm, ip4_address_t * addr, bool is_add)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   snat_address_t *a = 0;

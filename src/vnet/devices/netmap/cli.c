@@ -34,8 +34,8 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 hwaddr[6];
   u8 *hw_addr_ptr = 0;
   int r;
-  u8 is_pipe = 0;
-  u8 is_master = 0;
+  bool is_pipe = 0;
+  bool is_master = 0;
   u32 sw_if_index = ~0;
   clib_error_t *error = NULL;
 

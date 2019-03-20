@@ -996,7 +996,7 @@ add_ip6_neighbor (test_main_t * tm, int add_del)
 }
 
 void
-reset_fib (test_main_t * tm, u8 is_ip6)
+reset_fib (test_main_t * tm, bool is_ip6)
 {
   vl_api_reset_fib_t *mp;
 
@@ -1090,7 +1090,7 @@ dhcp_set_proxy (test_main_t * tm, int ipv6)
 }
 
 void
-set_ip_flow_hash (test_main_t * tm, u8 is_ip6)
+set_ip_flow_hash (test_main_t * tm, bool is_ip6)
 {
   vl_api_set_ip_flow_hash_t *mp;
 

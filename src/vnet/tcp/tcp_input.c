@@ -122,7 +122,7 @@ tcp_segment_in_rcv_wnd (tcp_connection_t * tc, u32 seq, u32 end_seq)
  * @return -1 if parsing failed
  */
 static inline int
-tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
+tcp_options_parse (tcp_header_t * th, tcp_options_t * to, bool is_syn)
 {
   const u8 *data;
   u8 opt_len, opts_len, kind;
@@ -614,7 +614,7 @@ tcp_ack_is_dupack (tcp_connection_t * tc, vlib_buffer_t * b, u32 prev_snd_wnd,
  */
 static u8
 tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
-		     u32 prev_snd_wnd, u32 prev_snd_una, u8 * is_dack)
+		     u32 prev_snd_wnd, u32 prev_snd_una, bool * is_dack)
 {
   /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
    * defined to be 'duplicate' */
@@ -1357,7 +1357,7 @@ tcp_do_fastretransmits (tcp_worker_ctx_t * wrk)
  * One function to rule them all ... and in the darkness bind them
  */
 static void
-tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
+tcp_cc_handle_event (tcp_connection_t * tc, bool is_dack)
 {
   u32 rxt_delivered;
 
@@ -1556,7 +1556,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     tcp_header_t * th, u32 * error)
 {
   u32 prev_snd_wnd, prev_snd_una;
-  u8 is_dack;
+  bool is_dack;
 
   TCP_EVT_DBG (TCP_EVT_CC_STAT, tc);
 
@@ -2023,7 +2023,7 @@ format_tcp_rx_trace_short (u8 * s, va_list * args)
 
 static void
 tcp_set_rx_trace_data (tcp_rx_trace_t * t0, tcp_connection_t * tc0,
-		       tcp_header_t * th0, vlib_buffer_t * b0, u8 is_ip4)
+		       tcp_header_t * th0, vlib_buffer_t * b0, bool is_ip4)
 {
   if (tc0)
     {
@@ -2039,7 +2039,7 @@ tcp_set_rx_trace_data (tcp_rx_trace_t * t0, tcp_connection_t * tc0,
 
 static void
 tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     vlib_frame_t * frame, u8 is_ip4)
+			     vlib_frame_t * frame, bool is_ip4)
 {
   u32 *from, n_left;
 
@@ -2073,7 +2073,7 @@ tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 always_inline void
 tcp_node_inc_counter_i (vlib_main_t * vm, u32 tcp4_node, u32 tcp6_node,
-			u8 is_ip4, u32 evt, u32 val)
+			bool is_ip4, u32 evt, u32 val)
 {
   if (is_ip4)
     vlib_node_increment_counter (vm, tcp4_node, evt, val);
@@ -2259,7 +2259,7 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
   if (tc->c_lcl_port == 0 && tc->state == TCP_STATE_LISTEN)
     return 1;
 
-  u8 is_valid = (tc->c_lcl_port == hdr->dst_port
+  bool is_valid = (tc->c_lcl_port == hdr->dst_port
 		 && (tc->state == TCP_STATE_LISTEN
 		     || tc->c_rmt_port == hdr->src_port));
 
@@ -2286,7 +2286,7 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
  */
 static tcp_connection_t *
 tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
-		       u8 is_ip4)
+		       bool is_ip4)
 {
   tcp_header_t *tcp;
   transport_connection_t *tconn;
@@ -2651,7 +2651,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       tcp_header_t *tcp0 = 0;
       tcp_connection_t *tc0;
       vlib_buffer_t *b0;
-      u8 is_fin0;
+      bool is_fin0;
 
       bi0 = from[0];
       from += 1;
@@ -3291,7 +3291,7 @@ typedef enum _tcp_input_next
 
 static void
 tcp_input_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_buffer_t ** bs, u32 n_bufs, u8 is_ip4)
+		       vlib_buffer_t ** bs, u32 n_bufs, bool is_ip4)
 {
   tcp_connection_t *tc;
   tcp_header_t *tcp;
@@ -3312,7 +3312,7 @@ tcp_input_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static void
-tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
+tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, bool is_ip4)
 {
   if (*error == TCP_ERROR_FILTERED || *error == TCP_ERROR_WRONG_THREAD)
     {
@@ -3332,7 +3332,7 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
 
 static inline tcp_connection_t *
 tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
-			 u8 is_ip4)
+			 bool is_ip4)
 {
   u32 fib_index = vnet_buffer (b)->ip.fib_index;
   int n_advance_bytes, n_data_bytes;

@@ -171,10 +171,10 @@ set_is_dhcpv6_pd_prefix (prefix_info_t * prefix_info, u8 value)
 }
 
 static void
-cp_ip6_address_prefix_add_del_handler (u32 prefix_index, u8 is_add);
+cp_ip6_address_prefix_add_del_handler (u32 prefix_index, bool is_add);
 
 static void
-notify_prefix_add_del (u32 prefix_index, u8 is_add)
+notify_prefix_add_del (u32 prefix_index, bool is_add)
 {
   // TODO: use registries
   cp_ip6_address_prefix_add_del_handler (prefix_index, is_add);
@@ -341,7 +341,7 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
       for (i = 0; i < n_prefixes; i++)
 	{
 	  api_prefix = &mp->prefixes[i];
-	  prefix = (ip6_address_t *) api_prefix->prefix;
+	  prefix = (ip6_address_t *) &api_prefix->prefix;
 	  prefix_length = api_prefix->prefix_length;
 
 	  prefix_info = &prefix_list[i];
@@ -398,7 +398,7 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
 
       api_prefix = &mp->prefixes[i];
 
-      prefix = (ip6_address_t *) api_prefix->prefix;
+      prefix = (ip6_address_t *) &api_prefix->prefix;
       prefix_length = api_prefix->prefix_length;
 
       if (ip6_address_is_link_local_unicast (prefix))
@@ -673,7 +673,7 @@ cp_ip6_construct_address (ip6_address_info_t * address_info, u32 prefix_index,
 }
 
 static void
-cp_ip6_address_add_del_now (ip6_address_info_t * address_info, u8 is_add)
+cp_ip6_address_add_del_now (ip6_address_info_t * address_info, bool is_add)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 prefix_index;
@@ -777,7 +777,7 @@ cp_ip6_address_find_new_active_prefix (u32 prefix_group_index,
 }
 
 static void
-cp_ip6_address_prefix_add_del_handler (u32 prefix_index, u8 is_add)
+cp_ip6_address_prefix_add_del_handler (u32 prefix_index, bool is_add)
 {
   ip6_address_with_prefix_main_t *apm = &ip6_address_with_prefix_main;
   ip6_prefix_main_t *pm = &ip6_prefix_main;
@@ -870,7 +870,7 @@ prefix_group_find_or_create (const u8 * name, u8 create)
 
 static int
 cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
-			ip6_address_t address, u8 prefix_length, u8 is_add)
+			ip6_address_t address, u8 prefix_length, bool is_add)
 {
 
   ip6_address_with_prefix_main_t *apm = &ip6_address_with_prefix_main;

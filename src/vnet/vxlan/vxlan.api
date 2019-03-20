@@ -32,8 +32,8 @@ define vxlan_add_del_tunnel
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
+  bool is_add;
+  bool is_ipv6;
   u32 instance;		/* If non-~0, specifies a custom dev instance */
   u8 src_address[16];
   u8 dst_address[16];
@@ -68,7 +68,7 @@ define vxlan_tunnel_details
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
-  u8 is_ipv6;
+  bool is_ipv6;
 };
 
 /** \brief Interface set vxlan-bypass request
@@ -83,7 +83,7 @@ autoreply define sw_interface_set_vxlan_bypass
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-  u8 is_ipv6;
+  bool is_ipv6;
   u8 enable;
 };
 

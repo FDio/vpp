@@ -64,7 +64,8 @@ ip_interface_address_add_del (ip_lookup_main_t * lm,
 			      u32 sw_if_index,
 			      void *addr_fib,
 			      u32 address_length,
-			      u32 is_del, u32 * result_if_address_index)
+			      bool is_del,
+			      u32 * result_if_address_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip_interface_address_t *a, *prev, *next;

@@ -47,7 +47,7 @@ typedef enum
 
 typedef struct
 {
-  u8 is_resend;
+  bool is_resend;
   gid_address_t seid;
   gid_address_t deid;
   u8 smr_invoked;
@@ -94,7 +94,7 @@ get_encrypt_fcn (lisp_key_type_t key_id)
 
 static int
 queue_map_request (gid_address_t * seid, gid_address_t * deid,
-		   u8 smr_invoked, u8 is_resend);
+		   u8 smr_invoked, bool is_resend);
 
 ip_interface_address_t *
 ip_interface_get_first_interface_address (ip_lookup_main_t * lm,
@@ -221,7 +221,7 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
 }
 
 static int
-dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add,
+dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, bool is_l2, bool is_add,
 		  u8 with_default_route)
 {
   uword *dp_table;
@@ -678,7 +678,7 @@ get_map_resolver (ip_address_t * a)
 }
 
 int
-vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add)
+vnet_lisp_add_del_map_server (ip_address_t * addr, bool is_add)
 {
   u32 i;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -1038,7 +1038,7 @@ vnet_lisp_ndp_entries_get_by_bd (u32 bd)
 }
 
 int
-vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac, u8 is_add)
+vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac, bool is_add)
 {
   if (vnet_lisp_enable_disable_status () == 0)
     {
@@ -1077,7 +1077,7 @@ vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac, u8 is_add)
 }
 
 int
-vnet_lisp_eid_table_map (u32 vni, u32 dp_id, u8 is_l2, u8 is_add)
+vnet_lisp_eid_table_map (u32 vni, u32 dp_id, bool is_l2, bool is_add)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   uword *dp_idp, *vnip, **dp_table_by_vni, **vni_by_dp_table;
@@ -1159,7 +1159,7 @@ compare_locators (lisp_cp_main_t * lcm, u32 * old_ls_indexes,
 
 typedef struct
 {
-  u8 is_negative;
+  bool is_negative;
   void *lcm;
   gid_address_t *eids_to_be_deleted;
 } remove_mapping_args_t;
@@ -1209,7 +1209,7 @@ remove_mapping_if_needed (u32 mi, void *arg)
  */
 static void
 remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
-				 u8 is_negative)
+				 bool is_negative)
 {
   gid_address_t *e;
   remove_mapping_args_t a;
@@ -1279,7 +1279,7 @@ is_local_ip (lisp_cp_main_t * lcm, ip_address_t * addr)
 int
 vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
 		       locator_t * rlocs,
-		       u32 * res_map_index, u8 * is_updated)
+		       u32 * res_map_index, bool * is_updated)
 {
   vnet_lisp_add_del_locator_set_args_t _ls_args, *ls_args = &_ls_args;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -1578,7 +1578,7 @@ vnet_lisp_set_map_request_mode (u8 mode)
 }
 
 int
-vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add)
+vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, bool is_add)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
@@ -1629,7 +1629,7 @@ vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add)
 }
 
 int
-vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
+vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, bool is_add)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 locator_set_index = ~0;
@@ -1696,7 +1696,7 @@ vnet_lisp_map_register_fallback_threshold_get (void)
  * return 0 on success
  */
 int
-vnet_lisp_use_petr (ip_address_t * ip, u8 is_add)
+vnet_lisp_use_petr (ip_address_t * ip, bool is_add)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 ls_index = ~0;
@@ -2183,7 +2183,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 }
 
 int
-vnet_lisp_rloc_probe_enable_disable (u8 is_enable)
+vnet_lisp_rloc_probe_enable_disable (bool is_enable)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
@@ -2192,7 +2192,7 @@ vnet_lisp_rloc_probe_enable_disable (u8 is_enable)
 }
 
 int
-vnet_lisp_map_register_enable_disable (u8 is_enable)
+vnet_lisp_map_register_enable_disable (bool is_enable)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
@@ -2258,7 +2258,7 @@ lisp_cp_disable_l2_l3_ifaces (lisp_cp_main_t * lcm)
 }
 
 clib_error_t *
-vnet_lisp_enable_disable (u8 is_enable)
+vnet_lisp_enable_disable (bool is_enable)
 {
   clib_error_t *error = 0;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -2585,7 +2585,7 @@ static vlib_buffer_t *
 build_encapsulated_map_request (lisp_cp_main_t * lcm,
 				gid_address_t * seid, gid_address_t * deid,
 				locator_set_t * loc_set, ip_address_t * mr_ip,
-				ip_address_t * sloc, u8 is_smr_invoked,
+				ip_address_t * sloc, bool is_smr_invoked,
 				u64 * nonce_res, u32 * bi_res)
 {
   vlib_buffer_t *b;
@@ -3034,7 +3034,7 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
 static int
 _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 				gid_address_t * seid, gid_address_t * deid,
-				u8 is_smr_invoked, u8 is_resend)
+				bool is_smr_invoked, bool is_resend)
 {
   u32 next_index, bi = 0, *to_next, map_index;
   vlib_buffer_t *b;
@@ -3844,7 +3844,7 @@ process_map_reply (map_records_arg_t * a)
   pending_map_request_t *pmr;
   u64 *noncep;
   uword *pmr_index;
-  u8 is_changed = 0;
+  bool is_changed = 0;
 
   if (a->is_rloc_probe)
     goto done;
@@ -4566,7 +4566,7 @@ send_map_request_thread_fn (void *arg)
 
 static int
 queue_map_request (gid_address_t * seid, gid_address_t * deid,
-		   u8 smr_invoked, u8 is_resend)
+		   u8 smr_invoked, bool is_resend)
 {
   map_request_args_t a;
 
@@ -4887,7 +4887,7 @@ vnet_lisp_get_transport_protocol (void)
 }
 
 int
-vnet_lisp_enable_disable_xtr_mode (u8 is_enabled)
+vnet_lisp_enable_disable_xtr_mode (bool is_enabled)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u8 pitr_mode = lcm->flags & LISP_FLAG_PITR_MODE;
@@ -4924,7 +4924,7 @@ vnet_lisp_enable_disable_xtr_mode (u8 is_enabled)
 }
 
 int
-vnet_lisp_enable_disable_pitr_mode (u8 is_enabled)
+vnet_lisp_enable_disable_pitr_mode (bool is_enabled)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u8 xtr_mode = lcm->flags & LISP_FLAG_XTR_MODE;
@@ -4953,7 +4953,7 @@ vnet_lisp_enable_disable_pitr_mode (u8 is_enabled)
 }
 
 int
-vnet_lisp_enable_disable_petr_mode (u8 is_enabled)
+vnet_lisp_enable_disable_petr_mode (bool is_enabled)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u8 xtr_mode = lcm->flags & LISP_FLAG_XTR_MODE;

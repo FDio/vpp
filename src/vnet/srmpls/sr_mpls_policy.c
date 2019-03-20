@@ -464,14 +464,14 @@ sr_mpls_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
   int rv = -1;
-  char is_del = 0, is_add = 0, is_mod = 0;
+  bool is_del = 0, is_add = 0, is_mod = 0;
   char policy_set = 0;
   mpls_label_t bsid, next_label;
   u32 sl_index = (u32) ~ 0;
   u32 weight = (u32) ~ 0;
   mpls_label_t *segments = 0;
   u8 operation = 0;
-  u8 is_spray = 0;
+  bool is_spray = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

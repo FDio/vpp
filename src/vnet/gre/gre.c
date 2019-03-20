@@ -219,7 +219,7 @@ gre_build_rewrite (vnet_main_t * vnm,
   u8 *rewrite = NULL;
   gre_tunnel_t *t;
   u32 ti;
-  u8 is_ipv6;
+  bool is_ipv6;
 
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
 
@@ -309,7 +309,7 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   gre_main_t *gm = &gre_main;
   gre_tunnel_t *t;
   adj_flags_t af;
-  u8 is_ipv6;
+  bool is_ipv6;
   u32 ti;
 
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];

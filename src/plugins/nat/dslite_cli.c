@@ -25,7 +25,7 @@ dslite_add_del_pool_addr_command_fn (vlib_main_t * vm,
   ip4_address_t start_addr, end_addr, this_addr;
   u32 start_host_order, end_host_order;
   int i, count, rv;
-  u8 is_add = 1;
+  bool is_add = 1;
   clib_error_t *error = 0;
 
   /* Get a line of input. */

@@ -73,7 +73,7 @@ typedef struct vlib_config_function_runtime_t
   struct vlib_config_function_runtime_t *next_registration;
 
   /* To be invoked as soon as the clib heap is available */
-  u8 is_early;
+  bool is_early;
 
   /* Name used to distinguish input on command line. */
   char name[32];

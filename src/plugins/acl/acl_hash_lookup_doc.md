@@ -220,7 +220,7 @@ the same signature as:
 ```
 u8
 multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
-                       int is_ip6, int is_input, u32 * acl_match_p,
+                       bool is_ip6, bool is_input, u32 * acl_match_p,
                        u32 * rule_match_p, u32 * trace_bitmap)
 ```
 

@@ -225,7 +225,7 @@ create_ipsec_gre_tunnel_command_fn (vlib_main_t * vm,
 				    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   u32 num_m_args = 0;
   ip4_address_t src, dst;
   u32 lsa = 0, rsa = 0;

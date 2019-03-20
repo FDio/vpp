@@ -591,7 +591,7 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
 
 always_inline void
 tcp_enqueue_to_ip_lookup_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-			    u8 is_ip4, u32 fib_index, u8 flush)
+			    bool is_ip4, u32 fib_index, u8 flush)
 {
   vlib_main_t *vm = wrk->vm;
   u32 *to_next, next_index;
@@ -627,14 +627,14 @@ tcp_enqueue_to_ip_lookup_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 
 static void
 tcp_enqueue_to_ip_lookup_now (tcp_worker_ctx_t * wrk, vlib_buffer_t * b,
-			      u32 bi, u8 is_ip4, u32 fib_index)
+			      u32 bi, bool is_ip4, u32 fib_index)
 {
   tcp_enqueue_to_ip_lookup_i (wrk, b, bi, is_ip4, fib_index, 1);
 }
 
 static void
 tcp_enqueue_to_ip_lookup (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-			  u8 is_ip4, u32 fib_index)
+			  bool is_ip4, u32 fib_index)
 {
   tcp_enqueue_to_ip_lookup_i (wrk, b, bi, is_ip4, fib_index, 0);
   if (wrk->vm->thread_index == 0 && vlib_num_workers ())
@@ -643,7 +643,7 @@ tcp_enqueue_to_ip_lookup (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 
 always_inline void
 tcp_enqueue_to_output_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-			 u8 is_ip4, u8 flush)
+			 bool is_ip4, u8 flush)
 {
   u32 *to_next, next_index;
   vlib_frame_t *f;
@@ -675,14 +675,14 @@ tcp_enqueue_to_output_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 
 static void
 tcp_enqueue_to_output (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-		       u8 is_ip4)
+		       bool is_ip4)
 {
   tcp_enqueue_to_output_i (wrk, b, bi, is_ip4, 0);
 }
 
 static void
 tcp_enqueue_to_output_now (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
-			   u8 is_ip4)
+			   bool is_ip4)
 {
   tcp_enqueue_to_output_i (wrk, b, bi, is_ip4, 1);
 }
@@ -690,7 +690,7 @@ tcp_enqueue_to_output_now (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 
 static int
 tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
-			 tcp_state_t state, u8 thread_index, u8 is_ip4)
+			 tcp_state_t state, u8 thread_index, bool is_ip4)
 {
   ip4_header_t *ih4;
   ip6_header_t *ih6;
@@ -775,7 +775,7 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
  */
 void
 tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
-		      u32 thread_index, u8 is_ip4)
+		      u32 thread_index, bool is_ip4)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_main_t *vm = wrk->vm;
@@ -995,7 +995,7 @@ tcp_send_synack (tcp_connection_t * tc)
  * Flush tx frame populated by retransmits and timer pops
  */
 void
-tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, u8 is_ip4)
+tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, bool is_ip4)
 {
   if (wrk->tx_frames[!is_ip4])
     {
@@ -1010,7 +1010,7 @@ tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, u8 is_ip4)
  * Flush ip lookup tx frames populated by timer pops
  */
 static void
-tcp_flush_frame_to_ip_lookup (tcp_worker_ctx_t * wrk, u8 is_ip4)
+tcp_flush_frame_to_ip_lookup (tcp_worker_ctx_t * wrk, bool is_ip4)
 {
   if (wrk->ip_lookup_tx_frames[!is_ip4])
     {
@@ -1473,7 +1473,7 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
 }
 
 static inline void
-tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
+tcp_timer_retransmit_handler_i (u32 index, bool is_syn)
 {
   u32 thread_index = vlib_get_thread_index ();
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
@@ -2028,7 +2028,7 @@ tcp46_output_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 always_inline void
 tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
-		    tcp_connection_t * tc0, u8 is_ip4)
+		    tcp_connection_t * tc0, bool is_ip4)
 {
   tcp_header_t *th0 = 0;
 
@@ -2056,7 +2056,7 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 
 always_inline void
 tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
-			  u32 * error0, u16 * next0, u8 is_ip4)
+			  u32 * error0, u16 * next0, bool is_ip4)
 {
 
   if (PREDICT_FALSE (tc0->state == TCP_STATE_CLOSED))
@@ -2224,7 +2224,7 @@ typedef enum _tcp_reset_next
 
 static uword
 tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame, u8 is_ip4)
+			 vlib_frame_t * from_frame, bool is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index;

@@ -139,7 +139,7 @@ ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg)
 
 static_always_inline u32
 ip_neighbor_scan (vlib_main_t * vm, f64 start_time, u32 start_idx,
-		  u8 is_ip6, u8 delete_stale, u8 * update_count)
+		  bool is_ip6, u8 delete_stale, u8 * update_count)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip_neighbor_scan_config_t *cfg = &ip_neighbor_scan_conf;

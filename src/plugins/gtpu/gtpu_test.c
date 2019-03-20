@@ -170,8 +170,8 @@ api_sw_interface_set_gtpu_bypass (vat_main_t * vam)
   vl_api_sw_interface_set_gtpu_bypass_t *mp;
   u32 sw_if_index = 0;
   u8 sw_if_index_set = 0;
-  u8 is_enable = 1;
-  u8 is_ipv6 = 0;
+  bool is_enable = 1;
+  bool is_ipv6 = 0;
   int ret;
 
   /* Parse args required to build the message */
@@ -235,7 +235,7 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
   unformat_input_t *line_input = vam->input;
   vl_api_gtpu_add_del_tunnel_t *mp;
   ip46_address_t src, dst;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 ipv4_set = 0, ipv6_set = 0;
   u8 src_set = 0;
   u8 dst_set = 0;

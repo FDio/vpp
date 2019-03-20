@@ -61,7 +61,7 @@ sctp_is_retransmitting (sctp_connection_t * sctp_conn, u8 idx)
 always_inline uword
 sctp46_output_inline (vlib_main_t * vm,
 		      vlib_node_runtime_t * node,
-		      vlib_frame_t * from_frame, int is_ip4)
+		      vlib_frame_t * from_frame, bool is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index;
@@ -181,7 +181,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	    }
 
 #if SCTP_DEBUG_STATE_MACHINE
-	  u8 is_valid =
+	  bool is_valid =
 	    (sctp_conn->sub_conn[idx].connection.lcl_port ==
 	     sctp_hdr->src_port
 	     || sctp_conn->sub_conn[idx].connection.lcl_port ==

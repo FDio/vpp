@@ -32,7 +32,7 @@ nat66_interface_feature_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   u32 *inside_sw_if_indices = 0;
   u32 *outside_sw_if_indices = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   int i, rv;
 
   /* Get a line of input. */
@@ -164,7 +164,7 @@ nat66_add_del_static_mapping_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   ip6_address_t l_addr, e_addr;
   u32 vrf_id = 0;
   int rv;

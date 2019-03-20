@@ -735,7 +735,7 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 }
 
 void
-ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
+ip_table_delete (fib_protocol_t fproto, u32 table_id, bool is_api)
 {
   u32 fib_index, mfib_index;
 
@@ -790,22 +790,22 @@ vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
 }
 
 int
-add_del_route_t_handler (u8 is_multipath,
-			 u8 is_add,
-			 u8 is_drop,
-			 u8 is_unreach,
-			 u8 is_prohibit,
-			 u8 is_local,
-			 u8 is_multicast,
-			 u8 is_classify,
+add_del_route_t_handler (bool is_multipath,
+			 bool is_add,
+			 bool is_drop,
+			 bool is_unreach,
+			 bool is_prohibit,
+			 bool is_local,
+			 bool is_multicast,
+			 bool is_classify,
 			 u32 classify_table_index,
-			 u8 is_resolve_host,
-			 u8 is_resolve_attached,
-			 u8 is_interface_rx,
-			 u8 is_rpf_id,
-			 u8 is_dvr,
-			 u8 is_source_lookup,
-			 u8 is_udp_encap,
+			 bool is_resolve_host,
+			 bool is_resolve_attached,
+			 bool is_interface_rx,
+			 bool is_rpf_id,
+			 bool is_dvr,
+			 bool is_source_lookup,
+			 bool is_udp_encap,
 			 u32 fib_index,
 			 const fib_prefix_t * prefix,
 			 dpo_proto_t next_hop_proto,
@@ -974,7 +974,7 @@ add_del_route_check (fib_protocol_t table_proto,
 		     u32 next_hop_sw_if_index,
 		     dpo_proto_t next_hop_table_proto,
 		     u32 next_hop_table_id,
-		     u8 is_rpf_id, u32 * fib_index, u32 * next_hop_fib_index)
+		     bool is_rpf_id, u32 * fib_index, u32 * next_hop_fib_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -1194,7 +1194,7 @@ vl_api_ip_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 
 void
 ip_table_create (fib_protocol_t fproto,
-		 u32 table_id, u8 is_api, const u8 * name)
+		 u32 table_id, bool is_api, const u8 * name)
 {
   u32 fib_index, mfib_index;
 
@@ -1235,7 +1235,7 @@ ip_table_create (fib_protocol_t fproto,
 static int
 add_del_mroute_check (fib_protocol_t table_proto,
 		      u32 table_id,
-		      u32 next_hop_sw_if_index, u8 is_local, u32 * fib_index)
+		      u32 next_hop_sw_if_index, bool is_local, u32 * fib_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -1259,8 +1259,8 @@ add_del_mroute_check (fib_protocol_t table_proto,
 }
 
 static fib_node_index_t
-mroute_add_del_handler (u8 is_add,
-			u8 is_local,
+mroute_add_del_handler (bool is_add,
+			bool is_local,
 			u32 fib_index,
 			const mfib_prefix_t * prefix,
 			dpo_proto_t nh_proto,
@@ -1401,7 +1401,7 @@ vl_api_ip_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 
 static void
 send_ip_details (vpe_api_main_t * am,
-		 vl_api_registration_t * reg, u32 sw_if_index, u8 is_ipv6,
+		 vl_api_registration_t * reg, u32 sw_if_index, bool is_ipv6,
 		 u32 context)
 {
   vl_api_ip_details_t *mp;
@@ -1421,7 +1421,7 @@ static void
 send_ip_address_details (vpe_api_main_t * am,
 			 vl_api_registration_t * reg,
 			 u8 * ip, u16 prefix_length,
-			 u32 sw_if_index, u8 is_ipv6, u32 context)
+			 u32 sw_if_index, bool is_ipv6, u32 context)
 {
   vl_api_ip_address_details_t *mp;
 
@@ -1663,7 +1663,7 @@ static void
   vl_api_sw_interface_ip6nd_ra_config_reply_t *rmp;
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
-  u8 is_no, suppress, managed, other, ll_option, send_unicast, cease,
+  bool is_no, suppress, managed, other, ll_option, send_unicast, cease,
     default_router;
 
   is_no = mp->is_no == 1;
@@ -1699,7 +1699,7 @@ static void
   vl_api_sw_interface_ip6nd_ra_prefix_reply_t *rmp;
   fib_prefix_t pfx;
   int rv = 0;
-  u8 is_no, use_default, no_advertise, off_link, no_autoconfig, no_onlink;
+  bool is_no, use_default, no_advertise, off_link, no_autoconfig, no_onlink;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -2056,7 +2056,7 @@ static void
   vl_api_ip_source_and_port_range_check_add_del_reply_t *rmp;
   int rv = 0;
 
-  u8 is_add = mp->is_add;
+  bool is_add = mp->is_add;
   fib_prefix_t pfx;
   u16 *low_ports = 0;
   u16 *high_ports = 0;
@@ -2192,7 +2192,7 @@ static void
   vl_api_ip_source_check_interface_add_del_reply_t *rmp;
   int rv;
   u32 sw_if_index = ntohl (mp->sw_if_index);
-  u8 is_add = mp->is_add;
+  bool is_add = mp->is_add;
   char *feature_name =
     mp->loose ? "ip4-source-check-via-any" : "ip4-source-check-via-rx";
 
@@ -3394,7 +3394,7 @@ void
 void
 send_ip_punt_redirect_details (vl_api_registration_t * reg,
 			       u32 context, u32 sw_if_index,
-			       ip_punt_redirect_rx_t * pr, u8 is_ipv6)
+			       ip_punt_redirect_rx_t * pr, bool is_ipv6)
 {
   vl_api_ip_punt_redirect_details_t *mp;
 

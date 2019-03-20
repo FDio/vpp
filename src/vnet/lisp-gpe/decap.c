@@ -148,7 +148,7 @@ incr_decap_stats (vnet_main_t * vnm, u32 thread_index, u32 length,
  */
 static uword
 lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame, u8 is_v4)
+		       vlib_frame_t * from_frame, bool is_v4)
 {
   u32 n_left_from, next_index, *from, *to_next, thread_index;
   u32 n_bytes = 0, n_packets = 0, last_sw_if_index = ~0, drops = 0;

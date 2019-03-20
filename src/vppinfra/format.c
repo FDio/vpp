@@ -73,7 +73,7 @@ typedef struct
   u8 n_bits;
 
   /* Signed or unsigned. */
-  u8 is_signed;
+  bool is_signed;
 
   /* Output digits uppercase (not lowercase) %X versus %x. */
   u8 uppercase_digits;

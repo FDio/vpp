@@ -45,7 +45,7 @@ ethernet_arp_ip4_entry_t *ip4_neighbor_entries (u32 sw_if_index);
 
 extern int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 				   ip4_address_t * hi_addr,
-				   u32 fib_index, int is_del);
+				   u32 fib_index, bool is_del);
 
 extern int vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
 					   u32 sw_if_index,

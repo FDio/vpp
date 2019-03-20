@@ -92,7 +92,6 @@ rm_free (struct radix_mask *rm)
 }
 #define Free(p) clib_mem_free((p))
 #define log(a,b, c...)
-#define bool i32
 
 /*
  * The data structure for the keys is a radix tree with one way

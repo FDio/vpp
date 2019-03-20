@@ -86,7 +86,7 @@ typedef struct
 
   u32 fifo_size;
   int i_am_server;
-  u8 is_connected;
+  bool is_connected;
 
   /* Our event queue */
   svm_msg_q_t *our_event_queue;

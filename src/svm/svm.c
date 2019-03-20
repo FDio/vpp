@@ -1062,7 +1062,7 @@ svm_region_unlink (svm_region_t * rp)
  * a new region client showing up at the wrong moment.
  */
 void
-svm_region_unmap_internal (void *rp_arg, u8 is_client)
+svm_region_unmap_internal (void *rp_arg, bool is_client)
 {
   int i, mypid = getpid ();
   int nclients_left;
@@ -1196,7 +1196,7 @@ svm_region_unmap_client (void *rp_arg)
  * svm_region_exit
  */
 static void
-svm_region_exit_internal (u8 is_client)
+svm_region_exit_internal (bool is_client)
 {
   void *oldheap;
   int i, mypid = getpid ();

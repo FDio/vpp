@@ -65,7 +65,7 @@ typedef enum
 } udp_input_next_t;
 
 always_inline void
-udp_input_inc_counter (vlib_main_t * vm, u8 is_ip4, u8 evt, u8 val)
+udp_input_inc_counter (vlib_main_t * vm, bool is_ip4, u8 evt, u8 val)
 {
   if (PREDICT_TRUE (!val))
     return;
@@ -78,7 +78,7 @@ udp_input_inc_counter (vlib_main_t * vm, u8 is_ip4, u8 evt, u8 val)
 
 always_inline uword
 udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, u8 is_ip4)
+		    vlib_frame_t * frame, bool is_ip4)
 {
   u32 n_left_from, *from, *to_next;
   u32 next_index, errors;

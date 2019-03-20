@@ -146,7 +146,7 @@ typedef struct
 
   /* lifetime data */
   f64 time_to_expiration;
-  u8 is_expired;
+  bool is_expired;
   i8 rekey_retries;
 } ikev2_child_sa_t;
 
@@ -178,7 +178,7 @@ typedef struct
 typedef struct
 {
   u8 *name;
-  u8 is_enabled;
+  bool is_enabled;
 
   ikev2_auth_t auth;
   ikev2_id_t loc_id;
@@ -248,7 +248,7 @@ typedef struct
   u32 last_msg_id;
   u8 *last_res_packet_data;
 
-  u8 is_initiator;
+  bool is_initiator;
   u32 last_init_msg_id;
   ikev2_profile_t *profile;
 

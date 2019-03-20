@@ -14,6 +14,7 @@
  */
 
 #include <stddef.h>
+#include <stdbool.h>
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>

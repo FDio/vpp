@@ -60,7 +60,7 @@ static void vl_api_sr_localsid_add_del_t_handler
   vl_api_sr_localsid_add_del_reply_t *rmp;
   int rv = 0;
 /*
- * int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
+ * int sr_cli_localsid (bool is_del, ip6_address_t *localsid_addr,
  *  char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index, u32 fib_table,
  *  ip46_address_t *nh_addr, void *ls_plugin_mem)
  */
@@ -107,7 +107,7 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
 
 /*
  * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
- *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
+ *                u32 weight, u8 behavior, u32 fib_table, bool is_encap)
  */
   int rv = 0;
   rv = sr_policy_add ((ip6_address_t *) & mp->bsid_addr,
@@ -140,7 +140,7 @@ vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
  * int
  * sr_policy_mod(ip6_address_t *bsid, u32 index, u32 fib_table,
  *               u8 operation, ip6_address_t *segments, u32 sl_index,
- *               u32 weight, u8 is_encap)
+ *               u32 weight, bool is_encap)
  */
   rv = sr_policy_mod ((ip6_address_t *) & mp->bsid_addr,
 		      ntohl (mp->sr_policy_index),
@@ -327,10 +327,10 @@ static void send_sr_steering_pol_details
   rmp->fib_table = htonl (t->classify.l3.fib_table);
   rmp->mask_width = htonl (t->classify.l3.mask_width);
   if (ip46_address_is_ip4 (&t->classify.l3.prefix))
-    clib_memcpy (rmp->prefix_addr, &t->classify.l3.prefix.ip4,
+    clib_memcpy (&rmp->prefix_addr, &t->classify.l3.prefix.ip4,
 		 sizeof (ip4_address_t));
   else
-    clib_memcpy (rmp->prefix_addr, &t->classify.l3.prefix.ip6,
+    clib_memcpy (&rmp->prefix_addr, &t->classify.l3.prefix.ip6,
 		 sizeof (ip6_address_t));
 
   rmp->sw_if_index = htonl (t->classify.l2.sw_if_index);

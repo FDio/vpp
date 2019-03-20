@@ -67,7 +67,7 @@ offset_beyond_packet (vlib_buffer_t * b0, int offset)
 
 
 always_inline void
-acl_fill_5tuple_l3_data (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
+acl_fill_5tuple_l3_data (acl_main_t * am, vlib_buffer_t * b0, bool is_ip6,
 		 int l3_offset, fa_5tuple_t * p5tuple_pkt)
 {
   if (is_ip6)
@@ -89,7 +89,7 @@ acl_fill_5tuple_l3_data (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 }
 
 always_inline void
-acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_t * b0, int is_ip6, int is_input,
+acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_t * b0, bool is_ip6, bool is_input,
 		 int l3_offset, fa_session_l4_key_t *p5tuple_l4, fa_packet_info_t *p5tuple_pkt)
 {
   /* IP4 and IP6 protocol numbers of ICMP */
@@ -204,8 +204,8 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
 }
 
 always_inline void
-acl_fill_5tuple (acl_main_t * am, u32 sw_if_index0, vlib_buffer_t * b0, int is_ip6,
-		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
+acl_fill_5tuple (acl_main_t * am, u32 sw_if_index0, vlib_buffer_t * b0, bool is_ip6,
+		 bool is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
 {
   int l3_offset;
 
@@ -228,8 +228,8 @@ acl_fill_5tuple (acl_main_t * am, u32 sw_if_index0, vlib_buffer_t * b0, int is_i
 }
 
 always_inline void
-acl_plugin_fill_5tuple_inline (void *p_acl_main, u32 lc_index, vlib_buffer_t * b0, int is_ip6,
-		 int is_input, int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt)
+acl_plugin_fill_5tuple_inline (void *p_acl_main, u32 lc_index, vlib_buffer_t * b0, bool is_ip6,
+		 bool is_input, int is_l2_path, fa_5tuple_opaque_t * p5tuple_pkt)
 {
   acl_main_t *am = p_acl_main;
   acl_fill_5tuple(am, 0, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_t *)p5tuple_pkt);
@@ -281,14 +281,14 @@ fa_acl_match_ip6_addr (ip6_address_t * addr1, ip6_address_t * addr2,
 }
 
 always_inline int
-fa_acl_match_port (u16 port, u16 port_first, u16 port_last, int is_ip6)
+fa_acl_match_port (u16 port, u16 port_first, u16 port_last, bool is_ip6)
 {
   return ((port >= port_first) && (port <= port_last));
 }
 
 always_inline int
 single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
-		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
+		  bool is_ip6, u8 * r_action, u32 * r_acl_match_p,
 		  u32 * r_rule_match_p, u32 * trace_bitmap)
 {
   int i;
@@ -401,7 +401,7 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
 
 always_inline int
 acl_plugin_single_acl_match_5tuple (void *p_acl_main, u32 acl_index, fa_5tuple_t * pkt_5tuple,
-		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
+		  bool is_ip6, u8 * r_action, u32 * r_acl_match_p,
 		  u32 * r_rule_match_p, u32 * trace_bitmap)
 {
   acl_main_t * am = p_acl_main;
@@ -411,7 +411,7 @@ acl_plugin_single_acl_match_5tuple (void *p_acl_main, u32 acl_index, fa_5tuple_t
 
 always_inline int
 linear_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5tuple,
-		       int is_ip6, u8 *r_action, u32 *acl_pos_p, u32 * acl_match_p,
+		       bool is_ip6, u8 *r_action, u32 *acl_pos_p, u32 * acl_match_p,
 		       u32 * rule_match_p, u32 * trace_bitmap)
 {
   acl_main_t *am = p_acl_main;
@@ -475,7 +475,7 @@ match_portranges(acl_main_t *am, fa_5tuple_t *match, u32 index)
 }
 
 always_inline int
-single_rule_match_5tuple (acl_rule_t * r, int is_ip6, fa_5tuple_t * pkt_5tuple)
+single_rule_match_5tuple (acl_rule_t * r, bool is_ip6, fa_5tuple_t * pkt_5tuple)
 {
   if (is_ip6 != r->is_ipv6)
     {
@@ -532,7 +532,7 @@ single_rule_match_5tuple (acl_rule_t * r, int is_ip6, fa_5tuple_t * pkt_5tuple)
 }
 
 always_inline u32
-multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t * match)
+multi_acl_match_get_applied_ace_index (acl_main_t * am, bool is_ip6, fa_5tuple_t * match)
 {
   clib_bihash_kv_48_8_t kv;
   clib_bihash_kv_48_8_t result;
@@ -629,7 +629,7 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
 
 always_inline int
 hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5tuple,
-                       int is_ip6, u8 *action, u32 *acl_pos_p, u32 * acl_match_p,
+                       bool is_ip6, u8 *action, u32 *acl_pos_p, u32 * acl_match_p,
                        u32 * rule_match_p, u32 * trace_bitmap)
 {
   acl_main_t *am = p_acl_main;
@@ -652,7 +652,7 @@ hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5
 always_inline int
 acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index,
                                            fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
+                                           bool is_ip6, u8 * r_action,
                                            u32 * r_acl_pos_p,
                                            u32 * r_acl_match_p,
                                            u32 * r_rule_match_p,

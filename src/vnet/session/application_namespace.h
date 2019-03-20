@@ -57,7 +57,7 @@ typedef struct _vnet_app_namespace_add_del_args
   u32 sw_if_index;
   u32 ip4_fib_id;
   u32 ip6_fib_id;
-  u8 is_add;
+  bool is_add;
 } vnet_app_namespace_add_del_args_t;
 
 #define APP_NAMESPACE_INVALID_INDEX ((u32)~0)

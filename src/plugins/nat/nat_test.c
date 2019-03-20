@@ -132,7 +132,7 @@ static int api_nat44_add_del_address_range (vat_main_t * vam)
   ip4_address_t start_addr, end_addr;
   u32 start_host_order, end_host_order;
   vl_api_nat44_add_del_address_range_t * mp;
-  u8 is_add = 1;
+  bool is_add = 1;
   int count;
   int ret;
 
@@ -189,8 +189,8 @@ static int api_nat44_interface_add_del_feature (vat_main_t * vam)
   vl_api_nat44_interface_add_del_feature_t * mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
-  u8 is_inside = 1;
-  u8 is_add = 1;
+  bool is_inside = 1;
+  bool is_add = 1;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -234,7 +234,7 @@ static int api_nat44_add_del_static_mapping(vat_main_t * vam)
   vl_api_nat44_add_del_static_mapping_t * mp;
   u8 external_addr_set = 0;
   u8 local_addr_set = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 addr_only = 1;
   ip4_address_t local_addr, external_addr;
   u32 local_port = 0, external_port = 0, vrf_id = ~0;
@@ -564,7 +564,7 @@ static int api_nat44_add_del_interface_addr (vat_main_t * vam)
   vl_api_nat44_add_del_interface_addr_t * mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -757,7 +757,7 @@ static int api_nat_det_add_del_map (vat_main_t * vam)
   vl_api_nat_det_add_del_map_t * mp;
   ip4_address_t in_addr, out_addr;
   u32 in_plen, out_plen;
-  u8 is_add = 1;
+  bool is_add = 1;
   int ret;
 
   if (unformat (i, "in %U/%d out %U/%d",
@@ -773,10 +773,8 @@ static int api_nat_det_add_del_map (vat_main_t * vam)
     }
 
   M(NAT_DET_ADD_DEL_MAP, mp);
-  clib_memcpy(mp->in_addr, &in_addr, 4);
-  mp->in_plen = in_plen;
-  clib_memcpy(mp->out_addr, &out_addr, 4);
-  mp->out_plen = out_plen;
+  clib_memcpy(&mp->in_addr, &in_addr, 4);
+  clib_memcpy(&mp->out_addr, &out_addr, 4);
   mp->is_add = is_add;
 
   S(mp);

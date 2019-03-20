@@ -244,7 +244,7 @@ gbp_rule_l3_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0, int is_ip6)
 always_inline uword
 gbp_policy_dpo_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame, u8 is_ip6)
+		       vlib_frame_t * from_frame, bool is_ip6)
 {
   gbp_main_t *gm = &gbp_main;
   u32 n_left_from, next_index, *from, *to_next;

@@ -56,14 +56,14 @@ extern int ip6_neighbor_ra_config (vlib_main_t * vm, u32 sw_if_index,
 				   u8 use_lifetime, u32 lifetime,
 				   u32 initial_count, u32 initial_interval,
 				   u32 max_interval, u32 min_interval,
-				   u8 is_no);
+				   bool is_no);
 
 extern int ip6_neighbor_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
 				   ip6_address_t * prefix_addr, u8 prefix_len,
 				   u8 use_default, u32 val_lifetime,
 				   u32 pref_lifetime, u8 no_advertise,
 				   u8 off_link, u8 no_autoconfig,
-				   u8 no_onlink, u8 is_no);
+				   u8 no_onlink, bool is_no);
 
 extern clib_error_t *ip6_set_neighbor_limit (u32 neighbor_limit);
 
@@ -84,7 +84,7 @@ extern int vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
 					     const ip6_address_t * a);
 
 extern int ip6_neighbor_proxy_add_del (u32 sw_if_index,
-				       ip6_address_t * addr, u8 is_add);
+				       ip6_address_t * addr, bool is_add);
 
 u32 ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index,
 				       u32 is_add);

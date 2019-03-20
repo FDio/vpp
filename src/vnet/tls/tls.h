@@ -73,7 +73,7 @@ typedef struct tls_ctx_
    * underlying tcp connection is established */
 #define parent_app_api_context c_tls_ctx_id.parent_app_api_ctx
 
-  u8 is_passive_close;
+  bool is_passive_close;
   u8 resume;
   u8 *srv_hostname;
 } tls_ctx_t;
@@ -119,7 +119,7 @@ int tls_add_vpp_q_tx_evt (session_t * s);
 int tls_add_vpp_q_builtin_tx_evt (session_t * s);
 int tls_add_vpp_q_builtin_rx_evt (session_t * s);
 int tls_notify_app_accept (tls_ctx_t * ctx);
-int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
+int tls_notify_app_connected (tls_ctx_t * ctx, bool is_failed);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 #endif /* SRC_VNET_TLS_TLS_H_ */
 

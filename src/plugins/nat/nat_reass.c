@@ -24,7 +24,7 @@
 nat_reass_main_t nat_reass_main;
 
 static u32
-nat_reass_get_nbuckets (u8 is_ip6)
+nat_reass_get_nbuckets (bool is_ip6)
 {
   nat_reass_main_t *srm = &nat_reass_main;
   u32 nbuckets;
@@ -83,7 +83,7 @@ nat_ip6_reass_get_frags_inline (nat_reass_ip6_t * reass, u32 ** bi)
 
 int
 nat_reass_set (u32 timeout, u16 max_reass, u8 max_frag, u8 drop_frag,
-	       u8 is_ip6)
+	       bool is_ip6)
 {
   nat_reass_main_t *srm = &nat_reass_main;
   u32 nbuckets;
@@ -132,7 +132,7 @@ nat_reass_set (u32 timeout, u16 max_reass, u8 max_frag, u8 drop_frag,
 }
 
 u32
-nat_reass_get_timeout (u8 is_ip6)
+nat_reass_get_timeout (bool is_ip6)
 {
   nat_reass_main_t *srm = &nat_reass_main;
 
@@ -143,7 +143,7 @@ nat_reass_get_timeout (u8 is_ip6)
 }
 
 u16
-nat_reass_get_max_reass (u8 is_ip6)
+nat_reass_get_max_reass (bool is_ip6)
 {
   nat_reass_main_t *srm = &nat_reass_main;
 
@@ -154,7 +154,7 @@ nat_reass_get_max_reass (u8 is_ip6)
 }
 
 u8
-nat_reass_get_max_frag (u8 is_ip6)
+nat_reass_get_max_frag (bool is_ip6)
 {
   nat_reass_main_t *srm = &nat_reass_main;
 
@@ -165,7 +165,7 @@ nat_reass_get_max_frag (u8 is_ip6)
 }
 
 u8
-nat_reass_is_drop_frag (u8 is_ip6)
+nat_reass_is_drop_frag (bool is_ip6)
 {
   nat_reass_main_t *srm = &nat_reass_main;
 

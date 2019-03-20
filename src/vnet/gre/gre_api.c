@@ -99,7 +99,7 @@ static void send_gre_tunnel_details
   (gre_tunnel_t * t, vl_api_registration_t * reg, u32 context)
 {
   vl_api_gre_tunnel_details_t *rmp;
-  u8 is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
+  bool is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
   fib_table_t *ft;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));

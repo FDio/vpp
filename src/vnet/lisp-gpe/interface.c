@@ -112,7 +112,7 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  const ip_adjacency_t *adj0;
 	  const dpo_id_t *dpo0;
 	  vlib_buffer_t *b0;
-	  u8 is_v4_0;
+	  bool is_v4_0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -811,7 +811,7 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				   vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   u32 table_id, vni, bd_id;
   u8 vni_is_set = 0, vrf_is_set = 0, bd_index_is_set = 0;
   u8 nsh_iface = 0;

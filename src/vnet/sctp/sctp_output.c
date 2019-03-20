@@ -21,7 +21,7 @@
  * Flush tx frame populated by retransmits and timer pops
  */
 void
-sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
+sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, bool is_ip4)
 {
   if (sctp_main.tx_frames[!is_ip4][thread_index])
     {
@@ -37,7 +37,7 @@ sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
  * Flush ip lookup tx frames populated by timer pops
  */
 always_inline void
-sctp_flush_frame_to_ip_lookup (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
+sctp_flush_frame_to_ip_lookup (vlib_main_t * vm, u8 thread_index, bool is_ip4)
 {
   if (sctp_main.ip_lookup_tx_frames[!is_ip4][thread_index])
     {
@@ -290,7 +290,7 @@ sctp_get_free_buffer_index (sctp_main_t * tm, u32 * bidx)
 
 always_inline void
 sctp_enqueue_to_output_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			  u8 is_ip4, u8 flush)
+			  bool is_ip4, u8 flush)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
   u32 thread_index = vlib_get_thread_index ();
@@ -324,14 +324,14 @@ sctp_enqueue_to_output_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
 always_inline void
 sctp_enqueue_to_output_now (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			    u8 is_ip4)
+			    bool is_ip4)
 {
   sctp_enqueue_to_output_i (vm, b, bi, is_ip4, 1);
 }
 
 always_inline void
 sctp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			     u8 is_ip4, u32 fib_index, u8 flush)
+			     bool is_ip4, u32 fib_index, u8 flush)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
   u32 thread_index = vlib_get_thread_index ();
@@ -372,7 +372,7 @@ sctp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
 always_inline void
 sctp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			   u8 is_ip4, u32 fib_index)
+			   bool is_ip4, u32 fib_index)
 {
   sctp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, fib_index, 0);
   if (vm->thread_index == 0 && vlib_num_workers ())

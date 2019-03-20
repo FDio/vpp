@@ -606,7 +606,7 @@ vnet_mpls_tunnel_del (u32 sw_if_index)
 
 u32
 vnet_mpls_tunnel_create (u8 l2_only,
-                         u8 is_multicast)
+                         bool is_multicast)
 {
     vnet_hw_interface_t * hi;
     mpls_tunnel_t *mt;
@@ -792,7 +792,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
 {
     unformat_input_t _line_input, * line_input = &_line_input;
     vnet_main_t * vnm = vnet_get_main();
-    u8 is_del = 0, l2_only = 0, is_multicast =0;
+    bool is_del = 0, l2_only = 0, is_multicast =0;
     fib_route_path_t rpath, *rpaths = NULL;
     u32 sw_if_index = ~0, payload_proto;
     clib_error_t *error = NULL;

@@ -173,7 +173,7 @@ map_user_mem (vhost_user_intf_t * vui, uword addr)
 
 static_always_inline void
 vhost_user_log_dirty_pages_2 (vhost_user_intf_t * vui,
-			      u64 addr, u64 len, u8 is_host_address)
+			      u64 addr, u64 len, bool is_host_address)
 {
   if (PREDICT_TRUE (vui->log_base_addr == 0
 		    || !(vui->features & (1 << FEAT_VHOST_F_LOG_ALL))))

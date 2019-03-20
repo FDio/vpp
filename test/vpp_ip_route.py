@@ -52,7 +52,7 @@ def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
 
     route_addr = inet_pton(inet, ip_addr)
     for e in routes:
-        if route_addr == e.address[:s] \
+        if route_addr == bytes(e.address)[:s] \
                 and len == e.address_length \
                 and table_id == e.table_id:
             return True
@@ -70,9 +70,9 @@ def find_mroute(test, grp_addr, src_addr, grp_addr_len,
     gaddr = inet_pton(inet, grp_addr)
     saddr = inet_pton(inet, src_addr)
     for e in routes:
-        if gaddr == e.grp_address[:s] \
+        if gaddr == bytes(e.grp_address)[:s] \
                 and grp_addr_len == e.address_length \
-                and saddr == e.src_address[:s] \
+                and saddr == bytes(e.src_address)[:s] \
                 and table_id == e.table_id:
             return True
     return False
@@ -108,7 +108,7 @@ def fib_interface_ip_prefix(test, address, length, sw_if_index):
     for a in addrs:
         if a.prefix_length == length and \
                 a.sw_if_index == sw_if_index and \
-                a.ip[:n] == vp.bytes:
+                bytes(a.ip)[:n] == vp.bytes:
             return True
     return False
 

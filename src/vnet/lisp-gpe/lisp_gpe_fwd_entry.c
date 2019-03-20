@@ -289,7 +289,7 @@ ip_src_fib_add_route (u32 src_fib_index,
 }
 
 static void
-gpe_native_fwd_add_del_lfe (lisp_gpe_fwd_entry_t * lfe, u8 is_add)
+gpe_native_fwd_add_del_lfe (lisp_gpe_fwd_entry_t * lfe, bool is_add)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   u8 found = 0, ip_version;
@@ -681,7 +681,7 @@ lisp_l2_fib_lookup (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[6],
  */
 static u32
 lisp_l2_fib_add_del_entry (u16 bd_index, u8 src_mac[6],
-			   u8 dst_mac[6], const dpo_id_t * dpo, u8 is_add)
+			   u8 dst_mac[6], const dpo_id_t * dpo, bool is_add)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   BVT (clib_bihash_kv) kv, value;
@@ -945,7 +945,7 @@ lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm, u32 spi_si_net_order)
  * @return ~0 or value of overwritten entry.
  */
 static u32
-lisp_nsh_fib_add_del_entry (u32 spi_si_host_order, u32 lfei, u8 is_add)
+lisp_nsh_fib_add_del_entry (u32 spi_si_host_order, u32 lfei, bool is_add)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   BVT (clib_bihash_kv) kv, value;

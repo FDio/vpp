@@ -19,7 +19,7 @@
 static ct_connection_t *connections;
 
 static void
-ct_enable_disable_main_pre_input_node (u8 is_add)
+ct_enable_disable_main_pre_input_node (bool is_add)
 {
   u32 n_conns;
 

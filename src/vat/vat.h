@@ -138,7 +138,7 @@ typedef struct
   u32 current_sw_if_index;
 
   /* remember that we are dumping ipv6 */
-  u8 is_ipv6;
+  bool is_ipv6;
 
   /* function table */
   uword *function_by_name;

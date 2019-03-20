@@ -690,7 +690,7 @@ vl_register_mapped_shmem_region (svm_region_t * rp)
 }
 
 static void
-vl_unmap_shmem_internal (u8 is_client)
+vl_unmap_shmem_internal (bool is_client)
 {
   svm_region_t *rp;
   int i;

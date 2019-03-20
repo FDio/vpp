@@ -2007,7 +2007,7 @@ bfd_auth_type_supported (bfd_auth_type_e auth_type)
 
 vnet_api_error_t
 bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
-		   u8 bfd_key_id, u8 is_delayed)
+		   u8 bfd_key_id, bool is_delayed)
 {
   bfd_main_t *bm = &bfd_main;
   const uword *key_idx_p =
@@ -2055,7 +2055,7 @@ bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
 }
 
 vnet_api_error_t
-bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed)
+bfd_auth_deactivate (bfd_session_t * bs, bool is_delayed)
 {
   bfd_main_t *bm = &bfd_main;
 #if WITH_LIBSSL > 0

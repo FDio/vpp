@@ -53,7 +53,7 @@ typedef struct
   u32 clib_file_index;
 
   u32 per_interface_next_index;
-  u8 is_admin_up;
+  bool is_admin_up;
 
   /* netmap */
   struct nmreq *req;
@@ -103,7 +103,7 @@ extern vnet_device_class_t netmap_device_class;
 extern vlib_node_registration_t netmap_input_node;
 
 int netmap_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
-		      u8 is_pipe, u8 is_master, u32 * sw_if_index);
+		      bool is_pipe, bool is_master, u32 * sw_if_index);
 int netmap_delete_if (vlib_main_t * vm, u8 * host_if_name);
 
 

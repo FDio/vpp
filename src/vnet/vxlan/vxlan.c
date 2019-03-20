@@ -137,7 +137,7 @@ VNET_HW_INTERFACE_CLASS (vxlan_hw_class) = {
 static void
 vxlan_tunnel_restack_dpo (vxlan_tunnel_t * t)
 {
-  u8 is_ip4 = ip46_address_is_ip4 (&t->dst);
+  bool is_ip4 = ip46_address_is_ip4 (&t->dst);
   dpo_id_t dpo = DPO_INVALID;
   fib_forward_chain_type_t forw_type = is_ip4 ?
     FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
@@ -682,7 +682,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip46_address_t src = ip46_address_initializer, dst =
     ip46_address_initializer;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 src_set = 0;
   u8 dst_set = 0;
   u8 grp_set = 0;
@@ -917,7 +917,7 @@ VLIB_CLI_COMMAND (show_vxlan_tunnel_command, static) = {
 
 
 void
-vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
+vnet_int_vxlan_bypass_mode (u32 sw_if_index, bool is_ip6, bool is_enable)
 {
   vxlan_main_t *vxm = &vxlan_main;
 

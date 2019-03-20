@@ -36,7 +36,7 @@ typedef struct
   u16 id;
   u16 seq;
   u32 cli_process_node;
-  u8 is_ip6;
+  bool is_ip6;
 } icmp_echo_trace_t;
 
 

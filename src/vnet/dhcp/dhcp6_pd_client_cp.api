@@ -51,7 +51,7 @@ autoreply define ip6_add_del_address_using_prefix
   u8 prefix_group[64];
   u8 address[16];
   u8 prefix_length;
-  u8 is_add;
+  bool is_add;
 };
 
 /*

@@ -49,7 +49,7 @@ ipsec_check_esp_support (ipsec_sa_t * sa)
 }
 
 clib_error_t *
-ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index, u8 is_add)
+ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index, bool is_add)
 {
   ipsec_ah_backend_t *ah =
     pool_elt_at_index (im->ah_backends, im->ah_current_backend);

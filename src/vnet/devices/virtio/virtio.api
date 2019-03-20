@@ -14,6 +14,7 @@
  */
 
 option version = "1.0.0";
+import "vnet/ethernet/ethernet_types.api";
 
 /** \brief Initialize a new virtio pci interface with the given paramters
     @param client_index - opaque cookie to identify the sender
@@ -32,7 +33,7 @@ define virtio_pci_create
   u32 context;
   u32 pci_addr;
   u8 use_random_mac;
-  u8 mac_address[6];
+  vl_api_mac_address_t mac_address;
   u16 tx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
   u16 rx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
   u64 features;
@@ -83,7 +84,7 @@ define sw_interface_virtio_pci_details
   u32 context;
   u32 sw_if_index;
   u32 pci_addr;
-  u8 mac_addr[6];
+  vl_api_mac_address_t mac_addr;
   u16 tx_ring_sz;
   u16 rx_ring_sz;
   u64 features;

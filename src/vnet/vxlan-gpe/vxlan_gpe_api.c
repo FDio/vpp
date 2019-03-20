@@ -149,7 +149,7 @@ static void send_vxlan_gpe_tunnel_details
   vl_api_vxlan_gpe_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
-  u8 is_ipv6 = !(t->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+  bool is_ipv6 = !(t->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));

@@ -76,7 +76,7 @@ lisp_add_del_map_server_command_fn (vlib_main_t * vm,
 				    vlib_cli_command_t * cmd)
 {
   int rv = 0;
-  u8 is_add = 1, ip_set = 0;
+  bool is_add = 1, ip_set = 0;
   ip_address_t ip;
   unformat_input_t _line_input, *line_input = &_line_input;
 
@@ -131,7 +131,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   gid_address_t eid;
   gid_address_t *eids = 0;
   clib_error_t *error = 0;
@@ -238,7 +238,7 @@ lisp_eid_table_map_command_fn (vlib_main_t * vm,
 			       unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
-  u8 is_add = 1, is_l2 = 0;
+  bool is_add = 1, is_l2 = 0;
   u32 vni = 0, dp_id = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -494,7 +494,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 {
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1, del_all = 0;
+  bool is_add = 1, del_all = 0;
   locator_t rloc, *rlocs = 0, *curr_rloc = 0;
   gid_address_t eid;
   u8 eid_set = 0;
@@ -599,7 +599,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
       map_args->is_static = 1;
       map_args->authoritative = 0;
       map_args->ttl = ~0;
-      rv = vnet_lisp_add_mapping (map_args, rlocs, NULL, NULL);
+      rv = vnet_lisp_add_mapping (map_args, rlocs, NULL, false);
     }
   else
     rv = vnet_lisp_del_mapping (&eid, NULL);
@@ -635,7 +635,7 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
-  u8 is_add = 1;
+  bool is_add = 1;
   ip_prefix_t *reid_ippref, *leid_ippref;
   gid_address_t leid, reid;
   u8 *dmac = gid_address_mac (&reid);
@@ -842,7 +842,7 @@ lisp_nsh_set_locator_set_command_fn (vlib_main_t * vm,
 {
   u8 locator_name_set = 0;
   u8 *locator_set_name = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   int rv = 0;
@@ -964,7 +964,7 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
 {
   u8 locator_name_set = 0;
   u8 *locator_set_name = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   int rv = 0;
@@ -1214,8 +1214,8 @@ lisp_enable_disable_pitr_mode_command_fn (vlib_main_t * vm,
 					  vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_enabled = 0;
-  u8 is_set = 0;
+  bool is_enabled = 0;
+  bool is_set = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -1268,8 +1268,8 @@ lisp_enable_disable_petr_mode_command_fn (vlib_main_t * vm,
 					  vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_enabled = 0;
-  u8 is_set = 0;
+  bool is_enabled = 0;
+  bool is_set = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -1321,8 +1321,8 @@ lisp_enable_disable_xtr_mode_command_fn (vlib_main_t * vm,
 					 vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_enabled = 0;
-  u8 is_set = 0;
+  bool is_enabled = 0;
+  bool is_set = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -1373,8 +1373,8 @@ lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_enabled = 0;
-  u8 is_set = 0;
+  bool is_enabled = 0;
+  bool is_set = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -1427,7 +1427,7 @@ lisp_map_register_set_ttl_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 ttl = 0;
-  u8 is_set = 0;
+  bool is_set = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -1493,8 +1493,8 @@ lisp_map_register_enable_disable_command_fn (vlib_main_t * vm,
 					     vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_enabled = 0;
-  u8 is_set = 0;
+  bool is_enabled = 0;
+  bool is_set = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -1546,8 +1546,8 @@ lisp_rloc_probe_enable_disable_command_fn (vlib_main_t * vm,
 					   vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_enabled = 0;
-  u8 is_set = 0;
+  bool is_enabled = 0;
+  bool is_set = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -1629,7 +1629,7 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   uword *vni_table = 0;
-  u8 is_l2 = 0;
+  bool is_l2 = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -1694,7 +1694,7 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm,
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   vnet_main_t *vnm = lgm->vnet_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   clib_error_t *error = 0;
   u8 *locator_set_name = 0;
   locator_t locator, *locators = 0;
@@ -1769,7 +1769,7 @@ lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm,
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   vnet_main_t *vnm = lgm->vnet_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   clib_error_t *error = 0;
   u8 *locator_set_name = 0;
   u8 locator_set_name_set = 0;
@@ -1901,7 +1901,7 @@ lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
 				      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1, addr_set = 0;
+  bool is_add = 1, addr_set = 0;
   ip_address_t ip_addr;
   clib_error_t *error = 0;
   int rv = 0;
@@ -1961,7 +1961,7 @@ lisp_add_del_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
 					vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 *locator_set_name = 0;
   clib_error_t *error = 0;
   int rv = 0;
@@ -2044,7 +2044,7 @@ lisp_use_petr_set_locator_set_command_fn (vlib_main_t * vm,
 					  unformat_input_t * input,
 					  vlib_cli_command_t * cmd)
 {
-  u8 is_add = 1, ip_set = 0;
+  bool is_add = 1, ip_set = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   ip_address_t ip;
@@ -2172,7 +2172,7 @@ lisp_show_map_register_state_command_fn (vlib_main_t * vm,
 					 vlib_cli_command_t * cmd)
 {
   u8 *msg = 0;
-  u8 is_enabled = vnet_lisp_map_register_state_get ();
+  bool is_enabled = vnet_lisp_map_register_state_get ();
 
   msg = format (msg, "%s\n", is_enabled ? "enabled" : "disabled");
   vlib_cli_output (vm, "%v", msg);
@@ -2194,7 +2194,7 @@ lisp_show_rloc_probe_state_command_fn (vlib_main_t * vm,
 				       vlib_cli_command_t * cmd)
 {
   u8 *msg = 0;
-  u8 is_enabled = vnet_lisp_rloc_probe_state_get ();
+  bool is_enabled = vnet_lisp_rloc_probe_state_get ();
 
   msg = format (msg, "%s\n", is_enabled ? "enabled" : "disabled");
   vlib_cli_output (vm, "%v", msg);
@@ -2215,7 +2215,7 @@ lisp_show_stats_command_fn (vlib_main_t * vm,
 			    unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
-  u8 is_enabled = vnet_lisp_stats_enable_disable_state ();
+  bool is_enabled = vnet_lisp_stats_enable_disable_state ();
   vlib_cli_output (vm, "%s\n", is_enabled ? "enabled" : "disabled");
   return 0;
 }

@@ -33,7 +33,7 @@ define l2tpv3_create_tunnel
   u32 context;
   u8 client_address[16];
   u8 our_address[16];
-  u8 is_ipv6;
+  bool is_ipv6;
   u32 local_session_id;
   u32 remote_session_id;
   u64 local_cookie;

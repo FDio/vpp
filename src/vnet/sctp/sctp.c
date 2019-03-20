@@ -94,7 +94,7 @@ sctp_session_unbind (u32 listener_index)
 }
 
 void
-sctp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
+sctp_punt_unknown (vlib_main_t * vm, bool is_ip4, bool is_add)
 {
   sctp_main_t *tm = &sctp_main;
   if (is_ip4)
@@ -105,7 +105,7 @@ sctp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
 
 static int
 sctp_alloc_custom_local_endpoint (sctp_main_t * tm, ip46_address_t * lcl_addr,
-				  u16 * lcl_port, u8 is_ip4)
+				  u16 * lcl_port, bool is_ip4)
 {
   int index, port;
   if (is_ip4)
@@ -899,7 +899,7 @@ sctp_main_enable (vlib_main_t * vm)
 }
 
 clib_error_t *
-sctp_enable_disable (vlib_main_t * vm, u8 is_en)
+sctp_enable_disable (vlib_main_t * vm, bool is_en)
 {
   if (is_en)
     {

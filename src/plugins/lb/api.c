@@ -123,7 +123,7 @@ vl_api_lb_add_del_vip_t_handler
       mp->protocol = ~0;
     }
 
-  memcpy (&(args.prefix.ip6), mp->ip_prefix, sizeof(args.prefix.ip6));
+  memcpy (&(args.prefix.ip6), &mp->ip_prefix, sizeof(args.prefix.ip6));
 
   if (mp->is_del) {
     u32 vip_index;
@@ -178,7 +178,7 @@ static void *vl_api_lb_add_del_vip_t_print
   u8 * s;
   s = format (0, "SCRIPT: lb_add_del_vip ");
   s = format (s, "%U ", format_ip46_prefix,
-              (ip46_address_t *)mp->ip_prefix, mp->prefix_length, IP46_TYPE_ANY);
+              (ip46_address_t *) &mp->ip_prefix, mp->prefix_length, IP46_TYPE_ANY);
 
   s = format (s, "%s ", (mp->encap == LB_ENCAP_TYPE_GRE4)? "gre4"
               : (mp->encap == LB_ENCAP_TYPE_GRE6)? "gre6"
@@ -264,7 +264,7 @@ vl_api_lb_flush_vip_t_handler
       mp->protocol = ~0;
     }
 
-  memcpy (&(vip_prefix.ip6), mp->ip_prefix, sizeof(vip_prefix.ip6));
+  memcpy (&(vip_prefix.ip6), &mp->ip_prefix, sizeof(vip_prefix.ip6));
 
   vip_plen = mp->prefix_length;
 
@@ -282,7 +282,7 @@ static void *vl_api_lb_flush_vip_t_print
   u8 * s;
   s = format (0, "SCRIPT: lb_add_del_vip ");
   s = format (s, "%U ", format_ip46_prefix,
-              (ip46_address_t *)mp->ip_prefix, mp->prefix_length, IP46_TYPE_ANY);
+              (ip46_address_t *) &mp->ip_prefix, mp->prefix_length, IP46_TYPE_ANY);
 
   s = format (s, "protocol %u ", mp->protocol);
   s = format (s, "port %u ", mp->port);

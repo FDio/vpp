@@ -440,7 +440,7 @@ pppoe_add_del_session_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u16 session_id = 0;
   ip46_address_t client_ip;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 client_ip_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;

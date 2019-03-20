@@ -475,7 +475,7 @@ done:
 
 static void
 gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
-			    fib_route_path_t * src, u8 is_ip4)
+			    fib_route_path_t * src, bool is_ip4)
 {
   fib_route_path_t *e;
   fib_table_t *table;

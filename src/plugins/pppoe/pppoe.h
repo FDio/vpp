@@ -184,8 +184,8 @@ extern vlib_node_registration_t pppoe_cp_dispatch_node;
 
 typedef struct
 {
-  u8 is_add;
-  u8 is_ip6;
+  bool is_add;
+  bool is_ip6;
   u16 session_id;
   ip46_address_t client_ip;
   u32 encap_if_index;
@@ -199,7 +199,7 @@ int vnet_pppoe_add_del_session
 
 typedef struct
 {
-  u8 is_add;
+  bool is_add;
   u32 client_if_index;
   u32 cp_if_index;
 } vnet_pppoe_add_del_tap_args_t;

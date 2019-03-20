@@ -868,14 +868,16 @@ class TestGBP(VppTestCase):
             for (ip, fip) in zip(ep.ips, ep.fips):
                 # Add static mappings for each EP from the 10/8 to 11/8 network
                 if ip.af == AF_INET:
-                    self.vapi.nat44_add_del_static_mapping(ip.bytes,
-                                                           fip.bytes,
-                                                           vrf_id=0,
-                                                           addr_only=1)
+                    self.vapi.nat44_add_del_static_mapping(
+                        local_ip_address=ip.bytes,
+                        external_ip_address=fip.bytes,
+                        vrf_id=0,
+                        addr_only=1)
                 else:
-                    self.vapi.nat66_add_del_static_mapping(ip.bytes,
-                                                           fip.bytes,
-                                                           vrf_id=0)
+                    self.vapi.nat66_add_del_static_mapping(
+                        local_ip_address=ip.bytes,
+                        external_ip_address=fip.bytes,
+                        vrf_id=0)
 
             # VPP EP create ...
             ep.add_vpp_config()

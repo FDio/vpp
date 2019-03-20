@@ -56,7 +56,7 @@ format_stn_rule (u8 * s, va_list * args)
 }
 
 static_always_inline u8 *
-format_stn_ip46_punt_trace (u8 * s, va_list * args, u8 is_ipv4)
+format_stn_ip46_punt_trace (u8 * s, va_list * args, bool is_ipv4)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -89,7 +89,7 @@ static_always_inline uword
 stn_ip46_punt_fn (vlib_main_t * vm,
                   vlib_node_runtime_t * node,
                   vlib_frame_t * frame,
-                  u8 is_ipv4)
+                  bool is_ipv4)
 {
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   stn_main_t *stn = &stn_main;

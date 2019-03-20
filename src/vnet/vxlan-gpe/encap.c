@@ -88,7 +88,7 @@ format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
  */
 always_inline void
 vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
-			    vxlan_gpe_tunnel_t * t0, u32 * next0, u8 is_v4)
+			    vxlan_gpe_tunnel_t * t0, u32 * next0, bool is_v4)
 {
   ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
@@ -114,7 +114,7 @@ always_inline void
 vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
 			    vlib_buffer_t * b1, vxlan_gpe_tunnel_t * t0,
 			    vxlan_gpe_tunnel_t * t1, u32 * next0,
-			    u32 * next1, u8 is_v4)
+			    u32 * next1, bool is_v4)
 {
   ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
@@ -167,7 +167,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
       u32 sw_if_index0 = ~0, sw_if_index1 = ~0, len0, len1;
       vnet_hw_interface_t *hi0, *hi1;
       vxlan_gpe_tunnel_t *t0 = NULL, *t1 = NULL;
-      u8 is_ip4_0 = 0, is_ip4_1 = 0;
+      bool is_ip4_0 = 0, is_ip4_1 = 0;
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 

@@ -840,7 +840,7 @@ int snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
  *
  * @return 0 on success, non-zero value otherwise
  */
-void nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add);
+void nat44_add_del_address_dpo (ip4_address_t addr, bool is_add);
 
 /**
  * @brief Add/delete NAT44 static mapping
@@ -885,14 +885,14 @@ int snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
  */
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 				     snat_protocol_t proto,
-				     nat44_lb_addr_port_t * locals, u8 is_add,
+				     nat44_lb_addr_port_t * locals, bool is_add,
 				     twice_nat_type_t twice_nat,
 				     u8 out2in_only, u8 * tag, u32 affinity);
 
 int nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 					   ip4_address_t l_addr, u16 l_port,
 					   snat_protocol_t proto, u32 vrf_id,
-					   u8 probability, u8 is_add);
+					   u8 probability, bool is_add);
 
 clib_error_t *snat_api_init (vlib_main_t * vm, snat_main_t * sm);
 
@@ -914,7 +914,7 @@ int snat_set_workers (uword * bitmap);
  *
  * @return 0 on success, non-zero value otherwise
  */
-int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);
+int snat_interface_add_del (u32 sw_if_index, bool is_inside, bool is_del);
 
 /**
  * @brief Enable/disable NAT44 output feature on the interface (postrouting NAT)
@@ -925,8 +925,8 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);
  *
  * @return 0 on success, non-zero value otherwise
  */
-int snat_interface_add_del_output_feature (u32 sw_if_index, u8 is_inside,
-					   int is_del);
+int snat_interface_add_del_output_feature (u32 sw_if_index, bool is_inside,
+					   bool is_del);
 
 /**
  * @brief Add/delete NAT44 pool address from specific interfce
@@ -937,7 +937,7 @@ int snat_interface_add_del_output_feature (u32 sw_if_index, u8 is_inside,
  *
  * @return 0 on success, non-zero value otherwise
  */
-int snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
+int snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, bool is_del,
 				u8 twice_nat);
 
 /**
@@ -977,7 +977,7 @@ int nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
  * @param is_ha        is HA event
  */
 void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
-			    u32 thread_index, u8 is_ha);
+			    u32 thread_index, bool is_ha);
 
 /**
  * @brief Find or create NAT user

@@ -782,7 +782,7 @@ out:
 static void
 send_bd_ip_mac_entry (vpe_api_main_t * am,
 		      vl_api_registration_t * reg,
-		      u32 bd_id, u8 is_ipv6,
+		      u32 bd_id, bool is_ipv6,
 		      u8 * ip_address, u8 * mac_address, u32 context)
 {
   vl_api_bd_ip_mac_details_t *mp;

@@ -32,7 +32,7 @@ typedef struct ct_connection_
   u64 segment_handle;
   svm_fifo_t *client_rx_fifo;
   svm_fifo_t *client_tx_fifo;
-  u8 is_client;
+  bool is_client;
 } ct_connection_t;
 
 session_t *ct_session_get_peer (session_t * s);

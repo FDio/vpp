@@ -34,7 +34,7 @@ typedef struct
   vnet_link_t link_type;
   ip46_address_t ip;
   u32 sw_if_index;
-  u8 is_add;
+  bool is_add;
 } tcp_add_del_adj_args_t;
 
 static void
@@ -56,7 +56,7 @@ tcp_add_del_adj_cb (tcp_add_del_adj_args_t * args)
 }
 
 static void
-tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
+tcp_add_del_adjacency (tcp_connection_t * tc, bool is_add)
 {
   tcp_add_del_adj_args_t args = {
     .nh_proto = FIB_PROTOCOL_IP6,
@@ -634,7 +634,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
 
 static int
 tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
-				 u16 * lcl_port, u8 is_ip4)
+				 u16 * lcl_port, bool is_ip4)
 {
   int index, port;
   if (is_ip4)
@@ -1483,7 +1483,7 @@ tcp_main_enable (vlib_main_t * vm)
 }
 
 clib_error_t *
-vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en)
+vnet_tcp_enable_disable (vlib_main_t * vm, bool is_en)
 {
   if (is_en)
     {
@@ -1501,7 +1501,7 @@ vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en)
 }
 
 void
-tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
+tcp_punt_unknown (vlib_main_t * vm, bool is_ip4, bool is_add)
 {
   tcp_main_t *tm = &tcp_main;
   if (is_ip4)
@@ -1649,7 +1649,7 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
   int rv;
   int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 			      ip4_address_t * hi_addr, u32 fib_index,
-			      int is_del);
+			      bool is_del);
 
   clib_memset (&prefix, 0, sizeof (prefix));
 

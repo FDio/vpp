@@ -78,7 +78,7 @@ do {                                                                    \
 #define REPLY_MACRO4(t, n, body)                                        \
 do {                                                                    \
     vl_api_registration_t *rp;                                          \
-    u8 is_error = 0;                                                    \
+    bool is_error = 0;                                                    \
     rv = vl_msg_api_pd_handler (mp, rv);                                \
                                                                         \
     rp = vl_api_client_index_to_registration (mp->client_index);        \

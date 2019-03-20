@@ -323,7 +323,7 @@ pipe_rx (vlib_main_t * vm,
 	  ethernet_header_t *e0, *e1;
 	  vlib_buffer_t *b0, *b1;
 	  pipe_t *pipe0, *pipe1;
-	  u8 is_l20, is_l21;
+	  bool is_l20, is_l21;
 	  u16 type0, type1;
 
 	  // Prefetch next iteration
@@ -402,7 +402,7 @@ pipe_rx (vlib_main_t * vm,
 	  ethernet_header_t *e0;
 	  pipe_t *pipe0;
 	  u16 type0;
-	  u8 is_l20;
+	  bool is_l20;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -462,7 +462,7 @@ VLIB_REGISTER_NODE (pipe_rx_node) = {
 #define PIPE_MAX_INSTANCE		(16 * 1024)
 
 static u32
-pipe_instance_alloc (u8 is_specified, u32 want)
+pipe_instance_alloc (bool is_specified, u32 want)
 {
   /*
    * Check for dynamically allocaetd instance number.
@@ -538,7 +538,7 @@ pipe_create_sub_interface (vnet_hw_interface_t * hi,
 }
 
 int
-vnet_create_pipe_interface (u8 is_specified,
+vnet_create_pipe_interface (bool is_specified,
 			    u32 user_instance,
 			    u32 * parent_sw_if_index, u32 pipe_sw_if_index[2])
 {
@@ -675,7 +675,7 @@ create_pipe_interfaces (vlib_main_t * vm,
   int rv;
   u32 sw_if_index;
   u32 pipe_sw_if_index[2];
-  u8 is_specified = 0;
+  bool is_specified = 0;
   u32 user_instance = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)

@@ -139,11 +139,11 @@ void nat_ipfix_logging_nat64_session(u32 thread_index,
                                      ip6_address_t * dst_ip,
                                      ip4_address_t * nat_dst_ip,
                                      u16 dst_port, u16 nat_dst_port,
-                                     u32 vrf_id, u8 is_create);
+                                     u32 vrf_id, bool is_create);
 void nat_ipfix_logging_nat64_bib(u32 thread_index,
                                  ip6_address_t * src_ip,
                                  ip4_address_t * nat_src_ip, u8 proto,
                                  u16 src_port, u16 nat_src_port,
-                                 u32 vrf_id, u8 is_create);
+                                 u32 vrf_id, bool is_create);
 
 #endif /* __included_nat_ipfix_logging_h__ */

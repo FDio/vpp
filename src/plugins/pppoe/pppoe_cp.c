@@ -24,7 +24,7 @@ pppoe_add_del_cp_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   pppoe_main_t *pem = &pppoe_main;
-  u8 is_add = 1;
+  bool is_add = 1;
   u8 cp_if_index_set = 0;
   u32 cp_if_index = 0;
   clib_error_t *error = NULL;

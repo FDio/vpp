@@ -100,7 +100,7 @@ void nat_ha_sadd (ip4_address_t * in_addr, u16 in_port,
 		  ip4_address_t * out_addr, u16 out_port,
 		  ip4_address_t * eh_addr, u16 eh_port,
 		  ip4_address_t * ehn_addr, u16 ehn_port, u8 proto,
-		  u32 fib_index, u16 flags, u32 thread_index, u8 is_resync);
+		  u32 fib_index, u16 flags, u32 thread_index, bool is_resync);
 
 /**
  * @brief Create session delete HA event
@@ -140,7 +140,7 @@ void nat_ha_sref (ip4_address_t * out_addr, u16 out_port,
 /**
  * @brief Flush the current HA data (for testing)
  */
-void nat_ha_flush (u8 is_resync);
+void nat_ha_flush (bool is_resync);
 
 typedef void (*nat_ha_resync_event_cb_t) (u32 client_index, u32 pid,
 					  u32 missed_count);

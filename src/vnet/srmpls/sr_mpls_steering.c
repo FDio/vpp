@@ -660,7 +660,7 @@ static clib_error_t *
 sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
-  int is_del = 0;
+  bool is_del = 0;
 
   ip46_address_t prefix, nh;
   u32 dst_mask_width = 0;

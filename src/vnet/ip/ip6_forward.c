@@ -197,7 +197,7 @@ clib_error_t *
 ip6_add_del_interface_address (vlib_main_t * vm,
 			       u32 sw_if_index,
 			       ip6_address_t * address,
-			       u32 address_length, u32 is_del)
+			       u32 address_length, bool is_del)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_main_t *im = &ip6_main;
@@ -1160,7 +1160,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
 
 	  u32 udp_offset[2] = { };
-	  u8 is_tcp_udp[2];
+	  bool is_tcp_udp[2];
 	  is_tcp_udp[0] =
 	    ip6_next_proto_is_tcp_udp (b[0], ip[0], &udp_offset[0]);
 	  is_tcp_udp[1] =
@@ -1326,7 +1326,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  u32 udp_offset;
 	  i16 len_diff = 0;
-	  u8 is_tcp_udp = ip6_next_proto_is_tcp_udp (b[0], ip, &udp_offset);
+	  bool is_tcp_udp = ip6_next_proto_is_tcp_udp (b[0], ip, &udp_offset);
 	  if (PREDICT_TRUE (is_tcp_udp))
 	    {
 	      udp_header_t *udp = (udp_header_t *) ((u8 *) ip + udp_offset);

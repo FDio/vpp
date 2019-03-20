@@ -63,7 +63,7 @@ static dpo_type_t sr_localsid_d_dpo_type;
  * @return 0 on success, error otherwise.
  */
 int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (bool is_del, ip6_address_t * localsid_addr,
 		 char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index,
 		 u32 fib_table, ip46_address_t * nh_addr, void *ls_plugin_mem)
 {
@@ -266,7 +266,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   ip6_sr_main_t *sm = &sr_main;
   u32 sw_if_index = (u32) ~ 0, vlan_index = (u32) ~ 0, fib_index = 0;
-  int is_del = 0;
+  bool is_del = 0;
   int end_psp = 0;
   ip6_address_t resulting_address;
   ip46_address_t next_hop;

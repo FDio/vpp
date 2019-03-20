@@ -340,7 +340,7 @@ static void
   vnet_main_t *vnm = vnet_get_main ();
   vl_api_sw_interface_add_del_address_reply_t *rmp;
   int rv = 0;
-  u32 is_del;
+  bool is_del;
   clib_error_t *error = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -410,7 +410,7 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
 int
 ip_table_bind (fib_protocol_t fproto,
-	       u32 sw_if_index, u32 table_id, u8 is_api)
+	       u32 sw_if_index, u32 table_id, bool is_api)
 {
   CLIB_UNUSED (ip_interface_address_t * ia);
   u32 fib_index, mfib_index;
@@ -1299,7 +1299,7 @@ static void vl_api_create_loopback_instance_t_handler
 {
   vl_api_create_loopback_instance_reply_t *rmp;
   u32 sw_if_index;
-  u8 is_specified = mp->is_specified;
+  bool is_specified = mp->is_specified;
   u32 user_instance = ntohl (mp->user_instance);
   int rv;
 

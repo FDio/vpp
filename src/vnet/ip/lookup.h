@@ -160,7 +160,7 @@ clib_error_t *ip_interface_address_add_del (ip_lookup_main_t * lm,
 					    u32 sw_if_index,
 					    void *address,
 					    u32 address_length,
-					    u32 is_del, u32 * result_index);
+					    bool is_del, u32 * result_index);
 
 u8 *format_ip_flow_hash_config (u8 * s, va_list * args);
 
@@ -232,7 +232,7 @@ typedef struct _vnet_ip_container_proxy_args
 {
   fib_prefix_t prefix;
   u32 sw_if_index;
-  u8 is_add;
+  bool is_add;
 } vnet_ip_container_proxy_args_t;
 
 clib_error_t *vnet_ip_container_proxy_add_del (vnet_ip_container_proxy_args_t

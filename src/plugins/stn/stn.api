@@ -32,10 +32,10 @@ option version = "1.0.0";
 autoreply manual_print define stn_add_del_rule {
   u32 client_index;
   u32 context;
-  u8 is_ip4;
+  bool is_ip4;
   u8 ip_address[16];
   u32 sw_if_index;
-  u8 is_add;
+  bool is_add;
 };
 
 /** \brief Dump STN rules
@@ -55,7 +55,7 @@ define stn_rules_dump {
 */
 define stn_rules_details {
   u32 context;
-  u8 is_ip4;
+  bool is_ip4;
   u8 ip_address[16];
   u32 sw_if_index;
 };

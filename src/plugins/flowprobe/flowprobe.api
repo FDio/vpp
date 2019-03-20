@@ -23,7 +23,7 @@ autoreply manual_print define flowprobe_tx_interface_add_del
   u32 context;
 
   /* Enable / disable the feature */
-  u8 is_add;
+  bool is_add;
   u8 which;  /* 0 = ipv4, 1 = l2, 2 = ipv6 */
 
   /* Interface handle */

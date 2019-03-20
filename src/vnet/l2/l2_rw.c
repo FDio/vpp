@@ -349,7 +349,7 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
 #ifndef CLIB_MARCH_VARIANT
 int
 l2_rw_mod_entry (u32 * index,
-		 u8 * mask, u8 * value, u32 len, u32 skip, u8 is_del)
+		 u8 * mask, u8 * value, u32 len, u32 skip, bool is_del)
 {
   l2_rw_main_t *rw = &l2_rw_main;
   l2_rw_entry_t *e = 0;

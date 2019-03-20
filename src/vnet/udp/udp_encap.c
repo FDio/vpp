@@ -425,7 +425,7 @@ udp_encap_cli (vlib_main_t * vm,
   udp_encap_fixup_flags_t flags;
   fib_protocol_t fproto;
   index_t uei;
-  u8 is_del;
+  bool is_del;
 
   is_del = 0;
   table_id = 0;

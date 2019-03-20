@@ -969,7 +969,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  const ip4_address_t *if_addr0;
 	  ip4_address_t proxy_src;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
-	  u8 is_request0, dst_is_local0, is_unnum0, is_vrrp_reply0;
+	  bool is_request0, dst_is_local0, is_unnum0, is_vrrp_reply0;
 	  ethernet_proxy_arp_t *pa;
 	  fib_node_index_t dst_fei, src_fei;
 	  const fib_prefix_t *pfx0;
@@ -1669,7 +1669,7 @@ arp_add_del_interface_address (ip4_main_t * im,
 			       u32 sw_if_index,
 			       ip4_address_t * address,
 			       u32 address_length,
-			       u32 if_address_index, u32 is_del)
+			       u32 if_address_index, bool is_del)
 {
   /*
    * Flush the ARP cache of all entries covered by the address
@@ -1996,7 +1996,7 @@ proxy_arp_walk (proxy_arp_walk_t cb, void *data)
 
 int
 vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
-			ip4_address_t * hi_addr, u32 fib_index, int is_del)
+			ip4_address_t * hi_addr, u32 fib_index, bool is_del)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ethernet_proxy_arp_t *pa;
@@ -2074,7 +2074,7 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   ethernet_arp_ip4_over_ethernet_address_t lo_addr, hi_addr, addr;
   int addr_valid = 0;
-  int is_del = 0;
+  bool is_del = 0;
   int count = 1;
   u32 fib_index = 0;
   u32 fib_id;

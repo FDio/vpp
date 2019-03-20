@@ -76,7 +76,7 @@ typedef struct
   /*
    * Flags
    */
-  u8 is_init;
+  bool is_init;
   u8 prealloc_fifos;		/**< Request fifo preallocation */
 } proxy_main_t;
 

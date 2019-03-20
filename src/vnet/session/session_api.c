@@ -307,7 +307,7 @@ mq_send_session_reset_cb (session_t * s)
 
 static int
 mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
-			      session_t * s, u8 is_fail)
+			      session_t * s, bool is_fail)
 {
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_connected_msg_t *mp;
@@ -1097,7 +1097,7 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
 }
 
 static void
-send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
+send_session_rule_details4 (mma_rule_16_t * rule, bool is_local,
 			    u8 transport_proto, u32 appns_index, u8 * tag,
 			    vl_api_registration_t * reg, u32 context)
 {
@@ -1134,7 +1134,7 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
 }
 
 static void
-send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
+send_session_rule_details6 (mma_rule_40_t * rule, bool is_local,
 			    u8 transport_proto, u32 appns_index, u8 * tag,
 			    vl_api_registration_t * reg, u32 context)
 {
@@ -1172,7 +1172,7 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
 
 static void
 send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
-				  u8 tp, u8 is_local, u32 appns_index,
+				  u8 tp, bool is_local, u32 appns_index,
 				  vl_api_registration_t * reg, u32 context)
 {
   mma_rule_16_t *rule16;

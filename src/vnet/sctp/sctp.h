@@ -142,7 +142,7 @@ typedef struct _sctp_sub_connection
   u8 unacknowledged_hb;	/**< Used to track how many unacknowledged heartbeats we had;
   	  	  	  	  If more than SCTP_PATH_MAX_RETRANS then connection is considered unreachable. */
 
-  u8 is_retransmitting;	/**< A flag (0 = no, 1 = yes) indicating whether the connection is retransmitting a previous packet */
+  bool is_retransmitting;	/**< A flag (0 = no, 1 = yes) indicating whether the connection is retransmitting a previous packet */
 
   u8 enqueue_state; /**< if set to 1 indicates that DATA is still being handled hence cannot shutdown this connection yet */
 
@@ -295,9 +295,9 @@ void sctp_send_shutdown_complete (sctp_connection_t * sctp_conn, u8 idx,
 void sctp_send_heartbeat (sctp_connection_t * sctp_conn);
 void sctp_data_retransmit (sctp_connection_t * sctp_conn);
 void sctp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index,
-				 u8 is_ip4);
+				 bool is_ip4);
 void sctp_flush_frames_to_output (u8 thread_index);
-void sctp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
+void sctp_punt_unknown (vlib_main_t * vm, bool is_ip4, bool is_add);
 
 format_function_t format_sctp_state;
 
@@ -509,7 +509,7 @@ typedef struct _sctp_main
   /* sctp_cc_algorithm_t *cc_algos; */
 
   /* Flag that indicates if stack is on or off */
-  u8 is_enabled;
+  bool is_enabled;
 
 	  /** Number of preallocated connections */
   u32 preallocated_connections;
@@ -554,7 +554,7 @@ sctp_buffer_hdr (vlib_buffer_t * b)
 			    + vnet_buffer (b)->sctp.hdr_offset);
 }
 
-clib_error_t *vnet_sctp_enable_disable (vlib_main_t * vm, u8 is_en);
+clib_error_t *vnet_sctp_enable_disable (vlib_main_t * vm, bool is_en);
 
 always_inline sctp_connection_t *
 sctp_half_open_connection_get (u32 conn_index)

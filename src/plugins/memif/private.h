@@ -102,7 +102,7 @@ typedef struct
   void *shm;
   memif_region_size_t region_size;
   int fd;
-  u8 is_external;
+  bool is_external;
 } memif_region_t;
 
 typedef struct
@@ -266,8 +266,8 @@ typedef struct
   memif_interface_id_t id;
   u32 socket_id;
   u8 *secret;
-  u8 is_master;
-  u8 is_zero_copy;
+  bool is_master;
+  bool is_zero_copy;
   memif_interface_mode_t mode:8;
   memif_log2_ring_size_t log2_ring_size;
   u16 buffer_size;
@@ -280,7 +280,7 @@ typedef struct
   u32 sw_if_index;
 } memif_create_if_args_t;
 
-int memif_socket_filename_add_del (u8 is_add, u32 sock_id,
+int memif_socket_filename_add_del (bool is_add, u32 sock_id,
 				   u8 * sock_filename);
 int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
 int memif_delete_if (vlib_main_t * vm, memif_if_t * mif);

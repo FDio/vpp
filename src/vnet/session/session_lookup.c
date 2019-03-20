@@ -826,7 +826,7 @@ session_lookup_half_open_handle (transport_connection_t * tc)
 }
 
 transport_connection_t *
-session_lookup_half_open_connection (u64 handle, u8 proto, u8 is_ip4)
+session_lookup_half_open_connection (u64 handle, u8 proto, bool is_ip4)
 {
   if (handle != HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
@@ -1359,7 +1359,7 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
 typedef struct _ip4_session_table_show_ctx_t
 {
   vlib_main_t *vm;
-  u8 is_local;
+  bool is_local;
 } ip4_session_table_show_ctx_t;
 
 static int
@@ -1373,7 +1373,7 @@ ip4_session_table_show (clib_bihash_kv_16_8_t * kvp, void *arg)
 
 void
 session_lookup_show_table_entries (vlib_main_t * vm, session_table_t * table,
-				   u8 type, u8 is_local)
+				   u8 type, bool is_local)
 {
   ip4_session_table_show_ctx_t ctx = {
     .vm = vm,
@@ -1402,7 +1402,7 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 proto = ~0, lcl_port, rmt_port, action = 0, lcl_plen = 0, rmt_plen = 0;
   u32 appns_index, scope = 0;
   ip46_address_t lcl_ip, rmt_ip;
-  u8 is_ip4 = 1, conn_set = 0;
+  bool is_ip4 = 1, conn_set = 0;
   u8 fib_proto, is_add = 1, *ns_id = 0;
   u8 *tag = 0;
   app_namespace_t *app_ns;
@@ -1552,7 +1552,7 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 transport_proto = ~0, lcl_port, rmt_port, lcl_plen, rmt_plen;
   u32 fib_index, scope = 0;
   ip46_address_t lcl_ip, rmt_ip;
-  u8 is_ip4 = 1, show_one = 0;
+  bool is_ip4 = 1, show_one = 0;
   app_namespace_t *app_ns;
   session_rules_table_t *srt;
   session_table_t *st;

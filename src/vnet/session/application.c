@@ -481,7 +481,7 @@ application_verify_cb_fns (session_cb_vft_t * cb_fns)
 static u8
 application_verify_cfg (ssvm_segment_type_t st)
 {
-  u8 is_valid;
+  bool is_valid;
   if (st == SSVM_SEGMENT_MEMFD)
     {
       is_valid = (session_main_get_evt_q_segment () != 0);
@@ -916,7 +916,7 @@ vnet_application_detach (vnet_app_detach_args_t * a)
 static u8
 session_endpoint_in_ns (session_endpoint_t * sep)
 {
-  u8 is_lep = session_endpoint_is_local (sep);
+  bool is_lep = session_endpoint_is_local (sep);
   if (!is_lep && sep->sw_if_index != ENDPOINT_INVALID_INDEX
       && !ip_interface_has_address (sep->sw_if_index, &sep->ip, sep->is_ip4))
     {
@@ -930,7 +930,7 @@ session_endpoint_in_ns (session_endpoint_t * sep)
 
 static void
 session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
-				 application_t * app, u8 is_connect)
+				 application_t * app, bool is_connect)
 {
   app_namespace_t *app_ns;
   u32 ns_index, fib_index;
@@ -1175,10 +1175,10 @@ application_has_global_scope (application_t * app)
 
 static clib_error_t *
 application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
-					u8 transport_proto, u8 is_start)
+					u8 transport_proto, bool is_start)
 {
   app_namespace_t *app_ns = app_namespace_get (app->ns_index);
-  u8 is_ip4 = (fib_proto == FIB_PROTOCOL_IP4);
+  bool is_ip4 = (fib_proto == FIB_PROTOCOL_IP4);
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   transport_connection_t *tc;
   app_worker_t *app_wrk;
@@ -1240,7 +1240,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
 static void
 application_start_stop_proxy_local_scope (application_t * app,
-					  u8 transport_proto, u8 is_start)
+					  u8 transport_proto, bool is_start)
 {
   session_endpoint_t sep = SESSION_ENDPOINT_NULL;
   app_namespace_t *app_ns;
@@ -1267,7 +1267,7 @@ application_start_stop_proxy_local_scope (application_t * app,
 
 void
 application_start_stop_proxy (application_t * app,
-			      transport_proto_t transport_proto, u8 is_start)
+			      transport_proto_t transport_proto, bool is_start)
 {
   if (application_has_local_scope (app))
     application_start_stop_proxy_local_scope (app, transport_proto, is_start);

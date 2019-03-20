@@ -107,7 +107,7 @@ typedef struct {
   u32 local_adj_index;
   ila_csum_mode_t csum_mode;
   ila_direction_t dir;
-  u8 is_del;
+  bool is_del;
 } ila_add_del_entry_args_t;
 
 int ila_add_del_entry (ila_add_del_entry_args_t * args);

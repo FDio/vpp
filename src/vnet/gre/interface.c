@@ -183,7 +183,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
   vnet_hw_interface_t *hi;
   u32 hw_if_index, sw_if_index;
   clib_error_t *error;
-  u8 is_ipv6 = a->is_ipv6;
+  bool is_ipv6 = a->is_ipv6;
   gre_tunnel_key_t key;
 
   t = gre_tunnel_db_find (a, outer_fib_index, &key);
@@ -431,7 +431,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   u32 session_id = 0;
   int rv;
   u32 num_m_args = 0;
-  u8 is_add = 1;
+  bool is_add = 1;
   u32 sw_if_index;
   clib_error_t *error = NULL;
   u8 ipv4_set = 0;

@@ -40,7 +40,7 @@ typedef struct _session_lookup_table
   session_rules_table_t session_rules[TRANSPORT_N_PROTO];
 
   /** Flag that indicates if table has local scope */
-  u8 is_local;
+  bool is_local;
 
   /** Namespace this table belongs to */
   u32 appns_index;

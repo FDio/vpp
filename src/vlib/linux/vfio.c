@@ -88,7 +88,7 @@ get_vfio_iommu_group (int group)
 }
 
 static clib_error_t *
-open_vfio_iommu_group (int group, int is_noiommu)
+open_vfio_iommu_group (int group, bool is_noiommu)
 {
   linux_vfio_main_t *lvm = &vfio_main;
   linux_pci_vfio_iommu_group_t *g;

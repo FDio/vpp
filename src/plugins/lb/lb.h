@@ -613,8 +613,8 @@ u32 lb_hash_time_now(vlib_main_t * vm);
 
 void lb_garbage_collection();
 
-int lb_nat4_interface_add_del (u32 sw_if_index, int is_del);
-int lb_nat6_interface_add_del (u32 sw_if_index, int is_del);
+int lb_nat4_interface_add_del (u32 sw_if_index, bool is_del);
+int lb_nat6_interface_add_del (u32 sw_if_index, bool is_del);
 
 format_function_t format_lb_main;
 

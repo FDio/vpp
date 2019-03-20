@@ -254,7 +254,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   clib_bihash_kv_8_8_t kv0;
   snat_session_key_t key1;
   udp_header_t *udp0 = ip4_next_header (ip0);
-  u8 is_sm = 0;
+  bool is_sm = 0;
   nat_outside_fib_t *outside_fib;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   u8 identity_nat;

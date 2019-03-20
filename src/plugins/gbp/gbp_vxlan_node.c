@@ -69,7 +69,7 @@ static char *gbp_vxlan_error_strings[] = {
 static uword
 gbp_vxlan_decap (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame, u8 is_ip4)
+		 vlib_frame_t * from_frame, bool is_ip4)
 {
   u32 n_left_to_next, n_left_from, next_index, *to_next, *from;
 

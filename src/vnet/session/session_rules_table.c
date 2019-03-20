@@ -21,7 +21,7 @@
 #include <vnet/session/transport.h>
 
 u32
-session_rule_tag_key_index (u32 ri, u8 is_ip4)
+session_rule_tag_key_index (u32 ri, bool is_ip4)
 {
   return ((ri << 1) | is_ip4);
 }
@@ -34,7 +34,7 @@ session_rule_tag_key_index_parse (u32 rti_key, u32 * ri, u8 * is_ip4)
 }
 
 u8 *
-session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri, u8 is_ip4)
+session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri, bool is_ip4)
 {
   uword *tip;
   session_rule_tag_t *rt;
@@ -50,7 +50,7 @@ session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri, u8 is_ip4)
 }
 
 void
-session_rules_table_del_tag (session_rules_table_t * srt, u8 * tag, u8 is_ip4)
+session_rules_table_del_tag (session_rules_table_t * srt, u8 * tag, bool is_ip4)
 {
   uword *rip, *rtip;
   session_rule_tag_t *rt;
@@ -80,7 +80,7 @@ session_rules_table_del_tag (session_rules_table_t * srt, u8 * tag, u8 is_ip4)
 
 void
 session_rules_table_add_tag (session_rules_table_t * srt, u8 * tag,
-			     u32 rule_index, u8 is_ip4)
+			     u32 rule_index, bool is_ip4)
 {
   uword *rip;
   session_rule_tag_t *rt;
@@ -546,7 +546,7 @@ void
 session_rules_table_show_rule (vlib_main_t * vm, session_rules_table_t * srt,
 			       ip46_address_t * lcl_ip, u16 lcl_port,
 			       ip46_address_t * rmt_ip, u16 rmt_port,
-			       u8 is_ip4)
+			       bool is_ip4)
 {
   mma_rules_table_16_t *srt4;
   mma_rules_table_40_t *srt6;

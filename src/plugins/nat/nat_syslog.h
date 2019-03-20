@@ -46,13 +46,13 @@ void nat_syslog_nat44_sadd (u32 ssubix, u32 sfibix, ip4_address_t * isaddr,
 			    u16 isport, ip4_address_t * idaddr, u16 idport,
 			    ip4_address_t * xsaddr, u16 xsport,
 			    ip4_address_t * xdaddr, u16 xdport,
-			    snat_protocol_t proto, u8 is_twicenat);
+			    snat_protocol_t proto, bool is_twicenat);
 
 void nat_syslog_nat44_sdel (u32 ssubix, u32 sfibix, ip4_address_t * isaddr,
 			    u16 isport, ip4_address_t * idaddr, u16 idport,
 			    ip4_address_t * xsaddr, u16 xsport,
 			    ip4_address_t * xdaddr, u16 xdport,
-			    snat_protocol_t proto, u8 is_twicenat);
+			    snat_protocol_t proto, bool is_twicenat);
 
 void nat_syslog_nat64_sadd (u32 sfibix, ip6_address_t * isaddr, u16 isport,
 			    ip4_address_t * xsaddr, u16 xsport,

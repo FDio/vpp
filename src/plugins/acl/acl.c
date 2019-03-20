@@ -337,7 +337,7 @@ warning_acl_print_acl (vlib_main_t * vm, acl_main_t * am, int acl_index)
 }
 
 static void
-increment_policy_epoch (acl_main_t * am, u32 sw_if_index, int is_input)
+increment_policy_epoch (acl_main_t * am, u32 sw_if_index, bool is_input)
 {
 
   u32 **ppolicy_epoch_by_swi =
@@ -352,7 +352,7 @@ increment_policy_epoch (acl_main_t * am, u32 sw_if_index, int is_input)
 }
 
 static void
-try_increment_acl_policy_epoch (acl_main_t * am, u32 acl_num, int is_input)
+try_increment_acl_policy_epoch (acl_main_t * am, u32 acl_num, bool is_input)
 {
   u32 ***p_swi_vec_by_acl = is_input ? &am->input_sw_if_index_vec_by_acl
     : &am->output_sw_if_index_vec_by_acl;
@@ -561,7 +561,7 @@ acl_classify_add_del_table_small (vnet_classify_main_t * cm, u8 * mask,
 }
 
 static int
-intf_has_etype_whitelist (acl_main_t * am, u32 sw_if_index, int is_input)
+intf_has_etype_whitelist (acl_main_t * am, u32 sw_if_index, bool is_input)
 {
   u16 **v = is_input
     ? am->input_etype_whitelist_by_sw_if_index
@@ -665,7 +665,7 @@ acl_interface_out_enable_disable (acl_main_t * am, u32 sw_if_index,
 
 static int
 acl_interface_inout_enable_disable (acl_main_t * am, u32 sw_if_index,
-				    int is_input, int enable_disable)
+				    bool is_input, int enable_disable)
 {
   if (is_input)
     return acl_interface_in_enable_disable (am, sw_if_index, enable_disable);
@@ -681,7 +681,7 @@ acl_is_not_defined (acl_main_t * am, u32 acl_list_index)
 
 static int
 acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
-				  u8 is_input, u32 * vec_acl_list_index,
+				  bool is_input, u32 * vec_acl_list_index,
 				  int *may_clear_sessions)
 {
   u32 *pacln;
@@ -823,7 +823,7 @@ done:
 }
 
 static void
-acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input,
+acl_interface_reset_inout_acls (u32 sw_if_index, bool is_input,
 				int *may_clear_sessions)
 {
   acl_main_t *am = &acl_main;
@@ -834,7 +834,7 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input,
 }
 
 static int
-acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
+acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, bool is_input,
 				 u32 acl_list_index)
 {
 
@@ -935,7 +935,7 @@ acl_set_etype_whitelists (acl_main_t * am, u32 sw_if_index, u16 * vec_in,
 
 typedef struct
 {
-  u8 is_ipv6;
+  bool is_ipv6;
   u8 has_egress;
   u8 mac_mask[6];
   u8 prefix_len;
@@ -957,7 +957,7 @@ typedef struct
 
 static u32
 macip_find_match_type (macip_match_type_t * mv, u8 * mac_mask, u8 prefix_len,
-		       u8 is_ipv6)
+		       bool is_ipv6)
 {
   u32 i;
   if (mv)
@@ -1007,7 +1007,7 @@ match_type_compare (macip_match_type_t * m1, macip_match_type_t * m2)
 
 /* Get the offset of L3 source within ethernet packet */
 static int
-get_l3_src_offset (int is6)
+get_l3_src_offset (bool is6)
 {
   if (is6)
     return (sizeof (ethernet_header_t) +
@@ -1018,7 +1018,7 @@ get_l3_src_offset (int is6)
 }
 
 static int
-get_l3_dst_offset (int is6)
+get_l3_dst_offset (bool is6)
 {
   if (is6)
     return (sizeof (ethernet_header_t) +
@@ -1095,7 +1095,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
   vec_foreach (mt, mvec)
   {
     int mask_len;
-    int is6 = mt->is_ipv6;
+    bool is6 = mt->is_ipv6;
     int tags;
     u32 *last_tag_table;
     u32 *out_last_tag_table;
@@ -1222,7 +1222,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
   vec_foreach (mt, mvec)
   {
     int mask_len;
-    int is6 = mt->is_ipv6;
+    bool is6 = mt->is_ipv6;
     int l3_src_offs;
     int l3_dst_offs;
     int tags;
@@ -1340,7 +1340,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
     {
       u32 action = 0;
       u32 metadata = 0;
-      int is6 = a->rules[i].is_ipv6;
+      bool is6 = a->rules[i].is_ipv6;
       int l3_src_offs;
       int l3_dst_offs;
       u32 tag_table;

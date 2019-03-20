@@ -1200,10 +1200,10 @@ fib_path_list_recursive_loop_detect (fib_node_index_t path_list_index,
 				     fib_node_index_t **entry_indicies)
 {
     fib_node_index_t *path_index;
-    int is_looped, list_looped;
+    bool is_looped;
+    int list_looped = 0;
     fib_path_list_t *path_list;
 
-    list_looped = 0;
     path_list = fib_path_list_get(path_list_index);
 
     vec_foreach (path_index, path_list->fpl_paths)
