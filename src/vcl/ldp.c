@@ -2389,8 +2389,11 @@ ldp_constructor (void)
 {
   swrap_constructor ();
   if (ldp_init () != 0)
-    fprintf (stderr, "\nLDP<%d>: ERROR: ldp_constructor: failed!\n",
-	     getpid ());
+    {
+      fprintf (stderr, "\nLDP<%d>: ERROR: ldp_constructor: failed!\n",
+	       getpid ());
+      _exit (1);
+    }
   else if (LDP_DEBUG > 0)
     clib_warning ("LDP<%d>: LDP constructor: done!\n", getpid ());
 }
