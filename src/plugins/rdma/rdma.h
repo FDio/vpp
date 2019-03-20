@@ -67,6 +67,8 @@ typedef struct
   u32 sw_if_index;
   u32 hw_if_index;
 
+  u32 async_event_clib_file_index;
+
   rdma_rxq_t *rxqs;
   rdma_txq_t *txqs;
 

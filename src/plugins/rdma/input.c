@@ -40,26 +40,59 @@ static __clib_unused char *rdma_input_error_strings[] = {
 #undef _
 };
 
+static_always_inline void
+rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
+			  rdma_rxq_t * rxq)
+{
+  u32 n_alloc, n;
+  struct ibv_sge sg_entry;
+  struct ibv_recv_wr wr, *bad_wr;
+  u32 buffers[VLIB_FRAME_SIZE];
+
+  if (rxq->n_enq >= rxq->size)
+    return;
+
+  n_alloc = clib_min (VLIB_FRAME_SIZE, rxq->size - rxq->n_enq);
+  n_alloc = vlib_buffer_alloc (vm, buffers, n_alloc);
+
+  sg_entry.length = vlib_buffer_get_default_data_size (vm);
+  sg_entry.lkey = rd->mr->lkey;
+  wr.num_sge = 1;
+  wr.sg_list = &sg_entry;
+  wr.next = NULL;
+  for (n = 0; n < n_alloc; n++)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, buffers[n]);
+      sg_entry.addr = vlib_buffer_get_va (b);
+      wr.wr_id = buffers[n];
+      if (ibv_post_recv (rxq->qp, &wr, &bad_wr) != 0)
+	vlib_buffer_free (vm, buffers + n, 1);
+      else
+	rxq->n_enq++;
+    }
+}
 
 static_always_inline uword
 rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, rdma_device_t * rd, u16 qid)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
   u32 n_trace;
-  int n_rx_packets;
   struct ibv_wc wc[VLIB_FRAME_SIZE];
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 *bi, *to_next, n_left_to_next;
   int i;
+  u32 n_rx_packets = 0, n_rx_bytes = 0;
 
   n_rx_packets = ibv_poll_cq (rxq->cq, VLIB_FRAME_SIZE, wc);
 
   if (n_rx_packets <= 0)
-    goto refill;
+    rdma_device_input_refill (vm, rd, rxq);
 
   if (PREDICT_FALSE (rd->per_interface_next_index != ~0))
     next_index = rd->per_interface_next_index;
+
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
   for (i = 0; i < n_rx_packets; i++)
@@ -70,6 +103,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vnet_buffer (b)->sw_if_index[VLIB_RX] = rd->sw_if_index;
       vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
       to_next[i] = bi;
+      n_rx_bytes += wc[i].byte_len;
     }
 
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
@@ -113,35 +147,14 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   n_left_to_next -= n_rx_packets;
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+  vlib_increment_combined_counter
+    (vnm->interface_main.combined_sw_if_counters +
+     VNET_INTERFACE_COUNTER_RX, vm->thread_index,
+     rd->hw_if_index, n_rx_packets, n_rx_bytes);
+
   rxq->n_enq -= n_rx_packets;
-
-refill:
-  if (rxq->n_enq < rxq->size)
-    {
-      u32 n_alloc, n;
-      struct ibv_sge sg_entry;
-      struct ibv_recv_wr wr, *bad_wr;
-      u32 buffers[VLIB_FRAME_SIZE];
-
-      n_alloc = clib_min (VLIB_FRAME_SIZE, rxq->size - rxq->n_enq);
-      n_alloc = vlib_buffer_alloc (vm, buffers, n_alloc);
-
-      sg_entry.length = vlib_buffer_get_default_data_size (vm);
-      sg_entry.lkey = rd->mr->lkey;
-      wr.num_sge = 1;
-      wr.sg_list = &sg_entry;
-      wr.next = NULL;
-      for (n = 0; n < n_alloc; n++)
-	{
-	  vlib_buffer_t *b = vlib_get_buffer (vm, buffers[n]);
-	  sg_entry.addr = vlib_buffer_get_va (b);
-	  wr.wr_id = buffers[n];
-	  if (ibv_post_recv (rxq->qp, &wr, &bad_wr) != 0)
-	    vlib_buffer_free (vm, buffers + n, 1);
-	  else
-	    rxq->n_enq++;
-	}
-    }
+  rdma_device_input_refill (vm, rd, rxq);
 
   return n_rx_packets;
 }
