@@ -2485,20 +2485,27 @@ class VppPapiProvider(object):
                                 anti_replay=1, renumber=0, show_instance=0):
         return self.api(
             self.papi.ipsec_tunnel_if_add_del,
-            {'local_ip': local_ip, 'remote_ip': remote_ip,
-             'local_spi': local_spi, 'remote_spi': remote_spi,
-             'crypto_alg': crypto_alg,
-             'local_crypto_key_len': len(local_crypto_key),
-             'local_crypto_key': local_crypto_key,
-             'remote_crypto_key_len': len(remote_crypto_key),
-             'remote_crypto_key': remote_crypto_key, 'integ_alg': integ_alg,
-             'local_integ_key_len': len(local_integ_key),
-             'local_integ_key': local_integ_key,
-             'remote_integ_key_len': len(remote_integ_key),
-             'remote_integ_key': remote_integ_key, 'is_add': is_add,
-             'esn': esn, 'anti_replay': anti_replay, 'renumber': renumber,
-             'show_instance': show_instance
-             })
+            {
+                'local_ip': local_ip,
+                'remote_ip': remote_ip,
+                'local_spi': local_spi,
+                'remote_spi': remote_spi,
+                'crypto_alg': crypto_alg,
+                'local_crypto_key_len': len(local_crypto_key),
+                'local_crypto_key': local_crypto_key,
+                'remote_crypto_key_len': len(remote_crypto_key),
+                'remote_crypto_key': remote_crypto_key,
+                'integ_alg': integ_alg,
+                'local_integ_key_len': len(local_integ_key),
+                'local_integ_key': local_integ_key,
+                'remote_integ_key_len': len(remote_integ_key),
+                'remote_integ_key': remote_integ_key,
+                'is_add': is_add,
+                'esn': esn,
+                'anti_replay': anti_replay,
+                'renumber': renumber,
+                'show_instance': show_instance
+            })
 
     def ipsec_select_backend(self, protocol, index):
         return self.api(self.papi.ipsec_select_backend,
