@@ -69,7 +69,8 @@ openssl_ops_enc_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 
       EVP_EncryptInit_ex (ctx, cipher, NULL, op->key, op->iv);
       EVP_EncryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
-      EVP_EncryptFinal_ex (ctx, op->dst + out_len, &out_len);
+      if (out_len < op->len)
+	EVP_EncryptFinal_ex (ctx, op->dst + out_len, &out_len);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   return n_ops;
@@ -90,7 +91,8 @@ openssl_ops_dec_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 
       EVP_DecryptInit_ex (ctx, cipher, NULL, op->key, op->iv);
       EVP_DecryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
-      EVP_DecryptFinal_ex (ctx, op->dst + out_len, &out_len);
+      if (out_len < op->len)
+	EVP_DecryptFinal_ex (ctx, op->dst + out_len, &out_len);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   return n_ops;
