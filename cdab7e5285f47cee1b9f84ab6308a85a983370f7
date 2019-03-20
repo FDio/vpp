@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "112cfb60_cf1872e3",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 2877,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-20T19:03:50Z",
+      "side": 1,
+      "message": "Please do not add new wrappers in vpp_papi_provider. Those are no longer needed.\nUse named arguments.",
+      "range": {
+        "startLine": 2869,
+        "startChar": 0,
+        "endLine": 2877,
+        "endChar": 53
+      },
+      "revId": "cdab7e5285f47cee1b9f84ab6308a85a983370f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
