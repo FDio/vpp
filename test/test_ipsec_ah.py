@@ -53,7 +53,7 @@ class TemplateIpsecAh(TemplateIpsec):
 
         for _, p in self.params.items():
             self.config_ah_tra(p)
-            self.configure_sa_tra(p)
+            config_tra_params(p, self.encryption_type)
             self.logger.info(self.vapi.ppcli("show ipsec"))
         for _, p in self.params.items():
             self.config_ah_tun(p)
