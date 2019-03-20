@@ -382,11 +382,14 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
     }
   else
     {
+      u32 ti;
+
       /* check if exists */
       if (!p)
 	return VNET_API_ERROR_INVALID_VALUE;
 
-      t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
+      ti = p[0];
+      t = pool_elt_at_index (im->tunnel_interfaces, ti);
       hi = vnet_get_hw_interface (vnm, t->hw_if_index);
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0);	/* admin down */
 
@@ -401,8 +404,8 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       pool_put (im->tunnel_interfaces, t);
 
       /* delete input and output SA */
-      ipsec_sa_del (ipsec_tun_mk_input_sa_id (p[0]));
-      ipsec_sa_del (ipsec_tun_mk_output_sa_id (p[0]));
+      ipsec_sa_del (ipsec_tun_mk_input_sa_id (ti));
+      ipsec_sa_del (ipsec_tun_mk_output_sa_id (ti));
     }
 
   if (sw_if_index)
