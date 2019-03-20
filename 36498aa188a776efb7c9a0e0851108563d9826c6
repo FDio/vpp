@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d5656ef7_b2bf3ec3",
+        "filename": "src/plugins/cdp/cdp.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-20T07:47:35Z",
+      "side": 1,
+      "message": "bool enable.\n  would be better. but i separate commit i think..",
+      "revId": "36498aa188a776efb7c9a0e0851108563d9826c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
