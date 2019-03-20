@@ -2297,8 +2297,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 		    IP4_ERROR_SAME_INTERFACE : error1);
 	}
 
-      b[0]->error = error_node->errors[error0];
-      b[1]->error = error_node->errors[error1];
       /* Don't adjust the buffer for ttl issue; icmp-error node wants
        * to see the IP headerr */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
@@ -2315,6 +2313,10 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 				    tx_sw_if_index0, &next_index, b[0]);
 	  next[0] = next_index;
 	}
+      else
+	{
+	  b[0]->error = error_node->errors[error0];
+	}
       if (PREDICT_TRUE (error1 == IP4_ERROR_NONE))
 	{
 	  u32 next_index = adj1[0].rewrite_header.next_index;
@@ -2329,6 +2331,10 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    vnet_feature_arc_start (lm->output_feature_arc_index,
 				    tx_sw_if_index1, &next_index, b[1]);
 	  next[1] = next_index;
+	}
+      else
+	{
+	  b[1]->error = error_node->errors[error1];
 	}
 
       /* Guess we are only writing on simple Ethernet header. */
@@ -2420,7 +2426,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 		     vnet_buffer (b[0])->sw_if_index[VLIB_RX]) ?
 		    IP4_ERROR_SAME_INTERFACE : error0);
 	}
-      b[0]->error = error_node->errors[error0];
 
       /* Don't adjust the buffer for ttl issue; icmp-error node wants
        * to see the IP headerr */
@@ -2437,6 +2442,10 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    vnet_feature_arc_start (lm->output_feature_arc_index,
 				    tx_sw_if_index0, &next_index, b[0]);
 	  next[0] = next_index;
+	}
+      else
+	{
+	  b[0]->error = error_node->errors[error0];
 	}
 
       /* Guess we are only writing on simple Ethernet header. */
