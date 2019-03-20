@@ -77,7 +77,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_crypto_op_type_t op:16;
   vnet_crypto_op_status_t status:8;
-  u8 key_len;
+  u8 key_len, hmac_trunc_len;
   u16 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV 1
   u32 len;
