@@ -118,9 +118,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   if (mp->retval)
     {
-      clib_warning ("VCL<%d>: attach failed: %U", getpid (),
-		    format_api_error, ntohl (mp->retval));
-      return;
+      VERR ("attach failed: %U", format_api_error, ntohl (mp->retval));
+      goto failed;
     }
 
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
@@ -128,8 +127,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
-      clib_warning ("invalid segment handle");
-      return;
+      VERR ("invalid segment handle");
+      goto failed;
     }
 
   if (mp->n_fds)
@@ -141,12 +140,12 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 	if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0),
 				"vpp-mq-seg", SSVM_SEGMENT_MEMFD,
 				fds[n_fds++]))
-	  return;
+	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
 				SSVM_SEGMENT_MEMFD, fds[n_fds++]))
-	  return;
+	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
@@ -161,11 +160,15 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     {
       if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
 			      SSVM_SEGMENT_SHM, -1))
-	return;
+	goto failed;
     }
 
   vcm->app_index = clib_net_to_host_u32 (mp->app_index);
   vcm->app_state = STATE_APP_ATTACHED;
+  return;
+
+failed:
+  vcm->app_state = STATE_APP_FAILED;
 }
 
 static void
