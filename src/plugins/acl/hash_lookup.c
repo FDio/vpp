@@ -1511,9 +1511,11 @@ split_partition(acl_main_t *am, u32 first_index,
         clib_memset(&the_max_tuple, 0, sizeof(the_max_tuple));
 
 	int i=0;
+	collision_match_rule_t *colliding_rules = pae->colliding_rules;
 	u64 collisions = vec_len(pae->colliding_rules);
 	for(i=0; i<collisions; i++){
                 /* reload the hash acl info as it might be a different ACL# */
+		pae = vec_elt_at_index((*applied_hash_aces), colliding_rules[i].applied_entry_index);
 	        ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
 
 		DBG( "TM-collision: base_ace:%d (ace_mask:%d, first_collision_mask:%d)",
@@ -1563,8 +1565,6 @@ split_partition(acl_main_t *am, u32 first_index,
 			if(mask->pkt.as_u64 > max_tuple->pkt.as_u64)
 				max_tuple->pkt.as_u64 = mask->pkt.as_u64;
 		}
-
-		pae = pae->next_applied_entry_index == ~0 ? 0 : vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
 	}
 
 	/* Computing field with max difference between (min/max)_mask */
@@ -1691,15 +1691,19 @@ split_partition(acl_main_t *am, u32 first_index,
 	u32 r_ace_index = first_index;
         int repopulate_count = 0;
 
-//	for(i=0; i<collisions; i++){
-	for(r_ace_index=0; r_ace_index < vec_len((*applied_hash_aces)); r_ace_index++) {
+	collision_match_rule_t *temp_colliding_rules = vec_dup(colliding_rules);
+	collisions = vec_len(temp_colliding_rules);
+
+	for(i=0; i<collisions; i++){
+
+	        r_ace_index = temp_colliding_rules[i].applied_entry_index;
 
 		applied_hash_ace_entry_t *pop_pae = vec_elt_at_index((*applied_hash_aces), r_ace_index);
+	        ha = vec_elt_at_index(am->hash_acl_infos, pop_pae->acl_index);
 		DBG( "TM-Population-collision: base_ace:%d (ace_mask:%d, first_collision_mask:%d)",
 				pop_pae->ace_index, pop_pae->mask_type_index, coll_mask_type_index);
 
-		if(pop_pae->mask_type_index != coll_mask_type_index) continue;
-		u32 next_index = pop_pae->next_applied_entry_index;
+		ASSERT(pop_pae->mask_type_index == coll_mask_type_index);
 
 		ace_info = vec_elt_at_index(ha->rules, pop_pae->hash_ace_info_index);
 		mte = vec_elt_at_index(am->ace_mask_type_pool, ace_info->base_mask_type_index);
@@ -1721,8 +1725,8 @@ split_partition(acl_main_t *am, u32 first_index,
 
 		activate_applied_ace_hash_entry(am, lc_index, applied_hash_aces, r_ace_index);
 
-		r_ace_index = next_index;
 	}
+	vec_free(temp_colliding_rules);
 
 	DBG( "TM-Populate new partition-END");
 	DBG( "TM-split_partition - END");
