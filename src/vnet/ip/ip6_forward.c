@@ -1851,6 +1851,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					  (u8 *) ip1);
 	    }
 
+	  p0->error = error_node->errors[error0];
+	  p1->error = error_node->errors[error1];
+
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   pi0, pi1, next0, next1);
