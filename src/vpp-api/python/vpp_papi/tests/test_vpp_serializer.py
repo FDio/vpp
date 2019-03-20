@@ -230,7 +230,7 @@ class TestAddType(unittest.TestCase):
                          inet_pton(AF_INET, '2.2.2.2'))
 
         string = 'foobar foobar'
-        b = s.pack({'length': len(string), 'string': string.encode()})
+        b = s.pack({'length': len(string), 'string': string.encode('utf-8')})
         nt, size = s.unpack(b)
         self.assertEqual(len(b), size)
 
@@ -239,7 +239,7 @@ class TestAddType(unittest.TestCase):
                             ['u8', 'string', 0, 'length']])
 
         string = ''
-        b = s.pack({'length': len(string), 'string': string.encode()})
+        b = s.pack({'length': len(string), 'string': string.encode('utf-8')})
         nt, size = s.unpack(b)
         self.assertEqual(len(b), size)
 

@@ -89,7 +89,7 @@ def make_string_vector(api, strings):
         strings = [strings]
     for s in strings:
         vec = api.stat_segment_string_vector(vec, ffi.new("char []",
-                                                          s.encode()))
+                                                          s.encode('utf-8')))
     return vec
 
 
@@ -184,7 +184,7 @@ class VPPStats(object):
 
         poll_end_time = time.time() + timeout
         while time.time() < poll_end_time:
-            rv = self.api.stat_segment_connect_r(socketname.encode(),
+            rv = self.api.stat_segment_connect_r(socketname.encode('utf-8'),
                                                  self.client)
             if rv == 0:
                 break
@@ -208,7 +208,7 @@ class VPPStats(object):
             raise VPPStatsIOError()
         rv_len = self.api.stat_segment_vec_len(rv)
         for i in range(rv_len):
-            n = ffi.string(rv[i].name).decode()
+            n = ffi.string(rv[i].name).decode('utf-8')
             e = stat_entry_to_python(self.api, rv[i])
             if e is not None:
                 stats[n] = e

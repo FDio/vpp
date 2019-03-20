@@ -427,7 +427,7 @@ class VPP(object):
         self._api = VppApiDynamicMethodHolder()
         for name, msg in vpp_iterator(self.messages):
             n = name + '_' + msg.crc[2:]
-            i = self.transport.get_msg_index(n.encode())
+            i = self.transport.get_msg_index(n.encode('utf-8'))
             if i > 0:
                 self.id_msgdef[i] = msg
                 self.id_names[i] = name
@@ -447,9 +447,10 @@ class VPP(object):
 
     def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen,
                          do_async):
-        pfx = chroot_prefix.encode() if chroot_prefix else None
+        pfx = chroot_prefix.encode('utf-8') if chroot_prefix else None
 
-        rv = self.transport.connect(name.encode(), pfx, msg_handler, rx_qlen)
+        rv = self.transport.connect(name.encode('utf-8'), pfx,
+                                    msg_handler, rx_qlen)
         if rv != 0:
             raise VPPIOError(2, 'Connect failed')
         self.vpp_dictionary_maxid = self.transport.msg_table_max_index()
@@ -458,7 +459,7 @@ class VPP(object):
         # Initialise control ping
         crc = self.messages['control_ping'].crc
         self.control_ping_index = self.transport.get_msg_index(
-            ('control_ping' + '_' + crc[2:]).encode())
+            ('control_ping' + '_' + crc[2:]).encode('utf-8'))
         self.control_ping_msgdef = self.messages['control_ping']
         if self.async_thread:
             self.event_thread = threading.Thread(
