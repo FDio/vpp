@@ -260,13 +260,14 @@ acl_print_acl_x (acl_vector_print_func_t vpr, vlib_main_t * vm,
 		 acl_main_t * am, int acl_index)
 {
   acl_rule_t *r;
+  acl_rule_t *acl_rules = am->acls[acl_index].rules;
   u8 *out0 = format (0, "acl-index %u count %u tag {%s}\n", acl_index,
-		     am->acls[acl_index].count, am->acls[acl_index].tag);
+		     vec_len (acl_rules), am->acls[acl_index].tag);
   int j;
   vpr (vm, out0);
-  for (j = 0; j < am->acls[acl_index].count; j++)
+  for (j = 0; j < vec_len (acl_rules); j++)
     {
-      r = &am->acls[acl_index].rules[j];
+      r = &acl_rules[j];
       out0 = format (out0, "  %9d: %s ", j, r->is_ipv6 ? "ipv6" : "ipv4");
       out0 = format_acl_action (out0, r->is_permit);
       out0 = format (out0, " src %U/%d", format_ip46_address, &r->src,
@@ -457,7 +458,6 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	vec_free (a->rules);
     }
   a->rules = acl_new_rules;
-  a->count = count;
   memcpy (a->tag, tag, sizeof (a->tag));
   if (am->trace_acl > 255)
     warning_acl_print_acl (am->vlib_main, am, *acl_list_index);
@@ -2003,7 +2003,8 @@ send_acl_details (acl_main_t * am, vl_api_registration_t * reg,
   vl_api_acl_details_t *mp;
   vl_api_acl_rule_t *rules;
   int i;
-  int msg_size = sizeof (*mp) + sizeof (mp->r[0]) * acl->count;
+  acl_rule_t *acl_rules = acl->rules;
+  int msg_size = sizeof (*mp) + sizeof (mp->r[0]) * vec_len (acl_rules);
   void *oldheap = acl_set_heap (am);
 
   mp = vl_msg_api_alloc (msg_size);
@@ -2012,14 +2013,14 @@ send_acl_details (acl_main_t * am, vl_api_registration_t * reg,
 
   /* fill in the message */
   mp->context = context;
-  mp->count = htonl (acl->count);
+  mp->count = htonl (vec_len (acl_rules));
   mp->acl_index = htonl (acl - am->acls);
   memcpy (mp->tag, acl->tag, sizeof (mp->tag));
   // clib_memcpy (mp->r, acl->rules, acl->count * sizeof(acl->rules[0]));
   rules = mp->r;
-  for (i = 0; i < acl->count; i++)
+  for (i = 0; i < vec_len (acl_rules); i++)
     {
-      copy_acl_rule_to_api_rule (&rules[i], &acl->rules[i]);
+      copy_acl_rule_to_api_rule (&rules[i], &acl_rules[i]);
     }
 
   clib_mem_set_heap (oldheap);

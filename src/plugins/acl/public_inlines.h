@@ -292,8 +292,8 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
 		  u32 * r_rule_match_p, u32 * trace_bitmap)
 {
   int i;
-  acl_list_t *a;
   acl_rule_t *r;
+  acl_rule_t *acl_rules;
 
   if (pool_is_free_index (am->acls, acl_index))
     {
@@ -304,10 +304,10 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
       /* the ACL does not exist but is used for policy. Block traffic. */
       return 0;
     }
-  a = am->acls + acl_index;
-  for (i = 0; i < a->count; i++)
+  acl_rules = am->acls[acl_index].rules;
+  for (i = 0; i < vec_len(acl_rules); i++)
     {
-      r = a->rules + i;
+      r = &acl_rules[i];
       if (is_ip6 != r->is_ipv6)
 	{
 	  continue;
