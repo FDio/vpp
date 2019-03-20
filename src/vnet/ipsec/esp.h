@@ -220,17 +220,13 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
   op->len = data_len;
   op->dst = signature;
   op->hmac_trunc_len = sa->integ_trunc_size;
-#if 0
 
-  HMAC_Init_ex (ctx, key, key_len, md, NULL);
+  if (sa->use_esn)
+    {
+      op->len += 4;
+      clib_memcpy (data + data_len, &sa->seq_hi, 4);
+    }
 
-  HMAC_Update (ctx, data, data_len);
-
-  if (PREDICT_TRUE (use_esn))
-    HMAC_Update (ctx, (u8 *) & seq_hi, sizeof (seq_hi));
-  HMAC_Final (ctx, signature, &len);
-
-#endif
   vnet_crypto_process_ops (vm, op, 1);
   return sa->integ_trunc_size;
 }
