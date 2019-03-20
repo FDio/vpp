@@ -200,7 +200,6 @@ rdma_async_event_cleanup (rdma_device_t * rd)
 static clib_error_t *
 rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
 {
-  ethernet_mac_address_generate (rd->hwaddr);
   return ethernet_register_interface (vnm, rdma_device_class.index,
 				      rd->dev_instance, rd->hwaddr,
 				      &rd->hw_if_index, rdma_flag_change);
@@ -364,6 +363,8 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd)
 			    IBV_ACCESS_LOCAL_WRITE)) == 0)
     return clib_error_return_unix (0, "Register MR Failed");
 
+  ethernet_mac_address_generate (rd->hwaddr);
+
   struct raw_eth_flow_attr
   {
     struct ibv_flow_attr attr;
@@ -374,6 +375,19 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd)
   fa.attr.port = 1;
   fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
   fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
+
+  if (rd->flags & RDMA_DEVICE_F_UNICAST)
+    {
+      /*
+       * restrict packets steering to our MAC
+       * allows to share a single HW NIC with multiple RDMA ifaces
+       * and/or Linux, but breaks broadcast/multicast L2
+       */
+      memcpy (fa.spec_eth.val.dst_mac, rd->hwaddr,
+	      sizeof (fa.spec_eth.val.dst_mac));
+      memset (fa.spec_eth.mask.dst_mac, 0xff,
+	      sizeof (fa.spec_eth.mask.dst_mac));
+    }
 
   if ((rd->flow = ibv_create_flow (rd->rxqs[0].qp, &fa.attr)) == 0)
     return clib_error_return_unix (0, "create Flow Failed");
@@ -416,7 +430,9 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   if (s2 == 0 || strncmp ((char *) s2, "mlx5_core", 9) != 0)
     {
-      args->error = clib_error_return (0, "invalid interface");
+      args->error =
+	clib_error_return (0,
+			   "invalid interface (only mlx5 supported for now)");
       goto err0;
     }
 
@@ -455,6 +471,9 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
       if ((rd->ctx = ibv_open_device (dev_list[i])))
 	break;
     }
+
+  if (args->unicast)
+    rd->flags |= RDMA_DEVICE_F_UNICAST;
 
   if ((args->error = rdma_dev_init (vm, rd)))
     goto err2;

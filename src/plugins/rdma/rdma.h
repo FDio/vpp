@@ -29,7 +29,8 @@
   _(3, VA_DMA, "vaddr-dma") \
   _(4, LINK_UP, "link-up") \
   _(5, SHARED_TXQ_LOCK, "shared-txq-lock") \
-  _(6, ELOG, "elog")
+  _(6, ELOG, "elog") \
+  _(7, UNICAST, "unicast")
 
 enum
 {
@@ -95,6 +96,7 @@ extern rdma_main_t rdma_main;
 typedef struct
 {
   u8 *ifname;
+  int unicast;
   /* return */
   int rv;
   u32 sw_if_index;

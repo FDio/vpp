@@ -43,6 +43,8 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "name %s", &args.ifname))
 	;
+      else if (unformat (line_input, "unicast"))
+	args.unicast = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -59,7 +61,7 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (rdma_create_command, static) = {
   .path = "create interface rdma",
-  .short_help = "create interface rdma <name ifname>",
+  .short_help = "create interface rdma <name ifname> [unicast]",
   .function = rdma_create_command_fn,
 };
 /* *INDENT-ON* */
