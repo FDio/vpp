@@ -1808,6 +1808,10 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index0, &next0, p0);
 	    }
+	  else
+	    {
+	      p0->error = error_node->errors[error0];
+	    }
 	  if (PREDICT_TRUE (error1 == IP6_ERROR_NONE))
 	    {
 	      p1->current_data -= rw_len1;
@@ -1821,6 +1825,10 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 		  (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index1, &next1, p1);
+	    }
+	  else
+	    {
+	      p1->error = error_node->errors[error1];
 	    }
 
 	  /* Guess we are only writing on simple Ethernet header. */
@@ -1954,6 +1962,10 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index0, &next0, p0);
 	    }
+	  else
+	    {
+	      p0->error = error_node->errors[error0];
+	    }
 
 	  if (is_midchain)
 	    {
@@ -1968,8 +1980,6 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					  &ip0->dst_address.as_u32[3],
 					  (u8 *) ip0);
 	    }
-
-	  p0->error = error_node->errors[error0];
 
 	  from += 1;
 	  n_left_from -= 1;
