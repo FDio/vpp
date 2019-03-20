@@ -28,12 +28,12 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
 					     vlib_node_runtime_t * node,
 					     vlib_frame_t * frame)
 {
-  rdma_main_t *mm = &rdma_main;
-  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
-  rdma_device_t *md = pool_elt_at_index (mm->devices, rd->dev_instance);
+  rdma_main_t *rm = &rdma_main;
+  vnet_interface_output_runtime_t *ord = (void *) node->runtime_data;
+  rdma_device_t *rd = pool_elt_at_index (rm->devices, ord->dev_instance);
   u32 thread_index = vm->thread_index;
   u8 qid = thread_index;
-  rdma_txq_t *txq = vec_elt_at_index (md->txqs, qid % vec_len (md->txqs));
+  rdma_txq_t *txq = vec_elt_at_index (rd->txqs, qid % vec_len (rd->txqs));
   u32 *buffers = vlib_frame_vector_args (frame);
   u16 n_left;
   int n_free;
@@ -63,7 +63,7 @@ retry:
       vlib_buffer_t *b = vlib_get_buffer (vm, buffers[0]);
       sg_entry.addr = vlib_buffer_get_current_va (b);
       sg_entry.length = b->current_length;
-      sg_entry.lkey = md->mr->lkey;
+      sg_entry.lkey = rd->mr->lkey;
 
       memset (&wr, 0, sizeof (wr));
       wr.num_sge = 1;

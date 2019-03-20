@@ -22,7 +22,7 @@
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "Mellanox ConnectX-5 Device Plugin",
+  .description = "RDMA (ibverb) Device Plugin",
 };
 /* *INDENT-ON* */
 

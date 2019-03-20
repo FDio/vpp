@@ -71,8 +71,8 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
   vnet_hw_interface_t *hw;
-  rdma_main_t *am = &rdma_main;
-  rdma_device_t *ad;
+  rdma_main_t *rm = &rdma_main;
+  rdma_device_t *rd;
   vnet_main_t *vnm = vnet_get_main ();
 
   /* Get a line of input. */
@@ -100,9 +100,9 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (hw == NULL || rdma_device_class.index != hw->dev_class_index)
     return clib_error_return (0, "not an AVF interface");
 
-  ad = pool_elt_at_index (am->devices, hw->dev_instance);
+  rd = pool_elt_at_index (rm->devices, hw->dev_instance);
 
-  rdma_delete_if (vm, ad);
+  rdma_delete_if (vm, rd);
 
   return 0;
 }

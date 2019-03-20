@@ -32,75 +32,75 @@ rdma_main_t rdma_main;
 static u32
 rdma_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 {
-  rdma_main_t *am = &rdma_main;
-  vlib_log_warn (am->log_class, "TODO");
+  rdma_main_t *rm = &rdma_main;
+  vlib_log_warn (rm->log_class, "TODO");
   return 0;
 }
 
 #define rdma_log_debug(dev, f, ...) \
 {                                                                   \
   vlib_log(VLIB_LOG_LEVEL_DEBUG, rdma_main.log_class, "%U: " f,      \
-	   format_vlib_pci_addr, &md->pci_addr, ##__VA_ARGS__);     \
+	   format_vlib_pci_addr, &rd->pci_addr, ##__VA_ARGS__);     \
 };
 
 
 void
-rdma_delete_if (vlib_main_t * vm, rdma_device_t * md)
+rdma_delete_if (vlib_main_t * vm, rdma_device_t * rd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   rdma_main_t *axm = &rdma_main;
   rdma_rxq_t *rxq;
   rdma_txq_t *txq;
 
-  if (md->hw_if_index)
+  if (rd->hw_if_index)
     {
-      vnet_hw_interface_set_flags (vnm, md->hw_if_index, 0);
-      vnet_hw_interface_unassign_rx_thread (vnm, md->hw_if_index, 0);
-      ethernet_delete_interface (vnm, md->hw_if_index);
+      vnet_hw_interface_set_flags (vnm, rd->hw_if_index, 0);
+      vnet_hw_interface_unassign_rx_thread (vnm, rd->hw_if_index, 0);
+      ethernet_delete_interface (vnm, rd->hw_if_index);
     }
 #define _(fn, arg) if (arg) \
   { \
     int rv; \
     if ((rv = fn (arg))) \
-       rdma_log_debug (md, #fn "() failed (rv = %d)", rv); \
+       rdma_log_debug (rd, #fn "() failed (rv = %d)", rv); \
   }
 
-  _(ibv_destroy_flow, md->flow);
-  _(ibv_dereg_mr, md->mr);
-  vec_foreach (txq, md->txqs)
+  _(ibv_destroy_flow, rd->flow);
+  _(ibv_dereg_mr, rd->mr);
+  vec_foreach (txq, rd->txqs)
   {
     _(ibv_destroy_qp, txq->qp);
     _(ibv_destroy_cq, txq->cq);
   }
-  vec_foreach (rxq, md->rxqs)
+  vec_foreach (rxq, rd->rxqs)
   {
     _(ibv_destroy_qp, rxq->qp);
     _(ibv_destroy_cq, rxq->cq);
   }
-  _(ibv_dealloc_pd, md->pd);
-  _(ibv_close_device, md->ctx);
+  _(ibv_dealloc_pd, rd->pd);
+  _(ibv_close_device, rd->ctx);
 #undef _
 
-  clib_error_free (md->error);
+  clib_error_free (rd->error);
 
-  vec_free (md->rxqs);
-  vec_free (md->txqs);
-  pool_put (axm->devices, md);
+  vec_free (rd->rxqs);
+  vec_free (rd->txqs);
+  pool_put (axm->devices, rd);
 }
 
 static clib_error_t *
-rdma_rxq_init (vlib_main_t * vm, rdma_device_t * md, u16 qid, u32 n_desc)
+rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 {
   rdma_rxq_t *rxq;
   struct ibv_qp_init_attr qpia;
   struct ibv_qp_attr qpa;
   int qp_flags;
 
-  vec_validate_aligned (md->rxqs, qid, CLIB_CACHE_LINE_BYTES);
-  rxq = vec_elt_at_index (md->rxqs, qid);
+  vec_validate_aligned (rd->rxqs, qid, CLIB_CACHE_LINE_BYTES);
+  rxq = vec_elt_at_index (rd->rxqs, qid);
   rxq->size = n_desc;
 
-  if ((rxq->cq = ibv_create_cq (md->ctx, n_desc, NULL, NULL, 0)) == 0)
+  if ((rxq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
     return clib_error_return_unix (0, "Create CQ Failed");
 
   memset (&qpia, 0, sizeof (qpia));
@@ -110,7 +110,7 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * md, u16 qid, u32 n_desc)
   qpia.cap.max_recv_wr = n_desc;
   qpia.cap.max_recv_sge = 1;
 
-  if ((rxq->qp = ibv_create_qp (md->pd, &qpia)) == 0)
+  if ((rxq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
     return clib_error_return_unix (0, "Queue Pair create failed");
 
   memset (&qpa, 0, sizeof (qpa));
@@ -130,18 +130,18 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * md, u16 qid, u32 n_desc)
 }
 
 static clib_error_t *
-rdma_txq_init (vlib_main_t * vm, rdma_device_t * md, u16 qid, u32 n_desc)
+rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 {
   rdma_txq_t *txq;
   struct ibv_qp_init_attr qpia;
   struct ibv_qp_attr qpa;
   int qp_flags;
 
-  vec_validate_aligned (md->txqs, qid, CLIB_CACHE_LINE_BYTES);
-  txq = vec_elt_at_index (md->txqs, qid);
+  vec_validate_aligned (rd->txqs, qid, CLIB_CACHE_LINE_BYTES);
+  txq = vec_elt_at_index (rd->txqs, qid);
   txq->size = n_desc;
 
-  if ((txq->cq = ibv_create_cq (md->ctx, n_desc, NULL, NULL, 0)) == 0)
+  if ((txq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
     return clib_error_return_unix (0, "Create CQ Failed");
 
   memset (&qpia, 0, sizeof (qpia));
@@ -151,7 +151,7 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * md, u16 qid, u32 n_desc)
   qpia.cap.max_send_wr = n_desc;
   qpia.cap.max_send_sge = 1;
 
-  if ((txq->qp = ibv_create_qp (md->pd, &qpia)) == 0)
+  if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
     return clib_error_return_unix (0, "Queue Pair create failed");
 
   memset (&qpa, 0, sizeof (qpa));
@@ -176,27 +176,27 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * md, u16 qid, u32 n_desc)
 }
 
 static clib_error_t *
-rdma_dev_init (vlib_main_t * vm, rdma_device_t * md)
+rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd)
 {
   clib_error_t *err;
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   u16 i;
 
-  if (md->ctx == 0)
+  if (rd->ctx == 0)
     return clib_error_return_unix (0, "Device Open Failed");
 
-  if ((md->pd = ibv_alloc_pd (md->ctx)) == 0)
+  if ((rd->pd = ibv_alloc_pd (rd->ctx)) == 0)
     return clib_error_return_unix (0, "PD Alloc Failed");
 
-  if ((err = rdma_rxq_init (vm, md, 0, 512)))
+  if ((err = rdma_rxq_init (vm, rd, 0, 512)))
     return err;
 
   for (i = 0; i < tm->n_vlib_mains; i++)
-    if ((err = rdma_txq_init (vm, md, i, 512)))
+    if ((err = rdma_txq_init (vm, rd, i, 512)))
       return err;
 
-  if ((md->mr = ibv_reg_mr (md->pd, (void *) bm->buffer_mem_start,
+  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
 			    bm->buffer_mem_size,
 			    IBV_ACCESS_LOCAL_WRITE)) == 0)
     return clib_error_return_unix (0, "Register MR Failed");
@@ -223,15 +223,15 @@ void
 rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  rdma_main_t *mm = &rdma_main;
-  rdma_device_t *md = 0;
+  rdma_main_t *rm = &rdma_main;
+  rdma_device_t *rd = 0;
   struct ibv_device **dev_list = 0;
   int n_devs;
   u8 *s = 0, *s2 = 0;
 
-  pool_get_zero (mm->devices, md);
-  md->dev_instance = md - mm->devices;
-  md->per_interface_next_index = ~0;
+  pool_get_zero (rm->devices, rd);
+  rd->dev_instance = rd - rm->devices;
+  rd->per_interface_next_index = ~0;
 
   /* check if device exist and if it is bound to mlx5_core */
   s = format (s, "/sys/class/net/%s/device/driver/module%c", args->ifname, 0);
@@ -246,7 +246,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   /* extract PCI address */
   vec_reset_length (s);
   s = format (s, "/sys/class/net/%s/device%c", args->ifname, 0);
-  if (sysfs_path_to_pci_addr ((char *) s, &md->pci_addr) == 0)
+  if (sysfs_path_to_pci_addr ((char *) s, &rd->pci_addr) == 0)
     {
       args->error = clib_error_return (0, "cannot find PCI address");
       goto error;
@@ -271,14 +271,14 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
       if (sysfs_path_to_pci_addr ((char *) s, &addr) == 0)
 	continue;
 
-      if (addr.as_u32 != md->pci_addr.as_u32)
+      if (addr.as_u32 != rd->pci_addr.as_u32)
 	continue;
 
-      if ((md->ctx = ibv_open_device (dev_list[i])))
+      if ((rd->ctx = ibv_open_device (dev_list[i])))
 	break;
     }
 
-  if ((args->error = rdma_dev_init (vm, md)))
+  if ((args->error = rdma_dev_init (vm, rd)))
     goto error;
 
   struct raw_eth_flow_attr
@@ -293,35 +293,35 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
   fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
 
-  if ((md->flow = ibv_create_flow (md->rxqs[0].qp, &fa.attr)) == 0)
+  if ((rd->flow = ibv_create_flow (rd->rxqs[0].qp, &fa.attr)) == 0)
     {
       args->error = clib_error_return_unix (0, "create Flow Failed");
       goto error;
     }
 
   /* create interface */
-  ethernet_mac_address_generate (md->hwaddr);
+  ethernet_mac_address_generate (rd->hwaddr);
   if ((args->error =
        ethernet_register_interface (vnm, rdma_device_class.index,
-				    md->dev_instance, md->hwaddr,
-				    &md->hw_if_index, rdma_flag_change)))
+				    rd->dev_instance, rd->hwaddr,
+				    &rd->hw_if_index, rdma_flag_change)))
     goto error;
 
-  vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, md->hw_if_index);
-  args->sw_if_index = md->sw_if_index = sw->sw_if_index;
+  vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, rd->hw_if_index);
+  args->sw_if_index = rd->sw_if_index = sw->sw_if_index;
 
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, md->hw_if_index);
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, rd->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, md->hw_if_index,
+  vnet_hw_interface_set_input_node (vnm, rd->hw_if_index,
 				    rdma_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, md->hw_if_index, 0, ~0);
+  vnet_hw_interface_assign_rx_thread (vnm, rd->hw_if_index, 0, ~0);
 
 error:
   if (args->error)
     {
-      rdma_delete_if (vm, md);
+      rdma_delete_if (vm, rd);
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
-      vlib_log_err (mm->log_class, "%U", format_clib_error, args->error);
+      vlib_log_err (rm->log_class, "%U", format_clib_error, args->error);
     }
   vec_free (s);
   vec_free (s2);
@@ -333,23 +333,23 @@ static clib_error_t *
 rdma_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
-  rdma_main_t *am = &rdma_main;
-  rdma_device_t *ad = vec_elt_at_index (am->devices, hi->dev_instance);
+  rdma_main_t *rm = &rdma_main;
+  rdma_device_t *rd = vec_elt_at_index (rm->devices, hi->dev_instance);
   uword is_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
 
-  if (ad->flags & RDMA_DEVICE_F_ERROR)
+  if (rd->flags & RDMA_DEVICE_F_ERROR)
     return clib_error_return (0, "device is in error state");
 
   if (is_up)
     {
-      vnet_hw_interface_set_flags (vnm, ad->hw_if_index,
+      vnet_hw_interface_set_flags (vnm, rd->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
-      ad->flags |= RDMA_DEVICE_F_ADMIN_UP;
+      rd->flags |= RDMA_DEVICE_F_ADMIN_UP;
     }
   else
     {
-      vnet_hw_interface_set_flags (vnm, ad->hw_if_index, 0);
-      ad->flags &= ~RDMA_DEVICE_F_ADMIN_UP;
+      vnet_hw_interface_set_flags (vnm, rd->hw_if_index, 0);
+      rd->flags &= ~RDMA_DEVICE_F_ADMIN_UP;
     }
   return 0;
 }
@@ -358,18 +358,18 @@ static void
 rdma_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
 			      u32 node_index)
 {
-  rdma_main_t *am = &rdma_main;
+  rdma_main_t *rm = &rdma_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  rdma_device_t *ad = pool_elt_at_index (am->devices, hw->dev_instance);
+  rdma_device_t *rd = pool_elt_at_index (rm->devices, hw->dev_instance);
 
   /* Shut off redirection */
   if (node_index == ~0)
     {
-      ad->per_interface_next_index = node_index;
+      rd->per_interface_next_index = node_index;
       return;
     }
 
-  ad->per_interface_next_index =
+  rd->per_interface_next_index =
     vlib_node_add_next (vlib_get_main (), rdma_input_node.index, node_index);
 }
 
@@ -382,7 +382,7 @@ static char *rdma_tx_func_error_strings[] = {
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (rdma_device_class,) =
 {
-  .name = "MLX interface",
+  .name = "RDMA interface",
   .format_device = format_rdma_device,
   .format_device_name = format_rdma_device_name,
   .admin_up_down_function = rdma_interface_admin_up_down,
@@ -395,9 +395,9 @@ VNET_DEVICE_CLASS (rdma_device_class,) =
 clib_error_t *
 rdma_init (vlib_main_t * vm)
 {
-  rdma_main_t *am = &rdma_main;
+  rdma_main_t *rm = &rdma_main;
 
-  am->log_class = vlib_log_register_class ("rdma", 0);
+  rm->log_class = vlib_log_register_class ("rdma", 0);
 
   return 0;
 }

@@ -43,9 +43,9 @@ static __clib_unused char *rdma_input_error_strings[] = {
 
 static_always_inline uword
 rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame, rdma_device_t * md, u16 qid)
+			  vlib_frame_t * frame, rdma_device_t * rd, u16 qid)
 {
-  rdma_rxq_t *rxq = vec_elt_at_index (md->rxqs, qid);
+  rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
   u32 n_trace;
   int n_rx_packets;
   struct ibv_wc wc[VLIB_FRAME_SIZE];
@@ -58,8 +58,8 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (n_rx_packets <= 0)
     goto refill;
 
-  if (PREDICT_FALSE (md->per_interface_next_index != ~0))
-    next_index = md->per_interface_next_index;
+  if (PREDICT_FALSE (rd->per_interface_next_index != ~0))
+    next_index = rd->per_interface_next_index;
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
   for (i = 0; i < n_rx_packets; i++)
@@ -67,7 +67,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       u32 bi = wc[i].wr_id;
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
       b->current_length = wc[i].byte_len;
-      vnet_buffer (b)->sw_if_index[VLIB_RX] = md->sw_if_index;
+      vnet_buffer (b)->sw_if_index[VLIB_RX] = rd->sw_if_index;
       vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
       to_next[i] = bi;
     }
@@ -85,7 +85,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_trace_buffer (vm, node, next_index, b, /* follow_chain */ 0);
 	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	  tr->next_index = next_index;
-	  tr->hw_if_index = md->hw_if_index;
+	  tr->hw_if_index = rd->hw_if_index;
 
 	  /* next */
 	  n_trace--;
@@ -106,8 +106,8 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
 
       ef = vlib_frame_scalar_args (f);
-      ef->sw_if_index = md->sw_if_index;
-      ef->hw_if_index = md->hw_if_index;
+      ef->sw_if_index = rd->sw_if_index;
+      ef->hw_if_index = rd->hw_if_index;
       //f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
     }
 
@@ -127,7 +127,7 @@ refill:
       n_alloc = vlib_buffer_alloc (vm, buffers, n_alloc);
 
       sg_entry.length = vlib_buffer_get_default_data_size (vm);
-      sg_entry.lkey = md->mr->lkey;
+      sg_entry.lkey = rd->mr->lkey;
       wr.num_sge = 1;
       wr.sg_list = &sg_entry;
       wr.next = NULL;
@@ -151,17 +151,17 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
 				vlib_frame_t * frame)
 {
   u32 n_rx = 0;
-  rdma_main_t *am = &rdma_main;
+  rdma_main_t *rm = &rdma_main;
   vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
   foreach_device_and_queue (dq, rt->devices_and_queues)
   {
-    rdma_device_t *ad;
-    ad = vec_elt_at_index (am->devices, dq->dev_instance);
-    if ((ad->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
+    rdma_device_t *rd;
+    rd = vec_elt_at_index (rm->devices, dq->dev_instance);
+    if ((rd->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
       continue;
-    n_rx += rdma_device_input_inline (vm, node, frame, ad, dq->queue_id);
+    n_rx += rdma_device_input_inline (vm, node, frame, rd, dq->queue_id);
   }
   return n_rx;
 }

@@ -26,20 +26,20 @@ u8 *
 format_rdma_device_name (u8 * s, va_list * args)
 {
   u32 i = va_arg (*args, u32);
-  rdma_main_t *am = &rdma_main;
-  rdma_device_t *ad = vec_elt_at_index (am->devices, i);
+  rdma_main_t *rm = &rdma_main;
+  rdma_device_t *rd = vec_elt_at_index (rm->devices, i);
 
-  s = format (s, "rdma-%u", ad->dev_instance);
+  s = format (s, "rdma-%u", rd->dev_instance);
   return s;
 }
 
 u8 *
 format_rdma_device_flags (u8 * s, va_list * args)
 {
-  rdma_device_t *ad = va_arg (*args, rdma_device_t *);
+  rdma_device_t *rd = va_arg (*args, rdma_device_t *);
   u8 *t = 0;
 
-#define _(a, b, c) if (ad->flags & (1 << a)) \
+#define _(a, b, c) if (rd->flags & (1 << a)) \
 t = format (t, "%s%s", t ? " ":"", c);
   foreach_rdma_device_flags
 #undef _
@@ -52,14 +52,14 @@ u8 *
 format_rdma_device (u8 * s, va_list * args)
 {
   u32 i = va_arg (*args, u32);
-  rdma_main_t *am = &rdma_main;
-  rdma_device_t *ad = vec_elt_at_index (am->devices, i);
+  rdma_main_t *rm = &rdma_main;
+  rdma_device_t *rd = vec_elt_at_index (rm->devices, i);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "flags: %U", format_rdma_device_flags, ad);
-  if (ad->error)
+  s = format (s, "flags: %U", format_rdma_device_flags, rd);
+  if (rd->error)
     s = format (s, "\n%Uerror %U", format_white_space, indent,
-		format_clib_error, ad->error);
+		format_clib_error, rd->error);
 
   return s;
 }

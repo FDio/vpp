@@ -100,7 +100,7 @@ typedef struct
 } rdma_create_if_args_t;
 
 void rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args);
-void rdma_delete_if (vlib_main_t * vm, rdma_device_t * ad);
+void rdma_delete_if (vlib_main_t * vm, rdma_device_t * rd);
 
 extern vlib_node_registration_t rdma_input_node;
 extern vnet_device_class_t rdma_device_class;
