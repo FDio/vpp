@@ -100,7 +100,8 @@ typedef struct
   uword *spd_index_by_spd_id;
   uword *spd_index_by_sw_if_index;
   uword *sa_index_by_sa_id;
-  uword *ipsec_if_pool_index_by_key;
+  uword *ipsec4_if_pool_index_by_key;
+  uword *ipsec6_if_pool_index_by_key;
   uword *ipsec_if_real_dev_by_show_dev;
 
   /* node indices */
@@ -158,7 +159,8 @@ extern vlib_node_registration_t esp6_encrypt_node;
 extern vlib_node_registration_t esp6_decrypt_node;
 extern vlib_node_registration_t ah6_encrypt_node;
 extern vlib_node_registration_t ah6_decrypt_node;
-extern vlib_node_registration_t ipsec_if_input_node;
+extern vlib_node_registration_t ipsec4_if_input_node;
+extern vlib_node_registration_t ipsec6_if_input_node;
 
 /*
  * functions

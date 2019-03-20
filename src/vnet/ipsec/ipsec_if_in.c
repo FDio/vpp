@@ -63,8 +63,8 @@ format_ipsec_if_input_trace (u8 * s, va_list * args)
 
 
 always_inline uword
-ipsec_if_input_inline (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		       vlib_frame_t * from_frame, int is_ip6)
 {
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
@@ -91,10 +91,16 @@ ipsec_if_input_inline (vlib_main_t * vm,
 
   u32 last_sw_if_index = ~0;
   u32 last_tunnel_id = ~0;
-  u64 last_key = ~0;
+  ipsec4_tunnel_key_t last_key4;
+  ipsec6_tunnel_key_t last_key6;
 
   vlib_combined_counter_main_t *rx_counter;
   vlib_combined_counter_main_t *drop_counter;
+
+  if (is_ip6)
+    clib_memset (&last_key6, 0xff, sizeof (last_key6));
+  else
+    last_key4.as_u64 = ~0;
 
   rx_counter = vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
   drop_counter = vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_DROP;
@@ -102,13 +108,15 @@ ipsec_if_input_inline (vlib_main_t * vm,
   while (n_left_from >= 2)
     {
       u32 sw_if_index0, sw_if_index1;
-      ip4_header_t *ip0, *ip1;
+      ip4_header_t *ip40, *ip41;
+      ip6_header_t *ip60, *ip61;
       esp_header_t *esp0, *esp1;
       u32 len0, len1;
       u16 buf_adv0, buf_adv1;
       u32 tid0, tid1;
       ipsec_tunnel_if_t *t0, *t1;
-      u64 key0, key1;
+      ipsec4_tunnel_key_t key40, key41;
+      ipsec6_tunnel_key_t key60, key61;
 
       if (n_left_from >= 4)
 	{
@@ -118,33 +126,48 @@ ipsec_if_input_inline (vlib_main_t * vm,
 	  CLIB_PREFETCH (b[3]->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      ip0 = (ip4_header_t *) (b[0]->data + vnet_buffer (b[0])->l3_hdr_offset);
-      ip1 = (ip4_header_t *) (b[1]->data + vnet_buffer (b[1])->l3_hdr_offset);
+      ip40 =
+	(ip4_header_t *) (b[0]->data + vnet_buffer (b[0])->l3_hdr_offset);
+      ip41 =
+	(ip4_header_t *) (b[1]->data + vnet_buffer (b[1])->l3_hdr_offset);
 
-      /* NAT UDP port 4500 case, don't advance any more */
-      if (ip0->protocol == IP_PROTOCOL_UDP)
+      if (is_ip6)
 	{
-	  esp0 =
-	    (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0) +
-			      sizeof (udp_header_t));
-	  buf_adv0 = 0;
+	  ip60 = (ip6_header_t *) ip40;
+	  ip61 = (ip6_header_t *) ip41;
+	  esp0 = (esp_header_t *) ((u8 *) ip60 + sizeof (ip6_header_t));
+	  esp1 = (esp_header_t *) ((u8 *) ip61 + sizeof (ip6_header_t));
+	  buf_adv0 = sizeof (ip6_header_t);
+	  buf_adv1 = sizeof (ip6_header_t);
 	}
       else
 	{
-	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
-	  buf_adv0 = ip4_header_bytes (ip0);
-	}
-      if (ip1->protocol == IP_PROTOCOL_UDP)
-	{
-	  esp1 =
-	    (esp_header_t *) ((u8 *) ip1 + ip4_header_bytes (ip1) +
-			      sizeof (udp_header_t));
-	  buf_adv1 = 0;
-	}
-      else
-	{
-	  esp1 = (esp_header_t *) ((u8 *) ip1 + ip4_header_bytes (ip1));
-	  buf_adv1 = ip4_header_bytes (ip1);
+	  /* NAT UDP port 4500 case, don't advance any more */
+	  if (ip40->protocol == IP_PROTOCOL_UDP)
+	    {
+	      esp0 =
+		(esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40) +
+				  sizeof (udp_header_t));
+	      buf_adv0 = 0;
+	    }
+	  else
+	    {
+	      esp0 = (esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40));
+	      buf_adv0 = ip4_header_bytes (ip40);
+	    }
+	  /* NAT UDP port 4500 case, don't advance any more */
+	  if (ip41->protocol == IP_PROTOCOL_UDP)
+	    {
+	      esp1 =
+		(esp_header_t *) ((u8 *) ip41 + ip4_header_bytes (ip41) +
+				  sizeof (udp_header_t));
+	      buf_adv1 = 0;
+	    }
+	  else
+	    {
+	      esp1 = (esp_header_t *) ((u8 *) ip41 + ip4_header_bytes (ip41));
+	      buf_adv1 = ip4_header_bytes (ip41);
+	    }
 	}
 
       vlib_buffer_advance (b[0], buf_adv0);
@@ -153,27 +176,58 @@ ipsec_if_input_inline (vlib_main_t * vm,
       len0 = vlib_buffer_length_in_chain (vm, b[0]);
       len1 = vlib_buffer_length_in_chain (vm, b[1]);
 
-      key0 = (u64) ip0->src_address.as_u32 << 32 | (u64) esp0->spi;
-      key1 = (u64) ip1->src_address.as_u32 << 32 | (u64) esp1->spi;
+      if (is_ip6)
+	{
+	  key60.remote_ip = ip60->src_address;
+	  key60.spi = esp0->spi;
 
-      if (key0 == last_key)
-	{
-	  tid0 = last_tunnel_id;
-	}
-      else
-	{
-	  uword *p = hash_get (im->ipsec_if_pool_index_by_key, key0);
-	  if (p)
+	  if (memcmp (&key60, &last_key6, sizeof (last_key6)) == 0)
 	    {
-	      tid0 = p[0];
-	      last_tunnel_id = tid0;
-	      last_key = key0;
+	      tid0 = last_tunnel_id;
 	    }
 	  else
 	    {
-	      n_no_tunnel++;
-	      next[0] = IPSEC_INPUT_NEXT_DROP;
-	      goto pkt1;
+	      uword *p =
+		hash_get_mem (im->ipsec6_if_pool_index_by_key, &key60);
+	      if (p)
+		{
+		  tid0 = p[0];
+		  last_tunnel_id = tid0;
+		  clib_memcpy_fast (&last_key6, &key60, sizeof (key60));
+		}
+	      else
+		{
+		  n_no_tunnel++;
+		  next[0] = IPSEC_INPUT_NEXT_DROP;
+		  goto pkt1;
+		}
+	    }
+	}
+      else			/* !is_ip6 */
+	{
+	  key40.remote_ip = ip40->src_address.as_u32;
+	  key40.spi = esp0->spi;
+
+	  if (key40.as_u64 == last_key4.as_u64)
+	    {
+	      tid0 = last_tunnel_id;
+	    }
+	  else
+	    {
+	      uword *p =
+		hash_get (im->ipsec4_if_pool_index_by_key, key40.as_u64);
+	      if (p)
+		{
+		  tid0 = p[0];
+		  last_tunnel_id = tid0;
+		  last_key4.as_u64 = key40.as_u64;
+		}
+	      else
+		{
+		  n_no_tunnel++;
+		  next[0] = IPSEC_INPUT_NEXT_DROP;
+		  goto pkt1;
+		}
 	    }
 	}
 
@@ -220,24 +274,58 @@ ipsec_if_input_inline (vlib_main_t * vm,
 	}
 
     pkt1:
-      if (key1 == last_key)
+      if (is_ip6)
 	{
-	  tid1 = last_tunnel_id;
-	}
-      else
-	{
-	  uword *p = hash_get (im->ipsec_if_pool_index_by_key, key1);
-	  if (p)
+	  key61.remote_ip = ip61->src_address;
+	  key61.spi = esp1->spi;
+
+	  if (memcmp (&key61, &last_key6, sizeof (last_key6)) == 0)
 	    {
-	      tid1 = p[0];
-	      last_tunnel_id = tid1;
-	      last_key = key1;
+	      tid1 = last_tunnel_id;
 	    }
 	  else
 	    {
-	      n_no_tunnel++;
-	      next[1] = IPSEC_INPUT_NEXT_DROP;
-	      goto trace1;
+	      uword *p =
+		hash_get_mem (im->ipsec6_if_pool_index_by_key, &key61);
+	      if (p)
+		{
+		  tid1 = p[0];
+		  last_tunnel_id = tid1;
+		  clib_memcpy_fast (&last_key6, &key61, sizeof (key61));
+		}
+	      else
+		{
+		  n_no_tunnel++;
+		  next[1] = IPSEC_INPUT_NEXT_DROP;
+		  goto trace1;
+		}
+	    }
+	}
+      else			/* !is_ip6 */
+	{
+	  key41.remote_ip = ip41->src_address.as_u32;
+	  key41.spi = esp1->spi;
+
+	  if (key41.as_u64 == last_key4.as_u64)
+	    {
+	      tid1 = last_tunnel_id;
+	    }
+	  else
+	    {
+	      uword *p =
+		hash_get (im->ipsec4_if_pool_index_by_key, key41.as_u64);
+	      if (p)
+		{
+		  tid1 = p[0];
+		  last_tunnel_id = tid1;
+		  last_key4.as_u64 = key41.as_u64;
+		}
+	      else
+		{
+		  n_no_tunnel++;
+		  next[1] = IPSEC_INPUT_NEXT_DROP;
+		  goto trace1;
+		}
 	    }
 	}
 
@@ -284,16 +372,16 @@ ipsec_if_input_inline (vlib_main_t * vm,
 	}
 
     trace1:
-      if (is_trace)
+      if (PREDICT_FALSE (is_trace))
 	{
-	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      ipsec_if_input_trace_t *tr =
 		vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	      tr->spi = clib_host_to_net_u32 (esp0->spi);
 	      tr->seq = clib_host_to_net_u32 (esp0->seq);
 	    }
-	  if (PREDICT_FALSE (b[1]->flags & VLIB_BUFFER_IS_TRACED))
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      ipsec_if_input_trace_t *tr =
 		vlib_add_trace (vm, node, b[1], sizeof (*tr));
@@ -310,28 +398,40 @@ ipsec_if_input_inline (vlib_main_t * vm,
   while (n_left_from > 0)
     {
       u32 sw_if_index0;
-      ip4_header_t *ip0;
+      ip4_header_t *ip40;
+      ip6_header_t *ip60;
       esp_header_t *esp0;
       u32 len0;
       u16 buf_adv0;
       u32 tid0;
       ipsec_tunnel_if_t *t0;
-      u64 key0;
+      ipsec4_tunnel_key_t key40;
+      ipsec6_tunnel_key_t key60;
 
-      ip0 = (ip4_header_t *) (b[0]->data + vnet_buffer (b[0])->l3_hdr_offset);
+      ip40 =
+	(ip4_header_t *) (b[0]->data + vnet_buffer (b[0])->l3_hdr_offset);
 
-      /* NAT UDP port 4500 case, don't advance any more */
-      if (ip0->protocol == IP_PROTOCOL_UDP)
+      if (is_ip6)
 	{
-	  esp0 =
-	    (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0) +
-			      sizeof (udp_header_t));
-	  buf_adv0 = 0;
+	  ip60 = (ip6_header_t *) ip40;
+	  esp0 = (esp_header_t *) ((u8 *) ip60 + sizeof (ip6_header_t));
+	  buf_adv0 = sizeof (ip6_header_t);
 	}
       else
 	{
-	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
-	  buf_adv0 = ip4_header_bytes (ip0);
+	  /* NAT UDP port 4500 case, don't advance any more */
+	  if (ip40->protocol == IP_PROTOCOL_UDP)
+	    {
+	      esp0 =
+		(esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40) +
+				  sizeof (udp_header_t));
+	      buf_adv0 = 0;
+	    }
+	  else
+	    {
+	      esp0 = (esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40));
+	      buf_adv0 = ip4_header_bytes (ip40);
+	    }
 	}
 
       /* stats for the tunnel include all the data after the IP header
@@ -339,25 +439,58 @@ ipsec_if_input_inline (vlib_main_t * vm,
       vlib_buffer_advance (b[0], buf_adv0);
       len0 = vlib_buffer_length_in_chain (vm, b[0]);
 
-      key0 = (u64) ip0->src_address.as_u32 << 32 | (u64) esp0->spi;
-      if (key0 == last_key)
+      if (is_ip6)
 	{
-	  tid0 = last_tunnel_id;
-	}
-      else
-	{
-	  uword *p = hash_get (im->ipsec_if_pool_index_by_key, key0);
-	  if (p)
+	  key60.remote_ip = ip60->src_address;
+	  key60.spi = esp0->spi;
+
+	  if (memcmp (&key60, &last_key6, sizeof (last_key6)) == 0)
 	    {
-	      tid0 = p[0];
-	      last_tunnel_id = tid0;
-	      last_key = key0;
+	      tid0 = last_tunnel_id;
 	    }
 	  else
 	    {
-	      n_no_tunnel++;
-	      next[0] = IPSEC_INPUT_NEXT_DROP;
-	      goto trace00;
+	      uword *p =
+		hash_get_mem (im->ipsec6_if_pool_index_by_key, &key60);
+	      if (p)
+		{
+		  tid0 = p[0];
+		  last_tunnel_id = tid0;
+		  clib_memcpy_fast (&last_key6, &key60, sizeof (key60));
+		}
+	      else
+		{
+		  n_no_tunnel++;
+		  next[0] = IPSEC_INPUT_NEXT_DROP;
+		  goto trace00;
+		}
+	    }
+	}
+      else			/* !is_ip6 */
+	{
+	  key40.remote_ip = ip40->src_address.as_u32;
+	  key40.spi = esp0->spi;
+
+	  if (key40.as_u64 == last_key4.as_u64)
+	    {
+	      tid0 = last_tunnel_id;
+	    }
+	  else
+	    {
+	      uword *p =
+		hash_get (im->ipsec4_if_pool_index_by_key, key40.as_u64);
+	      if (p)
+		{
+		  tid0 = p[0];
+		  last_tunnel_id = tid0;
+		  last_key4.as_u64 = key40.as_u64;
+		}
+	      else
+		{
+		  n_no_tunnel++;
+		  next[0] = IPSEC_INPUT_NEXT_DROP;
+		  goto trace00;
+		}
 	    }
 	}
 
@@ -404,9 +537,9 @@ ipsec_if_input_inline (vlib_main_t * vm,
 	}
 
     trace00:
-      if (is_trace)
+      if (PREDICT_FALSE (is_trace))
 	{
-	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      ipsec_if_input_trace_t *tr =
 		vlib_add_trace (vm, node, b[0], sizeof (*tr));
@@ -428,12 +561,12 @@ ipsec_if_input_inline (vlib_main_t * vm,
 				       last_sw_if_index, n_packets, n_bytes);
     }
 
-  vlib_node_increment_counter (vm, ipsec_if_input_node.index,
+  vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_IF_INPUT_ERROR_RX,
 			       from_frame->n_vectors - n_disabled);
-  vlib_node_increment_counter (vm, ipsec_if_input_node.index,
+  vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_IF_INPUT_ERROR_DISABLED, n_disabled);
-  vlib_node_increment_counter (vm, ipsec_if_input_node.index,
+  vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_IF_INPUT_ERROR_NO_TUNNEL, n_no_tunnel);
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, from_frame->n_vectors);
@@ -441,22 +574,41 @@ ipsec_if_input_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipsec4_if_input_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * from_frame)
 {
-  return ipsec_if_input_inline (vm, node, from_frame);
+  return ipsec_if_input_inline (vm, node, from_frame, 0 /* is_ip6 */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec_if_input_node) = {
-  .name = "ipsec-if-input",
+VLIB_REGISTER_NODE (ipsec4_if_input_node) = {
+  .name = "ipsec4-if-input",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_if_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN(ipsec_if_input_error_strings),
   .error_strings = ipsec_if_input_error_strings,
   .sibling_of = "ipsec4-input-feature",
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (ipsec6_if_input_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * from_frame)
+{
+  return ipsec_if_input_inline (vm, node, from_frame, 1 /* is_ip6 */ );
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ipsec6_if_input_node) = {
+  .name = "ipsec6-if-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ipsec_if_input_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(ipsec_if_input_error_strings),
+  .error_strings = ipsec_if_input_error_strings,
+  .sibling_of = "ipsec6-input-feature",
 };
 /* *INDENT-ON* */
 

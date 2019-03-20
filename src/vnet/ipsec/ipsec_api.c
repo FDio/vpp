@@ -616,6 +616,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
   u32 sw_if_index = ~0;
+  ip46_type_t itype;
   int rv;
 
 #if WITH_LIBSSL > 0
@@ -636,8 +637,9 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   tun.remote_integ_key_len = mp->remote_integ_key_len;
   tun.udp_encap = mp->udp_encap;
   tun.tx_table_id = ntohl (mp->tx_table_id);
-  memcpy (&tun.local_ip.ip4, mp->local_ip, 4);
-  memcpy (&tun.remote_ip.ip4, mp->remote_ip, 4);
+  itype = ip_address_decode (&mp->local_ip, &tun.local_ip);
+  itype = ip_address_decode (&mp->remote_ip, &tun.remote_ip);
+  tun.is_ip6 = (IP46_TYPE_IP6 == itype);
   memcpy (&tun.local_crypto_key, &mp->local_crypto_key,
 	  mp->local_crypto_key_len);
   memcpy (&tun.remote_crypto_key, &mp->remote_crypto_key,
