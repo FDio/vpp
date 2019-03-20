@@ -228,14 +228,14 @@ $(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	$(call set,RTE_LIBRTE_DPAA_PMD,n)
 	$(call set,RTE_LIBRTE_PMD_DPAA_SEC,n)
 	$(call set,RTE_LIBRTE_PMD_DPAA_EVENTDEV,n)
-	@rm -f .config.ok
+	@rm -f .dpdk-config.ok
 
 $(CURDIR)/$(DPDK_TARBALL):
 	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) ] ; \
 		then cp $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) $(CURDIR) ; \
 		else curl -o $(CURDIR)/$(DPDK_TARBALL) -LO $(DPDK_TAR_URL) ; \
 	fi
-	@rm -f $(B)/.download.ok
+	@rm -f $(B)/.dpdk-download.ok
 
 DPDK_DOWNLOADS = $(CURDIR)/$(DPDK_TARBALL)
 

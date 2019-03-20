@@ -17,7 +17,6 @@
 
 #include <net/if.h>
 #include <linux/if_link.h>
-#include <linux/if_xdp.h>
 #include <linux/if_ether.h>
 
 #include <vppinfra/linux/sysfs.h>
