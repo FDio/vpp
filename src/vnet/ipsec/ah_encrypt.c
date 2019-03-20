@@ -152,7 +152,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      adv = -sizeof (ah_header_t);
 	    }
 
-	  icv_size = im->integ_algs[sa0->integ_alg].trunc_size;
+	  icv_size = sa0->integ_trunc_size;
 	  const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ip6);
 	  adv -= padding_len;
 	  /* transport mode save the eth header before it is overwritten */
@@ -265,11 +265,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    sizeof (ah_header_t);
 	  clib_memset (digest, 0, icv_size);
 
-	  unsigned size = hmac_calc (vm, sa0->integ_alg, sa0->integ_key.data,
-				     sa0->integ_key.len,
-				     vlib_buffer_get_current (i_b0),
-				     i_b0->current_length, sig, sa0->use_esn,
-				     sa0->seq_hi);
+	  unsigned size = hmac_calc (vm, sa0, vlib_buffer_get_current (i_b0),
+				     i_b0->current_length, sig);
 
 	  memcpy (digest, sig, size);
 	  if (is_ip6)

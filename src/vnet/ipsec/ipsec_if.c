@@ -493,25 +493,25 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
   if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO)
     {
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
-      sa->crypto_alg = alg;
+      ipsec_sa_set_crypto_alg (sa, alg);
       ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG)
     {
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
-      sa->integ_alg = alg;
+      ipsec_sa_set_integ_alg (sa, alg);
       ipsec_mk_key (&sa->integ_key, key, vec_len (key));
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO)
     {
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
-      sa->crypto_alg = alg;
+      ipsec_sa_set_crypto_alg (sa, alg);
       ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG)
     {
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
-      sa->integ_alg = alg;
+      ipsec_sa_set_integ_alg (sa, alg);
       ipsec_mk_key (&sa->integ_key, key, vec_len (key));
     }
   else

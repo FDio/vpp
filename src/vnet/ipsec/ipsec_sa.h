@@ -106,9 +106,15 @@ typedef struct
 
   ipsec_crypto_alg_t crypto_alg;
   ipsec_key_t crypto_key;
+  u8 crypto_iv_size;
+  u8 crypto_block_size;
+  vnet_crypto_op_type_t crypto_enc_op_type;
+  vnet_crypto_op_type_t crypto_dec_op_type;
 
   ipsec_integ_alg_t integ_alg;
   ipsec_key_t integ_key;
+  vnet_crypto_op_type_t integ_op_type;
+  u8 integ_trunc_size;
 
   u8 use_esn;
   u8 use_anti_replay;
@@ -156,6 +162,10 @@ extern int ipsec_sa_add (u32 id,
 			 u32 * sa_index);
 extern u32 ipsec_sa_del (u32 id);
 extern void ipsec_sa_stack (ipsec_sa_t * sa);
+extern void ipsec_sa_set_crypto_alg (ipsec_sa_t * sa,
+				     ipsec_crypto_alg_t crypto_alg);
+extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,
+				    ipsec_integ_alg_t integ_alg);
 
 extern u8 ipsec_is_sa_used (u32 sa_index);
 extern int ipsec_set_sa_key (u32 id,

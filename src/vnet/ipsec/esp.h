@@ -205,19 +205,17 @@ esp_seq_advance (ipsec_sa_t * sa)
 
 
 always_inline unsigned int
-hmac_calc (vlib_main_t * vm, ipsec_integ_alg_t alg, u8 * key, int key_len,
-	   u8 * data, int data_len, u8 * signature, u8 use_esn, u32 seq_hi)
+hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
+	   u8 * signature)
 {
-  ipsec_main_t *im = &ipsec_main;
   vnet_crypto_op_t _op, *op = &_op;
-  ASSERT (alg < IPSEC_INTEG_N_ALG);
 
-  if (PREDICT_FALSE (im->integ_algs[alg].op_type == 0))
+  if (PREDICT_FALSE (sa->integ_op_type == 0))
     return 0;
 
-  op->op = im->integ_algs[alg].op_type;
-  op->key = key;
-  op->key_len = key_len;
+  op->op = sa->integ_op_type;
+  op->key = sa->integ_key.data;
+  op->key_len = sa->integ_key.len;
   op->src = data;
   op->len = data_len;
   op->dst = signature;
@@ -233,7 +231,7 @@ hmac_calc (vlib_main_t * vm, ipsec_integ_alg_t alg, u8 * key, int key_len,
 
 #endif
   vnet_crypto_process_ops (vm, op, 1);
-  return im->integ_algs[alg].trunc_size;
+  return sa->integ_trunc_size;
 }
 
 #endif /* __ESP_H__ */

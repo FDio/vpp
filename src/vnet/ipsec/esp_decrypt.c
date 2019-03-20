@@ -82,21 +82,16 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
 }
 
 always_inline void
-esp_decrypt_cbc (vlib_main_t * vm, ipsec_crypto_alg_t alg,
+esp_decrypt_cbc (vlib_main_t * vm, ipsec_sa_t * sa,
 		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
 {
-  ipsec_main_t *im = &ipsec_main;
-  ipsec_main_crypto_alg_t *a;
   vnet_crypto_op_t _op, *op = &_op;
 
-  ASSERT (alg < IPSEC_CRYPTO_N_ALG);
 
-  a = &im->crypto_algs[alg];
-
-  if (PREDICT_FALSE (a->dec_op_type == VNET_CRYPTO_OP_NONE))
+  if (PREDICT_FALSE (sa->crypto_dec_op_type == VNET_CRYPTO_OP_NONE))
     return;
 
-  op->op = a->dec_op_type;
+  op->op = sa->crypto_dec_op_type;
   op->iv = iv;
   op->src = in;
   op->dst = out;
@@ -181,15 +176,13 @@ esp_decrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
 	  u8 sig[64];
-	  int icv_size = im->integ_algs[sa0->integ_alg].trunc_size;
+	  int icv_size = sa0->integ_trunc_size;
 	  clib_memset (sig, 0, sizeof (sig));
 	  u8 *icv = vlib_buffer_get_current (ib[0]) + ib[0]->current_length -
 	    icv_size;
 	  ib[0]->current_length -= icv_size;
 
-	  hmac_calc (vm, sa0->integ_alg, sa0->integ_key.data,
-		     sa0->integ_key.len, (u8 *) esp0,
-		     ib[0]->current_length, sig, sa0->use_esn, sa0->seq_hi);
+	  hmac_calc (vm, sa0, (u8 *) esp0, ib[0]->current_length, sig);
 
 	  if (PREDICT_FALSE (memcmp (icv, sig, icv_size)))
 	    {
@@ -217,8 +210,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  (sa0->crypto_alg >= IPSEC_CRYPTO_ALG_DES_CBC &&
 	   sa0->crypto_alg <= IPSEC_CRYPTO_ALG_3DES_CBC))
 	{
-	  const int BLOCK_SIZE = im->crypto_algs[sa0->crypto_alg].block_size;
-	  const int IV_SIZE = im->crypto_algs[sa0->crypto_alg].iv_size;
+	  const int BLOCK_SIZE = sa0->crypto_block_size;
+	  const int IV_SIZE = sa0->crypto_block_size;
 	  esp_footer_t *f0;
 	  u8 ip_hdr_size = 0;
 
@@ -251,8 +244,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  esp_decrypt_cbc (vm, sa0->crypto_alg,
-			   esp0->data + IV_SIZE,
+	  esp_decrypt_cbc (vm, sa0, esp0->data + IV_SIZE,
 			   (u8 *) vlib_buffer_get_current (ob[0]) +
 			   ip_hdr_size, BLOCK_SIZE * blocks,
 			   sa0->crypto_key.data, esp0->data);
