@@ -95,7 +95,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
       if (fail & tm->verbose)
 	{
            vlib_cli_output (vm, "Expected:\n%U\nCalculated:\n%U",
-			    format_hexdump, r->expected, r->expected.length,
+			    format_hexdump, r->expected.data, r->expected.length,
 			    format_hexdump, op->dst, r->expected.length);
 	}
     }
