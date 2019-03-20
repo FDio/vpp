@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "11bee07d_db23da10",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-20T12:16:40Z",
+      "side": 1,
+      "message": "use vl_api_address_t\nand so no is_ip6",
+      "revId": "b4ffed81a698e12e5bc711827fe0dd6cbc738e55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3d11cd28_e7825dd3",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 641,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-20T12:16:40Z",
+      "side": 1,
+      "message": "ip_address_decode",
+      "revId": "b4ffed81a698e12e5bc711827fe0dd6cbc738e55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "900b9aeb_e00e1ac3",
+        "filename": "src/vnet/ipsec/ipsec_if_in.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-20T12:16:40Z",
+      "side": 1,
+      "message": "move these to the v4 else clause. for perf maybe, but also for compiler warnings about uninitialised use.",
+      "revId": "b4ffed81a698e12e5bc711827fe0dd6cbc738e55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "11c49da5_b37fd27b",
+        "filename": "src/vnet/ipsec/ipsec_if_in.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-20T12:16:40Z",
+      "side": 1,
+      "message": "a question for you. Do we need UDP with IPv6. RFC3948 says UDP encap is valid for IPv6.",
+      "revId": "b4ffed81a698e12e5bc711827fe0dd6cbc738e55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d6943f87_e5109bdf",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2500,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-20T12:16:40Z",
+      "side": 1,
+      "message": "run\n  make test-checkstyle",
+      "revId": "b4ffed81a698e12e5bc711827fe0dd6cbc738e55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
