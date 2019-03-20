@@ -91,7 +91,6 @@ typedef struct
   /** Required for pool_get_aligned */
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   u8 tag[64];
-  u32 count;
   acl_rule_t *rules;
 } acl_list_t;
 

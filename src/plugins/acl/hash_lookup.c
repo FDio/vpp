@@ -1182,7 +1182,7 @@ void hash_acl_add(acl_main_t *am, int acl_index)
   void *oldheap = hash_acl_set_heap(am);
   DBG("HASH ACL add : %d", acl_index);
   int i;
-  acl_list_t *a = &am->acls[acl_index];
+  acl_rule_t *acl_rules = am->acls[acl_index].rules;
   vec_validate(am->hash_acl_infos, acl_index);
   hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
   clib_memset(ha, 0, sizeof(*ha));
@@ -1192,19 +1192,19 @@ void hash_acl_add(acl_main_t *am, int acl_index)
      is a mask type, increment a reference count for that mask type */
 
   /* avoid small requests by preallocating the entire vector before running the additions */
-  if (a->count > 0) {
-    vec_validate(ha->rules, a->count-1);
+  if (vec_len(acl_rules) > 0) {
+    vec_validate(ha->rules, vec_len(acl_rules)-1);
     vec_reset_length(ha->rules);
   }
 
-  for(i=0; i < a->count; i++) {
+  for(i=0; i < vec_len(acl_rules); i++) {
     hash_ace_info_t ace_info;
     fa_5tuple_t mask;
     clib_memset(&ace_info, 0, sizeof(ace_info));
     ace_info.acl_index = acl_index;
     ace_info.ace_index = i;
 
-    make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info);
+    make_mask_and_match_from_rule(&mask, &acl_rules[i], &ace_info);
     mask.pkt.flags_reserved = 0b000;
     ace_info.base_mask_type_index = assign_mask_type_index(am, &mask);
     /* assign the mask type index for matching itself */
