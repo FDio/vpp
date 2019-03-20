@@ -155,8 +155,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  clib_error_t *error;
-	  u32 bi0;
-	  vlib_buffer_t *b0 = 0;
+	  u32 bi0, bi1;
+	  vlib_buffer_t *b0, *b1;
 	  u32 sa_index0;
 	  ip4_and_esp_header_t *ih0, *oh0 = 0;
 	  ip6_and_esp_header_t *ih6_0, *oh6_0 = 0;
@@ -169,7 +169,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  u8 trunc_size;
 	  u16 rewrite_len;
 	  u16 udp_encap_adv = 0;
-	  struct rte_mbuf *mb0 = 0;
+	  struct rte_mbuf *mb0;
 	  struct rte_crypto_op *op;
 	  u16 res_idx;
 
@@ -187,6 +187,16 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  CLIB_PREFETCH (vlib_buffer_get_tail (b0), 20, STORE);
 	  /* mb0 */
 	  CLIB_PREFETCH (mb0, CLIB_CACHE_LINE_BYTES, STORE);
+
+	  if (n_left_from > 1)
+	    {
+	      bi1 = from[1];
+	      b1 = vlib_get_buffer (vm, bi1);
+
+	      CLIB_PREFETCH (b1, CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (b1->data - CLIB_CACHE_LINE_BYTES,
+			     CLIB_CACHE_LINE_BYTES, STORE);
+	    }
 
 	  op = ops[0];
 	  ops += 1;
