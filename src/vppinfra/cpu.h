@@ -370,7 +370,7 @@ CLIB_MARCH_SFX(fn ## _march_constructor) (void)				\
 #else
 #define CLIB_MARCH_FN(fn, rtype, _args...)				\
   static rtype CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args);	\
-  extern int (*fn ## _selected) (_args);				\
+  extern rtype (*fn ## _selected) (_args);				\
   extern int fn ## _selected_priority;					\
   CLIB_MARCH_FN_CONSTRUCTOR (fn)					\
   static rtype CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args)
