@@ -5,7 +5,7 @@ from scapy.layers.inet import UDP
 
 from framework import VppTestRunner
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
-    IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests
+    IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params
 from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA,\
         VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -177,8 +177,6 @@ class TemplateIpsecEsp(TemplateIpsec):
     |pg0| ------->  |VPP| ------> |pg1|
      ---             ---           ---
     """
-    config_esp_tun = config_esp_tun
-    config_esp_tra = config_esp_tra
 
     def setUp(self):
         super(TemplateIpsecEsp, self).setUp()
@@ -193,8 +191,8 @@ class TemplateIpsecEsp(TemplateIpsec):
                               self.tra_if).add_vpp_config()
 
         for _, p in self.params.items():
-            self.config_esp_tra(p)
-            self.configure_sa_tra(p)
+            config_esp_tra(self, p)
+            config_tra_params(p, self.encryption_type)
         self.logger.info(self.vapi.ppcli("show ipsec"))
 
         self.tun_spd = VppIpsecSpd(self, self.tun_spd_id)
@@ -203,7 +201,7 @@ class TemplateIpsecEsp(TemplateIpsec):
                               self.tun_if).add_vpp_config()
 
         for _, p in self.params.items():
-            self.config_esp_tun(p)
+            config_esp_tun(self, p)
         self.logger.info(self.vapi.ppcli("show ipsec"))
 
         for _, p in self.params.items():
@@ -241,9 +239,6 @@ class TemplateIpsecEspUdp(TemplateIpsec):
     """
     UDP encapped ESP
     """
-    config_esp_tun = config_esp_tun
-    config_esp_tra = config_esp_tra
-
     def setUp(self):
         super(TemplateIpsecEspUdp, self).setUp()
         self.encryption_type = ESP
@@ -261,15 +256,15 @@ class TemplateIpsecEspUdp(TemplateIpsec):
         VppIpsecSpdItfBinding(self, self.tra_spd,
                               self.tra_if).add_vpp_config()
 
-        self.config_esp_tra(p)
-        self.configure_sa_tra(p)
+        config_esp_tra(self, p)
+        config_tra_params(p, self.encryption_type)
 
         self.tun_spd = VppIpsecSpd(self, self.tun_spd_id)
         self.tun_spd.add_vpp_config()
         VppIpsecSpdItfBinding(self, self.tun_spd,
                               self.tun_if).add_vpp_config()
 
-        self.config_esp_tun(p)
+        config_esp_tun(self, p)
         self.logger.info(self.vapi.ppcli("show ipsec"))
 
         d = DpoProto.DPO_PROTO_IP4
