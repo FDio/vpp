@@ -87,21 +87,16 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
 }
 
 always_inline void
-esp_encrypt_cbc (vlib_main_t * vm, ipsec_crypto_alg_t alg,
+esp_encrypt_cbc (vlib_main_t * vm, ipsec_sa_t * sa,
 		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
 {
-  ipsec_main_t *im = &ipsec_main;
-  ipsec_main_crypto_alg_t *a;
   vnet_crypto_op_t _op, *op = &_op;
 
-  ASSERT (alg < IPSEC_CRYPTO_N_ALG);
 
-  a = &im->crypto_algs[alg];
-
-  if (PREDICT_FALSE (a->enc_op_type == VNET_CRYPTO_OP_NONE))
+  if (PREDICT_FALSE (sa->crypto_enc_op_type == VNET_CRYPTO_OP_NONE))
     return;
 
-  op->op = a->enc_op_type;
+  op->op = sa->crypto_enc_op_type;
   op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
   op->iv = iv;
   op->src = in;
@@ -282,8 +277,8 @@ esp_encrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (sa0->crypto_alg != IPSEC_CRYPTO_ALG_NONE))
 	{
 
-	  const int BLOCK_SIZE = im->crypto_algs[sa0->crypto_alg].block_size;
-	  const int IV_SIZE = im->crypto_algs[sa0->crypto_alg].iv_size;
+	  const int BLOCK_SIZE = sa0->crypto_block_size;
+	  const int IV_SIZE = sa0->crypto_iv_size;
 	  int blocks = 1 + (ib[0]->current_length + 1) / BLOCK_SIZE;
 
 	  /* pad packet in input buffer */
@@ -311,10 +306,9 @@ esp_encrypt_inline (vlib_main_t * vm,
 
 	  clib_memcpy_fast ((u8 *) vlib_buffer_get_current (ob[0]) +
 			    ip_udp_hdr_size + sizeof (esp_header_t), iv,
-			    im->crypto_algs[sa0->crypto_alg].iv_size);
+			    IV_SIZE);
 
-	  esp_encrypt_cbc (vm, sa0->crypto_alg,
-			   (u8 *) vlib_buffer_get_current (ib[0]),
+	  esp_encrypt_cbc (vm, sa0, (u8 *) vlib_buffer_get_current (ib[0]),
 			   (u8 *) vlib_buffer_get_current (ob[0]) +
 			   ip_udp_hdr_size + sizeof (esp_header_t) +
 			   IV_SIZE, BLOCK_SIZE * blocks,
@@ -322,11 +316,9 @@ esp_encrypt_inline (vlib_main_t * vm,
 	}
 
       ob[0]->current_length +=
-	hmac_calc (vm, sa0->integ_alg, sa0->integ_key.data,
-		   sa0->integ_key.len, (u8 *) o_esp0,
+	hmac_calc (vm, sa0, (u8 *) o_esp0,
 		   ob[0]->current_length - ip_udp_hdr_size,
-		   vlib_buffer_get_current (ob[0]) + ob[0]->current_length,
-		   sa0->use_esn, sa0->seq_hi);
+		   vlib_buffer_get_current (ob[0]) + ob[0]->current_length);
 
 
       if (is_ip6)
