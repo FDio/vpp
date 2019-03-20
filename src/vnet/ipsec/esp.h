@@ -221,6 +221,7 @@ hmac_calc (vlib_main_t * vm, ipsec_integ_alg_t alg, u8 * key, int key_len,
   op->src = data;
   op->len = data_len;
   op->dst = signature;
+  op->hmac_trunc_len = sa->integ_trunc_size;
 #if 0
 
   HMAC_Init_ex (ctx, key, key_len, md, NULL);
