@@ -152,6 +152,22 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc5) = {
 };
 /* *INDENT-ON* */
 
+static u8 sha1_tc5_digest_96[12] = {
+  0x4c, 0x1a, 0x03, 0x42, 0x4b, 0x55, 0xe0, 0x7f,
+  0xe7, 0xf2, 0x7b, 0xe1
+};
+
+/* *INDENT-OFF* */
+UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc5_trunc) = {
+  .name = "RFC2202 HMAC-SHA-1-96 TC5-trunc",
+  .op = VNET_CRYPTO_OP_SHA1_HMAC,
+  .key = TEST_DATA (sha1_tc5_key),
+  .data = TEST_DATA (sha1_tc5_data),
+  .expected = TEST_DATA (sha1_tc5_digest_96),
+  .hmac_trunc_len = 12,
+};
+/* *INDENT-ON* */
+
 static u8 sha1_tc6_key[80] = {
   0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
   0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,

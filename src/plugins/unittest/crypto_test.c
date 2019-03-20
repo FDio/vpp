@@ -69,6 +69,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
       op->dst = computed_data + computed_data_total_len;
       op->len = r->data.length;
       op->key_len = r->key.length;
+      op->hmac_trunc_len = r->hmac_trunc_len;
       computed_data_total_len += r->expected.length;
       /* next */
       r = r->next;
@@ -95,7 +96,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
       if (fail & tm->verbose)
 	{
            vlib_cli_output (vm, "Expected:\n%U\nCalculated:\n%U",
-			    format_hexdump, r->expected, r->expected.length,
+			    format_hexdump, r->expected.data, r->expected.length,
 			    format_hexdump, op->dst, r->expected.length);
 	}
     }
