@@ -1000,7 +1000,8 @@ format_vnet_error_trace (u8 * s, va_list * va)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   vnet_error_trace_t *t = va_arg (*va, vnet_error_trace_t *);
 
-  s = format (s, " rx:%d", t->sw_if_index);
+  s = format (s, "rx:%U", format_vnet_sw_if_index_name,
+	      vnet_get_main (), t->sw_if_index);
 
   return s;
 }
