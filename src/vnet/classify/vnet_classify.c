@@ -776,19 +776,23 @@ vnet_classify_add_del_table (vnet_classify_main_t * cm,
 
 	  t = vnet_classify_new_table (cm, mask, nbuckets, memory_size,
 				       skip, match);
+	}
+      else			/* update */
+	{
+	  vnet_classify_main_t *cm = &vnet_classify_main;
+
+	  if (cm->tables == NULL || pool_elts(cm->tables) <= *table_index)
+	  	return VNET_API_ERROR_NO_SUCH_TABLE;
+
+	  vnet_classify_delete_table_index (cm, *table_index, del_chain);
+	  t = vnet_classify_new_table (cm, mask, nbuckets, memory_size,
+				       skip, match);
+	}
 	  t->next_table_index = next_table_index;
 	  t->miss_next_index = miss_next_index;
 	  t->current_data_flag = current_data_flag;
 	  t->current_data_offset = current_data_offset;
 	  *table_index = t - cm->tables;
-	}
-      else			/* update */
-	{
-	  vnet_classify_main_t *cm = &vnet_classify_main;
-	  t = pool_elt_at_index (cm->tables, *table_index);
-
-	  t->next_table_index = next_table_index;
-	}
       return 0;
     }
 
