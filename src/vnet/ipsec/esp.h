@@ -223,8 +223,10 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
 
   if (sa->use_esn)
     {
+      u32 seq_hi = clib_host_to_net_u32 (sa->seq_hi);
+
       op->len += 4;
-      clib_memcpy (data + data_len, &sa->seq_hi, 4);
+      clib_memcpy (data + data_len, &seq_hi, 4);
     }
 
   vnet_crypto_process_ops (vm, op, 1);
