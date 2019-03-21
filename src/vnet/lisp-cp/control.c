@@ -26,7 +26,7 @@
 #include <vnet/ethernet/packet.h>
 
 #include <openssl/evp.h>
-#include <openssl/hmac.h>
+#include <vnet/crypto/crypto.h>
 
 #define MAX_VALUE_U24 0xffffff
 
@@ -74,22 +74,6 @@ auth_data_len_by_key_id (lisp_key_type_t key_id)
       return (u16) ~ 0;
     }
   return (u16) ~ 0;
-}
-
-static const EVP_MD *
-get_encrypt_fcn (lisp_key_type_t key_id)
-{
-  switch (key_id)
-    {
-    case HMAC_SHA_1_96:
-      return EVP_sha1 ();
-    case HMAC_SHA_256_128:
-      return EVP_sha256 ();
-    default:
-      clib_warning ("unsupported encryption key type: %d!", key_id);
-      break;
-    }
-  return 0;
 }
 
 static int
@@ -2741,18 +2725,42 @@ build_map_register_record_list (lisp_cp_main_t * lcm)
   return recs;
 }
 
+static vnet_crypto_op_type_t
+lisp_key_type_to_crypto_op (lisp_key_type_t key_id)
+{
+  switch (key_id)
+    {
+    case HMAC_SHA_1_96:
+      return VNET_CRYPTO_OP_SHA1_HMAC;
+    case HMAC_SHA_256_128:
+      return VNET_CRYPTO_OP_SHA256_HMAC;
+    default:
+      clib_warning ("unsupported encryption key type: %d!", key_id);
+      break;
+    }
+  return VNET_CRYPTO_OP_NONE;
+}
+
 static int
 update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
 			       lisp_key_type_t key_id, u8 * key,
 			       u16 auth_data_len, u32 msg_len)
 {
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   MREG_KEY_ID (map_reg_hdr) = clib_host_to_net_u16 (key_id);
   MREG_AUTH_DATA_LEN (map_reg_hdr) = clib_host_to_net_u16 (auth_data_len);
+  vnet_crypto_op_t _op, *op = &_op;
 
-  unsigned char *result = HMAC (get_encrypt_fcn (key_id), key, vec_len (key),
-				(unsigned char *) map_reg_hdr, msg_len, NULL,
-				NULL);
-  clib_memcpy (MREG_DATA (map_reg_hdr), result, auth_data_len);
+  vnet_crypto_op_init (op, lisp_key_type_to_crypto_op (key_id));
+  op->key = key;
+  op->key_len = vec_len (key);
+  op->len = msg_len;
+  op->dst = MREG_DATA (map_reg_hdr);
+  op->src = (u8 *) map_reg_hdr;
+  op->hmac_trunc_len = 0;
+  op->iv = 0;
+
+  vnet_crypto_process_ops (lcm->vlib_main, op, 1);
 
   return 0;
 }
@@ -3913,9 +3921,12 @@ static int
 is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
 		    lisp_key_type_t key_id, u8 * key)
 {
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u8 *auth_data = 0;
   u16 auth_data_len;
   int result;
+  vnet_crypto_op_t _op, *op = &_op;
+  u8 out[EVP_MAX_MD_SIZE] = { 0, };
 
   auth_data_len = auth_data_len_by_key_id (key_id);
   if ((u16) ~ 0 == auth_data_len)
@@ -3931,11 +3942,18 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   /* clear auth data */
   clib_memset (MNOTIFY_DATA (h), 0, auth_data_len);
 
-  /* get hash of the message */
-  unsigned char *code = HMAC (get_encrypt_fcn (key_id), key, vec_len (key),
-			      (unsigned char *) h, msg_len, NULL, NULL);
+  vnet_crypto_op_init (op, lisp_key_type_to_crypto_op (key_id));
+  op->key = key;
+  op->key_len = vec_len (key);
+  op->len = msg_len;
+  op->dst = out;
+  op->src = (u8 *) h;
+  op->hmac_trunc_len = 0;
+  op->iv = 0;
 
-  result = memcmp (code, auth_data, auth_data_len);
+  vnet_crypto_process_ops (lcm->vlib_main, op, 1);
+
+  result = memcmp (out, auth_data, auth_data_len);
 
   vec_free (auth_data);
 
