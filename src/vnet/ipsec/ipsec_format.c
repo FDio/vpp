@@ -262,7 +262,8 @@ format_ipsec_sa (u8 * s, va_list * args)
 	      sa->udp_encap ? " udp-encap-enabled" : "",
 	      sa->use_anti_replay ? " anti-replay" : "",
 	      sa->use_esn ? " extended-sequence-number" : "");
-  s = format (s, "\n   last-seq %u last-seq-hi %u  window %U",
+  s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
+  s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
 	      sa->last_seq, sa->last_seq_hi,
 	      format_ipsec_replay_window, sa->replay_window);
   s = format (s, "\n   crypto alg %U%s%U",

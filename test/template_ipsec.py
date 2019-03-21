@@ -307,7 +307,23 @@ class IpsecTra4Tests(object):
                                       seq_num=234))
         self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
+        # move VPP's SA to just before the seq-number wrap
+        self.vapi.cli("test ipsec sa %d seq 0xffffffff" % p.scapy_tra_sa_id)
+
+        # then fire in a packet that VPP should drop becuase it causes the
+        # seq number to wrap
+        pkt = (Ether(src=self.tra_if.remote_mac,
+                     dst=self.tra_if.local_mac) /
+               p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                         dst=self.tra_if.local_ip4) /
+                                      ICMP(),
+                                      seq_num=236))
+        self.send_and_assert_no_replies(self.tra_if, [pkt])
+        self.assert_packet_counter_equal(
+            '/err/%s/sequence number cycled' % self.tra4_encrypt_node_name, 1)
+
         # move the security-associations seq number on to the last we used
+        self.vapi.cli("test ipsec sa %d seq 0x15f" % p.scapy_tra_sa_id)
         p.scapy_tra_sa.seq_num = 351
         p.vpp_tra_sa.seq_num = 351
 
