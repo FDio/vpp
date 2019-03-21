@@ -171,19 +171,31 @@ enable_current_events (perfmon_main_t * pm)
       if (ioctl (fd, PERF_EVENT_IOC_ENABLE, 0) < 0)
 	clib_unix_warning ("enable ioctl");
 
+      pm->perf_event_pages[i][my_thread_index] = (void *) p;
+      pm->pm_fds[i][my_thread_index] = fd;
+    }
+
+  /*
+   * Hardware events must be all opened and enabled before aquiring
+   * pmc indices, otherwise the pmc indices might be out-dated.
+   */
+  for (i = 0; i < limit; i++)
+    {
+      p =
+	(struct perf_event_mmap_page *)
+	pm->perf_event_pages[i][my_thread_index];
+
       /*
        * Software event counters - and others not capable of being
        * read via the "rdpmc" instruction - will be read
        * by system calls.
        */
-      if (pe.type == PERF_TYPE_SOFTWARE || p->cap_user_rdpmc == 0)
+      if (p == 0 || p->cap_user_rdpmc == 0)
 	index = ~0;
       else
 	index = p->index - 1;
 
       pm->rdpmc_indices[i][my_thread_index] = index;
-      pm->perf_event_pages[i][my_thread_index] = (void *) p;
-      pm->pm_fds[i][my_thread_index] = fd;
     }
 
   pm->n_active = i;
