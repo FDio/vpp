@@ -100,7 +100,7 @@ vec_resize_allocate_memory (void *v,
   v = new;
 
   /* Zero new memory. */
-  clib_memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
+  memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
 
   return v + header_bytes;
 }
