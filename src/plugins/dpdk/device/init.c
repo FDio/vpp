@@ -695,19 +695,30 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
 
       /*
-       * For cisco VIC vNIC, set default to VLAN strip enabled, unless
-       * specified otherwise in the startup config.
-       * For other NICs default to VLAN strip disabled, unless specified
+       * A note on Cisco VIC (PMD_ENIC) and VLAN:
+       *
+       * With Cisco VIC vNIC, every ingress packet is tagged. On a
+       * trunk vNIC (C series "standalone" server), packets on no VLAN
+       * are tagged with vlan 0. On an access vNIC (standalone or B
+       * series "blade" server), packets on the default/native VLAN
+       * are tagged with that vNIC's VLAN. VPP expects these packets
+       * to be untagged, and previously enabled VLAN strip on VIC by
+       * default. But it also broke vlan sub-interfaces.
+       *
+       * The VIC adapter has "untag default vlan" ingress VLAN rewrite
+       * mode, which removes tags from these packets. VPP now includes
+       * a local patch for the enic driver to use this untag mode, so
+       * enabling vlan stripping is no longer needed. In future, the
+       * driver + dpdk will have an API to set the mode after
+       * rte_eal_init. Then, this note and local patch will be
+       * removed.
+       */
+
+      /*
+       * VLAN stripping: default to VLAN strip disabled, unless specified
        * otherwise in the startup config.
        */
-      if (xd->pmd == VNET_DPDK_PMD_ENIC)
-	{
-	  if (devconf->vlan_strip_offload != DPDK_DEVICE_VLAN_STRIP_OFF)
-	    vlan_strip = 1;	/* remove vlan tag from VIC port by default */
-	  else
-	    dpdk_log_warn ("VLAN strip disabled for interface\n");
-	}
-      else if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
+      if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
 	vlan_strip = 1;
 
       if (vlan_strip)
