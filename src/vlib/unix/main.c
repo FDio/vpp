@@ -110,11 +110,16 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
     {
       /* these (caught) signals cause the application to exit */
     case SIGTERM:
-      if (unix_main.vlib_main->main_loop_exit_set)
+      /*
+       * Ignore SIGTERM if it's sent before we're ready.
+       */
+      if (unix_main.vlib_main && unix_main.vlib_main->main_loop_exit_set)
 	{
 	  syslog (LOG_ERR | LOG_DAEMON, "received SIGTERM, exiting...");
 	  unix_main.vlib_main->main_loop_exit_now = 1;
 	}
+      else
+	syslog (LOG_ERR | LOG_DAEMON, "IGNORE early SIGTERM...");
       break;
       /* fall through */
     case SIGQUIT:
