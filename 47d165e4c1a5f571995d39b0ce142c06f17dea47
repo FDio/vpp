@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0a904df1_f57829ac",
+        "filename": "src/plugins/perfmon/perfmon_intel_bdw.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-21T17:11:53Z",
+      "side": 1,
+      "message": "This and all the following files are missing the copyright+license block.",
+      "revId": "47d165e4c1a5f571995d39b0ce142c06f17dea47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
