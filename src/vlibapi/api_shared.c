@@ -466,6 +466,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 {
   u16 id = ntohs (*((u16 *) the_msg));
   u8 *(*handler) (void *, void *, void *);
+  u8 *(*print_fp) (void *, void *);
 
   if (PREDICT_FALSE (vm->elog_trace_api_messages))
     {
@@ -493,6 +494,20 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 
       if (am->rx_trace && am->rx_trace->enabled)
 	vl_msg_api_trace (am, am->rx_trace, the_msg);
+
+      if (am->msg_print_flag)
+	{
+	  fformat (stdout, "[%d]: %s\n", id, am->msg_names[id]);
+	  print_fp = (void *) am->msg_print_handlers[id];
+	  if (print_fp == 0)
+	    {
+	      fformat (stdout, "  [no registered print fn]\n");
+	    }
+	  else
+	    {
+	      (*print_fp) (the_msg, vm);
+	    }
+	}
 
       if (!am->is_mp_safe[id])
 	{
