@@ -162,8 +162,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (rv))
 		{
-		  vlib_node_increment_counter (vm, node->node_index,
-					       AH_DECRYPT_ERROR_REPLAY, 1);
+		  i_b0->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
 		  goto trace;
 		}
 	    }
@@ -207,9 +206,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (memcmp (digest, sig, icv_size)))
 		{
-		  vlib_node_increment_counter (vm, node->node_index,
-					       AH_DECRYPT_ERROR_INTEG_ERROR,
-					       1);
+		  i_b0->error = node->errors[AH_DECRYPT_ERROR_INTEG_ERROR];
 		  goto trace;
 		}
 
@@ -236,9 +233,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 		next0 = AH_DECRYPT_NEXT_IP6_INPUT;
 	      else
 		{
-		  vlib_node_increment_counter (vm, node->node_index,
-					       AH_DECRYPT_ERROR_DECRYPTION_FAILED,
-					       1);
+		  i_b0->error =
+		    node->errors[AH_DECRYPT_ERROR_DECRYPTION_FAILED];
 		  goto trace;
 		}
 	    }

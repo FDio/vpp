@@ -61,7 +61,8 @@ typedef struct
 {
   u32 sa_index;
   u32 spi;
-  u32 seq;
+  u32 seq_lo;
+  u32 seq_hi;
   ipsec_integ_alg_t integ_alg;
 } ah_encrypt_trace_t;
 
@@ -73,8 +74,8 @@ format_ah_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ah_encrypt_trace_t *t = va_arg (*args, ah_encrypt_trace_t *);
 
-  s = format (s, "ah: sa-index %d spi %u seq %u integrity %U",
-	      t->sa_index, t->spi, t->seq,
+  s = format (s, "ah: sa-index %d spi %u seq %u:%u integrity %U",
+	      t->sa_index, t->spi, t->seq_hi, t->seq_lo,
 	      format_ipsec_integ_alg, t->integ_alg);
   return s;
 }
@@ -127,8 +128,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	    {
-	      vlib_node_increment_counter (vm, node->node_index,
-					   AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
+	      i_b0->error = node->errors[AH_ENCRYPT_ERROR_SEQ_CYCLED];
 	      goto trace;
 	    }
 	  vlib_increment_combined_counter
@@ -294,7 +294,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      ah_encrypt_trace_t *tr =
 		vlib_add_trace (vm, node, i_b0, sizeof (*tr));
 	      tr->spi = sa0->spi;
-	      tr->seq = sa0->seq - 1;
+	      tr->seq_lo = sa0->seq;
+	      tr->seq_hi = sa0->seq_hi;
 	      tr->integ_alg = sa0->integ_alg;
 	      tr->sa_index = sa_index0;
 	    }
