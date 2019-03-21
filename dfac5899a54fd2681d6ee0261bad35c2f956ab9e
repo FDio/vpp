@@ -1,0 +1,257 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ff6a2f17_4e1e74da",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 1026,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "IPv4",
+      "range": {
+        "startLine": 1026,
+        "startChar": 28,
+        "endLine": 1026,
+        "endChar": 31
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7910ce4a_52f6d788",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 1027,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "IPv4",
+      "range": {
+        "startLine": 1027,
+        "startChar": 28,
+        "endLine": 1027,
+        "endChar": 30
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1ed0a8c2_0146132d",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 1102,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "IPv4",
+      "range": {
+        "startLine": 1102,
+        "startChar": 28,
+        "endLine": 1102,
+        "endChar": 30
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a10efc52_1c208b83",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 1103,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "IPv4",
+      "range": {
+        "startLine": 1103,
+        "startChar": 28,
+        "endLine": 1103,
+        "endChar": 29
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "260ce204_371be502",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 1255,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "Can we rename this? is_\u003cfoo\u003e implies true/false.  \nMaybe \u0027applied_to\u0027?",
+      "range": {
+        "startLine": 1255,
+        "startChar": 4,
+        "endLine": 1255,
+        "endChar": 59
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d1ebe28d_cc46fd49",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "Remember to clean this up when you\u0027re done.",
+      "range": {
+        "startLine": 467,
+        "startChar": 0,
+        "endLine": 473,
+        "endChar": 23
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4873216e_4beb8f98",
+        "filename": "test/test_nat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2236,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "Go the other way. \nself.assertEqual(bytes(session.inside_ip_address), self.pg5.remote_ip4)\n\nremove all the inet_pton wrappers.",
+      "range": {
+        "startLine": 2235,
+        "startChar": 0,
+        "endLine": 2236,
+        "endChar": 63
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d7e747bd_c7197a3d",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "Remove the method.",
+      "range": {
+        "startLine": 1036,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 35
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "93f70512_710e1c22",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1068,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "Remove the whole method.  Add the default to: defaultmapping",
+      "range": {
+        "startLine": 1059,
+        "startChar": 0,
+        "endLine": 1068,
+        "endChar": 33
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f6e70d7_678e76a6",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1119,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "Remove the method.  Add the default to the dict.",
+      "range": {
+        "startLine": 1115,
+        "startChar": 0,
+        "endLine": 1119,
+        "endChar": 35
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "940be7f5_ce4a7724",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1131,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-21T18:32:53Z",
+      "side": 1,
+      "message": "remove the method.",
+      "range": {
+        "startLine": 1126,
+        "startChar": 0,
+        "endLine": 1131,
+        "endChar": 37
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
