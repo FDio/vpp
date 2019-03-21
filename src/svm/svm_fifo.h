@@ -179,12 +179,12 @@ svm_fifo_set_event (svm_fifo_t * f)
 /**
  * Unsets fifo event flag.
  *
- * Also acts as a release barrier.
+ * Also acts as an acquire barrier.
  */
 always_inline void
 svm_fifo_unset_event (svm_fifo_t * f)
 {
-  clib_atomic_release (&f->has_event);
+  __atomic_exchange_n (&f->has_event, 0, __ATOMIC_ACQUIRE);
 }
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
