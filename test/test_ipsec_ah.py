@@ -5,7 +5,7 @@ from scapy.layers.ipsec import AH
 
 from framework import VppTestRunner
 from template_ipsec import TemplateIpsec, IpsecTra46Tests, IpsecTun46Tests, \
-    config_tun_params, config_tra_params
+    config_tun_params, config_tra_params, IPsecIPv4Params, IPsecIPv6Params
 from template_ipsec import IpsecTcpTests
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
         VppIpsecSpdItfBinding
@@ -85,6 +85,7 @@ class TemplateIpsecAh(TemplateIpsec):
         remote_tun_if_host = params.remote_tun_if_host
         addr_any = params.addr_any
         addr_bcast = params.addr_bcast
+        flags = params.flags
         e = VppEnum.vl_api_ipsec_spd_action_t
 
         params.tun_sa_in = VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
@@ -92,14 +93,16 @@ class TemplateIpsecAh(TemplateIpsec):
                                       crypt_algo_vpp_id, crypt_key,
                                       self.vpp_ah_protocol,
                                       self.tun_if.local_addr[addr_type],
-                                      self.tun_if.remote_addr[addr_type])
+                                      self.tun_if.remote_addr[addr_type],
+                                      flags=flags)
         params.tun_sa_in.add_vpp_config()
         params.tun_sa_out = VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
                                        auth_algo_vpp_id, auth_key,
                                        crypt_algo_vpp_id, crypt_key,
                                        self.vpp_ah_protocol,
                                        self.tun_if.remote_addr[addr_type],
-                                       self.tun_if.local_addr[addr_type])
+                                       self.tun_if.local_addr[addr_type],
+                                       flags=flags)
         params.tun_sa_out.add_vpp_config()
 
         params.spd_policy_in_any = VppIpsecSpdEntry(self, self.tun_spd,
@@ -160,8 +163,8 @@ class TemplateIpsecAh(TemplateIpsec):
         crypt_key = params.crypt_key
         addr_any = params.addr_any
         addr_bcast = params.addr_bcast
-        flags = (VppEnum.vl_api_ipsec_sad_flags_t.
-                 IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY)
+        flags = params.flags | (VppEnum.vl_api_ipsec_sad_flags_t.
+                                IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY)
         e = VppEnum.vl_api_ipsec_spd_action_t
 
         params.tra_sa_in = VppIpsecSA(self, scapy_tra_sa_id, scapy_tra_spi,
@@ -220,6 +223,27 @@ class TestIpsecAh2(TemplateIpsecAh, IpsecTcpTests):
     """ Ipsec AH - TCP tests """
     pass
 
+
+class TestIpsecAh3(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec AH w/ ESN - TCP tests """
+
+    tra4_encrypt_node_name = "ah4-encrypt"
+    tra4_decrypt_node_name = "ah4-decrypt"
+    tra6_encrypt_node_name = "ah6-encrypt"
+    tra6_decrypt_node_name = "ah6-decrypt"
+    tun4_encrypt_node_name = "ah4-encrypt"
+    tun4_decrypt_node_name = "ah4-decrypt"
+    tun6_encrypt_node_name = "ah6-encrypt"
+    tun6_decrypt_node_name = "ah6-decrypt"
+
+    def setup_params(self):
+        self.ipv4_params = IPsecIPv4Params()
+        self.ipv6_params = IPsecIPv6Params()
+        self.params = {self.ipv4_params.addr_type: self.ipv4_params,
+                       self.ipv6_params.addr_type: self.ipv6_params}
+        for _, p in self.params.items():
+            p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
+                       IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
