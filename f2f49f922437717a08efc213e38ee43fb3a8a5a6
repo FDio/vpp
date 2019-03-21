@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cbbc3434_47f89379",
+        "filename": "src/vnet/ip/icmp6.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-21T09:36:52Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this also be to_single_next?",
+      "range": {
+        "startLine": 590,
+        "startChar": 2,
+        "endLine": 596,
+        "endChar": 28
+      },
+      "revId": "f2f49f922437717a08efc213e38ee43fb3a8a5a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
