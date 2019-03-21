@@ -495,7 +495,6 @@ ip4_icmp_error (vlib_main_t * vm,
 
 	  org_p0 = vlib_get_buffer (vm, org_pi0);
 	  p0 = vlib_buffer_copy_no_chain (vm, org_p0, &pi0);
-	  vlib_buffer_free_one (vm, org_pi0);
 	  if (!p0 || pi0 == ~0)	/* Out of buffers */
 	    continue;
 
@@ -574,6 +573,15 @@ ip4_icmp_error (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+  /*
+   * push the original buffers to error-drop, so that
+   * they can get the error counters handled, then freed
+   */
+  vlib_buffer_enqueue_to_single_next (vm, node,
+				      vlib_frame_vector_args (frame),
+				      IP4_ICMP_ERROR_NEXT_DROP,
+				      frame->n_vectors);
 
   return frame->n_vectors;
 }
