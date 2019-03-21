@@ -60,8 +60,8 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   if (len > 0)
     {
       tag = clib_mem_alloc (len + 1);
+      clib_memset (tag, 0, len + 1);
       clib_memcpy (tag, (char *) mp->tag.buf, len);
-      tag[len] = 0;
     }
 
   rv =
