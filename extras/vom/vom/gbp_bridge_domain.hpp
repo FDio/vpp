@@ -38,6 +38,9 @@ public:
   {
     const static flags_t NONE;
     const static flags_t DO_NOT_LEARN;
+    const static flags_t UU_FWD_DROP;
+    const static flags_t MCAST_DROP;
+    const static flags_t UCAST_ARP;
 
     static const flags_t& from_vpp(int i);
 
