@@ -109,6 +109,7 @@ typedef struct
   uword *ipsec4_if_pool_index_by_key;
   uword *ipsec6_if_pool_index_by_key;
   uword *ipsec_if_real_dev_by_show_dev;
+  uword *ipsec_if_by_sw_if_index;
 
   /* node indices */
   u32 error_drop_node_index;
@@ -212,6 +213,13 @@ u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 
 int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
+
+always_inline ipsec_sa_t *
+ipsec_sa_get (u32 sa_index)
+{
+  return (pool_elt_at_index (ipsec_main.sad, sa_index));
+}
+
 #endif /* __IPSEC_H__ */
 
 /*

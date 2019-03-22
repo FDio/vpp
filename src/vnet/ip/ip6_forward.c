@@ -54,6 +54,7 @@
 #include <vppinfra/bihash_template.c>
 #endif
 #include <vnet/ip/ip6_forward.h>
+#include <vnet/interface_output.h>
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
 #define OI_DECAP   0x80000000
@@ -1831,16 +1832,26 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      p1->error = error_node->errors[error1];
 	    }
 
+	  if (is_midchain)
+	    {
+	      /* before we paint on the next header, update the L4
+	       * checksums if required, since there's no offload on a tunnel */
+	      calc_checksums (vm, p0);
+	      calc_checksums (vm, p1);
+	    }
+
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_two_headers (adj0[0], adj1[0],
 				    ip0, ip1, sizeof (ethernet_header_t));
 
 	  if (is_midchain)
 	    {
-	      adj0->sub_type.midchain.fixup_func
-		(vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-	      adj1->sub_type.midchain.fixup_func
-		(vm, adj1, p1, adj1->sub_type.midchain.fixup_data);
+	      if (adj0->sub_type.midchain.fixup_func)
+		adj0->sub_type.midchain.fixup_func
+		  (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+	      if (adj1->sub_type.midchain.fixup_func)
+		adj1->sub_type.midchain.fixup_func
+		  (vm, adj1, p1, adj1->sub_type.midchain.fixup_data);
 	    }
 	  if (is_mcast)
 	    {
@@ -1919,6 +1930,11 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
 
+	  if (is_midchain)
+	    {
+	      calc_checksums (vm, p0);
+	    }
+
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
 
@@ -1969,8 +1985,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  if (is_midchain)
 	    {
-	      adj0->sub_type.midchain.fixup_func
-		(vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+	      if (adj0->sub_type.midchain.fixup_func)
+		adj0->sub_type.midchain.fixup_func
+		  (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
 	    }
 	  if (is_mcast)
 	    {

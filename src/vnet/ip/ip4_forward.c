@@ -55,6 +55,7 @@
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
 
 #include <vnet/ip/ip4_forward.h>
+#include <vnet/interface_output.h>
 
 /** @brief IPv4 lookup node.
     @node ip4-lookup
@@ -2336,7 +2337,11 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	{
 	  b[1]->error = error_node->errors[error1];
 	}
-
+      if (is_midchain)
+	{
+	  calc_checksums (vm, b[0]);
+	  calc_checksums (vm, b[1]);
+	}
       /* Guess we are only writing on simple Ethernet header. */
       vnet_rewrite_two_headers (adj0[0], adj1[0],
 				ip0, ip1, sizeof (ethernet_header_t));
@@ -2359,10 +2364,12 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
       if (is_midchain)
 	{
-	  adj0->sub_type.midchain.fixup_func
-	    (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
-	  adj1->sub_type.midchain.fixup_func
-	    (vm, adj1, b[1], adj1->sub_type.midchain.fixup_data);
+	  if (adj0->sub_type.midchain.fixup_func)
+	    adj0->sub_type.midchain.fixup_func
+	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
+	  if (adj1->sub_type.midchain.fixup_func)
+	    adj1->sub_type.midchain.fixup_func
+	      (vm, adj1, b[1], adj1->sub_type.midchain.fixup_data);
 	}
 
       if (is_mcast)
@@ -2447,7 +2454,10 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	{
 	  b[0]->error = error_node->errors[error0];
 	}
-
+      if (is_midchain)
+	{
+	  calc_checksums (vm, b[0]);
+	}
       /* Guess we are only writing on simple Ethernet header. */
       vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
 
@@ -2459,8 +2469,9 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
       if (is_midchain)
 	{
-	  adj0->sub_type.midchain.fixup_func
-	    (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
+	  if (adj0->sub_type.midchain.fixup_func)
+	    adj0->sub_type.midchain.fixup_func
+	      (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
 	}
 
       if (is_mcast)
