@@ -29,7 +29,7 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
         tun_if.admin_up()
         tun_if.config_ip4()
 
-        VppIpRoute(self,  p.remote_tun_if_host, 32,
+        VppIpRoute(self, p.remote_tun_if_host, 32,
                    [VppRoutePath(tun_if.remote_ip4,
                                  0xffffffff)]).add_vpp_config()
 
@@ -70,7 +70,7 @@ class TemplateIpsec6TunIfEsp(TemplateIpsec):
         tun_if.admin_up()
         tun_if.config_ip6()
 
-        VppIpRoute(self,  p.remote_tun_if_host, 128,
+        VppIpRoute(self, p.remote_tun_if_host, 128,
                    [VppRoutePath(tun_if.remote_ip6,
                                  0xffffffff,
                                  proto=DpoProto.DPO_PROTO_IP6)],

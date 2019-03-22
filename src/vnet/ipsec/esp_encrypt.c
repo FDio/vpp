@@ -220,7 +220,7 @@ esp_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 always_inline uword
 esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, int is_ip6)
+		    vlib_frame_t * frame, int is_ip6, int is_tun)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, vm->thread_index);
@@ -258,7 +258,19 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
+      if (is_tun)
+	{
+	  /* we are on a ipsec tunnel's feature arc */
+	  u32 next0;
+	  sa_index0 = *(u32 *) vnet_feature_next_with_data (&next0, b[0],
+							    sizeof
+							    (sa_index0));
+	  next[0] = next0;
+	}
+      else
+	sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
+
+      if (sa_index0 != current_sa_index)
 	{
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
 	  current_sa_index = sa_index0;
@@ -335,8 +347,11 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  dpo = sa0->dpo + IPSEC_PROTOCOL_ESP;
-	  next[0] = dpo->dpoi_next_node;
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
+	  if (!is_tun)
+	    {
+	      next[0] = dpo->dpoi_next_node;
+	      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
+	    }
 	}
       else			/* transport mode */
 	{
@@ -483,7 +498,7 @@ VLIB_NODE_FN (esp4_encrypt_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ );
+  return esp_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ , 0);
 }
 
 /* *INDENT-OFF* */
@@ -509,7 +524,7 @@ VLIB_NODE_FN (esp6_encrypt_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ );
+  return esp_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ , 0);
 }
 
 /* *INDENT-OFF* */
@@ -528,6 +543,60 @@ VLIB_REGISTER_NODE (esp6_encrypt_node) = {
     foreach_esp_encrypt_next
 #undef _
   },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (esp4_encrypt_tun_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
+{
+  return esp_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ , 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp4_encrypt_tun_node) = {
+  .name = "esp4-encrypt-tun",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_encrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
+};
+
+VNET_FEATURE_INIT (esp4_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ip4-output",
+  .node_name = "esp4-encrypt-tun",
+  .runs_before = VNET_FEATURES ("ip4-frag",
+                                "adj-midchain-tx"),
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (esp6_encrypt_tun_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
+{
+  return esp_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ , 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
+  .name = "esp6-encrypt-tun",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_encrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
+};
+
+VNET_FEATURE_INIT (esp6_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ip6-output",
+  .node_name = "esp6-encrypt-tun",
+  .runs_before = VNET_FEATURES ("ip6-frag",
+                                "adj-midchain-tx"),
 };
 /* *INDENT-ON* */
 
