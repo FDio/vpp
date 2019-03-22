@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b3aa67a0_275c050e",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-03-22T04:01:43Z",
+      "side": 1,
+      "message": "cosmetic but can we use #define clib_atomic_swap_acq_n(a, b) __atomic_exchange_n ((a), (b), __ATOMIC_ACQUIRE)\n\nin src/vppinfra/atomics.h.",
+      "revId": "4b76112dc43b775abd3deb2d9f65458ca08424ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
