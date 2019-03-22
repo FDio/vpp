@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1672192c_97431015",
+        "filename": "src/plugins/gbp/gbp_bridge_domain.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-22T15:34:23Z",
+      "side": 1,
+      "message": "i think the logic is here wrong. if the drop flag is set, then we don\u0027t want the feature enabled.",
+      "revId": "eb6bb60c97252f96c5755b6ff32037558e792d12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
