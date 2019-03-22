@@ -25,6 +25,15 @@ const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::NONE(0, "none");
 const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::DO_NOT_LEARN(
   1,
   "do-not-learn");
+const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::UU_FWD_DROP(
+  2,
+  "uu-fwd-drop");
+const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::MCAST_DROP(
+  4,
+  "mcast-drop");
+const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::UCAST_ARP(
+  8,
+  "ucast-arp");
 
 gbp_bridge_domain::flags_t::flags_t(int v, const std::string& s)
   : enum_base<gbp_bridge_domain::flags_t>(v, s)
@@ -273,12 +282,22 @@ gbp_bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<interface> bvi =
       interface::find(payload.bd.bvi_sw_if_index);
 
+    flags_t flags = gbp_bridge_domain::flags_t::NONE;
+    if (payload.bd.flags & GBP_BD_API_FLAG_DO_NOT_LEARN)
+      flags |= gbp_bridge_domain::flags_t::DO_NOT_LEARN;
+    if (payload.bd.flags & GBP_BD_API_FLAG_UU_FWD_DROP)
+      flags |= gbp_bridge_domain::flags_t::UU_FWD_DROP;
+    if (payload.bd.flags & GBP_BD_API_FLAG_MCAST_DROP)
+      flags |= gbp_bridge_domain::flags_t::MCAST_DROP;
+    if (payload.bd.flags & GBP_BD_API_FLAG_UCAST_ARP)
+      flags |= gbp_bridge_domain::flags_t::UCAST_ARP;
+
     if (uu_fwd && bm_flood && bvi) {
-      gbp_bridge_domain bd(payload.bd.bd_id, bvi, uu_fwd, bm_flood);
+      gbp_bridge_domain bd(payload.bd.bd_id, bvi, uu_fwd, bm_flood, flags);
       OM::commit(key, bd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
     } else if (bvi) {
-      gbp_bridge_domain bd(payload.bd.bd_id, *bvi);
+      gbp_bridge_domain bd(payload.bd.bd_id, *bvi, flags);
       OM::commit(key, bd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
     } else {
