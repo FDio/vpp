@@ -513,16 +513,36 @@ typedef CLIB_PACKED (struct {
   u8 n_data_u64s;
 }) ip6_ext_header_t;
 
+#define foreach_ext_hdr_type \
+  _(IP6_HOP_BY_HOP_OPTIONS) \
+  _(IPV6_ROUTE) \
+  _(IPV6_FRAGMENTATION) \
+  _(IPSEC_ESP) \
+  _(IPSEC_AH) \
+  _(IP6_DESTINATION_OPTIONS) \
+  _(MOBILITY) \
+  _(HIP) \
+  _(SHIM6)
+
 always_inline u8 ip6_ext_hdr(u8 nexthdr)
 {
+#ifdef CLIB_HAVE_VEC128
+  static const u8x16 ext_hdr_types = {
+#define _(x) IP_PROTOCOL_##x,
+ foreach_ext_hdr_type
+#undef _
+  };
+
+  return !u8x16_is_all_zero (ext_hdr_types == u8x16_splat (nexthdr));
+#else
   /*
    * find out if nexthdr is an extension header or a protocol
    */
-  return   (nexthdr == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) ||
-    (nexthdr == IP_PROTOCOL_IPV6_FRAGMENTATION)  ||
-    (nexthdr == IP_PROTOCOL_IPSEC_AH)      ||
-    (nexthdr == IP_PROTOCOL_IPV6_ROUTE)      ||
-    (nexthdr == IP_PROTOCOL_IP6_DESTINATION_OPTIONS);
+  return   0
+#define _(x) || (nexthdr == IP_PROTOCOL_##x)
+ foreach_ext_hdr_type;
+#undef _
+#endif
 }
 
 #define ip6_ext_header_len(p)  ((((ip6_ext_header_t *)(p))->n_data_u64s+1) << 3)
