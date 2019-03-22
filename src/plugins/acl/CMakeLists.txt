@@ -18,6 +18,8 @@ add_vpp_plugin(acl
   lookup_context.c
   sess_mgmt_node.c
   dataplane_node.c
+  sparse_bitmap.c
+  bm_lookup.c
 
   MULTIARCH_SOURCES
   dataplane_node.c
