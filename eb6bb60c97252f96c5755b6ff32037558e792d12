@@ -16,6 +16,24 @@
       "revId": "eb6bb60c97252f96c5755b6ff32037558e792d12",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dc80cc2f_0d0553af",
+        "filename": "src/plugins/gbp/gbp_bridge_domain.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-03-22T15:37:03Z",
+      "side": 1,
+      "message": "Yes, It is disabling all these features in bd_set_flags by providing enable bit \u003d 0.",
+      "parentUuid": "1672192c_97431015",
+      "revId": "eb6bb60c97252f96c5755b6ff32037558e792d12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
