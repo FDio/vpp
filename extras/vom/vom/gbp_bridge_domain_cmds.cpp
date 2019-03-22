@@ -51,10 +51,21 @@ create_cmd::issue(connection& con)
   payload.bd.uu_fwd_sw_if_index = m_uu_fwd.value();
   payload.bd.bm_flood_sw_if_index = m_bm_flood.value();
 
-  payload.bd.flags = GBP_BD_API_FLAG_NONE;
-  if (gbp_bridge_domain::flags_t::DO_NOT_LEARN == m_flags)
-    payload.bd.flags = GBP_BD_API_FLAG_DO_NOT_LEARN;
+  vapi_enum_gbp_bridge_domain_flags flags = GBP_BD_API_FLAG_NONE;
+  if (gbp_bridge_domain::flags_t::DO_NOT_LEARN & m_flags)
+    flags = static_cast<vapi_enum_gbp_bridge_domain_flags>(
+      flags | GBP_BD_API_FLAG_DO_NOT_LEARN);
+  if (gbp_bridge_domain::flags_t::UU_FWD_DROP & m_flags)
+    flags = static_cast<vapi_enum_gbp_bridge_domain_flags>(
+      flags | GBP_BD_API_FLAG_UU_FWD_DROP);
+  if (gbp_bridge_domain::flags_t::MCAST_DROP & m_flags)
+    flags = static_cast<vapi_enum_gbp_bridge_domain_flags>(
+      flags | GBP_BD_API_FLAG_MCAST_DROP);
+  if (gbp_bridge_domain::flags_t::UCAST_ARP & m_flags)
+    flags = static_cast<vapi_enum_gbp_bridge_domain_flags>(
+      flags | GBP_BD_API_FLAG_UCAST_ARP);
 
+  payload.bd.flags = flags;
   VAPI_CALL(req.execute());
 
   return (wait());
