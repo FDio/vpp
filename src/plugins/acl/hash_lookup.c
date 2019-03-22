@@ -28,6 +28,7 @@
 #include <vnet/plugin/plugin.h>
 #include <acl/acl.h>
 #include <vppinfra/bihash_48_8.h>
+#include <acl/bm_lookup.h>
 
 #include "hash_lookup.h"
 #include "hash_lookup_private.h"
@@ -694,6 +695,8 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
   }
 
   void *oldheap = hash_acl_set_heap(am);
+  bm_acl_add(am, lc_index, acl_index);
+
   vec_validate(am->hash_entry_vec_by_lc_index, lc_index);
   vec_validate(am->hash_acl_infos, acl_index);
   applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, lc_index);
@@ -950,6 +953,7 @@ hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
   }
 
   void *oldheap = hash_acl_set_heap(am);
+  bm_acl_remove(am, lc_index, acl_index);
   int base_offset = i;
   int tail_offset = base_offset + vec_len(ha->rules);
   int tail_len = vec_len((*applied_hash_aces)) - tail_offset;
