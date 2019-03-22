@@ -43,6 +43,7 @@
 #define clib_atomic_load_acq_n(a) __atomic_load_n((a), __ATOMIC_ACQUIRE)
 #define clib_atomic_store_rel_n(a, b) __atomic_store_n ((a), (b), __ATOMIC_RELEASE)
 #define clib_atomic_swap_acq_n(a, b) __atomic_exchange_n ((a), (b), __ATOMIC_ACQUIRE)
+#define clib_atomic_swap_rel_n(a, b) __atomic_exchange_n ((a), (b), __ATOMIC_RELEASE)
 
 #define clib_atomic_fetch_add_rel(a, b) __atomic_fetch_add((a), (b), __ATOMIC_RELEASE)
 #define clib_atomic_fetch_sub_rel(a, b) __atomic_fetch_sub((a), (b), __ATOMIC_RELEASE)
