@@ -28,6 +28,8 @@
 #include <vppinfra/bihash_40_8.h>
 #include <vppinfra/bihash_16_8.h>
 
+#include <acl/sparse_bitmap.h>
+
 #include "types.h"
 #include "fa_node.h"
 #include "hash_lookup_types.h"
@@ -42,7 +44,8 @@
 
 #define SESSION_PURGATORY_TIMEOUT_USEC 10
 
-#define ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE (2 << 25)
+// #define ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE (2 << 25)
+#define ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE (1 << 30)
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS 65536
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY (2 << 25)
 

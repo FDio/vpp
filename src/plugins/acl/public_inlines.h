@@ -24,6 +24,7 @@
 #include <plugins/acl/hash_lookup_private.h>
 
 #include <plugins/acl/exported_types.h>
+#include <plugins/acl/bm_lookup.h>
 
 #define LOAD_SYMBOL_FROM_PLUGIN_TO(p, s, st)                              \
 ({                                                                        \
@@ -672,6 +673,11 @@ acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index,
       return linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
     } else {
+	    /*
+      return bm_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+				 */
+
       return hash_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
     }

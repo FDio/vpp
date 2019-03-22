@@ -3563,6 +3563,7 @@ VLIB_CONFIG_FUNCTION (acl_plugin_config, "acl-plugin");
 static clib_error_t *
 acl_init (vlib_main_t * vm)
 {
+  sparse_bitmap_test (vm);
   acl_main_t *am = &acl_main;
   clib_error_t *error = 0;
   clib_memset (am, 0, sizeof (*am));
