@@ -318,7 +318,7 @@ class VppGbpBridgeDomain(VppObject):
     """
 
     def __init__(self, test, bd, bvi, uu_fwd=None,
-                 bm_flood=None, learn=True):
+                 bm_flood=None, learn=True, uu_drop=False, bm_drop=False):
         self._test = test
         self.bvi = bvi
         self.uu_fwd = uu_fwd
@@ -330,6 +330,10 @@ class VppGbpBridgeDomain(VppObject):
             self.learn = e.GBP_BD_API_FLAG_NONE
         else:
             self.learn = e.GBP_BD_API_FLAG_DO_NOT_LEARN
+        if (uu_drop):
+            self.learn |= e.GBP_BD_API_FLAG_UU_FWD_DROP
+        if (bm_drop):
+            self.learn |= e.GBP_BD_API_FLAG_MCAST_DROP
 
     def add_vpp_config(self):
         self._test.vapi.gbp_bridge_domain_add(

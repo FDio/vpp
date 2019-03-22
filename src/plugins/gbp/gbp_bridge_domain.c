@@ -121,7 +121,13 @@ format_gbp_bridge_domain_flags (u8 * s, va_list * args)
   if (gf)
     {
       if (gf & GBP_BD_FLAG_DO_NOT_LEARN)
-	s = format (s, "do-not-learn");
+	s = format (s, "do-not-learn ");
+      if (gf & GBP_BD_FLAG_UU_FWD_DROP)
+	s = format (s, "uu-fwd-drop ");
+      if (gf & GBP_BD_FLAG_MCAST_DROP)
+	s = format (s, "mcast-drop ");
+      if (gf & GBP_BD_FLAG_UCAST_ARP)
+	s = format (s, "ucast-arp ");
     }
   else
     {
@@ -183,10 +189,11 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       if (~0 == bd_index)
 	return (VNET_API_ERROR_BD_NOT_MODIFIABLE);
 
-      /*
-       * unset learning in the bridge
-       */
-      bd_set_flags (vlib_get_main (), bd_index, L2_LEARN, 0);
+      bd_flags_t bd_flags = L2_LEARN;
+      if (flags & GBP_BD_FLAG_UU_FWD_DROP)
+	bd_flags |= L2_UU_FLOOD;
+      if (flags & GBP_BD_FLAG_MCAST_DROP)
+	bd_flags |= L2_FLOOD;
 
       pool_get (gbp_bridge_domain_pool, gb);
       memset (gb, 0, sizeof (*gb));
@@ -205,19 +212,27 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 		       MODE_L2_BRIDGE, gb->gb_bvi_sw_if_index,
 		       bd_index, L2_BD_PORT_TYPE_BVI, 0, 0);
-      if (~0 != gb->gb_uu_fwd_sw_if_index)
+
+      if (!(flags & GBP_BD_FLAG_UU_FWD_DROP)
+	  && ~0 != gb->gb_uu_fwd_sw_if_index)
 	{
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L2_BRIDGE, gb->gb_uu_fwd_sw_if_index,
 			   bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
 	}
-      if (~0 != gb->gb_bm_flood_sw_if_index)
+      if (!(flags & GBP_BD_FLAG_MCAST_DROP)
+	  && ~0 != gb->gb_bm_flood_sw_if_index)
 	{
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L2_BRIDGE, gb->gb_bm_flood_sw_if_index,
 			   bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
 	  gbp_learn_enable (gb->gb_bm_flood_sw_if_index, GBP_LEARN_MODE_L2);
 	}
+
+      /*
+       * unset learning in the bridge + any flag(s) set above
+       */
+      bd_set_flags (vlib_get_main (), bd_index, bd_flags, 0);
 
       /*
        * Add the BVI's MAC to the L2FIB
@@ -343,8 +358,8 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
-      else if (unformat (input, "flags &d", &flags))
-	add = 0;
+      else if (unformat (input, "flags %d", &flags))
+	;
       else if (unformat (input, "bd %d", &bd_id))
 	;
       else
@@ -380,7 +395,8 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_bridge_domain_cli_node, static) = {
   .path = "gbp bridge-domain",
-  .short_help = "gbp bridge-domain [del] bd <ID> bvi <interface> uu-flood <interface>",
+  .short_help = "gbp bridge-domain [del] bd <ID> bvi <interface>"
+                " uu-flood <interface> [flags <flags>]",
   .function = gbp_bridge_domain_cli,
 };
 

@@ -27,6 +27,9 @@ typedef enum gbp_bridge_domain_flags_t_
 {
   GBP_BD_FLAG_NONE = 0,
   GBP_BD_FLAG_DO_NOT_LEARN = (1 << 0),
+  GBP_BD_FLAG_UU_FWD_DROP = (1 << 1),
+  GBP_BD_FLAG_MCAST_DROP = (1 << 2),
+  GBP_BD_FLAG_UCAST_ARP = (1 << 3),
 } gbp_bridge_domain_flags_t;
 
 /**
