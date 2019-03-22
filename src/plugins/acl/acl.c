@@ -3563,12 +3563,15 @@ VLIB_CONFIG_FUNCTION (acl_plugin_config, "acl-plugin");
 static clib_error_t *
 acl_init (vlib_main_t * vm)
 {
+  sparse_bitmap_test (vm);
   acl_main_t *am = &acl_main;
+
   clib_error_t *error = 0;
   clib_memset (am, 0, sizeof (*am));
   am->vlib_main = vm;
   am->vnet_main = vnet_get_main ();
   am->log_default = vlib_log_register_class ("acl_plugin", 0);
+  bm_set_main(am);
 
   u8 *name = format (0, "acl_%08x%c", api_version, 0);
 

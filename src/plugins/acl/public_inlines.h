@@ -24,6 +24,7 @@
 #include <plugins/acl/hash_lookup_private.h>
 
 #include <plugins/acl/exported_types.h>
+#include <plugins/acl/bm_lookup.h>
 
 #define LOAD_SYMBOL_FROM_PLUGIN_TO(p, s, st)                              \
 ({                                                                        \
@@ -647,6 +648,154 @@ hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5
   return 0;
 }
 
+always_inline sbitmap_t *
+get_indexed_bitmap (sbitmap_t ** bitmaps, u16 index)
+{
+  if (bitmaps)
+    {
+      int idx = sparse_vec_index (bitmaps, index);
+      if (idx && idx < vec_len (bitmaps))
+        {
+          sbitmap_t **res = vec_elt_at_index (bitmaps, idx);
+          return *res;
+        }
+      else
+        {
+          return 0;
+        }
+    }
+  else
+    {
+      return 0;
+    }
+}
+
+
+always_inline int
+bm_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index,
+			   fa_5tuple_t * pkt_5tuple, int is_ip6, u8 * action,
+			   u32 * acl_pos_p, u32 * acl_match_p,
+			   u32 * rule_match_p, u32 * trace_bitmap)
+{
+  acl_main_t *am = p_acl_main;
+  bm_main_t *bm = am->bm_main;
+  acl_sbmatch_t *asbm = vec_elt_at_index (bm->match_contexts, lc_index);
+
+  if (is_ip6)
+    {
+      int i;
+      u16 *CLIB_UNUSED (pmatch) = (u16 *) & pkt_5tuple->ip6_addr[0];
+      sbm_or (&bm->lookup_result, asbm->l3_sbmv_ip6[0].wildcard_bitmap,
+	      get_indexed_bitmap (asbm->l3_sbmv_ip6[0].indexed_bitmaps,
+				  pmatch[0]));
+      for (i = 1; i < 16; i++)
+	{
+	  sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		      asbm->l3_sbmv_ip6[i].wildcard_bitmap,
+		      get_indexed_bitmap (asbm->
+					  l3_sbmv_ip6[i].indexed_bitmaps,
+					  pmatch[i]));
+	}
+    }
+  else
+    {
+      int i;
+      u16 *CLIB_UNUSED (pmatch) = (u16 *) & pkt_5tuple->ip4_addr[0];
+      sbm_or (&bm->lookup_result, asbm->l3_sbmv_ip4[0].wildcard_bitmap,
+	      get_indexed_bitmap (asbm->l3_sbmv_ip4[0].indexed_bitmaps,
+				  *pmatch));
+      for (i = 1; i < 3; i++)
+	{
+	  sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		      asbm->l3_sbmv_ip4[i].wildcard_bitmap,
+		      get_indexed_bitmap (asbm->
+					  l3_sbmv_ip4[i].indexed_bitmaps,
+					  pmatch[i]));
+	}
+    }
+
+  u8 proto = pkt_5tuple->l4.proto;
+
+  if (proto == 6)
+    {
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->l4_sbmvs[is_ip6].tcp_sbmv[0].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->l4_sbmvs[is_ip6].
+				      tcp_sbmv[0].indexed_bitmaps,
+				      pkt_5tuple->l4.port[0]));
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->l4_sbmvs[is_ip6].tcp_sbmv[1].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->l4_sbmvs[is_ip6].
+				      tcp_sbmv[1].indexed_bitmaps,
+				      pkt_5tuple->l4.port[1]));
+    }
+  else if (proto == 17)
+    {
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->l4_sbmvs[is_ip6].udp_sbmv[0].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->l4_sbmvs[is_ip6].
+				      udp_sbmv[0].indexed_bitmaps,
+				      pkt_5tuple->l4.port[0]));
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->l4_sbmvs[is_ip6].udp_sbmv[1].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->l4_sbmvs[is_ip6].
+				      udp_sbmv[1].indexed_bitmaps,
+				      pkt_5tuple->l4.port[1]));
+    }
+  else if (is_ip6 && proto == 58)
+    {
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->l4_sbmvs[is_ip6].icmp_sbmv[0].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->l4_sbmvs[is_ip6].
+				      icmp_sbmv[0].indexed_bitmaps,
+				      pkt_5tuple->l4.port[0]));
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->l4_sbmvs[is_ip6].icmp_sbmv[1].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->l4_sbmvs[is_ip6].
+				      icmp_sbmv[1].indexed_bitmaps,
+				      pkt_5tuple->l4.port[1]));
+    }
+  else if (!is_ip6 && proto == 1)
+    {
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->l4_sbmvs[is_ip6].icmp_sbmv[0].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->l4_sbmvs[is_ip6].
+				      icmp_sbmv[0].indexed_bitmaps,
+				      pkt_5tuple->l4.port[0]));
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->l4_sbmvs[is_ip6].icmp_sbmv[1].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->l4_sbmvs[is_ip6].
+				      icmp_sbmv[1].indexed_bitmaps,
+				      pkt_5tuple->l4.port[1]));
+    }
+  else
+    {
+      sbm_and_or (&bm->lookup_result, bm->lookup_result,
+		  asbm->proto_sbmv[is_ip6].wildcard_bitmap,
+		  get_indexed_bitmap (asbm->
+				      proto_sbmv[is_ip6].indexed_bitmaps,
+				      proto));
+    }
+  if (vec_len (bm->lookup_result))
+    {
+      u32 match_index =
+	bm->lookup_result[0].elt_zero *
+	sizeof (bm->lookup_result[0].elt_bits) * 8;
+      match_index += log2_first_set (bm->lookup_result[0].elt_bits);
+      bm_applied_ace_entry_t *pae =
+	vec_elt_at_index (asbm->all_applied_entries, match_index);
+      pae->hitcount++;
+      *acl_pos_p = pae->acl_position;
+      *acl_match_p = pae->acl_index;
+      *rule_match_p = pae->ace_index;
+      *action = pae->action;
+      return 1;
+    }
+  else
+    {
+      return 0;
+    }
+}
 
 
 always_inline int
@@ -672,8 +821,12 @@ acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index,
       return linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
     } else {
+      return bm_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+/*
       return hash_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+				 */
     }
   } else {
     return linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
