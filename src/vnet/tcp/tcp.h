@@ -486,6 +486,9 @@ typedef struct _tcp_main
    *  rfc 7323 window scaling factor */
   u32 max_rx_fifo;
 
+  /** Default MTU to be used when establishing connections */
+  u16 default_mtu;
+
   /** Number of preallocated connections */
   u32 preallocated_connections;
   u32 preallocated_half_open_connections;

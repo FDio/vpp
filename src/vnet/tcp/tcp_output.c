@@ -49,10 +49,6 @@ typedef struct
   tcp_connection_t tcp_connection;
 } tcp_tx_trace_t;
 
-#ifndef CLIB_MARCH_VARIANT
-u16 dummy_mtu = 1460;
-#endif /* CLIB_MARCH_VARIANT */
-
 static u8 *
 format_tcp_tx_trace (u8 * s, va_list * args)
 {
@@ -89,7 +85,7 @@ void
 tcp_update_rcv_mss (tcp_connection_t * tc)
 {
   /* TODO find our iface MTU */
-  tc->mss = dummy_mtu - sizeof (tcp_header_t);
+  tc->mss = tcp_main.default_mtu - sizeof (tcp_header_t);
 }
 
 /**
@@ -293,7 +289,7 @@ tcp_make_syn_options (tcp_options_t * opts, u8 wnd_scale)
   u8 len = 0;
 
   opts->flags |= TCP_OPTS_FLAG_MSS;
-  opts->mss = dummy_mtu;	/*XXX discover that */
+  opts->mss = tcp_main.default_mtu;	/*XXX discover that */
   len += TCP_OPTION_LEN_MSS;
 
   opts->flags |= TCP_OPTS_FLAG_WSCALE;
