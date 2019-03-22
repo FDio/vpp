@@ -841,9 +841,10 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tcp_flight_size (tc), tcp_available_output_snd_space (tc),
 	      tcp_rcv_wnd_available (tc));
   s = format (s, " tsval_recent %u\n", tc->tsval_recent);
-  s = format (s, " tsecr %u tsecr_last_ack %u tsval_recent_age %u\n",
+  s = format (s, " tsecr %u tsecr_last_ack %u tsval_recent_age %u",
 	      tc->rcv_opts.tsecr, tc->tsecr_last_ack,
 	      tcp_time_now () - tc->tsval_recent_age);
+  s = format (s, " snd_mss %u\n", tc->snd_mss);
   s = format (s, " rto %u rto_boff %u srtt %u us %.3f rttvar %u rtt_ts %.4f",
 	      tc->rto, tc->rto_boff, tc->srtt, tc->mrtt_us * 1000, tc->rttvar,
 	      tc->rtt_ts);
@@ -1534,6 +1535,7 @@ tcp_init (vlib_main_t * vm)
   tcp_api_reference ();
   tm->tx_pacing = 1;
   tm->cc_algo = TCP_CC_NEWRENO;
+  tm->default_mtu = 1460;
   return 0;
 }
 
@@ -1595,6 +1597,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "max-rx-fifo %U", unformat_memory_size,
 			 &tm->max_rx_fifo))
+	;
+      else if (unformat (input, "mtu %d", &tm->default_mtu))
 	;
       else if (unformat (input, "no-tx-pacing"))
 	tm->tx_pacing = 0;
