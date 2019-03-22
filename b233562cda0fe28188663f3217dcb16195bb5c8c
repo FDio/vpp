@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4193a3f3_70e2f8bc",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-22T07:13:10Z",
+      "side": 1,
+      "message": "A flag enum?",
+      "range": {
+        "startLine": 91,
+        "startChar": 2,
+        "endLine": 95,
+        "endChar": 18
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7cf9a674_4ff94310",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-22T07:13:10Z",
+      "side": 1,
+      "message": "Delete? Or add to flag enum?",
+      "range": {
+        "startLine": 103,
+        "startChar": 2,
+        "endLine": 103,
+        "endChar": 15
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "71f991d4_8155cd8b",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-22T07:13:10Z",
+      "side": 1,
+      "message": "bool?",
+      "range": {
+        "startLine": 510,
+        "startChar": 2,
+        "endLine": 510,
+        "endChar": 15
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b7be3eb7_5cfa579f",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-22T07:13:10Z",
+      "side": 1,
+      "message": "bool?",
+      "range": {
+        "startLine": 532,
+        "startChar": 2,
+        "endLine": 532,
+        "endChar": 15
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "64ed9db0_518244e2",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 567,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-22T07:13:10Z",
+      "side": 1,
+      "message": "bool?",
+      "range": {
+        "startLine": 567,
+        "startChar": 2,
+        "endLine": 567,
+        "endChar": 15
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4421b0ec_751e7a98",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 685,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-22T07:13:10Z",
+      "side": 1,
+      "message": "A shared flags enum for all of these across all methods?",
+      "range": {
+        "startLine": 683,
+        "startChar": 2,
+        "endLine": 685,
+        "endChar": 19
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
