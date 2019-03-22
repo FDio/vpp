@@ -161,6 +161,8 @@ extern vlib_node_registration_t ah6_encrypt_node;
 extern vlib_node_registration_t ah6_decrypt_node;
 extern vlib_node_registration_t ipsec4_if_input_node;
 extern vlib_node_registration_t ipsec6_if_input_node;
+extern vlib_node_registration_t ipsec4_if_output_node;
+extern vlib_node_registration_t ipsec6_if_output_node;
 
 /*
  * functions
