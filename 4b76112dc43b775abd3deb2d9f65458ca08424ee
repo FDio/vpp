@@ -16,6 +16,24 @@
       "revId": "4b76112dc43b775abd3deb2d9f65458ca08424ee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9c97a143_5839daff",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-03-22T04:24:05Z",
+      "side": 1,
+      "message": "Sure! Done here: https://gerrit.fd.io/r/#/c/18473/",
+      "parentUuid": "b3aa67a0_275c050e",
+      "revId": "4b76112dc43b775abd3deb2d9f65458ca08424ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
