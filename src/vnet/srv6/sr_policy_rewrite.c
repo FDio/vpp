@@ -185,9 +185,10 @@ compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap, u64 tmap_prefix)
   iph->protocol = IP_PROTOCOL_IPV6;
   iph->hop_limit = IPv6_DEFAULT_HOP_LIMIT;
 
+  srh = (ip6_sr_header_t *) (iph + 1);
+
   if (vec_len (sl) > 1)
     {
-      srh = (ip6_sr_header_t *) (iph + 1);
       iph->protocol = IP_PROTOCOL_IPV6_ROUTE;
       srh->protocol = IP_PROTOCOL_IPV6;
       srh->type = ROUTING_HEADER_TYPE_SR;
@@ -204,14 +205,14 @@ compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap, u64 tmap_prefix)
 		     sizeof (ip6_address_t));
 	addrp--;
       }
-
-      if (is_tmap)
-        {
-          segment = (void *) srh + header_length -
-            sizeof (ip6_address_t);
-          segment->as_u64[0] = tmap_prefix;
-        }
     }
+
+  if (is_tmap)
+    {
+      segment = srh->segments + vec_len (sl);
+      segment->as_u64[0] = tmap_prefix;
+    }
+
   iph->dst_address.as_u64[0] = sl->as_u64[0];
   iph->dst_address.as_u64[1] = sl->as_u64[1];
   return rs;

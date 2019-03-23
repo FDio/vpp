@@ -33,7 +33,7 @@ srv6_end_init (vlib_main_t * vm)
   // sr_localsid_register_function ( )
 
   node = vlib_get_node_by_name (vm, (u8 *) "srv6-end-m-gtp4-e");
-  sm->end_m_gtp4_e_index = node->index;
+  sm->end_m_gtp4_e_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = node->index;
@@ -50,7 +50,7 @@ VNET_FEATURE_INIT (srv6_end_m_gtp4_e, static) =
   .runs_before = 0,
 };
 
-VLIB_INI_FUNCTION (srv6_end_init);
+VLIB_INIT_FUNCTION (srv6_end_init);
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,

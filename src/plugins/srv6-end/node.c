@@ -15,9 +15,10 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
+#include <srv6-end/srv6_end.h>
 
 #define foreach_srv6_end_error \
-  _(SRV6_END_M_GTP4_E_PACKETS, "srv6 End.M.GTP4.E packets")
+  _(M_GTP4_E_PACKETS, "srv6 End.M.GTP4.E packets")
 
 typedef enum
 {
@@ -78,18 +79,18 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
           b0 = vlib_get_buffer (vm, bi0);
           ip0 = vlib_buffer_get_current (b0);
+          // dummy
+          ip0++;
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 
 	  good_n++;
-
-
         }
     }
 
   vlib_node_increment_counter (vm, sm->end_m_gtp4_e_node_index,
-			       SRV6_END_M_GTP4_E_PACKETS,
+                               SRV6_END_ERROR_M_GTP4_E_PACKETS,
 			       good_n);
 
   return frame->n_vectors;
@@ -109,7 +110,7 @@ VLIB_REGISTER_NODE (srv6_end_m_gtp4_e) = {
     [SRV6_END_M_GTP4_E_NEXT_DROP] = "error-drop",
     [SRV6_END_M_GTP4_E_NEXT_LOOKUP] = "ip6-lookup",
   },
-}
+};
 
 /*
 * fd.io coding-style-patch-verification: ON

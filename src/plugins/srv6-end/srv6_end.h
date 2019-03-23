@@ -21,7 +21,6 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 
-
 typedef struct srv6_end_main_s
 {
 
