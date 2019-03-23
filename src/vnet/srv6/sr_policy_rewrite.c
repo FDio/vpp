@@ -295,7 +295,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
  */
 static inline ip6_sr_sl_t *
 create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
-	   u8 is_encap)
+	   u8 is_encap, u8 is_gtp4_removal, ip46_address_t *gtp4_sr_prefix)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
@@ -549,7 +549,9 @@ update_replicate (ip6_sr_policy_t * sr_policy)
  */
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
-	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
+	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+           u8 is_gtp4_removal, ip46_address_t *gtp4_sr_prefix,
+           u32 gtp4_mask_width)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -599,7 +601,8 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	     NULL);
 
   /* Create a segment list and add the index to the SR policy */
-  create_sl (sr_policy, segments, weight, is_encap);
+  create_sl (sr_policy, segments, weight, is_encap, is_gtp4_removal,
+             gtp4_sr_prefix, gtp4_mask_width);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -832,6 +835,9 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 operation = 0;
   char is_encap = 1;
   char is_spray = 0;
+  char is_gtp4_removal = 0;
+  ip46_address_t gtp4_sr_prefix;
+  u32 gtp4_mask_width = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -867,6 +873,14 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_encap = 1;
       else if (unformat (input, "insert"))
 	is_encap = 0;
+       else if (unformat (input, "gtp4_removal sr-prefix %U/%d",
+           unformat_ip6_address, &gtp4_sr_prefix.ip6,  &gtp4_mask_width))
+       {
+    ip6_address_t mask;
+    ip6_address_mask_from_width(&mask, gtp4_mask_width);
+    ip6_address_mask(&gtp4_sr_prefix.ip6, &mask);
+    is_gtp4_removal = 1;
+       }
       else if (unformat (input, "spray"))
 	is_spray = 1;
       else
@@ -885,7 +899,8 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	return clib_error_return (0, "No Segment List specified");
       rv = sr_policy_add (&bsid, segments, weight,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
-			   SR_POLICY_TYPE_DEFAULT), fib_table, is_encap);
+			   SR_POLICY_TYPE_DEFAULT), fib_table, is_encap, is_gtp4_removal,
+               &gtp4_sr_prefix);
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -939,7 +954,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (sr_policy_command, static) = {
   .path = "sr policy",
   .short_help = "sr policy [add||del||mod] [bsid 2001::1||index 5] "
-    "next A:: next B:: next C:: (weight 1) (fib-table 2) (encap|insert)",
+    "next A:: next B:: next C:: (weight 1) (fib-table 2) (encap|insert|gtp4_removal sr-prefix <ipv6_prefix_interworking>/<mask>)",
   .long_help =
     "Manipulation of SR policies.\n"
     "A Segment Routing policy may contain several SID lists. Each SID list has\n"
