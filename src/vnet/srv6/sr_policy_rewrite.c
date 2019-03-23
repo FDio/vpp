@@ -163,6 +163,7 @@ compute_rewrite_encaps (ip6_address_t * sl)
   if (vec_len (sl) > 1)
     {
       header_length += sizeof (ip6_sr_header_t);
+      // TODO: (vec_len (sl) + 1)
       header_length += vec_len (sl) * sizeof (ip6_address_t);
     }
 
@@ -1364,10 +1365,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u32 next0, next1, next2, next3;
 	  next0 = next1 = next2 = next3 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
-    ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
+          ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
-    ip4_gtpu_header_t *hdr0, *hdr1, *hdr2, *hdr3;
-    u32 teid0, teid1, teid2, teid3;
+          ip4_gtpu_header_t *hdr0, *hdr1, *hdr2, *hdr3;
+          u32 teid0, teid1, teid2, teid3;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -1417,51 +1418,55 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    pool_elt_at_index (sm->sid_lists,
 			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
 
-    hdr0 = vlib_buffer_get_current (b0);
-    hdr1 = vlib_buffer_get_current (b1);
-    hdr2 = vlib_buffer_get_current (b2);
-    hdr3 = vlib_buffer_get_current (b3);
+          hdr0 = vlib_buffer_get_current (b0);
+          hdr1 = vlib_buffer_get_current (b1);
+          hdr2 = vlib_buffer_get_current (b2);
+          hdr3 = vlib_buffer_get_current (b3);
 
-    teid0 = hdr0->gtpu.teid;
-    teid1 = hdr1->gtpu.teid;
-    teid2 = hdr2->gtpu.teid;
-    teid3 = hdr3->gtpu.teid;
+          teid0 = hdr0->gtpu.teid;
+          teid1 = hdr1->gtpu.teid;
+          teid2 = hdr2->gtpu.teid;
+          teid3 = hdr3->gtpu.teid;
 
-    vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
-    vlib_buffer_advance (b1, (word) sizeof(ip4_gtpu_header_t));
-    vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
-    vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));    
+          vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
+          vlib_buffer_advance (b1, (word) sizeof(ip4_gtpu_header_t));
+          vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
+          vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));
 
-    clib_memcpy (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite), sl0->rewrite, vec_len (sl0->rewrite));
-    clib_memcpy (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite), sl1->rewrite, vec_len (sl1->rewrite));
-    clib_memcpy (vlib_buffer_get_current (b2) - vec_len (sl2->rewrite), sl2->rewrite, vec_len (sl2->rewrite));
-    clib_memcpy (vlib_buffer_get_current (b3) - vec_len (sl3->rewrite), sl3->rewrite, vec_len (sl3->rewrite));
+          clib_memcpy (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
+                       sl0->rewrite, vec_len (sl0->rewrite));
+          clib_memcpy (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite),
+                       sl1->rewrite, vec_len (sl1->rewrite));
+          clib_memcpy (vlib_buffer_get_current (b2) - vec_len (sl2->rewrite),
+                       sl2->rewrite, vec_len (sl2->rewrite));
+          clib_memcpy (vlib_buffer_get_current (b3) - vec_len (sl3->rewrite),
+                      sl3->rewrite, vec_len (sl3->rewrite));
     
-    vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
-    vlib_buffer_advance (b1, -(word) vec_len (sl1->rewrite));
-    vlib_buffer_advance (b2, -(word) vec_len (sl2->rewrite));
-    vlib_buffer_advance (b3, -(word) vec_len (sl3->rewrite));
+          vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
+          vlib_buffer_advance (b1, -(word) vec_len (sl1->rewrite));
+          vlib_buffer_advance (b2, -(word) vec_len (sl2->rewrite));
+          vlib_buffer_advance (b3, -(word) vec_len (sl3->rewrite));
 
-    ip0 = vlib_buffer_get_current (b0);
-    ip1 = vlib_buffer_get_current (b1);
-    ip2 = vlib_buffer_get_current (b2);
-    ip3 = vlib_buffer_get_current (b3);
+          ip0 = vlib_buffer_get_current (b0);
+          ip1 = vlib_buffer_get_current (b1);
+          ip2 = vlib_buffer_get_current (b2);
+          ip3 = vlib_buffer_get_current (b3);
 
-    encaps_processing_v4 (vm, node, b0, ip0);
-    encaps_processing_v4 (vm, node, b1, ip1);
-    encaps_processing_v4 (vm, node, b2, ip2);
-    encaps_processing_v4 (vm, node, b3, ip3);
+          encaps_processing_v4 (vm, node, b0, ip0);
+          encaps_processing_v4 (vm, node, b1, ip1);
+          encaps_processing_v4 (vm, node, b2, ip2);
+          encaps_processing_v4 (vm, node, b3, ip3);
 
-    /* Set the TEID in the last SID args */
-    sr0 = (void*)(ip0+1);
-    sr1 = (void*)(ip1+1);
-    sr2 = (void*)(ip2+1);
-    sr3 = (void*)(ip3+1);
+          /* Set the TEID in the last SID args */
+          sr0 = (void*)(ip0+1);
+          sr1 = (void*)(ip1+1);
+          sr2 = (void*)(ip2+1);
+          sr3 = (void*)(ip3+1);
 
-    sr0->segments->as_u32[3] = teid0;
-    sr1->segments->as_u32[3] = teid1;
-    sr2->segments->as_u32[3] = teid2;
-    sr3->segments->as_u32[3] = teid3;
+          sr0->segments->as_u32[3] = teid0;
+          sr1->segments->as_u32[3] = teid1;
+          sr2->segments->as_u32[3] = teid2;
+          sr3->segments->as_u32[3] = teid3;
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -1518,9 +1523,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0;
 	  ip6_header_t *ip0 = 0;
 	  ip6_sr_sl_t *sl0;
-    ip6_sr_header_t *sr0;
-    ip4_gtpu_header_t *hdr0;
-    u32 teid0;
+          ip6_sr_header_t *sr0;
+          ip4_gtpu_header_t *hdr0;
+          u32 teid0;
 
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 
@@ -1536,15 +1541,32 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    pool_elt_at_index (sm->sid_lists,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
-    hdr0 = vlib_buffer_get_current (b0);
-    teid0 = hdr0->gtpu.teid;
-    vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));  
-    clib_memcpy (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite), sl0->rewrite, vec_len (sl0->rewrite));
-    vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
-    ip0 = vlib_buffer_get_current (b0);
-    encaps_processing_v4 (vm, node, b0, ip0);
-    sr0 = (void*)(ip0+1);
-    sr0->segments->as_u32[3] = teid0;
+          // GTPU = IPv4 + UDP + GTP
+          hdr0 = vlib_buffer_get_current (b0);
+          teid0 = hdr0->gtpu.teid;
+          // go after GTPU, we are at segment header
+          vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
+          clib_memcpy (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
+                       sl0->rewrite, vec_len (sl0->rewrite));
+          vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
+          ip0 = vlib_buffer_get_current (b0);
+
+          // ??
+          encaps_processing_v4 (vm, node, b0, ip0);
+
+          sr0 = (void*)(ip0+1);
+          if (PREDICT_TRUE (sl0->is_tmap))
+            {
+              sr0 = ((void *) sr0) - vec_len (sl0->rewrite);
+              sr0->segments->as_u64[0] = sl0->tmap_prefix;
+              sr0->segments->as_u32[2] = hdr0->ip4.dst_address.as_u32;
+              sr0->segments->as_u32[3] = teid0;
+            }
+          else
+            {
+              // do we need this ? ? ?
+              sr0->segments->as_u32[3] = teid0;
+            }
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -2362,6 +2384,7 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vec_len (sl0->rewrite);
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 
+          // LOOK he is adding to last one destination address
 	  sr0 = ((void *) sr0) - vec_len (sl0->rewrite);
 	  sr0->segments->as_u64[0] = ip0->dst_address.as_u64[0];
 	  sr0->segments->as_u64[1] = ip0->dst_address.as_u64[1];

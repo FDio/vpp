@@ -44,9 +44,15 @@ RUN set -eux; \
     rm vpp-api-python_*.deb; \
     dpkg -i *.deb
 
+RUN set -euex; \
+    cp {{vpp_path}}/startup.conf /etc/startup.conf; \
+    rm -rf {{vpp_path}}
+
 WORKDIR /usr/share/vpp/plugins/perfmon
 
 RUN tar Jxf PerfmonTables.tar.xz
+
+WORKDIR /
  
-CMD vpp -c {{vpp_path}}/startup.conf
+CMD vpp -c /etc/startup.conf
 
