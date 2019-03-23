@@ -1596,13 +1596,14 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* Single loop for potentially the last three packets */
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0;
+	  u32 bi0, tmp0;
 	  vlib_buffer_t *b0;
 	  ip6_header_t *ip0 = 0;
 	  ip6_sr_sl_t *sl0;
           ip6_sr_header_t *sr0;
           ip4_gtpu_header_t *hdr0;
           ip6_address_t *segment;
+          ip4_address_t addr0;
           u32 teid0;
 
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
@@ -1619,30 +1620,35 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    pool_elt_at_index (sm->sid_lists,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
-          // GTPU = IPv4 + UDP + GTP
+          // save for later use
           hdr0 = vlib_buffer_get_current (b0);
+          teid0 = hdr0->gtpu.teid;
+          addr0 = hdr0->ip4.dst_address;
+
           // go after GTPU, we are at segment header
           vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
-          // srv header
-          clib_memcpy (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
+
+          // srv header + 1 position (new one)
+          tmp0 = vlib_buffer_get_current (b0);
+          clib_memcpy (tmp0 - vec_len (sl0->rewrite),
                        sl0->rewrite, vec_len (sl0->rewrite));
+
+          // first ipv6 header position
           vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
           ip0 = vlib_buffer_get_current (b0);
 
           // ??
           encaps_processing_v4 (vm, node, b0, ip0);
 
-          sr0 = (void*)(ip0+1);
-          teid0 = hdr0->gtpu.teid;
           if (PREDICT_TRUE (sl0->is_tmap))
             {
-              segment = (void *) sr0 + vec_len (sl0->rewrite) -
-                sizeof (ip6_address_t);
-              segment->as_u32[2] = hdr0->ip4.dst_address.as_u32;
+              segment = (void *) tmp0 - sizeof (ip6_address_t);
+              segment->as_u32[2] = addr0.as_u32;
               segment->as_u32[3] = teid0;
             }
           else
             {
+              sr0 = (void*)(ip0+1);
               sr0->segments->as_u32[3] = teid0;
             }
 
