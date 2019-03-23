@@ -150,7 +150,7 @@ VLIB_CLI_COMMAND (set_sr_src_command, static) = {
  * @return precomputed rewrite string for encapsulation
  */
 static inline u8 *
-compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap)
+compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap, u64 tmap_prefix)
 {
   ip6_header_t *iph;
   ip6_sr_header_t *srh;
@@ -209,7 +209,7 @@ compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap)
         {
           segment = (void *) srh + header_length -
             sizeof (ip6_address_t);
-          segment->as_u64[0] = sl0->tmap_prefix;
+          segment->as_u64[0] = tmap_prefix;
         }
     }
   iph->dst_address.as_u64[0] = sl->as_u64[0];
@@ -326,11 +326,11 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
   segment_list->segments = vec_dup (sl);
 
   segment_list->is_tmap = is_tmap;
-  segment_list->tmap_prefix = tmap_prefix;
 
   if (is_encap)
     {
-      segment_list->rewrite = compute_rewrite_encaps (sl, is_tmap);
+      segment_list->rewrite = compute_rewrite_encaps (sl, is_tmap,
+                                                      tmap_prefix->as_u64[0]);
       segment_list->rewrite_bsid = segment_list->rewrite;
     }
   else
@@ -569,8 +569,7 @@ update_replicate (ip6_sr_policy_t * sr_policy)
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
-           u8 is_tmap, ip46_address_t *tmap_prefix,
-           u32 gtp4_mask_width)
+           u8 is_tmap, ip46_address_t *tmap_prefix)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -621,7 +620,7 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 
   /* Create a segment list and add the index to the SR policy */
   create_sl (sr_policy, segments, weight, is_encap, is_tmap,
-             tmap_prefix, gtp4_mask_width);
+             tmap_prefix);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -775,7 +774,7 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
     {
       /* Create the new SL */
       segment_list =
-	create_sl (sr_policy, segments, weight, sr_policy->is_encap);
+	create_sl (sr_policy, segments, weight, sr_policy->is_encap, 0, NULL);
 
       /* Create a new LB DPO */
       if (sr_policy->type == SR_POLICY_TYPE_DEFAULT)

@@ -92,7 +92,6 @@ typedef struct
   dpo_id_t ip4_dpo;				/**< DPO for Encaps IPv6 */
 
   u8 is_tmap;                                /**< T.M.Tmap dynamically compute node ID */
-  u64 tmap_prefix;                           /**< T.M.Tmap prefix used for node ID computation */
 
 } ip6_sr_sl_t;
 
