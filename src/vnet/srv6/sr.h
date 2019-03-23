@@ -285,7 +285,8 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 
 extern int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
-	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap);
+	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+           u8 is_gtp4_removal, ip46_address_t *gtp4_sr_prefix);
 extern int
 sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 	       u8 operation, ip6_address_t * segments, u32 sl_index,
