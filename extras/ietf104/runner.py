@@ -528,13 +528,13 @@ class Program(object):
         self.logger.error("connecting to: {}".format(name))
         self.containers.vppctl(name, command)
 
-    def bash(self, index, command=None):
+    def bash(self, index):
         if index >= len(self.instance_names):
             return
         name = self.get_name(
             self.instance_names[index])
         self.logger.error("connecting to: {}".format(name))
-        self.containers.bash(name, command)
+        self.containers.bash(name)
 
 
 def get_args():
