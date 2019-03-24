@@ -1519,8 +1519,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
             {
               segment = (void *) tmp0 - sizeof (ip6_address_t);
               segment->as_u32[1] = dst_addr0.as_u32;
-              segment->as_u16[5] = ((u16*) &teid0)[0];
-              segment->as_u16[6] = ((u16*) &teid0)[1];
+              segment->as_u8[9] = ((u8*) &teid0)[0];
+              segment->as_u8[10] = ((u8*) &teid0)[1];
+              segment->as_u8[11] = ((u8*) &teid0)[2];
+              segment->as_u8[12] = ((u8*) &teid0)[3];
 
               ip0->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip0->src_address.as_u32[2] = sr_addr0.as_u32;
@@ -1537,8 +1539,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           {
               segment = (void *) tmp1 - sizeof (ip6_address_t);
               segment->as_u32[1] = dst_addr1.as_u32;
-              segment->as_u16[5] = ((u16*) &teid1)[0];
-              segment->as_u16[6] = ((u16*) &teid1)[1];
+              segment->as_u8[9] = ((u8*) &teid1)[0];
+              segment->as_u8[10] = ((u8*) &teid1)[1];
+              segment->as_u8[11] = ((u8*) &teid1)[2];
+              segment->as_u8[12] = ((u8*) &teid1)[3];
 
               ip1->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip1->src_address.as_u32[2] = sr_addr1.as_u32;
@@ -1555,8 +1559,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
             {
               segment = (void *) tmp2 - sizeof (ip6_address_t);
               segment->as_u32[1] = dst_addr2.as_u32;
-              segment->as_u16[5] = ((u16*) &teid2)[0];
-              segment->as_u16[6] = ((u16*) &teid2)[1];
+              segment->as_u8[9] = ((u8*) &teid2)[0];
+              segment->as_u8[10] = ((u8*) &teid2)[1];
+              segment->as_u8[11] = ((u8*) &teid2)[2];
+              segment->as_u8[12] = ((u8*) &teid2)[3];
 
               ip2->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip2->src_address.as_u32[2] = sr_addr2.as_u32;
@@ -1573,8 +1579,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
             {
               segment = (void *) tmp3 - sizeof (ip6_address_t);
               segment->as_u32[1] = dst_addr3.as_u32;
-              segment->as_u16[5] = ((u16*) &teid3)[0];
-              segment->as_u16[6] = ((u16*) &teid3)[1];
+              segment->as_u8[9] = ((u8*) &teid3)[0];
+              segment->as_u8[10] = ((u8*) &teid3)[1];
+              segment->as_u8[11] = ((u8*) &teid3)[2];
+              segment->as_u8[12] = ((u8*) &teid3)[3];
 
               ip3->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip3->src_address.as_u32[2] = sr_addr3.as_u32;
@@ -1689,8 +1697,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
             {
               segment = (void *) tmp0 - sizeof (ip6_address_t);
               segment->as_u32[1] = dst_addr0.as_u32;
-              segment->as_u16[5] = ((u16*) &teid0)[0];
-              segment->as_u16[6] = ((u16*) &teid0)[1];
+              segment->as_u8[9] = ((u8*) &teid0)[0];
+              segment->as_u8[10] = ((u8*) &teid0)[1];
+              segment->as_u8[11] = ((u8*) &teid0)[2];
+              segment->as_u8[12] = ((u8*) &teid0)[3];
 
               ip0->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip0->src_address.as_u32[2] = sr_addr0.as_u32;
