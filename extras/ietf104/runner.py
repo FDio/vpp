@@ -16,7 +16,7 @@ from jinja2 import Environment, FileSystemLoader
 from docker.errors import NotFound, APIError
 from docker import from_env
 from scapy.all import *
-from scapy.contrib.gtp_v2 import *
+from scapy.contrib.gtp import *
 
 
 verbose_levels = {
@@ -481,7 +481,7 @@ class Program(object):
             local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
 
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
-             IP(src="172.20.0.2", dst="172.20.0.1")/UDP(sport=2152, dport=2152)/GTPHeader(teid=200)/IP(src="172.99.0.1", dst="172.99.0.2")/ICMP())
+             IP(src="172.20.0.2", dst="172.20.0.1")/UDP(sport=2152, dport=2152)/GTPHeader(gtp_type="g_pdu", teid=200)/IP(src="172.99.0.1", dst="172.99.0.2")/ICMP())
 
         print("Sending packet on {}:".format(c1.name))
         p.show2()
