@@ -17,6 +17,14 @@
 #include <vppinfra/error.h>
 #include <srv6-end/srv6_end.h>
 
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct
+{
+  ip6_header_t ip;
+  ip6_sr_header_t sr;
+}) ip6srv_combo_header_t;
+/* *INDENT-ON* */
+
 #define foreach_srv6_end_error \
   _(M_GTP4_E_PACKETS, "srv6 End.M.GTP4.E packets")
 
@@ -67,9 +75,14 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           u32 bi0;
 	  vlib_buffer_t *b0;
 
-	  ip6_header_t *ip0 = 0;
+          ip6srv_combo_header_t *ip6srv0;
+          ip6_address_t src0, dst0;
+
+          ip4_gtpu_header_t hdr0 = sm->cache_hdr;
+          
 	  u32 next0 = SRV6_END_M_GTP4_E_NEXT_LOOKUP;
 
+          // defaults
           bi0 = from[0];
           to_next[0] = bi0;
           from += 1;
@@ -78,9 +91,28 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           n_left_to_next -= 1;
 
           b0 = vlib_get_buffer (vm, bi0);
-          ip0 = vlib_buffer_get_current (b0);
-          // dummy
-          ip0++;
+          //
+
+          ip6srv0 = vlib_buffer_get_current (b0);
+          src0 = ip6srv0->ip.src_address;
+          dst0 = ip6srv0->ip.dst_address;
+
+          hdr0.ip4.src_address = src0.as_u32[2];
+          hdr0.ip4.dst_address = dst0.as_u32[1];
+          hdr0.ip4.checksum = ip4_header_checksum (&hdr0.ip4);
+
+          hdr0.udp.src_port = src0.as_u16[6];
+
+          hdr0.gtpu.teid = (u32) dst0.as_u8[9];
+
+          hdr0.udp.length =;
+          hdr0.gtpu.length =;
+
+          vlib_buffer_advance (b0, (word) ip6srv0->sr.length);
+         
+          clib_memcpy (vlib_buffer_get_current (b0) -
+                       sizeof (ip4_gtpu_header_t), &hdr0,
+                       sizeof (ip4_gtpu_header_t));
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -108,7 +140,7 @@ VLIB_REGISTER_NODE (srv6_end_m_gtp4_e) = {
   .n_next_nodes = SRV6_END_M_GTP4_E_N_NEXT,
   .next_nodes = {
     [SRV6_END_M_GTP4_E_NEXT_DROP] = "error-drop",
-    [SRV6_END_M_GTP4_E_NEXT_LOOKUP] = "ip6-lookup",
+    [SRV6_END_M_GTP4_E_NEXT_LOOKUP] = "ip4-lookup",
   },
 };
 

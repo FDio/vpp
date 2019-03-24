@@ -91,6 +91,9 @@ static clib_error_t *
 srv6_end_init (vlib_main_t * vm)
 {
   srv6_end_main_t *sm = &srv6_end_main;
+  ip4_header_t *ip4 = &sm->cache_hdr.ip4;
+  udp_header_t *udp = &sm->cahce_hdr.udp;
+  gtpu_header_t *gtpu = &sm->cache_hdr.gtpu;
   vlib_node_t *node;
   u32 rc;
 
@@ -104,6 +107,23 @@ srv6_end_init (vlib_main_t * vm)
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = node->index;
+
+  sm->dst_p_len = 32;
+  sm->src_p_len = 64;
+
+  // clear the pre cached packet
+  clib_memset_u8 (ip4, 0, sizeof (ip4_gtpu_header_t));
+
+  // set defaults
+  ip->ip_version_and_header_length = 0x45;
+  ip4->protocol = IP_PROTOCOL_UDP;
+  ip4->ttl = 64;
+
+  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_GTPU);
+
+  gtpu->ver_flags = GTPU_V1_VER | GTPU_PT_GTP;
+  gtpu->type = GTPU_TYPE_GTPU;
+  //
 
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 

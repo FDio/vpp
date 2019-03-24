@@ -30,6 +30,12 @@ typedef struct srv6_end_main_s
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
+  // dst and src prefix len
+  u32 dst_p_len;
+  u32 src_p_len;
+
+  ip4_gtpu_header_t cache_hdr;
+
 } srv6_end_main_t;
 
 extern srv6_end_main_t srv6_end_main;
