@@ -86,37 +86,6 @@ clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 static int
 clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
-    srv6_end_main_t *sm = &srv6_end_main;
-    srv6_end_localsid_t *ls_mem = localsid->plugin_mem;
-    adj_index_t nh_adj_index = ADJ_INDEX_INVALID;
-
-    /* Step 1: Prepare xconnect adjacency for sending packets to the VNF */
-
-    /* Retrieve the adjacency corresponding to the (OIF, next_hop) */
-    nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
-                                        VNET_LINK_IP6, &ls_mem->nh_addr,
-                                        ls_mem->sw_if_index_out);
-    if (nh_adj_index == ADJ_INDEX_INVALID)
-        return -5;
-
-    localsid->nh_adj = nh_adj_index;
-
-    /* Step 2: Prepare inbound policy for packets returning from the VNF */
-
-    /* Sanitise the SW_IF_INDEX */
-    if (pool_is_free_index (sm->vnet_main->interface_main.sw_interfaces,
-        ls_mem->sw_if_index_in))
-        return -3;
-
-    vnet_sw_interface_t *sw = vnet_get_sw_interface (sm->vnet_main,
-                                                     ls_mem->sw_if_index_in);
-    if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
-        return -3;
-
-    int ret = vnet_feature_enable_disable ("ip4-unicast", "srv6-end-m-gtp4-e",
-                                           ls_mem->sw_if_index_in, 1, 0, 0);
-    if (ret != 0)
-        return -1;
 
     return 0;
 }
@@ -124,22 +93,8 @@ clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 static int
 clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
-    srv6_end_localsid_t *ls_mem = localsid->plugin_mem;
-
-  /* Remove hardware indirection (from sr_steering.c:137) */
-  int ret = vnet_feature_enable_disable ("ip4-unicast", "srv6-end-m-gtp4-e",
-					 ls_mem->sw_if_index_in, 0, 0, 0);
-  if (ret != 0)
-    return -1;
-
-  /* Unlock (OIF, NHOP) adjacency (from sr_localsid.c:103) */
-  adj_unlock (localsid->nh_adj);
-
-  /* Clean up local SID memory */
-  clib_mem_free (localsid->plugin_mem);
 
   return 0;
-    return 1;
 }
 
 static clib_error_t *
