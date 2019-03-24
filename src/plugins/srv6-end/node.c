@@ -17,6 +17,22 @@
 #include <vppinfra/error.h>
 #include <srv6-end/srv6_end.h>
 
+typedef struct {
+  ip6_address_t src, dst;
+} srv6_end_rewrite_trace_t;
+
+static u8 *
+format_srv6_end_rewrite_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  srv6_end_rewrite_trace_t *t = va_arg (*args, srv6_end_rewrite_trace_t *);
+
+  return format (s, "SRv6-END-rewrite: src %U dst %U",
+		 format_ip4_address, &t->src, format_ip4_address, &t->dst);
+}
+
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
@@ -137,6 +153,17 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	      good_n++;
             }
 
+	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
+	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+        srv6_end_rewrite_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      clib_memcpy (tr->src.as_u8, hdr0->ip4.src_address.as_u8,
+			   sizeof (tr->src.as_u8));
+	      clib_memcpy (tr->dst.as_u8, hdr0->ip4.dst_address.as_u8,
+			   sizeof (tr->dst.as_u8));
+	    }
+
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
         }
@@ -157,6 +184,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (srv6_end_m_gtp4_e) = {
   .name = "srv6-end-m-gtp4-e",
   .vector_size = sizeof (u32),
+  .format_trace = format_srv6_end_rewrite_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = ARRAY_LEN (srv6_end_error_strings),
