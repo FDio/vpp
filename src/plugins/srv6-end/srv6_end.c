@@ -57,7 +57,7 @@ const static char *const *const dpo_nodes[DPO_PROTO_NUM] = {
 };
 
 static u8 fn_name[] = "SRv6-End.M.GTP4.E-plugin";
-static u8 keyword_str[] = "End.M.GTP4.E";
+static u8 keyword_str[] = "end.m.gtp4.e";
 static u8 def_str[] = "Endpoint function with encapsulation for IPv4/GTP tunnel";
 static u8 param_str[] = "";
 
@@ -75,13 +75,46 @@ clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 {
   // TODO: we need this! process the parameters of command line
 
-    return 0;
+    if (!unformat (input, "end.m.gtp4.e"))
+        return 0;
+
+    return 1;
 }
 
 static int
 clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
-  // TODO: figure out what to do
+    srv6_end_main_t *sm = &srv6_end_main;
+    srv6_end_localsid_t *ls_mem = localsid->plugin_mem;
+    adj_index_t nh_adj_index = ADJ_INDEX_INVALID;
+
+    /* Step 1: Prepare xconnect adjacency for sending packets to the VNF */
+
+    /* Retrieve the adjacency corresponding to the (OIF, next_hop) */
+    nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
+                                        VNET_LINK_IP6, &ls_mem->nh_addr,
+                                        ls_mem->sw_if_index_out);
+    if (nh_adj_index == ADJ_INDEX_INVALID)
+        return -5;
+
+    localsid->nh_adj = nh_adj_index;
+
+    /* Step 2: Prepare inbound policy for packets returning from the VNF */
+
+    /* Sanitise the SW_IF_INDEX */
+    if (pool_is_free_index (sm->vnet_main->interface_main.sw_interfaces,
+        ls_mem->sw_if_index_in))
+        return -3;
+
+    vnet_sw_interface_t *sw = vnet_get_sw_interface (sm->vnet_main,
+                                                     ls_mem->sw_if_index_in);
+    if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+        return -3;
+
+    int ret = vnet_feature_enable_disable ("ip4-unicast", "srv6-end-m-gtp4-e",
+                                           ls_mem->sw_if_index_in, 1, 0, 0);
+    if (ret != 0)
+        return -1;
 
     return 0;
 }
@@ -89,8 +122,22 @@ clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 static int
 clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
-  // TODO: figure out what to do
-    return 0;
+    srv6_end_localsid_t *ls_mem = localsid->plugin_mem;
+
+  /* Remove hardware indirection (from sr_steering.c:137) */
+  int ret = vnet_feature_enable_disable ("ip4-unicast", "srv6-end-m-gtp4-e",
+					 ls_mem->sw_if_index_in, 0, 0, 0);
+  if (ret != 0)
+    return -1;
+
+  /* Unlock (OIF, NHOP) adjacency (from sr_localsid.c:103) */
+  adj_unlock (localsid->nh_adj);
+
+  /* Clean up local SID memory */
+  clib_mem_free (localsid->plugin_mem);
+
+  return 0;
+    return 1;
 }
 
 static clib_error_t *
@@ -100,18 +147,16 @@ srv6_end_init (vlib_main_t * vm)
   vlib_node_t *node;
   u32 rc;
 
-  dpo_type_t dpo_type;
-
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
-                                
+
   node = vlib_get_node_by_name (vm, (u8 *) "srv6-end-m-gtp4-e");
   sm->end_m_gtp4_e_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = node->index;
 
-  dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
+  sm->srv6_end_dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 
   rc = sr_localsid_register_function (vm,
                                       fn_name,
@@ -119,7 +164,7 @@ srv6_end_init (vlib_main_t * vm)
                                       def_str,
                                       param_str,
                                       128, //prefix len
-                                      &dpo_type,
+                                      &sm->srv6_end_dpo_type,
                                       clb_format_srv6_end_m_gtp4_e,
                                       clb_unformat_srv6_end_m_gtp4_e,
                                       clb_creation_srv6_end_m_gtp4_e,
@@ -128,8 +173,9 @@ srv6_end_init (vlib_main_t * vm)
     {
       clib_error_return (0, "SRv6 Endpoint LocalSID function"
                             "couldn't be registered");
-    }
-   
+    } else
+        sm->srv6_localsid_behavior_id = rc;
+
   return 0;
 }
 

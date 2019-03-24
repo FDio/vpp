@@ -26,14 +26,27 @@
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
+
+typedef struct
+{
+  ip46_address_t nh_addr;		/**< Proxied device address */
+  u32 sw_if_index_out;					    /**< Outgoing iface to proxied device */
+  u32 sw_if_index_in;					    /**< Incoming iface from proxied device */
+} srv6_end_localsid_t;
+
 typedef struct srv6_end_main_s
 {
+  u16 msg_id_base;			  /**< API message ID base */
+
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+
+  u32 srv6_localsid_behavior_id;	  /**< SRv6 LocalSID behavior number */
 
   u32 end_m_gtp4_e_node_index;
   u32 error_node_index;
 
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
+  dpo_type_t srv6_end_dpo_type;		/**< DPO type */
 
 } srv6_end_main_t;
 
