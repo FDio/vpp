@@ -20,6 +20,11 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/srv6/sr.h>
+#include <vnet/srv6/sr_packet.h>
+
+#include <vppinfra/error.h>
+#include <vppinfra/elog.h>
 
 typedef struct srv6_end_main_s
 {

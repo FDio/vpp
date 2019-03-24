@@ -16,6 +16,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/adj/adj.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <srv6-end/srv6_end.h>
@@ -69,22 +70,27 @@ clb_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
   return s;
 }
 
-static uword *
-clb_unformat_srv6_end_m_gtp4_e (unformat_input_t, va_list * args)
+static uword
+clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 {
   // TODO: we need this! process the parameters of command line
+
+    return 0;
 }
 
 static int
 clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
   // TODO: figure out what to do
+
+    return 0;
 }
 
 static int
 clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
   // TODO: figure out what to do
+    return 0;
 }
 
 static clib_error_t *
@@ -107,8 +113,13 @@ srv6_end_init (vlib_main_t * vm)
 
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 
-  rc = sr_localsid_register_function (vm, fn_name, keyword_str,
-                                      def_str, param_str, &dpo_type,
+  rc = sr_localsid_register_function (vm,
+                                      fn_name,
+                                      keyword_str,
+                                      def_str,
+                                      param_str,
+                                      128, //prefix len
+                                      &dpo_type,
                                       clb_format_srv6_end_m_gtp4_e,
                                       clb_unformat_srv6_end_m_gtp4_e,
                                       clb_creation_srv6_end_m_gtp4_e,
