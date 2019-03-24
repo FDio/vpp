@@ -311,7 +311,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
  */
 static inline ip6_sr_sl_t *
 create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
-	   u8 is_encap, u8 is_tmap, ip46_address_t *tmap_prefix, u32 mask)
+	   u8 is_encap, u8 is_tmap, ip46_address_t *tmap_prefix)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
@@ -327,7 +327,6 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
   segment_list->segments = vec_dup (sl);
 
   segment_list->is_tmap = is_tmap;
-  segment_list->tmap_mask = mask;
 
   if (is_encap)
     {
@@ -571,7 +570,7 @@ update_replicate (ip6_sr_policy_t * sr_policy)
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
-           u8 is_tmap, ip46_address_t *tmap_prefix, u32 mask_width)
+           u8 is_tmap, ip46_address_t *tmap_prefix)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -622,7 +621,7 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 
   /* Create a segment list and add the index to the SR policy */
   create_sl (sr_policy, segments, weight, is_encap, is_tmap,
-             tmap_prefix, mask_width);
+             tmap_prefix);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -776,7 +775,7 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
     {
       /* Create the new SL */
       segment_list =
-	create_sl (sr_policy, segments, weight, sr_policy->is_encap, 0, NULL, 0);
+	create_sl (sr_policy, segments, weight, sr_policy->is_encap, 0, NULL);
 
       /* Create a new LB DPO */
       if (sr_policy->type == SR_POLICY_TYPE_DEFAULT)
@@ -920,7 +919,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       rv = sr_policy_add (&bsid, segments, weight,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
 			   SR_POLICY_TYPE_DEFAULT), fib_table,
-                           is_encap, is_tmap, &tmap_prefix, gtp4_mask_width);
+                           is_encap, is_tmap, &tmap_prefix);
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -1402,7 +1401,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
           ip4_gtpu_header_t *hdr0, *hdr1, *hdr2, *hdr3;
-          ip4_address_t addr0, addr1, addr2, addr3;
+          ip4_address_t sr_addr0, sr_addr1, sr_addr2, sr_addr3;
+          ip4_address_t dst_addr0, dst_addr1, dst_addr2, dst_addr3;
+          u16 sr_port0, sr_port1, sr_port2, sr_port3;
           u32 teid0, teid1, teid2, teid3;
           ip6_address_t *segment;
 
@@ -1464,10 +1465,20 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           teid2 = hdr2->gtpu.teid;
           teid3 = hdr3->gtpu.teid;
 
-          addr0 = hdr0->ip4.dst_address;
-          addr1 = hdr1->ip4.dst_address;
-          addr2 = hdr2->ip4.dst_address;
-          addr3 = hdr3->ip4.dst_address;
+          sr_addr0 = hdr0->ip4.src_address;
+          sr_addr1 = hdr1->ip4.src_address;
+          sr_addr2 = hdr2->ip4.src_address;
+          sr_addr3 = hdr3->ip4.src_address;
+
+          dst_addr0 = hdr0->ip4.dst_address;
+          dst_addr1 = hdr1->ip4.dst_address;
+          dst_addr2 = hdr2->ip4.dst_address;
+          dst_addr3 = hdr3->ip4.dst_address;
+
+          sr_port0 = hdr0->udp.src_port;
+          sr_port1 = hdr1->udp.src_port;
+          sr_port2 = hdr2->udp.src_port;
+          sr_port3 = hdr3->udp.src_port;
 
           vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
           vlib_buffer_advance (b1, (word) sizeof(ip4_gtpu_header_t));
@@ -1503,13 +1514,17 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           encaps_processing_v4 (vm, node, b2, ip2);
           encaps_processing_v4 (vm, node, b3, ip3);
 
-          
 
           if (PREDICT_TRUE (sl0->is_tmap))
             {
               segment = (void *) tmp0 - sizeof (ip6_address_t);
-              segment->as_u32[2] = addr0.as_u32;
-              segment->as_u32[3] = teid0;
+              segment->as_u32[1] = dst_addr0.as_u32;
+              segment->as_u16[5] = ((u16*) &teid0)[0];
+              segment->as_u16[6] = ((u16*) &teid0)[1];
+
+              ip0->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip0->src_address.as_u32[2] = sr_addr0.as_u32;
+              ip0->src_address.as_u16[6] = sr_port0;
             }
           else
             {
@@ -1519,10 +1534,15 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
             }
 
           if (PREDICT_TRUE (sl1->is_tmap))
-            {
+          {
               segment = (void *) tmp1 - sizeof (ip6_address_t);
-              segment->as_u32[2] = addr1.as_u32;
-              segment->as_u32[3] = teid1;
+              segment->as_u32[1] = dst_addr1.as_u32;
+              segment->as_u16[5] = ((u16*) &teid1)[0];
+              segment->as_u16[6] = ((u16*) &teid1)[1];
+
+              ip1->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip1->src_address.as_u32[2] = sr_addr1.as_u32;
+              ip1->src_address.as_u16[6] = sr_port1;
             }
           else
             {
@@ -1534,8 +1554,13 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           if (PREDICT_TRUE (sl2->is_tmap))
             {
               segment = (void *) tmp2 - sizeof (ip6_address_t);
-              segment->as_u32[2] = addr2.as_u32;
-              segment->as_u32[3] = teid2;
+              segment->as_u32[1] = dst_addr2.as_u32;
+              segment->as_u16[5] = ((u16*) &teid2)[0];
+              segment->as_u16[6] = ((u16*) &teid2)[1];
+
+              ip2->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip2->src_address.as_u32[2] = sr_addr2.as_u32;
+              ip2->src_address.as_u16[6] = sr_port2;
             }
           else
             {
@@ -1547,8 +1572,13 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           if (PREDICT_TRUE (sl3->is_tmap))
             {
               segment = (void *) tmp3 - sizeof (ip6_address_t);
-              segment->as_u32[2] = addr3.as_u32;
-              segment->as_u32[3] = teid3;
+              segment->as_u32[1] = dst_addr3.as_u32;
+              segment->as_u16[5] = ((u16*) &teid3)[0];
+              segment->as_u16[6] = ((u16*) &teid3)[1];
+
+              ip3->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip3->src_address.as_u32[2] = sr_addr3.as_u32;
+              ip3->src_address.as_u16[6] = sr_port3;
             }
           else
             {
@@ -1658,16 +1688,13 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           if (PREDICT_TRUE (sl0->is_tmap))
             {
               segment = (void *) tmp0 - sizeof (ip6_address_t);
-                if (sl0->tmap_mask == 64) {
-                    segment->as_u32[2] = sr_addr0.as_u32;
-                    segment->as_u16[6] = sr_port;
-                } else if (sl0->tmap_mask == 32) {
-                    segment->as_u32[1] = dst_addr0.as_u32;
-                    segment->as_u16[5] = ((u16*) &teid0)[0];
-                    segment->as_u16[6] = ((u16*) &teid0)[1];
-                } else {
-                    //Not support now
-                }
+              segment->as_u32[1] = dst_addr0.as_u32;
+              segment->as_u16[5] = ((u16*) &teid0)[0];
+              segment->as_u16[6] = ((u16*) &teid0)[1];
+
+              ip0->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip0->src_address.as_u32[2] = sr_addr0.as_u32;
+              ip0->src_address.as_u16[6] = sr_port;
             }
           else
             {

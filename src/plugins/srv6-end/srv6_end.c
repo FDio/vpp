@@ -16,9 +16,12 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/adj/adj.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <srv6-end/srv6_end.h>
+
+srv6_end_main_t srv6_end_main;
 
 static void
 clb_dpo_lock_srv6_end_m_gtp4_e (dpo_id_t * dpo)
@@ -56,7 +59,7 @@ const static char *const *const dpo_nodes[DPO_PROTO_NUM] = {
 };
 
 static u8 fn_name[] = "SRv6-End.M.GTP4.E-plugin";
-static u8 keyword_str[] = "End.M.GTP4.E";
+static u8 keyword_str[] = "end.m.gtp4.e";
 static u8 def_str[] = "Endpoint function with encapsulation for IPv4/GTP tunnel";
 static u8 param_str[] = "";
 
@@ -69,22 +72,74 @@ clb_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
   return s;
 }
 
-static uword *
-clb_unformat_srv6_end_m_gtp4_e (unformat_input_t, va_list * args)
+static uword
+clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 {
   // TODO: we need this! process the parameters of command line
+
+    if (!unformat (input, "end.m.gtp4.e"))
+        return 0;
+
+    return 1;
 }
 
 static int
 clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
-  // TODO: figure out what to do
+    srv6_end_main_t *sm = &srv6_end_main;
+    srv6_end_localsid_t *ls_mem = localsid->plugin_mem;
+    adj_index_t nh_adj_index = ADJ_INDEX_INVALID;
+
+    /* Step 1: Prepare xconnect adjacency for sending packets to the VNF */
+
+    /* Retrieve the adjacency corresponding to the (OIF, next_hop) */
+    nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
+                                        VNET_LINK_IP6, &ls_mem->nh_addr,
+                                        ls_mem->sw_if_index_out);
+    if (nh_adj_index == ADJ_INDEX_INVALID)
+        return -5;
+
+    localsid->nh_adj = nh_adj_index;
+
+    /* Step 2: Prepare inbound policy for packets returning from the VNF */
+
+    /* Sanitise the SW_IF_INDEX */
+    if (pool_is_free_index (sm->vnet_main->interface_main.sw_interfaces,
+        ls_mem->sw_if_index_in))
+        return -3;
+
+    vnet_sw_interface_t *sw = vnet_get_sw_interface (sm->vnet_main,
+                                                     ls_mem->sw_if_index_in);
+    if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+        return -3;
+
+    int ret = vnet_feature_enable_disable ("ip4-unicast", "srv6-end-m-gtp4-e",
+                                           ls_mem->sw_if_index_in, 1, 0, 0);
+    if (ret != 0)
+        return -1;
+
+    return 0;
 }
 
 static int
 clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
-  // TODO: figure out what to do
+    srv6_end_localsid_t *ls_mem = localsid->plugin_mem;
+
+  /* Remove hardware indirection (from sr_steering.c:137) */
+  int ret = vnet_feature_enable_disable ("ip4-unicast", "srv6-end-m-gtp4-e",
+					 ls_mem->sw_if_index_in, 0, 0, 0);
+  if (ret != 0)
+    return -1;
+
+  /* Unlock (OIF, NHOP) adjacency (from sr_localsid.c:103) */
+  adj_unlock (localsid->nh_adj);
+
+  /* Clean up local SID memory */
+  clib_mem_free (localsid->plugin_mem);
+
+  return 0;
+    return 1;
 }
 
 static clib_error_t *
@@ -92,16 +147,15 @@ srv6_end_init (vlib_main_t * vm)
 {
   srv6_end_main_t *sm = &srv6_end_main;
   ip4_header_t *ip4 = &sm->cache_hdr.ip4;
-  udp_header_t *udp = &sm->cahce_hdr.udp;
+  udp_header_t *udp = &sm->cache_hdr.udp;
   gtpu_header_t *gtpu = &sm->cache_hdr.gtpu;
+  dpo_type_t dpo_type;
   vlib_node_t *node;
   u32 rc;
 
-  dpo_type_t dpo_type;
-
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
-                                
+
   node = vlib_get_node_by_name (vm, (u8 *) "srv6-end-m-gtp4-e");
   sm->end_m_gtp4_e_node_index = node->index;
 
@@ -115,20 +169,25 @@ srv6_end_init (vlib_main_t * vm)
   clib_memset_u8 (ip4, 0, sizeof (ip4_gtpu_header_t));
 
   // set defaults
-  ip->ip_version_and_header_length = 0x45;
+  ip4->ip_version_and_header_length = 0x45;
   ip4->protocol = IP_PROTOCOL_UDP;
   ip4->ttl = 64;
 
-  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_GTPU);
+  udp->dst_port = clib_host_to_net_u16 (GTP6_UDP_DST_PORT);
 
-  gtpu->ver_flags = GTPU_V1_VER | GTPU_PT_GTP;
-  gtpu->type = GTPU_TYPE_GTPU;
+  gtpu->ver_flags = GTP6_V1_VER | GTP6_PT_GTP;
+  gtpu->type = GTP6_TYPE_GTPU;
   //
 
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 
-  rc = sr_localsid_register_function (vm, fn_name, keyword_str,
-                                      def_str, param_str, &dpo_type,
+  rc = sr_localsid_register_function (vm,
+                                      fn_name,
+                                      keyword_str,
+                                      def_str,
+                                      param_str,
+                                      128, //prefix len
+                                      &dpo_type,
                                       clb_format_srv6_end_m_gtp4_e,
                                       clb_unformat_srv6_end_m_gtp4_e,
                                       clb_creation_srv6_end_m_gtp4_e,
@@ -138,7 +197,7 @@ srv6_end_init (vlib_main_t * vm)
       clib_error_return (0, "SRv6 Endpoint LocalSID function"
                             "couldn't be registered");
     }
-   
+
   return 0;
 }
 

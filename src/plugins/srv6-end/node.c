@@ -97,16 +97,16 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           src0 = ip6srv0->ip.src_address;
           dst0 = ip6srv0->ip.dst_address;
 
-          hdr0.ip4.src_address = src0.as_u32[2];
-          hdr0.ip4.dst_address = dst0.as_u32[1];
+          hdr0.ip4.src_address.as_u32 = src0.as_u32[2];
+          hdr0.ip4.dst_address.as_u32 = dst0.as_u32[1];
           hdr0.ip4.checksum = ip4_header_checksum (&hdr0.ip4);
 
           hdr0.udp.src_port = src0.as_u16[6];
 
           hdr0.gtpu.teid = (u32) dst0.as_u8[9];
 
-          hdr0.udp.length =;
-          hdr0.gtpu.length =;
+          //hdr0.udp.length =;
+          //hdr0.gtpu.length =;
 
           vlib_buffer_advance (b0, (word) ip6srv0->sr.length);
          
