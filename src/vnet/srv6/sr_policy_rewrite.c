@@ -311,7 +311,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
  */
 static inline ip6_sr_sl_t *
 create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
-	   u8 is_encap, u8 is_tmap, ip46_address_t *tmap_prefix)
+	   u8 is_encap, u8 is_tmap, ip46_address_t *tmap_prefix, u32 mask)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
@@ -327,6 +327,7 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
   segment_list->segments = vec_dup (sl);
 
   segment_list->is_tmap = is_tmap;
+  segment_list->tmap_mask = mask;
 
   if (is_encap)
     {
@@ -570,7 +571,7 @@ update_replicate (ip6_sr_policy_t * sr_policy)
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
-           u8 is_tmap, ip46_address_t *tmap_prefix)
+           u8 is_tmap, ip46_address_t *tmap_prefix, u32 mask_width)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -621,7 +622,7 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 
   /* Create a segment list and add the index to the SR policy */
   create_sl (sr_policy, segments, weight, is_encap, is_tmap,
-             tmap_prefix);
+             tmap_prefix, mask_width);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -775,7 +776,7 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
     {
       /* Create the new SL */
       segment_list =
-	create_sl (sr_policy, segments, weight, sr_policy->is_encap, 0, NULL);
+	create_sl (sr_policy, segments, weight, sr_policy->is_encap, 0, NULL, 0);
 
       /* Create a new LB DPO */
       if (sr_policy->type == SR_POLICY_TYPE_DEFAULT)
@@ -919,7 +920,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       rv = sr_policy_add (&bsid, segments, weight,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
 			   SR_POLICY_TYPE_DEFAULT), fib_table,
-                           is_encap, is_tmap, &tmap_prefix);
+                           is_encap, is_tmap, &tmap_prefix, gtp4_mask_width);
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -1603,7 +1604,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip6_sr_header_t *sr0;
           ip4_gtpu_header_t *hdr0;
           ip6_address_t *segment;
-          ip4_address_t addr0;
+          ip4_address_t sr_addr0;
+          ip4_address_t dst_addr0;
           u16 sr_port;
           u32 teid0;
 
@@ -1624,7 +1626,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           // save for later use
           hdr0 = vlib_buffer_get_current (b0);
           teid0 = hdr0->gtpu.teid;
-          addr0 = hdr0->ip4.src_address;
+          sr_addr0 = hdr0->ip4.src_address;
+          dst_addr0 = hdr0->ip4.dst_address;
           sr_port = hdr0->udp.src_port;
 
           // go after GTPU, we are at segment header
@@ -1645,8 +1648,16 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           if (PREDICT_TRUE (sl0->is_tmap))
             {
               segment = (void *) tmp0 - sizeof (ip6_address_t);
-              segment->as_u32[2] = addr0.as_u32;
-              segment->as_u16[7] = sr_port;
+                if (sl0->tmap_mask == 64) {
+                    segment->as_u32[2] = sr_addr0.as_u32;
+                    segment->as_u16[6] = sr_port;
+                } else if (sl0->tmap_mask == 32) {
+                    segment->as_u32[1] = dst_addr0.as_u32;
+                    segment->as_u16[5] = ((u16*) &teid0)[0];
+                    segment->as_u16[6] = ((u16*) &teid0)[1];
+                } else {
+                    //Not support now
+                }
             }
           else
             {
