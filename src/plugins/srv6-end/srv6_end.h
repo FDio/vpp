@@ -30,7 +30,6 @@ typedef struct srv6_end_main_s
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
-
 } srv6_end_main_t;
 
 extern srv6_end_main_t srv6_end_main;

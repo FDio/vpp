@@ -1394,13 +1394,14 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
       while (n_left_from >= 8 && n_left_to_next >= 4)
 	{
 	  u32 bi0, bi1, bi2, bi3;
-	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3, *tmp0, *tmp1, *tmp2, *tmp3;
 	  u32 next0, next1, next2, next3;
 	  next0 = next1 = next2 = next3 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
           ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
           ip4_gtpu_header_t *hdr0, *hdr1, *hdr2, *hdr3;
+          ip4_address_t addr0, addr1, addr2, addr3;
           u32 teid0, teid1, teid2, teid3;
           ip6_address_t *segment;
 
@@ -1462,10 +1463,20 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           teid2 = hdr2->gtpu.teid;
           teid3 = hdr3->gtpu.teid;
 
+          addr0 = hdr0->ip4.dst_address;
+          addr1 = hdr1->ip4.dst_address;
+          addr2 = hdr2->ip4.dst_address;
+          addr3 = hdr3->ip4.dst_address;
+
           vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
           vlib_buffer_advance (b1, (word) sizeof(ip4_gtpu_header_t));
           vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
           vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));
+
+          tmp0 = vlib_buffer_get_current (b0);
+          tmp1 = vlib_buffer_get_current (b1);
+          tmp2 = vlib_buffer_get_current (b2);
+          tmp3 = vlib_buffer_get_current (b3);
 
           clib_memcpy (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
                        sl0->rewrite, vec_len (sl0->rewrite));
@@ -1491,58 +1502,58 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           encaps_processing_v4 (vm, node, b2, ip2);
           encaps_processing_v4 (vm, node, b3, ip3);
 
-          /* Set the TEID in the last SID args */
-          sr0 = (void*)(ip0+1);
-          sr1 = (void*)(ip1+1);
-          sr2 = (void*)(ip2+1);
-          sr3 = (void*)(ip3+1);
+          
 
           if (PREDICT_TRUE (sl0->is_tmap))
             {
-              segment = (void *) sr0 + vec_len (sl0->rewrite) -
-                sizeof (ip6_address_t);
-              segment->as_u32[2] = hdr0->ip4.dst_address.as_u32;
+              segment = (void *) tmp0 - sizeof (ip6_address_t);
+              segment->as_u32[2] = addr0.as_u32;
               segment->as_u32[3] = teid0;
             }
           else
             {
-              sl0->segments->as_u32[3] = teid0;
+              /* Set the TEID in the last SID args */
+              sr0 = (void*)(ip0+1);
+              sr0->segments->as_u32[3] = teid0;
             }
 
           if (PREDICT_TRUE (sl1->is_tmap))
             {
-              segment = (void *) sr1 + vec_len (sl1->rewrite) -
-                sizeof (ip6_address_t);
-              segment->as_u32[2] = hdr1->ip4.dst_address.as_u32;
+              segment = (void *) tmp1 - sizeof (ip6_address_t);
+              segment->as_u32[2] = addr1.as_u32;
               segment->as_u32[3] = teid1;
             }
           else
             {
-              sl1->segments->as_u32[3] = teid1;
+              /* Set the TEID in the last SID args */
+              sr1 = (void*)(ip1+1);
+              sr1->segments->as_u32[3] = teid1;
             }
 
           if (PREDICT_TRUE (sl2->is_tmap))
             {
-              segment = (void *) sr2 + vec_len (sl2->rewrite) -
-                sizeof (ip6_address_t);
-              segment->as_u32[2] = hdr2->ip4.dst_address.as_u32;
+              segment = (void *) tmp2 - sizeof (ip6_address_t);
+              segment->as_u32[2] = addr2.as_u32;
               segment->as_u32[3] = teid2;
             }
           else
             {
-              sl2->segments->as_u32[3] = teid2;
+              /* Set the TEID in the last SID args */
+              sr2 = (void*)(ip2+1);
+              sr2->segments->as_u32[3] = teid2;
             }
 
           if (PREDICT_TRUE (sl3->is_tmap))
             {
-              segment = (void *) sr3 + vec_len (sl3->rewrite) -
-                sizeof (ip6_address_t);
-              segment->as_u32[2] = hdr3->ip4.dst_address.as_u32;
+              segment = (void *) tmp3 - sizeof (ip6_address_t);
+              segment->as_u32[2] = addr3.as_u32;
               segment->as_u32[3] = teid3;
             }
           else
             {
-              sl3->segments->as_u32[3] = teid3;
+              /* Set the TEID in the last SID args */
+              sr3 = (void*)(ip3+1);
+              sr3->segments->as_u32[3] = teid3;
             }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
@@ -1596,8 +1607,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* Single loop for potentially the last three packets */
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0, tmp0;
-	  vlib_buffer_t *b0;
+	  u32 bi0;
+	  vlib_buffer_t *b0, *tmp0;
 	  ip6_header_t *ip0 = 0;
 	  ip6_sr_sl_t *sl0;
           ip6_sr_header_t *sr0;
@@ -1630,14 +1641,13 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           // srv header + 1 position (new one)
           tmp0 = vlib_buffer_get_current (b0);
-          clib_memcpy (tmp0 - vec_len (sl0->rewrite),
+          clib_memcpy ((void *) tmp0 - vec_len (sl0->rewrite),
                        sl0->rewrite, vec_len (sl0->rewrite));
 
           // first ipv6 header position
           vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
           ip0 = vlib_buffer_get_current (b0);
 
-          // ??
           encaps_processing_v4 (vm, node, b0, ip0);
 
           if (PREDICT_TRUE (sl0->is_tmap))
