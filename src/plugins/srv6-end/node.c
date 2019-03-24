@@ -156,7 +156,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-        srv6_end_rewrite_trace_t *tr =
+              srv6_end_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      clib_memcpy (tr->src.as_u8, hdr0->ip4.src_address.as_u8,
 			   sizeof (tr->src.as_u8));
@@ -167,6 +167,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
         }
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
   vlib_node_increment_counter (vm, sm->end_m_gtp4_e_node_index,
