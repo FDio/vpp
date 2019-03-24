@@ -19,6 +19,7 @@
 
 typedef struct {
   ip6_address_t src, dst;
+  u32 teid;
 } srv6_end_rewrite_trace_t;
 
 static u8 *
@@ -28,8 +29,8 @@ format_srv6_end_rewrite_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   srv6_end_rewrite_trace_t *t = va_arg (*args, srv6_end_rewrite_trace_t *);
 
-  return format (s, "SRv6-END-rewrite: src %U dst %U",
-		 format_ip4_address, &t->src, format_ip4_address, &t->dst);
+  return format (s, "SRv6-END-rewrite: src %U dst %U\n TEID: 0x%x",
+		 format_ip4_address, &t->src, format_ip4_address, &t->dst, t->teid);
 }
 
 
@@ -162,6 +163,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 			   sizeof (tr->src.as_u8));
 	      clib_memcpy (tr->dst.as_u8, hdr0->ip4.dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
+          tr->teid = hdr0->gtpu.teid;
 	    }
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -181,7 +183,6 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
   return frame->n_vectors;
 }
-
 
 VLIB_REGISTER_NODE (srv6_end_m_gtp4_e) = {
   .name = "srv6-end-m-gtp4-e",
