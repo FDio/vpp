@@ -26,7 +26,9 @@ typedef CLIB_PACKED(struct
 /* *INDENT-ON* */
 
 #define foreach_srv6_end_error \
-  _(M_GTP4_E_PACKETS, "srv6 End.M.GTP4.E packets")
+  _(M_GTP4_E_PACKETS, "srv6 End.M.GTP4.E packets") \
+  _(M_GTP4_E_BAD_PACKETS, "srv6 End.M.GTP4.E bad packets")
+
 
 typedef enum
 {
@@ -56,7 +58,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
   srv6_end_main_t *sm = &srv6_end_main;
   u32 n_left_from, next_index, *from, *to_next;
 
-  u32 good_n = 0;
+  u32 good_n = 0, bad_n = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -78,7 +80,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           ip6srv_combo_header_t *ip6srv0;
           ip6_address_t src0, dst0;
 
-          ip4_gtpu_header_t hdr0 = sm->cache_hdr;
+          ip4_gtpu_header_t *hdr0;
+          uword len0;
           
 	  u32 next0 = SRV6_END_M_GTP4_E_NEXT_LOOKUP;
 
@@ -97,29 +100,51 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           src0 = ip6srv0->ip.src_address;
           dst0 = ip6srv0->ip.dst_address;
 
-          hdr0.ip4.src_address.as_u32 = src0.as_u32[2];
-          hdr0.ip4.dst_address.as_u32 = dst0.as_u32[1];
-          hdr0.ip4.checksum = ip4_header_checksum (&hdr0.ip4);
+          len0 = vlib_buffer_length_in_chain (vm, b0);
+          if ((len0 < sizeof (ip6srv_combo_header_t)) ||
+              (len0 < sizeof (ip6srv_combo_header_t) + ip6srv0->sr.length))
+            {
+              next0 = SRV6_END_M_GTP4_E_NEXT_DROP;
 
-          hdr0.udp.src_port = src0.as_u16[6];
+              bad_n++;
+            }
+          else
+            {
+              vlib_buffer_advance (b0, (word) ip6srv0->sr.length);
 
-          hdr0.gtpu.teid = (u32) dst0.as_u8[9];
-
-          //hdr0.udp.length =;
-          //hdr0.gtpu.length =;
-
-          vlib_buffer_advance (b0, (word) ip6srv0->sr.length);
+              len0 = vlib_buffer_length_in_chain (vm, b0);
          
-          clib_memcpy (vlib_buffer_get_current (b0) -
-                       sizeof (ip4_gtpu_header_t), &hdr0,
-                       sizeof (ip4_gtpu_header_t));
+              clib_memcpy (vlib_buffer_get_current (b0) -
+                           sizeof (ip4_gtpu_header_t), &sm->cache_hdr,
+                           sizeof (ip4_gtpu_header_t));
+
+              vlib_buffer_advance (b0, -(word) vlib_buffer_get_current (b0) -
+                                   sizeof (ip4_gtpu_header_t));
+
+              hdr0 = vlib_buffer_get_current (b0);
+
+              hdr0->gtpu.teid = (u32) dst0.as_u8[9];
+              hdr0->gtpu.length = len0;
+
+              hdr0->udp.src_port = src0.as_u16[6];
+              hdr0->udp.length = len0 + sizeof (udp_header_t);
+
+              hdr0->ip4.src_address.as_u32 = src0.as_u32[2];
+              hdr0->ip4.dst_address.as_u32 = dst0.as_u32[1];
+              hdr0->ip4.length = len0 + sizeof (udp_header_t) + sizeof (ip4_header_t);
+              hdr0->ip4.checksum = ip4_header_checksum (&hdr0->ip4);
+
+	      good_n++;
+            }
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
-
-	  good_n++;
         }
     }
+
+  vlib_node_increment_counter (vm, sm->end_m_gtp4_e_node_index,
+                               SRV6_END_ERROR_M_GTP4_E_BAD_PACKETS,
+			       bad_n);
 
   vlib_node_increment_counter (vm, sm->end_m_gtp4_e_node_index,
                                SRV6_END_ERROR_M_GTP4_E_PACKETS,
