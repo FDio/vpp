@@ -48,3 +48,13 @@
     set interface ip address host-tmp1 a30::1/120
     set interface state host-tmp1 up
     sr localsid address C4:: behavior end.dx6 host-tmp1 a30::2
+
+## Packet generator and testing
+
+    Example how to build custom SRv6 packet in scapy and ipaddress pkgs
+
+    s = '\x11' * 4 + IPv4Address(u"192.168.192.10").packed + '\x11' * 8
+    ip6 = IPv6Address(s)
+    IPv6(dst=ip6, src=ip6)
+
+
