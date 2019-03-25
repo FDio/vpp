@@ -158,6 +158,10 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     *proto = TRANSPORT_PROTO_TCP;
   else if (unformat (input, "TCP"))
     *proto = TRANSPORT_PROTO_TCP;
+  else if (unformat (input, "udpc"))
+    *proto = TRANSPORT_PROTO_UDPC;
+  else if (unformat (input, "UDPC"))
+    *proto = TRANSPORT_PROTO_UDPC;
   else if (unformat (input, "udp"))
     *proto = TRANSPORT_PROTO_UDP;
   else if (unformat (input, "UDP"))
@@ -170,10 +174,6 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     *proto = TRANSPORT_PROTO_TLS;
   else if (unformat (input, "TLS"))
     *proto = TRANSPORT_PROTO_TLS;
-  else if (unformat (input, "udpc"))
-    *proto = TRANSPORT_PROTO_UDPC;
-  else if (unformat (input, "UDPC"))
-    *proto = TRANSPORT_PROTO_UDPC;
   else
     return 0;
   return 1;
