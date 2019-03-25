@@ -88,6 +88,7 @@ RPM_DEPENDS += selinux-policy selinux-policy-devel
 RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
+RPM_DEPENDS += rdma-core rdma-core-devel libmnl libmnl-devel
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils

@@ -59,6 +59,7 @@ BuildRequires: cmake
 %if 0%{rhel} == 7
 BuildRequires: devtoolset-7-toolchain
 BuildREquires: openssl-devel
+BuildRequires: rdma-core rdma-core-devel libmnl libmnl-devel
 BuildRequires: python-devel, python-virtualenv, python-ply
 BuildRequires: cmake3
 %endif

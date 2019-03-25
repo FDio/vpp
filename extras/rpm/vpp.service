@@ -1,6 +1,8 @@
 [Unit]
 Description=Vector Packet Processing Process
 After=syslog.target network.target auditd.service
+Wants=rdma.service
+After=rdma-load-modules@rdma.service
 
 [Service]
 ExecStartPre=-/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api
