@@ -20,15 +20,15 @@ rdma-core_url                 := http://github.com/linux-rdma/rdma-core/releases
 
 define  rdma-core_config_cmds
 	cd $(rdma-core_build_dir) && \
-	  cmake -G Ninja $(rdma-core_src_dir) -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DCMAKE_INSTALL_PREFIX:PATH=$(rdma-core_install_dir) -DCMAKE_INSTALL_RPATH:PATH=$(rdma-core_install_dir)/lib -DCMAKE_C_FLAGS=-fPIC > $(rdma-core_config_log)
+	  cmake -G Ninja $(rdma-core_src_dir) -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DCMAKE_INSTALL_PREFIX:PATH=$(rdma-core_install_dir) -DCMAKE_INSTALL_RPATH:PATH=$(rdma-core_install_dir)/lib -DCMAKE_C_FLAGS=-fPIC
 endef
 
 define  rdma-core_build_cmds
-	cd $(rdma-core_build_dir) && cmake --build . > $(rdma-core_build_log)
+	cd $(rdma-core_build_dir) && cmake --build .
 endef
 
 define  rdma-core_install_cmds
-	cd $(rdma-core_build_dir) && cmake --build . -- install > $(rdma-core_install_log)
+	cd $(rdma-core_build_dir) && cmake --build . -- install
 endef
 
 $(eval $(call package,rdma-core))
