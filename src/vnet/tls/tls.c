@@ -757,14 +757,15 @@ tls_register_engine (const tls_engine_vft_t * vft, tls_engine_type_t type)
 static clib_error_t *
 tls_init (vlib_main_t * vm)
 {
+  u32 add_segment_size = (4096ULL << 20) - 1, first_seg_size = 32 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads, fifo_size = 128 << 10;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
-  u32 segment_size = 2048 << 20;
   tls_main_t *tm = &tls_main;
-  u32 fifo_size = 128 << 10;
-  u32 num_threads;
 
+  first_seg_size = tm->first_seg_size ? tm->first_seg_size : first_seg_size;
+  fifo_size = tm->fifo_size ? tm->fifo_size : fifo_size;
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
   clib_memset (a, 0, sizeof (*a));
@@ -774,8 +775,8 @@ tls_init (vlib_main_t * vm)
   a->api_client_index = APP_INVALID_INDEX;
   a->options = options;
   a->name = format (0, "tls");
-  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = first_seg_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = add_segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -816,6 +817,12 @@ tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "use-test-cert-in-ca"))
 	tm->use_test_cert_in_ca = 1;
       else if (unformat (input, "ca-cert-path %s", &tm->ca_cert_path))
+	;
+      else if (unformat (input, "first-segment-size %U", unformat_memory_size,
+			 &tm->first_seg_size))
+	;
+      else if (unformat (input, "fifo-size %U", unformat_memory_size,
+			 &tm->fifo_size))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
