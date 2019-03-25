@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e4f68bfa_9b24f0be",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-03-25T15:11:17Z",
+      "side": 1,
+      "message": "I\u0027d like to do CLIB_PREFETCH (vlib_buffer_get_tail (b[1]),...",
+      "revId": "7c823ba928663d8e69891b9ebeea3992c5e12488",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a63fac4_fc1679f6",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-03-25T15:11:17Z",
+      "side": 1,
+      "message": "don\u0027t you want to trace this discared buffer?",
+      "revId": "7c823ba928663d8e69891b9ebeea3992c5e12488",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b90795d9_4e2094ac",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-03-25T15:11:17Z",
+      "side": 1,
+      "message": "what about a prefecth for this counter?",
+      "revId": "7c823ba928663d8e69891b9ebeea3992c5e12488",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
