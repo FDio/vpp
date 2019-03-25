@@ -51,7 +51,26 @@ vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
   p->desc = desc;
   p->priority = prio;
 
+  hash_set_mem (cm->engine_index_by_name, p->name, p - cm->engines);
+
   return p - cm->engines;
+}
+
+int
+vnet_crypto_set_handler (vnet_crypto_op_type_t ot, char *engine)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_op_type_data_t *otd = cm->opt_data + ot;
+  vnet_crypto_engine_t *ce;
+  uword *p = hash_get_mem (cm->engine_index_by_name, engine);
+
+  if (!p)
+    return -1;
+
+  ce = cm->engines + p[0];
+  otd->active_engine_index = p[0];
+  cm->ops_handlers[ot] = ce->ops_handlers[ot];
+  return 0;
 }
 
 vlib_error_t *
@@ -90,6 +109,9 @@ vnet_crypto_init (vlib_main_t * vm)
   const char *enc = "encrypt";
   const char *dec = "decrypt";
   const char *hmac = "hmac";
+
+  cm->engine_index_by_name = hash_create_string ( /* size */ 0,
+						 sizeof (uword));
 
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);

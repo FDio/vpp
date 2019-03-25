@@ -36,6 +36,32 @@ format_vnet_crypto_op (u8 * s, va_list * args)
   return format (s, "%s-%U", otd->desc, format_vnet_crypto_alg, otd->alg);
 }
 
+uword
+unformat_vnet_crypto_op_type (unformat_input_t * input, va_list * args)
+{
+  vnet_crypto_op_type_t *op = va_arg (*args, vnet_crypto_op_type_t *);
+
+  if (0 /* dummy */ )
+    {
+    }
+#define _(_n, _s)                                \
+  else if (unformat (input, "encrypt-" _s))      \
+    op[0] = VNET_CRYPTO_OP_##_n##_ENC;           \
+  else if (unformat (input, "decrypt-" _s))      \
+    op[0] = VNET_CRYPTO_OP_##_n##_DEC;
+  foreach_crypto_alg
+#undef _
+#define _(_n, _s)                                \
+  else if (unformat (input, "hmac-" _s))         \
+    op[0] = VNET_CRYPTO_OP_##_n##_HMAC;
+    foreach_hmac_alg
+#undef _
+    else
+    return 0;
+
+  return 1;
+}
+
 u8 *
 format_vnet_crypto_engine (u8 * s, va_list * args)
 {

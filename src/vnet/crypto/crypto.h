@@ -139,6 +139,7 @@ typedef struct
   vnet_crypto_ops_handler_t **ops_handlers;
   vnet_crypto_op_type_data_t opt_data[VNET_CRYPTO_N_OP_TYPES];
   vnet_crypto_engine_t *engines;
+  uword *engine_index_by_name;
 } vnet_crypto_main_t;
 
 extern vnet_crypto_main_t crypto_main;
@@ -149,9 +150,13 @@ u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t ** jobs,
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 			     u32 n_ops);
 
+
+int vnet_crypto_set_handler (vnet_crypto_op_type_t ot, char *engine);
+
 format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;
 format_function_t format_vnet_crypto_op;
+unformat_function_t unformat_vnet_crypto_op_type;
 
 #endif /* included_vnet_crypto_crypto_h */
 
