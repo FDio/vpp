@@ -56,6 +56,7 @@ typedef CLIB_PACKED (struct {
 
 #define ESP_SEQ_MAX		(4294967295UL)
 #define ESP_MAX_BLOCK_SIZE	(16)
+#define ESP_MAX_IV_SIZE		(16)
 #define ESP_MAX_ICV_SIZE	(16)
 
 u8 *format_esp_header (u8 * s, va_list * args);
@@ -97,6 +98,7 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
     return 0;
 
   op->op = sa->integ_op_type;
+  op->flags = 0;
   op->key = sa->integ_key.data;
   op->key_len = sa->integ_key.len;
   op->src = data;
