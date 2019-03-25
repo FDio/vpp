@@ -100,6 +100,7 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
   sa->crypto_block_size = im->crypto_algs[crypto_alg].block_size;
   sa->crypto_enc_op_type = im->crypto_algs[crypto_alg].enc_op_type;
   sa->crypto_dec_op_type = im->crypto_algs[crypto_alg].dec_op_type;
+  ASSERT (sa->crypto_iv_size <= ESP_MAX_IV_SIZE);
   ASSERT (sa->crypto_block_size <= ESP_MAX_BLOCK_SIZE);
 }
 

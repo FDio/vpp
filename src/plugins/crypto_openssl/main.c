@@ -111,16 +111,23 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
     {
       vnet_crypto_op_t *op = ops[i];
       unsigned int out_len;
+      size_t sz = op->hmac_trunc_len ? op->hmac_trunc_len : EVP_MD_size (md);
 
       HMAC_Init_ex (ctx, op->key, op->key_len, md, NULL);
       HMAC_Update (ctx, op->src, op->len);
-      if (op->hmac_trunc_len)
+      HMAC_Final (ctx, buffer, &out_len);
+
+      if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
 	{
-	  HMAC_Final (ctx, buffer, &out_len);
-	  clib_memcpy_fast (op->dst, buffer, op->hmac_trunc_len);
+	  if ((memcmp (op->dst, buffer, sz)))
+	    {
+	      n_ops -= 1;
+	      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+	      continue;
+	    }
 	}
       else
-	HMAC_Final (ctx, op->dst, &out_len);
+	clib_memcpy_fast (op->dst, buffer, sz);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   return n_ops;
