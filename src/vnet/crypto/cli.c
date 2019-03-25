@@ -92,6 +92,89 @@ VLIB_CLI_COMMAND (show_crypto_handlers_command, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_crypto_handler_command_fn (vlib_main_t * vm,
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_crypto_main_t *cm = &crypto_main;
+  int rc = 0;
+  char **args = 0, *s, **arg, *engine = 0;
+  int all = 0;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "all"))
+	all = 1;
+      else if (unformat (line_input, "%s", &s))
+	vec_add1 (args, s);
+      else
+	{
+	  error = clib_error_return (0, "invalid params");
+	  goto done;
+	}
+    }
+
+  if ((vec_len (args) < 2 && !all) || (vec_len (args) == 0 && all))
+    {
+      error = clib_error_return (0, "missing cipher or engine!");
+      goto done;
+    }
+
+  engine = vec_elt_at_index (args, vec_len (args) - 1)[0];
+  vec_del1 (args, vec_len (args) - 1);
+
+  if (all)
+    {
+      char *key;
+      u8 *value;
+
+      /* *INDENT-OFF* */
+      hash_foreach_mem (key, value, cm->ops_handler_index_by_name,
+      ({
+        (void) value;
+        rc += vnet_crypto_set_handler (key, engine);
+      }));
+      /* *INDENT-ON* */
+
+      if (rc)
+	vlib_cli_output (vm, "failed to set crypto engine!");
+    }
+  else
+    {
+      vec_foreach (arg, args)
+      {
+	rc = vnet_crypto_set_handler (arg[0], engine);
+	if (rc)
+	  {
+	    vlib_cli_output (vm, "failed to set engine %s for %s!",
+			     engine, arg[0]);
+	  }
+      }
+    }
+
+done:
+  vec_free (engine);
+  vec_foreach (arg, args) vec_free (arg[0]);
+  vec_free (args);
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_crypto_handler_command, static) =
+{
+  .path = "set crypto handler",
+  .short_help = "set crypto handler cipher [cipher2 cipher3 ...] engine",
+  .function = set_crypto_handler_command_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

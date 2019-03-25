@@ -51,7 +51,36 @@ vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
   p->desc = desc;
   p->priority = prio;
 
+  hash_set_mem (cm->engine_index_by_name, p->name, p - cm->engines);
+
   return p - cm->engines;
+}
+
+int
+vnet_crypto_set_handler (char *ops_handler_name, char *engine)
+{
+  uword *p;
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_op_type_t ot;
+  vnet_crypto_op_type_data_t *otd;
+  vnet_crypto_engine_t *ce;
+
+  p = hash_get_mem (cm->ops_handler_index_by_name, ops_handler_name);
+  if (!p)
+    return -1;
+
+  ot = p[0];
+  otd = cm->opt_data + ot;
+
+  p = hash_get_mem (cm->engine_index_by_name, engine);
+  if (!p)
+    return -1;
+
+  ce = cm->engines + p[0];
+  otd->active_engine_index = p[0];
+  cm->ops_handlers[ot] = ce->ops_handlers[ot];
+
+  return 0;
 }
 
 vlib_error_t *
@@ -87,9 +116,13 @@ vnet_crypto_init (vlib_main_t * vm)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  const char *enc = "encrypt";
-  const char *dec = "decrypt";
-  const char *hmac = "hmac";
+#define CRYPTO_ENC_STR "encrypt"
+#define CRYPTO_DEC_STR "decrypt"
+#define CRYPTO_HMAC_STR "hmac"
+
+  cm->engine_index_by_name = hash_create_string ( /* size */ 0,
+						 sizeof (uword));
+  cm->ops_handler_index_by_name = hash_create_string (0, sizeof (uword));
 
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);
@@ -98,18 +131,24 @@ vnet_crypto_init (vlib_main_t * vm)
   cm->algs[VNET_CRYPTO_ALG_##n].name = s; \
   cm->opt_data[VNET_CRYPTO_OP_##n##_ENC].alg = VNET_CRYPTO_ALG_##n; \
   cm->opt_data[VNET_CRYPTO_OP_##n##_DEC].alg = VNET_CRYPTO_ALG_##n; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_ENC].desc = enc; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_DEC].desc = dec; \
+  cm->opt_data[VNET_CRYPTO_OP_##n##_ENC].desc = CRYPTO_ENC_STR; \
+  cm->opt_data[VNET_CRYPTO_OP_##n##_DEC].desc = CRYPTO_DEC_STR; \
   cm->opt_data[VNET_CRYPTO_OP_##n##_ENC].active_engine_index = ~0; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_DEC].active_engine_index = ~0;
+  cm->opt_data[VNET_CRYPTO_OP_##n##_DEC].active_engine_index = ~0; \
+  hash_set_mem (cm->ops_handler_index_by_name, CRYPTO_ENC_STR "-" s, \
+      VNET_CRYPTO_OP_##n##_ENC); \
+  hash_set_mem (cm->ops_handler_index_by_name, CRYPTO_DEC_STR "-" s, \
+      VNET_CRYPTO_OP_##n##_DEC);
   foreach_crypto_alg;
 #undef _
 
 #define _(n, s) \
   cm->algs[VNET_CRYPTO_ALG_##n].name = s; \
   cm->opt_data[VNET_CRYPTO_OP_##n##_HMAC].alg = VNET_CRYPTO_ALG_##n; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_HMAC].desc = hmac; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_HMAC].active_engine_index = ~0;
+  cm->opt_data[VNET_CRYPTO_OP_##n##_HMAC].desc = CRYPTO_HMAC_STR; \
+  cm->opt_data[VNET_CRYPTO_OP_##n##_HMAC].active_engine_index = ~0; \
+  hash_set_mem (cm->ops_handler_index_by_name, CRYPTO_HMAC_STR "-" s, \
+      VNET_CRYPTO_OP_##n##_HMAC);
   foreach_hmac_alg;
 #undef _
 
