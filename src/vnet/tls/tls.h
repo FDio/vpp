@@ -92,6 +92,8 @@ typedef struct tls_main_
    */
   u8 use_test_cert_in_ca;
   char *ca_cert_path;
+  u64 first_seg_size;
+  u32 fifo_size;
 } tls_main_t;
 
 typedef struct tls_engine_vft_
