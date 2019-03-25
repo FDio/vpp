@@ -36,6 +36,23 @@
     },
     {
       "key": {
+        "uuid": "5652624e_85951b7f",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-03-25T15:22:30Z",
+      "side": 1,
+      "message": "please add: vnet_buffer (b[0])-\u003esw_if_index[VLIB_TX] \u003d (u32) ~ 0;\n\nfor tunnel case, we should reset TX-if-index...",
+      "revId": "7c823ba928663d8e69891b9ebeea3992c5e12488",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b90795d9_4e2094ac",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 12
