@@ -70,6 +70,7 @@ typedef enum
   VNET_CRYPTO_OP_STATUS_PENDING,
   VNET_CRYPTO_OP_STATUS_COMPLETED,
   VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER,
+  VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC,
 } vnet_crypto_op_status_t;
 
 typedef struct
@@ -79,7 +80,8 @@ typedef struct
   vnet_crypto_op_status_t status:8;
   u8 key_len, hmac_trunc_len;
   u16 flags;
-#define VNET_CRYPTO_OP_FLAG_INIT_IV 1
+#define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
+#define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
   u32 len;
   u8 *key;
   u8 *iv;
