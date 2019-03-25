@@ -31,10 +31,17 @@ include packages.mk
 include packages/nasm.mk
 include packages/ipsec-mb.mk
 include packages/dpdk.mk
+include packages/rdma-core.mk
 
 .PHONY: clean
 clean:
 	@rm -rf $(B) $(I)
+
+.PHONY: install
+install: dpdk-install rdma-core-install
+
+.PHONY: config
+config: dpdk-config rdma-core-config
 
 ##############################################################################
 # .deb packaging
@@ -62,11 +69,6 @@ build-deb: $(DEV_DEB)
 
 install-deb:
 ifneq ($(INSTALLED_VER),$(DEB_VER)-$(PKG_SUFFIX))
-	@echo "=========================================================="
-	@echo " Out of date vpp-ext-deps package installed."
-	@echo " Installed: $(INSTALLED_VER)"
-	@echo " Needed: $(DEB_VER)-$(PKG_SUFFIX)"
-	@echo "=========================================================="
 	@make $(DEV_DEB)
 	@sudo dpkg -i $(DEV_DEB)
 else
@@ -78,9 +80,9 @@ endif
 check-deb:
 ifneq ($(INSTALLED_VER),$(DEB_VER)-$(PKG_SUFFIX))
 	@echo "=========================================================="
-	@echo " Outdated DPDK package detected:"
-	@echo "  Installed: vpp-ext-deps $(INSTALLED_VER)"
-	@echo "  Current:   vpp-ext-deps $(DEB_VER)-$(PKG_SUFFIX)"
+	@echo " Out of date vpp-ext-deps package installed."
+	@echo " Installed: $(INSTALLED_VER)"
+	@echo " Needed: $(DEB_VER)-$(PKG_SUFFIX)"
 	@echo ""
 	@echo " Please upgrade by invoking 'make install-ext-deps'"
 	@echo " from the top level directory."
@@ -115,16 +117,16 @@ ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
 	sudo rpm -Uih --force $(DEV_RPM)
 else
 	@echo "=========================================================="
-	@echo " Up-to-date DPDK package already installed"
+	@echo " Up-to-date vpp-ext-deps package already installed"
 	@echo "=========================================================="
 endif
 
 check-rpm:
 ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
 	@echo "=========================================================="
-	@echo " Outdated DPDK package detected:"
-	@echo "  Installed: vpp-ext-deps $(INSTALLED_RPM_VER)"
-	@echo "  Current:   vpp-ext-deps $(RPM_VER)-$(PKG_SUFFIX)"
+	@echo " Out of date vpp-ext-deps package installed."
+	@echo " Installed: $(INSTALLED_RPM_VER)"
+	@echo " Needed: $(RPM_VER)-$(PKG_SUFFIX)"
 	@echo ""
 	@echo " Please upgrade by invoking 'make install-ext-deps'"
 	@echo " from the top level directory."
@@ -140,9 +142,9 @@ endif
 ebuild-build:
 ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
 	@echo "=========================================================="
-	@echo "Building DPDK from source. Consider installing development"
-	@echo "package by invoking 'make install-ext-deps' from the"
-	@echo "top level directory"
+	@echo "Building vpp-ext-deps from source. Consider installing"
+	@echo "development package by invoking 'make install-ext-deps'"
+	@echo "from the top level directory"
 	@echo "=========================================================="
 	make config
 else
