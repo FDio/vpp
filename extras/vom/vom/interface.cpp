@@ -275,12 +275,16 @@ interface::key() const
 std::queue<cmd*>&
 interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  if ((type_t::LOOPBACK == m_type) || (type_t::BVI == m_type)) {
+  if (type_t::LOOPBACK == m_type) {
     q.push(new interface_cmds::loopback_create_cmd(m_hdl, m_name));
     q.push(new interface_cmds::set_tag(m_hdl, m_name));
     /*
      * set the m_tag for pretty-print
      */
+    m_tag = m_name;
+  } else if (type_t::BVI == m_type) {
+    q.push(new interface_cmds::bvi_create_cmd(m_hdl, m_name));
+    q.push(new interface_cmds::set_tag(m_hdl, m_name));
     m_tag = m_name;
   } else if (type_t::AFPACKET == m_type) {
     q.push(new interface_cmds::af_packet_create_cmd(m_hdl, m_name));
@@ -301,8 +305,10 @@ interface::mk_create_cmd(std::queue<cmd*>& q)
 std::queue<cmd*>&
 interface::mk_delete_cmd(std::queue<cmd*>& q)
 {
-  if ((type_t::LOOPBACK == m_type) || (type_t::BVI == m_type)) {
+  if (type_t::LOOPBACK == m_type) {
     q.push(new interface_cmds::loopback_delete_cmd(m_hdl));
+  } else if (type_t::BVI == m_type) {
+    q.push(new interface_cmds::bvi_delete_cmd(m_hdl));
   } else if (type_t::AFPACKET == m_type) {
     q.push(new interface_cmds::af_packet_delete_cmd(m_hdl, m_name));
   } else if (type_t::VHOST == m_type) {

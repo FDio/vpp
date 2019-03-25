@@ -23,6 +23,41 @@ DEFINE_VAPI_MSG_IDS_VHOST_USER_API_JSON;
 
 namespace VOM {
 namespace interface_cmds {
+
+bvi_create_cmd::bvi_create_cmd(HW::item<handle_t>& item,
+                               const std::string& name)
+  : create_cmd(item, name)
+{
+}
+
+rc_t
+bvi_create_cmd::issue(connection& con)
+{
+  msg_t req(con.ctx(), std::ref(*this));
+
+  auto& payload = req.get_request().get_payload();
+
+  payload.user_instance = ~0;
+
+  VAPI_CALL(req.execute());
+
+  wait();
+
+  if (m_hw_item.rc() == rc_t::OK) {
+    insert_interface();
+  }
+
+  return rc_t::OK;
+}
+std::string
+bvi_create_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "bvi-itf-create: " << m_hw_item.to_string() << " name:" << m_name;
+
+  return (s.str());
+}
+
 loopback_create_cmd::loopback_create_cmd(HW::item<handle_t>& item,
                                          const std::string& name)
   : create_cmd(item, name)
@@ -134,6 +169,37 @@ vhost_create_cmd::to_string() const
   std::ostringstream s;
   s << "vhost-intf-create: " << m_hw_item.to_string() << " name:" << m_name
     << " tag:" << m_tag;
+
+  return (s.str());
+}
+
+bvi_delete_cmd::bvi_delete_cmd(HW::item<handle_t>& item)
+  : delete_cmd(item)
+{
+}
+
+rc_t
+bvi_delete_cmd::issue(connection& con)
+{
+  msg_t req(con.ctx(), std::ref(*this));
+
+  auto& payload = req.get_request().get_payload();
+  payload.sw_if_index = m_hw_item.data().value();
+
+  VAPI_CALL(req.execute());
+
+  wait();
+  m_hw_item.set(rc_t::NOOP);
+
+  remove_interface();
+  return rc_t::OK;
+}
+
+std::string
+bvi_delete_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "bvi-itf-delete: " << m_hw_item.to_string();
 
   return (s.str());
 }
