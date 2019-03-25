@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "568b0433_55988141",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-25T15:54:36Z",
+      "side": 1,
+      "message": "vnet_buffer (b[0])-\u003esw_if_index[VLIB_TX] is set correctly already in the ipX-rewirte node. both for tunnel and non-tunnel interfaces.",
+      "parentUuid": "5652624e_85951b7f",
+      "revId": "7c823ba928663d8e69891b9ebeea3992c5e12488",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b90795d9_4e2094ac",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 12
