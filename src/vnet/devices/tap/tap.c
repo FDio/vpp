@@ -347,16 +347,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
 
   if (!args->mac_addr_set)
-    {
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
+    ethernet_mac_address_generate (args->mac_addr);
 
-      memcpy (args->mac_addr + 2, &rnd, sizeof (rnd));
-      args->mac_addr[0] = 2;
-      args->mac_addr[1] = 0xfe;
-    }
   vif->rx_ring_sz = args->rx_ring_sz != 0 ? args->rx_ring_sz : 256;
   vif->tx_ring_sz = args->tx_ring_sz != 0 ? args->tx_ring_sz : 256;
   clib_memcpy (vif->mac_addr, args->mac_addr, 6);
