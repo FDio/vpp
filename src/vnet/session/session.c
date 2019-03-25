@@ -880,6 +880,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
   app_worker_t *app_wrk;
+  session_handle_t sh;
   session_t *s;
   int rv;
 
@@ -903,6 +904,9 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
       session_free (s);
       return -1;
     }
+
+  sh = session_handle (s);
+  session_lookup_add_connection (tc, sh);
 
   return app_worker_connect_notify (app_wrk, s, opaque);
 }
