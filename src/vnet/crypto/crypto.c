@@ -54,6 +54,34 @@ vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
   return p - cm->engines;
 }
 
+static vnet_crypto_engine_t *
+crypto_find_engine (vnet_crypto_main_t * cm, char *engine)
+{
+  vnet_crypto_engine_t *ce;
+
+  vec_foreach (ce, cm->engines)
+  {
+    if (!strcmp (ce->name, engine))
+      return ce;
+  }
+  return 0;
+}
+
+int
+vnet_crypto_set_handler (vnet_crypto_op_type_t ot, char *engine)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_op_type_data_t *otd = cm->opt_data + ot;
+  vnet_crypto_engine_t *ce = crypto_find_engine (cm, engine);
+
+  if (!ce)
+    return -1;
+
+  otd->active_engine_index = ce - cm->engines;
+  cm->ops_handlers[ot] = ce->ops_handlers[ot];
+  return 0;
+}
+
 vlib_error_t *
 vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
 				  vnet_crypto_op_type_t opt,
