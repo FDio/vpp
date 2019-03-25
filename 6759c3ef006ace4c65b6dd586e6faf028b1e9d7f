@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "367cbdf7_6db20f1f",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-25T20:02:58Z",
+      "side": 1,
+      "message": "can you also do ops_handler_index_by_name... instead of linear search?",
+      "range": {
+        "startLine": 142,
+        "startChar": 9,
+        "endLine": 142,
+        "endChar": 29
+      },
+      "revId": "6759c3ef006ace4c65b6dd586e6faf028b1e9d7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
