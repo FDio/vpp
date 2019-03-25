@@ -36,7 +36,7 @@ downloads/$($1_tarball):
 		echo "Downloading $($1_url)" ; \
 		curl -o downloads/$($1_tarball) -LO $($1_url) ; \
 	fi
-	@rm -f $(B)/.download.ok
+	@rm -f $(B)/.$1.download.ok
 
 $(B)/.$1.download.ok: downloads/$($1_tarball)
 	@mkdir -p $(B)
