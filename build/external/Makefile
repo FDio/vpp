@@ -31,10 +31,14 @@ include packages.mk
 include packages/nasm.mk
 include packages/ipsec-mb.mk
 include packages/dpdk.mk
+include packages/rdma-core.mk
 
 .PHONY: clean
 clean:
 	@rm -rf $(B) $(I)
+
+.PHONY: install
+install: dpdk-install rdma-core-install
 
 ##############################################################################
 # .deb packaging
@@ -144,7 +148,7 @@ ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
 	@echo "package by invoking 'make install-ext-deps' from the"
 	@echo "top level directory"
 	@echo "=========================================================="
-	make config
+	make dpdk-config
 else
 ifneq ($(INSTALLED_VER),)
 	make check-deb
