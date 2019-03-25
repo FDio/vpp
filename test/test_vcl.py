@@ -418,8 +418,8 @@ class VCLThruHostStackTLS(VCLTestCase):
 
         self.thru_host_stack_setup()
         self.client_uni_dir_tls_timeout = 20
-        self.server_tls_args = ["-S", self.server_port]
-        self.client_uni_dir_tls_test_args = ["-N", "1000", "-U", "-X", "-S",
+        self.server_tls_args = ["-L", self.server_port]
+        self.client_uni_dir_tls_test_args = ["-N", "1000", "-U", "-X", "-L",
                                              self.loop0.local_ip4,
                                              self.server_port]
 

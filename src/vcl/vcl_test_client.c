@@ -715,7 +715,7 @@ print_usage_and_exit (void)
 	   "  -w <dir>         Write test results to <dir>.\n"
 	   "  -X               Exit after running test.\n"
 	   "  -D               Use UDP transport layer\n"
-	   "  -S               Use TLS transport layer\n"
+	   "  -L               Use TLS transport layer\n"
 	   "  -E               Run Echo test.\n"
 	   "  -N <num-writes>  Test Cfg: number of writes.\n"
 	   "  -R <rxbuf-size>  Test Cfg: rx buffer size.\n"
@@ -733,7 +733,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
   int c, v;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "chn:w:XE:I:N:R:T:UBV6DS")) != -1)
+  while ((c = getopt (argc, argv, "chn:w:XE:I:N:R:T:UBV6DL")) != -1)
     switch (c)
       {
       case 'c':
@@ -874,7 +874,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	ctrl->cfg.transport_udp = 1;
 	break;
 
-      case 'S':
+      case 'L':
 	ctrl->cfg.transport_tls = 1;
 	break;
 

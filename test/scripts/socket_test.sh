@@ -85,6 +85,7 @@ OPTIONS:
 OPTIONS passed to client/server:
   -6                  Use IPv6.
   -D                  Use UDP as the transport.
+  -L                  Use TLS as the transport.
   -S <ip address>     Server IP address.
   -P <server port>    Server Port number.
   -E <data>           Run Echo test.
@@ -119,9 +120,8 @@ declare -i leave_tmp_files=0
 declare -i bash_after_exit=0
 declare -i iperf3=0
 declare -i use_ipv6=0
-declare -i transport_udp=0
 
-while getopts ":hitlbcd6fn:m:e:g:p:E:I:N:P:R:S:T:UBVXD" opt; do
+while getopts ":hitlbcd6fn:m:e:g:p:E:I:N:P:R:S:T:UBVXDL" opt; do
     case $opt in
         h) usage ;;
         l) leave_tmp_files=1
@@ -210,7 +210,7 @@ while getopts ":hitlbcd6fn:m:e:g:p:E:I:N:P:R:S:T:UBVXD" opt; do
            ;;
         P) sock_srvr_port="$OPTARG"
            ;;
-        D) sock_clnt_options="$sock_clnt_options -$opt"
+      D|L) sock_clnt_options="$sock_clnt_options -$opt"
            sock_srvr_options="$sock_srvr_options -$opt"
            ;;
 E|I|N|R|T) sock_clnt_options="$sock_clnt_options -$opt \"$OPTARG\""
