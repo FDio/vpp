@@ -31,12 +31,12 @@ $1_install_log ?= $(B)/$1.install.log
 downloads/$($1_tarball):
 	mkdir -p downloads
 	@if [ -e $(DL_CACHE_DIR)/$($1_tarball) ] ; \
-		then cp $(DL_CACHE_DIR)/$($1_tarball) downloads/ ; \
+		then cp $(DL_CACHE_DIR)/$($1_tarball) $$@ ; \
 	else \
 		echo "Downloading $($1_url)" ; \
-		curl -o downloads/$($1_tarball) -LO $($1_url) ; \
+		curl -o $$@ -LO $($1_url) ; \
 	fi
-	@rm -f $(B)/.download.ok
+	@rm -f $(B)/.$1.download.ok
 
 $(B)/.$1.download.ok: downloads/$($1_tarball)
 	@mkdir -p $(B)
