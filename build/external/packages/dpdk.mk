@@ -167,9 +167,7 @@ define set
 fi
 endef
 
-all: build
-
-$(B)/custom-config: $(B)/.patch.ok Makefile
+$(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	@echo --- generating custom config from $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) ---
 	@cpp -undef -ffreestanding -x assembler-with-cpp $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) $@
 	$(call set,RTE_MACHINE,$(DPDK_MACHINE))
@@ -230,18 +228,19 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_DPAA_PMD,n)
 	$(call set,RTE_LIBRTE_PMD_DPAA_SEC,n)
 	$(call set,RTE_LIBRTE_PMD_DPAA_EVENTDEV,n)
-	@rm -f .config.ok
+	@rm -f .dpdk-config.ok
 
-$(CURDIR)/$(DPDK_TARBALL):
+DPDK_DOWNLOADS = $(CURDIR)/downloads/$(DPDK_TARBALL)
+
+$(DPDK_DOWNLOADS):
+	mkdir -p downloads
 	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) ] ; \
-		then cp $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) $(CURDIR) ; \
-		else curl -o $(CURDIR)/$(DPDK_TARBALL) -LO $(DPDK_TAR_URL) ; \
+		then cp $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) $@ ; \
+		else curl -o $@ -LO $(DPDK_TAR_URL) ; \
 	fi
-	@rm -f $(B)/.download.ok
+	@rm -f $(B)/.dpdk-download.ok
 
-DPDK_DOWNLOADS = $(CURDIR)/$(DPDK_TARBALL)
-
-$(B)/.download.ok: $(DPDK_DOWNLOADS)
+$(B)/.dpdk-download.ok: $(DPDK_DOWNLOADS)
 	@mkdir -p $(B)
 	@openssl md5 $< | cut -f 2 -d " " - > $(B)/$(DPDK_TARBALL).md5sum
 	@([ "$$(<$(B)/$(DPDK_TARBALL).md5sum)" = "$(DPDK_$(DPDK_VERSION)_TARBALL_MD5_CKSUM)" ] || \
@@ -249,18 +248,18 @@ $(B)/.download.ok: $(DPDK_DOWNLOADS)
 		rm $(B)/$(DPDK_TARBALL).md5sum && false ))
 	@touch $@
 
-.PHONY: download
-download: $(B)/.download.ok
+.PHONY: dpdk-download
+dpdk-download: $(B)/.dpdk-download.ok
 
-$(B)/.extract.ok: $(B)/.download.ok
+$(B)/.dpdk-extract.ok: $(B)/.dpdk-download.ok
 	@echo --- extracting $(DPDK_TARBALL) ---
-	@tar --directory $(B) --extract --file $(CURDIR)/$(DPDK_TARBALL)
+	@tar --directory $(B) --extract --file $(DPDK_DOWNLOADS)
 	@touch $@
 
-.PHONY: extract
-extract: $(B)/.extract.ok
+.PHONY: dpdk-extract
+dpdk-extract: $(B)/.dpdk-extract.ok
 
-$(B)/.patch.ok: $(B)/.extract.ok
+$(B)/.dpdk-patch.ok: $(B)/.dpdk-extract.ok
 ifneq ($(wildcard $(CURDIR)/patches/dpdk_$(DPDK_VERSION)/*.patch),)
 	@echo --- patching ---
 	@for f in $(CURDIR)/patches/dpdk_$(DPDK_VERSION)/*.patch ; do \
@@ -270,26 +269,23 @@ ifneq ($(wildcard $(CURDIR)/patches/dpdk_$(DPDK_VERSION)/*.patch),)
 endif
 	@touch $@
 
-.PHONY: patch
-patch: $(B)/.patch.ok
+.PHONY: dpdk-patch
+dpdk-patch: $(B)/.dpdk-patch.ok
 
-$(B)/.config.ok: $(B)/.patch.ok $(B)/custom-config
+$(B)/.dpdk-config.ok: $(B)/.dpdk-patch.ok $(B)/custom-config
 	@make $(DPDK_MAKE_ARGS) config
 	@touch $@
 
-.PHONY: config
-config: $(B)/.config.ok
+.PHONY: dpdk-config
+dpdk-config: $(B)/.dpdk-config.ok
 
-.PHONY: build-dpdk
-build-dpdk: $(DPDK_BUILD_DEPS)
-	@if [ ! -e $(B)/.config.ok ] ; then echo 'Please run "make config" first' && false ; fi
+$(B)/.dpdk-build.ok: dpdk-config $(DPDK_BUILD_DEPS)
+	@if [ ! -e $(B)/.dpdk-config.ok ] ; then echo 'Please run "make config" first' && false ; fi
 	@make $(DPDK_MAKE_ARGS) install
-
-$(B)/.build.ok: build-dpdk
 	@touch $@
 
-.PHONY: build
-build: $(B)/.build.ok
+.PHONY: dpdk-build
+dpdk-build: $(B)/.dpdk-build.ok
 
-.PHONY: install
-install: $(B)/.build.ok
+.PHONY: dpdk-install
+dpdk-install: $(B)/.dpdk-build.ok
