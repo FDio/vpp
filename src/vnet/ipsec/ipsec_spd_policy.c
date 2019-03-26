@@ -182,23 +182,19 @@ ipsec_add_del_policy (vlib_main_t * vm,
     }
   else
     {
-      ipsec_spd_policy_type_t ptype;
       u32 ii;
 
-      FOR_EACH_IPSEC_SPD_POLICY_TYPE (ptype)
+      vec_foreach_index (ii, (spd->policies[policy->type]))
       {
-	vec_foreach_index (ii, (spd->policies[ptype]))
-	{
-	  vp = pool_elt_at_index (im->policies, spd->policies[ptype][ii]);
-	  if (ipsec_policy_is_equal (vp, policy))
-	    {
-	      vec_del1 (spd->policies[ptype], ii);
-	      pool_put (im->policies, vp);
-	      goto done;
-	    }
-	}
+	vp = pool_elt_at_index (im->policies,
+				spd->policies[policy->type][ii]);
+	if (ipsec_policy_is_equal (vp, policy))
+	  {
+	    vec_del1 (spd->policies[policy->type], ii);
+	    pool_put (im->policies, vp);
+	    break;
+	  }
       }
-    done:;
     }
 
   return 0;
