@@ -16,6 +16,24 @@
       "revId": "fd88467115afc9d48edb0b9f933960af9d3f8899",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dd803a2f_c654c520",
+        "filename": "src/plugins/gbp/gbp_bridge_domain.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-03-26T15:41:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "362cd88d_d1663e2f",
+      "revId": "fd88467115afc9d48edb0b9f933960af9d3f8899",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
