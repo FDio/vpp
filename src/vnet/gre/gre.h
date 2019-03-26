@@ -181,11 +181,6 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   /**
-   * Linkage into the FIB object graph
-   */
-  fib_node_t node;
-
-  /**
    * The hash table's key stored in separate memory since the tunnel_t
    * memory can realloc.
    */
@@ -206,19 +201,6 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
   gre_tunnel_type_t type;
-
-  /**
-   * The FIB entry sourced by the tunnel for its destination prefix
-   */
-  fib_node_index_t fib_entry_index;
-
-  /**
-   * The tunnel is a child of the FIB entry for its desintion. This is
-   * so it receives updates when the forwarding information for that entry
-   * changes.
-   * The tunnels sibling index on the FIB entry's dependency list.
-   */
-  u32 sibling_index;
 
   /**
    * an L2 tunnel always rquires an L2 midchain. cache here for DP.

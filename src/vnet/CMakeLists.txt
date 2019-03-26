@@ -1371,6 +1371,7 @@ list(APPEND VNET_SOURCES
   adj/adj_nbr.c
   adj/adj_glean.c
   adj/adj_midchain.c
+  adj/adj_midchain_delegate.c
   adj/adj_mcast.c
   adj/adj_l2.c
   adj/adj_nsh.c
