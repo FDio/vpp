@@ -145,7 +145,9 @@ _(INVALID_SESSION_ID, -148, "session ID out of range")			\
 _(ACL_IN_USE_BY_LOOKUP_CONTEXT, -149, "ACL in use by a lookup context")	\
 _(INVALID_VALUE_3, -150, "Invalid value #3")                            \
 _(NON_ETHERNET, -151, "Interface is not an Ethernet interface")         \
-_(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface")
+_(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface") \
+_(INVALID_PROTOCOL, -153, "Invalid Protocol")                           \
+_(INVALID_ALGORITHM, -154, "Invalid Algorithm")
 
 typedef enum
 {
