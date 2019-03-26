@@ -140,7 +140,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  ttl = ih0->ip4.ttl;
 	  tos = ih0->ip4.tos;
 
-	  if (PREDICT_TRUE (sa0->is_tunnel))
+	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {
 	      if (is_ip6)
 		adv = -sizeof (ip6_and_ah_header_t);
@@ -156,7 +156,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ip6);
 	  adv -= padding_len;
 	  /* transport mode save the eth header before it is overwritten */
-	  if (PREDICT_FALSE (!sa0->is_tunnel))
+	  if (PREDICT_FALSE (!ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {
 	      ethernet_header_t *ieh0 = (ethernet_header_t *)
 		((u8 *) vlib_buffer_get_current (i_b0) -
@@ -177,7 +177,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      hop_limit = ih6_0->ip6.hop_limit;
 	      ip_version_traffic_class_and_flow_label =
 		ih6_0->ip6.ip_version_traffic_class_and_flow_label;
-	      if (PREDICT_TRUE (sa0->is_tunnel))
+	      if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 		{
 		  next_hdr_type = IP_PROTOCOL_IPV6;
 		}
@@ -206,7 +206,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      oh0 = vlib_buffer_get_current (i_b0);
 	      clib_memset (oh0, 0, sizeof (ip4_and_ah_header_t));
 
-	      if (PREDICT_TRUE (sa0->is_tunnel))
+	      if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 		{
 		  next_hdr_type = IP_PROTOCOL_IP_IN_IP;
 		}
@@ -233,7 +233,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    }
 
 
-	  if (PREDICT_TRUE (!is_ip6 && sa0->is_tunnel && !sa0->is_tunnel_ip6))
+	  if (PREDICT_TRUE (!is_ip6 && ipsec_sa_is_set_IS_TUNNEL (sa0) &&
+			    !ipsec_sa_is_set_IS_TUNNEL_V6 (sa0)))
 	    {
 	      oh0->ip4.src_address.as_u32 = sa0->tunnel_src_addr.ip4.as_u32;
 	      oh0->ip4.dst_address.as_u32 = sa0->tunnel_dst_addr.ip4.as_u32;
@@ -242,7 +243,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      vnet_buffer (i_b0)->ip.adj_index[VLIB_TX] =
 		sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_index;
 	    }
-	  else if (is_ip6 && sa0->is_tunnel && sa0->is_tunnel_ip6)
+	  else if (is_ip6 && ipsec_sa_is_set_IS_TUNNEL (sa0) &&
+		   ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
 	    {
 	      oh6_0->ip6.src_address.as_u64[0] =
 		sa0->tunnel_src_addr.ip6.as_u64[0];
@@ -282,7 +284,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      oh0->ip4.checksum = ip4_header_checksum (&oh0->ip4);
 	    }
 
-	  if (!sa0->is_tunnel)
+	  if (!ipsec_sa_is_set_IS_TUNNEL (sa0))
 	    {
 	      next0 = AH_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	      vlib_buffer_advance (i_b0, -sizeof (ethernet_header_t));

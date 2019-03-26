@@ -466,7 +466,7 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
   osa = p[0];
   sa = pool_elt_at_index (im->sad, p[0]);
 
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
       key.remote_ip = sa->tunnel_dst_addr.ip4.as_u32;
       key.spi = clib_host_to_net_u32 (sa->spi);
@@ -599,13 +599,14 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
       old_sa_index = t->input_sa_index;
       old_sa = pool_elt_at_index (im->sad, old_sa_index);
 
-      if (sa->is_tunnel_ip6 ^ old_sa->is_tunnel_ip6)
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ^
+	  ipsec_sa_is_set_IS_TUNNEL_V6 (old_sa))
 	{
 	  clib_warning ("IPsec interface SA endpoints type can't be changed");
 	  return VNET_API_ERROR_INVALID_VALUE;
 	}
 
-      if (sa->is_tunnel_ip6)
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
 	{
 	  ipsec6_tunnel_key_t key;
 
@@ -651,7 +652,8 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
       old_sa_index = t->output_sa_index;
       old_sa = pool_elt_at_index (im->sad, old_sa_index);
 
-      if (sa->is_tunnel_ip6 ^ old_sa->is_tunnel_ip6)
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ^
+	  ipsec_sa_is_set_IS_TUNNEL_V6 (old_sa))
 	{
 	  clib_warning ("IPsec interface SA endpoints type can't be changed");
 	  return VNET_API_ERROR_INVALID_VALUE;

@@ -147,11 +147,11 @@ esp_decrypt_inline (vlib_main_t * vm,
       seq = clib_host_to_net_u32 (esp0->seq);
 
       /* anti-replay check */
-      if (sa0->use_anti_replay)
+      if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0))
 	{
 	  int rv = 0;
 
-	  if (PREDICT_TRUE (sa0->use_esn))
+	  if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
 	    rv = esp_replay_check_esn (sa0, seq);
 	  else
 	    rv = esp_replay_check (sa0, seq);
@@ -197,9 +197,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    }
 	}
 
-      if (PREDICT_TRUE (sa0->use_anti_replay))
+      if (PREDICT_TRUE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0)))
 	{
-	  if (PREDICT_TRUE (sa0->use_esn))
+	  if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
 	    esp_replay_advance_esn (sa0, seq);
 	  else
 	    esp_replay_advance (sa0, seq);
@@ -222,7 +222,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  ob[0]->current_data = sizeof (ethernet_header_t);
 
 	  /* transport mode */
-	  if (PREDICT_FALSE (!sa0->is_tunnel && !sa0->is_tunnel_ip6))
+	  if (PREDICT_FALSE (!ipsec_sa_is_set_IS_TUNNEL (sa0) &&
+			     !ipsec_sa_is_set_IS_TUNNEL_V6 (sa0)))
 	    {
 	      tunnel_mode = 0;
 
@@ -235,7 +236,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      else
 		{
 		  ip_hdr_size = sizeof (ip4_header_t);
-		  if (sa0->udp_encap)
+		  if (ipsec_sa_is_set_UDP_ENCAP (sa0))
 		    ih4 = (ip4_header_t *) ((u8 *) esp0 - ip_hdr_size -
 					    sizeof (udp_header_t));
 		  else

@@ -151,11 +151,11 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  seq = clib_host_to_net_u32 (ah0->seq_no);
 
 	  /* anti-replay check */
-	  if (sa0->use_anti_replay)
+	  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0))
 	    {
 	      int rv = 0;
 
-	      if (PREDICT_TRUE (sa0->use_esn))
+	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
 		rv = esp_replay_check_esn (sa0, seq);
 	      else
 		rv = esp_replay_check (sa0, seq);
@@ -210,9 +210,10 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 
-	      if (PREDICT_TRUE (sa0->use_anti_replay))
+	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0)))
 		{
-		  if (PREDICT_TRUE (sa0->use_esn))
+		  if (PREDICT_TRUE
+		      (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
 		    esp_replay_advance_esn (sa0, seq);
 		  else
 		    esp_replay_advance (sa0, seq);
@@ -225,7 +226,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 			       icv_padding_len);
 	  i_b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
-	  if (PREDICT_TRUE (sa0->is_tunnel))
+	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {			/* tunnel mode */
 	      if (PREDICT_TRUE (ah0->nexthdr == IP_PROTOCOL_IP_IN_IP))
 		next0 = AH_DECRYPT_NEXT_IP4_INPUT;

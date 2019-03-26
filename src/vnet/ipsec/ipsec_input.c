@@ -84,7 +84,7 @@ ipsec_input_protect_policy_match (ipsec_spd_t * spd, u32 sa, u32 da, u32 spi)
     if (spi != s->spi)
       continue;
 
-    if (s->is_tunnel)
+    if (ipsec_sa_is_set_IS_TUNNEL (s))
       {
 	if (da != clib_net_to_host_u32 (s->tunnel_dst_addr.ip4.as_u32))
 	  continue;
@@ -140,7 +140,7 @@ ipsec6_input_protect_policy_match (ipsec_spd_t * spd,
     if (spi != s->spi)
       continue;
 
-    if (s->is_tunnel)
+    if (ipsec_sa_is_set_IS_TUNNEL (s))
       {
 	if (!ip6_address_is_equal (sa, &s->tunnel_src_addr.ip6))
 	  continue;

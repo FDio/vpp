@@ -184,12 +184,12 @@ esp_replay_advance_esn (ipsec_sa_t * sa, u32 seq)
 always_inline int
 esp_seq_advance (ipsec_sa_t * sa)
 {
-  if (PREDICT_TRUE (sa->use_esn))
+  if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa)))
     {
       if (PREDICT_FALSE (sa->seq == ESP_SEQ_MAX))
 	{
-	  if (PREDICT_FALSE
-	      (sa->use_anti_replay && sa->seq_hi == ESP_SEQ_MAX))
+	  if (PREDICT_FALSE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
+			     sa->seq_hi == ESP_SEQ_MAX))
 	    return 1;
 	  sa->seq_hi++;
 	}
@@ -197,7 +197,8 @@ esp_seq_advance (ipsec_sa_t * sa)
     }
   else
     {
-      if (PREDICT_FALSE (sa->use_anti_replay && sa->seq == ESP_SEQ_MAX))
+      if (PREDICT_FALSE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
+			 sa->seq == ESP_SEQ_MAX))
 	return 1;
       sa->seq++;
     }
@@ -223,7 +224,7 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
   op->dst = signature;
   op->hmac_trunc_len = sa->integ_trunc_size;
 
-  if (sa->use_esn)
+  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa))
     {
       u32 seq_hi = clib_host_to_net_u32 (sa->seq_hi);
 

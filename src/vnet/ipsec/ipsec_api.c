@@ -320,15 +320,15 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 {
   vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
 
-  if (sa->use_esn)
+  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa))
     flags |= IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM;
-  if (sa->use_anti_replay)
+  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     flags |= IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY;
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL;
-  if (sa->is_tunnel_ip6)
+  if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
     flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL_V6;
-  if (sa->udp_encap)
+  if (ipsec_sa_is_set_UDP_ENCAP (sa))
     flags |= IPSEC_API_SAD_FLAG_UDP_ENCAP;
 
   return clib_host_to_net_u32 (flags);
@@ -690,7 +690,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
 
   mp->entry.flags = ipsec_sad_flags_encode (sa);
 
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
       ip_address_encode (&sa->tunnel_src_addr, IP46_TYPE_ANY,
 			 &mp->entry.tunnel_src);
@@ -702,12 +702,12 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   mp->salt = clib_host_to_net_u32 (sa->salt);
   mp->seq_outbound = clib_host_to_net_u64 (((u64) sa->seq));
   mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->last_seq));
-  if (sa->use_esn)
+  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa))
     {
       mp->seq_outbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
       mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->last_seq_hi));
     }
-  if (sa->use_anti_replay)
+  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
 
   vl_api_send_msg (reg, (u8 *) mp);

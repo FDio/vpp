@@ -289,7 +289,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* space for IV */
       hdr_len = iv_sz;
 
-      if (sa0->is_tunnel)
+      if (ipsec_sa_is_set_IS_TUNNEL (sa0))
 	{
 	  payload = vlib_buffer_get_current (b[0]);
 	  next_hdr_ptr = esp_add_footer_and_icv (b[0], block_sz, icv_sz);
@@ -303,7 +303,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  esp = (esp_header_t *) (payload - hdr_len);
 
 	  /* optional UDP header */
-	  if (sa0->udp_encap)
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa0))
 	    {
 	      hdr_len += sizeof (udp_header_t);
 	      esp_fill_udp_hdr (sa0, (udp_header_t *) (payload - hdr_len),
@@ -311,7 +311,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* IP header */
-	  if (sa0->is_tunnel_ip6)
+	  if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
 	    {
 	      ip6_header_t *ip6;
 	      u16 len = sizeof (ip6_header_t);
@@ -361,7 +361,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  esp = (esp_header_t *) (payload - hdr_len);
 
 	  /* optional UDP header */
-	  if (sa0->udp_encap)
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa0))
 	    {
 	      hdr_len += sizeof (udp_header_t);
 	      udp = (udp_header_t *) (payload - hdr_len);
@@ -434,7 +434,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  op->len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
 	  op->flags = 0;
 	  op->user_data = b - bufs;
-	  if (sa0->use_esn)
+	  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0))
 	    {
 	      u32 seq_hi = clib_net_to_host_u32 (sa0->seq_hi);
 	      clib_memcpy_fast (op->dst, &seq_hi, sizeof (seq_hi));
@@ -455,7 +455,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tr->sa_index = sa_index0;
 	  tr->spi = sa0->spi;
 	  tr->seq = sa0->seq - 1;
-	  tr->udp_encap = sa0->udp_encap;
+	  tr->udp_encap = ipsec_sa_is_set_UDP_ENCAP (sa0);
 	  tr->crypto_alg = sa0->crypto_alg;
 	  tr->integ_alg = sa0->integ_alg;
 	}

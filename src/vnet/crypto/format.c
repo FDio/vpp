@@ -30,7 +30,7 @@ u8 *
 format_vnet_crypto_op (u8 * s, va_list * args)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_op_type_t op = va_arg (*args, vnet_crypto_op_type_t);
+  vnet_crypto_op_type_t op = va_arg (*args, int);	// vnet_crypto_op_type_t);
   vnet_crypto_op_type_data_t *otd = cm->opt_data + op;
 
   return format (s, "%s-%U", otd->desc, format_vnet_crypto_alg, otd->alg);

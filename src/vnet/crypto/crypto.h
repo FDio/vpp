@@ -57,8 +57,11 @@ typedef enum
   foreach_hmac_alg
 #undef _
     VNET_CRYPTO_N_OP_TYPES,
-} vnet_crypto_op_type_t;
+} __attribute__ ((packed)) vnet_crypto_op_type_t;
 /* *INDENT-ON* */
+
+STATIC_ASSERT (sizeof (vnet_crypto_op_type_t) <= 2,
+	       "crypto op type > 2 bytes");
 
 typedef struct
 {
@@ -70,13 +73,16 @@ typedef enum
   VNET_CRYPTO_OP_STATUS_PENDING,
   VNET_CRYPTO_OP_STATUS_COMPLETED,
   VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER,
-} vnet_crypto_op_status_t;
+} __attribute__ ((packed)) vnet_crypto_op_status_t;
+
+STATIC_ASSERT (sizeof (vnet_crypto_op_status_t) == 1,
+	       "crypto op status > 1 byte");
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  vnet_crypto_op_type_t op:16;
-  vnet_crypto_op_status_t status:8;
+  vnet_crypto_op_type_t op;
+  vnet_crypto_op_status_t status;
   u8 key_len, hmac_trunc_len;
   u16 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV 1
