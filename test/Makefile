@@ -77,6 +77,12 @@ endif
 
 PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) -r requirements.txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON) -name site-packages)
+
+ifeq ($(SCAPY_SOURCE),)
+PYTHON_VER = $(shell $(PYTHON) -c '''import sys;print("python{major}.{minor}".format(major = sys.version_info.major, minor = sys.version_info.minor))''')
+SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON_VER) -name site-packages)
+endif
+
 BUILD_COV_DIR=$(TEST_DIR)/coverage
 
 PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install.done
