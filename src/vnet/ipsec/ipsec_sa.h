@@ -98,50 +98,66 @@ typedef enum ipsec_sad_flags_t_
 
 typedef struct
 {
-  fib_node_t node;
-  u32 id;
-  u32 spi;
-  u32 stat_index;
-  ipsec_protocol_t protocol;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-  ipsec_crypto_alg_t crypto_alg;
-  ipsec_key_t crypto_key;
+  /* flags */
+  u8 use_anti_replay:1;
+  u8 is_tunnel:1;
+  u8 is_tunnel_ip6:1;
+  u8 udp_encap:1;
+  u8 use_esn:1;
+
   u8 crypto_iv_size;
   u8 crypto_block_size;
-  vnet_crypto_op_type_t crypto_enc_op_type;
-  vnet_crypto_op_type_t crypto_dec_op_type;
-
-  ipsec_integ_alg_t integ_alg;
-  ipsec_key_t integ_key;
-  vnet_crypto_op_type_t integ_op_type;
   u8 integ_trunc_size;
-
-  u8 use_esn;
-  u8 use_anti_replay;
-
-  u8 is_tunnel;
-  u8 is_tunnel_ip6;
-  u8 udp_encap;
-  ip46_address_t tunnel_src_addr;
-  ip46_address_t tunnel_dst_addr;
-  ip4_header_t ip4_hdr;
-  ip6_header_t ip6_hdr;
-  udp_header_t udp_hdr;
-
-  fib_node_index_t fib_entry_index;
-  u32 sibling;
-  dpo_id_t dpo[IPSEC_N_PROTOCOLS];
-
-  u32 tx_fib_index;
-  u32 salt;
-
-  /* runtime */
+  u32 spi;
   u32 seq;
   u32 seq_hi;
   u32 last_seq;
   u32 last_seq_hi;
   u64 replay_window;
+
+  vnet_crypto_op_type_t crypto_enc_op_type:16;
+  vnet_crypto_op_type_t crypto_dec_op_type:16;
+  vnet_crypto_op_type_t integ_op_type:16;
+
+  dpo_id_t dpo[IPSEC_N_PROTOCOLS];
+
+  /* data accessed by dataplane code should be above this comment */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
+  union
+  {
+    ip4_header_t ip4_hdr;
+    ip6_header_t ip6_hdr;
+  };
+  udp_header_t udp_hdr;
+
+
+  fib_node_t node;
+  u32 id;
+  u32 stat_index;
+  ipsec_protocol_t protocol;
+
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_key_t crypto_key;
+
+  ipsec_integ_alg_t integ_alg;
+  ipsec_key_t integ_key;
+
+  ip46_address_t tunnel_src_addr;
+  ip46_address_t tunnel_dst_addr;
+
+  fib_node_index_t fib_entry_index;
+  u32 sibling;
+
+  u32 tx_fib_index;
+  u32 salt;
+
+  /* runtime */
 } ipsec_sa_t;
+
+STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
 
 /**
  * @brief
