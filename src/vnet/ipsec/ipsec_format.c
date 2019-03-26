@@ -256,12 +256,13 @@ format_ipsec_sa (u8 * s, va_list * args)
 
   s = format (s, "[%d] sa 0x%x spi %u mode %s%s protocol %s%s%s%s",
 	      sai, sa->id, sa->spi,
-	      sa->is_tunnel ? "tunnel" : "transport",
-	      sa->is_tunnel_ip6 ? "-ip6" : "",
+	      ipsec_sa_is_set_IS_TUNNEL (sa) ? "tunnel" : "transport",
+	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "-ip6" : "",
 	      sa->protocol ? "esp" : "ah",
-	      sa->udp_encap ? " udp-encap-enabled" : "",
-	      sa->use_anti_replay ? " anti-replay" : "",
-	      sa->use_esn ? " extended-sequence-number" : "");
+	      ipsec_sa_is_set_UDP_ENCAP (sa) ? " udp-encap-enabled" : "",
+	      ipsec_sa_is_set_USE_ANTI_REPLAY (sa) ? " anti-replay" : "",
+	      ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa) ?
+	      " extended-sequence-number" : "");
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
   s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
 	      sa->last_seq, sa->last_seq_hi,
@@ -276,7 +277,7 @@ format_ipsec_sa (u8 * s, va_list * args)
   vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
   s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);
 
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
       tx_table_id = fib_table_get_table_id (sa->tx_fib_index,
 					    FIB_PROTOCOL_IP4);

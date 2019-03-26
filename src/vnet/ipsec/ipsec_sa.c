@@ -73,17 +73,18 @@ ipsec_sa_stack (ipsec_sa_t * sa)
   fib_forward_chain_type_t fct;
   dpo_id_t tmp = DPO_INVALID;
 
-  fct = fib_forw_chain_type_from_fib_proto ((sa->is_tunnel_ip6 ?
-					     FIB_PROTOCOL_IP6 :
-					     FIB_PROTOCOL_IP4));
+  fct =
+    fib_forw_chain_type_from_fib_proto ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
+					 FIB_PROTOCOL_IP6 :
+					 FIB_PROTOCOL_IP4));
 
   fib_entry_contribute_forwarding (sa->fib_entry_index, fct, &tmp);
 
-  dpo_stack_from_node ((sa->is_tunnel_ip6 ?
+  dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
 			im->ah6_encrypt_node_index :
 			im->ah4_encrypt_node_index),
 		       &sa->dpo[IPSEC_PROTOCOL_AH], &tmp);
-  dpo_stack_from_node ((sa->is_tunnel_ip6 ?
+  dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
 			im->esp6_encrypt_node_index :
 			im->esp4_encrypt_node_index),
 		       &sa->dpo[IPSEC_PROTOCOL_ESP], &tmp);
@@ -135,7 +136,7 @@ ipsec_sa_add (u32 id,
   if (p)
     return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
 
-  pool_get_zero (im->sad, sa);
+  pool_get_aligned_zero (im->sad, sa, CLIB_CACHE_LINE_BYTES);
 
   fib_node_init (&sa->node, FIB_NODE_TYPE_IPSEC_SA);
   sa_index = sa - im->sad;
@@ -155,15 +156,15 @@ ipsec_sa_add (u32 id,
   ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
 
   if (flags & IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM)
-    sa->use_esn = 1;
+    ipsec_sa_set_USE_EXTENDED_SEQ_NUM (sa);
   if (flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY)
-    sa->use_anti_replay = 1;
+    ipsec_sa_set_USE_ANTI_REPLAY (sa);
   if (flags & IPSEC_SA_FLAG_IS_TUNNEL)
-    sa->is_tunnel = 1;
+    ipsec_sa_set_IS_TUNNEL (sa);
   if (flags & IPSEC_SA_FLAG_IS_TUNNEL_V6)
-    sa->is_tunnel_ip6 = 1;
+    ipsec_sa_set_IS_TUNNEL_V6 (sa);
   if (flags & IPSEC_SA_FLAG_UDP_ENCAP)
-    sa->udp_encap = 1;
+    ipsec_sa_set_UDP_ENCAP (sa);
 
   err = ipsec_check_support_cb (im, sa);
   if (err)
@@ -180,13 +181,13 @@ ipsec_sa_add (u32 id,
       return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
 
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
-      fib_protocol_t fproto = (sa->is_tunnel_ip6 ?
+      fib_protocol_t fproto = (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
 			       FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
       fib_prefix_t pfx = {
 	.fp_addr = sa->tunnel_dst_addr,
-	.fp_len = (sa->is_tunnel_ip6 ? 128 : 32),
+	.fp_len = (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? 128 : 32),
 	.fp_proto = fproto,
       };
       sa->tx_fib_index = fib_table_find (fproto, tx_table_id);
@@ -205,7 +206,7 @@ ipsec_sa_add (u32 id,
       ipsec_sa_stack (sa);
 
       /* generate header templates */
-      if (sa->is_tunnel_ip6)
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
 	{
 	  sa->ip6_hdr.ip_version_traffic_class_and_flow_label = 0x60;
 	  sa->ip6_hdr.hop_limit = 254;
@@ -217,7 +218,7 @@ ipsec_sa_add (u32 id,
 	    sa->tunnel_dst_addr.ip6.as_u64[0];
 	  sa->ip6_hdr.dst_address.as_u64[1] =
 	    sa->tunnel_dst_addr.ip6.as_u64[1];
-	  if (sa->udp_encap)
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa))
 	    sa->ip6_hdr.protocol = IP_PROTOCOL_UDP;
 	  else
 	    sa->ip6_hdr.protocol = IP_PROTOCOL_IPSEC_ESP;
@@ -229,7 +230,7 @@ ipsec_sa_add (u32 id,
 	  sa->ip4_hdr.src_address.as_u32 = sa->tunnel_src_addr.ip4.as_u32;
 	  sa->ip4_hdr.dst_address.as_u32 = sa->tunnel_dst_addr.ip4.as_u32;
 
-	  if (sa->udp_encap)
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa))
 	    sa->ip4_hdr.protocol = IP_PROTOCOL_UDP;
 	  else
 	    sa->ip4_hdr.protocol = IP_PROTOCOL_IPSEC_ESP;
@@ -237,7 +238,7 @@ ipsec_sa_add (u32 id,
 	}
     }
 
-  if (sa->udp_encap)
+  if (ipsec_sa_is_set_UDP_ENCAP (sa))
     {
       sa->udp_hdr.src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
       sa->udp_hdr.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
@@ -277,7 +278,8 @@ ipsec_sa_del (u32 id)
   err = ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
   if (err)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
-  if (sa->is_tunnel)
+
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
       fib_entry_child_remove (sa->fib_entry_index, sa->sibling);
       fib_table_entry_special_remove
