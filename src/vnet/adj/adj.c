@@ -537,10 +537,32 @@ static fib_node_back_walk_rc_t
 adj_back_walk_notify (fib_node_t *node,
 		      fib_node_back_walk_ctx_t *ctx)
 {
-    /*
-     * Que pasa. yo soj en el final!
-     */
-    ASSERT(0);
+    ip_adjacency_t *adj;
+
+    adj = ADJ_FROM_NODE(node);
+
+    switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+        adj_midchain_delegate_restack(adj_get_index(adj));
+        break;
+    case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_BCAST:
+    case IP_LOOKUP_NEXT_GLEAN:
+    case IP_LOOKUP_NEXT_MCAST:
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+        /*
+         * Que pasa. yo soj en el final!
+         */
+        ASSERT(0);
+        break;
+    }
 
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }
