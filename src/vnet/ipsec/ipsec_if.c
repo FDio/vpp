@@ -343,7 +343,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			 &args->local_ip, &t->input_sa_index);
 
       if (rv)
-	return VNET_API_ERROR_UNIMPLEMENTED;
+	return VNET_API_ERROR_INVALID_SRC_ADDRESS;
 
       ipsec_mk_key (&crypto_key,
 		    args->local_crypto_key, args->local_crypto_key_len);
@@ -363,7 +363,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			 &args->remote_ip, &t->output_sa_index);
 
       if (rv)
-	return VNET_API_ERROR_UNIMPLEMENTED;
+	return VNET_API_ERROR_INVALID_DST_ADDRESS;
 
       /* copy the key */
       if (is_ip6)

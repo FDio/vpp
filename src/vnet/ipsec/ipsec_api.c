@@ -207,7 +207,7 @@ ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
       *out = IPSEC_PROTOCOL_AH;
       return (0);
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_INVALID_PROTOCOL);
 }
 
 static vl_api_ipsec_proto_t
@@ -237,7 +237,7 @@ ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
       foreach_ipsec_crypto_alg
 #undef _
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_INVALID_ALGORITHM);
 }
 
 static vl_api_ipsec_crypto_alg_t
@@ -270,7 +270,7 @@ ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
       foreach_ipsec_integ_alg
 #undef _
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_INVALID_ALGORITHM);
 }
 
 static vl_api_ipsec_integ_alg_t
@@ -780,7 +780,7 @@ vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
       if (mp->alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
 	  mp->alg >= IPSEC_CRYPTO_N_ALG)
 	{
-	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  rv = VNET_API_ERROR_INVALID_ALGORITHM;
 	  goto out;
 	}
       break;
@@ -788,7 +788,7 @@ vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
     case IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG:
       if (mp->alg >= IPSEC_INTEG_N_ALG)
 	{
-	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  rv = VNET_API_ERROR_INVALID_ALGORITHM;
 	  goto out;
 	}
       break;
