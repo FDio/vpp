@@ -16,6 +16,23 @@
       "revId": "016faa4f5550b7f2706812a93be0c46bed91152c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "af666dcf_e42012aa",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 451,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-03-26T03:40:07Z",
+      "side": 1,
+      "message": "better to check \u0027node-\u003eflags \u0026 VLIB_NODE_FLAG_TRACE\u0027 first",
+      "revId": "016faa4f5550b7f2706812a93be0c46bed91152c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
