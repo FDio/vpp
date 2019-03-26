@@ -118,4 +118,10 @@ extern void adj_midchain_module_init(void);
  */
 extern u8* format_adj_midchain(u8* s, va_list *ap);
 
+extern void adj_midchain_delegate_stack(adj_index_t ai,
+                                        u32 fib_index,
+                                        const fib_prefix_t *pfx);
+extern void adj_midchain_delegate_restack(adj_index_t ai);
+extern void adj_midchain_delegate_unstack(adj_index_t ai);
+
 #endif
