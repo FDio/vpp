@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f0f4b7f8_56bfbb41",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-26T07:55:07Z",
+      "side": 1,
+      "message": "Good idea. clib_memcpy_fast will qctually emit unaligned avx128 store.\n\nAt this point i just wanted to have it functionally correct, and run perf optimisations in separate patch so i just copy/pasted it from the old code.",
+      "parentUuid": "37ecc91c_53b9d844",
+      "revId": "016faa4f5550b7f2706812a93be0c46bed91152c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "af666dcf_e42012aa",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 16
@@ -30,6 +48,24 @@
       "writtenOn": "2019-03-26T03:40:07Z",
       "side": 1,
       "message": "better to check \u0027node-\u003eflags \u0026 VLIB_NODE_FLAG_TRACE\u0027 first",
+      "revId": "016faa4f5550b7f2706812a93be0c46bed91152c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c71ac882_b7723aa9",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 451,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-26T07:55:07Z",
+      "side": 1,
+      "message": "It will be the same, in both cases it is not local variable so compiler will emit load operation. Buffer metadata at this point is hot in cache, node maybe not...",
+      "parentUuid": "af666dcf_e42012aa",
       "revId": "016faa4f5550b7f2706812a93be0c46bed91152c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
