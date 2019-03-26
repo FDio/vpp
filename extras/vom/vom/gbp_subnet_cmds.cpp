@@ -51,6 +51,8 @@ gbp_subnet_type_to_api(const gbp_subnet::type_t& type)
     return (GBP_API_SUBNET_STITCHED_EXTERNAL);
   if (gbp_subnet::type_t::TRANSPORT == type)
     return (GBP_API_SUBNET_TRANSPORT);
+  if (gbp_subnet::type_t::L3_OUT == type)
+    return (GBP_API_SUBNET_L3_OUT);
 
   return (GBP_API_SUBNET_STITCHED_INTERNAL);
 }
