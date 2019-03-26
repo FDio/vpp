@@ -475,6 +475,9 @@ typedef struct _tcp_main
   /* Seed used to generate random iss */
   tcp_iss_seed_t iss_seed;
 
+  /** Hash table of cc algorithms by name */
+  uword *cc_algo_by_name;
+
   /*
    * Configuration
    */
