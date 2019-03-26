@@ -545,6 +545,7 @@ tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
   vec_validate (tm->cc_algos, type);
 
   tm->cc_algos[type] = *vft;
+  hash_set_mem (tm->cc_algo_by_name, vft->name, type);
 }
 
 tcp_cc_algorithm_t *
@@ -1533,6 +1534,7 @@ tcp_init (vlib_main_t * vm)
 			       FIB_PROTOCOL_IP6, tcp6_output_node.index);
 
   tcp_api_reference ();
+  tm->cc_algo_by_name = hash_create_string (0, sizeof (uword));
   tm->tx_pacing = 1;
   tm->cc_algo = TCP_CC_NEWRENO;
   tm->default_mtu = 1460;
@@ -1545,15 +1547,20 @@ uword
 unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
 {
   uword *result = va_arg (*va, uword *);
+  tcp_main_t *tm = &tcp_main;
+  char *cc_algo_name;
+  u8 found = 0;
+  uword *p;
 
-  if (unformat (input, "newreno"))
-    *result = TCP_CC_NEWRENO;
-  else if (unformat (input, "cubic"))
-    *result = TCP_CC_CUBIC;
-  else
-    return 0;
+  if (unformat (input, "%s", &cc_algo_name)
+      && ((p = hash_get_mem (tm->cc_algo_by_name, cc_algo_name))))
+    {
+      *result = *p;
+      found = 1;
+    }
 
-  return 1;
+  vec_free (cc_algo_name);
+  return found;
 }
 
 uword
