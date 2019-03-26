@@ -1111,9 +1111,9 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
     best_source = fib_entry_src_get_source(bsrc);
     bflags = fib_entry_src_get_flags(bsrc);
 
-    sflag = fib_entry_src_action_remove_or_update_inherit(fib_entry, source);
-
     FIB_ENTRY_DBG(fib_entry, "special remove:%U", format_fib_source, source);
+
+    sflag = fib_entry_src_action_remove_or_update_inherit(fib_entry, source);
 
     /*
      * if the path list for the source passed is invalid,
