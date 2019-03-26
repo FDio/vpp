@@ -118,4 +118,25 @@ extern void adj_midchain_module_init(void);
  */
 extern u8* format_adj_midchain(u8* s, va_list *ap);
 
+/**
+ * @brief
+ *  create/attach a midchain delegate and stack it on the prefix passed
+ * @param ai - the index of the adjacency to stack
+ * @param fib_index - The FIB index of the prefix on which to stack
+ * @param pfx - The prefix on which to stack
+ */
+extern void adj_midchain_delegate_stack(adj_index_t ai,
+                                        u32 fib_index,
+                                        const fib_prefix_t *pfx);
+
+/**
+ * @brief restack a midchain delegate
+ */
+extern void adj_midchain_delegate_restack(adj_index_t ai);
+
+/**
+ * @brief unstack a midchain delegate (this stacks it on a drop)
+ */
+extern void adj_midchain_delegate_unstack(adj_index_t ai);
+
 #endif
