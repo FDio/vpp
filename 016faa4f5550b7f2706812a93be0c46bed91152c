@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "37ecc91c_53b9d844",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-03-26T02:46:37Z",
+      "side": 1,
+      "message": "block size has to be power of 2, so that we can optimize like this:\n\nstatic const u8 pad_data[] \u003d\n  { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0 };\n\nstatic_always_inline u8 *\nesp_add_footer_and_icv (vlib_buffer_t * b, u8 block_size, u8 icv_sz)\n{\n  /* padding + esp footer, only footer when BLOCK_SIZE \u003d\u003d1 */\n  esp_footer_t *f;\n\n  ASSERT (is_pow2 (block_size));\n\n  u16 mask \u003d block_size - 1;\n  u16 pad_payload_len \u003d\n    ((b-\u003ecurrent_length + sizeof (esp_footer_t)) + mask) \u0026 ~mask;\n\n  u8 pad_bytes \u003d pad_payload_len - sizeof (esp_footer_t) - b-\u003ecurrent_length;\n\n  u8 *padding \u003d vlib_buffer_put_uninit (b,\n\t\t\t\t\tpad_bytes +\n\t\t\t\t\tsizeof (esp_footer_t) + icv_sz);\n\n  /* The extra pad bytes would be overwritten by the digest */\n  if (pad_bytes)\n    clib_memcpy_fast (padding, pad_data, sizeof (pad_data));\n\n  /* esp footer */\n  f \u003d (esp_footer_t *) (padding + pad_bytes);\n  f-\u003epad_length \u003d pad_bytes;\n  return \u0026f-\u003enext_header;\n}\n\neven further, the memcpy can be optimized by AVX128 unaligned-sotre ...",
+      "revId": "016faa4f5550b7f2706812a93be0c46bed91152c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
