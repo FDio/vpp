@@ -41,11 +41,12 @@
 /* Vector resize operator.  Called as needed by various macros such as
    vec_add1() when we need to allocate memory. */
 void *
-vec_resize_allocate_memory (void *v,
+vec_resize_allocate_memory (void **vp,
 			    word length_increment,
 			    uword data_bytes,
 			    uword header_bytes, uword data_align)
 {
+  void *v = *vp;
   vec_header_t *vh = _vec_find (v);
   uword old_alloc_bytes, new_alloc_bytes;
   void *old, *new;
@@ -93,7 +94,6 @@ vec_resize_allocate_memory (void *v,
        length_increment, data_bytes, data_align);
 
   clib_memcpy_fast (new, old, old_alloc_bytes);
-  clib_mem_free (old);
 
   /* Allocator may give a bit of extra room. */
   new_alloc_bytes = clib_mem_size (new);
@@ -101,6 +101,11 @@ vec_resize_allocate_memory (void *v,
 
   /* Zero new memory. */
   memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
+
+  *vp = v + header_bytes;
+  __sync_synchronize ();
+
+  clib_mem_free (old);
 
   return v + header_bytes;
 }

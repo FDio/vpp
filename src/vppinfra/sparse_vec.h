@@ -70,13 +70,13 @@ sparse_vec_header (void *v)
 always_inline void *
 sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 {
-  void *v;
+  void *v = NULL;
   sparse_vec_header_t *h;
   word n;
 
   ASSERT (sparse_index_bits <= 16);
 
-  v = _vec_resize ((void *) 0,
+  v = _vec_resize (v,
 		   /* length increment */ 8,
 		   /* data bytes */ 8 * elt_bytes,
 		   /* header bytes */ sizeof (h[0]),

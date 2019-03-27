@@ -98,7 +98,7 @@
     @param data_align alignment (may be zero)
     @return v_prime pointer to resized vector, may or may not equal v
 */
-void *vec_resize_allocate_memory (void *v,
+void *vec_resize_allocate_memory (void **vp,
 				  word length_increment,
 				  uword data_bytes,
 				  uword header_bytes, uword data_align);
@@ -114,13 +114,14 @@ void *vec_resize_allocate_memory (void *v,
 */
 
 #define _vec_resize(V,L,DB,HB,A) \
-  _vec_resize_inline(V,L,DB,HB,clib_max((__alignof__((V)[0])),(A)))
+  _vec_resize_inline((void **)&V,L,DB,HB,clib_max((__alignof__((V)[0])),(A)))
 
 always_inline void *
-_vec_resize_inline (void *v,
+_vec_resize_inline (void **vp,
 		    word length_increment,
 		    uword data_bytes, uword header_bytes, uword data_align)
 {
+  void *v = *vp;
   vec_header_t *vh = _vec_find (v);
   uword new_data_bytes, aligned_header_bytes;
 
@@ -144,7 +145,7 @@ _vec_resize_inline (void *v,
     }
 
   /* Slow path: call helper function. */
-  return vec_resize_allocate_memory (v, length_increment, data_bytes,
+  return vec_resize_allocate_memory (vp, length_increment, data_bytes,
 				     header_bytes,
 				     clib_max (sizeof (vec_header_t),
 					       data_align));
@@ -297,8 +298,9 @@ do {						\
 */
 #define vec_new_ha(T,N,H,A)					\
 ({								\
+  void* _v(v) = NULL; \
   word _v(n) = (N);						\
-  _vec_resize ((T *) 0, _v(n), _v(n) * sizeof (T), (H), (A));	\
+  _vec_resize (_v(v), _v(n), _v(n) * sizeof (T), (H), (A));	\
 })
 
 /** \brief Create new vector of given type and length

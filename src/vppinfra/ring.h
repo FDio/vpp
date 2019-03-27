@@ -35,10 +35,10 @@ clib_ring_header (void *v)
 always_inline void
 clib_ring_new_inline (void **p, u32 elt_bytes, u32 size, u32 align)
 {
-  void *v;
+  void *v = NULL;
   clib_ring_header_t *h;
 
-  v = _vec_resize ((void *) 0,
+  v = _vec_resize (v,
 		   /* length increment */ size,
 		   /* data bytes */ elt_bytes * size,
 		   /* header bytes */ sizeof (h[0]),
