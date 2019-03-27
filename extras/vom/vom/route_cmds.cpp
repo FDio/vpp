@@ -49,7 +49,7 @@ update_cmd::issue(connection& con)
 
   payload.table_id = m_id;
   payload.is_add = 1;
-  payload.is_multipath = 0;
+  payload.is_multipath = 1;
 
   m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
                   &payload.dst_address_length);
