@@ -83,6 +83,7 @@ class TestIPReassemblyMixin(object):
         is_ip6 = 1 if scapy_ip_family == IPv6 else 0
 
         self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=0,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000,
                                     is_ip6=is_ip6)
 
@@ -183,6 +184,7 @@ class TestIPReassemblyMixin(object):
         is_ip6 = 1 if scapy_ip_family == IPv6 else 0
 
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000,
                                     is_ip6=is_ip6)
 
@@ -229,9 +231,11 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip4=True)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10)
         self.sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000)
 
     def tearDown(self):
@@ -300,6 +304,37 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
     def test_random(self, family, stream):
         stream = self.__class__.fragments_200
         super(TestIPv4Reassembly, self).test_random(family, stream)
+
+    def test_long_fragment_chain(self):
+        """ long fragment chain """
+
+        error_cnt_str = \
+            "/err/ip4-reassembly-feature/fragment chain too long (drop)"
+
+        error_cnt = self.get_packet_counter(error_cnt_str)
+
+        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                    max_reassembly_length=3,
+                                    expire_walk_interval_ms=50)
+
+        p1 = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+              IP(id=1000, src=self.src_if.remote_ip4,
+                 dst=self.dst_if.remote_ip4) /
+              UDP(sport=1234, dport=5678) /
+              Raw("X" * 1000))
+        p2 = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+              IP(id=1001, src=self.src_if.remote_ip4,
+                 dst=self.dst_if.remote_ip4) /
+              UDP(sport=1234, dport=5678) /
+              Raw("X" * 1000))
+        frags = fragment_rfc791(p1, 200) + fragment_rfc791(p2, 500)
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(frags)
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+        self.assert_packet_counter_equal(error_cnt_str, error_cnt + 1)
 
     def test_5737(self):
         """ fragment length + ip header size > 65535 """
@@ -504,6 +539,7 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
             if len(frags_400) > 1)
 
         self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=50)
 
         self.pg_enable_capture()
@@ -565,9 +601,11 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip6=True)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10, is_ip6=1)
         self.sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000, is_ip6=1)
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
@@ -646,6 +684,32 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
             for _ in range(0, min(2, len(frags)))
         ]
         super(TestIPv6Reassembly, self).test_duplicates(family, fragments)
+
+    def test_long_fragment_chain(self):
+        """ long fragment chain """
+
+        error_cnt_str = \
+            "/err/ip6-reassembly-feature/fragment chain too long (drop)"
+
+        error_cnt = self.get_packet_counter(error_cnt_str)
+
+        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                    max_reassembly_length=3,
+                                    expire_walk_interval_ms=50, is_ip6=1)
+
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IPv6(src=self.src_if.remote_ip6,
+                  dst=self.dst_if.remote_ip6) /
+             UDP(sport=1234, dport=5678) /
+             Raw("X" * 1000))
+        frags = fragment_rfc8200(p, 1, 300) + fragment_rfc8200(p, 2, 500)
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(frags)
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+        self.assert_packet_counter_equal(error_cnt_str, error_cnt + 1)
 
     def test_overlap1(self):
         """ overlapping fragments case #1 (differs from IP test case)"""
@@ -741,9 +805,11 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
             if len(frags_400) > 1)
 
         self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=50)
 
         self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=50, is_ip6=1)
 
         self.pg_enable_capture()
@@ -865,9 +931,11 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4ReassemblyLocalNode, self).setUp()
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10)
         self.sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000)
 
     def tearDown(self):
@@ -996,13 +1064,17 @@ class TestFIFReassembly(VppTestCase):
             sw_if_index=self.dst_if.sw_if_index, enable_ip4=True,
             enable_ip6=True)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10, is_ip6=1)
         self.sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000, is_ip6=1)
 
     def tearDown(self):
