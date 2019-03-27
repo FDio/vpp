@@ -42,7 +42,7 @@ class TestDHCPv6DataPlane(VppTestCase):
         super(TestDHCPv6DataPlane, self).tearDown()
 
     def test_dhcp_ia_na_send_solicit_receive_advertise(self):
-        """ Verify DHCPv6 IA NA Solicit packet and Advertise envent """
+        """ Verify DHCPv6 IA NA Solicit packet and Advertise event """
 
         self.vapi.dhcp6_clients_enable_disable()
 
@@ -119,7 +119,7 @@ class TestDHCPv6DataPlane(VppTestCase):
             self.vapi.want_dhcp6_reply_events(enable_disable=0)
 
     def test_dhcp_pd_send_solicit_receive_advertise(self):
-        """ Verify DHCPv6 PD Solicit packet and Advertise envent """
+        """ Verify DHCPv6 PD Solicit packet and Advertise event """
 
         self.vapi.dhcp6_clients_enable_disable()
 
@@ -410,7 +410,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.send_advertise(ianaopts=noavail)
         self.wait_for_solicit(is_resend=True)
 
-    def test_preferred_greater_than_valit_lifetime(self):
+    def test_preferred_greater_than_valid_lifetime(self):
         """ Preferred lifetime is greater than valid lifetime """
 
         self.wait_for_solicit()
@@ -705,7 +705,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.send_advertise(iapdopt=noavail)
         self.wait_for_solicit(is_resend=True)
 
-    def test_preferred_greater_than_valit_lifetime(self):
+    def test_preferred_greater_than_valid_lifetime(self):
         """ Preferred lifetime is greater than valid lifetime """
 
         try:

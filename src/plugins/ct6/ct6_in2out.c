@@ -123,7 +123,7 @@ ct6_create_or_recycle_session (ct6_main_t * cmp,
       *createp += 1;
     }
 
-  /* Sesison setup */
+  /* Session setup */
   memset (s0, 0, sizeof (*s0));
   clib_memcpy_fast (s0, kvpp, sizeof (ct6_session_key_t));
   s0->thread_index = my_thread_index;

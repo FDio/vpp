@@ -26,7 +26,7 @@ static char * bier_output_error_strings[] = {
 };
 
 /*
- * Keep these values sematically the same as BIER output
+ * Keep these values semantically the same as BIER output
  */
 #define foreach_bier_output_next                \
     _(DROP, "bier-drop")
@@ -52,7 +52,7 @@ vlib_node_registration_t bier_output_node;
 extern vlib_combined_counter_main_t bier_fmask_counters;
 
 /**
- * @brief Packet trace recoed for a BIER output
+ * @brief Packet trace record for a BIER output
  */
 typedef struct bier_output_trace_t_
 {
@@ -109,7 +109,7 @@ bier_output (vlib_main_t * vm,
             bier_bit_string_init_from_hdr(bh0, &bbs);
 
             /*
-             * In the BIER Lookup node we squirelled away the
+             * In the BIER Lookup node we squirrelled away the
              * BIER fmask index as the adj index
              */
             bfmi0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];

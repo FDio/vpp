@@ -163,7 +163,7 @@ format_pg_edit_group (u8 * s, va_list * va)
       while (*junk_after_name && *junk_after_name != ' ')
 	junk_after_name++;
       *junk_after_name = 0;
-      s = format (s, "edit-funtion %s, ", function_name);
+      s = format (s, "edit-function %s, ", function_name);
       vec_free (function_name);
     }
 

@@ -353,7 +353,7 @@ class RemoteVppTestCase(VppTestCase):
 
         @classmethod
         def setUpClass(cls):
-            # fork new process before clinet connects to VPP
+            # fork new process before client connects to VPP
             cls.remote_test = RemoteClass(RemoteVppTestCase)
 
             # start remote process

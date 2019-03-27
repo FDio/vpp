@@ -199,7 +199,7 @@ class TestVxlanGbp(VppTestCase):
 
         self.pg_start()
 
-        # Pick first received frame and check if it's corectly encapsulated.
+        # Pick first received frame and check if it's correctly encapsulated.
         out = self.pg0.get_capture(1)
         pkt = out[0]
         self.check_encapsulation(pkt, self.single_tunnel_bd)
@@ -218,7 +218,7 @@ class TestVxlanGbp(VppTestCase):
 
         self.pg_start()
 
-        # Get packet from each tunnel and assert it's corectly encapsulated.
+        # Get packet from each tunnel and assert it's correctly encapsulated.
         out = self.pg0.get_capture(self.n_ucast_tunnels)
         for pkt in out:
             self.check_encapsulation(pkt, self.ucast_flood_bd, True)

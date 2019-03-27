@@ -22,7 +22,7 @@
 #include <vnet/bier/bier_fmask.h>
 
 /**
- * Struct maintining the per-worker thread data for BIER lookups
+ * Struct maintaining the per-worker thread data for BIER lookups
  */
 typedef struct bier_lookup_main_t_
 {

@@ -290,7 +290,7 @@ fib_entry_src_adj_deactivate (fib_entry_src_t *src,
     fib_entry_t *cover;
 
     /*
-     * remove the depednecy on the covering entry
+     * remove the dependency on the covering entry
      */
     if (FIB_NODE_INDEX_INVALID == src->u.adj.fesa_cover)
     {
@@ -367,7 +367,7 @@ fib_entry_src_adj_cover_update (fib_entry_src_t *src,
 {
     /*
      * the cover has updated, i.e. its forwarding or flags
-     * have changed. don't decativate/activate here, since this
+     * have changed. don't deactivate/activate here, since this
      * prefix is updated during the covers walk.
      */
     fib_entry_src_cover_res_t res = {

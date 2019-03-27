@@ -77,7 +77,7 @@ VLIB_NODE_FN (dhcp_client_detect_node) (vlib_main_t * vm,
       /*
        * This loop is optimised not so we can really quickly process DHCp
        * offers... but so we can quickly sift them out when the interface
-       * is also receving 'normal' packets
+       * is also receiving 'normal' packets
        */
       while (n_left_from >= 8 && n_left_to_next >= 4)
 	{

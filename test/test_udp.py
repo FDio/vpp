@@ -85,7 +85,7 @@ class TestUdpEncap(VppTestCase):
 
         #
         # construct a UDP encap object through each of the peers
-        # v4 through the first two peears, v6 through the second.
+        # v4 through the first two peers, v6 through the second.
         #
         udp_encap_0 = VppUdpEncap(self,
                                   self.pg0.local_ip4,

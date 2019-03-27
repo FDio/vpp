@@ -460,7 +460,7 @@ class TestIPIP6(VppTestCase):
         rx = self.pg1.get_capture(2)
 
         # Scapy defragment doesn't deal well with multiple layers
-        # of samy type / Ethernet header first
+        # of same type / Ethernet header first
         f = [p[1] for p in rx]
         reass_pkt = defragment6(f)
         self.validate(reass_pkt, p6_reply)

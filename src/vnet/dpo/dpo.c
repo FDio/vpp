@@ -18,7 +18,7 @@
  * applied to packets are they are switched through VPP.
  * 
  * The DPO is a base class that is specialised by other objects to provide
- * concreate actions
+ * concrete actions
  *
  * The VLIB graph nodes are graph of types, the DPO graph is a graph of instances.
  */
@@ -78,7 +78,7 @@ static const char* const * const ** dpo_nodes;
  * the third dimension in dpo_nodes is lost, hence, the edge index from each
  * node MUST be the same.
  * Including both the child and parent protocol is required to support the
- * case where it changes as the grapth is traversed, most notablly when an
+ * case where it changes as the graph is traversed, most notably when an
  * MPLS label is popped.
  *
  * Note that this array is child type specific, not child instance specific.
@@ -86,7 +86,7 @@ static const char* const * const ** dpo_nodes;
 static u32 ****dpo_edges;
 
 /**
- * @brief The DPO type value that can be assigend to the next dynamic
+ * @brief The DPO type value that can be assigned to the next dynamic
  *        type registration.
  */
 static dpo_type_t dpo_dynamic = DPO_LAST;
@@ -408,7 +408,7 @@ dpo_get_next_node (dpo_type_t child_type,
         parent_proto, ~0);
 
     /*
-     * if the edge index has not yet been created for this node to node transistion
+     * if the edge index has not yet been created for this node to node transition
      */
     if (~0 == dpo_edges[child_type][child_proto][parent_type][parent_proto])
     {
@@ -494,7 +494,7 @@ dpo_stack_i (u32 edge,
     dpo_copy(&tmp, parent);
 
     /*
-     * get the edge index for the parent to child VLIB graph transisition
+     * get the edge index for the parent to child VLIB graph transition
      */
     tmp.dpoi_next_node = edge;
 

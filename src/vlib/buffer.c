@@ -321,7 +321,7 @@ static struct
 vlib_main_t **vlib_mains = &__bootstrap_vlib_main_vector.vm;
 
 
-/* When dubugging validate that given buffers are either known allocated
+/* When debugging validate that given buffers are either known allocated
    or known free. */
 void
 vlib_buffer_validate_alloc_free (vlib_main_t * vm,

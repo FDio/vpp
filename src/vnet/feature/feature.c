@@ -132,7 +132,7 @@ vnet_feature_init (vlib_main_t * vm)
 
       features_in_order = fm->feature_nodes[arc_index];
 
-      /* If specificed, verify that the last node in the arc is actually last */
+      /* If specified, verify that the last node in the arc is actually last */
       if (areg->last_in_arc && vec_len (features_in_order) > 0)
 	{
 	  last_feature = features_in_order[vec_len (features_in_order) - 1];

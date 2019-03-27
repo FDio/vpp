@@ -95,7 +95,7 @@ adj_mcast_add_or_lock (fib_protocol_t proto,
  * adj_mcast_update_rewrite
  *
  * Update the adjacency's rewrite string. A NULL string implies the
- * rewirte is reset (i.e. when ARP/ND etnry is gone).
+ * rewrite is reset (i.e. when ARP/ND entry is gone).
  * NB: the adj being updated may be handling traffic in the DP.
  */
 void
@@ -129,7 +129,7 @@ adj_mcast_update_rewrite (adj_index_t adj_index,
  * adj_mcast_midchain_update_rewrite
  *
  * Update the adjacency's rewrite string. A NULL string implies the
- * rewirte is reset (i.e. when ARP/ND etnry is gone).
+ * rewrite is reset (i.e. when ARP/ND entry is gone).
  * NB: the adj being updated may be handling traffic in the DP.
  */
 void
@@ -148,7 +148,7 @@ adj_mcast_midchain_update_rewrite (adj_index_t adj_index,
     adj = adj_get(adj_index);
 
     /*
-     * one time only update. since we don't support chainging the tunnel
+     * one time only update. since we don't support changing the tunnel
      * src,dst, this is all we need.
      */
     ASSERT(adj->lookup_next_index == IP_LOOKUP_NEXT_MCAST);

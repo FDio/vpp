@@ -303,7 +303,7 @@ class TestIP4PuntSocket(TestPuntSocket):
             self.portsCheck[p] = 0
 
         #
-        # create stream with random pakets count per given ports
+        # create stream with random packets count per given ports
         #
         pkts = list()
         for _ in range(0, self.nr_packets):
@@ -362,7 +362,7 @@ class TestIP4PuntSocket(TestPuntSocket):
             self.portsCheck[p] = 0
 
         #
-        # create stream with random pakets count per given ports
+        # create stream with random packets count per given ports
         #
         pkts = list()
         for _ in range(0, self.nr_packets):
@@ -558,7 +558,7 @@ class TestIP6PuntSocket(TestPuntSocket):
             self.portsCheck[p] = 0
 
         #
-        # create stream with random pakets count per given ports
+        # create stream with random packets count per given ports
         #
         pkts = list()
         for _ in range(0, self.nr_packets):
@@ -617,7 +617,7 @@ class TestIP6PuntSocket(TestPuntSocket):
             self.portsCheck[p] = 0
 
         #
-        # create stream with random pakets count per given ports
+        # create stream with random packets count per given ports
         #
         pkts = list()
         for _ in range(0, self.nr_packets):

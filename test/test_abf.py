@@ -171,7 +171,7 @@ class TestAbf(VppTestCase):
         # the application of ACLs to a forwarding path to achieve
         # ABF
         # So we construct just a few ACLs to ensure the ABF policies
-        # are correclty constructed and used. And a few path types
+        # are correctly constructed and used. And a few path types
         # to test the API path decoding.
         #
 

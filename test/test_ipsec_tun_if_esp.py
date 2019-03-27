@@ -149,7 +149,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
 
 
 class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
-    """ IPsec IPv6 Muitli Tunnel interface """
+    """ IPsec IPv6 Multi Tunnel interface """
 
     encryption_type = ESP
     tun6_encrypt_node_name = "esp6-encrypt"

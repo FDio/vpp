@@ -234,7 +234,7 @@ class MethodHolder(VppTestCase):
                 ip_layer = capture[0][IPv6]
             if data_set is not None:
                 for record in data:
-                    # skip flow if in/out gress interface is 0
+                    # skip flow if ingress/egress interface is 0
                     if int(binascii.hexlify(record[10]), 16) == 0:
                         continue
                     if int(binascii.hexlify(record[14]), 16) == 0:
@@ -881,7 +881,7 @@ class DisableIPFIX(MethodHolder):
         self.wait_for_cflow_packet(self.collector, templates[1])
         self.collector.get_capture(4)
 
-        # disble IPFIX
+        # disable IPFIX
         ipfix.disable_exporter()
         self.pg_enable_capture([self.collector])
 
@@ -998,7 +998,7 @@ class DisableFP(MethodHolder):
         self.wait_for_cflow_packet(self.collector, templates[1])
         self.collector.get_capture(4)
 
-        # disble IPFIX
+        # disable IPFIX
         ipfix.disable_flowprobe_feature()
         self.pg_enable_capture([self.collector])
 
@@ -1049,7 +1049,7 @@ class ReenableFP(MethodHolder):
         self.wait_for_cflow_packet(self.collector, templates[1], 5)
         self.collector.get_capture(4)
 
-        # disble FPP feature
+        # disable FPP feature
         ipfix.disable_flowprobe_feature()
         self.pg_enable_capture([self.collector])
 

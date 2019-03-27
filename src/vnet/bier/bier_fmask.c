@@ -311,7 +311,7 @@ bier_fmask_link (index_t bfmi,
     if (0 == bfm->bfm_bits.bfmb_refs[BIER_BP_TO_INDEX(bp)])
     {
         /*
-         * 0 -> 1 transistion - set the bit in the string
+         * 0 -> 1 transition - set the bit in the string
          */
         bier_bit_string_set_bit(&bfm->bfm_bits.bfmb_input_reset_string, bp);
     }
@@ -334,7 +334,7 @@ bier_fmask_unlink (index_t bfmi,
     if (0 == bfm->bfm_bits.bfmb_refs[BIER_BP_TO_INDEX(bp)])
     {
         /*
-         * 1 -> 0 transistion - clear the bit in the string
+         * 1 -> 0 transition - clear the bit in the string
          */
         bier_bit_string_clear_bit(&bfm->bfm_bits.bfmb_input_reset_string, bp);
     }

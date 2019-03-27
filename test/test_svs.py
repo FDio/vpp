@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import unittest
+
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable
 
@@ -53,7 +55,7 @@ class TestSVS(VppTestCase):
         """ Source VRF Select IP4 """
 
         #
-        # packets destinet out of the 3 non-default table interfaces
+        # packets destined out of the 3 non-default table interfaces
         #
         pkts_0 = [(Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                    IP(src="1.1.1.1", dst=self.pg1.remote_ip4) /
@@ -89,7 +91,7 @@ class TestSVS(VppTestCase):
 
         #
         # Add table 1001 & 1002 into which we'll add the routes
-        # determing the source VRF selection
+        # determining the source VRF selection
         #
         table_ids = [101, 102]
 
@@ -180,7 +182,7 @@ class TestSVS(VppTestCase):
         """ Source VRF Select IP6 """
 
         #
-        # packets destinet out of the 3 non-default table interfaces
+        # packets destined out of the 3 non-default table interfaces
         #
         pkts_0 = [(Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                    IPv6(src="2001:1::1", dst=self.pg1.remote_ip6) /
@@ -216,7 +218,7 @@ class TestSVS(VppTestCase):
 
         #
         # Add table 1001 & 1002 into which we'll add the routes
-        # determing the source VRF selection
+        # determining the source VRF selection
         #
         table_ids = [101, 102]
 

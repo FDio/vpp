@@ -4503,7 +4503,7 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
   ip6_radv_t *radv_info;
   ip6_address_t a;
 
-  /* create solicited node multicast address for this interface adddress */
+  /* create solicited node multicast address for this interface address */
   ip6_set_solicited_node_multicast_address (&a, 0);
 
   a.as_u8[0xd] = address->as_u8[0xd];

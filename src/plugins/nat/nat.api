@@ -963,7 +963,7 @@ manual_endian define nat44_lb_static_mapping_details {
 /** \brief Delete NAT44 session
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_in - 1 if inside network addres and port pari, 0 if outside
+    @param is_in - 1 if inside network address and port pair, 0 if outside
     @param ip_address - IPv4 address
     @param protocol - IP protocol
     @param port - port number
