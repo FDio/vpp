@@ -358,7 +358,8 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
       goto done;
     case VNET_API_ERROR_INVALID_VALUE:
       error =
-	clib_error_return (0, "Outside addres %U and port %u already in use.",
+	clib_error_return (0,
+			   "Outside address %U and port %u already in use.",
 			   format_ip4_address, &out_addr, out_port);
       goto done;
     case VNET_API_ERROR_INVALID_VALUE_2:

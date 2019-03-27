@@ -41,7 +41,7 @@ class VppIpsecSpd(VppObject):
 class VppIpsecSpdItfBinding(VppObject):
     """
     VPP SPD DB to interface binding
-    (i.e. this SPD is used on this interfce)
+    (i.e. this SPD is used on this interface)
     """
 
     def __init__(self, test, spd, itf):

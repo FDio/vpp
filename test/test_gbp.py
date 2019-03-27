@@ -1109,7 +1109,7 @@ class TestGBP(VppTestCase):
         self.send_and_expect_bridged(self.pg0, pkt_intra_epg * 65, self.pg1)
 
         #
-        # in the abscense of policy, endpoints in the different EPG
+        # in the absence of policy, endpoints in the different EPG
         # cannot communicate
         #
         pkt_inter_epg_220_to_221 = (Ether(src=self.pg0.remote_mac,
@@ -1284,7 +1284,7 @@ class TestGBP(VppTestCase):
                                        eps[0].fip6))
 
         #
-        # From an EP to an outside addess: IN2OUT
+        # From an EP to an outside address: IN2OUT
         #
         pkt_inter_epg_220_to_global = (Ether(src=self.pg0.remote_mac,
                                              dst=str(self.router_mac)) /
@@ -1526,7 +1526,7 @@ class TestGBP(VppTestCase):
 
         #
         # The VXLAN GBP tunnel is a bridge-port and has L2 endpoint
-        # leanring enabled
+        # learning enabled
         #
         vx_tun_l2_1 = VppGbpVxlanTunnel(
             self, 99, bd1.bd_id,
@@ -1546,7 +1546,7 @@ class TestGBP(VppTestCase):
 
         self.assertTrue(find_route(self, ep.ip4.address, 32, table_id=1))
 
-        # a packet with an sclass from an unknwon EPG
+        # a packet with an sclass from an unknown EPG
         p = (Ether(src=self.pg2.remote_mac,
                    dst=self.pg2.local_mac) /
              IP(src=self.pg2.remote_hosts[0].ip4,
@@ -1570,14 +1570,14 @@ class TestGBP(VppTestCase):
                                                self.pg2.remote_hosts[0].ip4,
                                                99))
 
-        # epg is not learnt, becasue the EPG is unknwon
+        # epg is not learnt, because the EPG is unknwon
         self.assertEqual(len(self.vapi.gbp_endpoint_dump()), 1)
 
         #
         # Learn new EPs from IP packets
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -1627,7 +1627,7 @@ class TestGBP(VppTestCase):
         # Learn new EPs from GARP packets received on the BD's mcast tunnel
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -1672,7 +1672,7 @@ class TestGBP(VppTestCase):
         # Learn new EPs from L2 packets
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -1716,7 +1716,7 @@ class TestGBP(VppTestCase):
         # repeat. the do not learn bit is set so the EPs are not learnt
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -1739,7 +1739,7 @@ class TestGBP(VppTestCase):
         # repeat
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -1791,7 +1791,7 @@ class TestGBP(VppTestCase):
         # so the packet is cleared for delivery
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -1824,7 +1824,7 @@ class TestGBP(VppTestCase):
         # refresh the entries after the check for no replies above
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -1903,7 +1903,7 @@ class TestGBP(VppTestCase):
         # Check v6 Endpoints
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -2015,7 +2015,7 @@ class TestGBP(VppTestCase):
 
         #
         # The VXLAN GBP tunnel is a bridge-port and has L2 endpoint
-        # leanring enabled
+        # learning enabled
         #
         vx_tun_l2_1 = VppGbpVxlanTunnel(
             self, 99, bd1.bd_id,
@@ -2039,7 +2039,7 @@ class TestGBP(VppTestCase):
         # Send to the static EP
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -2191,7 +2191,7 @@ class TestGBP(VppTestCase):
 
         #
         # The VXLAN GBP tunnel is a bridge-port and has L2 endpoint
-        # leanring enabled
+        # learning enabled
         #
         vx_tun_l3 = VppGbpVxlanTunnel(
             self, 101, rd1.rd_id,
@@ -2213,7 +2213,7 @@ class TestGBP(VppTestCase):
         # learn some remote IPv4 EPs
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -2280,7 +2280,7 @@ class TestGBP(VppTestCase):
         # learn some remote IPv6 EPs
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -2390,7 +2390,7 @@ class TestGBP(VppTestCase):
         # learn some remote IPv4 EPs
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -2445,7 +2445,7 @@ class TestGBP(VppTestCase):
         rep_2.add_vpp_config()
 
         #
-        # Add a route to the leanred EP's v4 subnet
+        # Add a route to the learned EP's v4 subnet
         #  packets should be send on the v4/v6 uu=fwd interface resp.
         #
         se_10_1_24 = VppGbpSubnet(
@@ -2507,7 +2507,7 @@ class TestGBP(VppTestCase):
         rxs = self.send_and_expect(self.pg0, [p], self.pg4)
 
         #
-        # to appease the testcase we cannot have the registered EP stll
+        # to appease the testcase we cannot have the registered EP still
         # present (because it's DP learnt) when the TC ends so wait until
         # it is removed
         #
@@ -3241,7 +3241,7 @@ class TestGBP(VppTestCase):
         rep.add_vpp_config()
 
         #
-        # ARP packet from External EPs are accpeted and replied to
+        # ARP packet from External EPs are accepted and replied to
         #
         p_arp = (Ether(src=eep1.mac, dst="ff:ff:ff:ff:ff:ff") /
                  Dot1Q(vlan=100) /

@@ -19,7 +19,7 @@
 
 /**
  * @file
- * Circular joournal diagnostic mechanism.
+ * Circular journal diagnostic mechanism.
  *
  * The @c cj thread-safe circular log buffer scheme is occasionally useful
  * when chasing bugs. Calls to it should not be checked in.
@@ -106,7 +106,7 @@ cj_config (vlib_main_t * vm, unformat_input_t * input)
 
 /*?
  * Configure the circular journal diagnostic mechanism. This is only useful
- * if you, the deveoper, have written code to make use of the circular
+ * if you, the developer, have written code to make use of the circular
  * journal.
  *
  * @cfgcmd{records, &lt;number&gt;}
@@ -258,7 +258,7 @@ done:
 /*?
  * Enable, disable the collection of diagnostic data into a
  * circular journal or dump the circular journal diagnostic data.
- * This is only useful if you, the deveoper, have written code to make
+ * This is only useful if you, the developer, have written code to make
  * use of the circular journal.
  *
  * When dumping the data it is formatted and sent to @c stderr of the

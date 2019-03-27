@@ -71,7 +71,7 @@ fib_path_api_parse (const vl_api_fib_path_t *in,
     }
 
     /*
-     * the special INVALID label meams we are not recursing via a
+     * the special INVALID label means we are not recursing via a
      * label. Exp-null value is never a valid via-label so that
      * also means it's not a via-label and means clients that set
      * it to 0 by default get the expected behaviour

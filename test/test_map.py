@@ -151,7 +151,7 @@ class TestMAP(VppTestCase):
         self.vapi.ppcli("map params pre-resolve ip6-nh 4001::1")
 
         self.send_and_assert_no_replies(self.pg0, v4,
-                                        "resovled via default route")
+                                        "resolved via default route")
 
         #
         # Add a route to 4001::1. Expect the encapped traffic to be

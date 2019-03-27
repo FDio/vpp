@@ -186,10 +186,10 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  dhcpv60 = vlib_buffer_get_current (b0);
 	  ip0 = (void *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
-	  u32 dhcpv6_ip6_palyoad_offset =
+	  u32 dhcpv6_ip6_payload_offset =
 	    (u8 *) dhcpv60 - ((u8 *) ip0 + sizeof (*ip0));
 	  options_length =
-	    ntohs (ip0->payload_length) - dhcpv6_ip6_palyoad_offset -
+	    ntohs (ip0->payload_length) - dhcpv6_ip6_payload_offset -
 	    sizeof (*dhcpv60);
 
 	  clib_memset (&report, 0, sizeof (report));

@@ -768,7 +768,7 @@ class TestIPSubNets(VppTestCase):
         # create a 2 pg interfaces
         self.create_pg_interfaces(range(2))
 
-        # pg0 we will use to experiemnt
+        # pg0 we will use to experiment
         self.pg0.admin_up()
 
         # pg1 is setup normally
@@ -967,7 +967,7 @@ class TestIPLoadBalance(VppTestCase):
         #    src,dst
         # We are not going to ensure equal amounts of packets across each link,
         # since the hash algorithm is statistical and therefore this can never
-        # be guaranteed. But wuth 64 different packets we do expect some
+        # be guaranteed. But with 64 different packets we do expect some
         # balancing. So instead just ensure there is traffic on each link.
         #
         self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
@@ -1241,7 +1241,7 @@ class TestIPPunt(VppTestCase):
         self.pg_start()
 
         #
-        # the number of packet recieved should be greater than 0,
+        # the number of packet received should be greater than 0,
         # but not equal to the number sent, since some were policed
         #
         rx = self.pg1._get_capture(1)
@@ -1249,7 +1249,7 @@ class TestIPPunt(VppTestCase):
         self.assertLess(len(rx), len(pkts))
 
         #
-        # remove the poilcer. back to full rx
+        # remove the policer. back to full rx
         #
         self.vapi.ip_punt_police(policer.policer_index, is_add=0)
         self.vapi.policer_add_del(b"ip4-punt", 400, 0, 10, 0,

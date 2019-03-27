@@ -453,7 +453,7 @@ bond_hash_to_port (u32 * h, u32 n_left, u32 n_slaves, int use_modulo_shortcut)
   u32 mask = n_slaves - 1;
 
 #ifdef CLIB_HAVE_VEC256
-  /* only lower 16 bits of hash due to single precision fp arithmetics */
+  /* only lower 16 bits of hash due to single precision fp arithmetic */
   u32x8 mask8, sc8u, h8a, h8b;
   f32x8 sc8f;
 
@@ -672,7 +672,7 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 
   vlib_get_buffers (vm, from, bufs, n_left);
 
-  /* active-backup mode, ship everyting to first sw if index */
+  /* active-backup mode, ship everything to first sw if index */
   if ((bif->lb == BOND_LB_AB) || PREDICT_FALSE (n_slaves == 1))
     {
       sw_if_index = *vec_elt_at_index (bif->active_slaves, 0);

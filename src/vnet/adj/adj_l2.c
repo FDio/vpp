@@ -108,7 +108,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 			      adj0[0].rewrite_header.max_l3_packet_bytes)))
 	    {
 		/* Don't adjust the buffer for ttl issue; icmp-error node wants
-		 * to see the IP headerr */
+		 * to see the IP header */
 		p0->current_data -= rw_len0;
 		p0->current_length += rw_len0;
 		tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;

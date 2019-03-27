@@ -549,7 +549,7 @@ typedef enum
   IP_VXLAN_GBP_BYPASS_NEXT_DROP,
   IP_VXLAN_GBP_BYPASS_NEXT_VXLAN_GBP,
   IP_VXLAN_GBP_BYPASS_N_NEXT,
-} ip_vxan_gbp_bypass_next_t;
+} ip_vxlan_gbp_bypass_next_t;
 
 always_inline uword
 ip_vxlan_gbp_bypass_inline (vlib_main_t * vm,

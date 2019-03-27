@@ -153,11 +153,11 @@ class TemplateIpsecEsp(TemplateIpsec):
 
     Below 4 cases are covered as part of this test
     1) ipsec esp v4 transport basic test  - IPv4 Transport mode
-        scenario using HMAC-SHA1-96 intergrity algo
+        scenario using HMAC-SHA1-96 integrity algo
     2) ipsec esp v4 transport burst test
         Above test for 257 pkts
     3) ipsec esp 4o4 tunnel basic test    - IPv4 Tunnel mode
-        scenario using HMAC-SHA1-96 intergrity algo
+        scenario using HMAC-SHA1-96 integrity algo
     4) ipsec esp 4o4 tunnel burst test
         Above test for 257 pkts
 

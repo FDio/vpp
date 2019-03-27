@@ -270,7 +270,7 @@ vnet_dns_send_dns4_request (dns_main_t * dm,
     }
 
   /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnummbered */,
+  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnumbered */,
   ({
     src_address = ip_interface_address_get_address (lm4, ia);
     goto found_src_address;
@@ -378,7 +378,7 @@ vnet_dns_send_dns6_request (dns_main_t * dm,
   sw_if_index = fib_entry_get_resolving_interface (fei);
 
   /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm6, ia, sw_if_index, 1 /* honor unnummbered */,
+  foreach_ip_interface_address(lm6, ia, sw_if_index, 1 /* honor unnumbered */,
   ({
     src_address = ip_interface_address_get_address (lm6, ia);
     goto found_src_address;
@@ -2852,7 +2852,7 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
     }
 
   /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnummbered */,
+  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnumbered */,
   ({
     src_address = ip_interface_address_get_address (lm4, ia);
     goto found_src_address;
