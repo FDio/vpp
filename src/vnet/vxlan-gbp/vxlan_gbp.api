@@ -17,6 +17,12 @@
 option version = "1.1.0";
 import "vnet/ip/ip_types.api";
 
+enum vxlan_gbp_api_tunnel_mode
+{
+  VXLAN_GBP_API_TUNNEL_MODE_L2,
+  VXLAN_GBP_API_TUNNEL_MODE_L3,
+};
+
 /** \brief Definition of a VXLAN GBP tunnel
     @param instance - optional unique custom device instance, else ~0.
     @param src - Source IP address
@@ -35,6 +41,7 @@ typedef vxlan_gbp_tunnel
   u32 encap_table_id;
   u32 vni;
   u32 sw_if_index;
+  vl_api_vxlan_gbp_api_tunnel_mode_t mode;
 };
 
 /** \brief Create or delete a VXLAN-GBP tunnel
