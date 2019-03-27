@@ -907,7 +907,7 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 
   if (a->is_add)
     {
-      dhcp_maybe_register_udp_ports ();
+      dhcp_maybe_register_udp_ports (DHCP_PORT_REG_CLIENT);
       pool_get (dcm->clients, c);
       clib_memset (c, 0, sizeof (*c));
       c->state = DHCP_DISCOVER;
