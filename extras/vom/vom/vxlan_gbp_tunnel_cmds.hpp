@@ -38,6 +38,7 @@ public:
   create_cmd(HW::item<handle_t>& item,
              const std::string& name,
              const vxlan_tunnel::endpoint_t& ep,
+             bool is_l2,
              handle_t mcast_itf);
 
   /**
@@ -59,6 +60,7 @@ private:
    * Enpoint values of the tunnel to be created
    */
   const vxlan_tunnel::endpoint_t m_ep;
+  bool m_is_l2;
   handle_t m_mcast_itf;
 };
 

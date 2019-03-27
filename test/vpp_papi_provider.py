@@ -1837,6 +1837,7 @@ class VppPapiProvider(object):
             is_ipv6=0,
             encap_table_id=0,
             vni=0,
+            mode=1,
             instance=0xFFFFFFFF):
         """
 
@@ -1859,7 +1860,8 @@ class VppPapiProvider(object):
                              'mcast_sw_if_index': mcast_sw_if_index,
                              'encap_table_id': encap_table_id,
                              'vni': vni,
-                             'instance': instance}})
+                             'instance': instance,
+                             "mode": mode}})
 
     def vxlan_gbp_tunnel_dump(self, sw_if_index=0xffffffff):
         return self.api(self.papi.vxlan_gbp_tunnel_dump,

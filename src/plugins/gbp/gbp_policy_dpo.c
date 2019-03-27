@@ -211,10 +211,11 @@ VLIB_INIT_FUNCTION (gbp_policy_dpo_module_init);
 
 typedef struct gbp_policy_dpo_trace_t_
 {
-  u32 src_epg;
-  u32 dst_epg;
+  u32 sclass;
+  u32 dclass;
   u32 acl_index;
   u32 a_bit;
+  u32 action;
 } gbp_policy_dpo_trace_t;
 
 typedef enum
@@ -268,7 +269,9 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  gbp_contract_t *gc0;
 	  vlib_buffer_t *b0;
 	  index_t gci0;
+	  u8 action0;
 
+	  action0 = 0;
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
@@ -302,6 +305,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		   */
 		  next0 = gpd0->gpd_dpo.dpoi_next_node;
 		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+		  action0 = 0;
 		}
 	      else
 		{
@@ -310,7 +314,6 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		  if (INDEX_INVALID != gci0)
 		    {
 		      fa_5tuple_opaque_t pkt_5tuple0;
-		      u8 action0 = 0;
 		      u32 acl_pos_p0, acl_match_p0;
 		      u32 rule_match_p0, trace_bitmap0;
 		      /*
@@ -335,9 +338,9 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 
 		      if (action0 > 0)
 			{
-
 			  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
 			  gu = gbp_rule_get (gc0->gc_rules[rule_match_p0]);
+			  action0 = gu->gu_action;
 
 			  switch (gu->gu_action)
 			    {
@@ -369,10 +372,11 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	      gbp_policy_dpo_trace_t *tr;
 
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      tr->src_epg = key0.gck_src;
-	      tr->dst_epg = key0.gck_dst;
+	      tr->sclass = key0.gck_src;
+	      tr->dclass = key0.gck_dst;
 	      tr->acl_index = (gc0 ? gc0->gc_acl_index : ~0);
 	      tr->a_bit = vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A;
+	      tr->action = action0;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -390,8 +394,8 @@ format_gbp_policy_dpo_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_policy_dpo_trace_t *t = va_arg (*args, gbp_policy_dpo_trace_t *);
 
-  s = format (s, " src-epg:%d dst-epg:%d acl-index:%d a-bit:%d",
-	      t->src_epg, t->dst_epg, t->acl_index, t->a_bit);
+  s = format (s, " sclass:%d dclass:%d acl-index:%d a-bit:%d action:%d",
+	      t->sclass, t->dclass, t->acl_index, t->a_bit, t->action);
 
   return s;
 }
