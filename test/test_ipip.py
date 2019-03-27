@@ -160,6 +160,11 @@ class TestIPIP(VppTestCase):
             sw_if_index=self.pg1.sw_if_index,
             enable_ip4=1)
 
+        self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
+                                    expire_walk_interval_ms=10000,
+                                    is_ip6=0)
+
         # Send lots of fragments, verify reassembled packet
         frags, p4_reply = self.generate_ip4_frags(3131, 1400)
         f = []
@@ -414,6 +419,11 @@ class TestIPIP6(VppTestCase):
         rv = self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.pg1.sw_if_index,
             enable_ip6=1)
+
+        self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=1000,
+                                    max_reassembly_length=1000,
+                                    expire_walk_interval_ms=10000,
+                                    is_ip6=1)
 
         # Send lots of fragments, verify reassembled packet
         before_cnt = self.statistics.get_counter(

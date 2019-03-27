@@ -30,6 +30,7 @@
 #define IP4_REASS_TIMEOUT_DEFAULT_MS 100
 #define IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS 10000	// 10 seconds default
 #define IP4_REASS_MAX_REASSEMBLIES_DEFAULT 1024
+#define IP4_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT 3
 #define IP4_REASS_HT_LOAD_FACTOR (0.75)
 
 #define IP4_REASS_DEBUG_BUFFERS 0
@@ -57,6 +58,7 @@
 typedef enum
 {
   IP4_REASS_RC_OK,
+  IP4_REASS_RC_TOO_MANY_FRAGMENTS,
   IP4_REASS_RC_INTERNAL_ERROR,
   IP4_REASS_RC_NO_BUF,
 } ip4_reass_rc_t;
@@ -133,7 +135,8 @@ typedef struct
   u8 next_index;
   // minimum fragment length for this reassembly - used to estimate MTU
   u16 min_fragment_length;
-
+  // number of fragments in this reassembly
+  u32 fragments_n;
 } ip4_reass_t;
 
 typedef struct
@@ -150,6 +153,9 @@ typedef struct
   u32 timeout_ms;
   f64 timeout;
   u32 expire_walk_interval_ms;
+  // maximum number of fragments in one reassembly
+  u32 max_reass_len;
+  // maximum number of reassemblies
   u32 max_reass_n;
 
   // IPv4 runtime
@@ -750,6 +756,7 @@ ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       *bi0 = ~0;
       reass->min_fragment_length = clib_net_to_host_u16 (fip->length);
+      reass->fragments_n = 1;
       return IP4_REASS_RC_OK;
     }
   reass->min_fragment_length = clib_min (clib_net_to_host_u16 (fip->length),
@@ -907,6 +914,7 @@ ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       break;
     }
+  ++reass->fragments_n;
   if (consumed)
     {
       if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
@@ -925,6 +933,10 @@ ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (consumed)
 	{
 	  *bi0 = ~0;
+	  if (reass->fragments_n > rm->max_reass_len)
+	    {
+	      rc = IP4_REASS_RC_TOO_MANY_FRAGMENTS;
+	    }
 	}
       else
 	{
@@ -1022,10 +1034,26 @@ ip4_reassembly_inline (vlib_main_t * vm,
 			case IP4_REASS_RC_OK:
 			  /* nothing to do here */
 			  break;
+			case IP4_REASS_RC_TOO_MANY_FRAGMENTS:
+			  vlib_node_increment_counter (vm, node->node_index,
+						       IP4_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG,
+						       1);
+			  ip4_reass_on_timeout (vm, rm, reass);
+			  ip4_reass_free (rm, rt, reass);
+			  goto next_packet;
+			  break;
 			case IP4_REASS_RC_NO_BUF:
-			  /* fallthrough */
+			  vlib_node_increment_counter (vm, node->node_index,
+						       IP4_ERROR_REASS_NO_BUF,
+						       1);
+			  ip4_reass_on_timeout (vm, rm, reass);
+			  ip4_reass_free (rm, rt, reass);
+			  goto next_packet;
+			  break;
 			case IP4_REASS_RC_INTERNAL_ERROR:
-			  /* drop everything and start with a clean slate */
+			  vlib_node_increment_counter (vm, node->node_index,
+						       IP4_ERROR_REASS_INTERNAL_ERROR,
+						       1);
 			  ip4_reass_on_timeout (vm, rm, reass);
 			  ip4_reass_free (rm, rt, reass);
 			  goto next_packet;
@@ -1176,20 +1204,21 @@ ip4_rehash_cb (clib_bihash_kv_16_8_t * kv, void *_ctx)
 
 static void
 ip4_reass_set_params (u32 timeout_ms, u32 max_reassemblies,
-		      u32 expire_walk_interval_ms)
+		      u32 max_reassembly_length, u32 expire_walk_interval_ms)
 {
   ip4_reass_main.timeout_ms = timeout_ms;
   ip4_reass_main.timeout = (f64) timeout_ms / (f64) MSEC_PER_SEC;
   ip4_reass_main.max_reass_n = max_reassemblies;
+  ip4_reass_main.max_reass_len = max_reassembly_length;
   ip4_reass_main.expire_walk_interval_ms = expire_walk_interval_ms;
 }
 
 vnet_api_error_t
 ip4_reass_set (u32 timeout_ms, u32 max_reassemblies,
-	       u32 expire_walk_interval_ms)
+	       u32 max_reassembly_length, u32 expire_walk_interval_ms)
 {
   u32 old_nbuckets = ip4_reass_get_nbuckets ();
-  ip4_reass_set_params (timeout_ms, max_reassemblies,
+  ip4_reass_set_params (timeout_ms, max_reassemblies, max_reassembly_length,
 			expire_walk_interval_ms);
   vlib_process_signal_event (ip4_reass_main.vlib_main,
 			     ip4_reass_main.ip4_reass_expire_node_idx,
@@ -1223,10 +1252,11 @@ ip4_reass_set (u32 timeout_ms, u32 max_reassemblies,
 
 vnet_api_error_t
 ip4_reass_get (u32 * timeout_ms, u32 * max_reassemblies,
-	       u32 * expire_walk_interval_ms)
+	       u32 * max_reassembly_length, u32 * expire_walk_interval_ms)
 {
   *timeout_ms = ip4_reass_main.timeout_ms;
   *max_reassemblies = ip4_reass_main.max_reass_n;
+  *max_reassembly_length = ip4_reass_main.max_reass_len;
   *expire_walk_interval_ms = ip4_reass_main.expire_walk_interval_ms;
   return 0;
 }
@@ -1256,6 +1286,7 @@ ip4_reass_init_function (vlib_main_t * vm)
 
   ip4_reass_set_params (IP4_REASS_TIMEOUT_DEFAULT_MS,
 			IP4_REASS_MAX_REASSEMBLIES_DEFAULT,
+			IP4_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT,
 			IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
 
   nbuckets = ip4_reass_get_nbuckets ();
