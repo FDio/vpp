@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "216dae7e_0af58e54",
+        "filename": "build/external/packages/quicly.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-03-27T21:43:29Z",
+      "side": 1,
+      "message": "2019. You have to update this in all the files.",
+      "range": {
+        "startLine": 1,
+        "startChar": 16,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "6377715e20add5ddb19d580ed5d9b8d3a47c13c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
