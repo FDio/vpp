@@ -746,21 +746,24 @@ VLIB_REGISTER_NODE (dhcp_proxy_to_client_node, static) = {
 /* *INDENT-ON* */
 
 void
-dhcp_maybe_register_udp_ports (void)
+dhcp_maybe_register_udp_ports (dhcp_port_reg_flags_t ports)
 {
   dhcp_proxy_main_t *dm = &dhcp_proxy_main;
   vlib_main_t *vm = dm->vlib_main;
+  int port_regs_diff = dm->udp_ports_registered ^ ports;
 
-  if (dm->udp_ports_registered)
+  if (!port_regs_diff)
     return;
 
-  udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_client,
-			 dhcp_proxy_to_client_node.index, 1 /* is_ip4 */ );
+  if ((port_regs_diff & DHCP_PORT_REG_CLIENT) & ports)
+    udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_client,
+			   dhcp_proxy_to_client_node.index, 1 /* is_ip4 */ );
 
-  udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_server,
-			 dhcp_proxy_to_server_node.index, 1 /* is_ip4 */ );
+  if ((port_regs_diff & DHCP_PORT_REG_SERVER) & ports)
+    udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_server,
+			   dhcp_proxy_to_server_node.index, 1 /* is_ip4 */ );
 
-  dm->udp_ports_registered = 1;
+  dm->udp_ports_registered |= ports;
 }
 
 static clib_error_t *
@@ -799,7 +802,7 @@ dhcp4_proxy_set_server (ip46_address_t * addr,
   if (ip46_address_is_zero (src_addr))
     return VNET_API_ERROR_INVALID_SRC_ADDRESS;
 
-  dhcp_maybe_register_udp_ports ();
+  dhcp_maybe_register_udp_ports (DHCP_PORT_REG_CLIENT | DHCP_PORT_REG_SERVER);
 
   rx_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 						    rx_table_id,
