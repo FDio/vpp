@@ -1753,6 +1753,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 		  vm->pcap[rx_tx].pcap_main.n_packets_to_capture =
 		    vm->pcap[rx_tx].pcap_main.n_packets_captured;
 		  error = pcap_write (&vm->pcap[rx_tx].pcap_main);
+		  if (vm->pcap[rx_tx].pcap_main.file_descriptor >= 0)
+		    pcap_close (&vm->pcap[rx_tx].pcap_main);
 		  if (error)
 		    clib_error_report (error);
 		  else

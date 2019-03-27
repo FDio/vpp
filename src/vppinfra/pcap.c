@@ -157,9 +157,6 @@ pcap_write (pcap_main_t * pm)
       pm->n_pcap_data_written = 0;
     }
 
-  if (pm->n_packets_captured >= pm->n_packets_to_capture)
-    pcap_close (pm);
-
 done:
   if (error)
     {

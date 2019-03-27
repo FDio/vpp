@@ -79,7 +79,10 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     }
   if (pif->pcap_file_name != 0)
     pcap_write (&pif->pcap_main);
-
+  if (pif->pcap_main.file_descriptor >= 0
+      && pif->pcap_main.n_packets_captured >=
+      pif->pcap_main.n_packets_to_capture)
+    pcap_close (&pif->pcap_main);
 
   vlib_buffer_free (vm, vlib_frame_vector_args (frame), n_buffers);
   if (PREDICT_FALSE (pif->lockp != 0))

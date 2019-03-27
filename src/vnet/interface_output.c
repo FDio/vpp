@@ -1453,6 +1453,8 @@ pcap_drop_trace_command_fn (vlib_main_t * vm,
 		  im->pcap_main.n_packets_to_capture =
 		    im->pcap_main.n_packets_captured;
 		  error = pcap_write (&im->pcap_main);
+		  if (im->pcap_main.file_descriptor >= 0)
+		    pcap_close (&im->pcap_main);
 		  if (error)
 		    clib_error_report (error);
 		  else

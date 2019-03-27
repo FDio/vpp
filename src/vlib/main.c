@@ -2170,6 +2170,8 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 		{
 		  pm->n_packets_to_capture = pm->n_packets_captured;
 		  error = pcap_write (pm);
+		  if (pm->file_descriptor >= 0)
+		    pcap_close (pm);
 		  if (error)
 		    clib_error_report (error);
 		  else
