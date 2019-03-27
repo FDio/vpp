@@ -682,7 +682,7 @@ _hash_create (uword elts, hash_t * h_user)
 {
   hash_t *h;
   uword log2_pair_size;
-  void *v;
+  void *v = NULL;
 
   /* Size of hash is power of 2 >= ELTS and larger than
      number of bits in is_user bitmap elements. */
@@ -693,7 +693,7 @@ _hash_create (uword elts, hash_t * h_user)
   if (h_user)
     log2_pair_size = h_user->log2_pair_size;
 
-  v = _vec_resize ((void *) 0,
+  v = _vec_resize (v,
 		   /* vec len: */ elts,
 		   /* data bytes: */
 		   (elts << log2_pair_size) * sizeof (hash_pair_t),
