@@ -330,7 +330,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      hdr_len += len;
 	      ip6 = (ip6_header_t *) (payload - hdr_len);
 	      clib_memcpy_fast (ip6, &sa0->ip6_hdr, len);
-	      *next_hdr_ptr = IP_PROTOCOL_IPV6;
+	      *next_hdr_ptr = (is_ip6 ?
+			       IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP);
 	      len = payload_len + hdr_len - len;
 	      ip6->payload_length = clib_net_to_host_u16 (len);
 	    }
@@ -341,7 +342,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      hdr_len += len;
 	      ip4 = (ip4_header_t *) (payload - hdr_len);
 	      clib_memcpy_fast (ip4, &sa0->ip4_hdr, len);
-	      *next_hdr_ptr = IP_PROTOCOL_IP_IN_IP;
+	      *next_hdr_ptr = (is_ip6 ?
+			       IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP);
 	      len = payload_len + hdr_len;
 	      esp_update_ip4_hdr (ip4, len, /* is_transport */ 0, 0);
 	    }
