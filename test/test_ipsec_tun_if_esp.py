@@ -28,10 +28,16 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
         tun_if.add_vpp_config()
         tun_if.admin_up()
         tun_if.config_ip4()
+        tun_if.config_ip6()
 
         VppIpRoute(self, p.remote_tun_if_host, 32,
                    [VppRoutePath(tun_if.remote_ip4,
                                  0xffffffff)]).add_vpp_config()
+        VppIpRoute(self, p.remote_tun_if_host6, 128,
+                   [VppRoutePath(tun_if.remote_ip6,
+                                 0xffffffff,
+                                 proto=DpoProto.DPO_PROTO_IP6)],
+                   is_ip6=1).add_vpp_config()
 
     def tearDown(self):
         if not self.vpp_dead:
@@ -43,6 +49,14 @@ class TestIpsec4TunIfEsp1(TemplateIpsec4TunIfEsp, IpsecTun4Tests):
     """ Ipsec ESP - TUN tests """
     tun4_encrypt_node_name = "esp4-encrypt"
     tun4_decrypt_node_name = "esp4-decrypt"
+
+    def test_tun_basic64(self):
+        """ ipsec 6o4 tunnel basic test """
+        self.verify_tun_64(self.params[socket.AF_INET], count=1)
+
+    def test_tun_burst64(self):
+        """ ipsec 6o4 tunnel basic test """
+        self.verify_tun_64(self.params[socket.AF_INET], count=257)
 
 
 class TestIpsec4TunIfEsp2(TemplateIpsec4TunIfEsp, IpsecTcpTests):
@@ -69,12 +83,16 @@ class TemplateIpsec6TunIfEsp(TemplateIpsec):
         tun_if.add_vpp_config()
         tun_if.admin_up()
         tun_if.config_ip6()
+        tun_if.config_ip4()
 
         VppIpRoute(self, p.remote_tun_if_host, 128,
                    [VppRoutePath(tun_if.remote_ip6,
                                  0xffffffff,
                                  proto=DpoProto.DPO_PROTO_IP6)],
                    is_ip6=1).add_vpp_config()
+        VppIpRoute(self, p.remote_tun_if_host4, 32,
+                   [VppRoutePath(tun_if.remote_ip4,
+                                 0xffffffff)]).add_vpp_config()
 
     def tearDown(self):
         if not self.vpp_dead:
@@ -86,6 +104,14 @@ class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp, IpsecTun6Tests):
     """ Ipsec ESP - TUN tests """
     tun6_encrypt_node_name = "esp6-encrypt"
     tun6_decrypt_node_name = "esp6-decrypt"
+
+    def test_tun_basic46(self):
+        """ ipsec 4o6 tunnel basic test """
+        self.verify_tun_46(self.params[socket.AF_INET6], count=1)
+
+    def test_tun_burst46(self):
+        """ ipsec 4o6 tunnel burst test """
+        self.verify_tun_46(self.params[socket.AF_INET6], count=257)
 
 
 class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
