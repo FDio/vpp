@@ -36,7 +36,6 @@ clb_dpo_unlock_srv6_end_m_gtp4_e (dpo_id_t * dpo)
 static u8 *
 clb_dpo_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
 {
-  // TODO:
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
 
@@ -66,8 +65,6 @@ static u8 param_str[] = "";
 static u8 *
 clb_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
 {
-  // TODO: we may not need this, string s contains the command line
-  // output to be printed 
   s = format (s, "SRv6 End format function unsupported.");
   return s;
 }
@@ -75,25 +72,20 @@ clb_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
 static uword
 clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 {
-  // TODO: we need this! process the parameters of command line
-
-    if (!unformat (input, "end.m.gtp4.e"))
-        return 0;
-
-    return 1;
+  if (!unformat (input, "end.m.gtp4.e"))
+    return 0;
+  return 1;
 }
 
 static int
 clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
-
-    return 0;
+  return 0;
 }
 
 static int
 clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
-
   return 0;
 }
 
@@ -128,10 +120,10 @@ srv6_end_init (vlib_main_t * vm)
   ip4->protocol = IP_PROTOCOL_UDP;
   ip4->ttl = 64;
 
-  udp->dst_port = clib_host_to_net_u16 (GTP6_UDP_DST_PORT);
+  udp->dst_port = clib_host_to_net_u16 (SRV6_GTP_UDP_DST_PORT);
 
-  gtpu->ver_flags = GTP6_V1_VER | GTP6_PT_GTP;
-  gtpu->type = GTP6_TYPE_GTPU;
+  gtpu->ver_flags = GTPU_V1_VER | GTPU_PT_GTP;
+  gtpu->type = GTPU_TYPE_GTPU;
   //
 
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
@@ -148,16 +140,12 @@ srv6_end_init (vlib_main_t * vm)
                                       clb_creation_srv6_end_m_gtp4_e,
                                       clb_removal_srv6_end_m_gtp4_e);
   if (rc < 0)
-    {
-      clib_error_return (0, "SRv6 Endpoint LocalSID function"
-                            "couldn't be registered");
-    }
-
+    clib_error_return (0, "SRv6 Endpoint LocalSID function"
+                          "couldn't be registered");
   return 0;
 }
 
 /* *INDENT-OFF* */
-// TODO: check if name matters !
 VNET_FEATURE_INIT (srv6_end_m_gtp4_e, static) =
 {
   .arc_name = "ip6-unicast",
