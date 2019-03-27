@@ -22,6 +22,9 @@ clib_error_t *pcap_write (pcap_main_t * pm);
 /** Read data from file. */
 clib_error_t *pcap_read (pcap_main_t * pm);
 
+/** Close the file created by pcap_write function. */
+clib_error_t *pcap_close (pcap_main_t * pm);
+
 /**
  * @brief Add packet
  *
