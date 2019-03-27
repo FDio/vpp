@@ -30,12 +30,14 @@
 #define IP6_REASS_TIMEOUT_DEFAULT_MS 100
 #define IP6_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS 10000	// 10 seconds default
 #define IP6_REASS_MAX_REASSEMBLIES_DEFAULT 1024
+#define IP6_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT 3
 #define IP6_REASS_HT_LOAD_FACTOR (0.75)
 
 typedef enum
 {
   IP6_REASS_RC_OK,
   IP6_REASS_RC_INTERNAL_ERROR,
+  IP6_REASS_RC_TOO_MANY_FRAGMENTS,
   IP6_REASS_RC_NO_BUF,
 } ip6_reass_rc_t;
 
@@ -112,6 +114,8 @@ typedef struct
   u8 next_index;
   // minimum fragment length for this reassembly - used to estimate MTU
   u16 min_fragment_length;
+  // number of fragments for this reassembly
+  u32 fragments_n;
 } ip6_reass_t;
 
 typedef struct
@@ -128,6 +132,9 @@ typedef struct
   u32 timeout_ms;
   f64 timeout;
   u32 expire_walk_interval_ms;
+  // maximum number of fragments in one reassembly
+  u32 max_reass_len;
+  // maximum number of reassemblies
   u32 max_reass_n;
 
   // IPv6 runtime
@@ -744,6 +751,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       *bi0);
       reass->min_fragment_length = clib_net_to_host_u16 (fip->payload_length);
       consumed = 1;
+      reass->fragments_n = 1;
       goto check_if_done_maybe;
     }
   reass->min_fragment_length =
@@ -797,6 +805,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       break;
     }
+  ++reass->fragments_n;
 check_if_done_maybe:
   if (consumed)
     {
@@ -816,6 +825,10 @@ check_if_done_maybe:
       if (consumed)
 	{
 	  *bi0 = ~0;
+	  if (reass->fragments_n > rm->max_reass_len)
+	    {
+	      return IP6_REASS_RC_TOO_MANY_FRAGMENTS;
+	    }
 	}
       else
 	{
@@ -989,10 +1002,25 @@ ip6_reassembly_inline (vlib_main_t * vm,
 		case IP6_REASS_RC_OK:
 		  /* nothing to do here */
 		  break;
+		case IP6_REASS_RC_TOO_MANY_FRAGMENTS:
+		  vlib_node_increment_counter (vm, node->node_index,
+					       IP6_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG,
+					       1);
+		  ip6_reass_drop_all (vm, rm, reass);
+		  ip6_reass_free (rm, rt, reass);
+		  goto next_packet;
+		  break;
 		case IP6_REASS_RC_NO_BUF:
-		  /* fallthrough */
+		  vlib_node_increment_counter (vm, node->node_index,
+					       IP6_ERROR_REASS_NO_BUF, 1);
+		  ip6_reass_drop_all (vm, rm, reass);
+		  ip6_reass_free (rm, rt, reass);
+		  goto next_packet;
+		  break;
 		case IP6_REASS_RC_INTERNAL_ERROR:
-		  /* drop everything and start with a clean slate */
+		  vlib_node_increment_counter (vm, node->node_index,
+					       IP6_ERROR_REASS_INTERNAL_ERROR,
+					       1);
 		  ip6_reass_drop_all (vm, rm, reass);
 		  ip6_reass_free (rm, rt, reass);
 		  goto next_packet;
@@ -1151,20 +1179,21 @@ ip6_rehash_cb (clib_bihash_kv_48_8_t * kv, void *_ctx)
 
 static void
 ip6_reass_set_params (u32 timeout_ms, u32 max_reassemblies,
-		      u32 expire_walk_interval_ms)
+		      u32 max_reassembly_length, u32 expire_walk_interval_ms)
 {
   ip6_reass_main.timeout_ms = timeout_ms;
   ip6_reass_main.timeout = (f64) timeout_ms / (f64) MSEC_PER_SEC;
   ip6_reass_main.max_reass_n = max_reassemblies;
+  ip6_reass_main.max_reass_len = max_reassembly_length;
   ip6_reass_main.expire_walk_interval_ms = expire_walk_interval_ms;
 }
 
 vnet_api_error_t
 ip6_reass_set (u32 timeout_ms, u32 max_reassemblies,
-	       u32 expire_walk_interval_ms)
+	       u32 max_reassembly_length, u32 expire_walk_interval_ms)
 {
   u32 old_nbuckets = ip6_reass_get_nbuckets ();
-  ip6_reass_set_params (timeout_ms, max_reassemblies,
+  ip6_reass_set_params (timeout_ms, max_reassemblies, max_reassembly_length,
 			expire_walk_interval_ms);
   vlib_process_signal_event (ip6_reass_main.vlib_main,
 			     ip6_reass_main.ip6_reass_expire_node_idx,
@@ -1231,6 +1260,7 @@ ip6_reass_init_function (vlib_main_t * vm)
 
   ip6_reass_set_params (IP6_REASS_TIMEOUT_DEFAULT_MS,
 			IP6_REASS_MAX_REASSEMBLIES_DEFAULT,
+			IP6_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT,
 			IP6_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
 
   nbuckets = ip6_reass_get_nbuckets ();
