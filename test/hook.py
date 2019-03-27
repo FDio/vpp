@@ -39,7 +39,7 @@ class Hook(object):
                 # we don't call test_type(val) because it is a packed value.
                 return '{!s} ({!s})'.format(val, str(
                     ipaddress.ip_address(val)))
-            except ipaddress.AddressValueError:
+            except ValueError:
                 return val
 
         _args = ', '.join("{!s}={!r}".format(key, _friendly_format(val)) for
