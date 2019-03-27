@@ -187,7 +187,7 @@ fib_entry_src_interpose_deactivate (fib_entry_src_t *src,
     if (FIB_NODE_INDEX_INVALID != src->u.interpose.fesi_cover)
     {
         /*
-         * remove the depednecy on the covering entry, if that's
+         * remove the dependency on the covering entry, if that's
          * what was contributing the path-list
          */
         cover = fib_entry_get(src->u.interpose.fesi_cover);
@@ -245,7 +245,7 @@ fib_entry_src_interpose_cover_change (fib_entry_src_t *src,
 
     /*
      * this function is called when this entry's cover has a more specific
-     * entry inserted benaeth it. That does not necessarily mean that this
+     * entry inserted beneath it. That does not necessarily mean that this
      * entry is covered by the new prefix. check that
      */
     if (src->u.interpose.fesi_cover !=

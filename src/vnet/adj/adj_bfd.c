@@ -161,7 +161,7 @@ adj_bfd_notify (bfd_listen_event_e event,
         {
             /*
              * lock the adj. add the delegate.
-             * Lockinging the adj prevents it being removed and thus maintains
+             * Locking the adj prevents it being removed and thus maintains
              * the BFD derived states
              */
             adj_lock(ai);
@@ -173,10 +173,10 @@ adj_bfd_notify (bfd_listen_event_e event,
 
             /*
              * it would be best here if we could ignore this create and just
-             * wait for the first update, but this is not posible because
+             * wait for the first update, but this is not possible because
              * BFD sessions are created in the down state, and can remain this
              * way without transitioning to another state if the peer is
-             * unresponxive. So we have to assuem down and wait for up.
+             * unresponsive. So we have to assume down and wait for up.
              */
             abd->abd_state = ADJ_BFD_STATE_DOWN;
             abd->abd_index = session->bs_idx;
@@ -188,7 +188,7 @@ adj_bfd_notify (bfd_listen_event_e event,
 
     case BFD_LISTEN_EVENT_UPDATE:
         /*
-         * state change up/dowm and
+         * state change up/down and
          */
         abd = adj_bfd_from_base(adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD));
 
@@ -213,7 +213,7 @@ adj_bfd_notify (bfd_listen_event_e event,
         {
             /*
              * has an associated BFD tracking delegate
-             * remove the BFD tracking deletgate, update children, then
+             * remove the BFD tracking delegate, update children, then
              * unlock the adj
              */
             adj_delegate_remove(ai, ADJ_DELEGATE_BFD);

@@ -308,7 +308,7 @@ class TestDVR(VppTestCase):
             push_dot1q=93)
 
         #
-        # Disable UU flooding, learning and ARP terminaation. makes this test
+        # Disable UU flooding, learning and ARP termination. makes this test
         # easier as unicast packets are dropped if not extracted.
         #
         self.vapi.bridge_flags(bd_id=1, is_set=0,

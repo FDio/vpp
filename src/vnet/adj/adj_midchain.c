@@ -502,7 +502,7 @@ adj_midchain_setup (adj_index_t adj_index,
  * adj_nbr_midchain_update_rewrite
  *
  * Update the adjacency's rewrite string. A NULL string implies the
- * rewrite is reset (i.e. when ARP/ND etnry is gone).
+ * rewrite is reset (i.e. when ARP/ND entry is gone).
  * NB: the adj being updated may be handling traffic in the DP.
  */
 void
@@ -519,7 +519,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     adj = adj_get(adj_index);
 
     /*
-     * one time only update. since we don't support chainging the tunnel
+     * one time only update. since we don't support changing the tunnel
      * src,dst, this is all we need.
      */
     ASSERT((adj->lookup_next_index == IP_LOOKUP_NEXT_ARP) ||
@@ -534,7 +534,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     adj_midchain_setup(adj_index, fixup, fixup_data, flags);
 
     /*
-     * update the rewirte with the workers paused.
+     * update the rewrite with the workers paused.
      */
     adj_nbr_update_rewrite_internal(adj,
 				    IP_LOOKUP_NEXT_MIDCHAIN,
@@ -685,7 +685,7 @@ adj_ndr_midchain_recursive_loop_detect (adj_index_t ai,
         {
             /*
              * The entry this midchain links to is already in the set
-             * of visisted entries, this is a loop
+             * of visited entries, this is a loop
              */
             adj->ia_flags |= ADJ_FLAG_MIDCHAIN_LOOPED;
             return (1);

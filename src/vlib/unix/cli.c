@@ -581,7 +581,7 @@ unix_cli_del_pending_output (clib_file_t * uf,
  * @param str The buffer in which to search for the value.
  * @param len The depth into the buffer to search.
  *
- * @return The index of the first occurence of \c chr. If \c chr is not
+ * @return The index of the first occurrence of \c chr. If \c chr is not
  *          found then \c len instead.
  */
 always_inline word
@@ -899,7 +899,7 @@ unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
  *
  * If instead @c line is @c NULL then @c len_or_index is taken to mean the
  * index of an existing line in the pager buffer; this simply means that the
- * input line does not need to be cloned since we alreayd have it. This is
+ * input line does not need to be cloned since we already have it. This is
  * typical if we are reindexing the pager buffer.
  *
  * @param cf           The CLI session whose pager we are adding to.

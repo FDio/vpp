@@ -345,8 +345,8 @@ class IpsecTra4Tests(object):
         # move VPP's SA to just before the seq-number wrap
         self.vapi.cli("test ipsec sa %d seq 0xffffffff" % p.scapy_tra_sa_id)
 
-        # then fire in a packet that VPP should drop becuase it causes the
-        # seq number to wrap, unless we're using exteneded.
+        # then fire in a packet that VPP should drop because it causes the
+        # seq number to wrap  unless we're using extended.
         pkt = (Ether(src=self.tra_if.remote_mac,
                      dst=self.tra_if.local_mac) /
                p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,

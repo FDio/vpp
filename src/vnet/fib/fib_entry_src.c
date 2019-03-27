@@ -447,7 +447,7 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
             /*
              * else
              *  the path does not refine the cover, meaning that
-             *  the adjacency doesdoes not match the sub-net on the link.
+             *  the adjacency does/does not match the sub-net on the link.
              *  So this path does not contribute forwarding.
              */
             break;
@@ -520,7 +520,7 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
 
     /*
      * As an optimisation we allocate the vector of next-hops to be sized
-     * equal to the maximum nuber of paths we will need, which is also the
+     * equal to the maximum number of paths we will need, which is also the
      * most likely number we will need, since in most cases the paths are 'up'.
      */
     vec_validate(ctx.next_hops, fib_path_list_get_n_paths(esrc->fes_pl));
@@ -809,7 +809,7 @@ fib_entry_src_covered_inherit_add_i (fib_entry_t *fib_entry,
             /*
              * the covered source is itself a COVERED_INHERIT, i.e.
              * it also pushes this source down the sub-tree.
-             * We consider this more specfic covered to be the owner
+             * We consider this more specific covered to be the owner
              * of the sub-tree from this point down.
              */
             return (FIB_TABLE_WALK_SUB_TREE_STOP);
@@ -827,7 +827,7 @@ fib_entry_src_covered_inherit_add_i (fib_entry_t *fib_entry,
         {
             /*
              * The covered's source was not inherited and it is also
-             * not inherting. Nevertheless, it still owns the sub-tree from 
+             * not inheriting. Nevertheless, it still owns the sub-tree from
              * this point down.
              */
             return (FIB_TABLE_WALK_SUB_TREE_STOP);
@@ -884,7 +884,7 @@ fib_entry_src_covered_inherit_walk_remove (fib_node_index_t fei,
             /*
              * the covered source is itself a COVERED_INHERIT, i.e.
              * it also pushes this source down the sub-tree.
-             * We consider this more specfic covered to be the owner
+             * We consider this more specific covered to be the owner
              * of the sub-tree from this point down.
              */
             return (FIB_TABLE_WALK_SUB_TREE_STOP);
@@ -905,7 +905,7 @@ fib_entry_src_covered_inherit_walk_remove (fib_node_index_t fei,
         {
             /*
              * The covered's source was not inherited and it is also
-             * not inherting. Nevertheless, it still owns the sub-tree from 
+             * not inheriting. Nevertheless, it still owns the sub-tree from
              * this point down.
              */
             return (FIB_TABLE_WALK_SUB_TREE_STOP);

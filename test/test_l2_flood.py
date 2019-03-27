@@ -201,7 +201,7 @@ class TestL2Flood(VppTestCase):
                                                  bd_id=1, shg=0)
 
         #
-        # an unknown unicast and braodcast packets
+        # an unknown unicast and broadcast packets
         #
         p_uu = (Ether(dst="00:00:00:c1:5c:00",
                       src="00:00:de:ad:be:ef") /

@@ -213,7 +213,7 @@ adj_recursive_loop_detect (adj_index_t ai,
     case IP_LOOKUP_NEXT_ICMP_ERROR:
     case IP_LOOKUP_N_NEXT:
         /*
-         * these adjcencey types are terminal graph nodes, so there's no
+         * these adjacency types are terminal graph nodes, so there's no
          * possibility of a loop down here.
          */
 	break;
@@ -365,7 +365,7 @@ adj_child_remove (adj_index_t adj_index,
 }
 
 /*
- * Context for the walk to update the cached feture flags.
+ * Context for the walk to update the cached feature flags.
  */
 typedef struct adj_feature_update_t_
 {
@@ -715,8 +715,8 @@ adj_cli_counters_set (vlib_main_t * vm,
 }
 
 /*?
- * Enabe/disble per-adjacency counters. This is optional because it comes with
- * a non-negligible performance cost.
+ * Enable/disable per-adjacency counters. This is optional because it comes
+ * with a non-negligible performance cost.
  ?*/
 VLIB_CLI_COMMAND (adj_cli_counters_set_command, static) = {
     .path = "adjacency counters",

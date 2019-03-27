@@ -104,7 +104,7 @@ class TestIPMcast(VppTestCase):
 
     def verify_filter(self, capture, sent):
         if not len(capture) == len(sent):
-            # filter out any IPv6 RAs from the captur
+            # filter out any IPv6 RAs from the capture
             for p in capture:
                 if (p.haslayer(IPv6)):
                     capture.remove(p)
@@ -184,7 +184,7 @@ class TestIPMcast(VppTestCase):
         #
         # A (*,G).
         # one accepting interface, pg0, 7 forwarding interfaces
-        #  many forwarding interfaces test the case where the replicare DPO
+        #  many forwarding interfaces test the case where the replicate DPO
         #  needs to use extra cache lines for the buckets.
         #
         route_232_1_1_1 = VppIpMRoute(

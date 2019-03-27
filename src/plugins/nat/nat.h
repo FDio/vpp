@@ -947,7 +947,7 @@ int snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
  * @param port   L4 port number
  * @param proto  L4 protocol
  * @param vrf_id VRF ID
- * @param is_in  1 = inside network addres and por pair, 0 = outside
+ * @param is_in  1 = inside network address and port pair, 0 = outside
  *
  * @return 0 on success, non-zero value otherwise
  */
@@ -961,7 +961,7 @@ int nat44_del_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
  * @param port   L4 port number
  * @param proto  L4 protocol
  * @param vrf_id VRF ID
- * @param is_in  1 = inside network addres and por pair, 0 = outside
+ * @param is_in  1 = inside network address and port pair, 0 = outside
  *
  * @return 0 on success, non-zero value otherwise
  */
@@ -1042,7 +1042,7 @@ void nat_set_alloc_addr_and_port_default (void);
  *
  * @param addresses    vector of outside addresses
  * @param thread_index thread index
- * @param k            adddress, port and protocol
+ * @param k            address, port and protocol
  */
 void snat_free_outside_address_and_port (snat_address_t * addresses,
 					 u32 thread_index,

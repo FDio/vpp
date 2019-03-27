@@ -29,7 +29,7 @@ typedef struct
 
   u32 app_index;		/**< Server app index */
   u32 my_client_index;		/**< API client handle */
-  u32 node_index;		/**< process node index for evnt scheduling */
+  u32 node_index;		/**< process node index for event scheduling */
 
   /*
    * Config params

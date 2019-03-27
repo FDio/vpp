@@ -632,7 +632,7 @@ class VppPapiProvider(object):
         :param outer_fib_id:  (Default value = 0)
         :param tunnel_type:  (Default value = 0)
         :param instance:  (Default value = 0xFFFFFFFF)
-        :param session_id: (Defalt value = 0)
+        :param session_id: (Default value = 0)
         :param is_add:  (Default value = 1)
         :param is_ipv6:  (Default value = 0)
         """
@@ -890,7 +890,7 @@ class VppPapiProvider(object):
         :param first_ip_address: First IP address
         :param last_ip_address: Last IP address
         :param vrf_id: VRF id for the address range
-        :param twice_nat: twice NAT address for extenal hosts
+        :param twice_nat: twice NAT address for extenral hosts
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         """
         return self.api(
@@ -909,7 +909,7 @@ class VppPapiProvider(object):
         """Add/del NAT44 address from interface
 
         :param sw_if_index: Software index of the interface
-        :param twice_nat: twice NAT address for extenal hosts
+        :param twice_nat: twice NAT address for external hosts
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         """
         return self.api(
@@ -964,7 +964,7 @@ class VppPapiProvider(object):
             is_add=1):
         """Add/delete NAT44 load-balancing static mapping rule backend
 
-        :param external_addr: external IPv4 address of the servic
+        :param external_addr: external IPv4 address of the service
         :param external_port: external L4 port number of the service
         :param local_addr: IPv4 address of the internal node
         :param local_port: L4 port number of the internal node
@@ -1000,7 +1000,7 @@ class VppPapiProvider(object):
         :param por: port number
         :param protocol: IP protocol number
         :param vrf_id: VRF ID
-        :param is_in: 1 if inside network addres and port pari, 0 if outside
+        :param is_in: 1 if inside network address and port pair, 0 if outside
         :param ext_host_address: external host IPv4 address
         :param ext_host_port: external host port
         """
@@ -1193,7 +1193,7 @@ class VppPapiProvider(object):
         """Dump NAT64 session table
 
         :param protocol: IP protocol (Default value = 255, all STs)
-        :returns: Dictionary of NAT64 sesstion table entries
+        :returns: Dictionary of NAT64 session table entries
         """
         return self.api(self.papi.nat64_st_dump, {'proto': protocol})
 
@@ -1302,7 +1302,7 @@ class VppPapiProvider(object):
         """Set HA failover (remote settings)
 
         :param addr: failover IP4 address
-        :param port: failvoer UDP port number
+        :param port: failover UDP port number
         :param refresh: number of seconds after which to send session refresh
         """
         return self.api(self.papi.nat_ha_set_failover,

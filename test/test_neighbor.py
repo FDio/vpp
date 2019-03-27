@@ -500,7 +500,7 @@ class ARPTestCase(VppTestCase):
                              self.pg1._remote_hosts[9].ip4)
 
         #
-        # Add a hierachy of routes for a host in the sub-net.
+        # Add a hierarchy of routes for a host in the sub-net.
         # Should still get an ARP resp since the cover is attached
         #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg1.remote_mac) /
@@ -599,8 +599,8 @@ class ARPTestCase(VppTestCase):
         #
         #  2 - don't respond to ARP request from an address not within the
         #      interface's sub-net
-        #   2b - to a prxied address
-        #   2c - not within a differents interface's sub-net
+        #   2b - to a proxied address
+        #   2c - not within a different interface's sub-net
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
              ARP(op="who-has",
                  hwsrc=self.pg0.remote_mac,
@@ -743,7 +743,7 @@ class ARPTestCase(VppTestCase):
         self.pg1.generate_remote_hosts(2)
 
         #
-        # Proxy ARP rewquest packets for each interface
+        # Proxy ARP request packets for each interface
         #
         arp_req_pg0 = (Ether(src=self.pg0.remote_mac,
                              dst="ff:ff:ff:ff:ff:ff") /
@@ -911,7 +911,7 @@ class ARPTestCase(VppTestCase):
         self.pg2.generate_remote_hosts(2)
 
         #
-        # Add a reoute with out going label via an ARP unresolved next-hop
+        # Add a route with out going label via an ARP unresolved next-hop
         #
         ip_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
                                  [VppRoutePath(self.pg2.remote_hosts[1].ip4,
@@ -1054,7 +1054,7 @@ class ARPTestCase(VppTestCase):
 
         #
         # remove the duplicate on pg1
-        # packet stream shoud generate ARPs out of pg1
+        # packet stream should generate ARPs out of pg1
         #
         arp_pg1.remove_vpp_config()
 
@@ -1207,7 +1207,7 @@ class ARPTestCase(VppTestCase):
                        self.pg1.remote_hosts[1].ip4)
 
         #
-        # set the mac address on the inteface that does not have a
+        # set the mac address on the interface that does not have a
         # configured subnet and thus no glean
         #
         self.vapi.sw_interface_set_mac_address(self.pg2.sw_if_index,
@@ -1276,7 +1276,7 @@ class ARPTestCase(VppTestCase):
                                  mac=self.pg1.remote_hosts[3].mac))
 
         #
-        # GARPs (requets nor replies) for host we don't know yet
+        # GARPs (request nor replies) for host we don't know yet
         # don't result in new neighbour entries
         #
         p1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
@@ -1380,7 +1380,7 @@ class ARPTestCase(VppTestCase):
         # Test that VPP responds with ARP requests to addresses that
         # are connected and local routes.
         # Use one of the 'remote' addresses in the subnet as a local address
-        # The intention of this route is that it then acts like a secondardy
+        # The intention of this route is that it then acts like a secondary
         # address added to an interface
         #
         self.pg0.generate_remote_hosts(2)

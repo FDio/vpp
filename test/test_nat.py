@@ -178,8 +178,8 @@ class MethodHolder(VppTestCase):
                 protocol=id_m.protocol,
                 is_add=0)
 
-        adresses = self.vapi.nat44_address_dump()
-        for addr in adresses:
+        addresses = self.vapi.nat44_address_dump()
+        for addr in addresses:
             self.vapi.nat44_add_del_address_range(addr.ip_address,
                                                   addr.ip_address,
                                                   twice_nat=addr.twice_nat,
@@ -241,7 +241,7 @@ class MethodHolder(VppTestCase):
 
         :param ip: IP address
         :param is_add: 1 if add, 0 if delete (Default add)
-        :param twice_nat: twice NAT address for extenal hosts
+        :param twice_nat: twice NAT address for external hosts
         """
         nat_addr = socket.inet_pton(socket.AF_INET, ip)
         self.vapi.nat44_add_del_address_range(nat_addr, nat_addr, is_add,
@@ -481,7 +481,7 @@ class MethodHolder(VppTestCase):
 
         :param capture: Captured packets
         :param nat_ip: Translated IP address (Default use global NAT address)
-        :param same_port: Sorce port number is not translated (Default False)
+        :param same_port: Source port number is not translated (Default False)
         :param dst_ip: Destination IP address (Default do not verify)
         :param is_ip6: If L3 protocol is IPv6 (Default False)
         """
@@ -534,7 +534,7 @@ class MethodHolder(VppTestCase):
 
         :param capture: Captured packets
         :param nat_ip: Translated IP address
-        :param same_port: Sorce port number is not translated (Default False)
+        :param same_port: Source port number is not translated (Default False)
         :param dst_ip: Destination IP address (Default do not verify)
         """
         return self.verify_capture_out(capture, nat_ip, same_port, dst_ip,
@@ -686,7 +686,7 @@ class MethodHolder(VppTestCase):
         :param data: Payload data
         :param proto: protocol (TCP, UDP, ICMP)
         :param echo_reply: use echo_reply if protocol is ICMP
-        :returns: Fragmets
+        :returns: Fragments
         """
         if proto == IP_PROTOS.tcp:
             p = (IP(src=src_if.remote_ip4, dst=dst) /
@@ -748,7 +748,7 @@ class MethodHolder(VppTestCase):
         :param pref: NAT64 prefix
         :param plen: NAT64 prefix length
         :param fragsize: size of fragments
-        :returns: Fragmets
+        :returns: Fragments
         """
         if pref is None:
             dst_ip6 = ''.join(['64:ff9b::', dst])
@@ -2584,19 +2584,19 @@ class TestNAT44(MethodHolder):
         self.vapi.nat44_add_del_interface_addr(self.pg7.sw_if_index)
 
         # no address in NAT pool
-        adresses = self.vapi.nat44_address_dump()
-        self.assertEqual(0, len(adresses))
+        addresses = self.vapi.nat44_address_dump()
+        self.assertEqual(0, len(addresses))
 
         # configure interface address and check NAT address pool
         self.pg7.config_ip4()
-        adresses = self.vapi.nat44_address_dump()
-        self.assertEqual(1, len(adresses))
-        self.assertEqual(adresses[0].ip_address[0:4], self.pg7.local_ip4n)
+        addresses = self.vapi.nat44_address_dump()
+        self.assertEqual(1, len(addresses))
+        self.assertEqual(addresses[0].ip_address[0:4], self.pg7.local_ip4n)
 
         # remove interface address and check NAT address pool
         self.pg7.unconfig_ip4()
-        adresses = self.vapi.nat44_address_dump()
-        self.assertEqual(0, len(adresses))
+        addresses = self.vapi.nat44_address_dump()
+        self.assertEqual(0, len(addresses))
 
     def test_interface_addr_static_mapping(self):
         """ Static mapping with addresses from interface """
@@ -2697,10 +2697,10 @@ class TestNAT44(MethodHolder):
                          identity_mappings[0].sw_if_index)
 
     def test_ipfix_nat44_sess(self):
-        """ IPFIX logging NAT44 session created/delted """
+        """ IPFIX logging NAT44 session created/deleted """
         self.ipfix_domain_id = 10
         self.ipfix_src_port = 20202
-        colector_port = 30303
+        collector_port = 30303
         bind_layers(UDP, IPFIX, dport=30303)
         self.nat44_add_address(self.nat_addr)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
@@ -2710,7 +2710,7 @@ class TestNAT44(MethodHolder):
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10,
-                                     collector_port=colector_port)
+                                     collector_port=collector_port)
         self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
                                            src_port=self.ipfix_src_port)
 
@@ -2730,7 +2730,7 @@ class TestNAT44(MethodHolder):
             self.assertEqual(p[IP].src, self.pg3.local_ip4)
             self.assertEqual(p[IP].dst, self.pg3.remote_ip4)
             self.assertEqual(p[UDP].sport, self.ipfix_src_port)
-            self.assertEqual(p[UDP].dport, colector_port)
+            self.assertEqual(p[UDP].dport, collector_port)
             self.assertEqual(p[IPFIX].observationDomainID,
                              self.ipfix_domain_id)
             if p.haslayer(Template):
@@ -5127,7 +5127,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.vapi.nat44_interface_add_del_output_feature(self.pg1.sw_if_index,
                                                          is_inside=0)
 
-        # session initiaded from service host - translate
+        # session initiated from service host - translate
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -5142,7 +5142,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
 
-        # session initiaded from remote host - do not translate
+        # session initiated from remote host - do not translate
         self.tcp_port_in = 60303
         self.udp_port_in = 60304
         self.icmp_id_in = 60305
@@ -6647,7 +6647,7 @@ class TestDeterministicNAT(MethodHolder):
 
         :param capture: Captured packets
         :param nat_ip: Translated IP address (Default use global NAT address)
-        :param same_port: Sorce port number is not translated (Default False)
+        :param same_port: Source port number is not translated (Default False)
         """
         if nat_ip is None:
             nat_ip = self.nat_addr
@@ -8168,8 +8168,8 @@ class TestNAT64(MethodHolder):
         self.vapi.nat64_add_del_interface_addr(self.pg4.sw_if_index)
 
         # no address in NAT64 pool
-        adresses = self.vapi.nat44_address_dump()
-        self.assertEqual(0, len(adresses))
+        addresses = self.vapi.nat44_address_dump()
+        self.assertEqual(0, len(addresses))
 
         # configure interface address and check NAT64 address pool
         self.pg4.config_ip4()
@@ -8180,7 +8180,7 @@ class TestNAT64(MethodHolder):
         # remove interface address and check NAT64 address pool
         self.pg4.unconfig_ip4()
         addresses = self.vapi.nat64_pool_addr_dump()
-        self.assertEqual(0, len(adresses))
+        self.assertEqual(0, len(addresses))
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ipfix_max_bibs_sessions(self):

@@ -236,7 +236,7 @@ geneve_input (vlib_main_t * vm,
 		tunnel_index0 = last_tunnel_index;
 	      t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-	      /* Validate GENEVE tunnel encap-fib index agaist packet */
+	      /* Validate GENEVE tunnel encap-fib index against packet */
 	      if (PREDICT_FALSE (validate_geneve_fib (b0, t0, is_ip4) == 0))
 		{
 		  error0 = GENEVE_ERROR_NO_SUCH_TUNNEL;
@@ -290,7 +290,7 @@ geneve_input (vlib_main_t * vm,
 		tunnel_index0 = last_tunnel_index;
 	      t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-	      /* Validate GENEVE tunnel encap-fib index agaist packet */
+	      /* Validate GENEVE tunnel encap-fib index against packet */
 	      if (PREDICT_FALSE (validate_geneve_fib (b0, t0, is_ip4) == 0))
 		{
 		  error0 = GENEVE_ERROR_NO_SUCH_TUNNEL;
@@ -403,7 +403,7 @@ geneve_input (vlib_main_t * vm,
 		tunnel_index1 = last_tunnel_index;
 	      t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
 
-	      /* Validate GENEVE tunnel encap-fib index agaist packet */
+	      /* Validate GENEVE tunnel encap-fib index against packet */
 	      if (PREDICT_FALSE (validate_geneve_fib (b1, t1, is_ip4) == 0))
 		{
 		  error1 = GENEVE_ERROR_NO_SUCH_TUNNEL;
@@ -459,7 +459,7 @@ geneve_input (vlib_main_t * vm,
 		tunnel_index1 = last_tunnel_index;
 	      t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
 
-	      /* Validate GENEVE tunnel encap-fib index agaist packet */
+	      /* Validate GENEVE tunnel encap-fib index against packet */
 	      if (PREDICT_FALSE (validate_geneve_fib (b1, t1, is_ip4) == 0))
 		{
 		  error1 = GENEVE_ERROR_NO_SUCH_TUNNEL;
