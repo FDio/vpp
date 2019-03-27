@@ -66,10 +66,29 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_VXLAN_GBP_BYPASS_REPLY);
 }
 
+static int
+vxlan_gbp_tunnel_mode_decode (vl_api_vxlan_gbp_api_tunnel_mode_t in,
+			      vxlan_gbp_tunnel_mode_t * out)
+{
+  in = clib_net_to_host_u32 (in);
+
+  switch (in)
+    {
+    case VXLAN_GBP_API_TUNNEL_MODE_L2:
+      *out = VXLAN_GBP_TUNNEL_MODE_L2;
+      return (0);
+    case VXLAN_GBP_API_TUNNEL_MODE_L3:
+      *out = VXLAN_GBP_TUNNEL_MODE_L3;
+      return (0);
+    }
+  return (1);
+}
+
 static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
   (vl_api_vxlan_gbp_tunnel_add_del_t * mp)
 {
   vl_api_vxlan_gbp_tunnel_add_del_reply_t *rmp;
+  vxlan_gbp_tunnel_mode_t mode;
   ip46_address_t src, dst;
   ip46_type_t itype;
   int rv = 0;
@@ -86,6 +105,11 @@ static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
       goto out;
     }
 
+  rv = vxlan_gbp_tunnel_mode_decode (mp->tunnel.mode, &mode);
+
+  if (rv)
+    goto out;
+
   vnet_vxlan_gbp_tunnel_add_del_args_t a = {
     .is_add = mp->is_add,
     .is_ip6 = (itype == IP46_TYPE_IP6),
@@ -95,7 +119,7 @@ static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
     .vni = ntohl (mp->tunnel.vni),
     .dst = dst,
     .src = src,
-    .mode = VXLAN_GBP_TUNNEL_MODE_L2,
+    .mode = mode,
   };
 
   /* Check src & dst are different */

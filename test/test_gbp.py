@@ -26,6 +26,7 @@ from vpp_papi import VppEnum, MACAddress
 from vpp_papi_provider import L2_VTR_OP
 from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
+from vpp_neighbor import VppNeighbor
 
 
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):
@@ -230,13 +231,13 @@ class VppGbpSubnet(VppObject):
     GBP Subnet
     """
     def __init__(self, test, rd, address, address_len,
-                 type, sw_if_index=None, epg=None):
+                 type, sw_if_index=None, sclass=None):
         self._test = test
         self.rd_id = rd.rd_id
         self.prefix = VppIpPrefix(address, address_len)
         self.type = type
         self.sw_if_index = sw_if_index
-        self.epg = epg
+        self.sclass = sclass
 
     def add_vpp_config(self):
         self._test.vapi.gbp_subnet_add_del(
@@ -245,7 +246,7 @@ class VppGbpSubnet(VppObject):
             self.prefix.encode(),
             self.type,
             sw_if_index=self.sw_if_index if self.sw_if_index else 0xffffffff,
-            sclass=self.epg.sclass if self.epg else 0xffff)
+            sclass=self.sclass if self.sclass else 0xffff)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
@@ -449,12 +450,12 @@ class VppGbpContract(VppObject):
     GBP Contract
     """
 
-    def __init__(self, test, src_epg, dst_epg, acl_index,
+    def __init__(self, test, sclass, dclass, acl_index,
                  rules, allowed_ethertypes):
         self._test = test
         self.acl_index = acl_index
-        self.src_epg = src_epg
-        self.dst_epg = dst_epg
+        self.sclass = sclass
+        self.dclass = dclass
         self.rules = rules
         self.allowed_ethertypes = allowed_ethertypes
         while (len(self.allowed_ethertypes) < 16):
@@ -466,8 +467,8 @@ class VppGbpContract(VppObject):
             rules.append(r.encode())
         self._test.vapi.gbp_contract_add_del(
             1,
-            self.src_epg.sclass,
-            self.dst_epg.sclass,
+            self.sclass,
+            self.dclass,
             self.acl_index,
             rules,
             self.allowed_ethertypes)
@@ -476,8 +477,8 @@ class VppGbpContract(VppObject):
     def remove_vpp_config(self):
         self._test.vapi.gbp_contract_add_del(
             0,
-            self.src_epg.sclass,
-            self.dst_epg.sclass,
+            self.sclass,
+            self.dclass,
             self.acl_index,
             [],
             self.allowed_ethertypes)
@@ -486,15 +487,15 @@ class VppGbpContract(VppObject):
         return self.object_id()
 
     def object_id(self):
-        return "gbp-contract:[%d:%s:%d]" % (self.src_epg.sclass,
-                                            self.dst_epg.sclass,
+        return "gbp-contract:[%d:%s:%d]" % (self.sclass,
+                                            self.dclass,
                                             self.acl_index)
 
     def query_vpp_config(self):
         cs = self._test.vapi.gbp_contract_dump()
         for c in cs:
-            if c.contract.sclass == self.src_epg.sclass \
-               and c.contract.dclass == self.dst_epg.sclass:
+            if c.contract.sclass == self.sclass \
+               and c.contract.dclass == self.dclass:
                 return True
         return False
 
@@ -1143,7 +1144,7 @@ class TestGBP(VppTestCase):
         rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
         acl_index = acl.add_vpp_config([rule, rule2])
         c1 = VppGbpContract(
-            self, epgs[0], epgs[1], acl_index,
+            self, epgs[0].sclass, epgs[1].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 []),
@@ -1163,7 +1164,7 @@ class TestGBP(VppTestCase):
         # contract for the return direction
         #
         c2 = VppGbpContract(
-            self, epgs[1], epgs[0], acl_index,
+            self, epgs[1].sclass, epgs[0].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 []),
@@ -1200,7 +1201,7 @@ class TestGBP(VppTestCase):
         # A uni-directional contract from EPG 220 -> 222 'L3 routed'
         #
         c3 = VppGbpContract(
-            self, epgs[0], epgs[2], acl_index,
+            self, epgs[0].sclass, epgs[2].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 []),
@@ -1242,33 +1243,33 @@ class TestGBP(VppTestCase):
             self, rd0, "0.0.0.0", 0,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_STITCHED_EXTERNAL,
             sw_if_index=recirc_nat.recirc.sw_if_index,
-            epg=epg_nat)
+            sclass=epg_nat.sclass)
         se2 = VppGbpSubnet(
             self, rd0, "11.0.0.0", 8,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_STITCHED_EXTERNAL,
             sw_if_index=recirc_nat.recirc.sw_if_index,
-            epg=epg_nat)
+            sclass=epg_nat.sclass)
         se16 = VppGbpSubnet(
             self, rd0, "::", 0,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_STITCHED_EXTERNAL,
             sw_if_index=recirc_nat.recirc.sw_if_index,
-            epg=epg_nat)
+            sclass=epg_nat.sclass)
         # in the NAT RD an external subnet via the NAT EPG's uplink
         se3 = VppGbpSubnet(
             self, rd20, "0.0.0.0", 0,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_STITCHED_EXTERNAL,
             sw_if_index=epg_nat.uplink.sw_if_index,
-            epg=epg_nat)
+            sclass=epg_nat.sclass)
         se36 = VppGbpSubnet(
             self, rd20, "::", 0,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_STITCHED_EXTERNAL,
             sw_if_index=epg_nat.uplink.sw_if_index,
-            epg=epg_nat)
+            sclass=epg_nat.sclass)
         se4 = VppGbpSubnet(
             self, rd20, "11.0.0.0", 8,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_STITCHED_EXTERNAL,
             sw_if_index=epg_nat.uplink.sw_if_index,
-            epg=epg_nat)
+            sclass=epg_nat.sclass)
         se1.add_vpp_config()
         se2.add_vpp_config()
         se16.add_vpp_config()
@@ -1305,7 +1306,7 @@ class TestGBP(VppTestCase):
 
         acl_index2 = acl2.add_vpp_config([rule, rule2])
         c4 = VppGbpContract(
-            self, epgs[0], epgs[3], acl_index2,
+            self, epgs[0].sclass, epgs[3].sclass, acl_index2,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 []),
@@ -1346,7 +1347,7 @@ class TestGBP(VppTestCase):
                                         pkt_inter_epg_220_from_global * 65)
 
         c5 = VppGbpContract(
-            self, epgs[3], epgs[0], acl_index2,
+            self, epgs[3].sclass, epgs[0].sclass, acl_index2,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 []),
@@ -1849,7 +1850,7 @@ class TestGBP(VppTestCase):
         rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
         acl_index = acl.add_vpp_config([rule, rule2])
         c1 = VppGbpContract(
-            self, epg_220, epg_330, acl_index,
+            self, epg_220.sclass, epg_330.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 []),
@@ -2744,7 +2745,7 @@ class TestGBP(VppTestCase):
         # test the src-ip hash mode
         #
         c1 = VppGbpContract(
-            self, epg_220, epg_222, acl_index,
+            self, epg_220.sclass, epg_222.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -2763,7 +2764,7 @@ class TestGBP(VppTestCase):
         c1.add_vpp_config()
 
         c2 = VppGbpContract(
-            self, epg_222, epg_220, acl_index,
+            self, epg_222.sclass, epg_220.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -2876,7 +2877,7 @@ class TestGBP(VppTestCase):
         # test the symmetric hash mode
         #
         c1 = VppGbpContract(
-            self, epg_220, epg_222, acl_index,
+            self, epg_220.sclass, epg_222.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
@@ -2895,7 +2896,7 @@ class TestGBP(VppTestCase):
         c1.add_vpp_config()
 
         c2 = VppGbpContract(
-            self, epg_222, epg_220, acl_index,
+            self, epg_222.sclass, epg_220.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
@@ -2960,7 +2961,7 @@ class TestGBP(VppTestCase):
                Raw('\xa5' * 100))]
 
         c3 = VppGbpContract(
-            self, epg_220, epg_221, acl_index,
+            self, epg_220.sclass, epg_221.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
@@ -2996,7 +2997,7 @@ class TestGBP(VppTestCase):
         vx_tun_l3.add_vpp_config()
 
         c4 = VppGbpContract(
-            self, epg_221, epg_220, acl_index,
+            self, epg_221.sclass, epg_220.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 []),
@@ -3074,7 +3075,7 @@ class TestGBP(VppTestCase):
         # test the dst-ip hash mode
         #
         c5 = VppGbpContract(
-            self, epg_220, epg_221, acl_index,
+            self, epg_220.sclass, epg_221.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_DST_IP,
@@ -3184,7 +3185,7 @@ class TestGBP(VppTestCase):
         l3o_1 = VppGbpSubnet(
             self, rd1, "10.0.0.0", 24,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
-            epg=epg_220)
+            sclass=113)
         l3o_1.add_vpp_config()
 
         #
@@ -3227,7 +3228,7 @@ class TestGBP(VppTestCase):
         eep2.add_vpp_config()
 
         #
-        # A remote endpoint
+        # A remote external endpoint
         #
         rep = VppGbpEndpoint(self, vx_tun_l3,
                              epg_220, None,
@@ -3330,7 +3331,7 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[Dot1Q].vlan, 101)
 
         #
-        # A subnet reachable through the external EP
+        # A subnet reachable through the external EP1
         #
         ip_220 = VppIpRoute(self, "10.220.0.0", 24,
                             [VppRoutePath(eep1.ip4.address,
@@ -3341,9 +3342,101 @@ class TestGBP(VppTestCase):
         l3o_220 = VppGbpSubnet(
             self, rd1, "10.220.0.0", 24,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
-            epg=epg_220)
+            sclass=4220)
         l3o_220.add_vpp_config()
 
+        #
+        # A subnet reachable through the external EP2
+        #
+        ip_221 = VppIpRoute(self, "10.221.0.0", 24,
+                            [VppRoutePath(eep2.ip4.address,
+                                          eep2.epg.bvi.sw_if_index)],
+                            table_id=t4.table_id)
+        ip_221.add_vpp_config()
+
+        l3o_221 = VppGbpSubnet(
+            self, rd1, "10.221.0.0", 24,
+            VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
+            sclass=4221)
+        l3o_221.add_vpp_config()
+
+        #
+        # ping between hosts in remote subnets
+        #  dropped without a contract
+        #
+        p = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
+             Dot1Q(vlan=100) /
+             IP(src="10.220.0.1", dst="10.221.0.1") /
+             ICMP(type='echo-request'))
+
+        rxs = self.send_and_assert_no_replies(self.pg0, p * 1)
+
+        #
+        # contract for the external nets to communicate
+        #
+        acl = VppGbpAcl(self)
+        rule4 = acl.create_rule(permit_deny=1, proto=17)
+        rule6 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
+        acl_index = acl.add_vpp_config([rule4, rule6])
+
+        c1 = VppGbpContract(
+            self, 4220, 4221, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c1.add_vpp_config()
+
+        #
+        # Contracts allowing ext-net 200 to talk with external EPs
+        #
+        c2 = VppGbpContract(
+            self, 4220, 113, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c2.add_vpp_config()
+        c3 = VppGbpContract(
+            self, 113, 4220, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c3.add_vpp_config()
+
+        #
+        # ping between hosts in remote subnets
+        #
+        p = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
+             Dot1Q(vlan=100) /
+             IP(src="10.220.0.1", dst="10.221.0.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, str(self.router_mac))
+            self.assertEqual(rx[Ether].dst, eep2.mac)
+            self.assertEqual(rx[Dot1Q].vlan, 101)
+
+        # we did not learn these external hosts
+        self.assertFalse(find_gbp_endpoint(self, ip="10.220.0.1"))
+        self.assertFalse(find_gbp_endpoint(self, ip="10.221.0.1"))
+
+        #
+        # from remote external EP to local external EP
+        #
         p = (Ether(src=self.pg7.remote_mac,
                    dst=self.pg7.local_mac) /
              IP(src=self.pg7.remote_ip4,
@@ -3358,34 +3451,146 @@ class TestGBP(VppTestCase):
         rxs = self.send_and_expect(self.pg7, p * 1, self.pg0)
 
         #
-        # A subnet reachable through the external EP
-        #
-        ip_221 = VppIpRoute(self, "10.221.0.0", 24,
-                            [VppRoutePath(eep2.ip4.address,
-                                          eep2.epg.bvi.sw_if_index)],
-                            table_id=t4.table_id)
-        ip_221.add_vpp_config()
-
-        l3o_221 = VppGbpSubnet(
-            self, rd1, "10.221.0.0", 24,
-            VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
-            epg=epg_220)
-        l3o_221.add_vpp_config()
-
-        #
-        # ping between hosts in remote subnets
+        # ping from an external host to the remote external EP
         #
         p = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
              Dot1Q(vlan=100) /
-             IP(src="10.220.0.1", dst="10.221.0.1") /
-             ICMP(type='echo-request'))
+             IP(src="10.220.0.1", dst=rep.ip4.address) /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
 
-        rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
+        rxs = self.send_and_expect(self.pg0, p * 1, self.pg7)
 
         for rx in rxs:
-            self.assertEqual(rx[Ether].src, str(self.router_mac))
-            self.assertEqual(rx[Ether].dst, eep2.mac)
-            self.assertEqual(rx[Dot1Q].vlan, 101)
+            self.assertEqual(rx[Ether].src, self.pg7.local_mac)
+            # self.assertEqual(rx[Ether].dst, self.pg7.remote_mac)
+            self.assertEqual(rx[IP].src, self.pg7.local_ip4)
+            self.assertEqual(rx[IP].dst, self.pg7.remote_ip4)
+            self.assertEqual(rx[VXLAN].vni, 444)
+            self.assertTrue(rx[VXLAN].flags.G)
+            self.assertTrue(rx[VXLAN].flags.Instance)
+            # the sclass of the ext-net the packet came from
+            self.assertEqual(rx[VXLAN].gpid, 4220)
+            # policy was applied to the original IP packet
+            self.assertTrue(rx[VXLAN].gpflags.A)
+            # since it's an external host the reciever should not learn it
+            self.assertTrue(rx[VXLAN].gpflags.D)
+            inner = rx[VXLAN].payload
+            self.assertEqual(inner[IP].src, "10.220.0.1")
+            self.assertEqual(inner[IP].dst, rep.ip4.address)
+
+        #
+        # An external subnet reachable via the remote external EP
+        #
+
+        #
+        # first the VXLAN-GBP tunnel over which it is reached
+        #
+        vx_tun_r = VppVxlanGbpTunnel(
+            self, self.pg7.local_ip4,
+            self.pg7.remote_ip4, 445,
+            mode=(VppEnum.vl_api_vxlan_gbp_api_tunnel_mode_t.
+                  VXLAN_GBP_API_TUNNEL_MODE_L3))
+        vx_tun_r.add_vpp_config()
+        VppIpInterfaceBind(self, vx_tun_r, t4).add_vpp_config()
+
+        self.logger.info(self.vapi.cli("sh vxlan-gbp tunnel"))
+
+        #
+        # then the special adj to resolve through on that tunnel
+        #
+        n1 = VppNeighbor(self,
+                         vx_tun_r.sw_if_index,
+                         "00:0c:0c:0c:0c:0c",
+                         self.pg7.remote_ip4)
+        n1.add_vpp_config()
+
+        #
+        # the route via the adj above
+        #
+        ip_222 = VppIpRoute(self, "10.222.0.0", 24,
+                            [VppRoutePath(self.pg7.remote_ip4,
+                                          vx_tun_r.sw_if_index)],
+                            table_id=t4.table_id)
+        ip_222.add_vpp_config()
+
+        l3o_222 = VppGbpSubnet(
+            self, rd1, "10.222.0.0", 24,
+            VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
+            sclass=4222)
+        l3o_222.add_vpp_config()
+
+        #
+        # ping between hosts in local and remote external subnets
+        #  dropped without a contract
+        #
+        p = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
+             Dot1Q(vlan=100) /
+             IP(src="10.220.0.1", dst="10.222.0.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        rxs = self.send_and_assert_no_replies(self.pg0, p * 1)
+
+        #
+        # Add contracts ext-nets for 220 -> 222
+        #
+        c4 = VppGbpContract(
+            self, 4220, 4222, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c4.add_vpp_config()
+
+        #
+        # ping from host in local to remote external subnets
+        #
+        p = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
+             Dot1Q(vlan=100) /
+             IP(src="10.220.0.1", dst="10.222.0.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        rxs = self.send_and_expect(self.pg0, p * 3, self.pg7)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, self.pg7.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg7.remote_mac)
+            self.assertEqual(rx[IP].src, self.pg7.local_ip4)
+            self.assertEqual(rx[IP].dst, self.pg7.remote_ip4)
+            self.assertEqual(rx[VXLAN].vni, 445)
+            self.assertTrue(rx[VXLAN].flags.G)
+            self.assertTrue(rx[VXLAN].flags.Instance)
+            # the sclass of the ext-net the packet came from
+            self.assertEqual(rx[VXLAN].gpid, 4220)
+            # policy was applied to the original IP packet
+            self.assertTrue(rx[VXLAN].gpflags.A)
+            # since it's an external host the reciever should not learn it
+            self.assertTrue(rx[VXLAN].gpflags.D)
+            inner = rx[VXLAN].payload
+            self.assertEqual(inner[Ether].dst, "00:0c:0c:0c:0c:0c")
+            self.assertEqual(inner[IP].src, "10.220.0.1")
+            self.assertEqual(inner[IP].dst, "10.222.0.1")
+
+        #
+        # ping from host in remote to local external subnets
+        # there's no contract for this, but the A bit is set.
+        #
+        p = (Ether(src=self.pg7.remote_mac, dst=self.pg7.local_mac) /
+             IP(src=self.pg7.remote_ip4, dst=self.pg7.local_ip4) /
+             UDP(sport=1234, dport=48879) /
+             VXLAN(vni=445, gpid=4222, flags=0x88, gpflags='A') /
+             Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
+             IP(src="10.222.0.1", dst="10.220.0.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        rxs = self.send_and_expect(self.pg7, p * 3, self.pg0)
+        self.assertFalse(find_gbp_endpoint(self, ip="10.222.0.1"))
 
         #
         # cleanup

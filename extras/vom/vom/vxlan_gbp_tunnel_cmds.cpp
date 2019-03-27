@@ -24,9 +24,11 @@ namespace vxlan_gbp_tunnel_cmds {
 create_cmd::create_cmd(HW::item<handle_t>& item,
                        const std::string& name,
                        const vxlan_tunnel::endpoint_t& ep,
+                       bool is_l2,
                        handle_t mcast_itf)
   : interface::create_cmd<vapi::Vxlan_gbp_tunnel_add_del>(item, name)
   , m_ep(ep)
+  , m_is_l2(is_l2)
   , m_mcast_itf(mcast_itf)
 {
 }
@@ -52,6 +54,8 @@ create_cmd::issue(connection& con)
   payload.tunnel.encap_table_id = 0;
   payload.tunnel.vni = m_ep.vni;
   payload.tunnel.instance = ~0;
+  payload.tunnel.mode =
+    (m_is_l2 ? VXLAN_GBP_API_TUNNEL_MODE_L2 : VXLAN_GBP_API_TUNNEL_MODE_L3);
 
   VAPI_CALL(req.execute());
 
