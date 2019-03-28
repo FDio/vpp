@@ -352,6 +352,9 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       t->hw_if_index = hw_if_index;
       t->sw_if_index = hi->sw_if_index;
 
+      /* Standard default jumbo MTU. */
+      vnet_sw_interface_set_mtu (vnm, t->sw_if_index, 9000);
+
       /* Add the new tunnel to the DB of tunnels per sw_if_index ... */
       vec_validate_init_empty (im->ipsec_if_by_sw_if_index, t->sw_if_index,
 			       ~0);

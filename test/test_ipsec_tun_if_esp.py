@@ -20,21 +20,22 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
         self.tun_if = self.pg0
 
         p = self.ipv4_params
-        tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
-                                      p.scapy_tun_spi, p.crypt_algo_vpp_id,
-                                      p.crypt_key, p.crypt_key,
-                                      p.auth_algo_vpp_id, p.auth_key,
-                                      p.auth_key)
-        tun_if.add_vpp_config()
-        tun_if.admin_up()
-        tun_if.config_ip4()
-        tun_if.config_ip6()
+
+        p.tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
+                                        p.scapy_tun_spi, p.crypt_algo_vpp_id,
+                                        p.crypt_key, p.crypt_key,
+                                        p.auth_algo_vpp_id, p.auth_key,
+                                        p.auth_key)
+        p.tun_if.add_vpp_config()
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+        p.tun_if.config_ip6()
 
         VppIpRoute(self, p.remote_tun_if_host, 32,
-                   [VppRoutePath(tun_if.remote_ip4,
+                   [VppRoutePath(p.tun_if.remote_ip4,
                                  0xffffffff)]).add_vpp_config()
         VppIpRoute(self, p.remote_tun_if_host6, 128,
-                   [VppRoutePath(tun_if.remote_ip6,
+                   [VppRoutePath(p.tun_if.remote_ip6,
                                  0xffffffff,
                                  proto=DpoProto.DPO_PROTO_IP6)],
                    is_ip6=1).add_vpp_config()
@@ -57,6 +58,17 @@ class TestIpsec4TunIfEsp1(TemplateIpsec4TunIfEsp, IpsecTun4Tests):
     def test_tun_burst64(self):
         """ ipsec 6o4 tunnel basic test """
         self.verify_tun_64(self.params[socket.AF_INET], count=257)
+
+    def test_tun_basic_frag44(self):
+        """ ipsec 4o4 tunnel frag basic test """
+        p = self.ipv4_params
+
+        self.vapi.sw_interface_set_mtu(p.tun_if.sw_if_index,
+                                       [1500, 0, 0, 0])
+        self.verify_tun_44(self.params[socket.AF_INET],
+                           count=1, payload_size=1800, n_rx=2)
+        self.vapi.sw_interface_set_mtu(p.tun_if.sw_if_index,
+                                       [9000, 0, 0, 0])
 
 
 class TestIpsec4TunIfEsp2(TemplateIpsec4TunIfEsp, IpsecTcpTests):

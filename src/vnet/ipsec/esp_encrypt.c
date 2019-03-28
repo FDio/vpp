@@ -564,6 +564,11 @@ VLIB_REGISTER_NODE (esp4_encrypt_tun_node) = {
 
   .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
+  },
 };
 
 VNET_FEATURE_INIT (esp4_encrypt_tun_feat_node, static) =
@@ -591,6 +596,11 @@ VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
 
   .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
+  },
 };
 
 VNET_FEATURE_INIT (esp6_encrypt_tun_feat_node, static) =

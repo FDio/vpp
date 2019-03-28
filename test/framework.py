@@ -1017,9 +1017,11 @@ class VppTestCase(unittest.TestCase):
             i.assert_nothing_captured(remark=remark)
             timeout = 0.1
 
-    def send_and_expect(self, intf, pkts, output):
+    def send_and_expect(self, intf, pkts, output, n_rx=None):
+        if not n_rx:
+            n_rx = len(pkts)
         self.pg_send(intf, pkts)
-        rx = output.get_capture(len(pkts))
+        rx = output.get_capture(n_rx)
         return rx
 
     def send_and_expect_only(self, intf, pkts, output, timeout=None):
