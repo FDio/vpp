@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74bf935b_d770e215",
+        "filename": "src/vnet/dhcp/dhcp_proxy.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-28T06:40:05Z",
+      "side": 1,
+      "message": "use the enum?",
+      "revId": "a6e15df52b79a187f6161aa4cab5f8e8f9567252",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
