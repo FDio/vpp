@@ -115,7 +115,7 @@ sparse_vec_index_internal (void *v,
 
   w = h->is_member_bitmap[i];
 
-  if (PREDICT_TRUE (maybe_range == 0 && insert == 0 &&
+  if (PREDICT_TRUE (maybe_range == 0 && insert == 0 && w &&
 		    count_trailing_zeros (w) == b))
     return h->member_counts[i] + 1;
 
