@@ -17,6 +17,9 @@
 #include <vppinfra/format.h>
 #include <vppinfra/cpu.h>
 
+#define SHOW_CPUPASS_IN_NUMBER	0
+#define SHOW_CPUPASS_IN_STRING	1
+
 #define foreach_x86_cpu_uarch \
  _(0x06, 0x9e, "Kaby Lake", "Kaby Lake DT/H/S/X") \
  _(0x06, 0x8e, "Kaby Lake", "Kaby Lake Y/U") \
@@ -58,16 +61,16 @@
  _(0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown")
 
 #define foreach_aarch64_cpu_uarch \
- _(0x41, 0xd03, "ARM", "Cortex-A53") \
- _(0x41, 0xd07, "ARM", "Cortex-A57") \
- _(0x41, 0xd08, "ARM", "Cortex-A72") \
- _(0x41, 0xd09, "ARM", "Cortex-A73") \
- _(0x43, 0x0a1, "Cavium", "ThunderX CN88XX") \
- _(0x43, 0x0a2, "Cavium", "Octeon TX CN81XX") \
- _(0x43, 0x0a3, "Cavium", "Octeon TX CN83XX") \
- _(0x43, 0x0af, "Cavium", "ThunderX2 CN99XX") \
- _(0x43, 0x0b1, "Cavium", "Octeon TX2 CN98XX") \
- _(0x43, 0x0b2, "Cavium", "Octeon TX2 CN93XX") \
+ _(0x41, 0xd03, "ARM", "Cortex-A53", SHOW_CPUPASS_IN_NUMBER) \
+ _(0x41, 0xd07, "ARM", "Cortex-A57", SHOW_CPUPASS_IN_NUMBER) \
+ _(0x41, 0xd08, "ARM", "Cortex-A72", SHOW_CPUPASS_IN_NUMBER) \
+ _(0x41, 0xd09, "ARM", "Cortex-A73", SHOW_CPUPASS_IN_NUMBER) \
+ _(0x43, 0x0a1, "Marvell", "THUNDERX CN88XX", SHOW_CPUPASS_IN_NUMBER) \
+ _(0x43, 0x0a2, "Marvell", "OCTEON TX CN81XX", SHOW_CPUPASS_IN_NUMBER) \
+ _(0x43, 0x0a3, "Marvell", "OCTEON TX CN83XX", SHOW_CPUPASS_IN_NUMBER) \
+ _(0x43, 0x0af, "Marvell", "THUNDERX2 CN99XX", SHOW_CPUPASS_IN_STRING) \
+ _(0x43, 0x0b1, "Marvell", "OCTEON TX2 CN98XX", SHOW_CPUPASS_IN_STRING) \
+ _(0x43, 0x0b2, "Marvell", "OCTEON TX2 CN96XX", SHOW_CPUPASS_IN_STRING)
 
 u8 *
 format_cpu_uarch (u8 * s, va_list * args)
@@ -115,12 +118,14 @@ format(s, "[0x%x] %s ([0x%02x] %s) stepping 0x%x", f, a, m, c, stepping);
   unformat_free (&input);
   close (fd);
 
-  /* Note: Cavium starts counting variants from 1 instead of 0 */
-  if (implementer == 0x43)
-    variant++;
+#define _(i,p,a,c,_format) if ((implementer == i) && (primary_part_number == p)){ \
+	if (_format == SHOW_CPUPASS_IN_STRING)\
+	 return format(s, "%s (%s PASS %c%u)", a, c, 'A'+variant, revision);\
+	 else {\
+  if (implementer == 0x43)\
+    variant++; \
+  return format (s, "%s (%s PASS %u.%u)", a, c, variant, revision);}}
 
-#define _(i,p,a,c) if ((implementer == i) && (primary_part_number == p)) \
-  return format(s, "%s (%s PASS %u.%u)", a, c, variant, revision);
   foreach_aarch64_cpu_uarch
 #undef _
     return format (s, "unknown (implementer 0x%02x part 0x%03x PASS %u.%u)",
