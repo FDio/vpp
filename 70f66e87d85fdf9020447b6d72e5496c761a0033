@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "89cf1434_d0b63e5e",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-03-28T08:07:20Z",
+      "side": 1,
+      "message": "Minor comment: You are setting VPP_LOG2_CACHE_LINE_SIZE to 7 which is not 64 bytes",
+      "range": {
+        "startLine": 37,
+        "startChar": 59,
+        "endLine": 37,
+        "endChar": 94
+      },
+      "revId": "70f66e87d85fdf9020447b6d72e5496c761a0033",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a2ac808a_7c1058c8",
         "filename": "src/plugins/dpdk/buffer.c",
         "patchSetId": 4
