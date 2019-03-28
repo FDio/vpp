@@ -87,11 +87,10 @@ esp_decrypt_cbc (vlib_main_t * vm, ipsec_sa_t * sa,
 {
   vnet_crypto_op_t _op, *op = &_op;
 
-
   if (PREDICT_FALSE (sa->crypto_dec_op_type == VNET_CRYPTO_OP_NONE))
     return;
 
-  op->op = sa->crypto_dec_op_type;
+  vnet_crypto_op_init (op, sa->crypto_dec_op_type);
   op->iv = iv;
   op->src = in;
   op->dst = out;
