@@ -117,7 +117,6 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define foreach_tcp_connection_flag             \
   _(SNDACK, "Send ACK")                         \
   _(FINSNT, "FIN sent")				\
-  _(SENT_RCV_WND0, "Sent 0 rcv_wnd")     	\
   _(RECOVERY, "Recovery")                    	\
   _(FAST_RECOVERY, "Fast Recovery")		\
   _(DCNT_PENDING, "Disconnect pending")		\
