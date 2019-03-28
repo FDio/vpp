@@ -465,13 +465,14 @@ class VppGbpContract(VppObject):
         rules = []
         for r in self.rules:
             rules.append(r.encode())
-        self._test.vapi.gbp_contract_add_del(
+        r = self._test.vapi.gbp_contract_add_del(
             1,
             self.sclass,
             self.dclass,
             self.acl_index,
             rules,
             self.allowed_ethertypes)
+        self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
@@ -498,6 +499,14 @@ class VppGbpContract(VppObject):
                and c.contract.dclass == self.dclass:
                 return True
         return False
+
+    def get_drop_stats(self):
+        c = self._test.statistics.get_counter("/net/gbp-contract-drop")
+        return c[0][self.stats_index]
+
+    def get_permit_stats(self):
+        c = self._test.statistics.get_counter("/net/gbp-contract-permit")
+        return c[0][self.stats_index]
 
 
 class VppGbpVxlanTunnel(VppInterface):
@@ -1181,6 +1190,11 @@ class TestGBP(VppTestCase):
                                      pkt_inter_epg_221_to_220 * 65,
                                      eps[0].itf)
 
+        ds = c2.get_drop_stats()
+        self.assertEqual(ds['packets'], 0)
+        ps = c2.get_permit_stats()
+        self.assertEqual(ps['packets'], 65)
+
         #
         # the contract does not allow non-IP
         #
@@ -1452,6 +1466,8 @@ class TestGBP(VppTestCase):
     def test_gbp_learn_l2(self):
         """ GBP L2 Endpoint Learning """
 
+        self.vapi.cli("clear errors")
+        self.logger.error(self.vapi.cli("show error"))
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         learnt = [{'mac': '00:00:11:11:11:01',
                    'ip': '10.0.0.1',
@@ -1560,6 +1576,9 @@ class TestGBP(VppTestCase):
 
         self.send_and_assert_no_replies(self.pg2, p)
 
+        self.assert_packet_counter_equal(
+            '/err/gbp-policy-port/drop-no-contract', 1)
+
         #
         # we should not have learnt a new tunnel endpoint, since
         # the EPG was not learnt.
@@ -1610,6 +1629,9 @@ class TestGBP(VppTestCase):
             self.assertTrue(find_gbp_endpoint(self,
                                               vx_tun_l2_1.sw_if_index,
                                               ip=l['ip']))
+
+        self.assert_packet_counter_equal(
+            '/err/gbp-policy-port/allow-intra-sclass', 2)
 
         self.logger.info(self.vapi.cli("show gbp endpoint"))
         self.logger.info(self.vapi.cli("show gbp vxlan"))

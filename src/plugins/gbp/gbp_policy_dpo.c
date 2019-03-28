@@ -209,6 +209,20 @@ gbp_policy_dpo_module_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (gbp_policy_dpo_module_init);
 #endif /* CLIB_MARCH_VARIANT */
 
+typedef enum
+{
+#define _(sym,str) GBP_POLICY_DPO_ERROR_##sym,
+  foreach_gbp_policy
+#undef _
+    GBP_POLICY_N_ERROR,
+} gbp_policy_dpo_error_t;
+
+static char *gbp_policy_dpo_error_strings[] = {
+#define _(sym,string) string,
+  foreach_gbp_policy
+#undef _
+};
+
 typedef struct gbp_policy_dpo_trace_t_
 {
   u32 sclass;
@@ -247,11 +261,14 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		       vlib_frame_t * from_frame, u8 is_ip6)
 {
   gbp_main_t *gm = &gbp_main;
-  u32 n_left_from, next_index, *from, *to_next;
+  u32 n_left_from, next_index, *from, *to_next, thread_index;
+  u32 n_allow_intra, n_allow_a_bit;
   gbp_rule_t *gu;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+  n_allow_intra = n_allow_a_bit = 0;
+  thread_index = vm->thread_index;
 
   next_index = node->cached_next_index;
 
@@ -290,6 +307,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	    {
 	      next0 = gpd0->gpd_dpo.dpoi_next_node;
 	      key0.as_u32 = ~0;
+	      n_allow_a_bit++;
 	      goto trace;
 	    }
 
@@ -305,6 +323,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		   */
 		  next0 = gpd0->gpd_dpo.dpoi_next_node;
 		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+		  n_allow_intra++;
 		  action0 = 0;
 		}
 	      else
@@ -348,13 +367,35 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 			      next0 = gpd0->gpd_dpo.dpoi_next_node;
 			      break;
 			    case GBP_RULE_DENY:
-			      next0 = 0;
+			      next0 = GBP_POLICY_DROP;
 			      break;
 			    case GBP_RULE_REDIRECT:
 			      next0 = gbp_rule_l3_redirect (gu, b0, is_ip6);
 			      break;
 			    }
 			}
+		      if (next0 == GBP_POLICY_DROP)
+			{
+			  vlib_increment_combined_counter
+			    (&gbp_contract_drop_counters,
+			     thread_index,
+			     gci0, 1, vlib_buffer_length_in_chain (vm, b0));
+			  b0->error =
+			    node->errors[GBP_POLICY_DPO_ERROR_DROP_CONTRACT];
+			}
+		      else
+			{
+			  vlib_increment_combined_counter
+			    (&gbp_contract_permit_counters,
+			     thread_index,
+			     gci0, 1, vlib_buffer_length_in_chain (vm, b0));
+			}
+
+		    }
+		  else
+		    {
+		      b0->error =
+			node->errors[GBP_POLICY_DPO_ERROR_DROP_NO_CONTRACT];
 		    }
 		}
 	    }
@@ -384,6 +425,14 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       GBP_POLICY_DPO_ERROR_ALLOW_INTRA,
+			       n_allow_intra);
+  vlib_node_increment_counter (vm, node->node_index,
+			       GBP_POLICY_DPO_ERROR_ALLOW_A_BIT,
+			       n_allow_a_bit);
+
   return from_frame->n_vectors;
 }
 
@@ -419,6 +468,10 @@ VLIB_REGISTER_NODE (ip4_gbp_policy_dpo_node) = {
     .name = "ip4-gbp-policy-dpo",
     .vector_size = sizeof (u32),
     .format_trace = format_gbp_policy_dpo_trace,
+
+    .n_errors = ARRAY_LEN(gbp_policy_dpo_error_strings),
+    .error_strings = gbp_policy_dpo_error_strings,
+
     .n_next_nodes = GBP_POLICY_N_NEXT,
     .next_nodes =
     {
@@ -429,6 +482,10 @@ VLIB_REGISTER_NODE (ip6_gbp_policy_dpo_node) = {
     .name = "ip6-gbp-policy-dpo",
     .vector_size = sizeof (u32),
     .format_trace = format_gbp_policy_dpo_trace,
+
+    .n_errors = ARRAY_LEN(gbp_policy_dpo_error_strings),
+    .error_strings = gbp_policy_dpo_error_strings,
+
     .n_next_nodes = GBP_POLICY_N_NEXT,
     .next_nodes =
     {
