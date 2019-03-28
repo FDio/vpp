@@ -12,20 +12,7 @@ from collections import deque
 from six import moves, iteritems
 from vpp_papi import VPP, mac_pton
 from hook import Hook
-from vpp_l2 import L2_PORT_TYPE
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
-
-
-class L2_VTR_OP:
-    L2_DISABLED = 0
-    L2_PUSH_1 = 1
-    L2_PUSH_2 = 2
-    L2_POP_1 = 3
-    L2_POP_2 = 4
-    L2_TRANSLATE_1_1 = 5
-    L2_TRANSLATE_1_2 = 6
-    L2_TRANSLATE_2_1 = 7
-    L2_TRANSLATE_2_2 = 8
 
 
 class QOS_SOURCE:

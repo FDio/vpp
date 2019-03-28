@@ -20,10 +20,9 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
     VppIpInterfaceAddress, VppIpInterfaceBind, find_route
 from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
     VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port, VppL2Vtr
-from vpp_sub_interface import VppDot1QSubint
+from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_ip import VppIpAddress, VppIpPrefix
 from vpp_papi import VppEnum, MACAddress
-from vpp_papi_provider import L2_VTR_OP
 from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
 from vpp_neighbor import VppNeighbor

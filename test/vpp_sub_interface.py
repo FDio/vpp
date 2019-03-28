@@ -2,8 +2,19 @@ from scapy.layers.l2 import Dot1Q
 import abc
 import six
 from vpp_pg_interface import VppPGInterface
-from vpp_papi_provider import L2_VTR_OP
 from vpp_interface import VppInterface
+
+
+class L2_VTR_OP:
+    L2_DISABLED = 0
+    L2_PUSH_1 = 1
+    L2_PUSH_2 = 2
+    L2_POP_1 = 3
+    L2_POP_2 = 4
+    L2_TRANSLATE_1_1 = 5
+    L2_TRANSLATE_1_2 = 6
+    L2_TRANSLATE_2_1 = 7
+    L2_TRANSLATE_2_2 = 8
 
 
 @six.add_metaclass(abc.ABCMeta)
