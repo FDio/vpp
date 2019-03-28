@@ -49,6 +49,7 @@ static double transport_pacer_period;
 
 #define TRANSPORT_PACER_MIN_MSS 	1460
 #define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
+#define TRANSPORT_PACER_MAX_BURST	(48 * TRANSPORT_PACER_MIN_MSS)
 
 u8 *
 format_transport_proto (u8 * s, va_list * args)
@@ -540,7 +541,7 @@ spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
       pacer->bucket += inc;
     }
 
-  return clib_min (pacer->bucket, pacer->max_burst_size);
+  return clib_min (pacer->bucket, TRANSPORT_PACER_MAX_BURST);
 }
 
 static inline void
@@ -548,13 +549,6 @@ spacer_update_bucket (spacer_t * pacer, u32 bytes)
 {
   ASSERT (pacer->bucket >= bytes);
   pacer->bucket -= bytes;
-}
-
-static inline void
-spacer_update_max_burst_size (spacer_t * pacer, u32 max_burst_bytes)
-{
-  pacer->max_burst_size = clib_max (max_burst_bytes,
-				    TRANSPORT_PACER_MIN_BURST);
 }
 
 static inline void
@@ -570,12 +564,6 @@ transport_connection_tx_pacer_reset (transport_connection_t * tc,
 				     u32 start_bucket, u64 time_now)
 {
   spacer_t *pacer = &tc->pacer;
-  f64 dispatch_period;
-  u32 burst_size;
-
-  dispatch_period = transport_dispatch_period (tc->thread_index);
-  burst_size = rate_bytes_per_sec * dispatch_period;
-  spacer_update_max_burst_size (&tc->pacer, burst_size);
   spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec);
   pacer->last_update = time_now >> SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
   pacer->bucket = start_bucket;
@@ -597,10 +585,7 @@ void
 transport_connection_tx_pacer_update (transport_connection_t * tc,
 				      u64 bytes_per_sec)
 {
-  f64 dispatch_period = transport_dispatch_period (tc->thread_index);
-  u32 burst_size = 1.1 * bytes_per_sec * dispatch_period;
   spacer_set_pace_rate (&tc->pacer, bytes_per_sec);
-  spacer_update_max_burst_size (&tc->pacer, burst_size);
 }
 
 u32
