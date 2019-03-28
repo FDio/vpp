@@ -90,7 +90,6 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-
           u32 bi0;
 	  vlib_buffer_t *b0;
 
@@ -148,7 +147,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
               hdr0->ip4.src_address.as_u32 = src0.as_u32[2];
               hdr0->ip4.dst_address.as_u32 = dst0.as_u32[1];
-              hdr0->ip4.length = len0 + sizeof (udp_header_t) + sizeof (ip4_header_t);
+              hdr0->ip4.length = len0 + sizeof (udp_header_t) +
+                                 sizeof (ip4_header_t);
               hdr0->ip4.checksum = ip4_header_checksum (&hdr0->ip4);
 
 	      good_n++;
@@ -163,7 +163,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 			   sizeof (tr->src.as_u8));
 	      clib_memcpy (tr->dst.as_u8, hdr0->ip4.dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
-          tr->teid = hdr0->gtpu.teid;
+              tr->teid = hdr0->gtpu.teid;
 	    }
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

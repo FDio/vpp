@@ -58,3 +58,18 @@
     IPv6(dst=ip6, src=ip6)
 
 
+## end.m.gtp4.e
+
+    First set behavior so our localsid node is called with the packet
+    matching C1::1 in fib table
+    sr localsid address C1::1 behavior end.m.gtp4.ess
+
+    show sr localsids behaviors
+    show sr localsid
+
+    We should send a well formated packet to C::1 destination address
+    that contains the correct spec as for end.m.gtp4.e with encapsulated
+    ipv4 src and dst address and teid with port for the conversion to
+    GTPU IPv4 packet
+
+
