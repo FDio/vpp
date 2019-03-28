@@ -220,7 +220,11 @@ class VLAList(object):
         # u8 array
 
         if self.packer.size == 1:
-            return bytearray(list)
+            try:
+                return bytearray(list)
+            #  A sequence of bytes must be joined in python3
+            except TypeError:
+                return bytearray().join(list)
 
         for e in list:
             b += self.packer.pack(e)
