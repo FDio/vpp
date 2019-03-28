@@ -38,8 +38,6 @@ class VppPipe(VppInterface):
         self._test.vapi.pipe_delete(
             self.result.sw_if_index)
 
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "pipe-%d" % (self._sw_if_index)

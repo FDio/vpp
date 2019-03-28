@@ -88,9 +88,6 @@ class VppAbfPolicy(VppObject):
     def query_vpp_config(self):
         return find_abf_policy(self._test, self.policy_id)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("abf-policy-%d" % self.policy_id)
 
@@ -130,9 +127,6 @@ class VppAbfAttach(VppObject):
         return find_abf_itf_attach(self._test,
                                    self.policy_id,
                                    self.sw_if_index)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return ("abf-attach-%d-%d" % (self.policy_id, self.sw_if_index))

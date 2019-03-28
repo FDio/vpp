@@ -64,9 +64,6 @@ class VppSocketFilename(VppObject):
     def query_vpp_config(self):
         return self._test.vapi.memif_socket_filename_dump()
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "%d" % (self.socket_id)
 
@@ -134,9 +131,6 @@ class VppMemif(VppObject):
             return None
         dump = self._test.vapi.memif_dump()
         return get_if_dump(dump, self.sw_if_index)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         if self.sw_if_index:
