@@ -71,8 +71,9 @@ ipsec_if_tunnel_stack (adj_index_t ai)
 
       fib_prefix_t pfx = {
 	.fp_addr = sa->tunnel_dst_addr,
-	.fp_len = (sa->is_tunnel_ip6 ? 128 : 32),
-	.fp_proto = (sa->is_tunnel_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
+	.fp_len = (sa->flags & IPSEC_SA_FLAG_IS_TUNNEL_V6 ? 128 : 32),
+	.fp_proto = (sa->flags & IPSEC_SA_FLAG_IS_TUNNEL_V6 ?
+		     FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
       };
 
       adj_midchain_delegate_stack (ai, sa->tx_fib_index, &pfx);
