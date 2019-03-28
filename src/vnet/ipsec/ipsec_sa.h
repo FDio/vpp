@@ -85,7 +85,7 @@ typedef struct ipsec_key_t_
  */
 #define foreach_ipsec_sa_flags                            \
   _ (0, NONE, "none")                                     \
-  _ (1, USE_EXTENDED_SEQ_NUM, "esn")                      \
+  _ (1, USE_ESN, "esn")                                   \
   _ (2, USE_ANTI_REPLAY, "anti-replay")                   \
   _ (4, IS_TUNNEL, "tunnel")                              \
   _ (8, IS_TUNNEL_V6, "tunnel-v6")                        \
@@ -227,7 +227,7 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 * seqp)
 
   seq = clib_net_to_host_u32 (*seqp);
 
-  if ((sa->flags & IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM) == 0)
+  if ((sa->flags & IPSEC_SA_FLAG_USE_ESN) == 0)
     {
 
       if (PREDICT_TRUE (seq > sa->last_seq))
@@ -291,7 +291,7 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 * seqp)
     return;
 
   seq = clib_host_to_net_u32 (*seqp);
-  if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM))
+  if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ESN))
     {
       int wrap = sa->seq_hi - sa->last_seq_hi;
 

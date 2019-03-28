@@ -64,7 +64,7 @@ u8 *format_esp_header (u8 * s, va_list * args);
 always_inline int
 esp_seq_advance (ipsec_sa_t * sa)
 {
-  if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa)))
+  if (PREDICT_TRUE (ipsec_sa_is_set_USE_ESN (sa)))
     {
       if (PREDICT_FALSE (sa->seq == ESP_SEQ_MAX))
 	{
@@ -104,7 +104,7 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
   op->dst = signature;
   op->hmac_trunc_len = sa->integ_trunc_size;
 
-  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa))
+  if (ipsec_sa_is_set_USE_ESN (sa))
     {
       u32 seq_hi = clib_host_to_net_u32 (sa->seq_hi);
 

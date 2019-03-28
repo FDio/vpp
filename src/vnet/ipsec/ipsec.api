@@ -222,7 +222,7 @@ enum ipsec_sad_flags
 {
   IPSEC_API_SAD_FLAG_NONE = 0,
   /* Enable extended sequence numbers */
-  IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM = 0x01,
+  IPSEC_API_SAD_FLAG_USE_ESN = 0x01,
   /* Enable Anti-replay */
   IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY = 0x02,
   /* IPsec tunnel mode if non-zero, else transport mode */
