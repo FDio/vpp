@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "983fdba4_672e6ae0",
+        "filename": "src/tests/vnet/session/quic_echo.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-03-28T15:33:03Z",
+      "side": 1,
+      "message": ":-)",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "f6cdaefa00c400cca46c9516a35d8c4ddbaf3c35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
