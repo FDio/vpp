@@ -535,9 +535,6 @@ void
 tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_FIN | TCP_FLAG_ACK);
-
-  /* Reset flags, make sure ack is sent */
-  vnet_buffer (b)->tcp.flags &= ~TCP_BUF_FLAG_DUPACK;
 }
 
 /**

@@ -144,26 +144,6 @@ typedef enum _tcp_connection_flag
   TCP_CONN_N_FLAGS
 } tcp_connection_flags_e;
 
-/** TCP buffer flags */
-#define foreach_tcp_buf_flag                            \
-  _ (ACK)       /**< Sending ACK. */                    \
-  _ (DUPACK)    /**< Sending DUPACK. */                 \
-
-enum
-{
-#define _(f) TCP_BUF_BIT_##f,
-  foreach_tcp_buf_flag
-#undef _
-    TCP_N_BUF_BITS,
-};
-
-enum
-{
-#define _(f) TCP_BUF_FLAG_##f = 1 << TCP_BUF_BIT_##f,
-  foreach_tcp_buf_flag
-#undef _
-};
-
 #define TCP_SCOREBOARD_TRACE (0)
 #define TCP_MAX_SACK_BLOCKS 256	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
