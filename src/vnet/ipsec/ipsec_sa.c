@@ -155,8 +155,8 @@ ipsec_sa_add (u32 id,
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
   ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
 
-  if (flags & IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM)
-    ipsec_sa_set_USE_EXTENDED_SEQ_NUM (sa);
+  if (flags & IPSEC_SA_FLAG_USE_ESN)
+    ipsec_sa_set_USE_ESN (sa);
   if (flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY)
     ipsec_sa_set_USE_ANTI_REPLAY (sa);
   if (flags & IPSEC_SA_FLAG_IS_TUNNEL)

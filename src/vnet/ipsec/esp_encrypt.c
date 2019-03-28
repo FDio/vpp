@@ -451,7 +451,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  op->len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
 	  op->flags = 0;
 	  op->user_data = b - bufs;
-	  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0))
+	  if (ipsec_sa_is_set_USE_ESN (sa0))
 	    {
 	      u32 seq_hi = clib_net_to_host_u32 (sa0->seq_hi);
 	      clib_memcpy_fast (op->dst, &seq_hi, sizeof (seq_hi));

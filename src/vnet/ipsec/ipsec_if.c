@@ -290,7 +290,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       if (args->udp_encap)
 	flags |= IPSEC_SA_FLAG_UDP_ENCAP;
       if (args->esn)
-	flags |= IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM;
+	flags |= IPSEC_SA_FLAG_USE_ESN;
       if (args->anti_replay)
 	flags |= IPSEC_SA_FLAG_USE_ANTI_REPLAY;
 
