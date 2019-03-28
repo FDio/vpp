@@ -25,15 +25,15 @@
 
 typedef enum
 {
-#define _(sym,str) GBP_ERROR_##sym,
-  foreach_gbp_policy
+#define _(sym,str) GBP_POLICY_ERROR_##sym,
+  foreach_gbp_policy_error
 #undef _
     GBP_POLICY_N_ERROR,
 } gbp_policy_error_t;
 
 static char *gbp_policy_error_strings[] = {
 #define _(sym,string) string,
-  foreach_gbp_policy
+  foreach_gbp_policy_error
 #undef _
 };
 
@@ -115,11 +115,14 @@ gbp_policy_inline (vlib_main_t * vm,
   gbp_main_t *gm = &gbp_main;
   gbp_policy_main_t *gpm = &gbp_policy_main;
   u32 n_left_from, *from, *to_next;
-  u32 next_index;
+  u32 next_index, thread_index;
+  u32 n_allow_intra, n_allow_a_bit;
 
   next_index = 0;
   n_left_from = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
+  thread_index = vm->thread_index;
+  n_allow_intra = n_allow_a_bit = 0;
 
   while (n_left_from > 0)
     {
@@ -172,6 +175,7 @@ gbp_policy_inline (vlib_main_t * vm,
 					    (is_port_based ?
 					     L2OUTPUT_FEAT_GBP_POLICY_PORT :
 					     L2OUTPUT_FEAT_GBP_POLICY_MAC));
+	      n_allow_a_bit++;
 	      key0.as_u32 = ~0;
 	      goto trace;
 	    }
@@ -188,9 +192,11 @@ gbp_policy_inline (vlib_main_t * vm,
 	  if (NULL != ge0)
 	    key0.gck_dst = ge0->ge_fwd.gef_sclass;
 	  else
-	    /* If you cannot determine the destination EP then drop */
-	    goto trace;
-
+	    {
+	      /* If you cannot determine the destination EP then drop */
+	      b0->error = node->errors[GBP_POLICY_ERROR_DROP_NO_DCLASS];
+	      goto trace;
+	    }
 	  key0.gck_src = vnet_buffer2 (b0)->gbp.sclass;
 
 	  if (SCLASS_INVALID != key0.gck_src)
@@ -208,6 +214,7 @@ gbp_policy_inline (vlib_main_t * vm,
 					   L2OUTPUT_FEAT_GBP_POLICY_PORT :
 					   L2OUTPUT_FEAT_GBP_POLICY_MAC));
 		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+		  n_allow_intra++;
 		}
 	      else
 		{
@@ -223,6 +230,11 @@ gbp_policy_inline (vlib_main_t * vm,
 		      u16 ether_type0;
 		      const u8 *h0;
 
+		      vlib_prefetch_combined_counter
+			(&gbp_contract_drop_counters, thread_index, gci0);
+		      vlib_prefetch_combined_counter
+			(&gbp_contract_permit_counters, thread_index, gci0);
+
 		      action0 = 0;
 		      gc0 = gbp_contract_get (gci0);
 		      l2_len0 = vnet_buffer (b0)->l2.l2_len;
@@ -235,6 +247,14 @@ gbp_policy_inline (vlib_main_t * vm,
 			  /*
 			   * black list model so drop
 			   */
+			  b0->error =
+			    node->errors[GBP_POLICY_ERROR_DROP_ETHER_TYPE];
+
+			  vlib_increment_combined_counter
+			    (&gbp_contract_drop_counters,
+			     thread_index,
+			     gci0, 1, vlib_buffer_length_in_chain (vm, b0));
+
 			  goto trace;
 			}
 
@@ -286,7 +306,7 @@ gbp_policy_inline (vlib_main_t * vm,
 				      L2OUTPUT_FEAT_GBP_POLICY_MAC));
 				  break;
 				case GBP_RULE_DENY:
-				  next0 = 0;
+				  next0 = GBP_POLICY_NEXT_DROP;
 				  break;
 				case GBP_RULE_REDIRECT:
 				  next0 = gbp_rule_l2_redirect (gu, b0);
@@ -294,6 +314,27 @@ gbp_policy_inline (vlib_main_t * vm,
 				}
 			    }
 			}
+		      if (next0 == GBP_POLICY_NEXT_DROP)
+			{
+			  vlib_increment_combined_counter
+			    (&gbp_contract_drop_counters,
+			     thread_index,
+			     gci0, 1, vlib_buffer_length_in_chain (vm, b0));
+			  b0->error =
+			    node->errors[GBP_POLICY_ERROR_DROP_CONTRACT];
+			}
+		      else
+			{
+			  vlib_increment_combined_counter
+			    (&gbp_contract_permit_counters,
+			     thread_index,
+			     gci0, 1, vlib_buffer_length_in_chain (vm, b0));
+			}
+		    }
+		  else
+		    {
+		      b0->error =
+			node->errors[GBP_POLICY_ERROR_DROP_NO_CONTRACT];
 		    }
 		}
 	    }
@@ -331,6 +372,11 @@ gbp_policy_inline (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       GBP_POLICY_ERROR_ALLOW_INTRA, n_allow_intra);
+  vlib_node_increment_counter (vm, node->node_index,
+			       GBP_POLICY_ERROR_ALLOW_A_BIT, n_allow_a_bit);
 
   return frame->n_vectors;
 }
@@ -376,7 +422,6 @@ VLIB_REGISTER_NODE (gbp_policy_port_node) = {
   .error_strings = gbp_policy_error_strings,
 
   .n_next_nodes = GBP_POLICY_N_NEXT,
-
   .next_nodes = {
     [GBP_POLICY_NEXT_DROP] = "error-drop",
   },
@@ -387,7 +432,14 @@ VLIB_REGISTER_NODE (gbp_policy_mac_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_policy_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .sibling_of = "gbp-policy-port",
+
+  .n_errors = ARRAY_LEN(gbp_policy_error_strings),
+  .error_strings = gbp_policy_error_strings,
+
+  .n_next_nodes = GBP_POLICY_N_NEXT,
+  .next_nodes = {
+    [GBP_POLICY_NEXT_DENY] = "error-drop",
+  },
 };
 
 /* *INDENT-ON* */
