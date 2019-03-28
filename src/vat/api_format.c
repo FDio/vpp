@@ -398,7 +398,7 @@ format_ipsec_integ_alg (u8 * s, va_list * args)
 static uword
 api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
-  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vat_main_t *vam __clib_unused = va_arg (*args, vat_main_t *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 *result = va_arg (*args, u32 *);
 
@@ -408,7 +408,7 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 static uword
 api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
 {
-  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vat_main_t *vam __clib_unused = va_arg (*args, vat_main_t *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 *result = va_arg (*args, u32 *);
 
@@ -2931,7 +2931,7 @@ typedef struct
 {
   u32 spi;
   u8 si;
-} __attribute__ ((__packed__)) lisp_nsh_api_t;
+} __clib_packed lisp_nsh_api_t;
 
 uword
 unformat_nsh_address (unformat_input_t * input, va_list * args)
@@ -14784,12 +14784,9 @@ api_ipsec_spd_entry_add_del (vat_main_t * vam)
   i32 priority = 0;
   u32 rport_start = 0, rport_stop = (u32) ~ 0;
   u32 lport_start = 0, lport_stop = (u32) ~ 0;
-  vl_api_address_t laddr_start = { }, laddr_stop =
-  {
-  }, raddr_start =
-  {
-  }, raddr_stop =
-  {
+  vl_api_address_t laddr_start = { }, laddr_stop = {
+  }, raddr_start = {
+  }, raddr_stop = {
   };
   int ret;
 
@@ -15231,16 +15228,15 @@ static void vl_api_ipsec_sa_details_t_handler_json
 			    ntohl (mp->entry.integrity_algorithm));
   flags = ntohl (mp->entry.flags);
   vat_json_object_add_uint (node, "use_esn",
-			    ! !(flags &
-				IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM));
+			    !!(flags & IPSEC_API_SAD_FLAG_USE_ESN));
   vat_json_object_add_uint (node, "use_anti_replay",
-			    ! !(flags & IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY));
+			    !!(flags & IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY));
   vat_json_object_add_uint (node, "is_tunnel",
-			    ! !(flags & IPSEC_API_SAD_FLAG_IS_TUNNEL));
+			    !!(flags & IPSEC_API_SAD_FLAG_IS_TUNNEL));
   vat_json_object_add_uint (node, "is_tunnel_ip6",
-			    ! !(flags & IPSEC_API_SAD_FLAG_IS_TUNNEL_V6));
+			    !!(flags & IPSEC_API_SAD_FLAG_IS_TUNNEL_V6));
   vat_json_object_add_uint (node, "udp_encap",
-			    ! !(flags & IPSEC_API_SAD_FLAG_UDP_ENCAP));
+			    !!(flags & IPSEC_API_SAD_FLAG_UDP_ENCAP));
   vat_json_object_add_bytes (node, "crypto_key", mp->entry.crypto_key.data,
 			     mp->entry.crypto_key.length);
   vat_json_object_add_bytes (node, "integ_key", mp->entry.integrity_key.data,

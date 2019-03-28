@@ -261,7 +261,7 @@ format_ipsec_sa (u8 * s, va_list * args)
 	      sa->protocol ? "esp" : "ah",
 	      ipsec_sa_is_set_UDP_ENCAP (sa) ? " udp-encap-enabled" : "",
 	      ipsec_sa_is_set_USE_ANTI_REPLAY (sa) ? " anti-replay" : "",
-	      ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa) ?
+	      ipsec_sa_is_set_USE_ESN (sa) ?
 	      " extended-sequence-number" : "");
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
   s = format (s, "\n   last-seq %u last-seq-hi %u window %U",

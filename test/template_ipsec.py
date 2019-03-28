@@ -84,7 +84,7 @@ class IPsecIPv6Params(object):
 def config_tun_params(p, encryption_type, tun_if):
     ip_class_by_addr_type = {socket.AF_INET: IP, socket.AF_INET6: IPv6}
     use_esn = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
-                              IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM))
+                              IPSEC_API_SAD_FLAG_USE_ESN))
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo, crypt_key=p.crypt_key,
@@ -107,7 +107,7 @@ def config_tun_params(p, encryption_type, tun_if):
 
 def config_tra_params(p, encryption_type):
     use_esn = p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
-                         IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM)
+                         IPSEC_API_SAD_FLAG_USE_ESN)
     p.scapy_tra_sa = SecurityAssociation(
         encryption_type,
         spi=p.vpp_tra_spi,

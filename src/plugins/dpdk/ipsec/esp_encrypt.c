@@ -513,7 +513,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	      aad[1] = clib_host_to_net_u32 (sa0->seq);
 
 	      /* aad[3] should always be 0 */
-	      if (PREDICT_FALSE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
+	      if (PREDICT_FALSE (ipsec_sa_is_set_USE_ESN (sa0)))
 		aad[2] = clib_host_to_net_u32 (sa0->seq_hi);
 	      else
 		aad[2] = 0;
@@ -522,7 +522,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	    {
 	      auth_len =
 		vlib_buffer_get_tail (b0) - ((u8 *) esp0) - trunc_size;
-	      if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0))
+	      if (ipsec_sa_is_set_USE_ESN (sa0))
 		{
 		  u32 *_digest = (u32 *) digest;
 		  _digest[0] = clib_host_to_net_u32 (sa0->seq_hi);

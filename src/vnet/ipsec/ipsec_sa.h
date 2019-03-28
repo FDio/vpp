@@ -83,7 +83,7 @@ typedef struct ipsec_key_t_
  */
 #define foreach_ipsec_sa_flags                            \
   _ (0, NONE, "none")                                     \
-  _ (1, USE_EXTENDED_SEQ_NUM, "esn")                      \
+  _ (1, USE_ESN, "esn")                                   \
   _ (2, USE_ANTI_REPLAY, "anti-replay")                   \
   _ (4, IS_TUNNEL, "tunnel")                              \
   _ (8, IS_TUNNEL_V6, "tunnel-v6")                        \
@@ -94,7 +94,7 @@ typedef enum ipsec_sad_flags_t_
 #define _(v, f, s) IPSEC_SA_FLAG_##f = v,
   foreach_ipsec_sa_flags
 #undef _
-} __attribute__ ((packed)) ipsec_sa_flags_t;
+} __clib_packed ipsec_sa_flags_t;
 
 STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 1, "IPSEC SA flags > 1 byte");
 
