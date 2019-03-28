@@ -34,6 +34,24 @@
       "revId": "3b2f398ded5c65a1079c47e060496f0372d204c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6481add0_8a0c0b83",
+        "filename": "src/vnet/ipsec-gre/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-28T18:41:40Z",
+      "side": 1,
+      "message": "Do you also need to keep 0x0001, so we don\u0027t break existing implementations? Avoid flag days, etc?",
+      "parentUuid": "053d0a93_a7cc6083",
+      "revId": "3b2f398ded5c65a1079c47e060496f0372d204c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
