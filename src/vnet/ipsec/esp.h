@@ -96,7 +96,7 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
   if (PREDICT_FALSE (sa->integ_op_type == 0))
     return 0;
 
-  op->op = sa->integ_op_type;
+  vnet_crypto_op_init (op, sa->integ_op_type);
   op->key = sa->integ_key.data;
   op->key_len = sa->integ_key.len;
   op->src = data;

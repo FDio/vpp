@@ -62,7 +62,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
     {
       r = rv[i];
       op  = ops + i;
-      op->op = r->op;
+      vnet_crypto_op_init (op, r->op);
       op->iv = r->iv.data;
       op->key = r->key.data;
       op->src = r->data.data;

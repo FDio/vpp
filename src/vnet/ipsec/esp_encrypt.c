@@ -429,7 +429,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  op->op = sa0->crypto_enc_op_type;
+	  vnet_crypto_op_init (op, sa0->crypto_enc_op_type);
 	  op->iv = payload - iv_sz;
 	  op->src = op->dst = payload;
 	  op->key = sa0->crypto_key.data;
@@ -442,14 +442,13 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  op->op = sa0->integ_op_type;
+	  vnet_crypto_op_init (op, sa0->integ_op_type);
 	  op->src = payload - iv_sz - sizeof (esp_header_t);
 	  op->dst = payload + payload_len - icv_sz;
 	  op->key = sa0->integ_key.data;
 	  op->key_len = sa0->integ_key.len;
 	  op->hmac_trunc_len = icv_sz;
 	  op->len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
-	  op->flags = 0;
 	  op->user_data = b - bufs;
 	  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0))
 	    {

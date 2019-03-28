@@ -165,6 +165,16 @@ format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;
 format_function_t format_vnet_crypto_op;
 
+
+static_always_inline void
+vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_type_t type)
+{
+  if (CLIB_DEBUG > 0)
+    clib_memset (op, 0xfe, sizeof (*op));
+  op->op = op;
+  op->flags = 0;
+}
+
 #endif /* included_vnet_crypto_crypto_h */
 
 /*
