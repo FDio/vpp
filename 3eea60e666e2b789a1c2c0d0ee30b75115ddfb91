@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "e173b7e8_bc1d49fa",
+        "filename": "src/plugins/unittest/sparse_vec_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-28T20:59:52Z",
+      "side": 1,
+      "message": "inserting \" \" somewhere in the middle can make this look nicer :)",
+      "range": {
+        "startLine": 41,
+        "startChar": 10,
+        "endLine": 41,
+        "endChar": 93
+      },
+      "revId": "3eea60e666e2b789a1c2c0d0ee30b75115ddfb91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5c4bd05b_983d83e5",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 1
