@@ -52,6 +52,24 @@
       "revId": "a6e15df52b79a187f6161aa4cab5f8e8f9567252",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3032248f_cebc7d94",
+        "filename": "src/vnet/dhcp/dhcp_proxy.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-03-28T21:33:43Z",
+      "side": 1,
+      "message": "Ok, that makes sense. I have submitted an updated patch set that renames the enum to dhcp_port_reg_flags_t and uses that type for the input parameter to dhcp_maybe_register_udp_ports().",
+      "parentUuid": "f04f76f2_a1f9a6dc",
+      "revId": "a6e15df52b79a187f6161aa4cab5f8e8f9567252",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
