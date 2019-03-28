@@ -68,9 +68,6 @@ class VppVxlanGbpTunnel(VppInterface):
                                                        self.dst,
                                                        self.vni))
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "vxlan-gbp-%d-%d-%s-%s" % (self.sw_if_index, self.vni,
                                           self.src, self.dst)

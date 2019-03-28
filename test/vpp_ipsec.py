@@ -24,9 +24,6 @@ class VppIpsecSpd(VppObject):
     def remove_vpp_config(self):
         self.test.vapi.ipsec_spd_add_del(self.id, is_add=0)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "ipsec-spd-%d" % self.id
 
@@ -58,9 +55,6 @@ class VppIpsecSpdItfBinding(VppObject):
         self.test.vapi.ipsec_interface_add_del_spd(self.spd.id,
                                                    self.itf.sw_if_index,
                                                    is_add=0)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "bind-%s-to-%s" % (self.spd.id, self.itf)
@@ -148,9 +142,6 @@ class VppIpsecSpdEntry(VppObject):
             remote_port_start=self.remote_port_start,
             remote_port_stop=self.remote_port_stop,
             is_add=0)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "spd-entry-%d-%d-%d-%d-%d-%d" % (self.spd.id,
@@ -240,9 +231,6 @@ class VppIpsecSA(VppObject):
             (self.tun_dst if self.tun_dst else []),
             flags=self.flags,
             is_add=0)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "ipsec-sa-%d" % self.id

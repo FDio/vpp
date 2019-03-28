@@ -86,9 +86,6 @@ class VppSRv6LocalSID(VppObject):
         # use _configured flag for now
         return self._configured
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("%d;%s,%d"
                 % (self.fib_table,
@@ -143,9 +140,6 @@ class VppSRv6Policy(VppObject):
         # no API to query SR Policies
         # use _configured flag for now
         return self._configured
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return ("%d;%s-><%s>;%d"
@@ -218,9 +212,6 @@ class VppSRv6Steering(VppObject):
         # no API to query steering entries
         # use _configured flag for now
         return self._configured
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return ("%d;%d;%s/%d->%s"
