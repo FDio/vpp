@@ -243,7 +243,7 @@ class TestIpsecAh3(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
                        self.ipv6_params.addr_type: self.ipv6_params}
         for _, p in self.params.items():
             p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
-                       IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM)
+                       IPSEC_API_SAD_FLAG_USE_ESN)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

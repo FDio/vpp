@@ -151,7 +151,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	{
 	  int rv = 0;
 
-	  if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
+	  if (PREDICT_TRUE (ipsec_sa_is_set_USE_ESN (sa0)))
 	    rv = esp_replay_check_esn (sa0, seq);
 	  else
 	    rv = esp_replay_check (sa0, seq);
@@ -199,7 +199,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_TRUE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0)))
 	{
-	  if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
+	  if (PREDICT_TRUE (ipsec_sa_is_set_USE_ESN (sa0)))
 	    esp_replay_advance_esn (sa0, seq);
 	  else
 	    esp_replay_advance (sa0, seq);

@@ -258,7 +258,7 @@ crypto_set_aead_xform (struct rte_crypto_sym_xform *xform,
     crypto_op_get_priv_offset () + offsetof (dpdk_op_priv_t, cb);
   xform->aead.iv.length = 12;
   xform->aead.digest_length = c->trunc_size;
-  xform->aead.aad_length = ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa) ? 12 : 8;
+  xform->aead.aad_length = ipsec_sa_is_set_USE_ESN (sa) ? 12 : 8;
   xform->next = NULL;
 
   if (is_outbound)
