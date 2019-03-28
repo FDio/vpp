@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b1fc0c0f_0cf70c96",
+        "filename": "test/test_ipsec_tun_if_esp.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-28T15:13:29Z",
+      "side": 1,
+      "message": "Should these be refactored so that you can call super, then only handle the differences here?",
+      "range": {
+        "startLine": 269,
+        "startChar": 4,
+        "endLine": 293,
+        "endChar": 21
+      },
+      "revId": "564fa0c933c184662b3e1bd23ed12a1f56452270",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6702ede3_69cfbc20",
+        "filename": "test/vpp_ipsec_tun_interface.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-28T15:13:29Z",
+      "side": 1,
+      "message": "Do we need to do:\nself.test.registry.deregister(self, self.test.logger) ?\n\nI think this is missing framework wide.",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 82,
+        "endChar": 21
+      },
+      "revId": "564fa0c933c184662b3e1bd23ed12a1f56452270",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3b6f0edb_1badc238",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 2527,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-28T15:13:29Z",
+      "side": 1,
+      "message": "Please remove these and add:\n\u0027ipsec_gre_tunnel_add_del\u0027: {\u0027is_add\u0027: 1} to defaultmapping.",
+      "range": {
+        "startLine": 2514,
+        "startChar": 0,
+        "endLine": 2527,
+        "endChar": 53
+      },
+      "revId": "564fa0c933c184662b3e1bd23ed12a1f56452270",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
