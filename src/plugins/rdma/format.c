@@ -29,6 +29,9 @@ format_rdma_device_name (u8 * s, va_list * args)
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd = vec_elt_at_index (rm->devices, i);
 
+  if (rd->name)
+    return format (s, "%s", rd->name);
+
   s = format (s, "rdma-%u", rd->dev_instance);
   return s;
 }

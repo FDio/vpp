@@ -73,6 +73,7 @@ typedef struct
 
   u8 hwaddr[6];
   vlib_pci_addr_t pci_addr;
+  u8 *name;
 
   struct ibv_context *ctx;
   struct ibv_pd *pd;
@@ -95,6 +96,7 @@ extern rdma_main_t rdma_main;
 typedef struct
 {
   u8 *ifname;
+  u8 *name;
 
   /* return */
   int rv;
