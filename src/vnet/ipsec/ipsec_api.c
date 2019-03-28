@@ -320,8 +320,8 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 {
   vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
 
-  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa))
-    flags |= IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM;
+  if (ipsec_sa_is_set_USE_ESN (sa))
+    flags |= IPSEC_API_SAD_FLAG_USE_ESN;
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     flags |= IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY;
   if (ipsec_sa_is_set_IS_TUNNEL (sa))
@@ -702,7 +702,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   mp->salt = clib_host_to_net_u32 (sa->salt);
   mp->seq_outbound = clib_host_to_net_u64 (((u64) sa->seq));
   mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->last_seq));
-  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa))
+  if (ipsec_sa_is_set_USE_ESN (sa))
     {
       mp->seq_outbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
       mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->last_seq_hi));
