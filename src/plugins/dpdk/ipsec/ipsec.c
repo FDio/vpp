@@ -258,7 +258,7 @@ crypto_set_aead_xform (struct rte_crypto_sym_xform *xform,
     crypto_op_get_priv_offset () + offsetof (dpdk_op_priv_t, cb);
   xform->aead.iv.length = 12;
   xform->aead.digest_length = c->trunc_size;
-  xform->aead.aad_length = ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa) ? 12 : 8;
+  xform->aead.aad_length = ipsec_sa_is_set_USE_ESN (sa) ? 12 : 8;
   xform->next = NULL;
 
   if (is_outbound)
@@ -405,7 +405,7 @@ done:
   return error;
 }
 
-static void __attribute__ ((unused)) clear_and_free_obj (void *obj)
+static void __attribute__((unused)) clear_and_free_obj (void *obj)
 {
   struct rte_mempool *mp = rte_mempool_from_obj (obj);
 
@@ -824,8 +824,8 @@ crypto_auto_placement (void)
 
 static void
 crypto_op_init (struct rte_mempool *mempool,
-		void *_arg __attribute__ ((unused)),
-		void *_obj, unsigned i __attribute__ ((unused)))
+		void *_arg __attribute__((unused)),
+		void *_obj, unsigned i __attribute__((unused)))
 {
   struct rte_crypto_op *op = _obj;
 

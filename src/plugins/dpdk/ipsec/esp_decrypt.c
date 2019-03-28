@@ -240,7 +240,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	      seq = clib_net_to_host_u32 (esp0->seq);
 
-	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
+	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_ESN (sa0)))
 		rv = esp_replay_check_esn (sa0, seq);
 	      else
 		rv = esp_replay_check (sa0, seq);
@@ -339,7 +339,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	      clib_memcpy_fast (aad, esp0, 8);
 
 	      /* _aad[3] should always be 0 */
-	      if (PREDICT_FALSE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
+	      if (PREDICT_FALSE (ipsec_sa_is_set_USE_ESN (sa0)))
 		_aad[2] = clib_host_to_net_u32 (sa0->seq_hi);
 	      else
 		_aad[2] = 0;
@@ -348,7 +348,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    {
 	      auth_len = sizeof (esp_header_t) + iv_size + payload_len;
 
-	      if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0))
+	      if (ipsec_sa_is_set_USE_ESN (sa0))
 		{
 		  clib_memcpy_fast (priv->icv, digest, trunc_size);
 		  u32 *_digest = (u32 *) digest;
@@ -564,7 +564,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 	    {
 	      u32 seq;
 	      seq = clib_host_to_net_u32 (esp0->seq);
-	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
+	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_ESN (sa0)))
 		esp_replay_advance_esn (sa0, seq);
 	      else
 		esp_replay_advance (sa0, seq);

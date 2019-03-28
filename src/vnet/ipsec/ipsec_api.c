@@ -71,7 +71,7 @@ vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
   clib_warning ("unimplemented");
 #else
 
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __attribute__((unused)) = vlib_get_main ();
   vl_api_ipsec_spd_add_del_reply_t *rmp;
   int rv;
 
@@ -84,11 +84,11 @@ vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
 static void vl_api_ipsec_interface_add_del_spd_t_handler
   (vl_api_ipsec_interface_add_del_spd_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __attribute__((unused)) = vlib_get_main ();
   vl_api_ipsec_interface_add_del_spd_reply_t *rmp;
   int rv;
-  u32 sw_if_index __attribute__ ((unused));
-  u32 spd_id __attribute__ ((unused));
+  u32 sw_if_index __attribute__((unused));
+  u32 spd_id __attribute__((unused));
 
   sw_if_index = ntohl (mp->sw_if_index);
   spd_id = ntohl (mp->spd_id);
@@ -126,7 +126,7 @@ ipsec_spd_action_decode (vl_api_ipsec_spd_action_t in,
 static void vl_api_ipsec_spd_entry_add_del_t_handler
   (vl_api_ipsec_spd_entry_add_del_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __attribute__((unused)) = vlib_get_main ();
   vl_api_ipsec_spd_entry_add_del_reply_t *rmp;
   ip46_type_t itype;
   u32 stat_index;
@@ -320,8 +320,8 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 {
   vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
 
-  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa))
-    flags |= IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM;
+  if (ipsec_sa_is_set_USE_ESN (sa))
+    flags |= IPSEC_API_SAD_FLAG_USE_ESN;
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     flags |= IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY;
   if (ipsec_sa_is_set_IS_TUNNEL (sa))
@@ -337,10 +337,9 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 static void vl_api_ipsec_sad_entry_add_del_t_handler
   (vl_api_ipsec_sad_entry_add_del_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __attribute__((unused)) = vlib_get_main ();
   vl_api_ipsec_sad_entry_add_del_reply_t *rmp;
-  ip46_address_t tun_src = { }, tun_dst =
-  {
+  ip46_address_t tun_src = { }, tun_dst = {
   };
   ipsec_key_t crypto_key, integ_key;
   ipsec_crypto_alg_t crypto_alg;
@@ -588,7 +587,7 @@ vl_api_ipsec_spd_interface_dump_t_handler (vl_api_ipsec_spd_interface_dump_t *
 static void
 vl_api_ipsec_sa_set_key_t_handler (vl_api_ipsec_sa_set_key_t * mp)
 {
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vlib_main_t *vm __attribute__((unused)) = vlib_get_main ();
   vl_api_ipsec_sa_set_key_reply_t *rmp;
   ipsec_key_t ck, ik;
   u32 id;
@@ -702,7 +701,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   mp->salt = clib_host_to_net_u32 (sa->salt);
   mp->seq_outbound = clib_host_to_net_u64 (((u64) sa->seq));
   mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->last_seq));
-  if (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa))
+  if (ipsec_sa_is_set_USE_ESN (sa))
     {
       mp->seq_outbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
       mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->last_seq_hi));
