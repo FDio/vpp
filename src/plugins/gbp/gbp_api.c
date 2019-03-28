@@ -929,6 +929,7 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 {
   vl_api_gbp_contract_add_del_reply_t *rmp;
   u16 *allowed_ethertypes;
+  u32 stats_index;
   index_t *rules;
   int ii, rv = 0;
   u8 n_et;
@@ -957,14 +958,19 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
       rv = gbp_contract_update (ntohs (mp->contract.sclass),
 				ntohs (mp->contract.dclass),
 				ntohl (mp->contract.acl_index),
-				rules, allowed_ethertypes);
+				rules, allowed_ethertypes, &stats_index);
     }
   else
     rv = gbp_contract_delete (ntohs (mp->contract.sclass),
 			      ntohs (mp->contract.dclass));
 
 out:
-  REPLY_MACRO (VL_API_GBP_CONTRACT_ADD_DEL_REPLY + GBP_MSG_BASE);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_GBP_CONTRACT_ADD_DEL_REPLY + GBP_MSG_BASE,
+  ({
+    rmp->stats_index = htonl (stats_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static int
