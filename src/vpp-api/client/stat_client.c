@@ -198,7 +198,7 @@ stat_segment_heartbeat (void)
   return stat_segment_heartbeat_r (sm);
 }
 
-stat_segment_data_t
+static stat_segment_data_t
 copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 {
   stat_segment_data_t result = { 0 };
