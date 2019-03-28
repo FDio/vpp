@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "90489c13_403df9c3",
+        "filename": "test/vpp_ipsec_tun_interface.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-28T16:06:14Z",
+      "side": 1,
+      "message": "no we shouldn\u0027t. the idea of the registry is to ensure that deletes have actually worked. so just because you think you have removed VPP config by calling remove_vpp_config, the registry will ensure it\u0027s not there anymore.",
+      "parentUuid": "6702ede3_69cfbc20",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 82,
+        "endChar": 21
+      },
+      "revId": "564fa0c933c184662b3e1bd23ed12a1f56452270",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3b6f0edb_1badc238",
         "filename": "test/vpp_papi_provider.py",
         "patchSetId": 8
