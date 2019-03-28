@@ -140,7 +140,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  clib_error_t *error;
-	  u32 bi0, sa_index0, seq, iv_size;
+	  u32 bi0, sa_index0, iv_size;
 	  u8 trunc_size;
 	  vlib_buffer_t *b0;
 	  esp_header_t *esp0;
@@ -234,33 +234,21 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  /* anti-replay check */
-	  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0))
+	  if (ipsec_sa_anti_replay_check (sa0, &esp0->seq))
 	    {
-	      int rv = 0;
-
-	      seq = clib_net_to_host_u32 (esp0->seq);
-
-	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
-		rv = esp_replay_check_esn (sa0, seq);
+	      clib_warning ("failed anti-replay check");
+	      if (is_ip6)
+		vlib_node_increment_counter (vm,
+					     dpdk_esp6_decrypt_node.index,
+					     ESP_DECRYPT_ERROR_REPLAY, 1);
 	      else
-		rv = esp_replay_check (sa0, seq);
-
-	      if (PREDICT_FALSE (rv))
-		{
-		  clib_warning ("failed anti-replay check");
-		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp6_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_REPLAY, 1);
-		  else
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp4_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_REPLAY, 1);
-		  to_next[0] = bi0;
-		  to_next += 1;
-		  n_left_to_next -= 1;
-		  goto trace;
-		}
+		vlib_node_increment_counter (vm,
+					     dpdk_esp4_decrypt_node.index,
+					     ESP_DECRYPT_ERROR_REPLAY, 1);
+	      to_next[0] = bi0;
+	      to_next += 1;
+	      n_left_to_next -= 1;
+	      goto trace;
 	    }
 
 	  if (is_ip6)
@@ -560,15 +548,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 
 	  iv_size = cipher_alg->iv_len;
 
-	  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0))
-	    {
-	      u32 seq;
-	      seq = clib_host_to_net_u32 (esp0->seq);
-	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
-		esp_replay_advance_esn (sa0, seq);
-	      else
-		esp_replay_advance (sa0, seq);
-	    }
+	  ipsec_sa_anti_replay_advance (sa0, &esp0->seq);
 
 	  /* if UDP encapsulation is used adjust the address of the IP header */
 	  if (ipsec_sa_is_set_UDP_ENCAP (sa0)

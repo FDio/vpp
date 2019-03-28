@@ -151,20 +151,10 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  seq = clib_host_to_net_u32 (ah0->seq_no);
 
 	  /* anti-replay check */
-	  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0))
+	  if (ipsec_sa_anti_replay_check (sa0, &ah0->seq_no))
 	    {
-	      int rv = 0;
-
-	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
-		rv = esp_replay_check_esn (sa0, seq);
-	      else
-		rv = esp_replay_check (sa0, seq);
-
-	      if (PREDICT_FALSE (rv))
-		{
-		  i_b0->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
-		  goto trace;
-		}
+	      i_b0->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
+	      goto trace;
 	    }
 
 	  vlib_increment_combined_counter
@@ -210,15 +200,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 
-	      if (PREDICT_TRUE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0)))
-		{
-		  if (PREDICT_TRUE
-		      (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
-		    esp_replay_advance_esn (sa0, seq);
-		  else
-		    esp_replay_advance (sa0, seq);
-		}
-
+	      ipsec_sa_anti_replay_advance (sa0, &ah0->seq_no);
 	    }
 
 	  vlib_buffer_advance (i_b0,
