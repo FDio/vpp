@@ -183,16 +183,6 @@ tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
     return tcp_initial_window_to_advertise (tc);
 
   tcp_update_rcv_wnd (tc);
-
-  if (tc->rcv_wnd == 0)
-    {
-      tc->flags |= TCP_CONN_SENT_RCV_WND0;
-    }
-  else
-    {
-      tc->flags &= ~TCP_CONN_SENT_RCV_WND0;
-    }
-
   return tc->rcv_wnd >> tc->rcv_wscale;
 }
 

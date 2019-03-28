@@ -1876,8 +1876,8 @@ tcp_can_delack (tcp_connection_t * tc)
 {
   /* Send ack if ... */
   if (TCP_ALWAYS_ACK
-      /* just sent a rcv wnd 0 */
-      || (tc->flags & TCP_CONN_SENT_RCV_WND0) != 0
+      /* just sent a rcv wnd 0
+         || (tc->flags & TCP_CONN_SENT_RCV_WND0) != 0 */
       /* constrained to send ack */
       || (tc->flags & TCP_CONN_SNDACK) != 0
       /* we're almost out of tx wnd */
