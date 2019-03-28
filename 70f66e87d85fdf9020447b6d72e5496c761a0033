@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "e7d66851_fe7ce38a",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-03-28T09:36:11Z",
+      "side": 1,
+      "message": "Yes, will correct the comments.",
+      "parentUuid": "89cf1434_d0b63e5e",
+      "range": {
+        "startLine": 37,
+        "startChar": 59,
+        "endLine": 37,
+        "endChar": 94
+      },
+      "revId": "70f66e87d85fdf9020447b6d72e5496c761a0033",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a2ac808a_7c1058c8",
         "filename": "src/plugins/dpdk/buffer.c",
         "patchSetId": 4
