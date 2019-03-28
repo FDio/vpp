@@ -164,7 +164,7 @@ private:
   /**
    * HW configuration for the result of creating the endpoint
    */
-  HW::item<bool> m_hw;
+  HW::item<uint32_t> m_hw;
 
   /**
    * The source EPG ID

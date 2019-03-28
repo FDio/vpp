@@ -27,13 +27,14 @@ namespace gbp_contract_cmds {
 /**
  * A command class that creates or updates the GBP contract
  */
-class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_contract_add_del>
+class create_cmd
+  : public rpc_cmd<HW::item<uint32_t>, vapi::Gbp_contract_add_del>
 {
 public:
   /**
    * Constructor
    */
-  create_cmd(HW::item<bool>& item,
+  create_cmd(HW::item<uint32_t>& item,
              sclass_t sclass,
              sclass_t dclass,
              const handle_t& acl,
@@ -66,13 +67,14 @@ private:
 /**
  * A cmd class that deletes a GBP contract
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_contract_add_del>
+class delete_cmd
+  : public rpc_cmd<HW::item<uint32_t>, vapi::Gbp_contract_add_del>
 {
 public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item, sclass_t sclass, sclass_t dclass);
+  delete_cmd(HW::item<uint32_t>& item, sclass_t sclass, sclass_t dclass);
 
   /**
    * Issue the command to VPP/HW

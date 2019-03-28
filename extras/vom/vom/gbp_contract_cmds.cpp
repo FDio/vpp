@@ -19,7 +19,7 @@
 namespace VOM {
 namespace gbp_contract_cmds {
 
-create_cmd::create_cmd(HW::item<bool>& item,
+create_cmd::create_cmd(HW::item<uint32_t>& item,
                        sclass_t sclass,
                        sclass_t dclass,
                        const handle_t& acl,
@@ -116,7 +116,9 @@ create_cmd::to_string() const
   return (s.str());
 }
 
-delete_cmd::delete_cmd(HW::item<bool>& item, sclass_t sclass, sclass_t dclass)
+delete_cmd::delete_cmd(HW::item<uint32_t>& item,
+                       sclass_t sclass,
+                       sclass_t dclass)
   : rpc_cmd(item)
   , m_sclass(sclass)
   , m_dclass(dclass)
