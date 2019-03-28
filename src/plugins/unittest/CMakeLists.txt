@@ -27,5 +27,6 @@ add_vpp_plugin(unittest
   session_test.c
   string_test.c
   tcp_test.c
+  sparse_vec_test.c
   unittest.c
 )
