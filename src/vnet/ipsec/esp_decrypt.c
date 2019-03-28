@@ -134,7 +134,6 @@ esp_decrypt_inline (vlib_main_t * vm,
       esp_header_t *esp0;
       ipsec_sa_t *sa0;
       u32 sa_index0 = ~0;
-      u32 seq;
       ip4_header_t *ih4 = 0, *oh4 = 0;
       ip6_header_t *ih6 = 0, *oh6 = 0;
       u8 tunnel_mode = 1;
@@ -144,29 +143,18 @@ esp_decrypt_inline (vlib_main_t * vm,
       esp0 = vlib_buffer_get_current (ib[0]);
       sa_index0 = vnet_buffer (ib[0])->ipsec.sad_index;
       sa0 = pool_elt_at_index (im->sad, sa_index0);
-      seq = clib_host_to_net_u32 (esp0->seq);
 
       /* anti-replay check */
-      if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0))
+      if (ipsec_sa_anti_replay_check (sa0, &esp0->seq))
 	{
-	  int rv = 0;
-
-	  if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
-	    rv = esp_replay_check_esn (sa0, seq);
-	  else
-	    rv = esp_replay_check (sa0, seq);
-
-	  if (PREDICT_FALSE (rv))
-	    {
-	      u32 tmp, off = n_alloc - n_left_from;
-	      /* send original packet to drop node */
-	      tmp = from[off];
-	      from[off] = new_bufs[off];
-	      new_bufs[off] = tmp;
-	      ib[0]->error = node->errors[ESP_DECRYPT_ERROR_REPLAY];
-	      next[0] = ESP_DECRYPT_NEXT_DROP;
-	      goto trace;
-	    }
+	  u32 tmp, off = n_alloc - n_left_from;
+	  /* send original packet to drop node */
+	  tmp = from[off];
+	  from[off] = new_bufs[off];
+	  new_bufs[off] = tmp;
+	  ib[0]->error = node->errors[ESP_DECRYPT_ERROR_REPLAY];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto trace;
 	}
 
       vlib_increment_combined_counter
@@ -197,13 +185,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    }
 	}
 
-      if (PREDICT_TRUE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa0)))
-	{
-	  if (PREDICT_TRUE (ipsec_sa_is_set_USE_EXTENDED_SEQ_NUM (sa0)))
-	    esp_replay_advance_esn (sa0, seq);
-	  else
-	    esp_replay_advance (sa0, seq);
-	}
+      ipsec_sa_anti_replay_advance (sa0, &esp0->seq);
 
       if ((sa0->crypto_alg >= IPSEC_CRYPTO_ALG_AES_CBC_128 &&
 	   sa0->crypto_alg <= IPSEC_CRYPTO_ALG_AES_CBC_256) ||

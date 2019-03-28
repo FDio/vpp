@@ -19,6 +19,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_node.h>
 
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (64)
+
 #define foreach_ipsec_crypto_alg    \
   _ (0, NONE, "none")               \
   _ (1, AES_CBC_128, "aes-cbc-128") \
@@ -94,7 +96,7 @@ typedef enum ipsec_sad_flags_t_
 #define _(v, f, s) IPSEC_SA_FLAG_##f = v,
   foreach_ipsec_sa_flags
 #undef _
-} __attribute__ ((packed)) ipsec_sa_flags_t;
+} __attribute__((packed)) ipsec_sa_flags_t;
 
 STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 1, "IPSEC SA flags > 1 byte");
 
@@ -215,6 +217,132 @@ extern uword unformat_ipsec_crypto_alg (unformat_input_t * input,
 extern uword unformat_ipsec_integ_alg (unformat_input_t * input,
 				       va_list * args);
 extern uword unformat_ipsec_key (unformat_input_t * input, va_list * args);
+
+always_inline int
+ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 * seqp)
+{
+  u32 seq, diff, tl, th;
+  if ((sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
+    return 0;
+
+  seq = clib_net_to_host_u32 (*seqp);
+
+  if ((sa->flags & IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM) == 0)
+    {
+
+      if (PREDICT_TRUE (seq > sa->last_seq))
+	return 0;
+
+      diff = sa->last_seq - seq;
+
+      if (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE > diff)
+	return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+      else
+	return 1;
+
+      return 0;
+    }
+
+  tl = sa->last_seq;
+  th = sa->last_seq_hi;
+  diff = tl - seq;
+
+  if (PREDICT_TRUE (tl >= (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE - 1)))
+    {
+      if (seq >= (tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1))
+	{
+	  sa->seq_hi = th;
+	  if (seq <= tl)
+	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  else
+	    return 0;
+	}
+      else
+	{
+	  sa->seq_hi = th + 1;
+	  return 0;
+	}
+    }
+  else
+    {
+      if (seq >= (tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1))
+	{
+	  sa->seq_hi = th - 1;
+	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	}
+      else
+	{
+	  sa->seq_hi = th;
+	  if (seq <= tl)
+	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  else
+	    return 0;
+	}
+    }
+
+  return 0;
+}
+
+always_inline void
+ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 * seqp)
+{
+  u32 pos, seq;
+  if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
+    return;
+
+  seq = clib_host_to_net_u32 (*seqp);
+  if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM))
+    {
+      int wrap = sa->seq_hi - sa->last_seq_hi;
+
+      if (wrap == 0 && seq > sa->last_seq)
+	{
+	  pos = seq - sa->last_seq;
+	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+	    sa->replay_window = ((sa->replay_window) << pos) | 1;
+	  else
+	    sa->replay_window = 1;
+	  sa->last_seq = seq;
+	}
+      else if (wrap > 0)
+	{
+	  pos = ~seq + sa->last_seq + 1;
+	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+	    sa->replay_window = ((sa->replay_window) << pos) | 1;
+	  else
+	    sa->replay_window = 1;
+	  sa->last_seq = seq;
+	  sa->last_seq_hi = sa->seq_hi;
+	}
+      else if (wrap < 0)
+	{
+	  pos = ~seq + sa->last_seq + 1;
+	  sa->replay_window |= (1ULL << pos);
+	}
+      else
+	{
+	  pos = sa->last_seq - seq;
+	  sa->replay_window |= (1ULL << pos);
+	}
+    }
+  else
+    {
+      if (seq > sa->last_seq)
+	{
+	  pos = seq - sa->last_seq;
+	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+	    sa->replay_window = ((sa->replay_window) << pos) | 1;
+	  else
+	    sa->replay_window = 1;
+	  sa->last_seq = seq;
+	}
+      else
+	{
+	  pos = sa->last_seq - seq;
+	  sa->replay_window |= (1ULL << pos);
+	}
+    }
+}
 
 #endif /* __IPSEC_SPD_SA_H__ */
 
