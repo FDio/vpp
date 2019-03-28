@@ -94,3 +94,12 @@ macro(add_vpp_plugin name)
     COMPONENT ${PLUGIN_COMPONENT}
   )
 endmacro()
+
+macro(vpp_plugin_find_library plugin var name)
+  find_library(${var} NAMES ${name} ${ARGN})
+if (NOT ${var})
+  message(WARNING "-- ${name} library not found - ${plugin} plugin disabled")
+  return()
+endif()
+    message(STATUS "${plugin} plugin needs ${name} library - found at ${${var}}")
+endmacro()

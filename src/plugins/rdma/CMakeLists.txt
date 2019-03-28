@@ -11,14 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-message(STATUS "RDMA plugins - looking for ibverbs")
-
 find_path(IBVERBS_INCLUDE_DIR NAMES infiniband/verbs.h)
-find_library(IBVERBS_LIB NAMES libibverbs.a)
-find_library(MLX5_LIB NAMES libmlx5.a)
+
+if (NOT IBVERBS_INCLUDE_DIR)
+  message(WARNING "-- rdma headers not found - rdma plugin disabled")
+  return()
+endif()
+
+vpp_plugin_find_library(rdma IBVERBS_LIB libibverbs.a)
+vpp_plugin_find_library(rdma MLX5_LIB libmlx5.a)
 
 if (NOT IBVERBS_LIB OR NOT MLX5_LIB)
-  message(WARNING "RDMA plugins - ibverbs not found - rdma_plugin disabled")
+  message(WARNING "rdma plugin - ibverbs not found - rdma plugin disabled")
   return()
 endif()
 
@@ -30,13 +34,9 @@ set(CMAKE_REQUIRED_FLAGS "-fPIC -shared ${IBVERBS_LIB} ${RDMA_LINK_FLAGS}")
 CHECK_C_SOURCE_COMPILES("" IBVERBS_COMPILES_CHECK)
 
 if (NOT IBVERBS_COMPILES_CHECK)
-  message(WARNING "RDMA plugins - no working ibverbs found - rdma_plugin disabled")
+  message(WARNING "rdma plugins - no working ibverbs found - rdma plugin disabled")
   return()
 endif()
-
-message(STATUS "RDMA plugins - found ${IBVERBS_INCLUDE_DIR}")
-message(STATUS "RDMA plugins - found ${IBVERBS_LIB}")
-message(STATUS "RDMA plugins - found ${MLX5_LIB}")
 
 include_directories(${IBVERBS_INCLUDE_DIR})
 
