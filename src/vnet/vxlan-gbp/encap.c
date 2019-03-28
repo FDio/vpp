@@ -63,8 +63,9 @@ format_vxlan_gbp_encap_trace (u8 * s, va_list * args)
 
   s =
     format (s,
-	    "VXLAN_GBP encap to vxlan_gbp_tunnel%d vni %d sclass %d flags %d",
-	    t->tunnel_index, t->vni, t->sclass, t->flags);
+	    "VXLAN_GBP encap to vxlan_gbp_tunnel%d vni %d sclass %d flags %U",
+	    t->tunnel_index, t->vni, t->sclass,
+	    format_vxlan_gbp_header_gpflags, t->flags);
   return s;
 }
 #endif /* CLIB_MARCH_VARIANT */
