@@ -130,20 +130,19 @@ tcp_initial_window_to_advertise (tcp_connection_t * tc)
   return clib_min (tc->rcv_wnd, TCP_WND_MAX);
 }
 
-static void
+static inline void
 tcp_update_rcv_wnd (tcp_connection_t * tc)
 {
+  u32 available_space, wnd;
   i32 observed_wnd;
-  u32 available_space, max_fifo, wnd;
+
+  ASSERT (tc->rcv_opts.mss < transport_rx_fifo_size (&tc->connection));
 
   /*
    * Figure out how much space we have available
    */
   available_space = transport_max_rx_enqueue (&tc->connection);
-  max_fifo = transport_rx_fifo_size (&tc->connection);
-
-  ASSERT (tc->rcv_opts.mss < max_fifo);
-  if (available_space < tc->rcv_opts.mss && available_space < max_fifo >> 3)
+  if (PREDICT_FALSE (available_space < tc->rcv_opts.mss))
     available_space = 0;
 
   /*
@@ -151,13 +150,11 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
    * to compute the new window
    */
   observed_wnd = (i32) tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
-  if (observed_wnd < 0)
-    observed_wnd = 0;
 
   /* Bad. Thou shalt not shrink */
-  if (available_space < observed_wnd)
+  if (PREDICT_FALSE ((i32) available_space < observed_wnd))
     {
-      wnd = observed_wnd;
+      wnd = clib_max (observed_wnd, 0);
       TCP_EVT_DBG (TCP_EVT_RCV_WND_SHRUNK, tc, observed_wnd, available_space);
     }
   else
