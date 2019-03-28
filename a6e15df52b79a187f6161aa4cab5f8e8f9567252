@@ -16,6 +16,24 @@
       "revId": "a6e15df52b79a187f6161aa4cab5f8e8f9567252",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4717db78_73d1d97d",
+        "filename": "src/vnet/dhcp/dhcp_proxy.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-03-28T13:52:41Z",
+      "side": 1,
+      "message": "Hi Neale,\n\nI didn\u0027t declare ports to have type dhcp_port_reg_t because it is possible to pass in the two values OR\u0027d together. I thought it might be confusing and appear that you are supposed to choose only one of the values if ports was declared as a dhcp_port_reg_t. I also didn\u0027t know if coverity might alert on the call in dhcp4_proxy_node.c which passes in DHCP_PORT_REG_CLIENT | DHCP_PORT_REG_SERVER.\n\nThat said, I can do whatever you think is best here. If it\u0027s a problem that I defined an enum type and did not use it, I can set the ports parameter to that type, or I could remove the typedef and just declare an anonymous enum containing DHCP_PORT_REG_*, or I could define DHCP_PORT_REG_* as preprocessor macros.\n\nLet me know which approach you think would be best and I can submit an updated patch.\n\nThanks for your review!\n-Matt",
+      "parentUuid": "74bf935b_d770e215",
+      "revId": "a6e15df52b79a187f6161aa4cab5f8e8f9567252",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
