@@ -39,9 +39,6 @@ class VppGreInterface(VppInterface):
                                           session_id=self.t_session,
                                           is_add=0)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "gre-%d" % self.sw_if_index
 
@@ -83,9 +80,6 @@ class VppGre6Interface(VppInterface):
                                           session_id=self.t_session,
                                           is_add=0,
                                           is_ip6=1)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "gre-%d" % self._sw_if_index

@@ -143,9 +143,6 @@ class VppIpTable(VppObject):
                           self.table_id,
                           inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("table-%s-%d" %
                 ("v6" if self.is_ip6 == 1 else "v4",
@@ -177,9 +174,6 @@ class VppIpInterfaceAddress(VppObject):
                                        self.prefix.address,
                                        self.prefix.length,
                                        self.intf.sw_if_index)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "interface-ip-%s-%s" % (self.intf, self.prefix)
@@ -213,9 +207,6 @@ class VppIpInterfaceBind(VppObject):
         return self._test.vapi.sw_interface_get_table(
             self.intf.sw_if_index,
             self.table.is_ip6).vrf_id == self.table.table_id
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "interface-bind-%s-%s" % (self.intf, self.table)
@@ -453,9 +444,6 @@ class VppIpRoute(VppObject):
                           self.table_id,
                           inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("%d:%s/%d"
                 % (self.table_id,
@@ -579,9 +567,6 @@ class VppIpMRoute(VppObject):
                            self.table_id,
                            inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         if self.is_ip6:
             return ("%d:(%s,%s/%d)"
@@ -667,9 +652,6 @@ class VppMplsIpBind(VppObject):
                 return True
         return False
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("%d:%s binds %d:%s/%d"
                 % (self.table_id,
@@ -704,9 +686,6 @@ class VppMplsTable(VppObject):
         if len(dump):
             return True
         return False
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return ("table-mpls-%d" % (self.table_id))
@@ -765,9 +744,6 @@ class VppMplsRoute(VppObject):
     def query_vpp_config(self):
         return find_mpls_route(self._test, self.table_id,
                                self.local_label, self.eos_bit)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return ("%d:%s/%d"

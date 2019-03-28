@@ -131,9 +131,6 @@ class VppGbpEndpoint(VppObject):
     def remove_vpp_config(self):
         self._test.vapi.gbp_endpoint_del(self.handle)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "gbp-endpoint:[%d==%d:%s:%d]" % (self.handle,
                                                 self.itf.sw_if_index,
@@ -172,9 +169,6 @@ class VppGbpRecirc(VppObject):
             self.epg.sclass,
             self.is_ext)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "gbp-recirc:[%d]" % (self.recirc.sw_if_index)
 
@@ -211,9 +205,6 @@ class VppGbpExtItf(VppObject):
             self.itf.sw_if_index,
             self.bd.bd_id,
             self.rd.rd_id)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "gbp-ext-itf:[%d]" % (self.itf.sw_if_index)
@@ -255,9 +246,6 @@ class VppGbpSubnet(VppObject):
             self.rd_id,
             self.prefix.encode(),
             self.type)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "gbp-subnet:[%d-%s]" % (self.rd_id, self.prefix)
@@ -314,9 +302,6 @@ class VppGbpEndpointGroup(VppObject):
     def remove_vpp_config(self):
         self._test.vapi.gbp_endpoint_group_del(self.sclass)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "gbp-endpoint-group:[%d]" % (self.vnid)
 
@@ -359,9 +344,6 @@ class VppGbpBridgeDomain(VppObject):
     def remove_vpp_config(self):
         self._test.vapi.gbp_bridge_domain_del(self.bd.bd_id)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "gbp-bridge-domain:[%d]" % (self.bd.bd_id)
 
@@ -397,9 +379,6 @@ class VppGbpRouteDomain(VppObject):
 
     def remove_vpp_config(self):
         self._test.vapi.gbp_route_domain_del(self.rd_id)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "gbp-route-domain:[%d]" % (self.rd_id)
@@ -483,9 +462,6 @@ class VppGbpContract(VppObject):
             [],
             self.allowed_ethertypes)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "gbp-contract:[%d:%s:%d]" % (self.sclass,
                                             self.dclass,
@@ -524,9 +500,6 @@ class VppGbpVxlanTunnel(VppInterface):
 
     def remove_vpp_config(self):
         self._test.vapi.gbp_vxlan_tunnel_del(self.vni)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "gbp-vxlan:%d" % (self.sw_if_index)
@@ -575,9 +548,6 @@ class VppGbpAcl(VppObject):
 
     def remove_vpp_config(self):
         self._test.vapi.acl_del(self.acl_index)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "gbp-acl:[%d]" % (self.acl_index)
