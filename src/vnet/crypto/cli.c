@@ -53,33 +53,58 @@ VLIB_CLI_COMMAND (show_crypto_engines_command, static) =
   .function = show_crypto_engines_command_fn,
 };
 
+static u8 *
+format_vnet_crypto_handlers (u8 * s, va_list * args)
+{
+  vnet_crypto_alg_t alg = va_arg (*args, vnet_crypto_alg_t);
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_alg_data_t *d = vec_elt_at_index (cm->algs, alg);
+  u32 indent = format_get_indent (s);
+  int i, first = 1;
+
+  for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+    {
+      vnet_crypto_op_data_t *od;
+      vnet_crypto_engine_t *e;
+      vnet_crypto_op_id_t id = d->op_by_type[i];
+
+      if (id == 0)
+	continue;
+
+      od = vec_elt_at_index (cm->opt_data, id);
+      if (first == 0)
+        s = format (s, "\n%U", format_white_space, indent);
+      s = format (s, "%-20U%-20U", format_vnet_crypto_op_type, od->type,
+		  format_vnet_crypto_engine, od->active_engine_index,s);
+
+      vec_foreach (e, cm->engines)
+	{
+	  if (e->ops_handlers[id] != 0)
+	    s = format (s, "%U ", format_vnet_crypto_engine, e - cm->engines);
+	}
+      first = 0;
+    }
+  return s;
+}
+
+
 static clib_error_t *
 show_crypto_handlers_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vnet_crypto_main_t *cm = &crypto_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 *s = 0;
+  int i;
 
   if (unformat_user (input, unformat_line_input, line_input))
     unformat_free (line_input);
 
-  vlib_cli_output (vm, "%-40s%-20s%s", "Name", "Active", "Candidates");
-  for (int i = 1; i < VNET_CRYPTO_N_OP_TYPES; i++)
-    {
-      vnet_crypto_op_type_data_t *otd = cm->opt_data + i;
-      vnet_crypto_engine_t *e;
+  vlib_cli_output (vm, "%-20s%-20s%-20s%s", "Algo", "Type", "Active",
+		   "Candidates");
 
-      vec_reset_length (s);
-      vec_foreach (e, cm->engines)
-	{
-	  if (e->ops_handlers[i] != 0)
-	    s = format (s, "%U ", format_vnet_crypto_engine, e - cm->engines);
-	}
-      vlib_cli_output (vm, "%-40U%-20U%v", format_vnet_crypto_op, i,
-		       format_vnet_crypto_engine, otd->active_engine_index,s);
-    }
-  vec_free (s);
+  for (i = 0; i < VNET_CRYPTO_N_ALGS; i++)
+    vlib_cli_output (vm, "%-20U%U", format_vnet_crypto_alg, i,
+		     format_vnet_crypto_handlers, i);
+
   return 0;
 }
 
@@ -135,7 +160,7 @@ set_crypto_handler_command_fn (vlib_main_t * vm,
       u8 *value;
 
       /* *INDENT-OFF* */
-      hash_foreach_mem (key, value, cm->ops_handler_index_by_name,
+      hash_foreach_mem (key, value, cm->alg_index_by_name,
       ({
         (void) value;
         rc += vnet_crypto_set_handler (key, engine);

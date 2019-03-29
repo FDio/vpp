@@ -30,10 +30,43 @@ u8 *
 format_vnet_crypto_op (u8 * s, va_list * args)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_op_type_t op = va_arg (*args, int);	// vnet_crypto_op_type_t);
-  vnet_crypto_op_type_data_t *otd = cm->opt_data + op;
+  vnet_crypto_op_id_t op = va_arg (*args, int);	// vnet_crypto_op_id_t);
+  vnet_crypto_op_data_t *otd = cm->opt_data + op;
 
-  return format (s, "%s-%U", otd->desc, format_vnet_crypto_alg, otd->alg);
+  return format (s, "%U-%U", format_vnet_crypto_op_type, otd->type,
+		 format_vnet_crypto_alg, otd->alg);
+}
+
+u8 *
+format_vnet_crypto_op_type (u8 * s, va_list * args)
+{
+  vnet_crypto_op_type_t opt = va_arg (*args, vnet_crypto_op_type_t);
+  char *strings[] = {
+#define _(n, s) [VNET_CRYPTO_OP_TYPE_##n] = s,
+    foreach_crypto_op_type
+#undef _
+  };
+
+  if (opt >= VNET_CRYPTO_OP_N_TYPES)
+    return format (s, "unknown");
+
+  return format (s, "%s", strings[opt]);
+}
+
+u8 *
+format_vnet_crypto_op_status (u8 * s, va_list * args)
+{
+  vnet_crypto_op_status_t st = va_arg (*args, vnet_crypto_op_status_t);
+  char *strings[] = {
+#define _(n, s) [VNET_CRYPTO_OP_STATUS_##n] = s,
+    foreach_crypto_op_status
+#undef _
+  };
+
+  if (st >= VNET_CRYPTO_OP_N_STATUS)
+    return format (s, "unknown");
+
+  return format (s, "%s", strings[st]);
 }
 
 u8 *

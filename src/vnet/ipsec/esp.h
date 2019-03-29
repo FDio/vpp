@@ -94,16 +94,16 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
 {
   vnet_crypto_op_t _op, *op = &_op;
 
-  if (PREDICT_FALSE (sa->integ_op_type == 0))
+  if (PREDICT_FALSE (sa->integ_op_id == 0))
     return 0;
 
-  vnet_crypto_op_init (op, sa->integ_op_type);
+  vnet_crypto_op_init (op, sa->integ_op_id);
   op->key = sa->integ_key.data;
   op->key_len = sa->integ_key.len;
   op->src = data;
   op->len = data_len;
-  op->dst = signature;
-  op->hmac_trunc_len = sa->integ_icv_size;
+  op->digest = signature;
+  op->digest_len = sa->integ_icv_size;
 
   if (ipsec_sa_is_set_USE_ESN (sa))
     {

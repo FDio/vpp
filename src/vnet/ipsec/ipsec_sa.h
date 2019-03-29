@@ -119,9 +119,9 @@ typedef struct
   u32 last_seq_hi;
   u64 replay_window;
 
-  vnet_crypto_op_type_t crypto_enc_op_type;
-  vnet_crypto_op_type_t crypto_dec_op_type;
-  vnet_crypto_op_type_t integ_op_type;
+  vnet_crypto_op_id_t crypto_enc_op_id;
+  vnet_crypto_op_id_t crypto_dec_op_id;
+  vnet_crypto_op_id_t integ_op_id;
 
   dpo_id_t dpo[IPSEC_N_PROTOCOLS];
 
