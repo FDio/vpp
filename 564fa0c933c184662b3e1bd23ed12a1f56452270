@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "66d30fe6_f8c06e27",
+        "filename": "test/test_ipsec_tun_if_esp.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-29T08:57:03Z",
+      "side": 1,
+      "message": "i\u0027m sure one could do better ;)",
+      "parentUuid": "b1fc0c0f_0cf70c96",
+      "range": {
+        "startLine": 269,
+        "startChar": 4,
+        "endLine": 293,
+        "endChar": 21
+      },
+      "revId": "564fa0c933c184662b3e1bd23ed12a1f56452270",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6702ede3_69cfbc20",
         "filename": "test/vpp_ipsec_tun_interface.py",
         "patchSetId": 8
@@ -96,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "ac9cb31f_5f634f00",
+        "filename": "test/vpp_ipsec_tun_interface.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-29T08:57:03Z",
+      "side": 1,
+      "message": "yes. it provides the automatic tear down of state *and* the check that deleting state is successful. It relies on a dump being correct, but one should be testing this separately anyway.",
+      "parentUuid": "2cb340c0_e4ea3780",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 82,
+        "endChar": 21
+      },
+      "revId": "564fa0c933c184662b3e1bd23ed12a1f56452270",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3b6f0edb_1badc238",
         "filename": "test/vpp_papi_provider.py",
         "patchSetId": 8
@@ -107,6 +155,30 @@
       "writtenOn": "2019-03-28T15:13:29Z",
       "side": 1,
       "message": "Please remove these and add:\n\u0027ipsec_gre_tunnel_add_del\u0027: {\u0027is_add\u0027: 1} to defaultmapping.",
+      "range": {
+        "startLine": 2514,
+        "startChar": 0,
+        "endLine": 2527,
+        "endChar": 53
+      },
+      "revId": "564fa0c933c184662b3e1bd23ed12a1f56452270",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a3821b85_66a77b63",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 2527,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-29T08:57:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b6f0edb_1badc238",
       "range": {
         "startLine": 2514,
         "startChar": 0,
