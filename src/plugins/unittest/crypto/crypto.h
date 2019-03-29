@@ -26,10 +26,9 @@ typedef struct
 typedef struct unittest_crypto_test_registration
 {
   char *name;
-  vnet_crypto_alg_t alg:8;
-  vnet_crypto_op_type_t op:8;
-  unittest_crypto_test_data_t iv, key, data, expected;
-  u8 hmac_trunc_len;
+  vnet_crypto_alg_t alg;
+  unittest_crypto_test_data_t iv, key, digest, plaintext, ciphertext, aad,
+    tag;
 
   /* next */
   struct unittest_crypto_test_registration *next;

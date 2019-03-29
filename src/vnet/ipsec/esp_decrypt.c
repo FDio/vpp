@@ -202,14 +202,14 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 
-	  vnet_crypto_op_init (op, sa0->integ_op_type);
+	  vnet_crypto_op_init (op, sa0->integ_op_id);
 	  op->key = sa0->integ_key.data;
 	  op->key_len = sa0->integ_key.len;
 	  op->src = payload;
-	  op->hmac_trunc_len = cpd.icv_sz;
 	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 	  op->user_data = b - bufs;
-	  op->dst = payload + len;
+	  op->digest = payload + len;
+	  op->digest_len = cpd.icv_sz;
 	  op->len = len;
 	  if (PREDICT_TRUE (sa0->flags & IPSEC_SA_FLAG_USE_ESN))
 	    {
@@ -226,11 +226,11 @@ esp_decrypt_inline (vlib_main_t * vm,
       payload += esp_sz;
       len -= esp_sz;
 
-      if (sa0->crypto_enc_op_type != VNET_CRYPTO_OP_NONE)
+      if (sa0->crypto_enc_op_id != VNET_CRYPTO_OP_NONE)
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->crypto_dec_op_type);
+	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
 	  op->key = sa0->crypto_key.data;
 	  op->iv = payload;
 	  op->src = op->dst = payload += cpd.iv_sz;
@@ -271,7 +271,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  op++;
 	}
     }
-
   if ((n = vec_len (ptd->crypto_ops)))
     {
       vnet_crypto_op_t *op = ptd->crypto_ops;

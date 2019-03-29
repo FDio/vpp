@@ -64,34 +64,34 @@ static u8 tc1_digest_sha512[] = {
 /* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc1_sha224) = {
   .name = "RFC4231 TC1",
-  .op = VNET_CRYPTO_OP_SHA224_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
   .key = TEST_DATA (tc1_key),
-  .data = TEST_DATA (tc1_data),
-  .expected = TEST_DATA (tc1_digest_sha224),
+  .plaintext = TEST_DATA (tc1_data),
+  .digest = TEST_DATA (tc1_digest_sha224),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc1_sha256) = {
   .name = "RFC4231 TC1",
-  .op = VNET_CRYPTO_OP_SHA256_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
   .key = TEST_DATA (tc1_key),
-  .data = TEST_DATA (tc1_data),
-  .expected = TEST_DATA (tc1_digest_sha256),
+  .plaintext = TEST_DATA (tc1_data),
+  .digest = TEST_DATA (tc1_digest_sha256),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc1_sha384) = {
   .name = "RFC4231 TC1",
-  .op = VNET_CRYPTO_OP_SHA384_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA384,
   .key = TEST_DATA (tc1_key),
-  .data = TEST_DATA (tc1_data),
-  .expected = TEST_DATA (tc1_digest_sha384),
+  .plaintext = TEST_DATA (tc1_data),
+  .digest = TEST_DATA (tc1_digest_sha384),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc1_sha512) = {
   .name = "RFC4231 TC1",
-  .op = VNET_CRYPTO_OP_SHA512_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
   .key = TEST_DATA (tc1_key),
-  .data = TEST_DATA (tc1_data),
-  .expected = TEST_DATA (tc1_digest_sha512),
+  .plaintext = TEST_DATA (tc1_data),
+  .digest = TEST_DATA (tc1_digest_sha512),
 };
 /* *INDENT-ON* */
 
@@ -136,34 +136,34 @@ static u8 tc2_digest_sha512[] = {
 /* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc2_sha224) = {
   .name = "RFC4231 TC2",
-  .op = VNET_CRYPTO_OP_SHA224_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
   .key = TEST_DATA (tc2_key),
-  .data = TEST_DATA (tc2_data),
-  .expected = TEST_DATA (tc2_digest_sha224),
+  .plaintext = TEST_DATA (tc2_data),
+  .digest = TEST_DATA (tc2_digest_sha224),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc2_sha256) = {
   .name = "RFC4231 TC2",
-  .op = VNET_CRYPTO_OP_SHA256_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
   .key = TEST_DATA (tc2_key),
-  .data = TEST_DATA (tc2_data),
-  .expected = TEST_DATA (tc2_digest_sha256),
+  .plaintext = TEST_DATA (tc2_data),
+  .digest = TEST_DATA (tc2_digest_sha256),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc2_sha384) = {
   .name = "RFC4231 TC2",
-  .op = VNET_CRYPTO_OP_SHA384_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA384,
   .key = TEST_DATA (tc2_key),
-  .data = TEST_DATA (tc2_data),
-  .expected = TEST_DATA (tc2_digest_sha384),
+  .plaintext = TEST_DATA (tc2_data),
+  .digest = TEST_DATA (tc2_digest_sha384),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc2_sha512) = {
   .name = "RFC4231 TC2",
-  .op = VNET_CRYPTO_OP_SHA512_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
   .key = TEST_DATA (tc2_key),
-  .data = TEST_DATA (tc2_data),
-  .expected = TEST_DATA (tc2_digest_sha512),
+  .plaintext = TEST_DATA (tc2_data),
+  .digest = TEST_DATA (tc2_digest_sha512),
 };
 /* *INDENT-ON* */
 
@@ -220,34 +220,34 @@ static u8 tc3_digest_sha512[] = {
 /* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc3_sha224) = {
   .name = "RFC4231 TC3",
-  .op = VNET_CRYPTO_OP_SHA224_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
   .key = TEST_DATA (tc3_key),
-  .data = TEST_DATA (tc3_data),
-  .expected = TEST_DATA (tc3_digest_sha224),
+  .plaintext = TEST_DATA (tc3_data),
+  .digest = TEST_DATA (tc3_digest_sha224),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc3_sha256) = {
   .name = "RFC4231 TC3",
-  .op = VNET_CRYPTO_OP_SHA256_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
   .key = TEST_DATA (tc3_key),
-  .data = TEST_DATA (tc3_data),
-  .expected = TEST_DATA (tc3_digest_sha256),
+  .plaintext = TEST_DATA (tc3_data),
+  .digest = TEST_DATA (tc3_digest_sha256),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc3_sha384) = {
   .name = "RFC4231 TC3",
-  .op = VNET_CRYPTO_OP_SHA384_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA384,
   .key = TEST_DATA (tc3_key),
-  .data = TEST_DATA (tc3_data),
-  .expected = TEST_DATA (tc3_digest_sha384),
+  .plaintext = TEST_DATA (tc3_data),
+  .digest = TEST_DATA (tc3_digest_sha384),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc3_sha512) = {
   .name = "RFC4231 TC3",
-  .op = VNET_CRYPTO_OP_SHA512_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
   .key = TEST_DATA (tc3_key),
-  .data = TEST_DATA (tc3_data),
-  .expected = TEST_DATA (tc3_digest_sha512),
+  .plaintext = TEST_DATA (tc3_data),
+  .digest = TEST_DATA (tc3_digest_sha512),
 };
 /* *INDENT-ON* */
 
@@ -305,34 +305,34 @@ static u8 tc4_digest_sha512[] = {
 /* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc4_sha224) = {
   .name = "RFC4231 TC4",
-  .op = VNET_CRYPTO_OP_SHA224_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
   .key = TEST_DATA (tc4_key),
-  .data = TEST_DATA (tc4_data),
-  .expected = TEST_DATA (tc4_digest_sha224),
+  .plaintext = TEST_DATA (tc4_data),
+  .digest = TEST_DATA (tc4_digest_sha224),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc4_sha256) = {
   .name = "RFC4231 TC4",
-  .op = VNET_CRYPTO_OP_SHA256_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
   .key = TEST_DATA (tc4_key),
-  .data = TEST_DATA (tc4_data),
-  .expected = TEST_DATA (tc4_digest_sha256),
+  .plaintext = TEST_DATA (tc4_data),
+  .digest = TEST_DATA (tc4_digest_sha256),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc4_sha384) = {
   .name = "RFC4231 TC4",
-  .op = VNET_CRYPTO_OP_SHA384_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA384,
   .key = TEST_DATA (tc4_key),
-  .data = TEST_DATA (tc4_data),
-  .expected = TEST_DATA (tc4_digest_sha384),
+  .plaintext = TEST_DATA (tc4_data),
+  .digest = TEST_DATA (tc4_digest_sha384),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc4_sha512) = {
   .name = "RFC4231 TC4",
-  .op = VNET_CRYPTO_OP_SHA512_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
   .key = TEST_DATA (tc4_key),
-  .data = TEST_DATA (tc4_data),
-  .expected = TEST_DATA (tc4_digest_sha512),
+  .plaintext = TEST_DATA (tc4_data),
+  .digest = TEST_DATA (tc4_digest_sha512),
 };
 /* *INDENT-ON* */
 
@@ -371,38 +371,34 @@ static u8 tc5_digest_sha512[16] = {
 /* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc5_sha224) = {
   .name = "RFC4231 TC5",
-  .op = VNET_CRYPTO_OP_SHA224_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
   .key = TEST_DATA (tc5_key),
-  .data = TEST_DATA (tc5_data),
-  .expected = TEST_DATA (tc5_digest_sha224),
-  .hmac_trunc_len = 16,
+  .plaintext = TEST_DATA (tc5_data),
+  .digest = TEST_DATA (tc5_digest_sha224),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc5_sha256) = {
   .name = "RFC4231 TC5",
-  .op = VNET_CRYPTO_OP_SHA256_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
   .key = TEST_DATA (tc5_key),
-  .data = TEST_DATA (tc5_data),
-  .expected = TEST_DATA (tc5_digest_sha256),
-  .hmac_trunc_len = 16,
+  .plaintext = TEST_DATA (tc5_data),
+  .digest = TEST_DATA (tc5_digest_sha256),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc5_sha384) = {
   .name = "RFC4231 TC5",
-  .op = VNET_CRYPTO_OP_SHA384_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA384,
   .key = TEST_DATA (tc5_key),
-  .data = TEST_DATA (tc5_data),
-  .expected = TEST_DATA (tc5_digest_sha384),
-  .hmac_trunc_len = 16,
+  .plaintext = TEST_DATA (tc5_data),
+  .digest = TEST_DATA (tc5_digest_sha384),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc5_sha512) = {
   .name = "RFC4231 TC5",
-  .op = VNET_CRYPTO_OP_SHA512_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
   .key = TEST_DATA (tc5_key),
-  .data = TEST_DATA (tc5_data),
-  .expected = TEST_DATA (tc5_digest_sha512),
-  .hmac_trunc_len = 16,
+  .plaintext = TEST_DATA (tc5_data),
+  .digest = TEST_DATA (tc5_digest_sha512),
 };
 /* *INDENT-ON* */
 
@@ -466,34 +462,34 @@ static u8 tc6_digest_sha512[] = {
 /* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc6_sha224) = {
   .name = "RFC4231 TC6",
-  .op = VNET_CRYPTO_OP_SHA224_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
   .key = TEST_DATA (tc6_key),
-  .data = TEST_DATA (tc6_data),
-  .expected = TEST_DATA (tc6_digest_sha224),
+  .plaintext = TEST_DATA (tc6_data),
+  .digest = TEST_DATA (tc6_digest_sha224),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc6_sha256) = {
   .name = "RFC4231 TC6",
-  .op = VNET_CRYPTO_OP_SHA256_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
   .key = TEST_DATA (tc6_key),
-  .data = TEST_DATA (tc6_data),
-  .expected = TEST_DATA (tc6_digest_sha256),
+  .plaintext = TEST_DATA (tc6_data),
+  .digest = TEST_DATA (tc6_digest_sha256),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc6_sha384) = {
   .name = "RFC4231 TC6",
-  .op = VNET_CRYPTO_OP_SHA384_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA384,
   .key = TEST_DATA (tc6_key),
-  .data = TEST_DATA (tc6_data),
-  .expected = TEST_DATA (tc6_digest_sha384),
+  .plaintext = TEST_DATA (tc6_data),
+  .digest = TEST_DATA (tc6_digest_sha384),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc6_sha512) = {
   .name = "RFC4231 TC6",
-  .op = VNET_CRYPTO_OP_SHA512_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
   .key = TEST_DATA (tc6_key),
-  .data = TEST_DATA (tc6_data),
-  .expected = TEST_DATA (tc6_digest_sha512),
+  .plaintext = TEST_DATA (tc6_data),
+  .digest = TEST_DATA (tc6_digest_sha512),
 };
 /* *INDENT-ON* */
 
@@ -559,34 +555,34 @@ static u8 tc7_digest_sha512[] = {
 /* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha224) = {
   .name = "RFC4231 TC7",
-  .op = VNET_CRYPTO_OP_SHA224_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
   .key = TEST_DATA (tc7_key),
-  .data = TEST_DATA (tc7_data),
-  .expected = TEST_DATA (tc7_digest_sha224),
+  .plaintext = TEST_DATA (tc7_data),
+  .digest = TEST_DATA (tc7_digest_sha224),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha256) = {
   .name = "RFC4231 TC7",
-  .op = VNET_CRYPTO_OP_SHA256_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
   .key = TEST_DATA (tc7_key),
-  .data = TEST_DATA (tc7_data),
-  .expected = TEST_DATA (tc7_digest_sha256),
+  .plaintext = TEST_DATA (tc7_data),
+  .digest = TEST_DATA (tc7_digest_sha256),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha384) = {
   .name = "RFC4231 TC7",
-  .op = VNET_CRYPTO_OP_SHA384_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA384,
   .key = TEST_DATA (tc7_key),
-  .data = TEST_DATA (tc7_data),
-  .expected = TEST_DATA (tc7_digest_sha384),
+  .plaintext = TEST_DATA (tc7_data),
+  .digest = TEST_DATA (tc7_digest_sha384),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha512) = {
   .name = "RFC4231 TC7",
-  .op = VNET_CRYPTO_OP_SHA512_HMAC,
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
   .key = TEST_DATA (tc7_key),
-  .data = TEST_DATA (tc7_data),
-  .expected = TEST_DATA (tc7_digest_sha512),
+  .plaintext = TEST_DATA (tc7_data),
+  .digest = TEST_DATA (tc7_digest_sha512),
 };
 /* *INDENT-ON* */
 
