@@ -166,7 +166,7 @@ l2_bvi_create (u32 user_instance,
    */
   if (mac_address_is_zero (mac_in))
     {
-      u8 bytes[] = {
+      u8 bytes[6] = {
 	[0] = 0xb0,
 	[1] = 0xb0,
 	[5] = instance,
