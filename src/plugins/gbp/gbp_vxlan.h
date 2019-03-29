@@ -122,6 +122,7 @@ extern u32 gbp_vxlan_tunnel_clone_and_lock (u32 parent_tunnel,
 extern void vxlan_gbp_tunnel_lock (u32 sw_if_index);
 extern void vxlan_gbp_tunnel_unlock (u32 sw_if_index);
 extern u32 vxlan_gbp_tunnel_get_parent (u32 sw_if_index);
+extern u32 vxlan_gbp_tunnel_get (u32 sw_if_index);
 
 typedef walk_rc_t (*gbp_vxlan_cb_t) (gbp_vxlan_tunnel_t * gt, void *ctx);
 extern void gbp_vxlan_walk (gbp_vxlan_cb_t cb, void *ctx);

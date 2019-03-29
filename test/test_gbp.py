@@ -3562,6 +3562,21 @@ class TestGBP(VppTestCase):
         self.assertFalse(find_gbp_endpoint(self, ip="10.222.0.1"))
 
         #
+        # ping from host in remote to remote external subnets
+        #   this is dropped by reflection check.
+        #
+        p = (Ether(src=self.pg7.remote_mac, dst=self.pg7.local_mac) /
+             IP(src=self.pg7.remote_ip4, dst=self.pg7.local_ip4) /
+             UDP(sport=1234, dport=48879) /
+             VXLAN(vni=445, gpid=4222, flags=0x88, gpflags='A') /
+             Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
+             IP(src="10.222.0.1", dst="10.222.0.2") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        rxs = self.send_and_assert_no_replies(self.pg7, p * 3)
+
+        #
         # cleanup
         #
         self.pg7.unconfig_ip4()
