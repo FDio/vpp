@@ -17,9 +17,11 @@
 #include <plugins/gbp/gbp_policy_dpo.h>
 
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
+#include <vnet/vxlan-gbp/vxlan_gbp.h>
 
 #define foreach_gbp_policy                      \
-  _(DENY,    "deny")
+  _(DENY,    "deny")                            \
+  _(REFLECTION, "reflection")
 
 typedef enum
 {
@@ -37,10 +39,8 @@ static char *gbp_policy_error_strings[] = {
 
 typedef enum
 {
-#define _(sym,str) GBP_POLICY_NEXT_##sym,
-  foreach_gbp_policy
-#undef _
-    GBP_POLICY_N_NEXT,
+  GBP_POLICY_NEXT_DROP,
+  GBP_POLICY_N_NEXT,
 } gbp_policy_next_t;
 
 /**
@@ -53,6 +53,7 @@ typedef struct gbp_policy_trace_t_
   u32 dst_epg;
   u32 acl_index;
   u32 allowed;
+  u32 flags;
 } gbp_policy_trace_t;
 
 always_inline dpo_proto_t
@@ -138,7 +139,7 @@ gbp_policy_inline (vlib_main_t * vm,
 	  index_t gci0;
 
 	  gc0 = NULL;
-	  next0 = GBP_POLICY_NEXT_DENY;
+	  next0 = GBP_POLICY_NEXT_DROP;
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
@@ -151,7 +152,16 @@ gbp_policy_inline (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
 	  /*
-	   * If the A0bit is set then policy has already been applied
+	   * Reflection check; in and out on an ivxlan tunnel
+	   */
+	  if ((~0 != vxlan_gbp_tunnel_by_sw_if_index (sw_if_index0)) &&
+	      (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_R))
+	    {
+	      goto trace;
+	    }
+
+	  /*
+	   * If the A-bit is set then policy has already been applied
 	   * and we skip enforcement here.
 	   */
 	  if (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A)
@@ -165,6 +175,7 @@ gbp_policy_inline (vlib_main_t * vm,
 	      key0.as_u32 = ~0;
 	      goto trace;
 	    }
+
 	  /*
 	   * determine the src and dst EPG
 	   */
@@ -307,8 +318,9 @@ gbp_policy_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sclass = key0.gck_src;
 	      t->dst_epg = key0.gck_dst;
-	      t->acl_index = (gc0 ? gc0->gc_acl_index : ~0),
-		t->allowed = (next0 != GBP_POLICY_NEXT_DENY);
+	      t->acl_index = (gc0 ? gc0->gc_acl_index : ~0);
+	      t->allowed = (next0 != GBP_POLICY_NEXT_DROP);
+	      t->flags = vnet_buffer2 (b0)->gbp.flags;
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -346,8 +358,9 @@ format_gbp_policy_trace (u8 * s, va_list * args)
   gbp_policy_trace_t *t = va_arg (*args, gbp_policy_trace_t *);
 
   s =
-    format (s, "sclass:%d, dst:%d, acl:%d allowed:%d",
-	    t->sclass, t->dst_epg, t->acl_index, t->allowed);
+    format (s, "sclass:%d, dst:%d, acl:%d allowed:%d flags:%U",
+	    t->sclass, t->dst_epg, t->acl_index, t->allowed,
+	    format_vxlan_gbp_header_gpflags, t->flags);
 
   return s;
 }
@@ -365,7 +378,7 @@ VLIB_REGISTER_NODE (gbp_policy_port_node) = {
   .n_next_nodes = GBP_POLICY_N_NEXT,
 
   .next_nodes = {
-    [GBP_POLICY_NEXT_DENY] = "error-drop",
+    [GBP_POLICY_NEXT_DROP] = "error-drop",
   },
 };
 

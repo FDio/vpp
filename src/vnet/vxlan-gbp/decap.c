@@ -330,7 +330,8 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      pkts_decapsulated++;
 	    }
 
-	  vnet_buffer2 (b0)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
+	  vnet_buffer2 (b0)->gbp.flags = (vxlan_gbp_get_gpflags (vxlan_gbp0) |
+					  VXLAN_GBP_GPFLAGS_R);
 	  vnet_buffer2 (b0)->gbp.sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
 
 
@@ -370,7 +371,9 @@ vxlan_gbp_input (vlib_main_t * vm,
 		(rx_counter, thread_index, t1->sw_if_index, 1, len1);
 	    }
 
-	  vnet_buffer2 (b1)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp1);
+	  vnet_buffer2 (b1)->gbp.flags = (vxlan_gbp_get_gpflags (vxlan_gbp1) |
+					  VXLAN_GBP_GPFLAGS_R);
+
 	  vnet_buffer2 (b1)->gbp.sclass = vxlan_gbp_get_sclass (vxlan_gbp1);
 
 	  vnet_update_l2_len (b0);
@@ -476,7 +479,9 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      vlib_increment_combined_counter
 		(rx_counter, thread_index, t0->sw_if_index, 1, len0);
 	    }
-	  vnet_buffer2 (b0)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
+	  vnet_buffer2 (b0)->gbp.flags = (vxlan_gbp_get_gpflags (vxlan_gbp0) |
+					  VXLAN_GBP_GPFLAGS_R);
+
 	  vnet_buffer2 (b0)->gbp.sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
 
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */

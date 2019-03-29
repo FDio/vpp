@@ -226,6 +226,17 @@ int vnet_vxlan_gbp_tunnel_del (u32 sw_if_indexp);
 void vnet_int_vxlan_gbp_bypass_mode (u32 sw_if_index, u8 is_ip6,
 				     u8 is_enable);
 
+always_inline u32
+vxlan_gbp_tunnel_by_sw_if_index (u32 sw_if_index)
+{
+  vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
+
+  if (sw_if_index >= vec_len (vxm->tunnel_index_by_sw_if_index))
+    return ~0;
+
+  return (vxm->tunnel_index_by_sw_if_index[sw_if_index]);
+}
+
 #endif /* included_vnet_vxlan_gbp_h */
 
 /*

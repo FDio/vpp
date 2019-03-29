@@ -16,6 +16,7 @@
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
+#include <vnet/vxlan-gbp/vxlan_gbp.h>
 
 #include <plugins/gbp/gbp.h>
 #include <plugins/gbp/gbp_policy_dpo.h>
@@ -153,6 +154,13 @@ gbp_policy_dpo_interpose (const dpo_id_t * original,
   gpd_clone->gpd_sclass = gpd->gpd_sclass;
   gpd_clone->gpd_sw_if_index = gpd->gpd_sw_if_index;
 
+  /*
+   * if no interface is provided, grab one from the parent
+   * on which we stack
+   */
+  if (~0 == gpd_clone->gpd_sw_if_index)
+    gpd_clone->gpd_sw_if_index = dpo_get_urpf (parent);
+
   dpo_stack (gbp_policy_dpo_type,
 	     gpd_clone->gpd_proto, &gpd_clone->gpd_dpo, parent);
 
@@ -285,6 +293,15 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  gc0 = NULL;
 	  gpd0 = gbp_policy_dpo_get (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = gpd0->gpd_dpo.dpoi_index;
+
+	  /*
+	   * Reflection check; in and out on an ivxlan tunnel
+	   */
+	  if ((~0 != vxlan_gbp_tunnel_by_sw_if_index (gpd0->gpd_sw_if_index))
+	      && (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_R))
+	    {
+	      goto trace;
+	    }
 
 	  if (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A)
 	    {
