@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e7d73d84_eaebe21e",
+        "filename": "src/cmake/syscall.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-03-29T22:19:36Z",
+      "side": 1,
+      "message": "I dont whats wrong with this but this fails in all the other Arm architectures other than ThunderX which rightly detects:\n-- Performing Test HAVE_MEMFD_CREATE - Success\n11:35:47 -- Performing Test HAVE_GETCPU\n11:35:47 -- Performing Test HAVE_GETCPU - Failed\n11:35:47 -- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version \"1.1.0g\") \n\nBut for Qualcomm, ThunderX2, Mellanox Bluefield:\nPerforming C SOURCE FILE Test HAVE_GETCPU failed with the following output:\nChange Dir: /home/sirdas/code/commitb/vpp/build-root/build-vpp-native/vpp/CMakeFiles/CMakeTmp\n\nRun Build Command:\"/usr/bin/ninja\" \"cmTC_67739\"\n[1/2] Building C object CMakeFiles/cmTC_67739.dir/src.c.o\nFAILED: CMakeFiles/cmTC_67739.dir/src.c.o \n/usr/lib/ccache/cc   -Wno-address-of-packed-member -march\u003darmv8-a+crc -g -O2 -DFORTIFY_SOURCE\u003d2 -fstack-protector -fPIC -Werror -DHAVE_GETCPU -o CMakeFiles/cmTC_67739.dir/src.c.o   -c src.c\nsrc.c: In function ‘main’:\nsrc.c:4:23: error: implicit declaration of function ‘getcpu’ [-Werror\u003dimplicit-function-declaration]\n   int main() { return getcpu (0, 0); }\n                       ^~~~~~\nsrc.c: At top level:\ncc1: error: unrecognized command line option ‘-Wno-address-of-packed-member’ [-Werror]\ncc1: all warnings being treated as errors\nninja: build stopped: subcommand failed.\n\nSource file was:\n\n  #define _GNU_SOURCE\n  #include \u003csched.h\u003e\n  int main() { return getcpu (0, 0); }\n\nCan we comment this out for arm while figure the fix ?",
+      "revId": "1ee346a0a61b454a1ce879f97cb9c06267d1e107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
