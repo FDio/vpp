@@ -468,7 +468,7 @@ vls_mt_rel_locks (int locks_acq)
 
 #define vls_mt_guard(_vls, _op)				\
   int _locks_acq = 0;					\
-  if (PREDICT_FALSE (vcl_get_worker_index () == ~0));	\
+  if (PREDICT_FALSE (vcl_get_worker_index () == ~0))	\
     vls_mt_add ();					\
   if (PREDICT_FALSE (vlsl->vls_mt_n_threads > 1))	\
     vls_mt_acq_locks (_vls, _op, &_locks_acq);		\
@@ -561,6 +561,9 @@ vls_attr (vls_handle_t vlsh, uint32_t op, void *buffer, uint32_t * buflen)
 {
   vcl_locked_session_t *vls;
   int rv;
+
+  if (PREDICT_FALSE (vcl_get_worker_index () == ~0))
+    vls_mt_add ();
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
@@ -734,6 +737,9 @@ vls_epoll_create (void)
 {
   vcl_session_handle_t sh;
   vls_handle_t vlsh;
+
+  if (PREDICT_FALSE (vcl_get_worker_index () == ~0))
+    vls_mt_add ();
 
   sh = vppcom_epoll_create ();
   if (sh == INVALID_SESSION_ID)
