@@ -54,23 +54,15 @@ static u8 ciphertext128[] = {
 };
 
 /* *INDENT-OFF* */
-UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc_enc) = {
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc) = {
   .name = "NIST SP 800-38A",
-  .op = VNET_CRYPTO_OP_AES_128_CBC_ENC,
+  .alg = VNET_CRYPTO_ALG_AES_128_CBC,
   .iv = TEST_DATA (iv),
   .key = TEST_DATA (key128),
-  .data = TEST_DATA (plaintext),
-  .expected = TEST_DATA (ciphertext128),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext128),
 };
 
-UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_cbc_dec) = {
-  .name = "NIST SP 800-38A",
-  .op = VNET_CRYPTO_OP_AES_128_CBC_DEC,
-  .iv = TEST_DATA (iv),
-  .key = TEST_DATA (key128),
-  .data = TEST_DATA (ciphertext128),
-  .expected = TEST_DATA (plaintext),
-};
 /* *INDENT-ON* */
 
 static u8 key192[24] = {
@@ -91,23 +83,15 @@ static u8 ciphertext192[64] = {
 };
 
 /* *INDENT-OFF* */
-UNITTEST_REGISTER_CRYPTO_TEST (nist_aes192_cbc_enc) = {
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes192_cbc) = {
   .name = "NIST SP 800-38A",
-  .op = VNET_CRYPTO_OP_AES_192_CBC_ENC,
+  .alg = VNET_CRYPTO_ALG_AES_192_CBC,
   .iv = TEST_DATA (iv),
   .key = TEST_DATA (key192),
-  .data = TEST_DATA (plaintext),
-  .expected = TEST_DATA (ciphertext192),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext192),
 };
 
-UNITTEST_REGISTER_CRYPTO_TEST (nist_aes192_cbc_dec) = {
-  .name = "NIST SP 800-38A",
-  .op = VNET_CRYPTO_OP_AES_192_CBC_DEC,
-  .iv = TEST_DATA (iv),
-  .key = TEST_DATA (key192),
-  .data = TEST_DATA (ciphertext192),
-  .expected = TEST_DATA (plaintext),
-};
 /* *INDENT-ON* */
 
 static u8 key256[32] = {
@@ -129,23 +113,15 @@ static u8 ciphertext256[64] = {
 };
 
 /* *INDENT-OFF* */
-UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc_enc) = {
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc) = {
   .name = "NIST SP 800-38A",
-  .op = VNET_CRYPTO_OP_AES_256_CBC_ENC,
+  .alg = VNET_CRYPTO_ALG_AES_256_CBC,
   .iv = TEST_DATA (iv),
   .key = TEST_DATA (key256),
-  .data = TEST_DATA (plaintext),
-  .expected = TEST_DATA (ciphertext256),
+  .plaintext = TEST_DATA (plaintext),
+  .ciphertext = TEST_DATA (ciphertext256),
 };
 
-UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc_dec) = {
-  .name = "NIST SP 800-38A",
-  .op = VNET_CRYPTO_OP_AES_256_CBC_DEC,
-  .iv = TEST_DATA (iv),
-  .key = TEST_DATA (key256),
-  .data = TEST_DATA (ciphertext256),
-  .expected = TEST_DATA (plaintext),
-};
 /* *INDENT-ON* */
 
 /*
