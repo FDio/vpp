@@ -472,6 +472,33 @@ class IpsecTun4(object):
         self.assert_packet_counter_equal(self.tun4_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tun4_decrypt_node_name, count)
 
+    def verify_decrypted(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[IP].src, p.remote_tun_if_host)
+            self.assert_equal(rx[IP].dst, self.pg1.remote_ip4)
+            self.assert_packet_checksums_valid(rx)
+
+    def verify_encrypted(self, p, sa, rxs):
+        decrypt_pkts = []
+        for rx in rxs:
+            try:
+                decrypt_pkt = p.vpp_tun_sa.decrypt(rx[IP])
+                if not decrypt_pkt.haslayer(IP):
+                    decrypt_pkt = IP(decrypt_pkt[Raw].load)
+                decrypt_pkts.append(decrypt_pkt)
+                self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip4)
+                self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
+            except:
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", decrypt_pkt))
+                except:
+                    pass
+                raise
+        pkts = reassemble4(decrypt_pkts)
+        for pkt in pkts:
+            self.assert_packet_checksums_valid(pkt)
+
     def verify_tun_44(self, p, count=1, payload_size=64, n_rx=None):
         self.vapi.cli("clear errors")
         if not n_rx:
@@ -483,35 +510,15 @@ class IpsecTun4(object):
                                               dst=self.pg1.remote_ip4,
                                               count=count)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
-            for recv_pkt in recv_pkts:
-                self.assert_equal(recv_pkt[IP].src, p.remote_tun_if_host)
-                self.assert_equal(recv_pkt[IP].dst, self.pg1.remote_ip4)
-                self.assert_packet_checksums_valid(recv_pkt)
+            self.verify_decrypted(p, recv_pkts)
+
             send_pkts = self.gen_pkts(self.pg1, src=self.pg1.remote_ip4,
                                       dst=p.remote_tun_if_host, count=count,
                                       payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.pg1, send_pkts,
                                              self.tun_if, n_rx)
-            decrypt_pkts = []
-            for recv_pkt in recv_pkts:
-                try:
-                    decrypt_pkt = p.vpp_tun_sa.decrypt(recv_pkt[IP])
-                    if not decrypt_pkt.haslayer(IP):
-                        decrypt_pkt = IP(decrypt_pkt[Raw].load)
-                    decrypt_pkts.append(decrypt_pkt)
-                    self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip4)
-                    self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
-                except:
-                    self.logger.debug(ppp("Unexpected packet:", recv_pkt))
-                    try:
-                        self.logger.debug(
-                            ppp("Decrypted packet:", decrypt_pkt))
-                    except:
-                        pass
-                    raise
-            pkts = reassemble4(decrypt_pkts)
-            for pkt in pkts:
-                self.assert_packet_checksums_valid(pkt)
+            self.verify_encrypted(p, p.vpp_tun_sa, recv_pkts)
+
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
