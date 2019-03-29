@@ -27,6 +27,12 @@ JOBS := $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo),\
 B := $(BUILD_DIR)
 I := $(INSTALL_DIR)
 
+ifneq ($(shell which cmake3),)
+CMAKE?=cmake3
+else
+CMAKE?=cmake
+endif
+
 include packages.mk
 include packages/nasm.mk
 include packages/ipsec-mb.mk
