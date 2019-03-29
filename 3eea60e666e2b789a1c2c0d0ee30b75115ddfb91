@@ -120,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "52f03cb6_212bf1e3",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-03-29T15:49:57Z",
+      "side": 1,
+      "message": "Oh, cool! Thanks for the info, good to know!",
+      "parentUuid": "9fa5fa6a_8b507b0c",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 46
+      },
+      "revId": "3eea60e666e2b789a1c2c0d0ee30b75115ddfb91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "76b0910a_4afb6dad",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 1
