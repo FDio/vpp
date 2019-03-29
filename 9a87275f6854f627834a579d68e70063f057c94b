@@ -16,6 +16,24 @@
       "revId": "9a87275f6854f627834a579d68e70063f057c94b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d02dec84_0e98f228",
+        "filename": "src/vppinfra/sparse_vec.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-03-29T12:47:10Z",
+      "side": 1,
+      "message": "Ah, makes sense, thank you! I left the assignment at line 116 since moving it to 111 would have rendered the assert at line 113 moot...",
+      "parentUuid": "e5196085_ff6990ea",
+      "revId": "9a87275f6854f627834a579d68e70063f057c94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
