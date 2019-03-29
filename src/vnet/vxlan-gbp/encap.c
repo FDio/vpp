@@ -22,8 +22,9 @@
 #include <vnet/adj/rewrite.h>
 
 /* Statistics (not all errors) */
-#define foreach_vxlan_gbp_encap_error    \
-_(ENCAPSULATED, "good packets encapsulated")
+#define foreach_vxlan_gbp_encap_error           \
+_(ENCAPSULATED, "good packets encapsulated")    \
+_(REFLECTED, "reflected")
 
 static char *vxlan_gbp_encap_error_strings[] = {
 #define _(sym,string) string,
@@ -84,10 +85,11 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
   u32 pkts_encapsulated = 0;
   u32 thread_index = vlib_get_thread_index ();
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
-  u32 next0 = 0, next1 = 0;
+  u32 next0, next1;
   vxlan_gbp_tunnel_t *t0 = NULL, *t1 = NULL;
   index_t dpoi_idx0 = INDEX_INVALID, dpoi_idx1 = INDEX_INVALID;
 
+  next0 = next1 = VXLAN_GBP_ENCAP_NEXT_DROP;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
@@ -307,11 +309,33 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 		udp1->checksum = 0xffff;
 	    }
 
-	  vlib_increment_combined_counter (tx_counter, thread_index,
-					   sw_if_index0, 1, len0);
-	  vlib_increment_combined_counter (tx_counter, thread_index,
-					   sw_if_index1, 1, len1);
 	  pkts_encapsulated += 2;
+
+	  if (PREDICT_FALSE
+	      (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_R))
+	    {
+	      b0->error = node->errors[VXLAN_GBP_ENCAP_ERROR_REFLECTED];
+	      next0 = VXLAN_GBP_ENCAP_NEXT_DROP;
+	      pkts_encapsulated--;
+	    }
+	  else
+	    {
+	      vlib_increment_combined_counter (tx_counter, thread_index,
+					       sw_if_index0, 1, len0);
+	    }
+
+	  if (PREDICT_FALSE
+	      (vnet_buffer2 (b1)->gbp.flags & VXLAN_GBP_GPFLAGS_R))
+	    {
+	      b1->error = node->errors[VXLAN_GBP_ENCAP_ERROR_REFLECTED];
+	      next1 = VXLAN_GBP_ENCAP_NEXT_DROP;
+	      pkts_encapsulated--;
+	    }
+	  else
+	    {
+	      vlib_increment_combined_counter (tx_counter, thread_index,
+					       sw_if_index1, 1, len1);
+	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -449,9 +473,18 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 		udp0->checksum = 0xffff;
 	    }
 
-	  vlib_increment_combined_counter (tx_counter, thread_index,
-					   sw_if_index0, 1, len0);
-	  pkts_encapsulated++;
+	  if (PREDICT_FALSE
+	      (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_R))
+	    {
+	      b0->error = node->errors[VXLAN_GBP_ENCAP_ERROR_REFLECTED];
+	      next0 = VXLAN_GBP_ENCAP_NEXT_DROP;
+	    }
+	  else
+	    {
+	      vlib_increment_combined_counter (tx_counter, thread_index,
+					       sw_if_index0, 1, len0);
+	      pkts_encapsulated++;
+	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
