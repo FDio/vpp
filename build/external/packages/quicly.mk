@@ -11,6 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifneq ($(shell which cmake3),)
+CMAKE?=cmake3
+else
+CMAKE?=cmake
+endif
+
 quicly_repository := https://github.com/h2o/quicly.git
 quicly_version := f25b70d37f8974af9cc48a4a565d13a9cdc5fd75
 quicly_patch_dir := $(CURDIR)/patches/quicly
@@ -19,13 +25,13 @@ picotls_build_dir := $(B)/build-picotls
 
 define  quicly_build_cmds
 	@cd $(quicly_build_dir) && \
-		cmake -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
+		$(CMAKE) -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
 		$(quicly_src_dir) > $(quicly_build_log)
 	@$(MAKE) $(MAKE_ARGS) -C $(quicly_build_dir) > $(quicly_build_log)
 
 	@mkdir -p $(picotls_build_dir)
 	@cd $(picotls_build_dir) && \
-		cmake -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
+		$(CMAKE) -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
 		$(quicly_src_dir)/deps/picotls > $(quicly_build_log)
 endef
 
