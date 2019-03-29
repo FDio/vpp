@@ -30,7 +30,6 @@ I := $(INSTALL_DIR)
 include packages.mk
 include packages/nasm.mk
 include packages/ipsec-mb.mk
-include packages/quicly.mk
 include packages/dpdk.mk
 include packages/rdma-core.mk
 
@@ -39,7 +38,7 @@ clean:
 	@rm -rf $(B) $(I)
 
 .PHONY: install
-install: dpdk-install rdma-core-install quicly-install
+install: dpdk-install rdma-core-install
 
 .PHONY: config
 config: dpdk-config rdma-core-config
@@ -64,7 +63,7 @@ deb/debian/changelog: Makefile
 
 $(DEV_DEB): deb/debian/changelog
 	@cd deb && dpkg-buildpackage -b -uc -us
-	@git clean -ffdx deb
+	git clean -fdx deb
 
 build-deb: $(DEV_DEB)
 
@@ -108,7 +107,7 @@ $(DEV_RPM): Makefile rpm/vpp-ext-deps.spec
 	  --define "_release $(PKG_SUFFIX)" \
 	  $(CURDIR)/rpm/vpp-ext-deps.spec
 	mv rpm/RPMS/$(RPM_ARCH)/*.rpm .
-	@git clean -ffdx rpm
+	@git clean -fdx rpm
 
 build-rpm: $(DEV_RPM)
 
