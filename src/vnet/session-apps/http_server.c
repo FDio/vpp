@@ -277,7 +277,10 @@ send_data (http_session_t * hs, u8 * data)
       /* Made any progress? */
       if (actual_transfer <= 0)
 	{
+	  http_server_sessions_reader_unlock ();
 	  vlib_process_suspend (vm, delay);
+	  http_server_sessions_reader_lock ();
+
 	  /* 10s deadman timer */
 	  if (vlib_time_now (vm) > last_sent_timer + 10.0)
 	    {
@@ -770,21 +773,27 @@ http_server_create_command_fn (vlib_main_t * vm,
 			       vlib_cli_command_t * cmd)
 {
   http_server_main_t *hsm = &http_server_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
   u64 seg_size;
   u8 *html;
   int rv;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
 
   hsm->prealloc_fifos = 0;
   hsm->private_segment_size = 0;
   hsm->fifo_size = 0;
   hsm->is_static = 0;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "static"))
+      if (unformat (line_input, "static"))
 	hsm->is_static = 1;
-      else if (unformat (input, "prealloc-fifos %d", &hsm->prealloc_fifos))
+      else
+	if (unformat (line_input, "prealloc-fifos %d", &hsm->prealloc_fifos))
 	;
-      else if (unformat (input, "private-segment-size %U",
+      else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &seg_size))
 	{
 	  if (seg_size >= 0x100000000ULL)
@@ -795,14 +804,15 @@ http_server_create_command_fn (vlib_main_t * vm,
 	    }
 	  hsm->private_segment_size = seg_size;
 	}
-      else if (unformat (input, "fifo-size %d", &hsm->fifo_size))
+      else if (unformat (line_input, "fifo-size %d", &hsm->fifo_size))
 	hsm->fifo_size <<= 10;
-      else if (unformat (input, "uri %s", &hsm->uri))
+      else if (unformat (line_input, "uri %s", &hsm->uri))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+				  format_unformat_error, line_input);
     }
+  unformat_free (line_input);
   if (hsm->my_client_index != (u32) ~ 0)
     return clib_error_return (0, "test http server is already running");
 
