@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e5196085_ff6990ea",
+        "filename": "src/vppinfra/sparse_vec.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-03-29T11:47:03Z",
+      "side": 1,
+      "message": "You can solve the problem here:\n\nSet W at line 111, then:\n\n/* No bits set in the word? We\u0027re done... */\nif (PREDICT_FALSE(w \u003d\u003d 0))\n   return 0;",
+      "revId": "9a87275f6854f627834a579d68e70063f057c94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
