@@ -1033,6 +1033,29 @@ vlib_buffer_copy_no_chain (vlib_main_t * vm, vlib_buffer_t * b, u32 * di)
   return d;
 }
 
+/*  \brief Move packet from current position to offset position in buffer.
+    Only work for small packet using one buffer with room to fit the move
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param b -  (vlib_buffer_t *) pointer to buffer
+    @param offset - (u16) position to move the packet in buffer
+ */
+always_inline void
+vlib_buffer_move (vlib_main_t * vm, vlib_buffer_t * b, u16 offset)
+{
+  ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
+  ASSERT (offset + b->current_length < VLIB_BUFFER_DATA_SIZE);
+
+  u8 *source = vlib_buffer_get_current (b);
+  b->current_data = offset;
+  u8 *destination = vlib_buffer_get_current (b);
+  u16 length = b->current_length;
+
+  if (source + length <= destination)	/* no overlap */
+    clib_memcpy_fast (destination, source, length);
+  else
+    memmove (destination, source, length);
+}
+
 /** \brief Create a maximum of 256 clones of buffer and store them
     in the supplied array
 
@@ -1042,12 +1065,14 @@ vlib_buffer_copy_no_chain (vlib_main_t * vm, vlib_buffer_t * b, u32 * di)
     @param n_buffers - (u16) number of buffer clones requested (<=256)
     @param head_end_offset - (u16) offset relative to current position
            where packet head ends
+    @param offset - (u16) copy packet head at current position if 0,
+           else at offset position to create specified headroom for encap
     @return - (u16) number of buffers actually cloned, may be
     less than the number requested or zero
 */
 always_inline u16
 vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
-		       u16 n_buffers, u16 head_end_offset)
+		       u16 n_buffers, u16 head_end_offset, u16 offset)
 {
   u16 i;
   vlib_buffer_t *s = vlib_get_buffer (vm, src_buffer);
@@ -1055,10 +1080,14 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
   ASSERT (s->ref_count == 1);
   ASSERT (n_buffers);
   ASSERT (n_buffers <= 256);
+  ASSERT ((offset + head_end_offset) < VLIB_BUFFER_DATA_SIZE);
 
   if (s->current_length <= head_end_offset + CLIB_CACHE_LINE_BYTES * 2)
     {
       buffers[0] = src_buffer;
+      if (offset)
+	vlib_buffer_move (vm, s, offset);
+
       for (i = 1; i < n_buffers; i++)
 	{
 	  vlib_buffer_t *d;
@@ -1071,7 +1100,7 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
       return n_buffers;
     }
 
-  if (PREDICT_FALSE (n_buffers == 1))
+  if (PREDICT_FALSE ((n_buffers == 1) && (offset == 0)))
     {
       buffers[0] = src_buffer;
       return 1;
@@ -1083,7 +1112,11 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
   for (i = 0; i < n_buffers; i++)
     {
       vlib_buffer_t *d = vlib_get_buffer (vm, buffers[i]);
-      d->current_data = s->current_data;
+      if (offset)
+	d->current_data = offset;
+      else
+	d->current_data = s->current_data;
+
       d->current_length = head_end_offset;
       ASSERT (d->buffer_pool_index == s->buffer_pool_index);
 
@@ -1122,12 +1155,14 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
     @param n_buffers - (u16) number of buffer clones requested (<=256)
     @param head_end_offset - (u16) offset relative to current position
            where packet head ends
+    @param offset - (u16) copy packet head at current position if 0,
+           else at offset position to create specified headroom for encap
     @return - (u16) number of buffers actually cloned, may be
     less than the number requested or zero
 */
 always_inline u16
-vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
-		   u16 n_buffers, u16 head_end_offset)
+vlib_buffer_clone_at_offset (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
+			     u16 n_buffers, u16 head_end_offset, u16 offset)
 {
   vlib_buffer_t *s = vlib_get_buffer (vm, src_buffer);
   u16 n_cloned = 0;
@@ -1139,14 +1174,34 @@ vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
       n_cloned += vlib_buffer_clone_256 (vm,
 					 vlib_get_buffer_index (vm, copy),
 					 (buffers + n_cloned),
-					 256, head_end_offset);
+					 256, head_end_offset, offset);
       n_buffers -= 256;
     }
   n_cloned += vlib_buffer_clone_256 (vm, src_buffer,
 				     buffers + n_cloned,
-				     n_buffers, head_end_offset);
+				     n_buffers, head_end_offset, offset);
 
   return n_cloned;
+}
+
+/** \brief Create multiple clones of buffer and store them
+    in the supplied array
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param src_buffer - (u32) source buffer index
+    @param buffers - (u32 * ) buffer index array
+    @param n_buffers - (u16) number of buffer clones requested (<=256)
+    @param head_end_offset - (u16) offset relative to current position
+           where packet head ends
+    @return - (u16) number of buffers actually cloned, may be
+    less than the number requested or zero
+*/
+always_inline u16
+vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
+		   u16 n_buffers, u16 head_end_offset)
+{
+  return vlib_buffer_clone_at_offset (vm, src_buffer, buffers, n_buffers,
+				      head_end_offset, 0);
 }
 
 /** \brief Attach cloned tail to the buffer
