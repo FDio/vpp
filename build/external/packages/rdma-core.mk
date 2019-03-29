@@ -11,6 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifneq ($(shell which cmake3),)
+CMAKE?=cmake3
+else
+CMAKE?=cmake
+endif
+
 rdma-core_version             := 23
 rdma-core_tarball             := rdma-core-$(rdma-core_version).tar.gz
 rdma-core_tarball_md5sum_22.1 := dde4d30e3db20893408ae51041117034
@@ -28,14 +34,14 @@ RDMA_FILES := include/infiniband/verbs.h \
 
 define  rdma-core_config_cmds
 	cd $(rdma-core_build_dir) && \
-	  cmake -G Ninja $(rdma-core_src_dir) \
+	  $(CMAKE) -G Ninja $(rdma-core_src_dir) \
 	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0 \
 	    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 	    -DCMAKE_C_FLAGS=-fPIC > $(rdma-core_config_log)
 endef
 
 define  rdma-core_build_cmds
-	cmake --build $(rdma-core_build_dir) -- libibverbs.a libmlx5.a > $(rdma-core_build_log)
+	$(CMAKE) --build $(rdma-core_build_dir) -- libibverbs.a libmlx5.a > $(rdma-core_build_log)
 endef
 
 define  rdma-core_install_cmds
