@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "9fa5fa6a_8b507b0c",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-29T13:52:30Z",
+      "side": 1,
+      "message": "I know.  The cleanup is here.  https://gerrit.fd.io/r/#/c/18269/\n\nIt\u0027s not strictly needed with a test case holds a single test method, but once a second test case is added, it is needed for cleanup.  The cleanup method does: \n        \"\"\" Perform final cleanup after running all tests in this test-case \"\"\"\n        cls.reporter.send_keep_alive(cls, \u0027tearDownClass\u0027)\n        cls.quit()\n        cls.file_handler.close()\n        cls.reset_packet_infos()\n        if debug_framework:\n            debug_internal.on_tear_down_class(cls)",
+      "parentUuid": "084a2d81_f58ca84c",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 46
+      },
+      "revId": "3eea60e666e2b789a1c2c0d0ee30b75115ddfb91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "76b0910a_4afb6dad",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 1
