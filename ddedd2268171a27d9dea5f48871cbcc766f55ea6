@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c4c17d86_8d86f875",
+        "filename": "src/vppinfra/sparse_vec.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-03-29T15:48:35Z",
+      "side": 1,
+      "message": "Dave, aiee. looks like we need to hit this codepath if w \u003d\u003d b \u003d\u003d 0, but insert !\u003d 0. So it looks like the original approach is a bit more attractive, what do you reckon ?",
+      "revId": "ddedd2268171a27d9dea5f48871cbcc766f55ea6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
