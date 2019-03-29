@@ -52,6 +52,24 @@
       "revId": "3b2f398ded5c65a1079c47e060496f0372d204c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cc4909f4_65868df0",
+        "filename": "src/vnet/ipsec-gre/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-29T08:21:46Z",
+      "side": 1,
+      "message": "0x1 is non standard. Our L2 our GRE (not encrypted) doesn\u0027t support it either.",
+      "parentUuid": "6481add0_8a0c0b83",
+      "revId": "3b2f398ded5c65a1079c47e060496f0372d204c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
