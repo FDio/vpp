@@ -2725,7 +2725,7 @@ build_map_register_record_list (lisp_cp_main_t * lcm)
   return recs;
 }
 
-static vnet_crypto_op_type_t
+static vnet_crypto_op_id_t
 lisp_key_type_to_crypto_op (lisp_key_type_t key_id)
 {
   switch (key_id)
@@ -2755,9 +2755,9 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   op->key = key;
   op->key_len = vec_len (key);
   op->len = msg_len;
-  op->dst = MREG_DATA (map_reg_hdr);
+  op->digest = MREG_DATA (map_reg_hdr);
   op->src = (u8 *) map_reg_hdr;
-  op->hmac_trunc_len = 0;
+  op->digest_len = 0;
   op->iv = 0;
 
   vnet_crypto_process_ops (lcm->vlib_main, op, 1);
@@ -3946,9 +3946,9 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   op->key = key;
   op->key_len = vec_len (key);
   op->len = msg_len;
-  op->dst = out;
+  op->digest = out;
   op->src = (u8 *) h;
-  op->hmac_trunc_len = 0;
+  op->digest_len = 0;
   op->iv = 0;
 
   vnet_crypto_process_ops (lcm->vlib_main, op, 1);

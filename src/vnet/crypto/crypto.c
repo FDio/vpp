@@ -22,7 +22,7 @@ vnet_crypto_main_t crypto_main;
 static_always_inline u32
 vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 				      vnet_crypto_main_t * cm,
-				      vnet_crypto_op_type_t opt,
+				      vnet_crypto_op_id_t opt,
 				      vnet_crypto_op_t * ops[], u32 n_ops)
 {
   if (n_ops == 0)
@@ -30,7 +30,7 @@ vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 
   if (cm->ops_handlers[opt] == 0)
     {
-      while (n_ops)
+      while (n_ops--)
 	{
 	  ops[0]->status = VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER;
 	  ops++;
@@ -48,7 +48,7 @@ vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
   vnet_crypto_main_t *cm = &crypto_main;
   const int op_q_size = VLIB_FRAME_SIZE;
   vnet_crypto_op_t *op_queue[op_q_size];
-  vnet_crypto_op_type_t opt, current_op_type = ~0;
+  vnet_crypto_op_id_t opt, current_op_type = ~0;
   u32 n_op_queue = 0;
   u32 rv = 0, i;
 
@@ -92,41 +92,49 @@ vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
 }
 
 int
-vnet_crypto_set_handler (char *ops_handler_name, char *engine)
+vnet_crypto_set_handler (char *alg_name, char *engine)
 {
   uword *p;
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_op_type_t ot;
-  vnet_crypto_op_type_data_t *otd;
+  vnet_crypto_alg_data_t *ad;
   vnet_crypto_engine_t *ce;
+  int i;
 
-  p = hash_get_mem (cm->ops_handler_index_by_name, ops_handler_name);
+  p = hash_get_mem (cm->alg_index_by_name, alg_name);
   if (!p)
     return -1;
 
-  ot = p[0];
-  otd = cm->opt_data + ot;
+  ad = vec_elt_at_index (cm->algs, p[0]);
 
   p = hash_get_mem (cm->engine_index_by_name, engine);
   if (!p)
     return -1;
 
-  ce = cm->engines + p[0];
-  otd->active_engine_index = p[0];
-  cm->ops_handlers[ot] = ce->ops_handlers[ot];
+  ce = vec_elt_at_index (cm->engines, p[0]);
+
+  for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+    {
+      vnet_crypto_op_data_t *od;
+      vnet_crypto_op_id_t id = ad->op_by_type[i];
+      if (id == 0)
+	continue;
+      od = vec_elt_at_index (cm->opt_data, id);
+      od->active_engine_index = p[0];
+      cm->ops_handlers[id] = ce->ops_handlers[id];
+    }
 
   return 0;
 }
 
 vlib_error_t *
 vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
-				  vnet_crypto_op_type_t opt,
+				  vnet_crypto_op_id_t opt,
 				  vnet_crypto_ops_handler_t * fn)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
-  vnet_crypto_op_type_data_t *otd = cm->opt_data + opt;
-  vec_validate_aligned (cm->ops_handlers, VNET_CRYPTO_N_OP_TYPES - 1,
+  vnet_crypto_op_data_t *otd = cm->opt_data + opt;
+  vec_validate_aligned (cm->ops_handlers, VNET_CRYPTO_N_OP_IDS - 1,
 			CLIB_CACHE_LINE_BYTES);
   e->ops_handlers[opt] = fn;
 
@@ -146,47 +154,73 @@ vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
   return 0;
 }
 
+static void
+vnet_crypto_init_cipher_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
+			      vnet_crypto_op_id_t did, char *name, u8 is_aead)
+{
+  vnet_crypto_op_type_t eopt, dopt;
+  vnet_crypto_main_t *cm = &crypto_main;
+  cm->algs[alg].name = name;
+  cm->opt_data[eid].alg = cm->opt_data[did].alg = alg;
+  cm->opt_data[eid].active_engine_index = ~0;
+  cm->opt_data[did].active_engine_index = ~0;
+  if (is_aead)
+    {
+      eopt = VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT;
+      dopt = VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT;
+    }
+  else
+    {
+      eopt = VNET_CRYPTO_OP_TYPE_ENCRYPT;
+      dopt = VNET_CRYPTO_OP_TYPE_DECRYPT;
+    }
+  cm->opt_data[eid].type = eopt;
+  cm->opt_data[did].type = dopt;
+  cm->algs[alg].op_by_type[eopt] = eid;
+  cm->algs[alg].op_by_type[dopt] = did;
+  hash_set_mem (cm->alg_index_by_name, name, alg);
+}
+
+static void
+vnet_crypto_init_hmac_data (vnet_crypto_alg_t alg,
+			    vnet_crypto_op_id_t id, char *name)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  cm->algs[alg].name = name;
+  cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_HMAC] = id;
+  cm->opt_data[id].alg = alg;
+  cm->opt_data[id].active_engine_index = ~0;
+  cm->opt_data[id].type = VNET_CRYPTO_OP_TYPE_HMAC;
+  hash_set_mem (cm->alg_index_by_name, name, alg);
+}
+
 clib_error_t *
 vnet_crypto_init (vlib_main_t * vm)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-#define CRYPTO_ENC_STR "encrypt"
-#define CRYPTO_DEC_STR "decrypt"
-#define CRYPTO_HMAC_STR "hmac"
-
   cm->engine_index_by_name = hash_create_string ( /* size */ 0,
 						 sizeof (uword));
-  cm->ops_handler_index_by_name = hash_create_string (0, sizeof (uword));
-
+  cm->alg_index_by_name = hash_create_string (0, sizeof (uword));
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);
-
 #define _(n, s) \
-  cm->algs[VNET_CRYPTO_ALG_##n].name = s; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_ENC].alg = VNET_CRYPTO_ALG_##n; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_DEC].alg = VNET_CRYPTO_ALG_##n; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_ENC].desc = CRYPTO_ENC_STR; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_DEC].desc = CRYPTO_DEC_STR; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_ENC].active_engine_index = ~0; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_DEC].active_engine_index = ~0; \
-  hash_set_mem (cm->ops_handler_index_by_name, CRYPTO_ENC_STR "-" s, \
-      VNET_CRYPTO_OP_##n##_ENC); \
-  hash_set_mem (cm->ops_handler_index_by_name, CRYPTO_DEC_STR "-" s, \
-      VNET_CRYPTO_OP_##n##_DEC);
-  foreach_crypto_alg;
+  vnet_crypto_init_cipher_data (VNET_CRYPTO_ALG_##n, \
+				VNET_CRYPTO_OP_##n##_ENC, \
+				VNET_CRYPTO_OP_##n##_DEC, s, 0);
+  foreach_crypto_cipher_alg;
 #undef _
-
 #define _(n, s) \
-  cm->algs[VNET_CRYPTO_ALG_##n].name = s; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_HMAC].alg = VNET_CRYPTO_ALG_##n; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_HMAC].desc = CRYPTO_HMAC_STR; \
-  cm->opt_data[VNET_CRYPTO_OP_##n##_HMAC].active_engine_index = ~0; \
-  hash_set_mem (cm->ops_handler_index_by_name, CRYPTO_HMAC_STR "-" s, \
-      VNET_CRYPTO_OP_##n##_HMAC);
-  foreach_hmac_alg;
+  vnet_crypto_init_cipher_data (VNET_CRYPTO_ALG_##n, \
+				VNET_CRYPTO_OP_##n##_ENC, \
+				VNET_CRYPTO_OP_##n##_DEC, s, 1);
+  foreach_crypto_aead_alg;
 #undef _
-
+#define _(n, s) \
+  vnet_crypto_init_hmac_data (VNET_CRYPTO_ALG_HMAC_##n, \
+			      VNET_CRYPTO_OP_##n##_HMAC, s);
+  foreach_crypto_hmac_alg;
+#undef _
   return 0;
 }
 

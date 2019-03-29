@@ -107,6 +107,13 @@ STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 2 * sizeof (u64));
 
 #define ESP_ENCRYPT_PD_F_FD_TRANSPORT (1 << 2)
 
+#if 1
+#include "/home/damarion/cisco/vpp-sandbox/include/tscmarks.h"
+#else
+#define tsc_mark(...)
+#define tsc_print(...)
+#endif
+
 always_inline uword
 esp_decrypt_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * from_frame,
@@ -127,10 +134,14 @@ esp_decrypt_inline (vlib_main_t * vm,
   const u8 esp_sz = sizeof (esp_header_t);
   ipsec_sa_t *sa0 = 0;
 
+  tsc_mark ("start");
+
   vlib_get_buffers (vm, from, b, n_left);
   vec_reset_length (ptd->crypto_ops);
   vec_reset_length (ptd->integ_ops);
   clib_memset_u16 (nexts, -1, n_left);
+
+  tsc_mark ("rd1");
 
   while (n_left > 0)
     {
@@ -202,14 +213,14 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 
-	  vnet_crypto_op_init (op, sa0->integ_op_type);
+	  vnet_crypto_op_init (op, sa0->integ_op_id);
 	  op->key = sa0->integ_key.data;
 	  op->key_len = sa0->integ_key.len;
 	  op->src = payload;
-	  op->hmac_trunc_len = cpd.icv_sz;
 	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 	  op->user_data = b - bufs;
-	  op->dst = payload + len;
+	  op->digest = payload + len;
+	  op->digest_len = cpd.icv_sz;
 	  op->len = len;
 	  if (PREDICT_TRUE (sa0->flags & IPSEC_SA_FLAG_USE_ESN))
 	    {
@@ -226,11 +237,11 @@ esp_decrypt_inline (vlib_main_t * vm,
       payload += esp_sz;
       len -= esp_sz;
 
-      if (sa0->crypto_enc_op_type != VNET_CRYPTO_OP_NONE)
+      if (sa0->crypto_enc_op_id != VNET_CRYPTO_OP_NONE)
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->crypto_dec_op_type);
+	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
 	  op->key = sa0->crypto_key.data;
 	  op->iv = payload;
 	  op->src = op->dst = payload += cpd.iv_sz;
@@ -250,6 +261,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 				   current_sa_index, current_sa_pkts,
 				   current_sa_bytes);
 
+  tsc_mark ("integ");
   if ((n = vec_len (ptd->integ_ops)))
     {
       vnet_crypto_op_t *op = ptd->integ_ops;
@@ -271,7 +283,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  op++;
 	}
     }
-
+  tsc_mark ("crypto");
   if ((n = vec_len (ptd->crypto_ops)))
     {
       vnet_crypto_op_t *op = ptd->crypto_ops;
@@ -299,6 +311,7 @@ esp_decrypt_inline (vlib_main_t * vm,
   pd = pkt_data;
   b = bufs;
 
+  tsc_mark ("rd2");
   while (n_left)
     {
       const u8 tun_flags = IPSEC_SA_FLAG_IS_TUNNEL |
@@ -419,11 +432,15 @@ esp_decrypt_inline (vlib_main_t * vm,
       b += 1;
     }
 
+  tsc_mark ("enq");
   n_left = from_frame->n_vectors;
   vlib_node_increment_counter (vm, node->node_index,
 			       ESP_DECRYPT_ERROR_RX_PKTS, n_left);
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_left);
+
+  tsc_mark (0);
+  tsc_print (3, n_left);
 
   b = bufs;
   return n_left;

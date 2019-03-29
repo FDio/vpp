@@ -218,6 +218,13 @@ esp_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 }
 
+#if 0
+#include "/home/damarion/cisco/vpp-sandbox/include/tscmarks.h"
+#else
+#define tsc_mark(...)
+#define tsc_print(...)
+#endif
+
 always_inline uword
 esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, int is_ip6, int is_tun)
@@ -235,10 +242,13 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8 block_sz = 0, iv_sz = 0, icv_sz = 0;
   ipsec_sa_t *sa0 = 0;
 
+  tsc_mark ("start");
+
   vlib_get_buffers (vm, from, b, n_left);
   vec_reset_length (ptd->crypto_ops);
   vec_reset_length (ptd->integ_ops);
 
+  tsc_mark ("rd1");
   while (n_left > 0)
     {
       u32 sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
@@ -425,11 +435,11 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       esp->spi = spi;
       esp->seq = clib_net_to_host_u32 (sa0->seq);
 
-      if (sa0->crypto_enc_op_type)
+      if (sa0->crypto_enc_op_id)
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->crypto_enc_op_type);
+	  vnet_crypto_op_init (op, sa0->crypto_enc_op_id);
 	  op->iv = payload - iv_sz;
 	  op->src = op->dst = payload;
 	  op->key = sa0->crypto_key.data;
@@ -438,16 +448,16 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  op->user_data = b - bufs;
 	}
 
-      if (sa0->integ_op_type)
+      if (sa0->integ_op_id)
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->integ_op_type);
+	  vnet_crypto_op_init (op, sa0->integ_op_id);
 	  op->src = payload - iv_sz - sizeof (esp_header_t);
-	  op->dst = payload + payload_len - icv_sz;
+	  op->digest = payload + payload_len - icv_sz;
 	  op->key = sa0->integ_key.data;
 	  op->key_len = sa0->integ_key.len;
-	  op->hmac_trunc_len = icv_sz;
+	  op->digest_len = icv_sz;
 	  op->len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
 	  op->user_data = b - bufs;
 	  if (ipsec_sa_is_set_USE_ESN (sa0))
@@ -484,14 +494,18 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
 				   current_sa_index, current_sa_packets,
 				   current_sa_bytes);
-
+  tsc_mark ("crypto");
   esp_process_ops (vm, node, ptd->crypto_ops, bufs, nexts);
+  tsc_mark ("integ");
   esp_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
 
   vlib_node_increment_counter (vm, node->node_index,
 			       ESP_ENCRYPT_ERROR_RX_PKTS, frame->n_vectors);
 
+  tsc_mark ("integ");
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  tsc_mark (0);
+  tsc_print (3, frame->n_vectors);
   return frame->n_vectors;
 }
 
