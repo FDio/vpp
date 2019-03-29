@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "26929d6b_1e64804a",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-03-29T01:41:24Z",
+      "side": 1,
+      "message": "redundant \u0027\\\u0027 at the end of the line, which will cause problem if someone adds some code immediately after this line.",
+      "revId": "5f01b079fff97ec4fbc4ce8955690908516717ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "44075c88_a8f017d1",
         "filename": "src/vppinfra/cpu.c",
         "patchSetId": 1
