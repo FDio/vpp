@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "662d77eb_dfd7e2de",
+        "filename": "src/plugins/dpdk/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-03-30T07:22:47Z",
+      "side": 1,
+      "message": "can you change this to :\n-  vpp_plugin_find_library(MNL_LIB \"mnl\")\n+  vpp_plugin_find_library(dpdk MNL_LIB \"mnl\")\n Causes the following error in aarch64 machines:\n-- dpdk plugin needs numa library - found at /usr/lib/aarch64-linux-gnu/libnuma.so\nCMake Error at plugins/dpdk/CMakeLists.txt:104 (vpp_plugin_find_library):\n  vpp_plugin_find_library Macro invoked with incorrect arguments for macro\n  named: vpp_plugin_find_library",
+      "revId": "9fd24793a407f2edbdf5c2d3a031bdcf894f0a69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
