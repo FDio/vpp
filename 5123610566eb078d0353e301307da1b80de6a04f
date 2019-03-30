@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "072f128b_51c24f4e",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1043,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-30T19:37:16Z",
+      "side": 1,
+      "message": "why not i16 so it works in both directions?",
+      "range": {
+        "startLine": 1043,
+        "startChar": 55,
+        "endLine": 1043,
+        "endChar": 58
+      },
+      "revId": "5123610566eb078d0353e301307da1b80de6a04f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
