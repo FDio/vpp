@@ -120,10 +120,17 @@ _ (ssse3,    1, ecx, 9)   \
 _ (sse41,    1, ecx, 19)  \
 _ (sse42,    1, ecx, 20)  \
 _ (avx,      1, ecx, 28)  \
+_ (rdrand,   1, ecx, 30)  \
 _ (avx2,     7, ebx, 5)   \
+_ (rtm,      7, ebx, 11)  \
+_ (pqm,      7, ebx, 12)  \
+_ (pqe,      7, ebx, 15)  \
 _ (avx512f,  7, ebx, 16)  \
+_ (rdseed,   7, ebx, 18)  \
 _ (x86_aes,  1, ecx, 25)  \
 _ (sha,      7, ebx, 29)  \
+_ (vaes,     7, ecx, 9)   \
+_ (vpclmulqdq, 7, ecx, 10)   \
 _ (invariant_tsc, 0x80000007, edx, 8)
 
 

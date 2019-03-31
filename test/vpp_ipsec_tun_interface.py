@@ -43,8 +43,5 @@ class VppIpsecTunInterface(VppTunnelInterface):
             self.integ_alg, self.local_integ_key, self.remote_integ_key,
             is_add=0)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "ipsec-tun-if-%d" % self._sw_if_index

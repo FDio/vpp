@@ -106,11 +106,18 @@ session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 }
 
 void
+session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
+				      void *rpc_args)
+{
+  session_send_evt_to_thread (fp, rpc_args, thread_index,
+			      SESSION_CTRL_EVT_RPC);
+}
+
+void
 session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
 {
   if (thread_index != vlib_get_thread_index ())
-    session_send_evt_to_thread (fp, rpc_args, thread_index,
-				SESSION_CTRL_EVT_RPC);
+    session_send_rpc_evt_to_thread_force (thread_index, fp, rpc_args);
   else
     {
       void (*fnp) (void *) = fp;

@@ -7,6 +7,7 @@ from vpp_object import VppObject
 from vpp_ip import VppIpAddress
 from vpp_lo_interface import VppLoInterface
 from vpp_papi import MACAddress
+from vpp_sub_interface import L2_VTR_OP
 
 
 class L2_PORT_TYPE:
@@ -93,9 +94,6 @@ class VppBridgeDomain(VppObject):
     def query_vpp_config(self):
         return find_bridge_domain(self._test, self.bd_id)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "bridge-domain-%d" % (self.bd_id)
 
@@ -125,9 +123,6 @@ class VppBridgeDomainPort(VppObject):
                                        self.bd.bd_id,
                                        self.itf.sw_if_index)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "BD-Port-%s-%s" % (self.bd, self.itf)
 
@@ -156,9 +151,6 @@ class VppBridgeDomainArpEntry(VppObject):
                                             self.bd.bd_id,
                                             self.mac.packed,
                                             self.ip.address)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "BD-Arp-Entry-%s-%s-%s" % (self.bd, self.mac, self.ip.address)
@@ -203,9 +195,6 @@ class VppL2FibEntry(VppObject):
                                  self.mac.packed,
                                  self.itf.sw_if_index)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "L2-Fib-Entry-%s-%s-%s" % (self.bd, self.mac, self.itf)
 
@@ -231,9 +220,6 @@ class VppL2Vtr(VppObject):
         if d is not None:
             return (d.vtr_op == self.op)
         return False
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "L2-vtr-%s-%d" % (str(self.itf), self.op)

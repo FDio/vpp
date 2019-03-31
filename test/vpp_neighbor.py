@@ -77,9 +77,6 @@ class VppNeighbor(VppObject):
                         self.nbr_addr,
                         self.is_static())
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("%d:%s" % (self.sw_if_index, self.nbr_addr))
 

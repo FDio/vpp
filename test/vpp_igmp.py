@@ -68,9 +68,6 @@ class VppHostState(VppObject):
             [],
             self.sg.gaddr_p)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "%s:%d" % (self.sg, self.sw_if_index)
 

@@ -32,7 +32,7 @@ from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from vpp_papi import MACAddress
-from vpp_papi_provider import L2_PORT_TYPE
+from vpp_l2 import L2_PORT_TYPE
 
 
 class TestIpIrb(VppTestCase):

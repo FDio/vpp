@@ -60,9 +60,6 @@ class VppMPLSTunnelInterface(VppInterface):
                 return True
         return False
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("mpls-tunnel%d-%d" % (self.tunnel_index,
                                       self.sw_if_index))

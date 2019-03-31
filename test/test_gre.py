@@ -10,11 +10,10 @@ from scapy.layers.inet6 import IPv6
 from scapy.volatile import RandMAC, RandIP
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppDot1QSubint
+from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
-from vpp_papi_provider import L2_VTR_OP
 from util import ppp, ppc
 
 
