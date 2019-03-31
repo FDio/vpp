@@ -117,8 +117,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           dst0 = ip6srv0->ip.dst_address;
 
           len0 = vlib_buffer_length_in_chain (vm, b0);
-          if ((len0 < sizeof (ip6srv_combo_header_t)) ||
-              (len0 < sizeof (ip6srv_combo_header_t) + ip6srv0->sr.length))
+          if (len0 < sizeof (ip6srv_combo_header_t) + ip6srv0->sr.length)
             {
               next0 = SRV6_END_M_GTP4_E_NEXT_DROP;
 
@@ -126,32 +125,39 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
             }
           else
             {
-              vlib_buffer_advance (b0, (word) ip6srv0->sr.length);
+              // we need to be sure there is enough space before 
+              // ip6srv0 header, there is some extra space
+              // in the pre_data area for this kind of
+              // logic
 
+              // jump over variable length data
+              // not sure about the length
+              vlib_buffer_advance (b0, (word) sizeof (ip6srv_combo_header_t) +
+                  ip6srv0->sr.length * 8);
+              // get length of encapsulated IPv6 packet (the remaining part)
               len0 = vlib_buffer_length_in_chain (vm, b0);
-         
-              clib_memcpy (vlib_buffer_get_current (b0) -
-                           sizeof (ip4_gtpu_header_t), &sm->cache_hdr,
-                           sizeof (ip4_gtpu_header_t));
-
-              vlib_buffer_advance (b0, -(word) vlib_buffer_get_current (b0) -
-                                   sizeof (ip4_gtpu_header_t));
+              // jump back to data[0] or pre_data if required
+              vlib_buffer_advance (b0, -(word) sizeof (ip4_gtpu_header_t));
 
               hdr0 = vlib_buffer_get_current (b0);
 
+              clib_memcpy (hdr0, &sm->cache_hdr, sizeof (ip4_gtpu_header_t));
+
               hdr0->gtpu.teid = (u32) dst0.as_u8[9];
-              hdr0->gtpu.length = len0;
+              hdr0->gtpu.length = clib_host_to_net_u16 (len0);
 
               hdr0->udp.src_port = src0.as_u16[6];
-              hdr0->udp.length = len0 + sizeof (udp_header_t);
+              hdr0->udp.length = clib_host_to_net_u16 (len0 +
+                  sizeof (udp_header_t) + sizeof (gtpu_header_t));
 
               hdr0->ip4.src_address.as_u32 = src0.as_u32[2];
               hdr0->ip4.dst_address.as_u32 = dst0.as_u32[1];
-              hdr0->ip4.length = len0 + sizeof (udp_header_t) +
-                                 sizeof (ip4_header_t);
+              hdr0->ip4.length = clib_host_to_net_u16 (len0 +
+                  sizeof (ip4_gtpu_header_t));
+
               hdr0->ip4.checksum = ip4_header_checksum (&hdr0->ip4);
 
-	      good_n++;
+              good_n++;
             }
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&

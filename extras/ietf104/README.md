@@ -73,3 +73,44 @@
     GTPU IPv4 packet
 
 
+## additional commands
+
+    gdb - breakpoint
+
+    break sr_policy_rewrite.c:1620
+
+    break src/plugins/srv6-end/node.c:84
+
+    TMAP
+    Linux:
+
+    ip link add tmp1 type veth peer name tmp2
+    ip link set dev tmp1 up
+    ip link set dev tmp2 up
+    ip addr add 172.20.0.2/24 dev tmp2
+
+    create host-interface name tmp1
+    set int mac address host-tmp1 02:fe:98:c6:c8:7b
+    set interface ip address host-tmp1 172.20.0.1/24
+    set interface state host-tmp1 up
+
+    VPP
+    set sr encaps source addr C1::
+    sr policy add bsid D1::999:2 next D2:: next D3:: gtp4_removal sr-prefix fc34:5678::/64 local-prefix C1::/64
+    sr steer l3 172.21.0.0/24 via bsid d1::999:2
+
+    END
+    Linux
+    create host-interface name tmp1
+    set int mac address host-tmp1 02:fe:98:c6:c8:7b
+    set interface ip address host-tmp1 A1::1/64
+    set interface state host-tmp1 up
+
+    VPP
+    sr localsid address 1111:1111:c0a8:c00a:1122:1111:1111:1111 behavior end.m.gtp4.e
+
+    trace add af-packet-input 10
+
+    sr localsid address C3:: behavior end.m.gtp4.e
+    sr localsid address 2001:200:0:1ce1:3000:757f:0:2 behavior end.m.gtp4.e
+
