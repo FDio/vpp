@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a7aea03d_65b11ed3",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 1077,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-01T16:05:06Z",
+      "side": 1,
+      "message": "as discussed in previous patch, might be better to use i16....",
+      "range": {
+        "startLine": 1077,
+        "startChar": 45,
+        "endLine": 1077,
+        "endChar": 48
+      },
+      "revId": "e08feceff8b9340bc8e5084f5389a9d6455c2313",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
