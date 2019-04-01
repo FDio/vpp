@@ -122,6 +122,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(DCNT_PENDING, "Disconnect pending")		\
   _(HALF_OPEN_DONE, "Half-open completed")	\
   _(FINPNDG, "FIN pending")			\
+  _(FINRCVD, "FIN received")			\
   _(FRXT_PENDING, "Fast-retransmit pending")	\
   _(FRXT_FIRST, "Fast-retransmit first again")	\
   _(DEQ_PENDING, "Pending dequeue acked")	\
