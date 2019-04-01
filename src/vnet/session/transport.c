@@ -49,7 +49,7 @@ static double transport_pacer_period;
 
 #define TRANSPORT_PACER_MIN_MSS 	1460
 #define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
-#define TRANSPORT_PACER_MAX_BURST	(48 * TRANSPORT_PACER_MIN_MSS)
+#define TRANSPORT_PACER_MAX_BURST	(32 * TRANSPORT_PACER_MIN_MSS)
 
 u8 *
 format_transport_proto (u8 * s, va_list * args)

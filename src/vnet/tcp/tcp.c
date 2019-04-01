@@ -350,6 +350,15 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_ESTABLISHED:
+      /* If closing with unread data, reset the connection */
+      if (transport_max_rx_dequeue (&tc->connection))
+	{
+	  tcp_send_reset (tc);
+	  tcp_connection_timers_reset (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	  break;
+	}
       if (!transport_max_tx_dequeue (&tc->connection))
 	tcp_send_fin (tc);
       else

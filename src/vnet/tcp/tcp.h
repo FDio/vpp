@@ -126,6 +126,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FRXT_FIRST, "Fast-retransmit first again")	\
   _(DEQ_PENDING, "Pending dequeue acked")	\
   _(PSH_PENDING, "PSH pending")			\
+  _(FINRCVD, "FIN received")			\
 
 typedef enum _tcp_connection_flag_bits
 {
