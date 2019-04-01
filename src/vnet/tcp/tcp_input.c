@@ -405,11 +405,26 @@ error:
 }
 
 always_inline int
-tcp_rcv_ack_is_acceptable (tcp_connection_t * tc0, vlib_buffer_t * tb0)
+tcp_rcv_ack_no_cc (tcp_connection_t * tc, vlib_buffer_t * b, u32 * error)
 {
   /* SND.UNA =< SEG.ACK =< SND.NXT */
-  return (seq_leq (tc0->snd_una, vnet_buffer (tb0)->tcp.ack_number)
-	  && seq_leq (vnet_buffer (tb0)->tcp.ack_number, tc0->snd_una_max));
+  if (!(seq_leq (tc->snd_una, vnet_buffer (b)->tcp.ack_number)
+	&& seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
+    {
+      if (seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max))
+	{
+	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+	  goto acceptable;
+	}
+      *error = TCP_ERROR_ACK_INVALID;
+      return -1;
+    }
+
+acceptable:
+  tc->bytes_acked = vnet_buffer (b)->tcp.ack_number - tc->snd_una;
+  tc->snd_una = vnet_buffer (b)->tcp.ack_number;
+  *error = TCP_ERROR_ACK_OK;
+  return 0;
 }
 
 /**
@@ -2703,24 +2718,24 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       switch (tc0->state)
 	{
 	case TCP_STATE_SYN_RCVD:
+
+	  /* Make sure the segment is exactly right */
+	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0)
+	    {
+	      tcp_connection_reset (tc0);
+	      error0 = TCP_ERROR_SEGMENT_INVALID;
+	      goto drop;
+	    }
+
 	  /*
 	   * If the segment acknowledgment is not acceptable, form a
 	   * reset segment,
 	   *  <SEQ=SEG.ACK><CTL=RST>
 	   * and send it.
 	   */
-	  if (!tcp_rcv_ack_is_acceptable (tc0, b0))
+	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
 	    {
 	      tcp_connection_reset (tc0);
-	      error0 = TCP_ERROR_ACK_INVALID;
-	      goto drop;
-	    }
-
-	  /* Make sure the ack is exactly right */
-	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0)
-	    {
-	      tcp_connection_reset (tc0);
-	      error0 = TCP_ERROR_SEGMENT_INVALID;
 	      goto drop;
 	    }
 
@@ -2793,7 +2808,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* In addition to the processing for the ESTABLISHED state, if
 	   * the retransmission queue is empty, the user's CLOSE can be
 	   * acknowledged ("ok") but do not delete the TCB. */
-	  if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &error0))
+	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
 	    goto drop;
 	  tc0->burst_acked = 0;
 	  break;
@@ -2818,21 +2833,19 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* In addition to the processing for the ESTABLISHED state, if
 	   * the ACK acknowledges our FIN then enter the TIME-WAIT state,
 	   * otherwise ignore the segment. */
-	  if (!tcp_rcv_ack_is_acceptable (tc0, b0))
+	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
+	    goto drop;
+
+	  /* Ack moved snd_una beyond original fin so reprogram fin */
+	  if (tc0->bytes_acked > 1)
 	    {
-	      error0 = TCP_ERROR_ACK_INVALID;
+	      tc0->flags &= ~TCP_CONN_FINSNT;
+	      tcp_send_fin (tc0);
 	      goto drop;
 	    }
 
-	  error0 = TCP_ERROR_ACK_OK;
-	  tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
-	  /* Ack moved snd_una beyond snd_nxt so reprogram fin */
-	  if (seq_gt (tc0->snd_una, tc0->snd_nxt))
-	    {
-	      tc0->snd_nxt = tc0->snd_una;
-	      tc0->flags &= ~TCP_CONN_FINSNT;
-	      goto drop;
-	    }
+	  if (tc0->snd_una != tc0->snd_nxt)
+	    goto drop;
 
 	  tcp_connection_timers_reset (tc0);
 	  tcp_connection_set_state (tc0, TCP_STATE_TIME_WAIT);
@@ -2845,13 +2858,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * acknowledgment of our FIN. If our FIN is now acknowledged,
 	   * delete the TCB, enter the CLOSED state, and return. */
 
-	  if (!tcp_rcv_ack_is_acceptable (tc0, b0))
-	    {
-	      error0 = TCP_ERROR_ACK_INVALID;
-	      goto drop;
-	    }
-	  error0 = TCP_ERROR_ACK_OK;
-	  tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
+	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
+	    goto drop;
+
 	  /* Apparently our ACK for the peer's FIN was lost */
 	  if (is_fin0 && tc0->snd_una != tc0->snd_nxt)
 	    {
@@ -2875,7 +2884,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * retransmission of the remote FIN. Acknowledge it, and restart
 	   * the 2 MSL timeout. */
 
-	  if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &error0))
+	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
 	    goto drop;
 
 	  if (!is_fin0)
