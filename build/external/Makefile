@@ -30,6 +30,7 @@ I := $(INSTALL_DIR)
 include packages.mk
 include packages/nasm.mk
 include packages/ipsec-mb.mk
+include packages/quicly.mk
 include packages/dpdk.mk
 include packages/rdma-core.mk
 
@@ -38,7 +39,7 @@ clean:
 	@rm -rf $(B) $(I)
 
 .PHONY: install
-install: dpdk-install rdma-core-install
+install: dpdk-install rdma-core-install quicly-install
 
 .PHONY: config
 config: dpdk-config rdma-core-config
