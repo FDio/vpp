@@ -373,6 +373,7 @@ void session_register_transport (transport_proto_t transport_proto,
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
 u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
+void session_tx_fifo_tail_drop (transport_connection_t * tc, u32 max_bytes);
 
 always_inline u32
 transport_max_rx_enqueue (transport_connection_t * tc)
@@ -386,6 +387,13 @@ transport_max_tx_dequeue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_max_dequeue (s->tx_fifo);
+}
+
+always_inline u32
+transport_max_rx_dequeue (transport_connection_t * tc)
+{
+  session_t *s = session_get (tc->s_index, tc->thread_index);
+  return svm_fifo_max_dequeue (s->rx_fifo);
 }
 
 always_inline u32
