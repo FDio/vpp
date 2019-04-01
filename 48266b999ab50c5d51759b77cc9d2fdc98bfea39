@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1b05798_182803e9",
+        "filename": "build/external/packages/quicly.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-01T16:09:52Z",
+      "side": 1,
+      "message": "On CentOS this needs to be cmake3, see patch from Tom Herbert....",
+      "range": {
+        "startLine": 30,
+        "startChar": 2,
+        "endLine": 30,
+        "endChar": 7
+      },
+      "revId": "48266b999ab50c5d51759b77cc9d2fdc98bfea39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
