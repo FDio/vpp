@@ -543,15 +543,6 @@ app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s, u8 lock)
   svm_msg_q_msg_t msg;
   svm_msg_q_t *mq;
 
-  if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY
-		     && s->session_state != SESSION_STATE_LISTENING))
-    {
-      /* Session is closed so app will never clean up. Flush rx fifo */
-      if (s->session_state == SESSION_STATE_CLOSED)
-	svm_fifo_dequeue_drop_all (s->rx_fifo);
-      return 0;
-    }
-
   if (app_worker_application_is_builtin (app_wrk))
     {
       application_t *app = application_get (app_wrk->app_index);
