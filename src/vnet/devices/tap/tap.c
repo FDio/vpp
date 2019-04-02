@@ -339,18 +339,18 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       args->rv = VNET_API_ERROR_INIT_FAILED;
       goto error;
     }
+  vif->num_rxqs = 1;
 
   if ((args->error = virtio_vring_init (vm, vif, 1, args->tx_ring_sz)))
     {
       args->rv = VNET_API_ERROR_INIT_FAILED;
       goto error;
     }
+  vif->num_txqs = 1;
 
   if (!args->mac_addr_set)
     ethernet_mac_address_generate (args->mac_addr);
 
-  vif->rx_ring_sz = args->rx_ring_sz != 0 ? args->rx_ring_sz : 256;
-  vif->tx_ring_sz = args->tx_ring_sz != 0 ? args->tx_ring_sz : 256;
   clib_memcpy (vif->mac_addr, args->mac_addr, 6);
 
   vif->host_if_name = args->host_if_name;
@@ -415,8 +415,10 @@ error:
     close (vif->tap_fd);
   if (vif->fd != -1)
     close (vif->fd);
-  vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
-  vec_free (vif->vrings);
+  vec_foreach_index (i, vif->rxq_vrings) virtio_vring_free_rx (vm, vif, i);
+  vec_foreach_index (i, vif->txq_vrings) virtio_vring_free_tx (vm, vif, i);
+  vec_free (vif->rxq_vrings);
+  vec_free (vif->txq_vrings);
   clib_memset (vif, 0, sizeof (virtio_if_t));
   pool_put (vim->interfaces, vif);
 
@@ -465,8 +467,10 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   if (vif->fd != -1)
     close (vif->fd);
 
-  vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
-  vec_free (vif->vrings);
+  vec_foreach_index (i, vif->rxq_vrings) virtio_vring_free_rx (vm, vif, i);
+  vec_foreach_index (i, vif->txq_vrings) virtio_vring_free_tx (vm, vif, i);
+  vec_free (vif->rxq_vrings);
+  vec_free (vif->txq_vrings);
 
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 0);
   clib_spinlock_free (&vif->lockp);
@@ -528,6 +532,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
+  virtio_vring_t *vring;
   vnet_hw_interface_t *hi;
   tap_interface_details_t *r_tapids = NULL;
   tap_interface_details_t *tapid = NULL;
@@ -544,8 +549,10 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     clib_memcpy(tapid->dev_name, hi->name,
                 MIN (ARRAY_LEN (tapid->dev_name) - 1,
                      strlen ((const char *) hi->name)));
-    tapid->rx_ring_sz = vif->rx_ring_sz;
-    tapid->tx_ring_sz = vif->tx_ring_sz;
+    vring = vec_elt_at_index (vif->rxq_vrings, 0);
+    tapid->rx_ring_sz = vring->size;
+    vring = vec_elt_at_index (vif->txq_vrings, 0);
+    tapid->tx_ring_sz = vring->size;
     clib_memcpy(tapid->host_mac_addr, vif->host_mac_addr, 6);
     if (vif->host_if_name)
       {
