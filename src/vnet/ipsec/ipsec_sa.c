@@ -163,11 +163,10 @@ ipsec_sa_add_and_lock (u32 id,
   sa->protocol = proto;
   sa->flags = flags;
   sa->salt = salt;
-  if (integ_alg != IPSEC_INTEG_ALG_NONE)
-    {
-      ipsec_sa_set_integ_alg (sa, integ_alg);
-      clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
-    }
+  sa->encrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
+  sa->decrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
+  ipsec_sa_set_integ_alg (sa, integ_alg);
+  clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
