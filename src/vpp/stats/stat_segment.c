@@ -48,10 +48,11 @@ vlib_stat_segment_unlock (void)
  * Change heap to the stats shared memory segment
  */
 void *
-vlib_stats_push_heap (void)
+vlib_stats_push_heap (void *old)
 {
   stat_segment_main_t *sm = &stat_segment_main;
 
+  sm->last = old;
   ASSERT (sm && sm->shared_header);
   return clib_mem_set_heap (sm->heap);
 }
@@ -79,7 +80,8 @@ lookup_or_create_hash_index (void *oldheap, char *name, u32 next_vector_index)
 }
 
 void
-vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
+vlib_stats_pop_heap (void *cm_arg, void *oldheap, u32 cindex,
+		     stat_directory_type_t type)
 {
   vlib_simple_counter_main_t *cm = (vlib_simple_counter_main_t *) cm_arg;
   stat_segment_main_t *sm = &stat_segment_main;
@@ -126,8 +128,17 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
   /* Update the 2nd dimension offset vector */
   int i;
   vec_validate (offset_vector, vec_len (cm->counters) - 1);
-  for (i = 0; i < vec_len (cm->counters); i++)
-    offset_vector[i] = stat_segment_offset (shared_header, cm->counters[i]);
+
+  if (sm->last != offset_vector)
+    {
+      for (i = 0; i < vec_len (cm->counters); i++)
+	offset_vector[i] =
+	  stat_segment_offset (shared_header, cm->counters[i]);
+    }
+  else
+    offset_vector[cindex] =
+      stat_segment_offset (shared_header, cm->counters[cindex]);
+
   ep->offset_vector = stat_segment_offset (shared_header, offset_vector);
   sm->directory_vector[vector_index].offset =
     stat_segment_offset (shared_header, cm->counters);
@@ -659,7 +670,7 @@ stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
 
   ASSERT (shared_header);
 
-  oldheap = vlib_stats_push_heap ();
+  oldheap = vlib_stats_push_heap (NULL);
   vlib_stat_segment_lock ();
 
   memset (&e, 0, sizeof (e));
@@ -719,7 +730,7 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
 
-  void *oldheap = vlib_stats_push_heap ();
+  void *oldheap = vlib_stats_push_heap (sm->interfaces);
   vlib_stat_segment_lock ();
 
   vec_validate (sm->interfaces, sw_if_index);
@@ -756,11 +767,22 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 					      ep->offset_vector) : 0;
 
   vec_validate (offset_vector, vec_len (sm->interfaces) - 1);
-  for (i = 0; i < vec_len (sm->interfaces); i++)
+
+  if (sm->last != sm->interfaces)
     {
-      offset_vector[i] =
-	sm->interfaces[i] ? stat_segment_offset (shared_header,
-						 sm->interfaces[i]) : 0;
+      /* the interface vector moved, so need to recalulate the offset array */
+      for (i = 0; i < vec_len (sm->interfaces); i++)
+	{
+	  offset_vector[i] =
+	    sm->interfaces[i] ? stat_segment_offset (shared_header,
+						     sm->interfaces[i]) : 0;
+	}
+    }
+  else
+    {
+      offset_vector[sw_if_index] =
+	sm->interfaces[sw_if_index] ?
+	stat_segment_offset (shared_header, sm->interfaces[sw_if_index]) : 0;
     }
   ep->offset_vector = stat_segment_offset (shared_header, offset_vector);
 
