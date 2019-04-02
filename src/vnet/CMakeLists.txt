@@ -571,6 +571,7 @@ list(APPEND VNET_SOURCES
   ipsec/ipsec.c
   ipsec/ipsec_cli.c
   ipsec/ipsec_format.c
+  ipsec/ipsec_handoff.c
   ipsec/ipsec_input.c
   ipsec/ipsec_punt.c
   ipsec/ipsec_sa.c
@@ -591,6 +592,8 @@ list(APPEND VNET_MULTIARCH_SOURCES
   ipsec/esp_decrypt.c
   ipsec/ah_decrypt.c
   ipsec/ah_encrypt.c
+  ipsec/ipsec_handoff.c
+  ipsec/ipsec_if_in.c
   ipsec/ipsec_output.c
   ipsec/ipsec_input.c
   ipsec/ipsec_tun_in.c
