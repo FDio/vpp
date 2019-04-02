@@ -24,10 +24,11 @@
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_io.h>
 
-#define foreach_ah_decrypt_next \
-  _ (DROP, "error-drop")        \
-  _ (IP4_INPUT, "ip4-input")    \
-  _ (IP6_INPUT, "ip6-input")
+#define foreach_ah_decrypt_next                 \
+  _(DROP, "error-drop")                         \
+  _(IP4_INPUT, "ip4-input")                     \
+  _(IP6_INPUT, "ip6-input")                     \
+  _(HANDOFF, "handoff")
 
 #define _(v, s) AH_DECRYPT_NEXT_##v,
 typedef enum
@@ -173,6 +174,21 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  current_sa_bytes = current_sa_pkts = 0;
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
 					  thread_index, current_sa_index);
+	}
+
+      if (PREDICT_FALSE (~0 == sa0->decrypt_thread_index))
+	{
+	  /* this is the first packet to use this SA, claim the SA
+	   * for this thread. this could happen simultaneously on
+	   * another thread */
+	  clib_atomic_cmp_and_swap (&sa0->decrypt_thread_index, ~0,
+				    thread_index);
+	}
+
+      if (PREDICT_TRUE (thread_index != sa0->decrypt_thread_index))
+	{
+	  next[0] = AH_DECRYPT_NEXT_HANDOFF;
+	  goto next;
 	}
 
       pd->sa_index = current_sa_index;
@@ -413,9 +429,10 @@ VLIB_REGISTER_NODE (ah4_decrypt_node) = {
 
   .n_next_nodes = AH_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [AH_DECRYPT_NEXT_##s] = n,
-    foreach_ah_decrypt_next
-#undef _
+    [AH_DECRYPT_NEXT_DROP] = "ip4-drop",
+    [AH_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+    [AH_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [AH_DECRYPT_NEXT_HANDOFF] = "esp4-decrypt-tun-handoff",
   },
 };
 /* *INDENT-ON* */
@@ -439,9 +456,10 @@ VLIB_REGISTER_NODE (ah6_decrypt_node) = {
 
   .n_next_nodes = AH_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [AH_DECRYPT_NEXT_##s] = n,
-    foreach_ah_decrypt_next
-#undef _
+    [AH_DECRYPT_NEXT_DROP] = "ip6-drop",
+    [AH_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+    [AH_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [AH_DECRYPT_NEXT_HANDOFF] = "esp6-decrypt-tun-handoff",
   },
 };
 /* *INDENT-ON* */
