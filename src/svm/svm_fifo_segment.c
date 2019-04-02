@@ -370,10 +370,6 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * fs,
       f = fsh->free_fifos[freelist_index];
       if (PREDICT_FALSE (!f))
 	{
-	  /* Preallocated and no fifo left. Don't even try */
-	  if (fsh->flags & FIFO_SEGMENT_F_IS_PREALLOCATED)
-	    goto done;
-
 	  oldheap = ssvm_push_heap (sh);
 	  allocate_new_fifo_chunk (fsh, data_size_in_bytes,
 				   FIFO_SEGMENT_ALLOC_CHUNK_SIZE);
@@ -392,6 +388,7 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * fs,
 	  f->freelist_index = freelist_index;
 	  goto found;
 	}
+
       break;
     case FIFO_SEGMENT_FREELIST_NONE:
       break;
