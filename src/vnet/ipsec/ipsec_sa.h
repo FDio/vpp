@@ -114,6 +114,8 @@ typedef struct
   u8 crypto_iv_size;
   u8 crypto_block_size;
   u8 integ_icv_size;
+  u32 encrypt_thread_index;
+  u32 decrypt_thread_index;
   u32 spi;
   u32 seq;
   u32 seq_hi;
@@ -434,6 +436,18 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seq)
 	  sa->replay_window |= (1ULL << pos);
 	}
     }
+}
+
+
+/*
+ * Makes choice for thread_id should be assigned.
+ *  if input ~0, gets random worker_id based on unix_time_now_nsec
+*/
+always_inline u32
+ipsec_sa_assign_thread (u32 thread_id)
+{
+  return ((thread_id) ? thread_id
+	  : (unix_time_now_nsec () % vlib_num_workers ()) + 1);
 }
 
 #endif /* __IPSEC_SPD_SA_H__ */
