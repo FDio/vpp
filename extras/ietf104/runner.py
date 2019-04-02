@@ -474,10 +474,27 @@ class Program(object):
         self.start_containers()
 
         c1 = self.containers.get(self.get_name(self.instance_names[0]))
+        c2 = self.containers.get(self.get_name(self.instance_names[1]))
+        c3 = self.containers.get(self.get_name(self.instance_names[2]))
         c4 = self.containers.get(self.get_name(self.instance_names[-1]))
 
         c1.pg_create_interface(local_ip="172.20.0.1", remote_ip="172.20.0.2",
             local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+
+        c1.vppctl_exec("set sr encaps source addr C1::1")
+        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr-prefix D4::/32 local-prefix C1::/64")
+        c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D1::")
+
+        c2.vppctl_exec("sr localsid address D2:: behavior end")
+
+        c3.vppctl_exec("sr localsid address D3:: behavior end")
+
+        c4.vppctl_exec("sr localsid address D4:: behavior end.m.gtp4.e")
+
+        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
+        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
+        c3.set_ipv6_route("eth2", "A3::2", "D4::/128")
+        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
 
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
              IP(src="172.20.0.2", dst="172.20.0.1")/
