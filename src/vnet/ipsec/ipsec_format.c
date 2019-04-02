@@ -294,11 +294,16 @@ format_ipsec_sa (u8 * s, va_list * args)
 		  tx_table_id,
 		  format_ip46_address, &sa->tunnel_src_addr, IP46_TYPE_ANY,
 		  format_ip46_address, &sa->tunnel_dst_addr, IP46_TYPE_ANY);
-      s = format (s, "\n    resovle via fib-entry: %d", sa->fib_entry_index);
-      s = format (s, "\n    stacked on:");
-      s =
-	format (s, "\n      %U", format_dpo_id, &sa->dpo[IPSEC_PROTOCOL_ESP],
-		6);
+      if (!ipsec_sa_is_set_IS_INBOUND (sa))
+	{
+	  s =
+	    format (s, "\n    resovle via fib-entry: %d",
+		    sa->fib_entry_index);
+	  s = format (s, "\n    stacked on:");
+	  s =
+	    format (s, "\n      %U", format_dpo_id,
+		    &sa->dpo[IPSEC_PROTOCOL_ESP], 6);
+	}
     }
 
   return (s);

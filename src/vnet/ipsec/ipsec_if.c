@@ -306,7 +306,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			 &crypto_key,
 			 args->integ_alg,
 			 &integ_key,
-			 flags,
+			 (flags | IPSEC_SA_FLAG_IS_INBOUND),
 			 args->tx_table_id,
 			 &args->remote_ip,
 			 &args->local_ip, &t->input_sa_index);

@@ -713,6 +713,25 @@ increment_v4_address (ip4_address_t * a)
 }
 
 static void
+increment_vl_v4_address (vl_api_ip4_address_t * a)
+{
+  u32 v;
+
+  v = *(u32 *) a;
+  v = ntohl (v);
+  v++;
+  v = ntohl (v);
+  clib_memcpy (a, &v, sizeof (v));
+}
+
+static void
+increment_vl_address (vl_api_address_t * a)
+{
+  if (ADDRESS_IP4 == a->af)
+    increment_vl_v4_address (&a->un.ip4);
+}
+
+static void
 increment_v6_address (ip6_address_t * a)
 {
   u64 v0, v1;
@@ -15030,11 +15049,13 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
   u8 *lik = NULL, *rik = NULL;
   vl_api_address_t local_ip = { 0 };
   vl_api_address_t remote_ip = { 0 };
+  f64 before = 0;
   u8 is_add = 1;
   u8 esn = 0;
   u8 anti_replay = 0;
   u8 renumber = 0;
   u32 instance = ~0;
+  u32 count = 1, jj;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -15043,8 +15064,10 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	is_add = 0;
       else if (unformat (i, "esn"))
 	esn = 1;
-      else if (unformat (i, "anti_replay"))
+      else if (unformat (i, "anti-replay"))
 	anti_replay = 1;
+      else if (unformat (i, "count %d", &count))
+	;
       else if (unformat (i, "local_spi %d", &local_spi))
 	;
       else if (unformat (i, "remote_spi %d", &remote_spi))
@@ -15095,65 +15118,123 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	}
     }
 
-  M (IPSEC_TUNNEL_IF_ADD_DEL, mp);
-
-  mp->is_add = is_add;
-  mp->esn = esn;
-  mp->anti_replay = anti_replay;
-
-  clib_memcpy (&mp->local_ip, &local_ip, sizeof (local_ip));
-  clib_memcpy (&mp->remote_ip, &remote_ip, sizeof (remote_ip));
-
-  mp->local_spi = htonl (local_spi);
-  mp->remote_spi = htonl (remote_spi);
-  mp->crypto_alg = (u8) crypto_alg;
-
-  mp->local_crypto_key_len = 0;
-  if (lck)
+  if (count > 1)
     {
-      mp->local_crypto_key_len = vec_len (lck);
-      if (mp->local_crypto_key_len > sizeof (mp->local_crypto_key))
-	mp->local_crypto_key_len = sizeof (mp->local_crypto_key);
-      clib_memcpy (mp->local_crypto_key, lck, mp->local_crypto_key_len);
+      /* Turn on async mode */
+      vam->async_mode = 1;
+      vam->async_errors = 0;
+      before = vat_time_now (vam);
     }
 
-  mp->remote_crypto_key_len = 0;
-  if (rck)
+  for (jj = 0; jj < count; jj++)
     {
-      mp->remote_crypto_key_len = vec_len (rck);
-      if (mp->remote_crypto_key_len > sizeof (mp->remote_crypto_key))
-	mp->remote_crypto_key_len = sizeof (mp->remote_crypto_key);
-      clib_memcpy (mp->remote_crypto_key, rck, mp->remote_crypto_key_len);
+      M (IPSEC_TUNNEL_IF_ADD_DEL, mp);
+
+      mp->is_add = is_add;
+      mp->esn = esn;
+      mp->anti_replay = anti_replay;
+
+      if (jj > 0)
+	increment_vl_address (&remote_ip);
+
+      clib_memcpy (&mp->local_ip, &local_ip, sizeof (local_ip));
+      clib_memcpy (&mp->remote_ip, &remote_ip, sizeof (remote_ip));
+
+      mp->local_spi = htonl (local_spi + jj);
+      mp->remote_spi = htonl (remote_spi + jj);
+      mp->crypto_alg = (u8) crypto_alg;
+
+      mp->local_crypto_key_len = 0;
+      if (lck)
+	{
+	  mp->local_crypto_key_len = vec_len (lck);
+	  if (mp->local_crypto_key_len > sizeof (mp->local_crypto_key))
+	    mp->local_crypto_key_len = sizeof (mp->local_crypto_key);
+	  clib_memcpy (mp->local_crypto_key, lck, mp->local_crypto_key_len);
+	}
+
+      mp->remote_crypto_key_len = 0;
+      if (rck)
+	{
+	  mp->remote_crypto_key_len = vec_len (rck);
+	  if (mp->remote_crypto_key_len > sizeof (mp->remote_crypto_key))
+	    mp->remote_crypto_key_len = sizeof (mp->remote_crypto_key);
+	  clib_memcpy (mp->remote_crypto_key, rck, mp->remote_crypto_key_len);
+	}
+
+      mp->integ_alg = (u8) integ_alg;
+
+      mp->local_integ_key_len = 0;
+      if (lik)
+	{
+	  mp->local_integ_key_len = vec_len (lik);
+	  if (mp->local_integ_key_len > sizeof (mp->local_integ_key))
+	    mp->local_integ_key_len = sizeof (mp->local_integ_key);
+	  clib_memcpy (mp->local_integ_key, lik, mp->local_integ_key_len);
+	}
+
+      mp->remote_integ_key_len = 0;
+      if (rik)
+	{
+	  mp->remote_integ_key_len = vec_len (rik);
+	  if (mp->remote_integ_key_len > sizeof (mp->remote_integ_key))
+	    mp->remote_integ_key_len = sizeof (mp->remote_integ_key);
+	  clib_memcpy (mp->remote_integ_key, rik, mp->remote_integ_key_len);
+	}
+
+      if (renumber)
+	{
+	  mp->renumber = renumber;
+	  mp->show_instance = ntohl (instance);
+	}
+      S (mp);
     }
 
-  mp->integ_alg = (u8) integ_alg;
-
-  mp->local_integ_key_len = 0;
-  if (lik)
+  /* When testing multiple add/del ops, use a control-ping to sync */
+  if (count > 1)
     {
-      mp->local_integ_key_len = vec_len (lik);
-      if (mp->local_integ_key_len > sizeof (mp->local_integ_key))
-	mp->local_integ_key_len = sizeof (mp->local_integ_key);
-      clib_memcpy (mp->local_integ_key, lik, mp->local_integ_key_len);
+      vl_api_control_ping_t *mp_ping;
+      f64 after;
+      f64 timeout;
+
+      /* Shut off async mode */
+      vam->async_mode = 0;
+
+      MPING (CONTROL_PING, mp_ping);
+      S (mp_ping);
+
+      timeout = vat_time_now (vam) + 1.0;
+      while (vat_time_now (vam) < timeout)
+	if (vam->result_ready == 1)
+	  goto out;
+      vam->retval = -99;
+
+    out:
+      if (vam->retval == -99)
+	errmsg ("timeout");
+
+      if (vam->async_errors > 0)
+	{
+	  errmsg ("%d asynchronous errors", vam->async_errors);
+	  vam->retval = -98;
+	}
+      vam->async_errors = 0;
+      after = vat_time_now (vam);
+
+      /* slim chance, but we might have eaten SIGTERM on the first iteration */
+      if (jj > 0)
+	count = jj;
+
+      print (vam->ofp, "%d tunnels in %.6f secs, %.2f tunnels/sec",
+	     count, after - before, count / (after - before));
+    }
+  else
+    {
+      /* Wait for a reply... */
+      W (ret);
+      return ret;
     }
 
-  mp->remote_integ_key_len = 0;
-  if (rik)
-    {
-      mp->remote_integ_key_len = vec_len (rik);
-      if (mp->remote_integ_key_len > sizeof (mp->remote_integ_key))
-	mp->remote_integ_key_len = sizeof (mp->remote_integ_key);
-      clib_memcpy (mp->remote_integ_key, rik, mp->remote_integ_key_len);
-    }
-
-  if (renumber)
-    {
-      mp->renumber = renumber;
-      mp->show_instance = ntohl (instance);
-    }
-
-  S (mp);
-  W (ret);
   return ret;
 }
 
