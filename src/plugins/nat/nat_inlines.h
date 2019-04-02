@@ -34,6 +34,8 @@ ip_proto_to_snat_proto (u8 ip_proto)
     (ip_proto == IP_PROTOCOL_ICMP) ? SNAT_PROTOCOL_ICMP : snat_proto;
   snat_proto =
     (ip_proto == IP_PROTOCOL_ICMP6) ? SNAT_PROTOCOL_ICMP : snat_proto;
+  snat_proto =
+    (ip_proto == IP_PROTOCOL_IPSEC_ESP) ? SNAT_PROTOCOL_IPSEC_ESP : snat_proto;
 
   return snat_proto;
 }
@@ -467,6 +469,16 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
     }
 
   return 1;
+}
+
+/* $$$ obviously this is a POC implementation. FIXME $$$ */
+static int inline snat_dest_subnet_untranslated (ip4_header_t *ip)
+{
+  if (ip->dst_address.as_u8[0] == 192 &&
+      ip->dst_address.as_u8[1] == 168 &&
+      ip->dst_address.as_u8[2] < 10)
+    return 1;
+  return 0;
 }
 
 #endif /* __included_nat_inlines_h__ */
