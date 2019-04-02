@@ -159,8 +159,10 @@ virtio_pci_send_sw_interface_details (vpe_api_main_t * am,
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_VIRTIO_PCI_DETAILS);
   mp->pci_addr = htonl (vif->pci_addr.as_u32);
   mp->sw_if_index = htonl (vif->sw_if_index);
-  mp->rx_ring_sz = htons (vif->rx_ring_sz);
-  mp->tx_ring_sz = htons (vif->tx_ring_sz);
+  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, 0);
+  mp->rx_ring_sz = htons (vring->size);
+  vring = vec_elt_at_index (vif->txq_vrings, 0);
+  mp->tx_ring_sz = htons (vring->size);
   clib_memcpy (mp->mac_addr, vif->mac_addr, 6);
   mp->features = clib_host_to_net_u64 (vif->features);
 

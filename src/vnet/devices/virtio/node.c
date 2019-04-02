@@ -225,7 +225,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
   uword n_trace = vlib_get_trace_count (vm, node);
-  virtio_vring_t *vring = vec_elt_at_index (vif->vrings, 0);
+  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   const int hdr_sz = vif->virtio_net_hdr_sz;
   u32 *to_next = 0;
@@ -364,15 +364,15 @@ VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
 
   foreach_device_and_queue (dq, rt->devices_and_queues)
   {
-    virtio_if_t *mif;
-    mif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
-    if (mif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
+    virtio_if_t *vif;
+    vif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
+    if (vif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
       {
-	if (mif->gso_enabled)
-	  n_rx += virtio_device_input_inline (vm, node, frame, mif,
+	if (vif->gso_enabled)
+	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
 					      dq->queue_id, 1);
 	else
-	  n_rx += virtio_device_input_inline (vm, node, frame, mif,
+	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
 					      dq->queue_id, 0);
       }
   }
