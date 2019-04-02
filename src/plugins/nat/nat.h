@@ -125,10 +125,11 @@ typedef enum
 
 
 /* Supported L4 protocols */
-#define foreach_snat_protocol \
-  _(UDP, 0, udp, "udp")       \
-  _(TCP, 1, tcp, "tcp")       \
-  _(ICMP, 2, icmp, "icmp")
+#define foreach_snat_protocol                   \
+  _(UDP, 0, udp, "udp")                         \
+  _(TCP, 1, tcp, "tcp")                         \
+  _(ICMP, 2, icmp, "icmp")                      \
+  _(IPSEC_ESP, 3, ipsec_esp, "ipsec_esp")
 
 typedef enum
 {

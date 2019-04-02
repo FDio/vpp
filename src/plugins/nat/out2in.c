@@ -827,6 +827,12 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      icmp_packets++;
 	      goto trace0;
 	    }
+          /* Support ESP / nat split-tunneling */
+          if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_IPSEC_ESP))
+            {
+              vnet_feature_next (&next0, b0);
+              goto trace0;
+            }
 
 	  key0.addr = ip0->dst_address;
 	  key0.port = udp0->dst_port;
@@ -993,6 +999,11 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      icmp_packets++;
 	      goto trace1;
 	    }
+          if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_IPSEC_ESP))
+            {
+              vnet_feature_next (&next1, b1);
+              goto trace1;
+            }
 
 	  key1.addr = ip1->dst_address;
 	  key1.port = udp1->dst_port;
@@ -1196,6 +1207,11 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      icmp_packets++;
 	      goto trace00;
 	    }
+          if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_IPSEC_ESP))
+            {
+              vnet_feature_next (&next0, b0);
+              goto trace00;
+            }
 
 	  key0.addr = ip0->dst_address;
 	  key0.port = udp0->dst_port;
