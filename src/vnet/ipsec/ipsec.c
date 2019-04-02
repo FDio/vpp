@@ -318,6 +318,12 @@ ipsec_init (vlib_main_t * vm)
 
   vec_validate_aligned (im->ptd, vec_len (vlib_mains), CLIB_CACHE_LINE_BYTES);
 
+  im->enc4_fq_index = vlib_frame_queue_main_init (esp4_encrypt_node.index, 0);
+  im->dec4_fq_index = vlib_frame_queue_main_init (esp4_decrypt_node.index, 0);
+  im->enc6_fq_index = vlib_frame_queue_main_init (esp6_encrypt_node.index, 0);
+  im->dec6_fq_index = vlib_frame_queue_main_init (esp6_decrypt_node.index, 0);
+
+
   return 0;
 }
 

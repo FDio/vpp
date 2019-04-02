@@ -112,6 +112,7 @@ typedef struct
   u8 crypto_iv_size;
   u8 crypto_block_size;
   u8 integ_trunc_size;
+  u32 thread_index;
   u32 spi;
   u32 seq;
   u32 seq_hi;
@@ -119,9 +120,9 @@ typedef struct
   u32 last_seq_hi;
   u64 replay_window;
 
-  vnet_crypto_op_type_t crypto_enc_op_type;
-  vnet_crypto_op_type_t crypto_dec_op_type;
-  vnet_crypto_op_type_t integ_op_type;
+  vnet_crypto_op_type_t crypto_enc_op_type:8;
+  vnet_crypto_op_type_t crypto_dec_op_type:8;
+  vnet_crypto_op_type_t integ_op_type:8;
 
   dpo_id_t dpo[IPSEC_N_PROTOCOLS];
 

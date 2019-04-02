@@ -152,6 +152,12 @@ typedef struct
 
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
+
+  /** Worker handoff */
+  u32 enc4_fq_index;
+  u32 dec4_fq_index;
+  u32 enc6_fq_index;
+  u32 dec6_fq_index;
 } ipsec_main_t;
 
 extern ipsec_main_t ipsec_main;
