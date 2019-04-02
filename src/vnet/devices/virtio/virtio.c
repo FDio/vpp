@@ -81,9 +81,18 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   if (sz == 0)
     sz = 256;
 
-  vec_validate_aligned (vif->vrings, idx, CLIB_CACHE_LINE_BYTES);
-  vring = vec_elt_at_index (vif->vrings, idx);
-
+  if (idx % 2)
+    {
+      vec_validate_aligned (vif->txq_vrings, TX_QUEUE_ACCESS (idx),
+			    CLIB_CACHE_LINE_BYTES);
+      vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (idx));
+    }
+  else
+    {
+      vec_validate_aligned (vif->rxq_vrings, RX_QUEUE_ACCESS (idx),
+			    CLIB_CACHE_LINE_BYTES);
+      vring = vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
+    }
   i = sizeof (struct vring_desc) * sz;
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->desc = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
@@ -101,6 +110,7 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   vring->used = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
   clib_memset (vring->used, 0, i);
 
+  vring->queue_id = idx;
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, sz, CLIB_CACHE_LINE_BYTES);
   ASSERT (vring->indirect_buffers == 0);
@@ -168,29 +178,47 @@ virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring)
 }
 
 clib_error_t *
-virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
+virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
 {
-  virtio_vring_t *vring = vec_elt_at_index (vif->vrings, idx);
+  virtio_vring_t *vring =
+    vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
 
   clib_file_del_by_index (&file_main, vring->call_file_index);
   close (vring->kick_fd);
   close (vring->call_fd);
   if (vring->used)
     {
-      if ((idx & 1) == 1)
-	virtio_free_used_desc (vm, vring);
-      else
-	virtio_free_rx_buffers (vm, vring);
+      virtio_free_rx_buffers (vm, vring);
       clib_mem_free (vring->used);
     }
   if (vring->desc)
     clib_mem_free (vring->desc);
   if (vring->avail)
     clib_mem_free (vring->avail);
-  if (vring->queue_id % 2)
+  vec_free (vring->buffers);
+  vec_free (vring->indirect_buffers);
+  return 0;
+}
+
+clib_error_t *
+virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
+{
+  virtio_vring_t *vring =
+    vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (idx));
+
+  clib_file_del_by_index (&file_main, vring->call_file_index);
+  close (vring->kick_fd);
+  close (vring->call_fd);
+  if (vring->used)
     {
-      vlib_buffer_free_no_next (vm, vring->indirect_buffers, vring->size);
+      virtio_free_used_desc (vm, vring);
+      clib_mem_free (vring->used);
     }
+  if (vring->desc)
+    clib_mem_free (vring->desc);
+  if (vring->avail)
+    clib_mem_free (vring->avail);
+  vlib_buffer_free_no_next (vm, vring->indirect_buffers, vring->size);
   vec_free (vring->buffers);
   vec_free (vring->indirect_buffers);
   return 0;
@@ -201,10 +229,11 @@ virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index;
-  virtio_vring_t *vring = vec_elt_at_index (vif->vrings, idx);
+  virtio_vring_t *vring =
+    vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
   thread_index =
     vnet_get_device_input_thread_index (vnm, vif->hw_if_index,
-					vring->queue_id);
+					RX_QUEUE_ACCESS (idx));
   vring->buffer_pool_index =
     vlib_buffer_pool_get_default_for_numa (vm,
 					   vlib_mains
@@ -313,11 +342,12 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			     feat_entry->bit);
 	  feat_entry++;
 	}
-      vec_foreach_index (i, vif->vrings)
+      vlib_cli_output (vm, "  Number of RX Virtqueue  %u", vif->num_rxqs);
+      vlib_cli_output (vm, "  Number of TX Virtqueue  %u", vif->num_txqs);
+      vec_foreach_index (i, vif->rxq_vrings)
       {
-	// RX = 0, TX = 1
-	vring = vec_elt_at_index (vif->vrings, i);
-	vlib_cli_output (vm, "  Virtqueue (%s)", (i & 1) ? "TX" : "RX");
+	vring = vec_elt_at_index (vif->rxq_vrings, i);
+	vlib_cli_output (vm, "  Virtqueue (RX) %d", vring->queue_id);
 	vlib_cli_output (vm,
 			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
 			 vring->size, vring->last_used_idx, vring->desc_next,
@@ -338,7 +368,6 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			     "   id          addr         len  flags  next      user_addr\n");
 	    vlib_cli_output (vm,
 			     "  ===== ================== ===== ====== ===== ==================\n");
-	    vring = vif->vrings;
 	    for (j = 0; j < vring->size; j++)
 	      {
 		struct vring_desc *desc = &vring->desc[j];
@@ -350,6 +379,42 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	      }
 	  }
       }
+      vec_foreach_index (i, vif->txq_vrings)
+      {
+	vring = vec_elt_at_index (vif->txq_vrings, i);
+	vlib_cli_output (vm, "  Virtqueue (TX) %d", vring->queue_id);
+	vlib_cli_output (vm,
+			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+			 vring->size, vring->last_used_idx, vring->desc_next,
+			 vring->desc_in_use);
+	vlib_cli_output (vm,
+			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+			 vring->avail->flags, vring->avail->idx,
+			 vring->used->flags, vring->used->idx);
+	if (type == VIRTIO_IF_TYPE_TAP)
+	  {
+	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
+			     vring->call_fd);
+	  }
+	if (show_descr)
+	  {
+	    vlib_cli_output (vm, "\n  descriptor table:\n");
+	    vlib_cli_output (vm,
+			     "   id          addr         len  flags  next      user_addr\n");
+	    vlib_cli_output (vm,
+			     "  ===== ================== ===== ====== ===== ==================\n");
+	    for (j = 0; j < vring->size; j++)
+	      {
+		struct vring_desc *desc = &vring->desc[j];
+		vlib_cli_output (vm,
+				 "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
+				 j, desc->addr,
+				 desc->len,
+				 desc->flags, desc->next, desc->addr);
+	      }
+	  }
+      }
+
     }
 
 }
