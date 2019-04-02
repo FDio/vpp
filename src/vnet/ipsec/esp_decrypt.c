@@ -27,7 +27,9 @@
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input-no-checksum")           \
-_(IP6_INPUT, "ip6-input")
+_(IP6_INPUT, "ip6-input")                       \
+_(IP4_HANDOFF, "esp4-decrypt-handoff")          \
+_(IP6_HANDOFF, "esp6-decrypt-handoff")
 
 #define _(v, s) ESP_DECRYPT_NEXT_##v,
 typedef enum
@@ -169,6 +171,24 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  cpd.iv_sz = sa0->crypto_iv_size;
 	  cpd.flags = sa0->flags;
 	  cpd.sa_index = current_sa_index;
+	}
+
+      if (PREDICT_FALSE (~0 == sa0->decrypt_thread_index))
+	{
+	  /* this is the first packet to use this SA, claim the SA
+	   * for this thread. this could happen simultaneously on
+	   * another thread */
+	  clib_atomic_cmp_and_swap (&sa0->decrypt_thread_index, ~0,
+				    thread_index);
+	}
+
+      if (PREDICT_TRUE (thread_index != sa0->decrypt_thread_index))
+	{
+	  if (is_ip6)
+	    next[0] = ESP_DECRYPT_NEXT_IP6_HANDOFF;
+	  else
+	    next[0] = ESP_DECRYPT_NEXT_IP4_HANDOFF;
+	  goto trace;
 	}
 
       /* store packet data for next round for easier prefetch */
