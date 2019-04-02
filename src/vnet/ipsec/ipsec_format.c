@@ -290,6 +290,7 @@ format_ipsec_sa (u8 * s, va_list * args)
   if (!(flags & IPSEC_FORMAT_DETAIL))
     goto done;
 
+  s = format (s, "\n   thread-index %d", sa->thread_index);
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
   s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
 	      sa->last_seq, sa->last_seq_hi,

@@ -152,6 +152,14 @@ typedef struct
 
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
+
+  /** Worker handoff */
+  u32 enc4_fq_index;
+  u32 dec4_fq_index;
+  u32 enc6_fq_index;
+  u32 dec6_fq_index;
+  u32 enc4_tun_fq_index;
+  u32 enc6_tun_fq_index;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_
@@ -168,10 +176,12 @@ clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
 clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
 
 extern vlib_node_registration_t esp4_encrypt_node;
+extern vlib_node_registration_t esp4_encrypt_tun_node;
 extern vlib_node_registration_t esp4_decrypt_node;
 extern vlib_node_registration_t ah4_encrypt_node;
 extern vlib_node_registration_t ah4_decrypt_node;
 extern vlib_node_registration_t esp6_encrypt_node;
+extern vlib_node_registration_t esp6_encrypt_tun_node;
 extern vlib_node_registration_t esp6_decrypt_node;
 extern vlib_node_registration_t ah6_encrypt_node;
 extern vlib_node_registration_t ah6_decrypt_node;
