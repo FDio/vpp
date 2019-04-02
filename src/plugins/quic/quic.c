@@ -1068,18 +1068,15 @@ quic_session_connected_callback (u32 quic_app_index, u32 ho_ctx_idx,
   ho_ctx = quic_ctx_half_open_get (ho_ctx_idx);
   if (is_fail)
     {
-      int (*cb_fn) (u32, u32, session_t *, u8), rv = 0;
-      u32 wrk_index, api_context;
+      u32 api_context;
+      int rv = 0;
 
-      wrk_index = ho_ctx->c_quic_ctx_id.parent_app_wrk_idx;
       app_wrk =
 	app_worker_get_if_valid (ho_ctx->c_quic_ctx_id.parent_app_wrk_idx);
       if (app_wrk)
 	{
 	  api_context = ho_ctx->c_s_index;
-	  app = application_get (app_wrk->app_index);
-	  cb_fn = app->cb_fns.session_connected_callback;
-	  rv = cb_fn (wrk_index, api_context, 0, 1 /* failed */ );
+	  app_worker_connect_notify (app_wrk, 0, api_context);
 	}
       quic_ctx_half_open_reader_unlock ();
       quic_ctx_half_open_free (ho_ctx_idx);
