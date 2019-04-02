@@ -825,17 +825,16 @@ session_transport_closed_notify (transport_connection_t * tc)
 void
 session_transport_reset_notify (transport_connection_t * tc)
 {
-  session_t *s;
   app_worker_t *app_wrk;
-  application_t *app;
+  session_t *s;
+
   s = session_get (tc->s_index, tc->thread_index);
   svm_fifo_dequeue_drop_all (s->tx_fifo);
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return;
   s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
   app_wrk = app_worker_get (s->app_wrk_index);
-  app = application_get (app_wrk->app_index);
-  app->cb_fns.session_reset_callback (s);
+  app_worker_reset_notify (app_wrk, s);
 }
 
 int

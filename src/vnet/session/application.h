@@ -225,6 +225,7 @@ int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 			       u32 opaque);
 int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
+int app_worker_reset_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);

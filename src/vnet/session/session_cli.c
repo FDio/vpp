@@ -362,8 +362,7 @@ static int
 clear_session (session_t * s)
 {
   app_worker_t *server_wrk = app_worker_get (s->app_wrk_index);
-  application_t *server = application_get (server_wrk->app_index);
-  server->cb_fns.session_disconnect_callback (s);
+  app_worker_close_notify (server_wrk, s);
   return 0;
 }
 

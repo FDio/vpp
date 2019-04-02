@@ -88,8 +88,7 @@ session_mq_accepted_reply_handler (void *data)
       /* Closed while waiting for app to reply. Resend disconnect */
       if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 	{
-	  application_t *app = application_get (app_wrk->app_index);
-	  app->cb_fns.session_disconnect_callback (s);
+	  app_worker_close_notify (app_wrk, s);
 	  s->session_state = old_state;
 	  return;
 	}
@@ -289,7 +288,7 @@ session_mq_worker_update_handler (void *data)
     app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX);
 
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
-    app->cb_fns.session_disconnect_callback (s);
+    app_worker_close_notify (app_wrk, s);
 }
 
 vlib_node_registration_t session_queue_node;
