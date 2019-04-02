@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cfb49885_c82abb87",
+        "filename": "src/vnet/interface_output.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-02T15:09:52Z",
+      "side": 1,
+      "message": "2019",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "25edf14369b27ab3dfcda14b69dc53148c9ccf7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
