@@ -91,6 +91,7 @@ typedef struct ipsec_key_t_
   _ (8, IS_TUNNEL_V6, "tunnel-v6")                        \
   _ (16, UDP_ENCAP, "udp-encap")                          \
   _ (32, IS_GRE, "GRE")                                   \
+  _ (64, IS_INBOUND, "inboud")                            \
 
 typedef enum ipsec_sad_flags_t_
 {
