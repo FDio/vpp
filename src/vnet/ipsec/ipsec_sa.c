@@ -161,6 +161,8 @@ ipsec_sa_add (u32 id,
   sa->protocol = proto;
   sa->flags = flags;
   sa->salt = salt;
+  sa->encrypt_thread_index = ~0;
+  sa->decrypt_thread_index = ~0;
   ipsec_sa_set_integ_alg (sa, integ_alg);
   clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
