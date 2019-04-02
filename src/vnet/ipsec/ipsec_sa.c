@@ -149,23 +149,13 @@ ipsec_sa_add (u32 id,
   sa->spi = spi;
   sa->stat_index = sa_index;
   sa->protocol = proto;
+  sa->flags = flags;
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ipsec_sa_set_integ_alg (sa, integ_alg);
   clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
   ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
-
-  if (flags & IPSEC_SA_FLAG_USE_ESN)
-    ipsec_sa_set_USE_ESN (sa);
-  if (flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY)
-    ipsec_sa_set_USE_ANTI_REPLAY (sa);
-  if (flags & IPSEC_SA_FLAG_IS_TUNNEL)
-    ipsec_sa_set_IS_TUNNEL (sa);
-  if (flags & IPSEC_SA_FLAG_IS_TUNNEL_V6)
-    ipsec_sa_set_IS_TUNNEL_V6 (sa);
-  if (flags & IPSEC_SA_FLAG_UDP_ENCAP)
-    ipsec_sa_set_UDP_ENCAP (sa);
 
   err = ipsec_check_support_cb (im, sa);
   if (err)
@@ -182,7 +172,7 @@ ipsec_sa_add (u32 id,
       return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
 
-  if (ipsec_sa_is_set_IS_TUNNEL (sa))
+  if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
       fib_protocol_t fproto = (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
 			       FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
@@ -280,7 +270,7 @@ ipsec_sa_del (u32 id)
   if (err)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
-  if (ipsec_sa_is_set_IS_TUNNEL (sa))
+  if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
       fib_entry_child_remove (sa->fib_entry_index, sa->sibling);
       fib_table_entry_special_remove
