@@ -574,8 +574,7 @@ VNET_FEATURE_INIT (esp4_encrypt_tun_feat_node, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "esp4-encrypt-tun",
-  .runs_before = VNET_FEATURES ("ip4-frag",
-                                "adj-midchain-tx"),
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
 /* *INDENT-ON* */
 
@@ -606,8 +605,7 @@ VNET_FEATURE_INIT (esp6_encrypt_tun_feat_node, static) =
 {
   .arc_name = "ip6-output",
   .node_name = "esp6-encrypt-tun",
-  .runs_before = VNET_FEATURES ("ip6-frag",
-                                "adj-midchain-tx"),
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
 /* *INDENT-ON* */
 
