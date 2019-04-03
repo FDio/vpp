@@ -76,7 +76,8 @@ format_session (u8 * s, va_list * args)
       str = format (0, "%-10u%-10u", rxf, txf);
     }
 
-  if (ss->session_state >= SESSION_STATE_ACCEPTING)
+  if (ss->session_state >= SESSION_STATE_ACCEPTING
+      || ss->session_state == SESSION_STATE_CREATED)
     {
       s = format (s, "%U", format_transport_connection, tp,
 		  ss->connection_index, ss->thread_index, verbose);
