@@ -30,7 +30,7 @@ define  rdma-core_config_cmds
 	cd $(rdma-core_build_dir) && \
 	  $(CMAKE) -G Ninja $(rdma-core_src_dir) \
 	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0 \
-	    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+	    -DCMAKE_BUILD_TYPE=Release \
 	    -DCMAKE_C_FLAGS=-fPIC > $(rdma-core_config_log)
 endef
 
