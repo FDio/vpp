@@ -106,7 +106,7 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
   HMAC_CTX *ctx = ptd->hmac_ctx;
-  u32 i;
+  u32 i, n_fail = 0;
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
@@ -121,7 +121,7 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 	{
 	  if ((memcmp (op->dst, buffer, sz)))
 	    {
-	      n_ops -= 1;
+	      n_fail++;
 	      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
 	      continue;
 	    }
@@ -130,7 +130,7 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 	clib_memcpy_fast (op->dst, buffer, sz);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
-  return n_ops;
+  return n_ops - n_fail;
 }
 
 #define _(a, b) \
