@@ -3,7 +3,7 @@
  * @brief VPP control-plane API messages for the network delay simulator
  */
 
-option version = "1.1.0";
+option version = "2.1.0";
 
 /** \brief enable / disable the network delay simulation cross-connect
     @param client_index - opaque cookie to identify the sender
@@ -12,7 +12,7 @@ option version = "1.1.0";
     @param sw_if_index0 - one interface to cross-connect
     @param sw_if_index1 - the other interface to cross-connect
 */
-autoreply define nsim_enable_disable 
+autoreply define nsim_cross_connect_enable_disable 
 {
   /* Client identifier, set from api_main.my_client_index */
   u32 client_index;
@@ -26,6 +26,27 @@ autoreply define nsim_enable_disable
   /* Interface handles */
   u32 sw_if_index0;
   u32 sw_if_index1;
+};
+
+/** \brief enable / disable the network delay simulation output feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - enable or disable the feature
+    @param sw_if_index0 - interface 
+*/
+autoreply define nsim_output_feature_enable_disable 
+{
+  /* Client identifier, set from api_main.my_client_index */
+  u32 client_index;
+  
+  /* Arbitrary context, so client can match reply to request */
+  u32 context;
+  
+  /* Enable / disable the feature on the interfaces */
+  u8 enable_disable;
+  
+  /* Interface handles */
+  u32 sw_if_index;
 };
 
 /** \brief configure the network delay simulation cross-connect
@@ -49,3 +70,5 @@ autoreply define nsim_configure
   u64 bandwidth_in_bits_per_second;
   u32 packets_per_drop;
 };
+
+
