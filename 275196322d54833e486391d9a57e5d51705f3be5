@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "00a42bba_a060137b",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-03T08:36:35Z",
+      "side": 1,
+      "message": "we need some test cases with a bridge setup this way.",
+      "revId": "275196322d54833e486391d9a57e5d51705f3be5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
