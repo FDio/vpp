@@ -129,7 +129,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
   w[-1].next = 0;		/* fix next pointer in WR linked-list last item */
 
   w = wr;
-  ibv_post_recv (rxq->qp, wr, &w);
+  ibv_post_wq_recv (rxq->wq, wr, &w);
   n = wr == w ? n_alloc : (uintptr_t) (w - wr);
 
   if (PREDICT_FALSE (n != n_alloc))
