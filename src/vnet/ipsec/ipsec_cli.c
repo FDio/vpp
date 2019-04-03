@@ -407,67 +407,182 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ipsec_sa_key_command, static) = {
     .path = "set ipsec sa",
-    .short_help =
-    "set ipsec sa <id> crypto-key <key> integ-key <key>",
+    .short_help = "set ipsec sa <id> crypto-key <key> integ-key <key>",
     .function = set_ipsec_sa_key_command_fn,
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-show_ipsec_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+static void
+ipsec_sa_show_all (vlib_main_t * vm, ipsec_main_t * im)
 {
-  ipsec_main_t *im = &ipsec_main;
-  u32 spd_id, sw_if_index, sai;
-  vnet_hw_interface_t *hi;
-  ipsec_tunnel_if_t *t;
-  u8 *protocol = NULL;
-  u8 *policy = NULL;
-  u32 i;
+  u32 sai;
 
   /* *INDENT-OFF* */
   pool_foreach_index (sai, im->sad, ({
-     vlib_cli_output(vm, "%U", format_ipsec_sa, sai);
+    vlib_cli_output(vm, "%U", format_ipsec_sa, sai, IPSEC_FORMAT_BRIEF);
   }));
-  pool_foreach_index (i, im->spds, ({
-    vlib_cli_output(vm, "%U", format_ipsec_spd, i);
+  /* *INDENT-ON* */
+}
+
+static void
+ipsec_spd_show_all (vlib_main_t * vm, ipsec_main_t * im)
+{
+  u32 spdi;
+
+  /* *INDENT-OFF* */
+  pool_foreach_index (spdi, im->spds, ({
+    vlib_cli_output(vm, "%U", format_ipsec_spd, spdi);
   }));
+  /* *INDENT-ON* */
+}
+
+static void
+ipsec_spd_bindings_show_all (vlib_main_t * vm, ipsec_main_t * im)
+{
+  u32 spd_id, sw_if_index;
 
   vlib_cli_output (vm, "SPD Bindings:");
 
+  /* *INDENT-OFF* */
   hash_foreach(sw_if_index, spd_id, im->spd_index_by_sw_if_index, ({
     vlib_cli_output (vm, "  %d -> %U", spd_id,
                      format_vnet_sw_if_index_name, im->vnet_main,
                      sw_if_index);
   }));
   /* *INDENT-ON* */
+}
 
-  vlib_cli_output (vm, "tunnel interfaces");
+static void
+ipsec_tunnel_show_all (vlib_main_t * vm, ipsec_main_t * im)
+{
+  u32 ti;
+
+  vlib_cli_output (vm, "Tunnel interfaces");
   /* *INDENT-OFF* */
-  pool_foreach (t, im->tunnel_interfaces, ({
-    if (t->hw_if_index == ~0)
-      continue;
-    hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
-
-    vlib_cli_output(vm, "  %s", hi->name);
-
-    vlib_cli_output(vm, "  out-bound sa");
-    vlib_cli_output(vm, "   %U", format_ipsec_sa, t->output_sa_index);
-
-    vlib_cli_output(vm, "  in-bound sa");
-    vlib_cli_output(vm, "   %U", format_ipsec_sa, t->input_sa_index);
+  pool_foreach_index (ti, im->tunnel_interfaces, ({
+    vlib_cli_output(vm, "  %U", format_ipsec_tunnel, ti);
   }));
-  vec_free(policy);
-  vec_free(protocol);
   /* *INDENT-ON* */
+}
+
+static clib_error_t *
+show_ipsec_command_fn (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  ipsec_sa_show_all (vm, im);
+  ipsec_spd_show_all (vm, im);
+  ipsec_spd_bindings_show_all (vm, im);
+  ipsec_tunnel_show_all (vm, im);
+
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ipsec_command, static) = {
-    .path = "show ipsec",
-    .short_help = "show ipsec [backends]",
+    .path = "show ipsec all",
+    .short_help = "show ipsec all",
     .function = show_ipsec_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_ipsec_sa_command_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  ipsec_main_t *im = &ipsec_main;
+  u32 sai = ~0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%u", &sai))
+	;
+      else
+	break;
+    }
+
+  if (~0 == sai)
+    ipsec_sa_show_all (vm, im);
+  else
+    vlib_cli_output (vm, "%U", format_ipsec_sa, sai, IPSEC_FORMAT_DETAIL);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_ipsec_sa_command, static) = {
+    .path = "show ipsec sa",
+    .short_help = "show ipsec sa [index]",
+    .function = show_ipsec_sa_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_ipsec_spd_command_fn (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  ipsec_main_t *im = &ipsec_main;
+  u8 show_bindings = 0;
+  u32 spdi = ~0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%u", &spdi))
+	;
+      else if (unformat (input, "bindings"))
+	show_bindings = 1;
+      else
+	break;
+    }
+
+  if (show_bindings)
+    ipsec_spd_bindings_show_all (vm, im);
+  else if (~0 != spdi)
+    vlib_cli_output (vm, "%U", format_ipsec_spd, spdi);
+  else
+    ipsec_spd_show_all (vm, im);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_ipsec_spd_command, static) = {
+    .path = "show ipsec spd",
+    .short_help = "show ipsec spd [index]",
+    .function = show_ipsec_spd_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_ipsec_tunnel_command_fn (vlib_main_t * vm,
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
+{
+  ipsec_main_t *im = &ipsec_main;
+  u32 ti = ~0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%u", &ti))
+	;
+      else
+	break;
+    }
+
+  if (~0 != ti)
+    vlib_cli_output (vm, "%U", format_ipsec_tunnel, ti);
+  else
+    ipsec_tunnel_show_all (vm, im);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_ipsec_tunnel_command, static) = {
+    .path = "show ipsec tunnel",
+    .short_help = "show ipsec tunnel [index]",
+    .function = show_ipsec_tunnel_command_fn,
 };
 /* *INDENT-ON* */
 

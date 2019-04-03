@@ -154,6 +154,12 @@ typedef struct
   ipsec_per_thread_data_t *ptd;
 } ipsec_main_t;
 
+typedef enum ipsec_format_flags_t_
+{
+  IPSEC_FORMAT_BRIEF = 0,
+  IPSEC_FORMAT_DETAIL = (1 << 0),
+} ipsec_format_flags_t;
+
 extern ipsec_main_t ipsec_main;
 
 clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,

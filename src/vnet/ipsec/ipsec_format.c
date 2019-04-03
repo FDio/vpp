@@ -203,6 +203,12 @@ format_ipsec_spd (u8 * s, va_list * args)
   ipsec_spd_t *spd;
   u32 *i;
 
+  if (pool_is_free_index (im->spds, si))
+    {
+      s = format (s, "No such SPD index: %d", si);
+      goto done;
+    }
+
   spd = pool_elt_at_index (im->spds, si);
 
   s = format (s, "spd %u", spd->id);
@@ -216,6 +222,7 @@ format_ipsec_spd (u8 * s, va_list * args)
   foreach_ipsec_spd_policy_type;
 #undef _
 
+done:
   return (s);
 }
 
@@ -260,10 +267,17 @@ u8 *
 format_ipsec_sa (u8 * s, va_list * args)
 {
   u32 sai = va_arg (*args, u32);
+  ipsec_format_flags_t flags = va_arg (*args, ipsec_format_flags_t);
   ipsec_main_t *im = &ipsec_main;
   vlib_counter_t counts;
   u32 tx_table_id;
   ipsec_sa_t *sa;
+
+  if (pool_is_free_index (im->sad, sai))
+    {
+      s = format (s, "No such SA index: %d", sai);
+      goto done;
+    }
 
   sa = pool_elt_at_index (im->sad, sai);
 
@@ -272,6 +286,10 @@ format_ipsec_sa (u8 * s, va_list * args)
 	      ipsec_sa_is_set_IS_TUNNEL (sa) ? "tunnel" : "transport",
 	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "-ip6" : "",
 	      sa->protocol ? "esp" : "ah", format_ipsec_sa_flags, sa->flags);
+
+  if (!(flags & IPSEC_FORMAT_DETAIL))
+    goto done;
+
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
   s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
 	      sa->last_seq, sa->last_seq_hi,
@@ -306,6 +324,42 @@ format_ipsec_sa (u8 * s, va_list * args)
 	}
     }
 
+done:
+  return (s);
+}
+
+u8 *
+format_ipsec_tunnel (u8 * s, va_list * args)
+{
+  ipsec_main_t *im = &ipsec_main;
+  u32 ti = va_arg (*args, u32);
+  vnet_hw_interface_t *hi;
+  ipsec_tunnel_if_t *t;
+
+  if (pool_is_free_index (im->tunnel_interfaces, ti))
+    {
+      s = format (s, "No such tunnel index: %d", ti);
+      goto done;
+    }
+
+  t = pool_elt_at_index (im->tunnel_interfaces, ti);
+
+  if (t->hw_if_index == ~0)
+    goto done;
+
+  hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
+
+  s = format (s, "%s\n", hi->name);
+
+  s = format (s, "   out-bound sa: ");
+  s = format (s, "%U\n", format_ipsec_sa, t->output_sa_index,
+	      IPSEC_FORMAT_BRIEF);
+
+  s = format (s, "    in-bound sa: ");
+  s = format (s, "%U\n", format_ipsec_sa, t->input_sa_index,
+	      IPSEC_FORMAT_BRIEF);
+
+done:
   return (s);
 }
 
