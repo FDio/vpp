@@ -19,23 +19,58 @@
 
 vnet_crypto_main_t crypto_main;
 
+static_always_inline u32
+vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
+				      vnet_crypto_main_t * cm,
+				      vnet_crypto_op_type_t opt,
+				      vnet_crypto_op_t * ops[], u32 n_ops)
+{
+  if (n_ops == 0)
+    return 0;
+
+  if (cm->ops_handlers[opt] == 0)
+    {
+      while (n_ops)
+	{
+	  ops[0]->status = VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER;
+	  ops++;
+	}
+      return 0;
+    }
+
+  return (cm->ops_handlers[opt]) (vm, ops, n_ops);
+}
+
+
 u32
 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
 {
   vnet_crypto_main_t *cm = &crypto_main;
+  const int op_q_size = VLIB_FRAME_SIZE;
+  vnet_crypto_op_t *op_queue[op_q_size];
+  vnet_crypto_op_type_t opt, current_op_type = ~0;
+  u32 n_op_queue = 0;
   u32 rv = 0, i;
+
+  ASSERT (n_ops >= 1);
 
   for (i = 0; i < n_ops; i++)
     {
-      vnet_crypto_op_type_t opt = ops[i].op;
-      vnet_crypto_op_t *opp = &ops[i];
+      opt = ops[i].op;
 
-      if (cm->ops_handlers[opt])
-	rv += (cm->ops_handlers[opt]) (vm, &opp, 1);
-      else
-	ops[i].status = VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER;
+      if (current_op_type != opt || n_op_queue >= op_q_size)
+	{
+	  rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
+						      op_queue, n_op_queue);
+	  n_op_queue = 0;
+	  current_op_type = opt;
+	}
+
+      op_queue[n_op_queue++] = &ops[i];
     }
 
+  rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
+					      op_queue, n_op_queue);
   return rv;
 }
 
