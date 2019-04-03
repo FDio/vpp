@@ -116,6 +116,8 @@ extern int ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 extern int ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index,
 				   u32 sa_id, u8 is_outbound);
 
+extern u8 *format_ipsec_tunnel (u8 * s, va_list * args);
+
 #endif /* __IPSEC_IF_H__ */
 
 /*
