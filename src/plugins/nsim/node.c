@@ -80,10 +80,13 @@ typedef enum
 
 always_inline uword
 nsim_inline (vlib_main_t * vm,
-	     vlib_node_runtime_t * node, vlib_frame_t * frame, int is_trace)
+	     vlib_node_runtime_t * node, vlib_frame_t * frame, int is_trace,
+	     int is_cross_connect)
 {
   nsim_main_t *nsm = &nsim_main;
   u32 n_left_from, *from;
+  u32 *to_next, n_left_to_next;
+  u32 drops[VLIB_FRAME_SIZE], *drop;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u32 my_thread_index = vm->thread_index;
@@ -91,9 +94,9 @@ nsim_inline (vlib_main_t * vm,
   f64 now = vlib_time_now (vm);
   f64 expires = now + nsm->delay;
   int is_drop0;
-  u32 no_error = node->errors[NSIM_ERROR_BUFFERED];
   u32 no_buffer_error = node->errors[NSIM_ERROR_DROPPED];
   u32 loss_error = node->errors[NSIM_ERROR_LOSS];
+  u32 buffered = 0;
   nsim_wheel_entry_t *ep = 0;
 
   ASSERT (wp);
@@ -104,11 +107,10 @@ nsim_inline (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
   next = nexts;
+  drop = drops;
 
-  /* There is no point in trying to do more than 1 pkt here */
   while (n_left_from > 0)
     {
-      b[0]->error = no_error;
       next[0] = NSIM_NEXT_DROP;
       is_drop0 = 0;
       if (PREDICT_TRUE (wp->cursize < wp->wheel_size))
@@ -133,13 +135,25 @@ nsim_inline (vlib_main_t * vm,
 	  wp->cursize++;
 
 	  ep->tx_time = expires;
-	  ep->tx_sw_if_index =
-	    (vnet_buffer (b[0])->sw_if_index[VLIB_RX] == nsm->sw_if_index0)
-	    ? nsm->sw_if_index1 : nsm->sw_if_index0;
-	  ep->current_length = vlib_buffer_length_in_chain (vm, b[0]);
-	  ASSERT (ep->current_length <= WHEEL_ENTRY_DATA_SIZE);
-	  clib_memcpy_fast (ep->data, vlib_buffer_get_current (b[0]),
-			    ep->current_length);
+	  ep->rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	  if (is_cross_connect)
+	    {
+	      ep->tx_sw_if_index =
+		(vnet_buffer (b[0])->sw_if_index[VLIB_RX] ==
+		 nsm->sw_if_index0) ? nsm->sw_if_index1 : nsm->sw_if_index0;
+	      ep->output_next_index =
+		(ep->tx_sw_if_index ==
+		 nsm->sw_if_index0) ? nsm->
+		output_next_index0 : nsm->output_next_index1;
+	    }
+	  else			/* output feature, even easier... */
+	    {
+	      ep->tx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	      ep->output_next_index =
+		nsm->output_next_index_by_sw_if_index[ep->tx_sw_if_index];
+	    }
+	  ep->buffer_index = from[0];
+	  buffered++;
 	}
       else			/* out of wheel space, drop pkt */
 	{
@@ -162,9 +176,34 @@ nsim_inline (vlib_main_t * vm,
 
       b += 1;
       next += 1;
+      if (PREDICT_FALSE (is_drop0))
+	{
+	  drop[0] = from[0];
+	  drop++;
+	}
+      from++;
       n_left_from -= 1;
     }
-  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  if (PREDICT_FALSE (drop > drops))
+    {
+      u32 n_left_to_drop = drop - drops;
+      drop = drops;
+
+      while (n_left_to_drop > 0)
+	{
+	  u32 this_copy_size;
+	  vlib_get_next_frame (vm, node, NSIM_NEXT_DROP, to_next,
+			       n_left_to_next);
+	  this_copy_size = clib_min (n_left_to_drop, n_left_to_next);
+	  clib_memcpy_fast (to_next, drop, this_copy_size * sizeof (u32));
+	  n_left_to_next -= this_copy_size;
+	  vlib_put_next_frame (vm, node, NSIM_NEXT_DROP, n_left_to_next);
+	  drop += this_copy_size;
+	  n_left_to_drop -= this_copy_size;
+	}
+    }
+  vlib_node_increment_counter (vm, node->node_index,
+			       NSIM_ERROR_BUFFERED, buffered);
   return frame->n_vectors;
 }
 
@@ -172,9 +211,11 @@ VLIB_NODE_FN (nsim_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return nsim_inline (vm, node, frame, 1 /* is_trace */ );
+    return nsim_inline (vm, node, frame,
+			1 /* is_trace */ , 1 /* is_cross_connect */ );
   else
-    return nsim_inline (vm, node, frame, 0 /* is_trace */ );
+    return nsim_inline (vm, node, frame,
+			0 /* is_trace */ , 1 /* is_cross_connect */ );
 }
 
 /* *INDENT-OFF* */
@@ -182,6 +223,40 @@ VLIB_NODE_FN (nsim_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 VLIB_REGISTER_NODE (nsim_node) =
 {
   .name = "nsim",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nsim_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(nsim_error_strings),
+  .error_strings = nsim_error_strings,
+
+  .n_next_nodes = NSIM_N_NEXT,
+
+  /* edit / add dispositions here */
+  .next_nodes = {
+        [NSIM_NEXT_DROP] = "error-drop",
+  },
+};
+#endif /* CLIB_MARCH_VARIANT */
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (nsim_feature_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
+{
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    return nsim_inline (vm, node, frame,
+			1 /* is_trace */ , 0 /* is_cross_connect */ );
+  else
+    return nsim_inline (vm, node, frame,
+			0 /* is_trace */ , 0 /* is_cross_connect */ );
+}
+
+/* *INDENT-OFF* */
+#ifndef CLIB_MARCH_VARIANT
+VLIB_REGISTER_NODE (nsim_feature_node) =
+{
+  .name = "nsim-output-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_nsim_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
