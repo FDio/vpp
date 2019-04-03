@@ -55,6 +55,13 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
   mp = rte_mempool_create_empty ((char *) name, vec_len (bp->buffers),
 				 elt_size, 512, sizeof (priv),
 				 bp->numa_node, 0);
+  if (!mp)
+    {
+      vec_free (name);
+      return clib_error_return (0,
+				"failed to create normal mempool for numa node %u",
+				bp->index);
+    }
   vec_reset_length (name);
 
   /* non-cached mempool */
@@ -62,6 +69,14 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
   nmp = rte_mempool_create_empty ((char *) name, vec_len (bp->buffers),
 				  elt_size, 0, sizeof (priv),
 				  bp->numa_node, 0);
+  if (!nmp)
+    {
+      rte_mempool_free (mp);
+      vec_free (name);
+      return clib_error_return (0,
+				"failed to create non-cache mempool for numa nude %u",
+				bp->index);
+    }
   vec_free (name);
 
   dpdk_mempool_by_buffer_pool_index[bp->index] = mp;
