@@ -1,0 +1,25 @@
+set term pag off
+
+loop cre
+
+set int ip address loop0 192.168.2.1/24
+set int state loop0 up
+set nsim delay 20 ms bandwidth 1 gbit packet-size 128
+comment { add drop-fraction 0.8 or some such}
+nsim output-feature enable-disable loop0
+
+packet-generator new {
+    name icmp
+    limit 0
+    size 128-128
+    interface local0
+    node ethernet-input
+    data {
+        IP4: 0001.dead.beef -> 0002.dead.beef
+        ICMP: 192.168.1.2 -> 192.168.2.2
+        incrementing 30
+    }
+}
+
+set int ip address pg0 192.168.1.1/24
+set ip arp loop0 192.168.2.2 0003.dead.beef
