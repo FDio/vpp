@@ -60,7 +60,8 @@ nsim_test_main_t nsim_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 #define foreach_standard_reply_retval_handler   \
-_(nsim_enable_disable_reply)                    \
+_(nsim_cross_connect_enable_disable_reply)      \
+_(nsim_output_feature_enable_disable_reply)     \
 _(nsim_configure_reply)
 
 #define _(n)                                            \
@@ -83,19 +84,22 @@ foreach_standard_reply_retval_handler;
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
  */
-#define foreach_vpe_api_reply_msg                       \
-_(NSIM_ENABLE_DISABLE_REPLY, nsim_enable_disable_reply) \
+#define foreach_vpe_api_reply_msg               \
+_(NSIM_CROSS_CONNECT_ENABLE_DISABLE_REPLY,      \
+nsim_cross_connect_enable_disable_reply)        \
+_(NSIM_OUTPUT_FEATURE_ENABLE_DISABLE_REPLY,     \
+nsim_output_feature_enable_disable_reply)       \
 _(NSIM_CONFIGURE_REPLY, nsim_configure_reply)
 
 static int
-api_nsim_enable_disable (vat_main_t * vam)
+api_nsim_cross_connect_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;
   u32 sw_if_index0 = ~0;
   u32 sw_if_index1 = ~0;
   u32 tmp;
-  vl_api_nsim_enable_disable_t *mp;
+  vl_api_nsim_cross_connect_enable_disable_t *mp;
   int ret;
 
   /* Parse args required to build the message */
@@ -128,9 +132,50 @@ api_nsim_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (NSIM_ENABLE_DISABLE, mp);
+  M (NSIM_CROSS_CONNECT_ENABLE_DISABLE, mp);
   mp->sw_if_index0 = ntohl (sw_if_index0);
   mp->sw_if_index1 = ntohl (sw_if_index1);
+  mp->enable_disable = enable_disable;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_nsim_output_feature_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  int enable_disable = 1;
+  u32 sw_if_index = ~0;
+  vl_api_nsim_output_feature_enable_disable_t *mp;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "disable"))
+	enable_disable = 0;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name / explicit sw_if_index number \n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (NSIM_OUTPUT_FEATURE_ENABLE_DISABLE, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
   mp->enable_disable = enable_disable;
 
   /* send it... */
@@ -229,9 +274,10 @@ api_nsim_configure (vat_main_t * vam)
  * and that the data plane plugin processes
  */
 #define foreach_vpe_api_msg                                             \
-_(nsim_enable_disable,                                                  \
+_(nsim_cross_connect_enable_disable,                                    \
 "[<intfc0> | sw_if_index <swif0>] [<intfc1> | sw_if_index <swif1>] [disable]") \
-_(nsim_configure, "delay <time> bandwidth <bw> [packet-size <nn>]" \
+_(nsim_output_feature_enable_disable,"[<intfc> | sw_if_index <nnn> [disable]") \
+_(nsim_configure, "delay <time> bandwidth <bw> [packet-size <nn>]"      \
 "[packets-per-drop <nnnn>]")
 
 static void
