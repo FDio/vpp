@@ -150,6 +150,11 @@ M:	Damjan Marion <damarion@cisco.com>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/crypto/
 
+VNET COP
+I:	cop
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/cop/
+
 Crypto IA32 Plugin
 I:	crypto-ia32
 M:	Damjan Marion <damarion@cisco.com>
