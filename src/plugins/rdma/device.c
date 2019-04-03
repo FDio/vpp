@@ -268,11 +268,11 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
     return clib_error_return_unix (0, "Create CQ Failed");
 
   memset (&qpia, 0, sizeof (qpia));
-  qpia.qp_type = IBV_QPT_RAW_PACKET;
   qpia.send_cq = rxq->cq;
   qpia.recv_cq = rxq->cq;
   qpia.cap.max_recv_wr = n_desc;
   qpia.cap.max_recv_sge = 1;
+  qpia.qp_type = IBV_QPT_RAW_PACKET;
 
   if ((rxq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
     return clib_error_return_unix (0, "Queue Pair create failed");
@@ -309,11 +309,12 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
     return clib_error_return_unix (0, "Create CQ Failed");
 
   memset (&qpia, 0, sizeof (qpia));
-  qpia.qp_type = IBV_QPT_RAW_PACKET;
   qpia.send_cq = txq->cq;
   qpia.recv_cq = txq->cq;
   qpia.cap.max_send_wr = n_desc;
   qpia.cap.max_send_sge = 1;
+  qpia.qp_type = IBV_QPT_RAW_PACKET;
+  qpia.sq_sig_all = 1;
 
   if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
     return clib_error_return_unix (0, "Queue Pair create failed");
@@ -430,7 +431,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   pool_get_zero (rm->devices, rd);
   rd->dev_instance = rd - rm->devices;
-  rd->per_interface_next_index = ~0;
+  rd->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   rd->name = vec_dup (args->name);
 
   /* check if device exist and if it is bound to mlx5_core */
