@@ -411,7 +411,8 @@ tcp_rcv_ack_no_cc (tcp_connection_t * tc, vlib_buffer_t * b, u32 * error)
   if (!(seq_leq (tc->snd_una, vnet_buffer (b)->tcp.ack_number)
 	&& seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
     {
-      if (seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max))
+      if (seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max)
+	  && seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
 	{
 	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
 	  goto acceptable;
@@ -1580,7 +1581,8 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
     {
       /* We've probably entered recovery and the peer still has some
        * of the data we've sent. Update snd_nxt and accept the ack */
-      if (seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max))
+      if (seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max)
+	  && seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
 	{
 	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
 	  goto process_ack;
@@ -2787,7 +2789,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		tcp_send_fin (tc0);
 	      /* If a fin was received and data was acked extend wait */
 	      else if ((tc0->flags & TCP_CONN_FINRCVD) && tc0->bytes_acked)
-		tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+		tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE,
+				  TCP_CLOSEWAIT_TIME);
 	    }
 	  /* If FIN is ACKed */
 	  else if (tc0->snd_una == tc0->snd_nxt)
