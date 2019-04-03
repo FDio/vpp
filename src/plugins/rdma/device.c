@@ -29,6 +29,20 @@
 
 #include <rdma/rdma.h>
 
+/* Default RSS hash key (from DPDK MLX driver) */
+static u8 rdma_rss_hash_key[] = {
+  0x2c, 0xc6, 0x81, 0xd1,
+  0x5b, 0xdb, 0xf4, 0xf7,
+  0xfc, 0xa2, 0x83, 0x19,
+  0xdb, 0x1a, 0x3e, 0x94,
+  0x6b, 0x9e, 0x38, 0xd9,
+  0x2c, 0x9c, 0x03, 0xd1,
+  0xad, 0x99, 0x44, 0xa7,
+  0xd9, 0x56, 0x3d, 0x59,
+  0x06, 0x3c, 0x25, 0xf3,
+  0xfc, 0x1f, 0xdc, 0x2a,
+};
+
 rdma_main_t rdma_main;
 
 #define rdma_log_debug(dev, f, ...) \
@@ -201,7 +215,7 @@ static clib_error_t *
 rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
 {
   return ethernet_register_interface (vnm, rdma_device_class.index,
-				      rd->dev_instance, rd->hwaddr,
+				      rd->dev_instance, rd->hwaddr.bytes,
 				      &rd->hw_if_index, rdma_flag_change);
 }
 
@@ -237,9 +251,11 @@ rdma_dev_cleanup (rdma_device_t * rd)
   }
   vec_foreach (rxq, rd->rxqs)
   {
-    _(ibv_destroy_qp, rxq->qp);
+    _(ibv_destroy_wq, rxq->wq);
     _(ibv_destroy_cq, rxq->cq);
   }
+  _(ibv_destroy_rwq_ind_table, rd->rx_rwq_ind_tbl);
+  _(ibv_destroy_qp, rd->rx_qp);
   _(ibv_dealloc_pd, rd->pd);
   _(ibv_close_device, rd->ctx);
 #undef _
@@ -253,12 +269,38 @@ rdma_dev_cleanup (rdma_device_t * rd)
 }
 
 static clib_error_t *
+rdma_rxq_init_flow (struct ibv_flow **flow, struct ibv_qp *qp,
+		    const mac_address_t * mac, const mac_address_t * mask,
+		    u32 flags)
+{
+  struct raw_eth_flow_attr
+  {
+    struct ibv_flow_attr attr;
+    struct ibv_flow_spec_eth spec_eth;
+  } __attribute__ ((packed)) fa;
+
+  memset (&fa, 0, sizeof (fa));
+  fa.attr.num_of_specs = 1;
+  fa.attr.port = 1;
+  fa.attr.flags = flags;
+  fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
+  fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
+
+  memcpy (fa.spec_eth.val.dst_mac, mac, sizeof (fa.spec_eth.val.dst_mac));
+  memcpy (fa.spec_eth.mask.dst_mac, mask, sizeof (fa.spec_eth.mask.dst_mac));
+
+  if ((*flow = ibv_create_flow (qp, &fa.attr)) == 0)
+    return clib_error_return_unix (0, "create Flow Failed");
+
+  return 0;
+}
+
+static clib_error_t *
 rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 {
   rdma_rxq_t *rxq;
-  struct ibv_qp_init_attr qpia;
-  struct ibv_qp_attr qpa;
-  int qp_flags;
+  struct ibv_wq_init_attr wqia;
+  struct ibv_wq_attr wqa;
 
   vec_validate_aligned (rd->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (rd->rxqs, qid);
@@ -267,30 +309,75 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   if ((rxq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
     return clib_error_return_unix (0, "Create CQ Failed");
 
-  memset (&qpia, 0, sizeof (qpia));
-  qpia.send_cq = rxq->cq;
-  qpia.recv_cq = rxq->cq;
-  qpia.cap.max_recv_wr = n_desc;
-  qpia.cap.max_recv_sge = 1;
-  qpia.qp_type = IBV_QPT_RAW_PACKET;
+  memset (&wqia, 0, sizeof (wqia));
+  wqia.wq_type = IBV_WQT_RQ;
+  wqia.max_wr = n_desc;
+  wqia.max_sge = 1;
+  wqia.pd = rd->pd;
+  wqia.cq = rxq->cq;
+  if ((rxq->wq = ibv_create_wq (rd->ctx, &wqia)) == 0)
+    return clib_error_return_unix (0, "Create WQ Failed");
 
-  if ((rxq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
-    return clib_error_return_unix (0, "Queue Pair create failed");
-
-  memset (&qpa, 0, sizeof (qpa));
-  qp_flags = IBV_QP_STATE | IBV_QP_PORT;
-  qpa.qp_state = IBV_QPS_INIT;
-  qpa.port_num = 1;
-  if (ibv_modify_qp (rxq->qp, &qpa, qp_flags) != 0)
-    return clib_error_return_unix (0, "Modify QP (init) Failed");
-
-  memset (&qpa, 0, sizeof (qpa));
-  qp_flags = IBV_QP_STATE;
-  qpa.qp_state = IBV_QPS_RTR;
-  if (ibv_modify_qp (rxq->qp, &qpa, qp_flags) != 0)
-    return clib_error_return_unix (0, "Modify QP (receive) Failed");
+  memset (&wqa, 0, sizeof (wqa));
+  wqa.attr_mask = IBV_WQ_ATTR_STATE;
+  wqa.wq_state = IBV_WQS_RDY;
+  if (ibv_modify_wq (rxq->wq, &wqa) != 0)
+    return clib_error_return_unix (0, "Modify WQ (RDY) Failed");
 
   return 0;
+}
+
+static clib_error_t *
+rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
+{
+  struct ibv_rwq_ind_table_init_attr rwqia;
+  struct ibv_qp_init_attr_ex qpia;
+  const mac_address_t ucast = {.bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+  };
+  const mac_address_t mcast = {.bytes = {0x1, 0x0, 0x0, 0x0, 0x0, 0x0} };
+  struct ibv_wq **ind_tbl;
+  clib_error_t *err;
+  u32 i;
+
+  ASSERT (is_pow2 (vec_len (rd->rxqs))
+	  && "rxq number should be a power of 2");
+
+  ind_tbl = vec_new (struct ibv_wq *, vec_len (rd->rxqs));
+  vec_foreach_index (i, rd->rxqs)
+    ind_tbl[i] = vec_elt_at_index (rd->rxqs, i)->wq;
+  memset (&rwqia, 0, sizeof (rwqia));
+  rwqia.log_ind_tbl_size = min_log2 (vec_len (ind_tbl));
+  rwqia.ind_tbl = ind_tbl;
+  if ((rd->rx_rwq_ind_tbl = ibv_create_rwq_ind_table (rd->ctx, &rwqia)) == 0)
+    return clib_error_return_unix (0, "RWQ indirection table create failed");
+  vec_free (ind_tbl);
+
+  memset (&qpia, 0, sizeof (qpia));
+  qpia.qp_type = IBV_QPT_RAW_PACKET;
+  qpia.comp_mask =
+    IBV_QP_INIT_ATTR_PD | IBV_QP_INIT_ATTR_IND_TABLE |
+    IBV_QP_INIT_ATTR_RX_HASH;
+  qpia.pd = rd->pd;
+  qpia.rwq_ind_tbl = rd->rx_rwq_ind_tbl;
+  STATIC_ASSERT_SIZEOF (rdma_rss_hash_key, 40);
+  qpia.rx_hash_conf.rx_hash_key_len = sizeof (rdma_rss_hash_key);
+  qpia.rx_hash_conf.rx_hash_key = rdma_rss_hash_key;
+  qpia.rx_hash_conf.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ;
+  qpia.rx_hash_conf.rx_hash_fields_mask =
+    IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4;
+  if ((rd->rx_qp = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
+    return clib_error_return_unix (0, "Queue Pair create failed");
+
+  /* receive only packets with src = our MAC */
+  if ((err =
+       rdma_rxq_init_flow (&rd->flow_ucast, rd->rx_qp, &rd->hwaddr, &ucast,
+			   0)) != 0)
+    return err;
+  /* receive multicast packets */
+  return rdma_rxq_init_flow (&rd->flow_mcast, rd->rx_qp, &mcast, &mcast,
+			     IBV_FLOW_ATTR_FLAGS_DONT_TRAP
+			     /* let others receive mcast packet too (eg. Linux) */
+    );
 }
 
 static clib_error_t *
@@ -341,12 +428,13 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 }
 
 static clib_error_t *
-rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd)
+rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
+	       u32 txq_size, u32 rxq_num)
 {
   clib_error_t *err;
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u16 i;
+  u32 i;
 
   if (rd->ctx == 0)
     return clib_error_return_unix (0, "Device Open Failed");
@@ -354,52 +442,22 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd)
   if ((rd->pd = ibv_alloc_pd (rd->ctx)) == 0)
     return clib_error_return_unix (0, "PD Alloc Failed");
 
-  if ((err = rdma_rxq_init (vm, rd, 0, 512)))
+  ethernet_mac_address_generate (rd->hwaddr.bytes);
+
+  for (i = 0; i < rxq_num; i++)
+    if ((err = rdma_rxq_init (vm, rd, i, rxq_size)))
+      return err;
+  if ((err = rdma_rxq_finalize (vm, rd)))
     return err;
 
   for (i = 0; i < tm->n_vlib_mains; i++)
-    if ((err = rdma_txq_init (vm, rd, i, 512)))
+    if ((err = rdma_txq_init (vm, rd, i, txq_size)))
       return err;
 
   if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
 			    bm->buffer_mem_size,
 			    IBV_ACCESS_LOCAL_WRITE)) == 0)
     return clib_error_return_unix (0, "Register MR Failed");
-
-  ethernet_mac_address_generate (rd->hwaddr);
-
-  /*
-   * restrict packets steering to our MAC
-   * allows to share a single HW NIC with multiple RDMA ifaces
-   * and/or Linux
-   */
-  struct raw_eth_flow_attr
-  {
-    struct ibv_flow_attr attr;
-    struct ibv_flow_spec_eth spec_eth;
-  } __attribute__ ((packed)) fa;
-  memset (&fa, 0, sizeof (fa));
-  fa.attr.num_of_specs = 1;
-  fa.attr.port = 1;
-  fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
-  fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
-  memcpy (fa.spec_eth.val.dst_mac, rd->hwaddr,
-	  sizeof (fa.spec_eth.val.dst_mac));
-  memset (fa.spec_eth.mask.dst_mac, 0xff, sizeof (fa.spec_eth.mask.dst_mac));
-  if ((rd->flow_ucast = ibv_create_flow (rd->rxqs[0].qp, &fa.attr)) == 0)
-    return clib_error_return_unix (0, "create Flow Failed");
-
-  /* receive multicast packets too */
-  memset (&fa, 0, sizeof (fa));
-  fa.attr.num_of_specs = 1;
-  fa.attr.port = 1;
-  fa.attr.flags = IBV_FLOW_ATTR_FLAGS_DONT_TRAP;	/* let others receive them too */
-  fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
-  fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
-  fa.spec_eth.val.dst_mac[0] = 1;
-  fa.spec_eth.mask.dst_mac[0] = 1;
-  if ((rd->flow_mcast = ibv_create_flow (rd->rxqs[0].qp, &fa.attr)) == 0)
-    return clib_error_return_unix (0, "create Flow Failed");
 
   return 0;
 }
@@ -428,6 +486,27 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   struct ibv_device **dev_list = 0;
   int n_devs;
   u8 *s = 0, *s2 = 0;
+  u16 qid;
+
+  args->rxq_size = args->rxq_size ? args->rxq_size : 2 * VLIB_FRAME_SIZE;
+  args->txq_size = args->txq_size ? args->txq_size : 2 * VLIB_FRAME_SIZE;
+  args->rxq_num = args->rxq_num ? args->rxq_num : 1;
+
+  if (!is_pow2 (args->rxq_num))
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error =
+	clib_error_return (0, "rx queue number must be a power of two");
+      return;
+    }
+
+  if (!is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error =
+	clib_error_return (0, "queue size must be a power of two");
+      return;
+    }
 
   pool_get_zero (rm->devices, rd);
   rd->dev_instance = rd - rm->devices;
@@ -460,8 +539,8 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
     {
       args->error =
 	clib_error_return_unix (0,
-				"no RDMA devices available, errno = %d. Is the ib_uverbs module loaded?",
-				errno);
+				"no RDMA devices available, errno = %d. "
+				"Is the ib_uverbs module loaded?", errno);
       goto err1;
     }
 
@@ -482,7 +561,8 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	break;
     }
 
-  if ((args->error = rdma_dev_init (vm, rd)))
+  if ((args->error =
+       rdma_dev_init (vm, rd, args->rxq_size, args->txq_size, args->rxq_num)))
     goto err2;
 
   if ((args->error = rdma_register_interface (vnm, rd)))
@@ -502,7 +582,8 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
    */
   vnet_hw_interface_set_input_node (vnm, rd->hw_if_index,
 				    rdma_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, rd->hw_if_index, 0, ~0);
+  vec_foreach_index (qid, rd->rxqs)
+    vnet_hw_interface_assign_rx_thread (vnm, rd->hw_if_index, qid, ~0);
   return;
 
 err3:

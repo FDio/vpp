@@ -33,17 +33,23 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   rdma_create_if_args_t args;
 
-  clib_memset (&args, 0, sizeof (rdma_create_if_args_t));
-
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
+
+  clib_memset (&args, 0, sizeof (rdma_create_if_args_t));
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "host-if %s", &args.ifname))
 	;
       else if (unformat (line_input, "name %s", &args.name))
+	;
+      else if (unformat (line_input, "rx-queue-size %u", &args.rxq_size))
+	;
+      else if (unformat (line_input, "tx-queue-size %u", &args.txq_size))
+	;
+      else if (unformat (line_input, "num-rx-queues %u", &args.rxq_num))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -62,7 +68,9 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (rdma_create_command, static) = {
   .path = "create interface rdma",
-  .short_help = "create interface rdma <host-if ifname> [name <name>]",
+  .short_help = "create interface rdma <host-if ifname> [name <name>]"
+    " [rx-queue-size <size>] [tx-queue-size <size>]"
+    " [num-rx-queues <size>]",
   .function = rdma_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -101,7 +109,7 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == NULL || rdma_device_class.index != hw->dev_class_index)
-    return clib_error_return (0, "not an AVF interface");
+    return clib_error_return (0, "not a RDMA interface");
 
   rd = pool_elt_at_index (rm->devices, hw->dev_instance);
 

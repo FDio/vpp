@@ -43,7 +43,7 @@ typedef struct
   u32 size;
   u32 n_enq;
   struct ibv_cq *cq;
-  struct ibv_qp *qp;
+  struct ibv_wq *wq;
 } rdma_rxq_t;
 
 typedef struct
@@ -71,13 +71,15 @@ typedef struct
   rdma_rxq_t *rxqs;
   rdma_txq_t *txqs;
 
-  u8 hwaddr[6];
-  vlib_pci_addr_t pci_addr;
   u8 *name;
+  mac_address_t hwaddr;
+  vlib_pci_addr_t pci_addr;
 
   struct ibv_context *ctx;
   struct ibv_pd *pd;
   struct ibv_mr *mr;
+  struct ibv_qp *rx_qp;
+  struct ibv_rwq_ind_table *rx_rwq_ind_tbl;
   struct ibv_flow *flow_ucast;
   struct ibv_flow *flow_mcast;
 
@@ -97,6 +99,9 @@ typedef struct
 {
   u8 *ifname;
   u8 *name;
+  u32 rxq_size;
+  u32 txq_size;
+  u32 rxq_num;
 
   /* return */
   int rv;
