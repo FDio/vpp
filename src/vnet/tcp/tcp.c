@@ -200,6 +200,8 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 {
   tcp_main_t *tm = &tcp_main;
 
+  TCP_EVT_DBG (TCP_EVT_DELETE, tc);
+
   /* Cleanup local endpoint if this was an active connect */
   transport_endpoint_cleanup (TRANSPORT_PROTO_TCP, &tc->c_lcl_ip,
 			      tc->c_lcl_port);
@@ -243,7 +245,6 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 void
 tcp_connection_del (tcp_connection_t * tc)
 {
-  TCP_EVT_DBG (TCP_EVT_DELETE, tc);
   session_transport_delete_notify (&tc->connection);
   tcp_connection_cleanup (tc);
 }
