@@ -166,12 +166,9 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Copy data from the ring */
 	  clib_memcpy_fast (b0->data, ep->data, ep->current_length);
 	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = ep->rx_sw_if_index;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ep->tx_sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
-	    (ep->tx_sw_if_index == nsm->sw_if_index0) ? nsm->sw_if_index1 :
-	    nsm->sw_if_index0;
-	  next0 = (ep->tx_sw_if_index == nsm->sw_if_index0) ?
-	    nsm->output_next_index0 : nsm->output_next_index1;
+	  next0 = ep->output_next_index;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
