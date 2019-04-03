@@ -316,7 +316,7 @@ ipsec_init (vlib_main_t * vm)
   i->op_type = VNET_CRYPTO_OP_SHA512_HMAC;
   i->trunc_size = 32;
 
-  vec_validate_aligned (im->ptd, vec_len (vlib_mains), CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (im->ptd, vlib_num_workers (), CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }
