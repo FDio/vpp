@@ -23,6 +23,9 @@ ct_enable_disable_main_pre_input_node (u8 is_add)
 {
   u32 n_conns;
 
+  if (!vlib_num_workers ())
+    return;
+
   n_conns = pool_elts (connections);
   if (n_conns > 2)
     return;
