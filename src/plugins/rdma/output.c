@@ -65,16 +65,21 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
 
   memset (w, 0, n_left_from * sizeof (w[0]));
 
-  while (n_left_from >= 2)
+  while (n_left_from >= 4)
     {
-      if (PREDICT_TRUE (n_left_from >= 4))
+      if (PREDICT_TRUE (n_left_from >= 8))
 	{
-	  vlib_prefetch_buffer_header (b[2 + 0], LOAD);
-	  vlib_prefetch_buffer_header (b[2 + 1], LOAD);
-	  CLIB_PREFETCH (&s[2 + 0], sizeof (s[0]), STORE);
-	  CLIB_PREFETCH (&s[2 + 1], sizeof (s[0]), STORE);
-	  CLIB_PREFETCH (&w[2 + 0], sizeof (w[0]), STORE);
-	  CLIB_PREFETCH (&w[2 + 1], sizeof (w[0]), STORE);
+	  vlib_prefetch_buffer_header (b[4 + 0], LOAD);
+	  vlib_prefetch_buffer_header (b[4 + 1], LOAD);
+	  vlib_prefetch_buffer_header (b[4 + 2], LOAD);
+	  vlib_prefetch_buffer_header (b[4 + 3], LOAD);
+
+	  CLIB_PREFETCH (&s[4 + 0], 4 * sizeof (s[0]), STORE);
+
+	  CLIB_PREFETCH (&w[4 + 0], CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (&w[4 + 1], CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (&w[4 + 2], CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (&w[4 + 3], CLIB_CACHE_LINE_BYTES, STORE);
 	}
 
       s[0].addr = vlib_buffer_get_current_va (b[0]);
@@ -85,25 +90,43 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
       s[1].length = b[1]->current_length;
       s[1].lkey = rd->mr->lkey;
 
+      s[2].addr = vlib_buffer_get_current_va (b[2]);
+      s[2].length = b[2]->current_length;
+      s[2].lkey = rd->mr->lkey;
+
+      s[3].addr = vlib_buffer_get_current_va (b[3]);
+      s[3].length = b[3]->current_length;
+      s[3].lkey = rd->mr->lkey;
+
       w[0].wr_id = f[0];
-      w[0].next = &w[1 + 0];
+      w[0].next = &w[0] + 1;
       w[0].sg_list = &s[0];
       w[0].num_sge = 1;
       w[0].opcode = IBV_WR_SEND;
-      w[0].send_flags = IBV_SEND_SIGNALED;
 
       w[1].wr_id = f[1];
-      w[1].next = &w[1 + 1];
+      w[1].next = &w[1] + 1;
       w[1].sg_list = &s[1];
       w[1].num_sge = 1;
       w[1].opcode = IBV_WR_SEND;
-      w[1].send_flags = IBV_SEND_SIGNALED;
 
-      s += 2;
-      f += 2;
-      w += 2;
-      b += 2;
-      n_left_from -= 2;
+      w[2].wr_id = f[2];
+      w[2].next = &w[2] + 1;
+      w[2].sg_list = &s[2];
+      w[2].num_sge = 1;
+      w[2].opcode = IBV_WR_SEND;
+
+      w[3].wr_id = f[3];
+      w[3].next = &w[3] + 1;
+      w[3].sg_list = &s[3];
+      w[3].num_sge = 1;
+      w[3].opcode = IBV_WR_SEND;
+
+      s += 4;
+      f += 4;
+      w += 4;
+      b += 4;
+      n_left_from -= 4;
     }
 
   while (n_left_from >= 1)
@@ -113,11 +136,10 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
       s[0].lkey = rd->mr->lkey;
 
       w[0].wr_id = f[0];
-      w[0].next = &w[1 + 0];
+      w[0].next = &w[0] + 1;
       w[0].sg_list = &s[0];
       w[0].num_sge = 1;
       w[0].opcode = IBV_WR_SEND;
-      w[0].send_flags = IBV_SEND_SIGNALED;
 
       s += 1;
       f += 1;
