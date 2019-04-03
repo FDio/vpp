@@ -201,11 +201,12 @@ typedef enum _tcp_dbg_evt
     TCP_EVT_INIT_HANDLER(_tc, 0);					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "syn-rx: irs %u",						\
-    .format_args = "i4",						\
+    .format = "syn-rx: idx %u irs %u",					\
+    .format_args = "i4i4",						\
   };									\
-  DECLARE_ETD(_tc, _e, 1);						\
-  ed->data[0] = _tc->irs;						\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _tc->c_c_index;						\
+  ed->data[1] = _tc->irs;						\
   TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
 }
 

@@ -2785,6 +2785,10 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      max_dequeue = transport_max_tx_dequeue (&tc0->connection);
 	      if (max_dequeue <= tc0->burst_acked)
 		tcp_send_fin (tc0);
+	      /* If a fin was received and data was acked extend wait */
+	      else if ((tc0->flags & TCP_CONN_FINRCVD) && tc0->bytes_acked)
+		tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE,
+				  TCP_CLOSEWAIT_TIME);
 	    }
 	  /* If FIN is ACKed */
 	  else if (tc0->snd_una == tc0->snd_nxt)
@@ -2954,19 +2958,22 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  break;
 	case TCP_STATE_FIN_WAIT_1:
 	  tc0->rcv_nxt += 1;
-	  /* If data is outstanding stay in FIN_WAIT_1 and try to finish
-	   * sending it. */
+
 	  if (tc0->flags & TCP_CONN_FINPNDG)
 	    {
+	      /* If data is outstanding, stay in FIN_WAIT_1 and try to finish
+	       * sending it. Since we already received a fin, do not wait
+	       * for too long. */
 	      tc0->flags |= TCP_CONN_FINRCVD;
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	    }
 	  else
 	    {
 	      tcp_connection_set_state (tc0, TCP_STATE_CLOSING);
 	      tcp_program_ack (wrk, tc0);
+	      /* Wait for ACK for our FIN but not forever */
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	    }
-	  /* Wait for ACK for our FIN but not forever */
-	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	  break;
 	case TCP_STATE_FIN_WAIT_2:
 	  /* Got FIN, send ACK! Be more aggressive with resource cleanup */
