@@ -239,7 +239,7 @@ clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
   d1 = u8x32_blend (d1, s1, u8x32_is_greater (lv, mask));
   u8x32_store_unaligned (d1, dst + 32);
 
-#elif defined (CLIB_HAVE_VEC128) && !defined (__aarch64__)
+#elif defined (CLIB_HAVE_VEC128)
   u8x16 s0, s1, s2, s3, d0, d1, d2, d3;
   u8x16 mask = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
   u8x16 lv = u8x16_splat (len);
