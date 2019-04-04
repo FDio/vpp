@@ -1,4 +1,6 @@
 /*
+ * esp_decrypt.c : IPSec ESP decrypt node
+ *
  * Copyright (c) 2015 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,44 +14,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __IPSEC_IO_H__
-#define __IPSEC_IO_H__
 
-#define foreach_ipsec_output_next  \
-  _ (DROP, "error-drop")
+#include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_punt.h>
 
-#define _(v, s) IPSEC_OUTPUT_NEXT_##v,
-typedef enum
+static vlib_punt_hdl_t punt_hdl;
+
+vlib_punt_reason_t ipsec_punt_reason[IPSEC_PUNT_N_REASONS];
+
+static clib_error_t *
+ipsec_punt_init (vlib_main_t * vm)
 {
-  foreach_ipsec_output_next
+  clib_error_t *error;
+
+  if ((error = vlib_call_init_function (vm, punt_init)))
+    return (error);
+
+  punt_hdl = vlib_punt_client_register ("ipsec");
+
+#define _(s,v)  vlib_punt_reason_alloc (punt_hdl, v,                    \
+                                        &ipsec_punt_reason[IPSEC_PUNT_##s]);
+  foreach_ipsec_punt_reason
 #undef _
-    IPSEC_OUTPUT_N_NEXT,
-} ipsec_output_next_t;
+    return (error);
+}
 
-#define foreach_ipsec_input_next   \
-  _ (PUNT, "punt-dispatch")        \
-  _ (DROP, "error-drop")
+VLIB_INIT_FUNCTION (ipsec_punt_init);
 
-#define _(v, s) IPSEC_INPUT_NEXT_##v,
-typedef enum
-{
-  foreach_ipsec_input_next
-#undef _
-    IPSEC_INPUT_N_NEXT,
-} ipsec_input_next_t;
-
-
-typedef struct
-{
-  u32 spd_index;
-} ip4_ipsec_config_t;
-
-typedef struct
-{
-  u32 spd_index;
-} ip6_ipsec_config_t;
-
-#endif /* __IPSEC_IO_H__ */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -22,12 +22,14 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ipsec_io.h>
+#include <vnet/ipsec/ipsec_punt.h>
 
 /* Statistics (not really errors) */
 #define foreach_ipsec_if_input_error				  \
 _(RX, "good packets received")					  \
 _(DISABLED, "ipsec packets received on disabled interface")       \
-_(NO_TUNNEL, "no matching tunnel")
+_(NO_TUNNEL, "no matching tunnel")                                \
+_(SPI_0, "SPI 0")
 
 static char *ipsec_if_input_error_strings[] = {
 #define _(sym,string) string,
@@ -61,6 +63,46 @@ format_ipsec_if_input_trace (u8 * s, va_list * args)
   return s;
 }
 
+always_inline u16
+ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
+			vlib_buffer_t * b,
+			const esp_header_t * esp,
+			const ip4_header_t * ip4, u16 offset)
+{
+  if (PREDICT_FALSE (0 == esp->spi))
+    {
+      b->error = node->errors[IPSEC_IF_INPUT_ERROR_SPI_0];
+      b->punt_reason =
+	ipsec_punt_reason[(ip4->protocol == IP_PROTOCOL_UDP ?
+			   IPSEC_PUNT_IP4_SPI_UDP_0 : IPSEC_PUNT_IP4_SPI_0)];
+    }
+  else
+    {
+      b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+      b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP4_NO_SUCH_TUNNEL];
+    }
+  vlib_buffer_advance (b, -offset);
+  return IPSEC_INPUT_NEXT_PUNT;
+}
+
+always_inline u16
+ipsec_ip6_if_no_tunnel (vlib_node_runtime_t * node,
+			vlib_buffer_t * b,
+			const esp_header_t * esp, u16 offset)
+{
+  if (PREDICT_FALSE (0 == esp->spi))
+    {
+      b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+      b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_SPI_0];
+    }
+  else
+    {
+      b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+      b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
+    }
+  vlib_buffer_advance (b, -offset);
+  return (IPSEC_INPUT_NEXT_PUNT);
+}
 
 always_inline uword
 ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -197,9 +239,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+		  next[0] =
+		    ipsec_ip6_if_no_tunnel (node, b[0], esp0, buf_adv0);
 		  n_no_tunnel++;
-		  next[0] = IPSEC_INPUT_NEXT_DROP;
 		  goto pkt1;
 		}
 	    }
@@ -225,9 +267,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+		  next[0] =
+		    ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40, buf_adv0);
 		  n_no_tunnel++;
-		  next[0] = IPSEC_INPUT_NEXT_DROP;
 		  goto pkt1;
 		}
 	    }
@@ -293,9 +335,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  b[1]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+		  next[1] =
+		    ipsec_ip6_if_no_tunnel (node, b[1], esp1, buf_adv1);
 		  n_no_tunnel++;
-		  next[1] = IPSEC_INPUT_NEXT_DROP;
 		  goto trace1;
 		}
 	    }
@@ -321,9 +363,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  b[1]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+		  next[1] =
+		    ipsec_ip4_if_no_tunnel (node, b[1], esp1, ip41, buf_adv1);
 		  n_no_tunnel++;
-		  next[1] = IPSEC_INPUT_NEXT_DROP;
 		  goto trace1;
 		}
 	    }
@@ -456,9 +498,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+		  next[0] =
+		    ipsec_ip6_if_no_tunnel (node, b[0], esp0, buf_adv0);
 		  n_no_tunnel++;
-		  next[0] = IPSEC_INPUT_NEXT_DROP;
 		  goto trace00;
 		}
 	    }
@@ -484,9 +526,9 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+		  next[0] =
+		    ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40, buf_adv0);
 		  n_no_tunnel++;
-		  next[0] = IPSEC_INPUT_NEXT_DROP;
 		  goto trace00;
 		}
 	    }
