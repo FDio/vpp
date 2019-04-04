@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "2b6554db_0addc2f2",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 9
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-04-04T14:45:18Z",
+      "side": 1,
+      "message": "If end user wants to build arch specific optimized image, e.g., with specific -mtune/-march gcc options, arch specific cache line size, the TARGET_PLATFORM could be used for this purpose.\nCurrently, the only user of TARGET_PLATFORM in vpp Makefile is thunderx (you can search it using string of \u0027thunderx\u0027).\nIf you want to compile vpp for a specific aarch64 arch, for example OcteonTX, you have to add the path and parameters for the arch in vpp Makefile, and trigger it using below example.\n$make build-release TARGET_PLATFORM\u003doctentx",
+      "parentUuid": "87e3c55b_6147d454",
+      "range": {
+        "startLine": 47,
+        "startChar": 0,
+        "endLine": 47,
+        "endChar": 27
+      },
+      "revId": "27622496619b72c94f909b7fa30730133eba5c25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a1307921_add8c5c0",
         "filename": "build/external/packages/dpdk.mk",
         "patchSetId": 9
@@ -36,6 +60,30 @@
       "writtenOn": "2019-04-04T10:54:15Z",
       "side": 1,
       "message": "Sorry I have few more comment now\n1) You could put else here instead of extra if\n2) I prefer to rename \"DPDK_TARGET_GENERIC\" to \"DPDK_DISABLE_ARCH_AUTODETECT\". This flag is also required not only for packaging purpose but also for aarch64 cross compilation  (when external DPDK is not used)",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 32
+      },
+      "revId": "27622496619b72c94f909b7fa30730133eba5c25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "612a0678_88ce4e12",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 9
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-04-04T14:45:18Z",
+      "side": 1,
+      "message": "Good suggestion on 1).\nFor 2), it seems they are of the same meaning.",
+      "parentUuid": "a1307921_add8c5c0",
       "range": {
         "startLine": 77,
         "startChar": 0,
