@@ -760,8 +760,8 @@ class TestPunt(VppTestCase):
         self.assertEqual(stats, 130)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][2]['packets'], 65)
-        self.assertEqual(stats[0][3]['packets'], 65)
+        self.assertEqual(stats[0][7]['packets'], 65)
+        self.assertEqual(stats[0][8]['packets'], 65)
 
         #
         # use the test CLI to test a client that punts exception
@@ -788,8 +788,8 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][2]['packets'], 2*65)
-        self.assertEqual(stats[0][3]['packets'], 2*65)
+        self.assertEqual(stats[0][7]['packets'], 2*65)
+        self.assertEqual(stats[0][8]['packets'], 2*65)
 
         #
         # add another registration for the same reason to send packets
@@ -835,8 +835,8 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][2]['packets'], 3*65)
-        self.assertEqual(stats[0][3]['packets'], 3*65)
+        self.assertEqual(stats[0][7]['packets'], 3*65)
+        self.assertEqual(stats[0][8]['packets'], 3*65)
 
         self.logger.info(self.vapi.cli("show vlib graph punt-dispatch"))
         self.logger.info(self.vapi.cli("show punt client"))
