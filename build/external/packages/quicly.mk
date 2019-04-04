@@ -19,12 +19,6 @@ quicly_url := https://github.com/vpp-quic/quicly/releases/download/v$(quicly_ver
 
 picotls_build_dir := $(B)/build-picotls
 
-ifneq ($(shell which cmake3),)
-CMAKE?=cmake3
-else
-CMAKE?=cmake
-endif
-
 define  quicly_build_cmds
 	@cd $(quicly_build_dir) && \
 		$(CMAKE) -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
