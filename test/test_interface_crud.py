@@ -147,5 +147,39 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
         self.pg0.assert_nothing_captured()
 
 
+class TestInterfaceDumpApiLocalOnly(VppTestCase):
+    """test_interface_crud.TestInterfaceDumpApiLocalOnly"""
+
+    def test_sw_if_index_0(self):
+        rv = self.vapi.sw_interface_dump(sw_if_index=0)
+        self.assertEqual(rv[0].sw_if_index, 0)
+
+    def test_sw_if_index_twiddle0(self):
+        rv = self.vapi.sw_interface_dump(sw_if_index=0xffffffff)
+        self.assertEqual(rv[0].sw_if_index, 0)
+
+    def test_sw_if_index_1_not_existing(self):
+        rv = self.vapi.sw_interface_dump(sw_if_index=1)
+        print(rv)
+        self.assertEqual(rv[0].sw_if_index, 1, rv)
+
+
+class TestInterfaceDumpApi(VppTestCase):
+    """test_interface_crud.TestInterfaceDumpApi"""
+
+    def test_sw_if_index_1(self):
+        self.vapi.create_loopback_instance(is_specified=1,
+                                           user_instance=10)
+        self.vapi.create_loopback_instance(is_specified=1,
+                                           user_instance=5)
+
+        # Can I get back the specified record?
+        rv = self.vapi.sw_interface_dump(sw_if_index=1)
+        self.assertEqual(rv[0].sw_if_index, 1, rv)
+
+        # verify 3 interfaces
+        rv = self.vapi.sw_interface_dump(sw_if_index=0xffffffff)
+        self.assertEqual(len(rv), 3, 'Expected 3 interfaces.')
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

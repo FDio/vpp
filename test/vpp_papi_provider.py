@@ -183,6 +183,7 @@ defaultmapping = {
     'svs_route_add_del': {'is_add': 1, },
     'svs_table_add_del': {'is_add': 1, },
     'sw_interface_add_del_address': {'is_add': 1, },
+    'sw_interface_dump': {'sw_if_index': 4294967295, },
     'sw_interface_ip6nd_ra_prefix': {'val_lifetime': 4294967295,
                                      'pref_lifetime': 4294967295, },
     'sw_interface_set_ip_directed_broadcast': {'enable': 1, },
