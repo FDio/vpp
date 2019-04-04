@@ -23,9 +23,6 @@ enum gbp_bridge_domain_flags
 {
   GBP_BD_API_FLAG_NONE = 0,
   GBP_BD_API_FLAG_DO_NOT_LEARN = 1,
-  GBP_BD_API_FLAG_UU_FWD_DROP = 2,
-  GBP_BD_API_FLAG_MCAST_DROP = 4,
-  GBP_BD_API_FLAG_UCAST_ARP = 8,
 };
 
 typedef gbp_bridge_domain
@@ -308,12 +305,18 @@ typedef gbp_contract
   vl_api_gbp_rule_t rules[n_rules];
 };
 
-manual_print autoreply define gbp_contract_add_del
+manual_print define gbp_contract_add_del
 {
   u32 client_index;
   u32 context;
   u8  is_add;
   vl_api_gbp_contract_t contract;
+};
+define gbp_contract_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
 };
 
 define gbp_contract_dump
