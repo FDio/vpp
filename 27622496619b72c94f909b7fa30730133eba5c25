@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "9f466500_1d60595d",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 9
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-04-04T15:11:45Z",
+      "side": 1,
+      "message": "Below is the existing only usage with variable TARGET_PLATFORM.\n\n./build-data/platforms/vpp.mk\n\n ifeq ($(TARGET_PLATFORM),thunderx)\n vpp_dpdk_target \u003d arm64-thunderx-linuxapp-gcc\n endif",
+      "parentUuid": "129de55d_0ac49b85",
+      "range": {
+        "startLine": 47,
+        "startChar": 0,
+        "endLine": 47,
+        "endChar": 27
+      },
+      "revId": "27622496619b72c94f909b7fa30730133eba5c25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a1307921_add8c5c0",
         "filename": "build/external/packages/dpdk.mk",
         "patchSetId": 9
@@ -132,6 +156,30 @@
       "side": 1,
       "message": "For 2) I recommend adding atlease AARCH64 or ARM64 string as changes are only for ARM64",
       "parentUuid": "612a0678_88ce4e12",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 32
+      },
+      "revId": "27622496619b72c94f909b7fa30730133eba5c25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d31cc800_6b20c604",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 9
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-04-04T15:11:45Z",
+      "side": 1,
+      "message": "How about using DPDK_AARCH64_GENERIC?",
+      "parentUuid": "4611934c_eb5a0cb6",
       "range": {
         "startLine": 77,
         "startChar": 0,
