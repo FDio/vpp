@@ -445,7 +445,8 @@ alloc_http_process (http_server_args * args)
 
   /* Save the args (pointer) in the node runtime */
   save_args = vlib_node_get_runtime_data (vm, n->index);
-  *save_args = args;
+  *save_args = clib_mem_alloc (sizeof (*args));
+  clib_memcpy_fast (*save_args, args, sizeof (*args));
 
   vlib_start_process (vm, n->runtime_index);
 }
@@ -481,7 +482,7 @@ session_rx_request (http_session_t * hs)
 static int
 http_server_rx_callback (session_t * s)
 {
-  http_server_args *args;
+  http_server_args args;
   http_session_t *hs;
   int rv;
 
@@ -496,17 +497,17 @@ http_server_rx_callback (session_t * s)
     return rv;
 
   /* send the command to a new/recycled vlib process */
-  args = clib_mem_alloc (sizeof (*args));
-  args->hs_index = hs->session_index;
-  args->thread_index = hs->thread_index;
+  args.hs_index = hs->session_index;
+  args.thread_index = hs->thread_index;
 
   http_server_sessions_reader_unlock ();
 
-  /* Send an RPC request via the thread-0 input node */
+  /* Send RPC request to main thread */
   if (vlib_get_thread_index () != 0)
-    session_send_rpc_evt_to_thread (0, alloc_http_process_callback, args);
+    vlib_rpc_call_main_thread (alloc_http_process_callback, (u8 *) & args,
+			       sizeof (args));
   else
-    alloc_http_process (args);
+    alloc_http_process (&args);
   return 0;
 }
 
