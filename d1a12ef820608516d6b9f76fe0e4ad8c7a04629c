@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ebb435c5_c4f63deb",
+        "filename": "src/plugins/unittest/sparse_vec_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-04T11:22:49Z",
+      "side": 1,
+      "message": "2019",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "d1a12ef820608516d6b9f76fe0e4ad8c7a04629c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31e34c51_51ef7c46",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-04T11:22:49Z",
+      "side": 1,
+      "message": "Copyright?",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 1
+      },
+      "revId": "d1a12ef820608516d6b9f76fe0e4ad8c7a04629c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "07ab0d75_8687244e",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-04T11:22:49Z",
+      "side": 1,
+      "message": "I know inheritance can be tricky, and people might use constructs such as cls.__dict__,\nbut would anything bad actually happen if somebody deleted lines 12-25 (also for other classes)?",
+      "range": {
+        "startLine": 14,
+        "startChar": 8,
+        "endLine": 14,
+        "endChar": 13
+      },
+      "revId": "d1a12ef820608516d6b9f76fe0e4ad8c7a04629c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
