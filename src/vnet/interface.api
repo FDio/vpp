@@ -206,6 +206,7 @@ define sw_interface_details
 /** \brief Request all or filtered subset of sw_interface_details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param sw_if_index - ~0 if ignore, index of the interface to filter on
     @param name_filter_valid - 1 if requesting a filtered subset of records else 0
     @param name_filter - interface name substring filter. Eg. loop1 returns [loop1, loop10]
 */
@@ -214,6 +215,7 @@ define sw_interface_dump
 {
   u32 client_index;
   u32 context;
+  vl_api_interface_index_t sw_if_index;
   u8 name_filter_valid;
   u8 name_filter[49];
 };
