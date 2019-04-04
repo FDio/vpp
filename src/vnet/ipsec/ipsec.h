@@ -75,7 +75,7 @@ typedef struct
 typedef struct
 {
   vnet_crypto_op_type_t op_type;
-  u8 trunc_size;
+  u8 icv_size;
 } ipsec_main_integ_alg_t;
 
 typedef struct

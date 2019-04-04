@@ -157,7 +157,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	{
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
-	  cpd.icv_sz = sa0->integ_trunc_size;
+	  cpd.icv_sz = sa0->integ_icv_size;
 	  cpd.iv_sz = sa0->crypto_iv_size;
 	  cpd.flags = sa0->flags;
 	  cpd.sa_index = current_sa_index;

@@ -109,9 +109,9 @@ ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
 {
   ipsec_main_t *im = &ipsec_main;
   sa->integ_alg = integ_alg;
-  sa->integ_trunc_size = im->integ_algs[integ_alg].trunc_size;
+  sa->integ_icv_size = im->integ_algs[integ_alg].icv_size;
   sa->integ_op_type = im->integ_algs[integ_alg].op_type;
-  ASSERT (sa->integ_trunc_size <= ESP_MAX_ICV_SIZE);
+  ASSERT (sa->integ_icv_size <= ESP_MAX_ICV_SIZE);
 }
 
 int
