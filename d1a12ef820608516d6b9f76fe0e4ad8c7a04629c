@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "404585ed_56a96795",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-04-04T12:05:50Z",
+      "side": 1,
+      "message": "hmm I just copypasted from string test, and forgot to add.\nWonder if there is a usecase to have make checkstyle and test-checkstyle check for the presence/up-to-date-ness copyright messages ?",
+      "parentUuid": "31e34c51_51ef7c46",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 1
+      },
+      "revId": "d1a12ef820608516d6b9f76fe0e4ad8c7a04629c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "07ab0d75_8687244e",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 6
@@ -59,6 +83,30 @@
       "writtenOn": "2019-04-04T11:22:49Z",
       "side": 1,
       "message": "I know inheritance can be tricky, and people might use constructs such as cls.__dict__,\nbut would anything bad actually happen if somebody deleted lines 12-25 (also for other classes)?",
+      "range": {
+        "startLine": 14,
+        "startChar": 8,
+        "endLine": 14,
+        "endChar": 13
+      },
+      "revId": "d1a12ef820608516d6b9f76fe0e4ad8c7a04629c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e16c837_dc63bbe5",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-04-04T12:05:50Z",
+      "side": 1,
+      "message": "See Paul\u0027s comment... I think these are needed due to the way the test framework is written, but I am not a guru in Python, so mostly just parrot what is in the other files.",
+      "parentUuid": "07ab0d75_8687244e",
       "range": {
         "startLine": 14,
         "startChar": 8,
