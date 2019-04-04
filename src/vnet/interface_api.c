@@ -295,6 +295,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   vnet_sw_interface_t *swif;
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
   vl_api_registration_t *rp;
+  u32 sw_if_index;
 
   rp = vl_api_client_index_to_registration (mp->client_index);
 
@@ -305,6 +306,27 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
     }
 
   u8 *filter = 0, *name = 0;
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (sw_if_index != ~0)
+    {
+      /* is it a valid sw_if_index/ */
+      if (vec_len (im->sw_interfaces) <= sw_if_index)
+	return;
+
+      swif = vec_elt_at_index (im->sw_interfaces, sw_if_index);
+
+      /* If we have a sw_if_index, ignore the name filter. */
+      mp->name_filter_valid = 0;
+      vec_reset_length (name);
+      name =
+	format (name, "%U%c", format_vnet_sw_interface_name, am->vnet_main,
+		swif, 0);
+      send_sw_interface_details (am, rp, swif, name, mp->context);
+      vec_free (name);
+      return;
+    }
+
   if (mp->name_filter_valid)
     {
       mp->name_filter[ARRAY_LEN (mp->name_filter) - 1] = 0;
