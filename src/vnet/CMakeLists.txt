@@ -556,6 +556,7 @@ list(APPEND VNET_SOURCES
   ipsec/ipsec_input.c
   ipsec/ipsec_if.c
   ipsec/ipsec_if_in.c
+  ipsec/ipsec_punt.c
   ipsec/ipsec_sa.c
   ipsec/ipsec_spd.c
   ipsec/ipsec_spd_policy.c
