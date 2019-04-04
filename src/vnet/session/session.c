@@ -174,9 +174,14 @@ session_alloc (u32 thread_index)
 void
 session_free (session_t * s)
 {
-  pool_put (session_main.wrk[s->thread_index].sessions, s);
   if (CLIB_DEBUG)
-    clib_memset (s, 0xFA, sizeof (*s));
+    {
+      u8 thread_index = s->thread_index;
+      clib_memset (s, 0xFA, sizeof (*s));
+      pool_put (session_main.wrk[thread_index].sessions, s);
+      return;
+    }
+  pool_put (session_main.wrk[s->thread_index].sessions, s);
 }
 
 void
@@ -747,6 +752,8 @@ session_transport_delete_notify (transport_connection_t * tc)
   /* App might've been removed already */
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
+
+  SESSION_EVT_DBG (SESSION_EVT_FREE, s);
 
   /* Make sure we don't try to send anything more */
   svm_fifo_dequeue_drop_all (s->tx_fifo);
