@@ -40,6 +40,17 @@ gbp_next_hop_t *gbp_next_hop_pool;
 #define GBP_CONTRACT_DBG(...)                           \
     vlib_log_notice (gc_logger, __VA_ARGS__);
 
+/* Adjacency packet/byte counters indexed by adjacency index. */
+vlib_combined_counter_main_t gbp_contract_permit_counters = {
+  .name = "gbp-contracts-permit",
+  .stat_segment_name = "/net/gbp/contract/permit",
+};
+
+vlib_combined_counter_main_t gbp_contract_drop_counters = {
+  .name = "gbp-contracts-drop",
+  .stat_segment_name = "/net/gbp/contract/drop",
+};
+
 index_t
 gbp_rule_alloc (gbp_rule_action_t action,
 		gbp_hash_mode_t hash_mode, index_t * nhs)
@@ -435,7 +446,9 @@ gbp_contract_mk_lbs (index_t * guis)
 int
 gbp_contract_update (sclass_t sclass,
 		     sclass_t dclass,
-		     u32 acl_index, index_t * rules, u16 * allowed_ethertypes)
+		     u32 acl_index,
+		     index_t * rules,
+		     u16 * allowed_ethertypes, u32 * stats_index)
 {
   gbp_main_t *gm = &gbp_main;
   u32 *acl_vec = NULL;
@@ -471,6 +484,11 @@ gbp_contract_update (sclass_t sclass,
       gc->gc_key = key;
       gci = gc - gbp_contract_pool;
       hash_set (gbp_contract_db.gc_hash, key.as_u32, gci);
+
+      vlib_validate_combined_counter (&gbp_contract_drop_counters, gci);
+      vlib_zero_combined_counter (&gbp_contract_drop_counters, gci);
+      vlib_validate_combined_counter (&gbp_contract_permit_counters, gci);
+      vlib_zero_combined_counter (&gbp_contract_permit_counters, gci);
     }
 
   GBP_CONTRACT_DBG ("update: %U", format_gbp_contract, gci);
@@ -488,6 +506,8 @@ gbp_contract_update (sclass_t sclass,
   vec_add1 (acl_vec, gc->gc_acl_index);
   gm->acl_plugin.set_acl_vec_for_context (gc->gc_lc_index, acl_vec);
   vec_free (acl_vec);
+
+  *stats_index = gci;
 
   return (0);
 }
@@ -539,7 +559,7 @@ gbp_contract_cli (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   sclass_t sclass = SCLASS_INVALID, dclass = SCLASS_INVALID;
-  u32 acl_index = ~0;
+  u32 acl_index = ~0, stats_index;
   u8 add = 1;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -565,7 +585,8 @@ gbp_contract_cli (vlib_main_t * vm,
 
   if (add)
     {
-      gbp_contract_update (sclass, dclass, acl_index, NULL, NULL);
+      gbp_contract_update (sclass, dclass, acl_index,
+			   NULL, NULL, &stats_index);
     }
   else
     {
@@ -606,6 +627,7 @@ u8 *
 format_gbp_contract (u8 * s, va_list * args)
 {
   index_t gci = va_arg (*args, index_t);
+  vlib_counter_t counts;
   gbp_contract_t *gc;
   index_t *gui;
   u16 *et;
@@ -627,6 +649,12 @@ format_gbp_contract (u8 * s, va_list * args)
     if (0 != host_et)
       s = format (s, "0x%x, ", host_et);
   }
+
+  vlib_get_combined_counter (&gbp_contract_drop_counters, gci, &counts);
+  s = format (s, "\n   drop:[%Ld:%Ld]", counts.packets, counts.bytes);
+  vlib_get_combined_counter (&gbp_contract_permit_counters, gci, &counts);
+  s = format (s, "\n   permit:[%Ld:%Ld]", counts.packets, counts.bytes);
+
   s = format (s, "]");
 
   return (s);

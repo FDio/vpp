@@ -18,6 +18,16 @@
 
 #include <plugins/gbp/gbp_types.h>
 
+#define foreach_gbp_policy_error                           \
+  _(ALLOW_NO_SCLASS,    "allow-no-sclass")                 \
+  _(ALLOW_INTRA,        "allow-intra-sclass")              \
+  _(ALLOW_A_BIT,        "allow-a-bit-set")                 \
+  _(ALLOW_CONTRACT,     "allow-contract")                  \
+  _(DROP_CONTRACT,      "drop-contract")                   \
+  _(DROP_ETHER_TYPE,    "drop-ether-type")                 \
+  _(DROP_NO_CONTRACT,   "drop-no-contract")                \
+  _(DROP_NO_DCLASS,     "drop-no-dclass")
+
 /**
  * The key for an Contract
  */
@@ -141,7 +151,8 @@ typedef struct gbp_contract_db_t_
 extern int gbp_contract_update (sclass_t sclass,
 				sclass_t dclass,
 				u32 acl_index,
-				index_t * rules, u16 * allowed_ethertypes);
+				index_t * rules,
+				u16 * allowed_ethertypes, u32 * stats_index);
 extern int gbp_contract_delete (sclass_t sclass, sclass_t dclass);
 
 extern index_t gbp_rule_alloc (gbp_rule_action_t action,
@@ -188,6 +199,9 @@ gbp_rule_get (index_t gui)
 {
   return (pool_elt_at_index (gbp_rule_pool, gui));
 }
+
+extern vlib_combined_counter_main_t gbp_contract_permit_counters;
+extern vlib_combined_counter_main_t gbp_contract_drop_counters;
 
 #endif
 
