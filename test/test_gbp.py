@@ -1858,7 +1858,7 @@ class TestGBP(VppTestCase):
                 IP(dst="10.0.0.133", src=ep.ip4.address) /
                 UDP(sport=1234, dport=1234) /
                 Raw('\xa5' * 100))
-        rxs = self.send_and_expect_only(ep.itf, [p_bm], tun_bm.mcast_itf)
+        rxs = self.send_and_expect(ep.itf, [p_bm], tun_bm.mcast_itf)
 
         for rx in rxs:
             self.assertEqual(rx[IP].src, self.pg4.local_ip4)
@@ -1905,13 +1905,98 @@ class TestGBP(VppTestCase):
         for l in learnt:
             self.wait_for_ep_timeout(vx_tun_l2_1.sw_if_index,
                                      mac=l['mac'])
-
         self.pg2.unconfig_ip4()
         self.pg3.unconfig_ip4()
         self.pg4.unconfig_ip4()
 
         self.logger.info(self.vapi.cli("sh int"))
         self.logger.info(self.vapi.cli("sh gbp vxlan"))
+
+    def test_gbp_bd_flags(self):
+        """ GBP BD FLAGS """
+
+        #
+        # IP tables
+        #
+        gt4 = VppIpTable(self, 1)
+        gt4.add_vpp_config()
+        gt6 = VppIpTable(self, 1, is_ip6=True)
+        gt6.add_vpp_config()
+
+        rd1 = VppGbpRouteDomain(self, 1, gt4, gt6)
+        rd1.add_vpp_config()
+
+        #
+        # Pg3 hosts the IP4 UU-flood VXLAN tunnel
+        # Pg4 hosts the IP6 UU-flood VXLAN tunnel
+        #
+        self.pg3.config_ip4()
+        self.pg3.resolve_arp()
+        self.pg4.config_ip4()
+        self.pg4.resolve_arp()
+
+        #
+        # Add a mcast destination VXLAN-GBP tunnel for B&M traffic
+        #
+        tun_bm = VppVxlanGbpTunnel(self, self.pg4.local_ip4,
+                                   "239.1.1.1", 88,
+                                   mcast_itf=self.pg4)
+        tun_bm.add_vpp_config()
+
+        #
+        # a GBP bridge domain with a BVI and a UU-flood interface
+        #
+        bd1 = VppBridgeDomain(self, 1)
+        bd1.add_vpp_config()
+
+        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, self.pg3, tun_bm,
+                                  uu_drop=True, bm_drop=True)
+        gbd1.add_vpp_config()
+
+        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+        self.logger.info(self.vapi.cli("sh gbp bridge"))
+
+        # ... and has a /32 applied
+        ip_addr = VppIpInterfaceAddress(self, gbd1.bvi, "10.0.0.128", 32)
+        ip_addr.add_vpp_config()
+
+        #
+        # The Endpoint-group
+        #
+        epg_220 = VppGbpEndpointGroup(self, 220, 112, rd1, gbd1,
+                                      None, self.loop0,
+                                      "10.0.0.128",
+                                      "2001:10::128",
+                                      VppGbpEndpointRetention(2))
+        epg_220.add_vpp_config()
+
+        ep = VppGbpEndpoint(self, self.pg0,
+                            epg_220, None,
+                            "10.0.0.127", "11.0.0.127",
+                            "2001:10::1", "3001::1")
+        ep.add_vpp_config()
+        #
+        # send UU/BM packet from the local EP with UU drop and BM drop enabled
+        # in bd
+        #
+        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+        self.logger.info(self.vapi.cli("sh gbp bridge"))
+        p_uu = (Ether(src=ep.mac, dst="00:11:11:11:11:11") /
+                IP(dst="10.0.0.133", src=ep.ip4.address) /
+                UDP(sport=1234, dport=1234) /
+                Raw('\xa5' * 100))
+        self.send_and_assert_no_replies(ep.itf, [p_uu])
+
+        p_bm = (Ether(src=ep.mac, dst="ff:ff:ff:ff:ff:ff") /
+                IP(dst="10.0.0.133", src=ep.ip4.address) /
+                UDP(sport=1234, dport=1234) /
+                Raw('\xa5' * 100))
+        self.send_and_assert_no_replies(ep.itf, [p_bm])
+
+        self.pg3.unconfig_ip4()
+        self.pg4.unconfig_ip4()
+
+        self.logger.info(self.vapi.cli("sh int"))
 
     def test_gbp_learn_vlan_l2(self):
         """ GBP L2 Endpoint w/ VLANs"""
