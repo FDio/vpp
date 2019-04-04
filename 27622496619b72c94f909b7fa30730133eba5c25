@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1307921_add8c5c0",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 9
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-04-04T10:54:15Z",
+      "side": 1,
+      "message": "Sorry I have few more comment now\n1) You could put else here instead of extra if\n2) I prefer to rename \"DPDK_TARGET_GENERIC\" to \"DPDK_DISABLE_ARCH_AUTODETECT\". This flag is also required not only for packaging purpose but also for aarch64 cross compilation  (when external DPDK is not used)",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 32
+      },
+      "revId": "27622496619b72c94f909b7fa30730133eba5c25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
