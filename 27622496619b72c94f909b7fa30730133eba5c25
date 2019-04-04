@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "129de55d_0ac49b85",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 9
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-04-04T14:59:58Z",
+      "side": 1,
+      "message": "As far as I know VPP makefile system require PLATFORM arg to include proper Makefile. So its \"make build-release PLATFORM\u003docteontx | vpp | dpaa2\". \n\nI am not able to find \"TARGET_PLATFORM\" in existing cmake based compilation. I hope Damjan put some light on it.",
+      "parentUuid": "2b6554db_0addc2f2",
+      "range": {
+        "startLine": 47,
+        "startChar": 0,
+        "endLine": 47,
+        "endChar": 27
+      },
+      "revId": "27622496619b72c94f909b7fa30730133eba5c25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a1307921_add8c5c0",
         "filename": "build/external/packages/dpdk.mk",
         "patchSetId": 9
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "Good suggestion on 1).\nFor 2), it seems they are of the same meaning.",
       "parentUuid": "a1307921_add8c5c0",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 32
+      },
+      "revId": "27622496619b72c94f909b7fa30730133eba5c25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4611934c_eb5a0cb6",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 9
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-04-04T14:59:58Z",
+      "side": 1,
+      "message": "For 2) I recommend adding atlease AARCH64 or ARM64 string as changes are only for ARM64",
+      "parentUuid": "612a0678_88ce4e12",
       "range": {
         "startLine": 77,
         "startChar": 0,
