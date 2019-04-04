@@ -280,7 +280,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  current_sa_packets = current_sa_bytes = 0;
 	  spi = clib_net_to_host_u32 (sa0->spi);
 	  block_sz = sa0->crypto_block_size;
-	  icv_sz = sa0->integ_trunc_size;
+	  icv_sz = sa0->integ_icv_size;
 	  iv_sz = sa0->crypto_iv_size;
 	}
 

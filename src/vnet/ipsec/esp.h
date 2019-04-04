@@ -103,7 +103,7 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
   op->src = data;
   op->len = data_len;
   op->dst = signature;
-  op->hmac_trunc_len = sa->integ_trunc_size;
+  op->hmac_trunc_len = sa->integ_icv_size;
 
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
@@ -114,7 +114,7 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
     }
 
   vnet_crypto_process_ops (vm, op, 1);
-  return sa->integ_trunc_size;
+  return sa->integ_icv_size;
 }
 
 #endif /* __ESP_H__ */

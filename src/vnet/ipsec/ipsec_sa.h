@@ -111,7 +111,7 @@ typedef struct
 
   u8 crypto_iv_size;
   u8 crypto_block_size;
-  u8 integ_trunc_size;
+  u8 integ_icv_size;
   u32 spi;
   u32 seq;
   u32 seq_hi;

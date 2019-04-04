@@ -152,7 +152,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      adv = -sizeof (ah_header_t);
 	    }
 
-	  icv_size = sa0->integ_trunc_size;
+	  icv_size = sa0->integ_icv_size;
 	  const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ip6);
 	  adv -= padding_len;
 	  /* transport mode save the eth header before it is overwritten */

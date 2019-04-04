@@ -161,7 +161,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    (&ipsec_sa_counters, thread_index, sa_index0,
 	     1, i_b0->current_length);
 
-	  icv_size = sa0->integ_trunc_size;
+	  icv_size = sa0->integ_icv_size;
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	    {
 	      u8 sig[64];
