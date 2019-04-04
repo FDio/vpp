@@ -325,6 +325,12 @@ gbp_bridge_domain_flags_from_api (vl_api_gbp_bridge_domain_flags_t a)
 
   if (a & GBP_BD_API_FLAG_DO_NOT_LEARN)
     g |= GBP_BD_FLAG_DO_NOT_LEARN;
+  if (a & GBP_BD_API_FLAG_UU_FWD_DROP)
+    g |= GBP_BD_FLAG_UU_FWD_DROP;
+  if (a & GBP_BD_API_FLAG_MCAST_DROP)
+    g |= GBP_BD_FLAG_MCAST_DROP;
+  if (a & GBP_BD_API_FLAG_UCAST_ARP)
+    g |= GBP_BD_FLAG_UCAST_ARP;
 
   return (g);
 }
