@@ -163,11 +163,12 @@ crypto_openssl_init (vlib_main_t * vm)
   time_t t;
   pid_t pid;
 
-  u32 eidx = vnet_crypto_register_engine (vm, "openssl", 50, "OpenSSL");
   clib_error_t *error;
 
   if ((error = vlib_call_init_function (vm, vnet_crypto_init)))
     return error;
+
+  u32 eidx = vnet_crypto_register_engine (vm, "openssl", 50, "OpenSSL");
 
 #define _(a, b) \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
