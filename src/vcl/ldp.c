@@ -1837,6 +1837,7 @@ setsockopt (int fd, int level, int optname,
 			     (void *) optval, &optlen);
 	      break;
 	    case TCP_CONGESTION:
+	    case TCP_CORK:
 	      /* Ignore */
 	      rv = 0;
 	      break;
