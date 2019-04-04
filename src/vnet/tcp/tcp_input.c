@@ -3185,7 +3185,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       tcp_connection_init_vars (child0);
       child0->rto = TCP_RTO_MIN;
-      TCP_EVT_DBG (TCP_EVT_SYN_RCVD, child0, 1);
 
       if (session_stream_accept (&child0->connection, lc0->c_s_index,
 				 0 /* notify */ ))
@@ -3195,6 +3194,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto drop;
 	}
 
+      TCP_EVT_DBG (TCP_EVT_SYN_RCVD, child0, 1);
       child0->tx_fifo_size = transport_tx_fifo_size (&child0->connection);
       tcp_send_synack (child0);
       tcp_timer_set (child0, TCP_TIMER_ESTABLISH, TCP_SYN_RCVD_TIME);
