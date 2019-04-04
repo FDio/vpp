@@ -266,9 +266,14 @@ void
 tcp_connection_free (tcp_connection_t * tc)
 {
   tcp_main_t *tm = &tcp_main;
+  if (CLIB_DEBUG)
+    {
+      u8 thread_index = tc->c_thread_index;
+      clib_memset (tc, 0xFA, sizeof (*tc));
+      pool_put (tm->connections[thread_index], tc);
+      return;
+    }
   pool_put (tm->connections[tc->c_thread_index], tc);
-  if (CLIB_DEBUG > 0)
-    clib_memset (tc, 0xFA, sizeof (*tc));
 }
 
 /** Notify session that connection has been reset.
@@ -1255,10 +1260,10 @@ tcp_timer_establish_handler (u32 conn_index)
   ASSERT (tc->state == TCP_STATE_SYN_RCVD);
   tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
   tcp_connection_set_state (tc, TCP_STATE_CLOSED);
-  /* Start cleanup. App wasn't notified yet so use delete notify as
-   * opposed to delete to cleanup session layer state. */
   tcp_connection_timers_reset (tc);
-  session_transport_delete_notify (&tc->connection);
+  /* Start cleanup. Do NOT delete the session until we do the connection
+   * cleanup. Otherwise, we end up with a dangling session index in the
+   * tcp connection. */
   tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 }
 
@@ -1283,7 +1288,7 @@ tcp_timer_establish_ao_handler (u32 conn_index)
 static void
 tcp_timer_waitclose_handler (u32 conn_index)
 {
-  u32 thread_index = vlib_get_thread_index (), rto;
+  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (conn_index, thread_index);
@@ -1321,15 +1326,12 @@ tcp_timer_waitclose_handler (u32 conn_index)
       tcp_connection_timers_reset (tc);
       if (tc->flags & TCP_CONN_FINPNDG)
 	{
-	  /* If FIN pending send it before closing and wait as long as
-	   * the rto timeout would wait. Notify session layer that transport
-	   * is closed. We haven't sent everything but we did try. */
-	  tcp_cong_recovery_off (tc);
-	  tcp_send_fin (tc);
-	  rto = clib_max ((tc->rto >> tc->rto_boff) * TCP_TO_TIMER_TICK, 1);
-	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE,
-			 clib_min (rto, TCP_2MSL_TIME));
+	  /* If FIN pending, we haven't sent everything, but we did try.
+	   * Notify session layer that transport is closed. */
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  session_transport_closed_notify (&tc->connection);
+	  tcp_send_reset (tc);
+	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 	}
       else
 	{
