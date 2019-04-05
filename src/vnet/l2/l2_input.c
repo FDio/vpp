@@ -196,11 +196,13 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
 		     L2INPUT_FEAT_UU_FLOOD |
 		     L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_GBP_FWD);
 
+      if (ethertype != ETHERNET_TYPE_ARP)
+	feat_mask &= ~(L2INPUT_FEAT_ARP_UFWD);
+
       /* Disable ARP-term for non-ARP and non-ICMP6 packet */
       if (ethertype != ETHERNET_TYPE_ARP &&
 	  (ethertype != ETHERNET_TYPE_IP6 || protocol != IP_PROTOCOL_ICMP6))
 	feat_mask &= ~(L2INPUT_FEAT_ARP_TERM);
-
       /*
        * For packet from BVI - set SHG of ARP request or ICMPv6 neighbor
        * solicitation packet from BVI to 0 so it can also flood to VXLAN
@@ -705,6 +707,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 				     L2INPUT_FEAT_UU_FWD |
 				     L2INPUT_FEAT_FLOOD |
 				     L2INPUT_FEAT_LEARN |
+				     L2INPUT_FEAT_ARP_UFWD |
 				     L2INPUT_FEAT_ARP_TERM);
 
 	  /* Make sure last-chance drop is configured */
