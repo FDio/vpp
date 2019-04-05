@@ -185,6 +185,7 @@ format_function_t format_vnet_crypto_engine;
 format_function_t format_vnet_crypto_op;
 format_function_t format_vnet_crypto_op_type;
 format_function_t format_vnet_crypto_op_status;
+unformat_function_t unformat_vnet_crypto_alg;
 
 static_always_inline void
 vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
