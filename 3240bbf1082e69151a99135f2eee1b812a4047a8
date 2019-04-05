@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "25068e89_b2002b49",
+        "filename": "src/vlibmemory/vlib_api_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1095,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-05T14:04:30Z",
+      "side": 1,
+      "message": "Please move this to the beginning of the code block (line 1085).",
+      "range": {
+        "startLine": 1095,
+        "startChar": 0,
+        "endLine": 1095,
+        "endChar": 21
+      },
+      "revId": "3240bbf1082e69151a99135f2eee1b812a4047a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7cc53ede_d782fc87",
+        "filename": "src/vlibmemory/vlib_api_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1099,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-05T14:04:30Z",
+      "side": 1,
+      "message": "vec_validate_init_empty(dashes, 60 , \u0027-\u0027);\n\ndoes the same thing more elegantly.",
+      "range": {
+        "startLine": 1096,
+        "startChar": 0,
+        "endLine": 1099,
+        "endChar": 2
+      },
+      "revId": "3240bbf1082e69151a99135f2eee1b812a4047a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eff37518_04824ea4",
+        "filename": "src/vlibmemory/vlib_api_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1102,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-05T14:04:30Z",
+      "side": 1,
+      "message": "Don\u0027t forget to free the vector:\n\nvec_free (dashes);",
+      "range": {
+        "startLine": 1102,
+        "startChar": 0,
+        "endLine": 1102,
+        "endChar": 0
+      },
+      "revId": "3240bbf1082e69151a99135f2eee1b812a4047a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
