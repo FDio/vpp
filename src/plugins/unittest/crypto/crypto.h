@@ -38,6 +38,15 @@ typedef struct unittest_crypto_test_registration
 typedef struct
 {
   int verbose;
+
+  /* perf */
+  vnet_crypto_alg_t alg;
+  u32 warmup_rounds;
+  u32 rounds;
+  u32 buffer_size;
+  u32 n_buffers;
+  u8 one_key;
+
   unittest_crypto_test_registration_t *test_registrations;
 } crypto_test_main_t;
 

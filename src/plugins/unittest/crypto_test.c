@@ -258,10 +258,118 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 }
 
 static clib_error_t *
+test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  clib_error_t *err = 0;
+  u32 n_buffers, n_alloc = 0, warmup_rounds, rounds;
+  u32 *buffer_indices = 0;
+  vnet_crypto_op_t *ops1 = 0, *ops2 = 0, *op1, *op2;
+  vnet_crypto_alg_data_t *ad = vec_elt_at_index (cm->algs, tm->alg);
+  int buffer_size = vlib_buffer_get_default_data_size (vm);
+  u64 seed = clib_cpu_time_now();
+  u64 t0[5], t1[5], t2[5], n_bytes = 0;
+  int i, j;
+  u8 *key;
+
+  if (tm->buffer_size > buffer_size)
+    return clib_error_return (0, "buffer size must be <= %u", buffer_size);
+
+  rounds = tm->rounds ? tm->rounds : 100;
+  n_buffers = tm->n_buffers ? tm->n_buffers : 256;
+  buffer_size = tm->buffer_size ? tm->buffer_size : 2048;
+  warmup_rounds = tm->warmup_rounds ? tm->warmup_rounds : 100;
+
+  if (buffer_size > vlib_buffer_get_default_data_size (vm))
+    return clib_error_return (0, "buffer size too big");
+
+  vec_validate_aligned (buffer_indices, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ops1, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ops2, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
+
+  n_alloc = vlib_buffer_alloc (vm, buffer_indices, n_buffers);
+  if (n_alloc != n_buffers)
+    {
+      if (n_alloc)
+	vlib_buffer_free (vm, buffer_indices, n_alloc);
+      err = clib_error_return (0, "buffer alloc failure");
+      goto done;
+    }
+
+  vlib_cli_output (vm, "%U: n_buffers %u buffer-size %u rounds %u "
+		   "warmup-rounds %u one-key %s",
+		   format_vnet_crypto_alg, tm->alg, n_buffers, buffer_size,
+		   rounds, warmup_rounds, tm->one_key ? "yes" :"no");
+  vlib_cli_output (vm, "   cpu-freq %.2f GHz",
+		   (f64) vm->clib_time.clocks_per_second * 1e-9);
+
+  for (i = 0; i < n_buffers; i++)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
+      op1 = ops1 + i;
+      op2 = ops2 + i;
+      vnet_crypto_op_init (op1, ad->op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT]);
+      vnet_crypto_op_init (op2, ad->op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT]);
+      op1->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
+      op1->src = op2->src = op1->dst = op2->dst = b->data;
+      if (i == 0)
+	key = b->data - 32;
+      op1->key = op2->key = tm->one_key ? key : b->data - 32;
+      op1->iv = op2->iv = b->data - 64;
+      n_bytes += op1->len = op2->len = buffer_size;
+      for (j = -64; j < buffer_size; j+=8)
+	* (u64 *)(b->data + j) = 1 + random_u64 (&seed);
+    }
+
+  for (i = 0 ; i < 5; i++)
+    {
+      for (j = 0 ; j < warmup_rounds; j++)
+	{
+	  vnet_crypto_process_ops (vm, ops1, n_buffers);
+	  vnet_crypto_process_ops (vm, ops2, n_buffers);
+	}
+
+      t0[i] = clib_cpu_time_now ();
+      for (j = 0 ; j < rounds; j++)
+	vnet_crypto_process_ops (vm, ops1, n_buffers);
+      t1[i] = clib_cpu_time_now ();
+      for (j = 0 ; j < rounds; j++)
+	vnet_crypto_process_ops (vm, ops2, n_buffers);
+      t2[i] = clib_cpu_time_now ();
+    }
+
+  for (i = 0; i < 5; i++)
+    {
+      f64 tpb1 = (f64) (t1[i] - t0[i]) / (n_bytes * rounds);
+      f64 tpb2 = (f64) (t2[i] - t1[i]) / (n_bytes * rounds);
+      f64 gbps1 = vm->clib_time.clocks_per_second * 1e-9 * 8 / tpb1;
+      f64 gbps2 = vm->clib_time.clocks_per_second * 1e-9 * 8 / tpb2;
+      vlib_cli_output (vm, "%-2u: encrypt %.03f ticks/byte, %.02f Gbps; "
+		       "decrypt %.03f ticks/byte, %.02f Gbps",
+		       i + 1, tpb1, gbps1, tpb2, gbps2);
+    }
+
+done:
+  if (n_alloc)
+    vlib_buffer_free (vm, buffer_indices, n_alloc);
+  vec_free (buffer_indices);
+  vec_free (ops1);
+  vec_free (ops2);
+  return err;
+}
+
+static clib_error_t *
 test_crypto_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   crypto_test_main_t *tm = &crypto_test_main;
+  unittest_crypto_test_registration_t *tr;
+  int is_perf = 0;
+
+  tr = tm->test_registrations;
+  memset (tm, 0, sizeof (crypto_test_main_t));
+  tm->test_registrations = tr;
+  tm->alg = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -269,12 +377,27 @@ test_crypto_command_fn (vlib_main_t * vm,
 	tm->verbose = 1;
       else if (unformat (input, "detail"))
 	tm->verbose = 2;
+      else if (unformat (input, "perf %U",unformat_vnet_crypto_alg, &tm->alg))
+	is_perf = 1;
+      else if (unformat (input, "buffers %u", &tm->n_buffers))
+	;
+      else if (unformat (input, "rounds %u", &tm->rounds))
+	;
+      else if (unformat (input, "warmup-rounds %u", &tm->warmup_rounds))
+	;
+      else if (unformat (input, "buffer-size %u", &tm->buffer_size))
+	;
+      else if (unformat (input, "one-key"))
+	tm->one_key = 1;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
     }
 
-  return test_crypto (vm, tm);
+  if (is_perf)
+    return test_crypto_perf (vm, tm);
+  else
+    return test_crypto (vm, tm);
 }
 
 /* *INDENT-OFF* */

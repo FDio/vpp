@@ -26,6 +26,27 @@ format_vnet_crypto_alg (u8 * s, va_list * args)
   return format (s, "%s", d->name);
 }
 
+uword
+unformat_vnet_crypto_alg (unformat_input_t * input, va_list * args)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_alg_t *alg = va_arg (*args, vnet_crypto_alg_t *);
+  uword *p;
+  u8 * name;
+
+  if (!unformat (input, "%s", &name))
+    return 0;
+
+  p = hash_get_mem (cm->alg_index_by_name, name);
+  vec_free (name);
+  if (p == 0)
+    return 0;
+
+  *alg = p[0];
+
+  return 1;
+}
+
 u8 *
 format_vnet_crypto_op (u8 * s, va_list * args)
 {
