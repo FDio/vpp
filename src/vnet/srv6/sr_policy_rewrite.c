@@ -154,7 +154,7 @@ compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap, u64 tmap_prefix)
 {
   ip6_header_t *iph;
   ip6_sr_header_t *srh;
-  ip6_address_t *addrp, *this_address, *segment;
+  ip6_address_t *addrp, *this_address;
   u32 header_length = 0;
   u8 *rs = NULL;
 
@@ -163,15 +163,7 @@ compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap, u64 tmap_prefix)
   if (vec_len (sl) > 1)
     {
       header_length += sizeof (ip6_sr_header_t);
-
-      if (is_tmap)
-        {
-          header_length += (vec_len (sl) + 1) * sizeof (ip6_address_t);
-        }
-      else
-        {
-          header_length += vec_len (sl) * sizeof (ip6_address_t);
-        }
+      header_length += vec_len (sl) * sizeof (ip6_address_t);
     }
 
   vec_validate (rs, header_length - 1);
@@ -205,12 +197,6 @@ compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap, u64 tmap_prefix)
 		     sizeof (ip6_address_t));
 	addrp--;
       }
-    }
-
-  if (is_tmap)
-    {
-      segment = srh->segments + vec_len (sl);
-      segment->as_u64[0] = tmap_prefix;
     }
 
   iph->dst_address.as_u64[0] = sl->as_u64[0];
@@ -898,6 +884,12 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
     ip6_address_t mask;
     ip6_address_mask_from_width(&mask, gtp4_mask_width);
     ip6_address_mask(&tmap_prefix.ip6, &mask);
+
+    /* add tmap prefix as the last SID */
+
+    vec_add2 (segments, this_seg, 1);
+    clib_memcpy (this_seg->as_u8, tmap_prefix.as_u8, sizeof (*this_seg));
+
     is_tmap = 1;
        }
       else if (unformat (input, "spray"))
@@ -1394,7 +1386,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
       while (n_left_from >= 8 && n_left_to_next >= 4)
 	{
 	  u32 bi0, bi1, bi2, bi3;
-	  vlib_buffer_t *b0, *b1, *b2, *b3, *tmp0, *tmp1, *tmp2, *tmp3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
 	  u32 next0, next1, next2, next3;
 	  next0 = next1 = next2 = next3 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
@@ -1405,7 +1397,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip4_address_t dst_addr0, dst_addr1, dst_addr2, dst_addr3;
           u16 sr_port0, sr_port1, sr_port2, sr_port3;
           u32 teid0, teid1, teid2, teid3;
-          ip6_address_t *segment;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -1485,11 +1476,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
           vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));
 
-          tmp0 = vlib_buffer_get_current (b0);
-          tmp1 = vlib_buffer_get_current (b1);
-          tmp2 = vlib_buffer_get_current (b2);
-          tmp3 = vlib_buffer_get_current (b3);
-
           clib_memcpy (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
                        sl0->rewrite, vec_len (sl0->rewrite));
           clib_memcpy (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite),
@@ -1517,82 +1503,58 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           if (PREDICT_TRUE (sl0->is_tmap))
             {
-              segment = (void *) tmp0 - sizeof (ip6_address_t);
-              segment->as_u32[1] = dst_addr0.as_u32;
-              segment->as_u8[9] = ((u8*) &teid0)[0];
-              segment->as_u8[10] = ((u8*) &teid0)[1];
-              segment->as_u8[11] = ((u8*) &teid0)[2];
-              segment->as_u8[12] = ((u8*) &teid0)[3];
+              sr0 = (void*)(ip0+1);
+              sr0->segments->as_u32[1] = dst_addr0.as_u32;
+              sr0->segments->as_u8[9] = ((u8*) &teid0)[0];
+              sr0->segments->as_u8[10] = ((u8*) &teid0)[1];
+              sr0->segments->as_u8[11] = ((u8*) &teid0)[2];
+              sr0->segments->as_u8[12] = ((u8*) &teid0)[3];
 
               ip0->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip0->src_address.as_u32[2] = sr_addr0.as_u32;
               ip0->src_address.as_u16[6] = sr_port0;
             }
-          else
-            {
-              /* Set the TEID in the last SID args */
-              sr0 = (void*)(ip0+1);
-              sr0->segments->as_u32[3] = teid0;
-            }
 
           if (PREDICT_TRUE (sl1->is_tmap))
           {
-              segment = (void *) tmp1 - sizeof (ip6_address_t);
-              segment->as_u32[1] = dst_addr1.as_u32;
-              segment->as_u8[9] = ((u8*) &teid1)[0];
-              segment->as_u8[10] = ((u8*) &teid1)[1];
-              segment->as_u8[11] = ((u8*) &teid1)[2];
-              segment->as_u8[12] = ((u8*) &teid1)[3];
+              sr1 = (void*)(ip0+1);
+              sr1->segments->as_u32[1] = dst_addr1.as_u32;
+              sr1->segments->as_u8[9] = ((u8*) &teid1)[0];
+              sr1->segments->as_u8[10] = ((u8*) &teid1)[1];
+              sr1->segments->as_u8[11] = ((u8*) &teid1)[2];
+              sr1->segments->as_u8[12] = ((u8*) &teid1)[3];
 
               ip1->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip1->src_address.as_u32[2] = sr_addr1.as_u32;
               ip1->src_address.as_u16[6] = sr_port1;
             }
-          else
-            {
-              /* Set the TEID in the last SID args */
-              sr1 = (void*)(ip1+1);
-              sr1->segments->as_u32[3] = teid1;
-            }
 
           if (PREDICT_TRUE (sl2->is_tmap))
             {
-              segment = (void *) tmp2 - sizeof (ip6_address_t);
-              segment->as_u32[1] = dst_addr2.as_u32;
-              segment->as_u8[9] = ((u8*) &teid2)[0];
-              segment->as_u8[10] = ((u8*) &teid2)[1];
-              segment->as_u8[11] = ((u8*) &teid2)[2];
-              segment->as_u8[12] = ((u8*) &teid2)[3];
+              sr2 = (void*)(ip0+1);
+              sr2->segments->as_u32[1] = dst_addr2.as_u32;
+              sr2->segments->as_u8[9] = ((u8*) &teid2)[0];
+              sr2->segments->as_u8[10] = ((u8*) &teid2)[1];
+              sr2->segments->as_u8[11] = ((u8*) &teid2)[2];
+              sr2->segments->as_u8[12] = ((u8*) &teid2)[3];
 
               ip2->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip2->src_address.as_u32[2] = sr_addr2.as_u32;
               ip2->src_address.as_u16[6] = sr_port2;
             }
-          else
-            {
-              /* Set the TEID in the last SID args */
-              sr2 = (void*)(ip2+1);
-              sr2->segments->as_u32[3] = teid2;
-            }
 
           if (PREDICT_TRUE (sl3->is_tmap))
             {
-              segment = (void *) tmp3 - sizeof (ip6_address_t);
-              segment->as_u32[1] = dst_addr3.as_u32;
-              segment->as_u8[9] = ((u8*) &teid3)[0];
-              segment->as_u8[10] = ((u8*) &teid3)[1];
-              segment->as_u8[11] = ((u8*) &teid3)[2];
-              segment->as_u8[12] = ((u8*) &teid3)[3];
+              sr3 = (void*)(ip0+1);
+              sr3->segments->as_u32[1] = dst_addr3.as_u32;
+              sr3->segments->as_u8[9] = ((u8*) &teid3)[0];
+              sr3->segments->as_u8[10] = ((u8*) &teid3)[1];
+              sr3->segments->as_u8[11] = ((u8*) &teid3)[2];
+              sr3->segments->as_u8[12] = ((u8*) &teid3)[3];
 
               ip3->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip3->src_address.as_u32[2] = sr_addr3.as_u32;
               ip3->src_address.as_u16[6] = sr_port3;
-            }
-          else
-            {
-              /* Set the TEID in the last SID args */
-              sr3 = (void*)(ip3+1);
-              sr3->segments->as_u32[3] = teid3;
             }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
@@ -1652,7 +1614,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_sr_sl_t *sl0;
           ip6_sr_header_t *sr0;
           ip4_gtpu_header_t *hdr0;
-          ip6_address_t *segment;
           ip4_address_t sr_addr0;
           ip4_address_t dst_addr0;
           u16 sr_port;
@@ -1695,23 +1656,18 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           if (PREDICT_TRUE (sl0->is_tmap))
             {
-              segment = (void *) tmp0 - sizeof (ip6_address_t);
-              segment->as_u32[1] = dst_addr0.as_u32;
-              segment->as_u8[9] = ((u8*) &teid0)[0];
-              segment->as_u8[10] = ((u8*) &teid0)[1];
-              segment->as_u8[11] = ((u8*) &teid0)[2];
-              segment->as_u8[12] = ((u8*) &teid0)[3];
+              sr0 = (void*)(ip0+1);
+              sr0->segments->as_u32[1] = dst_addr0.as_u32;
+              sr0->segments->as_u8[9] = ((u8*) &teid0)[0];
+              sr0->segments->as_u8[10] = ((u8*) &teid0)[1];
+              sr0->segments->as_u8[11] = ((u8*) &teid0)[2];
+              sr0->segments->as_u8[12] = ((u8*) &teid0)[3];
 
               ip0->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
               ip0->src_address.as_u32[2] = sr_addr0.as_u32;
               ip0->src_address.as_u16[6] = sr_port;
             }
-          else
-            {
-              sr0 = (void*)(ip0+1);
-              sr0->segments->as_u32[3] = teid0;
-            }
-
+	  
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {

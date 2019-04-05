@@ -419,6 +419,9 @@ class Program(object):
 
         self.start_containers()
 
+        print("Sleeping")
+        time.sleep(30)
+
         c1 = self.containers.get(self.get_name(self.instance_names[0]))
         c2 = self.containers.get(self.get_name(self.instance_names[1]))
         c3 = self.containers.get(self.get_name(self.instance_names[2]))
@@ -473,16 +476,20 @@ class Program(object):
 
         self.start_containers()
 
+        print("Sleeping")
+        time.sleep(30)
+
         c1 = self.containers.get(self.get_name(self.instance_names[0]))
         c2 = self.containers.get(self.get_name(self.instance_names[1]))
         c3 = self.containers.get(self.get_name(self.instance_names[2]))
         c4 = self.containers.get(self.get_name(self.instance_names[-1]))
 
-        c1.pg_create_interface(local_ip="172.20.0.1", remote_ip="172.20.0.2",
+        c1.pg_create_interface(local_ip="172.16.0.1/30", remote_ip="172.16.0.2/30",
             local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
 
-        c1.vppctl_exec("set sr encaps source addr C1::1")
-        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr-prefix D4::/32 local-prefix C1::/64")
+        c1.vppctl_exec("set sr encaps source addr A1::1")
+#        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr-prefix D4::/32 local-prefix C1::/64")
+        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr-prefix D4::/32")
         c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D1::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
@@ -493,13 +500,13 @@ class Program(object):
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
-        c3.set_ipv6_route("eth2", "A3::2", "D4::/128")
+        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
         c3.set_ipv6_route("eth1", "A2::1", "C::/120")
 
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
              IP(src="172.20.0.2", dst="172.20.0.1")/
              UDP(sport=2152, dport=2152)/
-             GTPHeader(gtp_type="g_pdu", teid=200)/
+             GTP_U_Header(gtp_type="g_pdu", teid=200)/
              IP(src="172.99.0.1", dst="172.99.0.2")/
              ICMP())
 
