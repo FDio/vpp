@@ -123,6 +123,7 @@ typedef struct
   u8 forward;
   u8 learn;
   u8 arp_term;
+  u8 arp_ufwd;
   u8 mac_age;
   u8 *bd_tag;
   u8 is_add;
@@ -152,6 +153,7 @@ typedef enum bd_flags_t_
   L2_FLOOD = (1 << 2),
   L2_UU_FLOOD = (1 << 3),
   L2_ARP_TERM = (1 << 4),
+  L2_ARP_UFWD = (1 << 5),
 } bd_flags_t;
 
 u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags,

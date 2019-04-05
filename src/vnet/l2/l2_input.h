@@ -102,6 +102,7 @@ l2input_bd_config (u32 bd_index)
  _(DROP,          "feature-bitmap-drop")        \
  _(XCONNECT,      "l2-output")                  \
  _(FLOOD,         "l2-flood")                   \
+ _(ARP_UFWD,      "l2-uu-fwd")                  \
  _(ARP_TERM,      "arp-term-l2bd")              \
  _(UU_FLOOD,      "l2-flood")                   \
  _(GBP_FWD,       "gbp-fwd")                    \
@@ -188,6 +189,13 @@ bd_feature_arp_term (l2_bridge_domain_t * bd_config)
 {
   return ((bd_config->feature_bitmap & L2INPUT_FEAT_ARP_TERM) ==
 	  L2INPUT_FEAT_ARP_TERM);
+}
+
+static_always_inline u8
+bd_feature_arp_ufwd (l2_bridge_domain_t * bd_config)
+{
+  return ((bd_config->feature_bitmap & L2INPUT_FEAT_ARP_UFWD) ==
+	  L2INPUT_FEAT_ARP_UFWD);
 }
 
 /** Masks for eliminating features that do not apply to a packet */

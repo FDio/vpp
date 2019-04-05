@@ -438,6 +438,7 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
     .forward = mp->forward,
     .learn = mp->learn,
     .arp_term = mp->arp_term,
+    .arp_ufwd = mp->arp_ufwd,
     .mac_age = mp->mac_age,
     .bd_id = ntohl (mp->bd_id),
     .bd_tag = mp->bd_tag
@@ -470,6 +471,7 @@ send_bridge_domain_details (l2input_main_t * l2im,
   mp->forward = bd_feature_forward (bd_config);
   mp->learn = bd_feature_learn (bd_config);
   mp->arp_term = bd_feature_arp_term (bd_config);
+  mp->arp_ufwd = bd_feature_arp_ufwd (bd_config);
   mp->bvi_sw_if_index = ntohl (bd_config->bvi_sw_if_index);
   mp->uu_fwd_sw_if_index = ntohl (bd_config->uu_fwd_sw_if_index);
   mp->mac_age = bd_config->mac_age;
@@ -552,6 +554,8 @@ bd_flags_decode (vl_api_bd_flags_t v)
     f |= L2_UU_FLOOD;
   if (v & BRIDGE_API_FLAG_ARP_TERM)
     f |= L2_ARP_TERM;
+  if (v & BRIDGE_API_FLAG_ARP_UFWD)
+    f |= L2_ARP_UFWD;
 
   return (f);
 }
