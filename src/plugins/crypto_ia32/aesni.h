@@ -195,8 +195,9 @@ aes_key_expand (__m128i * k, u8 * key, aesni_key_size_t ks)
 
 
 static_always_inline void
-aes_key_enc_to_dec (__m128i * k, aesni_key_size_t rounds)
+aes_key_enc_to_dec (__m128i * k, aesni_key_size_t ks)
 {
+  int rounds = AESNI_KEY_ROUNDS (ks);
   __m128i r;
 
   r = k[rounds];
