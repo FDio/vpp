@@ -341,12 +341,6 @@ def autoconfig_dryrun(ask_questions=True):
 
     """
 
-    vutil = VPPUtil()
-    pkgs = vutil.get_installed_vpp_pkgs()
-    if len(pkgs) == 0:
-        print ("\nVPP is not installed, please install VPP.")
-        return
-
     acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE, clean=True)
 
     # Stop VPP on each node
@@ -370,6 +364,13 @@ def autoconfig_dryrun(ask_questions=True):
         acfg.modify_devices()
     else:
         acfg.update_interfaces_config()
+
+    # If there are no interfaces, just return
+    for i in nodes.items():
+        node = i[1]
+        if not acfg.has_interfaces(node):
+            print("\nThere are no VPP interfaces configured, please configure at least 1.")
+            return
 
     # Modify CPU
     acfg.modify_cpu(ask_questions)

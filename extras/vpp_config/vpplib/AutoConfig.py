@@ -572,7 +572,7 @@ class AutoConfig(object):
             #  then we shouldn't get workers
             total_workers_node = 0
             if len(ports_per_numa):
-                total_workers_node = total_vpp_cpus / len(ports_per_numa)
+                total_workers_node = total_vpp_cpus // len(ports_per_numa)
             total_main = 0
             if reserve_vpp_main_core:
                 total_main = 1
@@ -953,7 +953,9 @@ class AutoConfig(object):
         print("Then to improve performance start reserving cores and "
               "adding queues as needed.")
 
-        max_vpp_cpus = 4
+        # Leave 1 for the general system
+        total_cpus -= 1
+        max_vpp_cpus = min(total_cpus, 4)
         total_vpp_cpus = 0
         if max_vpp_cpus > 0:
             question = "\nHow many core(s) shall we reserve for " \
@@ -961,15 +963,16 @@ class AutoConfig(object):
             total_vpp_cpus = self._ask_user_range(question, 0, max_vpp_cpus, 0)
             node['cpu']['total_vpp_cpus'] = total_vpp_cpus
 
-        max_other_cores = (total_cpus - total_vpp_cpus) / 2
-        question = 'How many core(s) do you want to reserve for ' \
-                   'processes other than VPP? [0-{}][0]? '. \
-            format(str(max_other_cores))
-        total_other_cpus = self._ask_user_range(
-            question, 0, max_other_cores, 0)
-        node['cpu']['total_other_cpus'] = total_other_cpus
+        total_other_cpus = 0
+        max_other_cores = total_cpus - total_vpp_cpus
+        if max_other_cores > 0:
+            question = 'How many core(s) do you want to reserve for ' \
+                       'processes other than VPP? [0-{}][0]? '. \
+                       format(str(max_other_cores))
+            total_other_cpus = self._ask_user_range(question, 0, max_other_cores, 0)
+            node['cpu']['total_other_cpus'] = total_other_cpus
 
-        max_main_cpus = max_vpp_cpus + 1 - total_vpp_cpus
+        max_main_cpus = total_cpus - total_vpp_cpus - total_other_cpus
         reserve_vpp_main_core = False
         if max_main_cpus > 0:
             question = "Should we reserve 1 core for the VPP Main thread? "
@@ -1034,7 +1037,7 @@ class AutoConfig(object):
             node['cpu']['cpus_per_node'] = cpus_per_node
 
             # Ask the user some questions
-            if ask_questions and total_cpus >= 8:
+            if ask_questions and total_cpus >= 4:
                 self._modify_cpu_questions(node, total_cpus, numa_nodes)
 
             # Populate the interfaces with the numa node
@@ -1485,13 +1488,24 @@ class AutoConfig(object):
         hpg.show_huge_pages()
 
     @staticmethod
+    def has_interfaces(node):
+        """
+        Check for interfaces, return tru if there is at least one
+
+        :returns: boolean
+        """
+        if 'interfaces' in node and len(node['interfaces']):
+            return True
+        else:
+            return False
+
+    @staticmethod
     def min_system_resources(node):
         """
         Check the system for basic minimum resources, return true if
         there is enough.
 
         :returns: boolean
-        :rtype: dict
         """
 
         min_sys_res = True
