@@ -30,7 +30,7 @@ vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 
   if (cm->ops_handlers[opt] == 0)
     {
-      while (n_ops)
+      while (n_ops--)
 	{
 	  ops[0]->status = VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER;
 	  ops++;
