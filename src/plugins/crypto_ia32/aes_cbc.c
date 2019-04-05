@@ -95,10 +95,10 @@ aesni_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 							 vm->thread_index);
   int rounds = AESNI_KEY_ROUNDS (ks);
   u8 dummy[8192];
-  u8 *src[4], *dst[4], *key[4];
+  u8 *src[4] = { }, *dst[4] = { }, *key[4] = { };
   u32x4 dummy_mask, len = { };
   u32 i, j, count, n_left = n_ops;
-  __m128i r[4], k[4][rounds + 1];
+  __m128i r[4] = { }, k[4][rounds + 1];
 
 more:
   for (i = 0; i < 4; i++)
@@ -187,22 +187,30 @@ aesni_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 		       u32 n_ops, aesni_key_size_t ks)
 {
   int rounds = AESNI_KEY_ROUNDS (ks);
-  u8 *last_key = 0;
-  u32 i;
+  vnet_crypto_op_t *op = ops[0];
+  u32 n_left = n_ops;
+  u8 *last_key;
   __m128i k[rounds + 1];
 
-  for (i = 0; i < n_ops; i++)
+  ASSERT (n_ops >= 1);
+
+key_expand:
+  last_key = op->key;
+  aes_key_expand (k, op->key, ks);
+  aes_key_enc_to_dec (k, ks);
+
+decrypt:
+  aes_cbc_dec (k, op->src, op->dst, op->iv, op->len, rounds);
+  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+
+  if (--n_left)
     {
-      vnet_crypto_op_t *op = ops[i];
+      op += 1;
       if (last_key != op->key)
-	{
-	  aes_key_expand (k, op->key, ks);
-	  last_key = op->key;
-	  aes_key_enc_to_dec (k, rounds);
-	}
-      aes_cbc_dec (k, op->src, op->dst, op->iv, op->len, rounds);
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+	goto key_expand;
+      goto decrypt;
     }
+
   return n_ops;
 }
 
@@ -237,7 +245,8 @@ crypto_ia32_aesni_cbc_init (vlib_main_t * vm)
     {
       for (int i = 0; i < 4; i++)
 	{
-	  if (read(fd, ptd->cbc_iv, sizeof (ptd->cbc_iv)) < 0)
+	  if (read(fd, ptd->cbc_iv, sizeof (ptd->cbc_iv)) !=
+	      sizeof (ptd->cbc_iv))
 	    {
 	      err = clib_error_return_unix (0, "'/dev/urandom' read failure");
 	      goto error;
