@@ -480,8 +480,6 @@ do {								\
     @param V (possibly NULL) pointer to a vector.
     @param I vector index which will be valid upon return
     @param INIT initial value (can be a complex expression!)
-    @param H header size in bytes (may be zero)
-    @param A alignment (may be zero)
     @return V (value-result macro parameter)
 */
 
@@ -494,7 +492,6 @@ do {								\
     @param V (possibly NULL) pointer to a vector.
     @param I vector index which will be valid upon return
     @param INIT initial value (can be a complex expression!)
-    @param H header size in bytes (may be zero)
     @param A alignment (may be zero)
     @return V (value-result macro parameter)
 */
@@ -528,7 +525,6 @@ do {									\
 
     @param V pointer to a vector
     @param E element to add
-    @param H header size in bytes (may be zero)
     @param A alignment (may be zero)
     @return V (value-result macro parameter)
 */
@@ -937,8 +933,8 @@ do {						\
 
 /** \brief Search a vector for the index of the entry that matches.
 
-    @param v1 Pointer to a vector
-    @param v2 Entry to match
+    @param v Pointer to a vector
+    @param E Entry to match
     @return index of match or ~0
 */
 #define vec_search(v,E)					\
@@ -957,8 +953,8 @@ do {						\
 
 /** \brief Search a vector for the index of the entry that matches.
 
-    @param v1 Pointer to a vector
-    @param v2 Pointer to entry to match
+    @param v Pointer to a vector
+    @param E Pointer to entry to match
     @param fn Comparison function !0 => match
     @return index of match or ~0
 */
