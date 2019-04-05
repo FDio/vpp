@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9e585cda_c5f6aa1d",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-05T08:14:01Z",
+      "side": 1,
+      "message": "you\u0027ll need to bump the minor version.\n\nYou missed the API change cut-off deadline. can this wait for 19.08 or would you like to go in 19.04.",
+      "revId": "e7bfcfb1b39e23c49977fb9091b65e2f9b893f30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
