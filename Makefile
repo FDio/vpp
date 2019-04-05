@@ -100,8 +100,8 @@ ifeq ($(OS_ID),fedora)
 else
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python-devel python34-ply
-	RPM_DEPENDS += python34-devel python34-pip
+	RPM_DEPENDS += python-devel python36-ply
+	RPM_DEPENDS += python36-devel python36-pip
 	RPM_DEPENDS += python-virtualenv
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
