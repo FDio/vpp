@@ -93,15 +93,15 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
-	RPM_DEPENDS += python2-devel python34-ply
+	RPM_DEPENDS += python2-devel python36-ply
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python-devel python34-ply
-	RPM_DEPENDS += python34-devel python34-pip
+	RPM_DEPENDS += python-devel python36-ply
+	RPM_DEPENDS += python36-devel python36-pip
 	RPM_DEPENDS += python-virtualenv
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
