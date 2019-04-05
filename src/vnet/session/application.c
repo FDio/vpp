@@ -1421,12 +1421,12 @@ format_application (u8 * s, va_list * args)
   props = application_segment_manager_properties (app);
   if (!verbose)
     {
-      s = format (s, "%-10u%-20s%-40s", app->app_index, app_name,
+      s = format (s, "%-10u%-20v%-40s", app->app_index, app_name,
 		  app_ns_name);
       return s;
     }
 
-  s = format (s, "app-name %s app-index %u ns-index %u seg-size %U\n",
+  s = format (s, "app-name %v app-index %u ns-index %u seg-size %U\n",
 	      app_name, app->app_index, app->ns_index,
 	      format_memory_size, props->add_segment_size);
   s = format (s, "rx-fifo-size %U tx-fifo-size %U workers:\n",
