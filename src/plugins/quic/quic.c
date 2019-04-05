@@ -1505,10 +1505,10 @@ static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
   QUIC_DBG (2, "Called quic_init");
+  u32 add_segment_size = (4096ULL << 20) - 1, segment_size = 512 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
-  u32 segment_size = 512 << 20;
   quic_main_t *qm = &quic_main;
   u32 fifo_size = 64 << 10;
   u32 num_threads;
@@ -1523,6 +1523,7 @@ quic_init (vlib_main_t * vm)
   a->options = options;
   a->name = format (0, "quic");
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = add_segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
