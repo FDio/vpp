@@ -817,6 +817,7 @@ quic_connect (transport_endpoint_cfg_t * tep)
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
   ctx->c_quic_ctx_id.parent_app_id = app_wrk->app_index;
+  cargs->sep_ext.ns_index = app->ns_index;
 
   allocate_quicly_ctx (app, 1 /* is client */ );
 
