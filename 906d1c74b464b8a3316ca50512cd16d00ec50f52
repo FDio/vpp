@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5cd3b66e_1bf12284",
+        "filename": "src/vlibmemory/vlib_api_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1085,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-05T16:17:34Z",
+      "side": 1,
+      "message": "\u0027i\u0027 is no longer used, please remove.",
+      "range": {
+        "startLine": 1085,
+        "startChar": 0,
+        "endLine": 1085,
+        "endChar": 12
+      },
+      "revId": "906d1c74b464b8a3316ca50512cd16d00ec50f52",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
