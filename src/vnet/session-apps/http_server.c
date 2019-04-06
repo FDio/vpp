@@ -17,6 +17,7 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
+#include <vppinfra/tw_timer_2t_1w_2048sl.h>
 
 typedef enum
 {
@@ -46,6 +47,7 @@ typedef struct
   u8 *rx_buf;
   u32 vpp_session_index;
   u64 vpp_session_handle;
+  u32 timer_handle;
 } http_session_t;
 
 typedef struct
@@ -70,6 +72,9 @@ typedef struct
 
   /* process node index for evnt scheduling */
   u32 node_index;
+
+  tw_timer_wheel_2t_1w_2048sl_t tw;
+  clib_spinlock_t tw_lock;
 
   u32 prealloc_fifos;
   u32 private_segment_size;
@@ -105,6 +110,37 @@ http_server_sessions_writer_unlock (void)
   clib_rwlock_writer_unlock (&http_server_main.sessions_lock);
 }
 
+static http_session_t *
+http_server_session_alloc (u32 thread_index)
+{
+  http_server_main_t *hsm = &http_server_main;
+  http_session_t *hs;
+  pool_get (hsm->sessions[thread_index], hs);
+  memset (hs, 0, sizeof (*hs));
+  hs->session_index = hs - hsm->sessions[thread_index];
+  hs->thread_index = thread_index;
+  hs->timer_handle = ~0;
+  return hs;
+}
+
+static http_session_t *
+http_server_session_get (u32 thread_index, u32 hs_index)
+{
+  http_server_main_t *hsm = &http_server_main;
+  if (pool_is_free_index (hsm->sessions[thread_index], hs_index))
+    return 0;
+  return pool_elt_at_index (hsm->sessions[thread_index], hs_index);
+}
+
+static void
+http_server_session_free (http_session_t * hs)
+{
+  http_server_main_t *hsm = &http_server_main;
+  pool_put (hsm->sessions[hs->thread_index], hs);
+  if (CLIB_DEBUG)
+    memset (hs, 0xfa, sizeof (*hs));
+}
+
 static void
 http_server_session_lookup_add (u32 thread_index, u32 s_index, u32 hs_index)
 {
@@ -129,38 +165,31 @@ http_server_session_lookup (u32 thread_index, u32 s_index)
   if (s_index < vec_len (hsm->session_to_http_session[thread_index]))
     {
       hs_index = hsm->session_to_http_session[thread_index][s_index];
-      if (hs_index < vec_len (hsm->sessions[thread_index]))
-	return &hsm->sessions[thread_index][hs_index];
+      return http_server_session_get (thread_index, hs_index);
     }
   return 0;
 }
 
-static http_session_t *
-http_server_session_alloc (u32 thread_index)
-{
-  http_server_main_t *hsm = &http_server_main;
-  http_session_t *hs;
-  pool_get (hsm->sessions[thread_index], hs);
-  memset (hs, 0, sizeof (*hs));
-  hs->session_index = hs - hsm->sessions[thread_index];
-  hs->thread_index = thread_index;
-  return hs;
-}
 
-static http_session_t *
-http_server_session_get (u32 thread_index, u32 hs_index)
+static void
+http_server_session_timer_start (http_session_t * hs)
 {
-  http_server_main_t *hsm = &http_server_main;
-  return pool_elt_at_index (hsm->sessions[thread_index], hs_index);
+  u32 hs_handle;
+  hs_handle = hs->thread_index << 24 | hs->session_index;
+  clib_spinlock_lock (&http_server_main.tw_lock);
+  hs->timer_handle = tw_timer_start_2t_1w_2048sl (&http_server_main.tw,
+						  hs_handle, 0, 60);
+  clib_spinlock_unlock (&http_server_main.tw_lock);
 }
 
 static void
-http_server_session_free (http_session_t * hs)
+http_server_session_timer_stop (http_session_t * hs)
 {
-  http_server_main_t *hsm = &http_server_main;
-  pool_put (hsm->sessions[hs->thread_index], hs);
-  if (CLIB_DEBUG)
-    memset (hs, 0xfa, sizeof (*hs));
+  if (hs->timer_handle == ~0)
+    return;
+  clib_spinlock_lock (&http_server_main.tw_lock);
+  tw_timer_stop_2t_1w_2048sl (&http_server_main.tw, hs->timer_handle);
+  clib_spinlock_unlock (&http_server_main.tw_lock);
 }
 
 static void
@@ -170,7 +199,17 @@ http_server_session_cleanup (http_session_t * hs)
     return;
   http_server_session_lookup_del (hs->thread_index, hs->vpp_session_index);
   vec_free (hs->rx_buf);
+  http_server_session_timer_stop (hs);
   http_server_session_free (hs);
+}
+
+static void
+http_server_session_disconnect (http_session_t * hs)
+{
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  a->handle = hs->vpp_session_handle;
+  a->app_index = http_server_main.app_index;
+  vnet_disconnect_session (a);
 }
 
 static void
@@ -514,8 +553,6 @@ http_server_rx_callback (session_t * s)
 static int
 http_server_rx_callback_static (session_t * s)
 {
-  http_server_main_t *hsm = &http_server_main;
-  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   http_session_t *hs;
   u32 request_len;
   u8 *request = 0;
@@ -565,12 +602,10 @@ find_end:
 
 send_data:
   send_data (hs, static_http);
-  http_server_session_cleanup (hs);
 
 close_session:
-  a->handle = session_handle (s);
-  a->app_index = hsm->app_index;
-  vnet_disconnect_session (a);
+  http_server_session_disconnect (hs);
+  http_server_session_cleanup (hs);
   return 0;
 
 postpone:
@@ -602,6 +637,7 @@ http_server_session_accept_callback (session_t * s)
   hs->vpp_session_index = s->session_index;
   hs->vpp_session_handle = session_handle (s);
   hs->session_state = HTTP_STATE_ESTABLISHED;
+  http_server_session_timer_start (hs);
 
   if (!hsm->is_static)
     http_server_sessions_writer_unlock ();
@@ -741,12 +777,78 @@ http_server_listen ()
   return vnet_bind_uri (a);
 }
 
+static void
+http_server_session_cleanup_cb (void *hs_handlep)
+{
+  http_session_t *hs;
+  uword hs_handle;
+  hs_handle = pointer_to_uword (hs_handlep);
+  hs = http_server_session_get (hs_handle >> 24, hs_handle & 0x00FFFFFF);
+  if (!hs)
+    return;
+  hs->timer_handle = ~0;
+  http_server_session_disconnect (hs);
+  http_server_session_cleanup (hs);
+}
+
+static void
+http_expired_timers_dispatch (u32 * expired_timers)
+{
+  u32 hs_handle;
+  int i;
+
+  for (i = 0; i < vec_len (expired_timers); i++)
+    {
+      /* Get session handle. The first bit is the timer id */
+      hs_handle = expired_timers[i] & 0x7FFFFFFF;
+      session_send_rpc_evt_to_thread (hs_handle >> 24,
+				      http_server_session_cleanup_cb,
+				      uword_to_pointer (hs_handle, void *));
+    }
+}
+
+static uword
+http_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
+		     vlib_frame_t * f)
+{
+  http_server_main_t *hsm = &http_server_main;
+  f64 now, timeout = 1.0;
+  uword *event_data = 0;
+  uword __clib_unused event_type;
+
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, timeout);
+      now = vlib_time_now (vm);
+      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+
+      /* expire timers */
+      clib_spinlock_lock (&http_server_main.tw_lock);
+      tw_timer_expire_timers_2t_1w_2048sl (&hsm->tw, now);
+      clib_spinlock_unlock (&http_server_main.tw_lock);
+
+      vec_reset_length (event_data);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (http_server_process_node) =
+{
+  .function = http_server_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "http-server-process",
+  .state = VLIB_NODE_STATE_DISABLED,
+};
+/* *INDENT-ON* */
+
 static int
 http_server_create (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   http_server_main_t *hsm = &http_server_main;
   u32 num_threads;
+  vlib_node_t *n;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (hsm->vpp_queue, num_threads - 1);
@@ -754,6 +856,7 @@ http_server_create (vlib_main_t * vm)
   vec_validate (hsm->session_to_http_session, num_threads - 1);
 
   clib_rwlock_init (&hsm->sessions_lock);
+  clib_spinlock_init (&hsm->tw_lock);
 
   if (http_server_attach ())
     {
@@ -765,6 +868,15 @@ http_server_create (vlib_main_t * vm)
       clib_warning ("failed to start listening");
       return -1;
     }
+
+  /* Init timer wheel and process */
+  tw_timer_wheel_init_2t_1w_2048sl (&hsm->tw, http_expired_timers_dispatch,
+				    1 /* timer interval */ , ~0);
+  vlib_node_set_state (vm, http_server_process_node.index,
+		       VLIB_NODE_STATE_POLLING);
+  n = vlib_get_node (vm, http_server_process_node.index);
+  vlib_start_process (vm, n->runtime_index);
+
   return 0;
 }
 
