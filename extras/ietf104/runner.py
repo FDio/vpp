@@ -134,6 +134,16 @@ class Container(object):
         self.vppctl_exec("set ip6 neighbor pg0 {} {}".format(remote_ip,
             remote_mac))
         self.vppctl_exec("set int state pg0 up")
+    def pg_create_interface4(self, local_ip, remote_ip, local_mac, remote_mac):
+        # remote_ip can't have subnet mask
+
+        time.sleep(2)
+        self.vppctl_exec("create packet-generator interface pg0")
+        self.vppctl_exec("set int mac address pg0 {}".format(local_mac))
+        self.vppctl_exec("set int ip addr pg0 {}".format(local_ip))
+        self.vppctl_exec("set ip arp pg0 {} {}".format(remote_ip,
+            remote_mac))
+        self.vppctl_exec("set int state pg0 up")
 
     def pg_enable(self):
         # start packet generator
@@ -155,6 +165,10 @@ class Container(object):
 
     def set_ipv6_route(self, out_if_name, next_hop_ip, subnet):
         self.vppctl_exec("ip route add {} via host-{} {}".format(
+            subnet, out_if_name, next_hop_ip))
+
+    def set_ip_pgroute(self, out_if_name, next_hop_ip, subnet):
+        self.vppctl_exec("ip route add {} via {} {}".format(
             subnet, out_if_name, next_hop_ip))
 
     def set_ipv6_default_route(self, out_if_name, next_hop_ip):
@@ -338,9 +352,6 @@ class Program(object):
         #c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
             #local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
 
-        c4.pg_create_interface(local_ip="B::1/120", remote_ip="B::2",
-            local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
-
         # setup network between instances
         n1.connect(c1)
         n1.connect(c2)
@@ -390,6 +401,8 @@ class Program(object):
 
         c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
             local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+        c4.pg_create_interface(local_ip="B::1/120", remote_ip="B::2",
+            local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
              IPv6(src="C::2", dst="B::2")/ICMPv6EchoRequest())
@@ -429,6 +442,8 @@ class Program(object):
 
         c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
             local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+        c4.pg_create_interface(local_ip="B::1/120", remote_ip="B::2",
+            local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr D1::")
         c1.vppctl_exec("sr policy add bsid D1::999:1 next D2:: next D3:: next D4::")
@@ -476,16 +491,16 @@ class Program(object):
 
         self.start_containers()
 
-        print("Sleeping")
-        time.sleep(30)
 
         c1 = self.containers.get(self.get_name(self.instance_names[0]))
         c2 = self.containers.get(self.get_name(self.instance_names[1]))
         c3 = self.containers.get(self.get_name(self.instance_names[2]))
         c4 = self.containers.get(self.get_name(self.instance_names[-1]))
 
-        c1.pg_create_interface(local_ip="172.16.0.1/30", remote_ip="172.16.0.2/30",
+        c1.pg_create_interface4(local_ip="172.16.0.1/30", remote_ip="172.16.0.2/30",
             local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+        c4.pg_create_interface4(local_ip="1.0.0.2/30", remote_ip="1.0.0.1",
+            local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
 #        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr-prefix D4::/32 local-prefix C1::/64")
@@ -502,6 +517,7 @@ class Program(object):
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
         c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
         c3.set_ipv6_route("eth1", "A2::1", "C::/120")
+        c4.set_ip_pgroute("pg0", "1.0.0.1", "172.20.0.1/32")
 
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
              IP(src="172.20.0.2", dst="172.20.0.1")/
@@ -522,6 +538,8 @@ class Program(object):
         c1.pg_enable()
 
         # timeout (sleep) if needed
+        print("Sleeping")
+        time.sleep(5)
 
         print("Receiving packet on {}:".format(c4.name))
         for p in c4.pg_read_packets():
