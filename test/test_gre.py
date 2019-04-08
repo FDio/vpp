@@ -437,7 +437,7 @@ class TestGRE(VppTestCase):
 
         #
         # Send a packet stream that is routed into the tunnel
-        #  - they are all dropped since the tunnel's desintation IP
+        #  - they are all dropped since the tunnel's destintation IP
         #    is unresolved - or resolves via the default route - which
         #    which is a drop.
         #
@@ -581,7 +581,7 @@ class TestGRE(VppTestCase):
 
         #
         # Send a packet stream that is routed into the tunnel
-        #  - they are all dropped since the tunnel's desintation IP
+        #  - they are all dropped since the tunnel's destintation IP
         #    is unresolved - or resolves via the default route - which
         #    which is a drop.
         #

@@ -2299,7 +2299,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	}
 
       /* Don't adjust the buffer for ttl issue; icmp-error node wants
-       * to see the IP headerr */
+       * to see the IP header */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
 	{
 	  u32 next_index = adj0[0].rewrite_header.next_index;
@@ -2435,7 +2435,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	}
 
       /* Don't adjust the buffer for ttl issue; icmp-error node wants
-       * to see the IP headerr */
+       * to see the IP header */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
 	{
 	  u32 next_index = adj0[0].rewrite_header.next_index;

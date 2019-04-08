@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 /**
- * bier_dispositon : The BIER disposition object
+ * bier_disposition : The BIER disposition object
  *
  * A BIER disposition object is present in the IP mcast output list
  * and represents the disposition of a BIER bitmask. After BIER header

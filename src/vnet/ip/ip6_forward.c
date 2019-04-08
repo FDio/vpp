@@ -1794,7 +1794,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 			 is_locally_originated1, &next1, &error1);
 
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
-	   * wants to see the IP headerr */
+	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
 	    {
 	      p0->current_data -= rw_len0;

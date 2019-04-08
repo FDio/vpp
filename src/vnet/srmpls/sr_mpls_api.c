@@ -161,7 +161,7 @@ static void vl_api_sr_mpls_policy_assign_endpoint_color_t_handler
 
 /*
  * sr_mpls_api_hookup Add vpe's API message handlers to the table. vlib has
- * alread mapped shared memory and added the client registration handlers.
+ * already mapped shared memory and added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
 #define vl_msg_name_crc_list

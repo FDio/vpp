@@ -41,7 +41,7 @@ punt_dpo_lock (dpo_id_t *dpo)
     /*
      * not maintaining a lock count on the punt
      * more trouble than it's worth.
-     * There always needs to be one around. no point it managaing its lifetime
+     * There always needs to be one around. no point it managing its lifetime
      */
 }
 static void
