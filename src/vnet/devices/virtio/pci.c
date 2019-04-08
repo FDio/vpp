@@ -250,13 +250,15 @@ virtio_pci_get_max_virtqueue_pairs (vlib_main_t * vm, virtio_if_t * vif)
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ))
     {
       virtio_pci_legacy_read_config (vm, vif, &config.max_virtqueue_pairs,
-				     sizeof (config.max_virtqueue_pairs), 8);
+				     sizeof (config.max_virtqueue_pairs),
+				     STRUCT_OFFSET_OF (virtio_net_config_t,
+						       max_virtqueue_pairs));
       max_queue_pairs = config.max_virtqueue_pairs;
     }
 
   virtio_log_debug (vim, vif, "max queue pair is %x", max_queue_pairs);
   if (max_queue_pairs < 1 || max_queue_pairs > 0x8000)
-    clib_error_return (error, "max queue pair is %x", max_queue_pairs);
+    return clib_error_return (error, "max queue pair is %x", max_queue_pairs);
 
   vif->max_queue_pairs = max_queue_pairs;
   return error;
@@ -290,7 +292,8 @@ virtio_pci_is_link_up (vlib_main_t * vm, virtio_if_t * vif)
   u16 status = 1;
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_STATUS))
     virtio_pci_legacy_read_config (vm, vif, &status, sizeof (status),	/* mac */
-				   6);
+				   STRUCT_OFFSET_OF (virtio_net_config_t,
+						     status));
   return status;
 }
 
@@ -736,7 +739,9 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
     {
       virtio_net_config_t config;
       virtio_pci_legacy_read_config (vm, vif, &config.mtu,
-				     sizeof (config.mtu), 10);
+				     sizeof (config.mtu),
+				     STRUCT_OFFSET_OF (virtio_net_config_t,
+						       mtu));
       if (config.mtu < 64)
 	vif->features &= ~VIRTIO_FEATURE (VIRTIO_NET_F_MTU);
     }
@@ -939,7 +944,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
    * Initialize the virtqueues
    */
   if ((error = virtio_pci_get_max_virtqueue_pairs (vm, vif)))
-    goto error;
+    goto err;
 
   for (int i = 0; i < vif->max_queue_pairs; i++)
     {
@@ -988,7 +993,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
    */
   virtio_pci_legacy_set_status (vm, vif, VIRTIO_CONFIG_STATUS_DRIVER_OK);
   vif->status = virtio_pci_legacy_get_status (vm, vif);
-error:
+err:
   return error;
 }
 
