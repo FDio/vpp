@@ -15,6 +15,7 @@
 
 #undef BIHASH_TYPE
 #undef BIHASH_KVP_PER_PAGE
+#undef BIHASH_32_64_SVM
 
 #define BIHASH_TYPE _40_8
 #define BIHASH_KVP_PER_PAGE 4
