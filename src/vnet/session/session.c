@@ -492,6 +492,11 @@ static inline int
 session_enqueue_notify_inline (session_t * s)
 {
   app_worker_t *app_wrk;
+  u8 n_subscribers;
+  u64 s_handle;
+
+  s_handle = session_handle (s);
+  n_subscribers = svm_fifo_n_subscribers (s->rx_fifo);
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (PREDICT_FALSE (!app_wrk))
@@ -512,9 +517,12 @@ session_enqueue_notify_inline (session_t * s)
 						     SESSION_IO_EVT_RX)))
     return -1;
 
-  if (PREDICT_FALSE (svm_fifo_n_subscribers (s->rx_fifo)))
-    return session_notify_subscribers (app_wrk->app_index, s,
-				       s->rx_fifo, SESSION_IO_EVT_RX);
+  if (PREDICT_FALSE (n_subscribers))
+    {
+      s = session_get_from_handle (s_handle);
+      return session_notify_subscribers (app_wrk->app_index, s,
+					 s->rx_fifo, SESSION_IO_EVT_RX);
+    }
 
   return 0;
 }

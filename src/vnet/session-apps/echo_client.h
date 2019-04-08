@@ -74,6 +74,7 @@ typedef struct
   clib_spinlock_t sessions_lock;
   u8 **rx_buf;				/**< intermediate rx buffers */
   u8 *connect_test_data;		/**< Pre-computed test data */
+  u32 **quic_session_index_by_thread;
   u32 **connection_index_by_thread;
   u32 **connections_this_batch_by_thread; /**< active connection batch */
   pthread_t client_thread_handle;
@@ -101,6 +102,7 @@ typedef struct
   u8 no_output;
   u8 test_bytes;
   u8 test_failed;
+  u8 transport_proto;
 
   vlib_main_t *vlib_main;
 } echo_client_main_t;
