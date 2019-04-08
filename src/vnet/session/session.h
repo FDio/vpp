@@ -444,7 +444,8 @@ transport_add_tx_event (transport_connection_t * tc)
 always_inline u64
 listen_session_get_handle (session_t * s)
 {
-  ASSERT (s->session_state == SESSION_STATE_LISTENING);
+  ASSERT (s->session_state == SESSION_STATE_LISTENING ||
+	  session_get_transport_proto (s) == TRANSPORT_PROTO_QUIC);
   return session_handle (s);
 }
 
