@@ -260,6 +260,62 @@ u8x32_blend (u8x32 v1, u8x32 v2, u8x32 mask)
 				     (__m256i) mask);
 }
 
+#define u32x8_permute_lanes(a, b, m) \
+  (u32x8) _mm256_permute2x128_si256 ((__m256i) a, (__m256i) b, m)
+#define u64x4_permute_lanes(a, b, m) \
+  (u64x4) _mm256_permute2x128_si256 ((__m256i) a, (__m256i) b, m)
+
+static_always_inline void
+u32x8_transpose (u32x8 a[8])
+{
+  u64x4 r[8], x, y;
+
+  r[0] = (u64x4) u32x8_interleave_lo (a[0], a[1]);
+  r[1] = (u64x4) u32x8_interleave_hi (a[0], a[1]);
+  r[2] = (u64x4) u32x8_interleave_lo (a[2], a[3]);
+  r[3] = (u64x4) u32x8_interleave_hi (a[2], a[3]);
+  r[4] = (u64x4) u32x8_interleave_lo (a[4], a[5]);
+  r[5] = (u64x4) u32x8_interleave_hi (a[4], a[5]);
+  r[6] = (u64x4) u32x8_interleave_lo (a[6], a[7]);
+  r[7] = (u64x4) u32x8_interleave_hi (a[6], a[7]);
+
+  x = u64x4_interleave_lo (r[0], r[2]);
+  y = u64x4_interleave_lo (r[4], r[6]);
+  a[0] = u32x8_permute_lanes (x, y, 0x20);
+  a[4] = u32x8_permute_lanes (x, y, 0x31);
+
+  x = u64x4_interleave_hi (r[0], r[2]);
+  y = u64x4_interleave_hi (r[4], r[6]);
+  a[1] = u32x8_permute_lanes (x, y, 0x20);
+  a[5] = u32x8_permute_lanes (x, y, 0x31);
+
+  x = u64x4_interleave_lo (r[1], r[3]);
+  y = u64x4_interleave_lo (r[5], r[7]);
+  a[2] = u32x8_permute_lanes (x, y, 0x20);
+  a[6] = u32x8_permute_lanes (x, y, 0x31);
+
+  x = u64x4_interleave_hi (r[1], r[3]);
+  y = u64x4_interleave_hi (r[5], r[7]);
+  a[3] = u32x8_permute_lanes (x, y, 0x20);
+  a[7] = u32x8_permute_lanes (x, y, 0x31);
+}
+
+static_always_inline void
+u64x4_transpose (u64x4 a[8])
+{
+  u64x4 r[4];
+
+  r[0] = u64x4_interleave_lo (a[0], a[1]);
+  r[1] = u64x4_interleave_hi (a[0], a[1]);
+  r[2] = u64x4_interleave_lo (a[2], a[3]);
+  r[3] = u64x4_interleave_hi (a[2], a[3]);
+
+  a[0] = u64x4_permute_lanes (r[0], r[2], 0x20);
+  a[1] = u64x4_permute_lanes (r[1], r[3], 0x20);
+  a[2] = u64x4_permute_lanes (r[0], r[2], 0x31);
+  a[3] = u64x4_permute_lanes (r[1], r[3], 0x31);
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
