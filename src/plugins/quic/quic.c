@@ -531,7 +531,7 @@ ptls_get_bio_pem_object (BIO * bio, const char *label, ptls_buffer_t * buf)
 
 static int
 ptls_load_bio_pem_objects (BIO * bio, const char *label, ptls_iovec_t * list,
-			   size_t list_max, size_t * nb_objects)
+			   size_t list_max, size_t *nb_objects)
 {
   int ret = 0;
   size_t count = 0;
@@ -1620,6 +1620,31 @@ quic_app_rx_callback (session_t * udp_session)
   return 0;
 }
 
+static void
+quic_get_transport_endpoint (transport_connection_t * tc,
+			     ip46_address_t * ip, u8 * is_ip4, u16 * port,
+			     u8 is_lcl)
+{
+  quic_ctx_id_t *q_ctx;
+  transport_proto_vft_t *tp_vft;
+  session_t *udp_session;
+  transport_connection_t *udp_tc;
+  QUIC_DBG (2, "Called quic_get_transport_endpoint");
+
+  q_ctx = (quic_ctx_id_t *) tc;
+  if (q_ctx->is_stream)
+    {
+      // well this is ugly
+      *is_ip4 = 255;
+    }
+  else
+    {
+      udp_session = session_get_from_handle (q_ctx->udp_session_handle);
+      udp_tc = session_get_transport (udp_session);
+      tp_vft = transport_protocol_get_vft (TRANSPORT_PROTO_UDP);
+      tp_vft->get_transport_endpoint (udp_tc, ip, is_ip4, port, is_lcl);
+    }
+}
 
 /*****************************************************************************
  * END TRANSPORT PROTO FUNCTIONS
@@ -1650,6 +1675,7 @@ const static transport_proto_vft_t quic_proto = {
   .format_connection = format_quic_connection,
   .format_half_open = format_quic_half_open,
   .format_listener = format_quic_listener,
+  .get_transport_endpoint = quic_get_transport_endpoint,
 };
 /* *INDENT-ON* */
 

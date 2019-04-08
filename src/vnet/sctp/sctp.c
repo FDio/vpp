@@ -824,7 +824,7 @@ sctp_main_enable (vlib_main_t * vm)
   clib_error_t *error = 0;
   u32 num_threads;
   int thread;
-  sctp_connection_t *sctp_conn __attribute__ ((unused));
+  sctp_connection_t *sctp_conn __attribute__((unused));
   u32 preallocated_connections_per_thread;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))

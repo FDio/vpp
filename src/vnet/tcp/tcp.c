@@ -1416,7 +1416,7 @@ tcp_main_enable (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads, n_workers, prealloc_conn_per_wrk;
-  tcp_connection_t *tc __attribute__ ((unused));
+  tcp_connection_t *tc __attribute__((unused));
   tcp_main_t *tm = vnet_get_tcp_main ();
   clib_error_t *error = 0;
   int thread;
