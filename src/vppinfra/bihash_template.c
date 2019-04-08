@@ -196,6 +196,7 @@ void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
 void BV (clib_bihash_free) (BVT (clib_bihash) * h)
 {
   vec_free (h->working_copies);
+  vec_free (h->working_copy_lengths);
 #if BIHASH_32_64_SVM == 0
   vec_free (h->freelists);
 #else

@@ -401,6 +401,53 @@ static inline int BV (clib_bihash_search_inline_2)
 						     valuep);
 }
 
+/** This function return the first matching key based on value,
+  * when keys to values are not uniquley mapped
+  */
+static inline int BV (clib_bihash_find_key_by_value)
+  (BVT (clib_bihash) * h, u64 hash, BVT (clib_bihash_kv) * kv)
+{
+  u32 bucket_index;
+  BVT (clib_bihash_value) * v;
+  BVT (clib_bihash_bucket) * b;
+  int i, limit;
+
+  bucket_index = hash & (h->nbuckets - 1);
+  b = &h->buckets[bucket_index];
+
+  if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
+    return -1;
+
+  if (PREDICT_FALSE (b->lock))
+    {
+      volatile BVT (clib_bihash_bucket) * bv = b;
+      while (bv->lock)
+	CLIB_PAUSE ();
+    }
+
+  hash >>= h->log2_nbuckets;
+  v = BV (clib_bihash_get_value) (h, b->offset);
+
+  /* If the bucket has unresolvable collisions, use linear search */
+  limit = BIHASH_KVP_PER_PAGE;
+  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
+  if (PREDICT_FALSE (b->linear_search))
+    limit <<= b->log2_pages;
+
+  for (i = 0; i < limit; i++)
+    {
+      if (BV (clib_bihash_is_free) (&v->kvp[i]))
+	continue;
+
+      if (v->kvp[i].value == kv->value)
+	{
+	  clib_memcpy_fast (&kv->key, &(v->kvp[i]), sizeof (kv->key));
+	  return 0;
+	}
+    }
+  return -1;
+}
+
 
 #endif /* __included_bihash_template_h__ */
 
