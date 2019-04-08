@@ -1206,6 +1206,7 @@ const static transport_proto_vft_t tcp_proto = {
   .format_half_open = format_tcp_half_open_session,
   .tx_type = TRANSPORT_TX_PEEK,
   .service_type = TRANSPORT_SERVICE_VC,
+  .get_transport_endpoint = get_transport_endpoint,
 };
 /* *INDENT-ON* */
 

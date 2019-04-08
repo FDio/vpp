@@ -960,6 +960,7 @@ const static transport_proto_vft_t sctp_proto = {
   .format_half_open = format_sctp_half_open,
   .tx_type = TRANSPORT_TX_DEQUEUE,
   .service_type = TRANSPORT_SERVICE_VC,
+  .get_transport_endpoint = get_transport_endpoint,
 };
 
 /* *INDENT ON* */
