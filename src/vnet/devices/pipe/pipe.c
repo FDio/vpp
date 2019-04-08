@@ -51,7 +51,7 @@ static pipe_main_t pipe_main;
 /*
  * The pipe rewrite is the same size as an ethernet header (since it
  * is an ethernet interface and the DP is optimised for writing
- * sizeof(ethernet_header_t) rewirtes. Hwoever, there are no MAC addresses
+ * sizeof(ethernet_header_t) rewrites. Hwoever, there are no MAC addresses
  * since pipes don't have them.
  */
 static u8 *
