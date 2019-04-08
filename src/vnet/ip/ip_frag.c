@@ -159,8 +159,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       u8 *to_data;
 
       len = (rem > max ? max : rem);
-      if (len != rem)		/* Last fragment does not need to divisible by 8 */
-	len &= ~0x7;
+
       if ((to_b = frag_buffer_alloc (org_from_b, &to_bi)) == 0)
 	{
 	  *error = IP_FRAG_ERROR_MEMORY;
