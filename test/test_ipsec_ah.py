@@ -313,7 +313,10 @@ class TestIpsecAhAll(ConfigIpsecAH,
         super(TestIpsecAhAll, self).tearDown()
 
     def test_integ_algs(self):
-        """SHA1_96, SHA256, SHA394, SHA512 w/ & w/o ESN"""
+        """All Engines SHA[1_96, 256, 394, 512] w/ & w/o ESN"""
+        # foreach VPP crypto engine
+        engines = ["ia32", "ipsecmb", "openssl"]
+
         algos = [{'vpp': VppEnum.vl_api_ipsec_integ_alg_t.
                   IPSEC_API_INTEG_ALG_SHA1_96,
                   'scapy': "HMAC-SHA1-96"},
@@ -331,45 +334,50 @@ class TestIpsecAhAll(ConfigIpsecAH,
                      IPSEC_API_SAD_FLAG_USE_ESN)]
 
         #
-        # loop through each of the algorithms
+        # loop through the VPP engines
         #
-        for algo in algos:
-            # with self.subTest(algo=algo['scapy']):
-            for flag in flags:
-                #
-                # setup up the config paramters
-                #
-                self.ipv4_params = IPsecIPv4Params()
-                self.ipv6_params = IPsecIPv6Params()
+        for engine in engines:
+            self.vapi.cli("set crypto engine all %s" % engine)
+            #
+            # loop through each of the algorithms
+            #
+            for algo in algos:
+                # with self.subTest(algo=algo['scapy']):
+                for flag in flags:
+                    #
+                    # setup up the config paramters
+                    #
+                    self.ipv4_params = IPsecIPv4Params()
+                    self.ipv6_params = IPsecIPv6Params()
 
-                self.params = {self.ipv4_params.addr_type:
-                               self.ipv4_params,
-                               self.ipv6_params.addr_type:
-                               self.ipv6_params}
+                    self.params = {self.ipv4_params.addr_type:
+                                   self.ipv4_params,
+                                   self.ipv6_params.addr_type:
+                                   self.ipv6_params}
 
-                for _, p in self.params.items():
-                    p.auth_algo_vpp_id = algo['vpp']
-                    p.auth_algo = algo['scapy']
-                    p.flags = p.flags | flag
+                    for _, p in self.params.items():
+                        p.auth_algo_vpp_id = algo['vpp']
+                        p.auth_algo = algo['scapy']
+                        p.flags = p.flags | flag
 
-                #
-                # configure the SPDs. SAs, etc
-                #
-                self.config_network(self.params.values())
+                    #
+                    # configure the SPDs. SAs, etc
+                    #
+                    self.config_network(self.params.values())
 
-                #
-                # run some traffic.
-                #  An exhautsive 4o6, 6o4 is not necessary for each algo
-                #
-                self.verify_tra_basic6(count=17)
-                self.verify_tra_basic4(count=17)
-                self.verify_tun_66(self.params[socket.AF_INET6], count=17)
-                self.verify_tun_44(self.params[socket.AF_INET], count=17)
+                    #
+                    # run some traffic.
+                    #  An exhautsive 4o6, 6o4 is not necessary for each algo
+                    #
+                    self.verify_tra_basic6(count=17)
+                    self.verify_tra_basic4(count=17)
+                    self.verify_tun_66(self.params[socket.AF_INET6], count=17)
+                    self.verify_tun_44(self.params[socket.AF_INET], count=17)
 
-                #
-                # remove the SPDs, SAs, etc
-                #
-                self.unconfig_network()
+                    #
+                    # remove the SPDs, SAs, etc
+                    #
+                    self.unconfig_network()
 
 
 if __name__ == '__main__':

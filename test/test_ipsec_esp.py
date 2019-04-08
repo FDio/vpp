@@ -322,7 +322,7 @@ class TemplateIpsecEspUdp(ConfigIpsecESP):
                               self.tun_if).add_vpp_config()
 
         self.config_esp_tun(p)
-        self.logger.info(self.vapi.ppcli("show ipsec"))
+        self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         d = DpoProto.DPO_PROTO_IP4
         VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,
@@ -356,7 +356,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
         """All engines AES-CBC-[128, 192, 256] w/o ESN"""
 
         # foreach VPP crypto engine
-        engines = ["ia32", "openssl"]
+        engines = ["ia32", "ipsecmb", "openssl"]
 
         # foreach crypto algorithm
         algos = [{'vpp': VppEnum.vl_api_ipsec_crypto_alg_t.
