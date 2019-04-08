@@ -31,7 +31,7 @@ define  rdma-core_config_cmds
 	  $(CMAKE) -G Ninja $(rdma-core_src_dir) \
 	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0 \
 	    -DCMAKE_BUILD_TYPE=Release \
-	    -DCMAKE_C_FLAGS=-fPIC > $(rdma-core_config_log)
+	    -DCMAKE_C_FLAGS='-fPIC -fvisibility=hidden' > $(rdma-core_config_log)
 endef
 
 define  rdma-core_build_cmds
