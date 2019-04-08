@@ -38,10 +38,10 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
-#define TCP_ECHO_DBG 0
-#define DBG(_fmt,_args...)			\
-    if (TCP_ECHO_DBG) 				\
-      clib_warning (_fmt, _args)
+#define QUIC_ECHO_DBG 0
+#define DBG(_fmt, _args...)			\
+    if (QUIC_ECHO_DBG) 				\
+      clib_warning (_fmt, ##_args)
 
 typedef struct
 {
@@ -68,6 +68,13 @@ typedef enum
   STATE_DETACHED
 } connection_state_t;
 
+enum quic_session_type_t
+{
+  QUIC_SESSION_TYPE_QUIC = 0,
+  QUIC_SESSION_TYPE_STREAM = 1,
+  QUIC_SESSION_TYPE_LISTEN = INT32_MAX,
+};
+
 typedef struct
 {
   /* vpe input queue */
@@ -84,6 +91,9 @@ typedef struct
 
   /* Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;
+
+  /* Hash table for shared segment_names */
+  uword *shared_segment_names;
 
   /* intermediate rx buffer */
   u8 *rx_buf;
@@ -182,19 +192,38 @@ init_error_string_table (echo_main_t * em)
 
 static void handle_mq_event (session_event_t * e);
 
+#if CLIB_DEBUG > 0
+#define TIMEOUT 10.0
+#else
+#define TIMEOUT 10.0
+#endif
+
+static int
+wait_for_segment_allocation (u64 segment_handle)
+{
+  echo_main_t *em = &echo_main;
+  f64 timeout;
+  timeout = clib_time_now (&em->clib_time) + TIMEOUT;
+  uword *segment_present;
+  DBG ("ASKING for %lu", segment_handle);
+  while (clib_time_now (&em->clib_time) < timeout)
+    {
+      segment_present = hash_get (em->shared_segment_names, segment_handle);
+      if (segment_present != 0)
+	return 0;
+      if (em->time_to_stop == 1)
+	return 0;
+    }
+  DBG ("timeout waiting for segment_allocation %lu", segment_handle);
+  return -1;
+}
+
 static int
 wait_for_state_change (echo_main_t * em, connection_state_t state)
 {
   svm_msg_q_msg_t msg;
   session_event_t *e;
   f64 timeout;
-
-#if CLIB_DEBUG > 0
-#define TIMEOUT 600.0
-#else
-#define TIMEOUT 600.0
-#endif
-
   timeout = clib_time_now (&em->clib_time) + TIMEOUT;
 
   while (clib_time_now (&em->clib_time) < timeout)
@@ -292,6 +321,7 @@ ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
   svm_fifo_segment_main_t *sm = &echo_main.segment_main;
+  echo_main_t *em = &echo_main;
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
@@ -306,7 +336,6 @@ ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
       clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
       return rv;
     }
-
   vec_reset_length (a->new_segment_indices);
   return 0;
 }
@@ -318,6 +347,9 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   echo_main_t *em = &echo_main;
   int *fds = 0;
   u32 n_fds = 0;
+  u64 segment_handle;
+  segment_handle = clib_net_to_host_u64 (mp->segment_handle);
+  DBG ("Attached returned app %u", htons (mp->app_index));
 
   if (mp->retval)
     {
@@ -361,7 +393,9 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 			       -1))
 	goto failed;
     }
+  DBG ("SETTING for %lu", segment_handle);
 
+  hash_set (em->shared_segment_names, segment_handle, 1);
   em->state = STATE_ATTACHED;
   return;
 failed:
@@ -455,22 +489,37 @@ static void
 vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 {
   svm_fifo_segment_main_t *sm = &echo_main.segment_main;
+  echo_main_t *em = &echo_main;
   svm_fifo_segment_create_args_t _a, *a = &_a;
-  int rv;
+  int *fds = 0;
+  u64 segment_handle;
+  segment_handle = clib_net_to_host_u64 (mp->segment_handle);
+  DBG ("Mapping new segment '%s' size %d handle %lu", mp->segment_name,
+       mp->segment_size, segment_handle);
+
+  if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
+    {
+      vec_validate (fds, 1);
+      vl_socket_client_recv_fd_msg (fds, 1, 5);
+      if (ssvm_segment_attach
+	  ((char *) mp->segment_name, SSVM_SEGMENT_MEMFD, fds[0]))
+	clib_warning
+	  ("svm_fifo_segment_attach ('%s') failed on SSVM_SEGMENT_MEMFD",
+	   mp->segment_name);
+      DBG ("SETTING for %lu", segment_handle);
+      hash_set (em->shared_segment_names, segment_handle, 1);
+      vec_free (fds);
+      return;
+    }
 
   clib_memset (a, 0, sizeof (*a));
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
   /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (sm, a);
-  if (rv)
-    {
-      clib_warning ("svm_fifo_segment_attach ('%s') failed",
-		    mp->segment_name);
-      return;
-    }
-  clib_warning ("Mapped new segment '%s' size %d", mp->segment_name,
-		mp->segment_size);
+  if (svm_fifo_segment_attach (sm, a))
+    clib_warning ("svm_fifo_segment_attach ('%s') failed", mp->segment_name);
+  DBG ("SETTING2 for %lu", segment_handle);
+  hash_set (em->shared_segment_names, segment_handle, 1);
 }
 
 static void
@@ -577,7 +626,6 @@ client_thread_fn (void *arg)
 	break;
     }
 
-  clib_warning ("GOT OUT");
   DBG ("session %d done", session_index);
   em->tx_total += s->bytes_sent;
   em->rx_total += s->bytes_received;
@@ -587,7 +635,7 @@ client_thread_fn (void *arg)
 }
 
 void
-client_send_connect (echo_main_t * em)
+client_send_connect (echo_main_t * em, u8 * uri, u32 opaque)
 {
   vl_api_connect_uri_t *cmp;
   cmp = vl_msg_api_alloc (sizeof (*cmp));
@@ -595,8 +643,8 @@ client_send_connect (echo_main_t * em)
 
   cmp->_vl_msg_id = ntohs (VL_API_CONNECT_URI);
   cmp->client_index = em->my_client_index;
-  cmp->context = ntohl (0xfeedface);
-  memcpy (cmp->uri, em->connect_uri, vec_len (em->connect_uri));
+  cmp->context = ntohl (opaque);
+  memcpy (cmp->uri, uri, vec_len (uri));
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & cmp);
 }
 
@@ -640,6 +688,13 @@ session_bound_handler (session_bound_msg_t * mp)
 }
 
 static void
+quic_listen_session_accepted_handler (session_accepted_msg_t * mp)
+{
+  DBG ("Got QUIC listen session accept");
+}
+
+
+static void
 session_accepted_handler (session_accepted_msg_t * mp)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
@@ -649,7 +704,10 @@ session_accepted_handler (session_accepted_msg_t * mp)
   echo_session_t *session;
   static f64 start_time;
   u32 session_index;
+  u64 segment_handle;
   u8 *ip_str;
+
+  segment_handle = mp->segment_handle;
 
   if (start_time == 0.0)
     start_time = clib_time_now (&em->clib_time);
@@ -657,11 +715,19 @@ session_accepted_handler (session_accepted_msg_t * mp)
   ip_str = format (0, "%U", format_ip46_address, &mp->ip, mp->is_ip4);
   clib_warning ("Accepted session from: %s:%d", ip_str,
 		clib_net_to_host_u16 (mp->port));
+  DBG ("VPP session handle is %lu", mp->handle);
 
   /* Allocate local session and set it up */
   pool_get (em->sessions, session);
   session_index = session - em->sessions;
+  DBG ("Setting session_index %lu", session_index);
 
+  if (wait_for_segment_allocation (segment_handle))
+    {
+      clib_warning ("timeout waiting for segment allocation %lu",
+		    segment_handle);
+      return;
+    }
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
@@ -675,6 +741,22 @@ session_accepted_handler (session_accepted_msg_t * mp)
   /* Add it to lookup table */
   hash_set (em->session_index_by_vpp_handles, mp->handle, session_index);
 
+  /*
+   * Send accept reply to vpp
+   */
+  app_alloc_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt,
+			     SESSION_CTRL_EVT_ACCEPTED_REPLY);
+  rmp = (session_accepted_reply_msg_t *) app_evt->evt->data;
+  rmp->handle = mp->handle;
+  rmp->context = mp->context;
+  app_send_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt);
+
+  // TODO : this is very ugly
+  DBG ("Got ACCEPT isip4 : %u", mp->is_ip4);
+  if (mp->is_ip4 != 255)
+    return quic_listen_session_accepted_handler (mp);
+
+
   em->state = STATE_READY;
 
   /* Stats printing */
@@ -686,18 +768,17 @@ session_accepted_handler (session_accepted_msg_t * mp)
 	       (f64) pool_elts (em->sessions) / (now - start_time));
     }
 
-  /*
-   * Send accept reply to vpp
-   */
-  app_alloc_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt,
-			     SESSION_CTRL_EVT_ACCEPTED_REPLY);
-  rmp = (session_accepted_reply_msg_t *) app_evt->evt->data;
-  rmp->handle = mp->handle;
-  rmp->context = mp->context;
-  app_send_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt);
-
   session->bytes_received = 0;
   session->start = clib_time_now (&em->clib_time);
+}
+
+static void
+quic_session_connected_handler (session_connected_msg_t * mp)
+{
+  echo_main_t *em = &echo_main;
+  u8 *uri = format (0, "QUIC://session/%lu", mp->handle);
+  DBG ("QSession Connect : %s", uri);
+  client_send_connect (em, uri, QUIC_SESSION_TYPE_STREAM);
 }
 
 static void
@@ -708,6 +789,8 @@ session_connected_handler (session_connected_msg_t * mp)
   u32 session_index;
   svm_fifo_t *rx_fifo, *tx_fifo;
   int rv;
+  u64 segment_handle;
+  segment_handle = mp->segment_handle;
 
   if (mp->retval)
     {
@@ -717,6 +800,11 @@ session_connected_handler (session_connected_msg_t * mp)
       return;
     }
 
+  if (mp->context == QUIC_SESSION_TYPE_QUIC)
+    return quic_session_connected_handler (mp);
+
+  DBG ("SSession Connected");
+
   /*
    * Setup session
    */
@@ -724,7 +812,14 @@ session_connected_handler (session_connected_msg_t * mp)
   pool_get (em->sessions, session);
   clib_memset (session, 0, sizeof (*session));
   session_index = session - em->sessions;
+  DBG ("Setting session_index %lu", session_index);
 
+  if (wait_for_segment_allocation (segment_handle))
+    {
+      clib_warning ("timeout waiting for segment allocation %lu",
+		    segment_handle);
+      return;
+    }
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
@@ -753,7 +848,7 @@ session_connected_handler (session_connected_msg_t * mp)
     }
 
   em->n_clients_connected += 1;
-  clib_warning ("session %u (0x%llx) connected with local ip %U port %d",
+  clib_warning ("session %lu (0x%llx) connected with local ip %U port %d",
 		session_index, mp->handle, format_ip46_address, mp->lcl_ip,
 		mp->is_ip4, clib_net_to_host_u16 (mp->lcl_port));
 }
@@ -777,6 +872,7 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
 
   session = pool_elt_at_index (em->sessions, p[0]);
   hash_unset (em->session_index_by_vpp_handles, mp->handle);
+
   pool_put (em->sessions, session);
 
   app_alloc_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt,
@@ -829,18 +925,23 @@ handle_mq_event (session_event_t * e)
   switch (e->event_type)
     {
     case SESSION_CTRL_EVT_BOUND:
+      DBG ("SESSION_CTRL_EVT_BOUND");
       session_bound_handler ((session_bound_msg_t *) e->data);
       break;
     case SESSION_CTRL_EVT_ACCEPTED:
+      DBG ("SESSION_CTRL_EVT_ACCEPTED");
       session_accepted_handler ((session_accepted_msg_t *) e->data);
       break;
     case SESSION_CTRL_EVT_CONNECTED:
+      DBG ("SESSION_CTRL_EVT_CONNECTED");
       session_connected_handler ((session_connected_msg_t *) e->data);
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
+      DBG ("SESSION_CTRL_EVT_DISCONNECTED");
       session_disconnected_handler ((session_disconnected_msg_t *) e->data);
       break;
     case SESSION_CTRL_EVT_RESET:
+      DBG ("SESSION_CTRL_EVT_RESET");
       session_reset_handler ((session_reset_msg_t *) e->data);
       break;
     default:
@@ -869,7 +970,7 @@ clients_run (echo_main_t * em)
     return;
 
   for (i = 0; i < em->n_clients; i++)
-    client_send_connect (em);
+    client_send_connect (em, em->connect_uri, QUIC_SESSION_TYPE_QUIC);
 
   start_time = clib_time_now (&em->clib_time);
   while (em->n_clients_connected < em->n_clients
@@ -1058,7 +1159,6 @@ server_handle_rx (echo_main_t * em, session_event_t * e)
   int n_read, max_dequeue, n_sent;
   u32 offset, to_dequeue;
   echo_session_t *s;
-
   s = pool_elt_at_index (em->sessions, e->session_index);
 
   /* Clear event only once. Otherwise, if we do it in the loop by calling
@@ -1126,10 +1226,11 @@ server_handle_mq (echo_main_t * em)
       if (rc == ETIMEDOUT)
 	continue;
       e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-      clib_warning ("Event %d", e->event_type);
+      DBG ("Event %d", e->event_type);
       switch (e->event_type)
 	{
-	case FIFO_EVENT_APP_RX:
+	case SESSION_IO_EVT_RX:
+	  DBG ("SESSION_IO_EVT_RX");
 	  server_handle_rx (em, e);
 	  break;
 	default:
@@ -1299,6 +1400,7 @@ main (int argc, char **argv)
 
   clib_memset (em, 0, sizeof (*em));
   em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
+  em->shared_segment_names = hash_create (0, sizeof (u8));
   em->my_pid = getpid ();
   em->configured_segment_size = 1 << 20;
   em->socket_name = 0;

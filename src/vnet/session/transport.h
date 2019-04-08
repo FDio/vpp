@@ -61,6 +61,11 @@ typedef struct _transport_proto_vft
   u8 *(*format_listener) (u8 * s, va_list * args);
   u8 *(*format_half_open) (u8 * s, va_list * args);
 
+  /* External API response */
+
+  void (*get_transport_endpoint) (transport_connection_t *tc,
+        u8 ip[16], u8 * is_ip4, u16 * port, u8 is_lcl);
+
   /*
    * Properties
    */
