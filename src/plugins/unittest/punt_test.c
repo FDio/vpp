@@ -30,11 +30,6 @@ typedef struct punt_trace_t_
   vlib_punt_reason_t pt_reason;
 } punt_trace_t;
 
-/**
- * Per-thread clone vectors
- */
-u32 **punt_clones;
-
 #define SW_IF_INDEX_PG0 1
 #define SW_IF_INDEX_PG1 2
 
