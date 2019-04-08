@@ -131,6 +131,16 @@ for i in ${FILELIST}; do
         else
             UNCHECKSTYLED_FILES="${UNCHECKSTYLED_FILES} ${i}"
         fi
+
+	CLINE=`grep -i "Copyright" ${i}`
+        if [ $? == 0 ]; then
+	    YEAR=`date +"%Y"`
+	    if [[ ! ${CLINE} =~ ${YEAR} ]]; then
+                EXIT_CODE=1
+                echo "Copyright update required: " ${i}
+	    fi
+	fi
+
     else
         UNCHECKSTYLED_FILES="${UNCHECKSTYLED_FILES} ${i}"
     fi
