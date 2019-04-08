@@ -1231,7 +1231,8 @@ session_segment_handle (session_t * s)
 {
   svm_fifo_t *f;
 
-  if (s->session_state == SESSION_STATE_LISTENING)
+  if (s->session_state == SESSION_STATE_LISTENING &&
+      session_get_transport_proto (s) != TRANSPORT_PROTO_QUIC)
     return SESSION_INVALID_HANDLE;
 
   f = s->rx_fifo;

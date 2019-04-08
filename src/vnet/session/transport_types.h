@@ -137,6 +137,8 @@ typedef enum _transport_proto
 u8 *format_transport_proto (u8 * s, va_list * args);
 u8 *format_transport_proto_short (u8 * s, va_list * args);
 u8 *format_transport_connection (u8 * s, va_list * args);
+void fill_connection_info (transport_connection_t * tc,
+			   u8 ip[16], u8 * is_ip4, u16 * port, u8 is_lcl);
 u8 *format_transport_listen_connection (u8 * s, va_list * args);
 u8 *format_transport_half_open_connection (u8 * s, va_list * args);
 

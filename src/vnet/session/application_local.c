@@ -539,6 +539,7 @@ const static transport_proto_vft_t cut_thru_proto = {
   .service_type = TRANSPORT_SERVICE_APP,
   .format_listener = format_ct_listener,
   .format_connection = format_ct_session,
+  .fill_connection_info = fill_connection_info,
 };
 /* *INDENT-ON* */
 
