@@ -935,7 +935,7 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 {
   vl_api_gbp_contract_add_del_reply_t *rmp;
   u16 *allowed_ethertypes;
-  u32 stats_index;
+  u32 stats_index = ~0;
   index_t *rules;
   int ii, rv = 0;
   u8 n_et;
