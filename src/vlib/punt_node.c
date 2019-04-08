@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -75,7 +75,7 @@ punt_replicate (vlib_main_t * vm,
 		u32 bi0,
 		vlib_punt_reason_t pr0,
 		u32 * next_index,
-		u32 * n_left_to_next, u32 ** to_next, u32 * pkts_rep_fail)
+		u32 * n_left_to_next, u32 ** to_next, u32 * n_dispatched)
 {
   /* multiple clients => replicate a copy to each */
   u16 n_clones0, n_cloned0, clone0;
@@ -91,7 +91,6 @@ punt_replicate (vlib_main_t * vm,
   if (PREDICT_FALSE (n_cloned0 != n_clones0))
     {
       b0->error = node->errors[PUNT_ERROR_REP_FAIL];
-      *pkts_rep_fail += 1;
     }
 
   for (clone0 = 1; clone0 < n_cloned0; clone0++)
@@ -125,6 +124,7 @@ punt_replicate (vlib_main_t * vm,
        * so there's no need to check if the to_next frame
        * is full */
     }
+  *n_dispatched = *n_dispatched + n_clones0;
 
   /* The original buffer is the first clone */
   next0 = punt_dp_db[pr0][0];
@@ -139,7 +139,7 @@ punt_dispatch_one (vlib_main_t * vm,
 		   u32 thread_index,
 		   u32 bi0,
 		   u32 * next_index,
-		   u32 * n_left_to_next, u32 ** to_next, u32 * pkts_errors)
+		   u32 * n_left_to_next, u32 ** to_next, u32 * n_dispatched)
 {
   vlib_punt_reason_t pr0;
   vlib_buffer_t *b0;
@@ -152,7 +152,6 @@ punt_dispatch_one (vlib_main_t * vm,
     {
       b0->error = node->errors[PUNT_ERROR_NO_REASON];
       next0 = PUNT_NEXT_DROP;
-      pkts_errors[PUNT_ERROR_NO_REASON] += 1;
     }
   else
     {
@@ -166,24 +165,22 @@ punt_dispatch_one (vlib_main_t * vm,
 	   * This is the most likely outcome.
 	   */
 	  next0 = punt_dp_db[pr0][0];
-	  pkts_errors[PUNT_ERROR_DISPATCHED] += 1;
+	  *n_dispatched = *n_dispatched + 1;
 	}
       else if (0 == vec_len (punt_dp_db[pr0]))
 	{
 	  /* no registered clients => drop */
 	  next0 = PUNT_NEXT_DROP;
-	  pkts_errors[PUNT_ERROR_NO_REG] += 1;
+	  b0->error = node->errors[PUNT_ERROR_NO_REG];
 	}
       else
 	{
 	  /*
 	   * multiple registered clients => replicate
 	   */
-	  pkts_errors[PUNT_ERROR_DISPATCHED] += 1;
-
 	  next0 = punt_replicate (vm, node, thread_index, b0, bi0, pr0,
 				  next_index, n_left_to_next, to_next,
-				  &pkts_errors[PUNT_ERROR_REP_FAIL]);
+				  n_dispatched);
 	}
     }
 
@@ -204,13 +201,14 @@ VLIB_NODE_FN (punt_dispatch_node) (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
   vlib_combined_counter_main_t *cm;
-  u32 pkt_errors[PUNT_N_ERRORS] = { 0 };
+  u32 n_dispatched;
 
   cm = &punt_counters;
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
   thread_index = vlib_get_thread_index ();
+  n_dispatched = 0;
 
   while (n_left_from > 0)
     {
@@ -240,10 +238,10 @@ VLIB_NODE_FN (punt_dispatch_node) (vlib_main_t * vm,
 
 	  next0 = punt_dispatch_one (vm, node, cm, thread_index, bi0,
 				     &next_index, &n_left_to_next,
-				     &to_next, pkt_errors);
+				     &to_next, &n_dispatched);
 	  next1 = punt_dispatch_one (vm, node, cm, thread_index, bi1,
 				     &next_index, &n_left_to_next,
-				     &to_next, pkt_errors);
+				     &to_next, &n_dispatched);
 
 	  to_next += 2;
 	  n_left_to_next -= 2;
@@ -263,7 +261,7 @@ VLIB_NODE_FN (punt_dispatch_node) (vlib_main_t * vm,
 
 	  next0 = punt_dispatch_one (vm, node, cm, thread_index, bi0,
 				     &next_index, &n_left_to_next,
-				     &to_next, pkt_errors);
+				     &to_next, &n_dispatched);
 
 	  to_next += 1;
 	  n_left_to_next -= 1;
@@ -276,17 +274,7 @@ VLIB_NODE_FN (punt_dispatch_node) (vlib_main_t * vm,
     }
 
   vlib_node_increment_counter (vm, node->node_index,
-			       PUNT_ERROR_DISPATCHED,
-			       pkt_errors[PUNT_ERROR_DISPATCHED]);
-  vlib_node_increment_counter (vm, node->node_index,
-			       PUNT_ERROR_NO_REASON,
-			       pkt_errors[PUNT_ERROR_NO_REASON]);
-  vlib_node_increment_counter (vm, node->node_index,
-			       PUNT_ERROR_NO_REG,
-			       pkt_errors[PUNT_ERROR_NO_REG]);
-  vlib_node_increment_counter (vm, node->node_index,
-			       PUNT_ERROR_REP_FAIL,
-			       pkt_errors[PUNT_ERROR_REP_FAIL]);
+			       PUNT_ERROR_DISPATCHED, n_dispatched);
 
   return frame->n_vectors;
 }
