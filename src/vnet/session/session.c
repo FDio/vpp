@@ -1228,7 +1228,7 @@ session_segment_handle (session_t * s)
 {
   svm_fifo_t *f;
 
-  if (s->session_state == SESSION_STATE_LISTENING)
+  if (!s->rx_fifo)
     return SESSION_INVALID_HANDLE;
 
   f = s->rx_fifo;
@@ -1289,6 +1289,15 @@ session_get_transport (session_t * s)
   else
     return transport_get_listener (session_get_transport_proto (s),
 				   s->connection_index);
+}
+
+void
+session_get_endpoint (session_t * s, transport_endpoint_t * tep,
+		      u8 is_listener)
+{
+  return transport_get_endpoint (session_get_transport_proto (s),
+				 s->connection_index, s->thread_index, tep,
+				 is_listener);
 }
 
 transport_connection_t *

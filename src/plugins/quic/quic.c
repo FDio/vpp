@@ -1620,6 +1620,23 @@ quic_app_rx_callback (session_t * udp_session)
   return 0;
 }
 
+static void
+quic_get_transport_endpoint (u32 ctx_index, u32 thread_index,
+			     transport_endpoint_t * tep, u8 is_listener)
+{
+  quic_ctx_id_t *q_ctx;
+  session_t *udp_session;
+  QUIC_DBG (2, "Called quic_get_transport_endpoint");
+
+  q_ctx = (quic_ctx_id_t *) quic_ctx_get_w_thread (ctx_index, thread_index);
+  if (q_ctx->is_stream)
+    tep->is_ip4 = 255;		/* well this is ugly */
+  else
+    {
+      udp_session = session_get_from_handle (q_ctx->udp_session_handle);
+      session_get_endpoint (udp_session, tep, is_listener);
+    }
+}
 
 /*****************************************************************************
  * END TRANSPORT PROTO FUNCTIONS
@@ -1650,6 +1667,7 @@ const static transport_proto_vft_t quic_proto = {
   .format_connection = format_quic_connection,
   .format_half_open = format_quic_half_open,
   .format_listener = format_quic_listener,
+  .get_transport_endpoint = quic_get_transport_endpoint,
 };
 /* *INDENT-ON* */
 
