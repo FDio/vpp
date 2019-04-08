@@ -319,6 +319,57 @@ transport_protocol_is_cl (transport_proto_t tp)
   return (tp_vfts[tp].service_type == TRANSPORT_SERVICE_CL);
 }
 
+always_inline void
+default_get_transport_endpoint (transport_connection_t * tc,
+				ip46_address_t * ip, u16 * port, u8 * is_ip4,
+				u8 is_lcl)
+{
+  if (is_lcl)
+    {
+      *port = tc->lcl_port;
+      *is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+    }
+  else
+    {
+      *port = tc->rmt_port;
+      *is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+    }
+}
+
+void
+transport_get_endpoint (transport_proto_t tp, u32 conn_index,
+			u32 thread_index, ip46_address_t * ip, u16 * port,
+			u8 * is_ip4, u8 is_lcl)
+{
+  if (tp_vfts[tp].get_transport_endpoint)
+    tp_vfts[tp].get_transport_endpoint (conn_index, thread_index, ip, port,
+					is_ip4, is_lcl);
+  else
+    {
+      transport_connection_t *tc;
+      tc = transport_get_connection (tp, conn_index, thread_index);
+      default_get_transport_endpoint (tc, ip, port, is_ip4, is_lcl);
+    }
+}
+
+void
+transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
+				 ip46_address_t * ip, u16 * port, u8 * is_ip4,
+				 u8 is_lcl)
+{
+  if (tp_vfts[tp].get_transport_listener_endpoint)
+    tp_vfts[tp].get_transport_listener_endpoint (conn_index, ip, port, is_ip4,
+						 is_lcl);
+  else
+    {
+      transport_connection_t *tc;
+      tc = transport_get_listener (tp, conn_index);
+      default_get_transport_endpoint (tc, ip, port, is_ip4, is_lcl);
+    }
+}
+
 #define PORT_MASK ((1 << 16)- 1)
 
 void
