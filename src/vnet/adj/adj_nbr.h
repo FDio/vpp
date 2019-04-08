@@ -91,7 +91,7 @@ typedef enum adj_nbr_rewrite_flag_t_
 
     /**
      * An indication that the rewrite is complete, i.e. that it fully describes
-     * the link-layer addressing for the desintation.
+     * the link-layer addressing for the destintation.
      * The opposite of this is an incomplete rewrite that describes the ARP/ND
      * rewrite when probing.
      */

@@ -161,7 +161,7 @@ fib_bfd_notify (bfd_listen_event_e event,
         {
             /*
              * has an associated BFD tracking delegate
-             * usource the entry and remove the BFD tracking deletgate
+             * usource the entry and remove the BFD tracking delegate
              */
             fib_entry_delegate_remove(fib_entry_get(fei),
                                       FIB_ENTRY_DELEGATE_BFD);

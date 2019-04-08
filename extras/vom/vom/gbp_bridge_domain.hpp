@@ -30,7 +30,7 @@ class gbp_bridge_domain : public object_base
 {
 public:
   /**
-   * The key for a bridge_domain is the pari of EPG-IDs
+   * The key for a bridge_domain is the pair of EPG-IDs
    */
   typedef bridge_domain::key_t key_t;
 
