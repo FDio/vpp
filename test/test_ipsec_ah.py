@@ -207,8 +207,13 @@ class TemplateIpsecAh(TemplateIpsec):
                          priority=10).add_vpp_config()
 
 
-class TestIpsecAh1(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
-    """ Ipsec AH - TUN & TRA tests """
+class TestIpsecAh1(TemplateIpsecAh, IpsecTcpTests):
+    """ Ipsec AH - TCP tests """
+    pass
+
+
+class TestIpsecAh2(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec AH w/ SHA1 """
     tra4_encrypt_node_name = "ah4-encrypt"
     tra4_decrypt_node_name = "ah4-decrypt"
     tra6_encrypt_node_name = "ah6-encrypt"
@@ -219,13 +224,8 @@ class TestIpsecAh1(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
     tun6_decrypt_node_name = "ah6-decrypt"
 
 
-class TestIpsecAh2(TemplateIpsecAh, IpsecTcpTests):
-    """ Ipsec AH - TCP tests """
-    pass
-
-
 class TestIpsecAh3(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
-    """ Ipsec AH w/ ESN - TCP tests """
+    """ Ipsec AH w/ SHA1 & ESN """
 
     tra4_encrypt_node_name = "ah4-encrypt"
     tra4_decrypt_node_name = "ah4-decrypt"
@@ -244,6 +244,85 @@ class TestIpsecAh3(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
         for _, p in self.params.items():
             p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
                        IPSEC_API_SAD_FLAG_USE_ESN)
+
+
+class TestIpsecAh4(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec AH w/ SHA256 """
+
+    tra4_encrypt_node_name = "ah4-encrypt"
+    tra4_decrypt_node_name = "ah4-decrypt"
+    tra6_encrypt_node_name = "ah6-encrypt"
+    tra6_decrypt_node_name = "ah6-decrypt"
+    tun4_encrypt_node_name = "ah4-encrypt"
+    tun4_decrypt_node_name = "ah4-decrypt"
+    tun6_encrypt_node_name = "ah6-encrypt"
+    tun6_decrypt_node_name = "ah6-decrypt"
+
+    def setup_params(self):
+        self.ipv4_params = IPsecIPv4Params()
+        self.ipv6_params = IPsecIPv6Params()
+        self.ipv4_params.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                                             IPSEC_API_INTEG_ALG_SHA_256_128)
+        self.ipv4_params.auth_algo = 'SHA2-256-128'  # scapy name
+        self.ipv6_params.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                                             IPSEC_API_INTEG_ALG_SHA_256_128)
+        self.ipv6_params.auth_algo = 'SHA2-256-128'  # scapy name
+
+        self.params = {self.ipv4_params.addr_type: self.ipv4_params,
+                       self.ipv6_params.addr_type: self.ipv6_params}
+
+
+class TestIpsecAh5(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec AH w/ SHA384 """
+
+    tra4_encrypt_node_name = "ah4-encrypt"
+    tra4_decrypt_node_name = "ah4-decrypt"
+    tra6_encrypt_node_name = "ah6-encrypt"
+    tra6_decrypt_node_name = "ah6-decrypt"
+    tun4_encrypt_node_name = "ah4-encrypt"
+    tun4_decrypt_node_name = "ah4-decrypt"
+    tun6_encrypt_node_name = "ah6-encrypt"
+    tun6_decrypt_node_name = "ah6-decrypt"
+
+    def setup_params(self):
+        self.ipv4_params = IPsecIPv4Params()
+        self.ipv6_params = IPsecIPv6Params()
+        self.ipv4_params.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                                             IPSEC_API_INTEG_ALG_SHA_384_192)
+        self.ipv4_params.auth_algo = 'SHA2-384-192'  # scapy name
+        self.ipv6_params.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                                             IPSEC_API_INTEG_ALG_SHA_384_192)
+        self.ipv6_params.auth_algo = 'SHA2-384-192'  # scapy name
+
+        self.params = {self.ipv4_params.addr_type: self.ipv4_params,
+                       self.ipv6_params.addr_type: self.ipv6_params}
+
+
+class TestIpsecAh6(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec AH w/ SHA512 """
+
+    tra4_encrypt_node_name = "ah4-encrypt"
+    tra4_decrypt_node_name = "ah4-decrypt"
+    tra6_encrypt_node_name = "ah6-encrypt"
+    tra6_decrypt_node_name = "ah6-decrypt"
+    tun4_encrypt_node_name = "ah4-encrypt"
+    tun4_decrypt_node_name = "ah4-decrypt"
+    tun6_encrypt_node_name = "ah6-encrypt"
+    tun6_decrypt_node_name = "ah6-decrypt"
+
+    def setup_params(self):
+        self.ipv4_params = IPsecIPv4Params()
+        self.ipv6_params = IPsecIPv6Params()
+        self.ipv4_params.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                                             IPSEC_API_INTEG_ALG_SHA_512_256)
+        self.ipv4_params.auth_algo = 'SHA2-512-256'  # scapy name
+        self.ipv6_params.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                                             IPSEC_API_INTEG_ALG_SHA_512_256)
+        self.ipv6_params.auth_algo = 'SHA2-512-256'  # scapy name
+
+        self.params = {self.ipv4_params.addr_type: self.ipv4_params,
+                       self.ipv6_params.addr_type: self.ipv6_params}
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
