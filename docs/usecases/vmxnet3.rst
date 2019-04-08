@@ -52,7 +52,7 @@ These instructions describe how to change the e1000 driver for VMware fusion.
 * Find the name associated with the VM you are using, right click on it and
   select **Show Package Contents**
 * Find the **.vmx** file and edit it.
-* Find all the occurences of **e1000** and change them to **vmxnet3**
+* Find all the occurrences of **e1000** and change them to **vmxnet3**
 
 If you are concerned more with configuration not performance the vmxnet3 driver
 can be set to **interrupt** mode in VPP. This will save a great deal on battery
