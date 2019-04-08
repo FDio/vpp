@@ -69,8 +69,8 @@ class IPsecIPv6Params(object):
         self.vpp_tra_spi = 4000
 
         self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
-                                 IPSEC_API_INTEG_ALG_SHA_256_128)
-        self.auth_algo = 'SHA2-256-128'  # scapy name
+                                 IPSEC_API_INTEG_ALG_SHA1_96)
+        self.auth_algo = 'HMAC-SHA1-96'  # scapy name
         self.auth_key = 'C91KUR9GYMm5GfkEvNjX'
 
         self.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
