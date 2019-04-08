@@ -338,7 +338,8 @@ void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 void session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
 					   void *rpc_args);
 transport_connection_t *session_get_transport (session_t * s);
-
+void session_get_endpoint (session_t * s, ip46_address_t * ip, u16 * port,
+			   u8 * is_ip4, u8 is_lcl);
 
 u8 *format_session (u8 * s, va_list * args);
 uword unformat_session (unformat_input_t * input, va_list * args);
@@ -444,7 +445,8 @@ transport_add_tx_event (transport_connection_t * tc)
 always_inline u64
 listen_session_get_handle (session_t * s)
 {
-  ASSERT (s->session_state == SESSION_STATE_LISTENING);
+  ASSERT (s->session_state == SESSION_STATE_LISTENING ||
+	  session_get_transport_proto (s) == TRANSPORT_PROTO_QUIC);
   return session_handle (s);
 }
 
