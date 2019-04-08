@@ -336,6 +336,7 @@ const static transport_proto_vft_t udp_proto = {
   .format_listener = format_udp_listener_session,
   .tx_type = TRANSPORT_TX_DGRAM,
   .service_type = TRANSPORT_SERVICE_CL,
+  .get_transport_endpoint = get_transport_endpoint,
 };
 /* *INDENT-ON* */
 
@@ -380,6 +381,7 @@ const static transport_proto_vft_t udpc_proto = {
   .format_listener = format_udp_listener_session,
   .tx_type = TRANSPORT_TX_DEQUEUE,
   .service_type = TRANSPORT_SERVICE_CL,
+  .get_transport_endpoint = get_transport_endpoint,
 };
 /* *INDENT-ON* */
 

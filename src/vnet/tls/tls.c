@@ -740,6 +740,7 @@ const static transport_proto_vft_t tls_proto = {
   .format_connection = format_tls_connection,
   .format_half_open = format_tls_half_open,
   .format_listener = format_tls_listener,
+  .get_transport_endpoint = get_transport_endpoint,
 };
 /* *INDENT-ON* */
 

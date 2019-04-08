@@ -174,12 +174,13 @@ mq_send_session_accepted_cb (session_t * s)
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *vpp_queue, *app_mq;
-  transport_connection_t *tc;
   session_t *listener;
   session_accepted_msg_t *mp;
   session_event_t *evt;
   application_t *app;
   app_listener_t *al;
+  transport_proto_vft_t *tp_vft;
+  transport_connection_t *tc;
 
   app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
@@ -212,11 +213,12 @@ mq_send_session_accepted_cb (session_t * s)
       vpp_queue = session_main_get_vpp_event_queue (s->thread_index);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->handle = session_handle (s);
-      tc = transport_get_connection (session_get_transport_proto (s),
-				     s->connection_index, s->thread_index);
-      mp->port = tc->rmt_port;
-      mp->is_ip4 = tc->is_ip4;
-      clib_memcpy_fast (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+
+      tp_vft = transport_protocol_get_vft (session_get_transport_proto (s));
+      tc = session_get_transport (s);
+      if (tp_vft && tp_vft->get_transport_endpoint)
+	tp_vft->get_transport_endpoint (tc, mp->ip, &mp->is_ip4, &mp->port,
+				      0 /* is_lcl */ );
     }
   else
     {
@@ -315,6 +317,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   transport_connection_t *tc;
   app_worker_t *app_wrk;
   session_event_t *evt;
+  transport_proto_vft_t *tp_vft;
 
   app_wrk = app_worker_get (app_wrk_index);
   app_mq = app_wrk->event_queue;
@@ -350,9 +353,12 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       vpp_mq = session_main_get_vpp_event_queue (s->thread_index);
       mp->handle = session_handle (s);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
-      clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
-      mp->is_ip4 = tc->is_ip4;
-      mp->lcl_port = tc->lcl_port;
+
+      tp_vft = transport_protocol_get_vft (session_get_transport_proto (s));
+      if (tp_vft && tp_vft->get_transport_endpoint)
+	tp_vft->get_transport_endpoint (tc, mp->lcl_ip, &mp->is_ip4,
+				      &mp->lcl_port, 1 /* is_lcl */ );
+
       mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
       mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
       mp->segment_handle = session_segment_handle (s);
@@ -397,7 +403,6 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   session_event_t *evt;
   app_listener_t *al;
   session_t *ls = 0;
-
   app_wrk = app_worker_get (app_wrk_index);
   app_mq = app_wrk->event_queue;
   if (!app_mq)
