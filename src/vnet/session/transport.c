@@ -190,6 +190,26 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+static void
+get_transport_endpoint (transport_connection_t * tc,
+			ip46_address_t * ip, u8 * is_ip4, u16 * port,
+			u8 is_lcl)
+{
+  if (is_lcl)
+    {
+      *port = tc->lcl_port;
+      *is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+    }
+  else
+    {
+      *port = tc->rmt_port;
+      *is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+    }
+
+}
+
 u32
 transport_endpoint_lookup (transport_endpoint_table_t * ht, u8 proto,
 			   ip46_address_t * ip, u16 port)
@@ -317,6 +337,18 @@ u8
 transport_protocol_is_cl (transport_proto_t tp)
 {
   return (tp_vfts[tp].service_type == TRANSPORT_SERVICE_CL);
+}
+
+void
+transport_get_endpoint (transport_proto_t tp, transport_connection_t * tc,
+			ip46_address_t * ip, u8 * is_ip4, u16 * port,
+			u8 is_lcl)
+{
+  if (tp_vfts[tp].get_transport_endpoint)
+    tp_vfts[tp].get_transport_endpoint (tc, ip, is_ip4, port,
+					0 /* is_lcl */ );
+  else
+    get_transport_endpoint (tc, ip, is_ip4, port, 0 /* is_lcl */ );
 }
 
 #define PORT_MASK ((1 << 16)- 1)
