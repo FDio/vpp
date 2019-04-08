@@ -635,7 +635,8 @@ session_bound_handler (session_bound_msg_t * mp)
     }
 
   clib_warning ("listening on %U:%u", format_ip46_address, mp->lcl_ip,
-		mp->lcl_is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6, mp->lcl_port);
+		mp->lcl_is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+		clib_net_to_host_u16 (mp->lcl_port));
   em->state = STATE_READY;
 }
 
