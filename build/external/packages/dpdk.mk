@@ -17,7 +17,6 @@ DPDK_DOWNLOAD_DIR            ?= $(DL_CACHE_DIR)
 DPDK_DEBUG                   ?= n
 DPDK_MLX4_PMD                ?= n
 DPDK_MLX5_PMD                ?= n
-DPDK_MLX_IBVERBS_DLOPEN      ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 
@@ -189,7 +188,7 @@ $(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
 	$(call set,RTE_LIBRTE_PMD_SOFTNIC,n)
-	$(call set,RTE_IBVERBS_LINK_DLOPEN,$(DPDK_MLX_IBVERBS_DLOPEN))
+	$(call set,RTE_IBVERBS_LINK_DLOPEN,y)
 	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))
 	$(call set,RTE_LIBRTE_GSO,$(DPDK_TAP_PMD))
 	$(call set,RTE_LIBRTE_PMD_FAILSAFE,$(DPDK_FAILSAFE_PMD))
