@@ -824,7 +824,7 @@ sctp_main_enable (vlib_main_t * vm)
   clib_error_t *error = 0;
   u32 num_threads;
   int thread;
-  sctp_connection_t *sctp_conn __attribute__ ((unused));
+  sctp_connection_t *sctp_conn __attribute__((unused));
   u32 preallocated_connections_per_thread;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
@@ -960,6 +960,7 @@ const static transport_proto_vft_t sctp_proto = {
   .format_half_open = format_sctp_half_open,
   .tx_type = TRANSPORT_TX_DEQUEUE,
   .service_type = TRANSPORT_SERVICE_VC,
+  .get_transport_endpoint = get_transport_endpoint,
 };
 
 /* *INDENT ON* */
