@@ -5,7 +5,8 @@ from scapy.layers.inet import UDP
 
 from framework import VppTestRunner
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
-    IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params
+    IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
+    IPsecIPv4Params, IPsecIPv6Params
 from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA,\
         VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -193,7 +194,7 @@ class TemplateIpsecEsp(TemplateIpsec):
         for _, p in self.params.items():
             config_esp_tra(self, p)
             config_tra_params(p, self.encryption_type)
-        self.logger.info(self.vapi.ppcli("show ipsec"))
+        self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         self.tun_spd = VppIpsecSpd(self, self.tun_spd_id)
         self.tun_spd.add_vpp_config()
@@ -202,7 +203,7 @@ class TemplateIpsecEsp(TemplateIpsec):
 
         for _, p in self.params.items():
             config_esp_tun(self, p)
-        self.logger.info(self.vapi.ppcli("show ipsec"))
+        self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         for _, p in self.params.items():
             d = DpoProto.DPO_PROTO_IP6 if p.is_ipv6 else DpoProto.DPO_PROTO_IP4
@@ -235,6 +236,56 @@ class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):
     pass
 
 
+class TestIpsecEsp3(TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec ESP - AES-CBC-192 """
+    tra4_encrypt_node_name = "esp4-encrypt"
+    tra4_decrypt_node_name = "esp4-decrypt"
+    tra6_encrypt_node_name = "esp6-encrypt"
+    tra6_decrypt_node_name = "esp6-decrypt"
+    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_decrypt_node_name = "esp4-decrypt"
+    tun6_encrypt_node_name = "esp6-encrypt"
+    tun6_decrypt_node_name = "esp6-decrypt"
+
+    def setup_params(self):
+        self.ipv4_params = IPsecIPv4Params()
+        self.ipv6_params = IPsecIPv6Params()
+        self.ipv4_params.crypto_algo_vpp_id = (
+            VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_192)
+        self.ipv4_params.crypto_algo = 'AES-CBC-192'
+        self.ipv6_params.crypto_algo_vpp_id = (
+            VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_192)
+        self.ipv6_params.crypto_algo = 'AES-CBC-192'
+
+        self.params = {self.ipv4_params.addr_type: self.ipv4_params,
+                       self.ipv6_params.addr_type: self.ipv6_params}
+
+
+class TestIpsecEsp4(TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests):
+    """ Ipsec ESP - AES-CBC-256 """
+    tra4_encrypt_node_name = "esp4-encrypt"
+    tra4_decrypt_node_name = "esp4-decrypt"
+    tra6_encrypt_node_name = "esp6-encrypt"
+    tra6_decrypt_node_name = "esp6-decrypt"
+    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_decrypt_node_name = "esp4-decrypt"
+    tun6_encrypt_node_name = "esp6-encrypt"
+    tun6_decrypt_node_name = "esp6-decrypt"
+
+    def setup_params(self):
+        self.ipv4_params = IPsecIPv4Params()
+        self.ipv6_params = IPsecIPv6Params()
+        self.ipv4_params.crypto_algo_vpp_id = (
+            VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_256)
+        self.ipv4_params.crypto_algo = 'AES-CBC-256'
+        self.ipv6_params.crypto_algo_vpp_id = (
+            VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_256)
+        self.ipv6_params.crypto_algo = 'AES-CBC-256'
+
+        self.params = {self.ipv4_params.addr_type: self.ipv4_params,
+                       self.ipv6_params.addr_type: self.ipv6_params}
+
+
 class TemplateIpsecEspUdp(TemplateIpsec):
     """
     UDP encapped ESP
@@ -265,7 +316,7 @@ class TemplateIpsecEspUdp(TemplateIpsec):
                               self.tun_if).add_vpp_config()
 
         config_esp_tun(self, p)
-        self.logger.info(self.vapi.ppcli("show ipsec"))
+        self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         d = DpoProto.DPO_PROTO_IP4
         VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,
