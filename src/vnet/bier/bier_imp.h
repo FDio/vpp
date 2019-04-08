@@ -17,7 +17,7 @@
  *
  * A BIER imposition object is present in the IP mcast output list
  * and represents the imposition of a BIER bitmask. After BIER header
- * imposition the packet is forward within the appropriate/specifid
+ * imposition the packet is forward within the appropriate/specified
  * BIER table
  */
 

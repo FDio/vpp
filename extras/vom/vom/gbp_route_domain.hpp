@@ -30,7 +30,7 @@ class gbp_route_domain : public object_base
 {
 public:
   /**
-   * The key for a route_domain is the pari of EPG-IDs
+   * The key for a route_domain is the pair of EPG-IDs
    */
   typedef route_domain::key_t key_t;
 

@@ -29,7 +29,7 @@
 /**
  * The magic number of child entries that make a path-list popular.
  * There's a trade-off here between convergnece and forwarding speed.
- * Popular path-lists generate load-balance maps for the entires that
+ * Popular path-lists generate load-balance maps for the entries that
  * use them. If the map is present there is a switch path cost to indirect
  * through the map - this indirection provides the fast convergence - so
  * without the map convergence is slower.

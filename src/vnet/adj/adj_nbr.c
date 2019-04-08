@@ -291,7 +291,7 @@ adj_nbr_add_or_lock_w_rewrite (fib_protocol_t nh_proto,
  * adj_nbr_update_rewrite
  *
  * Update the adjacency's rewrite string. A NULL string implies the
- * rewrite is reset (i.e. when ARP/ND etnry is gone).
+ * rewrite is reset (i.e. when ARP/ND entry is gone).
  * NB: the adj being updated may be handling traffic in the DP.
  */
 void
@@ -333,7 +333,7 @@ adj_nbr_update_rewrite (adj_index_t adj_index,
  * adj_nbr_update_rewrite_internal
  *
  * Update the adjacency's rewrite string. A NULL string implies the
- * rewrite is reset (i.e. when ARP/ND etnry is gone).
+ * rewrite is reset (i.e. when ARP/ND entry is gone).
  * NB: the adj being updated may be handling traffic in the DP.
  */
 void

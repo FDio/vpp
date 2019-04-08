@@ -211,7 +211,7 @@ vl_api_ipip_6rd_del_tunnel_t_handler (vl_api_ipip_6rd_del_tunnel_t * mp)
 /*
  * ipip_api_hookup
  * Add vpe's API message handlers to the table.
- * vlib has alread mapped shared memory and
+ * vlib has already mapped shared memory and
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */

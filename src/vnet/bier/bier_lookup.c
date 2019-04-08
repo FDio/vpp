@@ -67,7 +67,7 @@ typedef enum {
 vlib_node_registration_t bier_lookup_node;
 
 /**
- * @brief Packet trace recoed for a BIER lookup
+ * @brief Packet trace record for a BIER lookup
  */
 typedef struct bier_lookup_trace_t_
 {
