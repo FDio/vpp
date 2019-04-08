@@ -128,6 +128,25 @@ format_transport_connection (u8 * s, va_list * args)
   return s;
 }
 
+void
+get_transport_endpoint (transport_connection_t * tc,
+			u8 ip[16], u8 * is_ip4, u16 * port, u8 is_lcl)
+{
+  if (is_lcl)
+    {
+      *port = tc->lcl_port;
+      *is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+    }
+  else
+    {
+      *port = tc->rmt_port;
+      *is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+    }
+
+}
+
 u8 *
 format_transport_listen_connection (u8 * s, va_list * args)
 {
