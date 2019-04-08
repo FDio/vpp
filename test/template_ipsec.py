@@ -74,9 +74,9 @@ class IPsecIPv6Params(object):
         self.auth_key = 'C91KUR9GYMm5GfkEvNjX'
 
         self.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
-                                  IPSEC_API_CRYPTO_ALG_AES_CBC_256)
+                                  IPSEC_API_CRYPTO_ALG_AES_CBC_128)
         self.crypt_algo = 'AES-CBC'  # scapy name
-        self.crypt_key = 'JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h'
+        self.crypt_key = 'JPjyOWBeVEQiMe7h'
         self.flags = 0
         self.nat_header = None
 
