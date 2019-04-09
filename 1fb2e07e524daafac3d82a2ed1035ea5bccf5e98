@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "22ed0066_b27ea578",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-04-09T09:33:10Z",
+      "side": 1,
+      "message": "please add a comment to explain",
+      "revId": "1fb2e07e524daafac3d82a2ed1035ea5bccf5e98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8900575f_adf6fc82",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-04-09T09:33:10Z",
+      "side": 1,
+      "message": "please add a comment to explain",
+      "revId": "1fb2e07e524daafac3d82a2ed1035ea5bccf5e98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
