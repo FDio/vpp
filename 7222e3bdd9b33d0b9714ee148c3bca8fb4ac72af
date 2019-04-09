@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eec2d5cc_5317290f",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1016,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-09T18:25:52Z",
+      "side": 1,
+      "message": "Maybe n_this_buffer \u003d clib_min (p0-\u003ecurrent_length, n_bytes_left)?\n\nThe cmov should be slightly faster than the branch ...",
+      "range": {
+        "startLine": 1014,
+        "startChar": 21,
+        "endLine": 1016,
+        "endChar": 30
+      },
+      "revId": "7222e3bdd9b33d0b9714ee148c3bca8fb4ac72af",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
