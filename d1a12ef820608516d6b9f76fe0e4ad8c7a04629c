@@ -72,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "adefe5b0_85ee9719",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-09T13:45:28Z",
+      "side": 1,
+      "message": "+1.\nIt would cetrainly spare people many of my comments.",
+      "parentUuid": "404585ed_56a96795",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 1
+      },
+      "revId": "d1a12ef820608516d6b9f76fe0e4ad8c7a04629c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "07ab0d75_8687244e",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 6
