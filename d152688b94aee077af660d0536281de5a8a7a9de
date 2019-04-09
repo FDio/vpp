@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a8e4297b_a69b7b51",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1235,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-09T17:57:39Z",
+      "side": 1,
+      "message": "make that !s-\u003erx_fifo",
+      "range": {
+        "startLine": 1234,
+        "startChar": 6,
+        "endLine": 1235,
+        "endChar": 61
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e83b4a62_32e012f3",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-09T17:57:39Z",
+      "side": 1,
+      "message": "Make a transport wrapper for this in transport.[ch], like the one we have for transport_get_connection, instead of retrieving the tp_vft and the connection. For instance, transport_get_endpoint (transport_proto_t tp, u32 conn_index, u32 thread_index, ip46_address_t *lcl_ip, ...). You could define a session layer wrapper as well: session_get_endpoint ();\n\nOne thing I don\u0027t like is that instead of using transport/session_endpoint_t we\u0027ll pass explicitly all the params. We\u0027ll have to live with that for now.\n\nSame holds for the changes lower",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 22
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7e9fe13c_d3c95b3a",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-09T17:57:39Z",
+      "side": 1,
+      "message": "I\u0027d actually make this the wrapper: transport_get_endpoint (transport_proto_t tp ..) and in case where the tp_vft does not implement a get_endpoint function, do what you have lower.\n\nAlso, move this to where the other wrappers are defined.",
+      "range": {
+        "startLine": 132,
+        "startChar": 0,
+        "endLine": 132,
+        "endChar": 22
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c1842d64_fcbf699c",
+        "filename": "src/vnet/session/transport.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-09T17:57:39Z",
+      "side": 1,
+      "message": "Maybe move this under connection retrieval apis since it retrieves connection properties. Also, instead of a transport_conenction_t, have it use conn_index and thread_index.",
+      "range": {
+        "startLine": 66,
+        "startChar": 9,
+        "endLine": 66,
+        "endChar": 31
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e3abdc09_d6603999",
+        "filename": "src/vnet/session/transport_types.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-09T17:57:39Z",
+      "side": 1,
+      "message": "I think this can be removed since we can either embed the code in the transport_get_endpoint (..) wrapper, or we can call it a static function in transport.c where the wrapper will be defined.",
+      "range": {
+        "startLine": 140,
+        "startChar": 5,
+        "endLine": 140,
+        "endChar": 27
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "59b5f1ca_18fe918b",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1209,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-09T17:57:39Z",
+      "side": 1,
+      "message": "It\u0027s fine to leave these as undefined and handle that in the wrapper with the generic function (what you call here get_transport_endpoint)",
+      "range": {
+        "startLine": 1209,
+        "startChar": 3,
+        "endLine": 1209,
+        "endChar": 25
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
