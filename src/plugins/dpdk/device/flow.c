@@ -209,6 +209,21 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   vec_add2 (actions, action, 1);
   action->type = RTE_FLOW_ACTION_TYPE_END;
 
+  rv = rte_flow_validate (xd->device_index, &ingress, items, actions,
+                &xd->last_flow_error);
+
+  if (rv)
+  {
+    if (rv == -EINVAL)
+        rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+    else if (rv == -EEXIST)
+        rv = VNET_FLOW_ERROR_ALREADY_EXISTS;
+    else
+        rv = VNET_FLOW_ERROR_INTERNAL;
+    
+    goto done;
+  }
+
   fe->handle = rte_flow_create (xd->device_index, &ingress, items, actions,
 				&xd->last_flow_error);
 
