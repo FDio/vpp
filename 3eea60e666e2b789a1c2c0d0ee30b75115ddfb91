@@ -144,6 +144,30 @@
     },
     {
       "key": {
+        "uuid": "14839807_9f96dd98",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-09T13:45:28Z",
+      "side": 1,
+      "message": "\u003e It\u0027s not strictly needed\n\nThen why should we waste space (and speed) by writing it?\n\nIf you want a reminder, replace (in future cleanup Change) lines 12-20 with a single comment line (perhaps two lines, depending on verbosity):\n\n# Do not forget to add setUp* and tearDown* methods when needed as described in {some document reference}.",
+      "parentUuid": "52f03cb6_212bf1e3",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 46
+      },
+      "revId": "3eea60e666e2b789a1c2c0d0ee30b75115ddfb91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "76b0910a_4afb6dad",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 1
