@@ -821,11 +821,11 @@ app_name_from_api_index (u32 api_client_index)
   vl_api_registration_t *regp;
   regp = vl_api_client_index_to_registration (api_client_index);
   if (regp)
-    return format (0, "%s%c", regp->name, 0);
+    return format (0, "%s", regp->name);
 
   clib_warning ("api client index %u does not have an api registration!",
 		api_client_index);
-  return format (0, "unknown%c", 0);
+  return format (0, "unknown");
 }
 
 /**
