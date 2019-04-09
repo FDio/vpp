@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8014427a_c9b7cd75",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-09T13:39:01Z",
+      "side": 1,
+      "message": "Careless reader might understand this as tear_down_and_show_commands, while it is show_commands_at_teardown.",
+      "range": {
+        "startLine": 575,
+        "startChar": 8,
+        "endLine": 575,
+        "endChar": 30
+      },
+      "revId": "2114b721bf98de358251bc84c57ac9ffadf56135",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
