@@ -4250,7 +4250,7 @@ void* mspace_get_aligned (mspace msp,
   if (use_trace(ms)) {
     mchunkptr p  = mem2chunk(rv);
     size_t psize = chunksize(p);
-    mheap_get_trace ((unsigned long)rv, psize);
+    mheap_get_trace (searchp, psize);
   }
   return (void *) searchp;
 }
