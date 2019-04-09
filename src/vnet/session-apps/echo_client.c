@@ -24,6 +24,13 @@ echo_client_main_t echo_client_main;
 
 #define ECHO_CLIENT_DBG (0)
 
+enum quic_session_type_t
+{
+  QUIC_SESSION_TYPE_QUIC = 0,
+  QUIC_SESSION_TYPE_STREAM = 1,
+  QUIC_SESSION_TYPE_LISTEN = INT32_MAX,
+};
+
 static void
 signal_evt_to_cli_i (int *code)
 {
@@ -55,7 +62,7 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
   bytes_this_chunk = clib_min (test_buf_len - test_buf_offset,
 			       s->bytes_to_send);
 
-  if (!ecm->is_dgram)
+  if (ecm->transport_proto != TRANSPORT_PROTO_UDP)
     {
       if (ecm->no_copy)
 	{
@@ -142,7 +149,7 @@ receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 
   if (ecm->test_bytes)
     {
-      if (!ecm->is_dgram)
+      if (ecm->transport_proto != TRANSPORT_PROTO_UDP)
 	n_read = app_recv_stream (&s->data, ecm->rx_buf[thread_index],
 				  vec_len (ecm->rx_buf[thread_index]));
       else
@@ -351,8 +358,41 @@ echo_clients_init (vlib_main_t * vm)
 
   vec_validate (ecm->connection_index_by_thread, vtm->n_vlib_mains);
   vec_validate (ecm->connections_this_batch_by_thread, vtm->n_vlib_mains);
+  vec_validate (ecm->quic_session_index_by_thread, vtm->n_vlib_mains);
   vec_validate (ecm->vpp_event_queue, vtm->n_vlib_mains);
 
+  return 0;
+}
+
+static int
+echo_clients_quic_session_connected_callback (u32 app_index, u32 api_context,
+					      session_t * s, u8 is_fail)
+{
+  echo_client_main_t *ecm = &echo_client_main;
+  vnet_connect_args_t a;
+  int rv;
+  u8 thread_index = vlib_get_thread_index ();
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+
+  clib_warning ("QUIC Connection callback %d", api_context);
+  clib_warning ("QUIC Connection handle %d", session_handle (s));
+
+  a.uri = (char *) ecm->connect_uri;
+  parse_uri (a.uri, &sep);
+  sep.transport_opts = session_handle (s);
+  sep.port = 0;
+  clib_memset (&a, 0, sizeof (a));
+  a.app_index = ecm->app_index;
+  a.api_context = session_handle (s);
+  clib_memcpy (&a.sep_ext, &sep, sizeof (sep));
+
+  if ((rv = vnet_connect (&a)))
+    {
+      clib_error ("Session opening failed: %d", rv);
+      return -1;
+    }
+  vec_add1 (ecm->quic_session_index_by_thread[thread_index],
+	    session_handle (s));
   return 0;
 }
 
@@ -375,6 +415,13 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
       signal_evt_to_cli (-1);
       return 0;
     }
+
+  if (ecm->transport_proto == TRANSPORT_PROTO_QUIC
+      && s->opaque == QUIC_SESSION_TYPE_QUIC)
+    return echo_clients_quic_session_connected_callback (app_index,
+							 api_context, s,
+							 is_fail);
+  clib_warning ("STREAM Connection callback %d", api_context);
 
   thread_index = s->thread_index;
   ASSERT (thread_index == vlib_get_thread_index ()
@@ -402,7 +449,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
   session->vpp_session_handle = session_handle (s);
 
-  if (ecm->is_dgram)
+  if (ecm->transport_proto == TRANSPORT_PROTO_UDP)
     {
       transport_connection_t *tc;
       tc = session_get_transport (s);
@@ -441,6 +488,7 @@ echo_clients_session_reset_callback (session_t * s)
 static int
 echo_clients_session_create_callback (session_t * s)
 {
+  clib_warning ("Got a client accept with session opaque %d", s->opaque);
   return 0;
 }
 
@@ -595,15 +643,22 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
   echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t _a, *a = &_a;
   int i, rv;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
 
   clib_memset (a, 0, sizeof (*a));
+  a->uri = (char *) ecm->connect_uri;
+  a->app_index = ecm->app_index;
+
+  if ((rv = parse_uri (a->uri, &sep)))
+    return clib_error_return (0, "Uri parse error: %d", rv);
+
+  ecm->transport_proto = sep.transport_proto;
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+
   for (i = 0; i < n_clients; i++)
     {
-      a->uri = (char *) ecm->connect_uri;
       a->api_context = i;
-      a->app_index = ecm->app_index;
-
-      if ((rv = vnet_connect_uri (a)))
+      if ((rv = vnet_connect (a)))
 	return clib_error_return (0, "connect returned: %d", rv);
 
       /* Crude pacing for call setups  */
@@ -738,9 +793,6 @@ echo_clients_command_fn (vlib_main_t * vm,
       ecm->connect_uri = format (0, "%s%c", default_uri, 0);
     }
 
-  if (ecm->connect_uri[0] == 'u' && ecm->connect_uri[3] != 'c')
-    ecm->is_dgram = 1;
-
 #if ECHO_CLIENT_PTHREAD
   echo_clients_start_tx_pthread ();
 #endif
@@ -858,6 +910,7 @@ cleanup:
     {
       vec_reset_length (ecm->connection_index_by_thread[i]);
       vec_reset_length (ecm->connections_this_batch_by_thread[i]);
+      vec_reset_length (ecm->quic_session_index_by_thread[i]);
     }
 
   pool_free (ecm->sessions);

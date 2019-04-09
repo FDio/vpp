@@ -42,23 +42,48 @@ typedef struct
   u32 private_segment_size;	/**< Size of private segments  */
   char *server_uri;		/**< Server URI */
   u32 tls_engine;		/**< TLS engine: mbedtls/openssl */
-  u8 is_dgram;			/**< set if transport is dgram */
   /*
    * Test state
    */
   u8 **rx_buf;			/**< Per-thread RX buffer */
   u64 byte_index;
   u32 **rx_retries;
+  u8 transport_proto;
 
   vlib_main_t *vlib_main;
 } echo_server_main_t;
 
 echo_server_main_t echo_server_main;
 
+enum quic_session_type_t
+{
+  QUIC_SESSION_TYPE_QUIC = (u64) 0,
+  QUIC_SESSION_TYPE_LISTEN = UINT64_MAX,
+};
+
+int
+echo_server_quic_session_accept_callback (session_t * s)
+{
+  clib_warning ("QSession %u accept w/opaque %d", s->session_index,
+		s->opaque);
+  return 0;
+}
+
 int
 echo_server_session_accept_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
+  if (s->opaque == QUIC_SESSION_TYPE_LISTEN)
+    {
+      clib_warning ("Error : Got accept on a listening session");
+      return -1;
+    }
+  if (s->opaque == QUIC_SESSION_TYPE_QUIC)
+    {
+      return echo_server_quic_session_accept_callback (s);
+    }
+  clib_warning ("SSESSION %u accept w/opaque %d", s->session_index,
+		s->opaque);
 
   esm->vpp_queue[s->thread_index] =
     session_main_get_vpp_event_queue (s->thread_index);
@@ -162,7 +187,7 @@ echo_server_rx_callback (session_t * s)
   ASSERT (tx_fifo->master_thread_index == thread_index);
 
   max_enqueue = svm_fifo_max_enqueue (tx_fifo);
-  if (!esm->is_dgram)
+  if (esm->transport_proto != TRANSPORT_PROTO_UDP)
     {
       max_dequeue = svm_fifo_max_dequeue (rx_fifo);
     }
@@ -212,7 +237,7 @@ echo_server_rx_callback (session_t * s)
     }
 
   vec_validate (esm->rx_buf[thread_index], max_transfer);
-  if (!esm->is_dgram)
+  if (esm->transport_proto != TRANSPORT_PROTO_UDP)
     {
       actual_transfer = app_recv_stream_raw (rx_fifo,
 					     esm->rx_buf[thread_index],
@@ -235,7 +260,7 @@ echo_server_rx_callback (session_t * s)
    * Echo back
    */
 
-  if (!esm->is_dgram)
+  if (esm->transport_proto != TRANSPORT_PROTO_UDP)
     {
       n_written = app_send_stream_raw (tx_fifo,
 				       esm->vpp_queue[thread_index],
@@ -366,11 +391,19 @@ static int
 echo_server_listen ()
 {
   echo_server_main_t *esm = &echo_server_main;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   vnet_listen_args_t _a, *a = &_a;
+  int rv;
   clib_memset (a, 0, sizeof (*a));
   a->app_index = esm->app_index;
   a->uri = esm->server_uri;
-  return vnet_bind_uri (a);
+  rv = parse_uri (a->uri, &sep);
+  if (rv)
+    return rv;
+  sep.app_wrk_index = 0;
+  esm->transport_proto = sep.transport_proto;
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+  return vnet_listen (a);
 }
 
 static int
@@ -434,7 +467,6 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   esm->private_segment_count = 0;
   esm->private_segment_size = 0;
   esm->tls_engine = TLS_ENGINE_OPENSSL;
-  esm->is_dgram = 0;
   vec_free (esm->server_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -503,8 +535,6 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       clib_warning ("No uri provided! Using default: %s", default_uri);
       esm->server_uri = (char *) format (0, "%s%c", default_uri, 0);
     }
-  if (esm->server_uri[0] == 'u' && esm->server_uri[3] != 'c')
-    esm->is_dgram = 1;
 
   rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
   vec_free (appns_id);
