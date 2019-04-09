@@ -130,8 +130,8 @@ typedef enum
 
 typedef enum session_flags_
 {
-  SESSION_F_RX_EVT,
-  SESSION_F_PROXY
+  SESSION_F_RX_EVT = 1,
+  SESSION_F_PROXY = (1 << 1),
 } session_flags_t;
 
 typedef struct session_
