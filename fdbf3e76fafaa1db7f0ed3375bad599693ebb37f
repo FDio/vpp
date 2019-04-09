@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a3050218_655030ec",
+        "filename": "extras/vpp_config/vpp_config.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-09T13:13:22Z",
+      "side": 1,
+      "message": "Do you want to raise a RuntimeError here?",
+      "range": {
+        "startLine": 372,
+        "startChar": 12,
+        "endLine": 373,
+        "endChar": 18
+      },
+      "revId": "fdbf3e76fafaa1db7f0ed3375bad599693ebb37f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4bb83adb_eff2f82d",
+        "filename": "extras/vpp_config/vpplib/AutoConfig.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-09T13:13:22Z",
+      "side": 1,
+      "message": "Do you want to use // here instead?",
+      "range": {
+        "startLine": 575,
+        "startChar": 16,
+        "endLine": 575,
+        "endChar": 78
+      },
+      "revId": "fdbf3e76fafaa1db7f0ed3375bad599693ebb37f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "47da4747_1f17e387",
+        "filename": "extras/vpp_config/vpplib/AutoConfig.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1500,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-09T13:13:22Z",
+      "side": 1,
+      "message": "Do you need to handle KeyError?",
+      "range": {
+        "startLine": 1493,
+        "startChar": 0,
+        "endLine": 1500,
+        "endChar": 24
+      },
+      "revId": "fdbf3e76fafaa1db7f0ed3375bad599693ebb37f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
