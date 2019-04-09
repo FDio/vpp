@@ -23,6 +23,9 @@
 echo_client_main_t echo_client_main;
 
 #define ECHO_CLIENT_DBG (0)
+#define DBG(_fmt, _args...)			\
+    if (ECHO_CLIENT_DBG) 				\
+      clib_warning (_fmt, ##_args)
 
 static void
 signal_evt_to_cli_i (int *code)
@@ -351,7 +354,112 @@ echo_clients_init (vlib_main_t * vm)
 
   vec_validate (ecm->connection_index_by_thread, vtm->n_vlib_mains);
   vec_validate (ecm->connections_this_batch_by_thread, vtm->n_vlib_mains);
+  vec_validate (ecm->quic_session_index_by_thread, vtm->n_vlib_mains);
   vec_validate (ecm->vpp_event_queue, vtm->n_vlib_mains);
+
+  return 0;
+}
+
+static int
+quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
+					       session_t * s, u8 is_fail)
+{
+  echo_client_main_t *ecm = &echo_client_main;
+  vnet_connect_args_t a;
+  int rv;
+  u8 thread_index = vlib_get_thread_index ();
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+
+  DBG ("QUIC Connection handle %d", session_handle (s));
+
+  a.uri = (char *) ecm->connect_uri;
+  parse_uri (a.uri, &sep);
+  sep.transport_opts = session_handle (s);
+  sep.port = 0;
+  clib_memset (&a, 0, sizeof (a));
+  a.app_index = ecm->app_index;
+  a.api_context = -1 - api_context;
+  clib_memcpy (&a.sep_ext, &sep, sizeof (sep));
+
+  if ((rv = vnet_connect (&a)))
+    {
+      clib_error ("Session opening failed: %d", rv);
+      return -1;
+    }
+  vec_add1 (ecm->quic_session_index_by_thread[thread_index],
+	    session_handle (s));
+  return 0;
+}
+
+static int
+quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
+					      session_t * s, u8 is_fail)
+{
+  echo_client_main_t *ecm = &echo_client_main;
+  eclient_session_t *session;
+  u32 session_index;
+  u8 thread_index;
+
+  if (PREDICT_FALSE (ecm->run_test != ECHO_CLIENTS_STARTING))
+    return -1;
+
+  if (is_fail)
+    {
+      clib_warning ("connection %d failed!", api_context);
+      ecm->run_test = ECHO_CLIENTS_EXITING;
+      signal_evt_to_cli (-1);
+      return 0;
+    }
+
+  if (!(s->flags & SESSION_F_QUIC_STREAM))
+    return quic_echo_clients_qsession_connected_callback (app_index,
+							  api_context, s,
+							  is_fail);
+  DBG ("STREAM Connection callback %d", api_context);
+
+  thread_index = s->thread_index;
+  ASSERT (thread_index == vlib_get_thread_index ()
+	  || session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
+
+  if (!ecm->vpp_event_queue[thread_index])
+    ecm->vpp_event_queue[thread_index] =
+      session_main_get_vpp_event_queue (thread_index);
+
+  /*
+   * Setup session
+   */
+  clib_spinlock_lock_if_init (&ecm->sessions_lock);
+  pool_get (ecm->sessions, session);
+  clib_spinlock_unlock_if_init (&ecm->sessions_lock);
+
+  clib_memset (session, 0, sizeof (*session));
+  session_index = session - ecm->sessions;
+  session->bytes_to_send = ecm->bytes_to_send;
+  session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
+  session->data.rx_fifo = s->rx_fifo;
+  session->data.rx_fifo->client_session_index = session_index;
+  session->data.tx_fifo = s->tx_fifo;
+  session->data.tx_fifo->client_session_index = session_index;
+  session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
+  session->vpp_session_handle = session_handle (s);
+
+  if (ecm->is_dgram)
+    {
+      transport_connection_t *tc;
+      tc = session_get_transport (s);
+      clib_memcpy_fast (&session->data.transport, tc,
+			sizeof (session->data.transport));
+      session->data.is_dgram = 1;
+    }
+
+  vec_add1 (ecm->connection_index_by_thread[thread_index], session_index);
+  clib_atomic_fetch_add (&ecm->ready_connections, 1);
+  if (ecm->ready_connections == ecm->expected_connections)
+    {
+      ecm->run_test = ECHO_CLIENTS_RUNNING;
+      /* Signal the CLI process that the action is starting... */
+      signal_evt_to_cli (1);
+    }
 
   return 0;
 }
@@ -519,6 +627,9 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   clib_memset (options, 0, sizeof (options));
 
   a->api_client_index = ecm->my_client_index;
+  if (ecm->transport_proto == TRANSPORT_PROTO_QUIC)
+    echo_clients.session_connected_callback =
+      quic_echo_clients_session_connected_callback;
   a->session_cb_vft = &echo_clients;
 
   prealloc_fifos = ecm->prealloc_fifos ? ecm->expected_connections : 1;
@@ -597,12 +708,12 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
   int i, rv;
 
   clib_memset (a, 0, sizeof (*a));
+
   for (i = 0; i < n_clients; i++)
     {
       a->uri = (char *) ecm->connect_uri;
       a->api_context = i;
       a->app_index = ecm->app_index;
-
       if ((rv = vnet_connect_uri (a)))
 	return clib_error_return (0, "connect returned: %d", rv);
 
@@ -637,6 +748,8 @@ echo_clients_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   u8 *appns_id = 0;
   int i;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  int rv;
 
   ecm->bytes_to_send = 8192;
   ecm->no_return = 0;
@@ -738,8 +851,10 @@ echo_clients_command_fn (vlib_main_t * vm,
       ecm->connect_uri = format (0, "%s%c", default_uri, 0);
     }
 
-  if (ecm->connect_uri[0] == 'u' && ecm->connect_uri[3] != 'c')
-    ecm->is_dgram = 1;
+  if ((rv = parse_uri ((char *) ecm->connect_uri, &sep)))
+    return clib_error_return (0, "Uri parse error: %d", rv);
+  ecm->transport_proto = sep.transport_proto;
+  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
 
 #if ECHO_CLIENT_PTHREAD
   echo_clients_start_tx_pthread ();
@@ -858,6 +973,7 @@ cleanup:
     {
       vec_reset_length (ecm->connection_index_by_thread[i]);
       vec_reset_length (ecm->connections_this_batch_by_thread[i]);
+      vec_reset_length (ecm->quic_session_index_by_thread[i]);
     }
 
   pool_free (ecm->sessions);
