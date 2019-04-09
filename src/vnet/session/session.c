@@ -574,9 +574,6 @@ session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 	  continue;
 	}
 
-      if (svm_fifo_has_event (s->rx_fifo) || svm_fifo_is_empty (s->rx_fifo))
-	continue;
-
       if (PREDICT_FALSE (session_enqueue_notify_inline (s)))
 	errors++;
     }
