@@ -133,6 +133,7 @@ typedef enum session_flags_
 {
   SESSION_F_RX_EVT = 1,
   SESSION_F_PROXY = (1 << 1),
+  SESSION_F_QUIC_STREAM = (1 << 2),
 } session_flags_t;
 
 typedef struct session_

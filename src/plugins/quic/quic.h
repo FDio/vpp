@@ -47,14 +47,6 @@
 #define QUIC_CONN_STATE_HANDSHAKE 0
 #define QUIC_CONN_STATE_READY     1
 
-enum quic_session_type_t
-{
-  QUIC_SESSION_TYPE_QUIC = 0,
-  QUIC_SESSION_TYPE_STREAM = 1,
-  QUIC_SESSION_TYPE_LISTEN = INT32_MAX,
-};
-
-
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct quic_ctx_id_
 {
@@ -115,6 +107,7 @@ typedef struct quic_main_
   quic_ctx_t **ctx_pool;
   quic_worker_ctx_t *wrk_ctx;
   f64 tstamp_ticks_per_clock;
+  u32 fake_app_listener_index;	// ugly hack for accept cb
 
   /*
    * Config
