@@ -492,6 +492,11 @@ static inline int
 session_enqueue_notify_inline (session_t * s)
 {
   app_worker_t *app_wrk;
+  u32 session_index;
+  u8 n_subscribers;
+
+  session_index = s->session_index;
+  n_subscribers = svm_fifo_n_subscribers (s->rx_fifo);
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (PREDICT_FALSE (!app_wrk))
@@ -512,9 +517,12 @@ session_enqueue_notify_inline (session_t * s)
 						     SESSION_IO_EVT_RX)))
     return -1;
 
-  if (PREDICT_FALSE (svm_fifo_n_subscribers (s->rx_fifo)))
-    return session_notify_subscribers (app_wrk->app_index, s,
-				       s->rx_fifo, SESSION_IO_EVT_RX);
+  if (PREDICT_FALSE (n_subscribers))
+    {
+      s = session_get (session_index, vlib_get_thread_index ());
+      return session_notify_subscribers (app_wrk->app_index, s,
+					 s->rx_fifo, SESSION_IO_EVT_RX);
+    }
 
   return 0;
 }
