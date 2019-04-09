@@ -1175,6 +1175,8 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       p0 = vlib_get_buffer (vm, p0->next_buffer);
       data_this_buffer = vlib_buffer_get_current (p0);
       n_this_buffer = p0->current_length;
+      if (PREDICT_FALSE (n_this_buffer > n_bytes_left))
+	n_this_buffer = n_bytes_left;
     }
 
   sum16 = ~ip_csum_fold (sum0);
