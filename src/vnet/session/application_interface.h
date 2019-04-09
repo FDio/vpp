@@ -211,6 +211,7 @@ typedef enum session_fd_flag_
 #undef _
 } session_fd_flag_t;
 
+int parse_uri (char *uri, session_endpoint_cfg_t * sep);
 int vnet_bind_uri (vnet_listen_args_t *);
 int vnet_unbind_uri (vnet_unlisten_args_t * a);
 int vnet_connect_uri (vnet_connect_args_t * a);
