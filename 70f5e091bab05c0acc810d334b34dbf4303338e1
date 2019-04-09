@@ -91,6 +91,30 @@
       "revId": "70f5e091bab05c0acc810d334b34dbf4303338e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4d8960c7_5eef75d3",
+        "filename": "docs/usecases/vppinaws.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 1377
+      },
+      "writtenOn": "2019-04-09T08:56:53Z",
+      "side": 1,
+      "message": "Hi Paul,\n\nDuring my work, I found that, when using the curl command to retrieve vpp, this is the easiest way to attach the NICs to VPP and it works. \n\nHowever, if it is not proper, I could change this section and describe with more conventional passages how to attach the NICs (using git clone to retrieve vpp and dpdk-devbind.py to bind the NICs)",
+      "parentUuid": "45d045a3_74d92120",
+      "range": {
+        "startLine": 71,
+        "startChar": 0,
+        "endLine": 93,
+        "endChar": 46
+      },
+      "revId": "70f5e091bab05c0acc810d334b34dbf4303338e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
