@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1ae7158e_209eca66",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-10T16:01:01Z",
+      "side": 1,
+      "message": "VppTestCase.tearDown() is already calling\n  self.logger.info(self.vapi.ppcli(\"show hardware\"))\n\nNot sure what difference the additional \"pp\" makes. But I think it is probable that this \"non-pp\" command can be either skipped, or added to VppTestCase.tearDown().\n\nBut if yes, it should be done in a subsequent Change.",
+      "range": {
+        "startLine": 203,
+        "startChar": 8,
+        "endLine": 203,
+        "endChar": 56
+      },
+      "revId": "2d76f232cf9307c1f039823135cc1e8c335ce564",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "57b7d713_483053c7",
+        "filename": "test/test_classifier.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-10T16:01:01Z",
+      "side": 1,
+      "message": "VppTestCase.tearDown() does not seem to be doing any actions afecting the state of VPP or the testcase instance (except the stuff with registy and logger). But I am not sure about lines 78-88 here.\nShould the parent tearDown be called before line 78, so the show commands are unaffected?",
+      "range": {
+        "startLine": 90,
+        "startChar": 35,
+        "endLine": 90,
+        "endChar": 46
+      },
+      "revId": "2d76f232cf9307c1f039823135cc1e8c335ce564",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
