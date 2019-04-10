@@ -740,7 +740,7 @@ fifo_prepare (u32 fifo_size)
   f = svm_fifo_create (fifo_size);
 
   /* Paint fifo data vector with -1's */
-  clib_memset (f->data, 0xFF, fifo_size);
+  clib_memset (f->head_chunk->data, 0xFF, fifo_size);
 
   return f;
 }
@@ -1375,14 +1375,14 @@ tcp_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
 static u32
 fifo_pos (svm_fifo_t * f, u32 pos)
 {
-  return pos % f->nitems;
+  return pos;
 }
 
 static int
 tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 {
   svm_fifo_t *f;
-  u32 fifo_size = 400, j = 0, offset = 200;
+  u32 fifo_size = 401, j = 0, offset = 200;
   int i, rv, verbose = 0;
   u8 *test_data = 0, *data_buf = 0;
   ooo_segment_t *ooo_seg;
