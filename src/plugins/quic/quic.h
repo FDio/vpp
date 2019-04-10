@@ -23,7 +23,7 @@
 
 #include <quicly.h>
 
-#define QUIC_DEBUG       4
+#define QUIC_DEBUG       1
 #define QUIC_DEBUG_LEVEL_CLIENT  0
 #define QUIC_DEBUG_LEVEL_SERVER  0
 
