@@ -371,7 +371,7 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 
   if (!svm_fifo_is_empty (rxf))
     {
-      clib_memcpy_fast (s->rx_fifo->data, rxf->data, rxf->nitems);
+      clib_memcpy_fast (s->rx_fifo->head_chunk->data, rxf->head_chunk->data, rxf->nitems);
       s->rx_fifo->head = rxf->head;
       s->rx_fifo->tail = rxf->tail;
       s->rx_fifo->cursize = rxf->cursize;
@@ -379,7 +379,7 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 
   if (!svm_fifo_is_empty (txf))
     {
-      clib_memcpy_fast (s->tx_fifo->data, txf->data, txf->nitems);
+      clib_memcpy_fast (s->tx_fifo->head_chunk->data, txf->head_chunk->data, txf->nitems);
       s->tx_fifo->head = txf->head;
       s->tx_fifo->tail = txf->tail;
       s->tx_fifo->cursize = txf->cursize;

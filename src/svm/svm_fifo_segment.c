@@ -16,6 +16,20 @@
 #include <svm/svm_fifo_segment.h>
 
 static void
+fifo_init_for_segment (svm_fifo_segment_header_t * fsh, u8 *fifo_space,
+                       u32 freelist_index)
+{
+  svm_fifo_t *f;
+
+  f = (svm_fifo_t *) fifo_space;
+  f->freelist_index = freelist_index;
+  f->head_chunk = &f->default_chunk;
+  f->tail_chunk = &f->default_chunk;
+  f->next = fsh->free_fifos[freelist_index];
+  fsh->free_fifos[freelist_index] = f;
+}
+
+static void
 allocate_new_fifo_chunk (svm_fifo_segment_header_t * fsh,
 			 u32 data_size_in_bytes, int chunk_size)
 {
@@ -43,14 +57,10 @@ allocate_new_fifo_chunk (svm_fifo_segment_header_t * fsh,
     return;
 
   /* Carve fifo space */
-  f = (svm_fifo_t *) fifo_space;
   for (i = 0; i < chunk_size; i++)
     {
-      f->freelist_index = freelist_index;
-      f->next = fsh->free_fifos[freelist_index];
-      fsh->free_fifos[freelist_index] = f;
+      fifo_init_for_segment (fsh, fifo_space, freelist_index);
       fifo_space += sizeof (*f) + rounded_data_size;
-      f = (svm_fifo_t *) fifo_space;
     }
 }
 
@@ -149,24 +159,16 @@ svm_fifo_segment_preallocate_fifo_pairs (svm_fifo_segment_private_t * s,
     }
 
   /* Carve rx fifo space */
-  f = (svm_fifo_t *) rx_fifo_space;
   for (i = 0; i < pairs_to_allocate; i++)
     {
-      f->freelist_index = rx_freelist_index;
-      f->next = fsh->free_fifos[rx_freelist_index];
-      fsh->free_fifos[rx_freelist_index] = f;
+      fifo_init_for_segment (fsh, rx_fifo_space, rx_freelist_index);
       rx_fifo_space += sizeof (*f) + rx_rounded_data_size;
-      f = (svm_fifo_t *) rx_fifo_space;
     }
   /* Carve tx fifo space */
-  f = (svm_fifo_t *) tx_fifo_space;
   for (i = 0; i < pairs_to_allocate; i++)
     {
-      f->freelist_index = tx_freelist_index;
-      f->next = fsh->free_fifos[tx_freelist_index];
-      fsh->free_fifos[tx_freelist_index] = f;
+      fifo_init_for_segment (fsh, tx_fifo_space, tx_freelist_index);
       tx_fifo_space += sizeof (*f) + tx_rounded_data_size;
-      f = (svm_fifo_t *) tx_fifo_space;
     }
 
   /* Account for the pairs allocated */
@@ -386,6 +388,8 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * fs,
 	  f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
 	  f->refcnt = 1;
 	  f->freelist_index = freelist_index;
+	  f->head_chunk = &f->default_chunk;
+	  f->tail_chunk = &f->default_chunk;
 	  goto found;
 	}
       break;

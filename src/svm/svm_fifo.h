@@ -56,6 +56,13 @@ typedef struct
   u32 action;
 } svm_fifo_trace_elem_t;
 
+typedef struct svm_fifo_mem_chunk_
+{
+  u32 start_byte;
+  u32 end_byte;
+  CLIB_CACHE_LINE_ALIGN_MARK (data);
+} svm_fifo_mem_chunk_t;
+
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (shared_first);
@@ -77,11 +84,13 @@ typedef struct _svm_fifo
 
     CLIB_CACHE_LINE_ALIGN_MARK (consumer);
   u32 head;
+  svm_fifo_mem_chunk_t *head_chunk;
   volatile u32 want_tx_ntf;	/**< producer wants nudge */
   volatile u32 has_tx_ntf;
 
     CLIB_CACHE_LINE_ALIGN_MARK (producer);
   u32 tail;
+  svm_fifo_mem_chunk_t *tail_chunk;
 
   ooo_segment_t *ooo_segments;	/**< Pool of ooo segments */
   u32 ooos_list_head;		/**< Head of out-of-order linked-list */
@@ -95,7 +104,7 @@ typedef struct _svm_fifo
   svm_fifo_trace_elem_t *trace;
 #endif
 
-    CLIB_CACHE_LINE_ALIGN_MARK (data);
+  svm_fifo_mem_chunk_t default_chunk;
 } svm_fifo_t;
 
 typedef enum
@@ -241,13 +250,13 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 bytes)
 always_inline u8 *
 svm_fifo_head (svm_fifo_t * f)
 {
-  return (f->data + f->head);
+  return (f->head_chunk->data + f->head);
 }
 
 always_inline u8 *
 svm_fifo_tail (svm_fifo_t * f)
 {
-  return (f->data + f->tail);
+  return (f->head_chunk->data + f->tail);
 }
 
 always_inline u32
