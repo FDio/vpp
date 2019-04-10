@@ -3,10 +3,14 @@
 
   object abstractions for representing IP routes in VPP
 """
+import sys
 
 from vpp_object import VppObject
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_ip import DpoProto, VppIpPrefix
+
+PY2 = True if sys.version_info[0] == 2 else False
+PY3 = True if sys.version_info[0] == 3 else False
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
@@ -238,10 +242,10 @@ class VppMplsLabel(object):
                     self.exp == other.exp and
                     (self.mode == MplsLspMode.UNIFORM) == other.is_uniform)
         else:
-            return False
-
-    def __ne__(self, other):
-        return not (self == other)
+            return NotImplemented
+    if PY2:
+        def __ne__(self, other):
+            return not (self == other)
 
 
 class VppRoutePath(object):
@@ -324,10 +328,10 @@ class VppRoutePath(object):
                     return False
             return self.nh_itf == other.sw_if_index
         else:
-            return False
-
-    def __ne__(self, other):
-        return not (self == other)
+            return NotImplemented
+    if PY2:
+        def __ne__(self, other):
+            return not (self == other)
 
 
 class VppMRoutePath(VppRoutePath):
