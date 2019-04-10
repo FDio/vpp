@@ -168,6 +168,30 @@
     },
     {
       "key": {
+        "uuid": "93052ffa_4d711f85",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T16:28:05Z",
+      "side": 1,
+      "message": "We do need it if we want to clear up all the swallowing of base exceptions.  We do need it if we want to run on more than the python2 unittest suite.  Right now, we have to use a custom runner/wrapper to manually manipulate the tests because the conventions aren\u0027t being followed.  \nHere is the reference: https://docs.python.org/2/library/unittest.html#setupclass-and-teardownclass . \n\n\"If you want the setUpClass and tearDownClass on base classes called then you must call up to them yourself. The implementations in TestCase are empty.\"",
+      "parentUuid": "14839807_9f96dd98",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 46
+      },
+      "revId": "3eea60e666e2b789a1c2c0d0ee30b75115ddfb91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "76b0910a_4afb6dad",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 1
