@@ -401,6 +401,28 @@ class VppTestCase(unittest.TestCase):
             cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
 
     @classmethod
+    def wait_for_coredump(cls):
+        corefile = cls.tempdir + "/core"
+        if os.path.isfile(corefile):
+            cls.logger.error("Waiting for coredump to complete: %s", corefile)
+            curr_size = os.path.getsize(corefile)
+            deadline = time.time() + 60
+            ok = False
+            while time.time() < deadline:
+                cls.sleep(1)
+                size = curr_size
+                curr_size = os.path.getsize(corefile)
+                if size == curr_size:
+                    ok = True
+                    break
+            if not ok:
+                cls.logger.error("Timed out waiting for coredump to complete:"
+                                 " %s", corefile)
+            else:
+                cls.logger.error("Coredump complete: %s, size %d",
+                                 corefile, curr_size)
+
+    @classmethod
     def setUpClass(cls):
         """
         Perform class setup before running the testcase
@@ -529,6 +551,7 @@ class VppTestCase(unittest.TestCase):
                 del cls.vapi
             cls.vpp.poll()
             if cls.vpp.returncode is None:
+                cls.wait_for_coredump()
                 cls.logger.debug("Sending TERM to vpp")
                 cls.vpp.terminate()
                 cls.logger.debug("Waiting for vpp to die")
