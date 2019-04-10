@@ -74,9 +74,9 @@ class IPsecIPv6Params(object):
         self.auth_key = 'C91KUR9GYMm5GfkEvNjX'
 
         self.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
-                                  IPSEC_API_CRYPTO_ALG_AES_CBC_256)
+                                  IPSEC_API_CRYPTO_ALG_AES_CBC_128)
         self.crypt_algo = 'AES-CBC'  # scapy name
-        self.crypt_key = 'JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h'
+        self.crypt_key = 'JPjyOWBeVEQiMe7h'
         self.flags = 0
         self.nat_header = None
 
@@ -146,6 +146,8 @@ class TemplateIpsec(VppTestCase):
     |tun_if| ------->  |VPP| ------> |pg1|
      ------             ---           ---
     """
+    tun_spd_id = 1
+    tra_spd_id = 2
 
     def ipsec_select_backend(self):
         """ empty method to be overloaded when necessary """
@@ -157,19 +159,7 @@ class TemplateIpsec(VppTestCase):
         self.params = {self.ipv4_params.addr_type: self.ipv4_params,
                        self.ipv6_params.addr_type: self.ipv6_params}
 
-    def setUp(self):
-        super(TemplateIpsec, self).setUp()
-
-        self.setup_params()
-
-        self.tun_spd_id = 1
-        self.tra_spd_id = 2
-
-        self.vpp_esp_protocol = (VppEnum.vl_api_ipsec_proto_t.
-                                 IPSEC_API_PROTO_ESP)
-        self.vpp_ah_protocol = (VppEnum.vl_api_ipsec_proto_t.
-                                IPSEC_API_PROTO_AH)
-
+    def config_interfaces(self):
         self.create_pg_interfaces(range(3))
         self.interfaces = list(self.pg_interfaces)
         for i in self.interfaces:
@@ -178,15 +168,30 @@ class TemplateIpsec(VppTestCase):
             i.resolve_arp()
             i.config_ip6()
             i.resolve_ndp()
+
+    def setUp(self):
+        super(TemplateIpsec, self).setUp()
+
+        self.setup_params()
+
+        self.vpp_esp_protocol = (VppEnum.vl_api_ipsec_proto_t.
+                                 IPSEC_API_PROTO_ESP)
+        self.vpp_ah_protocol = (VppEnum.vl_api_ipsec_proto_t.
+                                IPSEC_API_PROTO_AH)
+
+        self.config_interfaces()
         self.ipsec_select_backend()
 
-    def tearDown(self):
-        super(TemplateIpsec, self).tearDown()
-
+    def unconfig_interfaces(self):
         for i in self.interfaces:
             i.admin_down()
             i.unconfig_ip4()
             i.unconfig_ip6()
+
+    def tearDown(self):
+        super(TemplateIpsec, self).tearDown()
+
+        self.unconfig_interfaces()
 
         if not self.vpp_dead:
             self.vapi.cli("show hardware")
@@ -218,9 +223,8 @@ class TemplateIpsec(VppTestCase):
                 for i in range(count)]
 
 
-class IpsecTcpTests(object):
-    def test_tcp_checksum(self):
-        """ verify checksum correctness for vpp generated packets """
+class IpsecTcp(object):
+    def verify_tcp_checksum(self):
         self.vapi.cli("test http server")
         p = self.params[socket.AF_INET]
         config_tun_params(p, self.encryption_type, self.tun_if)
@@ -235,9 +239,15 @@ class IpsecTcpTests(object):
         self.assert_packet_checksums_valid(decrypted)
 
 
-class IpsecTra4Tests(object):
-    def test_tra_anti_replay(self, count=1):
-        """ ipsec v4 transport anti-reply test """
+class IpsecTcpTests(IpsecTcp):
+    def test_tcp_checksum(self):
+        """ verify checksum correctness for vpp generated packets """
+        self.verify_tcp_checksum()
+
+
+class IpsecTra4(object):
+    """ verify methods for Transport v4 """
+    def verify_tra_anti_replay(self, count=1):
         p = self.params[socket.AF_INET]
         use_esn = p.vpp_tra_sa.use_esn
 
@@ -368,7 +378,7 @@ class IpsecTra4Tests(object):
         p.scapy_tra_sa.seq_num = 351
         p.vpp_tra_sa.seq_num = 351
 
-    def test_tra_basic(self, count=1):
+    def verify_tra_basic4(self, count=1):
         """ ipsec v4 transport basic test """
         self.vapi.cli("clear errors")
         try:
@@ -402,14 +412,25 @@ class IpsecTra4Tests(object):
         self.assert_packet_counter_equal(self.tra4_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tra4_decrypt_node_name, count)
 
+
+class IpsecTra4Tests(IpsecTra4):
+    """ UT test methods for Transport v4 """
+    def test_tra_anti_replay(self):
+        """ ipsec v4 transport anti-reply test """
+        self.verify_tra_anti_replay(count=1)
+
+    def test_tra_basic(self, count=1):
+        """ ipsec v4 transport basic test """
+        self.verify_tra_basic4(count=1)
+
     def test_tra_burst(self):
         """ ipsec v4 transport burst test """
-        self.test_tra_basic(count=257)
+        self.verify_tra_basic4(count=257)
 
 
-class IpsecTra6Tests(object):
-    def test_tra_basic6(self, count=1):
-        """ ipsec v6 transport basic test """
+class IpsecTra6(object):
+    """ verify methods for Transport v6 """
+    def verify_tra_basic6(self, count=1):
         self.vapi.cli("clear errors")
         try:
             p = self.params[socket.AF_INET6]
@@ -441,17 +462,25 @@ class IpsecTra6Tests(object):
         self.assert_packet_counter_equal(self.tra6_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tra6_decrypt_node_name, count)
 
+
+class IpsecTra6Tests(IpsecTra6):
+    """ UT test methods for Transport v6 """
+    def test_tra_basic6(self):
+        """ ipsec v6 transport basic test """
+        self.verify_tra_basic6(count=1)
+
     def test_tra_burst6(self):
         """ ipsec v6 transport burst test """
-        self.test_tra_basic6(count=257)
+        self.verify_tra_basic6(count=257)
 
 
 class IpsecTra46Tests(IpsecTra4Tests, IpsecTra6Tests):
+    """ UT test methods for Transport v6 and v4"""
     pass
 
 
 class IpsecTun4(object):
-
+    """ verify methods for Tunnel v4 """
     def verify_counters(self, p, count):
         if (hasattr(p, "spd_policy_in_any")):
             pkts = p.spd_policy_in_any.get_stats()['packets']
@@ -565,7 +594,7 @@ class IpsecTun4(object):
 
 
 class IpsecTun4Tests(IpsecTun4):
-
+    """ UT test methods for Tunnel v4 """
     def test_tun_basic44(self):
         """ ipsec 4o4 tunnel basic test """
         self.verify_tun_44(self.params[socket.AF_INET], count=1)
@@ -576,7 +605,7 @@ class IpsecTun4Tests(IpsecTun4):
 
 
 class IpsecTun6(object):
-
+    """ verify methods for Tunnel v6 """
     def verify_counters(self, p, count):
         if (hasattr(p, "tun_sa_in")):
             pkts = p.tun_sa_in.get_stats()['packets']
@@ -670,6 +699,7 @@ class IpsecTun6(object):
 
 
 class IpsecTun6Tests(IpsecTun6):
+    """ UT test methods for Tunnel v6 """
 
     def test_tun_basic66(self):
         """ ipsec 6o6 tunnel basic test """
@@ -681,6 +711,7 @@ class IpsecTun6Tests(IpsecTun6):
 
 
 class IpsecTun46Tests(IpsecTun4Tests, IpsecTun6Tests):
+    """ UT test methods for Tunnel v6 & v4 """
     pass
 
 
