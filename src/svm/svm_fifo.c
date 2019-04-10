@@ -220,6 +220,7 @@ svm_fifo_create (u32 data_size_in_bytes)
   f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
   f->segment_index = SVM_FIFO_INVALID_INDEX;
   f->refcnt = 1;
+  f->data = f->data_start;
   return (f);
 }
 
