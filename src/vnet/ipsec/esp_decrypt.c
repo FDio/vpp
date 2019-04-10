@@ -177,7 +177,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       payload = b[0]->data + pd->current_data;
 
       /* we need 4 extra bytes for HMAC calculation when ESN are used */
-      if ((sa0->flags & IPSEC_SA_FLAG_USE_ESN) && pd->icv_sz &&
+      if (ipsec_sa_is_set_USE_ESN (sa0) && pd->icv_sz &&
 	  (pd->current_data + pd->current_length + 4 > buffer_data_size))
 	{
 	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_NO_TAIL_SPACE];
@@ -211,7 +211,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  op->digest = payload + len;
 	  op->digest_len = cpd.icv_sz;
 	  op->len = len;
-	  if (PREDICT_TRUE (sa0->flags & IPSEC_SA_FLAG_USE_ESN))
+	  if (ipsec_sa_is_set_USE_ESN (sa0))
 	    {
 	      /* shift ICV for 4 bytes to insert ESN */
 	      u8 tmp[ESP_MAX_ICV_SIZE], sz = sizeof (sa0->seq_hi);
@@ -219,7 +219,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      clib_memcpy_fast (payload + len, &sa0->seq_hi, sz);
 	      clib_memcpy_fast (payload + len + sz, tmp, ESP_MAX_ICV_SIZE);
 	      op->len += sz;
-	      op->dst += sz;
+	      op->digest += sz;
 	    }
 	}
 

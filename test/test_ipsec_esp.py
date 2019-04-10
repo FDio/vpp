@@ -353,7 +353,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
         super(TestIpsecEspAll, self).tearDown()
 
     def test_crypto_algs(self):
-        """All engines AES-CBC-[128, 192, 256] w/o ESN"""
+        """All engines AES-CBC-[128, 192, 256] w/ & w/o ESN"""
 
         # foreach VPP crypto engine
         engines = ["ia32", "openssl"]
@@ -372,9 +372,9 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy': "AES-CBC",
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
 
-        # bug found in VPP needs fixing with flag
-        # (VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_USE_ESN)
-        flags = [0]
+        # with and without ESN
+        flags = [VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_USE_ESN,
+                 0]
 
         #
         # loop through the VPP engines
