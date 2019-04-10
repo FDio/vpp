@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "3ccd8fec_22554a49",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T16:44:13Z",
+      "side": 1,
+      "message": "VPP looks at the coredump filter. Someone is not interpreting the leading pipe.\nsrc/vlib/unix/main.c:422:\n      else if (unformat (input, \"full-coredump\"))\n\t{\n\t  int fd;\n\n\t  fd \u003d open (\"/proc/self/coredump_filter\", O_WRONLY);\n\t  if (fd \u003e\u003d 0)\n\nThat is great info!\nThe unittest pollhook and the custom runner use get_core_path().  \nSomething else to fix!",
+      "parentUuid": "4e5739a0_e0d664ee",
+      "range": {
+        "startLine": 401,
+        "startChar": 31,
+        "endLine": 402,
+        "endChar": 19
+      },
+      "revId": "f98732c28c60eb6b23c63f767bba2907ac30fa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7089bb80_4e8f0615",
         "filename": "test/framework.py",
         "patchSetId": 1
