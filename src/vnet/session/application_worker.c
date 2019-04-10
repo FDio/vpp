@@ -375,7 +375,6 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
   if (!svm_fifo_is_empty_cons (txf))
     svm_fifo_clone (s->tx_fifo, txf);
 
-
   segment_manager_dealloc_fifos (rxf, txf);
 
   return 0;
