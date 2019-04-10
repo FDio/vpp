@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "eab44bb1_141bcc66",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-10T16:58:51Z",
+      "side": 1,
+      "message": "But we don\u0027t want that dataplane code spends time filling useless information into data structure. I tis reasonably to expect that caller knows what he\u0027s doing....",
+      "parentUuid": "78f61f1b_6f1e6f0d",
+      "range": {
+        "startLine": 235,
+        "startChar": 0,
+        "endLine": 235,
+        "endChar": 37
+      },
+      "revId": "9dfdc6af3647a7c6cc26cc0bcf75b5c240fb0a7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6f206e73_034c6e73",
         "filename": "src/vnet/ipsec/esp_decrypt.c",
         "patchSetId": 4
