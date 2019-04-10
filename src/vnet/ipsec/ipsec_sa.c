@@ -268,7 +268,7 @@ ipsec_sa_del (u32 id)
   hash_unset (im->sa_index_by_sa_id, sa->id);
   err = ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
   if (err)
-    return VNET_API_ERROR_SYSCALL_ERROR_1;
+    return VNET_API_ERROR_SYSCALL_ERROR_2;
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
