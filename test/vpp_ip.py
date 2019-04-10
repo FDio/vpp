@@ -6,6 +6,7 @@ import logging
 
 from ipaddress import ip_address
 from socket import AF_INET, AF_INET6
+import sys
 from vpp_papi import VppEnum
 try:
     text_type = unicode
@@ -13,6 +14,9 @@ except NameError:
     text_type = str
 
 _log = logging.getLogger(__name__)
+
+PY2 = True if sys.version_info[0] == 2 else False
+PY3 = True if sys.version_info[0] == 3 else False
 
 
 class DpoProto:
@@ -110,8 +114,9 @@ class VppIpAddress():
                 other.__class__.__name__, other)
             return NotImplemented
 
-    def __ne__(self, other):
-        return not (self == other)
+    if PY2:
+        def __ne__(self, other):
+            return not (self == other)
 
     def __str__(self):
         return self.address
