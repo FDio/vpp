@@ -16,6 +16,57 @@
       "revId": "8b7ee4c510a65d573d8b50016dc81284a7c94dbd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3f6f4596_7fd9e07d",
+        "filename": "Makefile",
+        "patchSetId": 14
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2019-04-10T08:24:59Z",
+      "side": 1,
+      "message": "You don\u0027t appear to be using liburcu anywhere. Therefore the userspace-rcu-devel and liburcu-devel dependency should not be needed.",
+      "revId": "8b7ee4c510a65d573d8b50016dc81284a7c94dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "be0061a1_8638a7bf",
+        "filename": "src/plugins/dpi/dpi_node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2019-04-10T08:24:59Z",
+      "side": 1,
+      "message": "You have not marked this file as MULTIARCH_SOURCE in the CMakefile. Therefor the CLIB_MARCH_VARIANT define should not be needed.\n\nOr do you want to actually have multi arch variants and just forgot the MULTIARCH_SOURCES definition in CMakeLists.txt?",
+      "revId": "8b7ee4c510a65d573d8b50016dc81284a7c94dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6217f2c1_2b2e30ae",
+        "filename": "src/plugins/dpi/dpi_plugin_doc.md",
+        "patchSetId": 14
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2019-04-10T08:24:59Z",
+      "side": 1,
+      "message": "I think that goal is too ambitious. IDS/IPS and firewalls need to be much more thorough then you code currently is (or can be give the infrastructure available in VPP).",
+      "revId": "8b7ee4c510a65d573d8b50016dc81284a7c94dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
