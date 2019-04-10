@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "18c238b8_fa3d6822",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T02:59:19Z",
+      "side": 1,
+      "message": "corefile \u003d util.get_core_path(cls.tempdir)",
+      "range": {
+        "startLine": 401,
+        "startChar": 31,
+        "endLine": 402,
+        "endChar": 19
+      },
+      "revId": "f98732c28c60eb6b23c63f767bba2907ac30fa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7089bb80_4e8f0615",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T02:59:19Z",
+      "side": 1,
+      "message": "Is this a good check?  What if the mount point is full, or ulimit is not large enough?  Google seems to suggest \"readelf -Wa \u003ccore\u003e 2\u003e\u00261 | grep -i warn\" to validate a core file.",
+      "range": {
+        "startLine": 412,
+        "startChar": 16,
+        "endLine": 412,
+        "endChar": 37
+      },
+      "revId": "f98732c28c60eb6b23c63f767bba2907ac30fa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "99ea1a19_6c30eff2",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 417,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T02:59:19Z",
+      "side": 1,
+      "message": "corefile",
+      "range": {
+        "startLine": 417,
+        "startChar": 40,
+        "endLine": 417,
+        "endChar": 47
+      },
+      "revId": "f98732c28c60eb6b23c63f767bba2907ac30fa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
