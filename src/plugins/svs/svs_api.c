@@ -54,7 +54,6 @@
  * Base message ID fot the plugin
  */
 static u32 svs_base_msg_id;
-
 #include <vlibapi/api_helper_macros.h>
 
 /* List of message types that this plugin understands */
@@ -71,13 +70,11 @@ vl_api_svs_plugin_get_version_t_handler (vl_api_svs_plugin_get_version_t * mp)
 {
   vl_api_svs_plugin_get_version_reply_t *rmp;
   int msg_size = sizeof (*rmp);
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
 
   rmp = vl_msg_api_alloc (msg_size);
   clib_memset (rmp, 0, msg_size);
@@ -87,7 +84,7 @@ vl_api_svs_plugin_get_version_t_handler (vl_api_svs_plugin_get_version_t * mp)
   rmp->major = htonl (SVS_PLUGIN_VERSION_MAJOR);
   rmp->minor = htonl (SVS_PLUGIN_VERSION_MINOR);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (rp, (u8 *) rmp);
 }
 
 static void
@@ -160,7 +157,7 @@ vl_api_svs_enable_disable_t_handler (vl_api_svs_enable_disable_t * mp)
 
 typedef struct svs_dump_walk_ctx_t_
 {
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
   u32 context;
 } svs_dump_walk_ctx_t;
 
@@ -182,7 +179,7 @@ svs_send_details (fib_protocol_t fproto,
   mp->table_id = htonl (table_id);
   mp->af = fib_proto_to_api_address_family (fproto);
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & mp);
+  vl_api_send_msg (ctx->rp, (u8 *) mp);
 
   return (WALK_CONTINUE);
 }
@@ -190,16 +187,14 @@ svs_send_details (fib_protocol_t fproto,
 static void
 vl_api_svs_dump_t_handler (vl_api_svs_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
 
   svs_dump_walk_ctx_t ctx = {
-    .q = q,
+    .rp = rp,
     .context = mp->context,
   };
 

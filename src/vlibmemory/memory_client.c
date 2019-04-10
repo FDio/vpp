@@ -164,6 +164,7 @@ noop_handler (void *notused)
 {
 }
 
+void vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem);
 int
 vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
 {

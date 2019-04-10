@@ -23,7 +23,7 @@
 #include <vnet/plugin/plugin.h>
 #include <ioam/lib-trace/trace_util.h>
 #include <ioam/lib-trace/trace_config.h>
-
+#include <vlibapi/api_helper_macros.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
@@ -52,47 +52,6 @@
 #include <ioam/lib-trace/trace_all_api_h.h>
 #undef vl_api_version
 
-/*
- * A handy macro to set up a message reply.
- * Assumes that the following variables are available:
- * mp - pointer to request message
- * rmp - pointer to reply message type
- * rv - return value
- */
-
-#define TRACE_REPLY_MACRO(t)                                          \
-do {                                                            \
-    svm_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-/* *INDENT-OFF* */
-#define TRACE_REPLY_MACRO2(t, body)                                   \
-do {                                                            \
-    svm_queue_t * q;                             \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-/* *INDENT-ON* */
-
 /* List of message types that this plugin understands */
 
 #define foreach_trace_plugin_api_msg                                      \
@@ -103,7 +62,6 @@ _(TRACE_PROFILE_SHOW_CONFIG, trace_profile_show_config)
 static void vl_api_trace_profile_add_t_handler
   (vl_api_trace_profile_add_t * mp)
 {
-  trace_main_t *sm = &trace_main;
   int rv = 0;
   vl_api_trace_profile_add_reply_t *rmp;
   trace_profile *profile = NULL;
@@ -123,45 +81,43 @@ static void vl_api_trace_profile_add_t_handler
       rv = -3;
     }
 ERROROUT:
-  TRACE_REPLY_MACRO (VL_API_TRACE_PROFILE_ADD_REPLY);
+  REPLY_MACRO (VL_API_TRACE_PROFILE_ADD_REPLY);
 }
 
 
 static void vl_api_trace_profile_del_t_handler
   (vl_api_trace_profile_del_t * mp)
 {
-  trace_main_t *sm = &trace_main;
   int rv = 0;
   vl_api_trace_profile_del_reply_t *rmp;
 
   clear_trace_profiles ();
 
-  TRACE_REPLY_MACRO (VL_API_TRACE_PROFILE_DEL_REPLY);
+  REPLY_MACRO (VL_API_TRACE_PROFILE_DEL_REPLY);
 }
 
 static void vl_api_trace_profile_show_config_t_handler
   (vl_api_trace_profile_show_config_t * mp)
 {
-  trace_main_t *sm = &trace_main;
   vl_api_trace_profile_show_config_reply_t *rmp;
   int rv = 0;
   trace_profile *profile = trace_profile_find ();
   if (profile->valid)
     {
-      TRACE_REPLY_MACRO2 (VL_API_TRACE_PROFILE_SHOW_CONFIG_REPLY,
-			  rmp->trace_type = profile->trace_type;
-			  rmp->num_elts = profile->num_elts;
-			  rmp->trace_tsp = profile->trace_tsp;
-			  rmp->node_id = htonl (profile->node_id);
-			  rmp->app_data = htonl (profile->app_data);
+      REPLY_MACRO2 (VL_API_TRACE_PROFILE_SHOW_CONFIG_REPLY,
+		    rmp->trace_type = profile->trace_type;
+		    rmp->num_elts = profile->num_elts;
+		    rmp->trace_tsp = profile->trace_tsp;
+		    rmp->node_id = htonl (profile->node_id);
+		    rmp->app_data = htonl (profile->app_data);
 	);
     }
   else
     {
-      TRACE_REPLY_MACRO2 (VL_API_TRACE_PROFILE_SHOW_CONFIG_REPLY,
-			  rmp->trace_type = 0;
-			  rmp->num_elts = 0; rmp->trace_tsp = 0;
-			  rmp->node_id = 0; rmp->app_data = 0;
+      REPLY_MACRO2 (VL_API_TRACE_PROFILE_SHOW_CONFIG_REPLY,
+		    rmp->trace_type = 0;
+		    rmp->num_elts = 0; rmp->trace_tsp = 0;
+		    rmp->node_id = 0; rmp->app_data = 0;
 	);
     }
 }

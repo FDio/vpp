@@ -52,48 +52,16 @@ _(SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump)\
 _(SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump)
 
 static void
-bond_send_sw_interface_event_deleted (vpe_api_main_t * am,
-				      unix_shared_memory_queue_t * q,
-				      u32 sw_if_index)
-{
-  vl_api_sw_interface_event_t *mp;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
-  mp->sw_if_index = ntohl (sw_if_index);
-
-  mp->admin_up_down = 0;
-  mp->link_up_down = 0;
-  mp->deleted = 1;
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-static void
 vl_api_bond_delete_t_handler (vl_api_bond_delete_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   int rv;
-  vpe_api_main_t *vam = &vpe_api_main;
   vl_api_bond_delete_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   rv = bond_delete_if (vm, sw_if_index);
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_BOND_DELETE_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = ntohl (rv);
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-
-  if (!rv)
-    bond_send_sw_interface_event_deleted (vam, q, sw_if_index);
+  REPLY_MACRO (VL_API_BOND_DELETE_REPLY);
 }
 
 static void
@@ -101,7 +69,6 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_create_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
   bond_create_if_args_t _a, *ap = &_a;
 
   clib_memset (ap, 0, sizeof (*ap));
@@ -118,19 +85,14 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
   ap->lb = mp->lb;
   bond_create_if (vm, ap);
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
+  int rv = ap->rv;
 
-  if (ap->rv != 0)
-    return;
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_BOND_CREATE_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = ntohl (ap->rv);
-  rmp->sw_if_index = ntohl (ap->sw_if_index);
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_BOND_CREATE_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (ap->sw_if_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -138,8 +100,8 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_enslave_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
   bond_enslave_args_t _a, *ap = &_a;
+  int rv = 0;
 
   clib_memset (ap, 0, sizeof (*ap));
 
@@ -150,16 +112,7 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
 
   bond_enslave (vm, ap);
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_BOND_ENSLAVE_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = ntohl (ap->rv);
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  REPLY_MACRO (VL_API_BOND_ENSLAVE_REPLY);
 }
 
 static void
@@ -167,24 +120,15 @@ vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_detach_slave_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
   bond_detach_slave_args_t _a, *ap = &_a;
+  int rv = 0;
 
   clib_memset (ap, 0, sizeof (*ap));
 
   ap->slave = ntohl (mp->sw_if_index);
   bond_detach_slave (vm, ap);
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_BOND_DETACH_SLAVE_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = htonl (ap->rv);
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  REPLY_MACRO (VL_API_BOND_DETACH_SLAVE_REPLY);
 }
 
 static void

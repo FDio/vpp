@@ -305,13 +305,11 @@ static void
   acl_main_t *am = &acl_main;
   vl_api_acl_plugin_get_conn_table_max_entries_reply_t *rmp;
   int msg_size = sizeof (*rmp);
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
 
   rmp = vl_msg_api_alloc (msg_size);
   memset (rmp, 0, msg_size);
@@ -321,7 +319,7 @@ static void
   rmp->context = mp->context;
   rmp->conn_table_max_entries = __bswap_64 (am->fa_conn_table_max_entries);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (rp, (u8 *) rmp);
 }
 
 static void

@@ -694,38 +694,36 @@ vl_api_sw_interface_clear_stats_t_handler (vl_api_sw_interface_clear_stats_t *
   REPLY_MACRO (VL_API_SW_INTERFACE_CLEAR_STATS_REPLY);
 }
 
-#define API_LINK_STATE_EVENT 1
-#define API_ADMIN_UP_DOWN_EVENT 2
-
-static int
-event_data_cmp (void *a1, void *a2)
+/*
+ * Events used for sw_interface_events
+ */
+enum api_events
 {
-  uword *e1 = a1;
-  uword *e2 = a2;
-
-  return (word) e1[0] - (word) e2[0];
-}
+  API_LINK_STATE_UP_EVENT = 1 << 1,
+  API_LINK_STATE_DOWN_EVENT = 1 << 2,
+  API_ADMIN_UP_EVENT = 1 << 3,
+  API_ADMIN_DOWN_EVENT = 1 << 4,
+  API_SW_INTERFACE_ADD_EVENT = 1 << 5,
+  API_SW_INTERFACE_DEL_EVENT = 1 << 6,
+};
 
 static void
 send_sw_interface_event (vpe_api_main_t * am,
 			 vpe_client_registration_t * reg,
 			 vl_api_registration_t * vl_reg,
-			 vnet_sw_interface_t * swif)
+			 u32 sw_if_index, enum api_events events)
 {
   vl_api_sw_interface_event_t *mp;
-  vnet_main_t *vnm = am->vnet_main;
 
-  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm,
-						       swif->sw_if_index);
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
-  mp->sw_if_index = ntohl (swif->sw_if_index);
+  mp->sw_if_index = ntohl (sw_if_index);
   mp->client_index = reg->client_index;
   mp->pid = reg->client_pid;
-
-  mp->admin_up_down = (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;
-  mp->link_up_down = (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ? 1 : 0;
+  mp->admin_up_down = events & API_ADMIN_UP_EVENT ? 1 : 0;
+  mp->link_up_down = events & API_LINK_STATE_UP_EVENT ? 1 : 0;
+  mp->deleted = events & API_SW_INTERFACE_DEL_EVENT ? 1 : 0;
   vl_api_send_msg (vl_reg, (u8 *) mp);
 }
 
@@ -734,13 +732,13 @@ link_state_process (vlib_main_t * vm,
 		    vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   vpe_api_main_t *vam = &vpe_api_main;
-  vnet_main_t *vnm = vam->vnet_main;
-  vnet_sw_interface_t *swif;
-  uword *event_data = 0;
+  uword *event_by_sw_if_index = 0;
   vpe_client_registration_t *reg;
   int i;
-  u32 prev_sw_if_index;
   vl_api_registration_t *vl_reg;
+  uword event_type;
+  uword *event_data = 0;
+  u32 sw_if_index;
 
   vam->link_state_process_up = 1;
 
@@ -748,42 +746,33 @@ link_state_process (vlib_main_t * vm,
     {
       vlib_process_wait_for_event (vm);
 
-      /* Unified list of changed link or admin state sw_if_indices */
-      vlib_process_get_events_with_type
-	(vm, &event_data, API_LINK_STATE_EVENT);
-      vlib_process_get_events_with_type
-	(vm, &event_data, API_ADMIN_UP_DOWN_EVENT);
-
-      /* Sort, so we can eliminate duplicates */
-      vec_sort_with_function (event_data, event_data_cmp);
-
-      prev_sw_if_index = ~0;
-
-      for (i = 0; i < vec_len (event_data); i++)
+      /* Batch up events */
+      while ((event_type = vlib_process_get_events (vm, &event_data)) != ~0)
 	{
-	  /* Only one message per swif */
-	  if (prev_sw_if_index == event_data[i])
+	  for (i = 0; i < vec_len (event_data); i++)
+	    {
+	      sw_if_index = event_data[i];
+	      vec_validate_init_empty (event_by_sw_if_index, sw_if_index, 0);
+	      event_by_sw_if_index[sw_if_index] |= event_type;
+	    }
+	  vec_reset_length (event_data);
+	}
+
+      for (i = 0; i < vec_len (event_by_sw_if_index); i++)
+	{
+	  if (event_by_sw_if_index[i] == 0)
 	    continue;
-	  prev_sw_if_index = event_data[i];
 
           /* *INDENT-OFF* */
           pool_foreach(reg, vam->interface_events_registrations,
           ({
             vl_reg = vl_api_client_index_to_registration (reg->client_index);
             if (vl_reg)
-              {
-                /* sw_interface may be deleted already */
-                if (!pool_is_free_index (vnm->interface_main.sw_interfaces,
-                                         event_data[i]))
-                  {
-                    swif = vnet_get_sw_interface (vnm, event_data[i]);
-                    send_sw_interface_event (vam, reg, vl_reg, swif);
-                  }
-              }
+	      send_sw_interface_event (vam, reg, vl_reg, i, event_by_sw_if_index[i]);
           }));
           /* *INDENT-ON* */
 	}
-      vec_reset_length (event_data);
+      vec_reset_length (event_by_sw_if_index);
     }
 
   return 0;
@@ -793,6 +782,9 @@ static clib_error_t *link_up_down_function (vnet_main_t * vm, u32 hw_if_index,
 					    u32 flags);
 static clib_error_t *admin_up_down_function (vnet_main_t * vm,
 					     u32 hw_if_index, u32 flags);
+static clib_error_t *sw_interface_add_del_function (vnet_main_t * vm,
+						    u32 sw_if_index,
+						    u32 flags);
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (link_state_process_node,static) = {
@@ -804,6 +796,7 @@ VLIB_REGISTER_NODE (link_state_process_node,static) = {
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (admin_up_down_function);
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (link_up_down_function);
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (sw_interface_add_del_function);
 
 static clib_error_t *
 link_up_down_function (vnet_main_t * vm, u32 hw_if_index, u32 flags)
@@ -812,9 +805,13 @@ link_up_down_function (vnet_main_t * vm, u32 hw_if_index, u32 flags)
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vm, hw_if_index);
 
   if (vam->link_state_process_up)
-    vlib_process_signal_event (vam->vlib_main,
-			       link_state_process_node.index,
-			       API_LINK_STATE_EVENT, hi->sw_if_index);
+    {
+      enum api_events event =
+	flags ? API_LINK_STATE_UP_EVENT : API_LINK_STATE_DOWN_EVENT;
+      vlib_process_signal_event (vam->vlib_main,
+				 link_state_process_node.index, event,
+				 hi->sw_if_index);
+    }
   return 0;
 }
 
@@ -829,9 +826,29 @@ admin_up_down_function (vnet_main_t * vm, u32 sw_if_index, u32 flags)
    * routine.
    */
   if (vam->link_state_process_up)
-    vlib_process_signal_event (vam->vlib_main,
-			       link_state_process_node.index,
-			       API_ADMIN_UP_DOWN_EVENT, sw_if_index);
+    {
+      enum api_events event =
+	flags ? API_ADMIN_UP_EVENT : API_ADMIN_DOWN_EVENT;
+      vlib_process_signal_event (vam->vlib_main,
+				 link_state_process_node.index, event,
+				 sw_if_index);
+    }
+  return 0;
+}
+
+static clib_error_t *
+sw_interface_add_del_function (vnet_main_t * vm, u32 sw_if_index, u32 flags)
+{
+  vpe_api_main_t *vam = &vpe_api_main;
+
+  if (vam->link_state_process_up)
+    {
+      enum api_events event =
+	flags ? API_SW_INTERFACE_ADD_EVENT : API_SW_INTERFACE_DEL_EVENT;
+      vlib_process_signal_event (vam->vlib_main,
+				 link_state_process_node.index, event,
+				 sw_if_index);
+    }
   return 0;
 }
 
