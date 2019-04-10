@@ -121,11 +121,14 @@ class _PacketInfo(object):
     data = None
 
     def __eq__(self, other):
-        index = self.index == other.index
-        src = self.src == other.src
-        dst = self.dst == other.dst
-        data = self.data == other.data
-        return index and src and dst and data
+        if isinstance(other, self.__class__):
+            index = self.index == other.index
+            src = self.src == other.src
+            dst = self.dst == other.dst
+            data = self.data == other.data
+            return index and src and dst and data
+        else:
+            return NotImplemented
 
 
 def pump_output(testclass):
