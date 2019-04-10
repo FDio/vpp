@@ -100,6 +100,7 @@ class ConfigIpsecESP(TemplateIpsec):
         addr_any = params.addr_any
         addr_bcast = params.addr_bcast
         e = VppEnum.vl_api_ipsec_spd_action_t
+        flags = params.flags
         objs = []
 
         params.tun_sa_in = VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
@@ -107,13 +108,15 @@ class ConfigIpsecESP(TemplateIpsec):
                                       crypt_algo_vpp_id, crypt_key,
                                       self.vpp_esp_protocol,
                                       self.tun_if.local_addr[addr_type],
-                                      self.tun_if.remote_addr[addr_type])
+                                      self.tun_if.remote_addr[addr_type],
+                                      flags=flags)
         params.tun_sa_out = VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
                                        auth_algo_vpp_id, auth_key,
                                        crypt_algo_vpp_id, crypt_key,
                                        self.vpp_esp_protocol,
                                        self.tun_if.remote_addr[addr_type],
-                                       self.tun_if.local_addr[addr_type])
+                                       self.tun_if.local_addr[addr_type],
+                                       flags=flags)
         objs.append(params.tun_sa_in)
         objs.append(params.tun_sa_out)
 
@@ -337,7 +340,7 @@ class TemplateIpsecEspUdp(ConfigIpsecESP):
         self.logger.info(self.vapi.cli("show hardware"))
 
 
-class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests, IpsecTun4Tests):
+class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests):
     """ Ipsec NAT-T ESP UDP tests """
     pass
 
@@ -354,7 +357,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
         super(TestIpsecEspAll, self).tearDown()
 
     def test_crypto_algs(self):
-        """All engines AES-CBC-[128, 192, 256] w/o ESN"""
+        """All engines AES-CBC-[128, 192, 256] w/ & w/o ESN"""
 
         # foreach VPP crypto engine
         engines = ["ia32", "ipsecmb", "openssl"]
@@ -373,9 +376,9 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy': "AES-CBC",
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
 
-        # bug found in VPP needs fixing with flag
-        # (VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_USE_ESN)
-        flags = [0]
+        # with and without ESN
+        flags = [0,
+                 VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_USE_ESN]
 
         #
         # loop through the VPP engines
@@ -418,8 +421,8 @@ class TestIpsecEspAll(ConfigIpsecESP,
                     #
                     self.verify_tra_basic6(count=17)
                     self.verify_tra_basic4(count=17)
-                    self.verify_tun_66(self.params[socket.AF_INET6], 17)
-                    self.verify_tun_44(self.params[socket.AF_INET], 17)
+                    self.verify_tun_66(self.params[socket.AF_INET6], 1)
+                    self.verify_tun_44(self.params[socket.AF_INET], 1)
 
                     #
                     # remove the SPDs, SAs, etc
