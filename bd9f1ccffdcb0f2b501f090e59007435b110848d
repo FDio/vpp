@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e6c326c_1eac64c1",
+        "filename": "test/test_quic.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T03:09:38Z",
+      "side": 1,
+      "message": "Pls. add a tearDownClass.  It is used in parallel CI test cleanup.",
+      "range": {
+        "startLine": 13,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 41
+      },
+      "revId": "bd9f1ccffdcb0f2b501f090e59007435b110848d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b4d56d4a_b6349901",
+        "filename": "test/test_quic.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T03:09:38Z",
+      "side": 1,
+      "message": "\"quic://%s/1234\" % self.loop0.local_ip4",
+      "range": {
+        "startLine": 66,
+        "startChar": 14,
+        "endLine": 66,
+        "endChar": 56
+      },
+      "revId": "bd9f1ccffdcb0f2b501f090e59007435b110848d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a5bda159_51b24dbb",
+        "filename": "test/test_quic.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T03:09:38Z",
+      "side": 1,
+      "message": "%s\" % uri",
+      "range": {
+        "startLine": 67,
+        "startChar": 72,
+        "endLine": 68,
+        "endChar": 33
+      },
+      "revId": "bd9f1ccffdcb0f2b501f090e59007435b110848d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ce3ea411_f6424923",
+        "filename": "test/test_quic.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-10T03:09:38Z",
+      "side": 1,
+      "message": "%s\" % uri",
+      "range": {
+        "startLine": 74,
+        "startChar": 35,
+        "endLine": 74,
+        "endChar": 42
+      },
+      "revId": "bd9f1ccffdcb0f2b501f090e59007435b110848d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
