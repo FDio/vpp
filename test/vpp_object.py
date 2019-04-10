@@ -1,9 +1,12 @@
 """ abstract vpp object and object registry """
 
 import abc
+import sys
+
 import six
 
-from six import moves
+PY2 = True if sys.version_info[0] == 2 else False
+PY3 = True if sys.version_info[0] == 3 else False
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -48,8 +51,9 @@ class VppObject(object):
         return False
 
     # This can be removed when python2 support is dropped.
-    def __ne__(self, other):
-        return not self.__eq__(other)
+    if PY2:
+        def __ne__(self, other):
+            return not self.__eq__(other)
 
 
 class VppObjectRegistry(object):
