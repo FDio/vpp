@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "4e5739a0_e0d664ee",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-10T16:15:05Z",
+      "side": 1,
+      "message": "That doesn\u0027t work on my test setup, because it just gets the core_pattern from the OS.  Whereas VPP is apparently configured to dump the core into /tmp/\u003cunittest dir\u003e/core\n\nSo on my plain vanilla Ubuntu 18.04 server, I get: \n\n\"/tmp/vpp-unittest-VCLCutThruTestCase-Xk0ez6/|/usr/share/apport/apport %p %s %c %d %P\"",
+      "parentUuid": "18c238b8_fa3d6822",
+      "range": {
+        "startLine": 401,
+        "startChar": 31,
+        "endLine": 402,
+        "endChar": 19
+      },
+      "revId": "f98732c28c60eb6b23c63f767bba2907ac30fa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7089bb80_4e8f0615",
         "filename": "test/framework.py",
         "patchSetId": 1
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "bf17857b_a1252480",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-10T16:15:05Z",
+      "side": 1,
+      "message": "I think that this check is good enough.  \n\nI verified that it doesn\u0027t timeout if ulimit is not large enough.  I could add additional info about debugging truncated core files, but ulimit is mentioned on the wiki in the coredump setup section of the bug report page:\nhttps://wiki.fd.io/view/VPP/BugReports#Core_Files\n\nThe readelf() guitar lick didn\u0027t work on the truncated core file generated in my unit testing.",
+      "parentUuid": "7089bb80_4e8f0615",
+      "range": {
+        "startLine": 412,
+        "startChar": 16,
+        "endLine": 412,
+        "endChar": 37
+      },
+      "revId": "f98732c28c60eb6b23c63f767bba2907ac30fa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "99ea1a19_6c30eff2",
         "filename": "test/framework.py",
         "patchSetId": 1
@@ -59,6 +107,30 @@
       "writtenOn": "2019-04-10T02:59:19Z",
       "side": 1,
       "message": "corefile",
+      "range": {
+        "startLine": 417,
+        "startChar": 40,
+        "endLine": 417,
+        "endChar": 47
+      },
+      "revId": "f98732c28c60eb6b23c63f767bba2907ac30fa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c9b2a131_5f644c1c",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 417,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-10T16:15:05Z",
+      "side": 1,
+      "message": "Good catch!",
+      "parentUuid": "99ea1a19_6c30eff2",
       "range": {
         "startLine": 417,
         "startChar": 40,
