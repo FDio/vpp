@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "51f30c7a_aaa0a1b8",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-10T09:52:25Z",
+      "side": 1,
+      "message": "Isn\u0027t this redundant, as each handler knows its key length?",
+      "range": {
+        "startLine": 235,
+        "startChar": 0,
+        "endLine": 235,
+        "endChar": 37
+      },
+      "revId": "9dfdc6af3647a7c6cc26cc0bcf75b5c240fb0a7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6f206e73_034c6e73",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-10T09:52:25Z",
+      "side": 1,
+      "message": "same here, for CBC modes IV size is always equal to block size....",
+      "range": {
+        "startLine": 237,
+        "startChar": 0,
+        "endLine": 237,
+        "endChar": 26
+      },
+      "revId": "9dfdc6af3647a7c6cc26cc0bcf75b5c240fb0a7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
