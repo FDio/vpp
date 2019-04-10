@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "31a0e2a3_c44dcfd8",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-10T11:02:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38a1f3b3_a274665d",
+      "range": {
+        "startLine": 111,
+        "startChar": 20,
+        "endLine": 111,
+        "endChar": 50
+      },
+      "revId": "9dfdc6af3647a7c6cc26cc0bcf75b5c240fb0a7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "51f30c7a_aaa0a1b8",
         "filename": "src/vnet/ipsec/esp_decrypt.c",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2019-04-10T09:52:25Z",
       "side": 1,
       "message": "Isn\u0027t this redundant, as each handler knows its key length?",
+      "range": {
+        "startLine": 235,
+        "startChar": 0,
+        "endLine": 235,
+        "endChar": 37
+      },
+      "revId": "9dfdc6af3647a7c6cc26cc0bcf75b5c240fb0a7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "78f61f1b_6f1e6f0d",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-10T11:02:34Z",
+      "side": 1,
+      "message": "the handler knows how long the key *should* be but not how long the c array actually is.",
+      "parentUuid": "51f30c7a_aaa0a1b8",
       "range": {
         "startLine": 235,
         "startChar": 0,
