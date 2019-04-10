@@ -64,6 +64,7 @@ typedef struct _svm_fifo
 
     CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
+  u8 *data;
 
   u32 master_session_index;
   u32 client_session_index;
@@ -95,7 +96,7 @@ typedef struct _svm_fifo
   svm_fifo_trace_elem_t *trace;
 #endif
 
-    CLIB_CACHE_LINE_ALIGN_MARK (data);
+    CLIB_CACHE_LINE_ALIGN_MARK (data_start);
 } svm_fifo_t;
 
 typedef enum
