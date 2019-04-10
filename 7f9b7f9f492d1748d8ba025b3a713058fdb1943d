@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e6f60179_8caf1ceb",
+        "filename": "test/remote_test.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-10T15:16:32Z",
+      "side": 1,
+      "message": "I do not like this.\n\nBut if you want to consistenly do the opposite of what I like [0], you should also add missing SetUp and TearDown methods.\n\n[0] https://gerrit.fd.io/r/#/c/18579/1/test/test_sparse_vec.py@12",
+      "range": {
+        "startLine": 407,
+        "startChar": 0,
+        "endLine": 407,
+        "endChar": 0
+      },
+      "revId": "7f9b7f9f492d1748d8ba025b3a713058fdb1943d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4d5cc4b3_fde54ca0",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-10T15:16:32Z",
+      "side": 1,
+      "message": "Too eager, see line 171.",
+      "range": {
+        "startLine": 162,
+        "startChar": 8,
+        "endLine": 162,
+        "endChar": 13
+      },
+      "revId": "7f9b7f9f492d1748d8ba025b3a713058fdb1943d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
