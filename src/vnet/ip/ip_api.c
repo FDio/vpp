@@ -3343,11 +3343,10 @@ vl_api_ip_reassembly_set_t_handler (vl_api_ip_reassembly_set_t * mp)
 void
 vl_api_ip_reassembly_get_t_handler (vl_api_ip_reassembly_get_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-
-  if (q == 0)
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
     return;
 
   vl_api_ip_reassembly_get_reply_t *rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -3371,7 +3370,7 @@ vl_api_ip_reassembly_get_t_handler (vl_api_ip_reassembly_get_t * mp)
   rmp->max_reassemblies = clib_host_to_net_u32 (rmp->max_reassemblies);
   rmp->expire_walk_interval_ms =
     clib_host_to_net_u32 (rmp->expire_walk_interval_ms);
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (rp, (u8 *) rmp);
 }
 
 void

@@ -124,7 +124,7 @@ VNET_DEVICE_CLASS (nsh_device_class, static) = {
 /* *INDENT-ON* */
 
 static void send_nsh_entry_details
-  (nsh_entry_t * t, unix_shared_memory_queue_t * q, u32 context)
+  (nsh_entry_t * t, vl_api_registration_t * rp, u32 context)
 {
   vl_api_nsh_entry_details_t *rmp;
   nsh_main_t *nm = &nsh_main;
@@ -157,11 +157,11 @@ static void send_nsh_entry_details
 
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (rp, (u8 *) rmp);
 }
 
 static void send_nsh_map_details
-  (nsh_map_t * t, unix_shared_memory_queue_t * q, u32 context)
+  (nsh_map_t * t, vl_api_registration_t * rp, u32 context)
 {
   vl_api_nsh_map_details_t *rmp;
   nsh_main_t *nm = &nsh_main;
@@ -179,22 +179,20 @@ static void send_nsh_map_details
 
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (rp, (u8 *) rmp);
 }
 
 static void
 vl_api_nsh_map_dump_t_handler (vl_api_nsh_map_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
   nsh_main_t *nm = &nsh_main;
   nsh_map_t *t;
   u32 map_index;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
 
   map_index = ntohl (mp->map_index);
 
@@ -202,7 +200,7 @@ vl_api_nsh_map_dump_t_handler (vl_api_nsh_map_dump_t * mp)
     {
       pool_foreach (t, nm->nsh_mappings, (
 					   {
-					   send_nsh_map_details (t, q,
+					   send_nsh_map_details (t, rp,
 								 mp->context);
 					   }
 		    ));
@@ -214,7 +212,7 @@ vl_api_nsh_map_dump_t_handler (vl_api_nsh_map_dump_t * mp)
 	  return;
 	}
       t = &nm->nsh_mappings[map_index];
-      send_nsh_map_details (t, q, mp->context);
+      send_nsh_map_details (t, rp, mp->context);
     }
 }
 
@@ -650,16 +648,14 @@ static void vl_api_nsh_add_del_entry_t_handler
 static void
 vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
   nsh_main_t *nm = &nsh_main;
   nsh_entry_t *t;
   u32 entry_index;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
 
   entry_index = ntohl (mp->entry_index);
 
@@ -667,7 +663,7 @@ vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t * mp)
     {
       pool_foreach (t, nm->nsh_entries, (
 					  {
-					  send_nsh_entry_details (t, q,
+					  send_nsh_entry_details (t, rp,
 								  mp->context);
 					  }
 		    ));
@@ -679,7 +675,7 @@ vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t * mp)
 	  return;
 	}
       t = &nm->nsh_entries[entry_index];
-      send_nsh_entry_details (t, q, mp->context);
+      send_nsh_entry_details (t, rp, mp->context);
     }
 }
 
