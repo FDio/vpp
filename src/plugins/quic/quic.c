@@ -1143,6 +1143,13 @@ quic_session_reset_callback (session_t * s)
   clib_warning ("UDP session reset???");
 }
 
+int
+quic_session_accepted_callback (session_t * s)
+{
+  /* never called */
+  return 0;
+}
+
 static int
 quic_add_segment_callback (u32 client_index, u64 seg_handle)
 {
@@ -1475,7 +1482,7 @@ quic_app_rx_callback (session_t * quic_session)
 
 /* *INDENT-OFF* */
 static session_cb_vft_t quic_app_cb_vft = {
-  .session_accept_callback = NULL,
+  .session_accept_callback = quic_session_accepted_callback,
   .session_disconnect_callback = quic_session_disconnect_callback,
   .session_connected_callback = quic_session_connected_callback,
   .session_reset_callback = quic_session_reset_callback,
