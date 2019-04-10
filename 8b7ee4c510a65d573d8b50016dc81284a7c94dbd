@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9dd1cc88_172d3a6d",
+        "filename": "Makefile",
+        "patchSetId": 14
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-10T08:21:09Z",
+      "side": 1,
+      "message": "do you need this java dependency?",
+      "revId": "8b7ee4c510a65d573d8b50016dc81284a7c94dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
