@@ -19,6 +19,9 @@ from scapy.utils6 import in6_mactoifaceid
 from io import BytesIO
 from vpp_papi import mac_pton
 
+PY2 = True if sys.version_info[0] == 2 else False
+PY3 = True if sys.version_info[0] == 3 else False
+
 
 def ppp(headline, packet):
     """ Return string containing the output of scapy packet.show() call. """
@@ -166,10 +169,11 @@ class Host(object):
                     self.ip6 == other.ip6 and
                     self.ip6_ll == other.ip6_ll)
         else:
-            return False
+            return NotImplemented
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
+    if PY2:
+        def __ne__(self, other):
+            return not self.__eq__(other)
 
     def __repr__(self):
         return "Host { mac:%s ip4:%s ip6:%s ip6_ll:%s }" % (self.mac,
