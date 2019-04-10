@@ -740,7 +740,7 @@ fifo_prepare (u32 fifo_size)
   f = svm_fifo_create (fifo_size);
 
   /* Paint fifo data vector with -1's */
-  clib_memset (f->data, 0xFF, fifo_size);
+  clib_memset (f->head_chunk->data, 0xFF, fifo_size);
 
   return f;
 }
