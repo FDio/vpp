@@ -45,6 +45,30 @@
       "revId": "7f9b7f9f492d1748d8ba025b3a713058fdb1943d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e26343c9_58b70b2c",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-10T16:28:19Z",
+      "side": 1,
+      "message": "Good catch!  Sorry I missed this in my review.\n\nI\u0027ll submit a patch removing the redundant setUp()",
+      "parentUuid": "4d5cc4b3_fde54ca0",
+      "range": {
+        "startLine": 162,
+        "startChar": 8,
+        "endLine": 162,
+        "endChar": 13
+      },
+      "revId": "7f9b7f9f492d1748d8ba025b3a713058fdb1943d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
