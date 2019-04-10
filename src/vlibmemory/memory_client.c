@@ -100,8 +100,8 @@ static void
 vl_api_rx_thread_exit_t_handler (vl_api_rx_thread_exit_t * mp)
 {
   memory_client_main_t *mm = &memory_client_main;
-  vl_msg_api_free (mp);
-  longjmp (mm->rx_thread_jmpbuf, 1);
+  if (mm->rx_thread_jmpbuf_valid)
+    longjmp (mm->rx_thread_jmpbuf, 1);
 }
 
 static void
