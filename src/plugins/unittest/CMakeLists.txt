@@ -34,4 +34,5 @@ add_vpp_plugin(unittest
   sparse_vec_test.c
   svm_fifo_test.c
   unittest.c
+  util_test.c
 )
