@@ -197,7 +197,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       current_sa_pkts += 1;
       current_sa_bytes += pd->current_length;
 
-      if (PREDICT_TRUE (cpd.icv_sz > 0))
+      if (PREDICT_TRUE (sa0->integ_op_id != VNET_CRYPTO_OP_NONE))
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
@@ -233,6 +233,39 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
 	  op->key = sa0->crypto_key.data;
 	  op->iv = payload;
+
+	  if (ipsec_sa_is_set_IS_AEAD (sa0))
+	    {
+	      esp_header_t *esp0;
+	      esp_aead_t *aad;
+	      u8 *scratch;
+	      u32 salt;
+
+	      /*
+	       * construct the AAD and the nonce (Salt || IV) in a scratch
+	       * space in front of the IP header.
+	       */
+	      scratch = payload - esp_sz;
+	      esp0 = (esp_header_t *) (scratch);
+
+	      scratch -= (sizeof (*aad) + pd->hdr_sz);
+	      op->aad = scratch;
+
+	      esp_aad_fill (op, esp0, sa0);
+
+	      /*
+	       * we don't need to refer to the ESP header anymore so we
+	       * can overwrite it with the salt and use the IV where it is
+	       * to form the nonce = (Salt + IV)
+	       */
+	      salt = clib_host_to_net_u32 (sa0->salt);
+	      op->iv -= sizeof (sa0->salt);
+	      clib_memcpy_fast (op->iv, &salt, sizeof (sa0->salt));
+	      op->iv_len = cpd.iv_sz + sizeof (sa0->salt);
+
+	      op->tag = payload + len;
+	      op->tag_len = 16;
+	    }
 	  op->src = op->dst = payload += cpd.iv_sz;
 	  op->len = len - cpd.iv_sz;
 	  op->user_data = b - bufs;

@@ -38,13 +38,6 @@ ipsec_check_ah_support (ipsec_sa_t * sa)
 static clib_error_t *
 ipsec_check_esp_support (ipsec_sa_t * sa)
 {
-  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
-    return clib_error_return (0, "unsupported aes-gcm-128 crypto-alg");
-  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192)
-    return clib_error_return (0, "unsupported aes-gcm-192 crypto-alg");
-  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)
-    return clib_error_return (0, "unsupported aes-gcm-256 crypto-alg");
-
   return 0;
 }
 
@@ -292,6 +285,24 @@ ipsec_init (vlib_main_t * vm)
   a->enc_op_id = VNET_CRYPTO_OP_AES_256_CBC_ENC;
   a->dec_op_id = VNET_CRYPTO_OP_AES_256_CBC_DEC;
   a->iv_size = a->block_size = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_GCM_128;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_128_GCM_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_128_GCM_DEC;
+  a->iv_size = a->block_size = 8;
+  a->icv_size = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_GCM_192;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_192_GCM_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_192_GCM_DEC;
+  a->iv_size = a->block_size = 8;
+  a->icv_size = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_GCM_256;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_256_GCM_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_256_GCM_DEC;
+  a->iv_size = a->block_size = 8;
+  a->icv_size = 16;
 
   vec_validate (im->integ_algs, IPSEC_INTEG_N_ALG - 1);
   ipsec_main_integ_alg_t *i;

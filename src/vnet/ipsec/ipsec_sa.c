@@ -102,6 +102,11 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
   sa->crypto_dec_op_id = im->crypto_algs[crypto_alg].dec_op_id;
   ASSERT (sa->crypto_iv_size <= ESP_MAX_IV_SIZE);
   ASSERT (sa->crypto_block_size <= ESP_MAX_BLOCK_SIZE);
+  if (IPSEC_CRYPTO_ALG_IS_GCM (crypto_alg))
+    {
+      sa->integ_icv_size = im->crypto_algs[crypto_alg].icv_size;
+      ipsec_sa_set_IS_AEAD (sa);
+    }
 }
 
 void
@@ -124,6 +129,7 @@ ipsec_sa_add (u32 id,
 	      const ipsec_key_t * ik,
 	      ipsec_sa_flags_t flags,
 	      u32 tx_table_id,
+	      u32 salt,
 	      const ip46_address_t * tun_src,
 	      const ip46_address_t * tun_dst, u32 * sa_out_index)
 {
@@ -150,10 +156,11 @@ ipsec_sa_add (u32 id,
   sa->stat_index = sa_index;
   sa->protocol = proto;
   sa->flags = flags;
-  ipsec_sa_set_crypto_alg (sa, crypto_alg);
-  clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
+  sa->salt = salt;
   ipsec_sa_set_integ_alg (sa, integ_alg);
   clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
+  ipsec_sa_set_crypto_alg (sa, crypto_alg);
+  clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
   ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
 
