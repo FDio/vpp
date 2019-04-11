@@ -1,0 +1,25 @@
+
+/** \file
+    This file defines static http servercontrol-plane API messages
+*/
+option version = "1.0.0";
+
+
+autoreply define http_static_enable {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+    /* Typical options */
+    u32 fifo_size;
+    u32 cache_size_limit;
+    /* Unusual options */
+    u32 prealloc_fifos;
+    u32 private_segment_size;
+
+    /* Root of the html path */
+    u8 www_root[256];
+    /* The bind URI */
+    u8 uri[256];
+};
