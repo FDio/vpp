@@ -240,6 +240,30 @@
     },
     {
       "key": {
+        "uuid": "f0629451_f7c79bd6",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-11T17:58:25Z",
+      "side": 1,
+      "message": "\u003e contribute a Change which removes the calls\n\nSo I decided to do that (just so I can say I have contributed more than just negative comments).\nIt was not pleasant, it felt like work. I have probably underestimated the number of calls to remove (and overestimated my editing skills).\nAnyway, it is here [3].\n\n\u003e \"verify succeeds\" is a wrong success criterion\n\nThanks, that has given me an idea of a better verification.\nI have created [4], but I do not see the logging output (which would prove there is no difference between implicit and explicit calls).\n\nCurently I believe [3] can be merged and [4] then abandoned.\n\n[3] https://gerrit.fd.io/r/18820\n[4] https://gerrit.fd.io/r/18821",
+      "parentUuid": "4b9f1a31_d42ff446",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 46
+      },
+      "revId": "3eea60e666e2b789a1c2c0d0ee30b75115ddfb91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "76b0910a_4afb6dad",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 1
