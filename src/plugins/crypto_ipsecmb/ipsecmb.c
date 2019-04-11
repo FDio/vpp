@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#include <fcntl.h>
+
 #include <intel-ipsec-mb.h>
 
 #include <vnet/vnet.h>
@@ -26,6 +28,7 @@
 typedef struct
 {
   MB_MGR *mgr;
+  __m128i cbc_iv;
 } ipsecmb_per_thread_data_t;
 
 typedef struct ipsecmb_main_t_
@@ -42,9 +45,9 @@ static ipsecmb_main_t ipsecmb_main;
   _(SHA512, SHA_512, sha512)
 
 #define foreach_ipsecmb_cipher_op                              \
-  _(AES_128_CBC, 128)                                          \
-  _(AES_192_CBC, 192)                                          \
-  _(AES_256_CBC, 256)
+  _(AES_128_CBC, 128, 16, 16)                                  \
+  _(AES_192_CBC, 192, 24, 16)                                  \
+  _(AES_256_CBC, 256, 32, 16)
 
 always_inline void
 hash_expand_keys (const MB_MGR * mgr,
@@ -200,9 +203,9 @@ ipsecmb_retire_cipher_job (JOB_AES_HMAC * job, u32 * n_fail)
 
 static_always_inline u32
 ipsecmb_ops_cipher_inline (vlib_main_t * vm,
-			   const ipsecmb_per_thread_data_t * ptd,
+			   ipsecmb_per_thread_data_t * ptd,
 			   vnet_crypto_op_t * ops[],
-			   u32 n_ops,
+			   u32 n_ops, u32 key_len, u32 iv_len,
 			   keyexp_t fn, JOB_CIPHER_DIRECTION direction)
 {
   JOB_AES_HMAC *job;
@@ -216,6 +219,7 @@ ipsecmb_ops_cipher_inline (vlib_main_t * vm,
       u8 aes_enc_key_expanded[EXPANDED_KEY_N_BYTES];
       u8 aes_dec_key_expanded[EXPANDED_KEY_N_BYTES];
       vnet_crypto_op_t *op = ops[i];
+      __m128i iv;
 
       fn (op->key, aes_enc_key_expanded, aes_dec_key_expanded);
 
@@ -231,11 +235,18 @@ ipsecmb_ops_cipher_inline (vlib_main_t * vm,
       job->cipher_direction = direction;
       job->chain_order = (direction == ENCRYPT ? CIPHER_HASH : HASH_CIPHER);
 
-      job->aes_key_len_in_bytes = op->key_len;
+      if ((direction == ENCRYPT) && (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV))
+	{
+	  iv = ptd->cbc_iv;
+	  _mm_storeu_si128 ((__m128i *) op->iv, iv);
+	  ptd->cbc_iv = _mm_aesenc_si128 (iv, iv);
+	}
+
+      job->aes_key_len_in_bytes = key_len;
       job->aes_enc_key_expanded = aes_enc_key_expanded;
       job->aes_dec_key_expanded = aes_dec_key_expanded;
       job->iv = op->iv;
-      job->iv_len_in_bytes = op->iv_len;
+      job->iv_len_in_bytes = iv_len;
 
       job->user_data = op;
 
@@ -257,7 +268,7 @@ ipsecmb_ops_cipher_inline (vlib_main_t * vm,
   return n_ops - n_fail;
 }
 
-#define _(a, b)                                                         \
+#define _(a, b, c, d)                                                   \
 static_always_inline u32                                                \
 ipsecmb_ops_cipher_enc_##a (vlib_main_t * vm,                           \
                             vnet_crypto_op_t * ops[],                   \
@@ -269,14 +280,14 @@ ipsecmb_ops_cipher_enc_##a (vlib_main_t * vm,                           \
   imbm = &ipsecmb_main;                                                 \
   ptd = vec_elt_at_index (imbm->per_thread_data, vm->thread_index);     \
                                                                         \
-  return ipsecmb_ops_cipher_inline (vm, ptd, ops, n_ops,                \
+  return ipsecmb_ops_cipher_inline (vm, ptd, ops, n_ops, c, d,          \
                                     ptd->mgr->keyexp_##b,               \
                                     ENCRYPT);                           \
   }
 foreach_ipsecmb_cipher_op;
 #undef _
 
-#define _(a, b)                                                         \
+#define _(a, b, c, d)                                                   \
 static_always_inline u32                                                \
 ipsecmb_ops_cipher_dec_##a (vlib_main_t * vm,                           \
                             vnet_crypto_op_t * ops[],                   \
@@ -288,12 +299,34 @@ ipsecmb_ops_cipher_dec_##a (vlib_main_t * vm,                           \
   imbm = &ipsecmb_main;                                                 \
   ptd = vec_elt_at_index (imbm->per_thread_data, vm->thread_index);     \
                                                                         \
-  return ipsecmb_ops_cipher_inline (vm, ptd, ops, n_ops,                \
+  return ipsecmb_ops_cipher_inline (vm, ptd, ops, n_ops, c, d,          \
                                     ptd->mgr->keyexp_##b,               \
                                     DECRYPT);                           \
   }
 foreach_ipsecmb_cipher_op;
 #undef _
+
+clib_error_t *
+crypto_ipsecmb_iv_init (ipsecmb_main_t * imbm)
+{
+  ipsecmb_per_thread_data_t *ptd;
+  clib_error_t *err = 0;
+  int fd;
+
+  if ((fd = open ("/dev/urandom", O_RDONLY)) < 0)
+    return clib_error_return_unix (0, "failed to open '/dev/urandom'");
+
+  vec_foreach (ptd, imbm->per_thread_data)
+  {
+    if (read (fd, &ptd->cbc_iv, sizeof (ptd->cbc_iv)) != sizeof (ptd->cbc_iv))
+      {
+	err = clib_error_return_unix (0, "'/dev/urandom' read failure");
+	return (err);
+      }
+  }
+
+  return (NULL);
+}
 
 static clib_error_t *
 crypto_ipsecmb_init (vlib_main_t * vm)
@@ -340,26 +373,30 @@ crypto_ipsecmb_init (vlib_main_t * vm)
       }
     }
 
+  if (clib_cpu_supports_x86_aes () && (error = crypto_ipsecmb_iv_init (imbm)))
+    return (error);
+
+
 #define _(a, b, c)                                                       \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
                                     ipsecmb_ops_hmac_##a);               \
 
   foreach_ipsecmb_hmac_op;
 #undef _
-#define _(a, b)                                                         \
+#define _(a, b, c, d)                                                   \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
                                     ipsecmb_ops_cipher_enc_##a);        \
 
   foreach_ipsecmb_cipher_op;
 #undef _
-#define _(a, b)                                                         \
+#define _(a, b, c, d)                                                   \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
                                     ipsecmb_ops_cipher_dec_##a);        \
 
   foreach_ipsecmb_cipher_op;
 #undef _
 
-  return 0;
+  return (NULL);
 }
 
 VLIB_INIT_FUNCTION (crypto_ipsecmb_init);

@@ -232,9 +232,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
 	  op->key = sa0->crypto_key.data;
-	  op->key_len = sa0->crypto_key.len;
 	  op->iv = payload;
-	  op->iv_len = cpd.iv_sz;
 	  op->src = op->dst = payload += cpd.iv_sz;
 	  op->len = len;
 	  op->user_data = b - bufs;
@@ -287,7 +285,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      bi = op->user_data;
 
 	      if (op->status == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC)
-		err = ESP_DECRYPT_ERROR_INTEG_ERROR;
+		err = ESP_DECRYPT_ERROR_DECRYPTION_FAILED;
 	      else
 		err = ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR;
 
