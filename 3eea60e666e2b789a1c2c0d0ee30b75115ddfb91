@@ -216,6 +216,30 @@
     },
     {
       "key": {
+        "uuid": "4b9f1a31_d42ff446",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-04-11T11:45:30Z",
+      "side": 1,
+      "message": "\"verify succeeds\" is a wrong success criterion, Vratko. Example: \"rm -rf test/test_acl_plugin*\" does not fail the verify. As far as I understand, the intent of these classes is to precisely make verify fail whereas before it would have succeeded and masked the underlying failure. Paul, please correct me if I mixed something up :)",
+      "parentUuid": "54c6f619_9777d744",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 46
+      },
+      "revId": "3eea60e666e2b789a1c2c0d0ee30b75115ddfb91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "76b0910a_4afb6dad",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 1
