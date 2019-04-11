@@ -192,6 +192,30 @@
     },
     {
       "key": {
+        "uuid": "54c6f619_9777d744",
+        "filename": "test/test_sparse_vec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-11T11:26:42Z",
+      "side": 1,
+      "message": "\u003e If you want the setUpClass and tearDownClass on base classes called\n\nI am not sure what does \"base classes\" mean here.\n\n\u003e The implementations in TestCase are empty.\n\nBut we have implementations in VppTestCase.\n\n\u003e https://docs.python.org/2/library/unittest.html#setupclass-and-teardownclass\n\nI have also looked at #class-and-module-fixtures:\n\n  \"A BaseTestSuite still exists for frameworks that don’t want to support shared fixtures.\"\n\nMaybe that is what they meant by \"base classes\"?\n\n  \"When the test suite encounters a test from a new class then tearDownClass() from the previous class (if there is one) is called, followed by setUpClass() from the new class.\"\n\nOnce again, I was not sure what they mean exactly by \"if there is one\". So I resorted to looking up the source code:\nhttps://github.com/python/cpython/blob/0f221d09cad46bee38d1b7a7822772df66c53028/Lib/unittest/suite.py#L286\n\nNo __dict__ shenanigans, plain getattr, which means we can rely on inheritance without explicit calls...\n\n\u003e Right now, we have to use a custom runner/wrapper to manually manipulate the tests because the conventions aren\u0027t being followed.\n\n... unless that implies the code in suite.py is not executed?\n\n\u003e We do need it if we want to clear up all the swallowing of base exceptions.\n\nI do not follow. Do you have an example?\n\nOverall, perhaps it would be quicker for me to contribute a Change which removes the calls, see whether verify fails, and if not ask you why.\nBut I have already written this comment, so posting it is even quicker.",
+      "parentUuid": "93052ffa_4d711f85",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 46
+      },
+      "revId": "3eea60e666e2b789a1c2c0d0ee30b75115ddfb91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "76b0910a_4afb6dad",
         "filename": "test/test_sparse_vec.py",
         "patchSetId": 1
