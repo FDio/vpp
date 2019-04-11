@@ -107,6 +107,11 @@ STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 2 * sizeof (u64));
 
 #define ESP_ENCRYPT_PD_F_FD_TRANSPORT (1 << 2)
 
+typedef struct esp_gcm_aad_t_
+{
+  u32 data[3];
+} esp_gcm_aad_t;
+
 always_inline uword
 esp_decrypt_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * from_frame,
@@ -233,6 +238,50 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
 	  op->key = sa0->crypto_key.data;
 	  op->iv = payload;
+          if (sa0->crypto_enc_op_id & VNET_CRYPTO_OP_GCM)
+            {
+              esp_header_t *esp0;
+              esp_gcm_aad_t *aad;
+              u8 *scratch;
+
+              /*
+               * construct the AAD and the nonce (Salt || IV) in a scratch 
+               * space in front of the IP header.
+               */
+              scratch = payload - esp_sz;
+              esp0 = (esp_header_t *) (scratch);
+
+              scratch -= (sizeof(*aad) + pd->hdr_sz);
+              op->aad = scratch;
+
+              aad = (esp_gcm_aad_t *)op->aad;
+              clib_memcpy_fast (aad, esp0, 8);
+
+              // aad->data[0] = clib_net_to_host_u32 (esp0->spi);
+              // aad->data[1] = clib_net_to_host_u32 (esp0->seq);
+
+	      if (ipsec_sa_is_set_USE_ESN (sa0))
+                {
+                  aad->data[2] = sa0->seq_hi;
+                  op->aad_len = 12;
+                }
+              else
+                {
+                  // aad->data[2] = 0;
+                  op->aad_len = 8;
+                }
+              //op->aad_len = 12;
+
+              scratch -= cpd.iv_sz;
+              clib_memcpy_fast(scratch, op->iv, cpd.iv_sz);
+              scratch -= sizeof(sa0->salt);
+              clib_memcpy_fast(scratch, &sa0->salt, sizeof(sa0->salt));
+              op->iv = scratch;
+              op->iv_len = cpd.iv_sz + sizeof(sa0->salt);
+
+              op->tag = payload + len;
+              op->tag_len = 16;
+           }
 	  op->src = op->dst = payload += cpd.iv_sz;
 	  op->len = len;
 	  op->user_data = b - bufs;
