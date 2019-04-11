@@ -141,7 +141,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   if (is_add)
     rv = ipsec_sa_add (id, spi, proto, crypto_alg,
 		       &ck, integ_alg, &ik, flags,
-		       0, &tun_src, &tun_dst, NULL);
+		       0, 0, &tun_src, &tun_dst, NULL);
   else
     rv = ipsec_sa_del (id);
 
@@ -790,6 +790,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "instance %u", &a.show_instance))
 	a.renumber = 1;
+      else if (unformat (line_input, "salt 0x%x", &a.salt))
+	;
       else if (unformat (line_input, "udp-encap"))
 	a.udp_encap = 1;
       else if (unformat (line_input, "use-esn"))

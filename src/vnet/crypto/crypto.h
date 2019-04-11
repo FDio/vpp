@@ -115,7 +115,7 @@ typedef struct
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
-  u32 len;
+  u32 len, salt;
   u16 aad_len;
   u8 key_len, iv_len, digest_len, tag_len;
   u8 *key;

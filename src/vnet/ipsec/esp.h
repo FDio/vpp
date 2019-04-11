@@ -54,6 +54,20 @@ typedef CLIB_PACKED (struct {
 }) ip6_and_esp_header_t;
 /* *INDENT-ON* */
 
+/**
+ * AES GCM Additional Authentication data
+ */
+typedef struct esp_aead_t_
+{
+  /**
+   * for GCM: when using ESN it's:
+   *   SPI, seq-hi, seg-low
+   * else
+   *   SPI, seq-low
+   */
+  u32 data[3];
+} __clib_packed esp_aead_t;
+
 #define ESP_SEQ_MAX		(4294967295UL)
 #define ESP_MAX_BLOCK_SIZE	(16)
 #define ESP_MAX_IV_SIZE		(16)
@@ -117,6 +131,26 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
   return sa->integ_icv_size;
 }
 
+always_inline void
+esp_aad_fill (vnet_crypto_op_t * op,
+	      const esp_header_t * esp, const ipsec_sa_t * sa)
+{
+  esp_aead_t *aad;
+
+  aad = (esp_aead_t *) op->aad;
+  clib_memcpy_fast (aad, esp, 8);
+
+  if (ipsec_sa_is_set_USE_ESN (sa))
+    {
+      /* SPI, seq-hi, seq-low */
+      aad->data[2] = aad->data[1];
+      aad->data[1] = clib_host_to_net_u32 (sa->seq_hi);
+      op->aad_len = 12;
+    }
+  else
+    /* SPI, seq-low */
+    op->aad_len = 8;
+}
 #endif /* __ESP_H__ */
 
 /*

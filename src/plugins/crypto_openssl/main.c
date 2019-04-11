@@ -115,14 +115,18 @@ openssl_ops_enc_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      u32 nonce[3];
       int len;
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
 	RAND_bytes (op->iv, 8);
 
+      nonce[0] = op->salt;
+      clib_memcpy_fast (nonce + 1, op->iv, 8);
+
       EVP_EncryptInit_ex (ctx, cipher, 0, 0, 0);
-      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 8, NULL);
-      EVP_EncryptInit_ex (ctx, 0, 0, op->key, op->iv);
+      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, NULL);
+      EVP_EncryptInit_ex (ctx, 0, 0, op->key, (u8 *) nonce);
       if (op->aad_len)
 	EVP_EncryptUpdate (ctx, NULL, &len, op->aad, op->aad_len);
       EVP_EncryptUpdate (ctx, op->dst, &len, op->src, op->len);
