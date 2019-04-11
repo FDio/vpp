@@ -111,12 +111,12 @@ vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t * mp)
 
   if (mp->is_add)
     {
-      abf_policy_update (ntohl (mp->policy.policy_id),
-			 ntohl (mp->policy.acl_index), paths);
+      rv = abf_policy_update (ntohl (mp->policy.policy_id),
+			      ntohl (mp->policy.acl_index), paths);
     }
   else
     {
-      abf_policy_delete (ntohl (mp->policy.policy_id), paths);
+      rv = abf_policy_delete (ntohl (mp->policy.policy_id), paths);
     }
 done:
   vec_free (paths);
