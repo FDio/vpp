@@ -42,6 +42,7 @@ class IPsecIPv4Params(object):
                                   IPSEC_API_CRYPTO_ALG_AES_CBC_128)
         self.crypt_algo = 'AES-CBC'  # scapy name
         self.crypt_key = 'JPjyOWBeVEQiMe7h'
+        self.crypt_salt = ''
         self.flags = 0
         self.nat_header = None
 
@@ -87,7 +88,7 @@ def config_tun_params(p, encryption_type, tun_if):
                               IPSEC_API_SAD_FLAG_USE_ESN))
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
-        crypt_algo=p.crypt_algo, crypt_key=p.crypt_key,
+        crypt_algo=p.crypt_algo, crypt_key=p.crypt_key + p.crypt_salt,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
         tunnel_header=ip_class_by_addr_type[p.addr_type](
             src=tun_if.remote_addr[p.addr_type],
@@ -96,7 +97,7 @@ def config_tun_params(p, encryption_type, tun_if):
         use_esn=use_esn)
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type, spi=p.scapy_tun_spi,
-        crypt_algo=p.crypt_algo, crypt_key=p.crypt_key,
+        crypt_algo=p.crypt_algo, crypt_key=p.crypt_key + p.crypt_salt,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
         tunnel_header=ip_class_by_addr_type[p.addr_type](
             dst=tun_if.remote_addr[p.addr_type],

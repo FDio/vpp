@@ -54,6 +54,13 @@ typedef CLIB_PACKED (struct {
 }) ip6_and_esp_header_t;
 /* *INDENT-ON* */
 
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct esp_gcm_aad_t_
+{
+  u32 data[3];
+}) esp_gcm_aad_t;
+/* *INDENT-ON* */
+
 #define ESP_SEQ_MAX		(4294967295UL)
 #define ESP_MAX_BLOCK_SIZE	(16)
 #define ESP_MAX_IV_SIZE		(16)
