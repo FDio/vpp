@@ -308,6 +308,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			 &integ_key,
 			 (flags | IPSEC_SA_FLAG_IS_INBOUND),
 			 args->tx_table_id,
+			 args->salt,
 			 &args->remote_ip,
 			 &args->local_ip, &t->input_sa_index);
 
@@ -328,6 +329,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			 &integ_key,
 			 flags,
 			 args->tx_table_id,
+			 args->salt,
 			 &args->local_ip,
 			 &args->remote_ip, &t->output_sa_index);
 

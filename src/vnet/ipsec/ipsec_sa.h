@@ -192,6 +192,7 @@ extern int ipsec_sa_add (u32 id,
 			 const ipsec_key_t * ik,
 			 ipsec_sa_flags_t flags,
 			 u32 tx_table_id,
+			 u32 salt,
 			 const ip46_address_t * tunnel_src_addr,
 			 const ip46_address_t * tunnel_dst_addr,
 			 u32 * sa_index);

@@ -124,6 +124,7 @@ ipsec_sa_add (u32 id,
 	      const ipsec_key_t * ik,
 	      ipsec_sa_flags_t flags,
 	      u32 tx_table_id,
+	      u32 salt,
 	      const ip46_address_t * tun_src,
 	      const ip46_address_t * tun_dst, u32 * sa_out_index)
 {
@@ -150,6 +151,7 @@ ipsec_sa_add (u32 id,
   sa->stat_index = sa_index;
   sa->protocol = proto;
   sa->flags = flags;
+  sa->salt = salt;
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ipsec_sa_set_integ_alg (sa, integ_alg);

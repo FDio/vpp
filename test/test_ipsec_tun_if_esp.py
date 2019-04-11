@@ -13,6 +13,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 from vpp_ipsec import VppIpsecSA
 from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort
 from util import ppp
+from vpp_papi import VppEnum
 
 
 class TemplateIpsec4TunIfEsp(TemplateIpsec):
@@ -198,6 +199,104 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
             self.assertEqual(c['packets'], 127)
             c = p.tun_if.get_tx_stats()
             self.assertEqual(c['packets'], 127)
+
+
+class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
+    """ IPsec IPv4 Tunnel interface all Algos """
+
+    encryption_type = ESP
+    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_decrypt_node_name = "esp4-decrypt"
+
+    def config_network(self, p):
+        config_tun_params(p, self.encryption_type, self.tun_if)
+
+        p.tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
+                                        p.scapy_tun_spi,
+                                        p.crypt_algo_vpp_id,
+                                        p.crypt_key, p.crypt_key,
+                                        p.auth_algo_vpp_id, p.auth_key,
+                                        p.auth_key)
+        p.tun_if.add_vpp_config()
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+
+        p.route = VppIpRoute(self, p.remote_tun_if_host, 32,
+                             [VppRoutePath(p.tun_if.remote_ip4,
+                                           0xffffffff)])
+        p.route.add_vpp_config()
+
+    def unconfig_network(self, p):
+        p.tun_if.unconfig_ip4()
+        p.tun_if.remove_vpp_config()
+        p.route.remove_vpp_config()
+
+    def setUp(self):
+        super(TestIpsec4TunIfEspAll, self).setUp()
+
+        self.tun_if = self.pg0
+
+
+    def tearDown(self):
+        super(TestIpsec4TunIfEspAll, self).tearDown()
+
+    def test_tun_44(self):
+        """IPSEC tunnel all algos """
+        p = copy.copy(self.ipv4_params)
+
+        # foreach VPP crypto engine
+        engines = ["ia32", "ipsecmb", "openssl"]
+
+        # foreach crypto algorithm
+        algos = [{'crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                             IPSEC_API_CRYPTO_ALG_AES_GCM_128),
+                  'integ': (VppEnum.vl_api_ipsec_integ_alg_t.
+                            IPSEC_API_INTEG_ALG_NONE),
+                  'scapy': "AES-GCM",
+                  'key': "JPjyOWBeVEQiMe7h0000"},
+                  {'crypto': VppEnum.vl_api_ipsec_crypto_alg_t.
+                  IPSEC_API_CRYPTO_ALG_AES_CBC_128,
+                  'integ': VppEnum.vl_api_ipsec_integ_alg_t.
+                  IPSEC_API_INTEG_ALG_SHA1_96,
+                  'scapy': "AES-CBC",
+                  'key': "JPjyOWBeVEQiMe7h"},
+                 {'crypto': VppEnum.vl_api_ipsec_crypto_alg_t.
+                  IPSEC_API_CRYPTO_ALG_AES_CBC_192,
+                  'integ': VppEnum.vl_api_ipsec_integ_alg_t.
+                  IPSEC_API_INTEG_ALG_SHA1_96,
+                  'scapy': "AES-CBC",
+                  'key': "JPjyOWBeVEQiMe7hJPjyOWBe"},
+                 {'crypto': VppEnum.vl_api_ipsec_crypto_alg_t.
+                  IPSEC_API_CRYPTO_ALG_AES_CBC_256,
+                  'integ': VppEnum.vl_api_ipsec_integ_alg_t.
+                  IPSEC_API_INTEG_ALG_SHA1_96,
+                  'scapy': "AES-CBC",
+                  'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
+
+
+        for engine in engines:
+            self.vapi.cli("set crypto handler all %s" % engine)
+
+            #
+            # loop through each of the algorithms
+            #
+            for algo in algos:
+                # with self.subTest(algo=algo['scapy']):
+
+                p.auth_algo_vpp_id = algo['integ']
+                p.crypt_algo_vpp_id = algo['crypto']
+                p.crypt_algo = algo['scapy']
+                p.crypt_key = algo['key']
+
+                self.config_network(p)
+
+                self.verify_tun_44(p, count=127)
+                c = p.tun_if.get_rx_stats()
+                self.assertEqual(c['packets'], 127)
+                c = p.tun_if.get_tx_stats()
+                self.assertEqual(c['packets'], 127)
+
+                self.unconfig_network(p)
 
 
 class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):

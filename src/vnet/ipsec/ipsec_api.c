@@ -390,7 +390,7 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
     rv = ipsec_sa_add (id, spi, proto,
 		       crypto_alg, &crypto_key,
 		       integ_alg, &integ_key, flags,
-		       0, &tun_src, &tun_dst, &sa_index);
+		       0, 0, &tun_src, &tun_dst, &sa_index);
   else
     rv = ipsec_sa_del (id);
 
