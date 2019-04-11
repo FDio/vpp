@@ -101,6 +101,18 @@ typedef enum
 } vnet_crypto_op_id_t;
 /* *INDENT-ON* */
 
+static_always_inline int
+VNET_CRYPTO_OP_IS_GCM (vnet_crypto_op_id_t op)
+{
+  return (0 ||
+#define _(n, s)                                           \
+          op == VNET_CRYPTO_OP_##n##_ENC ||              \
+          op == VNET_CRYPTO_OP_##n##_DEC ||
+	  foreach_crypto_aead_alg
+#undef _
+	  0);
+}
+
 typedef struct
 {
   char *name;
@@ -115,7 +127,7 @@ typedef struct
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
-  u32 len;
+  u32 len, salt;
   u16 aad_len;
   u8 key_len, iv_len, digest_len, tag_len;
   u8 *key;

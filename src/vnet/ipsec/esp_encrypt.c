@@ -436,6 +436,32 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  op->len = payload_len - icv_sz;
 	  op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
 	  op->user_data = b - bufs;
+	  op->salt = sa0->salt;
+
+	  if (VNET_CRYPTO_OP_IS_GCM (sa0->crypto_enc_op_id))
+	    {
+	      esp_gcm_aad_t *aad;
+
+	      /*
+	       * construct the AAD in a scratch space in front
+	       * of the IP header.
+	       */
+	      op->aad = payload - hdr_len - sizeof (*aad);
+
+	      aad = (esp_gcm_aad_t *) op->aad;
+	      clib_memcpy_fast (aad, esp, 8);
+
+	      if (ipsec_sa_is_set_USE_ESN (sa0))
+		{
+		  aad->data[2] = clib_host_to_net_u32 (sa0->seq_hi);
+		  op->aad_len = 12;
+		}
+	      else
+		op->aad_len = 8;
+
+	      op->tag = payload + op->len;
+	      op->tag_len = 16;
+	    }
 	}
 
       if (sa0->integ_op_id)
