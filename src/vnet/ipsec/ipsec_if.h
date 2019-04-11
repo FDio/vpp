@@ -61,6 +61,7 @@ typedef struct
   u32 show_instance;
   u8 udp_encap;
   u32 tx_table_id;
+  u32 salt;
 } ipsec_add_del_tunnel_args_t;
 
 /* *INDENT-OFF* */

@@ -43,6 +43,11 @@ typedef enum
     IPSEC_CRYPTO_N_ALG,
 } ipsec_crypto_alg_t;
 
+#define IPSEC_CRYPTO_ALG_IS_GCM(_alg)                     \
+  (((_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||             \
+    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||             \
+    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)))
+
 #define foreach_ipsec_integ_alg                                            \
   _ (0, NONE, "none")                                                      \
   _ (1, MD5_96, "md5-96")           /* RFC2403 */                          \
@@ -92,6 +97,7 @@ typedef struct ipsec_key_t_
   _ (16, UDP_ENCAP, "udp-encap")                          \
   _ (32, IS_GRE, "GRE")                                   \
   _ (64, IS_INBOUND, "inboud")                            \
+  _ (128, IS_AEAD, "aead")                                \
 
 typedef enum ipsec_sad_flags_t_
 {
@@ -192,6 +198,7 @@ extern int ipsec_sa_add (u32 id,
 			 const ipsec_key_t * ik,
 			 ipsec_sa_flags_t flags,
 			 u32 tx_table_id,
+			 u32 salt,
 			 const ip46_address_t * tunnel_src_addr,
 			 const ip46_address_t * tunnel_dst_addr,
 			 u32 * sa_index);
