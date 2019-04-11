@@ -101,6 +101,10 @@ typedef enum
 } vnet_crypto_op_id_t;
 /* *INDENT-ON* */
 
+#define VNET_CRYPTO_OP_GCM (VNET_CRYPTO_OP_AES_128_GCM_ENC |    \
+                            VNET_CRYPTO_OP_AES_192_GCM_ENC |    \
+                            VNET_CRYPTO_OP_AES_256_GCM_ENC)
+
 typedef struct
 {
   char *name;
