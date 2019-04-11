@@ -46,20 +46,6 @@ class ConfigIpsecAH(TemplateIpsec):
     tun6_encrypt_node_name = "ah6-encrypt"
     tun6_decrypt_node_name = "ah6-decrypt"
 
-    @classmethod
-    def setUpClass(cls):
-        super(ConfigIpsecAH, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(ConfigIpsecAH, cls).tearDownClass()
-
-    def setUp(self):
-        super(ConfigIpsecAH, self).setUp()
-
-    def tearDown(self):
-        super(ConfigIpsecAH, self).tearDown()
-
     def config_network(self, params):
         self.net_objs = []
         self.tun_if = self.pg0
@@ -274,13 +260,6 @@ class TemplateIpsecAh(ConfigIpsecAH):
     |pg0| ------->  |VPP| ------> |pg1|
      ---             ---           ---
     """
-    @classmethod
-    def setUpClass(cls):
-        super(TemplateIpsecAh, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TemplateIpsecAh, cls).tearDownClass()
 
     def setUp(self):
         super(TemplateIpsecAh, self).setUp()
@@ -305,12 +284,6 @@ class TestIpsecAhAll(ConfigIpsecAH,
                      IpsecTra4, IpsecTra6,
                      IpsecTun4, IpsecTun6):
     """ Ipsec AH all Algos """
-
-    def setUp(self):
-        super(TestIpsecAhAll, self).setUp()
-
-    def tearDown(self):
-        super(TestIpsecAhAll, self).tearDown()
 
     def test_integ_algs(self):
         """All Engines SHA[1_96, 256, 394, 512] w/ & w/o ESN"""

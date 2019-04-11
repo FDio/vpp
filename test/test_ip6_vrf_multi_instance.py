@@ -160,22 +160,12 @@ class TestIP6VrfMultiInst(VppTestCase):
             super(TestIP6VrfMultiInst, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIP6VrfMultiInst, cls).tearDownClass()
-
     def setUp(self):
         """
         Clear trace and packet infos before running each test.
         """
         super(TestIP6VrfMultiInst, self).setUp()
         self.reset_packet_infos()
-
-    def tearDown(self):
-        """
-        Show various debug prints after each test.
-        """
-        super(TestIP6VrfMultiInst, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show ip6 fib"))

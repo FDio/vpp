@@ -156,10 +156,6 @@ class TestVxlanGbp(VppTestCase):
             super(TestVxlanGbp, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestVxlanGbp, cls).tearDownClass()
-
     def assert_eq_pkts(self, pkt1, pkt2):
         """ Verify the Ether, IP, UDP, payload are equal in both
         packets
@@ -254,12 +250,6 @@ class TestVxlanGbp(VppTestCase):
 
         payload = self.decapsulate(pkt)
         self.assert_eq_pkts(payload, frame)
-
-# Method to define VPP actions before tear down of the test case.
-#  Overrides tearDown method in VppTestCase class.
-#  @param self The object pointer.
-    def tearDown(self):
-        super(TestVxlanGbp, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))

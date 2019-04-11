@@ -24,14 +24,6 @@ arp_opts = {"who-has": 1, "is-at": 2}
 class ARPTestCase(VppTestCase):
     """ ARP Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(ARPTestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(ARPTestCase, cls).tearDownClass()
-
     def setUp(self):
         super(ARPTestCase, self).setUp()
 
@@ -1418,14 +1410,6 @@ class ARPTestCase(VppTestCase):
 
 class NeighborStatsTestCase(VppTestCase):
     """ ARP/ND Counters """
-
-    @classmethod
-    def setUpClass(cls):
-        super(NeighborStatsTestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(NeighborStatsTestCase, cls).tearDownClass()
 
     def setUp(self):
         super(NeighborStatsTestCase, self).setUp()

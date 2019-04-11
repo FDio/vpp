@@ -131,10 +131,6 @@ class TestL2fib(VppTestCase):
             super(TestL2fib, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestL2fib, cls).tearDownClass()
-
     def setUp(self):
         super(TestL2fib, self).setUp()
         self.reset_packet_infos()
@@ -144,6 +140,7 @@ class TestL2fib(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestL2fib, self).tearDown()
+        # TODO: Move to show_commands_at_teardown()?
         if not self.vpp_dead:
             for bd_id in self.n_brs:
                 self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"

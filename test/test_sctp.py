@@ -9,14 +9,6 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 class TestSCTP(VppTestCase):
     """ SCTP Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestSCTP, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSCTP, cls).tearDownClass()
-
     def setUp(self):
         super(TestSCTP, self).setUp()
         self.vapi.session_enable_disable(is_enabled=1)

@@ -79,9 +79,6 @@ class VppDiedError(Exception):
 class PollHook(Hook):
     """ Hook which checks if the vpp subprocess is alive """
 
-    def __init__(self, test):
-        super(PollHook, self).__init__(test)
-
     def on_crash(self, core_path):
         self.logger.error("Core file present, debug with: gdb %s %s",
                           self.test.vpp_bin, core_path)

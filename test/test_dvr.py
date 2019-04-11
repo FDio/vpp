@@ -15,14 +15,6 @@ from socket import AF_INET, inet_pton
 class TestDVR(VppTestCase):
     """ Distributed Virtual Router """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestDVR, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestDVR, cls).tearDownClass()
-
     def setUp(self):
         super(TestDVR, self).setUp()
 

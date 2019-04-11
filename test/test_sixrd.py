@@ -25,10 +25,7 @@ class Test6RD(VppTestCase):
         super(Test6RD, cls).setUpClass()
         cls.create_pg_interfaces(range(4))
         cls.interfaces = list(cls.pg_interfaces)
-
-    @classmethod
-    def tearDownClass(cls):
-        super(Test6RD, cls).tearDownClass()
+        # TODO: Delete the interfaces in tearDownClass?
 
     def setUp(self):
         super(Test6RD, self).setUp()

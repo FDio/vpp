@@ -9,14 +9,6 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 class TestTCP(VppTestCase):
     """ TCP Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestTCP, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestTCP, cls).tearDownClass()
-
     def setUp(self):
         super(TestTCP, self).setUp()
         self.vapi.session_enable_disable(is_enabled=1)
@@ -86,14 +78,6 @@ class TestTCP(VppTestCase):
 
 class TestTCPUnitTests(VppTestCase):
     "TCP Unit Tests"
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestTCPUnitTests, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestTCPUnitTests, cls).tearDownClass()
 
     def setUp(self):
         super(TestTCPUnitTests, self).setUp()

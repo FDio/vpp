@@ -76,19 +76,9 @@ class TestL2xc(VppTestCase):
             super(TestL2xc, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestL2xc, cls).tearDownClass()
-
     def setUp(self):
         super(TestL2xc, self).setUp()
         self.reset_packet_infos()
-
-    def tearDown(self):
-        """
-        Show various debug prints after each test.
-        """
-        super(TestL2xc, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show l2patch"))

@@ -51,22 +51,12 @@ class TestL2bdArpTerm(VppTestCase):
             super(TestL2bdArpTerm, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestL2bdArpTerm, cls).tearDownClass()
-
     def setUp(self):
         """
         Clear trace and packet infos before running each test.
         """
         self.reset_packet_infos()
         super(TestL2bdArpTerm, self).setUp()
-
-    def tearDown(self):
-        """
-        Show various debug prints after each test.
-        """
-        super(TestL2bdArpTerm, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show l2fib verbose"))

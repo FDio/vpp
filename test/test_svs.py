@@ -16,14 +16,6 @@ from vpp_papi import VppEnum
 class TestSVS(VppTestCase):
     """ SVS Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestSVS, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSVS, cls).tearDownClass()
-
     def setUp(self):
         super(TestSVS, self).setUp()
 

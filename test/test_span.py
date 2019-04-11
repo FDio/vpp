@@ -59,9 +59,6 @@ class TestSpan(VppTestCase):
         super(TestSpan, self).setUp()
         self.reset_packet_infos()
 
-    def tearDown(self):
-        super(TestSpan, self).tearDown()
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show interface span"))
 

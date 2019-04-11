@@ -112,22 +112,12 @@ class TestL2xcMultiInst(VppTestCase):
             super(TestL2xcMultiInst, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestL2xcMultiInst, cls).tearDownClass()
-
     def setUp(self):
         """
         Clear trace and packet infos before running each test.
         """
         super(TestL2xcMultiInst, self).setUp()
         self.reset_packet_infos()
-
-    def tearDown(self):
-        """
-        Show various debug prints after each test.
-        """
-        super(TestL2xcMultiInst, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show l2patch"))

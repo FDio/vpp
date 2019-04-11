@@ -36,13 +36,6 @@ class TestPing(VppTestCase):
             super(TestPing, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestPing, cls).tearDownClass()
-
-    def tearDown(self):
-        super(TestPing, self).tearDown()
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show hardware"))
 

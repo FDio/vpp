@@ -26,20 +26,6 @@ class ConfigIpsecESP(TemplateIpsec):
     tun6_encrypt_node_name = "esp6-encrypt"
     tun6_decrypt_node_name = "esp6-decrypt"
 
-    @classmethod
-    def setUpClass(cls):
-        super(ConfigIpsecESP, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(ConfigIpsecESP, cls).tearDownClass()
-
-    def setUp(self):
-        super(ConfigIpsecESP, self).setUp()
-
-    def tearDown(self):
-        super(ConfigIpsecESP, self).tearDown()
-
     def config_network(self, params):
         self.net_objs = []
         self.tun_if = self.pg0
@@ -256,14 +242,6 @@ class TemplateIpsecEsp(ConfigIpsecESP):
      ---             ---           ---
     """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TemplateIpsecEsp, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TemplateIpsecEsp, cls).tearDownClass()
-
     def setUp(self):
         super(TemplateIpsecEsp, self).setUp()
         self.config_network(self.params.values())
@@ -287,14 +265,6 @@ class TemplateIpsecEspUdp(ConfigIpsecESP):
     """
     UDP encapped ESP
     """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TemplateIpsecEspUdp, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TemplateIpsecEspUdp, cls).tearDownClass()
 
     def setUp(self):
         super(TemplateIpsecEspUdp, self).setUp()
@@ -330,9 +300,6 @@ class TemplateIpsecEspUdp(ConfigIpsecESP):
                                  0xffffffff,
                                  proto=d)]).add_vpp_config()
 
-    def tearDown(self):
-        super(TemplateIpsecEspUdp, self).tearDown()
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show hardware"))
 
@@ -346,12 +313,6 @@ class TestIpsecEspAll(ConfigIpsecESP,
                       IpsecTra4, IpsecTra6,
                       IpsecTun4, IpsecTun6):
     """ Ipsec ESP all Algos """
-
-    def setUp(self):
-        super(TestIpsecEspAll, self).setUp()
-
-    def tearDown(self):
-        super(TestIpsecEspAll, self).tearDown()
 
     def test_crypto_algs(self):
         """All engines AES-CBC-[128, 192, 256] w/o ESN"""

@@ -38,14 +38,6 @@ class IPSecNATTestCase(TemplateIpsec):
     icmp_id_in = 6305
     icmp_id_out = 6305
 
-    @classmethod
-    def setUpClass(cls):
-        super(IPSecNATTestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(IPSecNATTestCase, cls).tearDownClass()
-
     def setUp(self):
         super(IPSecNATTestCase, self).setUp()
         self.tun_if = self.pg0
@@ -65,9 +57,6 @@ class IPSecNATTestCase(TemplateIpsec):
                                  0xffffffff,
                                  proto=d)],
                    is_ip6=p.is_ipv6).add_vpp_config()
-
-    def tearDown(self):
-        super(IPSecNATTestCase, self).tearDown()
 
     def create_stream_plain(self, src_mac, dst_mac, src_ip, dst_ip):
         return [

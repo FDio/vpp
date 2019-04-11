@@ -71,10 +71,6 @@ class TestCDP(VppTestCase):
             super(TestCDP, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestCDP, cls).tearDownClass()
-
     def test_enable_cdp(self):
         self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
         ret = self.vapi.cli("show cdp")

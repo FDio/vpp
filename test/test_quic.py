@@ -9,14 +9,6 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 class TestQUIC(VppTestCase):
     """ QUIC Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestQUIC, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestQUIC, cls).tearDownClass()
-
     def setUp(self):
         super(TestQUIC, self).setUp()
         self.vapi.session_enable_disable(is_enabled=1)

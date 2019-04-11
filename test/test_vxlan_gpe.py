@@ -224,10 +224,6 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
             super(TestVxlanGpe, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestVxlanGpe, cls).tearDownClass()
-
     @unittest.skip("test disabled for vxlan-gpe")
     def test_mcast_flood(self):
         """ inherited from BridgeDomain """
@@ -237,12 +233,6 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
     def test_mcast_rcv(self):
         """ inherited from BridgeDomain """
         pass
-
-    # Method to define VPP actions before tear down of the test case.
-    #  Overrides tearDown method in VppTestCase class.
-    #  @param self The object pointer.
-    def tearDown(self):
-        super(TestVxlanGpe, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show bridge-domain 11 detail"))

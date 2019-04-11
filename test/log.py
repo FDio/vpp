@@ -16,14 +16,13 @@ def colorize(msg, color):
 
 class ColorFormatter(logging.Formatter):
 
-    def init(self, fmt=None, datefmt=None):
-        super(ColorFormatter, self).__init__(fmt, datefmt)
-
     def format(self, record):
         message = super(ColorFormatter, self).format(record)
         if hasattr(record, 'color'):
             message = colorize(message, record.color)
         return message
+
+
 try:
     verbose = int(os.getenv("V", 0))
 except:

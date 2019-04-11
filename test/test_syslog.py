@@ -27,10 +27,6 @@ class TestSyslog(VppTestCase):
             super(TestSyslog, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSyslog, cls).tearDownClass()
-
     def syslog_generate(self, facility, severity, appname, msgid, sd=None,
                         msg=None):
         """

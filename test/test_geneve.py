@@ -218,12 +218,6 @@ class TestGeneve(BridgeDomain, VppTestCase):
             super(TestGeneve, cls).tearDownClass()
             raise
 
-    # Method to define VPP actions before tear down of the test case.
-    #  Overrides tearDown method in VppTestCase class.
-    #  @param self The object pointer.
-    def tearDown(self):
-        super(TestGeneve, self).tearDown()
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
         self.logger.info(self.vapi.cli("show bridge-domain 2 detail"))

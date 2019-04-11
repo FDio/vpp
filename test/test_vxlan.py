@@ -217,10 +217,6 @@ class TestVxlan(BridgeDomain, VppTestCase):
             super(TestVxlan, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestVxlan, cls).tearDownClass()
-
     def test_encap_big_packet(self):
         """ Encapsulation test send big frame from pg1
         Verify receipt of encapsulated frames on pg0
@@ -249,12 +245,6 @@ class TestVxlan(BridgeDomain, VppTestCase):
         payload = self.decapsulate(pkt)
         # TODO: Scapy bug?
         # self.assert_eq_pkts(payload, frame)
-
-    # Method to define VPP actions before tear down of the test case.
-    #  Overrides tearDown method in VppTestCase class.
-    #  @param self The object pointer.
-    def tearDown(self):
-        super(TestVxlan, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))

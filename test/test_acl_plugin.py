@@ -144,19 +144,9 @@ class TestACLplugin(VppTestCase):
             super(TestACLplugin, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestACLplugin, cls).tearDownClass()
-
     def setUp(self):
         super(TestACLplugin, self).setUp()
         self.reset_packet_infos()
-
-    def tearDown(self):
-        """
-        Show various debug prints after each test.
-        """
-        super(TestACLplugin, self).tearDown()
 
     def show_commands_at_teardown(self):
         cli = "show vlib graph l2-input-feat-arc"

@@ -1562,10 +1562,6 @@ class TestNAT44(MethodHolder):
             super(TestNAT44, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestNAT44, cls).tearDownClass()
-
     def test_dynamic(self):
         """ NAT44 dynamic translation test """
         self.nat44_add_address(self.nat_addr)
@@ -4281,10 +4277,6 @@ class TestNAT44EndpointDependent(MethodHolder):
             super(TestNAT44EndpointDependent, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestNAT44EndpointDependent, cls).tearDownClass()
-
     def test_frag_in_order(self):
         """ NAT44 translate fragments arriving in order """
         self.nat44_add_address(self.nat_addr)
@@ -6477,10 +6469,6 @@ class TestNAT44Out2InDPO(MethodHolder):
             super(TestNAT44Out2InDPO, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestNAT44Out2InDPO, cls).tearDownClass()
-
     def configure_xlat(self):
         self.dst_ip6_pfx = '1:2:3::'
         self.dst_ip6_pfx_n = socket.inet_pton(socket.AF_INET6,
@@ -6595,10 +6583,6 @@ class TestDeterministicNAT(MethodHolder):
         except Exception:
             super(TestDeterministicNAT, cls).tearDownClass()
             raise
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestDeterministicNAT, cls).tearDownClass()
 
     def create_stream_in(self, in_if, out_if, ttl=64):
         """
@@ -7220,10 +7204,6 @@ class TestNAT64(MethodHolder):
         except Exception:
             super(TestNAT64, cls).tearDownClass()
             raise
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestNAT64, cls).tearDownClass()
 
     def test_nat64_inside_interface_handles_neighbor_advertisement(self):
         """ NAT64 inside interface handles Neighbor Advertisement """
@@ -8560,10 +8540,6 @@ class TestDSlite(MethodHolder):
             super(TestDSlite, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestDSlite, cls).tearDownClass()
-
     def verify_syslog_apmadd(self, data, isaddr, isport, xsaddr, xsport,
                              sv6enc, proto):
         message = data.decode('utf-8')
@@ -8759,10 +8735,6 @@ class TestDSliteCE(MethodHolder):
             super(TestDSliteCE, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestDSliteCE, cls).tearDownClass()
-
     def test_dslite_ce(self):
         """ Test DS-Lite CE """
 
@@ -8866,10 +8838,6 @@ class TestNAT66(MethodHolder):
         except Exception:
             super(TestNAT66, cls).tearDownClass()
             raise
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestNAT66, cls).tearDownClass()
 
     def test_static(self):
         """ 1:1 NAT66 test """

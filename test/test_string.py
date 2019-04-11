@@ -9,20 +9,6 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 class TestString(VppTestCase):
     """ String Test Cases """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestString, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestString, cls).tearDownClass()
-
-    def setUp(self):
-        super(TestString, self).setUp()
-
-    def tearDown(self):
-        super(TestString, self).tearDown()
-
     def test_string_unittest(self):
         """ String unit tests """
         names = ["memcpy_s",

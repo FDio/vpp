@@ -23,14 +23,6 @@ from util import ppp
 class TestSRv6(VppTestCase):
     """ SRv6 Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestSRv6, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSRv6, cls).tearDownClass()
-
     def setUp(self):
         """ Perform test setup before each test case.
         """

@@ -31,16 +31,6 @@ class TestBondInterface(VppTestCase):
         for i in cls.pg_interfaces:
             i.admin_up()
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestBondInterface, cls).tearDownClass()
-
-    def setUp(self):
-        super(TestBondInterface, self).setUp()
-
-    def tearDown(self):
-        super(TestBondInterface, self).tearDown()
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show interface"))
 

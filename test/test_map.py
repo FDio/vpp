@@ -15,14 +15,6 @@ from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
 class TestMAP(VppTestCase):
     """ MAP Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestMAP, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestMAP, cls).tearDownClass()
-
     def setUp(self):
         super(TestMAP, self).setUp()
 

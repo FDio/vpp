@@ -20,14 +20,6 @@ class IgmpMode:
 class TestIgmp(VppTestCase):
     """ IGMP Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestIgmp, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIgmp, cls).tearDownClass()
-
     def setUp(self):
         super(TestIgmp, self).setUp()
 

@@ -157,14 +157,6 @@ class TestIPv6ND(VppTestCase):
 class TestIPv6(TestIPv6ND):
     """ IPv6 Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPv6, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPv6, cls).tearDownClass()
-
     def setUp(self):
         """
         Perform test setup before test case.
@@ -950,14 +942,6 @@ class TestIPv6(TestIPv6ND):
 class TestICMPv6Echo(VppTestCase):
     """ ICMPv6 Echo Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestICMPv6Echo, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestICMPv6Echo, cls).tearDownClass()
-
     def setUp(self):
         super(TestICMPv6Echo, self).setUp()
 
@@ -1022,14 +1006,6 @@ class TestICMPv6Echo(VppTestCase):
 
 class TestIPv6RD(TestIPv6ND):
     """ IPv6 Router Discovery Test Case """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPv6RD, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPv6RD, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPv6RD, self).setUp()
@@ -1144,14 +1120,6 @@ class TestIPv6RD(TestIPv6ND):
 class TestIPv6RDControlPlane(TestIPv6ND):
     """ IPv6 Router Discovery Control Plane Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPv6RDControlPlane, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPv6RDControlPlane, cls).tearDownClass()
-
     def setUp(self):
         super(TestIPv6RDControlPlane, self).setUp()
 
@@ -1164,9 +1132,6 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         for i in self.interfaces:
             i.admin_up()
             i.config_ip6()
-
-    def tearDown(self):
-        super(TestIPv6RDControlPlane, self).tearDown()
 
     @staticmethod
     def create_ra_packet(pg, routerlifetime=None):
@@ -1324,14 +1289,6 @@ class TestIPv6RDControlPlane(TestIPv6ND):
 class IPv6NDProxyTest(TestIPv6ND):
     """ IPv6 ND ProxyTest Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(IPv6NDProxyTest, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(IPv6NDProxyTest, cls).tearDownClass()
-
     def setUp(self):
         super(IPv6NDProxyTest, self).setUp()
 
@@ -1345,9 +1302,6 @@ class IPv6NDProxyTest(TestIPv6ND):
 
         self.pg1.ip6_enable()
         self.pg2.ip6_enable()
-
-    def tearDown(self):
-        super(IPv6NDProxyTest, self).tearDown()
 
     def test_nd_proxy(self):
         """ IPv6 Proxy ND """
@@ -1521,14 +1475,6 @@ class IPv6NDProxyTest(TestIPv6ND):
 class TestIPNull(VppTestCase):
     """ IPv6 routes via NULL """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPNull, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPNull, cls).tearDownClass()
-
     def setUp(self):
         super(TestIPNull, self).setUp()
 
@@ -1596,14 +1542,6 @@ class TestIPNull(VppTestCase):
 
 class TestIPDisabled(VppTestCase):
     """ IPv6 disabled """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPDisabled, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPDisabled, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPDisabled, self).setUp()
@@ -1693,14 +1631,6 @@ class TestIPDisabled(VppTestCase):
 
 class TestIP6LoadBalance(VppTestCase):
     """ IPv6 Load-Balancing """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestIP6LoadBalance, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIP6LoadBalance, cls).tearDownClass()
 
     def setUp(self):
         super(TestIP6LoadBalance, self).setUp()
@@ -1967,14 +1897,6 @@ class TestIP6LoadBalance(VppTestCase):
 class TestIP6Punt(VppTestCase):
     """ IPv6 Punt Police/Redirect """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestIP6Punt, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIP6Punt, cls).tearDownClass()
-
     def setUp(self):
         super(TestIP6Punt, self).setUp()
 
@@ -2103,14 +2025,6 @@ class TestIP6Punt(VppTestCase):
 class TestIPDeag(VppTestCase):
     """ IPv6 Deaggregate Routes """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPDeag, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPDeag, cls).tearDownClass()
-
     def setUp(self):
         super(TestIPDeag, self).setUp()
 
@@ -2229,14 +2143,6 @@ class TestIPDeag(VppTestCase):
 
 class TestIP6Input(VppTestCase):
     """ IPv6 Input Exception Test Cases """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestIP6Input, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIP6Input, cls).tearDownClass()
 
     def setUp(self):
         super(TestIP6Input, self).setUp()

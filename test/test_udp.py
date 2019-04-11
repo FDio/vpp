@@ -14,14 +14,6 @@ from scapy.contrib.mpls import MPLS
 class TestUdpEncap(VppTestCase):
     """ UDP Encap Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestUdpEncap, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestUdpEncap, cls).tearDownClass()
-
     def setUp(self):
         super(TestUdpEncap, self).setUp()
 
@@ -243,14 +235,6 @@ class TestUdpEncap(VppTestCase):
 
 class TestUDP(VppTestCase):
     """ UDP Test Case """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestUDP, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestUDP, cls).tearDownClass()
 
     def setUp(self):
         super(TestUDP, self).setUp()

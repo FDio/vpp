@@ -20,14 +20,6 @@ def ip6_normalize(ip6):
 class TestDHCPv6DataPlane(VppTestCase):
     """ DHCPv6 Data Plane Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestDHCPv6DataPlane, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestDHCPv6DataPlane, cls).tearDownClass()
-
     def setUp(self):
         super(TestDHCPv6DataPlane, self).setUp()
 
@@ -204,14 +196,6 @@ class TestDHCPv6DataPlane(VppTestCase):
 
 class TestDHCPv6IANAControlPlane(VppTestCase):
     """ DHCPv6 IA NA Control Plane Test Case """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestDHCPv6IANAControlPlane, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestDHCPv6IANAControlPlane, cls).tearDownClass()
 
     def setUp(self):
         super(TestDHCPv6IANAControlPlane, self).setUp()
@@ -455,14 +439,6 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
 
 class TestDHCPv6PDControlPlane(VppTestCase):
     """ DHCPv6 PD Control Plane Test Case """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestDHCPv6PDControlPlane, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestDHCPv6PDControlPlane, cls).tearDownClass()
 
     def setUp(self):
         super(TestDHCPv6PDControlPlane, self).setUp()

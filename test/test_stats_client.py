@@ -11,14 +11,6 @@ from framework import VppTestCase, VppTestRunner
 class StatsClientTestCase(VppTestCase):
     """Test Stats Client"""
 
-    @classmethod
-    def setUpClass(cls):
-        super(StatsClientTestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(StatsClientTestCase, cls).tearDownClass()
-
     def test_client_fd_leak(self):
         """Test file descriptor count - VPP-1486"""
 

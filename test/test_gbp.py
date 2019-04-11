@@ -575,14 +575,6 @@ class VppGbpAcl(VppObject):
 class TestGBP(VppTestCase):
     """ GBP Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestGBP, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestGBP, cls).tearDownClass()
-
     def setUp(self):
         super(TestGBP, self).setUp()
 

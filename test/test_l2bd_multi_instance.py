@@ -128,10 +128,6 @@ class TestL2bdMultiInst(VppTestCase):
             super(TestL2bdMultiInst, cls).tearDownClass()
             raise
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestL2bdMultiInst, cls).tearDownClass()
-
     def setUp(self):
         """
         Clear trace and packet infos before running each test.
@@ -143,6 +139,7 @@ class TestL2bdMultiInst(VppTestCase):
         """
         Show various debug prints after each test.
         """
+        # TODO: Convert to show_commands_at_teardown()?
         super(TestL2bdMultiInst, self).tearDown()
         if not self.vpp_dead:
             self.logger.info(self.vapi.ppcli("show l2fib verbose"))

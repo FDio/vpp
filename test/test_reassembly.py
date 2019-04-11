@@ -219,10 +219,6 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         cls.create_stream(cls.packet_sizes)
         cls.create_fragments()
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPv4Reassembly, cls).tearDownClass()
-
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4Reassembly, self).setUp()
@@ -233,9 +229,6 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         self.sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     expire_walk_interval_ms=10000)
-
-    def tearDown(self):
-        super(TestIPv4Reassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
@@ -555,10 +548,6 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
         cls.create_stream(cls.packet_sizes)
         cls.create_fragments()
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPv6Reassembly, cls).tearDownClass()
-
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv6Reassembly, self).setUp()
@@ -571,9 +560,6 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
                                     expire_walk_interval_ms=10000, is_ip6=1)
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
-
-    def tearDown(self):
-        super(TestIPv6Reassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
@@ -857,10 +843,6 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
         cls.create_stream()
         cls.create_fragments()
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPv4ReassemblyLocalNode, cls).tearDownClass()
-
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4ReassemblyLocalNode, self).setUp()
@@ -869,9 +851,6 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
         self.sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     expire_walk_interval_ms=10000)
-
-    def tearDown(self):
-        super(TestIPv4ReassemblyLocalNode, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
@@ -982,10 +961,6 @@ class TestFIFReassembly(VppTestCase):
         cls.packet_sizes = [64, 512, 1518, 9018]
         cls.padding = " abcdefghijklmn"
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestFIFReassembly, cls).tearDownClass()
-
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestFIFReassembly, self).setUp()
@@ -1004,9 +979,6 @@ class TestFIFReassembly(VppTestCase):
                                     expire_walk_interval_ms=10000)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     expire_walk_interval_ms=10000, is_ip6=1)
-
-    def tearDown(self):
-        super(TestFIFReassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))

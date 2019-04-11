@@ -25,17 +25,6 @@ N_PKTS_IN_STREAM = 91
 class TestMFIB(VppTestCase):
     """ MFIB Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestMFIB, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestMFIB, cls).tearDownClass()
-
-    def setUp(self):
-        super(TestMFIB, self).setUp()
-
     def test_mfib(self):
         """ MFIB Unit Tests """
         error = self.vapi.cli("test mfib")
@@ -47,14 +36,6 @@ class TestMFIB(VppTestCase):
 
 class TestIPMcast(VppTestCase):
     """ IP Multicast Test Case """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPMcast, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPMcast, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPMcast, self).setUp()

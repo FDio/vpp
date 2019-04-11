@@ -142,15 +142,6 @@ class ACLPluginConnTestCase(VppTestCase):
             i.resolve_arp()
             i.resolve_ndp()
 
-    @classmethod
-    def tearDownClass(cls):
-        super(ACLPluginConnTestCase, cls).tearDownClass()
-
-    def tearDown(self):
-        """Run standard test teardown and log various show commands
-        """
-        super(ACLPluginConnTestCase, self).tearDown()
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show ip arp"))
         self.logger.info(self.vapi.cli("show ip6 neighbors"))

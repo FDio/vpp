@@ -37,15 +37,6 @@ class ContainerIntegrationTestCase(VppTestCase):
             i.resolve_arp()
             i.resolve_ndp()
 
-    @classmethod
-    def tearDownClass(cls):
-        super(ContainerIntegrationTestCase, cls).tearDownClass()
-
-    def tearDown(self):
-        """Run standard test teardown and log various show commands
-        """
-        super(ContainerIntegrationTestCase, self).tearDown()
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show ip arp"))
         self.logger.info(self.vapi.cli("show ip6 neighbors"))

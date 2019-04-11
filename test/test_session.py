@@ -9,14 +9,6 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 class TestSession(VppTestCase):
     """ Session Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestSession, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSession, cls).tearDownClass()
-
     def setUp(self):
         super(TestSession, self).setUp()
 
@@ -91,14 +83,6 @@ class TestSession(VppTestCase):
 
 class TestSessionUnitTests(VppTestCase):
     """ Session Unit Tests Case """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestSessionUnitTests, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSessionUnitTests, cls).tearDownClass()
 
     def setUp(self):
         super(TestSessionUnitTests, self).setUp()

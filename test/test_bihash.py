@@ -9,20 +9,6 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 class TestBihash(VppTestCase):
     """ Bihash Test Cases """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestBihash, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestBihash, cls).tearDownClass()
-
-    def setUp(self):
-        super(TestBihash, self).setUp()
-
-    def tearDown(self):
-        super(TestBihash, self).tearDown()
-
     def test_bihash_unittest(self):
         """ Bihash Add/Del Test """
         error = self.vapi.cli("test bihash ")

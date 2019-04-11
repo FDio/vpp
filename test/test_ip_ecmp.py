@@ -67,12 +67,6 @@ class TestECMP(VppTestCase):
         super(TestECMP, self).setUp()
         self.reset_packet_infos()
 
-    def tearDown(self):
-        """
-        Show various debug prints after each test.
-        """
-        super(TestECMP, self).tearDown()
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show ip arp"))
         self.logger.info(self.vapi.ppcli("show ip6 neighbors"))

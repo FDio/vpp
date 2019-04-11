@@ -20,14 +20,6 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
 
     encryption_type = ESP
 
-    @classmethod
-    def setUpClass(cls):
-        super(TemplateIpsec4TunIfEsp, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TemplateIpsec4TunIfEsp, cls).tearDownClass()
-
     def setUp(self):
         super(TemplateIpsec4TunIfEsp, self).setUp()
 
@@ -186,6 +178,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
                                      0xffffffff)]).add_vpp_config()
 
     def tearDown(self):
+        # TODO: Convert to show_commands_at_teardown()?
         if not self.vpp_dead:
             self.vapi.cli("show hardware")
         super(TestIpsec4MultiTunIfEsp, self).tearDown()
@@ -248,6 +241,7 @@ class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
                        is_ip6=1).add_vpp_config()
 
     def tearDown(self):
+        # TODO: Convert to show_commands_at_teardown()?
         if not self.vpp_dead:
             self.vapi.cli("show hardware")
         super(TestIpsec6MultiTunIfEsp, self).tearDown()

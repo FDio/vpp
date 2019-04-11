@@ -74,8 +74,6 @@ class Driver(object):
 
 class SimpleDriver(Driver):
     """ Implements simple test procedure """
-    def __init__(self, test, test_cases):
-        super(SimpleDriver, self).__init__(test, test_cases)
 
     def verify_capture(self, src_loc, dst_loc, capture):
         """
@@ -144,10 +142,6 @@ class TestLisp(VppTestCase):
             i.admin_up()  # put the interface upsrc_if
             i.config_ip4()  # configure IPv4 address on the interface
             i.resolve_arp()  # resolve ARP, so that we know VPP MAC
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestLisp, cls).tearDownClass()
 
     def setUp(self):
         super(TestLisp, self).setUp()
