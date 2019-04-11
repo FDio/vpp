@@ -761,7 +761,7 @@ typedef enum
   _(RX_MULTICAST, rx-multicast, if)		\
   _(RX_BROADCAST, rx-broadcast, if)		\
   _(TX, tx, if)					\
-  _(TX_UNICAST, tx-unicast-miss, if)		\
+  _(TX_UNICAST, tx-unicast, if)			\
   _(TX_MULTICAST, tx-multicast, if)		\
   _(TX_BROADCAST, tx-broadcast, if)
 
