@@ -31,4 +31,5 @@ add_vpp_plugin(unittest
   tcp_test.c
   sparse_vec_test.c
   unittest.c
+  util_test.c
 )
