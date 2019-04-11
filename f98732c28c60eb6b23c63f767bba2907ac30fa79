@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "46cbace6_8544cf74",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-11T17:46:07Z",
+      "side": 1,
+      "message": "I\u0027m running on ubuntu 18.04 on bare metal.  Not sure why this would be different than running in a container as your test demonstrates.",
+      "parentUuid": "3ccd8fec_22554a49",
+      "range": {
+        "startLine": 401,
+        "startChar": 31,
+        "endLine": 402,
+        "endChar": 19
+      },
+      "revId": "f98732c28c60eb6b23c63f767bba2907ac30fa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7089bb80_4e8f0615",
         "filename": "test/framework.py",
         "patchSetId": 1
