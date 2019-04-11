@@ -232,9 +232,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
 	  op->key = sa0->crypto_key.data;
-	  op->key_len = sa0->crypto_key.len;
 	  op->iv = payload;
-	  op->iv_len = cpd.iv_sz;
 	  op->src = op->dst = payload += cpd.iv_sz;
 	  op->len = len;
 	  op->user_data = b - bufs;
