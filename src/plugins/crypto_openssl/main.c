@@ -120,7 +120,8 @@ openssl_ops_enc_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
       EVP_EncryptInit_ex (ctx, cipher, 0, 0, 0);
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, op->iv_len, NULL);
       EVP_EncryptInit_ex (ctx, 0, 0, op->key, op->iv);
-      EVP_EncryptUpdate (ctx, NULL, &len, op->aad, op->aad_len);
+      if (op->aad_len)
+	EVP_EncryptUpdate (ctx, NULL, &len, op->aad, op->aad_len);
       EVP_EncryptUpdate (ctx, op->dst, &len, op->src, op->len);
       EVP_EncryptFinal_ex (ctx, op->dst + len, &len);
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_GET_TAG, op->tag_len, op->tag);
@@ -145,7 +146,8 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
       EVP_DecryptInit_ex (ctx, cipher, 0, 0, 0);
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, op->iv_len, 0);
       EVP_DecryptInit_ex (ctx, 0, 0, op->key, op->iv);
-      EVP_DecryptUpdate (ctx, 0, &len, op->aad, op->aad_len);
+      if (op->aad_len)
+	EVP_DecryptUpdate (ctx, 0, &len, op->aad, op->aad_len);
       EVP_DecryptUpdate (ctx, op->dst, &len, op->src, op->len);
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_TAG, op->tag_len, op->tag);
 
