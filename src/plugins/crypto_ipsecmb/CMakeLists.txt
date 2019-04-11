@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+  return()
+endif()
+
 find_path(IPSECMB_INCLUDE_DIR NAMES intel-ipsec-mb.h HINTS ${IPSECMB_INCLUDE_DIR_HINT})
 find_library(IPSECMB_LIB NAMES libIPSec_MB.a HINTS ${IPSECMB_LIB_DIR_HINT})
 
@@ -33,3 +37,5 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 else()
 	message(STATUS "Intel IPSecMB not found")
 endif()
+
+target_compile_options(crypto_ipsecmb_plugin PRIVATE "-march=silvermont")

@@ -119,8 +119,11 @@ vnet_crypto_set_handler (char *alg_name, char *engine)
       if (id == 0)
 	continue;
       od = vec_elt_at_index (cm->opt_data, id);
-      od->active_engine_index = p[0];
-      cm->ops_handlers[id] = ce->ops_handlers[id];
+      if (ce->ops_handlers[id])
+	{
+	  od->active_engine_index = p[0];
+	  cm->ops_handlers[id] = ce->ops_handlers[id];
+	}
     }
 
   return 0;
