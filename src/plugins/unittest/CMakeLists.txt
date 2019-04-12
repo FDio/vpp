@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2018-2019 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -18,6 +18,7 @@ add_vpp_plugin(unittest
   crypto_test.c
   crypto/aes_cbc.c
   crypto/aes_gcm.c
+  crypto/aes_ctr.c
   crypto/rfc2202_hmac_sha1.c
   crypto/rfc2202_hmac_md5.c
   crypto/rfc4231.c

@@ -25,7 +25,10 @@
   _(3DES_CBC,    "3des-cbc") \
   _(AES_128_CBC, "aes-128-cbc") \
   _(AES_192_CBC, "aes-192-cbc") \
-  _(AES_256_CBC, "aes-256-cbc")
+  _(AES_256_CBC, "aes-256-cbc") \
+  _(AES_128_CTR, "aes-128-ctr") \
+  _(AES_192_CTR, "aes-192-ctr") \
+  _(AES_256_CTR, "aes-256-ctr")
 
 #define foreach_crypto_aead_alg \
   _(AES_128_GCM, "aes-128-gcm") \
