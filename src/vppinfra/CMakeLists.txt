@@ -147,6 +147,7 @@ set(VPPINFRA_HEADERS
   random.h
   random_isaac.h
   serialize.h
+  sha2.h
   slist.h
   smp.h
   socket.h
