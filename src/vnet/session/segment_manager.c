@@ -195,7 +195,7 @@ int
 segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
 {
   segment_manager_main_t *smm = &segment_manager_main;
-  u32 rnd_margin = 128 << 10, seg_index, page_size;
+  u32 rnd_margin = 128 << 10, seg_index = ~0, page_size;
   segment_manager_properties_t *props;
   uword baseva = (uword) ~ 0ULL, alloc_size;
   svm_fifo_segment_private_t *seg;
@@ -215,15 +215,9 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
    * Allocate fifo segment and lock if needed
    */
   if (vlib_num_workers ())
-    {
-      clib_rwlock_writer_lock (&sm->segments_rwlock);
-      pool_get (sm->segments, seg);
-    }
-  else
-    {
-      pool_get (sm->segments, seg);
-    }
-  clib_memset (seg, 0, sizeof (*seg));
+    clib_rwlock_writer_lock (&sm->segments_rwlock);
+
+  pool_get_zero (sm->segments, seg);
 
   /*
    * Initialize ssvm segment and svm fifo private header
@@ -239,7 +233,8 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
       if (!baseva)
 	{
 	  clib_warning ("out of space for segments");
-	  return -1;
+	  pool_put (sm->segments, seg);
+	  goto done;
 	}
     }
   else
@@ -257,7 +252,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
       if (props->segment_type != SSVM_SEGMENT_PRIVATE)
 	clib_valloc_free (&smm->va_allocator, baseva);
       pool_put (sm->segments, seg);
-      return (rv);
+      goto done;
     }
 
   svm_fifo_segment_init (seg);
@@ -266,6 +261,8 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
    * Save segment index before dropping lock, if any held
    */
   seg_index = seg - sm->segments;
+
+done:
 
   if (vlib_num_workers ())
     clib_rwlock_writer_unlock (&sm->segments_rwlock);
