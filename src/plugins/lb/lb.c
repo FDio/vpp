@@ -1375,6 +1375,7 @@ lb_init (vlib_main_t * vm)
   //Allocate and init default VIP.
   lbm->vips = 0;
   pool_get(lbm->vips, default_vip);
+  default_vip->new_flow_table_mask = 0;
   default_vip->prefix.ip6.as_u64[0] = 0xffffffffffffffffL;
   default_vip->prefix.ip6.as_u64[1] = 0xffffffffffffffffL;
   default_vip->protocol = ~0;
@@ -1417,6 +1418,12 @@ lb_init (vlib_main_t * vm)
   default_as->vip_index = ~0;
   default_as->address.ip6.as_u64[0] = 0xffffffffffffffffL;
   default_as->address.ip6.as_u64[1] = 0xffffffffffffffffL;
+
+  /* Generate a valid flow table for default VIP */
+  default_vip->as_indexes = NULL;
+  lb_get_writer_lock();
+  lb_vip_update_new_flow_table(default_vip);
+  lb_put_writer_lock();
 
   lbm->vip_index_by_nodeport
     = hash_create_mem (0, sizeof(u16), sizeof (uword));
