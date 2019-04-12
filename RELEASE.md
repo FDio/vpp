@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_1904
 * @subpage release_notes_19011
 * @subpage release_notes_1901
 * @subpage release_notes_1810
@@ -15,6 +16,10 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_1904 Release notes for VPP 19.04
+
+TBD
 
 @page release_notes_19011 Release notes for VPP 19.01.1
 
