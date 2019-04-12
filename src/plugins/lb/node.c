@@ -324,6 +324,11 @@ lb_node_fn (vlib_main_t * vm,
           p0 = vlib_get_buffer (vm, pi0);
 
           vip0 = pool_elt_at_index(lbm->vips, vip_index0);
+          if ((vip_index0 == 0) || (vip0 == NULL))
+            {
+              next0 = LB_NEXT_DROP;
+              goto trace0;
+            }
 
           if (is_input_v4)
             {
@@ -539,6 +544,7 @@ lb_node_fn (vlib_main_t * vm,
           vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
               lbm->ass[asindex0].dpo.dpoi_index;
 
+trace0:
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
             {
               lb_trace_t *tr = vlib_add_trace (vm, node, p0, sizeof(*tr));
