@@ -277,7 +277,7 @@ vlib_map_stat_segment_init (void)
   shared_header->epoch = 1;
 
   /* Scalar stats and node counters */
-  vec_validate (sm->directory_vector, STAT_COUNTERS - 1);
+  vec_validate (sm->directory_vector, STAT_COUNTERS);
 #define _(E,t,n,p)							\
   strcpy(sm->directory_vector[STAT_COUNTER_##E].name,  #p "/" #n); \
   sm->directory_vector[STAT_COUNTER_##E].type = STAT_DIR_TYPE_##t;
