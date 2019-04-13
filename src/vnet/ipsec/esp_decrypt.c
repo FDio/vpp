@@ -234,7 +234,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  op->key = sa0->crypto_key.data;
 	  op->iv = payload;
 	  op->src = op->dst = payload += cpd.iv_sz;
-	  op->len = len;
+	  op->len = len - cpd.iv_sz;
 	  op->user_data = b - bufs;
 	}
 
