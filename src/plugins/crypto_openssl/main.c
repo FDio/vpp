@@ -140,7 +140,7 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
   EVP_CIPHER_CTX *ctx = ptd->evp_cipher_ctx;
-  u32 i;
+  u32 i, n_fail = 0;
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
@@ -157,9 +157,12 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
       if (EVP_DecryptFinal_ex (ctx, op->dst + len, &len) > 0)
 	op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
       else
-	op->status = VNET_CRYPTO_OP_STATUS_FAIL_DECRYPT;
+	{
+	  n_fail++;
+	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_DECRYPT;
+	}
     }
-  return n_ops;
+  return n_ops - n_fail;
 }
 
 static_always_inline u32
