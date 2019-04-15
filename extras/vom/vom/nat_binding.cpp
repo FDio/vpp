@@ -225,7 +225,7 @@ nat_binding::event_handler::handle_populate(const client_db::key_t& key)
 
     if (itf) {
       nat_binding nb(*itf, direction_t::INPUT, l3_proto_t::IPV4,
-                     zone_t::from_vpp(payload.is_inside));
+                     zone_t::from_vpp(payload.flags & NAT_IS_INSIDE));
       OM::commit(key, nb);
     } else {
       VOM_LOG(log_level_t::ERROR) << "nat-binding-input-44 no sw_if_index: "
@@ -245,7 +245,7 @@ nat_binding::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
     if (itf) {
       nat_binding nb(*itf, direction_t::OUTPUT, l3_proto_t::IPV4,
-                     zone_t::from_vpp(payload.is_inside));
+                     zone_t::from_vpp(payload.flags & NAT_IS_INSIDE));
       OM::commit(key, nb);
     } else {
       VOM_LOG(log_level_t::ERROR) << "nat-binding-output-44 no sw_if_index: "
@@ -265,7 +265,7 @@ nat_binding::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
     if (itf) {
       nat_binding nb(*itf, direction_t::INPUT, l3_proto_t::IPV6,
-                     zone_t::from_vpp(payload.is_inside));
+                     zone_t::from_vpp(payload.flags & NAT_IS_INSIDE));
       OM::commit(key, nb);
     } else {
       VOM_LOG(log_level_t::ERROR) << "nat-binding-input-66 no sw_if_index: "
