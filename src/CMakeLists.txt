@@ -94,6 +94,13 @@ string(CONCAT CMAKE_C_FLAGS_GCOV
   "-fprofile-arcs "
   "-ftest-coverage ")
 
+option(ENABLE_SANITIZE_ADDRESS "Enable Address Sanitizer" OFF)
+if (ENABLE_SANITIZE_ADDRESS)
+  set(CMAKE_C_FLAGS "-fsanitize=address --param asan-stack=0 -DCLIB_SANITIZE_ADDRESS ${CMAKE_C_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address ${CMAKE_EXE_LINKER_FLAGS}")
+  set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
+endif (ENABLE_SANITIZE_ADDRESS)
+
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UC)
 
 
