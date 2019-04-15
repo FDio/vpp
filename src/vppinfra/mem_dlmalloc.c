@@ -19,6 +19,7 @@
 #include <vppinfra/lock.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
+#include <vppinfra/asan.h>
 
 void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 

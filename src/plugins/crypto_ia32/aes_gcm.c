@@ -63,10 +63,11 @@ aesni_gcm_byte_mask (__m128i x, u8 n_bytes)
 static_always_inline __m128i
 aesni_gcm_load_partial (__m128i * p, int n_bytes)
 {
+  ASSERT (n_bytes <= 16);
 #ifdef __AVX512F__
   return _mm_mask_loadu_epi8 (zero, (1 << n_bytes) - 1, p);
 #else
-  return aesni_gcm_byte_mask (_mm_loadu_si128 (p), n_bytes);
+  return aesni_gcm_byte_mask (aesni_loadu_si128 (p), n_bytes);
 #endif
 }
 
@@ -591,7 +592,7 @@ aes_gcm (const u8 * in, u8 * out, const u8 * addt, const u8 * iv, u8 * tag,
     T = aesni_gcm_ghash (T, kd, (__m128i *) addt, aad_bytes);
 
   /* initalize counter */
-  Y0 = _mm_loadu_si128 ((__m128i *) iv);
+  Y0 = aesni_loadu_si128 ((__m128i *) iv);
   Y0 = _mm_insert_epi32 (Y0, clib_host_to_net_u32 (1), 3);
 
   /* ghash and encrypt/edcrypt  */

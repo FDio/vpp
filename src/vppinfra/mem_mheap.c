@@ -39,10 +39,6 @@
 #include <vppinfra/mheap.h>
 #include <vppinfra/os.h>
 
-/* Valgrind stuff. */
-#include <vppinfra/memcheck.h>
-#include <vppinfra/valgrind.h>
-
 void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 
 void

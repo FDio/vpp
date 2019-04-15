@@ -39,6 +39,7 @@ class VCLAppWorker(Worker):
         else:
             app = "%s/vpp/bin/%s" % (build_dir, appname)
         self.args = [app] + args
+        env['LD_PRELOAD'] = '/usr/lib/x86_64-linux-gnu/libasan.so.5:' + env.get('LD_PRELOAD', '')
         super(VCLAppWorker, self).__init__(self.args, logger, env)
 
 

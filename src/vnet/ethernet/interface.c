@@ -219,6 +219,27 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
     }
 }
 
+static void
+ethernet_interface_set_hw_address (ethernet_interface_t * ei,
+				   vnet_hw_interface_t * hi,
+				   const u8 * address)
+{
+  STATIC_ASSERT (sizeof (ei->address) == 6,
+		 "ethernet mac address must be 6-bytes");
+
+  /*
+   * hi->hw_address is loaded in datapath as a single 64-bits load
+   * make sure we force 8-byte allocation to not fall in the middle of a page boundary
+   * force vector size to be 6 (mac address length) to not confuse downstream
+   * users, without any check
+   */
+  vec_validate_aligned (hi->hw_address, 7, 8);
+  _vec_len (hi->hw_address) = 6;
+
+  clib_memcpy (ei->address, address, 6);
+  clib_memcpy (hi->hw_address, address, 6);
+}
+
 static clib_error_t *
 ethernet_mac_change (vnet_hw_interface_t * hi,
 		     const u8 * old_address, const u8 * mac_address)
@@ -229,11 +250,8 @@ ethernet_mac_change (vnet_hw_interface_t * hi,
   em = &ethernet_main;
   ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
 
-  vec_validate (hi->hw_address,
-		STRUCT_SIZE_OF (ethernet_header_t, src_address) - 1);
-  clib_memcpy (hi->hw_address, mac_address, vec_len (hi->hw_address));
+  ethernet_interface_set_hw_address (ei, hi, mac_address);
 
-  clib_memcpy (ei->address, (u8 *) mac_address, sizeof (ei->address));
   ethernet_arp_change_mac (hi->sw_if_index);
   ethernet_ndp_change_mac (hi->sw_if_index);
 
@@ -309,8 +327,7 @@ ethernet_register_interface (vnet_main_t * vnm,
   /* Standard default ethernet MTU. */
   vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, 9000);
 
-  clib_memcpy (ei->address, address, sizeof (ei->address));
-  vec_add (hi->hw_address, address, sizeof (ei->address));
+  ethernet_interface_set_hw_address (ei, hi, address);
 
   if (error)
     {

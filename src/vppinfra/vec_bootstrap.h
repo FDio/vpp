@@ -159,10 +159,23 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 /** \brief Total number of elements that can fit into vector. */
 #define vec_max_len(v) (vec_capacity(v,0) / sizeof (v[0]))
 
+#define _vec_poison(v, l) \
+  do { \
+      if ((l) > _vec_len(v)) \
+        CLIB_MEM_UNPOISON((v) + _vec_len(v), ((l) - _vec_len(v)) * sizeof((v)[0])); \
+      else if ((l) < _vec_len(v)) \
+        CLIB_MEM_POISON((v) + (l), (_vec_len(v) - (l)) * sizeof((v)[0])); \
+  } while (0)
+
+/** \brief Set vector length to a user-defined value
+    NULL-pointer tolerant
+*/
+
 /** \brief Set vector length to a user-defined value */
 #define vec_set_len(v, l) do {     \
     ASSERT(v);                     \
     ASSERT((l) <= vec_max_len(v)); \
+    _vec_poison((v), (l));         \
     _vec_len(v) = (l);             \
 } while (0)
 
