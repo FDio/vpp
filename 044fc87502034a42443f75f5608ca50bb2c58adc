@@ -22,6 +22,30 @@
       "revId": "044fc87502034a42443f75f5608ca50bb2c58adc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2e7e03c6_33993e80",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-04-15T07:04:32Z",
+      "side": 1,
+      "message": "No, we will need it. If not included, it will crash again in the branch: else if (PREDICT_TRUE(available_index0 !\u003d ~0))",
+      "parentUuid": "50100de2_43c3fcb2",
+      "range": {
+        "startLine": 327,
+        "startChar": 0,
+        "endLine": 332,
+        "endChar": 13
+      },
+      "revId": "044fc87502034a42443f75f5608ca50bb2c58adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
