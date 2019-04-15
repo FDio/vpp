@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "84465477_cb8513d7",
+        "filename": "src/plugins/crypto_openssl/main.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-15T08:36:22Z",
+      "side": 1,
+      "message": "what about 16? Should we create 2 handlers? i.e. aes-128-gcm-12 and aes-128-gcm-16 ?",
+      "range": {
+        "startLine": 128,
+        "startChar": 56,
+        "endLine": 128,
+        "endChar": 58
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2407fc21_c6ecbc82",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-15T08:36:22Z",
+      "side": 1,
+      "message": "please lowercase",
+      "range": {
+        "startLine": 105,
+        "startChar": 0,
+        "endLine": 105,
+        "endChar": 21
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "742f5b2a_da726b5f",
+        "filename": "src/vnet/ipsec/esp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-15T08:36:22Z",
+      "side": 1,
+      "message": "if you use __clib_packed no need for turning off indentions.",
+      "range": {
+        "startLine": 58,
+        "startChar": 8,
+        "endLine": 58,
+        "endChar": 19
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8d3b36ac_a3823f22",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-15T08:36:22Z",
+      "side": 1,
+      "message": "there is devil behind this macro^H^H^H^H^Hfunction. what about introducing new SA flag _IS_AEAD instead?",
+      "range": {
+        "startLine": 237,
+        "startChar": 7,
+        "endLine": 237,
+        "endChar": 28
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "edb6e324_63202b38",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-15T08:36:22Z",
+      "side": 1,
+      "message": "can this be reused for AES-CTR? maybe s/gcm/aead/ to cover both...",
+      "range": {
+        "startLine": 240,
+        "startChar": 7,
+        "endLine": 240,
+        "endChar": 20
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
