@@ -722,8 +722,7 @@ vl_sock_api_init (vlib_main_t * vm)
       vec_free (tmp);
     }
 
-  sock->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_SEQPACKET |
-    CLIB_SOCKET_F_ALLOW_GROUP_WRITE;
+  sock->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_ALLOW_GROUP_WRITE;
   error = clib_socket_init (sock);
   if (error)
     return error;
