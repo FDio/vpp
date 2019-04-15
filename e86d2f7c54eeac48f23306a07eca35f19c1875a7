@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "e3bd86f1_3b1a571c",
+        "filename": "src/plugins/crypto_openssl/main.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-15T19:51:50Z",
+      "side": 1,
+      "message": "from RFC4106:\n\n3.1.  Initialization Vector (IV)\n\n   The AES-GCM-ESP IV field MUST be eight octets.\n\nwhen would you see the nonce length be 16?",
+      "parentUuid": "84465477_cb8513d7",
+      "range": {
+        "startLine": 128,
+        "startChar": 56,
+        "endLine": 128,
+        "endChar": 58
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2407fc21_c6ecbc82",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 6
@@ -36,6 +60,30 @@
       "writtenOn": "2019-04-15T08:36:22Z",
       "side": 1,
       "message": "please lowercase",
+      "range": {
+        "startLine": 105,
+        "startChar": 0,
+        "endLine": 105,
+        "endChar": 21
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "667b5c11_46faf955",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-15T19:51:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2407fc21_c6ecbc82",
       "range": {
         "startLine": 105,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "2c1d3874_b6c09a65",
+        "filename": "src/vnet/ipsec/esp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-15T19:51:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "742f5b2a_da726b5f",
+      "range": {
+        "startLine": 58,
+        "startChar": 8,
+        "endLine": 58,
+        "endChar": 19
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8d3b36ac_a3823f22",
         "filename": "src/vnet/ipsec/esp_decrypt.c",
         "patchSetId": 6
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "02eb8749_640aba0b",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-15T19:51:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8d3b36ac_a3823f22",
+      "range": {
+        "startLine": 237,
+        "startChar": 7,
+        "endLine": 237,
+        "endChar": 28
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "edb6e324_63202b38",
         "filename": "src/vnet/ipsec/esp_decrypt.c",
         "patchSetId": 6
@@ -105,6 +201,30 @@
       "writtenOn": "2019-04-15T08:36:22Z",
       "side": 1,
       "message": "can this be reused for AES-CTR? maybe s/gcm/aead/ to cover both...",
+      "range": {
+        "startLine": 240,
+        "startChar": 7,
+        "endLine": 240,
+        "endChar": 20
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "697cc26b_3cae6f9b",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-15T19:51:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "edb6e324_63202b38",
       "range": {
         "startLine": 240,
         "startChar": 7,
