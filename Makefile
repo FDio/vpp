@@ -22,6 +22,9 @@ MACHINE=$(shell uname -m)
 SUDO?=sudo
 DPDK_CONFIG?=no-pci
 
+ASAN_OPTIONS?=verify_asan_link_order=0:detect_leaks=0:abort_on_error=1
+export ASAN_OPTIONS
+
 ,:=,
 define disable_plugins
 $(if $(1), \
@@ -168,7 +171,7 @@ endif
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
 .PHONY: ctags cscope
 .PHONY: test test-debug retest retest-debug test-doc test-wipe-doc test-help test-wipe
-.PHONY: test-cov test-wipe-cov
+.PHONY: test-cov test-wipe-cov test-asan test-relasan
 
 define banner
 	@echo "========================================================================"
@@ -413,6 +416,12 @@ test-debug:
 
 test-gcov:
 	$(call test,vpp,vpp_gcov,test)
+
+test-asan:
+	$(call test,vpp,vpp_asan,test)
+
+test-relasan:
+	$(call test,vpp,vpp_relasan,test)
 
 test-all:
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp vom-install,)

@@ -25,6 +25,7 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/types.h>
+#include <vppinfra/asan.h>
 #include <vcl/ldp_glibc_socket.h>
 
 #define LDP_ENV_DEBUG     "LDP_DEBUG"

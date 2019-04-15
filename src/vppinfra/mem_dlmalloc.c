@@ -19,6 +19,7 @@
 #include <vppinfra/lock.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
+#include <vppinfra/asan.h>
 
 void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 
@@ -219,6 +220,7 @@ clib_mem_init (void *memory, uword memory_size)
   if (mheap_trace_main.lock == 0)
     clib_spinlock_init (&mheap_trace_main.lock);
 
+  CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
   return heap;
 }
 

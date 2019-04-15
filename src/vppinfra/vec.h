@@ -138,6 +138,7 @@ _vec_resize_inline (void *v,
       /* Typically we'll not need to resize. */
       if (new_data_bytes <= clib_mem_size (p))
 	{
+	  CLIB_MEM_UNPOISON (v, data_bytes);
 	  vh->len += length_increment;
 	  return v;
 	}
@@ -794,6 +795,7 @@ do {								\
   if (_v(n) > 0)						\
     clib_memset ((V) + _v(l) - _v(n), 0, _v(n) * sizeof ((V)[0]));	\
   _vec_len (V) -= _v(n);					\
+  CLIB_MEM_POISON(vec_end(V), _v(n) * sizeof ((V)[0]));         \
 } while (0)
 
 /** \brief Delete the element at index I
@@ -808,6 +810,7 @@ do {						\
   if (_vec_del_i < _vec_del_l)			\
     (v)[_vec_del_i] = (v)[_vec_del_l];		\
   _vec_len (v) = _vec_del_l;			\
+  CLIB_MEM_POISON(vec_end(v), sizeof ((v)[0])); \
 } while (0)
 
 /** \brief Append v2 after v1. Result in v1.
