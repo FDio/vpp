@@ -350,17 +350,17 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  max = clib_min (n_left_to_next, count);
 	}
 #if defined(CLIB_HAVE_VEC512)
-      u16x32 next32 = u16x32_load_unaligned (nexts);
+      u16x32 next32 = CLIB_MEM_OVERFLOW_LOAD (u16x32_load_unaligned, nexts);
       next32 = (next32 == u16x32_splat (next32[0]));
       u64 bitmap = u16x32_msb_mask (next32);
       n_enqueued = count_trailing_zeros (~bitmap);
 #elif defined(CLIB_HAVE_VEC256)
-      u16x16 next16 = u16x16_load_unaligned (nexts);
+      u16x16 next16 = CLIB_MEM_OVERFLOW_LOAD (u16x16_load_unaligned, nexts);
       next16 = (next16 == u16x16_splat (next16[0]));
       u64 bitmap = u8x32_msb_mask ((u8x32) next16);
       n_enqueued = count_trailing_zeros (~bitmap) / 2;
 #elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
-      u16x8 next8 = u16x8_load_unaligned (nexts);
+      u16x8 next8 = CLIB_MEM_OVERFLOW_LOAD (u16x8_load_unaligned, nexts);
       next8 = (next8 == u16x8_splat (next8[0]));
       u64 bitmap = u8x16_msb_mask ((u8x16) next8);
       n_enqueued = count_trailing_zeros (~bitmap) / 2;

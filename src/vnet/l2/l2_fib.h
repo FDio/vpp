@@ -214,12 +214,7 @@ l2fib_compute_hash_bucket (l2fib_entry_key_t * key)
   return result % L2FIB_NUM_BUCKETS;
 }
 
-/**
- * make address sanitizer skip this:
- * The 6-Bytes mac-address is cast into an 8-Bytes u64, with 2 additional Bytes.
- * l2fib_make_key() does read those two Bytes but does not use them.
- */
-always_inline u64 __attribute__ ((no_sanitize_address))
+always_inline u64
 l2fib_make_key (const u8 * mac_address, u16 bd_index)
 {
   u64 temp;
@@ -233,14 +228,14 @@ l2fib_make_key (const u8 * mac_address, u16 bd_index)
    * Create the in-register key as F:E:D:C:B:A:H:L
    * In memory the key is L:H:A:B:C:D:E:F
    */
-  temp = *((u64 *) (mac_address)) << 16;
+  temp = CLIB_MEM_OVERFLOW_LOAD (*, (u64 *) mac_address) << 16;
   temp = (temp & ~0xffff) | (u64) (bd_index);
 #else
   /*
    * Create the in-register key as H:L:A:B:C:D:E:F
    * In memory the key is H:L:A:B:C:D:E:F
    */
-  temp = *((u64 *) (mac_address)) >> 16;
+  temp = CLIB_MEM_OVERFLOW_LOAD (*, (u64 *) mac_address) >> 16;
   temp = temp | (((u64) bd_index) << 48);
 #endif
 

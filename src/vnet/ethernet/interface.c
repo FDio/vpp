@@ -311,6 +311,7 @@ ethernet_register_interface (vnet_main_t * vnm,
 
   clib_memcpy (ei->address, address, sizeof (ei->address));
   vec_add (hi->hw_address, address, sizeof (ei->address));
+  CLIB_MEM_UNPOISON (hi->hw_address, 8);
 
   if (error)
     {

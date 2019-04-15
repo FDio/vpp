@@ -394,7 +394,7 @@ swrap_load_lib_handle (enum swrap_lib lib)
   void *handle = NULL;
   int i;
 
-#ifdef RTLD_DEEPBIND
+#if defined(RTLD_DEEPBIND) && !defined(CLIB_SANITIZE_ADDR)
   flags |= RTLD_DEEPBIND;
 #endif
 
@@ -547,7 +547,7 @@ libc_eventfd (int count, int flags)
 }
 #endif
 
-DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
+int
 libc_vfcntl (int fd, int cmd, va_list ap)
 {
   long int args[4];
@@ -569,7 +569,7 @@ libc_vfcntl (int fd, int cmd, va_list ap)
 }
 
 #ifdef HAVE_FCNTL64
-DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
+int
 libc_vfcntl64 (int fd, int cmd, va_list ap)
 {
   long int args[4];
@@ -592,7 +592,7 @@ libc_vfcntl64 (int fd, int cmd, va_list ap)
 }
 #endif
 
-DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
+int
 libc_vioctl (int fd, int cmd, va_list ap)
 {
   long int args[4];

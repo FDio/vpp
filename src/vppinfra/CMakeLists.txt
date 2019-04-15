@@ -88,6 +88,7 @@ set(VPPINFRA_SRCS
 )
 
 set(VPPINFRA_HEADERS
+  sanitizer.h
   bihash_16_8.h
   bihash_24_8.h
   bihash_40_8.h
