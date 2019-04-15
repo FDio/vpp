@@ -142,6 +142,26 @@ typedef struct msgbuf_
   u8 data[0];			 /**< actual message begins here  */
 } msgbuf_t;
 
+CLIB_MEM_ATTR_NOASAN static inline void
+VL_MSG_API_UNPOISON (const void *a)
+{
+  const msgbuf_t *m = &((const msgbuf_t *) a)[-1];
+  CLIB_MEM_UNPOISON (m, sizeof (*m) + ntohl (m->data_len));
+}
+
+CLIB_MEM_ATTR_NOASAN static inline void
+VL_MSG_API_SVM_QUEUE_UNPOISON (const svm_queue_t * q)
+{
+  CLIB_MEM_UNPOISON (q, sizeof (*q) + q->elsize * q->maxsize);
+}
+
+static inline void
+VL_MSG_API_POISON (const void *a)
+{
+  const msgbuf_t *m = &((const msgbuf_t *) a)[-1];
+  CLIB_MEM_POISON (m, sizeof (*m) + ntohl (m->data_len));
+}
+
 /* api_shared.c prototypes */
 void vl_msg_api_handler (void *the_msg);
 void vl_msg_api_handler_no_free (void *the_msg);

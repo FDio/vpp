@@ -88,6 +88,7 @@ set(VPPINFRA_SRCS
 )
 
 set(VPPINFRA_HEADERS
+  asan.h
   bihash_16_8.h
   bihash_24_8.h
   bihash_40_8.h
@@ -169,7 +170,6 @@ set(VPPINFRA_HEADERS
   types.h
   atomics.h
   unix.h
-  valgrind.h
   valloc.h
   vec_bootstrap.h
   vec.h

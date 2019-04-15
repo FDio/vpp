@@ -18,6 +18,7 @@
 #ifndef __aesni_h__
 #define __aesni_h__
 
+#include <vppinfra/asan.h>
 
 typedef enum
 {
@@ -77,7 +78,8 @@ aes192_key_expand (__m128i * k, u8 * key)
   __m128i r1, r2, r3;
 
   k[0] = r1 = _mm_loadu_si128 ((__m128i *) key);
-  r3 = _mm_loadu_si128 ((__m128i *) (key + 16));
+  /* load the 24-bytes key as 2 * 16-bytes (and ignore last 8-bytes) */
+  r3 = CLIB_MEM_OVERFLOW_LOAD (_mm_loadu_si128, (__m128i *) (key + 16));
 
   k[1] = r3;
   r2 = _mm_aeskeygenassist_si128 (r3, 0x1);

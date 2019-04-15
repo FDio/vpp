@@ -22,6 +22,9 @@ MACHINE=$(shell uname -m)
 SUDO?=sudo
 DPDK_CONFIG?=no-pci
 
+ASAN_OPTIONS?=verify_asan_link_order=0:detect_leaks=0:abort_on_error=1:unmap_shadow_on_exit=1:disable_coredump=0
+export ASAN_OPTIONS
+
 ,:=,
 define disable_plugins
 $(if $(1), \
@@ -181,6 +184,8 @@ help:
 	@echo " build                - build debug binaries"
 	@echo " build-release        - build release binaries"
 	@echo " build-coverity       - build coverity artifacts"
+	@echo " build-asan           - build ASAN debug binaries"
+	@echo " build-relasan        - build ASAN release binaries"
 	@echo " rebuild              - wipe and build debug binaries"
 	@echo " rebuild-release      - wipe and build release binaries"
 	@echo " run                  - run debug binary"
@@ -199,6 +204,10 @@ help:
 	@echo " retest-debug         - run functional tests (debug build)"
 	@echo " test-all             - run functional and extended tests"
 	@echo " test-all-debug       - run functional and extended tests (debug build)"
+	@echo " test-asan            - build and run (basic) functional tests (ASAN debug build)"
+	@echo " test-all-asan        - run functional and extended tests (ASAN debug build)"
+	@echo " test-relasan         - build and run (basic) functional tests (ASAN release build)"
+	@echo " test-all-relasan     - run functional and extended tests (ASAN release build)"
 	@echo " test-help            - show help on test framework"
 	@echo " run-vat              - run vpp-api-test tool"
 	@echo " pkg-deb              - build DEB packages"
@@ -398,6 +407,14 @@ wipe-release: test-wipe $(BR)/.deps.ok
 .PHONY: rebuild-release
 rebuild-release: wipe-release build-release
 
+.PHONY: build-asan
+build-asan: $(BR)/.deps.ok
+	$(call make,$(PLATFORM)_asan,$(addsuffix -install,$(TARGETS)))
+
+.PHONY: build-relasan
+build-relasan: $(BR)/.deps.ok
+	$(call make,$(PLATFORM)_relasan,$(addsuffix -install,$(TARGETS)))
+
 libexpand = $(subst $(subst ,, ),:,$(foreach lib,$(1),$(BR)/install-$(2)-native/vpp/$(lib)/$(3)))
 
 export TEST_DIR ?= $(WS_ROOT)/test
@@ -442,6 +459,26 @@ test-all-debug:
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp_debug vom-install,)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_debug,test)
+
+.PHONY: test-asan
+test-asan:
+	$(call test,vpp,vpp_asan,test)
+
+.PHONY: test-all-asan
+test-all-asan:
+	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp_asan vom-install,)
+	$(eval EXTENDED_TESTS=yes)
+	$(call test,vpp,vpp_asan,test)
+
+.PHONY: test-relasan
+test-relasan:
+	$(call test,vpp,vpp_relasan,test)
+
+.PHONY: test-all-relasan
+test-all-relasan:
+	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp_relasan vom-install,)
+	$(eval EXTENDED_TESTS=yes)
+	$(call test,vpp,vpp_relasan,test)
 
 .PHONY: papi-wipe
 papi-wipe: test-wipe-papi
@@ -583,6 +620,14 @@ pkg-deb-debug:
 .PHONY: vom-pkg-deb-debug
 vom-pkg-deb-debug: pkg-deb-debug
 	$(call make,$(PLATFORM)_debug,vom-package-deb)
+
+.PHONY: pkg-deb-asan
+pkg-deb-asan:
+	$(call make,$(PLATFORM)_asan,vpp-package-deb)
+
+.PHONY: pkg-deb-relasan
+pkg-deb-relasan:
+	$(call make,$(PLATFORM)_relasan,vpp-package-deb)
 
 .PHONY: pkg-rpm
 pkg-rpm: dist

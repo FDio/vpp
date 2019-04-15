@@ -496,6 +496,16 @@ VLIB_CLI_COMMAND (show_bihash_command, static) =
 };
 /* *INDENT-ON* */
 
+#ifdef CLIB_DEBUG_ASAN
+/* default options for Address Sanitizer */
+const char *
+__asan_default_options (void)
+{
+  return
+    "verify_asan_link_order=0:unmap_shadow_on_exit=1:disable_coredump=0:detect_leaks=0:abort_on_error=1";
+}
+#endif /* CLIB_DEBUG_ASAN */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

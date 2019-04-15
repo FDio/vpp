@@ -52,43 +52,64 @@ check_c_compiler_flag("-Wno-address-of-packed-member"
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+#
+# common build flags
+#
+
 if (CMAKE_BUILD_TYPE)
-  set(CMAKE_C_FLAGS "-g -fPIC -Werror -Wall ${CMAKE_C_FLAGS}")
+  set(CMAKE_C_FLAGS "-g -DFORTIFY_SOURCE=2 -fstack-protector -fno-common -fPIC -Werror -Wall ${CMAKE_C_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "-g ${CMAKE_EXE_LINKER_FLAGS}")
+  set(CMAKE_SHARED_LINKER_FLAGS "-g ${CMAKE_SHARED_LINKER_FLAGS}")
 endif()
 
 if (compiler_flag_no_address_of_packed_member)
   set(CMAKE_C_FLAGS "-Wno-address-of-packed-member ${CMAKE_C_FLAGS}")
 endif()
 
+#
+# per build flags
+#
+
 # release
 string(CONCAT CMAKE_C_FLAGS_RELEASE
   "-O2 "
-  "-fstack-protector "
-  "-DFORTIFY_SOURCE=2 "
-  "-fno-common "
 )
-
 string(CONCAT CMAKE_EXE_LINKER_FLAGS_RELEASE "-pie")
 
 # debug
 string(CONCAT CMAKE_C_FLAGS_DEBUG
   "-O0 "
   "-DCLIB_DEBUG "
-  "-fstack-protector "
-  "-DFORTIFY_SOURCE=2 "
-  "-fno-common "
 )
 
 # coverity
-string(CONCAT CMAKE_C_FLAGS_COVERITY "-O2 -D__COVERITY__")
+string(CONCAT CMAKE_C_FLAGS_COVERITY
+  "${CMAKE_C_FLAGS_RELEASE}"
+  "-D__COVERITY__ ")
 
 # gcov
 string(CONCAT CMAKE_C_FLAGS_GCOV
-  "-O0 "
-  "-DCLIB_DEBUG "
+  "${CMAKE_C_FLAGS_DEBUG}"
   "-DCLIB_GCOV "
-  "-fprofile-arcs "
-  "-ftest-coverage ")
+  "--coverage ")
+string(CONCAT CMAKE_EXE_LINKER_FLAGS_GCOV "--coverage")
+string(CONCAT CMAKE_SHARED_LINKER_FLAGS_GCOV "${CMAKE_EXE_LINKER_FLAGS_GCOV}")
+
+# asan
+set(ASAN_COMMON_CFLAGS "-fsanitize=address --param asan-stack=0 -DCLIB_DEBUG_ASAN ")
+set(ASAN_COMMON_LDFLAGS "-fsanitize=address ")
+string(CONCAT CMAKE_C_FLAGS_ASAN
+  "${CMAKE_C_FLAGS_DEBUG}"
+  "${ASAN_COMMON_CFLAGS}")
+string(CONCAT CMAKE_EXE_LINKER_FLAGS_ASAN "${ASAN_COMMON_LDFLAGS}")
+string(CONCAT CMAKE_SHARED_LINKER_FLAGS_ASAN "${CMAKE_EXE_LINKER_FLAGS_ASAN}")
+
+# relasan
+string(CONCAT CMAKE_C_FLAGS_RELASAN
+  "${CMAKE_C_FLAGS_RELEASE}"
+  "${ASAN_COMMON_CFLAGS}")
+string(CONCAT CMAKE_EXE_LINKER_FLAGS_RELASAN "${ASAN_COMMON_LDFLAGS}")
+string(CONCAT CMAKE_SHARED_LINKER_FLAGS_RELASAN "${CMAKE_EXE_LINKER_FLAGS_RELASAN}")
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UC)
 

@@ -27,3 +27,5 @@ vpp_TAG_BUILD_TYPE = release
 vpp_clang_TAG_BUILD_TYPE = release
 vpp_gcov_TAG_BUILD_TYPE = gcov
 vpp_coverity_TAG_BUILD_TYPE = coverity
+vpp_asan_TAG_BUILD_TYPE = asan
+vpp_relasan_TAG_BUILD_TYPE = relasan
