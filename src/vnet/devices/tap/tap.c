@@ -175,6 +175,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   _IOCTL (vif->tap_fd, TUNSETIFF, (void *) &ifr);
   vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
 
+  if (!args->host_if_name)
+    args->host_if_name = (u8 *) ifr.ifr_ifrn.ifrn_name;
+
   unsigned int offload = 0;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
   if (args->tap_flags & TAP_FLAG_GSO)
