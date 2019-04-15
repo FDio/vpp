@@ -311,6 +311,8 @@ ethernet_register_interface (vnet_main_t * vnm,
 
   clib_memcpy (ei->address, address, sizeof (ei->address));
   vec_add (hi->hw_address, address, sizeof (ei->address));
+  /* packet mac address is loaded as u64 */
+  CLIB_MEM_UNPOISON (hi->hw_address, sizeof (u64));
 
   if (error)
     {
