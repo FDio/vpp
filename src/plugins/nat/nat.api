@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-option version = "4.1.0";
+option version = "5.0.0";
 import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
 
 /**
  * @file nat.api
@@ -27,6 +28,18 @@ import "vnet/ip/ip_types.api";
 /*
  * Common NAT plugin APIs
  */
+
+enum nat_config_flags : u8
+{
+  NAT_IS_TWICE_NAT = 0x01,
+  NAT_IS_SELF_TWICE_NAT = 0x02,
+  NAT_IS_OUT2IN_ONLY = 0x04,
+  NAT_IS_ADDR_ONLY = 0x08,
+  NAT_IS_OUTSIDE = 0x10,
+  NAT_IS_INSIDE = 0x20,
+  NAT_IS_STATIC = 0x40,
+  NAT_IS_EXT_HOST_VALID = 0x80,
+};
 
 /** \brief Control ping from client to api server request
     @param client_index - opaque cookie to identify the sender
@@ -65,11 +78,12 @@ define nat_show_config
 /** \brief Show NAT plugin startup config reply
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
-    @param static_mapping_only - if 1 dynamic translations disabled
-    @param static_mapping_connection_tracking - if 1 create session data
-    @param deterministic - if 1 deterministic mapping
-    @param endpoint_dependent - if 1 endpoint-dependent mode
-    @param out2in_dpo - if 1 out2in dpo mode
+    @param static_mapping_only - if true dynamic translations disabled
+    @param static_mapping_connection_tracking - if true create session data
+    @param deterministic - if true deterministic mapping
+    @param endpoint_dependent - if true endpoint-dependent mode
+    @param out2in_dpo - if true out2in dpo mode
+    @param dslite_ce - if true DS-Lite is CE/B4 element, if false AFTR elemet
     @param translation_buckets - number of translation hash buckets
     @param translation_memory_size - translation hash memory size
     @param user_buckets - number of user hash buckets
@@ -77,7 +91,6 @@ define nat_show_config
     @param max_translations_per_user - maximum number of translations per user
     @param outside_vrf_id - outside VRF id
     @param inside_vrf_id - default inside VRF id
-    @param dslite_ce - if DS-Lite is CE/B4 element, if 0 AFTR elemet
     @param nat64_bib_buckets - number of NAT64 BIB hash buckets
     @param nat64_bib_memory_size - memory size of NAT64 BIB hash
     @param nat64_st_buckets - number of NAT64 session table hash buckets
@@ -87,11 +100,12 @@ define nat_show_config_reply
 {
   u32 context;
   i32 retval;
-  u8 static_mapping_only;
-  u8 static_mapping_connection_tracking;
-  u8 deterministic;
-  u8 endpoint_dependent;
-  u8 out2in_dpo;
+  bool static_mapping_only;
+  bool static_mapping_connection_tracking;
+  bool deterministic;
+  bool endpoint_dependent;
+  bool out2in_dpo;
+  bool dslite_ce;
   u32 translation_buckets;
   u32 translation_memory_size;
   u32 user_buckets;
@@ -99,7 +113,6 @@ define nat_show_config_reply
   u32 max_translations_per_user;
   u32 outside_vrf_id;
   u32 inside_vrf_id;
-  u8 dslite_ce;
   u32 nat64_bib_buckets;
   u32 nat64_bib_memory_size;
   u32 nat64_st_buckets;
@@ -136,7 +149,7 @@ define nat_worker_details {
   u32 context;
   u32 worker_index;
   u32 lcore_id;
-  u8 name[64];
+  string name;
 };
 
 /** \brief Enable/disable NAT IPFIX logging
@@ -144,14 +157,14 @@ define nat_worker_details {
     @param context - sender context, to match reply w/ request
     @param domain_id - observation domain ID
     @param src_port - source port number
-    @param enable - 1 if enable, 0 if disable
+    @param enable - true if enable, false if disable
 */
 autoreply define nat_ipfix_enable_disable {
   u32 client_index;
   u32 context;
   u32 domain_id;
   u16 src_port;
-  u8 enable;
+  bool enable;
 };
 
 /** \brief Set NAT virtual fragmentation reassembly
@@ -161,7 +174,7 @@ autoreply define nat_ipfix_enable_disable {
     @param max_reass - maximum number of concurrent reassemblies
     @param max_frag - maximum number of fragmets per reassembly
     @param drop_frag - if 0 translate fragments, otherwise drop fragments
-    @param is_ip6 - 1 if IPv6, 0 if IPv4
+    @param is_ip6 - true if IPv6, false if IPv4
 */
 autoreply define nat_set_reass {
   u32 client_index;
@@ -170,7 +183,7 @@ autoreply define nat_set_reass {
   u16 max_reass;
   u8  max_frag;
   u8  drop_frag;
-  u8  is_ip6;
+  bool  is_ip6;
 };
 
 /** \brief Get NAT virtual fragmentation reassembly configuration
@@ -218,18 +231,16 @@ define nat_reass_dump {
 
 /** \brief NAT virtual fragmentation reassemblies response
     @param context - sender context, to match reply w/ request
-    @param is_ip4 - 1 if address type is IPv4
-    @param src_addr - source IP address
-    @param dst_addr - destination IP address
+    @param src_addr - source IPv4 address
+    @param dst_addr - destination IPv4 address
     @param frag_id - fragment ID
     @param proto - protocol
     @param frag_n - number of cached fragments
 */
 define nat_reass_details {
   u32 context;
-  u8 is_ip4;
-  u8 src_addr[16];
-  u8 dst_addr[16];
+  vl_api_address_t src_addr;
+  vl_api_address_t dst_addr;
   u32 frag_id;
   u8 proto;
   u8 frag_n;
@@ -337,13 +348,13 @@ define nat_get_addr_and_port_alloc_alg_reply {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param mss_value - MSS value to be used for MSS rewriting
-    @param enable - disable(0)/enable(1) MSS rewriting feature
+    @param enable - if true enable MSS rewriting feature else disable
 */
 autoreply define nat_set_mss_clamping {
   u32 client_index;
   u32 context;
   u16 mss_value;
-  u8 enable;
+  bool enable;
 };
 
 /** \brief Get TCP MSS rewriting configuration
@@ -359,13 +370,13 @@ define nat_get_mss_clamping {
     @param context - sender context, to match reply w/ request
     @param retval - return code
     @param mss_value - MSS value to be used for MSS rewriting
-    @param enable - disable(0)/enable(1) MSS rewriting feature
+    @param enable - if true enable MSS rewriting feature else disable
 */
 define nat_get_mss_clamping_reply {
   u32 context;
   i32 retval;
   u16 mss_value;
-  u8 enable;
+  bool enable;
 };
 
 /** \brief Set HA listener (local settings)
@@ -458,8 +469,8 @@ autoreply define nat_ha_flush {
 };
 
 /** \brief Resync HA (resend existing sessions to new failover)
+    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param retval - return code
     @param want_resync_event - resync completed event sent to the sender via
                                nat_ha_resync_completed_event API message if
                                non-zero
@@ -499,17 +510,18 @@ service {
     @param first_ip_address - first IPv4 address
     @param last_ip_address - last IPv4 address
     @param vrf_id - VRF id of tenant, ~0 means independent of VRF
-    @param twice_nat - twice NAT address range for extenal hosts
-    @param is_add - 1 if add, 0 if delete
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_IS_TWICE_NAT if NAT address range for external hosts
+
 */
 autoreply define nat44_add_del_address_range {
   u32 client_index;
   u32 context;
-  u8 first_ip_address[4];
-  u8 last_ip_address[4];
+  vl_api_ip4_address_t first_ip_address;
+  vl_api_ip4_address_t last_ip_address;
   u32 vrf_id;
-  u8 twice_nat;
-  u8 is_add;
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
 };
 
 /** \brief Dump NAT44 addresses
@@ -524,29 +536,30 @@ define nat44_address_dump {
 /** \brief NAT44 address details response
     @param context - sender context, to match reply w/ request
     @param ip_address - IPv4 address
-    @param twice_nat - twice NAT address range for extenal hosts
+    @param flags - flag NAT_IS_TWICE_NAT if NAT address range for external hosts
     @param vrf_id - VRF id of tenant, ~0 means independent of VRF
 */
 define nat44_address_details {
   u32 context;
-  u8 ip_address[4];
-  u8 twice_nat;
+  vl_api_ip4_address_t ip_address;
+  vl_api_nat_config_flags_t flags;
   u32 vrf_id;
 };
 
 /** \brief Enable/disable NAT44 feature on the interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
-    @param is_inside - 1 if inside, 0 if outside
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_IS_INSIDE if interface is inside else
+                   interface is outside
     @param sw_if_index - software index of the interface
 */
 autoreply define nat44_interface_add_del_feature {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_inside;
-  u32 sw_if_index;
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump interfaces with NAT44 feature
@@ -560,29 +573,33 @@ define nat44_interface_dump {
 
 /** \brief NAT44 interface details response
     @param context - sender context, to match reply w/ request
-    @param is_inside - 1 if inside, 0 if outside, 2 if inside and outside
     @param sw_if_index - software index of the interface
+    @param flags - flag NAT_IS_INSIDE if interface is inside,
+                   flag NAT_IS_OUTSIDE if interface is outside
+                   and if both flags are set the interface is
+                   both inside and outside
 */
 define nat44_interface_details {
   u32 context;
-  u8 is_inside;
-  u32 sw_if_index;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Enable/disbale NAT44 as an interface output feature (postrouting
            in2out translation)
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
-    @param is_inside - 1 if inside, 0 if outside
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_IS_INSIDE if interface is inside else
+                   interface is outside
     @param sw_if_index - software index of the interface
 */
 autoreply define nat44_interface_add_del_output_feature {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_inside;
-  u32 sw_if_index;
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump interfaces with NAT44 output feature
@@ -596,20 +613,26 @@ define nat44_interface_output_feature_dump {
 
 /** \brief NAT44 interface with output feature details response
     @param context - sender context, to match reply w/ request
-    @param is_inside - 1 if inside, 0 if outside
+    @param flags - flag NAT_IS_INSIDE if interface is inside else
+                   interface is outside
     @param sw_if_index - software index of the interface
 */
 define nat44_interface_output_feature_details {
   u32 context;
-  u8 is_inside;
-  u32 sw_if_index;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Add/delete NAT44 static mapping
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
-    @param addr_only - 1 if address only mapping
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_IS_ADDR_ONLY if address only mapping,
+                   flag nat_is_twice_nat if nat address range for external hosts,
+                   flag NAT_IS_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_IS_OUT2IN_ONLY if rule match only out2in direction
     @param local_ip_address - local IPv4 address
     @param external_ip_address - external IPv4 address
     @param protocol - IP protocol, used only if addr_only=0
@@ -619,30 +642,21 @@ define nat44_interface_output_feature_details {
                                   external_ip_address is ignored, ~0 means not
                                   used)
     @param vfr_id - VRF ID
-    @param twice_nat - if 1 translate external host address and port, only for
-                       1:1 NAPT (addr_only must be 0)
-    @param self_twice_nat - if 1 translate external host address and port
-                            whenever external host address equals
-                            local address of internal host
-    @param out2in_only - if 1 rule match only out2in direction
     @param tag - opaque string tag
 */
 autoreply define nat44_add_del_static_mapping {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 addr_only;
-  u8 local_ip_address[4];
-  u8 external_ip_address[4];
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t local_ip_address;
+  vl_api_ip4_address_t external_ip_address;
   u8 protocol;
   u16 local_port;
   u16 external_port;
-  u32 external_sw_if_index;
+  vl_api_interface_index_t external_sw_if_index;
   u32 vrf_id;
-  u8 twice_nat;
-  u8 self_twice_nat;
-  u8 out2in_only;
-  u8 tag[64];
+  string tag;
 };
 
 /** \brief Dump NAT44 static mappings
@@ -656,42 +670,39 @@ define nat44_static_mapping_dump {
 
 /** \brief NAT44 static mapping details response
     @param context - sender context, to match reply w/ request
-    @param addr_only - 1 if address only mapping
+    @param flags - flag NAT_ADDR_ONLY if address only mapping,
+                   flag NAT_TWICE_NAT if NAT address range for external hosts,
+                   flag NAT_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_OUT2IN_ONLY if rule match only out2in direction
     @param local_ip_address - local IPv4 address
     @param external_ip_address - external IPv4 address
-    @param protocol - IP protocol, valid only if addr_only=0
-    @param local_port - local port number, valid only if addr_only=0
-    @param external_port - external port number, valid only if addr_only=0
+    @param protocol - IP protocol, valid only if no NAT_ADDR_ONLY flag
+    @param local_port - local port number, valid only if no NAT_ADDR_ONLY flag
+    @param external_port - external port number, valid only if no NAT_ADDR_ONLY flag
     @param external_sw_if_index - external interface
     @param vfr_id - VRF ID
-    @param twice_nat - if 1 translate external host address and port
-    @param self_twice_nat - if 1 translate external host address and port
-                            whenever external host address equals
-                            local address of internal host
-    @param out2in_only - if 1 rule match only out2in direction
     @param tag - opaque string tag
 */
 define nat44_static_mapping_details {
   u32 context;
-  u8 addr_only;
-  u8 local_ip_address[4];
-  u8 external_ip_address[4];
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t local_ip_address;
+  vl_api_ip4_address_t external_ip_address;
   u8 protocol;
   u16 local_port;
   u16 external_port;
-  u32 external_sw_if_index;
+  vl_api_interface_index_t external_sw_if_index;
   u32 vrf_id;
-  u8 twice_nat;
-  u8 self_twice_nat;
-  u8 out2in_only;
-  u8 tag[64];
+  string tag;
 };
 
 /** \brief Add/delete NAT44 identity mapping
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
-    @param addr_only - 1 if address only mapping
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_ADDR_ONLY if address only mapping
     @param ip_address - IPv4 address
     @param protocol - IP protocol
     @param port - port number
@@ -703,14 +714,14 @@ define nat44_static_mapping_details {
 autoreply define nat44_add_del_identity_mapping {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 addr_only;
-  u8 ip_address[4];
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t ip_address;
   u8 protocol;
   u16 port;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 vrf_id;
-  u8 tag[64];
+  string tag;
 };
 
 /** \brief Dump NAT44 identity mappings
@@ -724,7 +735,7 @@ define nat44_identity_mapping_dump {
 
 /** \brief NAT44 identity mapping details response
     @param context - sender context, to match reply w/ request
-    @param addr_only - 1 if address only mapping
+    @param flags - flag NAT_ADDR_ONLY if address only mapping
     @param ip_address - IPv4 address
     @param protocol - IP protocol
     @param port - port number
@@ -734,28 +745,28 @@ define nat44_identity_mapping_dump {
 */
 define nat44_identity_mapping_details {
   u32 context;
-  u8 addr_only;
-  u8 ip_address[4];
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t ip_address;
   u8 protocol;
   u16 port;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 vrf_id;
-  u8 tag[64];
+  string tag;
 };
 
 /** \brief Add/delete NAT44 pool address from specific interfce
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
-    @param twice_nat - twice NAT address for extenal hosts
+    @param is_add - true if add, false if delete
     @param sw_if_index - software index of the interface
+    @param flags - flag NAT_TWICE_NAT if NAT address range for external hosts
 */
 autoreply define nat44_add_del_interface_addr {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 twice_nat;
-  u32 sw_if_index;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_nat_config_flags_t flags;
 };
 
 /** \brief Dump NAT44 pool addresses interfaces
@@ -770,12 +781,13 @@ define nat44_interface_addr_dump {
 /** \brief NAT44 pool addresses interfaces details response
     @param context - sender context, to match reply w/ request
     @param sw_if_index - software index of the interface
-    @param twice_nat - twice NAT address for extenal hosts
+    @param flags - flag NAT_TWICE_NAT if NAT address range for external hosts
+
 */
 define nat44_interface_addr_details {
   u32 context;
-  u32 sw_if_index;
-  u8 twice_nat;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_nat_config_flags_t flags;
 };
 
 /** \brief Dump NAT44 users
@@ -790,14 +802,14 @@ define nat44_user_dump {
 /** \brief NAT44 users response
     @param context - sender context, to match reply w/ request
     @vrf_id - VRF ID
-    @param ip_adress - IPv4 address
+    @param ip_address - IPv4 address
     @param nsessions - number of dynamic sessions
     @param nstaticsessions - number of static sessions
 */
 define nat44_user_details {
   u32 context;
   u32 vrf_id;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
   u32 nsessions;
   u32 nstaticsessions;
 };
@@ -805,14 +817,13 @@ define nat44_user_details {
 /** \brief NAT44 user's sessions
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_ip4 - 1 if address type is IPv4
-    @param user_ip - IP address of the user to dump
+    @param ip_address - IPv4 address of the user to dump
     @param vrf_id - VRF_ID
 */
 define nat44_user_session_dump {
   u32 client_index;
   u32 context;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
   u32 vrf_id;
 };
 
@@ -823,12 +834,13 @@ define nat44_user_session_dump {
     @param inside_ip_address - inside IPv4 address
     @param inside_port - inside port
     @param protocol - protocol
-    @param is_static - 1 if session is static
+    @param flags - flag NAT_IS_STATIC if session is static,
+                   flag NAT_IS_TWICE_NAT if session is twice-nat,
+                   flag NAT_IS_EXT_HOST_VALID if external host address
+                   and port are valid
     @param last_heard - last heard timer
     @param total_bytes - count of bytes sent through session
     @param total_pkts - count of pakets sent through session
-    @param is_twicenat - 1 if session is twice-nat
-    @param ext_host_valid - 1 if external host address and port are valid
     @param ext_host_address - external host IPv4 address
     @param ext_host_port - external host port
     @param ext_host_nat_address - post-NAT external host IPv4 address (valid
@@ -838,20 +850,18 @@ define nat44_user_session_dump {
 */
 define nat44_user_session_details {
   u32 context;
-  u8 outside_ip_address[4];
+  vl_api_ip4_address_t outside_ip_address;
   u16 outside_port;
-  u8 inside_ip_address[4];
+  vl_api_ip4_address_t inside_ip_address;
   u16 inside_port;
   u16 protocol;
-  u8 is_static;
+  vl_api_nat_config_flags_t flags;
   u64 last_heard;
   u64 total_bytes;
   u32 total_pkts;
-  u8 is_twicenat;
-  u8 ext_host_valid;
-  u8 ext_host_address[4];
+  vl_api_ip4_address_t ext_host_address;
   u16 ext_host_port;
-  u8 ext_host_nat_address[4];
+  vl_api_ip4_address_t ext_host_nat_address;
   u16 ext_host_nat_port;
 };
 
@@ -859,9 +869,10 @@ define nat44_user_session_details {
     @param addr - IPv4 address of the internal node
     @param port - L4 port number of the internal node
     @param probability - probability of the internal node to be randomly matched
+    @param vrf_id - VRF id
 */
 typeonly manual_endian define nat44_lb_addr_port {
-  u8 addr[4];
+  vl_api_ip4_address_t addr;
   u16 port;
   u8 probability;
   u32 vrf_id;
@@ -870,41 +881,39 @@ typeonly manual_endian define nat44_lb_addr_port {
 /** \brief Add/delete NAT44 load-balancing static mapping rule
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_TWICE_NAT if NAT address range for external hosts,
+                   flag NAT_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_OUT2IN_ONLY if rule match only out2in direction
     @param external_addr - external IPv4 address of the service
     @param external_port - external L4 port number of the service
     @param protocol - IP protocol number of the service
-    @param twice_nat - if 1 translate external host address and port
-    @param self_twice_nat - if 1 translate external host address and port
-                            whenever external host address equals
-                            local address of internal host
-    @param out2in_only - if 1 rule match only out2in direction
-    @param tag - opaque string tag
     @param affinity - if 0 disabled, otherwise client IP affinity sticky time
                       in seconds
     @param local_num - number of local network nodes
     @param locals - local network nodes
+    @param tag - opaque string tag
 */
 autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 external_addr[4];
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t external_addr;
   u16 external_port;
   u8 protocol;
-  u8 twice_nat;
-  u8 self_twice_nat;
-  u8 out2in_only;
-  u8 tag[64];
   u32 affinity;
   u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
+  string tag;
 };
 
 /** \brief Add/delete NAT44 load-balancing static mapping rule backend
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
+    @param is_add - true if add, false if delete
     @param external_addr - external IPv4 address of the service
     @param external_port - external L4 port number of the service
     @param protocol - IP protocol number of the service
@@ -913,8 +922,8 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
 autoreply define nat44_lb_static_mapping_add_del_local {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 external_addr[4];
+  bool is_add;
+  vl_api_ip4_address_t external_addr;
   u16 external_port;
   u8 protocol;
   vl_api_nat44_lb_addr_port_t local;
@@ -931,57 +940,55 @@ define nat44_lb_static_mapping_dump {
 
 /** \brief NAT44 load-balancing static mapping rule details response
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
     @param external_addr - external IPv4 address of the service
     @param external_port - external L4 port number of the service
     @param protocol - IP protocol number of the service
-    @param twice_nat - if 1 translate external host address and port
-    @param self_twice_nat - if 1 translate external host address and port
-                            whenever external host address equals
-                            local address of internal host
-    @param out2in_only - if 1 rule match only out2in direction
-    @param tag - opaque string tag
+    @param flags - flag NAT_TWICE_NAT if NAT address range for external hosts,
+                   flag NAT_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_OUT2IN_ONLY if rule match only out2in direction
     @param affinity - if 0 disabled, otherwise client IP affinity sticky time
                       in seconds
     @param local_num - number of local network nodes
     @param locals - local network nodes
+    @param tag - opaque string tag
 */
 manual_endian define nat44_lb_static_mapping_details {
   u32 context;
-  u8 external_addr[4];
+  vl_api_ip4_address_t external_addr;
   u16 external_port;
   u8 protocol;
-  u8 twice_nat;
-  u8 self_twice_nat;
-  u8 out2in_only;
-  u8 tag[64];
+  vl_api_nat_config_flags_t flags;
   u32 affinity;
   u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
+  string tag;
 };
 
 /** \brief Delete NAT44 session
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_in - 1 if inside network address and port pair, 0 if outside
     @param ip_address - IPv4 address
     @param protocol - IP protocol
     @param port - port number
     @param vfr_id - VRF ID
-    @param ext_host_valid - 1 if external host address and port are valid
+    @param flags - flag NAT_IS_INSIDE if interface is inside or
+                   interface is outside,
+                   flag NAT_IS_EXT_HOST_VALID if external host address and
+                   port are valid
     @param ext_host_address - external host IPv4 address
     @param ext_host_port - external host port
 */
 autoreply define nat44_del_session {
   u32 client_index;
   u32 context;
-  u8 is_in;
-  u8 address[4];
+  vl_api_ip4_address_t address;
   u8 protocol;
   u16 port;
   u32 vrf_id;
-  u8 ext_host_valid;
-  u8 ext_host_address[4];
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t ext_host_address;
   u16 ext_host_port;
 };
 
@@ -990,12 +997,12 @@ autoreply define nat44_del_session {
     or static mapping instead of dropping them.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param enable - 0 for enable, 1 for disable
+    @param enable - true for enable, false for disable
 */
 autoreply define nat44_forwarding_enable_disable {
   u32 client_index;
   u32 context;
-  u8 enable;
+  bool enable;
 };
 
 /** \brief Check if forwarding is enabled or disabled
@@ -1009,11 +1016,11 @@ define nat44_forwarding_is_enabled {
 
 /** \brief Response to check if forwarding is enabled or disabled
     @param context - sender context, to match reply w/ request
-    @param enabled - 1 if enabled, 0 if disabled
+    @param enabled - true if enabled, false if disabled
 */
 define nat44_forwarding_is_enabled_reply {
   u32 context;
-  u8 enabled;
+  bool enabled;
 };
 
 
@@ -1024,36 +1031,31 @@ define nat44_forwarding_is_enabled_reply {
 /** \brief Add/delete NAT deterministic mapping
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
-    @param is_nat44 - 1 if NAT44
-    @param in_addr - inside IP address
-    @param in_plen - inside IP address prefix length
+    @param is_add - true if add, false if delete
+    @param in_addr - inside IPv4 address
+    @param in_plen - inside IPv4 address prefix length
     @param out_addr - outside IPv4 address
-    @param out_addr - outside IPv4 address prefix length
+    @param out_plen - outside IPv4 address prefix length
 */
 autoreply define nat_det_add_del_map {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_nat44;
-  u8 addr_only;
-  u8 in_addr[16];
+  bool is_add;
+  vl_api_ip4_address_t in_addr;
   u8 in_plen;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
   u8 out_plen;
 };
 
 /** \brief Get outside address and port range from inside address
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_nat44 - 1 if NAT44
     @param in_addr - inside IP address
 */
 define nat_det_forward {
   u32 client_index;
   u32 context;
-  u8 is_nat44;
-  u8 in_addr[16];
+  vl_api_ip4_address_t in_addr;
 };
 
 /** \brief Get outside address and port range from inside address
@@ -1068,7 +1070,7 @@ define nat_det_forward_reply {
   i32 retval;
   u16 out_port_lo;
   u16 out_port_hi;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
 };
 
 /** \brief Get inside address from outside address and port
@@ -1081,20 +1083,18 @@ define nat_det_reverse {
   u32 client_index;
   u32 context;
   u16 out_port;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
 };
 
 /** \brief Get inside address from outside address and port reply
     @param context - sender context, to match reply w/ request
     @param retval - return code
-    @param is_nat44 - 1 if NAT44
     @param in_addr - inside IP address
 */
 define nat_det_reverse_reply {
   u32 context;
   i32 retval;
-  u8 is_nat44;
-  u8 in_addr[16];
+  vl_api_ip4_address_t in_addr;
 };
 
 /** \brief Dump NAT deterministic mappings
@@ -1108,9 +1108,8 @@ define nat_det_map_dump {
 
 /** \brief NAT users response
     @param context - sender context, to match reply w/ request
-    @param is_nat44 - 1 if NAT44
-    @param in_addr - inside IP address
-    @param in_plen - inside IP address prefix length
+    @param in_addr - inside IPv4 address
+    @param in_plen - inside IPv4 address prefix length
     @param out_addr - outside IPv4 address
     @param out_plen - outside IPv4 address prefix length
     @param sharing_ratio - outside to inside address sharing ratio
@@ -1119,10 +1118,9 @@ define nat_det_map_dump {
 */
 define nat_det_map_details {
   u32 context;
-  u8 is_nat44;
-  u8 in_addr[16];
+  vl_api_ip4_address_t in_addr;
   u8 in_plen;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
   u8 out_plen;
   u32 sharing_ratio;
   u16 ports_per_host;
@@ -1140,16 +1138,15 @@ define nat_det_map_details {
 autoreply define nat_det_close_session_out {
   u32 client_index;
   u32 context;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
   u16 out_port;
-  u8 ext_addr[4];
+  vl_api_ip4_address_t ext_addr;
   u16 ext_port;
 };
 
 /** \brief Close deterministic NAT session by inside address and port
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_nat44 - 1 if NAT44
     @param in_addr - inside IP address
     @param in_port - inside port
     @param ext_addr - external host IP address
@@ -1158,30 +1155,27 @@ autoreply define nat_det_close_session_out {
 autoreply define nat_det_close_session_in {
   u32 client_index;
   u32 context;
-  u8 is_nat44;
-  u8 in_addr[16];
+  vl_api_ip4_address_t in_addr;
   u16 in_port;
-  u8 ext_addr[16];
+  vl_api_ip4_address_t ext_addr;
   u16 ext_port;
 };
 
 /** \brief Dump determinstic NAT sessions
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_nat44 - 1 if NAT44
     @param user_addr - address of an inside user whose sessions to dump
 */
 define nat_det_session_dump {
   u32 client_index;
   u32 context;
-  u8 is_nat44;
-  u8 user_addr[16];
+  vl_api_ip4_address_t user_addr;
 };
 
 /** \brief Deterministic NAT sessions reply
     @param context - sender context, to match reply w/ request
     @param in_port - inside port
-    @param ext_addr - external host address
+    @param ext_addr - external host IPv4 address
     @param ext_port - external host port
     @param out_port - outside NAT port
     @param state - session state
@@ -1190,7 +1184,7 @@ define nat_det_session_dump {
 define nat_det_session_details {
   u32 context;
   u16 in_port;
-  u8 ext_addr[4];
+  vl_api_ip4_address_t ext_addr;
   u16 ext_port;
   u16 out_port;
   u8 state;
@@ -1204,18 +1198,18 @@ define nat_det_session_details {
 /** \brief Add/delete address range to NAT64 pool
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param start_addr - start address of the range
-    @param end_addr - end address of the range
+    @param start_addr - start IPv4 address of the range
+    @param end_addr - end IPv4 address of the range
     @param vrf_id - VRF id of tenant, ~0 means independent of VRF
-    @param is_add - 1 if add, 0 if delete
+    @param is_add - true if add, false if delete
 */
 autoreply define nat64_add_del_pool_addr_range {
   u32 client_index;
   u32 context;
-  u8 start_addr[4];
-  u8 end_addr[4];
+  vl_api_ip4_address_t start_addr;
+  vl_api_ip4_address_t end_addr;
   u32 vrf_id;
-  u8 is_add;
+  bool is_add;
 };
 
 /** \brief Dump NAT64 pool addresses
@@ -1234,23 +1228,24 @@ define nat64_pool_addr_dump {
 */
 define nat64_pool_addr_details {
   u32 context;
-  u8 address[4];
+  vl_api_ip4_address_t address;
   u32 vrf_id;
 };
 
 /** \brief Enable/disable NAT64 feature on the interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_IS_INSIDE if interface is inside else
+                   interface is outside
     @param sw_if_index - index of the interface
-    @param is_inside - 1 if inside, 0 if outside
-    @param is_add - 1 if add, 0 if delete
 */
 autoreply define nat64_add_del_interface {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 is_inside;
-  u8 is_add;
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump interfaces with NAT64 feature
@@ -1264,13 +1259,16 @@ define nat64_interface_dump {
 
 /** \brief NAT64 interface details response
     @param context - sender context, to match reply w/ request
-    @param is_inside - 1 if inside, 0 if outside
+    @param flags - flag NAT_IS_INSIDE if interface is inside,
+                   flag NAT_IS_OUTSIDE if interface is outside
+                   and if both flags are set the interface is
+                   both inside and outside
     @param sw_if_index - index of the interface
 */
 define nat64_interface_details {
   u32 context;
-  u8 is_inside;
-  u32 sw_if_index;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Add/delete NAT64 static BIB entry
@@ -1282,18 +1280,18 @@ define nat64_interface_details {
     @param o_port - outside port number
     @param vrf_id - VRF id of tenant
     @param proto - protocol number
-    @param is_add - 1 if add, 0 if delete
+    @param is_add - true if add, false if delete
 */
  autoreply define nat64_add_del_static_bib {
   u32 client_index;
   u32 context;
-  u8 i_addr[16];
-  u8 o_addr[4];
+  vl_api_ip6_address_t i_addr;
+  vl_api_ip4_address_t o_addr;
   u16 i_port;
   u16 o_port;
   u32 vrf_id;
   u8 proto;
-  u8 is_add;
+  bool is_add;
 };
 
 /** \brief Dump NAT64 BIB
@@ -1319,18 +1317,19 @@ define nat64_bib_dump {
     @param o_port - outside port number
     @param vrf_id - VRF id of tenant
     @param proto - protocol number
-    @param is_static - 1 if static BIB entry, 0 if dynamic
+    @param flags - flag NAT_IS_STATIC if BIB entry is static 
+                   or BIB entry is dynamic
     @param ses_num - number of sessions associated with the BIB entry
 */
 define nat64_bib_details {
   u32 context;
-  u8 i_addr[16];
-  u8 o_addr[4];
+  vl_api_ip6_address_t i_addr;
+  vl_api_ip4_address_t o_addr;
   u16 i_port;
   u16 o_port;
   u32 vrf_id;
   u8 proto;
-  u8 is_static;
+  vl_api_nat_config_flags_t flags;
   u32 ses_num;
 };
 
@@ -1355,20 +1354,20 @@ define nat64_st_dump {
     @param ol_addr - outside IPv4 address of the local host
     @param il_port - inside port number id of the local host/inside ICMP id
     @param ol_port - outside port number of the local host/outside ICMP id
-    @param il_addr - inside IPv6 address of the remote host
-    @param ol_addr - outside IPv4 address of the remote host
-    @param l_port - port number of the remote host (not used for ICMP)
+    @param ir_addr - inside IPv6 address of the remote host
+    @param or_addr - outside IPv4 address of the remote host
+    @param r_port - port number of the remote host (not used for ICMP)
     @param vrf_id - VRF id of tenant
     @param proto - protocol number
 */
 define nat64_st_details {
   u32 context;
-  u8 il_addr[16];
-  u8 ol_addr[4];
+  vl_api_ip6_address_t il_addr;
+  vl_api_ip4_address_t ol_addr;
   u16 il_port;
   u16 ol_port;
-  u8 ir_addr[16];
-  u8 or_addr[4];
+  vl_api_ip6_address_t ir_addr;
+  vl_api_ip4_address_t or_addr;
   u16 r_port;
   u32 vrf_id;
   u8 proto;
@@ -1378,17 +1377,15 @@ define nat64_st_details {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param prefix - NAT64 prefix
-    @param prefix - NAT64 prefix length
     @param vrf_id - VRF id of tenant
-    @param is_add - 1 if add, 0 if delete
+    @param is_add - true if add, false if delete
 */
 autoreply define nat64_add_del_prefix {
   u32 client_index;
   u32 context;
-  u8 prefix[16];
-  u8 prefix_len;
+  vl_api_ip6_prefix_t prefix;
   u32 vrf_id;
-  u8 is_add;
+  bool is_add;
 };
 
 /** \brief Dump NAT64 prefix
@@ -1403,30 +1400,26 @@ define nat64_prefix_dump {
 /** \brief Dump NAT64 prefix details response
     @param context - sender context, to match reply w/ request
     @param prefix - NAT64 prefix
-    @param prefix - NAT64 prefix length
     @param vrf_id - VRF id of tenant
 */
 define nat64_prefix_details {
   u32 context;
-  u8 prefix[16];
-  u8 prefix_len;
+  vl_api_ip6_prefix_t prefix;
   u32 vrf_id;
 };
 
 /** \brief Add/delete NAT64 pool address from specific interfce
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
+    @param is_add - true if add, false if delete
     @param sw_if_index - software index of the interface
 */
 autoreply define nat64_add_del_interface_addr {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_inside;
-  u32 sw_if_index;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
 };
-
 
 /*
  * DS-Lite APIs
@@ -1435,16 +1428,16 @@ autoreply define nat64_add_del_interface_addr {
 /** \brief Add/delete address range to DS-Lite pool
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param start_addr - start address of the range
-    @param end_addr - end address of the range
-    @param is_add - 1 if add, 0 if delete
+    @param start_addr - start IPv4 address of the range
+    @param end_addr - end IPv4 address of the range
+    @param is_add - true if add, false if delete
 */
 autoreply define dslite_add_del_pool_addr_range {
   u32 client_index;
   u32 context;
-  u8 start_addr[4];
-  u8 end_addr[4];
-  u8 is_add;
+  vl_api_ip4_address_t start_addr;
+  vl_api_ip4_address_t end_addr;
+  bool is_add;
 };
 
 /** \brief Dump DS-Lite addresses
@@ -1462,20 +1455,20 @@ define dslite_address_dump {
 */
 define dslite_address_details {
   u32 context;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
 };
 
 /** \brief Set AFTR IPv6 and IPv4 addresses
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param ip4_addr - IPv4 address
-    @param ip6_addr - IP64 address
+    @param ip6_addr - IPv6 address
 */
 autoreply define dslite_set_aftr_addr {
   u32 client_index;
   u32 context;
-  u8 ip4_addr[4];
-  u8 ip6_addr[16];
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
 };
 
 /** \brief Get AFTR IPv6 and IPv4 addresses
@@ -1491,26 +1484,26 @@ define dslite_get_aftr_addr {
     @param context - sender context, to match reply w/ request
     @param retval - return code
     @param ip4_addr - IPv4 address
-    @param ip6_addr - IP64 address
+    @param ip6_addr - IPv6 address
 */
 define dslite_get_aftr_addr_reply {
   u32 context;
   i32 retval;
-  u8 ip4_addr[4];
-  u8 ip6_addr[16];
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
 };
 
 /** \brief Set B4 IPv6 and IPv4 addresses
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param ip4_addr - IPv4 address
-    @param ip6_addr - IP64 address
+    @param ip6_addr - IPv6 address
 */
 autoreply define dslite_set_b4_addr {
   u32 client_index;
   u32 context;
-  u8 ip4_addr[4];
-  u8 ip6_addr[16];
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
 };
 
 /** \brief Get B4 IPv6 and IPv4 addresses
@@ -1526,13 +1519,13 @@ define dslite_get_b4_addr {
     @param context - sender context, to match reply w/ request
     @param retval - return code
     @param ip4_addr - IPv4 address
-    @param ip6_addr - IP64 address
+    @param ip6_addr - IPv6 address
 */
 define dslite_get_b4_addr_reply {
   u32 context;
   i32 retval;
-  u8 ip4_addr[4];
-  u8 ip6_addr[16];
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
 };
 
 /*
@@ -1541,16 +1534,17 @@ define dslite_get_b4_addr_reply {
 /** \brief Enable/disable NAT66 feature on the interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
-    @param is_inside - 1 if inside, 0 if outside
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_IS_INSIDE if interface is inside or
+                   interface is outside,
     @param sw_if_index - software index of the interface
 */
 autoreply define nat66_add_del_interface {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_inside;
-  u32 sw_if_index;
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump interfaces with NAT66 feature
@@ -1564,19 +1558,20 @@ define nat66_interface_dump {
 
 /** \brief NAT66 interface details response
     @param context - sender context, to match reply w/ request
-    @param is_inside - 1 if inside, 0 if outside
+    @param flags - flag NAT_IS_INSIDE if interface is inside or
+                   interface is outside,
     @param sw_if_index - software index of the interface
 */
 define nat66_interface_details {
   u32 context;
-  u8 is_inside;
-  u32 sw_if_index;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Add/delete 1:1 NAT66
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 if add, 0 if delete
+    @param is_add - true if add, false if delete
     @param local_ip_address - local IPv6 address
     @param external_ip_address - external IPv6 address
     @param vrf_id - VRF id of tenant
@@ -1584,9 +1579,9 @@ define nat66_interface_details {
 autoreply define nat66_add_del_static_mapping {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 local_ip_address[16];
-  u8 external_ip_address[16];
+  bool is_add;
+  vl_api_ip6_address_t local_ip_address;
+  vl_api_ip6_address_t external_ip_address;
   u32 vrf_id;
 };
 
@@ -1609,8 +1604,8 @@ define nat66_static_mapping_dump {
 */
 define nat66_static_mapping_details {
   u32 context;
-  u8 local_ip_address[16];
-  u8 external_ip_address[16];
+  vl_api_ip6_address_t local_ip_address;
+  vl_api_ip6_address_t external_ip_address;
   u32 vrf_id;
   u64 total_bytes;
   u64 total_pkts;
