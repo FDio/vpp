@@ -45,7 +45,8 @@ create_44_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
-  payload.addr_only = 1;
+  payload.flags = NAT_IS_ADDR_ONLY;
+  // payload.addr_only = 1;
   payload.local_port = 0;
   payload.external_port = 0;
   payload.vrf_id = m_id;
@@ -94,7 +95,8 @@ delete_44_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
-  payload.addr_only = 1;
+  payload.flags = NAT_IS_ADDR_ONLY;
+  // payload.addr_only = 1;
   payload.local_port = 0;
   payload.external_port = 0;
   payload.vrf_id = m_id;
