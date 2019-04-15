@@ -81,6 +81,10 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
       r = r->next;
     }
 
+  /* no tests registered */
+  if (n_ops == 0)
+    return 0;
+
   vec_sort_with_function (rv, sort_registrations);
 
   vec_validate_aligned (computed_data, computed_data_total_len - 1,
@@ -158,8 +162,6 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	  op->user_data = i;
 	  op++;
 	}
-      /* next */
-      r = r->next;
     }
   /* *INDENT-ON* */
 
@@ -177,6 +179,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	{
 	case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT:
 	  exp_tag = &r->tag;
+          /* fall through */
 	case VNET_CRYPTO_OP_TYPE_ENCRYPT:
 	  exp_ct = &r->ciphertext;
 	  break;

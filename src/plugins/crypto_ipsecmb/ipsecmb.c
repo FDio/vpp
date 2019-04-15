@@ -321,10 +321,12 @@ crypto_ipsecmb_iv_init (ipsecmb_main_t * imbm)
     if (read (fd, &ptd->cbc_iv, sizeof (ptd->cbc_iv)) != sizeof (ptd->cbc_iv))
       {
 	err = clib_error_return_unix (0, "'/dev/urandom' read failure");
+	close (fd);
 	return (err);
       }
   }
 
+  close (fd);
   return (NULL);
 }
 
