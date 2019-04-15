@@ -474,6 +474,8 @@ vapi_send (vapi_ctx_t ctx, void *msg)
     {
       rv = VAPI_EAGAIN;
     }
+  else
+    VL_MSG_API_POISON(msg);
 out:
   VAPI_DBG ("vapi_send() rv = %d", rv);
   return rv;
@@ -518,6 +520,8 @@ vapi_send2 (vapi_ctx_t ctx, void *msg1, void *msg2)
     {
       rv = VAPI_EAGAIN;
     }
+  else
+    VL_MSG_API_POISON(msg1);
 out:
   VAPI_DBG ("vapi_send() rv = %d", rv);
   return rv;
@@ -548,6 +552,7 @@ again:
 
   if (tmp == 0)
     {
+      VL_MSG_API_UNPOISON ((void *) data);
 #if VAPI_DEBUG_ALLOC
       vapi_add_to_be_freed ((void *) data);
 #endif

@@ -48,3 +48,18 @@ vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_GCOV -fPIC -Werror -coverage
 
 vpp_coverity_TAG_CFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
 vpp_coverity_TAG_LDFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
+
+# Support for ASAN, build it eg.
+# make -C build-root PLATFORM=vpp TAG=vpp_sanitize vpp-install
+# Note1: ASAN memory map and VPP memory map can overlap, preventing ASAN to
+# work. As a workaround, VPP memory map can be customized at startup, eg.
+# physmem { base-va 0x200000000000 } api-segment { base-va 0x300000000000 }
+# Note2: ASAN consumes a lot of adress space, which cause DPDK initialization
+# to slow down so much it is not usefull. As a workaround, starts VPP w/o dpdk
+# plugin: plugins { plugin dpdk_plugin.so { disable } }
+# Note3: ASAN stack sanitizer needs to be notified when switching stack (as it
+# is the case with VPP threads) through the use of
+# __sanitizer_start_switch_fiber() and __sanitizer_finish_switch_fiber(). This
+# is not supported for now, disable stack sanitizer altogether
+vpp_sanitize_TAG_CFLAGS  = $(vpp_debug_TAG_CFLAGS) -fsanitize=address --param asan-stack=0
+vpp_sanitize_TAG_LDFLAGS = $(vpp_debug_TAG_LDFLAGS) -fsanitize=address --param asan-stack=0

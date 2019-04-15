@@ -169,7 +169,6 @@ set(VPPINFRA_HEADERS
   types.h
   atomics.h
   unix.h
-  valgrind.h
   valloc.h
   vec_bootstrap.h
   vec.h

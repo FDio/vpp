@@ -186,6 +186,7 @@ vac_rx_thread_fn (void *arg)
   while (1)
     while (!svm_queue_sub(q, (u8 *)&msg, SVM_Q_WAIT, 0))
       {
+        VL_MSG_API_UNPOISON((void *)msg);
 	u16 id = ntohs(*((u16 *)msg));
 	switch (id) {
 	case VL_API_RX_THREAD_EXIT:
@@ -468,6 +469,7 @@ vac_read (char **p, int *l, u16 timeout)
   rv = svm_queue_sub(q, (u8 *)&msg, SVM_Q_WAIT, 0);
 
   if (rv == 0) {
+    VL_MSG_API_UNPOISON((void *)msg);
     u16 msg_id = ntohs(*((u16 *)msg));
     switch (msg_id) {
     case VL_API_RX_THREAD_EXIT:

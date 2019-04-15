@@ -205,6 +205,7 @@ do {                                                                    \
 	clib_bitmap_andnoti_notrim (_pool_var (p)->free_bitmap,        \
 	                             _pool_var (i));	               	\
       _vec_len (_pool_var (p)->free_indices) = _pool_var (l) - 1;       \
+      CLIB_MEM_UNPOISON((E), sizeof((E)[0]));                           \
     }                                                                   \
   else                                                                  \
     {                                                                   \
@@ -305,6 +306,8 @@ do {									\
     }                                                                   \
   else                                                                  \
     vec_add1 (_pool_var (p)->free_indices, _pool_var (l));		\
+                                                                        \
+  CLIB_MEM_POISON((E), sizeof((E)[0]));                                 \
 } while (0)
 
 /** Free pool element with given index. */
