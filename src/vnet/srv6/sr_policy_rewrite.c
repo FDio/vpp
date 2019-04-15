@@ -150,7 +150,7 @@ VLIB_CLI_COMMAND (set_sr_src_command, static) = {
  * @return precomputed rewrite string for encapsulation
  */
 static inline u8 *
-compute_rewrite_encaps (ip6_address_t * sl, u8 is_tmap, u64 tmap_prefix)
+compute_rewrite_encaps (ip6_address_t * sl)
 {
   ip6_header_t *iph;
   ip6_sr_header_t *srh;
@@ -292,12 +292,14 @@ compute_rewrite_bsid (ip6_address_t * sl)
  * @param sl is a vector of IPv6 addresses composing the Segment List
  * @param weight is the weight of the SegmentList (for load-balancing purposes)
  * @param is_encap represents the mode (SRH insertion vs Encapsulation)
+ * @param is_tmap (bool) whether SR policy should behave as T.M.Tmap gtp4
+ * @param localsid_prefix is T.M.Tmap localsid prefix
  *
  * @return pointer to the just created segment list
  */
 static inline ip6_sr_sl_t *
 create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
-	   u8 is_encap, u8 is_tmap, ip46_address_t *tmap_prefix)
+	   u8 is_encap, u8 is_tmap, ip46_address_t *localsid_prefix)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
@@ -313,11 +315,11 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
   segment_list->segments = vec_dup (sl);
 
   segment_list->is_tmap = is_tmap;
+  segment_list->localsid_prefix = *localsid_prefix;
 
   if (is_encap)
     {
-      segment_list->rewrite = compute_rewrite_encaps (sl, is_tmap,
-                                                      tmap_prefix->as_u64[0]);
+      segment_list->rewrite = compute_rewrite_encaps (sl);
       segment_list->rewrite_bsid = segment_list->rewrite;
     }
   else
@@ -550,13 +552,15 @@ update_replicate (ip6_sr_policy_t * sr_policy)
  * @param behavior is the behavior of the SR policy. (default//spray)
  * @param fib_table is the VRF where to install the FIB entry for the BSID
  * @param is_encap (bool) whether SR policy should behave as Encap/SRH Insertion
+ * @param is_tmap (bool) whether SR policy should behave as T.M.Tmap gtp4
+ * @param localsid_prefix is T.M.Tmap localsid prefix
  *
  * @return 0 if correct, else error
  */
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
-           u8 is_tmap, ip46_address_t *tmap_prefix)
+           u8 is_tmap, ip46_address_t *localsid_prefix)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -607,7 +611,7 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 
   /* Create a segment list and add the index to the SR policy */
   create_sl (sr_policy, segments, weight, is_encap, is_tmap,
-             tmap_prefix);
+             localsid_prefix);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -841,8 +845,8 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   char is_encap = 1;
   char is_spray = 0;
   char is_tmap = 0;
-  ip46_address_t tmap_prefix;
-  u32 gtp4_mask_width = 0;
+  ip46_address_t tmap_prefix, tmap_localsid;
+  u32 gtp4_mask_width = 0, localsid_mask_width=0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -878,12 +882,22 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_encap = 1;
       else if (unformat (input, "insert"))
 	is_encap = 0;
-       else if (unformat (input, "gtp4_removal sr-prefix %U/%d",
-           unformat_ip6_address, &tmap_prefix.ip6,  &gtp4_mask_width))
+       else if (unformat (input, "gtp4_removal sr-prefix %U/%d local-sid %U/%d",
+           unformat_ip6_address, &tmap_prefix.ip6,  &gtp4_mask_width,
+           &tmap_localsid, &localsid_mask_width))
        {
     ip6_address_t mask;
+
+    if (64 < localsid_mask_width) {
+        return clib_error_return (0,
+                                  "Incorrect local sid prefix width, max 64");
+    }
+
     ip6_address_mask_from_width(&mask, gtp4_mask_width);
     ip6_address_mask(&tmap_prefix.ip6, &mask);
+
+    ip6_address_mask_from_width(&mask, localsid_mask_width);
+    ip6_address_mask(&tmap_localsid.ip6, &mask);
 
     /* add tmap prefix as the last SID */
 
@@ -911,7 +925,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       rv = sr_policy_add (&bsid, segments, weight,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
 			   SR_POLICY_TYPE_DEFAULT), fib_table,
-                           is_encap, is_tmap, &tmap_prefix);
+                           is_encap, is_tmap, &tmap_localsid);
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -1510,7 +1524,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr0->segments->as_u8[11] = ((u8*) &teid0)[2];
               sr0->segments->as_u8[12] = ((u8*) &teid0)[3];
 
-              ip0->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip0->src_address.as_u64[0] = sl3->localsid_prefix.as_u64[0];
               ip0->src_address.as_u32[2] = sr_addr0.as_u32;
               ip0->src_address.as_u16[6] = sr_port0;
             }
@@ -1524,7 +1538,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr1->segments->as_u8[11] = ((u8*) &teid1)[2];
               sr1->segments->as_u8[12] = ((u8*) &teid1)[3];
 
-              ip1->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip1->src_address.as_u64[0] = sl3->localsid_prefix.as_u64[0];
               ip1->src_address.as_u32[2] = sr_addr1.as_u32;
               ip1->src_address.as_u16[6] = sr_port1;
             }
@@ -1538,7 +1552,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr2->segments->as_u8[11] = ((u8*) &teid2)[2];
               sr2->segments->as_u8[12] = ((u8*) &teid2)[3];
 
-              ip2->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip2->src_address.as_u64[0] = sl3->localsid_prefix.as_u64[0];
               ip2->src_address.as_u32[2] = sr_addr2.as_u32;
               ip2->src_address.as_u16[6] = sr_port2;
             }
@@ -1552,7 +1566,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr3->segments->as_u8[11] = ((u8*) &teid3)[2];
               sr3->segments->as_u8[12] = ((u8*) &teid3)[3];
 
-              ip3->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip3->src_address.as_u64[0] = sl3->localsid_prefix.as_u64[0];
               ip3->src_address.as_u32[2] = sr_addr3.as_u32;
               ip3->src_address.as_u16[6] = sr_port3;
             }
@@ -1663,7 +1677,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr0->segments->as_u8[11] = ((u8*) &teid0)[2];
               sr0->segments->as_u8[12] = ((u8*) &teid0)[3];
 
-              ip0->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
+              ip0->src_address.as_u64[0] = sl0->localsid_prefix.as_u64[0];
               ip0->src_address.as_u32[2] = sr_addr0.as_u32;
               ip0->src_address.as_u16[6] = sr_port;
             }
