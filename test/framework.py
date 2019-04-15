@@ -313,8 +313,10 @@ class VppTestCase(unittest.TestCase):
                            coredump_size, "runtime-dir", cls.tempdir, "}",
                            "api-trace", "{", "on", "}", "api-segment", "{",
                            "prefix", cls.shm_prefix, "}", "cpu", "{",
-                           "main-core", str(cpu_core_number), "}", "statseg",
-                           "{", "socket-name", cls.stats_sock, "}", "plugins",
+                           "main-core", str(cpu_core_number), "}",
+                           "statseg", "{", "socket-name", cls.stats_sock, "}",
+                           "socksvr", "{", "socket-name", cls.api_sock, "}",
+                           "plugins",
                            "{", "plugin", "dpdk_plugin.so", "{", "disable",
                            "}", "plugin", "rdma_plugin.so", "{", "disable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
@@ -415,6 +417,7 @@ class VppTestCase(unittest.TestCase):
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
+        cls.api_sock = "%s/api.sock" % cls.tempdir
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',

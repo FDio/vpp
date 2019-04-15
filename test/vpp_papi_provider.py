@@ -226,8 +226,16 @@ class VppPapiProvider(object):
         if 'VPP_API_DIR' not in os.environ:
             os.environ['VPP_API_DIR'] = os.getenv('VPP_INSTALL_PATH')
 
+        use_socket = False
+        try:
+            if os.environ['SOCKET'] == '1':
+                use_socket = True
+        except:
+            pass
         self.vpp = VPP(logger=test_class.logger,
-                       read_timeout=read_timeout)
+                       read_timeout=read_timeout,
+                       use_socket=use_socket,
+                       server_address=test_class.api_sock)
         self._events = deque()
 
     def __enter__(self):
