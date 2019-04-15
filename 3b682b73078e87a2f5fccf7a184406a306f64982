@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "595b8b3c_e2571a3d",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 12
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-04-15T08:44:46Z",
+      "side": 1,
+      "message": "As far as I understand, TARGET_PLATFORM is not being used. The whole purpose of TARGET_PLATFORM check in build-data/packages/vpp.mk  can only be when somebody is doing cross compilation for thunderx.\n\nTARGET_PLATFORM is controlling passing proper T\u003d$(DPDK_TARGET) to dpdk.mk. In native compilation, dpdk.mk has valid checks to determine DPDK_TARGET hence do not require caller passing it from external. Passing DPDK_TARGET to dpdk.mk can only be used in cross compilation but for that matter build-data/platforms/thunderx.mk should be added instead of changing build-data/packages/vpp.mk\n\nSo I think TARGET_PLATFORM is not required even in this patch. But this is not a blocker for this patch. That can be addressed in later patch. So +1 for my side",
+      "range": {
+        "startLine": 35,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 26
+      },
+      "revId": "3b682b73078e87a2f5fccf7a184406a306f64982",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
