@@ -39,7 +39,8 @@ bind_44_input_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
-  payload.is_inside = (nat_binding::zone_t::INSIDE == m_zone ? 1 : 0);
+  payload.flags = (vapi_enum_nat_config_flags)(
+    nat_binding::zone_t::INSIDE == m_zone ? NAT_IS_INSIDE : 0);
   payload.sw_if_index = m_itf.value();
 
   VAPI_CALL(req.execute());
@@ -79,7 +80,8 @@ unbind_44_input_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
-  payload.is_inside = (nat_binding::zone_t::INSIDE == m_zone ? 1 : 0);
+  payload.flags = (vapi_enum_nat_config_flags)(
+    nat_binding::zone_t::INSIDE == m_zone ? NAT_IS_INSIDE : 0);
   payload.sw_if_index = m_itf.value();
 
   VAPI_CALL(req.execute());
@@ -119,7 +121,8 @@ bind_44_output_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
-  payload.is_inside = (nat_binding::zone_t::INSIDE == m_zone ? 1 : 0);
+  payload.flags = (vapi_enum_nat_config_flags)(
+    nat_binding::zone_t::INSIDE == m_zone ? NAT_IS_INSIDE : 0);
   payload.sw_if_index = m_itf.value();
 
   VAPI_CALL(req.execute());
@@ -159,7 +162,8 @@ unbind_44_output_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
-  payload.is_inside = (nat_binding::zone_t::INSIDE == m_zone ? 1 : 0);
+  payload.flags = (vapi_enum_nat_config_flags)(
+    nat_binding::zone_t::INSIDE == m_zone ? NAT_IS_INSIDE : 0);
   payload.sw_if_index = m_itf.value();
 
   VAPI_CALL(req.execute());
@@ -263,7 +267,8 @@ bind_66_input_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
-  payload.is_inside = (nat_binding::zone_t::INSIDE == m_zone ? 1 : 0);
+  payload.flags = (vapi_enum_nat_config_flags)(
+    nat_binding::zone_t::INSIDE == m_zone ? NAT_IS_INSIDE : 0);
   payload.sw_if_index = m_itf.value();
 
   VAPI_CALL(req.execute());
@@ -305,7 +310,8 @@ unbind_66_input_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
-  payload.is_inside = (nat_binding::zone_t::INSIDE == m_zone ? 1 : 0);
+  payload.flags = (vapi_enum_nat_config_flags)(
+    nat_binding::zone_t::INSIDE == m_zone ? NAT_IS_INSIDE : 0);
   payload.sw_if_index = m_itf.value();
 
   VAPI_CALL(req.execute());
