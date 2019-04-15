@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb7ee083_6f6a60b9",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-15T19:01:20Z",
+      "side": 1,
+      "message": "raise NotImplementedError.",
+      "range": {
+        "startLine": 144,
+        "startChar": 10,
+        "endLine": 144,
+        "endChar": 24
+      },
+      "revId": "aaed10e583bd17dbebdc14296743efc80cb7c3d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
