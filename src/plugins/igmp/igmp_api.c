@@ -60,7 +60,7 @@ _(IGMP_CLEAR_INTERFACE, igmp_clear_interface)                                  \
 _(IGMP_CLEAR_INTERFACE, igmp_clear_interface)                                  \
 _(IGMP_GROUP_PREFIX_SET, igmp_group_prefix_set)                                \
 _(IGMP_GROUP_PREFIX_DUMP, igmp_group_prefix_dump)                              \
-_(WANT_IGMP_EVENTS, want_igmp_events)                                          \
+_(WANT_IGMP_EVENTS, want_igmp_events)
 
 static void
 vl_api_igmp_listen_t_handler (vl_api_igmp_listen_t * mp)
@@ -373,7 +373,7 @@ vl_api_want_igmp_events_t_handler (vl_api_want_igmp_events_t * mp)
     }
   rv = VNET_API_ERROR_INVALID_REGISTRATION;
 
-done:;
+done:
   REPLY_MACRO (VL_API_WANT_IGMP_EVENTS_REPLY + im->msg_id_base);
 }
 
@@ -399,7 +399,6 @@ VL_MSG_API_REAPER_FUNCTION (want_igmp_events_reaper);
 
 void
 send_igmp_event (vl_api_registration_t * rp,
-		 u32 context,
 		 igmp_filter_mode_t filter,
 		 u32 sw_if_index,
 		 const ip46_address_t * saddr, const ip46_address_t * gaddr)
@@ -408,7 +407,6 @@ send_igmp_event (vl_api_registration_t * rp,
   clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = ntohs ((VL_API_IGMP_EVENT) + igmp_main.msg_id_base);
-  mp->context = context;
   mp->sw_if_index = htonl (sw_if_index);
   mp->filter = htonl (filter);
   clib_memcpy (&mp->saddr, &saddr->ip4, sizeof (ip4_address_t));
@@ -440,7 +438,7 @@ igmp_event (igmp_filter_mode_t filter,
     ({
       rp = vl_api_client_index_to_registration (api_client->client_index);
       if (rp)
-        send_igmp_event (rp, 0, filter, sw_if_index, saddr, gaddr);
+        send_igmp_event (rp, filter, sw_if_index, saddr, gaddr);
     }));
   /* *INDENT-ON* */
 }

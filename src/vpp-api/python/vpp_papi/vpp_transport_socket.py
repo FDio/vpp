@@ -70,7 +70,7 @@ class VppTransport(object):
     def connect(self, name, pfx, msg_handler, rx_qlen):
 
         # Create a UDS socket
-        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.socket.settimeout(self.read_timeout)
 
         # Connect the socket to the port where the server is listening
@@ -150,36 +150,28 @@ class VppTransport(object):
         n = self.socket.send(buf)
 
     def _read(self):
-        # Header and message
-        try:
-            msg = self.socket.recv(4096)
-            if len(msg) == 0:
-                return None
-        except socket.error as message:
-            logging.error(message)
-            raise
+        hdr = self.socket.recv(16)
+        if not hdr:
+            return
+        (_, l, _) = self.header.unpack(hdr) # If at head of message
 
-        (_, l, _) = self.header.unpack(msg[:16])
-
+        # Read rest of message
+        msg = self.socket.recv(l)
         if l > len(msg):
-            buf = bytearray(l + 16)
+            nbytes = len(msg)
+            buf = bytearray(l)
             view = memoryview(buf)
-            view[:4096] = msg
-            view = view[4096:]
-            # Read rest of message
-            remaining_bytes = l - 4096 + 16
-            while remaining_bytes > 0:
-                bytes_to_read = (remaining_bytes if remaining_bytes
-                                 <= 4096 else 4096)
-                nbytes = self.socket.recv_into(view, bytes_to_read)
-                if nbytes == 0:
-                    logging.error('recv failed')
-                    break
+            view[:nbytes] = msg
+            view = view[nbytes:]
+            left = l - nbytes
+            while left:
+                nbytes = self.socket.recv_into(view, left)
                 view = view[nbytes:]
-                remaining_bytes -= nbytes
-        else:
-            buf = msg
-        return buf[16:]
+                left -= nbytes
+            return buf
+        if l == len(msg):
+            return msg
+        raise VPPTransportSocketIOError(1, 'Unknown socket read error')
 
     def read(self):
         if not self.connected:
