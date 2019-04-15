@@ -360,7 +360,7 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
       u64 bitmap = u8x32_msb_mask ((u8x32) next16);
       n_enqueued = count_trailing_zeros (~bitmap) / 2;
 #elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
-      u16x8 next8 = u16x8_load_unaligned (nexts);
+      u16x8 next8 = CLIB_MEM_OVERFLOW_LOAD (u16x8_load_unaligned, nexts);
       next8 = (next8 == u16x8_splat (next8[0]));
       u64 bitmap = u8x16_msb_mask ((u8x16) next8);
       n_enqueued = count_trailing_zeros (~bitmap) / 2;

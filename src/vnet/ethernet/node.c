@@ -671,7 +671,7 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 				    u32 n_packets, ethernet_interface_t * ei,
 				    u8 have_sec_dmac)
 {
-  u64 hwaddr = (*(u64 *) hi->hw_address) & DMAC_MASK;
+  u64 hwaddr = CLIB_MEM_OVERFLOW_LOAD (*, (u64 *) hi->hw_address) & DMAC_MASK;
   u64 *dmac = dmacs;
   u8 *dmac_bad = dmacs_bad;
   u32 bad = 0;
@@ -709,7 +709,7 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 
       vec_foreach (addr, ei->secondary_addrs)
       {
-	u64 hwaddr = ((u64 *) addr)[0] & DMAC_MASK;
+	u64 hwaddr = CLIB_MEM_OVERFLOW_LOAD (*, (u64 *) addr) & DMAC_MASK;
 	i32 n_left = n_packets;
 	u64 *dmac = dmacs;
 	u8 *dmac_bad = dmacs_bad;

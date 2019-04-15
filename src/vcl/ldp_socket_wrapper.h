@@ -90,13 +90,6 @@
 #define DESTRUCTOR_ATTRIBUTE
 #endif
 
-#define HAVE_ADDRESS_SANITIZER_ATTRIBUTE
-#ifdef HAVE_ADDRESS_SANITIZER_ATTRIBUTE
-#define DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE __attribute__((no_sanitize_address))
-#else
-#define DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE
-#endif
-
 /*
  * IMPORTANT
  *
@@ -127,11 +120,9 @@ int libc_dup2 (int oldfd, int newfd);
 int libc_eventfd (int count, int flags);
 #endif
 
-DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
-libc_vfcntl (int fd, int cmd, va_list ap);
+CLIB_MEM_ATTR_NOASAN int libc_vfcntl (int fd, int cmd, va_list ap);
 
-DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
-libc_vioctl (int fd, int cmd, va_list ap);
+CLIB_MEM_ATTR_NOASAN int libc_vioctl (int fd, int cmd, va_list ap);
 
 int libc_getpeername (int sockfd, struct sockaddr *addr, socklen_t * addrlen);
 

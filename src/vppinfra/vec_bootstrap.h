@@ -164,6 +164,7 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 #define vec_set_len(v, l) do {     \
     ASSERT(v);                     \
     ASSERT((l) <= vec_max_len(v)); \
+    CLIB_MEM_POISON_LEN((void *)(v), _vec_len(v) * sizeof((v)[0]), (l) * sizeof((v)[0])); \
     _vec_len(v) = (l);             \
 } while (0)
 #else /* __COVERITY__ */
