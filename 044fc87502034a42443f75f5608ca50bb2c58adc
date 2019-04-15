@@ -46,6 +46,30 @@
       "revId": "044fc87502034a42443f75f5608ca50bb2c58adc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c9a44f1d_9c5e9c0a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2019-04-15T07:22:12Z",
+      "side": 1,
+      "message": "Why ? It works for vips without any configured ASs. Why wouldn\u0027t it work for packets with wrong port ?\nThat\u0027s the idea behind using dummy entries, the data plane is not modified.\n\nThat said, we might have to do something to avoid creating state when there is no AS (or wrong port), by only adding state when there is no error. But that can be done in a separate patch.",
+      "parentUuid": "2e7e03c6_33993e80",
+      "range": {
+        "startLine": 327,
+        "startChar": 0,
+        "endLine": 332,
+        "endChar": 13
+      },
+      "revId": "044fc87502034a42443f75f5608ca50bb2c58adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
