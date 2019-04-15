@@ -73,7 +73,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
                                   vlib_frame_t * frame)
 {
   srv6_end_main_t *sm = &srv6_end_main;
+  ip6_sr_main_t *sm2 = &sr_main;
   u32 n_left_from, next_index, *from, *to_next;
+  u32 thread_index = vm->thread_index;
 
   u32 good_n = 0, bad_n = 0;
 
@@ -92,6 +94,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	{
           u32 bi0;
 	  vlib_buffer_t *b0;
+	  ip6_sr_localsid_t *ls0;
 
           ip6srv_combo_header_t *ip6srv0;
           ip6_address_t src0, dst0;
@@ -110,6 +113,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           n_left_to_next -= 1;
 
           b0 = vlib_get_buffer (vm, bi0);
+	  ls0 =
+            pool_elt_at_index (sm2->localsids,
+                               vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
           //
 
           ip6srv0 = vlib_buffer_get_current (b0);
@@ -143,7 +149,13 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
               clib_memcpy (hdr0, &sm->cache_hdr, sizeof (ip4_gtpu_header_t));
 
-              hdr0->gtpu.teid = (u32) dst0.as_u8[9];
+              u32 teid;
+              u8 *teid8p = (u8 *)&teid;
+              teid8p[0] = dst0.as_u8[9];
+              teid8p[1] = dst0.as_u8[10];
+              teid8p[2] = dst0.as_u8[11];
+              teid8p[3] = dst0.as_u8[12];
+              hdr0->gtpu.teid = teid;
               hdr0->gtpu.length = clib_host_to_net_u16 (len0);
 
               hdr0->udp.src_port = src0.as_u16[6];
@@ -171,6 +183,12 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 			   sizeof (tr->dst.as_u8));
               tr->teid = hdr0->gtpu.teid;
 	    }
+
+          vlib_increment_combined_counter
+            (((next0 ==
+               SRV6_END_M_GTP4_E_NEXT_DROP) ? &(sm2->sr_ls_invalid_counters) :
+              &(sm2->sr_ls_valid_counters)), thread_index, ls0 - sm2->localsids,
+             1, vlib_buffer_length_in_chain (vm, b0));
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
