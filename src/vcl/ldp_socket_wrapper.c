@@ -388,7 +388,7 @@ swrap_load_lib_handle (enum swrap_lib lib)
   void *handle = NULL;
   int i;
 
-#ifdef RTLD_DEEPBIND
+#if defined(RTLD_DEEPBIND) && !defined(__SANITIZE_ADDRESS__)
   flags |= RTLD_DEEPBIND;
 #endif
 

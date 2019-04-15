@@ -81,7 +81,11 @@ typedef struct svm_map_region_args_
  * Memory mapped to high addresses for session/vppcom/vcl/etc...
  */
 #if __WORDSIZE == 64
+#ifdef __SANITIZE_ADDRESS__
+#define HIGH_SEGMENT_BASEVA 0x300000000000
+#else /* __SANITIZE_ADDRESS__ */
 #define HIGH_SEGMENT_BASEVA (8ULL   << 30)	/* 8GB */
+#endif /* __SANITIZE_ADDRESS__ */
 #elif __WORDSIZE == 32
 #define HIGH_SEGMENT_BASEVA (3584UL << 20)	/* 3.5GB */
 #else

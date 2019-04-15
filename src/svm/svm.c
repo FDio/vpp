@@ -61,6 +61,10 @@ svm_get_root_rp (void)
 u64
 svm_get_global_region_base_va ()
 {
+#ifdef __SANITIZE_ADDRESS__
+  return 0x200000000000;
+#endif
+
 #if __aarch64__
   /* On AArch64 VA space can have different size, from 36 to 48 bits.
      Here we are trying to detect VA bits by parsing /proc/self/maps
