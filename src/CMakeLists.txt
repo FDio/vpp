@@ -102,6 +102,17 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
 	     HELPSTRING "Build type - valid options are: ${BUILD_TYPES}")
 
 ##############################################################################
+# sanitizers
+##############################################################################
+
+option(ENABLE_SANITIZE_ADDR "Enable Address Sanitizer" OFF)
+if (ENABLE_SANITIZE_ADDR)
+  set(CMAKE_C_FLAGS "-fsanitize=address --param asan-stack=0 -DCLIB_SANITIZE_ADDR ${CMAKE_C_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address ${CMAKE_EXE_LINKER_FLAGS}")
+  set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
+endif (ENABLE_SANITIZE_ADDR)
+
+##############################################################################
 # install config
 ##############################################################################
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
