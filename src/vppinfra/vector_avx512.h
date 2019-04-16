@@ -69,6 +69,52 @@ u16x32_msb_mask (u16x32 v)
   return (u32) _mm512_movepi16_mask ((__m512i) v);
 }
 
+static_always_inline u32x16
+u32x16_byte_swap (u32x16 v)
+{
+  u8x64 swap = {
+    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
+    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
+    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
+    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12
+  };
+  return (u32x16) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) swap);
+}
+
+static_always_inline u16x32
+u16x32_byte_swap (u16x32 v)
+{
+  u8x64 swap = {
+    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14
+  };
+  return (u16x32) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) swap);
+}
+
+static_always_inline u32x8
+u32x16_extract_lo (u32x16 v)
+{
+  return (u32x8) _mm512_extracti64x4_epi64 ((__m512i) v, 0);
+}
+
+static_always_inline u32x8
+u32x16_extract_hi (u32x16 v)
+{
+  return (u32x8) _mm512_extracti64x4_epi64 ((__m512i) v, 1);
+}
+
+static_always_inline u32
+u32x16_min_scalar (u32x16 v)
+{
+  return u32x8_min_scalar (u32x8_min (u32x16_extract_lo (v),
+				      u32x16_extract_hi (v)));
+}
+
+
+#define u32x16_ternary_logic(a, b, c, d) \
+  (u32x16) _mm512_ternarylogic_epi32 ((__m512i) a, (__m512i) b, (__m512i) c, d)
 
 static_always_inline void
 u32x16_transpose (u32x16 m[16])

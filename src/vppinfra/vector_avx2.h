@@ -132,6 +132,16 @@ _(i8x16, i64x4, epi8_epi64)
 #undef _
 /* *INDENT-ON* */
 
+static_always_inline u32x8
+u32x8_byte_swap (u32x8 v)
+{
+  u8x32 swap = {
+    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
+    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12
+  };
+  return (u32x8) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) swap);
+}
+
 static_always_inline u16x16
 u16x16_byte_swap (u16x16 v)
 {
@@ -187,6 +197,9 @@ u32x8_from_f32x8 (f32x8 v)
 {
   return (u32x8) _mm256_cvttps_epi32 ((__m256) v);
 }
+
+#define u32x8_blend(a,b,m) \
+  (u32x8) _mm256_blend_epi32 ((__m256i) a, (__m256i) b, m)
 
 #define u16x16_blend(v1, v2, mask) \
   (u16x16) _mm256_blend_epi16 ((__m256i) (v1), (__m256i) (v2), mask)
@@ -264,6 +277,19 @@ u8x32_blend (u8x32 v1, u8x32 v2, u8x32 mask)
   (u32x8) _mm256_permute2x128_si256 ((__m256i) a, (__m256i) b, m)
 #define u64x4_permute_lanes(a, b, m) \
   (u64x4) _mm256_permute2x128_si256 ((__m256i) a, (__m256i) b, m)
+
+static_always_inline u32x8
+u32x8_min (u32x8 a, u32x8 b)
+{
+  return (u32x8) _mm256_min_epu32 ((__m256i) a, (__m256i) b);
+}
+
+static_always_inline u32
+u32x8_min_scalar (u32x8 v)
+{
+  return u32x4_min_scalar (u32x4_min (u32x8_extract_lo (v),
+				      u32x8_extract_hi (v)));
+}
 
 static_always_inline void
 u32x8_transpose (u32x8 a[8])
