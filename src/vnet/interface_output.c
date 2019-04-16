@@ -850,9 +850,6 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 				   vnet_hw_interface_t * hi,
 				   int do_tx_offloads)
 {
-  vnet_interface_pcap_tx_trace (vm, node, frame,
-				0 /* sw_if_index_from_buffer */ );
-
   /*
    * The 3-headed "if" is here because we want to err on the side
    * of not impacting the non-GSO performance - so for the more
