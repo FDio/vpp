@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "067922e5_33c25973",
+        "filename": "src/plugins/crypto_openssl/main.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-16T14:59:50Z",
+      "side": 1,
+      "message": "Sorry, i was confused. My comment was about ICV, not IV....",
+      "parentUuid": "e3bd86f1_3b1a571c",
+      "range": {
+        "startLine": 128,
+        "startChar": 56,
+        "endLine": 128,
+        "endChar": 58
+      },
+      "revId": "e86d2f7c54eeac48f23306a07eca35f19c1875a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2407fc21_c6ecbc82",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 6
