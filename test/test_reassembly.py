@@ -15,7 +15,7 @@ from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp, fragment_rfc791, fragment_rfc8200
-from vpp_gre_interface import VppGreInterface, VppGre6Interface
+from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 
@@ -1122,7 +1122,7 @@ class TestFIFReassembly(VppTestCase):
         # it shared for multiple test cases
         self.tun_ip6 = "1002::1"
 
-        self.gre6 = VppGre6Interface(self, self.src_if.local_ip6, self.tun_ip6)
+        self.gre6 = VppGreInterface(self, self.src_if.local_ip6, self.tun_ip6)
         self.gre6.add_vpp_config()
         self.gre6.admin_up()
         self.gre6.config_ip6()

@@ -10,7 +10,7 @@ from scapy.layers.vxlan import VXLAN
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
-from vpp_gre_interface import VppGreInterface, VppGre6Interface
+from vpp_gre_interface import VppGreInterface
 from collections import namedtuple
 
 Tag = namedtuple('Tag', ['dot1', 'vlan'])
