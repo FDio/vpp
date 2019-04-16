@@ -22,6 +22,30 @@
       "revId": "667c19613609d7f85abe0f01db76967d90a4b16a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff80a43a_ad0a585f",
+        "filename": "build/external/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-16T20:18:48Z",
+      "side": 1,
+      "message": "that was unintentional.",
+      "parentUuid": "0b7166bc_368f8c90",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 38,
+        "endChar": 24
+      },
+      "revId": "667c19613609d7f85abe0f01db76967d90a4b16a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
