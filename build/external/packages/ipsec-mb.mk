@@ -25,7 +25,8 @@ define  ipsec-mb_config_cmds
 endef
 
 define  ipsec-mb_build_cmds
-	@true
+	echo "BUILDING"
+	make -C $(ipsec-mb_src_dir) DEBUG=y NASM=$(ipsec-mb_install_dir)/bin/nasm 
 endef
 
 define  ipsec-mb_install_cmds
