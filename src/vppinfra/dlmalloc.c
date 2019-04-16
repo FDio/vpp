@@ -4182,7 +4182,7 @@ void* mspace_get_aligned (mspace msp,
   /*
    * Alignment requests less than the size of an mmx vector are ignored
    */
-  if (align < 16) {
+  if (align < sizeof (uword)) {
     rv = mspace_malloc (msp, n_user_data_bytes);
     if (rv == 0)
         return rv;
