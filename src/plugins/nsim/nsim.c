@@ -348,11 +348,26 @@ static void vl_api_nsim_cross_connect_enable_disable_t_handler
   vl_api_nsim_cross_connect_enable_disable_reply_t *rmp;
   nsim_main_t *nsm = &nsim_main;
   int rv;
+  u32 sw_if_index0, sw_if_index1;
 
-  rv = nsim_cross_connect_enable_disable (nsm, ntohl (mp->sw_if_index0),
-					  ntohl (mp->sw_if_index1),
+  sw_if_index0 = clib_net_to_host_u32 (mp->sw_if_index0);
+  sw_if_index1 = clib_net_to_host_u32 (mp->sw_if_index1);
+
+  if (!vnet_sw_if_index_is_api_valid (sw_if_index0))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto bad_sw_if_index;
+    }
+  if (!vnet_sw_if_index_is_api_valid (sw_if_index1))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX_2;
+      goto bad_sw_if_index;
+    }
+
+  rv = nsim_cross_connect_enable_disable (nsm, sw_if_index0, sw_if_index1,
 					  (int) (mp->enable_disable));
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_NSIM_CROSS_CONNECT_ENABLE_DISABLE_REPLY);
 }
 
@@ -363,10 +378,12 @@ static void vl_api_nsim_output_feature_enable_disable_t_handler
   vl_api_nsim_output_feature_enable_disable_reply_t *rmp;
   nsim_main_t *nsm = &nsim_main;
   int rv;
+  VALIDATE_SW_IF_INDEX (mp);
 
   rv = nsim_output_feature_enable_disable (nsm, ntohl (mp->sw_if_index),
 					   (int) (mp->enable_disable));
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_NSIM_OUTPUT_FEATURE_ENABLE_DISABLE_REPLY);
 }
 
