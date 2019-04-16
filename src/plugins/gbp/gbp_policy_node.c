@@ -116,13 +116,13 @@ gbp_policy_inline (vlib_main_t * vm,
   gbp_policy_main_t *gpm = &gbp_policy_main;
   u32 n_left_from, *from, *to_next;
   u32 next_index, thread_index;
-  u32 n_allow_intra, n_allow_a_bit;
+  u32 n_allow_intra, n_allow_a_bit, n_allow_sclass_1;
 
   next_index = 0;
   n_left_from = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
   thread_index = vm->thread_index;
-  n_allow_intra = n_allow_a_bit = 0;
+  n_allow_intra = n_allow_a_bit = n_allow_sclass_1 = 0;
 
   while (n_left_from > 0)
     {
@@ -215,6 +215,21 @@ gbp_policy_inline (vlib_main_t * vm,
 					   L2OUTPUT_FEAT_GBP_POLICY_MAC));
 		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
 		  n_allow_intra++;
+		}
+	      else if (PREDICT_FALSE (key0.gck_src == 1 || key0.gck_dst == 1))
+		{
+		  /*
+		   * sclass or dclass 1 allowed
+		   */
+		  next0 =
+		    vnet_l2_feature_next (b0,
+					  gpm->l2_output_feat_next
+					  [is_port_based],
+					  (is_port_based ?
+					   L2OUTPUT_FEAT_GBP_POLICY_PORT :
+					   L2OUTPUT_FEAT_GBP_POLICY_MAC));
+		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+		  n_allow_sclass_1++;
 		}
 	      else
 		{
@@ -377,6 +392,9 @@ gbp_policy_inline (vlib_main_t * vm,
 			       GBP_POLICY_ERROR_ALLOW_INTRA, n_allow_intra);
   vlib_node_increment_counter (vm, node->node_index,
 			       GBP_POLICY_ERROR_ALLOW_A_BIT, n_allow_a_bit);
+  vlib_node_increment_counter (vm, node->node_index,
+			       GBP_POLICY_ERROR_ALLOW_SCLASS_1,
+			       n_allow_sclass_1);
 
   return frame->n_vectors;
 }

@@ -22,6 +22,7 @@
   _(ALLOW_NO_SCLASS,    "allow-no-sclass")                 \
   _(ALLOW_INTRA,        "allow-intra-sclass")              \
   _(ALLOW_A_BIT,        "allow-a-bit-set")                 \
+  _(ALLOW_SCLASS_1,     "allow-sclass-1")                  \
   _(ALLOW_CONTRACT,     "allow-contract")                  \
   _(DROP_CONTRACT,      "drop-contract")                   \
   _(DROP_ETHER_TYPE,    "drop-ether-type")                 \
