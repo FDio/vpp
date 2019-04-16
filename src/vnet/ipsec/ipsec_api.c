@@ -385,12 +385,11 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ip_address_decode (&mp->entry.tunnel_src, &tun_src);
   ip_address_decode (&mp->entry.tunnel_dst, &tun_dst);
 
-
   if (mp->is_add)
     rv = ipsec_sa_add (id, spi, proto,
 		       crypto_alg, &crypto_key,
 		       integ_alg, &integ_key, flags,
-		       0, 0, &tun_src, &tun_dst, &sa_index);
+		       0, mp->entry.salt, &tun_src, &tun_dst, &sa_index);
   else
     rv = ipsec_sa_del (id);
 
@@ -644,6 +643,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   tun.remote_integ_key_len = mp->remote_integ_key_len;
   tun.udp_encap = mp->udp_encap;
   tun.tx_table_id = ntohl (mp->tx_table_id);
+  tun.salt = mp->salt;
   itype = ip_address_decode (&mp->local_ip, &tun.local_ip);
   itype = ip_address_decode (&mp->remote_ip, &tun.remote_ip);
   tun.is_ip6 = (IP46_TYPE_IP6 == itype);

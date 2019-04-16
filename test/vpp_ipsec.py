@@ -178,7 +178,7 @@ class VppIpsecSA(VppObject):
                  crypto_alg, crypto_key,
                  proto,
                  tun_src=None, tun_dst=None,
-                 flags=None):
+                 flags=None, salt=0):
         e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
         self.id = id
@@ -188,6 +188,7 @@ class VppIpsecSA(VppObject):
         self.crypto_alg = crypto_alg
         self.crypto_key = crypto_key
         self.proto = proto
+        self.salt = salt
 
         self.tun_src = tun_src
         self.tun_dst = tun_dst
@@ -214,7 +215,8 @@ class VppIpsecSA(VppObject):
             self.proto,
             (self.tun_src if self.tun_src else []),
             (self.tun_dst if self.tun_dst else []),
-            flags=self.flags)
+            flags=self.flags,
+            salt=self.salt)
         self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
 
