@@ -1814,6 +1814,30 @@ class TestGBP(VppTestCase):
                                               mac=l['mac']))
 
         #
+        # repeat in the other EPG
+        # there's no contract between 220 and 330, but the sclass is set to 1
+        # so the packet is cleared for delivery
+        #
+        for l in learnt:
+            # a packet with an sclass from a known EPG
+            p = (Ether(src=self.pg2.remote_mac,
+                       dst=self.pg2.local_mac) /
+                 IP(src=self.pg2.remote_hosts[1].ip4,
+                    dst=self.pg2.local_ip4) /
+                 UDP(sport=1234, dport=48879) /
+                 VXLAN(vni=99, gpid=1, flags=0x88) /
+                 Ether(src=l['mac'], dst=ep.mac) /
+                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+
+            rx = self.send_and_expect(self.pg2, p*65, self.pg0)
+
+            self.assertTrue(find_gbp_endpoint(self,
+                                              vx_tun_l2_1.sw_if_index,
+                                              mac=l['mac']))
+
+        #
         # static EP cannot reach the learnt EPs since there is no contract
         # only test 1 EP as the others could timeout
         #
@@ -3664,6 +3688,22 @@ class TestGBP(VppTestCase):
             self.assertEqual(inner[Ether].dst, "00:0c:0c:0c:0c:0c")
             self.assertEqual(inner[IP].src, "10.220.0.1")
             self.assertEqual(inner[IP].dst, "10.222.0.1")
+
+        #
+        # ping from host in remote to local external subnets
+        # there's no contract for this, but sclass is 1.
+        #
+        p = (Ether(src=self.pg7.remote_mac, dst=self.pg7.local_mac) /
+             IP(src=self.pg7.remote_ip4, dst=self.pg7.local_ip4) /
+             UDP(sport=1234, dport=48879) /
+             VXLAN(vni=445, gpid=1, flags=0x88) /
+             Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
+             IP(src="10.222.0.1", dst="10.220.0.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        rxs = self.send_and_expect(self.pg7, p * 3, self.pg0)
+        self.assertFalse(find_gbp_endpoint(self, ip="10.222.0.1"))
 
         #
         # ping from host in remote to local external subnets

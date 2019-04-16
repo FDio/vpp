@@ -270,12 +270,12 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 {
   gbp_main_t *gm = &gbp_main;
   u32 n_left_from, next_index, *from, *to_next, thread_index;
-  u32 n_allow_intra, n_allow_a_bit;
+  u32 n_allow_intra, n_allow_a_bit, n_allow_sclass_1;
   gbp_rule_t *gu;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
-  n_allow_intra = n_allow_a_bit = 0;
+  n_allow_intra = n_allow_a_bit = n_allow_sclass_1 = 0;
   thread_index = vm->thread_index;
 
   next_index = node->cached_next_index;
@@ -341,6 +341,16 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		  next0 = gpd0->gpd_dpo.dpoi_next_node;
 		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
 		  n_allow_intra++;
+		  action0 = 0;
+		}
+	      else if (PREDICT_FALSE (key0.gck_src == 1 || key0.gck_dst == 1))
+		{
+		  /*
+		   * sclass or dclass 1 allowed
+		   */
+		  next0 = gpd0->gpd_dpo.dpoi_next_node;
+		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+		  n_allow_sclass_1++;
 		  action0 = 0;
 		}
 	      else
@@ -449,7 +459,9 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
   vlib_node_increment_counter (vm, node->node_index,
 			       GBP_POLICY_DPO_ERROR_ALLOW_A_BIT,
 			       n_allow_a_bit);
-
+  vlib_node_increment_counter (vm, node->node_index,
+			       GBP_POLICY_DPO_ERROR_ALLOW_SCLASS_1,
+			       n_allow_sclass_1);
   return from_frame->n_vectors;
 }
 
