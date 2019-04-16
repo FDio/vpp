@@ -1931,28 +1931,26 @@ static void *vl_api_geneve_tunnel_dump_t_print
   FINISH;
 }
 
-static void *vl_api_gre_add_del_tunnel_t_print
-  (vl_api_gre_add_del_tunnel_t * mp, void *handle)
+static void *vl_api_gre_tunnel_add_del_t_print
+  (vl_api_gre_tunnel_add_del_t * mp, void *handle)
 {
   u8 *s;
-  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->src_address);
-  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->dst_address);
 
-  s = format (0, "SCRIPT: gre_add_del_tunnel ");
+  s = format (0, "SCRIPT: gre_tunnel_add_del ");
 
-  s = format (s, "dst %U ", format_ip46_address, &dst, IP46_TYPE_ANY);
-  s = format (s, "src %U ", format_ip46_address, &src, IP46_TYPE_ANY);
+  s = format (s, "dst %U ", format_vl_api_address, &mp->tunnel.dst);
+  s = format (s, "src %U ", format_vl_api_address, &mp->tunnel.src);
 
-  s = format (s, "instance %d ", ntohl (mp->instance));
+  s = format (s, "instance %d ", ntohl (mp->tunnel.instance));
 
-  if (mp->tunnel_type == GRE_TUNNEL_TYPE_TEB)
+  if (mp->tunnel.type == GRE_TUNNEL_TYPE_TEB)
     s = format (s, "teb ");
 
-  if (mp->tunnel_type == GRE_TUNNEL_TYPE_ERSPAN)
-    s = format (s, "erspan %d ", ntohs (mp->session_id));
+  if (mp->tunnel.type == GRE_TUNNEL_TYPE_ERSPAN)
+    s = format (s, "erspan %d ", ntohs (mp->tunnel.session_id));
 
-  if (mp->outer_fib_id)
-    s = format (s, "outer-fib-id %d ", ntohl (mp->outer_fib_id));
+  if (mp->tunnel.outer_fib_id)
+    s = format (s, "outer-fib-id %d ", ntohl (mp->tunnel.outer_fib_id));
 
   if (mp->is_add == 0)
     s = format (s, "del ");
@@ -3846,7 +3844,7 @@ _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                   \
 _(GENEVE_ADD_DEL_TUNNEL, geneve_add_del_tunnel)                         \
 _(GENEVE_TUNNEL_DUMP, geneve_tunnel_dump)                               \
-_(GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel)                               \
+_(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)                               \
 _(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \

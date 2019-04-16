@@ -35,6 +35,7 @@ endif
 
 include packages.mk
 include packages/nasm.mk
+include packages/yasm.mk
 include packages/ipsec-mb.mk
 include packages/quicly.mk
 include packages/dpdk.mk
