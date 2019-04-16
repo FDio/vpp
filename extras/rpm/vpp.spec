@@ -46,7 +46,7 @@ Summary: Vector Packet Processing
 License: ASL 2.0
 Version: %{_version}
 Release: %{_release}
-Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python
+Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, epel-release, net-tools, pciutils, python, python36, net-tools, pciutils
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
 %if 0%{?fedora}
@@ -57,10 +57,14 @@ BuildRequires: mbedtls-devel
 BuildRequires: cmake
 %else
 %if 0%{rhel} == 7
+BuildRequires: epel-release
 BuildRequires: devtoolset-7-toolchain
 BuildREquires: openssl-devel
 BuildRequires: python-devel, python-virtualenv, python-ply
+BuildRequires: mbedtls-devel
+BuildRequires: python36-devel python36-pip python36-ply
 BuildRequires: cmake3
+BuildRequires: boost-filesystem
 %endif
 %endif
 BuildRequires: libffi-devel
@@ -83,7 +87,7 @@ vpp_json_test - vector packet engine JSON test tool
 %package lib
 Summary: VPP libraries
 Group: System Environment/Libraries
-Requires: vpp-selinux-policy = %{_version}-%{_release}
+Requires: vpp-selinux-policy = %{_version}-%{_release} boost-filesystem
 
 %description lib
 This package contains the VPP shared libraries, including:
@@ -111,7 +115,7 @@ vppinfra
 %package plugins
 Summary: Vector Packet Processing--runtime plugins
 Group: System Environment/Libraries
-Requires: vpp = %{_version}-%{_release} numactl-libs
+Requires: vpp = %{_version}-%{_release} numactl-libs mbedtls
 %description plugins
 This package contains VPP plugins
 
