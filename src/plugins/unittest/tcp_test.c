@@ -14,7 +14,7 @@
  */
 #include <vnet/tcp/tcp.h>
 
-#define TCP_TEST_I(_cond, _comment, _args...)			\
+#define RBTREE_TEST_I(_cond, _comment, _args...)			\
 ({								\
   int _evald = (_cond);						\
   if (!(_evald)) {						\
@@ -27,9 +27,9 @@
   _evald;							\
 })
 
-#define TCP_TEST(_cond, _comment, _args...)			\
+#define RBTREE_TEST(_cond, _comment, _args...)			\
 {								\
-    if (!TCP_TEST_I(_cond, _comment, ##_args)) {		\
+    if (!RBTREE_TEST_I(_cond, _comment, ##_args)) {		\
 	return 1;                                               \
     }								\
 }
@@ -114,22 +114,22 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "sb after even blocks (mss %u):\n%U",
 		     tc->snd_mss, format_tcp_scoreboard, sb, tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 5),
+  RBTREE_TEST ((pool_elts (sb->holes) == 5),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
 
   /* First SACK block should be rejected */
   hole = scoreboard_first_hole (sb);
-  TCP_TEST ((hole->start == 0 && hole->end == 200),
+  RBTREE_TEST ((hole->start == 0 && hole->end == 200),
 	    "first hole start %u end %u", hole->start, hole->end);
   hole = scoreboard_last_hole (sb);
-  TCP_TEST ((hole->start == 900 && hole->end == 1000),
+  RBTREE_TEST ((hole->start == 900 && hole->end == 1000),
 	    "last hole start %u end %u", hole->start, hole->end);
-  TCP_TEST ((sb->sacked_bytes == 400), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
-  TCP_TEST ((sb->last_sacked_bytes == 400),
+  RBTREE_TEST ((sb->sacked_bytes == 400), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+  RBTREE_TEST ((sb->last_sacked_bytes == 400),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
-  TCP_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
-  TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
+  RBTREE_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
   /*
    * Inject odd blocks
@@ -148,16 +148,16 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 		     sb, tc);
 
   hole = scoreboard_first_hole (sb);
-  TCP_TEST ((pool_elts (sb->holes) == 1),
+  RBTREE_TEST ((pool_elts (sb->holes) == 1),
 	    "scoreboard has %d holes", pool_elts (sb->holes));
-  TCP_TEST ((hole->start == 0 && hole->end == 100),
+  RBTREE_TEST ((hole->start == 0 && hole->end == 100),
 	    "first hole start %u end %u", hole->start, hole->end);
-  TCP_TEST ((sb->sacked_bytes == 900), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
-  TCP_TEST ((sb->high_sacked == 1000), "high sacked %u", sb->high_sacked);
-  TCP_TEST ((sb->last_sacked_bytes == 500),
+  RBTREE_TEST ((sb->sacked_bytes == 900), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+  RBTREE_TEST ((sb->high_sacked == 1000), "high sacked %u", sb->high_sacked);
+  RBTREE_TEST ((sb->last_sacked_bytes == 500),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
-  TCP_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
 
   /*
    *  Ack until byte 100, all bytes are now acked + sacked
@@ -167,15 +167,15 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nack until byte 100:\n%U", format_tcp_scoreboard,
 		     sb, tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0),
+  RBTREE_TEST ((pool_elts (sb->holes) == 0),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->snd_una_adv == 900),
+  RBTREE_TEST ((sb->snd_una_adv == 900),
 	    "snd_una_adv after ack %u", sb->snd_una_adv);
-  TCP_TEST ((sb->high_sacked == 1000), "max sacked byte %u", sb->high_sacked);
-  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 0),
+  RBTREE_TEST ((sb->high_sacked == 1000), "max sacked byte %u", sb->high_sacked);
+  RBTREE_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->last_sacked_bytes == 0),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
-  TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
 
   /*
    * Add new block
@@ -196,21 +196,21 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nadd [1200, 1300] snd_una_max 1500, snd_una 1000:"
 		     " \n%U", format_tcp_scoreboard, sb, tc);
 
-  TCP_TEST ((sb->snd_una_adv == 0),
+  RBTREE_TEST ((sb->snd_una_adv == 0),
 	    "snd_una_adv after ack %u", sb->snd_una_adv);
-  TCP_TEST ((pool_elts (sb->holes) == 2),
+  RBTREE_TEST ((pool_elts (sb->holes) == 2),
 	    "scoreboard has %d holes", pool_elts (sb->holes));
   hole = scoreboard_first_hole (sb);
-  TCP_TEST ((hole->start == 1000 && hole->end == 1200),
+  RBTREE_TEST ((hole->start == 1000 && hole->end == 1200),
 	    "first hole start %u end %u", hole->start, hole->end);
-  TCP_TEST ((sb->snd_una_adv == 0),
+  RBTREE_TEST ((sb->snd_una_adv == 0),
 	    "snd_una_adv after ack %u", sb->snd_una_adv);
-  TCP_TEST ((sb->high_sacked == 1300), "max sacked byte %u", sb->high_sacked);
+  RBTREE_TEST ((sb->high_sacked == 1300), "max sacked byte %u", sb->high_sacked);
   hole = scoreboard_last_hole (sb);
-  TCP_TEST ((hole->start == 1300 && hole->end == 1500),
+  RBTREE_TEST ((hole->start == 1300 && hole->end == 1500),
 	    "last hole start %u end %u", hole->start, hole->end);
-  TCP_TEST ((sb->sacked_bytes == 100), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->sacked_bytes == 100), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
 
   /*
    * Ack first hole
@@ -223,16 +223,16 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nsb ack up to byte 1200:\n%U",
 		     format_tcp_scoreboard, sb, tc);
 
-  TCP_TEST ((sb->snd_una_adv == 100),
+  RBTREE_TEST ((sb->snd_una_adv == 100),
 	    "snd_una_adv after ack %u", sb->snd_una_adv);
-  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((pool_elts (sb->holes) == 0),
+  RBTREE_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((pool_elts (sb->holes) == 0),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
+  RBTREE_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  RBTREE_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  RBTREE_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
    * Add some more blocks and then remove all
@@ -253,10 +253,10 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nsb cleared all:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0),
+  RBTREE_TEST ((pool_elts (sb->holes) == 0),
 	    "number of holes %d", pool_elts (sb->holes));
-  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  RBTREE_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  RBTREE_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
    * Re-inject odd blocks and ack them all
@@ -274,9 +274,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nsb added odd blocks snd_una 0 snd_una_max 1500:"
 		     "\n%U", format_tcp_scoreboard, sb, tc);
-  TCP_TEST ((pool_elts (sb->holes) == 5),
+  RBTREE_TEST ((pool_elts (sb->holes) == 5),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
   tcp_rcv_sacks (tc, 950);
 
@@ -284,13 +284,13 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nack [0, 950]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0),
+  RBTREE_TEST ((pool_elts (sb->holes) == 0),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->snd_una_adv == 50), "snd_una_adv %u", sb->snd_una_adv);
-  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 0),
+  RBTREE_TEST ((sb->snd_una_adv == 50), "snd_una_adv %u", sb->snd_una_adv);
+  RBTREE_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->last_sacked_bytes == 0),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
-  TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
 
   /*
    * Inject one block, ack it and overlap hole
@@ -317,17 +317,17 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nsb ack [0, 800]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0),
+  RBTREE_TEST ((pool_elts (sb->holes) == 0),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
-  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
+  RBTREE_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+  RBTREE_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
-  TCP_TEST ((sb->last_bytes_delivered == 400),
+  RBTREE_TEST ((sb->last_bytes_delivered == 400),
 	    "last bytes delivered %d", sb->last_bytes_delivered);
-  TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  RBTREE_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  RBTREE_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
    * One hole close to head, patch head, split in two and start acking
@@ -347,10 +347,10 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nsb added [500, 1000]:\n%U",
 		     format_tcp_scoreboard, sb, tc);
-  TCP_TEST ((sb->sacked_bytes == 500), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 500), "last sacked bytes %d",
+  RBTREE_TEST ((sb->sacked_bytes == 500), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->last_sacked_bytes == 500), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
-  TCP_TEST ((sb->lost_bytes == 500), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->lost_bytes == 500), "lost bytes %u", sb->lost_bytes);
 
   vec_reset_length (tc->rcv_opts.sacks);
   block.start = 300;
@@ -361,14 +361,14 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nsb added [0, 100] [300, 400]:\n%U",
 		     format_tcp_scoreboard, sb, tc);
-  TCP_TEST ((pool_elts (sb->holes) == 2),
+  RBTREE_TEST ((pool_elts (sb->holes) == 2),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->sacked_bytes == 600), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 100), "last sacked bytes %d",
+  RBTREE_TEST ((sb->sacked_bytes == 600), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->last_sacked_bytes == 100), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
-  TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
+  RBTREE_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
   tc->snd_una = 100;
   tcp_rcv_sacks (tc, 200);
@@ -377,9 +377,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nacked [0, 300] in two steps:\n%U",
 		     format_tcp_scoreboard, sb, tc);
-  TCP_TEST ((sb->sacked_bytes == 500), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
+  RBTREE_TEST ((sb->sacked_bytes == 500), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
 
   tc->snd_una = 400;
@@ -387,17 +387,17 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nacked [400, 500]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
-  TCP_TEST ((pool_elts (sb->holes) == 0),
+  RBTREE_TEST ((pool_elts (sb->holes) == 0),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
+  RBTREE_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
-  TCP_TEST ((sb->last_bytes_delivered == 500), "last bytes delivered %d",
+  RBTREE_TEST ((sb->last_bytes_delivered == 500), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->snd_una_adv == 500), "snd_una_adv %u", sb->snd_una_adv);
-  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  RBTREE_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->snd_una_adv == 500), "snd_una_adv %u", sb->snd_una_adv);
+  RBTREE_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  RBTREE_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
    * Re-ack high sacked, to make sure last_bytes_delivered and
@@ -407,9 +407,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nAck high sacked:\n%U", format_tcp_scoreboard, sb,
 		     tc);
-  TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
+  RBTREE_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+  RBTREE_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
 
   /*
    * Add [1200, 1500] and test that [1000, 1200] is lost (bytes condition)
@@ -426,15 +426,15 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nacked [1200, 1500] test first hole is lost:\n%U",
 		     format_tcp_scoreboard, sb, tc);
-  TCP_TEST ((pool_elts (sb->holes) == 2), "scoreboard has %d elements",
+  RBTREE_TEST ((pool_elts (sb->holes) == 2), "scoreboard has %d elements",
 	    pool_elts (sb->holes));
-  TCP_TEST ((sb->sacked_bytes == 300), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 300), "last sacked bytes %d",
+  RBTREE_TEST ((sb->sacked_bytes == 300), "sacked bytes %d", sb->sacked_bytes);
+  RBTREE_TEST ((sb->last_sacked_bytes == 300), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
-  TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
+  RBTREE_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+  RBTREE_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
+  RBTREE_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
 
   return 0;
 }
@@ -468,9 +468,9 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
       tcp_update_sack_list (tc, i * 100, (i + 1) * 100);
     }
 
-  TCP_TEST ((vec_len (tc->snd_sacks) == 5), "sack blocks %d expected %d",
+  RBTREE_TEST ((vec_len (tc->snd_sacks) == 5), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 5);
-  TCP_TEST ((tc->snd_sacks[0].start = 900),
+  RBTREE_TEST ((tc->snd_sacks[0].start = 900),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    900);
 
@@ -484,9 +484,9 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
 		     format_tcp_sacks, tc);
   expected = 5 < TCP_MAX_SACK_BLOCKS ? 6 : 5;
-  TCP_TEST ((vec_len (tc->snd_sacks) == expected),
+  RBTREE_TEST ((vec_len (tc->snd_sacks) == expected),
 	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), expected);
-  TCP_TEST ((tc->snd_sacks[0].start == 1100),
+  RBTREE_TEST ((tc->snd_sacks[0].start == 1100),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    1100);
 
@@ -502,9 +502,9 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "overlap first 2 segments:\n%U",
 		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
+  RBTREE_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 3);
-  TCP_TEST ((tc->snd_sacks[0].start == 900),
+  RBTREE_TEST ((tc->snd_sacks[0].start == 900),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    500);
 
@@ -515,9 +515,9 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
 		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 4), "sack blocks %d expected %d",
+  RBTREE_TEST ((vec_len (tc->snd_sacks) == 4), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 4);
-  TCP_TEST ((tc->snd_sacks[0].start == 1100),
+  RBTREE_TEST ((tc->snd_sacks[0].start == 1100),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    1100);
 
@@ -529,9 +529,9 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "join middle segments [800, 900]\n%U",
 		     format_tcp_sacks, tc);
 
-  TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
+  RBTREE_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 3);
-  TCP_TEST ((tc->snd_sacks[0].start == 700),
+  RBTREE_TEST ((tc->snd_sacks[0].start == 700),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    1100);
 
@@ -542,7 +542,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   tcp_update_sack_list (tc, 1200, 1200);
   if (verbose)
     vlib_cli_output (vm, "advance rcv_nxt to 1200\n%U", format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 0), "sack blocks %d expected %d",
+  RBTREE_TEST ((vec_len (tc->snd_sacks) == 0), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 0);
 
 
@@ -559,9 +559,9 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "add [100, 200] [300, 400]\n%U",
 		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 2),
+  RBTREE_TEST ((vec_len (tc->snd_sacks) == 2),
 	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), 2);
-  TCP_TEST ((tc->snd_sacks[0].start == 300),
+  RBTREE_TEST ((tc->snd_sacks[0].start == 300),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    300);
 
@@ -570,9 +570,9 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "add [100, 200] rcv_nxt = 100\n%U",
 		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 1),
+  RBTREE_TEST ((vec_len (tc->snd_sacks) == 1),
 	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), 1);
-  TCP_TEST ((tc->snd_sacks[0].start == 300),
+  RBTREE_TEST ((tc->snd_sacks[0].start == 300),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    300);
   return 0;
@@ -791,8 +791,8 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
    * Enqueue an initial (un-dequeued) chunk
    */
   rv = svm_fifo_enqueue_nowait (f, sizeof (u32), (u8 *) test_data);
-  TCP_TEST ((rv == sizeof (u32)), "enqueued %d", rv);
-  TCP_TEST ((f->tail == 4), "fifo tail %u", f->tail);
+  RBTREE_TEST ((rv == sizeof (u32)), "enqueued %d", rv);
+  RBTREE_TEST ((f->tail == 4), "fifo tail %u", f->tail);
 
   /*
    * Create 3 chunks in the future. The offsets are relative
@@ -822,8 +822,8 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo after odd segs: %U", format_svm_fifo, f, 1);
 
-  TCP_TEST ((f->tail == 8), "fifo tail %u", f->tail);
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 2),
+  RBTREE_TEST ((f->tail == 8), "fifo tail %u", f->tail);
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 2),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   /*
@@ -841,7 +841,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo after overlap seg: %U", format_svm_fifo, f, 1);
 
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 2),
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 2),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   /*
@@ -871,12 +871,12 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo before missing link: %U", format_svm_fifo, f,
 		     1);
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 1),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  TCP_TEST ((ooo_seg->start == 12),
+  RBTREE_TEST ((ooo_seg->start == 12),
 	    "first ooo seg position %u", ooo_seg->start);
-  TCP_TEST ((ooo_seg->length == 16),
+  RBTREE_TEST ((ooo_seg->length == 16),
 	    "first ooo seg length %u", ooo_seg->length);
 
   /*
@@ -886,8 +886,8 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo after missing link: %U", format_svm_fifo, f,
 		     1);
-  TCP_TEST ((rv == 20), "bytes to be enqueued %u", rv);
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 0),
+  RBTREE_TEST ((rv == 20), "bytes to be enqueued %u", rv);
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 0),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   /*
@@ -931,15 +931,15 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     }
 
   rv = svm_fifo_enqueue_with_offset (f, 8 - f->tail, 21, data);
-  TCP_TEST ((rv == 0), "ooo enqueued %u", rv);
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
+  RBTREE_TEST ((rv == 0), "ooo enqueued %u", rv);
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 1),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   vec_validate (data_buf, vec_len (data));
   svm_fifo_peek (f, 0, vec_len (data), data_buf);
   if (compare_data (data_buf, data, 8, vec_len (data), &j))
     {
-      TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j], data[j]);
+      RBTREE_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j], data[j]);
     }
   vec_reset_length (data_buf);
 
@@ -971,20 +971,20 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo after enqueueing 29: %U", format_svm_fifo, f,
 		     1);
-  TCP_TEST ((rv == 32), "ooo enqueued %u", rv);
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 0),
+  RBTREE_TEST ((rv == 32), "ooo enqueued %u", rv);
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 0),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   vec_validate (data_buf, vec_len (data));
   svm_fifo_peek (f, 0, vec_len (data), data_buf);
   if (compare_data (data_buf, data, 0, vec_len (data), &j))
     {
-      TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j], data[j]);
+      RBTREE_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j], data[j]);
     }
 
   /* Try to peek beyond the data */
   rv = svm_fifo_peek (f, svm_fifo_max_dequeue (f), vec_len (data), data_buf);
-  TCP_TEST ((rv == 0), "peeked %u expected 0", rv);
+  RBTREE_TEST ((rv == 0), "peeked %u expected 0", rv);
 
   vec_free (data_buf);
   svm_fifo_free (f);
@@ -1028,17 +1028,17 @@ tcp_test_fifo2 (vlib_main_t * vm)
     }
 
   /* Expected result: one big fat chunk at offset 4 */
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 1),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  TCP_TEST ((ooo_seg->start == 4),
+  RBTREE_TEST ((ooo_seg->start == 4),
 	    "first ooo seg position %u", ooo_seg->start);
-  TCP_TEST ((ooo_seg->length == 2996),
+  RBTREE_TEST ((ooo_seg->length == 2996),
 	    "first ooo seg length %u", ooo_seg->length);
 
   data64 = 0;
   rv = svm_fifo_enqueue_nowait (f, sizeof (u32), (u8 *) & data64);
-  TCP_TEST ((rv == 3000), "bytes to be enqueued %u", rv);
+  RBTREE_TEST ((rv == 3000), "bytes to be enqueued %u", rv);
 
   svm_fifo_free (f);
   vec_free (vp);
@@ -1062,18 +1062,18 @@ tcp_test_fifo2 (vlib_main_t * vm)
     }
 
   /* Expecting the same result: one big fat chunk at offset 4 */
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 1),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  TCP_TEST ((ooo_seg->start == 4),
+  RBTREE_TEST ((ooo_seg->start == 4),
 	    "first ooo seg position %u", ooo_seg->start);
-  TCP_TEST ((ooo_seg->length == 2996),
+  RBTREE_TEST ((ooo_seg->length == 2996),
 	    "first ooo seg length %u", ooo_seg->length);
 
   data64 = 0;
   rv = svm_fifo_enqueue_nowait (f, sizeof (u32), (u8 *) & data64);
 
-  TCP_TEST ((rv == 3000), "bytes to be enqueued %u", rv);
+  RBTREE_TEST ((rv == 3000), "bytes to be enqueued %u", rv);
 
   svm_fifo_free (f);
 
@@ -1258,12 +1258,12 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
       if (verbose)
 	vlib_cli_output (vm, "in-order enqueue returned %d", rv);
 
-      TCP_TEST ((rv == total_size), "enqueued %u expected %u", rv,
+      RBTREE_TEST ((rv == total_size), "enqueued %u expected %u", rv,
 		total_size);
 
     }
 
-  TCP_TEST ((svm_fifo_has_ooo_data (f) == 0), "number of ooo segments %u",
+  RBTREE_TEST ((svm_fifo_has_ooo_data (f) == 0), "number of ooo segments %u",
 	    svm_fifo_number_ooo_segments (f));
 
   /*
@@ -1273,7 +1273,7 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_peek (f, 0, vec_len (data_pattern), data_buf);
   if (compare_data (data_buf, data_pattern, 0, vec_len (data_pattern), &j))
     {
-      TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j],
+      RBTREE_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j],
 		data_pattern[j]);
     }
   vec_reset_length (data_buf);
@@ -1291,12 +1291,12 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
       if (compare_data
 	  (data_buf, data_pattern, 0, vec_len (data_pattern), &j))
 	{
-	  TCP_TEST (0, "[%d] dequeued %u expected %u", j, data_buf[j],
+	  RBTREE_TEST (0, "[%d] dequeued %u expected %u", j, data_buf[j],
 		    data_pattern[j]);
 	}
     }
 
-  TCP_TEST ((svm_fifo_max_dequeue (f) == 0), "fifo has %d bytes",
+  RBTREE_TEST ((svm_fifo_max_dequeue (f) == 0), "fifo has %d bytes",
 	    svm_fifo_max_dequeue (f));
 
   svm_fifo_free (f);
@@ -1366,7 +1366,7 @@ tcp_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
-  TCP_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  RBTREE_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
 
   svm_fifo_free (f);
   vec_free (test_data);
@@ -1414,9 +1414,9 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue_with_offset (f, 100, 100, &test_data[100]);
   svm_fifo_enqueue_with_offset (f, 300, 100, &test_data[300]);
 
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 2),
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 2),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
-  TCP_TEST ((f->ooos_newest == 1), "newest %u", f->ooos_newest);
+  RBTREE_TEST ((f->ooos_newest == 1), "newest %u", f->ooos_newest);
   if (verbose)
     vlib_cli_output (vm, "fifo after [100, 200] and [300, 400] : %U",
 		     format_svm_fifo, f, 2 /* verbose */ );
@@ -1429,27 +1429,27 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo after [225, 275] : %U",
 		     format_svm_fifo, f, 2 /* verbose */ );
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 3),
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 3),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  TCP_TEST ((ooo_seg->start == fifo_pos (f, 100 + offset)),
+  RBTREE_TEST ((ooo_seg->start == fifo_pos (f, 100 + offset)),
 	    "first seg start %u expected %u", ooo_seg->start,
 	    fifo_pos (f, 100 + offset));
-  TCP_TEST ((ooo_seg->length == 100), "first seg length %u expected %u",
+  RBTREE_TEST ((ooo_seg->length == 100), "first seg length %u expected %u",
 	    ooo_seg->length, 100);
   ooo_seg = ooo_segment_next (f, ooo_seg);
-  TCP_TEST ((ooo_seg->start == fifo_pos (f, 225 + offset)),
+  RBTREE_TEST ((ooo_seg->start == fifo_pos (f, 225 + offset)),
 	    "second seg start %u expected %u",
 	    ooo_seg->start, fifo_pos (f, 225 + offset));
-  TCP_TEST ((ooo_seg->length == 50), "second seg length %u expected %u",
+  RBTREE_TEST ((ooo_seg->length == 50), "second seg length %u expected %u",
 	    ooo_seg->length, 50);
   ooo_seg = ooo_segment_next (f, ooo_seg);
-  TCP_TEST ((ooo_seg->start == fifo_pos (f, 300 + offset)),
+  RBTREE_TEST ((ooo_seg->start == fifo_pos (f, 300 + offset)),
 	    "third seg start %u expected %u",
 	    ooo_seg->start, fifo_pos (f, 300 + offset));
-  TCP_TEST ((ooo_seg->length == 100), "third seg length %u expected %u",
+  RBTREE_TEST ((ooo_seg->length == 100), "third seg length %u expected %u",
 	    ooo_seg->length, 100);
-  TCP_TEST ((f->ooos_newest == 2), "newest %u", f->ooos_newest);
+  RBTREE_TEST ((f->ooos_newest == 2), "newest %u", f->ooos_newest);
   /*
    * Add [190, 310]
    */
@@ -1457,13 +1457,13 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo after [190, 310] : %U",
 		     format_svm_fifo, f, 1 /* verbose */ );
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 1),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  TCP_TEST ((ooo_seg->start == fifo_pos (f, offset + 100)),
+  RBTREE_TEST ((ooo_seg->start == fifo_pos (f, offset + 100)),
 	    "first seg start %u expected %u",
 	    ooo_seg->start, fifo_pos (f, offset + 100));
-  TCP_TEST ((ooo_seg->length == 300), "first seg length %u expected %u",
+  RBTREE_TEST ((ooo_seg->length == 300), "first seg length %u expected %u",
 	    ooo_seg->length, 300);
 
   /*
@@ -1475,15 +1475,15 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "fifo after [0 150] : %U", format_svm_fifo, f,
 		     2 /* verbose */ );
 
-  TCP_TEST ((rv == 400), "managed to enqueue %u expected %u", rv, 400);
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 0),
+  RBTREE_TEST ((rv == 400), "managed to enqueue %u expected %u", rv, 400);
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 0),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   vec_validate (data_buf, 399);
   svm_fifo_peek (f, 0, 400, data_buf);
   if (compare_data (data_buf, test_data, 0, 400, &j))
     {
-      TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j],
+      RBTREE_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j],
 		test_data[j]);
     }
 
@@ -1495,12 +1495,12 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 
   svm_fifo_enqueue_with_offset (f, 100, 100, &test_data[100]);
   svm_fifo_enqueue_with_offset (f, 50, 200, &test_data[50]);
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
+  RBTREE_TEST ((svm_fifo_number_ooo_segments (f) == 1),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  TCP_TEST ((ooo_seg->start == 50), "first seg start %u expected %u",
+  RBTREE_TEST ((ooo_seg->start == 50), "first seg start %u expected %u",
 	    ooo_seg->start, 50);
-  TCP_TEST ((ooo_seg->length == 200), "first seg length %u expected %u",
+  RBTREE_TEST ((ooo_seg->length == 200), "first seg length %u expected %u",
 	    ooo_seg->length, 200);
 
   svm_fifo_free (f);
@@ -1696,10 +1696,10 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
 					 tc1->lcl_port, tc1->rmt_port,
 					 tc1->proto, 0, &is_filtered);
 
-  TCP_TEST ((tconn != 0), "connection exists");
+  RBTREE_TEST ((tconn != 0), "connection exists");
   cmp = (memcmp (&tconn->rmt_ip, &tc1->rmt_ip, sizeof (tc1->rmt_ip)) == 0);
-  TCP_TEST ((cmp), "rmt ip is identical %d", cmp);
-  TCP_TEST ((tconn->lcl_port == tc1->lcl_port),
+  RBTREE_TEST ((cmp), "rmt ip is identical %d", cmp);
+  RBTREE_TEST ((tconn->lcl_port == tc1->lcl_port),
 	    "rmt port is identical %d", tconn->lcl_port == tc1->lcl_port);
 
   /*
@@ -1710,7 +1710,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
 					 &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
 					 tc2->proto, 0, &is_filtered);
-  TCP_TEST ((tconn == 0), "lookup result should be null");
+  RBTREE_TEST ((tconn == 0), "lookup result should be null");
 
   /*
    * Delete and lookup again
@@ -1720,12 +1720,12 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
 					 &tc1->rmt_ip.ip4,
 					 tc1->lcl_port, tc1->rmt_port,
 					 tc1->proto, 0, &is_filtered);
-  TCP_TEST ((tconn == 0), "lookup result should be null");
+  RBTREE_TEST ((tconn == 0), "lookup result should be null");
   tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
 					 &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
 					 tc2->proto, 0, &is_filtered);
-  TCP_TEST ((tconn == 0), "lookup result should be null");
+  RBTREE_TEST ((tconn == 0), "lookup result should be null");
 
   /*
    * Re-add and lookup tc2
@@ -1735,7 +1735,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
 					 &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
 					 tc2->proto, 0, &is_filtered);
-  TCP_TEST ((tconn == 0), "lookup result should be null");
+  RBTREE_TEST ((tconn == 0), "lookup result should be null");
 
   return 0;
 }
