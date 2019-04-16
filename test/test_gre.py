@@ -11,16 +11,11 @@ from scapy.volatile import RandMAC, RandIP
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
-from vpp_gre_interface import VppGreInterface, VppGre6Interface
+from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from util import ppp, ppc
-
-
-class GreTunnelTypes:
-    TT_L3 = 0
-    TT_TEB = 1
-    TT_ERSPAN = 2
+from vpp_papi import VppEnum
 
 
 class TestGRE(VppTestCase):
@@ -567,9 +562,9 @@ class TestGRE(VppTestCase):
         #  - assign an IP Address
         #  - Add a route via the tunnel
         #
-        gre_if = VppGre6Interface(self,
-                                  self.pg2.local_ip6,
-                                  "1002::1")
+        gre_if = VppGreInterface(self,
+                                 self.pg2.local_ip6,
+                                 "1002::1")
         gre_if.add_vpp_config()
         gre_if.admin_up()
         gre_if.config_ip6()
@@ -762,10 +757,12 @@ class TestGRE(VppTestCase):
         #
         gre_if1 = VppGreInterface(self, self.pg0.local_ip4,
                                   "2.2.2.2",
-                                  type=GreTunnelTypes.TT_TEB)
+                                  type=(VppEnum.vl_api_gre_tunnel_type_t.
+                                        GRE_API_TUNNEL_TYPE_TEB))
         gre_if2 = VppGreInterface(self, self.pg0.local_ip4,
                                   "2.2.2.3",
-                                  type=GreTunnelTypes.TT_TEB)
+                                  type=(VppEnum.vl_api_gre_tunnel_type_t.
+                                        GRE_API_TUNNEL_TYPE_TEB))
         gre_if1.add_vpp_config()
         gre_if2.add_vpp_config()
 
