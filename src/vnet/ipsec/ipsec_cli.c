@@ -84,8 +84,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   clib_error_t *error;
   ipsec_key_t ck = { 0 };
   ipsec_key_t ik = { 0 };
+  u32 id, spi, salt;
   int is_add, rv;
-  u32 id, spi;
 
   error = NULL;
   is_add = 0;
@@ -102,6 +102,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del %u", &id))
 	is_add = 0;
       else if (unformat (line_input, "spi %u", &spi))
+	;
+      else if (unformat (line_input, "salt %u", &salt))
 	;
       else if (unformat (line_input, "esp"))
 	proto = IPSEC_PROTOCOL_ESP;
@@ -141,7 +143,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   if (is_add)
     rv = ipsec_sa_add (id, spi, proto, crypto_alg,
 		       &ck, integ_alg, &ik, flags,
-		       0, 0, &tun_src, &tun_dst, NULL);
+		       0, clib_host_to_net_u32 (salt),
+		       &tun_src, &tun_dst, NULL);
   else
     rv = ipsec_sa_del (id);
 

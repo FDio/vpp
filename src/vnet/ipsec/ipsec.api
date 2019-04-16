@@ -262,6 +262,7 @@ typedef key
     @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tx_table_id - the FIB id used for encapsulated packets
+    @param salt - for use with counter mode ciphers
  */
 typedef ipsec_sad_entry
 {
@@ -282,6 +283,7 @@ typedef ipsec_sad_entry
   vl_api_address_t tunnel_src;
   vl_api_address_t tunnel_dst;
   u32 tx_table_id;
+  u32 salt;
 };
 
 /** \brief IPsec: Add/delete Security Association Database entry
@@ -374,6 +376,7 @@ define ipsec_spd_interface_details {
     @param show_instance - instance to display for intf if renumber is set
     @param udp_encap - enable UDP encapsulation for NAT traversal
     @param tx_table_id - the FIB id used after packet encap
+    @param salt - for use with counter mode ciphers
 */
 define ipsec_tunnel_if_add_del {
   u32 client_index;
@@ -399,6 +402,7 @@ define ipsec_tunnel_if_add_del {
   u32 show_instance;
   u8 udp_encap;
   u32 tx_table_id;
+  u32 salt;
 };
 
 /** \brief Add/delete IPsec tunnel interface response

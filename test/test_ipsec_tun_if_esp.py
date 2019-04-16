@@ -1,7 +1,6 @@
 import unittest
 import socket
 import copy
-import struct
 
 from scapy.layers.ipsec import ESP
 from scapy.layers.l2 import Ether, Raw, GRE
@@ -218,7 +217,8 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                                         p.crypt_algo_vpp_id,
                                         p.crypt_key, p.crypt_key,
                                         p.auth_algo_vpp_id, p.auth_key,
-                                        p.auth_key)
+                                        p.auth_key,
+                                        salt=p.salt)
         p.tun_if.add_vpp_config()
         p.tun_if.admin_up()
         p.tun_if.config_ip4()
@@ -257,7 +257,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'scapy-crypto': "AES-GCM",
                   'scapy-integ': "NULL",
                   'key': "JPjyOWBeVEQiMe7h",
-                  'salt': struct.pack("!L", 0)},
+                  'salt': 3333},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_GCM_192),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
@@ -265,7 +265,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'scapy-crypto': "AES-GCM",
                   'scapy-integ': "NULL",
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBe",
-                  'salt': struct.pack("!L", 0)},
+                  'salt': 0},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_GCM_256),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
@@ -273,14 +273,14 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'scapy-crypto': "AES-GCM",
                   'scapy-integ': "NULL",
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h",
-                  'salt': struct.pack("!L", 0)},
+                  'salt': 9999},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_128),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_SHA1_96),
                   'scapy-crypto': "AES-CBC",
                   'scapy-integ': "HMAC-SHA1-96",
-                  'salt': '',
+                  'salt': 0,
                   'key': "JPjyOWBeVEQiMe7h"},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_192),
@@ -288,7 +288,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                                 IPSEC_API_INTEG_ALG_SHA1_96),
                   'scapy-crypto': "AES-CBC",
                   'scapy-integ': "HMAC-SHA1-96",
-                  'salt': '',
+                  'salt': 0,
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBe"},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_256),
@@ -296,7 +296,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                                 IPSEC_API_INTEG_ALG_SHA1_96),
                   'scapy-crypto': "AES-CBC",
                   'scapy-integ': "HMAC-SHA1-96",
-                  'salt': '',
+                  'salt': 0,
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
 
         for engine in engines:
@@ -314,7 +314,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                 p.crypt_algo = algo['scapy-crypto']
                 p.auth_algo = algo['scapy-integ']
                 p.crypt_key = algo['key']
-                p.crypt_salt = algo['salt']
+                p.salt = algo['salt']
 
                 self.config_network(p)
 

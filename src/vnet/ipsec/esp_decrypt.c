@@ -239,7 +239,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      esp_header_t *esp0;
 	      esp_aead_t *aad;
 	      u8 *scratch;
-	      u32 salt;
 
 	      /*
 	       * construct the AAD and the nonce (Salt || IV) in a scratch
@@ -258,9 +257,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 	       * can overwrite it with the salt and use the IV where it is
 	       * to form the nonce = (Salt + IV)
 	       */
-	      salt = clib_host_to_net_u32 (sa0->salt);
 	      op->iv -= sizeof (sa0->salt);
-	      clib_memcpy_fast (op->iv, &salt, sizeof (sa0->salt));
+	      clib_memcpy_fast (op->iv, &sa0->salt, sizeof (sa0->salt));
 	      op->iv_len = cpd.iv_sz + sizeof (sa0->salt);
 
 	      op->tag = payload + len;

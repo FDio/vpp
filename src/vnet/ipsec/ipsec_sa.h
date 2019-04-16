@@ -160,9 +160,9 @@ typedef struct
   u32 sibling;
 
   u32 tx_fib_index;
-  u32 salt;
 
-  /* runtime */
+  /* Salt used in GCM modes - stored in network byte order */
+  u32 salt;
 } ipsec_sa_t;
 
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);

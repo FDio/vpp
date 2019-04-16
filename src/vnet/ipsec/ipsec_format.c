@@ -290,7 +290,7 @@ format_ipsec_sa (u8 * s, va_list * args)
   if (!(flags & IPSEC_FORMAT_DETAIL))
     goto done;
 
-  s = format (s, "\n   salt 0x%x", sa->salt);
+  s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
   s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
 	      sa->last_seq, sa->last_seq_hi,
@@ -303,6 +303,7 @@ format_ipsec_sa (u8 * s, va_list * args)
 	      format_ipsec_integ_alg, sa->integ_alg);
   if (sa->integ_alg)
     s = format (s, " key %U", format_ipsec_key, &sa->integ_key);
+
   vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
   s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);
 
