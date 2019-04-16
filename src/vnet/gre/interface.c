@@ -51,7 +51,7 @@ format_gre_tunnel (u8 * s, va_list * args)
 }
 
 static gre_tunnel_t *
-gre_tunnel_db_find (const vnet_gre_add_del_tunnel_args_t * a,
+gre_tunnel_db_find (const vnet_gre_tunnel_add_del_args_t * a,
 		    u32 outer_fib_index, gre_tunnel_key_t * key)
 {
   gre_main_t *gm = &gre_main;
@@ -60,13 +60,13 @@ gre_tunnel_db_find (const vnet_gre_add_del_tunnel_args_t * a,
   if (!a->is_ipv6)
     {
       gre_mk_key4 (a->src.ip4, a->dst.ip4, outer_fib_index,
-		   a->tunnel_type, a->session_id, &key->gtk_v4);
+		   a->type, a->session_id, &key->gtk_v4);
       p = hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
     }
   else
     {
       gre_mk_key6 (&a->src.ip6, &a->dst.ip6, outer_fib_index,
-		   a->tunnel_type, a->session_id, &key->gtk_v6);
+		   a->type, a->session_id, &key->gtk_v6);
       p = hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6);
     }
 
@@ -172,7 +172,7 @@ gre_tunnel_restack (gre_tunnel_t * gt)
 }
 
 static int
-vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
+vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 		     u32 outer_fib_index, u32 * sw_if_indexp)
 {
   gre_main_t *gm = &gre_main;
@@ -208,7 +208,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
   t->dev_instance = t_idx;	/* actual */
   t->user_instance = u_idx;	/* name */
 
-  t->type = a->tunnel_type;
+  t->type = a->type;
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
     t->session_id = a->session_id;
 
@@ -310,7 +310,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
 }
 
 static int
-vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t * a,
+vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
 			u32 outer_fib_index, u32 * sw_if_indexp)
 {
   gre_main_t *gm = &gre_main;
@@ -362,7 +362,7 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t * a,
 }
 
 int
-vnet_gre_add_del_tunnel (vnet_gre_add_del_tunnel_args_t * a,
+vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
 			 u32 * sw_if_indexp)
 {
   u32 outer_fib_index;
@@ -423,7 +423,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_gre_add_del_tunnel_args_t _a, *a = &_a;
+  vnet_gre_tunnel_add_del_args_t _a, *a = &_a;
   ip46_address_t src, dst;
   u32 instance = ~0;
   u32 outer_fib_id = 0;
@@ -512,7 +512,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   clib_memset (a, 0, sizeof (*a));
   a->is_add = is_add;
   a->outer_fib_id = outer_fib_id;
-  a->tunnel_type = t_type;
+  a->type = t_type;
   a->session_id = session_id;
   a->is_ipv6 = ipv6_set;
   a->instance = instance;
@@ -527,7 +527,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       clib_memcpy (&a->dst.ip6, &dst.ip6, sizeof (dst.ip6));
     }
 
-  rv = vnet_gre_add_del_tunnel (a, &sw_if_index);
+  rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
   switch (rv)
     {
@@ -554,7 +554,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     default:
       error =
-	clib_error_return (0, "vnet_gre_add_del_tunnel returned %d", rv);
+	clib_error_return (0, "vnet_gre_tunnel_add_del returned %d", rv);
       goto done;
     }
 

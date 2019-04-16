@@ -68,7 +68,7 @@ defaultmapping = {
     'gbp_subnet_add_del': {'sw_if_index': 4294967295, 'epg_id': 65535, },
     'geneve_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                               'decap_next_index': 4294967295, },
-    'gre_add_del_tunnel': {'instance': 4294967295, 'is_add': 1, },
+    'gre_tunnel_add_del': {'instance': 4294967295, 'is_add': 1, },
     'gtpu_add_del_tunnel': {'is_add': 1, 'mcast_sw_if_index': 4294967295,
                             'decap_next_index': 4294967295, },
     'input_acl_set_interface': {'ip4_table_index': 4294967295,
@@ -604,15 +604,14 @@ class VppPapiProvider(object):
              }
         )
 
-    def gre_add_del_tunnel(self,
-                           src_address,
-                           dst_address,
+    def gre_tunnel_add_del(self,
+                           src,
+                           dst,
                            outer_fib_id=0,
                            tunnel_type=0,
                            instance=0xFFFFFFFF,
                            session_id=0,
-                           is_add=1,
-                           is_ip6=0):
+                           is_add=1):
         """ Add a GRE tunnel
 
         :param src_address:
@@ -626,15 +625,17 @@ class VppPapiProvider(object):
         """
 
         return self.api(
-            self.papi.gre_add_del_tunnel,
+            self.papi.gre_tunnel_add_del,
             {'is_add': is_add,
-             'is_ipv6': is_ip6,
-             'tunnel_type': tunnel_type,
-             'instance': instance,
-             'src_address': src_address,
-             'dst_address': dst_address,
-             'outer_fib_id': outer_fib_id,
-             'session_id': session_id}
+             'tunnel':
+             {
+                 'type': tunnel_type,
+                 'instance': instance,
+                 'src': src,
+                 'dst': dst,
+                 'outer_fib_id': outer_fib_id,
+                 'session_id': session_id}
+             }
         )
 
     def udp_encap_add(self,
