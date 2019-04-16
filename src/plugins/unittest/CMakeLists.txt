@@ -27,6 +27,7 @@ add_vpp_plugin(unittest
   interface_test.c
   mfib_test.c
   punt_test.c
+  rbtree_test.c
   session_test.c
   string_test.c
   tcp_test.c
