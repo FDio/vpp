@@ -76,7 +76,7 @@ vl_api_ipsec_gre_tunnel_add_del_t_handler (vl_api_ipsec_gre_tunnel_add_del_t *
 
 out:
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GRE_ADD_DEL_TUNNEL_REPLY,
+  REPLY_MACRO2(VL_API_IPSEC_GRE_TUNNEL_ADD_DEL_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
