@@ -392,6 +392,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
 	      xd->supported_flow_actions = VNET_FLOW_ACTION_MARK |
 		VNET_FLOW_ACTION_REDIRECT_TO_NODE |
+		VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
 		VNET_FLOW_ACTION_BUFFER_ADVANCE |
 		VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP;
 
