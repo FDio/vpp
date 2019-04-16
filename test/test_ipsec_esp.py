@@ -413,7 +413,6 @@ class TestIpsecEspAll(ConfigIpsecESP,
         #
         for engine in engines:
             self.vapi.cli("set crypto handler all %s" % engine)
-
             #
             # loop through each of the algorithms
             #
