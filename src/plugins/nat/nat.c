@@ -713,7 +713,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 
 	  if (!addr_only)
 	    {
-	      if (rp->l_port != l_port || rp->e_port != e_port
+	      if ((rp->l_port != l_port && rp->e_port != e_port)
 		  || rp->proto != proto)
 		continue;
 	    }
