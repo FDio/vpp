@@ -342,7 +342,7 @@ segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
   else
     {
       seg_index = segment_manager_add_segment (sm, first_seg_size);
-      if (seg_index)
+      if (seg_index < 0)
 	{
 	  clib_warning ("Failed to allocate segment");
 	  return seg_index;
