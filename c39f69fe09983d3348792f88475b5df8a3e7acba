@@ -1,0 +1,1223 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "192dc776_98da0b34",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "I rely on the size of the string.  \nI suggested \u0027string name[64];\u0027 as a compromise.",
+      "range": {
+        "startLine": 152,
+        "startChar": 2,
+        "endLine": 152,
+        "endChar": 14
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cd603518_6fd31388",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 514,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 514,
+        "startChar": 19,
+        "endLine": 514,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "825c8118_3ae22fed",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 539,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 539,
+        "startChar": 19,
+        "endLine": 539,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a66e5663_f23f6a89",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 553,
+        "startChar": 19,
+        "endLine": 553,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bbaa6c6a_61c37840",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 577,
+        "startChar": 19,
+        "endLine": 577,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f9a3230_2b6de182",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 578,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 578,
+        "startChar": 19,
+        "endLine": 578,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a0231f32_ed354bba",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 593,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 593,
+        "startChar": 19,
+        "endLine": 593,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "36efe37b_4290e920",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 616,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 616,
+        "startChar": 19,
+        "endLine": 616,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "deb567cd_6b719872",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 630,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 630,
+        "startChar": 19,
+        "endLine": 630,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9427eb54_ca4daafb",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 631,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 631,
+        "startChar": 19,
+        "endLine": 631,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6b39b959_79627d74",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 631,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "Upper?",
+      "range": {
+        "startLine": 631,
+        "startChar": 24,
+        "endLine": 631,
+        "endChar": 40
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "556fe58b_cb2d0fa4",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 632,
+        "startChar": 19,
+        "endLine": 632,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "de581196_6e0c287d",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 635,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 635,
+        "startChar": 19,
+        "endLine": 635,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "63541108_9f08b681",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "loss of max length.",
+      "range": {
+        "startLine": 659,
+        "startChar": 2,
+        "endLine": 659,
+        "endChar": 13
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5fb572c9_c4aa98f5",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 673,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 673,
+        "startChar": 19,
+        "endLine": 673,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "56c90bd1_7785112a",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 674,
+        "startChar": 19,
+        "endLine": 674,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "97aa43db_4b18b64b",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 675,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 675,
+        "startChar": 19,
+        "endLine": 675,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ab8adfa5_c12b2fbb",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 678,
+        "startChar": 19,
+        "endLine": 678,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "776ce375_c67c0372",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 698,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "loss of max length.",
+      "range": {
+        "startLine": 698,
+        "startChar": 2,
+        "endLine": 698,
+        "endChar": 12
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6f61f472_d875dc9f",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 724,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "loss of max length",
+      "range": {
+        "startLine": 724,
+        "startChar": 2,
+        "endLine": 724,
+        "endChar": 13
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "927971a9_f329970f",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 738,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 738,
+        "startChar": 19,
+        "endLine": 738,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "46c5fea3_b93e6fb7",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 754,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "loss of max length.",
+      "range": {
+        "startLine": 754,
+        "startChar": 2,
+        "endLine": 754,
+        "endChar": 13
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "93ac8161_6442877c",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 762,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 762,
+        "startChar": 19,
+        "endLine": 762,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "03bf5258_50744b78",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 784,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 784,
+        "startChar": 19,
+        "endLine": 784,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b3585f69_c0a74e27",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 837,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 837,
+        "startChar": 19,
+        "endLine": 837,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4c968fc4_d7271fd9",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 838,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 838,
+        "startChar": 19,
+        "endLine": 838,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "674de71d_b82eca2d",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 839,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 839,
+        "startChar": 19,
+        "endLine": 839,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "045df436_5e6cba83",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 885,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 885,
+        "startChar": 19,
+        "endLine": 885,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4549aa88_8682ea44",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 886,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 886,
+        "startChar": 19,
+        "endLine": 886,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4d50fbf8_d030a338",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 889,
+        "startChar": 19,
+        "endLine": 889,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1591986e_a7f08aa4",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 910,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "loss of max length.",
+      "range": {
+        "startLine": 910,
+        "startChar": 2,
+        "endLine": 910,
+        "endChar": 13
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dc452a34_76ee82c9",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 946,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 946,
+        "startChar": 19,
+        "endLine": 946,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0df1dc2e_68c0a1b1",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 947,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 947,
+        "startChar": 19,
+        "endLine": 947,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e091e566_bcc9b652",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 950,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 950,
+        "startChar": 19,
+        "endLine": 950,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3d1fda08_308be17b",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 966,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "loss of max length.",
+      "range": {
+        "startLine": 966,
+        "startChar": 2,
+        "endLine": 966,
+        "endChar": 13
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3759f987_1c270ccc",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 976,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 976,
+        "startChar": 19,
+        "endLine": 976,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a7b0866_6f59983a",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 978,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 978,
+        "startChar": 19,
+        "endLine": 978,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a52655f_ae4a387a",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 1239,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 1239,
+        "startChar": 19,
+        "endLine": 1239,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bbab6e69_afa386b9",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 1262,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 1262,
+        "startChar": 19,
+        "endLine": 1262,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4067a508_ae1a22e1",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 1263,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 1263,
+        "startChar": 19,
+        "endLine": 1263,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "520d5d2a_b0c9ec7f",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 1320,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 1320,
+        "startChar": 19,
+        "endLine": 1320,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4666d26e_17d52fca",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 1538,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 1538,
+        "startChar": 19,
+        "endLine": 1538,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6c5b9529_49d1977b",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 1561,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "vl_api_nat_config_flags_t",
+      "range": {
+        "startLine": 1561,
+        "startChar": 19,
+        "endLine": 1561,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "600e6d4f_5a0ba104",
+        "filename": "test/test_nat.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "Why do we need to call this 2x?",
+      "range": {
+        "startLine": 132,
+        "startChar": 0,
+        "endLine": 136,
+        "endChar": 71
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c12d733_323b638f",
+        "filename": "test/test_nat.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "Why are you removing the named parameter?",
+      "range": {
+        "startLine": 146,
+        "startChar": 0,
+        "endLine": 155,
+        "endChar": 23
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "589bb153_02213601",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "NAT_IS_INSIDE \u003d 0x20,\n\nAlso add to default mapping.",
+      "range": {
+        "startLine": 756,
+        "startChar": 12,
+        "endLine": 756,
+        "endChar": 19
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "437b1ade_aa75c02b",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 773,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "NAT_IS_INSIDE \u003d 0x20,\n\nAlso add to default mapping.",
+      "range": {
+        "startLine": 773,
+        "startChar": 12,
+        "endLine": 773,
+        "endChar": 19
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "56367d9e_3163ca88",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 796,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "NAT_IS_ADDR_ONLY \u003d 0x08,\n\nAlso add to default mapping.",
+      "range": {
+        "startLine": 796,
+        "startChar": 12,
+        "endLine": 796,
+        "endChar": 20
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a6923a02_db423fe1",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 829,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "NAT_IS_ADDR_ONLY \u003d 0x08,",
+      "range": {
+        "startLine": 829,
+        "startChar": 12,
+        "endLine": 829,
+        "endChar": 20
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15ba3fc8_afb1ad57",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 965,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "NAT_IS_INSIDE \u003d 0x20",
+      "range": {
+        "startLine": 965,
+        "startChar": 12,
+        "endLine": 965,
+        "endChar": 20
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0a8108f6_eecbbd67",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 1064,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "What is prefix? an \"addr/len\" formatted string or an IpV[46]Network Object?",
+      "range": {
+        "startLine": 1064,
+        "startChar": 23,
+        "endLine": 1064,
+        "endChar": 35
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5858799c_31bd9050",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 1065,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "Remove",
+      "range": {
+        "startLine": 1065,
+        "startChar": 8,
+        "endLine": 1065,
+        "endChar": 40
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ef96f85_b5f81fee",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:23:46Z",
+      "side": 1,
+      "message": "NAT_IS_INSIDE \u003d 0x20",
+      "range": {
+        "startLine": 1112,
+        "startChar": 12,
+        "endLine": 1112,
+        "endChar": 20
+      },
+      "revId": "c39f69fe09983d3348792f88475b5df8a3e7acba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
