@@ -243,6 +243,55 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
     def tearDown(self):
         super(TestIpsec4TunIfEspAll, self).tearDown()
 
+    def rekey(self, p):
+        #
+        # change the key and the SPI
+        #
+        p.crypt_key = 'X' + p.crypt_key[1:]
+        p.scapy_tun_spi += 1
+        p.scapy_tun_sa_id += 1
+        p.vpp_tun_spi += 1
+        p.vpp_tun_sa_id += 1
+        p.tun_if.local_spi = p.vpp_tun_spi
+        p.tun_if.remote_spi = p.scapy_tun_spi
+
+        config_tun_params(p, self.encryption_type, self.tun_if)
+
+        p.tun_sa_in = VppIpsecSA(self,
+                                 p.scapy_tun_sa_id,
+                                 p.scapy_tun_spi,
+                                 p.auth_algo_vpp_id,
+                                 p.auth_key,
+                                 p.crypt_algo_vpp_id,
+                                 p.crypt_key,
+                                 self.vpp_esp_protocol,
+                                 self.tun_if.local_addr[p.addr_type],
+                                 self.tun_if.remote_addr[p.addr_type],
+                                 flags=p.flags,
+                                 salt=p.salt)
+        p.tun_sa_out = VppIpsecSA(self,
+                                  p.vpp_tun_sa_id,
+                                  p.vpp_tun_spi,
+                                  p.auth_algo_vpp_id,
+                                  p.auth_key,
+                                  p.crypt_algo_vpp_id,
+                                  p.crypt_key,
+                                  self.vpp_esp_protocol,
+                                  self.tun_if.remote_addr[p.addr_type],
+                                  self.tun_if.local_addr[p.addr_type],
+                                  flags=p.flags,
+                                  salt=p.salt)
+        p.tun_sa_in.add_vpp_config()
+        p.tun_sa_out.add_vpp_config()
+
+        self.vapi.ipsec_tunnel_if_set_sa(sw_if_index=p.tun_if.sw_if_index,
+                                         sa_id=p.tun_sa_in.id,
+                                         is_outbound=1)
+        self.vapi.ipsec_tunnel_if_set_sa(sw_if_index=p.tun_if.sw_if_index,
+                                         sa_id=p.tun_sa_out.id,
+                                         is_outbound=0)
+        self.logger.info(self.vapi.cli("sh ipsec sa"))
+
     def test_tun_44(self):
         """IPSEC tunnel all algos """
 
@@ -324,7 +373,15 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                 c = p.tun_if.get_tx_stats()
                 self.assertEqual(c['packets'], 127)
 
+                #
+                # rekey the tunnel
+                #
+                self.rekey(p)
+                self.verify_tun_44(p, count=127)
+
                 self.unconfig_network(p)
+                p.tun_sa_out.remove_vpp_config()
+                p.tun_sa_in.remove_vpp_config()
 
 
 class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
