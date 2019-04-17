@@ -2,7 +2,7 @@
 import os, fnmatch, subprocess
 
 starttag = 'v19.01-rc0'
-endtag = 'v19.01'
+endtag = 'HEAD'
 emit_md = True
 apifiles = []
 
