@@ -346,9 +346,10 @@ class VCLCutThruTestCase(VCLTestCase):
                                               self.server_port]
 
     def tearDown(self):
-        self.cut_thru_tear_down()
-
         super(VCLCutThruTestCase, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
 
     def test_vcl_cut_thru_echo(self):
         """ run VCL cut thru echo test """
