@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f6aa7159_4165c508",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:28:03Z",
+      "side": 1,
+      "message": "Are we abandoning fedora?",
+      "range": {
+        "startLine": 52,
+        "startChar": 0,
+        "endLine": 57,
+        "endChar": 20
+      },
+      "revId": "37f436c982528198cd3f95bbd567d86294a6824b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e71621b4_463aecc1",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-04-17T16:28:03Z",
+      "side": 1,
+      "message": "python-ply replaced with python36-ply",
+      "range": {
+        "startLine": 63,
+        "startChar": 48,
+        "endLine": 63,
+        "endChar": 58
+      },
+      "revId": "37f436c982528198cd3f95bbd567d86294a6824b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
