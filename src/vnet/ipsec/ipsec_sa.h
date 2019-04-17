@@ -125,9 +125,11 @@ typedef struct
   u32 last_seq_hi;
   u64 replay_window;
 
-  vnet_crypto_op_id_t crypto_enc_op_id;
-  vnet_crypto_op_id_t crypto_dec_op_id;
-  vnet_crypto_op_id_t integ_op_id;
+  vnet_crypto_key_index_t crypto_key_index;
+  vnet_crypto_key_index_t integ_key_index;
+  vnet_crypto_op_id_t crypto_enc_op_id:16;
+  vnet_crypto_op_id_t crypto_dec_op_id:16;
+  vnet_crypto_op_id_t integ_op_id:16;
 
   dpo_id_t dpo[IPSEC_N_PROTOCOLS];
 
@@ -149,9 +151,11 @@ typedef struct
 
   ipsec_crypto_alg_t crypto_alg;
   ipsec_key_t crypto_key;
+  vnet_crypto_alg_t crypto_calg;
 
   ipsec_integ_alg_t integ_alg;
   ipsec_key_t integ_key;
+  vnet_crypto_alg_t integ_calg;
 
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;

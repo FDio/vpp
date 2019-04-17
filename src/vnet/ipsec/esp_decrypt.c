@@ -203,8 +203,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 
 	  vnet_crypto_op_init (op, sa0->integ_op_id);
-	  op->key = sa0->integ_key.data;
-	  op->key_len = sa0->integ_key.len;
+	  op->key_index = sa0->integ_key_index;
 	  op->src = payload;
 	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 	  op->user_data = b - bufs;
@@ -231,7 +230,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
-	  op->key = sa0->crypto_key.data;
+	  op->key_index = sa0->crypto_key_index;
 	  op->iv = payload;
 
 	  if (ipsec_sa_is_set_IS_AEAD (sa0))
