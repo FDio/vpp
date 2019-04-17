@@ -230,6 +230,21 @@ ipsec_tun_mk_output_sa_id (u32 ti)
   return (0xc0000000 | ti);
 }
 
+static void
+ipsec_tunnel_feature_set (ipsec_tunnel_if_t * t, u8 enable)
+{
+  vnet_feature_enable_disable ("ip4-output",
+			       "esp4-encrypt-tun",
+			       t->sw_if_index, enable,
+			       &t->output_sa_index,
+			       sizeof (t->output_sa_index));
+  vnet_feature_enable_disable ("ip6-output",
+			       "esp6-encrypt-tun",
+			       t->sw_if_index, enable,
+			       &t->output_sa_index,
+			       sizeof (t->output_sa_index));
+}
+
 int
 ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 				  ipsec_add_del_tunnel_args_t * args,
@@ -362,16 +377,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			       ~0);
       im->ipsec_if_by_sw_if_index[t->sw_if_index] = dev_instance;
 
-      vnet_feature_enable_disable ("ip4-output",
-				   "esp4-encrypt-tun",
-				   t->sw_if_index, 1,
-				   &t->output_sa_index,
-				   sizeof (t->output_sa_index));
-      vnet_feature_enable_disable ("ip6-output",
-				   "esp6-encrypt-tun",
-				   t->sw_if_index, 1,
-				   &t->output_sa_index,
-				   sizeof (t->output_sa_index));
+      ipsec_tunnel_feature_set (t, 1);
 
       /*1st interface, register protocol */
       if (pool_elts (im->tunnel_interfaces) == 1)
@@ -396,16 +402,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       hi = vnet_get_hw_interface (vnm, t->hw_if_index);
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0);	/* admin down */
 
-      vnet_feature_enable_disable ("ip4-output",
-				   "esp4-encrypt-tun",
-				   hi->sw_if_index, 0,
-				   &t->output_sa_index,
-				   sizeof (t->output_sa_index));
-      vnet_feature_enable_disable ("ip6-output",
-				   "esp6-encrypt-tun",
-				   hi->sw_if_index, 0,
-				   &t->output_sa_index,
-				   sizeof (t->output_sa_index));
+      ipsec_tunnel_feature_set (t, 0);
       vnet_delete_hw_interface (vnm, t->hw_if_index);
 
       if (is_ip6)
@@ -649,7 +646,13 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 	  return VNET_API_ERROR_INVALID_VALUE;
 	}
 
+      /*
+       * re-enable the feature to get the new SA in
+       * the workers are stopped so no packets are sent in the clear
+       */
+      ipsec_tunnel_feature_set (t, 0);
       t->output_sa_index = sa_index;
+      ipsec_tunnel_feature_set (t, 1);
     }
 
   /* remove sa_id to sa_index mapping on old SA */
@@ -661,7 +664,7 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
       clib_warning ("IPsec backend add/del callback returned error");
       return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
-  pool_put (im->sad, old_sa);
+  ipsec_sa_del (old_sa->id);
 
   return 0;
 }
