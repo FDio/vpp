@@ -68,6 +68,33 @@ typedef enum
 
 typedef enum
 {
+  VNET_CRYPTO_KEY_TYPE_NONE = 0,
+  VNET_CRYPTO_KEY_TYPE_DES,
+  VNET_CRYPTO_KEY_TYPE_3DES,
+  VNET_CRYPTO_KEY_TYPE_AES_128,
+  VNET_CRYPTO_KEY_TYPE_AES_192,
+  VNET_CRYPTO_KEY_TYPE_AES_256,
+  VNET_CRYPTO_KEY_TYPE_HMAC_SHA1,
+  VNET_CRYPTO_KEY_TYPE_HMAC_SHA256,
+  VNET_CRYPTO_KEY_TYPE_HMAC_SHA512,
+  VNET_CRYPTO_KEY_N_TYPES,
+} vnet_crypto_key_type_t;
+
+typedef enum
+{
+  VNET_CRYPTO_KEY_OP_ADD,
+  VNET_CRYPTO_KEY_OP_DEL,
+  VNET_CRYPTO_KEY_OP_MODIFY,
+} vnet_crypto_key_op_t;
+
+typedef struct
+{
+  u8 *data;
+  vnet_crypto_key_type_t type:8;
+} vnet_crypto_key_t;
+
+typedef enum
+{
 #define _(n, s) VNET_CRYPTO_OP_STATUS_##n,
   foreach_crypto_op_status
 #undef _
@@ -104,6 +131,7 @@ typedef enum
 typedef struct
 {
   char *name;
+  vnet_crypto_key_type_t key_type;
   vnet_crypto_op_id_t op_by_type[VNET_CRYPTO_OP_N_TYPES];
 } vnet_crypto_alg_data_t;
 
@@ -115,10 +143,10 @@ typedef struct
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
+  u32 key_index;
   u32 len, salt;
   u16 aad_len;
-  u8 key_len, iv_len, digest_len, tag_len;
-  u8 *key;
+  u8 iv_len, digest_len, tag_len;
   u8 *iv;
   u8 *src;
   u8 *dst;
@@ -141,23 +169,30 @@ typedef struct
   clib_bitmap_t *act_queues;
 } vnet_crypto_thread_t;
 
+typedef u32 vnet_crypto_key_index_t;
+
 typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
 					 vnet_crypto_op_t * ops[], u32 n_ops);
+
+typedef void (vnet_crypto_key_handler_t) (vlib_main_t * vm,
+					  vnet_crypto_key_op_t kop,
+					  vnet_crypto_key_index_t idx);
 
 u32 vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
 				 char *desc);
 
-vlib_error_t *vnet_crypto_register_ops_handler (vlib_main_t * vm,
-						u32 provider_index,
-						vnet_crypto_op_id_t opt,
-						vnet_crypto_ops_handler_t *
-						f);
+void vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
+				       vnet_crypto_op_id_t opt,
+				       vnet_crypto_ops_handler_t * oph);
+void vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
+				       vnet_crypto_key_handler_t * keyh);
 
 typedef struct
 {
   char *name;
   char *desc;
   int priority;
+  vnet_crypto_key_handler_t *key_op_handler;
   vnet_crypto_ops_handler_t *ops_handlers[VNET_CRYPTO_N_OP_IDS];
 } vnet_crypto_engine_t;
 
@@ -168,6 +203,7 @@ typedef struct
   vnet_crypto_ops_handler_t **ops_handlers;
   vnet_crypto_op_data_t opt_data[VNET_CRYPTO_N_OP_IDS];
   vnet_crypto_engine_t *engines;
+  vnet_crypto_key_t *keys;
   uword *engine_index_by_name;
   uword *alg_index_by_name;
 } vnet_crypto_main_t;
@@ -180,8 +216,13 @@ u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t ** jobs,
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 			     u32 n_ops);
 
-
 int vnet_crypto_set_handler (char *ops_handler_name, char *engine);
+
+u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_key_type_t type,
+			 u8 * data, u16 length);
+void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
+void vnet_crypto_key_modify (vlib_main_t * vm, vnet_crypto_key_index_t index,
+			     u8 * data, u16 len);
 
 format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;
@@ -197,6 +238,7 @@ vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
     clib_memset (op, 0xfe, sizeof (*op));
   op->op = type;
   op->flags = 0;
+  op->key_index = ~0;
 }
 
 static_always_inline vnet_crypto_op_type_t
@@ -205,6 +247,13 @@ vnet_crypto_get_op_type (vnet_crypto_op_id_t id)
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_op_data_t *od = vec_elt_at_index (cm->opt_data, id);
   return od->type;
+}
+
+static_always_inline vnet_crypto_key_t *
+vnet_crypto_get_key (vnet_crypto_key_index_t index)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  return vec_elt_at_index (cm->keys, index);
 }
 
 #endif /* included_vnet_crypto_crypto_h */
