@@ -71,6 +71,30 @@
     },
     {
       "key": {
+        "uuid": "e66cdd66_c84a657a",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-04-17T11:34:37Z",
+      "side": 1,
+      "message": "I will change it to bool.",
+      "parentUuid": "71f991d4_8155cd8b",
+      "range": {
+        "startLine": 510,
+        "startChar": 2,
+        "endLine": 510,
+        "endChar": 15
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b7be3eb7_5cfa579f",
         "filename": "src/plugins/nat/nat.api",
         "patchSetId": 5
@@ -94,6 +118,30 @@
     },
     {
       "key": {
+        "uuid": "981e84c1_01280920",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-04-17T11:34:37Z",
+      "side": 1,
+      "message": "I will change it to bool.",
+      "parentUuid": "b7be3eb7_5cfa579f",
+      "range": {
+        "startLine": 532,
+        "startChar": 2,
+        "endLine": 532,
+        "endChar": 15
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "64ed9db0_518244e2",
         "filename": "src/plugins/nat/nat.api",
         "patchSetId": 5
@@ -105,6 +153,30 @@
       "writtenOn": "2019-03-22T07:13:10Z",
       "side": 1,
       "message": "bool?",
+      "range": {
+        "startLine": 567,
+        "startChar": 2,
+        "endLine": 567,
+        "endChar": 15
+      },
+      "revId": "b233562cda0fe28188663f3217dcb16195bb5c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6669248e_b3b7b543",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 567,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-04-17T11:34:37Z",
+      "side": 1,
+      "message": "There are 3 possible values. 1 if inside, 0 if outside, 2 if inside and outside. I will rename the element so it is more obvious.",
+      "parentUuid": "64ed9db0_518244e2",
       "range": {
         "startLine": 567,
         "startChar": 2,
