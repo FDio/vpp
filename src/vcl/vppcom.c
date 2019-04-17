@@ -1530,6 +1530,14 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   if (svm_fifo_is_empty_cons (rx_fifo))
     svm_fifo_unset_event (s->rx_fifo);
 
+  /* Cut-through sessions might request tx notifications on rx fifos */
+  if (PREDICT_FALSE (rx_fifo->want_tx_ntf))
+    {
+      app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
+			      SESSION_IO_EVT_RX, SVM_Q_WAIT);
+      svm_fifo_reset_tx_ntf (s->rx_fifo);
+    }
+
   VDBG (2, "session %u[0x%llx]: read %d bytes from (%p)", s->session_index,
 	s->vpp_handle, n_read, rx_fifo);
 

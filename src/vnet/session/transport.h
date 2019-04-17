@@ -46,6 +46,7 @@ typedef struct _transport_proto_vft
   void (*update_time) (f64 time_now, u8 thread_index);
   void (*flush_data) (transport_connection_t *tconn);
   int (*custom_tx) (void *session);
+  int (*app_rx_evt) (transport_connection_t *tconn);
 
   /*
    * Connection retrieval
@@ -109,6 +110,16 @@ static inline int
 transport_custom_tx (transport_proto_t tp, void *s)
 {
   return tp_vfts[tp].custom_tx (s);
+}
+
+static inline int
+transport_app_rx_evt (transport_proto_t tp, u32 conn_index, u32 thread_index)
+{
+  transport_connection_t *tc;
+  if (!tp_vfts[tp].app_rx_evt)
+    return 0;
+  tc = transport_get_connection (tp, conn_index, thread_index);
+  return tp_vfts[tp].app_rx_evt (tc);
 }
 
 void transport_register_protocol (transport_proto_t transport_proto,

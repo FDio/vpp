@@ -726,6 +726,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
 				  app->sm_properties.prealloc_fifos)))
     {
       app_worker_free (app_wrk);
+      *wrk = 0;
       return rv;
     }
   sm->first_is_protected = 1;

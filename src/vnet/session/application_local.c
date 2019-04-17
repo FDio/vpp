@@ -475,6 +475,19 @@ ct_custom_tx (void *session)
   return ct_session_tx (s);
 }
 
+static int
+ct_app_rx_evt (transport_connection_t * tc)
+{
+  ct_connection_t *ct = (ct_connection_t *) tc, *peer_ct;
+  session_t *ps;
+
+  peer_ct = ct_connection_get (ct->peer_index);
+  if (!peer_ct)
+    return -1;
+  ps = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
+  return session_dequeue_notify (ps);
+}
+
 static u8 *
 format_ct_listener (u8 * s, va_list * args)
 {
@@ -535,6 +548,7 @@ const static transport_proto_vft_t cut_thru_proto = {
   .close = ct_session_close,
   .get_connection = ct_session_get,
   .custom_tx = ct_custom_tx,
+  .app_rx_evt = ct_app_rx_evt,
   .tx_type = TRANSPORT_TX_INTERNAL,
   .service_type = TRANSPORT_SERVICE_APP,
   .format_listener = format_ct_listener,
