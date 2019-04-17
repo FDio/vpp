@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bea6ba3a_85ffada6",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-17T18:04:33Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/18980",
+      "range": {
+        "startLine": 319,
+        "startChar": 35,
+        "endLine": 319,
+        "endChar": 57
+      },
+      "revId": "6407ba56a392f37322001d0ffdca002223b095c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
