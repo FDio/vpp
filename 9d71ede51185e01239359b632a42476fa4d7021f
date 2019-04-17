@@ -45,6 +45,29 @@
       "revId": "9d71ede51185e01239359b632a42476fa4d7021f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "946802ed_5f87206d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-17T18:10:59Z",
+      "side": 1,
+      "message": "Looking at https://semver.org/\nforward compatibility is not mentioned when distinguishing minor and patch version, but I believe it makes sense here.",
+      "range": {
+        "startLine": 15,
+        "startChar": 6,
+        "endLine": 15,
+        "endChar": 28
+      },
+      "revId": "9d71ede51185e01239359b632a42476fa4d7021f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
