@@ -100,6 +100,7 @@ mbedtls_ctx_free (tls_ctx_t * ctx)
   mbedtls_ssl_free (&mc->ssl);
   mbedtls_ssl_config_free (&mc->conf);
 
+  vec_free (ctx->srv_hostname);
   pool_put_index (mbedtls_main.ctx_pool[ctx->c_thread_index],
 		  mc->mbedtls_ctx_index);
 }
@@ -536,6 +537,27 @@ mbedtls_handshake_is_over (tls_ctx_t * ctx)
   return (mc->ssl.state == MBEDTLS_SSL_HANDSHAKE_OVER);
 }
 
+static int
+mbedtls_transport_close (tls_ctx_t * ctx)
+{
+  if (!mbedtls_handshake_is_over (ctx))
+    {
+      session_close (session_get_from_handle (ctx->tls_session_handle));
+      return 0;
+    }
+  session_transport_closing_notify (&ctx->connection);
+  return 0;
+}
+
+static int
+mbedtls_app_close (tls_ctx_t * ctx)
+{
+  tls_disconnect_transport (ctx);
+  session_transport_delete_notify (&ctx->connection);
+  mbedtls_ctx_free (ctx);
+  return 0;
+}
+
 const static tls_engine_vft_t mbedtls_engine = {
   .ctx_alloc = mbedtls_ctx_alloc,
   .ctx_free = mbedtls_ctx_free,
@@ -548,6 +570,8 @@ const static tls_engine_vft_t mbedtls_engine = {
   .ctx_handshake_is_over = mbedtls_handshake_is_over,
   .ctx_start_listen = mbedtls_start_listen,
   .ctx_stop_listen = mbedtls_stop_listen,
+  .ctx_transport_close = mbedtls_transport_close,
+  .ctx_app_close = mbedtls_app_close,
 };
 
 int
