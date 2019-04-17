@@ -148,12 +148,6 @@ api_http_static_enable (vat_main_t * vam)
       return -99;
     }
 
-  if (www_root == 0)
-    {
-      errmsg ("Must specify www-root");
-      return -99;
-    }
-
   if (uri == 0)
     uri = format (0, "tcp://0.0.0.0/80%c", 0);
 
