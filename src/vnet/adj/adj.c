@@ -179,7 +179,7 @@ format_ip_adjacency (u8 * s, va_list * args)
         s = format (s, "\n   counts:[%Ld:%Ld]", counts.packets, counts.bytes);
 	s = format (s, "\n   locks:%d", adj->ia_node.fn_locks);
 	s = format(s, "\n delegates:\n  ");
-        adj_delegate_format(s, adj);
+        s = adj_delegate_format(s, adj);
 
 	s = format(s, "\n children:");
         if (fib_node_list_get_size(adj->ia_node.fn_children))
