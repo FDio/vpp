@@ -57,6 +57,14 @@ t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
 static_always_inline u##c						\
 t##s##x##c##_is_zero_mask (t##s##x##c v)				\
 { return _mm512_test_##i##_mask ((__m512i) v, (__m512i) v); }		\
+\
+static_always_inline t##s##x##c                                         \
+t##s##x##c##_interleave_lo (t##s##x##c a, t##s##x##c b)                 \
+{ return (t##s##x##c) _mm512_unpacklo_##i ((__m512i) a, (__m512i) b); } \
+\
+static_always_inline t##s##x##c                                         \
+t##s##x##c##_interleave_hi (t##s##x##c a, t##s##x##c b)                 \
+{ return (t##s##x##c) _mm512_unpackhi_##i ((__m512i) a, (__m512i) b); } \
 
 
 foreach_avx512_vec512i foreach_avx512_vec512u
@@ -110,6 +118,25 @@ u32x16_min_scalar (u32x16 v)
 {
   return u32x8_min_scalar (u32x8_min (u32x16_extract_lo (v),
 				      u32x16_extract_hi (v)));
+}
+
+static_always_inline u32x16
+u32x16_insert_lo (u32x16 r, u32x8 v)
+{
+  return (u32x16) _mm512_inserti64x4 ((__m512i) r, (__m256i) v, 0);
+}
+
+static_always_inline u32x16
+u32x16_insert_hi (u32x16 r, u32x8 v)
+{
+  return (u32x16) _mm512_inserti64x4 ((__m512i) r, (__m256i) v, 1);
+}
+
+static_always_inline u64x8
+u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)
+{
+  return (u64x8) _mm512_permutex2var_epi64 ((__m512i) a, (__m512i) mask,
+					    (__m512i) b);
 }
 
 
