@@ -258,7 +258,7 @@ dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
   /* TODO prefetch and quad-loop */
   for (n = 0; n < n_rx_packets; n++)
     {
-      if ((ptd->flags[n] & PKT_RX_FDIR) == 0)
+      if ((ptd->flags[n] & PKT_RX_FDIR_ID) == 0)
 	continue;
 
       fle = pool_elt_at_index (xd->flow_lookup_entries,
