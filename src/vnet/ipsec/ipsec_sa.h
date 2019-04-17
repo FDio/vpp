@@ -136,13 +136,9 @@ typedef struct
   /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
-  union
-  {
-    ip4_header_t ip4_hdr;
-    ip6_header_t ip6_hdr;
-  };
+  ip4_header_t ip4_hdr;
+  ip6_header_t ip6_hdr;
   udp_header_t udp_hdr;
-
 
   fib_node_t node;
   u32 id;

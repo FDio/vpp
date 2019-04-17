@@ -250,6 +250,20 @@ ipsec_sa_add (u32 id,
 	  sa->ip4_hdr.checksum = ip4_header_checksum (&sa->ip4_hdr);
 	}
     }
+  if (sa->protocol == IPSEC_PROTOCOL_AH && !ipsec_sa_is_set_IS_INBOUND (sa))
+    {
+      sa->ip6_hdr.ip_version_traffic_class_and_flow_label = 0x60;
+      sa->ip6_hdr.protocol = IP_PROTOCOL_IPSEC_AH;
+      sa->ip6_hdr.hop_limit = 0;
+
+      sa->ip4_hdr.ip_version_and_header_length = 0x45;
+      sa->ip4_hdr.protocol = IP_PROTOCOL_IPSEC_AH;
+      sa->ip4_hdr.ttl = 0;
+      sa->ip4_hdr.tos = 0;
+      sa->ip4_hdr.checksum = 0;
+      sa->ip4_hdr.fragment_id = 0;
+      sa->ip4_hdr.flags_and_fragment_offset = 0;
+    }
 
   if (ipsec_sa_is_set_UDP_ENCAP (sa))
     {
