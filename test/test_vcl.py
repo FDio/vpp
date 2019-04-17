@@ -127,8 +127,6 @@ class VCLTestCase(VppTestCase):
             i.set_table_ip4(0)
             i.admin_down()
 
-        self.vapi.session_enable_disable(is_enabled=0)
-
     def thru_host_stack_ipv6_setup(self):
         self.vapi.session_enable_disable(is_enabled=1)
         self.create_loopback_interfaces(2)
