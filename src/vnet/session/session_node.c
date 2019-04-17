@@ -947,6 +947,13 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      continue;
 	    }
 	  break;
+	case SESSION_IO_EVT_RX:
+	  s = session_event_get_session (e, thread_index);
+	  if (!s)
+	    break;
+	  transport_app_rx_evt (session_get_transport_proto (s),
+				s->connection_index, s->thread_index);
+	  break;
 	case SESSION_CTRL_EVT_CLOSE:
 	  s = session_get_from_handle_if_valid (e->session_handle);
 	  if (PREDICT_FALSE (!s))
