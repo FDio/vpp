@@ -1,4 +1,4 @@
-# VPP interface stats client
+# VPP interface stats client {#if_stats_client_doc}
 
 This is a source code and a binary of a 'thin client' to collect, 
 aggregate and expose VPP interface stats through VPP stats socket API. 
