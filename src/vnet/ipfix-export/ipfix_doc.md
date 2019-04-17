@@ -1,4 +1,4 @@
-# IPFIX support {#ipfix}
+# IPFIX support {#ipfix_doc}
 
 VPP includes a high-performance IPFIX record exporter. This note
 explains how to use the internal APIs to export IPFIX data, and how to
