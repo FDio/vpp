@@ -26,7 +26,7 @@ static tls_engine_vft_t *tls_vfts;
 
 void tls_disconnect (u32 ctx_handle, u32 thread_index);
 
-static void
+void
 tls_disconnect_transport (tls_ctx_t * ctx)
 {
   vnet_disconnect_args_t a = {
@@ -287,13 +287,6 @@ tls_ctx_alloc (tls_engine_type_t engine_type)
   return (((u32) engine_type << TLS_ENGINE_TYPE_SHIFT) | ctx_index);
 }
 
-static inline void
-tls_ctx_free (tls_ctx_t * ctx)
-{
-  vec_free (ctx->srv_hostname);
-  tls_vfts[ctx->tls_ctx_engine].ctx_free (ctx);
-}
-
 static inline tls_ctx_t *
 tls_ctx_get (u32 ctx_handle)
 {
@@ -334,7 +327,26 @@ tls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
   return tls_vfts[ctx->tls_ctx_engine].ctx_read (ctx, tls_session);
 }
 
-static inline u8
+static inline int
+tls_ctx_transport_close (tls_ctx_t * ctx)
+{
+  return tls_vfts[ctx->tls_ctx_engine].ctx_transport_close (ctx);
+}
+
+static inline int
+tls_ctx_app_close (tls_ctx_t * ctx)
+{
+  return tls_vfts[ctx->tls_ctx_engine].ctx_app_close (ctx);
+}
+
+void
+tls_ctx_free (tls_ctx_t * ctx)
+{
+  vec_free (ctx->srv_hostname);
+  tls_vfts[ctx->tls_ctx_engine].ctx_free (ctx);
+}
+
+u8
 tls_ctx_handshake_is_over (tls_ctx_t * ctx)
 {
   return tls_vfts[ctx->tls_ctx_engine].ctx_handshake_is_over (ctx);
@@ -368,13 +380,8 @@ tls_session_disconnect_callback (session_t * tls_session)
 	   tls_session->session_index);
 
   ctx = tls_ctx_get (tls_session->opaque);
-  if (!tls_ctx_handshake_is_over (ctx))
-    {
-      session_close (tls_session);
-      return;
-    }
   ctx->is_passive_close = 1;
-  session_transport_closing_notify (&ctx->connection);
+  tls_ctx_transport_close (ctx);
 }
 
 int
@@ -542,9 +549,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
   TLS_DBG (1, "Disconnecting %x", ctx_handle);
 
   ctx = tls_ctx_get (ctx_handle);
-  tls_disconnect_transport (ctx);
-  session_transport_delete_notify (&ctx->connection);
-  tls_ctx_free (ctx);
+  tls_ctx_app_close (ctx);
 }
 
 u32
