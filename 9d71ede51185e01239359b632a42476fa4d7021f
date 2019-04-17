@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "96e8189c_d59d34dd",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-17T18:07:39Z",
+      "side": 1,
+      "message": "See https://gerrit.fd.io/r/18693",
+      "range": {
+        "startLine": 10,
+        "startChar": 6,
+        "endLine": 10,
+        "endChar": 17
+      },
+      "revId": "9d71ede51185e01239359b632a42476fa4d7021f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "196d473d_d479962d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-17T18:07:39Z",
+      "side": 1,
+      "message": "CSIT will be such a client, work in progress (for 2.2.0 behavior):\nhttps://gerrit.fd.io/r/#/c/18360/41/resources/libraries/python/InterfaceUtil.py@268",
+      "range": {
+        "startLine": 14,
+        "startChar": 16,
+        "endLine": 14,
+        "endChar": 45
+      },
+      "revId": "9d71ede51185e01239359b632a42476fa4d7021f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
