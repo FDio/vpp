@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "8ab321fb_57dd2e1a",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 1096,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-04-17T11:34:37Z",
+      "side": 0,
+      "message": "Cleaning API. API handler returns all the time ipv4 address. This API message was misleading.",
+      "parentUuid": "ceac1cfe_a3f8d9ae",
+      "range": {
+        "startLine": 1096,
+        "startChar": 5,
+        "endLine": 1096,
+        "endChar": 13
+      },
+      "revId": "2ac885c665309fc670cec96675ec1f510116fc13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "db11990d_e0379134",
         "filename": "src/plugins/nat/nat.api",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2019-03-21T18:32:53Z",
       "side": 0,
       "message": "Why is this being removed?",
+      "range": {
+        "startLine": 1122,
+        "startChar": 2,
+        "endLine": 1122,
+        "endChar": 13
+      },
+      "revId": "2ac885c665309fc670cec96675ec1f510116fc13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7e3d23ca_037ea58e",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 1122,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-04-17T11:34:37Z",
+      "side": 0,
+      "message": "Cleaning API. API handler returns all the time ipv4 address. This API message was misleading.",
+      "parentUuid": "db11990d_e0379134",
       "range": {
         "startLine": 1122,
         "startChar": 2,

@@ -140,6 +140,30 @@
     },
     {
       "key": {
+        "uuid": "33b71dbf_0841c6a3",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-04-17T11:34:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d1ebe28d_cc46fd49",
+      "range": {
+        "startLine": 467,
+        "startChar": 0,
+        "endLine": 473,
+        "endChar": 23
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4873216e_4beb8f98",
         "filename": "test/test_nat.py",
         "patchSetId": 2
@@ -151,6 +175,30 @@
       "writtenOn": "2019-03-21T18:32:53Z",
       "side": 1,
       "message": "Go the other way. \nself.assertEqual(bytes(session.inside_ip_address), self.pg5.remote_ip4)\n\nremove all the inet_pton wrappers.",
+      "range": {
+        "startLine": 2235,
+        "startChar": 0,
+        "endLine": 2236,
+        "endChar": 63
+      },
+      "revId": "dfac5899a54fd2681d6ee0261bad35c2f956ab9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0db3165d_4e1adee6",
+        "filename": "test/test_nat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2236,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-04-17T11:34:37Z",
+      "side": 1,
+      "message": "That won\u0027t work.",
+      "parentUuid": "4873216e_4beb8f98",
       "range": {
         "startLine": 2235,
         "startChar": 0,
