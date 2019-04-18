@@ -1235,6 +1235,16 @@ vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
   return (hc->flags & VNET_HW_INTERFACE_CLASS_FLAG_P2P);
 }
 
+int
+vnet_sw_interface_is_nbma (vnet_main_t * vnm, u32 sw_if_index)
+{
+  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  vnet_hw_interface_class_t *hc =
+    vnet_get_hw_interface_class (vnm, hw->hw_class_index);
+
+  return (hc->flags & VNET_HW_INTERFACE_CLASS_FLAG_NBMA);
+}
+
 clib_error_t *
 vnet_interface_init (vlib_main_t * vm)
 {

@@ -530,8 +530,9 @@ class VppPapiProvider(object):
     def gre_tunnel_add_del(self,
                            src,
                            dst,
-                           outer_fib_id=0,
-                           tunnel_type=0,
+                           outer_table_id=0,
+                           type=0,
+                           mode=0,
                            instance=0xFFFFFFFF,
                            session_id=0,
                            is_add=1):
@@ -552,11 +553,12 @@ class VppPapiProvider(object):
             {'is_add': is_add,
              'tunnel':
              {
-                 'type': tunnel_type,
+                 'type': type,
+                 'mode': mode,
                  'instance': instance,
                  'src': src,
                  'dst': dst,
-                 'outer_fib_id': outer_fib_id,
+                 'outer_table_id': outer_table_id,
                  'session_id': session_id}
              }
         )
