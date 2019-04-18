@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os, fnmatch, subprocess
 
-starttag = 'v19.01-rc0'
+starttag = 'v19.04-rc0'
 endtag = 'HEAD'
 emit_md = True
 apifiles = []
