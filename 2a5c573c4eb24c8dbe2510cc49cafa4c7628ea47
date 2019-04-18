@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b761e57e_7b4a92c0",
+        "filename": "src/vnet/session/transport_types.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-18T17:20:29Z",
+      "side": 1,
+      "message": "We\u0027ve gone over this before. We can\u0027t grow this indiscriminately. What is it that you\u0027re trying to solve with this?",
+      "range": {
+        "startLine": 93,
+        "startChar": 2,
+        "endLine": 93,
+        "endChar": 27
+      },
+      "revId": "2a5c573c4eb24c8dbe2510cc49cafa4c7628ea47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
