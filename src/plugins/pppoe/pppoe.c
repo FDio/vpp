@@ -65,14 +65,6 @@ format_pppoe_name (u8 * s, va_list * args)
   return format (s, "pppoe_session%d", dev_instance);
 }
 
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
 static clib_error_t *
 pppoe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
@@ -87,7 +79,6 @@ pppoe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 VNET_DEVICE_CLASS (pppoe_device_class,static) = {
   .name = "PPPoE",
   .format_device_name = format_pppoe_name,
-  .tx_function = dummy_interface_tx,
   .admin_up_down_function = pppoe_interface_admin_up_down,
 };
 /* *INDENT-ON* */
