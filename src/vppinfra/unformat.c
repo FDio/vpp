@@ -338,8 +338,14 @@ unformat_token (unformat_input_t * input, va_list * va)
   clib_memset (map, 0, sizeof (map));
   for (s = token_chars; *s;)
     {
-      /* Parse range. */
-      if (s[0] < s[2] && s[1] == '-')
+      /*
+       * Parse range.
+       * The test order is important: s[1] is valid because s[0] != '\0' but
+       * s[2] might not if s[1] == '\0'
+       * Also, if s[1] == '-' but s[2] == '\0' the test s[0] < s[2] will
+       * (correctly) fail
+       */
+      if (s[1] == '-' && s[0] < s[2])
 	{
 	  for (i = s[0]; i <= s[2]; i++)
 	    map[i] = 1;
