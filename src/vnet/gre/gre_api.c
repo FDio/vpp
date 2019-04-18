@@ -56,15 +56,12 @@ gre_tunnel_type_decode (vl_api_gre_tunnel_type_t in, gre_tunnel_type_t * out)
 
   switch (in)
     {
-    case GRE_API_TUNNEL_TYPE_L3:
-      *out = GRE_TUNNEL_TYPE_L3;
-      return (0);
-    case GRE_API_TUNNEL_TYPE_TEB:
-      *out = GRE_TUNNEL_TYPE_TEB;
-      return (0);
-    case GRE_API_TUNNEL_TYPE_ERSPAN:
-      *out = GRE_TUNNEL_TYPE_ERSPAN;
-      return (0);
+#define _(n, v)                                           \
+      case GRE_API_TUNNEL_TYPE_##n:                       \
+        *out = GRE_TUNNEL_TYPE_##n;                       \
+        return (0);
+      foreach_gre_tunnel_type
+#undef _
     }
 
   return (VNET_API_ERROR_INVALID_VALUE);
@@ -76,16 +73,13 @@ gre_tunnel_type_encode (gre_tunnel_type_t in)
   vl_api_gre_tunnel_type_t out = GRE_API_TUNNEL_TYPE_L3;
 
   switch (in)
-    {
-    case GRE_TUNNEL_TYPE_L3:
-      out = GRE_API_TUNNEL_TYPE_L3;
-      break;
-    case GRE_TUNNEL_TYPE_TEB:
-      out = GRE_API_TUNNEL_TYPE_TEB;
-      break;
-    case GRE_TUNNEL_TYPE_ERSPAN:
-      out = GRE_API_TUNNEL_TYPE_ERSPAN;
-      break;
+    {      
+#define _(n, v)                                           \
+      case GRE_TUNNEL_TYPE_##n:                           \
+        out = GRE_API_TUNNEL_TYPE_##n;                    \
+        break;
+      foreach_gre_tunnel_type
+#undef _
     }
 
   out = clib_net_to_host_u32 (out);
@@ -93,6 +87,42 @@ gre_tunnel_type_encode (gre_tunnel_type_t in)
   return (out);
 }
 
+static int
+gre_tunnel_mode_decode (vl_api_gre_tunnel_mode_t in, gre_tunnel_mode_t * out)
+{
+  in = clib_net_to_host_u32 (in);
+
+  switch (in)
+    {
+#define _(n, v)                                           \
+      case GRE_API_TUNNEL_MODE_##n:                       \
+        *out = GRE_TUNNEL_MODE_##n;                       \
+        return (0);
+      foreach_gre_tunnel_mode
+#undef _
+    }
+
+  return (VNET_API_ERROR_INVALID_VALUE_2);
+}
+
+static vl_api_gre_tunnel_mode_t
+gre_tunnel_mode_encode (gre_tunnel_mode_t in)
+{
+  vl_api_gre_tunnel_mode_t out = GRE_API_TUNNEL_MODE_P2P;
+
+  switch (in)
+    {
+#define _(n, v)                                           \
+      case GRE_TUNNEL_MODE_##n:                           \
+        out = GRE_API_TUNNEL_MODE_##n;                    \
+        break;
+      foreach_gre_tunnel_mode
+#undef _
+    }
+
+  return (out);
+}
+  
 static void vl_api_gre_tunnel_add_del_t_handler
   (vl_api_gre_tunnel_add_del_t * mp)
 {
@@ -122,11 +152,16 @@ static void vl_api_gre_tunnel_add_del_t_handler
   if (rv)
     goto out;
 
+  rv = gre_tunnel_mode_decode (mp->tunnel.mode, &a->mode);
+
+  if (rv)
+    goto out;
+
   a->is_add = mp->is_add;
   a->is_ipv6 = (itype[0] == IP46_TYPE_IP6);
   a->instance = ntohl (mp->tunnel.instance);
   a->session_id = ntohs (mp->tunnel.session_id);
-  a->outer_fib_id = ntohl (mp->tunnel.outer_fib_id);
+  a->outer_table_id = ntohl (mp->tunnel.outer_table_id);
 
   rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
@@ -151,14 +186,16 @@ static void send_gre_tunnel_details
   ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
   ip_address_encode (&t->tunnel_dst.fp_addr, IP46_TYPE_ANY, &rmp->tunnel.dst);
 
-  rmp->tunnel.outer_fib_id =
+  rmp->tunnel.outer_table_id =
     htonl (fib_table_get_table_id
 	   (t->outer_fib_index, t->tunnel_dst.fp_proto));
 
   rmp->tunnel.type = gre_tunnel_type_encode (t->type);
+  rmp->tunnel.mode = gre_tunnel_mode_encode (t->mode);
   rmp->tunnel.instance = htonl (t->user_instance);
   rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
   rmp->tunnel.session_id = htons (t->session_id);
+
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);

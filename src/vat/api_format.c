@@ -13230,9 +13230,10 @@ api_gre_tunnel_add_del (vat_main_t * vam)
   vl_api_gre_tunnel_add_del_t *mp;
   vl_api_gre_tunnel_type_t t_type;
   u8 is_add = 1;
+  u8 t_type = GRE_TUNNEL_TYPE_L3;
   u8 src_set = 0;
   u8 dst_set = 0;
-  u32 outer_fib_id = 0;
+  u32 outer_table_id = 0;
   u32 session_id = 0;
   u32 instance = ~0;
   int ret;
@@ -13253,7 +13254,7 @@ api_gre_tunnel_add_del (vat_main_t * vam)
 	{
 	  dst_set = 1;
 	}
-      else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
+      else if (unformat (line_input, "outer-table-id %d", &outer_table_id))
 	;
       else if (unformat (line_input, "teb"))
 	t_type = GRE_API_TUNNEL_TYPE_TEB;
@@ -13283,7 +13284,7 @@ api_gre_tunnel_add_del (vat_main_t * vam)
   clib_memcpy (&mp->tunnel.dst, &dst, sizeof (mp->tunnel.dst));
 
   mp->tunnel.instance = htonl (instance);
-  mp->tunnel.outer_fib_id = htonl (outer_fib_id);
+  mp->tunnel.outer_table_id = htonl (outer_table_id);
   mp->is_add = is_add;
   mp->tunnel.session_id = htons ((u16) session_id);
   mp->tunnel.type = htonl (t_type);
@@ -13303,7 +13304,7 @@ static void vl_api_gre_tunnel_details_t_handler
 	 ntohl (mp->tunnel.instance),
 	 format_vl_api_address, &mp->tunnel.src,
 	 format_vl_api_address, &mp->tunnel.dst,
-	 mp->tunnel.type, ntohl (mp->tunnel.outer_fib_id),
+	 mp->tunnel.type, ntohl (mp->tunnel.outer_table_id),
 	 ntohl (mp->tunnel.session_id));
 }
 
@@ -13348,8 +13349,8 @@ static void vl_api_gre_tunnel_details_t_handler_json
   vat_json_object_add_address (node, "src", &mp->tunnel.src);
   vat_json_object_add_address (node, "dst", &mp->tunnel.dst);
   vat_json_object_add_uint (node, "tunnel_type", mp->tunnel.type);
-  vat_json_object_add_uint (node, "outer_fib_id",
-			    ntohl (mp->tunnel.outer_fib_id));
+  vat_json_object_add_uint (node, "outer_table_id",
+			    ntohl (mp->tunnel.outer_table_id));
   vat_json_object_add_uint (node, "session_id", mp->tunnel.session_id);
 }
 

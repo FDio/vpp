@@ -12,6 +12,7 @@ from scapy.volatile import RandMAC, RandIP
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
+from vpp_nhrp import VppNhrp
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from util import ppp, ppc
@@ -79,7 +80,7 @@ class TestGRE(VppTestCase):
         super(TestGRE, self).setUp()
 
         # create 3 pg interfaces - set one in a non-default table.
-        self.create_pg_interfaces(range(3))
+        self.create_pg_interfaces(range(5))
 
         self.tbl = VppIpTable(self, 1)
         self.tbl.add_vpp_config()
@@ -94,6 +95,10 @@ class TestGRE(VppTestCase):
         self.pg1.resolve_arp()
         self.pg2.config_ip6()
         self.pg2.resolve_ndp()
+        self.pg3.config_ip4()
+        self.pg3.resolve_arp()
+        self.pg4.config_ip4()
+        self.pg4.resolve_arp()
 
     def tearDown(self):
         for i in self.pg_interfaces:
@@ -708,7 +713,7 @@ class TestGRE(VppTestCase):
         #
         gre_if = VppGreInterface(self, self.pg1.local_ip4,
                                  "2.2.2.2",
-                                 outer_fib_id=1)
+                                 outer_table_id=1)
         gre_if.add_vpp_config()
         gre_if.admin_up()
         gre_if.config_ip4()
@@ -974,6 +979,77 @@ class TestGRE(VppTestCase):
         #
         route_via_tun_2.remove_vpp_config()
         gre_if.remove_vpp_config()
+
+    def test_mgre(self):
+        """ mGRE IPv4 tunnel Tests """
+
+        for itf in self.pg_interfaces[3:]:
+            #
+            # one underlay nh for each overlay/tunnel peer
+            #
+            itf.generate_remote_hosts(4)
+            itf.configure_ipv4_neighbors()
+
+            #
+            # Create an L3 GRE tunnel.
+            #  - set it admin up
+            #  - assign an IP Addres
+            #  - Add a route via the tunnel
+            #
+            gre_if = VppGreInterface(self,
+                                     itf.local_ip4,
+                                     "0.0.0.0",
+                                     mode=(VppEnum.vl_api_gre_tunnel_mode_t.
+                                           GRE_API_TUNNEL_MODE_MP))
+            gre_if.add_vpp_config()
+            gre_if.admin_up()
+            gre_if.config_ip4()
+            gre_if.generate_remote_hosts(4)
+
+            #
+            # for-each peer
+            #
+            for ii in range(1, 4):
+                route_addr = "4.4.4.%d" % ii
+
+                #
+                # route traffic via the peer
+                #
+                route_via_tun = VppIpRoute(
+                    self, route_addr, 32,
+                    [VppRoutePath(gre_if._remote_hosts[ii].ip4,
+                                  gre_if.sw_if_index)])
+                route_via_tun.add_vpp_config()
+
+                #
+                # Add a NHRP entry resolves the peer
+                #
+                nhrp = VppNhrp(self, gre_if,
+                               gre_if._remote_hosts[ii].ip4,
+                               itf._remote_hosts[ii].ip4)
+                nhrp.add_vpp_config()
+
+                #
+                # Send a packet stream that is routed into the tunnel
+                #  - packets are GRE encapped
+                #
+                tx = self.create_stream_ip4(self.pg0, "5.5.5.5", route_addr)
+                rx = self.send_and_expect(self.pg0, tx, itf)
+                self.verify_tunneled_4o4(self.pg0, rx, tx,
+                                         itf.local_ip4,
+                                         gre_if._remote_hosts[ii].ip4)
+
+                #
+                # delete and re-add the NHRP
+                #
+                nhrp.remove_vpp_config()
+                self.send_and_assert_no_replies(self.pg0, tx)
+
+                nhrp.add_vpp_config()
+                rx = self.send_and_expect(self.pg0, tx, itf)
+                self.verify_tunneled_4o4(self.pg0, rx, tx,
+                                         itf.local_ip4,
+                                         gre_if._remote_hosts[ii].ip4)
 
 
 if __name__ == '__main__':

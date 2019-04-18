@@ -574,8 +574,9 @@ class VppPapiProvider(object):
     def gre_tunnel_add_del(self,
                            src,
                            dst,
-                           outer_fib_id=0,
-                           tunnel_type=0,
+                           outer_table_id=0,
+                           type=0,
+                           mode=0,
                            instance=0xFFFFFFFF,
                            session_id=0,
                            is_add=1):
@@ -596,11 +597,12 @@ class VppPapiProvider(object):
             {'is_add': is_add,
              'tunnel':
              {
-                 'type': tunnel_type,
+                 'type': type,
+                 'mode': mode,
                  'instance': instance,
                  'src': src,
                  'dst': dst,
-                 'outer_fib_id': outer_fib_id,
+                 'outer_table_id': outer_table_id,
                  'session_id': session_id}
              }
         )
@@ -2284,4 +2286,18 @@ class VppPapiProvider(object):
                             'table_id': table_id,
                             'sw_if_index': sw_if_index,
                             'is_enable': is_enable,
+                        })
+
+    def nhrp_add_del(self, sw_if_index, peer, nh="::",
+                     table_id=0, is_add=1):
+        return self.api(self.papi.nhrp_entry_add_del,
+                        {
+                            'is_add': is_add,
+                            'entry':
+                            {
+                                'nh_table_id': table_id,
+                                'sw_if_index': sw_if_index,
+                                'peer': peer,
+                                'nh': nh,
+                            }
                         })

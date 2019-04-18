@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/gre/gre.h>
 #include <vnet/adj/adj_midchain.h>
+#include <vnet/nhrp/nhrp.h>
 
 extern gre_main_t gre_main;
 
@@ -213,6 +214,7 @@ gre_build_rewrite (vnet_main_t * vnm,
 		   vnet_link_t link_type, const void *dst_address)
 {
   gre_main_t *gm = &gre_main;
+  const ip46_address_t *dst;
   ip4_and_gre_header_t *h4;
   ip6_and_gre_header_t *h6;
   gre_header_t *gre;
@@ -221,6 +223,7 @@ gre_build_rewrite (vnet_main_t * vnm,
   u32 ti;
   u8 is_ipv6;
 
+  dst = dst_address;
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
 
   if (~0 == ti)
@@ -241,7 +244,7 @@ gre_build_rewrite (vnet_main_t * vnm,
       h4->ip4.protocol = IP_PROTOCOL_GRE;
       /* fixup ip4 header length and checksum after-the-fact */
       h4->ip4.src_address.as_u32 = t->tunnel_src.ip4.as_u32;
-      h4->ip4.dst_address.as_u32 = t->tunnel_dst.fp_addr.ip4.as_u32;
+      h4->ip4.dst_address.as_u32 = dst->ip4.as_u32;
       h4->ip4.checksum = ip4_header_checksum (&h4->ip4);
     }
   else
@@ -256,8 +259,8 @@ gre_build_rewrite (vnet_main_t * vnm,
       /* fixup ip6 header length and checksum after-the-fact */
       h6->ip6.src_address.as_u64[0] = t->tunnel_src.ip6.as_u64[0];
       h6->ip6.src_address.as_u64[1] = t->tunnel_src.ip6.as_u64[1];
-      h6->ip6.dst_address.as_u64[0] = t->tunnel_dst.fp_addr.ip6.as_u64[0];
-      h6->ip6.dst_address.as_u64[1] = t->tunnel_dst.fp_addr.ip6.as_u64[1];
+      h6->ip6.dst_address.as_u64[0] = dst->ip6.as_u64[0];
+      h6->ip6.dst_address.as_u64[1] = dst->ip6.as_u64[1];
     }
 
   if (PREDICT_FALSE (t->type == GRE_TUNNEL_TYPE_ERSPAN))
@@ -322,9 +325,50 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 
   adj_nbr_midchain_update_rewrite
     (ai, !is_ipv6 ? gre4_fixup : gre6_fixup, NULL, af,
-     gre_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai), NULL));
+     gre_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai),
+			&t->tunnel_dst.fp_addr));
 
   gre_tunnel_stack (ai);
+}
+
+static adj_walk_rc_t
+mgre_mk_complete_walk (adj_index_t ai, void *ctx)
+{
+  nhrp_entry_adj_stack (ctx, ai);
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+void
+mgre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+{
+  gre_main_t *gm = &gre_main;
+  ip_adjacency_t *adj;
+  nhrp_entry_t *ne;
+  gre_tunnel_t *t;
+  adj_flags_t af;
+  u8 is_ipv6;
+  u32 ti;
+
+  adj = adj_get (ai);
+  ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
+  t = pool_elt_at_index (gm->tunnels, ti);
+  is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
+  af = ADJ_FLAG_MIDCHAIN_IP_STACK;
+
+  adj_nbr_midchain_update_rewrite
+    (ai, !is_ipv6 ? gre4_fixup : gre6_fixup, NULL, af,
+     gre_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai),
+			&adj->sub_type.nbr.next_hop));
+
+  ne = nhrp_entry_find (sw_if_index, &adj->sub_type.nbr.next_hop);
+
+  if (NULL == ne)
+    // no NHRP entry to provide the next-hop
+    return;
+
+  adj_nbr_walk_nh (sw_if_index, t->tunnel_dst.fp_proto,
+		   &adj->sub_type.nbr.next_hop, mgre_mk_complete_walk, ne);
 }
 #endif /* CLIB_MARCH_VARIANT */
 
@@ -549,6 +593,15 @@ VNET_HW_INTERFACE_CLASS (gre_hw_interface_class) = {
   .build_rewrite = gre_build_rewrite,
   .update_adjacency = gre_update_adj,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+};
+
+VNET_HW_INTERFACE_CLASS (mgre_hw_interface_class) = {
+  .name = "mGRE",
+  .format_header = format_gre_header_with_length,
+  .unformat_header = unformat_gre_header,
+  .build_rewrite = gre_build_rewrite,
+  .update_adjacency = mgre_update_adj,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
 /* *INDENT-ON* */
 #endif /* CLIB_MARCH_VARIANT */

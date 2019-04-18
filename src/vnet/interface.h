@@ -355,6 +355,10 @@ typedef enum vnet_hw_interface_class_flags_t_
    * @brief a point 2 point interface
    */
   VNET_HW_INTERFACE_CLASS_FLAG_P2P = (1 << 0),
+  /**
+   * @brief a non-broadcast multiple access interface
+   */
+  VNET_HW_INTERFACE_CLASS_FLAG_NBMA = (1 << 1),
 } vnet_hw_interface_class_flags_t;
 
 /* Layer-2 (e.g. Ethernet) interface class. */
@@ -475,6 +479,9 @@ typedef enum vnet_hw_interface_flags_t_
 
   /* gso */
   VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO = (1 << 18),
+
+  /* non-broadcast multiple access */
+  VNET_HW_INTERFACE_FLAG_NBMA = (1 << 19),
 } vnet_hw_interface_flags_t;
 
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT 1
