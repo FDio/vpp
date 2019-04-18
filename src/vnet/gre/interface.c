@@ -26,7 +26,39 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/l2/l2_input.h>
 
-static const char *gre_tunnel_type_names[] = GRE_TUNNEL_TYPE_NAMES;
+u8 *
+format_gre_tunnel_type (u8 * s, va_list * args)
+{
+  gre_tunnel_type_t type = va_arg (*args, int);
+
+  switch (type)
+    {
+#define _(n, v) case GRE_TUNNEL_TYPE_##n:       \
+      s = format (s, "%s", v);                  \
+      break;
+      foreach_gre_tunnel_type
+#undef _
+    }
+
+  return (s);
+}
+
+u8 *
+format_gre_tunnel_mode (u8 * s, va_list * args)
+{
+  gre_tunnel_mode_t mode = va_arg (*args, int);
+
+  switch (mode)
+    {
+#define _(n, v) case GRE_TUNNEL_MODE_##n:       \
+      s = format (s, "%s", v);                  \
+      break;
+      foreach_gre_tunnel_mode
+#undef _
+    }
+
+  return (s);
+}
 
 static u8 *
 format_gre_tunnel (u8 * s, va_list * args)
@@ -39,7 +71,8 @@ format_gre_tunnel (u8 * s, va_list * args)
 	      format_ip46_address, &t->tunnel_dst.fp_addr, IP46_TYPE_ANY,
 	      t->outer_fib_index, t->sw_if_index);
 
-  s = format (s, "payload %s ", gre_tunnel_type_names[t->type]);
+  s = format (s, "payload %U ", format_gre_tunnel_type, t->type);
+  s = format (s, "%U ", format_gre_tunnel_mode, t->mode);
 
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
     s = format (s, "session %d ", t->session_id);
@@ -209,13 +242,21 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   t->user_instance = u_idx;	/* name */
 
   t->type = a->type;
+  t->mode = a->mode;
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
     t->session_id = a->session_id;
 
   if (t->type == GRE_TUNNEL_TYPE_L3)
-    hw_if_index = vnet_register_interface (vnm, gre_device_class.index, t_idx,
-					   gre_hw_interface_class.index,
-					   t_idx);
+    {
+      if (t->mode == GRE_TUNNEL_MODE_P2P)
+	hw_if_index =
+	  vnet_register_interface (vnm, gre_device_class.index, t_idx,
+				   gre_hw_interface_class.index, t_idx);
+      else
+	hw_if_index =
+	  vnet_register_interface (vnm, gre_device_class.index, t_idx,
+				   mgre_hw_interface_class.index, t_idx);
+    }
   else
     {
       /* Default MAC address (d00b:eed0:0000 + sw_if_index) */
@@ -372,9 +413,9 @@ vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
   u32 outer_fib_index;
 
   if (!a->is_ipv6)
-    outer_fib_index = ip4_fib_index_from_table_id (a->outer_fib_id);
+    outer_fib_index = ip4_fib_index_from_table_id (a->outer_table_id);
   else
-    outer_fib_index = ip6_fib_index_from_table_id (a->outer_fib_id);
+    outer_fib_index = ip6_fib_index_from_table_id (a->outer_table_id);
 
   if (~0 == outer_fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
@@ -428,18 +469,17 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_gre_tunnel_add_del_args_t _a, *a = &_a;
-  ip46_address_t src, dst;
+  ip46_address_t src = ip46_address_initializer, dst =
+    ip46_address_initializer;
   u32 instance = ~0;
-  u32 outer_fib_id = 0;
+  u32 outer_table_id = 0;
   gre_tunnel_type_t t_type = GRE_TUNNEL_TYPE_L3;
+  gre_tunnel_mode_t t_mode = GRE_TUNNEL_MODE_P2P;
   u32 session_id = 0;
   int rv;
-  u32 num_m_args = 0;
   u8 is_add = 1;
   u32 sw_if_index;
   clib_error_t *error = NULL;
-  u8 ipv4_set = 0;
-  u8 ipv6_set = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -451,32 +491,14 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (line_input, "instance %d", &instance))
 	;
-      else
-	if (unformat (line_input, "src %U", unformat_ip4_address, &src.ip4))
-	{
-	  num_m_args++;
-	  ipv4_set = 1;
-	}
-      else
-	if (unformat (line_input, "dst %U", unformat_ip4_address, &dst.ip4))
-	{
-	  num_m_args++;
-	  ipv4_set = 1;
-	}
-      else
-	if (unformat (line_input, "src %U", unformat_ip6_address, &src.ip6))
-	{
-	  num_m_args++;
-	  ipv6_set = 1;
-	}
-      else
-	if (unformat (line_input, "dst %U", unformat_ip6_address, &dst.ip6))
-	{
-	  num_m_args++;
-	  ipv6_set = 1;
-	}
-      else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
+      else if (unformat (line_input, "src %U", unformat_ip46_address, &src))
 	;
+      else if (unformat (line_input, "dst %U", unformat_ip46_address, &dst))
+	;
+      else if (unformat (line_input, "outer-table-id %d", &outer_table_id))
+	;
+      else if (unformat (line_input, "multipoint"))
+	t_mode = GRE_TUNNEL_MODE_MP;
       else if (unformat (line_input, "teb"))
 	t_type = GRE_TUNNEL_TYPE_TEB;
       else if (unformat (line_input, "erspan %d", &session_id))
@@ -489,47 +511,41 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (num_m_args < 2)
-    {
-      error = clib_error_return (0, "mandatory argument(s) missing");
-      goto done;
-    }
-
-  if ((ipv4_set && memcmp (&src.ip4, &dst.ip4, sizeof (src.ip4)) == 0) ||
-      (ipv6_set && memcmp (&src.ip6, &dst.ip6, sizeof (src.ip6)) == 0))
+  if (ip46_address_is_equal (&src, &dst))
     {
       error = clib_error_return (0, "src and dst are identical");
       goto done;
     }
 
-  if (ipv4_set && ipv6_set)
-    return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
-
-  if ((ipv4_set && memcmp (&dst.ip4, &zero_addr.ip4, sizeof (dst.ip4)) == 0)
-      || (ipv6_set
-	  && memcmp (&dst.ip6, &zero_addr.ip6, sizeof (dst.ip6)) == 0))
+  if (t_mode != GRE_TUNNEL_MODE_MP && ip46_address_is_zero (&dst))
     {
-      error = clib_error_return (0, "dst address cannot be zero");
+      error = clib_error_return (0, "destination address not specified");
+      goto done;
+    }
+
+  if (ip46_address_is_zero (&src))
+    {
+      error = clib_error_return (0, "source address not specified");
+      goto done;
+    }
+
+  if (ip46_address_is_ip4 (&src) != ip46_address_is_ip4 (&dst))
+    {
+      error =
+	clib_error_return (0, "src and dst address must be the same AF");
       goto done;
     }
 
   clib_memset (a, 0, sizeof (*a));
   a->is_add = is_add;
-  a->outer_fib_id = outer_fib_id;
+  a->outer_table_id = outer_table_id;
   a->type = t_type;
+  a->mode = t_mode;
   a->session_id = session_id;
-  a->is_ipv6 = ipv6_set;
+  a->is_ipv6 = !ip46_address_is_ip4 (&src);
   a->instance = instance;
-  if (!ipv6_set)
-    {
-      clib_memcpy (&a->src.ip4, &src.ip4, sizeof (src.ip4));
-      clib_memcpy (&a->dst.ip4, &dst.ip4, sizeof (dst.ip4));
-    }
-  else
-    {
-      clib_memcpy (&a->src.ip6, &src.ip6, sizeof (src.ip6));
-      clib_memcpy (&a->dst.ip6, &dst.ip6, sizeof (dst.ip6));
-    }
+  clib_memcpy (&a->src, &src, sizeof (a->src));
+  clib_memcpy (&a->dst, &dst, sizeof (a->dst));
 
   rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
@@ -543,8 +559,8 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       error = clib_error_return (0, "GRE tunnel already exists...");
       goto done;
     case VNET_API_ERROR_NO_SUCH_FIB:
-      error = clib_error_return (0, "outer fib ID %d doesn't exist\n",
-				 outer_fib_id);
+      error = clib_error_return (0, "outer table ID %d doesn't exist\n",
+				 outer_table_id);
       goto done;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       error = clib_error_return (0, "GRE tunnel doesn't exist");
