@@ -1484,6 +1484,22 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES syslog/syslog.api)
 
 ##############################################################################
+# NHRP
+##############################################################################
+
+list (APPEND VNET_SOURCES
+  nhrp/nhrp_api.c
+  nhrp/nhrp_cli.c
+  nhrp/nhrp.c
+)
+
+list(APPEND VNET_HEADERS
+  nhrp/nhrp.h
+)
+
+list(APPEND VNET_API_FILES nhrp/nhrp.api)
+
+##############################################################################
 # VNET Library
 ##############################################################################
 

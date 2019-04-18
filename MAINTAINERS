@@ -202,6 +202,11 @@ M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/lisp-cp/
 F:	src/vnet/lisp-gpe/
 
+VNET GRE
+I:	gre
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/gre/
+
 VNET GSO
 I:	gso
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
