@@ -127,88 +127,29 @@ Found 90 api message signature differences
 
 ### Patches that changed API definitions
 
-| @c src/vlibmemory/memclnt.api ||
-| ------- | ------- |
-| [eaec2a6d9](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=eaec2a6d9) | bapi: add options to have vpp cleanup client registration |
-
-| @c src/vpp/api/vpe.api ||
-| ------- | ------- |
-| [1aaf0e343](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1aaf0e343) | deprecate tapcli |
-| [f49ba0e81](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f49ba0e81) | stats: Deprecate old stats framework |
-| [413f4a5b2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=413f4a5b2) | API: Use string type instead of u8. |
-
 | @c src/vnet/interface.api ||
 | ------- | ------- |
 | [3b0d7e42f](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3b0d7e42f) | Revert "API: Cleanup APIs interface.api" |
 | [e63325e3c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e63325e3c) | API: Cleanup APIs interface.api |
 | [bb2c7b580](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bb2c7b580) | Update documentation for src/vnet/interface.api sw_interface_dump |
-| [f49ba0e81](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f49ba0e81) | stats: Deprecate old stats framework |
-| [53fffa1db](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=53fffa1db) | API: Add support for type aliases |
-| [5100aa9cb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5100aa9cb) | vnet: store hw interface speed in kbps instead of using flags |
 
 | @c src/vnet/interface_types.api ||
 | ------- | ------- |
 | [3b0d7e42f](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3b0d7e42f) | Revert "API: Cleanup APIs interface.api" |
 | [e63325e3c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e63325e3c) | API: Cleanup APIs interface.api |
-| [53fffa1db](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=53fffa1db) | API: Add support for type aliases |
-
-| @c src/vnet/bonding/bond.api ||
-| ------- | ------- |
-| [ad9d52831](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ad9d52831) | bonding: support custom interface IDs |
-
-| @c src/vnet/ipip/ipip.api ||
-| ------- | ------- |
-| [53fffa1db](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=53fffa1db) | API: Add support for type aliases |
-
-| @c src/vnet/ipsec-gre/ipsec_gre.api ||
-| ------- | ------- |
-| [e524d45ef](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e524d45ef) | IPSEC-GRE: fixes and API update to common types. |
-
-| @c src/vnet/syslog/syslog.api ||
-| ------- | ------- |
-| [b4515b4be](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b4515b4be) | Add RFC5424 syslog protocol support (VPP-1139) |
-
-| @c src/vnet/devices/tap/tapv2.api ||
-| ------- | ------- |
-| [754f24b35](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=754f24b35) | tapv2: add "tap_flags" field to the TAPv2 interface API |
-
-| @c src/vnet/devices/virtio/virtio.api ||
-| ------- | ------- |
-| [d6c15af33](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d6c15af33) | virtio: Native virtio driver |
-
-| @c src/vnet/fib/fib_types.api ||
-| ------- | ------- |
-| [775f73c6b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=775f73c6b) | FIB: encode the label stack in the FIB path during table dump |
-
-| @c src/vnet/ip/ip_types.api ||
-| ------- | ------- |
-| [8c8acc027](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8c8acc027) | API: Change ip4_address and ip6_address to use type alias. |
-| [ffba3c377](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ffba3c377) | MAP: Use explicit address/prefix types in API |
 
 | @c src/vnet/ip/ip.api ||
 | ------- | ------- |
 | [48ae19e90](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=48ae19e90) | API: Add python2.7 support for enum flags via aenum |
 | [37029305c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=37029305c) | Use IP and MAC API types for neighbors |
-| [7c03ed47d](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c03ed47d) | VOM: mroutes |
-| [3460b014a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3460b014a) | api: ip_source_check_interface_add_del api is added. |
-| [609e1210c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=609e1210c) | VPP-1507: Added binary api to dump configured ip_punt_redirect |
-| [2af0e3a74](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2af0e3a74) | flow-hash: Add symmetric flag for flow hashing |
-| [47527b24a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=47527b24a) | IP-punt: add documentation to the API and fix IP address init |
-| [5bb1ecae8](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5bb1ecae8) | IPv6: Make link-local configurable per-interface (VPP-1446) |
-| [75b9f45a1](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75b9f45a1) | ip: add container proxy dump API (VPP-1364) |
 
-| @c src/vnet/ip/punt.api ||
+| @c src/vnet/session/session.api ||
 | ------- | ------- |
-| [e88865d7b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e88865d7b) | VPP-1506: dump local punts and registered punt sockets |
+| [6442401c2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6442401c2) | session: remove deprecated binary apis |
 
 | @c src/vnet/vxlan-gbp/vxlan_gbp.api ||
 | ------- | ------- |
 | [4dd4cf4f9](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4dd4cf4f9) | GBP: fixes for l3-out routing |
-| [93cc3ee3b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=93cc3ee3b) | GBP Endpoint Learning |
-
-| @c src/vnet/ethernet/ethernet_types.api ||
-| ------- | ------- |
-| [8006c6aa4](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8006c6aa4) | PAPI: Add MACAddress object wrapper for vl_api_mac_address_t |
 
 | @c src/vnet/ipsec/ipsec.api ||
 | ------- | ------- |
@@ -221,54 +162,41 @@ Found 90 api message signature differences
 | [8d7c50200](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8d7c50200) | IPSEC: no second lookup after tunnel encap |
 | [a09c1ff5b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a09c1ff5b) | IPSEC: SPD counters in the stats sgement |
 | [17dcec0b9](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=17dcec0b9) | IPSEC: API modernisation |
-| [4c422f9a3](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4c422f9a3) | Add IPSec interface FIB index for TX packet |
-| [b4a7a7dcf](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b4a7a7dcf) | Add UDP encap flag |
-| [b4d305344](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b4d305344) | ipsec: infra for selecting backends |
-| [871bca9aa](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=871bca9aa) | VPP-1450: binary api call for dumping SPD to interface registration |
 
-| @c src/vnet/tcp/tcp.api ||
+| @c src/vnet/ipsec-gre/ipsec_gre.api ||
 | ------- | ------- |
-| [c5df8c71c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c5df8c71c) | host stack: update stale copyright |
+| [e524d45ef](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e524d45ef) | IPSEC-GRE: fixes and API update to common types. |
 
 | @c src/vnet/l2/l2.api ||
 | ------- | ------- |
 | [192b13f96](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=192b13f96) | BVI Interface |
 | [5daf0c55c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5daf0c55c) | add default NONE flag for bd_flags |
-| [e26c81fc8](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e26c81fc8) | L2 BD API to flush all IP-MAC entries in the specified BD |
-| [8006c6aa4](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8006c6aa4) | PAPI: Add MACAddress object wrapper for vl_api_mac_address_t |
-| [93cc3ee3b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=93cc3ee3b) | GBP Endpoint Learning |
-| [4d5b917b1](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4d5b917b1) | BD ARP entry use common API types |
 
-| @c src/vnet/session/session.api ||
+| @c src/vnet/tcp/tcp.api ||
 | ------- | ------- |
-| [6442401c2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6442401c2) | session: remove deprecated binary apis |
-| [d85de68ec](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d85de68ec) | vcl: wait for segments with segment handle |
-| [fa76a76bf](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=fa76a76bf) | session: segment handle in accept/connect notifications |
-| [c1f5a4336](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c1f5a4336) | session: cleanup use of api_client_index |
-| [c0d532d17](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c0d532d17) | session: mark apis for deprecation |
+| [c5df8c71c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c5df8c71c) | host stack: update stale copyright |
+
+| @c src/vnet/devices/virtio/virtio.api ||
+| ------- | ------- |
+| [d6c15af33](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d6c15af33) | virtio: Native virtio driver |
 
 | @c src/vnet/udp/udp.api ||
 | ------- | ------- |
 | [c5df8c71c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c5df8c71c) | host stack: update stale copyright |
 
-| @c src/plugins/cdp/cdp.api ||
+| @c src/plugins/ct6/ct6.api ||
 | ------- | ------- |
-| [76ef6094c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=76ef6094c) | tests: cdp plugin. Replace cdp enable cli command with API call. |
+| [a55df1081](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a55df1081) | ipv6 connection tracking plugin |
 
-| @c src/plugins/nat/nat.api ||
+| @c src/plugins/vmxnet3/vmxnet3.api ||
 | ------- | ------- |
-| [8feeaff56](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8feeaff56) | Typos. A bunch of typos I've been collecting. |
-| [34931eb47](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=34931eb47) | NAT44: active-passive HA (VPP-1571) |
-| [b686508c4](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b686508c4) | NAT44: nat44_add_del_lb_static_mapping enhancements (VPP-1514) |
+| [ee8ba6877](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ee8ba6877) | vmxnet3: auto bind support |
+| [854559d15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=854559d15) | vmxnet3: RSS support |
+| [773291163](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=773291163) | vmxnet3: multiple TX queues support |
 
-| @c src/plugins/map/map.api ||
+| @c src/plugins/ikev2/ikev2.api ||
 | ------- | ------- |
-| [4dc5c7b90](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4dc5c7b90) | MAP: Add optional user-supplied 'tag' field in MAPs. |
-| [fc7344f9b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=fc7344f9b) | MAP: Convert from DPO to input feature. |
-| [f34597fc8](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f34597fc8) | MAP: Add API support for MAP input feature. |
-| [5a2e278a0](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5a2e278a0) | MAP: Add API support for setting parameters. |
-| [a173a7a07](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a173a7a07) | MAP: Use bool type in map.api instead of u8. |
-| [ffba3c377](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ffba3c377) | MAP: Use explicit address/prefix types in API |
+| [7c44d78ef](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c44d78ef) | IKEv2 to plugin |
 
 | @c src/plugins/gbp/gbp.api ||
 | ------- | ------- |
@@ -281,42 +209,27 @@ Found 90 api message signature differences
 | [8da9fc659](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8da9fc659) | GBP: learn from ARP and L2 packets |
 | [32f6d8e0c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=32f6d8e0c) | GBP: per-group EP retention policy |
 | [879d11c25](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=879d11c25) | GBP: Sclass to src-epg conversions |
-| [1c17e2eca](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1c17e2eca) | GBP: add allowed ethertypes to contracts |
-| [b6a479539](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b6a479539) | GBP: l3-out subnets |
-| [33b81da54](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=33b81da54) | vom: Add support for redirect contracts in gbp |
-| [13a08cc09](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=13a08cc09) | GBP: redirect contracts |
-| [c29c0af40](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c29c0af40) | GBP: Endpoints with VLAN tags and birdges that don't learn |
-| [93cc3ee3b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=93cc3ee3b) | GBP Endpoint Learning |
 
-| @c src/plugins/acl/acl.api ||
+| @c src/plugins/nat/nat.api ||
 | ------- | ------- |
-| [bb5d22daf](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bb5d22daf) | New api in order to get max entries of connection table is added. |
+| [8feeaff56](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8feeaff56) | Typos. A bunch of typos I've been collecting. |
+| [34931eb47](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=34931eb47) | NAT44: active-passive HA (VPP-1571) |
 
-| @c src/plugins/vmxnet3/vmxnet3.api ||
+| @c src/plugins/map/map.api ||
 | ------- | ------- |
-| [ee8ba6877](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ee8ba6877) | vmxnet3: auto bind support |
-| [854559d15](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=854559d15) | vmxnet3: RSS support |
-| [773291163](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=773291163) | vmxnet3: multiple TX queues support |
-
-| @c src/plugins/nsim/nsim.api ||
-| ------- | ------- |
-| [10c5ff143](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=10c5ff143) | nsim: add packet loss simulation, docs |
-
-| @c src/plugins/igmp/igmp.api ||
-| ------- | ------- |
-| [97748cae2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=97748cae2) | IGMP: proxy device |
+| [4dc5c7b90](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4dc5c7b90) | MAP: Add optional user-supplied 'tag' field in MAPs. |
 
 | @c src/plugins/lb/lb.api ||
 | ------- | ------- |
 | [f7f13347b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7f13347b) | tests: update test_lb.py to use api call lb_conf. |
 
-| @c src/plugins/ct6/ct6.api ||
+| @c src/plugins/cdp/cdp.api ||
 | ------- | ------- |
-| [a55df1081](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a55df1081) | ipv6 connection tracking plugin |
+| [76ef6094c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=76ef6094c) | tests: cdp plugin. Replace cdp enable cli command with API call. |
 
-| @c src/plugins/ikev2/ikev2.api ||
+| @c src/vpp/api/vpe.api ||
 | ------- | ------- |
-| [7c44d78ef](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c44d78ef) | IKEv2 to plugin |
+| [1aaf0e343](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1aaf0e343) | deprecate tapcli |
 
 
 @page release_notes_19011 Release notes for VPP 19.01.1
