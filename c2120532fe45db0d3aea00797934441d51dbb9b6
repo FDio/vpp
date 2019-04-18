@@ -16,6 +16,24 @@
       "revId": "c2120532fe45db0d3aea00797934441d51dbb9b6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "77b08246_35d07349",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-18T16:07:06Z",
+      "side": 1,
+      "message": "I would typically expect this to be an issue on accepts/fd exchanges, because that\u0027s when a new file is added to the pool. So, if I were to guess, only on EPOLLIN we\u0027d have the pool realloc happen. But I\u0027ve been surprised before, and your point is quite valid :-)\n\nIf we want to protect against all possible issues, we should pool_get_elt_at_index after each handler call ...",
+      "parentUuid": "49a495c3_55789774",
+      "revId": "c2120532fe45db0d3aea00797934441d51dbb9b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
