@@ -293,8 +293,6 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
 
   if (add)
     {
-      if (~0 == uplink_sw_if_index)
-	return clib_error_return (0, "interface must be specified");
       if (~0 == bd_id)
 	return clib_error_return (0, "Bridge-domain must be specified");
       if (~0 == rd_id)
@@ -313,13 +311,13 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
  * Configure a GBP Endpoint Group
  *
  * @cliexpar
- * @cliexstart{set gbp endpoint-group [del] epg <ID> bd <ID> <interface>}
+ * @cliexstart{gbp endpoint-group [del] epg <ID> bd <ID> rd <ID> [sclass <ID>] [<interface>]}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_endpoint_group_cli_node, static) = {
   .path = "gbp endpoint-group",
-  .short_help = "gbp endpoint-group [del] epg <ID> bd <ID> rd <ID> <interface>",
+  .short_help = "gbp endpoint-group [del] epg <ID> bd <ID> rd <ID> [sclass <ID>] [<interface>]",
   .function = gbp_endpoint_group_cli,
 };
 
@@ -340,7 +338,7 @@ format_gbp_endpoint_group (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
 
   if (NULL != gg)
-    s = format (s, "[%d] %d, sclass:%d bd:[%d,%d] rd:[%d] uplink:%U retnetion:%U locks:%d",
+    s = format (s, "[%d] %d, sclass:%d bd:[%d,%d] rd:[%d] uplink:%U retention:%U locks:%d",
                 gg - gbp_endpoint_group_pool,
                 gg->gg_vnid,
                 gg->gg_sclass,
