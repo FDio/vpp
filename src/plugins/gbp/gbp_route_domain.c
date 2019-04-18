@@ -345,13 +345,13 @@ gbp_route_domain_cli (vlib_main_t * vm,
  * Configure a GBP route-domain
  *
  * @cliexpar
- * @cliexstart{set gbp route-domain [del] bd <ID> bvi <interface> uu-flood <interface>}
+ * @cliexstart{gbp route-domain [del] rd <ID> ip4-table-id <ID> ip6-table-id <ID> [ip4-uu <interface>] [ip6-uu <interface>]}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_route_domain_cli_node, static) = {
   .path = "gbp route-domain",
-  .short_help = "gbp route-domain [del] epg bd <ID> bvi <interface> uu-flood <interface>",
+  .short_help = "gbp route-domain [del] rd <ID> ip4-table-id <ID> ip6-table-id <ID> [ip4-uu <interface>] [ip6-uu <interface>]",
   .function = gbp_route_domain_cli,
 };
 

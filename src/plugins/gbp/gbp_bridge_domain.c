@@ -389,14 +389,13 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
  * Configure a GBP bridge-domain
  *
  * @cliexpar
- * @cliexstart{set gbp bridge-domain [del] bd <ID> bvi <interface> uu-flood <interface>}
+ * @cliexstart{gbp bridge-domain [del] bd <ID> bvi <interface> [uu-fwd <interface>] [bm-flood <interface>] [flags <flags>]}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_bridge_domain_cli_node, static) = {
   .path = "gbp bridge-domain",
-  .short_help = "gbp bridge-domain [del] bd <ID> bvi <interface>"
-                " uu-flood <interface> [flags <flags>]",
+  .short_help = "gbp bridge-domain [del] bd <ID> bvi <interface> [uu-fwd <interface>] [bm-flood <interface>] [flags <flags>]",
   .function = gbp_bridge_domain_cli,
 };
 
