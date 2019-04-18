@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49a495c3_55789774",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-18T15:28:46Z",
+      "side": 1,
+      "message": "Since f may no longer point to a valid memory location (i.e. when fm-\u003efile_pool is reallocated in the read_function() ), then it should be reset here.\n\n    f \u003d fm-\u003efile_pool + i;\n\nOtherwise in the case where both EPOLLIN and EPOLLOUT are set, there will still be memory corruption in the if (e-\u003eevents \u0026 EPOLLOUT) code block below.",
+      "revId": "c2120532fe45db0d3aea00797934441d51dbb9b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
