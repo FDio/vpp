@@ -329,7 +329,7 @@ l2_bvi_delete_cli (vlib_main_t * vm,
  *
  * @cliexpar
  * The following two command syntaxes are equivalent:
- * @cliexcmd{bvi delete <interace>
+ * @cliexcmd{bvi delete <interace>}
  * Example of how to create a bvi interface:
  * @cliexcmd{bvi delete bvi0}
 ?*/
