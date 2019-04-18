@@ -1967,6 +1967,251 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh int"))
         self.logger.info(self.vapi.cli("sh gbp vxlan"))
 
+    def test_gbp_contract(self):
+        """ GBP CONTRACTS """
+
+        #
+        # Bridge Domains
+        #
+        bd1 = VppBridgeDomain(self, 1)
+        bd2 = VppBridgeDomain(self, 2)
+        #bd20 = VppBridgeDomain(self, 20)
+
+        bd1.add_vpp_config()
+        bd2.add_vpp_config()
+        #bd20.add_vpp_config()
+
+        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0)
+        gbd2 = VppGbpBridgeDomain(self, bd2, self.loop1)
+        #gbd20 = VppGbpBridgeDomain(self, bd20, self.loop2)
+
+        gbd1.add_vpp_config()
+        gbd2.add_vpp_config()
+        #gbd20.add_vpp_config()
+
+        #
+        # Route Domains
+        #
+        gt4 = VppIpTable(self, 0)
+        gt4.add_vpp_config()
+        gt6 = VppIpTable(self, 0, is_ip6=True)
+        gt6.add_vpp_config()
+        #nt4 = VppIpTable(self, 20)
+        #nt4.add_vpp_config()
+        #nt6 = VppIpTable(self, 20, is_ip6=True)
+        #nt6.add_vpp_config()
+
+        rd0 = VppGbpRouteDomain(self, 0, gt4, gt6, None, None)
+        #rd20 = VppGbpRouteDomain(self, 20, nt4, nt6, None, None)
+
+        rd0.add_vpp_config()
+        #rd20.add_vpp_config()
+
+        #
+        # 3 EPGs, 2 of which share a BD.
+        # 2 NAT EPGs, one for floating-IP subnets, the other for internet
+        #
+        epgs = [VppGbpEndpointGroup(self, 220, 1220, rd0, gbd1,
+                                    None, self.loop0,
+                                    "10.0.0.128", "2001:10::128"),
+                VppGbpEndpointGroup(self, 221, 1221, rd0, gbd1,
+                                    None, self.loop0,
+                                    "10.0.1.128", "2001:10:1::128"),
+                VppGbpEndpointGroup(self, 222, 1222, rd0, gbd2,
+                                    None, self.loop1,
+                                    "10.0.2.128", "2001:10:2::128")]
+                #VppGbpEndpointGroup(self, 333, 1333, rd20, gbd20,
+                #                    self.pg7, self.loop2,
+                #                    "11.0.0.128", "3001::128"),
+                #VppGbpEndpointGroup(self, 444, 1444, rd20, gbd20,
+                #                    self.pg8, self.loop2,
+                #                    "11.0.0.129", "3001::129")]
+        #recircs = [VppGbpRecirc(self, epgs[0], self.loop3),
+        #           VppGbpRecirc(self, epgs[1], self.loop4),
+        #           VppGbpRecirc(self, epgs[2], self.loop5)]
+                   #VppGbpRecirc(self, epgs[3], self.loop6, is_ext=True),
+                   #VppGbpRecirc(self, epgs[4], self.loop7, is_ext=True)]
+
+        #epg_nat = epgs[3]
+        #recirc_nat = recircs[3]
+
+        #
+        # 4 end-points, 2 in the same subnet, 3 in the same BD
+        #
+        eps = [VppGbpEndpoint(self, self.pg0,
+                              epgs[0], None,
+                              "10.0.0.1", "11.0.0.1",
+                              "2001:10::1", "3001::1"),
+               VppGbpEndpoint(self, self.pg1,
+                              epgs[0], None,
+                              "10.0.0.2", "11.0.0.2",
+                              "2001:10::2", "3001::2"),
+               VppGbpEndpoint(self, self.pg2,
+                              epgs[1], None,
+                              "10.0.1.1", "11.0.0.3",
+                              "2001:10:1::1", "3001::3"),
+               VppGbpEndpoint(self, self.pg3,
+                              epgs[2], None,
+                              "10.0.2.1", "11.0.0.4",
+                              "2001:10:2::1", "3001::4")]
+
+        #
+        # Config related to each of the EPGs
+        #
+        for epg in epgs:
+            # IP config on the BVI interfaces
+            if epg != epgs[1]:
+                VppIpInterfaceBind(self, epg.bvi, epg.rd.t4).add_vpp_config()
+                VppIpInterfaceBind(self, epg.bvi, epg.rd.t6).add_vpp_config()
+                self.vapi.sw_interface_set_mac_address(
+                    epg.bvi.sw_if_index,
+                    self.router_mac.packed)
+
+                # The BVIs are NAT inside interfaces
+                #self.vapi.nat44_interface_add_del_feature(epg.bvi.sw_if_index,
+                #                                          is_inside=1,
+                #                                          is_add=1)
+                #self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
+                #                                  is_inside=1,
+                #                                  is_add=1)
+
+            if_ip4 = VppIpInterfaceAddress(self, epg.bvi, epg.bvi_ip4, 32)
+            if_ip6 = VppIpInterfaceAddress(self, epg.bvi, epg.bvi_ip6, 128)
+            if_ip4.add_vpp_config()
+            if_ip6.add_vpp_config()
+
+            # EPG uplink interfaces in the RD
+            #VppIpInterfaceBind(self, epg.uplink, epg.rd.t4).add_vpp_config()
+            #VppIpInterfaceBind(self, epg.uplink, epg.rd.t6).add_vpp_config()
+
+            # add the BD ARP termination entry for BVI IP
+            epg.bd_arp_ip4 = VppBridgeDomainArpEntry(self, epg.bd.bd,
+                                                     str(self.router_mac),
+                                                     epg.bvi_ip4)
+            #epg.bd_arp_ip6 = VppBridgeDomainArpEntry(self, epg.bd.bd,
+            #                                         str(self.router_mac),
+            #                                         epg.bvi_ip6)
+            epg.bd_arp_ip4.add_vpp_config()
+            #epg.bd_arp_ip6.add_vpp_config()
+
+            # EPG in VPP
+            epg.add_vpp_config()
+
+        #
+        # config ep
+        #
+        for ep in eps:
+           ep.add_vpp_config()
+
+        self.logger.info(self.vapi.cli("show gbp endpoint"))
+        self.logger.info(self.vapi.cli("show interface"))
+        self.logger.info(self.vapi.cli("show br"))
+
+        #
+        # Intra epg allowed without contract
+        #
+        pkt_intra_epg_220_to_220 = (Ether(src=self.pg0.remote_mac, / 
+                                          dst=self.pg1.remote_mac) /
+                                    IP(src=eps[0].ip4.address, /
+                                       dst=eps[1].ip4.address) /
+                                    UDP(sport=1234, dport=1234) /
+                                    Raw('\xa5' * 100))
+
+
+        self.send_and_expect_bridged(self.pg0, pkt_intra_epg_220_to_220 * 65, self.pg1)
+
+        #
+        # Inter epg denied without contract
+        #
+        pkt_inter_epg_220_to_221 = (Ether(src=self.pg0.remote_mac, /
+                                          dst=self.pg2.remote_mac) /
+                                    IP(src=eps[0].ip4.address, /
+                                       dst=eps[2].ip4.address) /
+                                    UDP(sport=1234, dport=1234) /
+                                    Raw('\xa5' * 100))
+
+        self.send_and_assert_no_replies(self.pg0, pkt_inter_epg_220_to_221)
+
+        #
+        # A uni-directional contract from EPG 220 -> 221
+        #
+        acl = VppGbpAcl(self)
+        rule = acl.create_rule(permit_deny=1, proto=17)
+        rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
+        acl_index = acl.add_vpp_config([rule, rule2])
+        c1 = VppGbpContract(
+            self, epgs[0].sclass, epgs[1].sclass, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c1.add_vpp_config()
+
+        self.send_and_expect_bridged(eps[0].itf,
+                                     pkt_inter_epg_220_to_221 * 65,
+                                     eps[2].itf)
+
+        pkt_inter_epg_220_to_222 = (Ether(src=self.pg0.remote_mac, /
+                                          dst=str(self.router_mac)) /
+                                    IP(src=eps[0].ip4.address, /
+                                       dst=eps[3].ip4.address) /
+                                    UDP(sport=1234, dport=1234) /
+                                    Raw('\xa5' * 100))
+        self.send_and_assert_no_replies(eps[0].itf,
+                                        pkt_inter_epg_220_to_222 * 65)
+
+        #
+        # contract for the return direction
+        #
+        c2 = VppGbpContract(
+            self, epgs[1].sclass, epgs[0].sclass, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 [])], 
+            [ETH_P_IP, ETH_P_IPV6])
+        c2.add_vpp_config()
+
+        self.send_and_expect_bridged(eps[0].itf,
+                                     pkt_inter_epg_220_to_221 * 65,
+                                     eps[2].itf)
+        pkt_inter_epg_221_to_220 = (Ether(src=self.pg2.remote_mac, /
+                                          dst=self.pg0.remote_mac) /
+                                    IP(src=eps[2].ip4.address, /
+                                       dst=eps[0].ip4.address) /
+                                    UDP(sport=1234, dport=1234) /
+                                    Raw('\xa5' * 100))
+        self.send_and_expect_bridged(eps[2].itf,
+                                     pkt_inter_epg_221_to_220 * 65,
+                                     eps[0].itf)
+
+
+        #
+        # contract between 220 and 222 uni-direction
+        #
+        c3 = VppGbpContract(
+            self, epgs[0].sclass, epgs[2].sclass, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c3.add_vpp_config()
+
+        self.send_and_expect(eps[0].itf, pkt_inter_epg_220_to_222 * 65, eps[3].itf)
+
+        self.logger.info(self.vapi.cli("sh int"))
+        c1.remove_vpp_config()
+        c2.remove_vpp_config()
+        c3.remove_vpp_config()
+
     def test_gbp_bd_flags(self):
         """ GBP BD FLAGS """
 
