@@ -285,14 +285,14 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  if (e->events & EPOLLIN)
 	    {
-	      errors[n_errors] = f->read_function (f);
 	      f->read_events++;
+	      errors[n_errors] = f->read_function (f);
 	      n_errors += errors[n_errors] != 0;
 	    }
 	  if (e->events & EPOLLOUT)
 	    {
-	      errors[n_errors] = f->write_function (f);
 	      f->write_events++;
+	      errors[n_errors] = f->write_function (f);
 	      n_errors += errors[n_errors] != 0;
 	    }
 	}
@@ -300,8 +300,8 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  if (f->error_function)
 	    {
-	      errors[n_errors] = f->error_function (f);
 	      f->error_events++;
+	      errors[n_errors] = f->error_function (f);
 	      n_errors += errors[n_errors] != 0;
 	    }
 	  else
