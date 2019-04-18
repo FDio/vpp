@@ -26,6 +26,7 @@
 #include <vnet/adj/adj_types.h>
 
 extern vnet_hw_interface_class_t gre_hw_interface_class;
+extern vnet_hw_interface_class_t mgre_hw_interface_class;
 
 typedef enum
 {
@@ -36,34 +37,42 @@ typedef enum
 } gre_error_t;
 
 /**
+ * L3: GRE (i.e. this tunnel is in L3 mode)
+ * TEB: Transparent Ethernet Bridging - the tunnel is in L2 mode
+ * ERSPAN: type 2 - the tunnel is for port mirror SPAN output. Each tunnel is
+ *         associated with a session ID and expected to be used for encap
+ *         and output of mirrored packet from a L2 network only. There is
+ *         no support for receiving ERSPAN packets from a GRE ERSPAN tunnel
+ */
+#define foreach_gre_tunnel_type \
+  _(L3, "L3")                   \
+  _(TEB, "TEB")                 \
+  _(ERSPAN, "ERSPAN")           \
+
+/**
  * @brief The GRE tunnel type
  */
 typedef enum gre_tunnel_type_t_
 {
-  /**
-   * L3 GRE (i.e. this tunnel is in L3 mode)
-   */
-  GRE_TUNNEL_TYPE_L3 = 0,
-  /**
-   * Transparent Ethernet Bridging - the tunnel is in L2 mode
-   */
-  GRE_TUNNEL_TYPE_TEB = 1,
-  /**
-   * ERSPAN type 2 - the tunnel is for port mirror SPAN output. Each tunnel is
-   * associated with a session ID and expected to be used for encap and output
-   * of mirrored packet from a L2 network only. There is no support for
-   * receiving ERSPAN packets from a GRE ERSPAN tunnel in VPP.
-   */
-  GRE_TUNNEL_TYPE_ERSPAN = 2,
-} gre_tunnel_type_t;
+#define _(n, s) GRE_TUNNEL_TYPE_##n,
+  foreach_gre_tunnel_type
+#undef _
+} __clib_packed gre_tunnel_type_t;
 
-#define GRE_TUNNEL_TYPE_N (GRE_TUNNEL_TYPE_ERSPAN + 1)
+extern u8 *format_gre_tunnel_type (u8 * s, va_list * args);
 
-#define GRE_TUNNEL_TYPE_NAMES {    \
-    [GRE_TUNNEL_TYPE_L3] = "L3",   \
-    [GRE_TUNNEL_TYPE_TEB] = "TEB", \
-    [GRE_TUNNEL_TYPE_ERSPAN] = "ERSPAN", \
-}
+#define foreach_gre_tunnel_mode \
+  _(P2P, "point-to-point")      \
+  _(MP, "multi-point")          \
+
+typedef enum gre_tunnel_mode_t_
+{
+#define _(n, s) GRE_TUNNEL_MODE_##n,
+  foreach_gre_tunnel_mode
+#undef _
+} __clib_packed gre_tunnel_mode_t;
+
+extern u8 *format_gre_tunnel_mode (u8 * s, va_list * args);
 
 /**
  * A GRE payload protocol registration
@@ -201,6 +210,7 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
   gre_tunnel_type_t type;
+  gre_tunnel_mode_t mode;
 
   /**
    * an L2 tunnel always rquires an L2 midchain. cache here for DP.
@@ -348,10 +358,11 @@ typedef struct
 {
   u8 is_add;
   gre_tunnel_type_t type;
+  gre_tunnel_mode_t mode;
   u8 is_ipv6;
   u32 instance;
   ip46_address_t src, dst;
-  u32 outer_fib_id;
+  u32 outer_table_id;
   u16 session_id;
 } vnet_gre_tunnel_add_del_args_t;
 

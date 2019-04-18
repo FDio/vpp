@@ -9,25 +9,32 @@ class VppGreInterface(VppInterface):
     VPP GRE interface
     """
 
-    def __init__(self, test, src_ip, dst_ip, outer_fib_id=0, type=None,
+    def __init__(self, test, src_ip, dst_ip, outer_table_id=0,
+                 type=None, mode=None,
                  session=0):
         """ Create VPP GRE interface """
         super(VppGreInterface, self).__init__(test)
         self.t_src = src_ip
         self.t_dst = dst_ip
-        self.t_outer_fib = outer_fib_id
+        self.t_outer_table = outer_table_id
         self.t_session = session
         self.t_type = type
         if not self.t_type:
             self.t_type = (VppEnum.vl_api_gre_tunnel_type_t.
                            GRE_API_TUNNEL_TYPE_L3)
+        self.t_mode = mode
+        if not self.t_mode:
+            self.t_mode = (VppEnum.vl_api_gre_tunnel_mode_t.
+                           GRE_API_TUNNEL_MODE_P2P)
 
     def add_vpp_config(self):
-        r = self.test.vapi.gre_tunnel_add_del(self.t_src,
-                                              self.t_dst,
-                                              outer_fib_id=self.t_outer_fib,
-                                              tunnel_type=self.t_type,
-                                              session_id=self.t_session)
+        r = self.test.vapi.gre_tunnel_add_del(
+            self.t_src,
+            self.t_dst,
+            outer_table_id=self.t_outer_table,
+            type=self.t_type,
+            mode=self.t_mode,
+            session_id=self.t_session)
         self.set_sw_if_index(r.sw_if_index)
         self.generate_remote_hosts()
         self.test.registry.register(self, self.test.logger)
@@ -37,8 +44,9 @@ class VppGreInterface(VppInterface):
         self.unconfig()
         self.test.vapi.gre_tunnel_add_del(self.t_src,
                                           self.t_dst,
-                                          outer_fib_id=self.t_outer_fib,
-                                          tunnel_type=self.t_type,
+                                          outer_table_id=self.t_outer_table,
+                                          type=self.t_type,
+                                          mode=self.t_mode,
                                           session_id=self.t_session,
                                           is_add=0)
 

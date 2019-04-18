@@ -1792,8 +1792,8 @@ static void *vl_api_gre_tunnel_add_del_t_print
   if (mp->tunnel.type == GRE_API_TUNNEL_TYPE_ERSPAN)
     s = format (s, "erspan %d ", (mp->tunnel.session_id));
 
-  if (mp->tunnel.outer_fib_id)
-    s = format (s, "outer-fib-id %d ", (mp->tunnel.outer_fib_id));
+  if (mp->tunnel.outer_table_id)
+    s = format (s, "outer-table-id %d ", mp->tunnel.outer_table_id);
 
   if (mp->is_add == 0)
     s = format (s, "del ");
