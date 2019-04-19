@@ -46,7 +46,7 @@ format_function_t format_ooo_list;
 #define SVM_FIFO_INVALID_INDEX		((u32)~0)
 #define SVM_FIFO_MAX_EVT_SUBSCRIBERS	8
 
-enum
+enum svm_fifo_tx_ntf_
 {
   SVM_FIFO_NO_TX_NOTIF = 0,
   SVM_FIFO_WANT_TX_NOTIF = 1,
@@ -68,13 +68,20 @@ typedef struct svm_fifo_chunk_
   u8 data[0];
 } svm_fifo_chunk_t;
 
+typedef enum svm_fifo_flag_
+{
+  SVM_FIFO_F_SIZE_UPDATE = 1 << 0,
+} svm_fifo_flag_t;
+
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (shared_first);
   u32 size;			/**< size of the fifo */
   u32 nitems;			/**< usable size(size-1) */
-  struct _svm_fifo *next;	/**< next in freelist/active chain */
-  struct _svm_fifo *prev;	/**< prev in active chain */
+  u8 flags;			/**< fifo flags */
+  svm_fifo_chunk_t *start_chunk;/**< first chunk in fifo chunk list */
+  svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
+  svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
 
     CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
@@ -88,16 +95,18 @@ typedef struct _svm_fifo
   u32 ct_session_index;		/**< Local session index for vpp */
   u32 freelist_index;		/**< aka log2(allocated_size) - const. */
   i8 refcnt;			/**< reference count  */
+  struct _svm_fifo *next;	/**< next in freelist/active chain */
+  struct _svm_fifo *prev;	/**< prev in active chain */
 
     CLIB_CACHE_LINE_ALIGN_MARK (consumer);
   u32 head;
-  svm_fifo_chunk_t *head_chunk;
+  svm_fifo_chunk_t *head_chunk;	/**< tracks chunk where head lands */
   volatile u32 want_tx_ntf;	/**< producer wants nudge */
   volatile u32 has_tx_ntf;
 
     CLIB_CACHE_LINE_ALIGN_MARK (producer);
   u32 tail;
-  svm_fifo_chunk_t *tail_chunk;
+  svm_fifo_chunk_t *tail_chunk;	/**< tracks chunk where tail lands */
 
   ooo_segment_t *ooo_segments;	/**< Pool of ooo segments */
   u32 ooos_list_head;		/**< Head of out-of-order linked-list */
@@ -511,6 +520,70 @@ ooo_segment_next (svm_fifo_t * f, ooo_segment_t * s)
   return pool_elt_at_index (f->ooo_segments, s->next);
 }
 
+static inline u8
+svm_fifo_is_wrapped (svm_fifo_t * f)
+{
+  u32 head, tail;
+  f_load_head_tail_all_acq (f, &head, &tail);
+  return head % f->size > tail % f->size;
+}
+
+static inline void
+svm_fifo_size_update (svm_fifo_t * f, svm_fifo_chunk_t * c)
+{
+  svm_fifo_chunk_t *prev;
+  u32 add_bytes = 0;
+
+  prev = f->end_chunk;
+  while (c)
+    {
+      c->start_byte = prev->start_byte + prev->length;
+      add_bytes += c->length;
+      prev->next = c;
+      prev = c;
+      c = c->next;
+    }
+  f->end_chunk = prev;
+  prev->next = f->start_chunk;
+  f->size += add_bytes;
+  f->nitems = f->size - 1;
+  f->new_chunks = 0;
+}
+
+static inline void
+svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
+{
+  if (svm_fifo_is_wrapped (f))
+    {
+      if (f->new_chunks)
+	{
+	  svm_fifo_chunk_t *prev;
+
+	  prev = f->new_chunks;
+	  while (prev->next)
+	    prev = prev->next;
+	  prev->next = c;
+	}
+      else
+	{
+	  f->new_chunks = c;
+	}
+      f->flags |= SVM_FIFO_F_SIZE_UPDATE;
+      return;
+    }
+
+  svm_fifo_size_update (f, c);
+}
+
+static inline void
+svm_fifo_try_size_update (svm_fifo_t * f, u32 new_head)
+{
+  if (new_head % f->size > f->tail % f->size)
+    return;
+
+  svm_fifo_size_update (f, f->new_chunks);
+  f->flags &= ~SVM_FIFO_F_SIZE_UPDATE;
+}
 #endif /* __included_ssvm_fifo_h__ */
 
 /*

@@ -1393,8 +1393,8 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 	verbose = 1;
       else
 	{
-	  clib_error_t *e = clib_error_return
-	    (0, "unknown input `%U'", format_unformat_error, input);
+	  clib_error_t *e = clib_error_return (0, "unknown input `%U'",
+					       format_unformat_error, input);
 	  clib_error_report (e);
 	  return -1;
 	}
@@ -1507,6 +1507,131 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
+{
+  int __clib_unused verbose, fifo_size = 201, start_offset = 100, i;
+  svm_fifo_chunk_t *c, *next, *prev;
+  svm_fifo_t *f;
+  u8 *buf = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  f = fifo_prepare (fifo_size);
+  svm_fifo_init_pointers (f, start_offset);
+
+  /*
+   * Add with fifo not wrapped
+   */
+  c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + 100);
+  c->length = 100;
+  c->start_byte = ~0;
+  c->next = 0;
+
+  svm_fifo_add_chunk (f, c);
+
+  TCP_TEST (f->size == fifo_size + 100, "size expected %u is %u",
+	    fifo_size + 100, f->size);
+  TCP_TEST (c->start_byte == fifo_size, "start byte expected %u is %u",
+	    fifo_size, c->start_byte);
+
+  /*
+   *  Add with fifo wrapped
+   */
+
+  f->tail = f->head + f->nitems;
+  c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + 100);
+  c->length = 100;
+  c->start_byte = ~0;
+  c->next = 0;
+
+  svm_fifo_add_chunk (f, c);
+
+  TCP_TEST (f->end_chunk != c, "tail chunk should not be updated");
+  TCP_TEST (f->size == fifo_size + 100, "size expected %u is %u",
+	    fifo_size + 100, f->size);
+  TCP_TEST (c->start_byte == ~0, "start byte expected %u is %u", ~0,
+	    c->start_byte);
+
+  /*
+   * Unwrap fifo
+   */
+  vec_validate (buf, 200);
+  svm_fifo_dequeue_nowait (f, 201, buf);
+
+  TCP_TEST (f->end_chunk == c, "tail chunk should be updated");
+  TCP_TEST (f->size == fifo_size + 200, "size expected %u is %u",
+	    fifo_size + 200, f->size);
+  TCP_TEST (c->start_byte == fifo_size + 100, "start byte expected %u is "
+	    "%u", fifo_size + 100, c->start_byte);
+
+  /*
+   * Add N chunks
+   */
+
+  f->head = f->nitems - 100;
+  f->tail = f->head + f->nitems;
+
+  prev = 0;
+  for (i = 0; i < 5; i++)
+    {
+      c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + 100);
+      c->length = 100;
+      c->start_byte = ~0;
+      c->next = prev;
+      prev = c;
+    }
+
+  svm_fifo_add_chunk (f, c);
+  TCP_TEST (f->size == fifo_size + 200, "size expected %u is %u",
+	    fifo_size + 200, f->size);
+
+  prev = 0;
+  for (i = 0; i < 5; i++)
+    {
+      c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + 100);
+      c->length = 100;
+      c->start_byte = ~0;
+      c->next = prev;
+      prev = c;
+    }
+
+  svm_fifo_add_chunk (f, c);
+  TCP_TEST (f->size == fifo_size + 200, "size expected %u is %u",
+	    fifo_size + 200, f->size);
+
+  svm_fifo_dequeue_nowait (f, 201, buf);
+
+  TCP_TEST (f->size == fifo_size + 200 + 10 * 100, "size expected %u is %u",
+	    fifo_size + 200 + 10 * 100, f->size);
+
+  /*
+   * Cleanup
+   */
+  c = f->start_chunk->next;
+  while (c && c != f->start_chunk)
+    {
+      next = c->next;
+      clib_mem_free (c);
+      c = next;
+    }
+
+  svm_fifo_free (f);
+
+  vec_free (buf);
+  return 0;
+}
+
 /* *INDENT-OFF* */
 svm_fifo_trace_elem_t fifo_trace[] = {};
 /* *INDENT-ON* */
@@ -1599,6 +1724,10 @@ tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
       res = tcp_test_fifo5 (vm, input);
       if (res)
 	return res;
+
+      res = tcp_test_fifo_grow (vm, input);
+      if (res)
+	return res;
     }
   else
     {
@@ -1625,6 +1754,10 @@ tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "replay"))
 	{
 	  res = tcp_test_fifo_replay (vm, input);
+	}
+      else if (unformat (input, "grow"))
+	{
+	  res = tcp_test_fifo_grow (vm, input);
 	}
     }
 
