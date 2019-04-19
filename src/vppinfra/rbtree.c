@@ -20,24 +20,6 @@
 
 #include <vppinfra/rbtree.h>
 
-static inline rb_node_t *
-rb_node_right (rb_tree_t * rt, rb_node_t * n)
-{
-  return pool_elt_at_index (rt->nodes, n->right);
-}
-
-static inline rb_node_t *
-rb_node_left (rb_tree_t * rt, rb_node_t * n)
-{
-  return pool_elt_at_index (rt->nodes, n->left);
-}
-
-static inline rb_node_t *
-rb_node_parent (rb_tree_t * rt, rb_node_t * n)
-{
-  return pool_elt_at_index (rt->nodes, n->parent);
-}
-
 static inline void
 rb_tree_rotate_left (rb_tree_t * rt, rb_node_t * x)
 {
@@ -188,7 +170,7 @@ rb_tree_add (rb_tree_t * rt, u32 key)
 }
 
 rb_node_index_t
-rb_tree_add2 (rb_tree_t * rt, u32 key, u32 opaque)
+rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
 {
   rb_node_t *n;
 
