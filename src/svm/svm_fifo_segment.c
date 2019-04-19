@@ -23,11 +23,10 @@ fifo_init_for_segment (svm_fifo_segment_header_t * fsh, u8 * fifo_space,
 
   f = (svm_fifo_t *) fifo_space;
   f->freelist_index = freelist_index;
-  f->default_chunk.next = &f->default_chunk;
   f->default_chunk.start_byte = 0;
   f->default_chunk.length = size;
-  f->head_chunk = &f->default_chunk;
-  f->tail_chunk = &f->default_chunk;
+  f->default_chunk.next = f->start_chunk = &f->default_chunk;
+  f->end_chunk = f->head_chunk = f->tail_chunk = f->start_chunk;
   f->next = fsh->free_fifos[freelist_index];
   fsh->free_fifos[freelist_index] = f;
 }
