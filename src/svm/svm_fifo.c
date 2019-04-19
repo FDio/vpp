@@ -22,7 +22,7 @@
 
 CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t * f,
 	       svm_fifo_chunk_t * c, u32 tail_idx, const u8 * src, u32 len,
-	       u8 update_tail)
+	       svm_fifo_chunk_t ** last)
 {
   u32 n_chunk;
 
@@ -40,8 +40,8 @@ CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t * f,
 	  n_chunk = clib_min (c->length, to_copy);
 	  clib_memcpy_fast (&c->data[0], src + (len - to_copy), n_chunk);
 	}
-      if (update_tail)
-	f->tail_chunk = c;
+      if (*last)
+	*last = c;
     }
   else
     {
@@ -80,10 +80,10 @@ CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t * f,
 
 static inline void
 svm_fifo_copy_to_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c, u32 tail_idx,
-			const u8 * src, u32 len, u8 update_tail)
+			const u8 * src, u32 len, svm_fifo_chunk_t **last)
 {
   CLIB_MARCH_FN_SELECT (svm_fifo_copy_to_chunk) (f, c, tail_idx, src, len,
-						 update_tail);
+						 last);
 }
 
 static inline void
@@ -370,6 +370,20 @@ svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
   svm_fifo_size_update (f, c);
 }
 
+/**
+ * Find chunk for given byte position
+ *
+ * @param f	fifo
+ * @param pos	normalized position in fifo
+ *
+ * @return chunk that includes given position or 0
+ */
+svm_fifo_chunk_t *
+svm_fifo_find_chunk (svm_fifo_t *f, u32 pos)
+{
+  return f->start_chunk;
+}
+
 void
 svm_fifo_free (svm_fifo_t * f)
 {
@@ -650,7 +664,7 @@ svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 len, const u8 * src)
   len = clib_min (free_count, len);
 
   svm_fifo_copy_to_chunk (f, f->tail_chunk, tail % f->size, src, len,
-			  1 /* update tail */ );
+			  &f->tail_chunk);
   tail += len;
 
   svm_fifo_trace_add (f, head, n_total, 2);
@@ -675,7 +689,8 @@ svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 len, const u8 * src)
 int
 svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 {
-  u32 tail, head, free_count;
+  u32 tail, head, free_count, tail_idx;
+  svm_fifo_chunk_t *c;
 
   f_load_head_tail_prod (f, &head, &tail);
 
@@ -692,8 +707,13 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 
   ooo_segment_add (f, offset, head, tail, len);
 
-  svm_fifo_copy_to_chunk (f, f->tail_chunk, (tail + offset) % f->size, src,
-			  len, 0 /* update tail */ );
+  tail_idx = (tail + offset) % f->size;
+
+  c = f->ooo_chunk;
+  if (tail_idx >= c->start_byte + c->length)
+    f->ooo_chunk = c = svm_fifo_find_chunk (f, tail_idx);
+
+  svm_fifo_copy_to_chunk (f, c, tail_idx, src, len, &f->ooo_chunk);
 
   return 0;
 }

@@ -101,6 +101,7 @@ typedef struct _svm_fifo
     CLIB_CACHE_LINE_ALIGN_MARK (producer);
   u32 tail;
   svm_fifo_chunk_t *tail_chunk;	/**< tracks chunk where tail lands */
+  svm_fifo_chunk_t *ooo_chunk;	/**< last chunk used for ooo enqueue */
 
   ooo_segment_t *ooo_segments;	/**< Pool of ooo segments */
   u32 ooos_list_head;		/**< Head of out-of-order linked-list */
