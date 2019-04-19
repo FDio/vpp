@@ -644,7 +644,7 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 
   /* manually set head and tail pointers to validate modular arithmetic */
   fifo_initial_offset = fifo_initial_offset % fifo_size;
-  svm_fifo_init_pointers (f, fifo_initial_offset);
+  svm_fifo_init_pointers (f, fifo_initial_offset, fifo_initial_offset);
 
   for (i = !randomize; i < vec_len (generate); i++)
     {
@@ -758,7 +758,7 @@ tcp_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
 
   /* Set head and tail pointers */
   fifo_initial_offset = fifo_initial_offset % fifo_size;
-  svm_fifo_init_pointers (f, fifo_initial_offset);
+  svm_fifo_init_pointers (f, fifo_initial_offset, fifo_initial_offset);
 
   vec_validate (test_data, test_n_bytes - 1);
   for (i = 0; i < vec_len (test_data); i++)
@@ -824,7 +824,7 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
     }
 
   f = fifo_prepare (fifo_size);
-  svm_fifo_init_pointers (f, offset);
+  svm_fifo_init_pointers (f, offset, offset);
 
   vec_validate (test_data, 399);
   for (i = 0; i < vec_len (test_data); i++)
@@ -933,10 +933,10 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 static int
 tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 {
-  int __clib_unused verbose, fifo_size = 201, start_offset = 100, i;
+  int verbose = 0, fifo_size = 201, start_offset = 100, i, j, rv, test_n_bytes;
   svm_fifo_chunk_t *c, *next, *prev;
+  u8 *test_data = 0, *data_buf = 0;
   svm_fifo_t *f;
-  u8 *buf = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -951,7 +951,7 @@ tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     }
 
   f = fifo_prepare (fifo_size);
-  svm_fifo_init_pointers (f, start_offset);
+  svm_fifo_init_pointers (f, start_offset, start_offset);
 
   /*
    * Add with fifo not wrapped
@@ -972,7 +972,8 @@ tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
    *  Add with fifo wrapped
    */
 
-  f->tail = f->head + f->nitems;
+//  f->tail = f->head + f->nitems;
+  svm_fifo_init_pointers (f, f->nitems - 100, f->nitems + 100);
   c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + 100);
   c->length = 100;
   c->start_byte = ~0;
@@ -983,14 +984,14 @@ tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->end_chunk != c, "tail chunk should not be updated");
   SFIFO_TEST (f->size == fifo_size + 100, "size expected %u is %u",
 	      fifo_size + 100, f->size);
-  SFIFO_TEST (c->start_byte == ~0, "start byte expected %u is %u", ~0,
-	      c->start_byte);
+  SFIFO_TEST (c->start_byte == fifo_size + 100, "start byte expected %u is "
+              " %u", fifo_size + 100, c->start_byte);
 
   /*
    * Unwrap fifo
    */
-  vec_validate (buf, 200);
-  svm_fifo_dequeue_nowait (f, 201, buf);
+  vec_validate (data_buf, 200);
+  svm_fifo_dequeue_nowait (f, 201, data_buf);
 
   SFIFO_TEST (f->end_chunk == c, "tail chunk should be updated");
   SFIFO_TEST (f->size == fifo_size + 200, "size expected %u is %u",
@@ -1001,23 +1002,9 @@ tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Add N chunks
    */
-
-  f->head = f->nitems - 100;
-  f->tail = f->head + f->nitems;
-
-  prev = 0;
-  for (i = 0; i < 5; i++)
-    {
-      c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + 100);
-      c->length = 100;
-      c->start_byte = ~0;
-      c->next = prev;
-      prev = c;
-    }
-
-  svm_fifo_add_chunk (f, c);
-  SFIFO_TEST (f->size == fifo_size + 200, "size expected %u is %u",
-	      fifo_size + 200, f->size);
+  svm_fifo_init_pointers (f, f->nitems - 100, f->nitems + 100);
+//  f->head = f->nitems - 100;
+//  f->tail = f->head + f->nitems;
 
   prev = 0;
   for (i = 0; i < 5; i++)
@@ -1033,11 +1020,57 @@ tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->size == fifo_size + 200, "size expected %u is %u",
 	      fifo_size + 200, f->size);
 
-  svm_fifo_dequeue_nowait (f, 201, buf);
+  prev = 0;
+  for (i = 0; i < 5; i++)
+    {
+      c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + 100);
+      c->length = 100;
+      c->start_byte = ~0;
+      c->next = prev;
+      prev = c;
+    }
+
+  svm_fifo_add_chunk (f, c);
+  SFIFO_TEST (f->size == fifo_size + 200, "size expected %u is %u",
+	      fifo_size + 200, f->size);
+
+  svm_fifo_dequeue_nowait (f, 201, data_buf);
 
   SFIFO_TEST (f->size == fifo_size + 200 + 10 * 100, "size expected %u is %u",
 	      fifo_size + 200 + 10 * 100, f->size);
 
+  /*
+   * OOO enqueues/dequeues and data validation
+   */
+  test_n_bytes = f->nitems;
+  svm_fifo_init_pointers (f, f->nitems/2, f->nitems/2);
+  vec_validate (test_data, test_n_bytes - 1);
+  for (i = 0; i < vec_len (test_data); i++)
+    test_data[i] = i;
+
+  for (i = test_n_bytes - 1; i > 0; i--)
+    {
+      rv = svm_fifo_enqueue_with_offset (f, i, sizeof (u8), &test_data[i]);
+      if (verbose)
+	vlib_cli_output (vm, "add [%d] [%d, %d]", i, i, i + sizeof (u8));
+      if (rv)
+	{
+	  clib_warning ("enqueue returned %d", rv);
+	  svm_fifo_free (f);
+	  vec_free (test_data);
+	  return -1;
+	}
+    }
+
+  svm_fifo_enqueue_nowait (f, sizeof (u8), &test_data[0]);
+
+  vec_validate (data_buf, vec_len (test_data));
+  svm_fifo_dequeue_nowait (f, vec_len (test_data), data_buf);
+  rv = compare_data (data_buf, test_data, 0, vec_len (test_data), (u32 *) &j);
+  if (rv)
+    vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
+		     test_data[j]);
+  SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
   /*
    * Cleanup
    */
@@ -1051,7 +1084,7 @@ tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 
   svm_fifo_free (f);
 
-  vec_free (buf);
+  vec_free (data_buf);
   return 0;
 }
 
