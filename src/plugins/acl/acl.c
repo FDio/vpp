@@ -1782,6 +1782,8 @@ macip_acl_del_list (u32 acl_list_index)
     {
       return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
+  if (acl_is_used_by (acl_list_index, am->sw_if_index_vec_by_macip_acl))
+    return VNET_API_ERROR_MACIP_ACL_IN_USE;
 
   /* delete any references to the ACL */
   for (i = 0; i < vec_len (am->macip_acl_by_sw_if_index); i++)
