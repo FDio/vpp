@@ -412,6 +412,8 @@ class IpsecTra4(object):
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
+                self.assertEqual(len(rx) - len(Ether()), rx[IP].len)
+                self.assert_packet_checksums_valid(rx)
                 try:
                     decrypted = p.vpp_tra_sa.decrypt(rx[IP])
                     self.assert_packet_checksums_valid(decrypted)
@@ -534,6 +536,8 @@ class IpsecTun4(object):
     def verify_encrypted(self, p, sa, rxs):
         decrypt_pkts = []
         for rx in rxs:
+            self.assert_packet_checksums_valid(rx)
+            self.assertEqual(len(rx) - len(Ether()), rx[IP].len)
             try:
                 decrypt_pkt = p.vpp_tun_sa.decrypt(rx[IP])
                 if not decrypt_pkt.haslayer(IP):
