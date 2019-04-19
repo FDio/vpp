@@ -402,7 +402,9 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      ip6_header_t *ip6 = (ip6_header_t *) (ip_hdr);
 	      *next_hdr_ptr = ip6->protocol;
 	      ip6->protocol = IP_PROTOCOL_IPSEC_ESP;
-	      ip6->payload_length = payload_len + hdr_len - l2_len - ip_len;
+	      ip6->payload_length =
+		clib_host_to_net_u16 (payload_len + hdr_len - l2_len -
+				      ip_len);
 	    }
 	  else
 	    {
