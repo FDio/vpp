@@ -409,7 +409,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      u16 len;
 	      ip4_header_t *ip4 = (ip4_header_t *) (ip_hdr);
 	      *next_hdr_ptr = ip4->protocol;
-	      len = payload_len + hdr_len + l2_len;
+	      len = payload_len + hdr_len - l2_len;
 	      if (udp)
 		{
 		  esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 1);
