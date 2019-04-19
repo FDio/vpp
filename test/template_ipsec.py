@@ -463,6 +463,8 @@ class IpsecTra6(object):
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
+                self.assertEqual(len(rx) - len(Ether()) - len(IPv6()),
+                                 rx[IPv6].plen)
                 try:
                     decrypted = p.vpp_tra_sa.decrypt(rx[IPv6])
                     self.assert_packet_checksums_valid(decrypted)
@@ -660,6 +662,8 @@ class IpsecTun6(object):
                                        count=count)
             recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if)
             for recv_pkt in recv_pkts:
+                self.assertEqual(len(recv_pkt) - len(Ether()) - len(IPv6()),
+                                 recv_pkt[IPv6].plen)
                 try:
                     decrypt_pkt = p.vpp_tun_sa.decrypt(recv_pkt[IPv6])
                     if not decrypt_pkt.haslayer(IPv6):
