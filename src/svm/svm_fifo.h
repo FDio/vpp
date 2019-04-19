@@ -23,6 +23,7 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
+#include <vppinfra/rbtree.h>
 
 /** Out-of-order segment */
 typedef struct
@@ -38,7 +39,7 @@ typedef struct
 #define OOO_SEGMENT_INVALID_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_SESSION_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_INDEX		((u32)~0)
-#define SVM_FIFO_MAX_EVT_SUBSCRIBERS	8
+#define SVM_FIFO_MAX_EVT_SUBSCRIBERS	7
 
 enum svm_fifo_tx_ntf_
 {
@@ -65,6 +66,7 @@ typedef struct svm_fifo_chunk_
 typedef enum svm_fifo_flag_
 {
   SVM_FIFO_F_SIZE_UPDATE = 1 << 0,
+  SVM_FIFO_F_MULTI_CHUNK = 1 << 1,
 } svm_fifo_flag_t;
 
 typedef struct _svm_fifo
@@ -76,6 +78,7 @@ typedef struct _svm_fifo
   svm_fifo_chunk_t *start_chunk;/**< first chunk in fifo chunk list */
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
   svm_fifo_chunk_t *new_chunks;	/**< chunks yet to be added to list */
+  rb_tree_t chunk_lookup;
 
     CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
@@ -93,17 +96,18 @@ typedef struct _svm_fifo
   struct _svm_fifo *prev;	/**< prev in active chain */
 
     CLIB_CACHE_LINE_ALIGN_MARK (consumer);
-  u32 head;
+  u32 head;			/**< fifo head position/byte */
   svm_fifo_chunk_t *head_chunk;	/**< tracks chunk where head lands */
+  svm_fifo_chunk_t *ooo_deq;	/**< last chunk used for ooo dequeue */
   volatile u32 want_tx_ntf;	/**< producer wants nudge */
   volatile u32 has_tx_ntf;
 
     CLIB_CACHE_LINE_ALIGN_MARK (producer);
-  u32 tail;
-  svm_fifo_chunk_t *tail_chunk;	/**< tracks chunk where tail lands */
-
-  ooo_segment_t *ooo_segments;	/**< Pool of ooo segments */
+  u32 tail;			/**< fifo tail position/byte */
   u32 ooos_list_head;		/**< Head of out-of-order linked-list */
+  svm_fifo_chunk_t *tail_chunk;	/**< tracks chunk where tail lands */
+  svm_fifo_chunk_t *ooo_enq;	/**< last chunk used for ooo enqueue */
+  ooo_segment_t *ooo_segments;	/**< Pool of ooo segments */
   u32 ooos_newest;		/**< Last segment to have been updated */
   volatile u8 n_subscribers;
   u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
@@ -327,6 +331,15 @@ svm_fifo_unset_event (svm_fifo_t * f)
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
 void svm_fifo_init (svm_fifo_t * f, u32 size);
+/**
+ * Grow fifo size by adding chunk to chunk list
+ *
+ * If fifos are allocated on a segment, this should be called with
+ * the segment's heap pushed.
+ *
+ * @param f	fifo to be extended
+ * @param c 	chunk or linked list of chunks to be added
+ */
 void svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c);
 void svm_fifo_free (svm_fifo_t * f);
 
@@ -341,7 +354,7 @@ int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes);
 void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
 int svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs);
 void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs);
-void svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer);
+void svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail);
 void svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf);
 void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len);
 void svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber);
