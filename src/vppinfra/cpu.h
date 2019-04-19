@@ -234,7 +234,7 @@ static inline int clib_cpu_supports_ ## flag() { return 0; }
   static inline int
 clib_cpu_supports_aes ()
 {
-#if defined (__aarch64__)
+#if defined(__x86_64__)
   return clib_cpu_supports_x86_aes ();
 #elif defined (__aarch64__)
   return clib_cpu_supports_aarch64_aes ();
