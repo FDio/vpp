@@ -36,7 +36,7 @@ typedef struct rb_node_
   rb_node_index_t left;		/**< left child index */
   rb_node_index_t right;	/**< right child index */
   u32 key;			/**< node key */
-  u32 opaque;			/**< value stored by node */
+  uword opaque;			/**< value stored by node */
 } rb_node_t;
 
 typedef struct rb_tree_
@@ -47,7 +47,7 @@ typedef struct rb_tree_
 
 void rb_tree_init (rb_tree_t * rt);
 rb_node_index_t rb_tree_add (rb_tree_t * rt, u32 key);
-rb_node_index_t rb_tree_add2 (rb_tree_t * rt, u32 key, u32 opaque);
+rb_node_index_t rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque);
 void rb_tree_del (rb_tree_t * rt, u32 key);
 void rb_tree_free_nodes (rb_tree_t * rt);
 u32 rb_tree_n_nodes (rb_tree_t * rt);
@@ -73,6 +73,24 @@ static inline rb_node_t *
 rb_node (rb_tree_t * rt, rb_node_index_t ri)
 {
   return pool_elt_at_index (rt->nodes, ri);
+}
+
+static inline rb_node_t *
+rb_node_right (rb_tree_t * rt, rb_node_t * n)
+{
+  return pool_elt_at_index (rt->nodes, n->right);
+}
+
+static inline rb_node_t *
+rb_node_left (rb_tree_t * rt, rb_node_t * n)
+{
+  return pool_elt_at_index (rt->nodes, n->left);
+}
+
+static inline rb_node_t *
+rb_node_parent (rb_tree_t * rt, rb_node_t * n)
+{
+  return pool_elt_at_index (rt->nodes, n->parent);
 }
 
 #endif /* SRC_VPPINFRA_RBTREE_H_ */
