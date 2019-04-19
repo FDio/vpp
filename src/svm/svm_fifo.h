@@ -21,11 +21,8 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/vec.h>
-#include <vppinfra/mheap.h>
-#include <vppinfra/heap.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
-#include <pthread.h>
 
 /** Out-of-order segment */
 typedef struct
@@ -36,9 +33,6 @@ typedef struct
   u32 start;	/**< Start of segment, normalized*/
   u32 length;	/**< Length of segment */
 } ooo_segment_t;
-
-format_function_t format_ooo_segment;
-format_function_t format_ooo_list;
 
 #define SVM_FIFO_TRACE 			(0)
 #define OOO_SEGMENT_INVALID_INDEX 	((u32)~0)
@@ -264,6 +258,14 @@ svm_fifo_is_empty (svm_fifo_t * f)
   return (svm_fifo_max_dequeue (f) == 0);
 }
 
+static inline u8
+svm_fifo_is_wrapped (svm_fifo_t * f)
+{
+  u32 head, tail;
+  f_load_head_tail_all_acq (f, &head, &tail);
+  return head % f->size > tail % f->size;
+}
+
 /* used by producer*/
 static inline u32
 svm_fifo_max_enqueue_prod (svm_fifo_t * f)
@@ -325,6 +327,7 @@ svm_fifo_unset_event (svm_fifo_t * f)
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
 void svm_fifo_init (svm_fifo_t * f, u32 size);
+void svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c);
 void svm_fifo_free (svm_fifo_t * f);
 
 int svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
@@ -520,70 +523,6 @@ ooo_segment_next (svm_fifo_t * f, ooo_segment_t * s)
   return pool_elt_at_index (f->ooo_segments, s->next);
 }
 
-static inline u8
-svm_fifo_is_wrapped (svm_fifo_t * f)
-{
-  u32 head, tail;
-  f_load_head_tail_all_acq (f, &head, &tail);
-  return head % f->size > tail % f->size;
-}
-
-static inline void
-svm_fifo_size_update (svm_fifo_t * f, svm_fifo_chunk_t * c)
-{
-  svm_fifo_chunk_t *prev;
-  u32 add_bytes = 0;
-
-  prev = f->end_chunk;
-  while (c)
-    {
-      c->start_byte = prev->start_byte + prev->length;
-      add_bytes += c->length;
-      prev->next = c;
-      prev = c;
-      c = c->next;
-    }
-  f->end_chunk = prev;
-  prev->next = f->start_chunk;
-  f->size += add_bytes;
-  f->nitems = f->size - 1;
-  f->new_chunks = 0;
-}
-
-static inline void
-svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
-{
-  if (svm_fifo_is_wrapped (f))
-    {
-      if (f->new_chunks)
-	{
-	  svm_fifo_chunk_t *prev;
-
-	  prev = f->new_chunks;
-	  while (prev->next)
-	    prev = prev->next;
-	  prev->next = c;
-	}
-      else
-	{
-	  f->new_chunks = c;
-	}
-      f->flags |= SVM_FIFO_F_SIZE_UPDATE;
-      return;
-    }
-
-  svm_fifo_size_update (f, c);
-}
-
-static inline void
-svm_fifo_try_size_update (svm_fifo_t * f, u32 new_head)
-{
-  if (new_head % f->size > f->tail % f->size)
-    return;
-
-  svm_fifo_size_update (f, f->new_chunks);
-  f->flags &= ~SVM_FIFO_F_SIZE_UPDATE;
-}
 #endif /* __included_ssvm_fifo_h__ */
 
 /*

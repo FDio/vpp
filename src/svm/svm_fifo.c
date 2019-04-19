@@ -20,6 +20,80 @@
 #include <svm/svm_fifo.h>
 #include <vppinfra/cpu.h>
 
+CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t * f,
+	       svm_fifo_chunk_t * c, u32 tail_idx, const u8 * src, u32 len,
+	       u8 update_tail)
+{
+  u32 n_chunk;
+
+  ASSERT (tail_idx >= c->start_byte && tail_idx < c->start_byte + c->length);
+
+  tail_idx -= c->start_byte;
+  n_chunk = c->length - tail_idx;
+  if (n_chunk < len)
+    {
+      u32 to_copy = len;
+      clib_memcpy_fast (&c->data[tail_idx], src, n_chunk);
+      while ((to_copy -= n_chunk))
+	{
+	  c = c->next;
+	  n_chunk = clib_min (c->length, to_copy);
+	  clib_memcpy_fast (&c->data[0], src + (len - to_copy), n_chunk);
+	}
+      if (update_tail)
+	f->tail_chunk = c;
+    }
+  else
+    {
+      clib_memcpy_fast (&c->data[tail_idx], src, len);
+    }
+}
+
+CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t * f,
+	       svm_fifo_chunk_t * c, u32 head_idx, u8 * dst, u32 len,
+	       u8 update_head)
+{
+  u32 n_chunk;
+
+  head_idx -= c->start_byte;
+  n_chunk = c->length - head_idx;
+  if (n_chunk < len)
+    {
+      u32 to_copy = len;
+      clib_memcpy_fast (dst, &c->data[head_idx], n_chunk);
+      while ((to_copy -= n_chunk))
+	{
+	  c = c->next;
+	  n_chunk = clib_min (c->length, to_copy);
+	  clib_memcpy_fast (dst + (len - to_copy), &c->data[0], n_chunk);
+	}
+      if (update_head)
+	f->head_chunk = c;
+    }
+  else
+    {
+      clib_memcpy_fast (dst, &c->data[head_idx], len);
+    }
+}
+
+#ifndef CLIB_MARCH_VARIANT
+
+static inline void
+svm_fifo_copy_to_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c, u32 tail_idx,
+			const u8 * src, u32 len, u8 update_tail)
+{
+  CLIB_MARCH_FN_SELECT (svm_fifo_copy_to_chunk) (f, c, tail_idx, src, len,
+						 update_tail);
+}
+
+static inline void
+svm_fifo_copy_from_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c, u32 head_idx,
+			  u8 * dst, u32 len, u8 update_head)
+{
+  CLIB_MARCH_FN_SELECT (svm_fifo_copy_from_chunk) (f, c, head_idx, dst, len,
+						   update_head);
+}
+
 static inline u8
 position_lt (svm_fifo_t * f, u32 a, u32 b, u32 tail)
 {
@@ -53,8 +127,6 @@ ooo_segment_end_pos (svm_fifo_t * f, ooo_segment_t * s)
 {
   return s->start + s->length;
 }
-
-#ifndef CLIB_MARCH_VARIANT
 
 u8 *
 format_ooo_segment (u8 * s, va_list * args)
@@ -241,6 +313,63 @@ svm_fifo_create (u32 data_size_in_bytes)
   return f;
 }
 
+static inline void
+svm_fifo_size_update (svm_fifo_t * f, svm_fifo_chunk_t * c)
+{
+  svm_fifo_chunk_t *prev;
+  u32 add_bytes = 0;
+
+  prev = f->end_chunk;
+  while (c)
+    {
+      c->start_byte = prev->start_byte + prev->length;
+      add_bytes += c->length;
+      prev->next = c;
+      prev = c;
+      c = c->next;
+    }
+  f->end_chunk = prev;
+  prev->next = f->start_chunk;
+  f->size += add_bytes;
+  f->nitems = f->size - 1;
+  f->new_chunks = 0;
+}
+
+static void
+svm_fifo_try_size_update (svm_fifo_t * f, u32 new_head)
+{
+  if (new_head % f->size > f->tail % f->size)
+    return;
+
+  svm_fifo_size_update (f, f->new_chunks);
+  f->flags &= ~SVM_FIFO_F_SIZE_UPDATE;
+}
+
+void
+svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
+{
+  if (svm_fifo_is_wrapped (f))
+    {
+      if (f->new_chunks)
+	{
+	  svm_fifo_chunk_t *prev;
+
+	  prev = f->new_chunks;
+	  while (prev->next)
+	    prev = prev->next;
+	  prev->next = c;
+	}
+      else
+	{
+	  f->new_chunks = c;
+	}
+      f->flags |= SVM_FIFO_F_SIZE_UPDATE;
+      return;
+    }
+
+  svm_fifo_size_update (f, c);
+}
+
 void
 svm_fifo_free (svm_fifo_t * f)
 {
@@ -252,7 +381,6 @@ svm_fifo_free (svm_fifo_t * f)
       clib_mem_free (f);
     }
 }
-#endif
 
 always_inline ooo_segment_t *
 ooo_segment_new (svm_fifo_t * f, u32 start, u32 length)
@@ -480,136 +608,6 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
   return bytes;
 }
 
-CLIB_MARCH_FN (svm_fifo_enqueue_nowait, int, svm_fifo_t * f, u32 len,
-	       const u8 * src)
-{
-  u32 n_chunk, to_copy, tail, head, free_count, tail_idx;
-  svm_fifo_chunk_t *c;
-
-  f_load_head_tail_prod (f, &head, &tail);
-
-  /* free space in fifo can only increase during enqueue: SPSC */
-  free_count = f_free_count (f, head, tail);
-
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
-
-  if (PREDICT_FALSE (free_count == 0))
-    return SVM_FIFO_FULL;
-
-  /* number of bytes we're going to copy */
-  to_copy = len = clib_min (free_count, len);
-
-  c = f->tail_chunk;
-  tail_idx = tail % f->size;
-  ASSERT (tail_idx >= c->start_byte);
-  tail_idx -= c->start_byte;
-  n_chunk = c->length - tail_idx;
-
-  if (n_chunk < to_copy)
-    {
-      clib_memcpy_fast (&c->data[tail_idx], src, n_chunk);
-      while ((to_copy -= n_chunk))
-	{
-	  c = c->next;
-	  n_chunk = clib_min (c->length, to_copy);
-	  clib_memcpy_fast (&c->data[0], src + (len - to_copy), n_chunk);
-	}
-      f->tail_chunk = c;
-    }
-  else
-    {
-      clib_memcpy_fast (&c->data[tail_idx], src, to_copy);
-    }
-  tail += len;
-
-  svm_fifo_trace_add (f, head, n_total, 2);
-
-  /* collect out-of-order segments */
-  if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
-    len += ooo_segment_try_collect (f, len, &tail);
-
-  ASSERT (len <= free_count);
-
-  /* store-rel: producer owned index (paired with load-acq in consumer) */
-  clib_atomic_store_rel_n (&f->tail, tail);
-
-  return len;
-}
-
-#ifndef CLIB_MARCH_VARIANT
-int
-svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
-			 const u8 * copy_from_here)
-{
-  return CLIB_MARCH_FN_SELECT (svm_fifo_enqueue_nowait) (f, max_bytes,
-							 copy_from_here);
-}
-#endif
-
-/**
- * Enqueue a future segment.
- *
- * Two choices: either copies the entire segment, or copies nothing
- * Returns 0 of the entire segment was copied
- * Returns -1 if none of the segment was copied due to lack of space
- */
-CLIB_MARCH_FN (svm_fifo_enqueue_with_offset, int, svm_fifo_t * f,
-	       u32 offset, u32 len, u8 * src)
-{
-  u32 to_copy, n_chunk, tail, head, free_count, tail_offset_idx;
-  svm_fifo_chunk_t *c;
-
-  f_load_head_tail_prod (f, &head, &tail);
-
-  /* free space in fifo can only increase during enqueue: SPSC */
-  free_count = f_free_count (f, head, tail);
-
-  /* will this request fit? */
-  if ((len + offset) > free_count)
-    return -1;
-
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
-
-  ASSERT (len < f->nitems);
-  svm_fifo_trace_add (f, offset, len, 1);
-
-  ooo_segment_add (f, offset, head, tail, len);
-
-  c = f->tail_chunk;
-  tail_offset_idx = (tail + offset) % f->size;
-  tail_offset_idx -= c->start_byte;
-  n_chunk = c->length - tail_offset_idx;
-  to_copy = len;
-
-  if (n_chunk < to_copy)
-    {
-      clib_memcpy_fast (&c->data[tail_offset_idx], src, n_chunk);
-      while ((to_copy -= n_chunk))
-	{
-	  c = c->next;
-	  n_chunk = clib_min (c->length, to_copy);
-	  clib_memcpy_fast (&c->data[0], src + (len - to_copy), n_chunk);
-	}
-    }
-  else
-    {
-      clib_memcpy_fast (&c->data[tail_offset_idx], src, len);
-    }
-
-  return 0;
-}
-
-#ifndef CLIB_MARCH_VARIANT
-
-int
-svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 required_bytes,
-			      u8 * copy_from_here)
-{
-  return CLIB_MARCH_FN_SELECT (svm_fifo_enqueue_with_offset) (f, offset,
-							      required_bytes,
-							      copy_from_here);
-}
-
 void
 svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len)
 {
@@ -632,13 +630,78 @@ svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len)
       clib_memcpy_fast (&c->next->data[0], data + n_chunk, len - n_chunk);
     }
 }
-#endif
 
-CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 len,
-	       u8 * dst)
+int
+svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 len, const u8 * src)
 {
-  u32 to_copy, n_chunk, tail, head, cursize, head_idx;
-  svm_fifo_chunk_t *c;
+  u32 tail, head, free_count;
+
+  f_load_head_tail_prod (f, &head, &tail);
+
+  /* free space in fifo can only increase during enqueue: SPSC */
+  free_count = f_free_count (f, head, tail);
+
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+
+  if (PREDICT_FALSE (free_count == 0))
+    return SVM_FIFO_FULL;
+
+  /* number of bytes we're going to copy */
+  len = clib_min (free_count, len);
+
+  svm_fifo_copy_to_chunk (f, f->tail_chunk, tail % f->size, src, len,
+			  1 /* update tail */ );
+  tail += len;
+
+  svm_fifo_trace_add (f, head, n_total, 2);
+
+  /* collect out-of-order segments */
+  if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
+    len += ooo_segment_try_collect (f, len, &tail);
+
+  /* store-rel: producer owned index (paired with load-acq in consumer) */
+  clib_atomic_store_rel_n (&f->tail, tail);
+
+  return len;
+}
+
+/**
+ * Enqueue a future segment.
+ *
+ * Two choices: either copies the entire segment, or copies nothing
+ * Returns 0 of the entire segment was copied
+ * Returns -1 if none of the segment was copied due to lack of space
+ */
+int
+svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
+{
+  u32 tail, head, free_count;
+
+  f_load_head_tail_prod (f, &head, &tail);
+
+  /* free space in fifo can only increase during enqueue: SPSC */
+  free_count = f_free_count (f, head, tail);
+
+  /* will this request fit? */
+  if ((len + offset) > free_count)
+    return -1;
+
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+
+  svm_fifo_trace_add (f, offset, len, 1);
+
+  ooo_segment_add (f, offset, head, tail, len);
+
+  svm_fifo_copy_to_chunk (f, f->tail_chunk, (tail + offset) % f->size, src,
+			  len, 0 /* update tail */ );
+
+  return 0;
+}
+
+int
+svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 len, u8 * dst)
+{
+  u32 tail, head, cursize;
 
   f_load_head_tail_cons (f, &head, &tail);
 
@@ -648,29 +711,11 @@ CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 len,
   if (PREDICT_FALSE (cursize == 0))
     return -2;			/* nothing in the fifo */
 
-  to_copy = len = clib_min (cursize, len);
-  ASSERT (cursize >= to_copy);
+  len = clib_min (cursize, len);
+  ASSERT (cursize >= len);
 
-  c = f->head_chunk;
-  head_idx = head % f->size;
-  head_idx -= c->start_byte;
-  n_chunk = c->length - head_idx;
-
-  if (n_chunk < to_copy)
-    {
-      clib_memcpy_fast (dst, &c->data[head_idx], n_chunk);
-      while ((to_copy -= n_chunk))
-	{
-	  c = c->next;
-	  n_chunk = clib_min (c->length, to_copy);
-	  clib_memcpy_fast (dst + (len - to_copy), &c->data[0], n_chunk);
-	}
-      f->head_chunk = c;
-    }
-  else
-    {
-      clib_memcpy_fast (dst, &c->data[head_idx], to_copy);
-    }
+  svm_fifo_copy_from_chunk (f, f->head_chunk, head % f->size, dst, len,
+			    1 /* update head */ );
   head += len;
 
   if (PREDICT_FALSE (f->flags & SVM_FIFO_F_SIZE_UPDATE))
@@ -682,21 +727,10 @@ CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 len,
   return len;
 }
 
-#ifndef CLIB_MARCH_VARIANT
-
 int
-svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
+svm_fifo_peek (svm_fifo_t * f, u32 relative_offset, u32 len, u8 * dst)
 {
-  return CLIB_MARCH_FN_SELECT (svm_fifo_dequeue_nowait) (f, max_bytes,
-							 copy_here);
-}
-#endif
-
-CLIB_MARCH_FN (svm_fifo_peek, int, svm_fifo_t * f, u32 relative_offset,
-	       u32 len, u8 * dst)
-{
-  u32 to_copy, n_chunk, tail, head, cursize, head_idx;
-  svm_fifo_chunk_t *c;
+  u32 tail, head, cursize;
 
   f_load_head_tail_cons (f, &head, &tail);
 
@@ -706,39 +740,12 @@ CLIB_MARCH_FN (svm_fifo_peek, int, svm_fifo_t * f, u32 relative_offset,
   if (PREDICT_FALSE (cursize < relative_offset))
     return -2;			/* nothing in the fifo */
 
-  to_copy = len = clib_min (cursize - relative_offset, len);
+  len = clib_min (cursize - relative_offset, len);
 
-  c = f->head_chunk;
-  head_idx = (head + relative_offset) % f->size;
-  head_idx -= c->start_byte;
-  n_chunk = c->length - head_idx;
-
-  if (n_chunk < to_copy)
-    {
-      clib_memcpy_fast (dst, &c->data[head_idx], n_chunk);
-      while ((to_copy -= n_chunk))
-	{
-	  c = c->next;
-	  n_chunk = clib_min (c->length, to_copy);
-	  clib_memcpy_fast (dst + (len - to_copy), &c->data[0], n_chunk);
-	}
-      f->head_chunk = c;
-    }
-  else
-    {
-      clib_memcpy_fast (dst, &c->data[head_idx], to_copy);
-    }
+  svm_fifo_copy_from_chunk (f, f->head_chunk,
+			    (head + relative_offset) % f->size, dst, len,
+			    0 /* update head */ );
   return len;
-}
-
-#ifndef CLIB_MARCH_VARIANT
-
-int
-svm_fifo_peek (svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
-	       u8 * copy_here)
-{
-  return CLIB_MARCH_FN_SELECT (svm_fifo_peek) (f, relative_offset, max_bytes,
-					       copy_here);
 }
 
 int
