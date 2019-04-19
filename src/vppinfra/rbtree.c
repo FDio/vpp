@@ -188,7 +188,7 @@ rb_tree_add (rb_tree_t * rt, u32 key)
 }
 
 rb_node_index_t
-rb_tree_add2 (rb_tree_t * rt, u32 key, u32 opaque)
+rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
 {
   rb_node_t *n;
 
