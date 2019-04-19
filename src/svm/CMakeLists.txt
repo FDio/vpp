@@ -19,12 +19,13 @@ add_vpp_library(svm
   svm.c
   ssvm.c
   svm_fifo.c
+  svm_fifo_ma.c
   svm_fifo_segment.c
   queue.c
   message_queue.c
 
   MULTIARCH_SOURCES
-  svm_fifo.c
+  svm_fifo_ma.c
 
   INSTALL_HEADERS
   ssvm.h
