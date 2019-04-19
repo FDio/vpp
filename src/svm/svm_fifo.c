@@ -216,11 +216,10 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
   f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
   f->segment_index = SVM_FIFO_INVALID_INDEX;
   f->refcnt = 1;
-  f->head_chunk = &f->default_chunk;
-  f->tail_chunk = &f->default_chunk;
-  f->default_chunk.next = &f->default_chunk;
   f->default_chunk.start_byte = 0;
   f->default_chunk.length = f->size;
+  f->default_chunk.next = f->start_chunk = &f->default_chunk;
+  f->end_chunk = f->head_chunk = f->tail_chunk = f->start_chunk;
 }
 
 /** create an svm fifo, in the current heap. Fails vs blow up the process */
@@ -650,6 +649,7 @@ CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 len,
     return -2;			/* nothing in the fifo */
 
   to_copy = len = clib_min (cursize, len);
+  ASSERT (cursize >= to_copy);
 
   c = f->head_chunk;
   head_idx = head % f->size;
@@ -673,7 +673,9 @@ CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 len,
     }
   head += len;
 
-  ASSERT (cursize >= to_copy);
+  if (PREDICT_FALSE (f->flags & SVM_FIFO_F_SIZE_UPDATE))
+    svm_fifo_try_size_update (f, head);
+
   /* store-rel: consumer owned index (paired with load-acq in producer) */
   clib_atomic_store_rel_n (&f->head, head);
 
