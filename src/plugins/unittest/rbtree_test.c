@@ -41,7 +41,7 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   int __clib_unused verbose, n_keys = 1e3, i;
   u32 *test_keys = 0, search_key;
   rb_tree_t _rt, *rt = &_rt;
-  rb_node_t *n;
+  rb_node_t *n, *aux;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -82,13 +82,21 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   RBTREE_TEST (n->key == n_keys / 2, "search result should be %u",
 	       n_keys / 2);
 
+  aux = rb_tree_successor (rt, n);
+  RBTREE_TEST (aux->key == n_keys / 2 + 1, "successor should be %u is %u",
+	       n_keys / 2 + 1, aux->key);
+
+  aux = rb_tree_predecessor (rt, n);
+  RBTREE_TEST (aux->key == n_keys / 2 - 1, "predecessor should be %u is %u",
+	       n_keys / 2 - 1, aux->key);
+
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), n_keys);
   RBTREE_TEST (rb_node_is_tnil (rt, n), "search result should be tnil");
 
   /*
    * Delete even keys
    */
-  for (i = 0; i < (n_keys - 1) / 2; i += 2)
+  for (i = 0; i < n_keys; i += 2)
     rb_tree_del (rt, i);
 
   n = rb_tree_max_subtree (rt, rb_node (rt, rt->root));
@@ -99,17 +107,26 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   search_key = 2 * ((n_keys - 1) / 4);
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
-  RBTREE_TEST (rb_node_is_tnil (rt, n), "search result should be tnil");
+  RBTREE_TEST (rb_node_is_tnil (rt, n), "search result for %u should be tnil",
+	       search_key);
 
   search_key += 1;
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
   RBTREE_TEST (n->key == search_key, "search result should be %u",
 	       search_key);
 
+  aux = rb_tree_successor (rt, n);
+  RBTREE_TEST (aux->key == search_key + 2, "successor should be %u is %u",
+	       search_key + 2, aux->key);
+
+  aux = rb_tree_predecessor (rt, n);
+  RBTREE_TEST (aux->key == search_key - 2, "predecessor should be %u is %u",
+	       search_key - 2, aux->key);
+
   /*
    * Re-add even keys
    */
-  for (i = 0; i < (n_keys - 1) / 2; i += 2)
+  for (i = 0; i < n_keys; i += 2)
     rb_tree_add (rt, i);
 
   RBTREE_TEST (rb_tree_n_nodes (rt) == n_keys + 1, "number nodes %u is %u",
@@ -131,6 +148,14 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   RBTREE_TEST (n->key == search_key, "search result should be %u",
 	       search_key);
 
+  aux = rb_tree_successor (rt, n);
+  RBTREE_TEST (aux->key == search_key + 1, "successor should be %u is %u",
+	       search_key + 1, aux->key);
+
+  aux = rb_tree_predecessor (rt, n);
+  RBTREE_TEST (aux->key == search_key - 1, "predecessor should be %u is %u",
+	       search_key - 1, aux->key);
+
   /*
    * Delete all keys
    */
@@ -150,6 +175,31 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
   RBTREE_TEST (rb_node_is_tnil (rt, n), "search result should be tnil");
 
+  /*
+   * Test successor/predecessor
+   */
+  u8 test_vals[] = { 2, 3, 4, 6, 7, 9, 13, 15, 17, 18, 20 };
+  for (i = 0; i < sizeof (test_vals) / sizeof (u8); i++)
+    rb_tree_add (rt, test_vals[i]);
+
+  search_key = 13;
+  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
+  RBTREE_TEST (n->key == search_key, "search result should be %u",
+	       search_key);
+
+  aux = rb_tree_successor (rt, n);
+  RBTREE_TEST (aux->key == 15, "successor should be %u is %u", 15, aux->key);
+
+  aux = rb_tree_predecessor (rt, n);
+  RBTREE_TEST (aux->key == 9, "predecessor should be %u is %u", 9, aux->key);
+
+  n = aux;
+  aux = rb_tree_predecessor (rt, n);
+  RBTREE_TEST (aux->key == 7, "predecessor should be %u is %u", 7, aux->key);
+
+  /*
+   * Cleanup
+   */
   rb_tree_free_nodes (rt);
   RBTREE_TEST (rb_tree_n_nodes (rt) == 0, "number nodes %u is %u",
 	       0, rb_tree_n_nodes (rt));
