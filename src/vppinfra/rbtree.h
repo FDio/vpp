@@ -54,6 +54,8 @@ u32 rb_tree_n_nodes (rb_tree_t * rt);
 rb_node_t *rb_tree_min_subtree (rb_tree_t * rt, rb_node_t * x);
 rb_node_t *rb_tree_max_subtree (rb_tree_t * rt, rb_node_t * x);
 rb_node_t *rb_tree_search_subtree (rb_tree_t * rt, rb_node_t * x, u32 key);
+rb_node_t *rb_tree_successor (rb_tree_t * rt, rb_node_t * x);
+rb_node_t *rb_tree_predecessor (rb_tree_t * rt, rb_node_t * x);
 
 static inline rb_node_index_t
 rb_node_index (rb_tree_t * rt, rb_node_t * n)

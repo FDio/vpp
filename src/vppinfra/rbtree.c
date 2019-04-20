@@ -227,6 +227,40 @@ rb_tree_max_subtree (rb_tree_t * rt, rb_node_t * x)
   return x;
 }
 
+rb_node_t *
+rb_tree_successor (rb_tree_t * rt, rb_node_t * x)
+{
+  rb_node_t *y;
+
+  if (x->right != RBTREE_TNIL_INDEX)
+    return rb_tree_min_subtree (rt, rb_node_right (rt, x));
+
+  y = rb_node_parent (rt, x);
+  while (!rb_node_is_tnil (rt, y) && y->right == rb_node_index (rt, x))
+    {
+      x = y;
+      y = rb_node_parent (rt, y);
+    }
+  return y;
+}
+
+rb_node_t *
+rb_tree_predecessor (rb_tree_t * rt, rb_node_t * x)
+{
+  rb_node_t *y;
+
+  if (x->left != RBTREE_TNIL_INDEX)
+    return rb_tree_max_subtree (rt, rb_node_left (rt, x));
+
+  y = rb_node_parent (rt, x);
+  while (!rb_node_is_tnil (rt, y) && y->left == rb_node_index (rt, x))
+    {
+      x = y;
+      y = rb_node_parent (rt, y);
+    }
+  return y;
+}
+
 static inline void
 rb_tree_transplant (rb_tree_t * rt, rb_node_t * u, rb_node_t * v)
 {
