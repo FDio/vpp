@@ -46,7 +46,7 @@ Summary: Vector Packet Processing
 License: ASL 2.0
 Version: %{_version}
 Release: %{_release}
-Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, epel-release, net-tools, pciutils, python, python36, net-tools, pciutils
+Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, epel-release, net-tools, pciutils, python, python36
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
 %if 0%{?fedora}
@@ -60,7 +60,7 @@ BuildRequires: cmake
 BuildRequires: epel-release
 BuildRequires: devtoolset-7-toolchain
 BuildREquires: openssl-devel
-BuildRequires: python-devel, python-virtualenv, python-ply
+BuildRequires: python-devel, python-virtualenv
 BuildRequires: mbedtls-devel
 BuildRequires: python36-devel python36-pip python36-ply
 BuildRequires: cmake3
