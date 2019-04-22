@@ -393,7 +393,7 @@ typedef struct
   u32 buffers[DPDK_RX_BURST_SZ];
   u16 next[DPDK_RX_BURST_SZ];
   u16 etype[DPDK_RX_BURST_SZ];
-  u8 flags[DPDK_RX_BURST_SZ];
+  u16 flags[DPDK_RX_BURST_SZ];
   vlib_buffer_t buffer_template;
 } dpdk_per_thread_data_t;
 

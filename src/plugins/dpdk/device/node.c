@@ -145,7 +145,7 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
 */
 
 static_always_inline u8
-dpdk_ol_flags_extract (struct rte_mbuf **mb, u8 * flags, int count)
+dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 * flags, int count)
 {
   u8 rv = 0;
   int i;
@@ -153,7 +153,7 @@ dpdk_ol_flags_extract (struct rte_mbuf **mb, u8 * flags, int count)
     {
       /* all flags we are interested in are in lower 8 bits but
          that might change */
-      flags[i] = (u8) mb[i]->ol_flags;
+      flags[i] = (u16) mb[i]->ol_flags;
       rv |= flags[i];
     }
   return rv;
@@ -161,13 +161,14 @@ dpdk_ol_flags_extract (struct rte_mbuf **mb, u8 * flags, int count)
 
 static_always_inline uword
 dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
-		       uword n_rx_packets, int maybe_multiseg, u8 * or_flagsp)
+		       uword n_rx_packets, int maybe_multiseg,
+		       u16 * or_flagsp)
 {
   u32 n_left = n_rx_packets;
   vlib_buffer_t *b[4];
   struct rte_mbuf **mb = ptd->mbufs;
   uword n_bytes = 0;
-  u8 *flags, or_flags = 0;
+  u16 *flags, or_flags = 0;
   vlib_buffer_t bt;
 
   mb = ptd->mbufs;
@@ -292,7 +293,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   struct rte_mbuf **mb;
   vlib_buffer_t *b0;
   u16 *next;
-  u8 or_flags;
+  u16 or_flags;
   u32 n;
   int single_next = 0;
 
