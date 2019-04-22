@@ -22,7 +22,7 @@ import "vnet/ip/ip_types.api";
 */
 enum gre_tunnel_type
 {
-  GRE_API_TUNNEL_TYPE_L3,
+  GRE_API_TUNNEL_TYPE_L3 = 0,
   GRE_API_TUNNEL_TYPE_TEB,
   GRE_API_TUNNEL_TYPE_ERSPAN,
 };
