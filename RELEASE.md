@@ -24,7 +24,70 @@ TBD
 
 @page release_notes_1904 Release notes for VPP 19.04
 
-TBD
+More than 700 commits since the 19.01 release.
+
+## Features
+
+### Infrastructure
+- DPDK 19.02 integration
+- Buffer manager rework and improvements
+- Python3 migration (work in progress)
+  - vppapigen
+  - Python API wrappers
+  - Docs generation
+  - vpp_config
+  - "make test" python3 readiness and refactoring
+- Add "make test-gcov" target to main Makefile
+- Refactor multiarch code
+- vfctl script: bind VF to vfio-pci after VF is created
+- cmake cross-compilation support
+- CLI control of graph dispatch elogs
+- AppImage packaging (disabled by default)
+- Complete upstreaming of wireshark dissector
+- Remove JVPP which is now an FD.io project
+- Punt infra: manage dispatch of exception packets
+
+### VNET & Plugins
+- BVI Interface
+- Deprecate TAP cli
+- Experimental TAP interface TCP segmentation offload
+- Vmxnet3 driver plugin
+- LACP passive mode
+- ACL plugin refactoring
+- RDMA (ibverb) driver plugin - MLX5 with multiqueue
+- IPSEC
+  - Intel IPSEC-MB engine plugin
+  - Tunnel fragmentation
+  - CLI improvements
+  - Performance improvements
+  - API modernisation and improvements
+  - New Tests and test refactoring
+- Crypto
+  - Introduce crypto infra
+  - crypto_ia32 plugin
+  - Add support for AEAD and AES-GCM
+  - Implement rfc4231 test cases
+  - Implement crypto tests per RFC2202
+- Perfmon improvements
+  - Python to C parser for intel CPUs
+  - 2-way parallel stat collection
+  - Collect data on selected thread(s)
+
+### Host stack
+- Improve ldp/vls/vcl support for multi-process and multi-threaded applications
+- Major refactor/cleanup of session layer
+- Refactor cut-through sessions to use a custom transport
+- Baseline QUIC transport support
+
+## Known issues
+
+For the full list of issues please refer to fd.io [JIRA](https://jira.fd.io).
+
+## Issues fixed
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1904)
 
 ## API changes
 
