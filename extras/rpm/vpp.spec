@@ -10,17 +10,6 @@
 %endif
 %define _vpp_install_dir install-%{_vpp_tag}-native
 
-# Failsafe backport of Python2-macros for RHEL <= 6
-%{!?python_sitelib: %global python_sitelib      %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
-%{!?python_sitearch:    %global python_sitearch     %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
-%{!?python_version: %global python_version      %(%{__python} -c "import sys; sys.stdout.write(sys.version[:3])")}
-%{!?__python2:      %global __python2       %{__python}}
-%{!?python2_sitelib:    %global python2_sitelib     %{python_sitelib}}
-%{!?python2_sitearch:   %global python2_sitearch    %{python_sitearch}}
-%{!?python2_version:    %global python2_version     %{python_version}}
-
-%{!?python2_minor_version: %define python2_minor_version %(%{__python} -c "import sys ; print sys.version[2:3]")}
-
 %{?systemd_requires}
 
 
@@ -46,20 +35,27 @@ Summary: Vector Packet Processing
 License: ASL 2.0
 Version: %{_version}
 Release: %{_release}
-Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
+BuildRequires: mbedtls-devel mbedtls
 %if 0%{?fedora}
+Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python3
+Requires: compat-openssl10
+Requires: boost-filesystem mbedtls libffi-devel
 BuildRequires: subunit, subunit-devel
 BuildRequires: compat-openssl10-devel
-BuildRequires: python2-devel, python2-virtualenv, python2-ply
-BuildRequires: mbedtls-devel
+BuildRequires: python3-devel, python3-virtualenv
 BuildRequires: cmake
 %else
 %if 0%{rhel} == 7
+Requires: epel-release
+Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python36
+Requires: boost-filesystem mbedtls libffi-devel
+BuildRequires: epel-release
+BuildRequires: mbedtls-devel mbedtls
 BuildRequires: devtoolset-7-toolchain
 BuildREquires: openssl-devel
-BuildRequires: python-devel, python-virtualenv, python-ply
+BuildRequires: python36-devel
 BuildRequires: cmake3
 %endif
 %endif
@@ -126,7 +122,8 @@ This package contains the lua bindings for the vpp api
 %package api-python
 Summary: VPP api python bindings
 Group: Development/Libraries
-Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python-setuptools libffi-devel
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, libffi-devel
+Requires: python-setuptools
 
 %description api-python
 This package contains the python bindings for the vpp api
@@ -157,7 +154,7 @@ groupadd -f -r vpp
     make bootstrap AESNI=n
     make -C build-root PLATFORM=vpp AESNI=n TAG=%{_vpp_tag} install-packages
 %endif
-cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
+cd %{_mu_build_dir}/../src/vpp-api/python && %py3_build
 cd %{_mu_build_dir}/../extras/selinux && make -f %{_datadir}/selinux/devel/Makefile
 
 %install
@@ -213,7 +210,7 @@ do
 done
 
 # Python bindings
-cd %{_mu_build_dir}/../src/vpp-api/python && %py2_install
+cd %{_mu_build_dir}/../src/vpp-api/python && %py3_install
 
 # SELinux Policy
 # Install SELinux interfaces
@@ -369,7 +366,7 @@ fi
 
 %files api-python
 %defattr(644,root,root,755)
-%{python2_sitelib}/vpp_*
+%{python3_sitelib}/vpp_*
 
 %files selinux-policy
 %defattr(-,root,root,0755)
