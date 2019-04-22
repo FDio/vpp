@@ -288,6 +288,8 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      f->read_events++;
 	      errors[n_errors] = f->read_function (f);
 	      /* Make sure f is valid if the file pool moves */
+	      if (pool_is_free_index (fm->file_pool, i))
+		continue;
 	      f = pool_elt_at_index (fm->file_pool, i);
 	      n_errors += errors[n_errors] != 0;
 	    }
