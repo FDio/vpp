@@ -452,6 +452,8 @@ create_bypass_for_fwd (snat_main_t * sm, ip4_header_t * ip, u32 rx_fib_index,
     }
   else
     {
+      u32 proto;
+
       if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
 	return;
 
@@ -471,12 +473,19 @@ create_bypass_for_fwd (snat_main_t * sm, ip4_header_t * ip, u32 rx_fib_index,
 	  return;
 	}
 
+      proto = ip_proto_to_snat_proto (key.proto);
+
       s->ext_host_addr = key.r_addr;
       s->ext_host_port = key.r_port;
       s->flags |= SNAT_SESSION_FLAG_FWD_BYPASS;
       s->out2in.addr = key.l_addr;
       s->out2in.port = key.l_port;
-      s->out2in.protocol = ip_proto_to_snat_proto (key.proto);
+      s->out2in.protocol = proto;
+      if (proto == ~0)
+	{
+	  s->flags |= SNAT_SESSION_FLAG_UNKNOWN_PROTO;
+	  s->out2in.port = ip->protocol;
+	}
       s->out2in.fib_index = 0;
       s->in2out = s->out2in;
       user_session_increment (sm, u, 0);

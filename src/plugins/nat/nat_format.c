@@ -124,12 +124,10 @@ format_snat_session (u8 * s, va_list * args)
     {
       s = format (s, "  i2o %U proto %u fib %u\n",
 		  format_ip4_address, &sess->in2out.addr,
-		  clib_net_to_host_u16 (sess->in2out.port),
-		  sess->in2out.fib_index);
+		  sess->in2out.port, sess->in2out.fib_index);
       s = format (s, "    o2i %U proto %u fib %u\n",
 		  format_ip4_address, &sess->out2in.addr,
-		  clib_net_to_host_u16 (sess->out2in.port),
-		  sess->out2in.fib_index);
+		  sess->out2in.port, sess->out2in.fib_index);
     }
   else
     {
