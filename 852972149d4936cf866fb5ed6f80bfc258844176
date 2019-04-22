@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea819e42_68679fa4",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-22T22:27:37Z",
+      "side": 1,
+      "message": "also:\n  punt infra; manage dispatch of exception packets.",
+      "revId": "852972149d4936cf866fb5ed6f80bfc258844176",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
