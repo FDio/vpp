@@ -16,6 +16,24 @@
       "revId": "852972149d4936cf866fb5ed6f80bfc258844176",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ac36a080_0403c431",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-04-23T13:07:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ea819e42_68679fa4",
+      "revId": "852972149d4936cf866fb5ed6f80bfc258844176",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
