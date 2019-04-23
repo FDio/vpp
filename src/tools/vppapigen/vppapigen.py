@@ -298,10 +298,11 @@ class Array():
 
 
 class Field():
-    def __init__(self, fieldtype, name):
+    def __init__(self, fieldtype, name, limit=None):
         self.type = 'Field'
         self.fieldtype = fieldtype
         self.fieldname = name
+        self.limit = limit
 
     def __repr__(self):
         return str([self.fieldtype, self.fieldname])
@@ -504,7 +505,7 @@ class VPPAPIParser(object):
 
     def p_enum_statements(self, p):
         '''enum_statements : enum_statement
-                            | enum_statements enum_statement'''
+                           | enum_statements enum_statement'''
         if len(p) == 2:
             p[0] = [p[1]]
         else:
@@ -519,11 +520,16 @@ class VPPAPIParser(object):
             p[0] = p[1]
 
     def p_declaration(self, p):
-        '''declaration : type_specifier ID ';' '''
-        if len(p) != 4:
+        '''declaration : type_specifier ID ';'
+                       | type_specifier ID '[' ID '=' assignee ']' ';' '''
+        if len(p) == 9:
+            p[0] = Field(p[1], p[2], {p[4]: p[6]})
+        elif len(p) == 4:
+            p[0] = Field(p[1], p[2])
+        else:
             self._parse_error('ERROR')
         self.fields.append(p[2])
-        p[0] = Field(p[1], p[2])
+
 
     def p_declaration_array(self, p):
         '''declaration : type_specifier ID '[' NUM ']' ';'

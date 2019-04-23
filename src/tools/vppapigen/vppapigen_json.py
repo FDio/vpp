@@ -33,7 +33,10 @@ def walk_defs(s):
         d.append(t.name)
         for b in t.block:
             if b.type == 'Field':
-                d.append([b.fieldtype, b.fieldname])
+                if b.limit:
+                    d.append([b.fieldtype, b.fieldname, b.limit])
+                else:
+                    d.append([b.fieldtype, b.fieldname])
             elif b.type == 'Array':
                 if b.lengthfield:
                     d.append([b.fieldtype, b.fieldname, b.length, b.lengthfield])
