@@ -380,7 +380,7 @@ const static transport_proto_vft_t udpc_proto = {
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
-  .tx_type = TRANSPORT_TX_DEQUEUE,
+  .tx_type = TRANSPORT_TX_DGRAM,
   .service_type = TRANSPORT_SERVICE_CL,
 };
 /* *INDENT-ON* */
