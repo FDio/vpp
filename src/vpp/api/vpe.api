@@ -183,10 +183,10 @@ define show_version_reply
 {
   u32 context;
   i32 retval;
-  string program;
-  string version;
-  string build_date;
-  string build_directory;
+  string program [limit = 32];
+  string version [limit = 32];
+  string build_date [limit = 32];
+  string build_directory [limit = 256];
 };
 
 
