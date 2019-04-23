@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.3.0";
+option version = "2.3.1";
 
 import "vnet/interface_types.api";
 
@@ -205,9 +205,10 @@ define sw_interface_details
 /** \brief Request all or filtered subset of sw_interface_details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - index of the interface to dump info on, ~0 if on all
+    @param sw_if_index - index of the interface to dump info on, 0 or ~0 if on all
+      TODO: Support selecting only index==0 when CSIT is ready.
     @param name_filter_valid - 1 if requesting a filtered subset of records else 0
-      if name filter is valid, sw_if_index value is effectively set to ~0
+      if name filter is set as valid, sw_if_index value is ignored and all interfaces are examined
     @param name_filter - interface name substring filter. Eg. loop1 returns [loop1, loop10]
 */
 define sw_interface_dump
