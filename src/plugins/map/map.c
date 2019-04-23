@@ -2223,7 +2223,7 @@ VLIB_CLI_COMMAND(map_if_command, static) = {
 
 VLIB_PLUGIN_REGISTER() = {
   .version = VPP_BUILD_VER,
-  .description = "Mapping of address and port (MAP)",
+  .description = "Mapping of Address and Port (MAP)",
 };
 
 /* *INDENT-ON* */

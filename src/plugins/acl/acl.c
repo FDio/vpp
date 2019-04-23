@@ -92,7 +92,7 @@ _(ACL_PLUGIN_GET_CONN_TABLE_MAX_ENTRIES,acl_plugin_get_conn_table_max_entries)
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "Access Control Lists",
+    .description = "Access Control Lists (ACL)",
 };
 /* *INDENT-ON* */
 

@@ -57,7 +57,7 @@ VLIB_INIT_FUNCTION (crypto_ia32_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "Intel AESNI Software Crypto Backend Plugin",
+  .description = "Intel IA32 Software Crypto Engine",
 };
 /* *INDENT-ON* */
 

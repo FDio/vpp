@@ -738,7 +738,7 @@ VLIB_INIT_FUNCTION (pppoe_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "PPPoE",
+    .description = "PPP over Ethernet (PPPoE)",
 };
 /* *INDENT-ON* */
 
