@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b959855c_3102fcf9",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-23T13:56:25Z",
+      "side": 1,
+      "message": "Is this safe when n_left_from \u003d\u003d 1?",
+      "range": {
+        "startLine": 208,
+        "startChar": 16,
+        "endLine": 208,
+        "endChar": 19
+      },
+      "revId": "f92211672646dccdaf50ec7cea9197e15dca03ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ba10a5f_c76f0064",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-23T13:56:25Z",
+      "side": 1,
+      "message": "Can this block be run before line 211?",
+      "range": {
+        "startLine": 215,
+        "startChar": 6,
+        "endLine": 215,
+        "endChar": 8
+      },
+      "revId": "f92211672646dccdaf50ec7cea9197e15dca03ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
