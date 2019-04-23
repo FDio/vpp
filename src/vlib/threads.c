@@ -1389,7 +1389,9 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   f64 t_entry;
   f64 t_open;
   f64 t_closed;
+  f64 max_vector_rate;
   u32 count;
+  int i;
 
   if (vec_len (vlib_mains) < 2)
     return;
@@ -1410,23 +1412,41 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
       return;
     }
 
+  /*
+   * Need data to decide if we're working hard enough to honor
+   * the barrier hold-down timer.
+   */
+  max_vector_rate = 0.0;
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    max_vector_rate =
+      clib_max (max_vector_rate,
+		vlib_last_vectors_per_main_loop_as_f64 (vlib_mains[i]));
+
   vlib_worker_threads[0].barrier_sync_count++;
 
   /* Enforce minimum barrier open time to minimize packet loss */
   ASSERT (vm->barrier_no_close_before <= (now + BARRIER_MINIMUM_OPEN_LIMIT));
 
-  while (1)
+  /*
+   * If any worker thread seems busy, which we define
+   * as a vector rate above 10, we enforce the barrier hold-down timer
+   */
+  if (max_vector_rate > 10.0)
     {
-      now = vlib_time_now (vm);
-      /* Barrier hold-down timer expired? */
-      if (now >= vm->barrier_no_close_before)
-	break;
-      if ((vm->barrier_no_close_before - now)
-	  > (2.0 * BARRIER_MINIMUM_OPEN_LIMIT))
+      while (1)
 	{
-	  clib_warning ("clock change: would have waited for %.4f seconds",
-			(vm->barrier_no_close_before - now));
-	  break;
+	  now = vlib_time_now (vm);
+	  /* Barrier hold-down timer expired? */
+	  if (now >= vm->barrier_no_close_before)
+	    break;
+	  if ((vm->barrier_no_close_before - now)
+	      > (2.0 * BARRIER_MINIMUM_OPEN_LIMIT))
+	    {
+	      clib_warning
+		("clock change: would have waited for %.4f seconds",
+		 (vm->barrier_no_close_before - now));
+	      break;
+	    }
 	}
     }
   /* Record time of closure */
