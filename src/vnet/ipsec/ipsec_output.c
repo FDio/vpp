@@ -205,18 +205,18 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       u64 bytes0;
 
       bi0 = from[0];
-      bi1 = from[1];
       b0 = vlib_get_buffer (vm, bi0);
-      b1 = vlib_get_buffer (vm, bi1);
+      if (n_left_from > 1)
+	{
+	  bi1 = from[1];
+	  b1 = vlib_get_buffer (vm, bi1);
+	  CLIB_PREFETCH (b1, CLIB_CACHE_LINE_BYTES * 2, STORE);
+	  vlib_prefetch_buffer_data (b1, LOAD);
+	}
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
       iph_offset = vnet_buffer (b0)->ip.save_rewrite_length;
       ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0)
 			      + iph_offset);
-      if (n_left_from > 1)
-	{
-	  CLIB_PREFETCH (b1, CLIB_CACHE_LINE_BYTES * 2, STORE);
-	  vlib_prefetch_buffer_data (b1, LOAD);
-	}
 
       /* lookup for SPD only if sw_if_index is changed */
       if (PREDICT_FALSE (last_sw_if_index != sw_if_index0))
