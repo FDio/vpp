@@ -575,10 +575,6 @@ class VppGbpAcl(VppObject):
 class TestGBP(VppTestCase):
     """ GBP Test Case """
 
-    @property
-    def config_flags(self):
-        return VppEnum.vl_api_nat_config_flags_t
-
     @classmethod
     def setUpClass(cls):
         super(TestGBP, cls).setUpClass()
@@ -799,11 +795,12 @@ class TestGBP(VppTestCase):
                     self.router_mac.packed)
 
                 # The BVIs are NAT inside interfaces
-                flags = self.config_flags.NAT_IS_INSIDE
                 self.vapi.nat44_interface_add_del_feature(epg.bvi.sw_if_index,
-                                                          flags=flags)
+                                                          is_inside=1,
+                                                          is_add=1)
                 self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
-                                                  flags=flags)
+                                                  is_inside=1,
+                                                  is_add=1)
 
             if_ip4 = VppIpInterfaceAddress(self, epg.bvi, epg.bvi_ip4, 32)
             if_ip6 = VppIpInterfaceAddress(self, epg.bvi, epg.bvi_ip6, 128)
@@ -835,9 +832,13 @@ class TestGBP(VppTestCase):
                                recirc.epg.rd.t6).add_vpp_config()
 
             self.vapi.nat44_interface_add_del_feature(
-                recirc.recirc.sw_if_index)
+                recirc.recirc.sw_if_index,
+                is_inside=0,
+                is_add=1)
             self.vapi.nat66_add_del_interface(
-                recirc.recirc.sw_if_index)
+                recirc.recirc.sw_if_index,
+                is_inside=0,
+                is_add=1)
 
             recirc.add_vpp_config()
 
@@ -857,11 +858,10 @@ class TestGBP(VppTestCase):
             for (ip, fip) in zip(ep.ips, ep.fips):
                 # Add static mappings for each EP from the 10/8 to 11/8 network
                 if ip.af == AF_INET:
-                    flags = self.config_flags.NAT_IS_ADDR_ONLY
                     self.vapi.nat44_add_del_static_mapping(ip.bytes,
                                                            fip.bytes,
                                                            vrf_id=0,
-                                                           flags=flags)
+                                                           addr_only=1)
                 else:
                     self.vapi.nat66_add_del_static_mapping(ip.bytes,
                                                            fip.bytes,
@@ -1404,12 +1404,11 @@ class TestGBP(VppTestCase):
         #
         for ep in eps:
             # del static mappings for each EP from the 10/8 to 11/8 network
-            flags = self.config_flags.NAT_IS_ADDR_ONLY
             self.vapi.nat44_add_del_static_mapping(ep.ip4.bytes,
                                                    ep.fip4.bytes,
                                                    vrf_id=0,
-                                                   is_add=0,
-                                                   flags=flags)
+                                                   addr_only=1,
+                                                   is_add=0)
             self.vapi.nat66_add_del_static_mapping(ep.ip6.bytes,
                                                    ep.fip6.bytes,
                                                    vrf_id=0,
@@ -1418,20 +1417,21 @@ class TestGBP(VppTestCase):
         for epg in epgs:
             # IP config on the BVI interfaces
             if epg != epgs[0] and epg != epgs[3]:
-                flags = self.config_flags.NAT_IS_INSIDE
                 self.vapi.nat44_interface_add_del_feature(epg.bvi.sw_if_index,
-                                                          flags=flags,
+                                                          is_inside=1,
                                                           is_add=0)
                 self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
-                                                  flags=flags,
+                                                  is_inside=1,
                                                   is_add=0)
 
         for recirc in recircs:
             self.vapi.nat44_interface_add_del_feature(
                 recirc.recirc.sw_if_index,
+                is_inside=0,
                 is_add=0)
             self.vapi.nat66_add_del_interface(
                 recirc.recirc.sw_if_index,
+                is_inside=0,
                 is_add=0)
 
     def wait_for_ep_timeout(self, sw_if_index=None, ip=None, mac=None,
