@@ -304,7 +304,7 @@ VNET_FEATURE_INIT (ct6in2out, static) =
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "ipv6 connection tracker",
+  .description = "IPv6 Connection Tracker",
 };
 /* *INDENT-ON* */
 

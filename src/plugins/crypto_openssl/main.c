@@ -285,7 +285,7 @@ VLIB_INIT_FUNCTION (crypto_openssl_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "OpenSSL Crypto Engine Plugin",
+  .description = "OpenSSL Crypto Engine",
 };
 /* *INDENT-ON* */
 

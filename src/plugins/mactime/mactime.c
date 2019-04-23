@@ -423,7 +423,7 @@ VNET_FEATURE_INIT (mactime_tx, static) =
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "Time-based MAC source-address filter",
+  .description = "Time-based MAC Source Address Filter",
 };
 /* *INDENT-ON* */
 
