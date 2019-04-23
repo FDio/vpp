@@ -498,7 +498,7 @@ VLIB_INIT_FUNCTION (igmp_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "IGMP messaging",
+  .description = "Internet Group Management Protocol (IGMP)",
 };
 /* *INDENT-ON* */
 

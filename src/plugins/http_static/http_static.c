@@ -139,7 +139,7 @@ VLIB_INIT_FUNCTION (http_static_init);
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "http static server plugin"
+  .description = "HTTP Static Server"
 };
 /* *INDENT-ON* */
 

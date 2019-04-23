@@ -584,7 +584,7 @@ VNET_FEATURE_INIT (nsim_feature, static) =
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "network delay simulator plugin",
+  .description = "Network Delay Simulator",
 };
 /* *INDENT-ON* */
 

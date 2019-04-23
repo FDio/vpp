@@ -3474,7 +3474,7 @@ VLIB_REGISTER_NODE (ikev2_mngr_process_node, static) = {
 
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "IKEv2",
+    .description = "Internet Key Exchange (IKEv2) Protocol",
 };
 /* *INDENT-ON* */
 
