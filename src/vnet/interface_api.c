@@ -308,9 +308,9 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   u8 *filter = 0, *name = 0;
   sw_if_index = ntohl (mp->sw_if_index);
 
-  if (!mp->name_filter_valid && sw_if_index != ~0)
+  if (!mp->name_filter_valid && sw_if_index != ~0 && sw_if_index != 0)
     {
-      /* is it a valid sw_if_index/ */
+      /* is it a valid sw_if_index? */
       if (vec_len (im->sw_interfaces) <= sw_if_index)
 	return;
 
