@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ac04a6a4_0d062096",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1425,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-23T19:23:04Z",
+      "side": 1,
+      "message": "clib_max?",
+      "range": {
+        "startLine": 1424,
+        "startChar": 0,
+        "endLine": 1425,
+        "endChar": 36
+      },
+      "revId": "d625e82f6547dfa49b7a1036f24c01fcf827f0e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
