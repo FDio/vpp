@@ -72,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "415c48f7_0f8ba5a6",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-23T18:25:00Z",
+      "side": 1,
+      "message": "Yup. It\u0027d probably be better to embed transport_endpoint_t or session_endpoint_t into connected/accepted messages. We can then pass a pointer to mp-\u003etep/sep to session_get_transport ()",
+      "parentUuid": "f8676217_692ece31",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 22
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7e9fe13c_d3c95b3a",
         "filename": "src/vnet/session/transport.c",
         "patchSetId": 6
