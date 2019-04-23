@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5081dd50_487f505c",
+        "filename": "src/vnet/session-apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 716,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-23T18:36:52Z",
+      "side": 1,
+      "message": "Same question here.",
+      "range": {
+        "startLine": 716,
+        "startChar": 23,
+        "endLine": 716,
+        "endChar": 24
+      },
+      "revId": "b7e91ae2593e56b018bba3bb1ac981079e01cb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "05ccc390_336f5dea",
+        "filename": "src/vnet/session-apps/echo_server.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-23T18:36:52Z",
+      "side": 1,
+      "message": "Empty line",
+      "revId": "b7e91ae2593e56b018bba3bb1ac981079e01cb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

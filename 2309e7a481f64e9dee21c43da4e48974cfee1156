@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "590d5a4d_05683500",
+        "filename": "src/vnet/session-apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-23T18:36:52Z",
+      "side": 0,
+      "message": "Any reason for removing this?",
+      "range": {
+        "startLine": 373,
+        "startChar": 45,
+        "endLine": 373,
+        "endChar": 56
+      },
+      "revId": "2309e7a481f64e9dee21c43da4e48974cfee1156",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
