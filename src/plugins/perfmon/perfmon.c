@@ -205,7 +205,7 @@ VLIB_INIT_FUNCTION (perfmon_init);
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "Performance monitor plugin",
+  .description = "Performance Monitor",
 #if !defined(__x86_64__)
   .default_disabled = 1,
 #endif

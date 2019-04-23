@@ -1105,7 +1105,7 @@ VLIB_INIT_FUNCTION (gtpu_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "GTPv1-U",
+    .description = "GPRS Tunnelling Protocol, User Data (GTPv1-U)",
 };
 /* *INDENT-ON* */
 

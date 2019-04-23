@@ -263,7 +263,7 @@ VLIB_INIT_FUNCTION (svs_api_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "Source VRF Select",
+    .description = "Source Virtual Routing and Fowarding (VRF) Select",
 };
 /* *INDENT-ON* */
 

@@ -170,7 +170,7 @@ VNET_FEATURE_INIT (ip4_nat44_ed_hairpinning, static) =
 
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "Network Address Translation",
+    .description = "Network Address Translation (NAT)",
 };
 /* *INDENT-ON* */
 

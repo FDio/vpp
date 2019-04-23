@@ -22,7 +22,7 @@
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "Marvell Device Plugin",
+  .description = "Marvell PP2 Device Driver",
 };
 /* *INDENT-ON* */
 

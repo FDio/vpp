@@ -1042,7 +1042,7 @@ VLIB_INIT_FUNCTION (memif_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "Packet Memory Interface (experimental)",
+    .description = "Packet Memory Interface (memif) -- Experimental",
 };
 /* *INDENT-ON* */
 

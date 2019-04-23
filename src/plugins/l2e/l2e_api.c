@@ -148,7 +148,7 @@ VLIB_API_INIT_FUNCTION (l2e_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "L2 Emulation",
+    .description = "Layer 2 (L2) Emulation",
 };
 /* *INDENT-ON* */
 
