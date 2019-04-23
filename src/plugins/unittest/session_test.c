@@ -1746,7 +1746,6 @@ session_test_mq (vlib_main_t * vm, unformat_input_t * input)
   vl_api_registration_t *reg;
   struct epoll_event ep_evt;
   u32 app_index, api_index;
-  u32 fifo_segment_index;
   app_worker_t *app_wrk;
   segment_manager_t *sm;
   svm_msg_q_msg_t msg;
@@ -1812,8 +1811,7 @@ session_test_mq (vlib_main_t * vm, unformat_input_t * input)
     }
 
   sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
-  segment_manager_alloc_session_fifos (sm, &rx_fifo, &tx_fifo,
-				       &fifo_segment_index);
+  segment_manager_alloc_session_fifos (sm, &rx_fifo, &tx_fifo);
   s.rx_fifo = rx_fifo;
   s.tx_fifo = tx_fifo;
   s.session_state = SESSION_STATE_READY;

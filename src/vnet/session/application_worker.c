@@ -150,11 +150,9 @@ static int
 app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
 {
   svm_fifo_t *rx_fifo = 0, *tx_fifo = 0;
-  u32 fifo_segment_index;
   int rv;
 
-  if ((rv = segment_manager_alloc_session_fifos (sm, &rx_fifo, &tx_fifo,
-						 &fifo_segment_index)))
+  if ((rv = segment_manager_alloc_session_fifos (sm, &rx_fifo, &tx_fifo)))
     return rv;
 
   rx_fifo->master_session_index = s->session_index;

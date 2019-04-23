@@ -512,15 +512,14 @@ segment_manager_try_alloc_fifos (svm_fifo_segment_private_t * fifo_segment,
 int
 segment_manager_alloc_session_fifos (segment_manager_t * sm,
 				     svm_fifo_t ** rx_fifo,
-				     svm_fifo_t ** tx_fifo,
-				     u32 * fifo_segment_index)
+				     svm_fifo_t ** tx_fifo)
 {
   svm_fifo_segment_private_t *fifo_segment = 0;
   int alloc_fail = 1, rv = 0, new_fs_index;
   segment_manager_properties_t *props;
+  u32 sm_index, fifo_segment_index;
   u8 added_a_segment = 0;
   u64 segment_handle;
-  u32 sm_index;
 
   props = segment_manager_properties_get (sm);
 
@@ -549,11 +548,11 @@ alloc_check:
 
       ASSERT (rx_fifo && tx_fifo);
       sm_index = segment_manager_index (sm);
-      *fifo_segment_index = segment_manager_segment_index (sm, fifo_segment);
+      fifo_segment_index = segment_manager_segment_index (sm, fifo_segment);
       (*tx_fifo)->segment_manager = sm_index;
       (*rx_fifo)->segment_manager = sm_index;
-      (*tx_fifo)->segment_index = *fifo_segment_index;
-      (*rx_fifo)->segment_index = *fifo_segment_index;
+      (*tx_fifo)->segment_index = fifo_segment_index;
+      (*rx_fifo)->segment_index = fifo_segment_index;
 
       if (added_a_segment)
 	{

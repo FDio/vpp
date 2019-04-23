@@ -151,8 +151,7 @@ void segment_manager_init_del (segment_manager_t * sm);
 u8 segment_manager_has_fifos (segment_manager_t * sm);
 int segment_manager_alloc_session_fifos (segment_manager_t * sm,
 					 svm_fifo_t ** server_rx_fifo,
-					 svm_fifo_t ** server_tx_fifo,
-					 u32 * fifo_segment_index);
+					 svm_fifo_t ** server_tx_fifo);
 int segment_manager_try_alloc_fifos (svm_fifo_segment_private_t * fs,
 				     u32 rx_fifo_size, u32 tx_fifo_size,
 				     svm_fifo_t ** rx_fifo,
