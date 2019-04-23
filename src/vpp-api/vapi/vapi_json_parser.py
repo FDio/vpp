@@ -167,13 +167,16 @@ class Message(object):
             else:
                 field_type = json_parser.lookup_type_like_id(field[0])
                 logger.debug("Parsing message field `%s'" % field)
-                if len(field) == 2:
+                l = len(field)
+                if any(type(n) is dict for n in field):
+                    l -= 1
+                if l == 2:
                     if self.header is not None and\
                             self.header.has_field(field[1]):
                         continue
                     p = field_class(field_name=field[1],
                                     field_type=field_type)
-                elif len(field) == 3:
+                elif l == 3:
                     if field[2] == 0:
                         raise ParseError(
                             "While parsing message `%s': variable length "
@@ -184,7 +187,7 @@ class Message(object):
                         field_name=field[1],
                         field_type=field_type,
                         array_len=field[2])
-                elif len(field) == 4:
+                elif l == 4:
                     nelem_field = None
                     for f in fields:
                         if f.name == field[3]:

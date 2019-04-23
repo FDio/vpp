@@ -96,14 +96,20 @@ class BaseTypes(object):
 
 
 class String(object):
-    def __init__(self):
+    def __init__(self, options):
         self.name = 'string'
         self.size = 1
         self.length_field_packer = BaseTypes('u32')
+        self.limit = options['limit'] if 'limit' in options else None
 
     def pack(self, list, kwargs=None):
         if not list:
             return self.length_field_packer.pack(0) + b""
+        if self.limit and len(list) > self.limit:
+            raise VPPSerializerValueError(
+                "Invalid argument length for: {}, {} maximum {}".
+                format(list, len(list), self.limit))
+
         return self.length_field_packer.pack(len(list)) + list.encode('utf8')
 
     def unpack(self, data, offset=0, result=None, ntc=False):
@@ -120,7 +126,7 @@ class String(object):
 types = {'u8': BaseTypes('u8'), 'u16': BaseTypes('u16'),
          'u32': BaseTypes('u32'), 'i32': BaseTypes('i32'),
          'u64': BaseTypes('u64'), 'f64': BaseTypes('f64'),
-         'bool': BaseTypes('bool'), 'string': String()}
+         'bool': BaseTypes('bool'), 'string': String}
 
 
 def vpp_get_type(name):
@@ -416,7 +422,15 @@ class VPPType(object):
                 logger.debug('Unknown type {}'.format(f_type))
                 raise VPPSerializerValueError(
                     'Unknown message type {}'.format(f_type))
-            if len(f) == 3:  # list
+
+            l = len(f)
+            options = [x for x in f if type(x) is dict]
+            if len(options):
+                self.options = options[0]
+                l -= 1
+            else:
+                self.options = {}
+            if l == 3:  # list
                 list_elements = f[2]
                 if list_elements == 0:
                     p = VLAList_legacy(f_name, f_type)
@@ -429,13 +443,17 @@ class VPPType(object):
                     p = FixedList(f_name, f_type, list_elements)
                     self.packers.append(p)
                     size += p.size
-            elif len(f) == 4:  # Variable length list
+            elif l == 4:  # Variable length list
                 length_index = self.fields.index(f[3])
                 p = VLAList(f_name, f_type, f[3], length_index)
                 self.packers.append(p)
             else:
-                self.packers.append(types[f_type])
-                size += types[f_type].size
+                if f_type == 'string':
+                    p = types[f_type](self.options)
+                else:
+                    p = types[f_type]
+                self.packers.append(p)
+                size += p.size
 
         self.size = size
         self.tuple = collections.namedtuple(name, self.fields, rename=True)
