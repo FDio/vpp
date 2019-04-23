@@ -820,7 +820,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	;
       else
 	if (unformat
-	    (line_input, "rmote-integ-key %U", unformat_ipsec_key, &rik))
+	    (line_input, "remote-integ-key %U", unformat_ipsec_key, &rik))
 	;
       else if (unformat (line_input, "integ-alg %U",
 			 unformat_ipsec_integ_alg, &a.integ_alg))
