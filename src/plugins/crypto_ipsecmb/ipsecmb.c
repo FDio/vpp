@@ -519,6 +519,7 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   clib_error_t *error;
   u32 eidx;
+  u8 *name;
 
   if ((error = vlib_call_init_function (vm, vnet_crypto_init)))
     return error;
@@ -526,8 +527,9 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   /*
    * A priority that is better than OpenSSL but worse than VPP natvie
    */
-  eidx = vnet_crypto_register_engine (vm, "ipsecmb", 80,
-				      "Intel IPSEC multi-buffer");
+  name = format (0, "Intel(R) Multi-Buffer Crypto for IPsec Library %s%c",
+		 IMB_VERSION_STR, 0);
+  eidx = vnet_crypto_register_engine (vm, "ipsecmb", 80, (char *) name);
 
   vec_validate (imbm->per_thread_data, tm->n_vlib_mains - 1);
 
