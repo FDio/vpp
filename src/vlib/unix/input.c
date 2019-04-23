@@ -145,8 +145,12 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     vlib_node_main_t *nm = &vm->node_main;
     u32 ticks_until_expiration;
     f64 timeout;
+    f64 now;
     int timeout_ms = 0, max_timeout_ms = 10;
     f64 vector_rate = vlib_last_vectors_per_main_loop (vm);
+
+    if (is_main == 0)
+      now = vlib_time_now (vm);
 
     /*
      * If we've been asked for a fixed-sleep between main loop polls,
@@ -194,8 +198,9 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }
 	node->input_main_loops_per_call = 0;
       }
-    else if (is_main == 0 && vector_rate < 2 &&
-	     nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
+    else if (is_main == 0 && vector_rate < 2
+	     && (vlib_global_main.time_last_barrier_release + 0.5 < now)
+	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
 	timeout = 10e-3;
 	timeout_ms = max_timeout_ms;
