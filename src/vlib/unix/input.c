@@ -145,8 +145,12 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     vlib_node_main_t *nm = &vm->node_main;
     u32 ticks_until_expiration;
     f64 timeout;
+    f64 now;
     int timeout_ms = 0, max_timeout_ms = 10;
     f64 vector_rate = vlib_last_vectors_per_main_loop (vm);
+
+    if (is_main == 0)
+      now = vlib_time_now (vm);
 
     /*
      * If we've been asked for a fixed-sleep between main loop polls,
@@ -194,8 +198,9 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }
 	node->input_main_loops_per_call = 0;
       }
-    else if (is_main == 0 && vector_rate < 2 &&
-	     nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
+    else if (is_main == 0 && vector_rate < 2
+	     && (vlib_global_main.time_last_barrier_release + 0.5 < now)
+	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
 	timeout = 10e-3;
 	timeout_ms = max_timeout_ms;
@@ -223,12 +228,32 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				      em->epoll_events,
 				      vec_len (em->epoll_events), timeout_ms);
 	  }
+
       }
     else
       {
+        /*
+         * Worker thread, no epoll fd's, sleep for 100us at a time
+         * and check for a barrier sync request
+         */
 	if (timeout_ms)
-	  usleep (timeout_ms * 1000);
-	return 0;
+          {
+            struct timespec ts, tsrem;
+            f64 limit = now + (f64) timeout_ms * 1e-3;
+
+            while (vlib_time_now(vm) < limit)
+              {
+                /* Sleep for 100us at a time */
+                ts.tv_sec = 0;
+                ts.tv_nsec = 1000 * 100;
+
+                while (nanosleep (&ts, &tsrem) < 0)
+                    ts = tsrem;
+                if (*vlib_worker_threads->wait_at_barrier)
+                  goto done;
+              }
+          }
+	goto done;
       }
   }
 
@@ -238,7 +263,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	vlib_panic_with_error (vm, clib_error_return_unix (0, "epoll_wait"));
 
       /* non fatal error (e.g. EINTR). */
-      return 0;
+      goto done;
     }
 
   em->epoll_waits += 1;
@@ -247,7 +272,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   for (e = em->epoll_events; e < em->epoll_events + n_fds_ready; e++)
     {
       u32 i = e->data.u32;
-      clib_file_t *f = fm->file_pool + i;
+      clib_file_t *f = pool_elt_at_index (fm->file_pool, i);
       clib_error_t *errors[4];
       int n_errors = 0;
 
@@ -286,6 +311,10 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      f->read_events++;
 	      errors[n_errors] = f->read_function (f);
+	      /* Make sure f is valid if the file pool moves */
+	      if (pool_is_free_index (fm->file_pool, i))
+		continue;
+	      f = pool_elt_at_index (fm->file_pool, i);
 	      n_errors += errors[n_errors] != 0;
 	    }
 	  if (e->events & EPOLLOUT)
@@ -314,6 +343,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
     }
 
+done:
   return 0;
 }
 
