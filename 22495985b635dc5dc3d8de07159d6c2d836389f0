@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a5fabd7a_8526a9e1",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-04-23T14:02:51Z",
+      "side": 1,
+      "message": "As a reaction to https://gerrit.fd.io/r/19074",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 9
+      },
+      "revId": "22495985b635dc5dc3d8de07159d6c2d836389f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
