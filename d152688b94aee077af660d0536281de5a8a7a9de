@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "f8676217_692ece31",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-04-23T09:49:51Z",
+      "side": 1,
+      "message": "I definitely agree on the fact that passing explicit params is not ideal. This could be avoided by either making a copy in the connected / accepted API calls to pass a session_endpoint_t to the function. Or we can modify the API calls to have a consistent parameter order and add an union.\nCurrently we have : \nConnected message (ip, is_ip4, port)\nAccepted message (port, is_ip4, ip)\nsession_endpoint_t (ip, port, is_ip4)",
+      "parentUuid": "e83b4a62_32e012f3",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 22
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7e9fe13c_d3c95b3a",
         "filename": "src/vnet/session/transport.c",
         "patchSetId": 6
