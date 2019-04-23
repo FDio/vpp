@@ -22,7 +22,7 @@
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "RDMA (ibverb) Device Plugin",
+  .description = "RDMA IBverbs Device Driver",
 };
 /* *INDENT-ON* */
 

@@ -273,7 +273,7 @@ VLIB_INIT_FUNCTION (nsh_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "Network Service Header",
+    .description = "Network Service Header (NSH)",
 };
 /* *INDENT-ON* */
 

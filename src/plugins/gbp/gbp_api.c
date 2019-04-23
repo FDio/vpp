@@ -1198,7 +1198,7 @@ VLIB_API_INIT_FUNCTION (gbp_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "Group Based Policy",
+    .description = "Group Based Policy (GBP)",
 };
 /* *INDENT-ON* */
 

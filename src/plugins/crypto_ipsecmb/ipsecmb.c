@@ -603,7 +603,7 @@ VLIB_INIT_FUNCTION (crypto_ipsecmb_init);
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "Intel IPSEC multi-buffer",
+  .description = "Intel IPSEC Multi-buffer Crypto Engine",
 };
 /* *INDENT-ON* */
 

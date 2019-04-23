@@ -917,7 +917,7 @@ VLIB_INIT_FUNCTION (tls_openssl_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "openssl based TLS Engine",
+    .description = "Transport Layer Security (TLS) Engine, OpenSSL Based",
 };
 /* *INDENT-ON* */
 
