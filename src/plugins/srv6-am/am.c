@@ -236,7 +236,7 @@ VLIB_INIT_FUNCTION (srv6_am_init);
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "Masquerading SRv6 proxy",
+  .description = "Masquerading Segment Routing for IPv6 (SRv6) Proxy",
 };
 /* *INDENT-ON* */
 

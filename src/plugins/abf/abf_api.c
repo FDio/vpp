@@ -312,7 +312,7 @@ VLIB_INIT_FUNCTION (abf_api_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "ACL based Forwarding",
+    .description = "Access Control List (ACL) Based Forwarding",
 };
 /* *INDENT-ON* */
 

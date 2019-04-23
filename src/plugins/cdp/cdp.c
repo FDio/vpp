@@ -189,6 +189,7 @@ VLIB_INIT_FUNCTION (cdp_init);
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
+  .description = "Cisco Discovery Protocol (CDP)",
 };
 /* *INDENT-ON* */
 

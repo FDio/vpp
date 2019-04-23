@@ -1758,7 +1758,7 @@ VLIB_INIT_FUNCTION (quic_init);
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "Quic transport protocol",
+  .description = "Quic Transport Protocol",
 };
 /* *INDENT-ON* */
 
