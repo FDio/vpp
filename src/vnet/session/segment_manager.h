@@ -40,7 +40,7 @@ typedef struct _segment_manager_properties
 typedef struct _segment_manager
 {
   /** Pool of segments allocated by this manager */
-  svm_fifo_segment_private_t *segments;
+  svm_fifo_segment_t *segments;
 
   /** rwlock that protects the segments pool */
   clib_rwlock_t segments_rwlock;
@@ -88,9 +88,6 @@ typedef struct segment_manager_main_init_args_
 
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
 
-/** Pool of segment managers */
-extern segment_manager_t *segment_managers;
-
 always_inline segment_manager_t *
 segment_manager_get (u32 index)
 {
@@ -125,21 +122,21 @@ segment_manager_make_segment_handle (u32 segment_manager_index,
 }
 
 u64 segment_manager_segment_handle (segment_manager_t * sm,
-				    svm_fifo_segment_private_t * segment);
+				    svm_fifo_segment_t * segment);
 
-segment_manager_t *segment_manager_new ();
+segment_manager_t *segment_manager_alloc ();
 int segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
 			  u32 prealloc_fifo_pairs);
 
-svm_fifo_segment_private_t *segment_manager_get_segment (segment_manager_t *,
-							 u32 segment_index);
-svm_fifo_segment_private_t *segment_manager_get_segment_w_handle (u64);
-svm_fifo_segment_private_t
+svm_fifo_segment_t *segment_manager_get_segment (segment_manager_t *,
+						 u32 segment_index);
+svm_fifo_segment_t *segment_manager_get_segment_w_handle (u64);
+svm_fifo_segment_t
   * segment_manager_get_segment_w_lock (segment_manager_t * sm,
 					u32 segment_index);
 int segment_manager_add_segment (segment_manager_t * sm, u32 segment_size);
 void segment_manager_del_segment (segment_manager_t * sm,
-				  svm_fifo_segment_private_t * fs);
+				  svm_fifo_segment_t * fs);
 void segment_manager_segment_reader_unlock (segment_manager_t * sm);
 void segment_manager_segment_writer_unlock (segment_manager_t * sm);
 
@@ -152,14 +149,14 @@ u8 segment_manager_has_fifos (segment_manager_t * sm);
 int segment_manager_alloc_session_fifos (segment_manager_t * sm,
 					 svm_fifo_t ** server_rx_fifo,
 					 svm_fifo_t ** server_tx_fifo);
-int segment_manager_try_alloc_fifos (svm_fifo_segment_private_t * fs,
+int segment_manager_try_alloc_fifos (svm_fifo_segment_t * fs,
 				     u32 rx_fifo_size, u32 tx_fifo_size,
 				     svm_fifo_t ** rx_fifo,
 				     svm_fifo_t ** tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
 u32 segment_manager_evt_q_expected_size (u32 q_size);
-svm_msg_q_t *segment_manager_alloc_queue (svm_fifo_segment_private_t * fs,
+svm_msg_q_t *segment_manager_alloc_queue (svm_fifo_segment_t * fs,
 					  segment_manager_properties_t *
 					  props);
 void segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q);
@@ -168,6 +165,8 @@ void segment_manager_app_detach (segment_manager_t * sm);
 void segment_manager_main_init (segment_manager_main_init_args_t * a);
 segment_manager_properties_t
   * segment_manager_properties_init (segment_manager_properties_t * sm);
+
+void segment_manager_format_sessions (segment_manager_t * sm, int verbose);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*
