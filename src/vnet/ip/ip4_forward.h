@@ -62,10 +62,13 @@ ip4_lookup_inline (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
   u32 thread_index = vm->thread_index;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t **b = bufs;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next = node->cached_next_index;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   while (n_left_from > 0)
     {
@@ -89,22 +92,15 @@ ip4_lookup_inline (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p4, *p5, *p6, *p7;
+	    vlib_prefetch_buffer_header (b[4], LOAD);
+	    vlib_prefetch_buffer_header (b[5], LOAD);
+	    vlib_prefetch_buffer_header (b[6], LOAD);
+	    vlib_prefetch_buffer_header (b[7], LOAD);
 
-	    p4 = vlib_get_buffer (vm, from[4]);
-	    p5 = vlib_get_buffer (vm, from[5]);
-	    p6 = vlib_get_buffer (vm, from[6]);
-	    p7 = vlib_get_buffer (vm, from[7]);
-
-	    vlib_prefetch_buffer_header (p4, LOAD);
-	    vlib_prefetch_buffer_header (p5, LOAD);
-	    vlib_prefetch_buffer_header (p6, LOAD);
-	    vlib_prefetch_buffer_header (p7, LOAD);
-
-	    CLIB_PREFETCH (p4->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p5->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p6->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p7->data, sizeof (ip0[0]), LOAD);
+	    CLIB_PREFETCH (b[4]->data, sizeof (ip0[0]), LOAD);
+	    CLIB_PREFETCH (b[5]->data, sizeof (ip0[0]), LOAD);
+	    CLIB_PREFETCH (b[6]->data, sizeof (ip0[0]), LOAD);
+	    CLIB_PREFETCH (b[7]->data, sizeof (ip0[0]), LOAD);
 	  }
 
 	  pi0 = to_next[0] = from[0];
@@ -117,10 +113,11 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  n_left_to_next -= 4;
 	  n_left_from -= 4;
 
-	  p0 = vlib_get_buffer (vm, pi0);
-	  p1 = vlib_get_buffer (vm, pi1);
-	  p2 = vlib_get_buffer (vm, pi2);
-	  p3 = vlib_get_buffer (vm, pi3);
+	  p0 = b[0];
+	  p1 = b[1];
+	  p2 = b[2];
+	  p3 = b[3];
+	  b += 4;
 
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
@@ -302,16 +299,11 @@ ip4_lookup_inline (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_prefetch_buffer_header (b[2], LOAD);
+	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), LOAD);
+	    CLIB_PREFETCH (b[2]->data, sizeof (ip0[0]), LOAD);
+	    CLIB_PREFETCH (b[3]->data, sizeof (ip0[0]), LOAD);
 	  }
 
 	  pi0 = to_next[0] = from[0];
@@ -322,8 +314,9 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
 
-	  p0 = vlib_get_buffer (vm, pi0);
-	  p1 = vlib_get_buffer (vm, pi1);
+	  p0 = b[0];
+	  p1 = b[1];
+	  b += 2;
 
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
@@ -441,7 +434,9 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  pi0 = from[0];
 	  to_next[0] = pi0;
 
-	  p0 = vlib_get_buffer (vm, pi0);
+	  p0 = b[0];
+	  b += 1;
+
 	  ip0 = vlib_buffer_get_current (p0);
 	  dst_addr0 = &ip0->dst_address;
 	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p0);
