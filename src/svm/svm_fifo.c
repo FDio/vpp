@@ -882,7 +882,7 @@ svm_fifo_dequeue_drop_all (svm_fifo_t * f)
 }
 
 int
-svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs)
+svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs)
 {
   u32 cursize, head, tail, head_idx;
 
@@ -914,7 +914,7 @@ svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs)
 }
 
 void
-svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs)
+svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs)
 {
   u32 head, head_idx;
 

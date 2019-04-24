@@ -325,7 +325,7 @@ typedef struct vppcom_main_t_
   /** Mapped segments table */
   uword *segment_table;
 
-  svm_fifo_segment_main_t segment_main;
+  fifo_segment_main_t segment_main;
 
 #ifdef VCL_ELOG
   /* VPP Event-logger */

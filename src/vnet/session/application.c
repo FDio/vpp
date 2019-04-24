@@ -504,7 +504,7 @@ static int
 application_alloc_and_init (app_init_args_t * a)
 {
   ssvm_segment_type_t seg_type = SSVM_SEGMENT_MEMFD;
-  segment_manager_properties_t *props;
+  segment_manager_props_t *props;
   vl_api_registration_t *reg;
   application_t *app;
   u64 *options;
@@ -553,7 +553,7 @@ application_alloc_and_init (app_init_args_t * a)
     app->flags |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 
   props = application_segment_manager_properties (app);
-  segment_manager_properties_init (props);
+  segment_manager_props_init (props);
   props->segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
   props->prealloc_fifos = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
   if (options[APP_OPTIONS_ADD_SEGMENT_SIZE])
@@ -719,7 +719,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   /*
    * Setup first segment manager
    */
-  sm = segment_manager_new ();
+  sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
 
   if ((rv = segment_manager_init (sm, app->sm_properties.segment_size,
@@ -746,7 +746,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
 int
 vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 {
-  svm_fifo_segment_private_t *fs;
+  fifo_segment_t *fs;
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
   segment_manager_t *sm;
@@ -838,7 +838,7 @@ app_name_from_api_index (u32 api_client_index)
 int
 vnet_application_attach (vnet_app_attach_args_t * a)
 {
-  svm_fifo_segment_private_t *fs;
+  fifo_segment_t *fs;
   application_t *app = 0;
   app_worker_t *app_wrk;
   segment_manager_t *sm;
@@ -1313,13 +1313,13 @@ application_remove_proxy (application_t * app)
   /* *INDENT-ON* */
 }
 
-segment_manager_properties_t *
+segment_manager_props_t *
 application_segment_manager_properties (application_t * app)
 {
   return &app->sm_properties;
 }
 
-segment_manager_properties_t *
+segment_manager_props_t *
 application_get_segment_manager_properties (u32 app_index)
 {
   application_t *app = application_get (app_index);
@@ -1404,7 +1404,7 @@ format_application (u8 * s, va_list * args)
 {
   application_t *app = va_arg (*args, application_t *);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
-  segment_manager_properties_t *props;
+  segment_manager_props_t *props;
   const u8 *app_ns_name, *app_name;
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
