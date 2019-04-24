@@ -92,7 +92,7 @@ typedef struct application_
   session_cb_vft_t cb_fns;
 
   /** Segment manager properties. Shared by all segment managers */
-  segment_manager_properties_t sm_properties;
+  segment_manager_props_t sm_properties;
 
   /** Pool of mappings that keep track of workers associated to this app */
   app_worker_map_t *worker_maps;
@@ -197,10 +197,10 @@ u8 application_has_global_scope (application_t * app);
 void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
 
-segment_manager_properties_t *application_get_segment_manager_properties (u32
-									  app_index);
+segment_manager_props_t *application_get_segment_manager_properties (u32
+								     app_index);
 
-segment_manager_properties_t
+segment_manager_props_t
   * application_segment_manager_properties (application_t * app);
 
 /*
