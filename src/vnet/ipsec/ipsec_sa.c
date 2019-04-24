@@ -66,7 +66,7 @@ ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
 /**
  * 'stack' (resolve the recursion for) the SA tunnel destination
  */
-void
+static void
 ipsec_sa_stack (ipsec_sa_t * sa)
 {
   ipsec_main_t *im = &ipsec_main;
