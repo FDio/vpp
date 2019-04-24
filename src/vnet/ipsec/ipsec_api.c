@@ -909,23 +909,13 @@ vl_api_ipsec_select_backend_t_handler (vl_api_ipsec_select_backend_t * mp)
   switch (protocol)
     {
     case IPSEC_PROTOCOL_ESP:
-      if (pool_is_free_index (im->esp_backends, mp->index))
-	{
-	  rv = VNET_API_ERROR_INVALID_VALUE;
-	  break;
-	}
-      ipsec_select_esp_backend (im, mp->index);
+      rv = ipsec_select_esp_backend (im, mp->index);
       break;
     case IPSEC_PROTOCOL_AH:
-      if (pool_is_free_index (im->ah_backends, mp->index))
-	{
-	  rv = VNET_API_ERROR_INVALID_VALUE;
-	  break;
-	}
-      ipsec_select_ah_backend (im, mp->index);
+      rv = ipsec_select_ah_backend (im, mp->index);
       break;
     default:
-      rv = VNET_API_ERROR_INVALID_VALUE;
+      rv = VNET_API_ERROR_INVALID_PROTOCOL;
       break;
     }
 #else
