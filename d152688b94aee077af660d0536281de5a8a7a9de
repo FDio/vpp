@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "92ea4449_215693e8",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-04-24T12:50:35Z",
+      "side": 1,
+      "message": "Right, I did try something out this way, adding an extra (but small) copy on the accepted / connected callbacks.\nIt would have been cool to be able to directly pass pointers to the messages data, but having packed \u0026 non packed structs, that\u0027s not really doable that way",
+      "parentUuid": "415c48f7_0f8ba5a6",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 22
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7e9fe13c_d3c95b3a",
         "filename": "src/vnet/session/transport.c",
         "patchSetId": 6
