@@ -167,6 +167,30 @@
     },
     {
       "key": {
+        "uuid": "3a893563_32dcf3a1",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-04-24T16:33:59Z",
+      "side": 1,
+      "message": "Ok, so I put back passing the 3 parameters, will make a different patch with the updated messages.",
+      "parentUuid": "897100fe_b1c47af8",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 22
+      },
+      "revId": "d152688b94aee077af660d0536281de5a8a7a9de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7e9fe13c_d3c95b3a",
         "filename": "src/vnet/session/transport.c",
         "patchSetId": 6
