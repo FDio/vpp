@@ -90,14 +90,6 @@ nsh_interface_admin_up_down (vnet_main_t * vnm, u32 nsh_hw_if, u32 flags)
   return 0;
 }
 
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
 /**
  * @brief Naming for NSH tunnel
  *
@@ -118,7 +110,6 @@ format_nsh_name (u8 * s, va_list * args)
 VNET_DEVICE_CLASS (nsh_device_class, static) = {
   .name = "NSH",
   .format_device_name = format_nsh_name,
-  .tx_function = dummy_interface_tx,
   .admin_up_down_function = nsh_interface_admin_up_down,
 };
 /* *INDENT-ON* */
