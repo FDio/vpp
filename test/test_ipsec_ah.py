@@ -313,7 +313,7 @@ class TestIpsecAhAll(ConfigIpsecAH,
         super(TestIpsecAhAll, self).tearDown()
 
     def test_integ_algs(self):
-        """All Engines SHA[1_96, 256, 394, 512] w/ & w/o ESN"""
+        """All Engines SHA[1_96, 256, 384, 512] w/ & w/o ESN"""
         # foreach VPP crypto engine
         engines = ["ia32", "ipsecmb", "openssl"]
 
