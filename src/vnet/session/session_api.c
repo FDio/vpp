@@ -212,8 +212,7 @@ mq_send_session_accepted_cb (session_t * s)
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->handle = session_handle (s);
 
-      session_get_endpoint (s, (ip46_address_t *) mp->ip, &mp->port,
-			    &mp->is_ip4, 0 /* is_lcl */ );
+      session_get_endpoint (s, &mp->rmt, 0 /* is_lcl */ );
     }
   else
     {
@@ -223,9 +222,9 @@ mq_send_session_accepted_cb (session_t * s)
       listener = listen_session_get (s->listener_index);
       al = app_listener_get (app, listener->al_index);
       mp->listener_handle = app_listener_handle (al);
-      mp->is_ip4 = session_type_is_ip4 (listener->session_type);
+      mp->rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
+      mp->rmt.port = ct->c_rmt_port;
       mp->handle = session_handle (s);
-      mp->port = ct->c_rmt_port;
       vpp_queue = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
     }
@@ -348,8 +347,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       mp->handle = session_handle (s);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
 
-      session_get_endpoint (s, (ip46_address_t *) mp->lcl_ip, &mp->lcl_port,
-			    &mp->is_ip4, 1 /* is_lcl */ );
+      session_get_endpoint (s, &mp->lcl, 1 /* is_lcl */ );
 
       mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
       mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
@@ -362,8 +360,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
       cct = (ct_connection_t *) session_get_transport (s);
       mp->handle = session_handle (s);
-      mp->lcl_port = cct->c_lcl_port;
-      mp->is_ip4 = cct->c_is_ip4;
+      mp->lcl.port = cct->c_lcl_port;
+      mp->lcl.is_ip4 = cct->c_is_ip4;
       vpp_mq = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
       mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);

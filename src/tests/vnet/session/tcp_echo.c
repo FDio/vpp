@@ -655,9 +655,9 @@ session_accepted_handler (session_accepted_msg_t * mp)
   if (start_time == 0.0)
     start_time = clib_time_now (&em->clib_time);
 
-  ip_str = format (0, "%U", format_ip46_address, &mp->ip, mp->is_ip4);
+  ip_str = format (0, "%U", format_ip46_address, &mp->rmt.ip, mp->rmt.is_ip4);
   clib_warning ("Accepted session from: %s:%d", ip_str,
-		clib_net_to_host_u16 (mp->port));
+		clib_net_to_host_u16 (mp->rmt.port));
 
   /* Allocate local session and set it up */
   pool_get (em->sessions, session);
@@ -755,8 +755,8 @@ session_connected_handler (session_connected_msg_t * mp)
 
   em->n_clients_connected += 1;
   clib_warning ("session %u (0x%llx) connected with local ip %U port %d",
-		session_index, mp->handle, format_ip46_address, mp->lcl_ip,
-		mp->is_ip4, clib_net_to_host_u16 (mp->lcl_port));
+		session_index, mp->handle, format_ip46_address, &mp->lcl.ip,
+		mp->lcl.is_ip4, clib_net_to_host_u16 (mp->lcl.port));
 }
 
 static void

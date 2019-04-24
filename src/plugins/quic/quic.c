@@ -1621,38 +1621,37 @@ quic_app_rx_callback (session_t * udp_session)
 }
 
 always_inline void
-quic_common_get_transport_endpoint (quic_ctx_t * ctx, ip46_address_t * ip,
-				    u16 * port, u8 * is_ip4, u8 is_lcl)
+quic_common_get_transport_endpoint (quic_ctx_t * ctx,
+				    transport_endpoint_t * tep, u8 is_lcl)
 {
   session_t *udp_session;
   QUIC_DBG (2, "Called quic_get_transport_endpoint");
   if (ctx->c_quic_ctx_id.is_stream)
-    *is_ip4 = 255;		/* well this is ugly */
+    tep->is_ip4 = 255;		/* well this is ugly */
   else
     {
       udp_session =
 	session_get_from_handle (ctx->c_quic_ctx_id.udp_session_handle);
-      session_get_endpoint (udp_session, ip, port, is_ip4, is_lcl);
+      session_get_endpoint (udp_session, tep, is_lcl);
     }
 }
 
 static void
-quic_get_transport_listener_endpoint (u32 listener_index, ip46_address_t * ip,
-				      u16 * port, u8 * is_ip4, u8 is_lcl)
+quic_get_transport_listener_endpoint (u32 listener_index,
+				      transport_endpoint_t * tep, u8 is_lcl)
 {
   quic_ctx_t *ctx;
   ctx = quic_ctx_get (listener_index);
-  quic_common_get_transport_endpoint (ctx, ip, port, is_ip4, is_lcl);
+  quic_common_get_transport_endpoint (ctx, tep, is_lcl);
 }
 
 static void
 quic_get_transport_endpoint (u32 ctx_index, u32 thread_index,
-			     ip46_address_t * ip, u16 * port, u8 * is_ip4,
-			     u8 is_lcl)
+			     transport_endpoint_t * tep, u8 is_lcl)
 {
   quic_ctx_t *ctx;
   ctx = quic_ctx_get_w_thread (ctx_index, thread_index);
-  quic_common_get_transport_endpoint (ctx, ip, port, is_ip4, is_lcl);
+  quic_common_get_transport_endpoint (ctx, tep, is_lcl);
 }
 
 /*****************************************************************************

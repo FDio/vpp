@@ -338,8 +338,8 @@ void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 void session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
 					   void *rpc_args);
 transport_connection_t *session_get_transport (session_t * s);
-void session_get_endpoint (session_t * s, ip46_address_t * ip, u16 * port,
-			   u8 * is_ip4, u8 is_lcl);
+void session_get_endpoint (session_t * s, transport_endpoint_t * tep,
+			   u8 is_lcl);
 
 u8 *format_session (u8 * s, va_list * args);
 uword unformat_session (unformat_input_t * input, va_list * args);
