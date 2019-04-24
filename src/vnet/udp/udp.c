@@ -344,9 +344,11 @@ int
 udpc_connection_open (transport_endpoint_cfg_t * rmt)
 {
   udp_connection_t *uc;
+  /* Reproduce the logic of udp_open_connection to find the correct thread */
+  u32 thread_index = vlib_num_workers ()? 1 : vlib_get_main ()->thread_index;
   u32 uc_index;
   uc_index = udp_open_connection (rmt);
-  uc = udp_connection_get (uc_index, vlib_get_thread_index ());
+  uc = udp_connection_get (uc_index, thread_index);
   uc->is_connected = 1;
   return uc_index;
 }
