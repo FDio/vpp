@@ -68,12 +68,13 @@ openssl_ops_enc_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       int out_len;
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
 	RAND_bytes (op->iv, 16);
 
-      EVP_EncryptInit_ex (ctx, cipher, NULL, op->key, op->iv);
+      EVP_EncryptInit_ex (ctx, cipher, NULL, key->data, op->iv);
       EVP_EncryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
       if (out_len < op->len)
 	EVP_EncryptFinal_ex (ctx, op->dst + out_len, &out_len);
@@ -93,9 +94,10 @@ openssl_ops_dec_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       int out_len;
 
-      EVP_DecryptInit_ex (ctx, cipher, NULL, op->key, op->iv);
+      EVP_DecryptInit_ex (ctx, cipher, NULL, key->data, op->iv);
       EVP_DecryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
       if (out_len < op->len)
 	EVP_DecryptFinal_ex (ctx, op->dst + out_len, &out_len);
@@ -115,6 +117,7 @@ openssl_ops_enc_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       u32 nonce[3];
       int len;
 
@@ -126,7 +129,7 @@ openssl_ops_enc_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 
       EVP_EncryptInit_ex (ctx, cipher, 0, 0, 0);
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, NULL);
-      EVP_EncryptInit_ex (ctx, 0, 0, op->key, (u8 *) nonce);
+      EVP_EncryptInit_ex (ctx, 0, 0, key->data, (u8 *) nonce);
       if (op->aad_len)
 	EVP_EncryptUpdate (ctx, NULL, &len, op->aad, op->aad_len);
       EVP_EncryptUpdate (ctx, op->dst, &len, op->src, op->len);
@@ -148,11 +151,12 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       int len;
 
       EVP_DecryptInit_ex (ctx, cipher, 0, 0, 0);
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, op->iv_len, 0);
-      EVP_DecryptInit_ex (ctx, 0, 0, op->key, op->iv);
+      EVP_DecryptInit_ex (ctx, 0, 0, key->data, op->iv);
       if (op->aad_len)
 	EVP_DecryptUpdate (ctx, 0, &len, op->aad, op->aad_len);
       EVP_DecryptUpdate (ctx, op->dst, &len, op->src, op->len);
@@ -181,10 +185,11 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       unsigned int out_len;
       size_t sz = op->digest_len ? op->digest_len : EVP_MD_size (md);
 
-      HMAC_Init_ex (ctx, op->key, op->key_len, md, NULL);
+      HMAC_Init_ex (ctx, key->data, vec_len (key->data), md, NULL);
       HMAC_Update (ctx, op->src, op->len);
       HMAC_Final (ctx, buffer, &out_len);
 
