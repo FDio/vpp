@@ -34,7 +34,16 @@ typedef struct
 typedef struct ipsecmb_main_t_
 {
   ipsecmb_per_thread_data_t *per_thread_data;
+  void **key_data;
 } ipsecmb_main_t;
+
+#define EXPANDED_KEY_N_BYTES (16 * 15)
+
+typedef struct
+{
+  u8 enc_key_exp[EXPANDED_KEY_N_BYTES];
+  u8 dec_key_exp[EXPANDED_KEY_N_BYTES];
+} ipsecmb_aes_cbc_key_data_t;
 
 /**
  * AES GCM key=expansion VFT
@@ -68,9 +77,9 @@ static ipsecmb_main_t ipsecmb_main;
  * (Alg, key-len-bits, key-len-bytes, iv-len-bytes)
  */
 #define foreach_ipsecmb_cbc_cipher_op                          \
-  _(AES_128_CBC, 128, 16, 16)                                  \
-  _(AES_192_CBC, 192, 24, 16)                                  \
-  _(AES_256_CBC, 256, 32, 16)
+  _(AES_128_CBC, 16, 16)                                       \
+  _(AES_192_CBC, 24, 16)                                       \
+  _(AES_256_CBC, 32, 16)
 
 /*
  * (Alg, key-len-bits, key-len-bytes, iv-len-bytes)
@@ -217,8 +226,6 @@ ipsecmb_ops_hmac_##a (vlib_main_t * vm,                                 \
 foreach_ipsecmb_hmac_op;
 #undef _
 
-#define EXPANDED_KEY_N_BYTES (16 * 15)
-
 always_inline void
 ipsecmb_retire_cipher_job (JOB_AES_HMAC * job, u32 * n_fail)
 {
@@ -238,8 +245,9 @@ ipsecmb_ops_cbc_cipher_inline (vlib_main_t * vm,
 			       ipsecmb_per_thread_data_t * ptd,
 			       vnet_crypto_op_t * ops[],
 			       u32 n_ops, u32 key_len, u32 iv_len,
-			       keyexp_t fn, JOB_CIPHER_DIRECTION direction)
+			       JOB_CIPHER_DIRECTION direction)
 {
+  ipsecmb_main_t *imbm = &ipsecmb_main;
   JOB_AES_HMAC *job;
   u32 i, n_fail = 0;
 
@@ -248,13 +256,10 @@ ipsecmb_ops_cbc_cipher_inline (vlib_main_t * vm,
    */
   for (i = 0; i < n_ops; i++)
     {
-      u8 aes_enc_key_expanded[EXPANDED_KEY_N_BYTES];
-      u8 aes_dec_key_expanded[EXPANDED_KEY_N_BYTES];
+      ipsecmb_aes_cbc_key_data_t *kd;
       vnet_crypto_op_t *op = ops[i];
-      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+      kd = (ipsecmb_aes_cbc_key_data_t *) imbm->key_data[op->key_index];
       __m128i iv;
-
-      fn (key->data, aes_enc_key_expanded, aes_dec_key_expanded);
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -276,8 +281,8 @@ ipsecmb_ops_cbc_cipher_inline (vlib_main_t * vm,
 	}
 
       job->aes_key_len_in_bytes = key_len;
-      job->aes_enc_key_expanded = aes_enc_key_expanded;
-      job->aes_dec_key_expanded = aes_dec_key_expanded;
+      job->aes_enc_key_expanded = kd->enc_key_exp;
+      job->aes_dec_key_expanded = kd->dec_key_exp;
       job->iv = op->iv;
       job->iv_len_in_bytes = iv_len;
 
@@ -301,7 +306,7 @@ ipsecmb_ops_cbc_cipher_inline (vlib_main_t * vm,
   return n_ops - n_fail;
 }
 
-#define _(a, b, c, d)                                                   \
+#define _(a, b, c)                                                      \
 static_always_inline u32                                                \
 ipsecmb_ops_cbc_cipher_enc_##a (vlib_main_t * vm,                       \
                                 vnet_crypto_op_t * ops[],               \
@@ -313,14 +318,13 @@ ipsecmb_ops_cbc_cipher_enc_##a (vlib_main_t * vm,                       \
   imbm = &ipsecmb_main;                                                 \
   ptd = vec_elt_at_index (imbm->per_thread_data, vm->thread_index);     \
                                                                         \
-  return ipsecmb_ops_cbc_cipher_inline (vm, ptd, ops, n_ops, c, d,      \
-                                        ptd->mgr->keyexp_##b,           \
+  return ipsecmb_ops_cbc_cipher_inline (vm, ptd, ops, n_ops, b, c,      \
                                         ENCRYPT);                       \
   }
 foreach_ipsecmb_cbc_cipher_op;
 #undef _
 
-#define _(a, b, c, d)                                                   \
+#define _(a, b, c)                                                      \
 static_always_inline u32                                                \
 ipsecmb_ops_cbc_cipher_dec_##a (vlib_main_t * vm,                       \
                                 vnet_crypto_op_t * ops[],               \
@@ -332,8 +336,7 @@ ipsecmb_ops_cbc_cipher_dec_##a (vlib_main_t * vm,                       \
   imbm = &ipsecmb_main;                                                 \
   ptd = vec_elt_at_index (imbm->per_thread_data, vm->thread_index);     \
                                                                         \
-  return ipsecmb_ops_cbc_cipher_inline (vm, ptd, ops, n_ops, c, d,      \
-                                        ptd->mgr->keyexp_##b,           \
+  return ipsecmb_ops_cbc_cipher_inline (vm, ptd, ops, n_ops, b, c,      \
                                         DECRYPT);                       \
   }
 foreach_ipsecmb_cbc_cipher_op;
@@ -514,6 +517,72 @@ crypto_ipsecmb_iv_init (ipsecmb_main_t * imbm)
   return (NULL);
 }
 
+static void
+crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
+			    vnet_crypto_key_index_t idx)
+{
+  ipsecmb_main_t *imbm = &ipsecmb_main;
+  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
+  ipsecmb_aes_cbc_key_data_t *kd;
+  ipsecmb_per_thread_data_t *ptd;
+
+  switch (key->alg)
+    {
+    case VNET_CRYPTO_ALG_AES_128_CBC:
+    case VNET_CRYPTO_ALG_AES_192_CBC:
+    case VNET_CRYPTO_ALG_AES_256_CBC:
+      break;
+    default:
+      return;
+      break;
+    }
+
+  if (kop == VNET_CRYPTO_KEY_OP_DEL)
+    {
+      if (idx >= vec_len (imbm->key_data))
+	return;
+
+      if (imbm->key_data[idx] == 0)
+	return;
+
+      clib_memset_u8 (imbm->key_data[idx], 0,
+		      clib_mem_size (imbm->key_data[idx]));
+      clib_mem_free (imbm->key_data[idx]);
+      return;
+    }
+
+  vec_validate_aligned (imbm->key_data, idx, CLIB_CACHE_LINE_BYTES);
+
+  if (kop == VNET_CRYPTO_KEY_OP_MODIFY && imbm->key_data[idx])
+    {
+      clib_memset_u8 (imbm->key_data[idx], 0,
+		      clib_mem_size (imbm->key_data[idx]));
+      clib_mem_free (imbm->key_data[idx]);
+    }
+
+  kd = imbm->key_data[idx] =
+    clib_mem_alloc_aligned (sizeof (ipsecmb_aes_cbc_key_data_t),
+			    CLIB_CACHE_LINE_BYTES);
+
+  ptd = vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
+
+  switch (key->alg)
+    {
+    case VNET_CRYPTO_ALG_AES_128_CBC:
+      ptd->mgr->keyexp_128 (key->data, kd->enc_key_exp, kd->dec_key_exp);
+      break;
+    case VNET_CRYPTO_ALG_AES_192_CBC:
+      ptd->mgr->keyexp_192 (key->data, kd->enc_key_exp, kd->dec_key_exp);
+      break;
+    case VNET_CRYPTO_ALG_AES_256_CBC:
+      ptd->mgr->keyexp_256 (key->data, kd->enc_key_exp, kd->dec_key_exp);
+      break;
+    default:
+      return;
+      break;
+    }
+}
+
 static clib_error_t *
 crypto_ipsecmb_init (vlib_main_t * vm)
 {
@@ -574,13 +643,13 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 
   foreach_ipsecmb_hmac_op;
 #undef _
-#define _(a, b, c, d)                                                   \
+#define _(a, b, c)                                                      \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
                                     ipsecmb_ops_cbc_cipher_enc_##a);    \
 
   foreach_ipsecmb_cbc_cipher_op;
 #undef _
-#define _(a, b, c, d)                                                   \
+#define _(a, b, c)                                                      \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
                                     ipsecmb_ops_cbc_cipher_dec_##a);    \
 
@@ -599,6 +668,7 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   foreach_ipsecmb_gcm_cipher_op;
 #undef _
 
+  vnet_crypto_register_key_handler (vm, eidx, crypto_ipsecmb_key_handler);
   return (NULL);
 }
 
