@@ -17,9 +17,9 @@
 
 #include <vlibmemory/api.h>
 #include <svm/message_queue.h>
-#include <svm/svm_fifo_segment.h>
 #include <vnet/session/session_types.h>
 #include <vnet/tls/tls_test.h>
+#include <svm/fifo_segment.h>
 
 typedef struct _stream_session_cb_vft
 {
