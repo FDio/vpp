@@ -284,9 +284,7 @@ typedef struct session_accepted_msg_
   uword server_tx_fifo;
   u64 segment_handle;
   uword vpp_event_queue_address;
-  u16 port;
-  u8 is_ip4;
-  u8 ip[16];
+  transport_endpoint_t rmt;
 } __clib_packed session_accepted_msg_t;
 
 typedef struct session_accepted_reply_msg_
@@ -315,9 +313,7 @@ typedef struct session_connected_msg_
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[64];
-  u8 lcl_ip[16];
-  u8 is_ip4;
-  u16 lcl_port;
+  transport_endpoint_t lcl;
 } __clib_packed session_connected_msg_t;
 
 typedef struct session_disconnected_msg_

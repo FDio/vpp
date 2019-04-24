@@ -1292,17 +1292,15 @@ session_get_transport (session_t * s)
 }
 
 void
-session_get_endpoint (session_t * s, ip46_address_t * ip, u16 * port,
-		      u8 * is_ip4, u8 is_lcl)
+session_get_endpoint (session_t * s, transport_endpoint_t * tep, u8 is_lcl)
 {
   if (s->session_state != SESSION_STATE_LISTENING)
     return transport_get_endpoint (session_get_transport_proto (s),
-				   s->connection_index, s->thread_index, ip,
-				   port, is_ip4, is_lcl);
+				   s->connection_index, s->thread_index, tep,
+				   is_lcl);
   else
     return transport_get_listener_endpoint (session_get_transport_proto (s),
-					    s->connection_index, ip, port,
-					    is_ip4, is_lcl);
+					    s->connection_index, tep, is_lcl);
 }
 
 transport_connection_t *

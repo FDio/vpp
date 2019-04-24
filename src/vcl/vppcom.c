@@ -309,9 +309,9 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
   session->tx_fifo = tx_fifo;
 
   session->session_state = STATE_ACCEPT;
-  session->transport.rmt_port = mp->port;
-  session->transport.is_ip4 = mp->is_ip4;
-  clib_memcpy_fast (&session->transport.rmt_ip, mp->ip,
+  session->transport.rmt_port = mp->rmt.port;
+  session->transport.is_ip4 = mp->rmt.is_ip4;
+  clib_memcpy_fast (&session->transport.rmt_ip, &mp->rmt.ip,
 		    sizeof (ip46_address_t));
 
   vcl_session_table_add_vpp_handle (wrk, mp->handle, session->session_index);
@@ -322,9 +322,9 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
 
   VDBG (1, "session %u [0x%llx]: client accept request from %s address %U"
 	" port %d queue %p!", session->session_index, mp->handle,
-	mp->is_ip4 ? "IPv4" : "IPv6", format_ip46_address, &mp->ip,
-	mp->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-	clib_net_to_host_u16 (mp->port), session->vpp_evt_q);
+	mp->rmt.is_ip4 ? "IPv4" : "IPv6", format_ip46_address, &mp->rmt.ip,
+	mp->rmt.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+	clib_net_to_host_u16 (mp->rmt.port), session->vpp_evt_q);
   vcl_evt (VCL_EVT_ACCEPT, session, listen_session, session_index);
 
   return session->session_index;
@@ -393,10 +393,10 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   session->tx_fifo = tx_fifo;
   session->vpp_handle = mp->handle;
   session->vpp_thread_index = rx_fifo->master_thread_index;
-  session->transport.is_ip4 = mp->is_ip4;
-  clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
+  session->transport.is_ip4 = mp->lcl.is_ip4;
+  clib_memcpy_fast (&session->transport.lcl_ip, &mp->lcl.ip,
 		    sizeof (session->transport.lcl_ip));
-  session->transport.lcl_port = mp->lcl_port;
+  session->transport.lcl_port = mp->lcl.port;
   session->session_state = STATE_CONNECT;
 
   /* Add it to lookup table */

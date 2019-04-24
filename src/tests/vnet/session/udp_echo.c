@@ -514,10 +514,10 @@ session_accepted_handler (session_accepted_msg_t * mp)
   tx_fifo->client_session_index = session_index;
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
-  clib_memcpy_fast (&session->transport.rmt_ip, mp->ip,
+  clib_memcpy_fast (&session->transport.rmt_ip, &mp->rmt.ip,
 		    sizeof (ip46_address_t));
-  session->transport.is_ip4 = mp->is_ip4;
-  session->transport.rmt_port = mp->port;
+  session->transport.is_ip4 = mp->rmt.is_ip4;
+  session->transport.rmt_port = mp->rmt.port;
 
   hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
   if (pool_elts (utm->sessions) && (pool_elts (utm->sessions) % 20000) == 0)
@@ -618,10 +618,10 @@ session_connected_handler (session_connected_msg_t * mp)
 
       session->rx_fifo->client_session_index = session->session_index;
       session->tx_fifo->client_session_index = session->session_index;
-      clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
+      clib_memcpy_fast (&session->transport.lcl_ip, &mp->lcl.ip,
 			sizeof (ip46_address_t));
-      session->transport.is_ip4 = mp->is_ip4;
-      session->transport.lcl_port = mp->lcl_port;
+      session->transport.is_ip4 = mp->lcl.is_ip4;
+      session->transport.lcl_port = mp->lcl.port;
 
       unformat_init_vector (input, utm->connect_uri);
       if (!unformat (input, "%U", unformat_uri, sep))
