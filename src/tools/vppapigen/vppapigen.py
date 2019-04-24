@@ -18,15 +18,14 @@ sys.dont_write_bytecode = True
 
 # Global dictionary of new types (including enums)
 global_types = {}
-global_crc = 0
 
 
-def global_type_add(name):
+def global_type_add(name, obj):
     '''Add new type to the dictionary of types '''
     type_name = 'vl_api_' + name + '_t'
     if type_name in global_types:
         raise KeyError('Type is already defined: {}'.format(name))
-    global_types[type_name] = True
+    global_types[type_name] = obj
 
 
 # All your trace are belong to us!
@@ -122,15 +121,9 @@ class VPPAPILexer(object):
     t_ignore = ' \t'
 
 
-#
-# Side-effect: Sets global_crc
-#
-def crc_block(block):
-    global global_crc
+def crc_block_combine(block, crc):
     s = str(block).encode()
-    global_crc = binascii.crc32(s, global_crc)
-    return binascii.crc32(s) & 0xffffffff
-
+    return binascii.crc32(s, crc) & 0xffffffff
 
 class Service():
     def __init__(self, caller, reply, events=None, stream=False):
@@ -145,7 +138,7 @@ class Typedef():
         self.name = name
         self.flags = flags
         self.block = block
-        self.crc = crc_block(block)
+        self.crc = str(block).encode()
         self.manual_print = False
         self.manual_endian = False
         for f in flags:
@@ -153,7 +146,7 @@ class Typedef():
                 self.manual_print = True
             elif f == 'manual_endian':
                 self.manual_endian = True
-        global_type_add(name)
+        global_type_add(name, self)
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
@@ -161,7 +154,6 @@ class Typedef():
 
 class Using():
     def __init__(self, name, alias):
-        global global_crc
         self.name = name
 
         if isinstance(alias, Array):
@@ -170,9 +162,8 @@ class Using():
         else:
             a = { 'type': alias.fieldtype }  # noqa: E201,E202
         self.alias = a
-        self.crc = binascii.crc32(str(alias).encode()) & 0xffffffff
-        global_crc = binascii.crc32(str(alias).encode(), global_crc)
-        global_type_add(name)
+        self.crc = str(alias).encode()
+        global_type_add(name, self)
 
     def __repr__(self):
         return self.name + str(self.alias)
@@ -183,11 +174,10 @@ class Union():
         self.type = 'Union'
         self.manual_print = False
         self.manual_endian = False
-        global global_crc
         self.name = name
         self.block = block
-        self.crc = crc_block(block)
-        global_type_add(name)
+        self.crc = str(block).encode()
+        global_type_add(name, self)
 
     def __repr__(self):
         return str(self.block)
@@ -198,7 +188,7 @@ class Define():
         self.name = name
         self.flags = flags
         self.block = block
-        self.crc = crc_block(block)
+        self.crc = str(block).encode()
         self.dont_trace = False
         self.manual_print = False
         self.manual_endian = False
@@ -238,8 +228,8 @@ class Enum():
                 block[i] = [b, count]
 
         self.block = block
-        self.crc = crc_block(block)
-        global_type_add(name)
+        self.crc = str(block).encode()
+        global_type_add(name, self)
 
     def __repr__(self):
         return self.name + str(self.block)
@@ -271,7 +261,7 @@ class Import():
 class Option():
     def __init__(self, option):
         self.option = option
-        self.crc = crc_block(option)
+        self.crc = str(option).encode()
 
     def __repr__(self):
         return str(self.option)
@@ -623,8 +613,13 @@ class VPPAPI(object):
         s['types'] = []
         s['Import'] = []
         s['Alias'] = {}
+        crc = 0
         for o in objs:
             tname = o.__class__.__name__
+            try:
+                crc = binascii.crc32(o.crc, crc)
+            except:
+                pass
             if isinstance(o, Define):
                 s[tname].append(o)
                 if o.autoreply:
@@ -651,6 +646,8 @@ class VPPAPI(object):
         svcs = {s.caller: s for s in s['Service']}
         replies = {s.reply: s for s in s['Service']}
         seen_services = {}
+
+        s['file_crc'] = crc & 0xffffffff
 
         for service in svcs:
             if service not in msgs:
@@ -748,6 +745,23 @@ def dirlist_add(dirs):
 def dirlist_get():
     return dirlist
 
+def foldup_blocks(block, crc):
+    for b in block:
+        # Look up CRC in user defined types
+        if b.fieldtype.startswith('vl_api_'):
+            # Recursively
+            t = global_types[b.fieldtype]
+            try:
+                crc = crc_block_combine(t.block, crc)
+                return foldup_blocks(t.block, crc)
+            except:
+                pass
+    return crc
+
+def foldup_crcs(s):
+    for f in s:
+        f.crc = foldup_blocks(f.block,
+                              binascii.crc32(f.crc))
 
 #
 # Main
@@ -805,7 +819,8 @@ def main():
     # Add msg_id field
     s['Define'] = add_msg_id(s['Define'])
 
-    file_crc = global_crc & 0xffffffff
+    # Fold up CRCs
+    foldup_crcs(s['Define'])
 
     #
     # Debug
@@ -849,7 +864,7 @@ def main():
         raise Exception('Error importing output plugin: {}, {}'
                         .format(module_path, err))
 
-    result = plugin.run(filename, s, file_crc)
+    result = plugin.run(filename, s)
     if result:
         print(result, file=args.output)
     else:

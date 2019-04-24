@@ -113,9 +113,8 @@ class Enum(SimpleType):
 
 
 class Union(Type):
-    def __init__(self, name, type_pairs, crc):
+    def __init__(self, name, type_pairs):
         Type.__init__(self, name)
-        self.crc = crc
         self.type_pairs = type_pairs
         self.depends = [t for t, _ in self.type_pairs]
 
@@ -363,8 +362,7 @@ class JsonParser(object):
                     try:
                         type_pairs = [[self.lookup_type_like_id(t), n]
                                       for t, n in u[1:-1]]
-                        crc = u[-1]["crc"]
-                        union = self.union_class(name, type_pairs, crc)
+                        union = self.union_class(name, type_pairs)
                         progress = progress + 1
                     except ParseError as e:
                         exceptions.append(e)
