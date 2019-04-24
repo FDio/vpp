@@ -661,17 +661,16 @@ ipsec_select_backend_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
-  u32 backend_index;
-  ipsec_main_t *im = &ipsec_main;
-
-  if (pool_elts (im->sad) > 0)
-    {
-      return clib_error_return (0,
-				"Cannot change IPsec backend, while %u SA entries are configured",
-				pool_elts (im->sad));
-    }
-
   unformat_input_t _line_input, *line_input = &_line_input;
+  ipsec_main_t *im = &ipsec_main;
+  clib_error_t *error;
+  u32 backend_index;
+
+  error = ipsec_rsc_in_use (im);
+
+  if (error)
+    return error;
+
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
