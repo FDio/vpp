@@ -3,7 +3,7 @@ import socket
 import struct
 
 from scapy.layers.inet import IP, ICMP, TCP, UDP
-from scapy.layers.ipsec import SecurityAssociation
+from scapy.layers.ipsec import SecurityAssociation, ESP
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 
@@ -308,7 +308,11 @@ class IpsecTra4(object):
 
         # a packet that does not decrypt does not move the window forward
         bogus_sa = SecurityAssociation(self.encryption_type,
-                                       p.vpp_tra_spi)
+                                       p.vpp_tra_spi,
+                                       crypt_algo=p.crypt_algo,
+                                       crypt_key=p.crypt_key[::-1],
+                                       auth_algo=p.auth_algo,
+                                       auth_key=p.auth_key[::-1])
         pkt = (Ether(src=self.tra_if.remote_mac,
                      dst=self.tra_if.local_mac) /
                bogus_sa.encrypt(IP(src=self.tra_if.remote_ip4,
@@ -319,6 +323,22 @@ class IpsecTra4(object):
 
         self.assert_packet_counter_equal(
             '/err/%s/Integrity check failed' % self.tra4_decrypt_node_name, 17)
+
+        # a malformed 'runt' packet
+        #  created by a mis-constructed SA
+        if (ESP == self.encryption_type):
+            bogus_sa = SecurityAssociation(self.encryption_type,
+                                           p.vpp_tra_spi)
+            pkt = (Ether(src=self.tra_if.remote_mac,
+                         dst=self.tra_if.local_mac) /
+                   bogus_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                       dst=self.tra_if.local_ip4) /
+                                    ICMP(),
+                                    seq_num=350))
+            self.send_and_assert_no_replies(self.tra_if, pkt * 17)
+
+            self.assert_packet_counter_equal(
+                '/err/%s/undersized packet' % self.tra4_decrypt_node_name, 17)
 
         # which we can determine since this packet is still in the window
         pkt = (Ether(src=self.tra_if.remote_mac,

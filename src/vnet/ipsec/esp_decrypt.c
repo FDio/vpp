@@ -44,6 +44,7 @@ typedef enum
  _(INTEG_ERROR, "Integrity check failed")                       \
  _(CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)") \
  _(REPLAY, "SA replayed packet")                                \
+ _(RUNT, "undersized packet")                                   \
  _(CHAINED_BUFFER, "chained buffers (packet dropped)")          \
  _(OVERSIZED_HEADER, "buffer with oversized header (dropped)")  \
  _(NO_TAIL_SPACE, "no enough buffer tail space (dropped)")
@@ -189,6 +190,13 @@ esp_decrypt_inline (vlib_main_t * vm,
       if (ipsec_sa_anti_replay_check (sa0, &((esp_header_t *) payload)->seq))
 	{
 	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_REPLAY];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto next;
+	}
+
+      if (pd->current_length < cpd.icv_sz + esp_sz + cpd.iv_sz)
+	{
+	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_RUNT];
 	  next[0] = ESP_DECRYPT_NEXT_DROP;
 	  goto next;
 	}
