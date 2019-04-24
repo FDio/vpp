@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 #include <svm/svm_fifo.h>
-#include <svm/svm_fifo_segment.h>
 #include <vlib/vlib.h>
+#include <svm/fifo_segment.h>
 
 #define SFIFO_TEST_I(_cond, _comment, _args...)			\
 ({								\
@@ -186,7 +186,7 @@ compare_data (u8 * data1, u8 * data2, u32 start, u32 len, u32 * index)
 }
 
 int
-tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 {
   svm_fifo_t *f;
   u32 fifo_size = 1 << 20;
@@ -423,7 +423,7 @@ err:
 }
 
 static int
-tcp_test_fifo2 (vlib_main_t * vm)
+sfifo_test_fifo2 (vlib_main_t * vm)
 {
   svm_fifo_t *f;
   u32 fifo_size = 1 << 20;
@@ -505,7 +505,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
 }
 
 static int
-tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 {
   svm_fifo_t *f;
   u32 fifo_size = 4 << 10;
@@ -730,7 +730,7 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-tcp_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
 {
   svm_fifo_t *f;
   u32 fifo_size = 6 << 10;
@@ -803,7 +803,7 @@ fifo_pos (svm_fifo_t * f, u32 pos)
 }
 
 static int
-tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 {
   svm_fifo_t *f;
   u32 fifo_size = 401, j = 0, offset = 200;
@@ -932,7 +932,7 @@ tcp_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-tcp_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 {
   int verbose = 0, fifo_size = 201, start_offset = 100, i, j, rv;
   int test_n_bytes, deq_bytes, enq_bytes, n_deqs, n_enqs;
@@ -1206,7 +1206,7 @@ svm_fifo_trace_elem_t fifo_trace[] = {};
 /* *INDENT-ON* */
 
 static int
-tcp_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
 {
   svm_fifo_t f;
   int verbose = 0;
@@ -1236,15 +1236,15 @@ tcp_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
-static svm_fifo_segment_main_t segment_main;
+static fifo_segment_main_t segment_main;
 
 static int
-tcp_test_fifo_segment_hello_world (int verbose)
+sfifo_test_fifo_segment_hello_world (int verbose)
 {
-  svm_fifo_segment_create_args_t _a, *a = &_a;
-  svm_fifo_segment_main_t *sm = &segment_main;
+  fifo_segment_create_args_t _a, *a = &_a;
+  fifo_segment_main_t *sm = &segment_main;
   u8 *test_data, *retrieved_data = 0;
-  svm_fifo_segment_private_t *sp;
+  fifo_segment_t *sp;
   svm_fifo_t *f;
   int rv;
 
@@ -1252,12 +1252,12 @@ tcp_test_fifo_segment_hello_world (int verbose)
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
 
-  rv = svm_fifo_segment_create (sm, a);
+  rv = fifo_segment_create (sm, a);
 
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
-  f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
+  sp = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  f = fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FIFO);
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
 
@@ -1281,19 +1281,19 @@ tcp_test_fifo_segment_hello_world (int verbose)
 
   vec_free (test_data);
   vec_free (retrieved_data);
-  svm_fifo_segment_free_fifo (sp, f, FIFO_SEGMENT_RX_FREELIST);
-  svm_fifo_segment_delete (sm, sp);
+  fifo_segment_free_fifo (sp, f);
+  fifo_segment_delete (sm, sp);
   return 0;
 }
 
 static int
-tcp_test_fifo_segment_slave (int verbose)
+sfifo_test_fifo_segment_slave (int verbose)
 {
-  svm_fifo_segment_create_args_t _a, *a = &_a;
-  svm_fifo_segment_main_t *sm = &segment_main;
+  fifo_segment_create_args_t _a, *a = &_a;
+  fifo_segment_main_t *sm = &segment_main;
   u8 *test_data, *retrieved_data = 0;
-  svm_fifo_segment_private_t *sp;
-  svm_fifo_segment_header_t *fsh;
+  fifo_segment_t *sp;
+  fifo_segment_header_t *fsh;
   ssvm_shared_header_t *sh;
   svm_fifo_t *f;
   u32 *result;
@@ -1305,13 +1305,13 @@ tcp_test_fifo_segment_slave (int verbose)
   clib_memset (a, 0, sizeof (*a));
   a->segment_name = "fifo-test1";
 
-  rv = svm_fifo_segment_attach (sm, a);
+  rv = fifo_segment_attach (sm, a);
 
   SFIFO_TEST (!rv, "svm_fifo_segment_attach returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  sp = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
   sh = sp->ssvm.sh;
-  fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
+  fsh = (fifo_segment_header_t *) sh->opaque[0];
 
   /* might wanna wait.. */
   f = fsh->fifos;
@@ -1340,11 +1340,11 @@ tcp_test_fifo_segment_slave (int verbose)
 }
 
 static int
-tcp_test_fifo_segment_master_slave (int verbose)
+sfifo_test_fifo_segment_master_slave (int verbose)
 {
-  svm_fifo_segment_create_args_t _a, *a = &_a;
-  svm_fifo_segment_main_t *sm = &segment_main;
-  svm_fifo_segment_private_t *sp;
+  fifo_segment_create_args_t _a, *a = &_a;
+  fifo_segment_main_t *sm = &segment_main;
+  fifo_segment_t *sp;
   svm_fifo_t *f;
   u8 *test_data;
   u32 *result;
@@ -1356,18 +1356,18 @@ tcp_test_fifo_segment_master_slave (int verbose)
     SFIFO_TEST (0, "fork failed");
 
   if (!pid)
-    tcp_test_fifo_segment_slave (verbose);
+    sfifo_test_fifo_segment_slave (verbose);
 
   clib_memset (a, 0, sizeof (*a));
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
 
-  rv = svm_fifo_segment_create (sm, a);
+  rv = fifo_segment_create (sm, a);
 
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
-  f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
+  sp = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  f = fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FIFO);
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo alloc");
 
@@ -1389,17 +1389,17 @@ tcp_test_fifo_segment_master_slave (int verbose)
   SFIFO_TEST (*result == 0, "slave reported no error");
 
   vec_free (test_data);
-  svm_fifo_segment_free_fifo (sp, f, FIFO_SEGMENT_RX_FREELIST);
-  svm_fifo_segment_delete (sm, sp);
+  fifo_segment_free_fifo (sp, f);
+  fifo_segment_delete (sm, sp);
   return 0;
 }
 
 static int
-tcp_test_fifo_segment_mempig (int verbose)
+sfifo_test_fifo_segment_mempig (int verbose)
 {
-  svm_fifo_segment_create_args_t _a, *a = &_a;
-  svm_fifo_segment_main_t *sm = &segment_main;
-  svm_fifo_segment_private_t *sp;
+  fifo_segment_create_args_t _a, *a = &_a;
+  fifo_segment_main_t *sm = &segment_main;
+  fifo_segment_t *sp;
   svm_fifo_t *f;
   svm_fifo_t **flist = 0;
   int rv;
@@ -1410,15 +1410,15 @@ tcp_test_fifo_segment_mempig (int verbose)
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
 
-  rv = svm_fifo_segment_create (sm, a);
+  rv = fifo_segment_create (sm, a);
 
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  sp = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
 
   for (i = 0; i < 1000; i++)
     {
-      f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
+      f = fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FIFO);
       if (f == 0)
 	break;
       vec_add1 (flist, f);
@@ -1429,14 +1429,14 @@ tcp_test_fifo_segment_mempig (int verbose)
   for (i = 0; i < vec_len (flist); i++)
     {
       f = flist[i];
-      svm_fifo_segment_free_fifo (sp, f, FIFO_SEGMENT_RX_FREELIST);
+      fifo_segment_free_fifo (sp, f);
     }
 
   _vec_len (flist) = 0;
 
   for (i = 0; i < 1000; i++)
     {
-      f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
+      f = fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FIFO);
       if (f == 0)
 	break;
       vec_add1 (flist, f);
@@ -1447,15 +1447,15 @@ tcp_test_fifo_segment_mempig (int verbose)
   for (i = 0; i < vec_len (flist); i++)
     {
       f = flist[i];
-      svm_fifo_segment_free_fifo (sp, f, FIFO_SEGMENT_RX_FREELIST);
+      fifo_segment_free_fifo (sp, f);
     }
 
-  svm_fifo_segment_delete (sm, sp);
+  fifo_segment_delete (sm, sp);
   return 0;
 }
 
 static int
-tcp_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
 {
   int rv, verbose = 0;
 
@@ -1465,27 +1465,27 @@ tcp_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
 	verbose = 1;
       else if (unformat (input, "masterslave"))
 	{
-	  if ((rv = tcp_test_fifo_segment_master_slave (verbose)))
+	  if ((rv = sfifo_test_fifo_segment_master_slave (verbose)))
 	    return -1;
 	}
       else if (unformat (input, "basic"))
 	{
-	  if ((rv = tcp_test_fifo_segment_hello_world (verbose)))
+	  if ((rv = sfifo_test_fifo_segment_hello_world (verbose)))
 	    return -1;
 	}
       else if (unformat (input, "mempig"))
 	{
-	  if ((rv = tcp_test_fifo_segment_mempig (verbose)))
+	  if ((rv = sfifo_test_fifo_segment_mempig (verbose)))
 	    return -1;
 	}
       else if (unformat (input, "all"))
 	{
-	  if ((rv = tcp_test_fifo_segment_hello_world (verbose)))
+	  if ((rv = sfifo_test_fifo_segment_hello_world (verbose)))
 	    return -1;
-	  if ((rv = tcp_test_fifo_segment_mempig (verbose)))
+	  if ((rv = sfifo_test_fifo_segment_mempig (verbose)))
 	    return -1;
 	  /* Pretty slow so avoid running it always
-	     if ((rv = tcp_test_fifo_segment_master_slave (verbose)))
+	     if ((rv = sfifo_test_fifo_segment_master_slave (verbose)))
 	     return -1;
 	   */
 	}
@@ -1509,27 +1509,27 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "fifo1"))
-	res = tcp_test_fifo1 (vm, input);
+	res = sfifo_test_fifo1 (vm, input);
       else if (unformat (input, "fifo2"))
-	res = tcp_test_fifo2 (vm);
+	res = sfifo_test_fifo2 (vm);
       else if (unformat (input, "fifo3"))
-	res = tcp_test_fifo3 (vm, input);
+	res = sfifo_test_fifo3 (vm, input);
       else if (unformat (input, "fifo4"))
-	res = tcp_test_fifo4 (vm, input);
+	res = sfifo_test_fifo4 (vm, input);
       else if (unformat (input, "fifo5"))
-	res = tcp_test_fifo5 (vm, input);
+	res = sfifo_test_fifo5 (vm, input);
       else if (unformat (input, "replay"))
-	res = tcp_test_fifo_replay (vm, input);
+	res = sfifo_test_fifo_replay (vm, input);
       else if (unformat (input, "grow"))
-	res = tcp_test_fifo_grow (vm, input);
+	res = sfifo_test_fifo_grow (vm, input);
       else if (unformat (input, "segment"))
-	res = tcp_test_fifo_segment (vm, input);
+	res = sfifo_test_fifo_segment (vm, input);
       else if (unformat (input, "all"))
 	{
-	  if ((res = tcp_test_fifo1 (vm, input)))
+	  if ((res = sfifo_test_fifo1 (vm, input)))
 	    goto done;
 
-	  if ((res = tcp_test_fifo2 (vm)))
+	  if ((res = sfifo_test_fifo2 (vm)))
 	    goto done;
 
 	  /*
@@ -1537,46 +1537,46 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	   */
 	  str = "nsegs 10 overlap seed 123";
 	  unformat_init_cstring (input, str);
-	  if ((res = tcp_test_fifo3 (vm, input)))
+	  if ((res = sfifo_test_fifo3 (vm, input)))
 	    goto done;
 	  unformat_free (input);
 
 	  str = "nsegs 10 overlap seed 123 in-seq-all";
 	  unformat_init_cstring (input, str);
-	  if ((res = tcp_test_fifo3 (vm, input)))
+	  if ((res = sfifo_test_fifo3 (vm, input)))
 	    goto done;
 	  unformat_free (input);
 
 	  str = "nsegs 10 overlap seed 123 initial-offset 3917";
 	  unformat_init_cstring (input, str);
-	  if ((res = tcp_test_fifo3 (vm, input)))
+	  if ((res = sfifo_test_fifo3 (vm, input)))
 	    goto done;
 	  unformat_free (input);
 
 	  str = "nsegs 10 overlap seed 123 initial-offset 3917 drop";
 	  unformat_init_cstring (input, str);
-	  if ((res = tcp_test_fifo3 (vm, input)))
+	  if ((res = sfifo_test_fifo3 (vm, input)))
 	    goto done;
 	  unformat_free (input);
 
 	  str = "nsegs 10 seed 123 initial-offset 3917 drop no-randomize";
 	  unformat_init_cstring (input, str);
-	  if ((res = tcp_test_fifo3 (vm, input)))
+	  if ((res = sfifo_test_fifo3 (vm, input)))
 	    goto done;
 	  unformat_free (input);
 
-	  if ((res = tcp_test_fifo4 (vm, input)))
+	  if ((res = sfifo_test_fifo4 (vm, input)))
 	    goto done;
 
-	  if ((res = tcp_test_fifo5 (vm, input)))
+	  if ((res = sfifo_test_fifo5 (vm, input)))
 	    goto done;
 
-	  if ((res = tcp_test_fifo_grow (vm, input)))
+	  if ((res = sfifo_test_fifo_grow (vm, input)))
 	    goto done;
 
 	  str = "all";
 	  unformat_init_cstring (input, str);
-	  if ((res = tcp_test_fifo_segment (vm, input)))
+	  if ((res = sfifo_test_fifo_segment (vm, input)))
 	    goto done;
 	}
       else

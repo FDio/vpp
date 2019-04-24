@@ -91,10 +91,10 @@ ct_session_endpoint (session_t * ll, session_endpoint_t * sep)
 int
 ct_session_connect_notify (session_t * ss)
 {
-  svm_fifo_segment_private_t *seg;
   ct_connection_t *sct, *cct;
   app_worker_t *client_wrk;
   segment_manager_t *sm;
+  fifo_segment_t *seg;
   u64 segment_handle;
   int is_fail = 0;
   session_t *cs;
@@ -167,11 +167,11 @@ ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
 		       ct_connection_t * ct, session_t * ls, session_t * ll)
 {
   u32 round_rx_fifo_sz, round_tx_fifo_sz, sm_index, seg_size;
-  segment_manager_properties_t *props;
-  svm_fifo_segment_private_t *seg;
+  segment_manager_props_t *props;
   application_t *server;
   segment_manager_t *sm;
   u32 margin = 16 << 10;
+  fifo_segment_t *seg;
   u64 segment_handle;
   int seg_index, rv;
 

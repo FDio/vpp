@@ -15,10 +15,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <svm/svm_fifo_segment.h>
 #include <vcl/vppcom.h>
 #include <vcl/vcl_debug.h>
 #include <vcl/vcl_private.h>
+#include <svm/fifo_segment.h>
 
 __thread uword __vcl_worker_index = ~0;
 
@@ -924,8 +924,8 @@ vppcom_app_create (char *app_name)
   vcm->main_pid = getpid ();
   vcm->app_name = format (0, "%s", app_name);
   vppcom_init_error_string_table ();
-  svm_fifo_segment_main_init (&vcm->segment_main, vcl_cfg->segment_baseva,
-			      20 /* timeout in secs */ );
+  fifo_segment_main_init (&vcm->segment_main, vcl_cfg->segment_baseva,
+			  20 /* timeout in secs */ );
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);
   clib_rwlock_init (&vcm->segment_table_lock);
@@ -1611,7 +1611,7 @@ vppcom_session_read_segments (uint32_t session_handle,
 	}
     }
 
-  n_read = svm_fifo_segments (rx_fifo, (svm_fifo_segment_t *) ds);
+  n_read = svm_fifo_segments (rx_fifo, (svm_fifo_seg_t *) ds);
   svm_fifo_unset_event (rx_fifo);
 
   return n_read;
@@ -1628,7 +1628,7 @@ vppcom_session_free_segments (uint32_t session_handle,
   if (PREDICT_FALSE (!s || s->is_vep))
     return;
 
-  svm_fifo_segments_free (s->rx_fifo, (svm_fifo_segment_t *) ds);
+  svm_fifo_segments_free (s->rx_fifo, (svm_fifo_seg_t *) ds);
 }
 
 int
