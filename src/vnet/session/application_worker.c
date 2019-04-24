@@ -95,7 +95,7 @@ app_worker_free (app_worker_t * app_wrk)
       sm = segment_manager_get (app_wrk->connects_seg_manager);
       sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
       sm->first_is_protected = 0;
-      segment_manager_init_del (sm);
+      segment_manager_init_free (sm);
     }
 
   /* If first segment manager is used by a listener */
@@ -108,7 +108,7 @@ app_worker_free (app_worker_t * app_wrk)
       /* .. and has no fifos, e.g. it might be used for redirected sessions,
        * remove it */
       if (!segment_manager_has_fifos (sm))
-	segment_manager_del (sm);
+	segment_manager_free (sm);
     }
 
   pool_put (app_workers, app_wrk);
@@ -140,7 +140,7 @@ app_worker_alloc_segment_manager (app_worker_t * app_wrk)
       return sm;
     }
 
-  sm = segment_manager_new ();
+  sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
 
   return sm;
@@ -238,7 +238,7 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
     }
   else
     {
-      segment_manager_init_del (sm);
+      segment_manager_init_free (sm);
     }
   hash_unset (app_wrk->listeners_table, handle);
 }
@@ -698,63 +698,20 @@ format_app_worker (u8 * s, va_list * args)
 void
 app_worker_format_connects (app_worker_t * app_wrk, int verbose)
 {
-  svm_fifo_segment_private_t *fifo_segment;
-  vlib_main_t *vm = vlib_get_main ();
   segment_manager_t *sm;
-  const u8 *app_name;
-  u8 *s = 0;
 
   /* Header */
   if (!app_wrk)
     {
-      if (verbose)
-	vlib_cli_output (vm, "%-40s%-20s%-15s%-10s", "Connection", "App",
-			 "API Client", "SegManager");
-      else
-	vlib_cli_output (vm, "%-40s%-20s", "Connection", "App");
+      segment_manager_format_sessions (0, verbose);
       return;
     }
 
   if (app_wrk->connects_seg_manager == (u32) ~ 0)
     return;
 
-  app_name = application_name_from_index (app_wrk->app_index);
-
-  /* Across all fifo segments */
   sm = segment_manager_get (app_wrk->connects_seg_manager);
-
-  /* *INDENT-OFF* */
-  segment_manager_foreach_segment_w_lock (fifo_segment, sm, ({
-    svm_fifo_t *fifo;
-    u8 *str;
-
-    fifo = svm_fifo_segment_get_fifo_list (fifo_segment);
-    while (fifo)
-      {
-        u32 session_index, thread_index;
-        session_t *session;
-
-        session_index = fifo->master_session_index;
-        thread_index = fifo->master_thread_index;
-
-        session = session_get (session_index, thread_index);
-        str = format (0, "%U", format_session, session, verbose);
-
-        if (verbose)
-          s = format (s, "%-40s%-20s%-15u%-10u", str, app_name,
-                      app_wrk->api_client_index, app_wrk->connects_seg_manager);
-        else
-          s = format (s, "%-40s%-20s", str, app_name);
-
-        vlib_cli_output (vm, "%v", s);
-        vec_reset_length (s);
-        vec_free (str);
-
-        fifo = fifo->next;
-      }
-    vec_free (s);
-  }));
-  /* *INDENT-ON* */
+  segment_manager_format_sessions (sm, verbose);
 }
 
 /*
