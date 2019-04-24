@@ -441,7 +441,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_crypto_op_init (op, sa0->crypto_enc_op_id);
 	  op->iv = payload - iv_sz;
 	  op->src = op->dst = payload;
-	  op->key = sa0->crypto_key.data;
+	  op->key_index = sa0->crypto_key_index;
 	  op->len = payload_len - icv_sz;
 	  op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
 	  op->user_data = b - bufs;
@@ -469,8 +469,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_crypto_op_init (op, sa0->integ_op_id);
 	  op->src = payload - iv_sz - sizeof (esp_header_t);
 	  op->digest = payload + payload_len - icv_sz;
-	  op->key = sa0->integ_key.data;
-	  op->key_len = sa0->integ_key.len;
+	  op->key_index = sa0->integ_key_index;
 	  op->digest_len = icv_sz;
 	  op->len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
 	  op->user_data = b - bufs;
