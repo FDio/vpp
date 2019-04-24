@@ -100,6 +100,16 @@ ipsec_add_node (vlib_main_t * vm, const char *node_name,
   *out_next_index = vlib_node_add_next (vm, prev_node->index, node->index);
 }
 
+static void
+ipsec_add_feature (const char *arc_name,
+		   const char *node_name, u32 * out_feature_index)
+{
+  u8 arc;
+
+  arc = vnet_get_feature_arc_index (arc_name);
+  *out_feature_index = vnet_get_feature_index (arc, node_name);
+}
+
 u32
 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
 			   const char *name,
@@ -132,13 +142,16 @@ u32
 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 			    const char *name,
 			    const char *esp4_encrypt_node_name,
+			    const char *esp4_encrypt_node_tun_name,
 			    const char *esp4_decrypt_node_name,
 			    const char *esp6_encrypt_node_name,
+			    const char *esp6_encrypt_node_tun_name,
 			    const char *esp6_decrypt_node_name,
 			    check_support_cb_t esp_check_support_cb,
 			    add_del_sa_sess_cb_t esp_add_del_sa_sess_cb)
 {
   ipsec_esp_backend_t *b;
+
   pool_get (im->esp_backends, b);
   b->name = format (0, "%s%c", name, 0);
 
@@ -151,27 +164,42 @@ ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
   ipsec_add_node (vm, esp6_decrypt_node_name, "ipsec6-input-feature",
 		  &b->esp6_decrypt_node_index, &b->esp6_decrypt_next_index);
 
+  ipsec_add_feature ("ip4-output", esp4_encrypt_node_tun_name,
+		     &b->esp4_encrypt_tun_feature_index);
+  ipsec_add_feature ("ip6-output", esp6_encrypt_node_tun_name,
+		     &b->esp6_encrypt_tun_feature_index);
+
   b->check_support_cb = esp_check_support_cb;
   b->add_del_sa_sess_cb = esp_add_del_sa_sess_cb;
   return b - im->esp_backends;
 }
 
-static walk_rc_t
-ipsec_sa_restack (ipsec_sa_t * sa, void *ctx)
+clib_error_t *
+ipsec_rsc_in_use (ipsec_main_t * im)
 {
-  ipsec_sa_stack (sa);
+  /* return an error is crypto resource are in use */
+  if (pool_elts (im->sad) > 0)
+    return clib_error_return (0,
+			      "%d SA entries configured",
+			      pool_elts (im->sad));
 
-  return (WALK_CONTINUE);
+  if (pool_elts (im->tunnel_interfaces))
+    return clib_error_return (0,
+			      "%d tunnel-interface entries configured",
+			      pool_elts (im->tunnel_interfaces));
+
+  return (NULL);
 }
 
 int
 ipsec_select_ah_backend (ipsec_main_t * im, u32 backend_idx)
 {
-  if (pool_elts (im->sad) > 0
-      || pool_is_free_index (im->ah_backends, backend_idx))
-    {
-      return -1;
-    }
+  if (ipsec_rsc_in_use (im))
+    return VNET_API_ERROR_RSRC_IN_USE;
+
+  if (pool_is_free_index (im->ah_backends, backend_idx))
+    return VNET_API_ERROR_INVALID_VALUE;
+
   ipsec_ah_backend_t *b = pool_elt_at_index (im->ah_backends, backend_idx);
   im->ah_current_backend = backend_idx;
   im->ah4_encrypt_node_index = b->ah4_encrypt_node_index;
@@ -183,18 +211,18 @@ ipsec_select_ah_backend (ipsec_main_t * im, u32 backend_idx)
   im->ah6_encrypt_next_index = b->ah6_encrypt_next_index;
   im->ah6_decrypt_next_index = b->ah6_decrypt_next_index;
 
-  ipsec_sa_walk (ipsec_sa_restack, NULL);
   return 0;
 }
 
 int
 ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
 {
-  if (pool_elts (im->sad) > 0
-      || pool_is_free_index (im->esp_backends, backend_idx))
-    {
-      return -1;
-    }
+  if (ipsec_rsc_in_use (im))
+    return VNET_API_ERROR_RSRC_IN_USE;
+
+  if (pool_is_free_index (im->esp_backends, backend_idx))
+    return VNET_API_ERROR_INVALID_VALUE;
+
   ipsec_esp_backend_t *b = pool_elt_at_index (im->esp_backends, backend_idx);
   im->esp_current_backend = backend_idx;
   im->esp4_encrypt_node_index = b->esp4_encrypt_node_index;
@@ -206,7 +234,9 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   im->esp6_encrypt_next_index = b->esp6_encrypt_next_index;
   im->esp6_decrypt_next_index = b->esp6_decrypt_next_index;
 
-  ipsec_sa_walk (ipsec_sa_restack, NULL);
+  im->esp4_encrypt_tun_feature_index = b->esp4_encrypt_tun_feature_index;
+  im->esp6_encrypt_tun_feature_index = b->esp6_encrypt_tun_feature_index;
+
   return 0;
 }
 
@@ -243,8 +273,10 @@ ipsec_init (vlib_main_t * vm)
 
   idx = ipsec_register_esp_backend (vm, im, "default openssl backend",
 				    "esp4-encrypt",
+				    "esp4-encrypt-tun",
 				    "esp4-decrypt",
 				    "esp6-encrypt",
+				    "esp6-encrypt-tun",
 				    "esp6-decrypt",
 				    ipsec_check_esp_support, NULL);
   im->esp_default_backend = idx;
