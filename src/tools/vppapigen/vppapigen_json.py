@@ -26,7 +26,7 @@ def walk_services(s):
     return r
 
 
-def walk_defs(s):
+def walk_defs(s, is_message = False):
     r = []
     for t in s:
         d = []
@@ -47,7 +47,7 @@ def walk_defs(s):
             else:
                 raise ValueError("Error in processing array type %s" % b)
 
-        if t.crc:
+        if is_message and t.crc:
             c = {}
             c['crc'] = "{0:#0{1}x}".format(t.crc, 10)
             d.append(c)
@@ -59,15 +59,15 @@ def walk_defs(s):
 #
 # Plugin entry point
 #
-def run(filename, s, file_crc):
+def run(filename, s):
     j = {}
 
     j['types'] = walk_defs([o for o in s['types'] if o.__class__.__name__ == 'Typedef'])
-    j['messages'] = walk_defs(s['Define'])
+    j['messages'] = walk_defs(s['Define'], True)
     j['unions'] = walk_defs([o for o in s['types'] if o.__class__.__name__ == 'Union'])
     j['enums'] = walk_enums([o for o in s['types'] if o.__class__.__name__ == 'Enum'])
     j['services'] = walk_services(s['Service'])
     j['options'] = s['Option']
     j['aliases'] = s['Alias']
-    j['vl_api_version'] = hex(file_crc)
+    j['vl_api_version'] = hex(s['file_crc'])
     return json.dumps(j, indent=4, separators=(',', ': '))

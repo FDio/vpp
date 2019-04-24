@@ -365,9 +365,8 @@ class JsonParser(object):
                         continue
                     try:
                         type_pairs = [[self.lookup_type_like_id(t), n]
-                                      for t, n in u[1:-1]]
-                        crc = u[-1]["crc"]
-                        union = self.union_class(name, type_pairs, crc)
+                                      for t, n in u[1:]]
+                        union = self.union_class(name, type_pairs, 0)
                         progress = progress + 1
                     except ParseError as e:
                         exceptions.append(e)
