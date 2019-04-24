@@ -318,7 +318,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       /* Handle interface naming for devices with multiple ports sharing same PCI ID */
       if (pci_dev &&
-	  ((next_port_id = rte_eth_find_next (i)) != RTE_MAX_ETHPORTS))
+	  ((next_port_id = rte_eth_find_next (i + 1)) != RTE_MAX_ETHPORTS))
 	{
 	  struct rte_eth_dev_info di = { 0 };
 	  struct rte_pci_device *next_pci_dev;
