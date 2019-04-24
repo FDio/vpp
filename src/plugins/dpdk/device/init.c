@@ -271,6 +271,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       struct rte_eth_dev_info dev_info;
       struct rte_pci_device *pci_dev;
       struct rte_eth_link l;
+      dpdk_portid_t next_port_id;
       dpdk_device_config_t *devconf = 0;
       vlib_pci_addr_t pci_addr;
       uword *p = 0;
@@ -316,13 +317,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	devconf = &dm->conf->default_devconf;
 
       /* Handle interface naming for devices with multiple ports sharing same PCI ID */
-      if (pci_dev)
+      if (pci_dev &&
+	  ((next_port_id = rte_eth_find_next (i)) != RTE_MAX_ETHPORTS))
 	{
 	  struct rte_eth_dev_info di = { 0 };
 	  struct rte_pci_device *next_pci_dev;
-	  rte_eth_dev_info_get (i + 1, &di);
+	  rte_eth_dev_info_get (next_port_id, &di);
 	  next_pci_dev = di.device ? RTE_DEV_TO_PCI (di.device) : 0;
-	  if (pci_dev && next_pci_dev &&
+	  if (next_pci_dev &&
 	      pci_addr.as_u32 != last_pci_addr.as_u32 &&
 	      memcmp (&pci_dev->addr, &next_pci_dev->addr,
 		      sizeof (struct rte_pci_addr)) == 0)
