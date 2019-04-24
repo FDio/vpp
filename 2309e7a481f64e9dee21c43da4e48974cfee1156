@@ -22,6 +22,30 @@
       "revId": "2309e7a481f64e9dee21c43da4e48974cfee1156",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0131cdd2_806b57d0",
+        "filename": "src/vnet/session-apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-04-24T08:45:04Z",
+      "side": 0,
+      "message": "That was due to the use of api_context to differentiate stream sessions \u0026 quic sessions, but we indeed switched to session flags. Changing this.",
+      "parentUuid": "590d5a4d_05683500",
+      "range": {
+        "startLine": 373,
+        "startChar": 45,
+        "endLine": 373,
+        "endChar": 56
+      },
+      "revId": "2309e7a481f64e9dee21c43da4e48974cfee1156",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
