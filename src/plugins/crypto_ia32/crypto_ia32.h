@@ -27,6 +27,7 @@ typedef struct
 {
   u32 crypto_engine_index;
   crypto_ia32_per_thread_data_t *per_thread_data;
+  void **key_data;
 } crypto_ia32_main_t;
 
 extern crypto_ia32_main_t crypto_ia32_main;

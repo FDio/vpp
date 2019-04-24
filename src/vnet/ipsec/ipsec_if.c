@@ -510,6 +510,7 @@ int
 ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 			 ipsec_if_set_key_type_t type, u8 alg, u8 * key)
 {
+  vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
   vnet_hw_interface_t *hi;
   ipsec_tunnel_if_t *t;
@@ -526,24 +527,36 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
       ipsec_sa_set_crypto_alg (sa, alg);
       ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
+      sa->crypto_calg = im->crypto_algs[alg].alg;
+      vnet_crypto_key_modify (vm, sa->crypto_key_index, sa->crypto_calg,
+			      key, vec_len (key));
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG)
     {
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
       ipsec_sa_set_integ_alg (sa, alg);
       ipsec_mk_key (&sa->integ_key, key, vec_len (key));
+      sa->integ_calg = im->integ_algs[alg].alg;
+      vnet_crypto_key_modify (vm, sa->integ_key_index, sa->integ_calg,
+			      key, vec_len (key));
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO)
     {
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
       ipsec_sa_set_crypto_alg (sa, alg);
       ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
+      sa->crypto_calg = im->crypto_algs[alg].alg;
+      vnet_crypto_key_modify (vm, sa->crypto_key_index, sa->crypto_calg,
+			      key, vec_len (key));
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG)
     {
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
       ipsec_sa_set_integ_alg (sa, alg);
       ipsec_mk_key (&sa->integ_key, key, vec_len (key));
+      sa->integ_calg = im->integ_algs[alg].alg;
+      vnet_crypto_key_modify (vm, sa->integ_key_index, sa->integ_calg,
+			      key, vec_len (key));
     }
   else
     return VNET_API_ERROR_INVALID_VALUE;

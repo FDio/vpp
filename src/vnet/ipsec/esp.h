@@ -112,8 +112,7 @@ hmac_calc (vlib_main_t * vm, ipsec_sa_t * sa, u8 * data, int data_len,
     return 0;
 
   vnet_crypto_op_init (op, sa->integ_op_id);
-  op->key = sa->integ_key.data;
-  op->key_len = sa->integ_key.len;
+  op->key_index = sa->integ_key_index;
   op->src = data;
   op->len = data_len;
   op->digest = signature;

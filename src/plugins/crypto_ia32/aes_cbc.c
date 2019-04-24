@@ -97,7 +97,7 @@ aesni_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   u8 dummy[8192];
   u8 *src[4] = { };
   u8 *dst[4] = { };
-  u8 *key[4] = { };
+  vnet_crypto_key_index_t key_index[4] = { ~0, ~0, ~0, ~0 };
   u32x4 dummy_mask, len = { };
   u32 i, j, count, n_left = n_ops;
   __m128i r[4] = { }, k[4][rounds + 1];
@@ -127,10 +127,13 @@ more:
 	    dst[i] = ops[0]->dst;
 	    len[i] = ops[0]->len;
 	    dummy_mask[i] = ~0;
-	    if (key[i] != ops[0]->key)
+	    if (key_index[i] != ops[0]->key_index)
 	      {
-		aes_key_expand (k[i], ops[0]->key, ks);
-		key[i] = ops[0]->key;
+		aesni_key_data_t *kd;
+		key_index[i] = ops[0]->key_index;
+		kd = (aesni_key_data_t *) cm->key_data[key_index[i]];
+		clib_memcpy_fast (k[i], kd->encrypt_key,
+				  (rounds + 1) * sizeof (__m128i));
 	      }
 	    ops[0]->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 	    n_left--;
@@ -188,28 +191,22 @@ static_always_inline u32
 aesni_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 		       u32 n_ops, aesni_key_size_t ks)
 {
+  crypto_ia32_main_t *cm = &crypto_ia32_main;
   int rounds = AESNI_KEY_ROUNDS (ks);
   vnet_crypto_op_t *op = ops[0];
+  aesni_key_data_t *kd = (aesni_key_data_t *) cm->key_data[op->key_index];
   u32 n_left = n_ops;
-  u8 *last_key;
-  __m128i k[rounds + 1];
 
   ASSERT (n_ops >= 1);
 
-key_expand:
-  last_key = op->key;
-  aes_key_expand (k, op->key, ks);
-  aes_key_enc_to_dec (k, ks);
-
 decrypt:
-  aes_cbc_dec (k, op->src, op->dst, op->iv, op->len, rounds);
+  aes_cbc_dec (kd->decrypt_key, op->src, op->dst, op->iv, op->len, rounds);
   op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 
   if (--n_left)
     {
       op += 1;
-      if (last_key != op->key)
-	goto key_expand;
+      kd = (aesni_key_data_t *) cm->key_data[op->key_index];
       goto decrypt;
     }
 
