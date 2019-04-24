@@ -83,7 +83,7 @@ send_add_segment_callback (u32 api_client_index, u64 segment_handle)
 {
   int fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_map_another_segment_t *mp;
-  svm_fifo_segment_private_t *fs;
+  svm_fifo_segment_t *fs;
   vl_api_registration_t *reg;
   ssvm_private_t *sp;
   u8 fd_flags = 0;

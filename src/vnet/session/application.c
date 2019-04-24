@@ -719,7 +719,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   /*
    * Setup first segment manager
    */
-  sm = segment_manager_new ();
+  sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
 
   if ((rv = segment_manager_init (sm, app->sm_properties.segment_size,
@@ -746,7 +746,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
 int
 vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 {
-  svm_fifo_segment_private_t *fs;
+  svm_fifo_segment_t *fs;
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
   segment_manager_t *sm;
@@ -838,7 +838,7 @@ app_name_from_api_index (u32 api_client_index)
 int
 vnet_application_attach (vnet_app_attach_args_t * a)
 {
-  svm_fifo_segment_private_t *fs;
+  svm_fifo_segment_t *fs;
   application_t *app = 0;
   app_worker_t *app_wrk;
   segment_manager_t *sm;
