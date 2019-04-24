@@ -154,9 +154,10 @@ ipsecmb_ops_hmac_inline (vlib_main_t * vm,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       u8 ipad[256], opad[256];
 
-      hash_expand_keys (ptd->mgr, op->key, op->key_len,
+      hash_expand_keys (ptd->mgr, key->data, vec_len (key->data),
 			block_size, ipad, opad, fn);
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
@@ -172,7 +173,7 @@ ipsecmb_ops_hmac_inline (vlib_main_t * vm,
       job->cipher_direction = DECRYPT;
       job->chain_order = HASH_CIPHER;
 
-      job->aes_key_len_in_bytes = op->key_len;
+      job->aes_key_len_in_bytes = vec_len (key->data);
 
       job->u.HMAC._hashed_auth_key_xor_ipad = ipad;
       job->u.HMAC._hashed_auth_key_xor_opad = opad;
@@ -250,9 +251,10 @@ ipsecmb_ops_cbc_cipher_inline (vlib_main_t * vm,
       u8 aes_enc_key_expanded[EXPANDED_KEY_N_BYTES];
       u8 aes_dec_key_expanded[EXPANDED_KEY_N_BYTES];
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       __m128i iv;
 
-      fn (op->key, aes_enc_key_expanded, aes_dec_key_expanded);
+      fn (key->data, aes_enc_key_expanded, aes_dec_key_expanded);
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -380,10 +382,11 @@ ipsecmb_ops_gcm_cipher_inline (vlib_main_t * vm,
     {
       struct gcm_key_data key_data;
       vnet_crypto_op_t *op = ops[i];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       u32 nonce[3];
       __m128i iv;
 
-      fn (op->key, &key_data);
+      fn (key->data, &key_data);
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 

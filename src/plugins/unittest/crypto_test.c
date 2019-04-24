@@ -38,6 +38,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
   unittest_crypto_test_registration_t **rv = 0;
   vnet_crypto_alg_data_t *ad;
   vnet_crypto_op_t *ops = 0, *op;
+  vnet_crypto_key_index_t *key_indices = 0;
   u8 *computed_data = 0, *s = 0, *err = 0;
   u32 computed_data_total_len = 0, n_ops = 0;
   u32 i;
@@ -114,8 +115,10 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	    case VNET_CRYPTO_OP_TYPE_DECRYPT:
 	      op->iv = r->iv.data;
 	      op->iv_len = r->iv.length;
-	      op->key = r->key.data;
-	      op->key_len = r->key.length;
+	      op->key_index = vnet_crypto_key_add (vm, r->alg,
+						   r->key.data,
+						   r->key.length);
+	      vec_add1 (key_indices, op->key_index);
 	      op->len = r->plaintext.length;
 	      op->src = t == VNET_CRYPTO_OP_TYPE_ENCRYPT ?
 		r->plaintext.data : r->ciphertext.data;
@@ -126,8 +129,10 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	    case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
 	      op->iv = r->iv.data;
 	      op->iv_len = r->iv.length;
-	      op->key = r->key.data;
-	      op->key_len = r->key.length;
+	      op->key_index = vnet_crypto_key_add (vm, r->alg,
+						   r->key.data,
+						   r->key.length);
+	      vec_add1 (key_indices, op->key_index);
 	      op->aad = r->aad.data;
 	      op->aad_len = r->aad.length;
 	      op->len = r->plaintext.length;
@@ -147,8 +152,10 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	      op->tag_len = r->tag.length;
 	      break;
 	    case VNET_CRYPTO_OP_TYPE_HMAC:
-	      op->key = r->key.data;
-	      op->key_len = r->key.length;
+	      op->key_index = vnet_crypto_key_add (vm, r->alg,
+						   r->key.data,
+						   r->key.length);
+	      vec_add1 (key_indices, op->key_index);
 	      op->src = r->plaintext.data;
 	      op->len = r->plaintext.length;
 	      op->digest_len = r->digest.length;
@@ -250,6 +257,9 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 			     op->digest_len);
 	}
     }
+
+  vec_foreach_index (i, key_indices)
+    vnet_crypto_key_del (vm, key_indices[i]);
   /* *INDENT-ON* */
 
   vec_free (computed_data);
@@ -269,11 +279,12 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   u32 *buffer_indices = 0;
   vnet_crypto_op_t *ops1 = 0, *ops2 = 0, *op1, *op2;
   vnet_crypto_alg_data_t *ad = vec_elt_at_index (cm->algs, tm->alg);
+  vnet_crypto_key_index_t key_index = ~0;
+  u8 key[32];
   int buffer_size = vlib_buffer_get_default_data_size (vm);
   u64 seed = clib_cpu_time_now ();
   u64 t0[5], t1[5], t2[5], n_bytes = 0;
   int i, j;
-  u8 *key;
 
   if (tm->buffer_size > buffer_size)
     return clib_error_return (0, "buffer size must be <= %u", buffer_size);
@@ -300,13 +311,18 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
     }
 
   vlib_cli_output (vm, "%U: n_buffers %u buffer-size %u rounds %u "
-		   "warmup-rounds %u one-key %s",
+		   "warmup-rounds %u",
 		   format_vnet_crypto_alg, tm->alg, n_buffers, buffer_size,
-		   rounds, warmup_rounds, tm->one_key ? "yes" : "no");
+		   rounds, warmup_rounds);
   vlib_cli_output (vm, "   cpu-freq %.2f GHz",
 		   (f64) vm->clib_time.clocks_per_second * 1e-9);
 
   vnet_crypto_op_type_t ot = 0;
+
+  for (i = 0; i < sizeof (key); i++)
+    key[i] = i;
+
+  key_index = vnet_crypto_key_add (vm, tm->alg, key, sizeof (key));
 
   for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
     {
@@ -322,8 +338,6 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
       vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
       op1 = ops1 + i;
       op2 = ops2 + i;
-      if (i == 0)
-	key = b->data - 32;
 
       switch (ot)
 	{
@@ -335,7 +349,7 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 			       ad->op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT]);
 	  op1->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
 	  op1->src = op2->src = op1->dst = op2->dst = b->data;
-	  op1->key = op2->key = tm->one_key ? key : b->data - 32;
+	  op1->key_index = op2->key_index = key_index;
 	  op1->iv = op2->iv = b->data - 64;
 	  n_bytes += op1->len = op2->len = buffer_size;
 	  break;
@@ -349,7 +363,7 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 			       [VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT]);
 	  op1->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
 	  op1->src = op2->src = op1->dst = op2->dst = b->data;
-	  op1->key = op2->key = tm->one_key ? key : b->data - 32;
+	  op1->key_index = op2->key_index = key_index;
 	  op1->iv = op2->iv = b->data - 64;
 	  op1->aad = op2->aad = b->data - VLIB_BUFFER_PRE_DATA_SIZE;
 	  op1->aad_len = op2->aad_len = 0;
@@ -358,7 +372,7 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 	case VNET_CRYPTO_OP_TYPE_HMAC:
 	  vnet_crypto_op_init (op1, ad->op_by_type[VNET_CRYPTO_OP_TYPE_HMAC]);
 	  op1->src = b->data;
-	  op1->key = tm->one_key ? key : b->data - 32;
+	  op1->key_index = key_index;
 	  op1->iv = 0;
 	  op1->digest = b->data - VLIB_BUFFER_PRE_DATA_SIZE;
 	  op1->digest_len = 0;
@@ -418,6 +432,10 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 done:
   if (n_alloc)
     vlib_buffer_free (vm, buffer_indices, n_alloc);
+
+  if (key_index != ~0)
+    vnet_crypto_key_del (vm, key_index);
+
   vec_free (buffer_indices);
   vec_free (ops1);
   vec_free (ops2);
@@ -454,8 +472,6 @@ test_crypto_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "buffer-size %u", &tm->buffer_size))
 	;
-      else if (unformat (input, "one-key"))
-	tm->one_key = 1;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
