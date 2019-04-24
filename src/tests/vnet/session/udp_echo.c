@@ -79,7 +79,7 @@ typedef struct
   uword *session_index_by_vpp_handles;
 
   /* fifo segment */
-  svm_fifo_segment_private_t *seg;
+  svm_fifo_segment_t *seg;
 
   /* intermediate rx buffer */
   u8 *rx_buf;
@@ -844,7 +844,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   svm_fifo_segment_create_args_t _a, *a = &_a;
   udp_echo_main_t *utm = &udp_echo_main;
   svm_fifo_segment_main_t *sm = &utm->segment_main;
-  svm_fifo_segment_private_t *seg;
+  svm_fifo_segment_t *seg;
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
@@ -870,7 +870,7 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
 {
   udp_echo_main_t *utm = &udp_echo_main;
   svm_fifo_segment_main_t *sm = &utm->segment_main;
-  svm_fifo_segment_private_t *seg;
+  svm_fifo_segment_t *seg;
   uword *seg_indexp;
   u64 segment_handle;
 

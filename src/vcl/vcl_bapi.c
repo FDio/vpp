@@ -89,7 +89,7 @@ static void
 vcl_segment_detach (u64 segment_handle)
 {
   svm_fifo_segment_main_t *sm = &vcm->segment_main;
-  svm_fifo_segment_private_t *segment;
+  svm_fifo_segment_t *segment;
   u32 segment_index;
 
   segment_index = vcl_segment_table_lookup (segment_handle);
