@@ -22,6 +22,30 @@
       "revId": "d625e82f6547dfa49b7a1036f24c01fcf827f0e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55d0a238_9f81932a",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1425,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-04-24T13:31:02Z",
+      "side": 1,
+      "message": "Since it won\u0027t waste 45 minutes\u0027 worth of LF infra cycles, I\u0027ll change it. Are you grumpy today?",
+      "parentUuid": "ac04a6a4_0d062096",
+      "range": {
+        "startLine": 1424,
+        "startChar": 0,
+        "endLine": 1425,
+        "endChar": 36
+      },
+      "revId": "d625e82f6547dfa49b7a1036f24c01fcf827f0e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
