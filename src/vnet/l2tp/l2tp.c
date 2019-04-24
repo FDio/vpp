@@ -254,20 +254,11 @@ l2tpv3_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   return 0;
 }
 
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (l2tpv3_device_class,static) = {
   .name = "L2TPv3",
   .format_device_name = format_l2tpv3_name,
   .name_renumber = l2tpv3_name_renumber,
-  .tx_function = dummy_interface_tx,
 };
 /* *INDENT-ON* */
 
