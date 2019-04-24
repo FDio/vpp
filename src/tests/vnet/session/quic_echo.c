@@ -17,10 +17,10 @@
 #include <signal.h>
 
 #include <vnet/session/application_interface.h>
-#include <svm/svm_fifo_segment.h>
 #include <vlibmemory/api.h>
 
 #include <vpp/api/vpe_msg_enum.h>
+#include <svm/fifo_segment.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>

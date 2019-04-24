@@ -24,9 +24,9 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
-#include <svm/svm_fifo_segment.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
+#include <svm/fifo_segment.h>
 
 typedef struct
 {
