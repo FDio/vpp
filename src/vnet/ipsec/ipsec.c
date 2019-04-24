@@ -364,7 +364,7 @@ ipsec_init (vlib_main_t * vm)
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_384_192];
   i->op_id = VNET_CRYPTO_OP_SHA384_HMAC;
-  i->alg = VNET_CRYPTO_ALG_HMAC_SHA512;
+  i->alg = VNET_CRYPTO_ALG_HMAC_SHA384;
   i->icv_size = 24;
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
