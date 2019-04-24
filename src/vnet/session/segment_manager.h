@@ -127,7 +127,7 @@ segment_manager_make_segment_handle (u32 segment_manager_index,
 u64 segment_manager_segment_handle (segment_manager_t * sm,
 				    svm_fifo_segment_private_t * segment);
 
-segment_manager_t *segment_manager_new ();
+segment_manager_t *segment_manager_alloc ();
 int segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
 			  u32 prealloc_fifo_pairs);
 
@@ -168,6 +168,8 @@ void segment_manager_app_detach (segment_manager_t * sm);
 void segment_manager_main_init (segment_manager_main_init_args_t * a);
 segment_manager_properties_t
   * segment_manager_properties_init (segment_manager_properties_t * sm);
+
+void segment_manager_format_sessions (segment_manager_t *sm, int verbose);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*

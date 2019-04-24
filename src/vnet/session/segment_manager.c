@@ -271,12 +271,12 @@ done:
 }
 
 segment_manager_t *
-segment_manager_new ()
+segment_manager_alloc ()
 {
   segment_manager_main_t *smm = &segment_manager_main;
   segment_manager_t *sm;
-  pool_get (smm->segment_managers, sm);
-  clib_memset (sm, 0, sizeof (*sm));
+
+  pool_get_zero (smm->segment_managers, sm);
   clib_rwlock_init (&sm->segments_rwlock);
   return sm;
 }
@@ -807,6 +807,66 @@ VLIB_CLI_COMMAND (segment_manager_show_command, static) =
   .function = segment_manager_show_fn,
 };
 /* *INDENT-ON* */
+
+void
+segment_manager_format_sessions (segment_manager_t *sm, int verbose)
+{
+  svm_fifo_segment_private_t *fifo_segment;
+  vlib_main_t *vm = vlib_get_main ();
+  app_worker_t *app_wrk;
+  const u8 *app_name;
+  u8 *s = 0;
+
+  if (!sm)
+    {
+      if (verbose)
+	vlib_cli_output (vm, "%-40s%-20s%-15s%-10s", "Connection", "App",
+			 "API Client", "SegManager");
+      else
+	vlib_cli_output (vm, "%-40s%-20s", "Connection", "App");
+      return;
+    }
+
+  app_wrk = app_worker_get (sm->app_wrk_index);
+  app_name = application_name_from_index (app_wrk->app_index);
+
+  clib_rwlock_reader_lock (&sm->segments_rwlock);
+
+  /* *INDENT-OFF* */
+  pool_foreach (fifo_segment, sm->segments, ({
+    svm_fifo_t *fifo;
+    u8 *str;
+
+    fifo = svm_fifo_segment_get_fifo_list (fifo_segment);
+    while (fifo)
+      {
+        u32 session_index, thread_index;
+        session_t *session;
+
+        session_index = fifo->master_session_index;
+        thread_index = fifo->master_thread_index;
+
+        session = session_get (session_index, thread_index);
+        str = format (0, "%U", format_session, session, verbose);
+
+        if (verbose)
+          s = format (s, "%-40s%-20s%-15u%-10u", str, app_name,
+                      app_wrk->api_client_index, app_wrk->connects_seg_manager);
+        else
+          s = format (s, "%-40s%-20s", str, app_name);
+
+        vlib_cli_output (vm, "%v", s);
+        vec_reset_length (s);
+        vec_free (str);
+
+        fifo = fifo->next;
+      }
+    vec_free (s);
+  }));
+  /* *INDENT-ON* */
+
+  clib_rwlock_reader_unlock (&sm->segments_rwlock);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

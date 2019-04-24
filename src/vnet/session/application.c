@@ -719,7 +719,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   /*
    * Setup first segment manager
    */
-  sm = segment_manager_new ();
+  sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
 
   if ((rv = segment_manager_init (sm, app->sm_properties.segment_size,

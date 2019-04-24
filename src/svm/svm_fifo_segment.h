@@ -17,7 +17,6 @@
 
 #include <svm/ssvm.h>
 #include <svm/svm_fifo.h>
-#include <vppinfra/lock.h>
 
 typedef enum
 {
@@ -27,12 +26,15 @@ typedef enum
   FIFO_SEGMENT_N_FREELISTS
 } svm_fifo_segment_freelist_t;
 
-#define FIFO_SEGMENT_MIN_FIFO_SIZE 4096
+#define FIFO_SEGMENT_MIN_FIFO_SIZE 4096		/* 4kB min fifo size */
 #define FIFO_SEGMENT_MAX_FIFO_SIZE (2 << 30)	/* 2GB max fifo size */
 #define FIFO_SEGMENT_ALLOC_CHUNK_SIZE 32	/* Allocation quantum */
 
-#define FIFO_SEGMENT_F_IS_PREALLOCATED	(1 << 0)
-#define FIFO_SEGMENT_F_WILL_DELETE	(1 << 1)
+typedef enum svm_fifo_segment_flags_
+{
+  FIFO_SEGMENT_F_IS_PREALLOCATED = 1 << 0,
+  FIFO_SEGMENT_F_WILL_DELETE = 1 << 1,
+} svm_fifo_segment_flags_t;
 
 typedef struct
 {
@@ -50,13 +52,9 @@ typedef struct
 
 typedef struct
 {
-  volatile u32 lock;
-
-  /** pool of segments */
-  svm_fifo_segment_private_t *segments;
-  /* Where to put the next one */
-  u64 next_baseva;
-  u32 timeout_in_seconds;
+  svm_fifo_segment_private_t *segments;	/**< pool of segments */
+  u64 next_baseva;			/**< Where to put the next one */
+  u32 timeout_in_seconds;		/**< Time to wait during attach */
 } svm_fifo_segment_main_t;
 
 typedef struct
@@ -64,8 +62,8 @@ typedef struct
   ssvm_segment_type_t segment_type;
   char *segment_name;
   u32 segment_size;
-  u32 *new_segment_indices;
   int memfd_fd;
+  u32 *new_segment_indices;
 } svm_fifo_segment_create_args_t;
 
 #define svm_fifo_segment_flags(_seg) _seg->h->flags
