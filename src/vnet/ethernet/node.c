@@ -1029,6 +1029,8 @@ ethernet_input_inline (vlib_main_t * vm,
   u32 cached_sw_if_index = ~0;
   u32 cached_is_l2 = 0;		/* shut up gcc */
   vnet_hw_interface_t *hi = NULL;	/* used for main interface only */
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t **b = bufs;
 
   if (variant != ETHERNET_INPUT_VARIANT_ETHERNET)
     error_node = vlib_node_get_runtime (vm, ethernet_input_node.index);
@@ -1040,6 +1042,7 @@ ethernet_input_inline (vlib_main_t * vm,
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
   stats_n_packets = stats_n_bytes = 0;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   while (n_left_from > 0)
     {
@@ -1066,16 +1069,11 @@ ethernet_input_inline (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *b2, *b3;
+	    vlib_prefetch_buffer_header (b[2], STORE);
+	    vlib_prefetch_buffer_header (b[3], STORE);
 
-	    b2 = vlib_get_buffer (vm, from[2]);
-	    b3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (b2, STORE);
-	    vlib_prefetch_buffer_header (b3, STORE);
-
-	    CLIB_PREFETCH (b2->data, sizeof (ethernet_header_t), LOAD);
-	    CLIB_PREFETCH (b3->data, sizeof (ethernet_header_t), LOAD);
+	    CLIB_PREFETCH (b[2]->data, sizeof (ethernet_header_t), LOAD);
+	    CLIB_PREFETCH (b[3]->data, sizeof (ethernet_header_t), LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -1087,8 +1085,9 @@ ethernet_input_inline (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+	  b0 = b[0];
+	  b1 = b[1];
+	  b += 2;
 
 	  error0 = error1 = ETHERNET_ERROR_NONE;
 	  e0 = vlib_buffer_get_current (b0);
@@ -1314,11 +1313,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  // Prefetch next iteration
 	  if (n_left_from > 1)
 	    {
-	      vlib_buffer_t *p2;
-
-	      p2 = vlib_get_buffer (vm, from[1]);
-	      vlib_prefetch_buffer_header (p2, STORE);
-	      CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	      vlib_prefetch_buffer_header (b[1], STORE);
+	      CLIB_PREFETCH (b[1]->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	    }
 
 	  bi0 = from[0];
@@ -1328,7 +1324,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+	  b0 = b[0];
+	  b += 1;
 
 	  error0 = ETHERNET_ERROR_NONE;
 	  e0 = vlib_buffer_get_current (b0);
