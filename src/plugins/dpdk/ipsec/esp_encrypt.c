@@ -554,7 +554,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 				   ESP_ENCRYPT_ERROR_RX_PKTS,
 				   from_frame->n_vectors);
 
-      crypto_enqueue_ops (vm, cwm, dpdk_esp6_encrypt_node.index,
+      crypto_enqueue_ops (vm, cwm, 1, dpdk_esp6_encrypt_node.index,
 			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa);
     }
   else
@@ -563,7 +563,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 				   ESP_ENCRYPT_ERROR_RX_PKTS,
 				   from_frame->n_vectors);
 
-      crypto_enqueue_ops (vm, cwm, dpdk_esp4_encrypt_node.index,
+      crypto_enqueue_ops (vm, cwm, 1, dpdk_esp4_encrypt_node.index,
 			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa);
     }
 
