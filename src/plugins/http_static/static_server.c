@@ -646,8 +646,14 @@ find_end:
 	}
     }
 
-  /* Now we can construc the file to open */
-  path = format (0, "%s/%s%c", hsm->www_root, request, 0);
+  /*
+   * Now we can construct the file to open
+   * Browsers are capable of sporadically including a leading '/'
+   */
+  if (request[0] == '/')
+    path = format (0, "%s%s%c", hsm->www_root, request, 0);
+  else
+    path = format (0, "%s/%s%c", hsm->www_root, request, 0);
 
   if (0)
     clib_warning ("GET '%s'", path);
@@ -688,32 +694,25 @@ find_end:
 
 	      vec_delete (path, vec_len (hsm->www_root) - 1, 0);
 
-	      if (0)
-		clib_warning ("redirect to '%s'", path);
 
 	      tc = session_get_transport (s);
 	      redirect = format (0, "HTTP/1.1 301 Moved Permanently\r\n"
-				 "Location: http://%U/%s",
+				 "Location: http://%U%s\r\n"
+				 "Connection: close\r\n",
 				 format_ip46_address, &tc->lcl_ip, tc->is_ip4,
 				 path);
+	      if (0)
+		clib_warning ("redirect: %s", redirect);
+
 	      static_send_data (hs, redirect, vec_len (redirect), 0);
-	      vec_free (path);
+	      hs->session_state = HTTP_STATE_RESPONSE_SENT;
+	      hs->path = 0;
 	      vec_free (redirect);
+	      vec_free (path);
 	      goto close_session;
 	    }
 	}
     }
-
-  hs->path = path;
-  /* send 200 OK first */
-
-  static_send_data (hs, (u8 *) "HTTP/1.1 200 OK\r\n", 17, 0);
-  hs->session_state = HTTP_STATE_OK_SENT;
-  goto postpone;
-
-static_send_response:
-
-  ASSERT (hs->path);
 
   /* find or read the file if we haven't done so yet. */
   if (hs->data == 0)
@@ -721,10 +720,15 @@ static_send_response:
       BVT (clib_bihash_kv) kv;
       file_data_cache_t *dp;
 
+      hs->path = path;
+
       /* First, try the cache */
       kv.key = (u64) hs->path;
       if (BV (clib_bihash_search) (&hsm->name_to_data, &kv, &kv) == 0)
 	{
+	  if (0)
+	    clib_warning ("lookup '%s' returned %lld", kv.key, kv.value);
+
 	  /* found the data.. */
 	  dp = pool_elt_at_index (hsm->cache_pool, kv.value);
 	  hs->data = dp->data;
@@ -738,6 +742,8 @@ static_send_response:
 	}
       else
 	{
+	  if (0)
+	    clib_warning ("lookup '%s' failed", kv.key, kv.value);
 	  /* Need to recycle one (or more cache) entries? */
 	  if (hsm->cache_size > hsm->cache_limit)
 	    {
@@ -754,16 +760,25 @@ static_send_response:
 		      if (0)
 			clib_warning ("index %d in use refcnt %d",
 				      dp - hsm->cache_pool, dp->inuse);
-		      continue;
-		    }
 
-		  BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
-					    0 /* is_add */ );
+		    }
+		  kv.key = (u64) (dp->filename);
+		  kv.value = ~0ULL;
+		  if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
+						0 /* is_add */ ) < 0)
+		    {
+		      clib_warning ("LRU delete '%s' FAILED!", dp->filename);
+		    }
+		  else if (0)
+		    clib_warning ("LRU delete '%s' ok", dp->filename);
+
 		  lru_remove (hsm, dp);
 		  hsm->cache_size -= vec_len (dp->data);
 		  hsm->cache_evictions++;
 		  vec_free (dp->filename);
 		  vec_free (dp->data);
+		  if (0)
+		    clib_warning ("pool put index %d", dp - hsm->cache_pool);
 		  pool_put (hsm->cache_pool, dp);
 		  if (hsm->cache_size < hsm->cache_limit)
 		    break;
@@ -793,11 +808,25 @@ static_send_response:
 	  kv.key = (u64) vec_dup (hs->path);
 	  kv.value = dp - hsm->cache_pool;
 	  /* Add to the lookup table */
-	  BV (clib_bihash_add_del) (&hsm->name_to_data, &kv, 1 /* is_add */ );
+	  if (0)
+	    clib_warning ("add '%s' value %lld", kv.key, kv.value);
+
+	  if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
+					1 /* is_add */ ) < 0)
+	    {
+	      clib_warning ("BUG: add failed!");
+	    }
 	  hsm->cache_size += vec_len (dp->data);
 	}
       hs->data_offset = 0;
     }
+
+  /* send 200 OK first */
+  static_send_data (hs, (u8 *) "HTTP/1.1 200 OK\r\n", 17, 0);
+  hs->session_state = HTTP_STATE_OK_SENT;
+  goto postpone;
+
+static_send_response:
 
   /* What kind of dog food are we serving? */
   suffix = (char *) (hs->path + vec_len (hs->path) - 1);
