@@ -332,6 +332,19 @@ svm_fifo_unset_event (svm_fifo_t * f)
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
 void svm_fifo_init (svm_fifo_t * f, u32 size);
+
+/**
+ * Allocate a fifo chunk on heap
+ *
+ * If the chunk is allocated on a fifo segment, this should be called
+ * with the segment's heap pushed.
+ *
+ * @param size	chunk size in bytes. Will be rounded to the next highest
+ * 		power-of-two
+ * @return	new chunk or 0 if alloc failed
+ */
+svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
+
 /**
  * Grow fifo size by adding chunk to chunk list
  *
@@ -343,6 +356,24 @@ void svm_fifo_init (svm_fifo_t * f, u32 size);
  */
 void svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c);
 void svm_fifo_free (svm_fifo_t * f);
+/**
+ * Cleanup fifo chunk lookup rb tree
+ *
+ * The rb tree is allocated in segment heap so this should be called
+ * with it pushed.
+ *
+ * @param f 	fifo to cleanup
+ */
+void svm_fifo_free_chunk_lookup (svm_fifo_t * f);
+/**
+ * Cleanup fifo ooo data
+ *
+ * The ooo data is allocated in producer process memory. The fifo
+ * segment heap should not be pushed.
+ *
+ * @param f	fifo to cleanup
+ */
+void svm_fifo_free_ooo_data (svm_fifo_t * f);
 
 int svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
 			     const u8 * copy_from_here);

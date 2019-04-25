@@ -298,7 +298,9 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
   f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = f->start_chunk;
 }
 
-/** create an svm fifo, in the current heap. Fails vs blow up the process */
+/**
+ * Creates a fifo in the current heap. Fails vs blow up the process
+ */
 svm_fifo_t *
 svm_fifo_create (u32 data_size_in_bytes)
 {
@@ -315,6 +317,27 @@ svm_fifo_create (u32 data_size_in_bytes)
   clib_memset (f, 0, sizeof (*f));
   svm_fifo_init (f, data_size_in_bytes);
   return f;
+}
+
+/**
+ * Creates a fifo chunk in the current heap
+ */
+svm_fifo_chunk_t *
+svm_fifo_chunk_alloc (u32 size)
+{
+  svm_fifo_chunk_t *c;
+  u32 rounded_size;
+
+  /* round chunk size to the next highest power-of-two */
+  rounded_size = (1 << (max_log2 (size)));
+  c = clib_mem_alloc_aligned_or_null (sizeof (*c) + rounded_size,
+				      CLIB_CACHE_LINE_BYTES);
+  if (c == 0)
+    return 0;
+
+  clib_memset (c, 0, sizeof (*c));
+  c->length = rounded_size;
+  return c;
 }
 
 static inline void
@@ -462,13 +485,26 @@ svm_fifo_find_chunk (svm_fifo_t * f, u32 pos)
 }
 
 void
+svm_fifo_free_chunk_lookup (svm_fifo_t * f)
+{
+  rb_tree_free_nodes (&f->chunk_lookup);
+}
+
+void
+svm_fifo_free_ooo_data (svm_fifo_t * f)
+{
+  pool_free (f->ooo_segments);
+}
+
+void
 svm_fifo_free (svm_fifo_t * f)
 {
   ASSERT (f->refcnt > 0);
 
   if (--f->refcnt == 0)
     {
-      pool_free (f->ooo_segments);
+      /* ooo data is not allocated on segment heap */
+      svm_fifo_free_chunk_lookup (f);
       clib_mem_free (f);
     }
 }

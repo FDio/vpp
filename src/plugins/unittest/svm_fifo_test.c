@@ -1244,7 +1244,7 @@ sfifo_test_fifo_segment_hello_world (int verbose)
   fifo_segment_create_args_t _a, *a = &_a;
   fifo_segment_main_t *sm = &segment_main;
   u8 *test_data, *retrieved_data = 0;
-  fifo_segment_t *sp;
+  fifo_segment_t *fs;
   svm_fifo_t *f;
   int rv;
 
@@ -1256,8 +1256,8 @@ sfifo_test_fifo_segment_hello_world (int verbose)
 
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
 
-  sp = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
-  f = fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FIFO);
+  fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  f = fifo_segment_alloc_fifo (fs, 4096, FIFO_SEGMENT_RX_FIFO);
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
 
@@ -1281,8 +1281,87 @@ sfifo_test_fifo_segment_hello_world (int verbose)
 
   vec_free (test_data);
   vec_free (retrieved_data);
-  fifo_segment_free_fifo (sp, f);
-  fifo_segment_delete (sm, sp);
+  vec_free (a->new_segment_indices);
+  fifo_segment_free_fifo (fs, f);
+  fifo_segment_delete (sm, fs);
+  return 0;
+}
+
+static int
+sfifo_test_fifo_segment_fifo_grow (int verbose)
+{
+  fifo_segment_main_t *sm = &segment_main;
+  fifo_segment_create_args_t _a, *a = &_a;
+  int rv, fifo_size = 4096, n_chunks;
+  fifo_segment_t *fs;
+  svm_fifo_t *f;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->segment_name = "fifo-test1";
+  a->segment_size = 256 << 10;
+
+  rv = fifo_segment_create (sm, a);
+
+  SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
+
+  /*
+   * Alloc and grow fifo
+   */
+  fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+
+  SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
+
+  fifo_segment_grow_fifo (fs, f, fifo_size);
+  SFIFO_TEST (f->size == 2 * fifo_size, "fifo size should be %u is %u",
+	      2 * fifo_size, f->size);
+
+  fifo_segment_grow_fifo (fs, f, 16 * fifo_size);
+  SFIFO_TEST (f->size == 18 * fifo_size, "fifo size should be %u is %u",
+	      18 * fifo_size, f->size);
+
+  /*
+   * Free and test free list size
+   */
+  fifo_segment_free_fifo (fs, f);
+
+  n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
+  SFIFO_TEST (n_chunks == 1, "free 2^10B chunks should be %u is %u", 1,
+	      n_chunks);
+  n_chunks = fifo_segment_num_free_chunks (fs, 16 * fifo_size);
+  SFIFO_TEST (n_chunks == 1, "free 2^14B chunks should be %u is %u", 1,
+	      n_chunks);
+  n_chunks = fifo_segment_num_free_chunks (fs, ~0);
+  SFIFO_TEST (n_chunks == 2, "free chunks should be %u is %u", 2, n_chunks);
+
+  /*
+   * Realloc fifo
+   */
+  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+
+  fifo_segment_grow_fifo (fs, f, fifo_size);
+  n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
+  SFIFO_TEST (n_chunks == 0, "free 2^10B chunks should be %u is %u", 0,
+	      n_chunks);
+
+  fifo_segment_grow_fifo (fs, f, 16 * fifo_size);
+  SFIFO_TEST (n_chunks == 0, "free 2^14B chunks should be %u is %u", 0,
+	      n_chunks);
+  n_chunks = fifo_segment_num_free_chunks (fs, ~0);
+  SFIFO_TEST (n_chunks == 0, "free chunks should be %u is %u", 0, n_chunks);
+
+  /*
+   * Free again
+   */
+  fifo_segment_free_fifo (fs, f);
+  n_chunks = fifo_segment_num_free_chunks (fs, ~0);
+  SFIFO_TEST (n_chunks == 2, "free chunks should be %u is %u", 2, n_chunks);
+
+  /*
+   * Cleanup
+   */
+  fifo_segment_delete (sm, fs);
+  vec_free (a->new_segment_indices);
   return 0;
 }
 
@@ -1310,6 +1389,7 @@ sfifo_test_fifo_segment_slave (int verbose)
   SFIFO_TEST (!rv, "svm_fifo_segment_attach returned %d", rv);
 
   sp = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  vec_free (a->new_segment_indices);
   sh = sp->ssvm.sh;
   fsh = (fifo_segment_header_t *) sh->opaque[0];
 
@@ -1388,6 +1468,7 @@ sfifo_test_fifo_segment_master_slave (int verbose)
   result = (u32 *) f->head_chunk->data;
   SFIFO_TEST (*result == 0, "slave reported no error");
 
+  vec_free (a->new_segment_indices);
   vec_free (test_data);
   fifo_segment_free_fifo (sp, f);
   fifo_segment_delete (sm, sp);
@@ -1478,11 +1559,18 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
 	  if ((rv = sfifo_test_fifo_segment_mempig (verbose)))
 	    return -1;
 	}
+      else if (unformat (input, "grow fifo"))
+	{
+	  if ((rv = sfifo_test_fifo_segment_fifo_grow (verbose)))
+	    return -1;
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((rv = sfifo_test_fifo_segment_hello_world (verbose)))
 	    return -1;
 	  if ((rv = sfifo_test_fifo_segment_mempig (verbose)))
+	    return -1;
+	  if ((rv = sfifo_test_fifo_segment_fifo_grow (verbose)))
 	    return -1;
 	  /* Pretty slow so avoid running it always
 	     if ((rv = sfifo_test_fifo_segment_master_slave (verbose)))
