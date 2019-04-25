@@ -94,7 +94,7 @@ void segment_manager_del_segment (segment_manager_t * sm,
 fifo_segment_t *segment_manager_get_segment (segment_manager_t * sm,
 					     u32 segment_index);
 fifo_segment_t *segment_manager_get_segment_w_handle (u64 sh);
-fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t *,
+fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t * sm,
 						    u32 segment_index);
 int segment_manager_add_first_segment (segment_manager_t * sm,
 				       u32 segment_size);
@@ -114,6 +114,17 @@ int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
 				     svm_fifo_t ** tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
+
+/**
+ * Grows fifo owned by segment manager
+ *
+ * @param sm	segment manager that owns the fifo
+ * @param f	fifo to be grown
+ * @param size	amount of bytes to add to fifo
+ * @return	0 on success, negative number otherwise
+ */
+int segment_manager_grow_fifo (segment_manager_t * sm, svm_fifo_t * f,
+			       u32 size);
 u8 segment_manager_has_fifos (segment_manager_t * sm);
 
 svm_msg_q_t *segment_manager_alloc_queue (fifo_segment_t * fs,

@@ -627,8 +627,8 @@ alloc_check:
 void
 segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
 {
-  fifo_segment_t *fs;
   segment_manager_t *sm;
+  fifo_segment_t *fs;
   u32 segment_index;
 
   if (!rx_fifo || !tx_fifo)
@@ -667,6 +667,19 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
     }
   else
     segment_manager_segment_reader_unlock (sm);
+}
+
+int
+segment_manager_grow_fifo (segment_manager_t * sm, svm_fifo_t * f, u32 size)
+{
+  fifo_segment_t *fs;
+  int rv;
+
+  fs = segment_manager_get_segment_w_lock (sm, f->segment_index);
+  rv = fifo_segment_grow_fifo (fs, f, size);
+  segment_manager_segment_reader_unlock (sm);
+
+  return rv;
 }
 
 u32
