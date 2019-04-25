@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "96abed37_ebcbbc79",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 579,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-25T20:56:53Z",
+      "side": 1,
+      "message": "This should probably be removed :-)",
+      "range": {
+        "startLine": 574,
+        "startChar": 0,
+        "endLine": 579,
+        "endChar": 1
+      },
+      "revId": "1f3dbec5b3890ccd5284735a9cb3649b477b524c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
