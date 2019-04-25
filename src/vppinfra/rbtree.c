@@ -401,8 +401,8 @@ rb_tree_n_nodes (rb_tree_t * rt)
 void
 rb_tree_free_nodes (rb_tree_t * rt)
 {
-  rb_node_t *n;
-  pool_flush (n, rt->nodes,;);
+  pool_free (rt->nodes);
+  rt->root = RBTREE_TNIL_INDEX;
 }
 
 void
