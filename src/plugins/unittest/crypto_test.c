@@ -114,7 +114,6 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	    case VNET_CRYPTO_OP_TYPE_ENCRYPT:
 	    case VNET_CRYPTO_OP_TYPE_DECRYPT:
 	      op->iv = r->iv.data;
-	      op->iv_len = r->iv.length;
 	      op->key_index = vnet_crypto_key_add (vm, r->alg,
 						   r->key.data,
 						   r->key.length);
@@ -128,7 +127,6 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 	    case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT:
 	    case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
 	      op->iv = r->iv.data;
-	      op->iv_len = r->iv.length;
 	      op->key_index = vnet_crypto_key_add (vm, r->alg,
 						   r->key.data,
 						   r->key.length);

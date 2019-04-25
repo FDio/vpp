@@ -132,7 +132,7 @@ typedef struct
   u32 key_index;
   u32 len, salt;
   u16 aad_len;
-  u8 iv_len, digest_len, tag_len;
+  u8 digest_len, tag_len;
   u8 *iv;
   u8 *src;
   u8 *dst;
