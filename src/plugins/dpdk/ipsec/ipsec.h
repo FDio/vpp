@@ -115,7 +115,7 @@ typedef struct
   u8 dev_id;
   u8 numa;
   u16 qp_id;
-  u16 inflights;
+  u16 inflights[2];
   u16 n_ops;
   u16 __unused;
   struct rte_crypto_op *ops[VLIB_FRAME_SIZE];
@@ -302,7 +302,7 @@ crypto_free_ops (u8 numa, struct rte_crypto_op **ops, u32 n)
 }
 
 static_always_inline void
-crypto_enqueue_ops (vlib_main_t * vm, crypto_worker_main_t * cwm,
+crypto_enqueue_ops (vlib_main_t * vm, crypto_worker_main_t * cwm, u8 outbound,
 		    u32 node_index, u32 error, u8 numa)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
@@ -318,9 +318,9 @@ crypto_enqueue_ops (vlib_main_t * vm, crypto_worker_main_t * cwm,
       if (!res->n_ops)
 	continue;
 
-      enq = rte_cryptodev_enqueue_burst (res->dev_id, res->qp_id,
+      enq = rte_cryptodev_enqueue_burst (res->dev_id, res->qp_id + outbound,
 					 res->ops, res->n_ops);
-      res->inflights += enq;
+      res->inflights[outbound] += enq;
 
       if (PREDICT_FALSE (enq < res->n_ops))
 	{
