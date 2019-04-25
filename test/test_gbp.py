@@ -800,10 +800,9 @@ class TestGBP(VppTestCase):
 
                 # The BVIs are NAT inside interfaces
                 flags = self.config_flags.NAT_IS_INSIDE
-                self.vapi.nat44_interface_add_del_feature(epg.bvi.sw_if_index,
-                                                          flags=flags)
-                self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
-                                                  flags=flags)
+                self.vapi.nat44_interface_add_del_feature(sw_if_index=epg.bvi.sw_if_index,
+                                                          flags=flags, is_add=1)
+                self.vapi.nat66_add_del_interface(is_add=1, flags=flags, sw_if_index=epg.bvi.sw_if_index)
 
             if_ip4 = VppIpInterfaceAddress(self, epg.bvi, epg.bvi_ip4, 32)
             if_ip6 = VppIpInterfaceAddress(self, epg.bvi, epg.bvi_ip6, 128)
@@ -835,9 +834,8 @@ class TestGBP(VppTestCase):
                                recirc.epg.rd.t6).add_vpp_config()
 
             self.vapi.nat44_interface_add_del_feature(
-                recirc.recirc.sw_if_index)
-            self.vapi.nat66_add_del_interface(
-                recirc.recirc.sw_if_index)
+                sw_if_index=recirc.recirc.sw_if_index, is_add=1)
+            self.vapi.nat66_add_del_interface(is_add=1, sw_if_index=recirc.recirc.sw_if_index)
 
             recirc.add_vpp_config()
 
@@ -858,14 +856,12 @@ class TestGBP(VppTestCase):
                 # Add static mappings for each EP from the 10/8 to 11/8 network
                 if ip.af == AF_INET:
                     flags = self.config_flags.NAT_IS_ADDR_ONLY
-                    self.vapi.nat44_add_del_static_mapping(ip.bytes,
-                                                           fip.bytes,
-                                                           vrf_id=0,
-                                                           flags=flags)
+                    self.vapi.nat44_add_del_static_mapping(is_add=1, local_ip_address=ip.bytes,
+                                                           external_ip_address=fip.bytes,
+                                                           external_sw_if_index=0xFFFFFFFF, vrf_id=0, flags=flags)
                 else:
-                    self.vapi.nat66_add_del_static_mapping(ip.bytes,
-                                                           fip.bytes,
-                                                           vrf_id=0)
+                    self.vapi.nat66_add_del_static_mapping(local_ip_address=ip.bytes, external_ip_address=fip.bytes,
+                                                           vrf_id=0, is_add=1)
 
             # VPP EP create ...
             ep.add_vpp_config()
@@ -1405,34 +1401,26 @@ class TestGBP(VppTestCase):
         for ep in eps:
             # del static mappings for each EP from the 10/8 to 11/8 network
             flags = self.config_flags.NAT_IS_ADDR_ONLY
-            self.vapi.nat44_add_del_static_mapping(ep.ip4.bytes,
-                                                   ep.fip4.bytes,
-                                                   vrf_id=0,
-                                                   is_add=0,
-                                                   flags=flags)
-            self.vapi.nat66_add_del_static_mapping(ep.ip6.bytes,
-                                                   ep.fip6.bytes,
-                                                   vrf_id=0,
-                                                   is_add=0)
+            self.vapi.nat44_add_del_static_mapping(is_add=0, local_ip_address=ep.ip4.bytes,
+                                                   external_ip_address=ep.fip4.bytes, external_sw_if_index=0xFFFFFFFF,
+                                                   vrf_id=0, flags=flags)
+            self.vapi.nat66_add_del_static_mapping(local_ip_address=ep.ip6.bytes, external_ip_address=ep.fip6.bytes,
+                                                   vrf_id=0, is_add=0)
 
         for epg in epgs:
             # IP config on the BVI interfaces
             if epg != epgs[0] and epg != epgs[3]:
                 flags = self.config_flags.NAT_IS_INSIDE
-                self.vapi.nat44_interface_add_del_feature(epg.bvi.sw_if_index,
+                self.vapi.nat44_interface_add_del_feature(sw_if_index=epg.bvi.sw_if_index,
                                                           flags=flags,
                                                           is_add=0)
-                self.vapi.nat66_add_del_interface(epg.bvi.sw_if_index,
-                                                  flags=flags,
-                                                  is_add=0)
+                self.vapi.nat66_add_del_interface(is_add=0, flags=flags, sw_if_index=epg.bvi.sw_if_index)
 
         for recirc in recircs:
             self.vapi.nat44_interface_add_del_feature(
-                recirc.recirc.sw_if_index,
+                sw_if_index=recirc.recirc.sw_if_index,
                 is_add=0)
-            self.vapi.nat66_add_del_interface(
-                recirc.recirc.sw_if_index,
-                is_add=0)
+            self.vapi.nat66_add_del_interface(is_add=0, sw_if_index=recirc.recirc.sw_if_index)
 
     def wait_for_ep_timeout(self, sw_if_index=None, ip=None, mac=None,
                             n_tries=100, s_time=1):
@@ -1802,30 +1790,6 @@ class TestGBP(VppTestCase):
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
                  VXLAN(vni=99, gpid=113, flags=0x88, gpflags='A') /
-                 Ether(src=l['mac'], dst=ep.mac) /
-                 IP(src=l['ip'], dst=ep.ip4.address) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw('\xa5' * 100))
-
-            rx = self.send_and_expect(self.pg2, p*65, self.pg0)
-
-            self.assertTrue(find_gbp_endpoint(self,
-                                              vx_tun_l2_1.sw_if_index,
-                                              mac=l['mac']))
-
-        #
-        # repeat in the other EPG
-        # there's no contract between 220 and 330, but the sclass is set to 1
-        # so the packet is cleared for delivery
-        #
-        for l in learnt:
-            # a packet with an sclass from a known EPG
-            p = (Ether(src=self.pg2.remote_mac,
-                       dst=self.pg2.local_mac) /
-                 IP(src=self.pg2.remote_hosts[1].ip4,
-                    dst=self.pg2.local_ip4) /
-                 UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=1, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -3688,22 +3652,6 @@ class TestGBP(VppTestCase):
             self.assertEqual(inner[Ether].dst, "00:0c:0c:0c:0c:0c")
             self.assertEqual(inner[IP].src, "10.220.0.1")
             self.assertEqual(inner[IP].dst, "10.222.0.1")
-
-        #
-        # ping from host in remote to local external subnets
-        # there's no contract for this, but sclass is 1.
-        #
-        p = (Ether(src=self.pg7.remote_mac, dst=self.pg7.local_mac) /
-             IP(src=self.pg7.remote_ip4, dst=self.pg7.local_ip4) /
-             UDP(sport=1234, dport=48879) /
-             VXLAN(vni=445, gpid=1, flags=0x88) /
-             Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
-             IP(src="10.222.0.1", dst="10.220.0.1") /
-             UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
-
-        rxs = self.send_and_expect(self.pg7, p * 3, self.pg0)
-        self.assertFalse(find_gbp_endpoint(self, ip="10.222.0.1"))
 
         #
         # ping from host in remote to local external subnets
