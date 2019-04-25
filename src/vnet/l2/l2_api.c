@@ -986,6 +986,9 @@ l2_api_hookup (vlib_main_t * vm)
   foreach_vpe_api_msg;
 #undef _
 
+  /* Mark VL_API_BRIDGE_DOMAIN_DUMP as mp safe */
+  am->is_mp_safe[VL_API_BRIDGE_DOMAIN_DUMP] = 1;
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */
