@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fd7bf8c9_c3d7c98e",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 13
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-25T18:08:28Z",
+      "side": 1,
+      "message": "please move this up so it applies foir all platforms, not only arm. Also thar message is not needed...",
+      "range": {
+        "startLine": 36,
+        "startChar": 2,
+        "endLine": 36,
+        "endChar": 38
+      },
+      "revId": "85504bed3793655a39581840ada15f50195bcb6a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
