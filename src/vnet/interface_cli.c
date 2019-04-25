@@ -469,6 +469,7 @@ VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
   .path = "show interface",
   .short_help = "show interface [address|addr|features|feat] [<interface> [<interface> [..]]] [verbose]",
   .function = show_sw_interfaces,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 

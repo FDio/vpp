@@ -1378,6 +1378,11 @@ interface_api_hookup (vlib_main_t * vm)
   foreach_vpe_api_msg;
 #undef _
 
+  /* Mark these APIs as mp safe */
+  am->is_mp_safe[VL_API_SW_INTERFACE_DUMP] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_DETAILS] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_TAG_ADD_DEL] = 1;
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */
