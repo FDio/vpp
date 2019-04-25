@@ -332,6 +332,18 @@ svm_fifo_unset_event (svm_fifo_t * f)
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
 void svm_fifo_init (svm_fifo_t * f, u32 size);
+
+/**
+ * Allocate a fifo chunk on heap
+ *
+ * If the chunk is allocated on a fifo segment, this should be called
+ * with the segment's heap pushed.
+ *
+ * @param size	chunk size in bytes
+ * @return	new chunk or 0 if alloc failed
+ */
+svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
+
 /**
  * Grow fifo size by adding chunk to chunk list
  *
