@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "323acb23_e3ae77f1",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-04-25T01:09:23Z",
+      "side": 1,
+      "message": "can we remove the ipsec_crypto_alg_t type and use the vnet_crypto_alg_t type instead.\nthe sets of algos we either be the same or the latter will be a superset.",
+      "revId": "ebef72bb6f042042f14d3d34635a124c39472c1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
