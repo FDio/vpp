@@ -462,15 +462,19 @@ class SplitToSuitesCallback:
         self.suite_name = 'default'
         self.filter_callback = filter_callback
         self.filtered = unittest.TestSuite()
+        self.count = 0
 
     def __call__(self, file_name, cls, method):
         test_method = cls(method)
-        if self.filter_callback(file_name, cls.__name__, method):
+        suite_name = file_name + cls.__name__
+        if suite_name not in self.suites:
+           self.suites[suite_name] = unittest.TestSuite()
+           self.count = self.count + 1
+        if self.filter_callback(file_name, cls.__name__, method, self.count):
             self.suite_name = file_name + cls.__name__
             if self.suite_name not in self.suites:
                 self.suites[self.suite_name] = unittest.TestSuite()
             self.suites[self.suite_name].addTest(test_method)
-
         else:
             self.filtered.addTest(test_method)
 
@@ -483,6 +487,8 @@ def parse_test_option():
     filter_file_name = None
     filter_class_name = None
     filter_func_name = None
+    filter_modulo = 1
+    filter_remainder = 0
     if f:
         if '.' in f:
             parts = f.split('.')
@@ -503,10 +509,15 @@ def parse_test_option():
             if f.startswith('test_'):
                 filter_file_name = f
             else:
-                filter_file_name = 'test_%s' % f
+                if '%' in f:
+		    parts = f.split('%')
+		    filter_remainder = int(parts[0])
+		    filter_modulo = int(parts[1])
+		else:                
+                    filter_file_name = 'test_%s' % f
     if filter_file_name:
         filter_file_name = '%s.py' % filter_file_name
-    return filter_file_name, filter_class_name, filter_func_name
+    return filter_file_name, filter_class_name, filter_func_name, filter_modulo, filter_remainder
 
 
 def filter_tests(tests, filter_cb):
@@ -534,12 +545,14 @@ def filter_tests(tests, filter_cb):
 
 
 class FilterByTestOption:
-    def __init__(self, filter_file_name, filter_class_name, filter_func_name):
+    def __init__(self, filter_file_name, filter_class_name, filter_func_name, filter_modulo, filter_remainder):
         self.filter_file_name = filter_file_name
         self.filter_class_name = filter_class_name
         self.filter_func_name = filter_func_name
+        self.filter_modulo = filter_modulo
+        self.filter_remainder = filter_remainder
 
-    def __call__(self, file_name, class_name, func_name):
+    def __call__(self, file_name, class_name, func_name, counter):
         if self.filter_file_name:
             fn_match = fnmatch.fnmatch(file_name, self.filter_file_name)
             if not fn_match:
@@ -547,6 +560,8 @@ class FilterByTestOption:
         if self.filter_class_name and class_name != self.filter_class_name:
             return False
         if self.filter_func_name and func_name != self.filter_func_name:
+            return False
+        if (counter % self.filter_modulo) != self.filter_remainder:
             return False
         return True
 
@@ -770,12 +785,12 @@ if __name__ == '__main__':
     descriptions = True
 
     print("Running tests using custom test runner")  # debug message
-    filter_file, filter_class, filter_func = parse_test_option()
+    filter_file, filter_class, filter_func, filter_modulo, filter_remainder = parse_test_option()
 
-    print("Active filters: file=%s, class=%s, function=%s" % (
-        filter_file, filter_class, filter_func))
+    print("Active filters: file=%s, class=%s, function=%s, mod=%d, rem=%d" % (
+        filter_file, filter_class, filter_func, filter_modulo, filter_remainder))
 
-    filter_cb = FilterByTestOption(filter_file, filter_class, filter_func)
+    filter_cb = FilterByTestOption(filter_file, filter_class, filter_func, filter_modulo, filter_remainder)
 
     ignore_path = os.getenv("VENV_PATH", None)
     cb = SplitToSuitesCallback(filter_cb)
