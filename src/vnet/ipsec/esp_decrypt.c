@@ -266,7 +266,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 	       */
 	      op->iv -= sizeof (sa0->salt);
 	      clib_memcpy_fast (op->iv, &sa0->salt, sizeof (sa0->salt));
-	      op->iv_len = cpd.iv_sz + sizeof (sa0->salt);
 
 	      op->tag = payload + len;
 	      op->tag_len = 16;
