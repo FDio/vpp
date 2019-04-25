@@ -81,9 +81,9 @@ static ipsecmb_main_t ipsecmb_main = { };
  * (Alg, key-len-bytes, iv-len-bytes)
  */
 #define foreach_ipsecmb_gcm_cipher_op                          \
-  _(AES_128_GCM, 128, 12)                                      \
-  _(AES_192_GCM, 192, 12)                                      \
-  _(AES_256_GCM, 256, 12)
+  _(AES_128_GCM, 128)                                          \
+  _(AES_192_GCM, 192)                                          \
+  _(AES_256_GCM, 256)
 
 always_inline void
 ipsecmb_retire_hmac_job (JOB_AES_HMAC * job, u32 * n_fail, u32 digest_size)
@@ -271,6 +271,7 @@ ipsecmb_retire_gcm_cipher_job (JOB_AES_HMAC * job,
     {
       op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
       *n_fail = *n_fail + 1;
+      return;
     }
   else
     op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
@@ -286,9 +287,8 @@ ipsecmb_retire_gcm_cipher_job (JOB_AES_HMAC * job,
 }
 
 static_always_inline u32
-ipsecmb_ops_gcm_cipher_inline (vlib_main_t * vm,
-			       vnet_crypto_op_t * ops[],
-			       u32 n_ops, u32 key_len, u32 iv_len,
+ipsecmb_ops_gcm_cipher_inline (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+			       u32 n_ops, u32 key_len,
 			       JOB_CIPHER_DIRECTION direction)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
@@ -306,8 +306,6 @@ ipsecmb_ops_gcm_cipher_inline (vlib_main_t * vm,
       struct gcm_key_data *kd;
       vnet_crypto_op_t *op = ops[i];
       kd = (struct gcm_key_data *) imbm->key_data[op->key_index];
-      u32 nonce[3];
-      __m128i iv;
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -321,30 +319,11 @@ ipsecmb_ops_gcm_cipher_inline (vlib_main_t * vm,
       job->cipher_direction = direction;
       job->chain_order = (direction == ENCRYPT ? CIPHER_HASH : HASH_CIPHER);
 
-      if (direction == ENCRYPT)
-	{
-	  if (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
-	    {
-	      iv = ptd->cbc_iv;
-	      // only use 8 bytes of the IV
-	      clib_memcpy_fast (op->iv, &iv, 8);
-	      ptd->cbc_iv = _mm_aesenc_si128 (iv, iv);
-	    }
-	  nonce[0] = op->salt;
-	  clib_memcpy_fast (nonce + 1, op->iv, 8);
-	  job->iv = (u8 *) nonce;
-	}
-      else
-	{
-	  nonce[0] = op->salt;
-	  clib_memcpy_fast (nonce + 1, op->iv, 8);
-	  job->iv = op->iv;
-	}
-
+      job->iv = op->iv;
       job->aes_key_len_in_bytes = key_len / 8;
       job->aes_enc_key_expanded = kd;
       job->aes_dec_key_expanded = kd;
-      job->iv_len_in_bytes = iv_len;
+      job->iv_len_in_bytes = 12;
 
       job->u.GCM.aad = op->aad;
       job->u.GCM.aad_len_in_bytes = op->aad_len;
@@ -361,34 +340,22 @@ ipsecmb_ops_gcm_cipher_inline (vlib_main_t * vm,
 	ipsecmb_retire_gcm_cipher_job (job, &n_fail, direction);
     }
 
-  /*
-   * .. then flush (i.e. complete) them
-   *  We will have queued enough to satisfy the 'multi' buffer
-   */
   while ((job = IMB_FLUSH_JOB (ptd->mgr)))
-    {
-      ipsecmb_retire_gcm_cipher_job (job, &n_fail, direction);
-    }
+    ipsecmb_retire_gcm_cipher_job (job, &n_fail, direction);
 
   return n_ops - n_fail;
 }
 
-#define _(a, b, c)                                                           \
+#define _(a, b)                                                              \
 static_always_inline u32                                                     \
-ipsecmb_ops_gcm_cipher_enc_##a (vlib_main_t * vm,                            \
-                                vnet_crypto_op_t * ops[],                    \
+ipsecmb_ops_gcm_cipher_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
                                 u32 n_ops)                                   \
-{ return ipsecmb_ops_gcm_cipher_inline (vm, ops, n_ops, b, c, ENCRYPT); }    \
-
-foreach_ipsecmb_gcm_cipher_op;
-#undef _
-
-#define _(a, b, c)                                                           \
+{ return ipsecmb_ops_gcm_cipher_inline (vm, ops, n_ops, b, ENCRYPT); }       \
+                                                                             \
 static_always_inline u32                                                     \
-ipsecmb_ops_gcm_cipher_dec_##a (vlib_main_t * vm,                            \
-                                vnet_crypto_op_t * ops[],                    \
+ipsecmb_ops_gcm_cipher_dec_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
                                 u32 n_ops)                                   \
-{ return ipsecmb_ops_gcm_cipher_inline (vm, ops, n_ops, b, c, DECRYPT); }    \
+{ return ipsecmb_ops_gcm_cipher_inline (vm, ops, n_ops, b, DECRYPT); }       \
 
 foreach_ipsecmb_gcm_cipher_op;
 #undef _
@@ -561,7 +528,7 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 
   foreach_ipsecmb_cbc_cipher_op;
 #undef _
-#define _(a, b, c)                                                      \
+#define _(a, b)                                                         \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
                                     ipsecmb_ops_gcm_cipher_enc_##a);    \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \

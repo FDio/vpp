@@ -167,6 +167,7 @@ typedef struct
 
   /* Salt used in GCM modes - stored in network byte order */
   u32 salt;
+  u64 gcm_iv_counter;
 } ipsec_sa_t;
 
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
