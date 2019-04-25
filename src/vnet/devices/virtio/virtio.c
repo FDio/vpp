@@ -121,7 +121,7 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
       do
 	{
 	  if (n_alloc < sz)
-	    n_alloc =
+	    n_alloc +=
 	      vlib_buffer_alloc (vm, vring->indirect_buffers + n_alloc,
 				 sz - n_alloc);
 	}
