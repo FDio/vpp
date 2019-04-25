@@ -38,10 +38,11 @@ typedef enum fifo_segment_flags_
 
 typedef struct
 {
-  svm_fifo_t *fifos;		/**< Linked list of active RX fifos */
-  svm_fifo_t **free_fifos;	/**< Freelists, by fifo size  */
-  u32 n_active_fifos;		/**< Number of active fifos */
-  u8 flags;			/**< Segment flags */
+  svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
+  svm_fifo_t **free_fifos;		/**< Freelists by fifo size  */
+  svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
+  u32 n_active_fifos;			/**< Number of active fifos */
+  u8 flags;				/**< Segment flags */
 } fifo_segment_header_t;
 
 typedef struct
@@ -82,7 +83,7 @@ void fifo_segment_info (fifo_segment_t * seg, char **address, size_t * size);
 /**
  * Allocate fifo in fifo segment
  *
- * @param fs		fifo segment
+ * @param fs		fifo segment for fifo
  * @param data_bytes	size of default fifo chunk in bytes
  * @param ftype		fifo type @ref fifo_segment_ftype_t
  * @return		new fifo or 0 if alloc failed
@@ -94,7 +95,7 @@ svm_fifo_t *fifo_segment_alloc_fifo (fifo_segment_t * fs,
 /**
  * Free fifo allocated in fifo segment
  *
- * @param fs		fifo segment
+ * @param fs		fifo segment for fifo
  * @param f		fifo to be freed
  */
 void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
@@ -107,7 +108,7 @@ void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
  * is hit, the number of fifo pairs requested is updated by subtracting the
  * number of fifos that have been successfully allocated.
  *
- * @param fs		fifo segment
+ * @param fs		fifo segment for fifo
  * @param rx_fifo_size	data size of rx fifos
  * @param tx_fifo_size	data size of tx fifos
  * @param n_fifo_pairs	number of pairs requested. Prior to returning, this
@@ -117,10 +118,28 @@ void fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 					  u32 rx_fifo_size,
 					  u32 tx_fifo_size,
 					  u32 * n_fifo_pairs);
+/**
+ * Grow fifo size by adding an additional chunk of memory
+ *
+ * @param fs		fifo segment for fifo
+ * @param f		fifo to be grown
+ * @param chunk_size	number of bytes to be added to fifo
+ * @return		0 on success or a negative number otherwise
+ */
+int fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f,
+			    u32 chunk_size);
 u8 fifo_segment_has_fifos (fifo_segment_t * fs);
 svm_fifo_t *fifo_segment_get_fifo_list (fifo_segment_t * fs);
 u32 fifo_segment_num_fifos (fifo_segment_t * fs);
 u32 fifo_segment_num_free_fifos (fifo_segment_t * fs, u32 fifo_size_in_bytes);
+/**
+ * Find number of free chunks of given size
+ *
+ * @param fs	fifo segment
+ * @param size	chunk size of interest or ~0 if all should be counted
+ * @return	number of chunks of given size
+ */
+u32 fifo_segment_num_free_chunks (fifo_segment_t * fs, u32 size);
 
 void fifo_segment_main_init (fifo_segment_main_t * sm, u64 baseva,
 			     u32 timeout_in_seconds);
