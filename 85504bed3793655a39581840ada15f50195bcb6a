@@ -22,6 +22,30 @@
       "revId": "85504bed3793655a39581840ada15f50195bcb6a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b96885a4_2854c2df",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 13
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-04-26T01:13:27Z",
+      "side": 1,
+      "message": "Yes, will get it applied for all platform and remove the message.",
+      "parentUuid": "fd7bf8c9_c3d7c98e",
+      "range": {
+        "startLine": 36,
+        "startChar": 2,
+        "endLine": 36,
+        "endChar": 38
+      },
+      "revId": "85504bed3793655a39581840ada15f50195bcb6a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
