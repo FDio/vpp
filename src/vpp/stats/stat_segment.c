@@ -703,6 +703,11 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 
   /* set default socket file name when statseg config stanza is empty. */
   sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
+  /*
+   * NULL-terminate socket name string
+   * clib_socket_init()->socket_config() use C str*
+   */
+  vec_add1 (sm->socket_name, 0);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
