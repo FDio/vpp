@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "c49ccf71_d82dca2b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-04-26T18:34:33Z",
+      "side": 1,
+      "message": "AArch64",
+      "range": {
+        "startLine": 7,
+        "startChar": 39,
+        "endLine": 7,
+        "endChar": 47
+      },
+      "revId": "073ab75dc384a0e7e13a9f1ddc9cb7e09a6fd645",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c16045fb_4e9cf882",
         "filename": "src/vppinfra/cpu.c",
         "patchSetId": 2
@@ -13,6 +36,24 @@
       "writtenOn": "2019-04-26T10:23:19Z",
       "side": 1,
       "message": "Instead of SHOW_CPUPASS_IN_NUMBER all over the place, can you just use 0 and 1 and put some header here. i.e.\n\n/* implementor-id, parti-d, vendor-name, cpu-name, show-as-string */",
+      "revId": "073ab75dc384a0e7e13a9f1ddc9cb7e09a6fd645",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c4a11cdc_beedd86f",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-04-26T18:34:33Z",
+      "side": 1,
+      "message": "I might be too anal about documenting, hence I would recommend keeping both as in SHOW_CPU_PASS and the comment Damjan mentioned:\n/* implementor-id, part-id, vendor-name, cpu-name, \u003cSHOW_CPUPASS_IN_NUMBER | SHOW_CPUPASS_IN_STRING\u003e */\n\nBut I will let both of you come to consensus.",
+      "parentUuid": "c16045fb_4e9cf882",
       "revId": "073ab75dc384a0e7e13a9f1ddc9cb7e09a6fd645",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
