@@ -4201,6 +4201,7 @@ void* mspace_get_aligned (mspace msp,
    * which we need later to call mspace_free...
    */
   if (align > 4<<10 || align_offset == ~0UL) {
+#if 0
     n_user_data_bytes -= sizeof(unsigned);
     assert(align_offset == 0);
     rv = internal_memalign(ms, (size_t)align, n_user_data_bytes);
@@ -4211,6 +4212,10 @@ void* mspace_get_aligned (mspace msp,
       size_t psize = chunksize(p);
       mheap_get_trace ((unsigned long)rv, psize);
     }
+#else
+    ASSERT(0 && "force allocation failure: the pointer would be incompatible with clib_mem_size()");
+    rv = 0;
+#endif
     return rv;
   }
 
