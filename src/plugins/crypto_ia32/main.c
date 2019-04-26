@@ -39,7 +39,6 @@ crypto_ia32_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
       break;
     default:
       return;
-      break;
     }
 
   if (kop == VNET_CRYPTO_KEY_OP_DEL)
@@ -88,9 +87,9 @@ crypto_ia32_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
       aes_key_enc_to_dec (kd->decrypt_key, AESNI_KEY_256);
       break;
     default:
-      return;
       break;
     }
+  return;
 }
 
 clib_error_t *
