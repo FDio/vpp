@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c16045fb_4e9cf882",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-04-26T10:23:19Z",
+      "side": 1,
+      "message": "Instead of SHOW_CPUPASS_IN_NUMBER all over the place, can you just use 0 and 1 and put some header here. i.e.\n\n/* implementor-id, parti-d, vendor-name, cpu-name, show-as-string */",
+      "revId": "073ab75dc384a0e7e13a9f1ddc9cb7e09a6fd645",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
