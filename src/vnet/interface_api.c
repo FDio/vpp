@@ -1372,7 +1372,7 @@ static void
   u32 sw_if_index;
   int rv = 0;
 
-  if (mp->sw_if_index || mp->restrict_also_local)
+  if (mp->restrict_by_index)
     sw_if_index = ntohl (mp->sw_if_index);
   else
     sw_if_index = ~0;
