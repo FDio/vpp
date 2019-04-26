@@ -314,21 +314,29 @@ class TestIpsecAhAll(ConfigIpsecAH,
 
     def test_integ_algs(self):
         """All Engines SHA[1_96, 256, 394, 512] w/ & w/o ESN"""
-        # foreach VPP crypto engine
+
+        ia = VppEnum.vl_api_ipsec_integ_alg_t
+
+        # each crypto engine
         engines = ["ia32", "ipsecmb", "openssl"]
 
-        algos = [{'vpp': VppEnum.vl_api_ipsec_integ_alg_t.
-                  IPSEC_API_INTEG_ALG_SHA1_96,
-                  'scapy': "HMAC-SHA1-96"},
-                 {'vpp': VppEnum.vl_api_ipsec_integ_alg_t.
-                  IPSEC_API_INTEG_ALG_SHA_256_128,
-                  'scapy': "SHA2-256-128"},
-                 {'vpp': VppEnum.vl_api_ipsec_integ_alg_t.
-                  IPSEC_API_INTEG_ALG_SHA_384_192,
-                  'scapy': "SHA2-384-192"},
-                 {'vpp': VppEnum.vl_api_ipsec_integ_alg_t.
-                  IPSEC_API_INTEG_ALG_SHA_512_256,
-                  'scapy': "SHA2-512-256"}]
+        algos = [{'vpp': ia.IPSEC_API_INTEG_ALG_SHA1_96,
+                  'scapy': "HMAC-SHA1-96",
+                  'key': 'C91KUR9GYMm5GfkEvNjX'},
+                 {'vpp': ia.IPSEC_API_INTEG_ALG_SHA1_96,
+                  'scapy': "HMAC-SHA1-96",
+                  # a key length greater than the block size
+                  'key': ('0123456789012345678901234567890123456789'
+                          '012345678901234567890123456789')},
+                 {'vpp': ia.IPSEC_API_INTEG_ALG_SHA_256_128,
+                  'scapy': "SHA2-256-128",
+                  'key': 'C91KUR9GYMm5GfkEvNjX'},
+                 {'vpp': ia.IPSEC_API_INTEG_ALG_SHA_384_192,
+                  'scapy': "SHA2-384-192",
+                  'key': 'C91KUR9GYMm5GfkEvNjX'},
+                 {'vpp': ia.IPSEC_API_INTEG_ALG_SHA_512_256,
+                  'scapy': "SHA2-512-256",
+                  'key': 'C91KUR9GYMm5GfkEvNjX'}]
 
         flags = [0, (VppEnum.vl_api_ipsec_sad_flags_t.
                      IPSEC_API_SAD_FLAG_USE_ESN)]
@@ -358,6 +366,7 @@ class TestIpsecAhAll(ConfigIpsecAH,
                     for _, p in self.params.items():
                         p.auth_algo_vpp_id = algo['vpp']
                         p.auth_algo = algo['scapy']
+                        p.auth_key = algo['key']
                         p.flags = p.flags | flag
 
                     #

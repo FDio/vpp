@@ -82,33 +82,40 @@ static ipsecmb_main_t ipsecmb_main;
 
 always_inline void
 hash_expand_keys (const MB_MGR * mgr,
-		  const u8 * key,
+		  const u8 * orig_key,
 		  u32 length,
 		  u8 block_size,
-		  u8 ipad[256], u8 opad[256], hash_one_block_t fn)
+		  u8 ipad[256], u8 opad[256],
+		  hash_one_block_t hash_one_block_fn, hash_fn_t hash_fn)
 {
+  u8 hash_key[block_size];
   u8 buf[block_size];
+  const u8 *key;
   int i = 0;
 
   if (length > block_size)
     {
-      return;
+      memset (hash_key, 0, sizeof (hash_key));
+      hash_fn (orig_key, length, hash_key);
+      key = hash_key;
+      length = block_size;
     }
+  else
+    key = orig_key;
 
   memset (buf, 0x36, sizeof (buf));
   for (i = 0; i < length; i++)
     {
       buf[i] ^= key[i];
     }
-  fn (buf, ipad);
+  hash_one_block_fn (buf, ipad);
 
   memset (buf, 0x5c, sizeof (buf));
-
   for (i = 0; i < length; i++)
     {
       buf[i] ^= key[i];
     }
-  fn (buf, opad);
+  hash_one_block_fn (buf, opad);
 }
 
 always_inline void
@@ -142,7 +149,8 @@ ipsecmb_ops_hmac_inline (vlib_main_t * vm,
 			 vnet_crypto_op_t * ops[],
 			 u32 n_ops,
 			 u32 block_size,
-			 hash_one_block_t fn, JOB_HASH_ALG alg)
+			 hash_one_block_t hash_one_block_fn,
+			 hash_fn_t hash_fn, JOB_HASH_ALG alg)
 {
   JOB_AES_HMAC *job;
   u32 i, n_fail = 0;
@@ -157,7 +165,7 @@ ipsecmb_ops_hmac_inline (vlib_main_t * vm,
       u8 ipad[256], opad[256];
 
       hash_expand_keys (ptd->mgr, op->key, op->key_len,
-			block_size, ipad, opad, fn);
+			block_size, ipad, opad, hash_one_block_fn, hash_fn);
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -211,6 +219,7 @@ ipsecmb_ops_hmac_##a (vlib_main_t * vm,                                 \
   return ipsecmb_ops_hmac_inline (vm, ptd, ops, n_ops,                  \
                                   b##_BLOCK_SIZE,                       \
                                   ptd->mgr->c##_one_block,              \
+                                  ptd->mgr->c,                          \
                                   b);                                   \
   }
 foreach_ipsecmb_hmac_op;
