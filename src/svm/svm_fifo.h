@@ -527,13 +527,13 @@ svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
 always_inline u32
 ooo_segment_distance_from_tail (svm_fifo_t * f, u32 pos, u32 tail)
 {
-  return ((pos - tail) % f->size);
+  return ((f->size + pos - tail) % f->size);
 }
 
 always_inline u32
 ooo_segment_distance_to_tail (svm_fifo_t * f, u32 pos, u32 tail)
 {
-  return ((tail - pos) % f->size);
+  return ((f->size + tail - pos) % f->size);
 }
 
 always_inline u32
