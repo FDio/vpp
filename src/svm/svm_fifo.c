@@ -819,7 +819,7 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 
   ooo_segment_add (f, offset, head, tail, len);
 
-  tail_idx = (tail + offset) % f->size;
+  tail_idx = (tail % f->size + offset) % f->size;
 
   if (!svm_fifo_chunk_includes_pos (f->ooo_enq, tail_idx))
     f->ooo_enq = svm_fifo_find_chunk (f, tail_idx);
@@ -871,7 +871,7 @@ svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
     return -2;			/* nothing in the fifo */
 
   len = clib_min (cursize - offset, len);
-  head_idx = (head + offset) % f->size;
+  head_idx = (head % f->size + offset) % f->size;
   if (!svm_fifo_chunk_includes_pos (f->ooo_deq, head_idx))
     f->ooo_deq = svm_fifo_find_chunk (f, head_idx);
 
