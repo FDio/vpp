@@ -92,7 +92,7 @@ typedef struct
   dpo_id_t ip4_dpo;				/**< DPO for Encaps IPv6 */
 
   u8 is_tmap;                                /**< T.M.Tmap dynamically compute node ID */
-  ip6_address_t localsid_prefix;           /**< T.M.Tmap localsid prefix */
+  ip6_address_t local_prefix;           /**< T.M.Tmap localsid prefix */
 
 } ip6_sr_sl_t;
 
@@ -356,3 +356,4 @@ ip6_sr_compute_rewrite_string_insert (ip6_address_t * sl)
  * eval: (c-set-style "gnu")
  * End:
  */
+

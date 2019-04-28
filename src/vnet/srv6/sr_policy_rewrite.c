@@ -58,7 +58,7 @@ typedef struct
 {
   ip6_address_t src, dst;
   bool is_tmap;
-  ip46_address_t localsid_prefix, node;
+  ip46_address_t local_prefix, node;
 } sr_policy_rewrite_trace_t;
 
 /* Graph arcs */
@@ -317,7 +317,7 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
   segment_list->segments = vec_dup (sl);
 
   segment_list->is_tmap = is_tmap;
-  segment_list->localsid_prefix = *localsid_prefix;
+  segment_list->local_prefix = *localsid_prefix;
 
   if (is_encap)
     {
@@ -885,7 +885,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_encap = 1;
       else if (unformat (input, "insert"))
 	is_encap = 0;
-       else if (unformat (input, "gtp4_removal sr-prefix %U/%d local-prefix %U/%d",
+       else if (unformat (input, "gtp4_removal sr_prefix %U/%d local_prefix %U/%d",
            unformat_ip6_address, &tmap_prefix,  &gtp4_mask_width,
            unformat_ip6_address, &tmap_localsid, &localsid_mask_width))
        {
@@ -982,7 +982,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (sr_policy_command, static) = {
   .path = "sr policy",
   .short_help = "sr policy [add||del||mod] [bsid 2001::1||index 5] "
-    "next A:: next B:: next C:: (weight 1) (fib-table 2) (encap|insert|gtp4_removal sr-prefix <ipv6_prefix_interworking>/<mask> local-prefix <ipv6_prefix_interworking>/<mask>)",
+    "next A:: next B:: next C:: (weight 1) (fib-table 2) (encap|insert|gtp4_removal sr_prefix <ipv6_prefix_interworking>/<mask> local_prefix <ipv6_prefix_interworking>/<mask>)",
   .long_help =
     "Manipulation of SR policies.\n"
     "A Segment Routing policy may contain several SID lists. Each SID list has\n"
@@ -1056,7 +1056,7 @@ show_sr_policies_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (sr_policy->is_tmap) {
           s = NULL;
           s = format (s, "\tLocal SID Prefix: %U",
-                           format_ip6_address, &segment_list->localsid_prefix);
+                           format_ip6_address, &segment_list->local_prefix);
           vlib_cli_output (vm, "  %s", s);
       }
     }
@@ -1089,7 +1089,7 @@ format_sr_policy_rewrite_trace (u8 * s, va_list * args)
   s = format
     (s, "SR-policy-rewrite: src %U dst %U\n\tLocal SID Prefix: %U Node: %U",
      format_ip6_address, &t->src, format_ip6_address, &t->dst,
-         format_ip6_address, t->localsid_prefix, format_ip6_address, t->node);
+         format_ip6_address, t->local_prefix, format_ip6_address, t->node);
     } else {
   s = format
     (s, "SR-policy-rewrite: src %U dst %U",
@@ -1541,7 +1541,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr0->segments->as_u8[11] = ((u8*) &teid0)[2];
               sr0->segments->as_u8[12] = ((u8*) &teid0)[3];
 
-              ip0->src_address.as_u64[0] = sl3->localsid_prefix.as_u64[0];
+              ip0->src_address.as_u64[0] = sl3->local_prefix.as_u64[0];
               ip0->src_address.as_u32[2] = sr_addr0.as_u32;
               ip0->src_address.as_u16[6] = sr_port0;
             }
@@ -1555,7 +1555,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr1->segments->as_u8[11] = ((u8*) &teid1)[2];
               sr1->segments->as_u8[12] = ((u8*) &teid1)[3];
 
-              ip1->src_address.as_u64[0] = sl3->localsid_prefix.as_u64[0];
+              ip1->src_address.as_u64[0] = sl3->local_prefix.as_u64[0];
               ip1->src_address.as_u32[2] = sr_addr1.as_u32;
               ip1->src_address.as_u16[6] = sr_port1;
             }
@@ -1569,7 +1569,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr2->segments->as_u8[11] = ((u8*) &teid2)[2];
               sr2->segments->as_u8[12] = ((u8*) &teid2)[3];
 
-              ip2->src_address.as_u64[0] = sl3->localsid_prefix.as_u64[0];
+              ip2->src_address.as_u64[0] = sl3->local_prefix.as_u64[0];
               ip2->src_address.as_u32[2] = sr_addr2.as_u32;
               ip2->src_address.as_u16[6] = sr_port2;
             }
@@ -1583,7 +1583,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr3->segments->as_u8[11] = ((u8*) &teid3)[2];
               sr3->segments->as_u8[12] = ((u8*) &teid3)[3];
 
-              ip3->src_address.as_u64[0] = sl3->localsid_prefix.as_u64[0];
+              ip3->src_address.as_u64[0] = sl3->local_prefix.as_u64[0];
               ip3->src_address.as_u32[2] = sr_addr3.as_u32;
               ip3->src_address.as_u16[6] = sr_port3;
             }
@@ -1601,9 +1601,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
                   if (PREDICT_TRUE (sl0->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->localsid_prefix.as_u8,
+                      clib_memcpy (tr->local_prefix.as_u8,
                                    ip0->src_address.as_u8,
-                                   sizeof(tr->localsid_prefix.as_u8));
+                                   sizeof(tr->local_prefix.as_u8));
                       clib_memcpy (tr->node.as_u8,
                                    sl0->segments->as_u8,
                                    sizeof(tr->node.as_u8));
@@ -1621,9 +1621,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
                   if (PREDICT_TRUE (sl1->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->localsid_prefix.as_u8,
+                      clib_memcpy (tr->local_prefix.as_u8,
                                    ip1->src_address.as_u8,
-                                   sizeof(tr->localsid_prefix.as_u8));
+                                   sizeof(tr->local_prefix.as_u8));
                       clib_memcpy (tr->node.as_u8,
                                    sl1->segments->as_u8,
                                    sizeof(tr->node.as_u8));
@@ -1641,9 +1641,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
                   if (PREDICT_TRUE (sl2->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->localsid_prefix.as_u8,
+                      clib_memcpy (tr->local_prefix.as_u8,
                                    ip2->src_address.as_u8,
-                                   sizeof(tr->localsid_prefix.as_u8));
+                                   sizeof(tr->local_prefix.as_u8));
                       clib_memcpy (tr->node.as_u8,
                                    sl2->segments->as_u8,
                                    sizeof(tr->node.as_u8));
@@ -1661,9 +1661,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
                   if (PREDICT_TRUE (sl3->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->localsid_prefix.as_u8,
+                      clib_memcpy (tr->local_prefix.as_u8,
                                    ip3->src_address.as_u8,
-                                   sizeof(tr->localsid_prefix.as_u8));
+                                   sizeof(tr->local_prefix.as_u8));
                       clib_memcpy (tr->node.as_u8,
                                    sl3->segments->as_u8,
                                    sizeof(tr->node.as_u8));
@@ -1734,7 +1734,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               sr0->segments->as_u8[11] = ((u8*) &teid0)[2];
               sr0->segments->as_u8[12] = ((u8*) &teid0)[3];
 
-              ip0->src_address.as_u64[0] = sl0->localsid_prefix.as_u64[0];
+              ip0->src_address.as_u64[0] = sl0->local_prefix.as_u64[0];
               ip0->src_address.as_u32[2] = sr_addr0.as_u32;
               ip0->src_address.as_u16[6] = sr_port;
             }
@@ -1751,9 +1751,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               if (PREDICT_TRUE (sl0->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->localsid_prefix.as_u8,
+                      clib_memcpy (tr->local_prefix.as_u8,
                                    ip0->src_address.as_u8,
-                                   sizeof(tr->localsid_prefix.as_u8));
+                                   sizeof(tr->local_prefix.as_u8));
                       clib_memcpy (tr->node.as_u8,
                                    sl0->segments->as_u8,
                                    sizeof(tr->node.as_u8));
