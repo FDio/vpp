@@ -414,8 +414,8 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 		}
 	    }
 	  else
-	    n_bytes_read = svm_fifo_dequeue_nowait (ctx->s->tx_fifo,
-						    len_to_deq, data);
+	    n_bytes_read = svm_fifo_dequeue (ctx->s->tx_fifo,
+					     len_to_deq, data);
 	}
       ASSERT (n_bytes_read == len_to_deq);
       chain_b->current_length = n_bytes_read;
@@ -494,8 +494,8 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 	}
       else
 	{
-	  n_bytes_read = svm_fifo_dequeue_nowait (ctx->s->tx_fifo,
-						  len_to_deq, data0);
+	  n_bytes_read = svm_fifo_dequeue (ctx->s->tx_fifo,
+					   len_to_deq, data0);
 	  ASSERT (n_bytes_read > 0);
 	}
     }
