@@ -30,7 +30,6 @@ typedef struct
 {
   u32 next;	/**< Next linked-list element pool index */
   u32 prev;	/**< Previous linked-list element pool index */
-
   u32 start;	/**< Start of segment, normalized*/
   u32 length;	/**< Length of segment */
 } ooo_segment_t;
@@ -57,10 +56,10 @@ typedef struct
 
 typedef struct svm_fifo_chunk_
 {
-  u32 start_byte;
-  u32 length;
-  struct svm_fifo_chunk_ *next;
-  u8 data[0];
+  u32 start_byte;		/**< chunk start absolute byte */
+  u32 length;			/**< length of chunk in bytes */
+  struct svm_fifo_chunk_ *next;	/**< pointer to next chunk in linked-lists */
+  u8 data[0];			/**< start of chunk data */
 } svm_fifo_chunk_t;
 
 typedef enum svm_fifo_flag_
@@ -73,8 +72,8 @@ typedef enum svm_fifo_flag_
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (shared_first);
-  u32 size;			/**< size of the fifo */
-  u32 nitems;			/**< usable size(size-1) */
+  u32 size;			/**< size of the fifo in bytes */
+  u32 nitems;			/**< usable size (size-1) */
   u8 flags;			/**< fifo flags */
   svm_fifo_chunk_t *start_chunk;/**< first chunk in fifo chunk list */
   svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
@@ -83,13 +82,12 @@ typedef struct _svm_fifo
 
     CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
-
-  u32 master_session_index;
-  u32 client_session_index;
-  u8 master_thread_index;
-  u8 client_thread_index;
-  u32 segment_manager;
-  u32 segment_index;
+  u32 master_session_index;	/**< session layer session index */
+  u32 client_session_index;	/**< app session index */
+  u8 master_thread_index;	/**< session layer thread index */
+  u8 client_thread_index;	/**< app worker index */
+  u32 segment_manager;		/**< session layer segment manager index */
+  u32 segment_index;		/**< segment index in segment manager */
   u32 ct_session_index;		/**< Local session index for vpp */
   u32 freelist_index;		/**< aka log2(allocated_size) - const. */
   i8 refcnt;			/**< reference count  */
@@ -190,6 +188,28 @@ static inline u32
 f_cursize (svm_fifo_t * f, u32 head, u32 tail)
 {
   return (f->nitems - f_free_count (f, head, tail));
+}
+
+/**
+ * Distance from position a to b, i.e., a - b in the fifo
+ *
+ * Internal function.
+ */
+always_inline u32
+f_distance_from (svm_fifo_t * f, u32 a, u32 b)
+{
+  return ((f->size + a - b) % f->size);
+}
+
+/**
+ * Distance to position a from b, i.e., b - a in the fifo
+ *
+ * Internal function.
+ */
+always_inline u32
+f_distance_to (svm_fifo_t * f, u32 a, u32 b)
+{
+  return ((f->size + b - a) % f->size);
 }
 
 /* used by consumer */
@@ -305,24 +325,25 @@ svm_fifo_has_ooo_data (svm_fifo_t * f)
 }
 
 /**
- * Sets fifo event flag.
+ * Set fifo event flag.
  *
- * Also acts as a release ordering.
+ * Forces release semantics.
  *
- * @return 1 if flag was not set.
+ * @param f	fifo
+ * @return 	1 if flag was not set, 0 otherwise
  */
 always_inline u8
 svm_fifo_set_event (svm_fifo_t * f)
 {
-  /* return __sync_lock_test_and_set (&f->has_event, 1) == 0;
-     return __sync_bool_compare_and_swap (&f->has_event, 0, 1); */
   return !clib_atomic_swap_rel_n (&f->has_event, 1);
 }
 
 /**
- * Unsets fifo event flag.
+ * Unset fifo event flag.
  *
- * Also acts as an acquire barrier.
+ * Forces acquire semantics
+ *
+ * @param f	fifo
  */
 always_inline void
 svm_fifo_unset_event (svm_fifo_t * f)
@@ -330,9 +351,22 @@ svm_fifo_unset_event (svm_fifo_t * f)
   clib_atomic_swap_acq_n (&f->has_event, 0);
 }
 
-svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
+/**
+ * Create fifo of requested size
+ *
+ * Allocates fifo on current heap.
+ *
+ * @param size		data size in bytes for fifo to be allocated. Will be
+ * 			rounded to the next highest power-of-two value.
+ * @return 		pointer to new fifo
+ */
+svm_fifo_t *svm_fifo_create (u32 size);
+/**
+ * Initialize fifo
+ *
+ * @param size		size for fifo
+ */
 void svm_fifo_init (svm_fifo_t * f, u32 size);
-
 /**
  * Allocate a fifo chunk on heap
  *
@@ -344,7 +378,6 @@ void svm_fifo_init (svm_fifo_t * f, u32 size);
  * @return	new chunk or 0 if alloc failed
  */
 svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
-
 /**
  * Grow fifo size by adding chunk to chunk list
  *
@@ -355,6 +388,11 @@ svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
  * @param c 	chunk or linked list of chunks to be added
  */
 void svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c);
+/**
+ * Free fifo and associated state
+ *
+ * @param f	fifo
+ */
 void svm_fifo_free (svm_fifo_t * f);
 /**
  * Cleanup fifo chunk lookup rb tree
@@ -374,19 +412,80 @@ void svm_fifo_free_chunk_lookup (svm_fifo_t * f);
  * @param f	fifo to cleanup
  */
 void svm_fifo_free_ooo_data (svm_fifo_t * f);
-
-int svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
-			     const u8 * copy_from_here);
-int svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset,
-				  u32 required_bytes, u8 * copy_from_here);
-int svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_here);
-
-int svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 max_bytes, u8 * copy_here);
-int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes);
+/**
+ * Enqueue data to fifo
+ *
+ * Data is enqueued and tail pointer is updated atomically. If the new data
+ * enqueued partly overlaps or "touches" an out-of-order segment, said segment
+ * is "consumed" and the number of bytes returned is appropriately updated.
+ *
+ * @param f	fifo
+ * @param len	length of data to copy
+ * @param src	buffer from where to copy the data
+ * @return	number of contiguous bytes that can be consumed or error
+ */
+int svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src);
+/**
+ * Enqueue data to fifo with offset
+ *
+ * Data is enqueued without updating tail pointer. Instead, an out-of-order
+ * list of segments is generated and maintained. Fifo takes care of coalescing
+ * contiguous or overlapping segments.
+ *
+ * @param f		fifo
+ * @param offset	offset at which to copy the data
+ * @param len		len of data to copy
+ * @param src		buffer from where to copy the data
+ * @return		number of bytes copied or error
+ */
+int svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len,
+				  u8 * src);
+/**
+ * Dequeue data from fifo
+ *
+ * Data is dequeued to consumer provided buffer and head is atomically
+ * updated.
+ *
+ * @param f		fifo
+ * @param len		length of data to dequeue
+ * @param dst		buffer to where to dequeue the data
+ * @return		number of bytes dequeued or error
+ */
+int svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst);
+/**
+ * Peek data from fifo
+ *
+ * Data is copied from requested offset into provided dst buffer. Head is
+ * not updated.
+ *
+ * @param f		fifo
+ * @param offset	offset from which to copy the data
+ * @param len		length of data to copy
+ * @param dst		buffer to where to dequeue the data
+ * @return		number of bytes peeked
+ */
+int svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst);
+/**
+ * Dequeue and drop bytes from fifo
+ *
+ * Advances fifo head by requested amount of bytes.
+ *
+ * @param f		fifo
+ * @param len		number of bytes to drop
+ * @return		number of bytes dropped
+ */
+int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len);
+/**
+ * Dequeue and drop all bytes from fifo
+ *
+ * Advances head to tail position.
+ *
+ * @param f		fifo
+ */
 void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
 int svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs);
 void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs);
-void svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail);
+void svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 b);
 void svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf);
 void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len);
 void svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber);
@@ -425,14 +524,17 @@ svm_fifo_max_write_chunk (svm_fifo_t * f)
  * Advance tail pointer
  *
  * Useful for moving tail pointer after external enqueue.
+ *
+ * @param f		fifo
+ * @param len		number of bytes to add to tail
  */
 always_inline void
-svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 bytes)
+svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
 {
-  ASSERT (bytes <= svm_fifo_max_enqueue_prod (f));
+  ASSERT (len <= svm_fifo_max_enqueue_prod (f));
   /* load-relaxed: producer owned index */
   u32 tail = f->tail;
-  tail += bytes;
+  tail += len;
   /* store-rel: producer owned index (paired with load-acq in consumer) */
   clib_atomic_store_rel_n (&f->tail, tail);
 }
@@ -525,47 +627,19 @@ svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
 }
 
 always_inline u32
-ooo_segment_distance_from_tail (svm_fifo_t * f, u32 pos, u32 tail)
-{
-  return ((f->size + pos - tail) % f->size);
-}
-
-always_inline u32
-ooo_segment_distance_to_tail (svm_fifo_t * f, u32 pos, u32 tail)
-{
-  return ((f->size + tail - pos) % f->size);
-}
-
-always_inline u32
 ooo_segment_offset_prod (svm_fifo_t * f, ooo_segment_t * s)
 {
   u32 tail;
   /* load-relaxed: producer owned index */
   tail = f->tail;
 
-  return ooo_segment_distance_from_tail (f, s->start, tail);
+  return f_distance_from (f, s->start, tail);
 }
 
 always_inline u32
 ooo_segment_length (svm_fifo_t * f, ooo_segment_t * s)
 {
   return s->length;
-}
-
-always_inline ooo_segment_t *
-ooo_segment_get_prev (svm_fifo_t * f, ooo_segment_t * s)
-{
-  if (s->prev == OOO_SEGMENT_INVALID_INDEX)
-    return 0;
-  return pool_elt_at_index (f->ooo_segments, s->prev);
-}
-
-always_inline ooo_segment_t *
-ooo_segment_next (svm_fifo_t * f, ooo_segment_t * s)
-{
-  if (s->next == OOO_SEGMENT_INVALID_INDEX)
-    return 0;
-  return pool_elt_at_index (f->ooo_segments, s->next);
 }
 
 #endif /* __included_ssvm_fifo_h__ */

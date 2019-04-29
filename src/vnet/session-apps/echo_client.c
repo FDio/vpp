@@ -97,7 +97,7 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip,
 			    sizeof (ip46_address_t));
 	  hdr.lcl_port = at->lcl_port;
-	  svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
+	  svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
 	  svm_fifo_enqueue_nocopy (f, rv);
 	  session_send_io_evt_to_thread_custom (&f->master_session_index,
 						s->thread_index,

@@ -447,10 +447,9 @@ cut_through_thread_fn (void *arg)
 	{
 	  /* We read from the tx fifo and write to the rx fifo */
 	  if (utm->have_return || do_dequeue)
-	    actual_transfer = svm_fifo_dequeue_nowait (rx_fifo,
-						       vec_len
-						       (my_copy_buffer),
-						       my_copy_buffer);
+	    actual_transfer = svm_fifo_dequeue (rx_fifo,
+						vec_len (my_copy_buffer),
+						my_copy_buffer);
 	  else
 	    {
 	      /* We don't do anything with the data, drop it */
@@ -467,8 +466,8 @@ cut_through_thread_fn (void *arg)
 	  buffer_offset = 0;
 	  while (actual_transfer > 0)
 	    {
-	      rv = svm_fifo_enqueue_nowait (tx_fifo, actual_transfer,
-					    my_copy_buffer + buffer_offset);
+	      rv = svm_fifo_enqueue (tx_fifo, actual_transfer,
+				     my_copy_buffer + buffer_offset);
 	      if (rv > 0)
 		{
 		  actual_transfer -= rv;
