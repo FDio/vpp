@@ -115,6 +115,8 @@ typeonly define dhcp_lease
   u8 host_address[16];
   u8 router_address[16];
   u8 host_mac[6];
+  u8 count;
+  u8 domain_server_address[count];
 };
 
 /** \brief Tell client about a DHCP completion event

@@ -248,7 +248,14 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	    c->router_address.as_u32 = router_address;
 	  }
 	  break;
-
+	case 6:		/* domain server address */
+	  {
+	    vec_free (c->domain_server_address);
+	    vec_validate (c->domain_server_address,
+			  o->length / sizeof (ip4_address_t) - 1);
+	    clib_memcpy (c->domain_server_address, o->data, o->length);
+	  }
+	  break;
 	case 12:		/* hostname */
 	  {
 	    /* Replace the existing hostname if necessary */
@@ -315,6 +322,7 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 	  c->router_address.as_u32 = 0;
 	  c->lease_renewal_interval = 0;
 	  c->dhcp_server.as_u32 = 0;
+	  vec_free (c->domain_server_address);
 	  break;
 	}
 
@@ -814,17 +822,26 @@ format_dhcp_client (u8 * s, va_list * va)
   dhcp_client_main_t *dcm = va_arg (*va, dhcp_client_main_t *);
   dhcp_client_t *c = va_arg (*va, dhcp_client_t *);
   int verbose = va_arg (*va, int);
+  ip4_address_t *addr;
 
   s = format (s, "[%d] %U state %U ", c - dcm->clients,
 	      format_vnet_sw_if_index_name, dcm->vnet_main, c->sw_if_index,
 	      format_dhcp_client_state, c->state);
 
   if (c->leased_address.as_u32)
-    s = format (s, "addr %U/%d gw %U\n",
-		format_ip4_address, &c->leased_address,
-		c->subnet_mask_width, format_ip4_address, &c->router_address);
+    {
+      s = format (s, "addr %U/%d gw %U\n",
+		  format_ip4_address, &c->leased_address,
+		  c->subnet_mask_width, format_ip4_address,
+		  &c->router_address);
+
+      vec_foreach (addr, c->domain_server_address)
+	s = format (s, "dns %U ", format_ip4_address, addr);
+    }
   else
-    s = format (s, "no address\n");
+    {
+      s = format (s, "no address\n");
+    }
 
   if (verbose)
     {
@@ -962,6 +979,7 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 	}
       dhcp_client_release_address (dcm, c);
 
+      vec_free (c->domain_server_address);
       vec_free (c->option_55_data);
       vec_free (c->hostname);
       vec_free (c->client_identifier);
