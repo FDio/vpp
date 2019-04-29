@@ -336,7 +336,6 @@ format_ipsec_tunnel (u8 * s, va_list * args)
 {
   ipsec_main_t *im = &ipsec_main;
   u32 ti = va_arg (*args, u32);
-  vnet_hw_interface_t *hi;
   ipsec_tunnel_if_t *t;
 
   if (pool_is_free_index (im->tunnel_interfaces, ti))
@@ -350,9 +349,9 @@ format_ipsec_tunnel (u8 * s, va_list * args)
   if (t->hw_if_index == ~0)
     goto done;
 
-  hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
-
-  s = format (s, "%s\n", hi->name);
+  s =
+    format (s, "%U\n", format_vnet_hw_if_index_name, im->vnet_main,
+	    t->hw_if_index);
 
   s = format (s, "   out-bound sa: ");
   s = format (s, "%U\n", format_ipsec_sa, t->output_sa_index,
