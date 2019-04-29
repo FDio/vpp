@@ -583,8 +583,9 @@ autoreply define delete_loopback
 /** \brief Enable or disable detailed interface stats
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - The interface to collect detail stats on. ~0 implies
-                         all interfaces.
+    @param restrict_by_index - If false the call affects all interfaces.
+    @param sw_if_index - The interface to collect detail stats on
+        if restrict_by_index is true. ~0 implies all interfaces.
     @param enable_disable - set to 1 to enable, 0 to disable detailed stats
 */
 autoreply define collect_detailed_interface_stats
