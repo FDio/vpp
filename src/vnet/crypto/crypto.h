@@ -20,20 +20,22 @@
 
 #include <vlib/vlib.h>
 
+/* CRYPTO_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES */
 #define foreach_crypto_cipher_alg \
-  _(DES_CBC,     "des-cbc") \
-  _(3DES_CBC,    "3des-cbc") \
-  _(AES_128_CBC, "aes-128-cbc") \
-  _(AES_192_CBC, "aes-192-cbc") \
-  _(AES_256_CBC, "aes-256-cbc") \
-  _(AES_128_CTR, "aes-128-ctr") \
-  _(AES_192_CTR, "aes-192-ctr") \
-  _(AES_256_CTR, "aes-256-ctr")
+  _(DES_CBC,     "des-cbc", 7) \
+  _(3DES_CBC,    "3des-cbc", 14) \
+  _(AES_128_CBC, "aes-128-cbc", 16) \
+  _(AES_192_CBC, "aes-192-cbc", 24) \
+  _(AES_256_CBC, "aes-256-cbc", 32) \
+  _(AES_128_CTR, "aes-128-ctr", 16) \
+  _(AES_192_CTR, "aes-192-ctr", 24) \
+  _(AES_256_CTR, "aes-256-ctr", 32)
 
+/* CRYPTO_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES */
 #define foreach_crypto_aead_alg \
-  _(AES_128_GCM, "aes-128-gcm") \
-  _(AES_192_GCM, "aes-192-gcm") \
-  _(AES_256_GCM, "aes-256-gcm")
+  _(AES_128_GCM, "aes-128-gcm", 16) \
+  _(AES_192_GCM, "aes-192-gcm", 24) \
+  _(AES_256_GCM, "aes-256-gcm", 32)
 
 #define foreach_crypto_hmac_alg \
   _(MD5, "md5") \
@@ -85,7 +87,7 @@ typedef enum
 typedef enum
 {
   VNET_CRYPTO_ALG_NONE = 0,
-#define _(n, s) VNET_CRYPTO_ALG_##n,
+#define _(n, s, l) VNET_CRYPTO_ALG_##n,
   foreach_crypto_cipher_alg
   foreach_crypto_aead_alg
 #undef _
@@ -104,7 +106,7 @@ typedef struct
 typedef enum
 {
   VNET_CRYPTO_OP_NONE = 0,
-#define _(n, s) VNET_CRYPTO_OP_##n##_ENC, VNET_CRYPTO_OP_##n##_DEC,
+#define _(n, s, l) VNET_CRYPTO_OP_##n##_ENC, VNET_CRYPTO_OP_##n##_DEC,
   foreach_crypto_cipher_alg
   foreach_crypto_aead_alg
 #undef _

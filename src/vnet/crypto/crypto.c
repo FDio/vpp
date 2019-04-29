@@ -167,6 +167,33 @@ vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
   return;
 }
 
+static int
+vnet_crypto_key_len_check (vnet_crypto_alg_t alg, u16 length)
+{
+  switch (alg)
+    {
+    case VNET_CRYPTO_N_ALGS:
+      return 0;
+    case VNET_CRYPTO_ALG_NONE:
+      return 1;
+
+#define _(n, s, l) \
+      case VNET_CRYPTO_ALG_##n: \
+        if ((l) == length) \
+          return 1;
+      foreach_crypto_cipher_alg foreach_crypto_aead_alg
+#undef _
+	/* HMAC allows any key length */
+#define _(n, s) \
+      case VNET_CRYPTO_ALG_HMAC_##n: \
+        return 1;
+        foreach_crypto_hmac_alg
+#undef _
+    }
+
+  return 0;
+}
+
 u32
 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
 		     u16 length)
@@ -175,6 +202,11 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key;
+
+  ASSERT (vnet_crypto_key_len_check (alg, length));
+  if (!vnet_crypto_key_len_check (alg, length))
+    return ~0;
+
   pool_get_zero (cm->keys, key);
   index = key - cm->keys;
   key->alg = alg;
@@ -279,13 +311,13 @@ vnet_crypto_init (vlib_main_t * vm)
   cm->alg_index_by_name = hash_create_string (0, sizeof (uword));
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);
-#define _(n, s) \
+#define _(n, s, l) \
   vnet_crypto_init_cipher_data (VNET_CRYPTO_ALG_##n, \
 				VNET_CRYPTO_OP_##n##_ENC, \
 				VNET_CRYPTO_OP_##n##_DEC, s, 0);
   foreach_crypto_cipher_alg;
 #undef _
-#define _(n, s) \
+#define _(n, s, l) \
   vnet_crypto_init_cipher_data (VNET_CRYPTO_ALG_##n, \
 				VNET_CRYPTO_OP_##n##_ENC, \
 				VNET_CRYPTO_OP_##n##_DEC, s, 1);
