@@ -10,7 +10,7 @@ The Developers section covers the following areas:
 * Explains how to run VPP with and without GDB, with some GDB examples
 * Describes the steps required to get a patch reviewed and merged
 * Describes the VPP software architecture and identifies the associated four VPP layers
-* Describes the different components that are associated with each VPP layer 
+* Describes the different components that are associated with each VPP layer
 * Explains how to Create, Add, Enable/Disable different ARC features
 * Discusses different aspects of Bounded-index Extensible Hashing (bihash), and how it is used in database lookups
 * Describes the different types of API support and how to integrate a plugin
@@ -29,6 +29,7 @@ The Developers section covers the following areas:
    plugins
    vnet
    featurearcs
+   metadata
    multiarch/index.rst
    bihash
    vpp_api_module
