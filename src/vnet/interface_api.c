@@ -1372,7 +1372,7 @@ static void
   int rv = 0;
 
   rv =
-    vnet_sw_interface_stats_collect_enable_disable (~0,
+    vnet_sw_interface_stats_collect_enable_disable (ntohl (mp->sw_if_index),
 						    mp->enable_disable);
 
   REPLY_MACRO (VL_API_COLLECT_DETAILED_INTERFACE_STATS_REPLY);
