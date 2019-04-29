@@ -96,6 +96,14 @@ autoreply define dhcp_client_config
   vl_api_dhcp_client_t client;
 };
 
+/** \brief Struct representing domain server
+    @param address - IP address
+*/
+typeonly manual_print manual_endian define domain_server
+{
+  u8 address[16];
+};
+
 /** \brief Data learned by the client during the DHCP process
     @param sw_if_index - the interface on which the client is configured
     @param state - the state of the lease (see dhcp_client_state_t)
@@ -115,6 +123,8 @@ typeonly define dhcp_lease
   u8 host_address[16];
   u8 router_address[16];
   u8 host_mac[6];
+  u8 count;
+  vl_api_domain_server_t domain_server[count];
 };
 
 /** \brief Tell client about a DHCP completion event
