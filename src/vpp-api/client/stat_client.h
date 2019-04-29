@@ -17,6 +17,9 @@
 #ifndef included_stat_client_h
 #define included_stat_client_h
 
+#define STAT_VERSION_MAJOR     1
+#define STAT_VERSION_MINOR     1
+
 #include <stdint.h>
 #include <unistd.h>
 #include <vlib/counter_types.h>
