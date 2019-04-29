@@ -497,7 +497,7 @@ VLIB_NODE_FN (ip6_mfib_forward_rpf_node) (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * frame)
 {
-    return (mfib_forward_rpf(vm, node, frame, 1));
+    return (mfib_forward_rpf(vm, node, frame, 0));
 }
 
 
