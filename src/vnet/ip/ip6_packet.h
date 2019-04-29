@@ -551,6 +551,9 @@ always_inline u8 ip6_ext_hdr(u8 nexthdr)
 always_inline void *
 ip6_ext_next_header (ip6_ext_header_t *ext_hdr )
 { return (void *)((u8 *) ext_hdr + ip6_ext_header_len(ext_hdr)); }
+always_inline void *
+ip6_ext_authhdr_header (ip6_ext_header_t *ext_hdr )
+{ return (void *)((u8 *) ext_hdr + ip6_ext_authhdr_len(ext_hdr)); }
 
 /*
  * Macro to find the IPv6 ext header of type t
@@ -558,27 +561,43 @@ ip6_ext_next_header (ip6_ext_header_t *ext_hdr )
  * P is the previous IPv6 ext header (NULL if none)
  * M is the matched IPv6 ext header of type t
  */
-#define ip6_ext_header_find_t(i, p, m, t)               \
-if ((i)->protocol == t)                                 \
-{                                                       \
-  (m) = (void *)((i)+1);                                \
-  (p) = NULL;                                           \
-}                                                       \
-else                                                    \
-{                                                       \
-  (m) = NULL;                                           \
-  (p) = (void *)((i)+1);                                \
-  while (ip6_ext_hdr((p)->next_hdr) &&                  \
-    ((ip6_ext_header_t *)(p))->next_hdr != (t))         \
-  {                                                     \
-    (p) = ip6_ext_next_header((p));                     \
-  }                                                     \
-  if ( ((p)->next_hdr) == (t))                          \
-  {                                                     \
-    (m) = (void *)(ip6_ext_next_header((p)));           \
-  }                                                     \
+#define ip6_ext_header_find_t(i, p, m, t)                   \
+if ((i)->protocol == t)                                     \
+{                                                           \
+  (m) = (void *)((i)+1);                                    \
+  (p) = NULL;                                               \
+}                                                           \
+else                                                        \
+{                                                           \
+  (m) = NULL;                                               \
+  (p) = NULL;                                               \
+  if(ip6_ext_hdr((i)->protocol))                            \
+  {                                                         \
+    (p) = (void *)((i)+1);                                  \
+    u8 protocol = (i)->protocol;                            \
+    while (ip6_ext_hdr((p)->next_hdr) &&                    \
+      ((ip6_ext_header_t *)(p))->next_hdr != (t))           \
+    {                                                       \
+        if (protocol == IP_PROTOCOL_IPSEC_AH)               \
+        {                                                   \
+          protocol = ((ip6_ext_header_t *)(p))->next_hdr;   \
+          (p) = ip6_ext_authhdr_header((p));                \
+        }                                                   \
+        else                                                \
+        {                                                   \
+          protocol = ((ip6_ext_header_t *)(p))->next_hdr;   \
+          (p) = ip6_ext_next_header((p));                   \
+        }                                                   \
+    }                                                       \
+    if ( ((p)->next_hdr) == (t) )                           \
+    {                                                       \
+      if(protocol == IP_PROTOCOL_IPSEC_AH)                  \
+        (m) = (void *)(ip6_ext_authhdr_header((p)));        \
+      else                                                  \
+        (m) = (void *)(ip6_ext_next_header((p)));           \
+    }                                                       \
+  }                                                         \
 }
-
 
 typedef CLIB_PACKED (struct {
   u8 next_hdr;
