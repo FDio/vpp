@@ -984,20 +984,20 @@ sfifo_test_fifo6 (vlib_main_t * vm, unformat_input_t * input)
   /*
    * |0|---[start]--(len5)-->|0|--(len6)-->[end]---|0|
    */
-  rv = ooo_segment_distance_to_tail (f, ~0 - 5, 5);
+  rv = f_distance_to (f, ~0 - 5, 5);
   SFIFO_TEST (rv == 11, "distance to tail should be %u is %u", 11, rv);
 
-  rv = ooo_segment_distance_from_tail (f, ~0 - 5, 5);
+  rv = f_distance_from (f, ~0 - 5, 5);
   SFIFO_TEST (rv == f->size - 11, "distance from tail should be %u is %u",
 	      f->size - 11, rv);
 
   /*
    * |0|---[end]--(len5)-->|0|--(len6)-->[start]---|0|
    */
-  rv = ooo_segment_distance_from_tail (f, 5, ~0 - 5);
+  rv = f_distance_from (f, 5, ~0 - 5);
   SFIFO_TEST (rv == 11, "distance from tail should be %u is %u", 11, rv);
 
-  rv = ooo_segment_distance_to_tail (f, 5, ~0 - 5);
+  rv = f_distance_to (f, 5, ~0 - 5);
   SFIFO_TEST (rv == f->size - 11, "distance to tail should be %u is %u",
 	      f->size - 11, rv);
 

@@ -192,6 +192,28 @@ f_cursize (svm_fifo_t * f, u32 head, u32 tail)
   return (f->nitems - f_free_count (f, head, tail));
 }
 
+/**
+ * Distance from a to b, i.e., a - b in the fifo
+ *
+ * Internal function.
+ */
+always_inline u32
+f_distance_from (svm_fifo_t * f, u32 a, u32 b)
+{
+  return ((f->size + a - b) % f->size);
+}
+
+/**
+ * Distance to a from b, i.e., b - a in the fifo
+ *
+ * Internal function.
+ */
+always_inline u32
+f_distance_to (svm_fifo_t * f, u32 a, u32 b)
+{
+  return ((f->size + b - a) % f->size);
+}
+
 /* used by consumer */
 static inline u32
 svm_fifo_max_dequeue_cons (svm_fifo_t * f)
@@ -386,7 +408,7 @@ int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes);
 void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
 int svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs);
 void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs);
-void svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail);
+void svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 b);
 void svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf);
 void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len);
 void svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber);
@@ -525,47 +547,19 @@ svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
 }
 
 always_inline u32
-ooo_segment_distance_from_tail (svm_fifo_t * f, u32 pos, u32 tail)
-{
-  return ((f->size + pos - tail) % f->size);
-}
-
-always_inline u32
-ooo_segment_distance_to_tail (svm_fifo_t * f, u32 pos, u32 tail)
-{
-  return ((f->size + tail - pos) % f->size);
-}
-
-always_inline u32
 ooo_segment_offset_prod (svm_fifo_t * f, ooo_segment_t * s)
 {
   u32 tail;
   /* load-relaxed: producer owned index */
   tail = f->tail;
 
-  return ooo_segment_distance_from_tail (f, s->start, tail);
+  return f_distance_from (f, s->start, tail);
 }
 
 always_inline u32
 ooo_segment_length (svm_fifo_t * f, ooo_segment_t * s)
 {
   return s->length;
-}
-
-always_inline ooo_segment_t *
-ooo_segment_get_prev (svm_fifo_t * f, ooo_segment_t * s)
-{
-  if (s->prev == OOO_SEGMENT_INVALID_INDEX)
-    return 0;
-  return pool_elt_at_index (f->ooo_segments, s->prev);
-}
-
-always_inline ooo_segment_t *
-ooo_segment_next (svm_fifo_t * f, ooo_segment_t * s)
-{
-  if (s->next == OOO_SEGMENT_INVALID_INDEX)
-    return 0;
-  return pool_elt_at_index (f->ooo_segments, s->next);
 }
 
 #endif /* __included_ssvm_fifo_h__ */
