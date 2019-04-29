@@ -469,10 +469,10 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   hdr.rmt_port = at->rmt_port;
   clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = at->lcl_port;
-  rv = svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
+  rv = svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
   ASSERT (rv == sizeof (hdr));
 
-  rv = svm_fifo_enqueue_nowait (f, actual_write, data);
+  rv = svm_fifo_enqueue (f, actual_write, data);
   if (do_evt)
     {
       if (rv > 0 && svm_fifo_set_event (f))
@@ -497,7 +497,7 @@ app_send_stream_raw (svm_fifo_t * f, svm_msg_q_t * vpp_evt_q, u8 * data,
 {
   int rv;
 
-  rv = svm_fifo_enqueue_nowait (f, len, data);
+  rv = svm_fifo_enqueue (f, len, data);
   if (do_evt)
     {
       if (rv > 0 && svm_fifo_set_event (f))
@@ -572,7 +572,7 @@ app_recv_stream_raw (svm_fifo_t * f, u8 * buf, u32 len, u8 clear_evt, u8 peek)
   if (peek)
     return svm_fifo_peek (f, 0, len, buf);
 
-  return svm_fifo_dequeue_nowait (f, len, buf);
+  return svm_fifo_dequeue (f, len, buf);
 }
 
 always_inline int

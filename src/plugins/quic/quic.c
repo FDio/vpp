@@ -138,9 +138,9 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
       clib_memcpy (&hdr.rmt_ip.ip6, &sa6->sin6_addr, 16);
     }
 
-  rv = svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
+  rv = svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
   ASSERT (rv == sizeof (hdr));
-  if (svm_fifo_enqueue_nowait (f, len, packet->data.base) != len)
+  if (svm_fifo_enqueue (f, len, packet->data.base) != len)
     return 1;
   return 0;
 }
@@ -242,7 +242,7 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
     to_enqueue = len;
   // TODO what happens to the excess bytes?
 
-  svm_fifo_enqueue_nowait (rx_fifo, to_enqueue, src);
+  svm_fifo_enqueue (rx_fifo, to_enqueue, src);
 
   // Notify app
   app_wrk = app_worker_get_if_valid (stream_session->app_wrk_index);
