@@ -650,7 +650,12 @@ dhcp6_pd_client_init (vlib_main_t * vm)
 
   cm->publisher_node = ~0;
 
-  cm->seed = 0xdeaddabe;
+  /*
+   * Refer to: https://github.com/harisokanovic/isc-dhcp/blob/master/client/dhclient.c
+   * In current stage, we don't have any interface, so the seed is compose of
+   * current time and process id.
+   */
+  cm->seed = clib_cpu_time_now ();
 
   return 0;
 }

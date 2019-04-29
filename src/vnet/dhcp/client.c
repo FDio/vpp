@@ -1190,7 +1190,12 @@ dhcp_client_init (vlib_main_t * vm)
 
   dcm->vlib_main = vm;
   dcm->vnet_main = vnet_get_main ();
-  dcm->seed = 0xdeaddabe;
+  /*
+   * Refer to: https://github.com/harisokanovic/isc-dhcp/blob/master/client/dhclient.c
+   * In current stage, we don't have any interface, so the seed is compose of
+   * current time and process id.
+   */
+  dcm->seed = clib_cpu_time_now ();
   return 0;
 }
 
