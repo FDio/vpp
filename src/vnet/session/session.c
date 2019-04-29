@@ -296,7 +296,7 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
 	continue;
       if (is_in_order)
 	{
-	  rv = svm_fifo_enqueue_nowait (s->rx_fifo, len, data);
+	  rv = svm_fifo_enqueue (s->rx_fifo, len, data);
 	  if (rv == len)
 	    {
 	      written += rv;
@@ -363,9 +363,9 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue_nowait (s->rx_fifo,
-					  b->current_length,
-					  vlib_buffer_get_current (b));
+      enqueued = svm_fifo_enqueue (s->rx_fifo,
+				   b->current_length,
+				   vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
 			 && enqueued >= 0))
 	{
@@ -414,10 +414,9 @@ session_enqueue_dgram_connection (session_t * s,
   ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo)
 	  >= b->current_length + sizeof (*hdr));
 
-  svm_fifo_enqueue_nowait (s->rx_fifo, sizeof (session_dgram_hdr_t),
-			   (u8 *) hdr);
-  enqueued = svm_fifo_enqueue_nowait (s->rx_fifo, b->current_length,
-				      vlib_buffer_get_current (b));
+  svm_fifo_enqueue (s->rx_fifo, sizeof (session_dgram_hdr_t), (u8 *) hdr);
+  enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
+			       vlib_buffer_get_current (b));
   if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
     {
       in_order_off = enqueued > b->current_length ? enqueued : 0;

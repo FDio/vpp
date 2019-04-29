@@ -379,7 +379,7 @@ static_send_data (http_session_t * hs, u8 * data, u32 length, u32 offset)
     {
       int actual_transfer;
 
-      actual_transfer = svm_fifo_enqueue_nowait
+      actual_transfer = svm_fifo_enqueue
 	(hs->tx_fifo, bytes_to_send, data + offset);
 
       /* Made any progress? */
