@@ -40,9 +40,7 @@ crypto_ia32_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
       if (cm->key_data[idx] == 0)
 	return;
 
-      clib_memset_u8 (cm->key_data[idx], 0,
-		      clib_mem_size (cm->key_data[idx]));
-      clib_mem_free (cm->key_data[idx]);
+      clib_mem_free_s(cm->key_data[idx]);
       cm->key_data[idx] = 0;
       return;
     }
@@ -51,9 +49,7 @@ crypto_ia32_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
 
   if (kop == VNET_CRYPTO_KEY_OP_MODIFY && cm->key_data[idx])
     {
-      clib_memset_u8 (cm->key_data[idx], 0,
-		      clib_mem_size (cm->key_data[idx]));
-      clib_mem_free (cm->key_data[idx]);
+      clib_mem_free_s(cm->key_data[idx]);
     }
 
   cm->key_data[idx] = cm->key_fn[key->alg] (key);

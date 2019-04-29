@@ -402,9 +402,7 @@ crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
       if (imbm->key_data[idx] == 0)
 	return;
 
-      clib_memset_u8 (imbm->key_data[idx], 0,
-		      clib_mem_size (imbm->key_data[idx]));
-      clib_mem_free (imbm->key_data[idx]);
+      clib_mem_free_s(imbm->key_data[idx]);
       imbm->key_data[idx] = 0;
       return;
     }
@@ -416,9 +414,7 @@ crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
 
   if (kop == VNET_CRYPTO_KEY_OP_MODIFY && imbm->key_data[idx])
     {
-      clib_memset_u8 (imbm->key_data[idx], 0,
-		      clib_mem_size (imbm->key_data[idx]));
-      clib_mem_free (imbm->key_data[idx]);
+      clib_mem_free_s(imbm->key_data[idx]);
     }
 
   kd = imbm->key_data[idx] = clib_mem_alloc_aligned (ad->data_size,
