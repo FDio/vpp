@@ -64,6 +64,7 @@ typedef struct dhcp_client_t_
   ip4_address_t dhcp_server;
   u32 subnet_mask_width;	/* option 1 */
   ip4_address_t router_address;	/* option 3 */
+  ip4_address_t *domain_server_address;	/* option 6 */
   u32 lease_renewal_interval;	/* option 51 */
   u32 lease_lifetime;		/* option 59 */
 

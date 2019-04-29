@@ -2697,13 +2697,22 @@ vl_api_ip_details_t_handler_json (vl_api_ip_details_t * mp)
 static void
 vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp)
 {
-  errmsg ("DHCP compl event: pid %d %s hostname %s host_addr %U "
-	  "router_addr %U host_mac %U",
-	  ntohl (mp->pid), mp->lease.is_ipv6 ? "ipv6" : "ipv4",
-	  mp->lease.hostname,
-	  format_ip4_address, &mp->lease.host_address,
-	  format_ip4_address, &mp->lease.router_address,
-	  format_ethernet_address, mp->lease.host_mac);
+  u8 *s, i;
+
+  s = format (s, "DHCP compl event: pid %d %s hostname %s host_addr %U "
+	      "host_mac %U router_addr %U",
+	      ntohl (mp->pid), mp->lease.is_ipv6 ? "ipv6" : "ipv4",
+	      mp->lease.hostname,
+	      format_ip4_address, mp->lease.host_address,
+	      format_ethernet_address, mp->lease.host_mac,
+	      format_ip4_address, mp->lease.router_address);
+
+  for (i = 0; i < mp->lease.count; i++)
+    s =
+      format (s, " domain_server_addr %U", format_ip4_address,
+	      mp->lease.domain_server[i].address);
+
+  errmsg ((char *) s);
 }
 
 static void vl_api_dhcp_compl_event_t_handler_json

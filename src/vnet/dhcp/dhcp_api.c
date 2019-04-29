@@ -218,6 +218,7 @@ dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
 			  const dhcp_client_t * client)
 {
   size_t len;
+  u8 i;
 
   lease->is_ipv6 = 0;		// only support IPv6 clients
   lease->sw_if_index = ntohl (client->sw_if_index);
@@ -227,8 +228,16 @@ dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
   lease->hostname[len] = 0;
 
   lease->mask_width = client->subnet_mask_width;
-  clib_memcpy (&lease->host_address[0], (u8 *) & client->leased_address, 4);
-  clib_memcpy (&lease->router_address[0], (u8 *) & client->router_address, 4);
+  clib_memcpy (&lease->host_address[0], (u8 *) & client->leased_address,
+	       sizeof (ip4_address_t));
+  clib_memcpy (&lease->router_address[0], (u8 *) & client->router_address,
+	       sizeof (ip4_address_t));
+
+  lease->count = vec_len (client->domain_server_address);
+  for (i = 0; i < lease->count; i++)
+    clib_memcpy (&lease->domain_server[i].address,
+		 (u8 *) & client->domain_server_address[i],
+		 sizeof (ip4_address_t));
 
   if (NULL != client->l2_rewrite)
     clib_memcpy (&lease->host_mac[0], client->l2_rewrite + 6, 6);
