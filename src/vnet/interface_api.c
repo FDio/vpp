@@ -1369,10 +1369,16 @@ static void
   (vl_api_collect_detailed_interface_stats_t * mp)
 {
   vl_api_collect_detailed_interface_stats_reply_t *rmp;
+  u32 sw_if_index;
   int rv = 0;
 
+  if (mp->restrict_by_index)
+    sw_if_index = ntohl (mp->sw_if_index);
+  else
+    sw_if_index = ~0;
+
   rv =
-    vnet_sw_interface_stats_collect_enable_disable (~0,
+    vnet_sw_interface_stats_collect_enable_disable (sw_if_index,
 						    mp->enable_disable);
 
   REPLY_MACRO (VL_API_COLLECT_DETAILED_INTERFACE_STATS_REPLY);
