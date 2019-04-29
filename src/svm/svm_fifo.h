@@ -552,22 +552,6 @@ ooo_segment_length (svm_fifo_t * f, ooo_segment_t * s)
   return s->length;
 }
 
-always_inline ooo_segment_t *
-ooo_segment_get_prev (svm_fifo_t * f, ooo_segment_t * s)
-{
-  if (s->prev == OOO_SEGMENT_INVALID_INDEX)
-    return 0;
-  return pool_elt_at_index (f->ooo_segments, s->prev);
-}
-
-always_inline ooo_segment_t *
-ooo_segment_next (svm_fifo_t * f, ooo_segment_t * s)
-{
-  if (s->next == OOO_SEGMENT_INVALID_INDEX)
-    return 0;
-  return pool_elt_at_index (f->ooo_segments, s->next);
-}
-
 #endif /* __included_ssvm_fifo_h__ */
 
 /*
