@@ -29,7 +29,7 @@
 #include <vlib/pci/pci.h>
 #include <vlib/linux/vfio.h>
 
-#ifdef __x86_64__
+#if defined(__x86_64__) && !defined(__SANITIZE_ADDRESS__)
 /* we keep physmem in low 38 bits of VA address space as some
    IOMMU implamentation cannot map above that range */
 #define VLIB_PHYSMEM_DEFAULT_BASE_ADDDR		(1ULL << 36)

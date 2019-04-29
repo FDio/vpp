@@ -210,6 +210,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   regp->clib_file_index = am->shmem_hdr->clib_file_index;
 
   q = regp->vl_input_queue = (svm_queue_t *) (uword) mp->input_queue;
+  VL_MSG_API_SVM_QUEUE_UNPOISON (q);
 
   regp->name = format (0, "%s", mp->name);
   vec_add1 (regp->name, 0);
@@ -709,6 +710,7 @@ void_mem_api_handle_msg_i (api_main_t * am, vlib_main_t * vm,
   uword mp;
   if (!svm_queue_sub2 (q, (u8 *) & mp))
     {
+      VL_MSG_API_UNPOISON ((void *) mp);
       vl_msg_api_handler_with_vm_node (am, (void *) mp, vm, node);
       return 0;
     }

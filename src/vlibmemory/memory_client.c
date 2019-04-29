@@ -108,6 +108,13 @@ vl_api_name_and_crc_free (void)
   hash_free (am->msg_index_by_name_and_crc);
 }
 
+CLIB_MEM_ATTR_NOASAN static void
+VL_API_VEC_UNPOISON (const void *v)
+{
+  const vec_header_t *vh = &((vec_header_t *) v)[-1];
+  CLIB_MEM_UNPOISON (vh, sizeof (*vh) + vec_len (v));
+}
+
 static void
 vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
 {
@@ -131,6 +138,8 @@ vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
   tblv = uword_to_pointer (mp->message_table, u8 *);
   unserialize_open_data (sm, tblv, vec_len (tblv));
   unserialize_integer (sm, &nmsgs, sizeof (u32));
+
+  VL_API_VEC_UNPOISON (tblv);
 
   for (i = 0; i < nmsgs; i++)
     {
@@ -179,6 +188,9 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
       return -1;
     }
 
+  CLIB_MEM_UNPOISON (shmem_hdr, sizeof (*shmem_hdr));
+  VL_MSG_API_SVM_QUEUE_UNPOISON (shmem_hdr->vl_input_queue);
+
   pthread_mutex_lock (&svm->mutex);
   oldheap = svm_push_data_heap (svm);
   vl_input_queue = svm_queue_alloc_and_init (input_queue_size, sizeof (uword),
@@ -222,6 +234,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
       return -1;
 
     read_one_msg:
+      VL_MSG_API_UNPOISON (rp);
       if (ntohs (rp->_vl_msg_id) != VL_API_MEMCLNT_CREATE_REPLY)
 	{
 	  clib_warning ("unexpected reply: id %d", ntohs (rp->_vl_msg_id));
@@ -305,6 +318,8 @@ vl_client_disconnect (void)
 	}
       if (svm_queue_sub (vl_input_queue, (u8 *) & rp, SVM_Q_NOWAIT, 0) < 0)
 	continue;
+
+      VL_MSG_API_UNPOISON (rp);
 
       /* drain the queue */
       if (ntohs (rp->_vl_msg_id) != VL_API_MEMCLNT_DELETE_REPLY)

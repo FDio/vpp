@@ -213,7 +213,6 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 	  else if (n_clones > 1)
 	    {
 	      vec_validate (msm->clones[thread_index], n_clones);
-	      vec_reset_length (msm->clones[thread_index]);
 
 	      /*
 	       * the header offset needs to be large enough to incorporate
@@ -228,6 +227,7 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (n_cloned != n_clones))
 		{
+		  vec_set_len (msm->clones[thread_index], n_cloned);
 		  b0->error = node->errors[L2FLOOD_ERROR_REPL_FAIL];
 		}
 

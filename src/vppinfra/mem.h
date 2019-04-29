@@ -53,7 +53,7 @@
 
 #include <vppinfra/os.h>
 #include <vppinfra/string.h>	/* memcpy, clib_memset */
-#include <vppinfra/valgrind.h>
+#include <vppinfra/asan.h>
 
 #define CLIB_MAX_MHEAPS 256
 
@@ -97,6 +97,17 @@ clib_mem_set_per_cpu_heap (u8 * new_heap)
   return old;
 }
 
+always_inline uword
+clib_mem_size_nocheck (void *p)
+{
+#if USE_DLMALLOC == 0
+  mheap_elt_t *e = mheap_user_pointer_to_elt (p);
+  return mheap_elt_data_bytes (e);
+#else
+  return mspace_usable_size_with_delta (p);
+#endif
+}
+
 /* Memory allocator which may call os_out_of_memory() if it fails */
 always_inline void *
 clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
@@ -120,32 +131,21 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
   uword offset;
   heap = mheap_get_aligned (heap, size, align, align_offset, &offset);
   clib_per_cpu_mheaps[cpu] = heap;
-
-  if (offset != ~0)
-    {
-      p = heap + offset;
-#if CLIB_DEBUG > 0
-      VALGRIND_MALLOCLIKE_BLOCK (p, mheap_data_bytes (heap, offset), 0, 0);
-#endif
-      return p;
-    }
-  else
-    {
-      if (os_out_of_memory_on_failure)
-	os_out_of_memory ();
-      return 0;
-    }
+  if (PREDICT_TRUE (offset != ~0))
+    p = heap + offset;
 #else
   p = mspace_get_aligned (heap, size, align, align_offset);
-  if (PREDICT_FALSE (p == 0))
+#endif /* USE_DLMALLOC */
+
+  if (PREDICT_FALSE (0 == p))
     {
       if (os_out_of_memory_on_failure)
 	os_out_of_memory ();
       return 0;
     }
 
+  CLIB_MEM_UNPOISON (p, size);
   return p;
-#endif /* USE_DLMALLOC */
 }
 
 /* Memory allocator which calls os_out_of_memory() when it fails */
@@ -230,14 +230,12 @@ clib_mem_free (void *p)
   /* Make sure object is in the correct heap. */
   ASSERT (clib_mem_is_heap_object (p));
 
+  CLIB_MEM_POISON (p, clib_mem_size_nocheck (p));
+
 #if USE_DLMALLOC == 0
   mheap_put (heap, (u8 *) p - heap);
 #else
   mspace_put (heap, p);
-#endif
-
-#if CLIB_DEBUG > 0
-  VALGRIND_FREELIKE_BLOCK (p, 0);
 #endif
 }
 
@@ -262,14 +260,17 @@ clib_mem_realloc (void *p, uword new_size, uword old_size)
 always_inline uword
 clib_mem_size (void *p)
 {
-#if USE_DLMALLOC == 0
-  mheap_elt_t *e = mheap_user_pointer_to_elt (p);
   ASSERT (clib_mem_is_heap_object (p));
-  return mheap_elt_data_bytes (e);
-#else
-  ASSERT (clib_mem_is_heap_object (p));
-  return mspace_usable_size_with_delta (p);
-#endif
+  return clib_mem_size_nocheck (p);
+}
+
+always_inline void
+clib_mem_free_s (void *p)
+{
+  uword size = clib_mem_size (p);
+  CLIB_MEM_UNPOISON (p, size);
+  memset_s (p, size, 0, size);
+  clib_mem_free (p);
 }
 
 always_inline void *

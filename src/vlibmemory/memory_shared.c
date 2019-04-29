@@ -42,7 +42,7 @@
 
 #define DEBUG_MESSAGE_BUFFER_OVERRUN 0
 
-static inline void *
+CLIB_MEM_ATTR_NOASAN static inline void *
 vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
 {
   int i;
@@ -192,6 +192,7 @@ out:
 #endif
   rv->data_len = htonl (nbytes - sizeof (msgbuf_t));
 
+  VL_MSG_API_UNPOISON (rv->data);
   return (rv->data);
 }
 
@@ -296,6 +297,7 @@ vl_msg_api_free (void *a)
 	ASSERT (*overrun == 0x1badbabe);
       }
 #endif
+      VL_MSG_API_POISON (rv->data);
       return;
     }
 
@@ -331,6 +333,7 @@ vl_msg_api_free_nolock (void *a)
   if (rv->q)
     {
       rv->q = 0;
+      VL_MSG_API_POISON (rv->data);
       return;
     }
 
@@ -753,10 +756,10 @@ void
 vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
 {
   api_main_t *am = &api_main;
-  uword *trace = (uword *) elem;
+  void *msg = (void *) *(uword *) elem;
 
   if (am->tx_trace && am->tx_trace->enabled)
-    vl_msg_api_trace (am, am->tx_trace, (void *) trace[0]);
+    vl_msg_api_trace (am, am->tx_trace, msg);
 
   /*
    * Announce a probable binary API client bug:
@@ -786,6 +789,7 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
 			q);
 	}
     }
+  VL_MSG_API_POISON (msg);
   (void) svm_queue_add (q, elem, 0 /* nowait */ );
 }
 
@@ -799,12 +803,13 @@ void
 vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem)
 {
   api_main_t *am = &api_main;
-  uword *trace = (uword *) elem;
+  void *msg = (void *) *(uword *) elem;
 
   if (am->tx_trace && am->tx_trace->enabled)
-    vl_msg_api_trace (am, am->tx_trace, (void *) trace[0]);
+    vl_msg_api_trace (am, am->tx_trace, msg);
 
   (void) svm_queue_add_nolock (q, elem);
+  VL_MSG_API_POISON (msg);
 }
 
 /*
