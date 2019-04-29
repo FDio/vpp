@@ -1190,7 +1190,7 @@ dhcp_client_init (vlib_main_t * vm)
 
   dcm->vlib_main = vm;
   dcm->vnet_main = vnet_get_main ();
-  dcm->seed = 0xdeaddabe;
+  dcm->seed = (u32) clib_cpu_time_now ();
   return 0;
 }
 
