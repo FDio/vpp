@@ -272,6 +272,14 @@ clib_mem_size (void *p)
 #endif
 }
 
+always_inline void
+clib_mem_free_s (void *p)
+{
+  uword size = clib_mem_size (p);
+  memset_s (p, size, 0, size);
+  clib_mem_free (p);
+}
+
 always_inline void *
 clib_mem_get_heap (void)
 {
