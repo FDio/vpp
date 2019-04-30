@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "34088a4f_14551f42",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-04-30T12:59:52Z",
+      "side": 1,
+      "message": "Doesn\u0027t %s add the \\0?\nAnd you could regardlessly add it in the format call.",
+      "range": {
+        "startLine": 706,
+        "startChar": 1,
+        "endLine": 710,
+        "endChar": 31
+      },
+      "revId": "b4f6fca04421b36a7f3c82772b3dd1692e03e5b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
