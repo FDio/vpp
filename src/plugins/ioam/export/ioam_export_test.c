@@ -60,7 +60,7 @@ typedef struct
   vat_main_t *vat_main;
 } export_test_main_t;
 
-export_test_main_t export_test_main;
+static export_test_main_t export_test_main;
 
 #define foreach_standard_reply_retval_handler   \
 _(ioam_export_ip6_enable_disable_reply)
