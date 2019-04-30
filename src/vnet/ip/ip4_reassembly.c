@@ -475,7 +475,7 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (trim_front > tmp->current_length)
 		{
 		  /* drop whole buffer */
-		  vlib_buffer_free_one (vm, tmp_bi);
+		  u32 to_be_freed_bi = tmp_bi;
 		  trim_front -= tmp->current_length;
 		  if (!(tmp->flags & VLIB_BUFFER_NEXT_PRESENT))
 		    {
@@ -484,6 +484,7 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  tmp->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 		  tmp_bi = tmp->next_buffer;
 		  tmp = vlib_get_buffer (vm, tmp_bi);
+		  vlib_buffer_free_one (vm, to_be_freed_bi);
 		  continue;
 		}
 	      else
@@ -514,23 +515,34 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    }
 		}
 	      total_length += tmp->current_length;
+	      if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
+		{
+		  tmp_bi = tmp->next_buffer;
+		  tmp = vlib_get_buffer (vm, tmp->next_buffer);
+		}
+	      else
+		{
+		  break;
+		}
 	    }
 	  else
 	    {
-	      vlib_buffer_free_one (vm, tmp_bi);
+	      u32 to_be_freed_bi = tmp_bi;
 	      if (reass->first_bi == tmp_bi)
 		{
 		  return IP4_REASS_RC_INTERNAL_ERROR;
 		}
-	    }
-	  if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
-	    {
-	      tmp_bi = tmp->next_buffer;
-	      tmp = vlib_get_buffer (vm, tmp->next_buffer);
-	    }
-	  else
-	    {
-	      break;
+	      if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
+		{
+		  tmp_bi = tmp->next_buffer;
+		  tmp = vlib_get_buffer (vm, tmp->next_buffer);
+		  vlib_buffer_free_one (vm, to_be_freed_bi);
+		}
+	      else
+		{
+		  vlib_buffer_free_one (vm, to_be_freed_bi);
+		  break;
+		}
 	    }
 	}
       sub_chain_bi =
@@ -672,7 +684,7 @@ ip4_reass_remove_range_from_chain (vlib_main_t * vm,
   reass->data_len -= ip4_reass_buffer_get_data_len (discard_b);
   while (1)
     {
-      vlib_buffer_free_one (vm, discard_bi);
+      u32 to_be_freed_bi = discard_bi;
       if (PREDICT_FALSE (discard_b->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  ip4_reass_add_trace (vm, node, rm, reass, discard_bi, RANGE_DISCARD,
@@ -683,9 +695,11 @@ ip4_reass_remove_range_from_chain (vlib_main_t * vm,
 	  discard_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 	  discard_bi = discard_b->next_buffer;
 	  discard_b = vlib_get_buffer (vm, discard_bi);
+	  vlib_buffer_free_one (vm, to_be_freed_bi);
 	}
       else
 	{
+	  vlib_buffer_free_one (vm, to_be_freed_bi);
 	  break;
 	}
     }
