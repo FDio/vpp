@@ -398,7 +398,7 @@ format_ipsec_integ_alg (u8 * s, va_list * args)
 static uword
 api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
-  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vat_main_t *vam __clib_unused = va_arg (*args, vat_main_t *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 *result = va_arg (*args, u32 *);
 
@@ -408,7 +408,7 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 static uword
 api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
 {
-  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vat_main_t *vam __clib_unused = va_arg (*args, vat_main_t *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 *result = va_arg (*args, u32 *);
 
@@ -562,12 +562,13 @@ unformat_flow_classify_table_type (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+#if (VPP_API_TEST_BUILTIN==0)
+
 static const char *mfib_flag_names[] = MFIB_ENTRY_NAMES_SHORT;
 static const char *mfib_flag_long_names[] = MFIB_ENTRY_NAMES_LONG;
 static const char *mfib_itf_flag_long_names[] = MFIB_ITF_NAMES_LONG;
 static const char *mfib_itf_flag_names[] = MFIB_ITF_NAMES_SHORT;
 
-#if (VPP_API_TEST_BUILTIN==0)
 uword
 unformat_mfib_itf_flags (unformat_input_t * input, va_list * args)
 {
@@ -1045,8 +1046,8 @@ static void vl_api_sw_interface_event_t_handler
 }
 #endif
 
-static void vl_api_sw_interface_event_t_handler_json
-  (vl_api_sw_interface_event_t * mp)
+__clib_unused static void
+vl_api_sw_interface_event_t_handler_json (vl_api_sw_interface_event_t * mp)
 {
   /* JSON output not supported */
 }
@@ -2699,7 +2700,7 @@ vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp)
 {
   u8 *s, i;
 
-  s = format (s, "DHCP compl event: pid %d %s hostname %s host_addr %U "
+  s = format (0, "DHCP compl event: pid %d %s hostname %s host_addr %U "
 	      "host_mac %U router_addr %U",
 	      ntohl (mp->pid), mp->lease.is_ipv6 ? "ipv6" : "ipv4",
 	      mp->lease.hostname,
@@ -7269,14 +7270,11 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
   vl_api_mac_address_t mac = { 0 };
   unformat_input_t *i = vam->input;
   vl_api_bd_ip_mac_add_del_t *mp;
-  ip46_type_t type;
   u32 bd_id;
-  u8 is_ipv6 = 0;
   u8 is_add = 1;
   u8 bd_id_set = 0;
   u8 ip_set = 0;
   u8 mac_set = 0;
-  u8 macaddr[6];
   int ret;
 
 
@@ -10197,7 +10195,6 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
   vl_api_sw_interface_ip6nd_ra_prefix_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
-  u32 address_length = 0;
   u8 v6_address_set = 0;
   vl_api_prefix_t pfx;
   u8 use_default = 0;
@@ -13308,8 +13305,6 @@ api_gre_tunnel_add_del (vat_main_t * vam)
   vl_api_gre_tunnel_add_del_t *mp;
   vl_api_gre_tunnel_type_t t_type;
   u8 is_add = 1;
-  u8 ipv4_set = 0;
-  u8 ipv6_set = 0;
   u8 src_set = 0;
   u8 dst_set = 0;
   u32 outer_fib_id = 0;
@@ -13412,8 +13407,6 @@ static void vl_api_gre_tunnel_details_t_handler_json
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
-  struct in_addr ip4;
-  struct in6_addr ip6;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -14247,7 +14240,7 @@ api_ip_probe_neighbor (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_probe_neighbor_t *mp;
-  vl_api_address_t dst_adr;
+  vl_api_address_t dst_adr = { };
   u8 int_set = 0;
   u8 adr_set = 0;
   u32 sw_if_index;
@@ -14259,7 +14252,7 @@ api_ip_probe_neighbor (vat_main_t * vam)
 	int_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	int_set = 1;
-      else if (unformat (i, "address %U", unformat_vl_api_address, dst_adr))
+      else if (unformat (i, "address %U", unformat_vl_api_address, &dst_adr))
 	adr_set = 1;
       else
 	break;
@@ -14786,7 +14779,7 @@ api_ipsec_spd_entry_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_spd_entry_add_del_t *mp;
-  u8 is_add = 1, is_outbound = 0, is_ipv6 = 0, is_ip_any = 1;
+  u8 is_add = 1, is_outbound = 0;
   u32 spd_id = 0, sa_id = 0, protocol = 0, policy = 0;
   i32 priority = 0;
   u32 rport_start = 0, rport_stop = (u32) ~ 0;
@@ -14826,16 +14819,16 @@ api_ipsec_spd_entry_add_del (vat_main_t * vam)
 	;
       else if (unformat (i, "laddr_start %U",
 			 unformat_vl_api_address, &laddr_start))
-	is_ip_any = 0;
+	;
       else if (unformat (i, "laddr_stop %U", unformat_vl_api_address,
 			 &laddr_stop))
-	is_ip_any = 0;
+	;
       else if (unformat (i, "raddr_start %U", unformat_vl_api_address,
 			 &raddr_start))
-	is_ip_any = 0;
+	;
       else if (unformat (i, "raddr_stop %U", unformat_vl_api_address,
 			 &raddr_stop))
-	is_ip_any = 0;
+	;
       else
 	if (unformat (i, "action %U", unformat_ipsec_policy_action, &policy))
 	{
@@ -15044,7 +15037,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
   u8 renumber = 0;
   u32 instance = ~0;
   u32 count = 1, jj;
-  int ret;
+  int ret = -1;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -20230,7 +20223,6 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
   u8 prefix_set = 0;
   u32 vrf_id = ~0;
   u8 is_add = 1;
-  u8 is_ipv6 = 0;
   int ret;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -20508,7 +20500,6 @@ static void vl_api_ipsec_gre_tunnel_details_t_handler_json
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
-  struct in_addr ip4;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {

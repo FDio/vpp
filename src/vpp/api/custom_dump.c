@@ -120,7 +120,8 @@ static void *vl_api_sw_interface_set_flags_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_rx_placement_t_print
+__clib_unused
+  static void *vl_api_sw_interface_set_rx_placement_t_print
   (vl_api_sw_interface_set_rx_placement_t * mp, void *handle)
 {
   u8 *s;
@@ -137,7 +138,8 @@ static void *vl_api_sw_interface_set_rx_placement_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_rx_placement_dump_t_print
+__clib_unused
+  static void *vl_api_sw_interface_rx_placement_dump_t_print
   (vl_api_sw_interface_rx_placement_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -529,7 +531,8 @@ static void *vl_api_bd_ip_mac_flush_t_print
   FINISH;
 }
 
-static void *vl_api_bd_ip_mac_dump_t_print
+__clib_unused
+  static void *vl_api_bd_ip_mac_dump_t_print
   (vl_api_bd_ip_mac_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -599,7 +602,8 @@ static void *vl_api_sw_interface_tap_v2_dump_t_print
   FINISH;
 }
 
-static void *vl_api_virtio_pci_create_t_print
+__clib_unused
+  static void *vl_api_virtio_pci_create_t_print
   (vl_api_virtio_pci_create_t * mp, void *handle)
 {
   u8 *s;
@@ -617,7 +621,8 @@ static void *vl_api_virtio_pci_create_t_print
   FINISH;
 }
 
-static void *vl_api_virtio_pci_delete_t_print
+__clib_unused
+  static void *vl_api_virtio_pci_delete_t_print
   (vl_api_virtio_pci_delete_t * mp, void *handle)
 {
   u8 *s;
@@ -628,7 +633,8 @@ static void *vl_api_virtio_pci_delete_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_virtio_pci_dump_t_print
+__clib_unused
+  static void *vl_api_sw_interface_virtio_pci_dump_t_print
   (vl_api_sw_interface_virtio_pci_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -697,7 +703,8 @@ static void *vl_api_bond_detach_slave_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_bond_dump_t_print
+__clib_unused
+  static void *vl_api_sw_interface_bond_dump_t_print
   (vl_api_sw_interface_bond_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -707,7 +714,8 @@ static void *vl_api_sw_interface_bond_dump_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_slave_dump_t_print
+__clib_unused
+  static void *vl_api_sw_interface_slave_dump_t_print
   (vl_api_sw_interface_slave_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -1939,10 +1947,10 @@ static void *vl_api_gre_tunnel_add_del_t_print
 
   s = format (s, "instance %d ", ntohl (mp->tunnel.instance));
 
-  if (mp->tunnel.type == GRE_TUNNEL_TYPE_TEB)
+  if (mp->tunnel.type == GRE_API_TUNNEL_TYPE_TEB)
     s = format (s, "teb ");
 
-  if (mp->tunnel.type == GRE_TUNNEL_TYPE_ERSPAN)
+  if (mp->tunnel.type == GRE_API_TUNNEL_TYPE_ERSPAN)
     s = format (s, "erspan %d ", ntohs (mp->tunnel.session_id));
 
   if (mp->tunnel.outer_fib_id)
@@ -2172,7 +2180,8 @@ static void *vl_api_show_version_t_print
   FINISH;
 }
 
-static void *vl_api_show_threads_t_print
+__clib_unused
+  static void *vl_api_show_threads_t_print
   (vl_api_show_threads_t * mp, void *handle)
 {
   u8 *s;
@@ -3594,7 +3603,7 @@ static void *vl_api_tcp_configure_src_addresses_t_print
 static void *vl_api_app_namespace_add_del_t_print
   (vl_api_app_namespace_add_del_t * mp, void *handle)
 {
-  u8 *s, *ns_id = 0;
+  u8 *s;
   u8 len = clib_min (mp->namespace_id_len,
 		     ARRAY_LEN (mp->namespace_id) - 1);
   mp->namespace_id[len] = 0;
@@ -3723,7 +3732,8 @@ static void *vl_api_session_rule_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_ip_container_proxy_add_del_t_print
+__clib_unused
+  static void *vl_api_ip_container_proxy_add_del_t_print
   (vl_api_ip_container_proxy_add_del_t * mp, void *handle)
 {
   u8 *s;
