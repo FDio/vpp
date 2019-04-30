@@ -458,7 +458,6 @@ int
 resolve_packet3 (void **pck_, uint32_t * size, uint8_t ip_addr[4])
 {
   struct ether_header *eh;
-  struct ether_arp *eah;
   struct iphdr *ip;
   struct icmphdr *icmp;
   int32_t offset = 0;

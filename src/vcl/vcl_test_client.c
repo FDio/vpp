@@ -62,7 +62,6 @@ vcl_test_client_main_t vcl_client_main;
 static int
 vtc_cfg_sync (vcl_test_session_t * ts)
 {
-  vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_cfg_t *rx_cfg = (vcl_test_cfg_t *) ts->rxbuf;
   int rx_bytes, tx_bytes;
 
@@ -216,11 +215,10 @@ static int
 vtc_worker_init (vcl_test_client_worker_t * wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
-  vcl_test_session_t *ctrl = &vcm->ctrl_session;
   vcl_test_cfg_t *cfg = &wrk->cfg;
   vcl_test_session_t *ts;
-  uint32_t i, n;
-  int rv, nbytes;
+  uint32_t n;
+  int rv;
 
   __wrk_index = wrk->wrk_index;
 
@@ -477,9 +475,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
   vcl_test_cfg_t *cfg = &ctrl->cfg;
   vcl_test_client_worker_t *wrk;
-  vcl_test_session_t *ts;
-  int tx_bytes, rv;
-  uint32_t i, n, sidx, n_conn, n_conn_per_wrk;
+  uint32_t i, n_conn, n_conn_per_wrk;
 
   vtinf ("%s-directional Stream Test Starting!",
 	 ctrl->cfg.test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
@@ -989,7 +985,7 @@ main (int argc, char **argv)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
-  int rv, errno_val;
+  int rv;
 
   vcm->n_workers = 1;
   vcl_test_cfg_init (&ctrl->cfg);

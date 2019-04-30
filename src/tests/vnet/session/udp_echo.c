@@ -419,7 +419,7 @@ wait_for_state_change (udp_echo_main_t * utm, connection_state_t state)
 
 u64 server_bytes_received, server_bytes_sent;
 
-static void *
+__clib_unused static void *
 cut_through_thread_fn (void *arg)
 {
   app_session_t *s;
@@ -716,7 +716,7 @@ send_test_chunk (udp_echo_main_t * utm, app_session_t * s, u32 bytes)
   u64 test_buf_len, bytes_this_chunk, test_buf_offset;
 
   u8 *test_data = utm->connect_test_data;
-  u32 bytes_to_snd, enq_space, min_chunk;
+  u32 enq_space;
   int written;
 
   test_buf_len = vec_len (test_data);
@@ -807,7 +807,6 @@ static void
 client_test (udp_echo_main_t * utm)
 {
   f64 start_time, timeout = 100.0;
-  app_session_t *session;
   svm_msg_q_msg_t msg;
   session_event_t *e;
 
@@ -1028,7 +1027,6 @@ server_handle_event_queue (udp_echo_main_t * utm)
   session_event_t *e;
   svm_msg_q_msg_t msg;
   svm_msg_q_t *mq = utm->our_event_queue;
-  int i;
 
   while (utm->state != STATE_READY)
     sleep (5);

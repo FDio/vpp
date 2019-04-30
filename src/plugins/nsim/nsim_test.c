@@ -226,7 +226,6 @@ api_nsim_configure (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   f64 delay = 0.0, bandwidth = 0.0;
   f64 packet_size = 1500.0;
-  u32 num_workers = vlib_num_workers ();
   u32 packets_per_drop = 0;
   int ret;
 

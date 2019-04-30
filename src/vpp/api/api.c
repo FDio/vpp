@@ -287,8 +287,7 @@ get_thread_data (vl_api_thread_data_t * td, int index)
 static void
 vl_api_show_threads_t_handler (vl_api_show_threads_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  int rv = 0, count = 0;
+  int count = 0;
 
 #if !defined(__powerpc64__)
   vl_api_registration_t *reg;
