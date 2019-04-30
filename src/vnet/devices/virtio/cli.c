@@ -29,7 +29,6 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   virtio_pci_create_if_args_t args;
-  u32 tmp;
   u64 feature_mask = (u64) ~ (0ULL);
 
   /* Get a line of input. */
@@ -43,10 +42,6 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "feature-mask 0x%llx", &feature_mask))
 	args.features = feature_mask;
-      else if (unformat (line_input, "rx-queue-size %u", &tmp))
-	args.rxq_size = tmp;
-      else if (unformat (line_input, "tx-queue-size %u", &tmp))
-	args.txq_size = tmp;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -62,7 +57,7 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
-                "[feature-mask <hex-mask>] [rx-queue-size <size>] [tx-queue-size <size>]",
+                "[feature-mask <hex-mask>]",
   .function = virtio_pci_create_command_fn,
 };
 /* *INDENT-ON* */

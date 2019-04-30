@@ -227,8 +227,6 @@ typedef struct
 typedef struct
 {
   u32 addr;
-  u16 rxq_size;
-  u16 txq_size;
   /* return */
   i32 rv;
   u32 sw_if_index;

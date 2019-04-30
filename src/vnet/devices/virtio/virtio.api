@@ -33,8 +33,6 @@ define virtio_pci_create
   u32 pci_addr;
   u8 use_random_mac;
   u8 mac_address[6];
-  u16 tx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
-  u16 rx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
   u64 features;
 };
 
