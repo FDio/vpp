@@ -177,16 +177,21 @@ virtio_pci_legacy_get_queue_num (vlib_main_t * vm, virtio_if_t * vif,
   return queue_num;
 }
 
-
-static void
+static int
 virtio_pci_legacy_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
 			       u16 queue_id, void *p)
 {
   u64 addr = vlib_physmem_get_pa (vm, p) >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
+  u32 addr2 = 0;
   vlib_pci_write_io_u16 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_SEL,
 			 &queue_id);
   vlib_pci_write_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_PFN,
 			 (u32 *) & addr);
+  vlib_pci_read_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_PFN,
+			&addr2);
+  if ((u32) addr == addr2)
+    return 0;
+  return 1;
 }
 
 static void
@@ -693,20 +698,19 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
 				 queue_size - n_alloc);
 	}
       while (n_alloc != queue_size);
-      vif->num_txqs++;
       virtio_log_debug (vim, vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
   else
     {
-      vif->num_rxqs++;
       virtio_log_debug (vim, vif, "rx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
   vring->size = queue_size;
-  virtio_pci_legacy_setup_queue (vm, vif, queue_num, ptr);
-  vring->kick_fd = -1;
+  if (virtio_pci_legacy_setup_queue (vm, vif, queue_num, ptr))
+    return clib_error_return (0, "error in queue address setup");
 
+  vring->kick_fd = -1;
   return error;
 }
 
@@ -949,12 +953,24 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   for (int i = 0; i < vif->max_queue_pairs; i++)
     {
       if ((error = virtio_pci_vring_init (vm, vif, RX_QUEUE (i))))
-	virtio_log_warning (vim, vif, "%s (%u) %s", "error in rxq-queue",
-			    RX_QUEUE (i), "initialization");
+	{
+	  virtio_log_warning (vim, vif, "%s (%u) %s", "error in rxq-queue",
+			      RX_QUEUE (i), "initialization");
+	}
+      else
+	{
+	  vif->num_rxqs++;
+	}
 
       if ((error = virtio_pci_vring_init (vm, vif, TX_QUEUE (i))))
-	virtio_log_warning (vim, vif, "%s (%u) %s", "error in txq-queue",
-			    TX_QUEUE (i), "initialization");
+	{
+	  virtio_log_warning (vim, vif, "%s (%u) %s", "error in txq-queue",
+			      TX_QUEUE (i), "initialization");
+	}
+      else
+	{
+	  vif->num_txqs++;
+	}
     }
 
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
@@ -1005,25 +1021,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   virtio_if_t *vif;
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
-
-  if (args->rxq_size == 0)
-    args->rxq_size = VIRTIO_NUM_RX_DESC;
-  if (args->txq_size == 0)
-    args->txq_size = VIRTIO_NUM_TX_DESC;
-
-  if (!virtio_pci_queue_size_valid (args->rxq_size) ||
-      !virtio_pci_queue_size_valid (args->txq_size))
-    {
-      args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (error,
-			   "queue size must be <= 4096, >= 64, "
-			   "and multiples of 64");
-      vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
-		format_vlib_pci_addr, &args->addr,
-		"queue size must be <= 4096, >= 64, and multiples of 64");
-      return;
-    }
 
   /* *INDENT-OFF* */
   pool_foreach (vif, vim->interfaces, ({
