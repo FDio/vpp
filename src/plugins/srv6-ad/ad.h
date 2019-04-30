@@ -66,7 +66,7 @@ typedef struct
   vlib_combined_counter_main_t invalid_counters;/**< Invalid rewrite counters */
 } srv6_ad_main_t;
 
-srv6_ad_main_t srv6_ad_main;
+extern srv6_ad_main_t srv6_ad_main;
 
 format_function_t format_srv6_ad_localsid;
 unformat_function_t unformat_srv6_ad_localsid;

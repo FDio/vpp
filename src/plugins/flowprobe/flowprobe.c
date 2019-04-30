@@ -51,7 +51,6 @@
 #undef vl_printfun
 
 flowprobe_main_t flowprobe_main;
-vlib_node_registration_t flowprobe_walker_node;
 static vlib_node_registration_t flowprobe_timer_node;
 uword flowprobe_walker_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 				vlib_frame_t * f);

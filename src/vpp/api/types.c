@@ -19,6 +19,9 @@
 #include <vpp/api/types.h>
 #include <vat/vat.h>
 
+const vl_api_mac_address_t VL_API_ZERO_MAC_ADDRESS;
+const vl_api_address_t VL_API_ZERO_ADDRESS;
+
 u8 *
 format_vl_api_address (u8 * s, va_list * args)
 {
