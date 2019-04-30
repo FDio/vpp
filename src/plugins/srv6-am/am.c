@@ -29,6 +29,7 @@ unsigned char keyword_str[] = "End.AM";
 unsigned char def_str[] = "Endpoint to SR-unaware appliance via masquerading";
 unsigned char params_str[] = "nh <next-hop> oif <iface-out> iif <iface-in>";
 
+srv6_am_main_t srv6_am_main;
 
 /*****************************************/
 /* SRv6 LocalSID instantiation and removal functions */

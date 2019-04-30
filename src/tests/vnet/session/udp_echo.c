@@ -419,71 +419,6 @@ wait_for_state_change (udp_echo_main_t * utm, connection_state_t state)
 
 u64 server_bytes_received, server_bytes_sent;
 
-static void *
-cut_through_thread_fn (void *arg)
-{
-  app_session_t *s;
-  svm_fifo_t *rx_fifo;
-  svm_fifo_t *tx_fifo;
-  u8 *my_copy_buffer = 0;
-  udp_echo_main_t *utm = &udp_echo_main;
-  i32 actual_transfer;
-  int rv, do_dequeue = 0;
-  u32 buffer_offset;
-
-  while (utm->cut_through_session_index == ~0)
-    ;
-
-  s = pool_elt_at_index (utm->sessions, utm->cut_through_session_index);
-
-  rx_fifo = s->rx_fifo;
-  tx_fifo = s->tx_fifo;
-
-  vec_validate (my_copy_buffer, 64 * 1024 - 1);
-
-  while (1)
-    {
-      do
-	{
-	  /* We read from the tx fifo and write to the rx fifo */
-	  if (utm->have_return || do_dequeue)
-	    actual_transfer = svm_fifo_dequeue (rx_fifo,
-						vec_len (my_copy_buffer),
-						my_copy_buffer);
-	  else
-	    {
-	      /* We don't do anything with the data, drop it */
-	      actual_transfer = svm_fifo_max_dequeue_cons (rx_fifo);
-	      svm_fifo_dequeue_drop (rx_fifo, actual_transfer);
-	    }
-	}
-      while (actual_transfer <= 0);
-
-      server_bytes_received += actual_transfer;
-
-      if (utm->have_return)
-	{
-	  buffer_offset = 0;
-	  while (actual_transfer > 0)
-	    {
-	      rv = svm_fifo_enqueue (tx_fifo, actual_transfer,
-				     my_copy_buffer + buffer_offset);
-	      if (rv > 0)
-		{
-		  actual_transfer -= rv;
-		  buffer_offset += rv;
-		  server_bytes_sent += rv;
-		}
-
-	    }
-	}
-      if (PREDICT_FALSE (utm->time_to_stop))
-	break;
-    }
-
-  pthread_exit (0);
-}
-
 static void
 session_accepted_handler (session_accepted_msg_t * mp)
 {
@@ -716,7 +651,7 @@ send_test_chunk (udp_echo_main_t * utm, app_session_t * s, u32 bytes)
   u64 test_buf_len, bytes_this_chunk, test_buf_offset;
 
   u8 *test_data = utm->connect_test_data;
-  u32 bytes_to_snd, enq_space, min_chunk;
+  u32 enq_space;
   int written;
 
   test_buf_len = vec_len (test_data);
@@ -807,7 +742,6 @@ static void
 client_test (udp_echo_main_t * utm)
 {
   f64 start_time, timeout = 100.0;
-  app_session_t *session;
   svm_msg_q_msg_t msg;
   session_event_t *e;
 
@@ -1028,7 +962,6 @@ server_handle_event_queue (udp_echo_main_t * utm)
   session_event_t *e;
   svm_msg_q_msg_t msg;
   svm_msg_q_t *mq = utm->our_event_queue;
-  int i;
 
   while (utm->state != STATE_READY)
     sleep (5);

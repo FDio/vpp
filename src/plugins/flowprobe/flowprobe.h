@@ -157,6 +157,7 @@ typedef struct
 } flowprobe_main_t;
 
 extern flowprobe_main_t flowprobe_main;
+extern vlib_node_registration_t flowprobe_walker_node;
 
 void flowprobe_flush_callback_ip4 (void);
 void flowprobe_flush_callback_ip6 (void);

@@ -127,7 +127,6 @@ api_command_fn (vlib_main_t * vm,
   u32 arg_len;
   int rv;
   int (*fp) (vat_main_t *);
-  api_main_t *am = &api_main;
 
   maybe_register_api_client (vam);
 
@@ -278,6 +277,7 @@ uword
 unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
   void *vam_unused = va_arg (*args, void *);
+  (void) (vam_unused);
   u32 *result = va_arg (*args, u32 *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
