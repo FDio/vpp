@@ -257,7 +257,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left > 0)
     {
-      u32 sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
+      u32 sa_index0;
       dpo_id_t *dpo;
       esp_header_t *esp;
       u8 *payload, *next_hdr_ptr;
