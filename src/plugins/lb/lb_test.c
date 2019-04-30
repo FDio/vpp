@@ -177,7 +177,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   int ret;
   ip46_address_t ip_prefix;
   u8 prefix_length = 0;
-  u8 protocol;
+  u8 protocol = 0;
   u32 port = 0;
   u32 encap = 0;
   u32 dscp = ~0;
@@ -269,7 +269,6 @@ static int api_lb_add_del_as (vat_main_t * vam)
   ip46_address_t vip_prefix, as_addr;
   u8 vip_plen;
   ip46_address_t *as_array = 0;
-  u32 vip_index;
   u32 port = 0;
   u8 protocol = 0;
   u8 is_del = 0;

@@ -37,7 +37,7 @@ typedef enum
   MARKER_N_PACKET_TEMPLATES,
 } marker_packet_template_id_t;
 
-enum
+typedef enum
 {
   LACP_PROCESS_EVENT_START = 1,
   LACP_PROCESS_EVENT_STOP = 2,

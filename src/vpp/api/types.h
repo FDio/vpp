@@ -23,8 +23,8 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
-const vl_api_mac_address_t VL_API_ZERO_MAC_ADDRESS;
-const vl_api_address_t VL_API_ZERO_ADDRESS;
+extern const vl_api_mac_address_t VL_API_ZERO_MAC_ADDRESS;
+extern const vl_api_address_t VL_API_ZERO_ADDRESS;
 
 extern uword unformat_vl_api_mac_address (unformat_input_t * input, va_list * args);
 extern uword unformat_vl_api_address (unformat_input_t * input, va_list * args);
