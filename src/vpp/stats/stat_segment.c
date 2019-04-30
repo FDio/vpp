@@ -158,7 +158,6 @@ vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
   stat_segment_directory_entry_t e;
-  hash_pair_t *hp;
 
   ASSERT (shared_header);
 
@@ -232,7 +231,6 @@ vlib_map_stat_segment_init (void)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header;
-  stat_segment_directory_entry_t *ep;
   void *oldheap;
   ssize_t memory_size;
   int mfd;
@@ -348,13 +346,10 @@ show_stat_segment_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   stat_segment_main_t *sm = &stat_segment_main;
-  counter_t *counter;
-  hash_pair_t *p;
-  stat_segment_directory_entry_t *show_data, *this;
-  int i, j;
+  stat_segment_directory_entry_t *show_data;
+  int i;
 
   int verbose = 0;
-  u8 *s;
 
   if (unformat (input, "verbose"))
     verbose = 1;
@@ -403,7 +398,6 @@ VLIB_CLI_COMMAND (show_stat_segment_command, static) =
 static inline void
 update_node_counters (stat_segment_main_t * sm)
 {
-  vlib_main_t *vm = vlib_mains[0];
   vlib_main_t **stat_vms = 0;
   vlib_node_t ***node_dups = 0;
   int i, j;
@@ -471,7 +465,6 @@ update_node_counters (stat_segment_main_t * sm)
   for (j = 0; j < vec_len (node_dups); j++)
     {
       vlib_node_t **nodes = node_dups[j];
-      u32 l = vec_len (nodes);
 
       for (i = 0; i < vec_len (nodes); i++)
 	{
@@ -517,7 +510,7 @@ do_stat_segment_updates (stat_segment_main_t * sm)
   stat_segment_shared_header_t *shared_header = sm->shared_header;
   vlib_main_t *vm = vlib_mains[0];
   f64 vector_rate;
-  u64 input_packets, last_input_packets;
+  u64 input_packets;
   f64 dt, now;
   vlib_main_t *this_vlib_main;
   int i, start;

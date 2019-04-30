@@ -288,7 +288,6 @@ setup_signal_handlers (void)
 static void
 vat_find_plugin_path ()
 {
-  extern char *vat_plugin_path;
   char *p, path[PATH_MAX];
   int rv;
   u8 *s;

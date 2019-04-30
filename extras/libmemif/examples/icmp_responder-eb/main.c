@@ -462,6 +462,9 @@ icmpr_add_external_region (void * *addr, uint32_t size, int *fd,
 
   err = ftruncate (rfd, size);
 
+  if (err)
+    return err;
+
   raddr = mmap (NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, rfd, 0);
 
   *addr = raddr;
@@ -500,7 +503,6 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 
   int err = MEMIF_ERR_SUCCESS, ret_val;
   uint16_t rx = 0, tx = 0;
-  uint16_t fb = 0;
   int i = 0;
   int j = 0;
 
@@ -579,8 +581,6 @@ on_interrupt1 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   int err = MEMIF_ERR_SUCCESS, ret_val;
   int i;
   uint16_t rx, tx;
-  uint16_t fb;
-  uint16_t pck_seq;
 
   do
     {
@@ -657,7 +657,6 @@ icmpr_memif_create (long index, long mode, char *s)
   memif_connection_t *c = &memif_connection[index];
 
   memif_conn_args_t args;
-  int fd = -1;
   memset (&args, 0, sizeof (args));
   args.is_master = mode;
   args.log2_ring_size = 11;
@@ -830,8 +829,6 @@ icmpr_send (long index, long packet_num, char *hw, char *ip)
   memif_connection_t *c = &memif_connection[index];
   if (c->conn == NULL)
     return -1;
-  int err, i;
-  uint16_t tx = 0, rx = 0;
   char *end, *ui;
   uint8_t tmp[6];
   icmpr_thread_data_t *data = &icmpr_thread_data[index];
@@ -977,9 +974,8 @@ done:
 int
 poll_event (int timeout)
 {
-  struct epoll_event evt, *e;
+  struct epoll_event evt;
   int app_err = 0, memif_err = 0, en = 0;
-  int tmp, nfd;
   uint32_t events = 0;
   memset (&evt, 0, sizeof (evt));
   evt.events = EPOLLIN | EPOLLOUT;
