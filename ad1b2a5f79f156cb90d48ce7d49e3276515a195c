@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2a911816_01d9947e",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-04-30T19:14:46Z",
+      "side": 1,
+      "message": "sirshak.das@arm.com",
+      "revId": "ad1b2a5f79f156cb90d48ce7d49e3276515a195c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
