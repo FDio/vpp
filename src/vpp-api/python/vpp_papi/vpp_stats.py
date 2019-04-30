@@ -73,7 +73,8 @@ void stat_segment_disconnect (void);
 
 uint32_t *stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm);
 uint32_t *stat_segment_ls (uint8_t ** pattern);
-stat_segment_data_t *stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm);
+stat_segment_data_t *stat_segment_dump_r (uint32_t * stats,
+                                          stat_client_main_t * sm);
 stat_segment_data_t *stat_segment_dump (uint32_t * counter_vec);
 void stat_segment_data_free (stat_segment_data_t * res);
 
@@ -126,8 +127,11 @@ def combined_counter_vec_list(api, e):
         vec.append(if_per_thread)
     return vec
 
+
 def name_vec_list(api, e):
-    return [ffi.string(e[i]).decode('utf-8') for i in range(api.stat_segment_vec_len(e)) if e[i] != ffi.NULL]
+    return [ffi.string(e[i]).decode('utf-8') for i in
+            range(api.stat_segment_vec_len(e)) if e[i] != ffi.NULL]
+
 
 def stat_entry_to_python(api, e):
     # Scalar index
@@ -214,7 +218,8 @@ class VPPStats(object):
 
         if rv == ffi.NULL:
             raise VPPStatsIOError()
-        return [ffi.string(self.api.stat_segment_index_to_name_r(rv[i], self.client)).decode('utf-8')
+        return [ffi.string(self.api.stat_segment_index_to_name_r(
+            rv[i], self.client)).decode('utf-8')
                 for i in range(self.api.stat_segment_vec_len(rv))]
 
     def dump(self, counters):
