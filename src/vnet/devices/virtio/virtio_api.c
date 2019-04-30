@@ -65,8 +65,6 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
       clib_memcpy (ap->mac_addr, mp->mac_address, 6);
       ap->mac_addr_set = 1;
     }
-  ap->rxq_size = ntohs (mp->rx_ring_sz);
-  ap->txq_size = ntohs (mp->tx_ring_sz);
   ap->sw_if_index = (u32) ~ 0;
   ap->features = clib_net_to_host_u64 (mp->features);
 

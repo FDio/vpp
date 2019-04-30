@@ -7732,8 +7732,6 @@ api_virtio_pci_create (vat_main_t * vam)
 
   mp->pci_addr = htonl (pci_addr);
   mp->features = clib_host_to_net_u64 (features);
-  mp->rx_ring_sz = htons (rx_ring_sz);
-  mp->tx_ring_sz = htons (tx_ring_sz);
 
   if (random_mac == 0)
     clib_memcpy (mp->mac_address, mac_address, 6);

@@ -612,10 +612,6 @@ static void *vl_api_virtio_pci_create_t_print
   if (memcmp (mp->mac_address, null_mac, 6))
     s = format (s, "mac-address %U ",
 		format_ethernet_address, mp->mac_address);
-  if (mp->tx_ring_sz)
-    s = format (s, "tx-ring-size %u ", ntohs (mp->tx_ring_sz));
-  if (mp->rx_ring_sz)
-    s = format (s, "rx-ring-size %u ", ntohs (mp->rx_ring_sz));
   if (mp->features)
     s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
   FINISH;
