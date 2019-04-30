@@ -22,6 +22,30 @@
       "revId": "b4f6fca04421b36a7f3c82772b3dd1692e03e5b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d3f0e947_177a4a90",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-04-30T13:37:39Z",
+      "side": 1,
+      "message": "Unfortunately not. format(\"%s\") copy strlen() bytes, which excludes last \\0\nAdding it to the format string won\u0027t work either for the same reason.\nThe other option is to do like format(\"%s%c\", s, 0). You can find both vec_add1 and this in the code base. I personally prefer vec_add1 but have no strong opinion.",
+      "parentUuid": "34088a4f_14551f42",
+      "range": {
+        "startLine": 706,
+        "startChar": 1,
+        "endLine": 710,
+        "endChar": 31
+      },
+      "revId": "b4f6fca04421b36a7f3c82772b3dd1692e03e5b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
