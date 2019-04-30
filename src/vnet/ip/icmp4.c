@@ -188,15 +188,10 @@ ip4_icmp_input (vlib_main_t * vm,
 	  next0 = im->ip4_input_next_index_by_type[type0];
 
 	  p0->error = node->errors[ICMP4_ERROR_UNKNOWN_TYPE];
-	  if (PREDICT_FALSE (next0 != next))
-	    {
-	      vlib_put_next_frame (vm, node, next, n_left_to_next + 1);
-	      next = next0;
-	      vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
-	      to_next[0] = bi0;
-	      to_next += 1;
-	      n_left_to_next -= 1;
-	    }
+
+	  /* Verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next, n_left_to_next);
