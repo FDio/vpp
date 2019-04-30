@@ -173,8 +173,6 @@ START_TEST (test_create_master)
   memset (&args, 0, sizeof (args));
   args.is_master = 1;
 
-  libmemif_main_t *lm = &libmemif_main;
-
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
 		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
@@ -584,7 +582,7 @@ END_TEST
 START_TEST (test_rx_burst)
 {
   int err, i;
-  uint16_t max_buf = 10, buf, rx;
+  uint16_t max_buf = 10, rx;
   uint8_t qid;
   memif_buffer_t *bufs;
   memif_queue_t *mq;

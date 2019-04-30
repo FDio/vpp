@@ -330,9 +330,7 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 
   int err = MEMIF_ERR_SUCCESS, ret_val;
   uint16_t rx = 0, tx = 0;
-  uint16_t fb = 0;
   int i = 0;			/* rx buffer iterator */
-  int j = 0;			/* tx bufferiterator */
 
   /* loop while there are packets in shm */
   do
@@ -413,9 +411,7 @@ on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 
   int err = MEMIF_ERR_SUCCESS, ret_val;
   uint16_t rx = 0, tx = 0;
-  uint16_t fb = 0;
   int i = 0;			/* rx buffer iterator */
-  int j = 0;			/* tx bufferiterator */
 
   /* loop while there are packets in shm */
   do
@@ -497,8 +493,6 @@ on_interrupt1 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   int err = MEMIF_ERR_SUCCESS, ret_val;
   int i;
   uint16_t rx, tx;
-  uint16_t fb;
-  uint16_t pck_seq;
 
   do
     {
@@ -565,7 +559,6 @@ icmpr_memif_create (long index, long mode, char *s)
 
   /* setting memif connection arguments */
   memif_conn_args_t args;
-  int fd = -1;
   memset (&args, 0, sizeof (args));
   args.is_master = mode;
   args.log2_ring_size = 11;
@@ -1051,7 +1044,6 @@ error:
 int
 user_input_handler ()
 {
-  int i;
   char *in = (char *) malloc (256);
   char *ui = fgets (in, 256, stdin);
   char *end;
@@ -1167,9 +1159,8 @@ done:
 int
 poll_event (int timeout)
 {
-  struct epoll_event evt, *e;
+  struct epoll_event evt;
   int app_err = 0, memif_err = 0, en = 0;
-  int tmp, nfd;
   uint32_t events = 0;
   struct timespec start, end;
   memset (&evt, 0, sizeof (evt));

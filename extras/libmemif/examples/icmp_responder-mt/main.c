@@ -112,7 +112,6 @@ pthread_t thread[MAX_THREADS];
 void
 user_signal_handler (int sig)
 {
-  sig = sig;
 }
 
 static void
@@ -375,9 +374,8 @@ memif_rx_interrupt (void *ptr)
   memif_connection_t *c = &memif_connection[data->index];
   int err;
   uint16_t rx = 0, tx = 0, fb = 0;
-  struct epoll_event evt, *e;
+  struct epoll_event evt;
   int en = 0;
-  uint32_t events = 0;
   sigset_t sigset;
 
   signal (SIGUSR1, user_signal_handler);
@@ -602,7 +600,6 @@ icmpr_memif_create (long index)
 
   /* setting memif connection arguments */
   memif_conn_args_t args;
-  int fd = -1;
   memset (&args, 0, sizeof (args));
   args.is_master = 0;
   args.log2_ring_size = 10;
@@ -765,7 +762,6 @@ error:
 int
 user_input_handler ()
 {
-  int i;
   char *in = (char *) malloc (256);
   char *ui = fgets (in, 256, stdin);
   char *end;
@@ -830,9 +826,8 @@ done:
 int
 poll_event (int timeout)
 {
-  struct epoll_event evt, *e;
+  struct epoll_event evt;
   int app_err = 0, memif_err = 0, en = 0;
-  int tmp, nfd;
   uint32_t events = 0;
   memset (&evt, 0, sizeof (evt));
   evt.events = EPOLLIN | EPOLLOUT;

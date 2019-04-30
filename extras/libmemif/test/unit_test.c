@@ -46,13 +46,13 @@ int
 main (void)
 {
   int num_fail;
-  Suite *main, *socket;
+  Suite *mains, *socket;
   SRunner *sr;
 
-  main = main_suite ();
+  mains = main_suite ();
   socket = socket_suite ();
 
-  sr = srunner_create (main);
+  sr = srunner_create (mains);
 
   srunner_add_suite (sr, socket);
 

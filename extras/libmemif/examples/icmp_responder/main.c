@@ -290,6 +290,7 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   memif_connection_t *c = &memif_connection;
   int err;
   uint16_t rx;
+  uint16_t fb = 0;
   /* receive data from shared memory buffers */
   err = memif_rx_burst (c->conn, qid, c->rx_bufs, MAX_MEMIF_BUFS, &rx);
   c->rx_buf_num += rx;
@@ -311,7 +312,6 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 		      &(c->tx_bufs + i)->len, c->ip_addr);
     }
 
-  uint16_t fb;
   /* mark memif buffers and shared memory buffers as free */
   err = memif_refill_queue (c->conn, qid, rx, 0);
   c->rx_buf_num -= fb;
@@ -338,7 +338,6 @@ icmpr_memif_create (int is_master)
 {
   /* setting memif connection arguments */
   memif_conn_args_t args;
-  int fd = -1;
   memset (&args, 0, sizeof (args));
   args.is_master = is_master;
   args.log2_ring_size = 10;
