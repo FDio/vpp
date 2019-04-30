@@ -184,23 +184,23 @@ class VppTransport(object):
         hdr = self.socket.recv(16)
         if not hdr:
             return
-        (_, l, _) = self.header.unpack(hdr) # If at head of message
+        (_, hdrlen, _) = self.header.unpack(hdr)  # If at head of message
 
         # Read rest of message
-        msg = self.socket.recv(l)
-        if l > len(msg):
+        msg = self.socket.recv(hdrlen)
+        if hdrlen > len(msg):
             nbytes = len(msg)
-            buf = bytearray(l)
+            buf = bytearray(hdrlen)
             view = memoryview(buf)
             view[:nbytes] = msg
             view = view[nbytes:]
-            left = l - nbytes
+            left = hdrlen - nbytes
             while left:
                 nbytes = self.socket.recv_into(view, left)
                 view = view[nbytes:]
                 left -= nbytes
             return buf
-        if l == len(msg):
+        if hdrlen == len(msg):
             return msg
         raise VppTransportSocketIOError(1, 'Unknown socket read error')
 

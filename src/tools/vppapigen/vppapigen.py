@@ -519,17 +519,30 @@ class VPPAPIParser(object):
         else:
             p[0] = p[1]
 
+    def p_field_options(self, p):
+        '''field_options : field_option
+                           | field_options field_option'''
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            p[0] = { **p[1], **p[2] }
+
+    def p_field_option(self, p):
+        '''field_option : ID '=' assignee ','
+                        | ID '=' assignee
+        '''
+        p[0] = { p[1]: p[3] }
+
     def p_declaration(self, p):
         '''declaration : type_specifier ID ';'
-                       | type_specifier ID '[' ID '=' assignee ']' ';' '''
-        if len(p) == 9:
-            p[0] = Field(p[1], p[2], {p[4]: p[6]})
+                       | type_specifier ID '[' field_options ']' ';' '''
+        if len(p) == 7:
+            p[0] = Field(p[1], p[2], p[4])
         elif len(p) == 4:
             p[0] = Field(p[1], p[2])
         else:
             self._parse_error('ERROR')
         self.fields.append(p[2])
-
 
     def p_declaration_array(self, p):
         '''declaration : type_specifier ID '[' NUM ']' ';'
