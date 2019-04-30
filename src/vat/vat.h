@@ -230,8 +230,8 @@ void do_one_file (vat_main_t * vam);
 int exec (vat_main_t * vam);
 
 /* Plugin API library functions */
-char *vat_plugin_path;
-char *vat_plugin_name_filter;
+extern char *vat_plugin_path;
+extern char *vat_plugin_name_filter;
 void vat_plugin_api_reference (void);
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 uword unformat_ip4_address (unformat_input_t * input, va_list * args);

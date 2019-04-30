@@ -177,13 +177,14 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   int ret;
   ip46_address_t ip_prefix;
   u8 prefix_length = 0;
-  u8 protocol;
+  u8 protocol = 0;
   u32 port = 0;
   u32 encap = 0;
   u32 dscp = ~0;
   u32 srv_type = LB_SRV_TYPE_CLUSTERIP;
   u32 target_port = 0;
   u32 new_length = 1024;
+  int is_del = 0;
 
   if (!unformat(line_input, "%U", unformat_ip46_prefix, &ip_prefix,
                 &prefix_length, IP46_TYPE_ANY, &prefix_length)) {
@@ -196,7 +197,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
     if (unformat(line_input, "new_len %d", &new_length))
       ;
     else if (unformat(line_input, "del"))
-      mp->is_del = 1;
+      is_del = 1;
     else if (unformat(line_input, "protocol tcp"))
       {
         protocol = IP_PROTOCOL_TCP;
@@ -254,6 +255,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   mp->target_port = htons((u16)target_port);
   mp->node_port = htons((u16)target_port);
   mp->new_flows_table_length = htonl(new_length);
+  mp->is_del = is_del;
 
   S(mp);
   W (ret);
@@ -269,7 +271,6 @@ static int api_lb_add_del_as (vat_main_t * vam)
   ip46_address_t vip_prefix, as_addr;
   u8 vip_plen;
   ip46_address_t *as_array = 0;
-  u32 vip_index;
   u32 port = 0;
   u8 protocol = 0;
   u8 is_del = 0;
