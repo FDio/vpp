@@ -59,7 +59,7 @@ typedef struct
   vat_main_t *vat_main;
 } export_test_main_t;
 
-export_test_main_t export_test_main;
+static export_test_main_t export_test_main;
 
 #define foreach_standard_reply_retval_handler   \
 _(vxlan_gpe_ioam_export_enable_disable_reply)
