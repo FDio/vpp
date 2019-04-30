@@ -688,7 +688,7 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
       do
 	{
 	  if (n_alloc < queue_size)
-	    n_alloc =
+	    n_alloc +=
 	      vlib_buffer_alloc (vm, vring->indirect_buffers + n_alloc,
 				 queue_size - n_alloc);
 	}
