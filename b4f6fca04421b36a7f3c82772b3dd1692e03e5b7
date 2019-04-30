@@ -46,6 +46,30 @@
       "revId": "b4f6fca04421b36a7f3c82772b3dd1692e03e5b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b29760fb_6ce6ecb5",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-04-30T15:17:11Z",
+      "side": 1,
+      "message": "+1 for format (\"%s%c\", s, 0) because it\u0027s 1 less line of code. But no strong opinion there.",
+      "parentUuid": "d3f0e947_177a4a90",
+      "range": {
+        "startLine": 706,
+        "startChar": 1,
+        "endLine": 710,
+        "endChar": 31
+      },
+      "revId": "b4f6fca04421b36a7f3c82772b3dd1692e03e5b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
