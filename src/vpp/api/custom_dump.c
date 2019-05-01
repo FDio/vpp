@@ -618,6 +618,8 @@ static void *vl_api_virtio_pci_create_t_print
     s = format (s, "rx-ring-size %u ", ntohs (mp->rx_ring_sz));
   if (mp->features)
     s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
+  if (mp->gso_enabled)
+    s = format (s, "gso-enabled");
   FINISH;
 }
 

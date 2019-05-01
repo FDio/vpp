@@ -68,6 +68,8 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
   ap->rxq_size = ntohs (mp->rx_ring_sz);
   ap->txq_size = ntohs (mp->tx_ring_sz);
   ap->sw_if_index = (u32) ~ 0;
+  if (mp->gso_enabled)
+    ap->gso_enabled = 1;
   ap->features = clib_net_to_host_u64 (mp->features);
 
   virtio_pci_create_if (vm, ap);

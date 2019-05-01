@@ -43,6 +43,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "feature-mask 0x%llx", &feature_mask))
 	args.features = feature_mask;
+      else if (unformat (line_input, "gso-enabled"))
+	args.gso_enabled = 1;
       else if (unformat (line_input, "rx-queue-size %u", &tmp))
 	args.rxq_size = tmp;
       else if (unformat (line_input, "tx-queue-size %u", &tmp))
@@ -62,7 +64,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
-                "[feature-mask <hex-mask>] [rx-queue-size <size>] [tx-queue-size <size>]",
+                "[feature-mask <hex-mask>] [gso-enabled] "
+                "[rx-queue-size <size>] [tx-queue-size <size>]",
   .function = virtio_pci_create_command_fn,
 };
 /* *INDENT-ON* */

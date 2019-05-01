@@ -7673,6 +7673,7 @@ api_virtio_pci_create (vat_main_t * vam)
   vl_api_virtio_pci_create_t *mp;
   u8 mac_address[6];
   u8 random_mac = 1;
+  u8 gso_enabled = 0;
   u32 pci_addr = 0;
   u64 features = (u64) ~ (0ULL);
   u32 rx_ring_sz = 0, tx_ring_sz = 0;
@@ -7691,6 +7692,8 @@ api_virtio_pci_create (vat_main_t * vam)
 	;
       else if (unformat (i, "features 0x%llx", &features))
 	;
+      else if (unformat (i, "gso-enabled"))
+	gso_enabled = 1;
       else if (unformat (i, "rx-ring-size %u", &rx_ring_sz))
 	;
       else if (unformat (i, "tx-ring-size %u", &tx_ring_sz))
@@ -7732,6 +7735,7 @@ api_virtio_pci_create (vat_main_t * vam)
 
   mp->pci_addr = htonl (pci_addr);
   mp->features = clib_host_to_net_u64 (features);
+  mp->gso_enabled = gso_enabled;
   mp->rx_ring_sz = htons (rx_ring_sz);
   mp->tx_ring_sz = htons (tx_ring_sz);
 
@@ -22340,7 +22344,7 @@ _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
 _(virtio_pci_create,                                                    \
-  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [tx-ring-size <num> [rx-ring-size <num>] [features <hex-value>]") \
+  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [tx-ring-size <num> [rx-ring-size <num>] [features <hex-value>] [gso-enabled]") \
 _(virtio_pci_delete,                                                    \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_virtio_pci_dump, "")                                     \
