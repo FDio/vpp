@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="vpp_config",
-      version="19.01.4",
+      version="19.04.2",
       author="John DeNisco",
       author_email="jdenisco@cisco.com",
       description="VPP Configuration Utility",
