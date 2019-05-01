@@ -1451,8 +1451,118 @@ cleanup:
     }
 
   svm_fifo_free (f);
-
+  vec_free (test_data);
   vec_free (data_buf);
+  return 0;
+}
+
+static int
+chunk_list_len (svm_fifo_chunk_t *c)
+{
+  svm_fifo_chunk_t *it;
+  int count = 0;
+
+  if (!c)
+    return 0;
+
+  count = 1;
+  it = c->next;
+  while (it && it != c)
+    {
+      it = it->next;
+      count ++;
+    }
+  return count;
+}
+
+static void
+chunk_list_free (svm_fifo_chunk_t *c, svm_fifo_chunk_t *stop)
+{
+  svm_fifo_chunk_t *it, *next;
+
+  it = c;
+  while (it && it != stop)
+    {
+      next = it->next;
+      clib_mem_free (it);
+      it = next;
+    }
+}
+
+static int
+sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
+{
+  int __clib_unused verbose = 0, fifo_size = 101, chunk_size = 100;
+  int i, rv; /*j, test_n_bytes, deq_bytes, enq_bytes, n_deqs, n_enqs; */
+  svm_fifo_chunk_t *c, *prev, *collected;
+  u8 *test_data = 0, *data_buf = 0;
+  svm_fifo_t *f;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  /*
+   * Init fifo with multiple chunks
+   */
+  f = fifo_prepare (fifo_size);
+  svm_fifo_init_pointers (f, 0, 0);
+
+  prev = 0;
+  for (i = 0; i < 11; i++)
+    {
+      c = clib_mem_alloc (sizeof (svm_fifo_chunk_t) + chunk_size);
+      c->length = 100;
+      c->start_byte = ~0;
+      c->next = prev;
+      prev = c;
+    }
+
+  svm_fifo_add_chunk (f, c);
+  SFIFO_TEST (f->size == fifo_size + 11 * 100, "size expected %u is %u",
+	      fifo_size + 11 * 100, f->size);
+
+  /*
+   * Try size reduction without fifo wrap and chunks being used
+   */
+  rv = svm_fifo_reduce_size (f, chunk_size, 0);
+  SFIFO_TEST (rv == chunk_size, "size expected %u is %u", chunk_size, rv);
+  SFIFO_TEST (f->size == fifo_size + 11 * 100, "size expected %u is %u",
+	      fifo_size + 11 * 100, f->size);
+  SFIFO_TEST (f->flags & SVM_FIFO_F_SHRINK, "shrink flag should be set");
+
+  /* try to dequeue and force size reduction */
+  (void) svm_fifo_max_enqueue (f);
+
+  SFIFO_TEST (f->size == fifo_size + 10 * 100, "size expected %u is %u",
+	      fifo_size + 10 * 100, f->size);
+  SFIFO_TEST (f->flags & SVM_FIFO_F_COLLECT_CHUNKS,
+              "collect flag should be set");
+
+  c = svm_fifo_collect_chunks (f);
+  collected = c;
+  rv = chunk_list_len (c);
+  SFIFO_TEST (rv == 1, "expected %u chunks got %u", 1, rv);
+  rv = chunk_list_len (f->start_chunk);
+  SFIFO_TEST (rv == 11, "expected %u chunks got %u", 11, rv);
+
+  /*
+   * Cleanup
+   */
+  chunk_list_free (f->start_chunk->next, f->start_chunk);
+  chunk_list_free (collected, 0);
+  svm_fifo_free (f);
+  vec_free (test_data);
+  vec_free (data_buf);
+
   return 0;
 }
 
@@ -1871,6 +1981,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo_replay (vm, input);
       else if (unformat (input, "grow"))
 	res = sfifo_test_fifo_grow (vm, input);
+      else if (unformat (input, "shrink"))
+	res = sfifo_test_fifo_shrink (vm, input);
       else if (unformat (input, "segment"))
 	res = sfifo_test_fifo_segment (vm, input);
       else if (unformat (input, "all"))
@@ -1927,6 +2039,9 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	    goto done;
 
 	  if ((res = sfifo_test_fifo_grow (vm, input)))
+	    goto done;
+
+	  if ((res = sfifo_test_fifo_shrink (vm, input)))
 	    goto done;
 
 	  str = "all";
