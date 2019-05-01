@@ -53,6 +53,8 @@ defaultmapping = {
     'bier_table_add_del': {'is_add': 1, },
     'bridge_domain_add_del': {'flood': 1, 'uu_flood': 1, 'forward': 1,
                               'learn': 1, 'is_add': 1, },
+    'bvi_create': {'user_instance': 4294967295, },
+    'bvi_delete': {},
     'classify_add_del_table': {'match_n_vectors': 1, 'table_index': 4294967295,
                                'nbuckets': 2, 'memory_size': 2097152,
                                'next_table_index': 4294967295,
