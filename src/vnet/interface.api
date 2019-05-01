@@ -113,7 +113,7 @@ autoreply define want_interface_events
     @param sw_if_index - index of the interface
     @param sup_sw_if_index - index of parent interface if any, else same as sw_if_index
     @param l2_address_length - length of the interface's l2 address
-    @param pid - the interface's l2 address
+    @param l2_address - the interface's l2 address
     @param interface_name - name of the interface
     @param link_duplex - 1 if half duplex, 2 if full duplex
     @param link_speed - value in kbps
