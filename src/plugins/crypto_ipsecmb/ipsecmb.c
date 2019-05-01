@@ -478,6 +478,9 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, vnet_crypto_init)))
     return error;
 
+  if (!clib_cpu_supports_aes ())
+    return 0;
+
   /*
    * A priority that is better than OpenSSL but worse than VPP natvie
    */
