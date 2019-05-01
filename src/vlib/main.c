@@ -680,13 +680,16 @@ vlib_node_runtime_update_stats (vlib_main_t * vm,
   return r;
 }
 
-static inline void
-vlib_node_runtime_perf_counter (vlib_main_t * vm, u64 * pmc0, u64 * pmc1)
+always_inline void
+vlib_node_runtime_perf_counter (vlib_main_t * vm, u64 * pmc0, u64 * pmc1,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * frame, int before_or_after)
 {
   *pmc0 = 0;
   *pmc1 = 0;
   if (PREDICT_FALSE (vm->vlib_node_runtime_perf_counter_cb != 0))
-    (*vm->vlib_node_runtime_perf_counter_cb) (vm, pmc0, pmc1);
+    (*vm->vlib_node_runtime_perf_counter_cb) (vm, pmc0, pmc1, node,
+					      frame, before_or_after);
 }
 
 always_inline void
@@ -1181,7 +1184,8 @@ dispatch_node (vlib_main_t * vm,
 			     last_time_stamp, frame ? frame->n_vectors : 0,
 			     /* is_after */ 0);
 
-  vlib_node_runtime_perf_counter (vm, &pmc_before[0], &pmc_before[1]);
+  vlib_node_runtime_perf_counter (vm, &pmc_before[0], &pmc_before[1],
+				  node, frame, 0 /* before */ );
 
   /*
    * Turn this on if you run into
@@ -1215,7 +1219,8 @@ dispatch_node (vlib_main_t * vm,
    * To validate accounting: pmc_delta = t - pmc_before;
    * perf ticks should equal clocks/pkt...
    */
-  vlib_node_runtime_perf_counter (vm, &pmc_after[0], &pmc_after[1]);
+  vlib_node_runtime_perf_counter (vm, &pmc_after[0], &pmc_after[1], node,
+				  frame, 1 /* after */ );
 
   pmc_delta[0] = pmc_after[0] - pmc_before[0];
   pmc_delta[1] = pmc_after[1] - pmc_before[1];
