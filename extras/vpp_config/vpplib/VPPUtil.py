@@ -17,10 +17,11 @@ from __future__ import print_function
 import logging
 import re
 import subprocess
-import platform
 import requests
 
 from collections import Counter
+
+import distro
 
 ubuntu_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua', 'vpp-api-python',
                            'vpp-dbg', 'vpp-dev'],
@@ -705,14 +706,14 @@ class VPPUtil(object):
         :rtype: list
         """
 
-        distro = platform.linux_distribution()
-        if distro[0] == 'Ubuntu' or \
-                distro[0] == 'CentOS Linux' or \
-                distro[:7] == 'Red Hat':
-            return distro
+        dist = distro.linux_distribution()
+        if dist[0] == 'Ubuntu' or \
+                dist[0] == 'CentOS Linux' or \
+                dist[:7] == 'Red Hat':
+            return dist
         else:
             raise RuntimeError(
-                'Linux Distribution {} is not supported'.format(distro[0]))
+                'Linux Distribution {} is not supported'.format(dist[0]))
 
     @staticmethod
     def version():
