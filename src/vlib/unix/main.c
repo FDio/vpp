@@ -632,7 +632,7 @@ vlib_thread_stack_init (uword thread_index)
 {
   vec_validate (vlib_thread_stacks, thread_index);
   vlib_thread_stacks[thread_index] = clib_mem_alloc_aligned
-    (VLIB_THREAD_STACK_SIZE, VLIB_THREAD_STACK_SIZE);
+    (VLIB_THREAD_STACK_SIZE, clib_mem_get_page_size ());
 
   /*
    * Disallow writes to the bottom page of the stack, to
