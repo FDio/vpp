@@ -452,31 +452,26 @@ debug_device_config_space (vlib_main_t * vm, virtio_if_t * vif)
     }
 }
 
-struct virtio_ctrl_mq_status_hdr
+struct virtio_ctrl_msg
 {
   struct virtio_net_ctrl_hdr ctrl;
-  struct virtio_net_ctrl_mq num_mqs;
   virtio_net_ctrl_ack status;
+  u8 data[1024];
 };
 
 static int
-virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
-			      u16 num_queues)
+virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
+			  struct virtio_ctrl_msg *data, u32 len)
 {
   virtio_main_t *vim = &virtio_main;
   virtio_vring_t *vring = vif->cxq_vring;
+  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+  struct virtio_ctrl_msg result;
   u32 buffer_index;
   vlib_buffer_t *b;
   u16 used, next, avail;
   u16 sz = vring->size;
   u16 mask = sz - 1;
-  struct virtio_ctrl_mq_status_hdr mq_hdr, result;
-  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
-
-  mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
-  mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
-  mq_hdr.status = VIRTIO_NET_ERR;
-  mq_hdr.num_mqs.virtqueue_pairs = num_queues;
 
   used = vring->desc_in_use;
   next = vring->desc_next;
@@ -492,8 +487,8 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
    * previous offset.
    */
   b->current_data = 0;
-  clib_memcpy (vlib_buffer_get_current (b), &mq_hdr,
-	       sizeof (struct virtio_ctrl_mq_status_hdr));
+  clib_memcpy (vlib_buffer_get_current (b), data,
+	       sizeof (struct virtio_ctrl_msg));
   d->flags = VRING_DESC_F_NEXT;
   d->addr = vlib_buffer_get_current_pa (vm, b);
   d->len = sizeof (struct virtio_net_ctrl_hdr);
@@ -506,8 +501,8 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
   d = &vring->desc[next];
   d->flags = VRING_DESC_F_NEXT;
   d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (struct virtio_ctrl_mq_status_hdr, num_mqs);
-  d->len = sizeof (struct virtio_net_ctrl_mq);
+    STRUCT_OFFSET_OF (struct virtio_ctrl_msg, data);
+  d->len = len;
   next = (next + 1) & mask;
   d->next = next;
   used++;
@@ -515,8 +510,8 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
   d = &vring->desc[next];
   d->flags = VRING_DESC_F_WRITE;
   d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (struct virtio_ctrl_mq_status_hdr, status);
-  d->len = sizeof (mq_hdr.status);
+    STRUCT_OFFSET_OF (struct virtio_ctrl_msg, status);
+  d->len = sizeof (data->status);
   next = (next + 1) & mask;
   used++;
 
@@ -530,7 +525,6 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
       virtio_kick (vm, vring, vif);
     }
 
-  clib_memset (&result, 0, sizeof (result));
   u16 last = vring->last_used_idx, n_left = 0;
   n_left = vring->used->idx - last;
 
@@ -555,12 +549,28 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
 
   CLIB_MEMORY_BARRIER ();
   clib_memcpy (&result, vlib_buffer_get_current (b),
-	       sizeof (struct virtio_ctrl_mq_status_hdr));
-
-  virtio_log_debug (vim, vif, "multi-queue enable status on Ctrl queue : %u",
-		    result.status);
+	       sizeof (struct virtio_ctrl_msg));
+  virtio_log_debug (vim, vif, "ctrl-queue: status %u", result.status);
   status = result.status;
   vlib_buffer_free (vm, &buffer_index, 1);
+  return status;
+}
+
+static int
+virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
+			      u16 num_queues)
+{
+  virtio_main_t *vim = &virtio_main;
+  struct virtio_ctrl_msg mq_hdr;
+  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+
+  mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
+  mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
+  mq_hdr.status = VIRTIO_NET_ERR;
+  clib_memcpy (mq_hdr.data, &num_queues, sizeof (num_queues));
+
+  status = virtio_pci_send_ctrl_msg (vm, vif, &mq_hdr, sizeof (num_queues));
+  virtio_log_debug (vim, vif, "multi-queue enable %u queues", num_queues);
   return status;
 }
 
