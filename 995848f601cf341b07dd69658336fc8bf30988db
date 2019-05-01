@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6498d222_d4d674b9",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 621,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-01T12:48:38Z",
+      "side": 1,
+      "message": "TypeError",
+      "range": {
+        "startLine": 621,
+        "startChar": 12,
+        "endLine": 621,
+        "endChar": 19
+      },
+      "revId": "995848f601cf341b07dd69658336fc8bf30988db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "94f3439e_506cb4fd",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-01T12:48:38Z",
+      "side": 1,
+      "message": "Not needed for python3:\n\nChanged in version 3.0: The return value is unsigned and in the range [0, 2**32-1] regardless of platform.\n\nhttps://docs.python.org/2/library/binascii.html#binascii.crc32",
+      "range": {
+        "startLine": 650,
+        "startChar": 8,
+        "endLine": 650,
+        "endChar": 40
+      },
+      "revId": "995848f601cf341b07dd69658336fc8bf30988db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "89b4fc67_f2a92f65",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 757,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-01T12:48:38Z",
+      "side": 1,
+      "message": "TypeError.  I don\u0027t think you want to be catching RecursionError.",
+      "range": {
+        "startLine": 757,
+        "startChar": 12,
+        "endLine": 757,
+        "endChar": 19
+      },
+      "revId": "995848f601cf341b07dd69658336fc8bf30988db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
