@@ -434,90 +434,6 @@ svm_fifo_chunk_alloc (u32 size)
   return c;
 }
 
-static inline void
-svm_fifo_size_update (svm_fifo_t * f, svm_fifo_chunk_t * c)
-{
-  svm_fifo_chunk_t *prev;
-  u32 add_bytes = 0;
-
-  if (!c)
-    return;
-
-  f->end_chunk->next = c;
-  while (c)
-    {
-      add_bytes += c->length;
-      prev = c;
-      c = c->next;
-    }
-  f->end_chunk = prev;
-  prev->next = f->start_chunk;
-  f->size += add_bytes;
-  f->nitems = f->size - 1;
-  f->new_chunks = 0;
-}
-
-static void
-svm_fifo_try_size_update (svm_fifo_t * f, u32 new_head)
-{
-  if (new_head % f->size > f->tail % f->size)
-    return;
-
-  svm_fifo_size_update (f, f->new_chunks);
-  f->flags &= ~SVM_FIFO_F_SIZE_UPDATE;
-}
-
-void
-svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
-{
-  svm_fifo_chunk_t *cur, *prev;
-
-  /* Initialize rbtree if needed and add default chunk to it */
-  if (!(f->flags & SVM_FIFO_F_MULTI_CHUNK))
-    {
-      rb_tree_init (&f->chunk_lookup);
-      rb_tree_add2 (&f->chunk_lookup, 0, pointer_to_uword (f->start_chunk));
-      f->flags |= SVM_FIFO_F_MULTI_CHUNK;
-    }
-
-  /* Initialize chunks and add to lookup rbtree. Expectation is that this is
-   * called with the heap where the rbtree's pool is pushed. */
-  cur = c;
-  if (f->new_chunks)
-    {
-      prev = f->new_chunks;
-      while (prev->next)
-	prev = prev->next;
-      prev->next = c;
-    }
-  else
-    prev = f->end_chunk;
-
-  while (cur)
-    {
-      cur->start_byte = prev->start_byte + prev->length;
-      rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
-		    pointer_to_uword (cur));
-      prev = cur;
-      cur = cur->next;
-    }
-
-  /* If fifo is not wrapped, update the size now */
-  if (!svm_fifo_is_wrapped (f))
-    {
-      ASSERT (!f->new_chunks);
-      svm_fifo_size_update (f, c);
-      return;
-    }
-
-  /* Postpone size update */
-  if (!f->new_chunks)
-    {
-      f->new_chunks = c;
-      f->flags |= SVM_FIFO_F_SIZE_UPDATE;
-    }
-}
-
 static inline u8
 svm_fifo_chunk_includes_pos (svm_fifo_chunk_t * c, u32 pos)
 {
@@ -571,6 +487,169 @@ svm_fifo_find_chunk (svm_fifo_t * f, u32 pos)
   if (!rb_node_is_tnil (rt, cur))
     return uword_to_pointer (cur->opaque, svm_fifo_chunk_t *);
   return 0;
+}
+
+static inline void
+svm_fifo_size_update (svm_fifo_t * f, svm_fifo_chunk_t * c)
+{
+  svm_fifo_chunk_t *prev;
+  u32 add_bytes = 0;
+
+  if (!c)
+    return;
+
+  f->end_chunk->next = c;
+  while (c)
+    {
+      add_bytes += c->length;
+      prev = c;
+      c = c->next;
+    }
+  f->end_chunk = prev;
+  prev->next = f->start_chunk;
+  f->size += add_bytes;
+  f->nitems = f->size - 1;
+  f->new_chunks = 0;
+}
+
+static void
+svm_fifo_try_size_update (svm_fifo_t * f, u32 new_head)
+{
+  if (new_head % f->size > f->tail % f->size)
+    return;
+
+  svm_fifo_size_update (f, f->new_chunks);
+  f->flags &= ~SVM_FIFO_F_SIZE_UPDATE;
+}
+
+void
+svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
+{
+  svm_fifo_chunk_t *cur, *prev;
+
+  /* Initialize rbtree if needed and add default chunk to it. Expectation is
+   * that this is called with the heap where the rbtree's pool is pushed. */
+  if (!(f->flags & SVM_FIFO_F_MULTI_CHUNK))
+    {
+      rb_tree_init (&f->chunk_lookup);
+      rb_tree_add2 (&f->chunk_lookup, 0, pointer_to_uword (f->start_chunk));
+      f->flags |= SVM_FIFO_F_MULTI_CHUNK;
+    }
+
+  /* Initialize chunks and add to lookup rbtree */
+  cur = c;
+  if (f->new_chunks)
+    {
+      prev = f->new_chunks;
+      while (prev->next)
+	prev = prev->next;
+      prev->next = c;
+    }
+  else
+    prev = f->end_chunk;
+
+  while (cur)
+    {
+      cur->start_byte = prev->start_byte + prev->length;
+      rb_tree_add2 (&f->chunk_lookup, cur->start_byte,
+		    pointer_to_uword (cur));
+      prev = cur;
+      cur = cur->next;
+    }
+
+  /* If fifo is not wrapped, update the size now */
+  if (!svm_fifo_is_wrapped (f))
+    {
+      ASSERT (!f->new_chunks);
+      svm_fifo_size_update (f, c);
+      return;
+    }
+
+  /* Postpone size update */
+  if (!f->new_chunks)
+    {
+      f->new_chunks = c;
+      f->flags |= SVM_FIFO_F_SIZE_UPDATE;
+    }
+}
+
+/**
+ * Removes chunks that are after fifo end byte
+ *
+ * Needs to be called with segment heap pushed.
+ *
+ * @param f fifo
+ */
+svm_fifo_chunk_t *
+svm_fifo_collect_chunks (svm_fifo_t * f)
+{
+  svm_fifo_chunk_t *last, *list, *cur;
+
+  last = svm_fifo_find_chunk (f, f->nitems);
+  if (!last || last->next == f->start_chunk)
+    return 0;
+
+  list = last->next;
+  last->next = f->start_chunk;
+  f->end_chunk = last;
+
+  cur = list;
+  while (cur != f->start_chunk)
+    {
+      rb_tree_del (&f->chunk_lookup, cur->start_byte);
+      cur = cur->next;
+    }
+
+  return list;
+}
+
+void
+svm_fifo_do_shrink (svm_fifo_t * f)
+{
+  u32 decrement, head, tail;
+
+  f_load_head_tail_prod (f, &head, &tail);
+  decrement = clib_min (f->size_decrement, f_free_count (f, head, tail));
+
+  f->nitems -= decrement;
+  f->size = f->nitems + 1;
+  f->size_decrement -= decrement;
+  if (!f->size_decrement)
+    {
+      f->flags &= ~SVM_FIFO_F_SHRINK;
+      f->flags |= SVM_FIFO_F_COLLECT_CHUNKS;
+    }
+}
+
+/**
+ * Request to reduce fifo size by amount of bytes
+ *
+ * The update is not applied until producer tries to enqueue new data.
+ * @param f	fifo
+ * @param len	number of bytes to remove from fifo. The actual number of
+ * 		bytes to be removed will be less or equal to this value.
+ */
+void
+svm_fifo_reduce_size (svm_fifo_t * f, u32 len)
+{
+  u32 actual_decrement = 0;
+  svm_fifo_chunk_t *cur;
+
+  /* last chunk that will not be removed */
+  cur = svm_fifo_find_chunk (f, f->nitems - len);
+  if (!cur)
+    return;
+
+  /* sum length of chunks that will be removed */
+  cur = cur->next;
+  while (cur != f->start_chunk)
+    {
+      actual_decrement += cur->length;
+      cur = cur->next;
+    }
+
+  f->size_decrement = actual_decrement;
+  f->flags |= SVM_FIFO_F_SHRINK;
 }
 
 void
