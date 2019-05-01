@@ -402,18 +402,18 @@ class VPPUtil(object):
             return interfaces
 
         lines = stdout.split('\n')
-        if len(lines[0]) is not 0:
+        if len(lines[0]) != 0:
             if lines[0].split(' ')[0] == 'FileNotFoundError':
                 return interfaces
 
         name = ''
         for line in lines:
-            if len(line) is 0:
+            if len(line) == 0:
                 continue
 
             # If the first character is not whitespace
             # create a new interface
-            if len(re.findall(r'\s', line[0])) is 0:
+            if len(re.findall(r'\s', line[0])) == 0:
                 spl = line.split()
                 name = spl[0]
                 if name == 'local0':
@@ -444,17 +444,17 @@ class VPPUtil(object):
             return interfaces
 
         lines = stdout.split('\n')
-        if len(lines[0]) is not 0:
+        if len(lines[0]) != 0:
             if lines[0].split(' ')[0] == 'FileNotFoundError':
                 return interfaces
 
         for line in lines:
-            if len(line) is 0:
+            if len(line) == 0:
                 continue
 
             # If the first character is not whitespace
             # create a new interface
-            if len(re.findall(r'\s', line[0])) is 0:
+            if len(re.findall(r'\s', line[0])) == 0:
                 spl = line.split()
                 name = spl[0]
                 interfaces[name] = {}
@@ -731,12 +731,12 @@ class VPPUtil(object):
             return version
 
         lines = stdout.split('\n')
-        if len(lines[0]) is not 0:
+        if len(lines[0]) != 0:
             if lines[0].split(' ')[0] == 'FileNotFoundError':
                 return version
 
         for line in lines:
-            if len(line) is 0:
+            if len(line) == 0:
                 continue
             dct = line.split(':')
             version[dct[0]] = dct[1].lstrip(' ')

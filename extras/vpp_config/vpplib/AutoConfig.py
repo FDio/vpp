@@ -351,7 +351,7 @@ class AutoConfig(object):
             vpp_main_core = node['cpu']['vpp_main_core']
         else:
             vpp_main_core = 0
-        if vpp_main_core is not 0:
+        if vpp_main_core != 0:
             cpu += '  main-core {}\n'.format(vpp_main_core)
 
         # Get workers
@@ -419,7 +419,7 @@ class AutoConfig(object):
 
         # If the total mbufs is not 0 or less than the default, set num-bufs
         logging.debug("Total mbufs: {}".format(total_mbufs))
-        if total_mbufs is not 0 and total_mbufs > 16384:
+        if total_mbufs != 0 and total_mbufs > 16384:
             devices += '\n  num-mbufs {}'.format(total_mbufs)
 
         return devices
@@ -558,7 +558,7 @@ class AutoConfig(object):
             other_cpus_end = other_cpus_start + \
                 node['cpu']['total_other_cpus'] - 1
             other_workers = None
-            if other_cpus_end is not 0:
+            if other_cpus_end != 0:
                 other_workers = (other_cpus_start, other_cpus_end)
             node['cpu']['other_workers'] = other_workers
 
@@ -577,7 +577,7 @@ class AutoConfig(object):
             if reserve_vpp_main_core:
                 total_main = 1
             total_mbufs = 0
-            if total_main + total_workers_node is not 0:
+            if total_main + total_workers_node != 0:
                 for item in ports_per_numa.items():
                     numa_node = item[0]
                     value = item[1]
@@ -735,7 +735,7 @@ class AutoConfig(object):
             all_workers = []
             if other_workers is not None:
                 all_workers = [other_workers]
-            if vpp_main_core is not 0:
+            if vpp_main_core != 0:
                 all_workers += [(vpp_main_core, vpp_main_core)]
             all_workers += vpp_workers
             isolated_cpus = ''
@@ -804,7 +804,7 @@ class AutoConfig(object):
                 iso_cpul = iso_cpu_str.split(',')
                 for iso_cpu in iso_cpul:
                     isocpuspl = iso_cpu.split('-')
-                    if len(isocpuspl) is 1:
+                    if len(isocpuspl) == 1:
                         current_iso_cpus += 1
                     else:
                         first = int(isocpuspl[0])
@@ -1409,7 +1409,7 @@ class AutoConfig(object):
 
         if 'cpu' in node and 'total_mbufs' in node['cpu']:
             total_mbufs = node['cpu']['total_mbufs']
-            if total_mbufs is not 0:
+            if total_mbufs != 0:
                 print("Total Number of Buffers: {}".format(total_mbufs))
 
         vpp = VppPCIUtil(node)
@@ -1631,7 +1631,7 @@ class AutoConfig(object):
 
             # Show the current interfaces with IP addresses
             current_ints = VPPUtil.get_int_ip(node)
-            if current_ints is not {}:
+            if current_ints != {}:
                 print("\nThese are the current interfaces with IP addresses:")
                 for items in sorted(current_ints.items()):
                     name = items[0]
