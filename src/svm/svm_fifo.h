@@ -64,9 +64,11 @@ typedef struct svm_fifo_chunk_
 
 typedef enum svm_fifo_flag_
 {
-  SVM_FIFO_F_SIZE_UPDATE = 1 << 0,
-  SVM_FIFO_F_MULTI_CHUNK = 1 << 1,
-  SVM_FIFO_F_LL_TRACKED = 1 << 2,
+  SVM_FIFO_F_MULTI_CHUNK = 1 << 0,
+  SVM_FIFO_F_SIZE_UPDATE = 1 << 1,
+  SVM_FIFO_F_SHRINK = 1 << 2,
+  SVM_FIFO_F_COLLECT_CHUNKS = 1 << 3,
+  SVM_FIFO_F_LL_TRACKED = 1 << 4,
 } svm_fifo_flag_t;
 
 typedef struct _svm_fifo
@@ -92,6 +94,7 @@ typedef struct _svm_fifo
   i8 refcnt;			/**< reference count  */
   struct _svm_fifo *next;	/**< next in freelist/active chain */
   struct _svm_fifo *prev;	/**< prev in active chain */
+  u32 size_decrement;		/**< bytes to remove from fifo */
 
     CLIB_CACHE_LINE_ALIGN_MARK (consumer);
   u32 head;			/**< fifo head position/byte */
@@ -172,7 +175,8 @@ f_load_head_tail_prod (svm_fifo_t * f, u32 * head, u32 * tail)
   *head = clib_atomic_load_acq_n (&f->head);
 }
 
-/* Load head and tail independent of producer/consumer role
+/**
+ * Load head and tail independent of producer/consumer role
  *
  * Internal function.
  */
@@ -186,7 +190,7 @@ f_load_head_tail_all_acq (svm_fifo_t * f, u32 * head, u32 * tail)
 }
 
 /**
- * Fifo free bytes, i.e., number of free bytes
+ * Fifo free bytes, i.e., number of bytes that could be enqueued
  *
  * Internal function
  */
@@ -204,7 +208,8 @@ f_free_count (svm_fifo_t * f, u32 head, u32 tail)
 static inline u32
 f_cursize (svm_fifo_t * f, u32 head, u32 tail)
 {
-  return (f->nitems - f_free_count (f, head, tail));
+//  return (f->nitems - f_free_count (f, head, tail));
+  return (tail - head);
 }
 
 /**
@@ -333,6 +338,16 @@ int svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src);
  */
 int svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len,
 				  u8 * src);
+
+/**
+ * Advance tail pointer
+ *
+ * Useful for moving tail pointer after external enqueue.
+ *
+ * @param f		fifo
+ * @param len		number of bytes to add to tail
+ */
+void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
 /**
  * Overwrite fifo head with new data
  *
@@ -594,25 +609,6 @@ svm_fifo_max_write_chunk (svm_fifo_t * f)
   head_idx = head % f->size;
   tail_idx = tail % f->size;
   return tail_idx >= head_idx ? (f->size - tail_idx) : (head_idx - tail_idx);
-}
-
-/**
- * Advance tail pointer
- *
- * Useful for moving tail pointer after external enqueue.
- *
- * @param f		fifo
- * @param len		number of bytes to add to tail
- */
-static inline void
-svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
-{
-  ASSERT (len <= svm_fifo_max_enqueue_prod (f));
-  /* load-relaxed: producer owned index */
-  u32 tail = f->tail;
-  tail += len;
-  /* store-rel: producer owned index (paired with load-acq in consumer) */
-  clib_atomic_store_rel_n (&f->tail, tail);
 }
 
 static inline u8 *
