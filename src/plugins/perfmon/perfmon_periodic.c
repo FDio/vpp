@@ -33,7 +33,9 @@ perf_event_open (struct perf_event_attr *hw_event, pid_t pid, int cpu,
 }
 
 static void
-read_current_perf_counters (vlib_main_t * vm, u64 * c0, u64 * c1)
+read_current_perf_counters (vlib_main_t * vm, u64 * c0, u64 * c1,
+			    vlib_node_runtime_t * node,
+			    vlib_frame_t * frame, int before_or_after)
 {
   int i;
   u64 *cc;
