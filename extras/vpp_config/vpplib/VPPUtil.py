@@ -23,14 +23,14 @@ from collections import Counter
 
 import distro
 
-ubuntu_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua', 'vpp-api-python',
+ubuntu_pkgs = {'release': ['vpp', 'vpp-plugin-core', 'vpp-plugin-dpdk', 'vpp-api-python', 'python3-vpp-api',
                            'vpp-dbg', 'vpp-dev'],
-               'master': ['vpp', 'vpp-plugin-core', 'vpp-api-python',
-                          'vpp-dbg', 'vpp-dev', 'vpp-plugin-dpdk']}
+               'master': ['vpp', 'vpp-plugin-core', 'vpp-plugin-dpdk', 'vpp-api-python', 'python3-vpp-api',
+                          'vpp-dbg', 'vpp-dev']}
 
-centos_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua',
+centos_pkgs = {'release': ['vpp', 'vpp-selinux-policy', 'vpp-plugins', 'vpp-api-lua',
                            'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0'],
-               'master': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua',
+               'master': ['vpp', 'vpp-selinux-policy', 'vpp-plugins', 'vpp-api-lua',
                           'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0']}
 
 
