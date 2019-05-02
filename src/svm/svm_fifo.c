@@ -125,7 +125,7 @@ position_diff (svm_fifo_t * f, u32 a, u32 b, u32 tail)
 static inline u32
 ooo_segment_end_pos (svm_fifo_t * f, ooo_segment_t * s)
 {
-  return s->start + s->length;
+  return (s->start + s->length) % f->size;
 }
 
 void
@@ -202,8 +202,8 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
 
   ASSERT (offset + length <= f_distance_to (f, head, tail) || head == tail);
 
-  offset_pos = tail + offset;
-  offset_end_pos = tail + offset + length;
+  offset_pos = (tail + offset) % f->size;
+  offset_end_pos = (tail + offset + length) % f->size;
 
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
@@ -350,7 +350,7 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
       if (s->length > diff)
 	{
 	  bytes = s->length - diff;
-	  *tail = *tail + bytes;
+	  *tail = (*tail + bytes) % f->size;
 	  ooo_segment_free (f, s_index);
 	  break;
 	}
@@ -460,7 +460,7 @@ svm_fifo_size_update (svm_fifo_t * f, svm_fifo_chunk_t * c)
 static void
 svm_fifo_try_size_update (svm_fifo_t * f, u32 new_head)
 {
-  if (new_head % f->size > f->tail % f->size)
+  if (new_head > f->tail)
     return;
 
   svm_fifo_size_update (f, f->new_chunks);
@@ -603,8 +603,7 @@ svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len)
 
   f_load_head_tail_cons (f, &head, &tail);
   c = f->head_chunk;
-  head_idx = head % f->size;
-  head_idx -= c->start_byte;
+  head_idx = head - c->start_byte;
   n_chunk = c->length - head_idx;
   if (len <= n_chunk)
     clib_memcpy_fast (&c->data[head_idx], src, len);
@@ -632,9 +631,8 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
 
   /* number of bytes we're going to copy */
   len = clib_min (free_count, len);
-  svm_fifo_copy_to_chunk (f, f->tail_chunk, tail % f->size, src, len,
-			  &f->tail_chunk);
-  tail += len;
+  svm_fifo_copy_to_chunk (f, f->tail_chunk, tail, src, len, &f->tail_chunk);
+  tail = (tail + len) % f->size;
 
   svm_fifo_trace_add (f, head, len, 2);
 
@@ -672,7 +670,7 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
   svm_fifo_trace_add (f, offset, len, 1);
   ooo_segment_add (f, offset, head, tail, len);
-  tail_idx = (tail % f->size + offset) % f->size;
+  tail_idx = (tail + offset) % f->size;
 
   if (!svm_fifo_chunk_includes_pos (f->ooo_enq, tail_idx))
     f->ooo_enq = svm_fifo_find_chunk (f, tail_idx);
@@ -696,9 +694,8 @@ svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst)
     return SVM_FIFO_EEMPTY;
 
   len = clib_min (cursize, len);
-  svm_fifo_copy_from_chunk (f, f->head_chunk, head % f->size, dst, len,
-			    &f->head_chunk);
-  head += len;
+  svm_fifo_copy_from_chunk (f, f->head_chunk, head, dst, len, &f->head_chunk);
+  head = (head + len) % f->size;
 
   if (PREDICT_FALSE (f->flags & SVM_FIFO_F_SIZE_UPDATE))
     svm_fifo_try_size_update (f, head);
@@ -723,7 +720,7 @@ svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
     return SVM_FIFO_EEMPTY;
 
   len = clib_min (cursize - offset, len);
-  head_idx = (head % f->size + offset) % f->size;
+  head_idx = (head + offset) % f->size;
   if (!svm_fifo_chunk_includes_pos (f->ooo_deq, head_idx))
     f->ooo_deq = svm_fifo_find_chunk (f, head_idx);
 
@@ -749,7 +746,7 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
   total_drop_bytes = clib_min (cursize, len);
 
   /* move head */
-  head += total_drop_bytes;
+  head = (head + total_drop_bytes) % f->size;
 
   /* store-rel: consumer owned index (paired with load-acq in producer) */
   clib_atomic_store_rel_n (&f->head, head);
@@ -779,7 +776,7 @@ svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs)
   if (PREDICT_FALSE (cursize == 0))
     return SVM_FIFO_EEMPTY;
 
-  head_idx = head % f->size;
+  head_idx = head;
 
   if (tail < head)
     {
@@ -801,14 +798,13 @@ svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs)
 void
 svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs)
 {
-  u32 head, head_idx;
+  u32 head;
 
   /* consumer owned index */
   head = f->head;
-  head_idx = head % f->size;
 
-  ASSERT (fs[0].data == f->head_chunk->data + head_idx);
-  head += fs[0].len + fs[1].len;
+  ASSERT (fs[0].data == f->head_chunk->data + head);
+  head = (head + fs[0].len + fs[1].len) % f->size;
   /* store-rel: consumer owned index (paired with load-acq in producer) */
   clib_atomic_store_rel_n (&f->head, head);
 }
@@ -849,15 +845,17 @@ svm_fifo_first_ooo_segment (svm_fifo_t * f)
 void
 svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail)
 {
+  head = head % f->size;
+  tail = tail % f->size;
   clib_atomic_store_rel_n (&f->head, head);
   clib_atomic_store_rel_n (&f->tail, tail);
   if (f->flags & SVM_FIFO_F_MULTI_CHUNK)
     {
       svm_fifo_chunk_t *c;
-      c = svm_fifo_find_chunk (f, head % f->size);
+      c = svm_fifo_find_chunk (f, head);
       ASSERT (c != 0);
       f->head_chunk = f->ooo_deq = c;
-      c = svm_fifo_find_chunk (f, tail % f->size);
+      c = svm_fifo_find_chunk (f, tail);
       ASSERT (c != 0);
       f->tail_chunk = f->ooo_enq = c;
     }
