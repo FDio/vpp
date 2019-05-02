@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "673f9587_cb384a8b",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-05-02T23:12:23Z",
+      "side": 1,
+      "message": "I know this is not a part of the patch but (f-\u003esize + b - a) should already sanitize negative values of b - a and wrap it round why do we need to do the % operation again ? For what values does it need to %.",
+      "revId": "6b74dd5880cad089d55f2e2f7c04eb3873d76978",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
