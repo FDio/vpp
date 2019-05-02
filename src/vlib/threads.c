@@ -1448,7 +1448,9 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
   f64 t_entry;
   f64 t_open;
   f64 t_closed;
+  f64 max_vector_rate;
   u32 count;
+  int i;
 
   if (vec_len (vlib_mains) < 2)
     return;
@@ -1468,13 +1470,43 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
       return;
     }
 
+  /*
+   * Need data to decide if we're working hard enough to honor
+   * the barrier hold-down timer.
+   */
+  max_vector_rate = 0.0;
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    max_vector_rate =
+      clib_max (max_vector_rate,
+		vlib_last_vectors_per_main_loop_as_f64 (vlib_mains[i]));
+
   vlib_worker_threads[0].barrier_sync_count++;
 
   /* Enforce minimum barrier open time to minimize packet loss */
   ASSERT (vm->barrier_no_close_before <= (now + BARRIER_MINIMUM_OPEN_LIMIT));
-  while ((now = vlib_time_now (vm)) < vm->barrier_no_close_before)
-    ;
 
+  /*
+   * If any worker thread seems busy, which we define
+   * as a vector rate above 10, we enforce the barrier hold-down timer
+   */
+  if (max_vector_rate > 10.0)
+    {
+      while (1)
+	{
+	  now = vlib_time_now (vm);
+	  /* Barrier hold-down timer expired? */
+	  if (now >= vm->barrier_no_close_before)
+	    break;
+	  if ((vm->barrier_no_close_before - now)
+	      > (2.0 * BARRIER_MINIMUM_OPEN_LIMIT))
+	    {
+	      clib_warning
+		("clock change: would have waited for %.4f seconds",
+		 (vm->barrier_no_close_before - now));
+	      break;
+	    }
+	}
+    }
   /* Record time of closure */
   t_open = now - vm->barrier_epoch;
   vm->barrier_epoch = now;
@@ -1558,6 +1590,14 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
     }
 
   deadline = now + BARRIER_SYNC_TIMEOUT;
+
+  /*
+   * Note when we let go of the barrier.
+   * Workers can use this to derive a reasonably accurate
+   * time offset. See vlib_time_now(...)
+   */
+  vm->time_last_barrier_release = vlib_time_now (vm);
+  CLIB_MEMORY_STORE_BARRIER ();
 
   *vlib_worker_threads->wait_at_barrier = 0;
 
@@ -1843,6 +1883,45 @@ threads_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (threads_init);
+
+
+static clib_error_t *
+show_clock_command_fn (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  int i;
+  f64 now;
+
+  now = vlib_time_now (vm);
+
+  vlib_cli_output (vm, "Time now %.9f", now);
+
+  if (vec_len (vlib_mains) == 1)
+    return 0;
+
+  vlib_cli_output (vm, "Time last barrier release %.9f",
+		   vm->time_last_barrier_release);
+
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    {
+      if (vlib_mains[i] == 0)
+	continue;
+      vlib_cli_output (vm, "Thread %d offset %.9f error %.9f", i,
+		       vlib_mains[i]->time_offset,
+		       vm->time_last_barrier_release -
+		       vlib_mains[i]->time_last_barrier_release);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (f_command, static) =
+{
+  .path = "show clock",
+  .short_help = "show clock",
+  .function = show_clock_command_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

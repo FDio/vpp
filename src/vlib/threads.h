@@ -400,7 +400,7 @@ vlib_worker_thread_barrier_check (void)
 {
   if (PREDICT_FALSE (*vlib_worker_threads->wait_at_barrier))
     {
-      vlib_main_t *vm;
+      vlib_main_t *vm = vlib_get_main ();
       clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, 1);
       if (CLIB_DEBUG > 0)
 	{
@@ -409,6 +409,21 @@ vlib_worker_thread_barrier_check (void)
 	}
       while (*vlib_worker_threads->wait_at_barrier)
 	;
+
+      /*
+       * Recompute the offset from thread-0 time.
+       * Note that vlib_time_now adds vm->time_offset, so
+       * clear it first. Save the resulting idea of "now", to
+       * see how well we're doing. See show_clock_command_fn(...)
+       */
+      {
+	f64 now;
+	vm->time_offset = 0.0;
+	now = vlib_time_now (vm);
+	vm->time_offset = vlib_global_main.time_last_barrier_release - now;
+	vm->time_last_barrier_release = vlib_time_now (vm);
+      }
+
       if (CLIB_DEBUG > 0)
 	vm->parked_at_barrier = 0;
       clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, -1);
