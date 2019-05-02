@@ -806,7 +806,7 @@ sfifo_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
 static u32
 fifo_pos (svm_fifo_t * f, u32 pos)
 {
-  return pos;
+  return pos % f->size;
 }
 
 /* Avoids exposing svm_fifo.c internal function */
@@ -1194,6 +1194,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_chunk_t *c, *next, *prev;
   u8 *test_data = 0, *data_buf = 0;
   svm_fifo_t *f;
+  u32 old_tail;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1288,10 +1289,14 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->size == fifo_size + 200, "size expected %u is %u",
 	      fifo_size + 200, f->size);
 
-  svm_fifo_dequeue (f, 201, data_buf);
+  old_tail = f->tail;
+  svm_fifo_dequeue (f, 101, data_buf);
 
   SFIFO_TEST (f->size == fifo_size + 200 + 10 * 100, "size expected %u is %u",
 	      fifo_size + 200 + 10 * 100, f->size);
+  SFIFO_TEST (f->tail == old_tail, "new tail expected %u is %u", old_tail,
+	      f->tail);
+
   /*
    * Enqueue/dequeue tests
    */
