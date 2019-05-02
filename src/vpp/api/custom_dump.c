@@ -613,6 +613,8 @@ static void *vl_api_virtio_pci_create_t_print
 		format_ethernet_address, mp->mac_address);
   if (mp->features)
     s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
+  if (mp->gso_enabled)
+    s = format (s, "gso-enabled");
   FINISH;
 }
 

@@ -22,8 +22,7 @@ option version = "1.0.0";
                       0-15 domain, 16-23 bus, 24-28 slot, 29-31 function
     @param use_random_mac - let the system generate a unique mac address
     @param mac_address - mac addr to assign to the interface if use_radom not set
-    @param tx_ring_sz - the number of entries of TX ring
-    @param rx_ring_sz - the number of entries of RX ring
+    @param gso_enabled - enable gso feature if available, 1 to enable
     @param features - the virtio features which driver should negotiate with device
 */
 define virtio_pci_create
@@ -33,6 +32,7 @@ define virtio_pci_create
   u32 pci_addr;
   u8 use_random_mac;
   u8 mac_address[6];
+  u8 gso_enabled;
   u64 features;
 };
 

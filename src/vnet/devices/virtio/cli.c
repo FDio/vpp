@@ -42,6 +42,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "feature-mask 0x%llx", &feature_mask))
 	args.features = feature_mask;
+      else if (unformat (line_input, "gso-enabled"))
+	args.gso_enabled = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
