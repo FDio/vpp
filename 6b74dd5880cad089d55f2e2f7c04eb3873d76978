@@ -16,6 +16,24 @@
       "revId": "6b74dd5880cad089d55f2e2f7c04eb3873d76978",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7c5ca328_3e9fee98",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-02T23:19:58Z",
+      "side": 1,
+      "message": "The result of this can be used to compute any other position in the fifo. If b \u003e a, then the result is larger than f-\u003esize and in corner cases can lead to surprising results. I\u0027m not saying it\u0027s always needed, just that it\u0027s much safer than not doing it like this.",
+      "parentUuid": "673f9587_cb384a8b",
+      "revId": "6b74dd5880cad089d55f2e2f7c04eb3873d76978",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
