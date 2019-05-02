@@ -61,6 +61,9 @@ typedef struct vlib_main_t
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Instruction level timing state. */
   clib_time_t clib_time;
+  /* Offset from main thread time */
+  f64 time_offset;
+  f64 time_last_barrier_release;
 
   /* Time stamp of last node dispatch. */
   u64 cpu_time_last_node_dispatch;
@@ -224,7 +227,7 @@ void vlib_worker_loop (vlib_main_t * vm);
 always_inline f64
 vlib_time_now (vlib_main_t * vm)
 {
-  return clib_time_now (&vm->clib_time);
+  return clib_time_now (&vm->clib_time) + vm->time_offset;
 }
 
 always_inline f64
