@@ -186,28 +186,6 @@ f_load_head_tail_all_acq (svm_fifo_t * f, u32 * head, u32 * tail)
 }
 
 /**
- * Fifo free bytes, i.e., number of free bytes
- *
- * Internal function
- */
-static inline u32
-f_free_count (svm_fifo_t * f, u32 head, u32 tail)
-{
-  return (f->nitems + head - tail);
-}
-
-/**
- * Fifo current size, i.e., number of bytes enqueued
- *
- * Internal function.
- */
-static inline u32
-f_cursize (svm_fifo_t * f, u32 head, u32 tail)
-{
-  return (f->nitems - f_free_count (f, head, tail));
-}
-
-/**
  * Distance to a from b, i.e., a - b in the fifo
  *
  * Internal function.
@@ -227,6 +205,28 @@ static inline u32
 f_distance_from (svm_fifo_t * f, u32 a, u32 b)
 {
   return ((f->size + b - a) % f->size);
+}
+
+/**
+ * Fifo current size, i.e., number of bytes enqueued
+ *
+ * Internal function.
+ */
+static inline u32
+f_cursize (svm_fifo_t * f, u32 head, u32 tail)
+{
+  return (head <= tail ? tail - head : f->size + tail - head);
+}
+
+/**
+ * Fifo free bytes, i.e., number of free bytes
+ *
+ * Internal function
+ */
+static inline u32
+f_free_count (svm_fifo_t * f, u32 head, u32 tail)
+{
+  return (f->nitems - f_cursize (f, head, tail));
 }
 
 /**
@@ -535,7 +535,7 @@ svm_fifo_is_wrapped (svm_fifo_t * f)
 {
   u32 head, tail;
   f_load_head_tail_all_acq (f, &head, &tail);
-  return head % f->size > tail % f->size;
+  return head > tail;
 }
 
 /**
@@ -575,11 +575,8 @@ static inline u32
 svm_fifo_max_read_chunk (svm_fifo_t * f)
 {
   u32 head, tail;
-  u32 head_idx, tail_idx;
   f_load_head_tail_cons (f, &head, &tail);
-  head_idx = head % f->size;
-  tail_idx = tail % f->size;
-  return tail_idx > head_idx ? (tail_idx - head_idx) : (f->size - head_idx);
+  return tail >= head ? (tail - head) : (f->size - head);
 }
 
 /**
@@ -589,11 +586,8 @@ static inline u32
 svm_fifo_max_write_chunk (svm_fifo_t * f)
 {
   u32 head, tail;
-  u32 head_idx, tail_idx;
   f_load_head_tail_prod (f, &head, &tail);
-  head_idx = head % f->size;
-  tail_idx = tail % f->size;
-  return tail_idx >= head_idx ? (f->size - tail_idx) : (head_idx - tail_idx);
+  return tail > head ? f->size - tail : f_free_count (f, head, tail);
 }
 
 /**
@@ -610,7 +604,7 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
   ASSERT (len <= svm_fifo_max_enqueue_prod (f));
   /* load-relaxed: producer owned index */
   u32 tail = f->tail;
-  tail += len;
+  tail = (tail + len) % f->size;
   /* store-rel: producer owned index (paired with load-acq in consumer) */
   clib_atomic_store_rel_n (&f->tail, tail);
 }
@@ -619,16 +613,14 @@ static inline u8 *
 svm_fifo_head (svm_fifo_t * f)
 {
   /* load-relaxed: consumer owned index */
-  return (f->head_chunk->data
-	  + ((f->head % f->size) - f->head_chunk->start_byte));
+  return (f->head_chunk->data + (f->head - f->head_chunk->start_byte));
 }
 
 static inline u8 *
 svm_fifo_tail (svm_fifo_t * f)
 {
   /* load-relaxed: producer owned index */
-  return (f->tail_chunk->data
-	  + ((f->tail % f->size) - f->tail_chunk->start_byte));
+  return (f->tail_chunk->data + (f->tail - f->tail_chunk->start_byte));
 }
 
 static inline u8
