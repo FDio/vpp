@@ -66,6 +66,10 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
       ap->mac_addr_set = 1;
     }
   ap->sw_if_index = (u32) ~ 0;
+  if (mp->gso_enabled)
+    ap->gso_enabled = 1;
+  else
+    ap->gso_enabled = 0;
   ap->features = clib_net_to_host_u64 (mp->features);
 
   virtio_pci_create_if (vm, ap);
