@@ -233,6 +233,7 @@ typedef struct
   u8 mac_addr_set;
   u8 mac_addr[6];
   u64 features;
+  u8 gso_enabled;
   clib_error_t *error;
 } virtio_pci_create_if_args_t;
 
