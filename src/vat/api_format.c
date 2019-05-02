@@ -7683,9 +7683,9 @@ api_virtio_pci_create (vat_main_t * vam)
   vl_api_virtio_pci_create_t *mp;
   u8 mac_address[6];
   u8 random_mac = 1;
+  u8 gso_enabled = 0;
   u32 pci_addr = 0;
   u64 features = (u64) ~ (0ULL);
-  u32 rx_ring_sz = 0, tx_ring_sz = 0;
   int ret;
 
   clib_memset (mac_address, 0, sizeof (mac_address));
@@ -7701,10 +7701,8 @@ api_virtio_pci_create (vat_main_t * vam)
 	;
       else if (unformat (i, "features 0x%llx", &features))
 	;
-      else if (unformat (i, "rx-ring-size %u", &rx_ring_sz))
-	;
-      else if (unformat (i, "tx-ring-size %u", &tx_ring_sz))
-	;
+      else if (unformat (i, "gso-enabled"))
+	gso_enabled = 1;
       else
 	break;
     }
@@ -7712,26 +7710,6 @@ api_virtio_pci_create (vat_main_t * vam)
   if (pci_addr == 0)
     {
       errmsg ("pci address must be non zero. ");
-      return -99;
-    }
-  if (!is_pow2 (rx_ring_sz))
-    {
-      errmsg ("rx ring size must be power of 2. ");
-      return -99;
-    }
-  if (rx_ring_sz > 32768)
-    {
-      errmsg ("rx ring size must be 32768 or lower. ");
-      return -99;
-    }
-  if (!is_pow2 (tx_ring_sz))
-    {
-      errmsg ("tx ring size must be power of 2. ");
-      return -99;
-    }
-  if (tx_ring_sz > 32768)
-    {
-      errmsg ("tx ring size must be 32768 or lower. ");
       return -99;
     }
 
@@ -22348,7 +22326,7 @@ _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
 _(virtio_pci_create,                                                    \
-  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [tx-ring-size <num> [rx-ring-size <num>] [features <hex-value>]") \
+  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled]") \
 _(virtio_pci_delete,                                                    \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_virtio_pci_dump, "")                                     \

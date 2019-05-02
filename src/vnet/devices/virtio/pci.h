@@ -101,9 +101,21 @@ typedef enum
  * at the end of the used ring. Guest should ignore the used->flags field. */ \
   _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)
 
+#define VIRTIO_NET_F_CTRL_GUEST_OFFLOADS 2
 #define VIRTIO_NET_F_MTU 3
 #define VIRTIO_NET_S_LINK_UP    1	/* Link is up */
 #define VIRTIO_NET_S_ANNOUNCE   2	/* Announcement is needed */
+
+/*
+ * Control network offloads
+ * Reconfigures the network offloads that Guest can handle.
+ * Available with the VIRTIO_NET_F_CTRL_GUEST_OFFLOADS feature bit.
+ * Command data format matches the feature bit mask exactly.
+ * See VIRTIO_NET_F_GUEST_* for the list of offloads
+ * that can be enabled/disabled.
+ */
+#define VIRTIO_NET_CTRL_GUEST_OFFLOADS 5
+#define VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET 0
 
 /* Common configuration */
 #define VIRTIO_PCI_CAP_COMMON_CFG       1
@@ -233,6 +245,7 @@ typedef struct
   u8 mac_addr_set;
   u8 mac_addr[6];
   u64 features;
+  u8 gso_enabled;
   clib_error_t *error;
 } virtio_pci_create_if_args_t;
 
