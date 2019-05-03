@@ -677,7 +677,10 @@ svm_fifo_reduce_size (svm_fifo_t * f, u32 len, u8 try_shrink)
   svm_fifo_chunk_t *cur;
   u32 actual_len = 0;
 
-  if (len > f->nitems)
+  /* Abort if trying to reduce by more than fifo size or if
+   * fifo is undergoing resizing already */
+  if (len >= f->size || f->size > f->nitems + 1
+      || (f->flags & SVM_FIFO_F_SHRINK) || (f->flags & SVM_FIFO_F_GROW))
     return 0;
 
   /* last chunk that will not be removed */

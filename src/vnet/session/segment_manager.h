@@ -125,6 +125,40 @@ void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
  */
 int segment_manager_grow_fifo (segment_manager_t * sm, svm_fifo_t * f,
 			       u32 size);
+
+/**
+ * Request to shrink fifo owned by segment manager
+ *
+ * If this is not called by the producer, no attempt is made to reduce the
+ * size until the producer tries to enqueue more data. To collect the chunks
+ * that are to be removed call @ref segment_manager_collect_fifo_chunks
+ *
+ * Size reduction does not affect fifo chunk boundaries. Therefore chunks are
+ * not split and the amount of bytes to be removed can be equal to or less
+ * than what was requested.
+ *
+ * @param sm		segment manager that owns the fifo
+ * @param f		fifo to be shrunk
+ * @param size		amount of bytes to remove from fifo
+ * @param is_producer	flag that indicates is caller is the producer for the
+ * 			fifo.
+ * @return		actual number of bytes to be removed
+ */
+int segment_manager_shrink_fifo (segment_manager_t * sm, svm_fifo_t * f,
+				 u32 size, u8 is_producer);
+
+/**
+ * Collect fifo chunks that are no longer used
+ *
+ * This should not be called unless SVM_FIFO_F_COLLECT_CHUNKS is set for
+ * the fifo. The chunks are returned to the fifo segment freelist.
+ *
+ * @param sm		segment manager that owns the fifo
+ * @param f		fifo whose chunks are to be collected
+ * @return		0 on success, error otherwise
+ */
+int segment_manager_collect_fifo_chunks (segment_manager_t * sm,
+					 svm_fifo_t * f);
 u8 segment_manager_has_fifos (segment_manager_t * sm);
 
 svm_msg_q_t *segment_manager_alloc_queue (fifo_segment_t * fs,
