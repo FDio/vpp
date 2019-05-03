@@ -234,6 +234,38 @@ class TestIPv4(VppTestCase):
             pkts = i.parent.get_capture()
             self.verify_capture(i, pkts)
 
+    def test_ip4_address(self):
+        """ IPv4 (duplicate) interface addresses"""
+        from vpp_papi_provider import UnexpectedApiReturnValueError
+        # Overlapping address on same interface
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, is_add=True,
+            address=socket.inet_pton(socket.AF_INET, "10.10.10.10"),
+            address_length=24)
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, is_add=True,
+            address=socket.inet_pton(socket.AF_INET, "10.10.10.11"),
+            address_length=24)
+
+        # Overlapping address on same interface with different prefix
+        # length
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, is_add=True,
+            address=socket.inet_pton(socket.AF_INET, "10.10.10.12"),
+            address_length=32)
+
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, is_add=True,
+            address=socket.inet_pton(socket.AF_INET, "10.10.10.13"),
+            address_length=16)
+
+        # Overlapping adddress on different interfaces
+        with self.assertRaises(UnexpectedApiReturnValueError):
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=self.pg1.sw_if_index, is_add=True,
+                address=socket.inet_pton(socket.AF_INET, "10.10.10.14"),
+                address_length=32)
+
 
 class TestICMPEcho(VppTestCase):
     """ ICMP Echo Test Case """

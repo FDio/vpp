@@ -268,6 +268,9 @@ ip6_add_del_interface_address (vlib_main_t * vm,
                 (&im->lookup_main, ia, sif->sw_if_index,
                  0 /* honor unnumbered */ ,
                  ({
+		   /* Allow overlapping addresses on same interface */
+		   if (sif->sw_if_index == sw_if_index)
+		     continue;
                    ip6_address_t * x =
                      ip_interface_address_get_address
                      (&im->lookup_main, ia);
