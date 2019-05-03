@@ -3,7 +3,8 @@
 In VPP most things are measured and counted. There are counters for interface statistics, like RX, TX counters, packet drops, and so on. Every node has a set of per-node counters, one set of error counters, like TTL exceeded, or packet to big or out-of-buffers. And a set of performance counters, like number of clocks, vectors, calls and suspends.
 
 There is also a set of system counters and performance counters, e.g. memory utilization per heap, buffer utilisation and so on.
-
+## Configuring VPP to expose stats to client processes
+Ensure the [`socksvr` configuration parameter is provided](https://wiki.fd.io/view/VPP/Command-line_Arguments#statseg_.7B_..._.7D)
 ## VPP Counter Architecture
 
 Counters are exposed directly via shared memory. These are the actual counters in VPP, no sampling or aggregation is done by the statistics infrastructure. With the exception of per node performance data under /sys/node and a few system counters.
@@ -63,7 +64,7 @@ A new client library can either wrap the C library (libvppapiclient.so) or it ca
 ```
 #!/usr/bin/env python
 from vpp_papi.vpp_stats import VPPStats
-stats = VPPStats('/var/run/stats.socks')
+stats = VPPStats('/var/run/vpp/stats.sock')
 dir = stats.ls(['^/if', '/err/ip4-input', '/sys/node/ip4-input'])
 counters = stats.dump(dir)
 
@@ -82,7 +83,7 @@ int main (int argc, char **argv) {
   vec_add1(patterns, "^/if");
   vec_add1(patterns, "ip4-input");
 
-  int rv = stat_segment_connect("/var/run/stats.sock");
+  int rv = stat_segment_connect("/var/run/vpp/stats.sock");
   uint32_t *dir = stat_segment_ls(patterns);
   stat_segment_data_t *res = stat_segment_dump(dir);
 
