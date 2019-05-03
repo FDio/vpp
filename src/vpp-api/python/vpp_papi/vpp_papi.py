@@ -27,9 +27,9 @@ import threading
 import fnmatch
 import weakref
 import atexit
-from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
-from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
-from . macaddress import MACAddress, mac_pton, mac_ntop
+from vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
+from vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
+from macaddress import MACAddress, mac_pton, mac_ntop
 
 logger = logging.getLogger(__name__)
 
@@ -230,9 +230,9 @@ class VPP(object):
         self.async_thread = async_thread
 
         if use_socket:
-            from . vpp_transport_socket import VppTransport
+            from vpp_transport_socket import VppTransport
         else:
-            from . vpp_transport_shmem import VppTransport
+            from vpp_transport_shmem import VppTransport
 
         if not apifiles:
             # Pick up API definitions from default directory

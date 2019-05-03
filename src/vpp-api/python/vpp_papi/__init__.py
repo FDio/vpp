@@ -1,1 +1,1 @@
-from .vpp_papi import *
+from vpp_papi import *

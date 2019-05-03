@@ -28,7 +28,7 @@ else:
     from enum import IntFlag
 
 import logging
-from . import vpp_format
+import vpp_format
 import ipaddress
 
 import socket

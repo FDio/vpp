@@ -16,7 +16,7 @@
 from socket import inet_pton, inet_ntop, AF_INET6, AF_INET
 import socket
 import ipaddress
-from . import macaddress
+import macaddress
 
 # Copies from vl_api_address_t definition
 ADDRESS_IP4 = 0
