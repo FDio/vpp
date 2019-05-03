@@ -128,6 +128,15 @@ void fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
  */
 int fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f,
 			    u32 chunk_size);
+
+/**
+ * Collect unused chunks for fifo
+ *
+ * @param fs		fifo segment for fifo
+ * @param f		fifo whose chunks are to be collected
+ * @return		0 on success, error otherwise
+ */
+int fifo_segment_collect_fifo_chunks (fifo_segment_t * fs, svm_fifo_t * f);
 u8 fifo_segment_has_fifos (fifo_segment_t * fs);
 svm_fifo_t *fifo_segment_get_fifo_list (fifo_segment_t * fs);
 u32 fifo_segment_num_fifos (fifo_segment_t * fs);
