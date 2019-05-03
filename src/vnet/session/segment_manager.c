@@ -682,6 +682,37 @@ segment_manager_grow_fifo (segment_manager_t * sm, svm_fifo_t * f, u32 size)
   return rv;
 }
 
+int
+segment_manager_collect_fifo_chunks (segment_manager_t * sm, svm_fifo_t * f)
+{
+  fifo_segment_t *fs;
+  int rv;
+
+  fs = segment_manager_get_segment_w_lock (sm, f->segment_index);
+  rv = fifo_segment_collect_fifo_chunks (fs, f);
+  segment_manager_segment_reader_unlock (sm);
+
+  return rv;
+}
+
+int
+segment_manager_shrink_fifo (segment_manager_t * sm, svm_fifo_t * f, u32 size,
+			     u8 is_producer)
+{
+  int rv;
+
+  rv = svm_fifo_reduce_size (f, size, is_producer);
+
+  /* Nothing to collect at this point */
+  if (!is_producer)
+    return rv;
+
+  if (f->flags & SVM_FIFO_F_COLLECT_CHUNKS)
+    segment_manager_collect_fifo_chunks (sm, f);
+
+  return rv;
+}
+
 u32
 segment_manager_evt_q_expected_size (u32 q_len)
 {

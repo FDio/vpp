@@ -570,6 +570,35 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
   return 0;
 }
 
+int
+fifo_segment_collect_fifo_chunks (fifo_segment_t * fs, svm_fifo_t * f)
+{
+  svm_fifo_chunk_t *cur, *next;
+  ssvm_shared_header_t *sh;
+  void *oldheap;
+  int fl_index;
+
+  sh = fs->ssvm.sh;
+  ssvm_lock_non_recursive (sh, 1);
+
+  oldheap = ssvm_push_heap (sh);
+  cur = svm_fifo_collect_chunks (f);
+
+  while (cur)
+    {
+      next = cur->next;
+      fl_index = fs_free_list_for_size (cur->length);
+      cur->next = fs->h->free_chunks[fl_index];
+      fs->h->free_chunks[fl_index] = cur;
+      cur = next;
+    }
+
+  ssvm_pop_heap (oldheap);
+  ssvm_unlock_non_recursive (sh);
+
+  return 0;
+}
+
 /**
  * Get number of active fifos
  */
