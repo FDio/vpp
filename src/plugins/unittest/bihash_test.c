@@ -20,10 +20,25 @@
 #include <stdio.h>
 #include <pthread.h>
 
-#include <vppinfra/bihash_8_8.h>
+#include <vppinfra/bihash_8_8_stats.h>
 #include <vppinfra/bihash_template.h>
 
 #include <vppinfra/bihash_template.c>
+
+typedef struct
+{
+  u64 alloc_add;
+  u64 add;
+  u64 split_add;
+  u64 replace;
+  u64 update;
+  u64 del;
+  u64 del_free;
+  u64 linear;
+  u64 resplit;
+  u64 working_copy_lost;
+  u64 *splits;
+} bihash_stats_t;
 
 typedef struct
 {
@@ -51,9 +66,52 @@ typedef struct
 
   /* convenience */
   vlib_main_t *vlib_main;
+
+    CLIB_CACHE_LINE_ALIGN_MARK (stat_align);
+  bihash_stats_t stats;
+
 } bihash_test_main_t;
 
 static bihash_test_main_t bihash_test_main;
+
+u8 *
+format_bihash_stats (u8 * s, va_list * args)
+{
+  BVT (clib_bihash) * h = va_arg (*args, BVT (clib_bihash) *);
+  int verbose = va_arg (*args, int);
+  int i;
+  bihash_stats_t *sp = h->inc_stats_context;
+
+#define _(a) s = format (s, "%20s: %lld\n", #a, sp->a);
+  foreach_bihash_stat;
+#undef _
+  for (i = 0; i < vec_len (sp->splits); i++)
+    {
+      if (sp->splits[i] > 0 || verbose)
+	s = format (s, "    splits[%d]: %lld\n", 1 << i, sp->splits[i]);
+    }
+  return s;
+}
+
+
+static void
+inc_stats_callback (BVT (clib_bihash) * h, int stat_id, u64 count)
+{
+  uword *statp = h->inc_stats_context;
+  bihash_stats_t *for_splits;
+
+  if (PREDICT_TRUE (stat_id * sizeof (u64)
+		    < STRUCT_OFFSET_OF (bihash_stats_t, splits)))
+    {
+      statp[stat_id] += count;
+      return;
+    }
+
+  for_splits = h->inc_stats_context;
+  vec_validate (for_splits->splits, count);
+  for_splits->splits[count] += 1;
+}
+
 
 static clib_error_t *
 test_bihash_vec64 (bihash_test_main_t * tm)
@@ -69,6 +127,7 @@ test_bihash_vec64 (bihash_test_main_t * tm)
   h = &tm->hash;
 
   BV (clib_bihash_init) (h, "test", user_buckets, user_memory_size);
+  BV (clib_bihash_set_stats_callback) (h, inc_stats_callback, &tm->stats);
 
   before = clib_time_now (&tm->clib_time);
 
@@ -143,6 +202,7 @@ test_bihash_threads (bihash_test_main_t * tm)
   h = &tm->hash;
 
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+  BV (clib_bihash_set_stats_callback) (h, inc_stats_callback, &tm->stats);
 
   tm->thread_barrier = 1;
 
@@ -176,6 +236,7 @@ test_bihash_threads (bihash_test_main_t * tm)
 		0.0 ? ((f64) ((u64) tm->nthreads * (u64) tm->nitems)) /
 		delta : 0.0);
 
+  fformat (stdout, "Stats:\n%U", format_bihash_stats, h, 1 /* verbose */ );
   BV (clib_bihash_free) (h);
   return 0;
 }
@@ -204,6 +265,7 @@ test_bihash (bihash_test_main_t * tm)
   h = &tm->hash;
 
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+  BV (clib_bihash_set_stats_callback) (h, inc_stats_callback, &tm->stats);
 
   for (acycle = 0; acycle < tm->ncycles; acycle++)
     {
@@ -384,6 +446,8 @@ test_bihash (bihash_test_main_t * tm)
   /* ASSERTs if any items remain */
   BV (clib_bihash_foreach_key_value_pair) (h, count_items, 0);
 
+  fformat (stdout, "Stats:\n%U", format_bihash_stats, h, 1 /* verbose */ );
+
   BV (clib_bihash_free) (h);
 
   vec_free (tm->keys);
@@ -406,6 +470,8 @@ test_bihash_command_fn (vlib_main_t * vm,
   tm->ncycles = 10;
   tm->report_every_n = 50000;
   tm->seed = 0x1badf00d;
+
+  memset (&tm->stats, 0, sizeof (tm->stats));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
