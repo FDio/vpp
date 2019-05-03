@@ -1190,6 +1190,14 @@ static void
       goto send_reply;
     }
 
+  len = vl_api_string_len (&mp->tag);
+
+  if (len > 64)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto send_reply;
+    }
+
   memcpy (&local_addr.as_u8, mp->local_ip_address, 4);
   memcpy (&external_addr.as_u8, mp->external_ip_address, 4);
 
@@ -1208,9 +1216,8 @@ static void
   else if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
     twice_nat = TWICE_NAT_SELF;
 
-  len = vl_api_string_len (&mp->tag);
-
   tag = vec_new (u8, len);
+
   memcpy (tag, mp->tag.buf, len);
   vec_terminate_c_string (tag);
 
