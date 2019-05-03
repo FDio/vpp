@@ -597,6 +597,9 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
                 (&im->lookup_main, ia, sif->sw_if_index,
                  0 /* honor unnumbered */ ,
                  ({
+		   if (sif->sw_if_index == sw_if_index &&
+		       ia->address_length == address_length)
+		     continue;
                    ip4_address_t * x =
                      ip_interface_address_get_address
                      (&im->lookup_main, ia);
