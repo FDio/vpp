@@ -20,18 +20,16 @@
 
 #include <vppinfra/lock.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
+#include <vppinfra/bihash_16_8.h>
 
 #include <quicly.h>
 #include <quicly/streambuf.h>
 
-
-#define QUIC_DEBUG                0
-#define QUIC_DEBUG_LEVEL_CLIENT   0
-#define QUIC_DEBUG_LEVEL_SERVER   0
+#define QUIC_DEBUG               0
+#define QUIC_DEBUG_LEVEL_CLIENT  0
+#define QUIC_DEBUG_LEVEL_SERVER  0
 
 #define QUIC_DEFAULT_CA_CERT_PATH        "/etc/ssl/certs/ca-certificates.crt"
-
-#define QUIC_TIMER_HANDLE_INVALID ((u32) ~0)
 
 #define QUIC_TSTAMP_RESOLUTION  0.001	/* QUIC tick resolution (1ms) */
 
@@ -44,16 +42,9 @@
 #define QUIC_DBG(_lvl, _fmt, _args...)
 #endif
 
-#define QUIC_CONN_STATE_HANDSHAKE 0
-#define QUIC_CONN_STATE_READY     1
-
-enum quic_session_type_t
-{
-  QUIC_SESSION_TYPE_QUIC = 0,
-  QUIC_SESSION_TYPE_STREAM = 1,
-  QUIC_SESSION_TYPE_LISTEN = INT32_MAX,
-};
-
+#define QUIC_CONN_STATE_OPENED    0
+#define QUIC_CONN_STATE_HANDSHAKE 1
+#define QUIC_CONN_STATE_READY     2
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct quic_ctx_id_
@@ -62,14 +53,14 @@ typedef CLIB_PACKED (struct quic_ctx_id_
   u32 parent_app_id;
   union {
     CLIB_PACKED (struct {
-      session_handle_t quic_session_handle; // TODO: remove
+      session_handle_t quic_session_handle; /* TODO: remove */
       session_handle_t udp_session_handle;
       quicly_conn_t *conn;
       u32 listener_ctx_id;
       u8 udp_is_ip4;
     });
     CLIB_PACKED (struct {
-      session_handle_t stream_session_handle; // TODO: remove
+      session_handle_t stream_session_handle; /* TODO: remove */
       quicly_stream_t *stream;
       u32 quic_connection_ctx_id;
     });
@@ -80,8 +71,8 @@ typedef CLIB_PACKED (struct quic_ctx_id_
 
 STATIC_ASSERT (sizeof (quic_ctx_id_t) <= 42, "ctx id must be less than 42");
 
-// This structure is used to implement the concept of VPP connection for QUIC.
-// We create one per connection and one per stream.
+/* This structure is used to implement the concept of VPP connection for QUIC.
+ * We create one per connection and one per stream. */
 typedef struct quic_ctx_
 {
   union
@@ -105,8 +96,9 @@ typedef struct quic_stream_data_
 typedef struct quic_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 time_now;					/**< worker time */
+  int64_t time_now;				   /**< worker time */
   tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;	   /**< worker timer wheel */
+  u32 *opening_ctx_pool;
 } quic_worker_ctx_t;
 
 typedef struct quic_main_
@@ -114,7 +106,9 @@ typedef struct quic_main_
   u32 app_index;
   quic_ctx_t **ctx_pool;
   quic_worker_ctx_t *wrk_ctx;
+  clib_bihash_16_8_t connection_hash;	/* quicly connection id -> conn handle */
   f64 tstamp_ticks_per_clock;
+  u32 fake_app_listener_index;	/* ugly hack for accept cb */
 
   /*
    * Config
