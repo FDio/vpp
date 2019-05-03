@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "e0ff97e5_b75da0c1",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-03T13:04:53Z",
+      "side": 1,
+      "message": "And this is the fix for it: https://gerrit.fd.io/r/#/c/19272/20..21/bad/pkg2/main.py",
+      "range": {
+        "startLine": 9,
+        "startChar": 11,
+        "endLine": 9,
+        "endChar": 18
+      },
+      "revId": "a1a42583fedcd069fe3923f9fd171b52239619cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7bac99bf_1b3deeab",
         "filename": "/COMMIT_MSG",
         "patchSetId": 1
