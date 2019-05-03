@@ -66,6 +66,20 @@ typedef struct
   u32 limit;
 } vlib_trace_node_t;
 
+/* Callback type for post-processing the vlib trace buffer */
+struct vlib_main_t;
+struct vlib_trace_main_t;
+typedef void (vlib_trace_buffer_callback_t) (struct vlib_main_t *,
+					     struct vlib_trace_main_t *);
+
+/* Callback type for alternate handling of vlib_add_trace internals */
+struct vlib_node_runtime_t;
+struct vlib_buffer_t;
+typedef void *(vlib_add_trace_callback_t) (struct vlib_main_t *,
+					   struct vlib_node_runtime_t * r,
+					   struct vlib_buffer_t * b,
+					   u32 n_data_bytes);
+
 typedef struct
 {
   /* Pool of trace buffers. */
@@ -87,6 +101,13 @@ typedef struct
 
   /* verbosity */
   int verbose;
+
+  /* a callback to enable customized consumption of the trace buffer content */
+  vlib_trace_buffer_callback_t *trace_buffer_callback;
+
+  /* a callback to enable customized addition of a new trace */
+  vlib_add_trace_callback_t *add_trace_callback;
+
 } vlib_trace_main_t;
 
 format_function_t format_vlib_trace;
