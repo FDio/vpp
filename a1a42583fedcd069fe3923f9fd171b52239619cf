@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7bac99bf_1b3deeab",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-03T11:49:26Z",
+      "side": 1,
+      "message": "Python 3.5.3 still does not work, but it at least shows a more helpful error message:\n\nbad/pkg2$ python3 main.py \nTraceback (most recent call last):\n  File \"main.py\", line 5, in \u003cmodule\u003e\n    foo \u003d outer()\n  File \"../pkg1/outer.py\", line 5, in __init__\n    from . inner import inner\nSystemError: Parent module \u0027\u0027 not loaded, cannot perform relative import",
+      "range": {
+        "startLine": 26,
+        "startChar": 0,
+        "endLine": 26,
+        "endChar": 23
+      },
+      "revId": "a1a42583fedcd069fe3923f9fd171b52239619cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
