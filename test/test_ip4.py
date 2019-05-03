@@ -235,6 +235,72 @@ class TestIPv4(VppTestCase):
             self.verify_capture(i, pkts)
 
 
+class TestIPv4Address(VppTestCase):
+    """ IPv4 Address Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4Address, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4Address, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPv4Address, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        # setup all interfaces
+        for i in list(self.pg_interfaces):
+            i.admin_up()
+            i.config_ip4()
+
+    def tearDown(self):
+        super(TestIPv4Address, self).tearDown()
+
+    def test_ip4_address(self):
+        """ IPv4 (duplicate) interface addresses"""
+        from vpp_papi_provider import UnexpectedApiReturnValueError
+        # Overlapping address on same interface
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, is_add=True,
+            address=socket.inet_pton(socket.AF_INET, "10.10.10.10"),
+            address_length=24)
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, is_add=True,
+            address=socket.inet_pton(socket.AF_INET, "10.10.10.11"),
+            address_length=24)
+
+        # Overlapping address on same interface with different prefix
+        # length
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, is_add=True,
+            address=socket.inet_pton(socket.AF_INET, "10.10.10.12"),
+            address_length=32)
+
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, is_add=True,
+            address=socket.inet_pton(socket.AF_INET, "10.10.10.13"),
+            address_length=16)
+
+        # Overlapping adddress on different interfaces
+        with self.assertRaises(UnexpectedApiReturnValueError):
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=self.pg1.sw_if_index, is_add=True,
+                address=socket.inet_pton(socket.AF_INET, "10.10.10.14"),
+                address_length=32)
+
+        # clean up
+        plen = [24, 24, 32, 16]
+        for i, a in enumerate(['10.10.10.10', '10.10.10.11',
+                               '10.10.10.12', '10.10.10.13']):
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=self.pg0.sw_if_index, is_add=False,
+                address=socket.inet_pton(socket.AF_INET, a),
+                address_length=plen[i])
+
+
 class TestICMPEcho(VppTestCase):
     """ ICMP Echo Test Case """
 
