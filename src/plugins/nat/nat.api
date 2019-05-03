@@ -31,6 +31,7 @@ import "vnet/interface_types.api";
 
 enum nat_config_flags : u8
 {
+  NAT_IS_NONE = 0x00,
   NAT_IS_TWICE_NAT = 0x01,
   NAT_IS_SELF_TWICE_NAT = 0x02,
   NAT_IS_OUT2IN_ONLY = 0x04,
