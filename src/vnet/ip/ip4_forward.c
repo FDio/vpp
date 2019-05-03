@@ -593,6 +593,10 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
           if (im->fib_index_by_sw_if_index[sw_if_index] ==
               im->fib_index_by_sw_if_index[sif->sw_if_index])
             {
+	      /* Allow overlapping address on same interface */
+	      if (sif->sw_if_index == sw_if_index)
+		continue;
+
               foreach_ip_interface_address
                 (&im->lookup_main, ia, sif->sw_if_index,
                  0 /* honor unnumbered */ ,
