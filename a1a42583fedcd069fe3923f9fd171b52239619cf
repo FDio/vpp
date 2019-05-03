@@ -22,6 +22,30 @@
       "revId": "a1a42583fedcd069fe3923f9fd171b52239619cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "964bedb6_e7c945ee",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-03T12:12:07Z",
+      "side": 1,
+      "message": "Found https://bugs.python.org/issue18018\nIt is concerned mainly about the error message, but contains some helpful background on what is happening when the error happens.",
+      "parentUuid": "7bac99bf_1b3deeab",
+      "range": {
+        "startLine": 26,
+        "startChar": 0,
+        "endLine": 26,
+        "endChar": 23
+      },
+      "revId": "a1a42583fedcd069fe3923f9fd171b52239619cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
