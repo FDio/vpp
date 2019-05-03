@@ -1182,7 +1182,9 @@ static void
   int rv = 0;
   snat_protocol_t proto;
   u8 *tag = 0;
-  u32 len = 0;
+
+  u32 len = 0, len_tmp = 0;
+  i32 sign_max = ((i32) (((u32) (~0U)) >> 1));
 
   if (sm->deterministic)
     {
@@ -1210,7 +1212,23 @@ static void
 
   len = vl_api_string_len (&mp->tag);
 
-  tag = vec_new (u8, len);
+  if (len > sign_max)
+    {
+      tag = vec_new (u8, sign_max);
+
+      len_tmp = len - sign_max;
+
+      if (len_tmp > sign_max)
+	{
+	  vec_resize (tag, sign_max);
+
+	  len_tmp = 1;
+	}
+      vec_resize (tag, len_tmp);
+    }
+  else
+    tag = vec_new (u8, len);
+
   memcpy (tag, mp->tag.buf, len);
   vec_terminate_c_string (tag);
 
