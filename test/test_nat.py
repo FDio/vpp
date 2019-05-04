@@ -3990,6 +3990,7 @@ class TestNAT44(MethodHolder):
             self.verify_capture_in(capture, self.pg0)
 
         finally:
+            self.nat44_add_address(self.nat_addr, is_add=0)
             self.pg1.unconfig_ip4()
             self.pg2.unconfig_ip4()
             self.pg1.set_table_ip4(0)
