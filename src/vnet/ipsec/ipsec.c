@@ -107,6 +107,7 @@ ipsec_add_feature (const char *arc_name,
   u8 arc;
 
   arc = vnet_get_feature_arc_index (arc_name);
+  ASSERT (arc != ~0);
   *out_feature_index = vnet_get_feature_index (arc, node_name);
 }
 
@@ -246,6 +247,10 @@ ipsec_init (vlib_main_t * vm)
   clib_error_t *error;
   ipsec_main_t *im = &ipsec_main;
   ipsec_main_crypto_alg_t *a;
+
+  /* Backend registration requires the feature arcs to be set up */
+  if ((error = vlib_call_init_function (vm, vnet_feature_init)))
+    return (error);
 
   im->vnet_main = vnet_get_main ();
   im->vlib_main = vm;
