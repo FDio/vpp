@@ -1945,9 +1945,9 @@ sfifo_test_fifo_segment_hello_world (int verbose)
 static int
 sfifo_test_fifo_segment_fifo_grow (int verbose)
 {
+  int rv, fifo_size = 4096, n_chunks, n_free;
   fifo_segment_main_t *sm = &segment_main;
   fifo_segment_create_args_t _a, *a = &_a;
-  int rv, fifo_size = 4096, n_chunks;
   fifo_segment_t *fs;
   svm_fifo_t *f;
 
@@ -1980,14 +1980,18 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
    */
   fifo_segment_free_fifo (fs, f);
 
+  /* fifo allocation allocates chunks in batch */
+  n_free = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
+
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == 1, "free 2^10B chunks should be %u is %u", 1,
-	      n_chunks);
+  SFIFO_TEST (n_chunks == n_free, "free 2^10B chunks "
+	      "should be %u is %u", n_free, n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, 16 * fifo_size);
   SFIFO_TEST (n_chunks == 1, "free 2^14B chunks should be %u is %u", 1,
 	      n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == 2, "free chunks should be %u is %u", 2, n_chunks);
+  SFIFO_TEST (n_chunks == 1 + n_free, "free chunks should be %u is %u",
+	      1 + n_free, n_chunks);
 
   /*
    * Realloc fifo
@@ -1996,21 +2000,24 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 
   fifo_segment_grow_fifo (fs, f, fifo_size);
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == 0, "free 2^10B chunks should be %u is %u", 0,
-	      n_chunks);
+  SFIFO_TEST (n_chunks == n_free - 2, "free 2^10B chunks should be %u is %u",
+	      n_free - 2, n_chunks);
 
   fifo_segment_grow_fifo (fs, f, 16 * fifo_size);
+  n_chunks = fifo_segment_num_free_chunks (fs, 16 * fifo_size);
   SFIFO_TEST (n_chunks == 0, "free 2^14B chunks should be %u is %u", 0,
 	      n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == 0, "free chunks should be %u is %u", 0, n_chunks);
+  SFIFO_TEST (n_chunks == n_free - 2, "free chunks should be %u is %u",
+	      n_free - 2, n_chunks);
 
   /*
    * Free again
    */
   fifo_segment_free_fifo (fs, f);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == 2, "free chunks should be %u is %u", 2, n_chunks);
+  SFIFO_TEST (n_chunks == 1 + n_free, "free chunks should be %u is %u",
+	      1 + n_free, n_chunks);
 
   /*
    * Cleanup
@@ -2023,9 +2030,9 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 static int
 sfifo_test_fifo_segment_fifo_shrink (int verbose)
 {
+  int i, rv, chunk_size = 4096, n_chunks, n_free;
   fifo_segment_main_t *sm = &segment_main;
   fifo_segment_create_args_t _a, *a = &_a;
-  int i, rv, chunk_size = 4096, n_chunks;
   fifo_segment_t *fs;
   svm_fifo_t *f;
 
@@ -2042,12 +2049,14 @@ sfifo_test_fifo_segment_fifo_shrink (int verbose)
    */
   fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
   f = fifo_segment_alloc_fifo (fs, chunk_size, FIFO_SEGMENT_RX_FIFO);
+  n_free = FIFO_SEGMENT_ALLOC_BATCH_SIZE - 1;
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
 
   for (i = 0; i < 9; i++)
     {
       fifo_segment_grow_fifo (fs, f, chunk_size);
+      n_free -= 1;
       if (f->size != (i + 2) * chunk_size)
 	SFIFO_TEST (0, "fifo size should be %u is %u",
 		    (i + 2) * chunk_size, f->size);
@@ -2058,12 +2067,15 @@ sfifo_test_fifo_segment_fifo_shrink (int verbose)
 	      rv);
 
   n_chunks = fifo_segment_num_free_chunks (fs, chunk_size);
-  SFIFO_TEST (n_chunks == 0, "free chunks should be %u is %u", 0, n_chunks);
+  SFIFO_TEST (n_chunks == n_free, "free chunks should be %u is %u", n_free,
+	      n_chunks);
 
   fifo_segment_collect_fifo_chunks (fs, f);
 
+  n_free += 3;
   n_chunks = fifo_segment_num_free_chunks (fs, chunk_size);
-  SFIFO_TEST (n_chunks == 3, "free chunks should be %u is %u", 3, n_chunks);
+  SFIFO_TEST (n_chunks == n_free, "free chunks should be %u is %u", n_free,
+	      n_chunks);
 
   rv = svm_fifo_reduce_size (f, 7 * chunk_size - 1, 1 /* is producer */ );
   SFIFO_TEST (rv == 6 * chunk_size, "len expected %u is %u", 6 * chunk_size,
@@ -2071,14 +2083,18 @@ sfifo_test_fifo_segment_fifo_shrink (int verbose)
 
   fifo_segment_collect_fifo_chunks (fs, f);
 
+  n_free += 6;
   n_chunks = fifo_segment_num_free_chunks (fs, chunk_size);
-  SFIFO_TEST (n_chunks == 9, "free chunks should be %u is %u", 9, n_chunks);
+  SFIFO_TEST (n_chunks == n_free, "free chunks should be %u is %u", n_free,
+	      n_chunks);
   /*
    * Free
    */
   fifo_segment_free_fifo (fs, f);
+  n_free += 1;
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == 9, "free chunks should be %u is %u", 9, n_chunks);
+  SFIFO_TEST (n_chunks == n_free, "free chunks should be %u is %u", n_free,
+	      n_chunks);
 
   /*
    * Cleanup

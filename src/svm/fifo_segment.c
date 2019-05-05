@@ -218,16 +218,18 @@ fifo_segment_main_init (fifo_segment_main_t * sm, u64 baseva,
 }
 
 static void
-fifo_init_for_segment (fifo_segment_header_t * fsh, svm_fifo_t * f,
-		       u32 size, u32 fl_index)
+fifo_init_for_segment (svm_fifo_t * f, svm_fifo_chunk_t * c)
 {
-  f->freelist_index = fl_index;
-  f->default_chunk.start_byte = 0;
-  f->default_chunk.length = size;
-  f->default_chunk.next = f->start_chunk = f->end_chunk = &f->default_chunk;
+  f->start_chunk = f->end_chunk = c->next = c;
   f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = f->start_chunk;
-  f->next = fsh->free_fifos[fl_index];
-  fsh->free_fifos[fl_index] = f;
+}
+
+static void
+fifo_init_chunk_for_segment (svm_fifo_chunk_t * c, u32 size)
+{
+  c->start_byte = 0;
+  c->length = size;
+  c->next = 0;
 }
 
 static inline int
@@ -247,37 +249,76 @@ fs_chunk_size_is_valid (u32 size)
     && size <= FIFO_SEGMENT_MAX_FIFO_SIZE;
 }
 
-static void
-allocate_new_fifo_batch (fifo_segment_header_t * fsh,
-			 u32 data_size_in_bytes, int chunk_size)
+static svm_fifo_t *
+fs_try_alloc_fifo_from_freelist (fifo_segment_header_t * fsh, u32 data_bytes)
+{
+  svm_fifo_chunk_t *c;
+  svm_fifo_t *f;
+  u32 fl_index;
+
+  f = fsh->free_fifos;
+  fl_index = fs_free_list_for_size (data_bytes);
+  vec_validate_init_empty (fsh->free_chunks, fl_index, 0);
+  c = fsh->free_chunks[fl_index];
+
+  if (!f || !c)
+    return 0;
+
+  fsh->free_fifos = f->next;
+  fsh->free_chunks[fl_index] = c->next;
+  c->next = c;
+  c->start_byte = 0;
+  c->length = data_bytes;
+  memset (f, 0, sizeof (*f));
+  f->start_chunk = c;
+  f->end_chunk = c;
+  return f;
+}
+
+static svm_fifo_t *
+fs_try_allocate_fifo_batch (ssvm_shared_header_t * sh,
+			    fifo_segment_header_t * fsh, u32 data_bytes)
 {
   u32 size, rounded_data_size;
-  int i, fl_index;
-  u8 *fifos_mem;
+  svm_fifo_chunk_t *c;
+  u32 fl_index, hdrs;
   svm_fifo_t *f;
+  void *oldheap;
+  u8 *fmem;
+  int i;
 
-  rounded_data_size = (1 << (max_log2 (data_size_in_bytes)));
-  fl_index = fs_free_list_for_size (data_size_in_bytes);
+  rounded_data_size = (1 << (max_log2 (data_bytes)));
+  fl_index = fs_free_list_for_size (data_bytes);
+  vec_validate_init_empty (fsh->free_chunks, fl_index, 0);
 
-  /* Calculate space requirement $$$ round-up data_size_in_bytes */
-  size = (sizeof (*f) + rounded_data_size) * chunk_size;
-
-  /* Allocate fifo space. May fail. */
-  fifos_mem = clib_mem_alloc_aligned_at_offset (size, CLIB_CACHE_LINE_BYTES,
-						0 /* align_offset */ ,
-						0 /* os_out_of_memory */ );
+  oldheap = ssvm_push_heap (sh);
+  hdrs = sizeof (*f) + sizeof (*c);
+  size = (hdrs + rounded_data_size) * FIFO_SEGMENT_ALLOC_BATCH_SIZE;
+  fmem = clib_mem_alloc_aligned_at_offset (size, CLIB_CACHE_LINE_BYTES,
+					   0 /* align_offset */ ,
+					   0 /* os_out_of_memory */ );
+  ssvm_pop_heap (oldheap);
 
   /* Out of space.. */
-  if (fifos_mem == 0)
-    return;
+  if (fmem == 0)
+    return 0;
 
-  /* Carve fifo space */
-  for (i = 0; i < chunk_size; i++)
+  /* Carve fifo + chunk space */
+  for (i = 0; i < FIFO_SEGMENT_ALLOC_BATCH_SIZE; i++)
     {
-      f = (svm_fifo_t *) fifos_mem;
-      fifo_init_for_segment (fsh, f, rounded_data_size, fl_index);
-      fifos_mem += sizeof (*f) + rounded_data_size;
+      f = (svm_fifo_t *) fmem;
+      memset (f, 0, sizeof (*f));
+      f->next = fsh->free_fifos;
+      fsh->free_fifos = f;
+      c = (svm_fifo_chunk_t *) (fmem + sizeof (*f));
+      c->start_byte = 0;
+      c->length = rounded_data_size;
+      c->next = fsh->free_chunks[fl_index];
+      fsh->free_chunks[fl_index] = c;
+      fmem += hdrs + rounded_data_size;
     }
+
+  return fs_try_alloc_fifo_from_freelist (fsh, data_bytes);
 }
 
 /**
@@ -290,8 +331,6 @@ fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
   fifo_segment_header_t *fsh;
   ssvm_shared_header_t *sh;
   svm_fifo_t *f = 0;
-  void *oldheap;
-  int fl_index;
 
   if (!fs_chunk_size_is_valid (data_bytes))
     {
@@ -299,45 +338,30 @@ fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
       return 0;
     }
 
-  fl_index = fs_free_list_for_size (data_bytes);
-
   sh = fs->ssvm.sh;
   ssvm_lock_non_recursive (sh, 1);
-
   fsh = fs->h;
-  vec_validate_init_empty (fsh->free_fifos, fl_index, 0);
-  f = fsh->free_fifos[fl_index];
 
-  /* Try to allocate batch of fifos */
-  if (PREDICT_FALSE (!f))
+  /* Try the following steps in order:
+   * - grab fifo and chunk from freelists
+   * - batch fifo and chunk allocation
+   * - single fifo allocation
+   */
+  f = fs_try_alloc_fifo_from_freelist (fsh, data_bytes);
+  if (!f)
+    f = fs_try_allocate_fifo_batch (sh, fsh, data_bytes);
+  if (!f)
     {
-      oldheap = ssvm_push_heap (sh);
-      allocate_new_fifo_batch (fsh, data_bytes,
-			       FIFO_SEGMENT_ALLOC_BATCH_SIZE);
+      void *oldheap = ssvm_push_heap (sh);
+      f = svm_fifo_create (data_bytes);
       ssvm_pop_heap (oldheap);
-      f = fsh->free_fifos[fl_index];
-    }
-  if (PREDICT_TRUE (f != 0))
-    {
-      fsh->free_fifos[fl_index] = f->next;
-      /* (re)initialize the fifo, as in svm_fifo_create */
-      memset (f, 0, sizeof (*f));
-      svm_fifo_init (f, data_bytes);
-      goto found;
+      if (!f)
+	goto done;
     }
 
-  /* Failed to allocate batch, try just one fifo. This can also fail,
-   * in which case, create another segment */
-  oldheap = ssvm_push_heap (sh);
-  f = svm_fifo_create (data_bytes);
-  ssvm_pop_heap (oldheap);
+  /* (re)initialize the fifo, as in svm_fifo_create */
+  svm_fifo_init (f, data_bytes);
 
-  if (PREDICT_FALSE (f == 0))
-    goto done;
-
-  f->freelist_index = fl_index;
-
-found:
   /* If rx fifo type add to active fifos list. When cleaning up segment,
    * we need a list of active sessions that should be disconnected. Since
    * both rx and tx fifos keep pointers to the session, it's enough to track
@@ -365,8 +389,10 @@ done:
 void
 fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 {
+  svm_fifo_chunk_t *cur, *next;
   fifo_segment_header_t *fsh;
   ssvm_shared_header_t *sh;
+  void *oldheap;
   int fl_index;
 
   ASSERT (f->refcnt > 0);
@@ -376,9 +402,6 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   sh = fs->ssvm.sh;
   fsh = fs->h;
-  fl_index = f->freelist_index;
-
-  ASSERT (fl_index < vec_len (fsh->free_fifos));
 
   ssvm_lock_non_recursive (sh, 2);
 
@@ -395,29 +418,26 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
     }
 
   /* Add to free list */
-  f->next = fsh->free_fifos[fl_index];
+  f->next = fsh->free_fifos;
   f->prev = 0;
-  fsh->free_fifos[fl_index] = f;
+  fsh->free_fifos = f;
 
-  /* If fifo has more chunks, free them */
-  if (f->flags & SVM_FIFO_F_MULTI_CHUNK)
+  /* Free fifo chunks */
+  cur = f->start_chunk;
+  do
     {
-      svm_fifo_chunk_t *cur, *next;
-      void *oldheap;
-
-      next = f->start_chunk->next;
-      while (next != f->start_chunk)
-	{
-	  cur = next;
-	  next = next->next;
-	  fl_index = fs_free_list_for_size (cur->length);
-	  cur->next = fsh->free_chunks[fl_index];
-	  fsh->free_chunks[fl_index] = cur;
-	}
-      oldheap = ssvm_push_heap (sh);
-      svm_fifo_free_chunk_lookup (f);
-      ssvm_pop_heap (oldheap);
+      next = cur->next;
+      fl_index = fs_free_list_for_size (cur->length);
+      ASSERT (fl_index < vec_len (fsh->free_chunks));
+      cur->next = fsh->free_chunks[fl_index];
+      fsh->free_chunks[fl_index] = cur;
+      cur = next;
     }
+  while (cur != f->start_chunk);
+
+  oldheap = ssvm_push_heap (sh);
+  svm_fifo_free_chunk_lookup (f);
+  ssvm_pop_heap (oldheap);
 
   /* not allocated on segment heap */
   svm_fifo_free_ooo_data (f);
@@ -447,8 +467,10 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
   int i, rx_fl_index, tx_fl_index;
   u8 *rx_fifo_mem, *tx_fifo_mem;
   uword space_available;
+  svm_fifo_chunk_t *c;
   void *oldheap;
   svm_fifo_t *f;
+  u32 hdrs;
 
   /* Parameter check */
   if (rx_fifo_size == 0 || tx_fifo_size == 0 || *n_fifo_pairs == 0)
@@ -471,8 +493,10 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
   tx_rounded_data_size = (1 << (max_log2 (tx_fifo_size)));
   tx_fl_index = fs_free_list_for_size (tx_fifo_size);
 
+  hdrs = sizeof (*f) + sizeof (*c);
+
   /* Calculate space requirements */
-  pair_size = 2 * sizeof (*f) + rx_rounded_data_size + tx_rounded_data_size;
+  pair_size = 2 * hdrs + rx_rounded_data_size + tx_rounded_data_size;
 #if USE_DLMALLOC == 0
   space_available = fs->ssvm.ssvm_size - mheap_bytes (sh->heap);
 #else
@@ -480,10 +504,10 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 #endif
 
   pairs_to_allocate = clib_min (space_available / pair_size, *n_fifo_pairs);
-  rx_fifos_size = (sizeof (*f) + rx_rounded_data_size) * pairs_to_allocate;
-  tx_fifos_size = (sizeof (*f) + tx_rounded_data_size) * pairs_to_allocate;
+  rx_fifos_size = (hdrs + rx_rounded_data_size) * pairs_to_allocate;
+  tx_fifos_size = (hdrs + tx_rounded_data_size) * pairs_to_allocate;
 
-  vec_validate_init_empty (fsh->free_fifos,
+  vec_validate_init_empty (fsh->free_chunks,
 			   clib_max (rx_fl_index, tx_fl_index), 0);
 
   oldheap = ssvm_push_heap (sh);
@@ -512,12 +536,16 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
   for (i = 0; i < pairs_to_allocate; i++)
     {
       f = (svm_fifo_t *) rx_fifo_mem;
-      fifo_init_for_segment (fsh, f, rx_rounded_data_size, rx_fl_index);
-      rx_fifo_mem += sizeof (*f) + rx_rounded_data_size;
+      c = (svm_fifo_chunk_t *) (rx_fifo_mem + sizeof (*f));
+      fifo_init_chunk_for_segment (c, rx_rounded_data_size);
+      fifo_init_for_segment (f, c);
+      rx_fifo_mem += hdrs + rx_rounded_data_size;
 
       f = (svm_fifo_t *) tx_fifo_mem;
-      fifo_init_for_segment (fsh, f, tx_rounded_data_size, tx_fl_index);
-      tx_fifo_mem += sizeof (*f) + tx_rounded_data_size;
+      c = (svm_fifo_chunk_t *) (tx_fifo_mem + sizeof (*f));
+      fifo_init_chunk_for_segment (c, tx_rounded_data_size);
+      fifo_init_for_segment (f, c);
+      tx_fifo_mem += hdrs + tx_rounded_data_size;
     }
 
   /* Account for the pairs allocated */
@@ -561,6 +589,7 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
   else
     {
       fs->h->free_chunks[fl_index] = c->next;
+      c->next = 0;
     }
 
   svm_fifo_add_chunk (f, c);
@@ -611,40 +640,15 @@ fifo_segment_num_fifos (fifo_segment_t * fs)
 u32
 fifo_segment_num_free_fifos (fifo_segment_t * fs, u32 fifo_size_in_bytes)
 {
-  u32 count = 0, rounded_data_size, fl_index;
   fifo_segment_header_t *fsh;
   ssvm_shared_header_t *sh;
   svm_fifo_t *f;
-  int i;
+  u32 count = 0;
 
   sh = fs->ssvm.sh;
   fsh = (fifo_segment_header_t *) sh->opaque[0];
 
-  /* Count all free fifos? */
-  if (fifo_size_in_bytes == ~0)
-    {
-      for (i = 0; i < vec_len (fsh->free_fifos); i++)
-	{
-	  f = fsh->free_fifos[i];
-	  if (f == 0)
-	    continue;
-
-	  while (f)
-	    {
-	      f = f->next;
-	      count++;
-	    }
-	}
-      return count;
-    }
-
-  rounded_data_size = (1 << (max_log2 (fifo_size_in_bytes)));
-  fl_index = fs_free_list_for_size (rounded_data_size);
-
-  if (fl_index >= vec_len (fsh->free_fifos))
-    return 0;
-
-  f = fsh->free_fifos[fl_index];
+  f = fsh->free_fifos;
   if (f == 0)
     return 0;
 
@@ -742,7 +746,7 @@ format_fifo_segment (u8 * s, va_list * args)
   int verbose __attribute__ ((unused)) = va_arg (*args, int);
   fifo_segment_header_t *fsh = sp->h;
   u32 count, indent;
-  svm_fifo_t *f;
+  svm_fifo_chunk_t *c;
   int i;
 
   indent = format_get_indent (s) + 2;
@@ -753,15 +757,15 @@ format_fifo_segment (u8 * s, va_list * args)
 	      format_white_space, indent, fifo_segment_num_fifos (sp));
 #endif
 
-  for (i = 0; i < vec_len (fsh->free_fifos); i++)
+  for (i = 0; i < vec_len (fsh->free_chunks); i++)
     {
-      f = fsh->free_fifos[i];
-      if (f == 0)
+      c = fsh->free_chunks[i];
+      if (c == 0)
 	continue;
       count = 0;
-      while (f)
+      while (c)
 	{
-	  f = f->next;
+	  c = c->next;
 	  count++;
 	}
 
