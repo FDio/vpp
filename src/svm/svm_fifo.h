@@ -117,7 +117,7 @@ typedef struct _svm_fifo
   svm_fifo_trace_elem_t *trace;
 #endif
 
-  svm_fifo_chunk_t default_chunk;
+//  svm_fifo_chunk_t default_chunk;
 } svm_fifo_t;
 
 typedef enum
