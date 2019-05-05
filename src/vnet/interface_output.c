@@ -483,6 +483,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
   u8 arc = im->output_feature_arc_index;
   vnet_interface_per_thread_data_t *ptd =
     vec_elt_at_index (im->per_thread_data, thread_index);
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   n_buffers = frame->n_vectors;
 
@@ -490,6 +491,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
     vnet_interface_output_trace (vm, node, frame, n_buffers);
 
   from = vlib_frame_vector_args (frame);
+  vlib_get_buffers (vm, from, b, n_buffers);
 
   if (rt->is_deleted)
     return vlib_error_drop_buffers (vm, node, from,
@@ -551,10 +553,10 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 	  u32 or_flags;
 
 	  /* Prefetch next iteration. */
-	  vlib_prefetch_buffer_with_index (vm, from[4], LOAD);
-	  vlib_prefetch_buffer_with_index (vm, from[5], LOAD);
-	  vlib_prefetch_buffer_with_index (vm, from[6], LOAD);
-	  vlib_prefetch_buffer_with_index (vm, from[7], LOAD);
+	  vlib_prefetch_buffer_header (b[4], LOAD);
+	  vlib_prefetch_buffer_header (b[5], LOAD);
+	  vlib_prefetch_buffer_header (b[6], LOAD);
+	  vlib_prefetch_buffer_header (b[7], LOAD);
 
 	  bi0 = from[0];
 	  bi1 = from[1];
@@ -564,29 +566,24 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 	  to_tx[1] = bi1;
 	  to_tx[2] = bi2;
 	  to_tx[3] = bi3;
-	  if (!do_segmentation)
-	    {
-	      from += 4;
-	      to_tx += 4;
-	      n_left_to_tx -= 4;
-	    }
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-	  b2 = vlib_get_buffer (vm, bi2);
-	  b3 = vlib_get_buffer (vm, bi3);
+	  b0 = b[0];
+	  b1 = b[1];
+	  b2 = b[2];
+	  b3 = b[3];
+
+	  or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
 
 	  if (do_segmentation)
 	    {
-	      or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
-
 	      /* go to single loop if we need TSO segmentation */
 	      if (PREDICT_FALSE (or_flags & VNET_BUFFER_F_GSO))
 		break;
-	      from += 4;
-	      to_tx += 4;
-	      n_left_to_tx -= 4;
 	    }
+	  from += 4;
+	  to_tx += 4;
+	  n_left_to_tx -= 4;
+	  b += 4;
 
 	  /* Be grumpy about zero length buffers for benefit of
 	     driver tx function. */
@@ -655,9 +652,6 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 					       n_bytes_b3);
 	    }
 
-	  if (!do_segmentation)
-	    or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
-
 	  if (do_tx_offloads)
 	    {
 	      if (or_flags &
@@ -685,8 +679,8 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 	  to_tx += 1;
 	  n_left_to_tx -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-
+	  b0 = b[0];
+	  b += 1;
 	  /* Be grumpy about zero length buffers for benefit of
 	     driver tx function. */
 	  ASSERT (b0->current_length > 0);
