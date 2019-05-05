@@ -400,9 +400,10 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
   f->segment_index = SVM_FIFO_INVALID_INDEX;
   f->refcnt = 1;
-  f->default_chunk.start_byte = 0;
-  f->default_chunk.length = f->size;
-  f->default_chunk.next = f->start_chunk = f->end_chunk = &f->default_chunk;
+  f->flags = 0;
+//  f->default_chunk.start_byte = 0;
+//  f->default_chunk.length = f->size;
+//  f->start_chunk = f->end_chunk = &f->default_chunk;
   f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = f->start_chunk;
 }
 
@@ -413,16 +414,30 @@ svm_fifo_t *
 svm_fifo_create (u32 data_size_in_bytes)
 {
   svm_fifo_t *f;
+  svm_fifo_chunk_t *c;
   u32 rounded_data_size;
 
-  /* always round fifo data size to the next highest power-of-two */
-  rounded_data_size = (1 << (max_log2 (data_size_in_bytes)));
-  f = clib_mem_alloc_aligned_or_null (sizeof (*f) + rounded_data_size,
-				      CLIB_CACHE_LINE_BYTES);
+  f = clib_mem_alloc_aligned_or_null (sizeof (*f), CLIB_CACHE_LINE_BYTES);
   if (f == 0)
     return 0;
 
   clib_memset (f, 0, sizeof (*f));
+
+  /* always round fifo data size to the next highest power-of-two */
+  rounded_data_size = (1 << (max_log2 (data_size_in_bytes)));
+  c = clib_mem_alloc_aligned_or_null (rounded_data_size,
+                                      CLIB_CACHE_LINE_BYTES);
+  if (!c)
+    {
+      clib_mem_free (f);
+      return 0;
+    }
+
+  c->next = c;
+  c->start_byte = 0;
+  c->length = data_size_in_bytes;
+  f->start_chunk = f->end_chunk = c;
+
   svm_fifo_init (f, data_size_in_bytes);
   return f;
 }

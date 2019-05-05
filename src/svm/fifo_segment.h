@@ -39,7 +39,7 @@ typedef enum fifo_segment_flags_
 typedef struct
 {
   svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
-  svm_fifo_t **free_fifos;		/**< Freelists by fifo size  */
+  svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
   u32 n_active_fifos;			/**< Number of active fifos */
   u8 flags;				/**< Segment flags */
