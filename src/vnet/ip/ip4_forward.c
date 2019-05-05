@@ -119,15 +119,16 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
   u32 thread_index = vm->thread_index;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next = node->cached_next_index;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   while (n_left_from > 0)
     {
       vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
-
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
@@ -140,16 +141,11 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_prefetch_buffer_header (b[2], STORE);
+	    vlib_prefetch_buffer_header (b[3], STORE);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, STORE);
-	    vlib_prefetch_buffer_header (p3, STORE);
-
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), STORE);
-	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), STORE);
+	    CLIB_PREFETCH (b[2]->data, sizeof (ip0[0]), STORE);
+	    CLIB_PREFETCH (b[3]->data, sizeof (ip0[0]), STORE);
 	  }
 
 	  pi0 = to_next[0] = from[0];
@@ -160,8 +156,9 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 	  to_next += 2;
 	  n_left_to_next -= 2;
 
-	  p0 = vlib_get_buffer (vm, pi0);
-	  p1 = vlib_get_buffer (vm, pi1);
+	  p0 = b[0];
+	  p1 = b[1];
+	  b += 2;
 
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
@@ -250,7 +247,8 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 	  n_left_from -= 1;
 
-	  p0 = vlib_get_buffer (vm, pi0);
+	  p0 = b[0];
+	  b += 1;
 
 	  ip0 = vlib_buffer_get_current (p0);
 	  lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
