@@ -91,7 +91,6 @@ typedef struct _svm_fifo
   i8 refcnt;			/**< reference count  */
   u32 segment_manager;		/**< session layer segment manager index */
   u32 segment_index;		/**< segment index in segment manager */
-  u32 freelist_index;		/**< aka log2(allocated_size) - const. */
   struct _svm_fifo *next;	/**< next in freelist/active chain */
   struct _svm_fifo *prev;	/**< prev in active chain */
   u32 size_decrement;		/**< bytes to remove from fifo */
@@ -117,7 +116,6 @@ typedef struct _svm_fifo
   svm_fifo_trace_elem_t *trace;
 #endif
 
-  svm_fifo_chunk_t default_chunk;
 } svm_fifo_t;
 
 typedef enum
