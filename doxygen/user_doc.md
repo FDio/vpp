@@ -27,3 +27,4 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage srv6_doc
 - @subpage vcl_ldpreload_doc
 - @subpage vmxnet3_doc
+- @subpage rdma_doc
