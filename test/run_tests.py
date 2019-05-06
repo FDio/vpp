@@ -282,20 +282,23 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
 
 def check_and_handle_core(vpp_binary, tempdir, core_crash_test):
     if is_core_present(tempdir):
-        print('VPP core detected in %s. Last test running was %s' %
-              (tempdir, core_crash_test))
-        print(single_line_delim)
-        spawn_gdb(vpp_binary, get_core_path(tempdir))
-        print(single_line_delim)
+        if debug_core:
+            print('VPP core detected in %s. Last test running was %s' %
+                  (tempdir, core_crash_test))
+            print(single_line_delim)
+            spawn_gdb(vpp_binary, get_core_path(tempdir))
+            print(single_line_delim)
+        elif compress_core:
+            print("Compressing core-file in test directory `%s'" % tempdir)
+            os.system("gzip %s" % get_core_path(tempdir))
 
 
 def handle_cores(failed_testcases):
-    if debug_core:
-        for failed_testcase in failed_testcases:
-            tcs_with_core = failed_testcase.testclasess_with_core
-            if tcs_with_core:
-                for test, vpp_binary, tempdir in tcs_with_core.values():
-                    check_and_handle_core(vpp_binary, tempdir, test)
+    for failed_testcase in failed_testcases:
+        tcs_with_core = failed_testcase.testclasess_with_core
+        if tcs_with_core:
+            for test, vpp_binary, tempdir in tcs_with_core.values():
+                check_and_handle_core(vpp_binary, tempdir, test)
 
 
 def process_finished_testsuite(wrapped_testcase_suite,
@@ -726,6 +729,7 @@ if __name__ == '__main__':
     debug = os.getenv("DEBUG", "n").lower() in ["gdb", "gdbserver"]
 
     debug_core = os.getenv("DEBUG", "").lower() == "core"
+    compress_core = os.getenv("CORE_COMPRESS", "").lower() in ("y", "yes", "1")
 
     step = os.getenv("STEP", "n").lower() in ("y", "yes", "1")
 
@@ -813,8 +817,7 @@ if __name__ == '__main__':
                 handle_failed_suite(test_case_info.logger,
                                     test_case_info.tempdir,
                                     test_case_info.vpp_pid)
-                if debug_core and \
-                        test_case_info in result.core_crash_test_cases_info:
+                if test_case_info in result.core_crash_test_cases_info:
                     check_and_handle_core(test_case_info.vpp_bin_path,
                                           test_case_info.tempdir,
                                           test_case_info.core_crash_test)
