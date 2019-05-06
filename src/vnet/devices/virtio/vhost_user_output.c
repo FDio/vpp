@@ -17,6 +17,7 @@
  *------------------------------------------------------------------
  */
 
+#include <stddef.h>
 #include <fcntl.h>		/* for open */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -39,6 +40,7 @@
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
+#include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
 
@@ -226,6 +228,51 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
   return 0;
 }
 
+static_always_inline void
+vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
+			      virtio_net_hdr_t * hdr)
+{
+  /* checksum offload */
+  if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+    {
+      hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;
+      hdr->csum_offset = offsetof (udp_header_t, checksum);
+    }
+  else if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+    {
+      hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;
+      hdr->csum_offset = offsetof (tcp_header_t, checksum);
+    }
+
+  /* GSO offload */
+  if (b->flags & VNET_BUFFER_F_GSO)
+    {
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+	{
+	  if ((b->flags & VNET_BUFFER_F_IS_IP4) &&
+	      (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_TSO4)))
+	    {
+	      hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	      hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
+	    }
+	  else if ((b->flags & VNET_BUFFER_F_IS_IP6) &&
+		   (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_TSO6)))
+	    {
+	      hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	      hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
+	    }
+	}
+      else if ((vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_UFO)) &&
+	       (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+	{
+	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  hdr->gso_type = VIRTIO_NET_HDR_GSO_UDP;
+	}
+    }
+}
+
 VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
 						   vlib_node_runtime_t *
 						   node, vlib_frame_t * frame)
@@ -335,8 +382,12 @@ retry:
 	virtio_net_hdr_mrg_rxbuf_t *hdr = &cpu->tx_headers[tx_headers_len];
 	tx_headers_len++;
 	hdr->hdr.flags = 0;
-	hdr->hdr.gso_type = 0;
+	hdr->hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE;
 	hdr->num_buffers = 1;	//This is local, no need to check
+
+	/* Guest supports csum offload? */
+	if (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_CSUM))
+	  vhost_user_handle_tx_offload (vui, b0, &hdr->hdr);
 
 	// Prepare a copy order executed later for the header
 	vhost_copy_t *cpy = &cpu->copy[copy_len];
