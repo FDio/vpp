@@ -139,6 +139,17 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
       break;
     }
 
+#ifdef CLIB_GCOV
+  /*
+   * Test framework sends SIGTERM, so we need to flush the
+   * code coverage stats here.
+   */
+  {
+    void __gcov_flush (void);
+    __gcov_flush ();
+  }
+#endif
+
   /* Null terminate. */
   vec_add1 (syslog_msg, 0);
 

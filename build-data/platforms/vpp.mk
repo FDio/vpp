@@ -37,9 +37,8 @@ vpp_clang_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
 vpp_clang_TAG_CXXFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
 vpp_clang_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
 
-vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -fprofile-arcs -ftest-coverage
-vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -coverage
+vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_GCOV -fPIC -Werror -fprofile-arcs -ftest-coverage
+vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_GCOV -fPIC -Werror -coverage
 
 vpp_coverity_TAG_CFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
 vpp_coverity_TAG_LDFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
-
