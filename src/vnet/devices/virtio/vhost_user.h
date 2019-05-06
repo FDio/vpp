@@ -85,6 +85,14 @@ typedef enum
 } virtio_trace_flag_t;
 
 #define foreach_virtio_net_feature      \
+ _ (VIRTIO_NET_F_CSUM, 0)		\
+ _ (VIRTIO_NET_F_GUEST_CSUM, 1)		\
+ _ (VIRTIO_NET_F_GUEST_TSO4, 7)         \
+ _ (VIRTIO_NET_F_GUEST_TSO6, 8)         \
+ _ (VIRTIO_NET_F_GUEST_UFO, 10)         \
+ _ (VIRTIO_NET_F_HOST_TSO4, 11)         \
+ _ (VIRTIO_NET_F_HOST_TSO6, 12)         \
+ _ (VIRTIO_NET_F_HOST_UFO, 14)          \
  _ (VIRTIO_NET_F_MRG_RXBUF, 15)         \
  _ (VIRTIO_NET_F_CTRL_VQ, 17)           \
  _ (VIRTIO_NET_F_GUEST_ANNOUNCE, 21)    \
@@ -102,14 +110,32 @@ typedef enum
 #undef _
 } virtio_net_feature_t;
 
+#define FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS \
+  ((1ULL << FEAT_VIRTIO_NET_F_CSUM) |		   \
+   (1ULL << FEAT_VIRTIO_NET_F_HOST_UFO) |	   \
+   (1ULL << FEAT_VIRTIO_NET_F_HOST_TSO4) |	   \
+   (1ULL << FEAT_VIRTIO_NET_F_HOST_TSO6))
+
+#define FEATURE_VIRTIO_NET_F_GUEST_TSO_FEATURE_BITS \
+  ((1ULL << FEAT_VIRTIO_NET_F_GUEST_CSUM) |	    \
+   (1ULL << FEAT_VIRTIO_NET_F_GUEST_UFO) |	    \
+   (1ULL << FEAT_VIRTIO_NET_F_GUEST_TSO4) |	    \
+   (1ULL << FEAT_VIRTIO_NET_F_GUEST_TSO6))
+
+#define FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS \
+  (FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS |		 \
+   FEATURE_VIRTIO_NET_F_GUEST_TSO_FEATURE_BITS)
+
 int vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  const char *sock_filename, u8 is_server,
 			  u32 * sw_if_index, u64 feature_mask,
-			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr);
+			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr,
+			  u8 enable_gso);
 int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  const char *sock_filename, u8 is_server,
 			  u32 sw_if_index, u64 feature_mask,
-			  u8 renumber, u32 custom_dev_instance);
+			  u8 renumber, u32 custom_dev_instance,
+			  u8 enable_gso);
 int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  u32 sw_if_index);
 
@@ -301,6 +327,8 @@ typedef struct
   /* Whether to use spinlock or per_cpu_tx_qid assignment */
   u8 use_tx_spinlock;
   u16 *per_cpu_tx_qid;
+
+  u8 enable_gso;
 } vhost_user_intf_t;
 
 typedef struct
@@ -357,6 +385,9 @@ typedef struct
 
   /* logging */
   vlib_log_class_t log_default;
+
+  /* gso interface count */
+  u32 gso_count;
 } vhost_user_main_t;
 
 typedef struct

@@ -39,6 +39,7 @@
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
+#include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
 
@@ -243,12 +244,97 @@ vhost_user_input_rewind_buffers (vlib_main_t * vm,
   cpu->rx_buffers_len++;
 }
 
+static_always_inline void
+vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
+			      virtio_net_hdr_t * hdr)
+{
+  u8 l4_hdr_sz = 0;
+
+  if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
+    {
+      u8 l4_proto = 0;
+      ethernet_header_t *eh = (ethernet_header_t *) b0_data;
+      u16 ethertype = clib_net_to_host_u16 (eh->type);
+      u16 l2hdr_sz = sizeof (ethernet_header_t);
+
+      if (ethernet_frame_is_tagged (ethertype))
+	{
+	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+
+	  ethertype = clib_net_to_host_u16 (vlan->type);
+	  l2hdr_sz += sizeof (*vlan);
+	  if (ethertype == ETHERNET_TYPE_VLAN)
+	    {
+	      vlan++;
+	      ethertype = clib_net_to_host_u16 (vlan->type);
+	      l2hdr_sz += sizeof (*vlan);
+	    }
+	}
+      vnet_buffer (b0)->l2_hdr_offset = 0;
+      vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
+      vnet_buffer (b0)->l4_hdr_offset = hdr->csum_start;
+      b0->flags |= (VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
+
+      if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
+	{
+	  ip4_header_t *ip4 = (ip4_header_t *) (b0_data + l2hdr_sz);
+	  l4_proto = ip4->protocol;
+	  b0->flags |= VNET_BUFFER_F_IS_IP4;
+	}
+      else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
+	{
+	  ip6_header_t *ip6 = (ip6_header_t *) (b0_data + l2hdr_sz);
+	  l4_proto = ip6->protocol;
+	  b0->flags |= VNET_BUFFER_F_IS_IP6;
+	}
+
+      if (l4_proto == IP_PROTOCOL_TCP)
+	{
+	  tcp_header_t *tcp = (tcp_header_t *)
+	    (b0_data + vnet_buffer (b0)->l4_hdr_offset);
+	  l4_hdr_sz = tcp_header_bytes (tcp);
+	  tcp->checksum = 0;
+	  b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	}
+      else if (l4_proto == IP_PROTOCOL_UDP)
+	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (b0_data + vnet_buffer (b0)->l4_hdr_offset);
+	  l4_hdr_sz = sizeof (*udp);
+	  udp->checksum = 0;
+	  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	}
+    }
+
+  if (hdr->gso_type == VIRTIO_NET_HDR_GSO_UDP)
+    {
+      vnet_buffer2 (b0)->gso_size = hdr->gso_size;
+      vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
+      b0->flags |= VNET_BUFFER_F_GSO;
+    }
+  else if (hdr->gso_type == VIRTIO_NET_HDR_GSO_TCPV4)
+    {
+      vnet_buffer2 (b0)->gso_size = hdr->gso_size;
+      vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
+      b0->flags |= (VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP4);
+    }
+  else if (hdr->gso_type == VIRTIO_NET_HDR_GSO_TCPV6)
+    {
+      vnet_buffer2 (b0)->gso_size = hdr->gso_size;
+      vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
+      b0->flags |= (VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP6);
+    }
+}
+
 static_always_inline u32
 vhost_user_if_input (vlib_main_t * vm,
 		     vhost_user_main_t * vum,
 		     vhost_user_intf_t * vui,
 		     u16 qid, vlib_node_runtime_t * node,
-		     vnet_hw_interface_rx_mode mode)
+		     vnet_hw_interface_rx_mode mode, u8 enable_csum)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
   vnet_feature_main_t *fm = &feature_main;
@@ -446,7 +532,6 @@ vhost_user_if_input (vlib_main_t * vm,
 
       if (PREDICT_FALSE (n_trace))
 	{
-	  //TODO: next_index is not exactly known at that point
 	  vlib_trace_buffer (vm, node, next_index, b_head,
 			     /* follow_chain */ 0);
 	  vhost_trace_t *t0 =
@@ -459,11 +544,13 @@ vhost_user_if_input (vlib_main_t * vm,
       /* This depends on the setup but is very consistent
        * So I think the CPU branch predictor will make a pretty good job
        * at optimizing the decision. */
+      u8 indirect = 0;
       if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
 	{
 	  desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr,
 				      &map_hint);
 	  desc_current = 0;
+	  indirect = 1;
 	  if (PREDICT_FALSE (desc_table == 0))
 	    {
 	      vlib_error_count (vm, node->node_index,
@@ -482,6 +569,27 @@ vhost_user_if_input (vlib_main_t * vm,
 	{
 	  /* CSR case without ANYLAYOUT, skip 1st buffer */
 	  desc_data_offset = desc_table[desc_current].len;
+	}
+
+      if (enable_csum)
+	{
+	  virtio_net_hdr_mrg_rxbuf_t *hdr;
+	  u8 *b_data;
+	  u16 current = desc_current;
+	  u32 data_offset = desc_data_offset;
+
+	  if ((data_offset == desc_table[current].len) &&
+	      (desc_table[current].flags & VIRTQ_DESC_F_NEXT))
+	    {
+	      current = desc_table[current].next;
+	      data_offset = 0;
+	    }
+	  hdr = map_guest_mem (vui, desc_table[current].addr, &map_hint);
+	  b_data = (u8 *) hdr + data_offset;
+	  if (indirect)
+	    hdr = map_guest_mem (vui, desc_table[desc_current].addr,
+				 &map_hint);
+	  vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
 	}
 
       while (1)
@@ -653,8 +761,14 @@ VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
       {
 	vui =
 	  pool_elt_at_index (vum->vhost_user_interfaces, dq->dev_instance);
-	n_rx_packets += vhost_user_if_input (vm, vum, vui, dq->queue_id, node,
-					     dq->mode);
+	if (vui->features & (1ULL << FEAT_VIRTIO_NET_F_CSUM))
+	  n_rx_packets +=
+	    vhost_user_if_input (vm, vum, vui, dq->queue_id, node, dq->mode,
+				 1);
+	else
+	  n_rx_packets +=
+	    vhost_user_if_input (vm, vum, vui, dq->queue_id, node, dq->mode,
+				 0);
       }
   }
 
