@@ -16,6 +16,24 @@
       "revId": "0d56fe9d579ce70e109ccfe1c69b317691e02543",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bbfa09ca_bbde3ef8",
+        "filename": "src/plugins/flowprobe/flowprobe.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-05-06T12:44:01Z",
+      "side": 1,
+      "message": "This is because it is declared with VLIB_REGISTER_NODE() macro in flowprobe/node.c but flowprobe_walker_node.index is referenced in flowprobe/flowprobe.c:timer_process().\nAlternatively, I can move the extern declaration in flowprobe/flowprobe.h\nWhat do you think?",
+      "parentUuid": "097b7397_5e3bdde2",
+      "revId": "0d56fe9d579ce70e109ccfe1c69b317691e02543",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
