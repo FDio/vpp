@@ -530,7 +530,7 @@ class VppTestCase(unittest.TestCase):
             cls.vpp.poll()
             if cls.vpp.returncode is None:
                 cls.logger.debug("Sending TERM to vpp")
-                cls.vpp.kill()
+                cls.vpp.terminate()
                 cls.logger.debug("Waiting for vpp to die")
                 cls.vpp.communicate()
             cls.logger.debug("Deleting class vpp attribute on %s",

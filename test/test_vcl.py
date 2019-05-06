@@ -202,7 +202,7 @@ class VCLTestCase(VppTestCase):
         if os.path.isdir('/proc/{}'.format(worker_server.process.pid)):
             self.logger.info("Killing server worker process (pid %d)" %
                              worker_server.process.pid)
-            os.killpg(os.getpgid(worker_server.process.pid), signal.SIGKILL)
+            os.killpg(os.getpgid(worker_server.process.pid), signal.SIGTERM)
             worker_server.join()
         self.logger.info("Client worker result is `%s'" % worker_client.result)
         error = False
