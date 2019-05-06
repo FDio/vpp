@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "faeda704_8ed76243",
+        "filename": "src/plugins/nat/nat_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1230,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-06T07:01:33Z",
+      "side": 1,
+      "message": "The tag field is a user defined string.\nPreviously it was limited to 64 bytes I believe.\nThere is no reason at all to not set a fixed limit instead of allowing it to be maximum of i32.",
+      "range": {
+        "startLine": 1215,
+        "startChar": 0,
+        "endLine": 1230,
+        "endChar": 28
+      },
+      "revId": "74661cb60ab632df1465db29948d58d38a16756f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
