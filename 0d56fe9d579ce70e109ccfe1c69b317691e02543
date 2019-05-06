@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "66572e35_83051fac",
+        "filename": "build-data/platforms/vpp.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-06T16:32:15Z",
+      "side": 1,
+      "message": "Might be better to use cmake targets instead, I already did some initial work for that but didn\u0027t have time to finish...",
+      "range": {
+        "startLine": 25,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 46
+      },
+      "revId": "0d56fe9d579ce70e109ccfe1c69b317691e02543",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "097b7397_5e3bdde2",
         "filename": "src/plugins/flowprobe/flowprobe.c",
         "patchSetId": 3
@@ -31,6 +54,29 @@
       "side": 1,
       "message": "This is because it is declared with VLIB_REGISTER_NODE() macro in flowprobe/node.c but flowprobe_walker_node.index is referenced in flowprobe/flowprobe.c:timer_process().\nAlternatively, I can move the extern declaration in flowprobe/flowprobe.h\nWhat do you think?",
       "parentUuid": "097b7397_5e3bdde2",
+      "revId": "0d56fe9d579ce70e109ccfe1c69b317691e02543",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "77c76e3b_4213459b",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1049,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-06T16:32:15Z",
+      "side": 1,
+      "message": "please use __clib_unused, this one is affected by gnu indent bug...",
+      "range": {
+        "startLine": 1049,
+        "startChar": 0,
+        "endLine": 1049,
+        "endChar": 24
+      },
       "revId": "0d56fe9d579ce70e109ccfe1c69b317691e02543",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
