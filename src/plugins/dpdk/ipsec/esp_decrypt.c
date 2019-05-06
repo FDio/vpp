@@ -168,6 +168,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	  dpdk_op_priv_t *priv = crypto_op_get_priv (op);
 	  /* store bi in op private */
 	  priv->bi = bi0;
+	  priv->encrypt = 0;
 
 	  u16 op_len =
 	    sizeof (op[0]) + sizeof (op[0].sym[0]) + sizeof (priv[0]);
@@ -372,7 +373,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 				   from_frame->n_vectors);
 
       crypto_enqueue_ops (vm, cwm, dpdk_esp6_decrypt_node.index,
-			  ESP_DECRYPT_ERROR_ENQ_FAIL, numa);
+			  ESP_DECRYPT_ERROR_ENQ_FAIL, numa, 0 /* encrypt */ );
     }
   else
     {
@@ -381,7 +382,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 				   from_frame->n_vectors);
 
       crypto_enqueue_ops (vm, cwm, dpdk_esp4_decrypt_node.index,
-			  ESP_DECRYPT_ERROR_ENQ_FAIL, numa);
+			  ESP_DECRYPT_ERROR_ENQ_FAIL, numa, 0 /* encrypt */ );
     }
 
   crypto_free_ops (numa, ops, cwm->ops + from_frame->n_vectors - ops);
