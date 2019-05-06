@@ -139,14 +139,11 @@ ppp_input (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  h0 = (void *) (b0->data + b0->current_data);
-	  h1 = (void *) (b1->data + b1->current_data);
+	  h0 = vlib_buffer_get_current (b0);
+	  h1 = vlib_buffer_get_current (b1);
 
-	  b0->current_data += sizeof (h0[0]);
-	  b1->current_data += sizeof (h1[0]);
-
-	  b0->current_length -= sizeof (h0[0]);
-	  b1->current_length -= sizeof (h1[0]);
+	  vlib_buffer_advance (b0, sizeof (ppp_header_t));
+	  vlib_buffer_advance (b1, sizeof (ppp_header_t));
 
 	  /* Index sparse array with network byte order. */
 	  protocol0 = h0->protocol;
@@ -227,10 +224,9 @@ ppp_input (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  h0 = (void *) (b0->data + b0->current_data);
+	  h0 = vlib_buffer_get_current (b0);
 
-	  b0->current_data += sizeof (h0[0]);
-	  b0->current_length -= sizeof (h0[0]);
+	  vlib_buffer_advance (b0, sizeof (ppp_header_t));
 
 	  protocol0 = h0->protocol;
 	  i0 = sparse_vec_index (rt->next_by_protocol, protocol0);
