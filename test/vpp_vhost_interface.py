@@ -5,7 +5,7 @@ class VppVhostInterface(VppInterface):
     """VPP vhost interface."""
 
     def __init__(self, test, sock_filename, is_server=0, renumber=0,
-                 disable_mrg_rxbuf=0, disable_indirect_desc=0,
+                 disable_mrg_rxbuf=0, disable_indirect_desc=0, gso=0,
                  custom_dev_instance=0, use_custom_mac=0, mac_address='',
                  tag=''):
 
@@ -16,6 +16,7 @@ class VppVhostInterface(VppInterface):
         self.renumber = renumber
         self.disable_mrg_rxbuf = disable_mrg_rxbuf
         self.disable_indirect_desc = disable_indirect_desc
+        self.gso = gso
         self.custom_dev_instance = custom_dev_instance
         self.use_custom_mac = use_custom_mac
         self.mac_address = mac_address
@@ -27,6 +28,7 @@ class VppVhostInterface(VppInterface):
                                                 self.renumber,
                                                 self.disable_mrg_rxbuf,
                                                 self.disable_indirect_desc,
+                                                self.gso,
                                                 self.custom_dev_instance,
                                                 self.use_custom_mac,
                                                 self.mac_address,
