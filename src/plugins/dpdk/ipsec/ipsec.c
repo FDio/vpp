@@ -639,9 +639,6 @@ crypto_parse_capabilities (crypto_dev_t * dev,
     }
 }
 
-#define DPDK_CRYPTO_N_QUEUE_DESC  2048
-#define DPDK_CRYPTO_NB_SESS_OBJS  20000
-
 static clib_error_t *
 crypto_dev_conf (u8 dev, u16 n_qp, u8 numa)
 {
