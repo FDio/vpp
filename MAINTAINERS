@@ -218,6 +218,11 @@ Binary API Compiler
 M:	Ole Troan <otroan@employees.org>
 F:	src/tools/vppapigen/
 
+Plugin - RDMA (ibverb) driver
+M:	Benoît Ganne <bganne@cisco.com>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/rdma/
+
 THE REST
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
 F:	*
