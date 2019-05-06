@@ -387,7 +387,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 {
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *app_mq, *vpp_evt_q;
-  transport_connection_t *tc;
+  transport_endpoint_t tep;
   session_bound_msg_t *mp;
   app_worker_t *app_wrk;
   session_event_t *evt;
@@ -420,10 +420,11 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
     ls = app_listener_get_session (al);
   else
     ls = app_listener_get_local_session (al);
-  tc = listen_session_get_transport (ls);
-  mp->lcl_port = tc->lcl_port;
-  mp->lcl_is_ip4 = tc->is_ip4;
-  clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+
+  session_get_endpoint (ls, &tep, 1 /* is_lcl */ );
+  mp->lcl_port = tep.port;
+  mp->lcl_is_ip4 = tep.is_ip4;
+  clib_memcpy_fast (mp->lcl_ip, &tep.ip, sizeof (tep.ip));
 
   vpp_evt_q = session_main_get_vpp_event_queue (0);
   mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
