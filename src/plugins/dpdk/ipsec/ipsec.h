@@ -30,6 +30,9 @@
 #define always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
+#define DPDK_CRYPTO_N_QUEUE_DESC  2048
+#define DPDK_CRYPTO_NB_SESS_OBJS  20000
+
 #define foreach_dpdk_crypto_input_next		\
   _(DROP, "error-drop")				\
   _(IP4_LOOKUP, "ip4-lookup")                   \
@@ -59,9 +62,11 @@ typedef struct
 {
   u32 next;
   u32 bi;
-  dpdk_gcm_cnt_blk cb __attribute__ ((aligned (16)));
+  u8 encrypt;
+    CLIB_ALIGN_MARK (mark0, 16);
+  dpdk_gcm_cnt_blk cb;
   u8 aad[16];
-  u8 icv[32];
+  u8 icv[32];			/* XXX last 16B in next cache line */
 } dpdk_op_priv_t;
 
 typedef struct
@@ -70,8 +75,8 @@ typedef struct
   struct rte_crypto_op **ops;
   u16 cipher_resource_idx[IPSEC_CRYPTO_N_ALG];
   u16 auth_resource_idx[IPSEC_INTEG_N_ALG];
-    CLIB_CACHE_LINE_ALIGN_MARK (pad);
-} crypto_worker_main_t __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)));
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+} crypto_worker_main_t;
 
 typedef struct
 {
@@ -115,12 +120,13 @@ typedef struct
   u8 dev_id;
   u8 numa;
   u16 qp_id;
-  u16 inflights;
+  u16 inflights[2];
   u16 n_ops;
   u16 __unused;
   struct rte_crypto_op *ops[VLIB_FRAME_SIZE];
   u32 bi[VLIB_FRAME_SIZE];
-} crypto_resource_t __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)));
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+} crypto_resource_t;
 
 typedef struct
 {
@@ -130,15 +136,13 @@ typedef struct
 
 typedef struct
 {
-  CLIB_ALIGN_MARK (pad, 16);	/* align up to 16 bytes for 32bit builds */
   struct rte_cryptodev_sym_session *session;
   u64 dev_mask;
+    CLIB_ALIGN_MARK (pad, 16);	/* align up to 16 bytes for 32bit builds */
 } crypto_session_by_drv_t;
 
 typedef struct
 {
-  /* Required for vec_validate_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct rte_mempool *crypto_op;
   struct rte_mempool *session_h;
   struct rte_mempool **session_drv;
@@ -149,6 +153,8 @@ typedef struct
   u64 *session_drv_failed;
   crypto_session_by_drv_t *session_by_drv_id_and_sa_index;
   clib_spinlock_t lockp;
+  /* Required for vec_validate_aligned */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 } crypto_data_t;
 
 typedef struct
@@ -303,7 +309,7 @@ crypto_free_ops (u8 numa, struct rte_crypto_op **ops, u32 n)
 
 static_always_inline void
 crypto_enqueue_ops (vlib_main_t * vm, crypto_worker_main_t * cwm,
-		    u32 node_index, u32 error, u8 numa)
+		    u32 node_index, u32 error, u8 numa, u8 encrypt)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_resource_t *res;
@@ -312,15 +318,18 @@ crypto_enqueue_ops (vlib_main_t * vm, crypto_worker_main_t * cwm,
   /* *INDENT-OFF* */
   vec_foreach (res_idx, cwm->resource_idx)
     {
-      u16 enq;
+      u16 enq, n_ops;
       res = vec_elt_at_index (dcm->resource, res_idx[0]);
 
       if (!res->n_ops)
 	continue;
 
+      n_ops = (DPDK_CRYPTO_N_QUEUE_DESC / 2) - res->inflights[encrypt];
+      n_ops = res->n_ops < n_ops ? res->n_ops : n_ops;
       enq = rte_cryptodev_enqueue_burst (res->dev_id, res->qp_id,
-					 res->ops, res->n_ops);
-      res->inflights += enq;
+					 res->ops, n_ops);
+      ASSERT (n_ops == enq);
+      res->inflights[encrypt] += enq;
 
       if (PREDICT_FALSE (enq < res->n_ops))
 	{

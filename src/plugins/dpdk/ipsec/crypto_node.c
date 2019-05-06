@@ -127,24 +127,23 @@ dpdk_crypto_dequeue (vlib_main_t * vm, crypto_worker_main_t * cwm,
 		     vlib_node_runtime_t * node, crypto_resource_t * res)
 {
   u8 numa = rte_socket_id ();
-  u32 n_ops, n_deq;
+  u32 n_ops, total_n_deq, n_deq[2];
   u32 bis[VLIB_FRAME_SIZE], *bi;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   struct rte_crypto_op **ops;
 
+  n_deq[0] = 0;
+  n_deq[1] = 0;
   bi = bis;
   next = nexts;
   ops = cwm->ops;
 
-  n_ops = n_deq = rte_cryptodev_dequeue_burst (res->dev_id,
-					       res->qp_id,
-					       ops, VLIB_FRAME_SIZE);
-
+  n_ops = total_n_deq = rte_cryptodev_dequeue_burst (res->dev_id,
+						     res->qp_id,
+						     ops, VLIB_FRAME_SIZE);
   /* no op dequeued, do not proceed */
-  if (n_deq == 0)
+  if (n_ops == 0)
     return 0;
-
-  res->inflights -= n_ops;
 
   while (n_ops >= 4)
     {
@@ -183,6 +182,11 @@ dpdk_crypto_dequeue (vlib_main_t * vm, crypto_worker_main_t * cwm,
       bi[2] = crypto_op_get_priv (op2)->bi;
       bi[3] = crypto_op_get_priv (op3)->bi;
 
+      n_deq[crypto_op_get_priv (op0)->encrypt] += 1;
+      n_deq[crypto_op_get_priv (op1)->encrypt] += 1;
+      n_deq[crypto_op_get_priv (op2)->encrypt] += 1;
+      n_deq[crypto_op_get_priv (op3)->encrypt] += 1;
+
       dpdk_crypto_input_check_op (vm, node, op0, next + 0);
       dpdk_crypto_input_check_op (vm, node, op1, next + 1);
       dpdk_crypto_input_check_op (vm, node, op2, next + 2);
@@ -208,6 +212,8 @@ dpdk_crypto_dequeue (vlib_main_t * vm, crypto_worker_main_t * cwm,
       next[0] = crypto_op_get_priv (op0)->next;
       bi[0] = crypto_op_get_priv (op0)->bi;
 
+      n_deq[crypto_op_get_priv (op0)->encrypt] += 1;
+
       dpdk_crypto_input_check_op (vm, node, op0, next + 0);
 
       op0->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
@@ -220,15 +226,18 @@ dpdk_crypto_dequeue (vlib_main_t * vm, crypto_worker_main_t * cwm,
     }
 
   vlib_node_increment_counter (vm, node->node_index,
-			       DPDK_CRYPTO_INPUT_ERROR_DQ_COPS, n_deq);
+			       DPDK_CRYPTO_INPUT_ERROR_DQ_COPS, total_n_deq);
 
-  vlib_buffer_enqueue_to_next (vm, node, bis, nexts, n_deq);
+  res->inflights[0] -= n_deq[0];
+  res->inflights[1] -= n_deq[1];
 
-  dpdk_crypto_input_trace (vm, node, res->dev_id, bis, nexts, n_deq);
+  vlib_buffer_enqueue_to_next (vm, node, bis, nexts, total_n_deq);
 
-  crypto_free_ops (numa, cwm->ops, n_deq);
+  dpdk_crypto_input_trace (vm, node, res->dev_id, bis, nexts, total_n_deq);
 
-  return n_deq;
+  crypto_free_ops (numa, cwm->ops, total_n_deq);
+
+  return total_n_deq;
 }
 
 static_always_inline uword
@@ -246,11 +255,13 @@ dpdk_crypto_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vec_foreach (res_idx, cwm->resource_idx)
     {
       res = vec_elt_at_index (dcm->resource, res_idx[0]);
+      u32 inflights = res->inflights[0] + res->inflights[1];
 
-      if (res->inflights)
+      if (inflights)
 	n_deq += dpdk_crypto_dequeue (vm, cwm, node, res);
 
-      if (PREDICT_FALSE (res->remove && !(res->inflights)))
+      inflights = res->inflights[0] + res->inflights[1];
+      if (PREDICT_FALSE (res->remove && !(inflights)))
 	vec_add1 (remove, res_idx[0]);
     }
   /* *INDENT-ON* */
