@@ -65,12 +65,18 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   if (mp->disable_indirect_desc)
     disabled_features |= (1ULL << FEAT_VIRTIO_F_INDIRECT_DESC);
 
+  /*
+   * feature mask is not supported via binary API. We disable GSO feature in the
+   * feature mask. It may be enabled via enable_gso argument.
+   */
+  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
   features &= ~disabled_features;
 
   rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
 			     mp->is_server, &sw_if_index, features,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     (mp->use_custom_mac) ? mp->mac_address : NULL);
+			     (mp->use_custom_mac) ? mp->mac_address : NULL,
+			     mp->enable_gso);
 
   /* Remember an interface tag for the new interface */
   if (rv == 0)
@@ -99,13 +105,23 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
   int rv = 0;
   vl_api_modify_vhost_user_if_reply_t *rmp;
   u32 sw_if_index = ntohl (mp->sw_if_index);
+  u64 features = (u64) ~ (0ULL);
+  u64 disabled_features = (u64) (0ULL);
 
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
+  /*
+   * feature mask is not supported via binary API. We disable GSO feature in the
+   * feature mask. It may be enabled via enable_gso argument.
+   */
+  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
+  features &= ~disabled_features;
+
   rv = vhost_user_modify_if (vnm, vm, (char *) mp->sock_filename,
-			     mp->is_server, sw_if_index, (u64) ~ 0,
-			     mp->renumber, ntohl (mp->custom_dev_instance));
+			     mp->is_server, sw_if_index, features,
+			     mp->renumber, ntohl (mp->custom_dev_instance),
+			     mp->enable_gso);
 
   REPLY_MACRO (VL_API_MODIFY_VHOST_USER_IF_REPLY);
 }

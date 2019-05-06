@@ -463,6 +463,10 @@ vhost_user_socket_read (clib_file_t * uf)
 	(1ULL << FEAT_VHOST_USER_F_PROTOCOL_FEATURES) |
 	(1ULL << FEAT_VIRTIO_F_VERSION_1);
       msg.u64 &= vui->feature_mask;
+
+      if (vui->enable_gso)
+	msg.u64 |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
+
       msg.size = sizeof (msg.u64);
       vu_log_debug (vui, "if %d msg VHOST_USER_GET_FEATURES - reply "
 		    "0x%016llx", vui->hw_if_index, msg.u64);
@@ -492,6 +496,12 @@ vhost_user_socket_read (clib_file_t * uf)
 	(vui->features & (1 << FEAT_VIRTIO_F_ANY_LAYOUT)) ? 1 : 0;
 
       ASSERT (vui->virtio_net_hdr_sz < VLIB_BUFFER_PRE_DATA_SIZE);
+      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vui->hw_if_index);
+      if (vui->enable_gso &&
+	  (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_CSUM)))
+	hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+      else
+	hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
       vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
       vui->is_ready = 0;
       vhost_user_update_iface_state (vui);
@@ -1202,6 +1212,7 @@ vhost_user_term_if (vhost_user_intf_t * vui)
 
   // disconnect interface sockets
   vhost_user_if_disconnect (vui);
+  vhost_user_update_gso_interface_count (vui, 0 /* delete */ );
   vhost_user_update_iface_state (vui);
 
   for (q = 0; q < VHOST_VRING_MAX_N; q++)
@@ -1403,7 +1414,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
 		     vhost_user_intf_t * vui,
 		     int server_sock_fd,
 		     const char *sock_filename,
-		     u64 feature_mask, u32 * sw_if_index)
+		     u64 feature_mask, u32 * sw_if_index, u8 enable_gso)
 {
   vnet_sw_interface_t *sw;
   int q;
@@ -1434,6 +1445,23 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vui->clib_file_index = ~0;
   vui->log_base_addr = 0;
   vui->if_index = vui - vum->vhost_user_interfaces;
+  vui->enable_gso = enable_gso;
+  /*
+   * enable_gso takes precedence over configurable feature mask if there
+   * is a clash.
+   *   if feature mask disables gso, but enable_gso is configured,
+   *     then gso is enable
+   *   if feature mask enables gso, but enable_gso is not configured,
+   *     then gso is enable
+   *
+   * if gso is enable via feature mask, it must enable both host and guest
+   * gso feature mask, we don't support one sided GSO or partial GSO.
+   */
+  if ((vui->enable_gso == 0) &&
+      ((feature_mask & FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS) ==
+       (FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS)))
+    vui->enable_gso = 1;
+  vhost_user_update_gso_interface_count (vui, 1 /* add */ );
   mhash_set_mem (&vum->if_index_by_sock_name, vui->sock_filename,
 		 &vui->if_index, 0);
 
@@ -1464,7 +1492,8 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      u8 is_server,
 		      u32 * sw_if_index,
 		      u64 feature_mask,
-		      u8 renumber, u32 custom_dev_instance, u8 * hwaddr)
+		      u8 renumber, u32 custom_dev_instance, u8 * hwaddr,
+		      u8 enable_gso)
 {
   vhost_user_intf_t *vui = NULL;
   u32 sw_if_idx = ~0;
@@ -1505,7 +1534,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 
   vhost_user_vui_init (vnm, vui, server_sock_fd, sock_filename,
-		       feature_mask, &sw_if_idx);
+		       feature_mask, &sw_if_idx, enable_gso);
   vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
   vhost_user_rx_thread_placement (vui, 1);
 
@@ -1526,7 +1555,8 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      const char *sock_filename,
 		      u8 is_server,
 		      u32 sw_if_index,
-		      u64 feature_mask, u8 renumber, u32 custom_dev_instance)
+		      u64 feature_mask, u8 renumber, u32 custom_dev_instance,
+		      u8 enable_gso)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui = NULL;
@@ -1563,7 +1593,7 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 
   vhost_user_term_if (vui);
   vhost_user_vui_init (vnm, vui, server_sock_fd,
-		       sock_filename, feature_mask, &sw_if_idx);
+		       sock_filename, feature_mask, &sw_if_idx, enable_gso);
 
   if (renumber)
     vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
@@ -1589,17 +1619,22 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   u8 hwaddr[6];
   u8 *hw = NULL;
   clib_error_t *error = NULL;
+  u8 enable_gso = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
+  /* GSO feature is disable by default */
+  feature_mask &= ~FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "socket %s", &sock_filename))
 	;
       else if (unformat (line_input, "server"))
 	is_server = 1;
+      else if (unformat (line_input, "gso"))
+	enable_gso = 1;
       else if (unformat (line_input, "feature-mask 0x%llx", &feature_mask))
 	;
       else
@@ -1623,7 +1658,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   int rv;
   if ((rv = vhost_user_create_if (vnm, vm, (char *) sock_filename,
 				  is_server, &sw_if_index, feature_mask,
-				  renumber, custom_dev_instance, hw)))
+				  renumber, custom_dev_instance, hw,
+				  enable_gso)))
     {
       error = clib_error_return (0, "vhost_user_create_if returned %d", rv);
       goto done;
@@ -1809,8 +1845,9 @@ show_vhost_user_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "Virtio vhost-user interfaces");
   vlib_cli_output (vm, "Global:\n  coalesce frames %d time %e",
 		   vum->coalesce_frames, vum->coalesce_time);
-  vlib_cli_output (vm, "  number of rx virtqueues in interrupt mode: %d",
+  vlib_cli_output (vm, "  Number of rx virtqueues in interrupt mode: %d",
 		   vum->ifq_count);
+  vlib_cli_output (vm, "  Number of GSO interfaces: %d", vum->gso_count);
 
   for (i = 0; i < vec_len (hw_if_indices); i++)
     {
@@ -1819,6 +1856,8 @@ show_vhost_user_command_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "Interface: %U (ifindex %d)",
 		       format_vnet_hw_if_index_name, vnm, hw_if_indices[i],
 		       hw_if_indices[i]);
+      if (vui->enable_gso)
+	vlib_cli_output (vm, "  GSO enable");
 
       vlib_cli_output (vm, "virtio_net_hdr_sz %d\n"
 		       " features mask (0x%llx): \n"
@@ -2025,7 +2064,7 @@ done:
 VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .path = "create vhost-user",
     .short_help = "create vhost-user socket <socket-filename> [server] "
-    "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] ",
+    "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] [gso]",
     .function = vhost_user_connect_command_fn,
     .is_mp_safe = 1,
 };

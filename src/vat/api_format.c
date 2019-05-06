@@ -13300,6 +13300,7 @@ api_create_vhost_user_if (vat_main_t * vam)
   u8 disable_mrg_rxbuf = 0;
   u8 disable_indirect_desc = 0;
   u8 *tag = 0;
+  u8 enable_gso = 0;
   int ret;
 
   /* Shut up coverity */
@@ -13321,6 +13322,8 @@ api_create_vhost_user_if (vat_main_t * vam)
 	disable_mrg_rxbuf = 1;
       else if (unformat (i, "disable_indirect_desc"))
 	disable_indirect_desc = 1;
+      else if (unformat (i, "gso"))
+	enable_gso = 1;
       else if (unformat (i, "tag %s", &tag))
 	;
       else
@@ -13345,6 +13348,7 @@ api_create_vhost_user_if (vat_main_t * vam)
   mp->is_server = is_server;
   mp->disable_mrg_rxbuf = disable_mrg_rxbuf;
   mp->disable_indirect_desc = disable_indirect_desc;
+  mp->enable_gso = enable_gso;
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
   vec_free (file_name);
   if (custom_dev_instance != ~0)
@@ -13375,6 +13379,7 @@ api_modify_vhost_user_if (vat_main_t * vam)
   u32 custom_dev_instance = ~0;
   u8 sw_if_index_set = 0;
   u32 sw_if_index = (u32) ~ 0;
+  u8 enable_gso = 0;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -13391,6 +13396,8 @@ api_modify_vhost_user_if (vat_main_t * vam)
 	;
       else if (unformat (i, "server"))
 	is_server = 1;
+      else if (unformat (i, "gso"))
+	enable_gso = 1;
       else
 	break;
     }
@@ -13418,6 +13425,7 @@ api_modify_vhost_user_if (vat_main_t * vam)
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_server = is_server;
+  mp->enable_gso = enable_gso;
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
   vec_free (file_name);
   if (custom_dev_instance != ~0)
@@ -22126,11 +22134,11 @@ _(l2_interface_vlan_tag_rewrite,                                        \
   "[translate-2-[1|2]] [push_dot1q 0] tag1 <nn> tag2 <nn>")             \
 _(create_vhost_user_if,                                                 \
         "socket <filename> [server] [renumber <dev_instance>] "         \
-        "[disable_mrg_rxbuf] [disable_indirect_desc] "                  \
+        "[disable_mrg_rxbuf] [disable_indirect_desc] [gso] "            \
         "[mac <mac_address>]")                                          \
 _(modify_vhost_user_if,                                                 \
         "<intfc> | sw_if_index <nn> socket <filename>\n"                \
-        "[server] [renumber <dev_instance>]")                           \
+        "[server] [renumber <dev_instance>] [gso]")                     \
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "")                                     \
 _(show_version, "")                                                     \
