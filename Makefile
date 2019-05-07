@@ -321,6 +321,7 @@ else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
 else
 	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE systems")
 endif
+	git config commit.template .git_commit_template.txt
 
 define make
 	@make -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
