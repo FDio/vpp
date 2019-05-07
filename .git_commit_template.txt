@@ -1,0 +1,64 @@
+# <feature-name>: <subject>
+# |<----  Using a maximum of 50 characters  ---->|
+#
+# Explain why this change is being made
+# |<----   Try to limit each line to a maximum of 72 characters   ---->|
+
+# Ticket: <JIRA #id>
+# Type: <type>
+# Fixes: <offending-git-commit-id>
+# Signed-off-by: <email>
+# Change-Id: <sha1>
+#
+#
+# --- COMMIT END ---
+#
+# Type can be
+#    feature  (new feature)
+#    fix      (bug fix)
+#    refactor (refactoring production code)
+#    style    (formatting, missing semi colons, etc; no code change)
+#    docs     (changes to documentation)
+#    test     (adding or refactoring tests; no production code change)
+#    make     (change the build process, or tools, or infrastructure)
+#
+# feature-name: Is the name of the VPP feature, plugin or directory.
+#               Commits across multiple components should be split.
+#               E.g. ip, fib, nat, acl, host, api
+#
+# Fixes: If type is fix refers to the original commit (optional).
+# Ticket: Refers to JIRA ticket if it exists (optional).
+#
+# --------------------
+# Remember to:
+#    Lowercase the subject line.
+#    Use the imperative mood in the subject line.
+#    Not end the subject line with a period.
+#    Separate subject from body with a blank line.
+#    Use the body to explain what and why vs. how.
+#    Use multiple lines with "-" for bullet points in body.
+# --------------------
+# Usage:
+#
+# Put the template file here:
+#
+#     ~/.git_commit_template.txt
+#
+# Configure git to use the template file by running:
+#
+#     git config --global commit.template ~/.git_commit_template.txt
+#
+# Add the template file to the ~/.gitconfig file:
+#
+#     [commit]
+#       template = ~/.git_commit_template.txt
+#
+# To add the template to the current repository,
+# run from within the repository:
+#
+#     git config commit.template .git_commit_template.txt
+#
+# If you prefer other file locations or ways of working,
+# you can freely adjust the usage as you like.
+#
+# --------------------
