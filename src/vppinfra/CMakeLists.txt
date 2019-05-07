@@ -39,7 +39,6 @@ install(
 # vppinfra sources
 ##############################################################################
 set(VPPINFRA_SRCS
-  asm_x86.c
   backtrace.c
   cpu.c
   cuckoo_template.c
@@ -88,8 +87,6 @@ set(VPPINFRA_SRCS
 )
 
 set(VPPINFRA_HEADERS
-  asm_mips.h
-  asm_x86.h
   bihash_16_8.h
   bihash_24_8.h
   bihash_40_8.h
