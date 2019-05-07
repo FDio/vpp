@@ -344,6 +344,18 @@ app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s)
 }
 
 int
+app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s)
+{
+  application_t *app = application_get (app_wrk->app_index);
+
+  if (!app->cb_fns.builtin_app_tx_callback)
+    return 0;
+
+  app->cb_fns.builtin_app_tx_callback (s);
+  return 0;
+}
+
+int
 app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 {
   segment_manager_t *sm;
@@ -583,7 +595,7 @@ app_send_io_evt_tx (app_worker_t * app_wrk, session_t * s, u8 lock)
   svm_msg_q_msg_t msg;
 
   if (app_worker_application_is_builtin (app_wrk))
-    return 0;
+    return app_worker_builtin_tx (app_wrk, s);
 
   mq = app_wrk->event_queue;
   if (lock)
