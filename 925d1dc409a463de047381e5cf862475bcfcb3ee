@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "36e29421_2645232b",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-07T08:53:48Z",
+      "side": 1,
+      "message": "Same here, it bloats subject line, can it be:\n\nSigned-off-by:  Damjan Marion \u003cdamarion@cisco.com\u003e\nTicket: JIRA-XXXX\nType: xxxxx\nFixes: offending-git-commit-id",
+      "range": {
+        "startLine": 1,
+        "startChar": 19,
+        "endLine": 1,
+        "endChar": 26
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "17b92ebe_32bc8b88",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-07T08:53:48Z",
+      "side": 1,
+      "message": "Adding JIRA ID at the front of Subject line makes thing very unreadable, my preference is that it is part of msg body, but if not, can it be at least at the end of subject line.",
+      "range": {
+        "startLine": 1,
+        "startChar": 3,
+        "endLine": 1,
+        "endChar": 18
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8cc55946_91a9a323",
         "filename": ".git_commit_template.txt",
         "patchSetId": 1
