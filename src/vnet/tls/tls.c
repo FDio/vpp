@@ -658,8 +658,7 @@ tls_custom_tx_callback (void *session)
     return 0;
 
   ctx = tls_ctx_get (app_session->connection_index);
-  tls_ctx_write (ctx, app_session);
-  return 0;
+  return tls_ctx_write (ctx, app_session);
 }
 
 u8 *
