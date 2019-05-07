@@ -180,7 +180,7 @@ class VppTransport(object):
             return buf
         if l == len(msg):
             return msg
-        raise VPPTransportSocketIOError(1, 'Unknown socket read error')
+        raise VppTransportSocketIOError(1, 'Unknown socket read error')
 
     def read(self):
         if not self.connected:
