@@ -871,11 +871,78 @@ pselect (int nfds, fd_set * __restrict readfds,
 #endif
 
 int
+load_tls_cert (int vlsh)
+{
+  char *env_var_str = getenv (LDP_ENV_TLS_CERT);
+  char inbuf[4096];
+  char *tls_cert;
+  int cert_size;
+  FILE *fp;
+
+  if (env_var_str)
+    {
+      fp = fopen (env_var_str, "r");
+      if (fp == NULL)
+	{
+	  fprintf (stderr, "\nLDP<%d>: ERROR: failed to open cert file %s \n",
+		   getpid (), env_var_str);
+	  return -1;
+	}
+      cert_size = fread (inbuf, sizeof (char), sizeof (inbuf), fp);
+      tls_cert = inbuf;
+      vppcom_session_tls_add_cert (vlsh, tls_cert, cert_size);
+      fclose (fp);
+    }
+  else
+    {
+      fprintf (stderr,
+	       "\nLDP<%d>: ERROR: failed to read LDP environment %s\n",
+	       getpid (), LDP_ENV_TLS_CERT);
+      return -1;
+    }
+  return 0;
+}
+
+int
+load_tls_key (int vlsh)
+{
+  char *env_var_str = getenv (LDP_ENV_TLS_KEY);
+  char inbuf[4096];
+  char *tls_key;
+  int key_size;
+  FILE *fp;
+
+  if (env_var_str)
+    {
+      fp = fopen (env_var_str, "r");
+      if (fp == NULL)
+	{
+	  fprintf (stderr, "\nLDP<%d>: ERROR: failed to open key file %s \n",
+		   getpid (), env_var_str);
+	  return -1;
+	}
+      key_size = fread (inbuf, sizeof (char), sizeof (inbuf), fp);
+      tls_key = inbuf;
+      vppcom_session_tls_add_key (vlsh, tls_key, key_size);
+      fclose (fp);
+    }
+  else
+    {
+      fprintf (stderr,
+	       "\nLDP<%d>: ERROR: failed to read LDP environment %s\n",
+	       getpid (), LDP_ENV_TLS_KEY);
+      return -1;
+    }
+  return 0;
+}
+
+int
 socket (int domain, int type, int protocol)
 {
   int rv, sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
   u8 is_nonblocking = type & SOCK_NONBLOCK ? 1 : 0;
   vls_handle_t vlsh;
+  char *env_var_str = getenv (LDP_ENV_TLS_TRANS);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -883,8 +950,14 @@ socket (int domain, int type, int protocol)
   if (((domain == AF_INET) || (domain == AF_INET6)) &&
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
-      u8 proto = ((sock_type == SOCK_DGRAM) ?
-		  VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP);
+      u8 proto;
+      if (env_var_str)
+	{
+	  proto = VPPCOM_PROTO_TLS;
+	}
+      else
+	proto = ((sock_type == SOCK_DGRAM) ?
+		 VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP);
 
       LDBG (0, "calling vls_create: proto %u (%s), is_nonblocking %u",
 	    proto, vppcom_proto_str (proto), is_nonblocking);
@@ -897,6 +970,13 @@ socket (int domain, int type, int protocol)
 	}
       else
 	{
+	  if (env_var_str)
+	    {
+	      if (load_tls_cert (vlsh) < 0 || load_tls_key (vlsh) < 0)
+		{
+		  return -1;
+		}
+	    }
 	  rv = ldp_vlsh_to_fd (vlsh);
 	}
     }
