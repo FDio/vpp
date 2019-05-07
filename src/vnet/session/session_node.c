@@ -792,6 +792,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       else if (svm_fifo_max_dequeue_cons (ctx->s->tx_fifo) > 0)
 	if (svm_fifo_set_event (ctx->s->tx_fifo))
 	  vec_add1 (wrk->pending_event_vector, *e);
+
+      if (svm_fifo_needs_tx_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
+	session_dequeue_notify (ctx->s);
     }
   return SESSION_TX_OK;
 }
@@ -905,9 +908,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   for (i = 0; i < n_events; i++)
     {
-      session_t *s;		/* $$$ prefetch 1 ahead maybe */
       session_event_t *e;
-      u8 need_tx_ntf;
+      session_t *s;
 
       e = &fifo_events[i];
       switch (e->event_type)
@@ -933,14 +935,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * different nodes */
 	  rv = (smm->session_tx_fns[s->session_type]) (vm, node, wrk, e,
 						       &n_tx_packets);
-	  if (PREDICT_TRUE (rv == SESSION_TX_OK))
-	    {
-	      need_tx_ntf = svm_fifo_needs_tx_ntf (s->tx_fifo,
-						   wrk->ctx.max_len_to_snd);
-	      if (PREDICT_FALSE (need_tx_ntf))
-		session_dequeue_notify (s);
-	    }
-	  else if (PREDICT_FALSE (rv == SESSION_TX_NO_BUFFERS))
+	  if (PREDICT_FALSE (rv == SESSION_TX_NO_BUFFERS))
 	    {
 	      vlib_node_increment_counter (vm, node->node_index,
 					   SESSION_QUEUE_ERROR_NO_BUFFER, 1);
