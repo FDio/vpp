@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1597bfb1_7a844079",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-07T14:38:39Z",
+      "side": 1,
+      "message": "packed?",
+      "range": {
+        "startLine": 8,
+        "startChar": 41,
+        "endLine": 8,
+        "endChar": 47
+      },
+      "revId": "551cfa7547c868356d2ed5126d8081357b61dbbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "34319ae7_9734795b",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-07T14:38:39Z",
+      "side": 1,
+      "message": "Wrap long lines please.",
+      "range": {
+        "startLine": 20,
+        "startChar": 86,
+        "endLine": 20,
+        "endChar": 87
+      },
+      "revId": "551cfa7547c868356d2ed5126d8081357b61dbbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "75e2721a_cbafc7ba",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-07T14:38:39Z",
+      "side": 1,
+      "message": "Where is it defined? How would clients understand the received data?",
+      "range": {
+        "startLine": 26,
+        "startChar": 319,
+        "endLine": 26,
+        "endChar": 355
+      },
+      "revId": "551cfa7547c868356d2ed5126d8081357b61dbbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f84dd1d2_cb2ef099",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-07T14:38:39Z",
+      "side": 1,
+      "message": "What happens if two senders use the same cookie?",
+      "range": {
+        "startLine": 27,
+        "startChar": 74,
+        "endLine": 27,
+        "endChar": 85
+      },
+      "revId": "551cfa7547c868356d2ed5126d8081357b61dbbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd18927c_951f8bab",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 323,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-07T14:38:39Z",
+      "side": 1,
+      "message": "The sentence makes more sense without this word.",
+      "range": {
+        "startLine": 323,
+        "startChar": 71,
+        "endLine": 323,
+        "endChar": 78
+      },
+      "revId": "551cfa7547c868356d2ed5126d8081357b61dbbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
