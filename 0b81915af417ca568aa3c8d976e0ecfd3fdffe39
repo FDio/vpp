@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e3bf0347_b0ffabde",
+        "filename": "src/tests/vnet/session/udp_echo.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T20:07:38Z",
+      "side": 0,
+      "message": "remove static keyword if that\u0027s the complaint. Although this is not used now, we might want to reuse it for cut-through session testing",
+      "range": {
+        "startLine": 422,
+        "startChar": 0,
+        "endLine": 422,
+        "endChar": 6
+      },
+      "revId": "0b81915af417ca568aa3c8d976e0ecfd3fdffe39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
