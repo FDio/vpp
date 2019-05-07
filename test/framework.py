@@ -756,8 +756,8 @@ class VppTestCase(unittest.TestCase):
         packet_len = len(packet) + 4
         extend = size - packet_len
         if extend > 0:
-            num = (extend / len(padding)) + 1
-            packet[Raw].load += (padding * num)[:extend]
+            num = (extend // len(padding)) + 1
+            packet[Raw].load += (padding * num)[:extend].encode("ascii")
 
     @classmethod
     def reset_packet_infos(cls):
