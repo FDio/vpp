@@ -68,7 +68,7 @@ class VppPGInterface(VppInterface):
     @property
     def input_cli(self):
         """CLI string to load the injected packets"""
-        return self._input_cli
+        return self._input_cli + " limit " + str(self._nb_replays)
 
     @property
     def in_history_counter(self):
@@ -105,9 +105,10 @@ class VppPGInterface(VppInterface):
         self._input_cli = \
             "packet-generator new pcap %s source pg%u name %s" % (
                 self.in_path, self.pg_index, self.cap_name)
+        self._nb_replays=1
 
     def enable_capture(self):
-        """ Enable capture on this packet-generator interface"""
+        """ Enable capture on this packet-generator interface of at most n packets. If n < 0, this is no limit"""
         try:
             if os.path.isfile(self.out_path):
                 name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" % \
@@ -125,13 +126,17 @@ class VppPGInterface(VppInterface):
         self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
 
-    def add_stream(self, pkts):
+    def disable_capture(self):
+        self.test.vapi.cli(self.capture_cli + " disable")
+
+    def add_stream(self, pkts, nb_replays=1):
         """
         Add a stream of packets to this packet-generator
 
         :param pkts: iterable packets
 
         """
+        self._nb_replays = nb_replays
         try:
             if os.path.isfile(self.in_path):
                 name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" %\
