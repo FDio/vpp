@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f46b199b_9e989f20",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T17:45:23Z",
+      "side": 1,
+      "message": "vls_handle_t",
+      "range": {
+        "startLine": 881,
+        "startChar": 15,
+        "endLine": 881,
+        "endChar": 18
+      },
+      "revId": "0b85a67df7f495e60a5738dd5527114c46c300cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "34012330_88b71eb3",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 899,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T17:45:23Z",
+      "side": 1,
+      "message": "I somehow missed this: vlsh_to_session_index (vlsh)",
+      "range": {
+        "startLine": 899,
+        "startChar": 35,
+        "endLine": 899,
+        "endChar": 39
+      },
+      "revId": "0b85a67df7f495e60a5738dd5527114c46c300cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8b2bb509_ca68b860",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 912,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T17:45:23Z",
+      "side": 1,
+      "message": "vls_handle_t",
+      "range": {
+        "startLine": 912,
+        "startChar": 14,
+        "endLine": 912,
+        "endChar": 17
+      },
+      "revId": "0b85a67df7f495e60a5738dd5527114c46c300cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7cfbbec7_a9f7c9f2",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 930,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T17:45:23Z",
+      "side": 1,
+      "message": "vlsh_to_session_index (vlsh)",
+      "range": {
+        "startLine": 930,
+        "startChar": 34,
+        "endLine": 930,
+        "endChar": 38
+      },
+      "revId": "0b85a67df7f495e60a5738dd5527114c46c300cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
