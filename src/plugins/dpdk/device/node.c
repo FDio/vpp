@@ -144,10 +144,10 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
       <code>xd->per_interface_next_index</code>
 */
 
-static_always_inline u8
+static_always_inline u16
 dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 * flags, int count)
 {
-  u8 rv = 0;
+  u16 rv = 0;
   int i;
   for (i = 0; i < count; i++)
     {
