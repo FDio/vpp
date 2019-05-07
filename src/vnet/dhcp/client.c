@@ -830,13 +830,14 @@ format_dhcp_client (u8 * s, va_list * va)
 
   if (c->leased_address.as_u32)
     {
-      s = format (s, "addr %U/%d gw %U\n",
+      s = format (s, "addr %U/%d gw %U",
 		  format_ip4_address, &c->leased_address,
 		  c->subnet_mask_width, format_ip4_address,
 		  &c->router_address);
 
       vec_foreach (addr, c->domain_server_address)
-	s = format (s, "dns %U ", format_ip4_address, addr);
+	s = format (s, " dns %U", format_ip4_address, addr);
+      vec_add1 (s, '\n');
     }
   else
     {

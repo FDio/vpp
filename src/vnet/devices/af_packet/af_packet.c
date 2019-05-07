@@ -128,7 +128,7 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
 		       tpacket_req_t * tx_req, int *fd, u8 ** ring)
 {
   af_packet_main_t *apm = &af_packet_main;
-  int ret, err;
+  int ret;
   struct sockaddr_ll sll;
   int ver = TPACKET_V2;
   socklen_t req_sz = sizeof (struct tpacket_req);
@@ -137,7 +137,9 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
 
   if ((*fd = socket (AF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0)
     {
-      vlib_log_debug (apm->log_class, "Failed to create socket");
+      vlib_log_debug (apm->log_class,
+		      "Failed to create AF_PACKET socket: %s (errno %d)",
+		      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -147,45 +149,48 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
   sll.sll_family = PF_PACKET;
   sll.sll_protocol = htons (ETH_P_ALL);
   sll.sll_ifindex = host_if_index;
-  if ((err = bind (*fd, (struct sockaddr *) &sll, sizeof (sll))) < 0)
+  if (bind (*fd, (struct sockaddr *) &sll, sizeof (sll)) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to bind rx packet socket (error %d)", err);
+		      "Failed to bind rx packet socket: %s (errno %d)",
+		      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
 
-  if ((err =
-       setsockopt (*fd, SOL_PACKET, PACKET_VERSION, &ver, sizeof (ver))) < 0)
+  if (setsockopt (*fd, SOL_PACKET, PACKET_VERSION, &ver, sizeof (ver)) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to set rx packet interface version");
+		      "Failed to set rx packet interface version: %s (errno %d)",
+		      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
 
   int opt = 1;
-  if ((err =
-       setsockopt (*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof (opt))) < 0)
+  if (setsockopt (*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof (opt)) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to set packet tx ring error handling option");
+		      "Failed to set packet tx ring error handling option: %s (errno %d)",
+		      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
 
-  if ((err =
-       setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz)) < 0)
+  if (setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz) < 0)
     {
-      vlib_log_debug (apm->log_class, "Failed to set packet rx ring options");
+      vlib_log_debug (apm->log_class,
+		      "Failed to set packet rx ring options: %s (errno %d)",
+		      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
 
-  if ((err =
-       setsockopt (*fd, SOL_PACKET, PACKET_TX_RING, tx_req, req_sz)) < 0)
+  if (setsockopt (*fd, SOL_PACKET, PACKET_TX_RING, tx_req, req_sz) < 0)
     {
-      vlib_log_debug (apm->log_class, "Failed to set packet tx ring options");
+      vlib_log_debug (apm->log_class,
+		      "Failed to set packet tx ring options: %s (errno %d)",
+		      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -195,7 +200,8 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
 	  0);
   if (*ring == MAP_FAILED)
     {
-      vlib_log_debug (apm->log_class, "mmap failure");
+      vlib_log_debug (apm->log_class, "mmap failure: %s (errno %d)",
+		      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -203,8 +209,10 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
   return 0;
 error:
   if (*fd >= 0)
-    close (*fd);
-  *fd = -1;
+    {
+      close (*fd);
+      *fd = -1;
+    }
   return ret;
 }
 
@@ -227,7 +235,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   vnet_main_t *vnm = vnet_get_main ();
   uword *p;
   uword if_index;
-  u8 *host_if_name_dup = vec_dup (host_if_name);
+  u8 *host_if_name_dup = 0;
   int host_if_index = -1;
 
   p = mhash_get (&apm->if_index_by_host_if_name, host_if_name);
@@ -237,6 +245,8 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
       *sw_if_index = apif->sw_if_index;
       return VNET_API_ERROR_IF_ALREADY_EXISTS;
     }
+
+  host_if_name_dup = vec_dup (host_if_name);
 
   vec_validate (rx_req, 0);
   rx_req->tp_block_size = AF_PACKET_RX_BLOCK_SIZE;
@@ -256,39 +266,52 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
    */
   if ((fd2 = socket (AF_UNIX, SOCK_DGRAM, 0)) < 0)
     {
-      vlib_log_debug (apm->log_class, "Failed to create socket");
+      vlib_log_debug (apm->log_class,
+		      "Failed to create AF_UNIX socket: %s (errno %d)",
+		      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
 
   clib_memcpy (ifr.ifr_name, (const char *) host_if_name,
 	       vec_len (host_if_name));
-  if ((ret = ioctl (fd2, SIOCGIFINDEX, &ifr)) < 0)
+  if (ioctl (fd2, SIOCGIFINDEX, &ifr) < 0)
     {
-      vlib_log_debug (apm->log_class, "af_packet_create error: %d", ret);
-      close (fd2);
-      return VNET_API_ERROR_INVALID_INTERFACE;
+      vlib_log_debug (apm->log_class,
+		      "Failed to retrieve the interface (%s) index: %s (errno %d)",
+		      host_if_name, strerror (errno), errno);
+      ret = VNET_API_ERROR_INVALID_INTERFACE;
+      goto error;
     }
 
   host_if_index = ifr.ifr_ifindex;
-  if ((ret = ioctl (fd2, SIOCGIFFLAGS, &ifr)) < 0)
+  if (ioctl (fd2, SIOCGIFFLAGS, &ifr) < 0)
     {
-      vlib_log_warn (apm->log_class, "af_packet_create error: %d", ret);
+      vlib_log_debug (apm->log_class,
+		      "Failed to get the active flag: %s (errno %d)",
+		      strerror (errno), errno);
+      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
 
   if (!(ifr.ifr_flags & IFF_UP))
     {
       ifr.ifr_flags |= IFF_UP;
-      if ((ret = ioctl (fd2, SIOCSIFFLAGS, &ifr)) < 0)
+      if (ioctl (fd2, SIOCSIFFLAGS, &ifr) < 0)
 	{
-	  vlib_log_warn (apm->log_class, "af_packet_create error: %d", ret);
+	  vlib_log_debug (apm->log_class,
+			  "Failed to set the active flag: %s (errno %d)",
+			  strerror (errno), errno);
+	  ret = VNET_API_ERROR_SYSCALL_ERROR_1;
 	  goto error;
 	}
     }
 
   if (fd2 > -1)
-    close (fd2);
+    {
+      close (fd2);
+      fd2 = -1;
+    }
 
   ret = create_packet_v2_sock (host_if_index, rx_req, tx_req, &fd, &ring);
 
@@ -384,7 +407,10 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
 
 error:
   if (fd2 > -1)
-    close (fd2);
+    {
+      close (fd2);
+      fd2 = -1;
+    }
   vec_free (host_if_name_dup);
   vec_free (rx_req);
   vec_free (tx_req);
