@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b5519a87_16f21c92",
+        "filename": "src/tools/vppapigen/README.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-07T08:41:58Z",
+      "side": 1,
+      "message": "Wrap long lines please.",
+      "range": {
+        "startLine": 48,
+        "startChar": 71,
+        "endLine": 48,
+        "endChar": 72
+      },
+      "revId": "c07debd136903c1b35351ec7d86adaac858d2a88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
