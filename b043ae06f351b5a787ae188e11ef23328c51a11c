@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7840d1fd_fa549480",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-07T19:18:36Z",
+      "side": 1,
+      "message": "please use \"%s limit %s\" % (self._input_cli, self._nb_replays)",
+      "range": {
+        "startLine": 72,
+        "startChar": 12,
+        "endLine": 72,
+        "endChar": 70
+      },
+      "revId": "b043ae06f351b5a787ae188e11ef23328c51a11c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
