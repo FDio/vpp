@@ -48,6 +48,77 @@
     },
     {
       "key": {
+        "uuid": "19b9027f_a13f0d81",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-07T18:09:14Z",
+      "side": 1,
+      "message": "\u003csubject\u003e \u003d\u003d\u003e [\u003cfeature name\u003e:] \u003csubject\u003e\n\nThis is common practice used by many committers, so we should explicitly document it in this proposal.",
+      "range": {
+        "startLine": 1,
+        "startChar": 27,
+        "endLine": 1,
+        "endChar": 36
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c85a2983_23cd028a",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-07T18:09:14Z",
+      "side": 1,
+      "message": "+1",
+      "parentUuid": "17b92ebe_32bc8b88",
+      "range": {
+        "startLine": 1,
+        "startChar": 3,
+        "endLine": 1,
+        "endChar": 18
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f2edd33b_c385c713",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-07T18:09:14Z",
+      "side": 1,
+      "message": "I agree.  Metadata should not be on the subject line.\n\nAlso this patch should include a script in extras/scripts to allow searches by metadata keyword (eg. Type) that produces output in \"git log --oneline\" format or full commit messages.",
+      "parentUuid": "36e29421_2645232b",
+      "range": {
+        "startLine": 1,
+        "startChar": 19,
+        "endLine": 1,
+        "endChar": 26
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8cc55946_91a9a323",
         "filename": ".git_commit_template.txt",
         "patchSetId": 1
@@ -82,6 +153,30 @@
       "writtenOn": "2019-05-07T08:48:13Z",
       "side": 1,
       "message": "\"refact\" to make it shorter?",
+      "range": {
+        "startLine": 12,
+        "startChar": 5,
+        "endLine": 12,
+        "endChar": 13
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "35a40176_7078792a",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-07T18:09:14Z",
+      "side": 1,
+      "message": "Assuming that Type is not on subject line, I think complete words is better than abbreviations.",
+      "parentUuid": "acb83e8b_e1a165e9",
       "range": {
         "startLine": 12,
         "startChar": 5,
