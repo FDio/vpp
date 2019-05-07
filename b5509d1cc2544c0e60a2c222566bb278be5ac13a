@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "92cd1fb1_e0f2abbf",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T04:25:07Z",
+      "side": 1,
+      "message": "Typical practice is to use the the name of the component first. So something like:\n\nldp: add option to enable transparent TLS connections",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 6
+      },
+      "revId": "b5509d1cc2544c0e60a2c222566bb278be5ac13a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4b5b3cc3_20668b97",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T04:25:07Z",
+      "side": 1,
+      "message": "If env variable LDP_TRANSPARENT_TLS is set, LDP transparently converts TCP into TLS connections",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 34
+      },
+      "revId": "b5509d1cc2544c0e60a2c222566bb278be5ac13a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "57c92ba4_55eb0fe8",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T04:25:07Z",
+      "side": 1,
+      "message": "static int",
+      "range": {
+        "startLine": 880,
+        "startChar": 0,
+        "endLine": 880,
+        "endChar": 3
+      },
+      "revId": "b5509d1cc2544c0e60a2c222566bb278be5ac13a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "89624338_9e216e56",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 894,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T04:25:07Z",
+      "side": 1,
+      "message": "LDBG(). Please fix in all places",
+      "range": {
+        "startLine": 894,
+        "startChar": 3,
+        "endLine": 894,
+        "endChar": 19
+      },
+      "revId": "b5509d1cc2544c0e60a2c222566bb278be5ac13a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a2e387a5_1e8a7fd4",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 913,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-07T04:25:07Z",
+      "side": 1,
+      "message": "static int",
+      "range": {
+        "startLine": 913,
+        "startChar": 0,
+        "endLine": 913,
+        "endChar": 3
+      },
+      "revId": "b5509d1cc2544c0e60a2c222566bb278be5ac13a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
