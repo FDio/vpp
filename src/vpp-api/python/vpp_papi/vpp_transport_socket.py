@@ -29,7 +29,7 @@ class VppTransport(object):
         self.message_table = {}
         self.sque = multiprocessing.Queue()
         self.q = multiprocessing.Queue()
-        self.message_thread = threading.Thread(target=self.msg_thread_func)
+        self.message_thread = None  # Will be set on connect().
 
     def msg_thread_func(self):
         while True:
@@ -69,6 +69,12 @@ class VppTransport(object):
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
 
+        if self.message_thread.daemon is not None:
+            raise RuntimeError(
+                "PAPI socket transport connect: You need to disconnect first.")
+        self.message_thread.daemon = threading.Thread(
+            target=self.msg_thread_func)
+
         # Create a UDS socket
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.socket.settimeout(self.read_timeout)
@@ -107,6 +113,7 @@ class VppTransport(object):
         return 0
 
     def disconnect(self):
+        # TODO: Should we detect if user forgot to connect first?
         rv = 0
         try:  # Might fail, if VPP closes socket before packet makes it out
             rv = self.parent.api.sockclnt_delete(index=self.socket_index)
@@ -116,6 +123,8 @@ class VppTransport(object):
         self.socket.close()
         self.sque.put(True)  # Terminate listening thread
         self.message_thread.join()
+        # Allow additional connect() calls.
+        self.message_thread = None
         return rv
 
     def suspend(self):
