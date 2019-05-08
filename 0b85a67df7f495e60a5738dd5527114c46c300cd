@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "81196e42_31a40cee",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-05-08T02:29:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f46b199b_9e989f20",
+      "range": {
+        "startLine": 881,
+        "startChar": 15,
+        "endLine": 881,
+        "endChar": 18
+      },
+      "revId": "0b85a67df7f495e60a5738dd5527114c46c300cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "34012330_88b71eb3",
         "filename": "src/vcl/ldp.c",
         "patchSetId": 6
@@ -36,6 +60,30 @@
       "writtenOn": "2019-05-07T17:45:23Z",
       "side": 1,
       "message": "I somehow missed this: vlsh_to_session_index (vlsh)",
+      "range": {
+        "startLine": 899,
+        "startChar": 35,
+        "endLine": 899,
+        "endChar": 39
+      },
+      "revId": "0b85a67df7f495e60a5738dd5527114c46c300cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cc9a9f69_4e5c2065",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 899,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-05-08T02:29:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "34012330_88b71eb3",
       "range": {
         "startLine": 899,
         "startChar": 35,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "7e63aaff_5440ad63",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 912,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-05-08T02:29:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8b2bb509_ca68b860",
+      "range": {
+        "startLine": 912,
+        "startChar": 14,
+        "endLine": 912,
+        "endChar": 17
+      },
+      "revId": "0b85a67df7f495e60a5738dd5527114c46c300cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7cfbbec7_a9f7c9f2",
         "filename": "src/vcl/ldp.c",
         "patchSetId": 6
@@ -82,6 +154,30 @@
       "writtenOn": "2019-05-07T17:45:23Z",
       "side": 1,
       "message": "vlsh_to_session_index (vlsh)",
+      "range": {
+        "startLine": 930,
+        "startChar": 34,
+        "endLine": 930,
+        "endChar": 38
+      },
+      "revId": "0b85a67df7f495e60a5738dd5527114c46c300cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "881a9d99_8940fcf8",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 930,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-05-08T02:29:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7cfbbec7_a9f7c9f2",
       "range": {
         "startLine": 930,
         "startChar": 34,
