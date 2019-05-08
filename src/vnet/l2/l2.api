@@ -479,9 +479,8 @@ autoreply define sw_interface_set_l2_bridge
     @param context - sender context, to match reply w/ request
     @param bd_id - the bridge domain to set the flags for
     @param is_add - if non-zero, add the entry, else clear it
-    @param is_ipv6 - if non-zero, ipv6 address, else ipv4 address
-    @param mac_address - MAC address
-    @param 
+    @param ip - ipv4 or ipv6 address
+    @param mac - MAC address
 */
 autoreply define bd_ip_mac_add_del
 {
