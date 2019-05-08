@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2fa796d4_237c554c",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-08T02:28:48Z",
+      "side": 1,
+      "message": "bytes?",
+      "range": {
+        "startLine": 284,
+        "startChar": 35,
+        "endLine": 284,
+        "endChar": 38
+      },
+      "revId": "8a72c10b29397e0060eb1178316dfa71f6e829ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ab5397b_cb9ce23f",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-08T02:28:48Z",
+      "side": 1,
+      "message": "IPv6Address.  \nIs it clearer to say \u003cclass \u0027ipaddress.IPv4Address\u0027\u003e or \u003cclass \u0027ipaddress.IPv6Address\u0027\u003e",
+      "range": {
+        "startLine": 291,
+        "startChar": 52,
+        "endLine": 291,
+        "endChar": 64
+      },
+      "revId": "8a72c10b29397e0060eb1178316dfa71f6e829ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5e2fbc2f_f2d05bad",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-08T02:28:48Z",
+      "side": 1,
+      "message": "\u003cclass vpp_papi.MACAddress\u003e",
+      "range": {
+        "startLine": 301,
+        "startChar": 44,
+        "endLine": 301,
+        "endChar": 54
+      },
+      "revId": "8a72c10b29397e0060eb1178316dfa71f6e829ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
