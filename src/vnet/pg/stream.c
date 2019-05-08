@@ -447,16 +447,16 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   /* Find an interface to use. */
   s->pg_if_index = pg_interface_add_or_get (pg, s->if_id);
 
-  {
-    pg_interface_t *pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
-    vlib_rx_or_tx_t rx_or_tx;
-
-    vlib_foreach_rx_tx (rx_or_tx)
+  if (s->sw_if_index[VLIB_RX] == ~0)
     {
-      if (s->sw_if_index[rx_or_tx] == ~0)
-	s->sw_if_index[rx_or_tx] = pi->sw_if_index;
+      pg_interface_t *pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
+      /*
+       * Default the RX interface if unset. It's a bad mistake to
+       * set [VLIB_TX] prior to ip lookup, since the ip lookup code
+       * interprets [VLIB_TX] as a fib index...
+       */
+      s->sw_if_index[VLIB_RX] = pi->sw_if_index;
     }
-  }
 
   /* Connect the graph. */
   s->next_index = vlib_node_add_next (vm, device_input_node.index,

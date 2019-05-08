@@ -388,6 +388,7 @@ define test
 	  VPP_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
 	  VPP_PLUGIN_PATH=$(call libexpand,$(libs),$(2),vpp_plugins) \
+	  VPP_TEST_PLUGIN_PATH=$(call libexpand,$(libs),$(2),vpp_api_test_plugins) \
 	  VPP_INSTALL_PATH=$(BR)/install-$(2)-native/ \
 	  LD_LIBRARY_PATH=$(call libexpand,$(libs),$(2),) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
@@ -427,6 +428,9 @@ test-shell:
 
 test-shell-debug:
 	$(call test,vpp,vpp_debug,shell)
+
+test-shell-gcov:
+	$(call test,vpp,vpp_gcov,shell)
 
 test-dep:
 	@make -C test test-dep
