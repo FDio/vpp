@@ -119,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "e5a79043_48dcf7fa",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-08T08:40:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "36e29421_2645232b",
+      "range": {
+        "startLine": 1,
+        "startChar": 19,
+        "endLine": 1,
+        "endChar": 26
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8cc55946_91a9a323",
         "filename": ".git_commit_template.txt",
         "patchSetId": 1
@@ -130,6 +154,30 @@
       "writtenOn": "2019-05-07T08:48:13Z",
       "side": 1,
       "message": "Please do not introduce trailing whitespace.\n\nColon instead?",
+      "range": {
+        "startLine": 9,
+        "startChar": 13,
+        "endLine": 9,
+        "endChar": 14
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "30804257_f46cb22c",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-08T08:40:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8cc55946_91a9a323",
       "range": {
         "startLine": 9,
         "startChar": 13,
@@ -200,6 +248,30 @@
       "writtenOn": "2019-05-07T08:48:13Z",
       "side": 1,
       "message": "Sentences should end with period.",
+      "range": {
+        "startLine": 19,
+        "startChar": 31,
+        "endLine": 19,
+        "endChar": 32
+      },
+      "revId": "925d1dc409a463de047381e5cf862475bcfcb3ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "544892a1_da31ea75",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-08T08:40:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b49c960f_99681e9b",
       "range": {
         "startLine": 19,
         "startChar": 31,
