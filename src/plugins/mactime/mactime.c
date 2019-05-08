@@ -126,6 +126,8 @@ mactime_enable_disable_command_fn (vlib_main_t * vm,
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
 			 mm->vnet_main, &sw_if_index))
 	;
+      else if (unformat (input, "sw_if_index %d", &sw_if_index))
+	;
       else
 	break;
     }
@@ -143,11 +145,6 @@ mactime_enable_disable_command_fn (vlib_main_t * vm,
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
       return clib_error_return
 	(0, "Invalid interface, only works on physical ports");
-      break;
-
-    case VNET_API_ERROR_UNIMPLEMENTED:
-      return clib_error_return (0,
-				"Device driver doesn't support redirection");
       break;
 
     default:

@@ -286,8 +286,10 @@ class VppTestCase(unittest.TestCase):
         cls.set_debug_flags(d)
         cls.vpp_bin = os.getenv('VPP_BIN', "vpp")
         cls.plugin_path = os.getenv('VPP_PLUGIN_PATH')
+        cls.test_plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
         cls.extern_plugin_path = os.getenv('EXTERN_PLUGINS')
         plugin_path = None
+        test_plugin_path = None
         if cls.plugin_path is not None:
             if cls.extern_plugin_path is not None:
                 plugin_path = "%s:%s" % (
@@ -296,6 +298,8 @@ class VppTestCase(unittest.TestCase):
                 plugin_path = cls.plugin_path
         elif cls.extern_plugin_path is not None:
             plugin_path = cls.extern_plugin_path
+        if cls.test_plugin_path is not None:
+            test_plugin_path = cls.test_plugin_path
         debug_cli = ""
         if cls.step or cls.debug_gdb or cls.debug_gdbserver:
             debug_cli = "cli-listen localhost:5002"
@@ -325,6 +329,9 @@ class VppTestCase(unittest.TestCase):
             cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
+        if test_plugin_path is not None:
+            cls.vpp_cmdline.extend(["test_plugin_path", test_plugin_path])
+
         cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
         cls.logger.info("vpp_cmdline: %s" % " ".join(cls.vpp_cmdline))
 
