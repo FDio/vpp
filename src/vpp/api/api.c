@@ -456,7 +456,7 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   vec_validate (vector, 16384);
   vec_reset_length (vector);
 
-  vlib_node_get_nodes (vm, 0 /* main threads */ ,
+  vlib_node_get_nodes (vm, 1 /* main threads */ ,
 		       0 /* include stats */ ,
 		       1 /* barrier sync */ ,
 		       &node_dups, &stat_vms);
