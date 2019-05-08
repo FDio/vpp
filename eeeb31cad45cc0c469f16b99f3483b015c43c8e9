@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "805744be_bef5338e",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1247,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-08T19:55:38Z",
+      "side": 1,
+      "message": "What do you think about \"Maglev-inspired Load Balancer",
+      "range": {
+        "startLine": 1247,
+        "startChar": 20,
+        "endLine": 1247,
+        "endChar": 33
+      },
+      "revId": "eeeb31cad45cc0c469f16b99f3483b015c43c8e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
