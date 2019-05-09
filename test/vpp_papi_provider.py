@@ -201,7 +201,7 @@ class VppPapiProvider(object):
         try:
             if os.environ['SOCKET'] == '1':
                 use_socket = True
-        except:
+        except KeyError:
             pass
         self.vpp = VPP(logger=test_class.logger,
                        read_timeout=read_timeout,
