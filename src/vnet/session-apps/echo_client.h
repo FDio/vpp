@@ -65,6 +65,7 @@ typedef struct
   u32 tls_engine;			/**< TLS engine mbedtls/openssl */
   u8 is_dgram;
   u32 no_copy;				/**< Don't memcpy data to tx fifo */
+  u32 quic_streams;			/**< QUIC streams per connection */
 
   /*
    * Test state variables
