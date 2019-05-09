@@ -397,7 +397,7 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
   wrk->sessions = pool_dup (parent_wrk->sessions);
   wrk->session_index_by_vpp_handles =
     hash_dup (parent_wrk->session_index_by_vpp_handles);
-  vls_table_wlock ();
+  vls_table_rlock ();
 
   /* *INDENT-OFF* */
   pool_foreach (s, wrk->sessions, ({
@@ -405,7 +405,7 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
   }));
   /* *INDENT-ON* */
 
-  vls_table_wunlock ();
+  vls_table_runlock ();
 }
 
 static void
