@@ -150,7 +150,7 @@ bond_tx_add_to_queue (bond_per_thread_data_t * ptd, u32 port, u32 bi)
 }
 
 static_always_inline u32
-bond_lb_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
+bond_lb_broadcast (vlib_main_t * vm,
 		   bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
 {
   bond_main_t *bm = &bond_main;
@@ -176,10 +176,9 @@ bond_lb_broadcast (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-bond_lb_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
+bond_lb_l2 (vlib_buffer_t * b0)
 {
-  ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
+  ethernet_header_t *eth = vlib_buffer_get_current (b0);
   u64 *dst = (u64 *) & eth->dst_address[0];
   u64 a = clib_mem_unaligned (dst, u64);
   u32 *src = (u32 *) & eth->src_address[2];
@@ -212,10 +211,9 @@ bond_locate_ethertype (ethernet_header_t * eth)
 }
 
 static_always_inline u32
-bond_lb_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
-	     bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
+bond_lb_l23 (vlib_buffer_t * b0)
 {
-  ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
+  ethernet_header_t *eth = vlib_buffer_get_current (b0);
   u8 ip_version;
   ip4_header_t *ip4;
   u16 ethertype, *ethertype_p;
@@ -226,7 +224,7 @@ bond_lb_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if ((ethertype != htons (ETHERNET_TYPE_IP4)) &&
       (ethertype != htons (ETHERNET_TYPE_IP6)))
-    return (bond_lb_l2 (vm, node, bif, b0, n_slaves));
+    return bond_lb_l2 (b0);
 
   ip4 = (ip4_header_t *) (ethertype_p + 1);
   ip_version = (ip4->ip_version_and_header_length >> 4);
@@ -269,14 +267,13 @@ bond_lb_l23 (vlib_main_t * vm, vlib_node_runtime_t * node,
 					  uword), a);
       return c;
     }
-  return (bond_lb_l2 (vm, node, bif, b0, n_slaves));
+  return bond_lb_l2 (b0);
 }
 
 static_always_inline u32
-bond_lb_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
-	     bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
+bond_lb_l34 (vlib_buffer_t * b0)
 {
-  ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b0);
+  ethernet_header_t *eth = vlib_buffer_get_current (b0);
   u8 ip_version;
   uword is_tcp_udp;
   ip4_header_t *ip4;
@@ -287,7 +284,7 @@ bond_lb_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if ((ethertype != htons (ETHERNET_TYPE_IP4)) &&
       (ethertype != htons (ETHERNET_TYPE_IP6)))
-    return (bond_lb_l2 (vm, node, bif, b0, n_slaves));
+    return (bond_lb_l2 (b0));
 
   ip4 = (ip4_header_t *) (ethertype_p + 1);
   ip_version = (ip4->ip_version_and_header_length >> 4);
@@ -346,13 +343,11 @@ bond_lb_l34 (vlib_main_t * vm, vlib_node_runtime_t * node,
       return c;
     }
 
-  return (bond_lb_l2 (vm, node, bif, b0, n_slaves));
+  return bond_lb_l2 (b0);
 }
 
 static_always_inline u32
-bond_lb_round_robin (vlib_main_t * vm,
-		     vlib_node_runtime_t * node,
-		     bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
+bond_lb_round_robin (bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
 {
   bif->lb_rr_last_index++;
   if (bif->lb_rr_last_index >= n_slaves)
@@ -362,8 +357,7 @@ bond_lb_round_robin (vlib_main_t * vm,
 }
 
 static_always_inline void
-bond_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		bond_if_t * bif, vlib_buffer_t ** b,
+bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 		u32 * h, u32 n_left, uword n_slaves, u32 lb_alg)
 {
   while (n_left >= 4)
@@ -391,38 +385,38 @@ bond_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (lb_alg == BOND_LB_L2)
 	{
-	  h[0] = bond_lb_l2 (vm, node, bif, b[0], n_slaves);
-	  h[1] = bond_lb_l2 (vm, node, bif, b[1], n_slaves);
-	  h[2] = bond_lb_l2 (vm, node, bif, b[2], n_slaves);
-	  h[3] = bond_lb_l2 (vm, node, bif, b[3], n_slaves);
+	  h[0] = bond_lb_l2 (b[0]);
+	  h[1] = bond_lb_l2 (b[1]);
+	  h[2] = bond_lb_l2 (b[2]);
+	  h[3] = bond_lb_l2 (b[3]);
 	}
       else if (lb_alg == BOND_LB_L34)
 	{
-	  h[0] = bond_lb_l34 (vm, node, bif, b[0], n_slaves);
-	  h[1] = bond_lb_l34 (vm, node, bif, b[1], n_slaves);
-	  h[2] = bond_lb_l34 (vm, node, bif, b[2], n_slaves);
-	  h[3] = bond_lb_l34 (vm, node, bif, b[3], n_slaves);
+	  h[0] = bond_lb_l34 (b[0]);
+	  h[1] = bond_lb_l34 (b[1]);
+	  h[2] = bond_lb_l34 (b[2]);
+	  h[3] = bond_lb_l34 (b[3]);
 	}
       else if (lb_alg == BOND_LB_L23)
 	{
-	  h[0] = bond_lb_l23 (vm, node, bif, b[0], n_slaves);
-	  h[1] = bond_lb_l23 (vm, node, bif, b[1], n_slaves);
-	  h[2] = bond_lb_l23 (vm, node, bif, b[2], n_slaves);
-	  h[3] = bond_lb_l23 (vm, node, bif, b[3], n_slaves);
+	  h[0] = bond_lb_l23 (b[0]);
+	  h[1] = bond_lb_l23 (b[1]);
+	  h[2] = bond_lb_l23 (b[2]);
+	  h[3] = bond_lb_l23 (b[3]);
 	}
       else if (lb_alg == BOND_LB_RR)
 	{
-	  h[0] = bond_lb_round_robin (vm, node, bif, b[0], n_slaves);
-	  h[1] = bond_lb_round_robin (vm, node, bif, b[1], n_slaves);
-	  h[2] = bond_lb_round_robin (vm, node, bif, b[2], n_slaves);
-	  h[3] = bond_lb_round_robin (vm, node, bif, b[3], n_slaves);
+	  h[0] = bond_lb_round_robin (bif, b[0], n_slaves);
+	  h[1] = bond_lb_round_robin (bif, b[1], n_slaves);
+	  h[2] = bond_lb_round_robin (bif, b[2], n_slaves);
+	  h[3] = bond_lb_round_robin (bif, b[3], n_slaves);
 	}
       else if (lb_alg == BOND_LB_BC)
 	{
-	  h[0] = bond_lb_broadcast (vm, node, bif, b[0], n_slaves);
-	  h[1] = bond_lb_broadcast (vm, node, bif, b[1], n_slaves);
-	  h[2] = bond_lb_broadcast (vm, node, bif, b[2], n_slaves);
-	  h[3] = bond_lb_broadcast (vm, node, bif, b[3], n_slaves);
+	  h[0] = bond_lb_broadcast (vm, bif, b[0], n_slaves);
+	  h[1] = bond_lb_broadcast (vm, bif, b[1], n_slaves);
+	  h[2] = bond_lb_broadcast (vm, bif, b[2], n_slaves);
+	  h[3] = bond_lb_broadcast (vm, bif, b[3], n_slaves);
 	}
       else
 	{
@@ -439,15 +433,15 @@ bond_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       if (bif->lb == BOND_LB_L2)
-	h[0] = bond_lb_l2 (vm, node, bif, b[0], n_slaves);
+	h[0] = bond_lb_l2 (b[0]);
       else if (bif->lb == BOND_LB_L34)
-	h[0] = bond_lb_l34 (vm, node, bif, b[0], n_slaves);
+	h[0] = bond_lb_l34 (b[0]);
       else if (bif->lb == BOND_LB_L23)
-	h[0] = bond_lb_l23 (vm, node, bif, b[0], n_slaves);
+	h[0] = bond_lb_l23 (b[0]);
       else if (bif->lb == BOND_LB_RR)
-	h[0] = bond_lb_round_robin (vm, node, bif, b[0], n_slaves);
+	h[0] = bond_lb_round_robin (bif, b[0], n_slaves);
       else if (bif->lb == BOND_LB_BC)
-	h[0] = bond_lb_broadcast (vm, node, bif, b[0], n_slaves);
+	h[0] = bond_lb_broadcast (vm, bif, b[0], n_slaves);
       else
 	{
 	  ASSERT (0);
@@ -621,7 +615,7 @@ bond_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node, bond_if_t * bif,
       vlib_trace_buffer (vm, node, next0, b[0], 0 /* follow_chain */ );
       vlib_set_trace_count (vm, node, --n_trace);
       t0 = vlib_add_trace (vm, node, b[0], sizeof (*t0));
-      eth = (ethernet_header_t *) vlib_buffer_get_current (b[0]);
+      eth = vlib_buffer_get_current (b[0]);
       t0->ethernet = *eth;
       t0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
       if (!h)
@@ -698,8 +692,7 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
     {
       sw_if_index = *vec_elt_at_index (bif->active_slaves, 0);
 
-      bond_tx_inline (vm, node, bif, bufs, hashes, n_left, n_slaves,
-		      BOND_LB_BC);
+      bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_BC);
       bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, 0);
       bond_update_sw_if_index (ptd, bif, from, bufs, &sw_if_index, n_left,
 			       /* single_sw_if_index */ 1);
@@ -707,17 +700,13 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
     }
 
   if (bif->lb == BOND_LB_L2)
-    bond_tx_inline (vm, node, bif, bufs, hashes, n_left, n_slaves,
-		    BOND_LB_L2);
+    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L2);
   else if (bif->lb == BOND_LB_L34)
-    bond_tx_inline (vm, node, bif, bufs, hashes, n_left, n_slaves,
-		    BOND_LB_L34);
+    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L34);
   else if (bif->lb == BOND_LB_L23)
-    bond_tx_inline (vm, node, bif, bufs, hashes, n_left, n_slaves,
-		    BOND_LB_L23);
+    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L23);
   else if (bif->lb == BOND_LB_RR)
-    bond_tx_inline (vm, node, bif, bufs, hashes, n_left, n_slaves,
-		    BOND_LB_RR);
+    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_RR);
   else
     ASSERT (0);
 
