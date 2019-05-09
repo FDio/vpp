@@ -224,7 +224,9 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
    */
   segment_size = segment_size ? segment_size : props->add_segment_size;
   page_size = clib_mem_get_page_size ();
-  segment_size = (segment_size + page_size - 1) & ~(page_size - 1);
+  /* Protect against segment size u32 wrap */
+  segment_size = clib_max (segment_size + page_size - 1, segment_size);
+  segment_size = segment_size & ~(page_size - 1);
   if (props->segment_type != SSVM_SEGMENT_PRIVATE)
     {
       seg_name = format (0, "%d-%d%c", getpid (), segment_name_counter++, 0);

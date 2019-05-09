@@ -554,7 +554,7 @@ application_alloc_and_init (app_init_args_t * a)
 
   props = application_segment_manager_properties (app);
   segment_manager_properties_init (props);
-  props->segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
+  props->segment_size = options[APP_OPTIONS_SEGMENT_SIZE];
   props->prealloc_fifos = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
   if (options[APP_OPTIONS_ADD_SEGMENT_SIZE])
     {
