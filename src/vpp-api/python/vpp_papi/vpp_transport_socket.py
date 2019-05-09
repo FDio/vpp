@@ -69,11 +69,10 @@ class VppTransport(object):
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
 
-        if self.message_thread.daemon is not None:
+        if self.message_thread is not None:
             raise RuntimeError(
                 "PAPI socket transport connect: You need to disconnect first.")
-        self.message_thread.daemon = threading.Thread(
-            target=self.msg_thread_func)
+        self.message_thread = threading.Thread(target=self.msg_thread_func)
 
         # Create a UDS socket
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
