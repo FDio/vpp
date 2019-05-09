@@ -114,6 +114,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
   ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_interface_main_t *vim = &vnm->interface_main;
   u32 thread_idx = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_resource_t *res = 0;
@@ -303,6 +305,13 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  vlib_increment_combined_counter
 	    (&ipsec_sa_counters, thread_index, sa_index0,
 	     1, b0->current_length);
+
+	  /* Update tunnel interface tx counters */
+	  if (is_tun)
+	    vlib_increment_combined_counter
+	      (vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+	       thread_index, vnet_buffer (b0)->sw_if_index[VLIB_TX],
+	       1, b0->current_length);
 
 	  res->ops[res->n_ops] = op;
 	  res->bi[res->n_ops] = bi0;

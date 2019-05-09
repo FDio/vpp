@@ -238,6 +238,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, int is_ip6, int is_tun)
 {
   ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_interface_main_t *vim = &vnm->interface_main;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, vm->thread_index);
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
@@ -293,6 +295,14 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
 					   sa_index0, current_sa_packets,
 					   current_sa_bytes);
+
+	  /* Update tunnel interface tx counters */
+	  if (is_tun)
+	    vlib_increment_combined_counter
+	      (vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+	       thread_index, vnet_buffer (b[0])->sw_if_index[VLIB_TX],
+	       current_sa_packets, current_sa_bytes);
+
 	  current_sa_packets = current_sa_bytes = 0;
 	  spi = clib_net_to_host_u32 (sa0->spi);
 	  block_sz = sa0->crypto_block_size;
