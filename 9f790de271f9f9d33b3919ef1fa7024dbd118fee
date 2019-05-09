@@ -45,6 +45,30 @@
       "revId": "9f790de271f9f9d33b3919ef1fa7024dbd118fee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "96f4ae33_a9592078",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 676,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-09T14:26:51Z",
+      "side": 1,
+      "message": "At a high level, this tries for a maximum of 1s (1000 times sleeps for 1ms). If during that time the tx buffer drains, we stop and send the message. Otherwise, we send the message after 1s either way.",
+      "parentUuid": "0b894785_28c66411",
+      "range": {
+        "startLine": 676,
+        "startChar": 2,
+        "endLine": 676,
+        "endChar": 7
+      },
+      "revId": "9f790de271f9f9d33b3919ef1fa7024dbd118fee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
