@@ -46,6 +46,30 @@
       "revId": "c2f8265c1db9daccd3c39e717e55c071e50132c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "177ab349_904f59c5",
+        "filename": "extras/japi/java/jvpp-core/io/fd/vpp/jvpp/core/examples/L2AclExample.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-09T15:41:20Z",
+      "side": 1,
+      "message": "Looking at https://stackoverflow.com/questions/4266756/can-we-make-unsigned-byte-in-java\nthis seems to be an old Java hack.\nIn newer Java versions, I would prefer readability of https://docs.oracle.com/javase/8/docs/api/java/lang/Byte.html#toUnsignedInt-byte-\n\nWhich Java versions should this code run on?",
+      "parentUuid": "e6df0cf3_aadb9c45",
+      "range": {
+        "startLine": 74,
+        "startChar": 28,
+        "endLine": 74,
+        "endChar": 35
+      },
+      "revId": "c2f8265c1db9daccd3c39e717e55c071e50132c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
