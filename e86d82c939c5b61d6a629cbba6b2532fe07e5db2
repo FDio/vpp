@@ -22,6 +22,23 @@
       "revId": "e86d82c939c5b61d6a629cbba6b2532fe07e5db2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ab183397_456627d5",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-05-09T14:19:37Z",
+      "side": 1,
+      "message": "Have you tested this form to be sure that gerrit / jira actually link issues and commits? I suspect that a change to the gerrit.fd.io hooks may be needed...",
+      "revId": "e86d82c939c5b61d6a629cbba6b2532fe07e5db2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
