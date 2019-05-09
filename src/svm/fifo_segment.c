@@ -190,23 +190,8 @@ fifo_segment_get_segment (fifo_segment_main_t * sm, u32 segment_index)
 void
 fifo_segment_info (fifo_segment_t * seg, char **address, size_t * size)
 {
-  if (ssvm_type (&seg->ssvm) == SSVM_SEGMENT_PRIVATE)
-    {
-#if USE_DLMALLOC == 0
-      mheap_t *heap_header;
-
-      *address = pointer_to_uword (seg->ssvm.sh->heap);
-      heap_header = mheap_header (seg->ssvm.sh->heap);
-      *size = heap_header->max_size;
-#else
-      mspace_get_address_and_size (seg->ssvm.sh->heap, address, size);
-#endif
-    }
-  else
-    {
-      *address = (char *) seg->ssvm.sh->ssvm_va;
-      *size = seg->ssvm.ssvm_size;
-    }
+  *address = (char *) seg->ssvm.sh->ssvm_va;
+  *size = seg->ssvm.ssvm_size;
 }
 
 void
