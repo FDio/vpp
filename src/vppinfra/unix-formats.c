@@ -812,11 +812,11 @@ u8 * format_timeval (u8 * s, va_list * args)
 	  break;
 	case 'm':
 	  what = tm->tm_mon + 1;
-	  what_fmt = "%2d";
+	  what_fmt = "%02d";
 	  break;
 	case 'd':
 	  what = tm->tm_mday;
-	  what_fmt = "%2d";
+	  what_fmt = "%02d";
 	  break;
 	case 'H':
 	  what = tm->tm_hour;
