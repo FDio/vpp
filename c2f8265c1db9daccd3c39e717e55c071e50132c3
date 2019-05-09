@@ -22,6 +22,30 @@
       "revId": "c2f8265c1db9daccd3c39e717e55c071e50132c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e6df0cf3_aadb9c45",
+        "filename": "extras/japi/java/jvpp-core/io/fd/vpp/jvpp/core/examples/L2AclExample.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 331
+      },
+      "writtenOn": "2019-05-09T09:32:46Z",
+      "side": 1,
+      "message": "without it this would return integer value not byte value.\nvar \u003d ((byte) 0xff) \u0026 0xff; \u003d 255\nvar \u003d ((byte) 0xff); \u003d -1",
+      "parentUuid": "3e402e41_ff46b568",
+      "range": {
+        "startLine": 74,
+        "startChar": 28,
+        "endLine": 74,
+        "endChar": 35
+      },
+      "revId": "c2f8265c1db9daccd3c39e717e55c071e50132c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
