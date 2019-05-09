@@ -247,7 +247,7 @@ autoreply define sw_interface_add_del_address
     @param context - sender context, to match reply w/ request
     @param sw_if_index - index of the interface
     @param is_ipv6 - if non-zero ipv6, else ipv4
-    @param vrf_id - fib table/vrd id to associate the interface with
+    @param vrf_id - fib table/vrf id to associate the interface with
 */
 autoreply define sw_interface_set_table
 {
