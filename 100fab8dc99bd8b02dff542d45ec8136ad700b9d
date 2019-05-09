@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3bb017ee_c397d2cf",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-09T12:48:09Z",
+      "side": 1,
+      "message": "ipaddress.IPv4Address",
+      "range": {
+        "startLine": 291,
+        "startChar": 38,
+        "endLine": 291,
+        "endChar": 69
+      },
+      "revId": "100fab8dc99bd8b02dff542d45ec8136ad700b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
