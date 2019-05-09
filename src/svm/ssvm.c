@@ -372,6 +372,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   heap = create_mspace (rnd_size, 1 /* locked */ );
 #endif
 
+  clib_warning ("size is %u ssvm size %u", rnd_size, ssvm->ssvm_size);
   ssvm->ssvm_size = rnd_size;
   ssvm->i_am_master = 1;
   ssvm->my_pid = getpid ();
@@ -383,6 +384,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
 
   clib_memset (sh, 0, sizeof (*sh));
   sh->heap = heap;
+  sh->ssvm_va = pointer_to_uword (heap);
   sh->type = SSVM_SEGMENT_PRIVATE;
 
   return 0;
