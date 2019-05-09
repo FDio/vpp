@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0ab083d9_7ac27cb4",
+        "filename": "src/vnet/dhcp/client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1193,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-05-09T12:28:56Z",
+      "side": 1,
+      "message": "Please use clib_cpu_time_now(), which costs less than 1ns - as opposed to two system calls.",
+      "revId": "514f36452884fbdd5f8c0aa50ba969dbff0aeef9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f9bb5556_e439cb2d",
+        "filename": "src/vnet/dhcp/dhcp6_pd_client_dp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 653,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-05-09T12:28:56Z",
+      "side": 1,
+      "message": "Same comment: clib_cpu_time_now() please",
+      "revId": "514f36452884fbdd5f8c0aa50ba969dbff0aeef9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
