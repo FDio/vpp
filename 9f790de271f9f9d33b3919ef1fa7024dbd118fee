@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f85afc0_6eaf831e",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 676,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-05-09T07:15:34Z",
+      "side": 1,
+      "message": "what if bytes does not equals to 0, while retry comes to 0?",
+      "range": {
+        "startLine": 676,
+        "startChar": 9,
+        "endLine": 676,
+        "endChar": 14
+      },
+      "revId": "9f790de271f9f9d33b3919ef1fa7024dbd118fee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
