@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e103d766_cafa49bc",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-09T14:29:16Z",
+      "side": 1,
+      "message": "This also needs to be more resilient.",
+      "range": {
+        "startLine": 128,
+        "startChar": 28,
+        "endLine": 128,
+        "endChar": 32
+      },
+      "revId": "bec519ccabce87faa7155a7b6fd0822e0b84a80a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
