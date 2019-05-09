@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e402e41_ff46b568",
+        "filename": "extras/japi/java/jvpp-core/io/fd/vpp/jvpp/core/examples/L2AclExample.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-09T08:40:59Z",
+      "side": 1,
+      "message": "Why is this part needed?",
+      "range": {
+        "startLine": 74,
+        "startChar": 28,
+        "endLine": 74,
+        "endChar": 35
+      },
+      "revId": "c2f8265c1db9daccd3c39e717e55c071e50132c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
