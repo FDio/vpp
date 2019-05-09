@@ -28,9 +28,10 @@ class VppTransport(object):
         self.server_address = server_address
         self.header = struct.Struct('>QII')
         self.message_table = {}
-        self.sque = multiprocessing.Queue()
-        self.q = multiprocessing.Queue()
-        self.message_thread = None  # Will be set on connect().
+        # The following fields are set in connect().
+        self.sque = None
+        self.q = None
+        self.message_thread = None
 
     def msg_thread_func(self):
         while True:
@@ -69,11 +70,12 @@ class VppTransport(object):
                         2, 'Unknown response from select')
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
+        # TODO: Reorder the actions and add "roll-backs",
+        # to restore clean disconnect state when failure happens durng connect.
 
         if self.message_thread is not None:
             raise VppTransportSocketIOError(
                 1, "PAPI socket transport connect: Need to disconnect first.")
-        self.message_thread = threading.Thread(target=self.msg_thread_func)
 
         # Create a UDS socket
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -87,6 +89,12 @@ class VppTransport(object):
             raise
 
         self.connected = True
+
+        # TODO: Can this block be moved even later?
+        self.sque = multiprocessing.Queue()
+        self.q = multiprocessing.Queue()
+        self.message_thread = threading.Thread(target=self.msg_thread_func)
+
         # Initialise sockclnt_create
         sockclnt_create = self.parent.messages['sockclnt_create']
         sockclnt_create_reply = self.parent.messages['sockclnt_create_reply']
@@ -123,9 +131,10 @@ class VppTransport(object):
         self.connected = False
         self.socket.close()
         self.sque.put(True)  # Terminate listening thread
-        self.message_thread.join()
-        # Allow additional connect() calls.
-        self.message_thread = None
+        if self.message_thread is not None:
+            # Allow additional connect() calls.
+            self.message_thread.join()
+            self.message_thread = None
         return rv
 
     def suspend(self):
