@@ -365,29 +365,38 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
 					       session_t * s, u8 is_fail)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  vnet_connect_args_t a;
+  vnet_connect_args_t *a = 0;
   int rv;
   u8 thread_index = vlib_get_thread_index ();
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  u32 stream_n;
 
   DBG ("QUIC Connection handle %d", session_handle (s));
 
-  a.uri = (char *) ecm->connect_uri;
-  parse_uri (a.uri, &sep);
+  vec_validate (a, 1);
+  a->uri = (char *) ecm->connect_uri;
+  parse_uri (a->uri, &sep);
   sep.transport_opts = session_handle (s);
-  sep.port = 0;
-  clib_memset (&a, 0, sizeof (a));
-  a.app_index = ecm->app_index;
-  a.api_context = -1 - api_context;
-  clib_memcpy (&a.sep_ext, &sep, sizeof (sep));
+  sep.port = 0;			/* QUIC: create a stream flag */
 
-  if ((rv = vnet_connect (&a)))
+  for (stream_n = 0; stream_n < ecm->quic_streams; stream_n++)
     {
-      clib_error ("Session opening failed: %d", rv);
-      return -1;
+      clib_memset (a, 0, sizeof (a));
+      a->app_index = ecm->app_index;
+      a->api_context = -1 - api_context;
+      clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+
+      DBG ("QUIC opening stream %d", stream_n);
+      if ((rv = vnet_connect (a)))
+	{
+	  clib_error ("Stream session %d opening failed: %d", stream_n, rv);
+	  return -1;
+	}
+      DBG ("QUIC stream %d connected", stream_n);
     }
   vec_add1 (ecm->quic_session_index_by_thread[thread_index],
 	    session_handle (s));
+  vec_free (a);
   return 0;
 }
 
@@ -751,6 +760,7 @@ echo_clients_command_fn (vlib_main_t * vm,
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   int rv;
 
+  ecm->quic_streams = 1;
   ecm->bytes_to_send = 8192;
   ecm->no_return = 0;
   ecm->fifo_size = 64 << 10;
@@ -774,6 +784,8 @@ echo_clients_command_fn (vlib_main_t * vm,
       if (unformat (input, "uri %s", &ecm->connect_uri))
 	;
       else if (unformat (input, "nclients %d", &n_clients))
+	;
+      else if (unformat (input, "quic-streams %d", &ecm->quic_streams))
 	;
       else if (unformat (input, "mbytes %lld", &tmp))
 	ecm->bytes_to_send = tmp << 20;
@@ -841,7 +853,7 @@ echo_clients_command_fn (vlib_main_t * vm,
 
 
   ecm->ready_connections = 0;
-  ecm->expected_connections = n_clients;
+  ecm->expected_connections = n_clients * ecm->quic_streams;
   ecm->rx_total = 0;
   ecm->tx_total = 0;
 
