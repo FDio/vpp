@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "07a488ea_ca045ab7",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-09T13:59:29Z",
+      "side": 1,
+      "message": "Not needed here.",
+      "range": {
+        "startLine": 292,
+        "startChar": 8,
+        "endLine": 292,
+        "endChar": 31
+      },
+      "revId": "af58116191193db63d79e59ec52551e96305605e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "38591712_af43f2ec",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-09T13:59:29Z",
+      "side": 1,
+      "message": "Not needed here.",
+      "range": {
+        "startLine": 301,
+        "startChar": 0,
+        "endLine": 302,
+        "endChar": 51
+      },
+      "revId": "af58116191193db63d79e59ec52551e96305605e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "75fb34c7_fcfc3475",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-09T13:59:29Z",
+      "side": 1,
+      "message": "cls.test_plugin_path",
+      "range": {
+        "startLine": 332,
+        "startChar": 11,
+        "endLine": 332,
+        "endChar": 27
+      },
+      "revId": "af58116191193db63d79e59ec52551e96305605e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e986baa0_7d774af9",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-09T13:59:29Z",
+      "side": 1,
+      "message": "cls.test_plugin_path",
+      "range": {
+        "startLine": 333,
+        "startChar": 56,
+        "endLine": 333,
+        "endChar": 72
+      },
+      "revId": "af58116191193db63d79e59ec52551e96305605e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
