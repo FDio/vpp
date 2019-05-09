@@ -22,6 +22,30 @@
       "revId": "875158acd64244eeae431578e3b5a086d5e1f1c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f3bdd91d_fa193e6c",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-09T08:09:16Z",
+      "side": 1,
+      "message": "Hi Paul.\n\nI see you have created https://gerrit.fd.io/r/19426\nbut not a fix for this, so I guess you are interested in how would a contributor (not a committer) fix this.\n\nThus, I have made https://gerrit.fd.io/r/19452\nin a slightly more verbose style than usual.",
+      "parentUuid": "96388ab5_16284fe8",
+      "range": {
+        "startLine": 73,
+        "startChar": 18,
+        "endLine": 73,
+        "endChar": 30
+      },
+      "revId": "875158acd64244eeae431578e3b5a086d5e1f1c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
