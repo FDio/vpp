@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6243d74b_8fc11420",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-09T13:01:44Z",
+      "side": 1,
+      "message": "Is this needed? Line 2 explains it better.",
+      "range": {
+        "startLine": 1,
+        "startChar": 28,
+        "endLine": 1,
+        "endChar": 41
+      },
+      "revId": "e86d82c939c5b61d6a629cbba6b2532fe07e5db2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
