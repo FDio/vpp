@@ -383,6 +383,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
 
   clib_memset (sh, 0, sizeof (*sh));
   sh->heap = heap;
+  sh->ssvm_va = pointer_to_uword (heap);
   sh->type = SSVM_SEGMENT_PRIVATE;
 
   return 0;
