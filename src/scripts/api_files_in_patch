@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Copyright (c) 2019 Cisco and/or its affiliates.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Bail out if not in a git tree
+git rev-parse 2> /dev/null
+if [ $? != 0 ] ; then
+    exit 0
+fi
+
+# ... or dependencies not met
+which git egrep awk >/dev/null
+if [ $? != 0 ] ; then
+    exit 1
+fi
+
+# ... or if the output file is not specified in $1
+outfile=$1 
+[ -n "$outfile" ] || exit 1
+rm -f $outfile
+
+# Retrieve list of api files in the patch at HEAD,
+# do nothing if there are none.
+api_files=$(git show --stat | egrep -e 'src/.+\.api\>' | awk -e '{ print $1}')
+if [ "$api_files" = "" ] ; then
+    exit 0
+fi
+
+# Generate the api changes file
+outdir=$(dirname $outfile)
+mkdir -p $outdir || exit 1
+for apifile in $api_files ; do
+    echo $apifile >>$outfile
+done
+
+# Echo output file name for build system use
+echo $outfile
+

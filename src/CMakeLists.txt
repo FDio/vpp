@@ -126,6 +126,20 @@ if (VPP_GIT_TOPLEVEL_DIR)
     DIRECTORY APPEND PROPERTY
     CMAKE_CONFIGURE_DEPENDS ${VPP_GIT_TOPLEVEL_DIR}/.git/index
   )
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND scripts/api_files_in_patch
+    ${CMAKE_CURRENT_BINARY_DIR}/${VPP_VERSION}.api-file.changes
+    OUTPUT_VARIABLE VPP_API_CHANGES_FILE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if (VPP_API_CHANGES_FILE)
+    install(
+      FILES ${VPP_API_CHANGES_FILE}
+      DESTINATION share/vpp/api
+      COMPONENT vpp
+    )
+  endif()
 endif()
 
 ##############################################################################
