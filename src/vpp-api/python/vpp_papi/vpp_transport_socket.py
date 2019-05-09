@@ -14,6 +14,7 @@ import logging
 
 
 class VppTransportSocketIOError(IOError):
+    # TODO: Document different values of error number (first numeric argument).
     pass
 
 
@@ -70,8 +71,8 @@ class VppTransport(object):
     def connect(self, name, pfx, msg_handler, rx_qlen):
 
         if self.message_thread is not None:
-            raise RuntimeError(
-                "PAPI socket transport connect: You need to disconnect first.")
+            raise VppTransportSocketIOError(
+                1, "PAPI socket transport connect: Need to disconnect first.")
         self.message_thread = threading.Thread(target=self.msg_thread_func)
 
         # Create a UDS socket
@@ -98,6 +99,7 @@ class VppTransport(object):
         msg = self._read()
         hdr, length = self.parent.header.unpack(msg, 0)
         if hdr.msgid != 16:
+            # TODO: Add first numeric argument.
             raise VppTransportSocketIOError('Invalid reply message')
 
         r, length = sockclnt_create_reply.unpack(msg)
