@@ -1599,8 +1599,8 @@ dns_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "max-ttl %u", &dm->max_ttl_in_seconds))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 }
@@ -2270,8 +2270,8 @@ show_dns_cache_command_fn (vlib_main_t * vm,
       else if (unformat (input, "name %s", &name))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
 
   vlib_cli_output (vm, "%U", format_dns_cache, dm, now, verbose, name);
@@ -2354,8 +2354,8 @@ dns_cache_add_del_command_fn (vlib_main_t * vm,
 	      return error;
 	    }
 	}
-      return clib_error_return (0, "unknown input `%U'",
-				format_unformat_error, input);
+      return clib_error_return_errno (0, -158, "unknown input `%U'",
+				      format_unformat_error, input);
     }
 
   /* Note: dns_add_static_entry consumes the name vector if OK... */
@@ -2591,8 +2591,8 @@ test_dns_fmt_command_fn (vlib_main_t * vm,
       else if (unformat (input, "verbose"))
 	verbose = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
 
   vec_validate (dns_reply_data, ARRAY_LEN (dns_reply_data_initializer) - 1);
@@ -2658,8 +2658,8 @@ test_dns_unfmt_command_fn (vlib_main_t * vm,
       else if (unformat (input, "%U", unformat_dns_reply, &dns_reply_data))
 	reply_set = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (reply_set == 0)

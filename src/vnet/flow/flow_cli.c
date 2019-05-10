@@ -141,8 +141,9 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
       if (unformat (line_input, "index %u", &index))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"parse error: '%U'",
+					format_unformat_error, line_input);
     }
 
   unformat_free (line_input);
@@ -233,8 +234,10 @@ show_flow_interface (vlib_main_t * vm, unformat_input_t * input,
 			unformat_vnet_hw_interface, vnm, &hw_if_index))
 	    ;
 	  else
-	    return clib_error_return (0, "parse error: '%U'",
-				      format_unformat_error, line_input);
+	    return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					    "parse error: '%U'",
+					    format_unformat_error,
+					    line_input);
 	}
       unformat_free (line_input);
     }
@@ -327,8 +330,9 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 			 &hw_if_index))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"parse error: '%U'",
+					format_unformat_error, line_input);
     }
 
   unformat_free (line_input);

@@ -65,7 +65,9 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	hw_addr_ptr = hwaddr;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -155,7 +157,9 @@ af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -219,7 +223,9 @@ af_packet_set_l4_cksum_offload_command_fn (vlib_main_t * vm,
 	set = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}

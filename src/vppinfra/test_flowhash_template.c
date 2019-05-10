@@ -202,8 +202,9 @@ test_flowhash_main (test_main_t * tm)
       else if (unformat (i, "iterations %d", &tm->iterations))
 	;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, i);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input '%U'",
+					format_unformat_error, i);
     }
 
   error = test_flowhash (tm);

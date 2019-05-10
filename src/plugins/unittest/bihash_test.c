@@ -25,6 +25,8 @@
 
 #include <vppinfra/bihash_template.c>
 
+#include <vnet/api_errno.h>
+
 typedef struct
 {
   u64 alloc_add;
@@ -504,8 +506,9 @@ test_bihash_command_fn (vlib_main_t * vm,
       else if (unformat (input, "verbose"))
 	tm->verbose = 1;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input '%U'",
+					format_unformat_error, input);
     }
 
   /* Preallocate hash table, key vector */

@@ -542,8 +542,8 @@ l2learn_config (vlib_main_t * vm, unformat_input_t * input)
 	;
 
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
 
   return 0;

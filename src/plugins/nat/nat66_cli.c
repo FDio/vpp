@@ -51,7 +51,9 @@ nat66_interface_feature_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -185,7 +187,9 @@ nat66_add_del_static_mapping_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input: '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}

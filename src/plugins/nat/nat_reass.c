@@ -747,7 +747,9 @@ nat_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_ip6 = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}

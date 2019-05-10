@@ -20,6 +20,8 @@
 #include <dlfcn.h>
 #include <dirent.h>
 
+#include <vnet/api_errno.h>
+
 plugin_main_t vlib_plugin_main;
 
 char *vlib_plugin_path __attribute__ ((weak));
@@ -500,7 +502,9 @@ vlib_plugin_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, input);
 	  goto done;
 	}
@@ -539,7 +543,9 @@ done:
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, input);
 	  {
 	    vec_free (s);
@@ -568,8 +574,9 @@ plugins_config (vlib_main_t * vm, unformat_input_t * input)
 	  return 0;
 	}
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input '%U'",
+					format_unformat_error, input);
     }
   return 0;
 }
