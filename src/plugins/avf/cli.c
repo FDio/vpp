@@ -55,8 +55,9 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "name %s", &args.name))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 
@@ -100,8 +101,9 @@ avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 
@@ -159,8 +161,9 @@ avf_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 
