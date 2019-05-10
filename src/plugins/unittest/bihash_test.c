@@ -504,8 +504,8 @@ test_bihash_command_fn (vlib_main_t * vm,
       else if (unformat (input, "verbose"))
 	tm->verbose = 1;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input '%U'",
+					format_unformat_error, input);
     }
 
   /* Preallocate hash table, key vector */

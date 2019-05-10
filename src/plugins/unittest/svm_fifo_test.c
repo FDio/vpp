@@ -833,8 +833,9 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 	verbose = 1;
       else
 	{
-	  clib_error_t *e = clib_error_return (0, "unknown input `%U'",
-					       format_unformat_error, input);
+	  clib_error_t *e =
+	    clib_error_return_errno (0, -156, "unknown input `%U'",
+				     format_unformat_error, input);
 	  clib_error_report (e);
 	  return -1;
 	}
