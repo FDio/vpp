@@ -368,7 +368,7 @@ nat_ha_failover_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	if (unformat
-	    (line_input, "refresh-intervval %u", &session_refresh_interval))
+	    (line_input, "refresh-interval %u", &session_refresh_interval))
 	;
       else
 	{
@@ -449,7 +449,7 @@ nat_show_ha_command_fn (vlib_main_t * vm, unformat_input_t * input,
   nat_ha_get_failover (&addr, &port, &session_refresh_interval);
   vlib_cli_output (vm, "FAILOVER:\n");
   if (port)
-    vlib_cli_output (vm, "  %U:%u refresh-intervval %usec\n",
+    vlib_cli_output (vm, "  %U:%u refresh-interval %usec\n",
 		     format_ip4_address, &addr, port,
 		     session_refresh_interval);
   else
@@ -2024,7 +2024,7 @@ VLIB_CLI_COMMAND (nat_show_mss_clamping_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (nat_ha_failover_command, static) = {
     .path = "nat ha failover",
-    .short_help = "nat ha failover <ip4-address>:<port> [refresh-intervval <sec>]",
+    .short_help = "nat ha failover <ip4-address>:<port> [refresh-interval <sec>]",
     .function = nat_ha_failover_command_fn,
 };
 
