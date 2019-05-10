@@ -506,29 +506,63 @@ update_node_counters (stat_segment_main_t * sm)
 static void
 do_stat_segment_updates (stat_segment_main_t * sm)
 {
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
   vlib_main_t *vm = vlib_mains[0];
   f64 vector_rate;
   u64 input_packets, last_input_packets;
   f64 dt, now;
   vlib_main_t *this_vlib_main;
   int i, start;
+  counter_t **counters;
+  static int num_worker_threads_set;
 
   /*
-   * Compute the average vector rate across all workers
+   * Set once at the beginning of time.
+   * Can't do this from the init routine, which happens before
+   * start_workers sets up vlib_mains...
+   */
+  if (PREDICT_FALSE (num_worker_threads_set == 0))
+    {
+      sm->directory_vector[STAT_COUNTER_NUM_WORKER_THREADS].value =
+	vec_len (vlib_mains) > 1 ? vec_len (vlib_mains) - 1 : 1;
+
+      stat_validate_counter_vector (&sm->directory_vector
+				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER],
+				    vec_len (vlib_mains));
+      num_worker_threads_set = 1;
+    }
+
+  /*
+   * Compute per-worker vector rates, and the average vector rate
+   * across all workers
    */
   vector_rate = 0.0;
+
+  counters =
+    stat_segment_pointer (shared_header,
+			  sm->directory_vector
+			  [STAT_COUNTER_VECTOR_RATE_PER_WORKER].offset);
 
   start = vec_len (vlib_mains) > 1 ? 1 : 0;
 
   for (i = start; i < vec_len (vlib_mains); i++)
     {
+
+      f64 this_vector_rate;
+
       this_vlib_main = vlib_mains[i];
-      vector_rate += vlib_last_vector_length_per_node (this_vlib_main);
+
+      this_vector_rate = vlib_last_vector_length_per_node (this_vlib_main);
+      vector_rate += this_vector_rate;
+
+      /* Set the per-worker rate */
+      counters[i - start][0] = this_vector_rate;
     }
+
+  /* And set the system average rate */
   vector_rate /= (f64) (i - start);
 
-  sm->directory_vector[STAT_COUNTER_VECTOR_RATE].value =
-    vector_rate / ((f64) (vec_len (vlib_mains) - start));
+  sm->directory_vector[STAT_COUNTER_VECTOR_RATE].value = vector_rate;
 
   /*
    * Compute the aggregate input rate
