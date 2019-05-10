@@ -791,8 +791,9 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  parse_error = clib_error_return (0, "parse error: '%U'",
-					   format_unformat_error, line_input);
+	  parse_error = clib_error_return_errno (0, -156, "parse error: '%U'",
+						 format_unformat_error,
+						 line_input);
 	  break;
 	}
     }
@@ -922,8 +923,8 @@ show_vxlan_gbp_tunnel_command_fn (vlib_main_t * vm,
       if (unformat (input, "raw"))
 	raw = 1;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "parse error: '%U'",
+					format_unformat_error, input);
     }
 
   if (pool_elts (vxm->tunnels) == 0)

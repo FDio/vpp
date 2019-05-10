@@ -859,8 +859,8 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
 	protocol = VXLAN_GPE_PROTOCOL_NSH;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }

@@ -311,7 +311,7 @@ lisp_add_del_ndp_entry_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error");
+	  error = clib_error_return_errno (0, -156, "parse error");
 	  goto done;
 	}
     }
@@ -375,7 +375,7 @@ lisp_add_del_l2_arp_entry_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error");
+	  error = clib_error_return_errno (0, -156, "parse error");
 	  goto done;
 	}
     }
@@ -859,7 +859,7 @@ lisp_nsh_set_locator_set_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "parse error");
+	  error = clib_error_return_errno (0, -156, "parse error");
 	  goto done;
 	}
     }
@@ -933,7 +933,7 @@ lisp_map_register_fallback_threshold_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error");
+	  error = clib_error_return_errno (0, -156, "parse error");
 	  goto done;
 	}
     }
@@ -981,7 +981,7 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "parse error");
+	  error = clib_error_return_errno (0, -156, "parse error");
 	  goto done;
 	}
     }
@@ -1145,8 +1145,8 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
 	filter = 2;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1233,8 +1233,8 @@ lisp_enable_disable_pitr_mode_command_fn (vlib_main_t * vm,
 	is_set = 1;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1287,8 +1287,8 @@ lisp_enable_disable_petr_mode_command_fn (vlib_main_t * vm,
 	is_set = 1;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1340,8 +1340,8 @@ lisp_enable_disable_xtr_mode_command_fn (vlib_main_t * vm,
 	is_set = 1;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1392,8 +1392,8 @@ lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_set = 1;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1650,8 +1650,8 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -2061,7 +2061,7 @@ lisp_use_petr_set_locator_set_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "parse error");
+	  error = clib_error_return_errno (0, -156, "parse error");
 	  goto done;
 	}
     }

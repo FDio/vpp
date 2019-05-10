@@ -758,8 +758,8 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "per-node-counters off"))
 	sm->node_counters_enabled = 0;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 }

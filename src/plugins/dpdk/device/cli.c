@@ -342,8 +342,8 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -507,8 +507,8 @@ set_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -617,8 +617,8 @@ set_dpdk_if_hqos_pipe (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -719,8 +719,8 @@ set_dpdk_if_hqos_subport (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -844,8 +844,8 @@ set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -987,8 +987,8 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1183,8 +1183,8 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1596,8 +1596,8 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
 
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }

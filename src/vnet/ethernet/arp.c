@@ -2158,8 +2158,8 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
     }
   else
     {
-      return clib_error_return (0, "unknown input `%U'",
-				format_unformat_error, input);
+      return clib_error_return_errno (0, -156, "unknown input `%U'",
+				      format_unformat_error, input);
     }
 
   return 0;
@@ -2227,8 +2227,8 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
     }
 
   if (intfc_set == 0)
-    return clib_error_return (0, "unknown input '%U'",
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, -156, "unknown input '%U'",
+				    format_unformat_error, input);
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
   ASSERT (si);

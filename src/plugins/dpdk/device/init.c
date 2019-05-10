@@ -1074,8 +1074,8 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, input);
 	  break;
 	}
     }
@@ -1288,8 +1288,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, input);
 	  goto done;
 	}
     }

@@ -2689,7 +2689,7 @@ test_lookup_command_fn (vlib_main_t * vm,
 			 unformat_ip4_address, &ip4_base_address))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
@@ -2780,8 +2780,8 @@ set_ip_flow_hash_command_fn (vlib_main_t * vm,
     }
 
   if (matched == 0)
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, -156, "unknown input `%U'",
+				    format_unformat_error, input);
 
   rv = vnet_set_ip4_flow_hash (table_id, flow_hash_config);
   switch (rv)

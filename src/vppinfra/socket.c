@@ -127,8 +127,8 @@ socket_config (char *config,
 	  else if (unformat (&i, "%s", &host_name))
 	    ;
 	  else
-	    error = clib_error_return (0, "unknown input `%U'",
-				       format_unformat_error, &i);
+	    error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					     format_unformat_error, &i);
 	  unformat_free (&i);
 
 	  if (error)

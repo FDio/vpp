@@ -153,7 +153,7 @@ set_interface_span_command_fn (vlib_main_t * vm,
       else if (unformat (input, "l2"))
 	sf = SPAN_FEAT_L2;
       else
-	return clib_error_return (0, "Invalid input");
+	return clib_error_return_errno (0, -156, "Invalid input");
     }
 
   int rv =

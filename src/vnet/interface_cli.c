@@ -104,8 +104,8 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, input);
 	  goto done;
 	}
     }
@@ -304,8 +304,8 @@ show_sw_interfaces (vlib_main_t * vm,
 	    verbose = 1;
 	  else
 	    {
-	      error = clib_error_return (0, "unknown input `%U'",
-					 format_unformat_error, linput);
+	      error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					       format_unformat_error, linput);
 	      goto done;
 	    }
 	}
@@ -960,8 +960,8 @@ set_unnumbered (vlib_main_t * vm,
 		     &unnumbered_sw_if_index))
     enable = 0;
   else
-    return clib_error_return (0, "parse error '%U'",
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, -156, "parse error '%U'",
+				    format_unformat_error, input);
 
   if (~0 == unnumbered_sw_if_index)
     return clib_error_return (0, "Specify the unnumbered interface");
@@ -1159,8 +1159,8 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 		     unformat_vnet_sw_interface, vnm, &sw_if_index))
     mtus[VNET_MTU_MPLS] = mtu;
   else
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, -156, "unknown input `%U'",
+				    format_unformat_error, input);
 
   vnet_sw_interface_set_protocol_mtu (vnm, sw_if_index, mtus);
 
@@ -1235,8 +1235,8 @@ set_tag (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 
   if (!unformat (input, "%U %s", unformat_vnet_sw_interface,
 		 vnm, &sw_if_index, &tag))
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, -156, "unknown input `%U'",
+				    format_unformat_error, input);
 
   vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
 
@@ -1427,8 +1427,8 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
 	mode = VNET_HW_INTERFACE_RX_MODE_ADAPTIVE;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  unformat_free (line_input);
 	  return error;
 	}
@@ -1863,8 +1863,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  errorFlag = 1;
 	  break;
 	}

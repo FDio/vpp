@@ -681,8 +681,8 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	  vl_set_memory_gid (grp->gr_gid);
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 }

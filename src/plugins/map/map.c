@@ -488,8 +488,8 @@ map_security_check_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -570,8 +570,8 @@ map_add_domain_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -612,8 +612,8 @@ map_del_domain_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -657,8 +657,8 @@ map_add_rule_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -711,8 +711,8 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
 	is_del = true;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -753,8 +753,8 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -790,8 +790,8 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
 	enabled = false;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -849,8 +849,8 @@ map_fragment_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -898,8 +898,8 @@ map_traffic_class_command_fn (vlib_main_t * vm,
 	tc = tc & 0xff;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1036,8 +1036,8 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1234,7 +1234,7 @@ map_params_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else
 	{
 	  unformat_free (line_input);
-	  return clib_error_return (0, "invalid input");
+	  return clib_error_return_errno (0, -156, "invalid input");
 	}
     }
   unformat_free (line_input);
@@ -1335,8 +1335,8 @@ map_if_command_fn (vlib_main_t * vm,
 	is_translation = true;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1962,8 +1962,8 @@ map_tcp_mss_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }

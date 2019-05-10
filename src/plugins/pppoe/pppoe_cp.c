@@ -43,8 +43,8 @@ pppoe_add_del_cp_command_fn (vlib_main_t * vm,
 	cp_if_index_set = 1;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }

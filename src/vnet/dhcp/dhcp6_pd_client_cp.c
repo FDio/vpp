@@ -984,8 +984,8 @@ cp_ip6_address_add_del_command_function (vlib_main_t * vm,
 	add = 0;
       else
 	{
-	  error = clib_error_return (0, "unexpected input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unexpected input `%U'",
+					   format_unformat_error, line_input);
 	  unformat_free (line_input);
 	  goto done;
 	}
@@ -1297,8 +1297,8 @@ dhcp6_pd_client_enable_disable_command_fn (vlib_main_t *
 	enable = 0;
       else
 	{
-	  error = clib_error_return (0, "unexpected input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unexpected input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }

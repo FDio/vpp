@@ -373,7 +373,7 @@ set_dpdk_crypto_placement_fn (vlib_main_t * vm,
   u8 dev_idx, auto_en = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "invalid syntax");
+    return clib_error_return_errno (0, -156, "invalid syntax");
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -384,8 +384,8 @@ set_dpdk_crypto_placement_fn (vlib_main_t * vm,
       else
 	{
 	  unformat_free (line_input);
-	  return clib_error_return (0, "parse error: '%U'",
-				    format_unformat_error, line_input);
+	  return clib_error_return_errno (0, -156, "parse error: '%U'",
+					  format_unformat_error, line_input);
 	}
     }
 
@@ -519,7 +519,7 @@ clear_dpdk_crypto_placement_fn (vlib_main_t * vm,
   u8 free_all = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "invalid syntax");
+    return clib_error_return_errno (0, -156, "invalid syntax");
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -530,8 +530,8 @@ clear_dpdk_crypto_placement_fn (vlib_main_t * vm,
       else
 	{
 	  unformat_free (line_input);
-	  return clib_error_return (0, "parse error: '%U'",
-				    format_unformat_error, line_input);
+	  return clib_error_return_errno (0, -156, "parse error: '%U'",
+					  format_unformat_error, line_input);
 	}
     }
 

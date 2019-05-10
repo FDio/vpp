@@ -908,8 +908,8 @@ unformat_rss_fn (unformat_input_t * input, uword * rss_fn)
 #undef _
 	else
 	{
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
+	  return clib_error_return_errno (0, -156, "unknown input `%U'",
+					  format_unformat_error, input);
 	}
     }
   return 0;
@@ -926,8 +926,8 @@ unformat_hqos (unformat_input_t * input, dpdk_device_config_hqos_t * hqos)
 	hqos->hqos_thread_valid = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, input);
 	  break;
 	}
     }

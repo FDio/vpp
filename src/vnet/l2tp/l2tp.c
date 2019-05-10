@@ -448,8 +448,8 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
 	l2_sublayer_present = 1;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -682,8 +682,8 @@ l2tp_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "lookup-session-id"))
 	lm->lookup_type = L2T_LOOKUP_SESSION_ID;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 }

@@ -1674,8 +1674,8 @@ string_test_command_fn (vlib_main_t * vm,
       if (unformat (input, "%U", unformat_string_test, &specific_test))
 	break;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (specific_test == ~0)

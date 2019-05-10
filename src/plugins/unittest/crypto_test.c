@@ -471,8 +471,8 @@ test_crypto_command_fn (vlib_main_t * vm,
       else if (unformat (input, "buffer-size %u", &tm->buffer_size))
 	;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input '%U'",
+					format_unformat_error, input);
     }
 
   if (is_perf)

@@ -1644,8 +1644,8 @@ collect_detailed_interface_stats_cli (vlib_main_t * vm,
 	collect_detailed_interface_stats_flag_clear ();
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
