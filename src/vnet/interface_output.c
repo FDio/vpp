@@ -1507,8 +1507,8 @@ pcap_drop_trace_command_fn (vlib_main_t * vm,
     }
 
   if (matched == 0)
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, -157, "unknown input `%U'",
+				    format_unformat_error, input);
 
   return 0;
 }

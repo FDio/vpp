@@ -53,6 +53,7 @@
 #include <vppinfra/socket.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
+#include <vnet/api_errno.h>
 
 void
 clib_socket_tx_add_formatted (clib_socket_t * s, char *fmt, ...)
@@ -127,7 +128,9 @@ socket_config (char *config,
 	  else if (unformat (&i, "%s", &host_name))
 	    ;
 	  else
-	    error = clib_error_return (0, "unknown input `%U'",
+	    error =
+	      clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				       "unknown input `%U'",
 				       format_unformat_error, &i);
 	  unformat_free (&i);
 

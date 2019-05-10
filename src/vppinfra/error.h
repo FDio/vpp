@@ -99,6 +99,10 @@ extern clib_error_t *_clib_error_return (clib_error_t * errors,
 #define clib_error_return(e,args...) \
   clib_error_return_code(e,0,0,args)
 
+#define clib_error_return_errno(e,code,args...) \
+  clib_error_return_code(e,code,0,args)
+
+
 #define clib_error_return_unix(e,args...) \
   clib_error_return_code(e,errno,CLIB_ERROR_ERRNO_VALID,args)
 

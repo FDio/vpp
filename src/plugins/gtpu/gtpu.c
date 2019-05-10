@@ -763,7 +763,9 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}

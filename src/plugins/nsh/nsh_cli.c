@@ -216,8 +216,8 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
 	    (line_input, "encap-none %d %d", &sw_if_index, &rx_sw_if_index))
 	next_node = NSH_NODE_NEXT_DECAP_ETH_INPUT;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	return clib_error_return_errno (0, -158, "parse error: '%U'",
+					format_unformat_error, line_input);
     }
 
   unformat_free (line_input);
@@ -408,8 +408,8 @@ nsh_add_del_entry_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "tlv-ioam-trace"))
 	has_ioam_trace_option = 1;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	return clib_error_return_errno (0, -158, "parse error: '%U'",
+					format_unformat_error, line_input);
     }
 
   unformat_free (line_input);

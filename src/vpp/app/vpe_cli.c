@@ -51,8 +51,10 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 		 unformat_ip4_address, &prefix.fp_addr.ip4,
 		 unformat_vnet_sw_interface, vnm, &sw_if_index))
     {
-      error = clib_error_return (0, "unknown input `%U'",
-				 format_unformat_error, line_input);
+      error =
+	clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				 "unknown input `%U'", format_unformat_error,
+				 line_input);
       goto done;
     }
 
@@ -72,7 +74,9 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -80,8 +84,10 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 
   if (vec_len (mac_addrs) == 0 || vec_len (mac_addrs) != vec_len (next_hops))
     {
-      error = clib_error_return (0, "unknown input `%U'",
-				 format_unformat_error, line_input);
+      error =
+	clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				 "unknown input `%U'", format_unformat_error,
+				 line_input);
       goto done;
     }
 

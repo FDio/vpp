@@ -272,8 +272,9 @@ abf_policy_cmd (vlib_main_t * vm,
 			 unformat_fib_route_path, &rpath))
 	vec_add1 (rpaths, rpath);
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, line_input));
+	return (clib_error_return_errno
+		(0, VNET_API_ERROR_SYNTAX_ERROR, "unknown input '%U'",
+		 format_unformat_error, line_input));
     }
 
   if (INDEX_INVALID == policy_id)
@@ -368,8 +369,9 @@ abf_show_policy_cmd (vlib_main_t * vm,
       if (unformat (input, "%d", &policy_id))
 	;
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input));
+	return (clib_error_return_errno
+		(0, VNET_API_ERROR_SYNTAX_ERROR, "unknown input '%U'",
+		 format_unformat_error, input));
     }
 
   if (INDEX_INVALID == policy_id)

@@ -371,8 +371,9 @@ abf_itf_attach_cmd (vlib_main_t * vm,
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input));
+	return (clib_error_return_errno
+		(0, VNET_API_ERROR_SYNTAX_ERROR, "unknown input '%U'",
+		 format_unformat_error, input));
     }
 
   if (~0 == policy_id)
@@ -429,8 +430,9 @@ abf_show_attach_cmd (vlib_main_t * vm,
 		    unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input));
+	return (clib_error_return_errno
+		(0, VNET_API_ERROR_SYNTAX_ERROR, "unknown input '%U'",
+		 format_unformat_error, input));
     }
 
   if (~0 == sw_if_index)

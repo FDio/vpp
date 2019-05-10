@@ -19,7 +19,7 @@
 #include <vppinfra/types.h>
 #include <vppinfra/format.h>
 
-#define foreach_vnet_api_error						\
+#define foreach_vnet_api_error											\
 _(UNSPECIFIED, -1, "Unspecified Error")                                 \
 _(INVALID_SW_IF_INDEX, -2, "Invalid sw_if_index")                       \
 _(NO_SUCH_FIB, -3, "No such FIB / VRF")                                 \
@@ -97,10 +97,10 @@ _(BFD_EEXIST, -101, "Duplicate BFD object")                             \
 _(BFD_ENOENT, -102, "No such BFD object")                               \
 _(BFD_EINUSE, -103, "BFD object in use")                                \
 _(BFD_NOTSUPP, -104, "BFD feature not supported")                       \
-_(ADDRESS_IN_USE, -105, "Address in use")				\
-_(ADDRESS_NOT_IN_USE, -106, "Address not in use")			\
+_(ADDRESS_IN_USE, -105, "Address in use")								\
+_(ADDRESS_NOT_IN_USE, -106, "Address not in use")						\
 _(QUEUE_FULL, -107, "Queue full")                                       \
-_(APP_UNSUPPORTED_CFG, -108, "Unsupported application config")		\
+_(APP_UNSUPPORTED_CFG, -108, "Unsupported application config")			\
 _(URI_FIFO_CREATE_FAILED, -109, "URI FIFO segment create failed")       \
 _(LISP_RLOC_LOCAL, -110, "RLOC address is local")                       \
 _(BFD_EAGAIN, -111, "BFD object cannot be manipulated at this time")	\
@@ -149,8 +149,11 @@ _(INVALID_PROTOCOL, -153, "Invalid Protocol")                           \
 _(INVALID_ALGORITHM, -154, "Invalid Algorithm")                         \
 _(RSRC_IN_USE, -155, "Resource In Use")                                 \
 _(KEY_LENGTH, -156, "invalid Key Length")                               \
-_(FIB_PATH_UNSUPPORTED_NH_PROTO, -157, "Unsupported FIB Path protocol") \
-_(API_ENDIAN_FAILED, -159, "Endian mismatch detected")
+_(FIB_PATH_UNSUPPORTED_NH_PROTO, -157, "Unsupported FIB Path protocol")	\
+_(SYNTAX_ERROR, -158, "Syntax Error: 'Unknown input'")					\
+_(API_ENDIAN_FAILED, -159, "Endian mismatch detected")					\
+
+
 typedef enum
 {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),

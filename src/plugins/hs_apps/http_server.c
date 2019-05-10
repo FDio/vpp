@@ -923,8 +923,8 @@ http_server_create_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "uri %s", &hsm->uri))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, line_input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, line_input);
     }
   unformat_free (line_input);
 

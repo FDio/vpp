@@ -270,8 +270,9 @@ set_significant_error_command_fn (vlib_main_t * vm,
       else if (unformat (input, "disable"))
 	enable = 0;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 
   rv = significant_error_enable_disable (gm, index, enable);

@@ -868,8 +868,8 @@ tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
 			 &tm->fifo_size))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 }

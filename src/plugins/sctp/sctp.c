@@ -1056,8 +1056,9 @@ show_sctp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   sctp_main_t *tm = &sctp_main;
   if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			      input);
+    return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				    "unknown input `%U'",
+				    format_unformat_error, input);
   vlib_cli_output (vm, "IPv4 UDP punt: %s",
 		   tm->punt_unknown4 ? "enabled" : "disabled");
   vlib_cli_output (vm, "IPv6 UDP punt: %s",

@@ -463,8 +463,9 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				      "Only lacp mode supports numa-only so far!");
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 
@@ -699,8 +700,10 @@ enslave_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.is_long_timeout = 1;
       else
 	{
-	  args.error = clib_error_return (0, "unknown input `%U'",
-					  format_unformat_error, input);
+	  args.error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
+				     format_unformat_error, input);
 	  break;
 	}
     }
@@ -764,8 +767,10 @@ detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  args.error = clib_error_return (0, "unknown input `%U'",
-					  format_unformat_error, input);
+	  args.error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
+				     format_unformat_error, input);
 	  break;
 	}
     }
@@ -862,8 +867,9 @@ show_bond_fn (vlib_main_t * vm, unformat_input_t * input,
 	details = 1;
       else
 	{
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
+	  return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					  "unknown input `%U'",
+					  format_unformat_error, input);
 	}
     }
 
