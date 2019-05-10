@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "39d9919f_7eb72cca",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2019-05-10T18:51:22Z",
+      "side": 1,
+      "message": "Sorry for such a basic question, how can the reader of these stats distinguish between the case (vec_len (vlib_mains)\u003d1) and (vec_len (vlib_mains)\u003d2) since they advertise the exact same value of 1 for STAT_COUNTER_NUM_WORKER_THREADS?\nOr should the user not have to care?",
+      "revId": "dd9f35b9e794a0924959ab294ce95fd15fd62d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e608c4bd_79203cfd",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 546,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2019-05-10T18:51:22Z",
+      "side": 1,
+      "message": "might be a bit more optimized to save the starting index as static variable that is initialized to -1 (replacing num_worker_threads_set)",
+      "revId": "dd9f35b9e794a0924959ab294ce95fd15fd62d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f08345c3_c9a7007b",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 563,
+      "author": {
+        "id": 78
+      },
+      "writtenOn": "2019-05-10T18:51:22Z",
+      "side": 1,
+      "message": "Is there any need now to keep calculating an average (maybe for backward compatibility)? I think we do not really need the average any more and save some cpu cycles",
+      "revId": "dd9f35b9e794a0924959ab294ce95fd15fd62d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
