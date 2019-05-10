@@ -59,7 +59,9 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_master = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -175,7 +177,9 @@ netmap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
