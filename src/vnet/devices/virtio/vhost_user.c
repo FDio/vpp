@@ -1608,8 +1608,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -157, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1668,7 +1668,9 @@ vhost_user_delete_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -1781,7 +1783,9 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	  if (vhost_user_device_class.index != hi->dev_class_index)
 	    {
-	      error = clib_error_return (0, "unknown input `%U'",
+	      error =
+		clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					 "unknown input `%U'",
 					 format_unformat_error, input);
 	      goto done;
 	    }
@@ -1791,7 +1795,9 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	show_descr = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, input);
 	  goto done;
 	}
@@ -2202,8 +2208,9 @@ vhost_user_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "dont-dump-memory"))
 	vum->dont_dump_vhost_user_memory = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 
   return 0;

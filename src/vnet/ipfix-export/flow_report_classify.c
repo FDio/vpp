@@ -427,8 +427,9 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (input, "udp"))
 	transport_protocol = 17;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (is_add == -1)
@@ -509,8 +510,9 @@ set_ipfix_classify_stream_command_fn (vlib_main_t * vm,
       else if (unformat (input, "src-port %d", &src_port))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (fcm->src_port != 0 &&

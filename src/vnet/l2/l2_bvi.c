@@ -250,7 +250,9 @@ l2_bvi_create_cli (vlib_main_t * vm,
 	    ;
 	  else
 	    {
-	      error = clib_error_return (0, "unknown input: %U",
+	      error =
+		clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					 "unknown input: %U",
 					 format_unformat_error, line_input);
 	      break;
 	    }

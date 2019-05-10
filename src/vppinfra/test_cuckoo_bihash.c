@@ -397,8 +397,9 @@ test_cuckoo_bihash_main (test_main_t * tm)
       else if (unformat (i, "verbose"))
 	tm->verbose = 1;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, i);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input '%U'",
+					format_unformat_error, i);
     }
 
   error = test_cuckoo_bihash (tm);

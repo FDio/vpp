@@ -50,6 +50,8 @@
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 
+#include <vnet/api_errno.h>
+
 vlib_pci_main_t pci_main;
 
 vlib_pci_device_info_t * __attribute__ ((weak))
@@ -79,8 +81,9 @@ show_pci_fn (vlib_main_t * vm,
       if (unformat (input, "all"))
 	show_all = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 
   vlib_cli_output (vm, "%-13s%-5s%-12s%-13s%-16s%-32s%s",

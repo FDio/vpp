@@ -2823,8 +2823,8 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
     }
 
   if (matched == 0)
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, -158, "unknown input `%U'",
+				    format_unformat_error, input);
 
   rv = vnet_set_ip6_flow_hash (table_id, flow_hash_config);
   switch (rv)
@@ -3117,8 +3117,8 @@ ip6_config (vlib_main_t * vm, unformat_input_t * input)
 			 unformat_memory_size, &heapsize))
 	;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input '%U'",
+					format_unformat_error, input);
     }
 
   im->lookup_table_nbuckets = nbuckets;

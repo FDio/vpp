@@ -311,8 +311,10 @@ set_syslog_sender_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "Unknown input `%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -428,32 +430,37 @@ test_syslog_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	      else
 		{
 		  ret =
-		    clib_error_return (0, "Unknown input `%U'",
-				       format_unformat_error, line_input);
+		    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					     "Unknown input `%U'",
+					     format_unformat_error,
+					     line_input);
 		  goto done;
 		}
 	    }
 	  else
 	    {
 	      ret =
-		clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+		clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					 "Unknown input `%U'",
+					 format_unformat_error, line_input);
 	      goto done;
 	    }
 	}
       else
 	{
 	  ret =
-	    clib_error_return (0, "Unknown input `%U'", format_unformat_error,
-			       line_input);
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "Unknown input `%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
   else
     {
       ret =
-	clib_error_return (0, "Unknown input `%U'", format_unformat_error,
-			   line_input);
+	clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				 "Unknown input `%U'", format_unformat_error,
+				 line_input);
       goto done;
     }
 
@@ -484,8 +491,10 @@ set_syslog_filter_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "Unknown input `%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
