@@ -205,13 +205,7 @@ mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
   clib_memset (h, 0, sizeof (h[0]));
   h->n_key_bytes = n_key_bytes;
 
-#if 0
-  if (h->n_key_bytes > 0)
-    {
-      vec_validate (h->key_tmp, h->n_key_bytes - 1);
-      _vec_len (h->key_tmp) = 0;
-    }
-#endif
+  vec_validate (h->key_tmps, os_get_nthreads () - 1);
 
   ASSERT (n_key_bytes < ARRAY_LEN (t));
   h->hash = hash_create2 ( /* elts */ 0,
@@ -228,7 +222,6 @@ mhash_set_tmp_key (mhash_t * h, const void *key)
   u8 *key_tmp;
   int my_cpu = os_get_thread_index ();
 
-  vec_validate (h->key_tmps, my_cpu);
   key_tmp = h->key_tmps[my_cpu];
 
   vec_reset_length (key_tmp);

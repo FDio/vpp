@@ -169,13 +169,7 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
 uword
 os_get_nthreads (void)
 {
-  u32 len;
-
-  len = vec_len (vlib_thread_stacks);
-  if (len == 0)
-    return 1;
-  else
-    return len;
+  return vec_len (vlib_thread_stacks);
 }
 
 void
@@ -299,11 +293,8 @@ vlib_thread_init (vlib_main_t * vm)
       pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
     }
 
-  /* as many threads as stacks... */
-  vec_validate_aligned (vlib_worker_threads, vec_len (vlib_thread_stacks) - 1,
-			CLIB_CACHE_LINE_BYTES);
-
-  /* Preallocate thread 0 */
+  /* Set up thread 0 */
+  vec_validate_aligned (vlib_worker_threads, 0, CLIB_CACHE_LINE_BYTES);
   _vec_len (vlib_worker_threads) = 1;
   w = vlib_worker_threads;
   w->thread_mheap = clib_mem_get_heap ();
@@ -358,8 +349,7 @@ vlib_thread_init (vlib_main_t * vm)
 
             avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
           }));
-/* *INDENT-ON* */
-
+          /* *INDENT-ON* */
 	}
       else
 	{
@@ -381,9 +371,14 @@ vlib_thread_init (vlib_main_t * vm)
 
   tm->n_vlib_mains = n_vlib_mains;
 
+  /*
+   * Allocate the remaining worker threads, and thread stack vector slots
+   * from now on, calls to os_get_nthreads() will return the correct
+   * answer.
+   */
   vec_validate_aligned (vlib_worker_threads, first_index - 1,
 			CLIB_CACHE_LINE_BYTES);
-
+  vec_validate (vlib_thread_stacks, vec_len (vlib_worker_threads) - 1);
   return 0;
 }
 

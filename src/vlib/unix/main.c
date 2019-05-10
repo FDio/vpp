@@ -641,7 +641,7 @@ thread0 (uword arg)
 u8 *
 vlib_thread_stack_init (uword thread_index)
 {
-  vec_validate (vlib_thread_stacks, thread_index);
+  ASSERT (thread_index < vec_len (vlib_thread_stacks));
   vlib_thread_stacks[thread_index] = clib_mem_alloc_aligned
     (VLIB_THREAD_STACK_SIZE, clib_mem_get_page_size ());
 
@@ -696,6 +696,7 @@ vlib_unix_main (int argc, char *argv[])
   /* always load symbols, for signal handler and mheap memory get/put backtrace */
   clib_elf_main_init (vm->name);
 
+  vec_validate (vlib_thread_stacks, 0);
   vlib_thread_stack_init (0);
 
   __os_thread_index = 0;
