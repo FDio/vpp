@@ -115,18 +115,6 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   vec_validate_aligned (vring->buffers, sz, CLIB_CACHE_LINE_BYTES);
   ASSERT (vring->indirect_buffers == 0);
   vec_validate_aligned (vring->indirect_buffers, sz, CLIB_CACHE_LINE_BYTES);
-  if (idx % 2)
-    {
-      u32 n_alloc = 0;
-      do
-	{
-	  if (n_alloc < sz)
-	    n_alloc +=
-	      vlib_buffer_alloc (vm, vring->indirect_buffers + n_alloc,
-				 sz - n_alloc);
-	}
-      while (n_alloc != sz);
-    }
 
   vring->size = sz;
   vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -218,7 +206,6 @@ virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
     clib_mem_free (vring->desc);
   if (vring->avail)
     clib_mem_free (vring->avail);
-  vlib_buffer_free_no_next (vm, vring->indirect_buffers, vring->size);
   vec_free (vring->buffers);
   vec_free (vring->indirect_buffers);
   return 0;

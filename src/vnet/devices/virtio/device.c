@@ -108,6 +108,10 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
       struct vring_used_elem *e = &vring->used->ring[last & mask];
       u16 slot = e->id;
 
+      if (PREDICT_FALSE
+	  (vlib_get_buffer (vm, vring->buffers[slot])->flags &
+	   VLIB_BUFFER_NEXT_PRESENT))
+	vlib_buffer_free_no_next (vm, &vring->indirect_buffers[slot], 1);
       vlib_buffer_free (vm, &vring->buffers[slot], 1);
       used--;
       last++;
@@ -170,6 +174,10 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
        * It can easily support 65535 bytes of Jumbo frames with
        * each data buffer size of 512 bytes minimum.
        */
+      if (PREDICT_FALSE
+	  (vlib_buffer_alloc (vm, &vring->indirect_buffers[next], 1) == 0))
+	return n_added;
+
       vlib_buffer_t *indirect_desc =
 	vlib_get_buffer (vm, vring->indirect_buffers[next]);
       indirect_desc->current_data = 0;
