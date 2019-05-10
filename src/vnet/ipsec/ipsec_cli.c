@@ -47,8 +47,8 @@ set_interface_spd_command_fn (vlib_main_t * vm,
     is_add = 0;
   else
     {
-      error = clib_error_return (0, "parse error: '%U'",
-				 format_unformat_error, line_input);
+      error = clib_error_return_errno (0, -158, "parse error: '%U'",
+				       format_unformat_error, line_input);
       goto done;
     }
 
@@ -137,8 +137,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	flags |= IPSEC_SA_FLAG_UDP_ENCAP;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -158, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -192,8 +192,8 @@ ipsec_spd_add_del_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -157, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -307,8 +307,8 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -157, "parse error: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -683,8 +683,8 @@ ipsec_select_backend_command_fn (vlib_main_t * vm,
     }
   else
     {
-      return clib_error_return (0, "Unknown input `%U'",
-				format_unformat_error, line_input);
+      return clib_error_return_errno (0, -157, "Unknown input `%U'",
+				      format_unformat_error, line_input);
     }
 
   return 0;
@@ -802,8 +802,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	a.is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -157, "unknown input `%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }

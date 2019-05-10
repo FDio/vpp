@@ -52,8 +52,8 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "num-rx-queues %u", &args.rxq_num))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 
@@ -98,8 +98,8 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 

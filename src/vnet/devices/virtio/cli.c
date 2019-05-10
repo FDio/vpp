@@ -45,8 +45,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "gso-enabled"))
 	args.gso_enabled = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 
@@ -87,8 +87,8 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 
@@ -137,8 +137,8 @@ show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	  if (virtio_device_class.index != hi->dev_class_index)
 	    {
-	      error = clib_error_return (0, "unknown input `%U'",
-					 format_unformat_error, input);
+	      error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					       format_unformat_error, input);
 	      goto done;
 	    }
 	  vec_add1 (hw_if_indices, hw_if_index);
@@ -149,8 +149,8 @@ show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
 	show_device_config = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_return_errno (0, -156, "unknown input `%U'",
+					   format_unformat_error, input);
 	  goto done;
 	}
     }

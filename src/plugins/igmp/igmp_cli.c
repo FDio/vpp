@@ -54,8 +54,8 @@ igmp_clear_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else
 	{
 	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	    clib_error_return_errno (0, -156, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -92,8 +92,8 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!unformat_user (input, unformat_line_input, line_input))
     {
       error =
-	clib_error_return (0,
-			   "'help igmp listen' or 'igmp listen ?' for help");
+	clib_error_return_errno (0, -156,
+				 "'help igmp listen' or 'igmp listen ?' for help");
       return error;
     }
 
@@ -115,8 +115,8 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else
 	{
 	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	    clib_error_return_errno (0, -156, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -189,8 +189,8 @@ igmp_enable_cli (vlib_main_t * vm,
       else
 	{
 	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	    clib_error_return_errno (0, -156, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -248,8 +248,8 @@ igmp_proxy_device_add_del_command_fn (vlib_main_t * vm,
       else
 	{
 	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	    clib_error_return_errno (0, -156, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -312,8 +312,8 @@ igmp_proxy_device_add_del_interface_command_fn (vlib_main_t * vm,
       else
 	{
 	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	    clib_error_return_errno (0, -156, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
