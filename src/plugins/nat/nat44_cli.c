@@ -54,8 +54,8 @@ set_workers_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -147,8 +147,8 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
 	enable = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -256,8 +256,8 @@ nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -322,8 +322,8 @@ nat_set_mss_clamping_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -372,8 +372,8 @@ nat_ha_failover_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -410,8 +410,8 @@ nat_ha_listener_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -523,8 +523,8 @@ add_address_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -670,8 +670,8 @@ snat_feature_command_fn (vlib_main_t * vm,
 	is_del = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -842,8 +842,8 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -938,8 +938,8 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1040,8 +1040,8 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1131,8 +1131,8 @@ add_lb_backend_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input: '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input: '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1239,8 +1239,8 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 	is_del = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1376,8 +1376,8 @@ nat44_del_session_command_fn (vlib_main_t * vm,
 	is_ed = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1437,8 +1437,8 @@ snat_forwarding_set_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1489,8 +1489,8 @@ snat_det_map_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1564,8 +1564,8 @@ snat_det_forward_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1612,8 +1612,8 @@ snat_det_reverse_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1705,8 +1705,8 @@ set_timeout_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1791,8 +1791,8 @@ snat_det_close_session_out_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1850,8 +1850,8 @@ snat_det_close_session_in_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -156, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
