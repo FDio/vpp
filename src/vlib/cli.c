@@ -684,7 +684,7 @@ vlib_unix_error_report (vlib_main_t * vm, clib_error_t * error)
 }
 
 /* Process CLI input. */
-void
+int
 vlib_cli_input (vlib_main_t * vm,
 		unformat_input_t * input,
 		vlib_cli_output_function_t * function, uword function_arg)
@@ -694,6 +694,7 @@ vlib_cli_input (vlib_main_t * vm,
   clib_error_t *error;
   vlib_cli_output_function_t *save_function;
   uword save_function_arg;
+  int rv = 0;
 
   save_function = cp->output_function;
   save_function_arg = cp->output_function_arg;
@@ -713,11 +714,15 @@ vlib_cli_input (vlib_main_t * vm,
     {
       vlib_cli_output (vm, "%v", error->what);
       vlib_unix_error_report (vm, error);
+      /* clib_error_return is unfortunately often called with a '0'
+         return code */
+      rv = error->code != 0 ? error->code : -1;
       clib_error_free (error);
     }
 
   cp->output_function = save_function;
   cp->output_function_arg = save_function_arg;
+  return rv;
 }
 
 /* Output to current CLI connection. */
