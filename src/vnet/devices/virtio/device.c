@@ -90,9 +90,8 @@ format_virtio_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
-#ifndef CLIB_MARCH_VARIANT
-inline void
-virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
+static_always_inline void
+virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring)
 {
   u16 used = vring->desc_in_use;
   u16 sz = vring->size;
@@ -106,17 +105,44 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
   while (n_left)
     {
       struct vring_used_elem *e = &vring->used->ring[last & mask];
-      u16 slot = e->id;
+      u16 slot, n_buffers;
+      slot = n_buffers = e->id;
 
-      vlib_buffer_free (vm, &vring->buffers[slot], 1);
-      used--;
-      last++;
-      n_left--;
+      while (e->id == n_buffers)
+	{
+	  if (PREDICT_FALSE
+	      (vlib_get_buffer (vm, vring->buffers[n_buffers])->flags &
+	       VLIB_BUFFER_NEXT_PRESENT))
+	    vlib_buffer_free_no_next (vm, &vring->indirect_buffers[n_buffers],
+				      1);
+	  n_left--;
+	  last++;
+	  n_buffers++;
+	  if (n_left == 0)
+	    break;
+	  e = &vring->used->ring[last & mask];
+	}
+      vlib_buffer_free_from_ring (vm, vring->buffers, slot,
+				  sz, (n_buffers - slot));
+      used -= (n_buffers - slot);
+
+      if (n_left > 0)
+	{
+	  slot = e->id;
+
+	  if (PREDICT_FALSE
+	      (vlib_get_buffer (vm, vring->buffers[slot])->flags &
+	       VLIB_BUFFER_NEXT_PRESENT))
+	    vlib_buffer_free_no_next (vm, &vring->indirect_buffers[slot], 1);
+	  vlib_buffer_free (vm, &vring->buffers[slot], 1);
+	  used--;
+	  last++;
+	  n_left--;
+	}
     }
   vring->desc_in_use = used;
   vring->last_used_idx = last;
 }
-#endif /* CLIB_MARCH_VARIANT */
 
 static_always_inline u16
 add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
@@ -170,6 +196,10 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
        * It can easily support 65535 bytes of Jumbo frames with
        * each data buffer size of 512 bytes minimum.
        */
+      if (PREDICT_FALSE
+	  (vlib_buffer_alloc (vm, &vring->indirect_buffers[next], 1) == 0))
+	return n_added;
+
       vlib_buffer_t *indirect_desc =
 	vlib_get_buffer (vm, vring->indirect_buffers[next]);
       indirect_desc->current_data = 0;
@@ -261,7 +291,7 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     virtio_kick (vm, vring, vif);
 
   /* free consumed buffers */
-  virtio_free_used_desc (vm, vring);
+  virtio_free_used_device_desc (vm, vring);
 
   used = vring->desc_in_use;
   next = vring->desc_next;
