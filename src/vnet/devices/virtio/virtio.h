@@ -115,7 +115,6 @@ typedef struct
   u16 flags;
   u32 call_file_index;
   u32 *buffers;
-  u32 *indirect_buffers;
   u16 last_used_idx;
   u16 last_kick_avail_idx;
 } virtio_vring_t;
