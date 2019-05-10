@@ -527,8 +527,7 @@ do_stat_segment_updates (stat_segment_main_t * sm)
     }
   vector_rate /= (f64) (i - start);
 
-  sm->directory_vector[STAT_COUNTER_VECTOR_RATE].value =
-    vector_rate / ((f64) (vec_len (vlib_mains) - start));
+  sm->directory_vector[STAT_COUNTER_VECTOR_RATE].value = vector_rate;
 
   /*
    * Compute the aggregate input rate
