@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0c0468a5_81337498",
+        "filename": "docs/gettingstarted/installing/ubuntu.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-10T18:05:27Z",
+      "side": 1,
+      "message": "Packagecloud has a nice script that automatically figures out what version of ubuntu is running and sets all of this up automatically.\n\nSee https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Add_fd.io_repo\n\nThis way you won\u0027t have to constantly update this section of the docs.",
+      "range": {
+        "startLine": 51,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 73
+      },
+      "revId": "8ef7c4c2528900075e9cbe15bae848a27327cc69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
