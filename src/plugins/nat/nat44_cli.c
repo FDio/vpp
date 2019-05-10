@@ -368,7 +368,7 @@ nat_ha_failover_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	if (unformat
-	    (line_input, "refresh-intervval %u", &session_refresh_interval))
+	    (line_input, "refresh-interval %u", &session_refresh_interval))
 	;
       else
 	{
