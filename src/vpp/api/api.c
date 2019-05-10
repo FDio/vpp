@@ -226,7 +226,7 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
 
   unformat_init_string (&input, (char *) vl_api_from_api_string (&mp->cmd),
 			vl_api_string_len (&mp->cmd));
-  vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
+  rv = vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
 
   len = vec_len (out_vec);
 
