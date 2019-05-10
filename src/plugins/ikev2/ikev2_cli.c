@@ -366,8 +366,10 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  r = clib_error_return (0, "parse error: '%U'",
-			 format_unformat_error, line_input);
+  r =
+    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+			     "parse error: '%U'", format_unformat_error,
+			     line_input);
 
 done:
   vec_free (name);
@@ -502,8 +504,10 @@ set_ikev2_local_key_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  r = clib_error_return (0, "parse error: '%U'",
-			 format_unformat_error, line_input);
+  r =
+    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+			     "parse error: '%U'", format_unformat_error,
+			     line_input);
 
 done:
   vec_free (data);
@@ -563,8 +567,10 @@ ikev2_initiate_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  r = clib_error_return (0, "parse error: '%U'",
-			 format_unformat_error, line_input);
+  r =
+    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+			     "parse error: '%U'", format_unformat_error,
+			     line_input);
 
 done:
   vec_free (name);

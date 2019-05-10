@@ -892,8 +892,9 @@ dhcp4_proxy_set_command_fn (vlib_main_t * vm,
 	}
     }
   else
-    return clib_error_return (0, "parse error`%U'",
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				    "parse error`%U'", format_unformat_error,
+				    input);
 }
 
 /* *INDENT-OFF* */
