@@ -702,11 +702,12 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
 unknown:
   if (parent->path)
-    return clib_error_return (0, "%v: unknown input `%U'", parent->path,
-			      format_unformat_error, input);
+    return clib_error_return_errno (0, -157, "%v: unknown input `%U'",
+				    parent->path, format_unformat_error,
+				    input);
   else
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			      input);
+    return clib_error_return_errno (0, -157, "unknown input `%U'",
+				    format_unformat_error, input);
 }
 
 
@@ -828,8 +829,8 @@ show_memory_usage (vlib_main_t * vm,
 	main_heap = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_return_errno (0, -157, "unknown input `%U'",
+					   format_unformat_error, input);
 	  return error;
 	}
     }
@@ -999,7 +1000,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
       else
 	{
 	  unformat_free (line_input);
-	  return clib_error_return (0, "invalid input");
+	  return clib_error_return_errno (0, -157, "invalid input");
 	}
     }
   unformat_free (line_input);
@@ -1110,8 +1111,8 @@ test_heap_validate (vlib_main_t * vm, unformat_input_t * input,
     }
   else
     {
-      return clib_error_return (0, "unknown input `%U'",
-				format_unformat_error, input);
+      return clib_error_return_errno (0, -157, "unknown input `%U'",
+				      format_unformat_error, input);
     }
 
   return error;

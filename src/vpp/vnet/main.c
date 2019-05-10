@@ -301,8 +301,8 @@ heapsize_config (vlib_main_t * vm, unformat_input_t * input)
 	  || unformat (input, "%dg", &junk) || unformat (input, "%dG", &junk))
 	return 0;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input '%U'",
+					format_unformat_error, input);
     }
   return 0;
 }
@@ -322,8 +322,8 @@ dummy_path_config (vlib_main_t * vm, unformat_input_t * input)
 	  return 0;
 	}
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -156, "unknown input '%U'",
+					format_unformat_error, input);
     }
   return 0;
 }
