@@ -1644,8 +1644,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "%U", unformat_tcp_cc_algo_cfg))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 }
@@ -1950,8 +1950,8 @@ tcp_show_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
 		    TRANSPORT_PROTO_TCP))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (!TCP_SCOREBOARD_TRACE)
@@ -2069,8 +2069,8 @@ tcp_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
 		    TRANSPORT_PROTO_TCP))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, -158, "unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (!TCP_SCOREBOARD_TRACE)
@@ -2105,8 +2105,8 @@ show_tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			      input);
+    return clib_error_return_errno (0, -158, "unknown input `%U'",
+				    format_unformat_error, input);
   vlib_cli_output (vm, "IPv4 TCP punt: %s",
 		   tm->punt_unknown4 ? "enabled" : "disabled");
   vlib_cli_output (vm, "IPv6 TCP punt: %s",

@@ -1186,8 +1186,8 @@ probe_neighbor_address (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -158, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -1399,8 +1399,9 @@ ip_container_cmd (vlib_main_t * vm,
       else
 	{
 	  unformat_free (line_input);
-	  return (clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input));
+	  return (clib_error_return_errno (0, -158, "unknown input '%U'",
+					   format_unformat_error,
+					   line_input));
 	}
     }
 
@@ -1461,8 +1462,9 @@ show_ip_container_cmd_fn (vlib_main_t * vm, unformat_input_t * main_input,
       else
 	{
 	  unformat_free (line_input);
-	  return (clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input));
+	  return (clib_error_return_errno (0, -158, "unknown input '%U'",
+					   format_unformat_error,
+					   line_input));
 	}
     }
 
