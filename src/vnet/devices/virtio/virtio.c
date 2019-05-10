@@ -113,20 +113,6 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   vring->queue_id = idx;
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, sz, CLIB_CACHE_LINE_BYTES);
-  ASSERT (vring->indirect_buffers == 0);
-  vec_validate_aligned (vring->indirect_buffers, sz, CLIB_CACHE_LINE_BYTES);
-  if (idx % 2)
-    {
-      u32 n_alloc = 0;
-      do
-	{
-	  if (n_alloc < sz)
-	    n_alloc +=
-	      vlib_buffer_alloc (vm, vring->indirect_buffers + n_alloc,
-				 sz - n_alloc);
-	}
-      while (n_alloc != sz);
-    }
 
   vring->size = sz;
   vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -196,8 +182,33 @@ virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
   if (vring->avail)
     clib_mem_free (vring->avail);
   vec_free (vring->buffers);
-  vec_free (vring->indirect_buffers);
   return 0;
+}
+
+inline void
+virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
+{
+  u16 used = vring->desc_in_use;
+  u16 sz = vring->size;
+  u16 mask = sz - 1;
+  u16 last = vring->last_used_idx;
+  u16 n_left = vring->used->idx - last;
+
+  if (n_left == 0)
+    return;
+
+  while (n_left)
+    {
+      struct vring_used_elem *e = &vring->used->ring[last & mask];
+      u16 slot = e->id;
+
+      vlib_buffer_free (vm, &vring->buffers[slot], 1);
+      used--;
+      last++;
+      n_left--;
+    }
+  vring->desc_in_use = used;
+  vring->last_used_idx = last;
 }
 
 clib_error_t *
@@ -218,9 +229,7 @@ virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
     clib_mem_free (vring->desc);
   if (vring->avail)
     clib_mem_free (vring->avail);
-  vlib_buffer_free_no_next (vm, vring->indirect_buffers, vring->size);
   vec_free (vring->buffers);
-  vec_free (vring->indirect_buffers);
   return 0;
 }
 
