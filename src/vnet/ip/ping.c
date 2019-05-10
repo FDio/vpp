@@ -1152,8 +1152,8 @@ ping_ip_address (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_return_errno (0, -157, "unknown input `%U'",
+					   format_unformat_error, input);
 	  goto done;
 	}
     }

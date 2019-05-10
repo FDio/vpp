@@ -46,6 +46,8 @@
 #include <vlib/unix/unix.h>
 #include <vlib/unix/cj.h>
 
+#include <vnet/api_errno.h>
+
 CJ_GLOBAL_LOG_PROTOTYPE;
 
 /* Actually allocate a few extra slots of vector data to support
@@ -2263,7 +2265,9 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, line_input);
 	  is_error = 1;
 	  break;

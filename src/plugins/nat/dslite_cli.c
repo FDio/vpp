@@ -44,7 +44,9 @@ dslite_add_del_pool_addr_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -131,7 +133,9 @@ dslite_set_aftr_tunnel_addr_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -182,7 +186,9 @@ dslite_set_b4_tunnel_addr_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}

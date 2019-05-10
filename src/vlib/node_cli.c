@@ -43,6 +43,8 @@
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
 
+#include <vnet/api_errno.h>
+
 static int
 node_cmp (void *a1, void *a2)
 {
@@ -560,7 +562,9 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
 	error = clib_error_return (0, "unknown node name: '%U'",
 				   format_unformat_error, line_input);
       else
-	error = clib_error_return (0, "unknown input '%U'",
+	error =
+	  clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				   "unknown input '%U'",
 				   format_unformat_error, line_input);
     }
 

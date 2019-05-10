@@ -20,6 +20,8 @@
 #include <vlib/threads.h>
 #include <vlib/unix/unix.h>
 
+#include <vnet/api_errno.h>
+
 static u8 *
 format_sched_policy_and_priority (u8 * s, va_list * args)
 {
@@ -123,7 +125,9 @@ trace_frame_queue (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -406,7 +410,9 @@ test_frame_queue_nelts (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -481,7 +487,9 @@ test_frame_queue_threshold (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}

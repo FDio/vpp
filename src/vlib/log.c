@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 #include <vlib/log.h>
 #include <syslog.h>
+#include <vnet/api_errno.h>
 
 typedef struct
 {
@@ -506,8 +507,9 @@ set_log_class (vlib_main_t * vm,
 	}
       else
 	{
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, line_input);
+	  return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					  "unknown input `%U'",
+					  format_unformat_error, line_input);
 	}
     }
 
@@ -566,8 +568,9 @@ set_log_unth_time (vlib_main_t * vm,
       if (unformat (line_input, "%d", &unthrottle_time))
 	lm->unthrottle_time = unthrottle_time;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, line_input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, line_input);
     }
 
   return rv;
@@ -602,8 +605,9 @@ set_log_size (vlib_main_t * vm,
 	  vec_validate (lm->entries, lm->size);
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, line_input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, line_input);
     }
 
   return rv;
