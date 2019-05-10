@@ -271,8 +271,8 @@ bfd_cli_key_add (vlib_main_t * vm, unformat_input_t * input,
 	}
       else
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret = clib_error_return_errno (0, -158, "Unknown input `%U'",
+					 format_unformat_error, line_input);
 	  goto out;
 	}
     }
@@ -335,8 +335,8 @@ bfd_cli_key_del (vlib_main_t * vm, unformat_input_t * input,
     {
       if (!unformat (line_input, "conf-key-id %u", &key_id))
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret = clib_error_return_errno (0, -158, "Unknown input `%U'",
+					 format_unformat_error, line_input);
 	  goto out;
 	}
     }
@@ -427,8 +427,8 @@ bfd_cli_udp_session_add (vlib_main_t * vm, unformat_input_t * input,
 
       if (!something_parsed)
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret = clib_error_return_errno (0, -158, "Unknown input `%U'",
+					 format_unformat_error, line_input);
 	  goto out;
 	}
     }
@@ -523,8 +523,10 @@ bfd_cli_udp_session_mod (vlib_main_t * vm, unformat_input_t * input,
 
       if (!something_parsed)
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "Unknown input `%U'",
+				     format_unformat_error, line_input);
 	  goto out;
 	}
     }
@@ -595,8 +597,10 @@ bfd_cli_udp_session_del (vlib_main_t * vm, unformat_input_t * input,
 
       if (!something_parsed)
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "Unknown input `%U'",
+				     format_unformat_error, line_input);
 	  goto out;
 	}
     }
@@ -658,8 +662,10 @@ bfd_cli_udp_session_set_flags (vlib_main_t * vm, unformat_input_t * input,
 
       if (!something_parsed)
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "Unknown input `%U'",
+				     format_unformat_error, line_input);
 	  goto out;
 	}
     }
@@ -742,8 +748,10 @@ bfd_cli_udp_session_auth_activate (vlib_main_t * vm,
 
       if (!something_parsed)
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "Unknown input `%U'",
+				     format_unformat_error, line_input);
 	  goto out;
 	}
     }
@@ -837,7 +845,7 @@ bfd_cli_udp_session_auth_deactivate (vlib_main_t *vm, unformat_input_t *input,
 
       if (!something_parsed)
         {
-          ret = clib_error_return (0, "Unknown input `%U'",
+          ret = clib_error_return_errno (0,  VNET_API_ERROR_SYNTAX_ERROR , "Unknown input `%U'",
                                    format_unformat_error, input);
           goto out;
         }
@@ -916,8 +924,10 @@ bfd_cli_udp_set_echo_source (vlib_main_t * vm, unformat_input_t * input,
 
       if (!something_parsed)
 	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	  ret =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "Unknown input `%U'",
+				     format_unformat_error, line_input);
 	  goto out;
 	}
     }

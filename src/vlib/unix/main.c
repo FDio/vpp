@@ -50,6 +50,8 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
+#include <vnet/api_errno.h>
+
 /** Default CLI pager limit is not configured in startup.conf */
 #define UNIX_CLI_DEFAULT_PAGER_LIMIT 100000
 
@@ -485,8 +487,9 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "pidfile %s", &um->pidfile))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (um->runtime_dir == 0)

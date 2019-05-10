@@ -19,6 +19,8 @@
 #include <vnet/crypto/crypto.h>
 #include <unittest/crypto/crypto.h>
 
+#include <vnet/api_errno.h>
+
 crypto_test_main_t crypto_test_main;
 
 static int
@@ -472,8 +474,9 @@ test_crypto_command_fn (vlib_main_t * vm,
       else if (unformat (input, "buffer-size %u", &tm->buffer_size))
 	;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input '%U'",
+					format_unformat_error, input);
     }
 
   if (is_perf)

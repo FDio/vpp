@@ -267,7 +267,7 @@ void unformat_init_vector (unformat_input_t * input, u8 * vector_string);
 u8 *format_unformat_error (u8 * s, va_list * va);
 
 #define unformat_parse_error(input)						\
-  clib_error_return (0, "parse error `%U'", format_unformat_error, input)
+  clib_error_return_errno (0, -156, "parse error `%U'", format_unformat_error, input)
 
 /* Print all input: not just error context. */
 u8 *format_unformat_input (u8 * s, va_list * va);

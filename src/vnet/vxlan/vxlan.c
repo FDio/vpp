@@ -749,8 +749,10 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  parse_error = clib_error_return (0, "parse error: '%U'",
-					   format_unformat_error, line_input);
+	  parse_error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
+				     format_unformat_error, line_input);
 	  break;
 	}
     }
@@ -880,8 +882,9 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
       if (unformat (input, "raw"))
 	raw = 1;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"parse error: '%U'",
+					format_unformat_error, input);
     }
 
   if (pool_elts (vxm->tunnels) == 0)
@@ -1192,8 +1195,9 @@ vxlan_offload_command_fn (vlib_main_t * vm,
 	  is_add = 0;
 	  continue;
 	}
-      return clib_error_return (0, "unknown input `%U'",
-				format_unformat_error, line_input);
+      return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				      "unknown input `%U'",
+				      format_unformat_error, line_input);
     }
 
   if (rx_sw_if_index == ~0)

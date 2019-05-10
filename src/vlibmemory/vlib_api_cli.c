@@ -23,6 +23,8 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
+#include <vnet/api_errno.h>
+
 static clib_error_t *
 vl_api_show_histogram_command (vlib_main_t * vm,
 			       unformat_input_t * input,
@@ -769,8 +771,9 @@ api_trace_command_fn (vlib_main_t * vm,
       else if (unformat (input, "post-mortem-off"))
 	vl_msg_api_post_mortem_dump_enable_disable (0 /* enable */ );
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 out:
   vec_free (filename);
@@ -843,8 +846,9 @@ vl_api_trace_command (vlib_main_t * vm,
 	  am->msg_print_flag = 0;
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 
@@ -891,8 +895,9 @@ api_trace_config_fn (vlib_main_t * vm, unformat_input_t * input)
 			 &am->save_msg_table_filename))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 }
@@ -923,8 +928,9 @@ api_queue_config_fn (vlib_main_t * vm, unformat_input_t * input)
 			  nitems);
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
   return 0;
 }
@@ -1020,8 +1026,9 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
       else if (unformat (input, "numeric"))
 	numeric_sort = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (numeric_sort && compare_current)

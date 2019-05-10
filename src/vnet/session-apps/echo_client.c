@@ -837,8 +837,9 @@ echo_clients_command_fn (vlib_main_t * vm,
       else if (unformat (input, "tls-engine %d", &ecm->tls_engine))
 	;
       else
-	return clib_error_return (0, "failed: unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"failed: unknown input `%U'",
+					format_unformat_error, input);
     }
 
   /* Store cli process node index for signalling */

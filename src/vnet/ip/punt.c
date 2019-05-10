@@ -465,7 +465,9 @@ punt_cli (vlib_main_t * vm,
 	pr.punt.l4.protocol = IP_PROTOCOL_TCP;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
 				     format_unformat_error, input);
 	  goto done;
 	}
@@ -545,7 +547,9 @@ punt_socket_register_cmd (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
 				     format_unformat_error, input);
 	  goto done;
 	}
@@ -608,7 +612,9 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
 				     format_unformat_error, input);
 	  goto done;
 	}
@@ -738,7 +744,9 @@ punt_socket_show_cmd (vlib_main_t * vm,
 	pt = PUNT_TYPE_IP_PROTO;
       else
 	{
-	  error = clib_error_return (0, "parse error: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "parse error: '%U'",
 				     format_unformat_error, input);
 	  goto done;
 	}
@@ -796,8 +804,9 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "socket %s", &socket_path))
 	strncpy (pm->sun_path, socket_path, UNIX_PATH_MAX - 1);
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
 
   if (socket_path == 0)

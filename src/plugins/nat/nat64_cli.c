@@ -53,8 +53,8 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -157, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -165,8 +165,8 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return_errno (0, -157, "unknown input '%U'",
+					   format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -316,7 +316,9 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input: '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -430,8 +432,10 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
     ;
   else
     {
-      error = clib_error_return (0, "unknown input: '%U'",
-				 format_unformat_error, line_input);
+      error =
+	clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				 "unknown input: '%U'", format_unformat_error,
+				 line_input);
       goto done;
     }
 
@@ -534,8 +538,10 @@ nat64_show_st_command_fn (vlib_main_t * vm,
     ;
   else
     {
-      error = clib_error_return (0, "unknown input: '%U'",
-				 format_unformat_error, line_input);
+      error =
+	clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				 "unknown input: '%U'", format_unformat_error,
+				 line_input);
       goto done;
     }
 
@@ -589,7 +595,9 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input: '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input: '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
@@ -706,7 +714,9 @@ nat64_add_interface_address_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else
 	{
-	  error = clib_error_return (0, "unknown input '%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input '%U'",
 				     format_unformat_error, line_input);
 	  goto done;
 	}
