@@ -411,8 +411,10 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
   if (!unformat (line_input, "%U",
 		 unformat_vnet_sw_interface, vnm, &l2_sw_if_index))
     {
-      error = clib_error_return (0, "unknown input '%U'",
-				 format_unformat_error, line_input);
+      error =
+	clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				 "unknown input '%U'", format_unformat_error,
+				 line_input);
       goto done;
     }
 

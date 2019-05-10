@@ -908,8 +908,9 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  tls_openssl_set_ciphers (ciphers);
 	}
       else
-	return clib_error_return (0, "failed: unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"failed: unknown input `%U'",
+					format_unformat_error, input);
     }
 
   /* reset parameters if engine is not configured */

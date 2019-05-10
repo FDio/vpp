@@ -488,8 +488,8 @@ show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
   clib_error_t *error = NULL;
 
   if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			      input);
+    return clib_error_return_errno (0, -158, "unknown input `%U'",
+				    format_unformat_error, input);
 
   udp_dst_port_info_t *port_info;
   if (um->punt_unknown4)

@@ -264,8 +264,9 @@ set_reassembly_command_fn (vlib_main_t * vm,
     }
   else
     {
-      return clib_error_return (0, "Unknown input `%U'",
-				format_unformat_error, line_input);
+      return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				      "Unknown input `%U'",
+				      format_unformat_error, line_input);
     }
 
 

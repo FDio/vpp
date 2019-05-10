@@ -78,7 +78,7 @@ lb_vip_command_fn (vlib_main_t * vm,
     else if (unformat(line_input, "target_port %d", &target_port))
       ;
     else {
-      error = clib_error_return (0, "parse error: '%U'",
+      error = clib_error_return_errno (0, -158, "parse error: '%U'",
                                 format_unformat_error, line_input);
       goto done;
     }
@@ -242,7 +242,7 @@ lb_as_command_fn (vlib_main_t * vm,
     else if (unformat(line_input, "port %d", &port))
       ;
     else {
-      error = clib_error_return (0, "parse error: '%U'",
+      error = clib_error_return_errno (0, -158, "parse error: '%U'",
                                  format_unformat_error, line_input);
       goto done;
     }
@@ -329,7 +329,7 @@ lb_conf_command_fn (vlib_main_t * vm,
     } else if (unformat(line_input, "timeout %d", &flow_timeout))
       ;
     else {
-      error = clib_error_return (0, "parse error: '%U'",
+      error = clib_error_return_errno (0, -158, "parse error: '%U'",
                                  format_unformat_error, line_input);
       goto done;
     }
@@ -430,7 +430,7 @@ lb_set_interface_nat_command_fn (vlib_main_t * vm,
         is_del = 1;
       else
         {
-          error = clib_error_return (0, "unknown input '%U'",
+          error = clib_error_return_errno (0,  VNET_API_ERROR_SYNTAX_ERROR , "unknown input '%U'",
             format_unformat_error, line_input);
           goto done;
         }

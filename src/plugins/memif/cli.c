@@ -53,8 +53,9 @@ memif_socket_filename_create_command_fn (vlib_main_t * vm,
       else
 	{
 	  vec_free (socket_filename);
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
+	  return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					  "unknown input `%U'",
+					  format_unformat_error, input);
 	}
     }
 
@@ -289,8 +290,9 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+					"unknown input `%U'",
+					format_unformat_error, input);
     }
   unformat_free (line_input);
 
@@ -428,7 +430,9 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	show_descr = 1;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  error =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
 				     format_unformat_error, input);
 	  goto done;
 	}

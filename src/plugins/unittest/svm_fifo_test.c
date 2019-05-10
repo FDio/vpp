@@ -16,6 +16,8 @@
 #include <vlib/vlib.h>
 #include <svm/fifo_segment.h>
 
+#include <vnet/api_errno.h>
+
 #define SFIFO_TEST_I(_cond, _comment, _args...)			\
 ({								\
   int _evald = (_cond);						\
@@ -833,8 +835,10 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 	verbose = 1;
       else
 	{
-	  clib_error_t *e = clib_error_return (0, "unknown input `%U'",
-					       format_unformat_error, input);
+	  clib_error_t *e =
+	    clib_error_return_errno (0, VNET_API_ERROR_SYNTAX_ERROR,
+				     "unknown input `%U'",
+				     format_unformat_error, input);
 	  clib_error_report (e);
 	  return -1;
 	}
