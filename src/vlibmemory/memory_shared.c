@@ -209,16 +209,6 @@ vl_msg_api_alloc (int nbytes)
 }
 
 void *
-vl_msg_api_alloc_zero (int nbytes)
-{
-  void *ret;
-
-  ret = vl_msg_api_alloc (nbytes);
-  clib_memset (ret, 0, nbytes);
-  return ret;
-}
-
-void *
 vl_msg_api_alloc_or_null (int nbytes)
 {
   int pool;
@@ -233,16 +223,6 @@ void *
 vl_msg_api_alloc_as_if_client (int nbytes)
 {
   return vl_msg_api_alloc_internal (nbytes, 0, 0 /* may_return_null */ );
-}
-
-void *
-vl_msg_api_alloc_zero_as_if_client (int nbytes)
-{
-  void *ret;
-
-  ret = vl_msg_api_alloc_as_if_client (nbytes);
-  clib_memset (ret, 0, nbytes);
-  return ret;
 }
 
 void *
