@@ -24,6 +24,8 @@
 typedef enum
 {
  STAT_COUNTER_VECTOR_RATE = 0,
+ STAT_COUNTER_NUM_WORKER_THREADS,
+ STAT_COUNTER_VECTOR_RATE_PER_WORKER,
  STAT_COUNTER_INPUT_RATE,
  STAT_COUNTER_LAST_UPDATE,
  STAT_COUNTER_LAST_STATS_CLEAR,
@@ -37,16 +39,19 @@ typedef enum
  STAT_COUNTERS
 } stat_segment_counter_t;
 
-#define foreach_stat_segment_counter_name			\
-  _(VECTOR_RATE, SCALAR_INDEX, vector_rate, /sys)		\
-  _(INPUT_RATE, SCALAR_INDEX, input_rate, /sys)			\
-  _(LAST_UPDATE, SCALAR_INDEX, last_update, /sys)		\
-  _(LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, /sys)	\
-  _(HEARTBEAT, SCALAR_INDEX, heartbeat, /sys)			\
-  _(NODE_CLOCKS, COUNTER_VECTOR_SIMPLE, clocks, /sys/node)	\
-  _(NODE_VECTORS, COUNTER_VECTOR_SIMPLE, vectors, /sys/node)	\
-  _(NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, /sys/node)	\
-  _(NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /sys/node)	\
+#define foreach_stat_segment_counter_name                       \
+  _(VECTOR_RATE, SCALAR_INDEX, vector_rate, /sys)               \
+  _(VECTOR_RATE_PER_WORKER, COUNTER_VECTOR_SIMPLE,              \
+    vector_rate_per_worker, /sys)                               \
+  _(NUM_WORKER_THREADS, SCALAR_INDEX, num_worker_threads, /sys) \
+  _(INPUT_RATE, SCALAR_INDEX, input_rate, /sys)                 \
+  _(LAST_UPDATE, SCALAR_INDEX, last_update, /sys)               \
+  _(LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, /sys)     \
+  _(HEARTBEAT, SCALAR_INDEX, heartbeat, /sys)                   \
+  _(NODE_CLOCKS, COUNTER_VECTOR_SIMPLE, clocks, /sys/node)      \
+  _(NODE_VECTORS, COUNTER_VECTOR_SIMPLE, vectors, /sys/node)    \
+  _(NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, /sys/node)        \
+  _(NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /sys/node)  \
   _(INTERFACE_NAMES, NAME_VECTOR, names, /if)                   \
   _(NODE_NAMES, NAME_VECTOR, names, /sys/node)
 
