@@ -70,7 +70,10 @@ class TestL2bdArpTerm(VppTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-        self.logger.info(self.vapi.ppcli("show bridge-domain 1 detail"))
+        # many tests delete bridge-domain 1 as the last task.  don't output
+        # the details of a non-existent bridge-domain.
+        if self.vapi.l2_fib_table_dump(bd_id=1):
+            self.logger.info(self.vapi.ppcli("show bridge-domain 1 detail"))
 
     def add_del_arp_term_hosts(self, entries, bd_id=1, is_add=1, is_ipv6=0):
         for e in entries:

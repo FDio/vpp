@@ -2438,7 +2438,7 @@ class TestGBP(VppTestCase):
     def test_gbp_learn_l3(self):
         """ GBP L3 Endpoint Learning """
 
-        self.vapi.cli("set logging class gbp debug")
+        self.vapi.cli("set logging class gbp level debug")
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
@@ -2877,7 +2877,7 @@ class TestGBP(VppTestCase):
     def test_gbp_redirect(self):
         """ GBP Endpoint Redirect """
 
-        self.vapi.cli("set logging class gbp debug")
+        self.vapi.cli("set logging class gbp level debug")
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
@@ -3449,7 +3449,7 @@ class TestGBP(VppTestCase):
         """ GBP L3 Out """
 
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
-        self.vapi.cli("set logging class gbp debug")
+        self.vapi.cli("set logging class gbp level debug")
 
         routed_dst_mac = "00:0c:0c:0c:0c:0c"
         routed_src_mac = "00:22:bd:f8:19:ff"

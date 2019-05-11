@@ -170,6 +170,14 @@ defaultmapping = {
 }
 
 
+class CliFailedCommandError(Exception):
+    """ cli command failed."""
+
+
+class CliSyntaxError(Exception):
+    """ cli command had a syntax error."""
+
+
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
     pass
@@ -366,6 +374,10 @@ class VppPapiProvider(object):
         cli += '\n'
         r = self.papi.cli_inband(cmd=cli)
         self.hook.after_cli(cli)
+        if r.retval == -156:
+            raise CliSyntaxError(r.reply)
+        if r.retval != 0:
+            raise CliFailedCommandError(r.reply)
         if hasattr(r, 'reply'):
             return r.reply
 
