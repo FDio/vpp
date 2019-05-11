@@ -257,8 +257,8 @@ class LDPCutThruTestCase(VCLTestCase):
                                               self.server_port]
 
     def tearDown(self):
-        self.cut_thru_tear_down()
         super(LDPCutThruTestCase, self).tearDown()
+        self.cut_thru_tear_down()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
@@ -695,9 +695,8 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                                                    self.server_port]
 
     def tearDown(self):
-        self.cut_thru_tear_down()
-
         super(LDPIpv6CutThruTestCase, self).tearDown()
+        self.cut_thru_tear_down()
 
     def test_ldp_ipv6_cut_thru_echo(self):
         """ run LDP IPv6 cut thru echo test """
@@ -774,9 +773,8 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
                                                    self.server_port]
 
     def tearDown(self):
-        self.cut_thru_tear_down()
-
         super(VCLIpv6CutThruTestCase, self).tearDown()
+        self.cut_thru_tear_down()
 
     def test_vcl_ipv6_cut_thru_echo(self):
         """ run VCL IPv6 cut thru echo test """
