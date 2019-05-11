@@ -87,7 +87,8 @@ pg_capture (pg_capture_args_t * a)
     {
       struct stat sb;
       if (stat ((char *) a->pcap_file_name, &sb) != -1)
-	return clib_error_return (0, "Cannot create pcap file");
+	return clib_error_return (0, "pcap file '%s' does not exist.",
+	a->pcap_file_name);
     }
 
   pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
