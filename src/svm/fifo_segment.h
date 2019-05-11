@@ -43,6 +43,8 @@ typedef struct
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
   u32 n_active_fifos;			/**< Number of active fifos */
   u8 flags;				/**< Segment flags */
+  u32 n_free_bytes;			/**< Bytes usable for new allocs */
+  u32 n_fl_chunk_bytes;			/**< Chunk bytes on freelist */
 } fifo_segment_header_t;
 
 typedef struct
