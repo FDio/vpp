@@ -39,6 +39,7 @@ typedef struct _segment_manager
 {
   /** Pool of segments allocated by this manager */
   fifo_segment_t *segments;
+  fifo_segment_main_t *fs_main;
 
   /** rwlock that protects the segments pool */
   clib_rwlock_t segments_rwlock;
