@@ -352,8 +352,8 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   u32 rnd_size = 0;
   u8 *heap;
 
-  rnd_size = (ssvm->ssvm_size + (pagesize - 1)) & ~(pagesize - 1);
-  rnd_size = clib_min (rnd_size, ((u64) 1 << 32) - pagesize);
+  rnd_size = clib_max (ssvm->ssvm_size + (pagesize - 1), ssvm->ssvm_size);
+  rnd_size &= ~(pagesize - 1);
 
 #if USE_DLMALLOC == 0
   {
