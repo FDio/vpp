@@ -102,7 +102,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
     }
 
   /*
-   * Allocate fifo segment and lock if needed
+   * Allocate fifo segment and grab lock if needed
    */
   if (vlib_num_workers ())
     clib_rwlock_writer_lock (&sm->segments_rwlock);
@@ -110,13 +110,14 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
   pool_get_zero (sm->segments, fs);
 
   /*
-   * Initialize ssvm segment and svm fifo private header
+   * Allocate ssvm segment
    */
   segment_size = segment_size ? segment_size : props->add_segment_size;
   page_size = clib_mem_get_page_size ();
   /* Protect against segment size u32 wrap */
   segment_size = clib_max (segment_size + page_size - 1, segment_size);
   segment_size = segment_size & ~(page_size - 1);
+
   if (props->segment_type != SSVM_SEGMENT_PRIVATE)
     {
       seg_name = format (0, "%d-%d%c", getpid (), smm->seg_name_counter++, 0);
@@ -147,6 +148,9 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
       goto done;
     }
 
+  /*
+   * Initialize fifo segment
+   */
   fifo_segment_init (fs);
 
   /*
@@ -761,6 +765,7 @@ segment_manager_alloc_queue (fifo_segment_t * segment,
 
   oldheap = ssvm_push_heap (segment->ssvm.sh);
   q = svm_msg_q_alloc (cfg);
+  fifo_segment_update_free_bytes (segment);
   ssvm_pop_heap (oldheap);
 
   if (props->use_mq_eventfd)
@@ -865,7 +870,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 	  segment_manager_foreach_segment_w_lock (seg, sm, ({
 	    fifo_segment_info (seg, &address, &size);
 	    active_fifos = fifo_segment_num_fifos (seg);
-	    free_fifos = fifo_segment_num_free_fifos (seg, ~0 /* size */);
+	    free_fifos = fifo_segment_num_free_fifos (seg);
 	    vlib_cli_output (vm, "%-15v%15U%15llu%15u%15u%15llx",
 			     ssvm_name (&seg->ssvm), format_fifo_segment_type,
 			     seg, size >> 20ULL, active_fifos, free_fifos,
