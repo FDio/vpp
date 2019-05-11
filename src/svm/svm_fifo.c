@@ -1053,6 +1053,24 @@ svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber)
     }
 }
 
+u32
+svm_fifo_mem_used (svm_fifo_t * f)
+{
+  svm_fifo_chunk_t *c;
+  u32 mem = 0;
+
+  mem += sizeof (*f);
+  c = f->start_chunk;
+  do
+    {
+      mem += sizeof (*c) + (1 << (max_log2 (c->length)));
+      c = c->next;
+    }
+  while (c != f->start_chunk);
+
+  return mem;
+}
+
 u8 *
 format_ooo_segment (u8 * s, va_list * args)
 {
