@@ -846,8 +846,6 @@ class TestPunt(VppTestCase):
         self.logger.info(self.vapi.cli("show punt stats"))
         self.logger.info(self.vapi.cli("show punt db"))
 
-        self.vapi.cli("test punt clear")
-
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
