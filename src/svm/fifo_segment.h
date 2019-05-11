@@ -43,6 +43,8 @@ typedef struct
   svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
   u32 n_active_fifos;			/**< Number of active fifos */
   u8 flags;				/**< Segment flags */
+  u32 n_free_bytes;			/**< Bytes usable for new allocs */
+  u32 n_fl_chunk_bytes;			/**< Chunk bytes on freelist */
 } fifo_segment_header_t;
 
 typedef struct
@@ -100,6 +102,19 @@ svm_fifo_t *fifo_segment_alloc_fifo (fifo_segment_t * fs,
  */
 void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
 
+int fifo_segment_prealloc_fifo_hdrs (fifo_segment_t * fs, u32 batch_size);
+/**
+ * Try to preallocate fifo chunks on segment
+ *
+ * Tries to preallocate chunks of requested size on segment and adds them
+ * to chunk freelist.
+ *
+ * @param fs		fifo segment
+ * @param chunk_size	size of chunks to be allocated in bytes
+ * @param batch_size	number of chunks to be allocated
+ */
+int fifo_segment_prealloc_fifo_chunks (fifo_segment_t * fs, u32 chunk_size,
+				       u32 batch_size);
 /**
  * Pre-allocates fifo pairs in fifo segment
  *
@@ -137,10 +152,40 @@ int fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f,
  * @return		0 on success, error otherwise
  */
 int fifo_segment_collect_fifo_chunks (fifo_segment_t * fs, svm_fifo_t * f);
+
+/**
+ * Fifo segment estimate of number of free bytes
+ *
+ * Returns fifo segment's internal estimate of the number of free bytes.
+ * To force a synchronization between the segment and the underlying
+ * memory allocator, call @ref fifo_segment_update_free_bytes
+ *
+ * @param fs		fifo segment
+ * @return		free bytes estimate
+ */
+u32 fifo_segment_free_bytes (fifo_segment_t * fs);
+
+/**
+ * Update fifo segment free bytes estimate
+ *
+ * Forces fifo segment free bytes estimate sinchronization with underlying
+ * memory allocator.
+ *
+ * @param fs		fifo segment
+ */
+void fifo_segment_update_free_bytes (fifo_segment_t * fs);
+
+/**
+ * Number of bytes on chunk free lists
+ *
+ * @param fs		fifo segment
+ * @return		free bytes on chunk free lists
+ */
+u32 fifo_segment_chunk_prealloc_bytes (fifo_segment_t * fs);
 u8 fifo_segment_has_fifos (fifo_segment_t * fs);
 svm_fifo_t *fifo_segment_get_fifo_list (fifo_segment_t * fs);
 u32 fifo_segment_num_fifos (fifo_segment_t * fs);
-u32 fifo_segment_num_free_fifos (fifo_segment_t * fs, u32 fifo_size_in_bytes);
+u32 fifo_segment_num_free_fifos (fifo_segment_t * fs);
 /**
  * Find number of free chunks of given size
  *
