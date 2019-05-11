@@ -432,6 +432,13 @@ int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len);
  * @param f		fifo
  */
 void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
+/**
+ * Total memory used by fifo
+ *
+ * @param f	fifo
+ * @return	number of bytes allocated for fifo and chunks
+ */
+u32 svm_fifo_mem_used (svm_fifo_t * f);
 int svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs);
 void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs);
 /**
