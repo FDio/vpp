@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "806630f2_6e8672d6",
+        "filename": "test/test_quic.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-13T22:33:10Z",
+      "side": 1,
+      "message": "except OSError:",
+      "range": {
+        "startLine": 156,
+        "startChar": 12,
+        "endLine": 156,
+        "endChar": 18
+      },
+      "revId": "e188f8672e8df94a6e41e7de39bbef5527ecf1ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0f1cabb7_665f1b6a",
+        "filename": "test/test_quic.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-13T22:33:10Z",
+      "side": 1,
+      "message": "Swap these lines.\n self.thru_host_stack_ipv4_tear_down() disables the session so that \"show session verbose 2\" below will return \"session layer is not enabled\" or something similar.\n\nsee: https://gerrit.fd.io/r/#/c/19523/3/test/test_vcl.py",
+      "range": {
+        "startLine": 247,
+        "startChar": 0,
+        "endLine": 248,
+        "endChar": 60
+      },
+      "revId": "e188f8672e8df94a6e41e7de39bbef5527ecf1ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
