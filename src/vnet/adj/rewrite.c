@@ -126,32 +126,6 @@ vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
 }
 
 void
-vnet_rewrite_for_tunnel (vnet_main_t * vnm,
-			 u32 tx_sw_if_index,
-			 u32 rewrite_node_index,
-			 u32 post_rewrite_node_index,
-			 vnet_rewrite_header_t * rw,
-			 u8 * rewrite_data, u32 rewrite_length)
-{
-  ip_adjacency_t *adj = 0;
-  /*
-   * Installed into vnet_buffer(b)->sw_if_index[VLIB_TX] e.g.
-   * by ip4_rewrite_inline. If the post-rewrite node injects into
-   * ipX-forward, this will be interpreted as a FIB number.
-   */
-  rw->sw_if_index = tx_sw_if_index;
-  rw->next_index = vlib_node_add_next (vnm->vlib_main, rewrite_node_index,
-				       post_rewrite_node_index);
-  /* we can't know at this point */
-  rw->max_l3_packet_bytes = (u16) ~ 0;
-
-  ASSERT (rewrite_length < sizeof (adj->rewrite_data));
-  /* Leave room for ethernet + VLAN tag */
-  vnet_rewrite_set_data_internal (rw, sizeof (adj->rewrite_data),
-				  rewrite_data, rewrite_length);
-}
-
-void
 serialize_vnet_rewrite (serialize_main_t * m, va_list * va)
 {
   vnet_rewrite_header_t *rw = va_arg (*va, vnet_rewrite_header_t *);
