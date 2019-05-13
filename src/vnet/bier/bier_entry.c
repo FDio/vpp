@@ -224,7 +224,7 @@ bier_entry_path_add (index_t bei,
     }
 
     /*
-     * update the ECNP tables with the new choice
+     * update the ECMP tables with the new choice
      */
     bier_table_ecmp_walk(be->be_bti,
                          bier_entry_table_ecmp_walk_add_fmask,
@@ -280,7 +280,7 @@ bier_entry_path_update (index_t bei,
     }
 
     /*
-     * update the ECNP tables with the new choice
+     * update the ECMP tables with the new choice
      */
     bier_table_ecmp_walk(be->be_bti,
                          bier_entry_table_ecmp_walk_add_fmask,
@@ -342,7 +342,7 @@ bier_entry_path_remove (index_t bei,
     fib_path_list_unlock(old_pl_index);
 
     /*
-     * update the ECNP tables with the new choice
+     * update the ECMP tables with the new choice
      */
     bier_table_ecmp_walk(be->be_bti,
                          bier_entry_table_ecmp_walk_add_fmask,

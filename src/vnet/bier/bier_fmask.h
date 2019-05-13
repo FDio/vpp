@@ -19,10 +19,10 @@
  * egress towards the next-hop. As such the fmask is part of the rewrite
  * (adj) for that next-hop. It it thus an extension of the next-hop and in
  * no way associated with the bit-position(s) that are reachable through it.
- * Fmasks are thus shared by bit-positions that egress throught the same
+ * Fmasks are thus shared by bit-positions that egress through the same
  * nh (BFR-NBR).
- * Deag fmasks are also shread in the event that a router has local
- * bit-positions. This is necessary to prevent the router recieving two copies
+ * Deag fmasks are also shared in the event that a router has local
+ * bit-positions. This is necessary to prevent the router receiving two copies
  * of each packet. Consequently it also means that they share the same
  * disposition data for the global data.
  */

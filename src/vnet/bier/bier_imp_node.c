@@ -143,7 +143,7 @@ bier_imp_dpo_inline (vlib_main_t * vm,
                                          BIER_HDR_ENTROPY_FIELD_SHIFT);
 
                 /*
-                 * use TTL 64 for the post enacp MPLS label/BIFT-ID
+                 * use TTL 64 for the post encap MPLS label/BIFT-ID
                  * this we be decremented in bier_output node.
                  */
                 vnet_buffer(b0)->mpls.ttl = 65;
