@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "b0d949cc_68ea3eaa",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 1740
+      },
+      "writtenOn": "2019-05-13T15:46:01Z",
+      "side": 1,
+      "message": "sorry didn\u0027t see that one, I correct it right away",
+      "parentUuid": "11964317_507179dd",
+      "range": {
+        "startLine": 135,
+        "startChar": 8,
+        "endLine": 135,
+        "endChar": 57
+      },
+      "revId": "f32d1bd11de711f534c151367c16da1c595cda06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f5443e24_4d7022bc",
         "filename": "test/vpp_pg_interface.py",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2019-05-09T14:15:24Z",
       "side": 1,
       "message": "Do you want to set this conditionally, only if nb_replays is not None, or do you want it set each time it is called.",
+      "range": {
+        "startLine": 144,
+        "startChar": 8,
+        "endLine": 144,
+        "endChar": 37
+      },
+      "revId": "f32d1bd11de711f534c151367c16da1c595cda06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "df65dd13_b6f906fb",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 1740
+      },
+      "writtenOn": "2019-05-13T15:46:01Z",
+      "side": 1,
+      "message": "Each time it is called",
+      "parentUuid": "f5443e24_4d7022bc",
       "range": {
         "startLine": 144,
         "startChar": 8,
