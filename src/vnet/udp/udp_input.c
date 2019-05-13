@@ -207,6 +207,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  child0->c_rmt_port = udp0->src_port;
 		  child0->c_is_ip4 = is_ip4;
 		  child0->c_fib_index = tc0->fib_index;
+		  child0->is_connected = 1;
 
 		  if (session_stream_accept (&child0->connection,
 					     tc0->s_index, 1))

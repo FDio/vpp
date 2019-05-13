@@ -41,6 +41,7 @@ typedef struct
   transport_connection_t connection;	/**< must be first */
   clib_spinlock_t rx_lock;		/**< rx fifo lock */
   u8 is_connected;			/**< connected mode */
+  u8 owns_port;				/**< does port belong to conn (UDPC) */
 } udp_connection_t;
 
 #define foreach_udp4_dst_port			\
@@ -234,6 +235,8 @@ udp_connection_clone_safe (u32 connection_index, u32 thread_index)
   udp_pool_remove_peeker (thread_index);
   new_c->c_thread_index = current_thread_index;
   new_c->c_c_index = udp_connection_index (new_c);
+  new_c->is_connected = old_c->is_connected;
+  new_c->c_fib_index = old_c->c_fib_index;
   return new_c;
 }
 
