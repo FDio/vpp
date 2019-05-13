@@ -138,6 +138,10 @@ typedef struct
   u8 test_return_packets;
   u64 bytes_to_send;
   u32 fifo_size;
+  u32 quic_streams;
+  u8 *appns_id;
+  u64 appns_flags;
+  u64 appns_secret;
 
   u32 n_clients;
   u64 tx_total;
@@ -286,6 +290,14 @@ application_send_attach (echo_main_t * em)
   bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[APP_OPTIONS_SEGMENT_SIZE] = 256 << 20;
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = 256;
+  if (em->appns_id)
+    {
+      bmp->namespace_id_len = vec_len (em->appns_id);
+      clib_memcpy_fast (bmp->namespace_id, em->appns_id,
+			bmp->namespace_id_len);
+      bmp->options[APP_OPTIONS_FLAGS] |= em->appns_flags;
+      bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = em->appns_secret;
+    }
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 
   cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + test_srv_crt_rsa_len);
@@ -1456,6 +1468,7 @@ main (int argc, char **argv)
   em->fifo_size = 64 << 10;
   em->n_clients = 1;
   em->max_test_msg = 50;
+  em->quic_streams = 1;
 
   clib_time_init (&em->clib_time);
   init_error_string_table (em);
@@ -1476,7 +1489,7 @@ main (int argc, char **argv)
 	i_am_server = 0;
       else if (unformat (a, "no-return"))
 	em->no_return = 1;
-      else if (unformat (a, "test"))
+      else if (unformat (a, "test-bytes"))
 	test_return_packets = 1;
       else if (unformat (a, "bytes %lld", &mbytes))
 	{
@@ -1497,6 +1510,19 @@ main (int argc, char **argv)
       else if (unformat (a, "fifo-size %d", &tmp))
 	em->fifo_size = tmp << 10;
       else if (unformat (a, "nclients %d", &em->n_clients))
+	;
+      else if (unformat (a, "appns %_%v%_", &em->appns_id))
+	;
+      else if (unformat (a, "all-scope"))
+	em->appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE
+			    | APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
+      else if (unformat (a, "local-scope"))
+	em->appns_flags = APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+      else if (unformat (a, "global-scope"))
+	em->appns_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+      else if (unformat (a, "secret %lu", &em->appns_secret))
+	;
+      else if (unformat (a, "quic-streams %d", &em->quic_streams))
 	;
       else
 	{
