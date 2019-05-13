@@ -95,6 +95,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
+  listener->owns_port = 1;
   clib_spinlock_init (&listener->rx_lock);
 
   node_index = lcl->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
@@ -168,8 +169,9 @@ udp_session_close (u32 connection_index, u32 thread_index)
   uc = udp_connection_get (connection_index, thread_index);
   if (uc)
     {
-      udp_unregister_dst_port (vm, clib_net_to_host_u16 (uc->c_lcl_port),
-			       uc->c_is_ip4);
+      if (uc->owns_port || !uc->is_connected)
+	udp_unregister_dst_port (vm, clib_net_to_host_u16 (uc->c_lcl_port),
+				 uc->c_is_ip4);
       session_transport_delete_notify (&uc->connection);
       udp_connection_free (uc);
     }
@@ -302,6 +304,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   uc->c_is_ip4 = rmt->is_ip4;
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
+  uc->owns_port = 1;
 
   return uc->c_c_index;
 }
