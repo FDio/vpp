@@ -1,9 +1,22 @@
 #!/usr/bin/env python
+""" Vpp QUIC tests """
 
 import unittest
 import os
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+import subprocess
+import signal
+from framework import VppTestCase, VppTestRunner, running_extended_tests, \
+    Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+
+
+class QUICAppWorker(Worker):
+    """ QUIC Test Application Worker """
+
+    def __init__(self, build_dir, appname, args, logger, env={}):
+        app = "%s/vpp/bin/%s" % (build_dir, appname)
+        self.args = [app] + args
+        super(QUICAppWorker, self).__init__(self.args, logger, env)
 
 
 class QUICTestCase(VppTestCase):
@@ -36,12 +49,10 @@ class QUICTestCase(VppTestCase):
 
         self.create_loopback_interfaces(2)
         self.uri = "quic://%s/1234" % self.loop0.local_ip4
-        common_args = ["uri", self.uri, "fifo-size", "4"]
+        common_args = ["uri", self.uri, "fifo-size", "64"]
         self.server_echo_test_args = common_args + ["appns", "server"]
         self.client_echo_test_args = common_args + ["appns", "client",
-                                                    "bytes", "1024",
-                                                    "test-bytes",
-                                                    "no-output"]
+                                                    "test-bytes"]
         table_id = 1
         for i in self.lo_interfaces:
             i.admin_up()
@@ -101,6 +112,57 @@ class QUICTestCase(VppTestCase):
         self.start_internal_echo_client(client_args)
         self.sleep(self.post_test_sleep)
 
+    def start_external_echo_server(self, args):
+        self.worker_server = QUICAppWorker(self.build_dir, "quic_echo",
+                                           args, self.logger)
+        self.worker_server.start()
+
+    def start_external_echo_client(self, args):
+        self.client_echo_test_args += "use-svm-api"
+        self.worker_client = QUICAppWorker(self.build_dir, "quic_echo",
+                                           args, self.logger)
+        self.worker_client.start()
+        self.worker_client.join(self.timeout)
+        try:
+            self.validateExternalTestResults()
+        except Exception as error:
+            self.fail("Failed with %s" % error)
+
+    def external_ipv4_transfer_test(self, server_args, client_args):
+        self.start_external_echo_server(server_args)
+        self.sleep(self.pre_test_sleep)
+        self.start_external_echo_client(client_args)
+        self.sleep(self.post_test_sleep)
+
+    def validateExternalTestResults(self):
+        if os.path.isdir('/proc/{}'.format(self.worker_server.process.pid)):
+            self.logger.info("Killing server worker process (pid %d)" %
+                             self.worker_server.process.pid)
+            os.killpg(os.getpgid(self.worker_server.process.pid),
+                      signal.SIGTERM)
+            self.worker_server.join()
+        self.logger.info("Client worker result is `%s'" %
+                         self.worker_client.result)
+        error = False
+        if self.worker_client.result is None:
+            try:
+                error = True
+                self.logger.error(
+                    "Timeout: %ss! Killing client worker process (pid %d)" %
+                    (self.timeout, self.worker_client.process.pid))
+                os.killpg(os.getpgid(self.worker_client.process.pid),
+                          signal.SIGKILL)
+                self.worker_client.join()
+            except:
+                self.logger.debug(
+                    "Couldn't kill client worker process")
+                raise
+        if error:
+            raise Exception(
+                "Timeout! Client worker did not finish in %ss" % timeout)
+        self.assert_equal(self.worker_client.result, 0,
+                          "Binary test return code")
+
 
 class QUICInternalEchoIPv4TestCase(QUICTestCase):
     """ QUIC Internal Echo IPv4 Transfer Test Cases """
@@ -129,7 +191,8 @@ class QUICInternalEchoIPv4TestCase(QUICTestCase):
         """ QUIC internal echo client/server transfer """
 
         self.internal_ipv4_transfer_test(self.server_echo_test_args,
-                                         self.client_echo_test_args)
+                                         self.client_echo_test_args +
+                                         ["no-output", "mbytes", "10"])
 
 
 class QUICInternalEchoIPv4MultiStreamTestCase(QUICTestCase):
@@ -160,7 +223,42 @@ class QUICInternalEchoIPv4MultiStreamTestCase(QUICTestCase):
 
         self.internal_ipv4_transfer_test(self.server_echo_test_args,
                                          self.client_echo_test_args +
-                                         ["quic-streams", "10"])
+                                         ["quic-streams", "10",
+                                          "mbytes", "1",
+                                          "no-output"])
+
+
+class QUICExternalEchoIPv4TestCase(QUICTestCase):
+    """ QUIC External Echo IPv4 Transfer Test Cases """
+
+    @classmethod
+    def setUpClass(cls):
+        super(QUICExternalEchoIPv4TestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(QUICExternalEchoIPv4TestCase, cls).tearDownClass()
+
+    def setUp(self):
+        super(QUICExternalEchoIPv4TestCase, self).setUp()
+        self.thru_host_stack_ipv4_setup()
+
+    def tearDown(self):
+        self.thru_host_stack_ipv4_tear_down()
+        super(QUICExternalEchoIPv4TestCase, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_external_transfer(self):
+        """ QUIC external echo client/server transfer """
+
+        self.external_ipv4_transfer_test(self.server_echo_test_args +
+                                         ["socket-name", self.api_sock],
+                                         self.client_echo_test_args +
+                                         ["socket-name", self.api_sock,
+                                          "mbytes", "10"])
 
 
 if __name__ == '__main__':
