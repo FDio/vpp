@@ -381,7 +381,7 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
 
   for (stream_n = 0; stream_n < ecm->quic_streams; stream_n++)
     {
-      clib_memset (a, 0, sizeof (a));
+      clib_memset (a, 0, sizeof (*a));
       a->app_index = ecm->app_index;
       a->api_context = -1 - api_context;
       clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
