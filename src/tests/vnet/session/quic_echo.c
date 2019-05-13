@@ -614,8 +614,8 @@ recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 	  n_to_read -= n_read;
 
 	  s->bytes_received += n_read;
+	  ASSERT (s->bytes_to_receive >= n_read);
 	  s->bytes_to_receive -= n_read;
-	  ASSERT (s->bytes_to_receive >= 0);
 	}
       else
 	break;
