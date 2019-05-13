@@ -20,3 +20,13 @@ referenced with following construct. This is the image created to show a
 pull request.
 
 ![](/_images/examplePullReq.png)
+
+Tables
+======
+
+An example of a table in markdown is shown here:
+
+| This Column | This Column   | This Column |
+| ------------|:-------------:|------------:|
+| is left     | is            | is right    |
+| aligned     | centered      | aligned     |

@@ -20,7 +20,7 @@ ID is released back to the pool and will be re-used by the next node.
 The Node ID is used to calculate per-node IP subnets for PODs
 and other internal subnets that need to be unique on each node. Apart from the Node ID,
 the input for IPAM calculations is a set of config knobs, which can be specified
-in the `IPAMConfig` section of the [Contiv/VPP deployment YAML](../../../k8s/contiv-vpp.yaml):
+in the `IPAMConfig` section of the \[Contiv/VPP deployment YAML\](../../../k8s/contiv-vpp.yaml):
 
 - **PodSubnetCIDR** (default `10.1.0.0/16`): each pod gets an IP address assigned 
 from this range. The size of this range (default `/16`) dictates upper limit of 
@@ -132,6 +132,6 @@ whenever a node is added/deleted in the k8s cluster.
 
 
 #### More Info
-Please refer to the [Packet Flow Dev Guide](../dev-guide/PACKET_FLOW.html) for more 
+Please refer to the \[Packet Flow Dev Guide\](../dev-guide/PACKET_FLOW.html) for more 
 detailed description of paths traversed by request and response packets 
 inside Contiv/VPP Kubernetes cluster under different situations.
