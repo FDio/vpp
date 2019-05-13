@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "26b63e49_1be05325",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-13T15:48:47Z",
+      "side": 0,
+      "message": "Why is this error check being removed in 19.01?\n\nIt was not removed in the patch to master:\nhttps://gerrit.fd.io/r/#/c/18780/",
+      "range": {
+        "startLine": 214,
+        "startChar": 0,
+        "endLine": 216,
+        "endChar": 39
+      },
+      "revId": "8d6723968945d686b94f780b5a755fd3a73d4be6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
