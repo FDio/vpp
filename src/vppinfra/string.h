@@ -216,7 +216,7 @@ memset_s_inline (void *s, rsize_t smax, int c, rsize_t n)
 static_always_inline void
 clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
 {
-#if defined (CLIB_HxAVE_VEC256)
+#if defined (CLIB_HAVE_VEC256)
   u8x32 s0, s1, d0, d1;
   u8x32 mask = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
     18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
