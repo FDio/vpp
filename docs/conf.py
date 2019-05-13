@@ -40,6 +40,8 @@ release = u'1.0'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
+    'recommonmark',
+    'sphinx_markdown_tables'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -48,10 +50,11 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = ['.rst', '.md']
-source_parsers = {
-   '.md': 'recommonmark.parser.CommonMarkParser',
-}
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown'
+    }
+
 # The master toctree document.
 master_doc = 'index'
 
