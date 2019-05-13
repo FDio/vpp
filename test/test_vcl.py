@@ -215,7 +215,7 @@ class VCLTestCase(VppTestCase):
                 os.killpg(os.getpgid(worker_client.process.pid),
                           signal.SIGKILL)
                 worker_client.join()
-            except:
+            except OSError:
                 self.logger.debug(
                     "Couldn't kill client worker process")
                 raise
