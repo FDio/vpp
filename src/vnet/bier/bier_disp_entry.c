@@ -175,7 +175,7 @@ bier_disp_entry_path_add (index_t bdei,
     old_pli = *pli;
 
     /*
-     * create a new or update the exisitng path-list for this
+     * create a new or update the existing path-list for this
      * payload protocol
      */
     if (FIB_NODE_INDEX_INVALID == *pli)
@@ -211,7 +211,7 @@ bier_disp_entry_path_remove (index_t bdei,
     old_pli = *pli;
 
     /*
-     * update the exisitng path-list for this payload protocol
+     * update the existing path-list for this payload protocol
      */
     if (FIB_NODE_INDEX_INVALID != *pli)
     {

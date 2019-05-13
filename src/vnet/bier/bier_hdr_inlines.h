@@ -48,7 +48,7 @@
 #define BIER_HDR_1ST_NIBBLE_VALUE 0x5
 
 /**
- * Mask and shift values for fields in the headers trainling word
+ * Mask and shift values for fields in the headers training word
  */
 #define BIER_HDR_PROTO_FIELD_MASK   0x003f
 #define BIER_HDR_OAM_FIELD_MASK     0xc000
