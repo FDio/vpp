@@ -63,7 +63,7 @@ A new client library can either wrap the C library (libvppapiclient.so) or it ca
 ```
 #!/usr/bin/env python
 from vpp_papi.vpp_stats import VPPStats
-stats = VPPStats('/var/run/stats.socks')
+stats = VPPStats('/run/vpp/stats.sock')
 dir = stats.ls(['^/if', '/err/ip4-input', '/sys/node/ip4-input'])
 counters = stats.dump(dir)
 
@@ -82,7 +82,7 @@ int main (int argc, char **argv) {
   vec_add1(patterns, "^/if");
   vec_add1(patterns, "ip4-input");
 
-  int rv = stat_segment_connect("/var/run/stats.sock");
+  int rv = stat_segment_connect(STAT_SEGMENT_SOCKET_FILE);
   uint32_t *dir = stat_segment_ls(patterns);
   stat_segment_data_t *res = stat_segment_dump(dir);
 
