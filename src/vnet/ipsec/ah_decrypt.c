@@ -200,7 +200,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 
-	      ipsec_sa_anti_replay_advance (sa0, &ah0->seq_no);
+	      ipsec_sa_anti_replay_advance (sa0, ah0->seq_no);
 	    }
 
 	  vlib_buffer_advance (i_b0,
