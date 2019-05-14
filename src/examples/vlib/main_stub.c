@@ -25,18 +25,17 @@ main (int argc, char *argv[])
 static clib_error_t *
 main_stub_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
-
-  if ((error = unix_physmem_init (vm)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, unix_cli_init)))
-    return error;
+  clib_error_t *error = 0;
 
   return error;
 }
 
-VLIB_INIT_FUNCTION (main_stub_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (main_stub_init) =
+{
+  .runs_after = VLIB_INITS("unix_physmem_init", "unix_cli_init"),
+};
+/* *INDENT-ON* */
 
 #if 0
 /* Node test code. */

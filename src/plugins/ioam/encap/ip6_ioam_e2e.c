@@ -44,7 +44,7 @@ static u8 * ioam_e2e_trace_handler (u8 * s,
   return s;
 }
 
-int 
+int
 ioam_e2e_config_handler (void *data, u8 disable)
 {
   int *analyse = data;
@@ -171,13 +171,6 @@ VLIB_CLI_COMMAND (ioam_show_e2e_cmd, static) = {
 static clib_error_t *
 ioam_e2e_init (vlib_main_t * vm)
 {
-  clib_error_t * error;
-
-  if ((error = vlib_call_init_function (vm, ip6_hop_by_hop_ioam_init)))
-    {
-      return(error);
-    }
-
   /*
    * As of now we have only PPC under E2E header.
    */
@@ -213,4 +206,9 @@ ioam_e2e_init (vlib_main_t * vm)
  * Init function for the E2E lib.
  * ip6_hop_by_hop_ioam_e2e_init gets called during init.
  */
-VLIB_INIT_FUNCTION (ioam_e2e_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ioam_e2e_init) =
+{
+    .runs_after = VLIB_INITS("ip6_hop_by_hop_ioam_init"),
+};
+/* *INDENT-ON* */

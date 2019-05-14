@@ -97,10 +97,7 @@ crypto_ia32_init (vlib_main_t * vm)
 {
   crypto_ia32_main_t *cm = &crypto_ia32_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, vnet_crypto_init)))
-    return error;
+  clib_error_t *error = 0;
 
   vec_validate_aligned (cm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
@@ -124,7 +121,12 @@ error:
   return error;
 }
 
-VLIB_INIT_FUNCTION (crypto_ia32_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (crypto_ia32_init) =
+{
+  .runs_after = VLIB_INITS ("vnet_crypto_init"),
+};
+/* *INDENT-ON* */
 
 #include <vpp/app/version.h>
 

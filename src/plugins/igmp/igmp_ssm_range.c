@@ -138,20 +138,19 @@ VLIB_CLI_COMMAND (igmp_show_timers_command, static) = {
 static clib_error_t *
 igmp_ssm_range_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, igmp_init)))
-    return error;
-
   igmp_ssm_range_populate ();
 
   IGMP_DBG ("ssm-range-initialized");
 
-  return (error);
+  return (0);
 }
 
-VLIB_INIT_FUNCTION (igmp_ssm_range_init);
-
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (igmp_ssm_range_init) =
+{
+  .runs_after = VLIB_INITS("igmp_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

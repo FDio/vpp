@@ -83,14 +83,6 @@ static clib_error_t *
 ethernet_init (vlib_main_t * vm)
 {
   ethernet_main_t *em = &ethernet_main;
-  clib_error_t *error;
-
-  /*
-   * Set up the L2 path now, or we'll wipe out the L2 ARP
-   * registration set up by ethernet_arp_init.
-   */
-  if ((error = vlib_call_init_function (vm, l2_init)))
-    return error;
 
   em->vlib_main = vm;
 
@@ -101,17 +93,28 @@ ethernet_init (vlib_main_t * vm)
 #include "types.def"
 #undef ethernet_type
 
-  if ((error = vlib_call_init_function (vm, llc_init)))
-    return error;
-  if ((error = vlib_call_init_function (vm, ethernet_input_init)))
-    return error;
-  if ((error = vlib_call_init_function (vm, vnet_feature_init)))
-    return error;
-
+  /*
+   * ethernet_input_init is effectively part of this function.
+   * Simply ensuring that it happens after we set up the hash tables
+   * is not sufficient.
+   */
+  ethernet_input_init (vm, em);
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ethernet_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ethernet_init) =
+{
+  /*
+   * Set up the L2 path before ethernet_init, or we'll wipe out the L2 ARP
+   * registration set up by ethernet_arp_init.
+   */
+  .init_order = VLIB_INITS("l2_init",
+                           "ethernet_init",
+                           "llc_init",
+                           "vnet_feature_init"),
+};
+/* *INDENT-ON* */
 
 ethernet_main_t *
 ethernet_get_main (vlib_main_t * vm)

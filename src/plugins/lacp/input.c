@@ -233,15 +233,15 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
 static clib_error_t *
 lacp_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, lacp_periodic_init)))
-    return error;
-
   return 0;
 }
 
-VLIB_INIT_FUNCTION (lacp_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (lacp_init) =
+{
+  .runs_after = VLIB_INITS("lacp_periodic_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * packet trace format function, very similar to

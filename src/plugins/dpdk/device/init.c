@@ -1734,6 +1734,8 @@ dpdk_init (vlib_main_t * vm)
   STATIC_ASSERT (RTE_CACHE_LINE_SIZE == 1 << CLIB_LOG2_CACHE_LINE_BYTES,
 		 "DPDK RTE CACHE LINE SIZE does not match with 1<<CLIB_LOG2_CACHE_LINE_BYTES");
 
+  dpdk_cli_reference ();
+
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
   dm->conf = &dpdk_config_main;
@@ -1751,17 +1753,12 @@ dpdk_init (vlib_main_t * vm)
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
 
-  /* init CLI */
-  if ((error = vlib_call_init_function (vm, dpdk_cli_init)))
-    return error;
-
   dm->log_default = vlib_log_register_class ("dpdk", 0);
 
   return error;
 }
 
 VLIB_INIT_FUNCTION (dpdk_init);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

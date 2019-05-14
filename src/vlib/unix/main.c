@@ -67,10 +67,15 @@ unix_main_init (vlib_main_t * vm)
 {
   unix_main_t *um = &unix_main;
   um->vlib_main = vm;
-  return vlib_call_init_function (vm, unix_input_init);
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (unix_main_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (unix_main_init) =
+{
+  .runs_before = VLIB_INITS ("unix_input_init"),
+};
+/* *INDENT-ON* */
 
 static int
 unsetup_signal_handlers (int sig)

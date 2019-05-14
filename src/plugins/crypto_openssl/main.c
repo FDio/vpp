@@ -232,12 +232,8 @@ crypto_openssl_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   openssl_per_thread_data_t *ptd;
   u8 *seed_data = 0;
-  clib_error_t *error;
   time_t t;
   pid_t pid;
-
-  if ((error = vlib_call_init_function (vm, vnet_crypto_init)))
-    return error;
 
   u32 eidx = vnet_crypto_register_engine (vm, "openssl", 50, "OpenSSL");
 
@@ -284,7 +280,13 @@ crypto_openssl_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (crypto_openssl_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (crypto_openssl_init) =
+{
+  .runs_after = VLIB_INITS ("vnet_crypto_init"),
+};
+/* *INDENT-ON* */
+
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {

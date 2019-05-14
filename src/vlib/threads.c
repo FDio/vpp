@@ -1736,7 +1736,7 @@ vlib_worker_thread_fn (void *arg)
     vlib_worker_thread_barrier_check ();
 
   e = vlib_call_init_exit_functions
-    (vm, vm->worker_init_function_registrations, 1 /* call_once */ );
+    (vm, &vm->worker_init_function_registrations, 1 /* call_once */ );
   if (e)
     clib_error_report (e);
 
