@@ -2699,7 +2699,7 @@ vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp)
 {
   u8 *s, i;
 
-  s = format (s, "DHCP compl event: pid %d %s hostname %s host_addr %U "
+  s = format (0, "DHCP compl event: pid %d %s hostname %s host_addr %U "
 	      "host_mac %U router_addr %U",
 	      ntohl (mp->pid), mp->lease.is_ipv6 ? "ipv6" : "ipv4",
 	      mp->lease.hostname,
@@ -2713,6 +2713,7 @@ vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp)
 	      mp->lease.domain_server[i].address);
 
   errmsg ((char *) s);
+  vec_free (s);
 }
 
 static void vl_api_dhcp_compl_event_t_handler_json
