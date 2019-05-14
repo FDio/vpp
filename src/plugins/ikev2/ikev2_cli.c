@@ -584,14 +584,10 @@ VLIB_CLI_COMMAND (ikev2_initiate_command, static) = {
 };
 /* *INDENT-ON* */
 
-
-clib_error_t *
-ikev2_cli_init (vlib_main_t * vm)
+void
+ikev2_cli_reference (void)
 {
-  return 0;
 }
-
-VLIB_INIT_FUNCTION (ikev2_cli_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

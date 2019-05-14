@@ -479,11 +479,7 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 static clib_error_t *
 igmp_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
   igmp_main_t *im = &igmp_main;
-
-  if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
-    return error;
 
   im->igmp_api_client_by_client_index = hash_create (0, sizeof (u32));
 
@@ -491,12 +487,16 @@ igmp_init (vlib_main_t * vm)
 
   IGMP_DBG ("initialized");
 
-  return (error);
+  return (0);
 }
 
-VLIB_INIT_FUNCTION (igmp_init);
 /* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = {
+VLIB_INIT_FUNCTION (igmp_init) =
+{
+  .runs_after = VLIB_INITS("ip4_lookup_init"),
+};
+VLIB_PLUGIN_REGISTER () =
+{
   .version = VPP_BUILD_VER,
   .description = "Internet Group Management Protocol (IGMP)",
 };

@@ -29,7 +29,7 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 
   clib_memset (data, 0, sizeof(*data));
 
-  /* 
+  /*
    * Ignore local interface, pg interfaces. $$$ need a #define for the
    * first "real" interface. The answer is 5 at the moment.
    */
@@ -41,7 +41,7 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
     {
       ccm = &cm->cop_config_mains[address_family];
 
-      /* 
+      /*
        * Once-only code to initialize the per-address-family
        * cop feature subgraphs.
        * Since the (single) start-node, cop-input, must be able
@@ -60,8 +60,8 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
                   [IP4_RX_COP_WHITELIST] = "ip4-cop-whitelist",
                   [IP4_RX_COP_INPUT] = "ip4-input",
                 };
-                
-                vnet_config_init (vm, &ccm->config_main, 
+
+                vnet_config_init (vm, &ccm->config_main,
                                   start_nodes, ARRAY_LEN(start_nodes),
                                   feature_nodes, ARRAY_LEN(feature_nodes));
               }
@@ -73,7 +73,7 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
                   [IP6_RX_COP_WHITELIST] = "ip6-cop-whitelist",
                   [IP6_RX_COP_INPUT] = "ip6-input",
                 };
-                vnet_config_init (vm, &ccm->config_main, 
+                vnet_config_init (vm, &ccm->config_main,
                                   start_nodes, ARRAY_LEN(start_nodes),
                                   feature_nodes, ARRAY_LEN(feature_nodes));
               }
@@ -86,7 +86,7 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
                   [DEFAULT_RX_COP_WHITELIST] = "default-cop-whitelist",
                   [DEFAULT_RX_COP_INPUT] = "ethernet-input",
                 };
-                vnet_config_init (vm, &ccm->config_main, 
+                vnet_config_init (vm, &ccm->config_main,
                                   start_nodes, ARRAY_LEN(start_nodes),
                                   feature_nodes, ARRAY_LEN(feature_nodes));
               }
@@ -109,15 +109,15 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
         default_next = IP6_RX_COP_INPUT;
       else
         default_next = DEFAULT_RX_COP_INPUT;
-        
+
       if (is_add)
         ci = vnet_config_add_feature (vm, &ccm->config_main,
-                                      ci, 
+                                      ci,
                                       default_next,
                                       data, sizeof(*data));
       else
         ci = vnet_config_del_feature (vm, &ccm->config_main,
-                                      ci, 
+                                      ci,
                                       default_next,
                                       data, sizeof(*data));
 
@@ -132,13 +132,6 @@ static clib_error_t *
 cop_init (vlib_main_t *vm)
 {
   cop_main_t * cm = &cop_main;
-  clib_error_t * error;
-
-  if ((error = vlib_call_init_function (vm, ip4_whitelist_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip6_whitelist_init)))
-    return error;
 
   cm->vlib_main = vm;
   cm->vnet_main = vnet_get_main();
@@ -146,7 +139,12 @@ cop_init (vlib_main_t *vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (cop_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (cop_init) =
+{
+  .runs_after = VLIB_INITS ("ip4_whitelist_init", "ip6_whitelist_init"),
+};
+/* *INDENT-ON* */
 
 int cop_interface_enable_disable (u32 sw_if_index, int enable_disable)
 {
@@ -159,11 +157,11 @@ int cop_interface_enable_disable (u32 sw_if_index, int enable_disable)
   sw = vnet_get_sw_interface (cm->vnet_main, sw_if_index);
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-  
-  /* 
+
+  /*
    * Redirect pkts from the driver to the cop node.
    * Returns VNET_API_ERROR_UNIMPLEMENTED if the h/w driver
-   * doesn't implement the API. 
+   * doesn't implement the API.
    *
    * Node_index = ~0 => shut off redirection
    */
@@ -180,7 +178,7 @@ cop_enable_disable_command_fn (vlib_main_t * vm,
   cop_main_t * cm = &cop_main;
   u32 sw_if_index = ~0;
   int enable_disable = 1;
-    
+
   int rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -195,7 +193,7 @@ cop_enable_disable_command_fn (vlib_main_t * vm,
 
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
-    
+
   rv = cop_interface_enable_disable (sw_if_index, enable_disable);
 
   switch(rv) {
@@ -203,7 +201,7 @@ cop_enable_disable_command_fn (vlib_main_t * vm,
     break;
 
   case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-    return clib_error_return 
+    return clib_error_return
       (0, "Invalid interface, only works on physical ports");
     break;
 
@@ -220,7 +218,7 @@ cop_enable_disable_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (cop_interface_command, static) = {
     .path = "cop interface",
-    .short_help = 
+    .short_help =
     "cop interface <interface-name> [disable]",
     .function = cop_enable_disable_command_fn,
 };
@@ -246,10 +244,10 @@ int cop_whitelist_enable_disable (cop_whitelist_enable_disable_args_t *a)
    */
 
   for (address_family = VNET_COP_IP4; address_family < VNET_N_COPS;
-       address_family++) 
+       address_family++)
     {
       ccm = &cm->cop_config_mains[address_family];
-    
+
       switch(address_family)
         {
         case VNET_COP_IP4:
@@ -267,7 +265,7 @@ int cop_whitelist_enable_disable (cop_whitelist_enable_disable_args_t *a)
                 continue;
             }
           break;
-              
+
         case VNET_COP_IP6:
           is_add = (a->ip6 != 0);
           next_to_add_del = IP6_RX_COP_WHITELIST;
@@ -287,7 +285,7 @@ int cop_whitelist_enable_disable (cop_whitelist_enable_disable_args_t *a)
           is_add = (a->default_cop != 0);
           next_to_add_del = DEFAULT_RX_COP_WHITELIST;
           break;
-        
+
         default:
           clib_warning ("BUG");
         }
@@ -343,7 +341,7 @@ cop_whitelist_enable_disable_command_fn (vlib_main_t * vm,
 
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
-    
+
   a->sw_if_index = sw_if_index;
   a->ip4 = ip4;
   a->ip6 = ip6;
@@ -357,12 +355,12 @@ cop_whitelist_enable_disable_command_fn (vlib_main_t * vm,
     break;
 
   case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-    return clib_error_return 
+    return clib_error_return
       (0, "Invalid interface, only works on physical ports");
     break;
 
   case VNET_API_ERROR_NO_SUCH_FIB:
-    return clib_error_return 
+    return clib_error_return
       (0, "Invalid fib");
     break;
 
@@ -380,8 +378,7 @@ cop_whitelist_enable_disable_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (cop_whitelist_command, static) = {
     .path = "cop whitelist",
-    .short_help = 
+    .short_help =
     "cop whitelist <interface-name> [ip4][ip6][default][fib-id <NN>][disable]",
     .function = cop_whitelist_enable_disable_command_fn,
 };
-

@@ -30,11 +30,10 @@ vlib_vmbus_addr_t * __attribute__ ((weak)) vlib_vmbus_get_all_dev_addrs ()
   return NULL;
 }
 
-
 clib_error_t *
 vmbus_bus_init (vlib_main_t * vm)
 {
-  return vlib_call_init_function (vm, vmbus_bus_init);
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (vmbus_bus_init);

@@ -953,13 +953,8 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
 static clib_error_t *
 vhost_user_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
   vhost_user_main_t *vum = &vhost_user_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  error = vlib_call_init_function (vm, ip4_init);
-  if (error)
-    return error;
 
   vum->log_default = vlib_log_register_class ("vhost-user", 0);
 
@@ -983,7 +978,12 @@ vhost_user_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (vhost_user_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (vhost_user_init) =
+{
+  .runs_after = VLIB_INITS("ip4_init"),
+};
+/* *INDENT-ON* */
 
 static uword
 vhost_user_send_interrupt_process (vlib_main_t * vm,

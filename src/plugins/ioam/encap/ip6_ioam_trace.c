@@ -417,16 +417,6 @@ static clib_error_t *
 ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
 {
   ip6_hop_by_hop_ioam_trace_main_t *hm = &ip6_hop_by_hop_ioam_trace_main;
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, ip_main_init)))
-    return (error);
-
-  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip6_hop_by_hop_ioam_init)))
-    return (error);
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
@@ -451,6 +441,14 @@ ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
 
   return (0);
 }
+
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_trace_init) =
+{
+  .runs_after = VLIB_INITS ("ip_main_init", "ip6_lookup_init",
+                            "ip6_hop_by_hop_ioam_init"),
+};
+/* *INDENT-ON* */
 
 int
 ip6_trace_profile_cleanup (void)
@@ -489,9 +487,6 @@ ip6_trace_profile_setup (void)
 
   return (0);
 }
-
-
-VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_trace_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

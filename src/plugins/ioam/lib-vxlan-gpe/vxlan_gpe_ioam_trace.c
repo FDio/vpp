@@ -436,16 +436,6 @@ static clib_error_t *
 vxlan_gpe_ioam_trace_init (vlib_main_t * vm)
 {
   vxlan_gpe_ioam_trace_main_t *hm = &vxlan_gpe_ioam_trace_main;
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, ip_main_init)))
-    return (error);
-
-  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, vxlan_gpe_init)))
-    return (error);
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
@@ -470,7 +460,14 @@ vxlan_gpe_ioam_trace_init (vlib_main_t * vm)
   return (0);
 }
 
-VLIB_INIT_FUNCTION (vxlan_gpe_ioam_trace_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (vxlan_gpe_ioam_trace_init) =
+{
+  .runs_after = VLIB_INITS("ip_main_init", "ip6_lookup_init",
+                           "vxlan_gpe_init"),
+};
+/* *INDENT-ON* */
+
 
 int
 vxlan_gpe_trace_profile_cleanup (void)

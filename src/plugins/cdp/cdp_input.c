@@ -408,14 +408,10 @@ cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
 static clib_error_t *
 cdp_input_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
   cdp_main_t *cm = &cdp_main;
   void vnet_cdp_node_reference (void);
 
   vnet_cdp_node_reference ();
-
-  if ((error = vlib_call_init_function (vm, cdp_periodic_init)))
-    return error;
 
   cm->vlib_main = vm;
   cm->vnet_main = vnet_get_main ();
@@ -424,7 +420,12 @@ cdp_input_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (cdp_input_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (cdp_input_init) =
+{
+  .runs_after = VLIB_INITS("cdp_periodic_init"),
+};
+/* *INDENT-ON* */
 
 
 static u8 *

@@ -54,6 +54,10 @@ typedef struct _vlib_init_function_list_elt
 {
   struct _vlib_init_function_list_elt *next_init_function;
   vlib_init_function_t *f;
+  char *name;
+  char **runs_before;
+  char **runs_after;
+  char **init_order;
 } _vlib_init_function_list_elt_t;
 
 /* Configuration functions: called with configuration input just before
@@ -116,48 +120,54 @@ typedef struct vlib_config_function_runtime_t
    be called from other modules to resolve init function depend. */
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_DECLARE_INIT_FUNCTION(x, tag)                      \
-vlib_init_function_t * _VLIB_INIT_FUNCTION_SYMBOL (x, tag) = x; \
-static void __vlib_add_##tag##_function_##x (void)              \
-    __attribute__((__constructor__)) ;                          \
-static void __vlib_add_##tag##_function_##x (void)              \
-{                                                               \
- vlib_main_t * vm = vlib_get_main();                            \
- static _vlib_init_function_list_elt_t _vlib_init_function;     \
- _vlib_init_function.next_init_function                         \
-    = vm->tag##_function_registrations;                         \
-  vm->tag##_function_registrations = &_vlib_init_function;      \
- _vlib_init_function.f = &x;                                    \
-}                                                               \
-static void __vlib_rm_##tag##_function_##x (void)               \
-    __attribute__((__destructor__)) ;                           \
-static void __vlib_rm_##tag##_function_##x (void)               \
-{                                                               \
-  vlib_main_t * vm = vlib_get_main();                           \
-  _vlib_init_function_list_elt_t *next;                         \
-  if (vm->tag##_function_registrations->f == &x)                \
-    {                                                           \
-      vm->tag##_function_registrations =                        \
-        vm->tag##_function_registrations->next_init_function;   \
-      return;                                                   \
-    }                                                           \
-  next = vm->tag##_function_registrations;                      \
-  while (next->next_init_function)                              \
-    {                                                           \
-      if (next->next_init_function->f == &x)                    \
-        {                                                       \
-          next->next_init_function =                            \
-            next->next_init_function->next_init_function;       \
-          return;                                               \
-        }                                                       \
-      next = next->next_init_function;                          \
-    }                                                           \
-}
+#define VLIB_DECLARE_INIT_FUNCTION(x, tag)                              \
+vlib_init_function_t * _VLIB_INIT_FUNCTION_SYMBOL (x, tag) = x;         \
+static void __vlib_add_##tag##_function_##x (void)                      \
+    __attribute__((__constructor__)) ;                                  \
+static _vlib_init_function_list_elt_t _vlib_init_function_##tag_##x;    \
+static void __vlib_add_##tag##_function_##x (void)                      \
+{                                                                       \
+ vlib_main_t * vm = vlib_get_main();                                    \
+ _vlib_init_function_##tag_##x.next_init_function                       \
+    = vm->tag##_function_registrations;                                 \
+  vm->tag##_function_registrations = &_vlib_init_function_##tag_##x;    \
+ _vlib_init_function_##tag_##x.f = &x;                                  \
+ _vlib_init_function_##tag_##x.name = #x;                               \
+}                                                                       \
+static void __vlib_rm_##tag##_function_##x (void)                       \
+    __attribute__((__destructor__)) ;                                   \
+static void __vlib_rm_##tag##_function_##x (void)                       \
+{                                                                       \
+  vlib_main_t * vm = vlib_get_main();                                   \
+  _vlib_init_function_list_elt_t *this, *prev;                          \
+  this = vm->tag##_function_registrations;                              \
+  if (this == 0)							\
+    return;								\
+  if (this->f == &x)  				                        \
+    {                                                                   \
+      vm->tag##_function_registrations = this->next_init_function;	\
+      return;                                                           \
+    }                                                                   \
+  prev = this;								\
+  this = this->next_init_function;					\
+  while (this)								\
+    {                                                                   \
+      if (this->f == &x)		                                \
+        {                                                               \
+          prev->next_init_function =                                    \
+            this->next_init_function;					\
+          return;                                                       \
+        }                                                               \
+      prev = this;							\
+      this = this->next_init_function;                                  \
+    }                                                                   \
+}									\
+static _vlib_init_function_list_elt_t _vlib_init_function_##tag_##x
 #else
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
 #define VLIB_DECLARE_INIT_FUNCTION(x, tag)                      \
-static __clib_unused void * __clib_unused_##tag##_##x = x;
+static __clib_unused void * __clib_unused_##tag##_##x = x
 #endif
 
 #define VLIB_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,init)
@@ -316,8 +326,8 @@ clib_error_t *vlib_call_all_main_loop_enter_functions (struct vlib_main_t
 						       *vm);
 clib_error_t *vlib_call_all_main_loop_exit_functions (struct vlib_main_t *vm);
 clib_error_t *vlib_call_init_exit_functions (struct vlib_main_t *vm,
-					     _vlib_init_function_list_elt_t *
-					     head, int call_once);
+					     _vlib_init_function_list_elt_t **
+					     headp, int call_once);
 
 #define foreach_vlib_module_reference		\
   _ (node_cli)					\
@@ -327,6 +337,7 @@ clib_error_t *vlib_call_init_exit_functions (struct vlib_main_t *vm,
 #define _(x) void vlib_##x##_reference (void);
 foreach_vlib_module_reference
 #undef _
+#define VLIB_INITS(...)  (char*[]) { __VA_ARGS__, 0}
 #endif /* included_vlib_init_h */
 /*
  * fd.io coding-style-patch-verification: ON

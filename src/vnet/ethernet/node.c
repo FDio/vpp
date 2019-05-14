@@ -2025,11 +2025,9 @@ next_by_ethertype_register (next_by_ethertype_t * l3_next,
   return 0;
 }
 
-
-static clib_error_t *
-ethernet_input_init (vlib_main_t * vm)
+void
+ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em)
 {
-  ethernet_main_t *em = &ethernet_main;
   __attribute__ ((unused)) vlan_table_t *invalid_vlan_table;
   __attribute__ ((unused)) qinq_table_t *invalid_qinq_table;
 
@@ -2048,11 +2046,7 @@ ethernet_input_init (vlib_main_t * vm)
   pool_get (em->vlan_pool, invalid_vlan_table);	// first id = 0
   // The first qinq pool will always be reserved for an invalid table
   pool_get (em->qinq_pool, invalid_qinq_table);	// first id = 0
-
-  return 0;
 }
-
-VLIB_INIT_FUNCTION (ethernet_input_init);
 
 void
 ethernet_register_input_type (vlib_main_t * vm,

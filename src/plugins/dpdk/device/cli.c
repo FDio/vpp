@@ -1737,6 +1737,12 @@ VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
 };
 /* *INDENT-ON* */
 
+/* Dummy function to get us linked in. */
+void
+dpdk_cli_reference (void)
+{
+}
+
 clib_error_t *
 dpdk_cli_init (vlib_main_t * vm)
 {

@@ -290,15 +290,16 @@ VLIB_CLI_COMMAND (set_udp_ping_export_command, static) = {
 clib_error_t *
 udp_ping_flow_report_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, flow_report_init)))
-    return error;
-
   return 0;
 }
 
-VLIB_INIT_FUNCTION (udp_ping_flow_report_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (udp_ping_flow_report_init) =
+{
+  .runs_after = VLIB_INITS ("flow_report_init"),
+};
+/* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON

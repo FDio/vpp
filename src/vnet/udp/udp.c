@@ -395,16 +395,8 @@ udp_init (vlib_main_t * vm)
   ip_main_t *im = &ip_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   u32 num_threads;
-  clib_error_t *error = 0;
   ip_protocol_info_t *pi;
   int i;
-
-  if ((error = vlib_call_init_function (vm, ip_main_init)))
-    return error;
-  if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
-    return error;
-  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
-    return error;
 
   /*
    * Registrations
@@ -443,10 +435,17 @@ udp_init (vlib_main_t * vm)
 	clib_spinlock_init (&um->peekers_readers_locks[i]);
 	clib_spinlock_init (&um->peekers_write_locks[i]);
       }
-  return error;
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (udp_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (udp_init) =
+{
+  .runs_after = VLIB_INITS("ip_main_init", "ip4_lookup_init",
+                           "ip6_lookup_init"),
+};
+/* *INDENT-ON* */
+
 
 static clib_error_t *
 show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
