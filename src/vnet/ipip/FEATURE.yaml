@@ -1,0 +1,22 @@
+name: IP in IP tunnelling
+maintainer: Ole Troan <ot@cisco.com>
+features:
+  - IPv4/IPv6 over IPv4/IPv6 encapsulation:
+    - Fragmentation and Reassembly
+    - Configurable MTU
+    - Inner to outer Traffic Class / TOS copy
+    - Configurable Traffic Class / TOS
+  - ICMPv4 / ICMPv6 proxying
+  - 6RD (RFC5969):
+    - Border Relay
+
+description: "Implements IP{v4,v6} over IP{v4,v6} tunnelling as
+              described in RFC2473. This module also implement the border relay of
+	      6RD (RFC5969)."
+
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
+missing:
+  - Tunnel PMTUD
+  - Tracking of FIB state for tunnel state
+  - IPv6 extension headers (Tunnel encapsulation limit option)

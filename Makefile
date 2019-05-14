@@ -67,7 +67,7 @@ DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python3-all python3-setuptools python-dev
 DEB_DEPENDS += python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
-DEB_DEPENDS += cmake ninja-build uuid-dev
+DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
@@ -94,7 +94,7 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
 	RPM_DEPENDS += python3-devel python3-ply
-	RPM_DEPENDS += python3-virtualenv
+	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
@@ -102,7 +102,7 @@ else
 	RPM_DEPENDS += openssl-devel
 	RPM_DEPENDS += python-devel python36-ply
 	RPM_DEPENDS += python36-devel python36-pip
-	RPM_DEPENDS += python-virtualenv
+	RPM_DEPENDS += python-virtualenv python36-jsonschema
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'
@@ -216,6 +216,8 @@ help:
 	@echo " doxygen             - (re)generate documentation"
 	@echo " bootstrap-doxygen   - setup Doxygen dependencies"
 	@echo " wipe-doxygen        - wipe all generated documentation"
+	@echo " checkfeaturelist    - check FEATURE.yaml according to schema"
+	@echo " featurelist         - dump feature list in markdown"
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv         - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean        - Remove the generated files from the Sphinx docs"
@@ -542,6 +544,12 @@ checkstyle:
 
 fixstyle:
 	@build-root/scripts/checkstyle.sh --fix
+
+featurelist:
+	@build-root/scripts/fts.py --all --markdown
+
+checkfeaturelist:
+	@build-root/scripts/fts.py --validate --git-status
 
 #
 # Build the documentation
