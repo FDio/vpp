@@ -26,6 +26,8 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 
+NUM_PKTS = 67
+
 
 # Format MAC Address
 def get_mac_addr(bytes_addr):
@@ -746,8 +748,8 @@ class TestPunt(VppTestCase):
         #
         # pkts now dropped
         #
-        self.send_and_assert_no_replies(self.pg2, p4*65)
-        self.send_and_assert_no_replies(self.pg2, p6*65)
+        self.send_and_assert_no_replies(self.pg2, p4*NUM_PKTS)
+        self.send_and_assert_no_replies(self.pg2, p6*NUM_PKTS)
 
         #
         # Check state:
@@ -757,11 +759,11 @@ class TestPunt(VppTestCase):
         #
         stats = self.statistics.get_counter(
             "/err/punt-dispatch/No registrations")
-        self.assertEqual(stats, 130)
+        self.assertEqual(stats, 2*NUM_PKTS)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][7]['packets'], 65)
-        self.assertEqual(stats[0][8]['packets'], 65)
+        self.assertEqual(stats[0][7]['packets'], NUM_PKTS)
+        self.assertEqual(stats[0][8]['packets'], NUM_PKTS)
 
         #
         # use the test CLI to test a client that punts exception
@@ -770,8 +772,8 @@ class TestPunt(VppTestCase):
         self.vapi.cli("test punt pg0 %s" % self.pg0.remote_ip4)
         self.vapi.cli("test punt pg0 %s" % self.pg0.remote_ip6)
 
-        rx4s = self.send_and_expect(self.pg2, p4*65, self.pg0)
-        rx6s = self.send_and_expect(self.pg2, p6*65, self.pg0)
+        rx4s = self.send_and_expect(self.pg2, p4*NUM_PKTS, self.pg0)
+        rx6s = self.send_and_expect(self.pg2, p6*NUM_PKTS, self.pg0)
 
         #
         # check the packets come out IP unmodified but destined to pg0 host
@@ -788,8 +790,8 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][7]['packets'], 2*65)
-        self.assertEqual(stats[0][8]['packets'], 2*65)
+        self.assertEqual(stats[0][7]['packets'], 2*NUM_PKTS)
+        self.assertEqual(stats[0][8]['packets'], 2*NUM_PKTS)
 
         #
         # add another registration for the same reason to send packets
@@ -799,17 +801,17 @@ class TestPunt(VppTestCase):
         self.vapi.cli("test punt pg1 %s" % self.pg1.remote_ip6)
 
         self.vapi.cli("clear trace")
-        self.pg2.add_stream(p4 * 65)
+        self.pg2.add_stream(p4 * NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rxd = self.pg0.get_capture(65)
+        rxd = self.pg0.get_capture(NUM_PKTS)
         for rx in rxd:
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(p4[IP].dst, rx[IP].dst)
             self.assertEqual(p4[IP].ttl, rx[IP].ttl)
-        rxd = self.pg1.get_capture(65)
+        rxd = self.pg1.get_capture(NUM_PKTS)
         for rx in rxd:
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
@@ -817,17 +819,17 @@ class TestPunt(VppTestCase):
             self.assertEqual(p4[IP].ttl, rx[IP].ttl)
 
         self.vapi.cli("clear trace")
-        self.pg2.add_stream(p6 * 65)
+        self.pg2.add_stream(p6 * NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rxd = self.pg0.get_capture(65)
+        rxd = self.pg0.get_capture(NUM_PKTS)
         for rx in rxd:
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(p6[IPv6].dst, rx[IPv6].dst)
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
-        rxd = self.pg1.get_capture(65)
+        rxd = self.pg1.get_capture(NUM_PKTS)
         for rx in rxd:
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
@@ -835,8 +837,8 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][7]['packets'], 3*65)
-        self.assertEqual(stats[0][8]['packets'], 3*65)
+        self.assertEqual(stats[0][7]['packets'], 3*NUM_PKTS)
+        self.assertEqual(stats[0][8]['packets'], 3*NUM_PKTS)
 
         self.logger.info(self.vapi.cli("show vlib graph punt-dispatch"))
         self.logger.info(self.vapi.cli("show punt client"))
