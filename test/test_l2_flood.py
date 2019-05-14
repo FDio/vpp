@@ -11,6 +11,8 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
+NUM_PKTS = 67
+
 
 class TestL2Flood(VppTestCase):
     """ L2-flood """
@@ -85,25 +87,25 @@ class TestL2Flood(VppTestCase):
         # this is in SHG=0 so its flooded to all, expect the pg0 since that's
         # the ingress link
         #
-        self.pg0.add_stream(p*65)
+        self.pg0.add_stream(p*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:12]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # input on pg4 (SHG=1) expect copies on pg0->3 (SHG=0)
         # and pg8->11 (SHG=2)
         #
-        self.pg4.add_stream(p*65)
+        self.pg4.add_stream(p*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[8:12]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[4:8]:
             i.assert_nothing_captured(remark="Different SH group")
 
@@ -122,25 +124,25 @@ class TestL2Flood(VppTestCase):
         # this is in SHG=0 so its flooded to all, expect the pg0 since that's
         # the ingress link
         #
-        self.pg0.add_stream(p*65)
+        self.pg0.add_stream(p*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # input on pg4 (SHG=1) expect copies on pg0->3 (SHG=0)
         # and pg8->12 (SHG=2)
         #
-        self.pg4.add_stream(p*65)
+        self.pg4.add_stream(p*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[8:13]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[4:8]:
             i.assert_nothing_captured(remark="Different SH group")
 
@@ -183,7 +185,7 @@ class TestL2Flood(VppTestCase):
         #
         # input on pg0 expect copies on pg1
         #
-        self.send_and_expect(self.pg0, p*65, self.pg1)
+        self.send_and_expect(self.pg0, p*NUM_PKTS, self.pg1)
 
         #
         # cleanup
@@ -225,19 +227,19 @@ class TestL2Flood(VppTestCase):
         #
         # input on pg0, expected copies on pg1->4
         #
-        self.pg0.add_stream(p_uu*65)
+        self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
-        self.pg0.add_stream(p_bm*65)
+        self.pg0.add_stream(p_bm*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # use pg8 as the uu-fwd interface
@@ -249,21 +251,21 @@ class TestL2Flood(VppTestCase):
         #
         # expect the UU packet on the uu-fwd interface and not be flooded
         #
-        self.pg0.add_stream(p_uu*65)
+        self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg8.get_capture(65, timeout=1)
+        rx0 = self.pg8.get_capture(NUM_PKTS, timeout=1)
 
         for i in self.pg_interfaces[0:4]:
             i.assert_nothing_captured(remark="UU not flooded")
 
-        self.pg0.add_stream(p_bm*65)
+        self.pg0.add_stream(p_bm*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # remove the uu-fwd interface and expect UU to be flooded again
@@ -272,12 +274,12 @@ class TestL2Flood(VppTestCase):
             rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
             port_type=L2_PORT_TYPE.UU_FWD, enable=0)
 
-        self.pg0.add_stream(p_uu*65)
+        self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # change the BD config to not support UU-flood
@@ -294,11 +296,11 @@ class TestL2Flood(VppTestCase):
             port_type=L2_PORT_TYPE.UU_FWD)
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
 
-        self.pg0.add_stream(p_uu*65)
+        self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg8.get_capture(65, timeout=1)
+        rx0 = self.pg8.get_capture(NUM_PKTS, timeout=1)
 
         for i in self.pg_interfaces[0:4]:
             i.assert_nothing_captured(remark="UU not flooded")

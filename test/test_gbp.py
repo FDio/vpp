@@ -27,6 +27,8 @@ from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
 from vpp_neighbor import VppNeighbor
 
+NUM_PKTS = 67
+
 
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):
     if ip:
@@ -992,7 +994,8 @@ class TestGBP(VppTestCase):
                                  UDP(sport=1234, dport=1234) /
                                  Raw('\xa5' * 100))
 
-        self.send_and_assert_no_replies(self.pg0, pkt_intra_epg_220_ip4 * 65)
+        self.send_and_assert_no_replies(self.pg0,
+                                        pkt_intra_epg_220_ip4 * NUM_PKTS)
 
         pkt_inter_epg_222_ip6 = (Ether(src=self.pg0.remote_mac,
                                        dst=str(self.router_mac)) /
@@ -1000,7 +1003,8 @@ class TestGBP(VppTestCase):
                                       dst="2001:10::99") /
                                  UDP(sport=1234, dport=1234) /
                                  Raw('\xa5' * 100))
-        self.send_and_assert_no_replies(self.pg0, pkt_inter_epg_222_ip6 * 65)
+        self.send_and_assert_no_replies(self.pg0,
+                                        pkt_inter_epg_222_ip6 * NUM_PKTS)
 
         #
         # Add the subnet routes
@@ -1031,13 +1035,13 @@ class TestGBP(VppTestCase):
         s63.add_vpp_config()
 
         self.send_and_expect_bridged(eps[0].itf,
-                                     pkt_intra_epg_220_ip4 * 65,
+                                     pkt_intra_epg_220_ip4 * NUM_PKTS,
                                      eps[0].epg.uplink)
         self.send_and_expect_bridged(eps[0].itf,
-                                     pkt_inter_epg_222_ip4 * 65,
+                                     pkt_inter_epg_222_ip4 * NUM_PKTS,
                                      eps[0].epg.uplink)
         self.send_and_expect_bridged6(eps[0].itf,
-                                      pkt_inter_epg_222_ip6 * 65,
+                                      pkt_inter_epg_222_ip6 * NUM_PKTS,
                                       eps[0].epg.uplink)
 
         self.logger.info(self.vapi.cli("sh ip fib 11.0.0.2"))
@@ -1062,7 +1066,7 @@ class TestGBP(VppTestCase):
                                        Raw('\xa5' * 100))
 
         self.send_and_expect_bridged(eps[0].itf,
-                                     pkt_intra_epg_220_to_uplink * 65,
+                                     pkt_intra_epg_220_to_uplink * NUM_PKTS,
                                      eps[0].epg.uplink)
         # ... and nowhere else
         self.pg1.get_capture(0, timeout=0.1)
@@ -1076,7 +1080,7 @@ class TestGBP(VppTestCase):
                                        Raw('\xa5' * 100))
 
         self.send_and_expect_bridged(eps[2].itf,
-                                     pkt_intra_epg_221_to_uplink * 65,
+                                     pkt_intra_epg_221_to_uplink * NUM_PKTS,
                                      eps[2].epg.uplink)
 
         #
@@ -1090,7 +1094,7 @@ class TestGBP(VppTestCase):
                                          Raw('\xa5' * 100))
 
         self.send_and_expect_bridged(self.pg4,
-                                     pkt_intra_epg_220_from_uplink * 65,
+                                     pkt_intra_epg_220_from_uplink * NUM_PKTS,
                                      self.pg0)
 
         #
@@ -1104,7 +1108,9 @@ class TestGBP(VppTestCase):
                          UDP(sport=1234, dport=1234) /
                          Raw('\xa5' * 100))
 
-        self.send_and_expect_bridged(self.pg0, pkt_intra_epg * 65, self.pg1)
+        self.send_and_expect_bridged(self.pg0,
+                                     pkt_intra_epg * NUM_PKTS,
+                                     self.pg1)
 
         #
         # in the absence of policy, endpoints in the different EPG
@@ -1130,9 +1136,9 @@ class TestGBP(VppTestCase):
                                     Raw('\xa5' * 100))
 
         self.send_and_assert_no_replies(eps[0].itf,
-                                        pkt_inter_epg_220_to_221 * 65)
+                                        pkt_inter_epg_220_to_221 * NUM_PKTS)
         self.send_and_assert_no_replies(eps[0].itf,
-                                        pkt_inter_epg_220_to_222 * 65)
+                                        pkt_inter_epg_220_to_222 * NUM_PKTS)
 
         #
         # A uni-directional contract from EPG 220 -> 221
@@ -1153,10 +1159,10 @@ class TestGBP(VppTestCase):
         c1.add_vpp_config()
 
         self.send_and_expect_bridged(eps[0].itf,
-                                     pkt_inter_epg_220_to_221 * 65,
+                                     pkt_inter_epg_220_to_221 * NUM_PKTS,
                                      eps[2].itf)
         self.send_and_assert_no_replies(eps[0].itf,
-                                        pkt_inter_epg_220_to_222 * 65)
+                                        pkt_inter_epg_220_to_222 * NUM_PKTS)
 
         #
         # contract for the return direction
@@ -1173,16 +1179,16 @@ class TestGBP(VppTestCase):
         c2.add_vpp_config()
 
         self.send_and_expect_bridged(eps[0].itf,
-                                     pkt_inter_epg_220_to_221 * 65,
+                                     pkt_inter_epg_220_to_221 * NUM_PKTS,
                                      eps[2].itf)
         self.send_and_expect_bridged(eps[2].itf,
-                                     pkt_inter_epg_221_to_220 * 65,
+                                     pkt_inter_epg_221_to_220 * NUM_PKTS,
                                      eps[0].itf)
 
         ds = c2.get_drop_stats()
         self.assertEqual(ds['packets'], 0)
         ps = c2.get_permit_stats()
-        self.assertEqual(ps['packets'], 65)
+        self.assertEqual(ps['packets'], NUM_PKTS)
 
         #
         # the contract does not allow non-IP
@@ -1198,7 +1204,7 @@ class TestGBP(VppTestCase):
         # not in the contract.
         #
         self.send_and_assert_no_replies(eps[0].itf,
-                                        pkt_inter_epg_220_to_222 * 65)
+                                        pkt_inter_epg_220_to_222 * NUM_PKTS)
 
         #
         # A uni-directional contract from EPG 220 -> 222 'L3 routed'
@@ -1217,7 +1223,7 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh gbp contract"))
 
         self.send_and_expect_routed(eps[0].itf,
-                                    pkt_inter_epg_220_to_222 * 65,
+                                    pkt_inter_epg_220_to_222 * NUM_PKTS,
                                     eps[3].itf,
                                     str(self.router_mac))
 
@@ -1230,11 +1236,11 @@ class TestGBP(VppTestCase):
         acl.remove_vpp_config()
 
         self.send_and_assert_no_replies(eps[2].itf,
-                                        pkt_inter_epg_221_to_220 * 65)
+                                        pkt_inter_epg_221_to_220 * NUM_PKTS)
         self.send_and_assert_no_replies(eps[0].itf,
-                                        pkt_inter_epg_220_to_221 * 65)
+                                        pkt_inter_epg_220_to_221 * NUM_PKTS)
         self.send_and_expect_bridged(eps[0].itf,
-                                     pkt_intra_epg * 65,
+                                     pkt_intra_epg * NUM_PKTS,
                                      eps[1].itf)
 
         #
@@ -1298,7 +1304,7 @@ class TestGBP(VppTestCase):
 
         # no policy yet
         self.send_and_assert_no_replies(eps[0].itf,
-                                        pkt_inter_epg_220_to_global * 65)
+                                        pkt_inter_epg_220_to_global * NUM_PKTS)
 
         acl2 = VppGbpAcl(self)
         rule = acl2.create_rule(permit_deny=1, proto=17, sport_from=1234,
@@ -1320,7 +1326,7 @@ class TestGBP(VppTestCase):
         c4.add_vpp_config()
 
         self.send_and_expect_natted(eps[0].itf,
-                                    pkt_inter_epg_220_to_global * 65,
+                                    pkt_inter_epg_220_to_global * NUM_PKTS,
                                     self.pg7,
                                     eps[0].fip4.address)
 
@@ -1332,7 +1338,7 @@ class TestGBP(VppTestCase):
                                        Raw('\xa5' * 100))
 
         self.send_and_expect_natted6(self.pg0,
-                                     pkt_inter_epg_220_to_global * 65,
+                                     pkt_inter_epg_220_to_global * NUM_PKTS,
                                      self.pg7,
                                      eps[0].fip6.address)
 
@@ -1346,8 +1352,8 @@ class TestGBP(VppTestCase):
                                          UDP(sport=1234, dport=1234) /
                                          Raw('\xa5' * 100))
 
-        self.send_and_assert_no_replies(self.pg7,
-                                        pkt_inter_epg_220_from_global * 65)
+        self.send_and_assert_no_replies(
+            self.pg7, pkt_inter_epg_220_from_global * NUM_PKTS)
 
         c5 = VppGbpContract(
             self, epgs[3].sclass, epgs[0].sclass, acl_index2,
@@ -1361,7 +1367,7 @@ class TestGBP(VppTestCase):
         c5.add_vpp_config()
 
         self.send_and_expect_unnatted(self.pg7,
-                                      pkt_inter_epg_220_from_global * 65,
+                                      pkt_inter_epg_220_from_global * NUM_PKTS,
                                       eps[0].itf,
                                       eps[0].ip4.address)
 
@@ -1372,10 +1378,11 @@ class TestGBP(VppTestCase):
                                          UDP(sport=1234, dport=1234) /
                                          Raw('\xa5' * 100))
 
-        self.send_and_expect_unnatted6(self.pg7,
-                                       pkt_inter_epg_220_from_global * 65,
-                                       eps[0].itf,
-                                       eps[0].ip6.address)
+        self.send_and_expect_unnatted6(
+            self.pg7,
+            pkt_inter_epg_220_from_global * NUM_PKTS,
+            eps[0].itf,
+            eps[0].ip6.address)
 
         #
         # From a local VM to another local VM using resp. public addresses:
@@ -1389,7 +1396,7 @@ class TestGBP(VppTestCase):
                                     Raw('\xa5' * 100))
 
         self.send_and_expect_double_natted(eps[0].itf,
-                                           pkt_intra_epg_220_global * 65,
+                                           pkt_intra_epg_220_global * NUM_PKTS,
                                            eps[1].itf,
                                            eps[0].fip4.address,
                                            eps[1].ip4.address)
@@ -1401,11 +1408,12 @@ class TestGBP(VppTestCase):
                                     UDP(sport=1234, dport=1234) /
                                     Raw('\xa5' * 100))
 
-        self.send_and_expect_double_natted6(eps[0].itf,
-                                            pkt_intra_epg_220_global * 65,
-                                            eps[1].itf,
-                                            eps[0].fip6.address,
-                                            eps[1].ip6.address)
+        self.send_and_expect_double_natted6(
+            eps[0].itf,
+            pkt_intra_epg_220_global * NUM_PKTS,
+            eps[1].itf,
+            eps[0].fip6.address,
+            eps[1].ip6.address)
 
         #
         # cleanup
@@ -1743,7 +1751,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-            rx = self.send_and_expect(self.pg2, p * 65, self.pg0)
+            rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
         for l in learnt:
             self.assertFalse(find_gbp_endpoint(self,
@@ -1766,7 +1774,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-            rx = self.send_and_expect(self.pg2, p * 65, self.pg0)
+            rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
             self.assertTrue(find_gbp_endpoint(self,
                                               vx_tun_l2_1.sw_if_index,
@@ -1818,7 +1826,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-            rx = self.send_and_expect(self.pg2, p * 65, self.pg0)
+            rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
             self.assertTrue(find_gbp_endpoint(self,
                                               vx_tun_l2_1.sw_if_index,
@@ -1851,7 +1859,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-            rx = self.send_and_expect(self.pg2, p * 65, self.pg0)
+            rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
             self.assertTrue(find_gbp_endpoint(self,
                                               vx_tun_l2_1.sw_if_index,
@@ -1930,7 +1938,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-            rx = self.send_and_expect(self.pg2, p * 65, self.pg0)
+            rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
             self.assertTrue(find_gbp_endpoint(self,
                                               vx_tun_l2_1.sw_if_index,
@@ -2423,7 +2431,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-            rxs = self.send_and_expect(self.pg0, p * 65, self.pg2)
+            rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
 
             for rx in rxs:
                 self.assertEqual(rx[IP].src, self.pg2.local_ip4)
@@ -2562,7 +2570,7 @@ class TestGBP(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-            rxs = self.send_and_expect(self.pg0, p * 65, self.pg2)
+            rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
 
             for rx in rxs:
                 self.assertEqual(rx[IP].src, self.pg2.local_ip4)
