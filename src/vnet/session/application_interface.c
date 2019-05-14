@@ -78,7 +78,7 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
       sep->is_ip4 = 0;
       return 1;
     }
-  else if (unformat (input, "%U://session/%u", unformat_transport_proto,
+  else if (unformat (input, "%U://session/%lu", unformat_transport_proto,
 		     &transport_proto, &sep->transport_opts))
     {
       sep->transport_proto = transport_proto;

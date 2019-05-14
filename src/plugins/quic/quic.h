@@ -23,9 +23,15 @@
 #include <vppinfra/bihash_16_8.h>
 
 #include <quicly.h>
-#include <quicly/streambuf.h>
 
-#define QUIC_DEBUG               0
+/* QUIC log levels
+ * 1 - errors
+ * 2 - connection/stream events
+ * 3 - packet events
+ * 4 - timer events
+ **/
+
+#define QUIC_DEBUG               2
 #define QUIC_DEBUG_LEVEL_CLIENT  0
 #define QUIC_DEBUG_LEVEL_SERVER  0
 
@@ -53,14 +59,12 @@ typedef CLIB_PACKED (struct quic_ctx_id_
   u32 parent_app_id;
   union {
     CLIB_PACKED (struct {
-      session_handle_t quic_session_handle; /* TODO: remove */
       session_handle_t udp_session_handle;
       quicly_conn_t *conn;
       u32 listener_ctx_id;
       u8 udp_is_ip4;
     });
     CLIB_PACKED (struct {
-      session_handle_t stream_session_handle; /* TODO: remove */
       quicly_stream_t *stream;
       u32 quic_connection_ctx_id;
     });
@@ -89,8 +93,8 @@ typedef struct quic_ctx_
 
 typedef struct quic_stream_data_
 {
-  quicly_streambuf_t streambuf;
   u32 ctx_id;
+  u32 thread_index;
 } quic_stream_data_t;
 
 typedef struct quic_worker_ctx_
