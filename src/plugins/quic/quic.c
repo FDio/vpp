@@ -59,6 +59,53 @@ static void quic_transfer_connection (u32 ctx_index, u32 dest_thread);
 #define QUICLY_PACKET_TYPE_BITMASK 0xf0
 #define QUIC_FIFO_SIZE (64 << 10)
 
+#define QUIC_ERROR_FULL_FIFO 0xff10
+
+static char *
+quic_format_err (u64 code)
+{
+  switch (code)
+    {
+    case QUIC_ERROR_FULL_FIFO:
+      return "full fifo";
+    case QUICLY_ERROR_PACKET_IGNORED:
+      return "QUICLY_ERROR_PACKET_IGNORED";
+    case QUICLY_ERROR_SENDBUF_FULL:
+      return "QUICLY_ERROR_SENDBUF_FULL";
+    case QUICLY_ERROR_FREE_CONNECTION:
+      return "no open stream on connection";
+    case QUICLY_ERROR_RECEIVED_STATELESS_RESET:
+      return "QUICLY_ERROR_RECEIVED_STATELESS_RESET";
+    case QUICLY_TRANSPORT_ERROR_NONE:
+      return "QUICLY_TRANSPORT_ERROR_NONE";
+    case QUICLY_TRANSPORT_ERROR_INTERNAL:
+      return "QUICLY_TRANSPORT_ERROR_INTERNAL";
+    case QUICLY_TRANSPORT_ERROR_SERVER_BUSY:
+      return "QUICLY_TRANSPORT_ERROR_SERVER_BUSY";
+    case QUICLY_TRANSPORT_ERROR_FLOW_CONTROL:
+      return "QUICLY_TRANSPORT_ERROR_FLOW_CONTROL";
+    case QUICLY_TRANSPORT_ERROR_STREAM_ID:
+      return "QUICLY_TRANSPORT_ERROR_STREAM_ID";
+    case QUICLY_TRANSPORT_ERROR_STREAM_STATE:
+      return "QUICLY_TRANSPORT_ERROR_STREAM_STATE";
+    case QUICLY_TRANSPORT_ERROR_FINAL_OFFSET:
+      return "QUICLY_TRANSPORT_ERROR_FINAL_OFFSET";
+    case QUICLY_TRANSPORT_ERROR_FRAME_ENCODING:
+      return "QUICLY_TRANSPORT_ERROR_FRAME_ENCODING";
+    case QUICLY_TRANSPORT_ERROR_TRANSPORT_PARAMETER:
+      return "QUICLY_TRANSPORT_ERROR_TRANSPORT_PARAMETER";
+    case QUICLY_TRANSPORT_ERROR_VERSION_NEGOTIATION:
+      return "QUICLY_TRANSPORT_ERROR_VERSION_NEGOTIATION";
+    case QUICLY_TRANSPORT_ERROR_PROTOCOL_VIOLATION:
+      return "QUICLY_TRANSPORT_ERROR_PROTOCOL_VIOLATION";
+    case QUICLY_TRANSPORT_ERROR_INVALID_MIGRATION:
+      return "QUICLY_TRANSPORT_ERROR_INVALID_MIGRATION";
+    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE:
+      return "QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE";
+    default:
+      return "unknown error";
+    }
+}
 
 static u32
 quic_ctx_alloc (u32 thread_index)
@@ -137,7 +184,7 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   if (max_enqueue <= sizeof (session_dgram_hdr_t))
     {
       QUIC_DBG (1, "Not enough space to enqueue header");
-      return 1;
+      return QUIC_ERROR_FULL_FIFO;
     }
 
   max_enqueue -= sizeof (session_dgram_hdr_t);
@@ -146,7 +193,7 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
     {
       QUIC_DBG (1, "Too much data to send, max_enqueue %u, len %u",
 		max_enqueue, len);
-      return 1;
+      return QUIC_ERROR_FULL_FIFO;
     }
 
   /*  Build packet header for fifo */
@@ -176,13 +223,13 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   if (ret != sizeof (hdr))
     {
       QUIC_DBG (1, "Not enough space to enqueue header");
-      return 1;
+      return QUIC_ERROR_FULL_FIFO;
     }
   ret = svm_fifo_enqueue (f, len, packet->data.base);
   if (ret != len)
     {
       QUIC_DBG (1, "Not enough space to enqueue payload");
-      return 1;
+      return QUIC_ERROR_FULL_FIFO;
     }
   return 0;
 }
@@ -209,6 +256,7 @@ quic_send_packets (quic_ctx_t * ctx)
   quicly_context_t *quicly_context;
   app_worker_t *app_wrk;
   application_t *app;
+  int err;
 
   /* We have sctx, get qctx */
   if (ctx->c_quic_ctx_id.is_stream)
@@ -246,12 +294,12 @@ quic_send_packets (quic_ctx_t * ctx)
       if (max_packets < 2)
 	break;
       num_packets = max_packets;
-      if (quicly_send (conn, packets, &num_packets))
+      if ((err = quicly_send (conn, packets, &num_packets)))
 	goto quicly_error;
 
       for (i = 0; i != num_packets; ++i)
 	{
-	  if (quic_send_datagram (udp_session, packets[i]))
+	  if ((err = quic_send_datagram (udp_session, packets[i])))
 	    goto quicly_error;
 
 	  quicly_context->packet_allocator->
@@ -268,7 +316,8 @@ stop_sending:
   return 0;
 
 quicly_error:
-  QUIC_DBG (1, "Error sending packets closing connection");
+  if (err != QUICLY_ERROR_PACKET_IGNORED)
+    clib_warning ("Quic error '%s'.", quic_format_err (err));
   quic_connection_closed (ctx->c_c_index, ctx->c_thread_index);
   return 1;
 }
