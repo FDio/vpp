@@ -821,44 +821,6 @@ nat_ha_get_resync_status (u8 * in_resync, u32 * resync_ack_missed)
   *resync_ack_missed = ha->resync_ack_missed;
 }
 
-int
-nat44_ha_resync (u32 client_index, u32 pid,
-		 nat_ha_resync_event_cb_t event_callback)
-{
-  nat_ha_main_t *ha = &nat_ha_main;
-  snat_main_t *sm = &snat_main;
-  snat_session_t *ses;
-  snat_main_per_thread_data_t *tsm;
-
-  if (ha->in_resync)
-    return VNET_API_ERROR_IN_PROGRESS;
-
-  ha->in_resync = 1;
-  ha->resync_ack_count = 0;
-  ha->resync_ack_missed = 0;
-  ha->event_callback = event_callback;
-  ha->client_index = client_index;
-  ha->pid = pid;
-
-  /* *INDENT-OFF* */
-  vec_foreach (tsm, sm->per_thread_data)
-    {
-      pool_foreach (ses, tsm->sessions, ({
-        nat_ha_sadd (&ses->in2out.addr, ses->in2out.port,
-                     &ses->out2in.addr, ses->out2in.port,
-                     &ses->ext_host_addr, ses->ext_host_port,
-                     &ses->ext_host_nat_addr, ses->ext_host_nat_port,
-                     ses->in2out.protocol, ses->in2out.fib_index,
-                     ses->flags, 0, 1);
-      }));
-    }
-  /* *INDENT-ON* */
-
-  nat_ha_flush (1);
-
-  return 0;
-}
-
 typedef struct
 {
   ip4_address_t addr;
