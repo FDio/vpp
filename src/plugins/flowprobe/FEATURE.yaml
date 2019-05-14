@@ -1,0 +1,13 @@
+name: IPFIX probe
+maintainer: Ole Troan <ot@cisco.com>
+features:
+  - L2 input feature
+  - IPv4 / IPv6 input feature
+  - Recording of L2, L3 and L4 information
+description: "IPFIX flow probe. Works in the L2, or IP input feature path."
+missing:
+ - Output path
+ - Export over IPv6
+ - Export over TCP/SCTP
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
