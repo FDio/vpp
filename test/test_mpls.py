@@ -2014,7 +2014,7 @@ class TestMPLSL2(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-        tx0 = pcore * 65
+        tx0 = pcore * NUM_PKTS
         rx0 = self.send_and_expect(self.pg0, tx0, self.pg1)
         payload = pcore[MPLS].payload
 
@@ -2024,7 +2024,7 @@ class TestMPLSL2(VppTestCase):
         #
         # Inject a packet from the customer/L2 side
         #
-        tx1 = pcore[MPLS].payload * 65
+        tx1 = pcore[MPLS].payload * NUM_PKTS
         rx1 = self.send_and_expect(self.pg1, tx1, self.pg0)
 
         self.verify_capture_tunneled_ethernet(rx1, tx1, [VppMplsLabel(42)])
@@ -2100,13 +2100,13 @@ class TestMPLSL2(VppTestCase):
         #
         # now a stream in each direction
         #
-        self.pg1.add_stream(p_cust * 65)
+        self.pg1.add_stream(p_cust * NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg0.get_capture(65)
+        rx0 = self.pg0.get_capture(NUM_PKTS)
 
-        self.verify_capture_tunneled_ethernet(rx0, p_cust*65,
+        self.verify_capture_tunneled_ethernet(rx0, p_cust*NUM_PKTS,
                                               [VppMplsLabel(42)])
 
         #

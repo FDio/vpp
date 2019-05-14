@@ -20,6 +20,8 @@ from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from scapy.contrib.bier import BIER, BIERLength, BIFT
 
+NUM_PKTS = 67
+
 
 class TestBFIB(VppTestCase):
     """ BIER FIB Test Case """
@@ -642,7 +644,7 @@ class TestBier(VppTestCase):
              UDP(sport=1234, dport=1234) /
              Raw(scapy.compat.chb(5) * 32))
 
-        rx = self.send_and_expect(self.pg0, p*65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p*NUM_PKTS, self.pg1)
 
         self.assertEqual(rx[0][IP].src, "1.1.1.1")
         self.assertEqual(rx[0][IP].dst, "232.1.1.1")
@@ -653,7 +655,7 @@ class TestBier(VppTestCase):
              UDP(sport=1234, dport=1234) /
              Raw(scapy.compat.chb(5) * 512))
 
-        rx = self.send_and_expect(self.pg0, p*65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p*NUM_PKTS, self.pg1)
         self.assertEqual(rx[0][IP].src, "1.1.1.1")
         self.assertEqual(rx[0][IP].dst, "232.1.1.2")
 

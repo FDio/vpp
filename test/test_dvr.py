@@ -11,6 +11,8 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 from socket import AF_INET, inet_pton
 
+NUM_PKTS = 67
+
 
 class TestDVR(VppTestCase):
     """ Distributed Virtual Router """
@@ -125,7 +127,7 @@ class TestDVR(VppTestCase):
         # Inject the packet that arrives and leaves on a non-tagged interface
         # Since it's 'bridged' expect that the MAC headed is unchanged.
         #
-        rx = self.send_and_expect(self.pg0, pkt_no_tag * 65, self.pg1)
+        rx = self.send_and_expect(self.pg0, pkt_no_tag * NUM_PKTS, self.pg1)
         self.assert_same_mac_addr(pkt_no_tag, rx)
         self.assert_has_no_tag(rx)
 
@@ -143,7 +145,7 @@ class TestDVR(VppTestCase):
         # Inject the packet that arrives non-tag and leaves on a tagged
         # interface
         #
-        rx = self.send_and_expect(self.pg0, pkt_tag * 65, self.pg3)
+        rx = self.send_and_expect(self.pg0, pkt_tag * NUM_PKTS, self.pg3)
         self.assert_same_mac_addr(pkt_tag, rx)
         self.assert_has_vlan_tag(93, rx)
 
@@ -158,7 +160,9 @@ class TestDVR(VppTestCase):
                           UDP(sport=1234, dport=1234) /
                           Raw('\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg2, pkt_tag_to_tag * 65, self.pg3)
+        rx = self.send_and_expect(self.pg2,
+                                  pkt_tag_to_tag * NUM_PKTS,
+                                  self.pg3)
         self.assert_same_mac_addr(pkt_tag_to_tag, rx)
         self.assert_has_vlan_tag(93, rx)
 
@@ -173,7 +177,9 @@ class TestDVR(VppTestCase):
                               UDP(sport=1234, dport=1234) /
                               Raw('\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg2, pkt_tag_to_non_tag * 65, self.pg1)
+        rx = self.send_and_expect(self.pg2,
+                                  pkt_tag_to_non_tag * NUM_PKTS,
+                                  self.pg1)
         self.assert_same_mac_addr(pkt_tag_to_tag, rx)
         self.assert_has_no_tag(rx)
 
@@ -204,7 +210,8 @@ class TestDVR(VppTestCase):
         #
         # Send packet's that should match the ACL and be dropped
         #
-        rx = self.send_and_assert_no_replies(self.pg2, pkt_tag_to_non_tag * 65)
+        rx = self.send_and_assert_no_replies(self.pg2,
+                                             pkt_tag_to_non_tag * NUM_PKTS)
 
         #
         # cleanup
@@ -352,19 +359,21 @@ class TestDVR(VppTestCase):
         #
         # now we expect the packet forward according to the DVR route
         #
-        rx = self.send_and_expect(self.pg0, pkt_no_tag * 65, self.pg1)
+        rx = self.send_and_expect(self.pg0, pkt_no_tag * NUM_PKTS, self.pg1)
         self.assert_same_mac_addr(pkt_no_tag, rx)
         self.assert_has_no_tag(rx)
 
-        rx = self.send_and_expect(self.pg0, pkt_to_tag * 65, self.pg2)
+        rx = self.send_and_expect(self.pg0, pkt_to_tag * NUM_PKTS, self.pg2)
         self.assert_same_mac_addr(pkt_to_tag, rx)
         self.assert_has_vlan_tag(92, rx)
 
-        rx = self.send_and_expect(self.pg3, pkt_from_tag * 65, self.pg1)
+        rx = self.send_and_expect(self.pg3, pkt_from_tag * NUM_PKTS, self.pg1)
         self.assert_same_mac_addr(pkt_from_tag, rx)
         self.assert_has_no_tag(rx)
 
-        rx = self.send_and_expect(self.pg3, pkt_from_to_tag * 65, self.pg2)
+        rx = self.send_and_expect(self.pg3,
+                                  pkt_from_to_tag * NUM_PKTS,
+                                  self.pg2)
         self.assert_same_mac_addr(pkt_from_tag, rx)
         self.assert_has_vlan_tag(92, rx)
 
