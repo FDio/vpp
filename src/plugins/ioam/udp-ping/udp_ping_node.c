@@ -819,21 +819,21 @@ VLIB_REGISTER_NODE (udp_ping_local, static) =
 static clib_error_t *
 udp_ping_init (vlib_main_t * vm)
 {
-  clib_error_t *error = 0;
-
   udp_ping_main.vlib_main = vm;
   udp_ping_main.vnet_main = vnet_get_main ();
   udp_ping_main.timer_interval = 1e9;
-
-  if ((error = vlib_call_init_function (vm, ip_main_init)))
-    return (error);
 
   ip6_register_protocol (IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS,
 			 udp_ping_local.index);
   return 0;
 }
 
-VLIB_INIT_FUNCTION (udp_ping_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (udp_ping_init) =
+{
+  .runs_after = VLIB_INITS("ip_main_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

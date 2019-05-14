@@ -680,17 +680,20 @@ static clib_error_t *
 statseg_init (vlib_main_t * vm)
 {
   stat_segment_main_t *sm = &stat_segment_main;
-  clib_error_t *error;
-
-  /* dependent on unix_input_init */
-  if ((error = vlib_call_init_function (vm, unix_input_init)))
-    return error;
 
   if (sm->socket_name)
     stats_segment_socket_init ();
 
   return 0;
 }
+
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (statseg_init) =
+{
+  .runs_after = VLIB_INITS("unix_input_init"),
+};
+/* *INDENT-ON* */
+
 
 clib_error_t *
 stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
@@ -832,7 +835,6 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (statseg_init);
 VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (statseg_sw_interface_add_del);
 

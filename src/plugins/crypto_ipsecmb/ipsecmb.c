@@ -475,9 +475,6 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   u32 eidx;
   u8 *name;
 
-  if ((error = vlib_call_init_function (vm, vnet_crypto_init)))
-    return error;
-
   if (!clib_cpu_supports_aes ())
     return 0;
 
@@ -547,7 +544,12 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   return (NULL);
 }
 
-VLIB_INIT_FUNCTION (crypto_ipsecmb_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (crypto_ipsecmb_init) =
+{
+  .runs_after = VLIB_INITS ("vnet_crypto_init"),
+};
+/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =

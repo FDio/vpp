@@ -544,6 +544,7 @@ u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 			    vnet_link_t link_type, const void *dst_address);
 const u8 *ethernet_ip4_mcast_dst_addr (void);
 const u8 *ethernet_ip6_mcast_dst_addr (void);
+void ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em);
 
 extern vlib_node_registration_t ethernet_input_node;
 

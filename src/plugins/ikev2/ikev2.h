@@ -422,6 +422,7 @@ uword unformat_ikev2_transform_dh_type (unformat_input_t * input,
 					va_list * args);
 uword unformat_ikev2_transform_esn_type (unformat_input_t * input,
 					 va_list * args);
+void ikev2_cli_reference (void);
 
 #endif /* __included_ikev2_h__ */
 

@@ -427,15 +427,15 @@ ioam_flow_create (u8 del)
 clib_error_t *
 ioam_flow_report_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, flow_report_init)))
-    return error;
-
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ioam_flow_report_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ioam_flow_report_init) =
+{
+  .runs_after = VLIB_INITS("flow_report_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

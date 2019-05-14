@@ -805,13 +805,10 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (socksvr_config, "socksvr");
 
-clib_error_t *
-vlibsocket_init (vlib_main_t * vm)
+void
+vlibsocket_reference ()
 {
-  return 0;
 }
-
-VLIB_INIT_FUNCTION (vlibsocket_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
