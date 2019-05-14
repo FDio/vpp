@@ -107,7 +107,7 @@ ipsec_add_feature (const char *arc_name,
   u8 arc;
 
   arc = vnet_get_feature_arc_index (arc_name);
-  ASSERT (arc != ~0);
+  ASSERT (arc != (u8) ~0);
   *out_feature_index = vnet_get_feature_index (arc, node_name);
 }
 
