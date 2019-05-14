@@ -235,7 +235,7 @@ install -m 0644 $MODULES \
 #
 # devel
 #
-for dir in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/include/ -maxdepth 0 -type d -print | grep -v dpdk)
+for dir in %{_mu_build_dir}/%{_vpp_install_dir}/{vom,vpp}/include/
 do
 	for subdir in $(cd ${dir} && find . -type d -print)
 	do
