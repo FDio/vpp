@@ -369,7 +369,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       sa0 = vec_elt_at_index (im->sad, pd->sa_index);
       u8 *payload = b[0]->data + pd->current_data;
 
-      ipsec_sa_anti_replay_advance (sa0, &((esp_header_t *) payload)->seq);
+      ipsec_sa_anti_replay_advance (sa0, ((esp_header_t *) payload)->seq);
 
       esp_footer_t *f = (esp_footer_t *) (b[0]->data + pd->current_data +
 					  pd->current_length - sizeof (*f) -

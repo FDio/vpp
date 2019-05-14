@@ -297,13 +297,13 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 * seqp)
 }
 
 always_inline void
-ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 * seqp)
+ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seqp)
 {
   u32 pos, seq;
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
     return;
 
-  seq = clib_host_to_net_u32 (*seqp);
+  seq = clib_host_to_net_u32 (seqp);
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ESN))
     {
       int wrap = sa->seq_hi - sa->last_seq_hi;
