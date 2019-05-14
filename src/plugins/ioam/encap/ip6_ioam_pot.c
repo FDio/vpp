@@ -29,7 +29,7 @@
   _(PROCESSED, "Pkts with ip6 hop-by-hop pot options")			\
   _(PROFILE_MISS, "Pkts with ip6 hop-by-hop pot options but no profile set") \
   _(PASSED, "Pkts with POT in Policy")					\
-  _(FAILED, "Pkts with POT out of Policy") 
+  _(FAILED, "Pkts with POT out of Policy")
 
 static char * ip6_hop_by_hop_ioam_pot_stats_strings[] = {
 #define _(sym,string) string,
@@ -47,7 +47,7 @@ typedef enum {
 typedef struct {
   /* stats */
   u64 counters[ARRAY_LEN(ip6_hop_by_hop_ioam_pot_stats_strings)];
-  
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
@@ -55,7 +55,7 @@ typedef struct {
 
 ip6_hop_by_hop_ioam_pot_main_t ip6_hop_by_hop_ioam_pot_main;
 
-always_inline void 
+always_inline void
 ip6_ioam_stats_increment_counter (u32 counter_index, u64 increment)
 {
   ip6_hop_by_hop_ioam_pot_main_t *hm = &ip6_hop_by_hop_ioam_pot_main;
@@ -69,13 +69,13 @@ static u8 * format_ioam_pot (u8 * s, va_list * args)
   ioam_pot_option_t * pot0 = va_arg (*args, ioam_pot_option_t *);
   u64 random, cumulative;
   random = cumulative = 0;
-  if (pot0) 
-    { 
+  if (pot0)
+    {
       random = clib_net_to_host_u64 (pot0->random);
       cumulative = clib_net_to_host_u64 (pot0->cumulative);
     }
 
-  s = format (s, "random = 0x%Lx, Cumulative = 0x%Lx, Index = 0x%x", 
+  s = format (s, "random = 0x%Lx, Cumulative = 0x%Lx, Index = 0x%x",
 	      random, cumulative, pot0 ? pot0->reserved_profile_id : ~0);
   return s;
 }
@@ -117,22 +117,22 @@ ip6_hbh_ioam_proof_of_transit_handler (vlib_buffer_t *b,
       pot0->reserved_profile_id =
 	pot_profile_index & PROFILE_ID_MASK;
       pot_profile_incr_usage_stats(pot_profile);
-    } 
-  else 
+    }
+  else
     { /* Non encap node */
-      if (PREDICT_FALSE(pot0->reserved_profile_id != 
-			pot_profile_index || pot_profile == 0)) 
+      if (PREDICT_FALSE(pot0->reserved_profile_id !=
+			pot_profile_index || pot_profile == 0))
 	{
 	  /* New profile announced by encap node. */
 	  new_profile =
-	    pot_profile_find(pot0->reserved_profile_id); 
+	    pot_profile_find(pot0->reserved_profile_id);
 	  if (PREDICT_FALSE(new_profile == 0 ||
-			    new_profile->valid == 0)) 
+			    new_profile->valid == 0))
 	    {
 	      ip6_ioam_stats_increment_counter (IP6_IOAM_POT_PROFILE_MISS, 1);
 	      return(-1);
- 	    } 
-	  else 
+ 	    }
+	  else
 	    {
 	      pot_profile_index = pot0->reserved_profile_id;
 	      pot_profile = new_profile;
@@ -143,7 +143,7 @@ ip6_hbh_ioam_proof_of_transit_handler (vlib_buffer_t *b,
       pot_profile_incr_usage_stats(pot_profile);
     }
 
-  if (pot0->random == 0) 
+  if (pot0->random == 0)
     {
       pot0->random = clib_host_to_net_u64(pot_generate_random(pot_profile));
       pot0->cumulative = 0;
@@ -196,7 +196,7 @@ int ip6_hop_by_hop_ioam_pot_rewrite_handler (u8 *rewrite_string, u8 *rewrite_siz
       pot_option = (ioam_pot_option_t *)rewrite_string;
       pot_option->hdr.type = HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT
         | HBH_OPTION_TYPE_DATA_CHANGE_ENROUTE;
-      pot_option->hdr.length = sizeof (ioam_pot_option_t) - 
+      pot_option->hdr.length = sizeof (ioam_pot_option_t) -
         sizeof (ip6_hop_by_hop_option_t);
       return(0);
     }
@@ -235,15 +235,11 @@ static clib_error_t *
 ip6_hop_by_hop_ioam_pot_init (vlib_main_t * vm)
 {
   ip6_hop_by_hop_ioam_pot_main_t * hm = &ip6_hop_by_hop_ioam_pot_main;
-  clib_error_t * error;
-
-  if ((error = vlib_call_init_function (vm, ip6_hop_by_hop_ioam_init)))
-    return(error);
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main();
   clib_memset(hm->counters, 0, sizeof(hm->counters));
-  
+
   if (ip6_hbh_register_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT, ip6_hbh_ioam_proof_of_transit_handler,
 			      ip6_hbh_ioam_proof_of_transit_trace_handler) < 0)
     return (clib_error_create("registration of HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT failed"));
@@ -260,6 +256,9 @@ ip6_hop_by_hop_ioam_pot_init (vlib_main_t * vm)
   return (0);
 }
 
-VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_pot_init);
-
-
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_pot_init) =
+{
+  .runs_after = VLIB_INITS("ip6_hop_by_hop_ioam_init"),
+};
+/* *INDENT-OFF* */

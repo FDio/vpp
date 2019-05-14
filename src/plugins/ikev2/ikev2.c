@@ -3295,12 +3295,8 @@ clib_error_t *
 ikev2_init (vlib_main_t * vm)
 {
   ikev2_main_t *km = &ikev2_main;
-  clib_error_t *error;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int thread_id;
-
-  if ((error = vlib_call_init_function (vm, ipsec_init)))
-    return error;
 
   clib_memset (km, 0, sizeof (ikev2_main_t));
   km->vnet_main = vnet_get_main ();
@@ -3319,16 +3315,20 @@ ikev2_init (vlib_main_t * vm)
 
   km->sa_by_ispi = hash_create (0, sizeof (uword));
 
-
-  if ((error = vlib_call_init_function (vm, ikev2_cli_init)))
-    return error;
-
   udp_register_dst_port (vm, 500, ikev2_node.index, 1);
+
+  ikev2_cli_reference ();
 
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ikev2_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ikev2_init) =
+{
+  .runs_after = VLIB_INITS("ipsec_init"),
+};
+/* *INDENT-ON* */
+
 
 static u8
 ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)

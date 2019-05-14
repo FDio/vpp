@@ -635,13 +635,9 @@ tls_mbedtls_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   mbedtls_main_t *mm = &mbedtls_main;
-  clib_error_t *error;
   u32 num_threads;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
-
-  if ((error = vlib_call_init_function (vm, tls_init)))
-    return error;
 
   if (tls_init_ca_chain ())
     {
@@ -667,7 +663,12 @@ tls_mbedtls_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (tls_mbedtls_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (tls_mbedtls_init) =
+{
+  .runs_after = VLIB_INITS("tls_init"),
+};
+/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {

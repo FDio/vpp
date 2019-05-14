@@ -512,6 +512,7 @@ clib_error_t *unformat_hqos (unformat_input_t * input,
 
 struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 					    *info);
+void dpdk_cli_reference (void);
 
 #if CLI_DEBUG
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);

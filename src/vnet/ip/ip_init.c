@@ -101,50 +101,28 @@ do {						\
       }
   }
 
-  if ((error = vlib_call_init_function (vm, vnet_main_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip4_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip6_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, icmp4_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, icmp6_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip6_hop_by_hop_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, udp_local_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, udp_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip_classify_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, in_out_acl_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, policer_classify_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, flow_classify_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, dns_init)))
-    return error;
-
   return error;
 }
 
-VLIB_INIT_FUNCTION (ip_main_init);
-
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ip_main_init) =
+{
+  .init_order =
+  VLIB_INITS ("vnet_main_init",
+              "ip4_init",
+              "ip6_init",
+              "icmp4_init",
+              "icmp6_init",
+              "ip6_hop_by_hop_init",
+              "udp_local_init",
+              "udp_init",
+              "ip_classify_init",
+              "in_out_acl_init",
+              "policer_classify_init",
+              "flow_classify_init",
+              "dns_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -764,7 +764,12 @@ abf_itf_bond_init (vlib_main_t * vm)
   return (NULL);
 }
 
-VLIB_INIT_FUNCTION (abf_itf_bond_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (abf_itf_bond_init) =
+{
+  .runs_after = VLIB_INITS("acl_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

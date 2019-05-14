@@ -1011,17 +1011,12 @@ VNET_DEVICE_CLASS (tuntap_dev_class,static) = {
 static clib_error_t *
 tuntap_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
   ip4_add_del_interface_address_callback_t cb4;
   ip6_add_del_interface_address_callback_t cb6;
   tuntap_main_t *tm = &tuntap_main;
   vlib_thread_main_t *m = vlib_get_thread_main ();
-
-  error = vlib_call_init_function (vm, ip4_init);
-  if (error)
-    return error;
 
   mhash_init (&tm->subif_mhash, sizeof (u32), sizeof (subif_address_t));
 
@@ -1038,7 +1033,12 @@ tuntap_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (tuntap_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (tuntap_init) =
+{
+  .runs_after = VLIB_INITS("ip4_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

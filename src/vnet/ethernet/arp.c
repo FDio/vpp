@@ -1761,11 +1761,7 @@ ethernet_arp_init (vlib_main_t * vm)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ip4_main_t *im = &ip4_main;
-  clib_error_t *error;
   pg_node_t *pn;
-
-  if ((error = vlib_call_init_function (vm, ethernet_init)))
-    return error;
 
   ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, arp_input_node.index);
 
@@ -1809,8 +1805,12 @@ ethernet_arp_init (vlib_main_t * vm)
 
   return 0;
 }
-
-VLIB_INIT_FUNCTION (ethernet_arp_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ethernet_arp_init) =
+{
+  .runs_after = VLIB_INITS("ethernet_init"),
+};
+/* *INDENT-ON* */
 
 static void
 arp_entry_free (ethernet_arp_interface_t * eai, ethernet_arp_ip4_entry_t * e)

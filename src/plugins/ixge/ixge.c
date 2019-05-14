@@ -2788,7 +2788,6 @@ clib_error_t *
 ixge_init (vlib_main_t * vm)
 {
   ixge_main_t *xm = &ixge_main;
-  clib_error_t *error;
 
   xm->vlib_main = vm;
   clib_memset (&xm->tx_descriptor_template, 0,
@@ -2807,13 +2806,15 @@ ixge_init (vlib_main_t * vm)
       | IXGE_TX_DESCRIPTOR_STATUS0_REPORT_STATUS);
   xm->tx_descriptor_template_mask.status1 &=
     ~(IXGE_TX_DESCRIPTOR_STATUS1_DONE);
-
-  error = vlib_call_init_function (vm, pci_bus_init);
-
-  return error;
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (ixge_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ixge_init) =
+{
+  .runs_before = VLIB_INITS("pci_bus_init"),
+};
+/* *INDENT-ON* */
 
 
 static void
