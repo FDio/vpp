@@ -19,7 +19,7 @@
   _(DISPATCHED, "dispatched")                  \
   _(NO_REASON, "No such punt reason")          \
   _(NO_REG, "No registrations")                \
-  _(REP_FAIL, "Replication Faliure")
+  _(REP_FAIL, "Replication Failure")
 
 typedef enum punt_error_t_
 {
