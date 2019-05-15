@@ -22,6 +22,30 @@
       "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba4c01a3_c709b034",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-05-15T16:56:07Z",
+      "side": 1,
+      "message": "Last vlib_buffer_free is freeing tx buffers which contains data in them.\nWhile vlib_buffer_free_no_next is freeing indirect buffer which is used for indirect descriptor chain in case of big packet. So these are freeing totally two different buffers.",
+      "parentUuid": "5f2b67fa_a9f42e9e",
+      "range": {
+        "startLine": 111,
+        "startChar": 0,
+        "endLine": 115,
+        "endChar": 54
+      },
+      "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
