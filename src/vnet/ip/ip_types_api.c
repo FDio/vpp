@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vlibapi/api_types.h>
 #include <vnet/ip/ip_types_api.h>
 
 #define vl_typedefs		/* define message structures */
@@ -28,6 +29,72 @@
 #define vl_printfun
 #include <vnet/vnet_all_api_h.h>
 #undef vl_printfun
+
+int
+ip_address_family_decode (int _af, ip_address_family_t * out)
+{
+  vl_api_address_family_t af = clib_host_to_net_u32 (_af);
+
+  switch (af)
+    {
+    case ADDRESS_IP4:
+      *out = AF_IP4;
+      return (0);
+    case ADDRESS_IP6:
+      *out = AF_IP6;
+      return (0);
+    }
+  return (-1);
+}
+
+int
+ip_address_family_encode (ip_address_family_t af)
+{
+  switch (af)
+    {
+    case AF_IP4:
+      return (clib_host_to_net_u32 (ADDRESS_IP4));
+    case AF_IP6:
+      return (clib_host_to_net_u32 (ADDRESS_IP6));
+    }
+
+  ASSERT (0);
+  return (clib_host_to_net_u32 (ADDRESS_IP4));
+}
+
+int
+ip_proto_decode (int _ipp, ip_protocol_t * out)
+{
+  vl_api_ip_proto_t ipp = clib_host_to_net_u32 (_ipp);
+
+  switch (ipp)
+    {
+    case IP_API_PROTO_TCP:
+      *out = IP_PROTOCOL_TCP;
+      return (0);
+    case IP_API_PROTO_UDP:
+      *out = IP_PROTOCOL_UDP;
+      return (0);
+    }
+  return (-1);
+}
+
+int
+ip_proto_encode (ip_protocol_t ipp)
+{
+  switch (ipp)
+    {
+    case IP_PROTOCOL_UDP:
+      return (clib_host_to_net_u32 (IP_API_PROTO_UDP));
+    case IP_PROTOCOL_TCP:
+      return (clib_host_to_net_u32 (IP_API_PROTO_TCP));
+    default:
+      break;
+    }
+
+  ASSERT (0);
+  return (clib_host_to_net_u32 (IP_API_PROTO_TCP));
+}
 
 void
 ip6_address_encode (const ip6_address_t * in, vl_api_ip6_address_t out)
