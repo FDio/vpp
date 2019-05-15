@@ -791,6 +791,7 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (marker);
   u32 *split_buffers;
   u32 padding[14];
 } vnet_interface_per_thread_data_t;
