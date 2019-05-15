@@ -313,28 +313,6 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	}
     }
 
-  /* Check if SA is for IPv6/AH which is not supported. Return error if TRUE. */
-  if (p.sa_id)
-    {
-      uword *p1;
-      ipsec_main_t *im = &ipsec_main;
-      ipsec_sa_t *sa = 0;
-      p1 = hash_get (im->sa_index_by_sa_id, p.sa_id);
-      if (!p1)
-	{
-	  error =
-	    clib_error_return (0, "SA with index %u not found", p.sa_id);
-	  goto done;
-	}
-      sa = pool_elt_at_index (im->sad, p1[0]);
-      if (sa && sa->protocol == IPSEC_PROTOCOL_AH && is_add && p.is_ipv6)
-	{
-	  error = clib_error_return (0, "AH not supported for IPV6: '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
   rv = ipsec_policy_mk_type (is_outbound, p.is_ipv6, p.policy, &p.type);
 
   if (rv)
