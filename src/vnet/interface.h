@@ -565,6 +565,10 @@ typedef struct vnet_hw_interface_t
   /* device input device_and_queue runtime index */
   uword *dq_runtime_index_by_queue;
 
+  /* numa node that hardware device connects to */
+  u8 numa_node;
+
+  u8 padding[3];
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;
