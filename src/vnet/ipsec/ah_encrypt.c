@@ -75,8 +75,8 @@ format_ah_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ah_encrypt_trace_t *t = va_arg (*args, ah_encrypt_trace_t *);
 
-  s = format (s, "ah: sa-index %d spi %u seq %u:%u integrity %U",
-	      t->sa_index, t->spi, t->seq_hi, t->seq_lo,
+  s = format (s, "ah: sa-index %d spi %u (0x%08x) seq %u:%u integrity %U",
+	      t->sa_index, t->spi, t->spi, t->seq_hi, t->seq_lo,
 	      format_ipsec_integ_alg, t->integ_alg);
   return s;
 }

@@ -78,11 +78,12 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_encrypt_trace_t *t = va_arg (*args, esp_encrypt_trace_t *);
 
-  s = format (s, "esp: sa-index %d spi %u seq %u crypto %U integrity %U%s",
-	      t->sa_index, t->spi, t->seq,
-	      format_ipsec_crypto_alg, t->crypto_alg,
-	      format_ipsec_integ_alg, t->integ_alg,
-	      t->udp_encap ? " udp-encap-enabled" : "");
+  s =
+    format (s,
+	    "esp: sa-index %d spi %u (0x%08x) seq %u crypto %U integrity %U%s",
+	    t->sa_index, t->spi, t->spi, t->seq, format_ipsec_crypto_alg,
+	    t->crypto_alg, format_ipsec_integ_alg, t->integ_alg,
+	    t->udp_encap ? " udp-encap-enabled" : "");
   return s;
 }
 
