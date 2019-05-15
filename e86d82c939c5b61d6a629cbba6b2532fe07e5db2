@@ -39,6 +39,24 @@
       "revId": "e86d82c939c5b61d6a629cbba6b2532fe07e5db2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a7fdfb4d_f1c6ba2d",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-15T16:11:59Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/#/c/16206/ is example of gerrit commit which have jira ID in the body of message and it is properly recognized by JIRA.",
+      "parentUuid": "ab183397_456627d5",
+      "revId": "e86d82c939c5b61d6a629cbba6b2532fe07e5db2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
