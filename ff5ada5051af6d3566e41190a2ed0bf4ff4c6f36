@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ec1252ec_810cc352",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-15T14:28:54Z",
+      "side": 1,
+      "message": "Does this make sense for a flag value?\nDoes this make more sense as an external magic number external to the flag enum?",
+      "range": {
+        "startLine": 34,
+        "startChar": 2,
+        "endLine": 34,
+        "endChar": 21
+      },
+      "revId": "ff5ada5051af6d3566e41190a2ed0bf4ff4c6f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
