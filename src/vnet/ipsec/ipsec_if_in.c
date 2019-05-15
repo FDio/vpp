@@ -59,7 +59,7 @@ format_ipsec_if_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ipsec_if_input_trace_t *t = va_arg (*args, ipsec_if_input_trace_t *);
 
-  s = format (s, "IPSec: spi %u seq %u", t->spi, t->seq);
+  s = format (s, "IPSec: spi 0x%08x seq %u", t->spi, t->seq);
   return s;
 }
 

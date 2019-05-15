@@ -281,7 +281,7 @@ format_ipsec_sa (u8 * s, va_list * args)
 
   sa = pool_elt_at_index (im->sad, sai);
 
-  s = format (s, "[%d] sa 0x%x spi %u mode %s%s protocol %s %U",
+  s = format (s, "[%d] sa 0x%x spi 0x%08x mode %s%s protocol %s %U",
 	      sai, sa->id, sa->spi,
 	      ipsec_sa_is_set_IS_TUNNEL (sa) ? "tunnel" : "transport",
 	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "-ip6" : "",
