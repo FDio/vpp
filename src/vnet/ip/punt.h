@@ -22,23 +22,51 @@
 
 #include <linux/un.h>
 #include <stdbool.h>
+#include <vnet/ip/ip.h>
 
-typedef enum
+#define foreach_punt_type \
+  _(L4, "l4")             \
+  _(EXCEPTION, "exception")
+
+typedef enum punt_type_t_
 {
-#define punt_error(n,s) PUNT_ERROR_##n,
-#include <vnet/ip/punt_error.def>
-#undef punt_error
-  PUNT_N_ERROR,
-} punt_error_t;
+#define _(v, s) PUNT_TYPE_##v,
+  foreach_punt_type
+#undef _
+} punt_type_t;
+
+typedef struct punt_l4_t_
+{
+  ip_address_family_t af;
+  ip_protocol_t protocol;
+  u16 port;
+} punt_l4_t;
+
+typedef struct punt_exception_t_
+{
+  vlib_punt_reason_t reason;
+} punt_exception_t;
+
+typedef struct punt_union_t_
+{
+  punt_exception_t exception;
+  punt_l4_t l4;
+} punt_union_t;
+
+typedef struct punt_reg_t_
+{
+  punt_type_t type;
+  punt_union_t punt;
+} punt_reg_t;
 
 
-clib_error_t *vnet_punt_add_del (vlib_main_t * vm, u8 ipv,
-				 u8 protocol, u16 port, bool is_add);
-clib_error_t *vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
-				    bool is_ip4, u8 protocol, u16 port,
+clib_error_t *vnet_punt_add_del (vlib_main_t * vm,
+				 const punt_reg_t * pr, bool is_add);
+clib_error_t *vnet_punt_socket_add (vlib_main_t * vm,
+				    u32 header_version,
+				    const punt_reg_t * pr,
 				    char *client_pathname);
-clib_error_t *vnet_punt_socket_del (vlib_main_t * vm, bool is_ip4,
-				    u8 l4_protocol, u16 port);
+clib_error_t *vnet_punt_socket_del (vlib_main_t * vm, const punt_reg_t * pr);
 char *vnet_punt_get_server_pathname (void);
 
 enum punt_action_e
@@ -64,34 +92,88 @@ typedef struct __attribute__ ((packed))
  */
 typedef struct
 {
-  u8 protocol;
-  u16 port;
+  punt_reg_t reg;
   struct sockaddr_un caddr;
 } punt_client_t;
+
+typedef struct punt_client_db_t_
+{
+  void *clients_by_l4_port4;
+  void *clients_by_l4_port6;
+  u32 *clients_by_exception;
+} punt_client_db_t;
 
 typedef struct
 {
   int socket_fd;
   char sun_path[sizeof (struct sockaddr_un)];
-  punt_client_t *clients_by_dst_port4;
-  punt_client_t *clients_by_dst_port6;
+  punt_client_db_t db;
+  punt_client_t *punt_client_pool;
   u32 clib_file_index;
   bool is_configured;
   vlib_node_t *interface_output_node;
   u32 *ready_fds;
   u32 *rx_buffers;
+  vlib_punt_hdl_t hdl;
 } punt_main_t;
+
 extern punt_main_t punt_main;
 
-typedef struct punt_socket_detail_t_
-{
-  u8 ipv;
-  u8 l4_protocol;
-  u16 l4_port;
-  u8 pathname[108];
-} punt_socket_detail_t;
+typedef walk_rc_t (*punt_client_walk_cb_t) (const punt_client_t * pc,
+					    void *ctx);
+extern void punt_client_walk (punt_type_t pt,
+			      punt_client_walk_cb_t cb, void *ctx);
 
-punt_socket_detail_t *punt_socket_entries (u8 ipv);
+/*
+ * inlines for the data-plane
+ */
+static_always_inline void *
+punt_client_l4_get_db (ip_address_family_t af)
+{
+  punt_main_t *pm = &punt_main;
+
+  return (af == AF_IP4 ?
+	  pm->db.clients_by_l4_port4 : pm->db.clients_by_l4_port6);
+}
+
+
+static_always_inline punt_client_t *
+punt_client_l4_get (ip_address_family_t af, u16 port)
+{
+  punt_main_t *pm = &punt_main;
+  uword *p;
+
+  p = hash_get (punt_client_l4_get_db (af), port);
+
+  if (p)
+    return (pool_elt_at_index (pm->punt_client_pool, p[0]));
+
+  return (NULL);
+}
+
+static_always_inline punt_client_t *
+punt_client_exception_get (vlib_punt_reason_t reason)
+{
+  punt_main_t *pm = &punt_main;
+  u32 pci;
+
+  if (reason >= vec_len (pm->db.clients_by_exception))
+    return (NULL);
+
+  pci = pm->db.clients_by_exception[reason];
+
+  if (~0 != pci)
+    return (pool_elt_at_index (pm->punt_client_pool, pci));
+
+  return (NULL);
+}
+
+extern vlib_node_registration_t udp4_punt_node;
+extern vlib_node_registration_t udp6_punt_node;
+extern vlib_node_registration_t udp4_punt_socket_node;
+extern vlib_node_registration_t udp6_punt_socket_node;
+extern vlib_node_registration_t punt_socket_rx_node;
+
 #endif
 
 /*

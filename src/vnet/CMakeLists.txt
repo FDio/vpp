@@ -445,6 +445,7 @@ list(APPEND VNET_SOURCES
   ip/ping.c
   ip/punt_api.c
   ip/punt.c
+  ip/punt_node.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
@@ -455,7 +456,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
   ip/ip6_reassembly.c
   ip/ip6_input.c
   ip/ip6_punt_drop.c
-  ip/punt.c
+  ip/punt_node.c
   ip/ip_in_out_acl.c
 )
 

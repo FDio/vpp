@@ -72,7 +72,8 @@ udp46_local_inline (vlib_main_t * vm,
   __attribute__ ((unused)) u32 n_left_from, next_index, *from, *to_next;
   word n_no_listener = 0;
   u8 punt_unknown = is_ip4 ? um->punt_unknown4 : um->punt_unknown6;
-
+  u16 *next_by_dst_port = (is_ip4 ?
+			   um->next_by_dst_port4 : um->next_by_dst_port6);
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
@@ -170,15 +171,10 @@ udp46_local_inline (vlib_main_t * vm,
 	  /* Index sparse array with network byte order. */
 	  dst_port0 = (error0 == 0) ? h0->dst_port : 0;
 	  dst_port1 = (error1 == 0) ? h1->dst_port : 0;
-	  sparse_vec_index2 (is_ip4 ? um->next_by_dst_port4 :
-			     um->next_by_dst_port6,
-			     dst_port0, dst_port1, &i0, &i1);
-	  next0 = (error0 == 0) ?
-	    vec_elt (is_ip4 ? um->next_by_dst_port4 : um->next_by_dst_port6,
-		     i0) : next0;
-	  next1 = (error1 == 0) ?
-	    vec_elt (is_ip4 ? um->next_by_dst_port4 : um->next_by_dst_port6,
-		     i1) : next1;
+	  sparse_vec_index2 (next_by_dst_port, dst_port0, dst_port1, &i0,
+			     &i1);
+	  next0 = (error0 == 0) ? vec_elt (next_by_dst_port, i0) : next0;
+	  next1 = (error1 == 0) ? vec_elt (next_by_dst_port, i1) : next1;
 
 	  if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX))
 	    {
@@ -321,10 +317,8 @@ udp46_local_inline (vlib_main_t * vm,
 	  if (PREDICT_TRUE (clib_net_to_host_u16 (h0->length) <=
 			    vlib_buffer_length_in_chain (vm, b0)))
 	    {
-	      i0 = sparse_vec_index (is_ip4 ? um->next_by_dst_port4 :
-				     um->next_by_dst_port6, h0->dst_port);
-	      next0 = vec_elt (is_ip4 ? um->next_by_dst_port4 :
-			       um->next_by_dst_port6, i0);
+	      i0 = sparse_vec_index (next_by_dst_port, h0->dst_port);
+	      next0 = vec_elt (next_by_dst_port, i0);
 
 	      if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX))
 		{
