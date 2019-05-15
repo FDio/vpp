@@ -61,9 +61,9 @@ format_ipsec_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ipsec_input_trace_t *t = va_arg (*args, ipsec_input_trace_t *);
 
-  s = format (s, "%U: sa_id %u spd %u policy %d spi %u seq %u",
+  s = format (s, "%U: sa_id %u spd %u policy %d spi %u (0x%08x) seq %u",
 	      format_ip_protocol, t->proto, t->sa_id,
-	      t->spd, t->policy_index, t->spi, t->seq);
+	      t->spd, t->policy_index, t->spi, t->spi, t->seq);
 
   return s;
 }
