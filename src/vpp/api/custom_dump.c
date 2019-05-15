@@ -3423,13 +3423,17 @@ vl_api_set_punt_t_print (vl_api_set_punt_t * mp, void *handle)
 
   s = format (0, "SCRIPT: punt ");
 
-  if (mp->punt.ipv != (u8) ~ 0)
-    s = format (s, "ip %d ", mp->punt.ipv);
+  switch (clib_net_to_host_u32 (mp->punt.type))
+    {
+    case PUNT_API_TYPE_L4:
+      s = format (s, "%U", format_vl_api_address_family, mp->punt.punt.l4.af);
 
-  s = format (s, "protocol %d ", mp->punt.l4_protocol);
+      s = format (s, "protocol %d ", mp->punt.punt.l4.protocol);
 
-  if (mp->punt.l4_port != (u16) ~ 0)
-    s = format (s, "port %d ", ntohs (mp->punt.l4_port));
+      if (mp->punt.punt.l4.port != (u16) ~ 0)
+	s = format (s, "port %d ", ntohs (mp->punt.punt.l4.port));
+      break;
+    }
 
   if (!mp->is_add)
     s = format (s, "del ");

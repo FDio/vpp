@@ -25,6 +25,7 @@ from framework import VppTestCase, VppTestRunner
 
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_papi import VppEnum
 
 
 # Format MAC Address
@@ -163,6 +164,20 @@ class TestPuntSocket(VppTestCase):
         for thread in self.sock_servers:
             thread.sock.close()
 
+    def verify_punt(self, pr, vpr):
+        self.assertEqual(vpr.punt.type, pr['type'])
+        self.assertEqual(vpr.punt.punt.l4.port,
+                         pr['punt']['l4']['port'])
+        self.assertEqual(vpr.punt.punt.l4.protocol,
+                         pr['punt']['l4']['protocol'])
+        self.assertEqual(vpr.punt.punt.l4.af,
+                         pr['punt']['l4']['af'])
+
+
+def set_port(pr, port):
+    pr['punt']['l4']['port'] = port
+    return pr
+
 
 class TestIP4PuntSocket(TestPuntSocket):
     """ Punt Socket for IPv4 """
@@ -191,51 +206,84 @@ class TestIP4PuntSocket(TestPuntSocket):
     def test_punt_socket_dump(self):
         """ Punt socket registration/deregistration"""
 
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
         #
         # configure a punt socket
         #
-        self.vapi.punt_socket_register(1111, b"%s/socket_punt_1111" %
+        punt_l4 = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip4,
+                    'protocol': udp_proto
+                }
+            }
+        }
+
+        self.vapi.punt_socket_register(set_port(punt_l4, 1111),
+                                       b"%s/socket_punt_1111" %
                                        six.ensure_binary(self.tempdir))
-        self.vapi.punt_socket_register(2222, b"%s/socket_punt_2222" %
+        self.vapi.punt_socket_register(set_port(punt_l4, 2222),
+                                       b"%s/socket_punt_2222" %
                                        six.ensure_binary(self.tempdir))
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 2)
-        self.assertEqual(punts[0].punt.l4_port, 1111)
-        self.assertEqual(punts[1].punt.l4_port, 2222)
+        self.verify_punt(set_port(punt_l4, 1111), punts[0])
+        self.verify_punt(set_port(punt_l4, 2222), punts[1])
 
         #
         # deregister a punt socket
         #
-        self.vapi.punt_socket_deregister(1111)
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        self.vapi.punt_socket_deregister(set_port(punt_l4, 1111))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 1)
 
         #
         # configure a punt socket again
         #
-        self.vapi.punt_socket_register(1111, b"%s/socket_punt_1111" %
+        self.vapi.punt_socket_register(set_port(punt_l4, 1111),
+                                       b"%s/socket_punt_1111" %
                                        six.ensure_binary(self.tempdir))
-        self.vapi.punt_socket_register(3333, b"%s/socket_punt_3333" %
+        self.vapi.punt_socket_register(set_port(punt_l4, 3333),
+                                       b"%s/socket_punt_3333" %
                                        six.ensure_binary(self.tempdir))
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 3)
+
+        self.logger.info(self.vapi.cli("sh punt sock reg"))
 
         #
         # deregister all punt socket
         #
-        self.vapi.punt_socket_deregister(1111)
-        self.vapi.punt_socket_deregister(2222)
-        self.vapi.punt_socket_deregister(3333)
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        self.vapi.punt_socket_deregister(set_port(punt_l4, 1111))
+        self.vapi.punt_socket_deregister(set_port(punt_l4, 2222))
+        self.vapi.punt_socket_deregister(set_port(punt_l4, 3333))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
     def test_punt_socket_traffic_single_port_single_socket(self):
         """ Punt socket traffic single port single socket"""
 
         port = self.ports[0]
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        punt_l4 = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip4,
+                    'protocol': udp_proto,
+                    'port': port,
+                }
+            }
+        }
 
         p = (Ether(src=self.pg0.remote_mac,
                    dst=self.pg0.local_mac) /
@@ -246,7 +294,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         pkts = p * self.nr_packets
         self.portsCheck[port] = self.nr_packets
 
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
         #
@@ -267,9 +315,9 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         self.socket_client_create(b"%s/socket_%d" % (
             six.ensure_binary(self.tempdir), port))
-        self.vapi.punt_socket_register(port, b"%s/socket_%d" % (
+        self.vapi.punt_socket_register(punt_l4, b"%s/socket_%d" % (
             six.ensure_binary(self.tempdir), port))
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 1)
 
         self.logger.debug("Sending %s packets to port %d",
@@ -290,8 +338,8 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         # remove punt socket. expect ICMP - port unreachable for all packets
         #
-        self.vapi.punt_socket_deregister(port)
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        self.vapi.punt_socket_deregister(punt_l4)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -299,8 +347,21 @@ class TestIP4PuntSocket(TestPuntSocket):
         # FIXME - when punt socket deregister is implemented
         # self.pg0.get_capture(nr_packets)
 
-    def test_punt_socket_traffic_multi_port_multi_sockets(self):
+    def test_punt_socket_traffic_multi_ports_multi_sockets(self):
         """ Punt socket traffic multi ports and multi sockets"""
+
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        punt_l4 = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip4,
+                    'protocol': udp_proto,
+                }
+            }
+        }
 
         for p in self.ports:
             self.portsCheck[p] = 0
@@ -322,7 +383,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         # no punt socket
         #
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
         #
@@ -331,9 +392,10 @@ class TestIP4PuntSocket(TestPuntSocket):
         for p in self.ports:
             self.socket_client_create(b"%s/socket_%d" % (
                 six.ensure_binary(self.tempdir), p))
-            self.vapi.punt_socket_register(p, b"%s/socket_%d" % (
+            self.vapi.punt_socket_register(set_port(punt_l4, p),
+                                           b"%s/socket_%d" % (
                 six.ensure_binary(self.tempdir),  p))
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), len(self.ports))
 
         for p in self.ports:
@@ -354,8 +416,8 @@ class TestIP4PuntSocket(TestPuntSocket):
 
         for p in self.ports:
             self.assertEqual(self.portsCheck[p], 0)
-            self.vapi.punt_socket_deregister(p)
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+            self.vapi.punt_socket_deregister(set_port(punt_l4, p))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
     def test_punt_socket_traffic_multi_ports_single_socket(self):
@@ -363,6 +425,19 @@ class TestIP4PuntSocket(TestPuntSocket):
 
         for p in self.ports:
             self.portsCheck[p] = 0
+
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        punt_l4 = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip4,
+                    'protocol': udp_proto,
+                }
+            }
+        }
 
         #
         # create stream with random packets count per given ports
@@ -382,7 +457,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         # no punt socket
         #
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
         # configure a punt socket
@@ -390,10 +465,10 @@ class TestIP4PuntSocket(TestPuntSocket):
         self.socket_client_create(b"%s/socket_multi" %
                                   six.ensure_binary(self.tempdir))
         for p in self.ports:
-            self.vapi.punt_socket_register(p,
+            self.vapi.punt_socket_register(set_port(punt_l4, p),
                                            b"%s/socket_multi" %
                                            six.ensure_binary(self.tempdir))
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), len(self.ports))
 
         for p in self.ports:
@@ -413,8 +488,8 @@ class TestIP4PuntSocket(TestPuntSocket):
 
         for p in self.ports:
             self.assertEqual(self.portsCheck[p], 0)
-            self.vapi.punt_socket_deregister(p)
-        punts = self.vapi.punt_socket_dump(is_ip6=0)
+            self.vapi.punt_socket_deregister(set_port(punt_l4, p))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
 
@@ -445,52 +520,81 @@ class TestIP6PuntSocket(TestPuntSocket):
     def test_punt_socket_dump(self):
         """ Punt socket registration """
 
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        #
+        # configure a punt socket
+        #
+        punt_l4 = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip6,
+                    'protocol': udp_proto
+                }
+            }
+        }
+
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
         #
         # configure a punt socket
         #
-        self.vapi.punt_socket_register(1111, b"%s/socket_1111" %
-                                       six.ensure_binary(self.tempdir),
-                                       is_ip4=0)
-        self.vapi.punt_socket_register(2222, b"%s/socket_2222" %
-                                       six.ensure_binary(self.tempdir),
-                                       is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        self.vapi.punt_socket_register(set_port(punt_l4, 1111),
+                                       b"%s/socket_1111" %
+                                       six.ensure_binary(self.tempdir))
+        self.vapi.punt_socket_register(set_port(punt_l4, 2222),
+                                       b"%s/socket_2222" %
+                                       six.ensure_binary(self.tempdir))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 2)
-        self.assertEqual(punts[0].punt.l4_port, 1111)
-        self.assertEqual(punts[1].punt.l4_port, 2222)
+        self.verify_punt(set_port(punt_l4, 1111), punts[0])
+        self.verify_punt(set_port(punt_l4, 2222), punts[1])
 
         #
         # deregister a punt socket
         #
-        self.vapi.punt_socket_deregister(1111, is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        self.vapi.punt_socket_deregister(set_port(punt_l4, 1111))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 1)
 
         #
         # configure a punt socket again
         #
-        self.vapi.punt_socket_register(1111, b"%s/socket_1111" %
-                                       six.ensure_binary(self.tempdir),
-                                       is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        self.vapi.punt_socket_register(set_port(punt_l4, 1111),
+                                       b"%s/socket_1111" %
+                                       six.ensure_binary(self.tempdir))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 2)
 
         #
         # deregister all punt socket
         #
-        self.vapi.punt_socket_deregister(1111, is_ip4=0)
-        self.vapi.punt_socket_deregister(2222, is_ip4=0)
-        self.vapi.punt_socket_deregister(3333, is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        self.vapi.punt_socket_deregister(set_port(punt_l4, 1111))
+        self.vapi.punt_socket_deregister(set_port(punt_l4, 2222))
+        self.vapi.punt_socket_deregister(set_port(punt_l4, 3333))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
     def test_punt_socket_traffic_single_port_single_socket(self):
         """ Punt socket traffic single port single socket"""
 
         port = self.ports[0]
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        punt_l4 = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip6,
+                    'protocol': udp_proto,
+                    'port': port,
+                }
+            }
+        }
 
         p = (Ether(src=self.pg0.remote_mac,
                    dst=self.pg0.local_mac) /
@@ -501,7 +605,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         pkts = p * self.nr_packets
         self.portsCheck[port] = self.nr_packets
 
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
         #
@@ -522,9 +626,9 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         self.socket_client_create(b"%s/socket_%d" % (
             six.ensure_binary(self.tempdir), port))
-        self.vapi.punt_socket_register(port, b"%s/socket_%d" % (
-            six.ensure_binary(self.tempdir), port), is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        self.vapi.punt_socket_register(punt_l4, b"%s/socket_%d" % (
+            six.ensure_binary(self.tempdir), port))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 1)
 
         self.logger.debug("Sending %s packets to port %d",
@@ -545,8 +649,8 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # remove punt socket. expect ICMP - dest. unreachable for all packets
         #
-        self.vapi.punt_socket_deregister(port, is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        self.vapi.punt_socket_deregister(punt_l4)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -554,8 +658,21 @@ class TestIP6PuntSocket(TestPuntSocket):
         # FIXME - when punt socket deregister is implemented
         # self.pg0.get_capture(nr_packets)
 
-    def test_punt_socket_traffic_multi_port_multi_sockets(self):
+    def test_punt_socket_traffic_multi_ports_multi_sockets(self):
         """ Punt socket traffic multi ports and multi sockets"""
+
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        punt_l4 = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip6,
+                    'protocol': udp_proto,
+                }
+            }
+        }
 
         for p in self.ports:
             self.portsCheck[p] = 0
@@ -577,7 +694,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # no punt socket
         #
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
         #
@@ -586,9 +703,10 @@ class TestIP6PuntSocket(TestPuntSocket):
         for p in self.ports:
             self.socket_client_create(b"%s/socket_%d" % (
                 six.ensure_binary(self.tempdir), p))
-            self.vapi.punt_socket_register(p, b"%s/socket_%d" % (
-                six.ensure_binary(self.tempdir), p), is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+            self.vapi.punt_socket_register(
+                set_port(punt_l4, p),
+                b"%s/socket_%d" % (six.ensure_binary(self.tempdir), p))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), len(self.ports))
 
         for p in self.ports:
@@ -609,12 +727,25 @@ class TestIP6PuntSocket(TestPuntSocket):
 
         for p in self.ports:
             self.assertEqual(self.portsCheck[p], 0)
-            self.vapi.punt_socket_deregister(p, is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+            self.vapi.punt_socket_deregister(set_port(punt_l4, p))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
     def test_punt_socket_traffic_multi_ports_single_socket(self):
         """ Punt socket traffic multi ports and single socket"""
+
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        punt_l4 = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip6,
+                    'protocol': udp_proto,
+                }
+            }
+        }
 
         for p in self.ports:
             self.portsCheck[p] = 0
@@ -637,7 +768,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # no punt socket
         #
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
         #
@@ -646,11 +777,10 @@ class TestIP6PuntSocket(TestPuntSocket):
         self.socket_client_create(b"%s/socket_multi" %
                                   six.ensure_binary(self.tempdir))
         for p in self.ports:
-            self.vapi.punt_socket_register(p,
+            self.vapi.punt_socket_register(set_port(punt_l4, p),
                                            b"%s/socket_multi" %
-                                           six.ensure_binary(self.tempdir),
-                                           is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+                                           six.ensure_binary(self.tempdir))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), len(self.ports))
 
         for p in self.ports:
@@ -670,8 +800,8 @@ class TestIP6PuntSocket(TestPuntSocket):
 
         for p in self.ports:
             self.assertEqual(self.portsCheck[p], 0)
-            self.vapi.punt_socket_deregister(p, is_ip4=0)
-        punts = self.vapi.punt_socket_dump(is_ip6=1)
+            self.vapi.punt_socket_deregister(set_port(punt_l4, p))
+        punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
 
@@ -845,6 +975,25 @@ class TestPunt(VppTestCase):
         self.logger.info(self.vapi.cli("show punt db"))
 
         self.vapi.cli("test punt clear")
+
+        #
+        # dump the punt registered reasons
+        #  search for a few we know should be there
+        #
+        rs = self.vapi.punt_reason_dump()
+
+        reasons = ["ipsec6-no-such-tunnel",
+                   "ipsec4-no-such-tunnel",
+                   "ipsec6-spi-0",
+                   "ipsec4-spi-0"]
+
+        for reason in reasons:
+            found = False
+            for r in rs:
+                if r.reason.name == reason:
+                    found = True
+                    break
+            self.assertTrue(found)
 
 
 if __name__ == '__main__':
