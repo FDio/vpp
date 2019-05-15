@@ -283,8 +283,9 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	    {
-	      clib_warning ("sequence number counter has cycled SPI %u",
-			    sa0->spi);
+	      clib_warning
+		("sequence number counter has cycled SPI %u (0x%08x)",
+		 sa0->spi, sa0->spi);
 	      if (is_ip6)
 		vlib_node_increment_counter (vm,
 					     dpdk_esp6_encrypt_node.index,
