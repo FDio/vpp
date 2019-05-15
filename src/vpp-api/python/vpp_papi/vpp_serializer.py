@@ -76,7 +76,7 @@ class BaseTypes(object):
                       'u32': '>I',
                       'i32': '>i',
                       'u64': '>Q',
-                      'f64': '>d',
+                      'f64': '@d',
                       'bool': '>?',
                       'header': '>HI'}
 
