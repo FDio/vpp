@@ -29,7 +29,6 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/sctp/sctp.h>
 #include <vnet/ip/punt.h>
-#include <vppinfra/sparse_vec.h>
 #include <vlib/unix/unix.h>
 
 #include <stdio.h>
@@ -38,37 +37,6 @@
 #include <sys/uio.h>
 #include <stdlib.h>
 
-#define foreach_punt_next			\
-  _ (PUNT4, "ip4-punt")                         \
-  _ (PUNT6, "ip6-punt")
-
-typedef enum
-{
-#define _(s,n) PUNT_NEXT_##s,
-  foreach_punt_next
-#undef _
-    PUNT_N_NEXT,
-} punt_next_t;
-
-enum punt_socket_rx_next_e
-{
-  PUNT_SOCKET_RX_NEXT_INTERFACE_OUTPUT,
-  PUNT_SOCKET_RX_NEXT_IP4_LOOKUP,
-  PUNT_SOCKET_RX_NEXT_IP6_LOOKUP,
-  PUNT_SOCKET_RX_N_NEXT
-};
-
-#define punt_next_punt(is_ip4) (is_ip4 ? PUNT_NEXT_PUNT4 : PUNT_NEXT_PUNT6)
-
-extern vlib_node_registration_t udp4_punt_node;
-extern vlib_node_registration_t udp6_punt_node;
-extern vlib_node_registration_t udp4_punt_socket_node;
-extern vlib_node_registration_t udp6_punt_socket_node;
-static vlib_node_registration_t punt_socket_rx_node;
-
-extern punt_main_t punt_main;
-
-#ifndef CLIB_MARCH_VARIANT
 punt_main_t punt_main;
 
 char *
@@ -77,552 +45,59 @@ vnet_punt_get_server_pathname (void)
   punt_main_t *pm = &punt_main;
   return pm->sun_path;
 }
-#endif /* CLIB_MARCH_VARIANT */
 
-/** @brief IPv4/IPv6 UDP punt node main loop.
-
-    This is the main loop inline function for IPv4/IPv6 UDP punt
-    transition node.
-
-    @param vm vlib_main_t corresponding to the current thread
-    @param node vlib_node_runtime_t
-    @param frame vlib_frame_t whose contents should be dispatched
-    @param is_ipv4 indicates if called for IPv4 or IPv6 node
-*/
-always_inline uword
-udp46_punt_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * from_frame, int is_ip4)
-{
-  u32 n_left_from, *from, *to_next;
-  word advance;
-
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
-
-  /* udp[46]_lookup hands us the data payload, not the IP header */
-  if (is_ip4)
-    advance = -(sizeof (ip4_header_t) + sizeof (udp_header_t));
-  else
-    advance = -(sizeof (ip6_header_t) + sizeof (udp_header_t));
-
-  while (n_left_from > 0)
-    {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, punt_next_punt (is_ip4), to_next,
-			   n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  vlib_buffer_advance (b0, advance);
-	  b0->error = node->errors[PUNT_ERROR_UDP_PORT];
-	}
-
-      vlib_put_next_frame (vm, node, punt_next_punt (is_ip4), n_left_to_next);
-    }
-
-  return from_frame->n_vectors;
-}
-
-static char *punt_error_strings[] = {
-#define punt_error(n,s) s,
-#include "punt_error.def"
-#undef punt_error
-};
-
-/** @brief IPv4 UDP punt node.
-    @node ip4-udp-punt
-
-    This is the IPv4 UDP punt transition node. It is registered as a next
-    node for the "ip4-udp-lookup" handling UDP port(s) requested for punt.
-    The buffer's current data pointer is adjusted to the original packet
-    IPv4 header. All buffers are dispatched to "error-punt".
-
-    @param vm vlib_main_t corresponding to the current thread
-    @param node vlib_node_runtime_t
-    @param frame vlib_frame_t whose contents should be dispatched
-
-    @par Graph mechanics: next index usage
-
-    @em Sets:
-    - <code>vnet_buffer(b)->current_data</code>
-    - <code>vnet_buffer(b)->current_len</code>
-
-    <em>Next Index:</em>
-    - Dispatches the packet to the "error-punt" node
-*/
-VLIB_NODE_FN (udp4_punt_node) (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * from_frame)
-{
-  return udp46_punt_inline (vm, node, from_frame, 1 /* is_ip4 */ );
-}
-
-/** @brief IPv6 UDP punt node.
-    @node ip6-udp-punt
-
-    This is the IPv6 UDP punt transition node. It is registered as a next
-    node for the "ip6-udp-lookup" handling UDP port(s) requested for punt.
-    The buffer's current data pointer is adjusted to the original packet
-    IPv6 header. All buffers are dispatched to "error-punt".
-
-    @param vm vlib_main_t corresponding to the current thread
-    @param node vlib_node_runtime_t
-    @param frame vlib_frame_t whose contents should be dispatched
-
-    @par Graph mechanics: next index usage
-
-    @em Sets:
-    - <code>vnet_buffer(b)->current_data</code>
-    - <code>vnet_buffer(b)->current_len</code>
-
-    <em>Next Index:</em>
-    - Dispatches the packet to the "error-punt" node
-*/
-VLIB_NODE_FN (udp6_punt_node) (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * from_frame)
-{
-  return udp46_punt_inline (vm, node, from_frame, 0 /* is_ip4 */ );
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (udp4_punt_node) = {
-  .name = "ip4-udp-punt",
-  /* Takes a vector of packets. */
-  .vector_size = sizeof (u32),
-
-  .n_errors = PUNT_N_ERROR,
-  .error_strings = punt_error_strings,
-
-  .n_next_nodes = PUNT_N_NEXT,
-  .next_nodes = {
-#define _(s,n) [PUNT_NEXT_##s] = n,
-     foreach_punt_next
-#undef _
-  },
-};
-
-VLIB_REGISTER_NODE (udp6_punt_node) = {
-  .name = "ip6-udp-punt",
-  /* Takes a vector of packets. */
-  .vector_size = sizeof (u32),
-
-  .n_errors = PUNT_N_ERROR,
-  .error_strings = punt_error_strings,
-
-  .n_next_nodes = PUNT_N_NEXT,
-  .next_nodes = {
-#define _(s,n) [PUNT_NEXT_##s] = n,
-     foreach_punt_next
-#undef _
-  },
-};
-
-/* *INDENT-ON* */
-
-static punt_client_t *
-punt_client_get (bool is_ip4, u16 port)
-{
-  punt_main_t *pm = &punt_main;
-  punt_client_t *v =
-    is_ip4 ? pm->clients_by_dst_port4 : pm->clients_by_dst_port6;
-
-  u16 i = sparse_vec_index (v, port);
-  if (i == SPARSE_VEC_INVALID_INDEX)
-    return 0;
-
-  return &vec_elt (v, i);
-}
-
-static struct sockaddr_un *
-punt_socket_get (bool is_ip4, u16 port)
-{
-  punt_client_t *v = punt_client_get (is_ip4, port);
-  if (v)
-    return &v->caddr;
-
-  return NULL;
-}
-
-#ifndef CLIB_MARCH_VARIANT
-static int
-punt_socket_register (bool is_ip4, u8 protocol, u16 port,
-		      char *client_pathname)
-{
-  punt_main_t *pm = &punt_main;
-  punt_client_t c, *n;
-  punt_client_t *v = is_ip4 ? pm->clients_by_dst_port4 :
-    pm->clients_by_dst_port6;
-
-  if (strncmp (client_pathname, vnet_punt_get_server_pathname (),
-	       UNIX_PATH_MAX) == 0)
-    return -1;
-
-  clib_memset (&c, 0, sizeof (c));
-  memcpy (c.caddr.sun_path, client_pathname, sizeof (c.caddr.sun_path));
-  c.caddr.sun_family = AF_UNIX;
-  c.port = port;
-  c.protocol = protocol;
-  n = sparse_vec_validate (v, port);
-  n[0] = c;
-  return 0;
-}
-
-/* $$$$ Just leaves the mapping in place for now */
 static void
-punt_socket_unregister (bool is_ip4, u8 protocol, u16 port)
-{
-  return;
-}
-#endif /* CLIB_MARCH_VARIANT */
-
-typedef struct
-{
-  punt_client_t client;
-  u8 is_midchain;
-} udp_punt_trace_t;
-
-static u8 *
-format_udp_punt_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  udp_punt_trace_t *t = va_arg (*args, udp_punt_trace_t *);
-  u32 indent = format_get_indent (s);
-  s = format (s, "to: %s", t->client.caddr.sun_path);
-  if (t->is_midchain)
-    {
-      s = format (s, "\n%U(buffer is part of chain)", format_white_space,
-		  indent);
-    }
-  return s;
-}
-
-always_inline uword
-udp46_punt_socket_inline (vlib_main_t * vm,
-			  vlib_node_runtime_t * node,
-			  vlib_frame_t * frame, bool is_ip4)
-{
-  u32 *buffers = vlib_frame_vector_args (frame);
-  uword n_packets = frame->n_vectors;
-  struct iovec *iovecs = 0;
-  punt_main_t *pm = &punt_main;
-  int i;
-
-  u32 node_index = is_ip4 ? udp4_punt_socket_node.index :
-    udp6_punt_socket_node.index;
-
-  for (i = 0; i < n_packets; i++)
-    {
-      struct iovec *iov;
-      vlib_buffer_t *b;
-      uword l;
-      punt_packetdesc_t packetdesc;
-
-      b = vlib_get_buffer (vm, buffers[i]);
-
-      /* Reverse UDP Punt advance */
-      udp_header_t *udp;
-      if (is_ip4)
-	{
-	  vlib_buffer_advance (b, -(sizeof (ip4_header_t) +
-				    sizeof (udp_header_t)));
-	  ip4_header_t *ip = vlib_buffer_get_current (b);
-	  udp = (udp_header_t *) (ip + 1);
-	}
-      else
-	{
-	  vlib_buffer_advance (b, -(sizeof (ip6_header_t) +
-				    sizeof (udp_header_t)));
-	  ip6_header_t *ip = vlib_buffer_get_current (b);
-	  udp = (udp_header_t *) (ip + 1);
-	}
-
-      u16 port = clib_net_to_host_u16 (udp->dst_port);
-
-      /*
-       * Find registerered client
-       * If no registered client, drop packet and count
-       */
-      struct sockaddr_un *caddr;
-      caddr = punt_socket_get (is_ip4, port);
-      if (!caddr)
-	{
-	  vlib_node_increment_counter (vm, node_index,
-				       PUNT_ERROR_SOCKET_TX_ERROR, 1);
-	  goto error;
-	}
-
-      punt_client_t *c = NULL;
-      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  c = punt_client_get (is_ip4, port);
-	  udp_punt_trace_t *t;
-	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
-	  clib_memcpy_fast (&t->client, c, sizeof (t->client));
-	}
-
-      /* Re-set iovecs if present. */
-      if (iovecs)
-	_vec_len (iovecs) = 0;
-
-      /* Add packet descriptor */
-      packetdesc.sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-      packetdesc.action = 0;
-      vec_add2 (iovecs, iov, 1);
-      iov->iov_base = &packetdesc;
-      iov->iov_len = sizeof (packetdesc);
-
-      /** VLIB buffer chain -> Unix iovec(s). */
-      vlib_buffer_advance (b, -(sizeof (ethernet_header_t)));
-      vec_add2 (iovecs, iov, 1);
-      iov->iov_base = b->data + b->current_data;
-      iov->iov_len = l = b->current_length;
-
-      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
-	{
-	  do
-	    {
-	      b = vlib_get_buffer (vm, b->next_buffer);
-	      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-		{
-		  if (PREDICT_FALSE (!c))
-		    {
-		      c = punt_client_get (is_ip4, port);
-		    }
-		  udp_punt_trace_t *t;
-		  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
-		  clib_memcpy_fast (&t->client, c, sizeof (t->client));
-		  t->is_midchain = 1;
-		}
-
-	      vec_add2 (iovecs, iov, 1);
-
-	      iov->iov_base = b->data + b->current_data;
-	      iov->iov_len = b->current_length;
-	      l += b->current_length;
-	    }
-	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-	}
-
-      struct msghdr msg = {
-	.msg_name = caddr,
-	.msg_namelen = sizeof (*caddr),
-	.msg_iov = iovecs,
-	.msg_iovlen = vec_len (iovecs),
-      };
-
-      if (sendmsg (pm->socket_fd, &msg, 0) < (ssize_t) l)
-	vlib_node_increment_counter (vm, node_index,
-				     PUNT_ERROR_SOCKET_TX_ERROR, 1);
-      else
-	vlib_node_increment_counter (vm, node_index, PUNT_ERROR_SOCKET_TX, 1);
-
-    }
-
-error:
-  vlib_buffer_free (vm, buffers, n_packets);
-
-  return n_packets;
-}
-
-static uword
-udp4_punt_socket (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
-{
-  return udp46_punt_socket_inline (vm, node, from_frame, true /* is_ip4 */ );
-}
-
-static uword
-udp6_punt_socket (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
-{
-  return udp46_punt_socket_inline (vm, node, from_frame, false /* is_ip4 */ );
-}
-
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (udp4_punt_socket_node) = {
-  .function = udp4_punt_socket,
-  .name = "ip4-udp-punt-socket",
-  .format_trace = format_udp_punt_trace,
-  .flags = VLIB_NODE_FLAG_IS_DROP,
-  /* Takes a vector of packets. */
-  .vector_size = sizeof (u32),
-  .n_errors = PUNT_N_ERROR,
-  .error_strings = punt_error_strings,
-};
-VLIB_REGISTER_NODE (udp6_punt_socket_node) = {
-  .function = udp6_punt_socket,
-  .name = "ip6-udp-punt-socket",
-  .format_trace = format_udp_punt_trace,
-  .flags = VLIB_NODE_FLAG_IS_DROP,
-  .vector_size = sizeof (u32),
-  .n_errors = PUNT_N_ERROR,
-  .error_strings = punt_error_strings,
-};
-/* *INDENT-ON* */
-
-typedef struct
-{
-  enum punt_action_e action;
-  u32 sw_if_index;
-} punt_trace_t;
-
-static u8 *
-format_punt_trace (u8 * s, va_list * va)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  vnet_main_t *vnm = vnet_get_main ();
-  punt_trace_t *t = va_arg (*va, punt_trace_t *);
-  s = format (s, "%U Action: %d", format_vnet_sw_if_index_name,
-	      vnm, t->sw_if_index, t->action);
-  return s;
-}
-
-static uword
-punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
-{
-  const uword buffer_size = vlib_buffer_get_default_data_size (vm);
-  u32 n_trace = vlib_get_trace_count (vm, node);
-  u32 next = node->cached_next_index;
-  u32 n_left_to_next, next_index;
-  u32 *to_next;
-  u32 error = PUNT_ERROR_NONE;
-  vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
-
-  /* $$$$ Only dealing with one buffer at the time for now */
-
-  u32 bi;
-  vlib_buffer_t *b;
-  punt_packetdesc_t packetdesc;
-  ssize_t size;
-  struct iovec io[2];
-
-  if (vlib_buffer_alloc (vm, &bi, 1) != 1)
-    {
-      error = PUNT_ERROR_NOBUFFER;
-      goto error;
-    }
-
-  b = vlib_get_buffer (vm, bi);
-  io[0].iov_base = &packetdesc;
-  io[0].iov_len = sizeof (packetdesc);
-  io[1].iov_base = b->data;
-  io[1].iov_len = buffer_size;
-
-  size = readv (fd, io, 2);
-  /* We need at least the packet descriptor plus a header */
-  if (size <= (int) (sizeof (packetdesc) + sizeof (ip4_header_t)))
-    {
-      vlib_buffer_free (vm, &bi, 1);
-      error = PUNT_ERROR_READV;
-      goto error;
-    }
-
-  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
-  b->current_length = size - sizeof (packetdesc);
-
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
-
-  switch (packetdesc.action)
-    {
-    case PUNT_L2:
-      vnet_buffer (b)->sw_if_index[VLIB_TX] = packetdesc.sw_if_index;
-      next_index = PUNT_SOCKET_RX_NEXT_INTERFACE_OUTPUT;
-      break;
-
-    case PUNT_IP4_ROUTED:
-      vnet_buffer (b)->sw_if_index[VLIB_RX] = packetdesc.sw_if_index;
-      vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
-      next_index = PUNT_SOCKET_RX_NEXT_IP4_LOOKUP;
-      break;
-
-    case PUNT_IP6_ROUTED:
-      vnet_buffer (b)->sw_if_index[VLIB_RX] = packetdesc.sw_if_index;
-      vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
-      next_index = PUNT_SOCKET_RX_NEXT_IP6_LOOKUP;
-      break;
-
-    default:
-      error = PUNT_ERROR_ACTION;
-      vlib_buffer_free (vm, &bi, 1);
-      goto error;
-    }
-
-  if (PREDICT_FALSE (n_trace > 0))
-    {
-      punt_trace_t *t;
-      vlib_trace_buffer (vm, node, next_index, b, 1 /* follow_chain */ );
-      vlib_set_trace_count (vm, node, --n_trace);
-      t = vlib_add_trace (vm, node, b, sizeof (*t));
-      t->sw_if_index = packetdesc.sw_if_index;
-      t->action = packetdesc.action;
-    }
-
-  to_next[0] = bi;
-  to_next++;
-  n_left_to_next--;
-
-  vlib_validate_buffer_enqueue_x1 (vm, node, next, to_next, n_left_to_next,
-				   bi, next_index);
-  vlib_put_next_frame (vm, node, next, n_left_to_next);
-  return 1;
-
-error:
-  vlib_node_increment_counter (vm, punt_socket_rx_node.index, error, 1);
-  return 0;
-}
-
-static uword
-punt_socket_rx (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+punt_client_l4_db_add (ip_address_family_t af, u16 port, u32 index)
 {
   punt_main_t *pm = &punt_main;
-  u32 total_count = 0;
-  int i;
 
-  for (i = 0; i < vec_len (pm->ready_fds); i++)
-    {
-      total_count += punt_socket_rx_fd (vm, node, pm->ready_fds[i]);
-      vec_del1 (pm->ready_fds, i);
-    }
-  return total_count;
+  pm->db.clients_by_l4_port = hash_set (pm->db.clients_by_l4_port,
+					punt_client_l4_mk_key (af, port),
+					index);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (punt_socket_rx_node, static) =
+static u32
+punt_client_l4_db_remove (ip_address_family_t af, u16 port)
 {
- .function = punt_socket_rx,
- .name = "punt-socket-rx",
- .type = VLIB_NODE_TYPE_INPUT,
- .state = VLIB_NODE_STATE_INTERRUPT,
- .vector_size = 1,
- .n_errors = PUNT_N_ERROR,
- .error_strings = punt_error_strings,
- .n_next_nodes = PUNT_SOCKET_RX_N_NEXT,
- .next_nodes = {
-		[PUNT_SOCKET_RX_NEXT_INTERFACE_OUTPUT] = "interface-output",
-		[PUNT_SOCKET_RX_NEXT_IP4_LOOKUP] = "ip4-lookup",
-		[PUNT_SOCKET_RX_NEXT_IP6_LOOKUP] = "ip6-lookup",
-		},
- .format_trace = format_punt_trace,
-};
-/* *INDENT-ON* */
+  punt_main_t *pm = &punt_main;
+  u32 key, index = ~0;
+  uword *p;
+
+  key = punt_client_l4_mk_key (af, port);
+  p = hash_get (pm->db.clients_by_l4_port, key);
+
+  if (p)
+    index = p[0];
+
+  hash_unset (pm->db.clients_by_l4_port, key);
+
+  return (index);
+}
+
+static void
+punt_client_exception_db_add (vlib_punt_reason_t reason, u32 pci)
+{
+  punt_main_t *pm = &punt_main;
+
+  vec_validate_init_empty (pm->db.clients_by_exception, reason, ~0);
+
+  pm->db.clients_by_exception[reason] = pci;
+}
+
+static u32
+punt_client_exception_db_remove (vlib_punt_reason_t reason)
+{
+  punt_main_t *pm = &punt_main;
+  u32 pci = ~0;
+
+  if (punt_client_exception_get (reason))
+    {
+      pci = pm->db.clients_by_exception[reason];
+      pm->db.clients_by_exception[reason] = ~0;
+    }
+
+  return pci;
+}
 
 static clib_error_t *
 punt_socket_read_ready (clib_file_t * uf)
@@ -637,19 +112,13 @@ punt_socket_read_ready (clib_file_t * uf)
   return 0;
 }
 
-#ifndef CLIB_MARCH_VARIANT
-clib_error_t *
-vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
-		      bool is_ip4, u8 protocol, u16 port,
-		      char *client_pathname)
+static clib_error_t *
+punt_socket_register_l4 (vlib_main_t * vm,
+			 ip_address_family_t af,
+			 u8 protocol, u16 port, char *client_pathname)
 {
   punt_main_t *pm = &punt_main;
-
-  if (!pm->is_configured)
-    return clib_error_return (0, "socket is not configured");
-
-  if (header_version != PUNT_PACKETDESC_VERSION)
-    return clib_error_return (0, "Invalid packet descriptor version");
+  punt_client_t *c;
 
   /* For now we only support UDP punt */
   if (protocol != IP_PROTOCOL_UDP)
@@ -660,30 +129,138 @@ vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
   if (port == (u16) ~ 0)
     return clib_error_return (0, "UDP port number required");
 
-  /* Register client */
-  if (punt_socket_register (is_ip4, protocol, port, client_pathname) < 0)
+  if (strncmp (client_pathname, vnet_punt_get_server_pathname (),
+	       UNIX_PATH_MAX) == 0)
     return clib_error_return (0,
 			      "Punt socket: Invalid client path: %s",
 			      client_pathname);
 
-  u32 node_index = is_ip4 ? udp4_punt_socket_node.index :
-    udp6_punt_socket_node.index;
+  c = punt_client_l4_get (af, port);
 
-  udp_register_dst_port (vm, port, node_index, is_ip4);
+  if (NULL == c)
+    {
+      pool_get_zero (pm->punt_client_pool, c);
+      punt_client_l4_db_add (af, port, c - pm->punt_client_pool);
+    }
 
-  return 0;
+  memcpy (c->caddr.sun_path, client_pathname, sizeof (c->caddr.sun_path));
+  c->caddr.sun_family = AF_UNIX;
+  c->reg.type = PUNT_TYPE_L4;
+  c->reg.punt.l4.port = port;
+  c->reg.punt.l4.protocol = protocol;
+  c->reg.punt.l4.af = af;
+
+  u32 node_index = (af == AF_IP4 ?
+		    udp4_punt_socket_node.index :
+		    udp6_punt_socket_node.index);
+
+  udp_register_dst_port (vm, port, node_index, af == AF_IP4);
+
+  return (NULL);
+}
+
+static clib_error_t *
+punt_socket_register_exception (vlib_main_t * vm,
+				vlib_punt_reason_t reason,
+				char *client_pathname)
+{
+  punt_main_t *pm = &punt_main;
+  punt_client_t *pc;
+
+  pc = punt_client_exception_get (reason);
+
+  if (NULL == pc)
+    {
+      pool_get_zero (pm->punt_client_pool, pc);
+      punt_client_exception_db_add (reason, pc - pm->punt_client_pool);
+    }
+
+  memcpy (pc->caddr.sun_path, client_pathname, sizeof (pc->caddr.sun_path));
+  pc->caddr.sun_family = AF_UNIX;
+  pc->reg.type = PUNT_TYPE_EXCEPTION;
+  pc->reg.punt.exception.reason = reason;
+
+  vlib_punt_register (pm->hdl,
+		      pc->reg.punt.exception.reason, "exception-punt-socket");
+
+  return (NULL);
+}
+
+static clib_error_t *
+punt_socket_unregister_l4 (ip_address_family_t af,
+			   ip_protocol_t protocol, u16 port)
+{
+  u32 pci;
+
+  udp_unregister_dst_port (vlib_get_main (), port, af == AF_IP4);
+
+  pci = punt_client_l4_db_remove (af, port);
+
+  if (~0 != pci)
+    pool_put_index (punt_main.punt_client_pool, pci);
+
+  return (NULL);
+}
+
+static clib_error_t *
+punt_socket_unregister_exception (vlib_punt_reason_t reason)
+{
+  u32 pci;
+
+  pci = punt_client_exception_db_remove (reason);
+
+  if (~0 != pci)
+    pool_put_index (punt_main.punt_client_pool, pci);
+
+  return (NULL);
 }
 
 clib_error_t *
-vnet_punt_socket_del (vlib_main_t * vm, bool is_ip4, u8 l4_protocol, u16 port)
+vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
+		      const punt_reg_t * pr, char *client_pathname)
 {
   punt_main_t *pm = &punt_main;
 
   if (!pm->is_configured)
     return clib_error_return (0, "socket is not configured");
 
-  punt_socket_unregister (is_ip4, l4_protocol, port);
-  udp_unregister_dst_port (vm, port, is_ip4);
+  if (header_version != PUNT_PACKETDESC_VERSION)
+    return clib_error_return (0, "Invalid packet descriptor version");
+
+  /* Register client */
+  switch (pr->type)
+    {
+    case PUNT_TYPE_L4:
+      return (punt_socket_register_l4 (vm,
+				       pr->punt.l4.af,
+				       pr->punt.l4.protocol,
+				       pr->punt.l4.port, client_pathname));
+    case PUNT_TYPE_EXCEPTION:
+      return (punt_socket_register_exception (vm,
+					      pr->punt.exception.reason,
+					      client_pathname));
+    }
+
+  return 0;
+}
+
+clib_error_t *
+vnet_punt_socket_del (vlib_main_t * vm, const punt_reg_t * pr)
+{
+  punt_main_t *pm = &punt_main;
+
+  if (!pm->is_configured)
+    return clib_error_return (0, "socket is not configured");
+
+  switch (pr->type)
+    {
+    case PUNT_TYPE_L4:
+      return (punt_socket_unregister_l4 (pr->punt.l4.af,
+					 pr->punt.l4.protocol,
+					 pr->punt.l4.port));
+    case PUNT_TYPE_EXCEPTION:
+      return (punt_socket_unregister_exception (pr->punt.exception.reason));
+    }
 
   return 0;
 }
@@ -692,11 +269,10 @@ vnet_punt_socket_del (vlib_main_t * vm, bool is_ip4, u8 l4_protocol, u16 port)
  * @brief Request IP traffic punt to the local TCP/IP stack.
  *
  * @em Note
- * - UDP and TCP are the only protocols supported in the current implementation
+ * - UDP, TCP and SCTP are the only protocols supported in the current implementation
  *
  * @param vm       vlib_main_t corresponding to the current thread
- * @param ipv      IP protcol version.
- *                 4 - IPv4, 6 - IPv6, ~0 for both IPv6 and IPv4
+ * @param af       IP address family.
  * @param protocol 8-bits L4 protocol value
  *                 UDP is 17
  *                 TCP is 1
@@ -704,11 +280,11 @@ vnet_punt_socket_del (vlib_main_t * vm, bool is_ip4, u8 l4_protocol, u16 port)
  *
  * @returns 0 on success, non-zero value otherwise
  */
-clib_error_t *
-vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
-		   bool is_add)
+static clib_error_t *
+punt_l4_add_del (vlib_main_t * vm,
+		 ip_address_family_t af,
+		 ip_protocol_t protocol, u16 port, bool is_add)
 {
-
   /* For now we only support TCP, UDP and SCTP punt */
   if (protocol != IP_PROTOCOL_UDP &&
       protocol != IP_PROTOCOL_TCP && protocol != IP_PROTOCOL_SCTP)
@@ -717,30 +293,14 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 			      IP_PROTOCOL_UDP, IP_PROTOCOL_TCP,
 			      IP_PROTOCOL_SCTP, protocol);
 
-  if (ipv != (u8) ~ 0 && ipv != 4 && ipv != 6)
-    return clib_error_return (0, "IP version must be 4 or 6, got %d", ipv);
-
   if (port == (u16) ~ 0)
     {
-      if ((ipv == 4) || (ipv == (u8) ~ 0))
-	{
-	  if (protocol == IP_PROTOCOL_UDP)
-	    udp_punt_unknown (vm, 1, is_add);
-	  else if (protocol == IP_PROTOCOL_TCP)
-	    tcp_punt_unknown (vm, 1, is_add);
-	  else if (protocol == IP_PROTOCOL_SCTP)
-	    sctp_punt_unknown (vm, 1, is_add);
-	}
-
-      if ((ipv == 6) || (ipv == (u8) ~ 0))
-	{
-	  if (protocol == IP_PROTOCOL_UDP)
-	    udp_punt_unknown (vm, 0, is_add);
-	  else if (protocol == IP_PROTOCOL_TCP)
-	    tcp_punt_unknown (vm, 0, is_add);
-	  else if (protocol == IP_PROTOCOL_SCTP)
-	    sctp_punt_unknown (vm, 0, is_add);
-	}
+      if (protocol == IP_PROTOCOL_UDP)
+	udp_punt_unknown (vm, af == AF_IP4, is_add);
+      else if (protocol == IP_PROTOCOL_TCP)
+	tcp_punt_unknown (vm, af == AF_IP4, is_add);
+      else if (protocol == IP_PROTOCOL_SCTP)
+	sctp_punt_unknown (vm, af == AF_IP4, is_add);
 
       return 0;
     }
@@ -751,11 +311,10 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 	return clib_error_return (0,
 				  "punt TCP/SCTP ports is not supported yet");
 
-      if (ipv == 4 || ipv == (u8) ~ 0)
-	udp_register_dst_port (vm, port, udp4_punt_node.index, 1);
+      if (!udp_is_valid_dst_port (port, af == AF_IP4))
+	return clib_error_return (0, "invalid port: %d", port);
 
-      if (ipv == 6 || ipv == (u8) ~ 0)
-	udp_register_dst_port (vm, port, udp6_punt_node.index, 0);
+      udp_register_dst_port (vm, port, udp4_punt_node.index, af == AF_IP4);
 
       return 0;
     }
@@ -764,38 +323,66 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
       if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_SCTP)
 	return clib_error_return (0,
 				  "punt TCP/SCTP ports is not supported yet");
-      if (ipv == 4 || ipv == (u8) ~ 0)
-	udp_unregister_dst_port (vm, port, 1);
 
-      if (ipv == 6 || ipv == (u8) ~ 0)
-	udp_unregister_dst_port (vm, port, 0);
+      udp_unregister_dst_port (vm, port, af == AF_IP4);
 
       return 0;
     }
 }
-#endif /* CLIB_MARCH_VARIANT */
+
+static clib_error_t *
+punt_exception_add_del (vlib_main_t * vm,
+			vlib_punt_reason_t reason, bool is_add)
+{
+  return (NULL);
+}
+
+clib_error_t *
+vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
+{
+  switch (pr->type)
+    {
+    case PUNT_TYPE_L4:
+      return (punt_l4_add_del (vm, pr->punt.l4.af, pr->punt.l4.protocol,
+			       pr->punt.l4.port, is_add));
+    case PUNT_TYPE_EXCEPTION:
+      return (punt_exception_add_del (vm, pr->punt.exception.reason, is_add));
+    }
+
+  return (clib_error_return (0, "Unsupported punt type: %d", pr->type));
+}
 
 static clib_error_t *
 punt_cli (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u32 port = ~0;
-  bool is_add = true;
-  u32 protocol = ~0;
   clib_error_t *error = NULL;
+  bool is_add = true;
+  punt_reg_t pr = {
+    .punt = {
+	     .l4 = {
+		    .af = AF_IP4,
+		    .port = ~0,
+		    .protocol = ~0,
+		    },
+	     },
+    .type = PUNT_TYPE_L4,
+  };
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "del"))
 	is_add = false;
-      else if (unformat (input, "all"))
-	;
-      else if (unformat (input, "%d", &port))
+      else if (unformat (input, "ipv6"))
+	pr.punt.l4.af = AF_IP6;
+      else if (unformat (input, "ip6"))
+	pr.punt.l4.af = AF_IP6;
+      else if (unformat (input, "%d", &pr.punt.l4.port))
 	;
       else if (unformat (input, "udp"))
-	protocol = IP_PROTOCOL_UDP;
+	pr.punt.l4.protocol = IP_PROTOCOL_UDP;
       else if (unformat (input, "tcp"))
-	protocol = IP_PROTOCOL_TCP;
+	pr.punt.l4.protocol = IP_PROTOCOL_TCP;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -805,7 +392,7 @@ punt_cli (vlib_main_t * vm,
     }
 
   /* punt both IPv6 and IPv4 when used in CLI */
-  error = vnet_punt_add_del (vm, ~0, protocol, port, is_add);
+  error = vnet_punt_add_del (vm, &pr, is_add);
   if (error)
     {
       clib_error_report (error);
@@ -843,28 +430,36 @@ VLIB_CLI_COMMAND (punt_command, static) = {
 };
 /* *INDENT-ON* */
 
-#ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
 punt_socket_register_cmd (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  bool is_ipv4 = true;
-  u32 protocol = ~0;
-  u32 port = ~0;
   u8 *socket_name = 0;
   clib_error_t *error = NULL;
+  /* *INDENT-OFF* */
+  punt_reg_t pr = {
+    .punt = {
+      .l4 = {
+        .af = AF_IP4,
+        .port = ~0,
+        .protocol = ~0,
+      },
+    },
+    .type = PUNT_TYPE_L4,
+  };
+  /* *INDENT-ON* */
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "ipv4"))
 	;
       else if (unformat (input, "ipv6"))
-	is_ipv4 = false;
+	pr.punt.l4.af = AF_IP6;
       else if (unformat (input, "udp"))
-	protocol = IP_PROTOCOL_UDP;
+	pr.punt.l4.protocol = IP_PROTOCOL_UDP;
       else if (unformat (input, "tcp"))
-	protocol = IP_PROTOCOL_TCP;
-      else if (unformat (input, "%d", &port))
+	pr.punt.l4.protocol = IP_PROTOCOL_TCP;
+      else if (unformat (input, "%d", &pr.punt.l4.port))
 	;
       else if (unformat (input, "socket %s", &socket_name))
 	;
@@ -876,9 +471,8 @@ punt_socket_register_cmd (vlib_main_t * vm,
 	}
     }
 
-  error =
-    vnet_punt_socket_add (vm, 1, is_ipv4, protocol, port,
-			  (char *) socket_name);
+  error = vnet_punt_socket_add (vm, 1, &pr, (char *) socket_name);
+
 done:
   return error;
 }
@@ -903,22 +497,31 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
 			    unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
-  bool is_ipv4 = true;
-  u32 protocol = ~0;
-  u32 port = ~0;
   clib_error_t *error = NULL;
+  /* *INDENT-OFF* */
+  punt_reg_t pr = {
+    .punt = {
+      .l4 = {
+        .af = AF_IP4,
+        .port = ~0,
+        .protocol = ~0,
+      },
+    },
+    .type = PUNT_TYPE_L4,
+  };
+  /* *INDENT-ON* */
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "ipv4"))
 	;
       else if (unformat (input, "ipv6"))
-	is_ipv4 = false;
+	pr.punt.l4.af = AF_IP6;
       else if (unformat (input, "udp"))
-	protocol = IP_PROTOCOL_UDP;
+	pr.punt.l4.protocol = IP_PROTOCOL_UDP;
       else if (unformat (input, "tcp"))
-	protocol = IP_PROTOCOL_TCP;
-      else if (unformat (input, "%d", &port))
+	pr.punt.l4.protocol = IP_PROTOCOL_TCP;
+      else if (unformat (input, "%d", &pr.punt.l4.port))
 	;
       else
 	{
@@ -928,7 +531,7 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
 	}
     }
 
-  error = vnet_punt_socket_del (vm, is_ipv4, protocol, port);
+  error = vnet_punt_socket_del (vm, &pr);
 done:
   return error;
 }
@@ -948,85 +551,90 @@ VLIB_CLI_COMMAND (punt_socket_deregister_command, static) =
 };
 /* *INDENT-ON* */
 
-punt_socket_detail_t *
-punt_socket_entries (u8 ipv)
+void
+punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb, void *ctx)
 {
   punt_main_t *pm = &punt_main;
-  punt_client_t *pc;
-  punt_socket_detail_t *ps = 0;
-  bool is_valid;
 
-  punt_client_t *v = !ipv ? pm->clients_by_dst_port4 :
-    pm->clients_by_dst_port6;
-
-  vec_foreach (pc, v)
-  {
-    if (pc && pc->port != 0)
+  switch (pt)
+    {
+    case PUNT_TYPE_L4:
       {
-	is_valid = false;
-	if (pc->protocol == IP_PROTOCOL_UDP)
-	  {
-	    is_valid = udp_is_valid_dst_port (pc->port, !ipv);
-	  }
-	if (is_valid)
-	  {
-	    punt_socket_detail_t detail = {
-	      .ipv = ipv,
-	      .l4_protocol = pc->protocol,
-	      .l4_port = pc->port
-	    };
-	    memcpy (detail.pathname, pc->caddr.sun_path,
-		    sizeof (pc->caddr.sun_path));
-	    vec_add1 (ps, detail);
-	  }
+	u32 pci;
+	u16 port;
+
+        /* *INDENT-OFF* */
+        hash_foreach(port, pci, pm->db.clients_by_l4_port,
+        ({
+          cb (pool_elt_at_index(pm->punt_client_pool, pci), ctx);
+        }));
+        /* *INDENT-ON* */
+	break;
       }
-  }
-  return ps;
+    case PUNT_TYPE_EXCEPTION:
+      {
+	u32 *pci;
+
+	vec_foreach (pci, pm->db.clients_by_exception)
+	{
+	  if (~0 != *pci)
+	    cb (pool_elt_at_index (pm->punt_client_pool, *pci), ctx);
+	}
+
+	break;
+      }
+    }
 }
 
-u8 *
-format_punt_socket (u8 * s, va_list * args)
+static u8 *
+format_punt_client (u8 * s, va_list * args)
 {
-  punt_client_t *clients = va_arg (*args, punt_client_t *);
-  u8 *is_ipv6 = va_arg (*args, u8 *);
-  punt_client_t *pc;
-  bool is_valid;
+  punt_client_t *pc = va_arg (*args, punt_client_t *);
 
-  vec_foreach (pc, clients)
-  {
-    if (pc && pc->port != 0)
-      {
-	is_valid = false;
-	if (pc->protocol == IP_PROTOCOL_UDP)
-	  {
-	    is_valid = udp_is_valid_dst_port (pc->port, !(*is_ipv6));
-	  }
-	if (is_valid)
-	  {
-	    s = format (s, " punt %s port %d to socket %s \n",
-			(pc->protocol == IP_PROTOCOL_UDP) ? "UDP" : "TCP",
-			pc->port, pc->caddr.sun_path);
-	  }
-      }
-  }
+  s = format (s, " punt ");
+
+  switch (pc->reg.type)
+    {
+    case PUNT_TYPE_L4:
+      s = format (s, "%U %U port %d",
+		  format_ip_address_family, pc->reg.punt.l4.af,
+		  format_ip_protocol, pc->reg.punt.l4.protocol,
+		  pc->reg.punt.l4.port);
+      break;
+    case PUNT_TYPE_EXCEPTION:
+      s = format (s, " %U", format_vlib_punt_reason,
+		  pc->reg.punt.exception.reason);
+      break;
+    }
+
+  s = format (s, " to socket %s \n", pc->caddr.sun_path);
 
   return (s);
+}
+
+static walk_rc_t
+punt_client_show_one (const punt_client_t * pc, void *ctx)
+{
+  vlib_cli_output (ctx, "%U", format_punt_client, pc);
+
+  return (WALK_CONTINUE);
 }
 
 static clib_error_t *
 punt_socket_show_cmd (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u8 is_ipv6;
-  punt_main_t *pm = &punt_main;
   clib_error_t *error = NULL;
+  punt_type_t pt;
+
+  pt = PUNT_TYPE_L4;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "ipv4"))
-	is_ipv6 = 0;
-      else if (unformat (input, "ipv6"))
-	is_ipv6 = 1;
+      if (unformat (input, "exception"))
+	pt = PUNT_TYPE_EXCEPTION;
+      else if (unformat (input, "l4"))
+	pt = PUNT_TYPE_L4;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -1035,9 +643,7 @@ punt_socket_show_cmd (vlib_main_t * vm,
 	}
     }
 
-  punt_client_t *v =
-    is_ipv6 ? pm->clients_by_dst_port6 : pm->clients_by_dst_port4;
-  vlib_cli_output (vm, "%U", format_punt_socket, v, &is_ipv6);
+  punt_client_walk (pt, punt_client_show_one, vm);
 
 done:
   return (error);
@@ -1053,7 +659,7 @@ VLIB_CLI_COMMAND (show_punt_socket_registration_command, static) =
 {
   .path = "show punt socket registrations",
   .function = punt_socket_show_cmd,
-  .short_help = "show punt socket registrations [ipv4|ipv6]",
+  .short_help = "show punt socket registrations [l4|exception]",
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
@@ -1061,24 +667,22 @@ VLIB_CLI_COMMAND (show_punt_socket_registration_command, static) =
 clib_error_t *
 ip_punt_init (vlib_main_t * vm)
 {
+  clib_error_t *error = NULL;
   punt_main_t *pm = &punt_main;
 
-  pm->clients_by_dst_port6 = sparse_vec_new
-    (sizeof (pm->clients_by_dst_port6[0]),
-     BITS (((udp_header_t *) 0)->dst_port));
-  pm->clients_by_dst_port4 = sparse_vec_new
-    (sizeof (pm->clients_by_dst_port4[0]),
-     BITS (((udp_header_t *) 0)->dst_port));
-
   pm->is_configured = false;
-  pm->interface_output_node = vlib_get_node_by_name (vm,
-						     (u8 *)
-						     "interface-output");
-  return 0;
+  pm->interface_output_node =
+    vlib_get_node_by_name (vm, (u8 *) "interface-output");
+
+  if ((error = vlib_call_init_function (vm, punt_init)))
+    return error;
+
+  pm->hdl = vlib_punt_client_register ("ip-punt");
+
+  return (error);
 }
 
 VLIB_INIT_FUNCTION (ip_punt_init);
-#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 punt_config (vlib_main_t * vm, unformat_input_t * input)
@@ -1122,6 +726,15 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
   if (bind (pm->socket_fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
     {
       return clib_error_return (0, "bind error");
+    }
+
+  int n_bytes = 0x10000;
+
+  if (setsockopt
+      (pm->socket_fd, SOL_SOCKET, SO_SNDBUF, &n_bytes,
+       sizeof (n_bytes)) == -1)
+    {
+      return clib_error_return (0, "setsockopt error");
     }
 
   /* Register socket */
