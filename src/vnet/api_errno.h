@@ -149,8 +149,8 @@ _(INVALID_PROTOCOL, -153, "Invalid Protocol")                           \
 _(INVALID_ALGORITHM, -154, "Invalid Algorithm")                         \
 _(RSRC_IN_USE, -155, "Resource In Use")                                 \
 _(KEY_LENGTH, -156, "invalid Key Length")                               \
-_(FIB_PATH_UNSUPPORTED_NH_PROTO, -157, "Unsupported FIB Path protocol")
-
+_(FIB_PATH_UNSUPPORTED_NH_PROTO, -157, "Unsupported FIB Path protocol") \
+_(API_ENDIAN_FAILED, -159, "Endian mismatch detected")
 typedef enum
 {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),
