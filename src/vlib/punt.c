@@ -367,6 +367,15 @@ vlib_punt_unregister (vlib_punt_hdl_t client,
 }
 
 int
+vlib_punt_reason_validate (vlib_punt_reason_t reason)
+{
+  if (reason < punt_reason_last)
+    return (0);
+
+  return (-1);
+}
+
+int
 vlib_punt_reason_alloc (vlib_punt_hdl_t client,
 			const char *reason_name, vlib_punt_reason_t * reason)
 {
@@ -390,6 +399,17 @@ vlib_punt_reason_alloc (vlib_punt_hdl_t client,
   punt_reg_mk_dp (*reason);
 
   return (0);
+}
+
+void
+punt_reason_walk (punt_reason_walk_cb_t cb, void *ctx)
+{
+  punt_reason_data_t *pd;
+
+  vec_foreach (pd, punt_reason_data)
+  {
+    cb (pd->pd_reason, pd->pd_name, ctx);
+  }
 }
 
 /* Parse node name -> node index. */
