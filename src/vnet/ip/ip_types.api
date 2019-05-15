@@ -22,6 +22,11 @@ enum address_family {
   ADDRESS_IP6,
 };
 
+enum ip_proto {
+  IP_API_PROTO_TCP = 6,
+  IP_API_PROTO_UDP = 17,
+};
+
 union address_union {
   vl_api_ip4_address_t ip4;
   vl_api_ip6_address_t ip6;

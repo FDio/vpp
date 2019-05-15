@@ -20,6 +20,19 @@
 #include <vat/vat.h>
 
 u8 *
+format_vl_api_address_family (u8 * s, va_list * args)
+{
+  vl_api_address_family_t af = va_arg (*args, vl_api_address_family_t);
+
+  if (ADDRESS_IP6 == clib_net_to_host_u32 (af))
+      s = format (s, "ip4");
+  else
+      s = format (s, "ip6");
+
+  return s;
+}
+
+u8 *
 format_vl_api_address (u8 * s, va_list * args)
 {
   const vl_api_address_t *addr = va_arg (*args, vl_api_address_t *);
@@ -103,6 +116,22 @@ unformat_vl_api_address (unformat_input_t * input, va_list * args)
       ip->af = clib_host_to_net_u32(ADDRESS_IP4);
   else if (unformat (input, "%U", unformat_ip6_address, &ip->un.ip6))
       ip->af = clib_host_to_net_u32(ADDRESS_IP6);
+  else
+      return (0);
+
+  return (1);
+}
+
+uword
+unformat_vl_api_address_family (unformat_input_t * input,
+                                va_list * args)
+{
+  vl_api_address_family_t *af = va_arg (*args, vl_api_address_family_t *);
+
+  if (unformat (input, "ip4") || unformat (input, "ipv4"))
+      *af = clib_host_to_net_u32(ADDRESS_IP4);
+  else if (unformat (input, "ip6") || unformat (input, "ipv6"))
+      *af = clib_host_to_net_u32(ADDRESS_IP6);
   else
       return (0);
 
