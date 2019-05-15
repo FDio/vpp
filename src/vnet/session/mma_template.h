@@ -35,7 +35,7 @@
 typedef struct
 {
   u64 as_u64[MMA_RT_TYPE / 8];
-} RTT (mma_mask_or_match);
+} __attribute__ ((packed)) RTT (mma_mask_or_match);
 
 typedef struct
 {
@@ -46,7 +46,7 @@ typedef struct
   RTT (mma_mask_or_match) match;
   RTT (mma_mask_or_match) max_match;
   /* *INDENT-ON* */
-} RTT (mma_rule);
+} __attribute__ ((packed)) RTT (mma_rule);
 
 typedef int (*RTT (rule_cmp_fn)) (RTT (mma_rule) * rule1,
 				  RTT (mma_rule) * rule2);
@@ -59,7 +59,7 @@ typedef struct
     RTT (mma_rule) * rules;
 
     RTT (rule_cmp_fn) rule_cmp_fn;
-} RTT (mma_rules_table);
+} __attribute__ ((packed)) RTT (mma_rules_table);
 
 u32
 RT (mma_table_lookup) (RTT (mma_rules_table) * srt,
