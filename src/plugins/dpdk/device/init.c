@@ -738,6 +738,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  hi->max_packet_bytes = mtu;
 	  hi->max_supported_packet_bytes = max_rx_frame;
+	  hi->numa_node = xd->cpu_socket;
 	}
 
       if (dm->conf->no_tx_checksum_offload == 0)
