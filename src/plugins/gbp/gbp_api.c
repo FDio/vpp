@@ -246,7 +246,9 @@ gbp_endpoint_send_details (index_t gei, void *args)
   mp->endpoint.n_ips = n_ips;
   mp->endpoint.flags = gbp_endpoint_flags_encode (gef->gef_flags);
   mp->handle = htonl (gei);
-  mp->age = vlib_time_now (vlib_get_main ()) - ge->ge_last_time;
+  mp->age =
+    clib_host_to_net_f64 (vlib_time_now (vlib_get_main ()) -
+			  ge->ge_last_time);
   mac_address_encode (&ge->ge_key.gek_mac, mp->endpoint.mac);
 
   vec_foreach_index (ii, ge->ge_key.gek_ips)
