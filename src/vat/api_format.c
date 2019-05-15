@@ -20368,16 +20368,18 @@ static int
 api_set_punt (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
+  vl_api_address_family_t af;
   vl_api_set_punt_t *mp;
   u32 ipv = ~0;
   u32 protocol = ~0;
   u32 port = ~0;
   int is_add = 1;
+  u8 is_ip4 = 1;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "ip %d", &ipv))
+      if (unformat (i, "%U", unformat_vl_api_address_family, &af))
 	;
       else if (unformat (i, "protocol %d", &protocol))
 	;
@@ -20395,9 +20397,10 @@ api_set_punt (vat_main_t * vam)
   M (SET_PUNT, mp);
 
   mp->is_add = (u8) is_add;
-  mp->punt.ipv = (u8) ipv;
-  mp->punt.l4_protocol = (u8) protocol;
-  mp->punt.l4_port = htons ((u16) port);
+  mp->punt.type = PUNT_API_TYPE_L4;
+  mp->punt.punt.l4.af = af;
+  mp->punt.punt.l4.protocol = (u8) protocol;
+  mp->punt.punt.l4.port = htons ((u16) port);
 
   S (mp);
   W (ret);

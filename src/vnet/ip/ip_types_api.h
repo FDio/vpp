@@ -33,6 +33,18 @@ struct _vl_api_address;
 struct _vl_api_prefix;
 struct _vl_api_mprefix;
 
+/**
+ * These enum decode/encodes use 'int' as the type for the enum becuase
+ * one cannot forward declare an enum
+ */
+extern int ip_address_family_decode (int _af, ip_address_family_t * out);
+extern int ip_address_family_encode (ip_address_family_t af);
+extern int ip_proto_decode (int _af, ip_protocol_t * out);
+extern int ip_proto_encode (ip_protocol_t af);
+
+/**
+ * Decode/Encode for struct/union types
+ */
 extern ip46_type_t ip_address_decode (const struct _vl_api_address *in,
 				      ip46_address_t * out);
 extern void ip_address_encode (const ip46_address_t * in,
