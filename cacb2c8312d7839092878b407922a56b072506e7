@@ -34,6 +34,24 @@
       "revId": "cacb2c8312d7839092878b407922a56b072506e7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fb37964e_f79a53fd",
+        "filename": "src/vppinfra/error.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-15T12:18:43Z",
+      "side": 1,
+      "message": "I\u0027m not clear on the action you are asking for.  Do you prefer renaming it \u0027clib_error_return_api\u0027 ?",
+      "parentUuid": "ccabd733_900cabcc",
+      "revId": "cacb2c8312d7839092878b407922a56b072506e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
