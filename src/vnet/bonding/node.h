@@ -157,6 +157,11 @@ typedef struct
   u8 mode;
   u8 lb;
 
+  /* This flag works for active-backup mode only
+     and marks if the working port is local numa. */
+  u8 is_local_numa;
+  /* current working sw_if_index in active-bakeup mode. */
+  u32 sw_if_index_working;
   /* the last slave index for the rr lb */
   u32 lb_rr_last_index;
 
