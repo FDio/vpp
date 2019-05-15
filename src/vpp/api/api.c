@@ -83,7 +83,8 @@ _(ADD_NODE_NEXT, add_node_next)						\
 _(SHOW_VERSION, show_version)						\
 _(SHOW_THREADS, show_threads)						\
 _(GET_NODE_GRAPH, get_node_graph)                                       \
-_(GET_NEXT_INDEX, get_next_index)                                       \
+_(GET_NEXT_INDEX, get_next_index)                                           \
+_(GET_F64_ENDIAN_VALUE, get_f64_endian_value)       \
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -472,6 +473,24 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   }));
   /* *INDENT-ON* */
 }
+
+static void
+vl_api_get_f64_endian_value_t_handler (vl_api_get_f64_endian_value_t * mp)
+{
+  int rv = 0;
+  f64 one = 1.0;
+  vl_api_get_f64_endian_value_reply_t *rmp;
+  if (1.0 != clib_net_to_host_f64(mp->f64_one))
+    rv = VNET_API_ERROR_API_ENDIAN_FAILED;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_GET_F64_ENDIAN_VALUE_REPLY,
+  ({
+    rmp->f64_one_result = clib_net_to_host_f64 (one);
+  }));
+  /* *INDENT-ON* */
+}
+
 
 #define BOUNCE_HANDLER(nn)                                              \
 static void vl_api_##nn##_t_handler (                                   \

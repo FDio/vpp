@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.1.0";
+option version = "1.1.1";
 
 /* 
  * Note: API placement cleanup in progress
@@ -281,6 +281,25 @@ define get_next_index_reply
   u32 context;
   i32 retval;
   u32 next_index;
+};
+
+/** \brief f64 types are not standardized across the wire. Sense wire format.
+    @param context - sender context which was passed in the request
+    @param retval - return value
+    @param next_index - index of the next_node
+*/
+define get_f64_endian_value
+{
+  u32 client_index;
+  u32 context;
+  f64 f64_one [default=1.0];
+};
+
+define get_f64_endian_value_reply
+{
+  u32 context;
+  u32 retval;
+  f64 f64_one_result;
 };
 
 /*
