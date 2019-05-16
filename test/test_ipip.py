@@ -135,7 +135,7 @@ class TestIPIP(VppTestCase):
         for p in rx:
             self.validate(p[1], p4_reply)
 
-        err = self.statistics.get_counter(
+        err = self.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
         self.assertEqual(err, 10)
 
@@ -149,7 +149,7 @@ class TestIPIP(VppTestCase):
         for p in rx:
             self.validate(p[1], p6_reply)
 
-        err = self.statistics.get_counter(
+        err = self.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
         self.assertEqual(err, 20)
 
@@ -173,7 +173,7 @@ class TestIPIP(VppTestCase):
         for p in rx:
             self.validate(p[1], p4_reply)
 
-        err = self.statistics.get_counter(
+        err = self.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
         self.assertEqual(err, 1020)
 
@@ -416,7 +416,7 @@ class TestIPIP6(VppTestCase):
             enable_ip6=1)
 
         # Send lots of fragments, verify reassembled packet
-        before_cnt = self.statistics.get_counter(
+        before_cnt = self.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         frags, p6_reply = self.generate_ip6_frags(3131, 1400)
         f = []
@@ -430,7 +430,7 @@ class TestIPIP6(VppTestCase):
         for p in rx:
             self.validate(p[1], p6_reply)
 
-        cnt = self.statistics.get_counter(
+        cnt = self.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         self.assertEqual(cnt, before_cnt + 1000)
 

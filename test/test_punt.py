@@ -755,7 +755,7 @@ class TestPunt(VppTestCase):
         #  2 - per-reason counters
         #    2, 3 are the index of the assigned punt reason
         #
-        stats = self.statistics.get_counter(
+        stats = self.statistics.get_err_counter(
             "/err/punt-dispatch/No registrations")
         self.assertEqual(stats, 130)
 
