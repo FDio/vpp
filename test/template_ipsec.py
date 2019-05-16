@@ -527,7 +527,9 @@ class IpsecTra46Tests(IpsecTra4Tests, IpsecTra6Tests):
 
 class IpsecTun4(object):
     """ verify methods for Tunnel v4 """
-    def verify_counters(self, p, count):
+    def verify_counters4(self, p, count, n_frags=None):
+        if not n_frags:
+            n_frags = count
         if (hasattr(p, "spd_policy_in_any")):
             pkts = p.spd_policy_in_any.get_stats()['packets']
             self.assertEqual(pkts, count,
@@ -544,7 +546,7 @@ class IpsecTun4(object):
                              "incorrect SA out counts: expected %d != %d" %
                              (count, pkts))
 
-        self.assert_packet_counter_equal(self.tun4_encrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tun4_encrypt_node_name, n_frags)
         self.assert_packet_counter_equal(self.tun4_decrypt_node_name, count)
 
     def verify_decrypted(self, p, rxs):
@@ -600,7 +602,7 @@ class IpsecTun4(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
 
-        self.verify_counters(p, count)
+        self.verify_counters4(p, count, n_rx)
 
     def verify_tun_64(self, p, count=1):
         self.vapi.cli("clear errors")
@@ -638,7 +640,7 @@ class IpsecTun4(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
 
-        self.verify_counters(p, count)
+        self.verify_counters4(p, count)
 
 
 class IpsecTun4Tests(IpsecTun4):
@@ -654,7 +656,7 @@ class IpsecTun4Tests(IpsecTun4):
 
 class IpsecTun6(object):
     """ verify methods for Tunnel v6 """
-    def verify_counters(self, p, count):
+    def verify_counters6(self, p, count):
         if (hasattr(p, "tun_sa_in")):
             pkts = p.tun_sa_in.get_stats()['packets']
             self.assertEqual(pkts, count,
@@ -706,7 +708,7 @@ class IpsecTun6(object):
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
-        self.verify_counters(p, count)
+        self.verify_counters6(p, count)
 
     def verify_tun_46(self, p, count=1):
         """ ipsec 4o6 tunnel basic test """
@@ -745,7 +747,7 @@ class IpsecTun6(object):
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
-        self.verify_counters(p, count)
+        self.verify_counters6(p, count)
 
 
 class IpsecTun6Tests(IpsecTun6):
