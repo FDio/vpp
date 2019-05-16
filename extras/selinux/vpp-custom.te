@@ -43,7 +43,7 @@ files_tmp_file(vpp_tmp_t)
 # vpp local policy
 #
 
-allow vpp_t self:capability { dac_override ipc_lock setgid sys_rawio net_raw sys_admin net_admin }; # too benevolent
+allow vpp_t self:capability { dac_override ipc_lock setgid sys_rawio net_raw sys_admin net_admin chown }; # too benevolent
 dontaudit vpp_t self:capability2 block_suspend;
 allow vpp_t self:process { execmem execstack setsched signal }; # too benevolent
 allow vpp_t self:packet_socket { bind create setopt ioctl };
@@ -51,7 +51,8 @@ allow vpp_t self:tun_socket { create relabelto relabelfrom };
 allow vpp_t self:udp_socket { create ioctl };
 allow vpp_t self:unix_dgram_socket { connect create ioctl };
 allow vpp_t self:unix_stream_socket { create_stream_socket_perms connectto };
-allow vpp_t self:netlink_route_socket { bind create nlmsg_write read write };
+allow vpp_t self:netlink_route_socket { bind create nlmsg_write read write getattr setopt };
+allow vpp_t self:netlink_socket { bind create setopt };
 
 manage_dirs_pattern(vpp_t, vpp_lib_t, vpp_lib_t)
 manage_files_pattern(vpp_t, vpp_lib_t, vpp_lib_t)
@@ -89,6 +90,7 @@ auth_read_passwd(vpp_t)
 
 corenet_rw_tun_tap_dev(vpp_t)
 
+dev_rw_infiniband_dev(vpp_t)
 dev_rw_userio_dev(vpp_t)
 dev_rw_sysfs(vpp_t)
 dev_read_cpuid(vpp_t)
