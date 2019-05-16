@@ -15,10 +15,11 @@ Init function discovery
 vlib applications register for various \[initialization\] events by
 placing structures and \_\_attribute\_\_((constructor)) functions into
 the image. At appropriate times, the vlib framework walks
-constructor-generated singly-linked structure lists, calling the
-indicated functions. vlib applications create graph nodes, add CLI
-functions, start cooperative multi-tasking threads, etc. etc. using this
-mechanism.
+constructor-generated singly-linked structure lists, performs a
+topological sort based on specified constraints, and calls the
+indicated functions. Vlib applications create graph nodes, add CLI
+functions, start cooperative multi-tasking threads, etc. etc. using
+this mechanism.
 
 vlib applications invariably include a number of VLIB\_INIT\_FUNCTION
 (my\_init\_function) macros.
@@ -31,6 +32,50 @@ vlib applications must link against vppinfra, and often link against
 other libraries such as VNET. In the latter case, it may be necessary to
 explicitly reference symbol(s) otherwise large portions of the library
 may be AWOL at runtime.
+
+### Init function construction and constraint specification
+
+It's easy to add an init function:
+
+```
+   static clib_error_t *my_init_function (vlib_main_t *vm)
+   {
+      /* ... initialize things ... */
+
+      return 0; // or return clib_error_return (0, "BROKEN!");
+   }
+   VLIB_INIT_FUNCTION(my_init_function);
+```
+
+As given, my_init_function will be executed "at some point," but with
+no ordering guarantees.
+
+Specifying ordering constraints is easy:
+
+```
+   VLIB_INIT_FUNCTION(my_init_function) =
+   {
+      .runs_before = VLIB_INITS("we_run_before_function_1",
+                                "we_run_before_function_2"),
+      .runs_after = VLIB_INITS("we_run_after_function_1",
+                               "we_run_after_function_2),
+    };
+```
+
+It's also easy to specify bulk ordering constraints of the form "a
+then b then c then d":
+
+```
+   VLIB_INIT_FUNCTION(my_init_function) =
+   {
+      .init_order = VLIB_INITS("a", "b", "c", "d"),
+   };
+```
+
+It's OK to specify all three sorts of ordering constraints for a
+single init function, although it's hard to imagine why it would be
+necessary.
+
 
 Node Graph Initialization
 -------------------------
