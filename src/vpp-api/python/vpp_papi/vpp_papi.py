@@ -212,9 +212,6 @@ class VPPApiClient(object):
         loglevel, if supplied, is the log level this logger is set
         to report at (from the loglevels in the logging module).
         """
-        if apifiles is None and self.__class__.apidir is None:
-            raise ValueError("Either apifiles or apidir must be specified.")
-
         if logger is None:
             logger = logging.getLogger(__name__)
             if loglevel is not None:
