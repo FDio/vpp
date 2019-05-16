@@ -91,6 +91,30 @@
       "revId": "100fab8dc99bd8b02dff542d45ec8136ad700b9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b5261e76_241678a7",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-16T12:11:45Z",
+      "side": 1,
+      "message": "+1 to supporting multiple VPP instances (with different API versions).\n\nI guess in the meantime all we can do is to promote .apidir from class sttribute to instance attribute. See the added code comment at https://gerrit.fd.io/r/#/c/18352/4/test/vpp_papi_provider.py",
+      "parentUuid": "f4073e2d_6dd16d08",
+      "range": {
+        "startLine": 343,
+        "startChar": 2,
+        "endLine": 343,
+        "endChar": 8
+      },
+      "revId": "100fab8dc99bd8b02dff542d45ec8136ad700b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
