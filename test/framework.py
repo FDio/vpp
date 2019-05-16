@@ -1027,6 +1027,11 @@ class VppTestCase(unittest.TestCase):
                     counter_value = int(results[0])
                     break
 
+    def assert_error_counter_equal(self, counter, expected_value):
+        counter_value = self.statistics.get_err_counter(counter)
+        self.assert_equal(counter_value, expected_value,
+                          "error counter `%s'" % counter)
+
     @classmethod
     def sleep(cls, timeout, remark=None):
 

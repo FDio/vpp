@@ -18,7 +18,7 @@
 #define included_stat_client_h
 
 #define STAT_VERSION_MAJOR     1
-#define STAT_VERSION_MINOR     1
+#define STAT_VERSION_MINOR     2
 
 #include <stdint.h>
 #include <unistd.h>
@@ -46,7 +46,7 @@ typedef struct
   union
   {
     double scalar_value;
-    uint64_t error_value;
+    counter_t *error_vector;
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
     uint8_t **name_vector;

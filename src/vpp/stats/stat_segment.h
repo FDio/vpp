@@ -110,6 +110,7 @@ typedef struct
   /* statistics segment */
   uword *directory_vector_by_name;
   stat_segment_directory_entry_t *directory_vector;
+  u64 *error_vector;
   u8 **interfaces;
   u8 **nodes;
 

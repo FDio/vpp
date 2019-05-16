@@ -22,6 +22,7 @@
 #undef HAVE_MEMFD_CREATE
 #include <vppinfra/linux/syscall.h>
 #include <vpp-api/client/stat_client.h>
+
 stat_segment_main_t stat_segment_main;
 
 /*
@@ -200,22 +201,29 @@ stat_validate_counter_vector (stat_segment_directory_entry_t * ep, u32 max)
 }
 
 void
-vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap)
+vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap,
+		      int lock)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
 
   ASSERT (shared_header);
 
-  vlib_stat_segment_lock ();
+  if (lock)
+    vlib_stat_segment_lock ();
 
   /* Reset the client hash table pointer, since it WILL change! */
-  shared_header->error_offset =
+  vec_validate (sm->error_vector, thread_index);
+  sm->error_vector[thread_index] =
     stat_segment_offset (shared_header, error_vector);
+
+  shared_header->error_offset =
+    stat_segment_offset (shared_header, sm->error_vector);
   shared_header->directory_offset =
     stat_segment_offset (shared_header, sm->directory_vector);
 
-  vlib_stat_segment_unlock ();
+  if (lock)
+    vlib_stat_segment_unlock ();
   clib_mem_set_heap (oldheap);
 }
 

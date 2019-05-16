@@ -119,9 +119,6 @@ _(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)           \
 _(IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
 
 
-extern void stats_dslock_with_hint (int hint, int tag);
-extern void stats_dsunlock (void);
-
 static vl_api_ip_neighbor_flags_t
 ip_neighbor_flags_encode (ip_neighbor_flags_t f)
 {
@@ -704,8 +701,6 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 
   VALIDATE_SW_IF_INDEX ((&mp->neighbor));
 
-  stats_dslock_with_hint (1 /* release hint */ , 7 /* tag */ );
-
   flags = ip_neighbor_flags_decode (mp->neighbor.flags);
   type = ip_address_decode (&mp->neighbor.ip_address, &ip);
   mac_address_decode (mp->neighbor.mac_address, &mac);
@@ -721,8 +716,6 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 			  flags, &stats_index);
   else
     rv = ip_neighbor_del (&ip, type, ntohl (mp->neighbor.sw_if_index));
-
-  stats_dsunlock ();
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -879,8 +872,6 @@ add_del_route_t_handler (u8 is_multipath,
 
   path.frp_flags = path_flags;
 
-  stats_dslock_with_hint (1 /* release hint */ , 2 /* tag */ );
-
   if (is_drop || (is_local && (~0 == next_hop_sw_if_index)) ||
       is_classify || is_unreach || is_prohibit)
     {
@@ -910,7 +901,6 @@ add_del_route_t_handler (u8 is_multipath,
 	      if (pool_is_free_index (cm->tables,
 				      ntohl (classify_table_index)))
 		{
-		  stats_dsunlock ();
 		  return VNET_API_ERROR_NO_SUCH_TABLE;
 		}
 
@@ -920,7 +910,6 @@ add_del_route_t_handler (u8 is_multipath,
 	    }
 	  else
 	    {
-	      stats_dsunlock ();
 	      return VNET_API_ERROR_NO_SUCH_TABLE;
 	    }
 
@@ -964,7 +953,6 @@ add_del_route_t_handler (u8 is_multipath,
 	}
     }
 
-  stats_dsunlock ();
   return (0);
 }
 
@@ -1271,8 +1259,6 @@ mroute_add_del_handler (u8 is_add,
 {
   fib_node_index_t mfib_entry_index = ~0;
 
-  stats_dslock_with_hint (1 /* release hint */ , 2 /* tag */ );
-
   fib_route_path_t path = {
     .frp_sw_if_index = next_hop_sw_if_index,
     .frp_proto = nh_proto,
@@ -1308,7 +1294,6 @@ mroute_add_del_handler (u8 is_add,
     }
 
 done:
-  stats_dsunlock ();
   return (mfib_entry_index);
 }
 
@@ -2969,8 +2954,6 @@ vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
   u32 fib_index;
   int rv;
 
-  stats_dslock_with_hint (1 /* release hint */ , 6 /* tag */ );
-
   fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->proxy.table_id));
 
   if (~0 == fib_index)
@@ -2985,7 +2968,6 @@ vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
   rv = vnet_proxy_arp_add_del (&lo, &hi, fib_index, mp->is_add == 0);
 
 out:
-  stats_dsunlock ();
   REPLY_MACRO (VL_API_PROXY_ARP_ADD_DEL_REPLY);
 }
 
@@ -3166,8 +3148,6 @@ ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   int rv = VNET_API_ERROR_NO_SUCH_FIB;
   u32 target_fib_id = ntohl (mp->vrf_id);
 
-  stats_dslock_with_hint (1 /* release hint */ , 8 /* tag */ );
-
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im4->fibs,
   ({
@@ -3215,7 +3195,6 @@ ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
     })); /* pool_foreach (fib) */
     /* *INDENT-ON* */
 
-  stats_dsunlock ();
   return rv;
 }
 
@@ -3232,8 +3211,6 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   int i;
   int rv = VNET_API_ERROR_NO_SUCH_FIB;
   u32 target_fib_id = ntohl (mp->vrf_id);
-
-  stats_dslock_with_hint (1 /* release hint */ , 9 /* tag */ );
 
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im6->fibs,
@@ -3273,7 +3250,6 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   })); /* pool_foreach (fib) */
   /* *INDENT-ON* */
 
-  stats_dsunlock ();
   return rv;
 }
 
