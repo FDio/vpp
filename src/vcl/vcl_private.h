@@ -72,6 +72,7 @@ typedef enum
   STATE_FAILED = 0x20,
   STATE_UPDATED = 0x40,
   STATE_LISTEN_NO_MQ = 0x80,
+  STATE_LISTEN_QUIC = 0xa0,
 } vcl_session_state_t;
 
 #define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_VPP_CLOSING)

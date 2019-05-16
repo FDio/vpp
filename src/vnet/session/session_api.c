@@ -194,6 +194,7 @@ mq_send_session_accepted_cb (session_t * s)
   mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
   mp->segment_handle = session_segment_handle (s);
+  mp->next_listener_handle = s->al_handle;
 
   if (session_has_transport (s))
     {
@@ -228,6 +229,7 @@ mq_send_session_accepted_cb (session_t * s)
       vpp_queue = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
     }
+  clib_warning ("LISTENER_HANDLE %lx", mp->listener_handle);
   svm_msg_q_add_and_unlock (app_mq, msg);
 
   return 0;
@@ -330,6 +332,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   mp = (session_connected_msg_t *) evt->data;
   clib_memset (mp, 0, sizeof (*mp));
   mp->context = api_context;
+  mp->next_listener_handle = s->al_handle;
 
   if (is_fail)
     goto done;

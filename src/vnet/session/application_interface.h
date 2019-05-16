@@ -280,6 +280,7 @@ typedef struct session_accepted_msg_
   u32 context;
   u64 listener_handle;
   u64 handle;
+  u64 next_listener_handle;
   uword server_rx_fifo;
   uword server_tx_fifo;
   u64 segment_handle;
@@ -303,6 +304,7 @@ typedef struct session_connected_msg_
   u32 context;
   i32 retval;
   u64 handle;
+  u64 next_listener_handle;
   uword server_rx_fifo;
   uword server_tx_fifo;
   u64 segment_handle;

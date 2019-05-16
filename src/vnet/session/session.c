@@ -161,6 +161,7 @@ session_alloc (u32 thread_index)
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
+  s->al_handle = SESSION_INVALID_HANDLE;
   return s;
 }
 

@@ -558,7 +558,7 @@ quic_accept_stream (void *s)
 				    qctx->c_quic_ctx_id.udp_is_ip4);
   quic_session = session_get (qctx->c_s_index, qctx->c_thread_index);
   stream_session->listener_handle = session_handle (quic_session);
-  stream_session->al_handle = SESSION_INVALID_INDEX;
+  stream_session->al_handle = SESSION_INVALID_HANDLE;
   stream_session->app_index = sctx->c_quic_ctx_id.parent_app_id;
 
   app_wrk = app_worker_get (stream_session->app_wrk_index);
@@ -1159,10 +1159,11 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   QUIC_DBG (2, "Opening new stream (qsession %u)", sep->transport_opts);
   quic_session = session_get_from_handle (quic_session_handle);
 
-  if (quic_session->session_type !=
-      session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, sep->is_ip4))
+  if (session_get_transport_proto (quic_session) != TRANSPORT_PROTO_QUIC)
     {
-      QUIC_DBG (1, "received incompatible session");
+      QUIC_DBG (1, "received incompatible session type %U",
+		format_transport_proto,
+		session_get_transport_proto (quic_session));
       return -1;
     }
 
@@ -1213,7 +1214,7 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   stream_session->app_wrk_index = app_wrk->wrk_index;
   stream_session->connection_index = sctx_index;
   stream_session->listener_handle = quic_session_handle;
-  stream_session->al_handle = SESSION_INVALID_INDEX;
+  stream_session->al_handle = SESSION_INVALID_HANDLE;
   stream_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    qctx->c_quic_ctx_id.udp_is_ip4);
@@ -1535,7 +1536,7 @@ quic_notify_app_connected (quic_ctx_t * ctx)
   ctx->c_s_index = quic_session->session_index;
   quic_session->app_wrk_index = ctx->c_quic_ctx_id.parent_app_wrk_id;
   quic_session->connection_index = ctx->c_c_index;
-  quic_session->listener_handle = SESSION_INVALID_INDEX;
+  quic_session->listener_handle = SESSION_INVALID_HANDLE;
   quic_session->al_handle =
     quic_session_alloc_app_listener (app_wrk->app_index,
 				     quic_session->thread_index);
