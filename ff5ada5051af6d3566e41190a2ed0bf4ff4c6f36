@@ -46,6 +46,30 @@
       "revId": "ff5ada5051af6d3566e41190a2ed0bf4ff4c6f36",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a0d0aef0_94436d98",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-16T11:37:20Z",
+      "side": 1,
+      "message": "The use of NONE is already in the proposed doc.  https://gerrit.fd.io/r/#/c/19389/5/src/tools/vppapigen/VPPAPI.md",
+      "parentUuid": "3df7c122_d538a1e2",
+      "range": {
+        "startLine": 34,
+        "startChar": 2,
+        "endLine": 34,
+        "endChar": 21
+      },
+      "revId": "ff5ada5051af6d3566e41190a2ed0bf4ff4c6f36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
