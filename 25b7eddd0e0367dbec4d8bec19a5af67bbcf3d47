@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "93e8a069_aae18e35",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-16T12:21:06Z",
+      "side": 1,
+      "message": "Bump version?",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 23,
+        "endChar": 25
+      },
+      "revId": "25b7eddd0e0367dbec4d8bec19a5af67bbcf3d47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e2ee7193_2c707fc7",
+        "filename": "src/vnet/ip/ip46_cli.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-16T12:21:06Z",
+      "side": 1,
+      "message": "Does it make sense to use the enum definition from the .api?",
+      "range": {
+        "startLine": 247,
+        "startChar": 0,
+        "endLine": 251,
+        "endChar": 15
+      },
+      "revId": "25b7eddd0e0367dbec4d8bec19a5af67bbcf3d47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
