@@ -293,7 +293,7 @@ class IpsecTra4(object):
 
         # replayed packets are dropped
         self.send_and_assert_no_replies(self.tra_if, pkt * 3)
-        self.assert_packet_counter_equal(
+        self.assert_error_counter_equal(
             '/err/%s/SA replayed packet' % self.tra4_decrypt_node_name, 3)
 
         # the window size is 64 packets
@@ -321,7 +321,7 @@ class IpsecTra4(object):
                                 seq_num=350))
         self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
-        self.assert_packet_counter_equal(
+        self.assert_error_counter_equal(
             '/err/%s/Integrity check failed' % self.tra4_decrypt_node_name, 17)
 
         # a malformed 'runt' packet
@@ -337,7 +337,7 @@ class IpsecTra4(object):
                                     seq_num=350))
             self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
-            self.assert_packet_counter_equal(
+            self.assert_error_counter_equal(
                 '/err/%s/undersized packet' % self.tra4_decrypt_node_name, 17)
 
         # which we can determine since this packet is still in the window
@@ -361,12 +361,12 @@ class IpsecTra4(object):
         if use_esn:
             # an out of window error with ESN looks like a high sequence
             # wrap. but since it isn't then the verify will fail.
-            self.assert_packet_counter_equal(
+            self.assert_error_counter_equal(
                 '/err/%s/Integrity check failed' %
                 self.tra4_decrypt_node_name, 34)
 
         else:
-            self.assert_packet_counter_equal(
+            self.assert_error_counter_equal(
                 '/err/%s/SA replayed packet' %
                 self.tra4_decrypt_node_name, 20)
 
@@ -411,7 +411,7 @@ class IpsecTra4(object):
             decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
         else:
             self.send_and_assert_no_replies(self.tra_if, [pkt])
-            self.assert_packet_counter_equal(
+            self.assert_error_counter_equal(
                 '/err/%s/sequence number cycled' %
                 self.tra4_encrypt_node_name, 1)
 

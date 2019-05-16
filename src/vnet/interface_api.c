@@ -392,18 +392,6 @@ done:
   REPLY_MACRO (VL_API_SW_INTERFACE_ADD_DEL_ADDRESS_REPLY);
 }
 
-void stats_dslock_with_hint (int hint, int tag) __attribute__ ((weak));
-void
-stats_dslock_with_hint (int hint, int tag)
-{
-}
-
-void stats_dsunlock (void) __attribute__ ((weak));
-void
-stats_dsunlock (void)
-{
-}
-
 static void
 vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 {
@@ -414,14 +402,10 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  stats_dslock_with_hint (1 /* release hint */ , 4 /* tag */ );
-
   if (mp->is_ipv6)
     rv = ip_table_bind (FIB_PROTOCOL_IP6, sw_if_index, table_id, 1);
   else
     rv = ip_table_bind (FIB_PROTOCOL_IP4, sw_if_index, table_id, 1);
-
-  stats_dsunlock ();
 
   BAD_SW_IF_INDEX_LABEL;
 
