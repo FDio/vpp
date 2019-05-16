@@ -872,8 +872,16 @@ start_workers (vlib_main_t * vm)
 	      clib_mem_set_heap (oldheap);
 	      vec_add1_aligned (vlib_mains, vm_clone, CLIB_CACHE_LINE_BYTES);
 
+	      /* Switch to the stats segment ... */
+	      void *vlib_stats_push_heap (void) __attribute__ ((weak));
+	      void vlib_stats_pop_heap2 (void *, u32, void *, int)
+		__attribute__ ((weak));
+	      void *oldheap = vlib_stats_push_heap ();
 	      vm_clone->error_main.counters = vec_dup_aligned
 		(vlib_mains[0]->error_main.counters, CLIB_CACHE_LINE_BYTES);
+	      vlib_stats_pop_heap2 (vm_clone->error_main.counters,
+				    worker_thread_index, oldheap, 1);
+
 	      vm_clone->error_main.counters_last_clear = vec_dup_aligned
 		(vlib_mains[0]->error_main.counters_last_clear,
 		 CLIB_CACHE_LINE_BYTES);
@@ -1036,9 +1044,17 @@ vlib_worker_thread_node_refork (void)
   clib_memcpy_fast (&vm_clone->error_main, &vm->error_main,
 		    sizeof (vm->error_main));
   j = vec_len (vm->error_main.counters) - 1;
+
+  /* Switch to the stats segment ... */
+  void *vlib_stats_push_heap (void) __attribute__ ((weak));
+  void vlib_stats_pop_heap2 (void *, u32, void *, int) __attribute__ ((weak));
+  void *oldheap = vlib_stats_push_heap ();
   vec_validate_aligned (old_counters, j, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters = old_counters;
+  vlib_stats_pop_heap2 (vm_clone->error_main.counters, vm_clone->thread_index,
+			oldheap, 0);
+
+  vec_validate_aligned (old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters_last_clear = old_counters_all_clear;
 
   nm_clone = &vm_clone->node_main;
