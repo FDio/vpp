@@ -81,6 +81,8 @@
   _ (REASS_DUPLICATE_FRAGMENT, "duplicate fragments")                   \
   _ (REASS_OVERLAPPING_FRAGMENT, "overlapping fragments")               \
   _ (REASS_LIMIT_REACHED, "drops due to concurrent reassemblies limit") \
+  _ (REASS_FRAGMENT_CHAIN_TOO_LONG, "fragment chain too long (drop)")   \
+  _ (REASS_NO_BUF, "out of buffers (drop)")                             \
   _ (REASS_TIMEOUT, "fragments dropped due to reassembly timeout")      \
   _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")
 
