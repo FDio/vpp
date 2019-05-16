@@ -441,6 +441,27 @@ class VCLThruHostStackTLS(VCLTestCase):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
 
 
+class VCLThruHostStackQUIC(VCLTestCase):
+    """ VCL Thru Host Stack QUIC """
+
+    def setUp(self):
+        super(VCLThruHostStackQUIC, self).setUp()
+        self.thru_host_stack_setup()
+
+    def test_vcl_thru_host_stack_quic_uni_dir(self):
+        """ run VCL thru host stack uni-directional QUIC test """
+        self.timeout = 20
+        self.thru_host_stack_test(
+          "vcl_test_server", ["-p", "QUIC", self.server_port],
+          "vcl_test_client", ["-N", "1000", "-U", "-X", "-p", "QUIC",
+          self.loop0.local_ip4, self.server_port]
+        )
+
+    def tearDown(self):
+        self.thru_host_stack_tear_down()
+        super(VCLThruHostStackQUIC, self).tearDown()
+
+
 class VCLThruHostStackBidirNsock(VCLTestCase):
     """ VCL Thru Host Stack Bidir Nsock """
 
