@@ -263,7 +263,7 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (node);
   im->error_drop_node_index = node->index;
 
-  u32 idx = ipsec_register_ah_backend (vm, im, "default openssl backend",
+  u32 idx = ipsec_register_ah_backend (vm, im, "crypto engine backend",
 				       "ah4-encrypt",
 				       "ah4-decrypt",
 				       "ah6-encrypt",
@@ -276,7 +276,7 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (0 == rv);
   (void) (rv);			// avoid warning
 
-  idx = ipsec_register_esp_backend (vm, im, "default openssl backend",
+  idx = ipsec_register_esp_backend (vm, im, "crypto engine backend",
 				    "esp4-encrypt",
 				    "esp4-encrypt-tun",
 				    "esp4-decrypt",
