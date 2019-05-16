@@ -508,6 +508,18 @@ create_bypass_for_fwd (snat_main_t * sm, ip4_header_t * ip, u32 rx_fib_index,
   nat44_session_update_lru (sm, s, thread_index);
 }
 
+static inline void
+create_bypass_for_fwd_worker (snat_main_t * sm, ip4_header_t * ip,
+			      u32 rx_fib_index)
+{
+  ip4_header_t ip_wkr = {
+    .src_address = ip->dst_address,
+  };
+  u32 thread_index = sm->worker_in2out_cb (&ip_wkr, rx_fib_index);
+
+  create_bypass_for_fwd (sm, ip, rx_fib_index, thread_index);
+}
+
 #ifndef CLIB_MARCH_VARIANT
 u32
 icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
@@ -570,7 +582,10 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 		  next = NAT44_ED_OUT2IN_NEXT_IN2OUT;
 		  goto out;
 		}
-	      create_bypass_for_fwd (sm, ip, rx_fib_index, thread_index);
+	      if (sm->num_workers > 1)
+		create_bypass_for_fwd_worker (sm, ip, rx_fib_index);
+	      else
+		create_bypass_for_fwd (sm, ip, rx_fib_index, thread_index);
 	      goto out;
 	    }
 	}
@@ -923,8 +938,12 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			      next0 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
 			      goto trace00;
 			    }
-			  create_bypass_for_fwd (sm, ip0, rx_fib_index0,
-						 thread_index);
+			  if (sm->num_workers > 1)
+			    create_bypass_for_fwd_worker (sm, ip0,
+							  rx_fib_index0);
+			  else
+			    create_bypass_for_fwd (sm, ip0, rx_fib_index0,
+						   thread_index);
 			}
 		      goto trace00;
 		    }
@@ -1157,8 +1176,12 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			      next1 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
 			      goto trace01;
 			    }
-			  create_bypass_for_fwd (sm, ip1, rx_fib_index1,
-						 thread_index);
+			  if (sm->num_workers > 1)
+			    create_bypass_for_fwd_worker (sm, ip1,
+							  rx_fib_index1);
+			  else
+			    create_bypass_for_fwd (sm, ip1, rx_fib_index1,
+						   thread_index);
 			}
 		      goto trace01;
 		    }
@@ -1425,8 +1448,12 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			      next0 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
 			      goto trace0;
 			    }
-			  create_bypass_for_fwd (sm, ip0, rx_fib_index0,
-						 thread_index);
+			  if (sm->num_workers > 1)
+			    create_bypass_for_fwd_worker (sm, ip0,
+							  rx_fib_index0);
+			  else
+			    create_bypass_for_fwd (sm, ip0, rx_fib_index0,
+						   thread_index);
 			}
 		      goto trace0;
 		    }
@@ -1778,8 +1805,12 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 			      next0 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
 			      goto trace0;
 			    }
-			  create_bypass_for_fwd (sm, ip0, rx_fib_index0,
-						 thread_index);
+			  if (sm->num_workers > 1)
+			    create_bypass_for_fwd_worker (sm, ip0,
+							  rx_fib_index0);
+			  else
+			    create_bypass_for_fwd (sm, ip0, rx_fib_index0,
+						   thread_index);
 			  reass0->flags |= NAT_REASS_FLAG_ED_DONT_TRANSLATE;
 			  nat_ip4_reass_get_frags (reass0,
 						   &fragments_to_loopback);
