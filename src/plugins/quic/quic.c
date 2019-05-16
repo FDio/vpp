@@ -160,14 +160,16 @@ quic_store_conn_ctx (quicly_conn_t * conn, quic_ctx_t * ctx)
 static void
 quic_disconnect_transport (quic_ctx_t * ctx)
 {
-  QUIC_DBG (2, "Called quic_disconnect_transport");
+  int rv;
+  QUIC_DBG (2, "DISCONNECTING transport 0x%lx",
+	    ctx->c_quic_ctx_id.udp_session_handle);
   vnet_disconnect_args_t a = {
     .handle = ctx->c_quic_ctx_id.udp_session_handle,
     .app_index = quic_main.app_index,
   };
 
-  if (vnet_disconnect_session (&a))
-    clib_warning ("UDP session disconnect errored");
+  if ((rv = vnet_disconnect_session (&a)))
+    clib_warning ("UDP session disconnect errored %d", rv);
 }
 
 static int
@@ -250,7 +252,7 @@ quic_sendable_packet_count (session_t * udp_session)
 }
 
 static int
-quic_send_packets (quic_ctx_t * ctx)
+quic_send_packets (quic_ctx_t * ctx, int force_close)
 {
   quicly_datagram_t *packets[QUIC_SEND_PACKET_VEC_SIZE];
   session_t *udp_session;
@@ -259,7 +261,7 @@ quic_send_packets (quic_ctx_t * ctx)
   quicly_context_t *quicly_context;
   app_worker_t *app_wrk;
   application_t *app;
-  int err;
+  int err = 0;
 
   /* We have sctx, get qctx */
   if (ctx->c_quic_ctx_id.is_stream)
@@ -270,8 +272,14 @@ quic_send_packets (quic_ctx_t * ctx)
   ASSERT (!ctx->c_quic_ctx_id.is_stream);
 
   udp_session =
-    session_get_from_handle (ctx->c_quic_ctx_id.udp_session_handle);
+    session_get_from_handle_if_valid (ctx->c_quic_ctx_id.udp_session_handle);
   conn = ctx->c_quic_ctx_id.conn;
+  if (!udp_session)
+    {
+      QUIC_DBG (1, "Underlying UDP session 0x%lx does not exist",
+		ctx->c_quic_ctx_id.udp_session_handle);
+      goto quicly_error;
+    }
 
   if (!conn)
     return 0;
@@ -313,6 +321,9 @@ quic_send_packets (quic_ctx_t * ctx)
 
   if (svm_fifo_set_event (udp_session->tx_fifo))
     session_send_io_evt_to_thread (udp_session->tx_fifo, SESSION_IO_EVT_TX);
+
+  if (force_close)
+    goto quicly_error;
 
 stop_sending:
   quic_update_timer (ctx);
@@ -889,13 +900,14 @@ static void
 quic_connection_closed (u32 ctx_index, u32 thread_index)
 {
   /*  TODO : free fifos */
-  QUIC_DBG (2, "QUIC connection closed");
   tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
   quic_ctx_t *ctx;
 
   ctx = quic_ctx_get (ctx_index, thread_index);
+  QUIC_DBG (2, "CLOSED connection 0x%lx",
+	    (u64) thread_index << 32 | (u64) ctx->c_s_index);
 
   ASSERT (!ctx->c_quic_ctx_id.is_stream);
   /*  TODO if connection is not established, just delete the session? */
@@ -1021,7 +1033,7 @@ quic_timer_expired (u32 conn_index)
 	    quic_get_time (NULL));
   ctx = quic_ctx_get (conn_index, vlib_get_thread_index ());
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
-  quic_send_packets (ctx);
+  quic_send_packets (ctx, 0 /* force close */ );
 }
 
 static void
@@ -1143,10 +1155,11 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   QUIC_DBG (2, "Opening new stream (qsession %u)", sep->transport_opts);
   quic_session = session_get_from_handle (quic_session_handle);
 
-  if (quic_session->session_type !=
-      session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, sep->is_ip4))
+  if (session_get_transport_proto (quic_session) != TRANSPORT_PROTO_QUIC)
     {
-      QUIC_DBG (1, "received incompatible session");
+      QUIC_DBG (1, "received incompatible session type %U",
+		format_transport_proto,
+		session_get_transport_proto (quic_session));
       return -1;
     }
 
@@ -1292,6 +1305,7 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
 #endif
       quicly_stream_t *stream = ctx->c_quic_ctx_id.stream;
       quicly_reset_stream (stream, QUIC_APP_ERROR_NONE);
+      quic_send_packets (ctx, 0 /* force close */ );
     }
   else
     {
@@ -1305,8 +1319,8 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
          returns QUICLY_ERROR_FREE_CONNECTION */
       quicly_close (conn, 0, "");
       /* This also causes all streams to be closed (and the cb called) */
+      quic_send_packets (ctx, 1 /* force close */ );
     }
-  quic_send_packets (ctx);
 }
 
 static u32
@@ -1355,24 +1369,26 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   lctx->c_quic_ctx_id.udp_is_ip4 = sep->is_ip4;
   lctx->c_s_index = quic_listen_session_index;
 
-  QUIC_DBG (2, "Started listening %d", lctx_index);
+  QUIC_DBG (2, "START listen session 0x%x (UDP 0x%x)",
+	    quic_listen_session_index, udp_listen_session->session_index);
   return lctx_index;
 }
 
 static u32
 quic_stop_listen (u32 lctx_index)
 {
-  QUIC_DBG (2, "Called quic_stop_listen");
-  quic_ctx_t *lctx;
+  quic_ctx_t *lctx = quic_ctx_get (lctx_index, 0);
+  int rv;
 
-  lctx = quic_ctx_get (lctx_index, 0);
+  QUIC_DBG (2, "STOP listening on AL handle 0x%lx",
+	    lctx->c_quic_ctx_id.udp_session_handle);
   vnet_unlisten_args_t a = {
     .handle = lctx->c_quic_ctx_id.udp_session_handle,
     .app_index = quic_main.app_index,
     .wrk_map_index = 0		/* default wrk */
   };
-  if (vnet_unlisten (&a))
-    clib_warning ("unlisten errored");
+  if ((rv = vnet_unlisten (&a)))
+    clib_warning ("Unlisten errored %d", rv);
 
   /*  TODO: crypto state cleanup */
 
@@ -1624,7 +1640,7 @@ quic_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 1 /* is_add */ );
 
-  quic_send_packets (ctx);
+  quic_send_packets (ctx, 0 /* force close */ );
 
   /*  UDP stack quirk? preemptively transfer connection if that happens */
   if (udp_session->thread_index != thread_index)
@@ -1829,7 +1845,7 @@ quic_custom_tx_callback (void *s)
     return rv;
 
 tx_end:
-  quic_send_packets (ctx);
+  quic_send_packets (ctx, 0 /* force close */ );
   return 0;
 }
 
@@ -1911,7 +1927,7 @@ quic_receive (quic_ctx_t * ctx, quicly_conn_t * conn,
 	    }
 	}
     }
-  return quic_send_packets (ctx);
+  return quic_send_packets (ctx, 0 /* force close */ );
 }
 
 static int
@@ -1999,7 +2015,7 @@ quic_create_connection (quicly_context_t * quicly_ctx,
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 1 /* is_add */ );
   QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
 
-  return quic_send_packets (ctx);
+  return quic_send_packets (ctx, 0 /* force close */ );
 }
 
 static int
