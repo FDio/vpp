@@ -250,6 +250,7 @@ autoreply define unbind_sock {
     @param hostname-len - length of hostname
     @param hostname - destination's hostname. If present, used by protocols
 					  like tls.
+    @param transport_opts - transport option (e.g. session id for quic).
 */
 autoreply define connect_sock {
   u32 client_index;
@@ -264,6 +265,7 @@ autoreply define connect_sock {
   u8 proto;
   u8 hostname_len;
   u8 hostname[hostname_len];
+  u64 transport_opts;
 };
 
 /** \brief ask app to add a new cut-through registration
