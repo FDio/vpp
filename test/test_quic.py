@@ -193,6 +193,42 @@ class QUICInternalEchoIPv4TestCase(QUICTestCase):
                                          ["no-output", "mbytes", "10"])
 
 
+class QUICInternalSerialEchoIPv4TestCase(QUICTestCase):
+    """ QUIC Internal Serial Echo IPv4 Transfer Test Cases """
+
+    @classmethod
+    def setUpClass(cls):
+        super(QUICInternalSerialEchoIPv4TestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(QUICInternalSerialEchoIPv4TestCase, cls).tearDownClass()
+
+    def setUp(self):
+        super(QUICInternalSerialEchoIPv4TestCase, self).setUp()
+        self.thru_host_stack_ipv4_setup()
+
+    def tearDown(self):
+        self.thru_host_stack_ipv4_tear_down()
+        super(QUICInternalSerialEchoIPv4TestCase, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_serial_internal_transfer(self):
+        """ QUIC serial internal echo client/server transfer """
+
+        client_args = (self.client_echo_test_args +
+                       ["no-output", "mbytes", "10"])
+        self.internal_ipv4_transfer_test(self.server_echo_test_args,
+                                         client_args)
+        self.start_internal_echo_client(client_args)
+        self.start_internal_echo_client(client_args)
+        self.start_internal_echo_client(client_args)
+        self.start_internal_echo_client(client_args)
+
+
 class QUICInternalEchoIPv4MultiStreamTestCase(QUICTestCase):
     """ QUIC Internal Echo IPv4 Transfer Test Cases """
 
