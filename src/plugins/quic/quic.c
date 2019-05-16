@@ -1121,10 +1121,11 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   QUIC_DBG (2, "Opening new stream (qsession %u)", sep->transport_opts);
   quic_session = session_get_from_handle (quic_session_handle);
 
-  if (quic_session->session_type !=
-      session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, sep->is_ip4))
+  if (session_get_transport_proto (quic_session) != TRANSPORT_PROTO_QUIC)
     {
-      QUIC_DBG (1, "received incompatible session");
+      QUIC_DBG (1, "received incompatible session type %U",
+		format_transport_proto,
+		session_get_transport_proto (quic_session));
       return -1;
     }
 
