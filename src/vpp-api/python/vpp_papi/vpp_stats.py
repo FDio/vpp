@@ -40,7 +40,7 @@ typedef struct
   union
   {
     double scalar_value;
-    uint64_t error_value;
+    counter_t *error_vector;
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
     uint8_t **name_vector;
@@ -126,6 +126,12 @@ def combined_counter_vec_list(api, e):
         vec.append(if_per_thread)
     return vec
 
+def error_vec_list(api, e):
+    vec = []
+    for thread in range(api.stat_segment_vec_len(e)):
+        vec.append(e[thread])
+    return vec
+
 def name_vec_list(api, e):
     return [ffi.string(e[i]).decode('utf-8') for i in range(api.stat_segment_vec_len(e)) if e[i] != ffi.NULL]
 
@@ -138,7 +144,7 @@ def stat_entry_to_python(api, e):
     if e.type == 3:
         return combined_counter_vec_list(api, e.combined_counter_vec)
     if e.type == 4:
-        return e.error_value
+        return error_vec_list(api, e.error_vector)
     if e.type == 5:
         return name_vec_list(api, e.name_vector)
     raise NotImplementedError()
@@ -248,6 +254,11 @@ class VPPStats(object):
                     return None
                 retries += 1
 
+    def get_err_counter(self, name):
+        """Get an error counter. The errors from each worker thread
+           are summed"""
+        return sum(self.get_counter(name))
+
     def disconnect(self):
         self.api.stat_segment_disconnect_r(self.client)
         self.api.stat_client_free(self.client)
@@ -265,8 +276,8 @@ class VPPStats(object):
                     return None
                 retries += 1
 
-        return {k: error_counters[k]
-                for k in error_counters.keys() if error_counters[k]}
+        return {k: sum(error_counters[k])
+                for k in error_counters.keys() if sum(error_counters[k])}
 
     def set_errors_str(self):
         '''Return all errors counters > 0 pretty printed'''

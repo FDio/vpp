@@ -231,7 +231,6 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
   int i;
   vlib_counter_t **combined_c;	/* Combined counter */
   counter_t **simple_c;		/* Simple counter */
-  counter_t *error_base;
   uint64_t *offset_vector;
 
   assert (sm->shared_header);
@@ -275,10 +274,16 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       break;
 
     case STAT_DIR_TYPE_ERROR_INDEX:
-      error_base =
-	stat_segment_pointer (sm->shared_header,
-			      sm->shared_header->error_offset);
-      result.error_value = error_base[ep->index];
+      /* Gather errors from all threads into a vector */
+      offset_vector = stat_segment_pointer (sm->shared_header,
+					    sm->shared_header->error_offset);
+      vec_validate (result.error_vector, vec_len (offset_vector) - 1);
+      for (i = 0; i < vec_len (offset_vector); i++)
+	{
+	  counter_t *cb =
+	    stat_segment_pointer (sm->shared_header, offset_vector[i]);
+	  result.error_vector[i] = cb[ep->index];
+	}
       break;
 
     case STAT_DIR_TYPE_NAME_VECTOR:
