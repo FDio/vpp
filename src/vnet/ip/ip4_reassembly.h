@@ -30,12 +30,14 @@
  * @brief set ip4 reassembly configuration
  */
 vnet_api_error_t ip4_reass_set (u32 timeout_ms, u32 max_reassemblies,
+				u32 max_reassembly_length,
 				u32 expire_walk_interval_ms);
 
 /**
  * @brief get ip4 reassembly configuration
  */
 vnet_api_error_t ip4_reass_get (u32 * timeout_ms, u32 * max_reassemblies,
+				u32 * max_reassembly_length,
 				u32 * expire_walk_interval_ms);
 
 vnet_api_error_t ip4_reass_enable_disable (u32 sw_if_index,
