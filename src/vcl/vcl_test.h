@@ -86,10 +86,10 @@ typedef struct __attribute__ ((packed))
   uint32_t test;
   uint32_t ctrl_handle;
   uint32_t num_test_sessions;
+  uint32_t num_test_sessions_perq;
   uint32_t verbose;
   uint32_t address_ip6;
   uint32_t transport_udp;
-  uint32_t transport_tls;
   uint64_t rxbuf_size;
   uint64_t txbuf_size;
   uint64_t num_writes;
@@ -119,6 +119,7 @@ typedef struct
   char *rxbuf;
   vcl_test_cfg_t cfg;
   vcl_test_stats_t stats;
+  int session_index;
 } vcl_test_session_t;
 
 
@@ -201,6 +202,7 @@ vcl_test_cfg_init (vcl_test_cfg_t * cfg)
   cfg->test = VCL_TEST_TYPE_NONE;
   cfg->ctrl_handle = ~0;
   cfg->num_test_sessions = 1;
+  cfg->num_test_sessions_perq = 1;
   cfg->verbose = 0;
   cfg->rxbuf_size = VCL_TEST_CFG_RXBUF_SIZE_DEF;
   cfg->num_writes = VCL_TEST_CFG_NUM_WRITES_DEF;
@@ -404,7 +406,7 @@ static inline int
 vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 	       vcl_test_stats_t * stats)
 {
-  int rx_bytes, errno_val;
+  int rx_bytes;
 
   do
     {
@@ -443,7 +445,7 @@ vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 static inline int
 vcl_test_read_ds (int fd, vppcom_data_segments_t ds, vcl_test_stats_t * stats)
 {
-  int rx_bytes, errno_val;
+  int rx_bytes;
 
   do
     {
@@ -491,28 +493,16 @@ vcl_test_write (int fd, uint8_t * buf, uint32_t nbytes,
       if (rv < 0)
 	{
 	  errno = -rv;
-	  rv = -1;
-	}
-      if (rv < 0)
-	{
-	  if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-	    {
-	      if (stats)
-		stats->tx_eagain++;
-	      break;
-	    }
-	  else
-	    break;
+	  if ((errno == EAGAIN || errno == EWOULDBLOCK) && stats)
+	    stats->tx_eagain++;
+	  break;
 	}
       tx_bytes += rv;
 
-      if (tx_bytes != nbytes)
-	{
-	  nbytes_left = nbytes_left - rv;
-	  buf += rv;
-	  if (stats)
-	    stats->tx_incomp++;
-	}
+      nbytes_left = nbytes_left - rv;
+      buf += rv;
+      if (stats)
+	stats->tx_incomp++;
 
     }
   while (tx_bytes != nbytes);

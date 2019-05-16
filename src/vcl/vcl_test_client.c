@@ -28,7 +28,9 @@
 typedef struct
 {
   vcl_test_session_t *sessions;
+  vcl_test_session_t *qsessions;
   uint32_t n_sessions;
+  uint32_t n_qsessions;
   uint32_t wrk_index;
   fd_set wr_fdset;
   fd_set rd_fdset;
@@ -42,11 +44,12 @@ typedef struct
   vcl_test_client_worker_t *workers;
   vppcom_endpt_t server_endpt;
   uint32_t cfg_seq_num;
+  vcl_test_session_t quic_session;
   vcl_test_session_t ctrl_session;
   vcl_test_session_t *sessions;
   uint8_t dump_cfg;
   vcl_test_t post_test;
-  uint32_t proto;
+  uint8_t proto;
   uint32_t n_workers;
   volatile int active_workers;
   struct sockaddr_storage server_addr;
@@ -62,7 +65,6 @@ vcl_test_client_main_t vcl_client_main;
 static int
 vtc_cfg_sync (vcl_test_session_t * ts)
 {
-  vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_cfg_t *rx_cfg = (vcl_test_cfg_t *) ts->rxbuf;
   int rx_bytes, tx_bytes;
 
@@ -117,12 +119,115 @@ vtc_cfg_sync (vcl_test_session_t * ts)
 }
 
 static int
+vtc_quic_connect_test_sessions (vcl_test_client_worker_t * wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  vcl_test_session_t *ts, *tq;
+  uint32_t n_test_sessions, n_test_sessions_perq, n_test_qsessions, i;
+  int rv;
+
+  n_test_sessions = wrk->cfg.num_test_sessions;
+  n_test_sessions_perq = wrk->cfg.num_test_sessions_perq;
+  n_test_qsessions =
+    (n_test_sessions + n_test_sessions_perq - 1) / n_test_sessions_perq;
+  if (n_test_sessions < 1 || n_test_sessions_perq < 1)
+    {
+      errno = EINVAL;
+      return -1;
+    }
+
+  if (wrk->n_sessions >= n_test_sessions)
+    goto done;
+
+  /* Connect Qsessions */
+
+  if (wrk->n_qsessions)
+    wrk->qsessions =
+      realloc (wrk->qsessions,
+	       n_test_qsessions * sizeof (vcl_test_session_t));
+  else
+    wrk->qsessions = calloc (n_test_qsessions, sizeof (vcl_test_session_t));
+
+  if (!wrk->qsessions)
+    {
+      vterr ("failed to alloc Qsessions", -errno);
+      return errno;
+    }
+
+
+  for (i = 0; i < n_test_qsessions; i++)
+    {
+      tq = &wrk->qsessions[i];
+      tq->fd = vppcom_session_create (vcm->proto, 1 /* is_nonblocking */ );
+      tq->session_index = i;
+      if (tq->fd < 0)
+	{
+	  vterr ("vppcom_session_create()", tq->fd);
+	  return tq->fd;
+	}
+
+      rv = vppcom_session_connect (tq->fd, &vcm->server_endpt);
+      if (rv < 0)
+	{
+	  vterr ("vppcom_session_connect()", rv);
+	  return rv;
+	}
+      vtinf ("Test Qsession %d (fd %d) connected.", i, tq->fd);
+    }
+  wrk->n_qsessions = n_test_qsessions;
+
+  /* Connect Stream sessions */
+
+  if (wrk->n_sessions)
+    wrk->sessions =
+      realloc (wrk->sessions, n_test_sessions * sizeof (vcl_test_session_t));
+  else
+    wrk->sessions = calloc (n_test_sessions, sizeof (vcl_test_session_t));
+
+  if (!wrk->sessions)
+    {
+      vterr ("failed to alloc sessions", -errno);
+      return errno;
+    }
+
+  for (i = 0; i < n_test_sessions; i++)
+    {
+      tq = &wrk->qsessions[i / n_test_sessions_perq];
+      ts = &wrk->sessions[i];
+      ts->fd = vppcom_session_create (vcm->proto, 1 /* is_nonblocking */ );
+      ts->session_index = i;
+      if (ts->fd < 0)
+	{
+	  vterr ("vppcom_session_create()", ts->fd);
+	  return ts->fd;
+	}
+
+      rv = vppcom_session_stream_connect (ts->fd, tq->fd);
+      if (rv < 0)
+	{
+	  vterr ("vppcom_session_connect()", rv);
+	  return rv;
+	}
+
+      vtinf ("Test session %d (fd %d) connected.", i, ts->fd);
+    }
+  wrk->n_sessions = n_test_sessions;
+
+done:
+  vtinf ("All test sessions (%d) connected!", n_test_sessions);
+  return 0;
+}
+
+static int
 vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ts;
   uint32_t n_test_sessions;
   int i, rv;
+
+  if (vcm->proto == VPPCOM_PROTO_QUIC)
+    return vtc_quic_connect_test_sessions (wrk);
 
   n_test_sessions = wrk->cfg.num_test_sessions;
   if (n_test_sessions < 1)
@@ -216,11 +321,10 @@ static int
 vtc_worker_init (vcl_test_client_worker_t * wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
-  vcl_test_session_t *ctrl = &vcm->ctrl_session;
   vcl_test_cfg_t *cfg = &wrk->cfg;
   vcl_test_session_t *ts;
-  uint32_t i, n;
-  int rv, nbytes;
+  uint32_t n;
+  int rv;
 
   __wrk_index = wrk->wrk_index;
 
@@ -477,9 +581,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
   vcl_test_cfg_t *cfg = &ctrl->cfg;
   vcl_test_client_worker_t *wrk;
-  vcl_test_session_t *ts;
-  int tx_bytes, rv;
-  uint32_t i, n, sidx, n_conn, n_conn_per_wrk;
+  uint32_t i, n_conn, n_conn_per_wrk;
 
   vtinf ("%s-directional Stream Test Starting!",
 	 ctrl->cfg.test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
@@ -714,6 +816,7 @@ print_usage_and_exit (void)
 	   "  -c               Print test config before test.\n"
 	   "  -w <dir>         Write test results to <dir>.\n"
 	   "  -X               Exit after running test.\n"
+	   "  -p <proto>       Use <proto> transport layer\n"
 	   "  -D               Use UDP transport layer\n"
 	   "  -L               Use TLS transport layer\n"
 	   "  -E               Run Echo test.\n"
@@ -722,7 +825,10 @@ print_usage_and_exit (void)
 	   "  -T <txbuf-size>  Test Cfg: tx buffer size.\n"
 	   "  -U               Run Uni-directional test.\n"
 	   "  -B               Run Bi-directional test.\n"
-	   "  -V               Verbose mode.\n");
+	   "  -V               Verbose mode.\n"
+	   "  -I <N>           Use N sessions.\n"
+	   "  -s <N>           Use N sessions.\n"
+	   "  -q <n>           QUIC : use N Ssessions on top of n Qsessions\n");
   exit (1);
 }
 
@@ -733,13 +839,14 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
   int c, v;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "chn:w:XE:I:N:R:T:UBV6DL")) != -1)
+  while ((c = getopt (argc, argv, "chnp:w:XE:I:N:R:T:UBV6DLs:q:")) != -1)
     switch (c)
       {
       case 'c':
 	vcm->dump_cfg = 1;
 	break;
 
+      case 'I':		/* deprecated */
       case 's':
 	if (sscanf (optarg, "0x%x", &ctrl->cfg.num_test_sessions) != 1)
 	  if (sscanf (optarg, "%u", &ctrl->cfg.num_test_sessions) != 1)
@@ -748,11 +855,31 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	      print_usage_and_exit ();
 	    }
 	if (!ctrl->cfg.num_test_sessions ||
-	    (ctrl->cfg.num_test_sessions > FD_SETSIZE))
+	    (ctrl->cfg.num_test_sessions > VCL_TEST_CFG_MAX_TEST_SESS))
 	  {
 	    vtwrn ("Invalid number of sessions (%d) specified for option -%c!"
 		   "\n       Valid range is 1 - %d",
-		   ctrl->cfg.num_test_sessions, c, FD_SETSIZE);
+		   ctrl->cfg.num_test_sessions, c,
+		   VCL_TEST_CFG_MAX_TEST_SESS);
+	    print_usage_and_exit ();
+	  }
+	break;
+
+      case 'q':
+	if (sscanf (optarg, "0x%x", &ctrl->cfg.num_test_sessions_perq) != 1)
+	  if (sscanf (optarg, "%u", &ctrl->cfg.num_test_sessions_perq) != 1)
+	    {
+	      vtwrn ("Invalid value for option -%c!", c);
+	      print_usage_and_exit ();
+	    }
+	if (!ctrl->cfg.num_test_sessions_perq ||
+	    (ctrl->cfg.num_test_sessions_perq > VCL_TEST_CFG_MAX_TEST_SESS))
+	  {
+	    vtwrn
+	      ("Invalid number of Stream sessions (%d) per Qsession for option -%c!"
+	       "\n       Valid range is 1 - %d",
+	       ctrl->cfg.num_test_sessions_perq, c,
+	       VCL_TEST_CFG_MAX_TEST_SESS);
 	    print_usage_and_exit ();
 	  }
 	break;
@@ -780,21 +907,6 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	  }
 	strcpy (ctrl->txbuf, optarg);
 	ctrl->cfg.test = VCL_TEST_TYPE_ECHO;
-	break;
-
-      case 'I':
-	if (sscanf (optarg, "0x%x", &ctrl->cfg.num_test_sessions) != 1)
-	  if (sscanf (optarg, "%d", &ctrl->cfg.num_test_sessions) != 1)
-	    {
-	      vtwrn ("Invalid value for option -%c!", c);
-	      print_usage_and_exit ();
-	    }
-	if (ctrl->cfg.num_test_sessions > VCL_TEST_CFG_MAX_TEST_SESS)
-	  {
-	    vtwrn ("value greater than max number test sessions (%d)!",
-		   VCL_TEST_CFG_MAX_TEST_SESS);
-	    print_usage_and_exit ();
-	  }
 	break;
 
       case 'N':
@@ -870,23 +982,30 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	ctrl->cfg.address_ip6 = 1;
 	break;
 
-      case 'D':
-	ctrl->cfg.transport_udp = 1;
+      case 'p':
+	if (vppcom_unformat_proto (&vcm->proto, optarg))
+	  vtwrn ("Invalid vppcom protocol %s, defaulting to TCP", optarg);
 	break;
 
-      case 'L':
-	ctrl->cfg.transport_tls = 1;
+      case 'D':		/* deprecated */
+	vcm->proto = VPPCOM_PROTO_UDP;
+	break;
+
+      case 'L':		/* deprecated */
+	vcm->proto = VPPCOM_PROTO_TLS;
 	break;
 
       case '?':
 	switch (optopt)
 	  {
 	  case 'E':
-	  case 'I':
+	  case 'I':		/* deprecated */
 	  case 'N':
 	  case 'R':
 	  case 'T':
 	  case 'w':
+	  case 'p':
+	  case 'q':
 	    vtwrn ("Option -%c requires an argument.", optopt);
 	    break;
 
@@ -908,18 +1027,9 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
       print_usage_and_exit ();
     }
 
-  if (ctrl->cfg.transport_udp)
-    {
-      vcm->proto = VPPCOM_PROTO_UDP;
-    }
-  else if (ctrl->cfg.transport_tls)
-    {
-      vcm->proto = VPPCOM_PROTO_TLS;
-    }
-  else
-    {
-      vcm->proto = VPPCOM_PROTO_TCP;
-    }
+  if (vcm->proto != VPPCOM_PROTO_QUIC
+      && ctrl->cfg.num_test_sessions_perq != 1)
+    vtwrn ("Option -q only applies for QUIC");
 
   memset (&vcm->server_addr, 0, sizeof (vcm->server_addr));
   if (ctrl->cfg.address_ip6)
@@ -989,7 +1099,8 @@ main (int argc, char **argv)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
-  int rv, errno_val;
+  vcl_test_session_t *quic_session = &vcm->quic_session;
+  int rv;
 
   vcm->n_workers = 1;
   vcl_test_cfg_init (&ctrl->cfg);
@@ -1005,7 +1116,7 @@ main (int argc, char **argv)
   if (ctrl->fd < 0)
     vtfail ("vppcom_session_create()", ctrl->fd);
 
-  if (vcm->proto == VPPCOM_PROTO_TLS)
+  if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_QUIC)
     {
       vtinf ("Adding tls certs ...");
       vppcom_session_tls_add_cert (ctrl->fd, vcl_test_crt_rsa,
@@ -1015,7 +1126,20 @@ main (int argc, char **argv)
     }
 
   vtinf ("Connecting to server...");
-  rv = vppcom_session_connect (ctrl->fd, &vcm->server_endpt);
+  if (vcm->proto == VPPCOM_PROTO_QUIC)
+    {
+      quic_session->fd =
+	vppcom_session_create (vcm->proto, 0 /* is_nonblocking */ );
+      if (quic_session->fd < 0)
+	vtfail ("vppcom_session_create()", quic_session->fd);
+      rv = vppcom_session_connect (quic_session->fd, &vcm->server_endpt);
+      if (rv)
+	vtfail ("vppcom_session_quic_connect()", rv);
+      vtinf ("Connecting to stream...");
+      rv = vppcom_session_stream_connect (ctrl->fd, quic_session->fd);
+    }
+  else
+    rv = vppcom_session_connect (ctrl->fd, &vcm->server_endpt);
   if (rv)
     vtfail ("vppcom_session_connect()", rv);
   vtinf ("Control session (fd %d) connected.", ctrl->fd);
@@ -1087,6 +1211,8 @@ main (int argc, char **argv)
 
   vtc_ctrl_session_exit ();
   vppcom_session_close (ctrl->fd);
+  if (vcm->proto == VPPCOM_PROTO_QUIC)
+    vppcom_session_close (quic_session->fd);
   vppcom_app_destroy ();
   free (vcm->workers);
   return 0;
