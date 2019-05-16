@@ -22,6 +22,75 @@
       "revId": "100fab8dc99bd8b02dff542d45ec8136ad700b9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bea33cf7_bc90b99f",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-16T11:55:18Z",
+      "side": 1,
+      "message": "Is it possible to have an array of strings or do we need to use _dump/_details for that?",
+      "range": {
+        "startLine": 315,
+        "startChar": 0,
+        "endLine": 315,
+        "endChar": 71
+      },
+      "revId": "100fab8dc99bd8b02dff542d45ec8136ad700b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa48e420_91b6f442",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-16T11:55:18Z",
+      "side": 1,
+      "message": "u32 length + u8 string[length] ?\n\nDo you want to add something here about the availability of vl_api_to_api_string () to simplify the migration?",
+      "range": {
+        "startLine": 318,
+        "startChar": 42,
+        "endLine": 318,
+        "endChar": 52
+      },
+      "revId": "100fab8dc99bd8b02dff542d45ec8136ad700b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f4073e2d_6dd16d08",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-16T11:55:18Z",
+      "side": 1,
+      "message": "So that the client bindings can support connections to multiple vpp instances.",
+      "range": {
+        "startLine": 343,
+        "startChar": 2,
+        "endLine": 343,
+        "endChar": 8
+      },
+      "revId": "100fab8dc99bd8b02dff542d45ec8136ad700b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
