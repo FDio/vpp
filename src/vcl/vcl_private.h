@@ -167,6 +167,7 @@ typedef struct
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
+  u8 is_connectable_listener;
   u8 has_rx_evt;
   u32 attr;
   u64 transport_opts;
@@ -466,7 +467,8 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
       return 0;
     }
 
-  ASSERT (session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ));
+  ASSERT ((session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ)) |
+	  session->is_connectable_listener);
   return session;
 }
 

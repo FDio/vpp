@@ -312,7 +312,10 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   session->transport.lcl_port = listen_session->transport.lcl_port;
   session->transport.lcl_ip = listen_session->transport.lcl_ip;
   session->session_type = listen_session->session_type;
-  session->is_dgram = session->session_type == VPPCOM_PROTO_UDP;
+  session->is_dgram = vcl_proto_is_dgram (session->session_type);
+  session->is_connectable_listener =
+    (session->session_type ==
+     VPPCOM_PROTO_QUIC) & (!listen_session->is_connectable_listener);
 
   VDBG (1, "session %u [0x%llx]: client accept request from %s address %U"
 	" port %d queue %p!", session->session_index, mp->handle,
@@ -1015,7 +1018,7 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
   session->session_type = proto;
   session->session_state = STATE_START;
   session->vpp_handle = ~0;
-  session->is_dgram = proto == VPPCOM_PROTO_UDP;
+  session->is_dgram = vcl_proto_is_dgram (proto);
 
   if (is_nonblocking)
     VCL_SESS_ATTR_SET (session->attr, VCL_SESS_ATTR_NONBLOCK);
@@ -1086,7 +1089,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 		  vppcom_retval_str (rv));
 	  return rv;
 	}
-      else if (state & STATE_OPEN)
+      else if ((state & STATE_OPEN) | (session->is_connectable_listener))
 	{
 	  rv = vppcom_session_disconnect (sh);
 	  if (PREDICT_FALSE (rv < 0))
@@ -1274,14 +1277,47 @@ validate_args_session_accept_ (vcl_worker_t * wrk, vcl_session_t * ls)
       return VPPCOM_EBADFD;
     }
 
-  if (ls->session_state != STATE_LISTEN)
+  if ((ls->session_state != STATE_LISTEN) & (!ls->is_connectable_listener))
     {
-      VDBG (0, "ERROR: session [0x%llx]: not in listen state! state 0x%x"
-	    " (%s)", ls->vpp_handle, ls->session_index, ls->session_state,
+      VDBG (0,
+	    "ERROR: session [0x%llx]: not in listen state! state 0x%x"
+	    " (%s)", ls->vpp_handle, ls->session_state,
 	    vppcom_session_state_str (ls->session_state));
       return VPPCOM_EBADFD;
     }
   return VPPCOM_OK;
+}
+
+int
+vppcom_unformat_proto (uint8_t * proto, char *proto_str)
+{
+  if (!strcmp (proto_str, "TCP"))
+    *proto = VPPCOM_PROTO_TCP;
+  else if (!strcmp (proto_str, "tcp"))
+    *proto = VPPCOM_PROTO_TCP;
+  else if (!strcmp (proto_str, "UDP"))
+    *proto = VPPCOM_PROTO_UDP;
+  else if (!strcmp (proto_str, "udp"))
+    *proto = VPPCOM_PROTO_UDP;
+  else if (!strcmp (proto_str, "UDPC"))
+    *proto = VPPCOM_PROTO_UDPC;
+  else if (!strcmp (proto_str, "udpc"))
+    *proto = VPPCOM_PROTO_UDPC;
+  else if (!strcmp (proto_str, "SCTP"))
+    *proto = VPPCOM_PROTO_SCTP;
+  else if (!strcmp (proto_str, "sctp"))
+    *proto = VPPCOM_PROTO_SCTP;
+  else if (!strcmp (proto_str, "TLS"))
+    *proto = VPPCOM_PROTO_TLS;
+  else if (!strcmp (proto_str, "tls"))
+    *proto = VPPCOM_PROTO_TLS;
+  else if (!strcmp (proto_str, "QUIC"))
+    *proto = VPPCOM_PROTO_QUIC;
+  else if (!strcmp (proto_str, "quic"))
+    *proto = VPPCOM_PROTO_QUIC;
+  else
+    return 1;
+  return 0;
 }
 
 int
@@ -1393,8 +1429,9 @@ handle:
   return vcl_session_handle (client_session);
 }
 
-int
-vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
+always_inline int
+vppcom_session_connect_internal (uint32_t session_handle,
+				 vppcom_endpt_t * server_ep)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session = 0;
@@ -1415,13 +1452,13 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 
   if (PREDICT_FALSE (session->session_state & CLIENT_STATE_OPEN))
     {
-      VDBG (0, "session handle %u [0x%llx]: session already "
+      VDBG (0,
+	    "session handle %u [0x%llx]: session already "
 	    "connected to %s %U port %d proto %s, state 0x%x (%s)",
 	    session_handle, session->vpp_handle,
-	    session->transport.is_ip4 ? "IPv4" : "IPv6",
-	    format_ip46_address,
-	    &session->transport.rmt_ip, session->transport.is_ip4 ?
-	    IP46_TYPE_IP4 : IP46_TYPE_IP6,
+	    session->transport.is_ip4 ? "IPv4" : "IPv6", format_ip46_address,
+	    &session->transport.rmt_ip,
+	    session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	    clib_net_to_host_u16 (session->transport.rmt_port),
 	    vppcom_proto_str (session->session_type), session->session_state,
 	    vppcom_session_state_str (session->session_state));
@@ -1436,6 +1473,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
     clib_memcpy_fast (&session->transport.rmt_ip.ip6, server_ep->ip,
 		      sizeof (ip6_address_t));
   session->transport.rmt_port = server_ep->port;
+  session->transport_opts = server_ep->transport_opts;
 
   VDBG (0, "session handle %u [0x%llx]: connecting to server %s %U "
 	"port %d proto %s", session_handle, session->vpp_handle,
@@ -1458,6 +1496,45 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 	session->vpp_handle, rv ? "failed" : "succeeded");
 
   return rv;
+}
+
+int
+vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *session = 0;
+  session = vcl_session_get_w_handle (wrk, session_handle);
+  if (!session)
+    return VPPCOM_EBADFD;
+  session->is_connectable_listener =
+    vcl_proto_is_accepted_session_listener (session->session_type);
+  return vppcom_session_connect_internal (session_handle, server_ep);
+}
+
+int
+vppcom_session_stream_connect (uint32_t session_handle,
+			       uint32_t parent_session_handle)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *session, *parent_session;
+  vppcom_endpt_t _endpt, *endpt = &_endpt;
+  uint8_t ip[4] = { 1 };	/* needed for check on endpoint is null */
+
+  session = vcl_session_get_w_handle (wrk, session_handle);
+  if (!session)
+    return VPPCOM_EBADFD;
+  parent_session = vcl_session_get_w_handle (wrk, parent_session_handle);
+  if (!parent_session)
+    return VPPCOM_EBADFD;
+
+  endpt->ip = ip;
+  endpt->port = 0;
+  endpt->transport_opts = parent_session->vpp_handle;
+  VDBG (0, "session handle %u [%llx]: connecting to server %u [%llx]",
+	session_handle,
+	session->vpp_handle,
+	parent_session_handle, parent_session->vpp_handle);
+  return vppcom_session_connect_internal (session_handle, endpt);
 }
 
 static u8
@@ -3356,6 +3433,16 @@ vppcom_worker_mqs_epfd (void)
   if (!vcm->cfg.use_mq_eventfd)
     return -1;
   return wrk->mqs_epfd;
+}
+
+int
+vppcom_session_is_connectable_listener (uint32_t session_handle)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *session = vcl_session_get_w_handle (wrk, session_handle);
+  if (!session)
+    return VPPCOM_EBADFD;
+  return session->is_connectable_listener;
 }
 
 /*

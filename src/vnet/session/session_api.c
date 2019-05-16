@@ -225,6 +225,7 @@ mq_send_session_accepted_cb (session_t * s)
       vpp_queue = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
     }
+  clib_warning ("LISTENER_HANDLE %lx", mp->listener_handle);
   svm_msg_q_add_and_unlock (app_mq, msg);
 
   return 0;
