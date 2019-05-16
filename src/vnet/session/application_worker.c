@@ -33,7 +33,7 @@ app_worker_alloc (application_t * app)
   app_wrk->wrk_map_index = ~0;
   app_wrk->connects_seg_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
   app_wrk->first_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
-  APP_DBG ("New app %v worker %u", app_get_name (app), app_wrk->wrk_index);
+  APP_DBG ("New app %v worker %u", app->name, app_wrk->wrk_index);
   return app_wrk;
 }
 

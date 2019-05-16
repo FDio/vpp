@@ -509,6 +509,7 @@ vppcom_send_connect_sock (vcl_session_t * session)
   cmp->context = session->session_index;
   cmp->wrk_index = wrk->vpp_wrk_index;
   cmp->is_ip4 = session->transport.is_ip4;
+  cmp->transport_opts = session->transport_opts;
   clib_memcpy_fast (cmp->ip, &session->transport.rmt_ip, sizeof (cmp->ip));
   cmp->port = session->transport.rmt_port;
   cmp->proto = session->session_type;

@@ -170,6 +170,7 @@ typedef struct
   u8 is_vep_session;
   u8 has_rx_evt;
   u32 attr;
+  u64 transport_opts;
   vppcom_epoll_t vep;
   int libc_epfd;
   svm_msg_q_t *our_evt_q;
