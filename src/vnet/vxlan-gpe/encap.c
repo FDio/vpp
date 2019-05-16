@@ -153,6 +153,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
   u32 pkts_encapsulated = 0;
   u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -160,6 +161,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
   stats_n_packets = stats_n_bytes = 0;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   while (n_left_from > 0)
     {
@@ -181,16 +183,13 @@ vxlan_gpe_encap (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_prefetch_buffer_header (b[2], LOAD);
+	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[2]->data - CLIB_CACHE_LINE_BYTES,
+			   2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[3]->data - CLIB_CACHE_LINE_BYTES,
+			   2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -202,8 +201,9 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+	  b0 = b[0];
+	  b1 = b[1];
+	  b += 2;
 
 	  /* get the flag "is_ip4" */
 	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
@@ -329,7 +329,8 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+	  b0 = b[0];
+	  b += 1;
 
 	  /* get the flag "is_ip4" */
 	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
