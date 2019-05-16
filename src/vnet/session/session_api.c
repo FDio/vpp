@@ -891,6 +891,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->sep.transport_proto = mp->proto;
       a->sep.peer.fib_index = mp->vrf;
       a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
+      a->sep_ext.transport_opts = mp->transport_opts;
       if (mp->hostname_len)
 	{
 	  vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);
@@ -901,7 +902,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->app_index = app->app_index;
       a->wrk_map_index = mp->wrk_index;
       if ((rv = vnet_connect (a)))
-	clib_warning ("connect returned: %u", rv);
+	clib_warning ("connect returned: %U", format_vnet_api_errno, rv);
       vec_free (a->sep_ext.hostname);
     }
   else

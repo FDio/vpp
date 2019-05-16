@@ -582,7 +582,7 @@ application_alloc_and_init (app_init_args_t * a)
   a->app_index = app->app_index;
 
   APP_DBG ("New app name: %v api index: %u index %u", app->name,
-	   app->api_client_index, app->app_index);
+	   a->api_client_index, app->app_index);
 
   return 0;
 }
@@ -597,8 +597,7 @@ application_free (application_t * app)
    * The app event queue allocated in first segment is cleared with
    * the segment manager. No need to explicitly free it.
    */
-  APP_DBG ("Delete app name %v api index: %d index: %d", app->name,
-	   app->api_client_index, app->app_index);
+  APP_DBG ("Delete app name %v index: %d", app->name, app->app_index);
 
   if (application_is_proxy (app))
     application_remove_proxy (app);
@@ -641,7 +640,7 @@ application_detach_process (application_t * app, u32 api_client_index)
     }
 
   APP_DBG ("Detaching for app %v index %u api client index %u", app->name,
-	   app->app_index, app->api_client_index);
+	   app->app_index, api_client_index);
 
   /* *INDENT-OFF* */
   pool_foreach (wrk_map, app->worker_maps, ({
