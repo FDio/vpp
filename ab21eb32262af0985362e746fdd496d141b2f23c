@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0f12bb46_f92c9b7d",
+        "filename": "test/test_quic.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-16T20:16:39Z",
+      "side": 1,
+      "message": "swap the order of these.",
+      "range": {
+        "startLine": 212,
+        "startChar": 0,
+        "endLine": 213,
+        "endChar": 66
+      },
+      "revId": "ab21eb32262af0985362e746fdd496d141b2f23c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
