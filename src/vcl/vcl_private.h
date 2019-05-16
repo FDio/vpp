@@ -167,6 +167,10 @@ typedef struct
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
+  /* VCL session index of the listening session (if any) */
+  u32 listener_index;
+  /* Accepted sessions on this listener */
+  int n_accepted_sessions;
   u8 has_rx_evt;
   u32 attr;
   u64 transport_opts;
@@ -351,6 +355,7 @@ vcl_session_alloc (vcl_worker_t * wrk)
   pool_get (wrk->sessions, s);
   memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
+  s->listener_index = VCL_INVALID_SESSION_INDEX;
   return s;
 }
 
@@ -446,6 +451,26 @@ vcl_session_table_del_listener (vcl_worker_t * wrk, u64 listener_handle)
   hash_unset (wrk->session_index_by_vpp_handles, listener_handle);
 }
 
+static inline int
+vcl_session_is_connectable_listener (vcl_worker_t * wrk,
+				     vcl_session_t * session)
+{
+  /* Tell if we session_handle is a QUIC session.
+   * We can be in the following cases :
+   * Listen session <- QUIC session <- Stream session
+   * QUIC session <- Stream session
+   */
+  vcl_session_t *ls;
+  if (session->session_type != VPPCOM_PROTO_QUIC)
+    return 0;
+  if (session->listener_index == VCL_INVALID_SESSION_INDEX)
+    return !(session->session_state & STATE_LISTEN);
+  ls = vcl_session_get_w_handle (wrk, session->listener_index);
+  if (!ls)
+    return VPPCOM_EBADFD;
+  return ls->session_state & STATE_LISTEN;
+}
+
 static inline vcl_session_t *
 vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
 {
@@ -466,7 +491,8 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
       return 0;
     }
 
-  ASSERT (session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ));
+  ASSERT ((session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ)) ||
+	  vcl_session_is_connectable_listener (wrk, session));
   return session;
 }
 
