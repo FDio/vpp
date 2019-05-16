@@ -277,7 +277,7 @@ vts_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
 }
 
 static void
-vts_new_client (vcl_test_server_worker_t * wrk)
+vts_new_client (vcl_test_server_worker_t * wrk, int listen_fd)
 {
   vcl_test_server_conn_t *conn;
   struct epoll_event ev;
@@ -290,7 +290,7 @@ vts_new_client (vcl_test_server_worker_t * wrk)
       return;
     }
 
-  client_fd = vppcom_session_accept (wrk->listen_fd, &conn->endpt, 0);
+  client_fd = vppcom_session_accept (listen_fd, &conn->endpt, 0);
   if (client_fd < 0)
     {
       vterr ("vppcom_session_accept()", client_fd);
@@ -298,7 +298,8 @@ vts_new_client (vcl_test_server_worker_t * wrk)
     }
   conn->fd = client_fd;
 
-  vtinf ("Got a connection -- fd = %d (0x%08x)!", client_fd, client_fd);
+  vtinf ("Got a connection -- fd = %d (0x%08x) on listener fd = %d (0x%08x)",
+	 client_fd, client_fd, listen_fd, listen_fd);
 
   ev.events = EPOLLIN;
   ev.data.u64 = conn - wrk->conn_pool;
@@ -320,6 +321,7 @@ print_usage_and_exit (void)
 	   "  -h               Print this message and exit.\n"
 	   "  -6               Use IPv6\n"
 	   "  -w <num>         Number of workers\n"
+	   "  -p <PROTO>       Use <PROTO> transport layer\n"
 	   "  -D               Use UDP transport layer\n"
 	   "  -L               Use TLS transport layer\n");
   exit (1);
@@ -371,11 +373,16 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
   vsm->cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "6DLsw:")) != -1)
+  while ((c = getopt (argc, argv, "6DLsw:p:")) != -1)
     switch (c)
       {
       case '6':
 	vsm->cfg.address_ip6 = 1;
+	break;
+
+      case 'p':
+	if (vppcom_unformat_proto (&vsm->cfg.proto, optarg))
+	  vtwrn ("Invalid vppcom protocol %s, defaulting to TCP", optarg);
 	break;
 
       case 'D':
@@ -399,6 +406,10 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
       case '?':
 	switch (optopt)
 	  {
+	  case 'w':
+	  case 'p':
+	    vtwrn ("Option `-%c' requires an argument.", optopt);
+	    break;
 	  default:
 	    if (isprint (optopt))
 	      vtwrn ("Unknown option `-%c'.", optopt);
@@ -428,10 +439,24 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
   vcl_test_init_endpoint_addr (vsm);
 }
 
+static void
+vts_clean_connected_listeners (vcl_test_server_worker_t * wrk,
+			       int listener_fd)
+{
+  if ((vppcom_session_n_accepted (listener_fd) == 0) &
+      vppcom_session_is_connectable_listener (listener_fd))
+    {
+      vtinf ("Connected Listener fd %x has no more sessions", listener_fd);
+      vppcom_session_close (listener_fd);
+      wrk->nfds--;
+    }
+}
+
 int
 vts_handle_cfg (vcl_test_server_worker_t * wrk, vcl_test_cfg_t * rx_cfg,
 		vcl_test_server_conn_t * conn, int rx_bytes)
 {
+  int listener_fd;
   if (rx_cfg->verbose)
     {
       vtinf ("(fd %d): Received a cfg msg!", conn->fd);
@@ -469,9 +494,11 @@ vts_handle_cfg (vcl_test_server_worker_t * wrk, vcl_test_cfg_t * rx_cfg,
     case VCL_TEST_TYPE_EXIT:
       vtinf ("Session fd %d closing!", conn->fd);
       clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
+      listener_fd = vppcom_session_listener (conn->fd);
       vppcom_session_close (conn->fd);
       conn_pool_free (conn);
       wrk->nfds--;
+      vts_clean_connected_listeners (wrk, listener_fd);
       break;
 
     default:
@@ -505,7 +532,8 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
     vtfail ("vppcom_session_create()", wrk->listen_fd);
 
 
-  if (vsm->cfg.proto == VPPCOM_PROTO_TLS)
+  if (vsm->cfg.proto == VPPCOM_PROTO_TLS
+      || vsm->cfg.proto == VPPCOM_PROTO_QUIC)
     {
       vppcom_session_tls_add_cert (wrk->listen_fd, vcl_test_crt_rsa,
 				   vcl_test_crt_rsa_len);
@@ -590,7 +618,7 @@ vts_worker_loop (void *arg)
   vcl_test_server_main_t *vsm = &vcl_server_main;
   vcl_test_server_worker_t *wrk = arg;
   vcl_test_server_conn_t *conn;
-  int i, rx_bytes, num_ev;
+  int i, rx_bytes, num_ev, listener_fd;
   vcl_test_cfg_t *rx_cfg;
 
   if (wrk->wrk_index)
@@ -615,8 +643,11 @@ vts_worker_loop (void *arg)
 	  conn = &wrk->conn_pool[wrk->wait_events[i].data.u32];
 	  if (wrk->wait_events[i].events & (EPOLLHUP | EPOLLRDHUP))
 	    {
+	      vtinf ("Closing session %d on HUP", conn->fd);
+	      listener_fd = vppcom_session_listener (conn->fd);
 	      vppcom_session_close (conn->fd);
-	      wrk->nfds -= 1;
+	      wrk->nfds--;
+	      vts_clean_connected_listeners (wrk, listener_fd);
 	      if (!wrk->nfds)
 		{
 		  vtinf ("All client connections closed\n");
@@ -626,7 +657,12 @@ vts_worker_loop (void *arg)
 	    }
 	  if (wrk->wait_events[i].data.u32 == ~0)
 	    {
-	      vts_new_client (wrk);
+	      vts_new_client (wrk, wrk->listen_fd);
+	      continue;
+	    }
+	  else if (vppcom_session_is_connectable_listener (conn->fd))
+	    {
+	      vts_new_client (wrk, conn->fd);
 	      continue;
 	    }
 
