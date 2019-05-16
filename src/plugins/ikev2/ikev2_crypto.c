@@ -457,21 +457,18 @@ void
 ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 {
   int r;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  BIGNUM *p = BN_new ();
-  BIGNUM *q = BN_new ();
-  BIGNUM *g = BN_new ();
-  BIGNUM *pub_key = BN_new ();
-  BIGNUM *priv_key = BN_new ();
-#endif
 
   if (t->dh_group == IKEV2_DH_GROUP_MODP)
     {
       DH *dh = DH_new ();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      BIGNUM *p = NULL;
+      BIGNUM *g = NULL;
+      const BIGNUM *pub_key, *priv_key;
+
       BN_hex2bn (&p, t->dh_p);
       BN_hex2bn (&g, t->dh_g);
-      DH_set0_pqg (dh, p, q, g);
+      DH_set0_pqg (dh, p, NULL, g);
 #else
       BN_hex2bn (&dh->p, t->dh_p);
       BN_hex2bn (&dh->g, t->dh_g);
@@ -483,28 +480,28 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  sa->i_dh_data = vec_new (u8, t->key_len);
 	  sa->dh_private_key = vec_new (u8, t->key_len);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	  DH_get0_key (dh, &pub_key, &priv_key);
 	  r = BN_bn2bin (pub_key, sa->i_dh_data);
 	  ASSERT (r == t->key_len);
 	  r = BN_bn2bin (priv_key, sa->dh_private_key);
-	  DH_set0_key (dh, pub_key, priv_key);
 #else
 	  r = BN_bn2bin (dh->pub_key, sa->i_dh_data);
 	  ASSERT (r == t->key_len);
 	  r = BN_bn2bin (dh->priv_key, sa->dh_private_key);
-	  ASSERT (r == t->key_len);
 #endif
+	  ASSERT (r == t->key_len);
 	}
       else
 	{
 	  sa->r_dh_data = vec_new (u8, t->key_len);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	  r = BN_bn2bin (pub_key, sa->i_dh_data);
-	  ASSERT (r == t->key_len);
-	  DH_set0_key (dh, pub_key, NULL);
+	  DH_get0_key (dh, &pub_key, &priv_key);
+	  r = BN_bn2bin (pub_key, sa->r_dh_data);
 #else
 	  r = BN_bn2bin (dh->pub_key, sa->r_dh_data);
-	  ASSERT (r == t->key_len);
 #endif
+	  ASSERT (r == t->key_len);
+
 	  BIGNUM *ex;
 	  sa->dh_shared_key = vec_new (u8, t->key_len);
 	  ex = BN_bin2bn (sa->i_dh_data, vec_len (sa->i_dh_data), NULL);
@@ -601,20 +598,18 @@ void
 ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 {
   int r;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  BIGNUM *p = BN_new ();
-  BIGNUM *q = BN_new ();
-  BIGNUM *g = BN_new ();
-  BIGNUM *priv_key = BN_new ();
-#endif
 
   if (t->dh_group == IKEV2_DH_GROUP_MODP)
     {
       DH *dh = DH_new ();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      BIGNUM *p = NULL;
+      BIGNUM *g = NULL;
+      BIGNUM *priv_key;
+
       BN_hex2bn (&p, t->dh_p);
       BN_hex2bn (&g, t->dh_g);
-      DH_set0_pqg (dh, p, q, g);
+      DH_set0_pqg (dh, p, NULL, g);
 
       priv_key =
 	BN_bin2bn (sa->dh_private_key, vec_len (sa->dh_private_key), NULL);
