@@ -46,7 +46,7 @@ files_tmp_file(vpp_tmp_t)
 allow vpp_t self:capability { dac_override ipc_lock setgid sys_rawio net_raw sys_admin net_admin }; # too benevolent
 dontaudit vpp_t self:capability2 block_suspend;
 allow vpp_t self:process { execmem execstack setsched signal }; # too benevolent
-allow vpp_t self:packet_socket { bind create setopt ioctl };
+allow vpp_t self:packet_socket { bind create setopt ioctl map };
 allow vpp_t self:tun_socket { create relabelto relabelfrom };
 allow vpp_t self:udp_socket { create ioctl };
 allow vpp_t self:unix_dgram_socket { connect create ioctl };
@@ -94,6 +94,7 @@ dev_rw_sysfs(vpp_t)
 dev_read_cpuid(vpp_t)
 dev_rw_vfio_dev(vpp_t)
 dev_rw_vhost( vpp_t )
+dev_rw_generic_chr_files(vpp_t)
 
 domain_obj_id_change_exemption(vpp_t)
 
