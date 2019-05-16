@@ -321,6 +321,7 @@ vcl_cleanup_bapi (void)
 int
 vcl_session_read_ready (vcl_session_t * session)
 {
+  u8 *s_state = 0;
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
   if (PREDICT_FALSE (session->is_vep))
     {
@@ -336,9 +337,10 @@ vcl_session_read_ready (vcl_session_t * session)
 
       rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
 
+      s_state = format (s_state, "%U", vppcom_format_session_state, state);
       VDBG (1, "session %u [0x%llx]: not open! state 0x%x (%s), ret %d (%s)",
 	    session->session_index, session->vpp_handle, state,
-	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
+	    s_state, rv, vppcom_retval_str (rv));
       return rv;
     }
 
@@ -354,6 +356,7 @@ vcl_session_read_ready (vcl_session_t * session)
 int
 vcl_session_write_ready (vcl_session_t * session)
 {
+  u8 *s_state = 0;
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
   if (PREDICT_FALSE (session->is_vep))
     {
@@ -376,9 +379,10 @@ vcl_session_write_ready (vcl_session_t * session)
       int rv;
 
       rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
+      s_state = format (s_state, "%U", vppcom_format_session_state, state);
       VDBG (0, "session %u [0x%llx]: not open! state 0x%x (%s), ret %d (%s)",
 	    session->session_index, session->vpp_handle, state,
-	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
+	    s_state, rv, vppcom_retval_str (rv));
       return rv;
     }
 
