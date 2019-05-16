@@ -116,9 +116,10 @@ vlib_stats_register_error_index (u8 * notused, u64 * notused2, u64 notused3)
 {
 };
 
-void vlib_stats_pop_heap2 (void *, u32, void *) __attribute__ ((weak));
+void vlib_stats_pop_heap2 (void *, u32, void *, int) __attribute__ ((weak));
 void
-vlib_stats_pop_heap2 (void *notused, u32 notused2, void *notused3)
+vlib_stats_pop_heap2 (void *notused, u32 notused2, void *notused3,
+		      int notused4)
 {
 };
 
@@ -186,7 +187,7 @@ vlib_register_errors (vlib_main_t * vm,
   }
 
   /* (re)register the em->counters base address, switch back to main heap */
-  vlib_stats_pop_heap2 (em->counters, vm->thread_index, oldheap);
+  vlib_stats_pop_heap2 (em->counters, vm->thread_index, oldheap, 1);
 
   {
     elog_event_type_t t;

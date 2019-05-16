@@ -56,7 +56,7 @@ public:
      * Get pointer to actual data
      */
     double get_stat_segment_scalar_data() const;
-    uint64_t get_stat_segment_error_data() const;
+    uint64_t* get_stat_segment_error_data() const;
     uint64_t** get_stat_segment_simple_counter_data() const;
     vlib_counter_t** get_stat_segment_combined_counter_data() const;
 
@@ -77,7 +77,7 @@ public:
     union
     {
       double m_scalar_value;
-      uint64_t m_error_value;
+      counter_t* m_error_vec;
       counter_t** m_simple_counter_vec;
       vlib_counter_t** m_combined_counter_vec;
     };

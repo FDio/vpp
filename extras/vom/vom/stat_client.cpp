@@ -32,7 +32,7 @@ stat_client::stat_data_t::stat_data_t(const stat_segment_data_t& stat_seg_data)
       m_combined_counter_vec = stat_seg_data.combined_counter_vec;
       break;
     case STAT_DIR_TYPE_ERROR_INDEX:
-      m_error_value = stat_seg_data.error_value;
+      m_error_vec = stat_seg_data.error_vector;
       break;
     case STAT_DIR_TYPE_NAME_VECTOR:
       break;
@@ -59,10 +59,10 @@ stat_client::stat_data_t::get_stat_segment_scalar_data() const
   return m_scalar_value;
 }
 
-uint64_t
+uint64_t *
 stat_client::stat_data_t::get_stat_segment_error_data() const
 {
-  return m_error_value;
+  return m_error_vec;
 }
 
 uint64_t**

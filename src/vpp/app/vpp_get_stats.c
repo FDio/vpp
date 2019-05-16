@@ -80,7 +80,9 @@ stat_poll_loop (u8 ** patterns)
 	      break;
 
 	    case STAT_DIR_TYPE_ERROR_INDEX:
-	      fformat (stdout, "%llu %s\n", res[i].error_value, res[i].name);
+	      for (j = 0; j < vec_len (res[i].error_vector); j++)
+		fformat (stdout, "%llu %s\n", res[i].error_vector[j],
+			 res[i].name);
 	      break;
 
 	    case STAT_DIR_TYPE_SCALAR_INDEX:
@@ -213,7 +215,9 @@ reconnect:
 	      break;
 
 	    case STAT_DIR_TYPE_ERROR_INDEX:
-	      fformat (stdout, "%llu %s\n", res[i].error_value, res[i].name);
+	      for (j = 0; j < vec_len (res[i].error_vector); j++)
+		fformat (stdout, "[@%d] %llu %s\n", j, res[i].error_vector[j],
+			 res[i].name);
 	      break;
 
 	    case STAT_DIR_TYPE_SCALAR_INDEX:
