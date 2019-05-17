@@ -1539,7 +1539,7 @@ snat_ipfix_flush_from_main (void)
     }
 
   /* Trigger flush for each worker thread */
-  for (i = 1; i < vec_len (silm->worker_vms); i++)
+  for (i = 0; i < vec_len (silm->worker_vms); i++)
     {
       worker_vm = silm->worker_vms[i];
       if (worker_vm)
