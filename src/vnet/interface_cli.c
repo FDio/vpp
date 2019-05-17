@@ -304,6 +304,7 @@ show_sw_interfaces (vlib_main_t * vm,
 	    verbose = 1;
 	  else
 	    {
+	      vec_free (sorted_sis);
 	      error = clib_error_return (0, "unknown input `%U'",
 					 format_unformat_error, linput);
 	      goto done;
@@ -314,7 +315,10 @@ show_sw_interfaces (vlib_main_t * vm,
   if (show_features || show_tag)
     {
       if (sw_if_index == ~(u32) 0)
-	return clib_error_return (0, "Interface not specified...");
+	{
+	  vec_free (sorted_sis);
+	  return clib_error_return (0, "Interface not specified...");
+	}
     }
 
   if (show_features)
@@ -335,6 +339,7 @@ show_sw_interfaces (vlib_main_t * vm,
 	vlib_cli_output (vm, "%10s (%s)", "VTR", "--internal--");
       vlib_cli_output (vm, "%U", format_l2_output_features,
 		       l2_output->feature_bitmap, 1);
+      vec_free (sorted_sis);
       return 0;
     }
   if (show_tag)
@@ -344,6 +349,7 @@ show_sw_interfaces (vlib_main_t * vm,
       vlib_cli_output (vm, "%U: %s",
 		       format_vnet_sw_if_index_name, vnm, sw_if_index,
 		       tag ? (char *) tag : "(none)");
+      vec_free (sorted_sis);
       return 0;
     }
 
@@ -497,42 +503,24 @@ clear_interface_counters (vlib_main_t * vm,
   vnet_interface_main_t *im = &vnm->interface_main;
   vlib_simple_counter_main_t *sm;
   vlib_combined_counter_main_t *cm;
-  static vnet_main_t **my_vnet_mains;
-  int i, j, n_counters;
-
-  vec_reset_length (my_vnet_mains);
-
-  for (i = 0; i < vec_len (vnet_mains); i++)
-    {
-      if (vnet_mains[i])
-	vec_add1 (my_vnet_mains, vnet_mains[i]);
-    }
-
-  if (vec_len (vnet_mains) == 0)
-    vec_add1 (my_vnet_mains, vnm);
+  int j, n_counters;
 
   n_counters = vec_len (im->combined_sw_if_counters);
 
   for (j = 0; j < n_counters; j++)
     {
-      for (i = 0; i < vec_len (my_vnet_mains); i++)
-	{
-	  im = &my_vnet_mains[i]->interface_main;
-	  cm = im->combined_sw_if_counters + j;
-	  vlib_clear_combined_counters (cm);
-	}
+      im = &vnm->interface_main;
+      cm = im->combined_sw_if_counters + j;
+      vlib_clear_combined_counters (cm);
     }
 
   n_counters = vec_len (im->sw_if_counters);
 
   for (j = 0; j < n_counters; j++)
     {
-      for (i = 0; i < vec_len (my_vnet_mains); i++)
-	{
-	  im = &my_vnet_mains[i]->interface_main;
-	  sm = im->sw_if_counters + j;
-	  vlib_clear_simple_counters (sm);
-	}
+      im = &vnm->interface_main;
+      sm = im->sw_if_counters + j;
+      vlib_clear_simple_counters (sm);
     }
 
   return 0;

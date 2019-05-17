@@ -41,7 +41,6 @@
 #include <vnet/ip/ip.h>
 
 vnet_main_t vnet_main;
-vnet_main_t **vnet_mains;
 
 vnet_main_t *
 vnet_get_main (void)

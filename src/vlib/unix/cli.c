@@ -3603,6 +3603,15 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
 	  goto done;
 	}
 
+      if (cf->has_history == 0)
+	{
+	  int i;
+	  for (i = 0; i < vec_len (cf->command_history); i++)
+	    vec_free (cf->command_history[i]);
+	  vec_free (cf->command_history);
+	  goto done;
+	}
+
       /* If we reduced history size, or turned it off, purge the history */
       limit = cf->has_history ? cf->history_limit : 0;
 
