@@ -552,6 +552,31 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 					parent_command_index);
       unformat_free (&sub_input);
     }
+  else if (unformat (input, "leak-check %U",
+		     unformat_vlib_cli_sub_input, &sub_input))
+    {
+      u8 *leak_report;
+      clib_mem_trace (1);
+      error =
+	vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
+					parent_command_index);
+      unformat_free (&sub_input);
+
+      /* Otherwise, the clib_error_t shows up as a leak... */
+      if (error)
+	{
+	  vlib_cli_output (vm, "%v", error->what);
+	  clib_error_free (error);
+	  error = 0;
+	}
+
+      (void) clib_mem_trace_enable_disable (0);
+      leak_report = format (0, "%U", format_mheap, clib_mem_get_heap (),
+			    1 /* verbose, i.e. print leaks */ );
+      clib_mem_trace (0);
+      vlib_cli_output (vm, "%v", leak_report);
+      vec_free (leak_report);
+    }
 
   else
     if (unformat_user (input, unformat_vlib_cli_sub_command, vm, parent, &c))
