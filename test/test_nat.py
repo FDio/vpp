@@ -23,7 +23,6 @@ from util import ip4_range
 from vpp_papi import mac_pton
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
-from vpp_papi_provider import SYSLOG_SEVERITY
 from io import BytesIO
 from vpp_papi import VppEnum
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
@@ -75,6 +74,10 @@ class MethodHolder(VppTestCase):
     def config_flags(self):
         return VppEnum.vl_api_nat_config_flags_t
 
+    @property
+    def SYSLOG_SEVERITY(self):
+        return VppEnum.vl_api_syslog_severity_t
+
     def clear_nat44(self):
         """
         Clear NAT44 configuration.
@@ -121,7 +124,8 @@ class MethodHolder(VppTestCase):
         self.ipfix_src_port = 4739
         self.ipfix_domain_id = 1
 
-        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.EMERG)
+        self.vapi.syslog_set_filter(
+            self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_EMERG)
 
         self.vapi.nat_ha_set_listener(ip_address='0.0.0.0', port=0,
                                       path_mtu=512)
@@ -2964,7 +2968,8 @@ class TestNAT44(MethodHolder):
 
     def test_syslog_apmap(self):
         """ Test syslog address and port mapping creation and deletion """
-        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
+        self.vapi.syslog_set_filter(
+            self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_INFO)
         self.vapi.syslog_set_sender(self.pg3.local_ip4n, self.pg3.remote_ip4n)
         self.nat44_add_address(self.nat_addr)
         flags = self.config_flags.NAT_IS_INSIDE
@@ -6848,7 +6853,8 @@ class TestNAT44EndpointDependent(MethodHolder):
 
     def test_syslog_sess(self):
         """ Test syslog session creation and deletion """
-        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
+        self.vapi.syslog_set_filter(
+            self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_INFO)
         self.vapi.syslog_set_sender(self.pg2.local_ip4n, self.pg2.remote_ip4n)
         self.nat44_add_address(self.nat_addr)
         flags = self.config_flags.NAT_IS_INSIDE
@@ -9034,7 +9040,8 @@ class TestNAT64(MethodHolder):
                                           sw_if_index=self.pg0.sw_if_index)
         self.vapi.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
-        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
+        self.vapi.syslog_set_filter(
+            self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_INFO)
         self.vapi.syslog_set_sender(self.pg3.local_ip4n, self.pg3.remote_ip4n)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
@@ -9074,7 +9081,8 @@ class TestNAT64(MethodHolder):
         self.ipfix_src_port = 4739
         self.ipfix_domain_id = 1
 
-        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.EMERG)
+        self.vapi.syslog_set_filter(
+            self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_EMERG)
 
         self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
                                    tcp_transitory=240, icmp=60)

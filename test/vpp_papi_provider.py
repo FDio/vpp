@@ -15,24 +15,6 @@ from hook import Hook
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
 
-class QOS_SOURCE:
-    EXT = 0
-    VLAN = 1
-    MPLS = 2
-    IP = 3
-
-
-class SYSLOG_SEVERITY:
-    EMERG = 0
-    ALERT = 1
-    CRIT = 2
-    ERR = 3
-    WARN = 4
-    NOTICE = 5
-    INFO = 6
-    DBG = 7
-
-
 #
 # Dictionary keyed on message name to override default values for
 # named parameters
