@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4e4012_1b512d56",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2019-05-17T16:10:52Z",
+      "side": 1,
+      "message": "Leave out MLX DPDK driver and change warding to MLX5 if this applies to the current RDMA external driver for MLX5.",
+      "revId": "89dae3b0351db16b47f5fc8af8368e817d9f57cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
