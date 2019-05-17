@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
-SPHINXPROJ    = fdio-firstcut
+SPHINXPROJ    = fdio-vpp
 SOURCEDIR     = .
 BUILDDIR      = _build
 
