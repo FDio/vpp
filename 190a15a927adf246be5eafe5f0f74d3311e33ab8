@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5d6f1af7_34b96b0f",
+        "filename": "src/vcl/vcl_test.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-17T17:12:02Z",
+      "side": 1,
+      "message": "If rv \u003e nbytes, obviously it shouldn\u0027t but this is a test program, then nbytes_left is a large positive number.",
+      "range": {
+        "startLine": 486,
+        "startChar": 2,
+        "endLine": 486,
+        "endChar": 10
+      },
+      "revId": "190a15a927adf246be5eafe5f0f74d3311e33ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fb3bb0a4_ec4b0cde",
+        "filename": "src/vcl/vcl_test_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-17T17:12:02Z",
+      "side": 1,
+      "message": "Move this if to vtc_connect_test_sessions. That is, keep the init function protocol agnostic.",
+      "range": {
+        "startLine": 339,
+        "startChar": 0,
+        "endLine": 340,
+        "endChar": 46
+      },
+      "revId": "190a15a927adf246be5eafe5f0f74d3311e33ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9cc9fec2_7275cdf8",
+        "filename": "src/vcl/vcl_test_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1117,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-17T17:12:02Z",
+      "side": 1,
+      "message": "I guess you can move this down to what\u0027s now line 1136, not to have that many \"if(quic)\" spread throughout the code",
+      "range": {
+        "startLine": 1114,
+        "startChar": 0,
+        "endLine": 1117,
+        "endChar": 54
+      },
+      "revId": "190a15a927adf246be5eafe5f0f74d3311e33ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "295b53ed_68277275",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1014,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-17T17:12:02Z",
+      "side": 1,
+      "message": "Maybe add a \"vcl_proto_is_dgram ()\"?",
+      "range": {
+        "startLine": 1014,
+        "startChar": 21,
+        "endLine": 1014,
+        "endChar": 77
+      },
+      "revId": "190a15a927adf246be5eafe5f0f74d3311e33ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "23b4df37_b40f816d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1511,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-17T17:12:02Z",
+      "side": 1,
+      "message": "I guess this should be a VDBG?",
+      "range": {
+        "startLine": 1511,
+        "startChar": 2,
+        "endLine": 1511,
+        "endChar": 14
+      },
+      "revId": "190a15a927adf246be5eafe5f0f74d3311e33ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
