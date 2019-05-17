@@ -3603,14 +3603,21 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
 	  goto done;
 	}
 
-      /* If we reduced history size, or turned it off, purge the history */
-      limit = cf->has_history ? cf->history_limit : 0;
+    }
 
-      while (cf->command_history && vec_len (cf->command_history) >= limit)
-	{
-	  vec_free (cf->command_history[0]);
-	  vec_delete (cf->command_history, 1, 0);
-	}
+  /* If we reduced history size, or turned it off, purge the history */
+  limit = cf->has_history ? cf->history_limit : 0;
+  if (limit < vec_len (cf->command_history))
+    {
+      u32 i;
+
+      /* How many items to remove from the start of history */
+      limit = vec_len (cf->command_history) - limit;
+
+      for (i = 0; i < limit; i++)
+	vec_free (cf->command_history[i]);
+
+      vec_delete (cf->command_history, limit, 0);
     }
 
 done:
