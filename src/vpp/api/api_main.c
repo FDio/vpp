@@ -59,7 +59,7 @@ api_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (api_main_init);
+VLIB_MAIN_LOOP_ENTER_FUNCTION (api_main_init);
 
 void
 vat_plugin_hash_create (void)
