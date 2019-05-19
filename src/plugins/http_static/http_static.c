@@ -26,6 +26,8 @@
 /* define message IDs */
 #include <http_static/http_static_msg_enum.h>
 
+#include <vpp/api/types.h>
+
 /* define message structures */
 #define vl_typedefs
 #include <http_static/http_static_all_api_h.h>
@@ -65,13 +67,16 @@ static void vl_api_http_static_enable_t_handler
   http_static_main_t *hmp = &http_static_main;
   int rv;
 
-  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
-  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
+  // mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
+  // mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
 
   rv = http_static_server_enable_api
-    (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
+    (ntohl (mp->fifo_size),
+     ntohl (mp->cache_size_limit),
      ntohl (mp->prealloc_fifos),
-     ntohl (mp->private_segment_size), mp->www_root, mp->uri);
+     ntohl (mp->private_segment_size),
+     vl_api_from_api_string (&mp->www_root),
+     vl_api_from_api_string (&mp->uri));
 
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_REPLY);
 }
