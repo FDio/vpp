@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b7061fc1_fd635e0b",
+        "filename": "src/vnet/ipsec/ah_encrypt.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-05-20T12:22:52Z",
+      "side": 1,
+      "message": "prefetch counter here and increment later.",
+      "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "43b2aa3d_4d623460",
+        "filename": "src/vnet/ipsec/ah_encrypt.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-05-20T12:22:52Z",
+      "side": 1,
+      "message": "can we set this in the previous loop, so we don\u0027t need to reload the SA in this loop? or save it on the pd?",
+      "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7eddb634_2d6d16f2",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-05-20T12:22:52Z",
+      "side": 1,
+      "message": "check for v6 tunnel here.",
+      "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2112bf2b_ed4f7d5e",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-05-20T12:22:52Z",
+      "side": 1,
+      "message": "can we keep the union?",
+      "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
