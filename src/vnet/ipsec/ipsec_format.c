@@ -155,6 +155,7 @@ u8 *
 format_ipsec_policy (u8 * s, va_list * args)
 {
   u32 pi = va_arg (*args, u32);
+  ip46_type_t ip_type = IP46_TYPE_IP4;
   ipsec_main_t *im = &ipsec_main;
   ipsec_policy_t *p;
   vlib_counter_t counts;
@@ -177,15 +178,19 @@ format_ipsec_policy (u8 * s, va_list * args)
     {
       s = format (s, " sa %u", p->sa_id);
     }
+  if (p->is_ipv6)
+    {
+      ip_type = IP46_TYPE_IP6;
+    }
 
   s = format (s, "\n     local addr range %U - %U port range %u - %u",
-	      format_ip46_address, &p->laddr.start, IP46_TYPE_ANY,
-	      format_ip46_address, &p->laddr.stop, IP46_TYPE_ANY,
+	      format_ip46_address, &p->laddr.start, ip_type,
+	      format_ip46_address, &p->laddr.stop, ip_type,
 	      clib_net_to_host_u16 (p->lport.start),
 	      clib_net_to_host_u16 (p->lport.stop));
   s = format (s, "\n     remote addr range %U - %U port range %u - %u",
-	      format_ip46_address, &p->raddr.start, IP46_TYPE_ANY,
-	      format_ip46_address, &p->raddr.stop, IP46_TYPE_ANY,
+	      format_ip46_address, &p->raddr.start, ip_type,
+	      format_ip46_address, &p->raddr.stop, ip_type,
 	      clib_net_to_host_u16 (p->rport.start),
 	      clib_net_to_host_u16 (p->rport.stop));
 
