@@ -66,9 +66,11 @@ geneve_encap_inline (vlib_main_t * vm,
   u32 next0 = 0, next1 = 0;
   vnet_hw_interface_t *hi0, *hi1;
   geneve_tunnel_t *t0 = NULL, *t1 = NULL;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
@@ -83,7 +85,6 @@ geneve_encap_inline (vlib_main_t * vm,
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
 	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
 	  u32 flow_hash0, flow_hash1;
 	  u32 len0, len1;
 	  ip4_header_t *ip4_0, *ip4_1;
@@ -98,16 +99,13 @@ geneve_encap_inline (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_prefetch_buffer_header (b[2], LOAD);
+	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[2]->data - CLIB_CACHE_LINE_BYTES,
+			   2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[3]->data - CLIB_CACHE_LINE_BYTES,
+			   2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -119,16 +117,13 @@ geneve_encap_inline (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-	  flow_hash0 = vnet_l2_compute_flow_hash (b0);
-	  flow_hash1 = vnet_l2_compute_flow_hash (b1);
+	  flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
+	  flow_hash1 = vnet_l2_compute_flow_hash (b[1]);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
+	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
 	    {
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	      hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may be set to drop */
@@ -137,12 +132,12 @@ geneve_encap_inline (vlib_main_t * vm,
 
 	  ASSERT (t0 != NULL);
 
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index1 != vnet_buffer (b1)->sw_if_index[VLIB_TX])
+	  if (sw_if_index1 != vnet_buffer (b[1])->sw_if_index[VLIB_TX])
 	    {
-	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+	      sw_if_index1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
 	      hi1 = vnet_get_sup_hw_interface (vnm, sw_if_index1);
 	      t1 = &vxm->tunnels[hi1->dev_instance];
 	      /* Note: change to always set next1 if it may be set to drop */
@@ -151,11 +146,11 @@ geneve_encap_inline (vlib_main_t * vm,
 
 	  ASSERT (t1 != NULL);
 
-	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
+	  vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
 
 	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
-	  vlib_buffer_advance (b0, -(word) _vec_len (t0->rewrite));
-	  vlib_buffer_advance (b1, -(word) _vec_len (t1->rewrite));
+	  vlib_buffer_advance (b[0], -(word) _vec_len (t0->rewrite));
+	  vlib_buffer_advance (b[1], -(word) _vec_len (t1->rewrite));
 
 	  if (is_ip4)
 	    {
@@ -171,8 +166,8 @@ geneve_encap_inline (vlib_main_t * vm,
 	      ASSERT (vec_len (t0->rewrite) == ip4_geneve_header_total_len0);
 	      ASSERT (vec_len (t1->rewrite) == ip4_geneve_header_total_len1);
 
-	      ip4_0 = vlib_buffer_get_current (b0);
-	      ip4_1 = vlib_buffer_get_current (b1);
+	      ip4_0 = vlib_buffer_get_current (b[0]);
+	      ip4_1 = vlib_buffer_get_current (b[1]);
 
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip4_0;
@@ -197,14 +192,14 @@ geneve_encap_inline (vlib_main_t * vm,
 	      /* Fix the IP4 checksum and length */
 	      sum0 = ip4_0->checksum;
 	      new_l0 =		/* old_l0 always 0, see the rewrite setup */
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]));
 	      sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
 				     length /* changed member */ );
 	      ip4_0->checksum = ip_csum_fold (sum0);
 	      ip4_0->length = new_l0;
 	      sum1 = ip4_1->checksum;
 	      new_l1 =		/* old_l1 always 0, see the rewrite setup */
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[1]));
 	      sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
 				     length /* changed member */ );
 	      ip4_1->checksum = ip_csum_fold (sum1);
@@ -213,13 +208,13 @@ geneve_encap_inline (vlib_main_t * vm,
 	      /* Fix UDP length and set source port */
 	      udp0 = (udp_header_t *) (ip4_0 + 1);
 	      new_l0 =
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]) -
 				      sizeof (*ip4_0));
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
 	      udp1 = (udp_header_t *) (ip4_1 + 1);
 	      new_l1 =
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1) -
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[1]) -
 				      sizeof (*ip4_1));
 	      udp1->length = new_l1;
 	      udp1->src_port = flow_hash1;
@@ -240,8 +235,8 @@ geneve_encap_inline (vlib_main_t * vm,
 	      ASSERT (vec_len (t0->rewrite) == ip6_geneve_header_total_len0);
 	      ASSERT (vec_len (t1->rewrite) == ip6_geneve_header_total_len1);
 
-	      ip6_0 = vlib_buffer_get_current (b0);
-	      ip6_1 = vlib_buffer_get_current (b1);
+	      ip6_0 = vlib_buffer_get_current (b[0]);
+	      ip6_1 = vlib_buffer_get_current (b[1]);
 
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip6_0;
@@ -257,11 +252,11 @@ geneve_encap_inline (vlib_main_t * vm,
 #undef _
 	      /* Fix IP6 payload length */
 	      new_l0 =
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0])
 				      - sizeof (*ip6_0));
 	      ip6_0->payload_length = new_l0;
 	      new_l1 =
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[1])
 				      - sizeof (*ip6_1));
 	      ip6_1->payload_length = new_l1;
 
@@ -274,13 +269,13 @@ geneve_encap_inline (vlib_main_t * vm,
 	      udp1->src_port = flow_hash1;
 
 	      /* IPv6 UDP checksum is mandatory */
-	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0,
+	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b[0],
 								  ip6_0,
 								  &bogus);
 	      ASSERT (bogus == 0);
 	      if (udp0->checksum == 0)
 		udp0->checksum = 0xffff;
-	      udp1->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b1,
+	      udp1->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b[1],
 								  ip6_1,
 								  &bogus);
 	      ASSERT (bogus == 0);
@@ -289,8 +284,8 @@ geneve_encap_inline (vlib_main_t * vm,
 	    }
 
 	  pkts_encapsulated += 2;
-	  len0 = vlib_buffer_length_in_chain (vm, b0);
-	  len1 = vlib_buffer_length_in_chain (vm, b1);
+	  len0 = vlib_buffer_length_in_chain (vm, b[0]);
+	  len1 = vlib_buffer_length_in_chain (vm, b[1]);
 	  stats_n_packets += 2;
 	  stats_n_bytes += len0 + len1;
 
@@ -325,21 +320,22 @@ geneve_encap_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      geneve_encap_trace_t *tr =
-		vlib_add_trace (vm, node, b0, sizeof (*tr));
+		vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	      tr->tunnel_index = t0 - vxm->tunnels;
 	      tr->vni = t0->vni;
 	    }
 
-	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	  if (PREDICT_FALSE (b[1]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      geneve_encap_trace_t *tr =
-		vlib_add_trace (vm, node, b1, sizeof (*tr));
+		vlib_add_trace (vm, node, b[1], sizeof (*tr));
 	      tr->tunnel_index = t1 - vxm->tunnels;
 	      tr->vni = t1->vni;
 	    }
+	  b += 2;
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -349,7 +345,6 @@ geneve_encap_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
-	  vlib_buffer_t *b0;
 	  u32 flow_hash0;
 	  u32 len0;
 	  ip4_header_t *ip4_0;
@@ -367,23 +362,21 @@ geneve_encap_inline (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  flow_hash0 = vnet_l2_compute_flow_hash (b0);
+	  flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
+	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
 	    {
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	      hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may be set to drop */
 	      next0 = t0->next_dpo.dpoi_next_node;
 	    }
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
 	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
-	  vlib_buffer_advance (b0, -(word) _vec_len (t0->rewrite));
+	  vlib_buffer_advance (b[0], -(word) _vec_len (t0->rewrite));
 
 	  if (is_ip4)
 	    {
@@ -396,7 +389,7 @@ geneve_encap_inline (vlib_main_t * vm,
 #endif
 	      ASSERT (vec_len (t0->rewrite) == ip4_geneve_header_total_len0);
 
-	      ip4_0 = vlib_buffer_get_current (b0);
+	      ip4_0 = vlib_buffer_get_current (b[0]);
 
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip4_0;
@@ -413,7 +406,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	      /* Fix the IP4 checksum and length */
 	      sum0 = ip4_0->checksum;
 	      new_l0 =		/* old_l0 always 0, see the rewrite setup */
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]));
 	      sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
 				     length /* changed member */ );
 	      ip4_0->checksum = ip_csum_fold (sum0);
@@ -422,7 +415,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	      /* Fix UDP length and set source port */
 	      udp0 = (udp_header_t *) (ip4_0 + 1);
 	      new_l0 =
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]) -
 				      sizeof (*ip4_0));
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
@@ -441,7 +434,7 @@ geneve_encap_inline (vlib_main_t * vm,
 #endif
 	      ASSERT (vec_len (t0->rewrite) == ip6_geneve_header_total_len0);
 
-	      ip6_0 = vlib_buffer_get_current (b0);
+	      ip6_0 = vlib_buffer_get_current (b[0]);
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip6_0;
 	      copy_src0 = (u64 *) t0->rewrite;
@@ -451,7 +444,7 @@ geneve_encap_inline (vlib_main_t * vm,
 #undef _
 	      /* Fix IP6 payload length */
 	      new_l0 =
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0])
 				      - sizeof (*ip6_0));
 	      ip6_0->payload_length = new_l0;
 
@@ -461,7 +454,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	      udp0->src_port = flow_hash0;
 
 	      /* IPv6 UDP checksum is mandatory */
-	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0,
+	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b[0],
 								  ip6_0,
 								  &bogus);
 	      ASSERT (bogus == 0);
@@ -470,7 +463,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	    }
 
 	  pkts_encapsulated++;
-	  len0 = vlib_buffer_length_in_chain (vm, b0);
+	  len0 = vlib_buffer_length_in_chain (vm, b[0]);
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
 
@@ -492,13 +485,15 @@ geneve_encap_inline (vlib_main_t * vm,
 	      stats_sw_if_index = sw_if_index0;
 	    }
 
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      geneve_encap_trace_t *tr =
-		vlib_add_trace (vm, node, b0, sizeof (*tr));
+		vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	      tr->tunnel_index = t0 - vxm->tunnels;
 	      tr->vni = t0->vni;
 	    }
+	  b += 1;
+
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, next0);
