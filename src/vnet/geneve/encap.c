@@ -103,11 +103,13 @@ geneve_encap_inline (vlib_main_t * vm,
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+	    vlib_prefetch_buffer_header (p2, STORE);
+	    vlib_prefetch_buffer_header (p3, STORE);
 
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data - CLIB_CACHE_LINE_BYTES,
+			   2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p3->data - CLIB_CACHE_LINE_BYTES,
+			   2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  bi0 = from[0];
