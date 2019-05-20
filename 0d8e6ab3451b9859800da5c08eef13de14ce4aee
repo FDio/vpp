@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6f6431d3_c97f968c",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-20T18:06:22Z",
+      "side": 1,
+      "message": "Do you want to take in a sw_if_index to filter on so that the list doesn\u0027t need to be iterated over client side?",
+      "range": {
+        "startLine": 392,
+        "startChar": 7,
+        "endLine": 392,
+        "endChar": 32
+      },
+      "revId": "0d8e6ab3451b9859800da5c08eef13de14ce4aee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffd83123_47239372",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-20T18:06:22Z",
+      "side": 1,
+      "message": "why did you select the value of 17?",
+      "range": {
+        "startLine": 469,
+        "startChar": 68,
+        "endLine": 469,
+        "endChar": 76
+      },
+      "revId": "0d8e6ab3451b9859800da5c08eef13de14ce4aee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b6ff26b_2046a5da",
+        "filename": "test/vpp_ipip_tun_interface.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-20T18:06:22Z",
+      "side": 1,
+      "message": "If you need unicode, after the imports, we need to add:\ntry:\n    text_type \u003d unicode\nexcept NameError:\n    text_type \u003d str",
+      "range": {
+        "startLine": 12,
+        "startChar": 30,
+        "endLine": 12,
+        "endChar": 37
+      },
+      "revId": "0d8e6ab3451b9859800da5c08eef13de14ce4aee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
