@@ -42,6 +42,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/elf_clib.h>
+#include <vppinfra/callback.h>
 
 /* Generic definitions. */
 #include <vlib/defs.h>
