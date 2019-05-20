@@ -99,6 +99,7 @@ set(VPPINFRA_HEADERS
   bitops.h
   byte_order.h
   cache.h
+  callback.h
   clib_error.h
   clib.h
   cpu.h
