@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f51ead10_86c8e30c",
+        "filename": "src/plugins/crypto_openssl/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2019-05-20T12:03:11Z",
+      "side": 1,
+      "message": "Also, iv_length can be obtained from crypto-\u003eiv_len.\nNot sure about why it was hardcoded before and is it really need to be hardcoded for future",
+      "range": {
+        "startLine": 73,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 29
+      },
+      "revId": "95b8ed71a49a3e89d556aa5d44f52f1c2c48b504",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
