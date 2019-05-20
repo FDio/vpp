@@ -157,7 +157,7 @@ class QUICTestCase(VppTestCase):
                 raise
         if error:
             raise Exception(
-                "Timeout! Client worker did not finish in %ss" % timeout)
+                "Timeout! Client worker did not finish in %ss" % self.timeout)
         self.assert_equal(self.worker_client.result, 0,
                           "Binary test return code")
 
@@ -266,6 +266,11 @@ class QUICExternalEchoIPv4TestCase(QUICTestCase):
     """ QUIC External Echo IPv4 Transfer Test Cases """
 
     @classmethod
+    def setUpConstants(cls):
+        super(QUICExternalEchoIPv4TestCase, cls).setUpConstants()
+        cls.vpp_cmdline.extend(["session", "{", "evt_qs_memfd_seg", "}"])
+
+    @classmethod
     def setUpClass(cls):
         super(QUICExternalEchoIPv4TestCase, cls).setUpClass()
 
@@ -289,10 +294,11 @@ class QUICExternalEchoIPv4TestCase(QUICTestCase):
         """ QUIC external echo client/server transfer """
 
         self.external_ipv4_transfer_test(self.server_echo_test_args +
-                                         ["socket-name", self.api_sock],
+                                         ["socket-name", self.api_sock,
+                                          "server"],
                                          self.client_echo_test_args +
                                          ["socket-name", self.api_sock,
-                                          "mbytes", "10"])
+                                          "client", "mbytes", "10"])
 
 
 if __name__ == '__main__':
