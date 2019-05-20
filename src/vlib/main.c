@@ -687,9 +687,9 @@ vlib_node_runtime_perf_counter (vlib_main_t * vm, u64 * pmc0, u64 * pmc1,
 {
   *pmc0 = 0;
   *pmc1 = 0;
-  if (PREDICT_FALSE (vm->vlib_node_runtime_perf_counter_cb != 0))
-    (*vm->vlib_node_runtime_perf_counter_cb) (vm, pmc0, pmc1, node,
-					      frame, before_or_after);
+  if (PREDICT_FALSE (vec_len (vm->vlib_node_runtime_perf_counter_cbs) != 0))
+    clib_call_callbacks (vm->vlib_node_runtime_perf_counter_cbs, vm, pmc0,
+			 pmc1, node, frame, before_or_after);
 }
 
 always_inline void
@@ -1760,9 +1760,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	      else
 		frame_queue_check_counter--;
 	    }
-	  if (PREDICT_FALSE (vm->worker_thread_main_loop_callback != 0))
-	    ((void (*)(vlib_main_t *)) vm->worker_thread_main_loop_callback)
-	      (vm);
+	  if (PREDICT_FALSE (vec_len (vm->worker_thread_main_loop_callbacks)))
+	    clib_call_callbacks (vm->worker_thread_main_loop_callbacks, vm);
 	}
 
       /* Process pre-input nodes. */
