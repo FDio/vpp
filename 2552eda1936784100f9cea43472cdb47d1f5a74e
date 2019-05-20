@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "00442bad_0494aedc",
+        "filename": "src/vnet/vxlan-gbp/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-05-20T12:00:21Z",
+      "side": 1,
+      "message": "This should probably use STORE instead of LOAD too as we modify headers",
+      "range": {
+        "startLine": 127,
+        "startChar": 33,
+        "endLine": 127,
+        "endChar": 37
+      },
+      "revId": "2552eda1936784100f9cea43472cdb47d1f5a74e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
