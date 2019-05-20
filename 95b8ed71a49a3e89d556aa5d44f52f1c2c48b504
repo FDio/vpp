@@ -22,6 +22,30 @@
       "revId": "95b8ed71a49a3e89d556aa5d44f52f1c2c48b504",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2f26c2ec_05b2d4da",
+        "filename": "src/plugins/crypto_openssl/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-05-20T13:11:27Z",
+      "side": 1,
+      "message": "iv_len is no longer a member of vnet_crypto_op_t. Since the cipher type fully specifies the IV length it\u0027s an unnecessary instruction to set it in the data-plane.",
+      "parentUuid": "f51ead10_86c8e30c",
+      "range": {
+        "startLine": 73,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 29
+      },
+      "revId": "95b8ed71a49a3e89d556aa5d44f52f1c2c48b504",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
