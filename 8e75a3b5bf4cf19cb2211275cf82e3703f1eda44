@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7e0eaae9_f7d55360",
+        "filename": "src/vppinfra/callback.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1516
+      },
+      "writtenOn": "2019-05-20T22:59:28Z",
+      "side": 1,
+      "message": "This is not thread safe - one thread can be reading the list during a realloc by another.",
+      "revId": "8e75a3b5bf4cf19cb2211275cf82e3703f1eda44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
