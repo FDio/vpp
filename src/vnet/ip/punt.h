@@ -24,9 +24,10 @@
 #include <stdbool.h>
 #include <vnet/ip/ip.h>
 
-#define foreach_punt_type \
-  _(L4, "l4")             \
-  _(EXCEPTION, "exception")
+#define foreach_punt_type                       \
+  _(L4, "l4")                                   \
+  _(EXCEPTION, "exception")                     \
+  _(IP_PROTO, "ip-proto")
 
 typedef enum punt_type_t_
 {
@@ -42,6 +43,12 @@ typedef struct punt_l4_t_
   u16 port;
 } punt_l4_t;
 
+typedef struct punt_ip_proto_t_
+{
+  ip_address_family_t af;
+  ip_protocol_t protocol;
+} punt_ip_proto_t;
+
 typedef struct punt_exception_t_
 {
   vlib_punt_reason_t reason;
@@ -51,6 +58,7 @@ typedef struct punt_union_t_
 {
   punt_exception_t exception;
   punt_l4_t l4;
+  punt_ip_proto_t ip_proto;
 } punt_union_t;
 
 typedef struct punt_reg_t_
@@ -100,6 +108,7 @@ typedef struct punt_client_db_t_
 {
   void *clients_by_l4_port;
   u32 *clients_by_exception;
+  void *clients_by_ip_proto;
 } punt_client_db_t;
 
 typedef struct
@@ -146,6 +155,28 @@ punt_client_l4_get (ip_address_family_t af, u16 port)
   return (NULL);
 }
 
+static_always_inline u32
+punt_client_ip_proto_mk_key (ip_address_family_t af, ip_protocol_t proto)
+{
+  return (af << 16 | proto);
+}
+
+static_always_inline punt_client_t *
+punt_client_ip_proto_get (ip_address_family_t af, ip_protocol_t proto)
+{
+  punt_main_t *pm = &punt_main;
+  uword *p;
+
+  p =
+    hash_get (pm->db.clients_by_ip_proto,
+	      punt_client_ip_proto_mk_key (af, proto));
+
+  if (p)
+    return (pool_elt_at_index (pm->punt_client_pool, p[0]));
+
+  return (NULL);
+}
+
 static_always_inline punt_client_t *
 punt_client_exception_get (vlib_punt_reason_t reason)
 {
@@ -167,6 +198,8 @@ extern vlib_node_registration_t udp4_punt_node;
 extern vlib_node_registration_t udp6_punt_node;
 extern vlib_node_registration_t udp4_punt_socket_node;
 extern vlib_node_registration_t udp6_punt_socket_node;
+extern vlib_node_registration_t ip4_proto_punt_socket_node;
+extern vlib_node_registration_t ip6_proto_punt_socket_node;
 extern vlib_node_registration_t punt_socket_rx_node;
 
 #endif

@@ -286,13 +286,29 @@ punt_socket_inline (vlib_main_t * vm,
 	      udp = (udp_header_t *) (ip + 1);
 	    }
 
-	  u16 port = clib_net_to_host_u16 (udp->dst_port);
-
 	  /*
 	   * Find registerered client
 	   * If no registered client, drop packet and count
 	   */
-	  c = punt_client_l4_get (af, port);
+	  c = punt_client_l4_get (af, clib_net_to_host_u16 (udp->dst_port));
+	}
+      else if (PUNT_TYPE_IP_PROTO == pt)
+	{
+	  /* Reverse UDP Punt advance */
+	  ip_protocol_t proto;
+
+	  if (AF_IP4 == af)
+	    {
+	      ip4_header_t *ip = vlib_buffer_get_current (b);
+	      proto = ip->protocol;
+	    }
+	  else
+	    {
+	      ip6_header_t *ip = vlib_buffer_get_current (b);
+	      proto = ip->protocol;
+	    }
+
+	  c = punt_client_ip_proto_get (af, proto);
 	}
       else if (PUNT_TYPE_EXCEPTION == pt)
 	{
@@ -391,6 +407,22 @@ udp6_punt_socket (vlib_main_t * vm,
 }
 
 static uword
+ip4_proto_punt_socket (vlib_main_t * vm,
+		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+{
+  return punt_socket_inline (vm, node, from_frame,
+			     PUNT_TYPE_IP_PROTO, AF_IP4);
+}
+
+static uword
+ip6_proto_punt_socket (vlib_main_t * vm,
+		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+{
+  return punt_socket_inline (vm, node, from_frame,
+			     PUNT_TYPE_IP_PROTO, AF_IP6);
+}
+
+static uword
 exception_punt_socket (vlib_main_t * vm,
 		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
@@ -413,6 +445,25 @@ VLIB_REGISTER_NODE (udp4_punt_socket_node) = {
 VLIB_REGISTER_NODE (udp6_punt_socket_node) = {
   .function = udp6_punt_socket,
   .name = "ip6-udp-punt-socket",
+  .format_trace = format_udp_punt_trace,
+  .flags = VLIB_NODE_FLAG_IS_DROP,
+  .vector_size = sizeof (u32),
+  .n_errors = PUNT_N_ERROR,
+  .error_strings = punt_error_strings,
+};
+VLIB_REGISTER_NODE (ip4_proto_punt_socket_node) = {
+  .function = ip4_proto_punt_socket,
+  .name = "ip4-proto-punt-socket",
+  .format_trace = format_udp_punt_trace,
+  .flags = VLIB_NODE_FLAG_IS_DROP,
+  /* Takes a vector of packets. */
+  .vector_size = sizeof (u32),
+  .n_errors = PUNT_N_ERROR,
+  .error_strings = punt_error_strings,
+};
+VLIB_REGISTER_NODE (ip6_proto_punt_socket_node) = {
+  .function = ip6_proto_punt_socket,
+  .name = "ip6-proto-punt-socket",
   .format_trace = format_udp_punt_trace,
   .flags = VLIB_NODE_FLAG_IS_DROP,
   .vector_size = sizeof (u32),

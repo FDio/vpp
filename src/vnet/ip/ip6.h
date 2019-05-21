@@ -388,6 +388,7 @@ u16 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 				       int *bogus_lengthp);
 
 void ip6_register_protocol (u32 protocol, u32 node_index);
+void ip6_unregister_protocol (u32 protocol);
 void ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index);
 
 serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;

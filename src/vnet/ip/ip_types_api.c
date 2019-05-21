@@ -65,16 +65,16 @@ ip_address_family_encode (ip_address_family_t af)
 int
 ip_proto_decode (int _ipp, ip_protocol_t * out)
 {
-  vl_api_ip_proto_t ipp = clib_host_to_net_u32 (_ipp);
+  ip_protocol_t ipp = clib_host_to_net_u32 (_ipp);
 
   switch (ipp)
     {
-    case IP_API_PROTO_TCP:
-      *out = IP_PROTOCOL_TCP;
-      return (0);
-    case IP_API_PROTO_UDP:
-      *out = IP_PROTOCOL_UDP;
-      return (0);
+#define ip_protocol(n,s)                       \
+      case IP_PROTOCOL_##s:                    \
+        *out = IP_PROTOCOL_##s;                \
+        return (0);
+#include "protocols.def"
+#undef ip_protocol
     }
   return (-1);
 }
@@ -84,12 +84,11 @@ ip_proto_encode (ip_protocol_t ipp)
 {
   switch (ipp)
     {
-    case IP_PROTOCOL_UDP:
-      return (clib_host_to_net_u32 (IP_API_PROTO_UDP));
-    case IP_PROTOCOL_TCP:
-      return (clib_host_to_net_u32 (IP_API_PROTO_TCP));
-    default:
-      break;
+#define ip_protocol(n,s)                                \
+      case IP_PROTOCOL_##s:                             \
+        return (clib_host_to_net_u32 (IP_PROTOCOL_##s));
+#include "protocols.def"
+#undef ip_protocol
     }
 
   ASSERT (0);

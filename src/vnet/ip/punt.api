@@ -22,6 +22,8 @@ enum punt_type
 {
     /* L4 (UDP) packets */
     PUNT_API_TYPE_L4,
+    /* IP proto (i.e. OSPF, RIP, etc) packets */
+    PUNT_API_TYPE_IP_PROTO,
     /* Exception packets handled by the VLIB punt infra */
     PUNT_API_TYPE_EXCEPTION,
 };
@@ -38,6 +40,16 @@ typedef punt_l4
     u16 port;
 };
 
+/** \brief Punt IP protocol traffic definition
+    @param af - Address Family, IPv4 or IPV6
+    @param protocol - IP protocol to be punted
+*/
+typedef punt_ip_proto
+{
+    vl_api_address_family_t af;
+    vl_api_ip_proto_t protocol;
+};
+
 /** \brief The ID of the punt exception reason
            Dump all the reasons to obtain this
 */
@@ -52,6 +64,7 @@ union punt_union
 {
     vl_api_punt_exception_t exception;
     vl_api_punt_l4_t l4;
+    vl_api_punt_ip_proto_t ip_proto;
 };
 
 /** \brief Full description of which packets are requested to be punted

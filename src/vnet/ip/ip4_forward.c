@@ -1704,6 +1704,16 @@ ip4_register_protocol (u32 protocol, u32 node_index)
   lm->local_next_by_ip_protocol[protocol] =
     vlib_node_add_next (vm, ip4_local_node.index, node_index);
 }
+
+void
+ip4_unregister_protocol (u32 protocol)
+{
+  ip4_main_t *im = &ip4_main;
+  ip_lookup_main_t *lm = &im->lookup_main;
+
+  ASSERT (protocol < ARRAY_LEN (lm->local_next_by_ip_protocol));
+  lm->local_next_by_ip_protocol[protocol] = IP_LOCAL_NEXT_PUNT;
+}
 #endif
 
 static clib_error_t *
@@ -1722,8 +1732,8 @@ show_ip_local_command_fn (vlib_main_t * vm,
 	  u32 node_index = vlib_get_node (vm,
 					  ip4_local_node.index)->
 	    next_nodes[lm->local_next_by_ip_protocol[i]];
-	  vlib_cli_output (vm, "%d: %U", i, format_vlib_node_name, vm,
-			   node_index);
+	  vlib_cli_output (vm, "%U: %U", format_ip_protocol, i,
+			   format_vlib_node_name, vm, node_index);
 	}
     }
   return 0;

@@ -1474,6 +1474,16 @@ ip6_register_protocol (u32 protocol, u32 node_index)
     vlib_node_add_next (vm, ip6_local_node.index, node_index);
 }
 
+void
+ip6_unregister_protocol (u32 protocol)
+{
+  ip6_main_t *im = &ip6_main;
+  ip_lookup_main_t *lm = &im->lookup_main;
+
+  ASSERT (protocol < ARRAY_LEN (lm->local_next_by_ip_protocol));
+  lm->local_next_by_ip_protocol[protocol] = IP_LOCAL_NEXT_PUNT;
+}
+
 clib_error_t *
 ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index,
 		    u8 refresh)

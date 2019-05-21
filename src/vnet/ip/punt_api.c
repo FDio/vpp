@@ -96,6 +96,18 @@ vl_api_punt_l4_decode (const vl_api_punt_l4_t * in, punt_l4_t * out)
 }
 
 static int
+vl_api_punt_ip_proto_decode (const vl_api_punt_ip_proto_t * in,
+			     punt_ip_proto_t * out)
+{
+  int rv;
+
+  rv = ip_address_family_decode (in->af, &out->af);
+  rv += ip_proto_decode (in->protocol, &out->protocol);
+
+  return (rv);
+}
+
+static int
 vl_api_punt_exception_decode (const vl_api_punt_exception_t * in,
 			      punt_exception_t * out)
 {
@@ -124,6 +136,9 @@ vl_api_punt_decode (const vl_api_punt_t * in, punt_reg_t * out)
     case PUNT_TYPE_EXCEPTION:
       return (vl_api_punt_exception_decode (&in->punt.exception,
 					    &out->punt.exception));
+    case PUNT_TYPE_IP_PROTO:
+      return (vl_api_punt_ip_proto_decode (&in->punt.ip_proto,
+					   &out->punt.ip_proto));
     }
 
   return (-1);
@@ -135,6 +150,14 @@ vl_api_punt_l4_encode (const punt_l4_t * in, vl_api_punt_l4_t * out)
   out->af = ip_address_family_encode (in->af);
   out->protocol = ip_proto_encode (in->protocol);
   out->port = clib_net_to_host_u16 (in->port);
+}
+
+static void
+vl_api_punt_ip_proto_encode (const punt_ip_proto_t * in,
+			     vl_api_punt_ip_proto_t * out)
+{
+  out->af = ip_address_family_encode (in->af);
+  out->protocol = ip_proto_encode (in->protocol);
 }
 
 static void
@@ -153,6 +176,9 @@ vl_api_punt_encode (const punt_reg_t * in, vl_api_punt_t * out)
     {
     case PUNT_TYPE_L4:
       vl_api_punt_l4_encode (&in->punt.l4, &out->punt.l4);
+      break;
+    case PUNT_TYPE_IP_PROTO:
+      vl_api_punt_ip_proto_encode (&in->punt.ip_proto, &out->punt.ip_proto);
       break;
     case PUNT_TYPE_EXCEPTION:
       vl_api_punt_exception_encode (&in->punt.exception,
