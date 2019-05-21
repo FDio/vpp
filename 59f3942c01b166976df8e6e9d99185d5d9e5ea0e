@@ -34,6 +34,24 @@
       "revId": "59f3942c01b166976df8e6e9d99185d5d9e5ea0e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "838b24a1_f3768e0b",
+        "filename": "src/vlib/main.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 1516
+      },
+      "writtenOn": "2019-05-21T19:14:13Z",
+      "side": 1,
+      "message": "What compiler and what error? This minimal declaration example works on all compilers I have tried (6 different gcc\u0027s, and 1 clang):\n  struct vlib_main_t {\n    void (** volatile callbacks) (struct vlib_main_t*);\n  };\n\n$ gcc -Wall -c minimal.c\n$ gcc --version\ngcc (Ubuntu 7.4.0-1ubuntu1~18.04) 7.4.0\nCopyright (C) 2017 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n$",
+      "parentUuid": "bb1d44fa_f054165d",
+      "revId": "59f3942c01b166976df8e6e9d99185d5d9e5ea0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
