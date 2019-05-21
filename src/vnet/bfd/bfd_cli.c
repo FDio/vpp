@@ -103,10 +103,10 @@ format_bfd_session_cli (u8 * s, va_list * args)
 	      bs->remote_demand ? "yes" : "no");
   s = format (s, "%10s %-32s %20s\n", "", "Poll state",
 	      bfd_poll_state_string (bs->poll_state));
-  if (bs->auth.curr_key)
+  if (bs->auth.curr_is_authenticated)
     {
       s = format (s, "%10s %-32s %20u\n", "", "Authentication config key ID",
-		  bs->auth.curr_key->conf_key_id);
+		  bs->auth.curr_conf_key_id);
       s = format (s, "%10s %-32s %20u\n", "", "Authentication BFD key ID",
 		  bs->auth.curr_bfd_key_id);
       s = format (s, "%10s %-32s %20u %20u\n", "", "Sequence number",

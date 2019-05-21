@@ -159,20 +159,20 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
   bfd_udp_key_t *key = &bus->key;
   mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
   mp->is_ipv6 = !(ip46_address_is_ip4 (&key->local_addr));
-  if ((!bs->auth.is_delayed && bs->auth.curr_key) ||
-      (bs->auth.is_delayed && bs->auth.next_key))
+  if ((!bs->auth.is_delayed && bs->auth.curr_is_authenticated) ||
+      (bs->auth.is_delayed && bs->auth.next_is_authenticated))
     {
       mp->is_authenticated = 1;
     }
-  if (bs->auth.is_delayed && bs->auth.next_key)
+  if (bs->auth.is_delayed && bs->auth.next_is_authenticated)
     {
       mp->bfd_key_id = bs->auth.next_bfd_key_id;
-      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.next_key->conf_key_id);
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.next_conf_key_id);
     }
-  else if (!bs->auth.is_delayed && bs->auth.curr_key)
+  else if (!bs->auth.is_delayed && bs->auth.curr_is_authenticated)
     {
       mp->bfd_key_id = bs->auth.curr_bfd_key_id;
-      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.curr_key->conf_key_id);
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.curr_conf_key_id);
     }
   if (mp->is_ipv6)
     {
