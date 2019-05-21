@@ -1,0 +1,229 @@
+#!/bin/sh
+#
+# A work in progress script for automating the dot-release process, v0
+# 
+# currently updates the boilerplate in the RELEASE.md, and propagates
+# the change upwards to master.
+#
+set -eux
+
+DOT_RELEASE=19012
+DOT_RELEASE=19041
+DOT_RELEASE=19013
+
+REALPATH=`which realpath`
+DIRNAME=`which dirname`
+if [ -z "${REALPATH}" ]; then
+  echo Please install realpath
+fi
+if [ -z "${DIRNAME}" ]; then
+  echo Please install dirname
+fi
+
+echo ${DOT_RELEASE} | egrep '^[0-9]{5}$' || (echo "release must be 5 digits, like 19012"; exit 1)
+
+RSCRPATH=$($DIRNAME $($REALPATH $0))
+echo "Release script path: ${RSCRPATH}"
+
+RUN_DIR=$(pwd)
+cd ${RSCRPATH}
+# refuse to run if the scripts are inside the VPP repo
+git status && (echo "Copy the release-mgmt directory outside of VPP git repository before running"; exit 3)
+
+cd ${RUN_DIR}
+GITROOT=$(git rev-parse --show-toplevel) || (echo "Need to be within VPP repository to run"; exit 2)
+cd ${GITROOT}
+
+
+#
+DOT_STABLE_SUFFIX=$(echo ${DOT_RELEASE} | cut -c 1-4)
+DOT_BRANCH=stable/${DOT_STABLE_SUFFIX}
+
+DOTTED_RELEASE=$(echo ${DOT_RELEASE} | sed -e 's/\(..\)/\1./g')
+
+echo "Dot release branch: ${DOT_BRANCH}"
+echo "Dotted release: ${DOTTED_RELEASE}"
+
+if [ ! -z "$(git status --porcelain)" ]; then
+  # Uncommitted changes
+  echo "Uncommitted work present. Refusing to continue".
+  exit 1
+fi
+
+get_dot_relnote_commit_id()
+{
+	DOT_RELNOTE_COMMIT_ID=$(git log stable-${DOT_STABLE_SUFFIX}-doc-integrate-${DOT_RELEASE} --grep "${DOTTED_RELEASE} Release Notes" | grep commit | awk '{ print $2; }')
+}
+
+get_dot_relnote_commit_id
+if [ -z "${DOT_RELNOTE_COMMIT_ID}" ]; then
+	read -p "Commit for release notes not found. Create it ? (yes/no) " YESNO
+else
+	YESNO="no"
+fi
+
+if [ "x${YESNO}" = "xyes" ]; then
+  echo "Generating docs..."
+
+  git checkout ${DOT_BRANCH}
+  git pull
+  git checkout -b stable-${DOT_STABLE_SUFFIX}-doc-integrate-${DOT_RELEASE}
+
+  # auto-add the dot-release release note boilerplate
+  ${RSCRPATH}/vpp-dotrelease-update-relnotes ${DOT_RELEASE}
+  
+  echo "Updated release notes:"
+  git diff
+
+  read -p "Run the pass to build the docs so you can verify it ? (yes/no) " YESNO
+  if [ "x${YESNO}" = "xyes" ]; then
+    # build the docs
+    CONFIRM=-y make bootstrap-doxygen doxygen
+
+    # FIXME: ... verify the syntax, fix the errors
+    echo "Docs should be in file:///$(pwd)/build-root/docs/html/index.html"
+    read -p "Please open the docs, verify syntax, etc. and hit ENTER when ok" YESNO
+  fi
+
+  # make a commit
+  git commit -a -m "${DOTTED_RELEASE} Release Notes" -s
+
+  git diff HEAD~1..
+  read -p "Check the diff and press ENTER to push it to gerrit" YESNO
+
+  # push the current branch commit
+  git push origin HEAD:refs/for/${DOT_BRANCH}
+
+  # check out the "old" newly integrated change
+  git checkout ${DOT_BRANCH}
+  git pull
+
+fi
+
+get_dot_relnote_commit_id
+if [ -z "${DOT_RELNOTE_COMMIT_ID}" ]; then
+	echo "Commit for release notes still not found. Abort." 
+	exit 3
+fi
+
+echo "Found commit id: ${DOT_RELNOTE_COMMIT_ID}"
+
+### this must loop until no more "later release" branches
+TARGET_SUFFIX=${DOT_STABLE_SUFFIX}
+
+while [ ! -z "${TARGET_SUFFIX}" ]; do
+##### loop until we can not have any more "later" branches
+
+OLD_TARGET_SUFFIX="${TARGET_SUFFIX}"
+
+# grep -v \-rc0 filters out the only tag that is on master
+# thus, a latest stable branch will not return any parents
+TARGET_SUFFIX=$(git tag | egrep '^v[0-9][0-9]\.[0-9][0-9]' | grep -v '\-rc0' | cut -c 2-6 | sed -e 's/\.//' | sort | uniq | grep -A 1 ${TARGET_SUFFIX} | tail -n +2)
+
+if [ -z "$TARGET_SUFFIX" ]; then
+  TARGET_BRANCH="master"
+  TARGET_LBL="master"
+else
+  TARGET_BRANCH="stable/${TARGET_SUFFIX}"
+  TARGET_LBL="stable-${TARGET_SUFFIX}"
+fi
+
+
+echo "Target branch: ${TARGET_BRANCH}"
+read -p "Make a change to README.md for ${TARGET_BRANCH} ? " YESNO
+
+if [ "x${YESNO}" = "xyes" ]; then
+
+  # check out the target branch to cherrypick into
+  git checkout ${TARGET_BRANCH}
+  git pull
+  git checkout -b ${TARGET_LBL}-doc-integrate-${DOT_RELEASE}
+
+  SAVE_RN_FILE="/tmp/${TARGET_LBL}-SAVE-RELEASE.md"
+
+  # Save a copy of a current 
+  cp RELEASE.md ${SAVE_RN_FILE}
+
+  # Run cherry-pick, it will fail
+  git cherry-pick ${DOT_RELNOTE_COMMIT_ID} || true
+
+  # copy the conflicted file, for entertainment
+  cp RELEASE.md /tmp/${TARGET_LBL}-RELEASE-CONFLICT.md
+
+  # restore the old version
+  cp ${SAVE_RN_FILE} RELEASE.md
+
+  # auto-edit the old version with the latest dot-release stuff
+  ${RSCRPATH}/vpp-dotrelease-update-relnotes ${DOT_RELEASE}
+
+  # we are still in a merge for a cherrypick
+  # make a commit non-interactive and without changing the message
+  EDITOR=/bin/cat git commit -a
+
+  # show the diff
+  git diff HEAD~1..
+  read -p "Check the diff and press ENTER to push it to gerrit" YESNO
+
+  # submit the change to the "later release" branch
+  git push origin HEAD:refs/for/${TARGET_BRANCH}%r=dwallacelf@gmail.com,
+fi
+
+### repeat for the next branch
+
+done
+
+
+read -p "Now let us lay a tag. Have the merge jobs been completed for ${DOT_BRANCH} release note patch ?" YESNO
+
+if [ "x${YESNO}" != "xyes" ]; then
+	echo "The merge jobs must be complete to continue."
+	exit 1
+fi
+
+DOT_TAG="v${DOTTED_RELEASE}"
+DOT_TAG_MESSAGE="Version ${DOTTED_RELEASE}"
+
+read -p "Ready to lay a tag '${DOT_TAG}' with message '${DOT_TAG_MESSAGE}' for ${DOT_BRANCH} ?" YESNO
+
+if [ "x${YESNO}" = "xyes" ]; then
+  git checkout ${DOT_BRANCH}
+  git pull
+
+  ##### LAY TAG
+  # signed tag
+  # git tag -s ${DOT_TAG} -m "${DOT_TAG_MESSAGE}"
+  #  unsigned tag
+  git tag -a ${DOT_TAG} -m "${DOT_TAG_MESSAGE}"
+
+
+  # use the newly created tag to show the release notes commit
+  RELEASE_NOTE_CHECK_COMMIT=$(git show ${DOT_TAG} --grep "${DOTTED_RELEASE} Release Notes" | grep commit | awk '{ print $2; }')
+  if [ -z "${RELEASE_NOTE_CHECK_COMMIT}" ]; then
+	  echo "The tag ${DOT_TAG} does not appear to have the Release Note commit at it, exiting"
+	  exit 4
+  fi
+
+  VERSION_WITH_V="v$(./src/scripts/version)"
+  EXPECTED_VERSION="${DOT_TAG}-release"
+
+  if [ "x${VERSION_WITH_V}" != "x${EXPECTED_VERSION}" ]; then
+	  echo "Got version ${VERSION_WITH_V}, expected version ${EXPECTED_VERSION}"
+	  exit 3
+  fi
+
+  #### PUSH TAG
+  git push origin ${DOT_TAG}
+
+  #### FIXME: automate the remerge kicking off
+  echo now please issue remerge on the change with release notes
+
+  #### FIXME: automate polling for merge jobs success
+  echo then wait for the merge jobs to complete
+
+  #### FIXME: kick off the testing 
+  echo then check the packagecloud.io for artifacts and test their installability
+
+  #### FIXME: automate the promotion of the artifacts
+  echo then update the LF case to publish the artifacts to release repositories
+
+fi
