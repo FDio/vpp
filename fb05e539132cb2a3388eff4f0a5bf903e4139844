@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "b07c25e9_16d28610",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-21T09:57:08Z",
+      "side": 1,
+      "message": "This looks like bad idea, this should be inline function.....",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 94,
+        "endChar": 11
+      },
+      "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3649a847_1d714552",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-21T09:57:08Z",
+      "side": 1,
+      "message": "Why is this check needed?",
+      "range": {
+        "startLine": 111,
+        "startChar": 6,
+        "endLine": 113,
+        "endChar": 30
+      },
+      "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f2b67fa_a9f42e9e",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 1
@@ -40,6 +86,53 @@
       "range": {
         "startLine": 111,
         "startChar": 0,
+        "endLine": 115,
+        "endChar": 54
+      },
+      "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "01d41ded_5d5beeb6",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-21T09:57:08Z",
+      "side": 1,
+      "message": "OK",
+      "parentUuid": "ba4c01a3_c709b034",
+      "range": {
+        "startLine": 111,
+        "startChar": 0,
+        "endLine": 115,
+        "endChar": 54
+      },
+      "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "94be9de0_e79ad6ce",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-21T09:57:08Z",
+      "side": 1,
+      "message": "Why you don\u0027t use vlib_buffer_free_from_ring instead of freeing one-by-one.\nFreeing buffers one-by-one is perf disaster...",
+      "range": {
+        "startLine": 115,
+        "startChar": 6,
         "endLine": 115,
         "endChar": 54
       },
