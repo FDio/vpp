@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "9ce8e412_f18d1392",
+        "filename": "src/vnet/ipsec/ah_encrypt.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-05-21T12:14:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b7061fc1_fd635e0b",
+      "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "43b2aa3d_4d623460",
         "filename": "src/vnet/ipsec/ah_encrypt.c",
         "patchSetId": 6
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "866e9400_521b9067",
+        "filename": "src/vnet/ipsec/ah_encrypt.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-05-21T12:14:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "43b2aa3d_4d623460",
+      "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7eddb634_2d6d16f2",
         "filename": "src/vnet/ipsec/ipsec_sa.c",
         "patchSetId": 6
@@ -47,6 +83,24 @@
       "writtenOn": "2019-05-20T12:22:52Z",
       "side": 1,
       "message": "check for v6 tunnel here.",
+      "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e7fe9ced_a77499bd",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-05-21T12:14:04Z",
+      "side": 1,
+      "message": "AH uses these templates also in non-tunnel mode so checking won\u0027t help. Not sure if we can check ip family here in non tunnel mode though.. any ideas?",
+      "parentUuid": "7eddb634_2d6d16f2",
       "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
