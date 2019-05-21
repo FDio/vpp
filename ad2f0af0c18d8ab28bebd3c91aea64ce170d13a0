@@ -22,6 +22,30 @@
       "revId": "ad2f0af0c18d8ab28bebd3c91aea64ce170d13a0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f6f25be1_9a6911e1",
+        "filename": "test/test_acl_plugin_macip.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-21T17:42:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "856e939e_ad8eb495",
+      "range": {
+        "startLine": 164,
+        "startChar": 0,
+        "endLine": 166,
+        "endChar": 11
+      },
+      "revId": "ad2f0af0c18d8ab28bebd3c91aea64ce170d13a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
