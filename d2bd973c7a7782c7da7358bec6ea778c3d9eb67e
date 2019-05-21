@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3b9b328d_05550a5b",
+        "filename": "src/vnet/geneve/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-21T14:16:21Z",
+      "side": 1,
+      "message": "Why store? store prefetch makes sense only if there is no load operation on cacheline, but here you read data from buffer metadata.",
+      "range": {
+        "startLine": 106,
+        "startChar": 38,
+        "endLine": 106,
+        "endChar": 43
+      },
+      "revId": "d2bd973c7a7782c7da7358bec6ea778c3d9eb67e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
