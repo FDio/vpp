@@ -558,12 +558,12 @@ list(APPEND VNET_SOURCES
   ipsec/ipsec_cli.c
   ipsec/ipsec_format.c
   ipsec/ipsec_input.c
-  ipsec/ipsec_if.c
-  ipsec/ipsec_if_in.c
   ipsec/ipsec_punt.c
   ipsec/ipsec_sa.c
   ipsec/ipsec_spd.c
   ipsec/ipsec_spd_policy.c
+  ipsec/ipsec_tun.c
+  ipsec/ipsec_tun_in.c
   ipsec/esp_format.c
   ipsec/esp_encrypt.c
   ipsec/esp_decrypt.c
@@ -577,9 +577,9 @@ list(APPEND VNET_MULTIARCH_SOURCES
   ipsec/esp_decrypt.c
   ipsec/ah_decrypt.c
   ipsec/ah_encrypt.c
-  ipsec/ipsec_if_in.c
   ipsec/ipsec_output.c
   ipsec/ipsec_input.c
+  ipsec/ipsec_tun_in.c
 )
 
 list(APPEND VNET_API_FILES ipsec/ipsec.api)
@@ -842,28 +842,6 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES vxlan-gpe/vxlan_gpe.api)
-
-##############################################################################
-# Tunnel protocol: ipsec+gre
-##############################################################################
-list(APPEND VNET_SOURCES
-  ipsec-gre/ipsec_gre.c
-  ipsec-gre/node.c
-  ipsec-gre/interface.c
-  ipsec-gre/ipsec_gre_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  ipsec-gre/node.c
-  ipsec-gre/ipsec_gre.c
-)
-
-list(APPEND VNET_HEADERS
-  ipsec-gre/ipsec_gre.h
-  ipsec-gre/error.def
-)
-
-list(APPEND VNET_API_FILES ipsec-gre/ipsec_gre.api)
 
 ##############################################################################
 # LISP control plane: lisp-cp

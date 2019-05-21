@@ -17,6 +17,7 @@
 option version = "3.0.0";
 
 import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
 
 /** \brief IPsec: Add/delete Security Policy Database
     @param client_index - opaque cookie to identify the sender
@@ -326,6 +327,80 @@ autoreply define ipsec_sa_set_key
   vl_api_key_t integrity_key;
 };
 
+/** \brief Add or Update Protection for a tunnel with IPSEC
+
+    Tunnel protection directly associates an SA with all packets
+    ingress and egress on the tunnel. This could also be achieved by
+    assigning an SPD to the tunnel, but that would incur an unnessccary
+    SPD entry lookup.
+
+    For tunnels the ESP acts on the post-encapsulated packet. So if this
+    packet:
+      +---------+------+
+      | Payload | O-IP |
+      +---------+------+
+    where O-IP is the overlay IP addrees that was routed into the tunnel,
+    the resulting encapsulated packet will be:
+      +---------+------+------+
+      | Payload | O-IP | T-IP |
+      +---------+------+------+
+    where T-IP is the tunnel's src.dst IP addresses.
+    If the SAs used for protection are in transport mode then the ESP is
+    inserted before T-IP, i.e.:
+      +---------+------+-----+------+
+      | Payload | O-IP | ESP | T-IP |
+      +---------+------+-----+------+
+    If the SAs used for protection are in tunnel mode then another
+    encapsulation occurs, i.e.:
+      +---------+------+------+-----+------+
+      | Payload | O-IP | T-IP | ESP | C-IP |
+      +---------+------+------+-----+------+
+    where C-IP are the crypto endpoint IP addresses defined as the tunnel
+    endpoints in the SA.
+    The mode for the inbound and outbound SA must be the same.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_id_index - Tunnel interface to protect
+    @param sa_in - The ID [set] of inbound SAs
+    @param sa_out - The ID of outbound SA
+*/
+typedef ipsec_tunnel_protect
+{
+  vl_api_interface_index_t sw_if_index;
+  u32 sa_out;
+  u8 n_sa_in;
+  u32 sa_in[n_sa_in];
+};
+
+autoreply define ipsec_tunnel_protect_update
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_ipsec_tunnel_protect_t tunnel;
+};
+
+autoreply define ipsec_tunnel_protect_del
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+};
+
+define ipsec_tunnel_protect_dump
+{
+  u32 client_index;
+  u32 context;
+};
+define ipsec_tunnel_protect_details
+{
+  u32 context;
+  vl_api_ipsec_tunnel_protect_t tun;
+};
+
+
 /** \brief IPsec: Get SPD interfaces
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -349,71 +424,6 @@ define ipsec_spd_interface_details {
     u32 context;
     u32 spd_index;
     u32 sw_if_index;
-};
-
-/** \brief Add or delete IPsec tunnel interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add IPsec tunnel interface if nonzero, else delete
-    @param is_ip6 - tunnel v6 or v4
-    @param esn - enable extended sequence numbers if nonzero, else disable
-    @param anti_replay - enable anti replay check if nonzero, else disable
-    @param local_ip - local IP address
-    @param remote_ip - IP address of remote IPsec peer
-    @param local_spi - SPI of outbound IPsec SA
-    @param remote_spi - SPI of inbound IPsec SA
-    @param crypto_alg - encryption algorithm ID
-    @param local_crypto_key_len - length of local crypto key in bytes
-    @param local_crypto_key - crypto key for outbound IPsec SA
-    @param remote_crypto_key_len - length of remote crypto key in bytes
-    @param remote_crypto_key - crypto key for inbound IPsec SA
-    @param integ_alg - integrity algorithm ID
-    @param local_integ_key_len - length of local integrity key in bytes
-    @param local_integ_key - integrity key for outbound IPsec SA
-    @param remote_integ_key_len - length of remote integrity key in bytes
-    @param remote_integ_key - integrity key for inbound IPsec SA
-    @param renumber - intf display name uses a specified instance if != 0
-    @param show_instance - instance to display for intf if renumber is set
-    @param udp_encap - enable UDP encapsulation for NAT traversal
-    @param tx_table_id - the FIB id used after packet encap
-    @param salt - for use with counter mode ciphers
-*/
-define ipsec_tunnel_if_add_del {
-  u32 client_index;
-  u32 context;
-  u8 is_add;
-  u8 esn;
-  u8 anti_replay;
-  vl_api_address_t local_ip;
-  vl_api_address_t remote_ip;
-  u32 local_spi;
-  u32 remote_spi;
-  u8 crypto_alg;
-  u8 local_crypto_key_len;
-  u8 local_crypto_key[128];
-  u8 remote_crypto_key_len;
-  u8 remote_crypto_key[128];
-  u8 integ_alg;
-  u8 local_integ_key_len;
-  u8 local_integ_key[128];
-  u8 remote_integ_key_len;
-  u8 remote_integ_key[128];
-  u8 renumber;
-  u32 show_instance;
-  u8 udp_encap;
-  u32 tx_table_id;
-  u32 salt;
-};
-
-/** \brief Add/delete IPsec tunnel interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return status
-    @param sw_if_index - sw_if_index of new interface (for successful add)
-*/
-define ipsec_tunnel_if_add_del_reply {
-  u32 context;
-  i32 retval;
-  u32 sw_if_index;
 };
 
 /** \brief Dump IPsec security association
@@ -465,40 +475,6 @@ define ipsec_sa_details {
   u64 replay_window;
 
   u64 total_data_size;
-};
-
-/** \brief Set key on IPsec interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - index of tunnel interface
-    @param key_type - type of key being set
-    @param alg - algorithm used with key
-    @param key_len - length key in bytes
-    @param key - key
-*/
-autoreply define ipsec_tunnel_if_set_key {
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u8 key_type;
-  u8 alg;
-  u8 key_len;
-  u8 key[128];
-};
-
-/** \brief Set new SA on IPsec interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - index of tunnel interface
-    @param sa_id - ID of SA to use
-    @param is_outbound - 1 if outbound (local) SA, 0 if inbound (remote)
-*/
-autoreply define ipsec_tunnel_if_set_sa {
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u32 sa_id;
-  u8 is_outbound;
 };
 
 /** \brief Dump IPsec backends

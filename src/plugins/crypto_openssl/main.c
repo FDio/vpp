@@ -70,15 +70,9 @@ openssl_ops_enc_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
       vnet_crypto_op_t *op = ops[i];
       vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       int out_len;
-      int iv_len;
-
-      if (op->op == VNET_CRYPTO_OP_3DES_CBC_ENC)
-	iv_len = 8;
-      else
-	iv_len = 16;
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
-	RAND_bytes (op->iv, iv_len);
+	RAND_bytes (op->iv, 16);
 
       EVP_EncryptInit_ex (ctx, cipher, NULL, key->data, op->iv);
       EVP_EncryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
