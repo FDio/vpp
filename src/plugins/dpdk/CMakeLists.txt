@@ -28,6 +28,8 @@ if (NOT DPDK_LIB)
   message(WARNING "-- linking dpdk plugin against DPDK shared libs")
 endif()
 
+check_ext_dep_version(dpdk 19.02)
+
 ##############################################################################
 # Parse DPDK config and version header files
 ##############################################################################

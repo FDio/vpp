@@ -141,6 +141,7 @@ endif
 $(B)/.$1.install.ok: $(B)/.$1.build.ok
 	$$(call h1,"installing $1 $($1_version) - log: $$($1_install_log)")
 	$$(call $1_install_cmds)
+	@echo "$($1_version)" > $$($1_install_dir)share/$1_version
 	@touch $$@
 
 .PHONY: $1-install

@@ -19,6 +19,7 @@ include(CheckCCompilerFlag)
 include(cmake/misc.cmake)
 include(cmake/cpu.cmake)
 include(cmake/ccache.cmake)
+include(cmake/extdeps.cmake)
 
 ##############################################################################
 # VPP Version
