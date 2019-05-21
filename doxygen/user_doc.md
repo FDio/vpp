@@ -21,10 +21,11 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage nat64_doc
 - @subpage nat_ha_doc
 - @subpage qos_doc
+- @subpage quic_doc
+- @subpage rdma_doc
 - @subpage selinux_doc
 - @subpage span_doc
 - @subpage srmpls_doc
 - @subpage srv6_doc
 - @subpage vcl_ldpreload_doc
 - @subpage vmxnet3_doc
-- @subpage rdma_doc

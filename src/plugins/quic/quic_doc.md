@@ -1,4 +1,4 @@
-# QUIC implementation {#rdma_doc}
+# QUIC implementation {#quic_doc}
 
 The quic plugin provides an IETF QUIC protocol implementation. It is based on
 the [quicly](https://github.com/h2o/quicly) library.
