@@ -765,6 +765,23 @@ bfd_transport_echo (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
   return 0;
 }
 
+inline  bfd_auth_key_t * 
+bfd_auth_get_key_from_conf_key_id(u32 conf_key_id)
+{
+    bfd_main_t *bm = &bfd_main;
+    bfd_auth_key_t *key = NULL;
+    const uword *key_idx_p =
+      hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
+    if (!key_idx_p)
+      {
+        return NULL;
+      }
+    const uword key_idx = *key_idx_p;
+    key = pool_elt_at_index (bm->auth_keys, key_idx);
+    return key;
+}    
+
+
 #if WITH_LIBSSL > 0
 static void
 bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
@@ -775,7 +792,10 @@ bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
   pkt->pkt.head.length += sizeof (*auth);
   bfd_pkt_set_auth_present (&pkt->pkt);
   clib_memset (auth, 0, sizeof (*auth));
-  auth->type_len.type = bs->auth.curr_key->auth_type;
+  bfd_auth_key_t *key =
+    bfd_auth_get_key_from_conf_key_id (bs->auth.curr_conf_key_id);
+  if (key)
+    auth->type_len.type = key->auth_type;
   /*
    * only meticulous authentication types require incrementing seq number
    * for every message, but doing so doesn't violate the RFC
@@ -788,8 +808,8 @@ bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
    * first copy the password into the packet, then calculate the hash
    * and finally replace the password with the calculated hash
    */
-  clib_memcpy (auth->hash, bs->auth.curr_key->key,
-	       sizeof (bs->auth.curr_key->key));
+  if (key)
+    clib_memcpy (auth->hash, key->key, sizeof (key->key));
   unsigned char hash[sizeof (auth->hash)];
   SHA1 ((unsigned char *) pkt, sizeof (*pkt), hash);
   BFD_DBG ("hashing: %U", format_hex_bytes, pkt, sizeof (*pkt));
@@ -801,37 +821,42 @@ static void
 bfd_add_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
 {
   bfd_main_t *bm = &bfd_main;
-  if (bs->auth.curr_key)
+  if (bs->auth.curr_is_authenticated)
     {
-      const bfd_auth_type_e auth_type = bs->auth.curr_key->auth_type;
-      switch (auth_type)
+      bfd_auth_key_t *key =
+	bfd_auth_get_key_from_conf_key_id (bs->auth.curr_conf_key_id);
+      if (key)
 	{
-	case BFD_AUTH_TYPE_reserved:
-	  /* fallthrough */
-	case BFD_AUTH_TYPE_simple_password:
-	  /* fallthrough */
-	case BFD_AUTH_TYPE_keyed_md5:
-	  /* fallthrough */
-	case BFD_AUTH_TYPE_meticulous_keyed_md5:
-	  vlib_log_crit (bm->log_class,
-			 "internal error, unexpected BFD auth type '%d'",
-			 auth_type);
-	  break;
+	  const bfd_auth_type_e auth_type = key->auth_type;
+	  switch (auth_type)
+	    {
+	    case BFD_AUTH_TYPE_reserved:
+	      /* fallthrough */
+	    case BFD_AUTH_TYPE_simple_password:
+	      /* fallthrough */
+	    case BFD_AUTH_TYPE_keyed_md5:
+	      /* fallthrough */
+	    case BFD_AUTH_TYPE_meticulous_keyed_md5:
+	      vlib_log_crit (bm->log_class,
+			     "internal error, unexpected BFD auth type '%d'",
+			     auth_type);
+	      break;
 #if WITH_LIBSSL > 0
-	case BFD_AUTH_TYPE_keyed_sha1:
-	  /* fallthrough */
-	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
-	  bfd_add_sha1_auth_section (b, bs);
-	  break;
+	    case BFD_AUTH_TYPE_keyed_sha1:
+	      /* fallthrough */
+	    case BFD_AUTH_TYPE_meticulous_keyed_sha1:
+	      bfd_add_sha1_auth_section (b, bs);
+	      break;
 #else
-	case BFD_AUTH_TYPE_keyed_sha1:
-	  /* fallthrough */
-	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
-	  vlib_log_crit (bm->log_class,
-			 "internal error, unexpected BFD auth type '%d'",
-			 auth_type);
-	  break;
+	    case BFD_AUTH_TYPE_keyed_sha1:
+	      /* fallthrough */
+	    case BFD_AUTH_TYPE_meticulous_keyed_sha1:
+	      vlib_log_crit (bm->log_class,
+			     "internal error, unexpected BFD auth type '%d'",
+			     auth_type);
+	      break;
 #endif
+	    }
 	}
     }
 }
@@ -1367,6 +1392,20 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
   return result;
 }
 
+void bfd_auth_key_use_count_minus(u32 conf_key_id)
+{
+    bfd_main_t *bm = &bfd_main;
+    const uword *key_idx_p = hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
+    if (key_idx_p)
+    {
+        const uword key_idx = *key_idx_p;
+        bfd_auth_key_t *key = pool_elt_at_index (bm->auth_keys, key_idx);
+        --key->use_count;
+    }
+    return;
+}
+
+
 void
 bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
 {
@@ -1375,13 +1414,15 @@ bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
   vlib_log_info (bm->log_class, "delete session: %U",
 		 format_bfd_session_brief, bs);
   bfd_notify_listeners (bm, BFD_LISTEN_EVENT_DELETE, bs);
-  if (bs->auth.curr_key)
+  if (bs->auth.curr_is_authenticated)
     {
-      --bs->auth.curr_key->use_count;
+      //--bs->auth.curr_key->use_count;
+      bfd_auth_key_use_count_minus(bs->auth.curr_conf_key_id);
     }
-  if (bs->auth.next_key)
+  if (bs->auth.next_is_authenticated)
     {
-      --bs->auth.next_key->use_count;
+      //--bs->auth.next_key->use_count;
+      bfd_auth_key_use_count_minus(bs->auth.next_conf_key_id);
     }
   hash_unset (bm->session_by_disc, bs->local_discr);
   pool_put (bm->sessions, bs);
@@ -1470,16 +1511,21 @@ bfd_verify_pkt_common (const bfd_pkt_t * pkt)
 static void
 bfd_session_switch_auth_to_next (bfd_session_t * bs)
 {
+  bfd_auth_key_t *curr_key = bfd_auth_get_key_from_conf_key_id(bs->auth.curr_conf_key_id);
+  bfd_auth_key_t *next_key = bfd_auth_get_key_from_conf_key_id(bs->auth.next_conf_key_id);
   BFD_DBG ("Switching authentication key from %U to %U for bs_idx=%u",
-	   format_bfd_auth_key, bs->auth.curr_key, format_bfd_auth_key,
-	   bs->auth.next_key, bs->bs_idx);
+	   format_bfd_auth_key, curr_key, format_bfd_auth_key,
+	   next_key, bs->bs_idx);
   bs->auth.is_delayed = 0;
-  if (bs->auth.curr_key)
+  if (bs->auth.curr_is_authenticated)
     {
-      --bs->auth.curr_key->use_count;
+      bfd_auth_key_use_count_minus(bs->auth.curr_conf_key_id);
+      //--bs->auth.curr_key->use_count;
     }
-  bs->auth.curr_key = bs->auth.next_key;
-  bs->auth.next_key = NULL;
+  bs->auth.curr_conf_key_id = bs->auth.next_conf_key_id;
+  bs->auth.curr_is_authenticated = bs->auth.next_is_authenticated;
+  bs->auth.next_is_authenticated = 0;
+  bs->auth.next_conf_key_id = 0;
   bs->auth.curr_bfd_key_id = bs->auth.next_bfd_key_id;
 }
 
@@ -1702,18 +1748,22 @@ bfd_verify_pkt_auth_key (const bfd_pkt_t * pkt, u32 pkt_size,
 int
 bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 {
+  bfd_auth_key_t *key;
   if (bfd_pkt_get_auth_present (pkt))
     {
       /* authentication present in packet */
-      if (!bs->auth.curr_key)
+      if (!bs->auth.curr_is_authenticated)
 	{
 	  /* currently not using authentication - can we turn it on? */
-	  if (bs->auth.is_delayed && bs->auth.next_key)
+	  if (bs->auth.is_delayed && bs->auth.next_is_authenticated)
 	    {
-	      /* yes, switch is scheduled - make sure the auth is valid */
+	      /* yes, switch is scheduled - make sure the auth is valid */          
+	      key = bfd_auth_get_key_from_conf_key_id(bs->auth.next_conf_key_id);
+          if (NULL == key)
+            return 0;
+          
 	      if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
-					   bs->auth.next_bfd_key_id,
-					   bs->auth.next_key))
+					   bs->auth.next_bfd_key_id, key))
 		{
 		  /* auth matches next key, do the switch, packet is valid */
 		  bfd_session_switch_auth_to_next (bs);
@@ -1724,9 +1774,12 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
       else
 	{
 	  /* yes, using authentication, verify the key */
+      key = bfd_auth_get_key_from_conf_key_id(bs->auth.curr_conf_key_id);
+      if (NULL == key)
+            return 0;
+      
 	  if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
-				       bs->auth.curr_bfd_key_id,
-				       bs->auth.curr_key))
+				       bs->auth.curr_bfd_key_id,key))
 	    {
 	      /* verification passed, packet is valid */
 	      return 1;
@@ -1734,12 +1787,15 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 	  else
 	    {
 	      /* verification failed - but maybe we need to switch key */
-	      if (bs->auth.is_delayed && bs->auth.next_key)
+	      if (bs->auth.is_delayed && bs->auth.next_is_authenticated)
 		{
 		  /* delayed switch present, verify if that key works */
+          key = bfd_auth_get_key_from_conf_key_id(bs->auth.next_conf_key_id);
+          if (NULL == key)
+            return 0;
+          
 		  if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
-					       bs->auth.next_bfd_key_id,
-					       bs->auth.next_key))
+					       bs->auth.next_bfd_key_id, key))
 		    {
 		      /* auth matches next key, switch key, packet is valid */
 		      bfd_session_switch_auth_to_next (bs);
@@ -1758,10 +1814,10 @@ bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 		   "(auth not present)", pkt_size);
 	  return 0;
 	}
-      if (bs->auth.curr_key)
+      if (bs->auth.curr_is_authenticated)
 	{
 	  /* currently authenticating - could we turn it off? */
-	  if (bs->auth.is_delayed && !bs->auth.next_key)
+	  if (bs->auth.is_delayed && !bs->auth.next_is_authenticated)
 	    {
 	      /* yes, delayed switch to NULL key is scheduled */
 	      bfd_session_switch_auth_to_next (bs);
@@ -1951,6 +2007,10 @@ u8 *
 format_bfd_session (u8 * s, va_list * args)
 {
   const bfd_session_t *bs = va_arg (*args, bfd_session_t *);
+  bfd_auth_key_t *curr_key =
+    bfd_auth_get_key_from_conf_key_id (bs->auth.curr_conf_key_id);
+  bfd_auth_key_t *next_key =
+    bfd_auth_get_key_from_conf_key_id (bs->auth.next_conf_key_id);
   u32 indent = format_get_indent (s) + vlib_log_get_indent ();
   s = format (s, "bs_idx=%u local-state=%s remote-state=%s\n"
 	      "%Ulocal-discriminator=%u remote-discriminator=%u\n"
@@ -1977,9 +2037,8 @@ format_bfd_session (u8 * s, va_list * args)
 	      indent, bs->auth.local_seq_number, bs->auth.remote_seq_number,
 	      format_white_space, indent,
 	      (bs->auth.is_delayed ? "yes" : "no"), format_white_space,
-	      indent, format_bfd_auth_key, bs->auth.curr_key,
-	      format_white_space, indent, format_bfd_auth_key,
-	      bs->auth.next_key);
+	      indent, format_bfd_auth_key, curr_key,
+	      format_white_space, indent, format_bfd_auth_key, next_key);
   return s;
 }
 
@@ -2023,28 +2082,33 @@ bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
   bfd_auth_key_t *key = pool_elt_at_index (bm->auth_keys, key_idx);
   if (is_delayed)
     {
-      if (bs->auth.next_key == key)
+      if (bs->auth.next_is_authenticated
+	  && bs->auth.next_conf_key_id == conf_key_id)
 	{
 	  /* already using this key, no changes required */
 	  return 0;
 	}
-      bs->auth.next_key = key;
+      bs->auth.next_conf_key_id = conf_key_id;
       bs->auth.next_bfd_key_id = bfd_key_id;
+      bs->auth.next_is_authenticated = 1;
       bs->auth.is_delayed = 1;
     }
   else
     {
-      if (bs->auth.curr_key == key)
+      if (bs->auth.curr_is_authenticated
+	  && bs->auth.curr_conf_key_id == conf_key_id)
 	{
 	  /* already using this key, no changes required */
 	  return 0;
 	}
-      if (bs->auth.curr_key)
+      if (bs->auth.curr_is_authenticated
+	  && bs->auth.curr_conf_key_id != conf_key_id)
 	{
-	  --bs->auth.curr_key->use_count;
+	  bfd_auth_key_use_count_minus (bs->auth.curr_conf_key_id);
 	}
-      bs->auth.curr_key = key;
+      bs->auth.curr_conf_key_id = conf_key_id;
       bs->auth.curr_bfd_key_id = bfd_key_id;
+      bs->auth.curr_is_authenticated = 1;
       bs->auth.is_delayed = 0;
     }
   ++key->use_count;
@@ -2062,10 +2126,12 @@ bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed)
   if (!is_delayed)
     {
       /* not delayed - deactivate the current key right now */
-      if (bs->auth.curr_key)
+      if (bs->auth.curr_is_authenticated)
 	{
-	  --bs->auth.curr_key->use_count;
-	  bs->auth.curr_key = NULL;
+	  //--bs->auth.curr_key->use_count;
+	  bfd_auth_key_use_count_minus (bs->auth.curr_conf_key_id);
+	  bs->auth.curr_conf_key_id = 0;
+	  bs->auth.curr_is_authenticated = 0;
 	}
       bs->auth.is_delayed = 0;
     }
@@ -2080,10 +2146,12 @@ bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed)
    * from this point forward, or it is delayed, in which case the next_key
    * needs to be set to NULL to make it so in the future
    */
-  if (bs->auth.next_key)
+  if (bs->auth.next_is_authenticated)
     {
-      --bs->auth.next_key->use_count;
-      bs->auth.next_key = NULL;
+      //--bs->auth.next_key->use_count;
+      bfd_auth_key_use_count_minus (bs->auth.next_conf_key_id);
+      bs->auth.next_conf_key_id = 0;
+      bs->auth.next_is_authenticated = 0;
     }
   BFD_DBG ("\nSession auth modified: %U", format_bfd_session, bs);
   vlib_log_info (bm->log_class, "session auth modified: %U",

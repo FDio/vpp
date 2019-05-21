@@ -199,13 +199,13 @@ typedef struct bfd_session_s
   struct
   {
     /** current key in use */
-    bfd_auth_key_t *curr_key;
+    u32 curr_conf_key_id;
 
     /**
      * set to next key to use if delayed switch is enabled - in that case
      * the key is switched when first incoming packet is signed with next_key
      */
-    bfd_auth_key_t *next_key;
+    u32 next_conf_key_id;
 
     /** sequence number incremented occasionally or always (if meticulous) */
     u32 local_seq_number;
@@ -227,6 +227,9 @@ typedef struct bfd_session_s
      * of authentication, change of key or deactivation
      */
     u8 is_delayed;
+
+    u8 curr_is_authenticated;
+    u8 next_is_authenticated;
   } auth;
 
   /** transport type for this session */
