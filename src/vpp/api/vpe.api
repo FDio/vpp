@@ -38,7 +38,6 @@ option version = "1.1.0";
  * L2TP APIs: see .../src/vnet/l2tp/{l2tp.api, l2tp_api.c}
  * BFD APIs: see .../src/vnet/bfd/{bfd.api, bfd_api.c}
  * IPSEC APIs: see .../src/vnet/ipsec/{ipsec.api, ipsec_api.c}
- * IPSEC-GRE APIs: see .../src/vnet/ipsec-gre/{ipsec_gre.api, ipsec_gre_api.c}
  * LISP APIs: see .../src/vnet/lisp/{lisp.api, lisp_api.c}
  * LISP-GPE APIs: see .../src/vnet/lisp-gpe/{lisp_gpe.api, lisp_gpe_api.c}
  * SESSION APIs: .../vnet/session/{session.api session_api.c}

@@ -22,6 +22,7 @@
 #include <vnet/fib/fib_table.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 u8 *
 format_ipsec_policy_action (u8 * s, va_list * args)
@@ -332,34 +333,34 @@ done:
 }
 
 u8 *
-format_ipsec_tunnel (u8 * s, va_list * args)
+format_ipsec_tun_protect (u8 * s, va_list * args)
 {
-  ipsec_main_t *im = &ipsec_main;
-  u32 ti = va_arg (*args, u32);
-  ipsec_tunnel_if_t *t;
+  u32 itpi = va_arg (*args, u32);
+  ipsec_protect_t *itp;
+  u32 sai;
 
-  if (pool_is_free_index (im->tunnel_interfaces, ti))
+  if (pool_is_free_index (ipsec_protect_pool, itpi))
     {
-      s = format (s, "No such tunnel index: %d", ti);
+      s = format (s, "No such tunnel index: %d", itpi);
       goto done;
     }
 
-  t = pool_elt_at_index (im->tunnel_interfaces, ti);
+  itp = pool_elt_at_index (ipsec_protect_pool, itpi);
 
-  if (t->hw_if_index == ~0)
-    goto done;
-
+  s = format (s, "%U", format_vnet_sw_if_index_name,
+	      vnet_get_main (), itp->itp_sw_if_index);
+  s = format (s, "\n output-sa:");
   s =
-    format (s, "%U\n", format_vnet_hw_if_index_name, im->vnet_main,
-	    t->hw_if_index);
+    format (s, "\n  %U", format_ipsec_sa, itp->itp_out_sa,
+	    IPSEC_FORMAT_BRIEF);
 
-  s = format (s, "   out-bound sa: ");
-  s = format (s, "%U\n", format_ipsec_sa, t->output_sa_index,
-	      IPSEC_FORMAT_BRIEF);
-
-  s = format (s, "    in-bound sa: ");
-  s = format (s, "%U\n", format_ipsec_sa, t->input_sa_index,
-	      IPSEC_FORMAT_BRIEF);
+  s = format (s, "\n input-sa:");
+  /* *INDENT-OFF* */
+  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
+  ({
+  s = format (s, "\n  %U", format_ipsec_sa, sai, IPSEC_FORMAT_BRIEF);
+  }));
+  /* *INDENT-ON* */
 
 done:
   return (s);

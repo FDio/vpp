@@ -116,6 +116,8 @@ typedef struct
 extern ipip_main_t ipip_main;
 extern vlib_node_registration_t ipip4_input_node;
 extern vlib_node_registration_t ipip6_input_node;
+extern vlib_node_registration_t ipip4_tun_decap_node;
+extern vlib_node_registration_t ipip6_tun_decap_node;
 
 /*
  * sixrd_get_addr_net
@@ -149,9 +151,9 @@ int sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 		      u32 ip4_fib_index, u32 ip6_fib_index,
 		      u32 * sw_if_index);
 int sixrd_del_tunnel (u32 sw_if_index);
-void ipip_tunnel_db_add (ipip_tunnel_t * t, ipip_tunnel_key_t * key);
+void ipip_tunnel_db_add (ipip_tunnel_t * t, const ipip_tunnel_key_t * key);
 void ipip_tunnel_db_remove (ipip_tunnel_t * t);
-ipip_tunnel_t *ipip_tunnel_db_find (ipip_tunnel_key_t * key);
+ipip_tunnel_t *ipip_tunnel_db_find (const ipip_tunnel_key_t * key);
 ipip_tunnel_t *ipip_tunnel_db_find_by_sw_if_index (u32 sw_if_index);
 
 #endif

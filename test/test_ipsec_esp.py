@@ -363,7 +363,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
         super(TestIpsecEspAll, self).tearDown()
 
     def test_crypto_algs(self):
-        """All engines AES-[CBC, GCM]-[128, 192, 256] 3DES-CBC w/ & w/o ESN"""
+        """All engines AES-[CBC, GCM]-[128, 192, 256] w/ & w/o ESN"""
 
         # foreach VPP crypto engine
         engines = ["ia32", "ipsecmb", "openssl"]
@@ -416,15 +416,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-crypto': "AES-CBC",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
-                  'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"},
-                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
-                                 IPSEC_API_CRYPTO_ALG_3DES_CBC),
-                  'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
-                                IPSEC_API_INTEG_ALG_SHA1_96),
-                  'scapy-crypto': "3DES",
-                  'scapy-integ': "HMAC-SHA1-96",
-                  'salt': 0,
-                  'key': "JPjyOWBeVEQiMe7h00112233"}]
+                  'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
 
         # with and without ESN
         flags = [0,
@@ -473,8 +465,8 @@ class TestIpsecEspAll(ConfigIpsecESP,
                     #
                     self.verify_tra_basic6(count=17)
                     self.verify_tra_basic4(count=17)
-                    self.verify_tun_66(self.params[socket.AF_INET6], 17)
-                    self.verify_tun_44(self.params[socket.AF_INET], 17)
+                    self.verify_tun_66(self.params[socket.AF_INET6], count=17)
+                    self.verify_tun_44(self.params[socket.AF_INET], count=17)
 
                     #
                     # remove the SPDs, SAs, etc
