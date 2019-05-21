@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "856e939e_ad8eb495",
+        "filename": "test/test_acl_plugin_macip.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-21T17:13:36Z",
+      "side": 1,
+      "message": "This pyDoc entry should either be included at line 170 or removed since it provides the same information as the method name: show_commands_at_teardown()",
+      "range": {
+        "startLine": 164,
+        "startChar": 0,
+        "endLine": 166,
+        "endChar": 11
+      },
+      "revId": "ad2f0af0c18d8ab28bebd3c91aea64ce170d13a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
