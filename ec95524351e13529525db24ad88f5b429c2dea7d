@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e8de24f1_34758c41",
+        "filename": "src/vppinfra/callback.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1516
+      },
+      "writtenOn": "2019-05-21T22:33:44Z",
+      "side": 1,
+      "message": "If this macro is to be used for perfmon, as well as future plugins or third-party code, doesn\u0027t the locking need to be defined in this patch, so that perfmon can use it without needing custom modification?\n\nPerhaps a muxed callback should be a struct, which has both a spinlock and the 2 vec pointers.  That way, it is all rolled into one implementation and one struct member for the users.  Our use cases don\u0027t envision frequent writes, but we will have 2 writers (just like perfmon - the main thread, and the worker thread).  The spinlock would rarely be taken, and even less rarely contended.",
+      "revId": "ec95524351e13529525db24ad88f5b429c2dea7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
