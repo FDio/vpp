@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5b6f8152_5191bd36",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-05-21T08:03:14Z",
+      "side": 1,
+      "message": "do we need a declaration of this function each time before it\u0027s used? can we not have one header file defining the signature and this file with the weak declaration and the stats with the strong?",
+      "revId": "7a9e2db450f1ef41854fc424117fd7be244b2759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
