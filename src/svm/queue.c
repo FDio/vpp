@@ -174,7 +174,7 @@ svm_queue_timedwait_inline (svm_queue_t * q, double timeout)
       while (q->cursize == cursize && unix_time_now () < max_time)
 	CLIB_PAUSE ();
       rv = unix_time_now () < max_time ? 0 : ETIMEDOUT;
-      svm_queue_unlock (q);
+      svm_queue_lock (q);
       return rv;
     }
 }
