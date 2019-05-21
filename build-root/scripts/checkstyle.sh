@@ -41,15 +41,6 @@ else
 	FILELIST=$((git diff HEAD~1.. --name-only; git ls-files -m ) | sort -u)
 fi
 
-# Check to make sure we have indent.  Exit if we don't with an error message, but
-# don't *fail*.
-command -v indent > /dev/null
-if [ $? != 0 ]; then
-    echo "Cound not find required command \"indent\".  Checkstyle aborted"
-    exit ${EXIT_CODE}
-fi
-indent --version
-
 # Check to make sure we have clang-format.  Exit if we don't with an error message, but
 # don't *fail*.
 HAVE_CLANG_FORMAT=0
@@ -76,15 +67,8 @@ for i in ${FILELIST}; do
         if [ $? == 0 ]; then
             EXTENSION=`basename ${i} | sed 's/^\w\+.//'`
             case ${EXTENSION} in
-                hpp|cpp|cc|hh)
-                    CMD="clang-format"
-                    if [ ${HAVE_CLANG_FORMAT} == 0 ]; then
-                            echo "C++ file detected. Abort. (missing clang-format)"
-                            exit ${EXIT_CODE}
-                    fi
-                    ;;
                 *)
-                    CMD="indent"
+                    CMD="clang-format"
                     ;;
             esac
             CHECKSTYLED_FILES="${CHECKSTYLED_FILES} ${i}"
@@ -93,8 +77,8 @@ for i in ${FILELIST}; do
                 then
                     clang-format ${i} > ${i}.out2
                 else
-                    indent ${i} -o ${i}.out1 > /dev/null 2>&1
-                    indent ${i}.out1 -o ${i}.out2 > /dev/null 2>&1
+                    nobozo ${i} -o ${i}.out1 > /dev/null 2>&1
+                    nobozo ${i}.out1 -o ${i}.out2 > /dev/null 2>&1
                 fi
                 # Remove trailing whitespace
                 sed -i -e 's/[[:space:]]*$//' ${i}.out2
@@ -103,8 +87,8 @@ for i in ${FILELIST}; do
                 if [ "${CMD}" == "clang-format" ]; then
                     clang-format -i ${i} > /dev/null 2>&1
                 else
-                    indent ${i}
-                    indent ${i}
+                    nobozo ${i}
+                    nobozo ${i}
                 fi
                 # Remove trailing whitespace
                 sed -i -e 's/[[:space:]]*$//' ${i}
@@ -117,9 +101,9 @@ for i in ${FILELIST}; do
                     echo "Run clang-format as shown to fix the problem:"
                     echo "clang-format -i ${VPP_DIR}${i}"
                 else
-                    echo "Run indent (twice!) as shown to fix the problem:"
-                    echo "indent ${VPP_DIR}${i}"
-                    echo "indent ${VPP_DIR}${i}"
+                    echo "Run nobozo (twice!) as shown to fix the problem:"
+                    echo "nobozo ${VPP_DIR}${i}"
+                    echo "nobozo ${VPP_DIR}${i}"
                 fi
             fi
             if [ -f ${i}.out1 ]; then
@@ -138,7 +122,7 @@ done
 
 if [ ${EXIT_CODE} == 0 ]; then
     echo "*******************************************************************"
-    echo "* VPP CHECKSTYLE SUCCESSFULLY COMPLETED"
+    echo "* VPP CHECKSTYLE SUCCESSFULLY COMPLETED using ${CMD}"
     echo "*******************************************************************"
 else
     echo "*******************************************************************"
