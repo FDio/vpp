@@ -25,6 +25,8 @@ enum address_family {
 enum ip_proto {
   IP_API_PROTO_TCP = 6,
   IP_API_PROTO_UDP = 17,
+  IP_API_PROTO_EIGRP = 88,
+  IP_API_PROTO_OSPF = 89,
 };
 
 union address_union {

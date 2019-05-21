@@ -75,6 +75,36 @@ punt_client_l4_db_remove (ip_address_family_t af, u16 port)
 }
 
 static void
+punt_client_ip_proto_db_add (ip_address_family_t af,
+			     ip_protocol_t proto, u32 index)
+{
+  punt_main_t *pm = &punt_main;
+
+  pm->db.clients_by_ip_proto = hash_set (pm->db.clients_by_ip_proto,
+					 punt_client_ip_proto_mk_key (af,
+								      proto),
+					 index);
+}
+
+static u32
+punt_client_ip_proto_db_remove (ip_address_family_t af, ip_protocol_t proto)
+{
+  punt_main_t *pm = &punt_main;
+  u32 key, index = ~0;
+  uword *p;
+
+  key = punt_client_ip_proto_mk_key (af, proto);
+  p = hash_get (pm->db.clients_by_ip_proto, key);
+
+  if (p)
+    index = p[0];
+
+  hash_unset (pm->db.clients_by_ip_proto, key);
+
+  return (index);
+}
+
+static void
 punt_client_exception_db_add (vlib_punt_reason_t reason, u32 pci)
 {
   punt_main_t *pm = &punt_main;
@@ -129,12 +159,6 @@ punt_socket_register_l4 (vlib_main_t * vm,
   if (port == (u16) ~ 0)
     return clib_error_return (0, "UDP port number required");
 
-  if (strncmp (client_pathname, vnet_punt_get_server_pathname (),
-	       UNIX_PATH_MAX) == 0)
-    return clib_error_return (0,
-			      "Punt socket: Invalid client path: %s",
-			      client_pathname);
-
   c = punt_client_l4_get (af, port);
 
   if (NULL == c)
@@ -155,6 +179,36 @@ punt_socket_register_l4 (vlib_main_t * vm,
 		    udp6_punt_socket_node.index);
 
   udp_register_dst_port (vm, port, node_index, af == AF_IP4);
+
+  return (NULL);
+}
+
+static clib_error_t *
+punt_socket_register_ip_proto (vlib_main_t * vm,
+			       ip_address_family_t af,
+			       ip_protocol_t proto, char *client_pathname)
+{
+  punt_main_t *pm = &punt_main;
+  punt_client_t *c;
+
+  c = punt_client_ip_proto_get (af, proto);
+
+  if (NULL == c)
+    {
+      pool_get_zero (pm->punt_client_pool, c);
+      punt_client_ip_proto_db_add (af, proto, c - pm->punt_client_pool);
+    }
+
+  memcpy (c->caddr.sun_path, client_pathname, sizeof (c->caddr.sun_path));
+  c->caddr.sun_family = AF_UNIX;
+  c->reg.type = PUNT_TYPE_IP_PROTO;
+  c->reg.punt.ip_proto.protocol = proto;
+  c->reg.punt.ip_proto.af = af;
+
+  if (af == AF_IP4)
+    ip4_register_protocol (proto, ip4_proto_punt_socket_node.index);
+  else
+    ip6_register_protocol (proto, ip6_proto_punt_socket_node.index);
 
   return (NULL);
 }
@@ -203,6 +257,24 @@ punt_socket_unregister_l4 (ip_address_family_t af,
 }
 
 static clib_error_t *
+punt_socket_unregister_ip_proto (ip_address_family_t af, ip_protocol_t proto)
+{
+  u32 pci;
+
+  if (af == AF_IP4)
+    ip4_unregister_protocol (proto);
+  else
+    ip6_unregister_protocol (proto);
+
+  pci = punt_client_ip_proto_db_remove (af, proto);
+
+  if (~0 != pci)
+    pool_put_index (punt_main.punt_client_pool, pci);
+
+  return (NULL);
+}
+
+static clib_error_t *
 punt_socket_unregister_exception (vlib_punt_reason_t reason)
 {
   u32 pci;
@@ -227,6 +299,12 @@ vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
   if (header_version != PUNT_PACKETDESC_VERSION)
     return clib_error_return (0, "Invalid packet descriptor version");
 
+  if (strncmp (client_pathname, vnet_punt_get_server_pathname (),
+	       UNIX_PATH_MAX) == 0)
+    return clib_error_return (0,
+			      "Punt socket: Invalid client path: %s",
+			      client_pathname);
+
   /* Register client */
   switch (pr->type)
     {
@@ -235,6 +313,11 @@ vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
 				       pr->punt.l4.af,
 				       pr->punt.l4.protocol,
 				       pr->punt.l4.port, client_pathname));
+    case PUNT_TYPE_IP_PROTO:
+      return (punt_socket_register_ip_proto (vm,
+					     pr->punt.ip_proto.af,
+					     pr->punt.ip_proto.protocol,
+					     client_pathname));
     case PUNT_TYPE_EXCEPTION:
       return (punt_socket_register_exception (vm,
 					      pr->punt.exception.reason,
@@ -258,6 +341,9 @@ vnet_punt_socket_del (vlib_main_t * vm, const punt_reg_t * pr)
       return (punt_socket_unregister_l4 (pr->punt.l4.af,
 					 pr->punt.l4.protocol,
 					 pr->punt.l4.port));
+    case PUNT_TYPE_IP_PROTO:
+      return (punt_socket_unregister_ip_proto (pr->punt.ip_proto.af,
+					       pr->punt.ip_proto.protocol));
     case PUNT_TYPE_EXCEPTION:
       return (punt_socket_unregister_exception (pr->punt.exception.reason));
     }
@@ -330,13 +416,6 @@ punt_l4_add_del (vlib_main_t * vm,
     }
 }
 
-static clib_error_t *
-punt_exception_add_del (vlib_main_t * vm,
-			vlib_punt_reason_t reason, bool is_add)
-{
-  return (NULL);
-}
-
 clib_error_t *
 vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
 {
@@ -346,7 +425,8 @@ vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
       return (punt_l4_add_del (vm, pr->punt.l4.af, pr->punt.l4.protocol,
 			       pr->punt.l4.port, is_add));
     case PUNT_TYPE_EXCEPTION:
-      return (punt_exception_add_del (vm, pr->punt.exception.reason, is_add));
+    case PUNT_TYPE_IP_PROTO:
+      break;
     }
 
   return (clib_error_return (0, "Unsupported punt type: %d", pr->type));
@@ -560,11 +640,22 @@ punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb, void *ctx)
     {
     case PUNT_TYPE_L4:
       {
-	u32 pci;
-	u16 port;
+	u32 pci, key;
 
         /* *INDENT-OFF* */
-        hash_foreach(port, pci, pm->db.clients_by_l4_port,
+        hash_foreach(key, pci, pm->db.clients_by_l4_port,
+        ({
+          cb (pool_elt_at_index(pm->punt_client_pool, pci), ctx);
+        }));
+        /* *INDENT-ON* */
+	break;
+      }
+    case PUNT_TYPE_IP_PROTO:
+      {
+	u32 pci, key;
+
+        /* *INDENT-OFF* */
+        hash_foreach(key, pci, pm->db.clients_by_ip_proto,
         ({
           cb (pool_elt_at_index(pm->punt_client_pool, pci), ctx);
         }));
@@ -601,6 +692,11 @@ format_punt_client (u8 * s, va_list * args)
 		  format_ip_protocol, pc->reg.punt.l4.protocol,
 		  pc->reg.punt.l4.port);
       break;
+    case PUNT_TYPE_IP_PROTO:
+      s = format (s, "%U %U",
+		  format_ip_address_family, pc->reg.punt.ip_proto.af,
+		  format_ip_protocol, pc->reg.punt.ip_proto.protocol);
+      break;
     case PUNT_TYPE_EXCEPTION:
       s = format (s, " %U", format_vlib_punt_reason,
 		  pc->reg.punt.exception.reason);
@@ -635,6 +731,8 @@ punt_socket_show_cmd (vlib_main_t * vm,
 	pt = PUNT_TYPE_EXCEPTION;
       else if (unformat (input, "l4"))
 	pt = PUNT_TYPE_L4;
+      else if (unformat (input, "ip"))
+	pt = PUNT_TYPE_IP_PROTO;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
