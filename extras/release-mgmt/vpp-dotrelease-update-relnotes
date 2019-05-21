@@ -1,0 +1,74 @@
+#!/usr/bin/perl
+#
+# Update release notes for a dot release
+# requires one argument being the upcoming dot release,
+# with no dots, e.g. 19012
+#
+
+$toc_fixed = 0;
+$page_fixed = 0;
+
+$bogus_rel_num = "100100"; # a bogus release just in case
+$last_rel_num = $bogus_rel_num;
+
+$rel_num = $ARGV[0];
+
+$rel_num =~ /^\d+$/ or die("Release number should be all digits, e.g. 19012");
+
+$rel_num_dots = $rel_num;
+$rel_num_dots =~ s/(..)/\1./g;
+
+$stable_branch = $rel_num;
+$stable_branch =~ s/(\d\d\d\d).+/\1/;
+
+$rel_text = <<__EE__;
+\@page release_notes_$rel_num Release notes for VPP $rel_num_dots
+
+This is bug fix release.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/$stable_branch)
+
+__EE__
+
+open(F, "RELEASE.md") || die("Could not open RELEASE.md");
+open(FO, ">/tmp/RELEASE.md") || die("Could not open /tmp/RELEASE.md");
+while (<F>) {
+   if ($toc_fixed) {
+	   if ($page_seen_prev_version) {
+		   print(FO);
+	   } else {
+               if ($_ =~ /^\@page release_notes_${last_rel_num} Release notes for VPP /) {
+		       print(FO $rel_text);
+	               $page_fixed = 1;
+	       }
+	       print(FO);
+	   }
+   } else {
+      # looking for the first line of TOC
+      if ($_ =~ /\* \@subpage release_notes_(\d+)$/) {
+	      print(STDERR "Found first line of toc! $1\n");
+	      $last_rel_num = $1;
+	      if ($last_rel_num == $rel_num) {
+		      print("Found current version in RELEASE.md already. Not updating.");
+		      exit 1;
+	      }
+	      $last_rel_num_compare = $last_rel_num;
+	      if (length($last_rel_num_compare) == 4) {
+		      $last_rel_num_compare = $last_rel_num_compare . "0";
+	      }
+	      # not numerical comparison, but since lengths are the same, should be ok
+	      if ($rel_num > $last_rel_num_compare) {
+	              $toc_fixed = 1;
+	              print(FO '* @subpage release_notes_' . $rel_num . "\n");
+	      }
+      }
+      print(FO);
+   }
+}
+
+if ($toc_fixed && $page_fixed) {
+	print("TOC and page of RELEASE.md fixed, copy from /tmp\n");
+	system("cp /tmp/RELEASE.md RELEASE.md");
+}

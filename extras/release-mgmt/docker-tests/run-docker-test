@@ -1,0 +1,71 @@
+#!/bin/sh
+set -eu
+
+# which packagecloud repository to use
+export PACKAGECLOUD_REPO=${PACKAGECLOUD_REPO:-'fdio/release'}
+
+# the version to pin down during the install, or empty
+if [ -z "${VPP_CHECK_VERSION+set}" ]; then
+  VPP_EXACT_VERSION=${VPP_EXACT_VERSION:-"19.01.3-release"}
+else
+  VPP_EXACT_VERSION=""
+fi
+export VPP_EXACT_VERSION
+
+if [ -z "${VPP_PACKAGE_LIST+set}" ]; then
+  VPP_PACKAGE_LIST=${VPP_PACKAGE_LIST:-"packagelists/default"}
+fi
+export VPP_PACKAGE_LIST
+echo "VPP package list prefix: ${VPP_PACKAGE_LIST}"
+
+# which version to check for in the show outputs
+export VPP_CHECK_VERSION=${VPP_CHECK_VERSION:-${VPP_EXACT_VERSION:+${VPP_EXACT_VERSION}}}
+
+# Prompt user to confirm verification criteria
+echo "Repo: ${PACKAGECLOUD_REPO}, force install version: '${VPP_EXACT_VERSION}', check version: '${VPP_CHECK_VERSION}'"
+read -p "Press enter when ready:" ENTER
+
+if [ "$VPP_EXACT_VERSION" = "" ]; then
+  BUILD_ARG_VERSION=""
+else
+  BUILD_ARG_VERSION="--build-arg VPP_EXACT_VERSION=${VPP_EXACT_VERSION}"
+fi
+
+TEST_ENVIRONMENTS="ubuntu1604 ubuntu1804 centos"
+
+# build the three containers
+echo "-----------------------"
+echo
+echo "Building docker containers:"
+for i in ${TEST_ENVIRONMENTS}; do
+  VPP_INSTALL_PACKAGES="$(cat $VPP_PACKAGE_LIST.packagelist.${i})"
+  echo  
+  echo DOCKER build $i  
+  # Docker caching has proven to harm more than help for this use case, so make it uncached
+  # also with "-q" it is very boring to watch the paint dry - so keep it verbose to entertain the PEBKAC :)
+  docker build --no-cache -t vpp-test-$i -f Dockerfile.$i ${BUILD_ARG_VERSION} --build-arg PACKAGECLOUD_REPO=${PACKAGECLOUD_REPO} --build-arg VPP_CHECK_VERSION=${VPP_CHECK_VERSION} --build-arg VPP_INSTALL_PACKAGES="${VPP_INSTALL_PACKAGES}" .
+done
+
+echo "-----------------------"
+
+# run the tests, bail out if it fails
+FAILED_TEST="false"
+for i in ${TEST_ENVIRONMENTS}; do
+  echo
+  echo Testing: $i
+  if docker run --shm-size=512M vpp-test-$i; then
+    echo "TEST $i ok"
+  else
+    RET_CODE=$?
+    echo "RET_CODE: ${RET_CODE}"
+    echo "FAILURE testing $i!"
+    FAILED_TEST="true"
+  fi
+done
+echo "-----------------------"
+echo
+if [ "$FAILED_TEST" = "false" ] ; then
+  echo 'ALL TESTS PASSED!!!  :)'
+else
+  echo 'One or more tests FAILED!!! :('
+fi
