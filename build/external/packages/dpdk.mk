@@ -295,3 +295,4 @@ dpdk-build: $(B)/.dpdk-build.ok
 
 .PHONY: dpdk-install
 dpdk-install: $(B)/.dpdk-build.ok
+	@echo "$(DPDK_VERSION)" > $(I)/share/dpdk_version

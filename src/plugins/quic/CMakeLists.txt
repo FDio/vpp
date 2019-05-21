@@ -38,6 +38,8 @@ if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
     LINK_LIBRARIES ${QUIC_LINK_LIBRARIES}
   )
   message(STATUS "Found quicly in ${QUICLY_INCLUDE_DIR}")
+  # Check quicly version only if the library is found
+  check_ext_dep_version(quicly 0.0.2-vpp)
 else()
   message(WARNING "-- quicly not found - quic_plugin disabled")
 endif()

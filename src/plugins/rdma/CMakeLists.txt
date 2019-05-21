@@ -40,6 +40,8 @@ endif()
 
 include_directories(${IBVERBS_INCLUDE_DIR})
 
+check_ext_dep_version(rdma-core 23)
+
 add_vpp_plugin(rdma
   SOURCES
   cli.c
