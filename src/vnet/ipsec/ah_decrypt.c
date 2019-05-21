@@ -42,6 +42,7 @@ typedef enum
   _ (RX_PKTS, "AH pkts received")               \
   _ (DECRYPTION_FAILED, "AH decryption failed") \
   _ (INTEG_ERROR, "Integrity check failed")     \
+  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)") \
   _ (REPLAY, "SA replayed packet")
 
 typedef enum
@@ -77,210 +78,298 @@ format_ah_decrypt_trace (u8 * s, va_list * args)
   return s;
 }
 
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      u8 hop_limit;
+      u8 nexthdr;
+      u32 ip_version_traffic_class_and_flow_label;
+    };
+
+    struct
+    {
+      u8 ttl;
+      u8 tos;
+    };
+  };
+  u8 skip;
+  u32 sa_index;
+  u32 seq;
+  u8 icv_padding_len;
+  u8 digest[64];
+  u8 auth_data[64];
+  u8 icv_size;
+  u8 ip_hdr_size;
+  ip4_header_t *ih4;
+  ip6_header_t *ih6;
+  u8 nexthdr_cached;
+} ah_decrypt_packet_data_t;
+
+static_always_inline void
+ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
+		vnet_crypto_op_t * ops, vlib_buffer_t * b[], u16 * nexts)
+{
+  u32 n_fail, n_ops = vec_len (ops);
+  vnet_crypto_op_t *op = ops;
+
+  if (n_ops == 0)
+    return;
+
+  n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
+
+  while (n_fail)
+    {
+      ASSERT (op - ops < n_ops);
+
+      if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+	{
+	  u32 bi = op->user_data;
+	  b[bi]->error = node->errors[AH_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR];
+	  nexts[bi] = AH_DECRYPT_NEXT_DROP;
+	  n_fail--;
+	}
+      op++;
+    }
+}
+
 always_inline uword
 ah_decrypt_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * from_frame,
 		   int is_ip6)
 {
-  u32 n_left_from, *from, next_index, *to_next, thread_index;
+  u32 n_left, *from;
+  u32 thread_index = vm->thread_index;
+  ah_decrypt_packet_data_t pkt_data[VLIB_FRAME_SIZE], *pd = pkt_data;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   ipsec_main_t *im = &ipsec_main;
+  ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, thread_index);
   from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
-  int icv_size;
+  n_left = from_frame->n_vectors;
+  ipsec_sa_t *sa0;
+  u32 sa_index0 = ~0;
 
-  next_index = node->cached_next_index;
-  thread_index = vm->thread_index;
+  clib_memset (pkt_data, 0, VLIB_FRAME_SIZE * sizeof (pkt_data[0]));
+  vlib_get_buffers (vm, from, b, n_left);
+  vec_reset_length (ptd->crypto_ops);
+  vec_reset_length (ptd->integ_ops);
 
-  while (n_left_from > 0)
+  while (n_left > 0)
     {
-      u32 n_left_to_next;
+      ah_header_t *ah0;
+      ip4_header_t *ih4;
+      ip6_header_t *ih6;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
+      sa0 = pool_elt_at_index (im->sad, sa_index0);
+      pd->sa_index = sa_index0;
+      next[0] = AH_DECRYPT_NEXT_DROP;
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      ih4 = vlib_buffer_get_current (b[0]);
+      ih6 = vlib_buffer_get_current (b[0]);
+      pd->ih4 = ih4;
+      pd->ih6 = ih6;
+
+      vlib_prefetch_combined_counter (&ipsec_sa_counters,
+				      thread_index, sa_index0);
+
+      if (is_ip6)
 	{
-	  u32 i_bi0;
-	  u32 next0;
-	  vlib_buffer_t *i_b0;
-	  ah_header_t *ah0;
-	  ipsec_sa_t *sa0;
-	  u32 sa_index0 = ~0;
-	  u32 seq;
-	  ip4_header_t *ih4 = 0, *oh4 = 0;
-	  ip6_header_t *ih6 = 0, *oh6 = 0;
-	  u8 ip_hdr_size = 0;
-	  u8 tos = 0;
-	  u8 ttl = 0;
-	  u32 ip_version_traffic_class_and_flow_label = 0;
-	  u8 hop_limit = 0;
-	  u8 nexthdr = 0;
-	  u8 icv_padding_len = 0;
+	  ip6_ext_header_t *prev = NULL;
+	  ip6_ext_header_find_t (ih6, prev, ah0, IP_PROTOCOL_IPSEC_AH);
+	  pd->ip_hdr_size = sizeof (ip6_header_t);
+	  ASSERT ((u8 *) ah0 - (u8 *) ih6 == pd->ip_hdr_size);
+	}
+      else
+	{
+	  pd->ip_hdr_size = ip4_header_bytes (ih4);
+	  ah0 = (ah_header_t *) ((u8 *) ih4 + pd->ip_hdr_size);
+	}
 
+      pd->seq = clib_host_to_net_u32 (ah0->seq_no);
 
-	  i_bi0 = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
+      /* anti-replay check */
+      if (ipsec_sa_anti_replay_check (sa0, &ah0->seq_no))
+	{
+	  b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
+	  pd->skip = 1;
+	  goto next;
+	}
 
-	  next0 = AH_DECRYPT_NEXT_DROP;
+      vlib_increment_combined_counter
+	(&ipsec_sa_counters, thread_index, sa_index0,
+	 1, b[0]->current_length);
 
-	  i_b0 = vlib_get_buffer (vm, i_bi0);
-	  to_next[0] = i_bi0;
-	  to_next += 1;
-	  ih4 = vlib_buffer_get_current (i_b0);
-	  ih6 = vlib_buffer_get_current (i_b0);
-	  sa_index0 = vnet_buffer (i_b0)->ipsec.sad_index;
-	  sa0 = pool_elt_at_index (im->sad, sa_index0);
+      pd->nexthdr_cached = ah0->nexthdr;
+      pd->icv_size = sa0->integ_icv_size;
+      if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
+	{
+	  vnet_crypto_op_t *op;
+	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
+	  vnet_crypto_op_init (op, sa0->integ_op_id);
 
-	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
-					  thread_index, sa_index0);
+	  u8 *icv = ah0->auth_data;
+	  clib_memcpy (pd->auth_data, icv, pd->icv_size);
+	  clib_memset (icv, 0, pd->icv_size);
+
+	  op->src = (u8 *) ih4;
+	  op->len = b[0]->current_length;
+	  op->digest = pd->digest;
+	  op->digest_len = pd->icv_size;
+	  op->key_index = sa0->integ_key_index;
+	  op->user_data = b - bufs;
+	  if (ipsec_sa_is_set_USE_ESN (sa0))
+	    {
+	      u32 seq_hi = clib_host_to_net_u32 (sa0->seq_hi);
+
+	      op->len += sizeof (seq_hi);
+	      clib_memcpy (op->src + b[0]->current_length, &seq_hi,
+			   sizeof (seq_hi));
+	    }
 
 	  if (is_ip6)
 	    {
-	      ip6_ext_header_t *prev = NULL;
-	      ip6_ext_header_find_t (ih6, prev, ah0, IP_PROTOCOL_IPSEC_AH);
-	      ip_hdr_size = sizeof (ip6_header_t);
-	      ASSERT ((u8 *) ah0 - (u8 *) ih6 == ip_hdr_size);
+	      pd->ip_version_traffic_class_and_flow_label =
+		ih6->ip_version_traffic_class_and_flow_label;
+	      pd->hop_limit = ih6->hop_limit;
+	      ih6->ip_version_traffic_class_and_flow_label = 0x60;
+	      ih6->hop_limit = 0;
+	      pd->nexthdr = ah0->nexthdr;
+	      pd->icv_padding_len =
+		ah_calc_icv_padding_len (pd->icv_size, 1 /* is_ipv6 */ );
 	    }
 	  else
 	    {
-	      ip_hdr_size = ip4_header_bytes (ih4);
-	      ah0 = (ah_header_t *) ((u8 *) ih4 + ip_hdr_size);
+	      pd->tos = ih4->tos;
+	      pd->ttl = ih4->ttl;
+	      ih4->tos = 0;
+	      ih4->ttl = 0;
+	      ih4->checksum = 0;
+	      ih4->flags_and_fragment_offset = 0;
+	      pd->icv_padding_len =
+		ah_calc_icv_padding_len (pd->icv_size, 0 /* is_ipv6 */ );
 	    }
+	}
 
-	  seq = clib_host_to_net_u32 (ah0->seq_no);
+    next:
+      n_left -= 1;
+      pd += 1;
+      next += 1;
+      b += 1;
+    }
 
-	  /* anti-replay check */
-	  if (ipsec_sa_anti_replay_check (sa0, &ah0->seq_no))
+  n_left = from_frame->n_vectors;
+  next = nexts;
+  pd = pkt_data;
+  b = bufs;
+
+  vlib_node_increment_counter (vm, node->node_index, AH_DECRYPT_ERROR_RX_PKTS,
+			       n_left);
+
+  ah_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
+
+  while (n_left > 0)
+    {
+      ip4_header_t *oh4;
+      ip6_header_t *oh6;
+
+      sa0 = vec_elt_at_index (im->sad, pd->sa_index);
+
+      if (pd->skip)
+	goto trace;
+
+      if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
+	{
+	  if (PREDICT_FALSE
+	      (clib_memcmp (pd->digest, pd->auth_data, pd->icv_size)))
 	    {
-	      i_b0->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
+	      b[0]->error = node->errors[AH_DECRYPT_ERROR_INTEG_ERROR];
 	      goto trace;
 	    }
+	  ipsec_sa_anti_replay_advance (sa0, clib_host_to_net_u32 (pd->seq));
+	}
 
-	  vlib_increment_combined_counter
-	    (&ipsec_sa_counters, thread_index, sa_index0,
-	     1, i_b0->current_length);
+      vlib_buffer_advance (b[0],
+			   pd->ip_hdr_size + sizeof (ah_header_t) +
+			   pd->icv_size + pd->icv_padding_len);
+      b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
-	  icv_size = sa0->integ_icv_size;
-	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
+      if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
+	{			/* tunnel mode */
+	  if (PREDICT_TRUE (pd->nexthdr_cached == IP_PROTOCOL_IP_IN_IP))
+	    next[0] = AH_DECRYPT_NEXT_IP4_INPUT;
+	  else if (pd->nexthdr_cached == IP_PROTOCOL_IPV6)
+	    next[0] = AH_DECRYPT_NEXT_IP6_INPUT;
+	  else
 	    {
-	      u8 sig[64];
-	      u8 digest[icv_size];
-	      u8 *icv = ah0->auth_data;
-	      memcpy (digest, icv, icv_size);
-	      clib_memset (icv, 0, icv_size);
-
-	      if (is_ip6)
-		{
-		  ip_version_traffic_class_and_flow_label =
-		    ih6->ip_version_traffic_class_and_flow_label;
-		  hop_limit = ih6->hop_limit;
-		  ih6->ip_version_traffic_class_and_flow_label = 0x60;
-		  ih6->hop_limit = 0;
-		  nexthdr = ah0->nexthdr;
-		  icv_padding_len =
-		    ah_calc_icv_padding_len (icv_size, 1 /* is_ipv6 */ );
-		}
-	      else
-		{
-		  tos = ih4->tos;
-		  ttl = ih4->ttl;
-		  ih4->tos = 0;
-		  ih4->ttl = 0;
-		  ih4->checksum = 0;
-		  ih4->flags_and_fragment_offset = 0;
-		  icv_padding_len =
-		    ah_calc_icv_padding_len (icv_size, 0 /* is_ipv6 */ );
-		}
-	      hmac_calc (vm, sa0, (u8 *) ih4, i_b0->current_length, sig);
-
-	      if (PREDICT_FALSE (memcmp (digest, sig, icv_size)))
-		{
-		  i_b0->error = node->errors[AH_DECRYPT_ERROR_INTEG_ERROR];
-		  goto trace;
-		}
-
-	      ipsec_sa_anti_replay_advance (sa0, ah0->seq_no);
+	      b[0]->error = node->errors[AH_DECRYPT_ERROR_DECRYPTION_FAILED];
+	      goto trace;
 	    }
+	}
+      else
+	{			/* transport mode */
+	  if (is_ip6)
+	    {
+	      vlib_buffer_advance (b[0], -sizeof (ip6_header_t));
+	      oh6 = vlib_buffer_get_current (b[0]);
+	      memmove (oh6, pd->ih6, sizeof (ip6_header_t));
 
-	  vlib_buffer_advance (i_b0,
-			       ip_hdr_size + sizeof (ah_header_t) + icv_size +
-			       icv_padding_len);
-	  i_b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-
-	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
-	    {			/* tunnel mode */
-	      if (PREDICT_TRUE (ah0->nexthdr == IP_PROTOCOL_IP_IN_IP))
-		next0 = AH_DECRYPT_NEXT_IP4_INPUT;
-	      else if (ah0->nexthdr == IP_PROTOCOL_IPV6)
-		next0 = AH_DECRYPT_NEXT_IP6_INPUT;
-	      else
-		{
-		  i_b0->error =
-		    node->errors[AH_DECRYPT_ERROR_DECRYPTION_FAILED];
-		  goto trace;
-		}
+	      next[0] = AH_DECRYPT_NEXT_IP6_INPUT;
+	      oh6->protocol = pd->nexthdr;
+	      oh6->hop_limit = pd->hop_limit;
+	      oh6->ip_version_traffic_class_and_flow_label =
+		pd->ip_version_traffic_class_and_flow_label;
+	      oh6->payload_length =
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain
+				      (vm, b[0]) - sizeof (ip6_header_t));
 	    }
 	  else
-	    {			/* transport mode */
-	      if (is_ip6)
-		{
-		  vlib_buffer_advance (i_b0, -sizeof (ip6_header_t));
-		  oh6 = vlib_buffer_get_current (i_b0);
-		  memmove (oh6, ih6, sizeof (ip6_header_t));
-
-		  next0 = AH_DECRYPT_NEXT_IP6_INPUT;
-		  oh6->protocol = nexthdr;
-		  oh6->hop_limit = hop_limit;
-		  oh6->ip_version_traffic_class_and_flow_label =
-		    ip_version_traffic_class_and_flow_label;
-		  oh6->payload_length =
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain
-					  (vm, i_b0) - sizeof (ip6_header_t));
-		}
-	      else
-		{
-		  vlib_buffer_advance (i_b0, -sizeof (ip4_header_t));
-		  oh4 = vlib_buffer_get_current (i_b0);
-		  memmove (oh4, ih4, sizeof (ip4_header_t));
-
-		  next0 = AH_DECRYPT_NEXT_IP4_INPUT;
-		  oh4->ip_version_and_header_length = 0x45;
-		  oh4->fragment_id = 0;
-		  oh4->flags_and_fragment_offset = 0;
-		  oh4->protocol = ah0->nexthdr;
-		  oh4->length =
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain
-					  (vm, i_b0));
-		  oh4->ttl = ttl;
-		  oh4->tos = tos;
-		  oh4->checksum = ip4_header_checksum (oh4);
-		}
-	    }
-
-	  /* for IPSec-GRE tunnel next node is ipsec-gre-input */
-	  if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
-	    next0 = AH_DECRYPT_NEXT_IPSEC_GRE_INPUT;
-
-	  vnet_buffer (i_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	trace:
-	  if (PREDICT_FALSE (i_b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      i_b0->flags |= VLIB_BUFFER_IS_TRACED;
-	      ah_decrypt_trace_t *tr =
-		vlib_add_trace (vm, node, i_b0, sizeof (*tr));
-	      tr->integ_alg = sa0->integ_alg;
-	      tr->seq_num = seq;
-	    }
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, i_bi0, next0);
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-  vlib_node_increment_counter (vm, node->node_index, AH_DECRYPT_ERROR_RX_PKTS,
-			       from_frame->n_vectors);
+	      vlib_buffer_advance (b[0], -sizeof (ip4_header_t));
+	      oh4 = vlib_buffer_get_current (b[0]);
+	      memmove (oh4, pd->ih4, sizeof (ip4_header_t));
 
-  return from_frame->n_vectors;
+	      next[0] = AH_DECRYPT_NEXT_IP4_INPUT;
+	      oh4->ip_version_and_header_length = 0x45;
+	      oh4->fragment_id = 0;
+	      oh4->flags_and_fragment_offset = 0;
+	      oh4->protocol = pd->nexthdr_cached;
+	      oh4->length =
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]));
+	      oh4->ttl = pd->ttl;
+	      oh4->tos = pd->tos;
+	      oh4->checksum = ip4_header_checksum (oh4);
+	    }
+	}
+
+      /* for IPSec-GRE tunnel next node is ipsec-gre-input */
+      if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
+	next[0] = AH_DECRYPT_NEXT_IPSEC_GRE_INPUT;
+
+      vnet_buffer (b[0])->sw_if_index[VLIB_TX] = (u32) ~ 0;
+    trace:
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  b[0]->flags |= VLIB_BUFFER_IS_TRACED;
+	  ah_decrypt_trace_t *tr =
+	    vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	  tr->integ_alg = sa0->integ_alg;
+	  tr->seq_num = pd->seq;
+	}
+
+      n_left -= 1;
+      pd += 1;
+      next += 1;
+      b += 1;
+    }
+
+  n_left = from_frame->n_vectors;
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_left);
+
+  return n_left;
 }
 
 VLIB_NODE_FN (ah4_decrypt_node) (vlib_main_t * vm,
