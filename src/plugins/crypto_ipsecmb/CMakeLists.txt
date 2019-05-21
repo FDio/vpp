@@ -35,6 +35,7 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 
 	target_compile_options(crypto_ipsecmb_plugin PRIVATE "-march=silvermont")
 	message(STATUS "Intel IPSecMB found: ${IPSECMB_INCLUDE_DIR}")
+	check_ext_dep_version(ipsec-mb 0.52)
 else()
 	message(STATUS "Intel IPSecMB not found")
 endif()
