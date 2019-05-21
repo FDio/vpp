@@ -826,7 +826,7 @@ snat_hairpin_src_fn_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  next0 = SNAT_HAIRPIN_SRC_NEXT_INTERFACE_OUTPUT;
+	  vnet_feature_next (&next0, b0);
 
           /* *INDENT-OFF* */
           pool_foreach (i, sm->output_feature_interfaces,
