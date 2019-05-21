@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b88a6017_8bec0bf2",
+        "filename": "src/svm/queue.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-21T11:49:00Z",
+      "side": 1,
+      "message": "Was \"lock\" before. Fix: https://gerrit.fd.io/r/19735",
+      "range": {
+        "startLine": 177,
+        "startChar": 16,
+        "endLine": 177,
+        "endChar": 22
+      },
+      "revId": "a474894a4a39edd5dc96151e6f95f8122e06a450",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
