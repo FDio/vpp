@@ -1,0 +1,43 @@
+# Download base ubuntu image
+FROM ubuntu:18.04
+
+# exact version to pin down the install with (e.g. "19.01.2-release"), or empty
+ARG VPP_EXACT_VERSION
+
+# version to check for, during the runtime. same format as above
+ARG VPP_CHECK_VERSION
+
+# packagecloud repository, e.g. "fdio/staging", "fdio/release", etc.
+ARG PACKAGECLOUD_REPO
+
+# space-separated list of VPP packagesm e.g. "vpp libvppinfra libvppinfra-dev vpp-plugin-core ..."
+ARG VPP_INSTALL_PACKAGES
+
+# "=19.01.2-release" for example, or empty
+ENV VPP_VERSION_ARG=${VPP_EXACT_VERSION:+=${VPP_EXACT_VERSION}}
+RUN export VPP_VERSION_ARG
+
+RUN echo ${VPP_CHECK_VERSION} > /VPP_CHECK_VERSION.txt
+
+
+RUN apt-get update && true
+RUN apt-get upgrade -y && true
+RUN apt-get install -y curl sudo gawk
+
+# install FD.io repository
+RUN (curl -s https://packagecloud.io/install/repositories/${PACKAGECLOUD_REPO}/script.deb.sh | sudo bash)
+
+# install VPP
+RUN echo " VPP exact version arg: \'${VPP_EXACT_VERSION}\'"
+RUN echo " VPP version arg: \'${VPP_VERSION_ARG}\'"
+RUN echo " VPP packages: \'${VPP_INSTALL_PACKAGES}\'"
+RUN apt-get install -y $(echo ${VPP_INSTALL_PACKAGES} | sed -e 's/-/_DASH_/g' -e 's/\>/'${VPP_VERSION_ARG}'/g' -e 's/_DASH_/-/g')
+
+
+
+# start and test
+COPY start.sh /start.sh
+COPY vpp-commands.txt /vpp-commands.txt
+
+CMD ["./start.sh"]
+
