@@ -1,0 +1,36 @@
+# Download base ubuntu image
+FROM centos:centos7
+ARG VPP_EXACT_VERSION
+ARG PACKAGECLOUD_REPO
+ARG VPP_CHECK_VERSION
+
+# install main packages:
+RUN yum -y update; yum clean all;
+
+
+RUN yum -y update; yum clean all;
+RUN yum -y install epel-release; yum clean all
+RUN yum -y install curl sudo; yum clean all
+
+# "=19.01.2-release" for example, or empty
+ENV VPP_VERSION_ARG=${VPP_EXACT_VERSION:+-${VPP_EXACT_VERSION}.x86_64}
+RUN export VPP_VERSION_ARG
+
+RUN echo ${VPP_CHECK_VERSION} > /VPP_CHECK_VERSION.txt
+
+
+# install fd.io repo
+RUN (curl -s https://packagecloud.io/install/repositories/${PACKAGECLOUD_REPO}/script.rpm.sh | sudo bash)
+RUN yum -y update; yum clean all;
+
+# RUN yum -y install vpp-plugins vpp vpp-lib; yum clean all
+RUN yum -y install vpp-plugins${VPP_VERSION_ARG} vpp${VPP_VERSION_ARG} vpp-lib${VPP_VERSION_ARG}; yum clean all
+
+COPY start.sh /start.sh
+COPY vpp-commands.txt /vpp-commands.txt
+
+CMD ["./start.sh"]
+
+# EXPOSE 1234
+
+

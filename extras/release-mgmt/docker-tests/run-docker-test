@@ -1,0 +1,53 @@
+#!/bin/sh
+set -eux
+
+# which packagecloud repository to use
+export PACKAGECLOUD_REPO=${PACKAGECLOUD_REPO:-'fdio/release'}
+
+# the version to pin down during the install, or empty
+if [ -z "${VPP_CHECK_VERSION+set}" ]; then
+  VPP_EXACT_VERSION=${VPP_EXACT_VERSION:-"19.01.2-release"}
+else
+  VPP_EXACT_VERSION=""
+fi
+export VPP_EXACT_VERSION
+
+# which version to check for in the show outputs
+export VPP_CHECK_VERSION=${VPP_CHECK_VERSION:-${VPP_EXACT_VERSION:+${VPP_EXACT_VERSION}}}
+
+echo "Repo: ${PACKAGECLOUD_REPO}, force install version: '${VPP_EXACT_VERSION}', check version: '${VPP_CHECK_VERSION}'"
+read -p "Press enter when ready:" ENTER
+
+
+if [ "$VPP_EXACT_VERSION" = "" ]; then
+  BUILD_ARG_VERSION=""
+else
+  BUILD_ARG_VERSION="--build-arg VPP_EXACT_VERSION=${VPP_EXACT_VERSION}"
+fi
+
+
+
+export TEST_ENVIRONMENTS="ubuntu1604 ubuntu1804 centos"
+
+
+# build the three containers
+
+for i in ${TEST_ENVIRONMENTS}; do
+  docker build -t vpp-test-$i -f Dockerfile.$i ${BUILD_ARG_VERSION} --build-arg PACKAGECLOUD_REPO=${PACKAGECLOUD_REPO} --build-arg VPP_CHECK_VERSION=${VPP_CHECK_VERSION} .
+done
+
+# run the tests, bail out if it fails
+
+for i in ${TEST_ENVIRONMENTS}; do
+  echo Testing: $i
+  if docker run --shm-size=512M vpp-test-$i; then
+    echo "TEST $i ok"
+  else
+    RET_CODE=$?
+    echo "RET_CODE: ${RET_CODE}"
+    echo "FAILURE testing $i"
+    exit 123
+  fi
+done
+
+echo "ALL TESTS PASSED"
