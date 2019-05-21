@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "03eb1cd8_7ab5ad14",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-21T10:19:13Z",
+      "side": 1,
+      "message": "It is a bit rude to make this global. It should be enough to do \"git config commit.template .git_commit_template.txt\" in the git root directory to make it vpp specific. We can also add \"git config commit.template .git_commit_template.txt\" into ~/Makefile so it is configured in the new tree....",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 44
+      },
+      "revId": "de687c276696cd48461310ed26f0e097af47cba0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
