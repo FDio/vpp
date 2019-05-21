@@ -81,6 +81,7 @@ geneve_input (vlib_main_t * vm,
   u32 pkts_decapsulated = 0;
   u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   if (is_ip4)
     last_key4.as_u64 = ~0;
@@ -89,6 +90,7 @@ geneve_input (vlib_main_t * vm,
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
@@ -117,16 +119,11 @@ geneve_input (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_prefetch_buffer_header (b[2], LOAD);
+	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -138,8 +135,9 @@ geneve_input (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+	  b0 = b[0];
+	  b1 = b[1];
+	  b += 2;
 
 	  /* udp leaves current_data pointing at the geneve header */
 	  geneve0 = vlib_buffer_get_current (b0);
@@ -563,7 +561,8 @@ geneve_input (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+	  b0 = b[0];
+	  b += 1;
 
 	  /* udp leaves current_data pointing at the geneve header */
 	  geneve0 = vlib_buffer_get_current (b0);
