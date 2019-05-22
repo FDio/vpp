@@ -86,6 +86,19 @@ crypto_ia32_init (vlib_main_t * vm)
   if (error)
     goto error;
 
+  if (clib_cpu_supports_pclmulqdq ())
+    {
+      if (clib_cpu_supports_avx512f ())
+	error = crypto_ia32_aesni_gcm_init_avx512 (vm);
+      else if (clib_cpu_supports_avx2 ())
+	error = crypto_ia32_aesni_gcm_init_avx2 (vm);
+      else
+	error = crypto_ia32_aesni_gcm_init_sse42 (vm);
+
+      if (error)
+	goto error;
+    }
+
   vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
 				    crypto_ia32_key_handler);
 
