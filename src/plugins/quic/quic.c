@@ -1374,9 +1374,48 @@ quic_listener_get (u32 listener_index)
 }
 
 static u8 *
+format_quic_ctx (u8 * s, va_list * args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  u32 verbose = va_arg (*args, u32);
+
+  if (!ctx)
+    return s;
+  s = format (s, "[#%d][%s] ", ctx->c_thread_index, "Q");
+
+  if (ctx->is_listener)
+    {
+      s = format (s, "%s Listener: ", ctx->c_quic_ctx_id.is_stream ?
+		  "Stream" : "QSession");
+      if (verbose)
+	s = format (s, "app %d wrk %d", ctx->c_quic_ctx_id.parent_app_id,
+		    ctx->c_quic_ctx_id.parent_app_wrk_id);
+    }
+  else
+    {
+      if (ctx->c_is_ip4)
+	s = format (s, "%U:%d->%U:%d", format_ip4_address, &ctx->c_lcl_ip4,
+		    clib_net_to_host_u16 (ctx->c_lcl_port),
+		    format_ip4_address, &ctx->c_rmt_ip4,
+		    clib_net_to_host_u16 (ctx->c_rmt_port));
+      else
+	s = format (s, "%U:%d->%U:%d", format_ip6_address, &ctx->c_lcl_ip6,
+		    clib_net_to_host_u16 (ctx->c_lcl_port),
+		    format_ip6_address, &ctx->c_rmt_ip6,
+		    clib_net_to_host_u16 (ctx->c_rmt_port));
+    }
+  return s;
+}
+
+static u8 *
 format_quic_connection (u8 * s, va_list * args)
 {
-  s = format (s, "[QUIC] connection");	/* TODO */
+  u32 qc_index = va_arg (*args, u32);
+  u32 thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
+  quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
+  if (ctx)
+    s = format (s, "%-50U", format_quic_ctx, ctx, verbose);
   return s;
 }
 
@@ -1393,7 +1432,14 @@ format_quic_half_open (u8 * s, va_list * args)
 static u8 *
 format_quic_listener (u8 * s, va_list * args)
 {
-  s = format (s, "[QUIC] listener");	/*  TODO */
+  u32 tci = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
+  quic_ctx_t *ctx = quic_ctx_get (tci, vlib_get_thread_index ());
+  if (ctx)
+    {
+      ASSERT (ctx->is_listener);
+      s = format (s, "%-50U", format_quic_ctx, ctx, verbose);
+    }
   return s;
 }
 
