@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "8d7c1d67_87beb2e3",
+        "filename": "src/scripts/fts.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-22T11:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9ced3518_8ffd88e3",
+      "range": {
+        "startLine": 56,
+        "startChar": 12,
+        "endLine": 56,
+        "endChar": 20
+      },
+      "revId": "3aff54909c534ef4f1c8a123e1893b029a2133b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b1bc353d_06e405fb",
         "filename": "src/scripts/fts.py",
         "patchSetId": 1
@@ -59,6 +83,30 @@
       "writtenOn": "2019-05-22T08:43:16Z",
       "side": 1,
       "message": "Do not introduce trailing whitespace please.",
+      "range": {
+        "startLine": 96,
+        "startChar": 11,
+        "endLine": 96,
+        "endChar": 15
+      },
+      "revId": "3aff54909c534ef4f1c8a123e1893b029a2133b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4aba53aa_6140e999",
+        "filename": "src/scripts/fts.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-22T11:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b1bc353d_06e405fb",
       "range": {
         "startLine": 96,
         "startChar": 11,
