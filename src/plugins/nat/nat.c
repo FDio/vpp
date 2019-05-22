@@ -2566,7 +2566,7 @@ snat_static_mapping_match (snat_main_t * sm,
           /* *INDENT-ON* */
 	  hi = vec_len (tmp) - 1;
 	  local = pool_elt_at_index (m->locals, tmp[hi]);
-	  rand = 1 + (random_u32 (&sm->random_seed) % local->prefix);
+	  rand = 1 + (random_u32 (&sm->lb_random_seed) % local->prefix);
 	  while (lo < hi)
 	    {
 	      mid = ((hi - lo) >> 1) + lo;

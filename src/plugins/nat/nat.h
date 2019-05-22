@@ -509,6 +509,9 @@ typedef struct snat_main_s
   /* Randomize port allocation order */
   u32 random_seed;
 
+  /* Randomize local allocation order */
+  u32 lb_random_seed;
+
   /* Worker handoff frame-queue index */
   u32 fq_in2out_index;
   u32 fq_in2out_output_index;
