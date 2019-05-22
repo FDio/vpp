@@ -8,23 +8,19 @@ import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
-from threading import Event
 
 
 class QUICAppWorker(Worker):
     """ QUIC Test Application Worker """
     process = None
 
-    def __init__(self, build_dir, appname, args, logger, env={}, event=None):
+    def __init__(self, build_dir, appname, args, logger, env={}):
         app = "%s/vpp/bin/%s" % (build_dir, appname)
         self.args = [app] + args
-        self.event = event
         super(QUICAppWorker, self).__init__(self.args, logger, env)
 
     def run(self):
         super(QUICAppWorker, self).run()
-        if self.event:
-            self.event.set()
 
     def teardown(self, logger, timeout):
         if self.process is None:
@@ -172,7 +168,6 @@ class QUICEchoExternalTestCase(QUICTestCase):
             ["server", "appns", "server", "quic-setup", self.quic_setup]
         self.client_echo_test_args = common_args + \
             ["client", "appns", "client", "quic-setup", self.quic_setup]
-        self.event = Event()
 
     def server(self, *args):
         _args = self.server_echo_test_args + list(args)
@@ -180,8 +175,7 @@ class QUICEchoExternalTestCase(QUICTestCase):
             self.build_dir,
             "quic_echo",
             _args,
-            self.logger,
-            event=self.event)
+            self.logger)
         self.worker_server.start()
         self.sleep(self.pre_test_sleep)
 
@@ -192,10 +186,10 @@ class QUICEchoExternalTestCase(QUICTestCase):
             self.build_dir,
             "quic_echo",
             _args,
-            self.logger,
-            event=self.event)
+            self.logger)
         self.worker_client.start()
-        self.event.wait(self.timeout)
+	self.worker_client.join()
+	self.worker_server.join()
         self.sleep(self.post_test_sleep)
 
     def validate_external_test_results(self):
@@ -210,7 +204,7 @@ class QUICEchoExternalTestCase(QUICTestCase):
                 self.logger, self.timeout)
         if self.worker_client.result is None:
             self.worker_client.teardown(self.logger, self.timeout)
-        self.assertIsNone(server_result, "Wrong server worker return code")
+        self.assertEqual(server_result, 0, "Wrong server worker return code %s" % server_result)
         self.assertIsNotNone(
             client_result,
             "Timeout! Client worker did not finish in %ss" %
@@ -234,8 +228,8 @@ class QUICEchoExternalServerStreamTestCase(QUICEchoExternalTestCase):
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_external_transfer_server_stream(self):
-        self.server("nclients", "1/1", "send", "1Kb", "recv", "0")
-        self.client("nclients", "1/1", "send", "0", "recv", "1Kb")
+        self.server("TX=1Kb", "RX=0")
+        self.client("TX=0", "RX=1Kb")
         self.validate_external_test_results()
 
 
@@ -245,8 +239,8 @@ class QUICEchoExternalServerStreamWorkersTestCase(QUICEchoExternalTestCase):
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_external_transfer_server_stream_multi_workers(self):
-        self.server("nclients", "4/4", "send", "1Kb", "recv", "0")
-        self.client("nclients", "4/4", "send", "0", "recv", "1Kb")
+        self.server("nclients", "4/4", "TX=1Kb", "RX=0")
+        self.client("nclients", "4/4", "TX=0", "RX=1Kb")
         self.validate_external_test_results()
 
 
