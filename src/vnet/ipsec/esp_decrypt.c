@@ -424,13 +424,13 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    {
 	      next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
 	      b[0]->current_data = pd->current_data + adv;
-	      b[0]->current_length = pd->current_length + adv - tail;
+	      b[0]->current_length = pd->current_length - adv - tail;
 	    }
 	  else if (f->next_header == IP_PROTOCOL_IPV6)
 	    {
 	      next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
 	      b[0]->current_data = pd->current_data + adv;
-	      b[0]->current_length = pd->current_length + adv - tail;
+	      b[0]->current_length = pd->current_length - adv - tail;
 	    }
 	  else
 	    {
