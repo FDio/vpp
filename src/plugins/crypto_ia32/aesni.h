@@ -19,12 +19,6 @@
 #define __aesni_h__
 
 
-typedef struct
-{
-  __m128i encrypt_key[15];
-  __m128i decrypt_key[15];
-} aesni_key_data_t;
-
 typedef enum
 {
   AESNI_KEY_128 = 0,
