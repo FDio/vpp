@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "caf786c6_270f69df",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-22T10:57:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "21de8ad3_7995be91",
+      "range": {
+        "startLine": 36,
+        "startChar": 5,
+        "endLine": 36,
+        "endChar": 7
+      },
+      "revId": "d47ae65bd0096623335110662ff5b0fdc5c9e95b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "99b40baf_a44cd110",
         "filename": ".git_commit_template.txt",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2019-05-21T17:26:20Z",
       "side": 1,
       "message": "Are other characters allowed?\nI like to use \"+\" for added fixes/improvements and \"-\" for removed or missing ones.\n\nAnd what abut nested bullet lists?",
+      "range": {
+        "startLine": 39,
+        "startChar": 33,
+        "endLine": 39,
+        "endChar": 36
+      },
+      "revId": "d47ae65bd0096623335110662ff5b0fdc5c9e95b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4e9a030b_90daf526",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-22T10:57:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "99b40baf_a44cd110",
       "range": {
         "startLine": 39,
         "startChar": 33,
