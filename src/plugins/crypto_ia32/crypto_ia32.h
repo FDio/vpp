@@ -18,6 +18,8 @@
 #ifndef __crypto_ia32_h__
 #define __crypto_ia32_h__
 
+typedef void *(crypto_ia32_key_fn_t) (vnet_crypto_key_t * key);
+
 typedef struct
 {
   __m128i cbc_iv[4];
@@ -27,12 +29,15 @@ typedef struct
 {
   u32 crypto_engine_index;
   crypto_ia32_per_thread_data_t *per_thread_data;
+  crypto_ia32_key_fn_t *key_fn[VNET_CRYPTO_N_ALGS];
   void **key_data;
 } crypto_ia32_main_t;
 
 extern crypto_ia32_main_t crypto_ia32_main;
 
-clib_error_t *crypto_ia32_aesni_cbc_init (vlib_main_t * vm);
+clib_error_t *crypto_ia32_aesni_cbc_init_sse42 (vlib_main_t * vm);
+clib_error_t *crypto_ia32_aesni_cbc_init_avx2 (vlib_main_t * vm);
+clib_error_t *crypto_ia32_aesni_cbc_init_avx512 (vlib_main_t * vm);
 
 #endif /* __crypto_ia32_h__ */
 

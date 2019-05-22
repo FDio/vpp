@@ -15,10 +15,20 @@ if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   return()
 endif()
 
-add_vpp_plugin(crypto_ia32
-  SOURCES
-  aes_cbc.c
-  main.c
-)
+add_vpp_plugin(crypto_ia32 SOURCES main.c)
 
-target_compile_options(crypto_ia32_plugin PRIVATE "-march=silvermont")
+list(APPEND VARIANTS "sse42\;-march=silvermont")
+list(APPEND VARIANTS "avx2\;-march=core-avx2")
+if(compiler_flag_march_skylake_avx512)
+  list(APPEND VARIANTS "avx512\;-march=skylake-avx512")
+endif()
+
+foreach(VARIANT ${VARIANTS})
+  list(GET VARIANT 0 v)
+  list(GET VARIANT 1 f)
+  set(l crypto_ia32_${v})
+  add_library(${l} OBJECT aes_cbc.c)
+  set_target_properties(${l} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_compile_options(${l} PUBLIC ${f} -O3 -Wall -fno-common)
+  target_sources(crypto_ia32_plugin PRIVATE $<TARGET_OBJECTS:${l}>)
+endforeach()
