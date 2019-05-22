@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3e1da0a_bd2005bd",
+        "filename": "src/scripts/fts.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-22T08:43:16Z",
+      "side": 1,
+      "message": "Just delete this line.",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 38,
+        "endChar": 12
+      },
+      "revId": "3aff54909c534ef4f1c8a123e1893b029a2133b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ced3518_8ffd88e3",
+        "filename": "src/scripts/fts.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-22T08:43:16Z",
+      "side": 1,
+      "message": "Quote from [0]:\n\"any nonzero value is considered “abnormal termination” by shells and the like. Most systems require it to be in the range 0–127, and produce undefined results otherwise. Some systems have a convention for assigning specific meanings to specific exit codes, but these are generally underdeveloped; Unix programs generally use 2 for command line syntax errors and 1 for all other kind of errors.\"\n\nFurther reading: [1], [2], [3].\n\n[0] https://docs.python.org/3.7/library/sys.html#sys.exit\n[1] http://tldp.org/LDP/abs/html/exitcodes.html\n[2] https://softwareengineering.stackexchange.com/questions/314563/where-did-exit-1-come-from\n[3] https://www.quora.com/What-is-the-significance-or-meaning-of-using-return-1-in-C",
+      "range": {
+        "startLine": 56,
+        "startChar": 12,
+        "endLine": 56,
+        "endChar": 20
+      },
+      "revId": "3aff54909c534ef4f1c8a123e1893b029a2133b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b1bc353d_06e405fb",
+        "filename": "src/scripts/fts.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-22T08:43:16Z",
+      "side": 1,
+      "message": "Do not introduce trailing whitespace please.",
+      "range": {
+        "startLine": 96,
+        "startChar": 11,
+        "endLine": 96,
+        "endChar": 15
+      },
+      "revId": "3aff54909c534ef4f1c8a123e1893b029a2133b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b9f6320e_efa82519",
+        "filename": "src/vnet/ipip/FEATURE.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-22T08:43:16Z",
+      "side": 1,
+      "message": "Tab (as in line 15) instead of spaces?",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 8
+      },
+      "revId": "3aff54909c534ef4f1c8a123e1893b029a2133b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
