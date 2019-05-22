@@ -976,9 +976,9 @@ done:
  *
  * @cliexpar
  * Example of how to create a VXLAN-GPE Tunnel:
- * @cliexcmd{create vxlan-gpe tunnel local 10.0.3.1 local 10.0.3.3 vni 13 encap-vrf-id 7}
- * Example of how to delete a VXLAN Tunnel:
- * @cliexcmd{create vxlan tunnel src 10.0.3.1 remote 10.0.3.3 vni 13 del}
+ * @cliexcmd{create vxlan-gpe tunnel local 10.0.3.1 remote 10.0.3.3 vni 13 encap-vrf-id 7}
+ * Example of how to delete a VXLAN-GPE Tunnel:
+ * @cliexcmd{create vxlan-gpe tunnel local 10.0.3.1 remote 10.0.3.3 vni 13 del}
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_vxlan_gpe_tunnel_command, static) = {
