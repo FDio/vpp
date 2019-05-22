@@ -45,6 +45,7 @@ typedef enum svm_fifo_tx_ntf_
   SVM_FIFO_NO_TX_NOTIF = 0,
   SVM_FIFO_WANT_TX_NOTIF = 1,
   SVM_FIFO_WANT_TX_NOTIF_IF_FULL = 2,
+  SVM_FIFO_WANT_TX_NOTIF_IF_EMPTY = 4,
 } svm_fifo_tx_ntf_t;
 
 typedef struct
@@ -826,6 +827,13 @@ svm_fifo_needs_tx_ntf (svm_fifo_t * f, u32 n_last_deq)
       u32 nitems = f->nitems;
       if (!f->has_tx_ntf && max_deq < nitems
 	  && max_deq + n_last_deq >= nitems)
+	return 1;
+
+      return 0;
+    }
+  else if (want_ntf & SVM_FIFO_WANT_TX_NOTIF_IF_EMPTY)
+    {
+      if (!f->has_tx_ntf && svm_fifo_is_empty (f))
 	return 1;
 
       return 0;
