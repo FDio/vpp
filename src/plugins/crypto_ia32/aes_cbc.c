@@ -22,6 +22,12 @@
 #include <crypto_ia32/crypto_ia32.h>
 #include <crypto_ia32/aesni.h>
 
+typedef struct
+{
+  __m128i encrypt_key[15];
+  __m128i decrypt_key[15];
+} aes_cbc_key_data_t;
+
 static_always_inline void
 aes_cbc_dec (__m128i * k, u8 * src, u8 * dst, u8 * iv, int count,
 	     aesni_key_size_t rounds)
@@ -98,7 +104,8 @@ aesni_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   u8 *src[4] = { };
   u8 *dst[4] = { };
   vnet_crypto_key_index_t key_index[4] = { ~0, ~0, ~0, ~0 };
-  u32x4 dummy_mask, len = { };
+  u32x4 dummy_mask = { };
+  u32x4 len = { };
   u32 i, j, count, n_left = n_ops;
   __m128i r[4] = { }, k[4][rounds + 1];
 
@@ -129,9 +136,9 @@ more:
 	    dummy_mask[i] = ~0;
 	    if (key_index[i] != ops[0]->key_index)
 	      {
-		aesni_key_data_t *kd;
+		aes_cbc_key_data_t *kd;
 		key_index[i] = ops[0]->key_index;
-		kd = (aesni_key_data_t *) cm->key_data[key_index[i]];
+		kd = (aes_cbc_key_data_t *) cm->key_data[key_index[i]];
 		clib_memcpy_fast (k[i], kd->encrypt_key,
 				  (rounds + 1) * sizeof (__m128i));
 	      }
@@ -194,7 +201,7 @@ aesni_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   crypto_ia32_main_t *cm = &crypto_ia32_main;
   int rounds = AESNI_KEY_ROUNDS (ks);
   vnet_crypto_op_t *op = ops[0];
-  aesni_key_data_t *kd = (aesni_key_data_t *) cm->key_data[op->key_index];
+  aes_cbc_key_data_t *kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
   u32 n_left = n_ops;
 
   ASSERT (n_ops >= 1);
@@ -206,11 +213,22 @@ decrypt:
   if (--n_left)
     {
       op += 1;
-      kd = (aesni_key_data_t *) cm->key_data[op->key_index];
+      kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
       goto decrypt;
     }
 
   return n_ops;
+}
+
+static_always_inline void *
+aesni_cbc_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
+{
+  aes_cbc_key_data_t *kd;
+  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
+  aes_key_expand (kd->encrypt_key, key->data, ks);
+  aes_key_expand (kd->decrypt_key, key->data, ks);
+  aes_key_enc_to_dec (kd->decrypt_key, ks);
+  return kd;
 }
 
 #define foreach_aesni_cbc_handler_type _(128) _(192) _(256)
@@ -222,6 +240,8 @@ static u32 aesni_ops_dec_aes_cbc_##x \
 static u32 aesni_ops_enc_aes_cbc_##x \
 (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
 { return aesni_ops_enc_aes_cbc (vm, ops, n_ops, AESNI_KEY_##x); } \
+static void * aesni_cbc_key_exp_##x (vnet_crypto_key_t *key) \
+{ return aesni_cbc_key_exp (key, AESNI_KEY_##x); }
 
 foreach_aesni_cbc_handler_type;
 #undef _
@@ -229,7 +249,13 @@ foreach_aesni_cbc_handler_type;
 #include <fcntl.h>
 
 clib_error_t *
-crypto_ia32_aesni_cbc_init (vlib_main_t * vm)
+#ifdef __AVX512F__
+crypto_ia32_aesni_cbc_init_avx512 (vlib_main_t * vm)
+#elif __AVX2__
+crypto_ia32_aesni_cbc_init_avx2 (vlib_main_t * vm)
+#else
+crypto_ia32_aesni_cbc_init_sse42 (vlib_main_t * vm)
+#endif
 {
   crypto_ia32_main_t *cm = &crypto_ia32_main;
   crypto_ia32_per_thread_data_t *ptd;
@@ -260,7 +286,8 @@ crypto_ia32_aesni_cbc_init (vlib_main_t * vm)
 				    aesni_ops_enc_aes_cbc_##x); \
   vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
 				    VNET_CRYPTO_OP_AES_##x##_CBC_DEC, \
-				    aesni_ops_dec_aes_cbc_##x);
+				    aesni_ops_dec_aes_cbc_##x); \
+  cm->key_fn[VNET_CRYPTO_ALG_AES_##x##_CBC] = aesni_cbc_key_exp_##x;
   foreach_aesni_cbc_handler_type;
 #undef _
 
