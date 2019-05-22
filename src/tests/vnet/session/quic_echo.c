@@ -38,7 +38,7 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
-#define QUIC_ECHO_DBG 1
+#define QUIC_ECHO_DBG 0
 #define DBG(_fmt, _args...)			\
     if (QUIC_ECHO_DBG) 				\
       clib_warning (_fmt, ##_args)
@@ -267,6 +267,18 @@ wait_for_state_change (echo_main_t * em, connection_state_t state)
     }
   clib_warning ("timeout waiting for state %d", state);
   return -1;
+}
+
+void
+notify_rx_data_to_vpp (echo_session_t * s)
+{
+  svm_fifo_t *f = s->tx_fifo;
+  if (svm_fifo_set_event (f))
+    {
+      DBG ("did send event");
+      app_send_io_evt_to_vpp (s->vpp_evt_q, f->master_session_index,
+			      SESSION_IO_EVT_TX, 0 /* noblock */ );
+    }
 }
 
 void
@@ -610,6 +622,8 @@ recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 
       if (n_read > 0)
 	{
+	  DBG ("Notify cause %u bytes", n_read);
+	  notify_rx_data_to_vpp (s);
 	  if (em->test_return_packets)
 	    test_recv_bytes (em, s, rx_buf, n_read);
 
@@ -1242,6 +1256,8 @@ server_handle_rx (echo_main_t * em, session_event_t * e)
 
       if (n_read > 0)
 	{
+	  DBG ("Notify cause %u bytes", n_read);
+	  notify_rx_data_to_vpp (s);
 	  if (em->test_return_packets)
 	    test_recv_bytes (em, s, em->rx_buf, n_read);
 
