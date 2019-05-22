@@ -45,18 +45,139 @@ static u8 rdma_rss_hash_key[] = {
 
 rdma_main_t rdma_main;
 
-#define rdma_log_debug(dev, f, ...) \
-{                                                                   \
-  vlib_log(VLIB_LOG_LEVEL_DEBUG, rdma_main.log_class, "%U: " f,      \
-	   format_vlib_pci_addr, &rd->pci_addr, ##__VA_ARGS__);     \
-};
+#define rdma_log__(lvl, dev, f, ...) \
+  do { \
+      vlib_log((lvl), rdma_main.log_class, "%s: " f, \
+               &(dev)->name, ##__VA_ARGS__); \
+  } while (0)
+
+#define rdma_log(lvl, dev, f, ...) \
+   rdma_log__((lvl), (dev), "%s (%d): " f, strerror(errno), errno, ##__VA_ARGS__)
+
+static struct ibv_flow *
+rdma_rxq_init_flow (const rdma_device_t * rd, struct ibv_qp *qp,
+		    const mac_address_t * mac, const mac_address_t * mask,
+		    u32 flags)
+{
+  struct ibv_flow *flow;
+  struct raw_eth_flow_attr
+  {
+    struct ibv_flow_attr attr;
+    struct ibv_flow_spec_eth spec_eth;
+  } __attribute__ ((packed)) fa;
+
+  memset (&fa, 0, sizeof (fa));
+  fa.attr.num_of_specs = 1;
+  fa.attr.port = 1;
+  fa.attr.flags = flags;
+  fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
+  fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
+
+  memcpy (fa.spec_eth.val.dst_mac, mac, sizeof (fa.spec_eth.val.dst_mac));
+  memcpy (fa.spec_eth.mask.dst_mac, mask, sizeof (fa.spec_eth.mask.dst_mac));
+
+  flow = ibv_create_flow (qp, &fa.attr);
+  if (!flow)
+    rdma_log (VLIB_LOG_LEVEL_ERR, rd, "ibv_create_flow() failed");
+  return flow;
+}
+
+static u32
+rdma_rxq_destroy_flow (const rdma_device_t * rd, struct ibv_flow **flow)
+{
+  if (!*flow)
+    return 0;
+
+  if (ibv_destroy_flow (*flow))
+    {
+      rdma_log (VLIB_LOG_LEVEL_ERR, rd, "ibv_destroy_flow() failed");
+      return ~0;
+    }
+
+  *flow = 0;
+  return 0;
+}
+
+static u32
+rdma_dev_set_promisc (rdma_device_t * rd)
+{
+  const mac_address_t all = {.bytes = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0} };
+  int err;
+
+  err = rdma_rxq_destroy_flow (rd, &rd->flow_mcast);
+  if (err)
+    return ~0;
+
+  err = rdma_rxq_destroy_flow (rd, &rd->flow_ucast);
+  if (err)
+    return ~0;
+
+  rd->flow_ucast = rdma_rxq_init_flow (rd, rd->rx_qp, &all, &all, 0);
+  if (!rd->flow_ucast)
+    return ~0;
+
+  rd->flags |= RDMA_DEVICE_F_PROMISC;
+  return 0;
+}
+
+static u32
+rdma_dev_set_ucast (rdma_device_t * rd)
+{
+  const mac_address_t ucast = {.bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+  };
+  const mac_address_t mcast = {.bytes = {0x1, 0x0, 0x0, 0x0, 0x0, 0x0} };
+  int err;
+
+  err = rdma_rxq_destroy_flow (rd, &rd->flow_mcast);
+  if (err)
+    return ~0;
+
+  err = rdma_rxq_destroy_flow (rd, &rd->flow_ucast);
+  if (err)
+    return ~0;
+
+  /* receive only packets with src = our MAC */
+  rd->flow_ucast = rdma_rxq_init_flow (rd, rd->rx_qp, &rd->hwaddr, &ucast, 0);
+  if (!rd->flow_ucast)
+    return ~0;
+
+  /* receive multicast packets */
+  rd->flow_mcast = rdma_rxq_init_flow (rd, rd->rx_qp, &mcast, &mcast,
+				       IBV_FLOW_ATTR_FLAGS_DONT_TRAP
+				       /* let others receive mcast packet too (eg. Linux) */
+    );
+  if (!rd->flow_mcast)
+    return ~0;
+
+  rd->flags &= ~RDMA_DEVICE_F_PROMISC;
+  return 0;
+}
+
+static u32
+rdma_dev_change_mtu (rdma_device_t * rd)
+{
+  rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "MTU change not supported");
+  return ~0;
+}
 
 static u32
 rdma_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 {
   rdma_main_t *rm = &rdma_main;
-  vlib_log_warn (rm->log_class, "TODO");
-  return 0;
+  rdma_device_t *rd = vec_elt_at_index (rm->devices, hw->dev_instance);
+
+  switch (flags)
+    {
+    case 0:
+      return rdma_dev_set_ucast (rd);
+    case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+      return rdma_dev_set_promisc (rd);
+    case ETHERNET_INTERFACE_FLAG_MTU:
+      return rdma_dev_change_mtu (rd);
+    }
+
+  rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "unknown flag %x requested", flags);
+  return ~0;
 }
 
 static void
@@ -145,9 +266,7 @@ rdma_async_event_read_ready (clib_file_t * f)
   struct ibv_async_event event;
   ret = ibv_get_async_event (rd->ctx, &event);
   if (ret < 0)
-    {
-      return clib_error_return_unix (0, "ibv_get_async_event() failed");
-    }
+    return clib_error_return_unix (0, "ibv_get_async_event() failed");
 
   switch (event.event_type)
     {
@@ -164,9 +283,8 @@ rdma_async_event_read_ready (clib_file_t * f)
 		      format_vlib_pci_addr, &rd->pci_addr);
       break;
     default:
-      vlib_log_warn (rm->log_class,
-		     "Unhandeld RDMA async event %i for device %U",
-		     event.event_type, format_vlib_pci_addr, &rd->pci_addr);
+      rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "unhandeld RDMA async event %i",
+		  event.event_type);
       break;
     }
 
@@ -183,14 +301,11 @@ rdma_async_event_init (rdma_device_t * rd)
   /* make RDMA async event fd non-blocking */
   ret = fcntl (rd->ctx->async_fd, F_GETFL);
   if (ret < 0)
-    {
-      return clib_error_return_unix (0, "fcntl(F_GETFL) failed");
-    }
+    return clib_error_return_unix (0, "fcntl(F_GETFL) failed");
+
   ret = fcntl (rd->ctx->async_fd, F_SETFL, ret | O_NONBLOCK);
   if (ret < 0)
-    {
-      return clib_error_return_unix (0, "fcntl(F_SETFL, O_NONBLOCK) failed");
-    }
+    return clib_error_return_unix (0, "fcntl(F_SETFL, O_NONBLOCK) failed");
 
   /* register RDMA async event fd */
   t.read_function = rdma_async_event_read_ready;
@@ -201,7 +316,6 @@ rdma_async_event_init (rdma_device_t * rd)
     format (0, "RMDA %U async event", format_vlib_pci_addr, &rd->pci_addr);
 
   rd->async_event_clib_file_index = clib_file_add (&file_main, &t);
-
   return 0;
 }
 
@@ -238,7 +352,7 @@ rdma_dev_cleanup (rdma_device_t * rd)
   { \
     int rv; \
     if ((rv = fn (arg))) \
-       rdma_log_debug (rd, #fn "() failed (rv = %d)", rv); \
+       rdma_log (VLIB_LOG_LEVEL_DEBUG, rd, #fn "() failed (rv = %d)", rv); \
   }
 
   _(ibv_destroy_flow, rd->flow_mcast);
@@ -266,33 +380,6 @@ rdma_dev_cleanup (rdma_device_t * rd)
   vec_free (rd->txqs);
   vec_free (rd->name);
   pool_put (rm->devices, rd);
-}
-
-static clib_error_t *
-rdma_rxq_init_flow (struct ibv_flow **flow, struct ibv_qp *qp,
-		    const mac_address_t * mac, const mac_address_t * mask,
-		    u32 flags)
-{
-  struct raw_eth_flow_attr
-  {
-    struct ibv_flow_attr attr;
-    struct ibv_flow_spec_eth spec_eth;
-  } __attribute__ ((packed)) fa;
-
-  memset (&fa, 0, sizeof (fa));
-  fa.attr.num_of_specs = 1;
-  fa.attr.port = 1;
-  fa.attr.flags = flags;
-  fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
-  fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
-
-  memcpy (fa.spec_eth.val.dst_mac, mac, sizeof (fa.spec_eth.val.dst_mac));
-  memcpy (fa.spec_eth.mask.dst_mac, mask, sizeof (fa.spec_eth.mask.dst_mac));
-
-  if ((*flow = ibv_create_flow (qp, &fa.attr)) == 0)
-    return clib_error_return_unix (0, "create Flow Failed");
-
-  return 0;
 }
 
 static clib_error_t *
@@ -332,11 +419,7 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
 {
   struct ibv_rwq_ind_table_init_attr rwqia;
   struct ibv_qp_init_attr_ex qpia;
-  const mac_address_t ucast = {.bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
-  };
-  const mac_address_t mcast = {.bytes = {0x1, 0x0, 0x0, 0x0, 0x0, 0x0} };
   struct ibv_wq **ind_tbl;
-  clib_error_t *err;
   u32 i;
 
   ASSERT (is_pow2 (vec_len (rd->rxqs))
@@ -368,16 +451,10 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
   if ((rd->rx_qp = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
     return clib_error_return_unix (0, "Queue Pair create failed");
 
-  /* receive only packets with src = our MAC */
-  if ((err =
-       rdma_rxq_init_flow (&rd->flow_ucast, rd->rx_qp, &rd->hwaddr, &ucast,
-			   0)) != 0)
-    return err;
-  /* receive multicast packets */
-  return rdma_rxq_init_flow (&rd->flow_mcast, rd->rx_qp, &mcast, &mcast,
-			     IBV_FLOW_ATTR_FLAGS_DONT_TRAP
-			     /* let others receive mcast packet too (eg. Linux) */
-    );
+  if (rdma_dev_set_ucast (rd))
+    return clib_error_return_unix (0, "Set unicast mode failed");
+
+  return 0;
 }
 
 static clib_error_t *
@@ -541,7 +618,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	clib_error_return_unix (0,
 				"no RDMA devices available, errno = %d. "
 				"Is the ib_uverbs module loaded?", errno);
-      goto err1;
+      goto err0;
     }
 
   for (int i = 0; i < n_devs; i++)
@@ -563,7 +640,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   if ((args->error =
        rdma_dev_init (vm, rd, args->rxq_size, args->txq_size, args->rxq_num)))
-    goto err2;
+    goto err1;
 
   if ((args->error = rdma_register_interface (vnm, rd)))
     goto err2;
