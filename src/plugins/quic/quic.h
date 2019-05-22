@@ -32,8 +32,6 @@
  **/
 
 #define QUIC_DEBUG               0
-#define QUIC_DEBUG_LEVEL_CLIENT  0
-#define QUIC_DEBUG_LEVEL_SERVER  0
 
 #define QUIC_DEFAULT_CA_CERT_PATH        "/etc/ssl/certs/ca-certificates.crt"
 
@@ -95,6 +93,7 @@ typedef struct quic_stream_data_
 {
   u32 ctx_id;
   u32 thread_index;
+  u32 app_rx_data_len;		/* bytes received, to be read by external app */
 } quic_stream_data_t;
 
 typedef struct quic_worker_ctx_
