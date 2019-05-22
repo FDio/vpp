@@ -88,15 +88,19 @@ format_session (u8 * s, va_list * args)
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
     {
-      s = format (s, "%U%v", format_transport_listen_connection,
-		  tp, ss->connection_index, verbose, str);
+      s = format (s, "%U", format_transport_listen_connection,
+		  tp, ss->connection_index, verbose);
+      if (verbose == 1)
+	s = format (s, "%v", str);
       if (verbose > 1)
 	s = format (s, "\n%U", format_session_fifos, ss, verbose);
     }
   else if (ss->session_state == SESSION_STATE_CONNECTING)
     {
-      s = format (s, "%-40U%v", format_transport_half_open_connection,
-		  tp, ss->connection_index, str);
+      s = format (s, "%-40U", format_transport_half_open_connection,
+		  tp, ss->connection_index);
+      if (verbose == 1)
+	s = format (s, "%v", str);
     }
   else
     {
