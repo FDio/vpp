@@ -311,7 +311,7 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         error_cnt_str = \
             "/err/ip4-reassembly-feature/fragment chain too long (drop)"
 
-        error_cnt = self.get_packet_counter(error_cnt_str)
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
 
         self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
                                     max_reassembly_length=3,
@@ -334,7 +334,7 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         self.pg_start()
 
         self.dst_if.get_capture(1)
-        self.assert_packet_counter_equal(error_cnt_str, error_cnt + 1)
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
 
     def test_5737(self):
         """ fragment length + ip header size > 65535 """
@@ -691,7 +691,7 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
         error_cnt_str = \
             "/err/ip6-reassembly-feature/fragment chain too long (drop)"
 
-        error_cnt = self.get_packet_counter(error_cnt_str)
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
 
         self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
                                     max_reassembly_length=3,
@@ -709,7 +709,7 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
         self.pg_start()
 
         self.dst_if.get_capture(1)
-        self.assert_packet_counter_equal(error_cnt_str, error_cnt + 1)
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
 
     def test_overlap1(self):
         """ overlapping fragments case #1 (differs from IP test case)"""
