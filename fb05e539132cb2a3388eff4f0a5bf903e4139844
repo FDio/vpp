@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "85520e32_a083d9a3",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-05-22T10:46:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b07c25e9_16d28610",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 94,
+        "endChar": 11
+      },
+      "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3649a847_1d714552",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2019-05-21T09:57:08Z",
       "side": 1,
       "message": "Why is this check needed?",
+      "range": {
+        "startLine": 111,
+        "startChar": 6,
+        "endLine": 113,
+        "endChar": 30
+      },
+      "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85cff165_939f48d8",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-05-22T10:46:23Z",
+      "side": 1,
+      "message": "We allocate an indirect buffer for accommodating indirect descriptors in case of big frames (chained buffers in VPP). So this check makes sure we only free indirect buffer when we have chained buffers.",
+      "parentUuid": "3649a847_1d714552",
       "range": {
         "startLine": 111,
         "startChar": 6,
@@ -130,6 +178,30 @@
       "writtenOn": "2019-05-21T09:57:08Z",
       "side": 1,
       "message": "Why you don\u0027t use vlib_buffer_free_from_ring instead of freeing one-by-one.\nFreeing buffers one-by-one is perf disaster...",
+      "range": {
+        "startLine": 115,
+        "startChar": 6,
+        "endLine": 115,
+        "endChar": 54
+      },
+      "revId": "fb05e539132cb2a3388eff4f0a5bf903e4139844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "075caf81_ee6973d4",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-05-22T10:46:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "94be9de0_e79ad6ce",
       "range": {
         "startLine": 115,
         "startChar": 6,
