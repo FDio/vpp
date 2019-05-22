@@ -25,6 +25,7 @@
 #include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/fib/fib_path_ext.h>
+#include <vnet/fib/fib_table.h>
 
 /**
  * The magic number of child entries that make a path-list popular.
@@ -364,10 +365,12 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
 		     dpo_id_t *dpo,
                      fib_path_list_fwd_flags_t flags)
 {
-    load_balance_path_t *nhs;
     fib_node_index_t *path_index;
+    load_balance_path_t *nhs;
+    dpo_proto_t dproto;
 
     nhs = NULL;
+    dproto = fib_forw_chain_type_to_dpo_proto(fct);
 
     /*
      * We gather the DPOs from resolved paths.
@@ -388,10 +391,11 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
      */
     dpo_set(dpo,
             DPO_LOAD_BALANCE,
-            fib_forw_chain_type_to_dpo_proto(fct),
+            dproto,
             load_balance_create(vec_len(nhs),
-                                fib_forw_chain_type_to_dpo_proto(fct),
-                                0 /* FIXME FLOW HASH */));
+                                dproto,
+                                fib_table_get_default_flow_hash_config(
+                                    dpo_proto_to_fib(dproto))));
     load_balance_multipath_update(dpo, nhs,
                                   fib_path_list_fwd_flags_2_load_balance(flags));
 
