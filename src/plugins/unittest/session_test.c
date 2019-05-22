@@ -1875,6 +1875,8 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
   svm_msg_q_msg_t msg1, msg2, msg[12];
   int __clib_unused verbose, i, rv;
   svm_msg_q_t *mq;
+  svm_msg_q_ring_t *ring;
+  u8 *rings_ptr;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1899,6 +1901,12 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
   mq = svm_msg_q_alloc (cfg);
   SESSION_TEST (mq != 0, "svm_msg_q_alloc");
   SESSION_TEST (vec_len (mq->rings) == 2, "ring allocation");
+  rings_ptr = (u8 *) mq->rings + vec_bytes (mq->rings);
+  vec_foreach (ring, mq->rings)
+  {
+    SESSION_TEST (ring->data == rings_ptr, "ring data");
+    rings_ptr += (uword) ring->nitems * ring->elsize;
+  }
 
   msg1 = svm_msg_q_alloc_msg (mq, 8);
   rv = (mq->rings[0].cursize != 1

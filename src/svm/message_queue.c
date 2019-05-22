@@ -72,7 +72,7 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
   vh = (vec_header_t *) ((u8 *) mq->q + q_sz);
   vh->len = cfg->n_rings;
   mq->rings = (svm_msg_q_ring_t *) (vh + 1);
-  rings_ptr = (u8 *) mq->rings + vec_sz;
+  rings_ptr = (u8 *) mq->rings + sizeof (svm_msg_q_ring_t) * cfg->n_rings;
   for (i = 0; i < cfg->n_rings; i++)
     {
       ring = &mq->rings[i];
