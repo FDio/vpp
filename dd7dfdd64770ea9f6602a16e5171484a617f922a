@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ac9d0961_acb0825c",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-23T02:57:56Z",
+      "side": 1,
+      "message": "This is not best solution to this problem.\n\nAll format functions invoked via \"%U\" *must* unwrap all of the variable args.  Since format_transport_listen_connection() invokes the appropriate transport layer\u0027s format listener functions, each of those functions must extract all of the required args using va_arg() that are passed on the va_arg list.\n\nSee [0] \u0026 [1] for a better solution.\n\nAlthough this solution works for now, if anyone adds any parameters after \"%U\" above, then they will encounter the mysterious behavior due to the incorrect unwrapping of the variable arg list by the UDP \u0026 QUIC format listener functions.  Imagine adding \"%U %d\", which would always print out the value of verbose instead of the desired variable contents.\n\nThe code on lines 82-83 have the same trap which is also taken care of in [1]\n\n[0] https://gerrit.fd.io/r/19764\n[1] https://gerrit.fd.io/r/19765",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 94,
+        "endChar": 27
+      },
+      "revId": "dd7dfdd64770ea9f6602a16e5171484a617f922a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
