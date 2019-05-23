@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "68f50791_f8e87bd1",
+        "filename": "src/vnet/ipsec/ipsec_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-05-23T09:23:13Z",
+      "side": 1,
+      "message": "maybe just remove these two lines that set the pad to ~0.",
+      "revId": "7e2b143a273c3d5aa77c869020587a1dd71879b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
