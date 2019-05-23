@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4a9826f6_3fd5941f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-05-23T12:50:32Z",
+      "side": 1,
+      "message": "Does not work. The VPP part has to be compatyble with both python2 and 3 (otherwise installation fails), but CSIT oper is does not install \"future\" module.",
+      "range": {
+        "startLine": 7,
+        "startChar": 37,
+        "endLine": 7,
+        "endChar": 46
+      },
+      "revId": "b194b9564cefbc2af72d2e48afdf87fce3a95cdd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
