@@ -46,6 +46,30 @@
       "revId": "2552eda1936784100f9cea43472cdb47d1f5a74e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3be71fa_3f0e8766",
+        "filename": "src/vnet/vxlan-gbp/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-23T08:53:02Z",
+      "side": 1,
+      "message": "In case when we both load and store, LOAD should be used....",
+      "parentUuid": "afc1e41a_fca7e23d",
+      "range": {
+        "startLine": 127,
+        "startChar": 33,
+        "endLine": 127,
+        "endChar": 37
+      },
+      "revId": "2552eda1936784100f9cea43472cdb47d1f5a74e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
