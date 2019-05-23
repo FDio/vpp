@@ -218,48 +218,53 @@ class VPPApiClient(object):
                 logger.setLevel(loglevel)
         self.logger = logger
 
-        self.messages = {}
-        self.services = {}
-        self.id_names = []
-        self.id_msgdef = []
-        self.header = VPPType('header', [['u16', 'msgid'],
-                                         ['u32', 'client_index']])
-        self.apifiles = []
-        self.event_callback = None
-        self.message_queue = queue.Queue()
-        self.read_timeout = read_timeout
-        self.async_thread = async_thread
+        try:
+            self.messages = {}
+            self.services = {}
+            self.id_names = []
+            self.id_msgdef = []
+            self.header = VPPType('header', [['u16', 'msgid'],
+                                             ['u32', 'client_index']])
+            self.apifiles = []
+            self.event_callback = None
+            self.message_queue = queue.Queue()
+            self.read_timeout = read_timeout
+            self.async_thread = async_thread
 
-        if use_socket:
-            from . vpp_transport_socket import VppTransport
-        else:
-            from . vpp_transport_shmem import VppTransport
+            if use_socket:
+                from . vpp_transport_socket import VppTransport
+            else:
+                from . vpp_transport_shmem import VppTransport
 
-        if not apifiles:
-            # Pick up API definitions from default directory
-            try:
-                apifiles = self.find_api_files()
-            except RuntimeError:
-                # In test mode we don't care that we can't find the API files
-                if testmode:
-                    apifiles = []
-                else:
-                    raise VPPRuntimeError
+            if not apifiles:
+                # Pick up API definitions from default directory
+                try:
+                    apifiles = self.find_api_files()
+                except RuntimeError:
+                    # In test mode we don't care that we can't find the API files
+                    if testmode:
+                        apifiles = []
+                    else:
+                        raise VPPRuntimeError
 
-        for file in apifiles:
-            with open(file) as apidef_file:
-                self.process_json_file(apidef_file)
+            for file in apifiles:
+                with open(file) as apidef_file:
+                    self.process_json_file(apidef_file)
 
-        self.apifiles = apifiles
+            self.apifiles = apifiles
 
-        # Basic sanity check
-        if len(self.messages) == 0 and not testmode:
-            raise VPPValueError(1, 'Missing JSON message definitions')
+            # Basic sanity check
+            if len(self.messages) == 0 and not testmode:
+                raise VPPValueError(1, 'Missing JSON message definitions')
 
-        self.transport = VppTransport(self, read_timeout=read_timeout,
-                                      server_address=server_address)
-        # Make sure we allow VPP to clean up the message rings.
-        atexit.register(vpp_atexit, weakref.ref(self))
+            self.transport = VppTransport(self, read_timeout=read_timeout,
+                                          server_address=server_address)
+            # Make sure we allow VPP to clean up the message rings.
+            atexit.register(vpp_atexit, weakref.ref(self))
+        except TypeError:
+            # See https://stackoverflow.com/a/13018468
+            _, err, traceback = sys.exc_info()
+            raise KeyboardInterrupt, (err.strerror,), traceback
 
     class ContextId(object):
         """Thread-safe provider of unique context IDs."""
