@@ -746,23 +746,18 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 {
   stat_segment_main_t *sm = &stat_segment_main;
 
-  /* set default socket file name when statseg config stanza is empty. */
-  sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
-  /*
-   * NULL-terminate socket name string
-   * clib_socket_init()->socket_config() use C str*
-   */
-  vec_add1 (sm->socket_name, 0);
-
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "socket-name %s", &sm->socket_name))
 	;
       else if (unformat (input, "default"))
-	sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
-      else
-	if (unformat
-	    (input, "size %U", unformat_memory_size, &sm->memory_size))
+	{
+	  vec_reset_length (sm->socket_name);
+	  sm->socket_name = format (sm->socket_name, "%s",
+				    STAT_SEGMENT_SOCKET_FILE);
+	}
+      else if (unformat (input, "size %U",
+			 unformat_memory_size, &sm->memory_size))
 	;
       else if (unformat (input, "per-node-counters on"))
 	sm->node_counters_enabled = 1;
@@ -772,6 +767,17 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
+
+  /* set default socket file name when statseg config stanza is empty. */
+  if (!vec_len (sm->socket_name))
+    sm->socket_name = format (sm->socket_name, "%s",
+			      STAT_SEGMENT_SOCKET_FILE);
+  /*
+   * NULL-terminate socket name string
+   * clib_socket_init()->socket_config() use C str*
+   */
+  vec_terminate_c_string (sm->socket_name);
+
   return 0;
 }
 
