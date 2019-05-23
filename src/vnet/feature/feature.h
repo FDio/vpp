@@ -304,6 +304,44 @@ vnet_device_input_have_features (u32 sw_if_index)
   return vnet_have_features (fm->device_input_feature_arc_index, sw_if_index);
 }
 
+typedef struct
+{
+  u32 config_index;
+  u16 offset;
+  u8 arc_index;
+} vnet_feature_init_device_input_t;
+
+static_always_inline int
+vnet_feature_init_device_input (u32 sw_if_index, u32 * next_index,
+				vnet_feature_init_device_input_t * feat)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  feat->arc_index = fm->device_input_feature_arc_index;
+  vnet_feature_config_main_t *cm;
+
+  if (PREDICT_TRUE
+      (0 ==
+       clib_bitmap_get (fm->sw_if_index_has_features[feat->arc_index],
+			sw_if_index)))
+    return 0;
+
+  cm = &fm->feature_config_mains[feat->arc_index];
+  feat->offset = device_input_next_node_advance[*next_index];
+  feat->config_index = vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
+  vnet_get_config_data (&cm->config_main, &feat->config_index, next_index, 0);
+
+  return 1;
+}
+
+static_always_inline void
+vnet_feature_buffer_device_input (const vnet_feature_init_device_input_t *
+				  feat, vlib_buffer_t * b)
+{
+  vlib_buffer_advance (b, -feat->offset);
+  vnet_buffer (b)->feature_arc_index = feat->arc_index;
+  b->current_config_index = feat->config_index;
+}
+
 static_always_inline void
 vnet_feature_start_device_input_x1 (u32 sw_if_index, u32 * next0,
 				    vlib_buffer_t * b0)
