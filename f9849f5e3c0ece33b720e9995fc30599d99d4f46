@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bdb62a07_76db1974",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-05-23T09:11:37Z",
+      "side": 1,
+      "message": "tab",
+      "revId": "f9849f5e3c0ece33b720e9995fc30599d99d4f46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "74ffa499_3a001a61",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-05-23T09:11:37Z",
+      "side": 1,
+      "message": "pls use /* */ comment format",
+      "revId": "f9849f5e3c0ece33b720e9995fc30599d99d4f46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e8372fad_3ae38165",
+        "filename": "src/vnet/bonding/node.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-05-23T09:11:37Z",
+      "side": 1,
+      "message": "use /* */ comment format",
+      "range": {
+        "startLine": 163,
+        "startChar": 0,
+        "endLine": 163,
+        "endChar": 55
+      },
+      "revId": "f9849f5e3c0ece33b720e9995fc30599d99d4f46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
