@@ -71,6 +71,30 @@
     },
     {
       "key": {
+        "uuid": "6034f50d_a346714f",
+        "filename": "test/test_gtpu.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2019-05-23T12:28:03Z",
+      "side": 1,
+      "message": "since VPPStats does not provide a method to reset error counters, I use ip4_err and ip6_err to count errors I\u0027m aware of. so if there already was one error now there should be one more",
+      "parentUuid": "09b54554_ccecdd02",
+      "range": {
+        "startLine": 51,
+        "startChar": 12,
+        "endLine": 51,
+        "endChar": 51
+      },
+      "revId": "cf6dbbb75d98f1e02048f9112b0b19f321ad63ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "167abe3f_0c227b23",
         "filename": "test/test_gtpu.py",
         "patchSetId": 1
