@@ -489,6 +489,7 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    }
 		  tmp->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 		  tmp_bi = tmp->next_buffer;
+		  tmp->next_buffer = 0;
 		  tmp = vlib_get_buffer (vm, tmp_bi);
 		  vlib_buffer_free_one (vm, to_be_freed_bi);
 		  continue;
@@ -540,12 +541,15 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
 		{
+		  tmp->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 		  tmp_bi = tmp->next_buffer;
-		  tmp = vlib_get_buffer (vm, tmp->next_buffer);
+		  tmp->next_buffer = 0;
+		  tmp = vlib_get_buffer (vm, tmp_bi);
 		  vlib_buffer_free_one (vm, to_be_freed_bi);
 		}
 	      else
 		{
+		  tmp->next_buffer = 0;
 		  vlib_buffer_free_one (vm, to_be_freed_bi);
 		  break;
 		}
@@ -562,6 +566,7 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       return IP4_REASS_RC_INTERNAL_ERROR;
     }
   last_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+
   if (total_length < first_b->current_length)
     {
       return IP4_REASS_RC_INTERNAL_ERROR;
@@ -577,7 +582,8 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       return IP4_REASS_RC_NO_BUF;
     }
-
+  // reset to reconstruct the mbuf linking
+  first_b->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
   if (PREDICT_FALSE (first_b->flags & VLIB_BUFFER_IS_TRACED))
     {
       ip4_reass_add_trace (vm, node, rm, reass, reass->first_bi, FINALIZE, 0);
@@ -700,11 +706,13 @@ ip4_reass_remove_range_from_chain (vlib_main_t * vm,
 	{
 	  discard_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 	  discard_bi = discard_b->next_buffer;
+	  discard_b->next_buffer = 0;
 	  discard_b = vlib_get_buffer (vm, discard_bi);
 	  vlib_buffer_free_one (vm, to_be_freed_bi);
 	}
       else
 	{
+	  discard_b->next_buffer = 0;
 	  vlib_buffer_free_one (vm, to_be_freed_bi);
 	  break;
 	}
