@@ -95,6 +95,9 @@ vpe_oam_add_del_target (ip4_address_t * src_address,
       t->seq = 1;
       init_oam_packet_template (om, t);
       hash_set (om->target_by_address_and_fib_id, key, t - om->targets);
+
+      ip4_icmp_register_type (om->vlib_main, ICMP4_echo_reply,
+			      oam_node.index);
     }
   else
     {
@@ -322,8 +325,6 @@ oam_init (vlib_main_t * vm)
   om->random_seed = (u32) (vlib_time_now (vm) * 1e6);
   om->target_by_address_and_fib_id = hash_create (0, sizeof (uword));
   om->icmp_id = random_u32 (&om->random_seed);
-
-  ip4_icmp_register_type (vm, ICMP4_echo_reply, oam_node.index);
 
   return 0;
 }

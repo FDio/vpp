@@ -1173,6 +1173,13 @@ ping_ip_address (vlib_main_t * vm,
     return clib_error_return (0, "burst size must be between 1 and %u",
 			      MAX_PING_BURST);
 
+  if (ping_ip6)
+    icmp6_register_type (vm, ICMP6_echo_reply,
+			 ip6_icmp_echo_reply_node.index);
+  if (ping_ip4)
+    ip4_icmp_register_type (vm, ICMP4_echo_reply,
+			    ip4_icmp_echo_reply_node.index);
+
   run_ping_ip46_address (vm, table_id, ping_ip4 ? &a4 : NULL,
 			 ping_ip6 ? &a6 : NULL, sw_if_index, ping_interval,
 			 ping_repeat, data_len, ping_burst, verbose);
@@ -1242,9 +1249,6 @@ ping_cli_init (vlib_main_t * vm)
 
   pm->ip6_main = &ip6_main;
   pm->ip4_main = &ip4_main;
-  icmp6_register_type (vm, ICMP6_echo_reply, ip6_icmp_echo_reply_node.index);
-  ip4_icmp_register_type (vm, ICMP4_echo_reply,
-			  ip4_icmp_echo_reply_node.index);
   if (tm->n_vlib_mains > 1)
     clib_spinlock_init (&pm->ping_run_check_lock);
   return 0;
