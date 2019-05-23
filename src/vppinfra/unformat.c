@@ -260,6 +260,10 @@ done:
       if (format_character == 's')
 	vec_add1 (s, 0);
 
+      /* don't leak an existing vector */
+      if (*string_return && clib_mem_is_heap_object (*string_return))
+	vec_free (*string_return);
+
       *string_return = s;
     }
   else
@@ -311,6 +315,10 @@ unformat_hex_string (unformat_input_t * input, va_list * va)
     {
       return 0;
     }
+
+  /* don't leak an existing vector */
+  if (*hexstring_return && clib_mem_is_heap_object (*hexstring_return))
+    vec_free (*hexstring_return);
 
   *hexstring_return = s;
   return 1;
@@ -373,6 +381,10 @@ unformat_token (unformat_input_t * input, va_list * va)
   if (vec_len (s) == 0)
     return 0;
 
+  /* don't leak an existing vector */
+  if (*string_return && clib_mem_is_heap_object (*string_return))
+    vec_free (*string_return);
+
   *string_return = s;
   return 1;
 }
@@ -405,6 +417,10 @@ unformat_line (unformat_input_t * i, va_list * va)
     {
       vec_add1 (line, c);
     }
+
+  /* don't leak an existing vector */
+  if (*result && clib_mem_is_heap_object (*result))
+    vec_free (*result);
 
   *result = line;
   return vec_len (line);
