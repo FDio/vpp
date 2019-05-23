@@ -737,10 +737,17 @@ void
 ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type, u32 node_index)
 {
   icmp4_main_t *im = &icmp4_main;
+  u32 old_next_index;
 
   ASSERT ((int) type < ARRAY_LEN (im->ip4_input_next_index_by_type));
+  old_next_index = im->ip4_input_next_index_by_type[type];
+
   im->ip4_input_next_index_by_type[type]
     = vlib_node_add_next (vm, ip4_icmp_input_node.index, node_index);
+
+  if (old_next_index &&
+      (old_next_index != im->ip4_input_next_index_by_type[type]))
+    clib_warning ("WARNING: changed next_by_type[%d]", (int) type);
 }
 
 static clib_error_t *
