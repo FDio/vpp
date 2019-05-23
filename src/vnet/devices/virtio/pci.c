@@ -694,20 +694,8 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
 
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, queue_size, CLIB_CACHE_LINE_BYTES);
-  ASSERT (vring->indirect_buffers == 0);
-  vec_validate_aligned (vring->indirect_buffers, queue_size,
-			CLIB_CACHE_LINE_BYTES);
   if (queue_num % 2)
     {
-      u32 n_alloc = 0;
-      do
-	{
-	  if (n_alloc < queue_size)
-	    n_alloc +=
-	      vlib_buffer_alloc (vm, vring->indirect_buffers + n_alloc,
-				 queue_size - n_alloc);
-	}
-      while (n_alloc != queue_size);
       virtio_log_debug (vim, vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
@@ -1246,7 +1234,6 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 	virtio_free_rx_buffers (vm, vring);
       }
     vec_free (vring->buffers);
-    vec_free (vring->indirect_buffers);
     vlib_physmem_free (vm, vring->desc);
   }
 
@@ -1259,12 +1246,7 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
       {
 	virtio_free_used_desc (vm, vring);
       }
-    if (vring->queue_id % 2)
-      {
-	vlib_buffer_free_no_next (vm, vring->indirect_buffers, vring->size);
-      }
     vec_free (vring->buffers);
-    vec_free (vring->indirect_buffers);
     vlib_physmem_free (vm, vring->desc);
   }
 
