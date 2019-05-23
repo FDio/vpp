@@ -81,7 +81,6 @@ void
 tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vlib_thread_main_t *thm = vlib_get_thread_main ();
   virtio_main_t *vim = &virtio_main;
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
@@ -407,8 +406,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
   vif->cxq_vring = NULL;
 
-  if (thm->n_vlib_mains > 1)
-    clib_spinlock_init (&vif->lockp);
   goto done;
 
 error:
@@ -484,7 +481,6 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   vec_free (vif->txq_vrings);
 
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 0);
-  clib_spinlock_free (&vif->lockp);
   clib_memset (vif, 0, sizeof (*vif));
   pool_put (mm->interfaces, vif);
 
