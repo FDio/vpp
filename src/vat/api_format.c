@@ -5170,7 +5170,6 @@ _(proxy_arp_add_del_reply)                              \
 _(proxy_arp_intfc_enable_disable_reply)                 \
 _(sw_interface_set_unnumbered_reply)                    \
 _(ip_neighbor_add_del_reply)                            \
-_(oam_add_del_reply)                                    \
 _(reset_fib_reply)                                      \
 _(dhcp_proxy_config_reply)                              \
 _(dhcp_proxy_set_vss_reply)                             \
@@ -5379,7 +5378,6 @@ _(SW_INTERFACE_SET_UNNUMBERED_REPLY,                                    \
 _(IP_NEIGHBOR_ADD_DEL_REPLY, ip_neighbor_add_del_reply)                 \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
 _(CREATE_SUBIF_REPLY, create_subif_reply)                     		\
-_(OAM_ADD_DEL_REPLY, oam_add_del_reply)                                 \
 _(RESET_FIB_REPLY, reset_fib_reply)                                     \
 _(DHCP_PROXY_CONFIG_REPLY, dhcp_proxy_config_reply)                     \
 _(DHCP_PROXY_SET_VSS_REPLY, dhcp_proxy_set_vss_reply)                   \
@@ -9531,59 +9529,6 @@ api_create_subif (vat_main_t * vam)
 
   mp->outer_vlan_id = ntohs (outer_vlan_id);
   mp->inner_vlan_id = ntohs (inner_vlan_id);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_oam_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_oam_add_del_t *mp;
-  u32 vrf_id = 0;
-  u8 is_add = 1;
-  ip4_address_t src, dst;
-  u8 src_set = 0;
-  u8 dst_set = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "vrf %d", &vrf_id))
-	;
-      else if (unformat (i, "src %U", unformat_ip4_address, &src))
-	src_set = 1;
-      else if (unformat (i, "dst %U", unformat_ip4_address, &dst))
-	dst_set = 1;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (src_set == 0)
-    {
-      errmsg ("missing src addr");
-      return -99;
-    }
-
-  if (dst_set == 0)
-    {
-      errmsg ("missing dst addr");
-      return -99;
-    }
-
-  M (OAM_ADD_DEL, mp);
-
-  mp->vrf_id = ntohl (vrf_id);
-  mp->is_add = is_add;
-  clib_memcpy (mp->src_address, &src, sizeof (mp->src_address));
-  clib_memcpy (mp->dst_address, &dst, sizeof (mp->dst_address));
 
   S (mp);
   W (ret);
@@ -22414,7 +22359,6 @@ _(create_subif, "<intfc> | sw_if_index <id> sub_id <n>\n"               \
   "[outer_vlan_id <n>][inner_vlan_id <n>]\n"                            \
   "[no_tags][one_tag][two_tags][dot1ad][exact_match][default_sub]\n"    \
   "[outer_vlan_id_any][inner_vlan_id_any]")                             \
-_(oam_add_del, "src <ip4-address> dst <ip4-address> [vrf <n>] [del]")   \
 _(reset_fib, "vrf <n> [ipv6]")                                          \
 _(dhcp_proxy_config,                                                    \
   "svr <v46-address> src <v46-address>\n"                               \
