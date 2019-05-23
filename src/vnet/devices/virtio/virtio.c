@@ -83,9 +83,12 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 
   if (idx % 2)
     {
+      vlib_thread_main_t *thm = vlib_get_thread_main ();
       vec_validate_aligned (vif->txq_vrings, TX_QUEUE_ACCESS (idx),
 			    CLIB_CACHE_LINE_BYTES);
       vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (idx));
+      if (thm->n_vlib_mains > 1)
+	clib_spinlock_init (&vring->lockp);
     }
   else
     {
@@ -221,6 +224,7 @@ virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
   vlib_buffer_free_no_next (vm, vring->indirect_buffers, vring->size);
   vec_free (vring->buffers);
   vec_free (vring->indirect_buffers);
+  clib_spinlock_free (&vring->lockp);
   return 0;
 }
 
