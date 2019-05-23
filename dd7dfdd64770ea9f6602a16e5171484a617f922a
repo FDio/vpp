@@ -22,6 +22,30 @@
       "revId": "dd7dfdd64770ea9f6602a16e5171484a617f922a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8dda256e_c79037ea",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-05-23T04:19:01Z",
+      "side": 1,
+      "message": "Yup, Dave\u0027s right.",
+      "parentUuid": "ac9d0961_acb0825c",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 94,
+        "endChar": 27
+      },
+      "revId": "dd7dfdd64770ea9f6602a16e5171484a617f922a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
