@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa980f4c_ccc0bae0",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-05-23T17:52:52Z",
+      "side": 1,
+      "message": "Please drop this if statement and move the statement \n  bif-\u003eis_local_numa \u003d 0;\nto the statement inside the if statement above such that\nif (sif-\u003esw_if_index \u003d\u003d bif-\u003esw_if_index_working)\n  {\n    switching_active \u003d 1;\n    if (bif-\u003emode \u003d\u003d BOND_NODE_ACTIVE_BACKUP)\n      bif-\u003eis_local_numa \u003d 0;\n  }",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa6f93eb_4d80128a",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-05-23T17:52:52Z",
+      "side": 1,
+      "message": "This check appears useless inside vec_foreach_index.",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "513b6af7_7826a5a0",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-05-23T17:52:52Z",
+      "side": 1,
+      "message": "Please add comment to this code.\n/* No local numa node is found in the active slave set. Use the first slave */",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0e513b34_b166ba04",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-05-23T17:52:52Z",
+      "side": 1,
+      "message": "I am not sure what the vec_foreach_index is doing if i is not even used inside the loop. Do you really need the vec_foreach_index loop?",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
