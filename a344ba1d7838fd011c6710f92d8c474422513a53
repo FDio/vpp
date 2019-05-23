@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "758873a3_82ba98eb",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-05-23T17:00:14Z",
+      "side": 1,
+      "message": "Minor nit: git review puts \"Change-Id: \u003csha1\u003e\" above the \"Signed-off-by: \u003cemail\u003e\" line.",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 19
+      },
+      "revId": "a344ba1d7838fd011c6710f92d8c474422513a53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
