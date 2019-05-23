@@ -51,12 +51,14 @@ define memclnt_create_reply {
  */
 manual_print
 define memclnt_delete {
+    u32 context;                /* opaque value */
     u32 index;                  /* index, used e.g. by API trace replay */
     u64 handle;               /* handle by which vlib knows this client */
     u8 do_cleanup;				/* vlib to cleanup the registration */
 };
 
 define memclnt_delete_reply {
+    u32 context;                /* opaque value */
     i32 response;               /* Non-negative = success */
     u64 handle;               /* in case the client wonders */
 };
