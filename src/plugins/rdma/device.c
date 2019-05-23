@@ -587,7 +587,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   pool_get_zero (rm->devices, rd);
   rd->dev_instance = rd - rm->devices;
-  rd->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  rd->per_interface_next_index = ~0;
   rd->name = vec_dup (args->name);
 
   /* check if device exist and if it is bound to mlx5_core */
