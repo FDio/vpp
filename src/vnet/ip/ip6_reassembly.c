@@ -633,6 +633,7 @@ ip6_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       rv = IP6_REASS_RC_NO_BUF;
       goto free_buffers_and_return;
     }
+  first_b->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
   if (PREDICT_FALSE (first_b->flags & VLIB_BUFFER_IS_TRACED))
     {
       ip6_reass_add_trace (vm, node, rm, reass, reass->first_bi, FINALIZE, 0);
