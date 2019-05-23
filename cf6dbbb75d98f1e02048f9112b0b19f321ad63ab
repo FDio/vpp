@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f8e3c33_f41a43a0",
+        "filename": "test/test_gtpu.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-23T11:43:21Z",
+      "side": 1,
+      "message": "Why are you explicitly calling __init__?",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 41
+      },
+      "revId": "cf6dbbb75d98f1e02048f9112b0b19f321ad63ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b2074480_da49ed3a",
+        "filename": "test/test_gtpu.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-23T11:43:21Z",
+      "side": 1,
+      "message": "Why do you need resolve_arp(), but not resolve_ndp()?",
+      "range": {
+        "startLine": 35,
+        "startChar": 8,
+        "endLine": 35,
+        "endChar": 30
+      },
+      "revId": "cf6dbbb75d98f1e02048f9112b0b19f321ad63ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "09b54554_ccecdd02",
+        "filename": "test/test_gtpu.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-23T11:43:21Z",
+      "side": 1,
+      "message": "Why the +1?",
+      "range": {
+        "startLine": 51,
+        "startChar": 12,
+        "endLine": 51,
+        "endChar": 51
+      },
+      "revId": "cf6dbbb75d98f1e02048f9112b0b19f321ad63ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "167abe3f_0c227b23",
+        "filename": "test/test_gtpu.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-23T11:43:21Z",
+      "side": 1,
+      "message": "Is it better to \"return err\" than to create a side-effect here?",
+      "range": {
+        "startLine": 71,
+        "startChar": 8,
+        "endLine": 71,
+        "endChar": 26
+      },
+      "revId": "cf6dbbb75d98f1e02048f9112b0b19f321ad63ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
