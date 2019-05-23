@@ -2558,6 +2558,8 @@ snat_static_mapping_match (snat_main_t * sm,
 	      goto end;
 	    }
 	get_local:
+	  tmp = 0;
+	  lo = 0;
           /* *INDENT-OFF* */
           pool_foreach_index (i, m->locals,
           ({
