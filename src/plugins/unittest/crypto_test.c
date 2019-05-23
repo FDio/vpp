@@ -359,12 +359,13 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 	  vnet_crypto_op_init (op2,
 			       ad->op_by_type
 			       [VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT]);
-	  op1->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
 	  op1->src = op2->src = op1->dst = op2->dst = b->data;
 	  op1->key_index = op2->key_index = key_index;
+	  op1->tag = op2->tag = b->data - 32;
 	  op1->iv = op2->iv = b->data - 64;
 	  op1->aad = op2->aad = b->data - VLIB_BUFFER_PRE_DATA_SIZE;
-	  op1->aad_len = op2->aad_len = 0;
+	  op1->aad_len = op2->aad_len = 64;
+	  op1->tag_len = op2->tag_len = 16;
 	  n_bytes += op1->len = op2->len = buffer_size;
 	  break;
 	case VNET_CRYPTO_OP_TYPE_HMAC:
