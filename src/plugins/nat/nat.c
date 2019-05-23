@@ -2583,7 +2583,11 @@ snat_static_mapping_match (snat_main_t * sm,
 	      };
 	      if (sm->worker_in2out_cb (&ip, m->fib_index) !=
 		  vlib_get_thread_index ())
-		goto get_local;
+		{
+		  vec_free (tmp);
+		  lo = 0;
+		  goto get_local;
+		}
 	    }
 	  mapping->addr = local->addr;
 	  mapping->port = clib_host_to_net_u16 (local->port);
