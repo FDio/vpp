@@ -2964,6 +2964,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						 thread_index);
   tcp_inc_counter (rcv_process, TCP_ERROR_MSG_QUEUE_FULL, errors);
   tcp_handle_postponed_dequeues (wrk);
+  tcp_handle_disconnects (wrk);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
 
   return from_frame->n_vectors;
