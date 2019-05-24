@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "fb940713_2eb673f0",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-05-24T02:32:22Z",
+      "side": 1,
+      "message": "Great. change it as you said.",
+      "parentUuid": "fa980f4c_ccc0bae0",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "aa6f93eb_4d80128a",
         "filename": "src/vnet/bonding/cli.c",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2019-05-23T17:52:52Z",
       "side": 1,
       "message": "This check appears useless inside vec_foreach_index.",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b992ae6_c4b9ec5d",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-05-24T02:32:22Z",
+      "side": 1,
+      "message": "good catch. change it.",
+      "parentUuid": "aa6f93eb_4d80128a",
       "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "deaafb3f_2f8e401f",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-05-24T02:32:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "513b6af7_7826a5a0",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0e513b34_b166ba04",
         "filename": "src/vnet/bonding/cli.c",
         "patchSetId": 3
@@ -64,6 +118,24 @@
       "writtenOn": "2019-05-23T17:52:52Z",
       "side": 1,
       "message": "I am not sure what the vec_foreach_index is doing if i is not even used inside the loop. Do you really need the vec_foreach_index loop?",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b1e1904_a1af9a0d",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-05-24T02:32:22Z",
+      "side": 1,
+      "message": "yes, I need to scan sw_if_index of active slaves, intend to put the current working slave in the first one of bif-\u003eactive_slaves.",
+      "parentUuid": "0e513b34_b166ba04",
       "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
