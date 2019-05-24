@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74743c4f_16626fa0",
+        "filename": "src/vlibapi/api_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-24T21:35:44Z",
+      "side": 1,
+      "message": "Do we need to add:\n  if (len \u003c2) return sizeof(vl_api_string_t); \nabove L39 above?\nstrncpy_s, which is often used for calculating the string length can return 0 and underrun the structure.",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 39,
+        "endChar": 28
+      },
+      "revId": "003d5da298b2cd1e20400fb5fdcefce752ca616e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
