@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54a89b17_fdfb798b",
+        "filename": "src/plugins/map/map_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-24T10:50:40Z",
+      "side": 1,
+      "message": "Haven\u0027t looked at details, but you cannot use vl_api_to_api_string()\ninstead of accessing internal members of the string type?",
+      "revId": "e7e7b0f1c25834cb7326662afacec72a04fde272",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
