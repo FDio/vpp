@@ -16,6 +16,24 @@
       "revId": "e7e7b0f1c25834cb7326662afacec72a04fde272",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3d37fe0e_b48c732c",
+        "filename": "src/plugins/map/map_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-24T11:01:04Z",
+      "side": 1,
+      "message": "yes.  \nIt looks like this code was written prior to the addition of the #defines and should be converted. I was just trying to follow your logic and saw that de-\u003etag.length wasn\u0027t being initialized when tag wasn\u0027t set.",
+      "parentUuid": "54a89b17_fdfb798b",
+      "revId": "e7e7b0f1c25834cb7326662afacec72a04fde272",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
