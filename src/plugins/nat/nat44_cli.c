@@ -2202,13 +2202,13 @@ VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
  * To create identity mapping for address 10.0.0.3 use:
  *  vpp# nat44 add identity mapping 10.0.0.3
  * To create identity mapping for DHCP addressed interface use:
- *  vpp# nat44 add identity mapping GigabitEthernet0/a/0 tcp 3606
+ *  vpp# nat44 add identity mapping external GigabitEthernet0/a/0 tcp 3606
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (add_identity_mapping_command, static) = {
   .path = "nat44 add identity mapping",
   .function = add_identity_mapping_command_fn,
-  .short_help = "nat44 add identity mapping <interface>|<ip4-addr> "
+  .short_help = "nat44 add identity mapping <ip4-addr>|external <interface> "
     "[<protocol> <port>] [vrf <table-id>] [del]",
 };
 
