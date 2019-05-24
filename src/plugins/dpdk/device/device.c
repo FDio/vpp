@@ -94,23 +94,13 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
 			int maybe_multiseg)
 {
   struct rte_mbuf *mb, *first_mb, *last_mb;
+  last_mb = first_mb = mb = rte_mbuf_from_vlib_buffer (b);
 
   /* buffer is coming from non-dpdk source so we need to init
      rte_mbuf header */
   if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_EXT_HDR_VALID) == 0))
-    {
-      vlib_buffer_t *b2 = b;
-      last_mb = mb = rte_mbuf_from_vlib_buffer (b2);
-      rte_pktmbuf_reset (mb);
-      while (maybe_multiseg && (b2->flags & VLIB_BUFFER_NEXT_PRESENT))
-	{
-	  b2 = vlib_get_buffer (vm, b2->next_buffer);
-	  mb = rte_mbuf_from_vlib_buffer (b2);
-	  rte_pktmbuf_reset (mb);
-	}
-    }
+    rte_pktmbuf_reset (mb);
 
-  last_mb = first_mb = mb = rte_mbuf_from_vlib_buffer (b);
   first_mb->nb_segs = 1;
   mb->data_len = b->current_length;
   mb->pkt_len = maybe_multiseg ? vlib_buffer_length_in_chain (vm, b) :
@@ -121,6 +111,8 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       mb = rte_mbuf_from_vlib_buffer (b);
+      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_EXT_HDR_VALID) == 0))
+	rte_pktmbuf_reset (mb);
       last_mb->next = mb;
       last_mb = mb;
       mb->data_len = b->current_length;
