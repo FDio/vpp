@@ -139,6 +139,24 @@
       "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "78ced1f8_92f781c6",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-05-24T02:42:54Z",
+      "side": 1,
+      "message": "I still don\u0027t understand why you need to scan. Here (bif-\u003eis_local_numa \u003d\u003d 0), it means none of the existing active slaves will be local numa. The only one that is local numa is the newly added one which sif is pointing to. What did I miss?",
+      "parentUuid": "1b1e1904_a1af9a0d",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
