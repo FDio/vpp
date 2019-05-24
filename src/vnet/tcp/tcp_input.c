@@ -1526,8 +1526,10 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
       /* When we entered cong recovery, we reset snd_nxt to snd_una. Seems
        * peer still has the data so accept the ack */
       if (tcp_in_cong_recovery (tc)
-	  && seq_leq (vnet_buffer (b)->tcp.ack_number,
-		      tc->snd_una + tc->snd_wnd))
+	  && (seq_leq (vnet_buffer (b)->tcp.ack_number,
+		       tc->snd_una + tc->snd_wnd)
+	      || seq_leq (vnet_buffer (b)->tcp.ack_number,
+			  tc->snd_congestion)))
 	{
 	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
 	  if (seq_gt (tc->snd_nxt, tc->snd_una_max))
