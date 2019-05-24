@@ -56,12 +56,10 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   char *tag = 0;
   u32 len;
 
-  len = ntohl (mp->tag.length);
+  len = vl_api_string_len (&mp->tag);
   if (len > 0)
     {
-      tag = clib_mem_alloc (len + 1);
-      clib_memset (tag, 0, len + 1);
-      clib_memcpy (tag, (char *) mp->tag.buf, len);
+      tag = vl_api_from_api_string_c(&mp->tag);
     }
 
   rv =
@@ -137,7 +135,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
 
     len = 0;
     if (de->tag)
-      len = strlen(de->tag);
+      len = strnlen_s(de->tag, 64);
 
     /* Make sure every field is initiated (or don't skip the clib_memset()) */
     rmp = vl_msg_api_alloc (sizeof (*rmp) + sizeof(rmp->tag.length) + len);
@@ -156,11 +154,12 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->psid_length = d->psid_length;
     rmp->flags = d->flags;
     rmp->mtu = htons(d->mtu);
+    rmp->tag.length = htonl (len);
 
+    /* testing for condition prevents clib_c11_violation: s NULL */
     if (de->tag)
       {
-	rmp->tag.length = htonl (len);
-	clib_memcpy ((char *)rmp->tag.buf, de->tag, len);
+	vl_api_to_api_string (len, de->tag, &rmp->tag );
       }
 
     vl_api_send_msg (reg, (u8 *) rmp);

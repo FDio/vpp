@@ -24,7 +24,7 @@ import "vnet/ip/ip_types.api";
     @param ip4_prefix - Rule IPv4 prefix
     @param ip6_src - MAP domain IPv6 BR address / Tunnel source
     @param ea_bits_len - Embedded Address bits length
-    @param psid_offset - Port Set Identifider (PSID) offset
+    @param psid_offset - Port Set Identifier (PSID) offset
     @param psid_length - PSID length
     @param mtu - MTU
     @param tag - A user field stored with the MAP
@@ -40,7 +40,7 @@ define map_add_domain
   u8 psid_offset;
   u8 psid_length;
   u16 mtu;
-  string tag;
+  string tag[length=64];
 };
 
 /** \brief Reply for MAP domain add
@@ -103,7 +103,7 @@ define map_domain_dump
     @param ip4_prefix - Rule IPv4 prefix
     @param ip6_src - MAP domain IPv6 BR address / Tunnel source
     @param ea_bits_len - Embedded Address bits length
-    @param psid_offset - Port Set Identifider (PSID) offset
+    @param psid_offset - Port Set Identifier (PSID) offset
     @param psid_length - PSID length
     @param flags -
     @param mtu - MTU
@@ -121,7 +121,7 @@ define map_domain_details
   u8 psid_length;
   u8 flags;
   u16 mtu;
-  string tag;
+  string tag[limit=64];
 };
 
 define map_rule_dump

@@ -87,7 +87,11 @@ class TestMAP(VppTestCase):
         map_dst = '2001::/64'
         map_src = '3000::1/128'
         client_pfx = '192.168.0.0/16'
-        self.vapi.map_add_domain(map_dst, client_pfx, map_src)
+        tag = 'MAP-E tag.'
+        self.vapi.map_add_domain(ip4_prefix=map_dst,
+                                 ip6_prefix=client_pfx,
+                                 ip6_src=map_src,
+                                 tag=tag)
 
         # Enable MAP on interface.
         self.vapi.map_if_enable_disable(is_enable=1,
@@ -211,9 +215,16 @@ class TestMAP(VppTestCase):
         map_dst = '2001:db8::/32'
         map_src = '1234:5678:90ab:cdef::/64'
         ip4_pfx = '192.168.0.0/24'
+        tag = 'MAP-T Tag.'
 
-        self.vapi.map_add_domain(map_dst, ip4_pfx, map_src,
-                                 16, 6, 4, mtu=1500)
+        self.vapi.map_add_domain(ip6_prefix=map_dst,
+                                 ip4_prefix=ip4_pfx,
+                                 ip6_src=map_src,
+                                 ea_bits_len=16,
+                                 psid_offset=6,
+                                 psid_length=4,
+                                 mtu=1500,
+                                 tag=tag)
 
         # Enable MAP-T on interfaces.
         self.vapi.map_if_enable_disable(is_enable=1,
