@@ -879,9 +879,16 @@ session_transport_closed_notify (transport_connection_t * tc)
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
 
+  /* Transport thinks that app requested close but it actually didn't.
+   * Can happen for tcp if fin and rst are received in close succession. */
+  if (s->session_state == SESSION_STATE_READY)
+    {
+      session_transport_closing_notify (tc);
+      svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+    }
   /* If app close has not been received or has not yet resulted in
    * a transport close, only mark the session transport as closed */
-  if (s->session_state <= SESSION_STATE_CLOSING)
+  else if (s->session_state <= SESSION_STATE_CLOSING)
     {
       session_lookup_del_session (s);
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
