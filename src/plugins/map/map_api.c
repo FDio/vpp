@@ -156,10 +156,10 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->psid_length = d->psid_length;
     rmp->flags = d->flags;
     rmp->mtu = htons(d->mtu);
+    rmp->tag.length = htonl (len);
 
     if (de->tag)
       {
-	rmp->tag.length = htonl (len);
 	clib_memcpy ((char *)rmp->tag.buf, de->tag, len);
       }
 
