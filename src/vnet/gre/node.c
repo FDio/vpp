@@ -577,9 +577,6 @@ gre_input_init (vlib_main_t * vm)
   gre_register_input_protocol (vm, GRE_PROTOCOL_mpls_unicast,
 			       mpls_unicast_input->index, GRE_TUNNEL_TYPE_L3);
 
-  ip4_register_protocol (IP_PROTOCOL_GRE, gre4_input_node.index);
-  ip6_register_protocol (IP_PROTOCOL_GRE, gre6_input_node.index);
-
   return 0;
 }
 

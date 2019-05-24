@@ -306,6 +306,10 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
+  /* register gre46-input nodes */
+  ip4_register_protocol (IP_PROTOCOL_GRE, gre4_input_node.index);
+  ip6_register_protocol (IP_PROTOCOL_GRE, gre6_input_node.index);
+
   return 0;
 }
 
