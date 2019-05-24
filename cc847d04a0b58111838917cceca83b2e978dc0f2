@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "862809ff_e20d7a97",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-24T10:54:34Z",
+      "side": 1,
+      "message": "This doesn\u0027t make lot of sense. 164 bytes * 256 elements \u003d 42K on stack.\nlinearization trick makes sense with small amount of data, i.e. in ipsec decrypt it is 16 bytes.",
+      "range": {
+        "startLine": 145,
+        "startChar": 0,
+        "endLine": 145,
+        "endChar": 69
+      },
+      "revId": "cc847d04a0b58111838917cceca83b2e978dc0f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
