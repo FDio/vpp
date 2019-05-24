@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import ipaddress
 import unittest
 
 from framework import VppTestCase, VppTestRunner
@@ -64,6 +65,33 @@ class TestMAP(VppTestCase):
         self.assertEqual(rx[IPv6].src, ip6_src)
         self.assertEqual(rx[IPv6].dst, ip6_dst)
 
+    def test_api_map_domain_dump(self):
+        map_dst = '2001::/64'
+        map_src = '3000::1/128'
+        client_pfx = '192.168.0.0/16'
+        tag = 'MAP-E tag.'
+        index = self.vapi.map_add_domain(ip4_prefix=client_pfx,
+                                         ip6_prefix=map_dst,
+                                         ip6_src=map_src,
+                                         tag=tag)
+
+        rv = self.vapi.map_domain_dump()
+
+        # restore the state early so as to not impact subsequent tests.
+        # If an assert fails, we will not get the chance to do it at the end.
+        self.vapi.map_del_domain(index=index)
+
+        self.assertGreater(len(rv), 0,
+                           "Expected output from 'map_domain_dump'")
+
+        # typedefs are returned as ipaddress objects.
+        self.assertEqual(rv[0].ip4_prefix, ipaddress.IPv4Network(client_pfx))
+        self.assertEqual(rv[0].ip6_prefix, ipaddress.IPv6Network(map_dst))
+        self.assertEqual(rv[0].ip6_src, ipaddress.IPv6Network(map_src))
+
+        self.assertEqual(rv[0].tag, tag,
+                         "output produced incorrect tag value.")
+
     def test_map_e(self):
         """ MAP-E """
 
@@ -87,7 +115,11 @@ class TestMAP(VppTestCase):
         map_dst = '2001::/64'
         map_src = '3000::1/128'
         client_pfx = '192.168.0.0/16'
-        self.vapi.map_add_domain(map_dst, client_pfx, map_src)
+        tag = 'MAP-E tag.'
+        self.vapi.map_add_domain(ip4_prefix=client_pfx,
+                                 ip6_prefix=map_dst,
+                                 ip6_src=map_src,
+                                 tag=tag)
 
         # Enable MAP on interface.
         self.vapi.map_if_enable_disable(is_enable=1,
@@ -211,9 +243,16 @@ class TestMAP(VppTestCase):
         map_dst = '2001:db8::/32'
         map_src = '1234:5678:90ab:cdef::/64'
         ip4_pfx = '192.168.0.0/24'
+        tag = 'MAP-T Tag.'
 
-        self.vapi.map_add_domain(map_dst, ip4_pfx, map_src,
-                                 16, 6, 4, mtu=1500)
+        self.vapi.map_add_domain(ip6_prefix=map_dst,
+                                 ip4_prefix=ip4_pfx,
+                                 ip6_src=map_src,
+                                 ea_bits_len=16,
+                                 psid_offset=6,
+                                 psid_length=4,
+                                 mtu=1500,
+                                 tag=tag)
 
         # Enable MAP-T on interfaces.
         self.vapi.map_if_enable_disable(is_enable=1,
