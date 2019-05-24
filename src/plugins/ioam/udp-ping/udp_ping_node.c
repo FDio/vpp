@@ -823,10 +823,8 @@ udp_ping_init (vlib_main_t * vm)
   udp_ping_main.vnet_main = vnet_get_main ();
   udp_ping_main.timer_interval = 1e9;
 
-  /* This steals MLDv2 listener reports. Disable until we properly handle
-   * hop-by-hop options in ip6-local */
-  /* ip6_register_protocol (IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS,
-     udp_ping_local.index); */
+  ip6_local_hop_by_hop_register_protocol (IP_PROTOCOL_UDP,
+					  udp_ping_local.index);
   return 0;
 }
 
