@@ -18,6 +18,52 @@ from util import ppp, ppc
 from vpp_papi import VppEnum
 
 
+class TestGREInputNodes(VppTestCase):
+    """ GRE Input Nodes Test Case """
+
+    def setUp(self):
+        super(TestGREInputNodes, self).setUp()
+
+        # create 3 pg interfaces - set one in a non-default table.
+        self.create_pg_interfaces(range(1))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+
+    def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+        super(TestGREInputNodes, self).tearDown()
+
+    def test_gre_input_node(self):
+        """ GRE gre input nodes not registerd unless configured """
+        pkt = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+               IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
+               GRE())
+
+        self.pg0.add_stream(pkt)
+        self.pg_start()
+        # no tunnel created, gre-input not registered
+        err = self.statistics.get_counter(
+            '/err/ip4-input/unknown ip protocol')[0]
+        self.assertEqual(err, 1)
+        err_count = err
+
+        # create gre tunnel
+        gre_if = VppGreInterface(self, self.pg0.local_ip4, "1.1.1.2")
+        gre_if.add_vpp_config()
+
+        self.pg0.add_stream(pkt)
+        self.pg_start()
+        # tunnel created, gre-input registered
+        err = self.statistics.get_counter(
+            '/err/ip4-input/unknown ip protocol')[0]
+        # expect no new errors
+        self.assertEqual(err, err_count)
+
+
 class TestGRE(VppTestCase):
     """ GRE Test Case """
 
