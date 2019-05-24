@@ -157,6 +157,24 @@
       "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "72d390d8_e20fb625",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-05-24T02:53:10Z",
+      "side": 1,
+      "message": "you are right. the new one should be added to the last one of bif-\u003eactive_slaves as above. just want to change this new one with local numa node to the first position of bif-\u003eactive_slaves here.",
+      "parentUuid": "78ced1f8_92f781c6",
+      "revId": "5f82a98e8b0d71b5655c11e6fb8f9038962817a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
