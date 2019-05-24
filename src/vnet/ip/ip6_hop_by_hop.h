@@ -42,6 +42,11 @@ typedef struct
 
 typedef struct
 {
+  u8 next_index_by_protocol[256];
+} ip6_local_hop_by_hop_runtime_t;
+
+typedef struct
+{
   /* The current rewrite we're using */
   u8 *rewrite;
 
@@ -84,6 +89,8 @@ typedef struct
   /* Array of function pointers to handle hbh options being used with classifier */
     u32 (*flow_handler[MAX_IP6_HBH_OPTION]) (u32 flow_ctx, u8 add);
   flow_data_t *flows;
+
+  ip6_local_hop_by_hop_runtime_t *ip6_local_hbh_runtime;
 
   /* convenience */
   vlib_main_t *vlib_main;
