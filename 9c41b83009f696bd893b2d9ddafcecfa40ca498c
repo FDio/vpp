@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "222149bc_b40b568b",
+        "filename": "src/vnet/geneve/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-24T14:53:59Z",
+      "side": 1,
+      "message": "s/b0/b[0]/g\ns/b1/b[1]/g",
+      "range": {
+        "startLine": 121,
+        "startChar": 3,
+        "endLine": 123,
+        "endChar": 10
+      },
+      "revId": "9c41b83009f696bd893b2d9ddafcecfa40ca498c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
