@@ -1370,6 +1370,10 @@ ip4_reass_walk_expired (vlib_main_t * vm,
           {
             ip4_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
             ip4_reass_on_timeout (vm, rm, reass);
+            vlib_node_increment_counter (vm, node->node_index,
+                                         IP4_ERROR_REASS_TIMEOUT,
+                                         1);
+
             ip4_reass_free (rm, rt, reass);
           }
           /* *INDENT-ON* */
