@@ -17,6 +17,19 @@ IPIP tests.
 """
 
 
+def ipip_add_tunnel(test, src, dst, table_id=0, tc_tos=0xff):
+    """ Add a IPIP tunnel """
+    return test.vapi.ipip_add_tunnel(
+        tunnel={
+            'src': src,
+            'dst': dst,
+            'table_id': table_id,
+            'instance': 0xffffffff,
+            'tc_tos': tc_tos
+        }
+    )
+
+
 class TestIPIP(VppTestCase):
     """ IPIP Test Case """
 
@@ -71,10 +84,10 @@ class TestIPIP(VppTestCase):
         p_payload = UDP(sport=1234, dport=1234)
 
         # IPv4 transport
-        rv = self.vapi.ipip_add_tunnel(
-            src_address=self.pg0.local_ip4n,
-            dst_address=self.pg1.remote_ip4n,
-            is_ipv6=0, tc_tos=0xFF)
+        rv = ipip_add_tunnel(self,
+                             self.pg0.local_ip4,
+                             self.pg1.remote_ip4,
+                             tc_tos=0xFF)
         sw_if_index = rv.sw_if_index
 
         # Set interface up and enable IP on it
@@ -226,9 +239,7 @@ class TestIPIP(VppTestCase):
 
     def test_ipip_create(self):
         """ ipip create / delete interface test """
-        rv = self.vapi.ipip_add_tunnel(
-            src_address=inet_pton(AF_INET, '1.2.3.4'),
-            dst_address=inet_pton(AF_INET, '2.3.4.5'), is_ipv6=0)
+        rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5')
         sw_if_index = rv.sw_if_index
         self.vapi.ipip_del_tunnel(sw_if_index)
 
@@ -237,10 +248,7 @@ class TestIPIP(VppTestCase):
 
         t = VppIpTable(self, 20)
         t.add_vpp_config()
-        rv = self.vapi.ipip_add_tunnel(
-            src_address=inet_pton(AF_INET, '1.2.3.4'),
-            dst_address=inet_pton(AF_INET, '2.3.4.5'), is_ipv6=0,
-            table_id=20)
+        rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5', table_id=20)
         sw_if_index = rv.sw_if_index
         self.vapi.ipip_del_tunnel(sw_if_index)
 
@@ -283,9 +291,10 @@ class TestIPIP6(VppTestCase):
 
     def setup_tunnel(self):
         # IPv6 transport
-        rv = self.vapi.ipip_add_tunnel(
-            src_address=self.pg0.local_ip6n,
-            dst_address=self.pg1.remote_ip6n, tc_tos=255)
+        rv = ipip_add_tunnel(self,
+                             self.pg0.local_ip6,
+                             self.pg1.remote_ip6,
+                             tc_tos=255)
 
         sw_if_index = rv.sw_if_index
         self.tunnel_if_index = sw_if_index
@@ -502,9 +511,7 @@ class TestIPIP6(VppTestCase):
 
     def test_ipip_create(self):
         """ ipip create / delete interface test """
-        rv = self.vapi.ipip_add_tunnel(
-            src_address=inet_pton(AF_INET, '1.2.3.4'),
-            dst_address=inet_pton(AF_INET, '2.3.4.5'), is_ipv6=0)
+        rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5')
         sw_if_index = rv.sw_if_index
         self.vapi.ipip_del_tunnel(sw_if_index)
 
@@ -513,10 +520,7 @@ class TestIPIP6(VppTestCase):
 
         t = VppIpTable(self, 20)
         t.add_vpp_config()
-        rv = self.vapi.ipip_add_tunnel(
-            src_address=inet_pton(AF_INET, '1.2.3.4'),
-            dst_address=inet_pton(AF_INET, '2.3.4.5'), is_ipv6=0,
-            table_id=20)
+        rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5', table_id=20)
         sw_if_index = rv.sw_if_index
         self.vapi.ipip_del_tunnel(sw_if_index)
 
