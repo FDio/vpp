@@ -107,6 +107,24 @@
     },
     {
       "key": {
+        "uuid": "df2a4c39_c20ae963",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-05-26T18:49:46Z",
+      "side": 1,
+      "message": "there\u0027s no data copied from the SA here. so we can define const static headers in the ah_encrypt node.",
+      "parentUuid": "e7fe9ced_a77499bd",
+      "revId": "2aa9a5aa28dc4a2cd053104dcb51ad5a395df6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2112bf2b_ed4f7d5e",
         "filename": "src/vnet/ipsec/ipsec_sa.h",
         "patchSetId": 6
