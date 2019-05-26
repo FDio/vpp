@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "164858cc_4530d6ea",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-26T20:54:14Z",
+      "side": 1,
+      "message": "Why do we need this? Aren\u0027t we trying to deprecate these methods?\nCan we just add table_is and tc_tos to the defaultmapping?\n\nThis also allow for only the single instance of ~0.  Is that correct?",
+      "range": {
+        "startLine": 613,
+        "startChar": 0,
+        "endLine": 625,
+        "endChar": 9
+      },
+      "revId": "ccc680da16b89ff24dc2703b6831f08a7a70ba7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
