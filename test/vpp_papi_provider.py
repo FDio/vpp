@@ -69,7 +69,7 @@ defaultmapping = {
     'ip_punt_redirect': {'is_add': 1, },
     'ip_table_add_del': {'is_add': 1, },
     'ip_unnumbered_dump': {'sw_if_index': 4294967295, },
-    'ipip_add_tunnel': {'is_ipv6': 1, 'instance': 4294967295, },
+    'ipip_add_tunnel': {'instance': 4294967295, },
     'ipsec_interface_add_del_spd': {'is_add': 1, },
     'ipsec_sad_entry_add_del': {'is_add': 1, },
     'ipsec_spd_add_del': {'is_add': 1, },
@@ -607,6 +607,20 @@ class VppPapiProvider(object):
                  'dst': dst,
                  'outer_fib_id': outer_fib_id,
                  'session_id': session_id}
+             }
+        )
+
+    def ipip_add_tunnel(self, src, dst, table_id=0, tc_tos=0xff):
+        """ Add a IPIP tunnel """
+        return self.api(
+            self.papi.ipip_add_tunnel,
+            {'tunnel':
+             {
+                 'src': src,
+                 'dst': dst,
+                 'table_id': table_id,
+                 'instance': 0xffffffff,
+                 'tc_tos': tc_tos}
              }
         )
 

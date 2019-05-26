@@ -22,6 +22,7 @@
 #include <vnet/ipip/ipip.h>
 #include <vnet/vnet.h>
 #include <vnet/vnet_msg_enum.h>
+#include <vnet/ip/ip_types_api.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
@@ -52,23 +53,26 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
   vl_api_ipip_add_tunnel_reply_t *rmp;
   int rv = 0;
   u32 fib_index, sw_if_index = ~0;
-  ip46_address_t src = ip46_address_initializer, dst =
-    ip46_address_initializer;
+  ip46_address_t src, dst;
+  ip46_type_t itype[2];
 
-  /* ip addresses sent in network byte order */
-  if (mp->is_ipv6)
+  itype[0] = ip_address_decode (&mp->tunnel.src, &src);
+  itype[1] = ip_address_decode (&mp->tunnel.dst, &dst);
+
+  if (itype[0] != itype[1])
     {
-      clib_memcpy (&src.ip6, mp->src_address, 16);
-      clib_memcpy (&dst.ip6, mp->dst_address, 16);
-    }
-  else
-    {
-      clib_memcpy (&src.ip4, mp->src_address, 4);
-      clib_memcpy (&dst.ip4, mp->dst_address, 4);
+      rv = VNET_API_ERROR_INVALID_PROTOCOL;
+      goto out;
     }
 
-  fib_index =
-    fib_table_find (fib_ip_proto (mp->is_ipv6), ntohl (mp->table_id));
+  if (ip46_address_is_equal (&src, &dst))
+    {
+      rv = VNET_API_ERROR_SAME_SRC_DST;
+      goto out;
+    }
+
+  fib_index = fib_table_find (fib_proto_from_ip46 (itype[0]),
+			      ntohl (mp->tunnel.table_id));
 
   if (~0 == fib_index)
     {
@@ -76,13 +80,14 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
     }
   else
     {
-      rv = ipip_add_tunnel ((mp->is_ipv6 ?
+      rv = ipip_add_tunnel ((itype[0] == IP46_TYPE_IP6 ?
 			     IPIP_TRANSPORT_IP6 :
 			     IPIP_TRANSPORT_IP4),
-			    ntohl (mp->instance), &src, &dst,
-			    fib_index, mp->tc_tos, &sw_if_index);
+			    ntohl (mp->tunnel.instance), &src, &dst,
+			    fib_index, mp->tunnel.tc_tos, &sw_if_index);
     }
 
+out:
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_IPIP_ADD_TUNNEL_REPLY,
   ({
@@ -112,24 +117,17 @@ send_ipip_tunnel_details (ipip_tunnel_t * t,
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_IPIP_TUNNEL_DETAILS);
-  if (is_ipv6)
-    {
-      clib_memcpy (rmp->src_address, &t->tunnel_src.ip6.as_u8, 16);
-      clib_memcpy (rmp->dst_address, &t->tunnel_dst.ip6.as_u8, 16);
-      ft = fib_table_get (t->fib_index, FIB_PROTOCOL_IP6);
-      rmp->fib_index = htonl (ft->ft_table_id);
-    }
-  else
-    {
-      clib_memcpy (rmp->src_address, &t->tunnel_src.ip4.as_u8, 4);
-      clib_memcpy (rmp->dst_address, &t->tunnel_dst.ip4.as_u8, 4);
-      ft = fib_table_get (t->fib_index, FIB_PROTOCOL_IP4);
-      rmp->fib_index = htonl (ft->ft_table_id);
-    }
-  rmp->instance = htonl (t->user_instance);
-  rmp->sw_if_index = htonl (t->sw_if_index);
+
+  ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
+  ip_address_encode (&t->tunnel_dst, IP46_TYPE_ANY, &rmp->tunnel.dst);
+
+  ft = fib_table_get (t->fib_index, (is_ipv6 ? FIB_PROTOCOL_IP6 :
+				     FIB_PROTOCOL_IP4));
+
+  rmp->tunnel.table_id = htonl (ft->ft_table_id);
+  rmp->tunnel.instance = htonl (t->user_instance);
+  rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
   rmp->context = context;
-  rmp->is_ipv6 = is_ipv6;
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
