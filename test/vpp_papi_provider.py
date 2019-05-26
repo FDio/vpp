@@ -69,7 +69,6 @@ defaultmapping = {
     'ip_punt_redirect': {'is_add': 1, },
     'ip_table_add_del': {'is_add': 1, },
     'ip_unnumbered_dump': {'sw_if_index': 4294967295, },
-    'ipip_add_tunnel': {'is_ipv6': 1, 'instance': 4294967295, },
     'ipsec_interface_add_del_spd': {'is_add': 1, },
     'ipsec_sad_entry_add_del': {'is_add': 1, },
     'ipsec_spd_add_del': {'is_add': 1, },
