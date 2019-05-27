@@ -67,6 +67,21 @@ public:
   };
 
   /**
+   * Bridge Domain ARP Unicast Forward mode
+   */
+  struct arp_ufwd_mode_t : enum_base<arp_ufwd_mode_t>
+  {
+    const static arp_ufwd_mode_t ON;
+    const static arp_ufwd_mode_t OFF;
+
+  private:
+    /**
+     * Private constructor taking the value and the string name
+     */
+    arp_ufwd_mode_t(int v, const std::string& s);
+  };
+
+  /**
    * Bridge Domain MAC aging mode
    */
   struct mac_age_mode_t : enum_base<mac_age_mode_t>
@@ -107,6 +122,7 @@ public:
   bridge_domain(uint32_t id,
                 const learning_mode_t& lmode = learning_mode_t::ON,
                 const arp_term_mode_t& amode = arp_term_mode_t::ON,
+                const arp_ufwd_mode_t& aumode = arp_ufwd_mode_t::OFF,
                 const flood_mode_t& fmode = flood_mode_t::ON,
                 const mac_age_mode_t& mmode = mac_age_mode_t::OFF);
 
@@ -235,6 +251,11 @@ private:
    * The ARP termination mode of the bridge
    */
   arp_term_mode_t m_arp_term_mode;
+
+  /**
+   * The ARP Unicast Forward mode of the bridge
+   */
+  arp_ufwd_mode_t m_arp_ufwd_mode;
 
   /**
    * The flood mode of the bridge
