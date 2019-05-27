@@ -116,180 +116,149 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 				      vlib_frame_t * frame)
 {
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
-  u32 n_left_from, n_left_to_next, *from, *to_next;
-  ip_lookup_next_t next;
+  u32 n_left, *from;
   u32 thread_index = vm->thread_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next = node->cached_next_index;
-  vlib_get_buffers (vm, from, bufs, n_left_from);
+  n_left = frame->n_vectors;
+  next = nexts;
 
-  while (n_left_from > 0)
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  while (n_left >= 4)
     {
-      vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
+      const load_balance_t *lb0, *lb1;
+      const ip4_header_t *ip0, *ip1;
+      u32 lbi0, hc0, lbi1, hc1;
+      const dpo_id_t *dpo0, *dpo1;
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      /* Prefetch next iteration. */
+      {
+	vlib_prefetch_buffer_header (b[2], LOAD);
+	vlib_prefetch_buffer_header (b[3], LOAD);
+
+	CLIB_PREFETCH (b[2]->data, sizeof (ip0[0]), LOAD);
+	CLIB_PREFETCH (b[3]->data, sizeof (ip0[0]), LOAD);
+      }
+
+      ip0 = vlib_buffer_get_current (b[0]);
+      ip1 = vlib_buffer_get_current (b[1]);
+      lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+      lbi1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
+
+      lb0 = load_balance_get (lbi0);
+      lb1 = load_balance_get (lbi1);
+
+      /*
+       * this node is for via FIBs we can re-use the hash value from the
+       * to node if present.
+       * We don't want to use the same hash value at each level in the recursion
+       * graph as that would lead to polarisation
+       */
+      hc0 = hc1 = 0;
+
+      if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
 	{
-	  ip_lookup_next_t next0, next1;
-	  const load_balance_t *lb0, *lb1;
-	  vlib_buffer_t *p0, *p1;
-	  u32 pi0, lbi0, hc0, pi1, lbi1, hc1;
-	  const ip4_header_t *ip0, *ip1;
-	  const dpo_id_t *dpo0, *dpo1;
-
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_prefetch_buffer_header (b[2], STORE);
-	    vlib_prefetch_buffer_header (b[3], STORE);
-
-	    CLIB_PREFETCH (b[2]->data, sizeof (ip0[0]), STORE);
-	    CLIB_PREFETCH (b[3]->data, sizeof (ip0[0]), STORE);
-	  }
-
-	  pi0 = to_next[0] = from[0];
-	  pi1 = to_next[1] = from[1];
-
-	  from += 2;
-	  n_left_from -= 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
-
-	  p0 = b[0];
-	  p1 = b[1];
-	  b += 2;
-
-	  ip0 = vlib_buffer_get_current (p0);
-	  ip1 = vlib_buffer_get_current (p1);
-	  lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  lbi1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
-
-	  lb0 = load_balance_get (lbi0);
-	  lb1 = load_balance_get (lbi1);
-
-	  /*
-	   * this node is for via FIBs we can re-use the hash value from the
-	   * to node if present.
-	   * We don't want to use the same hash value at each level in the recursion
-	   * graph as that would lead to polarisation
-	   */
-	  hc0 = hc1 = 0;
-
-	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
+	  if (PREDICT_TRUE (vnet_buffer (b[0])->ip.flow_hash))
 	    {
-	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
-		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    vnet_buffer (p0)->ip.flow_hash >> 1;
-		}
-	      else
-		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip0, lb0->lb_hash_config);
-		}
-	      dpo0 = load_balance_get_fwd_bucket
-		(lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));
+	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
+		vnet_buffer (b[0])->ip.flow_hash >> 1;
 	    }
 	  else
 	    {
-	      dpo0 = load_balance_get_bucket_i (lb0, 0);
+	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
+		ip4_compute_flow_hash (ip0, lb0->lb_hash_config);
 	    }
-	  if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
+	  dpo0 = load_balance_get_fwd_bucket
+	    (lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));
+	}
+      else
+	{
+	  dpo0 = load_balance_get_bucket_i (lb0, 0);
+	}
+      if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
+	{
+	  if (PREDICT_TRUE (vnet_buffer (b[1])->ip.flow_hash))
 	    {
-	      if (PREDICT_TRUE (vnet_buffer (p1)->ip.flow_hash))
-		{
-		  hc1 = vnet_buffer (p1)->ip.flow_hash =
-		    vnet_buffer (p1)->ip.flow_hash >> 1;
-		}
-	      else
-		{
-		  hc1 = vnet_buffer (p1)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip1, lb1->lb_hash_config);
-		}
-	      dpo1 = load_balance_get_fwd_bucket
-		(lb1, (hc1 & (lb1->lb_n_buckets_minus_1)));
+	      hc1 = vnet_buffer (b[1])->ip.flow_hash =
+		vnet_buffer (b[1])->ip.flow_hash >> 1;
 	    }
 	  else
 	    {
-	      dpo1 = load_balance_get_bucket_i (lb1, 0);
+	      hc1 = vnet_buffer (b[1])->ip.flow_hash =
+		ip4_compute_flow_hash (ip1, lb1->lb_hash_config);
 	    }
-
-	  next0 = dpo0->dpoi_next_node;
-	  next1 = dpo1->dpoi_next_node;
-
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
-
-	  vlib_increment_combined_counter
-	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
-	  vlib_increment_combined_counter
-	    (cm, thread_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
-
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next,
-					   to_next, n_left_to_next,
-					   pi0, pi1, next0, next1);
+	  dpo1 = load_balance_get_fwd_bucket
+	    (lb1, (hc1 & (lb1->lb_n_buckets_minus_1)));
+	}
+      else
+	{
+	  dpo1 = load_balance_get_bucket_i (lb1, 0);
 	}
 
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  ip_lookup_next_t next0;
-	  const load_balance_t *lb0;
-	  vlib_buffer_t *p0;
-	  u32 pi0, lbi0, hc0;
-	  const ip4_header_t *ip0;
-	  const dpo_id_t *dpo0;
+      next[0] = dpo0->dpoi_next_node;
+      next[1] = dpo1->dpoi_next_node;
 
-	  pi0 = from[0];
-	  to_next[0] = pi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-	  n_left_from -= 1;
+      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
-	  p0 = b[0];
-	  b += 1;
+      vlib_increment_combined_counter
+	(cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b[0]));
+      vlib_increment_combined_counter
+	(cm, thread_index, lbi1, 1, vlib_buffer_length_in_chain (vm, b[1]));
 
-	  ip0 = vlib_buffer_get_current (p0);
-	  lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-
-	  lb0 = load_balance_get (lbi0);
-
-	  hc0 = 0;
-	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
-	    {
-	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
-		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    vnet_buffer (p0)->ip.flow_hash >> 1;
-		}
-	      else
-		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip0, lb0->lb_hash_config);
-		}
-	      dpo0 = load_balance_get_fwd_bucket
-		(lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));
-	    }
-	  else
-	    {
-	      dpo0 = load_balance_get_bucket_i (lb0, 0);
-	    }
-
-	  next0 = dpo0->dpoi_next_node;
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-
-	  vlib_increment_combined_counter
-	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next,
-					   to_next, n_left_to_next,
-					   pi0, next0);
-	}
-
-      vlib_put_next_frame (vm, node, next, n_left_to_next);
+      b += 2;
+      next += 2;
+      n_left -= 2;
     }
 
+  while (n_left > 0)
+    {
+      const load_balance_t *lb0;
+      const ip4_header_t *ip0;
+      const dpo_id_t *dpo0;
+      u32 lbi0, hc0;
+
+      ip0 = vlib_buffer_get_current (b[0]);
+      lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+
+      lb0 = load_balance_get (lbi0);
+
+      hc0 = 0;
+      if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
+	{
+	  if (PREDICT_TRUE (vnet_buffer (b[0])->ip.flow_hash))
+	    {
+	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
+		vnet_buffer (b[0])->ip.flow_hash >> 1;
+	    }
+	  else
+	    {
+	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
+		ip4_compute_flow_hash (ip0, lb0->lb_hash_config);
+	    }
+	  dpo0 = load_balance_get_fwd_bucket
+	    (lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));
+	}
+      else
+	{
+	  dpo0 = load_balance_get_bucket_i (lb0, 0);
+	}
+
+      next[0] = dpo0->dpoi_next_node;
+      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+      vlib_increment_combined_counter
+	(cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b[0]));
+
+      b += 1;
+      next += 1;
+      n_left -= 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
