@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7ec4c2c6_9d0aba69",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 1965,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-05-27T08:14:56Z",
+      "side": 1,
+      "message": "Would you mind just ripping these out?",
+      "range": {
+        "startLine": 1954,
+        "startChar": 4,
+        "endLine": 1965,
+        "endChar": 38
+      },
+      "revId": "54ceb8ff697f01d6c9e937ad13b8e227ba9e8ca0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
