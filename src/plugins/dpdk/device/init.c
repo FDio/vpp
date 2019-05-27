@@ -1372,6 +1372,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     /* default per-device config items */
     foreach_dpdk_device_config_item
 
+    /* copy vlan_strip config from default device */
+	if (devconf->vlan_strip_offload == 0 &&
+		conf->default_devconf.vlan_strip_offload > 0)
+		devconf->vlan_strip_offload =
+			conf->default_devconf.vlan_strip_offload;
+
     /* add DPDK EAL whitelist/blacklist entry */
     if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
       {
