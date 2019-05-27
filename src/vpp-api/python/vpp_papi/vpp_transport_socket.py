@@ -29,9 +29,13 @@ class VppTransport(object):
         self.server_address = server_address
         self.header = struct.Struct('>QII')
         self.message_table = {}
+        # These queues can be accessed async.
+        # They are always up, but replaced on connect.
+        # TODO: Use multiprocessing.Pipe instead of multiprocessing.Queue
+        # if possible.
+        self.sque = multiprocessing.Queue()
+        self.q = multiprocessing.Queue()
         # The following fields are set in connect().
-        self.sque = None
-        self.q = None
         self.message_thread = None
         self.socket = None
 
@@ -92,7 +96,13 @@ class VppTransport(object):
 
         self.connected = True
 
-        # TODO: Can this block be moved even later?
+        # Queues' feeder threads from previous connect may still be sending.
+        # Close and join to avoid any errors.
+        self.sque.close()
+        self.q.close()
+        self.sque.join_thread()
+        self.q.join_thread()
+        # Finally safe to replace.
         self.sque = multiprocessing.Queue()
         self.q = multiprocessing.Queue()
         self.message_thread = threading.Thread(target=self.msg_thread_func)
@@ -143,10 +153,9 @@ class VppTransport(object):
             # Allow additional connect() calls.
             self.message_thread.join()
         # Collect garbage.
-        self.sque = None
-        self.q = None
         self.message_thread = None
         self.socket = None
+        # Queues will be collected after connect replaces them.
         return rv
 
     def suspend(self):
