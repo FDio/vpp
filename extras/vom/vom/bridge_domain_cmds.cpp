@@ -22,15 +22,16 @@ namespace bridge_domain_cmds {
 create_cmd::create_cmd(HW::item<uint32_t>& item,
                        const bridge_domain::learning_mode_t& lmode,
                        const bridge_domain::arp_term_mode_t& amode,
+                       const bridge_domain::arp_ufwd_mode_t& aumode,
                        const bridge_domain::flood_mode_t& fmode,
                        const bridge_domain::mac_age_mode_t& mmode)
   : rpc_cmd(item)
   , m_learning_mode(lmode)
   , m_arp_term_mode(amode)
+  , m_arp_ufwd_mode(aumode)
   , m_flood_mode(fmode)
   , m_mac_age_mode(mmode)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -50,6 +51,7 @@ create_cmd::issue(connection& con)
   payload.forward = 1;
   payload.learn = m_learning_mode.value();
   payload.arp_term = m_arp_term_mode.value();
+  payload.arp_ufwd = m_arp_ufwd_mode.value();
   payload.mac_age = m_mac_age_mode.value();
   payload.is_add = 1;
 
@@ -69,8 +71,7 @@ create_cmd::to_string() const
 
 delete_cmd::delete_cmd(HW::item<uint32_t>& item)
   : rpc_cmd(item)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -104,9 +105,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const
