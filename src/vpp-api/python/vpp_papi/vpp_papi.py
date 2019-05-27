@@ -465,6 +465,8 @@ class VPPApiClient(object):
                 target=self.thread_msg_handler)
             self.event_thread.daemon = True
             self.event_thread.start()
+        else:
+            self.event_thread = None
         return rv
 
     def connect(self, name, chroot_prefix=None, do_async=False, rx_qlen=32):
@@ -495,7 +497,8 @@ class VPPApiClient(object):
     def disconnect(self):
         """Detach from VPP."""
         rv = self.transport.disconnect()
-        self.message_queue.put("terminate event thread")
+        if self.event_thread is not None:
+            self.message_queue.put("terminate event thread")
         return rv
 
     def msg_handler_sync(self, msg):
