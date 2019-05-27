@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc4c9fe3_2735dcc0",
+        "filename": "src/vnet/l2tp/l2tp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-27T13:08:53Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be called once, not each time tunnel is created?",
+      "range": {
+        "startLine": 402,
+        "startChar": 2,
+        "endLine": 402,
+        "endChar": 23
+      },
+      "revId": "69dabc62362eaf23e625bc9a5ed6784da07f9015",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
