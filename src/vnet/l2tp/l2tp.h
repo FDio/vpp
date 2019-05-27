@@ -118,7 +118,6 @@ typedef struct
 uword unformat_pg_l2tp_header (unformat_input_t * input, va_list * args);
 
 void l2tp_encap_init (vlib_main_t * vm);
-void l2tp_decap_init (void);
 int create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
 			       ip6_address_t * client_address,
 			       ip6_address_t * our_address,

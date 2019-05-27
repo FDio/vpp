@@ -399,6 +399,8 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
   if (sw_if_index)
     *sw_if_index = hi->sw_if_index;
 
+  ip6_register_protocol (IP_PROTOCOL_L2TP, l2t_decap_local_node.index);
+
   return 0;
 }
 
@@ -731,7 +733,6 @@ l2tp_init (vlib_main_t * vm)
 
   /* insure these nodes are included in build */
   l2tp_encap_init (vm);
-  l2tp_decap_init ();
 
   return 0;
 }
