@@ -139,8 +139,8 @@ hdlc_input (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  h0 = (void *) (b0->data + b0->current_data);
-	  h1 = (void *) (b1->data + b1->current_data);
+	  h0 = vlib_buffer_get_current (b0);
+	  h1 = vlib_buffer_get_current (b1);
 
 	  protocol0 = h0->protocol;
 	  protocol1 = h1->protocol;
@@ -152,11 +152,8 @@ hdlc_input (vlib_main_t * vm,
 	  len0 += protocol0 == clib_host_to_net_u16 (HDLC_PROTOCOL_osi);
 	  len1 += protocol1 == clib_host_to_net_u16 (HDLC_PROTOCOL_osi);
 
-	  b0->current_data += len0;
-	  b1->current_data += len1;
-
-	  b0->current_length -= len0;
-	  b1->current_length -= len1;
+	  vlib_buffer_advance (b0, len0);
+	  vlib_buffer_advance (b1, len1);
 
 	  /* Index sparse array with network byte order. */
 	  sparse_vec_index2 (rt->next_by_protocol, protocol0, protocol1, &i0,
@@ -235,7 +232,7 @@ hdlc_input (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  h0 = (void *) (b0->data + b0->current_data);
+	  h0 = vlib_buffer_get_current (b0);
 
 	  protocol0 = h0->protocol;
 
@@ -243,8 +240,7 @@ hdlc_input (vlib_main_t * vm,
 	  len0 = sizeof (h0[0]);
 	  len0 += protocol0 == clib_host_to_net_u16 (HDLC_PROTOCOL_osi);
 
-	  b0->current_data += len0;
-	  b0->current_length -= len0;
+	  vlib_buffer_advance (b0, len0);
 
 	  i0 = sparse_vec_index (rt->next_by_protocol, protocol0);
 
