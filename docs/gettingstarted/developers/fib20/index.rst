@@ -11,3 +11,4 @@ FIB 2.0 Hierarchical, Protocol, Independent
    mplsfib
    multicast
    fastconvergence
+   scale
