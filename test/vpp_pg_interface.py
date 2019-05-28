@@ -109,24 +109,31 @@ class VppPGInterface(VppInterface):
                 self.in_path, self.pg_index, self.cap_name)
         self._nb_replays = None
 
+    def _rename_previous_capture_file(self, path, counter, file):
+        # if a file from a previous capture exists, rename it.
+        try:
+            if os.path.isfile(path):
+                name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" % \
+                    (self.test.tempdir,
+                     time.time(),
+                     self.name,
+                     counter,
+                     self._out_file)
+                self.test.logger.debug("Renaming %s->%s" %
+                                       (path, name))
+                os.rename(path, name)
+        except OSError:
+            pass
+
     def enable_capture(self):
         """ Enable capture on this packet-generator interface
             of at most n packets.
             If n < 0, this is no limit
         """
-        try:
-            if os.path.isfile(self.out_path):
-                name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" % \
-                    (self.test.tempdir,
-                     time.time(),
-                     self.name,
-                     self.out_history_counter,
-                     self._out_file)
-                self.test.logger.debug("Renaming %s->%s" %
-                                       (self.out_path, name))
-                os.rename(self.out_path, name)
-        except:
-            pass
+
+        self._rename_previous_capture_file(self.path,
+                                           self.out_history_counter,
+                                           self._out_file)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
@@ -142,19 +149,9 @@ class VppPGInterface(VppInterface):
 
         """
         self._nb_replays = nb_replays
-        try:
-            if os.path.isfile(self.in_path):
-                name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" %\
-                    (self.test.tempdir,
-                     time.time(),
-                     self.name,
-                     self.in_history_counter,
-                     self._in_file)
-                self.test.logger.debug("Renaming %s->%s" %
-                                       (self.in_path, name))
-                os.rename(self.in_path, name)
-        except:
-            pass
+        self._rename_previous_capture_file(self.path,
+                                           self.in_history_counter,
+                                           self._in_file)
         wrpcap(self.in_path, pkts)
         self.test.register_capture(self.cap_name)
         # FIXME this should be an API, but no such exists atm
