@@ -571,16 +571,10 @@ ip6_fib_table_show_one (ip6_fib_t *fib,
 u8 *
 format_ip6_fib_table_memory (u8 * s, va_list * args)
 {
-    uword bytes_inuse;
+    u64 bytes_inuse;
 
-    bytes_inuse = 
-        alloc_arena_next 
-        (&(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash))
-        - alloc_arena (&(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash));
-
-    bytes_inuse += 
-        alloc_arena_next(&(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash))
-        - alloc_arena(&(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash));
+    bytes_inuse = (alloc_arena_size(&(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash)) +
+                   alloc_arena_size(&(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash)));
 
     s = format(s, "%=30s %=6d %=8ld\n",
                "IPv6 unicast",
@@ -623,6 +617,7 @@ ip6_show_fib (vlib_main_t * vm,
     u32 mask_len  = 128;
     int table_id = -1, fib_index = ~0;
     int detail = 0;
+    int hash = 0;
 
     verbose = 1;
     matching = 0;
@@ -637,6 +632,9 @@ ip6_show_fib (vlib_main_t * vm,
 	else if (unformat (input, "detail")   ||
                  unformat (input, "det"))
 	    detail = 1;
+
+	else if (unformat (input, "hash"))
+	    hash = 1;
 
 	else if (unformat (input, "%U/%d",
 			   unformat_ip6_address, &matching_address, &mask_len))
@@ -707,6 +705,19 @@ ip6_show_fib (vlib_main_t * vm,
             }
 	    continue;
 	}
+        if (hash)
+        {
+            vlib_cli_output (vm, "IPv6 Non-Forwarding Hash Table:\n%U\n",
+                             BV (format_bihash),
+                             &im6->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
+                             1);
+            vlib_cli_output (vm, "IPv6 Forwarding Hash Table:\n%U\n",
+                             BV (format_bihash),
+                             &im6->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash,
+                             1);
+
+            continue;
+        }
 
 	if (!matching)
 	{
