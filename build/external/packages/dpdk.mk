@@ -21,12 +21,13 @@ DPDK_MLX5_PMD                ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 
-DPDK_VERSION                 ?= 19.02
+DPDK_VERSION                 ?= 19.05
 DPDK_BASE_URL                ?= http://fast.dpdk.org/rel
 DPDK_TARBALL                 := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL                 := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
 DPDK_18.11_TARBALL_MD5_CKSUM := 04b86f4a77f4f81a7fbd26467dd2ea9f
 DPDK_19.02_TARBALL_MD5_CKSUM := 23944a2cdee061aa4bd72ebe7d836db0
+DPDK_19.05_TARBALL_MD5_CKSUM := fe22ad1bab1539945119047b0fdf1105
 MACHINE=$(shell uname -m)
 
 # replace dot with space, and if 3rd word exists we deal with stable dpdk rel
@@ -220,9 +221,9 @@ $(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	$(call set,RTE_LIBRTE_GRO,n)
 	$(call set,RTE_LIBRTE_KNI,n)
 	$(call set,RTE_LIBRTE_BPF,n)
-	$(call set,RTE_LIBRTE_RAWDEV,n)
-	$(call set,RTE_LIBRTE_PMD_IFPGA_RAWDEV,n)
-	$(call set,RTE_LIBRTE_IFPGA_BUS,n)
+	$(call set,RTE_LIBRTE_RAWDEV,y)
+	$(call set,RTE_LIBRTE_PMD_IFPGA_RAWDEV,y)
+	$(call set,RTE_LIBRTE_IFPGA_BUS,y)
 	$(call set,RTE_LIBRTE_BBDEV,n)
 	$(call set,RTE_LIBRTE_BBDEV_NULL,n)
 	$(call set,RTE_TEST_PMD,n)
