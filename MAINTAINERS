@@ -14,15 +14,13 @@ Descriptions of section entries:
 Build System
 M:	Damjan Marion <damarion@cisco.com>
 F:	Makefile
-F:	src/*.ac
-F:	src/*.am
-F:	src/*.mk
-F:	src/m4/
+F:	src/CMakeLists.txt
+F:	src/cmake/
 
 Build System Internal
 M:	Dave Barach <dave@barachs.net>
 F:	build-root/Makefile
-F:	build-data/*
+F:	build-data/
 
 Doxygen
 M:	Chris Luke <chrisy@flirble.org>
@@ -42,12 +40,12 @@ Infrastructure Library
 M:	Dave Barach <dave@barachs.net>
 F:	src/vppinfra/
 
-VLIB Library
+Vector Library
 M:	Dave Barach <dave@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vlib/
 
-VLIB API Libraries
+Binary API Libraries
 M:	Dave Barach <dave@barachs.net>
 F:	src/vlibapi/
 F:	src/vlibmemory/
@@ -126,7 +124,6 @@ M:	John Lo <loj@cisco.com>
 F:	src/vnet/vxlan/
 
 VNET VXLAN-GPE
-M:	Keith Burns <alagalah@gmail.com>
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
@@ -144,50 +141,48 @@ F:	src/plugins/tlsmbedtls
 Plugin - ACL
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
-F:	src/plugins/acl.am
 
 Plugin - flowprobe
 M:	Ole Troan <otroan@employees.org>
 F:	src/plugins/flowprobe/
-F:	src/plugins/flowprobe.am
 
 Plugin - GTPU
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/gtpu/
-F:	src/plugins/gtpu.am
 
 Plugin - PPPoE
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/pppoe/
-F:	src/plugins/pppoe.am
 
 Plugin - IPv6 Segment Routing Dynamic Proxy
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-ad/
-F:	src/plugins/srv6_ad.am
 
 Plugin - IPv6 Segment Routing Masquerading Proxy
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-am/
-F:	src/plugins/srv6_am.am
 
 Plugin - IPv6 Segment Routing Static Proxy
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-as/
-F:	src/plugins/srv6_as.am
 
 Plugin - Load Balancer
 M:      Pierre Pfister <ppfister@cisco.com>
 M:      Hongjun Ni <hongjun.ni@intel.com>
 F:      src/plugins/lb/
-F:      src/plugins/lb.am
 
 Plugin - NSH
 M:      Hongjun Ni <hongjun.ni@intel.com>
-M:      Keith Burns <alagalah@gmail.com>
 M:      Vengada <venggovi@cisco.com>
 F:      src/plugins/nsh/
-F:      src/plugins/nsh.am
+
+Plugin - Time-based MAC filter
+M:	Dave Barach <dave@barachs.net>
+F:      src/plugins/mactime/
+
+Plugin - Network Delay Simulator
+M:	Dave Barach <dave@barachs.net>
+F:      src/plugins/nsim/
 
 Test Infrastructure
 M:	Klement Sekera <ksekera@cisco.com>

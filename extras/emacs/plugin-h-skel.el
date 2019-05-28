@@ -24,7 +24,7 @@ nil
 '(setq capital-oh-en "ON")
 "
 /*
- * " plugin-name ".h - skeleton vpp engine plug-in header file 
+ * " plugin-name ".h - skeleton vpp engine plug-in header file
  *
  * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -55,6 +55,8 @@ typedef struct {
 
     /* on/off switch for the periodic function */
     u8 periodic_timer_enabled;
+    /* Node index, non-zero if the periodic process has been created */
+    u32 periodic_node_index;
 
     /* convenience */
     vlib_main_t * vlib_main;
@@ -71,6 +73,8 @@ extern vlib_node_registration_t " plugin-name "_periodic_node;
 #define " PLUGIN-NAME "_EVENT1 1
 #define " PLUGIN-NAME "_EVENT2 2
 #define " PLUGIN-NAME "_EVENT_PERIODIC_ENABLE_DISABLE 3
+
+void " plugin-name "_create_periodic_process (" plugin-name "_main_t *);
 
 #endif /* __included_" plugin-name "_h__ */
 
