@@ -20,6 +20,17 @@ Start with a clone of the vpp repository.
    $ cd vpp
 
 
+Install the Necessary Packages
+===============================
+
+Before building the docs there are some packages that are needed. To install
+these packages on ubuntu execute the following.
+
+.. code-block:: console
+
+   $ sudo apt-get install python3-all python3-setuptools python3-pip
+
+ 
 Create a Virtual Environment using virtualenv
 ===============================================
  
