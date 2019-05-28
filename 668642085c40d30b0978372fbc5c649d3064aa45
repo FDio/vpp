@@ -16,6 +16,24 @@
       "revId": "668642085c40d30b0978372fbc5c649d3064aa45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff7d0c6c_1c4d320a",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2019-05-28T13:56:26Z",
+      "side": 1,
+      "message": "It seems to me that passing an argument (thread_index in this case) that will be overwritten in the function to a correct one is not quite correct. I think it is better to pass the correct argument in the first place. Thus, create_bypass_for_fwd() will not be aware of the logic behind the determination of the current thread index and will work with the given one. What do you think?",
+      "parentUuid": "9f72db9c_fca6434a",
+      "revId": "668642085c40d30b0978372fbc5c649d3064aa45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
