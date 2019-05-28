@@ -757,6 +757,34 @@ done:
   return error;
 }
 
+u32
+vlib_process_create (vlib_main_t * vm, char *name,
+		     vlib_node_function_t * f, u32 log2_n_stack_bytes)
+{
+  vlib_node_registration_t r;
+  vlib_node_t *n;
+
+  memset (&r, 0, sizeof (r));
+
+  r.name = (char *) format (0, "%s", name, 0);
+  r.function = f;
+  r.process_log2_n_stack_bytes = log2_n_stack_bytes;
+  r.type = VLIB_NODE_TYPE_PROCESS;
+
+  vlib_worker_thread_barrier_sync (vm);
+
+  vlib_register_node (vm, &r);
+  vec_free (r.name);
+
+  vlib_worker_thread_node_runtime_update ();
+  vlib_worker_thread_barrier_release (vm);
+
+  n = vlib_get_node (vm, r.index);
+  vlib_start_process (vm, n->runtime_index);
+
+  return (r.index);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

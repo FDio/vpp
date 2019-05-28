@@ -100,14 +100,16 @@ int " plugin-name "_enable_disable (" plugin-name "_main_t * " main-p ", u32 sw_
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
+  " plugin-name "_create_periodic_process (" main-p ");
+
   vnet_feature_enable_disable (\"device-input\", \"" plugin-name "\",
                                sw_if_index, enable_disable, 0, 0);
 
   /* Send an event to enable/disable the periodic scanner process */
-  vlib_process_signal_event (" main-p "->vlib_main, " plugin-name"_periodic_node.index,
-                            " PLUGIN-NAME"_EVENT_PERIODIC_ENABLE_DISABLE,
+  vlib_process_signal_event (" main-p "->vlib_main,
+                             " main-p"->periodic_node_index,
+                             " PLUGIN-NAME"_EVENT_PERIODIC_ENABLE_DISABLE,
                             (uword)enable_disable);
-
   return rv;
 }
 
