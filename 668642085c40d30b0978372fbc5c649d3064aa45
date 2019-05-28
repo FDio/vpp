@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9f72db9c_fca6434a",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-05-28T11:44:49Z",
+      "side": 1,
+      "message": "Why not put the condition inside create_bypass_for_fwd ?",
+      "revId": "668642085c40d30b0978372fbc5c649d3064aa45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
