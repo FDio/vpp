@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "479de3c3_628c1831",
+        "filename": "src/plugins/l3xc/l3xc_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-28T22:10:27Z",
+      "side": 1,
+      "message": "Can you take sw_if_index as a filter or ~0 for all?",
+      "range": {
+        "startLine": 196,
+        "startChar": 0,
+        "endLine": 196,
+        "endChar": 26
+      },
+      "revId": "812da092ef03d99bcdb3e2bef28bb788c7e8f3b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ffea90c_f24222f9",
+        "filename": "src/plugins/l3xc/l3xc_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-28T22:10:27Z",
+      "side": 1,
+      "message": "L3 Cross-Connect (L3XC)",
+      "range": {
+        "startLine": 269,
+        "startChar": 20,
+        "endLine": 269,
+        "endChar": 62
+      },
+      "revId": "812da092ef03d99bcdb3e2bef28bb788c7e8f3b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a08f47c3_99786a77",
+        "filename": "test/test_l3xc.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-28T22:10:27Z",
+      "side": 1,
+      "message": "If we take sw_if_index as a parameter, we don\u0027t have to iterate the list client side.",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 23
+      },
+      "revId": "812da092ef03d99bcdb3e2bef28bb788c7e8f3b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
