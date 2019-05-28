@@ -237,7 +237,7 @@ fib_memory_show (vlib_main_t * vm,
 
     vlib_cli_output (vm, "FIB memory");
     vlib_cli_output (vm, "  Tables:");
-    vlib_cli_output (vm, "%=30s %=6s %=8s", "SAFI", "Number", "Bytes");
+    vlib_cli_output (vm, "%=30s %=6s %=12s", "SAFI", "Number", "Bytes");
     vlib_cli_output (vm, "%U", format_fib_table_memory);
     vlib_cli_output (vm, "%U", format_mfib_table_memory);
     vlib_cli_output (vm, "  Nodes:");

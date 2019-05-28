@@ -573,16 +573,10 @@ format_ip6_fib_table_memory (u8 * s, va_list * args)
 {
     uword bytes_inuse;
 
-    bytes_inuse = 
-        alloc_arena_next 
-        (&(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash))
-        - alloc_arena (&(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash));
+    bytes_inuse = (alloc_arena_next(&(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash)) +
+                   alloc_arena_next(&(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash)));
 
-    bytes_inuse += 
-        alloc_arena_next(&(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash))
-        - alloc_arena(&(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash));
-
-    s = format(s, "%=30s %=6d %=8ld\n",
+    s = format(s, "%=30s %=6d %=12ld\n",
                "IPv6 unicast",
                pool_elts(ip6_main.fibs),
                bytes_inuse);
@@ -623,6 +617,7 @@ ip6_show_fib (vlib_main_t * vm,
     u32 mask_len  = 128;
     int table_id = -1, fib_index = ~0;
     int detail = 0;
+    int hash = 0;
 
     verbose = 1;
     matching = 0;
@@ -638,6 +633,11 @@ ip6_show_fib (vlib_main_t * vm,
                  unformat (input, "det"))
 	    detail = 1;
 
+	else if (unformat (input, "hash") ||
+                 unformat (input, "mem") ||
+                 unformat (input, "memory"))
+	    hash = 1;
+
 	else if (unformat (input, "%U/%d",
 			   unformat_ip6_address, &matching_address, &mask_len))
 	    matching = 1;
@@ -651,6 +651,19 @@ ip6_show_fib (vlib_main_t * vm,
 	    ;
 	else
 	    break;
+    }
+
+    if (hash)
+    {
+        vlib_cli_output (vm, "IPv6 Non-Forwarding Hash Table:\n%U\n",
+                         BV (format_bihash),
+                         &im6->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
+                         detail);
+        vlib_cli_output (vm, "IPv6 Forwarding Hash Table:\n%U\n",
+                         BV (format_bihash),
+                         &im6->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash,
+                         detail);
+        return (NULL);
     }
 
     pool_foreach (fib_table, im6->fibs,

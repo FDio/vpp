@@ -4,6 +4,6 @@
 About
 =====
 
-**VPP Version:** 19.08-rc0~238-g0a715cd03
+**VPP Version:** 19.08-rc0~293-g1833fd8
 
-**Built on:** Fri May 17 17:37:25 GMT 2019
+**Built on:** Tue May 28 14:47:35 GMT 2019

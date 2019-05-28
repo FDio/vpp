@@ -521,9 +521,14 @@ VLIB_INIT_FUNCTION(ip6_mfib_module_init);
 u8 *
 format_ip6_mfib_table_memory (u8 * s, va_list * args)
 {
-    s = format(s, "%=30s %=6d %=8s\n",
+    u64 bytes_inuse;
+
+    bytes_inuse = alloc_arena_next(&(ip6_main.ip6_mtable.ip6_mhash));
+
+    s = format(s, "%=30s %=6d %=12ld\n",
                "IPv6 multicast",
-               pool_elts(ip6_main.mfibs), "???");
+               pool_elts(ip6_main.mfibs),
+               bytes_inuse);
 
     return (s);
 }
