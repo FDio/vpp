@@ -348,10 +348,13 @@ format_ipsec_gre_device (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (ipsec_gre_device_class) = {
   .name = "IPSec GRE tunnel device",
+  .name_format_string = "ipsec-gre%d",
   .format_device_name = format_ipsec_gre_tunnel_name,
   .format_device = format_ipsec_gre_device,
   .format_tx_trace = format_ipsec_gre_tx_trace,
   .admin_up_down_function = ipsec_gre_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "ipsec_gre_tunnel",
 };
 
 

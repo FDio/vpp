@@ -2447,6 +2447,7 @@ ixge_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (ixge_device_class) = {
   .name = "ixge",
+  .name_format_string = "TenGigabitEthernet%x/%x/%x/%x",
   .tx_function = ixge_interface_tx,
   .format_device_name = format_ixge_device_name,
   .format_device = format_ixge_device,
@@ -2454,6 +2455,8 @@ VNET_DEVICE_CLASS (ixge_device_class) = {
   .clear_counters = ixge_clear_hw_interface_counters,
   .admin_up_down_function = ixge_interface_admin_up_down,
   .rx_redirect_to_node = ixge_set_interface_next_node,
+  .max_system_instances = ~0,
+  .api_create_fn = "(none)",
 };
 /* *INDENT-ON* */
 

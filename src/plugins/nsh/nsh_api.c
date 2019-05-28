@@ -109,8 +109,11 @@ format_nsh_name (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (nsh_device_class, static) = {
   .name = "NSH",
+  .name_format_string = "nsh_tunnel%d",
   .format_device_name = format_nsh_name,
   .admin_up_down_function = nsh_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "nsh_add_del_entry",
 };
 /* *INDENT-ON* */
 

@@ -332,6 +332,7 @@ error:
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (af_packet_device_class) = {
   .name = "af-packet",
+  .name_format_string = "host-%s",
   .format_device_name = format_af_packet_device_name,
   .format_device = format_af_packet_device,
   .format_tx_trace = format_af_packet_tx_trace,
@@ -342,6 +343,7 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .admin_up_down_function = af_packet_interface_admin_up_down,
   .subif_add_del_function = af_packet_subif_add_del_function,
   .mac_addr_change_function = af_packet_set_mac_address_function,
+  .api_create_fn = "af_packet_create",
 };
 /* *INDENT-ON* */
 

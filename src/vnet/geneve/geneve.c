@@ -107,9 +107,12 @@ geneve_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (geneve_device_class, static) = {
   .name = "GENEVE",
+  .name_format_string = "geneve_tunnel%d",
   .format_device_name = format_geneve_name,
   .format_tx_trace = format_geneve_encap_trace,
   .admin_up_down_function = geneve_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "geneve_add_del_tunnel",
 };
 /* *INDENT-ON* */
 

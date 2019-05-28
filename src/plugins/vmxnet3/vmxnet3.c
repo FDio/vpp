@@ -136,6 +136,7 @@ static char *vmxnet3_tx_func_error_strings[] = {
 VNET_DEVICE_CLASS (vmxnet3_device_class,) =
 {
   .name = "VMXNET3 interface",
+  .name_format_string =  "vmxnet3-%x/%x/%x/%x",
   .format_device = format_vmxnet3_device,
   .format_device_name = format_vmxnet3_device_name,
   .admin_up_down_function = vmxnet3_interface_admin_up_down,
@@ -144,6 +145,7 @@ VNET_DEVICE_CLASS (vmxnet3_device_class,) =
   .rx_redirect_to_node = vmxnet3_set_interface_next_node,
   .tx_function_n_errors = VMXNET3_TX_N_ERROR,
   .tx_function_error_strings = vmxnet3_tx_func_error_strings,
+  .api_create_fn = "vmxnet3_create",
 };
 /* *INDENT-ON* */
 

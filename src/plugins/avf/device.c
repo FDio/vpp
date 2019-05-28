@@ -1426,6 +1426,7 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .rx_redirect_to_node = avf_set_interface_next_node,
   .tx_function_n_errors = AVF_TX_N_ERROR,
   .tx_function_error_strings = avf_tx_func_error_strings,
+  .api_create_fn = "avf_create",
 };
 /* *INDENT-ON* */
 

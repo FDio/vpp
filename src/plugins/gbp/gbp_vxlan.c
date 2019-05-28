@@ -451,11 +451,14 @@ gbp_vxlan_interface_tx (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (gbp_vxlan_device_class) = {
   .name = "GBP VXLAN tunnel-template",
+  .name_format_string = "gbp-vxlan-%d",
   .format_device_name = format_gbp_vxlan_tunnel_name,
   .format_device = format_gbp_vxlan_tunnel,
   .format_tx_trace = format_gbp_vxlan_tx_trace,
   .admin_up_down_function = gbp_vxlan_interface_admin_up_down,
   .tx_function = gbp_vxlan_interface_tx,
+  .max_system_instances = ~0,
+  .api_create_fn = "vxlan_gbp_tunnel_add_del",
 };
 
 VNET_HW_INTERFACE_CLASS (gbp_vxlan_hw_interface_class) = {

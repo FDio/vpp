@@ -142,10 +142,13 @@ pg_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pg_dev_class) = {
   .name = "pg",
+  .name_format_string = "pg%d",
   .tx_function = pg_output,
   .format_device_name = format_pg_interface_name,
   .format_tx_trace = format_pg_output_trace,
   .admin_up_down_function = pg_interface_admin_up_down,
+  .base_hw_address = {0x02, 0xfe, 0x00, 0x00, 0x00, 0x00 },
+  .api_create_fn = "pg_create_interface",
 };
 /* *INDENT-ON* */
 

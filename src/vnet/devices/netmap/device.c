@@ -231,6 +231,7 @@ netmap_subif_add_del_function (vnet_main_t * vnm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (netmap_device_class) = {
   .name = "netmap",
+  .name_format_string = "netmap-%s",
   .format_device_name = format_netmap_device_name,
   .format_device = format_netmap_device,
   .format_tx_trace = format_netmap_tx_trace,
@@ -240,6 +241,9 @@ VNET_DEVICE_CLASS (netmap_device_class) = {
   .clear_counters = netmap_clear_hw_interface_counters,
   .admin_up_down_function = netmap_interface_admin_up_down,
   .subif_add_del_function = netmap_subif_add_del_function,
+  .max_system_instances = ~0,
+  .base_hw_address = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+  .api_create_fn = "netmap_create",
 };
 /* *INDENT-ON* */
 

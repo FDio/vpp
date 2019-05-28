@@ -282,7 +282,9 @@ format_xcrw_name (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (xcrw_device_class,static) = {
   .name = "Xcrw",
+  .name_format_string = "xcrw%d",
   .format_device_name = format_xcrw_name,
+  .api_create_fn = "l2_patch_add_del"
 };
 /* *INDENT-ON* */
 

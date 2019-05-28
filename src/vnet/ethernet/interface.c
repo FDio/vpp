@@ -648,21 +648,25 @@ simulated_ethernet_mac_change (vnet_hw_interface_t * hi,
   return (NULL);
 }
 
-
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
-  .name = "Loopback",
-  .format_device_name = format_simulated_ethernet_name,
-  .tx_function = simulated_ethernet_interface_tx,
-  .admin_up_down_function = simulated_ethernet_admin_up_down,
-  .mac_addr_change_function = simulated_ethernet_mac_change,
-};
-/* *INDENT-ON* */
-
 /*
  * Maintain a bitmap of allocated loopback instance numbers.
  */
 #define LOOPBACK_MAX_INSTANCE		(16 * 1024)
+
+/* *INDENT-OFF* */
+VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
+  .name = "Loopback",
+  .name_format_string = "loop%d:",
+  .format_device_name = format_simulated_ethernet_name,
+  .tx_function = simulated_ethernet_interface_tx,
+  .admin_up_down_function = simulated_ethernet_admin_up_down,
+  .mac_addr_change_function = simulated_ethernet_mac_change,
+  .max_system_instances = LOOPBACK_MAX_INSTANCE,
+  .base_hw_address = {0xde, 0xad, 0x00, 0x00, 0x00, 0x00},
+  .api_create_fn = "create_loopback",
+};
+/* *INDENT-ON* */
+
 
 static u32
 loopback_instance_alloc (u8 is_specified, u32 want)
@@ -772,7 +776,13 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
     {
       address[0] = 0xde;
       address[1] = 0xad;
-      address[5] = instance;
+      address[2] = instance >> 24 && 0xFF;
+      address[3] = instance >> 16 && 0xFF;
+      address[4] = instance >> 8 && 0xFF;
+      address[5] = instance && 0xFF;
+
+
+
     }
 
   error = ethernet_register_interface

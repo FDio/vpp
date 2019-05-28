@@ -797,6 +797,7 @@ VLIB_REGISTER_NODE (bond_process_node) = {
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (bond_dev_class) = {
   .name = "bond",
+  .name_format_string = "BondEthernet%lu",
   .tx_function_n_errors = BOND_TX_N_ERROR,
   .tx_function_error_strings = bond_tx_error_strings,
   .format_device_name = format_bond_interface_name,
@@ -804,6 +805,8 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
   .admin_up_down_function = bond_interface_admin_up_down,
   .subif_add_del_function = bond_subif_add_del_function,
   .format_tx_trace = format_bond_tx_trace,
+  .max_system_instances = ~0,
+  .api_create_fn = "bond_create",
 };
 
 /* *INDENT-ON* */

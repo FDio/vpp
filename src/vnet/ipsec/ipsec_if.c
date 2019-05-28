@@ -186,8 +186,11 @@ ipsec_if_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 VNET_DEVICE_CLASS (ipsec_device_class) =
 {
   .name = "IPSec",
+  .name_format_string = "ipsec%d",
   .format_device_name = format_ipsec_name,
   .admin_up_down_function = ipsec_admin_up_down_function,
+  .max_system_instances = ~0,
+  .api_create_fn = "ipsec_tunnel_if_add_del",
 };
 /* *INDENT-ON* */
 

@@ -92,6 +92,7 @@ static uword dummy_interface_tx (vlib_main_t * vm,
 
 VNET_DEVICE_CLASS (test_interface_device_class,static) = {
   .name = "Test interface",
+  .name_format_string = "test-eth%d",
   .format_device_name = format_test_interface_name,
   .tx_function = dummy_interface_tx,
 };

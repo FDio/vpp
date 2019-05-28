@@ -642,6 +642,7 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .name = "vhost-user",
+  .name_format_string = "VirtualEthernet0/0/%d",
   .tx_function_n_errors = VHOST_USER_TX_FUNC_N_ERROR,
   .tx_function_error_strings = vhost_user_tx_func_error_strings,
   .format_device_name = format_vhost_user_interface_name,
@@ -649,6 +650,9 @@ VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .admin_up_down_function = vhost_user_interface_admin_up_down,
   .rx_mode_change_function = vhost_user_interface_rx_mode_change,
   .format_tx_trace = format_vhost_trace,
+  .max_system_instances = ~0,
+  .base_hw_address =  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+  .api_create_fn = "create_vhost_user_if",
 };
 
 /* *INDENT-ON* */

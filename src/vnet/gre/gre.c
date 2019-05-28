@@ -533,10 +533,13 @@ format_gre_device (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (gre_device_class) = {
   .name = "GRE tunnel device",
+  .name_format_string = "gre%d",
   .format_device_name = format_gre_tunnel_name,
   .format_device = format_gre_device,
   .format_tx_trace = format_gre_tx_trace,
   .admin_up_down_function = gre_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "gre_tunnel_add_del",
 #ifdef SOON
   .clear counter = 0;
 #endif

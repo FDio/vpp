@@ -96,6 +96,7 @@ test_interface_admin_up_down (vnet_main_t * vnm,
 
 VNET_DEVICE_CLASS (test_interface_device_class,static) = {
   .name = "Test interface",
+  .name_format_string = "test-eth%d",
   .format_device_name = format_test_interface_name,
   .tx_function = dummy_interface_tx,
   .admin_up_down_function = test_interface_admin_up_down,

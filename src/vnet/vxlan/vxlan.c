@@ -112,9 +112,12 @@ vxlan_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vxlan_device_class, static) = {
   .name = "VXLAN",
+  .name_format_string = "vxlan_tunnel%d",
   .format_device_name = format_vxlan_name,
   .format_tx_trace = format_vxlan_encap_trace,
   .admin_up_down_function = vxlan_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "vxlan_add_del_tunnel",
 };
 /* *INDENT-ON* */
 

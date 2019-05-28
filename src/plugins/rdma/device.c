@@ -738,12 +738,14 @@ static char *rdma_tx_func_error_strings[] = {
 VNET_DEVICE_CLASS (rdma_device_class,) =
 {
   .name = "RDMA interface",
+  .name_format_string = "rdma-%u",
   .format_device = format_rdma_device,
   .format_device_name = format_rdma_device_name,
   .admin_up_down_function = rdma_interface_admin_up_down,
   .rx_redirect_to_node = rdma_set_interface_next_node,
   .tx_function_n_errors = RDMA_TX_N_ERROR,
   .tx_function_error_strings = rdma_tx_func_error_strings,
+  .api_create_fn = "(none)",
 };
 /* *INDENT-ON* */
 

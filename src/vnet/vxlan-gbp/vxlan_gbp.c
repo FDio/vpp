@@ -103,9 +103,12 @@ vxlan_gbp_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vxlan_gbp_device_class, static) = {
   .name = "VXLAN-GBP",
+  .name_format_string = "vxlan_gbp_tunnel%d",
   .format_device_name = format_vxlan_gbp_name,
   .format_tx_trace = format_vxlan_gbp_encap_trace,
   .admin_up_down_function = vxlan_gbp_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "vxlan_gbp_tunnel_add_del",
 };
 /* *INDENT-ON* */
 

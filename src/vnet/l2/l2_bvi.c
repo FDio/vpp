@@ -58,19 +58,24 @@ bvi_mac_change (vnet_hw_interface_t * hi,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (bvi_device_class) = {
-  .name = "BVI",
-  .format_device_name = format_bvi_name,
-  .admin_up_down_function = bvi_admin_up_down,
-  .mac_addr_change_function = bvi_mac_change,
-};
-/* *INDENT-ON* */
-
 /*
  * Maintain a bitmap of allocated bvi instance numbers.
  */
+
 #define BVI_MAX_INSTANCE		(16 * 1024)
+
+/* *INDENT-OFF* */
+VNET_DEVICE_CLASS (bvi_device_class) = {
+  .name = "BVI",
+  .name_format_string = "bvi%d",
+  .format_device_name = format_bvi_name,
+  .admin_up_down_function = bvi_admin_up_down,
+  .mac_addr_change_function = bvi_mac_change,
+  .base_hw_address = { 0xb0, 0xb0, 0x00, 0x00, 0x00, 0x00 },
+  .max_system_instances = BVI_MAX_INSTANCE,
+  .api_create_fn = "bvi_create"
+};
+/* *INDENT-ON* */
 
 static u32
 bvi_instance_alloc (u32 want)

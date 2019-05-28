@@ -313,8 +313,12 @@ static u8 * format_simulated_srp_name (u8 * s, va_list * args)
 
 VNET_DEVICE_CLASS (srp_simulated_device_class,static) = {
   .name = "Simulated srp",
+  .name_format_string = "fake-srp%d",
   .format_device_name = format_simulated_srp_name,
   .tx_function = simulated_srp_interface_tx,
+  .max_system_instances = ~0,
+  .base_hw_address = { 0xde, 0xad, 0x00, 0x00, 0x00, 0x00 },
+  .api_create_fn = "(none)"
 };
 
 static clib_error_t *

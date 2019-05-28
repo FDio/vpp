@@ -542,6 +542,7 @@ done:
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
+  .name_format_string = "GigabitEthernet",
   .tx_function_n_errors = DPDK_TX_FUNC_N_ERROR,
   .tx_function_error_strings = dpdk_tx_func_error_strings,
   .format_device_name = format_dpdk_device_name,

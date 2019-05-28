@@ -502,6 +502,7 @@ memif_subif_add_del_function (vnet_main_t * vnm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (memif_device_class) = {
   .name = "memif",
+  .name_format_string = "memif%lu/%lu",
   .format_device_name = format_memif_device_name,
   .format_device = format_memif_device,
   .format_tx_trace = format_memif_tx_trace,
@@ -512,6 +513,7 @@ VNET_DEVICE_CLASS (memif_device_class) = {
   .admin_up_down_function = memif_interface_admin_up_down,
   .subif_add_del_function = memif_subif_add_del_function,
   .rx_mode_change_function = memif_interface_rx_mode_change,
+  .api_create_fn = "memif_create",
 };
 
 /* *INDENT-ON* */

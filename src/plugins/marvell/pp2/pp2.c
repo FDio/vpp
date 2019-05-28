@@ -382,6 +382,7 @@ static char *mrvl_pp2_tx_func_error_strings[] = {
 VNET_DEVICE_CLASS (mrvl_pp2_device_class,) =
 {
   .name = "Marvell PPv2 interface",
+  .name_format_string = ,
   .format_device_name = format_mrvl_pp2_interface_name,
   .format_device = format_mrvl_pp2_interface,
   .tx_function = mrvl_pp2_interface_tx,
@@ -390,6 +391,7 @@ VNET_DEVICE_CLASS (mrvl_pp2_device_class,) =
   .admin_up_down_function = mrvl_pp2_interface_admin_up_down,
   .clear_counters = mrvl_pp2_clear_interface_counters,
   .rx_redirect_to_node = mrvl_pp2_set_interface_next_node,
+  .api_create_fn = "(none)",
 };
 /* *INDENT-ON* */
 

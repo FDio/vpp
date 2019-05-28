@@ -59,13 +59,17 @@ vnet_local_interface_tx (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vnet_local_interface_device_class) = {
   .name = "local",
+  .name_format_string = "local%d",
   .tx_function = vnet_local_interface_tx,
+  .max_system_instances = 1,
+  .api_create_fn = "(none)"
 };
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (vnet_local_interface_hw_class,static) = {
   .name = "local",
+
 };
 /* *INDENT-ON* */
 

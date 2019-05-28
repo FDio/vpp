@@ -122,9 +122,12 @@ gtpu_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (gtpu_device_class,static) = {
   .name = "GTPU",
+  .name_format_string = "gtpu_tunnel%d",
   .format_device_name = format_gtpu_name,
   .format_tx_trace = format_gtpu_encap_trace,
   .admin_up_down_function = gtpu_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "gtpu_add_del_tunnel",
 };
 /* *INDENT-ON* */
 

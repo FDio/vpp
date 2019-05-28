@@ -419,6 +419,7 @@ virtio_subif_add_del_function (vnet_main_t * vnm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (virtio_device_class) = {
   .name = "virtio",
+  .name_format_string = "virtio-%lu",
   .format_device_name = format_virtio_device_name,
   .format_device = format_virtio_device,
   .format_tx_trace = format_virtio_tx_trace,
@@ -429,6 +430,8 @@ VNET_DEVICE_CLASS (virtio_device_class) = {
   .admin_up_down_function = virtio_interface_admin_up_down,
   .subif_add_del_function = virtio_subif_add_del_function,
   .rx_mode_change_function = virtio_interface_rx_mode_change,
+  .max_system_instances = ~0,
+  .api_create_fn = "virtio_pci_create",
 };
 /* *INDENT-ON* */
 

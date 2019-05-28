@@ -144,9 +144,12 @@ vxlan_gpe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vxlan_gpe_device_class,static) = {
   .name = "VXLAN_GPE",
+  .name_format_string = "vxlan_gpe_tunnel%d",
   .format_device_name = format_vxlan_gpe_name,
   .format_tx_trace = format_vxlan_gpe_encap_trace,
   .admin_up_down_function = vxlan_gpe_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "vxlan_gpe_add_del_tunnel"
 };
 /* *INDENT-ON* */
 

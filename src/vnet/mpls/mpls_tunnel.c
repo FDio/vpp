@@ -548,11 +548,13 @@ mpls_tunnel_tx (vlib_main_t * vm,
 
 VNET_DEVICE_CLASS (mpls_tunnel_class) = {
     .name = "MPLS tunnel device",
+    .name_format_string = "mpls-tunnel%d",
     .format_device_name = format_mpls_tunnel_name,
     .format_device = format_mpls_tunnel_device,
     .format_tx_trace = format_mpls_tunnel_tx_trace,
     .tx_function = mpls_tunnel_tx,
     .admin_up_down_function = mpls_tunnel_admin_up_down,
+    .api_create_fn = "mpls_tunnel_add_del",
 };
 
 VNET_HW_INTERFACE_CLASS (mpls_tunnel_hw_interface_class) = {

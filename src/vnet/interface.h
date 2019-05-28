@@ -255,6 +255,19 @@ typedef struct _vnet_device_class
 
   /* Function to set mac address. */
   vnet_interface_set_mac_address_function_t *mac_addr_change_function;
+
+  /* Maximum number of instances supported by the system.*/
+  u32 max_system_instances;
+
+  /* Name format string. */
+  char *name_format_string;
+
+  /* Base hw-address used for automated hw-address allocation. */
+  u8 base_hw_address[6];
+
+  /* Name of the api create function */
+  char * api_create_fn;
+
 } vnet_device_class_t;
 
 #ifndef CLIB_MARCH_VARIANT

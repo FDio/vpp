@@ -51,7 +51,7 @@ static pipe_main_t pipe_main;
 /*
  * The pipe rewrite is the same size as an ethernet header (since it
  * is an ethernet interface and the DP is optimised for writing
- * sizeof(ethernet_header_t) rewrites. Hwoever, there are no MAC addresses
+ * sizeof(ethernet_header_t) rewrites. However, there are no MAC addresses
  * since pipes don't have them.
  */
 static u8 *
@@ -201,9 +201,13 @@ pipe_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pipe_device_class) = {
   .name = "Pipe",
+  .name_format_string = "pipe%d",
   .format_device_name = format_pipe_name,
   .tx_function = pipe_tx,
   .admin_up_down_function = pipe_admin_up_down,
+  .max_system_instances = ~0,
+  .base_hw_address = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+  .api_create_fn = "pipe_create",
 };
 /* *INDENT-ON* */
 

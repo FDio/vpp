@@ -257,8 +257,10 @@ l2tpv3_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (l2tpv3_device_class,static) = {
   .name = "L2TPv3",
+  .name_format_string = "l2tpv3_tunnel%d",
   .format_device_name = format_l2tpv3_name,
   .name_renumber = l2tpv3_name_renumber,
+  .api_create_fn = "l2tpv3_create_tunnel",
 };
 /* *INDENT-ON* */
 

@@ -78,8 +78,11 @@ pppoe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pppoe_device_class,static) = {
   .name = "PPPoE",
+  .name_format_string = "pppoe_session%d",
   .format_device_name = format_pppoe_name,
   .admin_up_down_function = pppoe_interface_admin_up_down,
+  .max_system_instances = ~0,
+  .api_create_fn = "pppoe_add_del_session",
 };
 /* *INDENT-ON* */
 
@@ -399,7 +402,7 @@ int vnet_pppoe_add_del_session
 
       pem->session_index_by_sw_if_index[t->sw_if_index] = ~0;
 
-      /* update pppoe fib with session_inde=~0x */
+      /* update pppoe fib with session_index=~0x */
       result.fields.session_index = ~0;
       pppoe_update_1 (&pem->session_table,
 		      a->client_mac, clib_host_to_net_u16 (a->session_id),

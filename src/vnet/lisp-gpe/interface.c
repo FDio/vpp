@@ -161,9 +161,12 @@ format_lisp_gpe_name (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (lisp_gpe_device_class) = {
   .name = "LISP_GPE",
+  .name_format_string = "lisp_gpe%d",
   .format_device_name = format_lisp_gpe_name,
   .format_tx_trace = format_lisp_gpe_tx_trace,
   .tx_function = lisp_gpe_interface_tx,
+  .max_system_instances = ~0,
+  .api_create_fn = "N/A",
 };
 /* *INDENT-ON* */
 
@@ -305,9 +308,11 @@ format_l2_lisp_gpe_name (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (l2_lisp_gpe_device_class,static) = {
   .name = "L2_LISP_GPE",
+  .name_format_string = "l2_lisp_gpe%d",
   .format_device_name = format_l2_lisp_gpe_name,
   .format_tx_trace = format_l2_lisp_gpe_tx_trace,
   .tx_function = l2_lisp_gpe_interface_tx,
+  .api_create_fn = "N/A",
 };
 /* *INDENT-ON* */
 
@@ -409,9 +414,11 @@ format_nsh_lisp_gpe_name (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (nsh_lisp_gpe_device_class,static) = {
   .name = "NSH_LISP_GPE",
+  .name_format_string = "nsh_lisp_gpe%d",
   .format_device_name = format_nsh_lisp_gpe_name,
   .format_tx_trace = format_nsh_lisp_gpe_tx_trace,
   .tx_function = nsh_lisp_gpe_interface_tx,
+  .api_create_fn = "N/A",
 };
 /* *INDENT-ON* */
 
@@ -549,7 +556,7 @@ lisp_gpe_tenant_add_default_routes (u32 table_id)
     u32 fib_index;
 
     /*
-     * Add a deafult route that results in a control plane punt DPO
+     * Add a default route that results in a control plane punt DPO
      */
     fib_index = fib_table_find_or_create_and_lock (prefix.fp_proto, table_id,
 						   FIB_SOURCE_LISP);

@@ -995,8 +995,10 @@ tuntap_intfc_tx (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (tuntap_dev_class,static) = {
   .name = "tuntap",
+  .name_format_string = "tuntap-%d",
   .tx_function = tuntap_intfc_tx,
   .format_device_name = format_tuntap_interface_name,
+  .api_create_fn = "tap_create_v2"
 };
 /* *INDENT-ON* */
 
