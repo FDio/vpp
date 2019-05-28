@@ -38,7 +38,7 @@
 #define clib_atomic_bool_cmp_and_swap(addr,old,new) __sync_bool_compare_and_swap(addr, old, new)
 
 #define clib_atomic_test_and_set(a) __atomic_exchange_n(a, 1, __ATOMIC_ACQUIRE)
-#define clib_atomic_release(a) __sync_lock_release(a)
+#define clib_atomic_release(a) __atomic_store_n(a, 0, __ATOMIC_RELEASE)
 
 #define clib_atomic_fence_rel() __atomic_thread_fence(__ATOMIC_RELEASE);
 
