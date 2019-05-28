@@ -423,10 +423,6 @@ class VppPGInterface(VppInterface):
                                   pg_interface.name)
             return
         arp_reply = captured_packet.copy()  # keep original for exception
-        # Make Dot1AD packet content recognizable to scapy
-        if arp_reply.type == 0x88a8:
-            arp_reply.type = 0x8100
-            arp_reply = Ether(scapy.compat.raw(arp_reply))
         try:
             if arp_reply[ARP].op == ARP.is_at:
                 self.test.logger.info("VPP %s MAC address is %s " %
@@ -470,13 +466,6 @@ class VppPGInterface(VppInterface):
                     "Timeout while waiting for NDP response")
                 raise
             ndp_reply = captured_packet.copy()  # keep original for exception
-            # Make Dot1AD packet content recognizable to scapy
-            if ndp_reply.type == 0x88a8:
-                self._test.logger.info(
-                    "Replacing EtherType: 0x88a8 with "
-                    "0x8100 and regenerating Ethernet header. ")
-                ndp_reply.type = 0x8100
-                ndp_reply = Ether(scapy.compat.raw(ndp_reply))
             try:
                 ndp_na = ndp_reply[ICMPv6ND_NA]
                 opt = ndp_na[ICMPv6NDOptDstLLAddr]
