@@ -409,9 +409,6 @@ static clib_error_t *
 cdp_input_init (vlib_main_t * vm)
 {
   cdp_main_t *cm = &cdp_main;
-  void vnet_cdp_node_reference (void);
-
-  vnet_cdp_node_reference ();
 
   cm->vlib_main = vm;
   cm->vnet_main = vnet_get_main ();
