@@ -178,10 +178,10 @@ vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t * mp)
     }
   else
     {
-      rv = sixrd_add_tunnel ((ip6_address_t *) & mp->ip6_prefix,
-			     mp->ip6_prefix_len,
-			     (ip4_address_t *) & mp->ip4_prefix,
-			     mp->ip4_prefix_len,
+      rv = sixrd_add_tunnel ((ip6_address_t *) & mp->ip6_prefix.prefix,
+			     mp->ip6_prefix.len,
+			     (ip4_address_t *) & mp->ip4_prefix.prefix,
+			     mp->ip4_prefix.len,
 			     (ip4_address_t *) & mp->ip4_src,
 			     mp->security_check,
 			     ip4_fib_index, ip6_fib_index,

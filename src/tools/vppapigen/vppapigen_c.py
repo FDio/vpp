@@ -13,6 +13,7 @@ top_boilerplate = '''\
  * Automatically generated: please edit the input file NOT this file!
  */
 
+#include <stdbool.h>
 #if defined(vl_msg_id)||defined(vl_union_id) \\
     || defined(vl_printfun) ||defined(vl_endianfun) \\
     || defined(vl_api_version)||defined(vl_typedefs) \\
