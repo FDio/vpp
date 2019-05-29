@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d7634b17_05a673aa",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 598,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-05-29T11:33:48Z",
+      "side": 0,
+      "message": "You might need to keep the retries for now. There is a timing issue with the packet capture that causes intermittent failures.",
+      "range": {
+        "startLine": 598,
+        "startChar": 37,
+        "endLine": 598,
+        "endChar": 46
+      },
+      "revId": "6aa58b732bcff8060f287472c3d3c08137fabca9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
