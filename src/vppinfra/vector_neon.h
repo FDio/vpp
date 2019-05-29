@@ -75,6 +75,10 @@ static_always_inline int						\
 t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
 { return !!(vminvq_u##s (vceqq_##i (a, b))); }				\
 \
+static_always_inline t##s##x##c						\
+t##s##x##c##_xcombine_even_elements (t##s##x##c a, t##s##x##c b)	\
+{ return vtrn1q_##i (a, b); }						\
+\
 static_always_inline int						\
 t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
 { return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); };		\
@@ -83,6 +87,10 @@ static_always_inline u32						\
 t##s##x##c##_zero_byte_mask (t##s##x##c x)			\
 { uint8x16_t v = vreinterpretq_u8_u##s (vceqq_##i (vdupq_n_##i(0), x));  \
   return u8x16_compare_byte_mask (v); } \
+\
+static_always_inline t##s##x##c						\
+t##s##x##c##_add (t##s##x##c a, t##s##x##c b)				\
+{ return (t##s##x##c) vaddq_##i (a, b); }				\
 \
 static_always_inline u##s##x##c						\
 t##s##x##c##_is_greater (t##s##x##c a, t##s##x##c b)			\
@@ -93,6 +101,24 @@ t##s##x##c##_blend (t##s##x##c dst, t##s##x##c src, u##s##x##c mask)	\
 { return (t##s##x##c) vbslq_##i (mask, src, dst); }
 
 foreach_neon_vec128i foreach_neon_vec128u
+
+#undef _
+
+#define _(t, s, c, i) \
+static_always_inline u32x4						\
+u32x4_from_##t##s##x##c (t##s##x##c x)					\
+{ return (u32x4) vreinterpretq_u32_##i (x); }
+
+foreach_neon_vec128i
+
+#undef _
+
+#define _(t, s, c, i) \
+static_always_inline i16x8						\
+i16x8_from_##t##s##x##c (t##s##x##c x)					\
+{ return (i16x8) vreinterpretq_s16_##i (x); }
+
+foreach_neon_vec128u
 
 #undef _
 /* *INDENT-ON* */
