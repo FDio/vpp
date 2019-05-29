@@ -24,12 +24,14 @@ create_cmd::create_cmd(HW::item<uint32_t>& item,
                        const bridge_domain::arp_term_mode_t& amode,
                        const bridge_domain::arp_ufwd_mode_t& aumode,
                        const bridge_domain::flood_mode_t& fmode,
+                       const bridge_domain::uu_flood_mode_t& uufmode,
                        const bridge_domain::mac_age_mode_t& mmode)
   : rpc_cmd(item)
   , m_learning_mode(lmode)
   , m_arp_term_mode(amode)
   , m_arp_ufwd_mode(aumode)
   , m_flood_mode(fmode)
+  , m_uu_flood_mode(uufmode)
   , m_mac_age_mode(mmode)
 {}
 
@@ -47,7 +49,7 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.bd_id = m_hw_item.data();
   payload.flood = m_flood_mode.value();
-  payload.uu_flood = m_flood_mode.value();
+  payload.uu_flood = m_uu_flood_mode.value();
   payload.forward = 1;
   payload.learn = m_learning_mode.value();
   payload.arp_term = m_arp_term_mode.value();
