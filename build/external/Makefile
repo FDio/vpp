@@ -121,6 +121,7 @@ build-rpm: $(DEV_RPM)
 install-rpm:
 ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
 	@$(MAKE) $(DEV_RPM)
+	sudo rpm -e vpp-ext-deps
 	sudo rpm -Uih --force $(DEV_RPM)
 else
 	@echo "=========================================================="
