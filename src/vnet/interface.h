@@ -657,7 +657,7 @@ typedef enum vnet_sw_interface_flags_t_
   /* Interface is disabled for forwarding: punt all traffic to slow-path. */
   VNET_SW_INTERFACE_FLAG_PUNT = (1 << 1),
 
-  VNET_SW_INTERFACE_FLAG_PROXY_ARP = (1 << 2),
+  __VNET_SW_INTERFACE_FLAG_UNSUED = (1 << 2),
 
   VNET_SW_INTERFACE_FLAG_UNNUMBERED = (1 << 3),
 

@@ -546,6 +546,12 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 
   vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
 			       sw_if_index, !is_enable, 0, 0);
+
+  {
+    ip4_enable_disable_interface_callback_t *cb;
+    vec_foreach (cb, im->enable_disable_interface_callbacks)
+      cb->function (im, cb->function_opaque, sw_if_index, is_enable);
+  }
 }
 
 static clib_error_t *

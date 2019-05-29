@@ -74,6 +74,15 @@ typedef struct
   uword function_opaque;
 } ip4_add_del_interface_address_callback_t;
 
+typedef void (ip4_enable_disable_interface_function_t)
+  (struct ip4_main_t * im, uword opaque, u32 sw_if_index, u32 is_enable);
+
+typedef struct
+{
+  ip4_enable_disable_interface_function_t *function;
+  uword function_opaque;
+} ip4_enable_disable_interface_callback_t;
+
 typedef void (ip4_table_bind_function_t)
   (struct ip4_main_t * im,
    uword opaque, u32 sw_if_index, u32 new_fib_index, u32 old_fib_index);
@@ -128,6 +137,10 @@ typedef struct ip4_main_t
   /** Functions to call when interface address changes. */
     ip4_add_del_interface_address_callback_t
     * add_del_interface_address_callbacks;
+
+  /** Functions to call when interface becomes IPv4 enabled/disable. */
+    ip4_enable_disable_interface_callback_t
+    * enable_disable_interface_callbacks;
 
   /** Functions to call when interface to table biding changes. */
   ip4_table_bind_callback_t *table_bind_callbacks;
