@@ -317,7 +317,8 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
   u32 flags = VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
     VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
-#ifdef CLIB_HAVE_VEC256
+#if defined (CLIB_HAVE_VEC256) || defined (CLIB_HAVE_VEC128)
+#if defined (CLIB_HAVE_VEC256)
   /* to reduce number of small loads/stores we are loading first 64 bits
      of each buffer metadata into 256-bit register so we can advance
      current_data, current_length and flags.
@@ -354,6 +355,90 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
   u32x8_scatter_one ((u32x8) r, 4, &vnet_buffer (b[2])->l2_hdr_offset);
   u32x8_scatter_one ((u32x8) r, 6, &vnet_buffer (b[3])->l2_hdr_offset);
 
+#else
+  /* to reduce number of small loads/stores we are loading first 32 bits
+     of each buffer metadata into 128-bit register, so we can advance
+     current_data, current_length, l2_hdr_offset and l3_hdr_offset. */
+  u32x4 cur;
+  i16x8 cur_s16, off_s16;
+  i16 _cur_adv[8] = {
+    adv, -adv, adv, -adv,
+    adv, -adv, adv, -adv
+  };
+  i16x8 cur_adv = i16x8_load_unaligned ((void *) _cur_adv);
+  i16 _off_adv[8] = {
+    0, adv, 0, adv,
+    0, adv, 0, adv
+  };
+  i16x8 off_adv = i16x8_load_unaligned ((void *) _off_adv);
+
+  /* load 4 x 32 bits */
+  cur = u32x4_gather (b[0], b[1], b[2], b[3]);
+  /* cur_s16 = {
+   *   b[0]->current_data,
+   *   b[0]->current_length,
+   *   b[1]->current_data,
+   *   b[1]->current_length,
+   *   b[2]->current_data,
+   *   b[2]->current_length,
+   *   b[3]->current_data,
+   *   b[3]->current_length,
+   * }; */
+  cur_s16 = (i16x8) cur;
+
+  /* calculate for l2_hdr_offset and l3_hdr_offset */
+  /* i16x8_xcombine_even_elements (cur_s16, cur_s16) = {
+   *   b[0]->current_data,
+   *   b[0]->current_data,
+   *   b[1]->current_data,
+   *   b[1]->current_data,
+   *   b[2]->current_data,
+   *   b[2]->current_data,
+   *   b[3]->current_data,
+   *   b[3]->current_data,
+   * }; */
+  /* off_s16 = {
+   *   b[0]->current_data,
+   *   b[0]->current_data + adv,
+   *   b[1]->current_data,
+   *   b[1]->current_data + adv,
+   *   b[2]->current_data,
+   *   b[2]->current_data + adv,
+   *   b[3]->current_data,
+   *   b[3]->current_data + adv,
+   * }; */
+  off_s16 = i16x8_xcombine_even_elements (cur_s16, cur_s16) + off_adv;
+  /* store both l2_hdr_offset and l3_hdr_offset */
+  u32x4_scatter ((u32x4) off_s16,
+		 &vnet_buffer (b[0])->l2_hdr_offset,
+		 &vnet_buffer (b[1])->l2_hdr_offset,
+		 &vnet_buffer (b[2])->l2_hdr_offset,
+		 &vnet_buffer (b[3])->l2_hdr_offset);
+
+  if (is_l3)
+    {
+      /* advance buffer */
+      /* cur_s16 = {
+       *   b[0]->current_data + adv,
+       *   b[0]->current_length - adv,
+       *   b[1]->current_data + adv,
+       *   b[1]->current_length - adv,
+       *   b[2]->current_data + adv,
+       *   b[2]->current_length - adv,
+       *   b[3]->current_data + adv,
+       *   b[3]->current_length - adv,
+       * }; */
+      cur_s16 = cur_s16 + cur_adv;
+      /* write 4 x 32 bits */
+      u32x4_scatter ((u32x4) cur_s16, b[0], b[1], b[2], b[3]);
+    }
+
+  b[0]->flags |= flags;
+  b[1]->flags |= flags;
+  b[2]->flags |= flags;
+  b[3]->flags |= flags;
+
+#endif
   if (is_l3)
     {
       ASSERT (b[0]->current_data == vnet_buffer (b[0])->l3_hdr_offset);
