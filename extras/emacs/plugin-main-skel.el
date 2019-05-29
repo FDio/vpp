@@ -47,6 +47,7 @@ nil
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
+#include <stdbool.h>
 
 /* define message IDs */
 #include <" plugin-name "/" plugin-name "_msg_enum.h>
