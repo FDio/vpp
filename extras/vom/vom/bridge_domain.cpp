@@ -39,6 +39,16 @@ bridge_domain::flood_mode_t::flood_mode_t(int v, const std::string& s)
 {
 }
 
+const bridge_domain::uu_flood_mode_t bridge_domain::uu_flood_mode_t::ON(1,
+                                                                        "on");
+const bridge_domain::uu_flood_mode_t bridge_domain::uu_flood_mode_t::OFF(0,
+                                                                         "off");
+
+bridge_domain::uu_flood_mode_t::uu_flood_mode_t(int v, const std::string& s)
+  : enum_base<bridge_domain::uu_flood_mode_t>(v, s)
+{
+}
+
 const bridge_domain::mac_age_mode_t bridge_domain::mac_age_mode_t::ON(1, "on");
 const bridge_domain::mac_age_mode_t bridge_domain::mac_age_mode_t::OFF(0,
                                                                        "off");
@@ -83,12 +93,14 @@ bridge_domain::bridge_domain(uint32_t id,
                              const arp_term_mode_t& amode,
                              const arp_ufwd_mode_t& aumode,
                              const flood_mode_t& fmode,
+                             const uu_flood_mode_t& uufmode,
                              const mac_age_mode_t& mmode)
   : m_id(id)
   , m_learning_mode(lmode)
   , m_arp_term_mode(amode)
   , m_arp_ufwd_mode(aumode)
   , m_flood_mode(fmode)
+  , m_uu_flood_mode(uufmode)
   , m_mac_age_mode(mmode)
 {
 }
@@ -99,6 +111,7 @@ bridge_domain::bridge_domain(const bridge_domain& o)
   , m_arp_term_mode(o.m_arp_term_mode)
   , m_arp_ufwd_mode(o.m_arp_ufwd_mode)
   , m_flood_mode(o.m_flood_mode)
+  , m_uu_flood_mode(o.m_uu_flood_mode)
   , m_mac_age_mode(o.m_mac_age_mode)
 {
 }
@@ -120,6 +133,7 @@ bridge_domain::operator==(const bridge_domain& b) const
 {
   return ((m_learning_mode == b.m_learning_mode) &&
           (m_flood_mode == b.m_flood_mode) &&
+          (m_uu_flood_mode == b.m_uu_flood_mode) &&
           (m_mac_age_mode == b.m_mac_age_mode) &&
           (m_arp_term_mode == b.m_arp_term_mode) &&
           (m_arp_ufwd_mode == b.m_arp_ufwd_mode) && id() == b.id());
@@ -140,7 +154,7 @@ bridge_domain::replay()
   if (rc_t::OK == m_id.rc()) {
     HW::enqueue(new bridge_domain_cmds::create_cmd(
       m_id, m_learning_mode, m_arp_term_mode, m_arp_ufwd_mode, m_flood_mode,
-      m_mac_age_mode));
+      m_uu_flood_mode, m_mac_age_mode));
   }
 }
 
@@ -177,7 +191,7 @@ bridge_domain::update(const bridge_domain& desired)
   if (rc_t::OK != m_id.rc()) {
     HW::enqueue(new bridge_domain_cmds::create_cmd(
       m_id, m_learning_mode, m_arp_term_mode, m_arp_ufwd_mode, m_flood_mode,
-      m_mac_age_mode));
+      m_uu_flood_mode, m_mac_age_mode));
   }
 }
 
@@ -214,7 +228,14 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
   for (auto& record : *cmd) {
     auto& payload = record.get_payload();
 
-    bridge_domain bd(payload.bd_id);
+    bridge_domain bd(
+      payload.bd_id,
+      (payload.learn ? learning_mode_t::ON : learning_mode_t::OFF),
+      (payload.arp_term ? arp_term_mode_t::ON : arp_term_mode_t::OFF),
+      (payload.arp_ufwd ? arp_ufwd_mode_t::ON : arp_ufwd_mode_t::OFF),
+      (payload.flood ? flood_mode_t::ON : flood_mode_t::OFF),
+      (payload.uu_flood ? uu_flood_mode_t::ON : uu_flood_mode_t::OFF),
+      (payload.mac_age ? mac_age_mode_t::ON : mac_age_mode_t::OFF));
 
     VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
 
