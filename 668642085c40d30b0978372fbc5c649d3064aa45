@@ -34,6 +34,24 @@
       "revId": "668642085c40d30b0978372fbc5c649d3064aa45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a20cca36_6683486d",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2019-05-29T14:26:39Z",
+      "side": 1,
+      "message": "Yes that\u0027s good point. What do you think about\nif (sm-\u003enum_workers \u003e 1) create_bypass_for_fwd_worker (sm, ip, rx_fib_index);\nelse create_bypass_for_fwd (...). Less code static inline function to wrap it inside.",
+      "parentUuid": "ff7d0c6c_1c4d320a",
+      "revId": "668642085c40d30b0978372fbc5c649d3064aa45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
