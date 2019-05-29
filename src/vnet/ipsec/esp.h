@@ -137,18 +137,21 @@ esp_aad_fill (vnet_crypto_op_t * op,
   esp_aead_t *aad;
 
   aad = (esp_aead_t *) op->aad;
-  clib_memcpy_fast (aad, esp, 8);
+  aad->data[0] = esp->spi;
 
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
       /* SPI, seq-hi, seq-low */
-      aad->data[2] = aad->data[1];
       aad->data[1] = clib_host_to_net_u32 (sa->seq_hi);
+      aad->data[2] = esp->seq;
       op->aad_len = 12;
     }
   else
-    /* SPI, seq-low */
-    op->aad_len = 8;
+    {
+      /* SPI, seq-low */
+      aad->data[1] = esp->seq;
+      op->aad_len = 8;
+    }
 }
 #endif /* __ESP_H__ */
 
