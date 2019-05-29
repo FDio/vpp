@@ -343,7 +343,7 @@ lb_node_fn (vlib_main_t * vm,
                        vip_index0, lb_time,
                        &available_index0, &asindex0);
 
-          if (PREDICT_TRUE(asindex0 != ~0))
+          if (PREDICT_TRUE(asindex0 != 0))
             {
               //Found an existing entry
               counter = LB_VIP_COUNTER_NEXT_PACKET;

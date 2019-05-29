@@ -442,7 +442,7 @@ out:
   //Let's create a new flow table
   vec_validate(new_flow_table, vip->new_flow_table_mask);
   for (i=0; i<vec_len(new_flow_table); i++)
-    new_flow_table[i].as_index = ~0;
+    new_flow_table[i].as_index = 0;
 
   u32 done = 0;
   while (1) {
@@ -450,7 +450,7 @@ out:
       while (1) {
         u32 last = pr->last;
         pr->last = (pr->last + pr->skip) & vip->new_flow_table_mask;
-        if (new_flow_table[last].as_index == ~0) {
+        if (new_flow_table[last].as_index == 0) {
           new_flow_table[last].as_index = pr->as_index;
           break;
         }
@@ -773,7 +773,7 @@ lb_flush_vip_as (u32 vip_index, u32 as_index)
               vlib_refcount_add(&lbm->as_refcount, thread_index, b->value[i], -1);
               vlib_refcount_add(&lbm->as_refcount, thread_index, 0, 1);
               b->vip[i] = ~0;
-              b->value[i] = ~0;
+              b->value[i] = 0;
             }
         }
         if (vip_index == ~0)
@@ -1369,6 +1369,7 @@ lb_init (vlib_main_t * vm)
   //Allocate and init default VIP.
   lbm->vips = 0;
   pool_get(lbm->vips, default_vip);
+  default_vip->new_flow_table_mask = 0;
   default_vip->prefix.ip6.as_u64[0] = 0xffffffffffffffffL;
   default_vip->prefix.ip6.as_u64[1] = 0xffffffffffffffffL;
   default_vip->protocol = ~0;
@@ -1411,6 +1412,12 @@ lb_init (vlib_main_t * vm)
   default_as->vip_index = ~0;
   default_as->address.ip6.as_u64[0] = 0xffffffffffffffffL;
   default_as->address.ip6.as_u64[1] = 0xffffffffffffffffL;
+
+  /* Generate a valid flow table for default VIP */
+  default_vip->as_indexes = NULL;
+  lb_get_writer_lock();
+  lb_vip_update_new_flow_table(default_vip);
+  lb_put_writer_lock();
 
   lbm->vip_index_by_nodeport
     = hash_create_mem (0, sizeof(u16), sizeof (uword));

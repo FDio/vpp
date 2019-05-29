@@ -89,6 +89,7 @@ lb_hash_t *lb_hash_alloc(u32 buckets, u32 timeout)
   u8 *mem = 0;
   lb_hash_t *h;
   vec_alloc_aligned(mem, size, CLIB_CACHE_LINE_BYTES);
+  memset(mem, 0, size);
   h = (lb_hash_t *)mem;
   h->buckets_mask = (buckets - 1);
   h->timeout = timeout;
@@ -114,7 +115,7 @@ void lb_hash_get(lb_hash_t *ht, u32 hash, u32 vip, u32 time_now,
 		 u32 *available_index, u32 *found_value)
 {
   lb_hash_bucket_t *bucket = &ht->buckets[hash & ht->buckets_mask];
-  *found_value = ~0;
+  *found_value = 0;
   *available_index = ~0;
 #if __SSE4_2__ && LB_HASH_DO_NOT_USE_SSE_BUCKETS == 0
   u32 bitmask, found_index;
