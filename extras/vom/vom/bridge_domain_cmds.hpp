@@ -39,6 +39,7 @@ public:
              const bridge_domain::arp_term_mode_t& amode,
              const bridge_domain::arp_ufwd_mode_t& aumode,
              const bridge_domain::flood_mode_t& fmode,
+             const bridge_domain::uu_flood_mode_t& uufmode,
              const bridge_domain::mac_age_mode_t& mmode);
 
   /**
@@ -72,6 +73,10 @@ private:
    * the flood mode for the bridge
    */
   bridge_domain::flood_mode_t m_flood_mode;
+  /**
+   * the unknown unicast flood mode for the bridge
+   */
+  bridge_domain::uu_flood_mode_t m_uu_flood_mode;
   /**
    * the flood mode for the bridge
    */
