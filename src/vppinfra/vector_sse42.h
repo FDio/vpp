@@ -690,7 +690,7 @@ u64x2_gather (void *p0, void *p1)
 }
 
 static_always_inline u32x4
-u32x4_gather (void *p0, void *p1, void *p2, void *p3, void *p4)
+u32x4_gather (void *p0, void *p1, void *p2, void *p3)
 {
   u32x4 r = { *(u32 *) p0, *(u32 *) p1, *(u32 *) p2, *(u32 *) p3 };
   return r;
@@ -737,6 +737,16 @@ u8x16_blend (u8x16 v1, u8x16 v2, u8x16 mask)
   return (u8x16) _mm_blendv_epi8 ((__m128i) v1, (__m128i) v2, (__m128i) mask);
 }
 
+static_always_inline i16x8
+i16x8_xcombine_even_elements (i16x8 a, i16x8 b)
+{
+#ifdef __clang__
+  return (i16x8) __builtin_shufflevector (a, b, 0, 8, 2, 10, 4, 12, 6, 14);
+#else
+  u16x8 m = { 0, 8, 2, 10, 4, 12, 6, 14 };
+  return (i16x8) __builtin_shuffle (a, b, m);
+#endif
+}
 
 #endif /* included_vector_sse2_h */
 
