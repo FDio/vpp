@@ -52,6 +52,24 @@
       "revId": "668642085c40d30b0978372fbc5c649d3064aa45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3c7ba346_2af8d13f",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2019-05-29T14:46:52Z",
+      "side": 1,
+      "message": "That sounds good. I will implement this and update the patch.",
+      "parentUuid": "a20cca36_6683486d",
+      "revId": "668642085c40d30b0978372fbc5c649d3064aa45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
