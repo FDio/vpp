@@ -187,7 +187,7 @@ $(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	$(call set,RTE_PCI_CONFIG,y)
 	$(call set,RTE_PCI_EXTENDED_TAG,"on")
 	$(call set,RTE_PCI_MAX_READ_REQUEST_SIZE,4096)
-	$(call set,RTE_LIBRTE_PMD_BOND,y)
+	$(call set,RTE_LIBRTE_PMD_BOND,n)
 	$(call set,RTE_LIBRTE_IP_FRAG,y)
 	$(call set,RTE_LIBRTE_PMD_QAT,y)
 	$(call set,RTE_LIBRTE_PMD_QAT_SYM,y)

@@ -195,9 +195,6 @@ format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "HundredGigabitEthernet";
       break;
 
-    case VNET_DPDK_PORT_TYPE_ETH_BOND:
-      return format (s, "BondEthernet%d", xd->bond_instance_num);
-
     case VNET_DPDK_PORT_TYPE_ETH_SWITCH:
       device_name = "EthernetSwitch";
       break;
@@ -327,10 +324,6 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_AF_PACKET:
       dev_type = "af_packet";
-      break;
-
-    case VNET_DPDK_PMD_BOND:
-      dev_type = "Ethernet Bonding";
       break;
 
     case VNET_DPDK_PMD_DPAA2:

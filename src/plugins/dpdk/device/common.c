@@ -189,17 +189,6 @@ dpdk_device_start (dpdk_device_t * xd)
 
   rte_eth_allmulticast_enable (xd->port_id);
 
-  if (xd->pmd == VNET_DPDK_PMD_BOND)
-    {
-      dpdk_portid_t slink[16];
-      int nlink = rte_eth_bond_slaves_get (xd->port_id, slink, 16);
-      while (nlink >= 1)
-	{
-	  dpdk_portid_t dpdk_port = slink[--nlink];
-	  rte_eth_allmulticast_enable (dpdk_port);
-	}
-    }
-
   dpdk_log_info ("Interface %U started",
 		 format_dpdk_device_name, xd->port_id);
 }
@@ -214,82 +203,17 @@ dpdk_device_stop (dpdk_device_t * xd)
   rte_eth_dev_stop (xd->port_id);
   clib_memset (&xd->link, 0, sizeof (struct rte_eth_link));
 
-  /* For bonded interface, stop slave links */
-  if (xd->pmd == VNET_DPDK_PMD_BOND)
-    {
-      dpdk_portid_t slink[16];
-      int nlink = rte_eth_bond_slaves_get (xd->port_id, slink, 16);
-      while (nlink >= 1)
-	{
-	  dpdk_portid_t dpdk_port = slink[--nlink];
-	  rte_eth_dev_stop (dpdk_port);
-	}
-    }
   dpdk_log_info ("Interface %U stopped",
 		 format_dpdk_device_name, xd->port_id);
 }
 
-/* Even type for send_garp_na_process */
-enum
-{
-  SEND_GARP_NA = 1,
-} dpdk_send_garp_na_process_event_t;
-
-static vlib_node_registration_t send_garp_na_proc_node;
-
-static uword
-send_garp_na_process (vlib_main_t * vm,
-		      vlib_node_runtime_t * rt, vlib_frame_t * f)
-{
-  uword event_type, *event_data = 0;
-
-  while (1)
-    {
-      u32 i;
-      uword dpdk_port;
-      vlib_process_wait_for_event (vm);
-      event_type = vlib_process_get_events (vm, &event_data);
-      ASSERT (event_type == SEND_GARP_NA);
-      for (i = 0; i < vec_len (event_data); i++)
-	{
-	  dpdk_port = event_data[i];
-	  if (i < 5)		/* wait 0.2 sec for link to settle, max total 1 sec */
-	    vlib_process_suspend (vm, 0.2);
-	  dpdk_device_t *xd = &dpdk_main.devices[dpdk_port];
-	  dpdk_update_link_state (xd, vlib_time_now (vm));
-	  send_ip4_garp (vm, xd->sw_if_index);
-	  send_ip6_na (vm, xd->sw_if_index);
-	}
-      vec_reset_length (event_data);
-    }
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (send_garp_na_proc_node, static) = {
-    .function = send_garp_na_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "send-garp-na-process",
-};
-/* *INDENT-ON* */
-
 void vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-
-static void
-garp_na_proc_callback (uword * dpdk_port)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  ASSERT (vlib_get_thread_index () == 0);
-  vlib_process_signal_event
-    (vm, send_garp_na_proc_node.index, SEND_GARP_NA, *dpdk_port);
-}
 
 always_inline int
 dpdk_port_state_callback_inline (dpdk_portid_t port_id,
 				 enum rte_eth_event_type type, void *param)
 {
   struct rte_eth_link link;
-  dpdk_device_t *xd = &dpdk_main.devices[port_id];
 
   RTE_SET_USED (param);
   if (type != RTE_ETH_EVENT_INTR_LSC)
@@ -300,36 +224,13 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
 
   rte_eth_link_get_nowait (port_id, &link);
   u8 link_up = link.link_status;
-
-  if (xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE)
-    {
-      uword bd_port = xd->bond_port;
-      int bd_mode = rte_eth_bond_mode_get (bd_port);
-      dpdk_log_info ("Port %d state to %s, "
-		     "slave of port %d BondEthernet%d in mode %d",
-		     port_id, (link_up) ? "UP" : "DOWN",
-		     bd_port, xd->bond_instance_num, bd_mode);
-      if (bd_mode == BONDING_MODE_ACTIVE_BACKUP)
-	{
-	  vl_api_force_rpc_call_main_thread
-	    (garp_na_proc_callback, (u8 *) & bd_port, sizeof (uword));
-	}
-
-      if (link_up)
-	xd->flags |= DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
-      else
-	xd->flags &= ~DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
-    }
-  else				/* Should not happen as callback not setup for "normal" links */
-    {
-      if (link_up)
-	dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s",
-		       port_id, (unsigned) link.link_speed,
-		       (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-		       "full-duplex" : "half-duplex");
-      else
-	dpdk_log_info ("Port %d Link Down\n\n", port_id);
-    }
+  if (link_up)
+    dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s",
+		   port_id, (unsigned) link.link_speed,
+		   (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+		   "full-duplex" : "half-duplex");
+  else
+    dpdk_log_info ("Port %d Link Down\n\n", port_id);
 
   return 0;
 }

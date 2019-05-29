@@ -466,8 +466,6 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   foreach_device_and_queue (dq, rt->devices_and_queues)
     {
       xd = vec_elt_at_index(dm->devices, dq->dev_instance);
-      if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE))
-	continue;	/* Do not poll slave to a bonded interface */
       n_rx_packets += dpdk_device_input (vm, dm, xd, node, thread_index,
 					 dq->queue_id);
     }
