@@ -143,6 +143,7 @@ void cdp_periodic (vlib_main_t * vm);
 void cdp_keepalive (cdp_main_t * cm, cdp_neighbor_t * n);
 u16 cdp_checksum (void *p, int count);
 u8 *cdp_input_format_trace (u8 * s, va_list * args);
+void vnet_cdp_create_periodic_process (cdp_main_t * cmp);
 
 #endif /* __included_cdp_h__ */
 
