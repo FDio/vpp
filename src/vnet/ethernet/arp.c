@@ -29,6 +29,8 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/l2/feat_bitmap.h>
 
+#include <vlibmemory/api.h>
+
 /**
  * @file
  * @brief IPv4 ARP.
@@ -37,8 +39,6 @@
  * to MAC Address lookup).
  */
 
-
-void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
 /**
  * @brief Per-interface ARP configuration and state
@@ -50,6 +50,14 @@ typedef struct ethernet_arp_interface_t_
    * Since this hash table is per-interface, the key is only the IPv4 address.
    */
   uword *arp_entries;
+  /**
+   * Is ARP enabled on this interface
+   */
+  u32 enabled;
+  /**
+   * Is Proxy ARP enabled on this interface
+   */
+  u32 proxy_enabled;
 } ethernet_arp_interface_t;
 
 typedef struct
@@ -97,6 +105,9 @@ typedef struct
 
   uword wc_ip4_arp_publisher_node;
   uword wc_ip4_arp_publisher_et;
+
+  /* ARP feature arc index */
+  u8 feature_arc_index;
 } ethernet_arp_main_t;
 
 static ethernet_arp_main_t ethernet_arp_main;
@@ -442,6 +453,77 @@ arp_mk_incomplete_walk (adj_index_t ai, void *ctx)
   return (ADJ_WALK_RC_CONTINUE);
 }
 
+static int
+arp_is_enabled (ethernet_arp_main_t * am, u32 sw_if_index)
+{
+  if (vec_len (am->ethernet_arp_by_sw_if_index) < sw_if_index)
+    return 0;
+
+  return (am->ethernet_arp_by_sw_if_index[sw_if_index].enabled);
+}
+
+static void
+arp_enable (ethernet_arp_main_t * am, u32 sw_if_index)
+{
+  if (arp_is_enabled (am, sw_if_index))
+    return;
+
+  vec_validate (am->ethernet_arp_by_sw_if_index, sw_if_index);
+
+  am->ethernet_arp_by_sw_if_index[sw_if_index].enabled = 1;
+
+  vnet_feature_enable_disable ("arp", "arp-reply", sw_if_index, 1, NULL, 0);
+}
+
+static int
+vnet_arp_flush_ip4_over_ethernet_internal (vnet_main_t * vnm,
+					   vnet_arp_set_ip4_over_ethernet_rpc_args_t
+					   * args);
+
+static void
+arp_disable (ethernet_arp_main_t * am, u32 sw_if_index)
+{
+  ethernet_arp_interface_t *eai;
+  ethernet_arp_ip4_entry_t *e;
+  u32 i, *to_delete = 0;
+  hash_pair_t *pair;
+
+  if (!arp_is_enabled (am, sw_if_index))
+    return;
+
+  vnet_feature_enable_disable ("arp", "arp-reply", sw_if_index, 0, NULL, 0);
+
+  eai = &am->ethernet_arp_by_sw_if_index[sw_if_index];
+
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (pair, eai->arp_entries,
+  ({
+    e = pool_elt_at_index(am->ip4_entry_pool,
+                          pair->value[0]);
+    vec_add1 (to_delete, e - am->ip4_entry_pool);
+  }));
+  /* *INDENT-ON* */
+
+  for (i = 0; i < vec_len (to_delete); i++)
+    {
+      e = pool_elt_at_index (am->ip4_entry_pool, to_delete[i]);
+
+      vnet_arp_set_ip4_over_ethernet_rpc_args_t delme = {
+	.ip4.as_u32 = e->ip4_address.as_u32,
+	.sw_if_index = e->sw_if_index,
+	.flags = ETHERNET_ARP_ARGS_FLUSH,
+      };
+      mac_address_copy (&delme.mac, &e->mac);
+
+      vnet_arp_flush_ip4_over_ethernet_internal (vnet_get_main (), &delme);
+    }
+
+  vec_free (to_delete);
+
+  eai->enabled = 0;
+}
+
 void
 arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 {
@@ -452,7 +534,7 @@ arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 
   adj = adj_get (ai);
 
-  vec_validate (am->ethernet_arp_by_sw_if_index, sw_if_index);
+  arp_enable (am, sw_if_index);
   arp_int = &am->ethernet_arp_by_sw_if_index[sw_if_index];
   e = arp_entry_find (arp_int, &adj->sub_type.nbr.next_hop.ip4);
 
@@ -627,7 +709,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
   ethernet_arp_interface_t *arp_int;
   u32 sw_if_index = args->sw_if_index;
 
-  vec_validate (am->ethernet_arp_by_sw_if_index, sw_if_index);
+  arp_enable (am, sw_if_index);
 
   arp_int = &am->ethernet_arp_by_sw_if_index[sw_if_index];
 
@@ -871,10 +953,10 @@ vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 /* Either we drop the packet or we send a reply to the sender. */
 typedef enum
 {
-  ARP_INPUT_NEXT_DROP,
-  ARP_INPUT_NEXT_REPLY_TX,
-  ARP_INPUT_N_NEXT,
-} arp_input_next_t;
+  ARP_REPLY_NEXT_DROP,
+  ARP_REPLY_NEXT_REPLY_TX,
+  ARP_REPLY_N_NEXT,
+} arp_reply_next_t;
 
 #define foreach_ethernet_arp_error					\
   _ (replies_sent, "ARP replies sent")					\
@@ -900,7 +982,7 @@ typedef enum
   foreach_ethernet_arp_error
 #undef _
     ETHERNET_ARP_N_ERROR,
-} ethernet_arp_input_error_t;
+} ethernet_arp_reply_error_t;
 
 static int
 arp_unnumbered (vlib_buffer_t * p0,
@@ -936,14 +1018,138 @@ arp_learn (vnet_main_t * vnm,
   return (ETHERNET_ARP_ERROR_l3_src_address_learned);
 }
 
+typedef enum arp_input_next_t_
+{
+  ARP_INPUT_NEXT_DROP,
+  ARP_INPUT_N_NEXT,
+} arp_input_next_t;
+
 static uword
 arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
+  u32 n_left_from, next_index, *from, *to_next, n_left_to_next;
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
+				   /* stride */ 1,
+				   sizeof (ethernet_arp_input_trace_t));
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  const ethernet_arp_header_t *arp0;
+	  arp_input_next_t next0;
+	  vlib_buffer_t *p0;
+	  u32 pi0, error0;
+
+	  pi0 = to_next[0] = from[0];
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  p0 = vlib_get_buffer (vm, pi0);
+	  arp0 = vlib_buffer_get_current (p0);
+
+	  error0 = ETHERNET_ARP_ERROR_replies_sent;
+	  next0 = ARP_INPUT_NEXT_DROP;
+
+	  error0 =
+	    (arp0->l2_type !=
+	     clib_net_to_host_u16 (ETHERNET_ARP_HARDWARE_TYPE_ethernet) ?
+	     ETHERNET_ARP_ERROR_l2_type_not_ethernet : error0);
+	  error0 =
+	    (arp0->l3_type !=
+	     clib_net_to_host_u16 (ETHERNET_TYPE_IP4) ?
+	     ETHERNET_ARP_ERROR_l3_type_not_ip4 : error0);
+	  error0 =
+	    (0 == arp0->ip4_over_ethernet[0].ip4.as_u32 ?
+	     ETHERNET_ARP_ERROR_l3_dst_address_unset : error0);
+
+	  if (ETHERNET_ARP_ERROR_replies_sent == error0)
+	    vnet_feature_arc_start (am->feature_arc_index,
+				    vnet_buffer (p0)->sw_if_index[VLIB_RX],
+				    &next0, p0);
+	  else
+	    p0->error = node->errors[error0];
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+static_always_inline u32
+arp_mk_reply (vnet_main_t * vnm,
+	      vlib_buffer_t * p0,
+	      u32 sw_if_index0,
+	      const ip4_address_t * if_addr0,
+	      ethernet_arp_header_t * arp0, ethernet_header_t * eth_rx)
+{
+  vnet_hw_interface_t *hw_if0;
+  u8 *rewrite0, rewrite0_len;
+  ethernet_header_t *eth_tx;
+  u32 next0;
+
+  /* Send a reply.
+     An adjacency to the sender is not always present,
+     so we use the interface to build us a rewrite string
+     which will contain all the necessary tags. */
+  rewrite0 = ethernet_build_rewrite (vnm, sw_if_index0,
+				     VNET_LINK_ARP, eth_rx->src_address);
+  rewrite0_len = vec_len (rewrite0);
+
+  /* Figure out how much to rewind current data from adjacency. */
+  vlib_buffer_advance (p0, -rewrite0_len);
+  eth_tx = vlib_buffer_get_current (p0);
+
+  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
+  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+
+  /* Send reply back through input interface */
+  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
+  next0 = ARP_REPLY_NEXT_REPLY_TX;
+
+  arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
+
+  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
+
+  mac_address_from_bytes (&arp0->ip4_over_ethernet[0].mac,
+			  hw_if0->hw_address);
+  clib_mem_unaligned (&arp0->ip4_over_ethernet[0].ip4.data_u32, u32) =
+    if_addr0->data_u32;
+
+  /* Hardware must be ethernet-like. */
+  ASSERT (vec_len (hw_if0->hw_address) == 6);
+
+  /* the rx nd tx ethernet headers wil overlap in the case
+   * when we received a tagged VLAN=0 packet, but we are sending
+   * back untagged */
+  clib_memcpy_fast (eth_tx, rewrite0, vec_len (rewrite0));
+  vec_free (rewrite0);
+
+  return (next0);
+}
+
+static uword
+arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
   ethernet_arp_main_t *am = &ethernet_arp_main;
   vnet_main_t *vnm = vnet_get_main ();
-  ip4_main_t *im4 = &ip4_main;
   u32 n_left_from, next_index, *from, *to_next;
-  u32 n_replies_sent = 0, n_proxy_arp_replies_sent = 0;
+  u32 n_replies_sent = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -963,18 +1169,14 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  vlib_buffer_t *p0;
-	  vnet_hw_interface_t *hw_if0;
 	  ethernet_arp_header_t *arp0;
-	  ethernet_header_t *eth_rx, *eth_tx;
+	  ethernet_header_t *eth_rx;
 	  const ip4_address_t *if_addr0;
-	  ip4_address_t proxy_src;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
-	  u8 is_request0, dst_is_local0, is_unnum0, is_vrrp_reply0;
-	  ethernet_proxy_arp_t *pa;
+	  u8 dst_is_local0, is_unnum0, is_vrrp_reply0;
 	  fib_node_index_t dst_fei, src_fei;
 	  const fib_prefix_t *pfx0;
 	  fib_entry_flag_t src_flags, dst_flags;
-	  u8 *rewrite0, rewrite0_len;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -982,46 +1184,22 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
-	  pa = 0;
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  arp0 = vlib_buffer_get_current (p0);
 	  /* Fill in ethernet header. */
 	  eth_rx = ethernet_buffer_get_header (p0);
 
-	  is_request0 = arp0->opcode
-	    == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request);
-
+	  next0 = ARP_REPLY_NEXT_DROP;
 	  error0 = ETHERNET_ARP_ERROR_replies_sent;
-
-	  error0 =
-	    (arp0->l2_type !=
-	     clib_net_to_host_u16 (ETHERNET_ARP_HARDWARE_TYPE_ethernet) ?
-	     ETHERNET_ARP_ERROR_l2_type_not_ethernet : error0);
-	  error0 =
-	    (arp0->l3_type !=
-	     clib_net_to_host_u16 (ETHERNET_TYPE_IP4) ?
-	     ETHERNET_ARP_ERROR_l3_type_not_ip4 : error0);
-	  error0 =
-	    (0 == arp0->ip4_over_ethernet[0].ip4.as_u32 ?
-	     ETHERNET_ARP_ERROR_l3_dst_address_unset : error0);
-
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
-
-	  /* not playing the ARP game if the interface is not IPv4 enabled */
-	  error0 =
-	    (im4->ip_enabled_by_sw_if_index[sw_if_index0] == 0 ?
-	     ETHERNET_ARP_ERROR_interface_not_ip_enabled : error0);
-
-	  if (error0)
-	    goto drop2;
 
 	  /* Check that IP address is local and matches incoming interface. */
 	  fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 	  if (~0 == fib_index0)
 	    {
 	      error0 = ETHERNET_ARP_ERROR_interface_no_table;
-	      goto drop2;
+	      goto drop;
 
 	    }
 	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
@@ -1086,7 +1264,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
                        * So don't drop immediately here, instead go see if this
                        * is a proxy ARP case.
                        */
-                      goto drop1;
+                      goto next_feature;
                     }
                   /* A Source must also be local to subnet of matching
                    * interface address. */
@@ -1131,7 +1309,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		 * (i.e. a /32)
 		 */
 		error0 = ETHERNET_ARP_ERROR_l3_src_address_not_local;
-		goto drop2;
+		goto drop;
 	      }
 	  }
 
@@ -1149,12 +1327,12 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		  arp0->ip4_over_ethernet[1].ip4.as_u32)
 		error0 = arp_learn (vnm, am, sw_if_index0,
 				    &arp0->ip4_over_ethernet[0]);
-	      goto drop2;
+	      goto drop;
 	    }
 	  else if (!(FIB_ENTRY_FLAG_CONNECTED & dst_flags))
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
-	      goto drop1;
+	      goto next_feature;
 	    }
 
 	  if (sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
@@ -1187,7 +1365,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	       arp0->ip4_over_ethernet[0].mac.bytes) && !is_vrrp_reply0)
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
-	      goto drop2;
+	      goto drop;
 	    }
 
 	  /* Learn or update sender's mapping only for replies to addresses
@@ -1204,65 +1382,31 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		 * we drop */
 		error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
 
-	      goto drop1;
+	      goto next_feature;
 	    }
 	  else if (arp0->opcode ==
 		   clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request) &&
 		   (dst_is_local0 == 0))
 	    {
-	      goto drop1;
+	      goto next_feature;
 	    }
-
-	send_reply:
-	  /* Send a reply.
-	     An adjacency to the sender is not always present,
-	     so we use the interface to build us a rewrite string
-	     which will contain all the necessary tags. */
-	  rewrite0 = ethernet_build_rewrite (vnm, sw_if_index0,
-					     VNET_LINK_ARP,
-					     eth_rx->src_address);
-	  rewrite0_len = vec_len (rewrite0);
-
-	  /* Figure out how much to rewind current data from adjacency. */
-	  vlib_buffer_advance (p0, -rewrite0_len);
-	  eth_tx = vlib_buffer_get_current (p0);
-
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
-	  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
-
-	  /* Send reply back through input interface */
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
-	  next0 = ARP_INPUT_NEXT_REPLY_TX;
-
-	  arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
-
-	  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
-
-	  mac_address_from_bytes (&arp0->ip4_over_ethernet[0].mac,
-				  hw_if0->hw_address);
-	  clib_mem_unaligned (&arp0->ip4_over_ethernet[0].ip4.data_u32, u32) =
-	    if_addr0->data_u32;
-
-	  /* Hardware must be ethernet-like. */
-	  ASSERT (vec_len (hw_if0->hw_address) == 6);
-
-	  /* the rx nd tx ethernet headers wil overlap in the case
-	   * when we received a tagged VLAN=0 packet, but we are sending
-	   * back untagged */
-	  clib_memcpy_fast (eth_tx, rewrite0, vec_len (rewrite0));
-	  vec_free (rewrite0);
-
-	  if (NULL == pa)
+	  if (is_unnum0)
 	    {
-	      if (is_unnum0)
+	      if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
 		{
-		  if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
-		    {
-		      error0 = ETHERNET_ARP_ERROR_unnumbered_mismatch;
-		      goto drop2;
-		    }
+		  error0 = ETHERNET_ARP_ERROR_unnumbered_mismatch;
+		  goto drop;
 		}
 	    }
+	  if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
+	      arp0->ip4_over_ethernet[1].ip4.as_u32)
+	    {
+	      error0 = ETHERNET_ARP_ERROR_gratuitous_arp;
+	      goto drop;
+	    }
+
+	  next0 = arp_mk_reply (vnm, p0, sw_if_index0,
+				if_addr0, arp0, eth_rx);
 
 	  /* We are going to reply to this request, so, in the absence of
 	     errors, learn the sender */
@@ -1270,34 +1414,92 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    error0 = arp_learn (vnm, am, sw_if_index0,
 				&arp0->ip4_over_ethernet[1]);
 
+	  n_replies_sent += 1;
+	  goto enqueue;
+
+	next_feature:
+	  vnet_feature_next (&next0, p0);
+	  goto enqueue;
+
+	drop:
+	  p0->error = node->errors[error0];
+
+	enqueue:
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
+	}
 
-	  n_replies_sent += 1;
-	  continue;
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
 
-	drop1:
-	  if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
-	      arp0->ip4_over_ethernet[1].ip4.as_u32)
+  vlib_error_count (vm, node->node_index,
+		    ETHERNET_ARP_ERROR_replies_sent, n_replies_sent);
+
+  return frame->n_vectors;
+}
+
+static uword
+arp_proxy (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 n_left_from, next_index, *from, *to_next;
+  u32 n_arp_replies_sent = 0;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
+				   /* stride */ 1,
+				   sizeof (ethernet_arp_input_trace_t));
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  vlib_buffer_t *p0;
+	  ethernet_arp_header_t *arp0;
+	  ethernet_header_t *eth_rx;
+	  ip4_address_t proxy_src;
+	  u32 pi0, error0, next0, sw_if_index0, fib_index0;
+	  u8 is_request0;
+	  ethernet_proxy_arp_t *pa;
+
+	  pi0 = from[0];
+	  to_next[0] = pi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  p0 = vlib_get_buffer (vm, pi0);
+	  arp0 = vlib_buffer_get_current (p0);
+	  /* Fill in ethernet header. */
+	  eth_rx = ethernet_buffer_get_header (p0);
+
+	  is_request0 = arp0->opcode
+	    == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request);
+
+	  error0 = ETHERNET_ARP_ERROR_replies_sent;
+	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
+	  next0 = ARP_REPLY_NEXT_DROP;
+
+	  fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+	  if (~0 == fib_index0)
 	    {
-	      error0 = ETHERNET_ARP_ERROR_gratuitous_arp;
-	      goto drop2;
+	      error0 = ETHERNET_ARP_ERROR_interface_no_table;
 	    }
-	  /* See if proxy arp is configured for the address */
-	  if (is_request0)
+
+	  if (0 == error0 && is_request0)
 	    {
-	      vnet_sw_interface_t *si;
 	      u32 this_addr = clib_net_to_host_u32
 		(arp0->ip4_over_ethernet[1].ip4.as_u32);
-	      u32 fib_index0;
-
-	      si = vnet_get_sw_interface (vnm, sw_if_index0);
-
-	      if (!(si->flags & VNET_SW_INTERFACE_FLAG_PROXY_ARP))
-		goto drop2;
-
-	      fib_index0 = vec_elt (im4->fib_index_by_sw_if_index,
-				    sw_if_index0);
 
 	      vec_foreach (pa, am->proxy_arps)
 	      {
@@ -1314,18 +1516,18 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    /*
 		     * change the interface address to the proxied
 		     */
-		    if_addr0 = &proxy_src;
-		    is_unnum0 = 0;
-		    n_proxy_arp_replies_sent++;
-		    goto send_reply;
+		    n_arp_replies_sent++;
+
+		    next0 =
+		      arp_mk_reply (vnm, p0, sw_if_index0, &proxy_src, arp0,
+				    eth_rx);
 		  }
 	      }
 	    }
-
-	drop2:
-
-	  next0 = ARP_INPUT_NEXT_DROP;
-	  p0->error = node->errors[error0];
+	  else
+	    {
+	      p0->error = node->errors[error0];
+	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
@@ -1335,12 +1537,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     }
 
   vlib_error_count (vm, node->node_index,
-		    ETHERNET_ARP_ERROR_replies_sent,
-		    n_replies_sent - n_proxy_arp_replies_sent);
+		    ETHERNET_ARP_ERROR_replies_sent, n_arp_replies_sent);
 
-  vlib_error_count (vm, node->node_index,
-		    ETHERNET_ARP_ERROR_proxy_arp_replies_sent,
-		    n_proxy_arp_replies_sent);
   return frame->n_vectors;
 }
 
@@ -1351,6 +1549,16 @@ static char *ethernet_arp_error_strings[] = {
 };
 
 /* *INDENT-OFF* */
+
+/* Built-in ARP rx feature path definition */
+VNET_FEATURE_ARC_INIT (arp_feat, static) =
+{
+  .arc_name = "arp",
+  .start_nodes = VNET_FEATURES ("arp-input"),
+  .last_in_arc = "error-drop",
+  .arc_index_ptr = &ethernet_arp_main.feature_arc_index,
+};
+
 VLIB_REGISTER_NODE (arp_input_node, static) =
 {
   .function = arp_input,
@@ -1361,11 +1569,64 @@ VLIB_REGISTER_NODE (arp_input_node, static) =
   .n_next_nodes = ARP_INPUT_N_NEXT,
   .next_nodes = {
     [ARP_INPUT_NEXT_DROP] = "error-drop",
-    [ARP_INPUT_NEXT_REPLY_TX] = "interface-output",
   },
   .format_buffer = format_ethernet_arp_header,
   .format_trace = format_ethernet_arp_input_trace,
 };
+
+VLIB_REGISTER_NODE (arp_reply_node, static) =
+{
+  .function = arp_reply,
+  .name = "arp-reply",
+  .vector_size = sizeof (u32),
+  .n_errors = ETHERNET_ARP_N_ERROR,
+  .error_strings = ethernet_arp_error_strings,
+  .n_next_nodes = ARP_REPLY_N_NEXT,
+  .next_nodes = {
+    [ARP_REPLY_NEXT_DROP] = "error-drop",
+    [ARP_REPLY_NEXT_REPLY_TX] = "interface-output",
+  },
+  .format_buffer = format_ethernet_arp_header,
+  .format_trace = format_ethernet_arp_input_trace,
+};
+
+VLIB_REGISTER_NODE (arp_proxy_node, static) =
+{
+  .function = arp_proxy,
+  .name = "arp-proxy",
+  .vector_size = sizeof (u32),
+  .n_errors = ETHERNET_ARP_N_ERROR,
+  .error_strings = ethernet_arp_error_strings,
+  .n_next_nodes = ARP_REPLY_N_NEXT,
+  .next_nodes = {
+    [ARP_REPLY_NEXT_DROP] = "error-drop",
+    [ARP_REPLY_NEXT_REPLY_TX] = "interface-output",
+  },
+  .format_buffer = format_ethernet_arp_header,
+  .format_trace = format_ethernet_arp_input_trace,
+};
+
+VNET_FEATURE_INIT (arp_reply_feat_node, static) =
+{
+  .arc_name = "arp",
+  .node_name = "arp-reply",
+  .runs_before = VNET_FEATURES ("error-drop"),
+};
+
+VNET_FEATURE_INIT (arp_proxy_feat_node, static) =
+{
+  .arc_name = "arp",
+  .node_name = "arp-proxy",
+  .runs_after = VNET_FEATURES ("arp-reply"),
+  .runs_before = VNET_FEATURES ("error-drop"),
+};
+
+VNET_FEATURE_INIT (arp_drop_feat_node, static) =
+{
+  .arc_name = "arp",
+  .node_name = "error-drop",
+};
+
 /* *INDENT-ON* */
 
 static int
@@ -1664,6 +1925,23 @@ vnet_arp_flush_ip4_over_ethernet_internal (vnet_main_t * vnm,
  * callback when an interface address is added or deleted
  */
 static void
+arp_enable_disable_interface (ip4_main_t * im,
+			      uword opaque, u32 sw_if_index, u32 is_enable)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+
+  if (is_enable)
+    arp_enable (am, sw_if_index);
+  else
+    arp_disable (am, sw_if_index);
+}
+
+/*
+ * arp_add_del_interface_address
+ *
+ * callback when an interface address is added or deleted
+ */
+static void
 arp_add_del_interface_address (ip4_main_t * im,
 			       uword opaque,
 			       u32 sw_if_index,
@@ -1798,6 +2076,11 @@ ethernet_arp_init (vlib_main_t * vm)
   cb.function_opaque = 0;
   vec_add1 (im->add_del_interface_address_callbacks, cb);
 
+  ip4_enable_disable_interface_callback_t cbe;
+  cbe.function = arp_enable_disable_interface;
+  cbe.function_opaque = 0;
+  vec_add1 (im->enable_disable_interface_callbacks, cbe);
+
   ip4_table_bind_callback_t cbt;
   cbt.function = arp_table_bind;
   cbt.function_opaque = 0;
@@ -1859,7 +2142,7 @@ vnet_arp_populate_ip4_over_ethernet_internal (vnet_main_t * vnm,
   ethernet_arp_ip4_entry_t *e;
   ethernet_arp_interface_t *eai;
 
-  vec_validate (am->ethernet_arp_by_sw_if_index, args->sw_if_index);
+  arp_enable (am, args->sw_if_index);
   eai = &am->ethernet_arp_by_sw_if_index[args->sw_if_index];
 
   e = arp_entry_find (eai, &args->ip4);
@@ -1995,6 +2278,38 @@ proxy_arp_walk (proxy_arp_walk_t cb, void *data)
 }
 
 int
+vnet_proxy_arp_enable_disable (vnet_main_t * vnm, u32 sw_if_index, u8 enable)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_arp_interface_t *eai;
+
+  vec_validate (am->ethernet_arp_by_sw_if_index, sw_if_index);
+
+  eai = &am->ethernet_arp_by_sw_if_index[sw_if_index];
+
+  if (enable)
+    {
+      if (!eai->proxy_enabled)
+	{
+	  vnet_feature_enable_disable ("arp", "arp-proxy",
+				       sw_if_index, 1, NULL, 0);
+	}
+      eai->proxy_enabled = 1;
+    }
+  else
+    {
+      if (eai->proxy_enabled)
+	{
+	  vnet_feature_enable_disable ("arp", "arp-proxy",
+				       sw_if_index, 0, NULL, 0);
+	}
+      eai->proxy_enabled = 0;
+    }
+
+  return (0);
+}
+
+int
 vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 			ip4_address_t * hi_addr, u32 fib_index, int is_del)
 {
@@ -2029,6 +2344,19 @@ vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
   pa->hi_addr.as_u32 = hi_addr->as_u32;
   pa->fib_index = fib_index;
   return 0;
+}
+
+void
+proxy_arp_intfc_walk (proxy_arp_intf_walk_t cb, void *data)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_arp_interface_t *eai;
+
+  vec_foreach (eai, am->ethernet_arp_by_sw_if_index)
+  {
+    if (eai->proxy_enabled)
+      cb (eai - am->ethernet_arp_by_sw_if_index, data);
+  }
 }
 
 /*
@@ -2209,15 +2537,15 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index;
-  vnet_sw_interface_t *si;
   int enable = 0;
-  int intfc_set = 0;
+
+  sw_if_index = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "%U", unformat_vnet_sw_interface,
 		    vnm, &sw_if_index))
-	intfc_set = 1;
+	;
       else if (unformat (input, "enable") || unformat (input, "on"))
 	enable = 1;
       else if (unformat (input, "disable") || unformat (input, "off"))
@@ -2226,16 +2554,11 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  if (intfc_set == 0)
+  if (~0 == sw_if_index)
     return clib_error_return (0, "unknown input '%U'",
 			      format_unformat_error, input);
 
-  si = vnet_get_sw_interface (vnm, sw_if_index);
-  ASSERT (si);
-  if (enable)
-    si->flags |= VNET_SW_INTERFACE_FLAG_PROXY_ARP;
-  else
-    si->flags &= ~VNET_SW_INTERFACE_FLAG_PROXY_ARP;
+  vnet_proxy_arp_enable_disable (vnm, sw_if_index, enable);
 
   return 0;
 }

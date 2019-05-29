@@ -25,6 +25,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/ip/ip6_neighbor.h>
 #include <math.h>
+#include <vnet/ethernet/arp.h>
 
 tcp_main_t tcp_main;
 
@@ -1654,14 +1655,10 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   u32 start_host_byte_order, end_host_byte_order;
   fib_prefix_t prefix;
-  vnet_sw_interface_t *si;
   fib_node_index_t fei;
   u32 fib_index = 0;
   u32 sw_if_index;
   int rv;
-  int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
-			      ip4_address_t * hi_addr, u32 fib_index,
-			      int is_del);
 
   clib_memset (&prefix, 0, sizeof (prefix));
 
@@ -1690,12 +1687,13 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
 
   sw_if_index = fib_entry_get_resolving_interface (fei);
 
-  /* Enable proxy arp on the interface */
-  si = vnet_get_sw_interface (vnm, sw_if_index);
-  si->flags |= VNET_SW_INTERFACE_FLAG_PROXY_ARP;
-
   /* Configure proxy arp across the range */
   rv = vnet_proxy_arp_add_del (start, end, fib_index, 0 /* is_del */ );
+
+  if (rv)
+    return rv;
+
+  rv = vnet_proxy_arp_enable_disable (vnm, sw_if_index, 1);
 
   if (rv)
     return rv;
