@@ -1008,7 +1008,7 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
   pci_dev = dpdk_get_pci_device (&dev_info);
 
   if (pci_dev)
-    {				/* bonded interface has no pci info */
+    {
       vlib_pci_addr_t pci_addr;
 
       pci_addr.domain = pci_dev->addr.domain;
@@ -1203,7 +1203,7 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
   pci_dev = dpdk_get_pci_device (&dev_info);
 
   if (pci_dev)
-    {				/* bonded interface has no pci info */
+    {
       vlib_pci_addr_t pci_addr;
 
       pci_addr.domain = pci_dev->addr.domain;
