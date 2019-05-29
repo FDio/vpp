@@ -3019,14 +3019,10 @@ vl_api_proxy_arp_dump_t_handler (vl_api_proxy_arp_dump_t * mp)
 }
 
 static walk_rc_t
-send_proxy_arp_intfc_details (vnet_main_t * vnm,
-			      vnet_sw_interface_t * si, void *data)
+send_proxy_arp_intfc_details (u32 sw_if_index, void *data)
 {
   vl_api_proxy_arp_intfc_details_t *mp;
   proxy_arp_walk_ctx_t *ctx;
-
-  if (!(si->flags & VNET_SW_INTERFACE_FLAG_PROXY_ARP))
-    return (WALK_CONTINUE);
 
   ctx = data;
 
@@ -3034,7 +3030,7 @@ send_proxy_arp_intfc_details (vnet_main_t * vnm,
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_PROXY_ARP_INTFC_DETAILS);
   mp->context = ctx->context;
-  mp->sw_if_index = htonl (si->sw_if_index);
+  mp->sw_if_index = htonl (sw_if_index);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -3055,8 +3051,7 @@ vl_api_proxy_arp_intfc_dump_t_handler (vl_api_proxy_arp_intfc_dump_t * mp)
     .context = mp->context,
   };
 
-  vnet_sw_interface_walk (vnet_get_main (),
-			  send_proxy_arp_intfc_details, &wctx);
+  proxy_arp_intfc_walk (send_proxy_arp_intfc_details, &wctx);
 }
 
 static void
@@ -3069,15 +3064,9 @@ static void
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  vnet_sw_interface_t *si =
-    vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
-
-  ASSERT (si);
-
-  if (mp->enable_disable)
-    si->flags |= VNET_SW_INTERFACE_FLAG_PROXY_ARP;
-  else
-    si->flags &= ~VNET_SW_INTERFACE_FLAG_PROXY_ARP;
+  rv = vnet_proxy_arp_enable_disable (vnm,
+				      ntohl (mp->sw_if_index),
+				      mp->enable_disable);
 
   BAD_SW_IF_INDEX_LABEL;
 
