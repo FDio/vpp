@@ -108,6 +108,9 @@ typedef struct
   ip4_address_t *ip4_name_servers;
   ip6_address_t *ip6_name_servers;
 
+  /** resolver process node index */
+  u32 resolver_process_node_index;
+
   /** config parameters */
   u32 name_cache_size;
   u32 max_ttl_in_seconds;
@@ -182,6 +185,8 @@ void vnet_send_dns6_reply (dns_main_t * dm, dns_pending_request_t * t,
 
 u8 *vnet_dns_labels_to_name (u8 * label, u8 * full_text,
 			     u8 ** parse_from_here);
+
+void vnet_dns_create_resolver_process (dns_main_t * dm);
 
 format_function_t format_dns_reply;
 
