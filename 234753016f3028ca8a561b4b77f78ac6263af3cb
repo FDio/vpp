@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4348ac80_cf9f2824",
+        "filename": "src/plugins/l3xc/l3xc.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-30T09:17:04Z",
+      "side": 1,
+      "message": "Isn\u0027t this just waste of memory? It makes struct 2 times bigger than data in it if I counted correctly...",
+      "range": {
+        "startLine": 35,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 42
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "638d3f12_11cb452f",
+        "filename": "src/plugins/l3xc/l3xc.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-30T09:17:04Z",
+      "side": 1,
+      "message": "Can you use l3xc_main_t and put your externs there, to reduce number of exported symbols?",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 104,
+        "endChar": 25
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b683d80_b31afbf9",
+        "filename": "src/plugins/l3xc/l3xc_node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-05-30T09:17:04Z",
+      "side": 1,
+      "message": "if (PREDICT_FALSE((node-\u003eflags \u0026 VLIB_NODE_FLAG_TRACE)))\n  {\n\n  }\n\n?",
+      "range": {
+        "startLine": 97,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 2
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
