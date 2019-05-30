@@ -22,6 +22,10 @@
 #include <crypto_ia32/crypto_ia32.h>
 #include <crypto_ia32/aesni.h>
 
+#if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0
+#pragma GCC optimize ("O3")
+#endif
+
 typedef struct
 {
   __m128i encrypt_key[15];
