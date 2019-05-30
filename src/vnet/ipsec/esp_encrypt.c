@@ -269,9 +269,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u8 *p;
 	  vlib_prefetch_buffer_header (b[2], LOAD);
 	  p = vlib_buffer_get_current (b[1]);
-	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
-	  p -= CLIB_CACHE_LINE_BYTES;
-	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p - CLIB_CACHE_LINE_BYTES, 2 * CLIB_CACHE_LINE_BYTES,
+			 LOAD);
 	}
 
       if (is_tun)
