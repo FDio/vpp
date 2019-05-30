@@ -131,8 +131,8 @@ osi_input (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  h0 = (void *) (b0->data + b0->current_data);
-	  h1 = (void *) (b1->data + b1->current_data);
+	  h0 = vlib_buffer_get_current (b0);
+	  h1 = vlib_buffer_get_current (b1);
 
 	  next0 = lm->input_next_by_protocol[h0->protocol];
 	  next1 = lm->input_next_by_protocol[h1->protocol];
@@ -201,7 +201,7 @@ osi_input (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  h0 = (void *) (b0->data + b0->current_data);
+	  h0 = vlib_buffer_get_current (b0);
 
 	  next0 = lm->input_next_by_protocol[h0->protocol];
 
