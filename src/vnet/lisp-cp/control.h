@@ -281,6 +281,7 @@ typedef struct
   /** either UDP based or binary API. Default is UDP */
   lisp_transport_protocol_t transport_protocol;
 
+  u32 retry_service_index;
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;
@@ -378,6 +379,7 @@ int vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add);
 
 clib_error_t *vnet_lisp_enable_disable (u8 is_enabled);
 u8 vnet_lisp_enable_disable_status (void);
+void vnet_lisp_create_retry_process (lisp_cp_main_t * lcm);
 
 int vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add);
 int vnet_lisp_use_petr (ip_address_t * ip, u8 is_add);
