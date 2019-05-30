@@ -2297,6 +2297,9 @@ vnet_lisp_enable_disable (u8 is_enable)
 	}
     }
 
+  if (is_enable)
+    vnet_lisp_create_retry_process (lcm);
+
   /* update global flag */
   lcm->is_enabled = is_enable;
 
@@ -4903,14 +4906,17 @@ vnet_lisp_stats_enable_disable_state (void)
   return lcm->flags & LISP_FLAG_STATS_ENABLED;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (lisp_retry_service_node,static) = {
-    .function = send_map_resolver_service,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "lisp-retry-service",
-    .process_log2_n_stack_bytes = 16,
-};
-/* *INDENT-ON* */
+void
+vnet_lisp_create_retry_process (lisp_cp_main_t * lcm)
+{
+  if (lcm->retry_service_index)
+    return;
+
+  lcm->retry_service_index = vlib_process_create (vlib_get_main (),
+						  "lisp-retry-service",
+						  send_map_resolver_service,
+						  16 /* stack_bytes */ );
+}
 
 u32
 vnet_lisp_set_transport_protocol (u8 protocol)
