@@ -563,6 +563,7 @@ elog_string (elog_main_t * em, char *fmt, ...)
   u32 offset;
   va_list va;
 
+  elog_lock (em);
   va_start (va, fmt);
   offset = vec_len (em->string_table);
   em->string_table = (char *) va_format ((u8 *) em->string_table, fmt, &va);
@@ -571,6 +572,7 @@ elog_string (elog_main_t * em, char *fmt, ...)
   /* Null terminate string if it is not already. */
   if (vec_end (em->string_table)[-1] != 0)
     vec_add1 (em->string_table, 0);
+  elog_unlock (em);
 
   return offset;
 }
