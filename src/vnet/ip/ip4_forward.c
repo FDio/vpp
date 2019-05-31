@@ -1820,17 +1820,17 @@ ip4_arp_inline (vlib_main_t * vm,
 	    vlib_packet_template_get_packet (vm,
 					     &im->ip4_arp_request_packet_template,
 					     &bi0);
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  /* copy the persistent fields from the original */
-	  clib_memcpy_fast (b0->opaque2, p0->opaque2, sizeof (p0->opaque2));
-
 	  /* Seems we're out of buffers */
 	  if (PREDICT_FALSE (!h0))
 	    {
 	      p0->error = node->errors[IP4_ARP_ERROR_NO_BUFFERS];
 	      continue;
 	    }
+
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  /* copy the persistent fields from the original */
+	  clib_memcpy_fast (b0->opaque2, p0->opaque2, sizeof (p0->opaque2));
 
 	  /* Add rewrite/encap string for ARP packet. */
 	  vnet_rewrite_one_header (adj0[0], h0, sizeof (ethernet_header_t));
