@@ -547,6 +547,11 @@ Steal The NIC
 I:	stn
 F:	src/plugins/stn
 
+Plugin - Linux Interface Pairs
+I:	linux-intf-pair
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/linux-intf-pair/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
