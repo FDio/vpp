@@ -52,9 +52,9 @@ typedef struct dhcp_client_detect_trace_t_
   u8 extracted;
 } dhcp_client_detect_trace_t;
 
-VLIB_NODE_FN (dhcp_client_detect_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+always_inline u32
+dhcp_client_detect_inline (vlib_main_t * vm,
+			   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   dhcp_client_detect_next_t next_index;
   u16 dhcp_client_port_network_order;
@@ -272,6 +272,20 @@ VLIB_NODE_FN (dhcp_client_detect_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+VLIB_NODE_FN (dhcp_client_detect_input_node) (vlib_main_t * vm,
+					      vlib_node_runtime_t * node,
+					      vlib_frame_t * frame)
+{
+  return (dhcp_client_detect_inline (vm, node, frame));
+}
+
+VLIB_NODE_FN (dhcp_client_detect_drop_node) (vlib_main_t * vm,
+					     vlib_node_runtime_t * node,
+					     vlib_frame_t * frame)
+{
+  return (dhcp_client_detect_inline (vm, node, frame));
+}
+
 /* packet trace format function */
 static u8 *
 format_dhcp_client_detect_trace (u8 * s, va_list * args)
@@ -287,7 +301,7 @@ format_dhcp_client_detect_trace (u8 * s, va_list * args)
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dhcp_client_detect_node) = {
+VLIB_REGISTER_NODE (dhcp_client_detect_input_node) = {
   .name = "ip4-dhcp-client-detect",
   .vector_size = sizeof (u32),
   .format_trace = format_dhcp_client_detect_trace,
@@ -306,11 +320,37 @@ VLIB_REGISTER_NODE (dhcp_client_detect_node) = {
   },
 };
 
-VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) =
+VNET_FEATURE_INIT (ip4_input_dhcp_client_detect_node, static) =
 {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-dhcp-client-detect",
   .runs_before = VNET_FEATURES ("ip4-not-enabled"),
+};
+
+VLIB_REGISTER_NODE (dhcp_client_detect_drop_node) = {
+  .name = "ip4-drop-dhcp-client-detect",
+  .vector_size = sizeof (u32),
+  .format_trace = format_dhcp_client_detect_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(dhcp_client_detect_error_strings),
+  .error_strings = dhcp_client_detect_error_strings,
+
+  .n_next_nodes = DHCP_CLIENT_DETECT_N_NEXT,
+  .next_nodes = {
+    /*
+     * Jump straight to the UDP dispatch node thus avoiding
+     * the RPF checks in ip4-local that will fail
+     */
+    [DHCP_CLIENT_DETECT_NEXT_EXTRACT] = "ip4-punt",
+  },
+};
+
+VNET_FEATURE_INIT (ip4_drop_dhcp_client_detect_node, static) =
+{
+  .arc_name = "ip4-drop",
+  .node_name = "ip4-drop-dhcp-client-detect",
+  .runs_before = VNET_FEATURES("error-drop"),
 };
 
 /* *INDENT-ON* */
