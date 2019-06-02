@@ -363,7 +363,7 @@ ipsec_set_sa_key (u32 id, const ipsec_key_t * ck, const ipsec_key_t * ik)
   /* new integ key */
   if (ik)
     {
-      clib_memcpy (&sa->integ_key, 0, sizeof (sa->integ_key));
+      clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
       vnet_crypto_key_modify (vm, sa->integ_key_index, sa->integ_calg,
 			      (u8 *) ik->data, ik->len);
     }
