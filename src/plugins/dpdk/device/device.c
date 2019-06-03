@@ -397,17 +397,7 @@ dpdk_clear_hw_interface_counters (u32 instance)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, instance);
 
-  /*
-   * Set the "last_cleared_stats" to the current stats, so that
-   * things appear to clear from a display perspective.
-   */
-  dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
-
-  clib_memcpy_fast (&xd->last_cleared_stats, &xd->stats, sizeof (xd->stats));
-  clib_memcpy_fast (xd->last_cleared_xstats, xd->xstats,
-		    vec_len (xd->last_cleared_xstats) *
-		    sizeof (xd->last_cleared_xstats[0]));
-
+  rte_eth_xstats_reset (xd->port_id);
 }
 
 static clib_error_t *

@@ -659,35 +659,32 @@ format_dpdk_device (u8 * s, va_list * args)
 
   u8 *xs = 0;
   u32 i = 0;
-  struct rte_eth_xstat *xstat, *last_xstat;
+  struct rte_eth_xstat *xstat;
   struct rte_eth_xstat_name *xstat_names = 0;
-  int len = rte_eth_xstats_get_names (xd->port_id, NULL, 0);
+  int len = vec_len (xd->xstats);
   vec_validate (xstat_names, len - 1);
-  rte_eth_xstats_get_names (xd->port_id, xstat_names, len);
+  int ret = rte_eth_xstats_get_names (xd->port_id, xstat_names, len);
 
-  ASSERT (vec_len (xd->xstats) == vec_len (xd->last_cleared_xstats));
-
-  /* *INDENT-OFF* */
-  vec_foreach_index(i, xd->xstats)
+  if (ret < 0 || ret > len)
     {
-      u64 delta = 0;
-      xstat = vec_elt_at_index(xd->xstats, i);
-      last_xstat = vec_elt_at_index(xd->last_cleared_xstats, i);
-
-      delta = xstat->value - last_xstat->value;
-      if (verbose == 2 || (verbose && delta))
+      /* *INDENT-OFF* */
+      vec_foreach_index(i, xd->xstats)
         {
-          /* format_c_identifier doesn't like c strings inside vector */
-          u8 * name = format(0,"%s", xstat_names[i].name);
-          xs = format(xs, "\n%U%-38U%16Lu",
-                      format_white_space, indent + 4,
-                      format_c_identifier, name, delta);
-          vec_free(name);
+          xstat = vec_elt_at_index(xd->xstats, i);
+          if (verbose == 2 || (verbose && xstat->value))
+            {
+              /* format_c_identifier doesn't like c strings inside vector */
+              u8 * name = format(0,"%s", xstat_names[i].name);
+              xs = format(xs, "\n%U%-38U%16Lu",
+                          format_white_space, indent + 4,
+                          format_c_identifier, name, xstat->value);
+              vec_free(name);
+            }
         }
-    }
-  /* *INDENT-ON* */
+      /* *INDENT-ON* */
 
-  vec_free (xstat_names);
+      vec_free (xstat_names);
+    }
 
   if (xs)
     {
