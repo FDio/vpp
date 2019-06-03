@@ -201,7 +201,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   app_session->app_wrk_index = ctx->parent_app_wrk_index;
   app_session->connection_index = ctx->tls_ctx_handle;
   app_session->session_type = app_listener->session_type;
-  app_session->listener_index = app_listener->session_index;
+  app_session->listener_handle = session_handle (app_listener);
   app_session->session_state = SESSION_STATE_ACCEPTING;
 
   if ((rv = app_worker_init_accepted (app_session)))
@@ -391,7 +391,7 @@ tls_session_accept_callback (session_t * tls_session)
   tls_ctx_t *lctx, *ctx;
   u32 ctx_handle;
 
-  tls_listener = listen_session_get (tls_session->listener_index);
+  tls_listener = listen_session_get_from_handle (tls_session->listener_handle);
   lctx = tls_listener_ctx_get (tls_listener->opaque);
 
   ctx_handle = tls_ctx_alloc (lctx->tls_ctx_engine);
@@ -588,7 +588,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 
   lctx_index = tls_listener_ctx_alloc ();
   tls_al_handle = args->handle;
-  al = app_listener_get_w_handle (tls_al_handle);
+  al = app_listener_get (tls_al_handle);
   tls_listener = app_listener_get_session (al);
   tls_listener->opaque = lctx_index;
 
@@ -712,7 +712,7 @@ format_tls_listener (u8 * s, va_list * args)
   app_listener_t *al;
   u32 app_si, app_ti;
 
-  al = app_listener_get_w_handle (ctx->tls_session_handle);
+  al = app_listener_get (ctx->tls_session_handle);
   tls_listener = app_listener_get_session (al);
   session_parse_handle (ctx->app_session_handle, &app_si, &app_ti);
   s = format (s, "[%d:%d][TLS] app_wrk %u engine %u tcp %d:%d",
@@ -750,7 +750,7 @@ tls_transport_listener_endpoint_get (u32 ctx_handle,
   app_listener_t *al;
   tls_ctx_t *ctx = tls_listener_ctx_get (ctx_handle);
 
-  al = app_listener_get_w_handle (ctx->tls_session_handle);
+  al = app_listener_get (ctx->tls_session_handle);
   tls_listener = app_listener_get_session (al);
   session_get_endpoint (tls_listener, tep, is_lcl);
 }
