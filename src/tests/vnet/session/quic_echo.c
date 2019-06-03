@@ -92,6 +92,9 @@ typedef struct
   /* Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;
 
+  /* Hash table for Qsessions */
+  uword *qsession_listener_vpp_handles;
+
   /* Hash table for shared segment_names */
   uword *shared_segment_handles;
   clib_spinlock_t segment_handles_lock;
@@ -734,6 +737,7 @@ session_bound_handler (session_bound_msg_t * mp)
   clib_warning ("listening on %U:%u", format_ip46_address, mp->lcl_ip,
 		mp->lcl_is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		clib_net_to_host_u16 (mp->lcl_port));
+  hash_set (em->qsession_listener_vpp_handles, mp->handle, 1);
   em->state = STATE_READY;
 }
 
@@ -756,6 +760,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
   u32 session_index;
   u64 segment_handle;
   u8 *ip_str;
+  uword *p;
 
   segment_handle = mp->segment_handle;
 
@@ -801,8 +806,8 @@ session_accepted_handler (session_accepted_msg_t * mp)
   rmp->context = mp->context;
   app_send_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt);
 
-  /* TODO : this is very ugly */
-  if (mp->rmt.is_ip4 != 255)
+  p = hash_get (em->qsession_listener_vpp_handles, mp->listener_handle);
+  if (p)
     return quic_qsession_accepted_handler (mp);
   DBG ("SSession handle is %lu", mp->handle);
 
@@ -1464,6 +1469,7 @@ main (int argc, char **argv)
 
   clib_memset (em, 0, sizeof (*em));
   em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
+  em->qsession_listener_vpp_handles = hash_create (0, sizeof (uword));
   em->shared_segment_handles = hash_create (0, sizeof (uword));
   clib_spinlock_init (&em->segment_handles_lock);
   em->my_pid = getpid ();

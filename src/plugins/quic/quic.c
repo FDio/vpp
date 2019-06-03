@@ -107,6 +107,16 @@ quic_format_err (u64 code)
     }
 }
 
+static session_handle_t
+quic_session_alloc_app_listener (u32 app_index, u32 thread_index)
+{
+  app_listener_t *app_listener;
+  application_t *app;
+  app = application_get (app_index);
+  app_listener = app_listener_alloc (app, thread_index);
+  return app_listener_handle (app_listener);
+}
+
 static u32
 quic_ctx_alloc (u32 thread_index)
 {
@@ -484,12 +494,11 @@ static void
 quic_accept_stream (void *s)
 {
   quicly_stream_t *stream = (quicly_stream_t *) s;
-  session_t *stream_session;
+  session_t *stream_session, *quic_session;
   quic_stream_data_t *stream_data;
   app_worker_t *app_wrk;
   quic_ctx_t *qctx, *sctx;
   u32 sctx_id;
-  quic_main_t *qm = &quic_main;
   int rv;
 
   sctx_id = quic_ctx_alloc (vlib_get_thread_index ());
@@ -522,7 +531,9 @@ quic_accept_stream (void *s)
   stream_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    qctx->c_quic_ctx_id.udp_is_ip4);
-  stream_session->listener_index = qm->fake_app_listener_index;
+  quic_session = session_get (qctx->c_s_index, qctx->c_thread_index);
+  stream_session->listener_handle = session_handle (quic_session);
+  stream_session->al_handle = SESSION_INVALID_INDEX;
   stream_session->app_index = sctx->c_quic_ctx_id.parent_app_id;
 
   app_wrk = app_worker_get (stream_session->app_wrk_index);
@@ -870,6 +881,7 @@ quic_connection_closed (u32 ctx_index, u32 thread_index)
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
   quic_ctx_t *ctx;
+  session_t *quic_session;
 
   ctx = quic_ctx_get (ctx_index, thread_index);
 
@@ -889,7 +901,9 @@ quic_connection_closed (u32 ctx_index, u32 thread_index)
   QUIC_DBG (2, "Deleting conn with id %lu %lu", kv.key[0], kv.key[1]);
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 0 /* is_add */ );
 
-  // session_close (session_get_from_handle (ctx->c_quic_ctx_id.udp_session_handle));
+  quic_session = session_get (ctx->c_s_index, ctx->c_thread_index);
+  app_listener_free (quic_session->al_handle);
+
   quic_disconnect_transport (ctx);
   session_transport_delete_notify (&ctx->connection);
   /*  Do not try to send anything anymore */
@@ -1113,7 +1127,6 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   app_worker_t *app_wrk;
   quic_ctx_t *qctx, *sctx;
   u32 sctx_index;
-  quic_main_t *qm = &quic_main;
   int rv;
 
   /*  Find base session to which the user want to attach a stream */
@@ -1174,7 +1187,8 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   stream_session->flags |= SESSION_F_QUIC_STREAM;
   stream_session->app_wrk_index = app_wrk->wrk_index;
   stream_session->connection_index = sctx_index;
-  stream_session->listener_index = qm->fake_app_listener_index;
+  stream_session->listener_handle = quic_session_handle;
+  stream_session->al_handle = SESSION_INVALID_INDEX;
   stream_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    qctx->c_quic_ctx_id.udp_is_ip4);
@@ -1318,7 +1332,7 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
 
   lctx_index = quic_ctx_alloc (0);	/*  listener */
   udp_handle = args->handle;
-  app_listener = app_listener_get_w_handle (udp_handle);
+  app_listener = app_listener_get (udp_handle);
   udp_listen_session = app_listener_get_session (app_listener);
   udp_listen_session->opaque = lctx_index;
 
@@ -1480,7 +1494,6 @@ quic_notify_app_connected (quic_ctx_t * ctx)
   app_worker_t *app_wrk;
   u32 ctx_id = ctx->c_c_index;
   u32 thread_index = ctx->c_thread_index;
-  quic_main_t *qm = &quic_main;
 
   app_wrk = app_worker_get_if_valid (ctx->c_quic_ctx_id.parent_app_wrk_id);
   if (!app_wrk)
@@ -1496,7 +1509,10 @@ quic_notify_app_connected (quic_ctx_t * ctx)
   ctx->c_s_index = quic_session->session_index;
   quic_session->app_wrk_index = ctx->c_quic_ctx_id.parent_app_wrk_id;
   quic_session->connection_index = ctx->c_c_index;
-  quic_session->listener_index = qm->fake_app_listener_index;
+  quic_session->listener_handle = SESSION_INVALID_INDEX;
+  quic_session->al_handle =
+    quic_session_alloc_app_listener (app_wrk->app_index,
+				     quic_session->thread_index);
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    ctx->c_quic_ctx_id.udp_is_ip4);
@@ -1727,7 +1743,8 @@ quic_session_accepted_callback (session_t * udp_session)
   session_t *udp_listen_session;
   u32 thread_index = vlib_get_thread_index ();
 
-  udp_listen_session = listen_session_get (udp_session->listener_index);
+  udp_listen_session =
+    listen_session_get_from_handle (udp_session->listener_handle);
 
   ctx_index = quic_ctx_alloc (thread_index);
   ctx = quic_ctx_get (ctx_index, thread_index);
@@ -1893,10 +1910,9 @@ quic_receive (quic_ctx_t * ctx, quicly_conn_t * conn,
 static int
 quic_create_quic_session (quic_ctx_t * ctx)
 {
-  session_t *quic_session;
+  session_t *quic_session, *quic_listen_session;
   app_worker_t *app_wrk;
   quic_ctx_t *lctx;
-  quic_main_t *qm = &quic_main;
   int rv;
 
   quic_session = session_alloc (ctx->c_thread_index);
@@ -1913,7 +1929,8 @@ quic_create_quic_session (quic_ctx_t * ctx)
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    ctx->c_quic_ctx_id.udp_is_ip4);
-  quic_session->listener_index = qm->fake_app_listener_index;
+  quic_listen_session = listen_session_get (lctx->c_s_index);
+  quic_session->listener_handle = session_handle (quic_listen_session);
   quic_session->app_index = quic_main.app_index;
 
   /* TODO: don't alloc fifos when we don't transfer data on this session
@@ -1927,6 +1944,9 @@ quic_create_quic_session (quic_ctx_t * ctx)
   session_lookup_add_connection (&ctx->connection,
 				 session_handle (quic_session));
   app_wrk = app_worker_get (quic_session->app_wrk_index);
+  quic_session->al_handle =
+    quic_session_alloc_app_listener (app_wrk->app_index,
+				     quic_session->thread_index);
   rv = app_worker_accept_notify (app_wrk, quic_session);
   if (rv)
     {
@@ -2149,11 +2169,7 @@ quic_common_get_transport_endpoint (quic_ctx_t * ctx,
 				    transport_endpoint_t * tep, u8 is_lcl)
 {
   session_t *udp_session;
-  if (ctx->c_quic_ctx_id.is_stream)
-    {
-      tep->is_ip4 = 255;	/* well this is ugly */
-    }
-  else
+  if (!ctx->c_quic_ctx_id.is_stream)
     {
       udp_session =
 	session_get_from_handle (ctx->c_quic_ctx_id.udp_session_handle);
@@ -2171,8 +2187,7 @@ quic_get_transport_listener_endpoint (u32 listener_index,
   ctx = quic_ctx_get (listener_index, vlib_get_thread_index ());
   if (ctx->is_listener)
     {
-      app_listener =
-	app_listener_get_w_handle (ctx->c_quic_ctx_id.udp_session_handle);
+      app_listener = app_listener_get (ctx->c_quic_ctx_id.udp_session_handle);
       udp_listen_session = app_listener_get_session (app_listener);
       return session_get_endpoint (udp_listen_session, tep, is_lcl);
     }
@@ -2233,7 +2248,6 @@ quic_init (vlib_main_t * vm)
   quic_main_t *qm = &quic_main;
   u32 fifo_size = QUIC_FIFO_SIZE;
   u32 num_threads, i;
-  application_t *app;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -2276,19 +2290,6 @@ quic_init (vlib_main_t * vm)
     qm->ca_cert_path = QUIC_DEFAULT_CA_CERT_PATH;
 
   qm->app_index = a->app_index;
-
-  /*  Fake app listener hack, to remove */
-  app = application_get (a->app_index);
-  app_listener_t *fake_app_listener;
-  pool_get (app->listeners, fake_app_listener);
-  clib_memset (fake_app_listener, 0, sizeof (*fake_app_listener));
-  fake_app_listener->al_index = fake_app_listener - app->listeners;
-  fake_app_listener->app_index = app->app_index;
-  fake_app_listener->session_index = SESSION_INVALID_INDEX;
-  fake_app_listener->local_index = SESSION_INVALID_INDEX;
-  qm->fake_app_listener_index = fake_app_listener->al_index;
-  /* End fake listener hack */
-
   qm->tstamp_ticks_per_clock = vm->clib_time.seconds_per_clock
     / QUIC_TSTAMP_RESOLUTION;
 

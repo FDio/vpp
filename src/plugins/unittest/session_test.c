@@ -1072,7 +1072,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   error = vnet_listen (&bind_args);
   SESSION_TEST ((error == 0), "server bound to %U/%d", format_ip46_address,
 		&server_sep.ip, 1, server_sep.port);
-  al = app_listener_get_w_handle (bind_args.handle);
+  al = app_listener_get (bind_args.handle);
   listener = app_listener_get_session (al);
   ip4_address_t lcl_ip = {
     .as_u32 = clib_host_to_net_u32 (0x01020304),

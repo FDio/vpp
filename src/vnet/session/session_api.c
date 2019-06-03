@@ -197,8 +197,8 @@ mq_send_session_accepted_cb (session_t * s)
 
   if (session_has_transport (s))
     {
-      listener = listen_session_get (s->listener_index);
-      al = app_listener_get (app, listener->al_index);
+      listener = listen_session_get_from_handle (s->listener_handle);
+      al = app_listener_get_w_app (app, listener->al_handle);
       mp->listener_handle = app_listener_handle (al);
       if (application_is_proxy (app))
 	{
@@ -219,8 +219,8 @@ mq_send_session_accepted_cb (session_t * s)
       ct_connection_t *ct;
 
       ct = (ct_connection_t *) session_get_transport (s);
-      listener = listen_session_get (s->listener_index);
-      al = app_listener_get (app, listener->al_index);
+      listener = listen_session_get_from_handle (s->listener_handle);
+      al = app_listener_get_w_app (app, listener->al_handle);
       mp->listener_handle = app_listener_handle (al);
       mp->rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
       mp->rmt.port = ct->c_rmt_port;
@@ -415,7 +415,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
     goto done;
 
   mp->handle = handle;
-  al = app_listener_get_w_handle (handle);
+  al = app_listener_get (handle);
   if (al->session_index != SESSION_INVALID_INDEX)
     ls = app_listener_get_session (al);
   else
