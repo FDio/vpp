@@ -1438,7 +1438,12 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
       if (dp != sp)
 	{
 	  if (sb == db)
-	    bytes_to_copy = clib_min (bytes_to_copy, sp - dp);
+	    {
+	      // dp > sp, it means that there is non-first buffer in the buffer
+	      // chain which has current_data < 0, following assert checks this
+	      ASSERT (sp >= dp);
+	      bytes_to_copy = clib_min (bytes_to_copy, sp - dp);
+	    }
 
 	  clib_memcpy_fast (dp, sp, bytes_to_copy);
 	}
