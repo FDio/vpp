@@ -1288,15 +1288,13 @@ class TestIPPunt(VppTestCase):
              Raw('\xa5' * 100))
 
         pkts = p * 1025
+        paths = [VppRoutePath(self.pg1.remote_ip4,
+                              self.pg1.sw_if_index).encode(True)]
 
         #
         # Configure a punt redirect via pg1.
         #
-        nh_addr = self.pg1.remote_ip4
-        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
-                                   self.pg1.sw_if_index,
-                                   nh_addr)
-
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index, paths)
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
         #
@@ -1330,25 +1328,17 @@ class TestIPPunt(VppTestCase):
         #
         # remove the redirect. expect full drop.
         #
-        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
-                                   self.pg1.sw_if_index,
-                                   nh_addr,
-                                   is_add=0)
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index, [], is_add=0)
         self.send_and_assert_no_replies(self.pg0, pkts,
                                         "IP no punt config")
 
         #
         # Add a redirect that is not input port selective
         #
-        self.vapi.ip_punt_redirect(0xffffffff,
-                                   self.pg1.sw_if_index,
-                                   nh_addr)
+        self.vapi.ip_punt_redirect(0xffffffff, paths)
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
-        self.vapi.ip_punt_redirect(0xffffffff,
-                                   self.pg1.sw_if_index,
-                                   nh_addr,
-                                   is_add=0)
+        self.vapi.ip_punt_redirect(0xffffffff, [], is_add=0)
 
     def test_ip_punt_dump(self):
         """ IP4 punt redirect dump"""
@@ -1356,33 +1346,33 @@ class TestIPPunt(VppTestCase):
         #
         # Configure a punt redirects
         #
-        nh_address = self.pg3.remote_ip4
-        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
-                                   self.pg3.sw_if_index,
-                                   nh_address)
-        self.vapi.ip_punt_redirect(self.pg1.sw_if_index,
-                                   self.pg3.sw_if_index,
-                                   nh_address)
-        self.vapi.ip_punt_redirect(self.pg2.sw_if_index,
-                                   self.pg3.sw_if_index,
-                                   '0.0.0.0')
+        nh_paths = [VppRoutePath(self.pg3.remote_ip4,
+                                 self.pg3.sw_if_index).encode(True)]
+        unnum_paths = [VppRoutePath("0.0.0.0",
+                                    self.pg3.sw_if_index).encode(True)]
+
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index, nh_paths)
+        self.vapi.ip_punt_redirect(self.pg1.sw_if_index, nh_paths)
+        self.vapi.ip_punt_redirect(self.pg2.sw_if_index, unnum_paths)
+
+        self.logger.info(self.vapi.cli("sh ip punt redirect"))
 
         #
         # Dump pg0 punt redirects
         #
         punts = self.vapi.ip_punt_redirect_dump(self.pg0.sw_if_index)
         for p in punts:
-            self.assertEqual(p.punt.rx_sw_if_index, self.pg0.sw_if_index)
+            self.assertEqual(p.punt.sw_if_index, self.pg0.sw_if_index)
 
         #
         # Dump punt redirects for all interfaces
         #
         punts = self.vapi.ip_punt_redirect_dump(0xffffffff)
         self.assertEqual(len(punts), 3)
-        for p in punts:
-            self.assertEqual(p.punt.tx_sw_if_index, self.pg3.sw_if_index)
-        self.assertNotEqual(punts[1].punt.nh, self.pg3.remote_ip4)
-        self.assertEqual(str(punts[2].punt.nh), '0.0.0.0')
+
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index, [], is_add=0)
+        self.vapi.ip_punt_redirect(self.pg1.sw_if_index, [], is_add=0)
+        self.vapi.ip_punt_redirect(self.pg2.sw_if_index, [], is_add=0)
 
 
 class TestIPDeag(VppTestCase):

@@ -44,6 +44,7 @@
 #include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
+#include <vnet/fib/fib_path_list.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip4_reassembly.h>
 #include <vnet/ip/ip6_reassembly.h>
@@ -634,40 +635,48 @@ vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t * mp,
 				   vlib_main_t * vm)
 {
   vl_api_ip_punt_redirect_reply_t *rmp;
+  fib_route_path_t *paths = NULL, *path;
+  u32 rx_sw_if_index;
   int rv = 0;
-  ip46_type_t ipv;
-  ip46_address_t nh;
+  u8 pi;
 
-  if (!vnet_sw_if_index_is_api_valid (ntohl (mp->punt.tx_sw_if_index)))
-    goto bad_sw_if_index;
+  rx_sw_if_index = ntohl (mp->punt.sw_if_index);
 
-  ipv = ip_address_decode (&mp->punt.nh, &nh);
+  if (~0 != rx_sw_if_index)
+    VALIDATE_SW_IF_INDEX ((&mp->punt));
+
   if (mp->is_add)
     {
-      if (ipv == IP46_TYPE_IP6)
+      vec_validate (paths, mp->punt.n_paths - 1);
+
+      for (pi = 0; pi < mp->punt.n_paths; pi++)
 	{
-	  ip6_punt_redirect_add (ntohl (mp->punt.rx_sw_if_index),
-				 ntohl (mp->punt.tx_sw_if_index), &nh);
+	  path = &paths[pi];
+	  rv = fib_path_api_parse (&mp->punt.paths[pi], path);
+
+	  if (0 != rv)
+	    {
+	      goto done;
+	    }
 	}
-      else if (ipv == IP46_TYPE_IP4)
-	{
-	  ip4_punt_redirect_add (ntohl (mp->punt.rx_sw_if_index),
-				 ntohl (mp->punt.tx_sw_if_index), &nh);
-	}
+
+      if (mp->punt.is_ip6)
+	ip6_punt_redirect_add (rx_sw_if_index, paths);
+      else
+	ip4_punt_redirect_add (rx_sw_if_index, paths);
     }
   else
     {
-      if (ipv == IP46_TYPE_IP6)
-	{
-	  ip6_punt_redirect_del (ntohl (mp->punt.rx_sw_if_index));
-	}
-      else if (ipv == IP46_TYPE_IP4)
-	{
-	  ip4_punt_redirect_del (ntohl (mp->punt.rx_sw_if_index));
-	}
+      if (mp->punt.is_ip6)
+	ip6_punt_redirect_del (rx_sw_if_index);
+      else
+	ip4_punt_redirect_del (rx_sw_if_index);
     }
 
   BAD_SW_IF_INDEX_LABEL;
+
+done:
+  vec_free (paths);
 
   REPLY_MACRO (VL_API_IP_PUNT_REDIRECT_REPLY);
 }
@@ -3369,74 +3378,85 @@ void
   REPLY_MACRO (VL_API_IP_REASSEMBLY_ENABLE_DISABLE_REPLY);
 }
 
-void
-send_ip_punt_redirect_details (vl_api_registration_t * reg,
-			       u32 context, u32 sw_if_index,
-			       ip_punt_redirect_rx_t * pr, u8 is_ipv6)
+typedef struct ip_punt_redirect_walk_ctx_t_
 {
-  vl_api_ip_punt_redirect_details_t *mp;
+  vl_api_registration_t *reg;
+  u32 context;
+} ip_punt_redirect_walk_ctx_t;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+static walk_rc_t
+send_ip_punt_redirect_details (u32 rx_sw_if_index,
+			       const ip_punt_redirect_rx_t * ipr, void *arg)
+{
+  fib_route_path_encode_t *api_rpaths = NULL, *api_rpath;
+  ip_punt_redirect_walk_ctx_t *ctx = arg;
+  vl_api_ip_punt_redirect_details_t *mp;
+  vl_api_fib_path_t *fp;
+  u8 n_paths;
+
+  n_paths = fib_path_list_get_n_paths (ipr->pl);
+
+  mp =
+    vl_msg_api_alloc (sizeof (*mp) + (n_paths * sizeof (mp->punt.paths[0])));
   if (!mp)
-    return;
+    return (WALK_STOP);;
 
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_PUNT_REDIRECT_DETAILS);
-  mp->context = context;
-  mp->punt.rx_sw_if_index = htonl (sw_if_index);
-  mp->punt.tx_sw_if_index = htonl (pr->tx_sw_if_index);
-  if (is_ipv6)
-    {
-      ip_address_encode (&pr->nh, IP46_TYPE_IP6, &mp->punt.nh);
-    }
-  else
-    {
-      ip_address_encode (&pr->nh, IP46_TYPE_IP4, &mp->punt.nh);
-    }
+  mp->context = ctx->context;
 
-  vl_api_send_msg (reg, (u8 *) mp);
+  mp->punt.is_ip6 = (ipr->fproto == FIB_PROTOCOL_IP6);
+
+  mp->punt.sw_if_index = htonl (rx_sw_if_index);
+  mp->punt.n_paths = n_paths;
+
+  fib_path_list_walk_w_ext (ipr->pl, NULL, fib_path_encode, &api_rpaths);
+
+  fp = mp->punt.paths;
+  vec_foreach (api_rpath, api_rpaths)
+  {
+    fib_api_path_encode (api_rpath, fp);
+    fp++;
+  }
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
 }
 
 static void
 vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
 {
   vl_api_registration_t *reg;
-  u32 sw_if_index;
-  int rv __attribute__ ((unused)) = 0;
+  fib_protocol_t fproto;
 
-  sw_if_index = ntohl (mp->sw_if_index);
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  if (~0 != sw_if_index)
-    VALIDATE_SW_IF_INDEX (mp);
+  fproto = mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
 
-  ip_punt_redirect_detail_t *pr, *prs;
-  if (mp->is_ipv6)
+  ip_punt_redirect_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  if (~0 != mp->sw_if_index)
     {
-      prs = ip6_punt_redirect_entries (sw_if_index);
-      /* *INDENT-OFF* */
-      vec_foreach (pr, prs)
-      {
-        send_ip_punt_redirect_details (reg, mp->context, pr->rx_sw_if_index, &pr->punt_redirect, 1);
-      }
-      /* *INDENT-ON* */
-      vec_free (prs);
+      u32 rx_sw_if_index;
+      index_t pri;
+
+      rx_sw_if_index = ntohl (mp->sw_if_index);
+      pri = ip_punt_redirect_find (fproto, rx_sw_if_index);
+
+      if (INDEX_INVALID == pri)
+	return;
+
+      send_ip_punt_redirect_details (rx_sw_if_index,
+				     ip_punt_redirect_get (pri), &ctx);
     }
   else
-    {
-      prs = ip4_punt_redirect_entries (sw_if_index);
-      /* *INDENT-OFF* */
-      vec_foreach (pr, prs)
-      {
-        send_ip_punt_redirect_details (reg, mp->context, pr->rx_sw_if_index, &pr->punt_redirect, 0);
-      }
-      /* *INDENT-ON* */
-      vec_free (prs);
-    }
-
-  BAD_SW_IF_INDEX_LABEL;
+    ip_punt_redirect_walk (fproto, send_ip_punt_redirect_details, &ctx);
 }
 
 #define vl_msg_name_crc_list

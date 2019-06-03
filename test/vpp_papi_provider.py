@@ -1594,13 +1594,17 @@ class VppPapiProvider(object):
 
     def ip_punt_redirect(self,
                          rx_sw_if_index,
-                         tx_sw_if_index,
-                         address,
-                         is_add=1):
+                         paths,
+                         is_add=1,
+                         is_ip6=0):
         return self.api(self.papi.ip_punt_redirect,
-                        {'punt': {'rx_sw_if_index': rx_sw_if_index,
-                                  'tx_sw_if_index': tx_sw_if_index,
-                                  'nh': address},
+                        {'punt':
+                         {
+                             'is_ip6': is_ip6,
+                             'sw_if_index': rx_sw_if_index,
+                             'n_paths': len(paths),
+                             'paths': paths,
+                         },
                          'is_add': is_add})
 
     def ip_punt_redirect_dump(self, sw_if_index, is_ipv6=0):
