@@ -70,7 +70,7 @@ app_worker_free (app_worker_t * app_wrk)
   /* *INDENT-OFF* */
   hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
     ls = listen_session_get_from_handle (handle);
-    al = app_listener_get (app, ls->al_index);
+    al = app_listener_get_w_app (app, ls->al_handle);
     vec_add1 (handles, app_listener_handle (al));
     sm = segment_manager_get (sm_index);
     sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
@@ -277,7 +277,7 @@ app_worker_init_accepted (session_t * s)
   segment_manager_t *sm;
   session_t *listener;
 
-  listener = listen_session_get (s->listener_index);
+  listener = listen_session_get_from_handle (s->listener_handle);
   app_wrk = application_listener_select_worker (listener);
   s->app_wrk_index = app_wrk->wrk_index;
 

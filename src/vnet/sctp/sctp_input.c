@@ -1747,7 +1747,9 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 		      (&child_conn->
 		       sub_conn[SCTP_PRIMARY_PATH_IDX].connection,
 		       sctp_listener->
-		       sub_conn[SCTP_PRIMARY_PATH_IDX].c_s_index, 0))
+		       sub_conn[SCTP_PRIMARY_PATH_IDX].c_s_index,
+		       sctp_listener->
+		       sub_conn[SCTP_PRIMARY_PATH_IDX].c_thread_index, 0))
 		    {
 		      clib_warning ("session accept fail");
 		      sctp_connection_cleanup (child_conn);
