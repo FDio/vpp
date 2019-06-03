@@ -248,7 +248,6 @@ typedef struct
   struct rte_eth_stats last_stats;
   struct rte_eth_stats last_cleared_stats;
   struct rte_eth_xstat *xstats;
-  struct rte_eth_xstat *last_cleared_xstats;
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
 
