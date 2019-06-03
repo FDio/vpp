@@ -78,6 +78,7 @@ typedef struct app_listener_
   u32 app_index;
   u32 local_index;
   u32 session_index;
+  u8 thread_index;
 } app_listener_t;
 
 typedef struct application_
@@ -106,7 +107,7 @@ typedef struct application_
   u16 proxied_transports;
 
   /** Pool of listeners for the app */
-  app_listener_t *listeners;
+  app_listener_t **listeners;
 
   /*
    * TLS & QUIC Specific
@@ -165,7 +166,10 @@ typedef struct _vnet_app_worker_add_del_args
 #define APP_NS_INVALID_INDEX ((u32)~0)
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
-app_listener_t *app_listener_get (application_t * app, u32 al_index);
+app_listener_t *app_listener_get (u64 al_handle);
+app_listener_t *app_listener_get_w_app (application_t * app, u64 al_handle);
+app_listener_t *app_listener_alloc (application_t * app, u32 thread_index);
+void app_listener_free (u64 listener_handle);
 int app_listener_alloc_and_init (application_t * app,
 				 session_endpoint_cfg_t * sep,
 				 app_listener_t ** listener);
@@ -173,8 +177,6 @@ void app_listener_cleanup (app_listener_t * app_listener);
 session_handle_t app_listener_handle (app_listener_t * app_listener);
 app_listener_t *app_listener_lookup (application_t * app,
 				     session_endpoint_cfg_t * sep);
-app_listener_t *app_listener_get_w_handle (session_handle_t handle);
-app_listener_t *app_listener_get_w_session (session_t * ls);
 session_t *app_listener_get_session (app_listener_t * al);
 session_t *app_listener_get_local_session (app_listener_t * al);
 

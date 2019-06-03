@@ -28,102 +28,85 @@ static app_main_t app_main;
       return 0;								\
     }
 
-static app_listener_t *
-app_listener_alloc (application_t * app)
+session_handle_t
+app_listener_handle (app_listener_t * al)
+{
+  ASSERT (al->app_index < 1 << 16 && al->al_index < 1 << 16);
+  u64 app_listener_id = al->app_index << 16 | al->al_index;
+  u64 thread_id = SESSION_LISTENER_PREFIX << 16 | (al->thread_index & 0xFFFF);
+  return (thread_id << 32 | app_listener_id);
+}
+
+static void
+app_listener_id_parse (u64 listener_handle, u32 * app_index,
+		       u32 * listener_index, u32 * thread_index)
+{
+  ASSERT (listener_handle >> 48 == SESSION_LISTENER_PREFIX);
+  *thread_index = (listener_handle >> 32) & 0xFFFF;
+  *app_index = (listener_handle >> 16) & 0xFFFF;
+  *listener_index = listener_handle & 0xFFFF;
+}
+
+app_listener_t *
+app_listener_alloc (application_t * app, u32 thread_index)
 {
   app_listener_t *app_listener;
-  pool_get (app->listeners, app_listener);
+  pool_get (app->listeners[thread_index], app_listener);
   clib_memset (app_listener, 0, sizeof (*app_listener));
-  app_listener->al_index = app_listener - app->listeners;
+  app_listener->al_index = app_listener - app->listeners[thread_index];
   app_listener->app_index = app->app_index;
   app_listener->session_index = SESSION_INVALID_INDEX;
   app_listener->local_index = SESSION_INVALID_INDEX;
+  app_listener->thread_index = thread_index;
   return app_listener;
 }
 
 app_listener_t *
-app_listener_get (application_t * app, u32 app_listener_index)
+app_listener_get (u64 listener_handle)
 {
-  return pool_elt_at_index (app->listeners, app_listener_index);
+  u32 app_index, listener_index, thread_index;
+  application_t *app;
+
+  app_listener_id_parse (listener_handle, &app_index, &listener_index,
+			 &thread_index);
+  app = application_get_if_valid (app_index);
+  ASSERT (app);
+  return pool_elt_at_index (app->listeners[thread_index], listener_index);
 }
 
-static app_listener_t *
-app_listener_get_if_valid (application_t * app, u32 app_listener_index)
+app_listener_t *
+app_listener_get_w_app (application_t * app, u64 listener_handle)
 {
-  if (pool_is_free_index (app->listeners, app_listener_index))
-    return 0;
-  return pool_elt_at_index (app->listeners, app_listener_index);
+  u32 app_index, listener_index, thread_index;
+  app_listener_id_parse (listener_handle, &app_index, &listener_index,
+			 &thread_index);
+  return pool_elt_at_index (app->listeners[thread_index], listener_index);
 }
 
 static void
-app_listener_free (application_t * app, app_listener_t * app_listener)
+app_listener_free_internal (application_t * app,
+			    app_listener_t * app_listener)
 {
   clib_bitmap_free (app_listener->workers);
-  pool_put (app->listeners, app_listener);
+  pool_put (app->listeners[app_listener->thread_index], app_listener);
   if (CLIB_DEBUG)
     clib_memset (app_listener, 0xfa, sizeof (*app_listener));
 }
 
-static u32
-app_listener_id (app_listener_t * al)
-{
-  ASSERT (al->app_index < 1 << 16 && al->al_index < 1 << 16);
-  return (al->app_index << 16 | al->al_index);
-}
-
-session_handle_t
-app_listener_handle (app_listener_t * al)
-{
-  return ((u64) SESSION_LISTENER_PREFIX << 32 | (u64) app_listener_id (al));
-}
-
-static void
-app_listener_id_parse (u32 listener_id, u32 * app_index,
-		       u32 * app_listener_index)
-{
-  *app_index = listener_id >> 16;
-  *app_listener_index = listener_id & 0xFFFF;
-}
-
 void
-app_listener_handle_parse (session_handle_t handle, u32 * app_index,
-			   u32 * app_listener_index)
+app_listener_free (u64 listener_handle)
 {
-  app_listener_id_parse (handle & 0xFFFFFFFF, app_index, app_listener_index);
-}
-
-static app_listener_t *
-app_listener_get_w_id (u32 listener_id)
-{
-  u32 app_index, app_listener_index;
+  u32 app_index, listener_index, thread_index;
   application_t *app;
+  app_listener_t *al;
 
-  app_listener_id_parse (listener_id, &app_index, &app_listener_index);
+  app_listener_id_parse (listener_handle, &app_index, &listener_index,
+			 &thread_index);
   app = application_get_if_valid (app_index);
   if (!app)
-    return 0;
-  return app_listener_get_if_valid (app, app_listener_index);
-}
-
-app_listener_t *
-app_listener_get_w_session (session_t * ls)
-{
-  application_t *app;
-
-  app = application_get_if_valid (ls->app_index);
-  if (!app)
-    return 0;
-  return app_listener_get (app, ls->al_index);
-}
-
-app_listener_t *
-app_listener_get_w_handle (session_handle_t handle)
-{
-
-  if (handle >> 32 != SESSION_LISTENER_PREFIX)
-    return 0;
-
-  return app_listener_get_w_id (handle & 0xFFFFFFFF);
+    return;
+  al = pool_elt_at_index (app->listeners[thread_index], listener_index);
+  app_listener_free_internal (app, al);
 }
 
 app_listener_t *
@@ -142,7 +125,7 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
       if (handle != SESSION_INVALID_HANDLE)
 	{
 	  ls = listen_session_get_from_handle (handle);
-	  return app_listener_get_w_session (ls);
+	  return app_listener_get (ls->al_handle);
 	}
     }
 
@@ -152,7 +135,7 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
   if (handle != SESSION_INVALID_HANDLE)
     {
       ls = listen_session_get_from_handle (handle);
-      return app_listener_get_w_session ((session_t *) ls);
+      return app_listener_get (ls->al_handle);
     }
 
   return 0;
@@ -168,11 +151,12 @@ app_listener_alloc_and_init (application_t * app,
   session_handle_t lh;
   session_type_t st;
   session_t *ls = 0;
-  u32 al_index;
+  u64 al_handle;
   int rv;
 
-  app_listener = app_listener_alloc (app);
-  al_index = app_listener->al_index;
+  app_listener = app_listener_alloc (app, 0);
+  al_handle = app_listener_handle (app_listener);
+
   st = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
 
   /*
@@ -200,9 +184,9 @@ app_listener_alloc_and_init (application_t * app,
 	}
 
       ls = session_get_from_handle (lh);
-      app_listener = app_listener_get (app, al_index);
+      app_listener = app_listener_get_w_app (app, al_handle);
       app_listener->local_index = ls->session_index;
-      ls->al_index = al_index;
+      ls->al_handle = al_handle;
 
       table_index = application_local_session_table (app);
       session_lookup_add_session_endpoint (table_index,
@@ -232,9 +216,9 @@ app_listener_alloc_and_init (application_t * app,
 	  return rv;
 	}
       ls = listen_session_get_from_handle (lh);
-      app_listener = app_listener_get (app, al_index);
+      app_listener = app_listener_get_w_app (app, al_handle);
       app_listener->session_index = ls->session_index;
-      ls->al_index = al_index;
+      ls->al_handle = al_handle;
 
       /* Add to the global lookup table after transport was initialized.
        * Lookup table needs to be populated only now because sessions
@@ -247,7 +231,7 @@ app_listener_alloc_and_init (application_t * app,
 
   if (!ls)
     {
-      app_listener_free (app, app_listener);
+      app_listener_free_internal (app, app_listener);
       return -1;
     }
 
@@ -279,7 +263,7 @@ app_listener_cleanup (app_listener_t * al)
       session_stop_listen (ls);
       listen_session_free (ls);
     }
-  app_listener_free (app, al);
+  app_listener_free_internal (app, al);
 }
 
 static app_worker_t *
@@ -508,6 +492,8 @@ application_alloc_and_init (app_init_args_t * a)
   vl_api_registration_t *reg;
   application_t *app;
   u64 *options;
+  vlib_thread_main_t *vtm = &vlib_thread_main;
+  u32 num_threads;
 
   app = application_alloc ();
   options = a->options;
@@ -546,6 +532,8 @@ application_alloc_and_init (app_init_args_t * a)
   app->ns_index = options[APP_OPTIONS_NAMESPACE];
   app->proxied_transports = options[APP_OPTIONS_PROXY_TRANSPORT];
   app->name = vec_dup (a->name);
+  num_threads = 1 /* main thread */  + vtm->n_threads;
+  vec_validate (app->listeners, num_threads - 1);
 
   /* If no scope enabled, default to global */
   if (!application_has_global_scope (app)
@@ -698,7 +686,7 @@ application_listener_select_worker (session_t * ls)
   app_listener_t *al;
 
   app = application_get (ls->app_index);
-  al = app_listener_get (app, ls->al_index);
+  al = app_listener_get_w_app (app, ls->al_handle);
   return app_listener_select_worker (app, al);
 }
 
@@ -1070,7 +1058,7 @@ vnet_unlisten (vnet_unlisten_args_t * a)
   if (!(app = application_get_if_valid (a->app_index)))
     return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
 
-  if (!(al = app_listener_get_w_handle (a->handle)))
+  if (!(al = app_listener_get (a->handle)))
     return -1;
 
   if (al->app_index != app->app_index)
@@ -1128,7 +1116,7 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   if (!app)
     return -1;
 
-  app_listener = app_listener_get (app, s->al_index);
+  app_listener = app_listener_get_w_app (app, s->al_handle);
 
   /* Only remove from lb for now */
   app_listener->workers = clib_bitmap_set (app_listener->workers,
