@@ -72,7 +72,7 @@ comma_split (u8 * s, u8 ** a, u8 ** b)
  * @returns 0 on success, otherwise a clib_error_t *.
  */
 
-static clib_error_t *init_exit_function_sort
+clib_error_t *vlib_sort_init_exit_functions
   (_vlib_init_function_list_elt_t ** head)
 {
   uword *index_by_name;
@@ -329,15 +329,15 @@ again:
  * A and B - and it leads to hugely annoying debugging exercises.
  */
 
-clib_error_t *
-vlib_call_init_exit_functions (vlib_main_t * vm,
-			       _vlib_init_function_list_elt_t ** headp,
-			       int call_once)
+static inline clib_error_t *
+call_init_exit_functions_internal (vlib_main_t * vm,
+				   _vlib_init_function_list_elt_t ** headp,
+				   int call_once, int do_sort)
 {
   clib_error_t *error = 0;
   _vlib_init_function_list_elt_t *i;
 
-  if ((error = init_exit_function_sort (headp)))
+  if (do_sort && (error = vlib_sort_init_exit_functions (headp)))
     return (error);
 
   i = *headp;
@@ -354,6 +354,24 @@ vlib_call_init_exit_functions (vlib_main_t * vm,
       i = i->next_init_function;
     }
   return error;
+}
+
+clib_error_t *
+vlib_call_init_exit_functions (vlib_main_t * vm,
+			       _vlib_init_function_list_elt_t ** headp,
+			       int call_once)
+{
+  return call_init_exit_functions_internal (vm, headp, call_once,
+					    1 /* do_sort */ );
+}
+
+clib_error_t *
+vlib_call_init_exit_functions_no_sort (vlib_main_t * vm,
+				       _vlib_init_function_list_elt_t **
+				       headp, int call_once)
+{
+  return call_init_exit_functions_internal (vm, headp, call_once,
+					    0 /* do_sort */ );
 }
 
 clib_error_t *

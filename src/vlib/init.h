@@ -328,7 +328,11 @@ clib_error_t *vlib_call_all_main_loop_exit_functions (struct vlib_main_t *vm);
 clib_error_t *vlib_call_init_exit_functions (struct vlib_main_t *vm,
 					     _vlib_init_function_list_elt_t **
 					     headp, int call_once);
-
+clib_error_t *vlib_call_init_exit_functions_no_sort (struct vlib_main_t *vm,
+						     _vlib_init_function_list_elt_t
+						     ** headp, int call_once);
+clib_error_t *vlib_sort_init_exit_functions (_vlib_init_function_list_elt_t
+					     **);
 #define foreach_vlib_module_reference		\
   _ (node_cli)					\
   _ (trace_cli)

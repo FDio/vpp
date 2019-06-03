@@ -1390,6 +1390,31 @@ vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
 #endif
 
 void
+vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
+{
+  f64 deadline;
+  f64 now = vlib_time_now (vm);
+  u32 count = vec_len (vlib_mains) - 1;
+
+  /* No worker threads? */
+  if (count == 0)
+    return;
+
+  deadline = now + BARRIER_SYNC_TIMEOUT;
+  *vlib_worker_threads->wait_at_barrier = 1;
+  while (*vlib_worker_threads->workers_at_barrier != count)
+    {
+      if ((now = vlib_time_now (vm)) > deadline)
+	{
+	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	  os_panic ();
+	}
+      CLIB_PAUSE ();
+    }
+  *vlib_worker_threads->wait_at_barrier = 0;
+}
+
+void
 vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 {
   f64 deadline;
@@ -1732,14 +1757,14 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
-  /* Wait until the dpdk init sequence is complete */
-  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
-    vlib_worker_thread_barrier_check ();
-
-  e = vlib_call_init_exit_functions
+  e = vlib_call_init_exit_functions_no_sort
     (vm, &vm->worker_init_function_registrations, 1 /* call_once */ );
   if (e)
     clib_error_report (e);
+
+  /* Wait until the dpdk init sequence is complete */
+  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
+    vlib_worker_thread_barrier_check ();
 
   vlib_worker_loop (vm);
 }
