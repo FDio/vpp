@@ -287,7 +287,7 @@ class VppRoutePath(object):
         self.next_hop_id = next_hop_id
         self.is_dvr = is_dvr
 
-    def encode_labels(self):
+    def encode_labels(self, pad_labels=False):
         lstack = []
         for l in self.nh_labels:
             if type(l) == VppMplsLabel:
@@ -295,9 +295,12 @@ class VppRoutePath(object):
             else:
                 lstack.append({'label': l,
                                'ttl': 255})
+        if (pad_labels):
+            while (len(lstack) < 16):
+                lstack.append({})
         return lstack
 
-    def encode(self):
+    def encode(self, pad_labels=False):
         return {'next_hop': self.nh_addr,
                 'weight': 1,
                 'preference': 0,
@@ -307,7 +310,7 @@ class VppRoutePath(object):
                 'afi': self.proto,
                 'is_udp_encap': self.is_udp_encap,
                 'n_labels': len(self.nh_labels),
-                'label_stack': self.encode_labels()}
+                'label_stack': self.encode_labels(pad_labels)}
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
