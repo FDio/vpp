@@ -1721,6 +1721,14 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   if (is_main)
     {
       uword i;
+
+      /*
+       * Perform an initial barrier sync. Pays no attention to
+       * the barrier sync hold-down timer scheme, which won't work
+       * at this point in time.
+       */
+      vlib_worker_thread_initial_barrier_sync_and_release (vm);
+
       nm->current_process_index = ~0;
       for (i = 0; i < vec_len (nm->processes); i++)
 	cpu_time_now = dispatch_process (vm, nm->processes[i], /* frame */ 0,
@@ -2089,6 +2097,9 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   if ((error = vlib_call_all_config_functions (vm, input, 0 /* is_early */ )))
     goto done;
+
+  /* Sort per-thread init functions before we start threads */
+  vlib_sort_init_exit_functions (&vm->worker_init_function_registrations);
 
   /* Call all main loop enter functions. */
   {
