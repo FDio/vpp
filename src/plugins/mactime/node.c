@@ -19,6 +19,7 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <mactime/mactime.h>
+#include <vnet/ip/ip4.h>
 
 typedef struct
 {
@@ -32,8 +33,11 @@ vlib_node_registration_t mactime_node;
 vlib_node_registration_t mactime_tx_node;
 
 #define foreach_mactime_error                   \
-_(DROP, "Dropped packets")                      \
-_(OK, "Permitted packets")
+_(OK, "Permitted packets")			\
+_(STATIC_DROP, "Static drop packets")           \
+_(RANGE_DROP, "Range drop packets")             \
+_(QUOTA_DROP, "Data quota drop packets")	\
+_(DROP_10001, "Dropped UDP DST-port 10001")
 
 typedef enum
 {
@@ -82,7 +86,7 @@ mactime_node_inline (vlib_main_t * vm,
   mactime_device_t *dp;
   clib_bihash_kv_8_8_t kv;
   clib_bihash_8_8_t *lut = &mm->lookup_table;
-  u32 packets_ok = 0, packets_dropped = 0;
+  u32 packets_ok = 0;
   f64 now;
   u32 thread_index = vm->thread_index;
   vnet_main_t *vnm = vnet_get_main ();
@@ -164,6 +168,24 @@ mactime_node_inline (vlib_main_t * vm,
 
 	  dp = pool_elt_at_index (mm->devices, device_index0);
 
+	  /* Known device, check for a traffic quota */
+	  if (PREDICT_FALSE (dp->data_quota))
+	    {
+	      vlib_counter_t device_current_count;
+	      vlib_get_combined_counter (&mm->allow_counters,
+					 dp - mm->devices,
+					 &device_current_count);
+	      if (device_current_count.bytes >= dp->data_quota)
+		{
+		  next0 = MACTIME_NEXT_DROP;
+		  b0->error = node->errors[MACTIME_ERROR_QUOTA_DROP];
+		  vlib_increment_combined_counter
+		    (&mm->drop_counters, thread_index, dp - mm->devices, 1,
+		     len0);
+		  goto trace0;
+		}
+	    }
+
 	  /* Static drop / allow? */
 	  if (PREDICT_FALSE
 	      (dp->flags &
@@ -173,17 +195,41 @@ mactime_node_inline (vlib_main_t * vm,
 	      if (dp->flags & MACTIME_DEVICE_FLAG_STATIC_DROP)
 		{
 		  next0 = MACTIME_NEXT_DROP;
+		  b0->error = node->errors[MACTIME_ERROR_STATIC_DROP];
 		  vlib_increment_combined_counter
 		    (&mm->drop_counters, thread_index, dp - mm->devices, 1,
 		     len0);
-		  packets_dropped++;
 		}
 	      else		/* note next0 set to allow */
 		{
-		  vlib_increment_combined_counter
-		    (&mm->allow_counters, thread_index, dp - mm->devices, 1,
-		     len0);
-		  packets_ok++;
+		  /*
+		   * Special-case mini-ACL for a certain species of
+		   * home security DVR which likes to "call home."
+		   */
+		  if (PREDICT_FALSE
+		      (dp->flags & MACTIME_DEVICE_FLAG_DROP_UDP_10001))
+		    {
+		      ip4_header_t *ip = (void *) (((u8 *) en0) + 14);
+		      udp_header_t *udp = (udp_header_t *) (ip + 1);
+		      if (ip->protocol != IP_PROTOCOL_UDP)
+			goto pass;
+		      if (clib_net_to_host_u16 (udp->dst_port) == 10001 ||
+			  clib_net_to_host_u16 (udp->dst_port) == 9603)
+			{
+			  next0 = MACTIME_NEXT_DROP;
+			  b0->error = node->errors[MACTIME_ERROR_DROP_10001];
+			}
+		      else
+			goto pass;
+		    }
+		  else
+		    {
+		    pass:
+		      vlib_increment_combined_counter
+			(&mm->allow_counters, thread_index, dp - mm->devices,
+			 1, len0);
+		      packets_ok++;
+		    }
 		}
 	      goto trace0;
 	    }
@@ -205,8 +251,8 @@ mactime_node_inline (vlib_main_t * vm,
 		      vlib_increment_combined_counter
 			(&mm->drop_counters, thread_index,
 			 dp - mm->devices, 1, len0);
-		      packets_dropped++;
 		      next0 = MACTIME_NEXT_DROP;
+		      b0->error = node->errors[MACTIME_ERROR_RANGE_DROP];
 		    }
 		  else		/* it's an allow range, allow it */
 		    {
@@ -225,9 +271,9 @@ mactime_node_inline (vlib_main_t * vm,
 	  if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW)
 	    {
 	      next0 = MACTIME_NEXT_DROP;
+	      b0->error = node->errors[MACTIME_ERROR_STATIC_DROP];
 	      vlib_increment_combined_counter
 		(&mm->drop_counters, thread_index, dp - mm->devices, 1, len0);
-	      packets_dropped++;
 	    }
 	  else
 	    {
@@ -265,8 +311,6 @@ mactime_node_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       MACTIME_ERROR_DROP, packets_dropped);
   vlib_node_increment_counter (vm, node->node_index,
 			       MACTIME_ERROR_OK, packets_ok);
   return frame->n_vectors;

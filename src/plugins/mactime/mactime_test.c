@@ -159,6 +159,8 @@ api_mactime_add_del_range (vat_main_t * vam)
   u8 is_add = 1;
   u8 allow = 0;
   u8 drop = 0;
+  u8 no_udp_10001 = 0;
+  u64 data_quota = 0;
   int ret;
   int ii;
 
@@ -180,10 +182,16 @@ api_mactime_add_del_range (vat_main_t * vam)
 	allow = 1;
       else if (unformat (i, "drop-static"))
 	drop = 1;
+      else if (unformat (i, "no-udp-10001"))
+	no_udp_10001 = 1;
       else if (unformat (i, "mac %U", my_unformat_mac_address, mac_address))
 	mac_set = 1;
       else if (unformat (i, "del"))
 	is_add = 0;
+      else if (unformat (i, "data-quota %lldM", &data_quota))
+	data_quota <<= 20;
+      else if (unformat (i, "data-quota %lldG", &data_quota))
+	data_quota <<= 30;
       else
 	break;
     }
@@ -226,6 +234,8 @@ api_mactime_add_del_range (vat_main_t * vam)
   mp->is_add = is_add;
   mp->drop = drop;
   mp->allow = allow;
+  mp->no_udp_10001 = no_udp_10001;
+  mp->data_quota = clib_host_to_net_u64 (data_quota);
   memcpy (mp->mac_address, mac_address, sizeof (mp->mac_address));
   memcpy (mp->device_name, device_name, vec_len (device_name));
   mp->count = clib_host_to_net_u32 (vec_len (rp));
