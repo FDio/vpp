@@ -169,12 +169,14 @@ ah_encrypt_inline (vlib_main_t * vm,
 
       if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
 	{
+	  if (current_sa_index != ~0)
+	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+					     current_sa_index,
+					     current_sa_pkts,
+					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
 
-	  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					   current_sa_index, current_sa_pkts,
-					   current_sa_bytes);
 	  current_sa_bytes = current_sa_pkts = 0;
 	}
 
