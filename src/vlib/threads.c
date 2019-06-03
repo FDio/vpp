@@ -1390,6 +1390,51 @@ vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
 #endif
 
 void
+vlib_worker_thread_barrier_initial_sync_and_release (vlib_main_t * vm)
+{
+  f64 deadline;
+  f64 now = vlib_time_now (vm);
+  u32 count = vec_len (vlib_mains) - 1;
+
+  deadline = now + BARRIER_SYNC_TIMEOUT;
+  *vlib_worker_threads->wait_at_barrier = 1;
+  while (*vlib_worker_threads->workers_at_barrier != count)
+    {
+      if ((now = vlib_time_now (vm)) > deadline)
+	{
+	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	  os_panic ();
+	}
+    }
+  *vlib_worker_threads->wait_at_barrier = 0;
+}
+
+void
+vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
+{
+  f64 deadline;
+  f64 now = vlib_time_now (vm);
+  u32 count = vec_len (vlib_mains) - 1;
+
+  /* No worker threads? */
+  if (count == 0)
+    return;
+
+  deadline = now + BARRIER_SYNC_TIMEOUT;
+  *vlib_worker_threads->wait_at_barrier = 1;
+  while (*vlib_worker_threads->workers_at_barrier != count)
+    {
+      if ((now = vlib_time_now (vm)) > deadline)
+	{
+	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	  os_panic ();
+	}
+      CLIB_PAUSE ();
+    }
+  *vlib_worker_threads->wait_at_barrier = 0;
+}
+
+void
 vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 {
   f64 deadline;
@@ -1718,6 +1763,39 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
   return processed;
 }
 
+static inline void
+pre_init_event (vlib_worker_thread_t * w, u64 cpu_time)
+{
+  elog_main_t *em = &vlib_global_main.elog_main;
+  ELOG_TYPE_DECLARE (e) =
+  {
+  .format = "call-worker-init-fns",.format_args = "",};
+
+  elog_event_data (em, &e, &w->elog_track, cpu_time);
+}
+
+static inline void
+post_init_event (vlib_worker_thread_t * w, u64 cpu_time)
+{
+  elog_main_t *em = &vlib_global_main.elog_main;
+  ELOG_TYPE_DECLARE (e) =
+  {
+  .format = "call-worker-init-fns-done",.format_args = "",};
+
+  elog_event_data (em, &e, &w->elog_track, cpu_time);
+}
+
+static inline void
+enter_loop_event (vlib_worker_thread_t * w, u64 cpu_time)
+{
+  elog_main_t *em = &vlib_global_main.elog_main;
+  ELOG_TYPE_DECLARE (e) =
+  {
+  .format = "enter-worker-main-loop",.format_args = "",};
+
+  elog_event_data (em, &e, &w->elog_track, cpu_time);
+}
+
 void
 vlib_worker_thread_fn (void *arg)
 {
@@ -1732,14 +1810,20 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
-  /* Wait until the dpdk init sequence is complete */
-  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
-    vlib_worker_thread_barrier_check ();
+  pre_init_event (w, clib_cpu_time_now ());
 
   e = vlib_call_init_exit_functions
     (vm, &vm->worker_init_function_registrations, 1 /* call_once */ );
   if (e)
     clib_error_report (e);
+
+  post_init_event (w, clib_cpu_time_now ());
+
+  /* Wait until the dpdk init sequence is complete */
+  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
+    vlib_worker_thread_barrier_check ();
+
+  enter_loop_event (w, clib_cpu_time_now ());
 
   vlib_worker_loop (vm);
 }

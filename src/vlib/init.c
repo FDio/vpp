@@ -337,6 +337,8 @@ vlib_call_init_exit_functions (vlib_main_t * vm,
   clib_error_t *error = 0;
   _vlib_init_function_list_elt_t *i;
 
+  clib_spinlock_lock_if_init (&vm->init_fn_list_lock);
+
   if ((error = init_exit_function_sort (headp)))
     return (error);
 
@@ -353,6 +355,7 @@ vlib_call_init_exit_functions (vlib_main_t * vm,
 	}
       i = i->next_init_function;
     }
+  clib_spinlock_unlock_if_init (&vm->init_fn_list_lock);
   return error;
 }
 

@@ -179,35 +179,40 @@ static __clib_unused void * __clib_unused_##tag##_##x = x
 VLIB_DECLARE_INIT_FUNCTION(x,main_loop_exit)
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_CONFIG_FUNCTION(x,n,...)                           \
-    __VA_ARGS__ vlib_config_function_runtime_t                  \
-    VLIB_CONFIG_FUNCTION_SYMBOL(x);                             \
-static void __vlib_add_config_function_##x (void)               \
-    __attribute__((__constructor__)) ;                          \
-static void __vlib_add_config_function_##x (void)               \
-{                                                               \
-    vlib_main_t * vm = vlib_get_main();                         \
-    VLIB_CONFIG_FUNCTION_SYMBOL(x).next_registration            \
-       = vm->config_function_registrations;                     \
-    vm->config_function_registrations                           \
-       = &VLIB_CONFIG_FUNCTION_SYMBOL(x);                       \
-}                                                               \
-static void __vlib_rm_config_function_##x (void)                \
-    __attribute__((__destructor__)) ;                           \
-static void __vlib_rm_config_function_##x (void)                \
-{                                                               \
-    vlib_main_t * vm = vlib_get_main();                         \
-    vlib_config_function_runtime_t *p =                         \
-       & VLIB_CONFIG_FUNCTION_SYMBOL (x);                       \
-    VLIB_REMOVE_FROM_LINKED_LIST                                \
-      (vm->config_function_registrations, p, next_registration);\
-}                                                               \
-  vlib_config_function_runtime_t                                \
-    VLIB_CONFIG_FUNCTION_SYMBOL (x)                             \
-  = {                                                           \
-    .name = n,                                                  \
-    .function = x,                                              \
-    .is_early = 0,						\
+#define VLIB_CONFIG_FUNCTION(x,n,...)                                   \
+    __VA_ARGS__ vlib_config_function_runtime_t                          \
+    VLIB_CONFIG_FUNCTION_SYMBOL(x);                                     \
+static void __vlib_add_config_function_##x (void)                       \
+    __attribute__((__constructor__)) ;                                  \
+static void __vlib_add_config_function_##x (void)                       \
+{                                                                       \
+    vlib_main_t * vm = vlib_get_main();                                 \
+    clib_spinlock_lock_if_init(&vm->init_fn_list_lock);                 \
+    VLIB_CONFIG_FUNCTION_SYMBOL(x).next_registration                    \
+       = vm->config_function_registrations;                             \
+    vm->config_function_registrations                                   \
+       = &VLIB_CONFIG_FUNCTION_SYMBOL(x);                               \
+    clib_spinlock_unlock_if_init(&vm->init_fn_list_lock);               \
+}                                                                       \
+static void __vlib_rm_config_function_##x (void)                        \
+    __attribute__((__destructor__)) ;                                   \
+static void __vlib_rm_config_function_##x (void)                        \
+{                                                                       \
+    vlib_main_t * vm = vlib_get_main();                                 \
+    vlib_config_function_runtime_t *p =                                 \
+       & VLIB_CONFIG_FUNCTION_SYMBOL (x);                               \
+    clib_spinlock_lock_if_init(&vm->init_fn_list_lock);                 \
+    VLIB_REMOVE_FROM_LINKED_LIST                                        \
+      (vm->config_function_registrations, p, next_registration);        \
+    clib_spinlock_unlock_if_init(&vm->init_fn_list_lock);               \
+                                                                        \
+}                                                                       \
+  vlib_config_function_runtime_t                                        \
+    VLIB_CONFIG_FUNCTION_SYMBOL (x)                                     \
+  = {                                                                   \
+    .name = n,                                                          \
+    .function = x,                                                      \
+    .is_early = 0,                                                      \
   }
 #else
 /* create unused pointer to silence compiler warnings and get whole
@@ -223,35 +228,39 @@ static void __vlib_rm_config_function_##x (void)                \
 #endif
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_EARLY_CONFIG_FUNCTION(x,n,...)                     \
-    __VA_ARGS__ vlib_config_function_runtime_t                  \
-    VLIB_CONFIG_FUNCTION_SYMBOL(x);                             \
-static void __vlib_add_config_function_##x (void)               \
-    __attribute__((__constructor__)) ;                          \
-static void __vlib_add_config_function_##x (void)               \
-{                                                               \
-    vlib_main_t * vm = vlib_get_main();                         \
-    VLIB_CONFIG_FUNCTION_SYMBOL(x).next_registration            \
-       = vm->config_function_registrations;                     \
-    vm->config_function_registrations                           \
-       = &VLIB_CONFIG_FUNCTION_SYMBOL(x);                       \
-}                                                               \
-static void __vlib_rm_config_function_##x (void)                \
-    __attribute__((__destructor__)) ;                           \
-static void __vlib_rm_config_function_##x (void)                \
-{                                                               \
-    vlib_main_t * vm = vlib_get_main();                         \
-    vlib_config_function_runtime_t *p =                         \
-       & VLIB_CONFIG_FUNCTION_SYMBOL (x);                       \
-    VLIB_REMOVE_FROM_LINKED_LIST                                \
-      (vm->config_function_registrations, p, next_registration);\
-}                                                               \
-  vlib_config_function_runtime_t                                \
-    VLIB_CONFIG_FUNCTION_SYMBOL (x)                             \
-  = {                                                           \
-    .name = n,                                                  \
-    .function = x,                                              \
-    .is_early = 1,						\
+#define VLIB_EARLY_CONFIG_FUNCTION(x,n,...)                             \
+    __VA_ARGS__ vlib_config_function_runtime_t                          \
+    VLIB_CONFIG_FUNCTION_SYMBOL(x);                                     \
+static void __vlib_add_config_function_##x (void)                       \
+    __attribute__((__constructor__)) ;                                  \
+static void __vlib_add_config_function_##x (void)                       \
+{                                                                       \
+    vlib_main_t * vm = vlib_get_main();                                 \
+    clib_spinlock_lock_if_init(&vm->init_fn_list_lock);                 \
+    VLIB_CONFIG_FUNCTION_SYMBOL(x).next_registration                    \
+       = vm->config_function_registrations;                             \
+    vm->config_function_registrations                                   \
+       = &VLIB_CONFIG_FUNCTION_SYMBOL(x);                               \
+    clib_spinlock_unlock_if_init(&vm->init_fn_list_lock);               \
+}                                                                       \
+static void __vlib_rm_config_function_##x (void)                        \
+    __attribute__((__destructor__)) ;                                   \
+static void __vlib_rm_config_function_##x (void)                        \
+{                                                                       \
+    vlib_main_t * vm = vlib_get_main();                                 \
+    vlib_config_function_runtime_t *p =                                 \
+       & VLIB_CONFIG_FUNCTION_SYMBOL (x);                               \
+    clib_spinlock_lock_if_init(&vm->init_fn_list_lock);                 \
+    VLIB_REMOVE_FROM_LINKED_LIST                                        \
+      (vm->config_function_registrations, p, next_registration);        \
+    clib_spinlock_unlock_if_init(&vm->init_fn_list_lock);               \
+}                                                                       \
+  vlib_config_function_runtime_t                                        \
+    VLIB_CONFIG_FUNCTION_SYMBOL (x)                                     \
+  = {                                                                   \
+    .name = n,                                                          \
+    .function = x,                                                      \
+    .is_early = 1,                                                      \
   }
 #else
 /* create unused pointer to silence compiler warnings and get whole

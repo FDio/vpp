@@ -674,6 +674,7 @@ vlib_unix_main (int argc, char *argv[])
   vm->heap_aligned_base = (void *)
     (((uword) vm->heap_base) & ~(VLIB_FRAME_ALIGN - 1));
   ASSERT (vm->heap_base);
+  clib_spinlock_init (&vm->init_fn_list_lock);
 
   unformat_init_command_line (&input, (char **) vm->argv);
   if ((e = vlib_plugin_config (vm, &input)))

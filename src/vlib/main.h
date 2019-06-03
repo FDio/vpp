@@ -204,6 +204,7 @@ typedef struct vlib_main_t
   u32 numa_node;
 
   /* List of init functions to call, setup by constructors */
+  clib_spinlock_t init_fn_list_lock;
   _vlib_init_function_list_elt_t *init_function_registrations;
   _vlib_init_function_list_elt_t *worker_init_function_registrations;
   _vlib_init_function_list_elt_t *main_loop_enter_function_registrations;
