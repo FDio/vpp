@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "4147ea85_00bf14f8",
+        "filename": "src/plugins/l3xc/l3xc.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-03T16:03:49Z",
+      "side": 1,
+      "message": "it\u0027s the only exported symbol, a main symbol wouldn\u0027t reduce the number.",
+      "parentUuid": "638d3f12_11cb452f",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 104,
+        "endChar": 25
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7b683d80_b31afbf9",
         "filename": "src/plugins/l3xc/l3xc_node.c",
         "patchSetId": 4
@@ -68,6 +92,30 @@
       "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd5d7ed2_40ff8a5f",
+        "filename": "src/plugins/l3xc/l3xc_node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-03T16:03:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7b683d80_b31afbf9",
+      "range": {
+        "startLine": 97,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 2
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
