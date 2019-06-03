@@ -445,6 +445,7 @@ list(APPEND VNET_SOURCES
   ip/ip.c
   ip/ip_init.c
   ip/ip_in_out_acl.c
+  ip/ip_punt_drop.c
   ip/lookup.c
   ip/ping.c
   ip/punt_api.c
