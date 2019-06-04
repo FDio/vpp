@@ -23,7 +23,7 @@
 /* CRYPTO_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES */
 #define foreach_crypto_cipher_alg \
   _(DES_CBC,     "des-cbc", 7) \
-  _(3DES_CBC,    "3des-cbc", 14) \
+  _(3DES_CBC,    "3des-cbc", 24) \
   _(AES_128_CBC, "aes-128-cbc", 16) \
   _(AES_192_CBC, "aes-192-cbc", 24) \
   _(AES_256_CBC, "aes-256-cbc", 32) \
