@@ -1416,13 +1416,19 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 
       if (dst_left == 0)
 	{
-	  if (db != first)
-	    db->current_data = 0;
 	  db->current_length = dp - (u8 *) vlib_buffer_get_current (db);
 	  ASSERT (db->flags & VLIB_BUFFER_NEXT_PRESENT);
 	  db = vlib_get_buffer (vm, db->next_buffer);
 	  dst_left = data_size;
-	  dp = db->data;
+	  if (db->current_data > 0)
+	    {
+	      db->current_data = 0;
+	    }
+	  else
+	    {
+	      dst_left += -db->current_data;
+	    }
+	  dp = vlib_buffer_get_current (db);
 	}
 
       while (src_left == 0)
