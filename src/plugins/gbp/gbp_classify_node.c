@@ -330,8 +330,16 @@ gbp_classify_get_src_ip_address (const ethernet_header_t * eh0,
 	      gbp_classify_get_src_ip6_address (eh0, ip6);
 	      break;
 	    }
+	  case ETHERNET_TYPE_ARP:
+	    {
+	      const ethernet_arp_header_t *ea0;
+
+	      ea0 = (ethernet_arp_header_t *) (eh0 + 1);
+
+	      *ip4 = &ea0->ip4_over_ethernet[0].ip4;
+	      break;
+	    }
 	  }
-	break;
       }
     case ETHERNET_TYPE_ARP:
       {
