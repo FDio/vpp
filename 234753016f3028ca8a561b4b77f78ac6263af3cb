@@ -72,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "7d229105_73553a8a",
+        "filename": "src/plugins/l3xc/l3xc.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T07:50:03Z",
+      "side": 1,
+      "message": "I can see 2:\n\nextern fib_node_type_t l3xc_fib_node_type;\nextern l3xc_t *l3xc_pool;",
+      "parentUuid": "4147ea85_00bf14f8",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 104,
+        "endChar": 25
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7b683d80_b31afbf9",
         "filename": "src/plugins/l3xc/l3xc_node.c",
         "patchSetId": 4
