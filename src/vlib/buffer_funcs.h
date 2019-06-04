@@ -1396,7 +1396,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 	  b->flags = VLIB_BUFFER_NEXT_PRESENT;
 	  b->next_buffer = bi;
 	  b = vlib_get_buffer (vm, bi);
-	  len += data_size;
+	  len += VLIB_BUFFER_PRE_DATA_SIZE + data_size;
 	  n_buffers++;
 	}
       sb = vlib_get_buffer (vm, first->next_buffer);
@@ -1417,12 +1417,20 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
       if (dst_left == 0)
 	{
 	  if (db != first)
-	    db->current_data = 0;
+	    db->current_data = -VLIB_BUFFER_PRE_DATA_SIZE;
 	  db->current_length = dp - (u8 *) vlib_buffer_get_current (db);
 	  ASSERT (db->flags & VLIB_BUFFER_NEXT_PRESENT);
 	  db = vlib_get_buffer (vm, db->next_buffer);
-	  dst_left = data_size;
-	  dp = db->data;
+	  if (db != first)
+	    {
+	      dst_left = VLIB_BUFFER_PRE_DATA_SIZE + data_size;
+	      dp = db->pre_data;
+	    }
+	  else
+	    {
+	      dst_left = data_size;
+	      dp = db->data;
+	    }
 	}
 
       while (src_left == 0)
@@ -1450,7 +1458,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
       bytes_left -= bytes_to_copy;
     }
   if (db != first)
-    db->current_data = 0;
+    db->current_data = -VLIB_BUFFER_PRE_DATA_SIZE;
   db->current_length = dp - (u8 *) vlib_buffer_get_current (db);
 
   if (is_cloned && to_free)
