@@ -27,7 +27,6 @@
 
 DECLARE_CJ_GLOBAL_LOG;
 
-#define FRAME_QUEUE_NELTS 64
 
 u32
 vl (void *p)
@@ -1786,7 +1785,7 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
   int i;
 
   if (frame_queue_nelts == 0)
-    frame_queue_nelts = FRAME_QUEUE_NELTS;
+    frame_queue_nelts = FRAME_QUEUE_MAX_NELTS;
 
   ASSERT (frame_queue_nelts >= 8);
 
