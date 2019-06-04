@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ee560f6f_00c318d6",
+        "filename": "src/plugins/ioam/ipfixcollector/ipfixcollector.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-06-04T15:54:54Z",
+      "side": 1,
+      "message": "wouldn\u0027t it make sense to add an \"ipfix_port_registered\" boolean to the main_t, test/set that boolean here?",
+      "revId": "ddb4f27ae67cd49a63c77cd98b508552d340eb79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f393087_9a857758",
+        "filename": "src/vnet/geneve/geneve.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-06-04T15:54:54Z",
+      "side": 1,
+      "message": "Same comment, x2...",
+      "revId": "ddb4f27ae67cd49a63c77cd98b508552d340eb79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
