@@ -743,6 +743,17 @@ int vnet_vxlan_gpe_add_del_tunnel
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
+  if (a->is_add)
+    {
+      /* register udp ports */
+      if (!is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_VXLAN_GPE, 1))
+	udp_register_dst_port (ngm->vlib_main, UDP_DST_PORT_VXLAN_GPE,
+			       vxlan4_gpe_input_node.index, 1 /* is_ip4 */ );
+      if (is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_VXLAN6_GPE, 0))
+	udp_register_dst_port (ngm->vlib_main, UDP_DST_PORT_VXLAN6_GPE,
+			       vxlan6_gpe_input_node.index, 0 /* is_ip4 */ );
+    }
+
   return 0;
 }
 
@@ -1252,11 +1263,6 @@ vxlan_gpe_init (vlib_main_t * vm)
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
   ngm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
-
-  udp_register_dst_port (vm, UDP_DST_PORT_VXLAN_GPE,
-			 vxlan4_gpe_input_node.index, 1 /* is_ip4 */ );
-  udp_register_dst_port (vm, UDP_DST_PORT_VXLAN6_GPE,
-			 vxlan6_gpe_input_node.index, 0 /* is_ip4 */ );
 
   /* Register the list of standard decap protocols supported */
   vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IP4,
