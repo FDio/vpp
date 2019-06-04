@@ -199,7 +199,9 @@ class VPPStats(object):
         while time.time() < poll_end_time:
             rv = self.api.stat_segment_connect_r(socketname.encode('utf-8'),
                                                  self.client)
-            if rv == 0:
+            # Break out if success or any other error than "no such file"
+            # (indicating that VPP hasn't started yet)
+            if rv == 0 or ffi.errno != 2:
                 break
 
         if rv != 0:
