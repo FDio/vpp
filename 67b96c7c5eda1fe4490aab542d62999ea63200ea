@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da2b5a31_3ebb0511",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T08:15:10Z",
+      "side": 1,
+      "message": "not needed",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 104,
+        "endChar": 16
+      },
+      "revId": "67b96c7c5eda1fe4490aab542d62999ea63200ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5826703a_3cbe96ee",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T08:15:10Z",
+      "side": 1,
+      "message": "this is expensive, see how esp_decrypt node deals with counter, it is updated only when SA changes....",
+      "range": {
+        "startLine": 202,
+        "startChar": 0,
+        "endLine": 204,
+        "endChar": 27
+      },
+      "revId": "67b96c7c5eda1fe4490aab542d62999ea63200ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "842f8fb0_4ecdc6dc",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T08:15:10Z",
+      "side": 1,
+      "message": "not needed",
+      "range": {
+        "startLine": 228,
+        "startChar": 0,
+        "endLine": 229,
+        "endChar": 58
+      },
+      "revId": "67b96c7c5eda1fe4490aab542d62999ea63200ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c9534e1_8bee0770",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T08:15:10Z",
+      "side": 1,
+      "message": "op-\u003edigest \u003d b[0]-\u003edata + pd-\u003ecurrent_data + b[0]-\u003ecurrent_length;l\nop-\u003eflags \u003d VNET_CRYPTO_OP_FLAG_HMAC_CHECK;",
+      "range": {
+        "startLine": 233,
+        "startChar": 3,
+        "endLine": 233,
+        "endChar": 33
+      },
+      "revId": "67b96c7c5eda1fe4490aab542d62999ea63200ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "10c19773_8abf93b3",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T08:15:10Z",
+      "side": 1,
+      "message": "not needed",
+      "range": {
+        "startLine": 247,
+        "startChar": 0,
+        "endLine": 248,
+        "endChar": 38
+      },
+      "revId": "67b96c7c5eda1fe4490aab542d62999ea63200ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "85fa19f0_51fc00de",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T08:15:10Z",
+      "side": 1,
+      "message": "This is not needed, crypto infra does that check and it returns VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC in op-\u003estatus.",
+      "range": {
+        "startLine": 304,
+        "startChar": 0,
+        "endLine": 304,
+        "endChar": 63
+      },
+      "revId": "67b96c7c5eda1fe4490aab542d62999ea63200ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1da78e0b_c363756e",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T08:15:10Z",
+      "side": 1,
+      "message": "memmove is causing function call which is costly, consider alternative used in esp_decrypt...",
+      "range": {
+        "startLine": 335,
+        "startChar": 7,
+        "endLine": 335,
+        "endChar": 14
+      },
+      "revId": "67b96c7c5eda1fe4490aab542d62999ea63200ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
