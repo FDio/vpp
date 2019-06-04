@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "829285ea_bdf2cc6d",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T07:42:26Z",
+      "side": 1,
+      "message": "This is very costly, STORE of 1 byte and 32 bytes costs same. Can you simply create buffer template like AVF, memif, dpdk,...",
+      "range": {
+        "startLine": 225,
+        "startChar": 0,
+        "endLine": 284,
+        "endChar": 1
+      },
+      "revId": "bab55070d324f79fefcf7e02dd1fa9eeb88ff8de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
