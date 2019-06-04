@@ -91,6 +91,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   is_add = 0;
   flags = IPSEC_SA_FLAG_NONE;
   proto = IPSEC_PROTOCOL_ESP;
+  integ_alg = IPSEC_INTEG_ALG_NONE;
+  crypto_alg = IPSEC_CRYPTO_ALG_NONE;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -149,7 +151,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
     rv = ipsec_sa_del (id);
 
   if (rv)
-    clib_error_return (0, "failed");
+    error = clib_error_return (0, "failed");
 
 done:
   unformat_free (line_input);
@@ -233,9 +235,6 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 
   clib_memset (&p, 0, sizeof (p));
   p.lport.stop = p.rport.stop = ~0;
-  p.laddr.stop.ip4.as_u32 = p.raddr.stop.ip4.as_u32 = (u32) ~ 0;
-  p.laddr.stop.ip6.as_u64[0] = p.laddr.stop.ip6.as_u64[1] = (u64) ~ 0;
-  p.raddr.stop.ip6.as_u64[0] = p.raddr.stop.ip6.as_u64[1] = (u64) ~ 0;
   is_outbound = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))

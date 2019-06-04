@@ -171,13 +171,19 @@ ipsec_sa_add (u32 id,
 					      im->crypto_algs[crypto_alg].alg,
 					      (u8 *) ck->data, ck->len);
   if (~0 == sa->crypto_key_index)
-    return VNET_API_ERROR_INVALID_VALUE;
+    {
+      pool_put (im->sad, sa);
+      return VNET_API_ERROR_KEY_LENGTH;
+    }
 
   sa->integ_key_index = vnet_crypto_key_add (vm,
 					     im->integ_algs[integ_alg].alg,
 					     (u8 *) ik->data, ik->len);
   if (~0 == sa->integ_key_index)
-    return VNET_API_ERROR_INVALID_VALUE;
+    {
+      pool_put (im->sad, sa);
+      return VNET_API_ERROR_KEY_LENGTH;
+    }
 
   err = ipsec_check_support_cb (im, sa);
   if (err)
