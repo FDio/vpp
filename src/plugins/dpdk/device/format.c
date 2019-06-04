@@ -646,11 +646,11 @@ format_dpdk_device (u8 * s, va_list * args)
   /* $$$ MIB counters  */
   {
 #define _(N, V)							\
-    if ((xd->stats.V - xd->last_cleared_stats.V) != 0) {       \
+    if (xd->stats.V != 0) {                                    \
       s = format (s, "\n%U%-40U%16Lu",                         \
                   format_white_space, indent + 2,              \
                   format_c_identifier, #N,                     \
-                  xd->stats.V - xd->last_cleared_stats.V);     \
+                  xd->stats.V);                                \
     }                                                          \
 
     foreach_dpdk_counter
