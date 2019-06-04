@@ -17,6 +17,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsTable, VppIpTable
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_papi import VppEnum
 
 NUM_PKTS = 67
 
@@ -1281,10 +1282,28 @@ class TestIPPunt(VppTestCase):
     def test_ip_punt(self):
         """ IP punt police and redirect """
 
+        # use UDP packet that have a port we need to explicitly
+        # register to get punted.
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        punt_udp = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip4,
+                    'protocol': udp_proto,
+                    'port': 1234,
+                }
+            }
+        }
+
+        self.vapi.set_punt(is_add=1, punt=punt_udp)
+
         p = (Ether(src=self.pg0.remote_mac,
                    dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-             TCP(sport=1234, dport=1234) /
+             UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
 
         pkts = p * 1025
