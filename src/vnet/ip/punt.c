@@ -397,9 +397,6 @@ punt_l4_add_del (vlib_main_t * vm,
 	return clib_error_return (0,
 				  "punt TCP/SCTP ports is not supported yet");
 
-      if (!udp_is_valid_dst_port (port, af == AF_IP4))
-	return clib_error_return (0, "invalid port: %d", port);
-
       udp_register_dst_port (vm, port, udp4_punt_node.index, af == AF_IP4);
 
       return 0;
@@ -438,16 +435,19 @@ punt_cli (vlib_main_t * vm,
 {
   clib_error_t *error = NULL;
   bool is_add = true;
+  /* *INDENT-OFF* */
   punt_reg_t pr = {
     .punt = {
-	     .l4 = {
-		    .af = AF_IP4,
-		    .port = ~0,
-		    .protocol = ~0,
-		    },
-	     },
+      .l4 = {
+        .af = AF_IP4,
+        .port = ~0,
+        .protocol = ~0,
+      },
+    },
     .type = PUNT_TYPE_L4,
   };
+  u32 port;
+  /* *INDENT-ON* */
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -457,8 +457,8 @@ punt_cli (vlib_main_t * vm,
 	pr.punt.l4.af = AF_IP6;
       else if (unformat (input, "ip6"))
 	pr.punt.l4.af = AF_IP6;
-      else if (unformat (input, "%d", &pr.punt.l4.port))
-	;
+      else if (unformat (input, "%d", &port))
+	pr.punt.l4.port = port;
       else if (unformat (input, "udp"))
 	pr.punt.l4.protocol = IP_PROTOCOL_UDP;
       else if (unformat (input, "tcp"))
