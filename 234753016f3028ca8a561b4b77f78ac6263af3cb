@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "672e0029_231f69a3",
+        "filename": "src/plugins/l3xc/l3xc.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-04T10:21:28Z",
+      "side": 1,
+      "message": "it means the struct is guaranteed to occupy only one cache line, so at most 1 miss at switch time. i also fix the pool_get.",
+      "parentUuid": "4348ac80_cf9f2824",
+      "range": {
+        "startLine": 35,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 42
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "638d3f12_11cb452f",
         "filename": "src/plugins/l3xc/l3xc.h",
         "patchSetId": 4
@@ -93,6 +117,30 @@
       "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "593ef103_bdf2c115",
+        "filename": "src/plugins/l3xc/l3xc.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-04T10:21:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4147ea85_00bf14f8",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 104,
+        "endChar": 25
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
