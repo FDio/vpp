@@ -167,8 +167,8 @@ srp_input (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  s0 = (void *) (b0->data + b0->current_data);
-	  s1 = (void *) (b1->data + b1->current_data);
+	  s0 = vlib_buffer_get_current (b0);
+	  s1 = vlib_buffer_get_current (b1);
 
 	  /* Data packets are always assigned to side A (outer ring) interface. */
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
@@ -229,7 +229,7 @@ srp_input (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  s0 = (void *) (b0->data + b0->current_data);
+	  s0 = vlib_buffer_get_current (b0);
 
 	  /* Data packets are always assigned to side A (outer ring) interface. */
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
