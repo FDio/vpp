@@ -397,6 +397,7 @@ dpdk_clear_hw_interface_counters (u32 instance)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, instance);
 
+  rte_eth_stats_reset (xd->port_id);
   rte_eth_xstats_reset (xd->port_id);
 }
 
