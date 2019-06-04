@@ -22,6 +22,30 @@
       "revId": "e45a50f9ca6a55e1f60b186678255c9a17709374",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c82f2e38_e1c5da98",
+        "filename": "src/plugins/lb/lbhash.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-06-04T15:53:57Z",
+      "side": 1,
+      "message": "+1...",
+      "parentUuid": "2dbf6517_f94e1b1d",
+      "range": {
+        "startLine": 92,
+        "startChar": 2,
+        "endLine": 92,
+        "endChar": 8
+      },
+      "revId": "e45a50f9ca6a55e1f60b186678255c9a17709374",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
