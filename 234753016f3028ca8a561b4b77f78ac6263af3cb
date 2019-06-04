@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "4328290d_9b8ca95d",
+        "filename": "src/plugins/l3xc/l3xc.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-04T16:59:27Z",
+      "side": 1,
+      "message": "CLIB_CACHE_LINE_ALIGN_MARK doesn\u0027t guarantee that data will occupy only one cacheline of data, if you have 65 bytes of real data, it will be 2 cachelines.\n\nThis structure, if I counted correctly is 32 bytes, so it is natural fit for two-in-one-cacheline. You will save 50% o memory, reduce cache usage and there will be no drawbacks.\nGenerally for read only data,  it makes sense to me to compress as much as possible to reduce cache utilisation.\nIf data is updated by dataplane code, it must be cacheline aligned to avoid false sharing.\n\nBut at the end, not big deal. If you want to leave it as it is, I will be glad to press the button.",
+      "parentUuid": "672e0029_231f69a3",
+      "range": {
+        "startLine": 35,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 42
+      },
+      "revId": "234753016f3028ca8a561b4b77f78ac6263af3cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "638d3f12_11cb452f",
         "filename": "src/plugins/l3xc/l3xc.h",
         "patchSetId": 4
