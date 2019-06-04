@@ -180,7 +180,8 @@ vnet_crypto_key_len_check (vnet_crypto_alg_t alg, u16 length)
 #define _(n, s, l) \
       case VNET_CRYPTO_ALG_##n: \
         if ((l) == length) \
-          return 1;
+          return 1;        \
+        break;
       foreach_crypto_cipher_alg foreach_crypto_aead_alg
 #undef _
 	/* HMAC allows any key length */
@@ -203,7 +204,6 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key;
 
-  ASSERT (vnet_crypto_key_len_check (alg, length));
   if (!vnet_crypto_key_len_check (alg, length))
     return ~0;
 
