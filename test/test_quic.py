@@ -301,5 +301,70 @@ class QUICExternalEchoIPv4TestCase(QUICTestCase):
                                           "client", "mbytes", "10"])
 
 
+class QUICExternalEchoIPv4ServerStreamTestCase(QUICTestCase):
+    """ QUIC External Echo IPv4 Transfer (Server Stream Create) Test Cases """
+
+    @classmethod
+    def setUpConstants(cls):
+        super(QUICExternalEchoIPv4ServerStreamTestCase, cls).setUpConstants()
+        cls.vpp_cmdline.extend(["session", "{", "evt_qs_memfd_seg", "}"])
+
+    @classmethod
+    def setUpClass(cls):
+        super(QUICExternalEchoIPv4ServerStreamTestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(QUICExternalEchoIPv4ServerStreamTestCase, cls).tearDownClass()
+
+    def setUp(self):
+        super(QUICExternalEchoIPv4ServerStreamTestCase, self).setUp()
+        self.thru_host_stack_ipv4_setup()
+
+    def tearDown(self):
+        super(QUICExternalEchoIPv4ServerStreamTestCase, self).tearDown()
+        self.thru_host_stack_ipv4_tear_down()
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_external_transfer_server_stream(self):
+        """ QUIC external echo client/server transfer """
+
+        # Create 3 quic streams on server qsession accept
+        #
+        self.external_ipv4_transfer_test(self.server_echo_test_args +
+                                         ["socket-name", self.api_sock,
+                                          "server", "quic-streams", "3",
+                                          "master-create-streams",
+                                          "qsession-accept"],
+                                         self.client_echo_test_args +
+                                         ["socket-name", self.api_sock,
+                                          "client", "mbytes", "10"])
+
+        # Create 3 quic streams on server stream session accept
+        #
+        # self.external_ipv4_transfer_test(self.server_echo_test_args +
+        #                                 ["socket-name", self.api_sock,
+        #                                  "server", "quic-streams", "3",
+        #                                  "master-create-streams",
+        #                                  "stream-accept"],
+        #                                 self.client_echo_test_args +
+        #                                 ["socket-name", self.api_sock,
+        #                                  "client", "mbytes", "10"])
+
+        # create 3 quic streams on server qsession accept and
+        # create 3 quic streams on server stream session accept
+        #
+        # self.external_ipv4_transfer_test(self.server_echo_test_args +
+        #                                 ["socket-name", self.api_sock,
+        #                                  "server", "quic-streams", "3",
+        #                                  "master-create-streams"],
+        #                                 self.client_echo_test_args +
+        #                                 ["socket-name", self.api_sock,
+        #                                  "client", "mbytes", "10"])
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -75,6 +75,12 @@ enum quic_session_type_t
   QUIC_SESSION_TYPE_LISTEN = INT32_MAX,
 };
 
+enum quic_server_stream_create_t
+{
+  MASTER_CREATE_STREAMS_ACCEPT_QSESSION = 1,
+  MASTER_CREATE_STREAMS_ACCEPT_SSESSION = 2
+};
+
 typedef struct
 {
   /* vpe input queue */
@@ -103,6 +109,10 @@ typedef struct
   u8 *connect_uri;
 
   u32 connected_session_index;
+
+  /* URI for master's stream connect */
+  /* TODO: support multiple clients */
+  u8 *client_uri;
 
   int i_am_master;
 
@@ -139,6 +149,8 @@ typedef struct
   u64 bytes_to_send;
   u32 fifo_size;
   u32 quic_streams;
+  u8 master_create_streams;
+
   u8 *appns_id;
   u64 appns_flags;
   u64 appns_secret;
@@ -754,7 +766,29 @@ session_bound_handler (session_bound_msg_t * mp)
 static void
 quic_qsession_accepted_handler (session_accepted_msg_t * mp)
 {
+  echo_main_t *em = &echo_main;
   DBG ("Accept on QSession index %u", mp->handle);
+
+  if (em->i_am_master)
+    {
+      vec_reset_length (em->client_uri);
+      em->client_uri = format (em->client_uri, "quic://session/%lu",
+			       mp->handle);
+
+      if (em->master_create_streams & MASTER_CREATE_STREAMS_ACCEPT_QSESSION)
+	{
+	  u32 i;
+
+	  for (i = 1; i < em->quic_streams; i++)
+	    {
+	      DBG ("Server [qsession-accept] creating QUIC stream #%d: %s",
+		   i, em->client_uri);
+
+	      client_send_connect (em, em->client_uri,
+				   QUIC_SESSION_TYPE_STREAM);
+	    }
+	}
+    }
 }
 
 
@@ -776,6 +810,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
   if (start_time == 0.0)
     start_time = clib_time_now (&em->clib_time);
 
+  /* TODO: Support multiple clients */
   ip_str = format (0, "%U", format_ip46_address, &mp->rmt.ip, mp->rmt.is_ip4);
   clib_warning ("Accepted session from: %s:%d", ip_str,
 		clib_net_to_host_u16 (mp->rmt.port));
@@ -818,7 +853,21 @@ session_accepted_handler (session_accepted_msg_t * mp)
   /* TODO : this is very ugly */
   if (mp->rmt.is_ip4 != 255)
     return quic_qsession_accepted_handler (mp);
-  DBG ("SSession handle is %lu", mp->handle);
+  DBG ("Stream Session handle is %lu", mp->handle);
+
+  if (em->i_am_master &&
+      em->master_create_streams & MASTER_CREATE_STREAMS_ACCEPT_SSESSION)
+    {
+      u32 i;
+
+      for (i = 1; i < em->quic_streams; i++)
+	{
+	  DBG ("Server [stream-accept] creating QUIC stream #%d: %s",
+	       i, em->client_uri);
+
+	  client_send_connect (em, em->client_uri, QUIC_SESSION_TYPE_STREAM);
+	}
+    }
 
   em->state = STATE_READY;
 
@@ -896,7 +945,7 @@ session_connected_handler (session_connected_msg_t * mp)
   if (mp->context == QUIC_SESSION_TYPE_QUIC)
     return quic_session_connected_handler (mp);
 
-  DBG ("SSession Connected");
+  DBG ("Stream Session Connected");
 
   /*
    * Start RX thread
@@ -1461,6 +1510,23 @@ quic_echo_api_hookup (echo_main_t * em)
 #undef _
 }
 
+static uword
+unformat_master_create_streams (unformat_input_t * input, va_list * args)
+{
+  echo_main_t *em = &echo_main;
+
+  if (unformat (input, "qsession-accept"))
+    em->master_create_streams |= MASTER_CREATE_STREAMS_ACCEPT_QSESSION;
+  else if (unformat (input, "stream-accept"))
+    em->master_create_streams |= MASTER_CREATE_STREAMS_ACCEPT_SSESSION;
+  else
+    em->master_create_streams |=
+      MASTER_CREATE_STREAMS_ACCEPT_QSESSION |
+      MASTER_CREATE_STREAMS_ACCEPT_SSESSION;
+
+  return 1;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1542,8 +1608,12 @@ main (int argc, char **argv)
 	em->appns_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
       else if (unformat (a, "secret %lu", &em->appns_secret))
 	;
-      else if (unformat (a, "quic-streams %d", &em->quic_streams))
+      else if (unformat (a, "quic-streams %u", &em->quic_streams))
 	;
+      else if (unformat (a, "master-create-streams %U",
+			 unformat_master_create_streams))
+	clib_warning ("em->master_create_streams = %d, quic-streams = %d",
+		      em->master_create_streams, em->quic_streams);
       else
 	{
 	  fformat (stderr, "%s: usage [master|slave]\n", argv[0]);
