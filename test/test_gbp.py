@@ -3529,6 +3529,9 @@ class TestGBP(VppTestCase):
         vlan_101 = VppDot1QSubint(self, self.pg0, 101)
         vlan_101.admin_up()
         VppL2Vtr(self, vlan_101, L2_VTR_OP.L2_POP_1).add_vpp_config()
+        # vlan_102 is not poped
+        vlan_102 = VppDot1QSubint(self, self.pg0, 102)
+        vlan_102.admin_up()
 
         ext_itf = VppGbpExtItf(self, self.loop0, bd1, rd1)
         ext_itf.add_vpp_config()
@@ -3557,6 +3560,12 @@ class TestGBP(VppTestCase):
                               "2001:10::2", "3001::2",
                               ep_flags.GBP_API_ENDPOINT_FLAG_EXTERNAL)
         eep2.add_vpp_config()
+        eep3 = VppGbpEndpoint(self, vlan_102,
+                              epg_220, None,
+                              "10.0.0.3", "11.0.0.3",
+                              "2001:10::3", "3001::3",
+                              ep_flags.GBP_API_ENDPOINT_FLAG_EXTERNAL)
+        eep3.add_vpp_config()
 
         #
         # A remote external endpoint
@@ -3579,6 +3588,16 @@ class TestGBP(VppTestCase):
                  ARP(op="who-has",
                      psrc=eep1.ip4.address, pdst="10.0.0.128",
                      hwsrc=eep1.mac, hwdst="ff:ff:ff:ff:ff:ff"))
+        rxs = self.send_and_expect(self.pg0, p_arp * 1, self.pg0)
+
+        #
+        # ARP packet from host in remote subnet are accepted and replied to
+        #
+        p_arp = (Ether(src=vlan_102.remote_mac, dst="ff:ff:ff:ff:ff:ff") /
+                 Dot1Q(vlan=102) /
+                 ARP(op="who-has",
+                     psrc="10.0.0.17", pdst="10.0.0.128",
+                     hwsrc=vlan_102.remote_mac, hwdst="ff:ff:ff:ff:ff:ff"))
         rxs = self.send_and_expect(self.pg0, p_arp * 1, self.pg0)
 
         #
@@ -3660,6 +3679,20 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[Ether].src, eep1.mac)
             self.assertEqual(rx[Ether].dst, eep2.mac)
             self.assertEqual(rx[Dot1Q].vlan, 101)
+
+        #
+        # local EP pings router w/o vlan tag poped
+        #
+        p = (Ether(src=eep3.mac, dst=str(self.router_mac)) /
+             Dot1Q(vlan=102) /
+             IP(src=eep3.ip4.address, dst="10.0.0.128") /
+             ICMP(type='echo-request'))
+
+        rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, str(self.router_mac))
+            self.assertEqual(rx[Ether].dst, vlan_102.remote_mac)
 
         #
         # A subnet reachable through the external EP1
