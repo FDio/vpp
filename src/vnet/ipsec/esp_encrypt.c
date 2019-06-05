@@ -288,12 +288,15 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (sa_index0 != current_sa_index)
 	{
+	  if (current_sa_packets)
+	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+					     current_sa_index,
+					     current_sa_packets,
+					     current_sa_bytes);
+	  current_sa_packets = current_sa_bytes = 0;
+
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
 	  current_sa_index = sa_index0;
-	  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					   sa_index0, current_sa_packets,
-					   current_sa_bytes);
-	  current_sa_packets = current_sa_bytes = 0;
 	  spi = clib_net_to_host_u32 (sa0->spi);
 	  block_sz = sa0->crypto_block_size;
 	  icv_sz = sa0->integ_icv_size;
