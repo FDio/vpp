@@ -228,7 +228,7 @@ class VppBFDUDPSession(VppObject):
 
     def __init__(self, test, interface, peer_addr, local_addr=None, af=AF_INET,
                  desired_min_tx=300000, required_min_rx=300000, detect_mult=3,
-                 sha1_key=None, bfd_key_id=None):
+                 sha1_key=None, bfd_key_id=None, is_tunnel=False):
         self._test = test
         self._interface = interface
         self._af = af
@@ -247,6 +247,7 @@ class VppBFDUDPSession(VppObject):
             self._bfd_key_id = bfd_key_id
         else:
             self._bfd_key_id = randint(0, 255)
+        self._is_tunnel = is_tunnel
 
     @property
     def test(self):
@@ -347,6 +348,10 @@ class VppBFDUDPSession(VppObject):
     def bfd_key_id(self):
         """ bfd key id in use """
         return self._bfd_key_id
+
+    @property
+    def is_tunnel(self):
+        return self._is_tunnel
 
     def activate_auth(self, key, bfd_key_id=None, delayed=False):
         """ activate authentication for this session """
