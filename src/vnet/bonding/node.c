@@ -90,7 +90,7 @@ bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u16 *ethertype_p, ethertype;
   ethernet_vlan_header_t *vlan;
-  ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b);
+  ethernet_header_t *eth = vlib_buffer_get_current (b);
 
   ethertype = clib_mem_unaligned (&eth->type, u16);
   if (!ethernet_frame_is_tagged (ntohs (ethertype)))
