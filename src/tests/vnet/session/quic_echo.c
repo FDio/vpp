@@ -75,6 +75,28 @@ enum quic_session_type_t
   QUIC_SESSION_TYPE_LISTEN = INT32_MAX,
 };
 
+typedef struct _quic_echo_cb_vft
+{
+  void (*quic_connected_cb) (session_connected_msg_t * mp, u32 session_index);
+  void (*client_stream_connected_cb) (session_connected_msg_t * mp,
+				      u32 session_index);
+  void (*server_stream_connected_cb) (session_connected_msg_t * mp,
+				      u32 session_index);
+  void (*quic_accepted_cb) (session_accepted_msg_t * mp, u32 session_index);
+  void (*client_stream_accepted_cb) (session_accepted_msg_t * mp,
+				     u32 session_index);
+  void (*server_stream_accepted_cb) (session_accepted_msg_t * mp,
+				     u32 session_index);
+} quic_echo_cb_vft_t;
+
+
+typedef enum
+{
+  RETURN_PACKETS_NOTEST,
+  RETURN_PACKETS_LOG_WRONG,
+  RETURN_PACKETS_ASSERT,
+} test_return_packets_t;
+
 typedef struct
 {
   /* vpe input queue */
@@ -102,11 +124,6 @@ typedef struct
   /* intermediate rx buffer */
   u8 *rx_buf;
 
-  /* URI for slave's connect */
-  u8 *connect_uri;
-
-  u32 connected_session_index;
-
   int i_am_master;
 
   /* drop all packets */
@@ -129,35 +146,36 @@ typedef struct
   volatile int time_to_stop;
   volatile int time_to_print_stats;
 
-  u32 configured_segment_size;
-
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
 
   u8 *connect_test_data;
   pthread_t *client_thread_handles;
   u32 *thread_args;
-  u32 client_bytes_received;
   u8 test_return_packets;
   u64 bytes_to_send;
   u32 fifo_size;
-  u32 quic_streams;
+
   u8 *appns_id;
   u64 appns_flags;
   u64 appns_secret;
 
-  u32 n_clients;
+  u32 n_clients;		/* Number of client threads to allocate */
+  u32 n_stream_clients;		/* Number of QUIC stream clients */
   u64 tx_total;
   u64 rx_total;
 
   volatile u32 n_clients_connected;
-  volatile u32 n_active_clients;
 
+  /* cb vft for QUIC scenarios */
+  quic_echo_cb_vft_t cb_vft;
 
   /** Flag that decides if socket, instead of svm, api is used to connect to
    * vpp. If sock api is used, shm binary api is subsequently bootstrapped
    * and all other messages are exchanged using shm IPC. */
   u8 use_sock_api;
+
+  /* Limit the number of incorrect data messages */
   int max_test_msg;
 
   fifo_segment_main_t segment_main;
@@ -170,6 +188,34 @@ echo_main_t echo_main;
 #else
 #define NITER 4000000
 #endif
+
+#if CLIB_DEBUG > 0
+#define TIMEOUT 10.0
+#else
+#define TIMEOUT 10.0
+#endif
+
+u8 *
+format_quic_echo_state (u8 * s, va_list * args)
+{
+  u32 state = va_arg (*args, u32);
+  if (state == STATE_START)
+    return format (s, "STATE_START");
+  if (state == STATE_ATTACHED)
+    return format (s, "STATE_ATTACHED");
+  if (state == STATE_LISTEN)
+    return format (s, "STATE_LISTEN");
+  if (state == STATE_READY)
+    return format (s, "STATE_READY");
+  if (state == STATE_DISCONNECTING)
+    return format (s, "STATE_DISCONNECTING");
+  if (state == STATE_FAILED)
+    return format (s, "STATE_FAILED");
+  if (state == STATE_DETACHED)
+    return format (s, "STATE_DETACHED");
+  else
+    return format (s, "unknown state");
+}
 
 static u8 *
 format_api_error (u8 * s, va_list * args)
@@ -199,13 +245,9 @@ init_error_string_table (echo_main_t * em)
   hash_set (em->error_string_by_error_number, 99, "Misc");
 }
 
-static void handle_mq_event (session_event_t * e);
-
-#if CLIB_DEBUG > 0
-#define TIMEOUT 10.0
-#else
-#define TIMEOUT 10.0
-#endif
+static void handle_mq_event (echo_main_t * em, session_event_t * e,
+			     int handle_rx);
+static void echo_handle_rx (echo_main_t * em, session_event_t * e);
 
 static int
 wait_for_segment_allocation (u64 segment_handle)
@@ -265,14 +307,15 @@ wait_for_state_change (echo_main_t * em, connection_state_t state)
       if (svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_NOWAIT, 0))
 	continue;
       e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-      handle_mq_event (e);
+      handle_mq_event (em, e, 0 /* handle_rx */ );
       svm_msg_q_free_msg (em->our_event_queue, &msg);
     }
-  clib_warning ("timeout waiting for state %d", state);
+  clib_warning ("timeout waiting for state %U", format_quic_echo_state,
+		state);
   return -1;
 }
 
-void
+static void
 notify_rx_data_to_vpp (echo_session_t * s)
 {
   svm_fifo_t *f = s->tx_fifo;
@@ -482,12 +525,6 @@ setup_signal_handlers (void)
   return 0;
 }
 
-void
-vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
-{
-  clib_warning ("BUG");
-}
-
 int
 connect_to_vpp (char *name)
 {
@@ -580,31 +617,52 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 static void
 session_print_stats (echo_main_t * em, echo_session_t * session)
 {
-  f64 deltat;
-  u64 bytes;
-
-  deltat = clib_time_now (&em->clib_time) - session->start;
-  bytes = em->i_am_master ? session->bytes_received : em->bytes_to_send;
+  f64 deltat = clib_time_now (&em->clib_time) - session->start;
   fformat (stdout, "Finished in %.6f\n", deltat);
-  fformat (stdout, "%.4f Gbit/second\n", (bytes * 8.0) / deltat / 1e9);
+  fformat (stdout, "RX %.4f Gbit/second\n",
+	   (session->bytes_received * 8.0) / deltat / 1e9);
+  fformat (stdout, "TX %.4f Gbit/second\n",
+	   (em->bytes_to_send * 8.0) / deltat / 1e9);
 }
+
+static void
+print_global_stats (echo_main_t * em, f64 start_time)
+{
+  f64 deltat = clib_time_now (&em->clib_time) - start_time;
+  fformat (stdout, "-------- TX --------\n");
+  fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds\n",
+	   em->tx_total, em->tx_total / (1ULL << 20),
+	   em->tx_total / (1ULL << 30), deltat);
+  fformat (stdout, "%.4f Gbit/second\n", (em->tx_total * 8.0) / deltat / 1e9);
+  fformat (stdout, "-------- RX --------\n");
+  fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds\n",
+	   em->rx_total, em->rx_total / (1ULL << 20),
+	   em->rx_total / (1ULL << 30), deltat);
+  fformat (stdout, "%.4f Gbit/second\n", (em->rx_total * 8.0) / deltat / 1e9);
+  fformat (stdout, "--------------------\n");
+}
+
 
 static void
 test_recv_bytes (echo_main_t * em, echo_session_t * s, u8 * rx_buf,
 		 u32 n_read)
 {
   int i;
+  u8 expected;
   for (i = 0; i < n_read; i++)
     {
-      if (rx_buf[i] != ((s->bytes_received + i) & 0xff)
-	  && em->max_test_msg > 0)
+      expected = (s->bytes_received + i) & 0xff;
+      if (rx_buf[i] != expected && em->max_test_msg > 0)
 	{
-	  clib_warning ("error at byte %lld, 0x%x not 0x%x",
-			s->bytes_received + i, rx_buf[i],
-			((s->bytes_received + i) & 0xff));
+	  clib_warning
+	    ("Session[%lx][0x%lx] byte[%lld], got 0x%x but expected 0x%x",
+	     s->session_index, s->vpp_session_handle, s->bytes_received + i,
+	     rx_buf[i], expected);
 	  em->max_test_msg--;
 	  if (em->max_test_msg == 0)
 	    clib_warning ("Too many errors, hiding next ones");
+	  if (em->test_return_packets == RETURN_PACKETS_ASSERT)
+	    ASSERT (0);
 	}
     }
 }
@@ -620,24 +678,18 @@ recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 
   do
     {
-      n_read = app_recv_stream ((app_session_t *) s, rx_buf,
-				vec_len (rx_buf));
-
-      if (n_read > 0)
-	{
-	  DBG ("Notify cause %u bytes", n_read);
-	  notify_rx_data_to_vpp (s);
-	  if (em->test_return_packets)
-	    test_recv_bytes (em, s, rx_buf, n_read);
-
-	  n_to_read -= n_read;
-
-	  s->bytes_received += n_read;
-	  ASSERT (s->bytes_to_receive >= n_read);
-	  s->bytes_to_receive -= n_read;
-	}
-      else
+      n_read =
+	app_recv_stream ((app_session_t *) s, rx_buf, vec_len (rx_buf));
+      if (n_read <= 0)
 	break;
+      notify_rx_data_to_vpp (s);
+      if (em->test_return_packets)
+	test_recv_bytes (em, s, rx_buf, n_read);
+
+      ASSERT (s->bytes_to_receive >= n_read);
+      n_to_read -= n_read;
+      s->bytes_received += n_read;
+      s->bytes_to_receive -= n_read;
     }
   while (n_to_read > 0);
 }
@@ -671,7 +723,7 @@ static void *
 client_thread_fn (void *arg)
 {
   echo_main_t *em = &echo_main;
-  static u8 *rx_buf = 0;
+  u8 *rx_buf = 0;
   u32 session_index = *(u32 *) arg;
   echo_session_t *s;
 
@@ -689,12 +741,12 @@ client_thread_fn (void *arg)
 	break;
     }
 
-  DBG ("session %d done send %lu to do, %lu done || recv %lu to do, %lu done",
-       session_index, s->bytes_to_send, s->bytes_sent, s->bytes_to_receive,
-       s->bytes_received);
+  DBG ("[%lu/%lu] -> S(%x) -> [%lu/%lu]",
+       s->bytes_received, s->bytes_received + s->bytes_to_receive,
+       session_index, s->bytes_sent, s->bytes_sent + s->bytes_to_send);
   em->tx_total += s->bytes_sent;
   em->rx_total += s->bytes_received;
-  em->n_active_clients--;
+  em->n_clients_connected--;
 
   pthread_exit (0);
 }
@@ -752,15 +804,8 @@ session_bound_handler (session_bound_msg_t * mp)
 		mp->lcl_is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		clib_net_to_host_u16 (mp->lcl_port));
   hash_set (em->qsession_listener_vpp_handles, mp->handle, 1);
-  em->state = STATE_READY;
+  em->state = STATE_LISTEN;
 }
-
-static void
-quic_qsession_accepted_handler (session_accepted_msg_t * mp)
-{
-  DBG ("Accept on QSession index %u", mp->handle);
-}
-
 
 static void
 session_accepted_handler (session_accepted_msg_t * mp)
@@ -772,29 +817,18 @@ session_accepted_handler (session_accepted_msg_t * mp)
   echo_session_t *session;
   static f64 start_time;
   u32 session_index;
-  u64 segment_handle;
-  u8 *ip_str;
   uword *p;
-
-  segment_handle = mp->segment_handle;
 
   if (start_time == 0.0)
     start_time = clib_time_now (&em->clib_time);
-
-  ip_str = format (0, "%U", format_ip46_address, &mp->rmt.ip, mp->rmt.is_ip4);
-  clib_warning ("Accepted session from: %s:%d", ip_str,
-		clib_net_to_host_u16 (mp->rmt.port));
 
   /* Allocate local session and set it up */
   pool_get (em->sessions, session);
   session_index = session - em->sessions;
 
-  if (wait_for_segment_allocation (segment_handle))
-    {
-      clib_warning ("timeout waiting for segment allocation %lu",
-		    segment_handle);
-      return;
-    }
+  if (wait_for_segment_allocation (mp->segment_handle))
+    return;
+
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
@@ -802,6 +836,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
 
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
+  session->session_index = session_index;
   session->vpp_session_handle = mp->handle;
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					 svm_msg_q_t *);
@@ -810,9 +845,6 @@ session_accepted_handler (session_accepted_msg_t * mp)
   DBG ("Accepted session handle %lx, idx %lu", mp->handle, session_index);
   hash_set (em->session_index_by_vpp_handles, mp->handle, session_index);
 
-  /*
-   * Send accept reply to vpp
-   */
   app_alloc_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt,
 			     SESSION_CTRL_EVT_ACCEPTED_REPLY);
   rmp = (session_accepted_reply_msg_t *) app_evt->evt->data;
@@ -821,11 +853,20 @@ session_accepted_handler (session_accepted_msg_t * mp)
   app_send_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt);
 
   p = hash_get (em->qsession_listener_vpp_handles, mp->listener_handle);
-  if (p)
-    return quic_qsession_accepted_handler (mp);
   DBG ("SSession handle is %lu", mp->handle);
-
-  em->state = STATE_READY;
+  if (p)
+    {
+      if (em->cb_vft.quic_accepted_cb)
+	em->cb_vft.quic_accepted_cb (mp, session_index);
+      return;
+    }
+  else if (em->i_am_master)
+    {
+      if (em->cb_vft.server_stream_accepted_cb)
+	em->cb_vft.server_stream_accepted_cb (mp, session_index);
+    }
+  else if (em->cb_vft.client_stream_accepted_cb)
+    em->cb_vft.client_stream_accepted_cb (mp, session_index);
 
   /* Stats printing */
   if (pool_elts (em->sessions) && (pool_elts (em->sessions) % 20000) == 0)
@@ -838,15 +879,9 @@ session_accepted_handler (session_accepted_msg_t * mp)
 
   session->bytes_received = 0;
   session->start = clib_time_now (&em->clib_time);
-}
 
-static void
-quic_session_connected_handler (session_connected_msg_t * mp)
-{
-  echo_main_t *em = &echo_main;
-  u8 *uri = format (0, "QUIC://session/%lu", mp->handle);
-  DBG ("QSession Connect : %s", uri);
-  client_send_connect (em, uri, QUIC_SESSION_TYPE_STREAM);
+  if (em->n_clients_connected == em->n_clients * em->n_stream_clients)
+    em->state = STATE_READY;
 }
 
 static void
@@ -856,9 +891,6 @@ session_connected_handler (session_connected_msg_t * mp)
   echo_session_t *session;
   u32 session_index;
   svm_fifo_t *rx_fifo, *tx_fifo;
-  int rv;
-  u64 segment_handle;
-  segment_handle = mp->segment_handle;
 
   if (mp->retval)
     {
@@ -868,21 +900,14 @@ session_connected_handler (session_connected_msg_t * mp)
       return;
     }
 
-  /*
-   * Setup session
-   */
-
   pool_get (em->sessions, session);
   clib_memset (session, 0, sizeof (*session));
   session_index = session - em->sessions;
-  DBG ("Setting session_index %lu", session_index);
+  DBG ("CONNECTED session[%lx][0x%lx]", session_index, mp->handle);
 
-  if (wait_for_segment_allocation (segment_handle))
-    {
-      clib_warning ("timeout waiting for segment allocation %lu",
-		    segment_handle);
-      return;
-    }
+  if (wait_for_segment_allocation (mp->segment_handle))
+    return;
+
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
@@ -891,17 +916,66 @@ session_connected_handler (session_connected_msg_t * mp)
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
   session->vpp_session_handle = mp->handle;
+  session->session_index = session_index;
   session->start = clib_time_now (&em->clib_time);
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					 svm_msg_q_t *);
 
-  DBG ("Connected session handle %lx, idx %lu", mp->handle, session_index);
+  DBG ("Connected session handle %lx, idx %lu RX[%lx] TX[%lx]", mp->handle,
+       session_index, rx_fifo, tx_fifo);
   hash_set (em->session_index_by_vpp_handles, mp->handle, session_index);
 
   if (mp->context == QUIC_SESSION_TYPE_QUIC)
-    return quic_session_connected_handler (mp);
+    {
+      if (em->cb_vft.quic_connected_cb)
+	em->cb_vft.quic_connected_cb (mp, session_index);
+    }
+  else if (em->i_am_master)
+    {
+      if (em->cb_vft.server_stream_connected_cb)
+	em->cb_vft.server_stream_connected_cb (mp, session_index);
+    }
+  else if (em->cb_vft.client_stream_connected_cb)
+    em->cb_vft.client_stream_connected_cb (mp, session_index);
 
-  DBG ("SSession Connected");
+  if (em->n_clients_connected == em->n_clients * em->n_stream_clients)
+    em->state = STATE_READY;
+}
+
+/*
+ *
+ *  ECHO Callback definitions
+ *
+ */
+
+
+static void
+echo_on_connected_connect (session_connected_msg_t * mp, u32 session_index)
+{
+  echo_main_t *em = &echo_main;
+  u8 *uri = format (0, "QUIC://session/%lu", mp->handle);
+  int i;
+
+  for (i = 0; i < em->n_stream_clients; i++)
+    {
+      DBG ("CONNECT : new QUIC stream #%d: %s", i, uri);
+      client_send_connect (em, uri, QUIC_SESSION_TYPE_STREAM);
+    }
+}
+
+static void
+echo_on_connected_send (session_connected_msg_t * mp, u32 session_index)
+{
+  echo_main_t *em = &echo_main;
+  int rv;
+  echo_session_t *session;
+
+  DBG ("Stream Session Connected");
+
+  session = pool_elt_at_index (em->sessions, session_index);
+  session->bytes_to_send = em->bytes_to_send;
+  if (!em->no_return)
+    session->bytes_to_receive = em->bytes_to_send;
 
   /*
    * Start RX thread
@@ -916,11 +990,128 @@ session_connected_handler (session_connected_msg_t * mp)
       return;
     }
 
-  em->n_clients_connected += 1;
+  em->n_clients_connected++;
   clib_warning ("session %u (0x%llx) connected with local ip %U port %d",
 		session_index, mp->handle, format_ip46_address, &mp->lcl.ip,
 		mp->lcl.is_ip4, clib_net_to_host_u16 (mp->lcl.port));
 }
+
+static void
+echo_on_connected_error (session_connected_msg_t * mp, u32 session_index)
+{
+  clib_warning ("Got a wrong connected on session %u [%lx]", session_index,
+		mp->handle);
+}
+
+static void
+echo_on_accept_recv (session_accepted_msg_t * mp, u32 session_index)
+{
+  echo_main_t *em = &echo_main;
+  int rv;
+  echo_session_t *session;
+
+  DBG ("Stream Session Accepted, expecting data");
+
+  session = pool_elt_at_index (em->sessions, session_index);
+  session->bytes_to_receive = em->bytes_to_send;
+
+  /*
+   * Start RX thread
+   */
+  em->thread_args[em->n_clients_connected] = session_index;
+  rv = pthread_create (&em->client_thread_handles[em->n_clients_connected],
+		       NULL /*attr */ , client_thread_fn,
+		       (void *) &em->thread_args[em->n_clients_connected]);
+  if (rv)
+    {
+      clib_warning ("pthread_create returned %d", rv);
+      return;
+    }
+
+  em->n_clients_connected++;
+}
+
+static void
+echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
+{
+  echo_main_t *em = &echo_main;
+  DBG ("Accept on QSession index %u", mp->handle);
+  u8 *uri = format (0, "QUIC://session/%lu", mp->handle);
+  u32 i;
+
+  for (i = 0; i < em->n_stream_clients; i++)
+    {
+      DBG ("ACCEPT : new QUIC stream #%d: %s", i, uri);
+      client_send_connect (em, uri, QUIC_SESSION_TYPE_STREAM);
+    }
+}
+
+static void
+echo_on_accept_ack (session_accepted_msg_t * mp, u32 session_index)
+{
+  echo_main_t *em = &echo_main;
+  em->n_clients_connected++;
+}
+
+static void
+echo_on_accept_error (session_accepted_msg_t * mp, u32 session_index)
+{
+  clib_warning ("Got a wrong accept on session %u [%lx]", session_index,
+		mp->handle);
+}
+
+static void
+echo_on_accept_log_ip (session_accepted_msg_t * mp, u32 session_index)
+{
+  u8 *ip_str;
+  ip_str = format (0, "%U", format_ip46_address, &mp->rmt.ip, mp->rmt.is_ip4);
+  clib_warning ("Accepted session from: %s:%d", ip_str,
+		clib_net_to_host_u16 (mp->rmt.port));
+
+}
+
+static const quic_echo_cb_vft_t default_cb_vft = {
+  /* Qsessions */
+  .quic_accepted_cb = &echo_on_accept_log_ip,
+  .quic_connected_cb = &echo_on_connected_connect,
+  /* client initiated streams */
+  .server_stream_accepted_cb = &echo_on_accept_ack,
+  .client_stream_connected_cb = &echo_on_connected_send,
+  /* server initiated streams */
+  .client_stream_accepted_cb = &echo_on_accept_error,
+  .server_stream_connected_cb = &echo_on_connected_error,
+};
+
+static const quic_echo_cb_vft_t server_stream_cb_vft = {
+  /* Qsessions */
+  .quic_accepted_cb = &echo_on_accept_connect,
+  .quic_connected_cb = NULL,
+  /* client initiated streams */
+  .server_stream_accepted_cb = &echo_on_accept_error,
+  .client_stream_connected_cb = &echo_on_connected_error,
+  /* server initiated streams */
+  .client_stream_accepted_cb = &echo_on_accept_recv,
+  .server_stream_connected_cb = &echo_on_connected_send,
+};
+
+static uword
+unformat_quic_setup_vft (unformat_input_t * input, va_list * args)
+{
+  echo_main_t *em = &echo_main;
+  if (unformat (input, "serverstream"))
+    {
+      clib_warning ("Using QUIC server initiated streams");
+      em->no_return = 1;
+      em->cb_vft = server_stream_cb_vft;
+    }
+  return 1;
+}
+
+/*
+ *
+ *  End of ECHO callback definitions
+ *
+ */
 
 static void
 session_disconnected_handler (session_disconnected_msg_t * mp)
@@ -990,7 +1181,7 @@ session_reset_handler (session_reset_msg_t * mp)
 }
 
 static void
-handle_mq_event (session_event_t * e)
+handle_mq_event (echo_main_t * em, session_event_t * e, int handle_rx)
 {
   switch (e->event_type)
     {
@@ -1014,25 +1205,25 @@ handle_mq_event (session_event_t * e)
       DBG ("SESSION_CTRL_EVT_RESET");
       session_reset_handler ((session_reset_msg_t *) e->data);
       break;
+    case SESSION_IO_EVT_RX:
+      DBG ("SESSION_IO_EVT_RX");
+      if (handle_rx)
+	echo_handle_rx (em, e);
+      break;
     default:
-      clib_warning ("unhandled %u", e->event_type);
+      clib_warning ("unhandled event %u", e->event_type);
     }
 }
 
 static void
 clients_run (echo_main_t * em)
 {
-  f64 start_time, deltat, timeout = 100.0;
+  f64 start_time;
   svm_msg_q_msg_t msg;
   session_event_t *e;
   echo_session_t *s;
   hash_pair_t *p;
   int i;
-
-  /* Init test data */
-  vec_validate (em->connect_test_data, 1024 * 1024 - 1);
-  for (i = 0; i < vec_len (em->connect_test_data); i++)
-    em->connect_test_data[i] = i & 0xff;
 
   /*
    * Attach and connect the clients
@@ -1041,65 +1232,25 @@ clients_run (echo_main_t * em)
     return;
 
   for (i = 0; i < em->n_clients; i++)
-    client_send_connect (em, em->connect_uri, QUIC_SESSION_TYPE_QUIC);
+    client_send_connect (em, em->uri, QUIC_SESSION_TYPE_QUIC);
 
-  start_time = clib_time_now (&em->clib_time);
-  while (em->n_clients_connected < em->n_clients
-	 && (clib_time_now (&em->clib_time) - start_time < timeout)
-	 && em->state != STATE_FAILED && em->time_to_stop != 1)
-
-    {
-      int rc = svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_TIMEDWAIT, 1);
-      if (rc == ETIMEDOUT && em->time_to_stop)
-	break;
-      if (rc == ETIMEDOUT)
-	continue;
-      e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-      handle_mq_event (e);
-      svm_msg_q_free_msg (em->our_event_queue, &msg);
-    }
-
-  if (em->n_clients_connected != em->n_clients)
-    {
-      clib_warning ("failed to initialize all connections");
-      return;
-    }
-
-  /*
-   * Initialize connections
-   */
-  DBG ("Initialize connections on %u clients", em->n_clients);
-
-  /* *INDENT-OFF* */
-  hash_foreach_pair (p, em->session_index_by_vpp_handles,
-                ({
-      s = pool_elt_at_index (em->sessions, p->value[0]);
-      s->bytes_to_send = em->bytes_to_send;
-      if (!em->no_return)
-	s->bytes_to_receive = em->bytes_to_send;
-                }));
-  /* *INDENT-ON* */
-  em->n_active_clients = em->n_clients_connected;
+  wait_for_state_change (em, STATE_READY);
 
   /*
    * Wait for client threads to send the data
    */
-  DBG ("Waiting for data on %u clients", em->n_active_clients);
+  DBG ("Waiting for data on %u clients", em->n_clients_connected);
   start_time = clib_time_now (&em->clib_time);
-  em->state = STATE_READY;
-  while (em->n_active_clients)
-    if (!svm_msg_q_is_empty (em->our_event_queue))
-      {
-	if (svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_TIMEDWAIT, 0))
-	  {
-	    clib_warning ("svm msg q returned");
-	    continue;
-	  }
-	e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-	if (e->event_type != FIFO_EVENT_APP_RX)
-	  handle_mq_event (e);
-	svm_msg_q_free_msg (em->our_event_queue, &msg);
-      }
+  while (em->n_clients_connected)
+    {
+      if (svm_msg_q_is_empty (em->our_event_queue))
+	continue;
+      if (svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_TIMEDWAIT, 1))
+	continue;
+      e = svm_msg_q_msg_data (em->our_event_queue, &msg);
+      handle_mq_event (em, e, 0 /* handle_rx */ );
+      svm_msg_q_free_msg (em->our_event_queue, &msg);
+    }
 
   /* *INDENT-OFF* */
   hash_foreach_pair (p, em->session_index_by_vpp_handles,
@@ -1110,15 +1261,7 @@ clients_run (echo_main_t * em)
                 }));
   /* *INDENT-ON* */
 
-  /*
-   * Stats and detach
-   */
-  deltat = clib_time_now (&em->clib_time) - start_time;
-  fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds\n",
-	   em->tx_total, em->tx_total / (1ULL << 20),
-	   em->tx_total / (1ULL << 30), deltat);
-  fformat (stdout, "%.4f Gbit/second\n", (em->tx_total * 8.0) / deltat / 1e9);
-
+  print_global_stats (em, start_time);
   wait_for_disconnected_sessions (em);
   application_detach (em);
 }
@@ -1127,7 +1270,6 @@ static void
 vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 {
   echo_main_t *em = &echo_main;
-
   if (mp->retval)
     {
       clib_warning ("bind failed: %U", format_api_error,
@@ -1136,7 +1278,7 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
       return;
     }
 
-  em->state = STATE_READY;
+  em->state = STATE_LISTEN;
 }
 
 static void
@@ -1234,7 +1376,7 @@ format_ip46_address (u8 * s, va_list * args)
 }
 
 static void
-server_handle_rx (echo_main_t * em, session_event_t * e)
+echo_handle_rx (echo_main_t * em, session_event_t * e)
 {
   int n_read, max_dequeue, n_sent;
   u32 offset, to_dequeue;
@@ -1245,7 +1387,6 @@ server_handle_rx (echo_main_t * em, session_event_t * e)
    * app_recv_stream, we may end up with a lot of unhandled rx events on the
    * message queue */
   svm_fifo_unset_event (s->rx_fifo);
-
   max_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
   if (PREDICT_FALSE (!max_dequeue))
     return;
@@ -1258,35 +1399,34 @@ server_handle_rx (echo_main_t * em, session_event_t * e)
       n_read = app_recv_stream_raw (s->rx_fifo, em->rx_buf, to_dequeue,
 				    0 /* clear evt */ , 0 /* peek */ );
 
-      if (n_read > 0)
-	{
-	  DBG ("Notify cause %u bytes", n_read);
-	  notify_rx_data_to_vpp (s);
-	  if (em->test_return_packets)
-	    test_recv_bytes (em, s, em->rx_buf, n_read);
-
-	  max_dequeue -= n_read;
-	  s->bytes_received += n_read;
-	}
-      else
+      if (n_read <= 0)
 	break;
+      DBG ("Notify cause %u bytes", n_read);
+      notify_rx_data_to_vpp (s);
+      if (em->test_return_packets)
+	test_recv_bytes (em, s, em->rx_buf, n_read);
+
+      max_dequeue -= n_read;
+      s->bytes_received += n_read;
+      s->bytes_to_receive -= n_read;
 
       /* Reflect if a non-drop session */
-      if (!em->no_return && n_read > 0)
+      if (!em->no_return)
 	{
 	  offset = 0;
 	  do
 	    {
 	      n_sent = app_send_stream ((app_session_t *) s,
-					&em->rx_buf[offset],
+					em->rx_buf + offset,
 					n_read, SVM_Q_WAIT);
-	      if (n_sent > 0)
-		{
-		  n_read -= n_sent;
-		  offset += n_sent;
-		}
+	      if (n_sent <= 0)
+		continue;
+	      n_read -= n_sent;
+	      s->bytes_to_send -= n_sent;
+	      s->bytes_sent += n_sent;
+	      offset += n_sent;
 	    }
-	  while ((n_sent <= 0 || n_read > 0) && !em->time_to_stop);
+	  while (n_read > 0);
 	}
     }
   while (max_dequeue > 0 && !em->time_to_stop);
@@ -1311,21 +1451,12 @@ server_handle_mq (echo_main_t * em)
       if (rc == ETIMEDOUT)
 	continue;
       e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-      switch (e->event_type)
-	{
-	case SESSION_IO_EVT_RX:
-	  DBG ("SESSION_IO_EVT_RX");
-	  server_handle_rx (em, e);
-	  break;
-	default:
-	  handle_mq_event (e);
-	  break;
-	}
+      handle_mq_event (em, e, em->state == STATE_READY /* handle_rx */ );
       svm_msg_q_free_msg (em->our_event_queue, &msg);
     }
 }
 
-void
+static void
 server_send_listen (echo_main_t * em)
 {
   vl_api_bind_uri_t *bmp;
@@ -1339,19 +1470,7 @@ server_send_listen (echo_main_t * em)
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 }
 
-int
-server_listen (echo_main_t * em)
-{
-  server_send_listen (em);
-  if (wait_for_state_change (em, STATE_READY))
-    {
-      clib_warning ("timeout waiting for STATE_READY");
-      return -1;
-    }
-  return 0;
-}
-
-void
+static void
 server_send_unbind (echo_main_t * em)
 {
   vl_api_unbind_uri_t *ump;
@@ -1365,7 +1484,7 @@ server_send_unbind (echo_main_t * em)
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & ump);
 }
 
-void
+static void
 server_run (echo_main_t * em)
 {
   echo_session_t *session;
@@ -1384,17 +1503,19 @@ server_run (echo_main_t * em)
     return;
 
   /* Bind to uri */
-  if (server_listen (em))
-    return;
+  server_send_listen (em);
+  if (wait_for_state_change (em, STATE_READY))
+    {
+      clib_warning ("timeout waiting for STATE_READY");
+      return;
+    }
 
   /* Enter handle event loop */
   server_handle_mq (em);
 
   /* Cleanup */
   server_send_unbind (em);
-
   application_detach (em);
-
   fformat (stdout, "Test complete...\n");
 }
 
@@ -1405,25 +1526,16 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
   echo_main_t *em = &echo_main;
   uword *p;
   DBG ("Got disonnected reply for session handle %lu", mp->handle);
-
-  if (mp->retval)
-    {
-      clib_warning ("vpp complained about disconnect: %d",
-		    ntohl (mp->retval));
-      return;
-    }
-
   em->state = STATE_START;
 
   p = hash_get (em->session_index_by_vpp_handles, mp->handle);
   if (p)
-    {
-      hash_unset (em->session_index_by_vpp_handles, mp->handle);
-    }
+    hash_unset (em->session_index_by_vpp_handles, mp->handle);
   else
-    {
-      clib_warning ("couldn't find session key %llx", mp->handle);
-    }
+    clib_warning ("couldn't find session key %llx", mp->handle);
+
+  if (mp->retval)
+    clib_warning ("vpp complained about disconnect: %d", ntohl (mp->retval));
 }
 
 static void
@@ -1466,41 +1578,49 @@ quic_echo_api_hookup (echo_main_t * em)
 #undef _
 }
 
-int
-main (int argc, char **argv)
+static void
+print_usage_and_exit (void)
 {
-  int i_am_server = 1, test_return_packets = 0;
+  fprintf (stderr,
+	   "quic_echo [socket-name SOCKET] [client|server] [uri URI] [OPTIONS]\n"
+	   "\n"
+	   "  socket-name PATH    Specify the binary socket path to connect to VPP\n"
+	   "  use-svm-api         Use SVM API to connect to VPP\n"
+	   "  test-bytes[:assert] Check data correctness when receiving (assert fails on first error)\n"
+	   "  fifo-size N         Use N Kb fifos\n"
+	   "  appns NAMESPACE     Use the namespace NAMESPACE\n"
+	   "  all-scope           all-scope option\n"
+	   "  local-scope         local-scope option\n"
+	   "  global-scope        global-scope option\n"
+	   "  secret SECRET       set namespace secret\n"
+	   "  chroot prefix PATH  Use PATH as memory root path\n"
+	   "  quic-setup OPT      OPT=serverstream : Client open N connections. On each one server opens M streams\n"
+	   "                            by default : Client open N connections. On each one client opens M streams\n"
+	   "\n"
+	   "--- server options ---\n"
+	   "  no-return            Drop the data when received, dont reply\n"
+	   "  nclients N[/M]       Open N QUIC connections, each one with M streams (M defaults to 1)\n"
+	   "\n"
+	   "--- client options ---\n"
+	   "  bytes N              Send N bytes to the server\n"
+	   "  mbytes N             Send N mbytes to the server\n"
+	   "  gbytes N             Send N gbytes to the server\n"
+	   "  nclients N[/M]       Open N QUIC connections, each one with M streams (M defaults to 1)\n");
+  exit (1);
+}
+
+
+void
+quic_echo_process_opts (int argc, char **argv)
+{
   echo_main_t *em = &echo_main;
-  fifo_segment_main_t *sm = &em->segment_main;
   unformat_input_t _argv, *a = &_argv;
+  u64 mbytes;
+  u32 tmp;
   u8 *chroot_prefix;
   u8 *uri = 0;
-  u8 *bind_uri = (u8 *) "quic://0.0.0.0/1234";
-  u8 *connect_uri = (u8 *) "quic://6.0.1.1/1234";
-  u64 bytes_to_send = 64 << 10, mbytes;
-  char *app_name;
-  u32 tmp;
 
-  clib_mem_init_thread_safe (0, 256 << 20);
-
-  clib_memset (em, 0, sizeof (*em));
-  em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
-  em->qsession_listener_vpp_handles = hash_create (0, sizeof (uword));
-  em->shared_segment_handles = hash_create (0, sizeof (uword));
-  clib_spinlock_init (&em->segment_handles_lock);
-  em->my_pid = getpid ();
-  em->socket_name = 0;
-  em->use_sock_api = 1;
-  em->fifo_size = 64 << 10;
-  em->n_clients = 1;
-  em->max_test_msg = 50;
-  em->quic_streams = 1;
-
-  clib_time_init (&em->clib_time);
-  init_error_string_table (em);
-  fifo_segment_main_init (sm, HIGH_SEGMENT_BASEVA, 20);
   unformat_init_command_line (a, argv);
-
   while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (a, "chroot prefix %s", &chroot_prefix))
@@ -1508,33 +1628,33 @@ main (int argc, char **argv)
 	  vl_set_memory_root_path ((char *) chroot_prefix);
 	}
       else if (unformat (a, "uri %s", &uri))
-	;
+	em->uri = format (0, "%s%c", uri, 0);
       else if (unformat (a, "server"))
-	i_am_server = 1;
+	em->i_am_master = 1;
       else if (unformat (a, "client"))
-	i_am_server = 0;
+	em->i_am_master = 0;
       else if (unformat (a, "no-return"))
 	em->no_return = 1;
+      else if (unformat (a, "test-bytes:assert"))
+	em->test_return_packets = RETURN_PACKETS_ASSERT;
       else if (unformat (a, "test-bytes"))
-	test_return_packets = 1;
+	em->test_return_packets = RETURN_PACKETS_LOG_WRONG;
       else if (unformat (a, "bytes %lld", &mbytes))
-	{
-	  bytes_to_send = mbytes;
-	}
+	em->bytes_to_send = mbytes;
       else if (unformat (a, "mbytes %lld", &mbytes))
-	{
-	  bytes_to_send = mbytes << 20;
-	}
+	em->bytes_to_send = mbytes << 20;
       else if (unformat (a, "gbytes %lld", &mbytes))
-	{
-	  bytes_to_send = mbytes << 30;
-	}
+	em->bytes_to_send = mbytes << 30;
       else if (unformat (a, "socket-name %s", &em->socket_name))
 	;
       else if (unformat (a, "use-svm-api"))
 	em->use_sock_api = 0;
       else if (unformat (a, "fifo-size %d", &tmp))
 	em->fifo_size = tmp << 10;
+      else
+	if (unformat
+	    (a, "nclients %d/%d", &em->n_clients, &em->n_stream_clients))
+	;
       else if (unformat (a, "nclients %d", &em->n_clients))
 	;
       else if (unformat (a, "appns %_%v%_", &em->appns_id))
@@ -1548,41 +1668,58 @@ main (int argc, char **argv)
 	em->appns_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
       else if (unformat (a, "secret %lu", &em->appns_secret))
 	;
-      else if (unformat (a, "quic-streams %d", &em->quic_streams))
+      else if (unformat (a, "quic-setup %U", unformat_quic_setup_vft))
 	;
       else
-	{
-	  fformat (stderr, "%s: usage [master|slave]\n", argv[0]);
-	  exit (1);
-	}
+	print_usage_and_exit ();
     }
 
-  if (!em->socket_name)
-    em->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
+}
 
-  if (uri)
-    {
-      em->uri = format (0, "%s%c", uri, 0);
-      em->connect_uri = format (0, "%s%c", uri, 0);
-    }
-  else
-    {
-      em->uri = format (0, "%s%c", bind_uri, 0);
-      em->connect_uri = format (0, "%s%c", connect_uri, 0);
-    }
+int
+main (int argc, char **argv)
+{
+  echo_main_t *em = &echo_main;
+  fifo_segment_main_t *sm = &em->segment_main;
+  char *app_name;
+  int i;
+  u32 n_clients;
 
-  em->i_am_master = i_am_server;
-  em->test_return_packets = test_return_packets;
-  em->bytes_to_send = bytes_to_send;
+  clib_mem_init_thread_safe (0, 256 << 20);
+  clib_memset (em, 0, sizeof (*em));
+  em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
+  em->shared_segment_handles = hash_create (0, sizeof (uword));
+  em->my_pid = getpid ();
+  em->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
+  em->use_sock_api = 1;
+  em->fifo_size = 64 << 10;
+  em->n_clients = 1;
+  em->n_stream_clients = 1;
+  em->max_test_msg = 50;
   em->time_to_stop = 0;
+  em->i_am_master = 1;
+  em->test_return_packets = RETURN_PACKETS_NOTEST;
+  em->bytes_to_send = 64 << 10;
+  em->uri = format (0, "%s%c", "quic://0.0.0.0/1234", 0);
+  em->cb_vft = default_cb_vft;
+  quic_echo_process_opts (argc, argv);
+
+  n_clients = em->n_clients * em->n_stream_clients;
+  vec_validate (em->client_thread_handles, n_clients - 1);
+  vec_validate (em->thread_args, n_clients - 1);
+  clib_time_init (&em->clib_time);
+  init_error_string_table (em);
+  fifo_segment_main_init (sm, HIGH_SEGMENT_BASEVA, 20);
+  clib_spinlock_init (&em->segment_handles_lock);
   vec_validate (em->rx_buf, 4 << 20);
-  vec_validate (em->client_thread_handles, em->n_clients - 1);
-  vec_validate (em->thread_args, em->n_clients - 1);
+  vec_validate (em->connect_test_data, 1024 * 1024 - 1);
+  for (i = 0; i < vec_len (em->connect_test_data); i++)
+    em->connect_test_data[i] = i & 0xff;
 
   setup_signal_handlers ();
   quic_echo_api_hookup (em);
 
-  app_name = i_am_server ? "quic_echo_server" : "quic_echo_client";
+  app_name = em->i_am_master ? "quic_echo_server" : "quic_echo_client";
   if (connect_to_vpp (app_name) < 0)
     {
       svm_region_exit ();
@@ -1590,14 +1727,13 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  if (i_am_server == 0)
-    clients_run (em);
-  else
+  if (em->i_am_master)
     server_run (em);
+  else
+    clients_run (em);
 
   /* Make sure detach finishes */
   wait_for_state_change (em, STATE_DETACHED);
-
   disconnect_from_vpp (em);
   exit (0);
 }
