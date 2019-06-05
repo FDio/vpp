@@ -8,51 +8,54 @@ import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from threading import Event
 
 
 class QUICAppWorker(Worker):
     """ QUIC Test Application Worker """
+    process = None
 
-    def __init__(self, build_dir, appname, args, logger, env={}):
+    def __init__(self, build_dir, appname, args, logger, env={}, event=None):
         app = "%s/vpp/bin/%s" % (build_dir, appname)
         self.args = [app] + args
+        self.event = event
         super(QUICAppWorker, self).__init__(self.args, logger, env)
+
+    def run(self):
+        super(QUICAppWorker, self).run()
+        if self.event:
+            self.event.set()
+
+    def teardown(self, logger, timeout):
+        if self.process is None:
+           return False
+        try:
+            logger.debug("Killing worker process (pid %d)" % self.process.pid)
+            os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+            self.join(timeout)
+        except OSError as e:
+            logger.debug("Couldn't kill worker process")
+            return True
+        return False
 
 
 class QUICTestCase(VppTestCase):
     """ QUIC Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(QUICTestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(QUICTestCase, cls).tearDownClass()
-
     def setUp(self):
+        super(QUICTestCase, self).setUp()
         var = "VPP_BUILD_DIR"
         self.build_dir = os.getenv(var, None)
         if self.build_dir is None:
             raise Exception("Environment variable `%s' not set" % var)
         self.vppDebug = 'vpp_debug' in self.build_dir
         self.timeout = 20
-        self.pre_test_sleep = 0.3
-        self.post_test_sleep = 0.3
         self.vapi.session_enable_disable(is_enabled=1)
-
-    def tearDown(self):
-        self.vapi.session_enable_disable(is_enabled=0)
-
-    def thru_host_stack_ipv4_setup(self):
-        super(QUICTestCase, self).setUp()
+        self.pre_test_sleep = 0.3
+        self.post_test_sleep = 0.2
 
         self.create_loopback_interfaces(2)
         self.uri = "quic://%s/1234" % self.loop0.local_ip4
-        common_args = ["uri", self.uri, "fifo-size", "64"]
-        self.server_echo_test_args = common_args + ["appns", "server"]
-        self.client_echo_test_args = common_args + ["appns", "client",
-                                                    "test-bytes"]
         table_id = 1
         for i in self.lo_interfaces:
             i.admin_up()
@@ -84,7 +87,8 @@ class QUICTestCase(VppTestCase):
         self.ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip fib"))
 
-    def thru_host_stack_ipv4_tear_down(self):
+    def tearDown(self):
+        self.vapi.session_enable_disable(is_enabled=0)
         # Delete inter-table routes
         self.ip_t01.remove_vpp_config()
         self.ip_t10.remove_vpp_config()
@@ -93,212 +97,123 @@ class QUICTestCase(VppTestCase):
             i.unconfig_ip4()
             i.set_table_ip4(0)
             i.admin_down()
-
-    def start_internal_echo_server(self, args):
-        error = self.vapi.cli("test echo server %s" % ' '.join(args))
-        if error:
-            self.logger.critical(error)
-            self.assertNotIn("failed", error)
-
-    def start_internal_echo_client(self, args):
-        error = self.vapi.cli("test echo client %s" % ' '.join(args))
-        if error:
-            self.logger.critical(error)
-            self.assertNotIn("failed", error)
-
-    def internal_ipv4_transfer_test(self, server_args, client_args):
-        self.start_internal_echo_server(server_args)
-        self.start_internal_echo_client(client_args)
-
-    def start_external_echo_server(self, args):
-        self.worker_server = QUICAppWorker(self.build_dir, "quic_echo",
-                                           args, self.logger)
-        self.worker_server.start()
-
-    def start_external_echo_client(self, args):
-        self.client_echo_test_args += "use-svm-api"
-        self.worker_client = QUICAppWorker(self.build_dir, "quic_echo",
-                                           args, self.logger)
-        self.worker_client.start()
-        self.worker_client.join(self.timeout)
-        try:
-            self.validateExternalTestResults()
-        except Exception as error:
-            self.fail("Failed with %s" % error)
-
-    def external_ipv4_transfer_test(self, server_args, client_args):
-        self.start_external_echo_server(server_args)
-        self.sleep(self.pre_test_sleep)
-        self.start_external_echo_client(client_args)
-        self.sleep(self.post_test_sleep)
-
-    def validateExternalTestResults(self):
-        if os.path.isdir('/proc/{}'.format(self.worker_server.process.pid)):
-            self.logger.info("Killing server worker process (pid %d)" %
-                             self.worker_server.process.pid)
-            os.killpg(os.getpgid(self.worker_server.process.pid),
-                      signal.SIGTERM)
-            self.worker_server.join()
-        self.logger.info("Client worker result is `%s'" %
-                         self.worker_client.result)
-        error = False
-        if self.worker_client.result is None:
-            try:
-                error = True
-                self.logger.error(
-                    "Timeout: %ss! Killing client worker process (pid %d)" %
-                    (self.timeout, self.worker_client.process.pid))
-                os.killpg(os.getpgid(self.worker_client.process.pid),
-                          signal.SIGKILL)
-                self.worker_client.join()
-            except OSError:
-                self.logger.debug(
-                    "Couldn't kill client worker process")
-                raise
-        if error:
-            raise Exception(
-                "Timeout! Client worker did not finish in %ss" % self.timeout)
-        self.assert_equal(self.worker_client.result, 0,
-                          "Binary test return code")
+        super(QUICTestCase, self).tearDown()
 
 
-class QUICInternalEchoIPv4TestCase(QUICTestCase):
-    """ QUIC Internal Echo IPv4 Transfer Test Cases """
-
-    @classmethod
-    def setUpClass(cls):
-        super(QUICInternalEchoIPv4TestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(QUICInternalEchoIPv4TestCase, cls).tearDownClass()
-
+class QUICEchoInternalTestCase(QUICTestCase):
+    """QUIC Echo Internal Test Case"""
     def setUp(self):
-        super(QUICInternalEchoIPv4TestCase, self).setUp()
-        self.thru_host_stack_ipv4_setup()
+        super(QUICEchoInternalTestCase, self).setUp()
+        self.client_args = "uri %s fifo-size 64 test-bytes appns client" % self.uri
+        self.server_args = "uri %s fifo-size 64 appns server" % self.uri
 
-    def tearDown(self):
-        super(QUICInternalEchoIPv4TestCase, self).tearDown()
-        self.thru_host_stack_ipv4_tear_down()
+    def server(self, *args):
+        error = self.vapi.cli("test echo server %s %s" % (self.server_args, ' '.join(args)))
+        if error:
+            self.logger.critical(error)
+            self.assertNotIn("failed", error)
 
-    def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+    def client(self, *args):
+        error = self.vapi.cli("test echo client %s %s" % (self.client_args, ' '.join(args)))
+        if error:
+            self.logger.critical(error)
+            self.assertNotIn("failed", error)
 
+class QUICEchoInternalTransferTestCase(QUICEchoInternalTestCase):
+    """QUIC Echo Internal Transfer Test Case"""
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_internal_transfer(self):
-        """ QUIC internal echo client/server transfer """
+        self.server()
+        self.client("no-output", "mbytes", "10")
 
-        self.internal_ipv4_transfer_test(self.server_echo_test_args,
-                                         self.client_echo_test_args +
-                                         ["no-output", "mbytes", "10"])
-
-
-class QUICInternalSerialEchoIPv4TestCase(QUICTestCase):
-    """ QUIC Internal Serial Echo IPv4 Transfer Test Cases """
-
-    @classmethod
-    def setUpClass(cls):
-        super(QUICInternalSerialEchoIPv4TestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(QUICInternalSerialEchoIPv4TestCase, cls).tearDownClass()
-
-    def setUp(self):
-        super(QUICInternalSerialEchoIPv4TestCase, self).setUp()
-        self.thru_host_stack_ipv4_setup()
-
-    def tearDown(self):
-        super(QUICInternalSerialEchoIPv4TestCase, self).tearDown()
-        self.thru_host_stack_ipv4_tear_down()
-
-    def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
-
+class QUICEchoInternalSerialTestCase(QUICEchoInternalTestCase):
+    """QUIC Echo Internal Serial Transfer Test Case"""
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_serial_internal_transfer(self):
-        """ QUIC serial internal echo client/server transfer """
+        self.server()
+        self.client("no-output", "mbytes", "10")
+        self.client("no-output", "mbytes", "10")
+        self.client("no-output", "mbytes", "10")
+        self.client("no-output", "mbytes", "10")
+        self.client("no-output", "mbytes", "10")
 
-        client_args = (self.client_echo_test_args +
-                       ["no-output", "mbytes", "10"])
-        self.internal_ipv4_transfer_test(self.server_echo_test_args,
-                                         client_args)
-        self.start_internal_echo_client(client_args)
-        self.start_internal_echo_client(client_args)
-        self.start_internal_echo_client(client_args)
-        self.start_internal_echo_client(client_args)
-
-
-class QUICInternalEchoIPv4MultiStreamTestCase(QUICTestCase):
-    """ QUIC Internal Echo IPv4 Transfer Test Cases """
-
-    @classmethod
-    def setUpClass(cls):
-        super(QUICInternalEchoIPv4MultiStreamTestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(QUICInternalEchoIPv4MultiStreamTestCase, cls).tearDownClass()
-
-    def setUp(self):
-        super(QUICInternalEchoIPv4MultiStreamTestCase, self).setUp()
-        self.thru_host_stack_ipv4_setup()
-
-    def tearDown(self):
-        super(QUICInternalEchoIPv4MultiStreamTestCase, self).tearDown()
-        self.thru_host_stack_ipv4_tear_down()
-
-    def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
-
+class QUICEchoInternalMStreamTestCase(QUICEchoInternalTestCase):
+    """QUIC Echo Internal MultiStream Test Case"""
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_internal_multistream_transfer(self):
-        """ QUIC internal echo client/server multi-stream transfer """
-
-        self.internal_ipv4_transfer_test(self.server_echo_test_args,
-                                         self.client_echo_test_args +
-                                         ["quic-streams", "10",
-                                          "mbytes", "1",
-                                          "no-output"])
+        self.server()
+        self.client("nclients", "10", "mbytes", "1", "no-output")
 
 
-class QUICExternalEchoIPv4TestCase(QUICTestCase):
-    """ QUIC External Echo IPv4 Transfer Test Cases """
-
-    @classmethod
-    def setUpConstants(cls):
-        super(QUICExternalEchoIPv4TestCase, cls).setUpConstants()
-        cls.vpp_cmdline.extend(["session", "{", "evt_qs_memfd_seg", "}"])
-
-    @classmethod
-    def setUpClass(cls):
-        super(QUICExternalEchoIPv4TestCase, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(QUICExternalEchoIPv4TestCase, cls).tearDownClass()
+class QUICEchoExternalTestCase(QUICTestCase):
+    extra_vpp_punt_config = ["session", "{", "evt_qs_memfd_seg", "}"]
+    quic_setup = "default"
 
     def setUp(self):
-        super(QUICExternalEchoIPv4TestCase, self).setUp()
-        self.thru_host_stack_ipv4_setup()
+        super(QUICEchoExternalTestCase, self).setUp()
+        common_args = ["uri", self.uri, "fifo-size", "64", "test-bytes:assert", "socket-name", self.api_sock]
+        self.server_echo_test_args = common_args + ["server", "appns", "server", "quic-setup", self.quic_setup]
+        self.client_echo_test_args = common_args + ["client", "appns", "client", "quic-setup", self.quic_setup]
+        self.event = Event()
 
-    def tearDown(self):
-        super(QUICExternalEchoIPv4TestCase, self).tearDown()
-        self.thru_host_stack_ipv4_tear_down()
+    def server(self, *args):
+        _args = self.server_echo_test_args + list(args)
+        self.worker_server = QUICAppWorker(self.build_dir, "quic_echo",
+                                           _args, self.logger, event=self.event)
+        self.worker_server.start()
+        self.sleep(self.pre_test_sleep)
 
-    def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+    def client(self, *args):
+        _args = self.client_echo_test_args + list(args)
+        # self.client_echo_test_args += "use-svm-api"
+        self.worker_client = QUICAppWorker(self.build_dir, "quic_echo",
+                                           _args, self.logger, event=self.event)
+        self.worker_client.start()
+        self.event.wait(self.timeout)
+        self.sleep(self.post_test_sleep)
 
+    def validate_external_test_results(self):
+        self.logger.info("Client worker result is `%s'" % self.worker_client.result)
+        server_result = self.worker_server.result
+        client_result = self.worker_client.result
+        server_kill_error = False
+        if self.worker_server.result is None:
+            server_kill_error = self.worker_server.teardown(self.logger, self.timeout)
+        if self.worker_client.result is None:
+            self.worker_client.teardown(self.logger, self.timeout)
+        self.assertIsNone(server_result, "Wrong server worker return code")
+        self.assertIsNotNone(client_result, "Timeout! Client worker did not finish in %ss" % self.timeout)
+        self.assertEqual(client_result, 0, "Wrong client worker return code")
+        self.assertFalse(server_kill_error, "Server kill errored")
+
+
+class QUICEchoExternalTransferTestCase(QUICEchoExternalTestCase):
+    """QUIC Echo External Transfer Test Case"""
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_external_transfer(self):
-        """ QUIC external echo client/server transfer """
+        self.server()
+        self.client()
+        self.validate_external_test_results()
 
-        self.external_ipv4_transfer_test(self.server_echo_test_args +
-                                         ["socket-name", self.api_sock,
-                                          "server"],
-                                         self.client_echo_test_args +
-                                         ["socket-name", self.api_sock,
-                                          "client", "mbytes", "10"])
+class QUICEchoExternalServerStreamTestCase(QUICEchoExternalTestCase):
+    """QUIC Echo External Transfer Server Stream Test Case"""
+    quic_setup = "serverstream"
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_external_transfer_server_stream(self):
+        self.server("nclients", "1/1", "send", "1Kb", "recv", "0")
+        self.client("nclients" ,"1/1", "send", "0", "recv", "1Kb")
+        self.validate_external_test_results()
+
+class QUICEchoExternalServerStreamWorkersTestCase(QUICEchoExternalTestCase):
+    """QUIC Echo External Transfer Server Stream MultiWorker Test Case"""
+    quic_setup = "serverstream"
+
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    def test_quic_external_transfer_server_stream_multi_workers(self):
+        self.server("nclients", "4/4", "send", "1Kb", "recv", "0")
+        self.client("nclients", "4/4", "send", "0", "recv", "1Kb")
+        self.validate_external_test_results()
 
 
 if __name__ == '__main__':

@@ -1936,7 +1936,7 @@ quic_create_quic_session (quic_ctx_t * ctx)
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    ctx->c_quic_ctx_id.udp_is_ip4);
-  quic_session->listener_handle = lctx->c_quic_ctx_id.listener_ctx_id;
+  quic_session->listener_handle = lctx->c_s_index;
 
   /* TODO: don't alloc fifos when we don't transfer data on this session
    * but we still need fifos for the events? */
