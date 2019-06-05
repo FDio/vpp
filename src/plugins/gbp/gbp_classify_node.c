@@ -481,6 +481,10 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 		{
 		  ge0 = gbp_endpoint_find_ip6 (ip6_0, fib_index0);
 		}
+	      else
+		{
+		  ge0 = NULL;
+		}
 
 	      next0 = vnet_l2_feature_next
 		(b0, gscm->l2_input_feat_next[GBP_SRC_CLASSIFY_LPM],
