@@ -75,6 +75,13 @@ setup 0000:3b:00.0 00:11:22:33:44:00
 setup 0000:3b:00.1 00:11:22:33:44:01
 ```
 
+### Promisc mode
+In cases when interface is used in the L2 mode or promisc mode is needed for some other reason,
+trust needs to be set to "on" using the linux "ip link" utility.
+```
+ip link set dev <PF inteface name> vf <VF id> trust on
+```
+
 ### Interface Creation
 Interfaces can be dynamically created by using following CLI:
 ```
