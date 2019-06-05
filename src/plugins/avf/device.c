@@ -561,7 +561,7 @@ avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad)
   virtchnl_promisc_info_t pi = { 0 };
 
   pi.vsi_id = ad->vsi_id;
-  pi.flags = 1;
+  pi.flags = FLAG_VF_UNICAST_PROMISC | FLAG_VF_MULTICAST_PROMISC;
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE, &pi,
 			 sizeof (virtchnl_promisc_info_t), 0, 0);
 }
