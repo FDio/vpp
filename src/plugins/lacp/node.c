@@ -25,8 +25,6 @@ lacp_state_struct lacp_state_array[] = {
   {.str = NULL}
 };
 
-static vlib_node_registration_t lacp_process_node;
-
 /** \file
 
     2 x LACP graph nodes: an "interior" node to process
@@ -136,6 +134,46 @@ VLIB_REGISTER_NODE (lacp_input_node, static) = {
 };
 /* *INDENT-ON* */
 
+static void
+lacp_elog_start_event (void)
+{
+  lacp_main_t *lm = &lacp_main;
+  /* *INDENT-OFF* */
+  ELOG_TYPE_DECLARE (e) =
+    {
+      .format = "Starting LACP process, interface count = %d",
+      .format_args = "i4",
+    };
+  /* *INDENT-ON* */
+  struct
+  {
+    u32 count;
+  } *ed;
+
+  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed->count = lm->lacp_int;
+}
+
+static void
+lacp_elog_stop_event (void)
+{
+  lacp_main_t *lm = &lacp_main;
+  /* *INDENT-OFF* */
+  ELOG_TYPE_DECLARE (e) =
+    {
+      .format = "Stopping LACP process, interface count = %d",
+      .format_args = "i4",
+    };
+  /* *INDENT-ON* */
+  struct
+  {
+    u32 count;
+  } *ed;
+
+  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed->count = lm->lacp_int;
+}
+
 /*
  * lacp periodic function
  */
@@ -145,10 +183,6 @@ lacp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   lacp_main_t *lm = &lacp_main;
   f64 poll_time_remaining;
   uword event_type, *event_data = 0;
-  u8 enabled = 0;
-
-  /* So we can send events to the lacp process */
-  lm->lacp_process_node_index = lacp_process_node.index;
 
   ethernet_register_input_type (vm, ETHERNET_TYPE_SLOW_PROTOCOLS /* LACP */ ,
 				lacp_input_node.index);
@@ -156,7 +190,7 @@ lacp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   poll_time_remaining = 0.2;
   while (1)
     {
-      if (enabled)
+      if (lm->lacp_int > 0)
 	poll_time_remaining =
 	  vlib_process_wait_for_event_or_clock (vm, poll_time_remaining);
       else
@@ -168,17 +202,21 @@ lacp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	case ~0:		/* no events => timeout */
 	  break;
 	case LACP_PROCESS_EVENT_START:
-	  enabled = 1;
+	  poll_time_remaining = 0.2;
+	  lacp_elog_start_event ();
 	  break;
 	case LACP_PROCESS_EVENT_STOP:
-	  enabled = 0;
-	  continue;
+	  if (lm->lacp_int == 0)
+	    {
+	      poll_time_remaining = SECS_IN_A_DAY;
+	      lacp_elog_stop_event ();
+	    }
+	  break;
 	default:
 	  clib_warning ("BUG: event type 0x%wx", event_type);
 	  break;
 	}
-      if (event_data)
-	_vec_len (event_data) = 0;
+      vec_reset_length (event_data);
 
       if (vlib_process_suspend_time_is_zero (poll_time_remaining))
 	{
@@ -190,16 +228,20 @@ lacp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/*
- * lacp periodic node declaration
- */
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (lacp_process_node, static) = {
-  .function = lacp_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = "lacp-process",
-};
-/* *INDENT-ON* */
+void
+lacp_create_periodic_process (void)
+{
+  lacp_main_t *lm = &lacp_main;
+
+  /* Already created the process node? */
+  if (lm->lacp_process_node_index > 0)
+    return;
+
+  /* No, create it now and make a note of the node index */
+  lm->lacp_process_node_index =
+    vlib_process_create (lm->vlib_main, "lacp-process", lacp_process,
+			 16 /* log2_n_stack_bytes */ );
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
