@@ -74,6 +74,8 @@ typedef enum
     LACP_N_ERROR,
 } lacp_error_t;
 
+#define SECS_IN_A_DAY 86400.0
+
 /* lacp packet trace capture */
 typedef struct
 {
@@ -129,7 +131,7 @@ typedef struct
   vlib_packet_template_t marker_packet_templates[MARKER_N_PACKET_TEMPLATES];
 
   /* LACP interface count */
-  u32 lacp_int;
+  volatile u32 lacp_int;
 
   /* debug is on or off */
   u8 debug;
@@ -138,6 +140,7 @@ typedef struct
 extern lacp_state_struct lacp_state_array[];
 extern lacp_main_t lacp_main;
 
+void lacp_create_periodic_process (void);
 clib_error_t *lacp_plugin_api_hookup (vlib_main_t * vm);
 int lacp_dump_ifs (lacp_interface_details_t ** out_bondids);
 lacp_error_t lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0);
