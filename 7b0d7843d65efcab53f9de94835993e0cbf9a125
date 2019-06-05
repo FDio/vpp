@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3208bd00_fe0e8ebe",
+        "filename": "src/vnet/bfd/bfd_udp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 391,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-05T09:10:17Z",
+      "side": 1,
+      "message": "i think there are better ways we could account for the interface down, rather than check on each packet TX.  can the session be \u0027inactive\u0027?\ni appreciate this is not the problem you are trying to address with this commit, so if you want to leave it in I\u0027m fine and we can address it properly with a separate commit.",
+      "revId": "7b0d7843d65efcab53f9de94835993e0cbf9a125",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
