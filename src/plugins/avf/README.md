@@ -60,7 +60,7 @@ setup () {
   ifname=$(basename net/*)
   echo 0 | tee sriov_numvfs > /dev/null
   echo 1 | tee sriov_numvfs > /dev/null
-  ip link set dev ${ifname} vf 0 mac ${2}
+  ip link set dev ${ifname} vf 0 mac ${2} trust on
   ip link show dev ${ifname}
   vf=$(basename $(readlink virtfn0))
   echo ${vf} | tee virtfn0/driver/unbind
