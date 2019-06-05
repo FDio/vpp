@@ -1196,6 +1196,7 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   if (!conn || !quicly_connection_is_ready (conn))
     return -1;
 
+  QUIC_DBG (2, "Opening stream on connection %lx", quicly_get_master_id (conn)->master_id );
   if ((rv = quicly_open_stream (conn, &stream, 0 /* uni */ )))
     {
       QUIC_DBG (2, "Stream open failed with %d", rv);
@@ -1916,7 +1917,7 @@ quic_receive (quic_ctx_t * ctx, quicly_conn_t * conn,
   rv = quicly_receive (conn, &packet);
   if (rv)
     {
-      QUIC_DBG (2, "Quicly receive ignored packet code : %u", rv);
+      QUIC_DBG (2, "Quicly receive ignored packet code : %s", quic_format_err(rv));
       return 0;
     }
   /* ctx pointer may change if a new stream is opened */
@@ -2179,6 +2180,8 @@ quic_app_rx_callback (session_t * udp_session)
 				     udp_session_handle, sa, salen, packet);
 	    }
 	}
+      else
+	clib_warning ("Got a packet where plen == SIZE_MAX");
     ctx_search_done:
       svm_fifo_dequeue_drop (f, full_len);
       free (data);
