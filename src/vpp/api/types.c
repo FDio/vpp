@@ -86,7 +86,7 @@ format_vl_api_prefix (u8 * s, va_list * args)
   const vl_api_prefix_t *pfx = va_arg (*args, vl_api_prefix_t *);
 
   s = format (s, "%U/%d", format_vl_api_address,
-	      &pfx->address, pfx->address_length);
+	      &pfx->prefix, pfx->len);
 
   return s;
 }
@@ -163,8 +163,8 @@ unformat_vl_api_prefix (unformat_input_t * input, va_list * args)
 {
    vl_api_prefix_t *pfx = va_arg (*args, vl_api_prefix_t *);
 
-  if (unformat (input, "%U/%d", unformat_vl_api_address, &pfx->address,
-                &pfx->address_length))
+  if (unformat (input, "%U/%d", unformat_vl_api_address, &pfx->prefix,
+                &pfx->len))
       return (1);
   return (0);
 }
