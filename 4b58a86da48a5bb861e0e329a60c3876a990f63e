@@ -22,6 +22,30 @@
       "revId": "4b58a86da48a5bb861e0e329a60c3876a990f63e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2b702491_3800f418",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-06-06T02:13:55Z",
+      "side": 0,
+      "message": "thanks for your clarification, Damjan.",
+      "parentUuid": "f0b0ac14_a7c38566",
+      "range": {
+        "startLine": 368,
+        "startChar": 0,
+        "endLine": 368,
+        "endChar": 30
+      },
+      "revId": "4b58a86da48a5bb861e0e329a60c3876a990f63e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
