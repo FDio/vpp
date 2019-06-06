@@ -21582,7 +21582,7 @@ api_ip_container_proxy_add_del (vat_main_t * vam)
       else
 	break;
     }
-  if (sw_if_index == ~0 || pfx.address_length == 0)
+  if (sw_if_index == ~0 || pfx.len == 0)
     {
       errmsg ("address and sw_if_index must be set");
       return -99;
