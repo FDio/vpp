@@ -38,8 +38,8 @@ def format_vl_api_address_t(args):
 
 def format_vl_api_prefix_t(args):
     p, length = args.split('/')
-    return {'address': format_vl_api_address_t(p),
-            'address_length': int(length)}
+    return {'prefix': format_vl_api_address_t(p),
+            'len': int(length)}
 
 
 def format_vl_api_ip6_prefix_t(args):
@@ -111,10 +111,10 @@ def unformat_api_address_t(o):
 
 
 def unformat_api_prefix_t(o):
-    if isinstance(o.address, ipaddress.IPv4Address):
-        return ipaddress.IPv4Network((o.address, o.address_length), False)
+    if isinstance(o.prefix, ipaddress.IPv4Address):
+        return ipaddress.IPv4Network((o.prefix, o.len), False)
     if isinstance(o.address, ipaddress.IPv6Address):
-        return ipaddress.IPv6Network((o.address, o.address_length), False)
+        return ipaddress.IPv6Network((o.prefix, o.len), False)
 
 
 conversion_unpacker_table = {
