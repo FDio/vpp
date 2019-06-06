@@ -615,7 +615,7 @@ class TestIPv6(TestIPv6ND):
             # the options are nested in the scapy packet in way that i cannot
             # decipher how to decode. this 1st layer of option always returns
             # nested classes, so a direct obj1=obj2 comparison always fails.
-            # however, the getlayer(.., 2) does give one instnace.
+            # however, the getlayer(.., 2) does give one instance.
             # so we cheat here and construct a new opt instance for comparison
             rd = ICMPv6NDOptPrefixInfo(
                 prefixlen=raos.prefixlen,
@@ -628,7 +628,9 @@ class TestIPv6(TestIPv6ND):
                     rd = rx.getlayer(
                         ICMPv6NDOptPrefixInfo, ii + 2)
             else:
-                self.assertEqual(pi_opt, raos)
+                self.assertEqual(pi_opt, raos, 'Expected: %s, received: %s'
+                                 % (pi_opt.show(dump=True),
+                                    raos.show(dump=True)))
 
     def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
                            filter_out_fn=is_ipv6_misc,
@@ -743,8 +745,8 @@ class TestIPv6(TestIPv6ND):
         #
         # Configure The RA to announce the links prefix
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
-                               self.pg0.local_ip6_prefix_len)
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg0.local_ip6,
+                               self.pg0.local_ip6_prefix_len))
 
         #
         # RAs should now contain the prefix information option
@@ -769,8 +771,8 @@ class TestIPv6(TestIPv6ND):
         # Change the prefix info to not off-link
         #  L-flag is clear
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
-                               self.pg0.local_ip6_prefix_len,
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg0.local_ip6,
+                               self.pg0.local_ip6_prefix_len),
                                off_link=1)
 
         opt = ICMPv6NDOptPrefixInfo(
@@ -789,8 +791,8 @@ class TestIPv6(TestIPv6ND):
         # Change the prefix info to not off-link, no-autoconfig
         #  L and A flag are clear in the advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
-                               self.pg0.local_ip6_prefix_len,
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg0.local_ip6,
+                               self.pg0.local_ip6_prefix_len),
                                off_link=1,
                                no_autoconfig=1)
 
@@ -810,8 +812,8 @@ class TestIPv6(TestIPv6ND):
         # Change the flag settings back to the defaults
         #  L and A flag are set in the advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
-                               self.pg0.local_ip6_prefix_len)
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg0.local_ip6,
+                               self.pg0.local_ip6_prefix_len))
 
         opt = ICMPv6NDOptPrefixInfo(
             prefixlen=self.pg0.local_ip6_prefix_len,
@@ -829,8 +831,8 @@ class TestIPv6(TestIPv6ND):
         # Change the prefix info to not off-link, no-autoconfig
         #  L and A flag are clear in the advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
-                               self.pg0.local_ip6_prefix_len,
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg0.local_ip6,
+                               self.pg0.local_ip6_prefix_len),
                                off_link=1,
                                no_autoconfig=1)
 
@@ -850,8 +852,8 @@ class TestIPv6(TestIPv6ND):
         # Use the reset to defaults option to revert to defaults
         #  L and A flag are clear in the advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
-                               self.pg0.local_ip6_prefix_len,
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg0.local_ip6,
+                               self.pg0.local_ip6_prefix_len),
                                use_default=1)
 
         opt = ICMPv6NDOptPrefixInfo(
@@ -869,8 +871,8 @@ class TestIPv6(TestIPv6ND):
         #
         # Advertise Another prefix. With no L-flag/A-flag
         #
-        self.pg0.ip6_ra_prefix(self.pg1.local_ip6,
-                               self.pg1.local_ip6_prefix_len,
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg1.local_ip6,
+                               self.pg1.local_ip6_prefix_len),
                                off_link=1,
                                no_autoconfig=1)
 
@@ -899,8 +901,8 @@ class TestIPv6(TestIPv6ND):
         # Remove the first prefix-info - expect the second is still in the
         # advert
         #
-        self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
-                               self.pg0.local_ip6_prefix_len,
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg0.local_ip6,
+                               self.pg0.local_ip6_prefix_len),
                                is_no=1)
 
         opt = ICMPv6NDOptPrefixInfo(
@@ -918,8 +920,8 @@ class TestIPv6(TestIPv6ND):
         #
         # Remove the second prefix-info - expect no prefix-info in the adverts
         #
-        self.pg0.ip6_ra_prefix(self.pg1.local_ip6,
-                               self.pg1.local_ip6_prefix_len,
+        self.pg0.ip6_ra_prefix('%s/%s' % (self.pg1.local_ip6,
+                               self.pg1.local_ip6_prefix_len),
                                is_no=1)
 
         self.pg0.ip6_ra_config(send_unicast=1)

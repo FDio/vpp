@@ -192,7 +192,7 @@ from_api(const vapi_type_mac_address& v)
 route::prefix_t
 from_api(const vapi_type_prefix& v)
 {
-  return route::prefix_t(from_api(v.address), v.address_length);
+  return route::prefix_t(from_api(v.address), v.len);
 }
 
 vapi_type_prefix
@@ -200,7 +200,7 @@ to_api(const route::prefix_t& p)
 {
   vapi_type_prefix v;
   to_api(p.address(), v.address);
-  v.address_length = p.mask_width();
+  v.len = p.mask_width();
   return v;
 }
 
