@@ -1,0 +1,234 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d948f1f5_92d098f9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "Use new git commit format:\n\u003ccomponent\u003e:\u003csubject\u003e\n\nType: \u003ctype\u003e\n\nAlso, this needs to be split into two patches: general host stack purpose and quic patch.",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 4
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "94c29006_6663197a",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1512,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "SESSION_INVALID_HANDLE",
+      "range": {
+        "startLine": 1512,
+        "startChar": 34,
+        "endLine": 1512,
+        "endChar": 55
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e19cad10_e80969da",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "Per previous comment, let\u0027s make this the actual \"app_listener_free\"",
+      "range": {
+        "startLine": 87,
+        "startChar": 0,
+        "endLine": 87,
+        "endChar": 26
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "630a72d3_3a070ce8",
+        "filename": "src/vnet/session/application.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "App listeners should be thread agnostic. Let\u0027s see if we can avoid this.",
+      "range": {
+        "startLine": 81,
+        "startChar": 5,
+        "endLine": 81,
+        "endChar": 17
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4fa09120_5490664e",
+        "filename": "src/vnet/session/application.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "Same comment as above.",
+      "range": {
+        "startLine": 110,
+        "startChar": 19,
+        "endLine": 110,
+        "endChar": 28
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ef179974_f4cf34bc",
+        "filename": "src/vnet/session/application.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "Nit: Let\u0027s call this app_listener_get, since we typically expect to get the listener with app context",
+      "range": {
+        "startLine": 170,
+        "startChar": 16,
+        "endLine": 170,
+        "endChar": 38
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ae550b0_bbda7405",
+        "filename": "src/vnet/session/application.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "Let\u0027s call free on the actual object, i.e., app_listener_free (app_listener_t *)",
+      "range": {
+        "startLine": 172,
+        "startChar": 5,
+        "endLine": 172,
+        "endChar": 22
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8cd87e75_6b2381f7",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "SESSION_INVALID_HANDLE",
+      "range": {
+        "startLine": 131,
+        "startChar": 24,
+        "endLine": 131,
+        "endChar": 45
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cb57921a_c3c561d9",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "Do these 2 need to be taken out of the union?",
+      "range": {
+        "startLine": 157,
+        "startChar": 0,
+        "endLine": 161,
+        "endChar": 16
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "94ef65e8_695607b0",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T00:03:08Z",
+      "side": 1,
+      "message": "Why were these 3 moved?",
+      "range": {
+        "startLine": 169,
+        "startChar": 0,
+        "endLine": 176,
+        "endChar": 18
+      },
+      "revId": "c10e52f3c88562cfb19c49c8eaf069ae3e446d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
