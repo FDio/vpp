@@ -53,13 +53,11 @@ _(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                         \
 _(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)     \
 _(IPSEC_SPD_ENTRY_ADD_DEL, ipsec_spd_entry_add_del)             \
 _(IPSEC_SAD_ENTRY_ADD_DEL, ipsec_sad_entry_add_del)             \
-_(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                           \
 _(IPSEC_SA_DUMP, ipsec_sa_dump)                                 \
 _(IPSEC_SPDS_DUMP, ipsec_spds_dump)                             \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                               \
 _(IPSEC_SPD_INTERFACE_DUMP, ipsec_spd_interface_dump)		\
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)             \
-_(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)             \
 _(IPSEC_TUNNEL_IF_SET_SA, ipsec_tunnel_if_set_sa)               \
 _(IPSEC_SELECT_BACKEND, ipsec_select_backend)                   \
 _(IPSEC_BACKEND_DUMP, ipsec_backend_dump)
@@ -592,29 +590,6 @@ vl_api_ipsec_spd_interface_dump_t_handler (vl_api_ipsec_spd_interface_dump_t *
 }
 
 static void
-vl_api_ipsec_sa_set_key_t_handler (vl_api_ipsec_sa_set_key_t * mp)
-{
-  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
-  vl_api_ipsec_sa_set_key_reply_t *rmp;
-  ipsec_key_t ck, ik;
-  u32 id;
-  int rv;
-#if WITH_LIBSSL > 0
-
-  id = ntohl (mp->sa_id);
-
-  ipsec_key_decode (&mp->crypto_key, &ck);
-  ipsec_key_decode (&mp->integrity_key, &ik);
-
-  rv = ipsec_set_sa_key (id, &ck, &ik);
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IPSEC_SA_SET_KEY_REPLY);
-}
-
-static void
 vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 					  mp)
 {
@@ -764,62 +739,6 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
   clib_warning ("unimplemented");
 #endif
 }
-
-
-static void
-vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
-					  mp)
-{
-  vl_api_ipsec_tunnel_if_set_key_reply_t *rmp;
-  ipsec_main_t *im = &ipsec_main;
-  vnet_main_t *vnm = im->vnet_main;
-  vnet_sw_interface_t *sw;
-  u8 *key = 0;
-  int rv;
-
-#if WITH_LIBSSL > 0
-  sw = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
-
-  switch (mp->key_type)
-    {
-    case IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO:
-    case IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO:
-      if (mp->alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
-	  mp->alg >= IPSEC_CRYPTO_N_ALG)
-	{
-	  rv = VNET_API_ERROR_INVALID_ALGORITHM;
-	  goto out;
-	}
-      break;
-    case IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG:
-    case IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG:
-      if (mp->alg >= IPSEC_INTEG_N_ALG)
-	{
-	  rv = VNET_API_ERROR_INVALID_ALGORITHM;
-	  goto out;
-	}
-      break;
-    case IPSEC_IF_SET_KEY_TYPE_NONE:
-    default:
-      rv = VNET_API_ERROR_UNIMPLEMENTED;
-      goto out;
-      break;
-    }
-
-  key = vec_new (u8, mp->key_len);
-  clib_memcpy (key, mp->key, mp->key_len);
-
-  rv = ipsec_set_interface_key (vnm, sw->hw_if_index, mp->key_type, mp->alg,
-				key);
-  vec_free (key);
-#else
-  clib_warning ("unimplemented");
-#endif
-
-out:
-  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_KEY_REPLY);
-}
-
 
 static void
 vl_api_ipsec_tunnel_if_set_sa_t_handler (vl_api_ipsec_tunnel_if_set_sa_t * mp)

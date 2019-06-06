@@ -514,65 +514,6 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
 }
 
 int
-ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
-			 ipsec_if_set_key_type_t type, u8 alg, u8 * key)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  ipsec_main_t *im = &ipsec_main;
-  vnet_hw_interface_t *hi;
-  ipsec_tunnel_if_t *t;
-  ipsec_sa_t *sa;
-
-  hi = vnet_get_hw_interface (vnm, hw_if_index);
-  t = pool_elt_at_index (im->tunnel_interfaces, hi->dev_instance);
-
-  if (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
-    return VNET_API_ERROR_SYSCALL_ERROR_1;
-
-  if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO)
-    {
-      sa = pool_elt_at_index (im->sad, t->output_sa_index);
-      ipsec_sa_set_crypto_alg (sa, alg);
-      ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
-      sa->crypto_calg = im->crypto_algs[alg].alg;
-      vnet_crypto_key_modify (vm, sa->crypto_key_index, sa->crypto_calg,
-			      key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG)
-    {
-      sa = pool_elt_at_index (im->sad, t->output_sa_index);
-      ipsec_sa_set_integ_alg (sa, alg);
-      ipsec_mk_key (&sa->integ_key, key, vec_len (key));
-      sa->integ_calg = im->integ_algs[alg].alg;
-      vnet_crypto_key_modify (vm, sa->integ_key_index, sa->integ_calg,
-			      key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO)
-    {
-      sa = pool_elt_at_index (im->sad, t->input_sa_index);
-      ipsec_sa_set_crypto_alg (sa, alg);
-      ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
-      sa->crypto_calg = im->crypto_algs[alg].alg;
-      vnet_crypto_key_modify (vm, sa->crypto_key_index, sa->crypto_calg,
-			      key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG)
-    {
-      sa = pool_elt_at_index (im->sad, t->input_sa_index);
-      ipsec_sa_set_integ_alg (sa, alg);
-      ipsec_mk_key (&sa->integ_key, key, vec_len (key));
-      sa->integ_calg = im->integ_algs[alg].alg;
-      vnet_crypto_key_modify (vm, sa->integ_key_index, sa->integ_calg,
-			      key, vec_len (key));
-    }
-  else
-    return VNET_API_ERROR_INVALID_VALUE;
-
-  return 0;
-}
-
-
-int
 ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 			u8 is_outbound)
 {

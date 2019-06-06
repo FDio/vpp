@@ -239,28 +239,6 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
   pool_put (cm->keys, key);
 }
 
-void
-vnet_crypto_key_modify (vlib_main_t * vm, vnet_crypto_key_index_t index,
-			vnet_crypto_alg_t alg, u8 * data, u16 length)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_engine_t *engine;
-  vnet_crypto_key_t *key = pool_elt_at_index (cm->keys, index);
-
-  if (vec_len (key->data))
-    clib_memset (key->data, 0, vec_len (key->data));
-  vec_free (key->data);
-  vec_validate_aligned (key->data, length - 1, CLIB_CACHE_LINE_BYTES);
-  clib_memcpy (key->data, data, length);
-  key->alg = alg;
-
-  /* *INDENT-OFF* */
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_MODIFY, index);
-  /* *INDENT-ON* */
-}
-
 static void
 vnet_crypto_init_cipher_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
 			      vnet_crypto_op_id_t did, char *name, u8 is_aead)

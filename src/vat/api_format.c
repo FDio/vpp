@@ -5210,9 +5210,7 @@ _(ipsec_spd_add_del_reply)                              \
 _(ipsec_interface_add_del_spd_reply)                    \
 _(ipsec_spd_entry_add_del_reply)                        \
 _(ipsec_sad_entry_add_del_reply)                        \
-_(ipsec_sa_set_key_reply)                               \
 _(ipsec_tunnel_if_add_del_reply)                        \
-_(ipsec_tunnel_if_set_key_reply)                        \
 _(ipsec_tunnel_if_set_sa_reply)                         \
 _(delete_loopback_reply)                                \
 _(bd_ip_mac_add_del_reply)                              \
@@ -5452,9 +5450,7 @@ _(IPSEC_INTERFACE_ADD_DEL_SPD_REPLY, ipsec_interface_add_del_spd_reply) \
 _(IPSEC_SPD_ENTRY_ADD_DEL_REPLY, ipsec_spd_entry_add_del_reply)         \
 _(IPSEC_SAD_ENTRY_ADD_DEL_REPLY, ipsec_sad_entry_add_del_reply)         \
 _(IPSEC_SA_DETAILS, ipsec_sa_details)                                   \
-_(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL_REPLY, ipsec_tunnel_if_add_del_reply)         \
-_(IPSEC_TUNNEL_IF_SET_KEY_REPLY, ipsec_tunnel_if_set_key_reply)         \
 _(IPSEC_TUNNEL_IF_SET_SA_REPLY, ipsec_tunnel_if_set_sa_reply)           \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
 _(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
@@ -14905,52 +14901,6 @@ api_ipsec_sad_entry_add_del (vat_main_t * vam)
 }
 
 static int
-api_ipsec_sa_set_key (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_ipsec_sa_set_key_t *mp;
-  u32 sa_id;
-  u8 *ck = 0, *ik = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sa_id %d", &sa_id))
-	;
-      else if (unformat (i, "crypto_key %U", unformat_hex_string, &ck))
-	;
-      else if (unformat (i, "integ_key %U", unformat_hex_string, &ik))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  M (IPSEC_SA_SET_KEY, mp);
-
-  mp->sa_id = ntohl (sa_id);
-  mp->crypto_key.length = vec_len (ck);
-  mp->integrity_key.length = vec_len (ik);
-
-  if (mp->crypto_key.length > sizeof (mp->crypto_key.data))
-    mp->crypto_key.length = sizeof (mp->crypto_key.data);
-
-  if (mp->integrity_key.length > sizeof (mp->integrity_key.data))
-    mp->integrity_key.length = sizeof (mp->integrity_key.data);
-
-  if (ck)
-    clib_memcpy (mp->crypto_key.data, ck, mp->crypto_key.length);
-  if (ik)
-    clib_memcpy (mp->integrity_key.data, ik, mp->integrity_key.length);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -15254,84 +15204,6 @@ api_ipsec_sa_dump (vat_main_t * vam)
   S (mp_ping);
 
   W (ret);
-  return ret;
-}
-
-static int
-api_ipsec_tunnel_if_set_key (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_ipsec_tunnel_if_set_key_t *mp;
-  u32 sw_if_index = ~0;
-  u8 key_type = IPSEC_IF_SET_KEY_TYPE_NONE;
-  u8 *key = 0;
-  u32 alg = ~0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	;
-      else
-	if (unformat
-	    (i, "local crypto %U", unformat_ipsec_api_crypto_alg, &alg))
-	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO;
-      else
-	if (unformat
-	    (i, "remote crypto %U", unformat_ipsec_api_crypto_alg, &alg))
-	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO;
-      else
-	if (unformat
-	    (i, "local integ %U", unformat_ipsec_api_integ_alg, &alg))
-	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG;
-      else
-	if (unformat
-	    (i, "remote integ %U", unformat_ipsec_api_integ_alg, &alg))
-	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG;
-      else if (unformat (i, "%U", unformat_hex_string, &key))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index == ~0)
-    {
-      errmsg ("interface must be specified");
-      return -99;
-    }
-
-  if (key_type == IPSEC_IF_SET_KEY_TYPE_NONE)
-    {
-      errmsg ("key type must be specified");
-      return -99;
-    }
-
-  if (alg == ~0)
-    {
-      errmsg ("algorithm must be specified");
-      return -99;
-    }
-
-  if (vec_len (key) == 0)
-    {
-      errmsg ("key must be specified");
-      return -99;
-    }
-
-  M (IPSEC_TUNNEL_IF_SET_KEY, mp);
-
-  mp->sw_if_index = htonl (sw_if_index);
-  mp->alg = alg;
-  mp->key_type = key_type;
-  mp->key_len = vec_len (key);
-  clib_memcpy (mp->key, key, vec_len (key));
-
-  S (mp);
-  W (ret);
-
   return ret;
 }
 
@@ -22464,15 +22336,12 @@ _(ipsec_spd_entry_add_del, "spd_id <n> priority <n> action <action>\n"  \
   "  (inbound|outbound) [sa_id <n>] laddr_start <ip4|ip6>\n"            \
   "  laddr_stop <ip4|ip6> raddr_start <ip4|ip6> raddr_stop <ip4|ip6>\n" \
   "  [lport_start <n> lport_stop <n>] [rport_start <n> rport_stop <n>]" ) \
-_(ipsec_sa_set_key, "sa_id <n> crypto_key <hex> integ_key <hex>")       \
 _(ipsec_tunnel_if_add_del, "local_spi <n> remote_spi <n>\n"             \
   "  crypto_alg <alg> local_crypto_key <hex> remote_crypto_key <hex>\n" \
   "  integ_alg <alg> local_integ_key <hex> remote_integ_key <hex>\n"    \
   "  local_ip <addr> remote_ip <addr> [esn] [anti_replay] [del]\n"      \
   "  [instance <n>]")     \
 _(ipsec_sa_dump, "[sa_id <n>]")                                         \
-_(ipsec_tunnel_if_set_key, "<intfc> <local|remote> <crypto|integ>\n"    \
-  "  <alg> <hex>\n")                                                    \
 _(ipsec_tunnel_if_set_sa, "<intfc> sa_id <n> <inbound|outbound>\n")     \
 _(delete_loopback,"sw_if_index <nn>")                                   \
 _(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \
