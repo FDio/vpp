@@ -3583,6 +3583,16 @@ class TestGBP(VppTestCase):
         rep.add_vpp_config()
 
         #
+        # EP1 impersonating EP3 is dropped
+        #
+        p = (Ether(src=eep1.mac, dst="ff:ff:ff:ff:ff:ff") /
+             Dot1Q(vlan=100) /
+             ARP(op="who-has",
+             psrc="10.0.0.3", pdst="10.0.0.128",
+             hwsrc=eep1.mac, hwdst="ff:ff:ff:ff:ff:ff"))
+        self.send_and_assert_no_replies(self.pg0, p)
+
+        #
         # ARP packet from External EPs are accepted and replied to
         #
         p_arp = (Ether(src=eep1.mac, dst="ff:ff:ff:ff:ff:ff") /
@@ -3595,11 +3605,11 @@ class TestGBP(VppTestCase):
         #
         # ARP packet from host in remote subnet are accepted and replied to
         #
-        p_arp = (Ether(src=vlan_102.remote_mac, dst="ff:ff:ff:ff:ff:ff") /
+        p_arp = (Ether(src=eep3.mac, dst="ff:ff:ff:ff:ff:ff") /
                  Dot1Q(vlan=102) /
                  ARP(op="who-has",
-                     psrc="10.0.0.17", pdst="10.0.0.128",
-                     hwsrc=vlan_102.remote_mac, hwdst="ff:ff:ff:ff:ff:ff"))
+                     psrc=eep3.ip4.address, pdst="10.0.0.128",
+                     hwsrc=eep3.mac, hwdst="ff:ff:ff:ff:ff:ff"))
         rxs = self.send_and_expect(self.pg0, p_arp * 1, self.pg0)
 
         #
