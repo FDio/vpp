@@ -138,8 +138,8 @@ class TestAddType(unittest.TestCase):
                            ['vl_api_address_union_t', 'un']])
 
         prefix = VPPType('vl_api_prefix_t',
-                         [['vl_api_address_t', 'address'],
-                          ['u8', 'address_length']])
+                         [['vl_api_address_t', 'prefix'],
+                          ['u8', 'len']])
         message = VPPMessage('svs',
                              [['vl_api_prefix_t', 'prefix']])
         message_addr = VPPMessage('svs_address',
