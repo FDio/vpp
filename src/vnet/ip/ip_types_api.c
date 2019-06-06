@@ -187,7 +187,7 @@ ip_address_encode (const ip46_address_t * in,
 void
 ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
 {
-  switch (clib_net_to_host_u32 (in->address.af))
+  switch (clib_net_to_host_u32 (in->prefix.af))
     {
     case ADDRESS_IP4:
       out->fp_proto = FIB_PROTOCOL_IP4;
@@ -196,9 +196,9 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
       out->fp_proto = FIB_PROTOCOL_IP6;
       break;
     }
-  out->fp_len = in->address_length;
+  out->fp_len = in->len;
   out->___fp___pad = 0;
-  ip_address_decode (&in->address, &out->fp_addr);
+  ip_address_decode (&in->prefix, &out->fp_addr);
 }
 
 void
