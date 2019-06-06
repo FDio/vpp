@@ -36,7 +36,9 @@ def format_vl_api_address_t(args):
     try:
         return {'un': {'ip6': inet_pton(AF_INET6, args)},
                 'af': ADDRESS_IP6}
-    except socket.error as e:
+    # PY2: raises socket.error
+    # PY3: raises OSError
+    except (socket.error, OSError):
         return {'un': {'ip4': inet_pton(AF_INET, args)},
                 'af': ADDRESS_IP4}
 
