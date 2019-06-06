@@ -209,8 +209,6 @@ int vnet_crypto_set_handler (char *ops_handler_name, char *engine);
 u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
 			 u8 * data, u16 length);
 void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
-void vnet_crypto_key_modify (vlib_main_t * vm, vnet_crypto_key_index_t index,
-			     vnet_crypto_alg_t alg, u8 * data, u16 len);
 
 format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;

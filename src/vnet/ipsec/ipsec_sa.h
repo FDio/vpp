@@ -214,8 +214,6 @@ extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,
 				    ipsec_integ_alg_t integ_alg);
 
 extern u8 ipsec_is_sa_used (u32 sa_index);
-extern int ipsec_set_sa_key (u32 id,
-			     const ipsec_key_t * ck, const ipsec_key_t * ik);
 extern u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);
 
 typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t * sa, void *ctx);

@@ -17,15 +17,6 @@
 
 #include <vnet/ipsec/ipsec_sa.h>
 
-typedef enum
-{
-  IPSEC_IF_SET_KEY_TYPE_NONE,
-  IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO,
-  IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO,
-  IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG,
-  IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG,
-} ipsec_if_set_key_type_t;
-
 typedef struct
 {
   /* Required for pool_get_aligned */
@@ -111,9 +102,6 @@ extern int ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
 					   ipsec_gre_tunnel_add_del_args_t *
 					   args);
 
-extern int ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
-				    ipsec_if_set_key_type_t type,
-				    u8 alg, u8 * key);
 extern int ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index,
 				   u32 sa_id, u8 is_outbound);
 
