@@ -615,7 +615,7 @@ class TestIPv6(TestIPv6ND):
             # the options are nested in the scapy packet in way that i cannot
             # decipher how to decode. this 1st layer of option always returns
             # nested classes, so a direct obj1=obj2 comparison always fails.
-            # however, the getlayer(.., 2) does give one instnace.
+            # however, the getlayer(.., 2) does give one instance.
             # so we cheat here and construct a new opt instance for comparison
             rd = ICMPv6NDOptPrefixInfo(
                 prefixlen=raos.prefixlen,
