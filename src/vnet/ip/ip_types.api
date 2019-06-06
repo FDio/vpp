@@ -40,8 +40,8 @@ typedef address {
 };
 
 typedef prefix {
-  vl_api_address_t address;
-  u8 address_length;
+  vl_api_address_t prefix;
+  u8 len;
 };
 
 typedef mprefix {
