@@ -229,6 +229,7 @@ class VPPApiClient(object):
         self.message_queue = queue.Queue()
         self.read_timeout = read_timeout
         self.async_thread = async_thread
+        self.event_thread = None
 
         if use_socket:
             from . vpp_transport_socket import VppTransport
