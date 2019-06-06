@@ -218,7 +218,7 @@ vl_api_gbp_subnet_add_del_t_print (vl_api_gbp_subnet_add_del_t * a,
   s = format (s, "type %d ", ntohl (a->subnet.type));
   s =
     format (s, "prefix %U/%d", format_vl_api_address,
-	    &a->subnet.prefix.address, a->subnet.prefix.address_length);
+	    &a->subnet.prefix.address, a->subnet.prefix.len);
 
   s = format (s, "\n");
 
