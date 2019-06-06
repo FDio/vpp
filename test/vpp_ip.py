@@ -154,8 +154,8 @@ class VppIpPrefix():
         self.len = len
 
     def encode(self):
-        return {'address': self.addr.encode(),
-                'address_length': self.len}
+        return {'prefix': self.addr.encode(),
+                'len': self.len}
 
     @property
     def address(self):
@@ -179,10 +179,10 @@ class VppIpPrefix():
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return (self.len == other.len and self.addr == other.addr)
-        elif hasattr(other, "address") and hasattr(other, "address_length"):
+        elif hasattr(other, "prefix") and hasattr(other, "len"):
             # vl_api_prefix_t
-            return self.len == other.address_length and \
-                   self.addr == other.address
+            return self.len == other.len and \
+                   self.addr == other.prefix
         else:
             _log.error(
                 "Comparing VppIpPrefix:%s with incomparable type: %s" %
