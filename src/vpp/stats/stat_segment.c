@@ -627,7 +627,7 @@ stats_socket_accept_ready (clib_file_t * uf)
   return 0;
 }
 
-static void
+static clib_error_t *
 stats_segment_socket_init (void)
 {
   stat_segment_main_t *sm = &stat_segment_main;
@@ -640,10 +640,7 @@ stats_segment_socket_init (void)
     CLIB_SOCKET_F_ALLOW_GROUP_WRITE | CLIB_SOCKET_F_PASSCRED;
 
   if ((error = clib_socket_init (s)))
-    {
-      clib_error_report (error);
-      return;
-    }
+    return error;
 
   clib_file_t template = { 0 };
   template.read_function = stats_socket_accept_ready;
@@ -652,6 +649,8 @@ stats_segment_socket_init (void)
   clib_file_add (&file_main, &template);
 
   sm->socket = s;
+
+  return 0;
 }
 
 static clib_error_t *
@@ -683,25 +682,6 @@ stat_segment_collector_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
     }
   return 0;			/* or not */
 }
-
-static clib_error_t *
-statseg_init (vlib_main_t * vm)
-{
-  stat_segment_main_t *sm = &stat_segment_main;
-
-  if (sm->socket_name)
-    stats_segment_socket_init ();
-
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (statseg_init) =
-{
-  .runs_after = VLIB_INITS("unix_input_init"),
-};
-/* *INDENT-ON* */
-
 
 clib_error_t *
 stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
@@ -750,12 +730,6 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "socket-name %s", &sm->socket_name))
 	;
-      else if (unformat (input, "default"))
-	{
-	  vec_reset_length (sm->socket_name);
-	  sm->socket_name = format (sm->socket_name, "%s",
-				    STAT_SEGMENT_SOCKET_FILE);
-	}
       else if (unformat (input, "size %U",
 			 unformat_memory_size, &sm->memory_size))
 	;
@@ -770,15 +744,16 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 
   /* set default socket file name when statseg config stanza is empty. */
   if (!vec_len (sm->socket_name))
-    sm->socket_name = format (sm->socket_name, "%s",
-			      STAT_SEGMENT_SOCKET_FILE);
+    sm->socket_name = format (0, "%s/%s", vlib_unix_get_runtime_dir (),
+			      STAT_SEGMENT_SOCKET_FILENAME);
+
   /*
    * NULL-terminate socket name string
    * clib_socket_init()->socket_config() use C str*
    */
   vec_terminate_c_string (sm->socket_name);
 
-  return 0;
+  return stats_segment_socket_init ();
 }
 
 static clib_error_t *
@@ -849,7 +824,7 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   return 0;
 }
 
-VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
+VLIB_CONFIG_FUNCTION (statseg_config, "statseg");
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (statseg_sw_interface_add_del);
 
 /* *INDENT-OFF* */

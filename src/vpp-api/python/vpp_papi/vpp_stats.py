@@ -184,7 +184,7 @@ class VPPStatsClientLoadError(RuntimeError):
 class VPPStats(object):
     VPPStatsIOError = VPPStatsIOError
 
-    default_socketname = '/var/run/vpp/stats.sock'
+    default_socketname = '/run/vpp/stats.sock'
     sharedlib_name = 'libvppapiclient.so'
 
     def __init__(self, socketname=default_socketname, timeout=10):
