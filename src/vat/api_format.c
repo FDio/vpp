@@ -788,8 +788,8 @@ static void
 vat_json_object_add_prefix (vat_json_node_t * node,
 			    const vl_api_prefix_t * prefix)
 {
-  vat_json_object_add_uint (node, "address_length", prefix->address_length);
-  vat_json_object_add_address (node, "prefix", &prefix->address);
+  vat_json_object_add_uint (node, "len", prefix->len);
+  vat_json_object_add_address (node, "address", &prefix->address);
 }
 
 static void vl_api_create_loopback_reply_t_handler
@@ -2663,7 +2663,7 @@ static void vl_api_ip_address_details_t_handler
   address = vec_elt_at_index (addresses, vec_len (addresses) - 1);
 
   clib_memcpy (&address->ip, &mp->prefix.address.un, sizeof (address->ip));
-  address->prefix_length = mp->prefix.address_length;
+  address->prefix_length = mp->prefix.len;
 #undef addresses
 }
 
@@ -19201,8 +19201,7 @@ vl_api_ip_route_details_t_handler (vl_api_ip_route_details_t * mp)
   print (vam->ofp,
 	 "table-id %d, prefix %U/%d",
 	 ntohl (mp->route.table_id),
-	 format_ip46_address,
-	 mp->route.prefix.address, mp->route.prefix.address_length);
+	 format_ip46_address, mp->route.prefix.address, mp->route.prefix.len);
   for (i = 0; i < count; i++)
     {
       fp = &mp->route.paths[i];
@@ -19242,8 +19241,7 @@ static void vl_api_ip_route_details_t_handler_json
       clib_memcpy (&ip4, &mp->route.prefix.address.un.ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "prefix", ip4);
     }
-  vat_json_object_add_uint (node, "mask_length",
-			    mp->route.prefix.address_length);
+  vat_json_object_add_uint (node, "mask_length", mp->route.prefix.len);
   vat_json_object_add_uint (node, "path_count", count);
   for (i = 0; i < count; i++)
     {
@@ -21310,7 +21308,7 @@ api_ip_container_proxy_add_del (vat_main_t * vam)
       else
 	break;
     }
-  if (sw_if_index == ~0 || pfx.address_length == 0)
+  if (sw_if_index == ~0 || pfx.len == 0)
     {
       errmsg ("address and sw_if_index must be set");
       return -99;

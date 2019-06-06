@@ -3007,7 +3007,7 @@ vl_api_nat64_add_del_prefix_t_handler (vl_api_nat64_add_del_prefix_t * mp)
   ip6_address_t prefix;
   int rv = 0;
 
-  memcpy (&prefix.as_u8, mp->prefix.prefix, 16);
+  memcpy (&prefix.as_u8, mp->prefix.address, 16);
 
   rv =
     nat64_add_del_prefix (&prefix, mp->prefix.len,
@@ -3022,7 +3022,7 @@ vl_api_nat64_add_del_prefix_t_print (vl_api_nat64_add_del_prefix_t * mp,
   u8 *s;
 
   s = format (0, "SCRIPT: nat64_add_del_prefix %U/%u vrf_id %u %s\n",
-	      format_ip6_address, mp->prefix.prefix, mp->prefix.len,
+	      format_ip6_address, mp->prefix.address, mp->prefix.len,
 	      ntohl (mp->vrf_id), mp->is_add ? "" : "del");
 
   FINISH;
@@ -3038,7 +3038,7 @@ nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_NAT64_PREFIX_DETAILS + sm->msg_id_base);
-  clib_memcpy (rmp->prefix.prefix, &(p->prefix), 16);
+  clib_memcpy (rmp->prefix.address, &(p->prefix), 16);
   rmp->prefix.len = p->plen;
   rmp->vrf_id = ntohl (p->vrf_id);
   rmp->context = ctx->context;
