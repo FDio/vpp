@@ -17,7 +17,7 @@ class TestGtpuUDP(VppTestCase):
     """ GTPU UDP ports Test Case """
 
     def setUp(self):
-        super(TestGtpuUDP, self).tearDown()
+        super(TestGtpuUDP, self).setUp()
 
         self.dport = 2152
 
