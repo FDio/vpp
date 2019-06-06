@@ -260,7 +260,8 @@ vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
 }
 
 static u32
-vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
+vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
+			      u32 ls_index)
 {
   vcl_session_t *session, *listen_session;
   svm_fifo_t *rx_fifo, *tx_fifo;
@@ -269,29 +270,23 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
 
   session = vcl_session_alloc (wrk);
 
-  listen_session = vcl_session_table_lookup_listener (wrk,
-						      mp->listener_handle);
-  if (!listen_session)
+  listen_session = vcl_session_get (wrk, ls_index);
+  if (listen_session->vpp_handle != mp->listener_handle)
     {
-      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
-      VDBG (0, "ERROR: couldn't find listen session: unknown vpp listener "
-	    "handle %llx", mp->listener_handle);
-      vcl_send_session_accepted_reply (evt_q, mp->context, mp->handle,
-				       VNET_API_ERROR_INVALID_ARGUMENT);
-      vcl_session_free (wrk, session);
-      return VCL_INVALID_SESSION_INDEX;
+      VDBG (0, "ERROR: listener handle %lu does not match session %u",
+	    mp->listener_handle, ls_index);
+      goto error;
+    }
+
+  if (vcl_wait_for_segment (mp->segment_handle))
+    {
+      VDBG (0, "ERROR: segment for session %u couldn't be mounted!",
+	    session->session_index);
+      goto error;
     }
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-
-  if (vcl_wait_for_segment (mp->segment_handle))
-    {
-      VDBG (0, "segment for session %u couldn't be mounted!",
-	    session->session_index);
-      return VCL_INVALID_SESSION_INDEX;
-    }
-
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					 svm_msg_q_t *);
   rx_fifo->client_session_index = session->session_index;
@@ -304,7 +299,6 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
 
   session->vpp_handle = mp->handle;
   session->vpp_thread_index = rx_fifo->master_thread_index;
-  session->client_context = mp->context;
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
 
@@ -327,7 +321,17 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
 	clib_net_to_host_u16 (mp->rmt.port), session->vpp_evt_q);
   vcl_evt (VCL_EVT_ACCEPT, session, listen_session, session_index);
 
+  vcl_send_session_accepted_reply (session->vpp_evt_q, mp->context,
+				   session->vpp_handle, 0);
+
   return session->session_index;
+
+error:
+  evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
+  vcl_send_session_accepted_reply (evt_q, mp->context, mp->handle,
+				   VNET_API_ERROR_INVALID_ARGUMENT);
+  vcl_session_free (wrk, session);
+  return VCL_INVALID_SESSION_INDEX;
 }
 
 static u32
@@ -1324,7 +1328,7 @@ vppcom_session_accept (uint32_t listen_session_handle, vppcom_endpt_t * ep,
       e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
       if (e->event_type != SESSION_CTRL_EVT_ACCEPTED)
 	{
-	  clib_warning ("discarded event: %u", e->event_type);
+	  VDBG (0, "discarded event: %u", e->event_type);
 	  svm_msg_q_free_msg (wrk->app_event_queue, &msg);
 	  continue;
 	}
@@ -1335,7 +1339,11 @@ vppcom_session_accept (uint32_t listen_session_handle, vppcom_endpt_t * ep,
 
 handle:
 
-  client_session_index = vcl_session_accepted_handler (wrk, &accepted_msg);
+  client_session_index = vcl_session_accepted_handler (wrk, &accepted_msg,
+						       listen_session_index);
+  if (client_session_index == VCL_INVALID_SESSION_INDEX)
+    return VPPCOM_ECONNABORTED;
+
   listen_session = vcl_session_get (wrk, listen_session_index);
   client_session = vcl_session_get (wrk, client_session_index);
 
@@ -1359,10 +1367,6 @@ handle:
 	clib_memcpy_fast (ep->ip, &client_session->transport.rmt_ip.ip6,
 			  sizeof (ip6_address_t));
     }
-
-  vcl_send_session_accepted_reply (client_session->vpp_evt_q,
-				   client_session->client_context,
-				   client_session->vpp_handle, 0);
 
   VDBG (0, "listener %u [0x%llx] accepted %u [0x%llx] peer: %U:%u "
 	"local: %U:%u", listen_session_handle, listen_session->vpp_handle,
