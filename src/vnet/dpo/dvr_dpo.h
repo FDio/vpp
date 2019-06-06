@@ -19,6 +19,15 @@
 #include <vnet/dpo/dpo.h>
 
 /**
+ * Control how the reinject is performed
+ */
+typedef enum dvr_dpo_reinject_t_
+{
+    DVR_REINJECT_L2,
+    DVR_REINJECT_L3,
+} __clib_packed dvr_dpo_reinject_t;
+
+/**
  * @brief
  * The DVR DPO. Used as the resolving object for a DVR route.
  * This is used, in place of the usual L3 Adjacency, to retransmit
@@ -40,10 +49,18 @@ typedef struct dvr_dpo_t_
     dpo_proto_t dd_proto;
 
     /**
+     * Control for how the re-inject is performed
+     */
+    dvr_dpo_reinject_t dd_reinject;
+
+    /**
      * number of locks.
      */
     u16 dd_locks;
 } dvr_dpo_t;
+
+/* 8 bytes is a factor of cache line size so this struct will never span */
+STATIC_ASSERT_SIZEOF(dvr_dpo_t, 8);
 
 extern void dvr_dpo_add_or_lock (u32 sw_if_index,
                                  dpo_proto_t dproto,

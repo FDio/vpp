@@ -239,9 +239,9 @@ typedef struct
     {
       u32 feature_bitmap;
       u16 bd_index;		/* bridge-domain index */
+      u16 l2fib_sn;		/* l2fib bd/int seq_num */
       u8 l2_len;		/* ethernet header length */
       u8 shg;			/* split-horizon group */
-      u16 l2fib_sn;		/* l2fib bd/int seq_num */
       u8 bd_age;		/* aging enabled */
     } l2;
 
