@@ -359,12 +359,12 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0, sw_if_index0, fib_index0, lbi0;
+	  const gbp_endpoint_t *ge0, *ge_lpm0;
 	  gbp_lpm_classify_next_t next0;
 	  const ethernet_header_t *eh0;
 	  const gbp_policy_dpo_t *gpd0;
 	  const ip4_address_t *ip4_0;
 	  const ip6_address_t *ip6_0;
-	  const gbp_endpoint_t *ge0;
 	  const gbp_recirc_t *gr0;
 	  const dpo_id_t *dpo0;
 	  load_balance_t *lb0;
@@ -437,15 +437,15 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 
 	      if (ip4_0)
 		{
-		  ge0 = gbp_endpoint_find_ip4 (ip4_0, fib_index0);
+		  ge_lpm0 = gbp_endpoint_find_ip4 (ip4_0, fib_index0);
 		}
 	      else if (ip6_0)
 		{
-		  ge0 = gbp_endpoint_find_ip6 (ip6_0, fib_index0);
+		  ge_lpm0 = gbp_endpoint_find_ip6 (ip6_0, fib_index0);
 		}
 	      else
 		{
-		  ge0 = NULL;
+		  ge_lpm0 = NULL;
 		}
 
 	      next0 = vnet_l2_feature_next
@@ -456,9 +456,18 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	       * if we found the EP by IP lookup, it must be from the EP
 	       * not a network behind it
 	       */
-	      if (NULL != ge0)
+	      if (NULL != ge_lpm0)
 		{
-		  sclass0 = ge0->ge_fwd.gef_sclass;
+		  if (PREDICT_FALSE (ge0 != ge_lpm0))
+		    {
+		      /* an EP spoofing another EP */
+		      sclass0 = SCLASS_INVALID;
+		      next0 = GPB_LPM_CLASSIFY_DROP;
+		    }
+		  else
+		    {
+		      sclass0 = ge0->ge_fwd.gef_sclass;
+		    }
 		  goto trace;
 		}
 	    }
