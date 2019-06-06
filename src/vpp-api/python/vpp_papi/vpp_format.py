@@ -45,29 +45,29 @@ def format_vl_api_address_t(args):
 
 def format_vl_api_prefix_t(args):
     if isinstance(args, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
-        return {'prefix': format_vl_api_address_t(
+        return {'address': format_vl_api_address_t(
             text_type(args.network_address)),
                 'len': int(args.prefixlen)}
     p, length = args.split('/')
     return {'address': format_vl_api_address_t(p),
-            'address_length': int(length)}
+            'len': int(length)}
 
 
 def format_vl_api_ip6_prefix_t(args):
     if isinstance(args, ipaddress.IPv6Network):
-        return {'prefix': args.network_address.packed,
+        return {'address': args.network_address.packed,
                 'len': int(args.prefixlen)}
     p, length = args.split('/')
-    return {'prefix': inet_pton(AF_INET6, p),
+    return {'address': inet_pton(AF_INET6, p),
             'len': int(length)}
 
 
 def format_vl_api_ip4_prefix_t(args):
     if isinstance(args, ipaddress.IPv4Network):
-        return {'prefix': args.network_address.packed,
+        return {'address': args.network_address.packed,
                 'len': int(args.prefixlen)}
     p, length = args.split('/')
-    return {'prefix': inet_pton(AF_INET, p),
+    return {'address': inet_pton(AF_INET, p),
             'len': int(length)}
 
 
@@ -84,13 +84,13 @@ conversion_table = {
     },
     'vl_api_ip6_prefix_t':
     {
-        'IPv6Network': lambda o: {'prefix': o.network_address.packed,
+        'IPv6Network': lambda o: {'address': o.network_address.packed,
                                   'len': o.prefixlen},
         'str': lambda s: format_vl_api_ip6_prefix_t(s)
     },
     'vl_api_ip4_prefix_t':
     {
-        'IPv4Network': lambda o: {'prefix': o.network_address.packed,
+        'IPv4Network': lambda o: {'address': o.network_address.packed,
                                   'len': o.prefixlen},
         'str': lambda s: format_vl_api_ip4_prefix_t(s)
     },
@@ -129,16 +129,16 @@ def unformat_api_address_t(o):
 
 def unformat_api_prefix_t(o):
     if isinstance(o.address, ipaddress.IPv4Address):
-        return ipaddress.IPv4Network((o.address, o.address_length), False)
+        return ipaddress.IPv4Network((o.address, o.len), False)
     if isinstance(o.address, ipaddress.IPv6Address):
-        return ipaddress.IPv6Network((o.address, o.address_length), False)
+        return ipaddress.IPv6Network((o.address, o.len), False)
 
 
 conversion_unpacker_table = {
     'vl_api_ip6_address_t': lambda o: ipaddress.IPv6Address(o),
-    'vl_api_ip6_prefix_t': lambda o: ipaddress.IPv6Network((o.prefix, o.len)),
+    'vl_api_ip6_prefix_t': lambda o: ipaddress.IPv6Network((o.address, o.len)),
     'vl_api_ip4_address_t': lambda o: ipaddress.IPv4Address(o),
-    'vl_api_ip4_prefix_t': lambda o: ipaddress.IPv4Network((o.prefix, o.len)),
+    'vl_api_ip4_prefix_t': lambda o: ipaddress.IPv4Network((o.address, o.len)),
     'vl_api_address_t': lambda o: unformat_api_address_t(o),
     'vl_api_prefix_t': lambda o: unformat_api_prefix_t(o),
     'vl_api_mac_address_t': lambda o: macaddress.MACAddress(o),
