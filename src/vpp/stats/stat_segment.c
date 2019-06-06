@@ -639,6 +639,21 @@ stats_segment_socket_init (void)
   s->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_SEQPACKET |
     CLIB_SOCKET_F_ALLOW_GROUP_WRITE | CLIB_SOCKET_F_PASSCRED;
 
+  /* make sure socket dir exist before binding */
+  if (strncmp (s->config, "/run", 4) == 0)
+    {
+      u8 *tmp = format (0, "%s", s->config);
+      int i = vec_len (tmp);
+      while (i && tmp[--i] != '/')
+	;
+
+      tmp[i] = '\0';
+
+      if (i)
+	vlib_unix_recursive_mkdir ((char *) tmp);
+      vec_free (tmp);
+    }
+
   if ((error = clib_socket_init (s)))
     {
       clib_error_report (error);
