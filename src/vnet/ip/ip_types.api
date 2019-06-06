@@ -41,7 +41,7 @@ typedef address {
 
 typedef prefix {
   vl_api_address_t address;
-  u8 address_length;
+  u8 len;
 };
 
 typedef mprefix {
@@ -52,11 +52,11 @@ typedef mprefix {
 };
 
 typedef ip6_prefix {
-  vl_api_ip6_address_t prefix;
+  vl_api_ip6_address_t address;
   u8 len;
 };
 
 typedef ip4_prefix {
-  vl_api_ip4_address_t prefix;
+  vl_api_ip4_address_t address;
   u8 len;
 };

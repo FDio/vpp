@@ -57,11 +57,11 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   u8 *vtag = 0;
   vtag = vl_api_from_api_to_vec (&mp->tag);
   rv =
-    map_create_domain ((ip4_address_t *) & mp->ip4_prefix.prefix,
+    map_create_domain ((ip4_address_t *) & mp->ip4_prefix.address,
 		       mp->ip4_prefix.len,
-		       (ip6_address_t *) & mp->ip6_prefix.prefix,
+		       (ip6_address_t *) & mp->ip6_prefix.address,
 		       mp->ip6_prefix.len,
-		       (ip6_address_t *) & mp->ip6_src.prefix,
+		       (ip6_address_t *) & mp->ip6_src.address,
 		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
 		       mp->psid_length, &index, ntohs (mp->mtu), flags, vtag);
   vec_free (vtag);
@@ -129,9 +129,9 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->_vl_msg_id = htons(VL_API_MAP_DOMAIN_DETAILS + mm->msg_id_base);
     rmp->context = mp->context;
     rmp->domain_index = htonl(map_domain_index);
-    clib_memcpy(&rmp->ip6_prefix.prefix, &d->ip6_prefix, sizeof(rmp->ip6_prefix.prefix));
-    clib_memcpy(&rmp->ip4_prefix.prefix, &d->ip4_prefix, sizeof(rmp->ip4_prefix.prefix));
-    clib_memcpy(&rmp->ip6_src.prefix, &d->ip6_src, sizeof(rmp->ip6_src.prefix));
+    clib_memcpy(&rmp->ip6_prefix.address, &d->ip6_prefix, sizeof(rmp->ip6_prefix.address));
+    clib_memcpy(&rmp->ip4_prefix.address, &d->ip4_prefix, sizeof(rmp->ip4_prefix.address));
+    clib_memcpy(&rmp->ip6_src.address, &d->ip6_src, sizeof(rmp->ip6_src.address));
     rmp->ip6_prefix.len = d->ip6_prefix_len;
     rmp->ip4_prefix.len = d->ip4_prefix_len;
     rmp->ip6_src.len = d->ip6_src_len;

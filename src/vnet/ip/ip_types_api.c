@@ -196,7 +196,7 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
       out->fp_proto = FIB_PROTOCOL_IP6;
       break;
     }
-  out->fp_len = in->address_length;
+  out->fp_len = in->len;
   out->___fp___pad = 0;
   ip_address_decode (&in->address, &out->fp_addr);
 }
@@ -204,7 +204,7 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
 void
 ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out)
 {
-  out->address_length = in->fp_len;
+  out->len = in->fp_len;
   ip_address_encode (&in->fp_addr,
 		     fib_proto_to_ip46 (in->fp_proto), &out->address);
 }

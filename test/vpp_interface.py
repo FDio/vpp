@@ -350,13 +350,13 @@ class VppInterface(object):
             send_unicast=send_unicast)
 
     # TODO: This should accept ipaddress object.
-    def ip6_ra_prefix(self, address, address_length, is_no=0,
+    def ip6_ra_prefix(self, prefix, len, is_no=0,
                       off_link=0, no_autoconfig=0, use_default=0):
         """Configure IPv6 RA suppress on the VPP interface."""
         self.test.vapi.sw_interface_ip6nd_ra_prefix(
             sw_if_index=self.sw_if_index,
-            prefix={'address': address,
-                    'address_length': address_length},
+            prefix={'prefix': prefix,
+                    'len': len},
             use_default=use_default,
             off_link=off_link, no_autoconfig=no_autoconfig,
             is_no=is_no)
