@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a6e39b5d_c9f91652",
+        "filename": "src/plugins/lacp/lacp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-06-06T11:20:16Z",
+      "side": 1,
+      "message": "Why don\u0027t you simply code .format \u003d \"lacp-int-en-dis: BUG lacp_int \u003d\u003d 0\" and call it a day?\n\nEvery time this event occurs, you\u0027re creating a fresh copy of the string \"lacp_interface_enable_disable,\"\n\nTypically, we use \"hash_create_string\" to build a (string, string-table-offset) hash, so that all the strings in the elog string vector are unique. But you don\u0027t need to bother with that here.",
+      "revId": "8f819c9dcf3778e31fcce591cb012bbdff2da3bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
