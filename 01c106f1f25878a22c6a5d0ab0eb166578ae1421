@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0a088ddf_55664eda",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-06T15:47:54Z",
+      "side": 1,
+      "message": "We can\u0027t block indefinitely the worker waiting for the lock. What sort of issues did you hit?",
+      "range": {
+        "startLine": 37,
+        "startChar": 2,
+        "endLine": 37,
+        "endChar": 42
+      },
+      "revId": "01c106f1f25878a22c6a5d0ab0eb166578ae1421",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
