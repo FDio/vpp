@@ -16,7 +16,9 @@
 
 from __future__ import print_function
 from __future__ import absolute_import
+import ctypes
 import sys
+import multiprocessing as mp
 import os
 import logging
 import collections
@@ -263,16 +265,16 @@ class VPPApiClient(object):
         atexit.register(vpp_atexit, weakref.ref(self))
 
     class ContextId(object):
-        """Thread-safe provider of unique context IDs."""
+        """Multiprocessing-safe provider of unique context IDs."""
         def __init__(self):
-            self.context = 0
-            self.lock = threading.Lock()
+            self.context = mp.Value(ctypes.c_uint, 0)
+            self.lock = mp.Lock()
 
         def __call__(self):
             """Get a new unique (or, at least, not recently used) context."""
             with self.lock:
-                self.context += 1
-                return self.context
+                self.context.value += 1
+                return self.context.value
     get_context = ContextId()
 
     def get_type(self, name):
