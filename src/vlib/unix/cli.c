@@ -3002,7 +3002,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  while (i && tmp[--i] != '/')
 	    ;
 
-	  tmp[i] = 0;
+	  tmp[i] = '\0';
 
 	  if (i)
 	    vlib_unix_recursive_mkdir ((char *) tmp);

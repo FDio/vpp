@@ -35,7 +35,9 @@ typedef enum
 } stat_directory_type_t;
 
 /* Default socket to exchange segment fd */
+/* TODO: Get from runtime directory */
 #define STAT_SEGMENT_SOCKET_FILE "/run/vpp/stats.sock"
+#define STAT_SEGMENT_SOCKET_FILENAME "stats.sock"
 
 typedef struct stat_client_main_t stat_client_main_t;
 
