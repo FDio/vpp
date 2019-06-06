@@ -163,7 +163,7 @@ class VppIpPrefix():
 
     def encode(self):
         return {'address': self.addr.encode(),
-                'address_length': self.len}
+                'len': self.len}
 
     @property
     def version(self):
@@ -191,9 +191,9 @@ class VppIpPrefix():
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return (self.len == other.len and self.addr == other.addr)
-        elif hasattr(other, "address") and hasattr(other, "address_length"):
+        elif hasattr(other, "address") and hasattr(other, "len"):
             # vl_api_prefix_t
-            return self.len == other.address_length and \
+            return self.len == other.len and \
                    self.addr == other.address
         else:
             _log.error(
