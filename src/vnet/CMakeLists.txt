@@ -596,6 +596,7 @@ list(APPEND VNET_HEADERS
   ipsec/ipsec_spd_policy.h
   ipsec/ipsec_sa.h
   ipsec/ipsec_if.h
+  ipsec/ipsec_punt.h
   ipsec/esp.h
   ipsec/ah.h
 )
