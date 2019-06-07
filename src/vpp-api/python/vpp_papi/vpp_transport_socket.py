@@ -188,6 +188,8 @@ class VppTransport(object):
         header = self.header.pack(0, len(buf), 0)
         n = self.socket.send(header)
         n = self.socket.send(buf)
+        if n == 0:
+            raise VppTransportSocketIOError(1, 'Not connected')
 
     def _read(self):
         hdr = self.socket.recv(16)

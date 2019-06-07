@@ -21,17 +21,14 @@ import sys
 import multiprocessing as mp
 import os
 import logging
-import collections
-import struct
 import functools
 import json
 import threading
 import fnmatch
 import weakref
 import atexit
-from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
+from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
-from . macaddress import MACAddress, mac_pton, mac_ntop
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +36,11 @@ if sys.version[0] == '2':
     import Queue as queue
 else:
     import queue as queue
+
+__all__ = ('FuncWrapper', 'VPP', 'VppApiDynamicMethodHolder',
+           'VppEnum', 'VppEnumType',
+           'VPPIOError', 'VPPRuntimeError', 'VPPValueError',
+           'VPPApiClient', )
 
 
 def metaclass(metaclass):
