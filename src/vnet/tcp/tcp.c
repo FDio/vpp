@@ -70,6 +70,38 @@ tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
 			     sizeof (args));
 }
 
+static void
+tcp_cc_init (tcp_connection_t * tc)
+{
+  tc->cc_algo = tcp_cc_algo_get (tcp_main.cc_algo);
+  tc->cc_algo->init (tc);
+}
+
+static void
+tcp_cc_cleanup (tcp_connection_t * tc)
+{
+  if (tc->cc_algo->cleanup)
+    tc->cc_algo->cleanup (tc);
+}
+
+void
+tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
+		      const tcp_cc_algorithm_t * vft)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  vec_validate (tm->cc_algos, type);
+
+  tm->cc_algos[type] = *vft;
+  hash_set_mem (tm->cc_algo_by_name, vft->name, type);
+}
+
+tcp_cc_algorithm_t *
+tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  return &tm->cc_algos[type];
+}
+
 static u32
 tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 {
@@ -226,6 +258,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
 	tcp_add_del_adjacency (tc, 0);
 
+      tcp_cc_cleanup (tc);
       vec_free (tc->snd_sacks);
       vec_free (tc->snd_sacks_fl);
 
@@ -545,31 +578,6 @@ tcp_connection_fib_attach (tcp_connection_t * tc)
   tcp_connection_stack_on_fib_entry (tc);
 }
 #endif /* 0 */
-
-static void
-tcp_cc_init (tcp_connection_t * tc)
-{
-  tc->cc_algo = tcp_cc_algo_get (tcp_main.cc_algo);
-  tc->cc_algo->init (tc);
-}
-
-void
-tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
-		      const tcp_cc_algorithm_t * vft)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  vec_validate (tm->cc_algos, type);
-
-  tm->cc_algos[type] = *vft;
-  hash_set_mem (tm->cc_algo_by_name, vft->name, type);
-}
-
-tcp_cc_algorithm_t *
-tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  return &tm->cc_algos[type];
-}
 
 /**
  * Generate random iss as per rfc6528

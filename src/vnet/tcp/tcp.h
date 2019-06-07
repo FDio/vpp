@@ -333,6 +333,7 @@ struct _tcp_cc_algorithm
   void (*congestion) (tcp_connection_t * tc);
   void (*recovered) (tcp_connection_t * tc);
   void (*init) (tcp_connection_t * tc);
+  void (*cleanup) (tcp_connection_t * tc);
 };
 /* *INDENT-ON* */
 
