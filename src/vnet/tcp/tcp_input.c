@@ -2526,9 +2526,9 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * allocate session send reset */
 	  if (session_stream_connect_notify (&new_tc0->connection, 0))
 	    {
-	      clib_warning ("connect notify fail");
 	      tcp_send_reset_w_pkt (new_tc0, b0, my_thread_index, is_ip4);
 	      tcp_connection_cleanup (new_tc0);
+	      error0 = TCP_ERROR_CREATE_SESSION_FAIL;
 	      goto drop;
 	    }
 
@@ -2550,6 +2550,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tcp_connection_cleanup (new_tc0);
 	      tcp_send_reset_w_pkt (tc0, b0, my_thread_index, is_ip4);
 	      TCP_EVT_DBG (TCP_EVT_RST_SENT, tc0);
+	      error0 = TCP_ERROR_CREATE_SESSION_FAIL;
 	      goto drop;
 	    }
 
