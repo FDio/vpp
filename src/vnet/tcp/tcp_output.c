@@ -1517,6 +1517,19 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	  tcp_update_rto (tc);
 	}
 
+      /* Peer is dead or network connectivity is lost. Close connection.
+       * RFC 1122 section 4.2.3.5 recommends a value of at least 100s. For
+       * a min rto of 0.2s we need to retry about 8 times. */
+      if (tc->rto_boff >= TCP_RTO_BOFF_MAX)
+	{
+	  tcp_send_reset (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	  session_transport_closing_notify (&tc->connection);
+	  tcp_connection_timers_reset (tc);
+	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	  return;
+	}
+
       /* Increment RTO backoff (also equal to number of retries) and go back
        * to first un-acked byte  */
       tc->rto_boff += 1;
