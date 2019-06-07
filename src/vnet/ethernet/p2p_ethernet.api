@@ -15,28 +15,31 @@
 
 option version = "1.0.0";
 
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
+
 define p2p_ethernet_add
 {
   u32 client_index;
   u32 context;
-  u32 parent_if_index;
+  vl_api_interface_index_t parent_if_index;
   u32 subif_id;
-  u8  remote_mac[6];
+  vl_api_mac_address_t remote_mac;
 };
 
 define p2p_ethernet_add_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 define p2p_ethernet_del
 {
   u32 client_index;
   u32 context;
-  u32 parent_if_index;
-  u8  remote_mac[6];
+  vl_api_interface_index_t parent_if_index;
+  vl_api_mac_address_t remote_mac;
 };
 
 define p2p_ethernet_del_reply
