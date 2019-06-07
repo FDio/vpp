@@ -12,25 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import struct
 import collections
-import sys
 import logging
-from . import vpp_format
-import ipaddress
 import socket
+import struct
+import sys
 
 if sys.version_info <= (3, 4):
-    from aenum import IntEnum
+    from aenum import IntEnum  # noqa: F401
 else:
-    from enum import IntEnum
+    from enum import IntEnum  # noqa: F401
 
 if sys.version_info <= (3, 6):
-    from aenum import IntFlag
+    from aenum import IntFlag  # noqa: F401
 else:
-    from enum import IntFlag
 
+    from enum import IntFlag  # noqa: F401
+
+from . import vpp_format  # noqa: E402
 
 #
 # Set log-level in application by doing e.g.:
