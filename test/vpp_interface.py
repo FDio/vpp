@@ -229,7 +229,7 @@ class VppInterface(object):
         self._remote_addr_n = {socket.AF_INET: self.remote_ip4n,
                                socket.AF_INET6: self.remote_ip6n}
 
-        r = self.test.vapi.sw_interface_dump()
+        r = self.test.vapi.sw_interface_dump(sw_if_index=self.sw_if_index)
         for intf in r:
             if intf.sw_if_index == self.sw_if_index:
                 self._name = intf.interface_name.split(b'\0',
@@ -429,7 +429,7 @@ class VppInterface(object):
             enable)
 
     def query_vpp_config(self):
-        dump = self.test.vapi.sw_interface_dump()
+        dump = self.test.vapi.sw_interface_dump(sw_if_index=self.sw_if_index)
         return self.is_interface_config_in_dump(dump)
 
     def get_interface_config_from_dump(self, dump):
