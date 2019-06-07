@@ -1533,6 +1533,14 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tc->snd_nxt = tc->snd_una;
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
+      /* Peer is dead or network connectivity is lost. Reset connection */
+      if (tc->rto_boff >= TCP_RTO_BOFF_MAX)
+	{
+	  tcp_send_reset (tc);
+	  tcp_connection_reset (tc);
+	  return;
+	}
+
       /* Send one segment. Note that n_bytes may be zero due to buffer
        * shortfall */
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss, &b);
