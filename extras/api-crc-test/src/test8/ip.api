@@ -1,0 +1,1075 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines vpp IP control-plane API messages which are generally
+    called through a shared memory interface. 
+*/
+
+option version = "3.0.0";
+
+import "vnet/fib/fib_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/mfib/mfib_types.api";
+
+autoreply define api_crc_test_msg
+{
+  u32 client_index;
+  /* api-crc-test: Remove a field */
+  u8 is_nop [default = 1];
+};
+
+/** \brief An IP table
+    @param is_ipv6 - V4 or V6 table
+    @param table_id - table ID associated with the route
+                      This table ID will apply to both the unicats
+		      and mlticast FIBs
+    @param name - A client provided name/tag for the table. If this is
+                  not set by the client, then VPP will generate something
+		  meaningfull.
+*/
+typeonly define ip_table
+{
+  u32 table_id;
+  u8  is_ip6;
+  u8  name[64];
+};
+
+/** \brief Add / del table request
+           A table can be added multiple times, but need be deleted only once.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define ip_table_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_ip_table_t table;
+};
+
+/** \brief Dump IP all fib tables
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ip_table_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IP FIB table response
+    @param context - sender context
+    @param table - description of the table
+*/
+manual_endian manual_print define ip_table_details
+{
+  u32 context;
+  vl_api_ip_table_t table;
+};
+
+/** \brief An IP route
+  @param table_id The IP table the route is in
+  @param stats_index The index of the route in the stats segment
+  @param prefix the prefix for the route
+  @param n_paths The number of paths the route has
+  @param paths The paths of the route
+*/
+typeonly define ip_route
+{
+  u32 table_id;
+  u32 stats_index;
+  vl_api_prefix_t prefix;
+  u8 n_paths;
+  vl_api_fib_path_t paths[n_paths];
+};
+
+/** \brief Add / del route request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_multipath - Set to 1 if these paths will be added/removed
+                          to/from the existing set, or 0 to replace
+			  the existing set.
+                          is_add=0 & is_multipath=0 implies delete all paths
+    @param is_add - Are the paths being added or removed
+*/
+define ip_route_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8  is_add;
+  u8  is_multipath;
+  vl_api_ip_route_t route;
+};
+define ip_route_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
+};
+
+/** \brief Dump IP routes from a table
+    @param client_index - opaque cookie to identify the sender
+    @param table - The table from which to dump routes (ony ID an AF are needed)
+*/
+define ip_route_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_table_t table;
+};
+
+/** \brief IP FIB table entry response
+    @param route The route entry in the table
+*/
+manual_endian manual_print define ip_route_details
+{
+  u32 context;
+  vl_api_ip_route_t route;
+};
+
+/** \brief IP neighbor flags
+    @param is_static - A static neighbor Entry - there are not flushed
+                       If the interface goes down.
+    @param is_no_fib_entry - Do not create a corresponding entry in the FIB
+                           table for the neighbor.
+*/
+enum ip_neighbor_flags
+{
+  IP_API_NEIGHBOR_FLAG_NONE = 0,
+  IP_API_NEIGHBOR_FLAG_STATIC = 0x1,
+  IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY = 0x2,
+};
+
+/** \brief IP neighbor
+    @param sw_if_index - interface used to reach neighbor
+    @param mac_address - l2 address of the neighbor
+    @param ip_address - ip4 or ip6 address of the neighbor
+    @param flags - flags for the nieghbor
+*/
+typedef ip_neighbor {
+  u32 sw_if_index;
+  vl_api_ip_neighbor_flags_t flags;
+  vl_api_mac_address_t mac_address;
+  vl_api_address_t ip_address;
+};
+
+/** \brief IP neighbor add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 to add neighbor, 0 to delete
+    @param neighbor - the neighor to add/remove
+*/
+define ip_neighbor_add_del
+{
+  u32 client_index;
+  u32 context;
+  /* 1 = add, 0 = delete */
+  u8 is_add;
+  vl_api_ip_neighbor_t neighbor;
+};
+define ip_neighbor_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
+};
+
+/** \brief Dump IP neighboors
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface to dump neighboors, ~0 == all
+    @param is_ipv6 - [1|0] to indicate if address family is ipv[6|4]
+*/
+define ip_neighbor_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8  is_ipv6;
+};
+
+/** \brief IP neighboors dump response
+    @param context - sender context which was passed in the request
+    @param neighbour - the neighbor
+*/
+define ip_neighbor_details {
+  u32 context;
+  vl_api_ip_neighbor_t neighbor;
+};
+
+/** \brief Set the ip flow hash config for a fib request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vrf_id - vrf/fib id
+    @param is_ipv6 - if non-zero the fib is ip6, else ip4
+    @param src - if non-zero include src in flow hash
+    @param dst - if non-zero include dst in flow hash
+    @param sport - if non-zero include sport in flow hash
+    @param dport - if non-zero include dport in flow hash
+    @param proto -if non-zero include proto in flow hash
+    @param reverse - if non-zero include reverse in flow hash
+    @param symmetric - if non-zero include symmetry in flow hash
+*/
+autoreply define set_ip_flow_hash
+{
+  u32 client_index;
+  u32 context;
+  u32 vrf_id;
+  u8 is_ipv6;
+  u8 src;
+  u8 dst;
+  u8 sport;
+  u8 dport;
+  u8 proto;
+  u8 reverse;
+  u8 symmetric;
+};
+
+/** \brief IPv6 router advertisement config request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param suppress -
+    @param managed -
+    @param other -
+    @param ll_option -
+    @param send_unicast -
+    @param cease -
+    @param is_no -
+    @param default_router -
+    @param max_interval -
+    @param min_interval -
+    @param lifetime -
+    @param initial_count -
+    @param initial_interval -
+*/
+autoreply define sw_interface_ip6nd_ra_config
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 suppress;
+  u8 managed;
+  u8 other;
+  u8 ll_option;
+  u8 send_unicast;
+  u8 cease;
+  u8 is_no;
+  u8 default_router;
+  u32 max_interval;
+  u32 min_interval;
+  u32 lifetime;
+  u32 initial_count;
+  u32 initial_interval;
+};
+
+/** \brief IPv6 router advertisement prefix config request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface the RA prefix information is for
+    @param prefix - The prefix to advertise
+    @param use_default - Revert to default settings
+    @param no_advertise - Do not advertise this prefix
+    @param off_link - The prefix is off link (it is not configured on the interface)
+                      Configures the L-flag, When set, indicates that this
+		      prefix can be used for on-link determination.
+    @param no_autoconfig - Setting for the A-flag. When
+                           set indicates that this prefix can be used for
+                          stateless address configuration.
+    @param no_onlink - The prefix is not on link. Make sure this is consistent
+                       with the off_link parameter else YMMV
+    @param is_no - add/delete
+    @param val_lifetime - The length of time in
+                     seconds (relative to the time the packet is sent)
+                     that the prefix is valid for the purpose of on-link
+                     determination.  A value of all one bits
+                     (0xffffffff) represents infinity
+    @param pref_lifetime - The length of time in
+                     seconds (relative to the time the packet is sent)
+                     that addresses generated from the prefix via
+                     stateless address autoconfiguration remain
+                     preferred [ADDRCONF].  A value of all one bits
+                     (0xffffffff) represents infinity.
+*/
+autoreply define sw_interface_ip6nd_ra_prefix
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  vl_api_prefix_t prefix;
+  u8 use_default;
+  u8 no_advertise;
+  u8 off_link;
+  u8 no_autoconfig;
+  u8 no_onlink;
+  u8 is_no;
+  u32 val_lifetime;
+  u32 pref_lifetime;
+};
+
+/** \brief IPv6 ND proxy config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface the host is on
+    @param address - The address of the host for which to proxy for
+    @param is_add - Adding or deleting
+*/
+autoreply define ip6nd_proxy_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_del;
+  vl_api_ip6_address_t ip;
+};
+
+/** \brief IPv6 ND proxy details returned after request
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define ip6nd_proxy_details
+{
+  u32 context;
+  u32 sw_if_index;
+  vl_api_ip6_address_t ip;
+};
+
+/** \brief IPv6 ND proxy dump request
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param sw_if_index - The interface the host is on
+    @param address - The address of the host for which to proxy for
+*/
+define ip6nd_proxy_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Start / stop sending router solicitation
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param irt - initial retransmission time
+    @param mrt - maximum retransmission time
+    @param mrc - maximum retransmission count
+    @param mrd - maximum retransmission duration
+    @param sw_if_index - software interface index of interface
+                         for sending router solicitation
+    @param stop - if non-zero then stop sending router solicitation,
+                  otherwise start sending router solicitation
+*/
+autoreply define ip6nd_send_router_solicitation
+{
+  u32 client_index;
+  u32 context;
+  u32 irt;
+  u32 mrt;
+  u32 mrc;
+  u32 mrd;
+  u32 sw_if_index;
+  u8 stop;
+};
+
+/** \brief IPv6 interface enable / disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface used to reach neighbor
+    @param enable - if non-zero enable ip6 on interface, else disable
+*/
+autoreply define sw_interface_ip6_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 enable;			/* set to true if enable */
+};
+
+/** \brief IPv6 set link local address on interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set link local on
+    @param address[] - the new link local address
+*/
+autoreply define sw_interface_ip6_set_link_local_address
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 address[16];
+};
+
+/** \brief Dump IP multicast fib table
+    @param client_index - opaque cookie to identify the sender
+*/
+define ip_mtable_dump
+{
+  u32 client_index;
+  u32 context;
+};
+define ip_mtable_details
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_table_t table;
+};
+
+/** \brief Add / del route request
+
+    Adds a route, consisting both of the MFIB entry to match packets
+    (which may already exist) and a path to send those packets down.
+    Routes can be entered repeatedly to add multiple paths.  Deletions are
+    per-path.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_id - fib table /vrf associated with the route
+    @param is_add - true if adding a route; false if deleting one
+    @param is_ipv6 - true iff all the addresses are v6
+    @param entry_flags - see fib_entry_flag_t
+    @param itf_flags - see mfib_entry_flags_t
+    @param next_hop_afi - see dpo_proto_t; the type of destination description
+    @param src_address - the source of the packet
+    @param grp_address - the group the packet is destined to
+    @param nh_address - the nexthop to forward the packet to
+    @param next_hop_sw_if_index - interface to emit packet on
+
+    BIER AFIs use the BIER imposition ID.  v4 and v6 AFIs use either the
+    interface or the nexthop address.
+
+    Note that if the route is source-specific (S is supplied, not all 0s),
+    the prefix match is treated as exact (prefixlen /32 or /128).
+
+    FIXME not complete yet
+*/
+typedef ip_mroute
+{
+  u32 table_id;
+  u32 entry_flags;
+  u32 rpf_id;
+  vl_api_mprefix_t prefix;
+  u8 n_paths;
+  vl_api_mfib_path_t paths[n_paths];
+};
+
+define ip_mroute_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_multipath;
+  vl_api_ip_mroute_t route;
+};
+define ip_mroute_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
+};
+
+/** \brief Dump IP multicast fib table
+    @param table - The table from which to dump routes (ony ID an AF are needed)
+*/
+define ip_mroute_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_table_t table;
+};
+
+/** \brief IP Multicast Route Details
+    @param route - Details of the route
+*/
+manual_endian manual_print define ip_mroute_details
+{
+  u32 context;
+  vl_api_ip_mroute_t route;
+};
+
+define ip_address_details
+{
+  u32 context;
+  u32 sw_if_index;
+  vl_api_prefix_t prefix;
+};
+
+define ip_address_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+};
+
+/** \brief IP unnumbered configurations
+    @param sw_if_index The interface that has unnumbered configuration
+    @param ip_sw_if_index The IP interface that it is unnnumbered to
+*/
+define ip_unnumbered_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u32 ip_sw_if_index;
+};
+
+/** \brief Dump IP unnumbered configurations
+    @param sw_if_index ~0 for all interfaces, else the interface desired
+*/
+define ip_unnumbered_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+define ip_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+};
+
+define ip_dump
+{
+  u32 client_index;
+  u32 context;
+  u8 is_ipv6;
+};
+
+define mfib_signal_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define mfib_signal_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u32 table_id;
+  vl_api_mprefix_t prefix;
+  u16 ip_packet_len;
+  u8 ip_packet_data[256];
+};
+
+/** \brief IP punt policer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 to add neighbor, 0 to delete
+    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
+    @param policer_index - Index of policer to use
+*/
+autoreply define ip_punt_police
+{
+  u32 client_index;
+  u32 context;
+  u32 policer_index;
+  u8 is_add;
+  u8 is_ip6;
+};
+
+/** \brief Punt redirect type
+    @param rx_sw_if_index - specify the original RX interface of traffic
+                            that should be redirected. ~0 means any interface.
+    @param tx_sw_if_index - the TX interface to which traffic shoulde be
+                            redirected.
+    @param nh - the next-hop to redirect the traffic to.
+    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
+*/
+typeonly define punt_redirect
+{
+  u32 rx_sw_if_index;
+  u32 tx_sw_if_index;
+  vl_api_address_t nh;
+};
+
+/** \brief IP punt redirect
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param punt - punt definition
+    @param is_add - 1 to add neighbor, 0 to delete
+*/
+autoreply define ip_punt_redirect
+{
+  u32 client_index;
+  u32 context;
+  vl_api_punt_redirect_t punt;
+  u8 is_add;
+};
+
+define ip_punt_redirect_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+};
+
+define ip_punt_redirect_details
+{
+  u32 context;
+  vl_api_punt_redirect_t punt;
+};
+
+autoreply define ip_container_proxy_add_del
+{
+  u32 client_index;
+  u32 context;
+  vl_api_prefix_t pfx;
+  u32 sw_if_index;
+  u8 is_add;
+};
+
+define ip_container_proxy_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define ip_container_proxy_details
+{
+  u32 context;
+  u32 sw_if_index;
+  vl_api_prefix_t prefix;
+};
+
+/** \brief Configure IP source and L4 port-range check
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip6 - 1 if source address type is IPv6
+    @param is_add - 1 if add, 0 if delete
+    @param ip - prefix to match
+    @param number_of_ranges - length of low_port and high_port arrays (must match)
+    @param low_ports[32] - up to 32 low end of port range entries (must have corresponding high_ports entry)
+    @param high_ports[32] - up to 32 high end of port range entries (must have corresponding low_ports entry)
+    @param vrf_id - fib table/vrf id to associate the source and port-range check with
+    @note To specify a single port set low_port and high_port entry the same
+*/
+autoreply define ip_source_and_port_range_check_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_prefix_t prefix;
+  u8 number_of_ranges;
+  u16 low_ports[32];
+  u16 high_ports[32];
+  u32 vrf_id;
+};
+
+/** \brief Set interface source and L4 port-range request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param interface_id - interface index
+    @param tcp_vrf_id - VRF associated with source and TCP port-range check
+    @param udp_vrf_id - VRF associated with source and TCP port-range check
+*/
+autoreply define ip_source_and_port_range_check_interface_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u32 sw_if_index;
+  u32 tcp_in_vrf_id;
+  u32 tcp_out_vrf_id;
+  u32 udp_in_vrf_id;
+  u32 udp_out_vrf_id;
+};
+
+/** \brief Set interface source check request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add or del
+    @param loose - strict or loose
+    @param sw_if_index - interface index
+*/
+autoreply define ip_source_check_interface_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 loose;
+  u32 sw_if_index;
+};
+
+/** \brief Enable/disable periodic IP neighbor scan
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mode - 0: disable, 1: IPv4, 2: IPv6, 3: both IPv4/v6
+    @param scan_interval - neighbor scan interval in minutes, 0: default to 1
+    @param max_proc_time - max processing time per run in usec, 0: default to 20
+    @param max_update - max neighbor probe/delete per run, 0: default to 10
+    @param scan_int_delay - delay in msec to resume scan if exceed max proc
+                            time or update, 0: default to 1
+    @param stale_threshold - threshold in minutes for neighbor deletion, 
+                             0: default to 4*scan_interval
+*/
+autoreply define ip_scan_neighbor_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u8 mode;
+  u8 scan_interval;
+  u8 max_proc_time;
+  u8 max_update;
+  u8 scan_int_delay;
+  u8 stale_threshold;
+};
+
+/** \brief IP probe neighbor address on an interface by sending an
+           ARP request (for IP4) or ICMP6 Neighbor Solicitation (for IP6)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+    @param dst - target IP address to send IP addr resolution request
+*/
+autoreply define ip_probe_neighbor
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  vl_api_address_t dst;
+};
+
+/** \brief Register for IP4 ARP resolution event on receing ARP reply or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+    @param ip - exact IP4 address of interested arp resolution event, or
+                0 to get MAC/IP info from ARP requests in BDs
+*/
+autoreply define want_ip4_arp_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
+  vl_api_ip4_address_t ip;
+};
+
+/** \brief Tell client about an IP4 ARP resolution event or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param ip - the exact ip4 address of interest
+    @param pid - client pid registered to receive notification
+    @param sw_if_index - interface which received ARP packet
+    @param mac - the new mac address 
+    @param mac_ip - 0: ARP resolution event, 1: MAC/IP info from L2 BDs
+*/
+define ip4_arp_event
+{
+  u32 client_index;
+  vl_api_ip4_address_t ip;
+  u32 pid;
+  u32 sw_if_index;
+  vl_api_mac_address_t mac;
+  u8 mac_ip;
+};
+
+service {
+  rpc want_ip4_arp_events returns want_ip4_arp_events_reply
+    events ip4_arp_event;
+};
+
+/** \brief Register for IP6 ND resolution event on recieving NA reply
+           MAC/IP info from ICMP6 Neighbor Solicitation in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+    @param ip - the exact IP6 address of interested ND resolution event, or
+                0 to get MAC/IP info from ICMP6 NS in L2 BDs.
+*/
+autoreply define want_ip6_nd_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
+  vl_api_ip6_address_t ip;
+};
+
+/** \brief Tell client about an IP6 ND resolution or
+           MAC/IP info from ICMP6 Neighbor Solicitation in L2 BDs.
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param sw_if_index - interface which received ARP packet
+    @param ip - the exact ip6 address of interest
+    @param new_mac - the new mac address 
+    @param mac_ip - 0: ND resolution event, 1: MAC/IP info from L2 BDs
+*/
+define ip6_nd_event
+{
+  u32 client_index;
+  u32 pid;
+  u32 sw_if_index;
+  vl_api_ip6_address_t ip;
+  vl_api_mac_address_t mac;
+  u8 mac_ip;
+};
+
+service {
+  rpc want_ip6_ra_events returns want_ip6_ra_events_reply
+    events ip6_ra_event;
+};
+
+/** \brief Register for ip6 router advertisement events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_ip6_ra_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
+};
+
+/** \brief Struct representing RA prefix info
+    @param prefix - RA prefix info destination address
+    @param flags - RA prefix info flags
+    @param valid_time - RA prefix info valid time
+    @param preferred_time - RA prefix info preferred time
+*/
+typeonly define ip6_ra_prefix_info
+{
+  vl_api_prefix_t prefix;
+  u8 flags;
+  u32 valid_time;
+  u32 preferred_time;
+};
+
+/** \brief Tell client about a router advertisement event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param current_hop_limit - RA current hop limit
+    @param flags - RA flags
+    @param router_lifetime_in_sec - RA lifetime in seconds
+    @param router_addr - The router's address
+    @param neighbor_reachable_time_in_msec - RA neighbor reachable time in msec
+    @param time_in_msec_between_retransmitted_neighbor_solicitations -
+               time in msec between retransmitted neighbor solicitations
+    @param n_prefixes -
+    @param prefixes -
+*/
+define ip6_ra_event
+{
+  u32 client_index;
+  u32 pid;
+  u32 sw_if_index;
+  vl_api_ip6_address_t router_addr;
+  u8 current_hop_limit;
+  u8 flags;
+  u16 router_lifetime_in_sec;
+  u32 neighbor_reachable_time_in_msec;
+  u32 time_in_msec_between_retransmitted_neighbor_solicitations;
+  u32 n_prefixes;
+  vl_api_ip6_ra_prefix_info_t prefixes[n_prefixes];
+};
+
+service {
+  rpc want_ip6_nd_events returns want_ip6_nd_events_reply
+    events ip6_nd_event;
+};
+
+/** \brief Proxy ARP configuration type
+    @param table_id - VRF / Fib table ID
+    @param low - Low address of the Proxy ARP range
+    @param hi - High address of the Proxy ARP range
+*/
+typeonly define proxy_arp
+{
+  u32 table_id;
+  vl_api_ip4_address_t low;
+  vl_api_ip4_address_t hi;
+};
+
+/** \brief Proxy ARP add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if adding the Proxy ARP range, 0 if deleting
+    @param proxy - Proxy configuration
+*/
+autoreply define proxy_arp_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_proxy_arp_t proxy;
+};
+
+/** \brief Proxy ARP dump request
+ */
+define proxy_arp_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Proxy ARP dump details reply
+ * @param proxy - Same data as used to configure
+ */
+define proxy_arp_details
+{
+  u32 context;
+  vl_api_proxy_arp_t proxy;
+};
+
+/** \brief Proxy ARP add / del interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - Which interface to enable / disable Proxy Arp on
+    @param enable_disable - 1 to enable Proxy ARP on interface, 0 to disable
+*/
+autoreply define proxy_arp_intfc_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  /* 1 = on, 0 = off */
+  u8 enable_disable;
+};
+
+/** \brief Proxy ARP interface dump request
+ */
+define proxy_arp_intfc_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Proxy ARP interface dump details reply
+ * @param sw_if_index The interface on which ARP proxy is enabled.
+ */
+define proxy_arp_intfc_details
+{
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Reset fib table request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vrf_id - vrf/table id of the fib table to reset
+    @param is_ipv6 - an ipv6 fib to reset if non-zero, else ipv4
+*/
+autoreply define reset_fib
+{
+  u32 client_index;
+  u32 context;
+  u32 vrf_id;
+  u8 is_ipv6;
+};
+
+/** \brief Set max allowed ARP or ip6 neighbor entries request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ipv6 - neighbor limit if non-zero, else ARP limit
+    @param arp_neighbor_limit - the new limit, defaults are ~ 50k
+*/
+autoreply define set_arp_neighbor_limit
+{
+  u32 client_index;
+  u32 context;
+  u8 is_ipv6;
+  u32 arp_neighbor_limit;
+};
+
+/** \brief IOAM enable : Enable in-band OAM
+    @param id - profile id
+    @param seqno - To enable Seqno Processing
+    @param analyse - Enabling analysis of iOAM at decap node 
+    @param pow_enable - Proof of Work enabled or not flag
+    @param trace_enable - iOAM Trace enabled or not flag
+*/
+autoreply define ioam_enable
+{
+  u32 client_index;
+  u32 context;
+  u16 id;
+  u8 seqno;
+  u8 analyse;
+  u8 pot_enable;
+  u8 trace_enable;
+  u32 node_id;
+};
+
+/** \brief iOAM disable
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param index - MAP Domain index
+*/
+autoreply define ioam_disable
+{
+  u32 client_index;
+  u32 context;
+  u16 id;
+};
+
+autoreply define ip_reassembly_set
+{
+  u32 client_index;
+  u32 context;
+  u32 timeout_ms;
+  u32 max_reassemblies;
+  u32 max_reassembly_length;
+  u32 expire_walk_interval_ms;
+  u8 is_ip6;
+};
+
+define ip_reassembly_get
+{
+  u32 client_index;
+  u32 context;
+  u8 is_ip6;
+};
+
+define ip_reassembly_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 timeout_ms;
+  u32 max_reassemblies;
+  u32 max_reassembly_length;
+  u32 expire_walk_interval_ms;
+  u8 is_ip6;
+};
+
+/** \brief Enable/disable reassembly feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to enable/disable feature on
+    @param enable_ip4 - enable ip4 reassembly if non-zero, disable if 0
+    @param enable_ip6 - enable ip6 reassembly if non-zero, disable if 0
+*/
+autoreply define ip_reassembly_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 enable_ip4;
+  u8 enable_ip6;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
