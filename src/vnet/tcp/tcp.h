@@ -112,6 +112,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_RTT_MAX 30 * THZ	/* 30s (probably too much) */
 #define TCP_RTO_SYN_RETRIES 3	/* SYN retries without doubling RTO */
 #define TCP_RTO_INIT 1 * THZ	/* Initial retransmit timer */
+#define TCP_RTO_BOFF_MAX 8	/* Max number of retries before reset */
 
 /** TCP connection flags */
 #define foreach_tcp_connection_flag             \
