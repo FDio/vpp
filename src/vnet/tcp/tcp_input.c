@@ -390,8 +390,9 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
   /* 4th: check the SYN bit (in window) */
   if (PREDICT_FALSE (tcp_syn (th0)))
     {
+      /* As per RFC5961 send challenge ack instead of reset */
+      tcp_program_ack (wrk, tc0);
       *error0 = TCP_ERROR_SPURIOUS_SYN;
-      tcp_send_reset (tc0);
       goto error;
     }
 
