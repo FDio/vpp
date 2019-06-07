@@ -94,6 +94,8 @@ GTAGS
 /src/vpp-api/python/build
 /src/vpp-api/python/dist
 /src/vpp-api/python/vpp_papi.egg-info
+/src/vpp_api/.tox
+/src/vpp_api/.stestr
 
 # Build files in the test directory
 /test/*.ok
@@ -103,3 +105,4 @@ GTAGS
 
 # No core files
 **/core
+
