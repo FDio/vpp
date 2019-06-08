@@ -266,6 +266,8 @@ static void vl_api_mactime_add_del_range_t_handler
 		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_DROP;
 	      if (mp->allow)
 		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW;
+	      if (mp->allow_quota)
+		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA;
 	    }
 	  else
 	    {
@@ -303,6 +305,8 @@ static void vl_api_mactime_add_del_range_t_handler
 		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_DROP;
 	      if (mp->allow)
 		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW;
+	      if (mp->allow_quota)
+		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA;
 	    }
 	  else
 	    {
@@ -462,7 +466,10 @@ format_bytes_with_width (u8 * s, va_list * va)
   u8 *fmt;
   char *suffix = "";
 
-  fmt = format (0, "%%%d.3f%%s%c", width, 0);
+  if (width > 0)
+    fmt = format (0, "%%%d.3f%%s%c", width, 0);
+  else
+    fmt = format (0, "%%.3f%%s%c", 0);
 
   if (nbytes > (1024ULL * 1024ULL * 1024ULL))
     {
@@ -480,7 +487,10 @@ format_bytes_with_width (u8 * s, va_list * va)
       suffix = "K";
     }
   else
-    nbytes_f64 = (f64) nbytes;
+    {
+      nbytes_f64 = (f64) nbytes;
+      suffix = "B";
+    }
 
   s = format (s, (char *) fmt, nbytes_f64, suffix);
   vec_free (fmt);
@@ -534,7 +544,7 @@ show_mactime_command_fn (vlib_main_t * vm,
   }));
   /* *INDENT-ON* */
 
-  vlib_cli_output (vm, "%-15s %18s %14s %10s %11s %10s",
+  vlib_cli_output (vm, "%-15s %18s %14s %10s %11s %13s",
 		   "Device Name", "Addresses", "Status",
 		   "AllowPkt", "AllowByte", "DropPkt");
 
@@ -559,6 +569,8 @@ show_mactime_command_fn (vlib_main_t * vm,
 	    {
 	      if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW)
 		current_status = 3;
+	      else if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA)
+		current_status = 5;
 	      else
 		current_status = 2;
 	      if (verbose)
@@ -581,6 +593,8 @@ show_mactime_command_fn (vlib_main_t * vm,
 	current_status = 2;
       if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_DROP)
 	current_status = 3;
+      if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA)
+	current_status = 4;
 
     print:
       vec_reset_length (macstring);
@@ -599,6 +613,12 @@ show_mactime_command_fn (vlib_main_t * vm,
 	case 3:
 	  status_string = "dynamic allow";
 	  break;
+	case 4:
+	  status_string = "d-quota inact";
+	  break;
+	case 5:
+	  status_string = "d-quota activ";
+	  break;
 	default:
 	  status_string = "code bug!";
 	  break;
@@ -606,13 +626,15 @@ show_mactime_command_fn (vlib_main_t * vm,
       vlib_get_combined_counter (&mm->allow_counters, dp - mm->devices,
 				 &allow);
       vlib_get_combined_counter (&mm->drop_counters, dp - mm->devices, &drop);
-      vlib_cli_output (vm, "%-15s %18s %14s %10lld %U %10lld",
+      vlib_cli_output (vm, "%-15s %18s %14s %10lld %U %13lld",
 		       dp->device_name, macstring, status_string,
 		       allow.packets, format_bytes_with_width, allow.bytes,
 		       10, drop.packets);
       if (dp->data_quota > 0)
-	vlib_cli_output (vm, "%-54s %s%U", " ", "Quota ",
-			 format_bytes_with_width, dp->data_quota, 10);
+	vlib_cli_output (vm, "%-54s %s%U %s%U", " ", "Quota ",
+			 format_bytes_with_width, dp->data_quota, 10,
+			 "Use ", format_bytes_with_width,
+			 dp->data_used_in_range, 8);
       /* This is really only good for small N... */
       for (j = 0; j < vec_len (mm->arp_cache_copy); j++)
 	{

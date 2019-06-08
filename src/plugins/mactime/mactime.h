@@ -37,6 +37,7 @@ typedef struct
   u8 *device_name;
   u8 mac_address[6];
   u64 data_quota;
+  u64 data_used_in_range;
   u32 flags;
   clib_timebase_range_t *ranges;
 } mactime_device_t;
@@ -46,7 +47,8 @@ typedef struct
 #define MACTIME_DEVICE_FLAG_STATIC_ALLOW	(1<<1)
 #define MACTIME_DEVICE_FLAG_DYNAMIC_DROP	(1<<2)
 #define MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW	(1<<3)
-#define MACTIME_DEVICE_FLAG_DROP_UDP_10001      (1<<4)
+#define MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA	(1<<4)
+#define MACTIME_DEVICE_FLAG_DROP_UDP_10001      (1<<5)
 
 typedef struct
 {
