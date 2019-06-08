@@ -158,6 +158,7 @@ api_mactime_add_del_range (vat_main_t * vam)
   int mac_set = 0;
   u8 is_add = 1;
   u8 allow = 0;
+  u8 allow_quota = 0;
   u8 drop = 0;
   u8 no_udp_10001 = 0;
   u64 data_quota = 0;
@@ -175,6 +176,9 @@ api_mactime_add_del_range (vat_main_t * vam)
       else if (unformat (i, "allow-range %U",
 			 unformat_clib_timebase_range_vector, &rp))
 	allow = 1;
+      else if (unformat (i, "allow-quota-range %U",
+			 unformat_clib_timebase_range_vector, &rp))
+	allow_quota = 1;
       else if (unformat (i, "drop-range %U",
 			 unformat_clib_timebase_range_vector, &rp))
 	drop = 1;
@@ -206,11 +210,12 @@ api_mactime_add_del_range (vat_main_t * vam)
     }
 
   /* allow-range / drop-range parse errors cause this condition */
-  if (is_add && allow == 0 && drop == 0)
+  if (is_add && allow == 0 && drop == 0 && allow_quota == 0)
     {
       vec_free (rp);
       vec_free (device_name);
-      errmsg ("neither allow nor drop set, parse error...\n");
+      errmsg ("parse error...\n");
+      return -99;
     }
 
   /* Unlikely, but check anyhow */
@@ -234,6 +239,7 @@ api_mactime_add_del_range (vat_main_t * vam)
   mp->is_add = is_add;
   mp->drop = drop;
   mp->allow = allow;
+  mp->allow_quota = allow_quota;
   mp->no_udp_10001 = no_udp_10001;
   mp->data_quota = clib_host_to_net_u64 (data_quota);
   memcpy (mp->mac_address, mac_address, sizeof (mp->mac_address));

@@ -120,6 +120,7 @@ mactime_node_inline (vlib_main_t * vm,
 	  u32 device_index0;
 	  u32 len0;
 	  ethernet_header_t *en0;
+	  int has_dynamic_range_allow = 0;
 	  int i;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -168,8 +169,9 @@ mactime_node_inline (vlib_main_t * vm,
 
 	  dp = pool_elt_at_index (mm->devices, device_index0);
 
-	  /* Known device, check for a traffic quota */
-	  if (PREDICT_FALSE (dp->data_quota))
+	  /* Known device, check for an always-on traffic quota */
+	  if ((dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW)
+	      && PREDICT_FALSE (dp->data_quota))
 	    {
 	      vlib_counter_t device_current_count;
 	      vlib_get_combined_counter (&mm->allow_counters,
@@ -242,6 +244,9 @@ mactime_node_inline (vlib_main_t * vm,
 
 	      start0 = r->start + mm->sunday_midnight;
 	      end0 = r->end + mm->sunday_midnight;
+	      if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA)
+		has_dynamic_range_allow = 1;
+
 	      /* Packet within time range */
 	      if (now >= start0 && now <= end0)
 		{
@@ -253,15 +258,35 @@ mactime_node_inline (vlib_main_t * vm,
 			 dp - mm->devices, 1, len0);
 		      next0 = MACTIME_NEXT_DROP;
 		      b0->error = node->errors[MACTIME_ERROR_RANGE_DROP];
+		      goto trace0;
 		    }
-		  else		/* it's an allow range, allow it */
+		  /* Quota-check allow range? */
+		  else if (has_dynamic_range_allow)
 		    {
+		      if (dp->data_used_in_range + len0 >= dp->data_quota)
+			{
+			  next0 = MACTIME_NEXT_DROP;
+			  b0->error = node->errors[MACTIME_ERROR_QUOTA_DROP];
+			  vlib_increment_combined_counter
+			    (&mm->drop_counters, thread_index,
+			     dp - mm->devices, 1, len0);
+			  goto trace0;
+			}
+		      else
+			{
+			  dp->data_used_in_range += len0;
+			  goto allow0;
+			}
+		    }
+		  else
+		    {		/* it's an allow range, allow it */
+		    allow0:
 		      vlib_increment_combined_counter
 			(&mm->allow_counters, thread_index,
 			 dp - mm->devices, 1, len0);
 		      packets_ok++;
+		      goto trace0;
 		    }
-		  goto trace0;
 		}
 	    }
 	  /*
@@ -275,11 +300,13 @@ mactime_node_inline (vlib_main_t * vm,
 	      vlib_increment_combined_counter
 		(&mm->drop_counters, thread_index, dp - mm->devices, 1, len0);
 	    }
-	  else
+	  else			/* DYNAMIC_DROP, DYNAMIC_RANGE_ALLOW_QUOTA */
 	    {
 	      vlib_increment_combined_counter
 		(&mm->allow_counters, thread_index, dp - mm->devices, 1,
 		 len0);
+	      /* Clear the data quota accumulater */
+	      dp->data_used_in_range = 0;
 	      packets_ok++;
 	    }
 
