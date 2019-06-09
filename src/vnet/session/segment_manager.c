@@ -131,7 +131,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
 	}
     }
   else
-    seg_name = format (0, "%s%c", "process-private-segment", 0);
+    seg_name = format (0, "%s%c", "process-private", 0);
 
   fs->ssvm.ssvm_size = segment_size;
   fs->ssvm.name = seg_name;
@@ -827,13 +827,9 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
   segment_manager_main_t *smm = &sm_main;
-  fifo_segment_t *seg;
-  segment_manager_t *sm;
   u8 show_segments = 0, verbose = 0;
-  char *address;
-  size_t size;
-  u32 active_fifos;
-  u32 free_fifos;
+  segment_manager_t *sm;
+  fifo_segment_t *seg;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -862,21 +858,12 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   if (show_segments)
     {
-      vlib_cli_output (vm, "%-15s%15s%15s%15s%15s%15s", "Name", "Type",
-		       "HeapSize (M)", "ActiveFifos", "FreeFifos", "Address");
+      vlib_cli_output (vm, "%U", format_fifo_segment, 0, verbose);
 
       /* *INDENT-OFF* */
       pool_foreach (sm, smm->segment_managers, ({
 	  segment_manager_foreach_segment_w_lock (seg, sm, ({
-	    fifo_segment_info (seg, &address, &size);
-	    active_fifos = fifo_segment_num_fifos (seg);
-	    free_fifos = fifo_segment_num_free_fifos (seg);
-	    vlib_cli_output (vm, "%-15v%15U%15llu%15u%15u%15llx",
-			     ssvm_name (&seg->ssvm), format_fifo_segment_type,
-			     seg, size >> 20ULL, active_fifos, free_fifos,
-			     address);
-	    if (verbose)
-	      vlib_cli_output (vm, "%U", format_fifo_segment, seg, verbose);
+	    vlib_cli_output (vm, "%U", format_fifo_segment, seg, verbose);
 	  }));
       }));
       /* *INDENT-ON* */

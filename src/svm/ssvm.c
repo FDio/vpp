@@ -385,6 +385,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   sh->heap = heap;
   sh->ssvm_va = pointer_to_uword (heap);
   sh->type = SSVM_SEGMENT_PRIVATE;
+  sh->name = ssvm->name;
 
   return 0;
 }

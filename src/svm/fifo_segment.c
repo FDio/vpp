@@ -824,21 +824,45 @@ format_fifo_segment_type (u8 * s, va_list * args)
 u8 *
 format_fifo_segment (u8 * s, va_list * args)
 {
-  fifo_segment_t *sp = va_arg (*args, fifo_segment_t *);
+  fifo_segment_t *fs = va_arg (*args, fifo_segment_t *);
   int verbose __attribute__ ((unused)) = va_arg (*args, int);
-  fifo_segment_header_t *fsh = sp->h;
-  u32 count, indent;
+  fifo_segment_header_t *fsh;
   svm_fifo_chunk_t *c;
+  u32 count, indent;
+  u32 active_fifos;
+  u32 free_fifos;
+  char *address;
+  size_t size;
   int i;
 
   indent = format_get_indent (s) + 2;
 #if USE_DLMALLOC == 0
   s = format (s, "%U segment heap: %U\n", format_white_space, indent,
-	      format_mheap, svm_fifo_segment_heap (sp), verbose);
+	      format_mheap, svm_fifo_segment_heap (fs), verbose);
   s = format (s, "%U segment has %u active fifos\n",
-	      format_white_space, indent, fifo_segment_num_fifos (sp));
+	      format_white_space, indent, fifo_segment_num_fifos (fs));
 #endif
 
+  if (fs == 0)
+    {
+      s = format (s, "%-15s%15s%15s%15s%15s%15s", "Name", "Type",
+		  "HeapSize (M)", "ActiveFifos", "FreeFifos", "Address");
+      return s;
+    }
+
+  fsh = fs->h;
+  fifo_segment_info (fs, &address, &size);
+  active_fifos = fifo_segment_num_fifos (fs);
+  free_fifos = fifo_segment_num_free_fifos (fs);
+
+  s = format (s, "%-15v%15U%15llu%15u%15u%15llx", ssvm_name (&fs->ssvm),
+	      format_fifo_segment_type, fs, size >> 20ULL, active_fifos,
+	      free_fifos, address);
+
+  if (!verbose)
+    return s;
+
+  s = format (s, "\n");
   for (i = 0; i < vec_len (fsh->free_chunks); i++)
     {
       c = fsh->free_chunks[i];
@@ -851,11 +875,13 @@ format_fifo_segment (u8 * s, va_list * args)
 	  count++;
 	}
 
-      s = format (s, "%U%-5u Kb: %u free",
-		  format_white_space, indent + 2,
+      s = format (s, "%U%-5u Kb: %u free", format_white_space, indent + 2,
 		  1 << (i + max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE) - 10),
 		  count);
     }
+  s = format (s, "%Ufree bytes %U", format_white_space, indent + 2,
+	      format_memory_size, fsh->n_free_bytes);
+
   return s;
 }
 
