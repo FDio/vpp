@@ -75,6 +75,7 @@ typedef struct
 
   /* bit-map of in-use IDs */
   uword *tap_ids;
+  int host_mtu_size;
 } tap_main_t;
 
 void tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args);
