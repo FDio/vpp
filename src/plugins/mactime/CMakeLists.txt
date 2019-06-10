@@ -26,3 +26,18 @@ add_vpp_plugin(mactime
   API_TEST_SOURCES
   mactime_test.c
 )
+
+add_vpp_executable(mactime_top ENABLE_EXPORTS
+  SOURCES
+  mactime_top.c
+
+  DEPENDS api_headers
+
+  LINK_LIBRARIES
+  vlibmemoryclient
+  vppapiclient
+  svm
+  vppinfra
+  Threads::Threads
+  rt m dl crypto
+)
