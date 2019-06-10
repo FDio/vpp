@@ -328,6 +328,13 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
+  args->error = vnet_netlink_set_link_mtu (vif->ifindex, tm->host_mtu_size);
+  if (args->error)
+    {
+      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+      goto error;
+    }
+
   /* Set vhost memory table */
   i = sizeof (struct vhost_memory) + sizeof (struct vhost_memory_region);
   vhost_mem = clib_mem_alloc (i);
@@ -594,6 +601,26 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
 }
 
 static clib_error_t *
+tap_mtu_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  tap_main_t *tm = &tap_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "mtu %d", &tm->host_mtu_size))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  return 0;
+}
+
+/* tap { mtu <size> } configuration. */
+VLIB_CONFIG_FUNCTION (tap_mtu_config, "tap");
+
+static clib_error_t *
 tap_init (vlib_main_t * vm)
 {
   tap_main_t *tm = &tap_main;
@@ -601,6 +628,9 @@ tap_init (vlib_main_t * vm)
 
   tm->log_default = vlib_log_register_class ("tap", 0);
   vlib_log_debug (tm->log_default, "initialized");
+
+  // default host side mtu
+  tm->host_mtu_size = 1500;
 
   return error;
 }
