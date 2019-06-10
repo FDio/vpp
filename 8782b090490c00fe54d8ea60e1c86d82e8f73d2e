@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2ec26160_85f644ab",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-10T14:17:13Z",
+      "side": 1,
+      "message": "Pls. use vl_api_prefix_t",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 105,
+        "endChar": 19
+      },
+      "revId": "8782b090490c00fe54d8ea60e1c86d82e8f73d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "48fb4691_5d8a1655",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-10T14:17:13Z",
+      "side": 1,
+      "message": "Pls. use vl_api_prefix_t",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 141,
+        "endChar": 19
+      },
+      "revId": "8782b090490c00fe54d8ea60e1c86d82e8f73d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
