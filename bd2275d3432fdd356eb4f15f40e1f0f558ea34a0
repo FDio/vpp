@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6bc33854_68bd4f2c",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2019-06-10T19:20:11Z",
+      "side": 1,
+      "message": "vnet_netlink_set_link_mtu shouldn\u0027t be called if tm_mtu_size stanza was not preconfigured.",
+      "revId": "bd2275d3432fdd356eb4f15f40e1f0f558ea34a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
