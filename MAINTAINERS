@@ -78,6 +78,15 @@ I:	devices
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/
 
+VNET TAP Drivers
+I:      tap
+M:      Damjan Marion <damarion@cisco.com>
+M:      Steven Luong <sluong@cisco.com>
+M:      Mohsin Kazmi <sykazmi@cisco.com>
+F:      src/vnet/devices/tap/
+F:      src/vnet/devices/virtio/node.c
+F:      src/vnet/devices/virtio/device.c
+
 VNET Feature Arcs
 I:	feature
 M:	Dave Barach <dave@barachs.net>

@@ -22,6 +22,7 @@ clib_error_t *vnet_netlink_set_link_netns (int ifindex, int netns_fd,
 clib_error_t *vnet_netlink_set_link_master (int ifindex, char *master_ifname);
 clib_error_t *vnet_netlink_set_link_addr (int ifindex, u8 * addr);
 clib_error_t *vnet_netlink_set_link_state (int ifindex, int up);
+clib_error_t *vnet_netlink_set_link_mtu (int ifindex, int mtu);
 clib_error_t *vnet_netlink_add_ip4_addr (int ifindex, void *addr,
 					 int pfx_len);
 clib_error_t *vnet_netlink_add_ip6_addr (int ifindex, void *addr,

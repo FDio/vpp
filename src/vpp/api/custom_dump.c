@@ -579,6 +579,10 @@ static void *vl_api_tap_create_v2_t_print
     s = format (s, "tx-ring-size %u ", ntohs (mp->tx_ring_sz));
   if (mp->rx_ring_sz)
     s = format (s, "rx-ring-size %u ", ntohs (mp->rx_ring_sz));
+  if (mp->host_mtu_set)
+    s = format (s, "host-mtu-size %u ", ntohl (mp->host_mtu_size));
+  if (ntohl (mp->tap_flags) & 0x1)
+    s = format (s, "gso-enabled");
   FINISH;
 }
 

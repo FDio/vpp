@@ -76,6 +76,10 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    ;
 	  else if (unformat (line_input, "tx-ring-size %d", &args.tx_ring_sz))
 	    ;
+	  else
+	    if (unformat
+		(line_input, "host-mtu-size %d", &args.host_mtu_size))
+	    args.host_mtu_set = 1;
 	  else if (unformat (line_input, "no-gso"))
 	    args.tap_flags &= ~TAP_FLAG_GSO;
 	  else if (unformat (line_input, "gso"))
@@ -114,7 +118,8 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[rx-ring-size <size>] [tx-ring-size <size>] [host-ns <netns>] "
     "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
     "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
-    "[host-ip6-gw <ip6-addr>] [host-if-name <name>] [no-gso|gso]",
+    "[host-ip6-gw <ip6-addr>] [host-mac-addr <host-mac-address>] "
+    "[host-if-name <name>] [host-mtu-size <size>] [no-gso|gso]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */

@@ -7429,6 +7429,7 @@ api_tap_create_v2 (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_tap_create_v2_t *mp;
+#define TAP_FLAG_GSO (1 << 0)
   u8 mac_address[6];
   u8 random_mac = 1;
   u32 id = ~0;
@@ -7445,6 +7446,9 @@ api_tap_create_v2 (vat_main_t * vam)
   ip6_address_t host_ip6_gw;
   u8 host_ip6_gw_set = 0;
   u32 host_ip6_prefix_len = 0;
+  u8 host_mtu_set = 0;
+  u32 host_mtu_size = 0;
+  u32 tap_flags = 0;
   int ret;
   u32 rx_ring_sz = 0, tx_ring_sz = 0;
 
@@ -7484,6 +7488,12 @@ api_tap_create_v2 (vat_main_t * vam)
 	;
       else if (unformat (i, "tx-ring-size %d", &tx_ring_sz))
 	;
+      else if (unformat (i, "host-mtu-size %d", &host_mtu_size))
+	host_mtu_set = 1;
+      else if (unformat (i, "no-gso"))
+	tap_flags &= ~TAP_FLAG_GSO;
+      else if (unformat (i, "gso"))
+	tap_flags |= TAP_FLAG_GSO;
       else
 	break;
     }
@@ -7533,6 +7543,11 @@ api_tap_create_v2 (vat_main_t * vam)
       errmsg ("tx ring size must be 32768 or lower. ");
       return -99;
     }
+  if (host_mtu_set && (host_mtu_size < 64 || host_mtu_size > 65355))
+    {
+      errmsg ("host MTU size must be in between 64 and 65355. ");
+      return -99;
+    }
 
   /* Construct the API message */
   M (TAP_CREATE_V2, mp);
@@ -7546,6 +7561,9 @@ api_tap_create_v2 (vat_main_t * vam)
   mp->host_ip6_addr_set = host_ip6_prefix_len != 0;
   mp->rx_ring_sz = ntohs (rx_ring_sz);
   mp->tx_ring_sz = ntohs (tx_ring_sz);
+  mp->host_mtu_set = host_mtu_set;
+  mp->host_mtu_size = ntohl (host_mtu_size);
+  mp->tap_flags = ntohl (tap_flags);
 
   if (random_mac == 0)
     clib_memcpy (mp->mac_address, mac_address, 6);
@@ -21843,7 +21861,7 @@ _(l2_flags,                                                             \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(tap_create_v2,                                                        \
-  "id <num> [hw-addr <mac-addr>] [host-ns <name>] [rx-ring-size <num> [tx-ring-size <num>]") \
+  "id <num> [hw-addr <mac-addr>] [host-ns <name>] [rx-ring-size <num> [tx-ring-size <num>] [host-mtu-size <mtu>] [gso | no-gso]") \
 _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
