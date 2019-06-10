@@ -370,6 +370,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   }
 #else
   heap = create_mspace (rnd_size, 1 /* locked */ );
+  mspace_disable_expand (heap);
 #endif
 
   ssvm->ssvm_size = rnd_size;
