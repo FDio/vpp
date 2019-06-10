@@ -128,7 +128,9 @@ foreach_standard_reply_retval_handler;
 #define foreach_vpe_api_reply_msg                               \
   _(LB_CONF_REPLY, lb_conf_reply)                               \
   _(LB_ADD_DEL_VIP_REPLY, lb_add_del_vip_reply)                 \
-  _(LB_ADD_DEL_AS_REPLY, lb_add_del_as_reply)
+  _(LB_ADD_DEL_AS_REPLY, lb_add_del_as_reply)                   \
+  _(LB_VIP_DETAILS, lb_vip_details)                             \
+  _(LB_AS_DETAILS, lb_as_details)
 
 static int api_lb_conf (vat_main_t * vam)
 {
@@ -245,8 +247,8 @@ static int api_lb_add_del_vip (vat_main_t * vam)
     }
 
   M(LB_ADD_DEL_VIP, mp);
-  clib_memcpy (mp->ip_prefix, &ip_prefix, sizeof (ip_prefix));
-  mp->prefix_length = prefix_length;
+  clib_memcpy (mp->pfx.address.un.ip6, &ip_prefix.ip6, sizeof (ip_prefix.ip6));
+  mp->pfx.len = prefix_length;
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
   mp->encap = (u8)encap;
@@ -320,13 +322,128 @@ static int api_lb_add_del_as (vat_main_t * vam)
   }
 
   M(LB_ADD_DEL_AS, mp);
-  clib_memcpy (mp->vip_ip_prefix, &vip_prefix, sizeof (vip_prefix));
-  mp->vip_prefix_length = vip_plen;
+  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
+  mp->pfx.len = vip_plen;
   mp->protocol = (u8)protocol;
   mp->port = htons((u16)port);
-  clib_memcpy (mp->as_address, &as_addr, sizeof (as_addr));
+  clib_memcpy (&mp->as_address, &as_addr, sizeof (as_addr));
   mp->is_del = is_del;
   mp->is_flush = is_flush;
+
+  S(mp);
+  W (ret);
+  return ret;
+}
+
+static void vl_api_lb_vip_details_t_handler
+  (vl_api_lb_vip_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  lb_main_t *lbm = &lb_main;
+  u32 i = 0;
+
+  u32 vip_count = pool_len(lbm->vips);
+
+  print (vam->ofp, "%11d", vip_count);
+
+  for (i=0; i<vip_count; i--)
+    {
+      print (vam->ofp, "%24U%14d%14d%18d",
+           format_ip46_address, &mp->vip.pfx.address, IP46_TYPE_ANY,
+           mp->vip.pfx.len,
+           mp->vip.protocol,
+           ntohs (mp->vip.port));
+    }
+}
+
+static int api_lb_vip_dump (vat_main_t * vam)
+{
+  vl_api_lb_vip_dump_t *mp;
+  int ret;
+
+  M(LB_VIP_DUMP, mp);
+
+  S(mp);
+  W (ret);
+  return ret;
+}
+
+static void vl_api_lb_as_details_t_handler
+  (vl_api_lb_as_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  lb_main_t *lbm = &lb_main;
+
+  //u32 i = 0;
+
+  print (vam->ofp, "%11d", pool_len(lbm->ass));
+/*
+  for (i=0; i<pool_len(lbm->ass); i--)
+    {
+      print (vam->ofp, "%24U%14d%14d%18d",
+           format_ip46_address, &mp->pfx.address, IP46_TYPE_ANY,
+           mp->pfx.len,
+           mp->pfx.protocol,
+           ntohs (mp->pfx.port),
+           ntohl(mp->app_srv),
+           mp->flags,
+           mp->in_use_;
+    }
+    */
+}
+
+static int api_lb_as_dump (vat_main_t * vam)
+{
+
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_as_dump_t *mp;
+  int ret;
+  ip46_address_t vip_prefix, as_addr;
+  u8 vip_plen;
+  ip46_address_t *as_array = 0;
+  u32 port = 0;
+  u8 protocol = 0;
+
+  if (!unformat(line_input, "%U", unformat_ip46_prefix,
+                &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+  {
+      errmsg ("lb_add_del_as: invalid vip prefix\n");
+      return -99;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat(line_input, "%U", unformat_ip46_address,
+                 &as_addr, IP46_TYPE_ANY))
+      {
+        vec_add1(as_array, as_addr);
+      }
+    else if (unformat(line_input, "protocol tcp"))
+      {
+          protocol = IP_PROTOCOL_TCP;
+      }
+    else if (unformat(line_input, "protocol udp"))
+      {
+          protocol = IP_PROTOCOL_UDP;
+      }
+    else if (unformat(line_input, "port %d", &port))
+      ;
+    else {
+        errmsg ("invalid arguments\n");
+        return -99;
+    }
+  }
+
+  if (!vec_len(as_array)) {
+    errmsg ("No AS address provided \n");
+    return -99;
+  }
+
+  M(LB_AS_DUMP, mp);
+  clib_memcpy (mp->pfx.address.un.ip6, &vip_prefix.ip6, sizeof (vip_prefix.ip6));
+  mp->pfx.len = vip_plen;
+  mp->protocol = (u8)protocol;
+  mp->port = htons((u16)port);
 
   S(mp);
   W (ret);
@@ -347,7 +464,9 @@ _(lb_add_del_vip, "<prefix> "  \
                   "[type (nodeport|clusterip) target_port <n>] " \
                   "[new_len <n>] [del]")  \
 _(lb_add_del_as, "<vip-prefix> [protocol (tcp|udp) port <n>] "  \
-                 "[<address>] [del] [flush]")
+                 "[<address>] [del] [flush]")              \
+_(lb_vip_dump, "")          \
+_(lb_as_dump, "<vip-prefix> [protocol (tcp|udp) port <n>]")
 
 static void
 lb_api_hookup (vat_main_t *vam)
