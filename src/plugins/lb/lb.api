@@ -92,3 +92,68 @@ autoreply define lb_flush_vip {
   u8 protocol;
   u16 port;
 };
+
+/** \brief Define connection statistics structure
+    @param ip_prefix - IP address (IPv4 in lower order 32 bits).
+    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4). only for vip stats.
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+typeonly define lb_ip_addr
+{
+  u8 ip_prefix[16];
+  u8 prefix_length;
+  u8 protocol;
+  u16 port;
+};
+
+/** \brief Request all vips
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lb_get_vip_list{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply all configured vips
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - 0 means all ok
+    @param vip_count - all vip numbers.
+    @param vips - all vip addrs.
+*/
+define lb_get_vip_list_reply {
+  u32 context;
+  i32 retval;
+  u32 vip_count;
+  vl_api_lb_ip_addr_t vips[vip_count];
+};
+
+/** \brief Request all ass as per vip
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lb_get_as_list{
+  u32 client_index;
+  u32 context;
+  u8 ip_prefix[16];
+  u8 prefix_length;
+  u8 protocol;
+  u16 port;
+};
+
+/** \brief Reply all configured ass per vip
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - 0 means all ok
+    @param as_count - all as numbers per vip.
+    @param ass - all as addrs per vip.
+*/
+define lb_get_as_list_reply {
+  u32 context;
+  i32 retval;
+  u32 as_count;
+  vl_api_lb_ip_addr_t ass[as_count];
+};
+
