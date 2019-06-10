@@ -16,6 +16,24 @@
       "revId": "bd2275d3432fdd356eb4f15f40e1f0f558ea34a0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1dcffa43_b0c76cc8",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-06-10T19:55:53Z",
+      "side": 1,
+      "message": "I am explicitly setting MTU to 1500 if stanza is missing.",
+      "parentUuid": "6bc33854_68bd4f2c",
+      "revId": "bd2275d3432fdd356eb4f15f40e1f0f558ea34a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
