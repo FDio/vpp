@@ -102,6 +102,14 @@ tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
   return &tm->cc_algos[type];
 }
 
+tcp_cc_algorithm_type_e
+tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_cc_algo_register (++tm->cc_last_type, vft);
+  return tm->cc_last_type;
+}
+
 static u32
 tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 {
@@ -1499,7 +1507,7 @@ tcp_main_enable (vlib_main_t * vm)
   tcp_initialize_iss_seed (tm);
 
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
-
+  tm->cc_last_type = TCP_CC_LAST;
   return error;
 }
 
