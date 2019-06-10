@@ -361,6 +361,29 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
+  if (args->host_mtu_set)
+    {
+      args->error =
+	vnet_netlink_set_link_mtu (vif->ifindex, args->host_mtu_size);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+    }
+  else
+    {
+      // default MTU size is 9000
+      args->host_mtu_size = 9000;
+      args->error =
+	vnet_netlink_set_link_mtu (vif->ifindex, args->host_mtu_size);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+    }
+
   /* Set vhost memory table */
   i = sizeof (struct vhost_memory) + sizeof (struct vhost_memory_region);
   vhost_mem = clib_mem_alloc (i);
@@ -396,6 +419,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   args->host_namespace = 0;
   vif->host_bridge = args->host_bridge;
   args->host_bridge = 0;
+  vif->host_mtu_size = args->host_mtu_size;
   clib_memcpy (vif->host_mac_addr, args->host_mac_addr, 6);
   vif->host_ip4_prefix_len = args->host_ip4_prefix_len;
   vif->host_ip6_prefix_len = args->host_ip6_prefix_len;
@@ -627,6 +651,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     if (vif->host_ip6_prefix_len)
       clib_memcpy(tapid->host_ip6_addr, &vif->host_ip6_addr, 16);
     tapid->host_ip6_prefix_len = vif->host_ip6_prefix_len;
+    tapid->host_mtu_size = vif->host_mtu_size;
   );
   /* *INDENT-ON* */
 

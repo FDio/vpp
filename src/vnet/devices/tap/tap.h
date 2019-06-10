@@ -43,6 +43,8 @@ typedef struct
   u8 host_ip6_prefix_len;
   ip6_address_t host_ip6_gw;
   u8 host_ip6_gw_set;
+  u8 host_mtu_set;
+  u32 host_mtu_size;
   /* return */
   u32 sw_if_index;
   int rv;
@@ -66,6 +68,7 @@ typedef struct
   u8 host_ip4_prefix_len;
   u8 host_ip6_addr[16];
   u8 host_ip6_prefix_len;
+  u32 host_mtu_size;
 } tap_interface_details_t;
 
 typedef struct
