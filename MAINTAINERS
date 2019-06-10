@@ -71,6 +71,7 @@ F:	src/vnet/bfd/
 VNET Device Drivers
 I:	devices
 M:	Damjan Marion <damarion@cisco.com>
+M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	src/vnet/devices/
 
 VNET Feature Arcs
