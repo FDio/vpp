@@ -109,6 +109,12 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
       ap->host_ip6_gw_set = 1;
     }
 
+  if (mp->host_mtu_set)
+    {
+      ap->host_mtu_size = ntohl (mp->host_mtu_size);
+      ap->host_mtu_set = 1;
+    }
+
   ap->tap_flags = ntohl (mp->tap_flags);
 
   tap_create_if (vm, ap);
@@ -190,6 +196,7 @@ tap_send_sw_interface_details (vpe_api_main_t * am,
   clib_memcpy (mp->host_bridge, tap_if->host_bridge,
 	       MIN (ARRAY_LEN (mp->host_bridge) - 1,
 		    strlen ((const char *) tap_if->host_bridge)));
+  mp->host_mtu_size = htonl (tap_if->host_mtu_size);
   if (tap_if->host_ip4_prefix_len)
     clib_memcpy (&mp->host_ip4_addr, &tap_if->host_ip4_addr, 4);
   mp->host_ip4_prefix_len = tap_if->host_ip4_prefix_len;

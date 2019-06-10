@@ -178,6 +178,7 @@ typedef struct
   u8 host_ip4_prefix_len;
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
+  u32 host_mtu_size;
   u32 tap_file_index;
   int gso_enabled;
   int ifindex;
