@@ -1,5 +1,5 @@
 option version = "1.0.0";
-import "vnet/ip/ip_types.api";
+import "plugins/lb/lb_types.api";
 
 /** \brief Configure Load-Balancer global parameters (unlike the CLI, both ip4_src_address and ip6_src_address need to be specified.
     @param client_index - opaque cookie to identify the sender
@@ -24,8 +24,7 @@ autoreply manual_print define lb_conf
 /** \brief Add a virtual address (or prefix)
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param ip_prefix - IP address (IPv4 in lower order 32 bits).
-    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4).
+    @param pfx - ip prefix and length
     @param protocol - tcp or udp.
     @param port - destination port. (0) means 'all-port VIP'
     @param encap - Encap is ip4 GRE(0) or ip6 GRE(1) or L3DSR(2) or NAT4(3) or NAT6(4).
@@ -40,24 +39,22 @@ autoreply manual_print define lb_conf
 autoreply manual_print define lb_add_del_vip {
   u32 client_index;
   u32 context;
-  u8 ip_prefix[16];
-  u8 prefix_length;
-  u8 protocol;
+  vl_api_prefix_t pfx;
+  u8 protocol [default=255];
   u16 port;
-  u8 encap;
+  vl_api_lb_encap_type_t encap;
   u8 dscp;
-  u8 type;
+  vl_api_lb_srv_type_t type ; /* LB_API_SRV_TYPE_CLUSTERIP */
   u16 target_port;
   u16 node_port;
-  u32 new_flows_table_length;
-  u8 is_del;
+  u32 new_flows_table_length [default=1024];
+  bool is_del;
 };
 
 /** \brief Add an application server for a given VIP
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param vip_ip_prefix - VIP IP address (IPv4 in lower order 32 bits).
-    @param vip_prefix_length - VIP IP prefix length (96 + 'IPv4 prefix length' for IPv4).
+    @param pfx - ip prefix and length
     @param protocol - tcp or udp.
     @param port - destination port.
     @param as_address - The application server address (IPv4 in lower order 32 bits).
@@ -67,28 +64,82 @@ autoreply manual_print define lb_add_del_vip {
 autoreply manual_print define lb_add_del_as {
   u32 client_index;
   u32 context;
-  u8 vip_ip_prefix[16];
-  u8 vip_prefix_length;
-  u8 protocol;
+  vl_api_prefix_t pfx;
+  u8 protocol [default=255];
   u16 port;
-  u8 as_address[16];
-  u8 is_del;
-  u8 is_flush;
+  vl_api_address_t as_address;
+  bool is_del;
+  bool is_flush;
 };
 
 /** \brief Flush a given vip
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param ip_prefix - IP address (IPv4 in lower order 32 bits).
-    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4).
+    @param pfx - ip prefix and length
     @param protocol - tcp or udp.
     @param port - destination port.
 */
 autoreply manual_print define lb_flush_vip {
   u32 client_index;
   u32 context;
-  u8 ip_prefix[16];
-  u8 prefix_length;
+  vl_api_prefix_t pfx;
   u8 protocol;
   u16 port;
 };
+
+/** \brief Dump all vips
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lb_vip_dump{
+  u32 client_index;
+  u32 context;
+  vl_api_prefix_t pfx;
+  vl_api_prefix_matcher_t pfx_matcher;
+  u8 protocol [default=255];
+  u16 port;
+
+};
+
+/** \brief Reply all configured vip
+    @param context - sender context, to match reply w/ request
+    @param vip - all vip addrs.
+*/
+define lb_vip_details {
+  u32 context;
+  vl_api_lb_vip_t vip;
+  vl_api_lb_encap_type_t encap;
+  vl_api_ip_dscp_t dscp;
+  vl_api_lb_srv_type_t srv_type;
+  u16 target_port;
+  u16 flow_table_length;
+};
+
+/** \brief dump AS list per VIP or all ASs for all VIPs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length.
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+define lb_as_dump{
+  u32 client_index;
+  u32 context;
+  /* vip */
+  vl_api_prefix_t pfx;
+  u8 protocol;
+  u16 port;
+};
+
+/** \brief lb_as_details
+    @param context - sender context, to match reply w/ request
+    @param as - AS detail record
+*/
+define lb_as_details {
+  u32 context;
+  vl_api_lb_vip_t vip;
+  vl_api_address_t app_srv;
+  u8 flags;
+  u32 in_use_since;
+};
+

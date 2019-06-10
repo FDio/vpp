@@ -860,7 +860,7 @@ static int
 lb_vip_prefix_index_alloc (lb_main_t *lbm)
 {
   /*
-   * Check for dynamically allocaetd instance number.
+   * Check for dynamically allocated instance number.
    */
   u32 bit;
 
