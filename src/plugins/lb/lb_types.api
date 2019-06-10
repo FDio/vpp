@@ -1,0 +1,44 @@
+enum lb_srv_type
+{
+  LB_API_SRV_TYPE_CLUSTERIP = 0,
+  LB_API_SRV_TYPE_NODEPORT = 1,
+  LB_API_SRV_N_TYPES = 2,
+};
+
+enum lb_encap_type
+{
+  LB_API_ENCAP_TYPE_GRE4 = 0,
+  LB_API_ENCAP_TYPE_GRE6 = 1,
+  LB_API_ENCAP_TYPE_L3DSR = 2,
+  LB_API_ENCAP_TYPE_NAT4 = 3 ,
+  LB_API_ENCAP_TYPE_NAT6 =4,
+  LB_API_ENCAP_N_TYPES =5,
+};
+
+/* Lookup types */
+enum lb_lkp_type_t
+{
+  LB_API_LKP_SAME_IP_PORT = 0,
+  LB_API_LKP_DIFF_IP_PORT = 1,
+  LB_API_LKP_ALL_PORT_IP =2,
+  LB_API_LKP_N_TYPES =3,
+};
+
+enum lb_vip_type
+{
+  LB_API_VIP_TYPE_IP6_GRE6 = 0,
+  LB_API_VIP_TYPE_IP6_GRE4 = 1,
+  LB_API_VIP_TYPE_IP4_GRE6 = 2,
+  LB_API_VIP_TYPE_IP4_GRE4 = 3,
+  LB_API_VIP_TYPE_IP4_L3DSR = 4,
+  LB_API_VIP_TYPE_IP4_NAT4 = 5,
+  LB_API_VIP_TYPE_IP6_NAT6 = 6,
+  LB_API_VIP_N_TYPES = 7,
+};
+
+enum lb_nat_protocol
+{
+  LB_API_NAT_PROTOCOL_UDP = 0x06,
+  LB_API_NAT_PROTOCOL_TCP = 0x17,
+  LB_API_NAT_PROTOCOL_ANY = 0xffffffff,
+};
