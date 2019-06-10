@@ -1626,12 +1626,16 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
   int processed = 0;
   u32 n_left_to_node;
   u32 vectors = 0;
+  vlib_buffer_t *b0, *b1, *b2, *b3;
+  vlib_node_runtime_t *r;
 
   ASSERT (fq);
   ASSERT (vm == vlib_mains[thread_id]);
 
   if (PREDICT_FALSE (fqm->node_index == ~0))
     return 0;
+
+  r = vlib_node_get_runtime (vm, fqm->node_index);
   /*
    * Gather trace data for frame queues
    */
@@ -1711,6 +1715,36 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
 	  to[1] = from[1];
 	  to[2] = from[2];
 	  to[3] = from[3];
+
+	  b0 = vlib_get_buffer (vm, to[0]);
+	  b1 = vlib_get_buffer (vm, to[1]);
+	  b2 = vlib_get_buffer (vm, to[2]);
+	  b3 = vlib_get_buffer (vm, to[3]);
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      f->flags |= VLIB_FRAME_TRACE;
+	      vlib_trace_buffer (vm, r, 0, b0, 1);
+	    }
+
+	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      f->flags |= VLIB_FRAME_TRACE;
+	      vlib_trace_buffer (vm, r, 0, b1, 1);
+	    }
+
+	  if (PREDICT_FALSE (b2->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      f->flags |= VLIB_FRAME_TRACE;
+	      vlib_trace_buffer (vm, r, 0, b2, 1);
+	    }
+
+	  if (PREDICT_FALSE (b3->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      f->flags |= VLIB_FRAME_TRACE;
+	      vlib_trace_buffer (vm, r, 0, b3, 1);
+	    }
+
 	  to += 4;
 	  from += 4;
 	  n_left_to_node -= 4;
@@ -1719,6 +1753,14 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
       while (n_left_to_node > 0)
 	{
 	  to[0] = from[0];
+
+	  b0 = vlib_get_buffer (vm, to[0]);
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      f->flags |= VLIB_FRAME_TRACE;
+	      vlib_trace_buffer (vm, r, 0, b0, 1);
+	    }
+
 	  to++;
 	  from++;
 	  n_left_to_node--;
