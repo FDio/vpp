@@ -838,7 +838,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	  n_queue = 0;
 	}
 
-      if (flags & VLIB_BUFFER_NEXT_PRESENT)
+      if (maybe_next && (flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
 	  bi = next;
 	  goto next_in_chain;
