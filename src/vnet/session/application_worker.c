@@ -58,10 +58,9 @@ app_worker_free (app_worker_t * app_wrk)
   vnet_unlisten_args_t _a, *a = &_a;
   u64 handle, *handles = 0;
   segment_manager_t *sm;
+  session_t *ls;
   u32 sm_index;
   int i;
-  app_listener_t *al;
-  session_t *ls;
 
   /*
    *  Listener cleanup
@@ -70,8 +69,7 @@ app_worker_free (app_worker_t * app_wrk)
   /* *INDENT-OFF* */
   hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
     ls = listen_session_get_from_handle (handle);
-    al = app_listener_get (app, ls->al_index);
-    vec_add1 (handles, app_listener_handle (al));
+    vec_add1 (handles, app_listen_session_handle (ls));
     sm = segment_manager_get (sm_index);
     sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
   }));
