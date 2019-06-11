@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2f044b4b_891fa749",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 614,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-11T09:50:19Z",
+      "side": 1,
+      "message": "How can user know if this is host-side mtu or vpp side mtu?\n\nWhat if different interfaces have different host side mtu requirements?",
+      "range": {
+        "startLine": 614,
+        "startChar": 28,
+        "endLine": 614,
+        "endChar": 34
+      },
+      "revId": "1e32d696dc3195b38f1a79eaabb885a9ef482cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2f6f33c7_943401dd",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-11T09:50:19Z",
+      "side": 1,
+      "message": "Why startup config?",
+      "range": {
+        "startLine": 608,
+        "startChar": 0,
+        "endLine": 625,
+        "endChar": 45
+      },
+      "revId": "1e32d696dc3195b38f1a79eaabb885a9ef482cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
