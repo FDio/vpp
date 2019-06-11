@@ -240,8 +240,8 @@ lacp_set_port_moved (vlib_main_t * vm, slave_if_t * sif, u8 val)
 int
 lacp_rx_action_initialize (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   lacp_set_port_unselected (vm, sif);
   lacp_record_default (sif);
@@ -257,8 +257,8 @@ lacp_rx_action_initialize (void *p1, void *p2)
 int
 lacp_rx_action_port_disabled (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   sif->partner.state &= ~LACP_STATE_SYNCHRONIZATION;
   if (sif->port_moved)
@@ -282,8 +282,8 @@ lacp_rx_action_port_disabled (void *p1, void *p2)
 int
 lacp_rx_action_expired (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   u8 timer_expired;
   lacp_main_t *lm = &lacp_main;
 
@@ -310,8 +310,8 @@ lacp_rx_action_expired (void *p1, void *p2)
 int
 lacp_rx_action_lacp_disabled (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   lacp_set_port_unselected (vm, sif);
   lacp_record_default (sif);
@@ -324,8 +324,8 @@ lacp_rx_action_lacp_disabled (void *p1, void *p2)
 int
 lacp_rx_action_defaulted (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   lacp_stop_timer (&sif->current_while_timer);
   lacp_update_default_selected (vm, sif);
@@ -363,8 +363,8 @@ lacp_port_is_moved (vlib_main_t * vm, slave_if_t * sif)
 int
 lacp_rx_action_current (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   lacp_main_t *lm = &lacp_main;
 
   lacp_update_selected (vm, sif);
@@ -389,8 +389,7 @@ format_rx_event (u8 * s, va_list * args)
     {.str = NULL}
   };
   int e = va_arg (*args, int);
-  lacp_event_struct *event_entry =
-    (lacp_event_struct *) & lacp_rx_event_array;
+  lacp_event_struct *event_entry = lacp_rx_event_array;
 
   if (e >= (sizeof (lacp_rx_event_array) / sizeof (*event_entry)))
     s = format (s, "Bad event %d", e);

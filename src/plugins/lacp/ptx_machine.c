@@ -74,8 +74,8 @@ lacp_machine_t lacp_ptx_machine = {
 int
 lacp_ptx_action_no_periodic (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   lacp_stop_timer (&sif->periodic_timer);
   lacp_ptx_post_short_timeout_event (vm, sif);
@@ -85,8 +85,8 @@ lacp_ptx_action_no_periodic (void *p1, void *p2)
 int
 lacp_ptx_action_slow_periodic (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   u8 timer_expired;
   lacp_main_t *lm = &lacp_main;
 
@@ -115,8 +115,8 @@ lacp_ptx_action_slow_periodic (void *p1, void *p2)
 int
 lacp_ptx_action_fast_periodic (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   u8 timer_expired;
   lacp_main_t *lm = &lacp_main;
 
@@ -150,8 +150,8 @@ lacp_ptx_action_fast_periodic (void *p1, void *p2)
 int
 lacp_ptx_action_timer_expired (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   if (!(sif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
       !(sif->actor.state & LACP_STATE_LACP_ACTIVITY))
@@ -183,8 +183,7 @@ format_ptx_event (u8 * s, va_list * args)
     {.str = NULL}
   };
   int e = va_arg (*args, int);
-  lacp_event_struct *event_entry =
-    (lacp_event_struct *) & lacp_ptx_event_array;
+  lacp_event_struct *event_entry = lacp_ptx_event_array;
 
   if (e >= (sizeof (lacp_ptx_event_array) / sizeof (*event_entry)))
     s = format (s, "Bad event %d", e);

@@ -186,8 +186,7 @@ format_rx_sm_state (u8 * s, va_list * args)
     {.str = NULL}
   };
   int state = va_arg (*args, int);
-  lacp_state_struct *state_entry =
-    (lacp_state_struct *) & lacp_rx_sm_state_array;
+  lacp_state_struct *state_entry = lacp_rx_sm_state_array;
 
   if (state >= (sizeof (lacp_rx_sm_state_array) / sizeof (*state_entry)))
     s = format (s, "Bad state %d", state);
@@ -207,8 +206,7 @@ format_tx_sm_state (u8 * s, va_list * args)
     {.str = NULL}
   };
   int state = va_arg (*args, int);
-  lacp_state_struct *state_entry =
-    (lacp_state_struct *) & lacp_tx_sm_state_array;
+  lacp_state_struct *state_entry = lacp_tx_sm_state_array;
 
   if (state >= (sizeof (lacp_tx_sm_state_array) / sizeof (*state_entry)))
     s = format (s, "Bad state %d", state);
@@ -228,8 +226,7 @@ format_mux_sm_state (u8 * s, va_list * args)
     {.str = NULL}
   };
   int state = va_arg (*args, int);
-  lacp_state_struct *state_entry =
-    (lacp_state_struct *) & lacp_mux_sm_state_array;
+  lacp_state_struct *state_entry = lacp_mux_sm_state_array;
 
   if (state >= (sizeof (lacp_mux_sm_state_array) / sizeof (*state_entry)))
     s = format (s, "Bad state %d", state);
@@ -249,8 +246,7 @@ format_ptx_sm_state (u8 * s, va_list * args)
     {.str = NULL}
   };
   int state = va_arg (*args, int);
-  lacp_state_struct *state_entry =
-    (lacp_state_struct *) & lacp_ptx_sm_state_array;
+  lacp_state_struct *state_entry = lacp_ptx_sm_state_array;
 
   if (state >= (sizeof (lacp_ptx_sm_state_array) / sizeof (*state_entry)))
     s = format (s, "Bad state %d", state);
