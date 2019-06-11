@@ -2178,6 +2178,7 @@ snat_update_outside_fib (u32 sw_if_index, u32 new_fib_index,
   nat_outside_fib_t *outside_fib;
   snat_interface_t *i;
   u8 is_add = 1;
+  u8 match = 0;
 
   if (new_fib_index == old_fib_index)
     return;
@@ -2185,14 +2186,21 @@ snat_update_outside_fib (u32 sw_if_index, u32 new_fib_index,
   if (!vec_len (sm->outside_fibs))
     return;
 
-  pool_foreach (i, sm->interfaces, (
-				     {
-				     if (i->sw_if_index == sw_if_index)
-				     {
-				     if (!(nat_interface_is_outside (i)))
-				     return;}
-				     }
-		));
+  /* *INDENT-OFF* */
+  pool_foreach (i, sm->interfaces,
+    ({
+      if (i->sw_if_index == sw_if_index)
+        {
+          if (!(nat_interface_is_outside (i)))
+	    return;
+          match = 1;
+        }
+    }));
+  /* *INDENT-ON* */
+
+  if (!match)
+    return;
+
   vec_foreach (outside_fib, sm->outside_fibs)
   {
     if (outside_fib->fib_index == old_fib_index)
