@@ -347,7 +347,6 @@ lacp_init_neighbor (slave_if_t * sif, u8 * hw_address, u16 port_number,
   sif->partner.key = htons (group);
   sif->partner.port_number = htons (port_number);
   sif->partner.port_priority = htons (LACP_DEFAULT_PORT_PRIORITY);
-  sif->partner.key = htons (group);
   sif->partner.state = 0;
 
   sif->actor_admin = sif->actor;
