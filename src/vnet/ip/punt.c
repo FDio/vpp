@@ -551,7 +551,10 @@ punt_socket_register_cmd (vlib_main_t * vm,
 	}
     }
 
-  error = vnet_punt_socket_add (vm, 1, &pr, (char *) socket_name);
+  if (!socket_name)
+    error = clib_error_return (0, "socket name not specified");
+  else
+    error = vnet_punt_socket_add (vm, 1, &pr, (char *) socket_name);
 
 done:
   return error;
