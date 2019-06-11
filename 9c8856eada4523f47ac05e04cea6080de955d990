@@ -16,6 +16,24 @@
       "revId": "9c8856eada4523f47ac05e04cea6080de955d990",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a2f0a28_4c428b61",
+        "filename": "src/vnet/ip/ip_types.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-11T11:46:17Z",
+      "side": 1,
+      "message": "So are you proposing instead that:\ntypedef ip6_prefix {\n  vl_api_ip6_address_t prefix;\n  u8 len;\n};\n\ntypedef ip4_prefix {\n  vl_api_ip4_address_t prefix;\n  u8 len;\n}; \n\nchange to become address/len?",
+      "parentUuid": "45005b8f_8df77ce9",
+      "revId": "9c8856eada4523f47ac05e04cea6080de955d990",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
