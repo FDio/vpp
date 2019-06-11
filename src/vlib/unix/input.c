@@ -272,17 +272,18 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   for (e = em->epoll_events; e < em->epoll_events + n_fds_ready; e++)
     {
       u32 i = e->data.u32;
-      clib_file_t *f = pool_elt_at_index (fm->file_pool, i);
+      clib_file_t *f;
       clib_error_t *errors[4];
       int n_errors = 0;
 
+      /*
+       * Under rare scenarios, epoll may still post us events for the
+       * deleted file descriptor. We just deal with it and throw away the
+       * events for the corresponding file descriptor.
+       */
+      f = fm->file_pool + i;
       if (PREDICT_FALSE (pool_is_free (fm->file_pool, f)))
 	{
-	  /*
-	   * Under rare scenerop, epoll may still post us events for the
-	   * deleted file descriptor. We just deal with it and throw away the
-	   * events for the corresponding file descriptor.
-	   */
 	  if (e->events & EPOLLIN)
 	    {
 	      errors[n_errors] =
