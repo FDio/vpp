@@ -38,20 +38,13 @@ app_listener_alloc (application_t * app)
   app_listener->app_index = app->app_index;
   app_listener->session_index = SESSION_INVALID_INDEX;
   app_listener->local_index = SESSION_INVALID_INDEX;
+  app_listener->ls_handle = SESSION_INVALID_HANDLE;
   return app_listener;
 }
 
 app_listener_t *
 app_listener_get (application_t * app, u32 app_listener_index)
 {
-  return pool_elt_at_index (app->listeners, app_listener_index);
-}
-
-static app_listener_t *
-app_listener_get_if_valid (application_t * app, u32 app_listener_index)
-{
-  if (pool_is_free_index (app->listeners, app_listener_index))
-    return 0;
   return pool_elt_at_index (app->listeners, app_listener_index);
 }
 
@@ -64,45 +57,10 @@ app_listener_free (application_t * app, app_listener_t * app_listener)
     clib_memset (app_listener, 0xfa, sizeof (*app_listener));
 }
 
-static u32
-app_listener_id (app_listener_t * al)
-{
-  ASSERT (al->app_index < 1 << 16 && al->al_index < 1 << 16);
-  return (al->app_index << 16 | al->al_index);
-}
-
 session_handle_t
 app_listener_handle (app_listener_t * al)
 {
-  return ((u64) SESSION_LISTENER_PREFIX << 32 | (u64) app_listener_id (al));
-}
-
-static void
-app_listener_id_parse (u32 listener_id, u32 * app_index,
-		       u32 * app_listener_index)
-{
-  *app_index = listener_id >> 16;
-  *app_listener_index = listener_id & 0xFFFF;
-}
-
-void
-app_listener_handle_parse (session_handle_t handle, u32 * app_index,
-			   u32 * app_listener_index)
-{
-  app_listener_id_parse (handle & 0xFFFFFFFF, app_index, app_listener_index);
-}
-
-static app_listener_t *
-app_listener_get_w_id (u32 listener_id)
-{
-  u32 app_index, app_listener_index;
-  application_t *app;
-
-  app_listener_id_parse (listener_id, &app_index, &app_listener_index);
-  app = application_get_if_valid (app_index);
-  if (!app)
-    return 0;
-  return app_listener_get_if_valid (app, app_listener_index);
+  return al->ls_handle;
 }
 
 app_listener_t *
@@ -116,14 +74,24 @@ app_listener_get_w_session (session_t * ls)
   return app_listener_get (app, ls->al_index);
 }
 
+session_handle_t
+app_listen_session_handle (session_t * ls)
+{
+  app_listener_t *al;
+  al = app_listener_get_w_session (ls);
+  if (!al)
+    return listen_session_get_handle (ls);
+  return al->ls_handle;
+}
+
 app_listener_t *
 app_listener_get_w_handle (session_handle_t handle)
 {
-
-  if (handle >> 32 != SESSION_LISTENER_PREFIX)
+  session_t *ls;
+  ls = session_get_from_handle_if_valid (handle);
+  if (!ls)
     return 0;
-
-  return app_listener_get_w_id (handle & 0xFFFFFFFF);
+  return app_listener_get_w_session (ls);
 }
 
 app_listener_t *
@@ -202,6 +170,7 @@ app_listener_alloc_and_init (application_t * app,
       ls = session_get_from_handle (lh);
       app_listener = app_listener_get (app, al_index);
       app_listener->local_index = ls->session_index;
+      app_listener->ls_handle = lh;
       ls->al_index = al_index;
 
       table_index = application_local_session_table (app);
@@ -234,6 +203,7 @@ app_listener_alloc_and_init (application_t * app,
       ls = listen_session_get_from_handle (lh);
       app_listener = app_listener_get (app, al_index);
       app_listener->session_index = ls->session_index;
+      app_listener->ls_handle = lh;
       ls->al_index = al_index;
 
       /* Add to the global lookup table after transport was initialized.

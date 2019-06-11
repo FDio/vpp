@@ -74,10 +74,13 @@ typedef struct app_listener_
 {
   clib_bitmap_t *workers;	/**< workers accepting connections */
   u32 accept_rotor;		/**< last worker to accept a connection */
-  u32 al_index;
-  u32 app_index;
-  u32 local_index;
-  u32 session_index;
+  u32 al_index;			/**< app listener index in app pool */
+  u32 app_index;		/**< owning app index */
+  u32 local_index;		/**< local listening session index */
+  u32 session_index;		/**< global listening session index */
+  session_handle_t ls_handle;	/**< session handle of the local or global
+				     listening session that also identifies
+				     the app listener */
 } app_listener_t;
 
 typedef struct application_
@@ -173,6 +176,28 @@ void app_listener_cleanup (app_listener_t * app_listener);
 session_handle_t app_listener_handle (app_listener_t * app_listener);
 app_listener_t *app_listener_lookup (application_t * app,
 				     session_endpoint_cfg_t * sep);
+
+/**
+ * Get app listener handle for listening session
+ *
+ * For a given listening session, this can return either the session
+ * handle of the app listener associated to the listening session or,
+ * if no such app listener exists, the session's handle
+ *
+ * @param ls		listening session
+ * @return		app listener or listening session handle
+ */
+session_handle_t app_listen_session_handle (session_t * ls);
+/**
+ * Get app listener for listener session handle
+ *
+ * Should only be called on handles that have an app listener, i.e.,
+ * were obtained at the end of a @ref vnet_listen call.
+ *
+ * @param handle	handle of the app listener. This is the handle of
+ * 			either the global or local listener
+ * @return		pointer to app listener or 0
+ */
 app_listener_t *app_listener_get_w_handle (session_handle_t handle);
 app_listener_t *app_listener_get_w_session (session_t * ls);
 session_t *app_listener_get_session (app_listener_t * al);
