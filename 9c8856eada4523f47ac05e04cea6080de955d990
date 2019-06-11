@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "45005b8f_8df77ce9",
+        "filename": "src/vnet/ip/ip_types.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-11T11:14:45Z",
+      "side": 1,
+      "message": "i think a struct of type prefix should not have a member called prefix - that sounds like recursion. A prefix is composed of an address and a length.",
+      "revId": "9c8856eada4523f47ac05e04cea6080de955d990",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
