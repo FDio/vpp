@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f7c6356e_9572ad17",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 729,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-11T14:22:29Z",
+      "side": 0,
+      "message": "Typically we expect more io events than ctrl so this is just a memory optimization. Probably dividing by 16 is too much but still, wasn\u0027t incrementing the size good enough?",
+      "range": {
+        "startLine": 729,
+        "startChar": 31,
+        "endLine": 729,
+        "endChar": 41
+      },
+      "revId": "f0b68a55a66040a72ad4f6f5832640386cb3c58e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
