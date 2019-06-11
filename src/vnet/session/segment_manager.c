@@ -726,7 +726,7 @@ segment_manager_evt_q_expected_size (u32 q_len)
   u32 msg_q_sz, fifo_evt_ring_sz, session_ntf_ring_sz;
 
   fifo_evt_size = 1 << max_log2 (sizeof (session_event_t));
-  notif_q_size = clib_max (16, q_len >> 4);
+  notif_q_size = clib_max (16, q_len);
 
   msg_q_sz = q_len * sizeof (svm_msg_q_msg_t);
   fifo_evt_ring_sz = q_len * fifo_evt_size;
@@ -751,7 +751,7 @@ segment_manager_alloc_queue (fifo_segment_t * segment,
   void *oldheap;
 
   fifo_evt_size = sizeof (session_event_t);
-  notif_q_size = clib_max (16, props->evt_q_size >> 4);
+  notif_q_size = clib_max (16, props->evt_q_size);
   /* *INDENT-OFF* */
   svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
     {props->evt_q_size, fifo_evt_size, 0},
