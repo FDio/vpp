@@ -19,7 +19,7 @@
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport_types.h>
 
-#define SESSION_LISTENER_PREFIX		0x5FFFFFFF
+//#define SESSION_LISTENER_PREFIX		0x5FFFFFFF
 
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
