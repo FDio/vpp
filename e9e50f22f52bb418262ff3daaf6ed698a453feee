@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e2b0de2f_c5e40f87",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1340,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-06-11T07:42:02Z",
+      "side": 1,
+      "message": "maybe a better solution is to that when freeing the TCP, the transmission pool is cleaned up.",
+      "revId": "e9e50f22f52bb418262ff3daaf6ed698a453feee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
