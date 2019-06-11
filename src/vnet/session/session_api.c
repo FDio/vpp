@@ -178,7 +178,6 @@ mq_send_session_accepted_cb (session_t * s)
   session_accepted_msg_t *mp;
   session_event_t *evt;
   application_t *app;
-  app_listener_t *al;
 
   app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
@@ -198,8 +197,7 @@ mq_send_session_accepted_cb (session_t * s)
   if (session_has_transport (s))
     {
       listener = listen_session_get (s->listener_index);
-      al = app_listener_get (app, listener->al_index);
-      mp->listener_handle = app_listener_handle (al);
+      mp->listener_handle = app_listen_session_handle (listener);
       if (application_is_proxy (app))
 	{
 	  listener =
@@ -220,8 +218,7 @@ mq_send_session_accepted_cb (session_t * s)
 
       ct = (ct_connection_t *) session_get_transport (s);
       listener = listen_session_get (s->listener_index);
-      al = app_listener_get (app, listener->al_index);
-      mp->listener_handle = app_listener_handle (al);
+      mp->listener_handle = app_listen_session_handle (listener);
       mp->rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
       mp->rmt.port = ct->c_rmt_port;
       mp->handle = session_handle (s);
