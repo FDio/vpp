@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "2dc5ae7e_0106a8df",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 614,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-06-11T10:08:15Z",
+      "side": 1,
+      "message": "I\u0027ll change it to \"mtu\" to \"host-mtu\".\nIt is temporary fix for 1904. I have another patch in which user can configure individual tap interface MTU through CLI or API in 19.08.",
+      "parentUuid": "2f044b4b_891fa749",
+      "range": {
+        "startLine": 614,
+        "startChar": 28,
+        "endLine": 614,
+        "endChar": 34
+      },
+      "revId": "1e32d696dc3195b38f1a79eaabb885a9ef482cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2f6f33c7_943401dd",
         "filename": "src/vnet/devices/tap/tap.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2019-06-11T09:50:19Z",
       "side": 1,
       "message": "Why startup config?",
+      "range": {
+        "startLine": 608,
+        "startChar": 0,
+        "endLine": 625,
+        "endChar": 45
+      },
+      "revId": "1e32d696dc3195b38f1a79eaabb885a9ef482cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e0b2211c_d45ca6a0",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-06-11T10:08:15Z",
+      "side": 1,
+      "message": "It is the only way to configure different values without affecting API or CLI.",
+      "parentUuid": "2f6f33c7_943401dd",
       "range": {
         "startLine": 608,
         "startChar": 0,
