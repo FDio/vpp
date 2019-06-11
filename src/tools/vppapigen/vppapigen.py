@@ -18,6 +18,7 @@ sys.dont_write_bytecode = True
 
 # Global dictionary of new types (including enums)
 global_types = {}
+global_vlacheck = False
 
 
 def global_type_add(name, obj):
@@ -143,11 +144,32 @@ class Typedef():
         self.crc = str(block).encode()
         self.manual_print = False
         self.manual_endian = False
+        self.vla = False
         for f in flags:
             if f == 'manual_print':
                 self.manual_print = True
             elif f == 'manual_endian':
                 self.manual_endian = True
+
+        if global_vlacheck:
+            for i, b in enumerate(block):
+                if isinstance(b, Array):
+                    if b.length == 0:
+                        self.vla = True
+                        if i + 1 < len(block):
+                            raise ValueError(
+                                'VLA field "{}" must be the last '
+                                'field in message "{}"'
+                                .format(b.fieldname, name))
+                elif b.fieldtype == 'string':
+                    self.vla = True
+                    if i + 1 < len(block):
+                        raise ValueError(
+                            'VLA field "{}" must be the last '
+                            'field in message "{}"'
+                            .format(b.fieldname, name))
+
+
         global_type_add(name, self)
 
     def __repr__(self):
@@ -157,12 +179,13 @@ class Typedef():
 class Using():
     def __init__(self, name, alias):
         self.name = name
+        self.vla = False
 
         if isinstance(alias, Array):
-            a = { 'type': alias.fieldtype,  # noqa: E201
-                  'length': alias.length }  # noqa: E202
+            a = {'type': alias.fieldtype,  # noqa: E201
+                  'length': alias.length}  # noqa: E202
         else:
-            a = { 'type': alias.fieldtype }  # noqa: E201,E202
+            a = {'type': alias.fieldtype}  # noqa: E201,E202
         self.alias = a
         self.crc = str(alias).encode()
         global_type_add(name, self)
@@ -206,11 +229,28 @@ class Define():
             elif f == 'autoreply':
                 self.autoreply = True
 
-        for b in block:
+        for i, b in enumerate(block):
             if isinstance(b, Option):
                 if b[1] == 'singular' and b[2] == 'true':
                     self.singular = True
                 block.remove(b)
+            if global_vlacheck:
+                if isinstance(b, Array) and b.vla and i + 1 < len(block):
+                    raise ValueError(
+                        'VLA field "{}" must be the last field in message "{}"'
+                        .format(b.fieldname, name))
+                elif b.fieldtype.startswith('vl_api_'):
+                        if (global_types[b.fieldtype].vla and
+                           i + 1 < len(block)):
+                            raise ValueError(
+                                'VLA field "{}" must be the last '
+                                'field in message "{}"'
+                                .format(b.fieldname, name))
+                elif b.fieldtype == 'string':
+                    raise ValueError(
+                        'VLA field "{}" must be the last '
+                        'field in message "{}"'
+                        .format(b.fieldname, name))
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
@@ -220,6 +260,7 @@ class Enum():
     def __init__(self, name, block, enumtype='u32'):
         self.name = name
         self.enumtype = enumtype
+        self.vla = False
 
         count = 0
         for i, b in enumerate(block):
@@ -280,9 +321,11 @@ class Array():
         if type(length) is str:
             self.lengthfield = length
             self.length = 0
+            self.vla = True
         else:
             self.length = length
             self.lengthfield = None
+            self.vla = False
 
     def __repr__(self):
         return str([self.fieldtype, self.fieldname, self.length,
@@ -517,13 +560,13 @@ class VPPAPIParser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = { **p[1], **p[2] }
+            p[0] = {**p[1], **p[2]}
 
     def p_field_option(self, p):
         '''field_option : ID '=' assignee ','
                         | ID '=' assignee
         '''
-        p[0] = { p[1]: p[3] }
+        p[0] = {p[1]: p[3]}
 
     def p_declaration(self, p):
         '''declaration : type_specifier ID ';'
@@ -766,6 +809,7 @@ def dirlist_add(dirs):
 def dirlist_get():
     return dirlist
 
+
 def foldup_blocks(block, crc):
     for b in block:
         # Look up CRC in user defined types
@@ -775,19 +819,23 @@ def foldup_blocks(block, crc):
             try:
                 crc = crc_block_combine(t.block, crc)
                 return foldup_blocks(t.block, crc)
-            except:
+            except AttributeError:
                 pass
     return crc
+
 
 def foldup_crcs(s):
     for f in s:
         f.crc = foldup_blocks(f.block,
                               binascii.crc32(f.crc))
 
+
 #
 # Main
 #
 def main():
+    global global_vlacheck
+
     cliparser = argparse.ArgumentParser(description='VPP API generator')
     cliparser.add_argument('--pluginpath', default=""),
     cliparser.add_argument('--includedir', action='append'),
@@ -809,11 +857,14 @@ def main():
     cliparser.add_argument('output_module', nargs='?', default='C')
     cliparser.add_argument('--debug', action='store_true')
     cliparser.add_argument('--show-name', nargs=1)
+    cliparser.add_argument('--vlacheck', action='store_true')
     args = cliparser.parse_args()
 
     dirlist_add(args.includedir)
     if not args.debug:
         sys.excepthook = exception_handler
+    if args.vlacheck:
+        global_vlacheck = True
 
     # Filename
     if args.show_name:
