@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "37b2c03e_dafe986c",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-11T12:00:32Z",
+      "side": 1,
+      "message": "Does it need to be last, or do we just need to not have any fixed-length fields following it?\nsay, for example, when we have 2 strings.",
+      "range": {
+        "startLine": 153,
+        "startChar": 0,
+        "endLine": 169,
+        "endChar": 55
+      },
+      "revId": "4d612155ad8b5e6bc6ad4042d9debbe9a5ca3e6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7959fe18_b4040693",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-11T12:00:32Z",
+      "side": 1,
+      "message": "remove the # noqa markers",
+      "range": {
+        "startLine": 184,
+        "startChar": 0,
+        "endLine": 187,
+        "endChar": 60
+      },
+      "revId": "4d612155ad8b5e6bc6ad4042d9debbe9a5ca3e6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
