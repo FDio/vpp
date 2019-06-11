@@ -1336,6 +1336,8 @@ tcp_do_fastretransmits (tcp_worker_ctx_t * wrk)
   for (i = 0; i < vec_len (ongoing_fast_rxt); i++)
     {
       tc = tcp_connection_get (ongoing_fast_rxt[i], thread_index);
+      if (!tc)
+	continue;
       if (!tcp_in_fastrecovery (tc))
 	{
 	  tc->flags &= ~TCP_CONN_FRXT_PENDING;
