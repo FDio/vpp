@@ -38,8 +38,8 @@ lacp_machine_t lacp_tx_machine = {
 int
 lacp_tx_action_transmit (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   lacp_main_t *lm = &lacp_main;
   f64 now = vlib_time_now (lm->vlib_main);
 
@@ -70,8 +70,7 @@ format_tx_event (u8 * s, va_list * args)
     {.str = NULL}
   };
   int e = va_arg (*args, int);
-  lacp_event_struct *event_entry =
-    (lacp_event_struct *) & lacp_tx_event_array;
+  lacp_event_struct *event_entry = lacp_tx_event_array;
 
   if (e >= (sizeof (lacp_tx_event_array) / sizeof (*event_entry)))
     s = format (s, "Bad event %d", e);
