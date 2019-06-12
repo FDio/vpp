@@ -780,6 +780,316 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
   return rv;
 }
 
+static inline int
+ttt_seq_lt (u32 a, u32 b)
+{
+  return seq_lt (a, b);
+}
+
+static int
+tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
+{
+  tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
+  tcp_connection_t _tc, *tc = &_tc;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  int __clib_unused verbose = 0, i;
+  sack_block_t *sacks = 0;
+//  sack_scoreboard_hole_t *hole;
+  u32 thread_index = 0, snd_una, __clib_unused snd_nxt;
+  tcp_tx_tracker_t *tt;
+  tcp_tx_sample_t *txs;
+  rb_node_t *root, *rbn;
+  u64 rate = 100, burst = 100;
+  u32 *min_seqs = 0;
+
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  /* Init data structures */
+  memset (tc, 0, sizeof (*tc));
+  session_main.wrk[thread_index].last_vlib_time = 1;
+  transport_connection_tx_pacer_update (&tc->connection, rate);
+
+  tcp_tx_tracker_init (tc);
+  tt = tc->tx_tracker;
+
+  /*
+   * Track simple bursts without rxt
+   */
+
+  /* 1) track first burst a time 1 */
+  tcp_track_tx (tc);
+
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  TCP_TEST (pool_elts (tt->samples) == 1, "should have 1 sample");
+  txs = pool_elt_at_index (tt->samples, tt->head);
+  TCP_TEST (txs->min_seq == tc->snd_una, "min seq should be snd_una");
+  TCP_TEST (txs->next == TCP_TXS_INVALID_INDEX, "next should be invalid");
+  TCP_TEST (txs->prev == TCP_TXS_INVALID_INDEX, "prev should be invalid");
+  TCP_TEST (txs->delivered_time == 1, "delivered time should be 1");
+  TCP_TEST (txs->delivered == 0, "delivered should be 0");
+  TCP_TEST (!(txs->flags & TCP_BS_IS_RXT), "not retransmitted");
+  TCP_TEST (!(txs->flags & TCP_BS_IS_APP_LIMITED), "not app limited");
+
+  /* 2) check delivery rate at time 2 */
+  session_main.wrk[thread_index].last_vlib_time = 2;
+  tc->snd_una = tc->snd_nxt = burst;
+  tc->bytes_acked = burst;
+
+  tcp_sample_delivery_rate (tc, rs);
+
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  TCP_TEST (pool_elts (tt->samples) == 0, "sample should've been consumed");
+  TCP_TEST (tc->delivered_time == 2, "delivered time should be 2");
+  TCP_TEST (tc->delivered == burst, "delivered should be 100");
+  TCP_TEST (rs->ack_time == 1, "ack time should be 1");
+  TCP_TEST (rs->delivered == burst, "delivered should be 100");
+  TCP_TEST (rs->sample_delivered == 0, "sample delivered should be 0");
+  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+  TCP_TEST (!(rs->flags & TCP_BS_IS_RXT), "not retransmitted");
+
+  /* 3) track second burst at time 2 */
+  tcp_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  /* 4) track second burst at time 3 */
+  session_main.wrk[thread_index].last_vlib_time = 3;
+  tcp_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  TCP_TEST (pool_elts (tt->samples) == 2, "should have 2 samples");
+
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  txs = pool_elt_at_index (tt->samples, tt->head);
+  TCP_TEST (txs->min_seq == tc->snd_una, "min seq should be snd_una");
+  TCP_TEST (txs->next == tt->tail, "next should tail");
+
+  txs = pool_elt_at_index (tt->samples, tt->tail);
+  TCP_TEST (txs->min_seq == tc->snd_nxt - burst,
+	    "min seq should be snd_nxt prior to burst");
+  TCP_TEST (txs->prev == tt->head, "prev should be head");
+
+  /* 5) check delivery rate at time 4 */
+  session_main.wrk[thread_index].last_vlib_time = 4;
+  tc->snd_una = tc->snd_nxt;
+  tc->bytes_acked = 2 * burst;
+
+  tcp_sample_delivery_rate (tc, rs);
+
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  TCP_TEST (pool_elts (tt->samples) == 0, "sample should've been consumed");
+  TCP_TEST (tc->delivered_time == 4, "delivered time should be 4");
+  TCP_TEST (tc->delivered == 3 * burst, "delivered should be 300 is %u",
+	    tc->delivered);
+  TCP_TEST (rs->ack_time == 2, "ack time should be 2");
+  TCP_TEST (rs->delivered == 2 * burst, "delivered should be 200");
+  TCP_TEST (rs->sample_delivered == burst, "delivered should be 100");
+  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+  TCP_TEST (!(rs->flags & TCP_BS_IS_RXT), "not retransmitted");
+  TCP_TEST (!(txs->flags & TCP_BS_IS_APP_LIMITED), "not app limited");
+
+  /*
+   * Track retransmissions
+   *
+   * snd_una should be 300 at this point
+   */
+
+  snd_una = tc->snd_una;
+  snd_nxt = tc->snd_nxt;
+
+  /* 1) track first burst a time 4 */
+  tcp_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  /* 2) track second burst at time 5 */
+  session_main.wrk[thread_index].last_vlib_time = 5;
+  tcp_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  /* 3) track third burst at time 6 */
+  session_main.wrk[thread_index].last_vlib_time = 6;
+  tcp_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  /* 4) track fourth burst at time 7 */
+  session_main.wrk[thread_index].last_vlib_time = 7;
+  /* Limited until last burst is acked */
+  tc->app_limited = snd_una + 4 * burst - 1;
+  tcp_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  /* 5) check delivery rate at time 8
+   *
+   * tc->snd_una = snd_una + 10
+   * sacks:
+   * [snd_una + burst, snd_una + burst + 10]
+   * [snd_una + 2 * burst + 10, snd_una + 2 * burst + 20]
+   */
+  session_main.wrk[thread_index].last_vlib_time = 8;
+  tc->snd_una += 10;
+  tc->bytes_acked = 10;
+  sb->last_sacked_bytes = 20;
+
+  TCP_TEST (pool_elts (tt->samples) == 4, "there should be 4 samples");
+
+  vec_validate (sacks, 1);
+  sacks[0].start = snd_una + burst;
+  sacks[0].end = snd_una + burst + 10;
+  sacks[1].start = snd_una + 2 * burst + 10;
+  sacks[1].end = snd_una + 2 * burst + 20;
+  tc->rcv_opts.sacks = sacks;
+
+  tcp_sample_delivery_rate (tc, rs);
+
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  TCP_TEST (pool_elts (tt->samples) == 4, "there should be 4 samples");
+  TCP_TEST (tc->delivered_time == 8, "delivered time should be 8");
+  TCP_TEST (tc->delivered == 3 * burst + 30, "delivered should be %u is %u",
+	    3 * burst + 30, tc->delivered);
+  /* All 3 samples have the same delivered number of bytes. So the first is
+   * the reference for delivery estimate. */
+  TCP_TEST (rs->ack_time == 4, "ack time should be 4 is %.2f", rs->ack_time);
+  TCP_TEST (rs->delivered == 30, "delivered should be 30");
+  TCP_TEST (rs->sample_delivered == 3 * burst,
+	    "sample delivered should be %u", 3 * burst);
+  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+  TCP_TEST (!(rs->flags & TCP_BS_IS_RXT), "not retransmitted");
+  TCP_TEST (!(rs->flags & TCP_BS_IS_APP_LIMITED), "not app limited");
+
+  /* 6) Retransmit and track at time 9
+   *
+   * delivered = 3 * burst + 30
+   * delivered_time = 8 (last ack)
+   *
+   * segments:
+   * [snd_una + 10, snd_una + burst]
+   * [snd_una + burst + 10, snd_una + 2 * burst + 10]
+   * [snd_una + 2 * burst + 20, snd_una + 4 * burst]
+   */
+  session_main.wrk[thread_index].last_vlib_time = 9;
+
+  tcp_track_rxt (tc, snd_una + 10, snd_una + burst);
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  /* The retransmit covers everything left from first burst */
+  TCP_TEST (pool_elts (tt->samples) == 4, "there should be 4 samples");
+
+  tcp_track_rxt (tc, snd_una + burst + 10, snd_una + 2 * burst + 10);
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  TCP_TEST (pool_elts (tt->samples) == 5, "there should be 5 samples");
+
+  /* Retransmit covers last sample entirely so it should be removed */
+  tcp_track_rxt (tc, snd_una + 2 * burst + 20, snd_una + 4 * burst);
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  TCP_TEST (pool_elts (tt->samples) == 5, "there should be 5 samples");
+
+  vec_validate (min_seqs, 4);
+  min_seqs[0] = snd_una + 10;
+  min_seqs[1] = snd_una + burst;
+  min_seqs[2] = snd_una + burst + 10;
+  min_seqs[3] = snd_una + 2 * burst + 10;
+  min_seqs[4] = snd_una + 2 * burst + 20;
+
+  root = tt->sample_lookup.nodes + tt->sample_lookup.root;
+  txs = tt->samples + tt->head;
+  for (i = 0; i < vec_len (min_seqs); i++)
+    {
+      if (txs->min_seq != min_seqs[i])
+	TCP_TEST (0, "should be %u is %u", min_seqs[i], txs->min_seq);
+      rbn = rb_tree_search_subtree_custom (&tt->sample_lookup, root,
+					   txs->min_seq, ttt_seq_lt);
+      if (rbn->opaque != txs - tt->samples)
+	TCP_TEST (0, "lookup should work");
+      txs = tt->samples + txs->next;
+    }
+
+  /* 7) check delivery rate at time 10
+   *
+   * tc->snd_una = snd_una + 2 * burst
+   * sacks:
+   * [snd_una + 2 * burst + 20, snd_una + 2 * burst + 30]
+   * [snd_una + 2 * burst + 50, snd_una + 2 * burst + 60]
+   */
+  session_main.wrk[thread_index].last_vlib_time = 10;
+  tc->snd_una = snd_una + 2 * burst;
+  tc->bytes_acked = 2 * burst - 10;
+  sb->last_sacked_bytes = 20;
+
+  sacks[0].start = snd_una + 2 * burst + 20;
+  sacks[0].end = snd_una + 2 * burst + 30;
+  sacks[1].start = snd_una + 2 * burst + 50;
+  sacks[1].end = snd_una + 2 * burst + 60;
+
+  tcp_sample_delivery_rate (tc, rs);
+
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  TCP_TEST (pool_elts (tt->samples) == 3, "num samples should be 3 is %u",
+	    pool_elts (tt->samples));
+  TCP_TEST (tc->delivered_time == 10, "delivered time should be 10");
+  TCP_TEST (tc->delivered == 5 * burst + 40, "delivered should be %u is %u",
+	    5 * burst + 40, tc->delivered);
+  /* A rxt was acked and delivered time for it is 8 (last ack time) */
+  TCP_TEST (rs->ack_time == 2, "ack time should be 2 is %.2f", rs->ack_time);
+  /* delivered_now - delivered_rxt ~ 5 * burst + 40 - 3 * burst - 30 */
+  TCP_TEST (rs->delivered == 2 * burst + 10, "delivered should be 210 is %u",
+	    rs->delivered);
+  TCP_TEST (rs->sample_delivered == 3 * burst + 30,
+	    "sample delivered should be %u", 3 * burst + 30);
+  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+  TCP_TEST (rs->flags & TCP_BS_IS_RXT, "is retransmitted");
+  /* Sample is app limited because of the retransmits */
+  TCP_TEST (rs->flags & TCP_BS_IS_APP_LIMITED, "is app limited");
+  TCP_TEST (tc->app_limited, "app limited should be set");
+
+  /*
+   * 8) check delivery rate at time 11
+   */
+  session_main.wrk[thread_index].last_vlib_time = 11;
+  tc->snd_una = tc->snd_nxt;
+  tc->bytes_acked = 2 * burst;
+  sb->last_sacked_bytes = 0;
+  sb->last_bytes_delivered = 40;
+
+  memset (rs, 0, sizeof (*rs));
+  tcp_sample_delivery_rate (tc, rs);
+
+  TCP_TEST (tcp_tx_tracker_is_sane (tt), "tracker should be sane");
+  TCP_TEST (pool_elts (tt->samples) == 0, "num samples should be 3 is %u",
+	    pool_elts (tt->samples));
+  TCP_TEST (tc->delivered_time == 11, "delivered time should be 10");
+  TCP_TEST (tc->delivered == 7 * burst, "delivered should be %u is %u",
+	    7 * burst, tc->delivered);
+  /* Last rxt was at time 8 */
+  TCP_TEST (rs->ack_time == 3, "ack time should be 3 is %.2f", rs->ack_time);
+  /* delivered_now - delivered_rxt ~ 7 * burst - 3 * burst - 30.
+   * That's because we didn't retransmit any new segment. */
+  TCP_TEST (rs->delivered == 4 * burst - 30, "delivered should be 160 is %u",
+	    rs->delivered);
+  TCP_TEST (rs->sample_delivered == 3 * burst + 30,
+	    "sample delivered should be %u", 3 * burst + 30);
+  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+  TCP_TEST (rs->flags & TCP_BS_IS_RXT, "is retransmitted");
+  TCP_TEST (rs->flags & TCP_BS_IS_APP_LIMITED, "is app limited");
+  TCP_TEST (tc->app_limited == 0, "app limited should be cleared");
+
+  /*
+   * Cleanup
+   */
+  vec_free (sacks);
+  vec_free (min_seqs);
+  tcp_tx_tracker_cleanup (tc);
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -800,11 +1110,17 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_lookup (vm, input);
 	}
+      else if (unformat (input, "delivery"))
+	{
+	  res = tcp_test_delivery (vm, input);
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_lookup (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_delivery (vm, input)))
 	    goto done;
 	}
       else
