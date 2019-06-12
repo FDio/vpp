@@ -456,6 +456,8 @@ rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn)
   if (rb_node_index (rt, n) != RBTREE_TNIL_INDEX)
     {
       rb_tree_del_node (rt, n);
+//      if (CLIB_DEBUG)
+	memset (n, 0xfc, sizeof (*n));
       pool_put (rt->nodes, n);
     }
 }
