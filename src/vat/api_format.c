@@ -58,6 +58,7 @@
 #include "vat/json_format.h"
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
+#include <vlibapi/api_types_inlines.h>
 
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -1299,30 +1300,31 @@ static void vl_api_show_version_reply_t_handler
 
   if (retval >= 0)
     {
-      char *s;
+      u8 *s = 0;
       char *p = (char *) &mp->program;
 
-      s = vl_api_from_api_string_c ((vl_api_string_t *) p);
-      errmsg ("        program: %s\n", s);
-      free (s);
+      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
+      errmsg ("        program: %v\n", s);
+      vec_free (s);
 
       p +=
 	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_string_c ((vl_api_string_t *) p);
-      errmsg ("        version: %s\n", s);
-      free (s);
+      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
+      errmsg ("        version: %v\n", s);
+      vec_free (s);
 
       p +=
 	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_string_c ((vl_api_string_t *) p);
-      errmsg ("     build date: %s\n", s);
-      free (s);
+      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
+      errmsg ("     build date: %v\n", s);
+      vec_free (s);
 
       p +=
 	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_string_c ((vl_api_string_t *) p);
-      errmsg ("build directory: %s\n", s);
-      free (s);
+      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
+      vec_free (s);
+
+      errmsg ("build directory: %v\n", s);
     }
   vam->retval = retval;
   vam->result_ready = 1;

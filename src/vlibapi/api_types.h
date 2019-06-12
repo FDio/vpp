@@ -31,31 +31,4 @@ typedef struct
   u8 buf[0];
 } __attribute__ ((packed)) vl_api_string_t;
 
-static inline int
-vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
-{
-  memcpy(str->buf, buf, len);
-  str->length = htonl (len);
-  return len + sizeof (u32);
-}
-
-/* Return a pointer to the API string (not nul terminated */
-static inline u8 *
-vl_api_from_api_string (vl_api_string_t * astr)
-{
-  return astr->buf;
-}
-
-static inline u32
-vl_api_string_len (vl_api_string_t * astr)
-{
-  return ntohl (astr->length);
-}
-
-static inline char *
-vl_api_from_api_string_c (vl_api_string_t *astr)
-{
-  return strndup((char *)astr->buf, ntohl (astr->length));
-}
-
 #endif
