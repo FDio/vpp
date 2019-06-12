@@ -153,12 +153,12 @@ I:	mpls
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/mpls/
 
-VNET Host Stack Session Layer
+VNET Session Layer
 I:	session
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/session
 
-VNET TCP Stack
+VNET TCP
 I:	tcp
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/tcp
@@ -352,6 +352,11 @@ libmemif
 I:	libmemif
 M:	Damjan Marion <damarion@cisco.com>
 F:	extras/libmemif
+
+VPP Comms Library
+I:	vcl
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/vcl
 
 THE REST
 I:	misc
