@@ -60,11 +60,11 @@ map_main_t map_main;
 
 
 /*
- * Save usre-assigned MAP domain names ("tags") in a vector of
+ * Save user-assigned MAP domain names ("tags") in a vector of
  * extra domain information.
  */
 static void
-map_save_extras (u32 map_domain_index, char *tag)
+map_save_extras (u32 map_domain_index, u8 * tag)
 {
   map_main_t *mm = &map_main;
   map_domain_extra_t *de;
@@ -80,7 +80,7 @@ map_save_extras (u32 map_domain_index, char *tag)
   if (!tag)
     return;
 
-  len = strlen (tag) + 1;
+  len = vec_len (tag);
   de->tag = clib_mem_alloc (len);
   clib_memcpy (de->tag, tag, len);
 }
@@ -116,7 +116,7 @@ map_create_domain (ip4_address_t * ip4_prefix,
 		   u8 ea_bits_len,
 		   u8 psid_offset,
 		   u8 psid_length,
-		   u32 * map_domain_index, u16 mtu, u8 flags, char *tag)
+		   u32 * map_domain_index, u16 mtu, u8 flags, u8 * tag)
 {
   u8 suffix_len, suffix_shift;
   map_main_t *mm = &map_main;
@@ -566,7 +566,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "mtu %d", &mtu))
 	num_m_args++;
-      else if (unformat (line_input, "tag %s", &tag))
+      else if (unformat (line_input, "tag %v", &tag))
 	;
       else
 	{
@@ -585,7 +585,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
   map_create_domain (&ip4_prefix, ip4_prefix_len,
 		     &ip6_prefix, ip6_prefix_len, &ip6_src, ip6_src_len,
 		     ea_bits_len, psid_offset, psid_length, &map_domain_index,
-		     mtu, flags, (char *) tag);
+		     mtu, flags, tag);
 
 done:
   unformat_free (line_input);

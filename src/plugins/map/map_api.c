@@ -62,7 +62,7 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 		       (ip6_address_t *) & mp->ip6_src.prefix,
 		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
 		       mp->psid_length, &index, ntohs (mp->mtu), flags,
-		       vl_api_from_api_string_c (&mp->tag));
+		       vl_api_from_api_to_vec (&mp->tag));
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MAP_ADD_DOMAIN_REPLY,
@@ -123,7 +123,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     map_domain_index = d - mm->domains;
     de = vec_elt_at_index(mm->domain_extras, map_domain_index);
 
-    len = strnlen_s(de->tag, 64);
+    len = vec_len(de->tag);
 
     /* Make sure every field is initiated (or don't skip the clib_memset()) */
     rmp = vl_msg_api_alloc (sizeof (*rmp) + len);
@@ -143,7 +143,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->flags = d->flags;
     rmp->mtu = htons(d->mtu);
 
-	vl_api_to_api_string (len, de->tag, &rmp->tag );
+    vl_api_to_api_string (len, de->tag, &rmp->tag );
 
     vl_api_send_msg (reg, (u8 *) rmp);
   }));
