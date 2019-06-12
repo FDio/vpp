@@ -780,6 +780,111 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
   return rv;
 }
 
+static int
+tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
+{
+  tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
+  tcp_connection_t _tc, *tc = &_tc;
+//  sack_scoreboard_t *sb = &tc->sack_sb;
+  int __clib_unused verbose = 0;
+//  sack_block_t *sacks = 0, block;
+//  sack_scoreboard_hole_t *hole;
+  u32 thread_index = 0;
+  tcp_tx_tracker_t *tt;
+  tcp_tx_sample_t *txs;
+  u64 rate = 100, burst = 100;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  /* Init data structures */
+  memset (tc, 0, sizeof (*tc));
+  session_main.wrk[thread_index].last_vlib_time = 1;
+  transport_connection_tx_pacer_update (&tc->connection, rate);
+
+  tcp_tx_tracker_init (tc);
+  tt = tc->tx_tracker;
+
+  /*
+   * Track simple bursts without rxt
+   */
+
+  /* 1) track first burst a time 1 */
+  tcp_track_tx (tc);
+
+  TCP_TEST (pool_elts (tt->samples) == 1, "should have 1 sample");
+  txs = pool_elt_at_index (tt->samples, tt->head);
+  TCP_TEST (txs->min_seq == tc->snd_una, "min seq should be snd_una");
+  TCP_TEST (txs->next == TCP_TXS_INVALID_INDEX, "next should be invalid");
+  TCP_TEST (txs->prev == TCP_TXS_INVALID_INDEX, "prev should be invalid");
+  TCP_TEST (txs->is_rxt == 0, "should not be retransmitted");
+  TCP_TEST (txs->delivered_time == 1, "delivered time should be 1");
+  TCP_TEST (txs->delivered == 0, "delivered should be 0");
+
+  /* 2) check delivery rate at time 2 */
+  session_main.wrk[thread_index].last_vlib_time = 2;
+  tc->snd_una = tc->snd_nxt = burst;
+  tc->bytes_acked = burst;
+
+  tcp_sample_delivery_rate (tc, rs);
+
+  TCP_TEST (pool_elts (tt->samples) == 0, "sample should've been consumed");
+  TCP_TEST (tc->delivered_time == 2, "delivered time should be 2");
+  TCP_TEST (tc->delivered == burst, "delivered should be 100");
+  TCP_TEST (rs->ack_time == 1, "ack time should be 1");
+  TCP_TEST (rs->delivered == burst, "delivered should be 100");
+  TCP_TEST (rs->delivered_total == burst, "delivered should be 100");
+  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+
+  /* 3) track second burst at time 2 */
+  tcp_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  /* 4) track second burst at time 3 */
+  tcp_track_tx (tc);
+  session_main.wrk[thread_index].last_vlib_time = 3;
+  tc->snd_nxt += burst;
+
+  TCP_TEST (pool_elts (tt->samples) == 2, "should have 2 samples");
+
+  txs = pool_elt_at_index (tt->samples, tt->head);
+  TCP_TEST (txs->min_seq == tc->snd_una, "min seq should be snd_una");
+  TCP_TEST (txs->next == tt->tail, "next should tail");
+
+  txs = pool_elt_at_index (tt->samples, tt->tail);
+  TCP_TEST (txs->min_seq == tc->snd_nxt - burst,
+            "min seq should be snd_nxt prior to burst");
+  TCP_TEST (txs->prev == tt->head, "prev should be head");
+
+  /* 5) check delivery rate at time 4 */
+  session_main.wrk[thread_index].last_vlib_time = 4;
+  tc->snd_una = tc->snd_nxt;
+  tc->bytes_acked = 2 * burst;
+
+  tcp_sample_delivery_rate (tc, rs);
+
+  TCP_TEST (pool_elts (tt->samples) == 0, "sample should've been consumed");
+  TCP_TEST (tc->delivered_time == 4, "delivered time should be 4");
+  TCP_TEST (tc->delivered == 3 * burst, "delivered should be 300 is %u",
+            tc->delivered);
+  TCP_TEST (rs->ack_time == 2, "ack time should be 2");
+  TCP_TEST (rs->delivered == 2 * burst, "delivered should be 200");
+  TCP_TEST (rs->delivered_total == 3 * burst, "delivered should be 300");
+  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+
+
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -800,11 +905,17 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_lookup (vm, input);
 	}
+      else if (unformat (input, "delivery"))
+	{
+	  res = tcp_test_delivery (vm, input);
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_lookup (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_delivery (vm, input)))
 	    goto done;
 	}
       else
