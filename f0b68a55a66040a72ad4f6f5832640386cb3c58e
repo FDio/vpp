@@ -46,6 +46,30 @@
       "revId": "f0b68a55a66040a72ad4f6f5832640386cb3c58e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c586065_fff6b984",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 729,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-12T02:33:11Z",
+      "side": 0,
+      "message": "Before discarding the patch: the dimensioning could be made more intuitive. What sort of scale were you testing with and what q_len did you provide? \n\nThe reason why we limit the notification queue size is because each event uses up 256B. That means that for a qlen of 1M we need 256MB for the ctrl ring and 18MB for io ring. Most probably, the 18MB can be used for up to 1M io events (so, for instance, like 0.5M sessions with rx and tx events) but, unless we do stress testing, those 256MB will be underutilized by the 0.5M sessions. \n\nWould it be more intuitive if q_len were to represent the number of ctrl events as opposed to io events? We could then allocate q_len * N io slots. We could also allow users to configure both io and ctrl rings but that complicates the config further ..",
+      "parentUuid": "6f02617f_c74df016",
+      "range": {
+        "startLine": 729,
+        "startChar": 31,
+        "endLine": 729,
+        "endChar": 41
+      },
+      "revId": "f0b68a55a66040a72ad4f6f5832640386cb3c58e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
