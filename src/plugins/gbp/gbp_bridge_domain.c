@@ -213,7 +213,8 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
 		       MODE_L2_BRIDGE, gb->gb_bvi_sw_if_index,
 		       bd_index, L2_BD_PORT_TYPE_BVI, 0, 0);
 
-      if (!(flags & GBP_BD_FLAG_UU_FWD_DROP)
+      if ((!(flags & GBP_BD_FLAG_UU_FWD_DROP)
+	   || (flags & GBP_BD_FLAG_UCAST_ARP))
 	  && ~0 != gb->gb_uu_fwd_sw_if_index)
 	{
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
@@ -233,6 +234,12 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
        * unset learning in the bridge + any flag(s) set above
        */
       bd_set_flags (vlib_get_main (), bd_index, bd_flags, 0);
+
+      if (flags & GBP_BD_FLAG_UCAST_ARP)
+	{
+	  bd_flags = L2_ARP_UFWD;
+	  bd_set_flags (vlib_get_main (), bd_index, bd_flags, 1);
+	}
 
       /*
        * Add the BVI's MAC to the L2FIB
