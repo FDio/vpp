@@ -73,7 +73,11 @@
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
+#if VPP_API_TEST_BUILTIN == 0
 #define vl_print(handle, ...)
+#else
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#endif
 #define vl_printfun
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
