@@ -503,7 +503,7 @@ void
 map_ip4_reass_free(map_ip4_reass_t *r, u32 **pi_to_drop);
 
 #define map_ip4_reass_lock() while (clib_atomic_test_and_set (map_main.ip4_reass_lock)) { CLIB_PAUSE (); }
-#define map_ip4_reass_unlock() do {CLIB_MEMORY_BARRIER(); *map_main.ip4_reass_lock = 0;} while(0)
+#define map_ip4_reass_unlock() clib_atomic_release (map_main.ip4_reass_lock)
 
 static_always_inline void
 map_ip4_reass_get_fragments(map_ip4_reass_t *r, u32 **pi)
@@ -528,7 +528,7 @@ void
 map_ip6_reass_free(map_ip6_reass_t *r, u32 **pi_to_drop);
 
 #define map_ip6_reass_lock() while (clib_atomic_test_and_set (map_main.ip6_reass_lock)) { CLIB_PAUSE (); }
-#define map_ip6_reass_unlock() do {CLIB_MEMORY_BARRIER(); *map_main.ip6_reass_lock = 0;} while(0)
+#define map_ip6_reass_unlock() clib_atomic_release (map_main.ip6_reass_lock)
 
 int
 map_ip6_reass_add_fragment(map_ip6_reass_t *r, u32 pi,

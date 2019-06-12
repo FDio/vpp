@@ -640,8 +640,7 @@ expand_ok:
   vnet_classify_entry_free (t, v, old_log2_pages);
 
 unlock:
-  CLIB_MEMORY_BARRIER ();
-  t->writer_lock[0] = 0;
+  clib_atomic_release (&t->writer_lock[0]);
   return rv;
 }
 
