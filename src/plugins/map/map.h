@@ -36,7 +36,7 @@ int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 		       ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 		       ip6_address_t * ip6_src, u8 ip6_src_len,
 		       u8 ea_bits_len, u8 psid_offset, u8 psid_length,
-		       u32 * map_domain_index, u16 mtu, u8 flags, char *tag);
+		       u32 * map_domain_index, u16 mtu, u8 flags, u8 * tag);
 int map_delete_domain (u32 map_domain_index);
 int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 		      bool is_add);
@@ -137,7 +137,7 @@ STATIC_ASSERT ((sizeof (map_domain_t) <= CLIB_CACHE_LINE_BYTES),
  */
 typedef struct
 {
-  char *tag;			/* Probably a user-assigned domain name. */
+  u8 *tag;			/* Probably a user-assigned domain name. */
 } map_domain_extra_t;
 
 #define MAP_REASS_INDEX_NONE ((u16)0xffff)
