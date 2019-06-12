@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# This depends on c2cpel and cpeldump. Enable their compilation by:
+# ccmake build-root/build-vpp-native/vpp/
+# and turning on VPP_BUILD_PERFTOOL
+
+BIN_PATH=../../../build-root/install-vpp-native/vpp/bin
+C2CPEL_BIN=$BIN_PATH/c2cpel
+CPELDUMP_BIN=$BIN_PATH/cpeldump
+
+$C2CPEL_BIN --in $1 --out /tmp/tmp_file.cpel
+$CPELDUMP_BIN --in /tmp/tmp_file.cpel --out $2
