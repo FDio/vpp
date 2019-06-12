@@ -270,6 +270,9 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       vec_free (tc->snd_sacks);
       vec_free (tc->snd_sacks_fl);
 
+      if (tc->flags & TCP_CONN_RATE_SAMPLE)
+	tcp_bt_cleanup (tc);
+
       /* Poison the entry */
       if (CLIB_DEBUG > 0)
 	clib_memset (tc, 0xFA, sizeof (*tc));
@@ -662,6 +665,9 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   if (transport_connection_is_tx_paced (&tc->connection)
       || tcp_main.tx_pacing)
     tcp_enable_pacing (tc);
+
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    tcp_bt_init (tc);
 }
 
 static int
