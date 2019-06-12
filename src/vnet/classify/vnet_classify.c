@@ -18,6 +18,7 @@
 #include <vnet/api_errno.h>	/* for API error numbers */
 #include <vnet/l2/l2_classify.h>	/* for L2_INPUT_CLASSIFY_NEXT_xxx */
 #include <vnet/fib/fib_table.h>
+#include <vppinfra/lock.h>
 
 vnet_classify_main_t vnet_classify_main;
 
@@ -447,7 +448,7 @@ vnet_classify_add_del (vnet_classify_table_t * t,
   hash >>= t->log2_nbuckets;
 
   while (clib_atomic_test_and_set (t->writer_lock))
-    ;
+    CLIB_PAUSE ();
 
   /* First elt in the bucket? */
   if (b->offset == 0)

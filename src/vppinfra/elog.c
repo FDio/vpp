@@ -41,13 +41,14 @@
 #include <vppinfra/format.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/math.h>
+#include <vppinfra/lock.h>
 
 static inline void
 elog_lock (elog_main_t * em)
 {
   if (PREDICT_FALSE (em->lock != 0))
     while (clib_atomic_test_and_set (em->lock))
-      ;
+      CLIB_PAUSE ();
 }
 
 static inline void

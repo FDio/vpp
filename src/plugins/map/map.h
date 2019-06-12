@@ -22,6 +22,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/dpo/load_balance.h>
 #include "lpm.h"
+#include <vppinfra/lock.h>
 
 #define MAP_SKIP_IP6_LOOKUP 1
 
@@ -501,7 +502,7 @@ map_ip4_reass_get(u32 src, u32 dst, u16 fragment_id,
 void
 map_ip4_reass_free(map_ip4_reass_t *r, u32 **pi_to_drop);
 
-#define map_ip4_reass_lock() while (clib_atomic_test_and_set (map_main.ip4_reass_lock)) {}
+#define map_ip4_reass_lock() while (clib_atomic_test_and_set (map_main.ip4_reass_lock)) { CLIB_PAUSE (); }
 #define map_ip4_reass_unlock() do {CLIB_MEMORY_BARRIER(); *map_main.ip4_reass_lock = 0;} while(0)
 
 static_always_inline void
@@ -526,7 +527,7 @@ map_ip6_reass_get(ip6_address_t *src, ip6_address_t *dst, u32 fragment_id,
 void
 map_ip6_reass_free(map_ip6_reass_t *r, u32 **pi_to_drop);
 
-#define map_ip6_reass_lock() while (clib_atomic_test_and_set (map_main.ip6_reass_lock)) {}
+#define map_ip6_reass_lock() while (clib_atomic_test_and_set (map_main.ip6_reass_lock)) { CLIB_PAUSE (); }
 #define map_ip6_reass_unlock() do {CLIB_MEMORY_BARRIER(); *map_main.ip6_reass_lock = 0;} while(0)
 
 int
