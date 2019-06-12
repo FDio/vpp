@@ -89,9 +89,8 @@ static_always_inline void
 clib_spinlock_unlock (clib_spinlock_t * p)
 {
   CLIB_LOCK_DBG_CLEAR (p);
-  /* Make sure all writes are complete before releasing the lock */
-  CLIB_MEMORY_BARRIER ();
-  (*p)->lock = 0;
+  /* Make sure all reads/writes are complete before releasing the lock */
+  clib_atomic_release (&(*p)->lock);
 }
 
 static_always_inline void
@@ -147,9 +146,7 @@ clib_rwlock_reader_lock (clib_rwlock_t * p)
       while (clib_atomic_test_and_set (&(*p)->writer_lock))
 	CLIB_PAUSE ();
     }
-  CLIB_MEMORY_BARRIER ();
-  (*p)->n_readers_lock = 0;
-
+  clib_atomic_release (&(*p)->n_readers_lock);
   CLIB_LOCK_DBG (p);
 }
 
@@ -165,12 +162,9 @@ clib_rwlock_reader_unlock (clib_rwlock_t * p)
   (*p)->n_readers -= 1;
   if ((*p)->n_readers == 0)
     {
-      CLIB_MEMORY_BARRIER ();
-      (*p)->writer_lock = 0;
+      clib_atomic_release (&(*p)->writer_lock);
     }
-
-  CLIB_MEMORY_BARRIER ();
-  (*p)->n_readers_lock = 0;
+  clib_atomic_release (&(*p)->n_readers_lock);
 }
 
 always_inline void
@@ -185,8 +179,7 @@ always_inline void
 clib_rwlock_writer_unlock (clib_rwlock_t * p)
 {
   CLIB_LOCK_DBG_CLEAR (p);
-  CLIB_MEMORY_BARRIER ();
-  (*p)->writer_lock = 0;
+  clib_atomic_release (&(*p)->writer_lock);
 }
 
 #endif

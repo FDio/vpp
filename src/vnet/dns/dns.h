@@ -206,8 +206,7 @@ dns_cache_unlock (dns_main_t * dm)
 {
   if (dm->cache_lock)
     {
-      CLIB_MEMORY_BARRIER ();
-      *dm->cache_lock = 0;
+      clib_atomic_release (dm->cache_lock);
     }
 }
 

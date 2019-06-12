@@ -128,8 +128,7 @@ ssvm_unlock (ssvm_shared_header_t * h)
     {
       h->owner_pid = 0;
       h->tag = 0;
-      CLIB_MEMORY_BARRIER ();
-      h->lock = 0;
+      clib_atomic_release (&h->lock);
     }
 }
 
@@ -137,8 +136,7 @@ always_inline void
 ssvm_unlock_non_recursive (ssvm_shared_header_t * h)
 {
   h->tag = 0;
-  CLIB_MEMORY_BARRIER ();
-  h->lock = 0;
+  clib_atomic_release (&h->lock);
 }
 
 static inline void *
