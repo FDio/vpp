@@ -149,7 +149,7 @@ class VppTransport(object):
             self.socket.close()
         if self.sque is not None:
             self.sque.put(True)  # Terminate listening thread
-        if self.message_thread is not None:
+        if self.message_thread is not None and self.message_thread.is_alive():
             # Allow additional connect() calls.
             self.message_thread.join()
         # Collect garbage.
