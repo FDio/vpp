@@ -21,6 +21,7 @@
 #define included_api_types_h
 
 #include <vppinfra/types.h>
+#include <vppinfra/vec.h>
 #include <arpa/inet.h>
 #include <string.h>
 
@@ -34,7 +35,16 @@ typedef struct
 static inline int
 vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
 {
-  memcpy(str->buf, buf, len);
+  clib_memcpy_fast(str->buf, buf, len);
+  str->length = htonl (len);
+  return len + sizeof (u32);
+}
+
+static inline int
+vl_api_vec_to_api_string (const u8 *vec, vl_api_string_t * str)
+{
+  u32 len = vec_len(vec);
+  clib_memcpy(str->buf, vec, len);
   str->length = htonl (len);
   return len + sizeof (u32);
 }
@@ -52,10 +62,15 @@ vl_api_string_len (vl_api_string_t * astr)
   return ntohl (astr->length);
 }
 
-static inline char *
-vl_api_from_api_string_c (vl_api_string_t *astr)
+/*
+ * Returns a new vector. Remember to free it after use.
+ */
+static inline u8 *
+vl_api_from_api_to_vec (vl_api_string_t *astr)
 {
-  return strndup((char *)astr->buf, ntohl (astr->length));
+  u8 *v = 0;
+  vec_add(v, astr->buf, ntohl(astr->length));
+  return v;
 }
 
 #endif
