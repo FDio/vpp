@@ -56,8 +56,7 @@ elog_unlock (elog_main_t * em)
 {
   if (PREDICT_FALSE (em->lock != 0))
     {
-      CLIB_MEMORY_BARRIER ();
-      *em->lock = 0;
+      clib_atomic_release (em->lock);
     }
 }
 

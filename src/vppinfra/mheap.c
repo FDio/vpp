@@ -82,8 +82,7 @@ mheap_maybe_unlock (void *v)
       if (--h->recursion_count == 0)
 	{
 	  h->owner_cpu = ~0;
-	  CLIB_MEMORY_BARRIER ();
-	  h->lock = 0;
+	  clib_atomic_release (&h->lock);
 	}
     }
 }
