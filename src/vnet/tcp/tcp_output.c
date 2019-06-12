@@ -422,6 +422,9 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 		     &tc->snd_opts);
 
   tcp_update_rcv_wnd (tc);
+
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    tc->flags |= TCP_CONN_TRACK_BURST;
 }
 
 void
@@ -1129,8 +1132,16 @@ u32
 tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 {
   tcp_connection_t *tc = (tcp_connection_t *) tconn;
+
+  if (tc->flags & TCP_CONN_TRACK_BURST)
+    {
+      tcp_track_tx (tc);
+      tc->flags &= ~TCP_CONN_TRACK_BURST;
+    }
+
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0, /* burst */ 1,
 		  /* update_snd_nxt */ 1);
+
   tc->snd_una_max = seq_max (tc->snd_nxt, tc->snd_una_max);
   tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
   /* If not tracking an ACK, start tracking */
@@ -1418,7 +1429,11 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
     return 0;
 
   if (tcp_in_fastrecovery (tc))
-    tc->snd_rxt_bytes += n_bytes;
+    {
+      tc->snd_rxt_bytes += n_bytes;
+      if (tc->flags & TCP_CONN_RATE_SAMPLE)
+	tcp_track_rxt (tc, start, start + n_bytes);
+    }
 
 done:
   TCP_EVT_DBG (TCP_EVT_CC_RTX, tc, offset, n_bytes);
@@ -1498,6 +1513,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	  return;
 	}
 
+      clib_warning ("HERE");
       /* Shouldn't be here. This condition is tricky because it has to take
        * into account boff > 0 due to persist timeout. */
       if ((tc->rto_boff == 0 && tc->snd_una == tc->snd_nxt)
