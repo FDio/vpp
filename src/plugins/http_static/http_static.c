@@ -71,10 +71,10 @@ static void vl_api_http_static_enable_t_handler
 
   char *p = (char *) &mp->www_root;
   www_root =
-    format (0, "%s%c", vl_api_from_api_string_c ((vl_api_string_t *) p), 0),
+    format (0, "%v", vl_api_from_api_to_vec ((vl_api_string_t *) p), 0),
     p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
   uri =
-    format (0, "%s%c", vl_api_from_api_string_c ((vl_api_string_t *) p), 0);
+    format (0, "%v", vl_api_from_api_to_vec ((vl_api_string_t *) p), 0);
 
 
   rv = http_static_server_enable_api
