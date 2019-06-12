@@ -79,6 +79,19 @@ t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
 foreach_sse42_vec128i foreach_sse42_vec128u
 #undef _
 
+/* blend - this uses the u8 for all types and thus assumes the mask is
+ * correctly set for the size of the type. if one of the comparison operators
+ * below are used, this will be the case */
+#define _(t, s, c, i) \
+static_always_inline t##s##x##c						\
+t##s##x##c##_blend (t##s##x##c a, t##s##x##c b, t##s##x##c m)           \
+{ return (t##s##x##c) _mm_blendv_epi8 ((__m128i) a, (__m128i) b, (__m128i) m); }     \
+\
+
+_(i,8,16,epi8) _(i,16,8,epi16) _(i,32,4,epi32)  _(i,64,2,epi64)
+_(u,8,16,epu8) _(u,16,8,epu16) _(u,32,4,epu32)  _(u,64,2,epu64)
+#undef _
+
 /* min, max */
 #define _(t, s, c, i) \
 static_always_inline t##s##x##c						\
@@ -92,6 +105,7 @@ t##s##x##c##_max (t##s##x##c a, t##s##x##c b)				\
 _(i,8,16,epi8) _(i,16,8,epi16) _(i,32,4,epi32)  _(i,64,2,epi64)
 _(u,8,16,epu8) _(u,16,8,epu16) _(u,32,4,epu32)  _(u,64,2,epu64)
 #undef _
+
 /* *INDENT-ON* */
 
 #define CLIB_VEC128_SPLAT_DEFINED
@@ -730,13 +744,6 @@ u8x16_is_greater (u8x16 v1, u8x16 v2)
 {
   return (u8x16) _mm_cmpgt_epi8 ((__m128i) v1, (__m128i) v2);
 }
-
-static_always_inline u8x16
-u8x16_blend (u8x16 v1, u8x16 v2, u8x16 mask)
-{
-  return (u8x16) _mm_blendv_epi8 ((__m128i) v1, (__m128i) v2, (__m128i) mask);
-}
-
 
 #endif /* included_vector_sse2_h */
 

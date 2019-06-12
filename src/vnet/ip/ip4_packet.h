@@ -202,6 +202,12 @@ ip4_get_fragment_offset (const ip4_header_t * i)
   return clib_net_to_host_u16 (i->flags_and_fragment_offset) & 0x1fff;
 }
 
+always_inline u16
+ip4_get_fragment_offset_network_order (const ip4_header_t * i)
+{
+  return (i->flags_and_fragment_offset) & clib_net_to_host_u16 (0x1fff);
+}
+
 always_inline int
 ip4_get_fragment_more (const ip4_header_t * i)
 {
