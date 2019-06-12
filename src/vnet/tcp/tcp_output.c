@@ -394,6 +394,248 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
     }
 }
 
+#define TCP_TXS_INVALID_INDEX	((u32)~0)
+
+tcp_tx_sample_t *
+tcp_tx_tracker_get_sample (tcp_tx_tracker_t *tt, u32 txs_index)
+{
+  if (pool_is_free_index(tt->samples, tx_index))
+    return 0;
+  return pool_elt_at_index (tt->samples, txs_index);
+}
+
+tcp_tx_sample_t *
+tcp_tx_tracker_next_sample (tcp_tx_tracker_t *tt, tcp_tx_sample_t *txs)
+{
+  return tcp_tx_tracker_get_sample (tt, txs->next);
+}
+
+tcp_tx_sample_t *
+tcp_tx_tracker_prev_sample (tcp_tx_tracker_t *tt, tcp_tx_sample_t *txs)
+{
+  return tcp_tx_tracker_get_sample (tt, txs->prev);
+}
+
+u32
+tcp_tx_tracker_sample_index (tcp_tx_tracker_t *tt, tcp_tx_sample_t *txs)
+{
+  if (!txs)
+    return TCP_TXS_INVALID_INDEX;
+  return txs - tt->samples;
+}
+
+tcp_tx_sample_t *
+tcp_tx_tracker_alloc_sample (tcp_tx_tracker_t *tt, u32 min_seq)
+{
+  tcp_tx_sample_t *txs;
+
+  pool_get_zero (tt->samples, txs);
+  txs->next = txs->prev = TCP_TXS_INVALID_INDEX;
+  txs->min_seq = min_seq;
+  rb_tree_add2 (tt->sample_lookup, txs->min_seq, txs - tt->samples);
+  return txs;
+}
+
+void
+tcp_tx_tracker_free_sample (tcp_tx_tracker_t *tt, tcp_tx_sample_t *txs)
+{
+  rb_tree_del (tt->sample_lookup, txs->min_seq);
+  pool_put (tt->samples, txs);
+}
+
+tcp_tx_sample_t *
+tcp_tx_tracker_lookup_seq (tcp_tx_tracker_t *tt, u32 seq)
+{
+  rb_tree_t *rt = &tt->sample_lookup;
+  rb_node_t *cur, *prev;
+  tcp_tx_sample_t *txs;
+
+  cur = rb_node (rt, rt->root);
+  while (seq != cur->key)
+    {
+      prev = cur;
+      if (seq_lt (seq, cur->key))
+	cur = rb_node_left (rt, cur);
+      else
+	cur = rb_node_right (rt, cur);
+      if (rb_node_is_tnil (rt, cur))
+	{
+	  /* Hit tnil as a left child. Find predecessor */
+	  if (seq_lt (seq, prev->key))
+	    {
+	      cur = rb_tree_predecessor (rt, prev);
+	      txs = tcp_tx_tracker_get_sample (tt, cur->opaque);
+	    }
+	  /* Hit tnil as a right child */
+	  else
+	    {
+	      txs = tcp_tx_tracker_get_sample (tt, prev->opaque);
+	    }
+
+	  if (seq_geq (seq, txs->min_seq))
+	    return txs;
+	}
+    }
+
+  if (!rb_node_is_tnil (rt, cur))
+    return tcp_tx_tracker_get_sample (tt, cur->opaque);
+
+  return 0;
+}
+
+
+tcp_tx_sample_t *
+tcp_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq)
+{
+  tcp_tx_sample_t *txs;
+  txs = tcp_tx_tracker_alloc_sample (tc->tx_tracker, min_seq);
+  txs->delivered = tc->delivered;
+  txs->delivered_time = tc->delivered_time;
+  txs->tx_rate = transport_connection_tx_pacer_rate (tc);
+  return txs;
+}
+
+void
+tcp_track_tx (tcp_connection_t *tc)
+{
+  tcp_tx_tracker_t *tt = tc->tx_tracker;
+  tcp_tx_sample_t *txs, *tail;
+  u32 txs_index;
+
+  if (!tcp_flight_size (tc))
+    tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+
+  txs = tcp_tx_tracker_alloc_sample (tt, tc->snd_nxt);
+  txs->delivered = tc->delivered;
+  txs->delivered_time = tc->delivered_time;
+  txs->tx_rate = transport_connection_tx_pacer_rate (tc);
+
+  txs_index = tcp_tx_tracker_sample_index (tt, txs);
+  tail = tcp_tx_tracker_get_sample (tt->tail);
+  if (tail)
+    {
+      tail->next = txs_index;
+      txs->prev = tt->tail;
+      tt->tail = txs_index;
+    }
+  else
+    {
+      tt->tail = tt->head = txs_index;
+    }
+}
+
+tcp_tx_sample_t *
+tcp_tx_tracker_fix_overlapped (tcp_tx_tracker_t *tt, tcp_tx_sample_t *start,
+                               u32 seq)
+{
+  tcp_tx_sample_t *prev, *cur, *next;
+
+  prev = tcp_tx_tracker_prev_sample (start);
+  cur = start;
+  while ((next = tcp_tx_tracker_next_sample (cur))
+	  && seq_geq (seq, next->min_seq))
+    {
+      if (prev)
+	{
+	  prev->next = tcp_tx_tracker_sample_index (tt, next);
+	  next->prev = tcp_tx_tracker_sample_index (tt, prev);
+	}
+      tcp_tx_tracker_free_sample (tt, cur);
+      cur = next;
+    }
+
+  if (seq_gt (seq, cur->min_seq))
+    {
+      rb_tree_del (tt->sample_lookup, cur->min_seq);
+      cur->min_seq = seq;
+      rb_tree_add2 (tt->sample_lookup, cur->min_seq,
+                    tcp_tx_tracker_sample_index (tt, cur));
+    }
+
+  return cur;
+}
+
+void
+tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_tx_tracker_t *tt = tc->tx_tracker;
+  tcp_tx_sample_t *txs, *next, *cur, *prev, *ntxs;
+  u32 txs_index, cur_index, next_index;
+
+  txs = tcp_tx_tracker_get_sample (tt, tt->last_ooo);
+  if (txs && txs->max_seq == start)
+    {
+      txs->max_seq = end;
+      next = tcp_tx_tracker_next_sample (txs);
+      if (next)
+	tcp_tx_tracker_fix_overlapped (tt, next, end);
+
+      return;
+    }
+
+  /* Find original tx sample */
+  txs = tcp_tx_tracker_lookup_seq (tt, start);
+  ASSERT (txs != 0 && !txs->is_rxt && seq_geq (start, txs->min_seq));
+
+  /* Head overlap */
+  if (txs->min_seq == start)
+    {
+      next = tcp_tx_tracker_fix_overlapped (tt, txs, end);
+      next_index = tcp_tx_tracker_sample_index (tt, next);
+
+      cur = tcp_alloc_tx_sample (tc, start);
+      cur->max_seq = end;
+      cur->is_rxt = 1;
+
+      next = tcp_tx_tracker_get_sample (tt, next);
+      prev = tcp_tx_tracker_prev_sample (tt, next);
+
+      cur->next = next_index;
+      cur->prev = next->prev;
+      next->prev = prev->next = tcp_tx_tracker_sample_index (tt, cur);
+      tt->last_ooo = next->prev;
+      return;
+    }
+
+  next = tcp_tx_tracker_next_sample (tt, txs);
+  ASSERT (seq_lt (start, next->min_seq));
+  next_index = tcp_tx_tracker_sample_index (tt, next);
+  txs_index = tcp_tx_tracker_sample_index (tt, txs);
+
+  /* Have to split or tail overlap */
+  cur = tcp_alloc_tx_sample (tc, start);
+  cur->max_seq = end;
+  cur->is_rxt = 1;
+  cur->prev = txs_index;
+
+  next = tcp_tx_tracker_get_sample (tt, next_index);
+
+  /* Split. Allocate another sample */
+  if (seq_lt (end, next->min_seq))
+    {
+      cur_index = tcp_tx_tracker_sample_index (tt, cur);
+      ntxs = tcp_alloc_tx_sample (tc, start);
+      cur = tcp_tx_tracker_get_sample (tt, cur_index);
+      txs = tcp_tx_tracker_get_sample (tt, txs_index);
+
+      clib_memcpy (ntxs, txs, sizeof (*txs));
+      ntxs->min_seq = end;
+      txs->next = ntxs->prev = cur_index;
+      cur->next = tcp_tx_tracker_sample_index (tt, ntxs);
+      tt->last_ooo = cur_index;
+    }
+  /* Tail completely overlapped */
+  else
+    {
+      next = tcp_tx_tracker_fix_overlapped (tt, next, end);
+      txs = tcp_tx_tracker_get_sample (tt, txs_index);
+
+      txs->next = next->prev = tcp_tx_tracker_sample_index (tt, cur);
+      cur->next = tcp_tx_tracker_sample_index (tt, next);
+      tt->last_ooo = next->prev;
+    }
+}
+
 /**
  * Update burst send vars
  *
@@ -422,6 +664,9 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 		     &tc->snd_opts);
 
   tcp_update_rcv_wnd (tc);
+
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    tcp_track_tx (tc);
 }
 
 void
@@ -1418,7 +1663,11 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
     return 0;
 
   if (tcp_in_fastrecovery (tc))
-    tc->snd_rxt_bytes += n_bytes;
+    {
+      tc->snd_rxt_bytes += n_bytes;
+      if (tc->flags & TCP_CONN_RATE_SAMPLE)
+	tcp_track_rxt (tc, start, start + n_bytes);
+    }
 
 done:
   TCP_EVT_DBG (TCP_EVT_CC_RTX, tc, offset, n_bytes);
