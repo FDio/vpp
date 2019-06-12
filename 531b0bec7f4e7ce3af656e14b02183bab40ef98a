@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f798295e_d8ec2188",
+        "filename": "src/plugins/mactime/mactime.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-06-12T12:12:59Z",
+      "side": 1,
+      "message": "import \"vnet/ethernet/ethernet_types.api\";\nvl_api_mac_address_t mac_address;\n\nAllows Python to pass in e.g. \"aa:bb:cc:dd:ee:ff\" directly to API call.",
+      "range": {
+        "startLine": 124,
+        "startChar": 2,
+        "endLine": 124,
+        "endChar": 20
+      },
+      "revId": "531b0bec7f4e7ce3af656e14b02183bab40ef98a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31a71986_5b5ca9cb",
+        "filename": "src/plugins/mactime/mactime.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-06-12T12:12:59Z",
+      "side": 1,
+      "message": "Feel free to try the dreaded string type. ;-)\nstring device_name [limit\u003d64];",
+      "range": {
+        "startLine": 128,
+        "startChar": 2,
+        "endLine": 128,
+        "endChar": 21
+      },
+      "revId": "531b0bec7f4e7ce3af656e14b02183bab40ef98a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
