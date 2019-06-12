@@ -130,7 +130,7 @@ cubic_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes_acked)
 }
 
 static void
-cubic_rcv_ack (tcp_connection_t * tc)
+cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   u64 w_cubic, w_aimd;
