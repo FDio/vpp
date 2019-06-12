@@ -664,7 +664,8 @@ api_trace_command_fn (vlib_main_t * vm,
   u32 nitems = 256 << 10;
   api_main_t *am = &api_main;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
-  u8 *filename;
+  u8 *filename = 0;
+  u8 *chroot_filename = 0;
   u32 first = 0;
   u32 last = (u32) ~ 0;
   FILE *fp;
@@ -685,13 +686,12 @@ api_trace_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (input, "save %s", &filename))
 	{
-	  u8 *chroot_filename;
 	  if (strstr ((char *) filename, "..")
 	      || index ((char *) filename, '/'))
 	    {
 	      vlib_cli_output (vm, "illegal characters in filename '%s'",
 			       filename);
-	      return 0;
+	      goto out;
 	    }
 
 	  chroot_filename = format (0, "/tmp/%s%c", filename, 0);
@@ -702,7 +702,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	  if (fp == NULL)
 	    {
 	      vlib_cli_output (vm, "Couldn't create %s\n", chroot_filename);
-	      return 0;
+	      goto out;
 	    }
 	  rv = vl_msg_api_trace_save (am, which, fp);
 	  fclose (fp);
@@ -724,7 +724,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	    vlib_cli_output (vm, "Unknown error while saving: %d", rv);
 	  else
 	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
-	  vec_free (chroot_filename);
+	  goto out;
 	}
       else if (unformat (input, "dump %s", &filename))
 	{
@@ -772,6 +772,9 @@ api_trace_command_fn (vlib_main_t * vm,
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
+out:
+  vec_free (filename);
+  vec_free (chroot_filename);
   return 0;
 }
 

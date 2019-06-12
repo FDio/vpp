@@ -97,7 +97,9 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
       old_trace = tp->traces + tp->curindex++;
       if (tp->curindex == tp->nitems)
 	tp->curindex = 0;
-      vec_free (*old_trace);
+      /* Reuse the trace record, may save some memory allocator traffic */
+      msg_copy = *old_trace;
+      vec_reset_length (msg_copy);
       this_trace = old_trace;
     }
 
