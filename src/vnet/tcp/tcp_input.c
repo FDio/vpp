@@ -1549,8 +1549,6 @@ partial_ack:
   else
     {
       tcp_fastrecovery_first_on (tc);
-      /* Reuse last bytes delivered to track total bytes acked */
-      tc->sack_sb.last_bytes_delivered += tc->bytes_acked;
       if (tc->snd_rxt_bytes > tc->bytes_acked)
 	tc->snd_rxt_bytes -= tc->bytes_acked;
       else

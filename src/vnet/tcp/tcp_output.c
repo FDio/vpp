@@ -1904,12 +1904,13 @@ tcp_fast_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   ASSERT (tcp_in_fastrecovery (tc));
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
 
+  snd_space = tcp_available_cc_snd_space (tc);
+
   if (!tcp_fastrecovery_first (tc))
     goto send_unsent;
 
   /* RFC 6582: [If a partial ack], retransmit the first unacknowledged
    * segment. */
-  snd_space = tc->sack_sb.last_bytes_delivered;
   while (snd_space > 0 && n_segs < burst_size)
     {
       n_written = tcp_prepare_retransmit_segment (wrk, tc, offset,
@@ -1932,7 +1933,6 @@ tcp_fast_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 send_unsent:
 
   /* RFC 6582: Send a new segment if permitted by the new value of cwnd. */
-  snd_space = tcp_available_cc_snd_space (tc);
   if (snd_space < tc->snd_mss || tc->snd_mss == 0)
     goto done;
 
