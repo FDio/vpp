@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce1d6ce9_f4b0df3a",
+        "filename": "MAINTAINERS",
+        "patchSetId": 1
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-12T13:13:16Z",
+      "side": 1,
+      "message": "typo",
+      "revId": "39a8868a61d712d137fd5865a9f0f45b6be62931",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
