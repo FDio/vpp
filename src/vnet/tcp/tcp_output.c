@@ -422,6 +422,9 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 		     &tc->snd_opts);
 
   tcp_update_rcv_wnd (tc);
+
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    tcp_track_tx (tc);
 }
 
 void
@@ -1418,7 +1421,11 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
     return 0;
 
   if (tcp_in_fastrecovery (tc))
-    tc->snd_rxt_bytes += n_bytes;
+    {
+      tc->snd_rxt_bytes += n_bytes;
+      if (tc->flags & TCP_CONN_RATE_SAMPLE)
+	tcp_track_rxt (tc, start, start + n_bytes);
+    }
 
 done:
   TCP_EVT_DBG (TCP_EVT_CC_RTX, tc, offset, n_bytes);
