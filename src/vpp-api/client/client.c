@@ -324,6 +324,10 @@ vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
   int rv = 0;
   vac_main_t *pm = &vac_main;
 
+  /* restore for this connection */
+  timeout_in_progress = false;
+  timeout_cancelled = false;
+
   init();
   if (chroot_prefix != NULL)
     vl_set_memory_root_path (chroot_prefix);
