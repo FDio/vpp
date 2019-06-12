@@ -634,6 +634,12 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec)
   pacer->tokens_per_period = rate_bytes_per_sec / transport_pacer_period;
 }
 
+static inline u64
+spacer_pace_rate (spacer_t * pacer)
+{
+  return pacer->tokens_per_period * transport_pacer_period;
+}
+
 void
 transport_connection_tx_pacer_reset (transport_connection_t * tc,
 				     u32 rate_bytes_per_sec,
@@ -688,6 +694,12 @@ transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
       snd_space = snd_space - snd_space % mss;
     }
   return snd_space;
+}
+
+u64
+transport_connection_tx_pacer_rate (transport_connection_t * tc)
+{
+  return spacer_pace_rate (&tc->pacer);
 }
 
 void
