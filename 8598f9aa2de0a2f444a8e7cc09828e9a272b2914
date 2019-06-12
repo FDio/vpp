@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c5391832_392f018d",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-06-12T20:53:43Z",
+      "side": 1,
+      "message": "Please don\u0027t commit this static assert. :-)...",
+      "revId": "8598f9aa2de0a2f444a8e7cc09828e9a272b2914",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
