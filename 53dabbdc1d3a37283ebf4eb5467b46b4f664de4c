@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3d08b64c_e261c658",
+        "filename": "src/plugins/avf/README.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-12T21:18:35Z",
+      "side": 1,
+      "message": "check",
+      "range": {
+        "startLine": 89,
+        "startChar": 51,
+        "endLine": 89,
+        "endChar": 56
+      },
+      "revId": "53dabbdc1d3a37283ebf4eb5467b46b4f664de4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
