@@ -128,6 +128,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(DEQ_PENDING, "Pending dequeue acked")	\
   _(PSH_PENDING, "PSH pending")			\
   _(FINRCVD, "FIN received")			\
+  _(RATE_SAMPLE, "Conn does rate sampling")	\
+  _(TRACK_BURST, "Track burst")			\
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -174,7 +176,7 @@ typedef struct _sack_scoreboard
   u32 tail;				/**< Index of last entry */
   u32 sacked_bytes;			/**< Number of bytes sacked in sb */
   u32 last_sacked_bytes;		/**< Number of bytes last sacked */
-  u32 last_bytes_delivered;		/**< Number of sack bytes delivered */
+  u32 last_bytes_delivered;		/**< Sack bytes delivered to app */
   u32 snd_una_adv;			/**< Bytes to add to snd_una */
   u32 high_sacked;			/**< Highest byte sacked (fack) */
   u32 high_rxt;				/**< Highest retransmitted sequence */
@@ -230,6 +232,44 @@ sack_scoreboard_hole_t *scoreboard_last_hole (sack_scoreboard_t * sb);
 void scoreboard_clear (sack_scoreboard_t * sb);
 void scoreboard_init (sack_scoreboard_t * sb);
 u8 *format_tcp_scoreboard (u8 * s, va_list * args);
+
+#define TCP_BTS_INVALID_INDEX	((u32)~0)
+
+typedef enum tcp_bts_flags_
+{
+  TCP_BTS_IS_RXT = 1,
+  TCP_BTS_IS_APP_LIMITED = 1 << 1,
+} __clib_packed tcp_bts_flags_t;
+
+typedef struct tcp_bt_sample_
+{
+  u32 next;			/**< Next sample index in list */
+  u32 prev;			/**< Previous sample index in list */
+  u32 min_seq;			/**< Min seq number in sample */
+  u32 max_seq;			/**< Max seq number. Set for rxt samples */
+  u64 delivered;		/**< Total delivered when sample taken */
+  f64 delivered_time;		/**< Delivered time when sample taken */
+  u64 tx_rate;			/**< Tx pacing rate */
+  tcp_bts_flags_t flags;	/**< Sample flag */
+} tcp_bt_sample_t;
+
+typedef struct tcp_rate_sample_
+{
+  u64 sample_delivered;		/**< Delivered of sample used for rate */
+  u32 delivered;		/**< Bytes delivered in ack time */
+  f64 ack_time;			/**< Time to ack the bytes delivered */
+  u64 tx_rate;			/**< Tx pacing rate */
+  tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */
+} tcp_rate_sample_t;
+
+typedef struct tcp_byte_tracker_
+{
+  tcp_bt_sample_t *samples;	/**< Pool of samples */
+  rb_tree_t sample_lookup;	/**< Rbtree for sample lookup by min_seq */
+  u32 head;			/**< Head of samples linked list */
+  u32 tail;			/**< Tail of samples linked list */
+  u32 last_ooo;			/**< Cached last ooo sample */
+} tcp_byte_tracker_t;
 
 typedef enum _tcp_cc_algorithm_type
 {
@@ -300,6 +340,9 @@ typedef struct _tcp_connection
   u32 prev_cwnd;	/**< ssthresh before congestion */
   u32 bytes_acked;	/**< Bytes acknowledged by current segment */
   u32 burst_acked;	/**< Bytes acknowledged in current burst */
+  u64 delivered;	/**< Total bytes delivered to peer */
+  u64 app_limited;	/**< Delivered when app-limited state detected */
+  f64 delivered_time;	/**< Time last bytes were acked */
   u32 snd_rxt_bytes;	/**< Retransmitted bytes */
   u32 snd_rxt_ts;	/**< Timestamp when first packet is retransmitted */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
@@ -325,6 +368,7 @@ typedef struct _tcp_connection
   u32 psh_seq;		/**< Add psh header for seg that includes this */
   u32 next_node_index;	/**< Can be used to control next node in output */
   u32 next_node_opaque;	/**< Opaque to pass to next node */
+  tcp_byte_tracker_t *tx_tracker;	/**< Tx burst send tracker */
 } tcp_connection_t;
 
 /* *INDENT-OFF* */
@@ -636,6 +680,66 @@ void tcp_program_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
 void tcp_program_dupack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
 void tcp_send_acks (tcp_worker_ctx_t * wrk);
 
+/*
+ * Rate estimation
+ */
+
+/**
+ * Byte tracker initialize
+ *
+ * @param tc	connection for which the byte tracker should be allocated and
+ * 		initialized
+ */
+void tcp_bt_init (tcp_connection_t * tc);
+/**
+ * Byte tracker cleanup
+ *
+ * @param tc	connection for which the byte tracker should be cleaned up
+ */
+void tcp_bt_cleanup (tcp_connection_t * tc);
+/**
+ * Flush byte tracker samples
+ *
+ * @param tc	tcp connection for which samples should be flushed
+ */
+void tcp_bt_flush_samples (tcp_connection_t * tc);
+/**
+ * Track a tcp tx burst
+ *
+ * @param tc	tcp connection
+ */
+void tcp_bt_track_tx (tcp_connection_t * tc);
+/**
+ * Track a tcp retransmission
+ *
+ * @param tc	tcp connection
+ * @param start	start sequence number
+ * @param end	end sequence number
+ */
+void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
+/**
+ * Generate a delivery rate sample from recently acked bytes
+ *
+ * @param tc	tcp connection
+ * @param rs	resulting rate sample
+ */
+void tcp_bt_sample_delivery_rate (tcp_connection_t * tc,
+				  tcp_rate_sample_t * rs);
+/**
+ * Check if sample to be generated is app limited
+ *
+ * @param tc	tcp connection
+ */
+void tcp_bt_check_app_limited (tcp_connection_t * tc);
+/**
+ * Check if the byte tracker is in sane state
+ *
+ * Should be used only for testing
+ *
+ * @param bt	byte tracker
+ */
+int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
+
 always_inline u32
 tcp_end_seq (tcp_header_t * th, u32 len)
 {
@@ -825,10 +929,17 @@ void tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 				    u32 start_bucket);
 
 always_inline void
-tcp_cc_rcv_ack (tcp_connection_t * tc)
+tcp_cc_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   tc->cc_algo->rcv_ack (tc);
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+}
+
+static inline void
+tcp_cc_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
+		     tcp_rate_sample_t * rs)
+{
+  tc->cc_algo->rcv_cong_ack (tc, ack_type);
 }
 
 always_inline void
