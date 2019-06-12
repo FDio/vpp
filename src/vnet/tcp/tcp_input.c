@@ -1563,6 +1563,33 @@ partial_ack:
   tcp_program_fastretransmit (tcp_get_worker (tc->c_thread_index), tc);
 }
 
+static void
+tcp_sample_delivery_rate (tcp_connection_t *tc)
+{
+  u32 delivered, max_sack, max_seq;
+  tcp_tx_sample_t *txs;
+  tcp_rate_sample_t rs;
+
+  delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes;
+  if (!delivered)
+    return;
+
+  tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+  tc->delivered += delivered;
+
+  max_seq = tc->snd_una;
+  if (tc->sack_sb.last_sacked_bytes)
+    {
+      max_sack = tc->rcv_opts.sacks[vec_len(tc->rcv_opts.sacks) - 1].end;
+      max_seq = seq_max (max_seq, max_sack);
+    }
+
+  txs = tcp_tx_sample_w_seq (tc, max_seq);
+  rs.ack_time = tc->delivered_time - txs->delivered_time;
+  rs.delivered = tc->delivered - txs->delivered;
+  rs.tx_rate = txs->tx_rate;
+}
+
 /**
  * Process incoming ACK
  */
@@ -1570,7 +1597,7 @@ static int
 tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     tcp_header_t * th, u32 * error)
 {
-  u32 prev_snd_wnd, prev_snd_una;
+  u32 prev_snd_wnd, prev_snd_una, delivered;
   u8 is_dack;
 
   TCP_EVT_DBG (TCP_EVT_CC_STAT, tc);
@@ -1627,6 +1654,9 @@ process_ack:
       tcp_program_dequeue (wrk, tc);
       tcp_update_rtt (tc, vnet_buffer (b)->tcp.ack_number);
     }
+
+  if (tc->bytes_acked || tc->sack_sb.last_sacked_bytes)
+    tcp_sample_delivery_rate (tc);
 
   TCP_EVT_DBG (TCP_EVT_ACK_RCVD, tc);
 
