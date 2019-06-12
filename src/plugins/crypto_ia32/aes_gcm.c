@@ -73,7 +73,7 @@ aesni_gcm_load_partial (__m128i * p, int n_bytes)
 static_always_inline void
 aesni_gcm_store_partial (void *p, __m128i r, int n_bytes)
 {
-#ifdef x__AVX512F__
+#ifdef __AVX512F__
   _mm_mask_storeu_epi8 (p, (1 << n_bytes) - 1, r);
 #else
   u8x16 mask = u8x16_is_greater (u8x16_splat (n_bytes), byte_mask_scale);
