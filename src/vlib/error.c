@@ -188,18 +188,19 @@ vlib_register_errors (vlib_main_t * vm,
   /* (re)register the em->counters base address, switch back to main heap */
   vlib_stats_pop_heap2 (em->counters, vm->thread_index, oldheap);
 
-  {
-    elog_event_type_t t;
-    uword i;
+  if (VLIB_ELOG_MAIN_LOOP > 0)
+    {
+      elog_event_type_t t;
+      uword i;
 
-    clib_memset (&t, 0, sizeof (t));
-    for (i = 0; i < n_errors; i++)
-      {
-	t.format = (char *) format (0, "%v %s: %%d",
-				    n->name, error_strings[i]);
-	vm->error_elog_event_types[n->error_heap_index + i] = t;
-      }
-  }
+      clib_memset (&t, 0, sizeof (t));
+      for (i = 0; i < n_errors; i++)
+	{
+	  t.format = (char *) format (0, "%v %s: %%d",
+				      n->name, error_strings[i]);
+	  vm->error_elog_event_types[n->error_heap_index + i] = t;
+	}
+    }
 }
 
 static clib_error_t *
