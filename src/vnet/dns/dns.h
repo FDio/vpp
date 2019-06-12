@@ -23,6 +23,7 @@
 #include <vppinfra/hash.h>
 #include <vnet/dns/dns_packet.h>
 #include <vnet/ip/ip.h>
+#include <vppinfra/lock.h>
 
 typedef struct
 {
@@ -196,7 +197,7 @@ dns_cache_lock (dns_main_t * dm)
   if (dm->cache_lock)
     {
       while (clib_atomic_test_and_set (dm->cache_lock))
-	;
+	CLIB_PAUSE ();
     }
 }
 
