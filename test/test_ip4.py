@@ -1718,7 +1718,7 @@ class TestIPDirectedBroadcast(VppTestCase):
         for i in self.pg_interfaces:
             i.admin_down()
 
-    def test_ip_input(self):
+    def test_ip_directed_bcast(self):
         """ IP Directed Broadcast """
 
         #

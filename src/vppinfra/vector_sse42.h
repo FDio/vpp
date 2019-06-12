@@ -79,6 +79,19 @@ t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
 foreach_sse42_vec128i foreach_sse42_vec128u
 #undef _
 
+/* blend - this uses the u8 for all types and thus assumes the mask is
+ * correctly set for the size of the type. if one of the comparison operators
+ * below are used, this will be the case */
+#define _(t, s, c, i) \
+static_always_inline t##s##x##c						\
+t##s##x##c##_blend (t##s##x##c a, t##s##x##c b, t##s##x##c m)           \
+{ return (t##s##x##c) _mm_blendv_epi8 ((__m128i) a, (__m128i) b, (__m128i) m); }     \
+\
+
+_(i,8,16,epi8) _(i,16,8,epi16) _(i,32,4,epi32)  _(i,64,2,epi64)
+_(u,8,16,epu8) _(u,16,8,epu16) _(u,32,4,epu32)  _(u,64,2,epu64)
+#undef _
+
 /* min, max */
 #define _(t, s, c, i) \
 static_always_inline t##s##x##c						\
@@ -92,6 +105,37 @@ t##s##x##c##_max (t##s##x##c a, t##s##x##c b)				\
 _(i,8,16,epi8) _(i,16,8,epi16) _(i,32,4,epi32)  _(i,64,2,epi64)
 _(u,8,16,epu8) _(u,16,8,epu16) _(u,32,4,epu32)  _(u,64,2,epu64)
 #undef _
+
+/* add, sub */
+#define _(t, s, c, i) \
+static_always_inline t##s##x##c						\
+t##s##x##c##_sub (t##s##x##c a, t##s##x##c b)				\
+{ return (t##s##x##c) _mm_sub_##i ((__m128i) a, (__m128i) b); }		\
+\
+static_always_inline t##s##x##c						\
+t##s##x##c##_add (t##s##x##c a, t##s##x##c b)				\
+{ return (t##s##x##c) _mm_add_##i ((__m128i) a, (__m128i) b); }		\
+
+_(i,8,16,epi8) _(i,16,8,epi16) _(i,32,4,epi32)  _(i,64,2,epi64)
+#undef _
+
+/* eq, ne, lt, */
+#define _(t, s, c, i) \
+static_always_inline t##s##x##c						\
+t##s##x##c##_eq (t##s##x##c a, t##s##x##c b)				\
+{ return (t##s##x##c) _mm_cmpeq_##i ((__m128i) a, (__m128i) b); }       \
+\
+static_always_inline t##s##x##c						\
+t##s##x##c##_ne (t##s##x##c a, t##s##x##c b)				\
+{ return (t##s##x##c) ~_mm_cmpeq_##i ((__m128i) a, (__m128i) b); }      \
+\
+static_always_inline t##s##x##c						\
+t##s##x##c##_lt (t##s##x##c a, t##s##x##c b)				\
+{ return (t##s##x##c) _mm_cmplt_##i ((__m128i) a, (__m128i) b); }       \
+
+_(i,8,16,epi8) _(i,16,8,epi16) _(i,32,4,epi32)
+#undef _
+
 /* *INDENT-ON* */
 
 #define CLIB_VEC128_SPLAT_DEFINED
@@ -626,6 +670,15 @@ u32x4_byte_swap (u32x4 v)
   return (u32x4) _mm_shuffle_epi8 ((__m128i) v, (__m128i) swap);
 }
 
+static_always_inline i32x4
+i32x4_byte_swap_as_u16 (i32x4 v)
+{
+  u8x16 swap = {
+    1, 0, 2, 3, 5, 4, 6, 7, 9, 8, 10, 11, 13, 12, 14, 15,
+  };
+  return (i32x4) _mm_shuffle_epi8 ((__m128i) v, (__m128i) swap);
+}
+
 static_always_inline u16x8
 u16x8_byte_swap (u16x8 v)
 {
@@ -730,13 +783,6 @@ u8x16_is_greater (u8x16 v1, u8x16 v2)
 {
   return (u8x16) _mm_cmpgt_epi8 ((__m128i) v1, (__m128i) v2);
 }
-
-static_always_inline u8x16
-u8x16_blend (u8x16 v1, u8x16 v2, u8x16 mask)
-{
-  return (u8x16) _mm_blendv_epi8 ((__m128i) v1, (__m128i) v2, (__m128i) mask);
-}
-
 
 #endif /* included_vector_sse2_h */
 
