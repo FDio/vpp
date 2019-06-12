@@ -28,7 +28,7 @@ newreno_recovered (tcp_connection_t * tc)
 }
 
 void
-newreno_rcv_ack (tcp_connection_t * tc)
+newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   if (tcp_in_slowstart (tc))
     {
@@ -42,7 +42,8 @@ newreno_rcv_ack (tcp_connection_t * tc)
 }
 
 void
-newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type)
+newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
+		      tcp_rate_sample_t * rs)
 {
   if (ack_type == TCP_CC_DUPACK)
     {
