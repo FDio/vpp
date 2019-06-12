@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "57daea0c_358f5cba",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-12T08:59:42Z",
+      "side": 1,
+      "message": "make this prefetch part of clause above? then it\u0027s only issued when the SA index changes.",
+      "revId": "07f060192a6c08eb543757301d05614371aa6103",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "528c5f99_5244ac39",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-12T08:59:42Z",
+      "side": 1,
+      "message": "if we can\u0027t handle fragments, we should drop them.",
+      "revId": "07f060192a6c08eb543757301d05614371aa6103",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e75fde64_833e74f2",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 378,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-12T08:59:42Z",
+      "side": 1,
+      "message": "why set the trace flag?",
+      "revId": "07f060192a6c08eb543757301d05614371aa6103",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
