@@ -82,6 +82,16 @@ trust needs to be set to "on" using the linux "ip link" utility.
 ip link set dev <PF inteface name> vf <VF id> trust on
 ```
 
+### L2 spoofing check
+By default Virtual Function is not allowed to send ethernet frames which
+have source MAC address different than address assigned to the VF.
+In some cases it is expected that VPP will send such frames (e.g. L2 bridging,
+bonding, l2 cross-connect) and in such cases spoof chack needs to be turned
+off by issuing following command:
+```
+ip link set dev <PF inteface name> vf <VF id> spoofchk off
+```
+
 ### Interface Creation
 Interfaces can be dynamically created by using following CLI:
 ```
