@@ -132,7 +132,7 @@ ip4_input_inline (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   ip4_header_t *ip[4];
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  u32 sw_if_index[4];
+  u32 x, sw_if_index[4];
   u32 last_sw_if_index = ~0;
   u32 cnt = 0;
   int arc_enabled = 0;
@@ -153,8 +153,6 @@ ip4_input_inline (vlib_main_t * vm,
   next = nexts;
   while (n_left_from >= 4)
     {
-      u32 x = 0;
-
       /* Prefetch next iteration. */
       if (n_left_from >= 12)
 	{
@@ -169,17 +167,17 @@ ip4_input_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_data (b[7], LOAD);
 	}
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] = ~0;
-      vnet_buffer (b[2])->ip.adj_index[VLIB_RX] = ~0;
-      vnet_buffer (b[3])->ip.adj_index[VLIB_RX] = ~0;
-
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
       sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
       sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
 
-      x |= sw_if_index[0] ^ last_sw_if_index;
+      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
+      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] = ~0;
+      vnet_buffer (b[2])->ip.adj_index[VLIB_RX] = ~0;
+      vnet_buffer (b[3])->ip.adj_index[VLIB_RX] = ~0;
+
+      x = sw_if_index[0] ^ last_sw_if_index;
       x |= sw_if_index[1] ^ last_sw_if_index;
       x |= sw_if_index[2] ^ last_sw_if_index;
       x |= sw_if_index[3] ^ last_sw_if_index;
