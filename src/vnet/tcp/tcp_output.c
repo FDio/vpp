@@ -394,6 +394,65 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
     }
 }
 
+#define TCP_TXS_INVALID_INDEX	((u32)~0)
+
+tcp_tx_sample_t *
+tcp_tx_tracker_get_sample (tcp_tx_tracker_t *tt, u32 txs_index)
+{
+  return pool_elt_at_index (tt->samples, txs_index);
+}
+
+u32
+tcp_tx_tracker_sample_index (tcp_tx_tracker_t *tt, tcp_tx_sample_t *txs)
+{
+  return txs - tt->samples;
+}
+
+tcp_tx_sample_t *
+tcp_tx_tracker_alloc_sample (tcp_tx_tracker_t *tt)
+{
+  tcp_tx_sample_t *txs;
+  pool_get_zero (tt->samples, txs);
+  txs->next = txs->prev = TCP_TXS_INVALID_INDEX;
+  return txs;
+}
+
+void
+tcp_tx_tracker_free_sample (tcp_tx_tracker_t *tt, tcp_tx_sample_t *txs)
+{
+  pool_put (tt->samples, txs);
+}
+
+void
+tcp_tx_tracker_add_sample (tcp_connection_t *tc)
+{
+  tcp_tx_tracker_t *tt = tc->tx_tracker;
+  tcp_tx_sample_t *txs, *tail;
+  u32 txs_index;
+
+  if (!tcp_flight_size (tc))
+    tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+
+  txs = tcp_tx_tracker_alloc_sample (tt);
+  txs->delivered = tc->delivered;
+  txs->delivered_time = tc->delivered_time;
+  txs->tx_rate = transport_connection_tx_pacer_rate (tc);
+  txs->min_seq = tc->snd_nxt;
+
+  txs_index = tcp_tx_tracker_sample_index (tt, txs);
+  tail = tcp_tx_tracker_get_sample (tt->tail);
+  if (tail)
+    {
+      tail->next = txs_index;
+      txs->prev = tt->tail;
+      tt->tail = txs_index;
+    }
+  else
+    {
+      tt->tail = tt->head = txs_index;
+    }
+}
+
 /**
  * Update burst send vars
  *
@@ -422,6 +481,7 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 		     &tc->snd_opts);
 
   tcp_update_rcv_wnd (tc);
+  tcp_tx_tracker_add_sample (tc);
 }
 
 void

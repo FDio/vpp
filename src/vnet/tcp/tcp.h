@@ -174,7 +174,7 @@ typedef struct _sack_scoreboard
   u32 tail;				/**< Index of last entry */
   u32 sacked_bytes;			/**< Number of bytes sacked in sb */
   u32 last_sacked_bytes;		/**< Number of bytes last sacked */
-  u32 last_bytes_delivered;		/**< Number of sack bytes delivered */
+  u32 last_bytes_delivered;		/**< Sack bytes delivered to app */
   u32 snd_una_adv;			/**< Bytes to add to snd_una */
   u32 high_sacked;			/**< Highest byte sacked (fack) */
   u32 high_rxt;				/**< Highest retransmitted sequence */
@@ -247,6 +247,32 @@ typedef enum _tcp_cc_ack_t
   TCP_CC_PARTIALACK
 } tcp_cc_ack_t;
 
+typedef struct tcp_tx_sample_
+{
+  u32 next;
+  u32 prev;
+  u32 min_seq;
+  u32 max_seq;
+  u64 delivered;
+  f64 delivered_time;
+  u64 tx_rate;
+} tcp_tx_sample_t;
+
+typedef struct tcp_rate_sample_
+{
+  u64 delivered_total;
+  u32 delivered;
+  f64 ack_time;
+  u64 tx_rate;
+} tcp_rate_sample_t;
+
+typedef struct tcp_tx_samples_
+{
+  tcp_tx_sample_t *samples;
+  u32 head;
+  u32 tail;
+} tcp_tx_tracker_t;
+
 typedef struct _tcp_connection
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -300,6 +326,8 @@ typedef struct _tcp_connection
   u32 prev_cwnd;	/**< ssthresh before congestion */
   u32 bytes_acked;	/**< Bytes acknowledged by current segment */
   u32 burst_acked;	/**< Bytes acknowledged in current burst */
+  u64 delivered;	/**< Total bytes delivered to peer */
+  f64 delivered_time;	/**< Time last bytes were delivered */
   u32 snd_rxt_bytes;	/**< Retransmitted bytes */
   u32 snd_rxt_ts;	/**< Timestamp when first packet is retransmitted */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
@@ -323,6 +351,7 @@ typedef struct _tcp_connection
   u32 tx_fifo_size;	/**< Tx fifo size. Used to constrain cwnd */
 
   u32 psh_seq;		/**< Add psh header for seg that includes this */
+  tcp_tx_tracker_t *tx_tracker;	/**< Tx burst send tracker */
 } tcp_connection_t;
 
 /* *INDENT-OFF* */

@@ -1563,6 +1563,90 @@ partial_ack:
   tcp_program_fastretransmit (tcp_get_worker (tc->c_thread_index), tc);
 }
 
+void
+tcp_tx_sample_to_rate_sample (tcp_connection_t *tc, tcp_tx_sample_t *txs,
+                              tcp_rate_sample_t *rs)
+{
+  if (rs->delivered_total && rs->delivered_total > txs->delivered)
+    return;
+
+  rs->delivered_total = tc->delivered;
+  rs->delivered = tc->delivered - txs->delivered;
+  rs->ack_time = tc->delivered_time - txs->delivered_time;
+  rs->tx_rate = txs->tx_rate;
+}
+
+void
+tcp_tx_tracker_walk_samples (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+{
+  tcp_tx_tracker_t *tt = tc->tx_tracker;
+  tcp_tx_sample_t *cur, *prev;
+
+  prev = tcp_tx_tracker_get_sample (tt, tt->head);
+  tcp_tx_sample_to_rate_sample (tc, prev, rs);
+  while ((cur = tcp_tx_tracker_get_sample (tt, prev->next)))
+    {
+      if (seq_gt (cur->min_seq, tc->snd_una))
+	break;
+
+      tcp_tx_tracker_free_sample (tt, prev);
+      tcp_tx_sample_to_rate_sample (tc, cur, rs);
+      prev = cur;
+    }
+
+  ASSERT (seq_leq (prev->min_seq, tc->snd_una));
+
+  tt->head = tcp_tx_tracker_sample_index (tt, prev);
+}
+
+void
+tcp_tx_tracker_walk_samples_ooo (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+{
+  sack_block_t *blks = tc->rcv_opts.sacks, *blk;
+  tcp_tx_tracker_t *tt = tc->tx_tracker;
+  tcp_tx_sample_t *cur, *prev;
+  int i;
+
+  for (i = 0; i < vec_len (blks); i++)
+    {
+      blk = &blks[i];
+
+      prev = tcp_tx_tracker_lookup_seq (tt, blk->start);
+      if (!prev)
+	continue;
+
+      tcp_tx_sample_to_rate_sample (tc, prev, rs);
+      while ((cur = tcp_tx_tracker_get_sample (tt, prev->next)))
+	{
+	  if (seq_gt (cur->min_seq, blk->end))
+	    break;
+
+	  tcp_tx_tracker_free_sample (tt, prev);
+	  tcp_tx_sample_to_rate_sample (tc, cur, rs);
+	  prev = cur;
+	}
+    }
+}
+
+static void
+tcp_sample_delivery_rate (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+{
+  u32 delivered;
+
+  delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes;
+  if (!delivered || tc->tx_tracker->head == TCP_TXS_INVALID_INDEX)
+    return;
+
+  tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+  tc->delivered += delivered;
+
+  if (tc->bytes_acked)
+    tcp_tx_tracker_walk_samples (tc, rs);
+
+  if (tc->sack_sb.last_sacked_bytes)
+    tcp_tx_tracker_walk_samples_ooo (tc, rs);
+}
+
 /**
  * Process incoming ACK
  */
@@ -1570,7 +1654,7 @@ static int
 tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     tcp_header_t * th, u32 * error)
 {
-  u32 prev_snd_wnd, prev_snd_una;
+  u32 prev_snd_wnd, prev_snd_una, delivered;
   u8 is_dack;
 
   TCP_EVT_DBG (TCP_EVT_CC_STAT, tc);
@@ -1627,6 +1711,9 @@ process_ack:
       tcp_program_dequeue (wrk, tc);
       tcp_update_rtt (tc, vnet_buffer (b)->tcp.ack_number);
     }
+
+  if (tc->bytes_acked || tc->sack_sb.last_sacked_bytes)
+    tcp_sample_delivery_rate (tc);
 
   TCP_EVT_DBG (TCP_EVT_ACK_RCVD, tc);
 
