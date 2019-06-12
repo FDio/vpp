@@ -629,6 +629,7 @@ list(APPEND VNET_SOURCES
   tcp/tcp_input.c
   tcp/tcp_newreno.c
   tcp/tcp_cubic.c
+  tcp/tcp_bt.c
   tcp/tcp.c
 )
 
