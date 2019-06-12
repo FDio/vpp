@@ -1628,6 +1628,9 @@ process_ack:
       tcp_update_rtt (tc, vnet_buffer (b)->tcp.ack_number);
     }
 
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    tcp_sample_delivery_rate (tc, 0);
+
   TCP_EVT_DBG (TCP_EVT_ACK_RCVD, tc);
 
   /*
