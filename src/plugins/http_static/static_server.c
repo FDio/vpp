@@ -1303,7 +1303,7 @@ http_static_server_create_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (http_static_server_create_command, static) =
 {
   .path = "http static server",
-  .short_help = "http static server www-root <path> [prealloc-fios <nn>]\n"
+  .short_help = "http static server www-root <path> [prealloc-fifos <nn>]\n"
   "[private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]\n",
   .function = http_static_server_create_command_fn,
 };
