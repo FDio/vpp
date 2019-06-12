@@ -22,6 +22,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
 #include <vlibmemory/api.h>
+#include <vlibapi/api_types_inlines.h>
 
 #define vl_typedefs		/* define message structures */
 #include <map/map_all_api_h.h>
@@ -53,7 +54,8 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   int rv = 0;
   u32 index;
   u8 flags = 0;
-
+  u8 *vtag = 0;
+  vtag = vl_api_from_api_to_vec (&mp->tag);
   rv =
     map_create_domain ((ip4_address_t *) & mp->ip4_prefix.prefix,
 		       mp->ip4_prefix.len,
@@ -61,8 +63,8 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 		       mp->ip6_prefix.len,
 		       (ip6_address_t *) & mp->ip6_src.prefix,
 		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
-		       mp->psid_length, &index, ntohs (mp->mtu), flags,
-		       vl_api_from_api_string_c (&mp->tag));
+		       mp->psid_length, &index, ntohs (mp->mtu), flags, vtag);
+  vec_free (vtag);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MAP_ADD_DOMAIN_REPLY,
@@ -118,15 +120,11 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
   /* *INDENT-OFF* */
   pool_foreach(d, mm->domains,
   ({
-    u32 len;
-
     map_domain_index = d - mm->domains;
     de = vec_elt_at_index(mm->domain_extras, map_domain_index);
 
-    len = strnlen_s(de->tag, 64);
-
     /* Make sure every field is initiated (or don't skip the clib_memset()) */
-    rmp = vl_msg_api_alloc (sizeof (*rmp) + len);
+    rmp = vl_msg_api_alloc (sizeof (*rmp) + vec_len(de->tag));
 
     rmp->_vl_msg_id = htons(VL_API_MAP_DOMAIN_DETAILS + mm->msg_id_base);
     rmp->context = mp->context;
@@ -143,7 +141,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->flags = d->flags;
     rmp->mtu = htons(d->mtu);
 
-	vl_api_to_api_string (len, de->tag, &rmp->tag );
+    vl_api_vec_to_api_string (de->tag, &rmp->tag );
 
     vl_api_send_msg (reg, (u8 *) rmp);
   }));

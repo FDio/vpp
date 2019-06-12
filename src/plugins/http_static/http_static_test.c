@@ -18,6 +18,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
+#include <vlibapi/api_types_inlines.h>
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
