@@ -253,7 +253,7 @@ class TestACLplugin(VppTestCase):
             self.vapi.acl_interface_set_acl_list(sw_if_index=i.sw_if_index,
                                                  n_input=1,
                                                  acls=[reply.acl_index])
-        return
+        return reply.acl_index
 
     def apply_rules_to(self, rules, tag=b'', sw_if_index=0xFFFFFFFF):
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=rules,
@@ -264,7 +264,7 @@ class TestACLplugin(VppTestCase):
         self.vapi.acl_interface_set_acl_list(sw_if_index=sw_if_index,
                                              n_input=1,
                                              acls=[reply.acl_index])
-        return
+        return reply.acl_index
 
     def etype_whitelist(self, whitelist, n_input):
         # Apply whitelists on all the interfaces
@@ -647,10 +647,21 @@ class TestACLplugin(VppTestCase):
                      0, self.proto[self.IP][self.TCP]))
 
         # Apply rules
-        self.apply_rules(rules, b"permit per-flow")
+        acl_idx = self.apply_rules(rules, b"permit per-flow")
 
         # Traffic should still pass
         self.run_verify_test(self.IP, self.IPV4, -1)
+
+        matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
+        self.logger.info("stat segment counters: %s" % repr(matches))
+        cli = "show acl-plugin acl"
+        self.logger.info(self.vapi.ppcli(cli))
+        cli = "show acl-plugin tables"
+        self.logger.info(self.vapi.ppcli(cli))
+
+        totali_hits = matches[0][0]['packets'] + matches[0][1]['packets']
+        self.assertEqual(total_hits, 64)
+
         self.logger.info("ACLP_TEST_FINISH_0002")
 
     def test_0003_acl_deny_apply(self):
@@ -666,13 +677,21 @@ class TestACLplugin(VppTestCase):
                                       self.PORTS_ALL, 0))
 
         # Apply rules
-        self.apply_rules(rules, b"deny per-flow;permit all")
+        acl_idx = self.apply_rules(rules, b"deny per-flow;permit all")
 
         # Traffic should not pass
         self.run_verify_negat_test(self.IP, self.IPV4,
                                    self.proto[self.IP][self.UDP])
+
+        matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
+        self.logger.info("stat segment counters: %s" % repr(matches))
+        cli = "show acl-plugin acl"
+        self.logger.info(self.vapi.ppcli(cli))
+        cli = "show acl-plugin tables"
+        self.logger.info(self.vapi.ppcli(cli))
+        self.assertEqual(matches[0][0]['packets'], 64)
         self.logger.info("ACLP_TEST_FINISH_0003")
-        # self.assertEqual(1, 0)
+        # self.assertEqual(, 0)
 
     def test_0004_vpp624_permit_icmpv4(self):
         """ VPP_624 permit ICMPv4
