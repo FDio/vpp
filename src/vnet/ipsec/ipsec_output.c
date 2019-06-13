@@ -473,7 +473,6 @@ static uword
 ipsec_output_node_fn (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  clib_warning ("IPSec disabled");
   return 0;
 }
 

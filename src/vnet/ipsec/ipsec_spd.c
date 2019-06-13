@@ -88,9 +88,6 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
       hash_unset (im->spd_index_by_sw_if_index, sw_if_index);
     }
 
-  clib_warning ("sw_if_index %u spd_id %u spd_index %u",
-		sw_if_index, spd_id, spd_index);
-
   /* enable IPsec on TX */
   vnet_feature_enable_disable ("ip4-output", "ipsec4-output-feature",
 			       sw_if_index, is_add, 0, 0);

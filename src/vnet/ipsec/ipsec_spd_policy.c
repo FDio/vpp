@@ -142,9 +142,6 @@ ipsec_add_del_policy (vlib_main_t * vm,
   u32 spd_index;
   uword *p;
 
-  clib_warning ("policy-id %u priority %d type %U", policy->id,
-		policy->priority, format_ipsec_policy_type, policy->type);
-
   if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
     {
       p = hash_get (im->sa_index_by_sa_id, policy->sa_id);
