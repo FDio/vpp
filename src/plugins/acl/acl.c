@@ -373,6 +373,33 @@ policy_notify_acl_change (acl_main_t * am, u32 acl_num)
 }
 
 
+static void
+validate_and_reset_acl_counters (acl_main_t * am, u32 acl_index)
+{
+  int i;
+  /* counters are set as vectors [acl#] pointing to vectors of [acl rule] */
+  acl_plugin_counter_lock (am);
+
+  int old_len = vec_len (am->combined_acl_counters);
+
+  vec_validate (am->combined_acl_counters, acl_index);
+
+  for (i = old_len; i < vec_len (am->combined_acl_counters); i++)
+    {
+      i32 rule_count = vec_len (am->acls[acl_index].rules);
+      /* add one to rule count so we always have at least one counter for an ACL */
+      vlib_validate_combined_counter (&am->combined_acl_counters[i],
+				      rule_count + 1);
+      vlib_zero_combined_counter (&am->combined_acl_counters[i],
+				  rule_count + 1);
+      /* fill in the missing name(s) */
+      am->combined_acl_counters[i].name = "matches";
+      /* filled in once only */
+      am->combined_acl_counters[i].stat_segment_name = (void *)
+	format (0, "/acl/%d/matches%c", i, 0);
+    }
+  acl_plugin_counter_unlock (am);
+}
 
 static int
 acl_add_list (u32 count, vl_api_acl_rule_t rules[],
@@ -464,6 +491,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       /* a change in an ACLs if they are applied may mean a new policy epoch */
       policy_notify_acl_change (am, *acl_list_index);
     }
+  validate_and_reset_acl_counters (am, *acl_list_index);
 
   /* notify the lookup contexts about the ACL changes */
   acl_plugin_lookup_context_notify_acl_change (*acl_list_index);
@@ -3660,6 +3688,10 @@ acl_init (vlib_main_t * vm)
   am->tuple_merge_split_threshold = TM_SPLIT_THRESHOLD;
 
   am->interface_acl_user_id = ~0;	/* defer till the first use */
+
+  am->acl_counter_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+						 CLIB_CACHE_LINE_BYTES);
+  am->acl_counter_lock[0] = 0;	/* should be no need */
 
   return error;
 }

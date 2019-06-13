@@ -27,6 +27,7 @@
 #include <vppinfra/bihash_48_8.h>
 #include <vppinfra/bihash_40_8.h>
 #include <vppinfra/bihash_16_8.h>
+#include <vlib/counter.h>
 
 #include "types.h"
 #include "fa_node.h"
@@ -314,6 +315,10 @@ typedef struct {
   vnet_main_t * vnet_main;
   /* logging */
   vlib_log_class_t log_default;
+  /* acl counters exposed via stats segment */
+  volatile u32 *acl_counter_lock;
+  vlib_combined_counter_main_t *combined_acl_counters;
+
 } acl_main_t;
 
 #define acl_log_err(...) \
@@ -325,6 +330,21 @@ typedef struct {
 #define acl_log_info(...) \
   vlib_log(VLIB_LOG_LEVEL_INFO, acl_main.log_default, __VA_ARGS__)
 
+
+static inline void
+acl_plugin_counter_lock (acl_main_t * am)
+{
+  if (am->acl_counter_lock)
+    while (clib_atomic_test_and_set (am->acl_counter_lock))
+      /* zzzz */ ;
+}
+
+static inline void
+acl_plugin_counter_unlock (acl_main_t * am)
+{
+  if (am->acl_counter_lock)
+    clib_atomic_release (am->acl_counter_lock);
+}
 
 
 #define foreach_acl_eh                                          \
