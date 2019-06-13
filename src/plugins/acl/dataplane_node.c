@@ -690,13 +690,15 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		  am->output_lc_index_by_sw_if_index[sw_if_index[0]];
 
 	      action = 0;	/* deny by default */
-	      acl_plugin_match_5tuple_inline (am, lc_index0,
-					      (fa_5tuple_opaque_t *) &
-					      fa_5tuple[0], is_ip6, &action,
-					      &match_acl_pos,
-					      &match_acl_in_index,
-					      &match_rule_index,
-					      &trace_bitmap);
+	      acl_plugin_match_5tuple_inline_and_count (am, lc_index0,
+							(fa_5tuple_opaque_t *)
+							& fa_5tuple[0],
+							is_ip6, &action,
+							&match_acl_pos,
+							&match_acl_in_index,
+							&match_rule_index,
+							&trace_bitmap,
+							b[0]->current_length);
 	      b[0]->error = error_node->errors[action];
 
 	      if (1 == action)

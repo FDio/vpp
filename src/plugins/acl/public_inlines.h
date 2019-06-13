@@ -637,7 +637,7 @@ hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5
   u32 match_index = multi_acl_match_get_applied_ace_index(am, is_ip6, pkt_5tuple);
   if (match_index < vec_len((*applied_hash_aces))) {
     applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
-    pae->hitcount++;
+    // pae->hitcount++;
     *acl_pos_p = pae->acl_position;
     *acl_match_p = pae->acl_index;
     *rule_match_p = pae->ace_index;
@@ -680,6 +680,47 @@ acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
   }
 }
+
+
+always_inline int
+acl_plugin_match_5tuple_inline_and_count (void *p_acl_main, u32 lc_index,
+                                           fa_5tuple_opaque_t * pkt_5tuple,
+                                           int is_ip6, u8 * r_action,
+                                           u32 * r_acl_pos_p,
+                                           u32 * r_acl_match_p,
+                                           u32 * r_rule_match_p,
+                                           u32 * trace_bitmap,
+					   u32 packet_size)
+{
+  acl_main_t *am = p_acl_main;
+  int ret = 0;
+  fa_5tuple_t * pkt_5tuple_internal = (fa_5tuple_t *)pkt_5tuple;
+  pkt_5tuple_internal->pkt.lc_index = lc_index;
+  if (PREDICT_TRUE(am->use_hash_acl_matching)) {
+    if (PREDICT_FALSE(pkt_5tuple_internal->pkt.is_nonfirst_fragment)) {
+      /*
+       * tuplemerge does not take fragments into account,
+       * and in general making fragments first class citizens has
+       * proved more overhead than it's worth - so just fall back to linear
+       * matching in that case.
+       */
+      ret = linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+    } else {
+      ret = hash_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+    }
+  } else {
+    ret = linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+  }
+  if (PREDICT_TRUE(ret)) {
+	  u16 thread_index = os_get_thread_index ();
+	  vlib_increment_combined_counter(am->combined_acl_counters + *r_acl_match_p, thread_index, *r_rule_match_p, 1, packet_size);
+  }
+  return ret;
+}
+
 
 
 
