@@ -3188,7 +3188,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       child0->rto = TCP_RTO_MIN;
 
       if (session_stream_accept (&child0->connection, lc0->c_s_index,
-				 0 /* notify */ ))
+				 lc0->c_thread_index, 0 /* notify */ ))
 	{
 	  tcp_connection_cleanup (child0);
 	  error0 = TCP_ERROR_CREATE_SESSION_FAIL;

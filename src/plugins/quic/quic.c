@@ -484,12 +484,11 @@ static void
 quic_accept_stream (void *s)
 {
   quicly_stream_t *stream = (quicly_stream_t *) s;
-  session_t *stream_session;
+  session_t *stream_session, *quic_session;
   quic_stream_data_t *stream_data;
   app_worker_t *app_wrk;
   quic_ctx_t *qctx, *sctx;
   u32 sctx_id;
-  quic_main_t *qm = &quic_main;
   int rv;
 
   sctx_id = quic_ctx_alloc (vlib_get_thread_index ());
@@ -522,8 +521,8 @@ quic_accept_stream (void *s)
   stream_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    qctx->c_quic_ctx_id.udp_is_ip4);
-  stream_session->listener_index = qm->fake_app_listener_index;
-  stream_session->app_index = sctx->c_quic_ctx_id.parent_app_id;
+  quic_session = session_get (qctx->c_s_index, qctx->c_thread_index);
+  stream_session->listener_handle = listen_session_get_handle (quic_session);
 
   app_wrk = app_worker_get (stream_session->app_wrk_index);
   if ((rv = app_worker_init_connected (app_wrk, stream_session)))
@@ -1113,7 +1112,6 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   app_worker_t *app_wrk;
   quic_ctx_t *qctx, *sctx;
   u32 sctx_index;
-  quic_main_t *qm = &quic_main;
   int rv;
 
   /*  Find base session to which the user want to attach a stream */
@@ -1174,7 +1172,7 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   stream_session->flags |= SESSION_F_QUIC_STREAM;
   stream_session->app_wrk_index = app_wrk->wrk_index;
   stream_session->connection_index = sctx_index;
-  stream_session->listener_index = qm->fake_app_listener_index;
+  stream_session->listener_handle = quic_session_handle;
   stream_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    qctx->c_quic_ctx_id.udp_is_ip4);
@@ -1480,7 +1478,7 @@ quic_notify_app_connected (quic_ctx_t * ctx)
   app_worker_t *app_wrk;
   u32 ctx_id = ctx->c_c_index;
   u32 thread_index = ctx->c_thread_index;
-  quic_main_t *qm = &quic_main;
+  quic_ctx_t *lctx;
 
   app_wrk = app_worker_get_if_valid (ctx->c_quic_ctx_id.parent_app_wrk_id);
   if (!app_wrk)
@@ -1491,12 +1489,13 @@ quic_notify_app_connected (quic_ctx_t * ctx)
 
   quic_session = session_alloc (thread_index);
 
+  lctx = quic_ctx_get (ctx->c_quic_ctx_id.listener_ctx_id, 0);
   QUIC_DBG (2, "Allocated quic_session, id %u, thread %u",
 	    quic_session->session_index, quic_session->thread_index);
   ctx->c_s_index = quic_session->session_index;
   quic_session->app_wrk_index = ctx->c_quic_ctx_id.parent_app_wrk_id;
   quic_session->connection_index = ctx->c_c_index;
-  quic_session->listener_index = qm->fake_app_listener_index;
+  quic_session->listener_handle = lctx->c_s_index;
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    ctx->c_quic_ctx_id.udp_is_ip4);
@@ -1727,7 +1726,8 @@ quic_session_accepted_callback (session_t * udp_session)
   session_t *udp_listen_session;
   u32 thread_index = vlib_get_thread_index ();
 
-  udp_listen_session = listen_session_get (udp_session->listener_index);
+  udp_listen_session =
+    listen_session_get_from_handle (udp_session->listener_handle);
 
   ctx_index = quic_ctx_alloc (thread_index);
   ctx = quic_ctx_get (ctx_index, thread_index);
@@ -1896,7 +1896,6 @@ quic_create_quic_session (quic_ctx_t * ctx)
   session_t *quic_session;
   app_worker_t *app_wrk;
   quic_ctx_t *lctx;
-  quic_main_t *qm = &quic_main;
   int rv;
 
   quic_session = session_alloc (ctx->c_thread_index);
@@ -1913,8 +1912,7 @@ quic_create_quic_session (quic_ctx_t * ctx)
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    ctx->c_quic_ctx_id.udp_is_ip4);
-  quic_session->listener_index = qm->fake_app_listener_index;
-  quic_session->app_index = quic_main.app_index;
+  quic_session->listener_handle = lctx->c_quic_ctx_id.listener_ctx_id;
 
   /* TODO: don't alloc fifos when we don't transfer data on this session
    * but we still need fifos for the events? */
@@ -2233,7 +2231,6 @@ quic_init (vlib_main_t * vm)
   quic_main_t *qm = &quic_main;
   u32 fifo_size = QUIC_FIFO_SIZE;
   u32 num_threads, i;
-  application_t *app;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -2276,18 +2273,6 @@ quic_init (vlib_main_t * vm)
     qm->ca_cert_path = QUIC_DEFAULT_CA_CERT_PATH;
 
   qm->app_index = a->app_index;
-
-  /*  Fake app listener hack, to remove */
-  app = application_get (a->app_index);
-  app_listener_t *fake_app_listener;
-  pool_get (app->listeners, fake_app_listener);
-  clib_memset (fake_app_listener, 0, sizeof (*fake_app_listener));
-  fake_app_listener->al_index = fake_app_listener - app->listeners;
-  fake_app_listener->app_index = app->app_index;
-  fake_app_listener->session_index = SESSION_INVALID_INDEX;
-  fake_app_listener->local_index = SESSION_INVALID_INDEX;
-  qm->fake_app_listener_index = fake_app_listener->al_index;
-  /* End fake listener hack */
 
   qm->tstamp_ticks_per_clock = vm->clib_time.seconds_per_clock
     / QUIC_TSTAMP_RESOLUTION;

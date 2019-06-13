@@ -788,7 +788,8 @@ session_accepted_handler (session_accepted_msg_t * mp)
 					 svm_msg_q_t *);
 
   /* Add it to lookup table */
-  DBG ("Accepted session handle %lx, idx %lu", mp->handle, session_index);
+  DBG ("Accepted session handle %lx, Listener %lx idx %lu", mp->handle,
+       mp->listener_handle, session_index);
   hash_set (em->session_index_by_vpp_handles, mp->handle, session_index);
 
   /*

@@ -167,7 +167,7 @@ typedef struct session_
   union
   {
     /** Parent listener session index if the result of an accept */
-    u32 listener_index;
+    session_handle_t listener_handle;
 
     /** App listener index in app's listener pool if a listener */
     u32 al_index;

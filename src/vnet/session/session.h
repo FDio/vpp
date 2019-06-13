@@ -367,7 +367,7 @@ void session_transport_delete_notify (transport_connection_t * tc);
 void session_transport_closed_notify (transport_connection_t * tc);
 void session_transport_reset_notify (transport_connection_t * tc);
 int session_stream_accept (transport_connection_t * tc, u32 listener_index,
-			   u8 notify);
+			   u32 thread_index, u8 notify);
 void session_register_transport (transport_proto_t transport_proto,
 				 const transport_proto_vft_t * vft, u8 is_ip4,
 				 u32 output_node);
