@@ -690,13 +690,24 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		  am->output_lc_index_by_sw_if_index[sw_if_index[0]];
 
 	      action = 0;	/* deny by default */
-	      acl_plugin_match_5tuple_inline (am, lc_index0,
-					      (fa_5tuple_opaque_t *) &
-					      fa_5tuple[0], is_ip6, &action,
-					      &match_acl_pos,
-					      &match_acl_in_index,
-					      &match_rule_index,
-					      &trace_bitmap);
+	      if (PREDICT_FALSE
+		  (am->interface_acl_counters_enabled
+		   && acl_plugin_match_5tuple_inline (am, lc_index0,
+						      (fa_5tuple_opaque_t *) &
+						      fa_5tuple[0], is_ip6,
+						      &action, &match_acl_pos,
+						      &match_acl_in_index,
+						      &match_rule_index,
+						      &trace_bitmap)))
+		{
+		  u32 buf_len = vlib_buffer_length_in_chain (vm, b[0]);
+		  vlib_increment_combined_counter (am->combined_acl_counters +
+						   match_acl_in_index,
+						   thread_index,
+						   match_rule_index, 1,
+						   buf_len);
+		}
+
 	      b[0]->error = error_node->errors[action];
 
 	      if (1 == action)

@@ -77,6 +77,7 @@ _(ACL_INTERFACE_ADD_DEL, acl_interface_add_del)	\
 _(ACL_INTERFACE_SET_ACL_LIST, acl_interface_set_acl_list)	\
 _(ACL_DUMP, acl_dump)  \
 _(ACL_INTERFACE_LIST_DUMP, acl_interface_list_dump) \
+_(ACL_STATS_COUNTERS_ENABLE, acl_stats_counters_enable) \
 _(MACIP_ACL_ADD, macip_acl_add) \
 _(MACIP_ACL_ADD_REPLACE, macip_acl_add_replace) \
 _(MACIP_ACL_DEL, macip_acl_del) \
@@ -373,6 +374,31 @@ policy_notify_acl_change (acl_main_t * am, u32 acl_num)
 }
 
 
+static void
+validate_and_reset_acl_counters (acl_main_t * am, u32 acl_index)
+{
+  int i;
+  /* counters are set as vectors [acl#] pointing to vectors of [acl rule] */
+  acl_plugin_counter_lock (am);
+
+  int old_len = vec_len (am->combined_acl_counters);
+
+  vec_validate (am->combined_acl_counters, acl_index);
+
+  for (i = old_len; i < vec_len (am->combined_acl_counters); i++)
+    {
+      i32 rule_count = vec_len (am->acls[acl_index].rules);
+      vlib_validate_combined_counter (&am->combined_acl_counters[i],
+				      rule_count);
+      vlib_zero_combined_counter (&am->combined_acl_counters[i], rule_count);
+      /* fill in the missing name(s) */
+      am->combined_acl_counters[i].name = "matches";
+      /* filled in once only */
+      am->combined_acl_counters[i].stat_segment_name = (void *)
+	format (0, "/acl/%d/matches%c", i, 0);
+    }
+  acl_plugin_counter_unlock (am);
+}
 
 static int
 acl_add_list (u32 count, vl_api_acl_rule_t rules[],
@@ -464,6 +490,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       /* a change in an ACLs if they are applied may mean a new policy epoch */
       policy_notify_acl_change (am, *acl_list_index);
     }
+  validate_and_reset_acl_counters (am, *acl_list_index);
 
   /* notify the lookup contexts about the ACL changes */
   acl_plugin_lookup_context_notify_acl_change (*acl_list_index);
@@ -657,6 +684,16 @@ acl_interface_out_enable_disable (acl_main_t * am, u32 sw_if_index,
 
   am->out_acl_on_sw_if_index =
     clib_bitmap_set (am->out_acl_on_sw_if_index, sw_if_index, enable_disable);
+
+  return rv;
+}
+
+static int
+acl_stats_counters_enable_disable (acl_main_t * am, int enable_disable)
+{
+  int rv = 0;
+
+  am->interface_acl_counters_enabled = enable_disable;
 
   return rv;
 }
@@ -1896,6 +1933,20 @@ vl_api_acl_del_t_handler (vl_api_acl_del_t * mp)
 
   REPLY_MACRO (VL_API_ACL_DEL_REPLY);
 }
+
+static void
+vl_api_acl_stats_counters_enable_t_handler (vl_api_acl_stats_counters_enable_t
+					    * mp)
+{
+  acl_main_t *am = &acl_main;
+  vl_api_acl_stats_counters_enable_reply_t *rmp;
+  int rv;
+
+  rv = acl_stats_counters_enable_disable (am, ntohl (mp->enable));
+
+  REPLY_MACRO (VL_API_ACL_DEL_REPLY);
+}
+
 
 static void
 vl_api_acl_interface_add_del_t_handler (vl_api_acl_interface_add_del_t * mp)
@@ -3394,6 +3445,8 @@ acl_show_aclplugin_tables_fn (vlib_main_t * vm,
       show_applied_info = 1;
       show_bihash = 1;
     }
+  vlib_cli_output (vm, "Stats counters enabled for interface ACLs: %d",
+		   acl_main.interface_acl_counters_enabled);
   if (show_mask_type)
     acl_plugin_show_tables_mask_type ();
   if (show_acl_hash_info)
@@ -3660,6 +3713,10 @@ acl_init (vlib_main_t * vm)
   am->tuple_merge_split_threshold = TM_SPLIT_THRESHOLD;
 
   am->interface_acl_user_id = ~0;	/* defer till the first use */
+
+  am->acl_counter_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+						 CLIB_CACHE_LINE_BYTES);
+  am->acl_counter_lock[0] = 0;	/* should be no need */
 
   return error;
 }
