@@ -2701,7 +2701,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  clib_memcpy (a->link_layer_address, eth_if0->address, 6);
 
 	  /* fill in default link-local address  (this may be overridden) */
-	  ip6_link_local_address_from_ethernet_address
+	  ip6_link_local_address_from_ethernet_mac_address
 	    (&a->link_local_address, eth_if0->address);
 
 	  mhash_init (&a->address_to_prefix_index, sizeof (uword),

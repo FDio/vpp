@@ -211,23 +211,6 @@ ip6_set_solicited_node_multicast_address (ip6_address_t * a, u32 id)
 }
 
 always_inline void
-ip6_link_local_address_from_ethernet_address (ip6_address_t * a,
-					      const u8 * ethernet_address)
-{
-  a->as_u64[0] = a->as_u64[1] = 0;
-  a->as_u16[0] = clib_host_to_net_u16 (0xfe80);
-  /* Always set locally administered bit (6). */
-  a->as_u8[0x8] = ethernet_address[0] | (1 << 6);
-  a->as_u8[0x9] = ethernet_address[1];
-  a->as_u8[0xa] = ethernet_address[2];
-  a->as_u8[0xb] = 0xff;
-  a->as_u8[0xc] = 0xfe;
-  a->as_u8[0xd] = ethernet_address[3];
-  a->as_u8[0xe] = ethernet_address[4];
-  a->as_u8[0xf] = ethernet_address[5];
-}
-
-always_inline void
 ip6_multicast_ethernet_address (u8 * ethernet_address, u32 group_id)
 {
   ethernet_address[0] = 0x33;
