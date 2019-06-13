@@ -168,6 +168,7 @@ session_alloc (u32 thread_index)
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
+  s->app_index = APP_INVALID_INDEX;
   return s;
 }
 
@@ -877,13 +878,13 @@ session_stream_accept_notify (transport_connection_t * tc)
  */
 int
 session_stream_accept (transport_connection_t * tc, u32 listener_index,
-		       u8 notify)
+		       u32 thread_index, u8 notify)
 {
   session_t *s;
   int rv;
 
   s = session_alloc_for_connection (tc);
-  s->listener_index = listener_index;
+  s->listener_handle = ((u64) thread_index << 32) | (u64) listener_index;
   s->session_state = SESSION_STATE_CREATED;
 
   if ((rv = app_worker_init_accepted (s)))

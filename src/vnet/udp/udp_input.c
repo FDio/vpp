@@ -210,7 +210,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  child0->is_connected = 1;
 
 		  if (session_stream_accept (&child0->connection,
-					     tc0->s_index, 1))
+					     tc0->s_index, tc0->thread_index,
+					     1))
 		    {
 		      error0 = UDP_ERROR_CREATE_SESSION;
 		      goto trace0;

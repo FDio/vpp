@@ -128,7 +128,7 @@ ct_session_connect_notify (session_t * ss)
   ss = session_get (ss_index, 0);
   cs->session_type = ss->session_type;
   cs->connection_index = sct->c_c_index;
-  cs->listener_index = SESSION_INVALID_INDEX;
+  cs->listener_handle = SESSION_INVALID_HANDLE;
   cs->session_state = SESSION_STATE_CONNECTING;
   cs->app_wrk_index = client_wrk->wrk_index;
   cs->connection_index = cct->c_c_index;
@@ -280,7 +280,7 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   ss->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
 						     sct->c_is_ip4);
   ss->connection_index = sct->c_c_index;
-  ss->listener_index = ll->session_index;
+  ss->listener_handle = listen_session_get_handle (ll);
   ss->session_state = SESSION_STATE_CREATED;
 
   server_wrk = application_listener_select_worker (ll);
