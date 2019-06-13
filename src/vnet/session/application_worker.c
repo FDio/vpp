@@ -275,7 +275,7 @@ app_worker_init_accepted (session_t * s)
   segment_manager_t *sm;
   session_t *listener;
 
-  listener = listen_session_get (s->listener_index);
+  listener = listen_session_get_from_handle (s->listener_handle);
   app_wrk = application_listener_select_worker (listener);
   s->app_wrk_index = app_wrk->wrk_index;
 
