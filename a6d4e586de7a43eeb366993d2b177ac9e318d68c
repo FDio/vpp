@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "db596ab3_1b502a9f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 6
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-13T10:38:29Z",
+      "side": 1,
+      "message": "buffers",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 12
+      },
+      "revId": "a6d4e586de7a43eeb366993d2b177ac9e318d68c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "df40279c_0c39f824",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 1399,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-13T10:38:29Z",
+      "side": 1,
+      "message": "please explain reasoning behind this change...",
+      "range": {
+        "startLine": 1399,
+        "startChar": 0,
+        "endLine": 1399,
+        "endChar": 48
+      },
+      "revId": "a6d4e586de7a43eeb366993d2b177ac9e318d68c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
