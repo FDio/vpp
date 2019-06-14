@@ -236,7 +236,7 @@ typedef struct
   lacp_port_info_t partner;
   lacp_port_info_t partner_admin;;
 
-  /* Partner port information */
+  /* Actor port information */
   lacp_port_info_t actor;
   lacp_port_info_t actor_admin;
 
