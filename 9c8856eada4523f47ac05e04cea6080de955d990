@@ -88,6 +88,24 @@
       "revId": "9c8856eada4523f47ac05e04cea6080de955d990",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3934a1f_0808b449",
+        "filename": "src/vnet/ip/ip_types.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-14T13:14:22Z",
+      "side": 1,
+      "message": "I think you are saying its either 4 or 16 significant bytes in a fixed len union of 16. Yes?",
+      "parentUuid": "08a20c8b_4b4f339a",
+      "revId": "9c8856eada4523f47ac05e04cea6080de955d990",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
