@@ -209,7 +209,7 @@ gbp_policy_inline (vlib_main_t * vm,
 	  /*
 	   * determine the src and dst EPG
 	   */
-
+	  key0.gck_src = vnet_buffer2 (b0)->gbp.sclass;
 	  key0.gck_dst = SCLASS_INVALID;
 
 	  if (GBP_POLICY_LPM == type)
@@ -247,7 +247,6 @@ gbp_policy_inline (vlib_main_t * vm,
 	      b0->error = node->errors[GBP_POLICY_ERROR_DROP_NO_DCLASS];
 	      goto trace;
 	    }
-	  key0.gck_src = vnet_buffer2 (b0)->gbp.sclass;
 
 	  if (SCLASS_INVALID != key0.gck_src)
 	    {
