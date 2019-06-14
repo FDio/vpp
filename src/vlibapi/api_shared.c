@@ -469,6 +469,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
   u16 id = ntohs (*((u16 *) the_msg));
   u8 *(*handler) (void *, void *, void *);
   u8 *(*print_fp) (void *, void *);
+  int is_mp_safe = 1;
 
   if (PREDICT_FALSE (vm->elog_trace_api_messages))
     {
@@ -510,14 +511,15 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 	      (*print_fp) (the_msg, vm);
 	    }
 	}
+      is_mp_safe = am->is_mp_safe[id];
 
-      if (!am->is_mp_safe[id])
+      if (!is_mp_safe)
 	{
 	  vl_msg_api_barrier_trace_context (am->msg_names[id]);
 	  vl_msg_api_barrier_sync ();
 	}
       (*handler) (the_msg, vm, node);
-      if (!am->is_mp_safe[id])
+      if (!is_mp_safe)
 	vl_msg_api_barrier_release ();
     }
   else
@@ -535,14 +537,22 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
   if (PREDICT_FALSE (vm->elog_trace_api_messages))
     {
       /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (e) = {
-        .format = "api-msg-done: %s",
-        .format_args = "T4",
-      };
+      ELOG_TYPE_DECLARE (e) =
+        {
+          .format = "api-msg-done(%s): %s",
+          .format_args = "t4T4",
+          .n_enum_strings = 2,
+          .enum_strings =
+          {
+            "barrier",
+            "mp-safe",
+          }
+        };
       /* *INDENT-ON* */
 
       struct
       {
+	u32 barrier;
 	u32 c;
       } *ed;
       ed = ELOG_DATA (&vm->elog_main, e);
@@ -550,6 +560,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 	ed->c = elog_id_for_msg_name (vm, (const char *) am->msg_names[id]);
       else
 	ed->c = elog_id_for_msg_name (vm, "BOGUS");
+      ed->barrier = is_mp_safe;
     }
 }
 

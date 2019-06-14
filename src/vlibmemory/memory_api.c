@@ -466,6 +466,7 @@ vl_mem_api_init (const char *region_name)
    */
   am->message_bounce[VL_API_MEMCLNT_DELETE] = 1;
   am->is_mp_safe[VL_API_MEMCLNT_KEEPALIVE_REPLY] = 1;
+  am->is_mp_safe[VL_API_MEMCLNT_KEEPALIVE] = 1;
 
   vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
 
