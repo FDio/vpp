@@ -509,6 +509,20 @@ stat_segment_index_to_name (uint32_t index)
   return stat_segment_index_to_name_r (index, sm);
 }
 
+uint64_t
+stat_segment_version_r (stat_client_main_t * sm)
+{
+  ASSERT (sm->shared_header);
+  return sm->shared_header->version;
+}
+
+uint64_t
+stat_segment_version (void)
+{
+  stat_client_main_t *sm = &stat_client_main;
+  return stat_segment_version_r (sm);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
