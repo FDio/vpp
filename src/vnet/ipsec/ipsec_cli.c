@@ -374,12 +374,14 @@ static void
 ipsec_spd_bindings_show_all (vlib_main_t * vm, ipsec_main_t * im)
 {
   u32 spd_id, sw_if_index;
+  ipsec_spd_t *spd;
 
   vlib_cli_output (vm, "SPD Bindings:");
 
   /* *INDENT-OFF* */
   hash_foreach(sw_if_index, spd_id, im->spd_index_by_sw_if_index, ({
-    vlib_cli_output (vm, "  %d -> %U", spd_id,
+    spd = pool_elt_at_index (im->spds, spd_id);
+    vlib_cli_output (vm, "  %d -> %U", spd->id,
                      format_vnet_sw_if_index_name, im->vnet_main,
                      sw_if_index);
   }));
