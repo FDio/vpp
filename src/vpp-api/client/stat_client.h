@@ -78,6 +78,8 @@ double stat_segment_heartbeat (void);
 
 char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
 char *stat_segment_index_to_name (uint32_t index);
+uint64_t stat_segment_version (void);
+uint64_t stat_segment_version_r (stat_client_main_t * sm);
 
 #endif /* included_stat_client_h */
 
