@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0be104f3_ad57a6a9",
+        "filename": "src/vnet/ip/ip4_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-14T15:09:15Z",
+      "side": 1,
+      "message": "ip_lens \u003d (i32x4) u16x8_byte_swap ( (u16x8) ip_lens);",
+      "range": {
+        "startLine": 193,
+        "startChar": 2,
+        "endLine": 193,
+        "endChar": 45
+      },
+      "revId": "be74bf98670a2416e06ad805c806234ef27eb2cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d953e65b_04428f41",
+        "filename": "src/vnet/ip/ip4_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-14T15:09:15Z",
+      "side": 1,
+      "message": "errors \u003d buff_len_errors | ip_len_errors |\n      frag_errors | ttl_errors | version_errors;\nif (verify_checksum)\n  errors |\u003d chksum_errors;",
+      "range": {
+        "startLine": 207,
+        "startChar": 0,
+        "endLine": 212,
+        "endChar": 48
+      },
+      "revId": "be74bf98670a2416e06ad805c806234ef27eb2cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "873d6372_c7e9bd67",
+        "filename": "src/vnet/ip/ip4_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-06-14T15:09:15Z",
+      "side": 1,
+      "message": "i32x4_splat (IP4_ERROR_TOO_SHORT)",
+      "range": {
+        "startLine": 226,
+        "startChar": 36,
+        "endLine": 226,
+        "endChar": 49
+      },
+      "revId": "be74bf98670a2416e06ad805c806234ef27eb2cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
