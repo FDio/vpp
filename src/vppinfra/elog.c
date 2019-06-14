@@ -508,6 +508,7 @@ elog_init (elog_main_t * em, u32 n_events)
   elog_track_register (em, &em->default_track);
 
   elog_time_now (&em->init_time);
+  em->string_table_hash = hash_create_string (0, sizeof (uword));
 }
 
 /* Returns number of events in ring and start index. */
@@ -561,17 +562,39 @@ u32
 elog_string (elog_main_t * em, char *fmt, ...)
 {
   u32 offset;
+  uword *p;
+  uword len;
   va_list va;
 
   elog_lock (em);
+  vec_reset_length (em->string_table_tmp);
   va_start (va, fmt);
-  offset = vec_len (em->string_table);
-  em->string_table = (char *) va_format ((u8 *) em->string_table, fmt, &va);
+  em->string_table_tmp = va_format (em->string_table_tmp, fmt, &va);
   va_end (va);
 
-  /* Null terminate string if it is not already. */
-  if (vec_end (em->string_table)[-1] != 0)
-    vec_add1 (em->string_table, 0);
+  /* See if we already have this string in the string table */
+  p = hash_get_mem (em->string_table_hash, em->string_table_tmp);
+
+  /* We already have the string, so give the caller its offset */
+  if (p)
+    {
+      elog_unlock (em);
+      return (p[0]);
+    }
+
+  /* We don't, so add it. String table entries MUST be NULL terminated */
+  len = vec_len (em->string_table_tmp);
+  ASSERT (len > 0);
+  if (em->string_table_tmp[len - 1] != 0)
+    vec_add1 (em->string_table_tmp, 0);
+
+  offset = vec_len (em->string_table);
+  vec_append (em->string_table, em->string_table_tmp);
+
+  hash_set_mem (em->string_table_hash, em->string_table_tmp, offset);
+
+  /* We gave the key to the string table hash, so we can't reuse it! */
+  em->string_table_tmp = 0;
   elog_unlock (em);
 
   return offset;
