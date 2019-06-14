@@ -165,6 +165,7 @@ gbp_policy_inline (vlib_main_t * vm,
 
 	  /* zero out the key to ensure the pad space is clear */
 	  key0.as_u64 = 0;
+	  key0.gck_src = vnet_buffer2 (b0)->gbp.sclass;
 	  key0.gck_dst = SCLASS_INVALID;
 
 	  if (GBP_POLICY_LPM == type)
