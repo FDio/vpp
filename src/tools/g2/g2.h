@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * Copyright (c) 2005-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,9 +29,9 @@ typedef unsigned long long ulonglong;
  * main.c
  */
 
-GtkWidget *g_mainwindow;
-GtkWidget *g_mainvbox;
-GtkWidget *g_mainhbox;
+extern GtkWidget *g_mainwindow;
+extern GtkWidget *g_mainvbox;
+extern GtkWidget *g_mainhbox;
 
 /*
  * pointsel.c
@@ -55,30 +55,30 @@ typedef struct event_def_ {
     char pad[2];
 } event_def_t;
 
-event_def_t *find_event_definition (ulong code);
+extern event_def_t *find_event_definition (ulong code);
 
-event_def_t g_eventdefs[NEVENTS];
+extern event_def_t g_eventdefs[NEVENTS];
 
 /*
  * config params
  */
-int c_maxpointsel;        /* max # points shown in selector dlg */
-gint c_view1_draw_width;
-gint c_view1_draw_height;
+extern int c_maxpointsel;        /* max # points shown in selector dlg */
+extern gint c_view1_draw_width;
+extern gint c_view1_draw_height;
 
 /*
  * menu1.c
  */
 
 void menu1_init(void);
-void modal_dialog (char *label_text, char *retry_text, char *default_value, 
+void modal_dialog (char *label_text, char *retry_text, char *default_value,
                    boolean (*cb)(char *));
 void infobox(char *label_text, char *text);
 /*
  * view1.c
  */
-GdkFont *g_font;
-GdkColor fg_black, bg_white;
+extern GdkFont *g_font;
+extern GdkColor fg_black, bg_white;
 void view1_init(void);
 void view1_display(void);
 void view1_read_events_callback(void);
@@ -132,10 +132,10 @@ int read_cpel_file(char *file);
 int read_clib_file(char *file);
 void cpel_event_init(ulong);
 void add_event_from_cpel_file(ulong, char * , char *);
-void add_event_from_clib_file(unsigned int event, char *name, 
+void add_event_from_clib_file(unsigned int event, char *name,
                               unsigned int vec_index);
 void add_cpel_event(ulonglong delta, ulong, ulong, ulong);
-void add_clib_event(double delta, unsigned short track, 
+void add_clib_event(double delta, unsigned short track,
                     unsigned short event, unsigned int index);
 void cpel_event_finalize(void);
 void *get_clib_event (unsigned int datum);
@@ -145,7 +145,7 @@ typedef struct pid_data {
     ulong pid_value;            /* The actual pid value */
     ulong pid_index;            /* Index in pid sort order */
 } pid_data_t;
-    
+
 #define EVENT_FLAG_SELECT 	0x00000001 /* This event is selected */
 #define EVENT_FLAG_SEARCHRSLT   0x00000002 /* This event is the search rslt */
 #define EVENT_FLAG_CLIB         0x00000004 /* clib event */
@@ -169,28 +169,28 @@ typedef struct event {
 } event_t;
 
 
-boolean g_little_endian;
-event_t *g_events;
-ulong g_nevents;
-pid_sort_t *g_pids;
-pid_sort_t *g_original_pids;
-int g_npids;
-pid_data_t *g_pid_data_list;
+extern boolean g_little_endian;
+extern event_t *g_events;
+extern ulong g_nevents;
+extern pid_sort_t *g_pids;
+extern pid_sort_t *g_original_pids;
+extern int g_npids;
+extern pid_data_t *g_pid_data_list;
 
 #define PIDHASH_NBUCKETS	20021 /* Should be prime */
 
-boolean ticks_per_ns_set;
-double ticks_per_ns;
+extern boolean ticks_per_ns_set;
+extern double ticks_per_ns;
 
 /*
  * version.c
  */
-const char *version_string;
-const char *minor_v_string;
+extern const char *version_string;
+extern const char *minor_v_string;
 
 /*
  * cpel.c
  */
 char *get_track_label(unsigned long);
-int widest_track_format;
+extern int widest_track_format;
 char *strtab_ref(unsigned long);
