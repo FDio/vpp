@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ddec527b_ffb8c944",
+        "filename": "test/test_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-14T10:56:03Z",
+      "side": 1,
+      "message": "Do you want to show every packet, or only show the failed packets in the message of the assert?",
+      "range": {
+        "startLine": 144,
+        "startChar": 0,
+        "endLine": 145,
+        "endChar": 45
+      },
+      "revId": "81262de270f67fb01ad93269e1c981f3500e74ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ada0610_dcb3cbf6",
+        "filename": "test/test_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 779,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-14T10:56:03Z",
+      "side": 1,
+      "message": "(rx.haslayer(IP), \u0027Expected IP packet. found: %s\u0027 % rx.command)",
+      "range": {
+        "startLine": 779,
+        "startChar": 39,
+        "endLine": 779,
+        "endChar": 43
+      },
+      "revId": "81262de270f67fb01ad93269e1c981f3500e74ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "90c1db86_7e3f7dcb",
+        "filename": "test/test_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 783,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-14T10:56:03Z",
+      "side": 1,
+      "message": "(rx.haslayer(UDP), \u0027Expected UDP packet. found: %s\u0027 % rx.command)",
+      "range": {
+        "startLine": 783,
+        "startChar": 31,
+        "endLine": 783,
+        "endChar": 49
+      },
+      "revId": "81262de270f67fb01ad93269e1c981f3500e74ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c2e6c2f4_cbb4718b",
+        "filename": "test/vpp_ipsec_tun_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-14T10:56:03Z",
+      "side": 1,
+      "message": "can we use kwargs here and remove the definition from vpp_papi_provider?",
+      "range": {
+        "startLine": 34,
+        "startChar": 0,
+        "endLine": 37,
+        "endChar": 72
+      },
+      "revId": "81262de270f67fb01ad93269e1c981f3500e74ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e5f52fe_c7fd347f",
+        "filename": "test/vpp_ipsec_tun_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-14T10:56:03Z",
+      "side": 1,
+      "message": "This logic should be factored out at some point.",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 36
+      },
+      "revId": "81262de270f67fb01ad93269e1c981f3500e74ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f21c1651_b8af69cc",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1910,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-14T10:56:03Z",
+      "side": 1,
+      "message": "Do you see any issues with changing the keys to string types?",
+      "range": {
+        "startLine": 1902,
+        "startChar": 16,
+        "endLine": 1910,
+        "endChar": 53
+      },
+      "revId": "81262de270f67fb01ad93269e1c981f3500e74ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
