@@ -19,11 +19,7 @@ vfio driver can still be used with recent kernels which support no-iommu mode.
 
 ##Known issues
 This driver is still in experimental phase, however it shows very good 
-performance numbers. Following items are not implemented (yet).
-
-* Jumbo MTU support
-* Adaptive mode
-* NUMA support
+performance numbers.
 
 ## Usage
 ### System setup
