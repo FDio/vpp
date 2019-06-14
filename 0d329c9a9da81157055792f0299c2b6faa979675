@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0fb35f7e_75644bde",
+        "filename": "src/plugins/acl/sess_mgmt_node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-06-14T22:40:13Z",
+      "side": 1,
+      "message": "You can probably place a single clib_bitmap_free() here rather than having two identical copies in if and else branches ?",
+      "range": {
+        "startLine": 730,
+        "startChar": 0,
+        "endLine": 730,
+        "endChar": 4
+      },
+      "revId": "0d329c9a9da81157055792f0299c2b6faa979675",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
