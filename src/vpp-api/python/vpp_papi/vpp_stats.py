@@ -49,6 +49,7 @@ typedef struct
 
 typedef struct
 {
+  uint64_t version;
   uint64_t epoch;
   uint64_t in_progress;
   uint64_t directory_offset;
@@ -82,6 +83,8 @@ double stat_segment_heartbeat_r (stat_client_main_t * sm);
 int stat_segment_vec_len(void *vec);
 uint8_t **stat_segment_string_vector(uint8_t **string_vector, char *string);
 char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
+uint64_t stat_segment_version(void);
+uint64_t stat_segment_version_r(stat_client_main_t *sm);
 void free(void *ptr);
 """)
 
