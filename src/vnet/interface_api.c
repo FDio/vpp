@@ -311,7 +311,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   if (!mp->name_filter_valid && sw_if_index != ~0 && sw_if_index != 0)
     {
       /* is it a valid sw_if_index? */
-      if (vec_len (im->sw_interfaces) <= sw_if_index)
+      if (!vnet_sw_if_index_is_api_valid (sw_if_index))
 	return;
 
       swif = vec_elt_at_index (im->sw_interfaces, sw_if_index);
