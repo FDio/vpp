@@ -1889,7 +1889,8 @@ class VppPapiProvider(object):
                                 remote_spi, crypto_alg, local_crypto_key,
                                 remote_crypto_key, integ_alg, local_integ_key,
                                 remote_integ_key, is_add=1, esn=0, salt=0,
-                                anti_replay=1, renumber=0, show_instance=0):
+                                anti_replay=1, renumber=0,
+                                udp_encap=0, show_instance=0):
         return self.api(
             self.papi.ipsec_tunnel_if_add_del,
             {
@@ -1912,6 +1913,7 @@ class VppPapiProvider(object):
                 'anti_replay': anti_replay,
                 'renumber': renumber,
                 'show_instance': show_instance,
+                'udp_encap': udp_encap,
                 'salt': salt
             })
 
