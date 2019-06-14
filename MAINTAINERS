@@ -363,6 +363,12 @@ I:	vcl
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vcl
 
+Statistics Segment
+I:	stats
+M:	Ole Troan <ot@cisco.com>
+F:	src/vpp/stats/
+F:	src/vpp-api/client/stat_client.[ch]
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>

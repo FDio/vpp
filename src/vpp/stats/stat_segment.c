@@ -272,6 +272,9 @@ vlib_map_stat_segment_init (void)
 
   sm->directory_vector_by_name = hash_create_string (0, sizeof (uword));
   sm->shared_header = shared_header = memaddr;
+
+  shared_header->version = STAT_SEGMENT_VERSION;
+
   sm->stat_segment_lockp = clib_mem_alloc (sizeof (clib_spinlock_t));
   clib_spinlock_init (sm->stat_segment_lockp);
 

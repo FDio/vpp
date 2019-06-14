@@ -70,11 +70,15 @@ typedef struct
 /* Default stat segment 32m */
 #define STAT_SEGMENT_DEFAULT_SIZE	(32<<20)
 
+/* Shared segment memory layout version */
+#define STAT_SEGMENT_VERSION		1
+
 /*
  * Shared header first in the shared memory segment.
  */
 typedef struct
 {
+  u64 version;
   atomic_int_fast64_t epoch;
   atomic_int_fast64_t in_progress;
   atomic_int_fast64_t directory_offset;
