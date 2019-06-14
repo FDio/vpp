@@ -92,6 +92,11 @@ I:	ip
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/ip/
 
+VNET Interface Common
+I:	interface
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/interface*.[ch]
+
 VNET Segment Routing (IPv6 and MPLS)
 I:	sr
 M:	Pablo Camarillo <pcamaril@cisco.com>
