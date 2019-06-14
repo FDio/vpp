@@ -34,7 +34,7 @@ static quic_main_t quic_main;
 
 static void quic_update_timer (quic_ctx_t * ctx);
 static void quic_connection_closed (u32 conn_index, u32 thread_index);
-static void quic_disconnect (u32 ctx_index, u32 thread_index);
+static void quic_proto_on_close (u32 ctx_index, u32 thread_index);
 static int quic_connect_new_stream (session_endpoint_cfg_t * sep);
 static int quic_connect_new_connection (session_endpoint_cfg_t * sep);
 
@@ -60,6 +60,10 @@ static void quic_transfer_connection (u32 ctx_index, u32 dest_thread);
 #define QUIC_FIFO_SIZE (64 << 10)
 
 #define QUIC_ERROR_FULL_FIFO 0xff10
+#define QUIC_APP_ERROR_NONE QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x1)
+#define QUIC_APP_ALLOCATION_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x1)
+#define QUIC_APP_ACCEPT_NOTIFY_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x2)
+#define QUIC_APP_CONNECT_NOTIFY_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x3)
 
 static char *
 quic_format_err (u64 code)
@@ -73,7 +77,7 @@ quic_format_err (u64 code)
     case QUICLY_ERROR_SENDBUF_FULL:
       return "QUICLY_ERROR_SENDBUF_FULL";
     case QUICLY_ERROR_FREE_CONNECTION:
-      return "no open stream on connection";
+      return "QUICLY_ERROR_FREE_CONNECTION";
     case QUICLY_ERROR_RECEIVED_STATELESS_RESET:
       return "QUICLY_ERROR_RECEIVED_STATELESS_RESET";
     case QUICLY_TRANSPORT_ERROR_NONE:
@@ -169,7 +173,6 @@ quic_disconnect_transport (quic_ctx_t * ctx)
 static int
 quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
 {
-  /*  QUIC_DBG (2, "Called quic_send_datagram at %ld", quic_get_time (NULL)); */
   u32 max_enqueue;
   session_dgram_hdr_t hdr;
   u32 len, ret;
@@ -316,7 +319,8 @@ stop_sending:
   return 0;
 
 quicly_error:
-  if (err != QUICLY_ERROR_PACKET_IGNORED)
+  if ((err != QUICLY_ERROR_PACKET_IGNORED) & (err !=
+					      QUICLY_ERROR_FREE_CONNECTION))
     clib_warning ("Quic error '%s'.", quic_format_err (err));
   quic_connection_closed (ctx->c_c_index, ctx->c_thread_index);
   return 1;
@@ -331,28 +335,50 @@ static void
 quic_on_stream_destroy (quicly_stream_t * stream, int err)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
-  u32 sctx_id = stream_data->ctx_id;
-  session_t *stream_session;
-  quic_ctx_t *sctx = quic_ctx_get (sctx_id, stream_data->thread_index);
-  QUIC_DBG (2, "Stream %ld (ctx %u) destroyed", stream->stream_id, sctx_id);
-  stream_session = session_get (sctx->c_s_index, sctx->c_thread_index);
+  quic_ctx_t *sctx =
+    quic_ctx_get (stream_data->ctx_id, stream_data->thread_index);
+  session_t *stream_session =
+    session_get (sctx->c_s_index, sctx->c_thread_index);
+  QUIC_DBG (2, "DESTROYED_STREAM: session 0x%lx (code 0x%x)",
+	    session_handle (stream_session), err);
+
   stream_session->session_state = SESSION_STATE_CLOSED;
   session_transport_delete_notify (&sctx->connection);
+
   quic_ctx_free (sctx);
   free (stream->data);
 }
 
 static int
-quic_on_stop_sending (quicly_stream_t * stream, int error_code)
+quic_on_stop_sending (quicly_stream_t * stream, int err)
 {
-  QUIC_DBG (2, "received STOP_SENDING: %d", error_code);
+#if QUIC_DEBUG >= 2
+  quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
+  quic_ctx_t *sctx =
+    quic_ctx_get (stream_data->ctx_id, stream_data->thread_index);
+  session_t *stream_session =
+    session_get (sctx->c_s_index, sctx->c_thread_index);
+  clib_warning ("(NOT IMPLEMENTD) STOP_SENDING: session 0x%lx (code 0x%x)",
+		session_handle (stream_session), err);
+#endif
+  /* TODO : handle STOP_SENDING */
   return 0;
 }
 
 static int
-quic_on_receive_reset (quicly_stream_t * stream, int error_code)
+quic_on_receive_reset (quicly_stream_t * stream, int err)
 {
-  QUIC_DBG (2, "received RESET_STREAM: %d", error_code);
+  quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
+  quic_ctx_t *sctx =
+    quic_ctx_get (stream_data->ctx_id, stream_data->thread_index);
+#if QUIC_DEBUG >= 2
+  session_t *stream_session =
+    session_get (sctx->c_s_index, sctx->c_thread_index);
+  clib_warning ("RESET_STREAM: session 0x%lx (code 0x%x)",
+		session_handle (stream_session), err);
+#endif
+
+  session_transport_closing_notify (&sctx->connection);
   return 0;
 }
 
@@ -529,7 +555,7 @@ quic_accept_stream (void *s)
     {
       QUIC_DBG (1, "failed to allocate fifos");
       session_free (stream_session);
-      quicly_reset_stream (stream, 0x30001);
+      quicly_reset_stream (stream, QUIC_APP_ALLOCATION_ERROR);
       return;
     }
 
@@ -538,7 +564,7 @@ quic_accept_stream (void *s)
     {
       QUIC_DBG (1, "failed to notify accept worker app");
       session_free_w_fifos (stream_session);
-      quicly_reset_stream (stream, 0x30002);
+      quicly_reset_stream (stream, QUIC_APP_ACCEPT_NOTIFY_ERROR);
       return;
     }
   session_lookup_add_connection (&sctx->connection,
@@ -888,7 +914,6 @@ quic_connection_closed (u32 ctx_index, u32 thread_index)
   QUIC_DBG (2, "Deleting conn with id %lu %lu", kv.key[0], kv.key[1]);
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 0 /* is_add */ );
 
-  // session_close (session_get_from_handle (ctx->c_quic_ctx_id.udp_session_handle));
   quic_disconnect_transport (ctx);
   session_transport_delete_notify (&ctx->connection);
   /*  Do not try to send anything anymore */
@@ -1182,7 +1207,7 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   if (app_worker_init_connected (app_wrk, stream_session))
     {
       QUIC_DBG (1, "failed to app_worker_init_connected");
-      quicly_reset_stream (stream, 0x30003);
+      quicly_reset_stream (stream, QUIC_APP_ALLOCATION_ERROR);
       session_free_w_fifos (stream_session);
       quic_ctx_free (sctx);
       return app_worker_connect_notify (app_wrk, NULL, sep->opaque);
@@ -1192,7 +1217,7 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   if (app_worker_connect_notify (app_wrk, stream_session, sep->opaque))
     {
       QUIC_DBG (1, "failed to notify app");
-      quicly_reset_stream (stream, 0x30004);
+      quicly_reset_stream (stream, QUIC_APP_CONNECT_NOTIFY_ERROR);
       session_free_w_fifos (stream_session);
       quic_ctx_free (sctx);
       return -1;
@@ -1256,30 +1281,34 @@ quic_connect_new_connection (session_endpoint_cfg_t * sep)
 }
 
 static void
-quic_disconnect (u32 ctx_index, u32 thread_index)
+quic_proto_on_close (u32 ctx_index, u32 thread_index)
 {
-  QUIC_DBG (2, "Called quic_disconnect");
-  quic_ctx_t *ctx;
-
-  ctx = quic_ctx_get (ctx_index, thread_index);
+  quic_ctx_t *ctx = quic_ctx_get (ctx_index, thread_index);
   if (ctx->c_quic_ctx_id.is_stream)
     {
-      QUIC_DBG (2, "Closing stream %x, session %x", ctx_index,
-		ctx->c_s_index);
+#if QUIC_DEBUG >= 2
+      session_t *stream_session =
+	session_get (ctx->c_s_index, ctx->c_thread_index);
+      clib_warning ("Closing Ssession 0x%lx",
+		    session_handle (stream_session));
+#endif
       quicly_stream_t *stream = ctx->c_quic_ctx_id.stream;
-      quicly_reset_stream (stream, 0x30000);
+      quicly_reset_stream (stream, QUIC_APP_ERROR_NONE);
     }
   else
     {
-      QUIC_DBG (2, "Closing connection %x, session %x", ctx_index,
-		ctx->c_s_index);
+#if QUIC_DEBUG >= 2
+      session_t *quic_session =
+	session_get (ctx->c_s_index, ctx->c_thread_index);
+      clib_warning ("Closing Qsession 0x%lx", session_handle (quic_session));
+#endif
       quicly_conn_t *conn = ctx->c_quic_ctx_id.conn;
       /* Start connection closing. Keep sending packets until quicly_send
          returns QUICLY_ERROR_FREE_CONNECTION */
       quicly_close (conn, 0, "");
       /* This also causes all streams to be closed (and the cb called) */
-      quic_send_packets (ctx);
     }
+  quic_send_packets (ctx);
 }
 
 static u32
@@ -1338,7 +1367,7 @@ quic_stop_listen (u32 lctx_index)
   QUIC_DBG (2, "Called quic_stop_listen");
   quic_ctx_t *lctx;
 
-  lctx = quic_ctx_get (lctx_index, 0);	/*  listener */
+  lctx = quic_ctx_get (lctx_index, 0);
   vnet_unlisten_args_t a = {
     .handle = lctx->c_quic_ctx_id.udp_session_handle,
     .app_index = quic_main.app_index,
@@ -1349,7 +1378,7 @@ quic_stop_listen (u32 lctx_index)
 
   /*  TODO: crypto state cleanup */
 
-  quic_ctx_free (lctx);		/*  listener */
+  quic_ctx_free (lctx);
   return 0;
 }
 
@@ -1503,7 +1532,7 @@ quic_notify_app_connected (quic_ctx_t * ctx)
   if (app_worker_init_connected (app_wrk, quic_session))
     {
       QUIC_DBG (1, "failed to app_worker_init_connected");
-      quic_disconnect (ctx_id, thread_index);
+      quic_proto_on_close (ctx_id, thread_index);
       return app_worker_connect_notify (app_wrk, NULL, ctx->client_opaque);
     }
 
@@ -1511,7 +1540,7 @@ quic_notify_app_connected (quic_ctx_t * ctx)
   if (app_worker_connect_notify (app_wrk, quic_session, ctx->client_opaque))
     {
       QUIC_DBG (1, "failed to notify app");
-      quic_disconnect (ctx_id, thread_index);
+      quic_proto_on_close (ctx_id, thread_index);
       return -1;
     }
 
@@ -2203,7 +2232,7 @@ static session_cb_vft_t quic_app_cb_vft = {
 
 static const transport_proto_vft_t quic_proto = {
   .connect = quic_connect,
-  .close = quic_disconnect,
+  .close = quic_proto_on_close,
   .start_listen = quic_start_listen,
   .stop_listen = quic_stop_listen,
   .get_connection = quic_connection_get,
