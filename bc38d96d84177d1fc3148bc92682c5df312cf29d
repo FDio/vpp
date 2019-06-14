@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "187861af_5c8bbfcd",
+        "filename": "src/plugins/acl/acl.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 918
+      },
+      "writtenOn": "2019-06-14T20:15:50Z",
+      "side": 1,
+      "message": "Not so much a concern as much as a question:  why not use the clib spinlock infrastructure here?",
+      "revId": "bc38d96d84177d1fc3148bc92682c5df312cf29d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
