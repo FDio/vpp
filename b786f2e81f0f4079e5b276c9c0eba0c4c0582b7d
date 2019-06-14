@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "9fb0c1ec_cf588f42",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-06-14T09:53:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4588e49d_fd7d9a97",
+      "revId": "b786f2e81f0f4079e5b276c9c0eba0c4c0582b7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b4ce6f3d_0d42d3f3",
         "filename": "src/vnet/devices/tap/tap.c",
         "patchSetId": 1
@@ -30,6 +48,30 @@
       "writtenOn": "2019-06-12T13:31:17Z",
       "side": 1,
       "message": "Remove this as we only need to set the MTU for host if user explicitly provide us with the value.",
+      "range": {
+        "startLine": 374,
+        "startChar": 1,
+        "endLine": 385,
+        "endChar": 5
+      },
+      "revId": "b786f2e81f0f4079e5b276c9c0eba0c4c0582b7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "73627c88_3aecea3f",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-06-14T09:53:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b4ce6f3d_0d42d3f3",
       "range": {
         "startLine": 374,
         "startChar": 1,
