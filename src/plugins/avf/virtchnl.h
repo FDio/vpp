@@ -193,12 +193,14 @@ typedef enum
 } virtchnl_event_codes_t;
 
 #define foreach_virtchnl_link_speed \
+  _(0, 2_5GB, "2.5 Gbps")		\
   _(1, 100MB, "100 Mbps")		\
   _(2, 1GB, "1 Gbps")			\
   _(3, 10GB, "10 Gbps")			\
   _(4, 40GB, "40 Gbps")			\
   _(5, 20GB, "20 Gbps")			\
-  _(6, 25GB, "25 Gbps")
+  _(6, 25GB, "25 Gbps")			\
+  _(7, 5GB, "5 Gbps")
 
 typedef enum
 {

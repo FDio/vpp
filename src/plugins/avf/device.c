@@ -1026,6 +1026,10 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 		kbps = 25000000;
 	      else if (speed == VIRTCHNL_LINK_SPEED_10GB)
 		kbps = 10000000;
+	      else if (speed == VIRTCHNL_LINK_SPEED_5GB)
+		kbps = 5000000;
+	      else if (speed == VIRTCHNL_LINK_SPEED_2_5GB)
+		kbps = 2500000;
 	      else if (speed == VIRTCHNL_LINK_SPEED_1GB)
 		kbps = 1000000;
 	      else if (speed == VIRTCHNL_LINK_SPEED_100MB)
