@@ -90,7 +90,7 @@ class BaseTypes(object):
         return self
 
     def pack(self, data, kwargs=None):
-        if not data:  # Default to zero if not specified
+        if data is None:  # Default to zero if default not specified in api.
             if self.options and 'default' in self.options:
                 data = self.options['default']
             else:
