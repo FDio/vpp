@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c487c8c4_ab91bdac",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-15T13:54:32Z",
+      "side": 1,
+      "message": "What about if one wants to override a default and set it to 0? \nMaybe this should be:\nif not data is None: ?",
+      "range": {
+        "startLine": 94,
+        "startChar": 8,
+        "endLine": 97,
+        "endChar": 17
+      },
+      "revId": "85465588b18fef9c4712f864f512e00741e2d4f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
