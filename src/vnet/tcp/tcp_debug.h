@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -20,8 +20,8 @@
 
 #define TCP_DEBUG (1)
 #define TCP_DEBUG_SM (0)
-#define TCP_DEBUG_CC (1)
-#define TCP_DEBUG_CC_STAT (1)
+#define TCP_DEBUG_CC (0)
+#define TCP_DEBUG_CC_STAT (0)
 #define TCP_DEBUG_BUFFER_ALLOCATION (0)
 
 #define foreach_tcp_dbg_evt		\
@@ -177,7 +177,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "close: %d",						\
+    .format = "close: cidx %d",						\
     .format_args = "i4",						\
   };									\
   DECLARE_ETD(_tc, _e, 1);						\
@@ -201,11 +201,13 @@ typedef enum _tcp_dbg_evt
     TCP_EVT_INIT_HANDLER(_tc, 0);					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "syn-rx: irs %u",						\
-    .format_args = "i4",						\
+    .format = "syn-rx: cidx %u sidx %u irs %u",				\
+    .format_args = "i4i4i4",						\
   };									\
-  DECLARE_ETD(_tc, _e, 1);						\
-  ed->data[0] = _tc->irs;						\
+  DECLARE_ETD(_tc, _e, 3);						\
+  ed->data[0] = _tc->c_c_index;						\
+  ed->data[1] = _tc->c_s_index;						\
+  ed->data[2] = _tc->irs;						\
   TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
 }
 
@@ -225,11 +227,12 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "delete: %d",						\
-    .format_args = "i4",						\
+    .format = "delete: cidx %d sidx %d",				\
+    .format_args = "i4i4",						\
   };									\
-  DECLARE_ETD(_tc, _e, 1);						\
+  DECLARE_ETD(_tc, _e, 2);						\
   ed->data[0] = _tc->c_c_index;						\
+  ed->data[1] = _tc->c_s_index;						\
   TCP_EVT_DEALLOC_HANDLER(_tc);						\
 }
 
@@ -378,7 +381,7 @@ if (_tc)								\
     .n_enum_strings = 2,						\
     .enum_strings = {                                           	\
 	"syn",	                                             		\
-        "syn-ack",							\
+        "synack",							\
     },  								\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
@@ -404,8 +407,8 @@ if (_tc)								\
     }                                                           	\
   ELOG_TYPE_DECLARE (_e) =                                      	\
   {                                                             	\
-    .format = "timer-pop: %s (%d)",                              	\
-    .format_args = "t4i4",                                      	\
+    .format = "timer-pop: %s cidx %u sidx %u",                  	\
+    .format_args = "t4i4i4",                                      	\
     .n_enum_strings = 8,                                        	\
     .enum_strings = {                                           	\
       "retransmit",                                             	\
@@ -420,9 +423,10 @@ if (_tc)								\
   };                                                            	\
   if (_tc)								\
     {									\
-      DECLARE_ETD(_tc, _e, 2);                                      	\
+      DECLARE_ETD(_tc, _e, 3);                                      	\
       ed->data[0] = _timer_id;                                      	\
-      ed->data[1] = _timer_id;                                      	\
+      ed->data[1] = _tc->c_c_index;                                    	\
+      ed->data[2] = _tc->c_s_index;                                    	\
     }									\
   else									\
     {									\

@@ -13,6 +13,10 @@ class TestTCP(VppTestCase):
     def setUpClass(cls):
         super(TestTCP, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestTCP, cls).tearDownClass()
+
     def setUp(self):
         super(TestTCP, self).setUp()
         self.vapi.session_enable_disable(is_enabled=1)
@@ -32,10 +36,10 @@ class TestTCP(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add(namespace_id="0",
-                                    sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add(namespace_id="1",
-                                    sw_if_index=self.loop1.sw_if_index)
+        self.vapi.app_namespace_add_del(namespace_id=b"0",
+                                        sw_if_index=self.loop0.sw_if_index)
+        self.vapi.app_namespace_add_del(namespace_id=b"1",
+                                        sw_if_index=self.loop1.sw_if_index)
 
     def tearDown(self):
         for i in self.lo_interfaces:
@@ -66,14 +70,14 @@ class TestTCP(VppTestCase):
                               uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         error = self.vapi.cli("test echo client mbytes 10 appns 1 " +
                               "fifo-size 4 no-output test-bytes " +
                               "syn-timeout 2 uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
@@ -82,6 +86,14 @@ class TestTCP(VppTestCase):
 
 class TestTCPUnitTests(VppTestCase):
     "TCP Unit Tests"
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestTCPUnitTests, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestTCPUnitTests, cls).tearDownClass()
 
     def setUp(self):
         super(TestTCPUnitTests, self).setUp()
@@ -97,7 +109,7 @@ class TestTCPUnitTests(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
+        self.assertNotIn("failed", error)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

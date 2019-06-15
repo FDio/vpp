@@ -658,9 +658,10 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   pool_foreach (vd, vmxm->devices, ({
     if (vd->pci_addr.as_u32 == args->addr.as_u32)
       {
-	args->rv = VNET_API_ERROR_INVALID_VALUE;
+	args->rv = VNET_API_ERROR_ADDRESS_IN_USE;
 	args->error =
-	  clib_error_return (error, "PCI address in use");
+	  clib_error_return (error, "%U: %s", format_vlib_pci_addr,
+			     &args->addr, "pci address in use");
 	vlib_log (VLIB_LOG_LEVEL_ERR, vmxm->log_default, "%U: %s",
 		  format_vlib_pci_addr, &args->addr, "pci address in use");
 	return;
@@ -668,24 +669,31 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   }));
   /* *INDENT-ON* */
 
-  pool_get (vmxm->devices, vd);
-  vd->num_tx_queues = args->txq_num;
-  vd->num_rx_queues = args->rxq_num;
-  vd->dev_instance = vd - vmxm->devices;
-  vd->per_interface_next_index = ~0;
-  vd->pci_addr = args->addr;
-
-  if (args->enable_elog)
-    vd->flags |= VMXNET3_DEVICE_F_ELOG;
+  if (args->bind)
+    {
+      error = vlib_pci_bind_to_uio (vm, &args->addr, (char *) "auto");
+      if (error)
+	{
+	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+	  args->error =
+	    clib_error_return (error, "%U: %s", format_vlib_pci_addr,
+			       &args->addr,
+			       "error encountered on binding pci device");
+	  vlib_log (VLIB_LOG_LEVEL_ERR, vmxm->log_default, "%U: %s",
+		    format_vlib_pci_addr, &args->addr,
+		    "error encountered on binding pci devicee");
+	  return;
+	}
+    }
 
   if ((error =
        vlib_pci_device_open (vm, &args->addr, vmxnet3_pci_device_ids, &h)))
     {
-      pool_put (vmxm->devices, vd);
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =
-	clib_error_return (error, "pci-addr %U", format_vlib_pci_addr,
-			   &args->addr);
+	clib_error_return (error, "%U: %s", format_vlib_pci_addr,
+			   &args->addr,
+			   "error encountered on pci device open");
       vlib_log (VLIB_LOG_LEVEL_ERR, vmxm->log_default, "%U: %s",
 		format_vlib_pci_addr, &args->addr,
 		"error encountered on pci device open");
@@ -696,6 +704,16 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
    * Do not use vmxnet3_log_error prior to this line since the macro
    * references vd->pci_dev_handle
    */
+  pool_get (vmxm->devices, vd);
+  vd->num_tx_queues = args->txq_num;
+  vd->num_rx_queues = args->rxq_num;
+  vd->dev_instance = vd - vmxm->devices;
+  vd->per_interface_next_index = ~0;
+  vd->pci_addr = args->addr;
+
+  if (args->enable_elog)
+    vd->flags |= VMXNET3_DEVICE_F_ELOG;
+
   vd->pci_dev_handle = h;
   vd->numa_node = vlib_pci_get_numa_node (vm, h);
   vd->num_intrs = vd->num_rx_queues + 1;	// +1 for the event interrupt

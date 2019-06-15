@@ -250,13 +250,15 @@ virtio_pci_get_max_virtqueue_pairs (vlib_main_t * vm, virtio_if_t * vif)
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ))
     {
       virtio_pci_legacy_read_config (vm, vif, &config.max_virtqueue_pairs,
-				     sizeof (config.max_virtqueue_pairs), 8);
+				     sizeof (config.max_virtqueue_pairs),
+				     STRUCT_OFFSET_OF (virtio_net_config_t,
+						       max_virtqueue_pairs));
       max_queue_pairs = config.max_virtqueue_pairs;
     }
 
   virtio_log_debug (vim, vif, "max queue pair is %x", max_queue_pairs);
   if (max_queue_pairs < 1 || max_queue_pairs > 0x8000)
-    clib_error_return (error, "max queue pair is %x", max_queue_pairs);
+    return clib_error_return (error, "max queue pair is %x", max_queue_pairs);
 
   vif->max_queue_pairs = max_queue_pairs;
   return error;
@@ -272,7 +274,7 @@ virtio_pci_set_mac (vlib_main_t * vm, virtio_if_t * vif)
 static u32
 virtio_pci_get_mac (vlib_main_t * vm, virtio_if_t * vif)
 {
-  if (vif->remote_features & VIRTIO_FEATURE (VIRTIO_NET_F_MAC))
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MAC))
     {
       virtio_pci_legacy_read_config (vm, vif, vif->mac_addr,
 				     sizeof (vif->mac_addr), 0);
@@ -288,9 +290,10 @@ virtio_pci_is_link_up (vlib_main_t * vm, virtio_if_t * vif)
    * Minimal driver: assumes link is up
    */
   u16 status = 1;
-  if (vif->remote_features & VIRTIO_FEATURE (VIRTIO_NET_F_STATUS))
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_STATUS))
     virtio_pci_legacy_read_config (vm, vif, &status, sizeof (status),	/* mac */
-				   6);
+				   STRUCT_OFFSET_OF (virtio_net_config_t,
+						     status));
   return status;
 }
 
@@ -444,6 +447,118 @@ debug_device_config_space (vlib_main_t * vm, virtio_if_t * vif)
     }
 }
 
+struct virtio_ctrl_mq_status_hdr
+{
+  struct virtio_net_ctrl_hdr ctrl;
+  struct virtio_net_ctrl_mq num_mqs;
+  virtio_net_ctrl_ack status;
+};
+
+static int
+virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
+			      u16 num_queues)
+{
+  virtio_main_t *vim = &virtio_main;
+  virtio_vring_t *vring = vif->cxq_vring;
+  u32 buffer_index;
+  vlib_buffer_t *b;
+  u16 used, next, avail;
+  u16 sz = vring->size;
+  u16 mask = sz - 1;
+  struct virtio_ctrl_mq_status_hdr mq_hdr, result;
+  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+
+  mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
+  mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
+  mq_hdr.status = VIRTIO_NET_ERR;
+  mq_hdr.num_mqs.virtqueue_pairs = num_queues;
+
+  used = vring->desc_in_use;
+  next = vring->desc_next;
+  avail = vring->avail->idx;
+  struct vring_desc *d = &vring->desc[next];
+
+  if (vlib_buffer_alloc (vm, &buffer_index, 1))
+    b = vlib_get_buffer (vm, buffer_index);
+  else
+    return VIRTIO_NET_ERR;
+  /*
+   * current_data may not be initialized with 0 and may contain
+   * previous offset.
+   */
+  b->current_data = 0;
+  clib_memcpy (vlib_buffer_get_current (b), &mq_hdr,
+	       sizeof (struct virtio_ctrl_mq_status_hdr));
+  d->flags = VRING_DESC_F_NEXT;
+  d->addr = vlib_buffer_get_current_pa (vm, b);
+  d->len = sizeof (struct virtio_net_ctrl_hdr);
+  vring->avail->ring[avail & mask] = next;
+  avail++;
+  next = (next + 1) & mask;
+  d->next = next;
+  used++;
+
+  d = &vring->desc[next];
+  d->flags = VRING_DESC_F_NEXT;
+  d->addr = vlib_buffer_get_current_pa (vm, b) +
+    STRUCT_OFFSET_OF (struct virtio_ctrl_mq_status_hdr, num_mqs);
+  d->len = sizeof (struct virtio_net_ctrl_mq);
+  next = (next + 1) & mask;
+  d->next = next;
+  used++;
+
+  d = &vring->desc[next];
+  d->flags = VRING_DESC_F_WRITE;
+  d->addr = vlib_buffer_get_current_pa (vm, b) +
+    STRUCT_OFFSET_OF (struct virtio_ctrl_mq_status_hdr, status);
+  d->len = sizeof (mq_hdr.status);
+  next = (next + 1) & mask;
+  used++;
+
+  CLIB_MEMORY_STORE_BARRIER ();
+  vring->avail->idx = avail;
+  vring->desc_next = next;
+  vring->desc_in_use = used;
+
+  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
+    {
+      virtio_kick (vm, vring, vif);
+    }
+
+  clib_memset (&result, 0, sizeof (result));
+  u16 last = vring->last_used_idx, n_left = 0;
+  n_left = vring->used->idx - last;
+
+  while (n_left)
+    {
+      struct vring_used_elem *e = &vring->used->ring[last & mask];
+      u16 slot = e->id;
+
+      d = &vring->desc[slot];
+      while (d->flags & VRING_DESC_F_NEXT)
+	{
+	  used--;
+	  slot = d->next;
+	  d = &vring->desc[slot];
+	}
+      used--;
+      last++;
+      n_left--;
+    }
+  vring->desc_in_use = used;
+  vring->last_used_idx = last;
+
+  CLIB_MEMORY_BARRIER ();
+  clib_memcpy (&result, vlib_buffer_get_current (b),
+	       sizeof (struct virtio_ctrl_mq_status_hdr));
+
+  virtio_log_debug (vim, vif, "multi-queue enable status on Ctrl queue : %u",
+		    result.status);
+  status = result.status;
+  vlib_buffer_free (vm, &buffer_index, 1);
+  return status;
+}
+
 static u8
 virtio_pci_queue_size_valid (u16 qsz)
 {
@@ -455,16 +570,18 @@ virtio_pci_queue_size_valid (u16 qsz)
 }
 
 clib_error_t *
-virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx)
+virtio_pci_control_vring_init (vlib_main_t * vm, virtio_if_t * vif,
+			       u16 queue_num)
 {
   clib_error_t *error = 0;
+  virtio_main_t *vim = &virtio_main;
   u16 queue_size = 0;
   virtio_vring_t *vring;
   struct vring vr;
   u32 i = 0;
-  void *ptr;
+  void *ptr = NULL;
 
-  queue_size = virtio_pci_legacy_get_queue_num (vm, vif, idx);
+  queue_size = virtio_pci_legacy_get_queue_num (vm, vif, queue_num);
   if (!virtio_pci_queue_size_valid (queue_size))
     clib_warning ("queue size is not valid");
 
@@ -477,18 +594,87 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx)
   if (queue_size == 0)
     queue_size = 256;
 
-  vec_validate_aligned (vif->vrings, idx, CLIB_CACHE_LINE_BYTES);
-  vring = vec_elt_at_index (vif->vrings, idx);
-
+  vec_validate_aligned (vif->cxq_vring, 0, CLIB_CACHE_LINE_BYTES);
+  vring = vec_elt_at_index (vif->cxq_vring, 0);
   i = vring_size (queue_size, VIRTIO_PCI_VRING_ALIGN);
   i = round_pow2 (i, VIRTIO_PCI_VRING_ALIGN);
-  ptr = vlib_physmem_alloc_aligned (vm, i, VIRTIO_PCI_VRING_ALIGN);
-  memset (ptr, 0, i);
+  ptr =
+    vlib_physmem_alloc_aligned_on_numa (vm, i, VIRTIO_PCI_VRING_ALIGN,
+					vif->numa_node);
+  if (!ptr)
+    return vlib_physmem_last_error (vm);
+  clib_memset (ptr, 0, i);
   vring_init (&vr, queue_size, ptr, VIRTIO_PCI_VRING_ALIGN);
   vring->desc = vr.desc;
   vring->avail = vr.avail;
   vring->used = vr.used;
-  vring->queue_id = idx;
+  vring->queue_id = queue_num;
+  vring->avail->flags = VIRTIO_RING_FLAG_MASK_INT;
+
+  ASSERT (vring->buffers == 0);
+
+  vring->size = queue_size;
+  virtio_log_debug (vim, vif, "control-queue: number %u, size %u", queue_num,
+		    queue_size);
+  virtio_pci_legacy_setup_queue (vm, vif, queue_num, ptr);
+  vring->kick_fd = -1;
+
+  return error;
+}
+
+clib_error_t *
+virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
+{
+  clib_error_t *error = 0;
+  virtio_main_t *vim = &virtio_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u16 queue_size = 0;
+  virtio_vring_t *vring;
+  struct vring vr;
+  u32 i = 0;
+  void *ptr = NULL;
+
+  queue_size = virtio_pci_legacy_get_queue_num (vm, vif, queue_num);
+  if (!virtio_pci_queue_size_valid (queue_size))
+    clib_warning ("queue size is not valid");
+
+  if (!is_pow2 (queue_size))
+    return clib_error_return (0, "ring size must be power of 2");
+
+  if (queue_size > 32768)
+    return clib_error_return (0, "ring size must be 32768 or lower");
+
+  if (queue_size == 0)
+    queue_size = 256;
+
+  if (queue_num % 2)
+    {
+      if (TX_QUEUE_ACCESS (queue_num) > vtm->n_vlib_mains)
+	return error;
+      vec_validate_aligned (vif->txq_vrings, TX_QUEUE_ACCESS (queue_num),
+			    CLIB_CACHE_LINE_BYTES);
+      vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (queue_num));
+      clib_spinlock_init (&vring->lockp);
+    }
+  else
+    {
+      vec_validate_aligned (vif->rxq_vrings, RX_QUEUE_ACCESS (queue_num),
+			    CLIB_CACHE_LINE_BYTES);
+      vring = vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (queue_num));
+    }
+  i = vring_size (queue_size, VIRTIO_PCI_VRING_ALIGN);
+  i = round_pow2 (i, VIRTIO_PCI_VRING_ALIGN);
+  ptr =
+    vlib_physmem_alloc_aligned_on_numa (vm, i, VIRTIO_PCI_VRING_ALIGN,
+					vif->numa_node);
+  if (!ptr)
+    return vlib_physmem_last_error (vm);
+  clib_memset (ptr, 0, i);
+  vring_init (&vr, queue_size, ptr, VIRTIO_PCI_VRING_ALIGN);
+  vring->desc = vr.desc;
+  vring->avail = vr.avail;
+  vring->used = vr.used;
+  vring->queue_id = queue_num;
   vring->avail->flags = VIRTIO_RING_FLAG_MASK_INT;
 
   ASSERT (vring->buffers == 0);
@@ -496,7 +682,7 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx)
   ASSERT (vring->indirect_buffers == 0);
   vec_validate_aligned (vring->indirect_buffers, queue_size,
 			CLIB_CACHE_LINE_BYTES);
-  if (idx % 2)
+  if (queue_num % 2)
     {
       u32 n_alloc = 0;
       do
@@ -507,13 +693,18 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx)
 				 queue_size - n_alloc);
 	}
       while (n_alloc != queue_size);
-      vif->tx_ring_sz = queue_size;
+      vif->num_txqs++;
+      virtio_log_debug (vim, vif, "tx-queue: number %u, size %u", queue_num,
+			queue_size);
     }
   else
-    vif->rx_ring_sz = queue_size;
+    {
+      vif->num_rxqs++;
+      virtio_log_debug (vim, vif, "rx-queue: number %u, size %u", queue_num,
+			queue_size);
+    }
   vring->size = queue_size;
-
-  virtio_pci_legacy_setup_queue (vm, vif, idx, ptr);
+  virtio_pci_legacy_setup_queue (vm, vif, queue_num, ptr);
   vring->kick_fd = -1;
 
   return error;
@@ -531,6 +722,8 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
     | VIRTIO_FEATURE (VIRTIO_NET_F_MAC)
     | VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF)
     | VIRTIO_FEATURE (VIRTIO_NET_F_STATUS)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_MQ)
     | VIRTIO_FEATURE (VIRTIO_F_NOTIFY_ON_EMPTY)
     | VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)
     | VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
@@ -542,12 +735,13 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
 
   vif->features = req_features & vif->remote_features & supported_features;
 
-  if (vif->
-      remote_features & vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MTU))
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MTU))
     {
       virtio_net_config_t config;
       virtio_pci_legacy_read_config (vm, vif, &config.mtu,
-				     sizeof (config.mtu), 10);
+				     sizeof (config.mtu),
+				     STRUCT_OFFSET_OF (virtio_net_config_t,
+						       mtu));
       if (config.mtu < 64)
 	vif->features &= ~VIRTIO_FEATURE (VIRTIO_NET_F_MTU);
     }
@@ -702,7 +896,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   u8 status = 0;
 
   if ((error = virtio_pci_read_caps (vm, vif)))
-    clib_error_return (error, "Device not supported");
+    clib_error_return (error, "Device is not supported");
 
   if (virtio_pci_reset_device (vm, vif) < 0)
     {
@@ -728,6 +922,9 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
     }
   vif->status = status;
 
+  /*
+   * get or set the mac address
+   */
   if (virtio_pci_get_mac (vm, vif))
     {
       f64 now = vlib_time_now (vm);
@@ -743,15 +940,44 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 
   virtio_set_net_hdr_size (vif);
 
+  /*
+   * Initialize the virtqueues
+   */
   if ((error = virtio_pci_get_max_virtqueue_pairs (vm, vif)))
-    goto error;
+    goto err;
 
-  if ((error = virtio_pci_vring_init (vm, vif, 0)))
-    goto error;
+  for (int i = 0; i < vif->max_queue_pairs; i++)
+    {
+      if ((error = virtio_pci_vring_init (vm, vif, RX_QUEUE (i))))
+	virtio_log_warning (vim, vif, "%s (%u) %s", "error in rxq-queue",
+			    RX_QUEUE (i), "initialization");
 
-  if ((error = virtio_pci_vring_init (vm, vif, 1)))
-    goto error;
+      if ((error = virtio_pci_vring_init (vm, vif, TX_QUEUE (i))))
+	virtio_log_warning (vim, vif, "%s (%u) %s", "error in txq-queue",
+			    TX_QUEUE (i), "initialization");
+    }
 
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
+    {
+      if ((error =
+	   virtio_pci_control_vring_init (vm, vif, vif->max_queue_pairs * 2)))
+	{
+	  virtio_log_warning (vim, vif, "%s (%u) %s",
+			      "error in control-queue",
+			      vif->max_queue_pairs * 2, "initialization");
+	  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ))
+	    vif->features &= ~VIRTIO_FEATURE (VIRTIO_NET_F_MQ);
+	}
+    }
+  else
+    {
+      virtio_log_debug (vim, vif, "control queue is not available");
+      vif->cxq_vring = NULL;
+    }
+
+  /*
+   * set the msix interrupts
+   */
   if (vif->msix_enabled == VIRTIO_MSIX_ENABLED)
     {
       if (virtio_pci_legacy_set_config_irq (vm, vif, 1) ==
@@ -761,9 +987,13 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 	  VIRTIO_MSI_NO_VECTOR)
 	virtio_log_warning (vim, vif, "queue vector 0 is not set");
     }
+
+  /*
+   * set the driver status OK
+   */
   virtio_pci_legacy_set_status (vm, vif, VIRTIO_CONFIG_STATUS_DRIVER_OK);
   vif->status = virtio_pci_legacy_get_status (vm, vif);
-error:
+err:
   return error;
 }
 
@@ -831,6 +1061,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     }
   vif->pci_dev_handle = h;
   vlib_pci_set_private_data (vm, h, vif->dev_instance);
+  vif->numa_node = vlib_pci_get_numa_node (vm, h);
 
   if ((error = vlib_pci_bus_master_enable (vm, h)))
     {
@@ -931,11 +1162,15 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, 0, ~0);
-  virtio_vring_set_numa_node (vm, vif, 0);
-
-  vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, 0,
-				 VNET_HW_INTERFACE_RX_MODE_POLLING);
+  u32 i = 0;
+  vec_foreach_index (i, vif->rxq_vrings)
+  {
+    vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, ~0);
+    virtio_vring_set_numa_node (vm, vif, RX_QUEUE (i));
+    /* Set default rx mode to POLLING */
+    vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
+				   VNET_HW_INTERFACE_RX_MODE_POLLING);
+  }
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {
       vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
@@ -944,6 +1179,13 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     }
   else
     vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
+
+  if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)) &&
+      (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ)))
+    {
+      if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
+	virtio_log_warning (vim, vif, "multiqueue is not set");
+    }
   return;
 
 error:
@@ -964,31 +1206,51 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 
   vlib_pci_intr_disable (vm, vif->pci_dev_handle);
 
-  virtio_pci_legacy_del_queue (vm, vif, 0);
-  virtio_pci_legacy_del_queue (vm, vif, 1);
+  for (i = 0; i < vif->max_queue_pairs; i++)
+    {
+      virtio_pci_legacy_del_queue (vm, vif, RX_QUEUE (i));
+      virtio_pci_legacy_del_queue (vm, vif, TX_QUEUE (i));
+    }
+
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
+    virtio_pci_legacy_del_queue (vm, vif, vif->max_queue_pairs * 2);
 
   virtio_pci_legacy_reset (vm, vif);
 
   if (vif->hw_if_index)
     {
       vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
-      vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, 0);
+      vec_foreach_index (i, vif->rxq_vrings)
+      {
+	vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, i);
+      }
       ethernet_delete_interface (vnm, vif->hw_if_index);
     }
 
   vlib_pci_device_close (vm, vif->pci_dev_handle);
 
-  vec_foreach_index (i, vif->vrings)
+  vec_foreach_index (i, vif->rxq_vrings)
   {
-    virtio_vring_t *vring = vec_elt_at_index (vif->vrings, i);
+    virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, i);
     if (vring->kick_fd != -1)
       close (vring->kick_fd);
     if (vring->used)
       {
-	if ((i & 1) == 1)
-	  virtio_free_used_desc (vm, vring);
-	else
-	  virtio_free_rx_buffers (vm, vring);
+	virtio_free_rx_buffers (vm, vring);
+      }
+    vec_free (vring->buffers);
+    vec_free (vring->indirect_buffers);
+    vlib_physmem_free (vm, vring->desc);
+  }
+
+  vec_foreach_index (i, vif->txq_vrings)
+  {
+    virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, i);
+    if (vring->kick_fd != -1)
+      close (vring->kick_fd);
+    if (vring->used)
+      {
+	virtio_free_used_desc (vm, vring);
       }
     if (vring->queue_id % 2)
       {
@@ -999,7 +1261,23 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
     vlib_physmem_free (vm, vring->desc);
   }
 
-  vec_free (vif->vrings);
+  if (vif->cxq_vring != NULL)
+    {
+      u16 last = vif->cxq_vring->last_used_idx;
+      u16 n_left = vif->cxq_vring->used->idx - last;
+      while (n_left)
+	{
+	  last++;
+	  n_left--;
+	}
+
+      vif->cxq_vring->last_used_idx = last;
+      vlib_physmem_free (vm, vif->cxq_vring->desc);
+    }
+
+  vec_free (vif->rxq_vrings);
+  vec_free (vif->txq_vrings);
+  vec_free (vif->cxq_vring);
 
   if (vif->fd != -1)
     vif->fd = -1;

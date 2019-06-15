@@ -25,6 +25,10 @@ class TestPPPoE(VppTestCase):
         cls.dst_ip = "100.1.1.100"
         cls.dst_ipn = socket.inet_pton(socket.AF_INET, cls.dst_ip)
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestPPPoE, cls).tearDownClass()
+
     def setUp(self):
         super(TestPPPoE, self).setUp()
 
@@ -39,15 +43,16 @@ class TestPPPoE(VppTestCase):
     def tearDown(self):
         super(TestPPPoE, self).tearDown()
 
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show int"))
         self.logger.info(self.vapi.cli("show pppoe fib"))
         self.logger.info(self.vapi.cli("show pppoe session"))
         self.logger.info(self.vapi.cli("show ip fib"))
         self.logger.info(self.vapi.cli("show trace"))
-
-        for i in self.pg_interfaces:
-            i.unconfig_ip4()
-            i.admin_down()
 
     def create_stream_pppoe_discovery(self, src_if, dst_if,
                                       client_mac, count=1):

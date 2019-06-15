@@ -26,9 +26,9 @@
  */
 
 
+#ifndef CLIB_MARCH_VARIANT
 l2_rw_main_t l2_rw_main;
-
-vlib_node_registration_t l2_rw_node;
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct
 {
@@ -156,9 +156,8 @@ l2_rw_rewrite (l2_rw_entry_t * rwe, u8 * h)
     }
 }
 
-static uword
-l2_rw_node_fn (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
+			   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   l2_rw_main_t *rw = &l2_rw_main;
   u32 n_left_from, *from, *to_next, next_index;
@@ -347,6 +346,7 @@ l2_rw_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 int
 l2_rw_mod_entry (u32 * index,
 		 u8 * mask, u8 * value, u32 len, u32 skip, u8 is_del)
@@ -395,6 +395,7 @@ l2_rw_mod_entry (u32 * index,
 
   return 0;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 l2_rw_entry_cli_fn (vlib_main_t * vm,
@@ -453,6 +454,7 @@ VLIB_CLI_COMMAND (l2_rw_entry_cli, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 int
 l2_rw_interface_set_table (u32 sw_if_index, u32 table_index, u32 miss_index)
 {
@@ -470,6 +472,7 @@ l2_rw_interface_set_table (u32 sw_if_index, u32 table_index, u32 miss_index)
 
   return 0;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 l2_rw_interface_cli_fn (vlib_main_t * vm,
@@ -594,7 +597,7 @@ VLIB_CLI_COMMAND (l2_rw_show_entries_cli, static) = {
 };
 /* *INDENT-ON* */
 
-int
+static int
 l2_rw_enable_disable (u32 bridge_domain, u8 disable)
 {
   u32 mask = L2INPUT_FEAT_RW;
@@ -686,7 +689,6 @@ static char *l2_rw_error_strings[] = {
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_rw_node) = {
-  .function = l2_rw_node_fn,
   .name = "l2-rw",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_rw_trace,
@@ -699,7 +701,6 @@ VLIB_REGISTER_NODE (l2_rw_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2_rw_node, l2_rw_node_fn)
 /*
  * fd.io coding-style-patch-verification: ON
  *

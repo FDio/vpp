@@ -1838,6 +1838,55 @@ static void *vl_api_vxlan_tunnel_dump_t_print
   FINISH;
 }
 
+static void *vl_api_vxlan_gbp_tunnel_add_del_t_print
+  (vl_api_vxlan_gbp_tunnel_add_del_t * mp, void *handle)
+{
+  u8 *s;
+  s = format (0, "SCRIPT: vxlan_gbp_tunnel_add_del ");
+
+  if (mp->is_add)
+    s = format (s, "add ");
+  else
+    s = format (s, "del ");
+
+  s = format (s, "instance %d ", ntohl (mp->tunnel.instance));
+  s = format (s, "src %U ", format_vl_api_address, &mp->tunnel.src);
+  s = format (s, "dst %U ", format_vl_api_address, &mp->tunnel.dst);
+  s =
+    format (s, "mcast_sw_if_index %d ", ntohl (mp->tunnel.mcast_sw_if_index));
+  s = format (s, "encap_table_id %d ", ntohl (mp->tunnel.encap_table_id));
+  s = format (s, "vni %d ", ntohl (mp->tunnel.vni));
+  s = format (s, "sw_if_index %d ", ntohl (mp->tunnel.sw_if_index));
+
+  FINISH;
+}
+
+static void *vl_api_vxlan_gbp_tunnel_dump_t_print
+  (vl_api_vxlan_gbp_tunnel_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: vxlan_gbp_tunnel_dump ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  FINISH;
+}
+
+static void *vl_api_sw_interface_set_vxlan_gbp_bypass_t_print
+  (vl_api_sw_interface_set_vxlan_gbp_bypass_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_vxlan_gbp_bypass ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "%s ", (mp->is_ipv6 != 0) ? "ipv6" : "ipv4");
+  s = format (s, "%s ", (mp->enable != 0) ? "enable" : "disable");
+
+  FINISH;
+}
+
 static void *vl_api_geneve_add_del_tunnel_t_print
   (vl_api_geneve_add_del_tunnel_t * mp, void *handle)
 {
@@ -1882,28 +1931,26 @@ static void *vl_api_geneve_tunnel_dump_t_print
   FINISH;
 }
 
-static void *vl_api_gre_add_del_tunnel_t_print
-  (vl_api_gre_add_del_tunnel_t * mp, void *handle)
+static void *vl_api_gre_tunnel_add_del_t_print
+  (vl_api_gre_tunnel_add_del_t * mp, void *handle)
 {
   u8 *s;
-  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->src_address);
-  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->dst_address);
 
-  s = format (0, "SCRIPT: gre_add_del_tunnel ");
+  s = format (0, "SCRIPT: gre_tunnel_add_del ");
 
-  s = format (s, "dst %U ", format_ip46_address, &dst, IP46_TYPE_ANY);
-  s = format (s, "src %U ", format_ip46_address, &src, IP46_TYPE_ANY);
+  s = format (s, "dst %U ", format_vl_api_address, &mp->tunnel.dst);
+  s = format (s, "src %U ", format_vl_api_address, &mp->tunnel.src);
 
-  s = format (s, "instance %d ", ntohl (mp->instance));
+  s = format (s, "instance %d ", ntohl (mp->tunnel.instance));
 
-  if (mp->tunnel_type == GRE_TUNNEL_TYPE_TEB)
+  if (mp->tunnel.type == GRE_TUNNEL_TYPE_TEB)
     s = format (s, "teb ");
 
-  if (mp->tunnel_type == GRE_TUNNEL_TYPE_ERSPAN)
-    s = format (s, "erspan %d ", ntohs (mp->session_id));
+  if (mp->tunnel.type == GRE_TUNNEL_TYPE_ERSPAN)
+    s = format (s, "erspan %d ", ntohs (mp->tunnel.session_id));
 
-  if (mp->outer_fib_id)
-    s = format (s, "outer-fib-id %d ", ntohl (mp->outer_fib_id));
+  if (mp->tunnel.outer_fib_id)
+    s = format (s, "outer-fib-id %d ", ntohl (mp->tunnel.outer_fib_id));
 
   if (mp->is_add == 0)
     s = format (s, "del ");
@@ -3258,22 +3305,62 @@ static void *vl_api_lisp_eid_table_map_dump_t_print
   FINISH;
 }
 
-static void *vl_api_ipsec_gre_add_del_tunnel_t_print
-  (vl_api_ipsec_gre_add_del_tunnel_t * mp, void *handle)
+static void *vl_api_ipsec_tunnel_if_add_del_t_print
+  (vl_api_ipsec_tunnel_if_add_del_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: ipsec_gre_add_del_tunnel ");
+  s = format (0, "SCRIPT: ipsec_tunnel_if_add_del ");
 
-  s = format (s, "dst %U ", format_ip4_address,
-	      (ip4_address_t *) & (mp->dst_address));
+  if (mp->esn)
+    s = format (s, "esn");
+  if (mp->anti_replay)
+    s = format (s, "anti-replay");
+  if (mp->udp_encap)
+    s = format (s, "udp-encap");
 
-  s = format (s, "src %U ", format_ip4_address,
-	      (ip4_address_t *) & (mp->src_address));
+  s = format (s, "local-ip %U ", format_vl_api_address, &mp->remote_ip);
 
-  s = format (s, "local_sa %d ", ntohl (mp->local_sa_id));
+  s = format (s, "remote-ip %U ", format_vl_api_address, &mp->local_ip);
+  s = format (s, "tx-table-id %d ", ntohl (mp->tx_table_id));
 
-  s = format (s, "remote_sa %d ", ntohl (mp->remote_sa_id));
+  s = format (s, "local-spi %d ", ntohl (mp->local_spi));
+
+  s = format (s, "remote-spi %d ", ntohl (mp->remote_spi));
+
+  s = format (s, "local-crypto-key-len %d ", mp->local_crypto_key_len);
+  s = format (s, "local-crypto-key %U ", format_hex_bytes,
+	      mp->local_crypto_key, mp->local_crypto_key_len, 0);
+  s = format (s, "remote-crypto-key-len %d ", mp->remote_crypto_key_len);
+  s = format (s, "remote-crypto-key %U ", format_hex_bytes,
+	      mp->remote_crypto_key, mp->remote_crypto_key_len, 0);
+  s = format (s, "local-integ-key-len %d ", mp->local_integ_key_len);
+  s = format (s, "local-integ-key %U ", format_hex_bytes,
+	      mp->local_integ_key, mp->local_integ_key_len, 0);
+  s = format (s, "remote-integ-key-len %d ", mp->remote_integ_key_len);
+  s = format (s, "remote-integ-key %U ", format_hex_bytes,
+	      mp->remote_integ_key, mp->remote_integ_key_len, 0);
+
+  if (mp->is_add == 0)
+    s = format (s, "del ");
+
+  FINISH;
+}
+
+static void *vl_api_ipsec_gre_tunnel_add_del_t_print
+  (vl_api_ipsec_gre_tunnel_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ipsec_gre_tunnel_add_del ");
+
+  s = format (s, "dst %U ", format_vl_api_ip4_address, mp->tunnel.dst);
+
+  s = format (s, "src %U ", format_vl_api_ip4_address, mp->tunnel.src);
+
+  s = format (s, "local_sa %d ", ntohl (mp->tunnel.local_sa_id));
+
+  s = format (s, "remote_sa %d ", ntohl (mp->tunnel.remote_sa_id));
 
   if (mp->is_add == 0)
     s = format (s, "del ");
@@ -3757,7 +3844,7 @@ _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                   \
 _(GENEVE_ADD_DEL_TUNNEL, geneve_add_del_tunnel)                         \
 _(GENEVE_TUNNEL_DUMP, geneve_tunnel_dump)                               \
-_(GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel)                               \
+_(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)                               \
 _(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
@@ -3777,6 +3864,9 @@ _(SHOW_VERSION, show_version)                                           \
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                 \
 _(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel) 			\
 _(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
+_(VXLAN_GBP_TUNNEL_ADD_DEL, vxlan_gbp_tunnel_add_del) 			\
+_(VXLAN_GBP_TUNNEL_DUMP, vxlan_gbp_tunnel_dump)                         \
+_(SW_INTERFACE_SET_VXLAN_GBP_BYPASS, sw_interface_set_vxlan_gbp_bypass) \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(IP_PROBE_NEIGHBOR, ip_probe_neighbor)                                 \
 _(IP_SCAN_NEIGHBOR_ENABLE_DISABLE, ip_scan_neighbor_enable_disable)     \
@@ -3849,7 +3939,8 @@ _(SHOW_LISP_RLOC_PROBE_STATE, show_lisp_rloc_probe_state)               \
 _(SHOW_LISP_MAP_REGISTER_STATE, show_lisp_map_register_state)           \
 _(LISP_RLOC_PROBE_ENABLE_DISABLE, lisp_rloc_probe_enable_disable)       \
 _(LISP_MAP_REGISTER_ENABLE_DISABLE, lisp_map_register_enable_disable)   \
-_(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
+_(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
+_(IPSEC_GRE_TUNNEL_ADD_DEL, ipsec_gre_tunnel_add_del)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \

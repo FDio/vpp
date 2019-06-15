@@ -140,7 +140,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  clib_error_t *error;
-	  u32 bi0, sa_index0, seq, iv_size;
+	  u32 bi0, sa_index0, iv_size;
 	  u8 trunc_size;
 	  vlib_buffer_t *b0;
 	  esp_header_t *esp0;
@@ -234,33 +234,21 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  /* anti-replay check */
-	  if (sa0->use_anti_replay)
+	  if (ipsec_sa_anti_replay_check (sa0, &esp0->seq))
 	    {
-	      int rv = 0;
-
-	      seq = clib_net_to_host_u32 (esp0->seq);
-
-	      if (PREDICT_TRUE (sa0->use_esn))
-		rv = esp_replay_check_esn (sa0, seq);
+	      clib_warning ("failed anti-replay check");
+	      if (is_ip6)
+		vlib_node_increment_counter (vm,
+					     dpdk_esp6_decrypt_node.index,
+					     ESP_DECRYPT_ERROR_REPLAY, 1);
 	      else
-		rv = esp_replay_check (sa0, seq);
-
-	      if (PREDICT_FALSE (rv))
-		{
-		  clib_warning ("failed anti-replay check");
-		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp6_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_REPLAY, 1);
-		  else
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp4_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_REPLAY, 1);
-		  to_next[0] = bi0;
-		  to_next += 1;
-		  n_left_to_next -= 1;
-		  goto trace;
-		}
+		vlib_node_increment_counter (vm,
+					     dpdk_esp4_decrypt_node.index,
+					     ESP_DECRYPT_ERROR_REPLAY, 1);
+	      to_next[0] = bi0;
+	      to_next += 1;
+	      n_left_to_next -= 1;
+	      goto trace;
 	    }
 
 	  if (is_ip6)
@@ -339,7 +327,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	      clib_memcpy_fast (aad, esp0, 8);
 
 	      /* _aad[3] should always be 0 */
-	      if (PREDICT_FALSE (sa0->use_esn))
+	      if (PREDICT_FALSE (ipsec_sa_is_set_USE_ESN (sa0)))
 		_aad[2] = clib_host_to_net_u32 (sa0->seq_hi);
 	      else
 		_aad[2] = 0;
@@ -348,7 +336,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    {
 	      auth_len = sizeof (esp_header_t) + iv_size + payload_len;
 
-	      if (sa0->use_esn)
+	      if (ipsec_sa_is_set_USE_ESN (sa0))
 		{
 		  clib_memcpy_fast (priv->icv, digest, trunc_size);
 		  u32 *_digest = (u32 *) digest;
@@ -560,18 +548,11 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 
 	  iv_size = cipher_alg->iv_len;
 
-	  if (sa0->use_anti_replay)
-	    {
-	      u32 seq;
-	      seq = clib_host_to_net_u32 (esp0->seq);
-	      if (PREDICT_TRUE (sa0->use_esn))
-		esp_replay_advance_esn (sa0, seq);
-	      else
-		esp_replay_advance (sa0, seq);
-	    }
+	  ipsec_sa_anti_replay_advance (sa0, &esp0->seq);
 
 	  /* if UDP encapsulation is used adjust the address of the IP header */
-	  if (sa0->udp_encap && (b0->flags & VNET_BUFFER_F_IS_IP4))
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa0)
+	      && (b0->flags & VNET_BUFFER_F_IS_IP4))
 	    {
 	      udp_encap_adv = sizeof (udp_header_t);
 	    }
@@ -599,11 +580,11 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 	      goto trace;
 	    }
 #endif
-	  if (sa0->is_tunnel)
+	  if (ipsec_sa_is_set_IS_TUNNEL (sa0))
 	    {
 	      if (f0->next_header == IP_PROTOCOL_IP_IN_IP)
 		next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
-	      else if (sa0->is_tunnel_ip6
+	      else if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa0)
 		       && f0->next_header == IP_PROTOCOL_IPV6)
 		next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
 	      else
@@ -629,7 +610,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 		  u16 ih4_len = ip4_header_bytes (ih4);
 		  vlib_buffer_advance (b0, -ih4_len - udp_encap_adv);
 		  next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
-		  if (!sa0->udp_encap)
+		  if (!ipsec_sa_is_set_UDP_ENCAP (sa0))
 		    {
 		      oh4 = vlib_buffer_get_current (b0);
 		      memmove (oh4, ih4, ih4_len);

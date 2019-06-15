@@ -374,8 +374,7 @@ vl_socket_client_connect (char *socket_path, char *client_name,
 
   sock = &scm->client_socket;
   sock->config = socket_path;
-  sock->flags = CLIB_SOCKET_F_IS_CLIENT
-    | CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_NON_BLOCKING_CONNECT;
+  sock->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_NON_BLOCKING_CONNECT;
 
   if ((error = clib_socket_init (sock)))
     {

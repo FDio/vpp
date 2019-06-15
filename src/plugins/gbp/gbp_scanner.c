@@ -45,9 +45,7 @@ gbp_scanner (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       if (gs_enabled)
 	{
 	  /* scan every 'inactive threshold' seconds */
-	  vlib_process_wait_for_event_or_clock (vm,
-						gbp_endpoint_scan_threshold
-						());
+	  vlib_process_wait_for_event_or_clock (vm, 2);
 	}
       else
 	vlib_process_wait_for_event (vm);
@@ -99,8 +97,7 @@ static clib_error_t *
 gbp_scanner_cli (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_cli_output (vm, "GBP-scanner: enabled:%d interval:%f",
-		   gs_enabled, gbp_endpoint_scan_threshold ());
+  vlib_cli_output (vm, "GBP-scanner: enabled:%d interval:2", gs_enabled);
 
   return (NULL);
 }

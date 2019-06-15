@@ -77,7 +77,18 @@ segment_manager_del_segment (segment_manager_t * sm,
   segment_manager_main_t *smm = &segment_manager_main;
 
   if (ssvm_type (&fs->ssvm) != SSVM_SEGMENT_PRIVATE)
-    clib_valloc_free (&smm->va_allocator, fs->ssvm.requested_va);
+    {
+      clib_valloc_free (&smm->va_allocator, fs->ssvm.requested_va);
+
+      if (sm->app_wrk_index != SEGMENT_MANAGER_INVALID_APP_INDEX)
+	{
+	  app_worker_t *app_wrk;
+	  u64 segment_handle;
+	  app_wrk = app_worker_get (sm->app_wrk_index);
+	  segment_handle = segment_manager_segment_handle (sm, fs);
+	  app_worker_del_segment_notify (app_wrk, segment_handle);
+	}
+    }
 
   ssvm_delete (&fs->ssvm);
 
@@ -184,7 +195,7 @@ int
 segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
 {
   segment_manager_main_t *smm = &segment_manager_main;
-  u32 rnd_margin = 128 << 10, seg_index, page_size;
+  u32 rnd_margin = 128 << 10, seg_index = ~0, page_size;
   segment_manager_properties_t *props;
   uword baseva = (uword) ~ 0ULL, alloc_size;
   svm_fifo_segment_private_t *seg;
@@ -204,15 +215,9 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
    * Allocate fifo segment and lock if needed
    */
   if (vlib_num_workers ())
-    {
-      clib_rwlock_writer_lock (&sm->segments_rwlock);
-      pool_get (sm->segments, seg);
-    }
-  else
-    {
-      pool_get (sm->segments, seg);
-    }
-  clib_memset (seg, 0, sizeof (*seg));
+    clib_rwlock_writer_lock (&sm->segments_rwlock);
+
+  pool_get_zero (sm->segments, seg);
 
   /*
    * Initialize ssvm segment and svm fifo private header
@@ -228,7 +233,8 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
       if (!baseva)
 	{
 	  clib_warning ("out of space for segments");
-	  return -1;
+	  pool_put (sm->segments, seg);
+	  goto done;
 	}
     }
   else
@@ -246,7 +252,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
       if (props->segment_type != SSVM_SEGMENT_PRIVATE)
 	clib_valloc_free (&smm->va_allocator, baseva);
       pool_put (sm->segments, seg);
-      return (rv);
+      goto done;
     }
 
   svm_fifo_segment_init (seg);
@@ -255,6 +261,8 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
    * Save segment index before dropping lock, if any held
    */
   seg_index = seg - sm->segments;
+
+done:
 
   if (vlib_num_workers ())
     clib_rwlock_writer_unlock (&sm->segments_rwlock);
@@ -334,7 +342,7 @@ segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
   else
     {
       seg_index = segment_manager_add_segment (sm, first_seg_size);
-      if (seg_index)
+      if (seg_index < 0)
 	{
 	  clib_warning ("Failed to allocate segment");
 	  return seg_index;
@@ -397,12 +405,10 @@ segment_manager_del_sessions (segment_manager_t * sm)
      */
     while (fifo)
       {
-	if (fifo->ct_session_index != SVM_FIFO_INVALID_SESSION_INDEX)
-	  session = session_get (fifo->ct_session_index, 0);
-	else
-	  session = session_get (fifo->master_session_index,
-	                         fifo->master_thread_index);
-	vec_add1 (handles, session_handle (session));
+	session = session_get_if_valid (fifo->master_session_index,
+	                                fifo->master_thread_index);
+	if (session)
+	  vec_add1 (handles, session_handle (session));
 	fifo = fifo->next;
       }
 
@@ -593,11 +599,11 @@ alloc_check:
 }
 
 void
-segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
-			       svm_fifo_t * tx_fifo)
+segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
 {
   svm_fifo_segment_private_t *fifo_segment;
   segment_manager_t *sm;
+  u32 segment_index;
 
   if (!rx_fifo || !tx_fifo)
     return;
@@ -607,6 +613,7 @@ segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
   if (!(sm = segment_manager_get_if_valid (rx_fifo->segment_manager)))
     return;
 
+  segment_index = rx_fifo->segment_index;
   fifo_segment = segment_manager_get_segment_w_lock (sm, segment_index);
   svm_fifo_segment_free_fifo (fifo_segment, rx_fifo,
 			      FIFO_SEGMENT_RX_FREELIST);

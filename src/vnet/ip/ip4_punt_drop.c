@@ -32,6 +32,11 @@ VNET_FEATURE_ARC_INIT (ip4_drop) =
 };
 /* *INDENT-ON* */
 
+extern ip_punt_policer_t ip4_punt_policer_cfg;
+extern ip_punt_redirect_t ip4_punt_redirect_cfg;
+extern ip_punt_redirect_rx_t uninit_rx_redirect;
+
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_ip_punt_policer_trace (u8 * s, va_list * args)
 {
@@ -46,6 +51,7 @@ format_ip_punt_policer_trace (u8 * s, va_list * args)
 ip_punt_policer_t ip4_punt_policer_cfg = {
   .policer_index = ~0,
 };
+#endif /* CLIB_MARCH_VARIANT */
 
 static char *ip4_punt_policer_error_strings[] = {
 #define _(sym,string) string,
@@ -53,9 +59,9 @@ static char *ip4_punt_policer_error_strings[] = {
 #undef _
 };
 
-static uword
-ip4_punt_policer (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_punt_policer_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   return (ip_punt_policer (vm, node, frame,
 			   vnet_feat_arc_ip4_punt.feature_arc_index,
@@ -63,8 +69,7 @@ ip4_punt_policer (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_punt_policer_node, static) = {
-  .function = ip4_punt_policer,
+VLIB_REGISTER_NODE (ip4_punt_policer_node) = {
   .name = "ip4-punt-policer",
   .vector_size = sizeof (u32),
   .n_next_nodes = IP_PUNT_POLICER_N_NEXT,
@@ -77,16 +82,14 @@ VLIB_REGISTER_NODE (ip4_punt_policer_node, static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_punt_policer_node,
-                              ip4_punt_policer);
-
-VNET_FEATURE_INIT (ip4_punt_policer_node, static) = {
+VNET_FEATURE_INIT (ip4_punt_policer_node) = {
   .arc_name = "ip4-punt",
   .node_name = "ip4-punt-policer",
   .runs_before = VNET_FEATURES("ip4-punt-redirect"),
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_ip_punt_redirect_trace (u8 * s, va_list * args)
 {
@@ -119,6 +122,7 @@ ip_punt_redirect_t ip4_punt_redirect_cfg = {
   },
 };
 /* *INDENT-ON* */
+#endif /* CLIB_MARCH_VARIANT */
 
 
 #define foreach_ip4_punt_redirect_error         \
@@ -138,9 +142,9 @@ static char *ip4_punt_redirect_error_strings[] = {
 #undef _
 };
 
-static uword
-ip4_punt_redirect (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_punt_redirect_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return (ip_punt_redirect (vm, node, frame,
 			    vnet_feat_arc_ip4_punt.feature_arc_index,
@@ -148,8 +152,7 @@ ip4_punt_redirect (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_punt_redirect_node, static) = {
-  .function = ip4_punt_redirect,
+VLIB_REGISTER_NODE (ip4_punt_redirect_node) = {
   .name = "ip4-punt-redirect",
   .vector_size = sizeof (u32),
   .n_next_nodes = IP_PUNT_REDIRECT_N_NEXT,
@@ -165,9 +168,6 @@ VLIB_REGISTER_NODE (ip4_punt_redirect_node, static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_punt_redirect_node,
-                              ip4_punt_redirect);
-
 VNET_FEATURE_INIT (ip4_punt_redirect_node, static) = {
   .arc_name = "ip4-punt",
   .node_name = "ip4-punt-redirect",
@@ -175,8 +175,8 @@ VNET_FEATURE_INIT (ip4_punt_redirect_node, static) = {
 };
 /* *INDENT-ON* */
 
-static uword
-ip4_drop (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_drop_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			      vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
@@ -186,9 +186,9 @@ ip4_drop (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 }
 
-static uword
-ip4_not_enabled (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_not_enabled_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
@@ -208,9 +208,8 @@ ip4_punt (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_drop_node, static) =
+VLIB_REGISTER_NODE (ip4_drop_node) =
 {
-  .function = ip4_drop,
   .name = "ip4-drop",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
@@ -220,11 +219,8 @@ VLIB_REGISTER_NODE (ip4_drop_node, static) =
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop);
-
-VLIB_REGISTER_NODE (ip4_not_enabled_node, static) =
+VLIB_REGISTER_NODE (ip4_not_enabled_node) =
 {
-  .function = ip4_not_enabled,
   .name = "ip4-not-enabled",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
@@ -234,9 +230,7 @@ VLIB_REGISTER_NODE (ip4_not_enabled_node, static) =
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_not_enabled_node, ip4_not_enabled);
-
-VLIB_REGISTER_NODE (ip4_punt_node, static) =
+VLIB_REGISTER_NODE (ip4_punt_node) =
 {
   .function = ip4_punt,
   .name = "ip4-punt",
@@ -261,6 +255,7 @@ VNET_FEATURE_INIT (ip4_drop_end_of_arc, static) = {
 };
 /* *INDENT-ON */
 
+#ifndef CLIB_MARCH_VARIANT
 void
 ip4_punt_policer_add_del (u8 is_add, u32 policer_index)
 {
@@ -269,6 +264,7 @@ ip4_punt_policer_add_del (u8 is_add, u32 policer_index)
   vnet_feature_enable_disable ("ip4-punt", "ip4-punt-policer",
                                0, is_add, 0, 0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 ip4_punt_police_cmd (vlib_main_t * vm,
@@ -330,6 +326,7 @@ VLIB_CLI_COMMAND (ip4_punt_policer_command, static) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 /*
  * an uninitalised rx-redirect strcut used to pad the vector
  */
@@ -407,6 +404,7 @@ ip4_punt_redirect_del (u32 rx_sw_if_index)
 
   ip_punt_redirect_del (&ip4_punt_redirect_cfg, rx_sw_if_index);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 ip4_punt_redirect_cmd (vlib_main_t * vm,
@@ -487,6 +485,7 @@ VLIB_CLI_COMMAND (ip4_punt_redirect_command, static) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_ip_punt_redirect (u8 * s, va_list * args)
 {
@@ -556,6 +555,7 @@ ip4_punt_redirect_entries (u32 sw_if_index)
 
   return prs;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 ip4_punt_redirect_show_cmd (vlib_main_t * vm,

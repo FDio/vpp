@@ -1,4 +1,4 @@
-# Statistics
+# Statistics {#stats_doc}
 
 In VPP most things are measured and counted. There are counters for interface statistics, like RX, TX counters, packet drops, and so on. Every node has a set of per-node counters, one set of error counters, like TTL exceeded, or packet to big or out-of-buffers. And a set of performance counters, like number of clocks, vectors, calls and suspends.
 

@@ -21,11 +21,11 @@ namespace gbp_recirc_cmds {
 create_cmd::create_cmd(HW::item<bool>& item,
                        const handle_t& itf,
                        bool is_ext,
-                       epg_id_t epg_id)
+                       sclass_t sclass)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_is_ext(is_ext)
-  , m_epg_id(epg_id)
+  , m_sclass(sclass)
 {
 }
 
@@ -33,7 +33,7 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_is_ext == other.m_is_ext) &&
-          (m_epg_id == other.m_epg_id));
+          (m_sclass == other.m_sclass));
 }
 
 rc_t
@@ -44,7 +44,7 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.recirc.sw_if_index = m_itf.value();
-  payload.recirc.epg_id = m_epg_id;
+  payload.recirc.sclass = m_sclass;
   payload.recirc.is_ext = m_is_ext;
 
   VAPI_CALL(req.execute());
@@ -57,7 +57,7 @@ create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "gbp-recirc-create: " << m_hw_item.to_string() << " itf:" << m_itf
-    << " ext:" << m_is_ext << " epg-id:" << m_epg_id;
+    << " ext:" << m_is_ext << " sclass:" << m_sclass;
 
   return (s.str());
 }
@@ -82,7 +82,7 @@ delete_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
   payload.recirc.sw_if_index = m_itf.value();
-  payload.recirc.epg_id = ~0;
+  payload.recirc.sclass = ~0;
 
   VAPI_CALL(req.execute());
 

@@ -29,7 +29,7 @@ ipsec_policy_is_equal (ipsec_policy_t * p1, ipsec_policy_t * p2)
 {
   if (p1->priority != p2->priority)
     return 0;
-  if (p1->is_outbound != p2->is_outbound)
+  if (p1->type != p2->type)
     return (0);
   if (p1->policy != p2->policy)
     return (0);
@@ -97,6 +97,42 @@ ipsec_spd_entry_sort (void *a1, void *a2)
 }
 
 int
+ipsec_policy_mk_type (bool is_outbound,
+		      bool is_ipv6,
+		      ipsec_policy_action_t action,
+		      ipsec_spd_policy_type_t * type)
+{
+  if (is_outbound)
+    {
+      *type = (is_ipv6 ?
+	       IPSEC_SPD_POLICY_IP6_OUTBOUND : IPSEC_SPD_POLICY_IP4_OUTBOUND);
+      return (0);
+    }
+  else
+    {
+      switch (action)
+	{
+	case IPSEC_POLICY_ACTION_PROTECT:
+	  *type = (is_ipv6 ?
+		   IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT :
+		   IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT);
+	  return (0);
+	case IPSEC_POLICY_ACTION_BYPASS:
+	  *type = (is_ipv6 ?
+		   IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS :
+		   IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
+	  return (0);
+	case IPSEC_POLICY_ACTION_DISCARD:
+	case IPSEC_POLICY_ACTION_RESOLVE:
+	  break;
+	}
+    }
+
+  /* Unsupported type */
+  return (-1);
+}
+
+int
 ipsec_add_del_policy (vlib_main_t * vm,
 		      ipsec_policy_t * policy, int is_add, u32 * stat_index)
 {
@@ -106,8 +142,8 @@ ipsec_add_del_policy (vlib_main_t * vm,
   u32 spd_index;
   uword *p;
 
-  clib_warning ("policy-id %u priority %d is_outbound %u", policy->id,
-		policy->priority, policy->is_outbound);
+  clib_warning ("policy-id %u priority %d type %U", policy->id,
+		policy->priority, format_ipsec_policy_type, policy->type);
 
   if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
     {
@@ -139,91 +175,26 @@ ipsec_add_del_policy (vlib_main_t * vm,
 				      policy_index);
       vlib_zero_combined_counter (&ipsec_spd_policy_counters, policy_index);
 
-      if (policy->is_outbound)
-	{
-	  if (policy->is_ipv6)
-	    {
-	      vec_add1 (spd->policies[IPSEC_SPD_POLICY_IP6_OUTBOUND],
-			policy_index);
-	      vec_sort_with_function (spd->policies
-				      [IPSEC_SPD_POLICY_IP6_OUTBOUND],
-				      ipsec_spd_entry_sort);
-	    }
-	  else
-	    {
-	      vec_add1 (spd->policies[IPSEC_SPD_POLICY_IP4_OUTBOUND],
-			policy_index);
-	      vec_sort_with_function (spd->policies
-				      [IPSEC_SPD_POLICY_IP4_OUTBOUND],
-				      ipsec_spd_entry_sort);
-	    }
-	}
-      else
-	{
-	  if (policy->is_ipv6)
-	    {
-	      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
-		{
-		  vec_add1 (spd->policies
-			    [IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT],
-			    policy_index);
-		  vec_sort_with_function (spd->policies
-					  [IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT],
-					  ipsec_spd_entry_sort);
-		}
-	      else
-		{
-		  vec_add1
-		    (spd->policies[IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS],
-		     policy_index);
-		  vec_sort_with_function
-		    (spd->policies[IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS],
-		     ipsec_spd_entry_sort);
-		}
-	    }
-	  else
-	    {
-	      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
-		{
-		  vec_add1 (spd->policies
-			    [IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT],
-			    policy_index);
-		  vec_sort_with_function (spd->policies
-					  [IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT],
-					  ipsec_spd_entry_sort);
-		}
-	      else
-		{
-		  vec_add1
-		    (spd->policies[IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS],
-		     policy_index);
-		  vec_sort_with_function
-		    (spd->policies[IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS],
-		     ipsec_spd_entry_sort);
-		}
-	    }
-	}
+      vec_add1 (spd->policies[policy->type], policy_index);
+      vec_sort_with_function (spd->policies[policy->type],
+			      ipsec_spd_entry_sort);
       *stat_index = policy_index;
     }
   else
     {
-      ipsec_spd_policy_t ptype;
       u32 ii;
 
-      FOR_EACH_IPSEC_SPD_POLICY_TYPE (ptype)
+      vec_foreach_index (ii, (spd->policies[policy->type]))
       {
-	vec_foreach_index (ii, (spd->policies[ptype]))
-	{
-	  vp = pool_elt_at_index (im->policies, spd->policies[ptype][ii]);
-	  if (ipsec_policy_is_equal (vp, policy))
-	    {
-	      vec_del1 (spd->policies[ptype], ii);
-	      pool_put (im->policies, vp);
-	      goto done;
-	    }
-	}
+	vp = pool_elt_at_index (im->policies,
+				spd->policies[policy->type][ii]);
+	if (ipsec_policy_is_equal (vp, policy))
+	  {
+	    vec_del1 (spd->policies[policy->type], ii);
+	    pool_put (im->policies, vp);
+	    break;
+	  }
       }
-    done:;
     }
 
   return 0;

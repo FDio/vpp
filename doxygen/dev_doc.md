@@ -12,3 +12,6 @@ Programming notes for developers.
 - @subpage acl_lookup_context
 - @subpage libmemif_doc
 - @subpage syslog_doc
+- @subpage ipfix_doc
+- @subpage stats_doc
+- @subpage if_stats_client_doc

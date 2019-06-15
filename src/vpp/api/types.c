@@ -25,9 +25,9 @@ format_vl_api_address (u8 * s, va_list * args)
   const vl_api_address_t *addr = va_arg (*args, vl_api_address_t *);
 
   if (ADDRESS_IP6 == clib_net_to_host_u32 (addr->af))
-    s = format (s, "ip6:%U", format_ip6_address, addr->un.ip6);
+    s = format (s, "%U", format_ip6_address, addr->un.ip6);
   else
-    s = format (s, "ip4:%U", format_ip4_address, addr->un.ip4);
+    s = format (s, "%U", format_ip4_address, addr->un.ip4);
 
   return s;
 }
@@ -40,9 +40,9 @@ format_vl_api_address_union (u8 * s, va_list * args)
   vl_api_address_family_t af = va_arg (*args, vl_api_address_family_t);
 
   if (ADDRESS_IP6 == af)
-    s = format (s, "ip6:%U", format_ip6_address, addr->ip6);
+    s = format (s, "%U", format_ip6_address, addr->ip6);
   else
-    s = format (s, "ip4:%U", format_ip4_address, addr->ip4);
+    s = format (s, "%U", format_ip4_address, addr->ip4);
 
   return s;
 }

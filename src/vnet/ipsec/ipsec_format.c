@@ -41,6 +41,24 @@ format_ipsec_policy_action (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_ipsec_policy_type (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  char *t = 0;
+
+  switch (i)
+    {
+#define _(f,str) case IPSEC_SPD_POLICY_##f: t = str; break;
+      foreach_ipsec_spd_policy_type
+#undef _
+    default:
+      s = format (s, "unknown");
+    }
+  s = format (s, "%s", t);
+  return s;
+}
+
 uword
 unformat_ipsec_policy_action (unformat_input_t * input, va_list * args)
 {
@@ -143,8 +161,10 @@ format_ipsec_policy (u8 * s, va_list * args)
 
   p = pool_elt_at_index (im->policies, pi);
 
-  s = format (s, "  [%d] priority %d action %U protocol ",
-	      pi, p->priority, format_ipsec_policy_action, p->policy);
+  s = format (s, "  [%d] priority %d action %U type %U protocol ",
+	      pi, p->priority,
+	      format_ipsec_policy_action, p->policy,
+	      format_ipsec_policy_type, p->type);
   if (p->protocol)
     {
       s = format (s, "%U", format_ip_protocol, p->protocol);
@@ -157,28 +177,18 @@ format_ipsec_policy (u8 * s, va_list * args)
     {
       s = format (s, " sa %u", p->sa_id);
     }
-  if (p->is_ipv6)
-    {
-      s = format (s, "\n     local addr range %U - %U port range %u - %u",
-		  format_ip6_address, &p->laddr.start.ip6,
-		  format_ip6_address, &p->laddr.stop.ip6,
-		  p->lport.start, p->lport.stop);
-      s = format (s, "\n     remote addr range %U - %U port range %u - %u",
-		  format_ip6_address, &p->raddr.start.ip6,
-		  format_ip6_address, &p->raddr.stop.ip6,
-		  p->rport.start, p->rport.stop);
-    }
-  else
-    {
-      s = format (s, "\n     local addr range %U - %U port range %u - %u",
-		  format_ip4_address, &p->laddr.start.ip4,
-		  format_ip4_address, &p->laddr.stop.ip4,
-		  p->lport.start, p->lport.stop);
-      s = format (s, "\n     remote addr range %U - %U port range %u - %u",
-		  format_ip4_address, &p->raddr.start.ip4,
-		  format_ip4_address, &p->raddr.stop.ip4,
-		  p->rport.start, p->rport.stop);
-    }
+
+  s = format (s, "\n     local addr range %U - %U port range %u - %u",
+	      format_ip46_address, &p->laddr.start, IP46_TYPE_ANY,
+	      format_ip46_address, &p->laddr.stop, IP46_TYPE_ANY,
+	      clib_net_to_host_u16 (p->lport.start),
+	      clib_net_to_host_u16 (p->lport.stop));
+  s = format (s, "\n     remote addr range %U - %U port range %u - %u",
+	      format_ip46_address, &p->raddr.start, IP46_TYPE_ANY,
+	      format_ip46_address, &p->raddr.stop, IP46_TYPE_ANY,
+	      clib_net_to_host_u16 (p->rport.start),
+	      clib_net_to_host_u16 (p->rport.stop));
+
   vlib_get_combined_counter (&ipsec_spd_policy_counters, pi, &counts);
   s = format (s, "\n     packets %u bytes %u", counts.packets, counts.bytes);
 
@@ -193,6 +203,12 @@ format_ipsec_spd (u8 * s, va_list * args)
   ipsec_spd_t *spd;
   u32 *i;
 
+  if (pool_is_free_index (im->spds, si))
+    {
+      s = format (s, "No such SPD index: %d", si);
+      goto done;
+    }
+
   spd = pool_elt_at_index (im->spds, si);
 
   s = format (s, "spd %u", spd->id);
@@ -206,6 +222,7 @@ format_ipsec_spd (u8 * s, va_list * args)
   foreach_ipsec_spd_policy_type;
 #undef _
 
+done:
   return (s);
 }
 
@@ -234,38 +251,63 @@ unformat_ipsec_key (unformat_input_t * input, va_list * args)
 }
 
 u8 *
+format_ipsec_sa_flags (u8 * s, va_list * args)
+{
+  ipsec_sa_flags_t flags = va_arg (*args, int);
+
+  if (0)
+    ;
+#define _(v, f, str) else if (flags & IPSEC_SA_FLAG_##f) s = format(s, "%s ", str);
+  foreach_ipsec_sa_flags
+#undef _
+    return (s);
+}
+
+u8 *
 format_ipsec_sa (u8 * s, va_list * args)
 {
   u32 sai = va_arg (*args, u32);
+  ipsec_format_flags_t flags = va_arg (*args, ipsec_format_flags_t);
   ipsec_main_t *im = &ipsec_main;
   vlib_counter_t counts;
   u32 tx_table_id;
   ipsec_sa_t *sa;
 
+  if (pool_is_free_index (im->sad, sai))
+    {
+      s = format (s, "No such SA index: %d", sai);
+      goto done;
+    }
+
   sa = pool_elt_at_index (im->sad, sai);
 
-  s = format (s, "[%d] sa %u spi %u mode %s%s protocol %s%s%s%s",
+  s = format (s, "[%d] sa 0x%x spi %u mode %s%s protocol %s %U",
 	      sai, sa->id, sa->spi,
-	      sa->is_tunnel ? "tunnel" : "transport",
-	      sa->is_tunnel_ip6 ? "-ip6" : "",
-	      sa->protocol ? "esp" : "ah",
-	      sa->udp_encap ? " udp-encap-enabled" : "",
-	      sa->use_anti_replay ? " anti-replay" : "",
-	      sa->use_esn ? " extended-sequence-number" : "");
-  s = format (s, "\n   last-seq %u last-seq-hi %u  window %U",
+	      ipsec_sa_is_set_IS_TUNNEL (sa) ? "tunnel" : "transport",
+	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "-ip6" : "",
+	      sa->protocol ? "esp" : "ah", format_ipsec_sa_flags, sa->flags);
+
+  if (!(flags & IPSEC_FORMAT_DETAIL))
+    goto done;
+
+  s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
+  s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
+  s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
 	      sa->last_seq, sa->last_seq_hi,
 	      format_ipsec_replay_window, sa->replay_window);
-  s = format (s, "\n   crypto alg %U%s%U",
-	      format_ipsec_crypto_alg, sa->crypto_alg,
-	      sa->crypto_alg ? " key " : "",
-	      format_ipsec_key, &sa->crypto_key);
-  s = format (s, "\n   integrity alg %U%s%U",
-	      format_ipsec_integ_alg, sa->integ_alg,
-	      sa->integ_alg ? " key " : "", format_ipsec_key, &sa->integ_key);
+  s = format (s, "\n   crypto alg %U",
+	      format_ipsec_crypto_alg, sa->crypto_alg);
+  if (sa->crypto_alg)
+    s = format (s, " key %U", format_ipsec_key, &sa->crypto_key);
+  s = format (s, "\n   integrity alg %U",
+	      format_ipsec_integ_alg, sa->integ_alg);
+  if (sa->integ_alg)
+    s = format (s, " key %U", format_ipsec_key, &sa->integ_key);
+
   vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
   s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);
 
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
       tx_table_id = fib_table_get_table_id (sa->tx_fib_index,
 					    FIB_PROTOCOL_IP4);
@@ -273,13 +315,54 @@ format_ipsec_sa (u8 * s, va_list * args)
 		  tx_table_id,
 		  format_ip46_address, &sa->tunnel_src_addr, IP46_TYPE_ANY,
 		  format_ip46_address, &sa->tunnel_dst_addr, IP46_TYPE_ANY);
-      s = format (s, "\n    resovle via fib-entry: %d", sa->fib_entry_index);
-      s = format (s, "\n    stacked on:");
-      s =
-	format (s, "\n      %U", format_dpo_id, &sa->dpo[IPSEC_PROTOCOL_ESP],
-		6);
+      if (!ipsec_sa_is_set_IS_INBOUND (sa))
+	{
+	  s =
+	    format (s, "\n    resovle via fib-entry: %d",
+		    sa->fib_entry_index);
+	  s = format (s, "\n    stacked on:");
+	  s =
+	    format (s, "\n      %U", format_dpo_id,
+		    &sa->dpo[IPSEC_PROTOCOL_ESP], 6);
+	}
     }
 
+done:
+  return (s);
+}
+
+u8 *
+format_ipsec_tunnel (u8 * s, va_list * args)
+{
+  ipsec_main_t *im = &ipsec_main;
+  u32 ti = va_arg (*args, u32);
+  vnet_hw_interface_t *hi;
+  ipsec_tunnel_if_t *t;
+
+  if (pool_is_free_index (im->tunnel_interfaces, ti))
+    {
+      s = format (s, "No such tunnel index: %d", ti);
+      goto done;
+    }
+
+  t = pool_elt_at_index (im->tunnel_interfaces, ti);
+
+  if (t->hw_if_index == ~0)
+    goto done;
+
+  hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
+
+  s = format (s, "%s\n", hi->name);
+
+  s = format (s, "   out-bound sa: ");
+  s = format (s, "%U\n", format_ipsec_sa, t->output_sa_index,
+	      IPSEC_FORMAT_BRIEF);
+
+  s = format (s, "    in-bound sa: ");
+  s = format (s, "%U\n", format_ipsec_sa, t->input_sa_index,
+	      IPSEC_FORMAT_BRIEF);
+
+done:
   return (s);
 }
 

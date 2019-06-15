@@ -19,6 +19,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_node.h>
 
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (64)
+
 #define foreach_ipsec_crypto_alg    \
   _ (0, NONE, "none")               \
   _ (1, AES_CBC_128, "aes-cbc-128") \
@@ -40,6 +42,11 @@ typedef enum
 #undef _
     IPSEC_CRYPTO_N_ALG,
 } ipsec_crypto_alg_t;
+
+#define IPSEC_CRYPTO_ALG_IS_GCM(_alg)                     \
+  (((_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||             \
+    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||             \
+    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)))
 
 #define foreach_ipsec_integ_alg                                            \
   _ (0, NONE, "none")                                                      \
@@ -83,24 +90,60 @@ typedef struct ipsec_key_t_
  */
 #define foreach_ipsec_sa_flags                            \
   _ (0, NONE, "none")                                     \
-  _ (1, USE_EXTENDED_SEQ_NUM, "esn")                      \
+  _ (1, USE_ESN, "esn")                                   \
   _ (2, USE_ANTI_REPLAY, "anti-replay")                   \
   _ (4, IS_TUNNEL, "tunnel")                              \
   _ (8, IS_TUNNEL_V6, "tunnel-v6")                        \
   _ (16, UDP_ENCAP, "udp-encap")                          \
+  _ (32, IS_GRE, "GRE")                                   \
+  _ (64, IS_INBOUND, "inboud")                            \
+  _ (128, IS_AEAD, "aead")                                \
 
 typedef enum ipsec_sad_flags_t_
 {
 #define _(v, f, s) IPSEC_SA_FLAG_##f = v,
   foreach_ipsec_sa_flags
 #undef _
-} ipsec_sa_flags_t;
+} __clib_packed ipsec_sa_flags_t;
+
+STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 1, "IPSEC SA flags > 1 byte");
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* flags */
+  ipsec_sa_flags_t flags;
+
+  u8 crypto_iv_size;
+  u8 crypto_block_size;
+  u8 integ_icv_size;
+  u32 spi;
+  u32 seq;
+  u32 seq_hi;
+  u32 last_seq;
+  u32 last_seq_hi;
+  u64 replay_window;
+
+  vnet_crypto_op_id_t crypto_enc_op_id;
+  vnet_crypto_op_id_t crypto_dec_op_id;
+  vnet_crypto_op_id_t integ_op_id;
+
+  dpo_id_t dpo[IPSEC_N_PROTOCOLS];
+
+  /* data accessed by dataplane code should be above this comment */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
+  union
+  {
+    ip4_header_t ip4_hdr;
+    ip6_header_t ip6_hdr;
+  };
+  udp_header_t udp_hdr;
+
+
   fib_node_t node;
   u32 id;
-  u32 spi;
   u32 stat_index;
   ipsec_protocol_t protocol;
 
@@ -110,30 +153,34 @@ typedef struct
   ipsec_integ_alg_t integ_alg;
   ipsec_key_t integ_key;
 
-  u8 use_esn;
-  u8 use_anti_replay;
-
-  u8 is_tunnel;
-  u8 is_tunnel_ip6;
-  u8 udp_encap;
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
 
   fib_node_index_t fib_entry_index;
   u32 sibling;
-  dpo_id_t dpo[IPSEC_N_PROTOCOLS];
 
   u32 tx_fib_index;
-  u32 salt;
 
-  /* runtime */
-  u32 seq;
-  u32 seq_hi;
-  u32 last_seq;
-  u32 last_seq_hi;
-  u64 replay_window;
+  /* Salt used in GCM modes - stored in network byte order */
+  u32 salt;
 } ipsec_sa_t;
 
+STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
+
+#define _(a,v,s)                                                        \
+  always_inline int                                                     \
+  ipsec_sa_is_set_##v (const ipsec_sa_t *sa) {                          \
+    return (sa->flags & IPSEC_SA_FLAG_##v);                             \
+  }
+foreach_ipsec_sa_flags
+#undef _
+#define _(a,v,s)                                                        \
+  always_inline int                                                     \
+  ipsec_sa_set_##v (ipsec_sa_t *sa) {                                   \
+    return (sa->flags |= IPSEC_SA_FLAG_##v);                            \
+  }
+  foreach_ipsec_sa_flags
+#undef _
 /**
  * @brief
  * SA packet & bytes counters
@@ -151,11 +198,16 @@ extern int ipsec_sa_add (u32 id,
 			 const ipsec_key_t * ik,
 			 ipsec_sa_flags_t flags,
 			 u32 tx_table_id,
+			 u32 salt,
 			 const ip46_address_t * tunnel_src_addr,
 			 const ip46_address_t * tunnel_dst_addr,
 			 u32 * sa_index);
 extern u32 ipsec_sa_del (u32 id);
 extern void ipsec_sa_stack (ipsec_sa_t * sa);
+extern void ipsec_sa_set_crypto_alg (ipsec_sa_t * sa,
+				     ipsec_crypto_alg_t crypto_alg);
+extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,
+				    ipsec_integ_alg_t integ_alg);
 
 extern u8 ipsec_is_sa_used (u32 sa_index);
 extern int ipsec_set_sa_key (u32 id,
@@ -174,6 +226,132 @@ extern uword unformat_ipsec_crypto_alg (unformat_input_t * input,
 extern uword unformat_ipsec_integ_alg (unformat_input_t * input,
 				       va_list * args);
 extern uword unformat_ipsec_key (unformat_input_t * input, va_list * args);
+
+always_inline int
+ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 * seqp)
+{
+  u32 seq, diff, tl, th;
+  if ((sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
+    return 0;
+
+  seq = clib_net_to_host_u32 (*seqp);
+
+  if ((sa->flags & IPSEC_SA_FLAG_USE_ESN) == 0)
+    {
+
+      if (PREDICT_TRUE (seq > sa->last_seq))
+	return 0;
+
+      diff = sa->last_seq - seq;
+
+      if (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE > diff)
+	return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+      else
+	return 1;
+
+      return 0;
+    }
+
+  tl = sa->last_seq;
+  th = sa->last_seq_hi;
+  diff = tl - seq;
+
+  if (PREDICT_TRUE (tl >= (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE - 1)))
+    {
+      if (seq >= (tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1))
+	{
+	  sa->seq_hi = th;
+	  if (seq <= tl)
+	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  else
+	    return 0;
+	}
+      else
+	{
+	  sa->seq_hi = th + 1;
+	  return 0;
+	}
+    }
+  else
+    {
+      if (seq >= (tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1))
+	{
+	  sa->seq_hi = th - 1;
+	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	}
+      else
+	{
+	  sa->seq_hi = th;
+	  if (seq <= tl)
+	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  else
+	    return 0;
+	}
+    }
+
+  return 0;
+}
+
+always_inline void
+ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 * seqp)
+{
+  u32 pos, seq;
+  if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
+    return;
+
+  seq = clib_host_to_net_u32 (*seqp);
+  if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ESN))
+    {
+      int wrap = sa->seq_hi - sa->last_seq_hi;
+
+      if (wrap == 0 && seq > sa->last_seq)
+	{
+	  pos = seq - sa->last_seq;
+	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+	    sa->replay_window = ((sa->replay_window) << pos) | 1;
+	  else
+	    sa->replay_window = 1;
+	  sa->last_seq = seq;
+	}
+      else if (wrap > 0)
+	{
+	  pos = ~seq + sa->last_seq + 1;
+	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+	    sa->replay_window = ((sa->replay_window) << pos) | 1;
+	  else
+	    sa->replay_window = 1;
+	  sa->last_seq = seq;
+	  sa->last_seq_hi = sa->seq_hi;
+	}
+      else if (wrap < 0)
+	{
+	  pos = ~seq + sa->last_seq + 1;
+	  sa->replay_window |= (1ULL << pos);
+	}
+      else
+	{
+	  pos = sa->last_seq - seq;
+	  sa->replay_window |= (1ULL << pos);
+	}
+    }
+  else
+    {
+      if (seq > sa->last_seq)
+	{
+	  pos = seq - sa->last_seq;
+	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+	    sa->replay_window = ((sa->replay_window) << pos) | 1;
+	  else
+	    sa->replay_window = 1;
+	  sa->last_seq = seq;
+	}
+      else
+	{
+	  pos = sa->last_seq - seq;
+	  sa->replay_window |= (1ULL << pos);
+	}
+    }
+}
 
 #endif /* __IPSEC_SPD_SA_H__ */
 

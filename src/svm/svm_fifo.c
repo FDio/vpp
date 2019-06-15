@@ -1,5 +1,9 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
+ * Copyright (c) 2019 Arm Limited
+ * Copyright (c) 2010-2017 Intel Corporation and/or its affiliates.
+ * Copyright (c) 2007-2009 Kip Macy kmacy@freebsd.org
+ * Inspired from DPDK rte_ring.h (SPSC only) (derived from freebsd bufring.h).
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -16,50 +20,122 @@
 #include <svm/svm_fifo.h>
 #include <vppinfra/cpu.h>
 
-static inline u8
-position_lt (svm_fifo_t * f, u32 a, u32 b)
+CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t * f,
+	       svm_fifo_chunk_t * c, u32 tail_idx, const u8 * src, u32 len,
+	       u8 update_tail)
 {
-  return (ooo_segment_distance_from_tail (f, a)
-	  < ooo_segment_distance_from_tail (f, b));
+  u32 n_chunk;
+
+  ASSERT (tail_idx >= c->start_byte && tail_idx < c->start_byte + c->length);
+
+  tail_idx -= c->start_byte;
+  n_chunk = c->length - tail_idx;
+  if (n_chunk < len)
+    {
+      u32 to_copy = len;
+      clib_memcpy_fast (&c->data[tail_idx], src, n_chunk);
+      while ((to_copy -= n_chunk))
+	{
+	  c = c->next;
+	  n_chunk = clib_min (c->length, to_copy);
+	  clib_memcpy_fast (&c->data[0], src + (len - to_copy), n_chunk);
+	}
+      if (update_tail)
+	f->tail_chunk = c;
+    }
+  else
+    {
+      clib_memcpy_fast (&c->data[tail_idx], src, len);
+    }
+}
+
+CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t * f,
+	       svm_fifo_chunk_t * c, u32 head_idx, u8 * dst, u32 len,
+	       u8 update_head)
+{
+  u32 n_chunk;
+
+  head_idx -= c->start_byte;
+  n_chunk = c->length - head_idx;
+  if (n_chunk < len)
+    {
+      u32 to_copy = len;
+      clib_memcpy_fast (dst, &c->data[head_idx], n_chunk);
+      while ((to_copy -= n_chunk))
+	{
+	  c = c->next;
+	  n_chunk = clib_min (c->length, to_copy);
+	  clib_memcpy_fast (dst + (len - to_copy), &c->data[0], n_chunk);
+	}
+      if (update_head)
+	f->head_chunk = c;
+    }
+  else
+    {
+      clib_memcpy_fast (dst, &c->data[head_idx], len);
+    }
+}
+
+#ifndef CLIB_MARCH_VARIANT
+
+static inline void
+svm_fifo_copy_to_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c, u32 tail_idx,
+			const u8 * src, u32 len, u8 update_tail)
+{
+  CLIB_MARCH_FN_SELECT (svm_fifo_copy_to_chunk) (f, c, tail_idx, src, len,
+						 update_tail);
+}
+
+static inline void
+svm_fifo_copy_from_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c, u32 head_idx,
+			  u8 * dst, u32 len, u8 update_head)
+{
+  CLIB_MARCH_FN_SELECT (svm_fifo_copy_from_chunk) (f, c, head_idx, dst, len,
+						   update_head);
 }
 
 static inline u8
-position_leq (svm_fifo_t * f, u32 a, u32 b)
+position_lt (svm_fifo_t * f, u32 a, u32 b, u32 tail)
 {
-  return (ooo_segment_distance_from_tail (f, a)
-	  <= ooo_segment_distance_from_tail (f, b));
+  return (ooo_segment_distance_from_tail (f, a, tail)
+	  < ooo_segment_distance_from_tail (f, b, tail));
 }
 
 static inline u8
-position_gt (svm_fifo_t * f, u32 a, u32 b)
+position_leq (svm_fifo_t * f, u32 a, u32 b, u32 tail)
 {
-  return (ooo_segment_distance_from_tail (f, a)
-	  > ooo_segment_distance_from_tail (f, b));
+  return (ooo_segment_distance_from_tail (f, a, tail)
+	  <= ooo_segment_distance_from_tail (f, b, tail));
+}
+
+static inline u8
+position_gt (svm_fifo_t * f, u32 a, u32 b, u32 tail)
+{
+  return (ooo_segment_distance_from_tail (f, a, tail)
+	  > ooo_segment_distance_from_tail (f, b, tail));
 }
 
 static inline u32
-position_diff (svm_fifo_t * f, u32 posa, u32 posb)
+position_diff (svm_fifo_t * f, u32 posa, u32 posb, u32 tail)
 {
-  return ooo_segment_distance_from_tail (f, posa)
-    - ooo_segment_distance_from_tail (f, posb);
+  return ooo_segment_distance_from_tail (f, posa, tail)
+    - ooo_segment_distance_from_tail (f, posb, tail);
 }
 
 static inline u32
 ooo_segment_end_pos (svm_fifo_t * f, ooo_segment_t * s)
 {
-  return (s->start + s->length) % f->nitems;
+  return s->start + s->length;
 }
-
-#ifndef CLIB_MARCH_VARIANT
 
 u8 *
 format_ooo_segment (u8 * s, va_list * args)
 {
   svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
   ooo_segment_t *seg = va_arg (*args, ooo_segment_t *);
-  u32 normalized_start = (seg->start + f->nitems - f->tail) % f->nitems;
+  u32 normalized_start = (seg->start + f->nitems - f->tail) % f->size;
   s = format (s, "[%u, %u], len %u, next %d, prev %d", normalized_start,
-	      (normalized_start + seg->length) % f->nitems, seg->length,
+	      (normalized_start + seg->length) % f->size, seg->length,
 	      seg->next, seg->prev);
   return s;
 }
@@ -108,9 +184,8 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
   trace_len = 0;
 #endif
 
-  dummy_fifo = svm_fifo_create (f->nitems);
-  clib_memset (f->data, 0xFF, f->nitems);
-
+  dummy_fifo = svm_fifo_create (f->size);
+  clib_memset (f->head_chunk->data, 0xFF, f->nitems);
   vec_validate (data, f->nitems);
   for (i = 0; i < vec_len (data); i++)
     data[i] = i;
@@ -122,8 +197,7 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
 	{
 	  if (verbose)
 	    s = format (s, "adding [%u, %u]:", trace[i].offset,
-			(trace[i].offset +
-			 trace[i].len) % dummy_fifo->nitems);
+			(trace[i].offset + trace[i].len) % dummy_fifo->size);
 	  svm_fifo_enqueue_with_offset (dummy_fifo, trace[i].offset,
 					trace[i].len, &data[offset]);
 	}
@@ -179,9 +253,10 @@ format_svm_fifo (u8 * s, va_list * args)
 
   indent = format_get_indent (s);
   s = format (s, "cursize %u nitems %u has_event %d\n",
-	      f->cursize, f->nitems, f->has_event);
-  s = format (s, "%Uhead %d tail %d segment manager %u\n", format_white_space,
-	      indent, f->head, f->tail, f->segment_manager);
+	      svm_fifo_max_dequeue (f), f->nitems, f->has_event);
+  s = format (s, "%Uhead %u tail %u segment manager %u\n", format_white_space,
+	      indent, (f->head % f->size), (f->tail % f->size),
+	      f->segment_manager);
 
   if (verbose > 1)
     s = format (s, "%Uvpp session %d thread %d app session %d thread %d\n",
@@ -200,6 +275,25 @@ format_svm_fifo (u8 * s, va_list * args)
   return s;
 }
 
+void
+svm_fifo_init (svm_fifo_t * f, u32 size)
+{
+  f->size = size;
+  /*
+   * usable size of the fifo set to rounded_data_size - 1
+   * to differentiate between free fifo and empty fifo.
+   */
+  f->nitems = f->size - 1;
+  f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
+  f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
+  f->segment_index = SVM_FIFO_INVALID_INDEX;
+  f->refcnt = 1;
+  f->default_chunk.start_byte = 0;
+  f->default_chunk.length = f->size;
+  f->default_chunk.next = f->start_chunk = &f->default_chunk;
+  f->end_chunk = f->head_chunk = f->tail_chunk = f->start_chunk;
+}
+
 /** create an svm fifo, in the current heap. Fails vs blow up the process */
 svm_fifo_t *
 svm_fifo_create (u32 data_size_in_bytes)
@@ -215,12 +309,65 @@ svm_fifo_create (u32 data_size_in_bytes)
     return 0;
 
   clib_memset (f, 0, sizeof (*f));
-  f->nitems = data_size_in_bytes;
-  f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
-  f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
-  f->segment_index = SVM_FIFO_INVALID_INDEX;
-  f->refcnt = 1;
-  return (f);
+  svm_fifo_init (f, data_size_in_bytes);
+  return f;
+}
+
+static inline void
+svm_fifo_size_update (svm_fifo_t * f, svm_fifo_chunk_t * c)
+{
+  svm_fifo_chunk_t *prev;
+  u32 add_bytes = 0;
+
+  prev = f->end_chunk;
+  while (c)
+    {
+      c->start_byte = prev->start_byte + prev->length;
+      add_bytes += c->length;
+      prev->next = c;
+      prev = c;
+      c = c->next;
+    }
+  f->end_chunk = prev;
+  prev->next = f->start_chunk;
+  f->size += add_bytes;
+  f->nitems = f->size - 1;
+  f->new_chunks = 0;
+}
+
+static void
+svm_fifo_try_size_update (svm_fifo_t * f, u32 new_head)
+{
+  if (new_head % f->size > f->tail % f->size)
+    return;
+
+  svm_fifo_size_update (f, f->new_chunks);
+  f->flags &= ~SVM_FIFO_F_SIZE_UPDATE;
+}
+
+void
+svm_fifo_add_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c)
+{
+  if (svm_fifo_is_wrapped (f))
+    {
+      if (f->new_chunks)
+	{
+	  svm_fifo_chunk_t *prev;
+
+	  prev = f->new_chunks;
+	  while (prev->next)
+	    prev = prev->next;
+	  prev->next = c;
+	}
+      else
+	{
+	  f->new_chunks = c;
+	}
+      f->flags |= SVM_FIFO_F_SIZE_UPDATE;
+      return;
+    }
+
+  svm_fifo_size_update (f, c);
 }
 
 void
@@ -234,7 +381,6 @@ svm_fifo_free (svm_fifo_t * f)
       clib_mem_free (f);
     }
 }
-#endif
 
 always_inline ooo_segment_t *
 ooo_segment_new (svm_fifo_t * f, u32 start, u32 length)
@@ -281,21 +427,23 @@ ooo_segment_del (svm_fifo_t * f, u32 index)
  * adjacent segments and removing overlapping ones.
  */
 static void
-ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
+ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
 {
   ooo_segment_t *s, *new_s, *prev, *next, *it;
   u32 new_index, s_end_pos, s_index;
-  u32 normalized_position, normalized_end_position;
+  u32 offset_pos, offset_end_pos;
 
-  ASSERT (offset + length <= ooo_segment_distance_from_tail (f, f->head));
-  normalized_position = (f->tail + offset) % f->nitems;
-  normalized_end_position = (f->tail + offset + length) % f->nitems;
+  ASSERT (offset + length <= ooo_segment_distance_from_tail (f, head, tail)
+	  || head == tail);
+
+  offset_pos = tail + offset;
+  offset_end_pos = tail + offset + length;
 
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
   if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX)
     {
-      s = ooo_segment_new (f, normalized_position, length);
+      s = ooo_segment_new (f, offset_pos, length);
       f->ooos_list_head = s - f->ooo_segments;
       f->ooos_newest = f->ooos_list_head;
       return;
@@ -304,20 +452,20 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
   /* Find first segment that starts after new segment */
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
   while (s->next != OOO_SEGMENT_INVALID_INDEX
-	 && position_lt (f, s->start, normalized_position))
+	 && position_lt (f, s->start, offset_pos, tail))
     s = pool_elt_at_index (f->ooo_segments, s->next);
 
   /* If we have a previous and we overlap it, use it as starting point */
   prev = ooo_segment_get_prev (f, s);
   if (prev
-      && position_leq (f, normalized_position, ooo_segment_end_pos (f, prev)))
+      && position_leq (f, offset_pos, ooo_segment_end_pos (f, prev), tail))
     {
       s = prev;
       s_end_pos = ooo_segment_end_pos (f, s);
 
-      /* Since we have previous, normalized start position cannot be smaller
+      /* Since we have previous, offset start position cannot be smaller
        * than prev->start. Check tail */
-      ASSERT (position_lt (f, s->start, normalized_position));
+      ASSERT (position_lt (f, s->start, offset_pos, tail));
       goto check_tail;
     }
 
@@ -325,9 +473,9 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
   s_end_pos = ooo_segment_end_pos (f, s);
 
   /* No overlap, add before current segment */
-  if (position_lt (f, normalized_end_position, s->start))
+  if (position_lt (f, offset_end_pos, s->start, tail))
     {
-      new_s = ooo_segment_new (f, normalized_position, length);
+      new_s = ooo_segment_new (f, offset_pos, length);
       new_index = new_s - f->ooo_segments;
 
       /* Pool might've moved, get segment again */
@@ -350,9 +498,9 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
       return;
     }
   /* No overlap, add after current segment */
-  else if (position_gt (f, normalized_position, s_end_pos))
+  else if (position_gt (f, offset_pos, s_end_pos, tail))
     {
-      new_s = ooo_segment_new (f, normalized_position, length);
+      new_s = ooo_segment_new (f, offset_pos, length);
       new_index = new_s - f->ooo_segments;
 
       /* Pool might've moved, get segment again */
@@ -373,24 +521,24 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
    */
 
   /* Merge at head */
-  if (position_lt (f, normalized_position, s->start))
+  if (position_lt (f, offset_pos, s->start, tail))
     {
-      s->start = normalized_position;
-      s->length = position_diff (f, s_end_pos, s->start);
+      s->start = offset_pos;
+      s->length = position_diff (f, s_end_pos, s->start, tail);
       f->ooos_newest = s - f->ooo_segments;
     }
 
 check_tail:
 
   /* Overlapping tail */
-  if (position_gt (f, normalized_end_position, s_end_pos))
+  if (position_gt (f, offset_end_pos, s_end_pos, tail))
     {
-      s->length = position_diff (f, normalized_end_position, s->start);
+      s->length = position_diff (f, offset_end_pos, s->start, tail);
 
       /* Remove the completely overlapped segments in the tail */
       it = ooo_segment_next (f, s);
       while (it && position_leq (f, ooo_segment_end_pos (f, it),
-				 normalized_end_position))
+				 offset_end_pos, tail))
 	{
 	  next = ooo_segment_next (f, it);
 	  ooo_segment_del (f, it - f->ooo_segments);
@@ -398,10 +546,10 @@ check_tail:
 	}
 
       /* If partial overlap with last, merge */
-      if (it && position_leq (f, it->start, normalized_end_position))
+      if (it && position_leq (f, it->start, offset_end_pos, tail))
 	{
 	  s->length = position_diff (f, ooo_segment_end_pos (f, it),
-				     s->start);
+				     s->start, tail);
 	  ooo_segment_del (f, it - f->ooo_segments);
 	}
       f->ooos_newest = s - f->ooo_segments;
@@ -413,14 +561,14 @@ check_tail:
  * advanced. Returns the number of bytes added to tail.
  */
 static int
-ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
+ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
 {
   ooo_segment_t *s;
   u32 index, bytes = 0;
   i32 diff;
 
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
-  diff = ooo_segment_distance_to_tail (f, s->start);
+  diff = ooo_segment_distance_to_tail (f, s->start, *tail);
 
   ASSERT (diff != n_bytes_enqueued);
 
@@ -436,8 +584,7 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
       if (s->length > diff)
 	{
 	  bytes = s->length - diff;
-	  f->tail += bytes;
-	  f->tail %= f->nitems;
+	  *tail = *tail + bytes;
 	  ooo_segment_del (f, index);
 	  break;
 	}
@@ -446,7 +593,7 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
       if (s->next != OOO_SEGMENT_INVALID_INDEX)
 	{
 	  s = pool_elt_at_index (f->ooo_segments, s->next);
-	  diff = ooo_segment_distance_to_tail (f, s->start);
+	  diff = ooo_segment_distance_to_tail (f, s->start, *tail);
 	  ooo_segment_del (f, index);
 	}
       /* End of search */
@@ -461,79 +608,62 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
   return bytes;
 }
 
-CLIB_MARCH_FN (svm_fifo_enqueue_nowait, int, svm_fifo_t * f, u32 max_bytes,
-	       const u8 * copy_from_here)
+void
+svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len)
 {
-  u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
-  u32 cursize, nitems;
+  u32 n_chunk;
+  u32 head, tail, head_idx;
+  svm_fifo_chunk_t *c;
 
-  /* read cursize, which can only increase while we're working */
-  cursize = svm_fifo_max_dequeue (f);
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+  ASSERT (len <= f->nitems);
 
-  if (PREDICT_FALSE (cursize == f->nitems))
-    return SVM_FIFO_FULL;
-
-  nitems = f->nitems;
-
-  /* Number of bytes we're going to copy */
-  total_copy_bytes = (nitems - cursize) < max_bytes ?
-    (nitems - cursize) : max_bytes;
-
-  if (PREDICT_TRUE (copy_from_here != 0))
-    {
-      /* Number of bytes in first copy segment */
-      first_copy_bytes = ((nitems - f->tail) < total_copy_bytes)
-	? (nitems - f->tail) : total_copy_bytes;
-
-      clib_memcpy_fast (&f->data[f->tail], copy_from_here, first_copy_bytes);
-      f->tail += first_copy_bytes;
-      f->tail = (f->tail == nitems) ? 0 : f->tail;
-
-      /* Number of bytes in second copy segment, if any */
-      second_copy_bytes = total_copy_bytes - first_copy_bytes;
-      if (second_copy_bytes)
-	{
-	  clib_memcpy_fast (&f->data[f->tail],
-			    copy_from_here + first_copy_bytes,
-			    second_copy_bytes);
-	  f->tail += second_copy_bytes;
-	  f->tail = (f->tail == nitems) ? 0 : f->tail;
-	}
-    }
+  f_load_head_tail_cons (f, &head, &tail);
+  c = f->head_chunk;
+  head_idx = head % f->size;
+  head_idx -= c->start_byte;
+  n_chunk = c->length - head_idx;
+  if (len <= n_chunk)
+    clib_memcpy_fast (&c->data[head_idx], data, len);
   else
     {
-      ASSERT (0);
-
-      /* Account for a zero-copy enqueue done elsewhere */
-      ASSERT (max_bytes <= (nitems - cursize));
-      f->tail += max_bytes;
-      f->tail = f->tail % nitems;
-      total_copy_bytes = max_bytes;
+      clib_memcpy_fast (&c->data[head_idx], data, n_chunk);
+      clib_memcpy_fast (&c->next->data[0], data + n_chunk, len - n_chunk);
     }
-
-  svm_fifo_trace_add (f, f->head, total_copy_bytes, 2);
-
-  /* Any out-of-order segments to collect? */
-  if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
-    total_copy_bytes += ooo_segment_try_collect (f, total_copy_bytes);
-
-  /* Atomically increase the queue length */
-  ASSERT (cursize + total_copy_bytes <= nitems);
-  clib_atomic_fetch_add_rel (&f->cursize, total_copy_bytes);
-
-  return (total_copy_bytes);
 }
 
-#ifndef CLIB_MARCH_VARIANT
 int
-svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
-			 const u8 * copy_from_here)
+svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 len, const u8 * src)
 {
-  return CLIB_MARCH_FN_SELECT (svm_fifo_enqueue_nowait) (f, max_bytes,
-							 copy_from_here);
+  u32 tail, head, free_count;
+
+  f_load_head_tail_prod (f, &head, &tail);
+
+  /* free space in fifo can only increase during enqueue: SPSC */
+  free_count = f_free_count (f, head, tail);
+
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+
+  if (PREDICT_FALSE (free_count == 0))
+    return SVM_FIFO_FULL;
+
+  /* number of bytes we're going to copy */
+  len = clib_min (free_count, len);
+
+  svm_fifo_copy_to_chunk (f, f->tail_chunk, tail % f->size, src, len,
+			  1 /* update tail */ );
+  tail += len;
+
+  svm_fifo_trace_add (f, head, n_total, 2);
+
+  /* collect out-of-order segments */
+  if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
+    len += ooo_segment_try_collect (f, len, &tail);
+
+  /* store-rel: producer owned index (paired with load-acq in consumer) */
+  clib_atomic_store_rel_n (&f->tail, tail);
+
+  return len;
 }
-#endif
 
 /**
  * Enqueue a future segment.
@@ -542,230 +672,107 @@ svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
  * Returns 0 of the entire segment was copied
  * Returns -1 if none of the segment was copied due to lack of space
  */
-CLIB_MARCH_FN (svm_fifo_enqueue_with_offset, int, svm_fifo_t * f,
-	       u32 offset, u32 required_bytes, u8 * copy_from_here)
+int
+svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 {
-  u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
-  u32 cursize, nitems, normalized_offset;
+  u32 tail, head, free_count;
+
+  f_load_head_tail_prod (f, &head, &tail);
+
+  /* free space in fifo can only increase during enqueue: SPSC */
+  free_count = f_free_count (f, head, tail);
+
+  /* will this request fit? */
+  if ((len + offset) > free_count)
+    return -1;
 
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
-  /* read cursize, which can only increase while we're working */
-  cursize = svm_fifo_max_dequeue (f);
-  nitems = f->nitems;
+  svm_fifo_trace_add (f, offset, len, 1);
 
-  ASSERT (required_bytes < nitems);
+  ooo_segment_add (f, offset, head, tail, len);
 
-  normalized_offset = (f->tail + offset) % nitems;
+  svm_fifo_copy_to_chunk (f, f->tail_chunk, (tail + offset) % f->size, src,
+			  len, 0 /* update tail */ );
 
-  /* Will this request fit? */
-  if ((required_bytes + offset) > (nitems - cursize))
-    return -1;
-
-  svm_fifo_trace_add (f, offset, required_bytes, 1);
-
-  ooo_segment_add (f, offset, required_bytes);
-
-  /* Number of bytes we're going to copy */
-  total_copy_bytes = required_bytes;
-
-  /* Number of bytes in first copy segment */
-  first_copy_bytes = ((nitems - normalized_offset) < total_copy_bytes)
-    ? (nitems - normalized_offset) : total_copy_bytes;
-
-  clib_memcpy_fast (&f->data[normalized_offset], copy_from_here,
-		    first_copy_bytes);
-
-  /* Number of bytes in second copy segment, if any */
-  second_copy_bytes = total_copy_bytes - first_copy_bytes;
-  if (second_copy_bytes)
-    {
-      normalized_offset += first_copy_bytes;
-      normalized_offset %= nitems;
-
-      ASSERT (normalized_offset == 0);
-
-      clib_memcpy_fast (&f->data[normalized_offset],
-			copy_from_here + first_copy_bytes, second_copy_bytes);
-    }
-
-  return (0);
+  return 0;
 }
-
-#ifndef CLIB_MARCH_VARIANT
 
 int
-svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 required_bytes,
-			      u8 * copy_from_here)
+svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 len, u8 * dst)
 {
-  return CLIB_MARCH_FN_SELECT (svm_fifo_enqueue_with_offset) (f, offset,
-							      required_bytes,
-							      copy_from_here);
-}
+  u32 tail, head, cursize;
 
-void
-svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len)
-{
-  u32 first_chunk;
-  first_chunk = f->nitems - f->head;
-  ASSERT (len <= f->nitems);
-  if (len <= first_chunk)
-    clib_memcpy_fast (&f->data[f->head], data, len);
-  else
-    {
-      clib_memcpy_fast (&f->data[f->head], data, first_chunk);
-      clib_memcpy_fast (&f->data[0], data + first_chunk, len - first_chunk);
-    }
-}
-#endif
+  f_load_head_tail_cons (f, &head, &tail);
 
-CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 max_bytes,
-	       u8 * copy_here)
-{
-  u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
-  u32 cursize, nitems;
+  /* current size of fifo can only increase during dequeue: SPSC */
+  cursize = f_cursize (f, head, tail);
 
-  /* read cursize, which can only increase while we're working */
-  cursize = svm_fifo_max_dequeue (f);
   if (PREDICT_FALSE (cursize == 0))
     return -2;			/* nothing in the fifo */
 
-  nitems = f->nitems;
+  len = clib_min (cursize, len);
+  ASSERT (cursize >= len);
 
-  /* Number of bytes we're going to copy */
-  total_copy_bytes = (cursize < max_bytes) ? cursize : max_bytes;
+  svm_fifo_copy_from_chunk (f, f->head_chunk, head % f->size, dst, len,
+			    1 /* update head */ );
+  head += len;
 
-  if (PREDICT_TRUE (copy_here != 0))
-    {
-      /* Number of bytes in first copy segment */
-      first_copy_bytes = ((nitems - f->head) < total_copy_bytes)
-	? (nitems - f->head) : total_copy_bytes;
-      clib_memcpy_fast (copy_here, &f->data[f->head], first_copy_bytes);
-      f->head += first_copy_bytes;
-      f->head = (f->head == nitems) ? 0 : f->head;
+  if (PREDICT_FALSE (f->flags & SVM_FIFO_F_SIZE_UPDATE))
+    svm_fifo_try_size_update (f, head);
 
-      /* Number of bytes in second copy segment, if any */
-      second_copy_bytes = total_copy_bytes - first_copy_bytes;
-      if (second_copy_bytes)
-	{
-	  clib_memcpy_fast (copy_here + first_copy_bytes,
-			    &f->data[f->head], second_copy_bytes);
-	  f->head += second_copy_bytes;
-	  f->head = (f->head == nitems) ? 0 : f->head;
-	}
-    }
-  else
-    {
-      ASSERT (0);
-      /* Account for a zero-copy dequeue done elsewhere */
-      ASSERT (max_bytes <= cursize);
-      f->head += max_bytes;
-      f->head = f->head % nitems;
-      cursize -= max_bytes;
-      total_copy_bytes = max_bytes;
-    }
+  /* store-rel: consumer owned index (paired with load-acq in producer) */
+  clib_atomic_store_rel_n (&f->head, head);
 
-  ASSERT (f->head <= nitems);
-  ASSERT (cursize >= total_copy_bytes);
-  clib_atomic_fetch_sub_rel (&f->cursize, total_copy_bytes);
-
-  return (total_copy_bytes);
+  return len;
 }
-
-#ifndef CLIB_MARCH_VARIANT
 
 int
-svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
+svm_fifo_peek (svm_fifo_t * f, u32 relative_offset, u32 len, u8 * dst)
 {
-  return CLIB_MARCH_FN_SELECT (svm_fifo_dequeue_nowait) (f, max_bytes,
-							 copy_here);
-}
-#endif
+  u32 tail, head, cursize;
 
-CLIB_MARCH_FN (svm_fifo_peek, int, svm_fifo_t * f, u32 relative_offset,
-	       u32 max_bytes, u8 * copy_here)
-{
-  u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
-  u32 cursize, nitems, real_head;
+  f_load_head_tail_cons (f, &head, &tail);
 
-  /* read cursize, which can only increase while we're working */
-  cursize = svm_fifo_max_dequeue (f);
+  /* current size of fifo can only increase during peek: SPSC */
+  cursize = f_cursize (f, head, tail);
+
   if (PREDICT_FALSE (cursize < relative_offset))
     return -2;			/* nothing in the fifo */
 
-  nitems = f->nitems;
-  real_head = f->head + relative_offset;
-  real_head = real_head >= nitems ? real_head - nitems : real_head;
+  len = clib_min (cursize - relative_offset, len);
 
-  /* Number of bytes we're going to copy */
-  total_copy_bytes = (cursize - relative_offset < max_bytes) ?
-    cursize - relative_offset : max_bytes;
-
-  if (PREDICT_TRUE (copy_here != 0))
-    {
-      /* Number of bytes in first copy segment */
-      first_copy_bytes =
-	((nitems - real_head) < total_copy_bytes) ?
-	(nitems - real_head) : total_copy_bytes;
-      clib_memcpy_fast (copy_here, &f->data[real_head], first_copy_bytes);
-
-      /* Number of bytes in second copy segment, if any */
-      second_copy_bytes = total_copy_bytes - first_copy_bytes;
-      if (second_copy_bytes)
-	{
-	  clib_memcpy_fast (copy_here + first_copy_bytes, &f->data[0],
-			    second_copy_bytes);
-	}
-    }
-  return total_copy_bytes;
-}
-
-#ifndef CLIB_MARCH_VARIANT
-
-int
-svm_fifo_peek (svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
-	       u8 * copy_here)
-{
-  return CLIB_MARCH_FN_SELECT (svm_fifo_peek) (f, relative_offset, max_bytes,
-					       copy_here);
+  svm_fifo_copy_from_chunk (f, f->head_chunk,
+			    (head + relative_offset) % f->size, dst, len,
+			    0 /* update head */ );
+  return len;
 }
 
 int
 svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes)
 {
-  u32 total_drop_bytes, first_drop_bytes, second_drop_bytes;
-  u32 cursize, nitems;
+  u32 total_drop_bytes;
+  u32 tail, head, cursize;
 
-  /* read cursize, which can only increase while we're working */
-  cursize = svm_fifo_max_dequeue (f);
+  f_load_head_tail_cons (f, &head, &tail);
+
+  /* number of bytes we're going to drop */
+  cursize = f_cursize (f, head, tail);
+
   if (PREDICT_FALSE (cursize == 0))
     return -2;			/* nothing in the fifo */
 
-  nitems = f->nitems;
+  svm_fifo_trace_add (f, tail, total_drop_bytes, 3);
 
-  /* Number of bytes we're going to drop */
+  /* number of bytes we're going to drop */
   total_drop_bytes = (cursize < max_bytes) ? cursize : max_bytes;
 
-  svm_fifo_trace_add (f, f->tail, total_drop_bytes, 3);
+  /* move head */
+  head += total_drop_bytes;
 
-  /* Number of bytes in first copy segment */
-  first_drop_bytes =
-    ((nitems - f->head) < total_drop_bytes) ?
-    (nitems - f->head) : total_drop_bytes;
-  f->head += first_drop_bytes;
-  f->head = (f->head == nitems) ? 0 : f->head;
-
-  /* Number of bytes in second drop segment, if any */
-  second_drop_bytes = total_drop_bytes - first_drop_bytes;
-  if (second_drop_bytes)
-    {
-      f->head += second_drop_bytes;
-      f->head = (f->head == nitems) ? 0 : f->head;
-    }
-
-  ASSERT (f->head <= nitems);
   ASSERT (cursize >= total_drop_bytes);
-  clib_atomic_fetch_sub_rel (&f->cursize, total_drop_bytes);
+  /* store-rel: consumer owned index (paired with load-acq in producer) */
+  clib_atomic_store_rel_n (&f->head, head);
 
   return total_drop_bytes;
 }
@@ -773,32 +780,38 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes)
 void
 svm_fifo_dequeue_drop_all (svm_fifo_t * f)
 {
-  f->head = f->tail;
-  clib_atomic_fetch_sub_rel (&f->cursize, f->cursize);
+  /* consumer foreign index */
+  u32 tail = clib_atomic_load_acq_n (&f->tail);
+  /* store-rel: consumer owned index (paired with load-acq in producer) */
+  clib_atomic_store_rel_n (&f->head, tail);
 }
 
 int
 svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs)
 {
-  u32 cursize, nitems;
+  u32 cursize, head, tail, head_idx;
 
-  /* read cursize, which can only increase while we're working */
-  cursize = svm_fifo_max_dequeue (f);
+  f_load_head_tail_cons (f, &head, &tail);
+
+  /* consumer function, cursize can only increase while we're working */
+  cursize = f_cursize (f, head, tail);
+
   if (PREDICT_FALSE (cursize == 0))
-    return -2;
+    return -2;			/* nothing in the fifo */
 
-  nitems = f->nitems;
+  head_idx = head % f->size;
 
-  fs[0].len = ((nitems - f->head) < cursize) ? (nitems - f->head) : cursize;
-  fs[0].data = f->data + f->head;
-
-  if (fs[0].len < cursize)
+  if (tail < head)
     {
+      fs[0].len = f->size - head_idx;
+      fs[0].data = f->head_chunk->data + head_idx;
       fs[1].len = cursize - fs[0].len;
-      fs[1].data = f->data;
+      fs[1].data = f->head_chunk->data;
     }
   else
     {
+      fs[0].len = cursize;
+      fs[0].data = f->head_chunk->data + head_idx;
       fs[1].len = 0;
       fs[1].data = 0;
     }
@@ -808,20 +821,28 @@ svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs)
 void
 svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs)
 {
-  u32 total_drop_bytes;
+  u32 head, head_idx;
 
-  ASSERT (fs[0].data == f->data + f->head);
-  if (fs[1].len)
-    {
-      f->head = fs[1].len;
-      total_drop_bytes = fs[0].len + fs[1].len;
-    }
-  else
-    {
-      f->head = (f->head + fs[0].len) % f->nitems;
-      total_drop_bytes = fs[0].len;
-    }
-  clib_atomic_fetch_sub_rel (&f->cursize, total_drop_bytes);
+  /* consumer owned index */
+  head = f->head;
+  head_idx = head % f->size;
+
+  ASSERT (fs[0].data == f->head_chunk->data + head_idx);
+  head += fs[0].len + fs[1].len;
+  /* store-rel: consumer owned index (paired with load-acq in producer) */
+  clib_atomic_store_rel_n (&f->head, head);
+}
+
+/* Assumption: no prod and cons are accessing either dest or src fifo */
+void
+svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf)
+{
+  u32 head, tail;
+  clib_memcpy_fast (df->head_chunk->data, sf->head_chunk->data, sf->size);
+
+  f_load_head_tail_all_acq (sf, &head, &tail);
+  clib_atomic_store_rel_n (&df->head, head);
+  clib_atomic_store_rel_n (&df->tail, tail);
 }
 
 u32
@@ -842,7 +863,8 @@ svm_fifo_first_ooo_segment (svm_fifo_t * f)
 void
 svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer)
 {
-  f->head = f->tail = pointer % f->nitems;
+  clib_atomic_store_rel_n (&f->head, pointer);
+  clib_atomic_store_rel_n (&f->tail, pointer);
 }
 
 void

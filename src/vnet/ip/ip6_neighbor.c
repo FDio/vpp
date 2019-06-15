@@ -264,7 +264,7 @@ ip6_neighbor_get_link_local_address (u32 sw_if_index)
 
 /**
  * @brief publish wildcard arp event
- * @param sw_if_index The interface on which the ARP entires are acted
+ * @param sw_if_index The interface on which the ARP entries are acted
  */
 static int
 vnet_nd_wc_publish (u32 sw_if_index,
@@ -687,7 +687,7 @@ ip6_ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	 * Complete the remaining fields of the adj's rewrite to direct the
 	 * complete of the rewrite at switch time by copying in the IP
 	 * dst address's bytes.
-	 * Ofset is 2 bytes into the desintation address.
+	 * Ofset is 2 bytes into the destintation address.
 	 */
 	offset = vec_len (rewrite) - 2;
 	adj_mcast_update_rewrite (ai, rewrite, offset);
@@ -4503,7 +4503,7 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
   ip6_radv_t *radv_info;
   ip6_address_t a;
 
-  /* create solicited node multicast address for this interface adddress */
+  /* create solicited node multicast address for this interface address */
   ip6_set_solicited_node_multicast_address (&a, 0);
 
   a.as_u8[0xd] = address->as_u8[0xd];

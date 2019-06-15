@@ -60,12 +60,15 @@ enum punt_socket_rx_next_e
 
 #define punt_next_punt(is_ip4) (is_ip4 ? PUNT_NEXT_PUNT4 : PUNT_NEXT_PUNT6)
 
-vlib_node_registration_t udp4_punt_node;
-vlib_node_registration_t udp6_punt_node;
-vlib_node_registration_t udp4_punt_socket_node;
-vlib_node_registration_t udp6_punt_socket_node;
+extern vlib_node_registration_t udp4_punt_node;
+extern vlib_node_registration_t udp6_punt_node;
+extern vlib_node_registration_t udp4_punt_socket_node;
+extern vlib_node_registration_t udp6_punt_socket_node;
 static vlib_node_registration_t punt_socket_rx_node;
 
+extern punt_main_t punt_main;
+
+#ifndef CLIB_MARCH_VARIANT
 punt_main_t punt_main;
 
 char *
@@ -74,6 +77,7 @@ vnet_punt_get_server_pathname (void)
   punt_main_t *pm = &punt_main;
   return pm->sun_path;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /** @brief IPv4/IPv6 UDP punt node main loop.
 
@@ -159,9 +163,9 @@ static char *punt_error_strings[] = {
     <em>Next Index:</em>
     - Dispatches the packet to the "error-punt" node
 */
-static uword
-udp4_punt (vlib_main_t * vm,
-	   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (udp4_punt_node) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * from_frame)
 {
   return udp46_punt_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
@@ -187,16 +191,15 @@ udp4_punt (vlib_main_t * vm,
     <em>Next Index:</em>
     - Dispatches the packet to the "error-punt" node
 */
-static uword
-udp6_punt (vlib_main_t * vm,
-	   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (udp6_punt_node) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * from_frame)
 {
   return udp46_punt_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_punt_node) = {
-  .function = udp4_punt,
   .name = "ip4-udp-punt",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -212,10 +215,7 @@ VLIB_REGISTER_NODE (udp4_punt_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (udp4_punt_node, udp4_punt);
-
 VLIB_REGISTER_NODE (udp6_punt_node) = {
-  .function = udp6_punt,
   .name = "ip6-udp-punt",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -230,8 +230,6 @@ VLIB_REGISTER_NODE (udp6_punt_node) = {
 #undef _
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (udp6_punt_node, udp6_punt);;
 
 /* *INDENT-ON* */
 
@@ -259,6 +257,7 @@ punt_socket_get (bool is_ip4, u16 port)
   return NULL;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 static int
 punt_socket_register (bool is_ip4, u8 protocol, u16 port,
 		      char *client_pathname)
@@ -288,6 +287,7 @@ punt_socket_unregister (bool is_ip4, u8 protocol, u16 port)
 {
   return;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct
 {
@@ -295,7 +295,7 @@ typedef struct
   u8 is_midchain;
 } udp_punt_trace_t;
 
-u8 *
+static u8 *
 format_udp_punt_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -637,6 +637,7 @@ punt_socket_read_ready (clib_file_t * uf)
   return 0;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 clib_error_t *
 vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
 		      bool is_ip4, u8 protocol, u16 port,
@@ -772,6 +773,7 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
       return 0;
     }
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 punt_cli (vlib_main_t * vm,
@@ -807,7 +809,6 @@ punt_cli (vlib_main_t * vm,
   if (error)
     {
       clib_error_report (error);
-      goto done;
     }
 
 done:
@@ -842,6 +843,7 @@ VLIB_CLI_COMMAND (punt_command, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
 punt_socket_register_cmd (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -877,10 +879,6 @@ punt_socket_register_cmd (vlib_main_t * vm,
   error =
     vnet_punt_socket_add (vm, 1, is_ipv4, protocol, port,
 			  (char *) socket_name);
-  if (error)
-    {
-      goto done;
-    }
 done:
   return error;
 }
@@ -931,10 +929,6 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
     }
 
   error = vnet_punt_socket_del (vm, is_ipv4, protocol, port);
-  if (error)
-    {
-      goto done;
-    }
 done:
   return error;
 }
@@ -1065,7 +1059,7 @@ VLIB_CLI_COMMAND (show_punt_socket_registration_command, static) =
 /* *INDENT-ON* */
 
 clib_error_t *
-punt_init (vlib_main_t * vm)
+ip_punt_init (vlib_main_t * vm)
 {
   punt_main_t *pm = &punt_main;
 
@@ -1083,7 +1077,8 @@ punt_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (punt_init);
+VLIB_INIT_FUNCTION (ip_punt_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 punt_config (vlib_main_t * vm, unformat_input_t * input)

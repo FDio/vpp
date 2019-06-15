@@ -13,7 +13,7 @@
 # limitations under the License.
 import sys
 
-stdlib_enum = sys.version_info >= (3, 4)
+stdlib_enum = sys.version_info >= (3, 6)
 
 try:
     from setuptools import setup, find_packages
@@ -30,7 +30,7 @@ setup(
     license='Apache-2.0',
     test_suite='vpp_papi.tests',
     install_requires=['cffi >= 1.6'] if stdlib_enum else
-        ['cffi >= 1.6', 'enum34'],
+        ['cffi >= 1.6', 'aenum'],
     packages=find_packages(),
     long_description='''VPP Python language binding.''',
     zip_safe=True)

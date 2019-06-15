@@ -72,24 +72,20 @@ static void
 vl_api_abf_plugin_get_version_t_handler (vl_api_abf_plugin_get_version_t * mp)
 {
   vl_api_abf_plugin_get_version_reply_t *rmp;
-  int msg_size = sizeof (*rmp);
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
 
-  rmp = vl_msg_api_alloc (msg_size);
-  clib_memset (rmp, 0, msg_size);
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id =
     ntohs (VL_API_ABF_PLUGIN_GET_VERSION_REPLY + abf_base_msg_id);
   rmp->context = mp->context;
   rmp->major = htonl (ABF_PLUGIN_VERSION_MAJOR);
   rmp->minor = htonl (ABF_PLUGIN_VERSION_MINOR);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (rp, (u8 *) rmp);
 }
 
 static void
@@ -115,12 +111,12 @@ vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t * mp)
 
   if (mp->is_add)
     {
-      abf_policy_update (ntohl (mp->policy.policy_id),
-			 ntohl (mp->policy.acl_index), paths);
+      rv = abf_policy_update (ntohl (mp->policy.policy_id),
+			      ntohl (mp->policy.acl_index), paths);
     }
   else
     {
-      abf_policy_delete (ntohl (mp->policy.policy_id), paths);
+      rv = abf_policy_delete (ntohl (mp->policy.policy_id), paths);
     }
 done:
   vec_free (paths);
@@ -155,7 +151,7 @@ vl_api_abf_itf_attach_add_del_t_handler (vl_api_abf_itf_attach_add_del_t * mp)
 
 typedef struct abf_dump_walk_ctx_t_
 {
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
   u32 context;
 } abf_dump_walk_ctx_t;
 
@@ -194,7 +190,7 @@ abf_policy_send_details (u32 api, void *args)
     fp++;
   }
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & mp);
+  vl_api_send_msg (ctx->rp, (u8 *) mp);
 
   return (1);
 }
@@ -202,16 +198,14 @@ abf_policy_send_details (u32 api, void *args)
 static void
 vl_api_abf_policy_dump_t_handler (vl_api_abf_policy_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
 
   abf_dump_walk_ctx_t ctx = {
-    .q = q,
+    .rp = rp,
     .context = mp->context,
   };
 
@@ -239,7 +233,7 @@ abf_itf_attach_send_details (u32 aiai, void *args)
   mp->attach.priority = htonl (aia->aia_prio);
   mp->attach.is_ipv6 = (aia->aia_proto == FIB_PROTOCOL_IP6);
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & mp);
+  vl_api_send_msg (ctx->rp, (u8 *) mp);
 
   return (1);
 }
@@ -247,16 +241,14 @@ abf_itf_attach_send_details (u32 aiai, void *args)
 static void
 vl_api_abf_itf_attach_dump_t_handler (vl_api_abf_itf_attach_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
 
   abf_dump_walk_ctx_t ctx = {
-    .q = q,
+    .rp = rp,
     .context = mp->context,
   };
 

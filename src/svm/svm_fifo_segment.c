@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -14,6 +14,22 @@
  */
 
 #include <svm/svm_fifo_segment.h>
+
+static void
+fifo_init_for_segment (svm_fifo_segment_header_t * fsh, u8 * fifo_space,
+		       u32 size, u32 freelist_index)
+{
+  svm_fifo_t *f;
+
+  f = (svm_fifo_t *) fifo_space;
+  f->freelist_index = freelist_index;
+  f->default_chunk.start_byte = 0;
+  f->default_chunk.length = size;
+  f->default_chunk.next = f->start_chunk = &f->default_chunk;
+  f->end_chunk = f->head_chunk = f->tail_chunk = f->start_chunk;
+  f->next = fsh->free_fifos[freelist_index];
+  fsh->free_fifos[freelist_index] = f;
+}
 
 static void
 allocate_new_fifo_chunk (svm_fifo_segment_header_t * fsh,
@@ -43,14 +59,11 @@ allocate_new_fifo_chunk (svm_fifo_segment_header_t * fsh,
     return;
 
   /* Carve fifo space */
-  f = (svm_fifo_t *) fifo_space;
   for (i = 0; i < chunk_size; i++)
     {
-      f->freelist_index = freelist_index;
-      f->next = fsh->free_fifos[freelist_index];
-      fsh->free_fifos[freelist_index] = f;
+      fifo_init_for_segment (fsh, fifo_space, rounded_data_size,
+			     freelist_index);
       fifo_space += sizeof (*f) + rounded_data_size;
-      f = (svm_fifo_t *) fifo_space;
     }
 }
 
@@ -149,24 +162,18 @@ svm_fifo_segment_preallocate_fifo_pairs (svm_fifo_segment_private_t * s,
     }
 
   /* Carve rx fifo space */
-  f = (svm_fifo_t *) rx_fifo_space;
   for (i = 0; i < pairs_to_allocate; i++)
     {
-      f->freelist_index = rx_freelist_index;
-      f->next = fsh->free_fifos[rx_freelist_index];
-      fsh->free_fifos[rx_freelist_index] = f;
+      fifo_init_for_segment (fsh, rx_fifo_space, rx_rounded_data_size,
+			     rx_freelist_index);
       rx_fifo_space += sizeof (*f) + rx_rounded_data_size;
-      f = (svm_fifo_t *) rx_fifo_space;
     }
   /* Carve tx fifo space */
-  f = (svm_fifo_t *) tx_fifo_space;
   for (i = 0; i < pairs_to_allocate; i++)
     {
-      f->freelist_index = tx_freelist_index;
-      f->next = fsh->free_fifos[tx_freelist_index];
-      fsh->free_fifos[tx_freelist_index] = f;
+      fifo_init_for_segment (fsh, tx_fifo_space, tx_rounded_data_size,
+			     tx_freelist_index);
       tx_fifo_space += sizeof (*f) + tx_rounded_data_size;
-      f = (svm_fifo_t *) tx_fifo_space;
     }
 
   /* Account for the pairs allocated */
@@ -370,10 +377,6 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * fs,
       f = fsh->free_fifos[freelist_index];
       if (PREDICT_FALSE (!f))
 	{
-	  /* Preallocated and no fifo left. Don't even try */
-	  if (fsh->flags & FIFO_SEGMENT_F_IS_PREALLOCATED)
-	    goto done;
-
 	  oldheap = ssvm_push_heap (sh);
 	  allocate_new_fifo_chunk (fsh, data_size_in_bytes,
 				   FIFO_SEGMENT_ALLOC_CHUNK_SIZE);
@@ -385,11 +388,7 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * fs,
 	  fsh->free_fifos[freelist_index] = f->next;
 	  /* (re)initialize the fifo, as in svm_fifo_create */
 	  clib_memset (f, 0, sizeof (*f));
-	  f->nitems = data_size_in_bytes;
-	  f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
-	  f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
-	  f->refcnt = 1;
-	  f->freelist_index = freelist_index;
+	  svm_fifo_init (f, data_size_in_bytes);
 	  goto found;
 	}
       break;
@@ -437,7 +436,6 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
 {
   ssvm_shared_header_t *sh;
   svm_fifo_segment_header_t *fsh;
-  void *oldheap;
   int freelist_index;
 
   ASSERT (f->refcnt > 0);
@@ -453,7 +451,6 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
   ASSERT (freelist_index < vec_len (fsh->free_fifos));
 
   ssvm_lock_non_recursive (sh, 2);
-  oldheap = ssvm_push_heap (sh);
 
   switch (list_index)
     {
@@ -487,7 +484,6 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
     }
 
   fsh->n_active_fifos--;
-  ssvm_pop_heap (oldheap);
   ssvm_unlock_non_recursive (sh);
 }
 

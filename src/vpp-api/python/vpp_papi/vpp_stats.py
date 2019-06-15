@@ -18,6 +18,7 @@ typedef enum {
   STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
   STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
   STAT_DIR_TYPE_ERROR_INDEX,
+  STAT_DIR_TYPE_NAME_VECTOR,
 } stat_directory_type_t;
 
 typedef struct
@@ -42,6 +43,7 @@ typedef struct
     uint64_t error_value;
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
+    uint8_t **name_vector;
   };
 } stat_segment_data_t;
 
@@ -76,9 +78,10 @@ stat_segment_data_t *stat_segment_dump (uint32_t * counter_vec);
 void stat_segment_data_free (stat_segment_data_t * res);
 
 double stat_segment_heartbeat_r (stat_client_main_t * sm);
-double stat_segment_heartbeat (void);
 int stat_segment_vec_len(void *vec);
 uint8_t **stat_segment_string_vector(uint8_t **string_vector, char *string);
+char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
+void free(void *ptr);
 """)
 
 
@@ -89,7 +92,7 @@ def make_string_vector(api, strings):
         strings = [strings]
     for s in strings:
         vec = api.stat_segment_string_vector(vec, ffi.new("char []",
-                                                          s.encode()))
+                                                          s.encode('utf-8')))
     return vec
 
 
@@ -123,6 +126,8 @@ def combined_counter_vec_list(api, e):
         vec.append(if_per_thread)
     return vec
 
+def name_vec_list(api, e):
+    return [ffi.string(e[i]).decode('utf-8') for i in range(api.stat_segment_vec_len(e)) if e[i] != ffi.NULL]
 
 def stat_entry_to_python(api, e):
     # Scalar index
@@ -134,7 +139,9 @@ def stat_entry_to_python(api, e):
         return combined_counter_vec_list(api, e.combined_counter_vec)
     if e.type == 4:
         return e.error_value
-    return None
+    if e.type == 5:
+        return name_vec_list(api, e.name_vector)
+    raise NotImplementedError()
 
 
 class VPPStatsIOError(IOError):
@@ -171,7 +178,7 @@ class VPPStatsClientLoadError(RuntimeError):
 class VPPStats(object):
     VPPStatsIOError = VPPStatsIOError
 
-    default_socketname = '/var/run/stats.sock'
+    default_socketname = '/var/run/vpp/stats.sock'
     sharedlib_name = 'libvppapiclient.so'
 
     def __init__(self, socketname=default_socketname, timeout=10):
@@ -184,7 +191,7 @@ class VPPStats(object):
 
         poll_end_time = time.time() + timeout
         while time.time() < poll_end_time:
-            rv = self.api.stat_segment_connect_r(socketname.encode(),
+            rv = self.api.stat_segment_connect_r(socketname.encode('utf-8'),
                                                  self.client)
             if rv == 0:
                 break
@@ -200,6 +207,16 @@ class VPPStats(object):
                                                              patterns),
                                           self.client)
 
+    def lsstr(self, patterns):
+        rv = self.api.stat_segment_ls_r(make_string_vector(self.api,
+                                                           patterns),
+                                        self.client)
+
+        if rv == ffi.NULL:
+            raise VPPStatsIOError()
+        return [ffi.string(self.api.stat_segment_index_to_name_r(rv[i], self.client)).decode('utf-8')
+                for i in range(self.api.stat_segment_vec_len(rv))]
+
     def dump(self, counters):
         stats = {}
         rv = self.api.stat_segment_dump_r(counters, self.client)
@@ -207,8 +224,9 @@ class VPPStats(object):
         if rv == ffi.NULL:
             raise VPPStatsIOError()
         rv_len = self.api.stat_segment_vec_len(rv)
+
         for i in range(rv_len):
-            n = ffi.string(rv[i].name).decode()
+            n = ffi.string(rv[i].name).decode('utf-8')
             e = stat_entry_to_python(self.api, rv[i])
             if e is not None:
                 stats[n] = e

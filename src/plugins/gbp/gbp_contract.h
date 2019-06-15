@@ -18,6 +18,17 @@
 
 #include <plugins/gbp/gbp_types.h>
 
+#define foreach_gbp_policy_error                           \
+  _(ALLOW_NO_SCLASS,    "allow-no-sclass")                 \
+  _(ALLOW_INTRA,        "allow-intra-sclass")              \
+  _(ALLOW_A_BIT,        "allow-a-bit-set")                 \
+  _(ALLOW_SCLASS_1,     "allow-sclass-1")                  \
+  _(ALLOW_CONTRACT,     "allow-contract")                  \
+  _(DROP_CONTRACT,      "drop-contract")                   \
+  _(DROP_ETHER_TYPE,    "drop-ether-type")                 \
+  _(DROP_NO_CONTRACT,   "drop-no-contract")                \
+  _(DROP_NO_DCLASS,     "drop-no-dclass")
+
 /**
  * The key for an Contract
  */
@@ -30,8 +41,8 @@ typedef struct gbp_contract_key_t_
       /**
        * source and destination EPGs for which the ACL applies
        */
-      epg_id_t gck_src;
-      epg_id_t gck_dst;
+      sclass_t gck_src;
+      sclass_t gck_dst;
     };
     u32 as_u32;
   };
@@ -138,11 +149,12 @@ typedef struct gbp_contract_db_t_
   uword *gc_hash;
 } gbp_contract_db_t;
 
-extern int gbp_contract_update (epg_id_t src_epg,
-				epg_id_t dst_epg,
+extern int gbp_contract_update (sclass_t sclass,
+				sclass_t dclass,
 				u32 acl_index,
-				index_t * rules, u16 * allowed_ethertypes);
-extern int gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg);
+				index_t * rules,
+				u16 * allowed_ethertypes, u32 * stats_index);
+extern int gbp_contract_delete (sclass_t sclass, sclass_t dclass);
 
 extern index_t gbp_rule_alloc (gbp_rule_action_t action,
 			       gbp_hash_mode_t hash_mode, index_t * nhs);
@@ -188,6 +200,9 @@ gbp_rule_get (index_t gui)
 {
   return (pool_elt_at_index (gbp_rule_pool, gui));
 }
+
+extern vlib_combined_counter_main_t gbp_contract_permit_counters;
+extern vlib_combined_counter_main_t gbp_contract_drop_counters;
 
 #endif
 

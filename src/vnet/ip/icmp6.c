@@ -493,14 +493,27 @@ ip6_icmp_error (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 pi0 = from[0];
+	  /*
+	   * Duplicate first buffer and free the original chain.  Keep
+	   * as much of the original packet as possible, within the
+	   * minimum MTU. We chat "a little" here by keeping whatever
+	   * is available in the first buffer.
+	   */
+
+	  u32 pi0 = ~0;
+	  u32 org_pi0 = from[0];
 	  u32 next0 = IP6_ICMP_ERROR_NEXT_LOOKUP;
 	  u8 error0 = ICMP6_ERROR_NONE;
-	  vlib_buffer_t *p0;
+	  vlib_buffer_t *p0, *org_p0;
 	  ip6_header_t *ip0, *out_ip0;
 	  icmp46_header_t *icmp0;
 	  u32 sw_if_index0, if_add_index0;
 	  int bogus_length;
+
+	  org_p0 = vlib_get_buffer (vm, org_pi0);
+	  p0 = vlib_buffer_copy_no_chain (vm, org_p0, &pi0);
+	  if (!p0 || pi0 == ~0)	/* Out of buffers */
+	    continue;
 
 	  /* Speculatively enqueue p0 to the current next frame */
 	  to_next[0] = pi0;
@@ -509,37 +522,14 @@ ip6_icmp_error (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
-	  /* RFC4443 says to keep as much of the original packet as possible
-	   * within the minimum MTU. We cheat "a little" here by keeping whatever fits
-	   * in the first buffer, to be more efficient */
-	  if (PREDICT_FALSE (p0->total_length_not_including_first_buffer))
-	    {			/* clear current_length of all other buffers in chain */
-	      vlib_buffer_t *b = p0;
-	      p0->total_length_not_including_first_buffer = 0;
-	      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-		{
-		  b = vlib_get_buffer (vm, b->next_buffer);
-		  b->current_length = 0;
-		  // XXX: Buffer leak???
-		}
-	    }
-
 	  /* Add IP header and ICMPv6 header including a 4 byte data field */
-	  int headroom = sizeof (ip6_header_t) + sizeof (icmp46_header_t) + 4;
+	  vlib_buffer_advance (p0,
+			       -(sizeof (ip6_header_t) +
+				 sizeof (icmp46_header_t) + 4));
 
-	  /* Verify that we're not falling off the edge */
-	  if (p0->current_data - headroom < -VLIB_BUFFER_PRE_DATA_SIZE)
-	    {
-	      next0 = IP6_ICMP_ERROR_NEXT_DROP;
-	      error0 = ICMP6_ERROR_DROP;
-	      goto error;
-	    }
-
-	  vlib_buffer_advance (p0, -headroom);
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = ~0;
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  p0->current_length =
@@ -571,7 +561,6 @@ ip6_icmp_error (vlib_main_t * vm,
 	    {
 	      next0 = IP6_ICMP_ERROR_NEXT_DROP;
 	      error0 = ICMP6_ERROR_DROP;
-	      goto error;
 	    }
 
 	  /* Fill icmp header fields */
@@ -588,7 +577,6 @@ ip6_icmp_error (vlib_main_t * vm,
 	  if (error0 == ICMP6_ERROR_NONE)
 	    error0 = icmp6_icmp_type_to_error (icmp0->type);
 
-	error:
 	  vlib_error_count (vm, node->node_index, error0, 1);
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
@@ -598,6 +586,15 @@ ip6_icmp_error (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+  /*
+   * push the original buffers to error-drop, so that
+   * they can get the error counters handled, then freed
+   */
+  vlib_buffer_enqueue_to_single_next (vm, node,
+				      vlib_frame_vector_args (frame),
+				      IP6_ICMP_ERROR_NEXT_DROP,
+				      frame->n_vectors);
 
   return frame->n_vectors;
 }

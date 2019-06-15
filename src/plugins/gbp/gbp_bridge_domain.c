@@ -15,7 +15,7 @@
 
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_endpoint.h>
-#include <plugins/gbp/gbp_sclass.h>
+#include <plugins/gbp/gbp_learn.h>
 
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
@@ -113,6 +113,29 @@ gbp_bridge_domain_db_remove (gbp_bridge_domain_t * gb)
   gbp_bridge_domain_db.gbd_by_bd_index[gb->gb_bd_index] = INDEX_INVALID;
 }
 
+u8 *
+format_gbp_bridge_domain_flags (u8 * s, va_list * args)
+{
+  gbp_bridge_domain_flags_t gf = va_arg (*args, gbp_bridge_domain_flags_t);
+
+  if (gf)
+    {
+      if (gf & GBP_BD_FLAG_DO_NOT_LEARN)
+	s = format (s, "do-not-learn ");
+      if (gf & GBP_BD_FLAG_UU_FWD_DROP)
+	s = format (s, "uu-fwd-drop ");
+      if (gf & GBP_BD_FLAG_MCAST_DROP)
+	s = format (s, "mcast-drop ");
+      if (gf & GBP_BD_FLAG_UCAST_ARP)
+	s = format (s, "ucast-arp ");
+    }
+  else
+    {
+      s = format (s, "none");
+    }
+  return (s);
+}
+
 static u8 *
 format_gbp_bridge_domain_ptr (u8 * s, va_list * args)
 {
@@ -120,13 +143,13 @@ format_gbp_bridge_domain_ptr (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
 
   if (NULL != gb)
-    s = format (s, "[%d] bd:[%d,%d], bvi:%U uu-flood:%U locks:%d",
+    s = format (s, "[%d] bd:[%d,%d], bvi:%U uu-flood:%U flags:%U locks:%d",
 		gb - gbp_bridge_domain_pool,
 		gb->gb_bd_id,
 		gb->gb_bd_index,
 		format_vnet_sw_if_index_name, vnm, gb->gb_bvi_sw_if_index,
 		format_vnet_sw_if_index_name, vnm, gb->gb_uu_fwd_sw_if_index,
-		gb->gb_locks);
+		format_gbp_bridge_domain_flags, gb->gb_flags, gb->gb_locks);
   else
     s = format (s, "NULL");
 
@@ -166,10 +189,11 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       if (~0 == bd_index)
 	return (VNET_API_ERROR_BD_NOT_MODIFIABLE);
 
-      /*
-       * unset learning in the bridge
-       */
-      bd_set_flags (vlib_get_main (), bd_index, L2_LEARN, 0);
+      bd_flags_t bd_flags = L2_LEARN;
+      if (flags & GBP_BD_FLAG_UU_FWD_DROP)
+	bd_flags |= L2_UU_FLOOD;
+      if (flags & GBP_BD_FLAG_MCAST_DROP)
+	bd_flags |= L2_FLOOD;
 
       pool_get (gbp_bridge_domain_pool, gb);
       memset (gb, 0, sizeof (*gb));
@@ -188,20 +212,27 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 		       MODE_L2_BRIDGE, gb->gb_bvi_sw_if_index,
 		       bd_index, L2_BD_PORT_TYPE_BVI, 0, 0);
-      if (~0 != gb->gb_uu_fwd_sw_if_index)
+
+      if (!(flags & GBP_BD_FLAG_UU_FWD_DROP)
+	  && ~0 != gb->gb_uu_fwd_sw_if_index)
 	{
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L2_BRIDGE, gb->gb_uu_fwd_sw_if_index,
 			   bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
-	  gbp_sclass_enable_l2 (gb->gb_uu_fwd_sw_if_index);
 	}
-      if (~0 != gb->gb_bm_flood_sw_if_index)
+      if (!(flags & GBP_BD_FLAG_MCAST_DROP)
+	  && ~0 != gb->gb_bm_flood_sw_if_index)
 	{
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L2_BRIDGE, gb->gb_bm_flood_sw_if_index,
 			   bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
-	  gbp_sclass_enable_l2 (gb->gb_bm_flood_sw_if_index);
+	  gbp_learn_enable (gb->gb_bm_flood_sw_if_index, GBP_LEARN_MODE_L2);
 	}
+
+      /*
+       * unset learning in the bridge + any flag(s) set above
+       */
+      bd_set_flags (vlib_get_main (), bd_index, bd_flags, 0);
 
       /*
        * Add the BVI's MAC to the L2FIB
@@ -250,14 +281,13 @@ gbp_bridge_domain_unlock (index_t index)
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L3, gb->gb_uu_fwd_sw_if_index,
 			   gb->gb_bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
-	  gbp_sclass_disable_l2 (gb->gb_uu_fwd_sw_if_index);
 	}
       if (~0 != gb->gb_bm_flood_sw_if_index)
 	{
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L3, gb->gb_bm_flood_sw_if_index,
 			   gb->gb_bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
-	  gbp_sclass_disable_l2 (gb->gb_bm_flood_sw_if_index);
+	  gbp_learn_enable (gb->gb_bm_flood_sw_if_index, GBP_LEARN_MODE_L2);
 	}
 
       gbp_bridge_domain_db_remove (gb);
@@ -304,11 +334,14 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  gbp_bridge_domain_flags_t flags;
   u32 bm_flood_sw_if_index = ~0;
   u32 uu_fwd_sw_if_index = ~0;
   u32 bvi_sw_if_index = ~0;
   u32 bd_id = ~0;
   u8 add = 1;
+
+  flags = GBP_BD_FLAG_NONE;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -325,6 +358,8 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
+      else if (unformat (input, "flags %d", &flags))
+	;
       else if (unformat (input, "bd %d", &bd_id))
 	;
       else
@@ -332,14 +367,14 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
     }
 
   if (~0 == bd_id)
-    return clib_error_return (0, "EPG-ID must be specified");
+    return clib_error_return (0, "BD-ID must be specified");
 
   if (add)
     {
       if (~0 == bvi_sw_if_index)
 	return clib_error_return (0, "interface must be specified");
 
-      gbp_bridge_domain_add_and_lock (bd_id, GBP_BD_FLAG_NONE,
+      gbp_bridge_domain_add_and_lock (bd_id, flags,
 				      bvi_sw_if_index,
 				      uu_fwd_sw_if_index,
 				      bm_flood_sw_if_index);
@@ -354,13 +389,13 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
  * Configure a GBP bridge-domain
  *
  * @cliexpar
- * @cliexstart{set gbp bridge-domain [del] bd <ID> bvi <interface> uu-flood <interface>}
+ * @cliexstart{gbp bridge-domain [del] bd <ID> bvi <interface> [uu-fwd <interface>] [bm-flood <interface>] [flags <flags>]}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_bridge_domain_cli_node, static) = {
   .path = "gbp bridge-domain",
-  .short_help = "gbp bridge-domain [del] epg bd <ID> bvi <interface> uu-flood <interface>",
+  .short_help = "gbp bridge-domain [del] bd <ID> bvi <interface> [uu-fwd <interface>] [bm-flood <interface>] [flags <flags>]",
   .function = gbp_bridge_domain_cli,
 };
 

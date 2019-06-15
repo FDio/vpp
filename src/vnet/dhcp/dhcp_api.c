@@ -356,7 +356,7 @@ vl_api_dhcp_client_dump_t_handler (vl_api_dhcp_client_dump_t * mp)
 /*
  * dhcp_api_hookup
  * Add vpe's API message handlers to the table.
- * vlib has alread mapped shared memory and
+ * vlib has already mapped shared memory and
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */

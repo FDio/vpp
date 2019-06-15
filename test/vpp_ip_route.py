@@ -53,8 +53,8 @@ def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
     route_addr = inet_pton(inet, ip_addr)
     for e in routes:
         if route_addr == e.address[:s] \
-           and len == e.address_length \
-           and table_id == e.table_id:
+                and len == e.address_length \
+                and table_id == e.table_id:
             return True
     return False
 
@@ -71,9 +71,9 @@ def find_mroute(test, grp_addr, src_addr, grp_addr_len,
     saddr = inet_pton(inet, src_addr)
     for e in routes:
         if gaddr == e.grp_address[:s] \
-           and grp_addr_len == e.address_length \
-           and saddr == e.src_address[:s] \
-           and table_id == e.table_id:
+                and grp_addr_len == e.address_length \
+                and saddr == e.src_address[:s] \
+                and table_id == e.table_id:
             return True
     return False
 
@@ -82,8 +82,8 @@ def find_mpls_route(test, table_id, label, eos_bit, paths=None):
     dump = test.vapi.mpls_fib_dump()
     for e in dump:
         if label == e.label \
-           and eos_bit == e.eos_bit \
-           and table_id == e.table_id:
+                and eos_bit == e.eos_bit \
+                and table_id == e.table_id:
             if not paths:
                 return True
             else:
@@ -107,8 +107,8 @@ def fib_interface_ip_prefix(test, address, length, sw_if_index):
 
     for a in addrs:
         if a.prefix_length == length and \
-           a.sw_if_index == sw_if_index and \
-           a.ip[:n] == vp.bytes:
+                a.sw_if_index == sw_if_index and \
+                a.ip[:n] == vp.bytes:
             return True
     return False
 
@@ -124,17 +124,13 @@ class VppIpTable(VppObject):
         self.is_ip6 = is_ip6
 
     def add_vpp_config(self):
-        self._test.vapi.ip_table_add_del(
-            self.table_id,
-            is_ipv6=self.is_ip6,
-            is_add=1)
+        self._test.vapi.ip_table_add_del(is_ipv6=self.is_ip6, is_add=1,
+                                         table_id=self.table_id)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.ip_table_add_del(
-            self.table_id,
-            is_ipv6=self.is_ip6,
-            is_add=0)
+        self._test.vapi.ip_table_add_del(is_ipv6=self.is_ip6, is_add=0,
+                                         table_id=self.table_id)
 
     def query_vpp_config(self):
         if self.table_id == 0:
@@ -146,9 +142,6 @@ class VppIpTable(VppObject):
                           0,
                           self.table_id,
                           inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return ("table-%s-%d" %
@@ -165,29 +158,22 @@ class VppIpInterfaceAddress(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.sw_interface_add_del_address(
-            self.intf.sw_if_index,
-            self.prefix.bytes,
-            self.prefix.length,
-            is_add=1,
-            is_ipv6=self.prefix.is_ip6)
+            sw_if_index=self.intf.sw_if_index, address=self.prefix.bytes,
+            address_length=self.prefix.length, is_ipv6=self.prefix.is_ip6,
+            is_add=1)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.sw_interface_add_del_address(
-            self.intf.sw_if_index,
-            self.prefix.bytes,
-            self.prefix.length,
-            is_add=0,
-            is_ipv6=self.prefix.is_ip6)
+            sw_if_index=self.intf.sw_if_index, address=self.prefix.bytes,
+            address_length=self.prefix.length, is_ipv6=self.prefix.is_ip6,
+            is_add=0)
 
     def query_vpp_config(self):
         return fib_interface_ip_prefix(self._test,
                                        self.prefix.address,
                                        self.prefix.length,
                                        self.intf.sw_if_index)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "interface-ip-%s-%s" % (self.intf, self.prefix)
@@ -221,9 +207,6 @@ class VppIpInterfaceBind(VppObject):
         return self._test.vapi.sw_interface_get_table(
             self.intf.sw_if_index,
             self.table.is_ip6).vrf_id == self.table.table_id
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "interface-bind-%s-%s" % (self.intf, self.table)
@@ -392,70 +375,67 @@ class VppIpRoute(VppObject):
     def add_vpp_config(self):
         if self.is_unreach or self.is_prohibit or self.is_drop:
             r = self._test.vapi.ip_add_del_route(
-                self.dest_addr,
-                self.dest_addr_len,
-                inet_pton(AF_INET6, "::"),
-                0xffffffff,
-                is_local=self.is_local,
+                dst_address=self.dest_addr,
+                dst_address_length=self.dest_addr_len,
+                next_hop_address=inet_pton(
+                    AF_INET6, "::"),
+                next_hop_sw_if_index=0xffffffff,
+                table_id=self.table_id,
+                is_drop=self.is_drop,
                 is_unreach=self.is_unreach,
                 is_prohibit=self.is_prohibit,
-                is_drop=self.is_drop,
-                table_id=self.table_id,
-                is_ipv6=self.is_ip6)
+                is_ipv6=self.is_ip6,
+                is_local=self.is_local)
         else:
             for path in self.paths:
                 lstack = path.encode_labels()
 
                 r = self._test.vapi.ip_add_del_route(
-                    self.dest_addr,
-                    self.dest_addr_len,
-                    path.nh_addr,
-                    path.nh_itf,
-                    table_id=self.table_id,
-                    next_hop_out_label_stack=lstack,
-                    next_hop_n_out_labels=len(lstack),
-                    next_hop_via_label=path.nh_via_label,
+                    dst_address=self.dest_addr,
+                    dst_address_length=self.dest_addr_len,
+                    next_hop_address=path.nh_addr,
+                    next_hop_sw_if_index=path.nh_itf, table_id=self.table_id,
                     next_hop_table_id=path.nh_table_id,
+                    next_hop_n_out_labels=len(lstack),
+                    next_hop_out_label_stack=lstack,
+                    next_hop_via_label=path.nh_via_label,
                     next_hop_id=path.next_hop_id,
-                    is_ipv6=self.is_ip6,
-                    is_dvr=path.is_dvr,
-                    is_local=self.is_local,
                     is_resolve_host=path.is_resolve_host,
                     is_resolve_attached=path.is_resolve_attached,
-                    is_source_lookup=path.is_source_lookup,
-                    is_udp_encap=path.is_udp_encap,
-                    is_multipath=1 if len(self.paths) > 1 else 0)
+                    is_ipv6=self.is_ip6, is_local=self.is_local,
+                    is_multipath=1 if len(self.paths) > 1 else 0,
+                    is_dvr=path.is_dvr, is_udp_encap=path.is_udp_encap,
+                    is_source_lookup=path.is_source_lookup)
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         if self.is_unreach or self.is_prohibit or self.is_drop:
             self._test.vapi.ip_add_del_route(
-                self.dest_addr,
-                self.dest_addr_len,
-                inet_pton(AF_INET6, "::"),
-                0xffffffff,
-                is_local=self.is_local,
+                dst_address=self.dest_addr,
+                dst_address_length=self.dest_addr_len,
+                next_hop_address=inet_pton(
+                    AF_INET6, "::"),
+                next_hop_sw_if_index=0xffffffff,
+                table_id=self.table_id, is_add=0,
                 is_unreach=self.is_unreach,
                 is_prohibit=self.is_prohibit,
-                is_add=0,
-                table_id=self.table_id,
-                is_ipv6=self.is_ip6)
+                is_ipv6=self.is_ip6,
+                is_local=self.is_local)
         else:
             for path in self.paths:
                 self._test.vapi.ip_add_del_route(
-                    self.dest_addr,
-                    self.dest_addr_len,
-                    path.nh_addr,
-                    path.nh_itf,
+                    dst_address=self.dest_addr,
+                    dst_address_length=self.dest_addr_len,
+                    next_hop_address=path.nh_addr,
+                    next_hop_sw_if_index=path.nh_itf,
                     table_id=self.table_id,
                     next_hop_table_id=path.nh_table_id,
                     next_hop_via_label=path.nh_via_label,
                     next_hop_id=path.next_hop_id,
-                    is_add=0,
-                    is_udp_encap=path.is_udp_encap,
-                    is_ipv6=self.is_ip6,
-                    is_dvr=path.is_dvr)
+                    is_add=0, is_ipv6=self.is_ip6,
+                    is_dvr=path.is_dvr,
+                    is_udp_encap=path.is_udp_encap)
 
     def query_vpp_config(self):
         return find_route(self._test,
@@ -463,9 +443,6 @@ class VppIpRoute(VppObject):
                           self.dest_addr_len,
                           self.table_id,
                           inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return ("%d:%s/%d"
@@ -590,9 +567,6 @@ class VppIpMRoute(VppObject):
                            self.table_id,
                            inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         if self.is_ip6:
             return ("%d:(%s,%s/%d)"
@@ -674,12 +648,9 @@ class VppMplsIpBind(VppObject):
         dump = self._test.vapi.mpls_fib_dump()
         for e in dump:
             if self.local_label == e.label \
-               and self.table_id == e.table_id:
+                    and self.table_id == e.table_id:
                 return True
         return False
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return ("%d:%s binds %d:%s/%d"
@@ -716,9 +687,6 @@ class VppMplsTable(VppObject):
             return True
         return False
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("table-mpls-%d" % (self.table_id))
 
@@ -743,46 +711,45 @@ class VppMplsRoute(VppObject):
             lstack = path.encode_labels()
 
             r = self._test.vapi.mpls_route_add_del(
-                self.local_label,
-                self.eos_bit,
-                path.proto,
-                path.nh_addr,
-                path.nh_itf,
-                is_multicast=self.is_multicast,
-                is_multipath=is_multipath,
-                table_id=self.table_id,
-                is_interface_rx=path.is_interface_rx,
-                is_rpf_id=path.is_rpf_id,
-                next_hop_out_label_stack=lstack,
-                next_hop_n_out_labels=len(lstack),
-                next_hop_via_label=path.nh_via_label,
-                next_hop_table_id=path.nh_table_id)
+                mr_label=self.local_label,
+                mr_eos=self.eos_bit,
+                mr_next_hop_proto=path.proto,
+                mr_next_hop=path.nh_addr,
+                mr_next_hop_sw_if_index=path.nh_itf,
+                mr_table_id=self.table_id,
+                mr_next_hop_table_id=path.nh_table_id,
+                mr_next_hop_n_out_labels=len(
+                    lstack),
+                mr_next_hop_out_label_stack=lstack,
+                mr_next_hop_via_label=path.nh_via_label,
+                mr_is_interface_rx=path.is_interface_rx,
+                mr_is_rpf_id=path.is_rpf_id,
+                mr_is_multicast=self.is_multicast,
+                mr_is_multipath=is_multipath)
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         for path in self.paths:
-            self._test.vapi.mpls_route_add_del(self.local_label,
-                                               self.eos_bit,
-                                               path.proto,
-                                               path.nh_addr,
-                                               path.nh_itf,
-                                               is_rpf_id=path.is_rpf_id,
-                                               table_id=self.table_id,
-                                               is_add=0)
+            self._test.vapi.mpls_route_add_del(
+                mr_label=self.local_label,
+                mr_eos=self.eos_bit,
+                mr_next_hop_proto=path.proto,
+                mr_next_hop=path.nh_addr,
+                mr_next_hop_sw_if_index=path.nh_itf,
+                mr_table_id=self.table_id,
+                mr_is_rpf_id=path.is_rpf_id,
+                mr_is_add=0)
 
     def query_vpp_config(self):
         return find_mpls_route(self._test, self.table_id,
                                self.local_label, self.eos_bit)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("%d:%s/%d"
                 % (self.table_id,
                    self.local_label,
-                   20+self.eos_bit))
+                   20 + self.eos_bit))
 
     def get_stats_to(self):
         c = self._test.statistics.get_counter("/net/route/to")

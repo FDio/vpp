@@ -22,17 +22,17 @@
  *  LACP State = NO_PERIODIC
  */
 static lacp_fsm_state_t lacp_ptx_state_no_periodic[] = {
-  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_FAST_PERIODIC},	// event 0 BEGIN
-  {LACP_NOACTION, LACP_PTX_STATE_NO_PERIODIC},	// event 1 LONG_TIMEOUT
-  {LACP_NOACTION, LACP_PTX_STATE_NO_PERIODIC},	// event 2 TIMER_EXPIRED
-  {LACP_NOACTION, LACP_PTX_STATE_NO_PERIODIC},	// event 3 SHORT_TIMEOUT
+  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 NO_PERIODIC
+  {LACP_ACTION_SLOW_PERIODIC, LACP_PTX_STATE_SLOW_PERIODIC},	// event 1 LONG_TIMEOUT
+  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 2 TIMER_EXPIRED
+  {LACP_ACTION_FAST_PERIODIC, LACP_PTX_STATE_FAST_PERIODIC},	// event 3 SHORT_TIMEOUT
 };
 
 /*
  *  LACP State = FAST_PERIODIC
  */
 static lacp_fsm_state_t lacp_ptx_state_fast_periodic[] = {
-  {LACP_ACTION_FAST_PERIODIC, LACP_PTX_STATE_FAST_PERIODIC},	// event 0 BEGIN
+  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 NO_PERIODIC
   {LACP_ACTION_SLOW_PERIODIC, LACP_PTX_STATE_SLOW_PERIODIC},	// event 1 LONG_TIMEOUT
   {LACP_ACTION_TIMER_EXPIRED, LACP_PTX_STATE_PERIODIC_TX},	// event 2 TIMER_EXPIRED
   {LACP_ACTION_FAST_PERIODIC, LACP_PTX_STATE_FAST_PERIODIC},	// event 3 SHORT_TIMEOUT
@@ -42,7 +42,7 @@ static lacp_fsm_state_t lacp_ptx_state_fast_periodic[] = {
  *  LACP State = SLOW_PERIODIC
  */
 static lacp_fsm_state_t lacp_ptx_state_slow_periodic[] = {
-  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 BEGIN
+  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 NO_PERIODIC
   {LACP_ACTION_SLOW_PERIODIC, LACP_PTX_STATE_SLOW_PERIODIC},	// event 1 LONG_TIMEOUT
   {LACP_ACTION_TIMER_EXPIRED, LACP_PTX_STATE_PERIODIC_TX},	// event 2 TIMER_EXPIRED
   {LACP_ACTION_FAST_PERIODIC, LACP_PTX_STATE_FAST_PERIODIC},	// event 3 SHORT_TIMEOUT
@@ -52,7 +52,7 @@ static lacp_fsm_state_t lacp_ptx_state_slow_periodic[] = {
  *  LACP State = PERIODIC_TX
  */
 static lacp_fsm_state_t lacp_ptx_state_periodic_tx[] = {
-  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 BEGIN
+  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 NO_PERIODIC
   {LACP_NOACTION, LACP_PTX_STATE_PERIODIC_TX},	// event 1 LONG_TIMEOUT
   {LACP_ACTION_TIMER_EXPIRED, LACP_PTX_STATE_PERIODIC_TX},	// event 2 TIMER_EXPIRED
   {LACP_NOACTION, LACP_PTX_STATE_PERIODIC_TX},	// event 3 SHORT_TIMEOUT
@@ -78,10 +78,7 @@ lacp_ptx_action_no_periodic (void *p1, void *p2)
   slave_if_t *sif = (slave_if_t *) p2;
 
   lacp_stop_timer (&sif->periodic_timer);
-
-  lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			 LACP_PTX_EVENT_BEGIN, &sif->ptx_state);
-
+  lacp_ptx_post_short_timeout_event (vm, sif);
   return 0;
 }
 
@@ -93,17 +90,24 @@ lacp_ptx_action_slow_periodic (void *p1, void *p2)
   u8 timer_expired;
   lacp_main_t *lm = &lacp_main;
 
-  if (lacp_timer_is_running (sif->periodic_timer) &&
-      lacp_timer_is_expired (lm->vlib_main, sif->periodic_timer))
-    timer_expired = 1;
-  else
-    timer_expired = 0;
-
-  lacp_schedule_periodic_timer (lm->vlib_main, sif);
-
-  if (timer_expired || (sif->partner.state & LACP_STATE_LACP_TIMEOUT))
+  if (!(sif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
+      !(sif->actor.state & LACP_STATE_LACP_ACTIVITY))
     lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_TIMER_EXPIRED, &sif->ptx_state);
+			   LACP_PTX_EVENT_NO_PERIODIC, &sif->ptx_state);
+  else
+    {
+      if (lacp_timer_is_running (sif->periodic_timer) &&
+	  lacp_timer_is_expired (lm->vlib_main, sif->periodic_timer))
+	timer_expired = 1;
+      else
+	timer_expired = 0;
+
+      lacp_schedule_periodic_timer (lm->vlib_main, sif);
+
+      if (timer_expired || (sif->partner.state & LACP_STATE_LACP_TIMEOUT))
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
+			       LACP_PTX_EVENT_TIMER_EXPIRED, &sif->ptx_state);
+    }
 
   return 0;
 }
@@ -116,21 +120,29 @@ lacp_ptx_action_fast_periodic (void *p1, void *p2)
   u8 timer_expired;
   lacp_main_t *lm = &lacp_main;
 
-  if (lacp_timer_is_running (sif->periodic_timer) &&
-      lacp_timer_is_expired (lm->vlib_main, sif->periodic_timer))
-    timer_expired = 1;
+  if (!(sif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
+      !(sif->actor.state & LACP_STATE_LACP_ACTIVITY))
+    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
+			   LACP_PTX_EVENT_NO_PERIODIC, &sif->ptx_state);
   else
-    timer_expired = 0;
+    {
+      if (lacp_timer_is_running (sif->periodic_timer) &&
+	  lacp_timer_is_expired (lm->vlib_main, sif->periodic_timer))
+	timer_expired = 1;
+      else
+	timer_expired = 0;
 
-  lacp_start_periodic_timer (lm->vlib_main, sif, LACP_FAST_PERIODIC_TIMER);
+      lacp_start_periodic_timer (lm->vlib_main, sif,
+				 LACP_FAST_PERIODIC_TIMER);
 
-  if (timer_expired)
-    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_TIMER_EXPIRED, &sif->ptx_state);
+      if (timer_expired)
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
+			       LACP_PTX_EVENT_TIMER_EXPIRED, &sif->ptx_state);
 
-  if (!(sif->partner.state & LACP_STATE_LACP_TIMEOUT))
-    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_LONG_TIMEOUT, &sif->ptx_state);
+      if (!(sif->partner.state & LACP_STATE_LACP_TIMEOUT))
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
+			       LACP_PTX_EVENT_LONG_TIMEOUT, &sif->ptx_state);
+    }
 
   return 0;
 }
@@ -141,15 +153,22 @@ lacp_ptx_action_timer_expired (void *p1, void *p2)
   vlib_main_t *vm = (vlib_main_t *) p1;
   slave_if_t *sif = (slave_if_t *) p2;
 
-  sif->ntt = 1;
-  lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_NTT,
-			 &sif->tx_state);
-  if (sif->partner.state & LACP_STATE_LACP_TIMEOUT)
+  if (!(sif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
+      !(sif->actor.state & LACP_STATE_LACP_ACTIVITY))
     lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_SHORT_TIMEOUT, &sif->ptx_state);
+			   LACP_PTX_EVENT_NO_PERIODIC, &sif->ptx_state);
   else
-    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_LONG_TIMEOUT, &sif->ptx_state);
+    {
+      sif->ntt = 1;
+      lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_NTT,
+			     &sif->tx_state);
+      if (sif->partner.state & LACP_STATE_LACP_TIMEOUT)
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
+			       LACP_PTX_EVENT_SHORT_TIMEOUT, &sif->ptx_state);
+      else
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
+			       LACP_PTX_EVENT_LONG_TIMEOUT, &sif->ptx_state);
+    }
 
   return 0;
 }
@@ -189,8 +208,8 @@ lacp_ptx_debug_func (slave_if_t * sif, int event, int state,
 void
 lacp_init_ptx_machine (vlib_main_t * vm, slave_if_t * sif)
 {
-  lacp_machine_dispatch (&lacp_ptx_machine, vm, sif, LACP_PTX_EVENT_BEGIN,
-			 &sif->ptx_state);
+  lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
+			 LACP_PTX_EVENT_NO_PERIODIC, &sif->ptx_state);
 }
 
 /*

@@ -1,4 +1,4 @@
-# Introduction
+# MTU Introduction {#mtu_doc}
 Maximum Transmission Unit is a term used to describe the maximum sized "thingy" that can be sent out an interface. It can refer to the maximum frame size that a NIC can send. On Ethernet that would include the Ethernet header but typically not the IGF. It can refer to the maximum packet size, that is, on Ethernet an MTU of 1500, would allow an IPv4 packet of 1500 bytes, that would result in an Ethernet frame of 1518 bytes.
 
 # MTU in VPP

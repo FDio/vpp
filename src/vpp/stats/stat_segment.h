@@ -113,6 +113,7 @@ typedef struct
   u8 *socket_name;
   ssize_t memory_size;
   u8 node_counters_enabled;
+  void *last;
   void *heap;
   stat_segment_shared_header_t *shared_header;	/* pointer to shared memory segment */
   int memfd;

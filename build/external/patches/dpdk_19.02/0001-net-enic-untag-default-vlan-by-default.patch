@@ -1,0 +1,31 @@
+From 85ce89273a8e67375713e154fa84f6da0c7d0bcf Mon Sep 17 00:00:00 2001
+From: Hyong Youb Kim <hyonkim@cisco.com>
+Date: Wed, 20 Mar 2019 00:00:20 -0700
+Subject: [PATCH] net/enic: untag default vlan by default
+
+The current default ingress vlan rewrite mode 'passthrough' is not
+suitable for VPP, as it leads to ingress packets tagged with vlan 0
+(trunk-mode vNIC) or native vlan (access-mode vNIC). Change the
+default to "untag default vlan" to remove these unwanted tags.
+
+Signed-off-by: Hyong Youb Kim <hyonkim@cisco.com>
+---
+ drivers/net/enic/enic_ethdev.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/enic/enic_ethdev.c b/drivers/net/enic/enic_ethdev.c
+index 8d14d8ac7..87d5c76cb 100644
+--- a/drivers/net/enic/enic_ethdev.c
++++ b/drivers/net/enic/enic_ethdev.c
+@@ -1125,7 +1125,7 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
+ 
+ 	enic->disable_overlay = false;
+ 	enic->enable_avx2_rx = false;
+-	enic->ig_vlan_rewrite_mode = IG_VLAN_REWRITE_MODE_PASS_THRU;
++	enic->ig_vlan_rewrite_mode = IG_VLAN_REWRITE_MODE_UNTAG_DEFAULT_VLAN;
+ 	if (!dev->device->devargs)
+ 		return 0;
+ 	kvlist = rte_kvargs_parse(dev->device->devargs->args, valid_keys);
+-- 
+2.16.2
+

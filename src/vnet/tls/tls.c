@@ -26,7 +26,7 @@ static tls_engine_vft_t *tls_vfts;
 
 void tls_disconnect (u32 ctx_handle, u32 thread_index);
 
-static void
+void
 tls_disconnect_transport (tls_ctx_t * ctx)
 {
   vnet_disconnect_args_t a = {
@@ -54,7 +54,7 @@ int
 tls_add_vpp_q_rx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->rx_fifo))
-    session_send_io_evt_to_thread (s->rx_fifo, FIFO_EVENT_APP_RX);
+    session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_RX);
   return 0;
 }
 
@@ -62,7 +62,7 @@ int
 tls_add_vpp_q_builtin_rx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->rx_fifo))
-    session_send_io_evt_to_thread (s->rx_fifo, FIFO_EVENT_BUILTIN_RX);
+    session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_BUILTIN_RX);
   return 0;
 }
 
@@ -70,7 +70,7 @@ int
 tls_add_vpp_q_tx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->tx_fifo))
-    session_send_io_evt_to_thread (s->tx_fifo, FIFO_EVENT_APP_TX);
+    session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
   return 0;
 }
 
@@ -79,14 +79,14 @@ tls_add_vpp_q_builtin_tx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->tx_fifo))
     session_send_io_evt_to_thread_custom (s, s->thread_index,
-					  FIFO_EVENT_BUILTIN_TX);
+					  SESSION_IO_EVT_BUILTIN_TX);
   return 0;
 }
 
 static inline int
 tls_add_app_q_evt (app_worker_t * app, session_t * app_session)
 {
-  return app_worker_lock_and_send_event (app, app_session, FIFO_EVENT_APP_RX);
+  return app_worker_lock_and_send_event (app, app_session, SESSION_IO_EVT_RX);
 }
 
 u32
@@ -180,10 +180,10 @@ tls_ctx_half_open_index (tls_ctx_t * ctx)
 void
 tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session)
 {
-  app_worker_t *app;
-  app = app_worker_get_if_valid (app_session->app_wrk_index);
-  if (PREDICT_TRUE (app != 0))
-    tls_add_app_q_evt (app, app_session);
+  app_worker_t *app_wrk;
+  app_wrk = app_worker_get_if_valid (app_session->app_wrk_index);
+  if (PREDICT_TRUE (app_wrk != 0))
+    tls_add_app_q_evt (app_wrk, app_session);
 }
 
 int
@@ -202,7 +202,6 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   app_session->connection_index = ctx->tls_ctx_handle;
   app_session->session_type = app_listener->session_type;
   app_session->listener_index = app_listener->session_index;
-  app_session->t_app_index = tls_main.app_index;
   app_session->session_state = SESSION_STATE_ACCEPTING;
 
   if ((rv = app_worker_init_accepted (app_session)))
@@ -240,7 +239,6 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   app_session->connection_index = ctx->tls_ctx_handle;
   app_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
-  app_session->t_app_index = tls_main.app_index;
 
   if (app_worker_init_connected (app_wrk, app_session))
     goto failed;
@@ -289,13 +287,6 @@ tls_ctx_alloc (tls_engine_type_t engine_type)
   return (((u32) engine_type << TLS_ENGINE_TYPE_SHIFT) | ctx_index);
 }
 
-static inline void
-tls_ctx_free (tls_ctx_t * ctx)
-{
-  vec_free (ctx->srv_hostname);
-  tls_vfts[ctx->tls_ctx_engine].ctx_free (ctx);
-}
-
 static inline tls_ctx_t *
 tls_ctx_get (u32 ctx_handle)
 {
@@ -336,7 +327,26 @@ tls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
   return tls_vfts[ctx->tls_ctx_engine].ctx_read (ctx, tls_session);
 }
 
-static inline u8
+static inline int
+tls_ctx_transport_close (tls_ctx_t * ctx)
+{
+  return tls_vfts[ctx->tls_ctx_engine].ctx_transport_close (ctx);
+}
+
+static inline int
+tls_ctx_app_close (tls_ctx_t * ctx)
+{
+  return tls_vfts[ctx->tls_ctx_engine].ctx_app_close (ctx);
+}
+
+void
+tls_ctx_free (tls_ctx_t * ctx)
+{
+  vec_free (ctx->srv_hostname);
+  tls_vfts[ctx->tls_ctx_engine].ctx_free (ctx);
+}
+
+u8
 tls_ctx_handshake_is_over (tls_ctx_t * ctx)
 {
   return tls_vfts[ctx->tls_ctx_engine].ctx_handshake_is_over (ctx);
@@ -364,22 +374,14 @@ tls_del_segment_callback (u32 client_index, u64 segment_handle)
 void
 tls_session_disconnect_callback (session_t * tls_session)
 {
-  session_t *app_session;
   tls_ctx_t *ctx;
-  app_worker_t *app_wrk;
-  application_t *app;
+
+  TLS_DBG (1, "TCP disconnecting handle %x session %u", tls_session->opaque,
+	   tls_session->session_index);
 
   ctx = tls_ctx_get (tls_session->opaque);
-  if (!tls_ctx_handshake_is_over (ctx))
-    {
-      session_close (tls_session);
-      return;
-    }
   ctx->is_passive_close = 1;
-  app_wrk = app_worker_get (ctx->parent_app_wrk_index);
-  app = application_get (app_wrk->app_index);
-  app_session = session_get_from_handle (ctx->app_session_handle);
-  app->cb_fns.session_disconnect_callback (app_session);
+  tls_ctx_transport_close (ctx);
 }
 
 int
@@ -415,17 +417,6 @@ tls_session_accept_callback (session_t * tls_session)
 }
 
 int
-tls_app_tx_callback (session_t * app_session)
-{
-  tls_ctx_t *ctx;
-  if (PREDICT_FALSE (app_session->session_state == SESSION_STATE_CLOSED))
-    return 0;
-  ctx = tls_ctx_get (app_session->connection_index);
-  tls_ctx_write (ctx, app_session);
-  return 0;
-}
-
-int
 tls_app_rx_callback (session_t * tls_session)
 {
   tls_ctx_t *ctx;
@@ -447,19 +438,15 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   if (is_fail)
     {
-      int (*cb_fn) (u32, u32, session_t *, u8), rv = 0;
-      u32 wrk_index, api_context;
       app_worker_t *app_wrk;
-      application_t *app;
+      u32 api_context;
+      int rv = 0;
 
-      wrk_index = ho_ctx->parent_app_wrk_index;
       app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_wrk_index);
       if (app_wrk)
 	{
 	  api_context = ho_ctx->c_s_index;
-	  app = application_get (app_wrk->app_index);
-	  cb_fn = app->cb_fns.session_connected_callback;
-	  rv = cb_fn (wrk_index, api_context, 0, 1 /* failed */ );
+	  app_worker_connect_notify (app_wrk, 0, api_context);
 	}
       tls_ctx_half_open_reader_unlock ();
       tls_ctx_half_open_free (ho_ctx_index);
@@ -501,7 +488,6 @@ static session_cb_vft_t tls_app_cb_vft = {
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
-  .builtin_app_tx_callback = tls_app_tx_callback,
 };
 /* *INDENT-ON* */
 
@@ -563,9 +549,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
   TLS_DBG (1, "Disconnecting %x", ctx_handle);
 
   ctx = tls_ctx_get (ctx_handle);
-  tls_disconnect_transport (ctx);
-  session_transport_delete_notify (&ctx->connection);
-  tls_ctx_free (ctx);
+  tls_ctx_app_close (ctx);
 }
 
 u32
@@ -663,19 +647,34 @@ tls_listener_get (u32 listener_index)
   return &ctx->connection;
 }
 
+int
+tls_custom_tx_callback (void *session)
+{
+  session_t *app_session = (session_t *) session;
+  tls_ctx_t *ctx;
+
+  if (PREDICT_FALSE (app_session->session_state
+		     >= SESSION_STATE_TRANSPORT_CLOSED))
+    return 0;
+
+  ctx = tls_ctx_get (app_session->connection_index);
+  tls_ctx_write (ctx, app_session);
+  return 0;
+}
+
 u8 *
 format_tls_ctx (u8 * s, va_list * args)
 {
+  u32 tcp_si, tcp_ti, ctx_index, ctx_engine, app_si, app_ti;
   tls_ctx_t *ctx = va_arg (*args, tls_ctx_t *);
-  u32 thread_index = va_arg (*args, u32);
-  u32 child_si, child_ti;
 
-  session_parse_handle (ctx->tls_session_handle, &child_si, &child_ti);
-  if (thread_index != child_ti)
-    clib_warning ("app and tls sessions are on different threads!");
+  session_parse_handle (ctx->tls_session_handle, &tcp_si, &tcp_ti);
+  tls_ctx_parse_handle (ctx->tls_ctx_handle, &ctx_index, &ctx_engine);
+  session_parse_handle (ctx->app_session_handle, &app_si, &app_ti);
+  s = format (s, "[%d:%d][TLS] app_wrk %u index %u engine %u tcp %d:%d",
+	      app_ti, app_si, ctx->parent_app_wrk_index, ctx_index,
+	      ctx_engine, tcp_ti, tcp_si);
 
-  s = format (s, "[#%d][TLS] app %u child %u", child_ti,
-	      ctx->parent_app_wrk_index, child_si);
   return s;
 }
 
@@ -691,7 +690,7 @@ format_tls_connection (u8 * s, va_list * args)
   if (!ctx)
     return s;
 
-  s = format (s, "%-50U", format_tls_ctx, ctx, thread_index);
+  s = format (s, "%-50U", format_tls_ctx, ctx);
   if (verbose)
     {
       session_t *ts;
@@ -709,12 +708,17 @@ format_tls_listener (u8 * s, va_list * args)
   u32 tc_index = va_arg (*args, u32);
   u32 __clib_unused verbose = va_arg (*args, u32);
   tls_ctx_t *ctx = tls_listener_ctx_get (tc_index);
-  u32 listener_index, thread_index;
+  session_t *tls_listener;
+  app_listener_t *al;
+  u32 app_si, app_ti;
 
-  listen_session_parse_handle (ctx->tls_session_handle, &listener_index,
-			       &thread_index);
-  return format (s, "[TLS] listener app %u child %u",
-		 ctx->parent_app_wrk_index, listener_index);
+  al = app_listener_get_w_handle (ctx->tls_session_handle);
+  tls_listener = app_listener_get_session (al);
+  session_parse_handle (ctx->app_session_handle, &app_si, &app_ti);
+  s = format (s, "[%d:%d][TLS] app_wrk %u engine %u tcp %d:%d",
+	      app_ti, app_si, ctx->parent_app_wrk_index, ctx->tls_ctx_engine,
+	      tls_listener->thread_index, tls_listener->session_index);
+  return s;
 }
 
 u8 *
@@ -735,6 +739,7 @@ const static transport_proto_vft_t tls_proto = {
   .stop_listen = tls_stop_listen,
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
+  .custom_tx = tls_custom_tx_callback,
   .tx_type = TRANSPORT_TX_INTERNAL,
   .service_type = TRANSPORT_SERVICE_APP,
   .format_connection = format_tls_connection,
@@ -753,14 +758,15 @@ tls_register_engine (const tls_engine_vft_t * vft, tls_engine_type_t type)
 static clib_error_t *
 tls_init (vlib_main_t * vm)
 {
+  u32 add_segment_size = (4096ULL << 20) - 1, first_seg_size = 32 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads, fifo_size = 128 << 10;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
-  u32 segment_size = 512 << 20;
   tls_main_t *tm = &tls_main;
-  u32 fifo_size = 64 << 10;
-  u32 num_threads;
 
+  first_seg_size = tm->first_seg_size ? tm->first_seg_size : first_seg_size;
+  fifo_size = tm->fifo_size ? tm->fifo_size : fifo_size;
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
   clib_memset (a, 0, sizeof (*a));
@@ -770,8 +776,8 @@ tls_init (vlib_main_t * vm)
   a->api_client_index = APP_INVALID_INDEX;
   a->options = options;
   a->name = format (0, "tls");
-  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = first_seg_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = add_segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -812,6 +818,12 @@ tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "use-test-cert-in-ca"))
 	tm->use_test_cert_in_ca = 1;
       else if (unformat (input, "ca-cert-path %s", &tm->ca_cert_path))
+	;
+      else if (unformat (input, "first-segment-size %U", unformat_memory_size,
+			 &tm->first_seg_size))
+	;
+      else if (unformat (input, "fifo-size %U", unformat_memory_size,
+			 &tm->fifo_size))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",

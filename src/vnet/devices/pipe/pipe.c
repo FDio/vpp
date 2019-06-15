@@ -51,7 +51,7 @@ static pipe_main_t pipe_main;
 /*
  * The pipe rewrite is the same size as an ethernet header (since it
  * is an ethernet interface and the DP is optimised for writing
- * sizeof(ethernet_header_t) rewirtes. Hwoever, there are no MAC addresses
+ * sizeof(ethernet_header_t) rewrites. Hwoever, there are no MAC addresses
  * since pipes don't have them.
  */
 static u8 *
@@ -131,11 +131,7 @@ pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left_from, n_left_to_next, n_copy, *from, *to_next;
   u32 next_index = VNET_PIPE_TX_NEXT_ETHERNET_INPUT;
-  u32 i, sw_if_index = 0;
-  u32 n_pkts = 0, n_bytes = 0;
-  u32 thread_index = vm->thread_index;
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_interface_main_t *im = &vnm->interface_main;
+  u32 i, sw_if_index = 0, n_pkts = 0, n_bytes = 0;
   vlib_buffer_t *b;
   pipe_t *pipe;
 
@@ -169,12 +165,6 @@ pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       from += n_copy;
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-
-      /* increment TX interface stat */
-      vlib_increment_combined_counter (im->combined_sw_if_counters +
-				       VNET_INTERFACE_COUNTER_TX,
-				       thread_index, sw_if_index, n_pkts,
-				       n_bytes);
     }
 
   return n_left_from;

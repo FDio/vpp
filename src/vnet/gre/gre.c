@@ -19,6 +19,9 @@
 #include <vnet/gre/gre.h>
 #include <vnet/adj/adj_midchain.h>
 
+extern gre_main_t gre_main;
+
+#ifndef CLIB_MARCH_VARIANT
 gre_main_t gre_main;
 
 typedef struct
@@ -38,6 +41,7 @@ typedef struct
     u64 as_u64[3];
   };
 } ip6_and_gre_union_t;
+#endif /* CLIB_MARCH_VARIANT */
 
 
 /* Packet trace structure */
@@ -54,6 +58,9 @@ typedef struct
   ip46_address_t dst;
 } gre_tx_trace_t;
 
+extern u8 *format_gre_tx_trace (u8 * s, va_list * args);
+
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_gre_tx_trace (u8 * s, va_list * args)
 {
@@ -319,7 +326,7 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 
   gre_tunnel_stack (ai);
 }
-
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum
 {
@@ -331,172 +338,144 @@ typedef enum
  * @brief TX function. Only called for L2 payload including TEB or ERSPAN.
  *        L3 traffic uses the adj-midchains.
  */
-static uword
-gre_interface_tx (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gre_encap_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   gre_main_t *gm = &gre_main;
-  vnet_main_t *vnm = gm->vnet_main;
-  u32 next_index;
-  u32 *from, *to_next, n_left_from, n_left_to_next;
-  u32 sw_if_index0 = 0;
-  u32 sw_if_index1 = 0;
-  adj_index_t adj_index0 = ADJ_INDEX_INVALID;
-  adj_index_t adj_index1 = ADJ_INDEX_INVALID;
-  gre_tunnel_t *gt0 = NULL;
-  gre_tunnel_t *gt1 = NULL;
+  u32 *from, n_left_from;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u32 sw_if_index[2] = { ~0, ~0 };
+  const gre_tunnel_t *gt[2] = { 0 };
+  adj_index_t adj_index[2] = { ADJ_INDEX_INVALID, ADJ_INDEX_INVALID };
 
-  /* Vector of buffer / pkt indices we're supposed to process */
   from = vlib_frame_vector_args (frame);
-
-  /* Number of buffers / pkts */
   n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
-  /* Speculatively send the first buffer to the last disposition we used */
-  next_index = GRE_ENCAP_NEXT_L2_MIDCHAIN;
-
-  while (n_left_from > 0)
+  while (n_left_from >= 2)
     {
-      /* set up to enqueue to our disposition with index = next_index */
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      if (PREDICT_FALSE
+	  (sw_if_index[0] != vnet_buffer (b[0])->sw_if_index[VLIB_TX]))
 	{
-	  u32 bi0 = from[0];
-	  u32 bi1 = from[1];
-	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-	  vlib_buffer_t *b1 = vlib_get_buffer (vm, bi1);
-
-	  to_next[0] = bi0;
-	  to_next[1] = bi1;
-	  from += 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
-	  n_left_from -= 2;
-
-	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
-	    {
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	      vnet_hw_interface_t *hi0 =
-		vnet_get_sup_hw_interface (vnm, sw_if_index0);
-	      gt0 = &gm->tunnels[hi0->dev_instance];
-	      adj_index0 = gt0->l2_adj_index;
-	    }
-
-	  if (sw_if_index1 != vnet_buffer (b1)->sw_if_index[VLIB_TX])
-	    {
-	      if (sw_if_index0 == vnet_buffer (b1)->sw_if_index[VLIB_TX])
-		{
-		  sw_if_index1 = sw_if_index0;
-		  gt1 = gt0;
-		  adj_index1 = adj_index0;
-		}
-	      else
-		{
-		  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-		  vnet_hw_interface_t *hi1 =
-		    vnet_get_sup_hw_interface (vnm, sw_if_index1);
-		  gt1 = &gm->tunnels[hi1->dev_instance];
-		  adj_index1 = gt1->l2_adj_index;
-		}
-	    }
-
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = adj_index0;
-	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = adj_index1;
-
-	  if (PREDICT_FALSE (gt0->type == GRE_TUNNEL_TYPE_ERSPAN))
-	    {
-	      /* Encap GRE seq# and ERSPAN type II header */
-	      vlib_buffer_advance (b0, -sizeof (erspan_t2_t));
-	      erspan_t2_t *h0 = vlib_buffer_get_current (b0);
-	      u32 seq_num = clib_atomic_fetch_add (&gt0->gre_sn->seq_num, 1);
-	      u64 hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
-	      h0->seq_num = clib_host_to_net_u32 (seq_num);
-	      h0->t2_u64 = hdr;
-	      h0->t2.cos_en_t_session |=
-		clib_host_to_net_u16 (gt0->session_id);
-	    }
-	  if (PREDICT_FALSE (gt1->type == GRE_TUNNEL_TYPE_ERSPAN))
-	    {
-	      /* Encap GRE seq# and ERSPAN type II header */
-	      vlib_buffer_advance (b1, -sizeof (erspan_t2_t));
-	      erspan_t2_t *h1 = vlib_buffer_get_current (b1);
-	      u32 seq_num = clib_atomic_fetch_add (&gt1->gre_sn->seq_num, 1);
-	      u64 hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
-	      h1->seq_num = clib_host_to_net_u32 (seq_num);
-	      h1->t2_u64 = hdr;
-	      h1->t2.cos_en_t_session |=
-		clib_host_to_net_u16 (gt1->session_id);
-	    }
-
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      gre_tx_trace_t *tr0 = vlib_add_trace (vm, node,
-						    b0, sizeof (*tr0));
-	      tr0->tunnel_id = gt0 - gm->tunnels;
-	      tr0->src = gt0->tunnel_src;
-	      tr0->dst = gt0->tunnel_dst.fp_addr;
-	      tr0->length = vlib_buffer_length_in_chain (vm, b0);
-	    }
-	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      gre_tx_trace_t *tr1 = vlib_add_trace (vm, node,
-						    b1, sizeof (*tr1));
-	      tr1->tunnel_id = gt1 - gm->tunnels;
-	      tr1->src = gt1->tunnel_src;
-	      tr1->dst = gt1->tunnel_dst.fp_addr;
-	      tr1->length = vlib_buffer_length_in_chain (vm, b1);
-	    }
+	  const vnet_hw_interface_t *hi;
+	  sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	  hi = vnet_get_sup_hw_interface (gm->vnet_main, sw_if_index[0]);
+	  gt[0] = &gm->tunnels[hi->dev_instance];
+	  adj_index[0] = gt[0]->l2_adj_index;
+	}
+      if (PREDICT_FALSE
+	  (sw_if_index[1] != vnet_buffer (b[1])->sw_if_index[VLIB_TX]))
+	{
+	  const vnet_hw_interface_t *hi;
+	  sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+	  hi = vnet_get_sup_hw_interface (gm->vnet_main, sw_if_index[1]);
+	  gt[1] = &gm->tunnels[hi->dev_instance];
+	  adj_index[1] = gt[1]->l2_adj_index;
 	}
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = adj_index[0];
+      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = adj_index[1];
+
+      if (PREDICT_FALSE (gt[0]->type == GRE_TUNNEL_TYPE_ERSPAN))
 	{
-	  u32 bi0 = from[0];
-	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
-	    {
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	      vnet_hw_interface_t *hi0 =
-		vnet_get_sup_hw_interface (vnm, sw_if_index0);
-	      gt0 = &gm->tunnels[hi0->dev_instance];
-	      adj_index0 = gt0->l2_adj_index;
-	    }
-
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = adj_index0;
-
-	  if (PREDICT_FALSE (gt0->type == GRE_TUNNEL_TYPE_ERSPAN))
-	    {
-	      /* Encap GRE seq# and ERSPAN type II header */
-	      vlib_buffer_advance (b0, -sizeof (erspan_t2_t));
-	      erspan_t2_t *h0 = vlib_buffer_get_current (b0);
-	      u32 seq_num = clib_atomic_fetch_add (&gt0->gre_sn->seq_num, 1);
-	      u64 hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
-	      h0->seq_num = clib_host_to_net_u32 (seq_num);
-	      h0->t2_u64 = hdr;
-	      h0->t2.cos_en_t_session |=
-		clib_host_to_net_u16 (gt0->session_id);
-	    }
-
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      gre_tx_trace_t *tr = vlib_add_trace (vm, node,
-						   b0, sizeof (*tr));
-	      tr->tunnel_id = gt0 - gm->tunnels;
-	      tr->src = gt0->tunnel_src;
-	      tr->dst = gt0->tunnel_dst.fp_addr;
-	      tr->length = vlib_buffer_length_in_chain (vm, b0);
-	    }
+	  /* Encap GRE seq# and ERSPAN type II header */
+	  erspan_t2_t *h0;
+	  u32 seq_num;
+	  u64 hdr;
+	  vlib_buffer_advance (b[0], -sizeof (erspan_t2_t));
+	  h0 = vlib_buffer_get_current (b[0]);
+	  seq_num = clib_atomic_fetch_add (&gt[0]->gre_sn->seq_num, 1);
+	  hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
+	  h0->seq_num = clib_host_to_net_u32 (seq_num);
+	  h0->t2_u64 = hdr;
+	  h0->t2.cos_en_t_session |= clib_host_to_net_u16 (gt[0]->session_id);
+	}
+      if (PREDICT_FALSE (gt[1]->type == GRE_TUNNEL_TYPE_ERSPAN))
+	{
+	  /* Encap GRE seq# and ERSPAN type II header */
+	  erspan_t2_t *h0;
+	  u32 seq_num;
+	  u64 hdr;
+	  vlib_buffer_advance (b[1], -sizeof (erspan_t2_t));
+	  h0 = vlib_buffer_get_current (b[1]);
+	  seq_num = clib_atomic_fetch_add (&gt[1]->gre_sn->seq_num, 1);
+	  hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
+	  h0->seq_num = clib_host_to_net_u32 (seq_num);
+	  h0->t2_u64 = hdr;
+	  h0->t2.cos_en_t_session |= clib_host_to_net_u16 (gt[1]->session_id);
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  gre_tx_trace_t *tr = vlib_add_trace (vm, node,
+					       b[0], sizeof (*tr));
+	  tr->tunnel_id = gt[0] - gm->tunnels;
+	  tr->src = gt[0]->tunnel_src;
+	  tr->dst = gt[0]->tunnel_dst.fp_addr;
+	  tr->length = vlib_buffer_length_in_chain (vm, b[0]);
+	}
+      if (PREDICT_FALSE (b[1]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  gre_tx_trace_t *tr = vlib_add_trace (vm, node,
+					       b[1], sizeof (*tr));
+	  tr->tunnel_id = gt[1] - gm->tunnels;
+	  tr->src = gt[1]->tunnel_src;
+	  tr->dst = gt[1]->tunnel_dst.fp_addr;
+	  tr->length = vlib_buffer_length_in_chain (vm, b[1]);
+	}
+
+      b += 2;
+      n_left_from -= 2;
     }
+
+  while (n_left_from >= 1)
+    {
+
+      if (PREDICT_FALSE
+	  (sw_if_index[0] != vnet_buffer (b[0])->sw_if_index[VLIB_TX]))
+	{
+	  const vnet_hw_interface_t *hi;
+	  sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	  hi = vnet_get_sup_hw_interface (gm->vnet_main, sw_if_index[0]);
+	  gt[0] = &gm->tunnels[hi->dev_instance];
+	  adj_index[0] = gt[0]->l2_adj_index;
+	}
+
+      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = adj_index[0];
+
+      if (PREDICT_FALSE (gt[0]->type == GRE_TUNNEL_TYPE_ERSPAN))
+	{
+	  /* Encap GRE seq# and ERSPAN type II header */
+	  erspan_t2_t *h0;
+	  u32 seq_num;
+	  u64 hdr;
+	  vlib_buffer_advance (b[0], -sizeof (erspan_t2_t));
+	  h0 = vlib_buffer_get_current (b[0]);
+	  seq_num = clib_atomic_fetch_add (&gt[0]->gre_sn->seq_num, 1);
+	  hdr = clib_host_to_net_u64 (ERSPAN_HDR2);
+	  h0->seq_num = clib_host_to_net_u32 (seq_num);
+	  h0->t2_u64 = hdr;
+	  h0->t2.cos_en_t_session |= clib_host_to_net_u16 (gt[0]->session_id);
+	}
+
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  gre_tx_trace_t *tr = vlib_add_trace (vm, node,
+					       b[0], sizeof (*tr));
+	  tr->tunnel_id = gt[0] - gm->tunnels;
+	  tr->src = gt[0]->tunnel_src;
+	  tr->dst = gt[0]->tunnel_dst.fp_addr;
+	  tr->length = vlib_buffer_length_in_chain (vm, b[0]);
+	}
+
+      b += 1;
+      n_left_from -= 1;
+    }
+
+  vlib_buffer_enqueue_to_single_next (vm, node, from,
+				      GRE_ENCAP_NEXT_L2_MIDCHAIN,
+				      frame->n_vectors);
 
   vlib_node_increment_counter (vm, node->node_index,
 			       GRE_ERROR_PKTS_ENCAP, frame->n_vectors);
@@ -513,7 +492,6 @@ static char *gre_error_strings[] = {
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gre_encap_node) =
 {
-  .function = gre_interface_tx,
   .name = "gre-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_gre_tx_trace,
@@ -525,10 +503,9 @@ VLIB_REGISTER_NODE (gre_encap_node) =
     [GRE_ENCAP_NEXT_L2_MIDCHAIN] = "adj-l2-midchain",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gre_encap_node, gre_interface_tx)
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 static u8 *
 format_gre_tunnel_name (u8 * s, va_list * args)
 {
@@ -574,6 +551,7 @@ VNET_HW_INTERFACE_CLASS (gre_hw_interface_class) = {
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 /* *INDENT-ON* */
+#endif /* CLIB_MARCH_VARIANT */
 
 static void
 add_protocol (gre_main_t * gm, gre_protocol_t protocol, char *protocol_name)

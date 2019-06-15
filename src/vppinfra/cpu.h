@@ -120,10 +120,17 @@ _ (ssse3,    1, ecx, 9)   \
 _ (sse41,    1, ecx, 19)  \
 _ (sse42,    1, ecx, 20)  \
 _ (avx,      1, ecx, 28)  \
+_ (rdrand,   1, ecx, 30)  \
 _ (avx2,     7, ebx, 5)   \
+_ (rtm,      7, ebx, 11)  \
+_ (pqm,      7, ebx, 12)  \
+_ (pqe,      7, ebx, 15)  \
 _ (avx512f,  7, ebx, 16)  \
+_ (rdseed,   7, ebx, 18)  \
 _ (x86_aes,  1, ecx, 25)  \
 _ (sha,      7, ebx, 29)  \
+_ (vaes,     7, ecx, 9)   \
+_ (vpclmulqdq, 7, ecx, 10)   \
 _ (invariant_tsc, 0x80000007, edx, 8)
 
 
@@ -227,7 +234,7 @@ static inline int clib_cpu_supports_ ## flag() { return 0; }
   static inline int
 clib_cpu_supports_aes ()
 {
-#if defined (__aarch64__)
+#if defined(__x86_64__)
   return clib_cpu_supports_x86_aes ();
 #elif defined (__aarch64__)
   return clib_cpu_supports_aarch64_aes ();
@@ -248,7 +255,7 @@ static inline int
 clib_cpu_march_priority_avx2 ()
 {
   if (clib_cpu_supports_avx2 ())
-    return 10;
+    return 50;
   return -1;
 }
 
@@ -370,7 +377,7 @@ CLIB_MARCH_SFX(fn ## _march_constructor) (void)				\
 #else
 #define CLIB_MARCH_FN(fn, rtype, _args...)				\
   static rtype CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args);	\
-  extern int (*fn ## _selected) (_args);				\
+  extern rtype (*fn ## _selected) (_args);				\
   extern int fn ## _selected_priority;					\
   CLIB_MARCH_FN_CONSTRUCTOR (fn)					\
   static rtype CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args)

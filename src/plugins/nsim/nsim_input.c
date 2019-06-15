@@ -24,7 +24,7 @@
 typedef struct
 {
   f64 expired;
-  u32 tx_sw_if_index;
+  u32 next_index;
 } nsim_tx_trace_t;
 
 #ifndef CLIB_MARCH_VARIANT
@@ -36,22 +36,20 @@ format_nsim_tx_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nsim_tx_trace_t *t = va_arg (*args, nsim_tx_trace_t *);
 
-  s = format (s, "NSIM: tx at %.6f sw_if_index %d",
-	      t->expired, t->tx_sw_if_index);
+  s = format (s, "NSIM: tx at %.6f next_index %d", t->expired, t->next_index);
   return s;
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_nsim_tx_error                      \
-_(TX, "Packets transmitted")                    \
-_(DROPPED, "No buffer drops")
+#define foreach_nsim_tx_error                   \
+_(TRANSMITTED, "Packets transmitted")
 
 typedef enum
 {
 #define _(sym,str) NSIM_TX_ERROR_##sym,
   foreach_nsim_tx_error
 #undef _
-    NSIM_N_ERROR,
+    NSIM_TX_N_ERROR,
 } nsim_tx_error_t;
 
 #ifndef CLIB_MARCH_VARIANT
@@ -74,12 +72,9 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   nsim_main_t *nsm = &nsim_main;
   u32 my_thread_index = vm->thread_index;
-  u32 *my_buffer_cache = nsm->buffer_indices_by_thread[my_thread_index];
   nsim_wheel_t *wp = nsm->wheel_by_thread[my_thread_index];
-  u32 n_trace = vlib_get_trace_count (vm, node);
   f64 now = vlib_time_now (vm);
-  uword n_rx_packets = 0;
-  vlib_buffer_t *b0;
+  uword n_tx_packets = 0;
   u32 bi0, next0;
   u32 *to_next;
   u32 next_index;
@@ -93,85 +88,30 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* First entry on the wheel isn't expired? */
   ep = wp->entries + wp->head;
   if (ep->tx_time > now)
-    return n_rx_packets;
+    return n_tx_packets;
 
-  /*
-   * We use per-thread buffer caches, so we need the freelist to
-   * initialize them...
-   */
   next_index = node->cached_next_index;
 
-  while (wp->cursize)
+  /* Be aware: this is not the usual coding pattern */
+  while (wp->cursize && ep->tx_time <= now)
     {
-      /* Be aware: this is not the usual coding pattern */
+      vlib_buffer_t *b0;
+
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_to_next > 0 && ep->tx_time <= now)
+      while (n_left_to_next > 0)
 	{
-	  /* Out of local buffer cache? */
-	  if (PREDICT_FALSE (_vec_len (my_buffer_cache) == 0))
-	    {
-	      u32 n =
-		vlib_buffer_alloc (vm, my_buffer_cache, VLIB_FRAME_SIZE);
-	      _vec_len (my_buffer_cache) = n;
-
-	      /* Ugh, drop the rest of the expired entries */
-	      if (n == 0)
-		{
-		  u32 drops = 0;
-		  while (ep->tx_time <= now && wp->cursize)
-		    {
-		      wp->head++;
-		      if (wp->head == wp->wheel_size)
-			wp->head = 0;
-		      ep = wp->entries + wp->head;
-		      wp->cursize--;
-		      drops++;
-		    }
-		  /* Count the drops */
-		  vlib_node_increment_counter (vm, node->node_index,
-					       NSIM_TX_ERROR_DROPPED, drops);
-		  /* Ship any pkts we already processed */
-		  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-		  return n_rx_packets + drops;
-		}
-	    }
-
-	  /* Allocate a buffer */
-	  bi0 = my_buffer_cache[_vec_len (my_buffer_cache) - 1];
-	  _vec_len (my_buffer_cache) -= 1;
+	  /* prefetch one line / 2 entries ahead */
+	  if ((((uword) ep) & (CLIB_CACHE_LINE_BYTES - 1)) == 0)
+	    CLIB_PREFETCH ((ep + 2), CLIB_CACHE_LINE_BYTES, LOAD);
+	  /* Pick up buffer from the wheel */
+	  bi0 = ep->buffer_index;
 
 	  to_next[0] = bi0;
 	  to_next += 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  /* Initialize the buffer */
-
-	  b0->current_data = 0;
-	  b0->current_length = ep->current_length;
-
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-
-	  if (PREDICT_FALSE (n_trace))
-	    {
-	      nsim_tx_trace_t *t0;
-	      vlib_trace_buffer (vm, node, next_index, b0,
-				 0 /* follow_chain */ );
-	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      t0->expired = ep->tx_time;
-	      t0->tx_sw_if_index = ep->tx_sw_if_index;
-	    }
-
-	  /* Copy data from the ring */
-	  clib_memcpy_fast (b0->data, ep->data, ep->current_length);
-	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ep->tx_sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
-	    (ep->tx_sw_if_index == nsm->sw_if_index0) ? nsm->sw_if_index1 :
-	    nsm->sw_if_index0;
-	  next0 = (ep->tx_sw_if_index == nsm->sw_if_index0) ?
-	    nsm->output_next_index0 : nsm->output_next_index1;
+	  next0 = ep->output_next_index;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -183,7 +123,19 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    wp->head = 0;
 	  wp->cursize--;
 	  ep = wp->entries + wp->head;
-	  n_rx_packets++;
+	  n_tx_packets++;
+
+	  if (is_trace)
+	    {
+	      b0 = vlib_get_buffer (vm, ep->buffer_index);
+	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  nsim_tx_trace_t *t =
+		    vlib_add_trace (vm, node, b0, sizeof (*t));
+		  t->expired = now;
+		  t->next_index = next0;
+		}
+	    }
 
 	  /* Out of ring entries? */
 	  if (PREDICT_FALSE (wp->cursize == 0))
@@ -196,7 +148,9 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (ep->tx_time > now)
 	break;
     }
-  return n_rx_packets;
+  vlib_node_increment_counter (vm, node->node_index,
+			       NSIM_TX_ERROR_TRANSMITTED, n_tx_packets);
+  return n_tx_packets;
 }
 
 VLIB_NODE_FN (nsim_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -221,7 +175,7 @@ VLIB_REGISTER_NODE (nsim_input_node) =
 
   .format_trace = format_nsim_tx_trace,
 
-  .n_errors = NSIM_N_ERROR,
+  .n_errors = NSIM_TX_N_ERROR,
   .error_strings = nsim_tx_error_strings,
 };
 #endif /* CLIB_MARCH_VARIANT */

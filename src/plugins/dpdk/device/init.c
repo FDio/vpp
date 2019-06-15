@@ -36,6 +36,7 @@
 #include <sys/mount.h>
 #include <string.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include <dpdk/device/dpdk_priv.h>
 
@@ -155,6 +156,47 @@ static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
+}
+
+/* The funciton check_l3cache helps check if Level 3 cache exists or not on current CPUs
+  return value 1: exist.
+  return value 0: not exist.
+*/
+static int
+check_l3cache ()
+{
+
+  struct dirent *dp;
+  clib_error_t *err;
+  const char *sys_cache_dir = "/sys/devices/system/cpu/cpu0/cache";
+  DIR *dir_cache = opendir (sys_cache_dir);
+
+  if (dir_cache == NULL)
+    return -1;
+
+  while ((dp = readdir (dir_cache)) != NULL)
+    {
+      if (dp->d_type == DT_DIR)
+	{
+	  u8 *p = NULL;
+	  int level_cache = -1;
+
+	  p = format (p, "%s/%s/%s", sys_cache_dir, dp->d_name, "level");
+	  if ((err = clib_sysfs_read ((char *) p, "%d", &level_cache)))
+	    clib_error_free (err);
+
+	  if (level_cache == 3)
+	    {
+	      closedir (dir_cache);
+	      return 1;
+	    }
+	}
+    }
+
+  if (dir_cache != NULL)
+    closedir (dir_cache);
+
+  return 0;
 }
 
 static clib_error_t *
@@ -388,9 +430,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IGB:
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_I40E:
+	    case VNET_DPDK_PMD_ICE:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
 	      xd->supported_flow_actions = VNET_FLOW_ACTION_MARK |
 		VNET_FLOW_ACTION_REDIRECT_TO_NODE |
+		VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
 		VNET_FLOW_ACTION_BUFFER_ADVANCE |
 		VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP;
 
@@ -499,10 +543,30 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  if (devconf->num_rx_desc)
 	    xd->nb_rx_desc = devconf->num_rx_desc;
+          else {
+
+            /* If num_rx_desc is not specified by VPP user, the current CPU is working
+            with 2M page and has no L3 cache, default num_rx_desc is changed to 512
+            from original 1024 to help reduce TLB misses.
+            */
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_rx_desc = 512;
+          }
 
 	  if (devconf->num_tx_desc)
 	    xd->nb_tx_desc = devconf->num_tx_desc;
-	}
+          else {
+
+            /* If num_tx_desc is not specified by VPP user, the current CPU is working
+            with 2M page and has no L3 cache, default num_tx_desc is changed to 512
+            from original 1024 to help reduce TLB misses.
+            */
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_tx_desc = 512;
+	  }
+       }
 
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
 	{
@@ -694,19 +758,30 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
 
       /*
-       * For cisco VIC vNIC, set default to VLAN strip enabled, unless
-       * specified otherwise in the startup config.
-       * For other NICs default to VLAN strip disabled, unless specified
+       * A note on Cisco VIC (PMD_ENIC) and VLAN:
+       *
+       * With Cisco VIC vNIC, every ingress packet is tagged. On a
+       * trunk vNIC (C series "standalone" server), packets on no VLAN
+       * are tagged with vlan 0. On an access vNIC (standalone or B
+       * series "blade" server), packets on the default/native VLAN
+       * are tagged with that vNIC's VLAN. VPP expects these packets
+       * to be untagged, and previously enabled VLAN strip on VIC by
+       * default. But it also broke vlan sub-interfaces.
+       *
+       * The VIC adapter has "untag default vlan" ingress VLAN rewrite
+       * mode, which removes tags from these packets. VPP now includes
+       * a local patch for the enic driver to use this untag mode, so
+       * enabling vlan stripping is no longer needed. In future, the
+       * driver + dpdk will have an API to set the mode after
+       * rte_eal_init. Then, this note and local patch will be
+       * removed.
+       */
+
+      /*
+       * VLAN stripping: default to VLAN strip disabled, unless specified
        * otherwise in the startup config.
        */
-      if (xd->pmd == VNET_DPDK_PMD_ENIC)
-	{
-	  if (devconf->vlan_strip_offload != DPDK_DEVICE_VLAN_STRIP_OFF)
-	    vlan_strip = 1;	/* remove vlan tag from VIC port by default */
-	  else
-	    dpdk_log_warn ("VLAN strip disabled for interface\n");
-	}
-      else if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
+      if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
 	vlan_strip = 1;
 
       if (vlan_strip)
@@ -842,7 +917,8 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
         (d->device_id == 0x0443 || d->device_id == 0x37c9 || d->device_id == 0x19e3))
       ;
     /* Cisco VIC */
-    else if (d->vendor_id == 0x1137 && d->device_id == 0x0043)
+    else if (d->vendor_id == 0x1137 &&
+        (d->device_id == 0x0043 || d->device_id == 0x0071))
       ;
     /* Chelsio T4/T5 */
     else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
@@ -1061,7 +1137,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   unformat_input_t sub_input;
   uword default_hugepage_sz, x;
   u8 *s, *tmp = 0;
-  u32 log_level;
   int ret, i;
   int num_whitelisted = 0;
   u8 no_pci = 0;
@@ -1075,7 +1150,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
-  log_level = RTE_LOG_NOTICE;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1093,9 +1167,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "decimal-interface-names"))
 	conf->interface_name_format_decimal = 1;
-
-      else if (unformat (input, "log-level %U", unformat_dpdk_log_level, &x))
-	log_level = x;
 
       else if (unformat (input, "no-multi-seg"))
 	conf->no_multi_seg = 1;
@@ -1335,7 +1406,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   /* Set up DPDK eal and packet mbuf pool early. */
 
-  rte_log_set_global_level (log_level);
   int log_fds[2] = { 0 };
   if (pipe (log_fds) == 0)
     {

@@ -84,10 +84,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 {
   u32 n_left_from, *from, next_index, *to_next, thread_index;
   ipsec_main_t *im = &ipsec_main;
-  ipsec_proto_main_t *em = &ipsec_proto_main;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
-  int icv_size = 0;
+  int icv_size;
 
   next_index = node->cached_next_index;
   thread_index = vm->thread_index;
@@ -152,35 +151,21 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  seq = clib_host_to_net_u32 (ah0->seq_no);
 
 	  /* anti-replay check */
-	  if (sa0->use_anti_replay)
+	  if (ipsec_sa_anti_replay_check (sa0, &ah0->seq_no))
 	    {
-	      int rv = 0;
-
-	      if (PREDICT_TRUE (sa0->use_esn))
-		rv = esp_replay_check_esn (sa0, seq);
-	      else
-		rv = esp_replay_check (sa0, seq);
-
-	      if (PREDICT_FALSE (rv))
-		{
-		  vlib_node_increment_counter (vm, node->node_index,
-					       AH_DECRYPT_ERROR_REPLAY, 1);
-		  goto trace;
-		}
+	      i_b0->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
+	      goto trace;
 	    }
 
 	  vlib_increment_combined_counter
 	    (&ipsec_sa_counters, thread_index, sa_index0,
 	     1, i_b0->current_length);
 
-	  icv_size =
-	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
+	  icv_size = sa0->integ_icv_size;
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	    {
 	      u8 sig[64];
-	      u8 digest[64];
-	      clib_memset (sig, 0, sizeof (sig));
-	      clib_memset (digest, 0, sizeof (digest));
+	      u8 digest[icv_size];
 	      u8 *icv = ah0->auth_data;
 	      memcpy (digest, icv, icv_size);
 	      clib_memset (icv, 0, icv_size);
@@ -207,26 +192,15 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  icv_padding_len =
 		    ah_calc_icv_padding_len (icv_size, 0 /* is_ipv6 */ );
 		}
-	      hmac_calc (sa0->integ_alg, sa0->integ_key.data,
-			 sa0->integ_key.len, (u8 *) ih4, i_b0->current_length,
-			 sig, sa0->use_esn, sa0->seq_hi);
+	      hmac_calc (vm, sa0, (u8 *) ih4, i_b0->current_length, sig);
 
 	      if (PREDICT_FALSE (memcmp (digest, sig, icv_size)))
 		{
-		  vlib_node_increment_counter (vm, node->node_index,
-					       AH_DECRYPT_ERROR_INTEG_ERROR,
-					       1);
+		  i_b0->error = node->errors[AH_DECRYPT_ERROR_INTEG_ERROR];
 		  goto trace;
 		}
 
-	      if (PREDICT_TRUE (sa0->use_anti_replay))
-		{
-		  if (PREDICT_TRUE (sa0->use_esn))
-		    esp_replay_advance_esn (sa0, seq);
-		  else
-		    esp_replay_advance (sa0, seq);
-		}
-
+	      ipsec_sa_anti_replay_advance (sa0, &ah0->seq_no);
 	    }
 
 	  vlib_buffer_advance (i_b0,
@@ -234,7 +208,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 			       icv_padding_len);
 	  i_b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
-	  if (PREDICT_TRUE (sa0->is_tunnel))
+	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {			/* tunnel mode */
 	      if (PREDICT_TRUE (ah0->nexthdr == IP_PROTOCOL_IP_IN_IP))
 		next0 = AH_DECRYPT_NEXT_IP4_INPUT;
@@ -242,9 +216,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 		next0 = AH_DECRYPT_NEXT_IP6_INPUT;
 	      else
 		{
-		  vlib_node_increment_counter (vm, node->node_index,
-					       AH_DECRYPT_ERROR_DECRYPTION_FAILED,
-					       1);
+		  i_b0->error =
+		    node->errors[AH_DECRYPT_ERROR_DECRYPTION_FAILED];
 		  goto trace;
 		}
 	    }
@@ -286,11 +259,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  /* for IPSec-GRE tunnel next node is ipsec-gre-input */
-	  if (PREDICT_FALSE
-	      ((vnet_buffer (i_b0)->ipsec.flags) &
-	       IPSEC_FLAG_IPSEC_GRE_TUNNEL))
+	  if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
 	    next0 = AH_DECRYPT_NEXT_IPSEC_GRE_INPUT;
-
 
 	  vnet_buffer (i_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	trace:

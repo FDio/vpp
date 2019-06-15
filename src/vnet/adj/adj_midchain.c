@@ -69,22 +69,13 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 
 	while (n_left_from >= 8 && n_left_to_next > 4)
 	{
+	    const ip_adjacency_t *adj0, *adj1, *adj2, *adj3;
+	    const dpo_id_t *dpo0, *dpo1, *dpo2, *dpo3;
+	    vlib_buffer_t * b0, *b1, *b2, *b3;
 	    u32 bi0, adj_index0, next0;
-	    const ip_adjacency_t * adj0;
-	    const dpo_id_t *dpo0;
-	    vlib_buffer_t * b0;
 	    u32 bi1, adj_index1, next1;
-	    const ip_adjacency_t * adj1;
-	    const dpo_id_t *dpo1;
-	    vlib_buffer_t * b1;
 	    u32 bi2, adj_index2, next2;
-	    const ip_adjacency_t * adj2;
-	    const dpo_id_t *dpo2;
-	    vlib_buffer_t * b2;
 	    u32 bi3, adj_index3, next3;
-	    const ip_adjacency_t * adj3;
-	    const dpo_id_t *dpo3;
-	    vlib_buffer_t * b3;
 
 	    /* Prefetch next iteration. */
 	    {
@@ -502,7 +493,7 @@ adj_midchain_setup (adj_index_t adj_index,
  * adj_nbr_midchain_update_rewrite
  *
  * Update the adjacency's rewrite string. A NULL string implies the
- * rewrite is reset (i.e. when ARP/ND etnry is gone).
+ * rewrite is reset (i.e. when ARP/ND entry is gone).
  * NB: the adj being updated may be handling traffic in the DP.
  */
 void
@@ -519,22 +510,17 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     adj = adj_get(adj_index);
 
     /*
-     * one time only update. since we don't support chainging the tunnel
+     * one time only update. since we don't support changing the tunnel
      * src,dst, this is all we need.
      */
     ASSERT((adj->lookup_next_index == IP_LOOKUP_NEXT_ARP) ||
            (adj->lookup_next_index == IP_LOOKUP_NEXT_GLEAN) ||
            (adj->lookup_next_index == IP_LOOKUP_NEXT_BCAST));
 
-    /*
-     * tunnels can always provide a rewrite.
-     */
-    ASSERT(NULL != rewrite);
-
     adj_midchain_setup(adj_index, fixup, fixup_data, flags);
 
     /*
-     * update the rewirte with the workers paused.
+     * update the rewrite with the workers paused.
      */
     adj_nbr_update_rewrite_internal(adj,
 				    IP_LOOKUP_NEXT_MIDCHAIN,
@@ -685,7 +671,7 @@ adj_ndr_midchain_recursive_loop_detect (adj_index_t ai,
         {
             /*
              * The entry this midchain links to is already in the set
-             * of visisted entries, this is a loop
+             * of visited entries, this is a loop
              */
             adj->ia_flags |= ADJ_FLAG_MIDCHAIN_LOOPED;
             return (1);
@@ -704,6 +690,8 @@ format_adj_midchain (u8* s, va_list *ap)
     ip_adjacency_t * adj = adj_get(index);
 
     s = format (s, "%U", format_vnet_link, adj->ia_link);
+    if (adj->rewrite_header.flags & VNET_REWRITE_HAS_FEATURES)
+        s = format(s, " [features]");
     s = format (s, " via %U",
 		format_ip46_address, &adj->sub_type.nbr.next_hop,
 		adj_proto_to_46(adj->ia_nh_proto));

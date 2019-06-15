@@ -37,9 +37,6 @@ format_ip_classify_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t ip4_classify_node;
-vlib_node_registration_t ip6_classify_node;
-
 #define foreach_ip_classify_error               \
 _(MISS, "Classify misses")                      \
 _(HIT, "Classify hits")                         \
@@ -311,9 +308,9 @@ ip_classify_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_classify (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_classify_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   return ip_classify_inline (vm, node, frame, 1 /* is_ip4 */ );
 }
@@ -321,7 +318,6 @@ ip4_classify (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_classify_node) = {
-  .function = ip4_classify,
   .name = "ip4-classify",
   .vector_size = sizeof (u32),
   .sibling_of = "ip4-lookup",
@@ -333,10 +329,9 @@ VLIB_REGISTER_NODE (ip4_classify_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_classify_node, ip4_classify)
-     static uword
-       ip6_classify (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_classify_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   return ip_classify_inline (vm, node, frame, 0 /* is_ip4 */ );
 }
@@ -344,7 +339,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (ip4_classify_node, ip4_classify)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_classify_node) = {
-  .function = ip6_classify,
   .name = "ip6-classify",
   .vector_size = sizeof (u32),
   .sibling_of = "ip6-lookup",
@@ -356,13 +350,15 @@ VLIB_REGISTER_NODE (ip6_classify_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_classify_node, ip6_classify)
-     static clib_error_t *ip_classify_init (vlib_main_t * vm)
+#ifndef CLIB_MARCH_VARIANT
+static clib_error_t *
+ip_classify_init (vlib_main_t * vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (ip_classify_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

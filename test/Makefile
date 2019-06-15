@@ -297,6 +297,8 @@ help:
 	@echo ""
 	@echo " SKIP_AARCH64=1       - skip tests that are failing on the ARM platorm in FD.io CI"
 	@echo ""
+	@echo " SOCKET=1             - Communicate with VPP over Unix domain socket instead of SHM"
+	@echo ""
 	@echo "Creating test documentation"
 	@echo " test-doc            - generate documentation for test framework"
 	@echo " test-wipe-doc       - wipe documentation for test framework"

@@ -54,9 +54,6 @@ class VppUdpEncap(VppObject):
     def query_vpp_config(self):
         return find_udp_encap(self._test, self)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("udp-encap-%d" % self.id)
 

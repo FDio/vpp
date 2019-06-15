@@ -501,7 +501,7 @@ static uword
 dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 			vlib_frame_t * f)
 {
-  /* These cross the longjmp  boundry (vlib_process_wait_for_event)
+  /* These cross the longjmp  boundary (vlib_process_wait_for_event)
    * and need to be volatile - to prevent them from being optimized into
    * a register - which could change during suspension */
 

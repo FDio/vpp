@@ -56,12 +56,22 @@ fib_path_api_parse (const vl_api_fib_path_t *in,
     out->frp_proto = in->afi;
     // .frp_addr = (NULL == next_hop ? zero_addr : *next_hop),
     out->frp_sw_if_index = ntohl(in->sw_if_index);
-    out->frp_fib_index = ntohl(in->table_id);
     out->frp_weight = in->weight;
     out->frp_preference = in->preference;
 
+    if (DPO_PROTO_IP4 == out->frp_proto ||
+        DPO_PROTO_IP6 == out->frp_proto ||
+        DPO_PROTO_MPLS == out->frp_proto)
+    {
+        out->frp_fib_index = fib_table_find (dpo_proto_to_fib(out->frp_proto),
+                                             ntohl (in->table_id));
+
+        if (~0 == out->frp_fib_index)
+            return (VNET_API_ERROR_NO_SUCH_FIB);
+    }
+
     /*
-     * the special INVALID label meams we are not recursing via a
+     * the special INVALID label means we are not recursing via a
      * label. Exp-null value is never a valid via-label so that
      * also means it's not a via-label and means clients that set
      * it to 0 by default get the expected behaviour

@@ -25,6 +25,10 @@ class TestClassifier(VppTestCase):
         super(TestClassifier, cls).setUpClass()
         cls.acl_active_table = ''
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifier, cls).tearDownClass()
+
     def setUp(self):
         """
         Perform test setup before test case.
@@ -71,10 +75,6 @@ class TestClassifier(VppTestCase):
     def tearDown(self):
         """Run standard test teardown and acl related log."""
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show inacl type ip4"))
-            self.logger.info(self.vapi.ppcli("show outacl type ip4"))
-            self.logger.info(self.vapi.cli("show classify table verbose"))
-            self.logger.info(self.vapi.cli("show ip fib"))
             if self.acl_active_table == 'ip_out':
                 self.output_acl_set_interface(
                     self.pg0, self.acl_tbl_idx.get(self.acl_active_table), 0)
@@ -89,6 +89,12 @@ class TestClassifier(VppTestCase):
 
         super(TestClassifier, self).tearDown()
 
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show inacl type ip4"))
+        self.logger.info(self.vapi.ppcli("show outacl type ip4"))
+        self.logger.info(self.vapi.cli("show classify table verbose"))
+        self.logger.info(self.vapi.cli("show ip fib"))
+
     def config_pbr_fib_entry(self, intf, is_add=1):
         """Configure fib entry to route traffic toward PBR VRF table
 
@@ -96,11 +102,10 @@ class TestClassifier(VppTestCase):
 
         """
         addr_len = 24
-        self.vapi.ip_add_del_route(intf.local_ip4n,
-                                   addr_len,
-                                   intf.remote_ip4n,
-                                   table_id=self.pbr_vrfid,
-                                   is_add=is_add)
+        self.vapi.ip_add_del_route(dst_address=intf.local_ip4n,
+                                   dst_address_length=addr_len,
+                                   next_hop_address=intf.remote_ip4n,
+                                   table_id=self.pbr_vrfid, is_add=is_add)
 
     def create_stream(self, src_if, dst_if, packet_sizes,
                       proto_l=UDP(sport=1234, dport=5678)):
@@ -141,7 +146,7 @@ class TestClassifier(VppTestCase):
             try:
                 ip_received = packet[IP]
                 proto_received = packet[proto_l]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug(
@@ -202,7 +207,7 @@ class TestClassifier(VppTestCase):
         :param str dst_port: destination port number <0-ffff>
         """
 
-        return ('{:0>20}{:0>12}{:0>8}{:0>4}{:0>4}'.format(
+        return ('{!s:0>20}{!s:0>12}{!s:0>8}{!s:0>4}{!s:0>4}'.format(
             proto, src_ip, dst_ip, src_port, dst_port)).rstrip('0')
 
     @staticmethod
@@ -221,7 +226,7 @@ class TestClassifier(VppTestCase):
         if dst_ip:
             dst_ip = binascii.hexlify(socket.inet_aton(dst_ip))
 
-        return ('{:0>20}{:0>12}{:0>8}{:0>4}{:0>4}'.format(
+        return ('{!s:0>20}{!s:0>12}{!s:0>8}{!s:0>4}{!s:0>4}'.format(
             hex(proto)[2:], src_ip, dst_ip, hex(src_port)[2:],
             hex(dst_port)[2:])).rstrip('0')
 
@@ -234,8 +239,8 @@ class TestClassifier(VppTestCase):
         :param str ether_type: ethernet type <0-ffff>
         """
 
-        return ('{:0>12}{:0>12}{:0>4}'.format(dst_mac, src_mac,
-                                              ether_type)).rstrip('0')
+        return ('{!s:0>12}{!s:0>12}{!s:0>4}'.format(
+            dst_mac, src_mac, ether_type)).rstrip('0')
 
     @staticmethod
     def build_mac_match(dst_mac='', src_mac='', ether_type=''):
@@ -250,8 +255,8 @@ class TestClassifier(VppTestCase):
         if src_mac:
             src_mac = src_mac.replace(':', '')
 
-        return ('{:0>12}{:0>12}{:0>4}'.format(dst_mac, src_mac,
-                                              ether_type)).rstrip('0')
+        return ('{!s:0>12}{!s:0>12}{!s:0>4}'.format(
+            dst_mac, src_mac, ether_type)).rstrip('0')
 
     def create_classify_table(self, key, mask, data_offset=0):
         """Create Classify Table
@@ -323,6 +328,14 @@ class TestClassifier(VppTestCase):
 # ticket VPP-1336
 class TestClassifierIP(TestClassifier):
     """ Classifier IP Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierIP, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierIP, cls).tearDownClass()
 
     def test_iacl_src_ip(self):
         """ Source IP iACL test
@@ -419,6 +432,14 @@ class TestClassifierIP(TestClassifier):
 
 class TestClassifierUDP(TestClassifier):
     """ Classifier UDP proto Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierUDP, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierUDP, cls).tearDownClass()
 
     def test_iacl_proto_udp(self):
         """ UDP protocol iACL test
@@ -559,6 +580,14 @@ class TestClassifierUDP(TestClassifier):
 
 class TestClassifierTCP(TestClassifier):
     """ Classifier TCP proto Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierTCP, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierTCP, cls).tearDownClass()
 
     def test_iacl_proto_tcp(self):
         """ TCP protocol iACL test
@@ -701,6 +730,14 @@ class TestClassifierTCP(TestClassifier):
 class TestClassifierIPOut(TestClassifier):
     """ Classifier output IP Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierIPOut, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierIPOut, cls).tearDownClass()
+
     def test_acl_ip_out(self):
         """ Output IP ACL test
 
@@ -736,6 +773,14 @@ class TestClassifierIPOut(TestClassifier):
 class TestClassifierMAC(TestClassifier):
     """ Classifier MAC Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierMAC, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierMAC, cls).tearDownClass()
+
     def test_acl_mac(self):
         """ MAC ACL test
 
@@ -770,6 +815,14 @@ class TestClassifierMAC(TestClassifier):
 
 class TestClassifierPBR(TestClassifier):
     """ Classifier PBR Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierPBR, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierPBR, cls).tearDownClass()
 
     def test_acl_pbr(self):
         """ IP PBR test

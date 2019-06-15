@@ -51,6 +51,10 @@ class TestL2bdArpTerm(VppTestCase):
             super(TestL2bdArpTerm, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2bdArpTerm, cls).tearDownClass()
+
     def setUp(self):
         """
         Clear trace and packet infos before running each test.
@@ -63,18 +67,16 @@ class TestL2bdArpTerm(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestL2bdArpTerm, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-            self.logger.info(self.vapi.ppcli("show bridge-domain 1 detail"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
+        self.logger.info(self.vapi.ppcli("show bridge-domain 1 detail"))
 
     def add_del_arp_term_hosts(self, entries, bd_id=1, is_add=1, is_ipv6=0):
         for e in entries:
             ip = e.ip4 if is_ipv6 == 0 else e.ip6
-            self.vapi.bd_ip_mac_add_del(bd_id=bd_id,
-                                        mac=e.mac,
-                                        ip=ip,
-                                        is_ipv6=is_ipv6,
-                                        is_add=is_add)
+            self.vapi.bd_ip_mac_add_del(bd_id=bd_id, is_add=is_add, ip=ip,
+                                        mac=e.mac)
 
     @classmethod
     def mac_list(cls, b6_range):
@@ -111,8 +113,8 @@ class TestL2bdArpTerm(VppTestCase):
             self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
         for swif in self.bd_swifs(bd_id):
             swif_idx = swif.sw_if_index
-            self.vapi.sw_interface_set_l2_bridge(
-                swif_idx, bd_id=bd_id, enable=is_add)
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=swif_idx,
+                                                 bd_id=bd_id, enable=is_add)
         if not is_add:
             self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
 
@@ -229,7 +231,8 @@ class TestL2bdArpTerm(VppTestCase):
             else:
                 raise ValueError("Unknown feature used: %s" % flag)
             is_set = 1 if args[flag] else 0
-            self.vapi.bridge_flags(bd_id, is_set, feature_bitmap)
+            self.vapi.bridge_flags(bd_id=bd_id, is_set=is_set,
+                                   flags=feature_bitmap)
         self.logger.info("Bridge domain ID %d updated" % bd_id)
 
     def verify_arp(self, src_host, req_hosts, resp_hosts, bd_id=1):

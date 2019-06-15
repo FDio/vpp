@@ -11,10 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ipsec-mb_version             := 0.49
+ipsec-mb_version             := 0.52
 ipsec-mb_tarball             := v$(ipsec-mb_version).tar.gz
 ipsec-mb_tarball_md5sum_0.49 := 3a2bee86f25f6c8ed720da5b4b8d4297
-ipsec-mb_tarball_md5sum_0.50 := c847ed77ae34da551237349f1c9db1e9
+ipsec-mb_tarball_md5sum_0.52 := 11ecfa6db4dc0c4ca6e5c616c141ac46
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_depends             := nasm
@@ -25,17 +25,18 @@ define  ipsec-mb_config_cmds
 endef
 
 define  ipsec-mb_build_cmds
-	@true
+	@make -C $(ipsec-mb_src_dir) -j \
+	  SHARED=n \
+	  PREFIX=$(ipsec-mb_install_dir) \
+	  NASM=$(ipsec-mb_install_dir)/bin/nasm \
+	  EXTRA_CFLAGS=-g > $(ipsec-mb_build_log)
 endef
 
 define  ipsec-mb_install_cmds
 	@mkdir -p $(ipsec-mb_install_dir)/include
-	@make -C $(ipsec-mb_src_dir) -j \
-	  SHARED=n \
-	  EXTRA_CFLAGS=-fPIC \
-	  NASM=$(ipsec-mb_install_dir)/bin/nasm \
-	  PREFIX=$(ipsec-mb_install_dir) \
-	  install > $(ipsec-mb_install_log)
+	@mkdir -p $(ipsec-mb_install_dir)/lib
+	@cp $(ipsec-mb_src_dir)/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
+	@cp $(ipsec-mb_src_dir)/libIPSec_MB.a $(ipsec-mb_install_dir)/lib
 endef
 
 $(eval $(call package,ipsec-mb))

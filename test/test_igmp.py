@@ -20,6 +20,14 @@ class IgmpMode:
 class TestIgmp(VppTestCase):
     """ IGMP Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIgmp, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIgmp, cls).tearDownClass()
+
     def setUp(self):
         super(TestIgmp, self).setUp()
 
@@ -265,7 +273,7 @@ class TestIgmp(VppTestCase):
                            [IgmpRecord(h1.sg, "Mode Is Include")])
 
         #
-        # Two source and group specific queires in qucik sucession, the
+        # Two source and group specific queries in quick succession, the
         # first does not have VPPs source the second does. then vice-versa
         #
         self.send(self.pg0, [p_gs2, p_gs1])
@@ -554,7 +562,7 @@ class TestIgmp(VppTestCase):
 
         #
         # resend the join. wait for two queries and then send a current-state
-        # record to include all sources. this should reset the exiry time
+        # record to include all sources. this should reset the expiry time
         # on the sources and thus they will still be present in 2 seconds time.
         # If the source timer was not refreshed, then the state would have
         # expired in 3 seconds.
@@ -601,7 +609,7 @@ class TestIgmp(VppTestCase):
         self.assertFalse(self.vapi.igmp_dump())
 
         #
-        # resend the join, then a leave. Router sends a gruop+source
+        # resend the join, then a leave. Router sends a group+source
         # specific query containing both sources
         #
         self.send(self.pg0, p_j)
@@ -658,7 +666,7 @@ class TestIgmp(VppTestCase):
                                             "239.1.1.3", "0.0.0.0", 1))
 
         #
-        # A 'allow sourcees' for {} should be ignored as it should
+        # A 'allow sources' for {} should be ignored as it should
         # never be sent.
         #
         p_j = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /

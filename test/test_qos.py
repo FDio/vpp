@@ -9,6 +9,7 @@ from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsLabel, VppMplsTable
 
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
@@ -18,6 +19,14 @@ from scapy.contrib.mpls import MPLS
 
 class TestQOS(VppTestCase):
     """ QOS Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestQOS, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestQOS, cls).tearDownClass()
 
     def setUp(self):
         super(TestQOS, self).setUp()
@@ -50,10 +59,10 @@ class TestQOS(VppTestCase):
         # for table 1 map the n=0xff possible values of input QoS mark,
         # n to 1-n
         #
-        output = [chr(0)] * 256
+        output = [scapy.compat.chb(0)] * 256
         for i in range(0, 255):
-            output[i] = chr(255 - i)
-        os = ''.join(output)
+            output[i] = scapy.compat.chb(255 - i)
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -64,8 +73,8 @@ class TestQOS(VppTestCase):
         #
         # For table 2 (and up) use the value n for everything
         #
-        output = [chr(2)] * 256
-        os = ''.join(output)
+        output = [scapy.compat.chb(2)] * 256
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -73,8 +82,8 @@ class TestQOS(VppTestCase):
 
         self.vapi.qos_egress_map_update(2, rows)
 
-        output = [chr(3)] * 256
-        os = ''.join(output)
+        output = [scapy.compat.chb(3)] * 256
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -82,8 +91,8 @@ class TestQOS(VppTestCase):
 
         self.vapi.qos_egress_map_update(3, rows)
 
-        output = [chr(4)] * 256
-        os = ''.join(output)
+        output = [scapy.compat.chb(4)] * 256
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -121,12 +130,12 @@ class TestQOS(VppTestCase):
         p_v4 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, tos=1) /
                 UDP(sport=1234, dport=1234) /
-                Raw(chr(100) * 65))
+                Raw(scapy.compat.chb(100) * 65))
         p_v6 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                 IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6,
                      tc=1) /
                 UDP(sport=1234, dport=1234) /
-                Raw(chr(100) * 65))
+                Raw(scapy.compat.chb(100) * 65))
 
         #
         # Since we have not yet enabled the recording of the input QoS
@@ -140,7 +149,7 @@ class TestQOS(VppTestCase):
             self.assertEqual(p[IPv6].tc, 1)
 
         #
-        # Enable QoS recrding on IP input for pg0
+        # Enable QoS recording on IP input for pg0
         #
         self.vapi.qos_record_enable_disable(self.pg0.sw_if_index,
                                             QOS_SOURCE.IP,
@@ -262,7 +271,7 @@ class TestQOS(VppTestCase):
             self.assertEqual(p[IP].tos, 254)
 
         #
-        # clean-up the masp
+        # clean-up the map
         #
         self.vapi.qos_egress_map_delete(1)
         self.vapi.qos_egress_map_delete(4)
@@ -282,14 +291,14 @@ class TestQOS(VppTestCase):
         from_ip = 6
         from_mpls = 5
         from_vlan = 4
-        output = [chr(from_ext)] * 256
-        os1 = ''.join(output)
-        output = [chr(from_vlan)] * 256
-        os2 = ''.join(output)
-        output = [chr(from_mpls)] * 256
-        os3 = ''.join(output)
-        output = [chr(from_ip)] * 256
-        os4 = ''.join(output)
+        output = [scapy.compat.chb(from_ext)] * 256
+        os1 = b''.join(output)
+        output = [scapy.compat.chb(from_vlan)] * 256
+        os2 = b''.join(output)
+        output = [scapy.compat.chb(from_mpls)] * 256
+        os3 = b''.join(output)
+        output = [scapy.compat.chb(from_ip)] * 256
+        os4 = b''.join(output)
         rows = [{'outputs': os1},
                 {'outputs': os2},
                 {'outputs': os3},
@@ -333,11 +342,11 @@ class TestQOS(VppTestCase):
         p_1 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                IP(src=self.pg0.remote_ip4, dst="10.0.0.1", tos=1) /
                UDP(sport=1234, dport=1234) /
-               Raw(chr(100) * 65))
+               Raw(scapy.compat.chb(100) * 65))
         p_3 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                IP(src=self.pg0.remote_ip4, dst="10.0.0.3", tos=1) /
                UDP(sport=1234, dport=1234) /
-               Raw(chr(100) * 65))
+               Raw(scapy.compat.chb(100) * 65))
 
         rx = self.send_and_expect(self.pg0, p_1 * 65, self.pg1)
 
@@ -388,7 +397,7 @@ class TestQOS(VppTestCase):
                 MPLS(label=32, cos=3, ttl=2) /
                 IP(src=self.pg0.remote_ip4, dst="10.0.0.1", tos=1) /
                 UDP(sport=1234, dport=1234) /
-                Raw(chr(100) * 65))
+                Raw(scapy.compat.chb(100) * 65))
 
         rx = self.send_and_expect(self.pg0, p_m1 * 65, self.pg1)
         for p in rx:
@@ -414,7 +423,7 @@ class TestQOS(VppTestCase):
                 MPLS(label=33, ttl=2, cos=3) /
                 IP(src=self.pg0.remote_ip4, dst="10.0.0.4", tos=1) /
                 UDP(sport=1234, dport=1234) /
-                Raw(chr(100) * 65))
+                Raw(scapy.compat.chb(100) * 65))
 
         rx = self.send_and_expect(self.pg0, p_m2 * 65, self.pg1)
 
@@ -446,10 +455,10 @@ class TestQOS(VppTestCase):
         #
         # QoS for all input values
         #
-        output = [chr(0)] * 256
+        output = [scapy.compat.chb(0)] * 256
         for i in range(0, 255):
-            output[i] = chr(255 - i)
-        os = ''.join(output)
+            output[i] = scapy.compat.chb(255 - i)
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -515,12 +524,12 @@ class TestQOS(VppTestCase):
                 Dot1Q(vlan=11, prio=1) /
                 IP(src="1.1.1.1", dst="10.0.0.2", tos=1) /
                 UDP(sport=1234, dport=1234) /
-                Raw(chr(100) * 65))
+                Raw(scapy.compat.chb(100) * 65))
 
         p_v2 = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
                 IP(src="1.1.1.1", dst="10.0.0.1", tos=1) /
                 UDP(sport=1234, dport=1234) /
-                Raw(chr(100) * 65))
+                Raw(scapy.compat.chb(100) * 65))
 
         rx = self.send_and_expect(self.pg1, p_v2 * 65, self.pg0)
 
@@ -536,12 +545,12 @@ class TestQOS(VppTestCase):
                 Dot1Q(vlan=11, prio=2) /
                 IPv6(src="2001::1", dst="2001::2", tc=1) /
                 UDP(sport=1234, dport=1234) /
-                Raw(chr(100) * 65))
+                Raw(scapy.compat.chb(100) * 65))
 
         p_v2 = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
                 IPv6(src="3001::1", dst="2001::1", tc=1) /
                 UDP(sport=1234, dport=1234) /
-                Raw(chr(100) * 65))
+                Raw(scapy.compat.chb(100) * 65))
 
         rx = self.send_and_expect(self.pg1, p_v2 * 65, self.pg0)
 

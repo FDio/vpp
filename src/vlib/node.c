@@ -47,7 +47,7 @@ vlib_get_node_by_name (vlib_main_t * vm, u8 * name)
   vlib_node_main_t *nm = &vm->node_main;
   uword *p;
   u8 *key = name;
-  if (!clib_mem_is_heap_object (key))
+  if (!clib_mem_is_heap_object (vec_header (key, 0)))
     key = format (0, "%s", key);
   p = hash_get (nm->node_by_name, key);
   if (key != name)
@@ -635,7 +635,10 @@ vlib_node_main_init (vlib_main_t * vm)
   vlib_node_t *n;
   uword ni;
 
+  nm->frame_sizes = vec_new (vlib_frame_size_t, 1);
+#ifdef VLIB_SUPPORTS_ARBITRARY_SCALAR_SIZES
   nm->frame_size_hash = hash_create (0, sizeof (uword));
+#endif
   nm->flags |= VLIB_NODE_MAIN_RUNTIME_STARTED;
 
   /* Generate sibling relationships */

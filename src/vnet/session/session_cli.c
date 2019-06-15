@@ -52,7 +52,7 @@ format_session_fifos (u8 * s, va_list * args)
  *   "Connection"
  */
 u8 *
-format_stream_session (u8 * s, va_list * args)
+format_session (u8 * s, va_list * args)
 {
   session_t *ss = va_arg (*args, session_t *);
   int verbose = va_arg (*args, int);
@@ -76,7 +76,8 @@ format_stream_session (u8 * s, va_list * args)
       str = format (0, "%-10u%-10u", rxf, txf);
     }
 
-  if (ss->session_state >= SESSION_STATE_ACCEPTING)
+  if (ss->session_state >= SESSION_STATE_ACCEPTING
+      || ss->session_state == SESSION_STATE_CREATED)
     {
       s = format (s, "%U", format_transport_connection, tp,
 		  ss->connection_index, ss->thread_index, verbose);
@@ -160,7 +161,7 @@ unformat_stream_session_id (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_stream_session (unformat_input_t * input, va_list * args)
+unformat_session (unformat_input_t * input, va_list * args)
 {
   session_t **result = va_arg (*args, session_t **);
   u32 lcl_port = 0, rmt_port = 0, fib_index = 0;
@@ -230,7 +231,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
   u8 one_session = 0, do_listeners = 0, sst, do_elog = 0;
-  session_manager_main_t *smm = &session_manager_main;
+  session_main_t *smm = &session_main;
   u32 transport_proto = ~0, track_index;
   session_t *pool, *s;
   transport_connection_t *tc;
@@ -252,7 +253,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "listeners %U", unformat_transport_proto,
 			 &transport_proto))
 	do_listeners = 1;
-      else if (unformat (input, "%U", unformat_stream_session, &s))
+      else if (unformat (input, "%U", unformat_session, &s))
 	{
 	  one_session = 1;
 	}
@@ -265,7 +266,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (one_session)
     {
-      u8 *str = format (0, "%U", format_stream_session, s, 3);
+      u8 *str = format (0, "%U", format_session, s, 3);
       if (do_elog && s->session_state != SESSION_STATE_LISTENING)
 	{
 	  elog_main_t *em = &vm->elog_main;
@@ -295,7 +296,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  continue;
 	app_wrk = app_worker_get (s->app_wrk_index);
 	app_name = application_name_from_index (app_wrk->app_index);
-	vlib_cli_output (vm, "%U%-25v%", format_stream_session, s, 0,
+	vlib_cli_output (vm, "%U%-25v%", format_session, s, 0,
 			 app_name);
       }));
       /* *INDENT-ON* */
@@ -333,7 +334,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
             n_closed += 1;
             continue;
           }
-        vlib_cli_output (vm, "%U", format_stream_session, s, verbose);
+        vlib_cli_output (vm, "%U", format_session, s, verbose);
       }));
       /* *INDENT-ON* */
 
@@ -362,8 +363,7 @@ static int
 clear_session (session_t * s)
 {
   app_worker_t *server_wrk = app_worker_get (s->app_wrk_index);
-  application_t *server = application_get (server_wrk->app_index);
-  server->cb_fns.session_disconnect_callback (s);
+  app_worker_close_notify (server_wrk, s);
   return 0;
 }
 
@@ -371,9 +371,9 @@ static clib_error_t *
 clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			  vlib_cli_command_t * cmd)
 {
-  session_manager_main_t *smm = &session_manager_main;
+  session_main_t *smm = &session_main;
   u32 thread_index = 0, clear_all = 0;
-  session_manager_worker_t *wrk;
+  session_worker_t *wrk;
   u32 session_index = ~0;
   session_t *session;
 
@@ -441,7 +441,7 @@ show_session_fifo_trace_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_stream_session, &s))
+      if (unformat (input, "%U", unformat_session, &s))
 	;
       else if (unformat (input, "rx"))
 	is_rx = 1;
@@ -490,7 +490,7 @@ session_replay_fifo_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_stream_session, &s))
+      if (unformat (input, "%U", unformat_session, &s))
 	;
       else if (unformat (input, "rx"))
 	is_rx = 1;

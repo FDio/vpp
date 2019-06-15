@@ -271,6 +271,7 @@ setup_signal_handlers (void)
 	  /* ignore SIGPIPE, SIGCHLD */
 	case SIGPIPE:
 	case SIGCHLD:
+	case SIGWINCH:
 	  sa.sa_sigaction = (void *) SIG_IGN;
 	  break;
 

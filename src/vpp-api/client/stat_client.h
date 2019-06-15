@@ -73,6 +73,7 @@ void stat_segment_data_free (stat_segment_data_t * res);
 double stat_segment_heartbeat_r (stat_client_main_t * sm);
 double stat_segment_heartbeat (void);
 
+char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
 char *stat_segment_index_to_name (uint32_t index);
 
 #endif /* included_stat_client_h */

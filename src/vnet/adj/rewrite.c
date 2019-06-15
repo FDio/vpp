@@ -40,30 +40,6 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/lookup.h>
 
-void
-vnet_rewrite_copy_slow_path (vnet_rewrite_data_t * p0,
-			     vnet_rewrite_data_t * rw0,
-			     word n_left, uword most_likely_size)
-{
-  uword n_done =
-    round_pow2 (most_likely_size, sizeof (rw0[0])) / sizeof (rw0[0]);
-
-  p0 -= n_done;
-  rw0 -= n_done;
-
-  /* As we enter the cleanup loop, p0 and rw0 point to the last chunk written
-     by the fast path. Hence, the constant 1, which the
-     vnet_rewrite_copy_one macro renders as p0[-1] = rw0[-1]. */
-
-  while (n_left > 0)
-    {
-      vnet_rewrite_copy_one (p0, rw0, 1);
-      p0--;
-      rw0--;
-      n_left--;
-    }
-}
-
 u8 *
 format_vnet_rewrite (u8 * s, va_list * args)
 {
@@ -71,6 +47,8 @@ format_vnet_rewrite (u8 * s, va_list * args)
   u32 max_data_bytes = va_arg (*args, u32);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
   vnet_main_t *vnm = vnet_get_main ();
+
+  ASSERT (rw->data_bytes <= max_data_bytes);
 
   if (rw->sw_if_index != ~0)
     {
@@ -86,9 +64,7 @@ format_vnet_rewrite (u8 * s, va_list * args)
 
   /* Format rewrite string. */
   if (rw->data_bytes > 0)
-    s = format (s, " %U",
-		format_hex_bytes,
-		rw->data + max_data_bytes - rw->data_bytes, rw->data_bytes);
+    s = format (s, " %U", format_hex_bytes, rw->data, rw->data_bytes);
 
   return s;
 }

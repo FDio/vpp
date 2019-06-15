@@ -4173,7 +4173,7 @@ void* mspace_get_aligned (mspace msp,
   /* 
    * Alignment requests less than the size of an mmx vector are ignored 
    */
-  if (align < 16) {
+  if (align < sizeof (uword)) {
     rv = mspace_malloc (msp, n_user_data_bytes);
     if (rv == 0)
         return rv;
@@ -4250,7 +4250,7 @@ void* mspace_get_aligned (mspace msp,
   if (use_trace(ms)) {
     mchunkptr p  = mem2chunk(rv);
     size_t psize = chunksize(p);
-    mheap_get_trace ((unsigned long)rv, psize);
+    mheap_get_trace (searchp, psize);
   }
   return (void *) searchp;
 }

@@ -86,7 +86,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
 
         self.pg_start()
 
-        # Pick first received frame and check if it's corectly encapsulated.
+        # Pick first received frame and check if it's correctly encapsulated.
         out = self.pg0.get_capture(1)
         pkt = out[0]
         self.check_encapsulation(pkt, self.single_tunnel_bd)
@@ -105,7 +105,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
 
         self.pg_start()
 
-        # Get packet from each tunnel and assert it's corectly encapsulated.
+        # Get packet from each tunnel and assert it's correctly encapsulated.
         out = self.pg0.get_capture(self.n_ucast_tunnels)
         for pkt in out:
             self.check_encapsulation(pkt, self.ucast_flood_bd, True)
@@ -123,7 +123,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
 
         self.pg_start()
 
-        # Pick first received frame and check if it's corectly encapsulated.
+        # Pick first received frame and check if it's correctly encapsulated.
         out = self.pg0.get_capture(1)
         pkt = out[0]
         self.check_encapsulation(pkt, self.mcast_flood_bd,
@@ -141,12 +141,15 @@ class TestGtpu(BridgeDomain, VppTestCase):
         for dest_ip4n in ip4n_range(next_hop_address, ip_range_start,
                                     ip_range_end):
             # add host route so dest_ip4n will not be resolved
-            cls.vapi.ip_add_del_route(dest_ip4n, 32, next_hop_address)
+            cls.vapi.ip_add_del_route(dst_address=dest_ip4n,
+                                      dst_address_length=32,
+                                      next_hop_address=next_hop_address)
             r = cls.vapi.gtpu_add_del_tunnel(
                 src_addr=cls.pg0.local_ip4n,
                 dst_addr=dest_ip4n,
                 teid=teid)
-            cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index, bd_id=teid)
+            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                                bd_id=teid)
 
     @classmethod
     def add_del_shared_mcast_dst_load(cls, is_add):
@@ -165,7 +168,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 teid=teid,
                 is_add=is_add)
             if r.sw_if_index == 0xffffffff:
-                raise "bad sw_if_index"
+                raise ValueError("bad sw_if_index: ~0")
 
     @classmethod
     def add_shared_mcast_dst_load(cls):
@@ -239,10 +242,10 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 src_addr=cls.pg0.local_ip4n,
                 dst_addr=cls.pg0.remote_ip4n,
                 teid=cls.single_tunnel_bd)
-            cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index,
+            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
-            cls.vapi.sw_interface_set_l2_bridge(cls.pg1.sw_if_index,
-                                                bd_id=cls.single_tunnel_bd)
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd)
 
             # Setup teid 2 to test multicast flooding
             cls.n_ucast_tunnels = 10
@@ -254,10 +257,10 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 dst_addr=cls.mcast_ip4n,
                 mcast_sw_if_index=1,
                 teid=cls.mcast_flood_bd)
-            cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index,
+            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.mcast_flood_bd)
-            cls.vapi.sw_interface_set_l2_bridge(cls.pg2.sw_if_index,
-                                                bd_id=cls.mcast_flood_bd)
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg2.sw_if_index, bd_id=cls.mcast_flood_bd)
 
             # Add and delete mcast tunnels to check stability
             cls.add_shared_mcast_dst_load()
@@ -269,24 +272,29 @@ class TestGtpu(BridgeDomain, VppTestCase):
             cls.ucast_flood_bd = 13
             cls.create_gtpu_flood_test_bd(cls.ucast_flood_bd,
                                           cls.n_ucast_tunnels)
-            cls.vapi.sw_interface_set_l2_bridge(cls.pg3.sw_if_index,
-                                                bd_id=cls.ucast_flood_bd)
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
         except Exception:
             super(TestGtpu, cls).tearDownClass()
             raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGtpu, cls).tearDownClass()
 
     # Method to define VPP actions before tear down of the test case.
     #  Overrides tearDown method in VppTestCase class.
     #  @param self The object pointer.
     def tearDown(self):
         super(TestGtpu, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show bridge-domain 11 detail"))
-            self.logger.info(self.vapi.cli("show bridge-domain 12 detail"))
-            self.logger.info(self.vapi.cli("show bridge-domain 13 detail"))
-            self.logger.info(self.vapi.cli("show int"))
-            self.logger.info(self.vapi.cli("show gtpu tunnel"))
-            self.logger.info(self.vapi.cli("show trace"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show bridge-domain 11 detail"))
+        self.logger.info(self.vapi.cli("show bridge-domain 12 detail"))
+        self.logger.info(self.vapi.cli("show bridge-domain 13 detail"))
+        self.logger.info(self.vapi.cli("show int"))
+        self.logger.info(self.vapi.cli("show gtpu tunnel"))
+        self.logger.info(self.vapi.cli("show trace"))
 
 
 if __name__ == '__main__':

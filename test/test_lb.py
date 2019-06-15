@@ -1,5 +1,6 @@
 import socket
 
+import scapy.compat
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
@@ -51,18 +52,26 @@ class TestLB(VppTestCase):
                 i.resolve_ndp()
             dst4 = socket.inet_pton(socket.AF_INET, "10.0.0.0")
             dst6 = socket.inet_pton(socket.AF_INET6, "2002::")
-            cls.vapi.ip_add_del_route(dst4, 24, cls.pg1.remote_ip4n)
-            cls.vapi.ip_add_del_route(dst6, 16, cls.pg1.remote_ip6n, is_ipv6=1)
-            cls.vapi.cli("lb conf ip4-src-address 39.40.41.42")
-            cls.vapi.cli("lb conf ip6-src-address 2004::1")
+            cls.vapi.ip_add_del_route(dst_address=dst4, dst_address_length=24,
+                                      next_hop_address=cls.pg1.remote_ip4n)
+            cls.vapi.ip_add_del_route(dst_address=dst6, dst_address_length=16,
+                                      next_hop_address=cls.pg1.remote_ip6n,
+                                      is_ipv6=1)
+            cls.vapi.lb_conf(ip4_src_address="39.40.41.42",
+                             ip6_src_address="2004::1")
         except Exception:
             super(TestLB, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLB, cls).tearDownClass()
+
     def tearDown(self):
         super(TestLB, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show lb vip verbose"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show lb vip verbose"))
 
     def getIPv4Flow(self, id):
         return (IP(dst="90.0.%u.%u" % (id / 255, id % 255),
@@ -93,11 +102,12 @@ class TestLB(VppTestCase):
         self.assertEqual(gre.proto, 0x0800 if isv4 else 0x86DD)
         self.assertEqual(gre.flags, 0)
         self.assertEqual(gre.version, 0)
-        inner = IPver(str(gre.payload))
-        payload_info = self.payload_to_info(str(inner[Raw]))
+        inner = IPver(scapy.compat.raw(gre.payload))
+        payload_info = self.payload_to_info(inner[Raw])
         self.info = self.packet_infos[payload_info.index]
         self.assertEqual(payload_info.src, self.pg0.sw_if_index)
-        self.assertEqual(str(inner), str(self.info.data[IPver]))
+        self.assertEqual(scapy.compat.raw(inner),
+                         scapy.compat.raw(self.info.data[IPver]))
 
     def checkCapture(self, encap, isv4):
         self.pg0.assert_nothing_captured()
@@ -135,7 +145,7 @@ class TestLB(VppTestCase):
                     )
                     self.assertEqual(ip.nh, 47)
                     # self.assertEqual(len(ip.options), 0)
-                    gre = GRE(str(p[IPv6].payload))
+                    gre = GRE(scapy.compat.raw(p[IPv6].payload))
                     self.checkInner(gre, isv4)
                 elif (encap == 'l3dsr'):
                     ip = p[IP]
@@ -174,15 +184,15 @@ class TestLB(VppTestCase):
                     )
                     self.assertEqual(ip.nh, 17)
                     self.assertGreaterEqual(ip.hlim, 63)
-                    udp = UDP(str(p[IPv6].payload))
+                    udp = UDP(scapy.compat.raw(p[IPv6].payload))
                     self.assertEqual(udp.dport, 3307)
                 load[asid] += 1
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", p))
                 raise
 
-        # This is just to 1roughly check that the balancing algorithm
-        # is not completly biased.
+        # This is just to roughly check that the balancing algorithm
+        # is not completely biased.
         for asid in self.ass:
             if load[asid] < len(self.packets) / (len(self.ass) * 2):
                 self.logger.error(

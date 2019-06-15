@@ -25,15 +25,14 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 
-#define WHEEL_ENTRY_DATA_SIZE 1536	/* an even multiple of 64, pls */
-
 typedef struct
 {
   f64 tx_time;
+  u32 rx_sw_if_index;
   u32 tx_sw_if_index;
-  u32 current_length;
-    CLIB_CACHE_LINE_ALIGN_MARK (pad);
-  u8 data[WHEEL_ENTRY_DATA_SIZE];
+  u32 output_next_index;
+  u32 buffer_index;
+  u32 pad;			/* pad to 32-bytes */
 } nsim_wheel_entry_t;
 
 typedef struct
@@ -54,12 +53,15 @@ typedef struct
   /* Two interfaces, cross-connected with delay */
   u32 sw_if_index0, sw_if_index1;
   u32 output_next_index0, output_next_index1;
+
+  /* N interfaces, using the output feature */
+  u32 *output_next_index_by_sw_if_index;
+
   /* Random seed for loss-rate simulation */
   u32 seed;
 
-  /* Per-thread buffer / scheduler wheels */
+  /* Per-thread scheduler wheels */
   nsim_wheel_t **wheel_by_thread;
-  u32 **buffer_indices_by_thread;
 
   /* Config parameters */
   f64 delay;

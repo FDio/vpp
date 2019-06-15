@@ -1244,15 +1244,6 @@ fib_table_unlock (u32 fib_index,
     fib_table->ft_locks[source]--;
     fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS]--;
 
-    if (0 == fib_table->ft_locks[source])
-    {
-        /*
-         * The source no longer needs the table. flush any routes
-         * from it just in case
-         */
-        fib_table_flush(fib_index, proto, source);
-    }
-
     if (0 == fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS])
     {
         /*

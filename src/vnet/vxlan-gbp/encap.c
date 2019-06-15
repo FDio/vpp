@@ -53,6 +53,7 @@ typedef struct
   u8 flags;
 } vxlan_gbp_encap_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_vxlan_gbp_encap_trace (u8 * s, va_list * args)
 {
@@ -62,10 +63,12 @@ format_vxlan_gbp_encap_trace (u8 * s, va_list * args)
 
   s =
     format (s,
-	    "VXLAN_GBP encap to vxlan_gbp_tunnel%d vni %d sclass %d flags %d",
-	    t->tunnel_index, t->vni, t->sclass, t->flags);
+	    "VXLAN_GBP encap to vxlan_gbp_tunnel%d vni %d sclass %d flags %U",
+	    t->tunnel_index, t->vni, t->sclass,
+	    format_vxlan_gbp_header_gpflags, t->flags);
   return s;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 always_inline uword
 vxlan_gbp_encap_inline (vlib_main_t * vm,
@@ -95,7 +98,6 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 
   u8 const underlay_hdr_len = is_ip4 ?
     sizeof (ip4_vxlan_gbp_header_t) : sizeof (ip6_vxlan_gbp_header_t);
-  u8 const rw_hdr_offset = sizeof t0->rewrite_data - underlay_hdr_len;
   u16 const l3_len = is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
   u32 const csum_flags = is_ip4 ?
     VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4 |
@@ -174,6 +176,9 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 
 	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
 	  ASSERT (t1->rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_two_headers (*t0, *t1, vlib_buffer_get_current (b0),
+				    vlib_buffer_get_current (b1),
+				    underlay_hdr_len);
 
 	  vlib_buffer_advance (b0, -underlay_hdr_len);
 	  vlib_buffer_advance (b1, -underlay_hdr_len);
@@ -185,16 +190,6 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 
 	  void *underlay0 = vlib_buffer_get_current (b0);
 	  void *underlay1 = vlib_buffer_get_current (b1);
-
-	  /* vnet_rewrite_two_header writes only in (uword) 8 bytes chunks
-	   * and discards the first 4 bytes of the (36 bytes ip4 underlay)  rewrite
-	   * use memcpy as a workaround */
-	  clib_memcpy_fast (underlay0,
-			    t0->rewrite_header.data + rw_hdr_offset,
-			    underlay_hdr_len);
-	  clib_memcpy_fast (underlay1,
-			    t1->rewrite_header.data + rw_hdr_offset,
-			    underlay_hdr_len);
 
 	  ip4_header_t *ip4_0, *ip4_1;
 	  qos_bits_t ip4_0_tos = 0, ip4_1_tos = 0;
@@ -368,16 +363,11 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 
 	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
+	  vnet_rewrite_one_header (*t0, vlib_buffer_get_current (b0),
+				   underlay_hdr_len);
 
 	  vlib_buffer_advance (b0, -underlay_hdr_len);
 	  void *underlay0 = vlib_buffer_get_current (b0);
-
-	  /* vnet_rewrite_one_header writes only in (uword) 8 bytes chunks
-	   * and discards the first 4 bytes of the (36 bytes ip4 underlay)  rewrite
-	   * use memcpy as a workaround */
-	  clib_memcpy_fast (underlay0,
-			    t0->rewrite_header.data + rw_hdr_offset,
-			    underlay_hdr_len);
 
 	  u32 len0 = vlib_buffer_length_in_chain (vm, b0);
 	  u16 payload_l0 = clib_host_to_net_u16 (len0 - l3_len);
@@ -488,9 +478,9 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-vxlan4_gbp_encap (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan4_gbp_encap_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   /* Disable chksum offload as setup overhead in tx node is not worthwhile
      for ip4 header checksum only, unless udp checksum is also required */
@@ -498,9 +488,9 @@ vxlan4_gbp_encap (vlib_main_t * vm,
 				 /* csum_offload */ 0);
 }
 
-static uword
-vxlan6_gbp_encap (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan6_gbp_encap_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   /* Enable checksum offload for ip6 as udp checksum is mandatory, */
   return vxlan_gbp_encap_inline (vm, node, from_frame, /* is_ip4 */ 0,
@@ -510,7 +500,6 @@ vxlan6_gbp_encap (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan4_gbp_encap_node) =
 {
-  .function = vxlan4_gbp_encap,
   .name = "vxlan4-gbp-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_vxlan_gbp_encap_trace,
@@ -523,11 +512,8 @@ VLIB_REGISTER_NODE (vxlan4_gbp_encap_node) =
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_gbp_encap_node, vxlan4_gbp_encap)
-
 VLIB_REGISTER_NODE (vxlan6_gbp_encap_node) =
 {
-  .function = vxlan6_gbp_encap,
   .name = "vxlan6-gbp-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_vxlan_gbp_encap_trace,
@@ -539,8 +525,6 @@ VLIB_REGISTER_NODE (vxlan6_gbp_encap_node) =
     [VXLAN_GBP_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_gbp_encap_node, vxlan6_gbp_encap)
 /* *INDENT-ON* */
 
 /*

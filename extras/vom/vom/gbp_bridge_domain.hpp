@@ -30,7 +30,7 @@ class gbp_bridge_domain : public object_base
 {
 public:
   /**
-   * The key for a bridge_domain is the pari of EPG-IDs
+   * The key for a bridge_domain is the pair of EPG-IDs
    */
   typedef bridge_domain::key_t key_t;
 
@@ -38,6 +38,9 @@ public:
   {
     const static flags_t NONE;
     const static flags_t DO_NOT_LEARN;
+    const static flags_t UU_FWD_DROP;
+    const static flags_t MCAST_DROP;
+    const static flags_t UCAST_ARP;
 
     static const flags_t& from_vpp(int i);
 

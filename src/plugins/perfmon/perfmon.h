@@ -26,6 +26,7 @@
 #include <vppinfra/error.h>
 
 #include <linux/perf_event.h>
+#include <perfmon/perfmon_intel.h>
 
 #define foreach_perfmon_event                                           \
 _(PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES, "cpu-cycles")           \
@@ -71,12 +72,6 @@ typedef struct
 
 typedef struct
 {
-  u32 cpuid;
-  const char **table;
-} perfmon_cpuid_and_table_t;
-
-typedef struct
-{
   u8 *name;
   u8 *value;
 } name_value_pair_t;
@@ -93,9 +88,13 @@ typedef struct
   perfmon_capture_t *capture_pool;
   uword *capture_by_thread_and_node_name;
 
-  /* CPU-specific event tables, hash table of selected table (if any)  */
-  perfmon_cpuid_and_table_t *perfmon_tables;
-  uword *perfmon_table;
+  /* vector of registered perfmon tables */
+  perfmon_intel_pmc_registration_t *perfmon_tables;
+
+  /* active table */
+  perfmon_intel_pmc_event_t *perfmon_table;
+
+  uword *pmc_event_by_name;
 
   /* vector of single events to collect */
   perfmon_event_config_t *single_events_to_collect;

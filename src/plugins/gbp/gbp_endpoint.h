@@ -164,9 +164,14 @@ typedef struct gbp_endpoint_fwd_t_
   index_t *gef_adjs;
 
   /**
-   * Endpoint Group's ID. cached for fast DP access.
+   * Endpoint Group's sclass. cached for fast DP access.
    */
-  epg_id_t gef_epg_id;
+  sclass_t gef_sclass;
+
+  /**
+   * FIB index the EP is in
+   */
+  u32 gef_fib_index;
 
   gbp_endpoint_flags_t gef_flags;
 } gbp_endpoint_fwd_t;
@@ -222,7 +227,7 @@ extern int gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
 					 const ip46_address_t * ip,
 					 const mac_address_t * mac,
 					 index_t gbd, index_t grd,
-					 epg_id_t epg_id,
+					 sclass_t sclass,
 					 gbp_endpoint_flags_t flags,
 					 const ip46_address_t * tun_src,
 					 const ip46_address_t * tun_dst,
@@ -236,7 +241,6 @@ extern void gbp_endpoint_child_remove (index_t gei, u32 sibling);
 typedef walk_rc_t (*gbp_endpoint_cb_t) (index_t gbpei, void *ctx);
 extern void gbp_endpoint_walk (gbp_endpoint_cb_t cb, void *ctx);
 extern void gbp_endpoint_scan (vlib_main_t * vm);
-extern f64 gbp_endpoint_scan_threshold (void);
 extern int gbp_endpoint_is_remote (const gbp_endpoint_t * ge);
 extern int gbp_endpoint_is_local (const gbp_endpoint_t * ge);
 extern int gbp_endpoint_is_external (const gbp_endpoint_t * ge);

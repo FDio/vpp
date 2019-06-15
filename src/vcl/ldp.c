@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -161,6 +161,14 @@ ldp_fd_to_vlsh (int fd)
   return (fd - ldp->vlsh_bit_val);
 }
 
+static void
+ldp_alloc_workers (void)
+{
+  if (ldp->workers)
+    return;
+  pool_alloc (ldp->workers, LDP_MAX_NWORKERS);
+}
+
 static inline int
 ldp_init (void)
 {
@@ -184,7 +192,7 @@ ldp_init (void)
       return rv;
     }
   ldp->vcl_needs_real_epoll = 0;
-  pool_alloc (ldp->workers, LDP_MAX_NWORKERS);
+  ldp_alloc_workers ();
   ldpw = ldp_worker_get_current ();
 
   char *env_var_str = getenv (LDP_ENV_DEBUG);
@@ -1829,6 +1837,7 @@ setsockopt (int fd, int level, int optname,
 			     (void *) optval, &optlen);
 	      break;
 	    case TCP_CONGESTION:
+	    case TCP_CORK:
 	      /* Ignore */
 	      rv = 0;
 	      break;
@@ -2040,6 +2049,12 @@ epoll_create1 (int flags)
 
   if (ldp->vcl_needs_real_epoll)
     {
+      /* Make sure workers have been allocated */
+      if (!ldp->workers)
+	{
+	  ldp_alloc_workers ();
+	  ldpw = ldp_worker_get_current ();
+	}
       rv = libc_epoll_create1 (flags);
       ldp->vcl_needs_real_epoll = 0;
       ldpw->vcl_mq_epfd = rv;
@@ -2375,8 +2390,11 @@ ldp_constructor (void)
 {
   swrap_constructor ();
   if (ldp_init () != 0)
-    fprintf (stderr, "\nLDP<%d>: ERROR: ldp_constructor: failed!\n",
-	     getpid ());
+    {
+      fprintf (stderr, "\nLDP<%d>: ERROR: ldp_constructor: failed!\n",
+	       getpid ());
+      _exit (1);
+    }
   else if (LDP_DEBUG > 0)
     clib_warning ("LDP<%d>: LDP constructor: done!\n", getpid ());
 }

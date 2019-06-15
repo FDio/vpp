@@ -15,11 +15,22 @@
 
 import struct
 import collections
-from enum import IntEnum
+import sys
+
+if sys.version_info <= (3, 4):
+    from aenum import IntEnum
+else:
+    from enum import IntEnum
+
+if sys.version_info <= (3, 6):
+    from aenum import IntFlag
+else:
+    from enum import IntFlag
+
 import logging
 from . import vpp_format
 import ipaddress
-import sys
+
 import socket
 
 #
@@ -268,15 +279,17 @@ class VLAList_legacy():
 class VPPEnumType(object):
     def __init__(self, name, msgdef):
         self.size = types['u32'].size
+        self.enumtype = 'u32'
         e_hash = {}
         for f in msgdef:
             if type(f) is dict and 'enumtype' in f:
                 if f['enumtype'] != 'u32':
-                    raise NotImplementedError
+                    self.size = types[f['enumtype']].size
+                    self.enumtype = f['enumtype']
                 continue
             ename, evalue = f
             e_hash[ename] = evalue
-        self.enum = IntEnum(name, e_hash)
+        self.enum = IntFlag(name, e_hash)
         types[name] = self
 
     def __getattr__(self, name):
@@ -286,10 +299,10 @@ class VPPEnumType(object):
         return True
 
     def pack(self, data, kwargs=None):
-        return types['u32'].pack(data)
+        return types[self.enumtype].pack(data)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
-        x, size = types['u32'].unpack(data, offset)
+        x, size = types[self.enumtype].unpack(data, offset)
         return self.enum(x), size
 
 

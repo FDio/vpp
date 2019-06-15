@@ -9,3 +9,4 @@ This reference guide describes how to use the vpp muli-architecture support sche
    :maxdepth: 1
 
    nodefns
+   arbfns

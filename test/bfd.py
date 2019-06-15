@@ -222,9 +222,6 @@ class VppBFDAuthKey(VppObject):
     def object_id(self):
         return "bfd-auth-key-%s" % self._conf_key_id
 
-    def __str__(self):
-        return self.object_id()
-
 
 class VppBFDUDPSession(VppObject):
     """ Represents BFD UDP session in VPP """
@@ -429,9 +426,6 @@ class VppBFDUDPSession(VppObject):
                                         self.local_addr,
                                         self.peer_addr,
                                         self.af)
-
-    def __str__(self):
-        return self.object_id()
 
     def admin_up(self):
         """ set bfd session admin-up """

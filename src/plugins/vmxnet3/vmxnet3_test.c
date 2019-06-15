@@ -117,11 +117,15 @@ api_vmxnet3_create (vat_main_t * vam)
 	}
       else if (unformat (i, "elog"))
 	args.enable_elog = 1;
+      else if (unformat (i, "bind"))
+	args.bind = 1;
       else if (unformat (i, "rx-queue-size %u", &args.rxq_size))
 	;
       else if (unformat (i, "tx-queue-size %u", &args.txq_size))
 	;
       else if (unformat (i, "num-tx-queues %u", &args.txq_num))
+	;
+      else if (unformat (i, "num-rx-queues %u", &args.rxq_num))
 	;
       else
 	{
@@ -137,6 +141,8 @@ api_vmxnet3_create (vat_main_t * vam)
   mp->rxq_size = clib_host_to_net_u16 (args.rxq_size);
   mp->txq_size = clib_host_to_net_u16 (args.txq_size);
   mp->txq_num = clib_host_to_net_u16 (args.txq_num);
+  mp->rxq_num = clib_host_to_net_u16 (args.rxq_num);
+  mp->bind = args.bind;
 
   S (mp);
   W (ret);
@@ -289,7 +295,8 @@ vl_api_vmxnet3_details_t_handler (vl_api_vmxnet3_details_t * mp)
  */
 #define foreach_vpe_api_msg					\
 _(vmxnet3_create, "<pci-address> [rx-queue-size <size>] "	\
-              "[tx-queue-size <size>] [num-tx-queues <num>]")	\
+  "[tx-queue-size <size>] [num-tx-queues <num>]"		\
+  "[num-rx-queues <num>] [bind]")				\
 _(vmxnet3_delete, "sw_if_index <sw_if_index>")                  \
 _(vmxnet3_dump, "")
 

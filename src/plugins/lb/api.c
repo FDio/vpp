@@ -16,6 +16,7 @@
 #include <lb/lb.h>
 
 #include <vppinfra/byte_order.h>
+#include <vppinfra/string.h>
 #include <vlibapi/api.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -79,8 +80,15 @@ vl_api_lb_conf_t_handler
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
 
+  if (mp->sticky_buckets_per_core == ~0) {
+    mp->sticky_buckets_per_core = lbm->per_cpu_sticky_buckets;
+  }
+  if (mp->flow_timeout == ~0) {
+    mp->flow_timeout = lbm->flow_timeout;
+  }
+
   rv = lb_conf((ip4_address_t *)&mp->ip4_src_address,
-               (ip6_address_t *)mp->ip6_src_address,
+               (ip6_address_t *)&mp->ip6_src_address,
                mp->sticky_buckets_per_core,
                mp->flow_timeout);
 
@@ -93,7 +101,7 @@ static void *vl_api_lb_conf_t_print
   u8 * s;
   s = format (0, "SCRIPT: lb_conf ");
   s = format (s, "%U ", format_ip4_address, (ip4_address_t *)&mp->ip4_src_address);
-  s = format (s, "%U ", format_ip6_address, (ip6_address_t *)mp->ip6_src_address);
+  s = format (s, "%U ", format_ip6_address, (ip6_address_t *)&mp->ip6_src_address);
   s = format (s, "%u ", mp->sticky_buckets_per_core);
   s = format (s, "%u ", mp->flow_timeout);
   FINISH;
@@ -109,11 +117,10 @@ vl_api_lb_add_del_vip_t_handler
   int rv = 0;
   lb_vip_add_args_t args;
 
-  if((mp->protocol != IP_PROTOCOL_TCP)
-     && (mp->protocol != IP_PROTOCOL_UDP))
+  /* if port == 0, it means all-port VIP */
+  if (mp->port == 0)
     {
       mp->protocol = ~0;
-      mp->port = 0;
     }
 
   memcpy (&(args.prefix.ip6), mp->ip_prefix, sizeof(args.prefix.ip6));
@@ -121,7 +128,7 @@ vl_api_lb_add_del_vip_t_handler
   if (mp->is_del) {
     u32 vip_index;
     if (!(rv = lb_vip_find_index(&(args.prefix), mp->prefix_length,
-                                 mp->protocol, mp->port, &vip_index)))
+                                 mp->protocol, ntohs(mp->port), &vip_index)))
       rv = lb_vip_del(vip_index);
   } else {
     u32 vip_index;
@@ -146,6 +153,8 @@ vl_api_lb_add_del_vip_t_handler
     }
 
     args.plen = mp->prefix_length;
+    args.protocol = mp->protocol;
+    args.port = ntohs(mp->port);
     args.type = type;
     args.new_length = ntohl(mp->new_flows_table_length);
 
@@ -214,7 +223,7 @@ vl_api_lb_add_del_as_t_handler
          sizeof(as_address.ip6));
 
   if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->vip_prefix_length,
-                              mp->protocol, mp->port, &vip_index)))
+                              mp->protocol, ntohs(mp->port), &vip_index)))
     goto done;
 
   if (mp->is_del)
@@ -260,7 +269,7 @@ vl_api_lb_flush_vip_t_handler
   vip_plen = mp->prefix_length;
 
   rv = lb_vip_find_index(&vip_prefix, vip_plen, mp->protocol,
-                         (u16)mp->port, &vip_index);
+                         ntohs(mp->port), &vip_index);
 
   rv = lb_flush_vip_as(vip_index, ~0);
 

@@ -270,7 +270,7 @@ vnet_dns_send_dns4_request (dns_main_t * dm,
     }
 
   /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnummbered */,
+  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnumbered */,
   ({
     src_address = ip_interface_address_get_address (lm4, ia);
     goto found_src_address;
@@ -378,7 +378,7 @@ vnet_dns_send_dns6_request (dns_main_t * dm,
   sw_if_index = fib_entry_get_resolving_interface (fei);
 
   /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm6, ia, sw_if_index, 1 /* honor unnummbered */,
+  foreach_ip_interface_address(lm6, ia, sw_if_index, 1 /* honor unnumbered */,
   ({
     src_address = ip_interface_address_get_address (lm6, ia);
     goto found_src_address;
@@ -2684,7 +2684,7 @@ test_dns_expire_command_fn (vlib_main_t * vm,
 			    vlib_cli_command_t * cmd)
 {
   dns_main_t *dm = &dns_main;
-  u8 *name;
+  u8 *name = 0;
   uword *p;
   clib_error_t *e;
   dns_cache_entry_t *ep;
@@ -2694,6 +2694,8 @@ test_dns_expire_command_fn (vlib_main_t * vm,
       vec_add1 (name, 0);
       _vec_len (name) -= 1;
     }
+  else
+    return clib_error_return (0, "no name provided");
 
   dns_cache_lock (dm);
 
@@ -2850,7 +2852,7 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
     }
 
   /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnummbered */,
+  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnumbered */,
   ({
     src_address = ip_interface_address_get_address (lm4, ia);
     goto found_src_address;

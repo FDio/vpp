@@ -214,6 +214,84 @@ memset_s_inline (void *s, rsize_t smax, int c, rsize_t n)
 #define clib_memset(s,c,n) memset_s_inline(s,n,c,n)
 
 static_always_inline void
+clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
+{
+#if defined (CLIB_HxAVE_VEC256)
+  u8x32 s0, s1, d0, d1;
+  u8x32 mask = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+    18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+  };
+  u8x32 lv = u8x32_splat (len);
+  u8x32 add = u8x32_splat (32);
+
+  s0 = u8x32_load_unaligned (src);
+  s1 = u8x32_load_unaligned (src + 32);
+  d0 = u8x32_load_unaligned (dst);
+  d1 = u8x32_load_unaligned (dst + 32);
+
+  d0 = u8x32_blend (d0, s0, u8x32_is_greater (lv, mask));
+  u8x32_store_unaligned (d0, dst);
+
+  if (max_len <= 32)
+    return;
+
+  mask += add;
+  d1 = u8x32_blend (d1, s1, u8x32_is_greater (lv, mask));
+  u8x32_store_unaligned (d1, dst + 32);
+
+#elif defined (CLIB_HAVE_VEC128) && !defined (__aarch64__)
+  u8x16 s0, s1, s2, s3, d0, d1, d2, d3;
+  u8x16 mask = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+  u8x16 lv = u8x16_splat (len);
+  u8x16 add = u8x16_splat (16);
+
+  s0 = u8x16_load_unaligned (src);
+  s1 = u8x16_load_unaligned (src + 16);
+  s2 = u8x16_load_unaligned (src + 32);
+  s3 = u8x16_load_unaligned (src + 48);
+  d0 = u8x16_load_unaligned (dst);
+  d1 = u8x16_load_unaligned (dst + 16);
+  d2 = u8x16_load_unaligned (dst + 32);
+  d3 = u8x16_load_unaligned (dst + 48);
+
+  d0 = u8x16_blend (d0, s0, u8x16_is_greater (lv, mask));
+  u8x16_store_unaligned (d0, dst);
+
+  if (max_len <= 16)
+    return;
+
+  mask += add;
+  d1 = u8x16_blend (d1, s1, u8x16_is_greater (lv, mask));
+  u8x16_store_unaligned (d1, dst + 16);
+
+  if (max_len <= 32)
+    return;
+
+  mask += add;
+  d2 = u8x16_blend (d2, s2, u8x16_is_greater (lv, mask));
+  u8x16_store_unaligned (d2, dst + 32);
+
+  mask += add;
+  d3 = u8x16_blend (d3, s3, u8x16_is_greater (lv, mask));
+  u8x16_store_unaligned (d3, dst + 48);
+#else
+  memmove (dst, src, len);
+#endif
+}
+
+static_always_inline void
+clib_memcpy_le64 (u8 * dst, u8 * src, u8 len)
+{
+  clib_memcpy_le (dst, src, len, 64);
+}
+
+static_always_inline void
+clib_memcpy_le32 (u8 * dst, u8 * src, u8 len)
+{
+  clib_memcpy_le (dst, src, len, 32);
+}
+
+static_always_inline void
 clib_memset_u64 (void *p, u64 val, uword count)
 {
   u64 *ptr = p;

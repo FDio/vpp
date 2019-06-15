@@ -1,0 +1,6 @@
+set term pag off
+create tap host-if-name lstack host-ip4-addr 192.168.10.2/24
+set int ip address tap0 192.168.10.1/24
+set int state tap0 up
+
+http static server www-root /tmp/www uri tcp://0.0.0.0/80 cache-size 1m

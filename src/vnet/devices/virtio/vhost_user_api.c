@@ -48,26 +48,6 @@ _(MODIFY_VHOST_USER_IF, modify_vhost_user_if)                           \
 _(DELETE_VHOST_USER_IF, delete_vhost_user_if)                           \
 _(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)
 
-/*
- * WARNING: replicated pending api refactor completion
- */
-static void
-send_sw_interface_event_deleted (vpe_api_main_t * am,
-				 vl_api_registration_t * reg, u32 sw_if_index)
-{
-  vl_api_sw_interface_event_t *mp;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
-  mp->sw_if_index = ntohl (sw_if_index);
-
-  mp->admin_up_down = 0;
-  mp->link_up_down = 0;
-  mp->deleted = 1;
-  vl_api_send_msg (reg, (u8 *) mp);
-}
-
 static void
 vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
 {
@@ -135,7 +115,6 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
 {
   int rv = 0;
   vl_api_delete_vhost_user_if_reply_t *rmp;
-  vpe_api_main_t *vam = &vpe_api_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   vl_api_registration_t *reg;
 
@@ -152,7 +131,6 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
 	return;
 
       vnet_clear_sw_interface_tag (vnm, sw_if_index);
-      send_sw_interface_event_deleted (vam, reg, sw_if_index);
     }
 }
 
@@ -213,7 +191,7 @@ static void
 /*
  * vhost-user_api_hookup
  * Add vpe's API message handlers to the table.
- * vlib has alread mapped shared memory and
+ * vlib has already mapped shared memory and
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */

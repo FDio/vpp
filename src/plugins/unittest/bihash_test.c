@@ -181,7 +181,7 @@ test_bihash_threads (bihash_test_main_t * tm)
 }
 
 /*
- * Callback to blow up spectacularly if anthing remains in the table
+ * Callback to blow up spectacularly if anything remains in the table
  */
 static void
 count_items (BVT (clib_bihash_kv) * kvp, void *notused)

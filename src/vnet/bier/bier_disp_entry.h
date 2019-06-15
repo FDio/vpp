@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 /**
- * bier_dispositon : The BIER dispositon object
+ * bier_disposition : The BIER disposition object
  *
- * A BIER dispositon object is used to pop the BIER header for for-us
+ * A BIER disposition object is used to pop the BIER header for for-us
  * packets and steer the packet down the payload protocol specific graph
  */
 
@@ -27,7 +27,7 @@
 #include <vnet/dpo/dpo.h>
 
 /**
- * The BIER dispositon object
+ * The BIER disposition object
  */
 typedef struct bier_disp_entry_t_ {
     /**

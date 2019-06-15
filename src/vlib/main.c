@@ -91,10 +91,11 @@ vlib_frame_find_magic (vlib_frame_t * f, vlib_node_t * node)
   return p;
 }
 
-static vlib_frame_size_t *
+static inline vlib_frame_size_t *
 get_frame_size_info (vlib_node_main_t * nm,
 		     u32 n_scalar_bytes, u32 n_vector_bytes)
 {
+#ifdef VLIB_SUPPORTS_ARBITRARY_SCALAR_SIZES
   uword key = (n_scalar_bytes << 16) | n_vector_bytes;
   uword *p, i;
 
@@ -109,6 +110,11 @@ get_frame_size_info (vlib_node_main_t * nm,
     }
 
   return vec_elt_at_index (nm->frame_sizes, i);
+#else
+  ASSERT (vlib_frame_bytes (n_scalar_bytes, n_vector_bytes)
+	  == (vlib_frame_bytes (0, 4)));
+  return vec_elt_at_index (nm->frame_sizes, 0);
+#endif
 }
 
 static u32
@@ -1673,6 +1679,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   u64 cpu_time_now;
   vlib_frame_queue_main_t *fqm;
   u32 *last_node_runtime_indices = 0;
+  u32 frame_queue_check_counter = 0;
 
   /* Initialize pending node vector. */
   if (is_main)
@@ -1728,8 +1735,26 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (!is_main)
 	{
 	  vlib_worker_thread_barrier_check ();
-	  vec_foreach (fqm, tm->frame_queue_mains)
-	    vlib_frame_queue_dequeue (vm, fqm);
+	  if (PREDICT_FALSE (vm->check_frame_queues +
+			     frame_queue_check_counter))
+	    {
+	      u32 processed = 0;
+
+	      if (vm->check_frame_queues)
+		{
+		  frame_queue_check_counter = 100;
+		  vm->check_frame_queues = 0;
+		}
+
+	      vec_foreach (fqm, tm->frame_queue_mains)
+		processed += vlib_frame_queue_dequeue (vm, fqm);
+
+	      /* No handoff queue work found? */
+	      if (processed)
+		frame_queue_check_counter = 100;
+	      else
+		frame_queue_check_counter--;
+	    }
 	  if (PREDICT_FALSE (vm->worker_thread_main_loop_callback != 0))
 	    ((void (*)(vlib_main_t *)) vm->worker_thread_main_loop_callback)
 	      (vm);
@@ -2058,6 +2083,17 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   vec_validate (vm->processing_rpc_requests, 0);
   _vec_len (vm->processing_rpc_requests) = 0;
 
+  if ((error = vlib_call_all_config_functions (vm, input, 0 /* is_early */ )))
+    goto done;
+
+  /* Call all main loop enter functions. */
+  {
+    clib_error_t *sub_error;
+    sub_error = vlib_call_all_main_loop_enter_functions (vm);
+    if (sub_error)
+      clib_error_report (sub_error);
+  }
+
   switch (clib_setjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_NONE))
     {
     case VLIB_MAIN_LOOP_EXIT_NONE:
@@ -2071,17 +2107,6 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       error = vm->main_loop_error;
       goto done;
     }
-
-  if ((error = vlib_call_all_config_functions (vm, input, 0 /* is_early */ )))
-    goto done;
-
-  /* Call all main loop enter functions. */
-  {
-    clib_error_t *sub_error;
-    sub_error = vlib_call_all_main_loop_enter_functions (vm);
-    if (sub_error)
-      clib_error_report (sub_error);
-  }
 
   vlib_main_loop (vm);
 

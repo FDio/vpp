@@ -452,6 +452,25 @@ memif_free_register (memif_free_t * mf)
 }
 
 int
+memif_set_connection_request_timer(struct itimerspec timer)
+{
+  libmemif_main_t *lm = &libmemif_main;
+  int err = MEMIF_ERR_SUCCESS;
+
+  lm->arm = timer;
+
+  /* overwrite timer, if already armed */
+  if (lm->disconn_slaves != 0)
+    {
+      if (timerfd_settime (lm->timerfd, 0, &lm->arm, NULL) < 0)
+	{
+	  err = memif_syscall_error_handler (errno);
+	}
+    }
+  return err;
+}
+
+int
 memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
 	    memif_alloc_t * memif_alloc, memif_realloc_t * memif_realloc,
 	    memif_free_t * memif_free)
@@ -573,10 +592,10 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
       goto error;
     }
 
-  lm->arm.it_value.tv_sec = 2;
-  lm->arm.it_value.tv_nsec = 0;
-  lm->arm.it_interval.tv_sec = 2;
-  lm->arm.it_interval.tv_nsec = 0;
+  lm->arm.it_value.tv_sec = MEMIF_DEFAULT_RECONNECT_PERIOD_SEC;
+  lm->arm.it_value.tv_nsec = MEMIF_DEFAULT_RECONNECT_PERIOD_NSEC;
+  lm->arm.it_interval.tv_sec = MEMIF_DEFAULT_RECONNECT_PERIOD_SEC;
+  lm->arm.it_interval.tv_nsec = MEMIF_DEFAULT_RECONNECT_PERIOD_NSEC;
 
   if (lm->control_fd_update (lm->timerfd, MEMIF_FD_EVENT_READ) < 0)
     {
@@ -851,15 +870,6 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
     }
   else
     {
-      if (lm->disconn_slaves == 0)
-	{
-	  if (timerfd_settime (lm->timerfd, 0, &lm->arm, NULL) < 0)
-	    {
-	      err = memif_syscall_error_handler (errno);
-	      goto error;
-	    }
-	}
-
       lm->disconn_slaves++;
 
       list_elt.key = -1;
@@ -871,9 +881,21 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
 	  err = MEMIF_ERR_NOMEM;
 	  goto error;
 	}
-    }
 
-  conn->index = index;
+      conn->index = index;
+
+      /* try connectiong to master */
+      err = memif_request_connection(conn);
+      if ((err < 0) && (lm->disconn_slaves == 1))
+	{
+	  /* connection failed, arm reconnect timer (if not armed) */
+	  if (timerfd_settime (lm->timerfd, 0, &lm->arm, NULL) < 0)
+	    {
+	      err = memif_syscall_error_handler (errno);
+	      goto error;
+	    }
+	}
+    }
 
   return 0;
 
@@ -890,9 +912,76 @@ error:
 }
 
 int
+memif_request_connection(memif_conn_handle_t c)
+{
+  libmemif_main_t *lm = &libmemif_main;
+  memif_connection_t *conn = (memif_connection_t *) c;
+  int err = MEMIF_ERR_SUCCESS;
+  int sockfd = -1;
+  struct sockaddr_un sun;
+
+  if (conn->args.is_master)
+    return MEMIF_ERR_INVAL_ARG;
+  if (conn->fd > 0)
+    return MEMIF_ERR_ALRCONN;
+
+  sockfd = socket (AF_UNIX, SOCK_SEQPACKET, 0);
+  if (sockfd < 0)
+    {
+      err = memif_syscall_error_handler (errno);
+      goto error;
+    }
+
+  sun.sun_family = AF_UNIX;
+
+  strncpy (sun.sun_path, (char *) conn->args.socket_filename,
+	   sizeof (sun.sun_path) - 1);
+
+  if (connect (sockfd, (struct sockaddr *) &sun,
+      sizeof (struct sockaddr_un)) == 0)
+    {
+      conn->fd = sockfd;
+      conn->read_fn = memif_conn_fd_read_ready;
+      conn->write_fn = memif_conn_fd_write_ready;
+      conn->error_fn = memif_conn_fd_error;
+
+      lm->control_list[conn->index].key = conn->fd;
+
+      lm->control_fd_update (sockfd,
+		MEMIF_FD_EVENT_READ |
+		MEMIF_FD_EVENT_WRITE);
+
+      lm->disconn_slaves--;
+      if (lm->disconn_slaves == 0)
+	{
+	  if (timerfd_settime (lm->timerfd, 0, &lm->disarm, NULL) < 0)
+	    {
+	      err = memif_syscall_error_handler (errno);
+	      return err;
+	    }
+	}
+    }
+  else
+    {
+      strcpy ((char *) conn->remote_disconnect_string,
+          memif_strerror (memif_syscall_error_handler
+                  (errno)));
+      goto error;
+    }
+
+ return err;
+
+error:
+  if (sockfd > 0)
+    close (sockfd);
+  sockfd = -1;
+  return err;
+}
+
+int
 memif_control_fd_handler (int fd, uint8_t events)
 {
-  int i, sockfd = -1, err = MEMIF_ERR_SUCCESS;	/* 0 */
+  int i, err = MEMIF_ERR_SUCCESS;	/* 0 */
   uint16_t num;
   memif_list_elt_t *e = NULL;
   memif_connection_t *conn;
@@ -914,51 +1003,7 @@ memif_control_fd_handler (int fd, uint8_t events)
 	      conn = lm->control_list[i].data_struct;
 	      if (conn->args.is_master)
 		continue;
-
-	      struct sockaddr_un sun;
-	      sockfd = socket (AF_UNIX, SOCK_SEQPACKET, 0);
-	      if (sockfd < 0)
-		{
-		  err = memif_syscall_error_handler (errno);
-		  goto error;
-		}
-
-	      sun.sun_family = AF_UNIX;
-
-	      strncpy (sun.sun_path, (char *) conn->args.socket_filename,
-		       sizeof (sun.sun_path) - 1);
-
-	      if (connect (sockfd, (struct sockaddr *) &sun,
-			   sizeof (struct sockaddr_un)) == 0)
-		{
-		  conn->fd = sockfd;
-		  conn->read_fn = memif_conn_fd_read_ready;
-		  conn->write_fn = memif_conn_fd_write_ready;
-		  conn->error_fn = memif_conn_fd_error;
-
-		  lm->control_list[conn->index].key = conn->fd;
-
-		  lm->control_fd_update (sockfd,
-					 MEMIF_FD_EVENT_READ |
-					 MEMIF_FD_EVENT_WRITE);
-
-		  lm->disconn_slaves--;
-		  if (lm->disconn_slaves == 0)
-		    {
-		      if (timerfd_settime (lm->timerfd, 0, &lm->disarm, NULL)
-			  < 0)
-			{
-			  err = memif_syscall_error_handler (errno);
-			  goto error;
-			}
-		    }
-		}
-	      else
-		{
-		  strcpy ((char *) conn->remote_disconnect_string,
-			  memif_strerror (memif_syscall_error_handler
-					  (errno)));
-		}
+	      memif_request_connection(conn);
 	    }
 	}
     }
@@ -993,15 +1038,15 @@ memif_control_fd_handler (int fd, uint8_t events)
       get_list_elt (&e, lm->listener_list, lm->listener_list_len, fd);
       if (e != NULL)
 	{
-	  memif_conn_fd_accept_ready ((memif_socket_t *) e->data_struct);
-	  return MEMIF_ERR_SUCCESS;
+	  err = memif_conn_fd_accept_ready ((memif_socket_t *) e->data_struct);
+	  return err;
 	}
 
       get_list_elt (&e, lm->pending_list, lm->pending_list_len, fd);
       if (e != NULL)
 	{
-	  memif_read_ready (fd);
-	  return MEMIF_ERR_SUCCESS;
+	  err = memif_read_ready (fd);
+	  return err;
 	}
 
       get_list_elt (&e, lm->control_list, lm->control_list_len, fd);
@@ -1037,9 +1082,6 @@ memif_control_fd_handler (int fd, uint8_t events)
   return MEMIF_ERR_SUCCESS;	/* 0 */
 
 error:
-  if (sockfd > 0)
-    close (sockfd);
-  sockfd = -1;
   return err;
 }
 

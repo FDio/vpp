@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=VPP
+Exec=vpp %F
+Icon=vpp
+Type=Application
+Categories=Network;
+Comment=Vector Packet Processor
+Name[en]=VPP
+Terminal=false
+StartupNotify=true
+NoDisplay=false

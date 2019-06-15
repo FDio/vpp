@@ -25,7 +25,7 @@
  *
  * The table's key is part of this DB key, since the fmasks therein build up
  * their forwarding mask based on the routes that resolve through
- * it, so cross polination would be bad.
+ * it, so cross pollination would be bad.
  */
 typedef struct bier_fmask_db_t_ {
     /**
@@ -143,9 +143,9 @@ bier_fmask_db_remove (const bier_fmask_id_t *fmid)
 
     if (NULL == p) {
         /*
-         * remove a non-exitant entry - oops
+         * remove a non-existent entry - oops
          */
-        ASSERT (!"remove non-existant fmask");
+        ASSERT (!"remove non-existent fmask");
     } else {
         hash_unset(bier_fmask_db.bfdb_hash, fmid);
     }

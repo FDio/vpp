@@ -509,7 +509,7 @@ class IPFIXDecoder(object):
 
     def add_template(self, template):
         """
-        Add IPFIX tempalte
+        Add IPFIX template
 
         :param template: IPFIX template
         """

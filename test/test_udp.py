@@ -14,6 +14,14 @@ from scapy.contrib.mpls import MPLS
 class TestUdpEncap(VppTestCase):
     """ UDP Encap Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestUdpEncap, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestUdpEncap, cls).tearDownClass()
+
     def setUp(self):
         super(TestUdpEncap, self).setUp()
 
@@ -85,7 +93,7 @@ class TestUdpEncap(VppTestCase):
 
         #
         # construct a UDP encap object through each of the peers
-        # v4 through the first two peears, v6 through the second.
+        # v4 through the first two peers, v6 through the second.
         #
         udp_encap_0 = VppUdpEncap(self,
                                   self.pg0.local_ip4,
@@ -240,6 +248,10 @@ class TestUDP(VppTestCase):
     def setUpClass(cls):
         super(TestUDP, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestUDP, cls).tearDownClass()
+
     def setUp(self):
         super(TestUDP, self).setUp()
         self.vapi.session_enable_disable(is_enabled=1)
@@ -259,10 +271,10 @@ class TestUDP(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add(namespace_id="0",
-                                    sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add(namespace_id="1",
-                                    sw_if_index=self.loop1.sw_if_index)
+        self.vapi.app_namespace_add_del(namespace_id="0",
+                                        sw_if_index=self.loop0.sw_if_index)
+        self.vapi.app_namespace_add_del(namespace_id="1",
+                                        sw_if_index=self.loop1.sw_if_index)
 
     def tearDown(self):
         for i in self.lo_interfaces:
@@ -293,14 +305,14 @@ class TestUDP(VppTestCase):
                               "uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         error = self.vapi.cli("test echo client mbytes 10 appns 1 " +
                               "fifo-size 4 no-output test-bytes " +
                               "syn-timeout 2 no-return uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()

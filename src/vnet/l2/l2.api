@@ -320,6 +320,7 @@ manual_print manual_endian define bridge_domain_details
 /** \brief Flags that can be changed on a bridge domain */
 enum bd_flags
 {
+  BRIDGE_API_FLAG_NONE = 0x0,
   BRIDGE_API_FLAG_LEARN = 0x1,
   BRIDGE_API_FLAG_FWD = 0x2,
   BRIDGE_API_FLAG_FLOOD = 0x4,
@@ -550,6 +551,44 @@ autoreply define sw_interface_set_vpath
   u32 context;
   u32 sw_if_index;
   u8 enable;
+};
+
+/** \brief Create BVI interface instance request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mac_address - mac addr to assign to the interface if none-zero
+    @param user_instance - requested instance, ~0 => dynamically allocate
+*/
+define bvi_create
+{
+  u32 client_index;
+  u32 context;
+  vl_api_mac_address_t mac;
+  u32 user_instance;
+};
+
+/** \brief Create BVI interface instance response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created
+    @param retval - return code for the request
+*/
+define bvi_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete BVI interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created
+*/
+autoreply define bvi_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
 };
 
 /*

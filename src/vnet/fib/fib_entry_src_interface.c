@@ -61,8 +61,8 @@ fib_entry_src_interface_path_swap (fib_entry_src_t *src,
     src->fes_pl = fib_path_list_create(pl_flags, paths);
 
     /*
-     * this is a hack to get the entry's prefix into the glean adjacnecy
-     * so that it is available for fast retreival in the switch path.
+     * this is a hack to get the entry's prefix into the glean adjacency
+     * so that it is available for fast retrieval in the switch path.
      */
     if (!(FIB_ENTRY_FLAG_LOCAL & src->fes_entry_flags))
     {
@@ -125,7 +125,7 @@ fib_entry_src_interface_deactivate (fib_entry_src_t *src,
     fib_entry_t *cover;
 
     /*
-     * remove the depednecy on the covering entry
+     * remove the dependency on the covering entry
      */
     if (FIB_NODE_INDEX_INVALID != src->u.interface.fesi_cover)
     {

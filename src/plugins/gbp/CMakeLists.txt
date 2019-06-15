@@ -16,22 +16,35 @@ add_vpp_plugin(gbp
   gbp_api.c
   gbp_bridge_domain.c
   gbp_classify.c
+  gbp_classify_node.c
   gbp_contract.c
   gbp_endpoint.c
   gbp_endpoint_group.c
   gbp_ext_itf.c
   gbp_fwd.c
   gbp_fwd_dpo.c
+  gbp_fwd_node.c
   gbp_itf.c
   gbp_learn.c
+  gbp_learn_node.c
   gbp_policy.c
   gbp_policy_dpo.c
+  gbp_policy_node.c
   gbp_recirc.c
   gbp_route_domain.c
   gbp_scanner.c
-  gbp_sclass.c
   gbp_subnet.c
   gbp_vxlan.c
+  gbp_vxlan_node.c
+
+  MULTIARCH_SOURCES
+  gbp_classify_node.c
+  gbp_fwd_dpo.c
+  gbp_fwd_node.c
+  gbp_learn_node.c
+  gbp_policy_dpo.c
+  gbp_policy_node.c
+  gbp_vxlan_node.c
 
   API_FILES
   gbp.api
@@ -39,5 +52,6 @@ add_vpp_plugin(gbp
   INSTALL_HEADERS
   gbp.h
   gbp_all_api_h.h
+  gbp_api_print.h
   gbp_msg_enum.h
 )

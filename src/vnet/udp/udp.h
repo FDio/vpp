@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -148,6 +148,8 @@ typedef struct
 extern udp_main_t udp_main;
 extern vlib_node_registration_t udp4_input_node;
 extern vlib_node_registration_t udp6_input_node;
+extern vlib_node_registration_t udp4_local_node;
+extern vlib_node_registration_t udp6_local_node;
 
 always_inline udp_connection_t *
 udp_connection_get (u32 conn_index, u32 thread_index)

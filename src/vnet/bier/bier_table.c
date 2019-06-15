@@ -251,7 +251,7 @@ bier_table_mk_lfib (bier_table_t *bt)
                                           FIB_SOURCE_BIER);
 
         /*
-         * stack the entry on the forwarding chain prodcued by the
+         * stack the entry on the forwarding chain produced by the
          * path-list via the ECMP tables.
          */
         fib_path_list_contribute_forwarding(bt->bt_pl,
@@ -309,7 +309,7 @@ bier_table_mk_ecmp (index_t bti)
     }
 
     /*
-     * no oppotunity to share, this the resolving ECMP tables are unique
+     * no opportunity to share, this the resolving ECMP tables are unique
      * to this table.
      * no need to be a child of the path list, we can do nothing with any
      * notifications it would generate [not that it will].

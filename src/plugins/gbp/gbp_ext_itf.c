@@ -60,7 +60,6 @@ gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id)
 
   if (INDEX_INVALID == gxi)
     {
-      gbp_bridge_domain_t *gb;
       gbp_route_domain_t *gr;
       fib_protocol_t fproto;
       index_t gbi, gri;
@@ -81,21 +80,17 @@ gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id)
       pool_get_zero (gbp_ext_itf_pool, gx);
       gxi = gx - gbp_ext_itf_pool;
 
-      gb = gbp_bridge_domain_get (gbi);
       gr = gbp_route_domain_get (gri);
 
       gx->gx_bd = gbi;
       gx->gx_rd = gri;
+      gx->gx_itf = sw_if_index;
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {
 	gx->gx_fib_index[fproto] =
 	  gr->grd_fib_index[fib_proto_to_dpo (fproto)];
       }
-
-      gx->gx_itf = gbp_itf_add_and_lock (sw_if_index, gb->gb_bd_index);
-      gbp_itf_set_l2_input_feature (gx->gx_itf, (gxi | GBP_EXT_ITF_ID),
-				    L2INPUT_FEAT_GBP_LPM_CLASSIFY);
 
       gbp_ext_itf_db[sw_if_index] = gxi;
 
@@ -123,11 +118,6 @@ gbp_ext_itf_delete (u32 sw_if_index)
       gx = pool_elt_at_index (gbp_ext_itf_pool, gxi);
 
       GBP_EXT_ITF_DBG ("del: %U", format_gbp_ext_itf, gx);
-
-      gbp_itf_set_l2_input_feature (gx->gx_itf,
-				    (gxi | GBP_EXT_ITF_ID),
-				    L2INPUT_FEAT_NONE);
-      gbp_itf_unlock (gx->gx_itf);
 
       gbp_route_domain_unlock (gx->gx_rd);
       gbp_bridge_domain_unlock (gx->gx_bd);

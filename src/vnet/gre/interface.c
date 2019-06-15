@@ -51,7 +51,7 @@ format_gre_tunnel (u8 * s, va_list * args)
 }
 
 static gre_tunnel_t *
-gre_tunnel_db_find (const vnet_gre_add_del_tunnel_args_t * a,
+gre_tunnel_db_find (const vnet_gre_tunnel_add_del_args_t * a,
 		    u32 outer_fib_index, gre_tunnel_key_t * key)
 {
   gre_main_t *gm = &gre_main;
@@ -60,13 +60,13 @@ gre_tunnel_db_find (const vnet_gre_add_del_tunnel_args_t * a,
   if (!a->is_ipv6)
     {
       gre_mk_key4 (a->src.ip4, a->dst.ip4, outer_fib_index,
-		   a->tunnel_type, a->session_id, &key->gtk_v4);
+		   a->type, a->session_id, &key->gtk_v4);
       p = hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
     }
   else
     {
       gre_mk_key6 (&a->src.ip6, &a->dst.ip6, outer_fib_index,
-		   a->tunnel_type, a->session_id, &key->gtk_v6);
+		   a->type, a->session_id, &key->gtk_v6);
       p = hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6);
     }
 
@@ -112,14 +112,6 @@ gre_tunnel_db_remove (gre_tunnel_t * t)
   t->key = NULL;
 }
 
-static gre_tunnel_t *
-gre_tunnel_from_fib_node (fib_node_t * node)
-{
-  ASSERT (FIB_NODE_TYPE_GRE_TUNNEL == node->fn_type);
-  return ((gre_tunnel_t *) (((char *) node) -
-			    STRUCT_OFFSET_OF (gre_tunnel_t, node)));
-}
-
 /**
  * gre_tunnel_stack
  *
@@ -146,14 +138,11 @@ gre_tunnel_stack (adj_index_t ai)
   if ((vnet_hw_interface_get_flags (vnet_get_main (), gt->hw_if_index) &
        VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
     {
-      adj_nbr_midchain_unstack (ai);
+      adj_midchain_delegate_unstack (ai);
     }
   else
     {
-      adj_nbr_midchain_stack_on_fib_entry (ai,
-					   gt->fib_entry_index,
-					   fib_forw_chain_type_from_fib_proto
-					   (gt->tunnel_dst.fp_proto));
+      adj_midchain_delegate_stack (ai, gt->outer_fib_index, &gt->tunnel_dst);
     }
 }
 
@@ -182,57 +171,8 @@ gre_tunnel_restack (gre_tunnel_t * gt)
   }
 }
 
-/**
- * Function definition to backwalk a FIB node
- */
-static fib_node_back_walk_rc_t
-gre_tunnel_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
-{
-  gre_tunnel_restack (gre_tunnel_from_fib_node (node));
-
-  return (FIB_NODE_BACK_WALK_CONTINUE);
-}
-
-/**
- * Function definition to get a FIB node from its index
- */
-static fib_node_t *
-gre_tunnel_fib_node_get (fib_node_index_t index)
-{
-  gre_tunnel_t *gt;
-  gre_main_t *gm;
-
-  gm = &gre_main;
-  gt = pool_elt_at_index (gm->tunnels, index);
-
-  return (&gt->node);
-}
-
-/**
- * Function definition to inform the FIB node that its last lock has gone.
- */
-static void
-gre_tunnel_last_lock_gone (fib_node_t * node)
-{
-  /*
-   * The MPLS GRE tunnel is a root of the graph. As such
-   * it never has children and thus is never locked.
-   */
-  ASSERT (0);
-}
-
-/*
- * Virtual function table registered by MPLS GRE tunnels
- * for participation in the FIB object graph.
- */
-const static fib_node_vft_t gre_vft = {
-  .fnv_get = gre_tunnel_fib_node_get,
-  .fnv_last_lock = gre_tunnel_last_lock_gone,
-  .fnv_back_walk = gre_tunnel_back_walk,
-};
-
 static int
-vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
+vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 		     u32 outer_fib_index, u32 * sw_if_indexp)
 {
   gre_main_t *gm = &gre_main;
@@ -267,9 +207,8 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
 
   t->dev_instance = t_idx;	/* actual */
   t->user_instance = u_idx;	/* name */
-  fib_node_init (&t->node, FIB_NODE_TYPE_GRE_TUNNEL);
 
-  t->type = a->tunnel_type;
+  t->type = a->type;
   if (t->type == GRE_TUNNEL_TYPE_ERSPAN)
     t->session_id = a->session_id;
 
@@ -357,11 +296,6 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
 	}
     }
 
-  t->fib_entry_index = fib_table_entry_special_add
-    (outer_fib_index, &t->tunnel_dst, FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
-  t->sibling_index = fib_entry_child_add
-    (t->fib_entry_index, FIB_NODE_TYPE_GRE_TUNNEL, t_idx);
-
   if (t->type != GRE_TUNNEL_TYPE_L3)
     {
       t->l2_adj_index = adj_nbr_add_or_lock
@@ -376,7 +310,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
 }
 
 static int
-vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t * a,
+vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
 			u32 outer_fib_index, u32 * sw_if_indexp)
 {
   gre_main_t *gm = &gre_main;
@@ -403,10 +337,10 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t * a,
     ethernet_delete_interface (vnm, t->hw_if_index);
 
   if (t->l2_adj_index != ADJ_INDEX_INVALID)
-    adj_unlock (t->l2_adj_index);
-
-  fib_entry_child_remove (t->fib_entry_index, t->sibling_index);
-  fib_table_entry_delete_index (t->fib_entry_index, FIB_SOURCE_RR);
+    {
+      adj_midchain_delegate_unstack (t->l2_adj_index);
+      adj_unlock (t->l2_adj_index);
+    }
 
   ASSERT ((t->type != GRE_TUNNEL_TYPE_ERSPAN) || (t->gre_sn != NULL));
   if ((t->type == GRE_TUNNEL_TYPE_ERSPAN) && (t->gre_sn->ref_count-- == 1))
@@ -419,7 +353,6 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t * a,
 
   hash_unset (gm->instance_used, t->user_instance);
   gre_tunnel_db_remove (t);
-  fib_node_deinit (&t->node);
   pool_put (gm->tunnels, t);
 
   if (sw_if_indexp)
@@ -429,7 +362,7 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t * a,
 }
 
 int
-vnet_gre_add_del_tunnel (vnet_gre_add_del_tunnel_args_t * a,
+vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
 			 u32 * sw_if_indexp)
 {
   u32 outer_fib_index;
@@ -490,7 +423,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_gre_add_del_tunnel_args_t _a, *a = &_a;
+  vnet_gre_tunnel_add_del_args_t _a, *a = &_a;
   ip46_address_t src, dst;
   u32 instance = ~0;
   u32 outer_fib_id = 0;
@@ -579,7 +512,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   clib_memset (a, 0, sizeof (*a));
   a->is_add = is_add;
   a->outer_fib_id = outer_fib_id;
-  a->tunnel_type = t_type;
+  a->type = t_type;
   a->session_id = session_id;
   a->is_ipv6 = ipv6_set;
   a->instance = instance;
@@ -594,7 +527,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       clib_memcpy (&a->dst.ip6, &dst.ip6, sizeof (dst.ip6));
     }
 
-  rv = vnet_gre_add_del_tunnel (a, &sw_if_index);
+  rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
   switch (rv)
     {
@@ -621,7 +554,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     default:
       error =
-	clib_error_return (0, "vnet_gre_add_del_tunnel returned %d", rv);
+	clib_error_return (0, "vnet_gre_tunnel_add_del returned %d", rv);
       goto done;
     }
 
@@ -690,9 +623,7 @@ VLIB_CLI_COMMAND (show_gre_tunnel_command, static) = {
 clib_error_t *
 gre_interface_init (vlib_main_t * vm)
 {
-  fib_node_register_type (FIB_NODE_TYPE_GRE_TUNNEL, &gre_vft);
-
-  return 0;
+  return (NULL);
 }
 
 VLIB_INIT_FUNCTION (gre_interface_init);

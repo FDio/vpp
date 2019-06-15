@@ -96,12 +96,15 @@ class TestVxlanGbp(VppTestCase):
                                   ip_range_end):
             # add host route so dest_ip4n will not be resolved
             vip = VppIpAddress(dest_ip4)
-            cls.vapi.ip_add_del_route(vip.bytes, 32, next_hop_address)
+            cls.vapi.ip_add_del_route(dst_address=vip.bytes,
+                                      dst_address_length=32,
+                                      next_hop_address=next_hop_address)
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
                 VppIpAddress(cls.pg0.local_ip4).encode(),
                 vip.encode(),
                 vni=vni)
-            cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index, bd_id=vni)
+            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                                bd_id=vni)
 
     # Class method to start the VXLAN GBP test case.
     #  Overrides setUpClass method in VppTestCase class.
@@ -136,10 +139,10 @@ class TestVxlanGbp(VppTestCase):
                 VppIpAddress(cls.pg0.local_ip4).encode(),
                 VppIpAddress(cls.pg0.remote_ip4).encode(),
                 vni=cls.single_tunnel_bd)
-            cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index,
+            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
-            cls.vapi.sw_interface_set_l2_bridge(cls.pg1.sw_if_index,
-                                                bd_id=cls.single_tunnel_bd)
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd)
 
             # Setup vni 2 to test multicast flooding
             cls.n_ucast_tunnels = 2
@@ -147,11 +150,15 @@ class TestVxlanGbp(VppTestCase):
             cls.ucast_flood_bd = 3
             cls.create_vxlan_gbp_flood_test_bd(cls.ucast_flood_bd,
                                                cls.n_ucast_tunnels)
-            cls.vapi.sw_interface_set_l2_bridge(cls.pg3.sw_if_index,
-                                                bd_id=cls.ucast_flood_bd)
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
         except Exception:
             super(TestVxlanGbp, cls).tearDownClass()
             raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestVxlanGbp, cls).tearDownClass()
 
     def assert_eq_pkts(self, pkt1, pkt2):
         """ Verify the Ether, IP, UDP, payload are equal in both
@@ -196,7 +203,7 @@ class TestVxlanGbp(VppTestCase):
 
         self.pg_start()
 
-        # Pick first received frame and check if it's corectly encapsulated.
+        # Pick first received frame and check if it's correctly encapsulated.
         out = self.pg0.get_capture(1)
         pkt = out[0]
         self.check_encapsulation(pkt, self.single_tunnel_bd)
@@ -215,7 +222,7 @@ class TestVxlanGbp(VppTestCase):
 
         self.pg_start()
 
-        # Get packet from each tunnel and assert it's corectly encapsulated.
+        # Get packet from each tunnel and assert it's correctly encapsulated.
         out = self.pg0.get_capture(self.n_ucast_tunnels)
         for pkt in out:
             self.check_encapsulation(pkt, self.ucast_flood_bd, True)
@@ -253,11 +260,12 @@ class TestVxlanGbp(VppTestCase):
 #  @param self The object pointer.
     def tearDown(self):
         super(TestVxlanGbp, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
-            self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
-            self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
-            self.logger.info(self.vapi.cli("show error"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
+        self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
+        self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
+        self.logger.info(self.vapi.cli("show error"))
 
 
 if __name__ == '__main__':

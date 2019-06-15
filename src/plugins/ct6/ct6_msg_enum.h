@@ -1,5 +1,8 @@
+
 /*
- * Copyright (c) 2019 Cisco and/or its affiliates.
+ * ct6_msg_enum.h - skeleton vpp engine plug-in message enumeration
+ *
+ * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,23 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef included_ct6_msg_enum_h
+#define included_ct6_msg_enum_h
 
-#ifndef __GBP_SCLASS_H__
-#define __GBP_SCLASS_H__
+#include <vppinfra/byte_order.h>
 
-#include <plugins/gbp/gbp.h>
+#define vl_msg_id(n,h) n,
+typedef enum {
+#include <ct6/ct6_all_api_h.h>
+    /* We'll want to know how many messages IDs we need... */
+    VL_MSG_FIRST_AVAILABLE,
+} vl_msg_id_t;
+#undef vl_msg_id
 
-extern void gbp_sclass_enable_ip (u32 sw_if_index);
-extern void gbp_sclass_enable_l2 (u32 sw_if_index);
-extern void gbp_sclass_disable_ip (u32 sw_if_index);
-extern void gbp_sclass_disable_l2 (u32 sw_if_index);
-
-#endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+#endif /* included_ct6_msg_enum_h */

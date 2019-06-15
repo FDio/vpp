@@ -1,5 +1,6 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,35 +14,54 @@
  * limitations under the License.
  */
 
-option version = "1.0.1";
+option version = "2.0.0";
 
-/** \brief Create or delete a GRE tunnel
+import "vnet/ip/ip_types.api";
+
+/** \brief A GRE tunnel type
+*/
+enum gre_tunnel_type
+{
+  GRE_API_TUNNEL_TYPE_L3 = 0,
+  GRE_API_TUNNEL_TYPE_TEB,
+  GRE_API_TUNNEL_TYPE_ERSPAN,
+};
+
+/** \brief A GRE tunnel
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - Use 1 to create the tunnel, 0 to remove it
-    @param is_ipv6 - Use 0 for IPv4, 1 for IPv6
     @param tunnel_type - 0: L3, 1: TEB, 2: ERSPAN
     @param instance - optional unique custom device instance, else ~0.
-    @param src_address - Source IP address
-    @param dst_address - Destination IP address, can be multicast
+    @param src - Source IP address
+    @param dst - Destination IP address, can be multicast
     @param outer_fib_id - Encap FIB table ID
     @param session_id - session for ERSPAN tunnel, range 0-1023
+    @param sw_if_index - ignored on create/delete, present in details.
 */
-define gre_add_del_tunnel
+typedef gre_tunnel
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   u8 is_ipv6;
-  u8 tunnel_type;
-  u32 instance;		/* If non-~0, specifies a custom dev instance */
-  u8 src_address[16];
-  u8 dst_address[16];
-  u32 outer_fib_id;
   u16 session_id;
+  vl_api_gre_tunnel_type_t type;
+  u32 instance;
+  u32 outer_fib_id;
+  u32 sw_if_index;
+  vl_api_address_t src;
+  vl_api_address_t dst;
 };
 
-define gre_add_del_tunnel_reply
+define gre_tunnel_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_gre_tunnel_t tunnel;
+};
+
+define gre_tunnel_add_del_reply
 {
   u32 context;
   i32 retval;
@@ -58,14 +78,7 @@ define gre_tunnel_dump
 define gre_tunnel_details
 {
   u32 context;
-  u32 sw_if_index;
-  u32 instance;
-  u8 is_ipv6;
-  u8 tunnel_type;
-  u8 src_address[16];
-  u8 dst_address[16];
-  u32 outer_fib_id;
-  u16 session_id;
+  vl_api_gre_tunnel_t tunnel;
 };
 
 /*

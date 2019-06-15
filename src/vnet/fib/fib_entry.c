@@ -761,7 +761,7 @@ fib_entry_create_special (u32 fib_index,
     fib_entry_t *fib_entry;
 
     /*
-     * create and initiliase the new enty
+     * create and initialize the new enty
      */
     fib_entry = fib_entry_alloc(fib_index, prefix, &fib_entry_index);
 
@@ -1111,9 +1111,9 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
     best_source = fib_entry_src_get_source(bsrc);
     bflags = fib_entry_src_get_flags(bsrc);
 
-    sflag = fib_entry_src_action_remove_or_update_inherit(fib_entry, source);
-
     FIB_ENTRY_DBG(fib_entry, "special remove:%U", format_fib_source, source);
+
+    sflag = fib_entry_src_action_remove_or_update_inherit(fib_entry, source);
 
     /*
      * if the path list for the source passed is invalid,
@@ -1193,7 +1193,7 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
 /**
  * fib_entry_inherit
  *
- * If the source on the cover is inherting then push this source
+ * If the source on the cover is inheriting then push this source
  * down to the covered.
  */
 void
@@ -1275,7 +1275,7 @@ fib_entry_cover_changed (fib_node_index_t fib_entry_index)
     fib_attached_export_cover_change(fib_entry);
 
     /*
-     * propagate the notificuation to each of the added sources
+     * propagate the notification to each of the added sources
      */
     index = 0;
     FOR_EACH_SRC_ADDED(fib_entry, esrc, source,
@@ -1349,7 +1349,7 @@ fib_entry_cover_updated (fib_node_index_t fib_entry_index)
     fib_attached_export_cover_update(fib_entry);
 
     /*
-     * propagate the notificuation to each of the added sources
+     * propagate the notification to each of the added sources
      */
     index = 0;
     FOR_EACH_SRC_ADDED(fib_entry, esrc, source,
@@ -1479,7 +1479,7 @@ fib_entry_is_host (fib_node_index_t fib_entry_index)
 }
 
 /**
- * Return !0 is the entry is reoslved, i.e. will return a valid forwarding
+ * Return !0 is the entry is resolved, i.e. will return a valid forwarding
  * chain
  */
 int
@@ -1552,9 +1552,9 @@ fib_ip4_address_compare (const ip4_address_t * a1,
                          const ip4_address_t * a2)
 {
     /*
-     * IP addresses are unsiged ints. the return value here needs to be signed
+     * IP addresses are unsigned ints. the return value here needs to be signed
      * a simple subtraction won't cut it.
-     * If the addresses are the same, the sort order is undefiend, so phoey.
+     * If the addresses are the same, the sort order is undefined, so phoey.
      */
     return ((clib_net_to_host_u32(a1->data_u32) >
 	     clib_net_to_host_u32(a2->data_u32) ) ?

@@ -22,7 +22,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
-
+#include <vlibapi/api_helper_macros.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
@@ -51,47 +51,6 @@
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
 #undef vl_api_version
 
-/*
- * A handy macro to set up a message reply.
- * Assumes that the following variables are available:
- * mp - pointer to request message
- * rmp - pointer to reply message type
- * rv - return value
- */
-
-#define VXLAN_GPE_REPLY_MACRO(t)                                \
-do {                                                            \
-    svm_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-/* *INDENT-OFF* */
-#define VXLAN_GPE_REPLY_MACRO2(t, body)                         \
-do {                                                            \
-    svm_queue_t * q;                             \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t));                               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-/* *INDENT-ON* */
-
 /* List of message types that this plugin understands */
 
 #define foreach_vxlan_gpe_plugin_api_msg                               \
@@ -109,7 +68,6 @@ static void vl_api_vxlan_gpe_ioam_enable_t_handler
   int rv = 0;
   vl_api_vxlan_gpe_ioam_enable_reply_t *rmp;
   clib_error_t *error;
-  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
 
   /* Ignoring the profile id as currently a single profile
    * is supported */
@@ -121,7 +79,7 @@ static void vl_api_vxlan_gpe_ioam_enable_t_handler
       rv = clib_error_get_code (error);
     }
 
-  VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_ENABLE_REPLY);
+  REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_ENABLE_REPLY);
 }
 
 static void vl_api_vxlan_gpe_ioam_disable_t_handler
@@ -130,7 +88,6 @@ static void vl_api_vxlan_gpe_ioam_disable_t_handler
   int rv = 0;
   vl_api_vxlan_gpe_ioam_disable_reply_t *rmp;
   clib_error_t *error;
-  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
 
   /* Ignoring the profile id as currently a single profile
    * is supported */
@@ -141,7 +98,7 @@ static void vl_api_vxlan_gpe_ioam_disable_t_handler
       rv = clib_error_get_code (error);
     }
 
-  VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_DISABLE_REPLY);
+  REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_DISABLE_REPLY);
 }
 
 static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
@@ -150,7 +107,6 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
   int rv = 0;
   vl_api_vxlan_gpe_ioam_vni_enable_reply_t *rmp;
   clib_error_t *error;
-  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   vxlan4_gpe_tunnel_key_t key4;
   uword *p = NULL;
   vxlan_gpe_main_t *gm = &vxlan_gpe_main;
@@ -190,7 +146,7 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
       rv = clib_error_get_code (error);
     }
 
-  VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_VNI_ENABLE_REPLY);
+  REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_VNI_ENABLE_REPLY);
 }
 
 
@@ -200,7 +156,6 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
   int rv = 0;
   vl_api_vxlan_gpe_ioam_vni_enable_reply_t *rmp;
   clib_error_t *error;
-  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   vxlan4_gpe_tunnel_key_t key4;
   uword *p = NULL;
   vxlan_gpe_main_t *gm = &vxlan_gpe_main;
@@ -238,7 +193,7 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
     }
 
 
-  VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_VNI_DISABLE_REPLY);
+  REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_VNI_DISABLE_REPLY);
 }
 
 static void vl_api_vxlan_gpe_ioam_transit_enable_t_handler
@@ -260,7 +215,7 @@ static void vl_api_vxlan_gpe_ioam_transit_enable_t_handler
 					       mp->is_ipv6 ? 0 : 1,
 					       1 /* is_add */ );
 
-  VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_ENABLE_REPLY);
+  REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_ENABLE_REPLY);
 }
 
 static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
@@ -281,7 +236,7 @@ static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
 					dst_addr,
 					ntohl (mp->outer_fib_index),
 					mp->is_ipv6 ? 0 : 1);
-  VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY);
+  REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY);
 }
 
 /* Set up the API message handling tables */

@@ -26,7 +26,6 @@ to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
   payload.is_prohibit = 0;
   payload.is_local = 0;
   payload.is_classify = 0;
-  payload.is_multipath = 0;
   payload.is_resolve_host = 0;
   payload.is_resolve_attached = 0;
 
@@ -37,6 +36,7 @@ to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
   if (route::path::special_t::STANDARD == p.type()) {
     uint8_t path_v6;
     to_bytes(p.nh(), &path_v6, payload.next_hop_address);
+    payload.next_hop_sw_if_index = 0xffffffff;
 
     if (p.rd()) {
       payload.next_hop_table_id = p.rd()->table_id();
@@ -55,7 +55,7 @@ to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
   }
   payload.next_hop_weight = p.weight();
   payload.next_hop_preference = p.preference();
-  payload.next_hop_via_label = 0;
+  payload.next_hop_via_label = 0x100000;
   payload.classify_table_index = 0;
 }
 

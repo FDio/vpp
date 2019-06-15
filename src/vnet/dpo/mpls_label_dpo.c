@@ -18,6 +18,7 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/dpo/drop_dpo.h>
 
+#ifndef CLIB_MARCH_VARIANT
 /*
  * pool of all MPLS Label DPOs
  */
@@ -247,6 +248,7 @@ mpls_label_dpo_unlock (dpo_id_t *dpo)
 	pool_put(mpls_label_dpo_pool, mld);
     }
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * @brief A struct to hold tracing information for the MPLS label imposition
@@ -902,8 +904,7 @@ format_mpls_label_imposition_trace (u8 * s, va_list * args)
     return (s);
 }
 
-static uword
-mpls_mpls_label_imposition_pipe (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_mpls_label_imposition_pipe_node) (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
@@ -913,7 +914,6 @@ mpls_mpls_label_imposition_pipe (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_mpls_label_imposition_pipe_node) = {
-    .function = mpls_mpls_label_imposition_pipe,
     .name = "mpls-label-imposition-pipe",
     .vector_size = sizeof (u32),
 
@@ -923,11 +923,8 @@ VLIB_REGISTER_NODE (mpls_mpls_label_imposition_pipe_node) = {
         [0] = "mpls-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_mpls_label_imposition_pipe_node,
-                              mpls_mpls_label_imposition_pipe)
 
-static uword
-ip4_mpls_label_imposition_pipe (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_mpls_label_imposition_pipe_node) (vlib_main_t * vm,
                                 vlib_node_runtime_t * node,
                                 vlib_frame_t * frame)
 {
@@ -937,7 +934,6 @@ ip4_mpls_label_imposition_pipe (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip4_mpls_label_imposition_pipe_node) = {
-    .function = ip4_mpls_label_imposition_pipe,
     .name = "ip4-mpls-label-imposition-pipe",
     .vector_size = sizeof (u32),
 
@@ -947,11 +943,8 @@ VLIB_REGISTER_NODE (ip4_mpls_label_imposition_pipe_node) = {
         [0] = "ip4-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_mpls_label_imposition_pipe_node,
-                              ip4_mpls_label_imposition_pipe)
 
-static uword
-ip6_mpls_label_imposition_pipe (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mpls_label_imposition_pipe_node) (vlib_main_t * vm,
                                 vlib_node_runtime_t * node,
                                 vlib_frame_t * frame)
 {
@@ -961,7 +954,6 @@ ip6_mpls_label_imposition_pipe (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip6_mpls_label_imposition_pipe_node) = {
-    .function = ip6_mpls_label_imposition_pipe,
     .name = "ip6-mpls-label-imposition-pipe",
     .vector_size = sizeof (u32),
 
@@ -971,11 +963,8 @@ VLIB_REGISTER_NODE (ip6_mpls_label_imposition_pipe_node) = {
         [0] = "ip6-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_mpls_label_imposition_pipe_node,
-                              ip6_mpls_label_imposition_pipe)
 
-static uword
-ethernet_mpls_label_imposition_pipe (vlib_main_t * vm,
+VLIB_NODE_FN (ethernet_mpls_label_imposition_pipe_node) (vlib_main_t * vm,
                                      vlib_node_runtime_t * node,
                                      vlib_frame_t * frame)
 {
@@ -985,7 +974,6 @@ ethernet_mpls_label_imposition_pipe (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ethernet_mpls_label_imposition_pipe_node) = {
-    .function = ethernet_mpls_label_imposition_pipe,
     .name = "ethernet-mpls-label-imposition-pipe",
     .vector_size = sizeof (u32),
 
@@ -996,11 +984,7 @@ VLIB_REGISTER_NODE (ethernet_mpls_label_imposition_pipe_node) = {
     }
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ethernet_mpls_label_imposition_pipe_node,
-                              ethernet_mpls_label_imposition_pipe)
-
-static uword
-mpls_mpls_label_imposition_uniform (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_mpls_label_imposition_uniform_node) (vlib_main_t * vm,
                                     vlib_node_runtime_t * node,
                                     vlib_frame_t * frame)
 {
@@ -1010,7 +994,6 @@ mpls_mpls_label_imposition_uniform (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_mpls_label_imposition_uniform_node) = {
-    .function = mpls_mpls_label_imposition_uniform,
     .name = "mpls-label-imposition-uniform",
     .vector_size = sizeof (u32),
 
@@ -1020,11 +1003,8 @@ VLIB_REGISTER_NODE (mpls_mpls_label_imposition_uniform_node) = {
         [0] = "mpls-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_mpls_label_imposition_uniform_node,
-                              mpls_mpls_label_imposition_uniform)
 
-static uword
-ip4_mpls_label_imposition_uniform (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_mpls_label_imposition_uniform_node) (vlib_main_t * vm,
                                    vlib_node_runtime_t * node,
                                    vlib_frame_t * frame)
 {
@@ -1034,7 +1014,6 @@ ip4_mpls_label_imposition_uniform (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip4_mpls_label_imposition_uniform_node) = {
-    .function = ip4_mpls_label_imposition_uniform,
     .name = "ip4-mpls-label-imposition-uniform",
     .vector_size = sizeof (u32),
 
@@ -1044,11 +1023,8 @@ VLIB_REGISTER_NODE (ip4_mpls_label_imposition_uniform_node) = {
         [0] = "ip4-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_mpls_label_imposition_uniform_node,
-                              ip4_mpls_label_imposition_uniform)
 
-static uword
-ip6_mpls_label_imposition_uniform (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mpls_label_imposition_uniform_node) (vlib_main_t * vm,
                                    vlib_node_runtime_t * node,
                                    vlib_frame_t * frame)
 {
@@ -1058,7 +1034,6 @@ ip6_mpls_label_imposition_uniform (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip6_mpls_label_imposition_uniform_node) = {
-    .function = ip6_mpls_label_imposition_uniform,
     .name = "ip6-mpls-label-imposition-uniform",
     .vector_size = sizeof (u32),
 
@@ -1068,11 +1043,8 @@ VLIB_REGISTER_NODE (ip6_mpls_label_imposition_uniform_node) = {
         [0] = "ip6-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_mpls_label_imposition_uniform_node,
-                              ip6_mpls_label_imposition_uniform)
 
-static uword
-ethernet_mpls_label_imposition_uniform (vlib_main_t * vm,
+VLIB_NODE_FN (ethernet_mpls_label_imposition_uniform_node) (vlib_main_t * vm,
                                         vlib_node_runtime_t * node,
                                         vlib_frame_t * frame)
 {
@@ -1082,7 +1054,6 @@ ethernet_mpls_label_imposition_uniform (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ethernet_mpls_label_imposition_uniform_node) = {
-    .function = ethernet_mpls_label_imposition_uniform,
     .name = "ethernet-mpls-label-imposition-uniform",
     .vector_size = sizeof (u32),
 
@@ -1093,11 +1064,8 @@ VLIB_REGISTER_NODE (ethernet_mpls_label_imposition_uniform_node) = {
     }
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ethernet_mpls_label_imposition_uniform_node,
-                              ethernet_mpls_label_imposition_uniform)
 
-static uword
-ip4_mpls_label_imposition_pipe_no_ip_ttl_decr (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_mpls_label_imposition_pipe_no_ip_ttl_decr_node) (vlib_main_t * vm,
                                                vlib_node_runtime_t * node,
                                                vlib_frame_t * frame)
 {
@@ -1107,7 +1075,6 @@ ip4_mpls_label_imposition_pipe_no_ip_ttl_decr (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip4_mpls_label_imposition_pipe_no_ip_ttl_decr_node) = {
-    .function = ip4_mpls_label_imposition_pipe_no_ip_ttl_decr,
     .name = "ip4-mpls-label-imposition-pipe-no-ip-ttl-decr",
     .vector_size = sizeof (u32),
 
@@ -1117,11 +1084,8 @@ VLIB_REGISTER_NODE (ip4_mpls_label_imposition_pipe_no_ip_ttl_decr_node) = {
         [0] = "ip4-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_mpls_label_imposition_pipe_no_ip_ttl_decr_node,
-                              ip4_mpls_label_imposition_pipe_no_ip_ttl_decr)
 
-static uword
-ip6_mpls_label_imposition_pipe_no_ip_ttl_decr (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mpls_label_imposition_pipe_no_ip_ttl_decr_node) (vlib_main_t * vm,
                                                vlib_node_runtime_t * node,
                                                vlib_frame_t * frame)
 {
@@ -1131,7 +1095,6 @@ ip6_mpls_label_imposition_pipe_no_ip_ttl_decr (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip6_mpls_label_imposition_pipe_no_ip_ttl_decr_node) = {
-    .function = ip6_mpls_label_imposition_pipe_no_ip_ttl_decr,
     .name = "ip6-mpls-label-imposition-pipe-no-ip-ttl-decr",
     .vector_size = sizeof (u32),
 
@@ -1141,11 +1104,8 @@ VLIB_REGISTER_NODE (ip6_mpls_label_imposition_pipe_no_ip_ttl_decr_node) = {
         [0] = "ip6-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_mpls_label_imposition_pipe_no_ip_ttl_decr_node,
-                              ip6_mpls_label_imposition_pipe_no_ip_ttl_decr)
 
-static uword
-ip4_mpls_label_imposition_uniform_no_ip_ttl_decr (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_mpls_label_imposition_uniform_no_ip_ttl_decr_node) (vlib_main_t * vm,
                                                   vlib_node_runtime_t * node,
                                                   vlib_frame_t * frame)
 {
@@ -1156,7 +1116,6 @@ ip4_mpls_label_imposition_uniform_no_ip_ttl_decr (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip4_mpls_label_imposition_uniform_no_ip_ttl_decr_node) = {
-    .function = ip4_mpls_label_imposition_uniform_no_ip_ttl_decr,
     .name = "ip4-mpls-label-imposition-uniform-no-ip-ttl-decr",
     .vector_size = sizeof (u32),
 
@@ -1166,11 +1125,8 @@ VLIB_REGISTER_NODE (ip4_mpls_label_imposition_uniform_no_ip_ttl_decr_node) = {
         [0] = "ip4-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_mpls_label_imposition_uniform_no_ip_ttl_decr_node,
-                              ip4_mpls_label_imposition_uniform_no_ip_ttl_decr)
 
-static uword
-ip6_mpls_label_imposition_uniform_no_ip_ttl_decr (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mpls_label_imposition_uniform_no_ip_ttl_decr_node) (vlib_main_t * vm,
                                                   vlib_node_runtime_t * node,
                                                   vlib_frame_t * frame)
 {
@@ -1181,7 +1137,6 @@ ip6_mpls_label_imposition_uniform_no_ip_ttl_decr (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip6_mpls_label_imposition_uniform_no_ip_ttl_decr_node) = {
-    .function = ip6_mpls_label_imposition_uniform_no_ip_ttl_decr,
     .name = "ip6-mpls-label-imposition-uniform-no-ip-ttl-decr",
     .vector_size = sizeof (u32),
 
@@ -1191,10 +1146,9 @@ VLIB_REGISTER_NODE (ip6_mpls_label_imposition_uniform_no_ip_ttl_decr_node) = {
         [0] = "ip6-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_mpls_label_imposition_uniform_no_ip_ttl_decr_node,
-                              ip6_mpls_label_imposition_uniform_no_ip_ttl_decr)
 
 
+#ifndef CLIB_MARCH_VARIANT
 static void
 mpls_label_dpo_mem_show (void)
 {
@@ -1359,3 +1313,4 @@ mpls_label_dpo_get_type (mpls_label_dpo_flags_t flags)
 {
     return (mpls_label_dpo_types[flags]);
 }
+#endif /* CLIB_MARCH_VARIANT */

@@ -23,6 +23,7 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/ipsec-gre/ipsec_gre.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -43,43 +44,43 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                             \
-_(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
+_(IPSEC_GRE_TUNNEL_ADD_DEL, ipsec_gre_tunnel_add_del)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)
 
 static void
-vl_api_ipsec_gre_add_del_tunnel_t_handler (vl_api_ipsec_gre_add_del_tunnel_t *
+vl_api_ipsec_gre_tunnel_add_del_t_handler (vl_api_ipsec_gre_tunnel_add_del_t *
 					   mp)
 {
-  vl_api_ipsec_gre_add_del_tunnel_reply_t *rmp;
+  vl_api_ipsec_gre_tunnel_add_del_reply_t *rmp;
   int rv = 0;
-  vnet_ipsec_gre_add_del_tunnel_args_t _a, *a = &_a;
+  ipsec_gre_tunnel_add_del_args_t _a, *a = &_a;
   u32 sw_if_index = ~0;
 
+  clib_memset (a, 0, sizeof (*a));
+
+  ip4_address_decode (mp->tunnel.src, &a->src);
+  ip4_address_decode (mp->tunnel.dst, &a->dst);
+
   /* Check src & dst are different */
-  if (memcmp (mp->src_address, mp->dst_address, 4) == 0)
+  if (a->src.as_u32 == a->dst.as_u32)
     {
       rv = VNET_API_ERROR_SAME_SRC_DST;
       goto out;
     }
 
-  clib_memset (a, 0, sizeof (*a));
-
-  /* ip addresses sent in network byte order */
-  clib_memcpy (&(a->src), mp->src_address, 4);
-  clib_memcpy (&(a->dst), mp->dst_address, 4);
   a->is_add = mp->is_add;
-  a->lsa = ntohl (mp->local_sa_id);
-  a->rsa = ntohl (mp->remote_sa_id);
+  a->local_sa_id = ntohl (mp->tunnel.local_sa_id);
+  a->remote_sa_id = ntohl (mp->tunnel.remote_sa_id);
 
-  rv = vnet_ipsec_gre_add_del_tunnel (a, &sw_if_index);
+  rv = vnet_ipsec_gre_tunnel_add_del (a, &sw_if_index);
 
 out:
-    /* *INDENT-OFF* */
-    REPLY_MACRO2(VL_API_GRE_ADD_DEL_TUNNEL_REPLY,
-    ({
-        rmp->sw_if_index = ntohl (sw_if_index);
-    }));
-    /* *INDENT-ON* */
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_IPSEC_GRE_TUNNEL_ADD_DEL_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (sw_if_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void send_ipsec_gre_tunnel_details
@@ -90,11 +91,12 @@ static void send_ipsec_gre_tunnel_details
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_IPSEC_GRE_TUNNEL_DETAILS);
-  clib_memcpy (rmp->src_address, &(t->tunnel_src), 4);
-  clib_memcpy (rmp->dst_address, &(t->tunnel_dst), 4);
-  rmp->sw_if_index = htonl (t->sw_if_index);
-  rmp->local_sa_id = htonl (t->local_sa_id);
-  rmp->remote_sa_id = htonl (t->remote_sa_id);
+
+  ip4_address_encode (&t->tunnel_src, rmp->tunnel.src);
+  ip4_address_encode (&t->tunnel_dst, rmp->tunnel.dst);
+  rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+  rmp->tunnel.local_sa_id = htonl (t->local_sa_id);
+  rmp->tunnel.remote_sa_id = htonl (t->remote_sa_id);
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);

@@ -141,7 +141,6 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
 
   p.id = ntohl (mp->entry.spd_id);
   p.priority = ntohl (mp->entry.priority);
-  p.is_outbound = mp->entry.is_outbound;
 
   itype = ip_address_decode (&mp->entry.remote_address_start, &p.raddr.start);
   ip_address_decode (&mp->entry.remote_address_stop, &p.raddr.stop);
@@ -151,10 +150,11 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
   p.is_ipv6 = (itype == IP46_TYPE_IP6);
 
   p.protocol = mp->entry.protocol;
-  p.rport.start = ntohs (mp->entry.remote_port_start);
-  p.rport.stop = ntohs (mp->entry.remote_port_stop);
-  p.lport.start = ntohs (mp->entry.local_port_start);
-  p.lport.stop = ntohs (mp->entry.local_port_stop);
+  /* leave the ports in network order */
+  p.rport.start = mp->entry.remote_port_start;
+  p.rport.stop = mp->entry.remote_port_stop;
+  p.lport.start = mp->entry.local_port_start;
+  p.lport.stop = mp->entry.local_port_stop;
 
   rv = ipsec_spd_action_decode (mp->entry.policy, &p.policy);
 
@@ -169,6 +169,11 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
       goto out;
     }
   p.sa_id = ntohl (mp->entry.sa_id);
+  rv =
+    ipsec_policy_mk_type (mp->entry.is_outbound, p.is_ipv6, p.policy,
+			  &p.type);
+  if (rv)
+    goto out;
 
   rv = ipsec_add_del_policy (vm, &p, mp->is_add, &stat_index);
   if (rv)
@@ -202,7 +207,7 @@ ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
       *out = IPSEC_PROTOCOL_AH;
       return (0);
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_INVALID_PROTOCOL);
 }
 
 static vl_api_ipsec_proto_t
@@ -232,7 +237,7 @@ ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
       foreach_ipsec_crypto_alg
 #undef _
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_INVALID_ALGORITHM);
 }
 
 static vl_api_ipsec_crypto_alg_t
@@ -265,7 +270,7 @@ ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
       foreach_ipsec_integ_alg
 #undef _
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_INVALID_ALGORITHM);
 }
 
 static vl_api_ipsec_integ_alg_t
@@ -303,11 +308,18 @@ ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in)
   ipsec_sa_flags_t flags = IPSEC_SA_FLAG_NONE;
   in = clib_net_to_host_u32 (in);
 
-#define _(v,f,s) if (in & IPSEC_API_SAD_FLAG_##f)    \
-    flags |= IPSEC_SA_FLAG_##f;
-  foreach_ipsec_sa_flags
-#undef _
-    return (flags);
+  if (in & IPSEC_API_SAD_FLAG_USE_ESN)
+    flags |= IPSEC_SA_FLAG_USE_ESN;
+  if (in & IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY)
+    flags |= IPSEC_SA_FLAG_USE_ANTI_REPLAY;
+  if (in & IPSEC_API_SAD_FLAG_IS_TUNNEL)
+    flags |= IPSEC_SA_FLAG_IS_TUNNEL;
+  if (in & IPSEC_API_SAD_FLAG_IS_TUNNEL_V6)
+    flags |= IPSEC_SA_FLAG_IS_TUNNEL_V6;
+  if (in & IPSEC_API_SAD_FLAG_UDP_ENCAP)
+    flags |= IPSEC_SA_FLAG_UDP_ENCAP;
+
+  return (flags);
 }
 
 static vl_api_ipsec_sad_flags_t
@@ -315,15 +327,15 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 {
   vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
 
-  if (sa->use_esn)
-    flags |= IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM;
-  if (sa->use_anti_replay)
+  if (ipsec_sa_is_set_USE_ESN (sa))
+    flags |= IPSEC_API_SAD_FLAG_USE_ESN;
+  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     flags |= IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY;
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL;
-  if (sa->is_tunnel_ip6)
+  if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
     flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL_V6;
-  if (sa->udp_encap)
+  if (ipsec_sa_is_set_UDP_ENCAP (sa))
     flags |= IPSEC_API_SAD_FLAG_UDP_ENCAP;
 
   return clib_host_to_net_u32 (flags);
@@ -342,7 +354,7 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ipsec_integ_alg_t integ_alg;
   ipsec_protocol_t proto;
   ipsec_sa_flags_t flags;
-  u32 id, spi, sa_index;
+  u32 id, spi, sa_index = ~0;
   int rv;
 
 #if WITH_LIBSSL > 0
@@ -373,12 +385,11 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ip_address_decode (&mp->entry.tunnel_src, &tun_src);
   ip_address_decode (&mp->entry.tunnel_dst, &tun_dst);
 
-
   if (mp->is_add)
     rv = ipsec_sa_add (id, spi, proto,
 		       crypto_alg, &crypto_key,
 		       integ_alg, &integ_key, flags,
-		       0, &tun_src, &tun_dst, &sa_index);
+		       0, mp->entry.salt, &tun_src, &tun_dst, &sa_index);
   else
     rv = ipsec_sa_del (id);
 
@@ -466,7 +477,8 @@ send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
 
   mp->entry.spd_id = htonl (p->id);
   mp->entry.priority = htonl (p->priority);
-  mp->entry.is_outbound = p->is_outbound;
+  mp->entry.is_outbound = ((p->type == IPSEC_SPD_POLICY_IP6_OUTBOUND) ||
+			   (p->type == IPSEC_SPD_POLICY_IP4_OUTBOUND));
 
   ip_address_encode (&p->laddr.start, IP46_TYPE_ANY,
 		     &mp->entry.local_address_start);
@@ -476,10 +488,10 @@ send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
 		     &mp->entry.remote_address_start);
   ip_address_encode (&p->raddr.stop, IP46_TYPE_ANY,
 		     &mp->entry.remote_address_stop);
-  mp->entry.local_port_start = htons (p->lport.start);
-  mp->entry.local_port_stop = htons (p->lport.stop);
-  mp->entry.remote_port_start = htons (p->rport.start);
-  mp->entry.remote_port_stop = htons (p->rport.stop);
+  mp->entry.local_port_start = p->lport.start;
+  mp->entry.local_port_stop = p->lport.stop;
+  mp->entry.remote_port_start = p->rport.start;
+  mp->entry.remote_port_stop = p->rport.stop;
   mp->entry.protocol = p->protocol;
   mp->entry.policy = ipsec_spd_action_encode (p->policy);
   mp->entry.sa_id = htonl (p->sa_id);
@@ -492,7 +504,7 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
 {
   vl_api_registration_t *reg;
   ipsec_main_t *im = &ipsec_main;
-  ipsec_spd_policy_t ptype;
+  ipsec_spd_policy_type_t ptype;
   ipsec_policy_t *policy;
   ipsec_spd_t *spd;
   uword *p;
@@ -610,6 +622,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
   u32 sw_if_index = ~0;
+  ip46_type_t itype;
   int rv;
 
 #if WITH_LIBSSL > 0
@@ -630,8 +643,10 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   tun.remote_integ_key_len = mp->remote_integ_key_len;
   tun.udp_encap = mp->udp_encap;
   tun.tx_table_id = ntohl (mp->tx_table_id);
-  memcpy (&tun.local_ip.ip4, mp->local_ip, 4);
-  memcpy (&tun.remote_ip.ip4, mp->remote_ip, 4);
+  tun.salt = mp->salt;
+  itype = ip_address_decode (&mp->local_ip, &tun.local_ip);
+  itype = ip_address_decode (&mp->remote_ip, &tun.remote_ip);
+  tun.is_ip6 = (IP46_TYPE_IP6 == itype);
   memcpy (&tun.local_crypto_key, &mp->local_crypto_key,
 	  mp->local_crypto_key_len);
   memcpy (&tun.remote_crypto_key, &mp->remote_crypto_key,
@@ -682,7 +697,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
 
   mp->entry.flags = ipsec_sad_flags_encode (sa);
 
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
       ip_address_encode (&sa->tunnel_src_addr, IP46_TYPE_ANY,
 			 &mp->entry.tunnel_src);
@@ -694,12 +709,12 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   mp->salt = clib_host_to_net_u32 (sa->salt);
   mp->seq_outbound = clib_host_to_net_u64 (((u64) sa->seq));
   mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->last_seq));
-  if (sa->use_esn)
+  if (ipsec_sa_is_set_USE_ESN (sa))
     {
       mp->seq_outbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
       mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->last_seq_hi));
     }
-  if (sa->use_anti_replay)
+  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
 
   vl_api_send_msg (reg, (u8 *) mp);
@@ -772,7 +787,7 @@ vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
       if (mp->alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
 	  mp->alg >= IPSEC_CRYPTO_N_ALG)
 	{
-	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  rv = VNET_API_ERROR_INVALID_ALGORITHM;
 	  goto out;
 	}
       break;
@@ -780,7 +795,7 @@ vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
     case IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG:
       if (mp->alg >= IPSEC_INTEG_N_ALG)
 	{
-	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  rv = VNET_API_ERROR_INVALID_ALGORITHM;
 	  goto out;
 	}
       break;

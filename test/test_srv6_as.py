@@ -9,6 +9,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
 from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
@@ -25,6 +26,10 @@ class TestSRv6(VppTestCase):
     @classmethod
     def setUpClass(self):
         super(TestSRv6, self).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestSRv6, cls).tearDownClass()
 
     def setUp(self):
         """ Perform test setup before each test case.
@@ -488,7 +493,7 @@ class TestSRv6(VppTestCase):
         tx_ip.chksum = None
         # read back the pkt (with str()) to force computing these fields
         # probably other ways to accomplish this are possible
-        tx_ip = IP(str(tx_ip))
+        tx_ip = IP(scapy.compat.raw(tx_ip))
 
         self.assertEqual(payload, tx_ip)
 
@@ -537,7 +542,7 @@ class TestSRv6(VppTestCase):
             payload = rx_ip.payload
 
         # the whole rx'ed pkt beyond SRH should be equal to tx'ed pkt
-        self.assertEqual(Ether(str(payload)), tx_ether)
+        self.assertEqual(Ether(scapy.compat.raw(payload)), tx_ether)
 
         self.logger.debug("packet verification: SUCCESS")
 
@@ -590,7 +595,7 @@ class TestSRv6(VppTestCase):
         tx_ip2.chksum = None
         # read back the pkt (with str()) to force computing these fields
         # probably other ways to accomplish this are possible
-        tx_ip2 = IP(str(tx_ip2))
+        tx_ip2 = IP(scapy.compat.raw(tx_ip2))
 
         self.assertEqual(rx_ip, tx_ip2)
 
@@ -609,7 +614,7 @@ class TestSRv6(VppTestCase):
         tx_ip = tx_pkt.getlayer(IPv6)
         # we can't just get the 2nd Ether layer
         # get the Raw content and dissect it as Ether
-        tx_eth1 = Ether(str(tx_pkt[Raw]))
+        tx_eth1 = Ether(scapy.compat.raw(tx_pkt[Raw]))
 
         # verify if rx'ed packet has no SRH
         self.assertFalse(rx_pkt.haslayer(IPv6ExtHdrSegmentRouting))
@@ -655,7 +660,7 @@ class TestSRv6(VppTestCase):
             # read back the dumped packet (with str())
             # to force computing these fields
             # probably other ways are possible
-            p = Ether(str(p))
+            p = Ether(scapy.compat.raw(p))
             payload_info.data = p.copy()
             self.logger.debug(ppp("Created packet:", p))
             pkts.append(p)
@@ -810,14 +815,14 @@ class TestSRv6(VppTestCase):
         # but packet[Raw] gives the complete payload
         # (incl L2 header) for the T.Encaps L2 case
         try:
-            payload_info = self.payload_to_info(str(packet[Raw]))
+            payload_info = self.payload_to_info(packet[Raw])
 
         except:
             # remote L2 header from packet[Raw]:
             # take packet[Raw], convert it to an Ether layer
             # and then extract Raw from it
             payload_info = self.payload_to_info(
-                str(Ether(str(packet[Raw]))[Raw]))
+                Ether(scapy.compat.raw(packet[Raw]))[Raw])
 
         return payload_info
 
@@ -831,7 +836,7 @@ class TestSRv6(VppTestCase):
         :param compare_func: function to compare in and out packet
         """
         self.logger.info("Verifying capture on interface %s using function %s"
-                         % (dst_if.name, compare_func.func_name))
+                         % (dst_if.name, compare_func.__name__))
 
         last_info = dict()
         for i in self.pg_interfaces:

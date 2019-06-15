@@ -963,7 +963,7 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_frame_t * from_frame)
 {
   u32 *from, n_left;
-  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) == 0))
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
       from = vlib_frame_vector_args (from_frame);
       n_left = from_frame->n_vectors;

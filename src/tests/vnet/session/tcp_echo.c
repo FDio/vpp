@@ -233,7 +233,6 @@ application_send_attach (echo_main_t * em)
   bmp->context = ntohl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ADD_SEGMENT;
-  bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 16;
   bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = em->fifo_size;
   bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = em->fifo_size;
@@ -508,7 +507,7 @@ recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 {
   int n_to_read, n_read;
 
-  n_to_read = svm_fifo_max_dequeue (s->rx_fifo);
+  n_to_read = svm_fifo_max_dequeue_cons (s->rx_fifo);
   if (!n_to_read)
     return;
 
@@ -531,15 +530,6 @@ recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 	break;
     }
   while (n_to_read > 0);
-}
-
-void
-client_handle_rx (echo_main_t * em, session_event_t * e, u8 * rx_buf)
-{
-  echo_session_t *s;
-
-  s = pool_elt_at_index (em->sessions, e->fifo->client_session_index);
-  recv_data_chunk (em, s, rx_buf);
 }
 
 static void
@@ -594,42 +584,6 @@ client_thread_fn (void *arg)
   em->rx_total += s->bytes_received;
   em->n_active_clients--;
 
-  pthread_exit (0);
-}
-
-/*
- * Rx thread that handles all connections.
- *
- * Not used.
- */
-void *
-client_rx_thread_fn (void *arg)
-{
-  session_event_t _e, *e = &_e;
-  echo_main_t *em = &echo_main;
-  static u8 *rx_buf = 0;
-  svm_msg_q_msg_t msg;
-
-  vec_validate (rx_buf, 1 << 20);
-
-  while (!em->time_to_stop && em->state != STATE_READY)
-    ;
-
-  while (!em->time_to_stop)
-    {
-      svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_WAIT, 0);
-      e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-      switch (e->event_type)
-	{
-	case FIFO_EVENT_APP_RX:
-	  client_handle_rx (em, e, rx_buf);
-	  break;
-	default:
-	  clib_warning ("unknown event type %d", e->event_type);
-	  break;
-	}
-      svm_msg_q_free_msg (em->our_event_queue, &msg);
-    }
   pthread_exit (0);
 }
 
@@ -962,7 +916,7 @@ clients_run (echo_main_t * em)
 	    continue;
 	  }
 	e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-	if (e->event_type != FIFO_EVENT_APP_RX)
+	if (e->event_type != SESSION_IO_EVT_RX)
 	  handle_mq_event (e);
 	svm_msg_q_free_msg (em->our_event_queue, &msg);
       }
@@ -1102,14 +1056,14 @@ server_handle_rx (echo_main_t * em, session_event_t * e)
   u32 offset, to_dequeue;
   echo_session_t *s;
 
-  s = pool_elt_at_index (em->sessions, e->fifo->client_session_index);
+  s = pool_elt_at_index (em->sessions, e->session_index);
 
   /* Clear event only once. Otherwise, if we do it in the loop by calling
    * app_recv_stream, we may end up with a lot of unhandled rx events on the
    * message queue */
   svm_fifo_unset_event (s->rx_fifo);
 
-  max_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
+  max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
   if (PREDICT_FALSE (!max_dequeue))
     return;
 
@@ -1162,7 +1116,7 @@ server_handle_mq (echo_main_t * em)
       e = svm_msg_q_msg_data (em->our_event_queue, &msg);
       switch (e->event_type)
 	{
-	case FIFO_EVENT_APP_RX:
+	case SESSION_IO_EVT_RX:
 	  server_handle_rx (em, e);
 	  break;
 	default:

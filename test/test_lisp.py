@@ -145,6 +145,10 @@ class TestLisp(VppTestCase):
             i.config_ip4()  # configure IPv4 address on the interface
             i.resolve_arp()  # resolve ARP, so that we know VPP MAC
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLisp, cls).tearDownClass()
+
     def setUp(self):
         super(TestLisp, self).setUp()
         self.vapi.lisp_enable_disable(is_enabled=1)
@@ -154,18 +158,18 @@ class TestLisp(VppTestCase):
 
         self.deid_ip4_net = self.faf.net
         self.deid_ip4 = self.faf.get_ip4()
-        self.seid_ip4 = '{}/{}'.format(self.pg0.local_ip4, 32)
+        self.seid_ip4 = '{!s}/{!s}'.format(self.pg0.local_ip4, 32)
         self.rloc_ip4 = self.pg1.remote_ip4n
 
         test_cases = [
             {
                 'name': 'basic ip4 over ip4',
-                'locator-sets': [VppLispLocatorSet(self, 'ls-4o4')],
+                'locator-sets': [VppLispLocatorSet(self, b'ls-4o4')],
                 'locators': [
-                    VppLispLocator(self, self.pg1.sw_if_index, 'ls-4o4')
+                    VppLispLocator(self, self.pg1.sw_if_index, b'ls-4o4')
                 ],
                 'local-mappings': [
-                    VppLocalMapping(self, self.seid_ip4, 'ls-4o4')
+                    VppLocalMapping(self, self.seid_ip4, b'ls-4o4')
                 ],
                 'remote-mappings': [
                     VppRemoteMapping(self, self.deid_ip4_net,

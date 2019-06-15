@@ -23,14 +23,11 @@
 #include <vnet/dpo/replicate_dpo.h>
 
 /**
- * Static MPLS VLIB forwarding node
- */
-static vlib_node_registration_t mpls_lookup_node;
-
-/**
  * The arc/edge from the MPLS lookup node to the MPLS replicate node
  */
+#ifndef CLIB_MARCH_VARIANT
 u32 mpls_lookup_to_replicate_edge;
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct {
   u32 next_index;
@@ -57,8 +54,7 @@ format_mpls_lookup_trace (u8 * s, va_list * args)
   return s;
 }
 
-static inline uword
-mpls_lookup (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
@@ -454,7 +450,7 @@ mpls_lookup (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, mpls_lookup_node.index,
+  vlib_node_increment_counter (vm, mm->mpls_lookup_node_index,
                                MPLS_ERROR_PKTS_DECAP, from_frame->n_vectors);
   return from_frame->n_vectors;
 }
@@ -465,8 +461,7 @@ static char * mpls_error_strings[] = {
 #undef mpls_error
 };
 
-VLIB_REGISTER_NODE (mpls_lookup_node, static) = {
-  .function = mpls_lookup,
+VLIB_REGISTER_NODE (mpls_lookup_node) = {
   .name = "mpls-lookup",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -479,8 +474,6 @@ VLIB_REGISTER_NODE (mpls_lookup_node, static) = {
   .format_trace = format_mpls_lookup_trace,
   .unformat_buffer = unformat_mpls_header,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_lookup_node, mpls_lookup)
 
 typedef struct {
   u32 next_index;
@@ -500,8 +493,7 @@ format_mpls_load_balance_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-mpls_load_balance (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
                   vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
@@ -689,7 +681,6 @@ mpls_load_balance (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_load_balance_node) = {
-  .function = mpls_load_balance,
   .name = "mpls-load-balance",
   .vector_size = sizeof (u32),
   .format_trace = format_mpls_load_balance_trace,
@@ -701,23 +692,27 @@ VLIB_REGISTER_NODE (mpls_load_balance_node) = {
 
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_load_balance_node, mpls_load_balance)
 
-
+#ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
 mpls_lookup_init (vlib_main_t * vm)
 {
+  mpls_main_t *mm = &mpls_main;
   clib_error_t * error;
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8*)"mpls-lookup" );
+
+  mm->mpls_lookup_node_index = node->index;
 
   if ((error = vlib_call_init_function (vm, mpls_init)))
     return error;
 
   mpls_lookup_to_replicate_edge =
       vlib_node_add_named_next(vm,
-                               mpls_lookup_node.index,
+                               mm->mpls_lookup_node_index,
                                "mpls-replicate");
 
   return (NULL);
 }
 
 VLIB_INIT_FUNCTION (mpls_lookup_init);
+#endif /* CLIB_MARCH_VARIANT */

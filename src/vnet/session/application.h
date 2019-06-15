@@ -109,7 +109,7 @@ typedef struct application_
   app_listener_t *listeners;
 
   /*
-   * TLS Specific
+   * TLS & QUIC Specific
    */
 
   /** Certificate to be used for listen sessions */
@@ -120,6 +120,8 @@ typedef struct application_
 
   /** Preferred tls engine */
   u8 tls_engine;
+
+  u64 *quicly_ctx;
 
 } application_t;
 
@@ -173,7 +175,6 @@ app_listener_t *app_listener_lookup (application_t * app,
 				     session_endpoint_cfg_t * sep);
 app_listener_t *app_listener_get_w_handle (session_handle_t handle);
 app_listener_t *app_listener_get_w_session (session_t * ls);
-app_worker_t *app_listener_select_worker (app_listener_t * al);
 session_t *app_listener_get_session (app_listener_t * al);
 session_t *app_listener_get_local_session (app_listener_t * al);
 
@@ -193,7 +194,6 @@ u32 application_local_session_table (application_t * app);
 const u8 *application_name_from_index (u32 app_or_wrk);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
-u8 application_use_mq_for_ctrl (application_t * app);
 void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
 
@@ -224,6 +224,9 @@ int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 			       u32 opaque);
+int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
+int app_worker_reset_notify (app_worker_t * app_wrk, session_t * s);
+int app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
@@ -237,7 +240,6 @@ int app_worker_del_segment_notify (app_worker_t * app_wrk,
 u32 app_worker_n_listeners (app_worker_t * app);
 session_t *app_worker_first_listener (app_worker_t * app,
 				      u8 fib_proto, u8 transport_proto);
-u8 app_worker_application_is_builtin (app_worker_t * app_wrk);
 int app_worker_send_event (app_worker_t * app, session_t * s, u8 evt);
 int app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				    u8 evt_type);

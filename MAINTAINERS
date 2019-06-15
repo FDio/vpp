@@ -215,12 +215,8 @@ M:	Dave Barach <dave@barachs.net>
 F:	src/tools/perftool/
 
 Binary API Compiler
-M:	Dave Barach <dave@barachs.net>
+M:	Ole Troan <otroan@employees.org>
 F:	src/tools/vppapigen/
-
-Ganglia Telemetry Module
-M:	Dave Barach <dave@barachs.net>
-F:	gmod/
 
 THE REST
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>

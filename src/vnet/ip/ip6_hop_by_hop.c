@@ -41,7 +41,9 @@
  * in-band OAM can be enabled for IPv6 traffic.
  */
 
+#ifndef CLIB_MARCH_VARIANT
 ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_ip6_hbyh_ioam_input_next	\
   _(IP6_REWRITE, "ip6-rewrite")			\
@@ -56,6 +58,7 @@ typedef enum
     IP6_HBYH_IOAM_INPUT_N_NEXT,
 } ip6_hbyh_ioam_input_next_t;
 
+#ifndef CLIB_MARCH_VARIANT
 static uword
 unformat_opaque_ioam (unformat_input_t * input, va_list * args)
 {
@@ -196,6 +199,7 @@ ip6_hbh_flow_handler_unregister (u8 option)
   hm->flow_handler[option] = NULL;
   return (0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct
 {
@@ -215,7 +219,7 @@ format_ip6_add_hop_by_hop_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t ip6_add_hop_by_hop_node;
+extern vlib_node_registration_t ip6_add_hop_by_hop_node;
 
 #define foreach_ip6_add_hop_by_hop_error \
 _(PROCESSED, "Pkts w/ added ip6 hop-by-hop options")
@@ -234,9 +238,9 @@ static char *ip6_add_hop_by_hop_error_strings[] = {
 #undef _
 };
 
-static uword
-ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   u32 n_left_from, *from, *to_next;
@@ -437,7 +441,7 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
 {
-  .function = ip6_add_hop_by_hop_node_fn,.name =
+  .name =
     "ip6-add-hop-by-hop",.vector_size = sizeof (u32),.format_trace =
     format_ip6_add_hop_by_hop_trace,.type =
     VLIB_NODE_TYPE_INTERNAL,.n_errors =
@@ -455,8 +459,6 @@ VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
 
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_add_hop_by_hop_node,
-			      ip6_add_hop_by_hop_node_fn);
 /* The main h-b-h tracer was already invoked, no need to do much here */
 typedef struct
 {
@@ -476,6 +478,7 @@ format_ip6_pop_hop_by_hop_trace (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 int
 ip6_hbh_pop_register_option (u8 option,
 			     int options (vlib_buffer_t * b,
@@ -509,8 +512,9 @@ ip6_hbh_pop_unregister_option (u8 option)
   hm->pop_options[option] = NULL;
   return (0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
-vlib_node_registration_t ip6_pop_hop_by_hop_node;
+extern vlib_node_registration_t ip6_pop_hop_by_hop_node;
 
 #define foreach_ip6_pop_hop_by_hop_error                \
 _(PROCESSED, "Pkts w/ removed ip6 hop-by-hop options")  \
@@ -577,9 +581,9 @@ ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
     }
 }
 
-static uword
-ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
@@ -779,7 +783,7 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) =
 {
-  .function = ip6_pop_hop_by_hop_node_fn,.name =
+  .name =
     "ip6-pop-hop-by-hop",.vector_size = sizeof (u32),.format_trace =
     format_ip6_pop_hop_by_hop_trace,.type =
     VLIB_NODE_TYPE_INTERNAL,.sibling_of = "ip6-lookup",.n_errors =
@@ -790,8 +794,7 @@ VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) =
 
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_pop_hop_by_hop_node,
-			      ip6_pop_hop_by_hop_node_fn);
+#ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
 ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
 {
@@ -1157,6 +1160,7 @@ vnet_register_ioam_end_of_path_callback (void *cb)
   hm->ioam_end_of_path_cb = cb;
 }
 
+#endif /* CLIB_MARCH_VARIANT */
 /*
  * fd.io coding-style-patch-verification: ON
  *

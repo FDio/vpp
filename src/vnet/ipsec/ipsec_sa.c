@@ -14,6 +14,8 @@
  */
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/esp.h>
+#include <vnet/udp/udp.h>
 #include <vnet/fib/fib_table.h>
 
 /**
@@ -71,21 +73,50 @@ ipsec_sa_stack (ipsec_sa_t * sa)
   fib_forward_chain_type_t fct;
   dpo_id_t tmp = DPO_INVALID;
 
-  fct = fib_forw_chain_type_from_fib_proto ((sa->is_tunnel_ip6 ?
-					     FIB_PROTOCOL_IP6 :
-					     FIB_PROTOCOL_IP4));
+  fct =
+    fib_forw_chain_type_from_fib_proto ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
+					 FIB_PROTOCOL_IP6 :
+					 FIB_PROTOCOL_IP4));
 
   fib_entry_contribute_forwarding (sa->fib_entry_index, fct, &tmp);
 
-  dpo_stack_from_node ((sa->is_tunnel_ip6 ?
+  dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
 			im->ah6_encrypt_node_index :
 			im->ah4_encrypt_node_index),
 		       &sa->dpo[IPSEC_PROTOCOL_AH], &tmp);
-  dpo_stack_from_node ((sa->is_tunnel_ip6 ?
+  dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
 			im->esp6_encrypt_node_index :
 			im->esp4_encrypt_node_index),
 		       &sa->dpo[IPSEC_PROTOCOL_ESP], &tmp);
   dpo_reset (&tmp);
+}
+
+void
+ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
+{
+  ipsec_main_t *im = &ipsec_main;
+  sa->crypto_alg = crypto_alg;
+  sa->crypto_iv_size = im->crypto_algs[crypto_alg].iv_size;
+  sa->crypto_block_size = im->crypto_algs[crypto_alg].block_size;
+  sa->crypto_enc_op_id = im->crypto_algs[crypto_alg].enc_op_id;
+  sa->crypto_dec_op_id = im->crypto_algs[crypto_alg].dec_op_id;
+  ASSERT (sa->crypto_iv_size <= ESP_MAX_IV_SIZE);
+  ASSERT (sa->crypto_block_size <= ESP_MAX_BLOCK_SIZE);
+  if (IPSEC_CRYPTO_ALG_IS_GCM (crypto_alg))
+    {
+      sa->integ_icv_size = im->crypto_algs[crypto_alg].icv_size;
+      ipsec_sa_set_IS_AEAD (sa);
+    }
+}
+
+void
+ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
+{
+  ipsec_main_t *im = &ipsec_main;
+  sa->integ_alg = integ_alg;
+  sa->integ_icv_size = im->integ_algs[integ_alg].icv_size;
+  sa->integ_op_id = im->integ_algs[integ_alg].op_id;
+  ASSERT (sa->integ_icv_size <= ESP_MAX_ICV_SIZE);
 }
 
 int
@@ -98,6 +129,7 @@ ipsec_sa_add (u32 id,
 	      const ipsec_key_t * ik,
 	      ipsec_sa_flags_t flags,
 	      u32 tx_table_id,
+	      u32 salt,
 	      const ip46_address_t * tun_src,
 	      const ip46_address_t * tun_dst, u32 * sa_out_index)
 {
@@ -111,7 +143,7 @@ ipsec_sa_add (u32 id,
   if (p)
     return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
 
-  pool_get_zero (im->sad, sa);
+  pool_get_aligned_zero (im->sad, sa, CLIB_CACHE_LINE_BYTES);
 
   fib_node_init (&sa->node, FIB_NODE_TYPE_IPSEC_SA);
   sa_index = sa - im->sad;
@@ -123,23 +155,14 @@ ipsec_sa_add (u32 id,
   sa->spi = spi;
   sa->stat_index = sa_index;
   sa->protocol = proto;
-  sa->crypto_alg = crypto_alg;
-  clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
-  sa->integ_alg = integ_alg;
+  sa->flags = flags;
+  sa->salt = salt;
+  ipsec_sa_set_integ_alg (sa, integ_alg);
   clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
+  ipsec_sa_set_crypto_alg (sa, crypto_alg);
+  clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
   ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
-
-  if (flags & IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM)
-    sa->use_esn = 1;
-  if (flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY)
-    sa->use_anti_replay = 1;
-  if (flags & IPSEC_SA_FLAG_IS_TUNNEL)
-    sa->is_tunnel = 1;
-  if (flags & IPSEC_SA_FLAG_IS_TUNNEL_V6)
-    sa->is_tunnel_ip6 = 1;
-  if (flags & IPSEC_SA_FLAG_UDP_ENCAP)
-    sa->udp_encap = 1;
 
   err = ipsec_check_support_cb (im, sa);
   if (err)
@@ -156,13 +179,13 @@ ipsec_sa_add (u32 id,
       return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
 
-  if (sa->is_tunnel)
+  if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
-      fib_protocol_t fproto = (sa->is_tunnel_ip6 ?
+      fib_protocol_t fproto = (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
 			       FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
       fib_prefix_t pfx = {
 	.fp_addr = sa->tunnel_dst_addr,
-	.fp_len = (sa->is_tunnel_ip6 ? 128 : 32),
+	.fp_len = (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? 128 : 32),
 	.fp_proto = fproto,
       };
       sa->tx_fib_index = fib_table_find (fproto, tx_table_id);
@@ -179,7 +202,46 @@ ipsec_sa_add (u32 id,
       sa->sibling = fib_entry_child_add (sa->fib_entry_index,
 					 FIB_NODE_TYPE_IPSEC_SA, sa_index);
       ipsec_sa_stack (sa);
+
+      /* generate header templates */
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
+	{
+	  sa->ip6_hdr.ip_version_traffic_class_and_flow_label = 0x60;
+	  sa->ip6_hdr.hop_limit = 254;
+	  sa->ip6_hdr.src_address.as_u64[0] =
+	    sa->tunnel_src_addr.ip6.as_u64[0];
+	  sa->ip6_hdr.src_address.as_u64[1] =
+	    sa->tunnel_src_addr.ip6.as_u64[1];
+	  sa->ip6_hdr.dst_address.as_u64[0] =
+	    sa->tunnel_dst_addr.ip6.as_u64[0];
+	  sa->ip6_hdr.dst_address.as_u64[1] =
+	    sa->tunnel_dst_addr.ip6.as_u64[1];
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa))
+	    sa->ip6_hdr.protocol = IP_PROTOCOL_UDP;
+	  else
+	    sa->ip6_hdr.protocol = IP_PROTOCOL_IPSEC_ESP;
+	}
+      else
+	{
+	  sa->ip4_hdr.ip_version_and_header_length = 0x45;
+	  sa->ip4_hdr.ttl = 254;
+	  sa->ip4_hdr.src_address.as_u32 = sa->tunnel_src_addr.ip4.as_u32;
+	  sa->ip4_hdr.dst_address.as_u32 = sa->tunnel_dst_addr.ip4.as_u32;
+
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa))
+	    sa->ip4_hdr.protocol = IP_PROTOCOL_UDP;
+	  else
+	    sa->ip4_hdr.protocol = IP_PROTOCOL_IPSEC_ESP;
+	  sa->ip4_hdr.checksum = ip4_header_checksum (&sa->ip4_hdr);
+	}
     }
+
+  if (ipsec_sa_is_set_UDP_ENCAP (sa))
+    {
+      sa->udp_hdr.src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+      sa->udp_hdr.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+    }
+
   hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
 
   if (sa_out_index)
@@ -213,8 +275,9 @@ ipsec_sa_del (u32 id)
   hash_unset (im->sa_index_by_sa_id, sa->id);
   err = ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
   if (err)
-    return VNET_API_ERROR_SYSCALL_ERROR_1;
-  if (sa->is_tunnel)
+    return VNET_API_ERROR_SYSCALL_ERROR_2;
+
+  if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
       fib_entry_child_remove (sa->fib_entry_index, sa->sibling);
       fib_table_entry_special_remove

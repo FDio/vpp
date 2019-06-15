@@ -1736,7 +1736,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      vlib_cli_output (vm, "pcap tx capture already on...");
+	      vlib_cli_output (vm, "pcap %s capture already on...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx");
 	      errorFlag = 1;
 	      break;
 	    }
@@ -1764,7 +1765,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      vlib_cli_output (vm, "pcap tx capture already off...");
+	      vlib_cli_output (vm, "pcap %s capture already off...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx");
 	      errorFlag = 1;
 	      break;
 	    }
@@ -1836,7 +1838,7 @@ pcap_trace_command_internal (vlib_main_t * vm,
 			       pcap_main.n_packets_to_capture :
 			       PCAP_DEF_PKT_TO_CAPTURE,
 			       format_vnet_sw_if_index_name, vnm,
-			       vm->pcap_sw_if_index,
+			       vm->pcap[rx_tx].pcap_sw_if_index,
 			       vm->pcap[rx_tx].
 			       pcap_main.file_name ? (u8 *) vm->pcap[rx_tx].
 			       pcap_main.file_name : (u8 *) "/tmp/vpe.pcap");

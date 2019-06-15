@@ -132,7 +132,7 @@ typedef struct
 
 #define foreach_vxlan_gbp_input_next         \
   _(DROP, "error-drop")                      \
-  _(NO_TUNNEL, "error-punt")                 \
+  _(PUNT, "punt-dispatch")                   \
   _(L2_INPUT, "l2-input")                    \
   _(IP4_INPUT, "ip4-input")                  \
   _(IP6_INPUT, "ip6-input")
@@ -189,6 +189,11 @@ typedef struct
 
   /* Record used instances */
   uword *instance_used;
+
+  /**
+   * Punt reasons for no such tunnel
+   */
+  vlib_punt_reason_t punt_no_such_tunnel[FIB_PROTOCOL_IP_MAX];
 } vxlan_gbp_main_t;
 
 extern vxlan_gbp_main_t vxlan_gbp_main;
@@ -221,7 +226,16 @@ int vnet_vxlan_gbp_tunnel_del (u32 sw_if_indexp);
 void vnet_int_vxlan_gbp_bypass_mode (u32 sw_if_index, u8 is_ip6,
 				     u8 is_enable);
 
-u32 vnet_vxlan_gbp_get_tunnel_index (u32 sw_if_index);
+always_inline u32
+vxlan_gbp_tunnel_by_sw_if_index (u32 sw_if_index)
+{
+  vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
+
+  if (sw_if_index >= vec_len (vxm->tunnel_index_by_sw_if_index))
+    return ~0;
+
+  return (vxm->tunnel_index_by_sw_if_index[sw_if_index]);
+}
 
 #endif /* included_vnet_vxlan_gbp_h */
 

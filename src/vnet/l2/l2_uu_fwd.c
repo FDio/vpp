@@ -59,9 +59,9 @@ format_l2_uu_fwd_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-l2_uu_fwd_node_fn (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_uu_fwd_node) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_uu_fwd_next_t next_index;
@@ -212,8 +212,7 @@ l2_uu_fwd_node_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_uu_fwd_node,static) = {
-  .function = l2_uu_fwd_node_fn,
+VLIB_REGISTER_NODE (l2_uu_fwd_node) = {
   .name = "l2-uu-fwd",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_uu_fwd_trace,
@@ -229,8 +228,6 @@ VLIB_REGISTER_NODE (l2_uu_fwd_node,static) = {
         [L2_UU_FWD_NEXT_L2_OUTPUT] = "l2-output",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (l2_uu_fwd_node, l2_uu_fwd_node_fn)
 /* *INDENT-ON* */
 
 /*

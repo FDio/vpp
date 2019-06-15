@@ -248,7 +248,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   for (e = em->epoll_events; e < em->epoll_events + n_fds_ready; e++)
     {
       u32 i = e->data.u32;
-      clib_file_t *f = fm->file_pool + i;
+      clib_file_t *f = pool_elt_at_index (fm->file_pool, i);
       clib_error_t *errors[4];
       int n_errors = 0;
 
@@ -285,14 +285,18 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  if (e->events & EPOLLIN)
 	    {
-	      errors[n_errors] = f->read_function (f);
 	      f->read_events++;
+	      errors[n_errors] = f->read_function (f);
+	      /* Make sure f is valid if the file pool moves */
+	      if (pool_is_free_index (fm->file_pool, i))
+		continue;
+	      f = pool_elt_at_index (fm->file_pool, i);
 	      n_errors += errors[n_errors] != 0;
 	    }
 	  if (e->events & EPOLLOUT)
 	    {
-	      errors[n_errors] = f->write_function (f);
 	      f->write_events++;
+	      errors[n_errors] = f->write_function (f);
 	      n_errors += errors[n_errors] != 0;
 	    }
 	}
@@ -300,8 +304,8 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  if (f->error_function)
 	    {
-	      errors[n_errors] = f->error_function (f);
 	      f->error_events++;
+	      errors[n_errors] = f->error_function (f);
 	      n_errors += errors[n_errors] != 0;
 	    }
 	  else

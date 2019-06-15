@@ -86,24 +86,6 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
 }
 
 static void
-virtio_pci_send_sw_interface_event_deleted (vpe_api_main_t * am,
-					    vl_api_registration_t * reg,
-					    u32 sw_if_index)
-{
-  vl_api_sw_interface_event_t *mp;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_EVENT);
-  mp->sw_if_index = htonl (sw_if_index);
-
-  mp->admin_up_down = 0;
-  mp->link_up_down = 0;
-  mp->deleted = 1;
-  vl_api_send_msg (reg, (u8 *) mp);
-}
-
-static void
 vl_api_virtio_pci_delete_t_handler (vl_api_virtio_pci_delete_t * mp)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -112,10 +94,8 @@ vl_api_virtio_pci_delete_t_handler (vl_api_virtio_pci_delete_t * mp)
   int rv = 0;
   vnet_hw_interface_t *hw;
   virtio_if_t *vif;
-  vpe_api_main_t *vam = &vpe_api_main;
   vl_api_virtio_pci_delete_reply_t *rmp;
   vl_api_registration_t *reg;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
 
   hw = vnet_get_sup_hw_interface (vnm, htonl (mp->sw_if_index));
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
@@ -139,11 +119,6 @@ reply:
   rmp->retval = htonl (rv);
 
   vl_api_send_msg (reg, (u8 *) rmp);
-
-  if (!rv)
-    {
-      virtio_pci_send_sw_interface_event_deleted (vam, reg, sw_if_index);
-    }
 }
 
 static void
@@ -159,8 +134,10 @@ virtio_pci_send_sw_interface_details (vpe_api_main_t * am,
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_VIRTIO_PCI_DETAILS);
   mp->pci_addr = htonl (vif->pci_addr.as_u32);
   mp->sw_if_index = htonl (vif->sw_if_index);
-  mp->rx_ring_sz = htons (vif->rx_ring_sz);
-  mp->tx_ring_sz = htons (vif->tx_ring_sz);
+  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, 0);
+  mp->rx_ring_sz = htons (vring->size);
+  vring = vec_elt_at_index (vif->txq_vrings, 0);
+  mp->tx_ring_sz = htons (vring->size);
   clib_memcpy (mp->mac_addr, vif->mac_addr, 6);
   mp->features = clib_host_to_net_u64 (vif->features);
 

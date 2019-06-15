@@ -28,7 +28,7 @@
 typedef struct fib_ae_import_t_
 {
     /**
-     * The entry in the epxort table that this importer
+     * The entry in the export table that this importer
      * is importing covereds from
      */
     fib_node_index_t faei_export_entry;
@@ -86,7 +86,7 @@ typedef struct fib_ae_export_t_ {
 } fib_ae_export_t;
 
 /*
- * memory pools for the importers and exportes
+ * memory pools for the importers and exporters
  */
 static fib_ae_import_t *fib_ae_import_pool;
 static fib_ae_export_t *fib_ae_export_pool;
@@ -136,7 +136,7 @@ fib_entry_import_remove (fib_ae_import_t *import,
     if (index < vec_len(import->faei_importeds))
     {
 	/*
-	 * this is an entry that was previsouly imported
+	 * this is an entry that was previously imported
 	 */
 	fib_table_entry_special_remove(import->faei_import_fib,
 				       fib_entry_get_prefix(entry_index),
@@ -245,7 +245,7 @@ fib_attached_export_import (fib_entry_t *fib_entry,
     fib_node_index_t fei;
 
     /*
-     * save index for later post-realloc retreival
+     * save index for later post-realloc retrieval
      */
     fei = fib_entry_get_index(fib_entry);
 
@@ -310,7 +310,7 @@ fib_attached_export_import (fib_entry_t *fib_entry,
 }
 
 /**
- * \brief All the imported entries need to be pruged
+ * \brief All the imported entries need to be purged
  */
 void
 fib_attached_export_purge (fib_entry_t *fib_entry)

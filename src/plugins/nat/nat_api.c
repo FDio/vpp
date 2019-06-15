@@ -3267,7 +3267,7 @@ static void *vl_api_nat66_add_del_static_mapping_t_print
 
 typedef struct nat66_api_walk_ctx_t_
 {
-  svm_queue_t *q;
+  vl_api_registration_t *rp;
   u32 context;
 } nat66_api_walk_ctx_t;
 
@@ -3285,7 +3285,7 @@ nat66_api_interface_walk (snat_interface_t * i, void *arg)
   rmp->is_inside = nat_interface_is_inside (i);
   rmp->context = ctx->context;
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->rp, (u8 *) rmp);
 
   return 0;
 }
@@ -3293,14 +3293,14 @@ nat66_api_interface_walk (snat_interface_t * i, void *arg)
 static void
 vl_api_nat66_interface_dump_t_handler (vl_api_nat66_interface_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
     return;
 
   nat66_api_walk_ctx_t ctx = {
-    .q = q,
+    .rp = rp,
     .context = mp->context,
   };
 
@@ -3345,7 +3345,7 @@ nat66_api_static_mapping_walk (nat66_static_mapping_t * m, void *arg)
   rmp->total_pkts = clib_host_to_net_u64 (vc.packets);
   rmp->context = ctx->context;
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->rp, (u8 *) rmp);
 
   return 0;
 }
@@ -3354,14 +3354,14 @@ static void
 vl_api_nat66_static_mapping_dump_t_handler (vl_api_nat66_static_mapping_dump_t
 					    * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *rp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
     return;
 
   nat66_api_walk_ctx_t ctx = {
-    .q = q,
+    .rp = rp,
     .context = mp->context,
   };
 

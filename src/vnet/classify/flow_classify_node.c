@@ -275,16 +275,15 @@ flow_classify_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_flow_classify (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_flow_classify_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return flow_classify_inline (vm, node, frame, FLOW_CLASSIFY_TABLE_IP4);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_flow_classify_node) = {
-  .function = ip4_flow_classify,
   .name = "ip4-flow-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_flow_classify_trace,
@@ -297,18 +296,15 @@ VLIB_REGISTER_NODE (ip4_flow_classify_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_flow_classify_node, ip4_flow_classify);
-
-static uword
-ip6_flow_classify (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_flow_classify_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return flow_classify_inline (vm, node, frame, FLOW_CLASSIFY_TABLE_IP6);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_flow_classify_node) = {
-  .function = ip6_flow_classify,
   .name = "ip6-flow-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_flow_classify_trace,
@@ -321,8 +317,6 @@ VLIB_REGISTER_NODE (ip6_flow_classify_node) = {
 };
 
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_flow_classify_node, ip6_flow_classify);
 
 
 static clib_error_t *

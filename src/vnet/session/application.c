@@ -47,6 +47,14 @@ app_listener_get (application_t * app, u32 app_listener_index)
   return pool_elt_at_index (app->listeners, app_listener_index);
 }
 
+static app_listener_t *
+app_listener_get_if_valid (application_t * app, u32 app_listener_index)
+{
+  if (pool_is_free_index (app->listeners, app_listener_index))
+    return 0;
+  return pool_elt_at_index (app->listeners, app_listener_index);
+}
+
 static void
 app_listener_free (application_t * app, app_listener_t * app_listener)
 {
@@ -94,7 +102,7 @@ app_listener_get_w_id (u32 listener_id)
   app = application_get_if_valid (app_index);
   if (!app)
     return 0;
-  return app_listener_get (app, app_listener_index);
+  return app_listener_get_if_valid (app, app_listener_index);
 }
 
 app_listener_t *
@@ -274,10 +282,9 @@ app_listener_cleanup (app_listener_t * al)
   app_listener_free (app, al);
 }
 
-app_worker_t *
-app_listener_select_worker (app_listener_t * al)
+static app_worker_t *
+app_listener_select_worker (application_t * app, app_listener_t * al)
 {
-  application_t *app;
   u32 wrk_index;
 
   app = application_get (al->app_index);
@@ -477,14 +484,14 @@ application_verify_cfg (ssvm_segment_type_t st)
   u8 is_valid;
   if (st == SSVM_SEGMENT_MEMFD)
     {
-      is_valid = (session_manager_get_evt_q_segment () != 0);
+      is_valid = (session_main_get_evt_q_segment () != 0);
       if (!is_valid)
 	clib_warning ("memfd seg: vpp's event qs IN binary api svm region");
       return is_valid;
     }
   else if (st == SSVM_SEGMENT_SHM)
     {
-      is_valid = (session_manager_get_evt_q_segment () == 0);
+      is_valid = (session_main_get_evt_q_segment () == 0);
       if (!is_valid)
 	clib_warning ("shm seg: vpp's event qs NOT IN binary api svm region");
       return is_valid;
@@ -517,13 +524,15 @@ application_alloc_and_init (app_init_args_t * a)
     }
   else
     {
-      if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
-	{
-	  clib_warning ("mq eventfds can only be used if socket transport is "
-			"used for api");
-	  return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
-	}
       seg_type = SSVM_SEGMENT_PRIVATE;
+    }
+
+  if ((options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+      && seg_type != SSVM_SEGMENT_MEMFD)
+    {
+      clib_warning ("mq eventfds can only be used if socket transport is "
+		    "used for binary api");
+      return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
     }
 
   if (!application_verify_cfg (seg_type))
@@ -686,10 +695,12 @@ application_n_workers (application_t * app)
 app_worker_t *
 application_listener_select_worker (session_t * ls)
 {
+  application_t *app;
   app_listener_t *al;
 
-  al = app_listener_get_w_session (ls);
-  return app_listener_select_worker (al);
+  app = application_get (ls->app_index);
+  al = app_listener_get (app, ls->al_index);
+  return app_listener_select_worker (app, al);
 }
 
 int
@@ -810,11 +821,11 @@ app_name_from_api_index (u32 api_client_index)
   vl_api_registration_t *regp;
   regp = vl_api_client_index_to_registration (api_client_index);
   if (regp)
-    return format (0, "%s%c", regp->name, 0);
+    return format (0, "%s", regp->name);
 
   clib_warning ("api client index %u does not have an api registration!",
 		api_client_index);
-  return format (0, "unknown%c", 0);
+  return format (0, "unknown");
 }
 
 /**
@@ -1060,7 +1071,9 @@ vnet_unlisten (vnet_unlisten_args_t * a)
   if (!(app = application_get_if_valid (a->app_index)))
     return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
 
-  al = app_listener_get_w_handle (a->handle);
+  if (!(al = app_listener_get_w_handle (a->handle)))
+    return -1;
+
   if (al->app_index != app->app_index)
     {
       clib_warning ("app doesn't own handle %llu!", a->handle);
@@ -1110,8 +1123,7 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   hash_unset (old_wrk->listeners_table, listen_session_get_handle (s));
   if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL
       && s->rx_fifo)
-    segment_manager_dealloc_fifos (s->rx_fifo->segment_index, s->rx_fifo,
-				   s->tx_fifo);
+    segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
 
   app = application_get (old_wrk->app_index);
   if (!app)
@@ -1161,12 +1173,6 @@ application_has_global_scope (application_t * app)
   return app->flags & APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 }
 
-u8
-application_use_mq_for_ctrl (application_t * app)
-{
-  return app->flags & APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
-}
-
 static clib_error_t *
 application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 					u8 transport_proto, u8 is_start)
@@ -1201,7 +1207,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
 	  app_worker_start_listen (app_wrk, al);
 	  s = listen_session_get (al->session_index);
-	  s->enqueue_epoch = SESSION_PROXY_LISTENER_INDEX;
+	  s->flags |= SESSION_F_PROXY;
 	}
     }
   else
@@ -1415,12 +1421,12 @@ format_application (u8 * s, va_list * args)
   props = application_segment_manager_properties (app);
   if (!verbose)
     {
-      s = format (s, "%-10u%-20s%-40s", app->app_index, app_name,
+      s = format (s, "%-10u%-20v%-40s", app->app_index, app_name,
 		  app_ns_name);
       return s;
     }
 
-  s = format (s, "app-name %s app-index %u ns-index %u seg-size %U\n",
+  s = format (s, "app-name %v app-index %u ns-index %u seg-size %U\n",
 	      app_name, app->app_index, app->ns_index,
 	      format_memory_size, props->add_segment_size);
   s = format (s, "rx-fifo-size %U tx-fifo-size %U workers:\n",

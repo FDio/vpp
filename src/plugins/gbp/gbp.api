@@ -23,6 +23,9 @@ enum gbp_bridge_domain_flags
 {
   GBP_BD_API_FLAG_NONE = 0,
   GBP_BD_API_FLAG_DO_NOT_LEARN = 1,
+  GBP_BD_API_FLAG_UU_FWD_DROP = 2,
+  GBP_BD_API_FLAG_MCAST_DROP = 4,
+  GBP_BD_API_FLAG_UCAST_ARP = 8,
 };
 
 typedef gbp_bridge_domain
@@ -34,13 +37,13 @@ typedef gbp_bridge_domain
   u32 bm_flood_sw_if_index;
 };
 
-autoreply define gbp_bridge_domain_add
+manual_print autoreply define gbp_bridge_domain_add
 {
   u32 client_index;
   u32 context;
   vl_api_gbp_bridge_domain_t bd;
 };
-autoreply define gbp_bridge_domain_del
+manual_print autoreply define gbp_bridge_domain_del
 {
   u32 client_index;
   u32 context;
@@ -66,13 +69,13 @@ typedef gbp_route_domain
   u32 ip6_uu_sw_if_index;
 };
 
-autoreply define gbp_route_domain_add
+manual_print autoreply define gbp_route_domain_add
 {
   u32 client_index;
   u32 context;
   vl_api_gbp_route_domain_t rd;
 };
-autoreply define gbp_route_domain_del
+manual_print autoreply define gbp_route_domain_del
 {
   u32 client_index;
   u32 context;
@@ -100,8 +103,6 @@ enum gbp_endpoint_flags
   GBP_API_ENDPOINT_FLAG_BOUNCE = 0x1,
   GBP_API_ENDPOINT_FLAG_REMOTE = 0x2,
   GBP_API_ENDPOINT_FLAG_LEARNT = 0x4,
-  /* hey Ole WTF */
-  GBP_API_ENDPOINT_FLAG_REMOTE_LEARNT = 0x6,
   GBP_API_ENDPOINT_FLAG_EXTERNAL = 0x8,
 };
 
@@ -114,7 +115,7 @@ typedef gbp_endpoint_tun
 typedef gbp_endpoint
 {
   u32 sw_if_index;
-  u16 epg_id;
+  u16 sclass;
   vl_api_gbp_endpoint_flags_t flags;
   vl_api_mac_address_t mac;
   vl_api_gbp_endpoint_tun_t tun;
@@ -122,7 +123,7 @@ typedef gbp_endpoint
   vl_api_address_t ips[n_ips];
 };
 
-define gbp_endpoint_add
+manual_print define gbp_endpoint_add
 {
   u32 client_index;
   u32 context;
@@ -136,7 +137,7 @@ define gbp_endpoint_add_reply
   u32 handle;
 };
 
-autoreply define gbp_endpoint_del
+manual_print autoreply define gbp_endpoint_del
 {
   u32 client_index;
   u32 context;
@@ -157,26 +158,32 @@ define gbp_endpoint_details
   vl_api_gbp_endpoint_t endpoint;
 };
 
+typedef gbp_endpoint_retention
+{
+  u32 remote_ep_timeout;
+};
+
 typeonly define gbp_endpoint_group
 {
-  u16 epg_id;
+  u32 vnid;
   u16 sclass;
   u32 bd_id;
   u32 rd_id;
   u32 uplink_sw_if_index;
+  vl_api_gbp_endpoint_retention_t retention;
 };
 
-autoreply define gbp_endpoint_group_add
+manual_print autoreply define gbp_endpoint_group_add
 {
   u32 client_index;
   u32 context;
   vl_api_gbp_endpoint_group_t epg;
 };
-autoreply define gbp_endpoint_group_del
+manual_print autoreply define gbp_endpoint_group_del
 {
   u32 client_index;
   u32 context;
-  u16 epg_id;
+  u16 sclass;
 };
 
 define gbp_endpoint_group_dump
@@ -194,11 +201,11 @@ define gbp_endpoint_group_details
 typeonly define gbp_recirc
 {
   u32 sw_if_index;
-  u16 epg_id;
+  u16 sclass;
   u8  is_ext;
 };
 
-autoreply define gbp_recirc_add_del
+manual_print autoreply define gbp_recirc_add_del
 {
   u32 client_index;
   u32 context;
@@ -230,12 +237,12 @@ typeonly define gbp_subnet
 {
   u32 rd_id;
   u32 sw_if_index;
-  u16 epg_id;
+  u16 sclass;
   vl_api_gbp_subnet_type_t type;
   vl_api_prefix_t prefix;
 };
 
-autoreply define gbp_subnet_add_del
+manual_print autoreply define gbp_subnet_add_del
 {
   u32 client_index;
   u32 context;
@@ -292,21 +299,27 @@ typedef gbp_rule
 
 typedef gbp_contract
 {
-  u16 src_epg;
-  u16 dst_epg;
+  u16 sclass;
+  u16 dclass;
   u32 acl_index;
+  u8 n_ether_types;
+  u16 allowed_ethertypes[16];
   u8  n_rules;
   vl_api_gbp_rule_t rules[n_rules];
-  u8 n_ether_types;
-  u16 allowed_ethertypes[n_ether_types];
 };
 
-autoreply define gbp_contract_add_del
+manual_print define gbp_contract_add_del
 {
   u32 client_index;
   u32 context;
   u8  is_add;
   vl_api_gbp_contract_t contract;
+};
+define gbp_contract_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
 };
 
 define gbp_contract_dump
@@ -319,18 +332,6 @@ define gbp_contract_details
 {
   u32 context;
   vl_api_gbp_contract_t contract;
-};
-
-/**
- * @brief Set the time throeshold after which an endpoint is
-          considered inative and is aged/reaped by the scanner
- * @param threshold In seconds
- */
-autoreply define gbp_endpoint_learn_set_inactive_threshold
-{
-  u32 client_index;
-  u32 context;
-  u32 threshold;
 };
 
 /**
@@ -350,9 +351,10 @@ typedef gbp_vxlan_tunnel
   u32 vni;
   vl_api_gbp_vxlan_tunnel_mode_t mode;
   u32 bd_rd_id;
+  vl_api_ip4_address_t src;
 };
 
-define gbp_vxlan_tunnel_add
+manual_print define gbp_vxlan_tunnel_add
 {
   u32 client_index;
   u32 context;
@@ -366,7 +368,7 @@ define gbp_vxlan_tunnel_add_reply
   u32 sw_if_index;
 };
 
-autoreply define gbp_vxlan_tunnel_del
+manual_print autoreply define gbp_vxlan_tunnel_del
 {
   u32 client_index;
   u32 context;
@@ -392,7 +394,7 @@ typeonly define gbp_ext_itf
   u32 rd_id;
 };
 
-autoreply define gbp_ext_itf_add_del
+manual_print autoreply define gbp_ext_itf_add_del
 {
   u32 client_index;
   u32 context;

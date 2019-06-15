@@ -1,0 +1,35 @@
+
+/** \file
+    This file defines static http servercontrol-plane API messages
+*/
+option version = "1.0.0";
+
+/** \brief Configure and enable the static http server
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param fifo_size - size (in bytes) of the session FIFOs
+    @param cache_size_limit - size (in bytes) of the in-memory file data cache
+    @param prealloc_fifos - number of preallocated fifos (usually 0)
+    @param private_segment_size - fifo segment size (usually 0)
+    @param www_root - html root path
+    @param uri - bind URI, defaults to "tcp://0.0.0.0/80"
+*/
+
+autoreply define http_static_enable {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+    /* Typical options */
+    u32 fifo_size;
+    u32 cache_size_limit;
+    /* Unusual options */
+    u32 prealloc_fifos;
+    u32 private_segment_size;
+
+    /* Root of the html path */
+    u8 www_root[256];
+    /* The bind URI */
+    u8 uri[256];
+};

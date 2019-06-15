@@ -19,6 +19,7 @@
 #include <vnet/session/session.h>
 #include <vnet/session/session_rules_table.h>
 #include <vnet/tcp/tcp.h>
+#include <sys/epoll.h>
 
 #define SESSION_TEST_I(_cond, _comment, _args...)		\
 ({								\
@@ -39,6 +40,9 @@
 	return 1;                                               \
     }								\
 }
+
+#define ST_DBG(_comment, _args...)				\
+    fformat(stderr,  _comment "\n",  ##_args);			\
 
 void
 dummy_session_reset_callback (session_t * s)
@@ -1692,6 +1696,180 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static inline void
+wait_for_event (svm_msg_q_t * mq, int fd, int epfd, u8 use_eventfd)
+{
+  if (!use_eventfd)
+    {
+      svm_msg_q_lock (mq);
+      while (svm_msg_q_is_empty (mq))
+	svm_msg_q_wait (mq);
+    }
+  else
+    {
+      int __clib_unused n_read, rv;
+      struct epoll_event ep_evt;
+      u64 buf;
+
+      while (1)
+	{
+	  rv = epoll_wait (epfd, &ep_evt, 1, -1);
+	  if (rv < 0)
+	    {
+	      ST_DBG ("epoll error");
+	      exit (1);
+	    }
+	  else if (rv > 0 && (ep_evt.events & EPOLLIN))
+	    {
+	      n_read = read (fd, &buf, sizeof (buf));
+	    }
+	  else
+	    continue;
+
+	  if (!svm_msg_q_is_empty (mq))
+	    {
+	      svm_msg_q_lock (mq);
+	      break;
+	    }
+	}
+    }
+}
+
+static int
+session_test_mq (vlib_main_t * vm, unformat_input_t * input)
+{
+  int error, __clib_unused verbose, use_eventfd = 0;
+  u64 i, n_test_msgs = 1 << 10, *counter;
+  u64 options[APP_OPTIONS_N_OPTIONS];
+  int epfd = -1, rv, prod_fd = -1;
+  svm_fifo_t *rx_fifo, *tx_fifo;
+  vl_api_registration_t *reg;
+  struct epoll_event ep_evt;
+  u32 app_index, api_index;
+  u32 fifo_segment_index;
+  app_worker_t *app_wrk;
+  segment_manager_t *sm;
+  svm_msg_q_msg_t msg;
+  application_t *app;
+  svm_msg_q_t *mq;
+  f64 start, diff;
+  svm_queue_t *q;
+  session_t s;
+  pid_t pid;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else if (unformat (input, "%d", &n_test_msgs))
+	;
+      else if (unformat (input, "use-eventfd"))
+	use_eventfd = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  q = clib_mem_alloc (sizeof (*q));
+  api_index = vl_api_memclnt_create_internal ("session_mq_test_api", q);
+
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+  options[APP_OPTIONS_EVT_QUEUE_SIZE] = 2048;
+
+  reg = vl_api_client_index_to_registration (api_index);
+  /* Shut up coverity */
+  if (reg == 0)
+    abort ();
+  if (!session_main.evt_qs_use_memfd_seg)
+    reg->clib_file_index = VL_API_INVALID_FI;
+
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = api_index,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &dummy_session_cbs,
+    .name = format (0, "session_mq_test"),
+  };
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "server attachment should work");
+
+  app_index = attach_args.app_index;
+
+  app = application_get (app_index);
+  app_wrk = application_get_worker (app, 0);
+  mq = app_wrk->event_queue;
+  if (use_eventfd)
+    {
+      svm_msg_q_alloc_producer_eventfd (mq);
+      svm_msg_q_alloc_consumer_eventfd (mq);
+      prod_fd = svm_msg_q_get_producer_eventfd (mq);
+      SESSION_TEST (prod_fd != -1, "mq producer eventd valid %u", prod_fd);
+    }
+
+  sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
+  segment_manager_alloc_session_fifos (sm, &rx_fifo, &tx_fifo,
+				       &fifo_segment_index);
+  s.rx_fifo = rx_fifo;
+  s.tx_fifo = tx_fifo;
+  s.session_state = SESSION_STATE_READY;
+  counter = (u64 *) rx_fifo->head_chunk->data;
+  start = vlib_time_now (vm);
+
+  pid = fork ();
+  if (pid < 0)
+    SESSION_TEST (0, "fork failed");
+
+  if (pid == 0)
+    {
+      if (use_eventfd)
+	{
+	  epfd = epoll_create1 (0);
+	  SESSION_TEST (epfd != -1, "epfd created");
+	  ep_evt.events = EPOLLIN;
+	  ep_evt.data.u64 = prod_fd;
+	  rv = epoll_ctl (epfd, EPOLL_CTL_ADD, prod_fd, &ep_evt);
+	  SESSION_TEST (rv == 0, "epoll returned %d", rv);
+	}
+
+      for (i = 0; i < n_test_msgs; i++)
+	{
+	  wait_for_event (mq, prod_fd, epfd, use_eventfd);
+	  svm_msg_q_sub_w_lock (mq, &msg);
+	  svm_msg_q_free_msg (mq, &msg);
+	  svm_msg_q_unlock (mq);
+	  *counter = *counter + 1;
+	  svm_fifo_unset_event (rx_fifo);
+	}
+      exit (0);
+    }
+  else
+    {
+      ST_DBG ("client pid %u", pid);
+      for (i = 0; i < n_test_msgs; i++)
+	{
+	  while (svm_fifo_has_event (rx_fifo))
+	    ;
+	  app_worker_lock_and_send_event (app_wrk, &s, SESSION_IO_EVT_RX);
+	}
+    }
+
+  diff = vlib_time_now (vm) - start;
+  ST_DBG ("done %u events in %.2f sec: %f evts/s", *counter,
+	  diff, *counter / diff);
+
+  vnet_app_detach_args_t detach_args = {
+    .app_index = app_index,
+    .api_client_index = ~0,
+  };
+  vnet_application_detach (&detach_args);
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -1714,6 +1892,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_proxy (vm, input);
       else if (unformat (input, "endpt-cfg"))
 	res = session_test_endpoint_cfg (vm, input);
+      else if (unformat (input, "mq"))
+	res = session_test_mq (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
@@ -1727,6 +1907,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_proxy (vm, input)))
 	    goto done;
 	  if ((res = session_test_endpoint_cfg (vm, input)))
+	    goto done;
+	  if ((res = session_test_mq (vm, input)))
 	    goto done;
 	}
       else

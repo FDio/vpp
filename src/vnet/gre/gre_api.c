@@ -25,6 +25,7 @@
 
 #include <vnet/gre/gre.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -45,50 +46,93 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                             \
-_(GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel)               \
+_(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)               \
 _(GRE_TUNNEL_DUMP, gre_tunnel_dump)
 
-static void vl_api_gre_add_del_tunnel_t_handler
-  (vl_api_gre_add_del_tunnel_t * mp)
+static int
+gre_tunnel_type_decode (vl_api_gre_tunnel_type_t in, gre_tunnel_type_t * out)
 {
-  vl_api_gre_add_del_tunnel_reply_t *rmp;
-  int rv = 0;
-  vnet_gre_add_del_tunnel_args_t _a, *a = &_a;
-  u32 sw_if_index = ~0;
+  in = clib_net_to_host_u32 (in);
 
-  /* Check src & dst are different */
-  if ((mp->is_ipv6 && memcmp (mp->src_address, mp->dst_address, 16) == 0) ||
-      (!mp->is_ipv6 && memcmp (mp->src_address, mp->dst_address, 4) == 0))
+  switch (in)
+    {
+    case GRE_API_TUNNEL_TYPE_L3:
+      *out = GRE_TUNNEL_TYPE_L3;
+      return (0);
+    case GRE_API_TUNNEL_TYPE_TEB:
+      *out = GRE_TUNNEL_TYPE_TEB;
+      return (0);
+    case GRE_API_TUNNEL_TYPE_ERSPAN:
+      *out = GRE_TUNNEL_TYPE_ERSPAN;
+      return (0);
+    }
+
+  return (VNET_API_ERROR_INVALID_VALUE);
+}
+
+static vl_api_gre_tunnel_type_t
+gre_tunnel_type_encode (gre_tunnel_type_t in)
+{
+  vl_api_gre_tunnel_type_t out = GRE_API_TUNNEL_TYPE_L3;
+
+  switch (in)
+    {
+    case GRE_TUNNEL_TYPE_L3:
+      out = GRE_API_TUNNEL_TYPE_L3;
+      break;
+    case GRE_TUNNEL_TYPE_TEB:
+      out = GRE_API_TUNNEL_TYPE_TEB;
+      break;
+    case GRE_TUNNEL_TYPE_ERSPAN:
+      out = GRE_API_TUNNEL_TYPE_ERSPAN;
+      break;
+    }
+
+  out = clib_net_to_host_u32 (out);
+
+  return (out);
+}
+
+static void vl_api_gre_tunnel_add_del_t_handler
+  (vl_api_gre_tunnel_add_del_t * mp)
+{
+  vnet_gre_tunnel_add_del_args_t _a = { }, *a = &_a;
+  vl_api_gre_tunnel_add_del_reply_t *rmp;
+  u32 sw_if_index = ~0;
+  ip46_type_t itype[2];
+  int rv = 0;
+
+  itype[0] = ip_address_decode (&mp->tunnel.src, &a->src);
+  itype[1] = ip_address_decode (&mp->tunnel.dst, &a->dst);
+
+  if (itype[0] != itype[1])
+    {
+      rv = VNET_API_ERROR_INVALID_PROTOCOL;
+      goto out;
+    }
+
+  if (ip46_address_is_equal (&a->src, &a->dst))
     {
       rv = VNET_API_ERROR_SAME_SRC_DST;
       goto out;
     }
-  clib_memset (a, 0, sizeof (*a));
+
+  rv = gre_tunnel_type_decode (mp->tunnel.type, &a->type);
+
+  if (rv)
+    goto out;
 
   a->is_add = mp->is_add;
-  a->tunnel_type = mp->tunnel_type;
-  a->is_ipv6 = mp->is_ipv6;
-  a->instance = ntohl (mp->instance);
-  a->session_id = ntohs (mp->session_id);
+  a->is_ipv6 = (itype[0] == IP46_TYPE_IP6);
+  a->instance = ntohl (mp->tunnel.instance);
+  a->session_id = ntohs (mp->tunnel.session_id);
+  a->outer_fib_id = ntohl (mp->tunnel.outer_fib_id);
 
-  /* ip addresses sent in network byte order */
-  if (!mp->is_ipv6)
-    {
-      clib_memcpy (&(a->src.ip4), mp->src_address, 4);
-      clib_memcpy (&(a->dst.ip4), mp->dst_address, 4);
-    }
-  else
-    {
-      clib_memcpy (&(a->src.ip6), mp->src_address, 16);
-      clib_memcpy (&(a->dst.ip6), mp->dst_address, 16);
-    }
-
-  a->outer_fib_id = ntohl (mp->outer_fib_id);
-  rv = vnet_gre_add_del_tunnel (a, &sw_if_index);
+  rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
 out:
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GRE_ADD_DEL_TUNNEL_REPLY,
+  REPLY_MACRO2(VL_API_GRE_TUNNEL_ADD_DEL_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
@@ -99,32 +143,23 @@ static void send_gre_tunnel_details
   (gre_tunnel_t * t, vl_api_registration_t * reg, u32 context)
 {
   vl_api_gre_tunnel_details_t *rmp;
-  u8 is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
-  fib_table_t *ft;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_GRE_TUNNEL_DETAILS);
-  if (!is_ipv6)
-    {
-      clib_memcpy (rmp->src_address, &(t->tunnel_src.ip4.as_u8), 4);
-      clib_memcpy (rmp->dst_address, &(t->tunnel_dst.fp_addr.ip4.as_u8), 4);
-      ft = fib_table_get (t->outer_fib_index, FIB_PROTOCOL_IP4);
-      rmp->outer_fib_id = htonl (ft->ft_table_id);
-    }
-  else
-    {
-      clib_memcpy (rmp->src_address, &(t->tunnel_src.ip6.as_u8), 16);
-      clib_memcpy (rmp->dst_address, &(t->tunnel_dst.fp_addr.ip6.as_u8), 16);
-      ft = fib_table_get (t->outer_fib_index, FIB_PROTOCOL_IP6);
-      rmp->outer_fib_id = htonl (ft->ft_table_id);
-    }
-  rmp->tunnel_type = t->type;
-  rmp->instance = htonl (t->user_instance);
-  rmp->sw_if_index = htonl (t->sw_if_index);
-  rmp->session_id = htons (t->session_id);
+
+  ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
+  ip_address_encode (&t->tunnel_dst.fp_addr, IP46_TYPE_ANY, &rmp->tunnel.dst);
+
+  rmp->tunnel.outer_fib_id =
+    htonl (fib_table_get_table_id
+	   (t->outer_fib_index, t->tunnel_dst.fp_proto));
+
+  rmp->tunnel.type = gre_tunnel_type_encode (t->type);
+  rmp->tunnel.instance = htonl (t->user_instance);
+  rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+  rmp->tunnel.session_id = htons (t->session_id);
   rmp->context = context;
-  rmp->is_ipv6 = is_ipv6;
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
@@ -167,7 +202,7 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
 /*
  * gre_api_hookup
  * Add vpe's API message handlers to the table.
- * vlib has alread mapped shared memory and
+ * vlib has already mapped shared memory and
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */

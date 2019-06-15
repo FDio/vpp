@@ -84,6 +84,8 @@ int l2_rw_interface_set_table (u32 sw_if_index,
 int l2_rw_mod_entry (u32 * index,
 		     u8 * mask, u8 * value, u32 len, u32 skip, u8 is_del);
 
+extern vlib_node_registration_t l2_rw_node;
+
 #endif /* L2_FW_H_ */
 
 /*

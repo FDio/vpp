@@ -360,7 +360,7 @@ ip4_fib_table_entry_remove (ip4_fib_t *fib,
     if (NULL == result)
     {
 	/*
-	 * removing a non-existant entry. i'll allow it.
+	 * removing a non-existent entry. i'll allow it.
 	 */
     }
     else 

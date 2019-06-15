@@ -225,7 +225,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
   uword n_trace = vlib_get_trace_count (vm, node);
-  virtio_vring_t *vring = vec_elt_at_index (vif->vrings, 0);
+  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   const int hdr_sz = vif->virtio_net_hdr_sz;
   u32 *to_next = 0;
@@ -353,9 +353,9 @@ refill:
   return n_rx_packets;
 }
 
-static uword
-virtio_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * frame)
+VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   u32 n_rx = 0;
   virtio_main_t *nm = &virtio_main;
@@ -364,15 +364,15 @@ virtio_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   foreach_device_and_queue (dq, rt->devices_and_queues)
   {
-    virtio_if_t *mif;
-    mif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
-    if (mif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
+    virtio_if_t *vif;
+    vif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
+    if (vif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
       {
-	if (mif->gso_enabled)
-	  n_rx += virtio_device_input_inline (vm, node, frame, mif,
+	if (vif->gso_enabled)
+	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
 					      dq->queue_id, 1);
 	else
-	  n_rx += virtio_device_input_inline (vm, node, frame, mif,
+	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
 					      dq->queue_id, 0);
       }
   }
@@ -382,7 +382,6 @@ virtio_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (virtio_input_node) = {
-  .function = virtio_input_fn,
   .name = "virtio-input",
   .sibling_of = "device-input",
   .format_trace = format_virtio_input_trace,
@@ -391,8 +390,6 @@ VLIB_REGISTER_NODE (virtio_input_node) = {
   .n_errors = VIRTIO_INPUT_N_ERROR,
   .error_strings = virtio_input_error_strings,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (virtio_input_node, virtio_input_fn)
 /* *INDENT-ON* */
 
 /*

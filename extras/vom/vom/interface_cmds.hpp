@@ -25,6 +25,7 @@
 
 #include <vapi/af_packet.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>
+#include <vapi/l2.api.vapi.hpp>
 #include <vapi/vhost_user.api.vapi.hpp>
 #include <vapi/vpe.api.vapi.hpp>
 
@@ -36,6 +37,30 @@ namespace interface_cmds {
  */
 std::unique_ptr<interface> new_interface(
   const vapi_payload_sw_interface_details& vd);
+
+/**
+ * A command class to create bvi interfaces in VPP
+ */
+class bvi_create_cmd : public interface::create_cmd<vapi::Bvi_create>
+{
+public:
+  /**
+   * Constructor taking the HW::item to update
+   * and the name of the interface to create
+   */
+  bvi_create_cmd(HW::item<handle_t>& item, const std::string& name);
+  ~bvi_create_cmd() = default;
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+
+  /**
+ * convert to string format for debug purposes
+ */
+  std::string to_string() const;
+};
 
 /**
  * A command class to create Loopback interfaces in VPP
@@ -106,6 +131,27 @@ public:
 
 private:
   const std::string m_tag;
+};
+
+/**
+ * A command class to delete bvi interfaces in VPP
+ */
+class bvi_delete_cmd : public interface::delete_cmd<vapi::Bvi_delete>
+{
+public:
+  /**
+   * Constructor taking the HW::item to update
+   */
+  bvi_delete_cmd(HW::item<handle_t>& item);
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
 };
 
 /**

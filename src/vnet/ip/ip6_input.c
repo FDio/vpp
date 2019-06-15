@@ -62,8 +62,8 @@ format_ip6_input_trace (u8 * s, va_list * va)
 
 /* Validate IP v6 packets and pass them either to forwarding code
    or drop exception packets. */
-static uword
-ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_main_t *im = &ip6_main;
@@ -218,15 +218,16 @@ ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return frame->n_vectors;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 char *ip6_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip6_error
 #undef _
 };
+#endif /* CLIB_MARCH_VARIANT */
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_input_node) = {
-  .function = ip6_input,
   .name = "ip6-input",
   .vector_size = sizeof (u32),
 
@@ -245,8 +246,6 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
   .format_trace = format_ip6_input_trace,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_input_node, ip6_input);
 
 static clib_error_t *
 ip6_init (vlib_main_t * vm)

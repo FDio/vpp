@@ -63,6 +63,7 @@ set(VPPINFRA_SRCS
   random.c
   random_buffer.c
   random_isaac.c
+  rbtree.c
   serialize.c
   slist.c
   socket.c
@@ -146,7 +147,9 @@ set(VPPINFRA_HEADERS
   random_buffer.h
   random.h
   random_isaac.h
+  rbtree.h
   serialize.h
+  sha2.h
   slist.h
   smp.h
   socket.h

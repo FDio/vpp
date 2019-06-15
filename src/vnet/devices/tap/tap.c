@@ -57,6 +57,38 @@ virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
   return 0;
 }
 
+void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+
+static clib_error_t *
+call_tap_read_ready (clib_file_t * uf)
+{
+  /* nothing to do */
+  return 0;
+}
+
+static void
+tap_delete_if_cp (u32 * sw_if_index)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  tap_delete_if (vm, *sw_if_index);
+}
+
+/*
+ * Tap clean-up routine:
+ * Linux side of tap interface can be deleted i.e. tap is
+ * attached to container and if someone will delete this
+ * container, will also removes tap interface. While VPP
+ * will have other side of tap. This function will RPC
+ * main thread to call the tap_delete_if to cleanup tap.
+ */
+static clib_error_t *
+call_tap_error_ready (clib_file_t * uf)
+{
+  vl_api_rpc_call_main_thread (tap_delete_if_cp, (u8 *) & uf->private_data,
+			       sizeof (uf->private_data));
+  return 0;
+}
+
 static int
 open_netns_fd (char *netns)
 {
@@ -92,6 +124,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
+  clib_file_t t = { 0 };
   clib_error_t *err = 0;
   int fd = -1;
 
@@ -174,6 +207,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_ONE_QUEUE | IFF_VNET_HDR;
   _IOCTL (vif->tap_fd, TUNSETIFF, (void *) &ifr);
   vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
+
+  if (!args->host_if_name)
+    args->host_if_name = (u8 *) ifr.ifr_ifrn.ifrn_name;
 
   unsigned int offload = 0;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
@@ -334,31 +370,25 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vhost_mem->regions[0].memory_size = (1ULL << 47) - 4096;
   _IOCTL (vif->fd, VHOST_SET_MEM_TABLE, vhost_mem);
 
-  if ((args->error = virtio_vring_init (vm, vif, 0, args->rx_ring_sz)))
+  if ((args->error =
+       virtio_vring_init (vm, vif, RX_QUEUE (0), args->rx_ring_sz)))
     {
       args->rv = VNET_API_ERROR_INIT_FAILED;
       goto error;
     }
+  vif->num_rxqs = 1;
 
-  if ((args->error = virtio_vring_init (vm, vif, 1, args->tx_ring_sz)))
+  if ((args->error =
+       virtio_vring_init (vm, vif, TX_QUEUE (0), args->tx_ring_sz)))
     {
       args->rv = VNET_API_ERROR_INIT_FAILED;
       goto error;
     }
+  vif->num_txqs = 1;
 
   if (!args->mac_addr_set)
-    {
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
+    ethernet_mac_address_generate (args->mac_addr);
 
-      memcpy (args->mac_addr + 2, &rnd, sizeof (rnd));
-      args->mac_addr[0] = 2;
-      args->mac_addr[1] = 0xfe;
-    }
-  vif->rx_ring_sz = args->rx_ring_sz != 0 ? args->rx_ring_sz : 256;
-  vif->tx_ring_sz = args->tx_ring_sz != 0 ? args->tx_ring_sz : 256;
   clib_memcpy (vif->mac_addr, args->mac_addr, 6);
 
   vif->host_if_name = args->host_if_name;
@@ -404,10 +434,20 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, 0,
 				 VNET_HW_INTERFACE_RX_MODE_DEFAULT);
   vif->per_interface_next_index = ~0;
-  virtio_vring_set_numa_node (vm, vif, 0);
+  virtio_vring_set_numa_node (vm, vif, RX_QUEUE (0));
   vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
+  vif->cxq_vring = NULL;
+
+  t.read_function = call_tap_read_ready;
+  t.error_function = call_tap_error_ready;
+  t.file_descriptor = vif->tap_fd;
+  t.private_data = vif->sw_if_index;
+  t.description = format (0, "tap sw_if_index %u  fd: %u",
+			  vif->sw_if_index, vif->tap_fd);
+  vif->tap_file_index = clib_file_add (&file_main, &t);
+
   if (thm->n_vlib_mains > 1)
     clib_spinlock_init (&vif->lockp);
   goto done;
@@ -423,8 +463,12 @@ error:
     close (vif->tap_fd);
   if (vif->fd != -1)
     close (vif->fd);
-  vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
-  vec_free (vif->vrings);
+  vec_foreach_index (i, vif->rxq_vrings) virtio_vring_free_rx (vm, vif,
+							       RX_QUEUE (i));
+  vec_foreach_index (i, vif->txq_vrings) virtio_vring_free_tx (vm, vif,
+							       TX_QUEUE (i));
+  vec_free (vif->rxq_vrings);
+  vec_free (vif->txq_vrings);
   clib_memset (vif, 0, sizeof (virtio_if_t));
   pool_put (vim->interfaces, vif);
 
@@ -460,10 +504,11 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
     vnm->interface_main.gso_interface_count--;
 
+  clib_file_del_by_index (&file_main, vif->tap_file_index);
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0);
-  vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, 0);
+  vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, RX_QUEUE (0));
 
   ethernet_delete_interface (vnm, vif->hw_if_index);
   vif->hw_if_index = ~0;
@@ -473,8 +518,12 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   if (vif->fd != -1)
     close (vif->fd);
 
-  vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
-  vec_free (vif->vrings);
+  vec_foreach_index (i, vif->rxq_vrings) virtio_vring_free_rx (vm, vif,
+							       RX_QUEUE (i));
+  vec_foreach_index (i, vif->txq_vrings) virtio_vring_free_tx (vm, vif,
+							       TX_QUEUE (i));
+  vec_free (vif->rxq_vrings);
+  vec_free (vif->txq_vrings);
 
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 0);
   clib_spinlock_free (&vif->lockp);
@@ -536,6 +585,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
+  virtio_vring_t *vring;
   vnet_hw_interface_t *hi;
   tap_interface_details_t *r_tapids = NULL;
   tap_interface_details_t *tapid = NULL;
@@ -552,8 +602,10 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     clib_memcpy(tapid->dev_name, hi->name,
                 MIN (ARRAY_LEN (tapid->dev_name) - 1,
                      strlen ((const char *) hi->name)));
-    tapid->rx_ring_sz = vif->rx_ring_sz;
-    tapid->tx_ring_sz = vif->tx_ring_sz;
+    vring = vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS(0));
+    tapid->rx_ring_sz = vring->size;
+    vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS(0));
+    tapid->tx_ring_sz = vring->size;
     clib_memcpy(tapid->host_mac_addr, vif->host_mac_addr, 6);
     if (vif->host_if_name)
       {

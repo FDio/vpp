@@ -441,8 +441,7 @@ static inline int BV (clib_bihash_add_del_inline)
       tmp_b.refcnt = 1;
       CLIB_MEMORY_BARRIER ();
 
-      b->as_u64 = tmp_b.as_u64;
-      BV (clib_bihash_unlock_bucket) (b);
+      b->as_u64 = tmp_b.as_u64;	/* unlocks the bucket */
       return (0);
     }
 
@@ -469,7 +468,7 @@ static inline int BV (clib_bihash_add_del_inline)
        */
       for (i = 0; i < limit; i++)
 	{
-	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
+	  if (BV (clib_bihash_key_compare) (v->kvp[i].key, add_v->key))
 	    {
 	      CLIB_MEMORY_BARRIER ();	/* Add a delay */
 	      clib_memcpy_fast (&(v->kvp[i]), add_v, sizeof (*add_v));
@@ -520,7 +519,7 @@ static inline int BV (clib_bihash_add_del_inline)
       for (i = 0; i < limit; i++)
 	{
 	  /* Found the key? Kill it... */
-	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
+	  if (BV (clib_bihash_key_compare) (v->kvp[i].key, add_v->key))
 	    {
 	      clib_memset (&(v->kvp[i]), 0xff, sizeof (*(add_v)));
 	      /* Is the bucket empty? */

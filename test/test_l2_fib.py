@@ -117,12 +117,12 @@ class TestL2fib(VppTestCase):
             for bd_id in n_brs:
                 # Create BD with MAC learning and unknown unicast flooding
                 # disabled and put interfaces to this BD
-                cls.vapi.bridge_domain_add_del(
-                    bd_id=bd_id, uu_flood=0, learn=0)
+                cls.vapi.bridge_domain_add_del(bd_id=bd_id, uu_flood=0,
+                                               learn=0)
                 ifs = [cls.pg_interfaces[i] for i in cls.bd_ifs(bd_id)]
                 for pg_if in ifs:
-                    cls.vapi.sw_interface_set_l2_bridge(pg_if.sw_if_index,
-                                                        bd_id=bd_id)
+                    cls.vapi.sw_interface_set_l2_bridge(
+                        rx_sw_if_index=pg_if.sw_if_index, bd_id=bd_id)
 
             # Set up all interfaces
             for i in cls.pg_interfaces:
@@ -130,6 +130,10 @@ class TestL2fib(VppTestCase):
         except Exception:
             super(TestL2fib, cls).tearDownClass()
             raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2fib, cls).tearDownClass()
 
     def setUp(self):
         super(TestL2fib, self).setUp()
@@ -141,10 +145,12 @@ class TestL2fib(VppTestCase):
         """
         super(TestL2fib, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
             for bd_id in self.n_brs:
                 self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
                                                  % bd_id))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
 
     def create_hosts(self, n_hosts_per_if, subnet):
         """
@@ -183,7 +189,7 @@ class TestL2fib(VppTestCase):
         :param int bd_id: BD to teach
         :param dict hosts: dict of hosts per interface
         """
-        self.vapi.bridge_flags(bd_id, 1, 1)
+        self.vapi.bridge_flags(bd_id=bd_id, is_set=1, flags=1)
         ifs = [self.pg_interfaces[i] for i in self.bd_ifs(bd_id)]
         for pg_if in ifs:
             swif = pg_if.sw_if_index
@@ -299,7 +305,7 @@ class TestL2fib(VppTestCase):
             last_info[i.sw_if_index] = None
         dst_sw_if_index = pg_if.sw_if_index
         for packet in capture:
-            payload_info = self.payload_to_info(str(packet[Raw]))
+            payload_info = self.payload_to_info(packet[Raw])
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
@@ -343,7 +349,7 @@ class TestL2fib(VppTestCase):
             if pkts:
                 i.add_stream(pkts)
 
-        self.vapi.bridge_flags(bd_id, 0, 1)
+        self.vapi.bridge_flags(bd_id=bd_id, is_set=0, flags=1)
         # Enable packet capture and start packet sending
         self.pg_enable_capture(ifs)
         self.pg_start()
@@ -371,7 +377,7 @@ class TestL2fib(VppTestCase):
             if pkts:
                 i.add_stream(pkts)
 
-        self.vapi.bridge_flags(bd_id, 0, 1)
+        self.vapi.bridge_flags(bd_id=bd_id, is_set=0, flags=1)
         # Enable packet capture and start packet sending
         self.pg_enable_capture(ifs)
         self.pg_start()
@@ -482,7 +488,7 @@ class TestL2fib(VppTestCase):
         bd1 = 1
         hosts = self.create_hosts(10, subnet=39)
 
-        self.vapi.want_macs_learn_events()
+        self.vapi.want_l2_macs_events()
         self.learn_hosts(bd1, hosts)
 
         self.sleep(1)
@@ -493,7 +499,7 @@ class TestL2fib(VppTestCase):
             if e.mac[i].action == MAC_EVENT_ACTION_ADD}
         macs = {h.bin_mac for swif in self.bd_ifs(bd1)
                 for h in hosts[self.pg_interfaces[swif].sw_if_index]}
-        self.vapi.want_macs_learn_events(enable_disable=0)
+        self.vapi.want_l2_macs_events(enable_disable=0)
         self.assertEqual(len(learned_macs ^ macs), 0)
 
     def test_l2_fib_macs_learn_max(self):
@@ -503,13 +509,13 @@ class TestL2fib(VppTestCase):
         hosts = self.create_hosts(10, subnet=40)
 
         ev_macs = 1
-        self.vapi.want_macs_learn_events(max_macs_in_event=ev_macs)
+        self.vapi.want_l2_macs_events(max_macs_in_event=ev_macs)
         self.learn_hosts(bd1, hosts)
 
         self.sleep(1)
         self.logger.info(self.vapi.ppcli("show l2fib"))
         evs = self.vapi.collect_events()
-        self.vapi.want_macs_learn_events(enable_disable=0)
+        self.vapi.want_l2_macs_events(enable_disable=0)
 
         self.assertGreater(len(evs), 0)
         learned_macs = {

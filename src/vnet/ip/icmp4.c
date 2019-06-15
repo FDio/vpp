@@ -476,14 +476,27 @@ ip4_icmp_error (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 pi0 = from[0];
+	  /*
+	   * Duplicate first buffer and free the original chain.  Keep
+	   * as much of the original packet as possible, within the
+	   * minimum MTU. We chat "a little" here by keeping whatever
+	   * is available in the first buffer.
+	   */
+
+	  u32 pi0 = ~0;
+	  u32 org_pi0 = from[0];
 	  u32 next0 = IP4_ICMP_ERROR_NEXT_LOOKUP;
 	  u8 error0 = ICMP4_ERROR_NONE;
-	  vlib_buffer_t *p0;
+	  vlib_buffer_t *p0, *org_p0;
 	  ip4_header_t *ip0, *out_ip0;
 	  icmp46_header_t *icmp0;
 	  u32 sw_if_index0, if_add_index0;
 	  ip_csum_t sum;
+
+	  org_p0 = vlib_get_buffer (vm, org_pi0);
+	  p0 = vlib_buffer_copy_no_chain (vm, org_p0, &pi0);
+	  if (!p0 || pi0 == ~0)	/* Out of buffers */
+	    continue;
 
 	  /* Speculatively enqueue p0 to the current next frame */
 	  to_next[0] = pi0;
@@ -492,27 +505,8 @@ ip4_icmp_error (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
-
-	  /*
-	   * RFC1812 says to keep as much of the original packet as
-	   * possible within the minimum MTU (576). We cheat "a little"
-	   * here by keeping whatever fits in the first buffer, to be more
-	   * efficient
-	   */
-	  if (PREDICT_FALSE (p0->total_length_not_including_first_buffer))
-	    {
-	      /* clear current_length of all other buffers in chain */
-	      vlib_buffer_t *b = p0;
-	      p0->total_length_not_including_first_buffer = 0;
-	      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-		{
-		  b = vlib_get_buffer (vm, b->next_buffer);
-		  b->current_length = 0;
-		}
-	    }
 
 	  /* Add IP header and ICMPv4 header including a 4 byte data field */
 	  vlib_buffer_advance (p0,
@@ -521,7 +515,6 @@ ip4_icmp_error (vlib_main_t * vm,
 
 	  p0->current_length =
 	    p0->current_length > 576 ? 576 : p0->current_length;
-
 	  out_ip0 = vlib_buffer_get_current (p0);
 	  icmp0 = (icmp46_header_t *) & out_ip0[1];
 
@@ -570,6 +563,7 @@ ip4_icmp_error (vlib_main_t * vm,
 	  /* Update error status */
 	  if (error0 == ICMP4_ERROR_NONE)
 	    error0 = icmp4_icmp_type_to_error (icmp0->type);
+
 	  vlib_error_count (vm, node->node_index, error0, 1);
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
@@ -579,6 +573,15 @@ ip4_icmp_error (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+  /*
+   * push the original buffers to error-drop, so that
+   * they can get the error counters handled, then freed
+   */
+  vlib_buffer_enqueue_to_single_next (vm, node,
+				      vlib_frame_vector_args (frame),
+				      IP4_ICMP_ERROR_NEXT_DROP,
+				      frame->n_vectors);
 
   return frame->n_vectors;
 }

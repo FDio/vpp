@@ -46,6 +46,7 @@ static char *virtio_tx_func_error_strings[] = {
 #undef _
 };
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_virtio_device_name (u8 * s, va_list * args)
 {
@@ -64,6 +65,7 @@ format_virtio_device_name (u8 * s, va_list * args)
 
   return s;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static u8 *
 format_virtio_device (u8 * s, va_list * args)
@@ -88,6 +90,7 @@ format_virtio_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 inline void
 virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
 {
@@ -113,6 +116,7 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
   vring->desc_in_use = used;
   vring->last_used_idx = last;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static_always_inline u16
 add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
@@ -241,15 +245,16 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif,
 			    int do_gso)
 {
-  u8 qid = 0;
   u16 n_left = frame->n_vectors;
-  virtio_vring_t *vring = vec_elt_at_index (vif->vrings, (qid << 1) + 1);
+  virtio_vring_t *vring;
+  u16 qid = vm->thread_index % vif->num_txqs;
+  vring = vec_elt_at_index (vif->txq_vrings, qid);
   u16 used, next, avail;
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u32 *buffers = vlib_frame_vector_args (frame);
 
-  clib_spinlock_lock_if_init (&vif->lockp);
+  clib_spinlock_lock_if_init (&vring->lockp);
 
   if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
       (vring->last_kick_avail_idx != vring->avail->idx))
@@ -294,20 +299,20 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_buffer_free (vm, buffers, n_left);
     }
 
-  clib_spinlock_unlock_if_init (&vif->lockp);
+  clib_spinlock_unlock_if_init (&vring->lockp);
 
   return frame->n_vectors - n_left;
 }
 
-static uword
-virtio_interface_tx (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
+					       vlib_node_runtime_t * node,
+					       vlib_frame_t * frame)
 {
   virtio_main_t *nm = &virtio_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
-
   vnet_main_t *vnm = vnet_get_main ();
+
   if (vnm->interface_main.gso_interface_count > 0)
     return virtio_interface_tx_inline (vm, node, frame, vif, 1 /* do_gso */ );
   else
@@ -348,7 +353,7 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   virtio_main_t *mm = &virtio_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
-  virtio_vring_t *vring = vec_elt_at_index (vif->vrings, qid);
+  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
 
   if (vif->type == VIRTIO_IF_TYPE_PCI && !(vif->support_int_mode))
     {
@@ -391,7 +396,6 @@ virtio_subif_add_del_function (vnet_main_t * vnm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (virtio_device_class) = {
   .name = "virtio",
-  .tx_function = virtio_interface_tx,
   .format_device_name = format_virtio_device_name,
   .format_device = format_virtio_device,
   .format_tx_trace = format_virtio_tx_trace,
@@ -403,9 +407,6 @@ VNET_DEVICE_CLASS (virtio_device_class) = {
   .subif_add_del_function = virtio_subif_add_del_function,
   .rx_mode_change_function = virtio_interface_rx_mode_change,
 };
-
-VLIB_DEVICE_TX_FUNCTION_MULTIARCH(virtio_device_class,
-				  virtio_interface_tx)
 /* *INDENT-ON* */
 
 /*

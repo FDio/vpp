@@ -339,7 +339,7 @@ void add_clib_event(double delta, unsigned short track,
     event_t *ep;
 
     ep = add_ep++;
-    ep->time = (ulonglong) (delta * 1e9); /* time in intger nanoseconds */
+    ep->time = (ulonglong) (delta * 1e9); /* time in integer nanoseconds */
     ep->pid = find_or_add_pid(track);
     ep->code = event;
     ep->datum = index;

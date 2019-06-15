@@ -97,9 +97,6 @@ class VppBierTable(VppObject):
             self.mpls_label,
             is_add=0)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "bier-table;[%d:%d:%d]" % (self.id.set_id,
                                           self.id.sub_domain_id,
@@ -198,9 +195,6 @@ class VppBierRoute(VppObject):
             is_replace=1)
         self.paths = []
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "bier-route;[%d:%d:%d:%d]" % (self.tbl_id.set_id,
                                              self.tbl_id.sub_domain_id,
@@ -234,9 +228,6 @@ class VppBierImp(VppObject):
         self._test.vapi.bier_imp_del(
             self.bi_index)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "bier-imp;[%d:%d:%d:%d]" % (self.tbl_id.set_id,
                                            self.tbl_id.sub_domain_id,
@@ -266,9 +257,6 @@ class VppBierDispTable(VppObject):
         self._test.vapi.bier_disp_table_add_del(
             self.id,
             is_add=0)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "bier-disp-table;[%d]" % (self.id)
@@ -315,9 +303,6 @@ class VppBierDispEntry(VppObject):
             self.nh_tbl,
             self.rpf_id,
             is_add=0)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "bier-disp-entry;[%d:%d]" % (self.tbl_id,

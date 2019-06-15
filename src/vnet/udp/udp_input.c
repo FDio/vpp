@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -229,7 +229,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (!uc0->is_connected)
 	    {
-	      if (svm_fifo_max_enqueue (s0->rx_fifo)
+	      if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
 		  < b0->current_length + sizeof (session_dgram_hdr_t))
 		{
 		  error0 = UDP_ERROR_FIFO_FULL;
@@ -255,7 +255,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if (svm_fifo_max_enqueue (s0->rx_fifo) < b0->current_length)
+	      if (svm_fifo_max_enqueue_prod (s0->rx_fifo) <
+		  b0->current_length)
 		{
 		  error0 = UDP_ERROR_FIFO_FULL;
 		  goto trace0;
@@ -289,7 +290,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  errors = session_manager_flush_all_enqueue_events (TRANSPORT_PROTO_UDP);
+  errors = session_main_flush_all_enqueue_events (TRANSPORT_PROTO_UDP);
   udp_input_inc_counter (vm, is_ip4, UDP_ERROR_EVENT_FIFO_FULL, errors);
   return frame->n_vectors;
 }

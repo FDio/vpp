@@ -17,6 +17,43 @@
 
 #include <vnet/mpls/mpls.h>
 
+static u8 *
+format_mpls_drop_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+
+  return s;
+}
+
+static void
+mpls_drop_trace (vlib_main_t * vm,
+                 vlib_node_runtime_t * node,
+                 vlib_frame_t * frame)
+{
+  u32 *from, n_left;
+
+  n_left = frame->n_vectors;
+  from = vlib_frame_vector_args (frame);
+
+  while (n_left >= 1)
+    {
+      vlib_buffer_t *b0;
+      u32 bi0;
+
+      bi0 = from[0];
+
+      b0 = vlib_get_buffer (vm, bi0);
+
+      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+      {
+          vlib_add_trace (vm, node, b0, 0);
+      }
+      from += 1;
+      n_left -= 1;
+    }
+}
+
 always_inline uword
 mpls_terminate (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
@@ -25,6 +62,9 @@ mpls_terminate (vlib_main_t * vm,
 {
   u32 * buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+      mpls_drop_trace (vm, node, frame);
 
   vlib_error_drop_buffers (vm, node,
                            buffers,
@@ -37,8 +77,7 @@ mpls_terminate (vlib_main_t * vm,
   return n_packets;
 }
 
-static uword
-mpls_punt (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_punt_node) (vlib_main_t * vm,
            vlib_node_runtime_t * node,
            vlib_frame_t * frame)
 {
@@ -46,9 +85,9 @@ mpls_punt (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_punt_node) = {
-  .function = mpls_punt,
   .name = "mpls-punt",
   .vector_size = sizeof (u32),
+  .format_trace = format_mpls_drop_trace,
 
   .n_next_nodes = 1,
   .next_nodes = {
@@ -56,10 +95,7 @@ VLIB_REGISTER_NODE (mpls_punt_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_punt_node, mpls_punt)
-
-static uword
-mpls_drop (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_drop_node) (vlib_main_t * vm,
            vlib_node_runtime_t * node,
            vlib_frame_t * frame)
 {
@@ -67,9 +103,9 @@ mpls_drop (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_drop_node) = {
-  .function = mpls_drop,
   .name = "mpls-drop",
   .vector_size = sizeof (u32),
+  .format_trace = format_mpls_drop_trace,
 
   .n_next_nodes = 1,
   .next_nodes = {
@@ -77,10 +113,7 @@ VLIB_REGISTER_NODE (mpls_drop_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_drop_node, mpls_drop)
-
-static uword
-mpls_not_enabled (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_not_enabled_node) (vlib_main_t * vm,
                   vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
@@ -88,17 +121,15 @@ mpls_not_enabled (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_not_enabled_node) = {
-  .function = mpls_not_enabled,
   .name = "mpls-not-enabled",
   .vector_size = sizeof (u32),
+  .format_trace = format_mpls_drop_trace,
 
   .n_next_nodes = 1,
   .next_nodes = {
     [0] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_not_enabled_node, mpls_not_enabled)
 
 VNET_FEATURE_ARC_INIT (mpls_input, static) =
 {

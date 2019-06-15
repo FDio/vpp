@@ -12,6 +12,7 @@ from vpp_bier import BIER_HDR_PAYLOAD, VppBierImp, VppBierDispEntry, \
     VppBierDispTable, VppBierTable, VppBierTableID, VppBierRoute
 from vpp_udp_encap import VppUdpEncap
 
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
@@ -29,7 +30,7 @@ class TestBFIB(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertEqual(error.find("Failed"), -1)
+        self.assertNotIn("Failed", error)
 
 
 class TestBier(VppTestCase):
@@ -122,10 +123,11 @@ class TestBier(VppTestCase):
         for pkt_size in pkt_sizes:
             p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                  MPLS(label=77, ttl=255) /
-                 BIER(length=hdr_len_id, BitString=chr(255)*n_bytes) /
+                 BIER(length=hdr_len_id,
+                      BitString=scapy.compat.chb(255)*n_bytes) /
                  IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6) /
                  UDP(sport=1234, dport=1234) /
-                 Raw(chr(5) * pkt_size))
+                 Raw(scapy.compat.chb(5) * pkt_size))
             pkts = p
 
             self.pg0.add_stream(pkts)
@@ -159,18 +161,18 @@ class TestBier(VppTestCase):
                 self.assertEqual(bier_hdr.Proto, 5)
 
                 # The bit-string should consist only of the BP given by i.
-                byte_array = ['\0'] * (n_bytes)
-                byte_val = chr(1 << (bp - 1) % 8)
-                byte_pos = n_bytes - (((bp - 1) / 8) + 1)
+                byte_array = [b'\0'] * (n_bytes)
+                byte_val = scapy.compat.chb(1 << (bp - 1) % 8)
+                byte_pos = n_bytes - (((bp - 1) // 8) + 1)
                 byte_array[byte_pos] = byte_val
-                bitstring = ''.join(byte_array)
+                bitstring = ''.join([scapy.compat.chb(x) for x in byte_array])
 
                 self.assertEqual(len(bitstring), len(bier_hdr.BitString))
                 self.assertEqual(bitstring, bier_hdr.BitString)
 
         #
         # cleanup. not strictly necessary, but it's much quicker this way
-        # becuase the bier_fib_dump and ip_fib_dump will be empty when the
+        # because the bier_fib_dump and ip_fib_dump will be empty when the
         # auto-cleanup kicks in
         #
         for br in bier_routes:
@@ -222,7 +224,7 @@ class TestBier(VppTestCase):
                          MPLS(label=77, ttl=255) /
                          BIER(length=BIERLength.BIER_LEN_64,
                               entropy=ii,
-                              BitString=chr(255)*16) /
+                              BitString=scapy.compat.chb(255)*16) /
                          IPv6(src=self.pg0.remote_ip6,
                               dst=self.pg0.remote_ip6) /
                          UDP(sport=1234, dport=1234) /
@@ -334,7 +336,7 @@ class TestBier(VppTestCase):
         #
         # An imposition object with both bit-positions set
         #
-        bi = VppBierImp(self, bti, 333, chr(0x3) * 32)
+        bi = VppBierImp(self, bti, 333, scapy.compat.chb(0x3) * 32)
         bi.add_vpp_config()
 
         #
@@ -446,7 +448,7 @@ class TestBier(VppTestCase):
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              MPLS(label=77, ttl=255) /
              BIER(length=BIERLength.BIER_LEN_256,
-                  BitString=chr(255)*32,
+                  BitString=scapy.compat.chb(255)*32,
                   BFRID=99) /
              IP(src="1.1.1.1", dst="232.1.1.1") /
              UDP(sport=1234, dport=1234) /
@@ -460,7 +462,7 @@ class TestBier(VppTestCase):
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              MPLS(label=77, ttl=255) /
              BIER(length=BIERLength.BIER_LEN_256,
-                  BitString=chr(255)*32,
+                  BitString=scapy.compat.chb(255)*32,
                   BFRID=77) /
              IP(src="1.1.1.1", dst="232.1.1.1") /
              UDP(sport=1234, dport=1234) /
@@ -486,7 +488,7 @@ class TestBier(VppTestCase):
         # A multicast route to forward post BIER disposition that needs
         # a check against sending back into the BIER core
         #
-        bi = VppBierImp(self, bti, 333, chr(0x3) * 32)
+        bi = VppBierImp(self, bti, 333, scapy.compat.chb(0x3) * 32)
         bi.add_vpp_config()
 
         route_eg_232_1_1_2 = VppIpMRoute(
@@ -506,7 +508,7 @@ class TestBier(VppTestCase):
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              MPLS(label=77, ttl=255) /
              BIER(length=BIERLength.BIER_LEN_256,
-                  BitString=chr(255)*32,
+                  BitString=scapy.compat.chb(255)*32,
                   BFRID=77) /
              IP(src="1.1.1.1", dst="232.1.1.2") /
              UDP(sport=1234, dport=1234) /
@@ -523,10 +525,10 @@ class TestBier(VppTestCase):
         bt = VppBierTable(self, bti, 77)
         bt.add_vpp_config()
 
-        lowest = ['\0'] * (n_bytes)
-        lowest[-1] = chr(1)
-        highest = ['\0'] * (n_bytes)
-        highest[0] = chr(128)
+        lowest = [b'\0'] * (n_bytes)
+        lowest[-1] = scapy.compat.chb(1)
+        highest = [b'\0'] * (n_bytes)
+        highest[0] = scapy.compat.chb(128)
 
         #
         # Impostion Sets bit strings
@@ -581,10 +583,12 @@ class TestBier(VppTestCase):
                           proto=DpoProto.DPO_PROTO_BIER,
                           nh_table_id=8)])
         bier_route_1.add_vpp_config()
-        bier_route_max = VppBierRoute(self, bti, max_bp,
-                                      [VppRoutePath("0.0.0.0",
-                                                    0xffffffff,
-                                                    nh_table_id=8)])
+        bier_route_max = VppBierRoute(
+            self, bti, max_bp,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          nh_table_id=8,
+                          proto=DpoProto.DPO_PROTO_BIER)])
         bier_route_max.add_vpp_config()
 
         #
@@ -636,7 +640,7 @@ class TestBier(VppTestCase):
                    src=self.pg0.remote_mac) /
              IP(src="1.1.1.1", dst="232.1.1.1") /
              UDP(sport=1234, dport=1234) /
-             Raw(chr(5) * 32))
+             Raw(scapy.compat.chb(5) * 32))
 
         rx = self.send_and_expect(self.pg0, p*65, self.pg1)
 
@@ -647,7 +651,7 @@ class TestBier(VppTestCase):
                    src=self.pg0.remote_mac) /
              IP(src="1.1.1.1", dst="232.1.1.2") /
              UDP(sport=1234, dport=1234) /
-             Raw(chr(5) * 512))
+             Raw(scapy.compat.chb(5) * 512))
 
         rx = self.send_and_expect(self.pg0, p*65, self.pg1)
         self.assertEqual(rx[0][IP].src, "1.1.1.1")
@@ -716,9 +720,9 @@ class TestBier(VppTestCase):
         # only use the second, but creating 2 tests with a non-zero
         # value index in the route add
         #
-        bi = VppBierImp(self, bti, 333, chr(0xff) * 32)
+        bi = VppBierImp(self, bti, 333, scapy.compat.chb(0xff) * 32)
         bi.add_vpp_config()
-        bi2 = VppBierImp(self, bti, 334, chr(0xff) * 32)
+        bi2 = VppBierImp(self, bti, 334, scapy.compat.chb(0xff) * 32)
         bi2.add_vpp_config()
 
         #
@@ -821,7 +825,7 @@ class TestBier(VppTestCase):
              UDP(sport=333, dport=8138) /
              BIFT(sd=1, set=0, bsl=2, ttl=255) /
              BIER(length=BIERLength.BIER_LEN_256,
-                  BitString=chr(255)*32,
+                  BitString=scapy.compat.chb(255)*32,
                   BFRID=99) /
              IP(src="1.1.1.1", dst="232.1.1.1") /
              UDP(sport=1234, dport=1234) /

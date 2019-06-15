@@ -135,16 +135,6 @@
   foreach_dpdk_pkt_rx_offload_flag              \
   foreach_dpdk_pkt_tx_offload_flag
 
-#define foreach_dpdk_log_level	\
-  _ (EMERG, "emergency")	\
-  _ (ALERT, "alert")		\
-  _ (CRIT, "critical")		\
-  _ (ERR, "error")		\
-  _ (WARNING, "warning")	\
-  _ (NOTICE, "notice")		\
-  _ (INFO, "info")		\
-  _ (DEBUG, "debug")
-
 u8 *
 format_dpdk_device_name (u8 * s, va_list * args)
 {
@@ -291,6 +281,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_I40EVF:
       dev_type = "Intel X710/XL710 Family VF";
+      break;
+
+    case VNET_DPDK_PMD_ICE:
+      dev_type = "Intel E810 Family";
       break;
 
     case VNET_DPDK_PMD_FM10K:
@@ -919,20 +913,6 @@ unformat_rss_fn (unformat_input_t * input, uword * rss_fn)
 	}
     }
   return 0;
-}
-
-uword
-unformat_dpdk_log_level (unformat_input_t * input, va_list * args)
-{
-  u32 *r = va_arg (*args, u32 *);
-
-  if (0);
-#define _(v,s) else if (unformat (input, s)) *r = RTE_LOG_##v;
-  foreach_dpdk_log_level
-#undef _
-    else
-    return 0;
-  return 1;
 }
 
 clib_error_t *

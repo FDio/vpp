@@ -16,11 +16,8 @@
 #define __IPSEC_H__
 
 #include <vnet/ip/ip.h>
+#include <vnet/crypto/crypto.h>
 #include <vnet/feature/feature.h>
-
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/evp.h>
 
 #include <vppinfra/types.h>
 #include <vppinfra/cache.h>
@@ -69,50 +66,24 @@ typedef struct
 
 typedef struct
 {
-  const EVP_CIPHER *type;
+  vnet_crypto_op_id_t enc_op_id;
+  vnet_crypto_op_id_t dec_op_id;
   u8 iv_size;
   u8 block_size;
-} ipsec_proto_main_crypto_alg_t;
+  u8 icv_size;
+} ipsec_main_crypto_alg_t;
 
 typedef struct
 {
-  const EVP_MD *md;
-  u8 trunc_size;
-} ipsec_proto_main_integ_alg_t;
+  vnet_crypto_op_id_t op_id;
+  u8 icv_size;
+} ipsec_main_integ_alg_t;
 
 typedef struct
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *encrypt_ctx;
-#else
-  EVP_CIPHER_CTX encrypt_ctx;
-#endif
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *decrypt_ctx;
-#else
-  EVP_CIPHER_CTX decrypt_ctx;
-#endif
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  HMAC_CTX *hmac_ctx;
-#else
-  HMAC_CTX hmac_ctx;
-#endif
-  ipsec_crypto_alg_t last_encrypt_alg;
-  ipsec_crypto_alg_t last_decrypt_alg;
-  ipsec_integ_alg_t last_integ_alg;
-} ipsec_proto_main_per_thread_data_t;
-
-typedef struct
-{
-  ipsec_proto_main_crypto_alg_t *ipsec_proto_main_crypto_algs;
-  ipsec_proto_main_integ_alg_t *ipsec_proto_main_integ_algs;
-  ipsec_proto_main_per_thread_data_t *per_thread_data;
-} ipsec_proto_main_t;
-
-extern ipsec_proto_main_t ipsec_proto_main;
+  vnet_crypto_op_t *crypto_ops;
+  vnet_crypto_op_t *integ_ops;
+} ipsec_per_thread_data_t;
 
 typedef struct
 {
@@ -126,8 +97,6 @@ typedef struct
   /* pool of tunnel interfaces */
   ipsec_tunnel_if_t *tunnel_interfaces;
 
-  u32 **empty_buffers;
-
   uword *tunnel_index_by_key;
 
   /* convenience */
@@ -138,9 +107,10 @@ typedef struct
   uword *spd_index_by_spd_id;
   uword *spd_index_by_sw_if_index;
   uword *sa_index_by_sa_id;
-  uword *ipsec_if_pool_index_by_key;
+  uword *ipsec4_if_pool_index_by_key;
+  uword *ipsec6_if_pool_index_by_key;
   uword *ipsec_if_real_dev_by_show_dev;
-  u32 *ipsec_if_by_sw_if_index;
+  uword *ipsec_if_by_sw_if_index;
 
   /* node indices */
   u32 error_drop_node_index;
@@ -174,7 +144,22 @@ typedef struct
   u32 ah_default_backend;
   /* index of default esp backend */
   u32 esp_default_backend;
+
+  /* crypto alg data */
+  ipsec_main_crypto_alg_t *crypto_algs;
+
+  /* crypto integ data */
+  ipsec_main_integ_alg_t *integ_algs;
+
+  /* per-thread data */
+  ipsec_per_thread_data_t *ptd;
 } ipsec_main_t;
+
+typedef enum ipsec_format_flags_t_
+{
+  IPSEC_FORMAT_BRIEF = 0,
+  IPSEC_FORMAT_DETAIL = (1 << 0),
+} ipsec_format_flags_t;
 
 extern ipsec_main_t ipsec_main;
 
@@ -191,7 +176,8 @@ extern vlib_node_registration_t esp6_encrypt_node;
 extern vlib_node_registration_t esp6_decrypt_node;
 extern vlib_node_registration_t ah6_encrypt_node;
 extern vlib_node_registration_t ah6_decrypt_node;
-extern vlib_node_registration_t ipsec_if_input_node;
+extern vlib_node_registration_t ipsec4_if_input_node;
+extern vlib_node_registration_t ipsec6_if_input_node;
 
 /*
  * functions
@@ -201,27 +187,6 @@ u8 *format_ipsec_replay_window (u8 * s, va_list * args);
 /*
  *  inline functions
  */
-
-always_inline void
-ipsec_alloc_empty_buffers (vlib_main_t * vm, ipsec_main_t * im)
-{
-  u32 thread_index = vm->thread_index;
-  uword l = vec_len (im->empty_buffers[thread_index]);
-  uword n_alloc = 0;
-
-  if (PREDICT_FALSE (l < VLIB_FRAME_SIZE))
-    {
-      if (!im->empty_buffers[thread_index])
-	{
-	  vec_alloc (im->empty_buffers[thread_index], 2 * VLIB_FRAME_SIZE);
-	}
-
-      n_alloc = vlib_buffer_alloc (vm, im->empty_buffers[thread_index] + l,
-				   2 * VLIB_FRAME_SIZE - l);
-
-      _vec_len (im->empty_buffers[thread_index]) = l + n_alloc;
-    }
-}
 
 static_always_inline u32
 get_next_output_feature_node_index (vlib_buffer_t * b,
@@ -255,6 +220,13 @@ u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 
 int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
+
+always_inline ipsec_sa_t *
+ipsec_sa_get (u32 sa_index)
+{
+  return (pool_elt_at_index (ipsec_main.sad, sa_index));
+}
+
 #endif /* __IPSEC_H__ */
 
 /*

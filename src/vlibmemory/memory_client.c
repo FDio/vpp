@@ -100,8 +100,8 @@ static void
 vl_api_rx_thread_exit_t_handler (vl_api_rx_thread_exit_t * mp)
 {
   memory_client_main_t *mm = &memory_client_main;
-  vl_msg_api_free (mp);
-  longjmp (mm->rx_thread_jmpbuf, 1);
+  if (mm->rx_thread_jmpbuf_valid)
+    longjmp (mm->rx_thread_jmpbuf, 1);
 }
 
 static void
@@ -164,6 +164,7 @@ noop_handler (void *notused)
 {
 }
 
+void vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem);
 int
 vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
 {

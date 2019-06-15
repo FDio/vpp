@@ -252,9 +252,9 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-static uword
-netmap_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * frame)
+VLIB_NODE_FN (netmap_input_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   int i;
   u32 n_rx_packets = 0;
@@ -276,7 +276,6 @@ netmap_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (netmap_input_node) = {
-  .function = netmap_input_fn,
   .name = "netmap-input",
   .sibling_of = "device-input",
   .format_trace = format_netmap_input_trace,
@@ -286,8 +285,6 @@ VLIB_REGISTER_NODE (netmap_input_node) = {
   .n_errors = NETMAP_INPUT_N_ERROR,
   .error_strings = netmap_input_error_strings,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (netmap_input_node, netmap_input_fn)
 /* *INDENT-ON* */
 
 

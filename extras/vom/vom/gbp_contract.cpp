@@ -24,14 +24,14 @@ singular_db<gbp_contract::key_t, gbp_contract> gbp_contract::m_db;
 
 gbp_contract::event_handler gbp_contract::m_evh;
 
-gbp_contract::gbp_contract(epg_id_t src_epg_id,
-                           epg_id_t dst_epg_id,
+gbp_contract::gbp_contract(sclass_t sclass,
+                           sclass_t dclass,
                            const ACL::l3_list& acl,
                            const gbp_rules_t& rules,
                            const ethertype_set_t& allowed_ethertypes)
   : m_hw(false)
-  , m_src_epg_id(src_epg_id)
-  , m_dst_epg_id(dst_epg_id)
+  , m_sclass(sclass)
+  , m_dclass(dclass)
   , m_acl(acl.singular())
   , m_gbp_rules(rules)
   , m_allowed_ethertypes(allowed_ethertypes)
@@ -40,8 +40,8 @@ gbp_contract::gbp_contract(epg_id_t src_epg_id,
 
 gbp_contract::gbp_contract(const gbp_contract& gbpc)
   : m_hw(gbpc.m_hw)
-  , m_src_epg_id(gbpc.m_src_epg_id)
-  , m_dst_epg_id(gbpc.m_dst_epg_id)
+  , m_sclass(gbpc.m_sclass)
+  , m_dclass(gbpc.m_dclass)
   , m_acl(gbpc.m_acl)
   , m_gbp_rules(gbpc.m_gbp_rules)
   , m_allowed_ethertypes(gbpc.m_allowed_ethertypes)
@@ -59,7 +59,7 @@ gbp_contract::~gbp_contract()
 const gbp_contract::key_t
 gbp_contract::key() const
 {
-  return (std::make_pair(m_src_epg_id, m_dst_epg_id));
+  return (std::make_pair(m_sclass, m_dclass));
 }
 
 bool
@@ -72,8 +72,7 @@ void
 gbp_contract::sweep()
 {
   if (m_hw) {
-    HW::enqueue(
-      new gbp_contract_cmds::delete_cmd(m_hw, m_src_epg_id, m_dst_epg_id));
+    HW::enqueue(new gbp_contract_cmds::delete_cmd(m_hw, m_sclass, m_dclass));
   }
   HW::write();
 }
@@ -82,9 +81,9 @@ void
 gbp_contract::replay()
 {
   if (m_hw) {
-    HW::enqueue(new gbp_contract_cmds::create_cmd(
-      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle(), m_gbp_rules,
-      m_allowed_ethertypes));
+    HW::enqueue(new gbp_contract_cmds::create_cmd(m_hw, m_sclass, m_dclass,
+                                                  m_acl->handle(), m_gbp_rules,
+                                                  m_allowed_ethertypes));
   }
 }
 
@@ -92,7 +91,7 @@ std::string
 gbp_contract::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-contract:[{" << m_src_epg_id << ", " << m_dst_epg_id << "}, "
+  s << "gbp-contract:[{" << m_sclass << ", " << m_dclass << "}, "
     << m_acl->to_string();
   if (m_gbp_rules.size()) {
     auto it = m_gbp_rules.cbegin();
@@ -101,7 +100,10 @@ gbp_contract::to_string() const
       ++it;
     }
   }
-  s << "]";
+  s << "[ethertype:";
+  for (auto e : m_allowed_ethertypes)
+    s << " " << e;
+  s << "]]";
 
   return (s.str());
 }
@@ -113,9 +115,9 @@ gbp_contract::update(const gbp_contract& r)
    * create the table if it is not yet created
    */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new gbp_contract_cmds::create_cmd(
-      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle(), m_gbp_rules,
-      m_allowed_ethertypes));
+    HW::enqueue(new gbp_contract_cmds::create_cmd(m_hw, m_sclass, m_dclass,
+                                                  m_acl->handle(), m_gbp_rules,
+                                                  m_allowed_ethertypes));
   }
 }
 
@@ -205,8 +207,8 @@ gbp_contract::event_handler::handle_populate(const client_db::key_t& key)
         allowed_ethertypes.insert(ethertype_t::from_numeric_val(et[i]));
       }
 
-      gbp_contract gbpc(payload.contract.src_epg, payload.contract.dst_epg,
-                        *acl, rules, allowed_ethertypes);
+      gbp_contract gbpc(payload.contract.sclass, payload.contract.dclass, *acl,
+                        rules, allowed_ethertypes);
       OM::commit(key, gbpc);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpc.to_string();

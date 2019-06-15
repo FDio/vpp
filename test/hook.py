@@ -5,6 +5,9 @@ import traceback
 from log import RED, single_line_delim, double_line_delim
 import ipaddress
 from subprocess import check_output, CalledProcessError
+
+import scapy.compat
+
 from util import check_core_path, get_core_path
 
 
@@ -31,12 +34,12 @@ class Hook(object):
                 return val
             if len(val) == 6:
                 return '{!s} ({!s})'.format(val, ':'.join(['{:02x}'.format(
-                    ord(x)) for x in val]))
+                    scapy.compat.orb(x)) for x in val]))
             try:
                 # we don't call test_type(val) because it is a packed value.
                 return '{!s} ({!s})'.format(val, str(
                     ipaddress.ip_address(val)))
-            except ipaddress.AddressValueError:
+            except ValueError:
                 return val
 
         _args = ', '.join("{!s}={!r}".format(key, _friendly_format(val)) for
@@ -81,7 +84,7 @@ class PollHook(Hook):
 
     def on_crash(self, core_path):
         self.logger.error("Core file present, debug with: gdb %s %s",
-                          self.testcase.vpp_bin, core_path)
+                          self.test.vpp_bin, core_path)
         check_core_path(self.logger, core_path)
         self.logger.error("Running `file %s':", core_path)
         try:

@@ -185,6 +185,79 @@ gdb_show_session (int verbose)
   unformat_free (&input);
 }
 
+static int
+trace_cmp (void *a1, void *a2)
+{
+  vlib_trace_header_t **t1 = a1;
+  vlib_trace_header_t **t2 = a2;
+  i64 dt = t1[0]->time - t2[0]->time;
+  return dt < 0 ? -1 : (dt > 0 ? +1 : 0);
+}
+
+void
+gdb_show_traces ()
+{
+  vlib_trace_main_t *tm;
+  vlib_trace_header_t **h, **traces;
+  u32 i, index = 0;
+  char *fmt;
+  u8 *s = 0;
+  u32 max;
+
+  /* By default display only this many traces. */
+  max = 50;
+
+  /* Get active traces from pool. */
+
+  /* *INDENT-OFF* */
+  foreach_vlib_main (
+  ({
+    fmt = "------------------- Start of thread %d %s -------------------\n";
+    s = format (s, fmt, index, vlib_worker_threads[index].name);
+
+    tm = &this_vlib_main->trace_main;
+
+    trace_apply_filter(this_vlib_main);
+
+    traces = 0;
+    pool_foreach (h, tm->trace_buffer_pool,
+    ({
+      vec_add1 (traces, h[0]);
+    }));
+
+    if (vec_len (traces) == 0)
+      {
+        s = format (s, "No packets in trace buffer\n");
+        goto done;
+      }
+
+    /* Sort them by increasing time. */
+    vec_sort_with_function (traces, trace_cmp);
+
+    for (i = 0; i < vec_len (traces); i++)
+      {
+        if (i == max)
+          {
+            fformat (stderr, "Limiting display to %d packets."
+                                 " To display more specify max.", max);
+            goto done;
+          }
+
+        s = format (s, "Packet %d\n%U\n\n", i + 1,
+                         format_vlib_trace, vlib_mains[0], traces[i]);
+      }
+
+  done:
+    vec_free (traces);
+
+    index++;
+  }));
+  /* *INDENT-ON* */
+
+  fformat (stderr, "%v", s);
+  vec_free (s);
+}
+
 /**
  * @brief GDB callable function: show_gdb_command_fn - show gdb
  *
@@ -203,6 +276,7 @@ show_gdb_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "pifi(p, i) returns pool_is_free_index(p, i)");
   vlib_cli_output (vm, "gdb_show_errors(0|1) dumps error counters");
   vlib_cli_output (vm, "gdb_show_session dumps session counters");
+  vlib_cli_output (vm, "gdb_show_traces() dumps buffer traces");
   vlib_cli_output (vm, "debug_hex_bytes (ptr, n_bytes) dumps n_bytes in hex");
   vlib_cli_output (vm, "vlib_dump_frame_ownership() does what it says");
   vlib_cli_output (vm, "vlib_runtime_index_to_node_name (index) prints NN");

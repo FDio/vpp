@@ -26,7 +26,7 @@ ping_main_t ping_main;
  * @file
  * @brief IPv4 and IPv6 ICMP Ping.
  *
- * This file contains code to suppport IPv4 or IPv6 ICMP ECHO_REQUEST to
+ * This file contains code to support IPv4 or IPv6 ICMP ECHO_REQUEST to
  * network hosts.
  *
  */

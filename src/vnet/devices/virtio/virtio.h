@@ -75,6 +75,11 @@ typedef enum
 
 #define VIRTIO_FEATURE(X) (1ULL << X)
 
+#define TX_QUEUE(X) ((X*2) + 1)
+#define RX_QUEUE(X) (X*2)
+#define TX_QUEUE_ACCESS(X) (X/2)
+#define RX_QUEUE_ACCESS(X) (X/2)
+
 typedef enum
 {
   VIRTIO_IF_TYPE_TAP,
@@ -99,6 +104,7 @@ typedef struct
   struct vring_desc *desc;
   struct vring_used *used;
   struct vring_avail *avail;
+  clib_spinlock_t lockp;
   u16 desc_in_use;
   u16 desc_next;
   int kick_fd;
@@ -135,6 +141,7 @@ typedef struct
   u32 dev_instance;
   u32 hw_if_index;
   u32 sw_if_index;
+  u32 numa_node;
   u16 virtio_net_hdr_sz;
   virtio_if_type_t type;
   union
@@ -153,16 +160,16 @@ typedef struct
     int tap_fd;
     u32 pci_dev_handle;
   };
-  virtio_vring_t *vrings;
-
+  virtio_vring_t *rxq_vrings;
+  virtio_vring_t *txq_vrings;
   u64 features, remote_features;
 
   /* error */
   clib_error_t *error;
   u8 support_int_mode;		/* support interrupt mode */
   u16 max_queue_pairs;
-  u16 tx_ring_sz;
-  u16 rx_ring_sz;
+  u16 num_rxqs;
+  u16 num_txqs;
   u8 status;
   u8 mac_addr[6];
   u8 *host_if_name;
@@ -173,8 +180,10 @@ typedef struct
   u8 host_ip4_prefix_len;
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
+  u32 tap_file_index;
   int gso_enabled;
   int ifindex;
+  virtio_vring_t *cxq_vring;
 } virtio_if_t;
 
 typedef struct
@@ -191,8 +200,10 @@ extern vlib_node_registration_t virtio_input_node;
 
 clib_error_t *virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx,
 				 u16 sz);
-clib_error_t *virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif,
-				 u32 idx);
+clib_error_t *virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif,
+				    u32 idx);
+clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
+				    u32 idx);
 void virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif,
 				 u32 idx);
 extern void virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring);

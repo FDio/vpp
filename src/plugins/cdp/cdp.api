@@ -25,7 +25,7 @@ autoreply define cdp_enable_disable
   /* Arbitrary context, so client can match reply to request */
   u32 context;
   
-  /* Enable / disable the feature */
+  /* Enable (1)/ disable (0) the feature */
   u8 enable_disable;
 };
 

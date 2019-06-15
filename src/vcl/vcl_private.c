@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this
  * You may obtain a copy of the License at:
@@ -61,80 +61,11 @@ vcl_wait_for_app_state_change (app_state_t app_state)
       if (vcm->app_state == STATE_APP_FAILED)
 	return VPPCOM_ECONNABORTED;
     }
-  VDBG (0, "VCL<%d>: timeout waiting for state %s (%d)", getpid (),
+  VDBG (0, "timeout waiting for state %s (%d)",
 	vppcom_app_state_str (app_state), app_state);
   vcl_evt (VCL_EVT_SESSION_TIMEOUT, vcm, app_state);
 
   return VPPCOM_ETIMEDOUT;
-}
-
-vcl_cut_through_registration_t *
-vcl_ct_registration_lock_and_alloc (vcl_worker_t * wrk)
-{
-  vcl_cut_through_registration_t *cr;
-  clib_spinlock_lock (&wrk->ct_registration_lock);
-  pool_get (wrk->cut_through_registrations, cr);
-  memset (cr, 0, sizeof (*cr));
-  cr->epoll_evt_conn_index = -1;
-  return cr;
-}
-
-u32
-vcl_ct_registration_index (vcl_worker_t * wrk,
-			   vcl_cut_through_registration_t * ctr)
-{
-  return (ctr - wrk->cut_through_registrations);
-}
-
-void
-vcl_ct_registration_lock (vcl_worker_t * wrk)
-{
-  clib_spinlock_lock (&wrk->ct_registration_lock);
-}
-
-void
-vcl_ct_registration_unlock (vcl_worker_t * wrk)
-{
-  clib_spinlock_unlock (&wrk->ct_registration_lock);
-}
-
-vcl_cut_through_registration_t *
-vcl_ct_registration_get (vcl_worker_t * wrk, u32 ctr_index)
-{
-  if (pool_is_free_index (wrk->cut_through_registrations, ctr_index))
-    return 0;
-  return pool_elt_at_index (wrk->cut_through_registrations, ctr_index);
-}
-
-vcl_cut_through_registration_t *
-vcl_ct_registration_lock_and_lookup (vcl_worker_t * wrk, uword mq_addr)
-{
-  uword *p;
-  clib_spinlock_lock (&wrk->ct_registration_lock);
-  p = hash_get (wrk->ct_registration_by_mq, mq_addr);
-  if (!p)
-    return 0;
-  return vcl_ct_registration_get (wrk, p[0]);
-}
-
-void
-vcl_ct_registration_lookup_add (vcl_worker_t * wrk, uword mq_addr,
-				u32 ctr_index)
-{
-  hash_set (wrk->ct_registration_by_mq, mq_addr, ctr_index);
-}
-
-void
-vcl_ct_registration_lookup_del (vcl_worker_t * wrk, uword mq_addr)
-{
-  hash_unset (wrk->ct_registration_by_mq, mq_addr);
-}
-
-void
-vcl_ct_registration_del (vcl_worker_t * wrk,
-			 vcl_cut_through_registration_t * ctr)
-{
-  pool_put (wrk->cut_through_registrations, ctr);
 }
 
 vcl_mq_evt_conn_t *
@@ -180,7 +111,7 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
   e.data.u32 = mqc_index;
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
     {
-      clib_warning ("failed to add mq eventfd to mq epoll fd");
+      VDBG (0, "failed to add mq eventfd to mq epoll fd");
       return -1;
     }
 
@@ -198,7 +129,7 @@ vcl_mq_epoll_del_evfd (vcl_worker_t * wrk, u32 mqc_index)
   mqc = vcl_mq_evt_conn_get (wrk, mqc_index);
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_DEL, mqc->mq_fd, 0) < 0)
     {
-      clib_warning ("failed to del mq eventfd to mq epoll fd");
+      VDBG (0, "failed to del mq eventfd to mq epoll fd");
       return -1;
     }
   return 0;
@@ -235,8 +166,6 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
   if (wrk->mqs_epfd > 0)
     close (wrk->mqs_epfd);
   hash_free (wrk->session_index_by_vpp_handles);
-  hash_free (wrk->ct_registration_by_mq);
-  clib_spinlock_free (&wrk->ct_registration_lock);
   vec_free (wrk->mq_events);
   vec_free (wrk->mq_msg_vector);
   vcl_worker_free (wrk);
@@ -286,8 +215,6 @@ vcl_worker_alloc_and_init ()
     }
 
   wrk->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
-  wrk->ct_registration_by_mq = hash_create (0, sizeof (uword));
-  clib_spinlock_init (&wrk->ct_registration_lock);
   clib_time_init (&wrk->clib_time);
   vec_validate (wrk->mq_events, 64);
   vec_validate (wrk->mq_msg_vector, 128);
@@ -311,13 +238,13 @@ vcl_worker_register_with_vpp (void)
   vcl_send_app_worker_add_del (1 /* is_add */ );
   if (vcl_wait_for_app_state_change (STATE_APP_READY))
     {
-      clib_warning ("failed to add worker to vpp");
+      VDBG (0, "failed to add worker to vpp");
       return -1;
     }
   if (pthread_key_create (&vcl_worker_stop_key, vcl_worker_cleanup_cb))
-    clib_warning ("failed to add pthread cleanup function");
+    VDBG (0, "failed to add pthread cleanup function");
   if (pthread_setspecific (vcl_worker_stop_key, &wrk->thread_id))
-    clib_warning ("failed to setup key value");
+    VDBG (0, "failed to setup key value");
 
   clib_spinlock_unlock (&vcm->workers_lock);
 
@@ -418,7 +345,10 @@ vcl_session_read_ready (vcl_session_t * session)
   if (session->session_state & STATE_LISTEN)
     return clib_fifo_elts (session->accept_evts_fifo);
 
-  return svm_fifo_max_dequeue (session->rx_fifo);
+  if (vcl_session_is_ct (session))
+    return svm_fifo_max_dequeue_cons (session->ct_rx_fifo);
+
+  return svm_fifo_max_dequeue_cons (session->rx_fifo);
 }
 
 int
@@ -435,7 +365,7 @@ vcl_session_write_ready (vcl_session_t * session)
   if (PREDICT_FALSE (session->session_state & STATE_LISTEN))
     {
       if (session->tx_fifo)
-	return svm_fifo_max_enqueue (session->tx_fifo);
+	return svm_fifo_max_enqueue_prod (session->tx_fifo);
       else
 	return VPPCOM_EBADFD;
     }
@@ -452,7 +382,10 @@ vcl_session_write_ready (vcl_session_t * session)
       return rv;
     }
 
-  return svm_fifo_max_enqueue (session->tx_fifo);
+  if (vcl_session_is_ct (session))
+    return svm_fifo_max_enqueue_prod (session->ct_tx_fifo);
+
+  return svm_fifo_max_enqueue_prod (session->tx_fifo);
 }
 
 /*

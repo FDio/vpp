@@ -303,7 +303,7 @@ ip4_mfib_table_entry_remove (ip4_mfib_t *mfib,
     if (NULL == result)
     {
         /*
-         * removing a non-existant entry. i'll allow it.
+         * removing a non-existent entry. i'll allow it.
          */
     }
     else

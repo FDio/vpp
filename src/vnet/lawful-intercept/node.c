@@ -22,7 +22,7 @@
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
-vlib_node_registration_t li_hit_node;
+extern vlib_node_registration_t li_hit_node;
 
 typedef struct
 {
@@ -41,8 +41,6 @@ format_li_hit_trace (u8 * s, va_list * args)
 
   return s;
 }
-
-vlib_node_registration_t li_hit_node;
 
 #define foreach_li_hit_error                                    \
 _(HITS, "LI packets processed")                                 \
@@ -69,9 +67,8 @@ typedef enum
   LI_HIT_N_NEXT,
 } li_hit_next_t;
 
-static uword
-li_hit_node_fn (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (li_hit_node) (vlib_main_t * vm,
+			    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   li_hit_next_t next_index;
@@ -265,7 +262,6 @@ li_hit_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (li_hit_node) = {
-  .function = li_hit_node_fn,
   .name = "li-hit",
   .vector_size = sizeof (u32),
   .format_trace = format_li_hit_trace,
@@ -283,7 +279,6 @@ VLIB_REGISTER_NODE (li_hit_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (li_hit_node, li_hit_node_fn)
 /*
  * fd.io coding-style-patch-verification: ON
  *

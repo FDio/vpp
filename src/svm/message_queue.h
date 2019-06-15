@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -314,9 +314,6 @@ svm_msg_q_lock (svm_msg_q_t * mq)
 static inline void
 svm_msg_q_unlock (svm_msg_q_t * mq)
 {
-  /* The other side of the connection is not polling */
-  if (mq->q->cursize < (mq->q->maxsize / 8))
-    (void) pthread_cond_broadcast (&mq->q->condvar);
   pthread_mutex_unlock (&mq->q->mutex);
 }
 
