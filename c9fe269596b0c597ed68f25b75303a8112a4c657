@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ac99f061_e61a16a2",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 887,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-15T00:16:52Z",
+      "side": 1,
+      "message": "remove one semicolon",
+      "range": {
+        "startLine": 887,
+        "startChar": 73,
+        "endLine": 887,
+        "endChar": 74
+      },
+      "revId": "c9fe269596b0c597ed68f25b75303a8112a4c657",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "da950dbf_5ddc7a37",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-15T00:16:52Z",
+      "side": 1,
+      "message": "make this a session_handle_t",
+      "range": {
+        "startLine": 170,
+        "startChar": 4,
+        "endLine": 170,
+        "endChar": 7
+      },
+      "revId": "c9fe269596b0c597ed68f25b75303a8112a4c657",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
