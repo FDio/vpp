@@ -44,6 +44,8 @@
 #include <unistd.h>
 #include <ctype.h>
 
+static void *current_traced_heap;
+
 /* Root of all show commands. */
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_show_command, static) = {
@@ -556,6 +558,14 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		     unformat_vlib_cli_sub_input, &sub_input))
     {
       u8 *leak_report;
+      if (current_traced_heap)
+	{
+	  void *oldheap;
+	  oldheap = clib_mem_set_heap (current_traced_heap);
+	  clib_mem_trace (0);
+	  clib_mem_set_heap (oldheap);
+	  current_traced_heap = 0;
+	}
       clib_mem_trace (1);
       error =
 	vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
@@ -775,15 +785,36 @@ vlib_cli_output (vlib_main_t * vm, char *fmt, ...)
 }
 
 void *vl_msg_push_heap (void) __attribute__ ((weak));
+void *
+vl_msg_push_heap (void)
+{
+  return 0;
+}
+
 void vl_msg_pop_heap (void *oldheap) __attribute__ ((weak));
+void
+vl_msg_pop_heap (void *oldheap)
+{
+}
+
+void *vlib_stats_push_heap (void *) __attribute__ ((weak));
+void *
+vlib_stats_push_heap (void *notused)
+{
+  return 0;
+}
 
 static clib_error_t *
 show_memory_usage (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  int verbose __attribute__ ((unused)) = 0, api_segment = 0;
+  int verbose __attribute__ ((unused)) = 0;
+  int api_segment = 0, stats_segment = 0, main_heap = 0;
   clib_error_t *error;
   u32 index = 0;
+  uword clib_mem_trace_enable_disable (uword enable);
+  uword was_enabled;
+
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -791,6 +822,10 @@ show_memory_usage (vlib_main_t * vm,
 	verbose = 1;
       else if (unformat (input, "api-segment"))
 	api_segment = 1;
+      else if (unformat (input, "stats-segment"))
+	stats_segment = 1;
+      else if (unformat (input, "main-heap"))
+	main_heap = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -799,9 +834,14 @@ show_memory_usage (vlib_main_t * vm,
 	}
     }
 
+  if ((api_segment + stats_segment + main_heap) == 0)
+    return clib_error_return
+      (0, "Please supply one of api-segment, stats-segment or main-heap");
+
   if (api_segment)
     {
       void *oldheap = vl_msg_push_heap ();
+      was_enabled = clib_mem_trace_enable_disable (0);
       u8 *s_in_svm =
 	format (0, "%U\n", format_mheap, clib_mem_get_heap (), 1);
       vl_msg_pop_heap (oldheap);
@@ -809,10 +849,31 @@ show_memory_usage (vlib_main_t * vm,
 
       oldheap = vl_msg_push_heap ();
       vec_free (s_in_svm);
+      clib_mem_trace_enable_disable (was_enabled);
       vl_msg_pop_heap (oldheap);
-      vlib_cli_output (vm, "API segment start:");
+      vlib_cli_output (vm, "API segment");
       vlib_cli_output (vm, "%v", s);
-      vlib_cli_output (vm, "API segment end:");
+      vec_free (s);
+    }
+  if (stats_segment)
+    {
+      void *oldheap = vlib_stats_push_heap (0);
+      was_enabled = clib_mem_trace_enable_disable (0);
+      u8 *s_in_svm =
+	format (0, "%U\n", format_mheap, clib_mem_get_heap (), 1);
+      if (oldheap)
+	clib_mem_set_heap (oldheap);
+      u8 *s = vec_dup (s_in_svm);
+
+      oldheap = vlib_stats_push_heap (0);
+      vec_free (s_in_svm);
+      if (oldheap)
+	{
+	  clib_mem_trace_enable_disable (was_enabled);
+	  clib_mem_set_heap (oldheap);
+	}
+      vlib_cli_output (vm, "Stats segment");
+      vlib_cli_output (vm, "%v", s);
       vec_free (s);
     }
 
@@ -833,36 +894,37 @@ show_memory_usage (vlib_main_t * vm,
   /* *INDENT-ON* */
 #else
   {
-    uword clib_mem_trace_enable_disable (uword enable);
-    uword was_enabled;
+    if (main_heap)
+      {
+	/*
+	 * Note: the foreach_vlib_main causes allocator traffic,
+	 * so shut off tracing before we go there...
+	 */
+	was_enabled = clib_mem_trace_enable_disable (0);
 
-    /*
-     * Note: the foreach_vlib_main cause allocator traffic,
-     * so shut off tracing before we go there...
-     */
-    was_enabled = clib_mem_trace_enable_disable (0);
+        /* *INDENT-OFF* */
+        foreach_vlib_main (
+        ({
+          struct dlmallinfo mi;
+          void *mspace;
+          mspace = clib_per_cpu_mheaps[index];
 
-    /* *INDENT-OFF* */
-    foreach_vlib_main (
-    ({
-      struct dlmallinfo mi;
-      void *mspace;
-      mspace = clib_per_cpu_mheaps[index];
+          mi = mspace_mallinfo (mspace);
+          vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n":"", index,
+                           vlib_worker_threads[index].name);
+          vlib_cli_output (vm, "  %U\n", format_page_map,
+                           pointer_to_uword (mspace_least_addr(mspace)),
+                           mi.arena);
+          vlib_cli_output (vm, "  %U\n", format_mheap,
+                           clib_per_cpu_mheaps[index],
+                           verbose);
+          index++;
+        }));
+        /* *INDENT-ON* */
 
-      mi = mspace_mallinfo (mspace);
-      vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n":"", index,
-		       vlib_worker_threads[index].name);
-      vlib_cli_output (vm, "  %U\n", format_page_map,
-                       pointer_to_uword (mspace_least_addr(mspace)),
-                       mi.arena);
-      vlib_cli_output (vm, "  %U\n", format_mheap, clib_per_cpu_mheaps[index],
-                       verbose);
-      index++;
-    }));
-    /* *INDENT-ON* */
-
-    /* Restore the trace flag */
-    clib_mem_trace_enable_disable (was_enabled);
+	/* Restore the trace flag */
+	clib_mem_trace_enable_disable (was_enabled);
+      }
   }
 #endif /* USE_DLMALLOC */
   return 0;
@@ -871,7 +933,7 @@ show_memory_usage (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
-  .short_help = "[verbose | api-segment] Show current memory usage",
+  .short_help = "show memory [api-segment][stats-segment][verbose]",
   .function = show_memory_usage,
 };
 /* *INDENT-ON* */
@@ -907,7 +969,6 @@ VLIB_CLI_COMMAND (show_cpu_command, static) = {
   .short_help = "Show cpu information",
   .function = show_cpu,
 };
-
 /* *INDENT-ON* */
 
 static clib_error_t *
@@ -916,10 +977,11 @@ enable_disable_memory_trace (vlib_main_t * vm,
 			     vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  int enable;
+  int enable = 1;
   int api_segment = 0;
+  int stats_segment = 0;
+  int main_heap = 0;
   void *oldheap;
-
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -930,6 +992,10 @@ enable_disable_memory_trace (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "api-segment"))
 	api_segment = 1;
+      else if (unformat (line_input, "stats-segment"))
+	stats_segment = 1;
+      else if (unformat (line_input, "main-heap"))
+	main_heap = 1;
       else
 	{
 	  unformat_free (line_input);
@@ -938,11 +1004,52 @@ enable_disable_memory_trace (vlib_main_t * vm,
     }
   unformat_free (line_input);
 
+  if ((api_segment + stats_segment + main_heap + (enable == 0)) == 0)
+    {
+      return clib_error_return
+	(0, "Need one of main-heap, stats-segment or api-segment");
+    }
+
+  /* Turn off current trace, if any */
+  if (current_traced_heap)
+    {
+      void *oldheap;
+      oldheap = clib_mem_set_heap (current_traced_heap);
+      clib_mem_trace (0);
+      clib_mem_set_heap (oldheap);
+      current_traced_heap = 0;
+    }
+
+  if (enable == 0)
+    return 0;
+
+  /* API segment */
   if (api_segment)
-    oldheap = vl_msg_push_heap ();
-  clib_mem_trace (enable);
-  if (api_segment)
-    vl_msg_pop_heap (oldheap);
+    {
+      oldheap = vl_msg_push_heap ();
+      current_traced_heap = clib_mem_get_heap ();
+      clib_mem_trace (1);
+      vl_msg_pop_heap (oldheap);
+
+    }
+
+  /* Stats segment */
+  if (stats_segment)
+    {
+      oldheap = vlib_stats_push_heap (0);
+      current_traced_heap = clib_mem_get_heap ();
+      clib_mem_trace (stats_segment);
+      /* We don't want to call vlib_stats_pop_heap... */
+      if (oldheap)
+	clib_mem_set_heap (oldheap);
+    }
+
+  /* main_heap */
+  if (main_heap)
+    {
+      current_traced_heap = clib_mem_get_heap ();
+      clib_mem_trace (main_heap);
+    }
 
   return 0;
 }
@@ -950,7 +1057,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .path = "memory-trace",
-  .short_help = "on|off [api-segment] Enable/disable memory allocation trace",
+  .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n",
   .function = enable_disable_memory_trace,
 };
 /* *INDENT-ON* */

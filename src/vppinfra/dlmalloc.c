@@ -4093,7 +4093,7 @@ void mspace_get_address_and_size (mspace msp, char **addrp, size_t *sizep)
 {
   mstate ms;
   msegment *this_seg;
-  
+
   ms = (mstate)msp;
   this_seg = &ms->seg;
 
@@ -4155,9 +4155,18 @@ int mspace_enable_disable_trace (mspace msp, int enable)
   return (was_enabled);
 }
 
-void* mspace_get_aligned (mspace msp, 
+int mspace_is_traced (mspace msp)
+{
+  mstate ms = (mstate)msp;
+
+  if (use_trace(ms))
+    return 1;
+  return 0;
+}
+
+void* mspace_get_aligned (mspace msp,
                           unsigned long n_user_data_bytes,
-                          unsigned long align, 
+                          unsigned long align,
                           unsigned long align_offset) {
   char *rv;
   unsigned long searchp;
@@ -4165,13 +4174,13 @@ void* mspace_get_aligned (mspace msp,
   mstate ms = (mstate)msp;
 
   /*
-   * Allocate space for the "Where's Waldo?" pointer 
+   * Allocate space for the "Where's Waldo?" pointer
    * the base of the dlmalloc object
    */
   n_user_data_bytes += sizeof(unsigned);
 
-  /* 
-   * Alignment requests less than the size of an mmx vector are ignored 
+  /*
+   * Alignment requests less than the size of an mmx vector are ignored
    */
   if (align < sizeof (uword)) {
     rv = mspace_malloc (msp, n_user_data_bytes);
@@ -4181,7 +4190,7 @@ void* mspace_get_aligned (mspace msp,
     if (use_trace(ms)) {
       mchunkptr p  = mem2chunk(rv);
       size_t psize = chunksize(p);
-      
+
       mheap_get_trace ((unsigned long)rv + sizeof (unsigned), psize);
     }
 
@@ -4196,15 +4205,15 @@ void* mspace_get_aligned (mspace msp,
    * Alignment requests greater than 4K must be at offset zero,
    * and must be freed using mspace_free_no_offset - or never freed -
    * since the "Where's Waldo?" pointer would waste too much space.
-   * 
-   * Waldo is the address of the chunk of memory returned by mspace_malloc, 
+   *
+   * Waldo is the address of the chunk of memory returned by mspace_malloc,
    * which we need later to call mspace_free...
    */
   if (align > 4<<10 || align_offset == ~0UL) {
     n_user_data_bytes -= sizeof(unsigned);
     assert(align_offset == 0);
     rv = internal_memalign(ms, (size_t)align, n_user_data_bytes);
-    
+
     /* Trace the allocation */
     if (rv && use_trace(ms)) {
       mchunkptr p  = mem2chunk(rv);
