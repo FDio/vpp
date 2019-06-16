@@ -49,11 +49,13 @@ autoreply define ip_table_add_del
 
 /** \brief Dump IP fib table
     @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
 */
 define ip_fib_dump
 {
   u32 client_index;
   u32 context;
+  /* TODO: add table_id to filter on. */
 };
 
 /** \brief IP FIB table response
@@ -77,11 +79,13 @@ manual_endian manual_print define ip_fib_details
 
 /** \brief Dump IP6 fib table
     @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
 */
 define ip6_fib_dump
 {
   u32 client_index;
   u32 context;
+  /* TODO: add table_id to filter on. */
 };
 
 /** \brief IP6 FIB table entry response
