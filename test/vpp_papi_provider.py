@@ -2028,6 +2028,7 @@ class VppPapiProvider(object):
                                 'rd_id': rd_id
                             }})
 
+
     def gbp_bridge_domain_del(self, bd_id):
         """ GBP bridge-domain Del """
         return self.api(self.papi.gbp_bridge_domain_del,
