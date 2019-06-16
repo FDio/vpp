@@ -3980,5 +3980,43 @@ class TestGBP(VppTestCase):
         vlan_100.set_vtr(L2_VTR_OP.L2_DISABLED)
 
 
+class TestBbpApi(VppTestCase):
+    """Test GBP API calls. """
+
+    def test_api_gbp_bridge_domain_add(self):
+        """ Verify invalid bvi_sw_if_index to gbp_bridge_domain_add returns INVALID_SW_IF_INDEX. """  # noqa
+
+        # test unconfigured. (0=local0)
+        with self.assertRaises(UnexpectedApiReturnValueError):
+            rv = self.vapi.gbp_bridge_domain_add(
+                bd={'bd_id': 1,
+                    'learn': 1,
+                    'bvi_sw_if_index': 0,
+                    'fw_sw_if_index': INDEX_INVALID,
+                    'bm_sw_if_index':  INDEX_INVALID
+                    })
+
+        # test invalid and non-existing.
+        with self.assertRaises(UnexpectedApiReturnValueError):
+            rv = self.vapi.gbp_bridge_domain_add(
+                bd={'bd_id': 1,
+                    'learn': 1,
+                    'bvi_sw_if_index': 123456,
+                    'fw_sw_if_index': INDEX_INVALID,
+                    'bm_sw_if_index':  INDEX_INVALID
+                    })
+
+        # test valid but non-bvi interface.
+        sw_if_index = self.vapi.create_loopback().sw_if_index
+        rv = self.vapi.gbp_bridge_domain_add(
+            bd={'bd_id': 2,
+                'learn': 1,
+                'bvi_sw_if_index': sw_if_index,
+                'fw_sw_if_index': INDEX_INVALID,
+                'bm_sw_if_index': INDEX_INVALID
+                })
+        self.assertEqual(0, rv, "Expected 'gbp_bridge_domain_add' rv of 0.")
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
