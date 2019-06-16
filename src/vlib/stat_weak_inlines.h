@@ -32,10 +32,10 @@ void
 vlib_stats_pop_heap (void *notused, void *notused2, u32 i, int type)
 {
 };
-void vlib_stats_register_error_index (u8 *, u64 *, u64)
+void vlib_stats_register_error_index (void *, u8 *, u64 *, u64)
   __attribute__ ((weak));
 void
-vlib_stats_register_error_index (u8 * notused, u64 * notused2, u64 notused3)
+vlib_stats_register_error_index (void * notused, u8 * notused2, u64 * notused3, u64 notused4)
 {
 };
 

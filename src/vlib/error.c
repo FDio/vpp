@@ -166,7 +166,7 @@ vlib_register_errors (vlib_main_t * vm,
       {
 	error_name = format (0, "/err/%v/%s%c", n->name, error_strings[i], 0);
 	/* Note: error_name consumed by the following call */
-	vlib_stats_register_error_index (error_name, em->counters,
+	vlib_stats_register_error_index (oldheap, error_name, em->counters,
 					 n->error_heap_index + i);
       }
   }
