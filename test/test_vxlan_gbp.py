@@ -103,9 +103,15 @@ class TestVxlanGbp(VppTestCase):
                              register=False)
             rip.add_vpp_config()
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
-                cls.pg0.local_ip4,
-                dest_ip4,
-                vni=vni)
+                tunnel={
+                    'src': VppIpAddress(cls.pg0.local_ip4).encode(),
+                    'dst': VppIpAddress(dest_ip4).encode(),
+                    'vni': vni,
+                    'instance': INVALID_INDEX,
+                    'mcast_sw_if_index': INVALID_INDEX,
+                },
+                is_add=1
+            )
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=vni)
 
@@ -139,13 +145,20 @@ class TestVxlanGbp(VppTestCase):
             # pg1 into BD.
             cls.single_tunnel_bd = 1
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
-                VppIpAddress(cls.pg0.local_ip4).encode(),
-                VppIpAddress(cls.pg0.remote_ip4).encode(),
-                vni=cls.single_tunnel_bd)
+                tunnel={
+                    'src': VppIpAddress(cls.pg0.local_ip4).encode(),
+                    'dst': VppIpAddress(cls.pg0.remote_ip4).encode(),
+                    'vni': cls.single_tunnel_bd,
+                    'instance': INVALID_INDEX,
+                    'mcast_sw_if_index': INVALID_INDEX,
+                },
+                is_add=1
+            )
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd)
+                rx_sw_if_index=cls.pg1.sw_if_index,
+                bd_id=cls.single_tunnel_bd)
 
             # Setup vni 2 to test multicast flooding
             cls.n_ucast_tunnels = 2
@@ -154,7 +167,8 @@ class TestVxlanGbp(VppTestCase):
             cls.create_vxlan_gbp_flood_test_bd(cls.ucast_flood_bd,
                                                cls.n_ucast_tunnels)
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
+                rx_sw_if_index=cls.pg3.sw_if_index,
+                bd_id=cls.ucast_flood_bd)
         except Exception:
             super(TestVxlanGbp, cls).tearDownClass()
             raise
