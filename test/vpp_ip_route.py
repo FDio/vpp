@@ -105,6 +105,7 @@ def fib_interface_ip_prefix(test, address, length, sw_if_index):
     else:
         n = 4
 
+    # TODO: refactor this to VppIpPrefix.__eq__
     for a in addrs:
         if a.prefix_length == length and \
                 a.sw_if_index == sw_if_index and \
@@ -362,6 +363,7 @@ class VppIpRoute(VppObject):
         self.is_unreach = is_unreach
         self.is_prohibit = is_prohibit
         self.is_drop = is_drop
+        self.stats_index = None
         self.dest_addr_p = dest_addr
         if is_ip6:
             self.dest_addr = inet_pton(AF_INET6, dest_addr)
@@ -448,8 +450,9 @@ class VppIpRoute(VppObject):
                           inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
 
     def object_id(self):
-        return ("%d:%s/%d"
-                % (self.table_id,
+        return ("%s:%d:%s/%d"
+                % ('ip6-route' if self.is_ip6 else 'ip-route',
+                   self.table_id,
                    self.dest_addr_p,
                    self.dest_addr_len))
 
@@ -749,7 +752,7 @@ class VppMplsRoute(VppObject):
                                self.local_label, self.eos_bit)
 
     def object_id(self):
-        return ("%d:%s/%d"
+        return ("mpls-route-%d:%s/%d"
                 % (self.table_id,
                    self.local_label,
                    20 + self.eos_bit))
