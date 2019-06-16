@@ -383,6 +383,21 @@ clib_mem_usage (clib_mem_usage_t * u)
   clib_warning ("unimp");
 }
 
+void
+mheap_usage (void *heap, clib_mem_usage_t * usage)
+{
+  struct dlmallinfo mi = mspace_mallinfo (heap);
+
+  /* TODO: Fill in some more values */
+  usage->object_count = 0;
+  usage->bytes_total = mi.arena;
+  usage->bytes_overhead = 0;
+  usage->bytes_max = 0;
+  usage->bytes_used = mi.uordblks;
+  usage->bytes_free = mi.fordblks;
+  usage->bytes_free_reclaimed = 0;
+}
+
 /* Call serial number for debugger breakpoints. */
 uword clib_mem_validate_serial = 0;
 
