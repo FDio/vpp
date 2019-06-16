@@ -109,10 +109,42 @@ vlib_error_drop_buffers (vlib_main_t * vm,
   return n_buffers;
 }
 
-void vlib_stats_register_error_index (u8 *, u64 *, u64)
+/* Convenience node to drop a vector of buffers with a "misc error". */
+static uword
+misc_drop_buffers (vlib_main_t * vm,
+		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return vlib_error_drop_buffers (vm, node, vlib_frame_vector_args (frame),
+				  /* buffer stride */ 1,
+				  frame->n_vectors,
+				  /* next */ 0,
+				  node->node_index,
+				  /* error */ 0);
+}
+
+static char *misc_drop_buffers_error_strings[] = {
+  [0] = "misc. errors",
+};
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (misc_drop_buffers_node,static) = {
+  .function = misc_drop_buffers,
+  .name = "misc-drop-buffers",
+  .vector_size = sizeof (u32),
+  .n_errors = 1,
+  .n_next_nodes = 1,
+  .next_nodes = {
+      "error-drop",
+  },
+  .error_strings = misc_drop_buffers_error_strings,
+};
+/* *INDENT-ON* */
+
+void vlib_stats_register_error_index (void *, u8 *, u64 *, u64)
   __attribute__ ((weak));
 void
-vlib_stats_register_error_index (u8 * notused, u64 * notused2, u64 notused3)
+vlib_stats_register_error_index (void *noutused, u8 * notused2,
+				 u64 * notused3, u64 notused4)
 {
 };
 
@@ -180,7 +212,7 @@ vlib_register_errors (vlib_main_t * vm,
       {
 	error_name = format (0, "/err/%v/%s%c", n->name, error_strings[i], 0);
 	/* Note: error_name consumed by the following call */
-	vlib_stats_register_error_index (error_name, em->counters,
+	vlib_stats_register_error_index (oldheap, error_name, em->counters,
 					 n->error_heap_index + i);
       }
   }
