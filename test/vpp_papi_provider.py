@@ -131,8 +131,6 @@ defaultmapping = {
     'vxlan_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                              'decap_next_index': 4294967295,
                              'instance': 4294967295, },
-    'vxlan_gbp_tunnel_add_del': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
-                                 'instance': 4294967295, },
     'vxlan_gbp_tunnel_dump': {'sw_if_index': 4294967295, },
     'vxlan_gpe_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                                  'protocol': 3, },
@@ -331,7 +329,7 @@ class VppPapiProvider(object):
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead " \
                       "of %d in %s" % (expected_retval, reply.retval,
-                                       moves.reprlib.repr(reply))
+                                       repr(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         else:
@@ -1276,41 +1274,6 @@ class VppPapiProvider(object):
                          'protocol': protocol,
                          'vni': vni})
 
-    def vxlan_gbp_tunnel_add_del(
-            self,
-            src,
-            dst,
-            mcast_sw_if_index=0xFFFFFFFF,
-            is_add=1,
-            is_ipv6=0,
-            encap_table_id=0,
-            vni=0,
-            mode=1,
-            instance=0xFFFFFFFF):
-        """
-
-        :param dst_addr:
-        :param src_addr:
-        :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-        :param encap_table_id:  (Default value = 0)
-        :param decap_next_index:  (Default value = 0xFFFFFFFF)
-        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vni:  (Default value = 0)
-        :param instance:  (Default value = 0xFFFFFFFF)
-
-        """
-        return self.api(self.papi.vxlan_gbp_tunnel_add_del,
-                        {'is_add': is_add,
-                         'tunnel': {
-                             'src': src,
-                             'dst': dst,
-                             'mcast_sw_if_index': mcast_sw_if_index,
-                             'encap_table_id': encap_table_id,
-                             'vni': vni,
-                             'instance': instance,
-                             "mode": mode}})
-
     def vxlan_gbp_tunnel_dump(self, sw_if_index=0xffffffff):
         return self.api(self.papi.vxlan_gbp_tunnel_dump,
                         {'sw_if_index': sw_if_index,
@@ -2134,20 +2097,6 @@ class VppPapiProvider(object):
         """ GBP Subnet Dump """
         return self.api(self.papi.gbp_subnet_dump,
                         {'_no_type_conversion': True})
-
-    def gbp_contract_add_del(self, is_add, sclass, dclass, acl_index,
-                             rules, allowed_ethertypes):
-        """ GBP contract Add/Del """
-        return self.api(self.papi.gbp_contract_add_del,
-                        {'is_add': is_add,
-                         'contract': {
-                             'acl_index': acl_index,
-                             'sclass': sclass,
-                             'dclass': dclass,
-                             'n_rules': len(rules),
-                             'rules': rules,
-                             'n_ether_types': len(allowed_ethertypes),
-                             'allowed_ethertypes': allowed_ethertypes}})
 
     def gbp_contract_dump(self):
         """ GBP contract Dump """

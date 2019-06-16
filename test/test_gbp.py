@@ -413,10 +413,10 @@ class VppGbpContractNextHop():
 
 
 class VppGbpContractRule():
-    def __init__(self, action, hash_mode, nhs=[]):
+    def __init__(self, action, hash_mode, nhs=None):
         self.action = action
         self.hash_mode = hash_mode
-        self.nhs = nhs
+        self.nhs = [] if nhs is None else nhs
 
     def encode(self):
         nhs = []
@@ -430,6 +430,10 @@ class VppGbpContractRule():
                     'n_nhs': len(self.nhs),
                     'nhs': nhs}}
 
+    def __repr__(self):
+        return '<VppGbpContractRule action=%s, hash_mode=%s>' % (
+            self.action, self.hash_mode)
+
 
 class VppGbpContract(VppObject):
     """
@@ -439,6 +443,10 @@ class VppGbpContract(VppObject):
     def __init__(self, test, sclass, dclass, acl_index,
                  rules, allowed_ethertypes):
         self._test = test
+        if not isinstance(rules, list):
+            raise ValueError("'rules' must be a list.")
+        if not isinstance(allowed_ethertypes, list):
+            raise ValueError("'allowed_ethertypes' must be a list.")
         self.acl_index = acl_index
         self.sclass = sclass
         self.dclass = dclass
@@ -452,23 +460,30 @@ class VppGbpContract(VppObject):
         for r in self.rules:
             rules.append(r.encode())
         r = self._test.vapi.gbp_contract_add_del(
-            1,
-            self.sclass,
-            self.dclass,
-            self.acl_index,
-            rules,
-            self.allowed_ethertypes)
+            is_add=1,
+            contract={
+                'acl_index': self.acl_index,
+                'sclass': self.sclass,
+                'dclass': self.dclass,
+                'n_rules': len(rules),
+                'rules': rules,
+                'n_ether_types': len(self.allowed_ethertypes),
+                'allowed_ethertypes': self.allowed_ethertypes})
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.gbp_contract_add_del(
-            0,
-            self.sclass,
-            self.dclass,
-            self.acl_index,
-            [],
-            self.allowed_ethertypes)
+            is_add=0,
+            contract={
+                'acl_index': self.acl_index,
+                'sclass': self.sclass,
+                'dclass': self.dclass,
+                'n_rules': 0,
+                'rules': [],
+                'n_ether_types': len(self.allowed_ethertypes),
+                'allowed_ethertypes': self.allowed_ethertypes}
+        )
 
     def object_id(self):
         return "gbp-contract:[%d:%s:%d]" % (self.sclass,
@@ -556,7 +571,7 @@ class VppGbpAcl(VppObject):
 
     def add_vpp_config(self, rules):
 
-        reply = self._test.vapi.acl_add_replace(self.acl_index,
+        reply = self._test.vapi.acl_add_replace(acl_index=self.acl_index,
                                                 r=rules,
                                                 tag=b'GBPTest')
         self.acl_index = reply.acl_index
@@ -1170,9 +1185,11 @@ class TestGBP(VppTestCase):
             self, epgs[0].sclass, epgs[1].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c1.add_vpp_config()
@@ -1190,9 +1207,11 @@ class TestGBP(VppTestCase):
             self, epgs[1].sclass, epgs[0].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c2.add_vpp_config()
@@ -1232,9 +1251,11 @@ class TestGBP(VppTestCase):
             self, epgs[0].sclass, epgs[2].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c3.add_vpp_config()
@@ -1337,9 +1358,11 @@ class TestGBP(VppTestCase):
             self, epgs[0].sclass, epgs[3].sclass, acl_index2,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c4.add_vpp_config()
@@ -1378,9 +1401,11 @@ class TestGBP(VppTestCase):
             self, epgs[3].sclass, epgs[0].sclass, acl_index2,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c5.add_vpp_config()
@@ -1895,9 +1920,11 @@ class TestGBP(VppTestCase):
             self, epg_220.sclass, epg_330.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c1.add_vpp_config()
@@ -2116,9 +2143,11 @@ class TestGBP(VppTestCase):
             self, epgs[0].sclass, epgs[1].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
              VppGbpContractRule(
                  VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                  [])],
             [ETH_P_IP, ETH_P_IPV6])
         c1.add_vpp_config()
@@ -2143,9 +2172,11 @@ class TestGBP(VppTestCase):
             self, epgs[1].sclass, epgs[0].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
              VppGbpContractRule(
                  VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                  [])],
             [ETH_P_IP, ETH_P_IPV6])
         c2.add_vpp_config()
@@ -2170,9 +2201,11 @@ class TestGBP(VppTestCase):
             self, epgs[0].sclass, epgs[2].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
              VppGbpContractRule(
                  VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                  [])],
             [ETH_P_IP, ETH_P_IPV6])
         c3.add_vpp_config()
@@ -3332,9 +3365,11 @@ class TestGBP(VppTestCase):
             self, epg_221.sclass, epg_220.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c4.add_vpp_config()
@@ -3748,9 +3783,11 @@ class TestGBP(VppTestCase):
             self, 4220, 4221, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c1.add_vpp_config()
@@ -3762,9 +3799,11 @@ class TestGBP(VppTestCase):
             self, 4220, 113, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c2.add_vpp_config()
@@ -3772,9 +3811,11 @@ class TestGBP(VppTestCase):
             self, 113, 4220, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c3.add_vpp_config()
@@ -3904,9 +3945,11 @@ class TestGBP(VppTestCase):
             self, 4220, 4222, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                     [])],
             [ETH_P_IP, ETH_P_IPV6])
         c4.add_vpp_config()
