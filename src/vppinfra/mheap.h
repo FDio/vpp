@@ -90,6 +90,7 @@ int test_mheap_main (unformat_input_t * input);
 /* Format mheap data structures as string. */
 u8 *format_mheap (u8 * s, va_list * va);
 void *mheap_alloc_with_lock (void *memory, uword size, int locked);
+void mheap_usage (void *v, clib_mem_usage_t * usage);
 
 #endif /* USE_DLMALLOC */
 

@@ -36,6 +36,8 @@ typedef enum
  STAT_COUNTER_NODE_SUSPENDS,
  STAT_COUNTER_INTERFACE_NAMES,
  STAT_COUNTER_NODE_NAMES,
+ STAT_COUNTER_MEM_STATSEG_TOTAL,
+ STAT_COUNTER_MEM_STATSEG_USED,
  STAT_COUNTERS
 } stat_segment_counter_t;
 
@@ -53,7 +55,9 @@ typedef enum
   _(NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, /sys/node)        \
   _(NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /sys/node)  \
   _(INTERFACE_NAMES, NAME_VECTOR, names, /if)                   \
-  _(NODE_NAMES, NAME_VECTOR, names, /sys/node)
+  _(NODE_NAMES, NAME_VECTOR, names, /sys/node)                  \
+  _(MEM_STATSEG_TOTAL, SCALAR_INDEX, total, /mem/statseg)       \
+  _(MEM_STATSEG_USED, SCALAR_INDEX, used, /mem/statseg)
 
 typedef struct
 {
