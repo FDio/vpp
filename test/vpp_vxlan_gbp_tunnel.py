@@ -25,13 +25,17 @@ class VppVxlanGbpTunnel(VppInterface):
     VPP VXLAN GBP interface
     """
 
-    def __init__(self, test, src, dst, vni, mcast_itf=None, mode=None):
+    def __init__(self, test, src, dst, vni, mcast_itf=None, mode=None,
+                 is_ipv6=None, encap_table_id=None, instance=0xffffffff):
         """ Create VXLAN-GBP Tunnel interface """
         super(VppVxlanGbpTunnel, self).__init__(test)
         self.src = VppIpAddress(src)
         self.dst = VppIpAddress(dst)
         self.vni = vni
         self.mcast_itf = mcast_itf
+        self.ipv6 = is_ipv6
+        self.encap_table_id = encap_table_id
+        self.instance = instance
         if not mode:
             self.mode = (VppEnum.vl_api_vxlan_gbp_api_tunnel_mode_t.
                          VXLAN_GBP_API_TUNNEL_MODE_L2)
@@ -43,11 +47,16 @@ class VppVxlanGbpTunnel(VppInterface):
         if (self.mcast_itf):
             mcast_sw_if_index = self.mcast_itf.sw_if_index
         reply = self.test.vapi.vxlan_gbp_tunnel_add_del(
-            self.src.encode(),
-            self.dst.encode(),
-            mode=self.mode,
-            vni=self.vni,
-            mcast_sw_if_index=mcast_sw_if_index)
+            is_add=1,
+            tunnel={
+                'src': self.src.encode(),
+                'dst': self.dst.encode(),
+                'mode': self.mode,
+                'vni': self.vni,
+                'mcast_sw_if_index': mcast_sw_if_index,
+                'encap_table_id': self.encap_table_id,
+                'instance': self.instance
+            })
         self.set_sw_if_index(reply.sw_if_index)
         self._test.registry.register(self, self._test.logger)
 
@@ -56,11 +65,16 @@ class VppVxlanGbpTunnel(VppInterface):
         if (self.mcast_itf):
             mcast_sw_if_index = self.mcast_itf.sw_if_index
         self.test.vapi.vxlan_gbp_tunnel_add_del(
-            self.src.encode(),
-            self.dst.encode(),
-            vni=self.vni,
             is_add=0,
-            mcast_sw_if_index=mcast_sw_if_index)
+            tunnel={
+                'src': self.src.encode(),
+                'dst': self.dst.encode(),
+                'mode': self.mode,
+                'vni': self.vni,
+                'mcast_sw_if_index': mcast_sw_if_index,
+                'encap_table_id': self.encap_table_id,
+                'instance': self.instance,
+            })
 
     def query_vpp_config(self):
         return (INDEX_INVALID != find_vxlan_gbp_tunnel(self._test,
