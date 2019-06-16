@@ -24,6 +24,7 @@ from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_ip import VppIpAddress, VppIpPrefix
 from vpp_papi import VppEnum, MACAddress
+from vpp_papi_provider import UnexpectedApiReturnValueError
 from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
 from vpp_neighbor import VppNeighbor
@@ -4595,6 +4596,49 @@ class TestGBP(VppTestCase):
         self.vlan_101.set_vtr(L2_VTR_OP.L2_DISABLED)
         self.vlan_100.set_vtr(L2_VTR_OP.L2_DISABLED)
         self.pg7.unconfig_ip4()
+
+
+class TestGbpApi(VppTestCase):
+    """Test GBP API calls. """
+
+    def test_api_gbp_bridge_domain_add(self):
+        """ Verify invalid bvi_sw_if_index to gbp_bridge_domain_add returns INVALID_SW_IF_INDEX. """  # noqa
+
+        # test unconfigured. (0=local0)
+        with self.assertRaises(UnexpectedApiReturnValueError):
+            rv = self.vapi.gbp_bridge_domain_add(
+                bd={'bd_id': 1,
+                    'learn': 1,
+                    'bvi_sw_if_index': 0,
+                    'fw_sw_if_index': INDEX_INVALID,
+                    'bm_sw_if_index':  INDEX_INVALID
+                    })
+
+        # test invalid and non-existing.
+        with self.assertRaises(UnexpectedApiReturnValueError):
+            rv = self.vapi.gbp_bridge_domain_add(
+                bd={'bd_id': 1,
+                    'learn': 1,
+                    'bvi_sw_if_index': 123456,
+                    'fw_sw_if_index': INDEX_INVALID,
+                    'bm_sw_if_index':  INDEX_INVALID
+                    })
+
+        # test valid but non-bvi interface.
+        expected_rv = -121
+        sw_if_index = self.vapi.create_loopback().sw_if_index
+        with self.assertRaises(UnexpectedApiReturnValueError) as ctx:
+            rv = self.vapi.gbp_bridge_domain_add(
+                bd={'bd_id': 2,
+                    'learn': 1,
+                    'bvi_sw_if_index': sw_if_index,
+                    'fw_sw_if_index': INDEX_INVALID,
+                    'bm_sw_if_index': INDEX_INVALID
+                    })
+
+        self.assertEqual(expected_rv, vars(ctx.exception),
+                         "Expected 'gbp_bridge_domain_add' rv of %s. got: %r" %
+                         (expected_rv, vars(ctx.exception)))
 
 
 if __name__ == '__main__':
