@@ -22,6 +22,7 @@
 #undef HAVE_MEMFD_CREATE
 #include <vppinfra/linux/syscall.h>
 #include <vpp-api/client/stat_client.h>
+#include <vppinfra/mheap.h>
 
 stat_segment_main_t stat_segment_main;
 
@@ -58,7 +59,6 @@ vlib_stats_push_heap (void *old)
   return clib_mem_set_heap (sm->heap);
 }
 
-/* Name to vector index hash */
 static u32
 lookup_or_create_hash_index (void *oldheap, char *name, u32 next_vector_index)
 {
@@ -153,7 +153,8 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, u32 cindex,
 }
 
 void
-vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
+vlib_stats_register_error_index (void *oldheap, u8 * name, u64 * em_vec,
+				 u64 index)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
@@ -162,18 +163,28 @@ vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
   ASSERT (shared_header);
 
   vlib_stat_segment_lock ();
+  u32 next_vector_index = vec_len (sm->directory_vector);
+  clib_mem_set_heap (oldheap);	/* Exit stats segment */
 
-  memcpy (e.name, name, vec_len (name));
-  e.name[vec_len (name)] = '\0';
-  e.type = STAT_DIR_TYPE_ERROR_INDEX;
-  e.offset = index;
-  e.offset_vector = 0;
-  vec_add1 (sm->directory_vector, e);
+  u32 vector_index = lookup_or_create_hash_index (oldheap, (char *) name,
+						  next_vector_index);
 
-  /* Warn clients to refresh any pointers they might be holding */
-  shared_header->directory_offset =
-    stat_segment_offset (shared_header, sm->directory_vector);
+  /* Back to stats segment */
+  clib_mem_set_heap (sm->heap);	/* Re-enter stat segment */
 
+  if (next_vector_index == vector_index)
+    {
+      memcpy (e.name, name, vec_len (name));
+      e.name[vec_len (name)] = '\0';
+      e.type = STAT_DIR_TYPE_ERROR_INDEX;
+      e.offset = index;
+      e.offset_vector = 0;
+      vec_add1 (sm->directory_vector, e);
+
+      /* Warn clients to refresh any pointers they might be holding */
+      shared_header->directory_offset =
+	stat_segment_offset (shared_header, sm->directory_vector);
+    }
   vlib_stat_segment_unlock ();
 }
 
@@ -224,6 +235,33 @@ vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap,
   if (lock)
     vlib_stat_segment_unlock ();
   clib_mem_set_heap (oldheap);
+}
+
+static void
+statseg_gauges_update_used_fn (stat_segment_directory_entry_t * e, u32 index)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  clib_mem_usage_t usage;
+  mheap_usage (sm->heap, &usage);
+  e->value = usage.bytes_used;
+}
+
+static void
+statseg_gauges_update_free_fn (stat_segment_directory_entry_t * e, u32 index)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  clib_mem_usage_t usage;
+  mheap_usage (sm->heap, &usage);
+  e->value = usage.bytes_free;
+}
+
+static void
+statseg_gauges_update_total_fn (stat_segment_directory_entry_t * e, u32 index)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  clib_mem_usage_t usage;
+  mheap_usage (sm->heap, &usage);
+  e->value = usage.bytes_total;
 }
 
 clib_error_t *
@@ -297,6 +335,19 @@ vlib_map_stat_segment_init (void)
     stat_segment_offset (shared_header, sm->directory_vector);
 
   clib_mem_set_heap (oldheap);
+
+  u8 *name = 0;
+  name = format (name, "/mem/statseg/used%c", 0);
+  stat_segment_register_gauge (name, statseg_gauges_update_used_fn, 0);
+  vec_reset_length (name);
+
+  name = format (name, "/mem/statseg/free%c", 0);
+  stat_segment_register_gauge (name, statseg_gauges_update_free_fn, 0);
+  vec_reset_length (name);
+
+  name = format (name, "/mem/statseg/total%c", 0);
+  stat_segment_register_gauge (name, statseg_gauges_update_total_fn, 0);
+  vec_reset_length (name);
 
   return 0;
 }

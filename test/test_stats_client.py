@@ -43,5 +43,30 @@ class StatsClientTestCase(VppTestCase):
                          "ending client side file descriptor count: %s" % (
                              initial_fds, ending_fds))
 
+    def test_mem_leak(self):
+        used = []
+        used.append(self.statistics.get_counter('/mem/statseg/used'))
+
+        def loop():
+            for i in range(10):
+                rv = self.vapi.papi.tap_create_v2(id=i, use_random_mac=1)
+                self.assertEqual(rv.retval, 0)
+                used.append(self.statistics.get_counter('/mem/statseg/used'))
+                rv = self.vapi.papi.tap_delete_v2(sw_if_index=rv.sw_if_index)
+                self.assertEqual(rv.retval, 0)
+                used.append(self.statistics.get_counter('/mem/statseg/used'))
+
+        before = self.statistics.get_counter('/mem/statseg/used')
+        loop()
+        after = self.statistics.get_counter('/mem/statseg/used')
+
+        print(self.vapi.cli("memory-trace on stats-segment"))
+        for j in range(10):
+            loop()
+
+        print('USED', used)
+        print('INTERFACES', self.statistics.get_counter('/if/names'))
+        print('BEFORE, AFTER', before, after)
+        print(self.vapi.cli("show memory stats-segment verbose"))
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
