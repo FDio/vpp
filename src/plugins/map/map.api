@@ -81,7 +81,7 @@ autoreply define map_add_del_rule
   u32 client_index;
   u32 context;
   u32 index;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_ip6_address_t ip6_dst;
   u16 psid;
 };
@@ -236,7 +236,7 @@ autoreply define map_param_add_del_pre_resolve
 {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_ip4_address_t ip4_nh_address;
   vl_api_ip6_address_t ip6_nh_address;
 };

@@ -521,7 +521,7 @@ autoreply define nat44_add_del_address_range {
   vl_api_ip4_address_t first_ip_address;
   vl_api_ip4_address_t last_ip_address;
   u32 vrf_id;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_nat_config_flags_t flags;
 };
 
@@ -558,7 +558,7 @@ define nat44_address_details {
 autoreply define nat44_interface_add_del_feature {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_nat_config_flags_t flags;
   vl_api_interface_index_t sw_if_index;
 };
@@ -598,7 +598,7 @@ define nat44_interface_details {
 autoreply define nat44_interface_add_del_output_feature {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_nat_config_flags_t flags;
   vl_api_interface_index_t sw_if_index;
 };
@@ -648,7 +648,7 @@ define nat44_interface_output_feature_details {
 autoreply define nat44_add_del_static_mapping {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_nat_config_flags_t flags;
   vl_api_ip4_address_t local_ip_address;
   vl_api_ip4_address_t external_ip_address;
@@ -715,7 +715,7 @@ define nat44_static_mapping_details {
 autoreply define nat44_add_del_identity_mapping {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_nat_config_flags_t flags;
   vl_api_ip4_address_t ip_address;
   u8 protocol;
@@ -765,7 +765,7 @@ define nat44_identity_mapping_details {
 autoreply define nat44_add_del_interface_addr {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_interface_index_t sw_if_index;
   vl_api_nat_config_flags_t flags;
 };
@@ -900,7 +900,7 @@ typeonly manual_endian define nat44_lb_addr_port {
 autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_nat_config_flags_t flags;
   vl_api_ip4_address_t external_addr;
   u16 external_port;
@@ -923,7 +923,7 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
 autoreply define nat44_lb_static_mapping_add_del_local {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_ip4_address_t external_addr;
   u16 external_port;
   u8 protocol;
@@ -1032,7 +1032,7 @@ define nat44_forwarding_is_enabled_reply {
 /** \brief Add/delete NAT deterministic mapping
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - true if add, false if delete
+    @param is_add - true if add, false if delete.  Default: Add.
     @param in_addr - inside IPv4 address
     @param in_plen - inside IPv4 address prefix length
     @param out_addr - outside IPv4 address
@@ -1041,7 +1041,7 @@ define nat44_forwarding_is_enabled_reply {
 autoreply define nat_det_add_del_map {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_ip4_address_t in_addr;
   u8 in_plen;
   vl_api_ip4_address_t out_addr;
@@ -1210,7 +1210,7 @@ autoreply define nat64_add_del_pool_addr_range {
   vl_api_ip4_address_t start_addr;
   vl_api_ip4_address_t end_addr;
   u32 vrf_id;
-  bool is_add;
+  bool is_add [default=true];
 };
 
 /** \brief Dump NAT64 pool addresses
@@ -1244,7 +1244,7 @@ define nat64_pool_addr_details {
 autoreply define nat64_add_del_interface {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_nat_config_flags_t flags;
   vl_api_interface_index_t sw_if_index;
 };
@@ -1292,7 +1292,7 @@ define nat64_interface_details {
   u16 o_port;
   u32 vrf_id;
   u8 proto;
-  bool is_add;
+  bool is_add [default=true];
 };
 
 /** \brief Dump NAT64 BIB
@@ -1386,7 +1386,7 @@ autoreply define nat64_add_del_prefix {
   u32 context;
   vl_api_ip6_prefix_t prefix;
   u32 vrf_id;
-  bool is_add;
+  bool is_add [default=true];
 };
 
 /** \brief Dump NAT64 prefix
@@ -1418,7 +1418,7 @@ define nat64_prefix_details {
 autoreply define nat64_add_del_interface_addr {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_interface_index_t sw_if_index;
 };
 
@@ -1431,14 +1431,14 @@ autoreply define nat64_add_del_interface_addr {
     @param context - sender context, to match reply w/ request
     @param start_addr - start IPv4 address of the range
     @param end_addr - end IPv4 address of the range
-    @param is_add - true if add, false if delete
+    @param is_add - true if add, false if delete.  Default: Add
 */
 autoreply define dslite_add_del_pool_addr_range {
   u32 client_index;
   u32 context;
   vl_api_ip4_address_t start_addr;
   vl_api_ip4_address_t end_addr;
-  bool is_add;
+  bool is_add [default=true];
 };
 
 /** \brief Dump DS-Lite addresses
@@ -1543,7 +1543,7 @@ define dslite_get_b4_addr_reply {
 autoreply define nat66_add_del_interface {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_nat_config_flags_t flags;
   vl_api_interface_index_t sw_if_index;
 };
@@ -1580,7 +1580,7 @@ define nat66_interface_details {
 autoreply define nat66_add_del_static_mapping {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_ip6_address_t local_ip_address;
   vl_api_ip6_address_t external_ip_address;
   u32 vrf_id;

@@ -56,7 +56,7 @@ define gre_tunnel_add_del
 {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_gre_tunnel_t tunnel;
 };
 

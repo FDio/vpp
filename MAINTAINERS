@@ -313,6 +313,7 @@ M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 
 Test Infrastructure
+I:	tests
 M:	Klement Sekera <ksekera@cisco.com>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	test/

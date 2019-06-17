@@ -46,7 +46,7 @@ define mpls_tunnel_add_del
   u32 client_index;
   u32 context;
   u32 mt_sw_if_index;
-  u8 mt_is_add;
+  u8 mt_is_add [default=1];
   u8 mt_l2_only;
   u8 mt_is_multicast;
   u8 mt_next_hop_proto_is_ip4;
@@ -102,7 +102,7 @@ manual_endian manual_print define mpls_tunnel_details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param mt_table_id - The MPLS table-id the route is added in
-    @param mt_is_add - Is this a route add or delete
+    @param mt_is_add - Is this a route add or delete.  Default: Add.
     @param mt_name - A client provided name/tag for the table. If this
                      is not set by the client, then VPP will generate
 		     something meaningfull.
@@ -112,7 +112,7 @@ autoreply define mpls_table_add_del
   u32 client_index;
   u32 context;
   u32 mt_table_id;
-  u8  mt_is_add;
+  u8  mt_is_add [default=1];
   u8  mt_name[64];
 };
 
@@ -125,7 +125,7 @@ autoreply define mpls_table_add_del
     @param mr_classify_table_index - If this is a classify route, 
                                      this is the classify table index
                                         create them
-    @param mr_is_add - Is this a route add or delete
+    @param mr_is_add - Is this a route add or delete.  Default:  Add.
     @param mr_is_classify - Is this route result a classify
     @param mr_is_multicast - Is this a multicast route
     @param mr_is_multipath - Is this route update a multipath - i.e. is this
@@ -137,7 +137,7 @@ autoreply define mpls_table_add_del
                                 is used as the RPF-ID
     @param mr_next_hop_proto - The next-hop protocol, of type dpo_proto_t
     @param mr_next_hop_weight - The weight, for UCMP
-    @param mr_next_hop[16] - the nextop address
+    @param mr_next_hop[16] - the next hop address
     @param mr_next_hop_sw_if_index - the next-hop SW interface
     @param mr_next_hop_table_id - the next-hop table-id (if appropriate)
     @param mr_next_hop_n_out_labels - the number of labels in the label stack
@@ -152,7 +152,7 @@ define mpls_route_add_del
   u8 mr_eos;
   u32 mr_table_id;
   u32 mr_classify_table_index;
-  u8 mr_is_add;
+  u8 mr_is_add [default=1];
   u8 mr_is_classify;
   u8 mr_is_multicast;
   u8 mr_is_multipath;
@@ -209,14 +209,14 @@ manual_endian manual_print define mpls_fib_details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - index of the interface
-    @param enable - if non-zero enable, else disable
+    @param enable - if non-zero enable, else disable.  Default: Enable.
 */
 autoreply define sw_interface_set_mpls_enable
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-  u8 enable;
+  u8 enable [default=1];
 };
 
 /*
