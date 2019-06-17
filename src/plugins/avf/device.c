@@ -564,9 +564,9 @@ avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
   for (i = 0; i < ad->rss_lut_size; i++)
     rl->lut[i] = i % ad->n_rx_queues;
 
-  avf_log_debug (ad, "config_rss_lut: vsi_id %u rss_lut_size %u lut %U",
-		 rl->vsi_id, rl->lut_entries, format_hex_bytes, rl->lut,
-		 rl->lut_entries);
+  avf_log_debug (ad, "config_rss_lut: vsi_id %u rss_lut_size %u lut 0x%U",
+		 rl->vsi_id, rl->lut_entries, format_hex_bytes_no_wrap,
+		 rl->lut, rl->lut_entries);
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_LUT, msg, msg_len, 0,
 			 0);
@@ -588,8 +588,8 @@ avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
   for (i = 0; i < ad->rss_key_size; i++)
     rk->key[i] = (u8) random_u32 (&seed);
 
-  avf_log_debug (ad, "config_rss_key: vsi_id %u rss_key_size %u key %U",
-		 rk->vsi_id, rk->key_len, format_hex_bytes, rk->key,
+  avf_log_debug (ad, "config_rss_key: vsi_id %u rss_key_size %u key 0x%U",
+		 rk->vsi_id, rk->key_len, format_hex_bytes_no_wrap, rk->key,
 		 rk->key_len);
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,

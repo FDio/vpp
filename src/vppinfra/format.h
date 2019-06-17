@@ -94,6 +94,7 @@ _(format_vec32);
 _(format_vec_uword);
 _(format_ascii_bytes);
 _(format_hex_bytes);
+_(format_hex_bytes_no_wrap);
 _(format_white_space);
 _(format_f64);
 _(format_time_interval);
