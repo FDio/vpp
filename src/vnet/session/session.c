@@ -452,12 +452,15 @@ session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 u32
 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 {
+  u32 rv;
   session_t *s = session_get (tc->s_index, tc->thread_index);
+
+  rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
 
   if (svm_fifo_needs_tx_ntf (s->tx_fifo, max_bytes))
     session_dequeue_notify (s);
 
-  return svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
+  return rv;
 }
 
 static inline int
