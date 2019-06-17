@@ -326,9 +326,7 @@ format_ipsec_sa (u8 * s, va_list * args)
 	    format (s, "\n    resovle via fib-entry: %d",
 		    sa->fib_entry_index);
 	  s = format (s, "\n    stacked on:");
-	  s =
-	    format (s, "\n      %U", format_dpo_id,
-		    &sa->dpo[IPSEC_PROTOCOL_ESP], 6);
+	  s = format (s, "\n      %U", format_dpo_id, &sa->dpo, 6);
 	}
     }
 

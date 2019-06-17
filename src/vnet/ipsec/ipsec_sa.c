@@ -80,14 +80,14 @@ ipsec_sa_stack (ipsec_sa_t * sa)
 
   fib_entry_contribute_forwarding (sa->fib_entry_index, fct, &tmp);
 
-  dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			im->ah6_encrypt_node_index :
-			im->ah4_encrypt_node_index),
-		       &sa->dpo[IPSEC_PROTOCOL_AH], &tmp);
-  dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			im->esp6_encrypt_node_index :
-			im->esp4_encrypt_node_index),
-		       &sa->dpo[IPSEC_PROTOCOL_ESP], &tmp);
+  if (IPSEC_PROTOCOL_AH == sa->protocol)
+    dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
+			  im->ah6_encrypt_node_index :
+			  im->ah4_encrypt_node_index), &sa->dpo, &tmp);
+  else
+    dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
+			  im->esp6_encrypt_node_index :
+			  im->esp4_encrypt_node_index), &sa->dpo, &tmp);
   dpo_reset (&tmp);
 }
 
@@ -305,8 +305,7 @@ ipsec_sa_del (u32 id)
       fib_table_entry_special_remove
 	(sa->tx_fib_index,
 	 fib_entry_get_prefix (sa->fib_entry_index), FIB_SOURCE_RR);
-      dpo_reset (&sa->dpo[IPSEC_PROTOCOL_AH]);
-      dpo_reset (&sa->dpo[IPSEC_PROTOCOL_ESP]);
+      dpo_reset (&sa->dpo);
     }
   vnet_crypto_key_del (vm, sa->crypto_key_index);
   vnet_crypto_key_del (vm, sa->integ_key_index);
