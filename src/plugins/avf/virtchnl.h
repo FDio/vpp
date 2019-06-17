@@ -179,12 +179,17 @@ typedef struct
   virtchnl_vsi_resource_t vsi_res[1];
 } virtchnl_vf_resource_t;
 
+#define foreach_virtchnl_event_code \
+  _(0, UNKNOWN)				\
+  _(1, LINK_CHANGE)			\
+  _(2, RESET_IMPENDING)			\
+  _(3, PF_DRIVER_CLOSE)
+
 typedef enum
 {
-  VIRTCHNL_EVENT_UNKNOWN = 0,
-  VIRTCHNL_EVENT_LINK_CHANGE,
-  VIRTCHNL_EVENT_RESET_IMPENDING,
-  VIRTCHNL_EVENT_PF_DRIVER_CLOSE,
+#define _(a,b) VIRTCHNL_EVENT_##b = (a),
+  foreach_virtchnl_event_code
+#undef _
 } virtchnl_event_codes_t;
 
 #define foreach_virtchnl_link_speed \
