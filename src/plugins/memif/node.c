@@ -667,13 +667,9 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b3 = vlib_get_buffer (vm, bi3);
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 	  vnet_buffer (b1)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = ~0;
 	  vnet_buffer (b2)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-	  vnet_buffer (b2)->sw_if_index[VLIB_TX] = ~0;
 	  vnet_buffer (b3)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-	  vnet_buffer (b3)->sw_if_index[VLIB_TX] = ~0;
 
 	  if (mode == MEMIF_INTERFACE_MODE_IP)
 	    {
@@ -736,7 +732,6 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 
 	  if (mode == MEMIF_INTERFACE_MODE_IP)
 	    {

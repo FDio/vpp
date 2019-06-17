@@ -343,7 +343,7 @@ vxlan_gpe_input (vlib_main_t * vm,
       /**
        * ip[46] lookup in the configured FIB
        */
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
+	  vnet_buffer (b0)->ip.fib_index = t0->decap_fib_index;
 
 	  if (is_ip4)
 	    ip4_pkts_decapsulated++;
@@ -438,7 +438,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 	  /*
 	   * ip[46] lookup in the configured FIB
 	   */
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = t1->decap_fib_index;
+	  vnet_buffer (b1)->ip.fib_index = t1->decap_fib_index;
 
 	  if (is_ip4)
 	    ip4_pkts_decapsulated++;
@@ -465,7 +465,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 	      stats_n_bytes = len1;
 	      stats_sw_if_index = sw_if_index1;
 	    }
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = t1->decap_fib_index;
+	  vnet_buffer (b1)->ip.fib_index = t1->decap_fib_index;
 
 	trace1:b1->error = error1 ? node->errors[error1] : 0;
 
@@ -614,7 +614,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 	  /*
 	   * ip[46] lookup in the configured FIB
 	   */
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
+	  vnet_buffer (b0)->ip.fib_index = t0->decap_fib_index;
 
 	  if (is_ip4)
 	    ip4_pkts_decapsulated++;

@@ -192,7 +192,7 @@ This function creates the packet header for an ipfix data packet
         sizeof (*s);
       b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
+      vnet_buffer (b0)->ip.fib_index = frm->fib_index;
       tp = vlib_buffer_get_current (b0);
       ip = (ip4_header_t *) & tp->ip4;
       udp = (udp_header_t *) (ip + 1);

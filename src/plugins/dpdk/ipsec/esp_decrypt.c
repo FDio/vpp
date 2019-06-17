@@ -649,8 +649,6 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-
 	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {

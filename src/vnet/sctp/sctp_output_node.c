@@ -294,7 +294,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	    }
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+	  vnet_buffer (b0)->ip.fib_index =
 	    sctp_conn->sub_conn[idx].c_fib_index;
 
 	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;

@@ -341,7 +341,7 @@ sctp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = fib_index;
+  vnet_buffer (b)->ip.fib_index = fib_index;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
 
   /* Send to IP lookup */

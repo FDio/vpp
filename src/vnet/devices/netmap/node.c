@@ -186,7 +186,6 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		      vnet_buffer (b0)->sw_if_index[VLIB_RX] =
 			nif->sw_if_index;
-		      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 		      first_bi0 = bi0;
 		      first_b0 = vlib_get_buffer (vm, first_bi0);
 		    }

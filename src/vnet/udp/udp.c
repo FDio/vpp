@@ -145,7 +145,7 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
       vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
     }
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = uc->c_fib_index;
+  vnet_buffer (b)->ip.fib_index = uc->c_fib_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   return 0;

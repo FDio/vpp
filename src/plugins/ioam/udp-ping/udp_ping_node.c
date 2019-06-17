@@ -477,7 +477,6 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
 	{
 	case HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST:
 	  /* Add trace for here as it hasnt been done yet */
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 	  trace = (ioam_trace_option_t *) opt0;
 	  if (PREDICT_FALSE
 	      (trace->trace_hdr.ioam_trace_type & BIT_LOOPBACK_REPLY))

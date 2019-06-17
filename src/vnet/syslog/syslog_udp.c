@@ -32,7 +32,7 @@ syslog_add_udp_transport (vlib_main_t * vm, u32 bi)
 
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = sm->fib_index;
+  vnet_buffer (b)->ip.fib_index = sm->fib_index;
 
   ip = vlib_buffer_get_current (b);
   clib_memset (ip, 0, sizeof (*ip));

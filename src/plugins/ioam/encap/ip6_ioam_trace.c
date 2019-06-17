@@ -231,7 +231,7 @@ ip6_hbh_ioam_loopback_handler (vlib_buffer_t * b, ip6_header_t * ip,
   buf_index = vlib_get_buffer_index (hm->vlib_main, b0);
 
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+  vnet_buffer (b0)->ip.fib_index = 0;
 
   ip6 = vlib_buffer_get_current (b0);
   hbh = (ip6_hop_by_hop_header_t *) (ip6 + 1);

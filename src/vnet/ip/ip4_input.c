@@ -42,6 +42,7 @@
 #include <vnet/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
 #include <vnet/util/throttle.h>
+#include <vnet/fib/ip4_fib.h>
 
 typedef struct
 {
@@ -169,15 +170,19 @@ ip4_input_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_data (b[7], LOAD);
 	}
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] = ~0;
-      vnet_buffer (b[2])->ip.adj_index[VLIB_RX] = ~0;
-      vnet_buffer (b[3])->ip.adj_index[VLIB_RX] = ~0;
-
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
       sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
       sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
+
+      vnet_buffer (b[0])->ip.fib_index =
+	ip4_fib_table_get_index_for_sw_if_index (sw_if_index[0]);
+      vnet_buffer (b[1])->ip.fib_index =
+	ip4_fib_table_get_index_for_sw_if_index (sw_if_index[1]);
+      vnet_buffer (b[2])->ip.fib_index =
+	ip4_fib_table_get_index_for_sw_if_index (sw_if_index[2]);
+      vnet_buffer (b[3])->ip.fib_index =
+	ip4_fib_table_get_index_for_sw_if_index (sw_if_index[3]);
 
       x |= sw_if_index[0] ^ last_sw_if_index;
       x |= sw_if_index[1] ^ last_sw_if_index;
@@ -236,8 +241,9 @@ ip4_input_inline (vlib_main_t * vm,
   while (n_left_from)
     {
       u32 next0;
-      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      vnet_buffer (b[0])->ip.fib_index =
+	ip4_fib_table_get_index_for_sw_if_index (sw_if_index[0]);
       ip4_input_check_sw_if_index (vm, cm, sw_if_index[0], &last_sw_if_index,
 				   &cnt, &arc_enabled);
       next0 = ip4_input_set_next (sw_if_index[0], b[0], arc_enabled);

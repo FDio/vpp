@@ -156,7 +156,6 @@ pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  pipe = &pipe_main.pipes[sw_if_index];
 	  // Set up RX index to be recv'd by the other end of the pipe
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = pipe->sw_if_index;
-	  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
 
 	  i++;
 	  n_pkts++;

@@ -62,7 +62,6 @@ l2_to_bvi (vlib_main_t * vlib_main,
 
   /* Set the input interface to be the BVI interface */
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = bvi_sw_if_index;
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 
   /* Go to appropriate L3 input node */
   if (ethertype == ETHERNET_TYPE_IP4)

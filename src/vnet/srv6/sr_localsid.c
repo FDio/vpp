@@ -756,7 +756,7 @@ end_srh_processing (vlib_node_runtime_t * node,
 	    }
 	  else if (ls0->behavior == SR_BEHAVIOR_T)
 	    {
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
+	      vnet_buffer (b0)->ip.fib_index = ls0->vrf_index;
 	    }
 	}
       else if (PREDICT_TRUE (sr0->segments_left > 0))
@@ -774,7 +774,7 @@ end_srh_processing (vlib_node_runtime_t * node,
 	    }
 	  else if (ls0->behavior == SR_BEHAVIOR_T)
 	    {
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
+	      vnet_buffer (b0)->ip.fib_index = ls0->vrf_index;
 	    }
 	}
       else
@@ -838,7 +838,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
       else if (ls0->behavior == SR_BEHAVIOR_DT6)
 	{
 	  vlib_buffer_advance (b0, total_size);
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
+	  vnet_buffer (b0)->ip.fib_index = ls0->vrf_index;
 	  return;
 	}
       break;
@@ -854,7 +854,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
       else if (ls0->behavior == SR_BEHAVIOR_DT4)
 	{
 	  vlib_buffer_advance (b0, total_size);
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
+	  vnet_buffer (b0)->ip.fib_index = ls0->vrf_index;
 	  *next0 = SR_LOCALSID_NEXT_IP4_LOOKUP;
 	  return;
 	}

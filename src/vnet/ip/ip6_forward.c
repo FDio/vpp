@@ -816,7 +816,6 @@ ip6_forward_next_trace (vlib_main_t * vm,
 			vlib_frame_t * frame, vlib_rx_or_tx_t which_adj_index)
 {
   u32 *from, n_left;
-  ip6_main_t *im = &ip6_main;
 
   n_left = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
@@ -842,11 +841,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index =
-	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b0)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	  t0->fib_index = vnet_buffer (b0)->ip.fib_index;
 
 	  clib_memcpy_fast (t0->packet_data,
 			    vlib_buffer_get_current (b0),
@@ -857,11 +852,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
 	  t1->adj_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
 	  t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
-	  t1->fib_index =
-	    (vnet_buffer (b1)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b1)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b1)->sw_if_index[VLIB_RX]);
+	  t1->fib_index = vnet_buffer (b1)->ip.fib_index;
 
 	  clib_memcpy_fast (t1->packet_data,
 			    vlib_buffer_get_current (b1),
@@ -886,11 +877,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index =
-	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b0)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	  t0->fib_index = vnet_buffer (b0)->ip.fib_index;
 
 	  clib_memcpy_fast (t0->packet_data,
 			    vlib_buffer_get_current (b0),
@@ -1021,9 +1008,7 @@ ip6_urpf_loose_check (ip6_main_t * im, vlib_buffer_t * b, ip6_header_t * i)
 
   fib_index = vec_elt (im->fib_index_by_sw_if_index,
 		       vnet_buffer (b)->sw_if_index[VLIB_RX]);
-  fib_index =
-    (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-    fib_index : vnet_buffer (b)->sw_if_index[VLIB_TX];
+  fib_index = vnet_buffer (b)->ip.fib_index;
 
   lbi = ip6_fib_table_fwding_lookup (im, fib_index, &i->src_address);
   lb0 = load_balance_get (lbi);
@@ -1214,15 +1199,6 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       ip[1]) ? IP6_ERROR_SRC_LOOKUP_MISS
 		: error[1];
 	    }
-
-	  vnet_buffer (b[0])->ip.fib_index =
-	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] != ~0 ?
-	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] :
-	    vnet_buffer (b[0])->ip.fib_index;
-	  vnet_buffer (b[1])->ip.fib_index =
-	    vnet_buffer (b[1])->sw_if_index[VLIB_TX] != ~0 ?
-	    vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
-	    vnet_buffer (b[1])->ip.fib_index;
 	}			/* head_of_feature_arc */
 
       next[0] = lm->local_next_by_ip_protocol[ip[0]->protocol];
@@ -1334,11 +1310,6 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       ip) ? IP6_ERROR_SRC_LOOKUP_MISS :
 		error;
 	    }
-
-	  vnet_buffer (b[0])->ip.fib_index =
-	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] != ~0 ?
-	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] :
-	    vnet_buffer (b[0])->ip.fib_index;
 	}			/* head_of_feature_arc */
 
       next[0] = lm->local_next_by_ip_protocol[ip->protocol];
@@ -1726,8 +1697,6 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  rw_len1 = adj1[0].rewrite_header.data_bytes;
-	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
-	  vnet_buffer (p1)->ip.save_rewrite_length = rw_len1;
 
 	  if (do_counters)
 	    {
@@ -1772,6 +1741,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 	      next0 = adj0[0].rewrite_header.next_index;
+	      vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
@@ -1790,6 +1760,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p1)->sw_if_index[VLIB_TX] = tx_sw_if_index1;
 	      next1 = adj1[0].rewrite_header.next_index;
+	      vnet_buffer (p1)->ip.save_rewrite_length = rw_len1;
 
 	      if (PREDICT_FALSE
 		  (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
@@ -1909,7 +1880,6 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  /* Update packet buffer attributes/set output interface. */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
-	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 
 	  if (do_counters)
 	    {
@@ -1941,6 +1911,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 	      next0 = adj0[0].rewrite_header.next_index;
+	      vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))

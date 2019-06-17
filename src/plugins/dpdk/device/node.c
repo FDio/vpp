@@ -132,8 +132,6 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
         - adjusted as needed to skip the L2 header in  direct-dispatch cases
     - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
         - rx interface sw_if_index
-    - <code>vnet_buffer(b)->sw_if_index[VLIB_TX] = ~0</code>
-        - required by ipX-lookup
     - <code>b->flags</code>
         - to indicate multi-segment pkts (VLIB_BUFFER_NEXT_PRESENT), etc.
 

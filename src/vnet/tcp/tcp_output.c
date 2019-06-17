@@ -14,6 +14,8 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/fib/ip6_fib.h>
+#include <vnet/fib/ip4_fib.h>
 #include <math.h>
 
 typedef enum _tcp_output_next
@@ -584,7 +586,7 @@ tcp_enqueue_to_ip_lookup_i (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = fib_index;
+  vnet_buffer (b)->ip.fib_index = fib_index;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
 
   /* Send to IP lookup */
@@ -1980,7 +1982,9 @@ tcp_output_handle_link_local (tcp_connection_t * tc0, vlib_buffer_t * b0,
 		     tc0->sw_if_index);
   if (ai == ADJ_INDEX_INVALID)
     {
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+      vnet_buffer (b0)->ip.fib_index =
+	ip6_fib_table_get_index_for_sw_if_index (tc0->sw_if_index);
+
       *next0 = TCP_OUTPUT_NEXT_DROP;
       *error0 = TCP_ERROR_LINK_LOCAL_RW;
       return;
@@ -2062,7 +2066,7 @@ tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
       return;
     }
 
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
+  vnet_buffer (b0)->ip.fib_index = tc0->c_fib_index;
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
 
   if (!is_ip4)
@@ -2262,7 +2266,14 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Prepare to send to IP lookup */
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+	  if (is_ip4)
+	    vnet_buffer (b0)->ip.fib_index =
+	      ip4_fib_table_get_index_for_sw_if_index
+	      (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	  else
+	    vnet_buffer (b0)->ip.fib_index =
+	      ip6_fib_table_get_index_for_sw_if_index
+	      (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 	  next0 = TCP_RESET_NEXT_IP_LOOKUP;
 
 	done:

@@ -735,7 +735,7 @@ nat44_ed_out2in_unknown_proto (snat_main_t * sm,
   sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
   ip->checksum = ip_csum_fold (sum);
 
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
+  vnet_buffer (b)->ip.fib_index = s->in2out.fib_index;
 
   /* Accounting */
   nat44_session_update_counters (s, now, vlib_buffer_length_in_chain (vm, b),
@@ -830,7 +830,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (ip0->ttl == 1))
 	    {
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      vnet_buffer (b0)->ip.fib_index = rx_fib_index0;
 	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
 					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
 					   0);
@@ -984,7 +984,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  old_addr0 = ip0->dst_address.as_u32;
 	  new_addr0 = ip0->dst_address.as_u32 = s0->in2out.addr.as_u32;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+	  vnet_buffer (b0)->ip.fib_index = s0->in2out.fib_index;
 
 	  sum0 = ip0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
@@ -1068,7 +1068,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (ip1->ttl == 1))
 	    {
-	      vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      vnet_buffer (b1)->ip.fib_index = rx_fib_index1;
 	      icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
 					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
 					   0);
@@ -1222,7 +1222,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  old_addr1 = ip1->dst_address.as_u32;
 	  new_addr1 = ip1->dst_address.as_u32 = s1->in2out.addr.as_u32;
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = s1->in2out.fib_index;
+	  vnet_buffer (b1)->ip.fib_index = s1->in2out.fib_index;
 
 	  sum1 = ip1->checksum;
 	  sum1 = ip_csum_update (sum1, old_addr1, new_addr1, ip4_header_t,
@@ -1340,7 +1340,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (ip0->ttl == 1))
 	    {
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      vnet_buffer (b0)->ip.fib_index = rx_fib_index0;
 	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
 					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
 					   0);
@@ -1494,7 +1494,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  old_addr0 = ip0->dst_address.as_u32;
 	  new_addr0 = ip0->dst_address.as_u32 = s0->in2out.addr.as_u32;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+	  vnet_buffer (b0)->ip.fib_index = s0->in2out.fib_index;
 
 	  sum0 = ip0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
@@ -1880,7 +1880,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 	  old_addr0 = ip0->dst_address.as_u32;
 	  ip0->dst_address = s0->in2out.addr;
 	  new_addr0 = ip0->dst_address.as_u32;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+	  vnet_buffer (b0)->ip.fib_index = s0->in2out.fib_index;
 
 	  sum0 = ip0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,

@@ -39,6 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/ip6_fib.h>
 #include <vnet/pg/pg.h>
 
 static u8 *
@@ -344,11 +345,11 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	  /* Determine the correct lookup fib indices... */
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
 				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
+	  vnet_buffer (p0)->ip.fib_index = fib_index0;
 	  /* Determine the correct lookup fib indices... */
 	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
 				vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p1)->sw_if_index[VLIB_TX] = fib_index1;
+	  vnet_buffer (p1)->ip.fib_index = fib_index1;
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
@@ -401,7 +402,7 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	   * table with the RX interface correctly set */
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
 				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
+	  vnet_buffer (p0)->ip.fib_index = fib_index0;
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -530,7 +531,8 @@ ip6_icmp_error (vlib_main_t * vm,
 			       -(sizeof (ip6_header_t) +
 				 sizeof (icmp46_header_t) + 4));
 
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = ~0;
+	  vnet_buffer (p0)->ip.fib_index =
+	    ip6_fib_table_get_index_for_sw_if_index (sw_if_index0);
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  p0->current_length =
 	    p0->current_length > 1280 ? 1280 : p0->current_length;
