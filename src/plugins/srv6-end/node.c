@@ -99,7 +99,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           ip6srv_combo_header_t *ip6srv0;
           ip6_address_t src0, dst0;
 
-          ip4_gtpu_header_t *hdr0;
+          ip4_gtpu_header_t *hdr0 = NULL;
           uword len0;
           
 	  u32 next0 = SRV6_END_M_GTP4_E_NEXT_LOOKUP;

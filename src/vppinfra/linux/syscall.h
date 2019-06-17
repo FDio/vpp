@@ -48,11 +48,13 @@ move_pages (int pid, unsigned long count, void **pages, const int *nodes,
 }
 
 #ifndef HAVE_MEMFD_CREATE
+#ifndef _LINUX_MEMFD_H	// tentative
 static inline int
 memfd_create (const char *name, unsigned int flags)
 {
   return syscall (__NR_memfd_create, name, flags);
 }
+#endif
 #endif
 
 #endif /* included_linux_syscall_h */
