@@ -1,25 +1,29 @@
-/*
- * Copyright (c) 2015 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#ifndef included_vnet_api_errno_h
-#define included_vnet_api_errno_h
+#  Copyright (c) 2019. Vinci Consulting Corp. All Rights Reserved.
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 
-#include <stdarg.h>
-#include <vppinfra/types.h>
-#include <vppinfra/format.h>
+import collections
 
-#define foreach_vnet_api_error						\
+# only put the api_prototypes here.
+__all__ = ('strerror_dump',)
+
+
+# if the named tuples are defined at the module level, they are
+# easier to serialize.
+strerror_details = collections.namedtuple(
+    'strerror_details', 'errno strerror')
+
+raw_retvals = r"""
 _(UNSPECIFIED, -1, "Unspecified Error")                                 \
 _(INVALID_SW_IF_INDEX, -2, "Invalid sw_if_index")                       \
 _(NO_SUCH_FIB, -3, "No such FIB / VRF")                                 \
@@ -44,7 +48,7 @@ _(FEATURE_DISABLED, -30, "Feature disabled by configuration")           \
 _(INVALID_REGISTRATION, -31, "Invalid registration")                    \
 _(NEXT_HOP_NOT_IN_FIB, -50, "Next hop not in FIB")                      \
 _(UNKNOWN_DESTINATION, -51, "Unknown destination")                      \
-_(NO_PATHS_IN_ROUTE, -52, "No paths specified in route")                \
+_(PREFIX_MATCHES_NEXT_HOP, -52, "Prefix matches next hop")              \
 _(NEXT_HOP_NOT_FOUND_MP, -53, "Next hop not found (multipath)")         \
 _(NO_MATCHING_INTERFACE, -54, "No matching interface for probe")        \
 _(INVALID_VLAN, -55, "Invalid VLAN")                                    \
@@ -55,6 +59,7 @@ _(ADDRESS_LENGTH_MISMATCH, -59, "Address length mismatch")              \
 _(ADDRESS_NOT_FOUND_FOR_INTERFACE, -60, "Address not found for interface") \
 _(ADDRESS_NOT_DELETABLE, -61, "Address not deletable")                  \
 _(IP6_NOT_ENABLED, -62, "ip6 not enabled")				\
+_(IN_PROGRESS, 10, "Operation in progress")				\
 _(NO_SUCH_NODE, -63, "No such graph node")				\
 _(NO_SUCH_NODE2, -64, "No such graph node #2")				\
 _(NO_SUCH_TABLE, -65, "No such table")                                  \
@@ -84,7 +89,7 @@ _(FAILED_TO_ATTACH_TO_JAVA_THREAD, -88, "Failed to attach to Java thread") \
 _(INVALID_WORKER, -89, "Invalid worker thread")                         \
 _(LISP_DISABLED, -90, "LISP is disabled")                               \
 _(CLASSIFY_TABLE_NOT_FOUND, -91, "Classify table not found")            \
-_(INVALID_EID_TYPE, -92, "Unsupported LISP EID type")                   \
+_(INVALID_EID_TYPE, -92, "Unsupported LSIP EID type")                   \
 _(CANNOT_CREATE_PCAP_FILE, -93, "Cannot create pcap file")              \
 _(INCORRECT_ADJACENCY_TYPE, -94, "Invalid adjacency type for this operation") \
 _(EXCEEDED_NUMBER_OF_RANGES_CAPACITY, -95, "Operation would exceed configured capacity of ranges") \
@@ -114,7 +119,7 @@ _(APPLICATION_NOT_ATTACHED, -118, "Application not attached")           \
 _(BD_ALREADY_EXISTS, -119, "Bridge domain already exists")              \
 _(BD_IN_USE, -120, "Bridge domain has member interfaces")		\
 _(BD_NOT_MODIFIABLE, -121, "Bridge domain 0 can't be deleted/modified") \
-_(BD_ID_EXCEED_MAX, -122, "Bridge domain ID exceeds 16M limit")		\
+_(BD_ID_EXCEED_MAX, -122, "Bridge domain ID exceed 16M limit")		\
 _(SUBIF_DOESNT_EXIST, -123, "Subinterface doesn't exist")               \
 _(L2_MACS_EVENT_CLINET_PRESENT, -124, "Client already exist for L2 MACs events") \
 _(INVALID_QUEUE, -125, "Invalid queue")                 		\
@@ -144,62 +149,45 @@ _(INVALID_SESSION_ID, -148, "Session ID out of range")			\
 _(ACL_IN_USE_BY_LOOKUP_CONTEXT, -149, "ACL in use by a lookup context")	\
 _(INVALID_VALUE_3, -150, "Invalid value #3")                            \
 _(NON_ETHERNET, -151, "Interface is not an Ethernet interface")         \
-_(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface") \
+_(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface")
 _(INVALID_PROTOCOL, -153, "Invalid Protocol")                           \
 _(INVALID_ALGORITHM, -154, "Invalid Algorithm")                         \
 _(RSRC_IN_USE, -155, "Resource In Use")                                 \
-_(KEY_LENGTH, -156, "invalid Key Length")                               \
+_(KEY_LENGTH, -156, "Invalid Key Length")                               \
 _(FIB_PATH_UNSUPPORTED_NH_PROTO, -157, "Unsupported FIB Path protocol")
+""".replace('\t', '').replace('\\', '')  # noqa
 
-typedef enum
-{
-#define _(a,b,c) VNET_API_ERROR_##a = (b),
-  foreach_vnet_api_error
-#undef _
-    VNET_API_N_ERROR,
-} vnet_api_error_t;
+lookup = {}
+for line in raw_retvals.splitlines():
+    line = line.rstrip().rstrip(')').lstrip('_(')
+    if ',' in line:
+        _, field2, field3 = line.split(',')
+        lookup[int(field2)] = field3.replace('"', '').strip()
 
-/* *INDENT-OFF* */
-static inline u8 *
-format_vnet_api_errno (u8 * s, va_list * args)
-{
-  vnet_api_error_t api_error = va_arg (*args, vnet_api_error_t);
-#ifdef _
-#undef _
-#endif
-#define _(a, b, c)           \
-  case b:                    \
-    s = format (s, "%s", c); \
-    break;
-  switch (api_error)
-    {
-      foreach_vnet_api_error
-      default:
-       	s = format (s, "UNKNOWN");
-        break;
-    }
-  return s;
-#undef _
-}
-/* *INDENT-ON* */
 
-static const int defined_api_errnos[] =
-#ifdef _
-#undef _
-#endif
-#define _(a, b, c) \
-  b ,
-{ foreach_vnet_api_error };
+def strerror(key):
+    if key == 0:
+        return "No error"
+    try:
+        return lookup[key]
+    except KeyError:
+        return "Unknown errno: %s" % key
 
-#undef _
-;
 
-#endif /* included_vnet_api_errno_h */
+def strerror_dump(*args, **kwargs):
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+    errno = kwargs.get('errno', None)
+
+    results = []
+    for line in raw_retvals.splitlines():
+        line = line.rstrip().rstrip(')').lstrip('_(')
+        if ',' in line:
+            _, erno, strerror = line.split(',')
+            record = strerror_details(
+                int(erno), '%s.' % strerror.replace('"', '').strip())
+            if record.errno == errno:
+                return[record]
+            results.append(record)
+    if errno is not None:
+        return [strerror_details(0xffffffff, 'Unknown errno.')]
+    return results
