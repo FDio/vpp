@@ -39,8 +39,18 @@ else:
 
 __all__ = ('FuncWrapper', 'VPP', 'VppApiDynamicMethodHolder',
            'VppEnum', 'VppEnumType',
-           'VPPIOError', 'VPPRuntimeError', 'VPPValueError',
-           'VPPApiClient', )
+           'VPPApiClient',
+           'VPPApiClientError',
+           'VPPApiClientIOError',
+           'VPPApiClientNotImplementedError',
+           'VPPApiClientRuntimeError',
+           'VPPApiClientTypeError',
+           'VPPApiClientValueError',
+           'VPPApiClientUnexpectedReturnValueError',
+           'VPPApiClientInvalidReturnValueError',
+           )
+
+BUGREPORT_URL = 'https://jira.fd.io/projects/VPP/issues'
 
 
 def metaclass(metaclass):
@@ -108,24 +118,63 @@ class FuncWrapper(object):
         return '<FuncWrapper(func=<%s(%s)>)>' % (self.__name__, self.__doc__)
 
 
-class VPPApiError(Exception):
+class VPPApiClientError(Exception):
     pass
 
 
-class VPPNotImplementedError(NotImplementedError):
+class VPPApiClientNotImplementedError(VPPApiClientError, NotImplementedError):
     pass
 
 
-class VPPIOError(IOError):
+class VPPApiClientIOError(VPPApiClientError, IOError):
     pass
 
 
-class VPPRuntimeError(RuntimeError):
+class VPPApiClientRuntimeError(VPPApiClientError, RuntimeError):
     pass
 
 
-class VPPValueError(ValueError):
+class VPPApiClientTypeError(VPPApiClientError, ValueError):
     pass
+
+
+class VPPApiClientValueError(VPPApiClientError, ValueError):
+    pass
+
+
+class VPPApiClientUnexpectedReturnValueError(VPPApiClientError):
+    """ exception raised when the API return value is unexpected """
+
+    def __init__(self, rv=0, strerror=None, reply=None, expected=0,
+                 api_fn_name=None, api_fn_args=None):
+        self.expected = expected
+        self.rv = rv
+        self.strerror = strerror
+        self.reply = reply
+        self.api_fn_name = api_fn_name
+        self.api_fn_args = api_fn_args
+        api_fn_args_sig = ', '.join(
+            ['{}={!r}'.format(k, v) for k, v in api_fn_args.items()])
+        msg = "%s(%s) returned '%s' (%s).  Expected %s.  " \
+              "Reply was: %s."
+        super(VPPApiClientUnexpectedReturnValueError, self).__init__(
+            msg % (api_fn_name, api_fn_args_sig, self.strerror, rv,
+                   expected, reply))
+
+
+class VPPApiClientInvalidReturnValueError(VPPApiClientUnexpectedReturnValueError):  # noqa
+    """ exception raised when api returns a value not in api_errno.h"""
+
+    def __init__(self, rv=0, strerror=None, reply=None, expected=0,
+                 api_fn_name=None, api_fn_args=None):
+        api_fn_args_sig = ', '.join(
+            ['{}={!r}'.format(k, v) for k, v in api_fn_args.items()])
+
+        msg = ('API function %s(%s) returned an invalid return code of (%s).\n'
+               'Please fix the api function to return a value in api_errno.h '
+               'or at least \nopen a ticket at: %s.\n'
+               % (api_fn_name, api_fn_args_sig, rv, BUGREPORT_URL))
+        super(VPPApiClientInvalidReturnValueError, self).__init__(msg)
 
 
 class VPPApiClient(object):
@@ -141,11 +190,13 @@ class VPPApiClient(object):
     these messages in a background thread.
     """
     apidir = None
-    VPPApiError = VPPApiError
-    VPPRuntimeError = VPPRuntimeError
-    VPPValueError = VPPValueError
-    VPPNotImplementedError = VPPNotImplementedError
-    VPPIOError = VPPIOError
+    VPPApiClientError = VPPApiClientError
+    VPPApiClientRuntimeError = VPPApiClientRuntimeError
+    VPPApiClientValueError = VPPApiClientValueError
+    VPPApiClientNotImplementedError = VPPApiClientNotImplementedError
+    VPPApiClientIOError = VPPApiClientIOError
+    VPPApiClientUnexpectedReturnValueError = VPPApiClientUnexpectedReturnValueError  # noqa
+    VPPApiClientInvalidReturnValueError = VPPApiClientInvalidReturnValueError  # noqa
 
     def process_json_file(self, apidef_file):
         api = json.load(apidef_file)
@@ -192,15 +243,15 @@ class VPPApiClient(object):
             if len(unresolved) == 0:
                 break
             if i > 3:
-                raise VPPValueError('Unresolved type definitions {}'
-                                    .format(unresolved))
+                raise VPPApiClientValueError(
+                    'Unresolved type definitions {}'.format(unresolved))
             types = unresolved
             i += 1
 
         for m in api['messages']:
             try:
                 self.messages[m[0]] = VPPMessage(m[0], m[1:])
-            except VPPNotImplementedError:
+            except VPPApiClientNotImplementedError:
                 self.logger.error('Not implemented error for {}'.format(m[0]))
 
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
@@ -241,6 +292,9 @@ class VPPApiClient(object):
         self.use_socket = use_socket
         self.server_address = server_address
         self._apifiles = apifiles
+        # local caches.  Reset to None and they will be refreshed.
+        self._api_strerrors = None
+        self._strerrors_by_api_errno = None
 
         if use_socket:
             from . vpp_transport_socket import VppTransport
@@ -256,7 +310,7 @@ class VPPApiClient(object):
                 if testmode:
                     apifiles = []
                 else:
-                    raise VPPRuntimeError
+                    raise VPPApiClientRuntimeError
 
         for file in apifiles:
             with open(file) as apidef_file:
@@ -266,7 +320,7 @@ class VPPApiClient(object):
 
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
-            raise VPPValueError(1, 'Missing JSON message definitions')
+            raise VPPApiClientValueError(1, 'Missing JSON message definitions')
 
         self.transport = VppTransport(self, read_timeout=read_timeout,
                                       server_address=server_address)
@@ -394,7 +448,7 @@ class VPPApiClient(object):
         if api_dir is None:
             api_dir = cls.find_api_dir()
             if api_dir is None:
-                raise VPPApiError("api_dir cannot be located")
+                raise VPPApiClientError("api_dir cannot be located")
 
         if isinstance(patterns, list) or isinstance(patterns, tuple):
             patterns = [p.strip() + '.api.json' for p in patterns]
@@ -413,7 +467,8 @@ class VPPApiClient(object):
     @property
     def api(self):
         if not hasattr(self, "_api"):
-            raise VPPApiError("Not connected, api definitions not available")
+            msg = "Not connected, api definitions not available."
+            raise VPPApiClientError(msg)
         return self._api
 
     def make_function(self, msg, i, multipart, do_async):
@@ -463,7 +518,7 @@ class VPPApiClient(object):
         rv = self.transport.connect(name.encode('utf-8'), pfx,
                                     msg_handler, rx_qlen)
         if rv != 0:
-            raise VPPIOError(2, 'Connect failed')
+            raise VPPApiClientIOError(2, 'Connect failed')
         self.vpp_dictionary_maxid = self.transport.msg_table_max_index()
         self._register_functions(do_async=do_async)
 
@@ -532,7 +587,8 @@ class VPPApiClient(object):
             # No context -> async notification that we feed to the callback
             self.message_queue.put_nowait(r)
         else:
-            raise VPPIOError(2, 'RPC reply message received in event handler')
+            msg = 'RPC reply message received in event handler.'
+            raise VPPApiClientIOError(2, msg)
 
     def has_context(self, msg):
         if len(msg) < 10:
@@ -568,7 +624,7 @@ class VPPApiClient(object):
         #
         msgobj = self.id_msgdef[i]
         if not msgobj:
-            raise VPPIOError(2, 'Reply message undefined')
+            raise VPPApiClientIOError(2, 'Reply message undefined')
 
         r, size = msgobj.unpack(msg, ntc=no_type_conversion)
         return r
@@ -596,8 +652,8 @@ class VPPApiClient(object):
     def validate_args(self, msg, kwargs):
         d = set(kwargs.keys()) - set(msg.field_by_name.keys())
         if d:
-            raise VPPValueError('Invalid argument {} to {}'
-                                .format(list(d), msg.name))
+            raise VPPApiClientValueError(
+                'Invalid argument {} to {}'.format(list(d), msg.name))
 
     def _call_vpp(self, i, msgdef, multipart, **kwargs):
         """Given a message, send the message and await a reply.
@@ -648,7 +704,7 @@ class VPPApiClient(object):
         while (True):
             msg = self.transport.read()
             if not msg:
-                raise VPPIOError(2, 'VPP API client: read failed')
+                raise VPPApiClientIOError(2, 'VPP API client: read failed')
             r = self.decode_incoming_msg(msg, no_type_conversion)
             msgname = type(r).__name__
             if context not in r or r.context == 0 or context != r.context:
@@ -734,6 +790,42 @@ class VPPApiClient(object):
                    self.logger, self.read_timeout, self.use_socket,
                    self.server_address)
 
+    @property
+    def api_strerrors(self):
+        # cache the values.
+        if self._api_strerrors is None:
+            if not self.api:
+                raise RuntimeError('Attempting to access dynamic data '
+                                   'before client has connected.')
+            # need to set explicit default for now.
+            self._api_strerrors = self.api.api_strerror_dump(
+                api_errno=0x7fffffff)
+        return self._api_strerrors
+
+    # this is a property to defer lookup until after
+    # client connection is established.
+    @property
+    def VPE_API_ERROR_SYNTAX_ERROR(self):
+        return self.api_strerror_lookup_by_name(
+            'VPE_API_ERROR_SYNTAX_ERROR') or -158
+
+    def api_strerror_lookup(self, api_errno):
+        # cache the values
+        if self._strerrors_by_api_errno is None:
+            self._strerrors_by_api_errno = \
+                {f.api_errno: f.strerror for f in self.api_strerrors}
+        if api_errno not in self._strerrors_by_api_errno:
+            return('INVALID API_ERRNO.')
+        return self._strerrors_by_api_errno[api_errno]
+
+    def api_strerror_lookup_by_name(self, enum_name):
+        enum_name_key = '%s: ' % enum_name
+        try:
+            return [cursor for cursor in self.api_strerrors if
+                    enum_name_key in cursor.strerror][0]
+        except IndexError:
+            # not found.
+            return None
 
 # Provide the old name for backward compatibility.
 VPP = VPPApiClient
