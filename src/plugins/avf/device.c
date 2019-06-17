@@ -43,6 +43,18 @@ static pci_device_id_t avf_pci_device_ids[] = {
   {0},
 };
 
+const static char *virtchnl_event_names[] = {
+#define _(v, n) [v] = #n,
+  foreach_virtchnl_event_code
+#undef _
+};
+
+const static char *virtchnl_link_speed_str[] = {
+#define _(v, n, s) [v] = s,
+  foreach_virtchnl_link_speed
+#undef _
+};
+
 static inline void
 avf_irq_0_disable (avf_device_t * ad)
 {
@@ -487,6 +499,8 @@ avf_op_version (vlib_main_t * vm, avf_device_t * ad,
     .minor = VIRTCHNL_VERSION_MINOR,
   };
 
+  avf_log_debug (ad, "version: major %u minor %u", myver.major, myver.minor);
+
   err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_VERSION, &myver,
 			sizeof (virtchnl_version_info_t), ver,
 			sizeof (virtchnl_version_info_t));
@@ -501,12 +515,37 @@ clib_error_t *
 avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
 			 virtchnl_vf_resource_t * res)
 {
+  clib_error_t *err = 0;
   u32 bitmap = (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_PF |
 		VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_VLAN |
 		VIRTCHNL_VF_OFFLOAD_RX_POLLING);
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
-			 sizeof (u32), res, sizeof (virtchnl_vf_resource_t));
+  avf_log_debug (ad, "get_vf_reqources: bitmap 0x%x", bitmap);
+  err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
+			sizeof (u32), res, sizeof (virtchnl_vf_resource_t));
+
+  if (err == 0)
+    {
+      int i;
+      avf_log_debug (ad, "get_vf_reqources: num_vsis %u num_queue_pairs %u "
+		     "max_vectors %u max_mtu %u vf_offload_flags 0x%04x "
+		     "rss_key_size %u rss_lut_size %u",
+		     res->num_vsis, res->num_queue_pairs, res->max_vectors,
+		     res->max_mtu, res->vf_offload_flags, res->rss_key_size,
+		     res->rss_lut_size);
+      for (i = 0; i < res->num_vsis; i++)
+	avf_log_debug (ad, "get_vf_reqources_vsi[%u]: vsi_id %u "
+		       "num_queue_pairs %u vsi_type %u qset_handle %u "
+		       "default_mac_addr %U", i,
+		       res->vsi_res[i].vsi_id,
+		       res->vsi_res[i].num_queue_pairs,
+		       res->vsi_res[i].vsi_type,
+		       res->vsi_res[i].qset_handle,
+		       format_ethernet_address,
+		       res->vsi_res[i].default_mac_addr);
+    }
+
+  return err;
 }
 
 clib_error_t *
@@ -523,6 +562,10 @@ avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
   rl->lut_entries = ad->rss_lut_size;
   for (i = 0; i < ad->rss_lut_size; i++)
     rl->lut[i] = i % ad->n_rx_queues;
+
+  avf_log_debug (ad, "config_rss_lut: vsi_id %u rss_lut_size %u lut %U",
+		 rl->vsi_id, rl->lut_entries, format_hex_bytes, rl->lut,
+		 rl->lut_entries);
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_LUT, msg, msg_len, 0,
 			 0);
@@ -544,6 +587,10 @@ avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
   for (i = 0; i < ad->rss_key_size; i++)
     rk->key[i] = (u8) random_u32 (&seed);
 
+  avf_log_debug (ad, "config_rss_key: vsi_id %u rss_key_size %u key %U",
+		 rk->vsi_id, rk->key_len, format_hex_bytes, rk->key,
+		 rk->key_len);
+
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,
 			 0);
 }
@@ -551,6 +598,8 @@ avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
 clib_error_t *
 avf_op_disable_vlan_stripping (vlib_main_t * vm, avf_device_t * ad)
 {
+  avf_log_debug (ad, "disable_vlan_stripping");
+
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_DISABLE_VLAN_STRIPPING, 0, 0, 0,
 			 0);
 }
@@ -562,6 +611,11 @@ avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad)
 
   pi.vsi_id = ad->vsi_id;
   pi.flags = FLAG_VF_UNICAST_PROMISC | FLAG_VF_MULTICAST_PROMISC;
+
+  avf_log_debug (ad, "config_promisc_mode: unicast %s multicast %s",
+		 pi.flags & FLAG_VF_UNICAST_PROMISC ? "on" : "off",
+		 pi.flags & FLAG_VF_MULTICAST_PROMISC ? "on" : "off");
+
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE, &pi,
 			 sizeof (virtchnl_promisc_info_t), 0, 0);
 }
@@ -582,6 +636,9 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
   ci->vsi_id = ad->vsi_id;
   ci->num_queue_pairs = n_qp;
 
+  avf_log_debug (ad, "config_vsi_queues: vsi_id %u num_queue_pairs %u",
+		 ad->vsi_id, ci->num_queue_pairs);
+
   for (i = 0; i < n_qp; i++)
     {
       virtchnl_txq_info_t *txq = &ci->qpair[i].txq;
@@ -598,6 +655,10 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	  rxq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	  avf_reg_write (ad, AVF_QRX_TAIL (i), q->size - 1);
 	}
+      avf_log_debug (ad, "config_vsi_queues_rx[%u]: max_pkt_size %u "
+		     "ring_len %u databuffer_size %u dma_ring_addr 0x%llx",
+		     i, rxq->max_pkt_size, rxq->ring_len,
+		     rxq->databuffer_size, rxq->dma_ring_addr);
 
       avf_txq_t *q = vec_elt_at_index (ad->txqs, i);
       txq->vsi_id = ad->vsi_id;
@@ -607,6 +668,9 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	  txq->ring_len = q->size;
 	  txq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	}
+      avf_log_debug (ad, "config_vsi_queues_tx[%u]: ring_len %u "
+		     "dma_ring_addr 0x%llx", i, txq->ring_len,
+		     txq->dma_ring_addr);
     }
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_VSI_QUEUES, msg, msg_len,
@@ -629,6 +693,11 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
   imi->vecmap[0].vector_id = 1;
   imi->vecmap[0].vsi_id = ad->vsi_id;
   imi->vecmap[0].rxq_map = 1;
+
+  avf_log_debug (ad, "config_irq_map: vsi_id %u vector_id %u rxq_map %u",
+		 ad->vsi_id, imi->vecmap[0].vector_id,
+		 imi->vecmap[0].rxq_map);
+
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_IRQ_MAP, msg, msg_len, 0,
 			 0);
 }
@@ -647,8 +716,16 @@ avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
   al = (virtchnl_ether_addr_list_t *) msg;
   al->vsi_id = ad->vsi_id;
   al->num_elements = count;
+
+  avf_log_debug (ad, "add_eth_addr: vsi_id %u num_elements %u",
+		 ad->vsi_id, al->num_elements);
+
   for (i = 0; i < count; i++)
-    clib_memcpy_fast (&al->list[i].addr, macs + i * 6, 6);
+    {
+      clib_memcpy_fast (&al->list[i].addr, macs + i * 6, 6);
+      avf_log_debug (ad, "add_eth_addr[%u]: %U", i,
+		     format_ethernet_address, &al->list[i].addr);
+    }
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0,
 			 0);
 }
@@ -661,6 +738,10 @@ avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
   qs.vsi_id = ad->vsi_id;
   qs.rx_queues = rx;
   qs.tx_queues = tx;
+
+  avf_log_debug (ad, "enable_queues: vsi_id %u rx_queues %u tx_queues %u",
+		 ad->vsi_id, qs.rx_queues, qs.tx_queues);
+
   while (rx)
     {
       if (rx & (1 << i))
@@ -681,6 +762,9 @@ avf_op_get_stats (vlib_main_t * vm, avf_device_t * ad,
 {
   virtchnl_queue_select_t qs = { 0 };
   qs.vsi_id = ad->vsi_id;
+
+  avf_log_debug (ad, "get_stats: vsi_id %u", ad->vsi_id);
+
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_STATS,
 			 &qs, sizeof (virtchnl_queue_select_t),
 			 es, sizeof (virtchnl_eth_stats_t));
@@ -693,6 +777,8 @@ avf_device_reset (vlib_main_t * vm, avf_device_t * ad)
   clib_error_t *error;
   u32 rstat;
   int n_retry = 20;
+
+  avf_log_debug (ad, "reset");
 
   d.opcode = 0x801;
   d.v_opcode = VIRTCHNL_OP_RESET_VF;
@@ -707,7 +793,10 @@ retry:
     return 0;
 
   if (--n_retry == 0)
-    return clib_error_return (0, "reset failed (timeout)");
+    {
+      avf_log_err (ad, "reset failed");
+      return clib_error_return (0, "reset failed (timeout)");
+    }
 
   goto retry;
 }
@@ -721,6 +810,8 @@ avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
   int n_retry = 20;
 
   res_req.num_queue_pairs = num_queue_pairs;
+
+  avf_log_debug (ad, "request_queues: num_queue_pairs %u", num_queue_pairs);
 
   error = avf_send_to_pf (vm, ad, VIRTCHNL_OP_REQUEST_QUEUES, &res_req,
 			  sizeof (virtchnl_vf_res_request_t), &res_req,
@@ -825,9 +916,8 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   else if (args->rxq_num > ad->num_queue_pairs)
     {
       args->rxq_num = ad->num_queue_pairs;
-      vlib_log_warn (am->log_class, "Requested more rx queues than"
-		     "queue pairs available. Using %u rx queues.",
-		     args->rxq_num);
+      avf_log_warn (ad, "Requested more rx queues than queue pairs available."
+		    "Using %u rx queues.", args->rxq_num);
     }
 
   for (i = 0; i < args->rxq_num; i++)
@@ -892,6 +982,7 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
   if ((r & 0xf0000000) != (1ULL << 31))
     {
       ad->error = clib_error_return (0, "arq not enabled, arqlen = 0x%x", r);
+      avf_log_err (ad, "error: %U", format_clib_error, ad->error);
       goto error;
     }
 
@@ -899,6 +990,7 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
   if ((r & 0xf0000000) != (1ULL << 31))
     {
       ad->error = clib_error_return (0, "atq not enabled, atqlen = 0x%x", r);
+      avf_log_err (ad, "error: %U", format_clib_error, ad->error);
       goto error;
     }
 
@@ -908,12 +1000,19 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
   /* *INDENT-OFF* */
   vec_foreach (e, ad->events)
     {
+      avf_log_debug (ad, "event: %s (%u) sev %d",
+		     virtchnl_event_names[e->event], e->event, e->severity);
       if (e->event == VIRTCHNL_EVENT_LINK_CHANGE)
 	{
 	  int link_up = e->event_data.link_event.link_status;
 	  virtchnl_link_speed_t speed = e->event_data.link_event.link_speed;
 	  u32 flags = 0;
 	  u32 kbps = 0;
+
+	  avf_log_debug (ad, "event_link_change: status %d speed '%s' (%d)",
+			 link_up,
+			 speed < ARRAY_LEN (virtchnl_link_speed_str) ?
+			 virtchnl_link_speed_str[speed] : "unknown", speed);
 
 	  if (link_up && (ad->flags & AVF_DEVICE_F_LINK_UP) == 0)
 	    {
@@ -1233,6 +1332,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
       return;
     }
   ad->pci_dev_handle = h;
+  ad->pci_addr = args->addr;
   ad->numa_node = vlib_pci_get_numa_node (vm, h);
 
   vlib_pci_set_private_data (vm, h, ad->dev_instance);
@@ -1345,7 +1445,7 @@ error:
   args->rv = VNET_API_ERROR_INVALID_INTERFACE;
   args->error = clib_error_return (error, "pci-addr %U",
 				   format_vlib_pci_addr, &args->addr);
-  vlib_log_err (am->log_class, "%U", format_clib_error, args->error);
+  avf_log_err (ad, "error: %U", format_clib_error, args->error);
 }
 
 static clib_error_t *
@@ -1438,7 +1538,7 @@ avf_init (vlib_main_t * vm)
   vec_validate_aligned (am->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  am->log_class = vlib_log_register_class ("avf_plugin", 0);
+  am->log_class = vlib_log_register_class ("avf", 0);
   vlib_log_debug (am->log_class, "initialized");
 
   return 0;

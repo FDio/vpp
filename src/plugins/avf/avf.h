@@ -38,6 +38,21 @@
 #define AVF_TXD_CMD_RS			AVF_TXD_CMD(1)
 #define AVF_TXD_CMD_RSV			AVF_TXD_CMD(2)
 
+#define avf_log_err(dev, f, ...)                        \
+  vlib_log (VLIB_LOG_LEVEL_ERR, avf_main.log_class, "%U: " f, \
+            format_vlib_pci_addr, &dev->pci_addr, \
+            ## __VA_ARGS__)
+
+#define avf_log_warn(dev, f, ...)                        \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, avf_main.log_class, "%U: " f, \
+            format_vlib_pci_addr, &dev->pci_addr, \
+            ## __VA_ARGS__)
+
+#define avf_log_debug(dev, f, ...)                        \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_main.log_class, "%U: " f, \
+            format_vlib_pci_addr, &dev->pci_addr, \
+            ## __VA_ARGS__)
+
 #define foreach_avf_device_flags \
   _(0, INITIALIZED, "initialized") \
   _(1, ERROR, "error") \
@@ -158,6 +173,7 @@ typedef struct
   u32 rss_key_size;
   u32 rss_lut_size;
   virtchnl_link_speed_t link_speed;
+  vlib_pci_addr_t pci_addr;
 
   /* stats */
   virtchnl_eth_stats_t eth_stats;
