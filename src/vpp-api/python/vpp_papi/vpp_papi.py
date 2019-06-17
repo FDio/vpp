@@ -141,11 +141,25 @@ class VPPApiClient(object):
     these messages in a background thread.
     """
     apidir = None
-    VPPApiError = VPPApiError
-    VPPRuntimeError = VPPRuntimeError
-    VPPValueError = VPPValueError
-    VPPNotImplementedError = VPPNotImplementedError
-    VPPIOError = VPPIOError
+    VPPApiClientError = vpp_exceptions.VPPApiClientError
+    VPPApiClientRuntimeError = vpp_exceptions.VPPApiClientRuntimeError
+    VPPApiClientValueError = vpp_exceptions.VPPApiClientValueError
+    VPPApiClientNotImplementedError = \
+        vpp_exceptions.VPPApiClientNotImplementedError
+    VPPApiClientNoSuchApiError = vpp_exceptions.VPPApiClientNoSuchApiError
+    VPPApiClientIOError = vpp_exceptions.VPPApiClientIOError
+    VPPApiClientUnexpectedReturnValueError = \
+        vpp_exceptions.VPPApiClientUnexpectedReturnValueError
+    VPPApiClientInvalidReturnValueError = \
+        vpp_exceptions.VPPApiClientInvalidReturnValueError
+
+    # Provide the old name for backward compatibility.
+    # To be removed in 20.01
+    VPPApiError = vpp_exceptions.VPPApiClientError
+    VPPRuntimeError = vpp_exceptions.VPPApiClientRuntimeError
+    VPPValueError = vpp_exceptions.VPPApiClientValueError
+    VPPNotImplementedError = vpp_exceptions.VPPApiClientNotImplementedError
+    VPPIOError = vpp_exceptions.VPPApiClientIOError
 
     def process_json_file(self, apidef_file):
         api = json.load(apidef_file)
@@ -241,6 +255,9 @@ class VPPApiClient(object):
         self.use_socket = use_socket
         self.server_address = server_address
         self._apifiles = apifiles
+        # local caches.  Reset to None and they will be refreshed.
+        self._api_strerrors = None
+        self._strerrors_by_api_errno = None
 
         if use_socket:
             from . vpp_transport_socket import VppTransport
@@ -568,8 +585,8 @@ class VPPApiClient(object):
         #
         msgobj = self.id_msgdef[i]
         if not msgobj:
-            raise VPPIOError(2, 'Reply message undefined')
-
+            raise vpp_exceptions.VPPApiClientIOError(
+                2, 'Reply message undefined')
         r, size = msgobj.unpack(msg, ntc=no_type_conversion)
         return r
 
@@ -734,6 +751,42 @@ class VPPApiClient(object):
                    self.logger, self.read_timeout, self.use_socket,
                    self.server_address)
 
+    @property
+    def api_strerrors(self):
+        # cache the values.
+        if self._api_strerrors is None:
+            if not self.api:
+                raise RuntimeError('Attempting to access dynamic data '
+                                   'before client has connected.')
+            # need to set explicit default for now.
+            self._api_strerrors = self.api.api_strerror_dump(
+                api_errno=0x7fffffff)
+        return self._api_strerrors
+
+    # this is a property to defer lookup until after
+    # client connection is established.
+    @property
+    def VPE_API_ERROR_SYNTAX_ERROR(self):
+        return self.api_strerror_lookup_by_name(
+            'VPE_API_ERROR_SYNTAX_ERROR') or -158
+
+    def api_strerror_lookup(self, api_errno):
+        # cache the values
+        if self._strerrors_by_api_errno is None:
+            self._strerrors_by_api_errno = \
+                {f.api_errno: f.strerror for f in self.api_strerrors}
+        if api_errno not in self._strerrors_by_api_errno:
+            return('INVALID API_ERRNO.')
+        return self._strerrors_by_api_errno[api_errno]
+
+    def api_strerror_lookup_by_name(self, enum_name):
+        enum_name_key = '%s: ' % enum_name
+        try:
+            return [cursor for cursor in self.api_strerrors if
+                    enum_name_key in cursor.strerror][0]
+        except IndexError:
+            # not found.
+            return None
 
 # Provide the old name for backward compatibility.
 VPP = VPPApiClient

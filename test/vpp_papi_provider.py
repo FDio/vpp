@@ -154,11 +154,6 @@ class CliSyntaxError(Exception):
     """ cli command had a syntax error."""
 
 
-class UnexpectedApiReturnValueError(Exception):
-    """ exception raised when the API return value is unexpected """
-    pass
-
-
 class VppPapiProvider(object):
     """VPP-api provider using vpp-papi
 
@@ -174,6 +169,7 @@ class VppPapiProvider(object):
         self.test_class = test_class
         self._expect_api_retval = self._zero
         self._expect_stack = []
+        self._connected = False
 
         # install_dir is a class attribute. We need to set it before
         # calling the constructor.
@@ -299,12 +295,14 @@ class VppPapiProvider(object):
     def connect(self):
         """Connect the API to VPP"""
         self.vpp.connect(self.name, self.shm_prefix)
+        self._connected = True
         self.papi = self.vpp.api
         self.vpp.register_event_callback(self)
 
     def disconnect(self):
         """Disconnect the API from VPP"""
         self.vpp.disconnect()
+        self._connected = False
 
     def api(self, api_fn, api_args, expected_retval=0):
         """ Call API function and check it's return value.
@@ -318,24 +316,40 @@ class VppPapiProvider(object):
         """
         self.hook.before_api(api_fn.__name__, api_args)
         reply = api_fn(**api_args)
+        exc = self.vpp.VPPApiClientUnexpectedReturnValueError
+        try:
+            if 'INVALID API_ERRNO.' == \
+                    self.vpp.api_strerror_lookup(reply.retval):
+                exc = self.vpp.VPPApiClientInvalidReturnValueError
+        except AttributeError:
+            pass
+
         if self._expect_api_retval == self._negative:
             if hasattr(reply, 'retval') and reply.retval >= 0:
                 msg = "API call passed unexpectedly: expected negative " \
                       "return value instead of %d in %s" % \
                       (reply.retval, moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise exc(
+                    rv=reply.retval, strerror=self.vpp.api_strerror_lookup(
+                        reply.retval),
+                    reply=repr(reply), expected=-self._negative,
+                    api_fn_name=api_fn.__name__, api_fn_args=api_args)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead " \
                       "of %d in %s" % (expected_retval, reply.retval,
                                        repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise exc(
+                    rv=reply.retval, strerror=self.vpp.api_strerror_lookup(
+                        reply.retval),
+                    reply=repr(reply), expected=0,
+                    api_fn_name=api_fn.__name__, api_fn_args=api_args)
         else:
-            raise Exception("Internal error, unexpected value for "
-                            "self._expect_api_retval %s" %
-                            self._expect_api_retval)
+            raise RuntimeError("Internal error, unexpected value for "
+                               "self._expect_api_retval %s" %
+                               self._expect_api_retval)
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
@@ -350,7 +364,7 @@ class VppPapiProvider(object):
         cli += '\n'
         r = self.papi.cli_inband(cmd=cli)
         self.hook.after_cli(cli)
-        if r.retval == -156:
+        if r.retval == self.vpp.VPE_API_ERROR_SYNTAX_ERROR:
             raise CliSyntaxError(r.reply)
         if r.retval != 0:
             raise CliFailedCommandError(r.reply)
