@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "66e9755b_7c019a2c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-17T19:48:16Z",
+      "side": 1,
+      "message": "This is a session layer change so change to \"session: ..\".",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 4
+      },
+      "revId": "5351ac40e74c1e170ae27dfef465d1bc363d1de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ccdd49df_35d592de",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-17T19:48:16Z",
+      "side": 1,
+      "message": "Aesthetic comment: move under s;",
+      "range": {
+        "startLine": 455,
+        "startChar": 2,
+        "endLine": 455,
+        "endChar": 9
+      },
+      "revId": "5351ac40e74c1e170ae27dfef465d1bc363d1de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
