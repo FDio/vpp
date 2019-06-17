@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "cf41adc4_27e2ff50",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 887,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-06-17T08:00:11Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ac99f061_e61a16a2",
+      "range": {
+        "startLine": 887,
+        "startChar": 73,
+        "endLine": 887,
+        "endChar": 74
+      },
+      "revId": "c9fe269596b0c597ed68f25b75303a8112a4c657",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da950dbf_5ddc7a37",
         "filename": "src/vnet/session/session_types.h",
         "patchSetId": 2
@@ -45,6 +69,30 @@
       "revId": "c9fe269596b0c597ed68f25b75303a8112a4c657",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "889a15ec_ad7669bc",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-06-17T08:00:11Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da950dbf_5ddc7a37",
+      "range": {
+        "startLine": 170,
+        "startChar": 4,
+        "endLine": 170,
+        "endChar": 7
+      },
+      "revId": "c9fe269596b0c597ed68f25b75303a8112a4c657",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
