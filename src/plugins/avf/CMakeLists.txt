@@ -15,6 +15,7 @@ add_vpp_plugin(avf
   SOURCES
   cli.c
   device.c
+  elog.c
   format.c
   input.c
   output.c
