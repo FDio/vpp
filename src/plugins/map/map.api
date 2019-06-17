@@ -90,7 +90,12 @@ autoreply define map_add_del_rule
 /** \brief Get list of map domains
     @param client_index - opaque cookie to identify the sender
 */
-define map_domain_dump
+service {
+  rpc map_domain_dump returns map_domain_dump_reply
+    stream map_domain_details;
+};
+
+autoreply define map_domain_dump
 {
   u32 client_index;
   u32 context;

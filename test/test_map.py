@@ -75,7 +75,8 @@ class TestMAP(VppTestCase):
                                          ip6_src=map_src,
                                          tag=tag).index
 
-        rv = self.vapi.map_domain_dump()
+        r, rv = self.vapi.map_domain_dump()
+        self.assertEqual(r.retval, 0)
 
         # restore the state early so as to not impact subsequent tests.
         # If an assert fails, we will not get the chance to do it at the end.
