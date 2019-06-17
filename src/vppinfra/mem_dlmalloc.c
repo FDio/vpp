@@ -56,6 +56,10 @@ typedef struct
 
   /* Hash table mapping mheap offset to trace index. */
   uword *trace_index_by_offset;
+
+  /* So we can easily shut off current segment trace, if any */
+  void *current_traced_mheap;
+
 } mheap_trace_main_t;
 
 mheap_trace_main_t mheap_trace_main;
@@ -69,7 +73,7 @@ mheap_get_trace (uword offset, uword size)
   mheap_trace_t trace;
   uword save_enabled;
 
-  if (tm->enabled == 0)
+  if (tm->enabled == 0 || (clib_mem_get_heap () != tm->current_traced_mheap))
     return;
 
   /* Spurious Coverity warnings be gone. */
@@ -79,11 +83,6 @@ mheap_get_trace (uword offset, uword size)
   n_callers = clib_backtrace (trace.callers, ARRAY_LEN (trace.callers), 2);
   if (n_callers == 0)
     return;
-
-  /* $$$ This looks like dreck to remove... */
-  if (0)
-    for (i = n_callers; i < ARRAY_LEN (trace.callers); i++)
-      trace.callers[i] = 0;
 
   clib_spinlock_lock (&tm->lock);
 
@@ -291,7 +290,8 @@ format_mheap_trace (u8 * s, va_list * va)
   int i;
 
   clib_spinlock_lock (&tm->lock);
-  if (vec_len (tm->traces) > 0)
+  if (vec_len (tm->traces) > 0 &&
+      clib_mem_get_heap () == tm->current_traced_mheap)
     {
       have_traces = 1;
 
@@ -372,7 +372,8 @@ format_mheap (u8 * s, va_list * va)
 	format (s, "\n    max total allocated %U", format_msize, mi.usmblks);
     }
 
-  s = format (s, "\n%U", format_mheap_trace, tm, verbose);
+  if (mspace_is_traced (heap))
+    s = format (s, "\n%U", format_mheap_trace, tm, verbose);
   return s;
 }
 
@@ -404,9 +405,21 @@ void
 clib_mem_trace (int enable)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
+  void *current_heap = clib_mem_get_heap ();
 
   tm->enabled = enable;
-  mheap_trace (clib_mem_get_heap (), enable);
+  mheap_trace (current_heap, enable);
+
+  if (enable)
+    tm->current_traced_mheap = current_heap;
+  else
+    tm->current_traced_mheap = 0;
+}
+
+int
+clib_mem_is_traced (void)
+{
+  return mspace_is_traced (clib_mem_get_heap ());
 }
 
 uword
