@@ -274,6 +274,8 @@ void clib_mem_validate (void);
 
 void clib_mem_trace (int enable);
 
+int clib_mem_is_traced (void);
+
 typedef struct
 {
   /* Total number of objects allocated. */
