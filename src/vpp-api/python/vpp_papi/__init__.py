@@ -1,10 +1,36 @@
-from .vpp_papi import FuncWrapper, VPP, VppApiDynamicMethodHolder  # noqa: F401
-from .vpp_papi import VppEnum, VppEnumType  # noqa: F401
-from .vpp_papi import VPPIOError, VPPRuntimeError, VPPValueError  # noqa: F401
-from .vpp_papi import VPPApiClient  # noqa: F401
-from . macaddress import MACAddress, mac_pton, mac_ntop  # noqa: F401
+from .vpp_papi import FuncWrapper, VPP, VppApiDynamicMethodHolder
+from .vpp_papi import VppEnum, VppEnumType
+from .vpp_exceptions import VPPApiClientInvalidReturnValueError
+from .vpp_exceptions import VPPApiClientIOError
+from .vpp_exceptions import VPPApiClientRuntimeError
+from .vpp_exceptions import VPPApiClientUnexpectedReturnValueError
+from .vpp_exceptions import VPPApiClientValueError
+from .vpp_papi import VPPApiClient
+from . macaddress import MACAddress, mac_pton, mac_ntop
 
 # sorted lexicographically
-from .vpp_serializer import BaseTypes  # noqa: F401
-from .vpp_serializer import VPPEnumType, VPPType, VPPTypeAlias  # noqa: F401
-from .vpp_serializer import VPPMessage, VPPUnionType  # noqa: F401
+from .vpp_serializer import BaseTypes
+from .vpp_serializer import VPPEnumType, VPPType, VPPTypeAlias
+from .vpp_serializer import VPPMessage, VPPUnionType
+
+__all__ = ('BaseTypes',
+           'FuncWrapper',
+           'VPP',
+           'VppApiDynamicMethodHolder',
+           'VPPApiClient',
+           'VPPApiClientInvalidReturnValueError',
+           'VPPApiClientIOError',
+           'VPPApiClientRuntimeError',
+           'VPPApiClientUnexpectedReturnValueError',
+           'VPPApiClientValueError',
+           'VppEnum',
+           'VppEnumType',
+           'MACAddress',
+           'mac_ntop',
+           'mac_pton',
+           'VPPEnumType',
+           'VPPMessage',
+           'VPPType',
+           'VPPTypeAlias',
+           'VPPUnionType',
+           )
