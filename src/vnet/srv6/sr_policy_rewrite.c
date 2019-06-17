@@ -117,7 +117,7 @@ static ip6_address_t sr_pr_encaps_src;
 void
 sr_set_source (ip6_address_t * address)
 {
-  clib_memcpy (&sr_pr_encaps_src, address, sizeof (sr_pr_encaps_src));
+  clib_memcpy_fast (&sr_pr_encaps_src, address, sizeof (sr_pr_encaps_src));
 }
 
 static clib_error_t *
@@ -195,7 +195,7 @@ compute_rewrite_encaps (ip6_address_t * sl)
       addrp = srh->segments + vec_len (sl) - 1;
       vec_foreach (this_address, sl)
       {
-	clib_memcpy (addrp->as_u8, this_address->as_u8,
+	clib_memcpy_fast (addrp->as_u8, this_address->as_u8,
 		     sizeof (ip6_address_t));
 	addrp--;
       }
@@ -238,7 +238,7 @@ compute_rewrite_insert (ip6_address_t * sl)
   addrp = srh->segments + vec_len (sl);
   vec_foreach (this_address, sl)
   {
-    clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+    clib_memcpy_fast (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
     addrp--;
   }
   return rs;
@@ -276,7 +276,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
   addrp = srh->segments + vec_len (sl) - 1;
   vec_foreach (this_address, sl)
   {
-    clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+    clib_memcpy_fast (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
     addrp--;
   }
   return rs;
@@ -602,7 +602,7 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
   /* Add an SR policy object */
   pool_get (sm->sr_policies, sr_policy);
   memset (sr_policy, 0, sizeof (*sr_policy));
-  clib_memcpy (&sr_policy->bsid, bsid, sizeof (ip6_address_t));
+  clib_memcpy_fast (&sr_policy->bsid, bsid, sizeof (ip6_address_t));
   sr_policy->type = behavior;
   sr_policy->fib_table = (fib_table != (u32) ~ 0 ? fib_table : 0);	//Is default FIB 0 ?
   sr_policy->is_encap = is_encap;
@@ -870,7 +870,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	if (unformat (input, "next %U", unformat_ip6_address, &next_address))
 	{
 	  vec_add2 (segments, this_seg, 1);
-	  clib_memcpy (this_seg->as_u8, next_address.as_u8,
+	  clib_memcpy_fast (this_seg->as_u8, next_address.as_u8,
 		       sizeof (*this_seg));
 	}
       else if (unformat (input, "add sl"))
@@ -905,7 +905,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
     /* add tmap prefix as the last SID */
 
     vec_add2 (segments, this_seg, 1);
-    clib_memcpy (this_seg->as_u8, tmap_prefix.as_u8, sizeof (*this_seg));
+    clib_memcpy_fast (this_seg->as_u8, tmap_prefix.as_u8, sizeof (*this_seg));
 
     is_tmap = 1;
        }
@@ -1214,13 +1214,13 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip2_encap = vlib_buffer_get_current (b2);
 	  ip3_encap = vlib_buffer_get_current (b3);
 
-	  clib_memcpy (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
+	  clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
 		       sl0->rewrite, vec_len (sl0->rewrite));
-	  clib_memcpy (((u8 *) ip1_encap) - vec_len (sl1->rewrite),
+	  clib_memcpy_fast (((u8 *) ip1_encap) - vec_len (sl1->rewrite),
 		       sl1->rewrite, vec_len (sl1->rewrite));
-	  clib_memcpy (((u8 *) ip2_encap) - vec_len (sl2->rewrite),
+	  clib_memcpy_fast (((u8 *) ip2_encap) - vec_len (sl2->rewrite),
 		       sl2->rewrite, vec_len (sl2->rewrite));
-	  clib_memcpy (((u8 *) ip3_encap) - vec_len (sl3->rewrite),
+	  clib_memcpy_fast (((u8 *) ip3_encap) - vec_len (sl3->rewrite),
 		       sl3->rewrite, vec_len (sl3->rewrite));
 
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
@@ -1244,9 +1244,9 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -1254,9 +1254,9 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b1, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip1->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip1->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -1264,9 +1264,9 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b2, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip2->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip2->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip2->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip2->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -1274,9 +1274,9 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b3, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip3->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip3->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip3->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip3->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 	    }
@@ -1312,7 +1312,7 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ip0_encap = vlib_buffer_get_current (b0);
 
-	  clib_memcpy (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
+	  clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
 		       sl0->rewrite, vec_len (sl0->rewrite));
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
 
@@ -1325,9 +1325,9 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      sr_policy_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+	      clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			   sizeof (tr->src.as_u8));
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+	      clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
 	    }
 
@@ -1507,13 +1507,13 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
           vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));
 
-          clib_memcpy (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
+          clib_memcpy_fast (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
                        sl0->rewrite, vec_len (sl0->rewrite));
-          clib_memcpy (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite),
+          clib_memcpy_fast (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite),
                        sl1->rewrite, vec_len (sl1->rewrite));
-          clib_memcpy (vlib_buffer_get_current (b2) - vec_len (sl2->rewrite),
+          clib_memcpy_fast (vlib_buffer_get_current (b2) - vec_len (sl2->rewrite),
                        sl2->rewrite, vec_len (sl2->rewrite));
-          clib_memcpy (vlib_buffer_get_current (b3) - vec_len (sl3->rewrite),
+          clib_memcpy_fast (vlib_buffer_get_current (b3) - vec_len (sl3->rewrite),
                       sl3->rewrite, vec_len (sl3->rewrite));
     
           vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
@@ -1594,17 +1594,17 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
                   if (PREDICT_TRUE (sl0->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->local_prefix.as_u8,
+                      clib_memcpy_fast (tr->local_prefix.as_u8,
                                    ip0->src_address.as_u8,
                                    sizeof(tr->local_prefix.as_u8));
-                      clib_memcpy (tr->node.as_u8,
+                      clib_memcpy_fast (tr->node.as_u8,
                                    sl0->segments->as_u8,
                                    sizeof(tr->node.as_u8));
                   }
@@ -1614,17 +1614,17 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b1, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip1->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip1->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
                   if (PREDICT_TRUE (sl1->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->local_prefix.as_u8,
+                      clib_memcpy_fast (tr->local_prefix.as_u8,
                                    ip1->src_address.as_u8,
                                    sizeof(tr->local_prefix.as_u8));
-                      clib_memcpy (tr->node.as_u8,
+                      clib_memcpy_fast (tr->node.as_u8,
                                    sl1->segments->as_u8,
                                    sizeof(tr->node.as_u8));
                   }
@@ -1634,17 +1634,17 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b2, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip2->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip2->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip2->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip2->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
                   if (PREDICT_TRUE (sl2->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->local_prefix.as_u8,
+                      clib_memcpy_fast (tr->local_prefix.as_u8,
                                    ip2->src_address.as_u8,
                                    sizeof(tr->local_prefix.as_u8));
-                      clib_memcpy (tr->node.as_u8,
+                      clib_memcpy_fast (tr->node.as_u8,
                                    sl2->segments->as_u8,
                                    sizeof(tr->node.as_u8));
                   }
@@ -1654,17 +1654,17 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b3, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip3->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip3->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip3->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip3->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
                   if (PREDICT_TRUE (sl3->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->local_prefix.as_u8,
+                      clib_memcpy_fast (tr->local_prefix.as_u8,
                                    ip3->src_address.as_u8,
                                    sizeof(tr->local_prefix.as_u8));
-                      clib_memcpy (tr->node.as_u8,
+                      clib_memcpy_fast (tr->node.as_u8,
                                    sl3->segments->as_u8,
                                    sizeof(tr->node.as_u8));
                   }
@@ -1716,7 +1716,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           // srv header + 1 position (new one)
           tmp0 = vlib_buffer_get_current (b0);
-          clib_memcpy ((void *) tmp0 - vec_len (sl0->rewrite),
+          clib_memcpy_fast ((void *) tmp0 - vec_len (sl0->rewrite),
                        sl0->rewrite, vec_len (sl0->rewrite));
 
           // first ipv6 header position
@@ -1744,17 +1744,17 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      sr_policy_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+	      clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			   sizeof (tr->src.as_u8));
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+	      clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
               if (PREDICT_TRUE (sl0->is_tmap))
                   {
                       tr->is_tmap = true;
-                      clib_memcpy (tr->local_prefix.as_u8,
+                      clib_memcpy_fast (tr->local_prefix.as_u8,
                                    ip0->src_address.as_u8,
                                    sizeof(tr->local_prefix.as_u8));
-                      clib_memcpy (tr->node.as_u8,
+                      clib_memcpy_fast (tr->node.as_u8,
                                    sl0->segments->as_u8,
                                    sizeof(tr->node.as_u8));
                   }
@@ -1990,13 +1990,13 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  en2 = vlib_buffer_get_current (b2);
 	  en3 = vlib_buffer_get_current (b3);
 
-	  clib_memcpy (((u8 *) en0) - vec_len (sl0->rewrite), sl0->rewrite,
+	  clib_memcpy_fast (((u8 *) en0) - vec_len (sl0->rewrite), sl0->rewrite,
 		       vec_len (sl0->rewrite));
-	  clib_memcpy (((u8 *) en1) - vec_len (sl1->rewrite), sl1->rewrite,
+	  clib_memcpy_fast (((u8 *) en1) - vec_len (sl1->rewrite), sl1->rewrite,
 		       vec_len (sl1->rewrite));
-	  clib_memcpy (((u8 *) en2) - vec_len (sl2->rewrite), sl2->rewrite,
+	  clib_memcpy_fast (((u8 *) en2) - vec_len (sl2->rewrite), sl2->rewrite,
 		       vec_len (sl2->rewrite));
-	  clib_memcpy (((u8 *) en3) - vec_len (sl3->rewrite), sl3->rewrite,
+	  clib_memcpy_fast (((u8 *) en3) - vec_len (sl3->rewrite), sl3->rewrite,
 		       vec_len (sl3->rewrite));
 
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
@@ -2059,9 +2059,9 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2069,9 +2069,9 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b1, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip1->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip1->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2079,9 +2079,9 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b2, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip2->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip2->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip2->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip2->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2089,9 +2089,9 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b3, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip3->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip3->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip3->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip3->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 	    }
@@ -2146,7 +2146,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  en0 = vlib_buffer_get_current (b0);
 
-	  clib_memcpy (((u8 *) en0) - vec_len (sl0->rewrite), sl0->rewrite,
+	  clib_memcpy_fast (((u8 *) en0) - vec_len (sl0->rewrite), sl0->rewrite,
 		       vec_len (sl0->rewrite));
 
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
@@ -2169,9 +2169,9 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      sr_policy_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+	      clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			   sizeof (tr->src.as_u8));
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+	      clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
 	    }
 
@@ -2336,22 +2336,22 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    sr3 = (ip6_sr_header_t *) (ip3 + 1);
 
-	  clib_memcpy ((u8 *) ip0 - vec_len (sl0->rewrite), (u8 *) ip0,
+	  clib_memcpy_fast ((u8 *) ip0 - vec_len (sl0->rewrite), (u8 *) ip0,
 		       (void *) sr0 - (void *) ip0);
-	  clib_memcpy ((u8 *) ip1 - vec_len (sl1->rewrite), (u8 *) ip1,
+	  clib_memcpy_fast ((u8 *) ip1 - vec_len (sl1->rewrite), (u8 *) ip1,
 		       (void *) sr1 - (void *) ip1);
-	  clib_memcpy ((u8 *) ip2 - vec_len (sl2->rewrite), (u8 *) ip2,
+	  clib_memcpy_fast ((u8 *) ip2 - vec_len (sl2->rewrite), (u8 *) ip2,
 		       (void *) sr2 - (void *) ip2);
-	  clib_memcpy ((u8 *) ip3 - vec_len (sl3->rewrite), (u8 *) ip3,
+	  clib_memcpy_fast ((u8 *) ip3 - vec_len (sl3->rewrite), (u8 *) ip3,
 		       (void *) sr3 - (void *) ip3);
 
-	  clib_memcpy (((u8 *) sr0 - vec_len (sl0->rewrite)), sl0->rewrite,
+	  clib_memcpy_fast (((u8 *) sr0 - vec_len (sl0->rewrite)), sl0->rewrite,
 		       vec_len (sl0->rewrite));
-	  clib_memcpy (((u8 *) sr1 - vec_len (sl1->rewrite)), sl1->rewrite,
+	  clib_memcpy_fast (((u8 *) sr1 - vec_len (sl1->rewrite)), sl1->rewrite,
 		       vec_len (sl1->rewrite));
-	  clib_memcpy (((u8 *) sr2 - vec_len (sl2->rewrite)), sl2->rewrite,
+	  clib_memcpy_fast (((u8 *) sr2 - vec_len (sl2->rewrite)), sl2->rewrite,
 		       vec_len (sl2->rewrite));
-	  clib_memcpy (((u8 *) sr3 - vec_len (sl3->rewrite)), sl3->rewrite,
+	  clib_memcpy_fast (((u8 *) sr3 - vec_len (sl3->rewrite)), sl3->rewrite,
 		       vec_len (sl3->rewrite));
 
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
@@ -2475,9 +2475,9 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2485,9 +2485,9 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b1, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip1->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip1->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2495,9 +2495,9 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b2, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip2->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip2->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip2->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip2->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2505,9 +2505,9 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b3, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip3->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip3->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip3->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip3->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 	    }
@@ -2551,9 +2551,9 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    sr0 = (ip6_sr_header_t *) (ip0 + 1);
 
-	  clib_memcpy ((u8 *) ip0 - vec_len (sl0->rewrite), (u8 *) ip0,
+	  clib_memcpy_fast ((u8 *) ip0 - vec_len (sl0->rewrite), (u8 *) ip0,
 		       (void *) sr0 - (void *) ip0);
-	  clib_memcpy (((u8 *) sr0 - vec_len (sl0->rewrite)), sl0->rewrite,
+	  clib_memcpy_fast (((u8 *) sr0 - vec_len (sl0->rewrite)), sl0->rewrite,
 		       vec_len (sl0->rewrite));
 
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
@@ -2592,9 +2592,9 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      sr_policy_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+	      clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			   sizeof (tr->src.as_u8));
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+	      clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
 	    }
 
@@ -2759,22 +2759,22 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    sr3 = (ip6_sr_header_t *) (ip3 + 1);
 
-	  clib_memcpy ((u8 *) ip0 - vec_len (sl0->rewrite_bsid), (u8 *) ip0,
+	  clib_memcpy_fast ((u8 *) ip0 - vec_len (sl0->rewrite_bsid), (u8 *) ip0,
 		       (void *) sr0 - (void *) ip0);
-	  clib_memcpy ((u8 *) ip1 - vec_len (sl1->rewrite_bsid), (u8 *) ip1,
+	  clib_memcpy_fast ((u8 *) ip1 - vec_len (sl1->rewrite_bsid), (u8 *) ip1,
 		       (void *) sr1 - (void *) ip1);
-	  clib_memcpy ((u8 *) ip2 - vec_len (sl2->rewrite_bsid), (u8 *) ip2,
+	  clib_memcpy_fast ((u8 *) ip2 - vec_len (sl2->rewrite_bsid), (u8 *) ip2,
 		       (void *) sr2 - (void *) ip2);
-	  clib_memcpy ((u8 *) ip3 - vec_len (sl3->rewrite_bsid), (u8 *) ip3,
+	  clib_memcpy_fast ((u8 *) ip3 - vec_len (sl3->rewrite_bsid), (u8 *) ip3,
 		       (void *) sr3 - (void *) ip3);
 
-	  clib_memcpy (((u8 *) sr0 - vec_len (sl0->rewrite_bsid)),
+	  clib_memcpy_fast (((u8 *) sr0 - vec_len (sl0->rewrite_bsid)),
 		       sl0->rewrite_bsid, vec_len (sl0->rewrite_bsid));
-	  clib_memcpy (((u8 *) sr1 - vec_len (sl1->rewrite_bsid)),
+	  clib_memcpy_fast (((u8 *) sr1 - vec_len (sl1->rewrite_bsid)),
 		       sl1->rewrite_bsid, vec_len (sl1->rewrite_bsid));
-	  clib_memcpy (((u8 *) sr2 - vec_len (sl2->rewrite_bsid)),
+	  clib_memcpy_fast (((u8 *) sr2 - vec_len (sl2->rewrite_bsid)),
 		       sl2->rewrite_bsid, vec_len (sl2->rewrite_bsid));
-	  clib_memcpy (((u8 *) sr3 - vec_len (sl3->rewrite_bsid)),
+	  clib_memcpy_fast (((u8 *) sr3 - vec_len (sl3->rewrite_bsid)),
 		       sl3->rewrite_bsid, vec_len (sl3->rewrite_bsid));
 
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite_bsid));
@@ -2889,9 +2889,9 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2899,9 +2899,9 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b1, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip1->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip1->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2909,9 +2909,9 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b2, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip2->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip2->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip2->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip2->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -2919,9 +2919,9 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b3, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip3->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip3->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip3->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip3->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 	    }
@@ -2965,9 +2965,9 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    sr0 = (ip6_sr_header_t *) (ip0 + 1);
 
-	  clib_memcpy ((u8 *) ip0 - vec_len (sl0->rewrite_bsid), (u8 *) ip0,
+	  clib_memcpy_fast ((u8 *) ip0 - vec_len (sl0->rewrite_bsid), (u8 *) ip0,
 		       (void *) sr0 - (void *) ip0);
-	  clib_memcpy (((u8 *) sr0 - vec_len (sl0->rewrite_bsid)),
+	  clib_memcpy_fast (((u8 *) sr0 - vec_len (sl0->rewrite_bsid)),
 		       sl0->rewrite_bsid, vec_len (sl0->rewrite_bsid));
 
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite_bsid));
@@ -3003,9 +3003,9 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      sr_policy_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+	      clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			   sizeof (tr->src.as_u8));
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+	      clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
 	    }
 
@@ -3189,13 +3189,13 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  end_bsid_encaps_srh_processing (node, b2, ip2_encap, sr2, &next2);
 	  end_bsid_encaps_srh_processing (node, b3, ip3_encap, sr3, &next3);
 
-	  clib_memcpy (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
+	  clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
 		       sl0->rewrite, vec_len (sl0->rewrite));
-	  clib_memcpy (((u8 *) ip1_encap) - vec_len (sl1->rewrite),
+	  clib_memcpy_fast (((u8 *) ip1_encap) - vec_len (sl1->rewrite),
 		       sl1->rewrite, vec_len (sl1->rewrite));
-	  clib_memcpy (((u8 *) ip2_encap) - vec_len (sl2->rewrite),
+	  clib_memcpy_fast (((u8 *) ip2_encap) - vec_len (sl2->rewrite),
 		       sl2->rewrite, vec_len (sl2->rewrite));
-	  clib_memcpy (((u8 *) ip3_encap) - vec_len (sl3->rewrite),
+	  clib_memcpy_fast (((u8 *) ip3_encap) - vec_len (sl3->rewrite),
 		       sl3->rewrite, vec_len (sl3->rewrite));
 
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
@@ -3219,9 +3219,9 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -3229,9 +3229,9 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b1, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip1->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip1->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -3239,9 +3239,9 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b2, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip2->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip2->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip2->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip2->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 
@@ -3249,9 +3249,9 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  sr_policy_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b3, sizeof (*tr));
-		  clib_memcpy (tr->src.as_u8, ip3->src_address.as_u8,
+		  clib_memcpy_fast (tr->src.as_u8, ip3->src_address.as_u8,
 			       sizeof (tr->src.as_u8));
-		  clib_memcpy (tr->dst.as_u8, ip3->dst_address.as_u8,
+		  clib_memcpy_fast (tr->dst.as_u8, ip3->dst_address.as_u8,
 			       sizeof (tr->dst.as_u8));
 		}
 	    }
@@ -3292,7 +3292,7 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 				 IP_PROTOCOL_IPV6_ROUTE);
 	  end_bsid_encaps_srh_processing (node, b0, ip0_encap, sr0, &next0);
 
-	  clib_memcpy (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
+	  clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
 		       sl0->rewrite, vec_len (sl0->rewrite));
 	  vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
 
@@ -3305,9 +3305,9 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      sr_policy_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+	      clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
 			   sizeof (tr->src.as_u8));
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+	      clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
 	    }
 
