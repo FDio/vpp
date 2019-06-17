@@ -156,6 +156,7 @@ _(MISSING_CERT_KEY, -161, "Missing certifcate or key")                  \
 _(LIMIT_EXCEEDED, -162, "limit exceeded")                               \
 _(IKE_NO_PORT, -163, "port not managed by IKE")                         \
 _(UDP_PORT_TAKEN, -164, "UDP port already taken")                       \
+_(EAGAIN, -165, "Retry stream call with cursor")                        \
 
 typedef enum
 {

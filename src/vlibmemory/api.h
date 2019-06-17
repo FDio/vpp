@@ -45,6 +45,16 @@ vl_api_send_msg (vl_api_registration_t * rp, u8 * elem)
 }
 
 always_inline int
+vl_api_available_slots (vl_api_registration_t * rp)
+{
+  if (PREDICT_FALSE (rp->registration_type > REGISTRATION_TYPE_SHMEM))
+    return 64;			/* Fixed blocks at the moment */
+  else
+    return vl_mem_api_available_slots (rp->vl_input_queue);
+}
+
+
+always_inline int
 vl_api_can_send_msg (vl_api_registration_t * rp)
 {
   if (PREDICT_FALSE (rp->registration_type > REGISTRATION_TYPE_SHMEM))

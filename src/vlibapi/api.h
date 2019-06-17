@@ -123,6 +123,8 @@ vlib_node_t ***vlib_node_unserialize (u8 * vector);
 
 u32 vl_msg_api_get_msg_length (void *msg_arg);
 
+#define VL_API_MAX_TIME_IN_HANDLER 0.001	/* 1 ms */
+
 #endif /* included_api_h */
 /*
  * fd.io coding-style-patch-verification: ON

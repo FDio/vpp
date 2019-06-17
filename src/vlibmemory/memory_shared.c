@@ -796,6 +796,12 @@ vl_mem_api_can_send (svm_queue_t * q)
   return (q->cursize < q->maxsize);
 }
 
+int
+vl_mem_api_available_slots (svm_queue_t * q)
+{
+  return (q->maxsize - q->cursize);
+}
+
 void
 vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem)
 {

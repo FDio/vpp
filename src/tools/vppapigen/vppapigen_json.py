@@ -26,6 +26,8 @@ def walk_services(s):
         d = {'reply': e.reply}
         if e.stream:
             d['stream'] = True
+        if e.stream_message:
+            d['stream_msg'] = e.stream_message
         if e.events:
             d['events'] = e.events
         r[e.caller] = d
