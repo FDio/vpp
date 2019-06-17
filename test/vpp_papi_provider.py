@@ -14,6 +14,7 @@ from vpp_papi import VPPApiClient, mac_pton
 from hook import Hook
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
+JIRA_URL = 'https://jira.fd.io/projects/VPP/issues'
 
 #
 # Dictionary keyed on message name to override default values for
@@ -158,7 +159,37 @@ class CliSyntaxError(Exception):
 
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
-    pass
+
+    def __init__(self, rv=0, strerror=None, reply=None, expected=0,
+                 api_fn_name=None, api_fn_args=None):
+        self.expected = expected
+        self.rv = rv
+        self.strerror = strerror
+        self.reply = reply
+        self.api_fn_name = api_fn_name
+        self.api_fn_args = api_fn_args
+        api_fn_args_sig = ', '.join(
+            ['{}={!r}'.format(k, v) for k, v in api_fn_args.items()])
+        msg = "%s(%s) returned '%s' (%s).  Expected %s.  " \
+              "Reply was: %s."
+        super(UnexpectedApiReturnValueError, self).__init__(
+            msg % (api_fn_name, api_fn_args_sig, strerror, rv,
+                   expected, reply))
+
+
+class InvalidApiReturnValueError(UnexpectedApiReturnValueError):
+    """ exception raised when api returns a value not in api_errno.h"""
+
+    def __init__(self, rv=0, strerror=None, reply=None, expected=0,
+                 api_fn_name=None, api_fn_args=None):
+        api_fn_args_sig = ', '.join(
+            ['{}={!r}'.format(k, v) for k, v in api_fn_args.items()])
+
+        msg = ('API function %s(%s) returned an invalid return code of (%s).\n'
+               'Please fix the api function to return a value in api_errno.h '
+               'or at least \nopen a ticket at: %s.\n'
+               % (api_fn_name, api_fn_args_sig, rv, JIRA_URL))
+        super(UnexpectedApiReturnValueError, self).__init__(msg)
 
 
 class VppPapiProvider(object):
@@ -168,6 +199,24 @@ class VppPapiProvider(object):
     """
 
     _zero, _negative = range(2)
+    _api_strerrors = None
+
+    @property
+    def api_strerrors(self):
+        # cache the values.
+        if self._api_strerrors is None:
+            if not self._connected:
+                raise RuntimeError('Attempting to access dynamic data '
+                                   'before client has connected.')
+            # need to set explicit default for now.
+            self._api_strerrors = self.api_strerror_dump(api_errno=0x7fffffff)
+        return self._api_strerrors
+
+    # this is a property to defer lookup until after
+    # client connection is established.
+    @property
+    def VPE_API_ERROR_SYNTAX_ERROR(self):
+        return self.api_strerror_lookup_by_name('VPE_API_ERROR_SYNTAX_ERROR')
 
     def __init__(self, name, shm_prefix, test_class, read_timeout):
         self.hook = Hook(test_class)
@@ -176,6 +225,9 @@ class VppPapiProvider(object):
         self.test_class = test_class
         self._expect_api_retval = self._zero
         self._expect_stack = []
+        self._connected = False
+        # we have to defer initialization until after client is connected.
+        self._strerrors_by_api_errno = None
 
         # install_dir is a class attribute. We need to set it before
         # calling the constructor.
@@ -220,6 +272,20 @@ class VppPapiProvider(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._expect_api_retval = self._expect_stack.pop()
+
+    def api_strerror_lookup(self, api_errno):
+        # cache the values
+        if self._strerrors_by_api_errno is None:
+            self._strerrors_by_api_errno = \
+                {f.api_errno: f.strerror for f in self.api_strerrors}
+        if api_errno not in self._strerrors_by_api_errno:
+            return('INVALID API_ERRNO.')
+        return self._strerrors_by_api_errno[api_errno]
+
+    def api_strerror_lookup_by_name(self, enum_name):
+        enum_name_key = '%s: ' % enum_name
+        return [cursor for cursor in self.api_strerrors if
+                enum_name_key in cursor.strerror][0]
 
     def register_hook(self, hook):
         """Replace hook registration with new hook
@@ -301,12 +367,14 @@ class VppPapiProvider(object):
     def connect(self):
         """Connect the API to VPP"""
         self.vpp.connect(self.name, self.shm_prefix)
+        self._connected = True
         self.papi = self.vpp.api
         self.vpp.register_event_callback(self)
 
     def disconnect(self):
         """Disconnect the API from VPP"""
         self.vpp.disconnect()
+        self._connected = False
 
     def api(self, api_fn, api_args, expected_retval=0):
         """ Call API function and check it's return value.
@@ -320,24 +388,39 @@ class VppPapiProvider(object):
         """
         self.hook.before_api(api_fn.__name__, api_args)
         reply = api_fn(**api_args)
+        exc = UnexpectedApiReturnValueError
+        try:
+            if 'INVALID API_ERRNO.' == self.api_strerror_lookup(reply.retval):
+                exc = InvalidApiReturnValueError
+        except AttributeError:
+            pass
+
         if self._expect_api_retval == self._negative:
             if hasattr(reply, 'retval') and reply.retval >= 0:
                 msg = "API call passed unexpectedly: expected negative " \
                       "return value instead of %d in %s" % \
                       (reply.retval, moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise exc(
+                    rv=reply.retval, strerror=self.api_strerror_lookup(
+                        reply.retval),
+                    reply=repr(reply), expected=-self._negative,
+                    api_fn_name=api_fn.__name__, api_fn_args=api_args)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead " \
                       "of %d in %s" % (expected_retval, reply.retval,
                                        moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise exc(
+                    rv=reply.retval, strerror=self.api_strerror_lookup(
+                        reply.retval),
+                    reply=repr(reply), expected=0,
+                    api_fn_name=api_fn.__name__, api_fn_args=api_args)
         else:
-            raise Exception("Internal error, unexpected value for "
-                            "self._expect_api_retval %s" %
-                            self._expect_api_retval)
+            raise RuntimeError("Internal error, unexpected value for "
+                               "self._expect_api_retval %s" %
+                               self._expect_api_retval)
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
@@ -352,7 +435,7 @@ class VppPapiProvider(object):
         cli += '\n'
         r = self.papi.cli_inband(cmd=cli)
         self.hook.after_cli(cli)
-        if r.retval == -156:
+        if r.retval == self.VPE_API_ERROR_SYNTAX_ERROR:
             raise CliSyntaxError(r.reply)
         if r.retval != 0:
             raise CliFailedCommandError(r.reply)
