@@ -162,7 +162,7 @@ VLIB_NODE_FN (nat66_out2in_node) (vlib_main_t * vm,
 	skip_csum0:
 	  ip60->dst_address.as_u64[0] = sm0->l_addr.as_u64[0];
 	  ip60->dst_address.as_u64[1] = sm0->l_addr.as_u64[1];
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sm0->fib_index;
+	  vnet_buffer (b0)->ip.fib_index = sm0->fib_index;
 
 	  vlib_increment_combined_counter (&nm->session_counters,
 					   thread_index, sm0 - nm->sm, 1,

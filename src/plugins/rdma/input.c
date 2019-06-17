@@ -270,11 +270,6 @@ rdma_device_input_bufs_init (u32 n_left_from, vlib_buffer_t ** bufs,
       vnet_buffer (bufs[2])->sw_if_index[VLIB_RX] = sw_if_index;
       vnet_buffer (bufs[3])->sw_if_index[VLIB_RX] = sw_if_index;
 
-      vnet_buffer (bufs[0])->sw_if_index[VLIB_TX] = ~0;
-      vnet_buffer (bufs[1])->sw_if_index[VLIB_TX] = ~0;
-      vnet_buffer (bufs[2])->sw_if_index[VLIB_TX] = ~0;
-      vnet_buffer (bufs[3])->sw_if_index[VLIB_TX] = ~0;
-
       bufs += 4;
       bufsz += 4;
       n_left_from -= 4;
@@ -284,7 +279,6 @@ rdma_device_input_bufs_init (u32 n_left_from, vlib_buffer_t ** bufs,
     {
       bufs[0]->current_length = bufsz[0];
       vnet_buffer (bufs[0])->sw_if_index[VLIB_RX] = sw_if_index;
-      vnet_buffer (bufs[0])->sw_if_index[VLIB_TX] = ~0;
 
       bufs += 1;
       bufsz += 1;

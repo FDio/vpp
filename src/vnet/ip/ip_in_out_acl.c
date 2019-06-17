@@ -361,7 +361,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 		    {
 		      if (e0->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX ||
 			  e0->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
-			vnet_buffer (b0)->sw_if_index[VLIB_TX] = e0->metadata;
+			vnet_buffer (b0)->ip.fib_index = e0->metadata;
 		      else if (e0->action == CLASSIFY_ACTION_SET_METADATA)
 			vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
 			  e0->metadata;
@@ -434,8 +434,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 				  CLASSIFY_ACTION_SET_IP4_FIB_INDEX
 				  || e0->action ==
 				  CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
-				vnet_buffer (b0)->sw_if_index[VLIB_TX] =
-				  e0->metadata;
+				vnet_buffer (b0)->ip.fib_index = e0->metadata;
 			      else if (e0->action ==
 				       CLASSIFY_ACTION_SET_METADATA)
 				vnet_buffer (b0)->ip.adj_index[VLIB_TX] =

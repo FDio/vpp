@@ -562,7 +562,6 @@ vhost_user_if_input (vlib_main_t * vm,
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b_head);
 
       vnet_buffer (b_head)->sw_if_index[VLIB_RX] = vui->sw_if_index;
-      vnet_buffer (b_head)->sw_if_index[VLIB_TX] = (u32) ~ 0;
       b_head->error = 0;
 
       if (current_config_index != ~(u32) 0)

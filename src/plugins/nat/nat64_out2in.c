@@ -190,7 +190,7 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   csum = ip_csum_add_even (csum, udp->dst_port);
   *checksum = ip_csum_fold (csum);
 
-  vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
+  vnet_buffer (ctx->b)->ip.fib_index = bibe->fib_index;
 
   nat64_session_reset_timeout (ste, ctx->vm);
 
@@ -262,7 +262,7 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
       ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
       ((u16 *) (icmp))[2] = bibe->in_port;
 
-      vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
+      vnet_buffer (ctx->b)->ip.fib_index = bibe->fib_index;
     }
   else
     {
@@ -326,7 +326,7 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
       ip6->src_address.as_u64[1] = bibe->in_addr.as_u64[1];
       ((u16 *) (icmp))[2] = bibe->in_port;
 
-      vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
+      vnet_buffer (ctx->b)->ip.fib_index = bibe->fib_index;
     }
   else
     {
@@ -363,7 +363,7 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
 	  *checksum = ip_csum_fold (csum);
 	}
 
-      vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
+      vnet_buffer (ctx->b)->ip.fib_index = bibe->fib_index;
     }
 
   return 0;
@@ -425,7 +425,7 @@ nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   ip6->dst_address.as_u64[0] = bibe->in_addr.as_u64[0];
   ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
 
-  vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
+  vnet_buffer (ctx->b)->ip.fib_index = bibe->fib_index;
 
   return 0;
 }
@@ -683,7 +683,7 @@ nat64_out2in_frag_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
   ip6->dst_address.as_u64[0] = bibe->in_addr.as_u64[0];
   ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
 
-  vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
+  vnet_buffer (ctx->b)->ip.fib_index = bibe->fib_index;
 
   nat64_session_reset_timeout (ste, ctx->vm);
 

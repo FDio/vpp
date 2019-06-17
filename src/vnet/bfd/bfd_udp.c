@@ -34,6 +34,8 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 #include <vnet/bfd/bfd_debug.h>
 #include <vnet/bfd/bfd_udp.h>
 #include <vnet/bfd/bfd_main.h>
@@ -260,7 +262,9 @@ bfd_add_udp4_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
   vnet_buffer (b)->ip.adj_index[VLIB_RX] = bus->adj_index;
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = bus->adj_index;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
+  vnet_buffer (b)->ip.fib_index =
+    ip4_fib_table_get_index_for_sw_if_index (bus->key.sw_if_index);
+
   typedef struct
   {
     ip4_header_t ip4;
@@ -315,7 +319,8 @@ bfd_add_udp6_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
   vnet_buffer (b)->ip.adj_index[VLIB_RX] = bus->adj_index;
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = bus->adj_index;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+  vnet_buffer (b)->ip.fib_index =
+    ip6_fib_table_get_index_for_sw_if_index (bus->key.sw_if_index);
   typedef struct
   {
     ip6_header_t ip6;

@@ -388,8 +388,8 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
   vec_add1 (s, '\n');
 
   s = format (s,
-	      "ip.flow_hash: 0x%x, ip.save_protocol: 0x%x, ip.fib_index: %d",
-	      o->ip.flow_hash, o->ip.save_protocol, o->ip.fib_index);
+	      "ip.flow_hash: 0x%x, ip.fib_index: %d",
+	      o->ip.flow_hash, o->ip.fib_index);
   vec_add1 (s, '\n');
 
   s = format (s,

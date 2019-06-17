@@ -313,7 +313,7 @@ svs_input_inline (vlib_main_t * vm,
 	  dpo0 = load_balance_get_fwd_bucket (lb0, 0);
 	  lk0 = lookup_dpo_get (dpo0->dpoi_index);
 
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = lk0->lkd_fib_index;
+	  vnet_buffer (b0)->ip.fib_index = lk0->lkd_fib_index;
 
 	  vnet_feature_next (&next0, b0);
 
@@ -322,7 +322,7 @@ svs_input_inline (vlib_main_t * vm,
 	      svs_input_trace_t *tr;
 
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      tr->fib_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	      tr->fib_index = vnet_buffer (b0)->ip.fib_index;
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */

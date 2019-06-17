@@ -193,7 +193,6 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   d = ptd->descs;
   buffers = ptd->buffers;
   sw_if_index[VLIB_RX] = ppif->sw_if_index;
-  sw_if_index[VLIB_TX] = (u32) ~ 0;
   while (n_desc)
     {
       u32 n_left_to_next;

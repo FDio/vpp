@@ -57,7 +57,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 		   vlib_frame_t * frame,
 		   int lookup_for_responses_to_locally_received_packets)
 {
-  ip4_main_t *im = &ip4_main;
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
   u32 n_left, *from;
   u32 thread_index = vm->thread_index;
@@ -107,11 +106,6 @@ ip4_lookup_inline (vlib_main_t * vm,
       dst_addr1 = &ip1->dst_address;
       dst_addr2 = &ip2->dst_address;
       dst_addr3 = &ip3->dst_address;
-
-      ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[0]);
-      ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[1]);
-      ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[2]);
-      ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[3]);
 
       if (!lookup_for_responses_to_locally_received_packets)
 	{
@@ -288,9 +282,6 @@ ip4_lookup_inline (vlib_main_t * vm,
       dst_addr0 = &ip0->dst_address;
       dst_addr1 = &ip1->dst_address;
 
-      ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[0]);
-      ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[1]);
-
       if (!lookup_for_responses_to_locally_received_packets)
 	{
 	  mtrie0 = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
@@ -395,7 +386,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 
       ip0 = vlib_buffer_get_current (b[0]);
       dst_addr0 = &ip0->dst_address;
-      ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[0]);
 
       if (!lookup_for_responses_to_locally_received_packets)
 	{
