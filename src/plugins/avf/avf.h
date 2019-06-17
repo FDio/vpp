@@ -370,6 +370,13 @@ avf_get_device (u32 dev_instance)
   return pool_elt_at_index (avf_main.devices, dev_instance)[0];
 }
 
+/* elog.c */
+void avf_elog_init ();
+void avf_elog_reg (avf_device_t *ad, u32 addr, u32 val, int is_read);
+void avf_elog_aq_enq_req (avf_device_t *ad, avf_aq_desc_t *d);
+void avf_elog_aq_enq_resp (avf_device_t *ad, avf_aq_desc_t *d);
+void avf_elog_arq_desc (avf_device_t *ad, avf_aq_desc_t *d);
+
 static inline u32
 avf_get_u32 (void *start, int offset)
 {
@@ -413,13 +420,20 @@ avf_set_u32 (void *start, int offset, u32 value)
 static inline void
 avf_reg_write (avf_device_t * ad, u32 addr, u32 val)
 {
+  if (ad->flags & AVF_DEVICE_F_ELOG)
+    avf_elog_reg (ad, addr, val, 0);
   *(volatile u32 *) ((u8 *) ad->bar0 + addr) = val;
 }
 
 static inline u32
 avf_reg_read (avf_device_t * ad, u32 addr)
 {
-  return *(volatile u32 *) (ad->bar0 + addr);
+  u32 val = *(volatile u32 *) (ad->bar0 + addr);
+
+  if (ad->flags & AVF_DEVICE_F_ELOG)
+    avf_elog_reg (ad, addr, val, 1);
+
+  return val;
 }
 
 static inline void
