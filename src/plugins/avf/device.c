@@ -1614,7 +1614,10 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   ad->name = vec_dup (args->name);
 
   if (args->enable_elog)
-    ad->flags |= AVF_DEVICE_F_ELOG;
+    {
+      ad->flags |= AVF_DEVICE_F_ELOG;
+      avf_elog_init ();
+    }
 
   if ((error = vlib_pci_device_open (vm, &args->addr, avf_pci_device_ids,
 				     &h)))
