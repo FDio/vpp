@@ -53,6 +53,7 @@
 #include <vppinfra/error.h>	/* for ASSERT */
 #include <vppinfra/serialize.h>
 #include <vppinfra/time.h>	/* for clib_cpu_time_now */
+#include <vppinfra/hash.h>
 #include <vppinfra/mhash.h>
 
 typedef struct
@@ -155,6 +156,8 @@ typedef struct
 
   /** Events may refer to strings in string table. */
   char *string_table;
+  uword *string_table_hash;
+  u8 *string_table_tmp;
 
   /** Vector of tracks. */
   elog_track_t *tracks;
