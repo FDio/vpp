@@ -186,10 +186,10 @@ static __clib_unused vlib_cli_command_t __clib_unused_##x
 void vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...);
 
 /* Process CLI input. */
-void vlib_cli_input (struct vlib_main_t *vm,
-		     unformat_input_t * input,
-		     vlib_cli_output_function_t * function,
-		     uword function_arg);
+int vlib_cli_input (struct vlib_main_t *vm,
+		    unformat_input_t * input,
+		    vlib_cli_output_function_t * function,
+		    uword function_arg);
 
 clib_error_t *vlib_cli_register (struct vlib_main_t *vm,
 				 vlib_cli_command_t * c);

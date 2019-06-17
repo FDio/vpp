@@ -26,6 +26,8 @@
 /* define message IDs */
 #include <http_static/http_static_msg_enum.h>
 
+#include <vpp/api/types.h>
+
 /* define message structures */
 #define vl_typedefs
 #include <http_static/http_static_all_api_h.h>
@@ -64,14 +66,22 @@ static void vl_api_http_static_enable_t_handler
   vl_api_http_static_enable_reply_t *rmp;
   http_static_main_t *hmp = &http_static_main;
   int rv;
+  u8 *www_root;
+  u8 *uri;
 
-  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
-  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
+  char *p = (char *) &mp->www_root;
+  www_root =
+    format (0, "%s%c", vl_api_from_api_string_c ((vl_api_string_t *) p), 0),
+    p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
+  uri =
+    format (0, "%s%c", vl_api_from_api_string_c ((vl_api_string_t *) p), 0);
+
 
   rv = http_static_server_enable_api
-    (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
+    (ntohl (mp->fifo_size),
+     ntohl (mp->cache_size_limit),
      ntohl (mp->prealloc_fifos),
-     ntohl (mp->private_segment_size), mp->www_root, mp->uri);
+     ntohl (mp->private_segment_size), www_root, uri);
 
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_REPLY);
 }
@@ -102,7 +112,7 @@ http_static_plugin_api_hookup (vlib_main_t * vm)
 static void
 setup_message_id_table (http_static_main_t * hmp, api_main_t * am)
 {
-#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n  #crc, id + hmp->msg_id_base);
+#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + hmp->msg_id_base);
   foreach_vl_msg_name_crc_http_static;
 #undef _
 }
@@ -139,7 +149,7 @@ VLIB_INIT_FUNCTION (http_static_init);
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "http static server plugin"
+  .description = "HTTP Static Server"
 };
 /* *INDENT-ON* */
 

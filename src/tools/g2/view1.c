@@ -1630,8 +1630,6 @@ static int anomaly_statistics_init (void)
     event_t *ep;
     pid_data_t *pid;
     int i;
-    int index;
-    int pid_index;
     f64 fdata;
 
     /* Gather summary statistics... */

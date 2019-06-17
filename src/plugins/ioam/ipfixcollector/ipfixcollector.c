@@ -73,6 +73,11 @@ ipfix_collector_reg_setid (vlib_main_t * vm, ipfix_client_add_del_t * info)
   client->set_id = info->ipfix_setid;
 
   hash_set (cm->client_reg_table, info->ipfix_setid, i);
+
+  if (!udp_is_valid_dst_port (UDP_DST_PORT_ipfix, 1))
+    udp_register_dst_port (vm, UDP_DST_PORT_ipfix,
+			   ipfix_collector_node.index, 1);
+
   return 0;
 }
 
@@ -88,9 +93,6 @@ ipfix_collector_init (vlib_main_t * vm)
   cm->client_reg_pool = NULL;
   cm->client_reg_table = hash_create (0, sizeof (uword));
 
-  udp_register_dst_port (vm,
-			 UDP_DST_PORT_ipfix,
-			 ipfix_collector_node.index, 1 /* is_ip4 */ );
   return error;
 }
 

@@ -183,14 +183,14 @@ fib_bfd_notify (bfd_listen_event_e event,
 static clib_error_t *
 fib_bfd_main_init (vlib_main_t * vm)
 {
-    clib_error_t * error = NULL;
-
-    if ((error = vlib_call_init_function (vm, bfd_main_init)))
-        return (error);
-
     bfd_register_listener(fib_bfd_notify);
 
-    return (error);
+    return (NULL);
 }
 
-VLIB_INIT_FUNCTION (fib_bfd_main_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (fib_bfd_main_init) =
+{
+    .runs_after = VLIB_INITS("bfd_main_init"),
+};
+/* *INDENT-ON* */

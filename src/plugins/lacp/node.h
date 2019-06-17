@@ -37,7 +37,7 @@ typedef enum
   MARKER_N_PACKET_TEMPLATES,
 } marker_packet_template_id_t;
 
-enum
+typedef enum
 {
   LACP_PROCESS_EVENT_START = 1,
   LACP_PROCESS_EVENT_STOP = 2,
@@ -73,6 +73,8 @@ typedef enum
 #undef _
     LACP_N_ERROR,
 } lacp_error_t;
+
+#define SECS_IN_A_DAY 86400.0
 
 /* lacp packet trace capture */
 typedef struct
@@ -129,7 +131,7 @@ typedef struct
   vlib_packet_template_t marker_packet_templates[MARKER_N_PACKET_TEMPLATES];
 
   /* LACP interface count */
-  u32 lacp_int;
+  volatile u32 lacp_int;
 
   /* debug is on or off */
   u8 debug;
@@ -138,6 +140,7 @@ typedef struct
 extern lacp_state_struct lacp_state_array[];
 extern lacp_main_t lacp_main;
 
+void lacp_create_periodic_process (void);
 clib_error_t *lacp_plugin_api_hookup (vlib_main_t * vm);
 int lacp_dump_ifs (lacp_interface_details_t ** out_bondids);
 lacp_error_t lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0);
@@ -183,8 +186,7 @@ format_rx_sm_state (u8 * s, va_list * args)
     {.str = NULL}
   };
   int state = va_arg (*args, int);
-  lacp_state_struct *state_entry =
-    (lacp_state_struct *) & lacp_rx_sm_state_array;
+  lacp_state_struct *state_entry = lacp_rx_sm_state_array;
 
   if (state >= (sizeof (lacp_rx_sm_state_array) / sizeof (*state_entry)))
     s = format (s, "Bad state %d", state);
@@ -204,8 +206,7 @@ format_tx_sm_state (u8 * s, va_list * args)
     {.str = NULL}
   };
   int state = va_arg (*args, int);
-  lacp_state_struct *state_entry =
-    (lacp_state_struct *) & lacp_tx_sm_state_array;
+  lacp_state_struct *state_entry = lacp_tx_sm_state_array;
 
   if (state >= (sizeof (lacp_tx_sm_state_array) / sizeof (*state_entry)))
     s = format (s, "Bad state %d", state);
@@ -225,8 +226,7 @@ format_mux_sm_state (u8 * s, va_list * args)
     {.str = NULL}
   };
   int state = va_arg (*args, int);
-  lacp_state_struct *state_entry =
-    (lacp_state_struct *) & lacp_mux_sm_state_array;
+  lacp_state_struct *state_entry = lacp_mux_sm_state_array;
 
   if (state >= (sizeof (lacp_mux_sm_state_array) / sizeof (*state_entry)))
     s = format (s, "Bad state %d", state);
@@ -246,8 +246,7 @@ format_ptx_sm_state (u8 * s, va_list * args)
     {.str = NULL}
   };
   int state = va_arg (*args, int);
-  lacp_state_struct *state_entry =
-    (lacp_state_struct *) & lacp_ptx_sm_state_array;
+  lacp_state_struct *state_entry = lacp_ptx_sm_state_array;
 
   if (state >= (sizeof (lacp_ptx_sm_state_array) / sizeof (*state_entry)))
     s = format (s, "Bad state %d", state);

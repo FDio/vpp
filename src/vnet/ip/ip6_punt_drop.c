@@ -227,16 +227,6 @@ VLIB_CLI_COMMAND (ip6_punt_policer_command, static) =
   .short_help = "ip6 punt policer [add|del] <index>",
 };
 
-extern ip_punt_redirect_t ip6_punt_redirect_cfg;
-
-#ifndef CLIB_MARCH_VARIANT
-ip_punt_redirect_t ip6_punt_redirect_cfg = {
-  .any_rx_sw_if_index = {
-    .tx_sw_if_index = ~0,
-    .adj_index = ADJ_INDEX_INVALID,
-  },
-};
-#endif /* CLIB_MARCH_VARIANT */
 /* *INDENT-ON* */
 
 #define foreach_ip6_punt_redirect_error         \
@@ -262,7 +252,7 @@ VLIB_NODE_FN (ip6_punt_redirect_node) (vlib_main_t * vm,
 {
   return (ip_punt_redirect (vm, node, frame,
 			    vnet_feat_arc_ip6_punt.feature_arc_index,
-			    &ip6_punt_redirect_cfg));
+			    FIB_PROTOCOL_IP6));
 }
 
 /* *INDENT-OFF* */
@@ -290,17 +280,33 @@ VNET_FEATURE_INIT (ip6_punt_redirect_node, static) = {
 /* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
+
 void
 ip6_punt_redirect_add (u32 rx_sw_if_index,
 		       u32 tx_sw_if_index, ip46_address_t * nh)
 {
-  ip_punt_redirect_rx_t rx = {
-    .tx_sw_if_index = tx_sw_if_index,
-    .nh = *nh,
+  /* *INDENT-OFF* */
+  fib_route_path_t *rpaths = NULL, rpath = {
+    .frp_proto = DPO_PROTO_IP6,
+    .frp_addr = *nh,
+    .frp_sw_if_index = tx_sw_if_index,
+    .frp_weight = 1,
+    .frp_fib_index = ~0,
   };
+  /* *INDENT-ON* */
+  vec_add1 (rpaths, rpath);
 
-  ip_punt_redirect_add (&ip6_punt_redirect_cfg,
-			rx_sw_if_index, &rx, FIB_PROTOCOL_IP6, VNET_LINK_IP6);
+  ip6_punt_redirect_add_paths (rx_sw_if_index, rpaths);
+
+  vec_free (rpaths);
+}
+
+void
+ip6_punt_redirect_add_paths (u32 rx_sw_if_index, fib_route_path_t * rpaths)
+{
+  ip_punt_redirect_add (FIB_PROTOCOL_IP6,
+			rx_sw_if_index,
+			FIB_FORW_CHAIN_TYPE_UNICAST_IP6, rpaths);
 
   vnet_feature_enable_disable ("ip6-punt", "ip6-punt-redirect", 0, 1, 0, 0);
 }
@@ -310,7 +316,7 @@ ip6_punt_redirect_del (u32 rx_sw_if_index)
 {
   vnet_feature_enable_disable ("ip6-punt", "ip6-punt-redirect", 0, 0, 0, 0);
 
-  ip_punt_redirect_del (&ip6_punt_redirect_cfg, rx_sw_if_index);
+  ip_punt_redirect_del (FIB_PROTOCOL_IP6, rx_sw_if_index);
 }
 #endif /* CLIB_MARCH_VARIANT */
 
@@ -320,10 +326,9 @@ ip6_punt_redirect_cmd (vlib_main_t * vm,
 		       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  fib_route_path_t *rpaths = NULL, rpath;
   clib_error_t *error = 0;
-  u32 rx_sw_if_index = 0;
-  u32 tx_sw_if_index = 0;
-  ip46_address_t nh;
+  u32 rx_sw_if_index = ~0;
   vnet_main_t *vnm;
   u8 is_add;
 
@@ -344,14 +349,9 @@ ip6_punt_redirect_cmd (vlib_main_t * vm,
       else if (unformat (line_input, "rx %U",
 			 unformat_vnet_sw_interface, vnm, &rx_sw_if_index))
 	;
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip6_address,
-			 &nh.ip6,
-			 unformat_vnet_sw_interface, vnm, &tx_sw_if_index))
-	;
       else if (unformat (line_input, "via %U",
-			 unformat_vnet_sw_interface, vnm, &tx_sw_if_index))
-	clib_memset (&nh, 0, sizeof (nh));
+			 unformat_fib_route_path, &rpath))
+	vec_add1 (rpaths, rpath);
       else
 	{
 	  error = unformat_parse_error (line_input);
@@ -359,19 +359,20 @@ ip6_punt_redirect_cmd (vlib_main_t * vm,
 	}
     }
 
+  if (~0 == rx_sw_if_index)
+    {
+      error = unformat_parse_error (line_input);
+      goto done;
+    }
+
   if (is_add)
     {
-      if (rx_sw_if_index && tx_sw_if_index)
-	{
-	  ip6_punt_redirect_add (rx_sw_if_index, tx_sw_if_index, &nh);
-	}
+      if (vec_len (rpaths))
+	ip6_punt_redirect_add_paths (rx_sw_if_index, rpaths);
     }
   else
     {
-      if (rx_sw_if_index)
-	{
-	  ip6_punt_redirect_del (rx_sw_if_index);
-	}
+      ip6_punt_redirect_del (rx_sw_if_index);
     }
 
 done:
@@ -394,45 +395,7 @@ VLIB_CLI_COMMAND (ip6_punt_redirect_command, static) =
 /* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
-ip_punt_redirect_detail_t *
-ip6_punt_redirect_entries (u32 sw_if_index)
-{
-  ip_punt_redirect_rx_t *pr;
-  ip_punt_redirect_detail_t *prs = 0;
-  u32 rx_sw_if_index;
 
-  vec_foreach_index (rx_sw_if_index,
-		     ip6_punt_redirect_cfg.redirect_by_rx_sw_if_index)
-  {
-    if (sw_if_index == ~0 || sw_if_index == rx_sw_if_index)
-      {
-	pr =
-	  &ip6_punt_redirect_cfg.redirect_by_rx_sw_if_index[rx_sw_if_index];
-	if (NULL != pr && ~0 != pr->tx_sw_if_index)
-	  {
-	    ip_punt_redirect_detail_t detail = {.rx_sw_if_index =
-		rx_sw_if_index,
-	      .punt_redirect = *pr
-	    };
-	    vec_add1 (prs, detail);
-	  }
-      }
-  }
-  if (~0 != ip6_punt_redirect_cfg.any_rx_sw_if_index.tx_sw_if_index)
-    {
-      pr = &ip6_punt_redirect_cfg.any_rx_sw_if_index;
-      if (NULL != pr)
-	{
-	  ip_punt_redirect_detail_t detail = {.rx_sw_if_index =
-	      rx_sw_if_index,
-	    .punt_redirect = *pr
-	  };
-	  vec_add1 (prs, detail);
-	}
-    }
-
-  return prs;
-}
 #endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
@@ -440,7 +403,7 @@ ip6_punt_redirect_show_cmd (vlib_main_t * vm,
 			    unformat_input_t * main_input,
 			    vlib_cli_command_t * cmd)
 {
-  vlib_cli_output (vm, "%U", format_ip_punt_redirect, &ip6_punt_redirect_cfg);
+  vlib_cli_output (vm, "%U", format_ip_punt_redirect, FIB_PROTOCOL_IP6);
 
   return (NULL);
 }

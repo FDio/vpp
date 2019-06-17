@@ -63,7 +63,14 @@ vlib_add_trace (vlib_main_t * vm,
 
   ASSERT (vnet_trace_dummy);
 
-  if (PREDICT_FALSE (tm->trace_enable == 0))
+  if (PREDICT_FALSE (tm->add_trace_callback != 0))
+    {
+      return tm->add_trace_callback ((struct vlib_main_t *) vm,
+				     (struct vlib_node_runtime_t *) r,
+				     (struct vlib_buffer_t *) b,
+				     n_data_bytes);
+    }
+  else if (PREDICT_FALSE (tm->trace_enable == 0))
     {
       ASSERT (vec_len (vnet_trace_dummy) >= n_data_bytes + sizeof (*h));
       return vnet_trace_dummy;
@@ -129,6 +136,10 @@ vlib_trace_buffer (vlib_main_t * vm,
     {
       tm->last_main_loop_count = vm->main_loop_count;
       trace_apply_filter (vm);
+
+      if (tm->trace_buffer_callback)
+	(tm->trace_buffer_callback) ((struct vlib_main_t *) vm,
+				     (struct vlib_trace_main_t *) tm);
     }
 
   vlib_trace_next_frame (vm, r, next_index);

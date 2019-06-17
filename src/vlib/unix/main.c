@@ -67,10 +67,15 @@ unix_main_init (vlib_main_t * vm)
 {
   unix_main_t *um = &unix_main;
   um->vlib_main = vm;
-  return vlib_call_init_function (vm, unix_input_init);
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (unix_main_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (unix_main_init) =
+{
+  .runs_before = VLIB_INITS ("unix_input_init"),
+};
+/* *INDENT-ON* */
 
 static int
 unsetup_signal_handlers (int sig)
@@ -138,6 +143,17 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
       fatal = 0;
       break;
     }
+
+#ifdef CLIB_GCOV
+  /*
+   * Test framework sends SIGTERM, so we need to flush the
+   * code coverage stats here.
+   */
+  {
+    void __gcov_flush (void);
+    __gcov_flush ();
+  }
+#endif
 
   /* Null terminate. */
   vec_add1 (syslog_msg, 0);
@@ -630,9 +646,9 @@ thread0 (uword arg)
 u8 *
 vlib_thread_stack_init (uword thread_index)
 {
-  vec_validate (vlib_thread_stacks, thread_index);
+  ASSERT (thread_index < vec_len (vlib_thread_stacks));
   vlib_thread_stacks[thread_index] = clib_mem_alloc_aligned
-    (VLIB_THREAD_STACK_SIZE, VLIB_THREAD_STACK_SIZE);
+    (VLIB_THREAD_STACK_SIZE, clib_mem_get_page_size ());
 
   /*
    * Disallow writes to the bottom page of the stack, to
@@ -685,6 +701,7 @@ vlib_unix_main (int argc, char *argv[])
   /* always load symbols, for signal handler and mheap memory get/put backtrace */
   clib_elf_main_init (vm->name);
 
+  vec_validate (vlib_thread_stacks, 0);
   vlib_thread_stack_init (0);
 
   __os_thread_index = 0;

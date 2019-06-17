@@ -25,6 +25,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/ip/ip6_neighbor.h>
 #include <math.h>
+#include <vnet/ethernet/arp.h>
 
 tcp_main_t tcp_main;
 
@@ -67,6 +68,46 @@ tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
   };
   vlib_rpc_call_main_thread (tcp_add_del_adj_cb, (u8 *) & args,
 			     sizeof (args));
+}
+
+static void
+tcp_cc_init (tcp_connection_t * tc)
+{
+  tc->cc_algo = tcp_cc_algo_get (tcp_main.cc_algo);
+  tc->cc_algo->init (tc);
+}
+
+static void
+tcp_cc_cleanup (tcp_connection_t * tc)
+{
+  if (tc->cc_algo->cleanup)
+    tc->cc_algo->cleanup (tc);
+}
+
+void
+tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
+		      const tcp_cc_algorithm_t * vft)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  vec_validate (tm->cc_algos, type);
+
+  tm->cc_algos[type] = *vft;
+  hash_set_mem (tm->cc_algo_by_name, vft->name, type);
+}
+
+tcp_cc_algorithm_t *
+tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  return &tm->cc_algos[type];
+}
+
+tcp_cc_algorithm_type_e
+tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_cc_algo_register (++tm->cc_last_type, vft);
+  return tm->cc_last_type;
 }
 
 static u32
@@ -225,6 +266,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
 	tcp_add_del_adjacency (tc, 0);
 
+      tcp_cc_cleanup (tc);
       vec_free (tc->snd_sacks);
       vec_free (tc->snd_sacks_fl);
 
@@ -544,31 +586,6 @@ tcp_connection_fib_attach (tcp_connection_t * tc)
   tcp_connection_stack_on_fib_entry (tc);
 }
 #endif /* 0 */
-
-static void
-tcp_cc_init (tcp_connection_t * tc)
-{
-  tc->cc_algo = tcp_cc_algo_get (tcp_main.cc_algo);
-  tc->cc_algo->init (tc);
-}
-
-void
-tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
-		      const tcp_cc_algorithm_t * vft)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  vec_validate (tm->cc_algos, type);
-
-  tm->cc_algos[type] = *vft;
-  hash_set_mem (tm->cc_algo_by_name, vft->name, type);
-}
-
-tcp_cc_algorithm_t *
-tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  return &tm->cc_algos[type];
-}
 
 /**
  * Generate random iss as per rfc6528
@@ -1490,7 +1507,7 @@ tcp_main_enable (vlib_main_t * vm)
   tcp_initialize_iss_seed (tm);
 
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
-
+  tm->cc_last_type = TCP_CC_LAST;
   return error;
 }
 
@@ -1654,14 +1671,10 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   u32 start_host_byte_order, end_host_byte_order;
   fib_prefix_t prefix;
-  vnet_sw_interface_t *si;
   fib_node_index_t fei;
   u32 fib_index = 0;
   u32 sw_if_index;
   int rv;
-  int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
-			      ip4_address_t * hi_addr, u32 fib_index,
-			      int is_del);
 
   clib_memset (&prefix, 0, sizeof (prefix));
 
@@ -1690,12 +1703,13 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
 
   sw_if_index = fib_entry_get_resolving_interface (fei);
 
-  /* Enable proxy arp on the interface */
-  si = vnet_get_sw_interface (vnm, sw_if_index);
-  si->flags |= VNET_SW_INTERFACE_FLAG_PROXY_ARP;
-
   /* Configure proxy arp across the range */
   rv = vnet_proxy_arp_add_del (start, end, fib_index, 0 /* is_del */ );
+
+  if (rv)
+    return rv;
+
+  rv = vnet_proxy_arp_enable_disable (vnm, sw_if_index, 1);
 
   if (rv)
     return rv;

@@ -292,14 +292,6 @@ VLIB_REGISTER_NODE (l2t_decap_local_node) = {
 };
 /* *INDENT-ON* */
 
-#ifndef CLIB_MARCH_VARIANT
-void
-l2tp_decap_init (void)
-{
-  ip6_register_protocol (IP_PROTOCOL_L2TP, l2t_decap_local_node.index);
-}
-#endif /* CLIB_MARCH_VARIANT */
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

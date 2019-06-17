@@ -33,7 +33,7 @@ struct bier_route_update_t_;
  * Each entry (bit-position) represents one destination, and its reachability
  *
  * The number of entries in a table is thus the maximum supported
- * bit-position. Since this is smal <4096, the table is a flat arry
+ * bit-position. Since this is small <4096, the table is a flat array
  */
 typedef struct bier_table_t_ {
     /**

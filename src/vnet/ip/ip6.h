@@ -388,6 +388,8 @@ u16 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 				       int *bogus_lengthp);
 
 void ip6_register_protocol (u32 protocol, u32 node_index);
+void ip6_unregister_protocol (u32 protocol);
+void ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index);
 
 serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 
@@ -466,6 +468,8 @@ u32 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
 void ip6_punt_policer_add_del (u8 is_add, u32 policer_index);
 void ip6_punt_redirect_add (u32 rx_sw_if_index,
 			    u32 tx_sw_if_index, ip46_address_t * nh);
+void ip6_punt_redirect_add_paths (u32 rx_sw_if_index,
+				  fib_route_path_t * paths);
 void ip6_punt_redirect_del (u32 rx_sw_if_index);
 
 int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,

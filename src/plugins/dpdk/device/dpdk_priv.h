@@ -52,26 +52,26 @@ _(log-level)
 static inline void
 dpdk_get_xstats (dpdk_device_t * xd)
 {
+  int len, ret;
+
   if (!(xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP))
     return;
-  int len;
-  if ((len = rte_eth_xstats_get (xd->port_id, NULL, 0)) > 0)
+
+  len = rte_eth_xstats_get (xd->port_id, NULL, 0);
+  if (len < 0)
+    return;
+
+  vec_validate (xd->xstats, len - 1);
+
+  ret = rte_eth_xstats_get (xd->port_id, xd->xstats, len);
+  if (ret < 0 || ret > len)
     {
-      vec_validate (xd->xstats, len - 1);
-      vec_validate (xd->last_cleared_xstats, len - 1);
-
-      len =
-	rte_eth_xstats_get (xd->port_id, xd->xstats, vec_len (xd->xstats));
-
-      ASSERT (vec_len (xd->xstats) == len);
-      ASSERT (vec_len (xd->last_cleared_xstats) == len);
-
-      _vec_len (xd->xstats) = len;
-      _vec_len (xd->last_cleared_xstats) = len;
-
+      _vec_len (xd->xstats) = 0;
+      return;
     }
-}
 
+  _vec_len (xd->xstats) = len;
+}
 
 static inline void
 dpdk_update_counters (dpdk_device_t * xd, f64 now)

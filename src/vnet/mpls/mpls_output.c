@@ -146,8 +146,7 @@ mpls_output_inline (vlib_main_t * vm,
           if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p0) <=
                            adj0[0].rewrite_header.max_l3_packet_bytes))
             {
-              p0->current_data -= rw_len0;
-              p0->current_length += rw_len0;
+              vlib_buffer_advance(p0, -rw_len0);
 
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   adj0[0].rewrite_header.sw_if_index;
@@ -167,8 +166,7 @@ mpls_output_inline (vlib_main_t * vm,
           if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p1) <=
                            adj1[0].rewrite_header.max_l3_packet_bytes))
             {
-              p1->current_data -= rw_len1;
-              p1->current_length += rw_len1;
+              vlib_buffer_advance(p1, -rw_len1);
 
               vnet_buffer (p1)->sw_if_index[VLIB_TX] =
                   adj1[0].rewrite_header.sw_if_index;
@@ -248,13 +246,12 @@ mpls_output_inline (vlib_main_t * vm,
                adj_index0,
                1,
                vlib_buffer_length_in_chain (vm, p0) + rw_len0);
-          
+
           /* Check MTU of outgoing interface. */
           if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p0) <=
                            adj0[0].rewrite_header.max_l3_packet_bytes))
             {
-              p0->current_data -= rw_len0;
-              p0->current_length += rw_len0;
+              vlib_buffer_advance(p0, -rw_len0);
 
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   adj0[0].rewrite_header.sw_if_index;

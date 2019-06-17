@@ -91,7 +91,7 @@ public:
     ExpException(unsigned int number)
     {
         // a neat place to add a break point
-        std::cout << "  ExpException here: " << number << std::endl;
+        // std::cout << "  ExpException here: " << number << std::endl;
     }
 };
 
@@ -190,6 +190,10 @@ public:
                     {
                         rc = handle_derived<interface_cmds::loopback_create_cmd>(f_exp, f_act);
                     }
+                    else if (typeid(*f_exp) == typeid(interface_cmds::bvi_create_cmd))
+                    {
+                        rc = handle_derived<interface_cmds::bvi_create_cmd>(f_exp, f_act);
+                    }
                     else if (typeid(*f_exp) == typeid(interface_cmds::vhost_create_cmd))
                     {
                         rc = handle_derived<interface_cmds::vhost_create_cmd>(f_exp, f_act);
@@ -201,6 +205,10 @@ public:
                     else if (typeid(*f_exp) == typeid(interface_cmds::loopback_delete_cmd))
                     {
                         rc = handle_derived<interface_cmds::loopback_delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(interface_cmds::bvi_delete_cmd))
+                    {
+                        rc = handle_derived<interface_cmds::bvi_delete_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(interface_cmds::af_packet_delete_cmd))
                     {
@@ -761,7 +769,7 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
     HW::item<handle_t> hw_ifh(4, rc_t::OK);
     HW::item<route::prefix_t> hw_pfx_10(pfx_10, rc_t::OK);
 
-    ADD_EXPECT(interface_cmds::loopback_create_cmd(hw_ifh, bvi_name));
+    ADD_EXPECT(interface_cmds::bvi_create_cmd(hw_ifh, bvi_name));
     ADD_EXPECT(interface_cmds::set_tag(hw_ifh, bvi_name));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(ernest, itf));
@@ -799,7 +807,7 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
     delete l3;
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind, hw_ifh.data(), pfx_10));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface_cmds::loopback_delete_cmd(hw_ifh));
+    ADD_EXPECT(interface_cmds::bvi_delete_cmd(hw_ifh));
     TRY_CHECK(OM::remove(ernest));
 
     /*
@@ -825,7 +833,7 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
                                     rd);
     HW::item<handle_t> hw_ifh2(5, rc_t::OK);
 
-    ADD_EXPECT(interface_cmds::loopback_create_cmd(hw_ifh2, bvi2_name));
+    ADD_EXPECT(interface_cmds::bvi_create_cmd(hw_ifh2, bvi2_name));
     ADD_EXPECT(interface_cmds::set_tag(hw_ifh2, bvi2_name));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
     ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_bind, l3_proto_t::IPV4, hw_ifh2));
@@ -844,7 +852,7 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
     ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV4, hw_ifh2));
     ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd6_unbind, l3_proto_t::IPV6, hw_ifh2));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
-    ADD_EXPECT(interface_cmds::loopback_delete_cmd(hw_ifh2));
+    ADD_EXPECT(interface_cmds::bvi_delete_cmd(hw_ifh2));
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd4_delete, l3_proto_t::IPV4, 1));
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd6_delete, l3_proto_t::IPV6, 1));
     TRY_CHECK(OM::remove(graham));
@@ -956,7 +964,9 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd,
                                               bridge_domain::learning_mode_t::ON,
                                               bridge_domain::arp_term_mode_t::ON,
+                                              bridge_domain::arp_ufwd_mode_t::ON,
                                               bridge_domain::flood_mode_t::ON,
+                                              bridge_domain::uu_flood_mode_t::ON,
                                               bridge_domain::mac_age_mode_t::OFF));
 
     TRY_CHECK_RC(OM::write(franz, bd1));
@@ -1053,7 +1063,9 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd2,
                                               bridge_domain::learning_mode_t::ON,
                                               bridge_domain::arp_term_mode_t::ON,
+                                              bridge_domain::arp_ufwd_mode_t::ON,
                                               bridge_domain::flood_mode_t::ON,
+                                              bridge_domain::uu_flood_mode_t::ON,
                                               bridge_domain::mac_age_mode_t::OFF));
 
     TRY_CHECK_RC(OM::write(jkr, bd2));
@@ -1064,7 +1076,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
                    interface::admin_state_t::UP);
 
     HW::item<handle_t> hw_ifh3(5, rc_t::OK);
-    ADD_EXPECT(interface_cmds::loopback_create_cmd(hw_ifh3, itf3_name));
+    ADD_EXPECT(interface_cmds::bvi_create_cmd(hw_ifh3, itf3_name));
     ADD_EXPECT(interface_cmds::set_tag(hw_ifh3, itf3_name));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh3));
     TRY_CHECK_RC(OM::write(jkr, itf3));
@@ -1091,7 +1103,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
                                            l2_binding::l2_port_type_t::L2_PORT_TYPE_BVI));
     ADD_EXPECT(bridge_domain_entry_cmds::delete_cmd(hw_be2, mac2, bd2.id(), true));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh3));
-    ADD_EXPECT(interface_cmds::loopback_delete_cmd(hw_ifh3));
+    ADD_EXPECT(interface_cmds::bvi_delete_cmd(hw_ifh3));
     ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd2));
     TRY_CHECK(OM::remove(jkr));
 }
@@ -1175,14 +1187,18 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
     // bridge-domain create
     bridge_domain bd1(33, bridge_domain::learning_mode_t::OFF,
                       bridge_domain::arp_term_mode_t::OFF,
+                      bridge_domain::arp_ufwd_mode_t::OFF,
                       bridge_domain::flood_mode_t::OFF,
+                      bridge_domain::uu_flood_mode_t::OFF,
                       bridge_domain::mac_age_mode_t::ON);
 
     HW::item<uint32_t> hw_bd(33, rc_t::OK);
     ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd,
                                               bridge_domain::learning_mode_t::OFF,
                                               bridge_domain::arp_term_mode_t::OFF,
+                                              bridge_domain::arp_ufwd_mode_t::OFF,
                                               bridge_domain::flood_mode_t::OFF,
+                                              bridge_domain::uu_flood_mode_t::OFF,
                                               bridge_domain::mac_age_mode_t::ON));
 
     TRY_CHECK_RC(OM::write(franz, bd1));
@@ -2111,14 +2127,18 @@ BOOST_AUTO_TEST_CASE(test_pipes) {
     // put each end of the pipe in a BD
     bridge_domain bd1(33, bridge_domain::learning_mode_t::OFF,
                       bridge_domain::arp_term_mode_t::OFF,
+                      bridge_domain::arp_ufwd_mode_t::ON,
                       bridge_domain::flood_mode_t::OFF,
+                      bridge_domain::uu_flood_mode_t::ON,
                       bridge_domain::mac_age_mode_t::ON);
 
     HW::item<uint32_t> hw_bd(33, rc_t::OK);
     ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd,
                                               bridge_domain::learning_mode_t::OFF,
                                               bridge_domain::arp_term_mode_t::OFF,
+                                              bridge_domain::arp_ufwd_mode_t::ON,
                                               bridge_domain::flood_mode_t::OFF,
+                                              bridge_domain::uu_flood_mode_t::ON,
                                               bridge_domain::mac_age_mode_t::ON));
 
     TRY_CHECK_RC(OM::write(gk, bd1));

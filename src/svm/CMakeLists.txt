@@ -16,23 +16,23 @@
 ##############################################################################
 add_vpp_library(svm
   SOURCES
+  fifo_segment.c
+  message_queue.c
+  queue.c
   svm.c
   ssvm.c
   svm_fifo.c
-  svm_fifo_segment.c
-  queue.c
-  message_queue.c
 
   MULTIARCH_SOURCES
   svm_fifo.c
 
   INSTALL_HEADERS
+  fifo_segment.h
+  message_queue.h
+  queue.h
   ssvm.h
   svm_common.h
   svm_fifo.h
-  svm_fifo_segment.h
-  queue.h
-  message_queue.h
   svm.h
   svmdb.h
 

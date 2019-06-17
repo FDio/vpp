@@ -17,6 +17,9 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsTable, VppIpTable
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_papi import VppEnum
+
+NUM_PKTS = 67
 
 
 class TestIPv4(VppTestCase):
@@ -687,7 +690,7 @@ class TestIPNull(VppTestCase):
                                       self.pg1.sw_if_index)])
         r1.add_vpp_config()
 
-        rx = self.send_and_expect(self.pg0, p * 65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
         #
         # insert a more specific as a drop
@@ -695,9 +698,9 @@ class TestIPNull(VppTestCase):
         r2 = VppIpRoute(self, "1.1.1.1", 32, [], is_drop=1)
         r2.add_vpp_config()
 
-        self.send_and_assert_no_replies(self.pg0, p * 65, "Drop Route")
+        self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS, "Drop Route")
         r2.remove_vpp_config()
-        rx = self.send_and_expect(self.pg0, p * 65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
 
 class TestIPDisabled(VppTestCase):
@@ -981,7 +984,7 @@ class TestIPLoadBalance(VppTestCase):
         src_ip_pkts = []
         src_mpls_pkts = []
 
-        for ii in range(65):
+        for ii in range(NUM_PKTS):
             port_ip_hdr = (IP(dst="10.0.0.1", src="20.0.0.1") /
                            UDP(sport=1234, dport=1234 + ii) /
                            Raw('\xa5' * 100))
@@ -1240,7 +1243,7 @@ class TestIPVlan0(VppTestCase):
                 IP(dst=self.pg1.remote_ip4,
                    src=self.pg0.remote_ip4) /
                 UDP(sport=1234, dport=1234) /
-                Raw('\xa5' * 100)) * 65
+                Raw('\xa5' * 100)) * NUM_PKTS
 
         #
         # Expect that packets sent on VLAN-0 are forwarded on the
@@ -1279,10 +1282,28 @@ class TestIPPunt(VppTestCase):
     def test_ip_punt(self):
         """ IP punt police and redirect """
 
+        # use UDP packet that have a port we need to explicitly
+        # register to get punted.
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        punt_udp = {
+            'type': pt_l4,
+            'punt': {
+                'l4': {
+                    'af': af_ip4,
+                    'protocol': udp_proto,
+                    'port': 1234,
+                }
+            }
+        }
+
+        self.vapi.set_punt(is_add=1, punt=punt_udp)
+
         p = (Ether(src=self.pg0.remote_mac,
                    dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-             TCP(sport=1234, dport=1234) /
+             UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
 
         pkts = p * 1025
@@ -1544,7 +1565,7 @@ class TestIPInput(VppTestCase):
                    UDP(sport=1234, dport=1234) /
                    Raw('\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg0, p_short * 65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p_short * NUM_PKTS, self.pg1)
 
         #
         # Packet too long - this is dropped
@@ -1557,7 +1578,7 @@ class TestIPInput(VppTestCase):
                   UDP(sport=1234, dport=1234) /
                   Raw('\xa5' * 100))
 
-        rx = self.send_and_assert_no_replies(self.pg0, p_long * 65,
+        rx = self.send_and_assert_no_replies(self.pg0, p_long * NUM_PKTS,
                                              "too long")
 
         #
@@ -1571,7 +1592,7 @@ class TestIPInput(VppTestCase):
                     UDP(sport=1234, dport=1234) /
                     Raw('\xa5' * 100))
 
-        rx = self.send_and_assert_no_replies(self.pg0, p_chksum * 65,
+        rx = self.send_and_assert_no_replies(self.pg0, p_chksum * NUM_PKTS,
                                              "bad checksum")
 
         #
@@ -1585,7 +1606,7 @@ class TestIPInput(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-        rx = self.send_and_assert_no_replies(self.pg0, p_ver * 65,
+        rx = self.send_and_assert_no_replies(self.pg0, p_ver * NUM_PKTS,
                                              "funky version")
 
         #
@@ -1599,7 +1620,7 @@ class TestIPInput(VppTestCase):
                   UDP(sport=1234, dport=1234) /
                   Raw('\xa5' * 100))
 
-        rx = self.send_and_assert_no_replies(self.pg0, p_frag * 65,
+        rx = self.send_and_assert_no_replies(self.pg0, p_frag * NUM_PKTS,
                                              "frag offset")
 
         #
@@ -1613,7 +1634,7 @@ class TestIPInput(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg0, p_ttl * 65, self.pg0)
+        rx = self.send_and_expect(self.pg0, p_ttl * NUM_PKTS, self.pg0)
 
         rx = rx[0]
         icmp = rx[ICMP]
@@ -1637,7 +1658,7 @@ class TestIPInput(VppTestCase):
 
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1500, 0, 0, 0])
 
-        rx = self.send_and_expect(self.pg0, p_mtu * 65, self.pg0)
+        rx = self.send_and_expect(self.pg0, p_mtu * NUM_PKTS, self.pg0)
         rx = rx[0]
         icmp = rx[ICMP]
 
@@ -1648,7 +1669,7 @@ class TestIPInput(VppTestCase):
         self.assertEqual(icmp.dst, self.pg1.remote_ip4)
 
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [2500, 0, 0, 0])
-        rx = self.send_and_expect(self.pg0, p_mtu * 65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p_mtu * NUM_PKTS, self.pg1)
 
         # Reset MTU for subsequent tests
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
@@ -1727,10 +1748,10 @@ class TestIPDirectedBroadcast(VppTestCase):
         #
         # test packet is L2 broadcast
         #
-        rx = self.send_and_expect(self.pg1, p0 * 65, self.pg0)
+        rx = self.send_and_expect(self.pg1, p0 * NUM_PKTS, self.pg0)
         self.assertTrue(rx[0][Ether].dst, "ff:ff:ff:ff:ff:ff")
 
-        self.send_and_assert_no_replies(self.pg0, p1 * 65,
+        self.send_and_assert_no_replies(self.pg0, p1 * NUM_PKTS,
                                         "directed broadcast disabled")
 
         #
@@ -1738,12 +1759,12 @@ class TestIPDirectedBroadcast(VppTestCase):
         #
         self.vapi.sw_interface_set_ip_directed_broadcast(
             self.pg0.sw_if_index, 0)
-        self.send_and_assert_no_replies(self.pg1, p0 * 65,
+        self.send_and_assert_no_replies(self.pg1, p0 * NUM_PKTS,
                                         "directed broadcast disabled")
 
         self.vapi.sw_interface_set_ip_directed_broadcast(
             self.pg0.sw_if_index, 1)
-        rx = self.send_and_expect(self.pg1, p0 * 65, self.pg0)
+        rx = self.send_and_expect(self.pg1, p0 * NUM_PKTS, self.pg0)
 
         self.pg0.unconfig_ip4()
         self.pg1.unconfig_ip4()
@@ -1802,8 +1823,8 @@ class TestIPLPM(VppTestCase):
                 Raw('\xa5' * 2000))
 
         self.logger.info(self.vapi.cli("sh ip fib mtrie"))
-        rx = self.send_and_expect(self.pg0, p_8 * 65, self.pg2)
-        rx = self.send_and_expect(self.pg0, p_24 * 65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p_8 * NUM_PKTS, self.pg2)
+        rx = self.send_and_expect(self.pg0, p_24 * NUM_PKTS, self.pg1)
 
 
 class TestIPv4Frag(VppTestCase):

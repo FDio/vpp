@@ -13,10 +13,15 @@
 # limitations under the License.
 #
 
-from socket import inet_pton, inet_ntop, AF_INET6, AF_INET
+from socket import inet_pton, AF_INET6, AF_INET
 import socket
 import ipaddress
 from . import macaddress
+
+try:
+    text_type = unicode
+except NameError:
+    text_type = str
 
 # Copies from vl_api_address_t definition
 ADDRESS_IP4 = 0
@@ -31,24 +36,36 @@ def format_vl_api_address_t(args):
     try:
         return {'un': {'ip6': inet_pton(AF_INET6, args)},
                 'af': ADDRESS_IP6}
-    except socket.error as e:
+    # PY2: raises socket.error
+    # PY3: raises OSError
+    except (socket.error, OSError):
         return {'un': {'ip4': inet_pton(AF_INET, args)},
                 'af': ADDRESS_IP4}
 
 
 def format_vl_api_prefix_t(args):
+    if isinstance(args, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
+        return {'prefix': format_vl_api_address_t(
+            text_type(args.network_address)),
+                'len': int(args.prefixlen)}
     p, length = args.split('/')
     return {'address': format_vl_api_address_t(p),
             'address_length': int(length)}
 
 
 def format_vl_api_ip6_prefix_t(args):
+    if isinstance(args, ipaddress.IPv6Network):
+        return {'prefix': args.network_address.packed,
+                'len': int(args.prefixlen)}
     p, length = args.split('/')
     return {'prefix': inet_pton(AF_INET6, p),
             'len': int(length)}
 
 
 def format_vl_api_ip4_prefix_t(args):
+    if isinstance(args, ipaddress.IPv4Network):
+        return {'prefix': args.network_address.packed,
+                'len': int(args.prefixlen)}
     p, length = args.split('/')
     return {'prefix': inet_pton(AF_INET, p),
             'len': int(length)}

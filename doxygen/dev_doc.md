@@ -15,3 +15,4 @@ Programming notes for developers.
 - @subpage ipfix_doc
 - @subpage stats_doc
 - @subpage if_stats_client_doc
+- @subpage api_lang_doc

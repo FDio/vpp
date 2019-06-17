@@ -179,6 +179,7 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
 void
 mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;

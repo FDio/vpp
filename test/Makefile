@@ -177,6 +177,7 @@ shell: verify-test-dir $(PAPI_INSTALL_DONE)
 		echo VPP_BUILD_DIR=$(VPP_BUILD_DIR);\
 		echo VPP_BIN=$(VPP_BIN);\
 		echo VPP_PLUGIN_PATH=$(VPP_PLUGIN_PATH);\
+		echo VPP_TEST_PLUGIN_PATH=$(VPP_TEST_PLUGIN_PATH);\
 		echo VPP_INSTALL_PATH=$(VPP_INSTALL_PATH);\
 		echo EXTERN_TESTS=$(EXTERN_TESTS);\
 		echo EXTERN_PLUGINS=$(EXTERN_PLUGINS);\
@@ -285,6 +286,7 @@ help:
 	@echo " COREDUMP_SIZE=<size> - pass <size> as unix { coredump-size <size> } argument to vpp"
 	@echo "                        e.g. COREDUMP_SIZE=4g"
 	@echo "                             COREDUMP_SIZE=unlimited"
+	@echo " COREDUMP_COMPRESS=1  - compress core files if not debugging them"
 	@echo " EXTERN_TESTS=<path>  - path to out-of-tree test_<name>.py files containing test cases"
 	@echo " EXTERN_PLUGINS=<path>- path to out-of-tree plugins to be loaded by vpp under test"
 	@echo " EXTERN_COV_DIR=<path>- path to out-of-tree prefix, where source, object and .gcda files can be found for coverage report"

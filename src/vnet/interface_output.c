@@ -483,6 +483,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
   u8 arc = im->output_feature_arc_index;
   vnet_interface_per_thread_data_t *ptd =
     vec_elt_at_index (im->per_thread_data, thread_index);
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   n_buffers = frame->n_vectors;
 
@@ -490,6 +491,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
     vnet_interface_output_trace (vm, node, frame, n_buffers);
 
   from = vlib_frame_vector_args (frame);
+  vlib_get_buffers (vm, from, b, n_buffers);
 
   if (rt->is_deleted)
     return vlib_error_drop_buffers (vm, node, from,
@@ -546,15 +548,14 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
       while (from + 8 <= from_end && n_left_to_tx >= 4)
 	{
 	  u32 bi0, bi1, bi2, bi3;
-	  vlib_buffer_t *b0, *b1, *b2, *b3;
 	  u32 tx_swif0, tx_swif1, tx_swif2, tx_swif3;
 	  u32 or_flags;
 
 	  /* Prefetch next iteration. */
-	  vlib_prefetch_buffer_with_index (vm, from[4], LOAD);
-	  vlib_prefetch_buffer_with_index (vm, from[5], LOAD);
-	  vlib_prefetch_buffer_with_index (vm, from[6], LOAD);
-	  vlib_prefetch_buffer_with_index (vm, from[7], LOAD);
+	  vlib_prefetch_buffer_header (b[4], LOAD);
+	  vlib_prefetch_buffer_header (b[5], LOAD);
+	  vlib_prefetch_buffer_header (b[6], LOAD);
+	  vlib_prefetch_buffer_header (b[7], LOAD);
 
 	  bi0 = from[0];
 	  bi1 = from[1];
@@ -564,45 +565,34 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 	  to_tx[1] = bi1;
 	  to_tx[2] = bi2;
 	  to_tx[3] = bi3;
-	  if (!do_segmentation)
-	    {
-	      from += 4;
-	      to_tx += 4;
-	      n_left_to_tx -= 4;
-	    }
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-	  b2 = vlib_get_buffer (vm, bi2);
-	  b3 = vlib_get_buffer (vm, bi3);
+	  or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
 
 	  if (do_segmentation)
 	    {
-	      or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
-
 	      /* go to single loop if we need TSO segmentation */
 	      if (PREDICT_FALSE (or_flags & VNET_BUFFER_F_GSO))
 		break;
-	      from += 4;
-	      to_tx += 4;
-	      n_left_to_tx -= 4;
 	    }
+	  from += 4;
+	  to_tx += 4;
+	  n_left_to_tx -= 4;
 
 	  /* Be grumpy about zero length buffers for benefit of
 	     driver tx function. */
-	  ASSERT (b0->current_length > 0);
-	  ASSERT (b1->current_length > 0);
-	  ASSERT (b2->current_length > 0);
-	  ASSERT (b3->current_length > 0);
+	  ASSERT (b[0]->current_length > 0);
+	  ASSERT (b[1]->current_length > 0);
+	  ASSERT (b[2]->current_length > 0);
+	  ASSERT (b[3]->current_length > 0);
 
-	  n_bytes_b0 = vlib_buffer_length_in_chain (vm, b0);
-	  n_bytes_b1 = vlib_buffer_length_in_chain (vm, b1);
-	  n_bytes_b2 = vlib_buffer_length_in_chain (vm, b2);
-	  n_bytes_b3 = vlib_buffer_length_in_chain (vm, b3);
-	  tx_swif0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  tx_swif1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-	  tx_swif2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
-	  tx_swif3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
+	  n_bytes_b0 = vlib_buffer_length_in_chain (vm, b[0]);
+	  n_bytes_b1 = vlib_buffer_length_in_chain (vm, b[1]);
+	  n_bytes_b2 = vlib_buffer_length_in_chain (vm, b[2]);
+	  n_bytes_b3 = vlib_buffer_length_in_chain (vm, b[3]);
+	  tx_swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	  tx_swif1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+	  tx_swif2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
+	  tx_swif3 = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
 
 	  n_bytes += n_bytes_b0 + n_bytes_b1;
 	  n_bytes += n_bytes_b2 + n_bytes_b3;
@@ -610,14 +600,14 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (current_config_index != ~0))
 	    {
-	      vnet_buffer (b0)->feature_arc_index = arc;
-	      vnet_buffer (b1)->feature_arc_index = arc;
-	      vnet_buffer (b2)->feature_arc_index = arc;
-	      vnet_buffer (b3)->feature_arc_index = arc;
-	      b0->current_config_index = current_config_index;
-	      b1->current_config_index = current_config_index;
-	      b2->current_config_index = current_config_index;
-	      b3->current_config_index = current_config_index;
+	      vnet_buffer (b[0])->feature_arc_index = arc;
+	      vnet_buffer (b[1])->feature_arc_index = arc;
+	      vnet_buffer (b[2])->feature_arc_index = arc;
+	      vnet_buffer (b[3])->feature_arc_index = arc;
+	      b[0]->current_config_index = current_config_index;
+	      b[1]->current_config_index = current_config_index;
+	      b[2]->current_config_index = current_config_index;
+	      b[3]->current_config_index = current_config_index;
 	    }
 
 	  /* update vlan subif tx counts, if required */
@@ -655,9 +645,6 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 					       n_bytes_b3);
 	    }
 
-	  if (!do_segmentation)
-	    or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
-
 	  if (do_tx_offloads)
 	    {
 	      if (or_flags &
@@ -665,18 +652,19 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 		   VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
 		   VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
 		{
-		  calc_checksums (vm, b0);
-		  calc_checksums (vm, b1);
-		  calc_checksums (vm, b2);
-		  calc_checksums (vm, b3);
+		  calc_checksums (vm, b[0]);
+		  calc_checksums (vm, b[1]);
+		  calc_checksums (vm, b[2]);
+		  calc_checksums (vm, b[3]);
 		}
 	    }
+	  b += 4;
+
 	}
 
       while (from + 1 <= from_end && n_left_to_tx >= 1)
 	{
 	  u32 bi0;
-	  vlib_buffer_t *b0;
 	  u32 tx_swif0;
 
 	  bi0 = from[0];
@@ -685,26 +673,24 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 	  to_tx += 1;
 	  n_left_to_tx -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-
 	  /* Be grumpy about zero length buffers for benefit of
 	     driver tx function. */
-	  ASSERT (b0->current_length > 0);
+	  ASSERT (b[0]->current_length > 0);
 
-	  n_bytes_b0 = vlib_buffer_length_in_chain (vm, b0);
-	  tx_swif0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  n_bytes_b0 = vlib_buffer_length_in_chain (vm, b[0]);
+	  tx_swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	  n_bytes += n_bytes_b0;
 	  n_packets += 1;
 
 	  if (PREDICT_FALSE (current_config_index != ~0))
 	    {
-	      vnet_buffer (b0)->feature_arc_index = arc;
-	      b0->current_config_index = current_config_index;
+	      vnet_buffer (b[0])->feature_arc_index = arc;
+	      b[0]->current_config_index = current_config_index;
 	    }
 
 	  if (do_segmentation)
 	    {
-	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_GSO))
+	      if (PREDICT_FALSE (b[0]->flags & VNET_BUFFER_F_GSO))
 		{
 		  /*
 		   * Undo the enqueue of the b0 - it is not going anywhere,
@@ -720,7 +706,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 		  u32 n_tx_bytes = 0;
 
 		  n_tx_bytes =
-		    tso_segment_buffer (vm, ptd, do_tx_offloads, bi0, b0,
+		    tso_segment_buffer (vm, ptd, do_tx_offloads, bi0, b[0],
 					n_bytes_b0);
 
 		  if (PREDICT_FALSE (n_tx_bytes == 0))
@@ -791,7 +777,9 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 	    }
 
 	  if (do_tx_offloads)
-	    calc_checksums (vm, b0);
+	    calc_checksums (vm, b[0]);
+
+	  b += 1;
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_tx);

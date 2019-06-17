@@ -280,69 +280,31 @@ typedef enum gbp_lpm_classify_next_t_
 } gbp_lpm_classify_next_t;
 
 always_inline void
-gbp_classify_get_src_ip4_address (const ethernet_header_t * eh0,
-				  const ip4_address_t ** ip4)
-{
-  const ip4_header_t *iph4;
-
-  iph4 = (ip4_header_t *) (eh0 + 1);
-  *ip4 = &iph4->src_address;
-}
-
-always_inline void
-gbp_classify_get_src_ip6_address (const ethernet_header_t * eh0,
-				  const ip6_address_t ** ip6)
-{
-  const ip6_header_t *iph6;
-
-  iph6 = (ip6_header_t *) (eh0 + 1);
-  *ip6 = &iph6->src_address;
-}
-
-always_inline void
 gbp_classify_get_src_ip_address (const ethernet_header_t * eh0,
 				 const ip4_address_t ** ip4,
 				 const ip6_address_t ** ip6)
 {
   u16 etype = clib_net_to_host_u16 (eh0->type);
+  const void *l3h0 = eh0 + 1;
+
+  if (ETHERNET_TYPE_VLAN == etype)
+    {
+      const ethernet_vlan_header_t *vh0 =
+	(ethernet_vlan_header_t *) (eh0 + 1);
+      etype = clib_net_to_host_u16 (vh0->type);
+      l3h0 = vh0 + 1;
+    }
 
   switch (etype)
     {
     case ETHERNET_TYPE_IP4:
-      gbp_classify_get_src_ip4_address (eh0, ip4);
+      *ip4 = &((const ip4_header_t *) l3h0)->src_address;
       break;
     case ETHERNET_TYPE_IP6:
-      gbp_classify_get_src_ip6_address (eh0, ip6);
+      *ip6 = &((const ip6_header_t *) l3h0)->src_address;
       break;
-    case ETHERNET_TYPE_VLAN:
-      {
-	ethernet_vlan_header_t *vh0;
-
-	vh0 = (ethernet_vlan_header_t *) (eh0 + 1);
-
-	switch (clib_net_to_host_u16 (vh0->type))
-	  {
-	  case ETHERNET_TYPE_IP4:
-	    {
-	      gbp_classify_get_src_ip4_address (eh0, ip4);
-	      break;
-	  case ETHERNET_TYPE_IP6:
-	      gbp_classify_get_src_ip6_address (eh0, ip6);
-	      break;
-	    }
-	  }
-	break;
-      }
     case ETHERNET_TYPE_ARP:
-      {
-	const ethernet_arp_header_t *ea0;
-
-	ea0 = (ethernet_arp_header_t *) (eh0 + 1);
-
-	*ip4 = &ea0->ip4_over_ethernet[0].ip4;
-	break;
-      }
-    default:
+      *ip4 = &((ethernet_arp_header_t *) l3h0)->ip4_over_ethernet[0].ip4;
       break;
     }
 }
@@ -480,6 +442,10 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	      else if (ip6_0)
 		{
 		  ge0 = gbp_endpoint_find_ip6 (ip6_0, fib_index0);
+		}
+	      else
+		{
+		  ge0 = NULL;
 		}
 
 	      next0 = vnet_l2_feature_next

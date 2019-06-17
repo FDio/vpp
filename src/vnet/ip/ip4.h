@@ -74,6 +74,15 @@ typedef struct
   uword function_opaque;
 } ip4_add_del_interface_address_callback_t;
 
+typedef void (ip4_enable_disable_interface_function_t)
+  (struct ip4_main_t * im, uword opaque, u32 sw_if_index, u32 is_enable);
+
+typedef struct
+{
+  ip4_enable_disable_interface_function_t *function;
+  uword function_opaque;
+} ip4_enable_disable_interface_callback_t;
+
 typedef void (ip4_table_bind_function_t)
   (struct ip4_main_t * im,
    uword opaque, u32 sw_if_index, u32 new_fib_index, u32 old_fib_index);
@@ -128,6 +137,10 @@ typedef struct ip4_main_t
   /** Functions to call when interface address changes. */
     ip4_add_del_interface_address_callback_t
     * add_del_interface_address_callbacks;
+
+  /** Functions to call when interface becomes IPv4 enabled/disable. */
+    ip4_enable_disable_interface_callback_t
+    * enable_disable_interface_callbacks;
 
   /** Functions to call when interface to table biding changes. */
   ip4_table_bind_callback_t *table_bind_callbacks;
@@ -275,6 +288,7 @@ u16 ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 				  ip4_header_t * ip0);
 
 void ip4_register_protocol (u32 protocol, u32 node_index);
+void ip4_unregister_protocol (u32 protocolx);
 
 serialize_function_t serialize_vnet_ip4_main, unserialize_vnet_ip4_main;
 
@@ -288,6 +302,9 @@ void ip4_punt_policer_add_del (u8 is_add, u32 policer_index);
 
 void ip4_punt_redirect_add (u32 rx_sw_if_index,
 			    u32 tx_sw_if_index, ip46_address_t * nh);
+void ip4_punt_redirect_add_paths (u32 rx_sw_if_index,
+				  fib_route_path_t * paths);
+
 void ip4_punt_redirect_del (u32 rx_sw_if_index);
 
 /* Compute flow hash.  We'll use it to select which adjacency to use for this

@@ -52,6 +52,10 @@
 #define __bvt(a,b) _bvt(a,b)
 #define BVT(a) __bvt(a,BIHASH_TYPE)
 
+#define _bvs(a,b) struct a##b
+#define __bvs(a,b) _bvs(a,b)
+#define BVS(a) __bvs(a,BIHASH_TYPE)
+
 #if _LP64 == 0
 #define OVERFLOW_ASSERT(x) ASSERT(((x) & 0xFFFFFFFF00000000ULL) == 0)
 #define u64_to_pointer(x) (void *)(u32)((x))
@@ -113,14 +117,15 @@ typedef CLIB_PACKED (struct {
 
 STATIC_ASSERT_SIZEOF (BVT (clib_bihash_shared_header), 8 * sizeof (u64));
 
-typedef struct
+typedef
+BVS (clib_bihash)
 {
   BVT (clib_bihash_bucket) * buckets;
   volatile u32 *alloc_lock;
 
-    BVT (clib_bihash_value) ** working_copies;
+  BVT (clib_bihash_value) ** working_copies;
   int *working_copy_lengths;
-    BVT (clib_bihash_bucket) saved_bucket;
+  BVT (clib_bihash_bucket) saved_bucket;
 
   u32 nbuckets;
   u32 log2_nbuckets;
@@ -129,10 +134,10 @@ typedef struct
   u64 *freelists;
 
 #if BIHASH_32_64_SVM
-    BVT (clib_bihash_shared_header) * sh;
+  BVT (clib_bihash_shared_header) * sh;
   int memfd;
 #else
-    BVT (clib_bihash_shared_header) sh;
+  BVT (clib_bihash_shared_header) sh;
 #endif
 
   u64 alloc_arena;		/* Base of the allocation arena */
@@ -141,6 +146,14 @@ typedef struct
     * A custom format function to print the Key and Value of bihash_key instead of default hexdump
     */
   format_function_t *fmt_fn;
+
+  /** Optional statistics-gathering callback */
+#if BIHASH_ENABLE_STATS
+  void (*inc_stats_callback) (BVS (clib_bihash) *, int stat_id, u64 count);
+
+  /** Statistics callback context (e.g. address of stats data structure) */
+  void *inc_stats_context;
+#endif
 
 } BVT (clib_bihash);
 
@@ -163,6 +176,51 @@ typedef struct
 #define alloc_arena(h) ((h)->alloc_arena)
 #define CLIB_BIHASH_READY_MAGIC 0
 #endif
+
+#ifndef BIHASH_STAT_IDS
+#define BIHASH_STAT_IDS 1
+
+#define foreach_bihash_stat                     \
+_(alloc_add)                                    \
+_(add)                                          \
+_(split_add)                                    \
+_(replace)                                      \
+_(update)                                       \
+_(del)                                          \
+_(del_free)                                     \
+_(linear)                                       \
+_(resplit)                                      \
+_(working_copy_lost)                            \
+_(splits)			/* must be last */
+
+typedef enum
+{
+#define _(a) BIHASH_STAT_##a,
+  foreach_bihash_stat
+#undef _
+    BIHASH_STAT_N_STATS,
+} BVT (clib_bihash_stat_id);
+#endif /* BIHASH_STAT_IDS */
+
+static inline void BV (clib_bihash_increment_stat) (BVT (clib_bihash) * h,
+						    int stat_id, u64 count)
+{
+#if BIHASH_ENABLE_STATS
+  if (PREDICT_FALSE (h->inc_stats_callback != 0))
+    h->inc_stats_callback (h, stat_id, count);
+#endif
+}
+
+#if BIHASH_ENABLE_STATS
+static inline void BV (clib_bihash_set_stats_callback)
+  (BVT (clib_bihash) * h, void (*cb) (BVT (clib_bihash) *, int, u64),
+   void *ctx)
+{
+  h->inc_stats_callback = cb;
+  h->inc_stats_context = ctx;
+}
+#endif
+
 
 static inline void BV (clib_bihash_alloc_lock) (BVT (clib_bihash) * h)
 {

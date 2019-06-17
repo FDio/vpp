@@ -188,15 +188,10 @@ ip4_icmp_input (vlib_main_t * vm,
 	  next0 = im->ip4_input_next_index_by_type[type0];
 
 	  p0->error = node->errors[ICMP4_ERROR_UNKNOWN_TYPE];
-	  if (PREDICT_FALSE (next0 != next))
-	    {
-	      vlib_put_next_frame (vm, node, next, n_left_to_next + 1);
-	      next = next0;
-	      vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
-	      to_next[0] = bi0;
-	      to_next += 1;
-	      n_left_to_next -= 1;
-	    }
+
+	  /* Verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next, n_left_to_next);
@@ -742,10 +737,17 @@ void
 ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type, u32 node_index)
 {
   icmp4_main_t *im = &icmp4_main;
+  u32 old_next_index;
 
   ASSERT ((int) type < ARRAY_LEN (im->ip4_input_next_index_by_type));
+  old_next_index = im->ip4_input_next_index_by_type[type];
+
   im->ip4_input_next_index_by_type[type]
     = vlib_node_add_next (vm, ip4_icmp_input_node.index, node_index);
+
+  if (old_next_index &&
+      (old_next_index != im->ip4_input_next_index_by_type[type]))
+    clib_warning ("WARNING: changed next_by_type[%d]", (int) type);
 }
 
 static clib_error_t *

@@ -333,6 +333,9 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 	}
     }
 
+  if (svm_fifo_needs_tx_ntf (app_session->tx_fifo, wrote))
+    session_dequeue_notify (app_session);
+
   if (wrote < deq_max)
     tls_add_vpp_q_builtin_tx_evt (app_session);
 
@@ -832,13 +835,9 @@ tls_openssl_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   openssl_main_t *om = &openssl_main;
-  clib_error_t *error;
   u32 num_threads;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
-
-  if ((error = vlib_call_init_function (vm, tls_init)))
-    return error;
 
   SSL_library_init ();
   SSL_load_error_strings ();
@@ -861,6 +860,12 @@ tls_openssl_init (vlib_main_t * vm)
 
   return 0;
 }
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (tls_openssl_init) =
+{
+  .runs_after = VLIB_INITS("tls_init"),
+};
+/* *INDENT-ON* */
 
 #ifdef HAVE_OPENSSL_ASYNC
 static clib_error_t *
@@ -935,13 +940,10 @@ VLIB_CLI_COMMAND (tls_openssl_set_command, static) =
 /* *INDENT-ON* */
 #endif
 
-
-VLIB_INIT_FUNCTION (tls_openssl_init);
-
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "openssl based TLS Engine",
+    .description = "Transport Layer Security (TLS) Engine, OpenSSL Based",
 };
 /* *INDENT-ON* */
 

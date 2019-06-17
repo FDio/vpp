@@ -112,6 +112,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_RTT_MAX 30 * THZ	/* 30s (probably too much) */
 #define TCP_RTO_SYN_RETRIES 3	/* SYN retries without doubling RTO */
 #define TCP_RTO_INIT 1 * THZ	/* Initial retransmit timer */
+#define TCP_RTO_BOFF_MAX 8	/* Max number of retries before reset */
 
 /** TCP connection flags */
 #define foreach_tcp_connection_flag             \
@@ -234,6 +235,7 @@ typedef enum _tcp_cc_algorithm_type
 {
   TCP_CC_NEWRENO,
   TCP_CC_CUBIC,
+  TCP_CC_LAST = TCP_CC_CUBIC
 } tcp_cc_algorithm_type_e;
 
 typedef struct _tcp_cc_algorithm tcp_cc_algorithm_t;
@@ -333,6 +335,7 @@ struct _tcp_cc_algorithm
   void (*congestion) (tcp_connection_t * tc);
   void (*recovered) (tcp_connection_t * tc);
   void (*init) (tcp_connection_t * tc);
+  void (*cleanup) (tcp_connection_t * tc);
 };
 /* *INDENT-ON* */
 
@@ -446,17 +449,20 @@ typedef struct _tcp_main
   tcp_connection_t *half_open_connections;
   clib_spinlock_t half_open_lock;
 
-  /* Congestion control algorithms registered */
-  tcp_cc_algorithm_t *cc_algos;
-
   /** vlib buffer size */
   u32 bytes_per_buffer;
 
   /* Seed used to generate random iss */
   tcp_iss_seed_t iss_seed;
 
+  /* Congestion control algorithms registered */
+  tcp_cc_algorithm_t *cc_algos;
+
   /** Hash table of cc algorithms by name */
   uword *cc_algo_by_name;
+
+  /** Last cc algo registered */
+  tcp_cc_algorithm_type_e cc_last_type;
 
   /*
    * Configuration
@@ -493,7 +499,6 @@ typedef struct _tcp_main
 
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
-
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
@@ -934,9 +939,16 @@ tcp_timer_is_active (tcp_connection_t * tc, tcp_timers_e timer)
 void tcp_rcv_sacks (tcp_connection_t * tc, u32 ack);
 u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);
 
+/**
+ * Register exiting cc algo type
+ */
 void tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
 			   const tcp_cc_algorithm_t * vft);
 
+/**
+ * Register new cc algo type
+ */
+tcp_cc_algorithm_type_e tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft);
 tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
 
 static inline void *

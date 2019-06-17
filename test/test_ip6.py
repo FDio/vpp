@@ -10,7 +10,7 @@ from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
-    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply
+    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, IPv6ExtHdrHopByHop
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.packet import Raw
 from scapy.utils import inet_pton, inet_ntop
@@ -35,6 +35,8 @@ try:
     text_type = unicode
 except NameError:
     text_type = str
+
+NUM_PKTS = 67
 
 
 class TestIPv6ND(VppTestCase):
@@ -1308,6 +1310,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         # check FIB still contains the SLAAC address
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(initial_addresses)
+
         self.assertEqual(len(new_addresses), 1)
         prefix = list(new_addresses)[0][:8] + '\0\0\0\0\0\0\0\0'
         self.assertEqual(inet_ntop(AF_INET6, prefix), '1::')
@@ -1760,7 +1763,7 @@ class TestIP6LoadBalance(VppTestCase):
         src_ip_pkts = []
         src_mpls_pkts = []
 
-        for ii in range(65):
+        for ii in range(NUM_PKTS):
             port_ip_hdr = (
                 IPv6(dst="3000::1", src="3000:1::1") /
                 inet6.UDP(sport=1234, dport=1234 + ii) /
@@ -2267,7 +2270,7 @@ class TestIP6Input(VppTestCase):
                      inet6.UDP(sport=1234, dport=1234) /
                      Raw('\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg0, p_version * 65, self.pg0)
+        rx = self.send_and_expect(self.pg0, p_version * NUM_PKTS, self.pg0)
         rx = rx[0]
         icmp = rx[ICMPv6TimeExceeded]
 
@@ -2306,10 +2309,23 @@ class TestIP6Input(VppTestCase):
                      l4 /
                      Raw('\xa5' * 100))
 
-        self.send_and_assert_no_replies(self.pg0, p_version * 65,
+        self.send_and_assert_no_replies(self.pg0, p_version * NUM_PKTS,
                                         remark=msg or "",
                                         timeout=timeout)
 
+    def test_hop_by_hop(self):
+        """ Hop-by-hop header test """
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+             IPv6ExtHdrHopByHop() /
+             inet6.UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

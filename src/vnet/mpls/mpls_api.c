@@ -56,9 +56,6 @@ _(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                       \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable) \
 _(MPLS_FIB_DUMP, mpls_fib_dump)
 
-extern void stats_dslock_with_hint (int hint, int tag);
-extern void stats_dsunlock (void);
-
 void
 mpls_table_delete (u32 table_id, u8 is_api)
 {
@@ -318,8 +315,6 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
 
   clib_memset (&rpath, 0, sizeof (rpath));
 
-  stats_dslock_with_hint (1 /* release hint */ , 5 /* tag */ );
-
   if (mp->mt_next_hop_proto_is_ip4)
     {
       rpath.frp_proto = DPO_PROTO_IP4;
@@ -393,8 +388,6 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
     }
 
   vec_free (rpaths);
-
-  stats_dsunlock ();
 
 out:
   /* *INDENT-OFF* */

@@ -36,8 +36,8 @@ typedef struct bier_disp_entry_t_ {
     CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
 
     /**
-     * The DPO contirubted from the per-payload protocol parents
-     * on cachline 1.
+     * The DPO contributed from the per-payload protocol parents
+     * on cacheline 1.
      */
     struct
     {

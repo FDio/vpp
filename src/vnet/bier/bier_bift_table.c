@@ -286,6 +286,6 @@ done:
 
 VLIB_CLI_COMMAND (show_bier_bift_command, static) = {
     .path = "show bier bift",
-    .short_help = "show bier bift [set <value> sd <value> bsl <value>]",
+    .short_help = "show bier bift [set <value>] [sd <value>] [bsl <value>]",
     .function = show_bier_bift_cmd,
 };

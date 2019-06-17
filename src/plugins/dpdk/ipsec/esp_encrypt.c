@@ -110,10 +110,12 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
 always_inline uword
 dpdk_esp_encrypt_inline (vlib_main_t * vm,
 			 vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame, int is_ip6)
+			 vlib_frame_t * from_frame, int is_ip6, int is_tun)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
   ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_interface_main_t *vim = &vnm->interface_main;
   u32 thread_idx = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_resource_t *res = 0;
@@ -205,12 +207,22 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  dpdk_op_priv_t *priv = crypto_op_get_priv (op);
 	  /* store bi in op private */
 	  priv->bi = bi0;
+	  priv->encrypt = 1;
 
 	  u16 op_len =
 	    sizeof (op[0]) + sizeof (op[0].sym[0]) + sizeof (priv[0]);
 	  CLIB_PREFETCH (op, op_len, STORE);
 
-	  sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
+	  if (is_tun)
+	    {
+	      u32 tmp;
+	      /* we are on a ipsec tunnel's feature arc */
+	      sa_index0 = *(u32 *) vnet_feature_next_with_data (&tmp, b0,
+								sizeof
+								(sa_index0));
+	    }
+	  else
+	    sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
 
 	  if (sa_index0 != last_sa_index)
 	    {
@@ -294,6 +306,13 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  vlib_increment_combined_counter
 	    (&ipsec_sa_counters, thread_index, sa_index0,
 	     1, b0->current_length);
+
+	  /* Update tunnel interface tx counters */
+	  if (is_tun)
+	    vlib_increment_combined_counter
+	      (vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+	       thread_index, vnet_buffer (b0)->sw_if_index[VLIB_TX],
+	       1, b0->current_length);
 
 	  res->ops[res->n_ops] = op;
 	  res->bi[res->n_ops] = bi0;
@@ -565,7 +584,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 				   from_frame->n_vectors);
 
       crypto_enqueue_ops (vm, cwm, dpdk_esp6_encrypt_node.index,
-			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa);
+			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa, 1 /* encrypt */ );
     }
   else
     {
@@ -574,7 +593,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 				   from_frame->n_vectors);
 
       crypto_enqueue_ops (vm, cwm, dpdk_esp4_encrypt_node.index,
-			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa);
+			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa, 1 /* encrypt */ );
     }
 
   crypto_free_ops (numa, ops, cwm->ops + from_frame->n_vectors - ops);
@@ -586,7 +605,7 @@ VLIB_NODE_FN (dpdk_esp4_encrypt_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */ );
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */ , 0);
 }
 
 /* *INDENT-OFF* */
@@ -609,7 +628,7 @@ VLIB_NODE_FN (dpdk_esp6_encrypt_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */ );
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */ , 0);
 }
 
 /* *INDENT-OFF* */
@@ -625,6 +644,66 @@ VLIB_REGISTER_NODE (dpdk_esp6_encrypt_node) = {
     {
       [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
     }
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (dpdk_esp4_encrypt_tun_node) (vlib_main_t * vm,
+					   vlib_node_runtime_t * node,
+					   vlib_frame_t * from_frame)
+{
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */ , 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (dpdk_esp4_encrypt_tun_node) = {
+  .name = "dpdk-esp4-encrypt-tun",
+  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_encrypt_trace,
+  .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes =
+    {
+      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+    }
+};
+
+VNET_FEATURE_INIT (dpdk_esp4_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ip4-output",
+  .node_name = "dpdk-esp4-encrypt-tun",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (dpdk_esp6_encrypt_tun_node) (vlib_main_t * vm,
+					   vlib_node_runtime_t * node,
+					   vlib_frame_t * from_frame)
+{
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */ , 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (dpdk_esp6_encrypt_tun_node) = {
+  .name = "dpdk-esp6-encrypt-tun",
+  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_encrypt_trace,
+  .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes =
+    {
+      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+    }
+};
+
+VNET_FEATURE_INIT (dpdk_esp6_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ip6-output",
+  .node_name = "dpdk-esp6-encrypt-tun",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
 /* *INDENT-ON* */
 

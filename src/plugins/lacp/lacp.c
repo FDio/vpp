@@ -180,6 +180,7 @@ lacp_interface_enable_disable (vlib_main_t * vm, bond_if_t * bif,
 
   if (enable)
     {
+      lacp_create_periodic_process ();
       port_number = clib_bitmap_first_clear (bif->port_number_bitmap);
       bif->port_number_bitmap = clib_bitmap_set (bif->port_number_bitmap,
 						 port_number, 1);
@@ -195,11 +196,23 @@ lacp_interface_enable_disable (vlib_main_t * vm, bond_if_t * bif,
     }
   else
     {
-      lm->lacp_int--;
+      ASSERT (lm->lacp_int >= 1);
       if (lm->lacp_int == 0)
 	{
-	  vlib_process_signal_event (vm, lm->lacp_process_node_index,
-				     LACP_PROCESS_EVENT_STOP, 0);
+	  /* *INDENT-OFF* */
+	  ELOG_TYPE_DECLARE (e) =
+	    {
+	      .format = "lacp-int-en-dis: BUG lacp_int == 0",
+	    };
+	  /* *INDENT-ON* */
+	  ELOG_DATA (&vlib_global_main.elog_main, e);
+	}
+      else
+	{
+	  lm->lacp_int--;
+	  if (lm->lacp_int == 0)
+	    vlib_process_signal_event (vm, lm->lacp_process_node_index,
+				       LACP_PROCESS_EVENT_STOP, 0);
 	}
     }
 }
@@ -334,7 +347,6 @@ lacp_init_neighbor (slave_if_t * sif, u8 * hw_address, u16 port_number,
   sif->partner.key = htons (group);
   sif->partner.port_number = htons (port_number);
   sif->partner.port_priority = htons (LACP_DEFAULT_PORT_PRIORITY);
-  sif->partner.key = htons (group);
   sif->partner.state = 0;
 
   sif->actor_admin = sif->actor;
@@ -412,7 +424,7 @@ VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lacp_hw_interface_up_down);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "Link Aggregation Control Protocol",
+    .description = "Link Aggregation Control Protocol (LACP)",
 };
 /* *INDENT-ON* */
 

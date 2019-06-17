@@ -3,7 +3,7 @@ import socket
 import struct
 
 from scapy.layers.inet import IP, ICMP, TCP, UDP
-from scapy.layers.ipsec import SecurityAssociation
+from scapy.layers.ipsec import SecurityAssociation, ESP
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 
@@ -293,7 +293,7 @@ class IpsecTra4(object):
 
         # replayed packets are dropped
         self.send_and_assert_no_replies(self.tra_if, pkt * 3)
-        self.assert_packet_counter_equal(
+        self.assert_error_counter_equal(
             '/err/%s/SA replayed packet' % self.tra4_decrypt_node_name, 3)
 
         # the window size is 64 packets
@@ -308,7 +308,11 @@ class IpsecTra4(object):
 
         # a packet that does not decrypt does not move the window forward
         bogus_sa = SecurityAssociation(self.encryption_type,
-                                       p.vpp_tra_spi)
+                                       p.vpp_tra_spi,
+                                       crypt_algo=p.crypt_algo,
+                                       crypt_key=p.crypt_key[::-1],
+                                       auth_algo=p.auth_algo,
+                                       auth_key=p.auth_key[::-1])
         pkt = (Ether(src=self.tra_if.remote_mac,
                      dst=self.tra_if.local_mac) /
                bogus_sa.encrypt(IP(src=self.tra_if.remote_ip4,
@@ -317,8 +321,24 @@ class IpsecTra4(object):
                                 seq_num=350))
         self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
-        self.assert_packet_counter_equal(
+        self.assert_error_counter_equal(
             '/err/%s/Integrity check failed' % self.tra4_decrypt_node_name, 17)
+
+        # a malformed 'runt' packet
+        #  created by a mis-constructed SA
+        if (ESP == self.encryption_type):
+            bogus_sa = SecurityAssociation(self.encryption_type,
+                                           p.vpp_tra_spi)
+            pkt = (Ether(src=self.tra_if.remote_mac,
+                         dst=self.tra_if.local_mac) /
+                   bogus_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                       dst=self.tra_if.local_ip4) /
+                                    ICMP(),
+                                    seq_num=350))
+            self.send_and_assert_no_replies(self.tra_if, pkt * 17)
+
+            self.assert_error_counter_equal(
+                '/err/%s/undersized packet' % self.tra4_decrypt_node_name, 17)
 
         # which we can determine since this packet is still in the window
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -341,12 +361,12 @@ class IpsecTra4(object):
         if use_esn:
             # an out of window error with ESN looks like a high sequence
             # wrap. but since it isn't then the verify will fail.
-            self.assert_packet_counter_equal(
+            self.assert_error_counter_equal(
                 '/err/%s/Integrity check failed' %
                 self.tra4_decrypt_node_name, 34)
 
         else:
-            self.assert_packet_counter_equal(
+            self.assert_error_counter_equal(
                 '/err/%s/SA replayed packet' %
                 self.tra4_decrypt_node_name, 20)
 
@@ -391,7 +411,7 @@ class IpsecTra4(object):
             decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
         else:
             self.send_and_assert_no_replies(self.tra_if, [pkt])
-            self.assert_packet_counter_equal(
+            self.assert_error_counter_equal(
                 '/err/%s/sequence number cycled' %
                 self.tra4_encrypt_node_name, 1)
 
@@ -422,7 +442,7 @@ class IpsecTra4(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         pkts = p.tra_sa_in.get_stats()['packets']
         self.assertEqual(pkts, count,
@@ -475,7 +495,7 @@ class IpsecTra6(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         pkts = p.tra_sa_in.get_stats()['packets']
         self.assertEqual(pkts, count,
@@ -507,7 +527,9 @@ class IpsecTra46Tests(IpsecTra4Tests, IpsecTra6Tests):
 
 class IpsecTun4(object):
     """ verify methods for Tunnel v4 """
-    def verify_counters(self, p, count):
+    def verify_counters4(self, p, count, n_frags=None):
+        if not n_frags:
+            n_frags = count
         if (hasattr(p, "spd_policy_in_any")):
             pkts = p.spd_policy_in_any.get_stats()['packets']
             self.assertEqual(pkts, count,
@@ -524,7 +546,7 @@ class IpsecTun4(object):
                              "incorrect SA out counts: expected %d != %d" %
                              (count, pkts))
 
-        self.assert_packet_counter_equal(self.tun4_encrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tun4_encrypt_node_name, n_frags)
         self.assert_packet_counter_equal(self.tun4_decrypt_node_name, count)
 
     def verify_decrypted(self, p, rxs):
@@ -578,9 +600,9 @@ class IpsecTun4(object):
 
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
-        self.verify_counters(p, count)
+        self.verify_counters4(p, count, n_rx)
 
     def verify_tun_64(self, p, count=1):
         self.vapi.cli("clear errors")
@@ -616,9 +638,9 @@ class IpsecTun4(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
-        self.verify_counters(p, count)
+        self.verify_counters4(p, count)
 
 
 class IpsecTun4Tests(IpsecTun4):
@@ -634,7 +656,7 @@ class IpsecTun4Tests(IpsecTun4):
 
 class IpsecTun6(object):
     """ verify methods for Tunnel v6 """
-    def verify_counters(self, p, count):
+    def verify_counters6(self, p, count):
         if (hasattr(p, "tun_sa_in")):
             pkts = p.tun_sa_in.get_stats()['packets']
             self.assertEqual(pkts, count,
@@ -685,8 +707,8 @@ class IpsecTun6(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
-        self.verify_counters(p, count)
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.verify_counters6(p, count)
 
     def verify_tun_46(self, p, count=1):
         """ ipsec 4o6 tunnel basic test """
@@ -724,8 +746,8 @@ class IpsecTun6(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
-        self.verify_counters(p, count)
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.verify_counters6(p, count)
 
 
 class IpsecTun6Tests(IpsecTun6):

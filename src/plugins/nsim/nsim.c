@@ -188,7 +188,7 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   nsm->drop_fraction = drop_fraction;
 
   /* delay in seconds, bandwidth in bits/sec */
-  total_buffer_size_in_bytes = (u32) ((delay * bandwidth) / 8.0) + 0.5;
+  total_buffer_size_in_bytes = ((delay * bandwidth) / 8.0) + 0.5;
 
   /*
    * Work out how much buffering each worker needs, assuming decent
@@ -584,7 +584,7 @@ VNET_FEATURE_INIT (nsim_feature, static) =
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "network delay simulator plugin",
+  .description = "Network Delay Simulator",
 };
 /* *INDENT-ON* */
 

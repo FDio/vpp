@@ -16,7 +16,9 @@
 
 from __future__ import print_function
 from __future__ import absolute_import
+import ctypes
 import sys
+import multiprocessing as mp
 import os
 import logging
 import collections
@@ -121,7 +123,7 @@ class VPPValueError(ValueError):
     pass
 
 
-class VPP(object):
+class VPPApiClient(object):
     """VPP interface.
 
     This class provides the APIs to VPP.  The APIs are loaded
@@ -133,6 +135,7 @@ class VPP(object):
     provides a means to register a callback function to receive
     these messages in a background thread.
     """
+    apidir = None
     VPPApiError = VPPApiError
     VPPRuntimeError = VPPRuntimeError
     VPPValueError = VPPValueError
@@ -228,6 +231,7 @@ class VPP(object):
         self.message_queue = queue.Queue()
         self.read_timeout = read_timeout
         self.async_thread = async_thread
+        self.event_thread = None
 
         if use_socket:
             from . vpp_transport_socket import VppTransport
@@ -261,16 +265,16 @@ class VPP(object):
         atexit.register(vpp_atexit, weakref.ref(self))
 
     class ContextId(object):
-        """Thread-safe provider of unique context IDs."""
+        """Multiprocessing-safe provider of unique context IDs."""
         def __init__(self):
-            self.context = 0
-            self.lock = threading.Lock()
+            self.context = mp.Value(ctypes.c_uint, 0)
+            self.lock = mp.Lock()
 
         def __call__(self):
             """Get a new unique (or, at least, not recently used) context."""
             with self.lock:
-                self.context += 1
-                return self.context
+                self.context.value += 1
+                return self.context.value
     get_context = ContextId()
 
     def get_type(self, name):
@@ -288,10 +292,7 @@ class VPP(object):
         :returns: A single directory name, or None if no such directory
             could be found.
         """
-        dirs = []
-
-        if 'VPP_API_DIR' in os.environ:
-            dirs.append(os.environ['VPP_API_DIR'])
+        dirs = [cls.apidir] if cls.apidir else []
 
         # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
         # in which case, plot a course to likely places in the src tree
@@ -353,7 +354,7 @@ class VPP(object):
         # finally, try the location system packages typically install into
         dirs.append(os.path.sep.join(('', 'usr', 'share', 'vpp', 'api')))
 
-        # check the directories for existance; first one wins
+        # check the directories for existence; first one wins
         for dir in dirs:
             if os.path.isdir(dir):
                 return dir
@@ -467,6 +468,8 @@ class VPP(object):
                 target=self.thread_msg_handler)
             self.event_thread.daemon = True
             self.event_thread.start()
+        else:
+            self.event_thread = None
         return rv
 
     def connect(self, name, chroot_prefix=None, do_async=False, rx_qlen=32):
@@ -497,7 +500,8 @@ class VPP(object):
     def disconnect(self):
         """Detach from VPP."""
         rv = self.transport.disconnect()
-        self.message_queue.put("terminate event thread")
+        if self.event_thread is not None:
+            self.message_queue.put("terminate event thread")
         return rv
 
     def msg_handler_sync(self, msg):
@@ -713,5 +717,7 @@ class VPP(object):
             if self.event_callback:
                 self.event_callback(msgname, r)
 
+# Provide the old name for backward compatibility.
+VPP = VPPApiClient
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4

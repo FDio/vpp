@@ -47,6 +47,7 @@ nil
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
+#include <stdbool.h>
 
 /* define message IDs */
 #include <" plugin-name "/" plugin-name "_msg_enum.h>
@@ -100,14 +101,16 @@ int " plugin-name "_enable_disable (" plugin-name "_main_t * " main-p ", u32 sw_
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
+  " plugin-name "_create_periodic_process (" main-p ");
+
   vnet_feature_enable_disable (\"device-input\", \"" plugin-name "\",
                                sw_if_index, enable_disable, 0, 0);
 
   /* Send an event to enable/disable the periodic scanner process */
-  vlib_process_signal_event (" main-p "->vlib_main, " plugin-name"_periodic_node.index, 
-                            " PLUGIN-NAME"_EVENT_PERIODIC_ENABLE_DISABLE, 
+  vlib_process_signal_event (" main-p "->vlib_main,
+                             " main-p"->periodic_node_index,
+                             " PLUGIN-NAME"_EVENT_PERIODIC_ENABLE_DISABLE,
                             (uword)enable_disable);
-
   return rv;
 }
 
@@ -122,7 +125,7 @@ static clib_error_t *
 
   int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, \"disable\"))
         enable_disable = 0;
@@ -138,7 +141,7 @@ static clib_error_t *
 
   rv = " plugin-name "_enable_disable (" main-p ", sw_if_index, enable_disable);
 
-  switch(rv) 
+  switch(rv)
     {
   case 0:
     break;
@@ -160,7 +163,7 @@ static clib_error_t *
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (" plugin-name "_enable_disable_command, static) = 
+VLIB_CLI_COMMAND (" plugin-name "_enable_disable_command, static) =
 {
   .path = \"" plugin-name " enable-disable\",
   .short_help =
@@ -210,7 +213,7 @@ static void
 setup_message_id_table (" plugin-name "_main_t * " main-p ", api_main_t * am)
 {
 #define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + " main-p "->msg_id_base);
+  vl_msg_api_add_msg_name_crc (am, #n \"_\" #crc, id + " main-p "->msg_id_base);
   foreach_vl_msg_name_crc_" plugin-name" ;
 #undef _
 }
@@ -252,7 +255,7 @@ VNET_FEATURE_INIT (" plugin-name ", static) =
 /* *INDENT-ON */
 
 /* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = 
+VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = \"" plugin-name " plugin description goes here\",
@@ -267,4 +270,3 @@ VLIB_PLUGIN_REGISTER () =
  * End:
  */
 ")
-

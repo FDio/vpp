@@ -39,6 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vppinfra/heap.h>
+#include <vlib/stat_weak_inlines.h>
 
 uword
 vlib_error_drop_buffers (vlib_main_t * vm,
@@ -109,20 +110,6 @@ vlib_error_drop_buffers (vlib_main_t * vm,
   return n_buffers;
 }
 
-void vlib_stats_register_error_index (u8 *, u64 *, u64)
-  __attribute__ ((weak));
-void
-vlib_stats_register_error_index (u8 * notused, u64 * notused2, u64 notused3)
-{
-};
-
-void vlib_stats_pop_heap2 (void *, u32, void *) __attribute__ ((weak));
-void
-vlib_stats_pop_heap2 (void *notused, u32 notused2, void *notused3)
-{
-};
-
-
 /* Reserves given number of error codes for given node. */
 void
 vlib_register_errors (vlib_main_t * vm,
@@ -132,7 +119,6 @@ vlib_register_errors (vlib_main_t * vm,
   vlib_node_t *n = vlib_get_node (vm, node_index);
   uword l;
   void *oldheap;
-  void *vlib_stats_push_heap (void) __attribute__ ((weak));
 
   ASSERT (vlib_get_thread_index () == 0);
 
@@ -157,7 +143,7 @@ vlib_register_errors (vlib_main_t * vm,
   vec_validate (vm->error_elog_event_types, l - 1);
 
   /* Switch to the stats segment ... */
-  oldheap = vlib_stats_push_heap ();
+  oldheap = vlib_stats_push_heap (0);
 
   /* Allocate a counter/elog type for each error. */
   vec_validate (em->counters, l - 1);
@@ -186,7 +172,7 @@ vlib_register_errors (vlib_main_t * vm,
   }
 
   /* (re)register the em->counters base address, switch back to main heap */
-  vlib_stats_pop_heap2 (em->counters, vm->thread_index, oldheap);
+  vlib_stats_pop_heap2 (em->counters, vm->thread_index, oldheap, 1);
 
   {
     elog_event_type_t t;

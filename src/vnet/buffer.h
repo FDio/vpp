@@ -189,6 +189,7 @@ typedef struct
 	  struct
 	  {
 	    u32 next_index;	/* index of next node - ignored if "feature" node */
+	    u32 error_next_index;	/* index of next node if error - ignored if 'feature' node */
 	    u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
 	    u16 owner_thread_index;
 	  };
@@ -238,9 +239,9 @@ typedef struct
     {
       u32 feature_bitmap;
       u16 bd_index;		/* bridge-domain index */
+      u16 l2fib_sn;		/* l2fib bd/int seq_num */
       u8 l2_len;		/* ethernet header length */
       u8 shg;			/* split-horizon group */
-      u16 l2fib_sn;		/* l2fib bd/int seq_num */
       u8 bd_age;		/* aging enabled */
     } l2;
 

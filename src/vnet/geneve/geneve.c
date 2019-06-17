@@ -623,6 +623,17 @@ int vnet_geneve_add_del_tunnel
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
+  if (a->is_add)
+    {
+      /* register udp ports */
+      if (!is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_geneve, 1))
+	udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_geneve,
+			       geneve4_input_node.index, 1);
+      if (is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_geneve6, 0))
+	udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_geneve6,
+			       geneve6_input_node.index, 0);
+    }
+
   return 0;
 }
 
@@ -1114,11 +1125,6 @@ geneve_init (vlib_main_t * vm)
   vxm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
-
-  udp_register_dst_port (vm, UDP_DST_PORT_geneve,
-			 geneve4_input_node.index, /* is_ip4 */ 1);
-  udp_register_dst_port (vm, UDP_DST_PORT_geneve6,
-			 geneve6_input_node.index, /* is_ip4 */ 0);
 
   fib_node_register_type (FIB_NODE_TYPE_GENEVE_TUNNEL, &geneve_vft);
 

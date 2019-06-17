@@ -14,11 +14,18 @@
 import sys
 
 stdlib_enum = sys.version_info >= (3, 6)
+stdlib_ipaddress = sys.version_info >= (3, 3)
 
 try:
     from setuptools import setup, find_packages
 except ImportError:
     from distutils.core import setup, find_packages
+
+requirements = ['cffi >= 1.6']
+if not stdlib_enum:
+    requirements.append('aenum')
+if not stdlib_ipaddress:
+    requirements.append('ipaddress')
 
 setup(
     name='vpp_papi',
@@ -29,8 +36,7 @@ setup(
     url='https://wiki.fd.io/view/VPP/Python_API',
     license='Apache-2.0',
     test_suite='vpp_papi.tests',
-    install_requires=['cffi >= 1.6'] if stdlib_enum else
-        ['cffi >= 1.6', 'aenum'],
+    install_requires=requirements,
     packages=find_packages(),
     long_description='''VPP Python language binding.''',
     zip_safe=True)

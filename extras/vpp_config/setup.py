@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="vpp_config",
-      version="19.01.4",
+      version="19.04.2",
       author="John DeNisco",
       author_email="jdenisco@cisco.com",
       description="VPP Configuration Utility",
@@ -9,7 +9,7 @@ setup(name="vpp_config",
       keywords="vppconfig",
       url='https://wiki.fd.io/view/VPP',
       py_modules=['vpp_config'],
-      install_requires=['pyyaml', 'requests'],
+      install_requires=['distro', 'pyyaml', 'requests'],
       extra_requires=["ipaddress; python_version < '3.3'"],
       packages=['vpplib'],
       entry_points={

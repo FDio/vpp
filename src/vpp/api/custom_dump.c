@@ -42,7 +42,6 @@
 #include <vlibmemory/api.h>
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/qos/qos_types.h>
-#include <vpp/oam/oam.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/ethernet_types_api.h>
@@ -120,7 +119,8 @@ static void *vl_api_sw_interface_set_flags_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_rx_placement_t_print
+__clib_unused
+  static void *vl_api_sw_interface_set_rx_placement_t_print
   (vl_api_sw_interface_set_rx_placement_t * mp, void *handle)
 {
   u8 *s;
@@ -137,7 +137,8 @@ static void *vl_api_sw_interface_set_rx_placement_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_rx_placement_dump_t_print
+__clib_unused
+  static void *vl_api_sw_interface_rx_placement_dump_t_print
   (vl_api_sw_interface_rx_placement_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -529,7 +530,8 @@ static void *vl_api_bd_ip_mac_flush_t_print
   FINISH;
 }
 
-static void *vl_api_bd_ip_mac_dump_t_print
+__clib_unused
+  static void *vl_api_bd_ip_mac_dump_t_print
   (vl_api_bd_ip_mac_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -599,7 +601,8 @@ static void *vl_api_sw_interface_tap_v2_dump_t_print
   FINISH;
 }
 
-static void *vl_api_virtio_pci_create_t_print
+__clib_unused
+  static void *vl_api_virtio_pci_create_t_print
   (vl_api_virtio_pci_create_t * mp, void *handle)
 {
   u8 *s;
@@ -612,16 +615,15 @@ static void *vl_api_virtio_pci_create_t_print
   if (memcmp (mp->mac_address, null_mac, 6))
     s = format (s, "mac-address %U ",
 		format_ethernet_address, mp->mac_address);
-  if (mp->tx_ring_sz)
-    s = format (s, "tx-ring-size %u ", ntohs (mp->tx_ring_sz));
-  if (mp->rx_ring_sz)
-    s = format (s, "rx-ring-size %u ", ntohs (mp->rx_ring_sz));
   if (mp->features)
     s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
+  if (mp->gso_enabled)
+    s = format (s, "gso-enabled");
   FINISH;
 }
 
-static void *vl_api_virtio_pci_delete_t_print
+__clib_unused
+  static void *vl_api_virtio_pci_delete_t_print
   (vl_api_virtio_pci_delete_t * mp, void *handle)
 {
   u8 *s;
@@ -632,7 +634,8 @@ static void *vl_api_virtio_pci_delete_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_virtio_pci_dump_t_print
+__clib_unused
+  static void *vl_api_sw_interface_virtio_pci_dump_t_print
   (vl_api_sw_interface_virtio_pci_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -701,7 +704,8 @@ static void *vl_api_bond_detach_slave_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_bond_dump_t_print
+__clib_unused
+  static void *vl_api_sw_interface_bond_dump_t_print
   (vl_api_sw_interface_bond_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -711,7 +715,8 @@ static void *vl_api_sw_interface_bond_dump_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_slave_dump_t_print
+__clib_unused
+  static void *vl_api_sw_interface_slave_dump_t_print
   (vl_api_sw_interface_slave_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -1101,26 +1106,6 @@ static void *vl_api_delete_subif_t_print
 
   s = format (0, "SCRIPT: delete_subif ");
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
-
-  FINISH;
-}
-
-static void *vl_api_oam_add_del_t_print
-  (vl_api_oam_add_del_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: oam_add_del ");
-
-  if (mp->vrf_id)
-    s = format (s, "vrf %d ", ntohl (mp->vrf_id));
-
-  s = format (s, "src %U ", format_ip4_address, mp->src_address);
-
-  s = format (s, "dst %U ", format_ip4_address, mp->dst_address);
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
 
   FINISH;
 }
@@ -1943,10 +1928,10 @@ static void *vl_api_gre_tunnel_add_del_t_print
 
   s = format (s, "instance %d ", ntohl (mp->tunnel.instance));
 
-  if (mp->tunnel.type == GRE_TUNNEL_TYPE_TEB)
+  if (mp->tunnel.type == GRE_API_TUNNEL_TYPE_TEB)
     s = format (s, "teb ");
 
-  if (mp->tunnel.type == GRE_TUNNEL_TYPE_ERSPAN)
+  if (mp->tunnel.type == GRE_API_TUNNEL_TYPE_ERSPAN)
     s = format (s, "erspan %d ", ntohs (mp->tunnel.session_id));
 
   if (mp->tunnel.outer_fib_id)
@@ -2176,7 +2161,8 @@ static void *vl_api_show_version_t_print
   FINISH;
 }
 
-static void *vl_api_show_threads_t_print
+__clib_unused
+  static void *vl_api_show_threads_t_print
   (vl_api_show_threads_t * mp, void *handle)
 {
   u8 *s;
@@ -3427,13 +3413,17 @@ vl_api_set_punt_t_print (vl_api_set_punt_t * mp, void *handle)
 
   s = format (0, "SCRIPT: punt ");
 
-  if (mp->punt.ipv != (u8) ~ 0)
-    s = format (s, "ip %d ", mp->punt.ipv);
+  switch (clib_net_to_host_u32 (mp->punt.type))
+    {
+    case PUNT_API_TYPE_L4:
+      s = format (s, "%U", format_vl_api_address_family, mp->punt.punt.l4.af);
 
-  s = format (s, "protocol %d ", mp->punt.l4_protocol);
+      s = format (s, "protocol %d ", mp->punt.punt.l4.protocol);
 
-  if (mp->punt.l4_port != (u16) ~ 0)
-    s = format (s, "port %d ", ntohs (mp->punt.l4_port));
+      if (mp->punt.punt.l4.port != (u16) ~ 0)
+	s = format (s, "port %d ", ntohs (mp->punt.punt.l4.port));
+      break;
+    }
 
   if (!mp->is_add)
     s = format (s, "del ");
@@ -3598,7 +3588,7 @@ static void *vl_api_tcp_configure_src_addresses_t_print
 static void *vl_api_app_namespace_add_del_t_print
   (vl_api_app_namespace_add_del_t * mp, void *handle)
 {
-  u8 *s, *ns_id = 0;
+  u8 *s;
   u8 len = clib_min (mp->namespace_id_len,
 		     ARRAY_LEN (mp->namespace_id) - 1);
   mp->namespace_id[len] = 0;
@@ -3727,7 +3717,8 @@ static void *vl_api_session_rule_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_ip_container_proxy_add_del_t_print
+__clib_unused
+  static void *vl_api_ip_container_proxy_add_del_t_print
   (vl_api_ip_container_proxy_add_del_t * mp, void *handle)
 {
   u8 *s;
@@ -3803,7 +3794,6 @@ _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)             \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
 _(CREATE_SUBIF, create_subif)                                           \
-_(OAM_ADD_DEL, oam_add_del)                                             \
 _(RESET_FIB, reset_fib)                                                 \
 _(DHCP_PROXY_CONFIG, dhcp_proxy_config)                                 \
 _(DHCP_PROXY_SET_VSS, dhcp_proxy_set_vss)                               \

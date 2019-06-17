@@ -239,38 +239,38 @@ send_sw_interface_details (vpe_api_main_t * am,
       mp->sub_default = sub->eth.flags.default_sub;
       mp->sub_outer_vlan_id_any = sub->eth.flags.outer_vlan_id_any;
       mp->sub_inner_vlan_id_any = sub->eth.flags.inner_vlan_id_any;
+    }
 
-      /* vlan tag rewrite data */
-      u32 vtr_op = L2_VTR_DISABLED;
-      u32 vtr_push_dot1q = 0, vtr_tag1 = 0, vtr_tag2 = 0;
+  /* vlan tag rewrite data */
+  u32 vtr_op = L2_VTR_DISABLED;
+  u32 vtr_push_dot1q = 0, vtr_tag1 = 0, vtr_tag2 = 0;
 
-      if (l2vtr_get (am->vlib_main, am->vnet_main, swif->sw_if_index,
-		     &vtr_op, &vtr_push_dot1q, &vtr_tag1, &vtr_tag2) != 0)
-	{
-	  // error - default to disabled
-	  mp->vtr_op = ntohl (L2_VTR_DISABLED);
-	  clib_warning ("cannot get vlan tag rewrite for sw_if_index %d",
-			swif->sw_if_index);
-	}
-      else
-	{
-	  mp->vtr_op = ntohl (vtr_op);
-	  mp->vtr_push_dot1q = ntohl (vtr_push_dot1q);
-	  mp->vtr_tag1 = ntohl (vtr_tag1);
-	  mp->vtr_tag2 = ntohl (vtr_tag2);
-	}
+  if (l2vtr_get (am->vlib_main, am->vnet_main, swif->sw_if_index,
+		 &vtr_op, &vtr_push_dot1q, &vtr_tag1, &vtr_tag2) != 0)
+    {
+      // error - default to disabled
+      mp->vtr_op = ntohl (L2_VTR_DISABLED);
+      clib_warning ("cannot get vlan tag rewrite for sw_if_index %d",
+		    swif->sw_if_index);
+    }
+  else
+    {
+      mp->vtr_op = ntohl (vtr_op);
+      mp->vtr_push_dot1q = ntohl (vtr_push_dot1q);
+      mp->vtr_tag1 = ntohl (vtr_tag1);
+      mp->vtr_tag2 = ntohl (vtr_tag2);
     }
 
   /* pbb tag rewrite data */
   ethernet_header_t eth_hdr;
-  u32 vtr_op = L2_VTR_DISABLED;
+  u32 pbb_vtr_op = L2_VTR_DISABLED;
   u16 outer_tag = 0;
   u16 b_vlanid = 0;
   u32 i_sid = 0;
   clib_memset (&eth_hdr, 0, sizeof (eth_hdr));
 
   if (!l2pbb_get (am->vlib_main, am->vnet_main, swif->sw_if_index,
-		  &vtr_op, &outer_tag, &eth_hdr, &b_vlanid, &i_sid))
+		  &pbb_vtr_op, &outer_tag, &eth_hdr, &b_vlanid, &i_sid))
     {
       mp->sub_dot1ah = 1;
       clib_memcpy (mp->b_dmac, eth_hdr.dst_address,
@@ -311,7 +311,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   if (!mp->name_filter_valid && sw_if_index != ~0 && sw_if_index != 0)
     {
       /* is it a valid sw_if_index? */
-      if (vec_len (im->sw_interfaces) <= sw_if_index)
+      if (!vnet_sw_if_index_is_api_valid (sw_if_index))
 	return;
 
       swif = vec_elt_at_index (im->sw_interfaces, sw_if_index);
@@ -392,18 +392,6 @@ done:
   REPLY_MACRO (VL_API_SW_INTERFACE_ADD_DEL_ADDRESS_REPLY);
 }
 
-void stats_dslock_with_hint (int hint, int tag) __attribute__ ((weak));
-void
-stats_dslock_with_hint (int hint, int tag)
-{
-}
-
-void stats_dsunlock (void) __attribute__ ((weak));
-void
-stats_dsunlock (void)
-{
-}
-
 static void
 vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 {
@@ -414,14 +402,10 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  stats_dslock_with_hint (1 /* release hint */ , 4 /* tag */ );
-
   if (mp->is_ipv6)
     rv = ip_table_bind (FIB_PROTOCOL_IP6, sw_if_index, table_id, 1);
   else
     rv = ip_table_bind (FIB_PROTOCOL_IP4, sw_if_index, table_id, 1);
-
-  stats_dsunlock ();
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -661,52 +645,34 @@ vl_api_sw_interface_clear_stats_t_handler (vl_api_sw_interface_clear_stats_t *
   vnet_interface_main_t *im = &vnm->interface_main;
   vlib_simple_counter_main_t *sm;
   vlib_combined_counter_main_t *cm;
-  static vnet_main_t **my_vnet_mains;
-  int i, j, n_counters;
+  int j, n_counters;
   int rv = 0;
 
   if (mp->sw_if_index != ~0)
     VALIDATE_SW_IF_INDEX (mp);
 
-  vec_reset_length (my_vnet_mains);
-
-  for (i = 0; i < vec_len (vnet_mains); i++)
-    {
-      if (vnet_mains[i])
-	vec_add1 (my_vnet_mains, vnet_mains[i]);
-    }
-
-  if (vec_len (vnet_mains) == 0)
-    vec_add1 (my_vnet_mains, vnm);
-
   n_counters = vec_len (im->combined_sw_if_counters);
 
   for (j = 0; j < n_counters; j++)
     {
-      for (i = 0; i < vec_len (my_vnet_mains); i++)
-	{
-	  im = &my_vnet_mains[i]->interface_main;
-	  cm = im->combined_sw_if_counters + j;
-	  if (mp->sw_if_index == (u32) ~ 0)
-	    vlib_clear_combined_counters (cm);
-	  else
-	    vlib_zero_combined_counter (cm, ntohl (mp->sw_if_index));
-	}
+      im = &vnm->interface_main;
+      cm = im->combined_sw_if_counters + j;
+      if (mp->sw_if_index == (u32) ~ 0)
+	vlib_clear_combined_counters (cm);
+      else
+	vlib_zero_combined_counter (cm, ntohl (mp->sw_if_index));
     }
 
   n_counters = vec_len (im->sw_if_counters);
 
   for (j = 0; j < n_counters; j++)
     {
-      for (i = 0; i < vec_len (my_vnet_mains); i++)
-	{
-	  im = &my_vnet_mains[i]->interface_main;
-	  sm = im->sw_if_counters + j;
-	  if (mp->sw_if_index == (u32) ~ 0)
-	    vlib_clear_simple_counters (sm);
-	  else
-	    vlib_zero_simple_counter (sm, ntohl (mp->sw_if_index));
-	}
+      im = &vnm->interface_main;
+      sm = im->sw_if_counters + j;
+      if (mp->sw_if_index == (u32) ~ 0)
+	vlib_clear_simple_counters (sm);
+      else
+	vlib_zero_simple_counter (sm, ntohl (mp->sw_if_index));
     }
 
   BAD_SW_IF_INDEX_LABEL;
@@ -1413,6 +1379,11 @@ interface_api_hookup (vlib_main_t * vm)
                            sizeof(vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
+
+  /* Mark these APIs as mp safe */
+  am->is_mp_safe[VL_API_SW_INTERFACE_DUMP] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_DETAILS] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_TAG_ADD_DEL] = 1;
 
   /*
    * Set up the (msg_name, crc, message-id) table

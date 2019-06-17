@@ -279,7 +279,7 @@ VLIB_INIT_FUNCTION (stn_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "VPP Steals the NIC for Container integration",
+    .description = "VPP Steals the NIC (STN) for Container Integration",
 };
 /* *INDENT-ON* */
 

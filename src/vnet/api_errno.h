@@ -55,7 +55,6 @@ _(ADDRESS_LENGTH_MISMATCH, -59, "Address length mismatch")              \
 _(ADDRESS_NOT_FOUND_FOR_INTERFACE, -60, "Address not found for interface") \
 _(ADDRESS_NOT_DELETABLE, -61, "Address not deletable")                  \
 _(IP6_NOT_ENABLED, -62, "ip6 not enabled")				\
-_(IN_PROGRESS, 10, "Operation in progress")				\
 _(NO_SUCH_NODE, -63, "No such graph node")				\
 _(NO_SUCH_NODE2, -64, "No such graph node #2")				\
 _(NO_SUCH_TABLE, -65, "No such table")                                  \
@@ -147,7 +146,9 @@ _(INVALID_VALUE_3, -150, "Invalid value #3")                            \
 _(NON_ETHERNET, -151, "Interface is not an Ethernet interface")         \
 _(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface") \
 _(INVALID_PROTOCOL, -153, "Invalid Protocol")                           \
-_(INVALID_ALGORITHM, -154, "Invalid Algorithm")
+_(INVALID_ALGORITHM, -154, "Invalid Algorithm")                         \
+_(RSRC_IN_USE, -155, "Resource In Use")                                 \
+_(KEY_LENGTH, -156, "invalid Key Length")
 
 typedef enum
 {

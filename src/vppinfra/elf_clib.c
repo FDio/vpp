@@ -153,7 +153,7 @@ clib_elf_parse_file (clib_elf_main_t * cem,
       clib_elf_section_bounds_t *b;
 
       /* Section name must begin with CLIB_ELF_SECTION key. */
-      if (memcmp (name, section_name_start, section_name_start_len))
+      if (strcmp ((char *) name, section_name_start))
 	continue;
 
       name += section_name_start_len;

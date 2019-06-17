@@ -251,10 +251,6 @@ clib_error_t *
 in_out_acl_init (vlib_main_t * vm)
 {
   in_out_acl_main_t *am = &in_out_acl_main;
-  clib_error_t *error = 0;
-
-  if ((error = vlib_call_init_function (vm, ip_in_out_acl_init)))
-    return error;
 
   am->vlib_main = vm;
   am->vnet_main = vnet_get_main ();
@@ -262,8 +258,12 @@ in_out_acl_init (vlib_main_t * vm)
 
   return 0;
 }
-
-VLIB_INIT_FUNCTION (in_out_acl_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (in_out_acl_init) =
+{
+  .runs_after = VLIB_INITS("ip_in_out_acl_init"),
+};
+/* *INDENT-ON* */
 
 uword
 unformat_acl_type (unformat_input_t * input, va_list * args)

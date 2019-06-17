@@ -21,8 +21,8 @@
 #include <vnet/mpls/packet.h>
 
 /*
- * the lookup table used to get from a BFIT_ID to a load-balance.
- * As per-draft draft-ietf-bier-mpls-encapsulation-10 this isthe
+ * the lookup table used to get from a BIFT_ID to a load-balance.
+ * As per-draft draft-ietf-bier-mpls-encapsulation-10 this is the
  * use case for non-MPLS networks
  */
 #define BIER_BIFT_N_ENTRIES (1 << 20)

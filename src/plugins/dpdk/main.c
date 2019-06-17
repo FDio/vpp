@@ -85,16 +85,18 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
 
-  if ((error = vlib_call_init_function (vm, dpdk_init)))
-    return error;
-
   /* register custom delay function */
   rte_delay_us_callback_register (rte_delay_us_override_cb);
 
   return error;
 }
 
-VLIB_INIT_FUNCTION (dpdk_main_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (dpdk_main_init) =
+{
+    .runs_after = VLIB_INITS("dpdk_init"),
+};
+/* *INDENT-ON* */
 
 
 clib_error_t *

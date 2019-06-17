@@ -67,6 +67,21 @@ public:
   };
 
   /**
+   * Bridge Domain ARP Unicast Forward mode
+   */
+  struct arp_ufwd_mode_t : enum_base<arp_ufwd_mode_t>
+  {
+    const static arp_ufwd_mode_t ON;
+    const static arp_ufwd_mode_t OFF;
+
+  private:
+    /**
+     * Private constructor taking the value and the string name
+     */
+    arp_ufwd_mode_t(int v, const std::string& s);
+  };
+
+  /**
    * Bridge Domain MAC aging mode
    */
   struct mac_age_mode_t : enum_base<mac_age_mode_t>
@@ -82,7 +97,7 @@ public:
   };
 
   /**
-   * Bridge Domain Learning mode
+   * Bridge Domain flood mode
    */
   struct flood_mode_t : enum_base<flood_mode_t>
   {
@@ -97,6 +112,21 @@ public:
   };
 
   /**
+   * Bridge Domain Unknown Unicast Flood mode
+   */
+  struct uu_flood_mode_t : enum_base<uu_flood_mode_t>
+  {
+    const static uu_flood_mode_t ON;
+    const static uu_flood_mode_t OFF;
+
+  private:
+    /**
+     * Private constructor taking the value and the string name
+     */
+    uu_flood_mode_t(int v, const std::string& s);
+  };
+
+  /**
    * The value of the defaultbridge domain
    */
   const static uint32_t DEFAULT_TABLE = 0;
@@ -107,7 +137,9 @@ public:
   bridge_domain(uint32_t id,
                 const learning_mode_t& lmode = learning_mode_t::ON,
                 const arp_term_mode_t& amode = arp_term_mode_t::ON,
+                const arp_ufwd_mode_t& aumode = arp_ufwd_mode_t::OFF,
                 const flood_mode_t& fmode = flood_mode_t::ON,
+                const uu_flood_mode_t& uufmode = uu_flood_mode_t::ON,
                 const mac_age_mode_t& mmode = mac_age_mode_t::OFF);
 
   /**
@@ -237,9 +269,19 @@ private:
   arp_term_mode_t m_arp_term_mode;
 
   /**
+   * The ARP Unicast Forward mode of the bridge
+   */
+  arp_ufwd_mode_t m_arp_ufwd_mode;
+
+  /**
    * The flood mode of the bridge
    */
   flood_mode_t m_flood_mode;
+
+  /**
+   * The unknown unicast flood mode of the bridge
+   */
+  uu_flood_mode_t m_uu_flood_mode;
 
   /**
    * The MAC aging mode of the bridge

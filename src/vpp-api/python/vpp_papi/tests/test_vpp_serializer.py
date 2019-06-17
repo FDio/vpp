@@ -3,11 +3,40 @@
 import unittest
 from vpp_papi.vpp_serializer import VPPType, VPPEnumType
 from vpp_papi.vpp_serializer import VPPUnionType, VPPMessage
-from vpp_papi.vpp_serializer import VPPTypeAlias
+from vpp_papi.vpp_serializer import VPPTypeAlias, VPPSerializerValueError
 from socket import inet_pton, AF_INET, AF_INET6
 import logging
 import sys
 from ipaddress import *
+
+
+class TestLimits(unittest.TestCase):
+    def test_limit(self):
+        limited_type = VPPType('limited_type_t',
+                               [['string', 'name', {'limit': 16}]])
+        unlimited_type = VPPType('limited_type_t',
+                                 [['string', 'name']])
+
+        b = limited_type.pack({'name': 'foobar'})
+        self.assertEqual(len(b), 10)
+        b = unlimited_type.pack({'name': 'foobar'})
+        self.assertEqual(len(b), 10)
+
+        with self.assertRaises(VPPSerializerValueError):
+            b = limited_type.pack({'name': 'foobar'*3})
+
+
+class TestDefaults(unittest.TestCase):
+    def test_defaults(self):
+        default_type = VPPType('default_type_t',
+                               [['u16', 'mtu', {'default': 1500, 'limit': 0}]])
+
+        b = default_type.pack({})
+        self.assertEqual(len(b), 2)
+
+        nt, size = default_type.unpack(b)
+        self.assertEqual(len(b), size)
+        self.assertEqual(nt.mtu, 1500)
 
 
 class TestAddType(unittest.TestCase):

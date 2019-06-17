@@ -1736,7 +1736,7 @@ wait_for_event (svm_msg_q_t * mq, int fd, int epfd, u8 use_eventfd)
 }
 
 static int
-session_test_mq (vlib_main_t * vm, unformat_input_t * input)
+session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
 {
   int error, __clib_unused verbose, use_eventfd = 0;
   u64 i, n_test_msgs = 1 << 10, *counter;
@@ -1746,7 +1746,6 @@ session_test_mq (vlib_main_t * vm, unformat_input_t * input)
   vl_api_registration_t *reg;
   struct epoll_event ep_evt;
   u32 app_index, api_index;
-  u32 fifo_segment_index;
   app_worker_t *app_wrk;
   segment_manager_t *sm;
   svm_msg_q_msg_t msg;
@@ -1812,8 +1811,7 @@ session_test_mq (vlib_main_t * vm, unformat_input_t * input)
     }
 
   sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
-  segment_manager_alloc_session_fifos (sm, &rx_fifo, &tx_fifo,
-				       &fifo_segment_index);
+  segment_manager_alloc_session_fifos (sm, &rx_fifo, &tx_fifo);
   s.rx_fifo = rx_fifo;
   s.tx_fifo = tx_fifo;
   s.session_state = SESSION_STATE_READY;
@@ -1870,6 +1868,99 @@ session_test_mq (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
+{
+  svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
+  svm_msg_q_msg_t msg1, msg2, msg[12];
+  int __clib_unused verbose, i, rv;
+  svm_msg_q_t *mq;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  svm_msg_q_ring_cfg_t rc[2] = { {8, 8, 0}
+  , {8, 16, 0}
+  };
+  cfg->consumer_pid = ~0;
+  cfg->n_rings = 2;
+  cfg->q_nitems = 16;
+  cfg->ring_cfgs = rc;
+
+  mq = svm_msg_q_alloc (cfg);
+  SESSION_TEST (mq != 0, "svm_msg_q_alloc");
+  SESSION_TEST (vec_len (mq->rings) == 2, "ring allocation");
+
+  msg1 = svm_msg_q_alloc_msg (mq, 8);
+  rv = (mq->rings[0].cursize != 1
+	|| msg1.ring_index != 0 || msg1.elt_index != 0);
+  SESSION_TEST (rv == 0, "msg alloc1");
+
+  msg2 = svm_msg_q_alloc_msg (mq, 15);
+  rv = (mq->rings[1].cursize != 1
+	|| msg2.ring_index != 1 || msg2.elt_index != 0);
+  SESSION_TEST (rv == 0, "msg alloc2");
+
+  svm_msg_q_free_msg (mq, &msg1);
+  SESSION_TEST (mq->rings[0].cursize == 0, "free msg");
+
+  for (i = 0; i < 12; i++)
+    {
+      msg[i] = svm_msg_q_alloc_msg (mq, 7);
+      *(u32 *) svm_msg_q_msg_data (mq, &msg[i]) = i;
+    }
+
+  rv = (mq->rings[0].cursize != 8 || mq->rings[1].cursize != 5);
+  SESSION_TEST (rv == 0, "msg alloc3");
+
+  *(u32 *) svm_msg_q_msg_data (mq, &msg2) = 123;
+  svm_msg_q_add (mq, &msg2, SVM_Q_NOWAIT);
+  for (i = 0; i < 12; i++)
+    svm_msg_q_add (mq, &msg[i], SVM_Q_NOWAIT);
+
+  rv = svm_msg_q_sub (mq, &msg2, SVM_Q_NOWAIT, 0);
+  SESSION_TEST (rv == 0, "dequeue1");
+
+  SESSION_TEST (msg2.ring_index == 1 && msg2.elt_index == 0,
+		"dequeue1 result");
+  rv = (*(u32 *) svm_msg_q_msg_data (mq, &msg2) == 123);
+  SESSION_TEST (rv, "dequeue 1 data");
+
+  svm_msg_q_free_msg (mq, &msg2);
+
+  for (i = 0; i < 12; i++)
+    {
+      if (svm_msg_q_sub (mq, &msg[i], SVM_Q_NOWAIT, 0))
+	SESSION_TEST (0, "dequeue2");
+      if (i < 8)
+	{
+	  if (msg[i].ring_index != 0 || msg[i].elt_index != (i + 1) % 8)
+	    SESSION_TEST (0, "dequeue2 result2");
+	}
+      else
+	{
+	  if (msg[i].ring_index != 1 || msg[i].elt_index != (i - 8) + 1)
+	    SESSION_TEST (0, "dequeue2 result3");
+	}
+      if (*(u32 *) svm_msg_q_msg_data (mq, &msg[i]) != i)
+	SESSION_TEST (0, "dequeue2 wrong data");
+      svm_msg_q_free_msg (mq, &msg[i]);
+    }
+  rv = (mq->rings[0].cursize == 0 && mq->rings[1].cursize == 0);
+  SESSION_TEST (rv, "post dequeue");
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -1892,8 +1983,10 @@ session_test (vlib_main_t * vm,
 	res = session_test_proxy (vm, input);
       else if (unformat (input, "endpt-cfg"))
 	res = session_test_endpoint_cfg (vm, input);
-      else if (unformat (input, "mq"))
-	res = session_test_mq (vm, input);
+      else if (unformat (input, "mq-speed"))
+	res = session_test_mq_speed (vm, input);
+      else if (unformat (input, "mq-basic"))
+	res = session_test_mq_basic (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
@@ -1908,7 +2001,9 @@ session_test (vlib_main_t * vm,
 	    goto done;
 	  if ((res = session_test_endpoint_cfg (vm, input)))
 	    goto done;
-	  if ((res = session_test_mq (vm, input)))
+	  if ((res = session_test_mq_speed (vm, input)))
+	    goto done;
+	  if ((res = session_test_mq_basic (vm, input)))
 	    goto done;
 	}
       else

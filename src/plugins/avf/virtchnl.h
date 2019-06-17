@@ -21,6 +21,16 @@
 #define VIRTCHNL_VERSION_MAJOR 1
 #define VIRTCHNL_VERSION_MINOR 1
 
+#define foreach_avf_promisc_flags \
+  _(0, UNICAST_PROMISC, "unicast") \
+  _(1, MULTICAST_PROMISC, "multicast")
+
+enum
+{
+#define _(a, b, c) FLAG_VF_ ##b = (1 << a),
+  foreach_avf_promisc_flags
+#undef _
+};
 
 #define AVFINT_DYN_CTLN(x)  (0x00003800 + (0x4 * x))
 #define AVFINT_ICR0         0x00004800

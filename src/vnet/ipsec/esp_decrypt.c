@@ -44,6 +44,7 @@ typedef enum
  _(INTEG_ERROR, "Integrity check failed")                       \
  _(CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)") \
  _(REPLAY, "SA replayed packet")                                \
+ _(RUNT, "undersized packet")                                   \
  _(CHAINED_BUFFER, "chained buffers (packet dropped)")          \
  _(OVERSIZED_HEADER, "buffer with oversized header (dropped)")  \
  _(NO_TAIL_SPACE, "no enough buffer tail space (dropped)")
@@ -155,18 +156,19 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
 	{
+	  if (current_sa_pkts)
+	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+					     current_sa_index,
+					     current_sa_pkts,
+					     current_sa_bytes);
+	  current_sa_bytes = current_sa_pkts = 0;
+
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
 	  cpd.icv_sz = sa0->integ_icv_size;
 	  cpd.iv_sz = sa0->crypto_iv_size;
 	  cpd.flags = sa0->flags;
 	  cpd.sa_index = current_sa_index;
-
-	  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					   current_sa_index, current_sa_pkts,
-					   current_sa_bytes);
-
-	  current_sa_bytes = current_sa_pkts = 0;
 	}
 
       /* store packet data for next round for easier prefetch */
@@ -193,6 +195,13 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  goto next;
 	}
 
+      if (pd->current_length < cpd.icv_sz + esp_sz + cpd.iv_sz)
+	{
+	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_RUNT];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto next;
+	}
+
       len = pd->current_length - cpd.icv_sz;
       current_sa_pkts += 1;
       current_sa_bytes += pd->current_length;
@@ -203,8 +212,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 
 	  vnet_crypto_op_init (op, sa0->integ_op_id);
-	  op->key = sa0->integ_key.data;
-	  op->key_len = sa0->integ_key.len;
+	  op->key_index = sa0->integ_key_index;
 	  op->src = payload;
 	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 	  op->user_data = b - bufs;
@@ -231,7 +239,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
-	  op->key = sa0->crypto_key.data;
+	  op->key_index = sa0->crypto_key_index;
 	  op->iv = payload;
 
 	  if (ipsec_sa_is_set_IS_AEAD (sa0))
@@ -259,7 +267,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 	       */
 	      op->iv -= sizeof (sa0->salt);
 	      clib_memcpy_fast (op->iv, &sa0->salt, sizeof (sa0->salt));
-	      op->iv_len = cpd.iv_sz + sizeof (sa0->salt);
 
 	      op->tag = payload + len;
 	      op->tag_len = 16;
@@ -363,7 +370,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       sa0 = vec_elt_at_index (im->sad, pd->sa_index);
       u8 *payload = b[0]->data + pd->current_data;
 
-      ipsec_sa_anti_replay_advance (sa0, &((esp_header_t *) payload)->seq);
+      ipsec_sa_anti_replay_advance (sa0, ((esp_header_t *) payload)->seq);
 
       esp_footer_t *f = (esp_footer_t *) (b[0]->data + pd->current_data +
 					  pd->current_length - sizeof (*f) -
@@ -418,13 +425,13 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    {
 	      next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
 	      b[0]->current_data = pd->current_data + adv;
-	      b[0]->current_length = pd->current_length + adv - tail;
+	      b[0]->current_length = pd->current_length - adv - tail;
 	    }
 	  else if (f->next_header == IP_PROTOCOL_IPV6)
 	    {
 	      next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
 	      b[0]->current_data = pd->current_data + adv;
-	      b[0]->current_length = pd->current_length + adv - tail;
+	      b[0]->current_length = pd->current_length - adv - tail;
 	    }
 	  else
 	    {

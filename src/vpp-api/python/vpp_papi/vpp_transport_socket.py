@@ -11,9 +11,11 @@ try:
 except ImportError:
     import Queue as queue
 import logging
+from . import vpp_papi
 
 
 class VppTransportSocketIOError(IOError):
+    # TODO: Document different values of error number (first numeric argument).
     pass
 
 
@@ -27,9 +29,15 @@ class VppTransport(object):
         self.server_address = server_address
         self.header = struct.Struct('>QII')
         self.message_table = {}
+        # These queues can be accessed async.
+        # They are always up, but replaced on connect.
+        # TODO: Use multiprocessing.Pipe instead of multiprocessing.Queue
+        # if possible.
         self.sque = multiprocessing.Queue()
         self.q = multiprocessing.Queue()
-        self.message_thread = threading.Thread(target=self.msg_thread_func)
+        # The following fields are set in connect().
+        self.message_thread = None
+        self.socket = None
 
     def msg_thread_func(self):
         while True:
@@ -68,6 +76,12 @@ class VppTransport(object):
                         2, 'Unknown response from select')
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
+        # TODO: Reorder the actions and add "roll-backs",
+        # to restore clean disconnect state when failure happens durng connect.
+
+        if self.message_thread is not None:
+            raise VppTransportSocketIOError(
+                1, "PAPI socket transport connect: Need to disconnect first.")
 
         # Create a UDS socket
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -81,6 +95,18 @@ class VppTransport(object):
             raise
 
         self.connected = True
+
+        # Queues' feeder threads from previous connect may still be sending.
+        # Close and join to avoid any errors.
+        self.sque.close()
+        self.q.close()
+        self.sque.join_thread()
+        self.q.join_thread()
+        # Finally safe to replace.
+        self.sque = multiprocessing.Queue()
+        self.q = multiprocessing.Queue()
+        self.message_thread = threading.Thread(target=self.msg_thread_func)
+
         # Initialise sockclnt_create
         sockclnt_create = self.parent.messages['sockclnt_create']
         sockclnt_create_reply = self.parent.messages['sockclnt_create_reply']
@@ -93,6 +119,7 @@ class VppTransport(object):
         msg = self._read()
         hdr, length = self.parent.header.unpack(msg, 0)
         if hdr.msgid != 16:
+            # TODO: Add first numeric argument.
             raise VppTransportSocketIOError('Invalid reply message')
 
         r, length = sockclnt_create_reply.unpack(msg)
@@ -107,15 +134,28 @@ class VppTransport(object):
         return 0
 
     def disconnect(self):
+        # TODO: Support repeated disconnect calls, recommend users to call
+        # disconnect when they are not sure what the state is after failures.
+        # TODO: Any volunteer for comprehensive docstrings?
         rv = 0
-        try:  # Might fail, if VPP closes socket before packet makes it out
+        try:
+            # Might fail, if VPP closes socket before packet makes it out,
+            # or if there was a failure during connect().
             rv = self.parent.api.sockclnt_delete(index=self.socket_index)
-        except IOError:
+        except (IOError, vpp_papi.VPPApiError):
             pass
         self.connected = False
-        self.socket.close()
-        self.sque.put(True)  # Terminate listening thread
-        self.message_thread.join()
+        if self.socket is not None:
+            self.socket.close()
+        if self.sque is not None:
+            self.sque.put(True)  # Terminate listening thread
+        if self.message_thread is not None and self.message_thread.is_alive():
+            # Allow additional connect() calls.
+            self.message_thread.join()
+        # Collect garbage.
+        self.message_thread = None
+        self.socket = None
+        # Queues will be collected after connect replaces them.
         return rv
 
     def suspend(self):
@@ -153,25 +193,25 @@ class VppTransport(object):
         hdr = self.socket.recv(16)
         if not hdr:
             return
-        (_, l, _) = self.header.unpack(hdr) # If at head of message
+        (_, hdrlen, _) = self.header.unpack(hdr)  # If at head of message
 
         # Read rest of message
-        msg = self.socket.recv(l)
-        if l > len(msg):
+        msg = self.socket.recv(hdrlen)
+        if hdrlen > len(msg):
             nbytes = len(msg)
-            buf = bytearray(l)
+            buf = bytearray(hdrlen)
             view = memoryview(buf)
             view[:nbytes] = msg
             view = view[nbytes:]
-            left = l - nbytes
+            left = hdrlen - nbytes
             while left:
                 nbytes = self.socket.recv_into(view, left)
                 view = view[nbytes:]
                 left -= nbytes
             return buf
-        if l == len(msg):
+        if hdrlen == len(msg):
             return msg
-        raise VPPTransportSocketIOError(1, 'Unknown socket read error')
+        raise VppTransportSocketIOError(1, 'Unknown socket read error')
 
     def read(self):
         if not self.connected:

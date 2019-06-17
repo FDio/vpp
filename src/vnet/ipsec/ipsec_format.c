@@ -155,6 +155,7 @@ u8 *
 format_ipsec_policy (u8 * s, va_list * args)
 {
   u32 pi = va_arg (*args, u32);
+  ip46_type_t ip_type = IP46_TYPE_IP4;
   ipsec_main_t *im = &ipsec_main;
   ipsec_policy_t *p;
   vlib_counter_t counts;
@@ -177,15 +178,19 @@ format_ipsec_policy (u8 * s, va_list * args)
     {
       s = format (s, " sa %u", p->sa_id);
     }
+  if (p->is_ipv6)
+    {
+      ip_type = IP46_TYPE_IP6;
+    }
 
   s = format (s, "\n     local addr range %U - %U port range %u - %u",
-	      format_ip46_address, &p->laddr.start, IP46_TYPE_ANY,
-	      format_ip46_address, &p->laddr.stop, IP46_TYPE_ANY,
+	      format_ip46_address, &p->laddr.start, ip_type,
+	      format_ip46_address, &p->laddr.stop, ip_type,
 	      clib_net_to_host_u16 (p->lport.start),
 	      clib_net_to_host_u16 (p->lport.stop));
   s = format (s, "\n     remote addr range %U - %U port range %u - %u",
-	      format_ip46_address, &p->raddr.start, IP46_TYPE_ANY,
-	      format_ip46_address, &p->raddr.stop, IP46_TYPE_ANY,
+	      format_ip46_address, &p->raddr.start, ip_type,
+	      format_ip46_address, &p->raddr.stop, ip_type,
 	      clib_net_to_host_u16 (p->rport.start),
 	      clib_net_to_host_u16 (p->rport.stop));
 
@@ -336,7 +341,6 @@ format_ipsec_tunnel (u8 * s, va_list * args)
 {
   ipsec_main_t *im = &ipsec_main;
   u32 ti = va_arg (*args, u32);
-  vnet_hw_interface_t *hi;
   ipsec_tunnel_if_t *t;
 
   if (pool_is_free_index (im->tunnel_interfaces, ti))
@@ -350,9 +354,9 @@ format_ipsec_tunnel (u8 * s, va_list * args)
   if (t->hw_if_index == ~0)
     goto done;
 
-  hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
-
-  s = format (s, "%s\n", hi->name);
+  s =
+    format (s, "%U\n", format_vnet_hw_if_index_name, im->vnet_main,
+	    t->hw_if_index);
 
   s = format (s, "   out-bound sa: ");
   s = format (s, "%U\n", format_ipsec_sa, t->output_sa_index,

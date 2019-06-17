@@ -18,6 +18,7 @@
 #ifndef __aesni_h__
 #define __aesni_h__
 
+
 typedef enum
 {
   AESNI_KEY_128 = 0,

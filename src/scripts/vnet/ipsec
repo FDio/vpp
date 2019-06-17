@@ -18,12 +18,12 @@ set int state pg0 up
 set int state pg1 up
 set int state pipe0 up
 
-create ipsec tunnel local-ip 10.0.0.1 remote-ip 10.0.0.2 local-spi 100 remote-spi 101 local-crypto-key A11E51E5B1E0 remote-crypto-key A11E51E5B1E0 crypto-alg aes-cbc-128
+create ipsec tunnel local-ip 10.0.0.1 remote-ip 10.0.0.2 local-spi 100 remote-spi 101 local-crypto-key 6541686776336961656264656f6f6579 remote-crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128
 
 set int state ipsec0 up
 set int unnum ipsec0 use pg0
 
-create ipsec tunnel local-ip 10.0.0.2 remote-ip 10.0.0.1 local-spi 101 remote-spi 100 tx-table 1 local-crypto-key A11E51E5B1E0 remote-crypto-key A11E51E5B1E0 crypto-alg aes-cbc-128 
+create ipsec tunnel local-ip 10.0.0.2 remote-ip 10.0.0.1 local-spi 101 remote-spi 100 tx-table 1 local-crypto-key 6541686776336961656264656f6f6579 remote-crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128
 
 set int state ipsec1 up
 set int ip table ipsec1 1

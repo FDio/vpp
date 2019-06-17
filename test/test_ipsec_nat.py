@@ -57,7 +57,7 @@ class IPSecNATTestCase(TemplateIpsec):
 
         p = self.ipv4_params
         self.config_esp_tun(p)
-        self.logger.info(self.vapi.ppcli("show ipsec"))
+        self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         d = DpoProto.DPO_PROTO_IP6 if p.is_ipv6 else DpoProto.DPO_PROTO_IP4
         VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,

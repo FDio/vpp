@@ -274,6 +274,8 @@ void clib_mem_validate (void);
 
 void clib_mem_trace (int enable);
 
+int clib_mem_is_traced (void);
+
 typedef struct
 {
   /* Total number of objects allocated. */
@@ -406,6 +408,8 @@ typedef struct
 clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
 void clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size);
 void mheap_trace (void *v, int enable);
+uword clib_mem_trace_enable_disable (uword enable);
+void clib_mem_trace (int enable);
 
 #include <vppinfra/error.h>	/* clib_panic */
 

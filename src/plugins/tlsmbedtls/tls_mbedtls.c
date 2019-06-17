@@ -167,7 +167,7 @@ tls_net_send (void *ctx_indexp, const unsigned char *buf, size_t len)
   ctx_index = pointer_to_uword (ctx_indexp);
   ctx = mbedtls_ctx_get (ctx_index);
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  rv = svm_fifo_enqueue_nowait (tls_session->tx_fifo, len, buf);
+  rv = svm_fifo_enqueue (tls_session->tx_fifo, len, buf);
   if (rv < 0)
     return MBEDTLS_ERR_SSL_WANT_WRITE;
   tls_add_vpp_q_tx_evt (tls_session);
@@ -185,7 +185,7 @@ tls_net_recv (void *ctx_indexp, unsigned char *buf, size_t len)
   ctx_index = pointer_to_uword (ctx_indexp);
   ctx = mbedtls_ctx_get (ctx_index);
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  rv = svm_fifo_dequeue_nowait (tls_session->rx_fifo, len, buf);
+  rv = svm_fifo_dequeue (tls_session->rx_fifo, len, buf);
   return (rv < 0) ? 0 : rv;
 }
 
@@ -516,8 +516,8 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
       return 0;
     }
 
-  enq = svm_fifo_enqueue_nowait (app_session->rx_fifo, read,
-				 mm->rx_bufs[thread_index]);
+  enq = svm_fifo_enqueue (app_session->rx_fifo, read,
+			  mm->rx_bufs[thread_index]);
   ASSERT (enq == read);
   vec_reset_length (mm->rx_bufs[thread_index]);
 
@@ -635,13 +635,9 @@ tls_mbedtls_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   mbedtls_main_t *mm = &mbedtls_main;
-  clib_error_t *error;
   u32 num_threads;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
-
-  if ((error = vlib_call_init_function (vm, tls_init)))
-    return error;
 
   if (tls_init_ca_chain ())
     {
@@ -667,12 +663,17 @@ tls_mbedtls_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (tls_mbedtls_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (tls_mbedtls_init) =
+{
+  .runs_after = VLIB_INITS("tls_init"),
+};
+/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "mbedtls based TLS Engine",
+    .description = "Transport Layer Security (TLS) Engine, Mbedtls Based",
 };
 /* *INDENT-ON* */
 

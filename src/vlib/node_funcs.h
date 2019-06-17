@@ -1186,6 +1186,16 @@ vlib_node_increment_counter (vlib_main_t * vm, u32 node_index,
   em->counters[node_counter_base_index + counter_index] += increment;
 }
 
+/** @brief Create a vlib process
+ *  @param vm &vlib_global_main
+ *  @param f the process node function
+ *  @param log2_n_stack_bytes size of the process stack, defaults to 16K
+ *  @return newly-create node index
+ *  @warning call only on the main thread. Barrier sync required
+ */
+u32 vlib_process_create (vlib_main_t * vm, char *name,
+			 vlib_node_function_t * f, u32 log2_n_stack_bytes);
+
 #endif /* included_vlib_node_funcs_h */
 
 /*

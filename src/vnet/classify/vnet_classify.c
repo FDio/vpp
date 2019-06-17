@@ -621,7 +621,6 @@ vnet_classify_add_del (vnet_classify_table_t * t,
     }
   /* Crap. Try again */
   vnet_classify_entry_free (t, save_new_v, new_log2_pages);
-  new_log2_pages++;
 
   if (resplit_once)
     goto mark_linear;

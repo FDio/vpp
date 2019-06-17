@@ -41,7 +41,6 @@
 #include <vnet/ip/ip.h>
 
 vnet_main_t vnet_main;
-vnet_main_t **vnet_mains;
 
 vnet_main_t *
 vnet_get_main (void)
@@ -74,30 +73,8 @@ clib_error_t *
 vnet_main_init (vlib_main_t * vm)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  clib_error_t *error;
   u32 hw_if_index;
   vnet_hw_interface_t *hw;
-
-  if ((error = vlib_call_init_function (vm, vnet_interface_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, fib_module_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, mfib_module_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip_main_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, mpls_init)))
-    return error;
 
   vnm->vlib_main = vm;
 
@@ -117,7 +94,20 @@ vnet_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (vnet_main_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (vnet_main_init)=
+{
+  .init_order = VLIB_INITS("vnet_interface_init",
+                           "ethernet_init",
+                           "fib_module_init",
+                           "mfib_module_init",
+                           "ip_main_init",
+                           "ip4_lookup_init",
+                           "ip6_lookup_init",
+                           "mpls_init",
+                           "vnet_main_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

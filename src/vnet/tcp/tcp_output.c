@@ -1517,6 +1517,19 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	  tcp_update_rto (tc);
 	}
 
+      /* Peer is dead or network connectivity is lost. Close connection.
+       * RFC 1122 section 4.2.3.5 recommends a value of at least 100s. For
+       * a min rto of 0.2s we need to retry about 8 times. */
+      if (tc->rto_boff >= TCP_RTO_BOFF_MAX)
+	{
+	  tcp_send_reset (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	  session_transport_closing_notify (&tc->connection);
+	  tcp_connection_timers_reset (tc);
+	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	  return;
+	}
+
       /* Increment RTO backoff (also equal to number of retries) and go back
        * to first un-acked byte  */
       tc->rto_boff += 1;
@@ -1891,12 +1904,13 @@ tcp_fast_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   ASSERT (tcp_in_fastrecovery (tc));
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
 
+  snd_space = tcp_available_cc_snd_space (tc);
+
   if (!tcp_fastrecovery_first (tc))
     goto send_unsent;
 
   /* RFC 6582: [If a partial ack], retransmit the first unacknowledged
    * segment. */
-  snd_space = tc->sack_sb.last_bytes_delivered;
   while (snd_space > 0 && n_segs < burst_size)
     {
       n_written = tcp_prepare_retransmit_segment (wrk, tc, offset,
@@ -1919,7 +1933,6 @@ tcp_fast_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 send_unsent:
 
   /* RFC 6582: Send a new segment if permitted by the new value of cwnd. */
-  snd_space = tcp_available_cc_snd_space (tc);
   if (snd_space < tc->snd_mss || tc->snd_mss == 0)
     goto done;
 

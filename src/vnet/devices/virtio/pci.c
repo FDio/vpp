@@ -177,16 +177,21 @@ virtio_pci_legacy_get_queue_num (vlib_main_t * vm, virtio_if_t * vif,
   return queue_num;
 }
 
-
-static void
+static int
 virtio_pci_legacy_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
 			       u16 queue_id, void *p)
 {
   u64 addr = vlib_physmem_get_pa (vm, p) >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
+  u32 addr2 = 0;
   vlib_pci_write_io_u16 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_SEL,
 			 &queue_id);
   vlib_pci_write_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_PFN,
 			 (u32 *) & addr);
+  vlib_pci_read_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_PFN,
+			&addr2);
+  if ((u32) addr == addr2)
+    return 0;
+  return 1;
 }
 
 static void
@@ -447,31 +452,26 @@ debug_device_config_space (vlib_main_t * vm, virtio_if_t * vif)
     }
 }
 
-struct virtio_ctrl_mq_status_hdr
+struct virtio_ctrl_msg
 {
   struct virtio_net_ctrl_hdr ctrl;
-  struct virtio_net_ctrl_mq num_mqs;
   virtio_net_ctrl_ack status;
+  u8 data[1024];
 };
 
 static int
-virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
-			      u16 num_queues)
+virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
+			  struct virtio_ctrl_msg *data, u32 len)
 {
   virtio_main_t *vim = &virtio_main;
   virtio_vring_t *vring = vif->cxq_vring;
+  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+  struct virtio_ctrl_msg result;
   u32 buffer_index;
   vlib_buffer_t *b;
   u16 used, next, avail;
   u16 sz = vring->size;
   u16 mask = sz - 1;
-  struct virtio_ctrl_mq_status_hdr mq_hdr, result;
-  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
-
-  mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
-  mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
-  mq_hdr.status = VIRTIO_NET_ERR;
-  mq_hdr.num_mqs.virtqueue_pairs = num_queues;
 
   used = vring->desc_in_use;
   next = vring->desc_next;
@@ -487,8 +487,8 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
    * previous offset.
    */
   b->current_data = 0;
-  clib_memcpy (vlib_buffer_get_current (b), &mq_hdr,
-	       sizeof (struct virtio_ctrl_mq_status_hdr));
+  clib_memcpy (vlib_buffer_get_current (b), data,
+	       sizeof (struct virtio_ctrl_msg));
   d->flags = VRING_DESC_F_NEXT;
   d->addr = vlib_buffer_get_current_pa (vm, b);
   d->len = sizeof (struct virtio_net_ctrl_hdr);
@@ -501,8 +501,8 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
   d = &vring->desc[next];
   d->flags = VRING_DESC_F_NEXT;
   d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (struct virtio_ctrl_mq_status_hdr, num_mqs);
-  d->len = sizeof (struct virtio_net_ctrl_mq);
+    STRUCT_OFFSET_OF (struct virtio_ctrl_msg, data);
+  d->len = len;
   next = (next + 1) & mask;
   d->next = next;
   used++;
@@ -510,8 +510,8 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
   d = &vring->desc[next];
   d->flags = VRING_DESC_F_WRITE;
   d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (struct virtio_ctrl_mq_status_hdr, status);
-  d->len = sizeof (mq_hdr.status);
+    STRUCT_OFFSET_OF (struct virtio_ctrl_msg, status);
+  d->len = sizeof (data->status);
   next = (next + 1) & mask;
   used++;
 
@@ -525,7 +525,6 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
       virtio_kick (vm, vring, vif);
     }
 
-  clib_memset (&result, 0, sizeof (result));
   u16 last = vring->last_used_idx, n_left = 0;
   n_left = vring->used->idx - last;
 
@@ -550,12 +549,49 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
 
   CLIB_MEMORY_BARRIER ();
   clib_memcpy (&result, vlib_buffer_get_current (b),
-	       sizeof (struct virtio_ctrl_mq_status_hdr));
-
-  virtio_log_debug (vim, vif, "multi-queue enable status on Ctrl queue : %u",
-		    result.status);
+	       sizeof (struct virtio_ctrl_msg));
+  virtio_log_debug (vim, vif, "ctrl-queue: status %u", result.status);
   status = result.status;
   vlib_buffer_free (vm, &buffer_index, 1);
+  return status;
+}
+
+static int
+virtio_pci_enable_gso (vlib_main_t * vm, virtio_if_t * vif)
+{
+  virtio_main_t *vim = &virtio_main;
+  struct virtio_ctrl_msg gso_hdr;
+  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+
+  gso_hdr.ctrl.class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
+  gso_hdr.ctrl.cmd = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
+  gso_hdr.status = VIRTIO_NET_ERR;
+  u64 offloads = VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO);
+  clib_memcpy (gso_hdr.data, &offloads, sizeof (offloads));
+
+  status = virtio_pci_send_ctrl_msg (vm, vif, &gso_hdr, sizeof (offloads));
+  virtio_log_debug (vim, vif, "enable gso");
+  return status;
+}
+
+static int
+virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
+			      u16 num_queues)
+{
+  virtio_main_t *vim = &virtio_main;
+  struct virtio_ctrl_msg mq_hdr;
+  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+
+  mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
+  mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
+  mq_hdr.status = VIRTIO_NET_ERR;
+  clib_memcpy (mq_hdr.data, &num_queues, sizeof (num_queues));
+
+  status = virtio_pci_send_ctrl_msg (vm, vif, &mq_hdr, sizeof (num_queues));
+  virtio_log_debug (vim, vif, "multi-queue enable %u queues", num_queues);
   return status;
 }
 
@@ -679,34 +715,21 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
 
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, queue_size, CLIB_CACHE_LINE_BYTES);
-  ASSERT (vring->indirect_buffers == 0);
-  vec_validate_aligned (vring->indirect_buffers, queue_size,
-			CLIB_CACHE_LINE_BYTES);
   if (queue_num % 2)
     {
-      u32 n_alloc = 0;
-      do
-	{
-	  if (n_alloc < queue_size)
-	    n_alloc =
-	      vlib_buffer_alloc (vm, vring->indirect_buffers + n_alloc,
-				 queue_size - n_alloc);
-	}
-      while (n_alloc != queue_size);
-      vif->num_txqs++;
       virtio_log_debug (vim, vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
   else
     {
-      vif->num_rxqs++;
       virtio_log_debug (vim, vif, "rx-queue: number %u, size %u", queue_num,
 			queue_size);
     }
   vring->size = queue_size;
-  virtio_pci_legacy_setup_queue (vm, vif, queue_num, ptr);
-  vring->kick_fd = -1;
+  if (virtio_pci_legacy_setup_queue (vm, vif, queue_num, ptr))
+    return clib_error_return (0, "error in queue address setup");
 
+  vring->kick_fd = -1;
   return error;
 }
 
@@ -718,8 +741,18 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
    * if features are not requested
    * default: all supported features
    */
-  u64 supported_features = VIRTIO_FEATURE (VIRTIO_NET_F_MTU)
+  u64 supported_features = VIRTIO_FEATURE (VIRTIO_NET_F_CSUM)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_MTU)
     | VIRTIO_FEATURE (VIRTIO_NET_F_MAC)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_GSO)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO)
     | VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF)
     | VIRTIO_FEATURE (VIRTIO_NET_F_STATUS)
     | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)
@@ -949,12 +982,24 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   for (int i = 0; i < vif->max_queue_pairs; i++)
     {
       if ((error = virtio_pci_vring_init (vm, vif, RX_QUEUE (i))))
-	virtio_log_warning (vim, vif, "%s (%u) %s", "error in rxq-queue",
-			    RX_QUEUE (i), "initialization");
+	{
+	  virtio_log_warning (vim, vif, "%s (%u) %s", "error in rxq-queue",
+			      RX_QUEUE (i), "initialization");
+	}
+      else
+	{
+	  vif->num_rxqs++;
+	}
 
       if ((error = virtio_pci_vring_init (vm, vif, TX_QUEUE (i))))
-	virtio_log_warning (vim, vif, "%s (%u) %s", "error in txq-queue",
-			    TX_QUEUE (i), "initialization");
+	{
+	  virtio_log_warning (vim, vif, "%s (%u) %s", "error in txq-queue",
+			      TX_QUEUE (i), "initialization");
+	}
+      else
+	{
+	  vif->num_txqs++;
+	}
     }
 
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
@@ -1005,25 +1050,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   virtio_if_t *vif;
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
-
-  if (args->rxq_size == 0)
-    args->rxq_size = VIRTIO_NUM_RX_DESC;
-  if (args->txq_size == 0)
-    args->txq_size = VIRTIO_NUM_TX_DESC;
-
-  if (!virtio_pci_queue_size_valid (args->rxq_size) ||
-      !virtio_pci_queue_size_valid (args->txq_size))
-    {
-      args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (error,
-			   "queue size must be <= 4096, >= 64, "
-			   "and multiples of 64");
-      vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
-		format_vlib_pci_addr, &args->addr,
-		"queue size must be <= 4096, >= 64, and multiples of 64");
-      return;
-    }
 
   /* *INDENT-OFF* */
   pool_foreach (vif, vim->interfaces, ({
@@ -1180,13 +1206,30 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   else
     vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
 
-  if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)) &&
-      (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ)))
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
     {
-      if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
-	virtio_log_warning (vim, vif, "multiqueue is not set");
+      if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS) &&
+	  args->gso_enabled)
+	{
+	  if (virtio_pci_enable_gso (vm, vif))
+	    {
+	      virtio_log_warning (vim, vif, "gso is not enabled");
+	    }
+	  else
+	    {
+	      vif->gso_enabled = 1;
+	      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+	      vnm->interface_main.gso_interface_count++;
+	    }
+	}
+      if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ))
+	{
+	  if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
+	    virtio_log_warning (vim, vif, "multiqueue is not set");
+	}
     }
   return;
+
 
 error:
   virtio_pci_delete_if (vm, vif);
@@ -1217,6 +1260,9 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 
   virtio_pci_legacy_reset (vm, vif);
 
+  if (vif->gso_enabled)
+    vnm->interface_main.gso_interface_count--;
+
   if (vif->hw_if_index)
     {
       vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
@@ -1239,7 +1285,6 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 	virtio_free_rx_buffers (vm, vring);
       }
     vec_free (vring->buffers);
-    vec_free (vring->indirect_buffers);
     vlib_physmem_free (vm, vring->desc);
   }
 
@@ -1252,12 +1297,7 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
       {
 	virtio_free_used_desc (vm, vring);
       }
-    if (vring->queue_id % 2)
-      {
-	vlib_buffer_free_no_next (vm, vring->indirect_buffers, vring->size);
-      }
     vec_free (vring->buffers);
-    vec_free (vring->indirect_buffers);
     vlib_physmem_free (vm, vring->desc);
   }
 

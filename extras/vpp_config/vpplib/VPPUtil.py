@@ -17,19 +17,20 @@ from __future__ import print_function
 import logging
 import re
 import subprocess
-import platform
 import requests
 
 from collections import Counter
 
-ubuntu_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua', 'vpp-api-python',
-                           'vpp-dbg', 'vpp-dev'],
-               'master': ['vpp', 'vpp-plugin-core', 'vpp-api-python',
-                          'vpp-dbg', 'vpp-dev', 'vpp-plugin-dpdk']}
+import distro
 
-centos_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua',
+ubuntu_pkgs = {'release': ['vpp', 'vpp-plugin-core', 'vpp-plugin-dpdk', 'vpp-api-python', 'python3-vpp-api',
+                           'vpp-dbg', 'vpp-dev'],
+               'master': ['vpp', 'vpp-plugin-core', 'vpp-plugin-dpdk', 'vpp-api-python', 'python3-vpp-api',
+                          'vpp-dbg', 'vpp-dev']}
+
+centos_pkgs = {'release': ['vpp', 'vpp-selinux-policy', 'vpp-plugins', 'vpp-api-lua',
                            'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0'],
-               'master': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua',
+               'master': ['vpp', 'vpp-selinux-policy', 'vpp-plugins', 'vpp-api-lua',
                           'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0']}
 
 
@@ -402,18 +403,18 @@ class VPPUtil(object):
             return interfaces
 
         lines = stdout.split('\n')
-        if len(lines[0]) is not 0:
+        if len(lines[0]) != 0:
             if lines[0].split(' ')[0] == 'FileNotFoundError':
                 return interfaces
 
         name = ''
         for line in lines:
-            if len(line) is 0:
+            if len(line) == 0:
                 continue
 
             # If the first character is not whitespace
             # create a new interface
-            if len(re.findall(r'\s', line[0])) is 0:
+            if len(re.findall(r'\s', line[0])) == 0:
                 spl = line.split()
                 name = spl[0]
                 if name == 'local0':
@@ -444,17 +445,17 @@ class VPPUtil(object):
             return interfaces
 
         lines = stdout.split('\n')
-        if len(lines[0]) is not 0:
+        if len(lines[0]) != 0:
             if lines[0].split(' ')[0] == 'FileNotFoundError':
                 return interfaces
 
         for line in lines:
-            if len(line) is 0:
+            if len(line) == 0:
                 continue
 
             # If the first character is not whitespace
             # create a new interface
-            if len(re.findall(r'\s', line[0])) is 0:
+            if len(re.findall(r'\s', line[0])) == 0:
                 spl = line.split()
                 name = spl[0]
                 interfaces[name] = {}
@@ -705,14 +706,14 @@ class VPPUtil(object):
         :rtype: list
         """
 
-        distro = platform.linux_distribution()
-        if distro[0] == 'Ubuntu' or \
-                distro[0] == 'CentOS Linux' or \
-                distro[:7] == 'Red Hat':
-            return distro
+        dist = distro.linux_distribution()
+        if dist[0] == 'Ubuntu' or \
+                dist[0] == 'CentOS Linux' or \
+                dist[:7] == 'Red Hat':
+            return dist
         else:
             raise RuntimeError(
-                'Linux Distribution {} is not supported'.format(distro[0]))
+                'Linux Distribution {} is not supported'.format(dist[0]))
 
     @staticmethod
     def version():
@@ -731,12 +732,12 @@ class VPPUtil(object):
             return version
 
         lines = stdout.split('\n')
-        if len(lines[0]) is not 0:
+        if len(lines[0]) != 0:
             if lines[0].split(' ')[0] == 'FileNotFoundError':
                 return version
 
         for line in lines:
-            if len(line) is 0:
+            if len(line) == 0:
                 continue
             dct = line.split(':')
             version[dct[0]] = dct[1].lstrip(' ')

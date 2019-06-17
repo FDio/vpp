@@ -31,6 +31,7 @@
  */
 char *vlib_plugin_path = NULL;
 char *vlib_plugin_app_version = VPP_BUILD_VER;
+char *vat_plugin_path = NULL;
 
 static void
 vpp_find_plugin_path ()
@@ -219,6 +220,11 @@ main (int argc, char *argv[])
 	  if (i < (argc - 1))
 	    vlib_plugin_path = argv[++i];
 	}
+      if (!strncmp (argv[i], "test_plugin_path", 16))
+	{
+	  if (i < (argc - 1))
+	    vat_plugin_path = argv[++i];
+	}
       else if (!strncmp (argv[i], "heapsize", 8))
 	{
 	  sizep = (u8 *) argv[i + 1];
@@ -304,7 +310,7 @@ heapsize_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (heapsize_config, "heapsize");
 
 static clib_error_t *
-plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
+dummy_path_config (vlib_main_t * vm, unformat_input_t * input)
 {
   u8 *junk;
 
@@ -322,7 +328,21 @@ plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static clib_error_t *
+plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  return dummy_path_config (vm, input);
+}
+
 VLIB_CONFIG_FUNCTION (plugin_path_config, "plugin_path");
+
+static clib_error_t *
+test_plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  return dummy_path_config (vm, input);
+}
+
+VLIB_CONFIG_FUNCTION (test_plugin_path_config, "test_plugin_path");
 
 void vl_msg_api_post_mortem_dump (void);
 void elog_post_mortem_dump (void);

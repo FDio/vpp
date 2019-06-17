@@ -1144,13 +1144,9 @@ clib_error_t *
 vxlan_gbp_init (vlib_main_t * vm)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
-  clib_error_t *error;
 
   vxm->vnet_main = vnet_get_main ();
   vxm->vlib_main = vm;
-
-  if ((error = vlib_call_init_function (vm, punt_init)))
-    return (error);
 
   /* initialize the ip6 hash */
   clib_bihash_init_16_8 (&vxm->vxlan4_gbp_tunnel_by_key, "vxlan4-gbp",
@@ -1175,10 +1171,15 @@ vxlan_gbp_init (vlib_main_t * vm)
 			  "VXLAN-GBP-no-such-v6-tunnel",
 			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6]);
 
-  return (error);
+  return (0);
 }
 
-VLIB_INIT_FUNCTION (vxlan_gbp_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (vxlan_gbp_init) =
+{
+  .runs_after = VLIB_INITS("punt_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

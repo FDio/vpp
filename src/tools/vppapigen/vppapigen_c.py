@@ -13,6 +13,7 @@ top_boilerplate = '''\
  * Automatically generated: please edit the input file NOT this file!
  */
 
+#include <stdbool.h>
 #if defined(vl_msg_id)||defined(vl_union_id) \\
     || defined(vl_printfun) ||defined(vl_endianfun) \\
     || defined(vl_api_version)||defined(vl_typedefs) \\
@@ -294,7 +295,7 @@ def version_tuple(s, module):
 #
 # Plugin entry point
 #
-def run(input_filename, s, file_crc):
+def run(input_filename, s):
     basename = os.path.basename(input_filename)
     filename, file_extension = os.path.splitext(basename)
     output = top_boilerplate.format(datestring=datestring,
@@ -307,6 +308,6 @@ def run(input_filename, s, file_crc):
     output += endianfun(s['types'] + s['Define'])
     output += version_tuple(s, basename)
     output += bottom_boilerplate.format(input_filename=basename,
-                                        file_crc=file_crc)
+                                        file_crc=s['file_crc'])
 
     return output

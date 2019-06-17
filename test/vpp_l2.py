@@ -23,6 +23,7 @@ class BRIDGE_FLAGS:
     FLOOD = 4
     UU_FLOOD = 8
     ARP_TERM = 16
+    ARP_UFWD = 32
 
 
 def find_bridge_domain(test, bd_id):
@@ -70,7 +71,7 @@ class VppBridgeDomain(VppObject):
 
     def __init__(self, test, bd_id,
                  flood=1, uu_flood=1, forward=1,
-                 learn=1, arp_term=1):
+                 learn=1, arp_term=1, arp_ufwd=0):
         self._test = test
         self.bd_id = bd_id
         self.flood = flood
@@ -78,6 +79,7 @@ class VppBridgeDomain(VppObject):
         self.forward = forward
         self.learn = learn
         self.arp_term = arp_term
+        self.arp_ufwd = arp_ufwd
 
     def add_vpp_config(self):
         self._test.vapi.bridge_domain_add_del(bd_id=self.bd_id,
@@ -85,7 +87,9 @@ class VppBridgeDomain(VppObject):
                                               uu_flood=self.uu_flood,
                                               forward=self.forward,
                                               learn=self.learn,
-                                              arp_term=self.arp_term, is_add=1)
+                                              arp_term=self.arp_term,
+                                              arp_ufwd=self.arp_ufwd,
+                                              is_add=1)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):

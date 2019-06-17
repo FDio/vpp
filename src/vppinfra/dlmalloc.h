@@ -1447,9 +1447,9 @@ DLMALLOC_EXPORT int mspace_trim(mspace msp, size_t pad);
 */
 DLMALLOC_EXPORT int mspace_mallopt(int, int);
 
-DLMALLOC_EXPORT void* mspace_get_aligned (mspace msp, 
+DLMALLOC_EXPORT void* mspace_get_aligned (mspace msp,
                                           unsigned long n_user_data_bytes,
-                                          unsigned long align, 
+                                          unsigned long align,
                                           unsigned long align_offset);
 
 DLMALLOC_EXPORT int mspace_is_heap_object (mspace msp, void *p);
@@ -1463,6 +1463,7 @@ DLMALLOC_EXPORT void *mspace_least_addr (mspace msp);
 DLMALLOC_EXPORT void mheap_get_trace (uword offset, uword size);
 DLMALLOC_EXPORT void mheap_put_trace (uword offset, uword size);
 DLMALLOC_EXPORT int mspace_enable_disable_trace (mspace msp, int enable);
+DLMALLOC_EXPORT int mspace_is_traced (mspace msp);
 
 #endif /* MSPACES */
 

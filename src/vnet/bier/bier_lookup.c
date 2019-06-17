@@ -44,7 +44,7 @@ static char * bier_lookup_error_strings[] = {
 };
 
 /*
- * Keep these values sematically the same as BIER lookup
+ * Keep these values semantically the same as BIER lookup
  */
 #define foreach_bier_lookup_next                \
     _(DROP, "bier-drop")                        \

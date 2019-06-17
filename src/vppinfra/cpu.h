@@ -116,6 +116,7 @@ _CLIB_MARCH_FN_REGISTRATION(fn)
 #endif
 #define foreach_x86_64_flags \
 _ (sse3,     1, ecx, 0)   \
+_ (pclmulqdq, 1, ecx, 1)  \
 _ (ssse3,    1, ecx, 9)   \
 _ (sse41,    1, ecx, 19)  \
 _ (sse42,    1, ecx, 20)  \

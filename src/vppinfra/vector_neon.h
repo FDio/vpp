@@ -83,6 +83,14 @@ static_always_inline u32						\
 t##s##x##c##_zero_byte_mask (t##s##x##c x)			\
 { uint8x16_t v = vreinterpretq_u8_u##s (vceqq_##i (vdupq_n_##i(0), x));  \
   return u8x16_compare_byte_mask (v); } \
+\
+static_always_inline u##s##x##c						\
+t##s##x##c##_is_greater (t##s##x##c a, t##s##x##c b)			\
+{ return (u##s##x##c) vcgtq_##i (a, b); }				\
+\
+static_always_inline t##s##x##c						\
+t##s##x##c##_blend (t##s##x##c dst, t##s##x##c src, u##s##x##c mask)	\
+{ return (t##s##x##c) vbslq_##i (mask, src, dst); }
 
 foreach_neon_vec128i foreach_neon_vec128u
 
