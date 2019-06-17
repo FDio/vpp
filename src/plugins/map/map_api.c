@@ -103,15 +103,11 @@ vl_api_map_add_del_rule_t_handler (vl_api_map_add_del_rule_t * mp)
 static void
 vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
 {
-  vl_api_map_domain_details_t *rmp;
   map_main_t *mm = &map_main;
   map_domain_t *d;
   map_domain_extra_t *de;
   vl_api_registration_t *reg;
   u32 map_domain_index;
-
-  if (pool_elts (mm->domains) == 0)
-    return;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -124,6 +120,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     de = vec_elt_at_index(mm->domain_extras, map_domain_index);
 
     /* Make sure every field is initiated (or don't skip the clib_memset()) */
+    vl_api_map_domain_details_t *rmp;
     rmp = vl_msg_api_alloc (sizeof (*rmp) + vec_len(de->tag));
 
     rmp->_vl_msg_id = htons(VL_API_MAP_DOMAIN_DETAILS + mm->msg_id_base);
@@ -146,6 +143,9 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     vl_api_send_msg (reg, (u8 *) rmp);
   }));
   /* *INDENT-ON* */
+  vl_api_map_domain_dump_reply_t *rmp;
+  int rv = 0;
+  REPLY_MACRO (VL_API_MAP_DOMAIN_DUMP_REPLY);
 }
 
 static void
