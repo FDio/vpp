@@ -157,7 +157,19 @@ class CliSyntaxError(Exception):
 
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
-    pass
+
+    def __init__(self, rv=0, reply=None, expected=0, api_fn_name=None, api_fn_args=None):
+        self.expected = expected
+        self.rv = rv
+        self.reply = reply
+        self.api_fn_name = api_fn_name
+        self.api_fn_args = api_fn_args
+        api_fn_args_sig = ', '.join(
+            ['{}={!r}'.format(k,v) for k,v in api_fn_args.items()])
+        msg = '%s(%s) returned %s.  Expected %s.  ' \
+              'Reply was: %s.'
+        super(UnexpectedApiReturnValueError, self).__init__(
+            msg % (api_fn_name, api_fn_args_sig, rv, expected, reply))
 
 
 class VppPapiProvider(object):
@@ -325,14 +337,19 @@ class VppPapiProvider(object):
                       "return value instead of %d in %s" % \
                       (reply.retval, moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise UnexpectedApiReturnValueError(
+                    rv=reply.retval, reply=repr(reply),
+                    expected=-self._negative,
+                    api_fn_name=api_fn.__name__, api_fn_args=api_args)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead " \
                       "of %d in %s" % (expected_retval, reply.retval,
                                        moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise UnexpectedApiReturnValueError(
+                    rv=reply.retval, reply=repr(reply), expected=0,
+                    api_fn_name=api_fn.__name__, api_fn_args=api_args)
         else:
             raise Exception("Internal error, unexpected value for "
                             "self._expect_api_retval %s" %
