@@ -53,6 +53,27 @@ vl_api_can_send_msg (vl_api_registration_t * rp)
     return vl_mem_api_can_send (rp->vl_input_queue);
 }
 
+/*
+ * Suggests to an API handler to relinguish control. Currently limits
+ * an handler to a maximum of 1ms or it earlier if the client queue is
+ * full.
+ *
+ * May be enhanced in the future based on other performance
+ * characteristics of the main thread.
+ */
+#define VL_API_MAX_TIME_IN_HANDLER 0.001	/* 1 ms */
+always_inline int
+vl_api_process_may_suspend (vlib_main_t *vm, vl_api_registration_t * rp, f64 start)
+{
+  /* Is client queue full (leave space for reply message) */
+  if (rp->registration_type <= REGISTRATION_TYPE_SHMEM &&
+      rp->vl_input_queue->cursize + 1 >= rp->vl_input_queue->maxsize)
+    return true;
+  if (vlib_time_now (vm) > start + VL_API_MAX_TIME_IN_HANDLER)
+    return true;
+  return false;
+}
+
 always_inline vl_api_registration_t *
 vl_api_client_index_to_registration (u32 index)
 {
