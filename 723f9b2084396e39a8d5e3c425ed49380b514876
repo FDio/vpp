@@ -22,6 +22,30 @@
       "revId": "723f9b2084396e39a8d5e3c425ed49380b514876",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31f47536_76165b0d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-17T21:01:14Z",
+      "side": 1,
+      "message": "ok, but why? It\u0027s the first character of a sentence, yes?",
+      "parentUuid": "99778ae9_183a1449",
+      "range": {
+        "startLine": 7,
+        "startChar": 7,
+        "endLine": 7,
+        "endChar": 8
+      },
+      "revId": "723f9b2084396e39a8d5e3c425ed49380b514876",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
