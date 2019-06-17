@@ -359,6 +359,24 @@ class TestIPv6(TestIPv6ND):
                             "Interface %s: Packet expected from interface %s "
                             "didn't arrive" % (dst_if.name, i.name))
 
+    def test_next_header_anomaly(self):
+        """ IPv6 next header anomaly test
+
+        Test scenario:
+            - ipv6 next header field = Fragment Header (44)
+            - next header is ICMPv6 Echo Request
+            - wait for reassembly
+        """
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44) /
+               ICMPv6EchoRequest())
+
+        self.pg0.add_stream(pkt)
+        self.pg_start()
+
+        # wait for reassembly
+        self.sleep(10)
+
     def test_fib(self):
         """ IPv6 FIB test
 
