@@ -13,7 +13,9 @@ from six import moves, iteritems
 from vpp_papi import VPPApiClient, mac_pton
 from hook import Hook
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
+from vpp_papi_api_prototypes import strerror_dump
 
+JIRA_URL = 'https://jira.fd.io/projects/VPP/issues'
 
 #
 # Dictionary keyed on message name to override default values for
@@ -158,7 +160,38 @@ class CliSyntaxError(Exception):
 
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
-    pass
+
+    def __init__(self, rv=0, strerror=None, reply=None, expected=0,
+                 api_fn_name=None, api_fn_args=None):
+        self.expected = expected
+        self.rv = rv
+        self.strerror = strerror
+        self.reply = reply
+        self.api_fn_name = api_fn_name
+        self.api_fn_args = api_fn_args
+        api_fn_args_sig = ', '.join(
+            ['{}={!r}'.format(k, v) for k, v in api_fn_args.items()])
+        msg = '%s(%s) returned %s (%s).  Expected %s.  ' \
+              'Reply was: %s.'
+        super(UnexpectedApiReturnValueError, self).__init__(
+            msg % (api_fn_name, api_fn_args_sig, strerror, rv,
+                   expected, reply))
+
+
+class InvalidApiReturnValueError(UnexpectedApiReturnValueError):
+    """ exception raised when api returns a value not in api_errno.h"""
+
+    def __init__(self, rv=0, reply=None, expected=0,
+                 api_fn_name=None, api_fn_args=None):
+        api_fn_args_sig = ', '.join(
+            ['{}={!r}'.format(k, v) for k, v in api_fn_args.items()])
+
+        msg = ('API function %s(%s) returned an invalid return code of (%s).\n'
+               'Please fix the api function to return a value in api_errno.h '
+               'or at least open a ticket at: %s.\n'
+               % (api_fn_name, api_fn_args_sig, rv, JIRA_URL))
+        super(UnexpectedApiReturnValueError, self).__init__(
+            msg % (api_fn_name, api_fn_args_sig, rv, expected, reply))
 
 
 class VppPapiProvider(object):
@@ -168,6 +201,10 @@ class VppPapiProvider(object):
     """
 
     _zero, _negative = range(2)
+
+    @property
+    def api_errors(self):
+        return self.strerror_dump()
 
     def __init__(self, name, shm_prefix, test_class, read_timeout):
         self.hook = Hook(test_class)
@@ -326,14 +363,20 @@ class VppPapiProvider(object):
                       "return value instead of %d in %s" % \
                       (reply.retval, moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise InvalidApiReturnValueError(
+                    rv=reply.retval, strerror=self.api_errors(reply.retval),
+                    reply=repr(reply), expected=-self._negative,
+                    api_fn_name=api_fn.__name__, api_fn_args=api_args)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead " \
                       "of %d in %s" % (expected_retval, reply.retval,
                                        moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise UnexpectedApiReturnValueError(
+                    rv=reply.retval, strerror=self.api_errors(reply.retval),
+                    reply=repr(reply), expected=0,
+                    api_fn_name=api_fn.__name__, api_fn_args=api_args)
         else:
             raise Exception("Internal error, unexpected value for "
                             "self._expect_api_retval %s" %
@@ -2301,3 +2344,6 @@ class VppPapiProvider(object):
                             'sw_if_index': sw_if_index,
                             'is_enable': is_enable,
                         })
+
+
+VppPapiProvider.strerror_dump = strerror_dump
