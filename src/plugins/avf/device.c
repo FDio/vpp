@@ -101,10 +101,9 @@ clib_error_t *
 avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
 		 void *data, int len)
 {
-  avf_main_t *am = &avf_main;
   clib_error_t *err = 0;
   avf_aq_desc_t *d, dc;
-  int n_retry = 5;
+  f64 t0, wait_time, suspend_time = AVF_AQ_ENQ_SUSPEND_TIME;
 
   d = &ad->atq[ad->atq_next_slot];
   clib_memcpy_fast (d, dt, sizeof (avf_aq_desc_t));
@@ -126,22 +125,24 @@ avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
     clib_memcpy_fast (&dc, d, sizeof (avf_aq_desc_t));
 
   CLIB_MEMORY_BARRIER ();
-  vlib_log_debug (am->log_class, "%U", format_hexdump, data, len);
   ad->atq_next_slot = (ad->atq_next_slot + 1) % AVF_MBOX_LEN;
   avf_reg_write (ad, AVF_ATQT, ad->atq_next_slot);
   avf_reg_flush (ad);
 
+  t0 = vlib_time_now (vm);
 retry:
-  vlib_process_suspend (vm, 10e-6);
+  vlib_process_suspend (vm, suspend_time);
+  wait_time = vlib_time_now (vm) - t0;
 
   if (((d->flags & AVF_AQ_F_DD) == 0) || ((d->flags & AVF_AQ_F_CMP) == 0))
     {
-      if (--n_retry == 0)
+      if (wait_time > AVF_AQ_ENQ_MAX_WAIT_TIME)
 	{
 	  err = clib_error_return (0, "adminq enqueue timeout [opcode 0x%x]",
 				   d->opcode);
 	  goto done;
 	}
+      suspend_time *= 2;
       goto retry;
     }
 
