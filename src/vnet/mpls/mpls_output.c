@@ -78,12 +78,14 @@ mpls_output_inline (vlib_main_t * vm,
           ip_adjacency_t * adj0;
           mpls_unicast_header_t *hdr0;
           vlib_buffer_t * p0;
-          u32 pi0, rw_len0, adj_index0, next0, error0;
+          u32 pi0, adj_index0, next0, error0;
+          word rw_len0;
 
           ip_adjacency_t * adj1;
           mpls_unicast_header_t *hdr1;
           vlib_buffer_t * p1;
-          u32 pi1, rw_len1, adj_index1, next1, error1;
+          u32 pi1, adj_index1, next1, error1;
+          word rw_len1;
 
           /* Prefetch next iteration. */
           {
@@ -221,7 +223,8 @@ mpls_output_inline (vlib_main_t * vm,
 	  ip_adjacency_t * adj0;
           mpls_unicast_header_t *hdr0;
 	  vlib_buffer_t * p0;
-	  u32 pi0, rw_len0, adj_index0, next0, error0;
+	  u32 pi0, adj_index0, next0, error0;
+          word rw_len0;
 
 	  pi0 = to_next[0] = from[0];
 
