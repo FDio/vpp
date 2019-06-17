@@ -73,7 +73,11 @@
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
+#if VPP_API_TEST_BUILTIN == 0
 #define vl_print(handle, ...)
+#else
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#endif
 #define vl_printfun
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
@@ -398,7 +402,7 @@ format_ipsec_integ_alg (u8 * s, va_list * args)
 static uword
 api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
-  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vat_main_t *vam __clib_unused = va_arg (*args, vat_main_t *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 *result = va_arg (*args, u32 *);
 
@@ -408,7 +412,7 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 static uword
 api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
 {
-  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vat_main_t *vam __clib_unused = va_arg (*args, vat_main_t *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 *result = va_arg (*args, u32 *);
 
@@ -562,12 +566,13 @@ unformat_flow_classify_table_type (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+#if (VPP_API_TEST_BUILTIN==0)
+
 static const char *mfib_flag_names[] = MFIB_ENTRY_NAMES_SHORT;
 static const char *mfib_flag_long_names[] = MFIB_ENTRY_NAMES_LONG;
 static const char *mfib_itf_flag_long_names[] = MFIB_ITF_NAMES_LONG;
 static const char *mfib_itf_flag_names[] = MFIB_ITF_NAMES_SHORT;
 
-#if (VPP_API_TEST_BUILTIN==0)
 uword
 unformat_mfib_itf_flags (unformat_input_t * input, va_list * args)
 {
@@ -1045,8 +1050,8 @@ static void vl_api_sw_interface_event_t_handler
 }
 #endif
 
-static void vl_api_sw_interface_event_t_handler_json
-  (vl_api_sw_interface_event_t * mp)
+__clib_unused static void
+vl_api_sw_interface_event_t_handler_json (vl_api_sw_interface_event_t * mp)
 {
   /* JSON output not supported */
 }
@@ -2697,13 +2702,23 @@ vl_api_ip_details_t_handler_json (vl_api_ip_details_t * mp)
 static void
 vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp)
 {
-  errmsg ("DHCP compl event: pid %d %s hostname %s host_addr %U "
-	  "router_addr %U host_mac %U",
-	  ntohl (mp->pid), mp->lease.is_ipv6 ? "ipv6" : "ipv4",
-	  mp->lease.hostname,
-	  format_ip4_address, &mp->lease.host_address,
-	  format_ip4_address, &mp->lease.router_address,
-	  format_ethernet_address, mp->lease.host_mac);
+  u8 *s, i;
+
+  s = format (0, "DHCP compl event: pid %d %s hostname %s host_addr %U "
+	      "host_mac %U router_addr %U",
+	      ntohl (mp->pid), mp->lease.is_ipv6 ? "ipv6" : "ipv4",
+	      mp->lease.hostname,
+	      format_ip4_address, mp->lease.host_address,
+	      format_ethernet_address, mp->lease.host_mac,
+	      format_ip4_address, mp->lease.router_address);
+
+  for (i = 0; i < mp->lease.count; i++)
+    s =
+      format (s, " domain_server_addr %U", format_ip4_address,
+	      mp->lease.domain_server[i].address);
+
+  errmsg ((char *) s);
+  vec_free (s);
 }
 
 static void vl_api_dhcp_compl_event_t_handler_json
@@ -5160,7 +5175,6 @@ _(proxy_arp_add_del_reply)                              \
 _(proxy_arp_intfc_enable_disable_reply)                 \
 _(sw_interface_set_unnumbered_reply)                    \
 _(ip_neighbor_add_del_reply)                            \
-_(oam_add_del_reply)                                    \
 _(reset_fib_reply)                                      \
 _(dhcp_proxy_config_reply)                              \
 _(dhcp_proxy_set_vss_reply)                             \
@@ -5201,9 +5215,7 @@ _(ipsec_spd_add_del_reply)                              \
 _(ipsec_interface_add_del_spd_reply)                    \
 _(ipsec_spd_entry_add_del_reply)                        \
 _(ipsec_sad_entry_add_del_reply)                        \
-_(ipsec_sa_set_key_reply)                               \
 _(ipsec_tunnel_if_add_del_reply)                        \
-_(ipsec_tunnel_if_set_key_reply)                        \
 _(ipsec_tunnel_if_set_sa_reply)                         \
 _(delete_loopback_reply)                                \
 _(bd_ip_mac_add_del_reply)                              \
@@ -5369,7 +5381,6 @@ _(SW_INTERFACE_SET_UNNUMBERED_REPLY,                                    \
 _(IP_NEIGHBOR_ADD_DEL_REPLY, ip_neighbor_add_del_reply)                 \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
 _(CREATE_SUBIF_REPLY, create_subif_reply)                     		\
-_(OAM_ADD_DEL_REPLY, oam_add_del_reply)                                 \
 _(RESET_FIB_REPLY, reset_fib_reply)                                     \
 _(DHCP_PROXY_CONFIG_REPLY, dhcp_proxy_config_reply)                     \
 _(DHCP_PROXY_SET_VSS_REPLY, dhcp_proxy_set_vss_reply)                   \
@@ -5444,9 +5455,7 @@ _(IPSEC_INTERFACE_ADD_DEL_SPD_REPLY, ipsec_interface_add_del_spd_reply) \
 _(IPSEC_SPD_ENTRY_ADD_DEL_REPLY, ipsec_spd_entry_add_del_reply)         \
 _(IPSEC_SAD_ENTRY_ADD_DEL_REPLY, ipsec_sad_entry_add_del_reply)         \
 _(IPSEC_SA_DETAILS, ipsec_sa_details)                                   \
-_(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL_REPLY, ipsec_tunnel_if_add_del_reply)         \
-_(IPSEC_TUNNEL_IF_SET_KEY_REPLY, ipsec_tunnel_if_set_key_reply)         \
 _(IPSEC_TUNNEL_IF_SET_SA_REPLY, ipsec_tunnel_if_set_sa_reply)           \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
 _(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
@@ -7260,14 +7269,11 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
   vl_api_mac_address_t mac = { 0 };
   unformat_input_t *i = vam->input;
   vl_api_bd_ip_mac_add_del_t *mp;
-  ip46_type_t type;
   u32 bd_id;
-  u8 is_ipv6 = 0;
   u8 is_add = 1;
   u8 bd_id_set = 0;
   u8 ip_set = 0;
   u8 mac_set = 0;
-  u8 macaddr[6];
   int ret;
 
 
@@ -7673,9 +7679,9 @@ api_virtio_pci_create (vat_main_t * vam)
   vl_api_virtio_pci_create_t *mp;
   u8 mac_address[6];
   u8 random_mac = 1;
+  u8 gso_enabled = 0;
   u32 pci_addr = 0;
   u64 features = (u64) ~ (0ULL);
-  u32 rx_ring_sz = 0, tx_ring_sz = 0;
   int ret;
 
   clib_memset (mac_address, 0, sizeof (mac_address));
@@ -7691,10 +7697,8 @@ api_virtio_pci_create (vat_main_t * vam)
 	;
       else if (unformat (i, "features 0x%llx", &features))
 	;
-      else if (unformat (i, "rx-ring-size %u", &rx_ring_sz))
-	;
-      else if (unformat (i, "tx-ring-size %u", &tx_ring_sz))
-	;
+      else if (unformat (i, "gso-enabled"))
+	gso_enabled = 1;
       else
 	break;
     }
@@ -7702,26 +7706,6 @@ api_virtio_pci_create (vat_main_t * vam)
   if (pci_addr == 0)
     {
       errmsg ("pci address must be non zero. ");
-      return -99;
-    }
-  if (!is_pow2 (rx_ring_sz))
-    {
-      errmsg ("rx ring size must be power of 2. ");
-      return -99;
-    }
-  if (rx_ring_sz > 32768)
-    {
-      errmsg ("rx ring size must be 32768 or lower. ");
-      return -99;
-    }
-  if (!is_pow2 (tx_ring_sz))
-    {
-      errmsg ("tx ring size must be power of 2. ");
-      return -99;
-    }
-  if (tx_ring_sz > 32768)
-    {
-      errmsg ("tx ring size must be 32768 or lower. ");
       return -99;
     }
 
@@ -7732,8 +7716,7 @@ api_virtio_pci_create (vat_main_t * vam)
 
   mp->pci_addr = htonl (pci_addr);
   mp->features = clib_host_to_net_u64 (features);
-  mp->rx_ring_sz = htons (rx_ring_sz);
-  mp->tx_ring_sz = htons (tx_ring_sz);
+  mp->gso_enabled = gso_enabled;
 
   if (random_mac == 0)
     clib_memcpy (mp->mac_address, mac_address, 6);
@@ -9530,59 +9513,6 @@ api_create_subif (vat_main_t * vam)
 }
 
 static int
-api_oam_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_oam_add_del_t *mp;
-  u32 vrf_id = 0;
-  u8 is_add = 1;
-  ip4_address_t src, dst;
-  u8 src_set = 0;
-  u8 dst_set = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "vrf %d", &vrf_id))
-	;
-      else if (unformat (i, "src %U", unformat_ip4_address, &src))
-	src_set = 1;
-      else if (unformat (i, "dst %U", unformat_ip4_address, &dst))
-	dst_set = 1;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (src_set == 0)
-    {
-      errmsg ("missing src addr");
-      return -99;
-    }
-
-  if (dst_set == 0)
-    {
-      errmsg ("missing dst addr");
-      return -99;
-    }
-
-  M (OAM_ADD_DEL, mp);
-
-  mp->vrf_id = ntohl (vrf_id);
-  mp->is_add = is_add;
-  clib_memcpy (mp->src_address, &src, sizeof (mp->src_address));
-  clib_memcpy (mp->dst_address, &dst, sizeof (mp->dst_address));
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_reset_fib (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -10190,7 +10120,6 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
   vl_api_sw_interface_ip6nd_ra_prefix_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
-  u32 address_length = 0;
   u8 v6_address_set = 0;
   vl_api_prefix_t pfx;
   u8 use_default = 0;
@@ -13301,8 +13230,6 @@ api_gre_tunnel_add_del (vat_main_t * vam)
   vl_api_gre_tunnel_add_del_t *mp;
   vl_api_gre_tunnel_type_t t_type;
   u8 is_add = 1;
-  u8 ipv4_set = 0;
-  u8 ipv6_set = 0;
   u8 src_set = 0;
   u8 dst_set = 0;
   u32 outer_fib_id = 0;
@@ -13405,8 +13332,6 @@ static void vl_api_gre_tunnel_details_t_handler_json
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
-  struct in_addr ip4;
-  struct in6_addr ip6;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -14240,7 +14165,7 @@ api_ip_probe_neighbor (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_probe_neighbor_t *mp;
-  vl_api_address_t dst_adr;
+  vl_api_address_t dst_adr = { };
   u8 int_set = 0;
   u8 adr_set = 0;
   u32 sw_if_index;
@@ -14252,7 +14177,7 @@ api_ip_probe_neighbor (vat_main_t * vam)
 	int_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	int_set = 1;
-      else if (unformat (i, "address %U", unformat_vl_api_address, dst_adr))
+      else if (unformat (i, "address %U", unformat_vl_api_address, &dst_adr))
 	adr_set = 1;
       else
 	break;
@@ -14779,7 +14704,7 @@ api_ipsec_spd_entry_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_spd_entry_add_del_t *mp;
-  u8 is_add = 1, is_outbound = 0, is_ipv6 = 0, is_ip_any = 1;
+  u8 is_add = 1, is_outbound = 0;
   u32 spd_id = 0, sa_id = 0, protocol = 0, policy = 0;
   i32 priority = 0;
   u32 rport_start = 0, rport_stop = (u32) ~ 0;
@@ -14819,16 +14744,16 @@ api_ipsec_spd_entry_add_del (vat_main_t * vam)
 	;
       else if (unformat (i, "laddr_start %U",
 			 unformat_vl_api_address, &laddr_start))
-	is_ip_any = 0;
+	;
       else if (unformat (i, "laddr_stop %U", unformat_vl_api_address,
 			 &laddr_stop))
-	is_ip_any = 0;
+	;
       else if (unformat (i, "raddr_start %U", unformat_vl_api_address,
 			 &raddr_start))
-	is_ip_any = 0;
+	;
       else if (unformat (i, "raddr_stop %U", unformat_vl_api_address,
 			 &raddr_stop))
-	is_ip_any = 0;
+	;
       else
 	if (unformat (i, "action %U", unformat_ipsec_policy_action, &policy))
 	{
@@ -14974,52 +14899,6 @@ api_ipsec_sad_entry_add_del (vat_main_t * vam)
 }
 
 static int
-api_ipsec_sa_set_key (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_ipsec_sa_set_key_t *mp;
-  u32 sa_id;
-  u8 *ck = 0, *ik = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sa_id %d", &sa_id))
-	;
-      else if (unformat (i, "crypto_key %U", unformat_hex_string, &ck))
-	;
-      else if (unformat (i, "integ_key %U", unformat_hex_string, &ik))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  M (IPSEC_SA_SET_KEY, mp);
-
-  mp->sa_id = ntohl (sa_id);
-  mp->crypto_key.length = vec_len (ck);
-  mp->integrity_key.length = vec_len (ik);
-
-  if (mp->crypto_key.length > sizeof (mp->crypto_key.data))
-    mp->crypto_key.length = sizeof (mp->crypto_key.data);
-
-  if (mp->integrity_key.length > sizeof (mp->integrity_key.data))
-    mp->integrity_key.length = sizeof (mp->integrity_key.data);
-
-  if (ck)
-    clib_memcpy (mp->crypto_key.data, ck, mp->crypto_key.length);
-  if (ik)
-    clib_memcpy (mp->integrity_key.data, ik, mp->integrity_key.length);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -15037,7 +14916,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
   u8 renumber = 0;
   u32 instance = ~0;
   u32 count = 1, jj;
-  int ret;
+  int ret = -1;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -15323,84 +15202,6 @@ api_ipsec_sa_dump (vat_main_t * vam)
   S (mp_ping);
 
   W (ret);
-  return ret;
-}
-
-static int
-api_ipsec_tunnel_if_set_key (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_ipsec_tunnel_if_set_key_t *mp;
-  u32 sw_if_index = ~0;
-  u8 key_type = IPSEC_IF_SET_KEY_TYPE_NONE;
-  u8 *key = 0;
-  u32 alg = ~0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	;
-      else
-	if (unformat
-	    (i, "local crypto %U", unformat_ipsec_api_crypto_alg, &alg))
-	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO;
-      else
-	if (unformat
-	    (i, "remote crypto %U", unformat_ipsec_api_crypto_alg, &alg))
-	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO;
-      else
-	if (unformat
-	    (i, "local integ %U", unformat_ipsec_api_integ_alg, &alg))
-	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG;
-      else
-	if (unformat
-	    (i, "remote integ %U", unformat_ipsec_api_integ_alg, &alg))
-	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG;
-      else if (unformat (i, "%U", unformat_hex_string, &key))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index == ~0)
-    {
-      errmsg ("interface must be specified");
-      return -99;
-    }
-
-  if (key_type == IPSEC_IF_SET_KEY_TYPE_NONE)
-    {
-      errmsg ("key type must be specified");
-      return -99;
-    }
-
-  if (alg == ~0)
-    {
-      errmsg ("algorithm must be specified");
-      return -99;
-    }
-
-  if (vec_len (key) == 0)
-    {
-      errmsg ("key must be specified");
-      return -99;
-    }
-
-  M (IPSEC_TUNNEL_IF_SET_KEY, mp);
-
-  mp->sw_if_index = htonl (sw_if_index);
-  mp->alg = alg;
-  mp->key_type = key_type;
-  mp->key_len = vec_len (key);
-  clib_memcpy (mp->key, key, vec_len (key));
-
-  S (mp);
-  W (ret);
-
   return ret;
 }
 
@@ -20223,7 +20024,6 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
   u8 prefix_set = 0;
   u32 vrf_id = ~0;
   u8 is_add = 1;
-  u8 is_ipv6 = 0;
   int ret;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -20437,8 +20237,8 @@ static int
 api_set_punt (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
+  vl_api_address_family_t af;
   vl_api_set_punt_t *mp;
-  u32 ipv = ~0;
   u32 protocol = ~0;
   u32 port = ~0;
   int is_add = 1;
@@ -20446,7 +20246,7 @@ api_set_punt (vat_main_t * vam)
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "ip %d", &ipv))
+      if (unformat (i, "%U", unformat_vl_api_address_family, &af))
 	;
       else if (unformat (i, "protocol %d", &protocol))
 	;
@@ -20464,9 +20264,10 @@ api_set_punt (vat_main_t * vam)
   M (SET_PUNT, mp);
 
   mp->is_add = (u8) is_add;
-  mp->punt.ipv = (u8) ipv;
-  mp->punt.l4_protocol = (u8) protocol;
-  mp->punt.l4_port = htons ((u16) port);
+  mp->punt.type = PUNT_API_TYPE_L4;
+  mp->punt.punt.l4.af = af;
+  mp->punt.punt.l4.protocol = (u8) protocol;
+  mp->punt.punt.l4.port = htons ((u16) port);
 
   S (mp);
   W (ret);
@@ -20501,7 +20302,6 @@ static void vl_api_ipsec_gre_tunnel_details_t_handler_json
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
-  struct in_addr ip4;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -22340,7 +22140,7 @@ _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
 _(virtio_pci_create,                                                    \
-  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [tx-ring-size <num> [rx-ring-size <num>] [features <hex-value>]") \
+  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled]") \
 _(virtio_pci_delete,                                                    \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_virtio_pci_dump, "")                                     \
@@ -22406,7 +22206,6 @@ _(create_subif, "<intfc> | sw_if_index <id> sub_id <n>\n"               \
   "[outer_vlan_id <n>][inner_vlan_id <n>]\n"                            \
   "[no_tags][one_tag][two_tags][dot1ad][exact_match][default_sub]\n"    \
   "[outer_vlan_id_any][inner_vlan_id_any]")                             \
-_(oam_add_del, "src <ip4-address> dst <ip4-address> [vrf <n>] [del]")   \
 _(reset_fib, "vrf <n> [ipv6]")                                          \
 _(dhcp_proxy_config,                                                    \
   "svr <v46-address> src <v46-address>\n"                               \
@@ -22531,15 +22330,12 @@ _(ipsec_spd_entry_add_del, "spd_id <n> priority <n> action <action>\n"  \
   "  (inbound|outbound) [sa_id <n>] laddr_start <ip4|ip6>\n"            \
   "  laddr_stop <ip4|ip6> raddr_start <ip4|ip6> raddr_stop <ip4|ip6>\n" \
   "  [lport_start <n> lport_stop <n>] [rport_start <n> rport_stop <n>]" ) \
-_(ipsec_sa_set_key, "sa_id <n> crypto_key <hex> integ_key <hex>")       \
 _(ipsec_tunnel_if_add_del, "local_spi <n> remote_spi <n>\n"             \
   "  crypto_alg <alg> local_crypto_key <hex> remote_crypto_key <hex>\n" \
   "  integ_alg <alg> local_integ_key <hex> remote_integ_key <hex>\n"    \
   "  local_ip <addr> remote_ip <addr> [esn] [anti_replay] [del]\n"      \
   "  [instance <n>]")     \
 _(ipsec_sa_dump, "[sa_id <n>]")                                         \
-_(ipsec_tunnel_if_set_key, "<intfc> <local|remote> <crypto|integ>\n"    \
-  "  <alg> <hex>\n")                                                    \
 _(ipsec_tunnel_if_set_sa, "<intfc> sa_id <n> <inbound|outbound>\n")     \
 _(delete_loopback,"sw_if_index <nn>")                                   \
 _(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \

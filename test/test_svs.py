@@ -12,6 +12,8 @@ from scapy.layers.inet6 import IPv6
 
 from vpp_papi import VppEnum
 
+NUM_PKTS = 67
+
 
 class TestSVS(VppTestCase):
     """ SVS Test Case """
@@ -127,12 +129,12 @@ class TestSVS(VppTestCase):
         #
         # now all the packets should be delivered out the respective interface
         #
-        self.send_and_expect(self.pg0, pkts_0[0] * 65, self.pg1)
-        self.send_and_expect(self.pg0, pkts_0[1] * 65, self.pg2)
-        self.send_and_expect(self.pg0, pkts_0[2] * 65, self.pg3)
-        self.send_and_expect(self.pg1, pkts_1[0] * 65, self.pg1)
-        self.send_and_expect(self.pg1, pkts_1[1] * 65, self.pg2)
-        self.send_and_expect(self.pg1, pkts_1[2] * 65, self.pg3)
+        self.send_and_expect(self.pg0, pkts_0[0] * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, pkts_0[1] * NUM_PKTS, self.pg2)
+        self.send_and_expect(self.pg0, pkts_0[2] * NUM_PKTS, self.pg3)
+        self.send_and_expect(self.pg1, pkts_1[0] * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg1, pkts_1[1] * NUM_PKTS, self.pg2)
+        self.send_and_expect(self.pg1, pkts_1[2] * NUM_PKTS, self.pg3)
 
         #
         # check that if the SVS lookup does not match a route the packet
@@ -142,13 +144,13 @@ class TestSVS(VppTestCase):
              IP(src=self.pg0.remote_ip4, dst=self.pg0.remote_ip4) /
              UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
-        self.send_and_expect(self.pg0, p * 65, self.pg0)
+        self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg0)
 
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.pg1.remote_ip4) /
              UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
-        self.send_and_expect(self.pg1, p * 65, self.pg1)
+        self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg1)
 
         #
         # dump the SVS configs
@@ -257,12 +259,12 @@ class TestSVS(VppTestCase):
         #
         # now all the packets should be delivered out the respective interface
         #
-        self.send_and_expect(self.pg0, pkts_0[0] * 65, self.pg1)
-        self.send_and_expect(self.pg0, pkts_0[1] * 65, self.pg2)
-        self.send_and_expect(self.pg0, pkts_0[2] * 65, self.pg3)
-        self.send_and_expect(self.pg1, pkts_1[0] * 65, self.pg1)
-        self.send_and_expect(self.pg1, pkts_1[1] * 65, self.pg2)
-        self.send_and_expect(self.pg1, pkts_1[2] * 65, self.pg3)
+        self.send_and_expect(self.pg0, pkts_0[0] * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, pkts_0[1] * NUM_PKTS, self.pg2)
+        self.send_and_expect(self.pg0, pkts_0[2] * NUM_PKTS, self.pg3)
+        self.send_and_expect(self.pg1, pkts_1[0] * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg1, pkts_1[1] * NUM_PKTS, self.pg2)
+        self.send_and_expect(self.pg1, pkts_1[2] * NUM_PKTS, self.pg3)
 
         #
         # check that if the SVS lookup does not match a route the packet
@@ -272,13 +274,13 @@ class TestSVS(VppTestCase):
              IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6) /
              UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
-        self.send_and_expect(self.pg0, p * 65, self.pg0)
+        self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg0)
 
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
              IPv6(src=self.pg1.remote_ip6, dst=self.pg1.remote_ip6) /
              UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
-        self.send_and_expect(self.pg1, p * 65, self.pg1)
+        self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg1)
 
         #
         # dump the SVS configs

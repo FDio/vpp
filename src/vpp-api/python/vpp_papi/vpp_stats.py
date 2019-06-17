@@ -40,7 +40,7 @@ typedef struct
   union
   {
     double scalar_value;
-    uint64_t error_value;
+    counter_t *error_vector;
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
     uint8_t **name_vector;
@@ -49,6 +49,7 @@ typedef struct
 
 typedef struct
 {
+  uint64_t version;
   uint64_t epoch;
   uint64_t in_progress;
   uint64_t directory_offset;
@@ -73,7 +74,8 @@ void stat_segment_disconnect (void);
 
 uint32_t *stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm);
 uint32_t *stat_segment_ls (uint8_t ** pattern);
-stat_segment_data_t *stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm);
+stat_segment_data_t *stat_segment_dump_r (uint32_t * stats,
+                                          stat_client_main_t * sm);
 stat_segment_data_t *stat_segment_dump (uint32_t * counter_vec);
 void stat_segment_data_free (stat_segment_data_t * res);
 
@@ -81,6 +83,8 @@ double stat_segment_heartbeat_r (stat_client_main_t * sm);
 int stat_segment_vec_len(void *vec);
 uint8_t **stat_segment_string_vector(uint8_t **string_vector, char *string);
 char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
+uint64_t stat_segment_version(void);
+uint64_t stat_segment_version_r(stat_client_main_t *sm);
 void free(void *ptr);
 """)
 
@@ -126,8 +130,16 @@ def combined_counter_vec_list(api, e):
         vec.append(if_per_thread)
     return vec
 
+def error_vec_list(api, e):
+    vec = []
+    for thread in range(api.stat_segment_vec_len(e)):
+        vec.append(e[thread])
+    return vec
+
 def name_vec_list(api, e):
-    return [ffi.string(e[i]).decode('utf-8') for i in range(api.stat_segment_vec_len(e)) if e[i] != ffi.NULL]
+    return [ffi.string(e[i]).decode('utf-8') for i in
+            range(api.stat_segment_vec_len(e)) if e[i] != ffi.NULL]
+
 
 def stat_entry_to_python(api, e):
     # Scalar index
@@ -138,7 +150,7 @@ def stat_entry_to_python(api, e):
     if e.type == 3:
         return combined_counter_vec_list(api, e.combined_counter_vec)
     if e.type == 4:
-        return e.error_value
+        return error_vec_list(api, e.error_vector)
     if e.type == 5:
         return name_vec_list(api, e.name_vector)
     raise NotImplementedError()
@@ -193,7 +205,9 @@ class VPPStats(object):
         while time.time() < poll_end_time:
             rv = self.api.stat_segment_connect_r(socketname.encode('utf-8'),
                                                  self.client)
-            if rv == 0:
+            # Break out if success or any other error than "no such file"
+            # (indicating that VPP hasn't started yet)
+            if rv == 0 or ffi.errno != 2:
                 break
 
         if rv != 0:
@@ -214,7 +228,8 @@ class VPPStats(object):
 
         if rv == ffi.NULL:
             raise VPPStatsIOError()
-        return [ffi.string(self.api.stat_segment_index_to_name_r(rv[i], self.client)).decode('utf-8')
+        return [ffi.string(self.api.stat_segment_index_to_name_r(
+            rv[i], self.client)).decode('utf-8')
                 for i in range(self.api.stat_segment_vec_len(rv))]
 
     def dump(self, counters):
@@ -248,6 +263,11 @@ class VPPStats(object):
                     return None
                 retries += 1
 
+    def get_err_counter(self, name):
+        """Get an error counter. The errors from each worker thread
+           are summed"""
+        return sum(self.get_counter(name))
+
     def disconnect(self):
         self.api.stat_segment_disconnect_r(self.client)
         self.api.stat_client_free(self.client)
@@ -265,8 +285,8 @@ class VPPStats(object):
                     return None
                 retries += 1
 
-        return {k: error_counters[k]
-                for k in error_counters.keys() if error_counters[k]}
+        return {k: sum(error_counters[k])
+                for k in error_counters.keys() if sum(error_counters[k])}
 
     def set_errors_str(self):
         '''Return all errors counters > 0 pretty printed'''

@@ -50,8 +50,8 @@ format_mpls_input_trace (u8 * s, va_list * args)
 #define _(a,b) if (t->next_index == MPLS_INPUT_NEXT_##a) next_name = b;
   foreach_mpls_input_next;
 #undef _
-  
-  s = format (s, "MPLS: next %s[%d]  label %d ttl %d exp %d", 
+
+  s = format (s, "MPLS: next %s[%d]  label %d ttl %d exp %d",
               next_name, t->next_index,
 	      vnet_mpls_uc_get_label(label),
 	      vnet_mpls_uc_get_ttl(label),
@@ -209,9 +209,9 @@ mpls_input_inline (vlib_main_t * vm,
               vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
             }
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              mpls_input_trace_t *tr = vlib_add_trace (vm, node, 
+              mpls_input_trace_t *tr = vlib_add_trace (vm, node,
 						       b0, sizeof (*tr));
               tr->next_index = next0;
               tr->label_net_byte_order = *(u32*)h0;
@@ -278,16 +278,15 @@ mpls_setup_nodes (vlib_main_t * vm)
 
 static clib_error_t * mpls_input_init (vlib_main_t * vm)
 {
-  clib_error_t * error; 
-
-  error = vlib_call_init_function (vm, mpls_init);
-  if (error)
-    clib_error_report (error);
-
   mpls_setup_nodes (vm);
 
   return 0;
 }
 
-VLIB_INIT_FUNCTION (mpls_input_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (mpls_input_init) =
+{
+  .runs_after = VLIB_INITS("mpls_init"),
+};
+/* *INDENT-ON* */
 #endif /* CLIB_MARCH_VARIANT */

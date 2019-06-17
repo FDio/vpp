@@ -143,11 +143,13 @@ show_lacp (vlib_main_t * vm, u32 * sw_if_indices)
 static void
 show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
 {
+  lacp_main_t *lm = &lacp_main;
   slave_if_t *sif;
   lacp_state_struct *state_entry;
   int i;
   f64 now;
 
+  vlib_cli_output (vm, "Number of interfaces: %d", lm->lacp_int);
   if (!sw_if_indices)
     return;
 

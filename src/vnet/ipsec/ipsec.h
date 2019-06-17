@@ -62,12 +62,15 @@ typedef struct
   u32 esp6_decrypt_node_index;
   u32 esp6_encrypt_next_index;
   u32 esp6_decrypt_next_index;
+  u32 esp4_encrypt_tun_feature_index;
+  u32 esp6_encrypt_tun_feature_index;
 } ipsec_esp_backend_t;
 
 typedef struct
 {
   vnet_crypto_op_id_t enc_op_id;
   vnet_crypto_op_id_t dec_op_id;
+  vnet_crypto_alg_t alg;
   u8 iv_size;
   u8 block_size;
   u8 icv_size;
@@ -76,6 +79,7 @@ typedef struct
 typedef struct
 {
   vnet_crypto_op_id_t op_id;
+  vnet_crypto_alg_t alg;
   u8 icv_size;
 } ipsec_main_integ_alg_t;
 
@@ -131,6 +135,10 @@ typedef struct
   u32 esp6_decrypt_next_index;
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
+
+  /* tun encrypt arcs and feature nodes */
+  u32 esp4_encrypt_tun_feature_index;
+  u32 esp6_encrypt_tun_feature_index;
 
   /* pool of ah backends */
   ipsec_ah_backend_t *ah_backends;
@@ -212,14 +220,18 @@ u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
 u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 				const char *name,
 				const char *esp4_encrypt_node_name,
+				const char *esp4_encrypt_tun_node_name,
 				const char *esp4_decrypt_node_name,
 				const char *esp6_encrypt_node_name,
+				const char *esp6_encrypt_tun_node_name,
 				const char *esp6_decrypt_node_name,
 				check_support_cb_t esp_check_support_cb,
 				add_del_sa_sess_cb_t esp_add_del_sa_sess_cb);
 
 int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
+
+clib_error_t *ipsec_rsc_in_use (ipsec_main_t * im);
 
 always_inline ipsec_sa_t *
 ipsec_sa_get (u32 sa_index)

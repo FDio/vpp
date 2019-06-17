@@ -322,15 +322,18 @@ dns_resolver_process (vlib_main_t * vm,
   return 0;			/* or not */
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dns_resolver_node) =
+void
+vnet_dns_create_resolver_process (dns_main_t * dm)
 {
-  .function = dns_resolver_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = "dns-resolver-process",
-};
-/* *INDENT-ON* */
+  /* Already created the resolver process? */
+  if (dm->resolver_process_node_index > 0)
+    return;
 
+  /* No, create it now and make a note of the node index */
+  dm->resolver_process_node_index = vlib_process_create
+    (dm->vlib_main, "dns-resolver-process",
+     dns_resolver_process, 16 /* log2_n_stack_bytes */ );
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

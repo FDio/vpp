@@ -22,7 +22,7 @@
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "VMWare Vmxnet3 Device Plugin",
+  .description = "VMWare Vmxnet3 Device Driver",
 };
 /* *INDENT-ON* */
 

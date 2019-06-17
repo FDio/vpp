@@ -21,7 +21,7 @@
 option version = "1.1.0";
 import "vnet/fib/fib_types.api";
 
-/** \brief BIER Table Indentifier
+/** \brief BIER Table Identifier
     @param bt_set - The BIER set
     @param bt_sub_domain - the sud-domain
     @param bt_bit_header_length - the number of bits in the header length
@@ -70,7 +70,7 @@ define bier_table_details
     @param br_bp - The Bit-position value
     @param br_tbl_id - The BIER table-id the route is added in
     @param br_is_add - Is this a route add or delete
-    @param br_is_replace - Are the paths specfied replacing those already
+    @param br_is_replace - Are the paths specified replacing those already
                            present or are they to be combined.
 			   is_replace = 1 and n_paths=0 implies delete the
 			   route and all paths;
@@ -195,8 +195,8 @@ define bier_disp_table_details
     @param context - sender context, to match reply w/ request
     @param bde_bp - The Bit-position value for the entry, i.e. the sender's
                     Use 0 for the default (match any source) entry.
-    @param bde_tbl_id - The BIER dispositiontable-id the route is added in
-    @param bde_next_hop_sw_if_index - the nextop interface
+    @param bde_tbl_id - The BIER disposition table-id the route is added in
+    @param bde_next_hop_sw_if_index - the next hop interface
     @param bde_is_add - Is this a route add or delete
     @param bde_payload_proto - The payload protocol for which the next-hop
 			       is added

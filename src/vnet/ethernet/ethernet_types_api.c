@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vlibapi/api_types.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 
 #define vl_typedefs		/* define message structures */

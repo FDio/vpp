@@ -206,6 +206,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  child0->c_lcl_port = udp0->dst_port;
 		  child0->c_rmt_port = udp0->src_port;
 		  child0->c_is_ip4 = is_ip4;
+		  child0->c_fib_index = tc0->fib_index;
+		  child0->is_connected = 1;
 
 		  if (session_stream_accept (&child0->connection,
 					     tc0->s_index, 1))
@@ -227,45 +229,30 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto trace0;
 	    }
 
-	  if (!uc0->is_connected)
-	    {
-	      if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
-		  < b0->current_length + sizeof (session_dgram_hdr_t))
-		{
-		  error0 = UDP_ERROR_FIFO_FULL;
-		  goto trace0;
-		}
-	      hdr0.data_length = b0->current_length;
-	      hdr0.data_offset = 0;
-	      ip_set (&hdr0.lcl_ip, lcl_addr, is_ip4);
-	      ip_set (&hdr0.rmt_ip, rmt_addr, is_ip4);
-	      hdr0.lcl_port = udp0->dst_port;
-	      hdr0.rmt_port = udp0->src_port;
-	      hdr0.is_ip4 = is_ip4;
 
-	      clib_spinlock_lock (&uc0->rx_lock);
-	      wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
-							 TRANSPORT_PROTO_UDP,
-							 1 /* queue evt */ );
-	      clib_spinlock_unlock (&uc0->rx_lock);
-	      ASSERT (wrote0 > 0);
-
-	      if (s0->session_state != SESSION_STATE_LISTENING)
-		session_pool_remove_peeker (s0->thread_index);
-	    }
-	  else
+	  if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
+	      < b0->current_length + sizeof (session_dgram_hdr_t))
 	    {
-	      if (svm_fifo_max_enqueue_prod (s0->rx_fifo) <
-		  b0->current_length)
-		{
-		  error0 = UDP_ERROR_FIFO_FULL;
-		  goto trace0;
-		}
-	      wrote0 = session_enqueue_stream_connection (tc0, b0, 0,
-							  1 /* queue evt */ ,
-							  1 /* in order */ );
-	      ASSERT (wrote0 > 0);
+	      error0 = UDP_ERROR_FIFO_FULL;
+	      goto trace0;
 	    }
+	  hdr0.data_length = b0->current_length;
+	  hdr0.data_offset = 0;
+	  ip_set (&hdr0.lcl_ip, lcl_addr, is_ip4);
+	  ip_set (&hdr0.rmt_ip, rmt_addr, is_ip4);
+	  hdr0.lcl_port = udp0->dst_port;
+	  hdr0.rmt_port = udp0->src_port;
+	  hdr0.is_ip4 = is_ip4;
+
+	  clib_spinlock_lock (&uc0->rx_lock);
+	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
+						     TRANSPORT_PROTO_UDP,
+						     1 /* queue evt */ );
+	  clib_spinlock_unlock (&uc0->rx_lock);
+	  ASSERT (wrote0 > 0);
+
+	  if (s0->session_state != SESSION_STATE_LISTENING)
+	    session_pool_remove_peeker (s0->thread_index);
 
 	trace0:
 

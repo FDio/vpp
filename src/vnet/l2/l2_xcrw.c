@@ -272,14 +272,6 @@ l2_xcrw_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2_xcrw_init);
 
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
 static u8 *
 format_xcrw_name (u8 * s, va_list * args)
 {
@@ -291,7 +283,6 @@ format_xcrw_name (u8 * s, va_list * args)
 VNET_DEVICE_CLASS (xcrw_device_class,static) = {
   .name = "Xcrw",
   .format_device_name = format_xcrw_name,
-  .tx_function = dummy_interface_tx,
 };
 /* *INDENT-ON* */
 

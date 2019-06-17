@@ -565,6 +565,10 @@ typedef struct vnet_hw_interface_t
   /* device input device_and_queue runtime index */
   uword *dq_runtime_index_by_queue;
 
+  /* numa node that hardware device connects to */
+  u8 numa_node;
+
+  u8 padding[3];
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;
@@ -657,7 +661,7 @@ typedef enum vnet_sw_interface_flags_t_
   /* Interface is disabled for forwarding: punt all traffic to slow-path. */
   VNET_SW_INTERFACE_FLAG_PUNT = (1 << 1),
 
-  VNET_SW_INTERFACE_FLAG_PROXY_ARP = (1 << 2),
+  __VNET_SW_INTERFACE_FLAG_UNSUED = (1 << 2),
 
   VNET_SW_INTERFACE_FLAG_UNNUMBERED = (1 << 3),
 

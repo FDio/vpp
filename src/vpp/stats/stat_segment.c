@@ -22,6 +22,7 @@
 #undef HAVE_MEMFD_CREATE
 #include <vppinfra/linux/syscall.h>
 #include <vpp-api/client/stat_client.h>
+
 stat_segment_main_t stat_segment_main;
 
 /*
@@ -157,7 +158,6 @@ vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
   stat_segment_directory_entry_t e;
-  hash_pair_t *hp;
 
   ASSERT (shared_header);
 
@@ -200,22 +200,29 @@ stat_validate_counter_vector (stat_segment_directory_entry_t * ep, u32 max)
 }
 
 void
-vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap)
+vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap,
+		      int lock)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
 
   ASSERT (shared_header);
 
-  vlib_stat_segment_lock ();
+  if (lock)
+    vlib_stat_segment_lock ();
 
   /* Reset the client hash table pointer, since it WILL change! */
-  shared_header->error_offset =
+  vec_validate (sm->error_vector, thread_index);
+  sm->error_vector[thread_index] =
     stat_segment_offset (shared_header, error_vector);
+
+  shared_header->error_offset =
+    stat_segment_offset (shared_header, sm->error_vector);
   shared_header->directory_offset =
     stat_segment_offset (shared_header, sm->directory_vector);
 
-  vlib_stat_segment_unlock ();
+  if (lock)
+    vlib_stat_segment_unlock ();
   clib_mem_set_heap (oldheap);
 }
 
@@ -224,7 +231,6 @@ vlib_map_stat_segment_init (void)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header;
-  stat_segment_directory_entry_t *ep;
   void *oldheap;
   ssize_t memory_size;
   int mfd;
@@ -266,6 +272,9 @@ vlib_map_stat_segment_init (void)
 
   sm->directory_vector_by_name = hash_create_string (0, sizeof (uword));
   sm->shared_header = shared_header = memaddr;
+
+  shared_header->version = STAT_SEGMENT_VERSION;
+
   sm->stat_segment_lockp = clib_mem_alloc (sizeof (clib_spinlock_t));
   clib_spinlock_init (sm->stat_segment_lockp);
 
@@ -277,7 +286,7 @@ vlib_map_stat_segment_init (void)
   shared_header->epoch = 1;
 
   /* Scalar stats and node counters */
-  vec_validate (sm->directory_vector, STAT_COUNTERS);
+  vec_validate (sm->directory_vector, STAT_COUNTERS - 1);
 #define _(E,t,n,p)							\
   strcpy(sm->directory_vector[STAT_COUNTER_##E].name,  #p "/" #n); \
   sm->directory_vector[STAT_COUNTER_##E].type = STAT_DIR_TYPE_##t;
@@ -340,13 +349,10 @@ show_stat_segment_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   stat_segment_main_t *sm = &stat_segment_main;
-  counter_t *counter;
-  hash_pair_t *p;
-  stat_segment_directory_entry_t *show_data, *this;
-  int i, j;
+  stat_segment_directory_entry_t *show_data;
+  int i;
 
   int verbose = 0;
-  u8 *s;
 
   if (unformat (input, "verbose"))
     verbose = 1;
@@ -395,7 +401,6 @@ VLIB_CLI_COMMAND (show_stat_segment_command, static) =
 static inline void
 update_node_counters (stat_segment_main_t * sm)
 {
-  vlib_main_t *vm = vlib_mains[0];
   vlib_main_t **stat_vms = 0;
   vlib_node_t ***node_dups = 0;
   int i, j;
@@ -463,7 +468,6 @@ update_node_counters (stat_segment_main_t * sm)
   for (j = 0; j < vec_len (node_dups); j++)
     {
       vlib_node_t **nodes = node_dups[j];
-      u32 l = vec_len (nodes);
 
       for (i = 0; i < vec_len (nodes); i++)
 	{
@@ -506,29 +510,63 @@ update_node_counters (stat_segment_main_t * sm)
 static void
 do_stat_segment_updates (stat_segment_main_t * sm)
 {
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
   vlib_main_t *vm = vlib_mains[0];
   f64 vector_rate;
-  u64 input_packets, last_input_packets;
+  u64 input_packets;
   f64 dt, now;
   vlib_main_t *this_vlib_main;
   int i, start;
+  counter_t **counters;
+  static int num_worker_threads_set;
 
   /*
-   * Compute the average vector rate across all workers
+   * Set once at the beginning of time.
+   * Can't do this from the init routine, which happens before
+   * start_workers sets up vlib_mains...
+   */
+  if (PREDICT_FALSE (num_worker_threads_set == 0))
+    {
+      sm->directory_vector[STAT_COUNTER_NUM_WORKER_THREADS].value =
+	vec_len (vlib_mains) > 1 ? vec_len (vlib_mains) - 1 : 1;
+
+      stat_validate_counter_vector (&sm->directory_vector
+				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER],
+				    vec_len (vlib_mains));
+      num_worker_threads_set = 1;
+    }
+
+  /*
+   * Compute per-worker vector rates, and the average vector rate
+   * across all workers
    */
   vector_rate = 0.0;
+
+  counters =
+    stat_segment_pointer (shared_header,
+			  sm->directory_vector
+			  [STAT_COUNTER_VECTOR_RATE_PER_WORKER].offset);
 
   start = vec_len (vlib_mains) > 1 ? 1 : 0;
 
   for (i = start; i < vec_len (vlib_mains); i++)
     {
+
+      f64 this_vector_rate;
+
       this_vlib_main = vlib_mains[i];
-      vector_rate += vlib_last_vector_length_per_node (this_vlib_main);
+
+      this_vector_rate = vlib_last_vector_length_per_node (this_vlib_main);
+      vector_rate += this_vector_rate;
+
+      /* Set the per-worker rate */
+      counters[i - start][0] = this_vector_rate;
     }
+
+  /* And set the system average rate */
   vector_rate /= (f64) (i - start);
 
-  sm->directory_vector[STAT_COUNTER_VECTOR_RATE].value =
-    vector_rate / ((f64) (vec_len (vlib_mains) - start));
+  sm->directory_vector[STAT_COUNTER_VECTOR_RATE].value = vector_rate;
 
   /*
    * Compute the aggregate input rate
@@ -646,17 +684,20 @@ static clib_error_t *
 statseg_init (vlib_main_t * vm)
 {
   stat_segment_main_t *sm = &stat_segment_main;
-  clib_error_t *error;
-
-  /* dependent on unix_input_init */
-  if ((error = vlib_call_init_function (vm, unix_input_init)))
-    return error;
 
   if (sm->socket_name)
     stats_segment_socket_init ();
 
   return 0;
 }
+
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (statseg_init) =
+{
+  .runs_after = VLIB_INITS("unix_input_init"),
+};
+/* *INDENT-ON* */
+
 
 clib_error_t *
 stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
@@ -701,18 +742,18 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 {
   stat_segment_main_t *sm = &stat_segment_main;
 
-  /* set default socket file name when statseg config stanza is empty. */
-  sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
-
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "socket-name %s", &sm->socket_name))
 	;
       else if (unformat (input, "default"))
-	sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
-      else
-	if (unformat
-	    (input, "size %U", unformat_memory_size, &sm->memory_size))
+	{
+	  vec_reset_length (sm->socket_name);
+	  sm->socket_name = format (sm->socket_name, "%s",
+				    STAT_SEGMENT_SOCKET_FILE);
+	}
+      else if (unformat (input, "size %U",
+			 unformat_memory_size, &sm->memory_size))
 	;
       else if (unformat (input, "per-node-counters on"))
 	sm->node_counters_enabled = 1;
@@ -722,6 +763,17 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
+
+  /* set default socket file name when statseg config stanza is empty. */
+  if (!vec_len (sm->socket_name))
+    sm->socket_name = format (sm->socket_name, "%s",
+			      STAT_SEGMENT_SOCKET_FILE);
+  /*
+   * NULL-terminate socket name string
+   * clib_socket_init()->socket_config() use C str*
+   */
+  vec_terminate_c_string (sm->socket_name);
+
   return 0;
 }
 
@@ -793,7 +845,6 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (statseg_init);
 VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (statseg_sw_interface_add_del);
 

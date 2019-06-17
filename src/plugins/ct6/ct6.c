@@ -235,7 +235,7 @@ ct6_plugin_api_hookup (vlib_main_t * vm)
 static void
 setup_message_id_table (ct6_main_t * cmp, api_main_t * am)
 {
-#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n  #crc, id + cmp->msg_id_base);
+#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_"  #crc, id + cmp->msg_id_base);
   foreach_vl_msg_name_crc_ct6;
 #undef _
 }
@@ -304,7 +304,7 @@ VNET_FEATURE_INIT (ct6in2out, static) =
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "ipv6 connection tracker",
+  .description = "IPv6 Connection Tracker",
 };
 /* *INDENT-ON* */
 

@@ -63,11 +63,17 @@ cdp_enable_disable (cdp_main_t * cm, int enable_disable)
   int rv = 0;
 
   if (enable_disable)
-    vlib_process_signal_event (cm->vlib_main, cdp_process_node.index,
-			       CDP_EVENT_ENABLE, 0);
+    {
+      vnet_cdp_create_periodic_process (cm);
+      vlib_process_signal_event (cm->vlib_main, cm->cdp_process_node_index,
+				 CDP_EVENT_ENABLE, 0);
+    }
   else
-    vlib_process_signal_event (cm->vlib_main, cdp_process_node.index,
-			       CDP_EVENT_DISABLE, 0);
+    {
+      vnet_cdp_create_periodic_process (cm);
+      vlib_process_signal_event (cm->vlib_main, cm->cdp_process_node_index,
+				 CDP_EVENT_DISABLE, 0);
+    }
   cm->enabled = enable_disable;
 
   return rv;
@@ -189,6 +195,7 @@ VLIB_INIT_FUNCTION (cdp_init);
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
+  .description = "Cisco Discovery Protocol (CDP)",
 };
 /* *INDENT-ON* */
 

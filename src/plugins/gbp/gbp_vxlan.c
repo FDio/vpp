@@ -678,14 +678,8 @@ static clib_error_t *
 gbp_vxlan_init (vlib_main_t * vm)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
-  clib_error_t *error;
 
   gt_logger = vlib_log_register_class ("gbp", "tun");
-
-  if ((error = vlib_call_init_function (vm, punt_init)))
-    return error;
-  if ((error = vlib_call_init_function (vm, vxlan_gbp_init)))
-    return error;
 
   punt_hdl = vlib_punt_client_register ("gbp-vxlan");
 
@@ -693,10 +687,15 @@ gbp_vxlan_init (vlib_main_t * vm)
 		      vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4],
 		      "gbp-vxlan4");
 
-  return (error);
+  return (0);
 }
 
-VLIB_INIT_FUNCTION (gbp_vxlan_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (gbp_vxlan_init) =
+{
+  .runs_after = VLIB_INITS("punt_init", "vxlan_gbp_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

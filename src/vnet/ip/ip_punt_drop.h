@@ -194,19 +194,19 @@ ip_punt_policer (vlib_main_t * vm,
 typedef struct ip_punt_redirect_rx_t_
 {
   /**
-   * The next-hop to send redirected packets to
+   * Node linkage into the FIB graph
    */
-  ip46_address_t nh;
+  fib_node_t node;
+
+  fib_protocol_t fproto;
+  fib_forward_chain_type_t payload_type;
+  fib_node_index_t pl;
+  u32 sibling;
 
   /**
-   * the TX interface to send redirected packets
+   * redirect forwarding
    */
-  u32 tx_sw_if_index;
-
-  /**
-   * redirect forwarding adjacency
-   */
-  adj_index_t adj_index;
+  dpo_id_t dpo;
 } ip_punt_redirect_rx_t;
 
 /**
@@ -214,16 +214,17 @@ typedef struct ip_punt_redirect_rx_t_
  */
 typedef struct ip_punt_redirect_t_
 {
-    /**
-     * any RX interface redirect
-     */
-  ip_punt_redirect_rx_t any_rx_sw_if_index;
+  ip_punt_redirect_rx_t *pool;
 
-    /**
-    * per-RX interface configuration
-    */
-  ip_punt_redirect_rx_t *redirect_by_rx_sw_if_index;
-} ip_punt_redirect_t;
+  /**
+   * per-RX interface configuration.
+   *  sw_if_index = 0 (from which packets are never received) is used to
+   *  indicate 'from-any'
+   */
+  index_t *redirect_by_rx_sw_if_index[FIB_PROTOCOL_IP_MAX];
+} ip_punt_redirect_cfg_t;
+
+extern ip_punt_redirect_cfg_t ip_punt_redirect_cfg;
 
 /**
  * IP punt redirect next nodes
@@ -241,75 +242,51 @@ typedef enum ip_punt_redirect_next_t_
  */
 typedef struct ip4_punt_redirect_trace_t_
 {
-  ip_punt_redirect_rx_t redirect;
+  index_t rrxi;
   u32 next;
 } ip_punt_redirect_trace_t;
-
-typedef struct ip_punt_redirect_detail_t_
-{
-  /**
-   * the RX interface
-   */
-  u32 rx_sw_if_index;
-  /**
-   * IP punt redirect configuration
-   */
-  ip_punt_redirect_rx_t punt_redirect;
-} ip_punt_redirect_detail_t;
 
 /**
  * Add a punt redirect entry
  */
-extern void ip_punt_redirect_add (ip_punt_redirect_t * cfg,
+extern void ip_punt_redirect_add (fib_protocol_t fproto,
 				  u32 rx_sw_if_index,
-				  ip_punt_redirect_rx_t * redirect,
-				  fib_protocol_t fproto, vnet_link_t linkt);
-extern void ip_punt_redirect_del (ip_punt_redirect_t * cfg,
-				  u32 rx_sw_if_index);
+				  fib_forward_chain_type_t ct,
+				  fib_route_path_t * rpaths);
+
+extern void ip_punt_redirect_del (fib_protocol_t fproto, u32 rx_sw_if_index);
+extern index_t ip_punt_redirect_find (fib_protocol_t fproto,
+				      u32 rx_sw_if_index);
 extern u8 *format_ip_punt_redirect (u8 * s, va_list * args);
 
 extern u8 *format_ip_punt_redirect_trace (u8 * s, va_list * args);
 
-extern ip_punt_redirect_detail_t *ip4_punt_redirect_entries (u32 sw_if_index);
-extern ip_punt_redirect_detail_t *ip6_punt_redirect_entries (u32 sw_if_index);
+typedef walk_rc_t (*ip_punt_redirect_walk_cb_t) (u32 rx_sw_if_index,
+						 const ip_punt_redirect_rx_t *
+						 redirect, void *arg);
+extern void ip_punt_redirect_walk (fib_protocol_t fproto,
+				   ip_punt_redirect_walk_cb_t cb, void *ctx);
 
-always_inline u32
-ip_punt_redirect_tx_via_adj (vlib_buffer_t * b0, adj_index_t ai)
+static_always_inline ip_punt_redirect_rx_t *
+ip_punt_redirect_get (index_t rrxi)
 {
-  ip_adjacency_t *adj = adj_get (ai);
-  u32 next0;
-
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ai;
-
-  switch (adj->lookup_next_index)
-    {
-    case IP_LOOKUP_NEXT_ARP:
-      next0 = IP_PUNT_REDIRECT_NEXT_ARP;
-      break;
-    case IP_LOOKUP_NEXT_REWRITE:
-      next0 = IP_PUNT_REDIRECT_NEXT_TX;
-      break;
-    default:
-      next0 = IP_PUNT_REDIRECT_NEXT_DROP;
-      break;
-    }
-
-  return (next0);
+  return (pool_elt_at_index (ip_punt_redirect_cfg.pool, rrxi));
 }
 
 always_inline uword
 ip_punt_redirect (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame,
-		  u8 arc_index, ip_punt_redirect_t * redirect)
+		  vlib_frame_t * frame, u8 arc_index, fib_protocol_t fproto)
 {
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
+  index_t *redirects;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
+  redirects = ip_punt_redirect_cfg.redirect_by_rx_sw_if_index[fproto];
 
   while (n_left_from > 0)
     {
@@ -317,13 +294,13 @@ ip_punt_redirect (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 rx_sw_if_index0;
+	  u32 rx_sw_if_index0, rrxi0;
 	  ip_punt_redirect_rx_t *rrx0;
 	  vlib_buffer_t *b0;
 	  u32 next0;
 	  u32 bi0;
 
-	  rrx0 = NULL;
+	  rrxi0 = INDEX_INVALID;
 	  next0 = 0;
 	  bi0 = to_next[0] = from[0];
 
@@ -339,24 +316,24 @@ ip_punt_redirect (vlib_main_t * vm,
 
 	  rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  if (vec_len (redirect->redirect_by_rx_sw_if_index) >
-	      rx_sw_if_index0)
+	  /*
+	   * If config exists for this particular RX interface use it,
+	   * else use the default (at RX = 0)
+	   */
+	  if (vec_len (redirects) > rx_sw_if_index0)
 	    {
-	      rrx0 = &redirect->redirect_by_rx_sw_if_index[rx_sw_if_index0];
-	      if (~0 != rrx0->tx_sw_if_index)
-		{
-		  next0 = ip_punt_redirect_tx_via_adj (b0, rrx0->adj_index);
-		}
-	      else if (~0 != redirect->any_rx_sw_if_index.tx_sw_if_index)
-		{
-		  rrx0 = &redirect->any_rx_sw_if_index;
-		  next0 = ip_punt_redirect_tx_via_adj (b0, rrx0->adj_index);
-		}
+	      rrxi0 = redirects[rx_sw_if_index0];
+	      if (INDEX_INVALID == rrxi0)
+		rrxi0 = redirects[0];
 	    }
-	  else if (~0 != redirect->any_rx_sw_if_index.tx_sw_if_index)
+	  else if (vec_len (redirects) >= 1)
+	    rrxi0 = redirects[0];
+
+	  if (PREDICT_TRUE (INDEX_INVALID != rrxi0))
 	    {
-	      rrx0 = &redirect->any_rx_sw_if_index;
-	      next0 = ip_punt_redirect_tx_via_adj (b0, rrx0->adj_index);
+	      rrx0 = ip_punt_redirect_get (rrxi0);
+	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = rrx0->dpo.dpoi_index;
+	      next0 = rrx0->dpo.dpoi_next_node;
 	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -364,8 +341,7 @@ ip_punt_redirect (vlib_main_t * vm,
 	      ip_punt_redirect_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->next = next0;
-	      if (rrx0)
-		t->redirect = *rrx0;
+	      t->rrxi = rrxi0;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

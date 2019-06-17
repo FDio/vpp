@@ -404,7 +404,7 @@ static inline int
 vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 	       vcl_test_stats_t * stats)
 {
-  int rx_bytes, errno_val;
+  int rx_bytes;
 
   do
     {
@@ -443,7 +443,7 @@ vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 static inline int
 vcl_test_read_ds (int fd, vppcom_data_segments_t ds, vcl_test_stats_t * stats)
 {
-  int rx_bytes, errno_val;
+  int rx_bytes;
 
   do
     {

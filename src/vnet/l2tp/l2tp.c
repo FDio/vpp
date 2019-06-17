@@ -254,20 +254,11 @@ l2tpv3_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   return 0;
 }
 
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (l2tpv3_device_class,static) = {
   .name = "L2TPv3",
   .format_device_name = format_l2tpv3_name,
   .name_renumber = l2tpv3_name_renumber,
-  .tx_function = dummy_interface_tx,
 };
 /* *INDENT-ON* */
 
@@ -407,6 +398,12 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
 
   if (sw_if_index)
     *sw_if_index = hi->sw_if_index;
+
+  if (!lm->proto_registered)
+    {
+      ip6_register_protocol (IP_PROTOCOL_L2TP, l2t_decap_local_node.index);
+      lm->proto_registered = true;
+    }
 
   return 0;
 }
@@ -738,9 +735,10 @@ l2tp_init (vlib_main_t * vm)
   pi = ip_get_protocol_info (im, IP_PROTOCOL_L2TP);
   pi->unformat_pg_edit = unformat_pg_l2tp_header;
 
+  lm->proto_registered = false;
+
   /* insure these nodes are included in build */
   l2tp_encap_init (vm);
-  l2tp_decap_init ();
 
   return 0;
 }

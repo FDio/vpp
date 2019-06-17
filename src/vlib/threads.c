@@ -23,9 +23,10 @@
 #include <vlib/threads.h>
 #include <vlib/unix/cj.h>
 
+#include <vlib/stat_weak_inlines.h>
+
 DECLARE_CJ_GLOBAL_LOG;
 
-#define FRAME_QUEUE_NELTS 64
 
 u32
 vl (void *p)
@@ -169,13 +170,7 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
 uword
 os_get_nthreads (void)
 {
-  u32 len;
-
-  len = vec_len (vlib_thread_stacks);
-  if (len == 0)
-    return 1;
-  else
-    return len;
+  return vec_len (vlib_thread_stacks);
 }
 
 void
@@ -299,11 +294,8 @@ vlib_thread_init (vlib_main_t * vm)
       pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
     }
 
-  /* as many threads as stacks... */
-  vec_validate_aligned (vlib_worker_threads, vec_len (vlib_thread_stacks) - 1,
-			CLIB_CACHE_LINE_BYTES);
-
-  /* Preallocate thread 0 */
+  /* Set up thread 0 */
+  vec_validate_aligned (vlib_worker_threads, 0, CLIB_CACHE_LINE_BYTES);
   _vec_len (vlib_worker_threads) = 1;
   w = vlib_worker_threads;
   w->thread_mheap = clib_mem_get_heap ();
@@ -358,8 +350,7 @@ vlib_thread_init (vlib_main_t * vm)
 
             avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
           }));
-/* *INDENT-ON* */
-
+          /* *INDENT-ON* */
 	}
       else
 	{
@@ -381,9 +372,14 @@ vlib_thread_init (vlib_main_t * vm)
 
   tm->n_vlib_mains = n_vlib_mains;
 
+  /*
+   * Allocate the remaining worker threads, and thread stack vector slots
+   * from now on, calls to os_get_nthreads() will return the correct
+   * answer.
+   */
   vec_validate_aligned (vlib_worker_threads, first_index - 1,
 			CLIB_CACHE_LINE_BYTES);
-
+  vec_validate (vlib_thread_stacks, vec_len (vlib_worker_threads) - 1);
   return 0;
 }
 
@@ -877,8 +873,13 @@ start_workers (vlib_main_t * vm)
 	      clib_mem_set_heap (oldheap);
 	      vec_add1_aligned (vlib_mains, vm_clone, CLIB_CACHE_LINE_BYTES);
 
+	      /* Switch to the stats segment ... */
+	      void *oldheap = vlib_stats_push_heap (0);
 	      vm_clone->error_main.counters = vec_dup_aligned
 		(vlib_mains[0]->error_main.counters, CLIB_CACHE_LINE_BYTES);
+	      vlib_stats_pop_heap2 (vm_clone->error_main.counters,
+				    worker_thread_index, oldheap, 1);
+
 	      vm_clone->error_main.counters_last_clear = vec_dup_aligned
 		(vlib_mains[0]->error_main.counters_last_clear,
 		 CLIB_CACHE_LINE_BYTES);
@@ -1041,9 +1042,15 @@ vlib_worker_thread_node_refork (void)
   clib_memcpy_fast (&vm_clone->error_main, &vm->error_main,
 		    sizeof (vm->error_main));
   j = vec_len (vm->error_main.counters) - 1;
+
+  /* Switch to the stats segment ... */
+  void *oldheap = vlib_stats_push_heap (0);
   vec_validate_aligned (old_counters, j, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters = old_counters;
+  vlib_stats_pop_heap2 (vm_clone->error_main.counters, vm_clone->thread_index,
+			oldheap, 0);
+
+  vec_validate_aligned (old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters_last_clear = old_counters_all_clear;
 
   nm_clone = &vm_clone->node_main;
@@ -1382,6 +1389,31 @@ vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
 #endif
 
 void
+vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
+{
+  f64 deadline;
+  f64 now = vlib_time_now (vm);
+  u32 count = vec_len (vlib_mains) - 1;
+
+  /* No worker threads? */
+  if (count == 0)
+    return;
+
+  deadline = now + BARRIER_SYNC_TIMEOUT;
+  *vlib_worker_threads->wait_at_barrier = 1;
+  while (*vlib_worker_threads->workers_at_barrier != count)
+    {
+      if ((now = vlib_time_now (vm)) > deadline)
+	{
+	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	  os_panic ();
+	}
+      CLIB_PAUSE ();
+    }
+  *vlib_worker_threads->wait_at_barrier = 0;
+}
+
+void
 vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 {
   f64 deadline;
@@ -1389,7 +1421,9 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   f64 t_entry;
   f64 t_open;
   f64 t_closed;
+  f64 max_vector_rate;
   u32 count;
+  int i;
 
   if (vec_len (vlib_mains) < 2)
     return;
@@ -1410,23 +1444,41 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
       return;
     }
 
+  /*
+   * Need data to decide if we're working hard enough to honor
+   * the barrier hold-down timer.
+   */
+  max_vector_rate = 0.0;
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    max_vector_rate =
+      clib_max (max_vector_rate,
+		vlib_last_vectors_per_main_loop_as_f64 (vlib_mains[i]));
+
   vlib_worker_threads[0].barrier_sync_count++;
 
   /* Enforce minimum barrier open time to minimize packet loss */
   ASSERT (vm->barrier_no_close_before <= (now + BARRIER_MINIMUM_OPEN_LIMIT));
 
-  while (1)
+  /*
+   * If any worker thread seems busy, which we define
+   * as a vector rate above 10, we enforce the barrier hold-down timer
+   */
+  if (max_vector_rate > 10.0)
     {
-      now = vlib_time_now (vm);
-      /* Barrier hold-down timer expired? */
-      if (now >= vm->barrier_no_close_before)
-	break;
-      if ((vm->barrier_no_close_before - now)
-	  > (2.0 * BARRIER_MINIMUM_OPEN_LIMIT))
+      while (1)
 	{
-	  clib_warning ("clock change: would have waited for %.4f seconds",
-			(vm->barrier_no_close_before - now));
-	  break;
+	  now = vlib_time_now (vm);
+	  /* Barrier hold-down timer expired? */
+	  if (now >= vm->barrier_no_close_before)
+	    break;
+	  if ((vm->barrier_no_close_before - now)
+	      > (2.0 * BARRIER_MINIMUM_OPEN_LIMIT))
+	    {
+	      clib_warning
+		("clock change: would have waited for %.4f seconds",
+		 (vm->barrier_no_close_before - now));
+	      break;
+	    }
 	}
     }
   /* Record time of closure */
@@ -1449,18 +1501,6 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 
   barrier_trace_sync (t_entry, t_open, t_closed);
 
-}
-
-void vlib_stat_segment_lock (void) __attribute__ ((weak));
-void
-vlib_stat_segment_lock (void)
-{
-}
-
-void vlib_stat_segment_unlock (void) __attribute__ ((weak));
-void
-vlib_stat_segment_unlock (void)
-{
 }
 
 void
@@ -1716,14 +1756,14 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
+  e = vlib_call_init_exit_functions_no_sort
+    (vm, &vm->worker_init_function_registrations, 1 /* call_once */ );
+  if (e)
+    clib_error_report (e);
+
   /* Wait until the dpdk init sequence is complete */
   while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
     vlib_worker_thread_barrier_check ();
-
-  e = vlib_call_init_exit_functions
-    (vm, vm->worker_init_function_registrations, 1 /* call_once */ );
-  if (e)
-    clib_error_report (e);
 
   vlib_worker_loop (vm);
 }
@@ -1745,7 +1785,7 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
   int i;
 
   if (frame_queue_nelts == 0)
-    frame_queue_nelts = FRAME_QUEUE_NELTS;
+    frame_queue_nelts = FRAME_QUEUE_MAX_NELTS;
 
   ASSERT (frame_queue_nelts >= 8);
 

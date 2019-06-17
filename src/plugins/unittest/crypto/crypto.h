@@ -45,7 +45,6 @@ typedef struct
   u32 rounds;
   u32 buffer_size;
   u32 n_buffers;
-  u8 one_key;
 
   unittest_crypto_test_registration_t *test_registrations;
 } crypto_test_main_t;

@@ -38,6 +38,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/stat_weak_inlines.h>
 
 void
 vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
@@ -73,19 +74,6 @@ vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
 	}
     }
 }
-
-void *vlib_stats_push_heap (void *) __attribute__ ((weak));
-void *
-vlib_stats_push_heap (void *unused)
-{
-  return 0;
-};
-
-void vlib_stats_pop_heap (void *, void *, u32, int) __attribute__ ((weak));
-void
-vlib_stats_pop_heap (void *notused, void *notused2, u32 i, int type)
-{
-};
 
 void
 vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)

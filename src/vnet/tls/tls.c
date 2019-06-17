@@ -731,6 +731,30 @@ format_tls_half_open (u8 * s, va_list * args)
   return s;
 }
 
+static void
+tls_transport_endpoint_get (u32 ctx_handle, u32 thread_index,
+			    transport_endpoint_t * tep, u8 is_lcl)
+{
+  tls_ctx_t *ctx = tls_ctx_get_w_thread (ctx_handle, thread_index);
+  session_t *tcp_session;
+
+  tcp_session = session_get_from_handle (ctx->tls_session_handle);
+  session_get_endpoint (tcp_session, tep, is_lcl);
+}
+
+static void
+tls_transport_listener_endpoint_get (u32 ctx_handle,
+				     transport_endpoint_t * tep, u8 is_lcl)
+{
+  session_t *tls_listener;
+  app_listener_t *al;
+  tls_ctx_t *ctx = tls_listener_ctx_get (ctx_handle);
+
+  al = app_listener_get_w_handle (ctx->tls_session_handle);
+  tls_listener = app_listener_get_session (al);
+  session_get_endpoint (tls_listener, tep, is_lcl);
+}
+
 /* *INDENT-OFF* */
 const static transport_proto_vft_t tls_proto = {
   .connect = tls_connect,
@@ -745,6 +769,8 @@ const static transport_proto_vft_t tls_proto = {
   .format_connection = format_tls_connection,
   .format_half_open = format_tls_half_open,
   .format_listener = format_tls_listener,
+  .get_transport_endpoint = tls_transport_endpoint_get,
+  .get_transport_listener_endpoint = tls_transport_listener_endpoint_get,
 };
 /* *INDENT-ON* */
 

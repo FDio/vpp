@@ -22,24 +22,29 @@ endif
 
 vpp_root_packages = vpp vom
 
-vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
-	-fstack-protector-all -fPIC -Werror
-vpp_debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
-	-fstack-protector-all -fPIC -Werror
-vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
-	-fstack-protector-all -fPIC -Werror
+vpp_common_cflags = \
+	-g \
+	-DFORTIFY_SOURCE=2 \
+	-fstack-protector \
+	-fPIC \
+	-Wall \
+	-Werror \
+	-fno-common
 
-vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
-vpp_TAG_CXXFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
-vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror -pie
+vpp_debug_TAG_CFLAGS = -O0 -DCLIB_DEBUG $(vpp_common_cflags)
+vpp_debug_TAG_CXXFLAGS = -O0 -DCLIB_DEBUG $(vpp_common_cflags)
+vpp_debug_TAG_LDFLAGS = -O0 -DCLIB_DEBUG $(vpp_common_cflags)
 
-vpp_clang_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
-vpp_clang_TAG_CXXFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
-vpp_clang_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
+vpp_TAG_CFLAGS = -O2 $(vpp_common_cflags)
+vpp_TAG_CXXFLAGS = -O2 $(vpp_common_cflags)
+vpp_TAG_LDFLAGS = -O2 $(vpp_common_cflags) -pie
 
-vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -fprofile-arcs -ftest-coverage
-vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -coverage
+vpp_clang_TAG_CFLAGS = -O2 $(vpp_common_cflags)
+vpp_clang_TAG_CXXFLAGS = -O2 $(vpp_common_cflags)
+vpp_clang_TAG_LDFLAGS = -O2 $(vpp_common_cflags)
+
+vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_GCOV -fPIC -Werror -fprofile-arcs -ftest-coverage
+vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_GCOV -fPIC -Werror -coverage
 
 vpp_coverity_TAG_CFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
 vpp_coverity_TAG_LDFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
-

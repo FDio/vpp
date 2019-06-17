@@ -15,17 +15,19 @@ DPDK_PKTMBUF_HEADROOM        ?= 128
 DPDK_CACHE_LINE_SIZE         ?= 64
 DPDK_DOWNLOAD_DIR            ?= $(DL_CACHE_DIR)
 DPDK_DEBUG                   ?= n
+DPDK_AARCH64_GENERIC         ?= y
 DPDK_MLX4_PMD                ?= n
 DPDK_MLX5_PMD                ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 
-DPDK_VERSION                 ?= 19.02
+DPDK_VERSION                 ?= 19.05
 DPDK_BASE_URL                ?= http://fast.dpdk.org/rel
 DPDK_TARBALL                 := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL                 := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
 DPDK_18.11_TARBALL_MD5_CKSUM := 04b86f4a77f4f81a7fbd26467dd2ea9f
 DPDK_19.02_TARBALL_MD5_CKSUM := 23944a2cdee061aa4bd72ebe7d836db0
+DPDK_19.05_TARBALL_MD5_CKSUM := fe22ad1bab1539945119047b0fdf1105
 MACHINE=$(shell uname -m)
 
 # replace dot with space, and if 3rd word exists we deal with stable dpdk rel
@@ -67,7 +69,10 @@ export CROSS
 DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= armv8a
 DPDK_TUNE             ?= generic
-
+ifeq (y, $(DPDK_AARCH64_GENERIC))
+DPDK_CACHE_LINE_SIZE  := 128
+# assign aarch64 variant specific options
+else
 CPU_IMP_ARM                     = 0x41
 CPU_IMP_CAVIUM                  = 0x43
 
@@ -110,6 +115,9 @@ DPDK_CACHE_LINE_SIZE := 128
 else
 $(warning Unknown Cavium CPU)
 endif
+endif
+
+# finish of assigning aarch64 variant specific options
 endif
 
 ##############################################################################
@@ -179,7 +187,7 @@ $(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	$(call set,RTE_PCI_CONFIG,y)
 	$(call set,RTE_PCI_EXTENDED_TAG,"on")
 	$(call set,RTE_PCI_MAX_READ_REQUEST_SIZE,4096)
-	$(call set,RTE_LIBRTE_PMD_BOND,y)
+	$(call set,RTE_LIBRTE_PMD_BOND,n)
 	$(call set,RTE_LIBRTE_IP_FRAG,y)
 	$(call set,RTE_LIBRTE_PMD_QAT,y)
 	$(call set,RTE_LIBRTE_PMD_QAT_SYM,y)
@@ -215,6 +223,7 @@ $(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	$(call set,RTE_LIBRTE_BPF,n)
 	$(call set,RTE_LIBRTE_RAWDEV,n)
 	$(call set,RTE_LIBRTE_PMD_IFPGA_RAWDEV,n)
+	$(call set,RTE_LIBRTE_IPN3KE_PMD,n)
 	$(call set,RTE_LIBRTE_IFPGA_BUS,n)
 	$(call set,RTE_LIBRTE_BBDEV,n)
 	$(call set,RTE_LIBRTE_BBDEV_NULL,n)

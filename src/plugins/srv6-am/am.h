@@ -46,7 +46,7 @@ typedef struct
   u32 sw_if_index_in;					    /**< Incoming iface from proxied device */
 } srv6_am_localsid_t;
 
-srv6_am_main_t srv6_am_main;
+extern srv6_am_main_t srv6_am_main;
 
 format_function_t format_srv6_am_localsid;
 unformat_function_t unformat_srv6_am_localsid;

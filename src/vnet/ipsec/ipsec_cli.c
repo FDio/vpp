@@ -91,6 +91,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   is_add = 0;
   flags = IPSEC_SA_FLAG_NONE;
   proto = IPSEC_PROTOCOL_ESP;
+  integ_alg = IPSEC_INTEG_ALG_NONE;
+  crypto_alg = IPSEC_CRYPTO_ALG_NONE;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -149,7 +151,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
     rv = ipsec_sa_del (id);
 
   if (rv)
-    clib_error_return (0, "failed");
+    error = clib_error_return (0, "failed");
 
 done:
   unformat_free (line_input);
@@ -233,9 +235,6 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 
   clib_memset (&p, 0, sizeof (p));
   p.lport.stop = p.rport.stop = ~0;
-  p.laddr.stop.ip4.as_u32 = p.raddr.stop.ip4.as_u32 = (u32) ~ 0;
-  p.laddr.stop.ip6.as_u64[0] = p.laddr.stop.ip6.as_u64[1] = (u64) ~ 0;
-  p.raddr.stop.ip6.as_u64[0] = p.raddr.stop.ip6.as_u64[1] = (u64) ~ 0;
   is_outbound = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -313,28 +312,6 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	}
     }
 
-  /* Check if SA is for IPv6/AH which is not supported. Return error if TRUE. */
-  if (p.sa_id)
-    {
-      uword *p1;
-      ipsec_main_t *im = &ipsec_main;
-      ipsec_sa_t *sa = 0;
-      p1 = hash_get (im->sa_index_by_sa_id, p.sa_id);
-      if (!p1)
-	{
-	  error =
-	    clib_error_return (0, "SA with index %u not found", p.sa_id);
-	  goto done;
-	}
-      sa = pool_elt_at_index (im->sad, p1[0]);
-      if (sa && sa->protocol == IPSEC_PROTOCOL_AH && is_add && p.is_ipv6)
-	{
-	  error = clib_error_return (0, "AH not supported for IPV6: '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
   rv = ipsec_policy_mk_type (is_outbound, p.is_ipv6, p.policy, &p.type);
 
   if (rv)
@@ -369,52 +346,6 @@ VLIB_CLI_COMMAND (ipsec_policy_add_del_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-set_ipsec_sa_key_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = NULL;
-  ipsec_key_t ck, ik;
-  u32 id;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%u", &id))
-	;
-      else
-	if (unformat (line_input, "crypto-key %U", unformat_ipsec_key, &ck))
-	;
-      else if (unformat (line_input, "integ-key %U", unformat_ipsec_key, &ik))
-	;
-      else
-	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  ipsec_set_sa_key (id, &ck, &ik);
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_ipsec_sa_key_command, static) = {
-    .path = "set ipsec sa",
-    .short_help = "set ipsec sa <id> crypto-key <key> integ-key <key>",
-    .function = set_ipsec_sa_key_command_fn,
-};
-/* *INDENT-ON* */
-
 static void
 ipsec_sa_show_all (vlib_main_t * vm, ipsec_main_t * im)
 {
@@ -443,12 +374,14 @@ static void
 ipsec_spd_bindings_show_all (vlib_main_t * vm, ipsec_main_t * im)
 {
   u32 spd_id, sw_if_index;
+  ipsec_spd_t *spd;
 
   vlib_cli_output (vm, "SPD Bindings:");
 
   /* *INDENT-OFF* */
   hash_foreach(sw_if_index, spd_id, im->spd_index_by_sw_if_index, ({
-    vlib_cli_output (vm, "  %d -> %U", spd_id,
+    spd = pool_elt_at_index (im->spds, spd_id);
+    vlib_cli_output (vm, "  %d -> %U", spd->id,
                      format_vnet_sw_if_index_name, im->vnet_main,
                      sw_if_index);
   }));
@@ -661,17 +594,16 @@ ipsec_select_backend_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
-  u32 backend_index;
-  ipsec_main_t *im = &ipsec_main;
-
-  if (pool_elts (im->sad) > 0)
-    {
-      return clib_error_return (0,
-				"Cannot change IPsec backend, while %u SA entries are configured",
-				pool_elts (im->sad));
-    }
-
   unformat_input_t _line_input, *line_input = &_line_input;
+  ipsec_main_t *im = &ipsec_main;
+  clib_error_t *error;
+  u32 backend_index;
+
+  error = ipsec_rsc_in_use (im);
+
+  if (error)
+    return error;
+
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -888,89 +820,6 @@ VLIB_CLI_COMMAND (create_ipsec_tunnel_command, static) = {
       "remote-ip <addr> remote-spi <spi> [instance <inst_num>] [udp-encap] [use-esn] [use-anti-replay] "
       "[tx-table <table-id>]",
   .function = create_ipsec_tunnel_command_fn,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-set_interface_key_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ipsec_main_t *im = &ipsec_main;
-  ipsec_if_set_key_type_t type = IPSEC_IF_SET_KEY_TYPE_NONE;
-  u32 hw_if_index = (u32) ~ 0;
-  u32 alg;
-  u8 *key = 0;
-  clib_error_t *error = NULL;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U",
-		    unformat_vnet_hw_interface, im->vnet_main, &hw_if_index))
-	;
-      else
-	if (unformat
-	    (line_input, "local crypto %U", unformat_ipsec_crypto_alg, &alg))
-	type = IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO;
-      else
-	if (unformat
-	    (line_input, "remote crypto %U", unformat_ipsec_crypto_alg, &alg))
-	type = IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO;
-      else
-	if (unformat
-	    (line_input, "local integ %U", unformat_ipsec_integ_alg, &alg))
-	type = IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG;
-      else
-	if (unformat
-	    (line_input, "remote integ %U", unformat_ipsec_integ_alg, &alg))
-	type = IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG;
-      else if (unformat (line_input, "%U", unformat_hex_string, &key))
-	;
-      else
-	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  if (type == IPSEC_IF_SET_KEY_TYPE_NONE)
-    {
-      error = clib_error_return (0, "unknown key type");
-      goto done;
-    }
-
-  if (alg > 0 && vec_len (key) == 0)
-    {
-      error = clib_error_return (0, "key is not specified");
-      goto done;
-    }
-
-  if (hw_if_index == (u32) ~ 0)
-    {
-      error = clib_error_return (0, "interface not specified");
-      goto done;
-    }
-
-  ipsec_set_interface_key (im->vnet_main, hw_if_index, type, alg, key);
-
-done:
-  vec_free (key);
-  unformat_free (line_input);
-
-  return error;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_interface_key_command, static) = {
-    .path = "set interface ipsec key",
-    .short_help =
-    "set interface ipsec key <int> <local|remote> <crypto|integ> <key type> <key>",
-    .function = set_interface_key_command_fn,
 };
 /* *INDENT-ON* */
 

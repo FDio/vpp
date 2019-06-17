@@ -1449,12 +1449,8 @@ linux_pci_init (vlib_main_t * vm)
 {
   vlib_pci_main_t *pm = &pci_main;
   vlib_pci_addr_t *addr = 0, *addrs;
-  clib_error_t *error;
 
   pm->vlib_main = vm;
-
-  if ((error = vlib_call_init_function (vm, unix_input_init)))
-    return error;
 
   ASSERT (sizeof (vlib_pci_addr_t) == sizeof (u32));
 
@@ -1471,10 +1467,15 @@ linux_pci_init (vlib_main_t * vm)
     }
   /* *INDENT-ON* */
 
-  return error;
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (linux_pci_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (linux_pci_init) =
+{
+  .runs_after = VLIB_INITS("unix_input_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

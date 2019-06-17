@@ -52,7 +52,8 @@ bd_validate (l2_bridge_domain_t * bd_config)
 {
   if (bd_is_valid (bd_config))
     return;
-  bd_config->feature_bitmap = ~(L2INPUT_FEAT_ARP_TERM | L2INPUT_FEAT_UU_FWD);
+  bd_config->feature_bitmap =
+    ~(L2INPUT_FEAT_ARP_TERM | L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_ARP_UFWD);
   bd_config->bvi_sw_if_index = ~0;
   bd_config->uu_fwd_sw_if_index = ~0;
   bd_config->members = 0;
@@ -274,6 +275,10 @@ bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags, u32 enable)
   if (flags & L2_ARP_TERM)
     {
       feature_bitmap |= L2INPUT_FEAT_ARP_TERM;
+    }
+  if (flags & L2_ARP_UFWD)
+    {
+      feature_bitmap |= L2INPUT_FEAT_ARP_UFWD;
     }
 
   if (enable)
@@ -593,6 +598,71 @@ VLIB_CLI_COMMAND (bd_uu_flood_cli, static) = {
   .path = "set bridge-domain uu-flood",
   .short_help = "set bridge-domain uu-flood <bridge-domain-id> [disable]",
   .function = bd_uu_flood,
+};
+/* *INDENT-ON* */
+
+/**
+    Set bridge-domain arp-unicast forward enable/disable.
+    The CLI format is:
+    set bridge-domain arp-ufwd <bd_index> [disable]
+*/
+static clib_error_t *
+bd_arp_ufwd (vlib_main_t * vm,
+	     unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  bd_main_t *bdm = &bd_main;
+  clib_error_t *error = 0;
+  u32 bd_index, bd_id;
+  u32 enable;
+  uword *p;
+
+  if (!unformat (input, "%d", &bd_id))
+    {
+      error = clib_error_return (0, "expecting bridge-domain id but got `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+
+  if (bd_id == 0)
+    return clib_error_return (0,
+			      "No operations on the default bridge domain are supported");
+
+  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+
+  if (p == 0)
+    return clib_error_return (0, "No such bridge domain %d", bd_id);
+
+  bd_index = p[0];
+
+  enable = 1;
+  if (unformat (input, "disable"))
+    {
+      enable = 0;
+    }
+
+  /* set the bridge domain flag */
+  bd_set_flags (vm, bd_index, L2_ARP_UFWD, enable);
+
+done:
+  return error;
+}
+
+/*?
+ * Layer 2 arp-unicast forwarding can be enabled and disabled on each
+ * bridge-domain. It is disabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable arp-unicast forwarding (where 200 is the
+ * bridge-domain-id):
+ * @cliexcmd{set bridge-domain arp-ufwd 200}
+ * Example of how to disable arp-unicast forwarding (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain arp-ufwd 200 disable}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (bd_arp_ufwd_cli, static) = {
+  .path = "set bridge-domain arp-ufwd",
+  .short_help = "set bridge-domain arp-ufwd <bridge-domain-id> [disable]",
+  .function = bd_arp_ufwd,
 };
 /* *INDENT-ON* */
 
@@ -1046,10 +1116,11 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	    {
 	      printed = 1;
 	      vlib_cli_output (vm,
-			       "%=8s %=7s %=4s %=9s %=9s %=9s %=11s %=9s %=9s %=11s",
+			       "%=8s %=7s %=4s %=9s %=9s %=9s %=11s %=9s %=9s %=9s %=11s",
 			       "BD-ID", "Index", "BSN", "Age(min)",
 			       "Learning", "U-Forwrd", "UU-Flood",
-			       "Flooding", "ARP-Term", "BVI-Intf");
+			       "Flooding", "ARP-Term", "arp-ufwd",
+			       "BVI-Intf");
 	    }
 
 	  if (bd_config->mac_age)
@@ -1057,7 +1128,7 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	  else
 	    as = format (as, "off");
 	  vlib_cli_output (vm,
-			   "%=8d %=7d %=4d %=9v %=9s %=9s %=11U %=9s %=9s %=11U",
+			   "%=8d %=7d %=4d %=9v %=9s %=9s %=11U %=9s %=9s %=9s %=11U",
 			   bd_config->bd_id, bd_index, bd_config->seq_num, as,
 			   bd_config->feature_bitmap & L2INPUT_FEAT_LEARN ?
 			   "on" : "off",
@@ -1067,6 +1138,8 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 			   bd_config->feature_bitmap & L2INPUT_FEAT_FLOOD ?
 			   "on" : "off",
 			   bd_config->feature_bitmap & L2INPUT_FEAT_ARP_TERM ?
+			   "on" : "off",
+			   bd_config->feature_bitmap & L2INPUT_FEAT_ARP_UFWD ?
 			   "on" : "off",
 			   format_vnet_sw_if_index_name_with_NA,
 			   vnm, bd_config->bvi_sw_if_index);
@@ -1226,6 +1299,11 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
       else
 	disable_flags |= L2_ARP_TERM;
 
+      if (a->arp_ufwd)
+	enable_flags |= L2_ARP_UFWD;
+      else
+	disable_flags |= L2_ARP_UFWD;
+
       if (enable_flags)
 	bd_set_flags (vm, bd_index, enable_flags, 1 /* enable */ );
 
@@ -1267,7 +1345,8 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
   clib_error_t *error = 0;
   u8 is_add = 1;
   u32 bd_id = ~0;
-  u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term = 0;
+  u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term =
+    0, arp_ufwd = 0;
   u32 mac_age = 0;
   u8 *bd_tag = NULL;
   l2_bridge_domain_add_del_args_t _a, *a = &_a;
@@ -1290,6 +1369,8 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "learn %d", &learn))
 	;
       else if (unformat (line_input, "arp-term %d", &arp_term))
+	;
+      else if (unformat (line_input, "arp-ufwd %d", &arp_ufwd))
 	;
       else if (unformat (line_input, "mac-age %d", &mac_age))
 	;
@@ -1335,6 +1416,7 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
   a->forward = (u8) forward;
   a->learn = (u8) learn;
   a->arp_term = (u8) arp_term;
+  a->arp_ufwd = (u8) arp_ufwd;
   a->mac_age = (u8) mac_age;
   a->bd_tag = bd_tag;
 
@@ -1404,7 +1486,7 @@ VLIB_CLI_COMMAND (bd_create_cli, static) = {
   .path = "create bridge-domain",
   .short_help = "create bridge-domain <bridge-domain-id>"
                 " [learn <0|1>] [forward <0|1>] [uu-flood <0|1>] [flood <0|1>] [arp-term <0|1>]"
-                " [mac-age <nn>] [bd-tag <tag>] [del]",
+                " [arp-ufwd <0|1>] [mac-age <nn>] [bd-tag <tag>] [del]",
   .function = bd_add_del_command_fn,
 };
 /* *INDENT-ON* */

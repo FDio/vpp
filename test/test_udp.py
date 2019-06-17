@@ -10,6 +10,8 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 
+NUM_PKTS = 67
+
 
 class TestUdpEncap(VppTestCase):
     """ UDP Encap Test Case """
@@ -164,12 +166,12 @@ class TestUdpEncap(VppTestCase):
                  IP(src="2.2.2.2", dst="1.1.0.1") /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_4o4*65, self.pg0)
+        rx = self.send_and_expect(self.pg0, p_4o4*NUM_PKTS, self.pg0)
         for p in rx:
             self.validate_outer4(p, udp_encap_0)
             p = IP(p["UDP"].payload.load)
             self.validate_inner4(p, p_4o4)
-        self.assertEqual(udp_encap_0.get_stats()['packets'], 65)
+        self.assertEqual(udp_encap_0.get_stats()['packets'], NUM_PKTS)
 
         #
         # 4o6 encap
@@ -179,12 +181,12 @@ class TestUdpEncap(VppTestCase):
                  IP(src="2.2.2.2", dst="1.1.2.1") /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_4o6*65, self.pg2)
+        rx = self.send_and_expect(self.pg0, p_4o6*NUM_PKTS, self.pg2)
         for p in rx:
             self.validate_outer6(p, udp_encap_2)
             p = IP(p["UDP"].payload.load)
             self.validate_inner4(p, p_4o6)
-        self.assertEqual(udp_encap_2.get_stats()['packets'], 65)
+        self.assertEqual(udp_encap_2.get_stats()['packets'], NUM_PKTS)
 
         #
         # 6o4 encap
@@ -194,12 +196,12 @@ class TestUdpEncap(VppTestCase):
                  IPv6(src="2001::100", dst="2001::1") /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_6o4*65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p_6o4*NUM_PKTS, self.pg1)
         for p in rx:
             self.validate_outer4(p, udp_encap_1)
             p = IPv6(p["UDP"].payload.load)
             self.validate_inner6(p, p_6o4)
-        self.assertEqual(udp_encap_1.get_stats()['packets'], 65)
+        self.assertEqual(udp_encap_1.get_stats()['packets'], NUM_PKTS)
 
         #
         # 6o6 encap
@@ -209,12 +211,12 @@ class TestUdpEncap(VppTestCase):
                  IPv6(src="2001::100", dst="2001::3") /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_6o6*65, self.pg3)
+        rx = self.send_and_expect(self.pg0, p_6o6*NUM_PKTS, self.pg3)
         for p in rx:
             self.validate_outer6(p, udp_encap_3)
             p = IPv6(p["UDP"].payload.load)
             self.validate_inner6(p, p_6o6)
-        self.assertEqual(udp_encap_3.get_stats()['packets'], 65)
+        self.assertEqual(udp_encap_3.get_stats()['packets'], NUM_PKTS)
 
         #
         # A route with an output label
@@ -233,12 +235,12 @@ class TestUdpEncap(VppTestCase):
                    IP(src="2.2.2.2", dst="1.1.2.22") /
                    UDP(sport=1234, dport=1234) /
                    Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_4omo4*65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p_4omo4*NUM_PKTS, self.pg1)
         for p in rx:
             self.validate_outer4(p, udp_encap_1)
             p = MPLS(p["UDP"].payload.load)
             self.validate_inner4(p, p_4omo4, ttl=63)
-        self.assertEqual(udp_encap_1.get_stats()['packets'], 130)
+        self.assertEqual(udp_encap_1.get_stats()['packets'], 2*NUM_PKTS)
 
 
 class TestUDP(VppTestCase):

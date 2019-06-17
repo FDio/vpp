@@ -17,6 +17,9 @@ from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6
 
+
+NUM_PKTS = 67
+
 # not exported by scapy, so redefined here
 arp_opts = {"who-has": 1, "is-at": 2}
 
@@ -1480,14 +1483,14 @@ class NeighborStatsTestCase(VppTestCase):
               UDP(sport=1234, dport=1234) /
               Raw())
 
-        rx = self.send_and_expect(self.pg0, p1 * 65, self.pg1)
-        rx = self.send_and_expect(self.pg0, p2 * 65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p1 * NUM_PKTS, self.pg1)
+        rx = self.send_and_expect(self.pg0, p2 * NUM_PKTS, self.pg1)
 
-        self.assertEqual(65, arp1.get_stats()['packets'])
-        self.assertEqual(65, arp2.get_stats()['packets'])
+        self.assertEqual(NUM_PKTS, arp1.get_stats()['packets'])
+        self.assertEqual(NUM_PKTS, arp2.get_stats()['packets'])
 
-        rx = self.send_and_expect(self.pg0, p1 * 65, self.pg1)
-        self.assertEqual(130, arp1.get_stats()['packets'])
+        rx = self.send_and_expect(self.pg0, p1 * NUM_PKTS, self.pg1)
+        self.assertEqual(NUM_PKTS*2, arp1.get_stats()['packets'])
 
     def test_nd_stats(self):
         """ ND Counters """
@@ -1525,8 +1528,8 @@ class NeighborStatsTestCase(VppTestCase):
         self.assertEqual(16, nd1.get_stats()['packets'])
         self.assertEqual(16, nd2.get_stats()['packets'])
 
-        rx = self.send_and_expect(self.pg1, p1 * 65, self.pg0)
-        self.assertEqual(81, nd1.get_stats()['packets'])
+        rx = self.send_and_expect(self.pg1, p1 * NUM_PKTS, self.pg0)
+        self.assertEqual(NUM_PKTS+16, nd1.get_stats()['packets'])
 
 
 if __name__ == '__main__':

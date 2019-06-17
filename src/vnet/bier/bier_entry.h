@@ -16,7 +16,7 @@
  * bier_entry : The BIER entry
  *
  * The interface to the BIER entry is through a bier_entry_t* rather
- * than an index. This is becuase the BIER table allocates the entries
+ * than an index. This is because the BIER table allocates the entries
  * in a contiguous array once and only once when the table is created.
  * this is done for forwarding performance. The entry is thus not subject
  * to realloc, and does not need to be malloc'd when a route to that

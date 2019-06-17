@@ -46,24 +46,22 @@
   _ (rx_errors, q_errors)
 
 #define foreach_dpdk_rss_hf                    \
-  _(ETH_RSS_IPV4,               "ipv4")        \
   _(ETH_RSS_FRAG_IPV4,          "ipv4-frag")   \
   _(ETH_RSS_NONFRAG_IPV4_TCP,   "ipv4-tcp")    \
   _(ETH_RSS_NONFRAG_IPV4_UDP,   "ipv4-udp")    \
   _(ETH_RSS_NONFRAG_IPV4_SCTP,  "ipv4-sctp")   \
   _(ETH_RSS_NONFRAG_IPV4_OTHER, "ipv4-other")  \
-  _(ETH_RSS_IPV6,               "ipv6")        \
+  _(ETH_RSS_IPV4,               "ipv4")        \
+  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
+  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex") \
   _(ETH_RSS_FRAG_IPV6,          "ipv6-frag")   \
   _(ETH_RSS_NONFRAG_IPV6_TCP,   "ipv6-tcp")    \
   _(ETH_RSS_NONFRAG_IPV6_UDP,   "ipv6-udp")    \
   _(ETH_RSS_NONFRAG_IPV6_SCTP,  "ipv6-sctp")   \
   _(ETH_RSS_NONFRAG_IPV6_OTHER, "ipv6-other")  \
-  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
-  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex") \
-  _(ETH_RSS_L2_PAYLOAD,         "l2-payload")  \
   _(ETH_RSS_IPV6_EX,            "ipv6-ex")     \
-  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
-  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex") \
+  _(ETH_RSS_IPV6,               "ipv6")        \
+  _(ETH_RSS_L2_PAYLOAD,         "l2-payload")  \
   _(ETH_RSS_PORT,               "port")        \
   _(ETH_RSS_VXLAN,              "vxlan")       \
   _(ETH_RSS_GENEVE,             "geneve")      \
@@ -197,9 +195,6 @@ format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "HundredGigabitEthernet";
       break;
 
-    case VNET_DPDK_PORT_TYPE_ETH_BOND:
-      return format (s, "BondEthernet%d", xd->bond_instance_num);
-
     case VNET_DPDK_PORT_TYPE_ETH_SWITCH:
       device_name = "EthernetSwitch";
       break;
@@ -329,10 +324,6 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_AF_PACKET:
       dev_type = "af_packet";
-      break;
-
-    case VNET_DPDK_PMD_BOND:
-      dev_type = "Ethernet Bonding";
       break;
 
     case VNET_DPDK_PMD_DPAA2:
@@ -655,11 +646,11 @@ format_dpdk_device (u8 * s, va_list * args)
   /* $$$ MIB counters  */
   {
 #define _(N, V)							\
-    if ((xd->stats.V - xd->last_cleared_stats.V) != 0) {       \
+    if (xd->stats.V != 0) {                                    \
       s = format (s, "\n%U%-40U%16Lu",                         \
                   format_white_space, indent + 2,              \
                   format_c_identifier, #N,                     \
-                  xd->stats.V - xd->last_cleared_stats.V);     \
+                  xd->stats.V);                                \
     }                                                          \
 
     foreach_dpdk_counter
@@ -668,35 +659,32 @@ format_dpdk_device (u8 * s, va_list * args)
 
   u8 *xs = 0;
   u32 i = 0;
-  struct rte_eth_xstat *xstat, *last_xstat;
+  struct rte_eth_xstat *xstat;
   struct rte_eth_xstat_name *xstat_names = 0;
-  int len = rte_eth_xstats_get_names (xd->port_id, NULL, 0);
+  int len = vec_len (xd->xstats);
   vec_validate (xstat_names, len - 1);
-  rte_eth_xstats_get_names (xd->port_id, xstat_names, len);
+  int ret = rte_eth_xstats_get_names (xd->port_id, xstat_names, len);
 
-  ASSERT (vec_len (xd->xstats) == vec_len (xd->last_cleared_xstats));
-
-  /* *INDENT-OFF* */
-  vec_foreach_index(i, xd->xstats)
+  if (ret < 0 || ret > len)
     {
-      u64 delta = 0;
-      xstat = vec_elt_at_index(xd->xstats, i);
-      last_xstat = vec_elt_at_index(xd->last_cleared_xstats, i);
-
-      delta = xstat->value - last_xstat->value;
-      if (verbose == 2 || (verbose && delta))
+      /* *INDENT-OFF* */
+      vec_foreach_index(i, xd->xstats)
         {
-          /* format_c_identifier doesn't like c strings inside vector */
-          u8 * name = format(0,"%s", xstat_names[i].name);
-          xs = format(xs, "\n%U%-38U%16Lu",
-                      format_white_space, indent + 4,
-                      format_c_identifier, name, delta);
-          vec_free(name);
+          xstat = vec_elt_at_index(xd->xstats, i);
+          if (verbose == 2 || (verbose && xstat->value))
+            {
+              /* format_c_identifier doesn't like c strings inside vector */
+              u8 * name = format(0,"%s", xstat_names[i].name);
+              xs = format(xs, "\n%U%-38U%16Lu",
+                          format_white_space, indent + 4,
+                          format_c_identifier, name, xstat->value);
+              vec_free(name);
+            }
         }
-    }
-  /* *INDENT-ON* */
+      /* *INDENT-ON* */
 
-  vec_free (xstat_names);
+      vec_free (xstat_names);
+    }
 
   if (xs)
     {

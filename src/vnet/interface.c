@@ -287,9 +287,6 @@ call_sw_interface_add_del_callbacks (vnet_main_t * vnm, u32 sw_if_index,
     (vnm, sw_if_index, is_create, vnm->sw_interface_add_del_functions);
 }
 
-#define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
-#define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)
-
 static clib_error_t *
 vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index,
 				    vnet_hw_interface_flags_t flags,

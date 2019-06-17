@@ -65,7 +65,7 @@ class TestMTU(VppTestCase):
         return 'x' * len
 
     def get_mtu(self, sw_if_index):
-        rv = self.vapi.sw_interface_dump()
+        rv = self.vapi.sw_interface_dump(sw_if_index=sw_if_index)
         for i in rv:
             if i.sw_if_index == sw_if_index:
                 return i.mtu[0]

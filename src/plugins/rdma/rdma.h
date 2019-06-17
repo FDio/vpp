@@ -22,13 +22,10 @@
 #include <vlib/log.h>
 
 #define foreach_rdma_device_flags \
-  _(0, INITIALIZED, "initialized") \
-  _(1, ERROR, "error") \
-  _(2, ADMIN_UP, "admin-up") \
-  _(3, VA_DMA, "vaddr-dma") \
-  _(4, LINK_UP, "link-up") \
-  _(5, SHARED_TXQ_LOCK, "shared-txq-lock") \
-  _(6, ELOG, "elog") \
+  _(0, ERROR, "error") \
+  _(1, ADMIN_UP, "admin-up") \
+  _(2, LINK_UP, "link-up") \
+  _(3, PROMISC, "promiscuous")
 
 enum
 {

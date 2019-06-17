@@ -390,8 +390,9 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
   /* 4th: check the SYN bit (in window) */
   if (PREDICT_FALSE (tcp_syn (th0)))
     {
+      /* As per RFC5961 send challenge ack instead of reset */
+      tcp_program_ack (wrk, tc0);
       *error0 = TCP_ERROR_SPURIOUS_SYN;
-      tcp_send_reset (tc0);
       goto error;
     }
 
@@ -1335,6 +1336,8 @@ tcp_do_fastretransmits (tcp_worker_ctx_t * wrk)
   for (i = 0; i < vec_len (ongoing_fast_rxt); i++)
     {
       tc = tcp_connection_get (ongoing_fast_rxt[i], thread_index);
+      if (!tc)
+	continue;
       if (!tcp_in_fastrecovery (tc))
 	{
 	  tc->flags &= ~TCP_CONN_FRXT_PENDING;
@@ -1548,8 +1551,6 @@ partial_ack:
   else
     {
       tcp_fastrecovery_first_on (tc);
-      /* Reuse last bytes delivered to track total bytes acked */
-      tc->sack_sb.last_bytes_delivered += tc->bytes_acked;
       if (tc->snd_rxt_bytes > tc->bytes_acked)
 	tc->snd_rxt_bytes -= tc->bytes_acked;
       else
@@ -2526,9 +2527,9 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * allocate session send reset */
 	  if (session_stream_connect_notify (&new_tc0->connection, 0))
 	    {
-	      clib_warning ("connect notify fail");
 	      tcp_send_reset_w_pkt (new_tc0, b0, my_thread_index, is_ip4);
 	      tcp_connection_cleanup (new_tc0);
+	      error0 = TCP_ERROR_CREATE_SESSION_FAIL;
 	      goto drop;
 	    }
 
@@ -2550,6 +2551,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tcp_connection_cleanup (new_tc0);
 	      tcp_send_reset_w_pkt (tc0, b0, my_thread_index, is_ip4);
 	      TCP_EVT_DBG (TCP_EVT_RST_SENT, tc0);
+	      error0 = TCP_ERROR_CREATE_SESSION_FAIL;
 	      goto drop;
 	    }
 
@@ -3008,6 +3010,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 					      thread_index);
   tcp_inc_counter (rcv_process, TCP_ERROR_MSG_QUEUE_FULL, errors);
   tcp_handle_postponed_dequeues (wrk);
+  tcp_handle_disconnects (wrk);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
 
   return from_frame->n_vectors;

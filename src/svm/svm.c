@@ -436,10 +436,7 @@ svm_data_region_map (svm_map_region_args_t * a, svm_region_t * rp)
 u8 *
 shm_name_from_svm_map_region_args (svm_map_region_args_t * a)
 {
-  u8 *path;
   u8 *shm_name;
-  u8 *split_point;
-  u8 *mkdir_arg = 0;
   int root_path_offset = 0;
   int name_offset = 0;
 
@@ -448,29 +445,6 @@ shm_name_from_svm_map_region_args (svm_map_region_args_t * a)
       /* Tolerate present or absent slashes */
       if (a->root_path[0] == '/')
 	root_path_offset++;
-
-      /* create the root_path under /dev/shm
-         iterate through path creating directories */
-
-      path = format (0, "/dev/shm/%s%c", &a->root_path[root_path_offset], 0);
-      split_point = path + 1;
-      vec_add1 (mkdir_arg, '-');
-
-      while (*split_point)
-	{
-	  while (*split_point && *split_point != '/')
-	    {
-	      vec_add1 (mkdir_arg, *split_point);
-	      split_point++;
-	    }
-	  vec_add1 (mkdir_arg, 0);
-
-	  /* ready to descend another level */
-	  mkdir_arg[vec_len (mkdir_arg) - 1] = '-';
-	  split_point++;
-	}
-      vec_free (mkdir_arg);
-      vec_free (path);
 
       if (a->name[0] == '/')
 	name_offset = 1;

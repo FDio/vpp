@@ -74,6 +74,9 @@ dns_enable_disable (dns_main_t * dm, int is_enable)
   u32 n_vlib_mains = tm->n_vlib_mains;
   vlib_main_t *vm = dm->vlib_main;
 
+  /* Create the resolver process if not done already */
+  vnet_dns_create_resolver_process (dm);
+
   if (is_enable)
     {
       if (vec_len (dm->ip4_name_servers) == 0

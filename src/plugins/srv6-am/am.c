@@ -29,6 +29,7 @@ unsigned char keyword_str[] = "End.AM";
 unsigned char def_str[] = "Endpoint to SR-unaware appliance via masquerading";
 unsigned char params_str[] = "nh <next-hop> oif <iface-out> iif <iface-in>";
 
+srv6_am_main_t srv6_am_main;
 
 /*****************************************/
 /* SRv6 LocalSID instantiation and removal functions */
@@ -236,7 +237,7 @@ VLIB_INIT_FUNCTION (srv6_am_init);
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "Masquerading SRv6 proxy",
+  .description = "Masquerading Segment Routing for IPv6 (SRv6) Proxy",
 };
 /* *INDENT-ON* */
 

@@ -13,6 +13,11 @@ existing packages. This guide describes how to pull, install and run the VPP pac
 This section provides directions on how to Install VPP binaries on Ubuntu, Centos,
 and openSUSE platforms.
 
+FD.io VPP is installed using Package Cloud. For a complete set of
+instructions on how to install VPP with package cloud please refer
+to `Package Cloud <https://packagecloud.io/fdio/release>`_.
+
+
 Installing on Ubuntu
 ---------------------------------
 

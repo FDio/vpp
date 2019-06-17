@@ -231,18 +231,25 @@ ipsec_tun_mk_output_sa_id (u32 ti)
 }
 
 static void
-ipsec_tunnel_feature_set (ipsec_tunnel_if_t * t, u8 enable)
+ipsec_tunnel_feature_set (ipsec_main_t * im, ipsec_tunnel_if_t * t, u8 enable)
 {
-  vnet_feature_enable_disable ("ip4-output",
-			       "esp4-encrypt-tun",
-			       t->sw_if_index, enable,
-			       &t->output_sa_index,
-			       sizeof (t->output_sa_index));
-  vnet_feature_enable_disable ("ip6-output",
-			       "esp6-encrypt-tun",
-			       t->sw_if_index, enable,
-			       &t->output_sa_index,
-			       sizeof (t->output_sa_index));
+  u8 arc;
+
+  arc = vnet_get_feature_arc_index ("ip4-output");
+
+  vnet_feature_enable_disable_with_index (arc,
+					  im->esp4_encrypt_tun_feature_index,
+					  t->sw_if_index, enable,
+					  &t->output_sa_index,
+					  sizeof (t->output_sa_index));
+
+  arc = vnet_get_feature_arc_index ("ip6-output");
+
+  vnet_feature_enable_disable_with_index (arc,
+					  im->esp6_encrypt_tun_feature_index,
+					  t->sw_if_index, enable,
+					  &t->output_sa_index,
+					  sizeof (t->output_sa_index));
 }
 
 int
@@ -377,7 +384,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			       ~0);
       im->ipsec_if_by_sw_if_index[t->sw_if_index] = dev_instance;
 
-      ipsec_tunnel_feature_set (t, 1);
+      ipsec_tunnel_feature_set (im, t, 1);
 
       /*1st interface, register protocol */
       if (pool_elts (im->tunnel_interfaces) == 1)
@@ -402,7 +409,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       hi = vnet_get_hw_interface (vnm, t->hw_if_index);
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0);	/* admin down */
 
-      ipsec_tunnel_feature_set (t, 0);
+      ipsec_tunnel_feature_set (im, t, 0);
       vnet_delete_hw_interface (vnm, t->hw_if_index);
 
       if (is_ip6)
@@ -507,52 +514,6 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
 }
 
 int
-ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
-			 ipsec_if_set_key_type_t type, u8 alg, u8 * key)
-{
-  ipsec_main_t *im = &ipsec_main;
-  vnet_hw_interface_t *hi;
-  ipsec_tunnel_if_t *t;
-  ipsec_sa_t *sa;
-
-  hi = vnet_get_hw_interface (vnm, hw_if_index);
-  t = pool_elt_at_index (im->tunnel_interfaces, hi->dev_instance);
-
-  if (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
-    return VNET_API_ERROR_SYSCALL_ERROR_1;
-
-  if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO)
-    {
-      sa = pool_elt_at_index (im->sad, t->output_sa_index);
-      ipsec_sa_set_crypto_alg (sa, alg);
-      ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG)
-    {
-      sa = pool_elt_at_index (im->sad, t->output_sa_index);
-      ipsec_sa_set_integ_alg (sa, alg);
-      ipsec_mk_key (&sa->integ_key, key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO)
-    {
-      sa = pool_elt_at_index (im->sad, t->input_sa_index);
-      ipsec_sa_set_crypto_alg (sa, alg);
-      ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG)
-    {
-      sa = pool_elt_at_index (im->sad, t->input_sa_index);
-      ipsec_sa_set_integ_alg (sa, alg);
-      ipsec_mk_key (&sa->integ_key, key, vec_len (key));
-    }
-  else
-    return VNET_API_ERROR_INVALID_VALUE;
-
-  return 0;
-}
-
-
-int
 ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 			u8 is_outbound)
 {
@@ -650,9 +611,9 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
        * re-enable the feature to get the new SA in
        * the workers are stopped so no packets are sent in the clear
        */
-      ipsec_tunnel_feature_set (t, 0);
+      ipsec_tunnel_feature_set (im, t, 0);
       t->output_sa_index = sa_index;
-      ipsec_tunnel_feature_set (t, 1);
+      ipsec_tunnel_feature_set (im, t, 1);
     }
 
   /* remove sa_id to sa_index mapping on old SA */
@@ -668,7 +629,6 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 
   return 0;
 }
-
 
 clib_error_t *
 ipsec_tunnel_if_init (vlib_main_t * vm)

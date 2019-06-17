@@ -305,27 +305,6 @@ define ipsec_sad_entry_add_del_reply
   u32 stat_index;
 };
 
-/** \brief IPsec: Update Security Association keys
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-
-    @param sa_id - sa id
-
-    @param crypto_key - crypto keying material
-    @param integrity_key - integrity keying material
-*/
-
-autoreply define ipsec_sa_set_key
-{
-  u32 client_index;
-  u32 context;
-
-  u32 sa_id;
-
-  vl_api_key_t crypto_key;
-  vl_api_key_t integrity_key;
-};
-
 /** \brief IPsec: Get SPD interfaces
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -465,25 +444,6 @@ define ipsec_sa_details {
   u64 replay_window;
 
   u64 total_data_size;
-};
-
-/** \brief Set key on IPsec interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - index of tunnel interface
-    @param key_type - type of key being set
-    @param alg - algorithm used with key
-    @param key_len - length key in bytes
-    @param key - key
-*/
-autoreply define ipsec_tunnel_if_set_key {
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u8 key_type;
-  u8 alg;
-  u8 key_len;
-  u8 key[128];
 };
 
 /** \brief Set new SA on IPsec interface

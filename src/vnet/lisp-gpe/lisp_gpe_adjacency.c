@@ -592,7 +592,7 @@ lisp_gpe_adj_module_init (vlib_main_t * vm)
   return (NULL);
 }
 
-VLIB_INIT_FUNCTION (lisp_gpe_adj_module_init)
+VLIB_INIT_FUNCTION (lisp_gpe_adj_module_init);
 /*
  * fd.io coding-style-patch-verification: ON
  *

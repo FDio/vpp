@@ -179,7 +179,7 @@ gbp_subnet_external_add (gbp_subnet_t * gs, u32 sw_if_index, sclass_t sclass)
 }
 
 static int
-gbp_subnet_l3_out_add (gbp_subnet_t * gs, u32 sw_if_index, sclass_t sclass)
+gbp_subnet_l3_out_add (gbp_subnet_t * gs, sclass_t sclass)
 {
   dpo_id_t gpd = DPO_INVALID;
 
@@ -289,12 +289,95 @@ gbp_subnet_add (u32 rd_id,
       rv = gbp_subnet_transport_add (gs);
       break;
     case GBP_SUBNET_L3_OUT:
-      rv = gbp_subnet_l3_out_add (gs, sw_if_index, sclass);
+      rv = gbp_subnet_l3_out_add (gs, sclass);
       break;
     }
 
   return (rv);
 }
+
+static clib_error_t *
+gbp_subnet_add_del_cli (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  fib_prefix_t pfx = {.fp_addr = ip46_address_initializer };
+  int length;
+  u32 rd_id = ~0;
+  u32 sw_if_index = ~0;
+  gbp_subnet_type_t type = ~0;
+  u32 sclass = ~0;
+  int is_add = 1;
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+	is_add = 0;
+      else if (unformat (input, "rd %d", &rd_id))
+	;
+      else
+	if (unformat
+	    (input, "prefix %U/%d", unformat_ip4_address, &pfx.fp_addr.ip4,
+	     &length))
+	pfx.fp_proto = FIB_PROTOCOL_IP4;
+      else
+	if (unformat
+	    (input, "prefix %U/%d", unformat_ip6_address, &pfx.fp_addr.ip6,
+	     &length))
+	pfx.fp_proto = FIB_PROTOCOL_IP6;
+      else if (unformat (input, "type transport"))
+	type = GBP_SUBNET_TRANSPORT;
+      else if (unformat (input, "type internal"))
+	type = GBP_SUBNET_STITCHED_INTERNAL;
+      else if (unformat (input, "type external"))
+	type = GBP_SUBNET_STITCHED_EXTERNAL;
+      else if (unformat (input, "type l3out"))
+	type = GBP_SUBNET_L3_OUT;
+      else
+	if (unformat_user
+	    (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (input, "sclass %u", &sclass))
+	;
+      else
+	break;
+    }
+
+  pfx.fp_len = length;
+
+  if (is_add)
+    rv = gbp_subnet_add (rd_id, &pfx, type, sw_if_index, sclass);
+  else
+    rv = gbp_subnet_del (rd_id, &pfx);
+
+  switch (rv)
+    {
+    case 0:
+      return 0;
+    case VNET_API_ERROR_NO_SUCH_FIB:
+      return clib_error_return (0, "no such FIB");
+    }
+
+  return clib_error_return (0, "unknown error %d", rv);
+}
+
+/*?
+ * Add Group Based Policy Subnets
+ *
+ * @cliexpar
+ * @cliexstart{gbp subnet [del] rd <ID> prefix <prefix> type <type> [<interface>] [sclass <sclass>]}
+ * @cliexend
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (gbp_subnet_add_del, static) = {
+  .path = "gbp subnet",
+  .short_help = "gbp subnet [del] rd <ID> prefix <prefix> type <type> [<interface>] [sclass <sclass>]\n",
+  .function = gbp_subnet_add_del_cli,
+};
+/* *INDENT-ON* */
+
+
 
 void
 gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx)

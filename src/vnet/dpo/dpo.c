@@ -16,7 +16,7 @@
  * @brief
  * A Data-Path Object is an object that represents actions that are
  * applied to packets are they are switched through VPP.
- * 
+ *
  * The DPO is a base class that is specialised by other objects to provide
  * concrete actions
  *
@@ -267,10 +267,10 @@ dpo_copy (dpo_id_t *dst,
      * the destination is written in a single u64 write - hence atomically w.r.t
      * any packets inflight.
      */
-    *((u64*)dst) = *(u64*)src; 
+    *((u64*)dst) = *(u64*)src;
 
     dpo_lock(dst);
-    dpo_unlock(&tmp);    
+    dpo_unlock(&tmp);
 }
 
 int
@@ -592,7 +592,12 @@ dpo_module_init (vlib_main_t * vm)
     return (NULL);
 }
 
-VLIB_INIT_FUNCTION(dpo_module_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION(dpo_module_init) =
+{
+    .runs_before = VLIB_INITS ("ip_main_init"),
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 dpo_memory_show (vlib_main_t * vm,

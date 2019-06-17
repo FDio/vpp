@@ -28,6 +28,13 @@ typedef enum vlib_punt_reason_t_
   PUNT_N_REASONS,
 } vlib_punt_reason_t;
 
+/**
+ * Walk each punt reason
+ */
+typedef int (*punt_reason_walk_cb_t) (vlib_punt_reason_t id,
+				      const u8 * name, void *ctx);
+
+extern void punt_reason_walk (punt_reason_walk_cb_t cb, void *cxt);
 
 /**
  * @brief Format a punt reason
@@ -55,6 +62,11 @@ vlib_punt_hdl_t vlib_punt_client_register (const char *who);
 extern int vlib_punt_reason_alloc (vlib_punt_hdl_t client,
 				   const char *reason_name,
 				   vlib_punt_reason_t * reason);
+
+/**
+ * Validate that a punt reason is assigned
+ */
+extern int vlib_punt_reason_validate (vlib_punt_reason_t reason);
 
 /**
  * @brief Register a node to receive particular punted buffers

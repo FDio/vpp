@@ -64,19 +64,25 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
 
 class TestIpsec4TunIfEsp1(TemplateIpsec4TunIfEsp, IpsecTun4Tests):
     """ Ipsec ESP - TUN tests """
-    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
     tun4_decrypt_node_name = "esp4-decrypt"
 
     def test_tun_basic64(self):
         """ ipsec 6o4 tunnel basic test """
+        self.tun4_encrypt_node_name = "esp6-encrypt-tun"
+
         self.verify_tun_64(self.params[socket.AF_INET], count=1)
 
     def test_tun_burst64(self):
         """ ipsec 6o4 tunnel basic test """
+        self.tun4_encrypt_node_name = "esp6-encrypt-tun"
+
         self.verify_tun_64(self.params[socket.AF_INET], count=257)
 
     def test_tun_basic_frag44(self):
         """ ipsec 4o4 tunnel frag basic test """
+        self.tun4_encrypt_node_name = "esp4-encrypt-tun"
+
         p = self.ipv4_params
 
         self.vapi.sw_interface_set_mtu(p.tun_if.sw_if_index,
@@ -130,15 +136,17 @@ class TemplateIpsec6TunIfEsp(TemplateIpsec):
 
 class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp, IpsecTun6Tests):
     """ Ipsec ESP - TUN tests """
-    tun6_encrypt_node_name = "esp6-encrypt"
+    tun6_encrypt_node_name = "esp6-encrypt-tun"
     tun6_decrypt_node_name = "esp6-decrypt"
 
     def test_tun_basic46(self):
         """ ipsec 4o6 tunnel basic test """
+        self.tun6_encrypt_node_name = "esp4-encrypt-tun"
         self.verify_tun_46(self.params[socket.AF_INET6], count=1)
 
     def test_tun_burst46(self):
         """ ipsec 4o6 tunnel burst test """
+        self.tun6_encrypt_node_name = "esp4-encrypt-tun"
         self.verify_tun_46(self.params[socket.AF_INET6], count=257)
 
 
@@ -146,7 +154,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
     """ IPsec IPv4 Multi Tunnel interface """
 
     encryption_type = ESP
-    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
     tun4_decrypt_node_name = "esp4-decrypt"
 
     def setUp(self):
@@ -206,7 +214,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
     """ IPsec IPv4 Tunnel interface all Algos """
 
     encryption_type = ESP
-    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
     tun4_decrypt_node_name = "esp4-decrypt"
 
     def config_network(self, p):
@@ -388,7 +396,7 @@ class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
     """ IPsec IPv6 Multi Tunnel interface """
 
     encryption_type = ESP
-    tun6_encrypt_node_name = "esp6-encrypt"
+    tun6_encrypt_node_name = "esp6-encrypt-tun"
     tun6_decrypt_node_name = "esp6-decrypt"
 
     def setUp(self):

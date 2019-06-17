@@ -17,6 +17,7 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/l2/l2_input.h>
 
 #ifndef CLIB_MARCH_VARIANT
 dvr_dpo_t *dvr_dpo_pool;
@@ -91,6 +92,7 @@ dvr_dpo_add_or_lock (u32 sw_if_index,
                      dpo_proto_t dproto,
                      dpo_id_t *dpo)
 {
+    l2_input_config_t *config;
     dvr_dpo_t *dd;
 
     vec_validate_init_empty(dvr_dpo_db[dproto],
@@ -105,6 +107,17 @@ dvr_dpo_add_or_lock (u32 sw_if_index,
         dd->dd_proto = dproto;
 
         dvr_dpo_db[dproto][sw_if_index] = dvr_dpo_get_index(dd);
+
+        config = l2input_intf_config (sw_if_index);
+
+        if (config->bridge || config->xconnect)
+        {
+            dd->dd_reinject = DVR_REINJECT_L2;
+        }
+        else
+        {
+            dd->dd_reinject = DVR_REINJECT_L3;
+        }
 
         /*
          * enable the reinject into L2 path feature on the interface
@@ -168,6 +181,23 @@ VNET_SW_INTERFACE_ADD_DEL_FUNCTION(
 
 #ifndef CLIB_MARCH_VARIANT
 static u8*
+format_dvr_reinject (u8* s, va_list *ap)
+{
+    dvr_dpo_reinject_t ddr = va_arg(*ap, int);
+
+    switch (ddr)
+    {
+    case DVR_REINJECT_L2:
+        s = format (s, "l2");
+        break;
+    case DVR_REINJECT_L3:
+        s = format (s, "l3");
+        break;
+    }
+    return (s);
+}
+
+static u8*
 format_dvr_dpo (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
@@ -175,10 +205,12 @@ format_dvr_dpo (u8* s, va_list *ap)
     vnet_main_t * vnm = vnet_get_main();
     dvr_dpo_t *dd = dvr_dpo_get(index);
 
-    return (format(s, "dvr-%U-dpo",
+    return (format(s, "%U-dvr-%U-dpo %U",
+                   format_dpo_proto, dd->dd_proto,
                    format_vnet_sw_interface_name,
                    vnm,
-                   vnet_get_sw_interface(vnm, dd->dd_sw_if_index)));
+                   vnet_get_sw_interface(vnm, dd->dd_sw_if_index),
+                   format_dvr_reinject, dd->dd_reinject));
 }
 
 static void
@@ -300,6 +332,7 @@ dvr_dpo_inline (vlib_main_t * vm,
             vnet_buffer(b1)->l2.l2_len =
                 vnet_buffer(b1)->ip.save_rewrite_length =
                     len1;
+
             b0->flags |= VNET_BUFFER_F_IS_DVR;
             b1->flags |= VNET_BUFFER_F_IS_DVR;
 
@@ -430,7 +463,8 @@ VLIB_REGISTER_NODE (ip6_dvr_dpo_node) = {
 
 typedef enum dvr_reinject_next_t_
 {
-    DVR_REINJECT_OUTPUT = 0,
+    DVR_REINJECT_NEXT_L2,
+    DVR_REINJECT_NEXT_L3,
 } dvr_reinject_next_t;
 
 always_inline uword
@@ -454,8 +488,9 @@ dvr_reinject_inline (vlib_main_t * vm,
         while (n_left_from >= 4 && n_left_to_next > 2)
         {
             dvr_reinject_next_t next0, next1;
+            const dvr_dpo_t *dd0, *dd1;
+            u32 bi0, bi1, ddi0, ddi1;
             vlib_buffer_t *b0, *b1;
-            u32 bi0, bi1;
 
             bi0 = from[0];
             to_next[0] = bi0;
@@ -470,12 +505,24 @@ dvr_reinject_inline (vlib_main_t * vm,
             b1 = vlib_get_buffer (vm, bi1);
 
             if (b0->flags & VNET_BUFFER_F_IS_DVR)
-                next0 = DVR_REINJECT_OUTPUT;
+            {
+                ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+                dd0 = dvr_dpo_get(ddi0);
+                next0 = (dd0->dd_reinject == DVR_REINJECT_L2 ?
+                         DVR_REINJECT_NEXT_L2 :
+                         DVR_REINJECT_NEXT_L3);
+            }
             else
                 vnet_feature_next( &next0, b0);
 
             if (b1->flags & VNET_BUFFER_F_IS_DVR)
-                next1 = DVR_REINJECT_OUTPUT;
+            {
+                ddi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+                dd1 = dvr_dpo_get(ddi1);
+                next1 = (dd1->dd_reinject == DVR_REINJECT_L2 ?
+                         DVR_REINJECT_NEXT_L2 :
+                         DVR_REINJECT_NEXT_L3);
+            }
             else
                 vnet_feature_next( &next1, b1);
 
@@ -502,8 +549,9 @@ dvr_reinject_inline (vlib_main_t * vm,
         while (n_left_from > 0 && n_left_to_next > 0)
         {
             dvr_reinject_next_t next0;
+            const dvr_dpo_t *dd0;
             vlib_buffer_t * b0;
-            u32 bi0;
+            u32 bi0, ddi0;
 
             bi0 = from[0];
             to_next[0] = bi0;
@@ -515,7 +563,13 @@ dvr_reinject_inline (vlib_main_t * vm,
             b0 = vlib_get_buffer (vm, bi0);
 
             if (b0->flags & VNET_BUFFER_F_IS_DVR)
-                next0 = DVR_REINJECT_OUTPUT;
+            {
+                ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+                dd0 = dvr_dpo_get(ddi0);
+                next0 = (dd0->dd_reinject == DVR_REINJECT_L2 ?
+                         DVR_REINJECT_NEXT_L2 :
+                         DVR_REINJECT_NEXT_L3);
+            }
             else
                 vnet_feature_next( &next0, b0);
 
@@ -556,7 +610,8 @@ VLIB_REGISTER_NODE (ip4_dvr_reinject_node) = {
 
     .n_next_nodes = 1,
     .next_nodes = {
-        [DVR_REINJECT_OUTPUT] = "l2-output",
+        [DVR_REINJECT_NEXT_L2] = "l2-output",
+        [DVR_REINJECT_NEXT_L3] = "interface-output",
     },
 };
 
@@ -567,7 +622,8 @@ VLIB_REGISTER_NODE (ip6_dvr_reinject_node) = {
 
     .n_next_nodes = 1,
     .next_nodes = {
-        [DVR_REINJECT_OUTPUT] = "l2-output",
+        [DVR_REINJECT_NEXT_L2] = "l2-output",
+        [DVR_REINJECT_NEXT_L3] = "interface-output",
     },
 };
 

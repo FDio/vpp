@@ -83,8 +83,8 @@ send_add_segment_callback (u32 api_client_index, u64 segment_handle)
 {
   int fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_map_another_segment_t *mp;
-  svm_fifo_segment_private_t *fs;
   vl_api_registration_t *reg;
+  fifo_segment_t *fs;
   ssvm_private_t *sp;
   u8 fd_flags = 0;
 
@@ -174,12 +174,10 @@ mq_send_session_accepted_cb (session_t * s)
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *vpp_queue, *app_mq;
-  transport_connection_t *tc;
   session_t *listener;
   session_accepted_msg_t *mp;
   session_event_t *evt;
   application_t *app;
-  app_listener_t *al;
 
   app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
@@ -199,8 +197,7 @@ mq_send_session_accepted_cb (session_t * s)
   if (session_has_transport (s))
     {
       listener = listen_session_get (s->listener_index);
-      al = app_listener_get (app, listener->al_index);
-      mp->listener_handle = app_listener_handle (al);
+      mp->listener_handle = app_listen_session_handle (listener);
       if (application_is_proxy (app))
 	{
 	  listener =
@@ -212,11 +209,8 @@ mq_send_session_accepted_cb (session_t * s)
       vpp_queue = session_main_get_vpp_event_queue (s->thread_index);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->handle = session_handle (s);
-      tc = transport_get_connection (session_get_transport_proto (s),
-				     s->connection_index, s->thread_index);
-      mp->port = tc->rmt_port;
-      mp->is_ip4 = tc->is_ip4;
-      clib_memcpy_fast (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+
+      session_get_endpoint (s, &mp->rmt, 0 /* is_lcl */ );
     }
   else
     {
@@ -224,11 +218,10 @@ mq_send_session_accepted_cb (session_t * s)
 
       ct = (ct_connection_t *) session_get_transport (s);
       listener = listen_session_get (s->listener_index);
-      al = app_listener_get (app, listener->al_index);
-      mp->listener_handle = app_listener_handle (al);
-      mp->is_ip4 = session_type_is_ip4 (listener->session_type);
+      mp->listener_handle = app_listen_session_handle (listener);
+      mp->rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
+      mp->rmt.port = ct->c_rmt_port;
       mp->handle = session_handle (s);
-      mp->port = ct->c_rmt_port;
       vpp_queue = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
     }
@@ -350,9 +343,9 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       vpp_mq = session_main_get_vpp_event_queue (s->thread_index);
       mp->handle = session_handle (s);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
-      clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
-      mp->is_ip4 = tc->is_ip4;
-      mp->lcl_port = tc->lcl_port;
+
+      session_get_endpoint (s, &mp->lcl, 1 /* is_lcl */ );
+
       mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
       mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
       mp->segment_handle = session_segment_handle (s);
@@ -364,8 +357,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
       cct = (ct_connection_t *) session_get_transport (s);
       mp->handle = session_handle (s);
-      mp->lcl_port = cct->c_lcl_port;
-      mp->is_ip4 = cct->c_is_ip4;
+      mp->lcl.port = cct->c_lcl_port;
+      mp->lcl.is_ip4 = cct->c_is_ip4;
       vpp_mq = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
       mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
@@ -391,13 +384,12 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 {
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *app_mq, *vpp_evt_q;
-  transport_connection_t *tc;
+  transport_endpoint_t tep;
   session_bound_msg_t *mp;
   app_worker_t *app_wrk;
   session_event_t *evt;
   app_listener_t *al;
   session_t *ls = 0;
-
   app_wrk = app_worker_get (app_wrk_index);
   app_mq = app_wrk->event_queue;
   if (!app_mq)
@@ -425,10 +417,11 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
     ls = app_listener_get_session (al);
   else
     ls = app_listener_get_local_session (al);
-  tc = listen_session_get_transport (ls);
-  mp->lcl_port = tc->lcl_port;
-  mp->lcl_is_ip4 = tc->is_ip4;
-  clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+
+  session_get_endpoint (ls, &tep, 1 /* is_lcl */ );
+  mp->lcl_port = tep.port;
+  mp->lcl_is_ip4 = tep.is_ip4;
+  clib_memcpy_fast (mp->lcl_ip, &tep.ip, sizeof (tep.ip));
 
   vpp_evt_q = session_main_get_vpp_event_queue (0);
   mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
@@ -895,6 +888,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->sep.transport_proto = mp->proto;
       a->sep.peer.fib_index = mp->vrf;
       a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
+      a->sep_ext.transport_opts = mp->transport_opts;
       if (mp->hostname_len)
 	{
 	  vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);
@@ -905,7 +899,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->app_index = app->app_index;
       a->wrk_map_index = mp->wrk_index;
       if ((rv = vnet_connect (a)))
-	clib_warning ("connect returned: %u", rv);
+	clib_warning ("connect returned: %U", format_vnet_api_errno, rv);
       vec_free (a->sep_ext.hostname);
     }
   else

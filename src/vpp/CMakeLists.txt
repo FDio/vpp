@@ -35,7 +35,6 @@ option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
 
 set(VPP_API_FILES
   api/vpe.api
-  oam/oam.api
 )
 
 vpp_add_api_files(vpp ${VPP_API_FILES})
@@ -53,8 +52,6 @@ set(VPP_SOURCES
   vnet/main.c
   app/vpe_cli.c
   app/version.c
-  oam/oam.c
-  oam/oam_api.c
   stats/stat_segment.c
   api/api.c
   api/json_format.c

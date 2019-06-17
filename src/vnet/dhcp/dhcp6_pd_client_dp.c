@@ -647,10 +647,8 @@ dhcp6_pd_client_init (vlib_main_t * vm)
 
   cm->vlib_main = vm;
   cm->vnet_main = vnet_get_main ();
-
   cm->publisher_node = ~0;
-
-  cm->seed = 0xdeaddabe;
+  cm->seed = (u32) clib_cpu_time_now ();
 
   return 0;
 }

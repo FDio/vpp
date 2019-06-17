@@ -96,8 +96,8 @@ lacp_attach_mux_to_aggregator (vlib_main_t * vm, slave_if_t * sif)
 int
 lacp_mux_action_detached (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   lacp_main_t *lm = &lacp_main;
 
   lacp_detach_mux_from_aggregator (vm, sif);
@@ -121,8 +121,8 @@ lacp_mux_action_detached (void *p1, void *p2)
 int
 lacp_mux_action_attached (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   lacp_main_t *lm = &lacp_main;
 
   lacp_attach_mux_to_aggregator (vm, sif);
@@ -147,8 +147,8 @@ lacp_mux_action_attached (void *p1, void *p2)
 int
 lacp_mux_action_waiting (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   lacp_main_t *lm = &lacp_main;
 
   if (!lacp_timer_is_running (sif->wait_while_timer))
@@ -169,8 +169,8 @@ lacp_mux_action_waiting (void *p1, void *p2)
 int
 lacp_mux_action_collecting_distributing (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   lacp_main_t *lm = &lacp_main;
 
   sif->actor.state |= LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
@@ -198,8 +198,7 @@ format_mux_event (u8 * s, va_list * args)
     {.str = NULL}
   };
   int e = va_arg (*args, int);
-  lacp_event_struct *event_entry =
-    (lacp_event_struct *) & lacp_mux_event_array;
+  lacp_event_struct *event_entry = lacp_mux_event_array;
 
   if (e >= (sizeof (lacp_mux_event_array) / sizeof (*event_entry)))
     s = format (s, "Bad event %d", e);

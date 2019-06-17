@@ -354,13 +354,6 @@ nsh_md2_ioam_trace_init (vlib_main_t * vm)
 {
   nsh_md2_ioam_trace_main_t *hm = &nsh_md2_ioam_trace_main;
   nsh_md2_ioam_main_t *gm = &nsh_md2_ioam_main;
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, nsh_init)))
-    return (error);
-
-  if ((error = vlib_call_init_function (vm, nsh_md2_ioam_init)))
-    return (error);
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
@@ -384,7 +377,12 @@ nsh_md2_ioam_trace_init (vlib_main_t * vm)
   return (0);
 }
 
-VLIB_INIT_FUNCTION (nsh_md2_ioam_trace_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (nsh_md2_ioam_trace_init) =
+{
+  .runs_after = VLIB_INITS ("nsh_init", "nsh_md2_ioam_init"),
+};
+/* *INDENT-ON* */
 
 int
 nsh_md2_ioam_trace_profile_cleanup (void)

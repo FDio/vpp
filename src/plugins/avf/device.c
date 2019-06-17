@@ -561,7 +561,7 @@ avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad)
   virtchnl_promisc_info_t pi = { 0 };
 
   pi.vsi_id = ad->vsi_id;
-  pi.flags = 1;
+  pi.flags = FLAG_VF_UNICAST_PROMISC | FLAG_VF_MULTICAST_PROMISC;
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE, &pi,
 			 sizeof (virtchnl_promisc_info_t), 0, 0);
 }
@@ -1433,11 +1433,7 @@ clib_error_t *
 avf_init (vlib_main_t * vm)
 {
   avf_main_t *am = &avf_main;
-  clib_error_t *error;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  if ((error = vlib_call_init_function (vm, pci_bus_init)))
-    return error;
 
   vec_validate_aligned (am->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
@@ -1448,7 +1444,12 @@ avf_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (avf_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (avf_init) =
+{
+  .runs_after = VLIB_INITS ("pci_bus_init"),
+};
+/* *INDENT-OFF* */
 
 /*
  * fd.io coding-style-patch-verification: ON

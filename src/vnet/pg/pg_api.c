@@ -46,9 +46,6 @@ _(PG_CREATE_INTERFACE, pg_create_interface)                             \
 _(PG_CAPTURE, pg_capture)                                               \
 _(PG_ENABLE_DISABLE, pg_enable_disable)
 
-extern void stats_dslock_with_hint (int hint, int tag);
-extern void stats_dsunlock (void);
-
 static void
 vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
 {

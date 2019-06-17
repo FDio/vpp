@@ -125,9 +125,11 @@ typedef struct
   u32 last_seq_hi;
   u64 replay_window;
 
-  vnet_crypto_op_id_t crypto_enc_op_id;
-  vnet_crypto_op_id_t crypto_dec_op_id;
-  vnet_crypto_op_id_t integ_op_id;
+  vnet_crypto_key_index_t crypto_key_index;
+  vnet_crypto_key_index_t integ_key_index;
+  vnet_crypto_op_id_t crypto_enc_op_id:16;
+  vnet_crypto_op_id_t crypto_dec_op_id:16;
+  vnet_crypto_op_id_t integ_op_id:16;
 
   dpo_id_t dpo[IPSEC_N_PROTOCOLS];
 
@@ -149,9 +151,11 @@ typedef struct
 
   ipsec_crypto_alg_t crypto_alg;
   ipsec_key_t crypto_key;
+  vnet_crypto_alg_t crypto_calg;
 
   ipsec_integ_alg_t integ_alg;
   ipsec_key_t integ_key;
+  vnet_crypto_alg_t integ_calg;
 
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
@@ -163,6 +167,7 @@ typedef struct
 
   /* Salt used in GCM modes - stored in network byte order */
   u32 salt;
+  u64 gcm_iv_counter;
 } ipsec_sa_t;
 
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
@@ -203,15 +208,12 @@ extern int ipsec_sa_add (u32 id,
 			 const ip46_address_t * tunnel_dst_addr,
 			 u32 * sa_index);
 extern u32 ipsec_sa_del (u32 id);
-extern void ipsec_sa_stack (ipsec_sa_t * sa);
 extern void ipsec_sa_set_crypto_alg (ipsec_sa_t * sa,
 				     ipsec_crypto_alg_t crypto_alg);
 extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,
 				    ipsec_integ_alg_t integ_alg);
 
 extern u8 ipsec_is_sa_used (u32 sa_index);
-extern int ipsec_set_sa_key (u32 id,
-			     const ipsec_key_t * ck, const ipsec_key_t * ik);
 extern u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);
 
 typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t * sa, void *ctx);
@@ -293,13 +295,13 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 * seqp)
 }
 
 always_inline void
-ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 * seqp)
+ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seqp)
 {
   u32 pos, seq;
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
     return;
 
-  seq = clib_host_to_net_u32 (*seqp);
+  seq = clib_host_to_net_u32 (seqp);
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ESN))
     {
       int wrap = sa->seq_hi - sa->last_seq_hi;

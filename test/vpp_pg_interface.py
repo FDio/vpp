@@ -68,6 +68,8 @@ class VppPGInterface(VppInterface):
     @property
     def input_cli(self):
         """CLI string to load the injected packets"""
+        if self._nb_replays is not None:
+            return "%s limit %d" % (self._input_cli, self._nb_replays)
         return self._input_cli
 
     @property
@@ -105,46 +107,52 @@ class VppPGInterface(VppInterface):
         self._input_cli = \
             "packet-generator new pcap %s source pg%u name %s" % (
                 self.in_path, self.pg_index, self.cap_name)
+        self._nb_replays = None
 
-    def enable_capture(self):
-        """ Enable capture on this packet-generator interface"""
+    def _rename_previous_capture_file(self, path, counter, file):
+        # if a file from a previous capture exists, rename it.
         try:
-            if os.path.isfile(self.out_path):
+            if os.path.isfile(path):
                 name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" % \
                     (self.test.tempdir,
                      time.time(),
                      self.name,
-                     self.out_history_counter,
-                     self._out_file)
+                     counter,
+                     file)
                 self.test.logger.debug("Renaming %s->%s" %
-                                       (self.out_path, name))
-                os.rename(self.out_path, name)
-        except:
-            pass
+                                       (path, name))
+                os.rename(path, name)
+        except OSError:
+            self.test.logger.debug("OSError: Could not rename %s %s" %
+                                   (path, file))
+
+    def enable_capture(self):
+        """ Enable capture on this packet-generator interface
+            of at most n packets.
+            If n < 0, this is no limit
+        """
+
+        self._rename_previous_capture_file(self.out_path,
+                                           self.out_history_counter,
+                                           self._out_file)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
 
-    def add_stream(self, pkts):
+    def disable_capture(self):
+        self.test.vapi.cli("%s disable" % self.capture_cli)
+
+    def add_stream(self, pkts, nb_replays=None):
         """
         Add a stream of packets to this packet-generator
 
         :param pkts: iterable packets
 
         """
-        try:
-            if os.path.isfile(self.in_path):
-                name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" %\
-                    (self.test.tempdir,
-                     time.time(),
-                     self.name,
-                     self.in_history_counter,
-                     self._in_file)
-                self.test.logger.debug("Renaming %s->%s" %
-                                       (self.in_path, name))
-                os.rename(self.in_path, name)
-        except:
-            pass
+        self._nb_replays = nb_replays
+        self._rename_previous_capture_file(self.in_path,
+                                           self.in_history_counter,
+                                           self._in_file)
         wrpcap(self.in_path, pkts)
         self.test.register_capture(self.cap_name)
         # FIXME this should be an API, but no such exists atm
@@ -413,10 +421,6 @@ class VppPGInterface(VppInterface):
                                   pg_interface.name)
             return
         arp_reply = captured_packet.copy()  # keep original for exception
-        # Make Dot1AD packet content recognizable to scapy
-        if arp_reply.type == 0x88a8:
-            arp_reply.type = 0x8100
-            arp_reply = Ether(scapy.compat.raw(arp_reply))
         try:
             if arp_reply[ARP].op == ARP.is_at:
                 self.test.logger.info("VPP %s MAC address is %s " %
@@ -460,13 +464,6 @@ class VppPGInterface(VppInterface):
                     "Timeout while waiting for NDP response")
                 raise
             ndp_reply = captured_packet.copy()  # keep original for exception
-            # Make Dot1AD packet content recognizable to scapy
-            if ndp_reply.type == 0x88a8:
-                self._test.logger.info(
-                    "Replacing EtherType: 0x88a8 with "
-                    "0x8100 and regenerating Ethernet header. ")
-                ndp_reply.type = 0x8100
-                ndp_reply = Ether(scapy.compat.raw(ndp_reply))
             try:
                 ndp_na = ndp_reply[ICMPv6ND_NA]
                 opt = ndp_na[ICMPv6NDOptDstLLAddr]

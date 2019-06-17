@@ -129,9 +129,6 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   f64 poll_time_remaining;
   uword event_type, *event_data = 0;
 
-  /* So we can send events to the cdp process */
-  cm->cdp_process_node_index = cdp_process_node.index;
-
   /* Start w/ cdp disabled */
   poll_time_remaining = 86400.0;
 
@@ -200,20 +197,17 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/*
- * cdp periodic node declaration
- */
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (cdp_process_node) = {
-  .function = cdp_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = "cdp-process",
-};
-/* *INDENT-ON* */
-
 void
-vnet_cdp_node_reference (void)
+vnet_cdp_create_periodic_process (cdp_main_t * cmp)
 {
+  /* Already created the process node? */
+  if (cmp->cdp_process_node_index > 0)
+    return;
+
+  /* No, create it now and make a note of the node index */
+  cmp->cdp_process_node_index = vlib_process_create
+    (cmp->vlib_main, "cdp-process",
+     cdp_process, 16 /* log2_n_stack_bytes */ );
 }
 
 /*

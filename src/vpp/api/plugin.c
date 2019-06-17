@@ -177,10 +177,7 @@ vat_load_new_plugins (plugin_main_t * pm)
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
 
-/*
- * Load plugins from /usr/lib/vpp_api_test_plugins by default
- */
-char *vat_plugin_path = "/usr/lib/vpp_api_test_plugins";
+extern char *vat_plugin_path;
 
 char *vat_plugin_name_filter = 0;
 

@@ -22,8 +22,9 @@ nil
      (setq plugin-name (read-string "Plugin name: ")))
 '(setq PLUGIN-NAME (upcase plugin-name))
 '(setq capital-oh-en "ON")
+'(setq main-p (concat (substring plugin-name 0 1) "mp"))
 "/*
- * " plugin-name "_periodic.c - skeleton plug-in periodic function 
+ * " plugin-name "_periodic.c - skeleton plug-in periodic function
  *
  * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -43,22 +44,22 @@ nil
 #include <vppinfra/error.h>
 #include <" plugin-name "/" plugin-name ".h>
 
-static void 
+static void
 handle_event1 (" plugin-name "_main_t *pm, f64 now, uword event_data)
 {
   clib_warning (\"received " PLUGIN-NAME "_EVENT1\");
 }
-                           
-static void 
+
+static void
 handle_event2 (" plugin-name "_main_t *pm, f64 now, uword event_data)
 {
   clib_warning (\"received " PLUGIN-NAME "_EVENT2\");
 }
-                           
+
 static void
 handle_periodic_enable_disable (" plugin-name"_main_t *pm, f64 now, uword event_data)
 {
-   clib_warning (\"Periodic timeouts now %s\", 
+   clib_warning (\"Periodic timeouts now %s\",
      event_data ? \"enabled\" : \"disabled\");
    pm->periodic_timer_enabled = event_data;
 }
@@ -120,14 +121,17 @@ static uword
   return 0;			/* or not */
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE ("plugin-name"_periodic_node) =
+void " plugin-name "_create_periodic_process (" plugin-name "_main_t *" main-p")
 {
-  .function = " plugin-name "_periodic_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = \"" plugin-name "-periodic-process\",
-};
-/* *INDENT-ON* */
+  /* Already created the process node? */
+  if (" main-p "->periodic_node_index > 0)
+    return;
+
+  /* No, create it now and make a note of the node index */
+  " main-p "->periodic_node_index = vlib_process_create (" main-p "->vlib_main,
+    \"" plugin-name "-periodic-process\",
+    " plugin-name "_periodic_process, 16 /* log2_n_stack_bytes */);
+}
 
 /*
  * fd.io coding-style-patch-verification: " capital-oh-en "

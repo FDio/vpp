@@ -47,7 +47,7 @@ extern void bier_bit_string_clear_bit(bier_bit_string_t *mask,
 
 extern u8 *format_bier_bit_string(u8 * s, va_list * args);
 
-#define BIER_BBS_NUM_INT_BUKCETS(_bbs) \
+#define BIER_BBS_NUM_INT_BUCKETS(_bbs) \
     (BIER_BBS_LEN_TO_BUCKETS(_bbs->bbs_len) / sizeof(int))
 
 always_inline int
@@ -56,7 +56,7 @@ bier_bit_string_is_zero (const bier_bit_string_t *src)
     u16 index;
 
     for (index = 0;
-         index < BIER_BBS_NUM_INT_BUKCETS(src);
+         index < BIER_BBS_NUM_INT_BUCKETS(src);
          index++) {
         if (((int*)src->bbs_buckets)[index] != 0) {
             return (0);
@@ -74,7 +74,7 @@ bier_bit_string_clear_string (const bier_bit_string_t *src,
     ASSERT(src->bbs_len == dest->bbs_len);
 
     for (index = 0;
-         index < BIER_BBS_NUM_INT_BUKCETS(src);
+         index < BIER_BBS_NUM_INT_BUCKETS(src);
          index++) {
         ((int*)dest->bbs_buckets)[index] &= ~(((int*)src->bbs_buckets)[index]);
     }
@@ -89,7 +89,7 @@ bier_bit_string_logical_and_string (const bier_bit_string_t *src,
     ASSERT(src->bbs_len == dest->bbs_len);
 
     for (index = 0;
-         index < BIER_BBS_NUM_INT_BUKCETS(src);
+         index < BIER_BBS_NUM_INT_BUCKETS(src);
          index++) {
         ((int*)dest->bbs_buckets)[index] &= ((int*)src->bbs_buckets)[index];
     }

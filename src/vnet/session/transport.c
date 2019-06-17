@@ -66,11 +66,20 @@ format_transport_proto (u8 * s, va_list * args)
     case TRANSPORT_PROTO_SCTP:
       s = format (s, "SCTP");
       break;
+    case TRANSPORT_PROTO_NONE:
+      s = format (s, "NONE");
+      break;
+    case TRANSPORT_PROTO_TLS:
+      s = format (s, "TLS");
+      break;
     case TRANSPORT_PROTO_UDPC:
       s = format (s, "UDPC");
       break;
     case TRANSPORT_PROTO_QUIC:
       s = format (s, "QUIC");
+      break;
+    default:
+      s = format (s, "UNKNOWN");
       break;
     }
   return s;
@@ -91,11 +100,20 @@ format_transport_proto_short (u8 * s, va_list * args)
     case TRANSPORT_PROTO_SCTP:
       s = format (s, "S");
       break;
+    case TRANSPORT_PROTO_NONE:
+      s = format (s, "N");
+      break;
+    case TRANSPORT_PROTO_TLS:
+      s = format (s, "J");
+      break;
     case TRANSPORT_PROTO_UDPC:
       s = format (s, "U");
       break;
     case TRANSPORT_PROTO_QUIC:
       s = format (s, "Q");
+      break;
+    default:
+      s = format (s, "?");
       break;
     }
   return s;
@@ -317,6 +335,54 @@ u8
 transport_protocol_is_cl (transport_proto_t tp)
 {
   return (tp_vfts[tp].service_type == TRANSPORT_SERVICE_CL);
+}
+
+always_inline void
+default_get_transport_endpoint (transport_connection_t * tc,
+				transport_endpoint_t * tep, u8 is_lcl)
+{
+  if (is_lcl)
+    {
+      tep->port = tc->lcl_port;
+      tep->is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (&tep->ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+    }
+  else
+    {
+      tep->port = tc->rmt_port;
+      tep->is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (&tep->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+    }
+}
+
+void
+transport_get_endpoint (transport_proto_t tp, u32 conn_index,
+			u32 thread_index, transport_endpoint_t * tep,
+			u8 is_lcl)
+{
+  if (tp_vfts[tp].get_transport_endpoint)
+    tp_vfts[tp].get_transport_endpoint (conn_index, thread_index, tep,
+					is_lcl);
+  else
+    {
+      transport_connection_t *tc;
+      tc = transport_get_connection (tp, conn_index, thread_index);
+      default_get_transport_endpoint (tc, tep, is_lcl);
+    }
+}
+
+void
+transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
+				 transport_endpoint_t * tep, u8 is_lcl)
+{
+  if (tp_vfts[tp].get_transport_listener_endpoint)
+    tp_vfts[tp].get_transport_listener_endpoint (conn_index, tep, is_lcl);
+  else
+    {
+      transport_connection_t *tc;
+      tc = transport_get_listener (tp, conn_index);
+      default_get_transport_endpoint (tc, tep, is_lcl);
+    }
 }
 
 #define PORT_MASK ((1 << 16)- 1)

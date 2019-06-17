@@ -5,10 +5,6 @@
 Ubuntu 18.04 - Setup the FD.io Repository
 ==========================================
 
-FD.io VPP is installed using Package Cloud. For a complete set of
-instructuctions on how to install VPP with package cloud please refer
-to `Package Cloud <https://packagecloud.io/fdio/release>`_
-
 Choose one of the following releases to install. 
 
 Update the OS
@@ -37,7 +33,7 @@ Create the file **/etc/apt/sources.list.d/99fd.io.list** that contain the follow
 
 .. code-block:: console
 
-   deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu xenial main
+   deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu bionic main
 
 Get the key:
 
@@ -52,7 +48,7 @@ Create the file **/etc/apt/sources.list.d/99fd.io.list** that contain the follow
 
 .. code-block:: console
 
-   deb [trusted=yes] https://packagecloud.io/fdio/master/ubuntu xenial main
+   deb [trusted=yes] https://packagecloud.io/fdio/master/ubuntu bionic main
 
 Get the key:
 
@@ -69,7 +65,7 @@ Install the mandatory packages by running the following commands:
 .. code-block:: console
 
   sudo apt-get update
-  sudo apt-get install vpp
+  sudo apt-get install vpp vpp-plugin-core vpp-plugin-dpdk
 
   
 Install the Optional Packages
@@ -77,17 +73,10 @@ Install the Optional Packages
 
 Install the optional packages by running the following command:
 
-For the release packages:
-
 .. code-block:: console
 
-  sudo apt-get install vpp-plugins vpp-api-java vpp-api-lua vpp-api-python vpp-dbg vpp-dev
+  sudo apt-get install vpp-api-python python3-vpp-api vpp-dbg vpp-dev
 
-For the master packages:
-
-.. code-block:: console
-
-  sudo apt-get install vpp-plugin-core vpp-api-python vpp-dbg vpp-dev vpp-plugin-dpdk
 
 Uninstall the Packages
 ======================

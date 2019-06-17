@@ -145,8 +145,12 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     vlib_node_main_t *nm = &vm->node_main;
     u32 ticks_until_expiration;
     f64 timeout;
+    f64 now;
     int timeout_ms = 0, max_timeout_ms = 10;
     f64 vector_rate = vlib_last_vectors_per_main_loop (vm);
+
+    if (is_main == 0)
+      now = vlib_time_now (vm);
 
     /*
      * If we've been asked for a fixed-sleep between main loop polls,
@@ -194,8 +198,9 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }
 	node->input_main_loops_per_call = 0;
       }
-    else if (is_main == 0 && vector_rate < 2 &&
-	     nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
+    else if (is_main == 0 && vector_rate < 2
+	     && (vlib_global_main.time_last_barrier_release + 0.5 < now)
+	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
 	timeout = 10e-3;
 	timeout_ms = max_timeout_ms;
@@ -227,8 +232,27 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       }
     else
       {
+	/*
+	 * Worker thread, no epoll fd's, sleep for 100us at a time
+	 * and check for a barrier sync request
+	 */
 	if (timeout_ms)
-	  usleep (timeout_ms * 1000);
+	  {
+	    struct timespec ts, tsrem;
+	    f64 limit = now + (f64) timeout_ms * 1e-3;
+
+	    while (vlib_time_now (vm) < limit)
+	      {
+		/* Sleep for 100us at a time */
+		ts.tv_sec = 0;
+		ts.tv_nsec = 1000 * 100;
+
+		while (nanosleep (&ts, &tsrem) < 0)
+		  ts = tsrem;
+		if (*vlib_worker_threads->wait_at_barrier)
+		  goto done;
+	      }
+	  }
 	goto done;
       }
   }
@@ -248,17 +272,18 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   for (e = em->epoll_events; e < em->epoll_events + n_fds_ready; e++)
     {
       u32 i = e->data.u32;
-      clib_file_t *f = pool_elt_at_index (fm->file_pool, i);
+      clib_file_t *f;
       clib_error_t *errors[4];
       int n_errors = 0;
 
+      /*
+       * Under rare scenarios, epoll may still post us events for the
+       * deleted file descriptor. We just deal with it and throw away the
+       * events for the corresponding file descriptor.
+       */
+      f = fm->file_pool + i;
       if (PREDICT_FALSE (pool_is_free (fm->file_pool, f)))
 	{
-	  /*
-	   * Under rare scenerop, epoll may still post us events for the
-	   * deleted file descriptor. We just deal with it and throw away the
-	   * events for the corresponding file descriptor.
-	   */
 	  if (e->events & EPOLLIN)
 	    {
 	      errors[n_errors] =
@@ -387,10 +412,15 @@ VLIB_INIT_FUNCTION (linux_epoll_input_init);
 static clib_error_t *
 unix_input_init (vlib_main_t * vm)
 {
-  return vlib_call_init_function (vm, linux_epoll_input_init);
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (unix_input_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (unix_input_init) =
+{
+  .runs_before = VLIB_INITS ("linux_epoll_input_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

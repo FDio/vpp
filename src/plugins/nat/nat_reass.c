@@ -546,8 +546,9 @@ nat_ip6_reass_find_or_create (ip6_address_t src, ip6_address_t dst,
       kv.key[0] = k.as_u64[0];
       kv.key[1] = k.as_u64[1];
       kv.key[2] = k.as_u64[2];
-      kv.key[3] = k.as_u64[4];
-      kv.key[4] = k.as_u64[5];
+      kv.key[3] = k.as_u64[3];
+      kv.key[4] = k.as_u64[4];
+      kv.key[5] = k.as_u64[5];
       if (clib_bihash_add_del_48_8 (&srm->ip6_reass_hash, &kv, 0))
 	{
 	  reass = 0;

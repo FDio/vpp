@@ -128,8 +128,8 @@ snap_input (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  h0 = (void *) (b0->data + b0->current_data);
-	  h1 = (void *) (b1->data + b1->current_data);
+	  h0 = vlib_buffer_get_current (b0);
+	  h1 = vlib_buffer_get_current (b1);
 
 	  oui0 = snap_header_get_oui (h0);
 	  oui1 = snap_header_get_oui (h1);
@@ -140,11 +140,8 @@ snap_input (vlib_main_t * vm,
 	  len0 = sizeof (h0[0]) - (is_ethernet0 ? sizeof (h0->protocol) : 0);
 	  len1 = sizeof (h1[0]) - (is_ethernet1 ? sizeof (h1->protocol) : 0);
 
-	  b0->current_data += len0;
-	  b1->current_data += len1;
-
-	  b0->current_length -= len0;
-	  b1->current_length -= len1;
+	  vlib_buffer_advance (b0, len0);
+	  vlib_buffer_advance (b1, len1);
 
 	  pi0 = snap_get_protocol_info (sm, h0);
 	  pi1 = snap_get_protocol_info (sm, h1);
@@ -216,7 +213,7 @@ snap_input (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  h0 = (void *) (b0->data + b0->current_data);
+	  h0 = vlib_buffer_get_current (b0);
 
 	  oui0 = snap_header_get_oui (h0);
 
@@ -224,9 +221,7 @@ snap_input (vlib_main_t * vm,
 
 	  len0 = sizeof (h0[0]) - (is_ethernet0 ? sizeof (h0->protocol) : 0);
 
-	  b0->current_data += len0;
-
-	  b0->current_length -= len0;
+	  vlib_buffer_advance (b0, len0);
 
 	  pi0 = snap_get_protocol_info (sm, h0);
 

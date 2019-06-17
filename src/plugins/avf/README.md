@@ -19,11 +19,7 @@ vfio driver can still be used with recent kernels which support no-iommu mode.
 
 ##Known issues
 This driver is still in experimental phase, however it shows very good 
-performance numbers. Following items are not implemented (yet).
-
-* Jumbo MTU support
-* Adaptive mode
-* NUMA support
+performance numbers.
 
 ## Usage
 ### System setup
@@ -73,6 +69,23 @@ setup () {
 setup 0000:3b:00.0 00:11:22:33:44:00
 # Setup one VF on PF 0000:3b:00.1 and assign MAC address
 setup 0000:3b:00.1 00:11:22:33:44:01
+```
+
+### Promisc mode
+In cases when interface is used in the L2 mode or promisc mode is needed for some other reason,
+trust needs to be set to "on" using the linux "ip link" utility.
+```
+ip link set dev <PF inteface name> vf <VF id> trust on
+```
+
+### L2 spoofing check
+By default Virtual Function is not allowed to send ethernet frames which
+have source MAC address different than address assigned to the VF.
+In some cases it is expected that VPP will send such frames (e.g. L2 bridging,
+bonding, l2 cross-connect) and in such cases spoof chack needs to be turned
+off by issuing following command:
+```
+ip link set dev <PF inteface name> vf <VF id> spoofchk off
 ```
 
 ### Interface Creation
