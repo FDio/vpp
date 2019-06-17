@@ -825,9 +825,8 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   else if (args->rxq_num > ad->num_queue_pairs)
     {
       args->rxq_num = ad->num_queue_pairs;
-      vlib_log_warn (am->log_class, "Requested more rx queues than"
-		     "queue pairs available. Using %u rx queues.",
-		     args->rxq_num);
+      avf_log_warn (ad, "Requested more rx queues than queue pairs available."
+		    "Using %u rx queues.", args->rxq_num);
     }
 
   for (i = 0; i < args->rxq_num; i++)
@@ -1233,6 +1232,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
       return;
     }
   ad->pci_dev_handle = h;
+  ad->pci_addr = args->addr;
   ad->numa_node = vlib_pci_get_numa_node (vm, h);
 
   vlib_pci_set_private_data (vm, h, ad->dev_instance);
@@ -1345,7 +1345,7 @@ error:
   args->rv = VNET_API_ERROR_INVALID_INTERFACE;
   args->error = clib_error_return (error, "pci-addr %U",
 				   format_vlib_pci_addr, &args->addr);
-  vlib_log_err (am->log_class, "%U", format_clib_error, args->error);
+  avf_log_err (ad, "error: %U", format_clib_error, args->error);
 }
 
 static clib_error_t *
@@ -1438,7 +1438,7 @@ avf_init (vlib_main_t * vm)
   vec_validate_aligned (am->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  am->log_class = vlib_log_register_class ("avf_plugin", 0);
+  am->log_class = vlib_log_register_class ("avf", 0);
   vlib_log_debug (am->log_class, "initialized");
 
   return 0;
