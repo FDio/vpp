@@ -38,7 +38,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_version.h>
-#include <rte_eth_bond.h>
 #include <rte_sched.h>
 #include <rte_net.h>
 #include <rte_bus_pci.h>
@@ -68,11 +67,11 @@ extern vlib_node_registration_t admin_up_down_process_node;
   _ ("net_ixgbe_vf", IXGBEVF)     \
   _ ("net_i40e", I40E)            \
   _ ("net_i40e_vf", I40EVF)       \
+  _ ("net_ice", ICE)              \
   _ ("net_virtio", VIRTIO)        \
   _ ("net_enic", ENIC)            \
   _ ("net_vmxnet3", VMXNET3)      \
   _ ("AF_PACKET PMD", AF_PACKET)  \
-  _ ("net_bonding", BOND)         \
   _ ("net_fm10k", FM10K)          \
   _ ("net_cxgbe", CXGBE)          \
   _ ("net_mlx4", MLX4)            \
@@ -107,7 +106,6 @@ typedef enum
   VNET_DPDK_PORT_TYPE_ETH_50G,
   VNET_DPDK_PORT_TYPE_ETH_56G,
   VNET_DPDK_PORT_TYPE_ETH_100G,
-  VNET_DPDK_PORT_TYPE_ETH_BOND,
   VNET_DPDK_PORT_TYPE_ETH_SWITCH,
   VNET_DPDK_PORT_TYPE_AF_PACKET,
   VNET_DPDK_PORT_TYPE_ETH_VF,
@@ -162,8 +160,6 @@ typedef struct
   _( 4, MAYBE_MULTISEG, "maybe-multiseg") \
   _( 5, HAVE_SUBIF, "subif") \
   _( 6, HQOS, "hqos") \
-  _( 7, BOND_SLAVE, "bond-slave") \
-  _( 8, BOND_SLAVE_UP, "bond-slave-up") \
   _( 9, TX_OFFLOAD, "tx-offload") \
   _(10, INTEL_PHDR_CKSUM, "intel-phdr-cksum") \
   _(11, RX_FLOW_OFFLOAD, "rx-flow-offload") \
@@ -242,22 +238,15 @@ typedef struct
   dpdk_device_hqos_per_worker_thread_t *hqos_wt;
   dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
 
-  /* af_packet or BondEthernet instance number */
+  /* af_packet instance number */
   u16 af_packet_instance_num;
-  u16 bond_instance_num;
-
-  /* Bonded interface port# of a slave -
-     only valid if DPDK_DEVICE_FLAG_BOND_SLAVE bit is set */
-  dpdk_portid_t bond_port;
 
   struct rte_eth_link link;
   f64 time_last_link_update;
 
   struct rte_eth_stats stats;
   struct rte_eth_stats last_stats;
-  struct rte_eth_stats last_cleared_stats;
   struct rte_eth_xstat *xstats;
-  struct rte_eth_xstat *last_cleared_xstats;
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
 
@@ -392,7 +381,7 @@ typedef struct
   u32 buffers[DPDK_RX_BURST_SZ];
   u16 next[DPDK_RX_BURST_SZ];
   u16 etype[DPDK_RX_BURST_SZ];
-  u8 flags[DPDK_RX_BURST_SZ];
+  u16 flags[DPDK_RX_BURST_SZ];
   vlib_buffer_t buffer_template;
 } dpdk_per_thread_data_t;
 
@@ -503,7 +492,6 @@ format_function_t format_dpdk_flow;
 format_function_t format_dpdk_rss_hf_name;
 format_function_t format_dpdk_rx_offload_caps;
 format_function_t format_dpdk_tx_offload_caps;
-unformat_function_t unformat_dpdk_log_level;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
 
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
@@ -512,6 +500,7 @@ clib_error_t *unformat_hqos (unformat_input_t * input,
 
 struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 					    *info);
+void dpdk_cli_reference (void);
 
 #if CLI_DEBUG
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);

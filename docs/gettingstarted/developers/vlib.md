@@ -15,10 +15,11 @@ Init function discovery
 vlib applications register for various \[initialization\] events by
 placing structures and \_\_attribute\_\_((constructor)) functions into
 the image. At appropriate times, the vlib framework walks
-constructor-generated singly-linked structure lists, calling the
-indicated functions. vlib applications create graph nodes, add CLI
-functions, start cooperative multi-tasking threads, etc. etc. using this
-mechanism.
+constructor-generated singly-linked structure lists, performs a
+topological sort based on specified constraints, and calls the
+indicated functions. Vlib applications create graph nodes, add CLI
+functions, start cooperative multi-tasking threads, etc. etc. using
+this mechanism.
 
 vlib applications invariably include a number of VLIB\_INIT\_FUNCTION
 (my\_init\_function) macros.
@@ -31,6 +32,50 @@ vlib applications must link against vppinfra, and often link against
 other libraries such as VNET. In the latter case, it may be necessary to
 explicitly reference symbol(s) otherwise large portions of the library
 may be AWOL at runtime.
+
+### Init function construction and constraint specification
+
+It's easy to add an init function:
+
+```
+   static clib_error_t *my_init_function (vlib_main_t *vm)
+   {
+      /* ... initialize things ... */
+
+      return 0; // or return clib_error_return (0, "BROKEN!");
+   }
+   VLIB_INIT_FUNCTION(my_init_function);
+```
+
+As given, my_init_function will be executed "at some point," but with
+no ordering guarantees.
+
+Specifying ordering constraints is easy:
+
+```
+   VLIB_INIT_FUNCTION(my_init_function) =
+   {
+      .runs_before = VLIB_INITS("we_run_before_function_1",
+                                "we_run_before_function_2"),
+      .runs_after = VLIB_INITS("we_run_after_function_1",
+                               "we_run_after_function_2),
+    };
+```
+
+It's also easy to specify bulk ordering constraints of the form "a
+then b then c then d":
+
+```
+   VLIB_INIT_FUNCTION(my_init_function) =
+   {
+      .init_order = VLIB_INITS("a", "b", "c", "d"),
+   };
+```
+
+It's OK to specify all three sorts of ordering constraints for a
+single init function, although it's hard to imagine why it would be
+necessary.
+
 
 Node Graph Initialization
 -------------------------
@@ -95,7 +140,7 @@ Graph dispatcher internals
 --------------------------
 
 This section may be safely skipped. It's not necessary to understand
-graph dispatcher internals to create graph nodes. 
+graph dispatcher internals to create graph nodes.
 
 Vector Data Structure
 ---------------------
@@ -161,10 +206,10 @@ Here is the code in .../src/vlib/main.c:vlib_main_or_worker_loop()
 which processes frames:
 
 ```c
-      /* 
+      /*
        * Input nodes may have added work to the pending vector.
        * Process pending vector until there is nothing left.
-       * All pending vectors will be processed from input -> output. 
+       * All pending vectors will be processed from input -> output.
        */
       for (i = 0; i < _vec_len (nm->pending_frames); i++)
 	cpu_time_now = dispatch_pending_node (vm, i, cpu_time_now);
@@ -245,14 +290,14 @@ indicated next node.
 After some scuffling around - two levels of macros - processing
 reaches vlib\_get\_next\_frame_internal (...). Get-next-frame-internal
 digs up the vlib\_next\_frame\_t corresponding to the desired graph
-arc. 
+arc.
 
 The next frame data structure amounts to a graph-arc-centric frame
 cache. Once a node finishes adding element to a frame, it will acquire
 a vlib_pending_frame_t and end up on the graph dispatcher's
 run-queue. But there's no guarantee that more vector elements won't be
 added to the underlying frame from the same (source\_node,
-next\_index) arc or from a different (source\_node, next\_index) arc. 
+next\_index) arc or from a different (source\_node, next\_index) arc.
 
 Maintaining consistency of the arc-to-frame cache is necessary. The
 first step in maintaining consistency is to make sure that only one
@@ -260,7 +305,7 @@ graph node at a time thinks it "owns" the target vlib\_frame\_t.
 
 Back to the graph node dispatch function. In the usual case, a certain
 number of packets will be added to the vlib\_frame\_t acquired by
-calling vlib\_get\_next\_frame (...). 
+calling vlib\_get\_next\_frame (...).
 
 Before a dispatch function returns, it's required to call
 vlib\_put\_next\_frame (...) for all of the graph arcs it actually
@@ -274,12 +319,12 @@ dispatch\_pending\_node actions
 -------------------------------
 
 The main graph dispatch loop calls dispatch pending node as shown
-above.  
+above.
 
 Dispatch\_pending\_node recovers the pending frame, and the graph node
 runtime / dispatch function. Further, it recovers the next\_frame
 currently associated with the vlib\_frame\_t, and detaches the
-vlib\_frame\_t from the next\_frame.  
+vlib\_frame\_t from the next\_frame.
 
 In .../src/vlib/main.c:dispatch\_pending\_node(...), note this stanza:
 
@@ -349,7 +394,7 @@ to use. Here is a typical example:
     vlib_main_t *vm = &vlib_global_main;
     uword event_type, * event_data = 0;
 
-    while (1) 
+    while (1)
     {
        vlib_process_wait_for_event_or_clock (vm, 5.0 /* seconds */);
 
@@ -362,7 +407,7 @@ to use. Here is a typical example:
 
        case EVENT2:
            handle_event2s (event_data);
-           break; 
+           break;
 
        case ~0: /* 5-second idle/periodic */
            handle_idle ();
@@ -471,7 +516,7 @@ Here is a complete example:
     }
 
     /* *INDENT-OFF* */
-    static VLIB_CLI_COMMAND (show_ip_tuple_command) = 
+    static VLIB_CLI_COMMAND (show_ip_tuple_command) =
     {
         .path = "show ip tuple match",
         .short_help = "Show ip 5-tuple match-and-broadcast tables",
@@ -494,3 +539,109 @@ code elsewhere to unpack the data and finally print the answer. If a
 certain cli command has the potential to hurt packet processing
 performance by running for too long, do the work incrementally in a
 process node. The client can wait.
+
+Handing off buffers between threads
+-----------------------------------
+
+Vlib includes an easy-to-use mechanism for handing off buffers between
+worker threads. A typical use-case: software ingress flow hashing. At
+a high level, one creates a per-worker-thread queue which sends packets
+to a specific graph node in the indicated worker thread. With the
+queue in hand, enqueue packets to the worker thread of your choice.
+
+### Initialize a handoff queue
+
+Simple enough, call vlib_frame_queue_main_init:
+
+```c
+   main_ptr->frame_queue_index
+       = vlib_frame_queue_main_init (dest_node.index, frame_queue_size);
+```
+
+Frame_queue_size means what it says: the number of frames which may be
+queued. Since frames contain 1...256 packets, frame_queue_size should
+be a reasonably small number (32...64). If the frame queue producer(s)
+are faster than the frame queue consumer(s), congestion will
+occur. Suggest letting the enqueue operator deal with queue
+congestion, as shown in the enqueue example below.
+
+Under the floorboards, vlib_frame_queue_main_init creates an input queue
+for each worker thread.
+
+Please do NOT create frame queues until it's clear that they will be
+used. Although the main dispatch loop is reasonably smart about how
+often it polls the (entire set of) frame queues, polling unused frame
+queues is a waste of clock cycles.
+
+### Hand off packets
+
+The actual handoff mechanics are simple, and integrate nicely with
+a typical graph-node dispatch function:
+
+```c
+    always_inline uword
+    do_handoff_inline (vlib_main_t * vm,
+         	       vlib_node_runtime_t * node, vlib_frame_t * frame,
+    		       int is_ip4, int is_trace)
+    {
+      u32 n_left_from, *from;
+      vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+      u16 thread_indices [VLIB_FRAME_SIZE];
+      u16 nexts[VLIB_FRAME_SIZE], *next;
+      u32 n_enq;
+      htest_main_t *hmp = &htest_main;
+      int i;
+
+      from = vlib_frame_vector_args (frame);
+      n_left_from = frame->n_vectors;
+
+      vlib_get_buffers (vm, from, bufs, n_left_from);
+      next = nexts;
+      b = bufs;
+
+      /*
+       * Typical frame traversal loop, details vary with
+       * use case. Make sure to set thread_indices[i] with
+       * the desired destination thread index. You may
+       * or may not bother to set next[i].
+       */
+
+      for (i = 0; i < frame->n_vectors; i++)
+        {
+          <snip>
+          /* Pick a thread to handle this packet */
+          thread_indices[i] = f (packet_data_or_whatever);
+          <snip>
+
+          b += 1;
+          next += 1;
+          n_left_from -= 1;
+        }
+
+       /* Enqueue buffers to threads */
+       n_enq =
+        vlib_buffer_enqueue_to_thread (vm, hmp->frame_queue_index,
+                                       from, thread_indices, frame->n_vectors,
+                                       1 /* drop on congestion */);
+       /* Typical counters,
+      if (n_enq < frame->n_vectors)
+        vlib_node_increment_counter (vm, node->node_index,
+    				 XXX_ERROR_CONGESTION_DROP,
+    				 frame->n_vectors - n_enq);
+      vlib_node_increment_counter (vm, node->node_index,
+    			         XXX_ERROR_HANDED_OFF, n_enq);
+      return frame->n_vectors;
+}
+```
+
+Notes about calling vlib_buffer_enqueue_to_thread(...):
+
+* If you pass "drop on congestion" non-zero, all packets in the
+inbound frame will be consumed one way or the other. This is the
+recommended setting.
+
+* In the drop-on-congestion case, please don't try to "help" in the
+enqueue node by freeing dropped packets, or by pushing them to
+"error-drop." Either of those actions would be a severe error.
+
+* It's perfectly OK to enqueue packets to the current thread.

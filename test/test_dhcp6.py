@@ -24,6 +24,10 @@ class TestDHCPv6DataPlane(VppTestCase):
     def setUpClass(cls):
         super(TestDHCPv6DataPlane, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestDHCPv6DataPlane, cls).tearDownClass()
+
     def setUp(self):
         super(TestDHCPv6DataPlane, self).setUp()
 
@@ -42,7 +46,7 @@ class TestDHCPv6DataPlane(VppTestCase):
         super(TestDHCPv6DataPlane, self).tearDown()
 
     def test_dhcp_ia_na_send_solicit_receive_advertise(self):
-        """ Verify DHCPv6 IA NA Solicit packet and Advertise envent """
+        """ Verify DHCPv6 IA NA Solicit packet and Advertise event """
 
         self.vapi.dhcp6_clients_enable_disable()
 
@@ -52,8 +56,10 @@ class TestDHCPv6DataPlane(VppTestCase):
         address = {'address': address_bin,
                    'preferred_time': 60,
                    'valid_time': 120}
-        self.vapi.dhcp6_send_client_message(1, self.pg0.sw_if_index,
-                                            T1=20, T2=40, addresses=[address])
+        self.vapi.dhcp6_send_client_message(msg_type=1,
+                                            sw_if_index=self.pg0.sw_if_index,
+                                            T1=20, T2=40, addresses=[address],
+                                            n_addresses=len([address]))
         rx_list = self.pg0.get_capture(1)
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]
@@ -117,7 +123,7 @@ class TestDHCPv6DataPlane(VppTestCase):
             self.vapi.want_dhcp6_reply_events(enable_disable=0)
 
     def test_dhcp_pd_send_solicit_receive_advertise(self):
-        """ Verify DHCPv6 PD Solicit packet and Advertise envent """
+        """ Verify DHCPv6 PD Solicit packet and Advertise event """
 
         self.vapi.dhcp6_clients_enable_disable()
 
@@ -202,6 +208,10 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(TestDHCPv6IANAControlPlane, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestDHCPv6IANAControlPlane, cls).tearDownClass()
 
     def setUp(self):
         super(TestDHCPv6IANAControlPlane, self).setUp()
@@ -408,7 +418,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.send_advertise(ianaopts=noavail)
         self.wait_for_solicit(is_resend=True)
 
-    def test_preferred_greater_than_valit_lifetime(self):
+    def test_preferred_greater_than_valid_lifetime(self):
         """ Preferred lifetime is greater than valid lifetime """
 
         self.wait_for_solicit()
@@ -449,6 +459,10 @@ class TestDHCPv6PDControlPlane(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(TestDHCPv6PDControlPlane, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestDHCPv6PDControlPlane, cls).tearDownClass()
 
     def setUp(self):
         super(TestDHCPv6PDControlPlane, self).setUp()
@@ -703,7 +717,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.send_advertise(iapdopt=noavail)
         self.wait_for_solicit(is_resend=True)
 
-    def test_preferred_greater_than_valit_lifetime(self):
+    def test_preferred_greater_than_valid_lifetime(self):
         """ Preferred lifetime is greater than valid lifetime """
 
         try:

@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * Copyright (c) 2009-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,19 +35,19 @@
 #include "cpel.h"
 #include "g2.h"
 
-int widest_track_format;
+extern int widest_track_format;
 
 typedef struct bound_track_ {
     u32 track;
     u8  *track_str;
 } bound_track_t;
 
-bound_track_t *bound_tracks;
+extern bound_track_t *bound_tracks;
 
-uword *the_evtdef_hash; /* (event-id, event-definition) hash */
-uword *the_trackdef_hash; /* (track-id, track-definition) hash */
+extern uword *the_evtdef_hash; /* (event-id, event-definition) hash */
+extern uword *the_trackdef_hash; /* (track-id, track-definition) hash */
 
-elog_main_t elog_main;
+extern elog_main_t elog_main;
 
 void *get_clib_event (unsigned int datum)
 {

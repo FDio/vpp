@@ -93,7 +93,7 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (r == VNET_API_ERROR_SUBIF_ALREADY_EXISTS)
     {
-      error = clib_error_return (0, "Interface elready exists");
+      error = clib_error_return (0, "Interface already exists");
       goto done;
     }
 

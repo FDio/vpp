@@ -222,16 +222,13 @@ class VppBFDAuthKey(VppObject):
     def object_id(self):
         return "bfd-auth-key-%s" % self._conf_key_id
 
-    def __str__(self):
-        return self.object_id()
-
 
 class VppBFDUDPSession(VppObject):
     """ Represents BFD UDP session in VPP """
 
     def __init__(self, test, interface, peer_addr, local_addr=None, af=AF_INET,
                  desired_min_tx=300000, required_min_rx=300000, detect_mult=3,
-                 sha1_key=None, bfd_key_id=None):
+                 sha1_key=None, bfd_key_id=None, is_tunnel=False):
         self._test = test
         self._interface = interface
         self._af = af
@@ -250,6 +247,7 @@ class VppBFDUDPSession(VppObject):
             self._bfd_key_id = bfd_key_id
         else:
             self._bfd_key_id = randint(0, 255)
+        self._is_tunnel = is_tunnel
 
     @property
     def test(self):
@@ -351,6 +349,10 @@ class VppBFDUDPSession(VppObject):
         """ bfd key id in use """
         return self._bfd_key_id
 
+    @property
+    def is_tunnel(self):
+        return self._is_tunnel
+
     def activate_auth(self, key, bfd_key_id=None, delayed=False):
         """ activate authentication for this session """
         self._bfd_key_id = bfd_key_id if bfd_key_id else randint(0, 255)
@@ -429,9 +431,6 @@ class VppBFDUDPSession(VppObject):
                                         self.local_addr,
                                         self.peer_addr,
                                         self.af)
-
-    def __str__(self):
-        return self.object_id()
 
     def admin_up(self):
         """ set bfd session admin-up """

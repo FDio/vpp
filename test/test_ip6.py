@@ -4,12 +4,13 @@ import socket
 import unittest
 
 from parameterized import parameterized
+import scapy.compat
 import scapy.layers.inet6 as inet6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
-    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply
+    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, IPv6ExtHdrHopByHop
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.packet import Raw
 from scapy.utils import inet_pton, inet_ntop
@@ -34,6 +35,8 @@ try:
     text_type = unicode
 except NameError:
     text_type = str
+
+NUM_PKTS = 67
 
 
 class TestIPv6ND(VppTestCase):
@@ -160,6 +163,10 @@ class TestIPv6(TestIPv6ND):
     def setUpClass(cls):
         super(TestIPv6, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv6, cls).tearDownClass()
+
     def setUp(self):
         """
         Perform test setup before test case.
@@ -245,8 +252,10 @@ class TestIPv6(TestIPv6ND):
         for i in self.interfaces:
             next_hop_address = i.local_ip6n
             for j in range(count / n_int):
-                self.vapi.ip_add_del_route(
-                    dest_addr, dest_addr_len, next_hop_address, is_ipv6=1)
+                self.vapi.ip_add_del_route(dst_address=dest_addr,
+                                           dst_address_length=dest_addr_len,
+                                           next_hop_address=next_hop_address,
+                                           is_ipv6=1)
                 counter += 1
                 if counter / count * 100 > percent:
                     self.logger.info("Configure %d FIB entries .. %d%% done" %
@@ -318,7 +327,7 @@ class TestIPv6(TestIPv6ND):
             try:
                 ip = packet[IPv6]
                 udp = packet[inet6.UDP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug(
@@ -560,7 +569,7 @@ class TestIPv6(TestIPv6ND):
 
         #
         # remove the duplicate on pg1
-        # packet stream shoud generate NSs out of pg1
+        # packet stream should generate NSs out of pg1
         #
         ns_pg1.remove_vpp_config()
 
@@ -623,7 +632,7 @@ class TestIPv6(TestIPv6ND):
             # decipher how to decode. this 1st layer of option always returns
             # nested classes, so a direct obj1=obj2 comparison always fails.
             # however, the getlayer(.., 2) does give one instnace.
-            # so we cheat here and construct a new opt instnace for comparison
+            # so we cheat here and construct a new opt instance for comparison
             rd = ICMPv6NDOptPrefixInfo(
                 prefixlen=raos.prefixlen,
                 prefix=raos.prefix,
@@ -682,7 +691,8 @@ class TestIPv6(TestIPv6ND):
         self.send_and_assert_no_replies(self.pg0, pkts, "RA rate limited")
 
         #
-        # When we reconfiure the IPv6 RA config, we reset the RA rate limiting,
+        # When we reconfigure the IPv6 RA config,
+        # we reset the RA rate limiting,
         # so we need to do this before each test below so as not to drop
         # packets for rate limiting reasons. Test this works here.
         #
@@ -853,7 +863,7 @@ class TestIPv6(TestIPv6ND):
                                 opt=opt)
 
         #
-        # Use the reset to defults option to revert to defaults
+        # Use the reset to defaults option to revert to defaults
         #  L and A flag are clear in the advert
         #
         self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
@@ -902,7 +912,7 @@ class TestIPv6(TestIPv6ND):
                                 opt=opt)
 
         #
-        # Remove the first refix-info - expect the second is still in the
+        # Remove the first prefix-info - expect the second is still in the
         # advert
         #
         self.pg0.ip6_ra_prefix(self.pg0.local_ip6,
@@ -922,7 +932,7 @@ class TestIPv6(TestIPv6ND):
                                 opt=opt)
 
         #
-        # Remove the second prefix-info - expect no prefix-info i nthe adverts
+        # Remove the second prefix-info - expect no prefix-info in the adverts
         #
         self.pg0.ip6_ra_prefix(self.pg1.local_ip6,
                                self.pg1.local_ip6_prefix_len,
@@ -941,6 +951,14 @@ class TestIPv6(TestIPv6ND):
 
 class TestICMPv6Echo(VppTestCase):
     """ ICMPv6 Echo Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestICMPv6Echo, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestICMPv6Echo, cls).tearDownClass()
 
     def setUp(self):
         super(TestICMPv6Echo, self).setUp()
@@ -971,7 +989,7 @@ class TestICMPv6Echo(VppTestCase):
 
         icmpv6_id = 0xb
         icmpv6_seq = 5
-        icmpv6_data = '\x0a' * 18
+        icmpv6_data = b'\x0a' * 18
         p_echo_request = (Ether(src=self.pg0.remote_mac,
                                 dst=self.pg0.local_mac) /
                           IPv6(src=self.pg0.remote_ip6,
@@ -1010,6 +1028,10 @@ class TestIPv6RD(TestIPv6ND):
     @classmethod
     def setUpClass(cls):
         super(TestIPv6RD, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv6RD, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPv6RD, self).setUp()
@@ -1128,6 +1150,10 @@ class TestIPv6RDControlPlane(TestIPv6ND):
     def setUpClass(cls):
         super(TestIPv6RDControlPlane, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv6RDControlPlane, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPv6RDControlPlane, self).setUp()
 
@@ -1163,10 +1189,10 @@ class TestIPv6RDControlPlane(TestIPv6ND):
             if entry.address_length == 0:
                 for path in entry.path:
                     if path.sw_if_index != 0xFFFFFFFF:
-                        defaut_route = {}
-                        defaut_route['sw_if_index'] = path.sw_if_index
-                        defaut_route['next_hop'] = path.next_hop
-                        list.append(defaut_route)
+                        default_route = {}
+                        default_route['sw_if_index'] = path.sw_if_index
+                        default_route['next_hop'] = path.next_hop
+                        list.append(default_route)
         return list
 
     @staticmethod
@@ -1284,6 +1310,7 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         # check FIB still contains the SLAAC address
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(initial_addresses)
+
         self.assertEqual(len(new_addresses), 1)
         prefix = list(new_addresses)[0][:8] + '\0\0\0\0\0\0\0\0'
         self.assertEqual(inet_ntop(AF_INET6, prefix), '1::')
@@ -1299,6 +1326,14 @@ class TestIPv6RDControlPlane(TestIPv6ND):
 
 class IPv6NDProxyTest(TestIPv6ND):
     """ IPv6 ND ProxyTest Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(IPv6NDProxyTest, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(IPv6NDProxyTest, cls).tearDownClass()
 
     def setUp(self):
         super(IPv6NDProxyTest, self).setUp()
@@ -1345,9 +1380,9 @@ class IPv6NDProxyTest(TestIPv6ND):
         #
         # Add proxy support for the host
         #
-        self.vapi.ip6_nd_proxy(
-            inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
-            self.pg1.sw_if_index)
+        self.vapi.ip6nd_proxy_add_del(
+            ip=inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
+            sw_if_index=self.pg1.sw_if_index)
 
         #
         # try that NS again. this time we expect an NA back
@@ -1412,9 +1447,9 @@ class IPv6NDProxyTest(TestIPv6ND):
                   ICMPv6NDOptSrcLLAddr(
                       lladdr=self.pg0._remote_hosts[2].mac))
 
-        self.vapi.ip6_nd_proxy(
-            inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
-            self.pg2.sw_if_index)
+        self.vapi.ip6nd_proxy_add_del(
+            ip=inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
+            sw_if_index=self.pg2.sw_if_index)
 
         self.send_and_expect_na(self.pg2, ns_pg2,
                                 "NS to proxy entry other interface",
@@ -1452,14 +1487,12 @@ class IPv6NDProxyTest(TestIPv6ND):
         #
         # remove the proxy configs
         #
-        self.vapi.ip6_nd_proxy(
-            inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
-            self.pg1.sw_if_index,
-            is_del=1)
-        self.vapi.ip6_nd_proxy(
-            inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
-            self.pg2.sw_if_index,
-            is_del=1)
+        self.vapi.ip6nd_proxy_add_del(
+            ip=inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
+            sw_if_index=self.pg1.sw_if_index, is_del=1)
+        self.vapi.ip6nd_proxy_add_del(
+            ip=inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
+            sw_if_index=self.pg2.sw_if_index, is_del=1)
 
         self.assertFalse(find_nbr(self,
                                   self.pg2.sw_if_index,
@@ -1490,6 +1523,14 @@ class IPv6NDProxyTest(TestIPv6ND):
 
 class TestIPNull(VppTestCase):
     """ IPv6 routes via NULL """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPNull, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPNull, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPNull, self).setUp()
@@ -1559,13 +1600,21 @@ class TestIPNull(VppTestCase):
 class TestIPDisabled(VppTestCase):
     """ IPv6 disabled """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPDisabled, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPDisabled, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPDisabled, self).setUp()
 
         # create 2 pg interfaces
         self.create_pg_interfaces(range(2))
 
-        # PG0 is IP enalbed
+        # PG0 is IP enabled
         self.pg0.admin_up()
         self.pg0.config_ip6()
         self.pg0.resolve_ndp()
@@ -1648,6 +1697,14 @@ class TestIPDisabled(VppTestCase):
 class TestIP6LoadBalance(VppTestCase):
     """ IPv6 Load-Balancing """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP6LoadBalance, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6LoadBalance, cls).tearDownClass()
+
     def setUp(self):
         super(TestIP6LoadBalance, self).setUp()
 
@@ -1706,7 +1763,7 @@ class TestIP6LoadBalance(VppTestCase):
         src_ip_pkts = []
         src_mpls_pkts = []
 
-        for ii in range(65):
+        for ii in range(NUM_PKTS):
             port_ip_hdr = (
                 IPv6(dst="3000::1", src="3000:1::1") /
                 inet6.UDP(sport=1234, dport=1234 + ii) /
@@ -1742,7 +1799,7 @@ class TestIP6LoadBalance(VppTestCase):
                                   src_ip_hdr))
 
         #
-        # A route for the IP pacekts
+        # A route for the IP packets
         #
         route_3000_1 = VppIpRoute(self, "3000::1", 128,
                                   [VppRoutePath(self.pg1.remote_ip6,
@@ -1780,7 +1837,7 @@ class TestIP6LoadBalance(VppTestCase):
         #    src,dst
         # We are not going to ensure equal amounts of packets across each link,
         # since the hash algorithm is statistical and therefore this can never
-        # be guaranteed. But wuth 64 different packets we do expect some
+        # be guaranteed. But with 64 different packets we do expect some
         # balancing. So instead just ensure there is traffic on each link.
         #
         self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
@@ -1796,7 +1853,7 @@ class TestIP6LoadBalance(VppTestCase):
 
         #
         # The packets with Entropy label in should not load-balance,
-        # since the Entorpy value is fixed.
+        # since the Entropy value is fixed.
         #
         self.send_and_expect_one_itf(self.pg0, port_ent_pkts, self.pg1)
 
@@ -1805,7 +1862,8 @@ class TestIP6LoadBalance(VppTestCase):
         #  - now only the stream with differing source address will
         #    load-balance
         #
-        self.vapi.set_ip_flow_hash(0, is_ip6=1, src=1, dst=1, sport=0, dport=0)
+        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=0, dport=0,
+                                   is_ipv6=1)
 
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
@@ -1816,7 +1874,8 @@ class TestIP6LoadBalance(VppTestCase):
         #
         # change the flow hash config back to defaults
         #
-        self.vapi.set_ip_flow_hash(0, is_ip6=1, src=1, dst=1, sport=1, dport=1)
+        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=1, dport=1,
+                                   is_ipv6=1)
 
         #
         # Recursive prefixes
@@ -1911,6 +1970,14 @@ class TestIP6LoadBalance(VppTestCase):
 class TestIP6Punt(VppTestCase):
     """ IPv6 Punt Police/Redirect """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP6Punt, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6Punt, cls).tearDownClass()
+
     def setUp(self):
         super(TestIP6Punt, self).setUp()
 
@@ -1952,7 +2019,7 @@ class TestIP6Punt(VppTestCase):
         #
         # add a policer
         #
-        policer = self.vapi.policer_add_del("ip6-punt", 400, 0, 10, 0,
+        policer = self.vapi.policer_add_del(b"ip6-punt", 400, 0, 10, 0,
                                             rate_type=1)
         self.vapi.ip_punt_police(policer.policer_index, is_ip6=1)
 
@@ -1962,7 +2029,7 @@ class TestIP6Punt(VppTestCase):
         self.pg_start()
 
         #
-        # the number of packet recieved should be greater than 0,
+        # the number of packet received should be greater than 0,
         # but not equal to the number sent, since some were policed
         #
         rx = self.pg1._get_capture(1)
@@ -1973,7 +2040,7 @@ class TestIP6Punt(VppTestCase):
         # remove the policer. back to full rx
         #
         self.vapi.ip_punt_police(policer.policer_index, is_add=0, is_ip6=1)
-        self.vapi.policer_add_del("ip6-punt", 400, 0, 10, 0,
+        self.vapi.policer_add_del(b"ip6-punt", 400, 0, 10, 0,
                                   rate_type=1, is_add=0)
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
@@ -2038,6 +2105,14 @@ class TestIP6Punt(VppTestCase):
 
 class TestIPDeag(VppTestCase):
     """ IPv6 Deaggregate Routes """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPDeag, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPDeag, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPDeag, self).setUp()
@@ -2158,6 +2233,14 @@ class TestIPDeag(VppTestCase):
 class TestIP6Input(VppTestCase):
     """ IPv6 Input Exception Test Cases """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP6Input, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6Input, cls).tearDownClass()
+
     def setUp(self):
         super(TestIP6Input, self).setUp()
 
@@ -2187,7 +2270,7 @@ class TestIP6Input(VppTestCase):
                      inet6.UDP(sport=1234, dport=1234) /
                      Raw('\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg0, p_version * 65, self.pg0)
+        rx = self.send_and_expect(self.pg0, p_version * NUM_PKTS, self.pg0)
         rx = rx[0]
         icmp = rx[ICMPv6TimeExceeded]
 
@@ -2226,10 +2309,23 @@ class TestIP6Input(VppTestCase):
                      l4 /
                      Raw('\xa5' * 100))
 
-        self.send_and_assert_no_replies(self.pg0, p_version * 65,
+        self.send_and_assert_no_replies(self.pg0, p_version * NUM_PKTS,
                                         remark=msg or "",
                                         timeout=timeout)
 
+    def test_hop_by_hop(self):
+        """ Hop-by-hop header test """
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+             IPv6ExtHdrHopByHop() /
+             inet6.UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

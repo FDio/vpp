@@ -19,6 +19,8 @@
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib.h>
+#include <vnet/udp/udp.h>
+#include <vnet/adj/adj_midchain.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -39,134 +41,72 @@ format_ipsec_name (u8 * s, va_list * args)
 #define foreach_ipsec_if_tx_error    \
 _(TX, "good packets transmitted")
 
-static char *ipsec_if_tx_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ipsec_if_tx_error
-#undef _
-};
-
-typedef enum
+static void
+ipsec_if_tunnel_stack (adj_index_t ai)
 {
-#define _(sym,str) IPSEC_IF_OUTPUT_ERROR_##sym,
-  foreach_ipsec_if_tx_error
-#undef _
-    IPSEC_IF_TX_N_ERROR,
-} ipsec_if_tx_error_t;
+  ipsec_main_t *ipm = &ipsec_main;
+  ipsec_tunnel_if_t *it;
+  ip_adjacency_t *adj;
+  u32 sw_if_index;
 
-typedef struct
-{
-  u32 spi;
-  u32 seq;
-} ipsec_if_tx_trace_t;
+  adj = adj_get (ai);
+  sw_if_index = adj->rewrite_header.sw_if_index;
 
-u8 *
-format_ipsec_if_tx_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ipsec_if_tx_trace_t *t = va_arg (*args, ipsec_if_tx_trace_t *);
+  if ((vec_len (ipm->ipsec_if_by_sw_if_index) <= sw_if_index) ||
+      (~0 == ipm->ipsec_if_by_sw_if_index[sw_if_index]))
+    return;
 
-  s = format (s, "IPSec: spi %u seq %u", t->spi, t->seq);
-  return s;
-}
+  it = pool_elt_at_index (ipm->tunnel_interfaces,
+			  ipm->ipsec_if_by_sw_if_index[sw_if_index]);
 
-always_inline ipsec_tunnel_if_t *
-ipsec_tun_get_by_sw_if_index (u32 sw_if_index)
-{
-  ipsec_main_t *im = &ipsec_main;
-  u32 ti;
-
-  ti = im->ipsec_if_by_sw_if_index[sw_if_index];
-
-  return (pool_elt_at_index (im->tunnel_interfaces, ti));
-}
-
-static uword
-ipsec_if_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * from_frame)
-{
-  ipsec_main_t *im = &ipsec_main;
-  vnet_main_t *vnm = im->vnet_main;
-  vnet_interface_main_t *vim = &vnm->interface_main;
-  u32 *from, *to_next = 0, next_index;
-  u32 n_left_from, sw_if_index0, last_sw_if_index = ~0;
-  u32 thread_index = vm->thread_index;
-  u32 n_bytes = 0, n_packets = 0;
-
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
+  if (!vnet_hw_interface_is_link_up (vnet_get_main (), it->hw_if_index))
     {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  const ipsec_tunnel_if_t *t0;
-	  u32 bi0, next0, len0;
-	  vlib_buffer_t *b0;
-
-	  bi0 = to_next[0] = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-	  b0 = vlib_get_buffer (vm, bi0);
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  t0 = ipsec_tun_get_by_sw_if_index (sw_if_index0);
-	  vnet_buffer (b0)->ipsec.sad_index = t0->output_sa_index;
-
-	  /* 0, tx-node next[0] was added by vlib_node_add_next_with_slot */
-	  next0 = 0;
-
-	  len0 = vlib_buffer_length_in_chain (vm, b0);
-
-	  if (PREDICT_TRUE (sw_if_index0 == last_sw_if_index))
-	    {
-	      n_packets++;
-	      n_bytes += len0;
-	    }
-	  else
-	    {
-	      vlib_increment_combined_counter (vim->combined_sw_if_counters +
-					       VNET_INTERFACE_COUNTER_TX,
-					       thread_index, sw_if_index0,
-					       n_packets, n_bytes);
-	      last_sw_if_index = sw_if_index0;
-	      n_packets = 1;
-	      n_bytes = len0;
-	    }
-
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      ipsec_if_tx_trace_t *tr =
-		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      ipsec_sa_t *sa0 =
-		pool_elt_at_index (im->sad, t0->output_sa_index);
-	      tr->spi = sa0->spi;
-	      tr->seq = sa0->seq;
-	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      adj_midchain_delegate_unstack (ai);
     }
-
-  if (last_sw_if_index != ~0)
+  else
     {
-      vlib_increment_combined_counter (vim->combined_sw_if_counters +
-				       VNET_INTERFACE_COUNTER_TX,
-				       thread_index,
-				       last_sw_if_index, n_packets, n_bytes);
-    }
+      ipsec_sa_t *sa;
 
-  return from_frame->n_vectors;
+      sa = ipsec_sa_get (it->output_sa_index);
+
+      /* *INDENT-OFF* */
+      fib_prefix_t pfx = {
+	.fp_addr = sa->tunnel_dst_addr,
+	.fp_len = (ipsec_sa_is_set_IS_TUNNEL_V6(sa) ? 128 : 32),
+	.fp_proto = (ipsec_sa_is_set_IS_TUNNEL_V6(sa) ?
+                     FIB_PROTOCOL_IP6 :
+                     FIB_PROTOCOL_IP4),
+      };
+      /* *INDENT-ON* */
+
+      adj_midchain_delegate_stack (ai, sa->tx_fib_index, &pfx);
+    }
 }
 
+/**
+ * @brief Call back when restacking all adjacencies on a GRE interface
+ */
+static adj_walk_rc_t
+ipsec_if_adj_walk_cb (adj_index_t ai, void *ctx)
+{
+  ipsec_if_tunnel_stack (ai);
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+static void
+ipsec_if_tunnel_restack (ipsec_tunnel_if_t * it)
+{
+  fib_protocol_t proto;
+
+  /*
+   * walk all the adjacencies on th GRE interface and restack them
+   */
+  FOR_EACH_FIB_IP_PROTOCOL (proto)
+  {
+    adj_nbr_walk (it->sw_if_index, proto, ipsec_if_adj_walk_cb, NULL);
+  }
+}
 
 static clib_error_t *
 ipsec_admin_up_down_function (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
@@ -219,19 +159,34 @@ ipsec_admin_up_down_function (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	return err;
     }
 
-  return /* no error */ 0;
+  ipsec_if_tunnel_restack (t);
+
+  return (NULL);
 }
 
+static u8 *
+ipsec_if_build_rewrite (vnet_main_t * vnm,
+			u32 sw_if_index,
+			vnet_link_t link_type, const void *dst_address)
+{
+  return (NULL);
+}
+
+static void
+ipsec_if_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+{
+  adj_nbr_midchain_update_rewrite
+    (ai, NULL, NULL, ADJ_FLAG_MIDCHAIN_IP_STACK,
+     ipsec_if_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai), NULL));
+
+  ipsec_if_tunnel_stack (ai);
+}
 
 /* *INDENT-OFF* */
-VNET_DEVICE_CLASS (ipsec_device_class, static) =
+VNET_DEVICE_CLASS (ipsec_device_class) =
 {
   .name = "IPSec",
   .format_device_name = format_ipsec_name,
-  .format_tx_trace = format_ipsec_if_tx_trace,
-  .tx_function = ipsec_if_tx_node_fn,
-  .tx_function_n_errors = IPSEC_IF_TX_N_ERROR,
-  .tx_function_error_strings = ipsec_if_tx_error_strings,
   .admin_up_down_function = ipsec_admin_up_down_function,
 };
 /* *INDENT-ON* */
@@ -241,6 +196,7 @@ VNET_HW_INTERFACE_CLASS (ipsec_hw_class) =
 {
   .name = "IPSec",
   .build_rewrite = default_build_rewrite,
+  .update_adjacency = ipsec_if_update_adj,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 /* *INDENT-ON* */
@@ -274,6 +230,28 @@ ipsec_tun_mk_output_sa_id (u32 ti)
   return (0xc0000000 | ti);
 }
 
+static void
+ipsec_tunnel_feature_set (ipsec_main_t * im, ipsec_tunnel_if_t * t, u8 enable)
+{
+  u8 arc;
+
+  arc = vnet_get_feature_arc_index ("ip4-output");
+
+  vnet_feature_enable_disable_with_index (arc,
+					  im->esp4_encrypt_tun_feature_index,
+					  t->sw_if_index, enable,
+					  &t->output_sa_index,
+					  sizeof (t->output_sa_index));
+
+  arc = vnet_get_feature_arc_index ("ip6-output");
+
+  vnet_feature_enable_disable_with_index (arc,
+					  im->esp6_encrypt_tun_feature_index,
+					  t->sw_if_index, enable,
+					  &t->output_sa_index,
+					  sizeof (t->output_sa_index));
+}
+
 int
 ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 				  ipsec_add_del_tunnel_args_t * args,
@@ -285,14 +263,25 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
   u32 hw_if_index = ~0;
   uword *p;
   u32 dev_instance;
-  u32 slot;
   ipsec_key_t crypto_key, integ_key;
   ipsec_sa_flags_t flags;
   int rv;
+  int is_ip6 = args->is_ip6;
+  ipsec4_tunnel_key_t key4;
+  ipsec6_tunnel_key_t key6;
 
-  u64 key = ((u64) args->remote_ip.ip4.as_u32 << 32 |
-	     (u64) clib_host_to_net_u32 (args->remote_spi));
-  p = hash_get (im->ipsec_if_pool_index_by_key, key);
+  if (!is_ip6)
+    {
+      key4.remote_ip = args->remote_ip.ip4.as_u32;
+      key4.spi = clib_host_to_net_u32 (args->remote_spi);
+      p = hash_get (im->ipsec4_if_pool_index_by_key, key4.as_u64);
+    }
+  else
+    {
+      key6.remote_ip = args->remote_ip.ip6;
+      key6.spi = clib_host_to_net_u32 (args->remote_spi);
+      p = hash_get_mem (im->ipsec6_if_pool_index_by_key, &key6);
+    }
 
   if (args->is_add)
     {
@@ -318,10 +307,12 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 		dev_instance);
 
       flags = IPSEC_SA_FLAG_IS_TUNNEL;
+      if (args->is_ip6)
+	flags |= IPSEC_SA_FLAG_IS_TUNNEL_V6;
       if (args->udp_encap)
 	flags |= IPSEC_SA_FLAG_UDP_ENCAP;
       if (args->esn)
-	flags |= IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM;
+	flags |= IPSEC_SA_FLAG_USE_ESN;
       if (args->anti_replay)
 	flags |= IPSEC_SA_FLAG_USE_ANTI_REPLAY;
 
@@ -337,13 +328,14 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			 &crypto_key,
 			 args->integ_alg,
 			 &integ_key,
-			 flags,
+			 (flags | IPSEC_SA_FLAG_IS_INBOUND),
 			 args->tx_table_id,
+			 args->salt,
 			 &args->remote_ip,
 			 &args->local_ip, &t->input_sa_index);
 
       if (rv)
-	return VNET_API_ERROR_UNIMPLEMENTED;
+	return VNET_API_ERROR_INVALID_SRC_ADDRESS;
 
       ipsec_mk_key (&crypto_key,
 		    args->local_crypto_key, args->local_crypto_key_len);
@@ -359,14 +351,20 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 			 &integ_key,
 			 flags,
 			 args->tx_table_id,
+			 args->salt,
 			 &args->local_ip,
 			 &args->remote_ip, &t->output_sa_index);
 
       if (rv)
-	return VNET_API_ERROR_UNIMPLEMENTED;
+	return VNET_API_ERROR_INVALID_DST_ADDRESS;
 
-      hash_set (im->ipsec_if_pool_index_by_key, key,
-		t - im->tunnel_interfaces);
+      /* copy the key */
+      if (is_ip6)
+	hash_set_mem_alloc (&im->ipsec6_if_pool_index_by_key, &key6,
+			    t - im->tunnel_interfaces);
+      else
+	hash_set (im->ipsec4_if_pool_index_by_key, key4.as_u64,
+		  t - im->tunnel_interfaces);
 
       hw_if_index = vnet_register_interface (vnm, ipsec_device_class.index,
 					     t - im->tunnel_interfaces,
@@ -374,53 +372,59 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 					     t - im->tunnel_interfaces);
 
       hi = vnet_get_hw_interface (vnm, hw_if_index);
-      /* add esp4 as the next-node-index of this tx-node */
-
-      slot = vlib_node_add_next_with_slot
-	(vnm->vlib_main, hi->tx_node_index, im->esp4_encrypt_node_index, 0);
-
-      ASSERT (slot == 0);
 
       t->hw_if_index = hw_if_index;
       t->sw_if_index = hi->sw_if_index;
 
-      vec_validate_init_empty (im->ipsec_if_by_sw_if_index,
-			       t->sw_if_index, ~0);
-      im->ipsec_if_by_sw_if_index[t->sw_if_index] = t - im->tunnel_interfaces;
+      /* Standard default jumbo MTU. */
+      vnet_sw_interface_set_mtu (vnm, t->sw_if_index, 9000);
 
-      vnet_feature_enable_disable ("interface-output", "ipsec-if-output",
-				   hi->sw_if_index, 1, 0, 0);
+      /* Add the new tunnel to the DB of tunnels per sw_if_index ... */
+      vec_validate_init_empty (im->ipsec_if_by_sw_if_index, t->sw_if_index,
+			       ~0);
+      im->ipsec_if_by_sw_if_index[t->sw_if_index] = dev_instance;
+
+      ipsec_tunnel_feature_set (im, t, 1);
 
       /*1st interface, register protocol */
       if (pool_elts (im->tunnel_interfaces) == 1)
-	ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
-			       ipsec_if_input_node.index);
+	{
+	  ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
+				 ipsec4_if_input_node.index);
+	  ip6_register_protocol (IP_PROTOCOL_IPSEC_ESP,
+				 ipsec6_if_input_node.index);
+	}
 
     }
   else
     {
+      u32 ti;
+
       /* check if exists */
       if (!p)
 	return VNET_API_ERROR_INVALID_VALUE;
 
-      t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
+      ti = p[0];
+      t = pool_elt_at_index (im->tunnel_interfaces, ti);
       hi = vnet_get_hw_interface (vnm, t->hw_if_index);
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0);	/* admin down */
 
-      vnet_feature_enable_disable ("interface-output", "ipsec-if-output",
-				   hi->sw_if_index, 0, 0, 0);
-
+      ipsec_tunnel_feature_set (im, t, 0);
       vnet_delete_hw_interface (vnm, t->hw_if_index);
 
-      hash_unset (im->ipsec_if_pool_index_by_key, key);
+      if (is_ip6)
+	hash_unset_mem_free (&im->ipsec6_if_pool_index_by_key, &key6);
+      else
+	hash_unset (im->ipsec4_if_pool_index_by_key, key4.as_u64);
+
       hash_unset (im->ipsec_if_real_dev_by_show_dev, t->show_instance);
       im->ipsec_if_by_sw_if_index[t->sw_if_index] = ~0;
 
       pool_put (im->tunnel_interfaces, t);
 
       /* delete input and output SA */
-      ipsec_sa_del (ipsec_tun_mk_input_sa_id (p[0]));
-      ipsec_sa_del (ipsec_tun_mk_output_sa_id (p[0]));
+      ipsec_sa_del (ipsec_tun_mk_input_sa_id (ti));
+      ipsec_sa_del (ipsec_tun_mk_output_sa_id (ti));
     }
 
   if (sw_if_index)
@@ -431,34 +435,43 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 
 int
 ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
-				ipsec_add_del_ipsec_gre_tunnel_args_t * args)
+				const ipsec_gre_tunnel_add_del_args_t * args)
 {
   ipsec_tunnel_if_t *t = 0;
   ipsec_main_t *im = &ipsec_main;
   uword *p;
   ipsec_sa_t *sa;
-  u64 key;
+  ipsec4_tunnel_key_t key;
   u32 isa, osa;
 
   p = hash_get (im->sa_index_by_sa_id, args->local_sa_id);
   if (!p)
     return VNET_API_ERROR_INVALID_VALUE;
-  isa = p[0];
+  osa = p[0];
+  sa = pool_elt_at_index (im->sad, p[0]);
+  ipsec_sa_set_IS_GRE (sa);
 
   p = hash_get (im->sa_index_by_sa_id, args->remote_sa_id);
   if (!p)
     return VNET_API_ERROR_INVALID_VALUE;
-  osa = p[0];
+  isa = p[0];
   sa = pool_elt_at_index (im->sad, p[0]);
+  ipsec_sa_set_IS_GRE (sa);
 
-  if (sa->is_tunnel)
-    key = ((u64) sa->tunnel_dst_addr.ip4.as_u32 << 32 |
-	   (u64) clib_host_to_net_u32 (sa->spi));
+  /* we form the key from the input/remote SA whose tunnel is srouce
+   * at the remote end */
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
+    {
+      key.remote_ip = sa->tunnel_src_addr.ip4.as_u32;
+      key.spi = clib_host_to_net_u32 (sa->spi);
+    }
   else
-    key = ((u64) args->remote_ip.as_u32 << 32 |
-	   (u64) clib_host_to_net_u32 (sa->spi));
+    {
+      key.remote_ip = args->src.as_u32;
+      key.spi = clib_host_to_net_u32 (sa->spi);
+    }
 
-  p = hash_get (im->ipsec_if_pool_index_by_key, key);
+  p = hash_get (im->ipsec4_if_pool_index_by_key, key.as_u64);
 
   if (args->is_add)
     {
@@ -472,13 +485,20 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
       t->input_sa_index = isa;
       t->output_sa_index = osa;
       t->hw_if_index = ~0;
-      hash_set (im->ipsec_if_pool_index_by_key, key,
+      hash_set (im->ipsec4_if_pool_index_by_key, key.as_u64,
 		t - im->tunnel_interfaces);
 
       /*1st interface, register protocol */
       if (pool_elts (im->tunnel_interfaces) == 1)
-	ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
-			       ipsec_if_input_node.index);
+	{
+	  ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
+				 ipsec4_if_input_node.index);
+	  /* TBD, GRE IPSec6
+	   *
+	   ip6_register_protocol (IP_PROTOCOL_IPSEC_ESP,
+	   ipsec6_if_input_node.index);
+	   */
+	}
     }
   else
     {
@@ -487,57 +507,11 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
 	return VNET_API_ERROR_INVALID_VALUE;
 
       t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
-      hash_unset (im->ipsec_if_pool_index_by_key, key);
+      hash_unset (im->ipsec4_if_pool_index_by_key, key.as_u64);
       pool_put (im->tunnel_interfaces, t);
     }
   return 0;
 }
-
-int
-ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
-			 ipsec_if_set_key_type_t type, u8 alg, u8 * key)
-{
-  ipsec_main_t *im = &ipsec_main;
-  vnet_hw_interface_t *hi;
-  ipsec_tunnel_if_t *t;
-  ipsec_sa_t *sa;
-
-  hi = vnet_get_hw_interface (vnm, hw_if_index);
-  t = pool_elt_at_index (im->tunnel_interfaces, hi->dev_instance);
-
-  if (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
-    return VNET_API_ERROR_SYSCALL_ERROR_1;
-
-  if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO)
-    {
-      sa = pool_elt_at_index (im->sad, t->output_sa_index);
-      sa->crypto_alg = alg;
-      ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG)
-    {
-      sa = pool_elt_at_index (im->sad, t->output_sa_index);
-      sa->integ_alg = alg;
-      ipsec_mk_key (&sa->integ_key, key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO)
-    {
-      sa = pool_elt_at_index (im->sad, t->input_sa_index);
-      sa->crypto_alg = alg;
-      ipsec_mk_key (&sa->crypto_key, key, vec_len (key));
-    }
-  else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG)
-    {
-      sa = pool_elt_at_index (im->sad, t->input_sa_index);
-      sa->integ_alg = alg;
-      ipsec_mk_key (&sa->integ_key, key, vec_len (key));
-    }
-  else
-    return VNET_API_ERROR_INVALID_VALUE;
-
-  return 0;
-}
-
 
 int
 ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
@@ -567,37 +541,79 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
     }
 
   sa = pool_elt_at_index (im->sad, sa_index);
-  if (sa->is_tunnel_ip6)
-    {
-      clib_warning ("IPsec interface not supported with IPv6 endpoints");
-      return VNET_API_ERROR_UNIMPLEMENTED;
-    }
 
   if (!is_outbound)
     {
-      u64 key;
-
       old_sa_index = t->input_sa_index;
       old_sa = pool_elt_at_index (im->sad, old_sa_index);
 
-      /* unset old inbound hash entry. packets should stop arriving */
-      key = ((u64) old_sa->tunnel_src_addr.ip4.as_u32 << 32 |
-	     (u64) clib_host_to_net_u32 (old_sa->spi));
-      p = hash_get (im->ipsec_if_pool_index_by_key, key);
-      if (p)
-	hash_unset (im->ipsec_if_pool_index_by_key, key);
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ^
+	  ipsec_sa_is_set_IS_TUNNEL_V6 (old_sa))
+	{
+	  clib_warning ("IPsec interface SA endpoints type can't be changed");
+	  return VNET_API_ERROR_INVALID_VALUE;
+	}
 
-      /* set new inbound SA, then set new hash entry */
-      t->input_sa_index = sa_index;
-      key = ((u64) sa->tunnel_src_addr.ip4.as_u32 << 32 |
-	     (u64) clib_host_to_net_u32 (sa->spi));
-      hash_set (im->ipsec_if_pool_index_by_key, key, hi->dev_instance);
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
+	{
+	  ipsec6_tunnel_key_t key;
+
+	  /* unset old inbound hash entry. packets should stop arriving */
+	  key.remote_ip = old_sa->tunnel_src_addr.ip6;
+	  key.spi = clib_host_to_net_u32 (old_sa->spi);
+
+	  p = hash_get_mem (im->ipsec6_if_pool_index_by_key, &key);
+	  if (p)
+	    hash_unset_mem_free (&im->ipsec6_if_pool_index_by_key, &key);
+
+	  /* set new inbound SA, then set new hash entry */
+	  t->input_sa_index = sa_index;
+	  key.remote_ip = sa->tunnel_src_addr.ip6;
+	  key.spi = clib_host_to_net_u32 (sa->spi);
+
+	  hash_set_mem_alloc (&im->ipsec6_if_pool_index_by_key, &key,
+			      hi->dev_instance);
+	}
+      else
+	{
+	  ipsec4_tunnel_key_t key;
+
+	  /* unset old inbound hash entry. packets should stop arriving */
+	  key.remote_ip = old_sa->tunnel_src_addr.ip4.as_u32;
+	  key.spi = clib_host_to_net_u32 (old_sa->spi);
+
+	  p = hash_get (im->ipsec4_if_pool_index_by_key, key.as_u64);
+	  if (p)
+	    hash_unset (im->ipsec4_if_pool_index_by_key, key.as_u64);
+
+	  /* set new inbound SA, then set new hash entry */
+	  t->input_sa_index = sa_index;
+	  key.remote_ip = sa->tunnel_src_addr.ip4.as_u32;
+	  key.spi = clib_host_to_net_u32 (sa->spi);
+
+	  hash_set (im->ipsec4_if_pool_index_by_key, key.as_u64,
+		    hi->dev_instance);
+	}
     }
   else
     {
       old_sa_index = t->output_sa_index;
       old_sa = pool_elt_at_index (im->sad, old_sa_index);
+
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ^
+	  ipsec_sa_is_set_IS_TUNNEL_V6 (old_sa))
+	{
+	  clib_warning ("IPsec interface SA endpoints type can't be changed");
+	  return VNET_API_ERROR_INVALID_VALUE;
+	}
+
+      /*
+       * re-enable the feature to get the new SA in
+       * the workers are stopped so no packets are sent in the clear
+       */
+      ipsec_tunnel_feature_set (im, t, 0);
       t->output_sa_index = sa_index;
+      ipsec_tunnel_feature_set (im, t, 1);
     }
 
   /* remove sa_id to sa_index mapping on old SA */
@@ -609,7 +625,7 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
       clib_warning ("IPsec backend add/del callback returned error");
       return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
-  pool_put (im->sad, old_sa);
+  ipsec_sa_del (old_sa->id);
 
   return 0;
 }
@@ -619,9 +635,18 @@ ipsec_tunnel_if_init (vlib_main_t * vm)
 {
   ipsec_main_t *im = &ipsec_main;
 
-  im->ipsec_if_pool_index_by_key = hash_create (0, sizeof (uword));
+  /* initialize the ipsec-if ip4 hash */
+  im->ipsec4_if_pool_index_by_key =
+    hash_create (0, sizeof (ipsec4_tunnel_key_t));
+  /* initialize the ipsec-if ip6 hash */
+  im->ipsec6_if_pool_index_by_key = hash_create_mem (0,
+						     sizeof
+						     (ipsec6_tunnel_key_t),
+						     sizeof (uword));
   im->ipsec_if_real_dev_by_show_dev = hash_create (0, sizeof (uword));
 
+  udp_register_dst_port (vm, UDP_DST_PORT_ipsec, ipsec4_if_input_node.index,
+			 1);
   return 0;
 }
 

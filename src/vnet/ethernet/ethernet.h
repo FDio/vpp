@@ -314,7 +314,7 @@ ethernet_interface_t *ethernet_get_interface (ethernet_main_t * em,
 clib_error_t *ethernet_register_interface (vnet_main_t * vnm,
 					   u32 dev_class_index,
 					   u32 dev_instance,
-					   u8 * address,
+					   const u8 * address,
 					   u32 * hw_if_index_return,
 					   ethernet_flag_change_function_t
 					   flag_change);
@@ -544,6 +544,7 @@ u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 			    vnet_link_t link_type, const void *dst_address);
 const u8 *ethernet_ip4_mcast_dst_addr (void);
 const u8 *ethernet_ip6_mcast_dst_addr (void);
+void ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em);
 
 extern vlib_node_registration_t ethernet_input_node;
 

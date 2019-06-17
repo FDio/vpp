@@ -83,7 +83,7 @@ class TestResult(dict):
             tc_id = testcase.id()
             if tc_id not in self[PASS] and tc_id not in self[SKIP]:
                 rerun_ids.add(tc_id)
-        if len(rerun_ids) > 0:
+        if rerun_ids:
             return suite_from_failed(self.testcase_suite, rerun_ids)
 
     def get_testcase_names(self, test_id):
@@ -218,11 +218,11 @@ class TestCaseWrapper(object):
 def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
                              read_testcases):
     read_testcase = None
-    while read_testcases.is_set() or len(unread_testcases):
-        if len(finished_unread_testcases):
+    while read_testcases.is_set() or unread_testcases:
+        if finished_unread_testcases:
             read_testcase = finished_unread_testcases.pop()
             unread_testcases.remove(read_testcase)
-        elif len(unread_testcases):
+        elif unread_testcases:
             read_testcase = unread_testcases.pop()
         if read_testcase:
             data = ''
@@ -282,20 +282,23 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
 
 def check_and_handle_core(vpp_binary, tempdir, core_crash_test):
     if is_core_present(tempdir):
-        print('VPP core detected in %s. Last test running was %s' %
-              (tempdir, core_crash_test))
-        print(single_line_delim)
-        spawn_gdb(vpp_binary, get_core_path(tempdir))
-        print(single_line_delim)
+        if debug_core:
+            print('VPP core detected in %s. Last test running was %s' %
+                  (tempdir, core_crash_test))
+            print(single_line_delim)
+            spawn_gdb(vpp_binary, get_core_path(tempdir))
+            print(single_line_delim)
+        elif compress_core:
+            print("Compressing core-file in test directory `%s'" % tempdir)
+            os.system("gzip %s" % get_core_path(tempdir))
 
 
 def handle_cores(failed_testcases):
-    if debug_core:
-        for failed_testcase in failed_testcases:
-            tcs_with_core = failed_testcase.testclasess_with_core
-            if len(tcs_with_core) > 0:
-                for test, vpp_binary, tempdir in tcs_with_core.values():
-                    check_and_handle_core(vpp_binary, tempdir, test)
+    for failed_testcase in failed_testcases:
+        tcs_with_core = failed_testcase.testclasess_with_core
+        if tcs_with_core:
+            for test, vpp_binary, tempdir in tcs_with_core.values():
+                check_and_handle_core(vpp_binary, tempdir, test)
 
 
 def process_finished_testsuite(wrapped_testcase_suite,
@@ -327,7 +330,7 @@ def run_forked(testcase_suites):
     manager = StreamQueueManager()
     manager.start()
     for i in range(concurrent_tests):
-        if len(testcase_suites) > 0:
+        if testcase_suites:
             wrapped_testcase_suite = TestCaseWrapper(testcase_suites.pop(0),
                                                      manager)
             wrapped_testcase_suites.add(wrapped_testcase_suite)
@@ -347,7 +350,7 @@ def run_forked(testcase_suites):
     stop_run = False
 
     try:
-        while len(wrapped_testcase_suites) > 0:
+        while wrapped_testcase_suites:
             finished_testcase_suites = set()
             for wrapped_testcase_suite in wrapped_testcase_suites:
                 while wrapped_testcase_suite.result_parent_end.poll():
@@ -434,13 +437,14 @@ def run_forked(testcase_suites):
                 finished_unread_testcases.add(finished_testcase)
                 finished_testcase.stdouterr_queue.put(None)
                 if stop_run:
-                    while len(testcase_suites) > 0:
+                    while testcase_suites:
                         results.append(TestResult(testcase_suites.pop(0)))
-                elif len(testcase_suites) > 0:
+                elif testcase_suites:
                     new_testcase = TestCaseWrapper(testcase_suites.pop(0),
                                                    manager)
                     wrapped_testcase_suites.add(new_testcase)
                     unread_testcases.add(new_testcase)
+            time.sleep(0.1)
     except Exception:
         for wrapped_testcase_suite in wrapped_testcase_suites:
             wrapped_testcase_suite.child.terminate()
@@ -630,7 +634,7 @@ class AllResults(dict):
                 failed_testcase_ids = result[FAIL]
                 errored_testcase_ids = result[ERROR]
                 old_testcase_name = None
-                if len(failed_testcase_ids) or len(errored_testcase_ids):
+                if failed_testcase_ids or errored_testcase_ids:
                     for failed_test_id in failed_testcase_ids:
                         new_testcase_name, test_name = \
                             result.get_testcase_names(failed_test_id)
@@ -649,7 +653,7 @@ class AllResults(dict):
                             old_testcase_name = new_testcase_name
                         print('      ERROR: {} [{}]'.format(
                             colorize(test_name, RED), failed_test_id))
-        if len(self.testsuites_no_tests_run) > 0:
+        if self.testsuites_no_tests_run:
             print('TESTCASES WHERE NO TESTS WERE SUCCESSFULLY EXECUTED:')
             tc_classes = set()
             for testsuite in self.testsuites_no_tests_run:
@@ -725,6 +729,7 @@ if __name__ == '__main__':
     debug = os.getenv("DEBUG", "n").lower() in ["gdb", "gdbserver"]
 
     debug_core = os.getenv("DEBUG", "").lower() == "core"
+    compress_core = os.getenv("CORE_COMPRESS", "").lower() in ("y", "yes", "1")
 
     step = os.getenv("STEP", "n").lower() in ("y", "yes", "1")
 
@@ -799,7 +804,7 @@ if __name__ == '__main__':
     if attempts > 1:
         print("Perform %s attempts to pass the suite..." % attempts)
 
-    if run_interactive and len(suites):
+    if run_interactive and suites:
         # don't fork if requiring interactive terminal
         full_suite = unittest.TestSuite()
         map(full_suite.addTests, suites)
@@ -812,8 +817,7 @@ if __name__ == '__main__':
                 handle_failed_suite(test_case_info.logger,
                                     test_case_info.tempdir,
                                     test_case_info.vpp_pid)
-                if debug_core and \
-                        test_case_info in result.core_crash_test_cases_info:
+                if test_case_info in result.core_crash_test_cases_info:
                     check_and_handle_core(test_case_info.vpp_bin_path,
                                           test_case_info.tempdir,
                                           test_case_info.core_crash_test)
@@ -821,7 +825,7 @@ if __name__ == '__main__':
         sys.exit(not was_successful)
     else:
         exit_code = 0
-        while len(suites) > 0 and attempts > 0:
+        while suites and attempts > 0:
             results = run_forked(suites)
             exit_code, suites = parse_results(results)
             attempts -= 1

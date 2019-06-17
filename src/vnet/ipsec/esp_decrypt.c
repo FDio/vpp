@@ -25,7 +25,7 @@
 
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \
-_(IP4_INPUT, "ip4-input")                       \
+_(IP4_INPUT, "ip4-input-no-checksum")           \
 _(IP6_INPUT, "ip6-input")                       \
 _(IPSEC_GRE_INPUT, "ipsec-gre-input")
 
@@ -38,13 +38,16 @@ typedef enum
 } esp_decrypt_next_t;
 
 
-#define foreach_esp_decrypt_error                   \
- _(RX_PKTS, "ESP pkts received")                    \
- _(NO_BUFFER, "No buffer (packed dropped)")         \
- _(DECRYPTION_FAILED, "ESP decryption failed")      \
- _(INTEG_ERROR, "Integrity check failed")           \
- _(REPLAY, "SA replayed packet")                    \
- _(NOT_IP, "Not IP packet (dropped)")
+#define foreach_esp_decrypt_error                               \
+ _(RX_PKTS, "ESP pkts received")                                \
+ _(DECRYPTION_FAILED, "ESP decryption failed")                  \
+ _(INTEG_ERROR, "Integrity check failed")                       \
+ _(CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)") \
+ _(REPLAY, "SA replayed packet")                                \
+ _(RUNT, "undersized packet")                                   \
+ _(CHAINED_BUFFER, "chained buffers (packet dropped)")          \
+ _(OVERSIZED_HEADER, "buffer with oversized header (dropped)")  \
+ _(NO_TAIL_SPACE, "no enough buffer tail space (dropped)")
 
 
 typedef enum
@@ -63,6 +66,7 @@ static char *esp_decrypt_error_strings[] = {
 
 typedef struct
 {
+  u32 seq;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
 } esp_decrypt_trace_t;
@@ -75,339 +79,398 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
 
-  s = format (s, "esp: crypto %U integrity %U",
+  s = format (s, "esp: crypto %U integrity %U seq %u",
 	      format_ipsec_crypto_alg, t->crypto_alg,
-	      format_ipsec_integ_alg, t->integ_alg);
+	      format_ipsec_integ_alg, t->integ_alg, t->seq);
   return s;
 }
 
-always_inline void
-esp_decrypt_cbc (ipsec_crypto_alg_t alg,
-		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
+typedef struct
 {
-  ipsec_proto_main_t *em = &ipsec_proto_main;
-  u32 thread_index = vlib_get_thread_index ();
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *ctx = em->per_thread_data[thread_index].decrypt_ctx;
-#else
-  EVP_CIPHER_CTX *ctx = &(em->per_thread_data[thread_index].decrypt_ctx);
-#endif
-  const EVP_CIPHER *cipher = NULL;
-  int out_len;
-
-  ASSERT (alg < IPSEC_CRYPTO_N_ALG);
-
-  if (PREDICT_FALSE (em->ipsec_proto_main_crypto_algs[alg].type == 0))
-    return;
-
-  if (PREDICT_FALSE
-      (alg != em->per_thread_data[thread_index].last_decrypt_alg))
+  union
+  {
+    struct
     {
-      cipher = em->ipsec_proto_main_crypto_algs[alg].type;
-      em->per_thread_data[thread_index].last_decrypt_alg = alg;
-    }
+      u8 icv_sz;
+      u8 iv_sz;
+      ipsec_sa_flags_t flags:8;
+      u32 sa_index;
+    };
+    u64 sa_data;
+  };
 
-  EVP_DecryptInit_ex (ctx, cipher, NULL, key, iv);
+  i16 current_data;
+  i16 current_length;
+  u16 hdr_sz;
+} esp_decrypt_packet_data_t;
 
-  EVP_DecryptUpdate (ctx, out, &out_len, in, in_len);
-  EVP_DecryptFinal_ex (ctx, out + out_len, &out_len);
-}
+STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 2 * sizeof (u64));
+
+#define ESP_ENCRYPT_PD_F_FD_TRANSPORT (1 << 2)
 
 always_inline uword
 esp_decrypt_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * from_frame,
 		    int is_ip6)
 {
-  u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
-  ipsec_proto_main_t *em = &ipsec_proto_main;
-  u32 *recycle = 0;
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
+  u16 buffer_data_size = vlib_buffer_get_default_data_size (vm);
+  u16 len;
+  ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, thread_index);
+  u32 *from = vlib_frame_vector_args (from_frame);
+  u32 n, n_left = from_frame->n_vectors;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  esp_decrypt_packet_data_t pkt_data[VLIB_FRAME_SIZE], *pd = pkt_data;
+  esp_decrypt_packet_data_t cpd = { };
+  u32 current_sa_index = ~0, current_sa_bytes = 0, current_sa_pkts = 0;
+  const u8 esp_sz = sizeof (esp_header_t);
+  ipsec_sa_t *sa0 = 0;
 
-  ipsec_alloc_empty_buffers (vm, im);
+  vlib_get_buffers (vm, from, b, n_left);
+  vec_reset_length (ptd->crypto_ops);
+  vec_reset_length (ptd->integ_ops);
+  clib_memset_u16 (nexts, -1, n_left);
 
-  u32 *empty_buffers = im->empty_buffers[thread_index];
-
-  if (PREDICT_FALSE (vec_len (empty_buffers) < n_left_from))
+  while (n_left > 0)
     {
-      vlib_node_increment_counter (vm, node->node_index,
-				   ESP_DECRYPT_ERROR_NO_BUFFER, n_left_from);
-      goto free_buffers_and_exit;
-    }
+      u8 *payload;
 
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
-    {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
+      if (n_left > 2)
 	{
-	  u32 i_bi0, o_bi0 = (u32) ~ 0, next0;
-	  vlib_buffer_t *i_b0;
-	  vlib_buffer_t *o_b0 = 0;
-	  esp_header_t *esp0;
-	  ipsec_sa_t *sa0;
-	  u32 sa_index0 = ~0;
-	  u32 seq;
-	  ip4_header_t *ih4 = 0, *oh4 = 0;
-	  ip6_header_t *ih6 = 0, *oh6 = 0;
-	  u8 tunnel_mode = 1;
-
-	  i_bi0 = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  next0 = ESP_DECRYPT_NEXT_DROP;
-
-	  i_b0 = vlib_get_buffer (vm, i_bi0);
-	  esp0 = vlib_buffer_get_current (i_b0);
-
-	  sa_index0 = vnet_buffer (i_b0)->ipsec.sad_index;
-	  sa0 = pool_elt_at_index (im->sad, sa_index0);
-
-	  seq = clib_host_to_net_u32 (esp0->seq);
-
-	  /* anti-replay check */
-	  if (sa0->use_anti_replay)
-	    {
-	      int rv = 0;
-
-	      if (PREDICT_TRUE (sa0->use_esn))
-		rv = esp_replay_check_esn (sa0, seq);
-	      else
-		rv = esp_replay_check (sa0, seq);
-
-	      if (PREDICT_FALSE (rv))
-		{
-		  vlib_node_increment_counter (vm, node->node_index,
-					       ESP_DECRYPT_ERROR_REPLAY, 1);
-		  o_bi0 = i_bi0;
-		  to_next[0] = o_bi0;
-		  to_next += 1;
-		  goto trace;
-		}
-	    }
-
-	  vlib_increment_combined_counter
-	    (&ipsec_sa_counters, thread_index, sa_index0,
-	     1, i_b0->current_length);
-
-	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
-	    {
-	      u8 sig[64];
-	      int icv_size =
-		em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
-	      clib_memset (sig, 0, sizeof (sig));
-	      u8 *icv =
-		vlib_buffer_get_current (i_b0) + i_b0->current_length -
-		icv_size;
-	      i_b0->current_length -= icv_size;
-
-	      hmac_calc (sa0->integ_alg, sa0->integ_key.data,
-			 sa0->integ_key.len, (u8 *) esp0,
-			 i_b0->current_length, sig, sa0->use_esn,
-			 sa0->seq_hi);
-
-	      if (PREDICT_FALSE (memcmp (icv, sig, icv_size)))
-		{
-		  vlib_node_increment_counter (vm, node->node_index,
-					       ESP_DECRYPT_ERROR_INTEG_ERROR,
-					       1);
-		  o_bi0 = i_bi0;
-		  to_next[0] = o_bi0;
-		  to_next += 1;
-		  goto trace;
-		}
-	    }
-
-	  if (PREDICT_TRUE (sa0->use_anti_replay))
-	    {
-	      if (PREDICT_TRUE (sa0->use_esn))
-		esp_replay_advance_esn (sa0, seq);
-	      else
-		esp_replay_advance (sa0, seq);
-	    }
-
-	  /* grab free buffer */
-	  uword last_empty_buffer = vec_len (empty_buffers) - 1;
-	  o_bi0 = empty_buffers[last_empty_buffer];
-	  to_next[0] = o_bi0;
-	  to_next += 1;
-	  o_b0 = vlib_get_buffer (vm, o_bi0);
-	  vlib_prefetch_buffer_with_index (vm,
-					   empty_buffers[last_empty_buffer -
-							 1], STORE);
-	  _vec_len (empty_buffers) = last_empty_buffer;
-
-	  /* add old buffer to the recycle list */
-	  vec_add1 (recycle, i_bi0);
-
-	  if ((sa0->crypto_alg >= IPSEC_CRYPTO_ALG_AES_CBC_128 &&
-	       sa0->crypto_alg <= IPSEC_CRYPTO_ALG_AES_CBC_256) ||
-	      (sa0->crypto_alg >= IPSEC_CRYPTO_ALG_DES_CBC &&
-	       sa0->crypto_alg <= IPSEC_CRYPTO_ALG_3DES_CBC))
-	    {
-	      const int BLOCK_SIZE =
-		em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].block_size;;
-	      const int IV_SIZE =
-		em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size;
-	      esp_footer_t *f0;
-	      u8 ip_hdr_size = 0;
-
-	      int blocks =
-		(i_b0->current_length - sizeof (esp_header_t) -
-		 IV_SIZE) / BLOCK_SIZE;
-
-	      o_b0->current_data = sizeof (ethernet_header_t);
-
-	      /* transport mode */
-	      if (PREDICT_FALSE (!sa0->is_tunnel && !sa0->is_tunnel_ip6))
-		{
-		  tunnel_mode = 0;
-
-		  if (is_ip6)
-		    {
-		      ih6 =
-			(ip6_header_t *) ((u8 *) esp0 -
-					  sizeof (ip6_header_t));
-		      ip_hdr_size = sizeof (ip6_header_t);
-		      oh6 = vlib_buffer_get_current (o_b0);
-		    }
-		  else
-		    {
-		      if (sa0->udp_encap)
-			{
-			  ih4 =
-			    (ip4_header_t *) ((u8 *) esp0 -
-					      sizeof (udp_header_t) -
-					      sizeof (ip4_header_t));
-			}
-		      else
-			{
-			  ih4 =
-			    (ip4_header_t *) ((u8 *) esp0 -
-					      sizeof (ip4_header_t));
-			}
-		      oh4 = vlib_buffer_get_current (o_b0);
-		      ip_hdr_size = sizeof (ip4_header_t);
-		    }
-		}
-
-	      esp_decrypt_cbc (sa0->crypto_alg,
-			       esp0->data + IV_SIZE,
-			       (u8 *) vlib_buffer_get_current (o_b0) +
-			       ip_hdr_size, BLOCK_SIZE * blocks,
-			       sa0->crypto_key.data, esp0->data);
-
-	      o_b0->current_length = (blocks * BLOCK_SIZE) - 2 + ip_hdr_size;
-	      o_b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
-	      f0 =
-		(esp_footer_t *) ((u8 *) vlib_buffer_get_current (o_b0) +
-				  o_b0->current_length);
-	      o_b0->current_length -= f0->pad_length;
-
-	      /* tunnel mode */
-	      if (PREDICT_TRUE (tunnel_mode))
-		{
-		  if (PREDICT_TRUE (f0->next_header == IP_PROTOCOL_IP_IN_IP))
-		    {
-		      next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
-		      oh4 = vlib_buffer_get_current (o_b0);
-		    }
-		  else if (f0->next_header == IP_PROTOCOL_IPV6)
-		    next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
-		  else
-		    {
-		      vlib_node_increment_counter (vm, node->node_index,
-						   ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
-						   1);
-		      o_b0 = 0;
-		      goto trace;
-		    }
-		}
-	      /* transport mode */
-	      else
-		{
-		  if (is_ip6)
-		    {
-		      next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
-		      oh6->ip_version_traffic_class_and_flow_label =
-			ih6->ip_version_traffic_class_and_flow_label;
-		      oh6->protocol = f0->next_header;
-		      oh6->hop_limit = ih6->hop_limit;
-		      oh6->src_address.as_u64[0] = ih6->src_address.as_u64[0];
-		      oh6->src_address.as_u64[1] = ih6->src_address.as_u64[1];
-		      oh6->dst_address.as_u64[0] = ih6->dst_address.as_u64[0];
-		      oh6->dst_address.as_u64[1] = ih6->dst_address.as_u64[1];
-		      oh6->payload_length =
-			clib_host_to_net_u16 (vlib_buffer_length_in_chain
-					      (vm,
-					       o_b0) - sizeof (ip6_header_t));
-		    }
-		  else
-		    {
-		      next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
-		      oh4->ip_version_and_header_length = 0x45;
-		      oh4->tos = ih4->tos;
-		      oh4->fragment_id = 0;
-		      oh4->flags_and_fragment_offset = 0;
-		      oh4->ttl = ih4->ttl;
-		      oh4->protocol = f0->next_header;
-		      oh4->src_address.as_u32 = ih4->src_address.as_u32;
-		      oh4->dst_address.as_u32 = ih4->dst_address.as_u32;
-		      oh4->length =
-			clib_host_to_net_u16 (vlib_buffer_length_in_chain
-					      (vm, o_b0));
-		      oh4->checksum = ip4_header_checksum (oh4);
-		    }
-		}
-
-	      /* for IPSec-GRE tunnel next node is ipsec-gre-input */
-	      if (PREDICT_FALSE
-		  ((vnet_buffer (i_b0)->ipsec.flags) &
-		   IPSEC_FLAG_IPSEC_GRE_TUNNEL))
-		next0 = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
-
-	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	      vnet_buffer (o_b0)->sw_if_index[VLIB_RX] =
-		vnet_buffer (i_b0)->sw_if_index[VLIB_RX];
-	    }
-
-	trace:
-	  if (PREDICT_FALSE (i_b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      if (o_b0)
-		{
-		  o_b0->flags |= VLIB_BUFFER_IS_TRACED;
-		  o_b0->trace_index = i_b0->trace_index;
-		  esp_decrypt_trace_t *tr =
-		    vlib_add_trace (vm, node, o_b0, sizeof (*tr));
-		  tr->crypto_alg = sa0->crypto_alg;
-		  tr->integ_alg = sa0->integ_alg;
-		}
-	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, o_bi0, next0);
+	  u8 *p;
+	  vlib_prefetch_buffer_header (b[2], LOAD);
+	  p = vlib_buffer_get_current (b[1]);
+	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	  p -= CLIB_CACHE_LINE_BYTES;
+	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
 	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+      if (vlib_buffer_chain_linearize (vm, b[0]) != 1)
+	{
+	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_CHAINED_BUFFER];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto next;
+	}
+
+      if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
+	{
+	  if (current_sa_pkts)
+	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+					     current_sa_index,
+					     current_sa_pkts,
+					     current_sa_bytes);
+	  current_sa_bytes = current_sa_pkts = 0;
+
+	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
+	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
+	  cpd.icv_sz = sa0->integ_icv_size;
+	  cpd.iv_sz = sa0->crypto_iv_size;
+	  cpd.flags = sa0->flags;
+	  cpd.sa_index = current_sa_index;
+	}
+
+      /* store packet data for next round for easier prefetch */
+      pd->sa_data = cpd.sa_data;
+      pd->current_data = b[0]->current_data;
+      pd->current_length = b[0]->current_length;
+      pd->hdr_sz = pd->current_data - vnet_buffer (b[0])->l3_hdr_offset;
+      payload = b[0]->data + pd->current_data;
+
+      /* we need 4 extra bytes for HMAC calculation when ESN are used */
+      if (ipsec_sa_is_set_USE_ESN (sa0) && pd->icv_sz &&
+	  (pd->current_data + pd->current_length + 4 > buffer_data_size))
+	{
+	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_NO_TAIL_SPACE];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto next;
+	}
+
+      /* anti-reply check */
+      if (ipsec_sa_anti_replay_check (sa0, &((esp_header_t *) payload)->seq))
+	{
+	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_REPLAY];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto next;
+	}
+
+      if (pd->current_length < cpd.icv_sz + esp_sz + cpd.iv_sz)
+	{
+	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_RUNT];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto next;
+	}
+
+      len = pd->current_length - cpd.icv_sz;
+      current_sa_pkts += 1;
+      current_sa_bytes += pd->current_length;
+
+      if (PREDICT_TRUE (sa0->integ_op_id != VNET_CRYPTO_OP_NONE))
+	{
+	  vnet_crypto_op_t *op;
+	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
+
+	  vnet_crypto_op_init (op, sa0->integ_op_id);
+	  op->key_index = sa0->integ_key_index;
+	  op->src = payload;
+	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+	  op->user_data = b - bufs;
+	  op->digest = payload + len;
+	  op->digest_len = cpd.icv_sz;
+	  op->len = len;
+	  if (ipsec_sa_is_set_USE_ESN (sa0))
+	    {
+	      /* shift ICV for 4 bytes to insert ESN */
+	      u8 tmp[ESP_MAX_ICV_SIZE], sz = sizeof (sa0->seq_hi);
+	      clib_memcpy_fast (tmp, payload + len, ESP_MAX_ICV_SIZE);
+	      clib_memcpy_fast (payload + len, &sa0->seq_hi, sz);
+	      clib_memcpy_fast (payload + len + sz, tmp, ESP_MAX_ICV_SIZE);
+	      op->len += sz;
+	      op->digest += sz;
+	    }
+	}
+
+      payload += esp_sz;
+      len -= esp_sz;
+
+      if (sa0->crypto_enc_op_id != VNET_CRYPTO_OP_NONE)
+	{
+	  vnet_crypto_op_t *op;
+	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
+	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
+	  op->key_index = sa0->crypto_key_index;
+	  op->iv = payload;
+
+	  if (ipsec_sa_is_set_IS_AEAD (sa0))
+	    {
+	      esp_header_t *esp0;
+	      esp_aead_t *aad;
+	      u8 *scratch;
+
+	      /*
+	       * construct the AAD and the nonce (Salt || IV) in a scratch
+	       * space in front of the IP header.
+	       */
+	      scratch = payload - esp_sz;
+	      esp0 = (esp_header_t *) (scratch);
+
+	      scratch -= (sizeof (*aad) + pd->hdr_sz);
+	      op->aad = scratch;
+
+	      esp_aad_fill (op, esp0, sa0);
+
+	      /*
+	       * we don't need to refer to the ESP header anymore so we
+	       * can overwrite it with the salt and use the IV where it is
+	       * to form the nonce = (Salt + IV)
+	       */
+	      op->iv -= sizeof (sa0->salt);
+	      clib_memcpy_fast (op->iv, &sa0->salt, sizeof (sa0->salt));
+
+	      op->tag = payload + len;
+	      op->tag_len = 16;
+	    }
+	  op->src = op->dst = payload += cpd.iv_sz;
+	  op->len = len - cpd.iv_sz;
+	  op->user_data = b - bufs;
+	}
+
+      /* next */
+    next:
+      n_left -= 1;
+      next += 1;
+      pd += 1;
+      b += 1;
     }
+
+  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+				   current_sa_index, current_sa_pkts,
+				   current_sa_bytes);
+
+  if ((n = vec_len (ptd->integ_ops)))
+    {
+      vnet_crypto_op_t *op = ptd->integ_ops;
+      n -= vnet_crypto_process_ops (vm, op, n);
+      while (n)
+	{
+	  ASSERT (op - ptd->integ_ops < vec_len (ptd->integ_ops));
+	  if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+	    {
+	      u32 err, bi = op->user_data;
+	      if (op->status == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC)
+		err = ESP_DECRYPT_ERROR_INTEG_ERROR;
+	      else
+		err = ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR;
+	      bufs[bi]->error = node->errors[err];
+	      nexts[bi] = ESP_DECRYPT_NEXT_DROP;
+	      n--;
+	    }
+	  op++;
+	}
+    }
+  if ((n = vec_len (ptd->crypto_ops)))
+    {
+      vnet_crypto_op_t *op = ptd->crypto_ops;
+      n -= vnet_crypto_process_ops (vm, op, n);
+      while (n)
+	{
+	  ASSERT (op - ptd->crypto_ops < vec_len (ptd->crypto_ops));
+	  if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+	    {
+	      u32 err, bi;
+
+	      bi = op->user_data;
+
+	      if (op->status == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC)
+		err = ESP_DECRYPT_ERROR_DECRYPTION_FAILED;
+	      else
+		err = ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR;
+
+	      bufs[bi]->error = node->errors[err];
+	      nexts[bi] = ESP_DECRYPT_NEXT_DROP;
+	      n--;
+	    }
+	  op++;
+	}
+    }
+
+  /* Post decryption ronud - adjust packet data start and length and next
+     node */
+
+  n_left = from_frame->n_vectors;
+  next = nexts;
+  pd = pkt_data;
+  b = bufs;
+
+  while (n_left)
+    {
+      const u8 tun_flags = IPSEC_SA_FLAG_IS_TUNNEL |
+	IPSEC_SA_FLAG_IS_TUNNEL_V6;
+
+      if (n_left >= 2)
+	{
+	  void *data = b[1]->data + pd[1].current_data;
+
+	  /* buffer metadata */
+	  vlib_prefetch_buffer_header (b[1], LOAD);
+
+	  /* esp_footer_t */
+	  CLIB_PREFETCH (data + pd[1].current_length - pd[1].icv_sz - 2,
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+
+	  /* packet headers */
+	  CLIB_PREFETCH (data - CLIB_CACHE_LINE_BYTES,
+			 CLIB_CACHE_LINE_BYTES * 2, LOAD);
+	}
+
+      if (next[0] < ESP_DECRYPT_N_NEXT)
+	goto trace;
+
+      sa0 = vec_elt_at_index (im->sad, pd->sa_index);
+      u8 *payload = b[0]->data + pd->current_data;
+
+      ipsec_sa_anti_replay_advance (sa0, ((esp_header_t *) payload)->seq);
+
+      esp_footer_t *f = (esp_footer_t *) (b[0]->data + pd->current_data +
+					  pd->current_length - sizeof (*f) -
+					  pd->icv_sz);
+      u16 adv = pd->iv_sz + esp_sz;
+      u16 tail = sizeof (esp_footer_t) + f->pad_length + pd->icv_sz;
+
+      if ((pd->flags & tun_flags) == 0)	/* transport mode */
+	{
+	  u8 udp_sz = (is_ip6 == 0 && pd->flags & IPSEC_SA_FLAG_UDP_ENCAP) ?
+	    sizeof (udp_header_t) : 0;
+	  u16 ip_hdr_sz = pd->hdr_sz - udp_sz;
+	  u8 *old_ip = b[0]->data + pd->current_data - ip_hdr_sz - udp_sz;
+	  u8 *ip = old_ip + adv + udp_sz;
+
+	  if (is_ip6 && ip_hdr_sz > 64)
+	    memmove (ip, old_ip, ip_hdr_sz);
+	  else
+	    clib_memcpy_le64 (ip, old_ip, ip_hdr_sz);
+
+	  b[0]->current_data = pd->current_data + adv - ip_hdr_sz;
+	  b[0]->current_length = pd->current_length + ip_hdr_sz - tail - adv;
+
+	  if (is_ip6)
+	    {
+	      ip6_header_t *ip6 = (ip6_header_t *) ip;
+	      u16 len = clib_net_to_host_u16 (ip6->payload_length);
+	      len -= adv + tail;
+	      ip6->payload_length = clib_host_to_net_u16 (len);
+	      ip6->protocol = f->next_header;
+	      next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
+	    }
+	  else
+	    {
+	      ip4_header_t *ip4 = (ip4_header_t *) ip;
+	      ip_csum_t sum = ip4->checksum;
+	      u16 len = clib_net_to_host_u16 (ip4->length);
+	      len = clib_host_to_net_u16 (len - adv - tail - udp_sz);
+	      sum = ip_csum_update (sum, ip4->protocol, f->next_header,
+				    ip4_header_t, protocol);
+	      sum = ip_csum_update (sum, ip4->length, len,
+				    ip4_header_t, length);
+	      ip4->checksum = ip_csum_fold (sum);
+	      ip4->protocol = f->next_header;
+	      ip4->length = len;
+	      next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
+	    }
+	}
+      else
+	{
+	  if (PREDICT_TRUE (f->next_header == IP_PROTOCOL_IP_IN_IP))
+	    {
+	      next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
+	      b[0]->current_data = pd->current_data + adv;
+	      b[0]->current_length = pd->current_length - adv - tail;
+	    }
+	  else if (f->next_header == IP_PROTOCOL_IPV6)
+	    {
+	      next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
+	      b[0]->current_data = pd->current_data + adv;
+	      b[0]->current_length = pd->current_length - adv - tail;
+	    }
+	  else
+	    {
+	      next[0] = ESP_DECRYPT_NEXT_DROP;
+	      b[0]->error = node->errors[ESP_DECRYPT_ERROR_DECRYPTION_FAILED];
+	    }
+	}
+
+      if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
+	next[0] = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
+
+    trace:
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  esp_decrypt_trace_t *tr;
+	  u8 *payload = b[0]->data + pd->current_data;
+	  tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	  sa0 = pool_elt_at_index (im->sad,
+				   vnet_buffer (b[0])->ipsec.sad_index);
+	  tr->crypto_alg = sa0->crypto_alg;
+	  tr->integ_alg = sa0->integ_alg;
+	  tr->seq = clib_host_to_net_u32 (((esp_header_t *) payload)->seq);
+	}
+
+      /* next */
+      n_left -= 1;
+      next += 1;
+      pd += 1;
+      b += 1;
+    }
+
+  n_left = from_frame->n_vectors;
   vlib_node_increment_counter (vm, node->node_index,
-			       ESP_DECRYPT_ERROR_RX_PKTS,
-			       from_frame->n_vectors);
+			       ESP_DECRYPT_ERROR_RX_PKTS, n_left);
 
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_left);
 
-free_buffers_and_exit:
-  if (recycle)
-    vlib_buffer_free (vm, recycle, vec_len (recycle));
-  vec_free (recycle);
-  return from_frame->n_vectors;
+  b = bufs;
+  return n_left;
 }
 
 VLIB_NODE_FN (esp4_decrypt_node) (vlib_main_t * vm,

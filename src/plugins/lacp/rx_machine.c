@@ -206,11 +206,15 @@ lacp_compare_partner (slave_if_t * sif)
 }
 
 static void
-lacp_record_pdu (slave_if_t * sif)
+lacp_record_pdu (vlib_main_t * vm, slave_if_t * sif)
 {
   lacp_pdu_t *lacpdu = (lacp_pdu_t *) sif->last_rx_pkt;
   u8 match;
 
+  /* Transition PTX out of NO_PERIODIC if needed */
+  if (!(sif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
+      (lacpdu->actor.port_info.state & LACP_STATE_LACP_ACTIVITY))
+    lacp_ptx_post_short_timeout_event (vm, sif);
   match = lacp_compare_partner (sif);
   sif->partner = lacpdu->actor.port_info;
   sif->actor.state &= ~LACP_STATE_DEFAULTED;
@@ -236,8 +240,8 @@ lacp_set_port_moved (vlib_main_t * vm, slave_if_t * sif, u8 val)
 int
 lacp_rx_action_initialize (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   lacp_set_port_unselected (vm, sif);
   lacp_record_default (sif);
@@ -253,8 +257,8 @@ lacp_rx_action_initialize (void *p1, void *p2)
 int
 lacp_rx_action_port_disabled (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   sif->partner.state &= ~LACP_STATE_SYNCHRONIZATION;
   if (sif->port_moved)
@@ -278,15 +282,14 @@ lacp_rx_action_port_disabled (void *p1, void *p2)
 int
 lacp_rx_action_expired (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   u8 timer_expired;
   lacp_main_t *lm = &lacp_main;
 
   sif->partner.state &= ~LACP_STATE_SYNCHRONIZATION;
   sif->partner.state |= LACP_STATE_LACP_TIMEOUT;
-  lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			 LACP_PTX_EVENT_SHORT_TIMEOUT, &sif->ptx_state);
+  lacp_ptx_post_short_timeout_event (vm, sif);
   if (lacp_timer_is_running (sif->current_while_timer) &&
       lacp_timer_is_expired (lm->vlib_main, sif->current_while_timer))
     timer_expired = 1;
@@ -307,8 +310,8 @@ lacp_rx_action_expired (void *p1, void *p2)
 int
 lacp_rx_action_lacp_disabled (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
   lacp_set_port_unselected (vm, sif);
   lacp_record_default (sif);
@@ -321,9 +324,10 @@ lacp_rx_action_lacp_disabled (void *p1, void *p2)
 int
 lacp_rx_action_defaulted (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
 
+  lacp_stop_timer (&sif->current_while_timer);
   lacp_update_default_selected (vm, sif);
   lacp_record_default (sif);
   sif->actor.state &= ~LACP_STATE_EXPIRED;
@@ -359,13 +363,13 @@ lacp_port_is_moved (vlib_main_t * vm, slave_if_t * sif)
 int
 lacp_rx_action_current (void *p1, void *p2)
 {
-  vlib_main_t *vm = (vlib_main_t *) p1;
-  slave_if_t *sif = (slave_if_t *) p2;
+  vlib_main_t *vm = p1;
+  slave_if_t *sif = p2;
   lacp_main_t *lm = &lacp_main;
 
   lacp_update_selected (vm, sif);
   lacp_update_ntt (vm, sif);
-  lacp_record_pdu (sif);
+  lacp_record_pdu (vm, sif);
   lacp_start_current_while_timer (lm->vlib_main, sif, sif->ttl_in_seconds);
   sif->actor.state &= ~LACP_STATE_EXPIRED;
   if (lacp_port_is_moved (vm, sif))
@@ -385,8 +389,7 @@ format_rx_event (u8 * s, va_list * args)
     {.str = NULL}
   };
   int e = va_arg (*args, int);
-  lacp_event_struct *event_entry =
-    (lacp_event_struct *) & lacp_rx_event_array;
+  lacp_event_struct *event_entry = lacp_rx_event_array;
 
   if (e >= (sizeof (lacp_rx_event_array) / sizeof (*event_entry)))
     s = format (s, "Bad event %d", e);

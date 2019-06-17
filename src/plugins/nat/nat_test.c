@@ -221,7 +221,8 @@ static int api_nat44_interface_add_del_feature (vat_main_t * vam)
   M(NAT44_INTERFACE_ADD_DEL_FEATURE, mp);
   mp->sw_if_index = ntohl(sw_if_index);
   mp->is_add = is_add;
-  mp->is_inside = is_inside;
+  if (is_inside)
+    mp->flags |= NAT_API_IS_INSIDE;
 
   S(mp);
   W (ret);
@@ -291,8 +292,11 @@ static int api_nat44_add_del_static_mapping(vat_main_t * vam)
     }
 
   M(NAT44_ADD_DEL_STATIC_MAPPING, mp);
+
   mp->is_add = is_add;
-  mp->addr_only = addr_only;
+  if (addr_only)
+    mp->flags |= NAT_API_IS_ADDR_ONLY;
+
   mp->local_port = ntohs ((u16) local_port);
   mp->external_port = ntohs ((u16) external_port);
   mp->external_sw_if_index = ntohl (sw_if_index);
@@ -327,20 +331,21 @@ static void vl_api_nat44_static_mapping_details_t_handler
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
+  nat_config_flags_t flags = (nat_config_flags_t) mp->flags;
 
-  if (mp->addr_only && mp->external_sw_if_index != ~0)
+  if (flags & NAT_API_IS_ADDR_ONLY && mp->external_sw_if_index != ~0)
       fformat (vam->ofp, "%15U%6s%15d%6s%11d%6d\n",
                format_ip4_address, &mp->local_ip_address, "",
                ntohl (mp->external_sw_if_index), "",
                ntohl (mp->vrf_id),
                mp->protocol);
-  else if (mp->addr_only && mp->external_sw_if_index == ~0)
+  else if (flags & NAT_API_IS_ADDR_ONLY && mp->external_sw_if_index == ~0)
       fformat (vam->ofp, "%15U%6s%15U%6s%11d%6d\n",
                format_ip4_address, &mp->local_ip_address, "",
                format_ip4_address, &mp->external_ip_address, "",
                ntohl (mp->vrf_id),
                mp->protocol);
-  else if (!mp->addr_only && mp->external_sw_if_index != ~0)
+  else if (!(flags & NAT_API_IS_ADDR_ONLY) && mp->external_sw_if_index != ~0)
       fformat (vam->ofp, "%15U%6d%15d%6d%11d%6d\n",
                format_ip4_address, &mp->local_ip_address,
                ntohs (mp->local_port),
@@ -469,11 +474,19 @@ static int api_nat44_address_dump(vat_main_t * vam)
 static void vl_api_nat44_interface_details_t_handler
   (vl_api_nat44_interface_details_t *mp)
 {
+  nat_config_flags_t flags = (nat_config_flags_t) mp->flags;
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
 
-  fformat (vam->ofp, "sw_if_index %d %s\n", ntohl (mp->sw_if_index),
-           mp->is_inside ? "in" : "out");
+  if ((flags & NAT_API_IS_INSIDE) && (flags & NAT_API_IS_OUTSIDE))
+    {
+      fformat (vam->ofp, "sw_if_index %d in & out\n", ntohl (mp->sw_if_index));
+    }
+  else
+    {
+      fformat (vam->ofp, "sw_if_index %d %s\n", ntohl (mp->sw_if_index),
+               flags & NAT_API_IS_INSIDE ? "in" : "out");
+    }
 }
 
 static int api_nat44_interface_dump(vat_main_t * vam)
@@ -590,6 +603,7 @@ static int api_nat44_add_del_interface_addr (vat_main_t * vam)
 
   M(NAT44_ADD_DEL_INTERFACE_ADDR, mp);
   mp->sw_if_index = ntohl(sw_if_index);
+
   mp->is_add = is_add;
 
   S(mp);
@@ -671,7 +685,7 @@ static void vl_api_nat44_user_session_details_t_handler
 
   fformat(vam->ofp, "%s session %U:%d to %U:%d protocol id %d "
                     "total packets %d total bytes %lld\n",
-          mp->is_static ? "static" : "dynamic",
+          mp->flags & NAT_API_IS_STATIC ? "static" : "dynamic",
           format_ip4_address, mp->inside_ip_address, ntohs(mp->inside_port),
           format_ip4_address, mp->outside_ip_address, ntohs(mp->outside_port),
           ntohs(mp->protocol), ntohl(mp->total_pkts),

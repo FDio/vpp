@@ -63,6 +63,11 @@
  *   Group membership being encapsulated by VXLAN. Its value is source
  *   class id.
  *
+ * FOR INTERNAL USE ONLY
+ * R bit: Bit 12 of the initial word is defined as the reflection bit
+ *   Set on packet rx checked on tx and dropped if set. this prevents
+ *   packets recieved on an iVXLAN tunnel being reflected back to
+ *   another.
  */
 
 typedef struct
@@ -103,7 +108,8 @@ typedef enum
 _ (0x40, D)                       \
 _ (0x20, E)                       \
 _ (0x10, S)                       \
-_ (0x08, A)
+_ (0x08, A)                       \
+_ (0x04, R)
 
 typedef enum
 {

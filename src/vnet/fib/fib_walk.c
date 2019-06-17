@@ -87,7 +87,7 @@ typedef struct fib_walk_t_
     /**
      * The reasons this walk is occuring.
      * This is a vector ordered in time. The reasons and the front were started
-     * first, and so should be acted first when a node is visisted.
+     * first, and so should be acted first when a node is visited.
      */
     fib_node_back_walk_ctx_t *fw_ctx;
 } fib_walk_t;
@@ -161,7 +161,7 @@ static fib_walk_queues_t fib_walk_queues;
 static const char * const fib_walk_priority_names[] = FIB_WALK_PRIORITIES;
 
 /**
- * @brief Histogram stats on the lenths of each walk in elemenets visisted.
+ * @brief Histogram stats on the lenths of each walk in elemenets visited.
  * Store upto 1<<23 elements in increments of 1<<10
  */
 #define HISTOGRAM_VISITS_PER_WALK_MAX (1<<23)
@@ -445,7 +445,7 @@ static u64 fib_walk_work_time_taken[N_TIME_BUCKETS];
  * Histogram on the number of nodes visted in each quota
  */
 #define N_ELTS_BUCKETS 128
-static u32 fib_walk_work_nodes_visisted_incr = 2;
+static u32 fib_walk_work_nodes_visited_incr = 2;
 static u64 fib_walk_work_nodes_visited[N_ELTS_BUCKETS];
 
 /**
@@ -524,12 +524,12 @@ that_will_do_for_now:
 
     /*
      * collect the stats:
-     *  - for the number of nodes visisted we store 128 increments
+     *  - for the number of nodes visited we store 128 increments
      *  - for the time consumed we store quota/TIME_INCREMENTS increments.
      */
-    bucket = ((n_elts/fib_walk_work_nodes_visisted_incr) > N_ELTS_BUCKETS ?
+    bucket = ((n_elts/fib_walk_work_nodes_visited_incr) > N_ELTS_BUCKETS ?
 	      N_ELTS_BUCKETS-1 :
-	      n_elts/fib_walk_work_nodes_visisted_incr);
+	      n_elts/fib_walk_work_nodes_visited_incr);
     ++fib_walk_work_nodes_visited[bucket];
 
     bucket = (consumed_time - quota) / (quota / TIME_INCREMENTS);
@@ -1041,7 +1041,7 @@ fib_walk_show (vlib_main_t * vm,
     {
 	if (0 != fib_walk_work_nodes_visited[ii])
 	    s = format(s, "%d:%d ",
-		       (ii * fib_walk_work_nodes_visisted_incr),
+		       (ii * fib_walk_work_nodes_visited_incr),
 		       fib_walk_work_nodes_visited[ii]);
     }
     vlib_cli_output(vm, "  %v", s);
@@ -1162,7 +1162,7 @@ fib_walk_set_histogram_elements_size (vlib_main_t * vm,
 
     if (unformat (input, "%d", &new))
     {
-	fib_walk_work_nodes_visisted_incr = new;
+	fib_walk_work_nodes_visited_incr = new;
     }
     else
     {

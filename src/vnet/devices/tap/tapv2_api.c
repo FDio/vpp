@@ -137,30 +137,11 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 }
 
 static void
-tap_send_sw_interface_event_deleted (vpe_api_main_t * am,
-				     vl_api_registration_t * reg,
-				     u32 sw_if_index)
-{
-  vl_api_sw_interface_event_t *mp;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
-  mp->sw_if_index = ntohl (sw_if_index);
-
-  mp->admin_up_down = 0;
-  mp->link_up_down = 0;
-  mp->deleted = 1;
-  vl_api_send_msg (reg, (u8 *) mp);
-}
-
-static void
 vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   int rv;
-  vpe_api_main_t *vam = &vpe_api_main;
   vl_api_tap_delete_v2_reply_t *rmp;
   vl_api_registration_t *reg;
   u32 sw_if_index = ntohl (mp->sw_if_index);
@@ -179,10 +160,7 @@ vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 
   if (!rv)
-    {
-      vnet_clear_sw_interface_tag (vnm, sw_if_index);
-      tap_send_sw_interface_event_deleted (vam, reg, sw_if_index);
-    }
+    vnet_clear_sw_interface_tag (vnm, sw_if_index);
 }
 
 static void

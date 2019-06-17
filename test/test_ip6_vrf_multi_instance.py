@@ -160,6 +160,10 @@ class TestIP6VrfMultiInst(VppTestCase):
             super(TestIP6VrfMultiInst, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6VrfMultiInst, cls).tearDownClass()
+
     def setUp(self):
         """
         Clear trace and packet infos before running each test.
@@ -172,9 +176,10 @@ class TestIP6VrfMultiInst(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestIP6VrfMultiInst, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show ip6 fib"))
-            self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show ip6 fib"))
+        self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """
@@ -190,7 +195,7 @@ class TestIP6VrfMultiInst(VppTestCase):
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
             dest_addr = pg_if.local_ip6n
             dest_addr_len = 64
-            self.vapi.ip_table_add_del(vrf_id, is_add=1, is_ipv6=1)
+            self.vapi.ip_table_add_del(is_ipv6=1, is_add=1, table_id=vrf_id)
             self.logger.info("IPv6 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
@@ -233,7 +238,7 @@ class TestIP6VrfMultiInst(VppTestCase):
         self.logger.info("IPv6 VRF ID %d reset finished" % vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip6 fib"))
         self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
-        self.vapi.ip_table_add_del(vrf_id, is_add=0, is_ipv6=1)
+        self.vapi.ip_table_add_del(is_ipv6=1, is_add=0, table_id=vrf_id)
 
     def create_stream(self, src_if, packet_sizes):
         """
@@ -309,7 +314,7 @@ class TestIP6VrfMultiInst(VppTestCase):
             try:
                 ip = packet[IPv6]
                 udp = packet[UDP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug("Got packet on port %s: src=%u (id=%u)" %

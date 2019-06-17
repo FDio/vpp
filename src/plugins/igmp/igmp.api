@@ -215,8 +215,6 @@ service {
  */
 define igmp_event
 {
-  u32 context;
-
   u32 sw_if_index;
   vl_api_filter_mode_t filter;
   vl_api_ip4_address_t saddr;

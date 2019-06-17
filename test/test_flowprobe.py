@@ -40,9 +40,11 @@ class VppCFLOW(VppObject):
 
     def add_vpp_config(self):
         self.enable_exporter()
-        self._test.vapi.ppcli("flowprobe params record %s active %s "
-                              "passive %s" % (self._collect, self._active,
-                                              self._passive))
+        self._test.vapi.flowprobe_params(
+            record_l2=1 if 'l2' in self._collect.lower() else 0,
+            record_l3=1 if 'l3' in self._collect.lower() else 0,
+            record_l4=1 if 'l4' in self._collect.lower() else 0,
+            active_timer=self._active, passive_timer=self._passive)
         self.enable_flowprobe_feature()
         self._test.vapi.cli("ipfix flush")
         self._configured = True
@@ -72,7 +74,7 @@ class VppCFLOW(VppObject):
                             (self._intf, self._datapath))
 
     def object_id(self):
-        return "ipfix-collector-%s" % (self._src, self.dst)
+        return "ipfix-collector-%s-%s" % (self._src, self.dst)
 
     def query_vpp_config(self):
         return self._configured
@@ -125,8 +127,10 @@ class MethodHolder(VppTestCase):
             # Create BD with MAC learning and unknown unicast flooding disabled
             # and put interfaces to this BD
             cls.vapi.bridge_domain_add_del(bd_id=1, uu_flood=1, learn=1)
-            cls.vapi.sw_interface_set_l2_bridge(cls.pg1._sw_if_index, bd_id=1)
-            cls.vapi.sw_interface_set_l2_bridge(cls.pg2._sw_if_index, bd_id=1)
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg1._sw_if_index, bd_id=1)
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg2._sw_if_index, bd_id=1)
 
             # Set up all interfaces
             for i in cls.pg_interfaces:
@@ -230,7 +234,7 @@ class MethodHolder(VppTestCase):
                 ip_layer = capture[0][IPv6]
             if data_set is not None:
                 for record in data:
-                    # skip flow if in/out gress interface is 0
+                    # skip flow if ingress/egress interface is 0
                     if int(binascii.hexlify(record[10]), 16) == 0:
                         continue
                     if int(binascii.hexlify(record[14]), 16) == 0:
@@ -877,7 +881,7 @@ class DisableIPFIX(MethodHolder):
         self.wait_for_cflow_packet(self.collector, templates[1])
         self.collector.get_capture(4)
 
-        # disble IPFIX
+        # disable IPFIX
         ipfix.disable_exporter()
         self.pg_enable_capture([self.collector])
 
@@ -994,7 +998,7 @@ class DisableFP(MethodHolder):
         self.wait_for_cflow_packet(self.collector, templates[1])
         self.collector.get_capture(4)
 
-        # disble IPFIX
+        # disable IPFIX
         ipfix.disable_flowprobe_feature()
         self.pg_enable_capture([self.collector])
 
@@ -1045,7 +1049,7 @@ class ReenableFP(MethodHolder):
         self.wait_for_cflow_packet(self.collector, templates[1], 5)
         self.collector.get_capture(4)
 
-        # disble FPP feature
+        # disable FPP feature
         ipfix.disable_flowprobe_feature()
         self.pg_enable_capture([self.collector])
 

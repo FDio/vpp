@@ -30,12 +30,14 @@
 #define IP6_REASS_TIMEOUT_DEFAULT_MS 100
 #define IP6_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS 10000	// 10 seconds default
 #define IP6_REASS_MAX_REASSEMBLIES_DEFAULT 1024
+#define IP6_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT 3
 #define IP6_REASS_HT_LOAD_FACTOR (0.75)
 
 typedef enum
 {
   IP6_REASS_RC_OK,
   IP6_REASS_RC_INTERNAL_ERROR,
+  IP6_REASS_RC_TOO_MANY_FRAGMENTS,
   IP6_REASS_RC_NO_BUF,
 } ip6_reass_rc_t;
 
@@ -55,6 +57,27 @@ typedef struct
     u64 as_u64[6];
   };
 } ip6_reass_key_t;
+
+typedef union
+{
+  struct
+  {
+    u32 reass_index;
+    u32 thread_index;
+  };
+  u64 as_u64;
+} ip6_reass_val_t;
+
+typedef union
+{
+  struct
+  {
+    ip6_reass_key_t k;
+    ip6_reass_val_t v;
+  };
+  clib_bihash_kv_48_8_t kv;
+} ip6_reass_kv_t;
+
 
 always_inline u32
 ip6_reass_buffer_get_data_offset (vlib_buffer_t * b)
@@ -88,9 +111,15 @@ typedef struct
   // trace operation counter
   u32 trace_op_counter;
   // next index - used by non-feature node
-  u8 next_index;
+  u32 next_index;
+  // error next index - used by non-feature node
+  u32 error_next_index;
+  // is_feature flag stored for non-inline code use
+  bool is_feature;
   // minimum fragment length for this reassembly - used to estimate MTU
   u16 min_fragment_length;
+  // number of fragments for this reassembly
+  u32 fragments_n;
 } ip6_reass_t;
 
 typedef struct
@@ -107,6 +136,9 @@ typedef struct
   u32 timeout_ms;
   f64 timeout;
   u32 expire_walk_interval_ms;
+  // maximum number of fragments in one reassembly
+  u32 max_reass_len;
+  // maximum number of reassemblies
   u32 max_reass_n;
 
   // IPv6 runtime
@@ -124,15 +156,24 @@ typedef struct
   u32 ip6_icmp_error_idx;
   u32 ip6_reass_expire_node_idx;
 
+  /** Worker handoff */
+  u32 fq_index;
+  u32 fq_feature_index;
+
 } ip6_reass_main_t;
 
+extern ip6_reass_main_t ip6_reass_main;
+
+#ifndef CLIB_MARCH_VARIANT
 ip6_reass_main_t ip6_reass_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum
 {
   IP6_REASSEMBLY_NEXT_INPUT,
   IP6_REASSEMBLY_NEXT_DROP,
   IP6_REASSEMBLY_NEXT_ICMP_ERROR,
+  IP6_REASSEMBLY_NEXT_HANDOFF,
   IP6_REASSEMBLY_N_NEXT,
 } ip6_reass_next_t;
 
@@ -284,8 +325,9 @@ ip6_reass_free (ip6_reass_main_t * rm, ip6_reass_per_thread_t * rt,
 }
 
 always_inline void
-ip6_reass_drop_all (vlib_main_t * vm, ip6_reass_main_t * rm,
-		    ip6_reass_t * reass)
+ip6_reass_drop_all (vlib_main_t * vm, vlib_node_runtime_t * node,
+		    ip6_reass_main_t * rm, ip6_reass_t * reass,
+		    bool is_feature)
 {
   u32 range_bi = reass->first_bi;
   vlib_buffer_t *range_b;
@@ -312,67 +354,103 @@ ip6_reass_drop_all (vlib_main_t * vm, ip6_reass_main_t * rm,
 	}
       range_bi = range_vnb->ip.reass.next_range_bi;
     }
-  vlib_buffer_free (vm, to_free, vec_len (to_free));
+  /* send to next_error_index */
+  if (!(is_feature))
+    {
+      u32 n_left_to_next, *to_next, next_index;
+
+      next_index = reass->error_next_index;
+      u32 bi = ~0;
+
+      while (vec_len (to_free) > 0)
+	{
+	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+	  while (vec_len (to_free) > 0 && n_left_to_next > 0)
+	    {
+	      bi = vec_pop (to_free);
+
+	      if (~0 != bi)
+		{
+		  to_next[0] = bi;
+		  to_next += 1;
+		  n_left_to_next -= 1;
+		  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+						   to_next, n_left_to_next,
+						   bi, next_index);
+		}
+	    }
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	}
+    }
+  else
+    {
+      vlib_buffer_free (vm, to_free, vec_len (to_free));
+    }
   vec_free (to_free);
 }
 
 always_inline void
 ip6_reass_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      ip6_reass_main_t * rm, ip6_reass_t * reass,
-		      u32 * icmp_bi)
+		      u32 * icmp_bi, bool is_feature)
 {
   if (~0 == reass->first_bi)
     {
       return;
     }
-  vlib_buffer_t *b = vlib_get_buffer (vm, reass->first_bi);
-  if (0 == vnet_buffer (b)->ip.reass.fragment_first)
+  if (is_feature)
     {
-      *icmp_bi = reass->first_bi;
-      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+      vlib_buffer_t *b = vlib_get_buffer (vm, reass->first_bi);
+      if (0 == vnet_buffer (b)->ip.reass.fragment_first)
 	{
-	  ip6_reass_add_trace (vm, node, rm, reass, reass->first_bi,
-			       ICMP_ERROR_RT_EXCEEDED, 0);
+	  *icmp_bi = reass->first_bi;
+	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      ip6_reass_add_trace (vm, node, rm, reass, reass->first_bi,
+				   ICMP_ERROR_RT_EXCEEDED, 0);
+	    }
+	  // fragment with offset zero received - send icmp message back
+	  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      // separate first buffer from chain and steer it towards icmp node
+	      b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	      reass->first_bi = b->next_buffer;
+	    }
+	  else
+	    {
+	      reass->first_bi = vnet_buffer (b)->ip.reass.next_range_bi;
+	    }
+	  icmp6_error_set_vnet_buffer (b, ICMP6_time_exceeded,
+				       ICMP6_time_exceeded_fragment_reassembly_time_exceeded,
+				       0);
 	}
-      // fragment with offset zero received - send icmp message back
-      if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-	{
-	  // separate first buffer from chain and steer it towards icmp node
-	  b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
-	  reass->first_bi = b->next_buffer;
-	}
-      else
-	{
-	  reass->first_bi = vnet_buffer (b)->ip.reass.next_range_bi;
-	}
-      icmp6_error_set_vnet_buffer (b, ICMP6_time_exceeded,
-				   ICMP6_time_exceeded_fragment_reassembly_time_exceeded,
-				   0);
     }
-  ip6_reass_drop_all (vm, rm, reass);
+  ip6_reass_drop_all (vm, node, rm, reass, is_feature);
 }
 
 always_inline ip6_reass_t *
 ip6_reass_find_or_create (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  ip6_reass_main_t * rm, ip6_reass_per_thread_t * rt,
-			  ip6_reass_key_t * k, u32 * icmp_bi)
+			  ip6_reass_kv_t * kv, u32 * icmp_bi, u8 * do_handoff,
+			  bool is_feature)
 {
   ip6_reass_t *reass = NULL;
   f64 now = vlib_time_now (rm->vlib_main);
-  clib_bihash_kv_48_8_t kv, value;
-  kv.key[0] = k->as_u64[0];
-  kv.key[1] = k->as_u64[1];
-  kv.key[2] = k->as_u64[2];
-  kv.key[3] = k->as_u64[3];
-  kv.key[4] = k->as_u64[4];
-  kv.key[5] = k->as_u64[5];
 
-  if (!clib_bihash_search_48_8 (&rm->hash, &kv, &value))
+  if (!clib_bihash_search_48_8
+      (&rm->hash, (clib_bihash_kv_48_8_t *) kv, (clib_bihash_kv_48_8_t *) kv))
     {
-      reass = pool_elt_at_index (rt->pool, value.value);
+      if (vm->thread_index != kv->v.thread_index)
+	{
+	  *do_handoff = 1;
+	  return NULL;
+	}
+      reass = pool_elt_at_index (rt->pool, kv->v.reass_index);
+
       if (now > reass->last_heard + rm->timeout)
 	{
-	  ip6_reass_on_timeout (vm, node, rm, reass, icmp_bi);
+	  ip6_reass_on_timeout (vm, node, rm, reass, icmp_bi, is_feature);
 	  ip6_reass_free (rm, rt, reass);
 	  reass = NULL;
 	}
@@ -393,25 +471,26 @@ ip6_reass_find_or_create (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       pool_get (rt->pool, reass);
       clib_memset (reass, 0, sizeof (*reass));
-      reass->id =
-	((u64) os_get_thread_index () * 1000000000) + rt->id_counter;
+      reass->id = ((u64) vm->thread_index * 1000000000) + rt->id_counter;
       ++rt->id_counter;
       reass->first_bi = ~0;
       reass->last_packet_octet = ~0;
       reass->data_len = 0;
+      reass->is_feature = is_feature;
       ++rt->reass_n;
     }
 
-  reass->key.as_u64[0] = kv.key[0] = k->as_u64[0];
-  reass->key.as_u64[1] = kv.key[1] = k->as_u64[1];
-  reass->key.as_u64[2] = kv.key[2] = k->as_u64[2];
-  reass->key.as_u64[3] = kv.key[3] = k->as_u64[3];
-  reass->key.as_u64[4] = kv.key[4] = k->as_u64[4];
-  reass->key.as_u64[5] = kv.key[5] = k->as_u64[5];
-  kv.value = reass - rt->pool;
+  reass->key.as_u64[0] = ((clib_bihash_kv_48_8_t *) kv)->key[0];
+  reass->key.as_u64[1] = ((clib_bihash_kv_48_8_t *) kv)->key[1];
+  reass->key.as_u64[2] = ((clib_bihash_kv_48_8_t *) kv)->key[2];
+  reass->key.as_u64[3] = ((clib_bihash_kv_48_8_t *) kv)->key[3];
+  reass->key.as_u64[4] = ((clib_bihash_kv_48_8_t *) kv)->key[4];
+  reass->key.as_u64[5] = ((clib_bihash_kv_48_8_t *) kv)->key[5];
+  kv->v.reass_index = (reass - rt->pool);
+  kv->v.thread_index = vm->thread_index;
   reass->last_heard = now;
 
-  if (clib_bihash_add_del_48_8 (&rm->hash, &kv, 1))
+  if (clib_bihash_add_del_48_8 (&rm->hash, (clib_bihash_kv_48_8_t *) kv, 1))
     {
       ip6_reass_free (rm, rt, reass);
       reass = NULL;
@@ -596,6 +675,7 @@ ip6_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       rv = IP6_REASS_RC_NO_BUF;
       goto free_buffers_and_return;
     }
+  first_b->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
   if (PREDICT_FALSE (first_b->flags & VLIB_BUFFER_IS_TRACED))
     {
       ip6_reass_add_trace (vm, node, rm, reass, reass->first_bi, FINALIZE, 0);
@@ -680,6 +760,8 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *fb = vlib_get_buffer (vm, *bi0);
   vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);
   reass->next_index = fvnb->ip.reass.next_index;	// store next_index before it's overwritten
+  reass->error_next_index = fvnb->ip.reass.error_next_index;	// store error_next_index before it is overwritten
+
   fvnb->ip.reass.ip6_frag_hdr_offset =
     (u8 *) frag_hdr - (u8 *) vlib_buffer_get_current (fb);
   ip6_header_t *fip = vlib_buffer_get_current (fb);
@@ -714,6 +796,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       *bi0);
       reass->min_fragment_length = clib_net_to_host_u16 (fip->payload_length);
       consumed = 1;
+      reass->fragments_n = 1;
       goto check_if_done_maybe;
     }
   reass->min_fragment_length =
@@ -754,7 +837,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
       else
 	{
 	  // overlapping fragment - not allowed by RFC 8200
-	  ip6_reass_drop_all (vm, rm, reass);
+	  ip6_reass_drop_all (vm, node, rm, reass, is_feature);
 	  ip6_reass_free (rm, rt, reass);
 	  if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -767,6 +850,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       break;
     }
+  ++reass->fragments_n;
 check_if_done_maybe:
   if (consumed)
     {
@@ -786,6 +870,10 @@ check_if_done_maybe:
       if (consumed)
 	{
 	  *bi0 = ~0;
+	  if (reass->fragments_n > rm->max_reass_len)
+	    {
+	      return IP6_REASS_RC_TOO_MANY_FRAGMENTS;
+	    }
 	}
       else
 	{
@@ -871,7 +959,7 @@ ip6_reassembly_inline (vlib_main_t * vm,
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, *to_next, next_index;
   ip6_reass_main_t *rm = &ip6_reass_main;
-  ip6_reass_per_thread_t *rt = &rm->per_thread_data[os_get_thread_index ()];
+  ip6_reass_per_thread_t *rt = &rm->per_thread_data[vm->thread_index];
   clib_spinlock_lock (&rt->lock);
 
   n_left_from = frame->n_vectors;
@@ -924,19 +1012,34 @@ ip6_reassembly_inline (vlib_main_t * vm,
 	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
 	    (u8 *) frag_hdr - (u8 *) ip0;
 
-	  ip6_reass_key_t k;
-	  k.as_u64[0] = ip0->src_address.as_u64[0];
-	  k.as_u64[1] = ip0->src_address.as_u64[1];
-	  k.as_u64[2] = ip0->dst_address.as_u64[0];
-	  k.as_u64[3] = ip0->dst_address.as_u64[1];
-	  k.as_u64[4] =
-	    (u64) vnet_buffer (b0)->
-	    sw_if_index[VLIB_RX] << 32 | frag_hdr->identification;
-	  k.as_u64[5] = ip0->protocol;
-	  ip6_reass_t *reass =
-	    ip6_reass_find_or_create (vm, node, rm, rt, &k, &icmp_bi);
+	  ip6_reass_kv_t kv;
+	  u8 do_handoff = 0;
 
-	  if (reass)
+	  kv.k.as_u64[0] = ip0->src_address.as_u64[0];
+	  kv.k.as_u64[1] = ip0->src_address.as_u64[1];
+	  kv.k.as_u64[2] = ip0->dst_address.as_u64[0];
+	  kv.k.as_u64[3] = ip0->dst_address.as_u64[1];
+	  kv.k.as_u64[4] =
+	    ((u64) vec_elt (ip6_main.fib_index_by_sw_if_index,
+			    vnet_buffer (b0)->sw_if_index[VLIB_RX])) << 32 |
+	    (u64) frag_hdr->identification;
+	  kv.k.as_u64[5] = ip0->protocol;
+
+	  ip6_reass_t *reass =
+	    ip6_reass_find_or_create (vm, node, rm, rt, &kv, &icmp_bi,
+				      &do_handoff, is_feature);
+
+	  if (PREDICT_FALSE (do_handoff))
+	    {
+	      next0 = IP6_REASSEMBLY_NEXT_HANDOFF;
+	      if (is_feature)
+		vnet_buffer (b0)->ip.reass.owner_feature_thread_index =
+		  kv.v.thread_index;
+	      else
+		vnet_buffer (b0)->ip.reass.owner_thread_index =
+		  kv.v.thread_index;
+	    }
+	  else if (reass)
 	    {
 	      switch (ip6_reass_update (vm, node, rm, rt, reass, &bi0, &next0,
 					&error0, frag_hdr, is_feature))
@@ -944,11 +1047,27 @@ ip6_reassembly_inline (vlib_main_t * vm,
 		case IP6_REASS_RC_OK:
 		  /* nothing to do here */
 		  break;
+		case IP6_REASS_RC_TOO_MANY_FRAGMENTS:
+		  vlib_node_increment_counter (vm, node->node_index,
+					       IP6_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG,
+					       1);
+		  ip6_reass_drop_all (vm, node, rm, reass, is_feature);
+		  ip6_reass_free (rm, rt, reass);
+		  goto next_packet;
+		  break;
 		case IP6_REASS_RC_NO_BUF:
-		  /* fallthrough */
+		  vlib_node_increment_counter (vm, node->node_index,
+					       IP6_ERROR_REASS_NO_BUF, 1);
+		  ip6_reass_drop_all (vm, node, rm, reass, is_feature);
+		  ip6_reass_free (rm, rt, reass);
+		  goto next_packet;
+		  break;
 		case IP6_REASS_RC_INTERNAL_ERROR:
 		  /* drop everything and start with a clean slate */
-		  ip6_reass_drop_all (vm, rm, reass);
+		  vlib_node_increment_counter (vm, node->node_index,
+					       IP6_ERROR_REASS_INTERNAL_ERROR,
+					       1);
+		  ip6_reass_drop_all (vm, node, rm, reass, is_feature);
 		  ip6_reass_free (rm, rt, reass);
 		  goto next_packet;
 		  break;
@@ -956,7 +1075,15 @@ ip6_reassembly_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      next0 = IP6_REASSEMBLY_NEXT_DROP;
+	      if (is_feature)
+		{
+		  next0 = IP6_REASSEMBLY_NEXT_DROP;
+		}
+	      else
+		{
+		  vnet_buffer_opaque_t *fvnb = vnet_buffer (b0);
+		  next0 = fvnb->ip.reass.error_next_index;
+		}
 	      error0 = IP6_ERROR_REASS_LIMIT_REACHED;
 	    }
 
@@ -1005,16 +1132,14 @@ static char *ip6_reassembly_error_strings[] = {
 #undef _
 };
 
-static uword
-ip6_reassembly (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_reass_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return ip6_reassembly_inline (vm, node, frame, false /* is_feature */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_reass_node, static) = {
-    .function = ip6_reassembly,
+VLIB_REGISTER_NODE (ip6_reass_node) = {
     .name = "ip6-reassembly",
     .vector_size = sizeof (u32),
     .format_trace = format_ip6_reass_trace,
@@ -1026,22 +1151,20 @@ VLIB_REGISTER_NODE (ip6_reass_node, static) = {
                 [IP6_REASSEMBLY_NEXT_INPUT] = "ip6-input",
                 [IP6_REASSEMBLY_NEXT_DROP] = "ip6-drop",
                 [IP6_REASSEMBLY_NEXT_ICMP_ERROR] = "ip6-icmp-error",
+                [IP6_REASSEMBLY_NEXT_HANDOFF] = "ip6-reassembly-handoff",
         },
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_reass_node, ip6_reassembly);
-
-static uword
-ip6_reassembly_feature (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_reass_node_feature) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return ip6_reassembly_inline (vm, node, frame, true /* is_feature */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_reass_node_feature, static) = {
-    .function = ip6_reassembly_feature,
+VLIB_REGISTER_NODE (ip6_reass_node_feature) = {
     .name = "ip6-reassembly-feature",
     .vector_size = sizeof (u32),
     .format_trace = format_ip6_reass_trace,
@@ -1053,11 +1176,10 @@ VLIB_REGISTER_NODE (ip6_reass_node_feature, static) = {
                 [IP6_REASSEMBLY_NEXT_INPUT] = "ip6-input",
                 [IP6_REASSEMBLY_NEXT_DROP] = "ip6-drop",
                 [IP6_REASSEMBLY_NEXT_ICMP_ERROR] = "ip6-icmp-error",
+                [IP6_REASSEMBLY_NEXT_HANDOFF] = "ip6-reass-feature-hoff",
         },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_reass_node_feature, ip6_reassembly_feature);
 
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip6_reassembly_feature, static) = {
@@ -1068,6 +1190,7 @@ VNET_FEATURE_INIT (ip6_reassembly_feature, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 static u32
 ip6_reass_get_nbuckets ()
 {
@@ -1084,12 +1207,14 @@ ip6_reass_get_nbuckets ()
 
   return nbuckets;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum
 {
   IP6_EVENT_CONFIG_CHANGED = 1,
 } ip6_reass_event_t;
 
+#ifndef CLIB_MARCH_VARIANT
 typedef struct
 {
   int failure;
@@ -1108,20 +1233,21 @@ ip6_rehash_cb (clib_bihash_kv_48_8_t * kv, void *_ctx)
 
 static void
 ip6_reass_set_params (u32 timeout_ms, u32 max_reassemblies,
-		      u32 expire_walk_interval_ms)
+		      u32 max_reassembly_length, u32 expire_walk_interval_ms)
 {
   ip6_reass_main.timeout_ms = timeout_ms;
   ip6_reass_main.timeout = (f64) timeout_ms / (f64) MSEC_PER_SEC;
   ip6_reass_main.max_reass_n = max_reassemblies;
+  ip6_reass_main.max_reass_len = max_reassembly_length;
   ip6_reass_main.expire_walk_interval_ms = expire_walk_interval_ms;
 }
 
 vnet_api_error_t
 ip6_reass_set (u32 timeout_ms, u32 max_reassemblies,
-	       u32 expire_walk_interval_ms)
+	       u32 max_reassembly_length, u32 expire_walk_interval_ms)
 {
   u32 old_nbuckets = ip6_reass_get_nbuckets ();
-  ip6_reass_set_params (timeout_ms, max_reassemblies,
+  ip6_reass_set_params (timeout_ms, max_reassemblies, max_reassembly_length,
 			expire_walk_interval_ms);
   vlib_process_signal_event (ip6_reass_main.vlib_main,
 			     ip6_reass_main.ip6_reass_expire_node_idx,
@@ -1188,6 +1314,7 @@ ip6_reass_init_function (vlib_main_t * vm)
 
   ip6_reass_set_params (IP6_REASS_TIMEOUT_DEFAULT_MS,
 			IP6_REASS_MAX_REASSEMBLIES_DEFAULT,
+			IP6_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT,
 			IP6_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
 
   nbuckets = ip6_reass_get_nbuckets ();
@@ -1205,10 +1332,15 @@ ip6_reass_init_function (vlib_main_t * vm)
   ip6_register_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION,
 			 ip6_reass_node.index);
 
+  rm->fq_index = vlib_frame_queue_main_init (ip6_reass_node.index, 0);
+  rm->fq_feature_index =
+    vlib_frame_queue_main_init (ip6_reass_node_feature.index, 0);
+
   return error;
 }
 
 VLIB_INIT_FUNCTION (ip6_reass_init_function);
+#endif /* CLIB_MARCH_VARIANT */
 
 static uword
 ip6_reass_walk_expired (vlib_main_t * vm,
@@ -1275,7 +1407,7 @@ ip6_reass_walk_expired (vlib_main_t * vm,
                     b->flags &= ~VLIB_BUFFER_IS_TRACED;
                   }
               }
-            ip6_reass_on_timeout (vm, node, rm, reass, &icmp_bi);
+            ip6_reass_on_timeout (vm, node, rm, reass, &icmp_bi, reass->is_feature);
             if (~0 != icmp_bi)
               {
                 vec_add1 (vec_icmp_bi, icmp_bi);
@@ -1331,8 +1463,6 @@ ip6_reass_walk_expired (vlib_main_t * vm,
 
   return 0;
 }
-
-static vlib_node_registration_t ip6_reass_expire_node;
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_reass_expire_node, static) = {
@@ -1446,12 +1576,150 @@ VLIB_CLI_COMMAND (show_ip6_reassembly_cmd, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
 ip6_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {
   return vnet_feature_enable_disable ("ip6-unicast", "ip6-reassembly-feature",
 				      sw_if_index, enable_disable, 0, 0);
 }
+#endif /* CLIB_MARCH_VARIANT */
+
+#define foreach_ip6_reassembly_handoff_error                       \
+_(CONGESTION_DROP, "congestion drop")
+
+
+typedef enum
+{
+#define _(sym,str) IP6_REASSEMBLY_HANDOFF_ERROR_##sym,
+  foreach_ip6_reassembly_handoff_error
+#undef _
+    IP6_REASSEMBLY_HANDOFF_N_ERROR,
+} ip6_reassembly_handoff_error_t;
+
+static char *ip6_reassembly_handoff_error_strings[] = {
+#define _(sym,string) string,
+  foreach_ip6_reassembly_handoff_error
+#undef _
+};
+
+typedef struct
+{
+  u32 next_worker_index;
+} ip6_reassembly_handoff_trace_t;
+
+static u8 *
+format_ip6_reassembly_handoff_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  ip6_reassembly_handoff_trace_t *t =
+    va_arg (*args, ip6_reassembly_handoff_trace_t *);
+
+  s =
+    format (s, "ip6-reassembly-handoff: next-worker %d",
+	    t->next_worker_index);
+
+  return s;
+}
+
+always_inline uword
+ip6_reassembly_handoff_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame, bool is_feature)
+{
+  ip6_reass_main_t *rm = &ip6_reass_main;
+
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u32 n_enq, n_left_from, *from;
+  u16 thread_indices[VLIB_FRAME_SIZE], *ti;
+  u32 fq_index;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
+  ti = thread_indices;
+
+  fq_index = (is_feature) ? rm->fq_feature_index : rm->fq_index;
+
+  while (n_left_from > 0)
+    {
+      ti[0] =
+	(is_feature) ? vnet_buffer (b[0])->ip.
+	reass.owner_feature_thread_index : vnet_buffer (b[0])->ip.
+	reass.owner_thread_index;
+
+      if (PREDICT_FALSE
+	  ((node->flags & VLIB_NODE_FLAG_TRACE)
+	   && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  ip6_reassembly_handoff_trace_t *t =
+	    vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  t->next_worker_index = ti[0];
+	}
+
+      n_left_from -= 1;
+      ti += 1;
+      b += 1;
+    }
+  n_enq =
+    vlib_buffer_enqueue_to_thread (vm, fq_index, from, thread_indices,
+				   frame->n_vectors, 1);
+
+  if (n_enq < frame->n_vectors)
+    vlib_node_increment_counter (vm, node->node_index,
+				 IP6_REASSEMBLY_HANDOFF_ERROR_CONGESTION_DROP,
+				 frame->n_vectors - n_enq);
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (ip6_reassembly_handoff_node) (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    vlib_frame_t * frame)
+{
+  return ip6_reassembly_handoff_inline (vm, node, frame,
+					false /* is_feature */ );
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_reassembly_handoff_node) = {
+  .name = "ip6-reassembly-handoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(ip6_reassembly_handoff_error_strings),
+  .error_strings = ip6_reassembly_handoff_error_strings,
+  .format_trace = format_ip6_reassembly_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+
+VLIB_NODE_FN (ip6_reassembly_feature_handoff_node) (vlib_main_t * vm,
+                               vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return ip6_reassembly_handoff_inline (vm, node, frame, true /* is_feature */ );
+}
+
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_reassembly_feature_handoff_node) = {
+  .name = "ip6-reass-feature-hoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(ip6_reassembly_handoff_error_strings),
+  .error_strings = ip6_reassembly_handoff_error_strings,
+  .format_trace = format_ip6_reassembly_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

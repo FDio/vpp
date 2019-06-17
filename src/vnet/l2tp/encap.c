@@ -57,7 +57,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } l2tp_encap_runtime_t;
 
-vlib_node_registration_t l2t_encap_node;
+extern vlib_node_registration_t l2t_encap_node;
 
 #define NSTAGES 3
 
@@ -184,9 +184,9 @@ done:
 
 #include <vnet/pipeline.h>
 
-uword
-l2t_encap_node_fn (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2t_encap_node) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return dispatch_pipeline (vm, node, frame);
 }
@@ -194,7 +194,6 @@ l2t_encap_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_encap_node) = {
-  .function = l2t_encap_node_fn,
   .name = "l2tp-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_l2t_trace,
@@ -214,7 +213,7 @@ VLIB_REGISTER_NODE (l2t_encap_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2t_encap_node, l2t_encap_node_fn);
+#ifndef CLIB_MARCH_VARIANT
 void
 l2tp_encap_init (vlib_main_t * vm)
 {
@@ -225,6 +224,7 @@ l2tp_encap_init (vlib_main_t * vm)
   rt->cached_sw_if_index = (u32) ~ 0;
   rt->cached_session_index = (u32) ~ 0;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

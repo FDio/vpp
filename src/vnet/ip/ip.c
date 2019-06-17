@@ -278,6 +278,22 @@ ip6_mask_to_preflen (ip6_address_t * mask)
     return 64 - first0;
 }
 
+u8 *
+format_ip_address_family (u8 * s, va_list * args)
+{
+  ip_address_family_t af = va_arg (*args, ip_address_family_t);
+
+  switch (af)
+    {
+    case AF_IP4:
+      return (format (s, "ip4"));
+    case AF_IP6:
+      return (format (s, "ip6"));
+    }
+
+  return (format (s, "unknown"));
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

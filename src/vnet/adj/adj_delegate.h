@@ -36,7 +36,13 @@ typedef enum adj_delegate_type_t_ {
      * BFD session state
      */
     ADJ_DELEGATE_BFD,
+    /**
+     * Stacking of a midchain's nexthop
+     */
+    ADJ_DELEGATE_MIDCHAIN,
 } adj_delegate_type_t;
+
+#define ADJ_DELEGATE_LAST (ADJ_DELEGATE_MIDCHAIN)
 
 /**
  * Adj delegate. This object is attached to the adjacency.

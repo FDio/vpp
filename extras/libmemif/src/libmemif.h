@@ -23,11 +23,12 @@
 #define _LIBMEMIF_H_
 
 /** Libmemif version. */
-#define LIBMEMIF_VERSION "2.0"
+#define LIBMEMIF_VERSION "2.1"
 /** Default name of application using libmemif. */
 #define MEMIF_DEFAULT_APP_NAME "libmemif-app"
 
 #include <inttypes.h>
+#include <sys/timerfd.h>
 
 /*! Error codes */
 typedef enum
@@ -49,7 +50,7 @@ typedef enum
   MEMIF_ERR_NOCONN,		/*!< handle points to no connection */
   MEMIF_ERR_CONN,		/*!< handle points to existing connection */
   MEMIF_ERR_CB_FDUPDATE,	/*!< user defined callback memif_control_fd_update_t error */
-  MEMIF_ERR_FILE_NOT_SOCK,	/*!< file specified by socket filename 
+  MEMIF_ERR_FILE_NOT_SOCK,	/*!< file specified by socket filename
 				   exists, but it's not socket */
   MEMIF_ERR_NO_SHMFD,		/*!< missing shm fd */
   MEMIF_ERR_COOKIE,		/*!< wrong cookie on ring */
@@ -419,7 +420,7 @@ int memif_set_rx_mode (memif_conn_handle_t conn, memif_rx_mode_t rx_mode,
     @param err_code - error code
 
     Converts error code to error message.
-    
+
     \return Error string
 */
 char *memif_strerror (int err_code);
@@ -475,13 +476,13 @@ int memif_cleanup ();
     @param private_ctx - private contex passed back to user with callback
 
     Creates memory interface.
-     
-    SLAVE-MODE - 
+
+    SLAVE-MODE -
         Start timer that will send events to timerfd. If this fd is passed to memif_control_fd_handler
         every disconnected memif in slave mode will send connection request.
         On success new fd is passed to user with memif_control_fd_update_t.
 
-    MASTER-MODE - 
+    MASTER-MODE -
         Create listener socket and pass fd to user with memif_cntrol_fd_update_t.
         If this fd is passed to memif_control_fd_handler accept will be called and
         new fd will be passed to user with memif_control_fd_update_t.
@@ -500,15 +501,15 @@ int memif_create (memif_conn_handle_t * conn, memif_conn_args_t * args,
 
     If event occures on any control fd, call memif_control_fd_handler.
     Internal - lib will "identify" fd (timerfd, lsitener, control) and handle event accordingly.
- 
-    FD-TYPE - 
-        TIMERFD - 
+
+    FD-TYPE -
+        TIMERFD -
             Every disconnected memif in slave mode will request connection.
-        LISTENER or CONTROL - 
+        LISTENER or CONTROL -
             Handle socket messaging (internal connection establishment).
-        INTERRUPT - 
+        INTERRUPT -
             Call on_interrupt callback (if set).
-        
+
     \return memif_err_t
 
 */
@@ -593,7 +594,7 @@ int memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
 /** \brief Memif poll event
     @param timeout - timeout in seconds
 
-    Passive event polling - 
+    Passive event polling -
     timeout = 0 - dont wait for event, check event queue if there is an event and return.
     timeout = -1 - wait until event
 
@@ -615,6 +616,25 @@ int memif_poll_event (int timeout);
 */
 #define MEMIF_HAVE_CANCEL_POLL_EVENT 1
 int memif_cancel_poll_event ();
+
+/** \brief Set connection request timer value
+    @param timer - new timer value
+
+    Timer on which all disconnected slaves request connection.
+    See system call 'timer_settime' man-page.
+
+    \return memif_err_t
+*/
+int memif_set_connection_request_timer(struct itimerspec timer);
+
+/** \brief Send connection request
+    @param conn - memif connection handle
+
+    Only slave interface can request connection.
+
+    \return memif_err_t
+*/
+int memif_request_connection(memif_conn_handle_t conn);
 /** @} */
 
 #endif /* _LIBMEMIF_H_ */

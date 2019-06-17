@@ -507,7 +507,6 @@ vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
 
       if (next_thread_index != current_thread_index)
 	{
-
 	  if (drop_on_congestion &&
 	      is_vlib_frame_queue_congested
 	      (frame_queue_index, next_thread_index, fqm->queue_hi_thresh,
@@ -518,6 +517,7 @@ vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
 	      n_drop++;
 	      goto next;
 	    }
+	  vlib_mains[next_thread_index]->check_frame_queues = 1;
 
 	  if (hf)
 	    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_thread;

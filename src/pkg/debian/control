@@ -5,7 +5,9 @@ Maintainer: fd.io VPP Packaging Team <vpp-dev@fd.io>
 Build-Depends: debhelper (>= 9),
                dh-systemd,
 	       dh-python,
-	       python-all
+	       python-all,
+	       python3-all,
+	       python3-setuptools
 Standards-Version: 3.9.4
 
 Package: vpp
@@ -70,5 +72,14 @@ Depends: vpp (= ${source:Version}),
          ${python:Depends},
 	 ${misc:Depends}
 Description: VPP Python API bindings
-  This package contains VPP python api bindings
-  .
+ This package contains VPP python api bindings
+ .
+
+Package: python3-vpp-api
+Architecture: any
+Depends: vpp (= ${source:Version}),
+         ${python3:Depends},
+	 ${misc:Depends}
+Description: VPP Python3 API bindings
+ This package contains VPP python api bindings
+ .

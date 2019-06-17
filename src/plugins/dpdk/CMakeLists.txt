@@ -12,30 +12,18 @@
 # limitations under the License.
 
 ##############################################################################
-# macros
-##############################################################################
-macro(dpdk_find_library var name)
-  find_library(${var} NAMES ${name} ${ARGN})
-if (NOT ${var})
-  message(WARNING "-- ${name} library not found - dpdk_plugin disabled")
-  return()
-endif()
-    message(STATUS "DPDK plugin needs ${name} library - found at ${${var}}")
-endmacro()
-
-##############################################################################
 # Find lib and include files
 ##############################################################################
 find_path(DPDK_INCLUDE_DIR PATH_SUFFIXES dpdk NAMES rte_config.h)
-find_library(DPDK_LIB NAMES libdpdk.a)
+vpp_plugin_find_library(dpdk DPDK_LIB "libdpdk.a")
 
 if (NOT DPDK_INCLUDE_DIR)
-  message(WARNING "-- DPDK headers not found - dpdk_plugin disabled")
+  message(WARNING "-- DPDK headers not found - dpdk plugin disabled")
   return()
 endif()
 
 if (NOT DPDK_LIB)
-  dpdk_find_library(DPDK_SHLIB "libdpdk.so")
+  vpp_plugin_find_library(dpdk DPDK_SHLIB "libdpdk.so")
   set(DPDK_IS_SHARED_LIB 1)
   message(WARNING "-- linking dpdk plugin against DPDK shared libs")
 endif()
@@ -91,7 +79,7 @@ endif()
 ##############################################################################
 # libnuma
 ##############################################################################
-dpdk_find_library(NUMA_LIB "numa")
+vpp_plugin_find_library(dpdk NUMA_LIB "numa")
 list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
 
 ##############################################################################
@@ -99,10 +87,10 @@ list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
 ##############################################################################
 if(DPDK_RTE_LIBRTE_PMD_AESNI_MB OR DPDK_RTE_LIBRTE_PMD_AESNI_GCM)
   if(DPDK_IS_SHARED_LIB)
-    dpdk_find_library(IPSECMB_LIB "libIPSec_MB.so")
+    vpp_plugin_find_library(dpdk IPSECMB_LIB "libIPSec_MB.so")
     list(APPEND DPDK_LINK_LIBRARIES "${IPSECMB_LIB}")
   else()
-    dpdk_find_library(IPSECMB_LIB "libIPSec_MB.a")
+    vpp_plugin_find_library(dpdk IPSECMB_LIB "libIPSec_MB.a")
     get_filename_component(IPSECMB_LIB_DIR ${IPSECMB_LIB} DIRECTORY)
     string_append(DPDK_LINK_FLAGS "-L${IPSECMB_LIB_DIR}")
     string_append(DPDK_LINK_FLAGS "-Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a")
@@ -113,16 +101,12 @@ endif()
 # Mellanox libraries
 ##############################################################################
 if(DPDK_RTE_LIBRTE_MLX4_PMD OR DPDK_RTE_LIBRTE_MLX5_PMD)
-  dpdk_find_library(MNL_LIB "mnl")
+  vpp_plugin_find_library(dpdk MNL_LIB "mnl")
   list(APPEND DPDK_LINK_LIBRARIES "${MNL_LIB}")
   if (DPDK_RTE_IBVERBS_LINK_DLOPEN)
     message(STATUS "DPDK depends on libmnl (Mellanox PMD requirement)")
   else()
-    dpdk_find_library(IBVERBS_LIB "ibverbs")
-    list(APPEND DPDK_LINK_LIBRARIES "${IBVERBS_LIB}")
-    dpdk_find_library(MLX5_LIB "mlx5")
-    list(APPEND DPDK_LINK_LIBRARIES "${MLX5_LIB}")
-    message(STATUS "DPDK depends on libmnl, libibverbs, libmlx5 (Mellanox PMD requirement)")
+    message(WARNING "unsupported DPDK configuration: DPDK Mellanox PMD requires RTE_IBVERBS_LINK_DLOPEN")
   endif()
 endif()
 

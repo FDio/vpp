@@ -303,7 +303,7 @@ ip4_mfib_table_entry_remove (ip4_mfib_t *mfib,
     if (NULL == result)
     {
         /*
-         * removing a non-existant entry. i'll allow it.
+         * removing a non-existent entry. i'll allow it.
          */
     }
     else
@@ -366,7 +366,7 @@ format_ip4_mfib_table_memory (u8 * s, va_list * args)
         total_memory += mfib_size;
     }));
 
-    s = format(s, "%=30s %=6d %=8ld\n",
+    s = format(s, "%=30s %=6d %=12ld\n",
                "IPv4 multicast",
                pool_elts(ip4_main.mfibs), total_memory);
 

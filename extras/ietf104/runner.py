@@ -504,7 +504,7 @@ class Program(object):
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
 #        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr-prefix D4::/32 local-prefix C1::/64")
-        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr-prefix D4::/32")
+        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 local_prefix C1::/64")
         c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D1::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")

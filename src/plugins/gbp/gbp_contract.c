@@ -40,6 +40,17 @@ gbp_next_hop_t *gbp_next_hop_pool;
 #define GBP_CONTRACT_DBG(...)                           \
     vlib_log_notice (gc_logger, __VA_ARGS__);
 
+/* Adjacency packet/byte counters indexed by adjacency index. */
+vlib_combined_counter_main_t gbp_contract_permit_counters = {
+  .name = "gbp-contracts-permit",
+  .stat_segment_name = "/net/gbp/contract/permit",
+};
+
+vlib_combined_counter_main_t gbp_contract_drop_counters = {
+  .name = "gbp-contracts-drop",
+  .stat_segment_name = "/net/gbp/contract/drop",
+};
+
 index_t
 gbp_rule_alloc (gbp_rule_action_t action,
 		gbp_hash_mode_t hash_mode, index_t * nhs)
@@ -377,7 +388,7 @@ gbp_contract_next_hop_resolve (index_t gui, index_t gnhi)
 				     gbd->gb_uu_fwd_sw_if_index,
 				     ips,
 				     &gnh->gnh_mac,
-				     gnh->gnh_bd, gnh->gnh_rd, EPG_INVALID,
+				     gnh->gnh_bd, gnh->gnh_rd, SCLASS_INVALID,
 				     GBP_ENDPOINT_FLAG_NONE, NULL, NULL,
 				     &gnh->gnh_ge);
 
@@ -433,9 +444,11 @@ gbp_contract_mk_lbs (index_t * guis)
 }
 
 int
-gbp_contract_update (epg_id_t src_epg,
-		     epg_id_t dst_epg,
-		     u32 acl_index, index_t * rules, u16 * allowed_ethertypes)
+gbp_contract_update (sclass_t sclass,
+		     sclass_t dclass,
+		     u32 acl_index,
+		     index_t * rules,
+		     u16 * allowed_ethertypes, u32 * stats_index)
 {
   gbp_main_t *gm = &gbp_main;
   u32 *acl_vec = NULL;
@@ -444,8 +457,8 @@ gbp_contract_update (epg_id_t src_epg,
   uword *p;
 
   gbp_contract_key_t key = {
-    .gck_src = src_epg,
-    .gck_dst = dst_epg,
+    .gck_src = sclass,
+    .gck_dst = dclass,
   };
 
   if (~0 == gm->gbp_acl_user_id)
@@ -471,6 +484,11 @@ gbp_contract_update (epg_id_t src_epg,
       gc->gc_key = key;
       gci = gc - gbp_contract_pool;
       hash_set (gbp_contract_db.gc_hash, key.as_u32, gci);
+
+      vlib_validate_combined_counter (&gbp_contract_drop_counters, gci);
+      vlib_zero_combined_counter (&gbp_contract_drop_counters, gci);
+      vlib_validate_combined_counter (&gbp_contract_permit_counters, gci);
+      vlib_zero_combined_counter (&gbp_contract_permit_counters, gci);
     }
 
   GBP_CONTRACT_DBG ("update: %U", format_gbp_contract, gci);
@@ -483,21 +501,23 @@ gbp_contract_update (epg_id_t src_epg,
   gc->gc_acl_index = acl_index;
   gc->gc_lc_index =
     gm->acl_plugin.get_lookup_context_index (gm->gbp_acl_user_id,
-					     src_epg, dst_epg);
+					     sclass, dclass);
 
   vec_add1 (acl_vec, gc->gc_acl_index);
   gm->acl_plugin.set_acl_vec_for_context (gc->gc_lc_index, acl_vec);
   vec_free (acl_vec);
 
+  *stats_index = gci;
+
   return (0);
 }
 
 int
-gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg)
+gbp_contract_delete (sclass_t sclass, sclass_t dclass)
 {
   gbp_contract_key_t key = {
-    .gck_src = src_epg,
-    .gck_dst = dst_epg,
+    .gck_src = sclass,
+    .gck_dst = dclass,
   };
   gbp_contract_t *gc;
   uword *p;
@@ -538,8 +558,8 @@ static clib_error_t *
 gbp_contract_cli (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  epg_id_t src_epg_id = EPG_INVALID, dst_epg_id = EPG_INVALID;
-  u32 acl_index = ~0;
+  sclass_t sclass = SCLASS_INVALID, dclass = SCLASS_INVALID;
+  u32 acl_index = ~0, stats_index;
   u8 add = 1;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -548,9 +568,9 @@ gbp_contract_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
-      else if (unformat (input, "src-epg %d", &src_epg_id))
+      else if (unformat (input, "src-epg %d", &sclass))
 	;
-      else if (unformat (input, "dst-epg %d", &dst_epg_id))
+      else if (unformat (input, "dst-epg %d", &dclass))
 	;
       else if (unformat (input, "acl-index %d", &acl_index))
 	;
@@ -558,18 +578,19 @@ gbp_contract_cli (vlib_main_t * vm,
 	break;
     }
 
-  if (EPG_INVALID == src_epg_id)
+  if (SCLASS_INVALID == sclass)
     return clib_error_return (0, "Source EPG-ID must be specified");
-  if (EPG_INVALID == dst_epg_id)
+  if (SCLASS_INVALID == dclass)
     return clib_error_return (0, "Destination EPG-ID must be specified");
 
   if (add)
     {
-      gbp_contract_update (src_epg_id, dst_epg_id, acl_index, NULL, NULL);
+      gbp_contract_update (sclass, dclass, acl_index,
+			   NULL, NULL, &stats_index);
     }
   else
     {
-      gbp_contract_delete (src_epg_id, dst_epg_id);
+      gbp_contract_delete (sclass, dclass);
     }
 
   return (NULL);
@@ -606,14 +627,15 @@ u8 *
 format_gbp_contract (u8 * s, va_list * args)
 {
   index_t gci = va_arg (*args, index_t);
+  vlib_counter_t counts;
   gbp_contract_t *gc;
   index_t *gui;
   u16 *et;
 
   gc = gbp_contract_get (gci);
 
-  s = format (s, "%U: acl-index:%d",
-	      format_gbp_contract_key, &gc->gc_key, gc->gc_acl_index);
+  s = format (s, "[%d] %U: acl-index:%d",
+	      gci, format_gbp_contract_key, &gc->gc_key, gc->gc_acl_index);
 
   vec_foreach (gui, gc->gc_rules)
   {
@@ -624,8 +646,15 @@ format_gbp_contract (u8 * s, va_list * args)
   vec_foreach (et, gc->gc_allowed_ethertypes)
   {
     int host_et = clib_net_to_host_u16 (*et);
-    s = format (s, "0x%x, ", host_et);
+    if (0 != host_et)
+      s = format (s, "0x%x, ", host_et);
   }
+
+  vlib_get_combined_counter (&gbp_contract_drop_counters, gci, &counts);
+  s = format (s, "\n   drop:[%Ld:%Ld]", counts.packets, counts.bytes);
+  vlib_get_combined_counter (&gbp_contract_permit_counters, gci, &counts);
+  s = format (s, "\n   permit:[%Ld:%Ld]", counts.packets, counts.bytes);
+
   s = format (s, "]");
 
   return (s);
@@ -635,14 +664,47 @@ static clib_error_t *
 gbp_contract_show (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  gbp_contract_t *gc;
+  u32 src, dst;
   index_t gci;
+
+  src = dst = SCLASS_INVALID;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "src %d", &src))
+	;
+      else if (unformat (input, "dst %d", &dst))
+	;
+      else
+	break;
+    }
 
   vlib_cli_output (vm, "Contracts:");
 
   /* *INDENT-OFF* */
-  pool_foreach_index (gci, gbp_contract_pool,
+  pool_foreach (gc, gbp_contract_pool,
   ({
-    vlib_cli_output (vm, "  [%d] %U", gci, format_gbp_contract, gci);
+    gci = gc - gbp_contract_pool;
+
+    if (SCLASS_INVALID != src && SCLASS_INVALID != dst)
+      {
+        if (gc->gc_key.gck_src == src &&
+            gc->gc_key.gck_dst == dst)
+          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+      }
+    else if (SCLASS_INVALID != src)
+      {
+        if (gc->gc_key.gck_src == src)
+          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+      }
+    else if (SCLASS_INVALID != dst)
+      {
+        if (gc->gc_key.gck_dst == dst)
+          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+      }
+    else
+      vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
   }));
   /* *INDENT-ON* */
 
@@ -659,7 +721,7 @@ gbp_contract_show (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_contract_show_node, static) = {
   .path = "show gbp contract",
-  .short_help = "show gbp contract\n",
+  .short_help = "show gbp contract [src <SRC>] [dst <DST>]\n",
   .function = gbp_contract_show,
 };
 /* *INDENT-ON* */

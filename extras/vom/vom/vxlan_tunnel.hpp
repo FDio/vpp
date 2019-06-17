@@ -82,7 +82,8 @@ public:
   {
     ~mode_t() = default;
     const static mode_t STANDARD;
-    const static mode_t GBP;
+    const static mode_t GBP_L2;
+    const static mode_t GBP_L3;
     const static mode_t GPE;
 
   private:
@@ -101,6 +102,11 @@ public:
                const boost::asio::ip::address& dst,
                uint32_t vni,
                const interface& mcast_itf,
+               const mode_t& mode = mode_t::STANDARD);
+  vxlan_tunnel(const boost::asio::ip::address& src,
+               const boost::asio::ip::address& dst,
+               uint32_t vni,
+               const route_domain& rd,
                const mode_t& mode = mode_t::STANDARD);
 
   /*
@@ -225,6 +231,16 @@ private:
    * is multicast
    */
   std::shared_ptr<interface> m_mcast_itf;
+
+  /**
+   * The RD an L3 interface is bound to
+   */
+  std::shared_ptr<const route_domain> m_rd;
+
+  /**
+   * HW state of the VPP table mapping
+   */
+  HW::item<route::table_id_t> m_table_id;
 
   /**
    * Construct a unique name for the tunnel

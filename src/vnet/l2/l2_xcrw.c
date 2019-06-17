@@ -57,9 +57,11 @@ format_l2_xcrw_trace (u8 * s, va_list * args)
   return s;
 }
 
-l2_xcrw_main_t l2_xcrw_main;
+extern l2_xcrw_main_t l2_xcrw_main;
 
-static vlib_node_registration_t l2_xcrw_node;
+#ifndef CLIB_MARCH_VARIANT
+l2_xcrw_main_t l2_xcrw_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 static char *l2_xcrw_error_strings[] = {
 #define _(sym,string) string,
@@ -67,9 +69,8 @@ static char *l2_xcrw_error_strings[] = {
 #undef _
 };
 
-static uword
-l2_xcrw_node_fn (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_xcrw_node) (vlib_main_t * vm,
+			     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_xcrw_next_t next_index;
@@ -238,8 +239,7 @@ l2_xcrw_node_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_xcrw_node, static) = {
-  .function = l2_xcrw_node_fn,
+VLIB_REGISTER_NODE (l2_xcrw_node) = {
   .name = "l2-xcrw",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_xcrw_trace,
@@ -257,8 +257,9 @@ VLIB_REGISTER_NODE (l2_xcrw_node, static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2_xcrw_node, l2_xcrw_node_fn)
-     clib_error_t *l2_xcrw_init (vlib_main_t * vm)
+#ifndef CLIB_MARCH_VARIANT
+clib_error_t *
+l2_xcrw_init (vlib_main_t * vm)
 {
   l2_xcrw_main_t *mp = &l2_xcrw_main;
 
@@ -271,14 +272,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_xcrw_node, l2_xcrw_node_fn)
 
 VLIB_INIT_FUNCTION (l2_xcrw_init);
 
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
 static u8 *
 format_xcrw_name (u8 * s, va_list * args)
 {
@@ -290,7 +283,6 @@ format_xcrw_name (u8 * s, va_list * args)
 VNET_DEVICE_CLASS (xcrw_device_class,static) = {
   .name = "Xcrw",
   .format_device_name = format_xcrw_name,
-  .tx_function = dummy_interface_tx,
 };
 /* *INDENT-ON* */
 
@@ -513,6 +505,8 @@ VLIB_CLI_COMMAND (set_l2_xcrw_command, static) = {
   .function = set_l2_xcrw_command_fn,
 };
 /* *INDENT-ON* */
+
+#endif /* CLIB_MARCH_VARIANT */
 
 static u8 *
 format_l2xcrw (u8 * s, va_list * args)

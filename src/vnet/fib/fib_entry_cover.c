@@ -63,7 +63,7 @@ fib_entry_cover_untrack (fib_entry_t* cover,
 }
 
 /**
- * Internal struct to hold user supplied paraneters for the cover walk
+ * Internal struct to hold user supplied parameters for the cover walk
  */
 typedef struct fib_enty_cover_walk_ctx_t_ {
     fib_entry_t *cover;

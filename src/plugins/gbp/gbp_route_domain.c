@@ -15,7 +15,6 @@
 
 #include <plugins/gbp/gbp_route_domain.h>
 #include <plugins/gbp/gbp_endpoint.h>
-#include <plugins/gbp/gbp_sclass.h>
 
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
@@ -183,8 +182,6 @@ gbp_route_domain_add_and_lock (u32 rd_id,
 					     &ADJ_BCAST_ADDR,
 					     grd->grd_uu_sw_if_index[fproto],
 					     rewrite);
-
-	    gbp_sclass_enable_ip (grd->grd_uu_sw_if_index[fproto]);
 	  }
 	else
 	  {
@@ -226,8 +223,6 @@ gbp_route_domain_unlock (index_t index)
 			  fproto, FIB_SOURCE_PLUGIN_HI);
 	if (INDEX_INVALID != grd->grd_adj[fproto])
 	  adj_unlock (grd->grd_adj[fproto]);
-	if (~0 != grd->grd_uu_sw_if_index[fproto])
-	  gbp_sclass_disable_ip (grd->grd_uu_sw_if_index[fproto]);
       }
 
       gbp_route_domain_db_remove (grd);
@@ -350,13 +345,13 @@ gbp_route_domain_cli (vlib_main_t * vm,
  * Configure a GBP route-domain
  *
  * @cliexpar
- * @cliexstart{set gbp route-domain [del] bd <ID> bvi <interface> uu-flood <interface>}
+ * @cliexstart{gbp route-domain [del] rd <ID> ip4-table-id <ID> ip6-table-id <ID> [ip4-uu <interface>] [ip6-uu <interface>]}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_route_domain_cli_node, static) = {
   .path = "gbp route-domain",
-  .short_help = "gbp route-domain [del] epg bd <ID> bvi <interface> uu-flood <interface>",
+  .short_help = "gbp route-domain [del] rd <ID> ip4-table-id <ID> ip6-table-id <ID> [ip4-uu <interface>] [ip6-uu <interface>]",
   .function = gbp_route_domain_cli,
 };
 

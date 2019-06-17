@@ -28,6 +28,8 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
+#include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_if.h>
 
 extern vnet_hw_interface_class_t ipsec_gre_hw_interface_class;
 
@@ -86,24 +88,11 @@ extern vlib_node_registration_t ipsec_gre_input_node;
 extern vnet_device_class_t ipsec_gre_device_class;
 
 /* manually added to the interface output node in ipsec_gre.c */
-#define IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT 1
+#define IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT 0
 
-/**
- * @brief IPSec-GRE tunnel add/del arguments.
- *
-*/
-typedef struct
-{
-  u8 is_add; /**< 1 - add, 0 - delete */
-
-  ip4_address_t src; /**< tunnel IPv4 src address */
-  ip4_address_t dst; /**< tunnel IPv4 dst address */
-  u32 lsa;	     /**< local IPSec SA id */
-  u32 rsa;	     /**< remote IPSec SA id */
-} vnet_ipsec_gre_add_del_tunnel_args_t;
-
-int vnet_ipsec_gre_add_del_tunnel
-  (vnet_ipsec_gre_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
+extern int vnet_ipsec_gre_tunnel_add_del (const
+					  ipsec_gre_tunnel_add_del_args_t * a,
+					  u32 * sw_if_indexp);
 
 #endif /* included_ipsec_gre_h */
 

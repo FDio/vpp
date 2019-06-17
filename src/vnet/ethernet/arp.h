@@ -47,6 +47,9 @@ extern int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 				   ip4_address_t * hi_addr,
 				   u32 fib_index, int is_del);
 
+extern int vnet_proxy_arp_enable_disable (vnet_main_t * vnm,
+					  u32 sw_if_index, u8 enable);
+
 extern int vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
 					   u32 sw_if_index,
 					   const
@@ -102,6 +105,14 @@ typedef walk_rc_t (proxy_arp_walk_t) (const ip4_address_t * lo_addr,
 				      u32 fib_index, void *dat);
 
 extern void proxy_arp_walk (proxy_arp_walk_t cb, void *data);
+
+/**
+ * call back function when walking the DB of proxy ARP interface
+ * @return 0 to stop the walk !0 to continue
+ */
+typedef walk_rc_t (proxy_arp_intf_walk_t) (u32 sw_if_index, void *data);
+
+extern void proxy_arp_intfc_walk (proxy_arp_intf_walk_t cb, void *data);
 
 #endif
 

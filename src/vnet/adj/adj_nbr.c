@@ -291,7 +291,7 @@ adj_nbr_add_or_lock_w_rewrite (fib_protocol_t nh_proto,
  * adj_nbr_update_rewrite
  *
  * Update the adjacency's rewrite string. A NULL string implies the
- * rewirte is reset (i.e. when ARP/ND etnry is gone).
+ * rewrite is reset (i.e. when ARP/ND entry is gone).
  * NB: the adj being updated may be handling traffic in the DP.
  */
 void
@@ -333,7 +333,7 @@ adj_nbr_update_rewrite (adj_index_t adj_index,
  * adj_nbr_update_rewrite_internal
  *
  * Update the adjacency's rewrite string. A NULL string implies the
- * rewirte is reset (i.e. when ARP/ND etnry is gone).
+ * rewrite is reset (i.e. when ARP/ND entry is gone).
  * NB: the adj being updated may be handling traffic in the DP.
  */
 void
@@ -357,7 +357,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
     {
         /*
          * The link type MPLS has no children in the control plane graph, it only
-         * has children in the data-palne graph. The backwalk is up the former.
+         * has children in the data-plane graph. The backwalk is up the former.
          * So we need to walk from its IP cousin.
          */
         walk_ai = adj_nbr_find(adj->ia_nh_proto,
@@ -394,7 +394,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      * lock the adjacencies that are affected by updates this walk will provoke.
      * Since the aim of the walk is to update children to link to a different
      * DPO, this adj will no longer be in use and its lock count will drop to 0.
-     * We don't want it to be deleted as part of this endevour.
+     * We don't want it to be deleted as part of this endeavour.
      */
     adj_lock(adj_get_index(adj));
     adj_lock(walk_ai);
@@ -407,7 +407,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      * ideally we would only want to suspend forwarding via this adj whilst we
      * do this, but we do not have that level of granularity - it's suspend all
      * worker threads or nothing.
-     * The other chioces are:
+     * The other choices are:
      *  - to mark the adj down and back walk so child load-balances drop this adj
      *    from the set.
      *  - update the next_node index of this adj to point to error-drop
@@ -418,7 +418,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      * node. So from the options above, updating the next_node of the adj to
      * be drop will work, but it relies on each graph node v4/v6/mpls, rewrite/
      * arp/midchain always be valid w.r.t. a mis-match of adj type and node type
-     * (i.e. a rewrite adj in the arp node). This is not enforcable. Getting it
+     * (i.e. a rewrite adj in the arp node). This is not enforceable. Getting it
      * wrong will lead to hard to find bugs since its a race condition. So we
      * choose the more reliable method of updating the children to use the drop,
      * then switching adj's type, then updating the children again. Did I mention
@@ -440,7 +440,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 	fib_node_back_walk_ctx_t bw_ctx = {
 	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_DOWN,
             /*
-             * force this walk to be synchrous. if we don't and a node in the graph
+             * force this walk to be synchronous. if we don't and a node in the graph
              * (a heavily shared path-list) chooses to back-ground the walk (make it
              * async) then it will pause and we will do the adj update below, before
              * all the children are updated. not good.
@@ -484,7 +484,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
                                                         next_node);
 
     /*
-     * done with the rewirte update - let the workers loose.
+     * done with the rewrite update - let the workers loose.
      */
     vlib_worker_thread_barrier_release(vm);
 

@@ -686,8 +686,8 @@ fib_path_attached_next_hop_set (fib_path_t *path)
 				     FIB_NODE_TYPE_PATH,
 				     fib_path_get_index(path));
 
-    if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
-				      path->attached_next_hop.fp_interface) ||
+    if (!vnet_sw_interface_is_up(vnet_get_main(),
+                                 path->attached_next_hop.fp_interface) ||
         !adj_is_up(path->fp_dpo.dpoi_index))
     {
 	path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
@@ -1083,7 +1083,7 @@ FIXME comment
             uword if_is_up;
             adj_index_t ai;
 
-            if_is_up = vnet_sw_interface_is_admin_up(
+            if_is_up = vnet_sw_interface_is_up(
                            vnet_get_main(),
                            path->attached_next_hop.fp_interface);
 
@@ -1883,19 +1883,28 @@ fib_path_resolve (fib_node_index_t path_index)
 	fib_path_attached_next_hop_set(path);
 	break;
     case FIB_PATH_TYPE_ATTACHED:
+    {
+        dpo_id_t tmp = DPO_INVALID;
+
         /*
          * path->attached.fp_interface
          */
-        if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
-                                           path->attached.fp_interface))
+        if (!vnet_sw_interface_is_up(vnet_get_main(),
+                                     path->attached.fp_interface))
         {
             path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
         }
-        dpo_set(&path->fp_dpo,
+        dpo_set(&tmp,
                 DPO_ADJACENCY,
                 path->fp_nh_proto,
                 fib_path_attached_get_adj(path,
                                           dpo_proto_to_link(path->fp_nh_proto)));
+
+        /*
+         * re-fetch after possible mem realloc
+         */
+        path = fib_path_get(path_index);
+        dpo_copy(&path->fp_dpo, &tmp);
 
         /*
          * become a child of the adjacency so we receive updates
@@ -1904,7 +1913,9 @@ fib_path_resolve (fib_node_index_t path_index)
         path->fp_sibling = adj_child_add(path->fp_dpo.dpoi_index,
                                          FIB_NODE_TYPE_PATH,
                                          fib_path_get_index(path));
+        dpo_reset(&tmp);
 	break;
+    }
     case FIB_PATH_TYPE_RECURSIVE:
     {
 	/*

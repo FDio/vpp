@@ -1,5 +1,7 @@
 import socket
 
+import six
+
 from vpp_object import VppObject
 
 
@@ -50,8 +52,9 @@ class VppSocketFilename(VppObject):
         rv = self._test.vapi.memif_socket_filename_add_del(
             1, self.socket_id, self.socket_filename)
         if self.add_default_folder:
-            self.socket_filename = self._test.tempdir + "/" \
-                                   + self.socket_filename
+            self.socket_filename = b"%s/%s" % (
+                six.ensure_binary(self._test.tempdir, encoding='utf-8'),
+                self.socket_filename)
         return rv
 
     def remove_vpp_config(self):
@@ -60,9 +63,6 @@ class VppSocketFilename(VppObject):
 
     def query_vpp_config(self):
         return self._test.vapi.memif_socket_filename_dump()
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "%d" % (self.socket_id)
@@ -118,8 +118,9 @@ class VppMemif(VppObject):
 
     def config_ip4(self):
         return self._test.vapi.sw_interface_add_del_address(
-            self.sw_if_index, socket.inet_pton(
-                socket.AF_INET, self.ip4_addr), self.ip4_addr_len)
+            sw_if_index=self.sw_if_index, address=socket.inet_pton(
+                socket.AF_INET, self.ip4_addr),
+            address_length=self.ip4_addr_len)
 
     def remove_vpp_config(self):
         self._test.vapi.memif_delete(self.sw_if_index)
@@ -130,9 +131,6 @@ class VppMemif(VppObject):
             return None
         dump = self._test.vapi.memif_dump()
         return get_if_dump(dump, self.sw_if_index)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         if self.sw_if_index:

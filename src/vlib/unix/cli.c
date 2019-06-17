@@ -581,7 +581,7 @@ unix_cli_del_pending_output (clib_file_t * uf,
  * @param str The buffer in which to search for the value.
  * @param len The depth into the buffer to search.
  *
- * @return The index of the first occurence of \c chr. If \c chr is not
+ * @return The index of the first occurrence of \c chr. If \c chr is not
  *          found then \c len instead.
  */
 always_inline word
@@ -899,7 +899,7 @@ unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
  *
  * If instead @c line is @c NULL then @c len_or_index is taken to mean the
  * index of an existing line in the pager buffer; this simply means that the
- * input line does not need to be cloned since we alreayd have it. This is
+ * input line does not need to be cloned since we already have it. This is
  * typical if we are reindexing the pager buffer.
  *
  * @param cf           The CLI session whose pager we are adding to.
@@ -3603,14 +3603,21 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
 	  goto done;
 	}
 
-      /* If we reduced history size, or turned it off, purge the history */
-      limit = cf->has_history ? cf->history_limit : 0;
+    }
 
-      while (cf->command_history && vec_len (cf->command_history) >= limit)
-	{
-	  vec_free (cf->command_history[0]);
-	  vec_delete (cf->command_history, 1, 0);
-	}
+  /* If we reduced history size, or turned it off, purge the history */
+  limit = cf->has_history ? cf->history_limit : 0;
+  if (limit < vec_len (cf->command_history))
+    {
+      u32 i;
+
+      /* How many items to remove from the start of history */
+      limit = vec_len (cf->command_history) - limit;
+
+      for (i = 0; i < limit; i++)
+	vec_free (cf->command_history[i]);
+
+      vec_delete (cf->command_history, limit, 0);
     }
 
 done:

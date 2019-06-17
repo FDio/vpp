@@ -35,6 +35,7 @@ unsigned char def_str[] =
   "Endpoint with dynamic proxy to SR-unaware appliance";
 unsigned char params_str[] = "nh <next-hop> oif <iface-out> iif <iface-in>";
 
+srv6_ad_main_t srv6_ad_main;
 
 /*****************************************/
 /* SRv6 LocalSID instantiation and removal functions */
@@ -464,7 +465,7 @@ VLIB_INIT_FUNCTION (srv6_ad_init);
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "Dynamic SRv6 proxy",
+  .description = "Dynamic Segment Routing for IPv6 (SRv6) Proxy",
 };
 /* *INDENT-ON* */
 

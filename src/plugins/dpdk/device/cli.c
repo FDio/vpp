@@ -1008,7 +1008,7 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
   pci_dev = dpdk_get_pci_device (&dev_info);
 
   if (pci_dev)
-    {				/* bonded interface has no pci info */
+    {
       vlib_pci_addr_t pci_addr;
 
       pci_addr.domain = pci_dev->addr.domain;
@@ -1203,7 +1203,7 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
   pci_dev = dpdk_get_pci_device (&dev_info);
 
   if (pci_dev)
-    {				/* bonded interface has no pci info */
+    {
       vlib_pci_addr_t pci_addr;
 
       pci_addr.domain = pci_dev->addr.domain;
@@ -1567,6 +1567,7 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
   dpdk_device_t *xd;
   uword *p = 0;
   struct rte_eth_dev_info dev_info;
+  struct rte_pci_device *pci_dev;
   dpdk_device_config_t *devconf = 0;
   u32 qindex;
   struct rte_sched_queue_stats stats;
@@ -1612,14 +1613,17 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
   rte_eth_dev_info_get (xd->port_id, &dev_info);
-  if (dev_info.pci_dev)
+
+  pci_dev = dpdk_get_pci_device (&dev_info);
+
+  if (pci_dev)
     {				/* bonded interface has no pci info */
       vlib_pci_addr_t pci_addr;
 
-      pci_addr.domain = dev_info.pci_dev->addr.domain;
-      pci_addr.bus = dev_info.pci_dev->addr.bus;
-      pci_addr.slot = dev_info.pci_dev->addr.devid;
-      pci_addr.function = dev_info.pci_dev->addr.function;
+      pci_addr.domain = pci_dev->addr.domain;
+      pci_addr.bus = pci_dev->addr.bus;
+      pci_addr.slot = pci_dev->addr.devid;
+      pci_addr.function = pci_dev->addr.function;
 
       p =
 	hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
@@ -1736,6 +1740,12 @@ VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .function = show_dpdk_version_command_fn,
 };
 /* *INDENT-ON* */
+
+/* Dummy function to get us linked in. */
+void
+dpdk_cli_reference (void)
+{
+}
 
 clib_error_t *
 dpdk_cli_init (vlib_main_t * vm)

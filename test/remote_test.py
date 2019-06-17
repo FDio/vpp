@@ -43,14 +43,16 @@ class RemoteClassAttr(object):
 
     def __getattr__(self, attr):
         if attr[0] == '_':
-            raise AttributeError
+            if not (attr.startswith('__') and attr.endswith('__')):
+                raise AttributeError
         self._path.append(attr)
         return self
 
     def __setattr__(self, attr, val):
         if attr[0] == '_':
-            super(RemoteClassAttr, self).__setattr__(attr, val)
-            return
+            if not (attr.startswith('__') and attr.endswith('__')):
+                super(RemoteClassAttr, self).__setattr__(attr, val)
+                return
         self._path.append(attr)
         self._remote._remote_exec(RemoteClass.SETATTR, self.path_to_str(),
                                   True, value=val)
@@ -114,15 +116,17 @@ class RemoteClass(Process):
 
     def __getattr__(self, attr):
         if attr[0] == '_' or not self.is_alive():
-            if hasattr(super(RemoteClass, self), '__getattr__'):
-                return super(RemoteClass, self).__getattr__(attr)
-            raise AttributeError
+            if not (attr.startswith('__') and attr.endswith('__')):
+                if hasattr(super(RemoteClass, self), '__getattr__'):
+                    return super(RemoteClass, self).__getattr__(attr)
+                raise AttributeError
         return RemoteClassAttr(self, attr)
 
     def __setattr__(self, attr, val):
         if attr[0] == '_' or not self.is_alive():
-            super(RemoteClass, self).__setattr__(attr, val)
-            return
+            if not (attr.startswith('__') and attr.endswith('__')):
+                super(RemoteClass, self).__setattr__(attr, val)
+                return
         setattr(RemoteClassAttr(self, None), attr, val)
 
     def _remote_exec(self, op, path=None, ret=True, *args, **kwargs):
@@ -241,7 +245,8 @@ class RemoteClass(Process):
         # copy at least serializable attributes and properties
         for name, member in inspect.getmembers(obj):
             if name[0] == '_':  # skip private members
-                continue
+                if not (name.startswith('__') and name.endswith('__')):
+                    continue
             if callable(member) and not isinstance(member, property):
                 continue
             if not self._serializable(member):
@@ -348,7 +353,7 @@ class RemoteVppTestCase(VppTestCase):
 
         @classmethod
         def setUpClass(cls):
-            # fork new process before clinet connects to VPP
+            # fork new process before client connects to VPP
             cls.remote_test = RemoteClass(RemoteVppTestCase)
 
             # start remote process
@@ -375,12 +380,14 @@ class RemoteVppTestCase(VppTestCase):
     def __init__(self):
         super(RemoteVppTestCase, self).__init__("emptyTest")
 
+    # Note: __del__ is a 'Finalizer" not a 'Destructor'.
+    # https://docs.python.org/3/reference/datamodel.html#object.__del__
     def __del__(self):
         if hasattr(self, "vpp"):
-            cls.vpp.poll()
-            if cls.vpp.returncode is None:
-                cls.vpp.terminate()
-                cls.vpp.communicate()
+            self.vpp.poll()
+            if self.vpp.returncode is None:
+                self.vpp.terminate()
+                self.vpp.communicate()
 
     @classmethod
     def setUpClass(cls, tempdir):
@@ -393,6 +400,10 @@ class RemoteVppTestCase(VppTestCase):
         cls.tempdir_prefix = os.path.basename(tempdir) + "/"
         super(RemoteVppTestCase, cls).setUpClass()
         os.environ = orig_env
+
+    @classmethod
+    def tearDownClass(cls):
+        super(RemoteVppTestCase, cls).tearDownClass()
 
     @unittest.skip("Empty test")
     def emptyTest(self):

@@ -26,7 +26,7 @@ ping_main_t ping_main;
  * @file
  * @brief IPv4 and IPv6 ICMP Ping.
  *
- * This file contains code to suppport IPv4 or IPv6 ICMP ECHO_REQUEST to
+ * This file contains code to support IPv4 or IPv6 ICMP ECHO_REQUEST to
  * network hosts.
  *
  */
@@ -1228,8 +1228,8 @@ VLIB_CLI_COMMAND (ping_command, static) =
   .function = ping_ip_address,
   .short_help = "ping {<ip-addr> | ipv4 <ip4-addr> | ipv6 <ip6-addr>}"
   " [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>]"
-  " [size <pktsize>] [interval <sec>] [repeat <cnt>] [table-id <id>]"
-  " [verbose]",
+  " [size <pktsize:60>] [interval <sec:1>] [repeat <cnt:5>] [table-id <id:0>]"
+  " [burst <count:1>] [verbose]",
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */

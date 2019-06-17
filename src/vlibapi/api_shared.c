@@ -97,7 +97,9 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
       old_trace = tp->traces + tp->curindex++;
       if (tp->curindex == tp->nitems)
 	tp->curindex = 0;
-      vec_free (*old_trace);
+      /* Reuse the trace record, may save some memory allocator traffic */
+      msg_copy = *old_trace;
+      vec_reset_length (msg_copy);
       this_trace = old_trace;
     }
 
@@ -466,6 +468,8 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 {
   u16 id = ntohs (*((u16 *) the_msg));
   u8 *(*handler) (void *, void *, void *);
+  u8 *(*print_fp) (void *, void *);
+  int is_mp_safe = 1;
 
   if (PREDICT_FALSE (vm->elog_trace_api_messages))
     {
@@ -491,16 +495,31 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
     {
       handler = (void *) am->msg_handlers[id];
 
-      if (am->rx_trace && am->rx_trace->enabled)
+      if (PREDICT_FALSE (am->rx_trace && am->rx_trace->enabled))
 	vl_msg_api_trace (am, am->rx_trace, the_msg);
 
-      if (!am->is_mp_safe[id])
+      if (PREDICT_FALSE (am->msg_print_flag))
+	{
+	  fformat (stdout, "[%d]: %s\n", id, am->msg_names[id]);
+	  print_fp = (void *) am->msg_print_handlers[id];
+	  if (print_fp == 0)
+	    {
+	      fformat (stdout, "  [no registered print fn for msg %d]\n", id);
+	    }
+	  else
+	    {
+	      (*print_fp) (the_msg, vm);
+	    }
+	}
+      is_mp_safe = am->is_mp_safe[id];
+
+      if (!is_mp_safe)
 	{
 	  vl_msg_api_barrier_trace_context (am->msg_names[id]);
 	  vl_msg_api_barrier_sync ();
 	}
       (*handler) (the_msg, vm, node);
-      if (!am->is_mp_safe[id])
+      if (!is_mp_safe)
 	vl_msg_api_barrier_release ();
     }
   else
@@ -518,14 +537,22 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
   if (PREDICT_FALSE (vm->elog_trace_api_messages))
     {
       /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (e) = {
-        .format = "api-msg-done: %s",
-        .format_args = "T4",
-      };
+      ELOG_TYPE_DECLARE (e) =
+        {
+          .format = "api-msg-done(%s): %s",
+          .format_args = "t4T4",
+          .n_enum_strings = 2,
+          .enum_strings =
+          {
+            "barrier",
+            "mp-safe",
+          }
+        };
       /* *INDENT-ON* */
 
       struct
       {
+	u32 barrier;
 	u32 c;
       } *ed;
       ed = ELOG_DATA (&vm->elog_main, e);
@@ -533,6 +560,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 	ed->c = elog_id_for_msg_name (vm, (const char *) am->msg_names[id]);
       else
 	ed->c = elog_id_for_msg_name (vm, "BOGUS");
+      ed->barrier = is_mp_safe;
     }
 }
 

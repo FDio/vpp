@@ -36,6 +36,7 @@ unsigned char def_str[] =
 unsigned char params_str[] =
   "nh <next-hop> oif <iface-out> iif <iface-in> src <src-addr> next <sid> [next <sid> ...]";
 
+srv6_as_main_t srv6_as_main;
 
 static inline u8 *
 prepare_rewrite (ip6_address_t src_addr, ip6_address_t * sid_list,
@@ -574,7 +575,7 @@ VLIB_INIT_FUNCTION (srv6_as_init);
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "Static SRv6 proxy",
+  .description = "Static Segment Routing for IPv6 (SRv6) Proxy",
 };
 /* *INDENT-ON* */
 

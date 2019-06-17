@@ -58,6 +58,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
 
   SSL_free (oc->ssl);
 
+  vec_free (ctx->srv_hostname);
   pool_put_index (openssl_main.ctx_pool[ctx->c_thread_index],
 		  oc->openssl_ctx_index);
 }
@@ -112,7 +113,7 @@ openssl_try_handshake_read (openssl_ctx_t * oc, session_t * tls_session)
   int wrote, rv;
 
   f = tls_session->rx_fifo;
-  deq_max = svm_fifo_max_dequeue (f);
+  deq_max = svm_fifo_max_dequeue_cons (f);
   if (!deq_max)
     return 0;
 
@@ -146,7 +147,7 @@ openssl_try_handshake_write (openssl_ctx_t * oc, session_t * tls_session)
     return 0;
 
   f = tls_session->tx_fifo;
-  enq_max = svm_fifo_max_enqueue (f);
+  enq_max = svm_fifo_max_enqueue_prod (f);
   if (!enq_max)
     return 0;
 
@@ -306,7 +307,7 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   svm_fifo_t *f;
 
   f = app_session->tx_fifo;
-  deq_max = svm_fifo_max_dequeue (f);
+  deq_max = svm_fifo_max_dequeue_cons (f);
   if (!deq_max)
     goto check_tls_fifo;
 
@@ -332,6 +333,9 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 	}
     }
 
+  if (svm_fifo_needs_tx_ntf (app_session->tx_fifo, wrote))
+    session_dequeue_notify (app_session);
+
   if (wrote < deq_max)
     tls_add_vpp_q_builtin_tx_evt (app_session);
 
@@ -342,7 +346,7 @@ check_tls_fifo:
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
   f = tls_session->tx_fifo;
-  enq_max = svm_fifo_max_enqueue (f);
+  enq_max = svm_fifo_max_enqueue_prod (f);
   if (!enq_max)
     {
       tls_add_vpp_q_builtin_tx_evt (app_session);
@@ -390,7 +394,7 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
     }
 
   f = tls_session->rx_fifo;
-  deq_max = svm_fifo_max_dequeue (f);
+  deq_max = svm_fifo_max_dequeue_cons (f);
   max_space = max_buf - BIO_ctrl_pending (oc->wbio);
   max_space = max_space < 0 ? 0 : max_space;
   deq_now = clib_min (deq_max, max_space);
@@ -415,7 +419,7 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 	  wrote += rv;
 	}
     }
-  if (svm_fifo_max_dequeue (f))
+  if (svm_fifo_max_dequeue_cons (f))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
 check_app_fifo:
@@ -425,7 +429,7 @@ check_app_fifo:
 
   app_session = session_get_from_handle (ctx->app_session_handle);
   f = app_session->rx_fifo;
-  enq_max = svm_fifo_max_enqueue (f);
+  enq_max = svm_fifo_max_enqueue_prod (f);
   if (!enq_max)
     {
       tls_add_vpp_q_builtin_rx_evt (tls_session);
@@ -725,6 +729,27 @@ openssl_handshake_is_over (tls_ctx_t * ctx)
   return SSL_is_init_finished (mc->ssl);
 }
 
+static int
+openssl_transport_close (tls_ctx_t * ctx)
+{
+  if (!openssl_handshake_is_over (ctx))
+    {
+      session_close (session_get_from_handle (ctx->tls_session_handle));
+      return 0;
+    }
+  session_transport_closing_notify (&ctx->connection);
+  return 0;
+}
+
+static int
+openssl_app_close (tls_ctx_t * ctx)
+{
+  tls_disconnect_transport (ctx);
+  session_transport_delete_notify (&ctx->connection);
+  openssl_ctx_free (ctx);
+  return 0;
+}
+
 const static tls_engine_vft_t openssl_engine = {
   .ctx_alloc = openssl_ctx_alloc,
   .ctx_free = openssl_ctx_free,
@@ -737,6 +762,8 @@ const static tls_engine_vft_t openssl_engine = {
   .ctx_handshake_is_over = openssl_handshake_is_over,
   .ctx_start_listen = openssl_start_listen,
   .ctx_stop_listen = openssl_stop_listen,
+  .ctx_transport_close = openssl_transport_close,
+  .ctx_app_close = openssl_app_close,
 };
 
 int
@@ -808,13 +835,9 @@ tls_openssl_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   openssl_main_t *om = &openssl_main;
-  clib_error_t *error;
   u32 num_threads;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
-
-  if ((error = vlib_call_init_function (vm, tls_init)))
-    return error;
 
   SSL_library_init ();
   SSL_load_error_strings ();
@@ -837,6 +860,12 @@ tls_openssl_init (vlib_main_t * vm)
 
   return 0;
 }
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (tls_openssl_init) =
+{
+  .runs_after = VLIB_INITS("tls_init"),
+};
+/* *INDENT-ON* */
 
 #ifdef HAVE_OPENSSL_ASYNC
 static clib_error_t *
@@ -911,13 +940,10 @@ VLIB_CLI_COMMAND (tls_openssl_set_command, static) =
 /* *INDENT-ON* */
 #endif
 
-
-VLIB_INIT_FUNCTION (tls_openssl_init);
-
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "openssl based TLS Engine",
+    .description = "Transport Layer Security (TLS) Engine, OpenSSL Based",
 };
 /* *INDENT-ON* */
 

@@ -23,9 +23,9 @@
 static adj_delegate_vft_t *ad_vfts;
 
 /**
- * The value of the last dynamically allocated delegeate value
+ * The value of the last dynamically allocated delegate value
  */
-static adj_delegate_type_t ad_max_id = ADJ_DELEGATE_BFD;
+static adj_delegate_type_t ad_max_id = ADJ_DELEGATE_LAST;
 
 static adj_delegate_t *
 adj_delegate_find_i (const ip_adjacency_t *adj,

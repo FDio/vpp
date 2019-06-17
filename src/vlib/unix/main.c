@@ -67,10 +67,15 @@ unix_main_init (vlib_main_t * vm)
 {
   unix_main_t *um = &unix_main;
   um->vlib_main = vm;
-  return vlib_call_init_function (vm, unix_input_init);
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (unix_main_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (unix_main_init) =
+{
+  .runs_before = VLIB_INITS ("unix_input_init"),
+};
+/* *INDENT-ON* */
 
 static int
 unsetup_signal_handlers (int sig)
@@ -110,11 +115,16 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
     {
       /* these (caught) signals cause the application to exit */
     case SIGTERM:
-      if (unix_main.vlib_main->main_loop_exit_set)
+      /*
+       * Ignore SIGTERM if it's sent before we're ready.
+       */
+      if (unix_main.vlib_main && unix_main.vlib_main->main_loop_exit_set)
 	{
 	  syslog (LOG_ERR | LOG_DAEMON, "received SIGTERM, exiting...");
 	  unix_main.vlib_main->main_loop_exit_now = 1;
 	}
+      else
+	syslog (LOG_ERR | LOG_DAEMON, "IGNORE early SIGTERM...");
       break;
       /* fall through */
     case SIGQUIT:
@@ -133,6 +143,17 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
       fatal = 0;
       break;
     }
+
+#ifdef CLIB_GCOV
+  /*
+   * Test framework sends SIGTERM, so we need to flush the
+   * code coverage stats here.
+   */
+  {
+    void __gcov_flush (void);
+    __gcov_flush ();
+  }
+#endif
 
   /* Null terminate. */
   vec_add1 (syslog_msg, 0);
@@ -559,10 +580,11 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
  *
  * @cfgcmd{runtime-dir}
  * Define directory where VPP is going to store all runtime files.
- * Default is /run/vpp.
+ * Default is /run/vpp when running as root, /run/user/<UID>/vpp if running as
+ * an unprivileged user.
  *
  * @cfgcmd{cli-listen, &lt;address:port&gt;}
- * Bind the CLI to listen at the address and port given. @clocalhost
+ * Bind the CLI to listen at the address and port given. @c localhost
  * on TCP port @c 5002, given as <tt>cli-listen localhost:5002</tt>,
  * is typical.
  *
@@ -574,7 +596,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
  * Configure the CLI prompt to be @c string.
  *
  * @cfgcmd{cli-history-limit, &lt;nn&gt;}
- * Limit commmand history to @c nn  lines. A value of @c 0
+ * Limit command history to @c nn  lines. A value of @c 0
  * disables command history. Default value: @c 50
  *
  * @cfgcmd{cli-no-banner}
@@ -586,6 +608,12 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
  * @cfgcmd{cli-pager-buffer-limit, &lt;nn&gt;}
  * Limit pager buffer to @c nn lines of output.
  * A value of @c 0 disables the pager. Default value: @c 100000
+ *
+ * @cfgcmd{gid, &lt;nn&gt;}
+ * Set the effective gid under which the vpp process is to run.
+ *
+ * @cfgcmd{poll-sleep-usec, &lt;nn&gt;}
+ * Set a fixed poll sleep interval between main loop polls.
 ?*/
 VLIB_EARLY_CONFIG_FUNCTION (unix_config, "unix");
 
@@ -618,9 +646,9 @@ thread0 (uword arg)
 u8 *
 vlib_thread_stack_init (uword thread_index)
 {
-  vec_validate (vlib_thread_stacks, thread_index);
+  ASSERT (thread_index < vec_len (vlib_thread_stacks));
   vlib_thread_stacks[thread_index] = clib_mem_alloc_aligned
-    (VLIB_THREAD_STACK_SIZE, VLIB_THREAD_STACK_SIZE);
+    (VLIB_THREAD_STACK_SIZE, clib_mem_get_page_size ());
 
   /*
    * Disallow writes to the bottom page of the stack, to
@@ -673,6 +701,7 @@ vlib_unix_main (int argc, char *argv[])
   /* always load symbols, for signal handler and mheap memory get/put backtrace */
   clib_elf_main_init (vm->name);
 
+  vec_validate (vlib_thread_stacks, 0);
   vlib_thread_stack_init (0);
 
   __os_thread_index = 0;

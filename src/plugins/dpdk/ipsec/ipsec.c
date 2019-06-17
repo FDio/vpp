@@ -258,7 +258,7 @@ crypto_set_aead_xform (struct rte_crypto_sym_xform *xform,
     crypto_op_get_priv_offset () + offsetof (dpdk_op_priv_t, cb);
   xform->aead.iv.length = 12;
   xform->aead.digest_length = c->trunc_size;
-  xform->aead.aad_length = sa->use_esn ? 12 : 8;
+  xform->aead.aad_length = ipsec_sa_is_set_USE_ESN (sa) ? 12 : 8;
   xform->next = NULL;
 
   if (is_outbound)
@@ -638,9 +638,6 @@ crypto_parse_capabilities (crypto_dev_t * dev,
 	}
     }
 }
-
-#define DPDK_CRYPTO_N_QUEUE_DESC  2048
-#define DPDK_CRYPTO_NB_SESS_OBJS  20000
 
 static clib_error_t *
 crypto_dev_conf (u8 dev, u16 n_qp, u8 numa)
@@ -1069,8 +1066,10 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   u32 idx = ipsec_register_esp_backend (vm, im, "dpdk backend",
 					"dpdk-esp4-encrypt",
+					"dpdk-esp4-encrypt-tun",
 					"dpdk-esp4-decrypt",
 					"dpdk-esp6-encrypt",
+					"dpdk-esp6-encrypt-tun",
 					"dpdk-esp6-decrypt",
 					dpdk_ipsec_check_support,
 					add_del_sa_session);

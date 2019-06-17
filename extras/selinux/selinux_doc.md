@@ -292,3 +292,215 @@ The following SELinux types are created by the VPP Custom SELinux Policy:
 
 - `vpp_var_run_t` - Applied to:
   - `/var/run/vpp/*`
+
+## Debug SELinux Issues
+
+If SELinux issues are suspected, there are a few steps that can be taken to
+debug the issue. This section provides a few pointers on on those steps. Any
+SELinux JIRAs will need this information to properly address the issue.
+
+### Additional SELinux Packages and Setup
+
+First, install the SELinux troubleshooting packages:
+
+```
+$ sudo yum -y install setroubleshoot setroubleshoot-server setools-console
+-- OR --
+$ sudo dnf -y install setroubleshoot setroubleshoot-server setools-console
+```
+
+To enable proper logging, restart auditd:
+
+```
+$ sudo service auditd restart
+```
+
+While debugging issues, it is best to set SELinux to `Permissive` mode. In
+`Permissive` mode, SELinux will still detect and flag errors, but will allow
+processes to continue normal operation. This allows multiple errors to be
+collected at once as opposed to breaking on each individual error. To set
+SELinux to `Permissive` mode (until next reboot or it is set back), use:
+
+```
+$ sudo setenforce 0
+
+$ getenforce
+Permissive
+```
+
+After debugging, to set SELinux back to `Enforcing` mode, use:
+
+```
+$ sudo setenforce 1
+
+$ getenforce
+Enforcing
+```
+
+### Debugging
+
+Once the SELinux troubleshooting packages are installed, perform the actions
+that are suspected to be blocked by SELinux. Either `tail` the log during
+these actions or `grep` the log for additional SELinux logs:
+
+```
+sudo tail -f /var/log/messages
+-- OR --
+sudo journalctl -f
+```
+
+Below are some examples of SELinux logs that are generated:
+
+```
+May 14 11:28:34 svr-22 setroubleshoot: SELinux is preventing /usr/bin/vpp from read access on the file hostCreate.txt. For complete SELinux messages run: sealert -l a418f869-f470-4c8a-b8e9-bdd41f2dd60b
+May 14 11:28:34 svr-22 python: SELinux is preventing /usr/bin/vpp from read access on the file hostCreate.txt.#012#012*****  Plugin catchall (100. confidence) suggests   **************************#012#012If you believe that vpp should be allowed read access on the hostCreate.txt file by default.#012Then you should report this as a bug.#012You can generate a local policy module to allow this access.#012Do#012allow this access for now by executing:#012# ausearch -c 'vpp_main' --raw | audit2allow -M my-vppmain#012# semodule -i my-vppmain.pp#012
+May 14 11:28:34 svr-22 setroubleshoot: SELinux is preventing /usr/bin/vpp from read access on the file hostCreate.txt. For complete SELinux messages run: sealert -l a418f869-f470-4c8a-b8e9-bdd41f2dd60b
+May 14 11:28:34 svr-22 python: SELinux is preventing /usr/bin/vpp from read access on the file hostCreate.txt.#012#012*****  Plugin catchall (100. confidence) suggests   **************************#012#012If you believe that vpp should be allowed read access on the hostCreate.txt file by default.#012Then you should report this as a bug.#012You can generate a local policy module to allow this access.#012Do#012allow this access for now by executing:#012# ausearch -c 'vpp_main' --raw | audit2allow -M my-vppmain#012# semodule -i my-vppmain.pp#012
+May 14 11:28:37 svr-22 setroubleshoot: SELinux is preventing vpp_main from map access on the packet_socket packet_socket. For complete SELinux messages run: sealert -l ab6667d9-3f14-4dbd-96a0-7a655f7b4eb1
+May 14 11:28:37 svr-22 python: SELinux is preventing vpp_main from map access on the packet_socket packet_socket.#012#012*****  Plugin catchall (100. confidence) suggests   **************************#012#012If you believe that vpp_main should be allowed map access on the packet_socket packet_socket by default.#012Then you should report this as a bug.#012You can generate a local policy module to allow this access.#012Do#012allow this access for now by executing:#012# ausearch -c 'vpp_main' --raw | audit2allow -M my-vppmain#012# semodule -i my-vppmain.pp#012
+May 14 11:28:51 svr-22 setroubleshoot: SELinux is preventing vpp_main from map access on the packet_socket packet_socket. For complete SELinux messages run: sealert -l ab6667d9-3f14-4dbd-96a0-7a655f7b4eb1
+May 14 11:28:51 svr-22 python: SELinux is preventing vpp_main from map access on the packet_socket packet_socket.#012#012*****  Plugin catchall (100. confidence) suggests   **************************#012#012If you believe that vpp_main should be allowed map access on the packet_socket packet_socket by default.#012Then you should report this as a bug.#012You can generate a local policy module to allow this access.#012Do#012allow this access for now by executing:#012# ausearch -c 'vpp_main' --raw | audit2allow -M my-vppmain#012# semodule -i my-vppmain.pp#012
+```
+
+From the logs above, there are two sets of commands that are recommended to be
+run. The first is to run the `sealert` command. The second is to run the
+`ausearch | audit2allow` commands and the `semodule` command.
+
+#### sealert Command
+
+This `sealert` command provides a more detailed output for the given issue
+detected.
+
+```
+$ sealert -l a418f869-f470-4c8a-b8e9-bdd41f2dd60b
+SELinux is preventing /usr/bin/vpp from 'read, write' accesses on the chr_file noiommu-0.
+
+*****  Plugin device (91.4 confidence) suggests   ****************************
+
+If you want to allow vpp to have read write access on the noiommu-0 chr_file
+Then you need to change the label on noiommu-0 to a type of a similar device.
+Do
+# semanage fcontext -a -t SIMILAR_TYPE 'noiommu-0'
+# restorecon -v 'noiommu-0'
+
+*****  Plugin catchall (9.59 confidence) suggests   **************************
+
+If you believe that vpp should be allowed read write access on the noiommu-0 chr_file by default.
+Then you should report this as a bug.
+You can generate a local policy module to allow this access.
+Do
+allow this access for now by executing:
+# ausearch -c 'vpp' --raw | audit2allow -M my-vpp
+# semodule -i my-vpp.pp
+
+
+Additional Information:
+Source Context                system_u:system_r:vpp_t:s0
+Target Context                system_u:object_r:device_t:s0
+Target Objects                noiommu-0 [ chr_file ]
+Source                        vpp
+Source Path                   /usr/bin/vpp
+Port                          <Unknown>
+Host                          vpp_centos7_selinux
+Source RPM Packages           vpp-19.01.2-rc0~17_gcfd3086.x86_64
+Target RPM Packages
+Policy RPM                    selinux-policy-3.13.1-229.el7_6.12.noarch
+Selinux Enabled               True
+Policy Type                   targeted
+Enforcing Mode                Permissive
+Host Name                     vpp_centos7_selinux
+Platform                      Linux vpp_centos7_selinux
+                              3.10.0-957.12.1.el7.x86_64 #1 SMP Mon Apr 29
+                              14:59:59 UTC 2019 x86_64 x86_64
+Alert Count                   1
+First Seen                    2019-05-13 18:10:50 EDT
+Last Seen                     2019-05-13 18:10:50 EDT
+Local ID                      a418f869-f470-4c8a-b8e9-bdd41f2dd60b
+
+Raw Audit Messages
+type=AVC msg=audit(1557785450.964:257): avc:  denied  { read write } for  pid=5273 comm="vpp" name="noiommu-0" dev="devtmpfs" ino=36022 scontext=system_u:system_r:vpp_t:s0 tcontext=system_u:object_r:device_t:s0 tclass=chr_file permissive=1
+
+
+type=AVC msg=audit(1557785450.964:257): avc:  denied  { open } for  pid=5273 comm="vpp" path="/dev/vfio/noiommu-0" dev="devtmpfs" ino=36022 scontext=system_u:system_r:vpp_t:s0 tcontext=system_u:object_r:device_t:s0 tclass=chr_file permissive=1
+
+
+type=SYSCALL msg=audit(1557785450.964:257): arch=x86_64 syscall=open success=yes exit=ENOTBLK a0=7fb395ffd7f0 a1=2 a2=7fb395ffd803 a3=7fb395ffe2a0 items=0 ppid=1 pid=5273 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=993 sgid=0 fsgid=993 tty=(none) ses=4294967295 comm=vpp exe=/usr/bin/vpp subj=system_u:system_r:vpp_t:s0 key=(null)
+
+Hash: vpp,vpp_t,device_t,chr_file,read,write
+```
+
+In general, this command pumps out too much info and is only needed for
+additional debugging for tougher issues. Also note that once the process being
+tested is restarted, this command loses it's context and will not provide any
+information:
+
+```
+$ sealert -l a418f869-f470-4c8a-b8e9-bdd41f2dd60b
+Error
+query_alerts error (1003): id (a418f869-f470-4c8a-b8e9-bdd41f2dd60b) not found
+```
+
+#### ausearch | audit2allow and semodule Commands
+
+These set of commands are more useful for basic debugging. The
+`ausearch | audit2allow` commands generate a set files. It may be worthwhile to
+run the commands in a temporary subdirectory:
+
+```
+$ mkdir test-01/; cd test-01/
+
+$ sudo ausearch -c 'vpp_main' --raw | audit2allow -M my-vppmain
+
+$ ls
+my-vpp.pp  my-vpp.te
+
+$ cat my-vpp.te
+module my-vpp 1.0;
+
+require {
+        type user_home_t;
+        type vpp_t;
+        class packet_socket map;
+        class file { open read };
+}
+
+#============= vpp_t ==============
+allow vpp_t self:packet_socket map;
+allow vpp_t user_home_t:file { open read };
+```
+
+As shown above, the file `my-vpp.te` has been generated. This file shows
+possible changes to the SELinux policy that may fix the issue. If an SELinux
+policy was being created from scratch, this policy could be applied using the
+`semodule -i my-vpp.pp` command. HOWEVER, VPP already has a policy in place. So
+these changes need to be incorporated into the existing policy. The VPP SELinux
+policy is located in the following files:
+
+```
+$ ls extras/selinux/
+selinux_doc.md  vpp-custom.fc  vpp-custom.if  vpp-custom.te
+```
+
+In this example, `map` needs to be added to the `packet_socket` class. If the
+`vpp-custom.te` is examined (prior to this fix), then one would see that the
+`packet_socket` class is already defined and just needs to be updated:
+
+```
+$ vi extras/selinux/vpp-custom.te
+:
+allow vpp_t self:process { execmem execstack setsched signal }; # too benevolent
+allow vpp_t self:packet_socket { bind create setopt ioctl };  <---
+allow vpp_t self:tun_socket { create relabelto relabelfrom };
+:
+```
+
+Before blindly applying the changes proposed by the `ausearch | audit2allow`
+commands, try to determine what is being allowed by the policy and determine if
+this is desired, or if the code can be reworked to no longer require the
+suggested permission. In the `my-vpp.te` file from above, it is suggested to
+allow `vpp_t` (i.e. the VPP process) access to all files in the home directory
+(`allow vpp_t user_home_t:file { open read };`). This was because a
+`vppctl exec` command was executed calling a script located in the
+`/home/<user>/` directory. Once this script was run from the `/usr/share/vpp/`
+directory as described in a section above, these permissions were no longer
+needed.

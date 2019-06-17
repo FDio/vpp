@@ -51,7 +51,7 @@ public:
      */
     const static mode_t LACP;
     /**
-     * Unspecificed bond interface mode
+     * Unspecified bond interface mode
      */
     const static mode_t UNSPECIFIED;
 
@@ -85,7 +85,7 @@ public:
      */
     const static lb_t L23;
     /**
-     * Unspecificed bond interface lb
+     * Unspecified bond interface lb
      */
     const static lb_t UNSPECIFIED;
 

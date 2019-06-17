@@ -17,9 +17,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/geneve/geneve.h>
 
-vlib_node_registration_t geneve4_input_node;
-vlib_node_registration_t geneve6_input_node;
-
 typedef struct
 {
   u32 next_index;
@@ -84,6 +81,7 @@ geneve_input (vlib_main_t * vm,
   u32 pkts_decapsulated = 0;
   u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   if (is_ip4)
     last_key4.as_u64 = ~0;
@@ -92,6 +90,7 @@ geneve_input (vlib_main_t * vm,
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
@@ -120,16 +119,11 @@ geneve_input (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_prefetch_buffer_header (b[2], LOAD);
+	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -141,8 +135,9 @@ geneve_input (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+	  b0 = b[0];
+	  b1 = b[1];
+	  b += 2;
 
 	  /* udp leaves current_data pointing at the geneve header */
 	  geneve0 = vlib_buffer_get_current (b0);
@@ -239,7 +234,7 @@ geneve_input (vlib_main_t * vm,
 		tunnel_index0 = last_tunnel_index;
 	      t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-	      /* Validate GENEVE tunnel encap-fib index agaist packet */
+	      /* Validate GENEVE tunnel encap-fib index against packet */
 	      if (PREDICT_FALSE (validate_geneve_fib (b0, t0, is_ip4) == 0))
 		{
 		  error0 = GENEVE_ERROR_NO_SUCH_TUNNEL;
@@ -293,7 +288,7 @@ geneve_input (vlib_main_t * vm,
 		tunnel_index0 = last_tunnel_index;
 	      t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-	      /* Validate GENEVE tunnel encap-fib index agaist packet */
+	      /* Validate GENEVE tunnel encap-fib index against packet */
 	      if (PREDICT_FALSE (validate_geneve_fib (b0, t0, is_ip4) == 0))
 		{
 		  error0 = GENEVE_ERROR_NO_SUCH_TUNNEL;
@@ -406,7 +401,7 @@ geneve_input (vlib_main_t * vm,
 		tunnel_index1 = last_tunnel_index;
 	      t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
 
-	      /* Validate GENEVE tunnel encap-fib index agaist packet */
+	      /* Validate GENEVE tunnel encap-fib index against packet */
 	      if (PREDICT_FALSE (validate_geneve_fib (b1, t1, is_ip4) == 0))
 		{
 		  error1 = GENEVE_ERROR_NO_SUCH_TUNNEL;
@@ -462,7 +457,7 @@ geneve_input (vlib_main_t * vm,
 		tunnel_index1 = last_tunnel_index;
 	      t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
 
-	      /* Validate GENEVE tunnel encap-fib index agaist packet */
+	      /* Validate GENEVE tunnel encap-fib index against packet */
 	      if (PREDICT_FALSE (validate_geneve_fib (b1, t1, is_ip4) == 0))
 		{
 		  error1 = GENEVE_ERROR_NO_SUCH_TUNNEL;
@@ -566,7 +561,8 @@ geneve_input (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+	  b0 = b[0];
+	  b += 1;
 
 	  /* udp leaves current_data pointing at the geneve header */
 	  geneve0 = vlib_buffer_get_current (b0);
@@ -797,16 +793,16 @@ geneve_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-geneve4_input (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (geneve4_input_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * from_frame)
 {
   return geneve_input (vm, node, from_frame, /* is_ip4 */ 1);
 }
 
-static uword
-geneve6_input (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (geneve6_input_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * from_frame)
 {
   return geneve_input (vm, node, from_frame, /* is_ip4 */ 0);
 }
@@ -820,7 +816,6 @@ static char *geneve_error_strings[] = {
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (geneve4_input_node) = {
-  .function = geneve4_input,
   .name = "geneve4-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -838,10 +833,7 @@ VLIB_REGISTER_NODE (geneve4_input_node) = {
   // $$$$ .unformat_buffer = unformat_geneve_header,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (geneve4_input_node, geneve4_input)
-
 VLIB_REGISTER_NODE (geneve6_input_node) = {
-  .function = geneve6_input,
   .name = "geneve6-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -857,8 +849,6 @@ VLIB_REGISTER_NODE (geneve6_input_node) = {
   .format_trace = format_geneve_rx_trace,
   // $$$$ .unformat_buffer = unformat_geneve_header,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (geneve6_input_node, geneve6_input)
 /* *INDENT-ON* */
 
 typedef enum
@@ -1264,9 +1254,9 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_geneve_bypass (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_geneve_bypass_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return ip_geneve_bypass_inline (vm, node, frame, /* is_ip4 */ 1);
 }
@@ -1274,7 +1264,7 @@ ip4_geneve_bypass (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_geneve_bypass_node) =
 {
-  .function = ip4_geneve_bypass,.name = "ip4-geneve-bypass",.vector_size =
+  .name = "ip4-geneve-bypass",.vector_size =
     sizeof (u32),.n_next_nodes = IP_GENEVE_BYPASS_N_NEXT,.next_nodes =
   {
   [IP_GENEVE_BYPASS_NEXT_DROP] = "error-drop",
@@ -1282,7 +1272,7 @@ VLIB_REGISTER_NODE (ip4_geneve_bypass_node) =
 ,.format_buffer = format_ip4_header,.format_trace =
     format_ip4_forward_next_trace,};
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_geneve_bypass_node, ip4_geneve_bypass)
+#ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */
      clib_error_t *ip4_geneve_bypass_init (vlib_main_t * vm)
 {
@@ -1291,10 +1281,11 @@ VLIB_NODE_FUNCTION_MULTIARCH (ip4_geneve_bypass_node, ip4_geneve_bypass)
 
 VLIB_INIT_FUNCTION (ip4_geneve_bypass_init);
 /* *INDENT-ON* */
+#endif /* CLIB_MARCH_VARIANT */
 
-static uword
-ip6_geneve_bypass (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_geneve_bypass_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return ip_geneve_bypass_inline (vm, node, frame, /* is_ip4 */ 0);
 }
@@ -1302,7 +1293,7 @@ ip6_geneve_bypass (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_geneve_bypass_node) =
 {
-  .function = ip6_geneve_bypass,.name = "ip6-geneve-bypass",.vector_size =
+  .name = "ip6-geneve-bypass",.vector_size =
     sizeof (u32),.n_next_nodes = IP_GENEVE_BYPASS_N_NEXT,.next_nodes =
   {
   [IP_GENEVE_BYPASS_NEXT_DROP] = "error-drop",
@@ -1311,14 +1302,16 @@ VLIB_REGISTER_NODE (ip6_geneve_bypass_node) =
     format_ip6_forward_next_trace,};
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_geneve_bypass_node, ip6_geneve_bypass)
+#ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */
-     clib_error_t *ip6_geneve_bypass_init (vlib_main_t * vm)
+clib_error_t *
+ip6_geneve_bypass_init (vlib_main_t * vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (ip6_geneve_bypass_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

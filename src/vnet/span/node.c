@@ -25,17 +25,15 @@
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
-vlib_node_registration_t span_node;
-
 /* packet trace format function */
-u8 *
+static u8 *
 format_span_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   span_trace_t *t = va_arg (*args, span_trace_t *);
 
-  vnet_main_t *vnm = &vnet_main;
+  vnet_main_t *vnm = vnet_get_main ();
   s = format (s, "SPAN: mirrored %U -> %U",
 	      format_vnet_sw_if_index_name, vnm, t->src_sw_if_index,
 	      format_vnet_sw_if_index_name, vnm, t->mirror_sw_if_index);
@@ -67,7 +65,7 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
 {
   vlib_buffer_t *c0;
   span_main_t *sm = &span_main;
-  vnet_main_t *vnm = &vnet_main;
+  vnet_main_t *vnm = vnet_get_main ();
   u32 *to_mirror_next = 0;
   u32 i;
   span_interface_t *si0;
@@ -92,8 +90,7 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
       if (mirror_frames[i] == 0)
         {
           if (sf == SPAN_FEAT_L2)
-            mirror_frames[i] = vlib_get_frame_to_node (vnm->vlib_main,
-						       l2output_node.index);
+            mirror_frames[i] = vlib_get_frame_to_node (vm, l2output_node.index);
           else
             mirror_frames[i] = vnet_get_frame_to_sw_interface (vnm, i);
 	}
@@ -134,9 +131,8 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     span_feat_t sf)
 {
   span_main_t *sm = &span_main;
-  vnet_main_t *vnm = &vnet_main;
+  vnet_main_t *vnm = vnet_get_main ();
   u32 n_left_from, *from, *to_next;
-  u32 n_span_packets = 0;
   u32 next_index;
   u32 sw_if_index;
   static __thread vlib_frame_t **mirror_frames = 0;
@@ -262,41 +258,37 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	continue;
 
       if (sf == SPAN_FEAT_L2)
-	vlib_put_frame_to_node (vnm->vlib_main, l2output_node.index, f);
+	vlib_put_frame_to_node (vm, l2output_node.index, f);
       else
 	vnet_put_frame_to_sw_interface (vnm, sw_if_index, f);
       mirror_frames[sw_if_index] = 0;
     }
-  vlib_node_increment_counter (vm, span_node.index, SPAN_ERROR_HITS,
-			       n_span_packets);
 
   return frame->n_vectors;
 }
 
-static uword
-span_device_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * frame)
+VLIB_NODE_FN (span_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
 {
   return span_node_inline_fn (vm, node, frame, VLIB_RX, SPAN_FEAT_DEVICE);
 }
 
-static uword
-span_device_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+VLIB_NODE_FN (span_output_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
 {
   return span_node_inline_fn (vm, node, frame, VLIB_TX, SPAN_FEAT_DEVICE);
 }
 
-static uword
-span_l2_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame)
+VLIB_NODE_FN (span_l2_input_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return span_node_inline_fn (vm, node, frame, VLIB_RX, SPAN_FEAT_L2);
 }
 
-static uword
-span_l2_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * frame)
+VLIB_NODE_FN (span_l2_output_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   return span_node_inline_fn (vm, node, frame, VLIB_TX, SPAN_FEAT_L2);
 }
@@ -315,36 +307,25 @@ span_l2_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (span_input_node) = {
   span_node_defs,
-  .function = span_device_input_node_fn,
   .name = "span-input",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (span_input_node, span_device_input_node_fn)
-
 VLIB_REGISTER_NODE (span_output_node) = {
   span_node_defs,
-  .function = span_device_output_node_fn,
   .name = "span-output",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (span_output_node, span_device_output_node_fn)
-
 VLIB_REGISTER_NODE (span_l2_input_node) = {
   span_node_defs,
-  .function = span_l2_input_node_fn,
   .name = "span-l2-input",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (span_l2_input_node, span_l2_input_node_fn)
-
 VLIB_REGISTER_NODE (span_l2_output_node) = {
   span_node_defs,
-  .function = span_l2_output_node_fn,
   .name = "span-l2-output",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (span_l2_output_node, span_l2_output_node_fn)
-
+#ifndef CLIB_MARCH_VARIANT
 clib_error_t *span_init (vlib_main_t * vm)
 {
   span_main_t *sm = &span_main;
@@ -369,6 +350,7 @@ clib_error_t *span_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (span_init);
 /* *INDENT-ON* */
+#endif /* CLIB_MARCH_VARIANT */
 
 #undef span_node_defs
 /*

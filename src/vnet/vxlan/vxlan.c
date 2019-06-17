@@ -639,6 +639,17 @@ int vnet_vxlan_add_del_tunnel
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
+  if (a->is_add)
+    {
+      /* register udp ports */
+      if (!is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_vxlan, 1))
+	udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_vxlan,
+			       vxlan4_input_node.index, 1);
+      if (is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_vxlan6, 0))
+	udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_vxlan6,
+			       vxlan6_input_node.index, 0);
+    }
+
   return 0;
 }
 
@@ -1254,11 +1265,6 @@ vxlan_init (vlib_main_t * vm)
   vxm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
-
-  udp_register_dst_port (vm, UDP_DST_PORT_vxlan,
-			 vxlan4_input_node.index, /* is_ip4 */ 1);
-  udp_register_dst_port (vm, UDP_DST_PORT_vxlan6,
-			 vxlan6_input_node.index, /* is_ip4 */ 0);
 
   fib_node_register_type (FIB_NODE_TYPE_VXLAN_TUNNEL, &vxlan_vft);
 

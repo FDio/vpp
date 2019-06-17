@@ -41,7 +41,9 @@
  * in-band OAM can be enabled for IPv6 traffic.
  */
 
+#ifndef CLIB_MARCH_VARIANT
 ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_ip6_hbyh_ioam_input_next	\
   _(IP6_REWRITE, "ip6-rewrite")			\
@@ -56,6 +58,7 @@ typedef enum
     IP6_HBYH_IOAM_INPUT_N_NEXT,
 } ip6_hbyh_ioam_input_next_t;
 
+#ifndef CLIB_MARCH_VARIANT
 static uword
 unformat_opaque_ioam (unformat_input_t * input, va_list * args)
 {
@@ -196,6 +199,7 @@ ip6_hbh_flow_handler_unregister (u8 option)
   hm->flow_handler[option] = NULL;
   return (0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct
 {
@@ -215,7 +219,7 @@ format_ip6_add_hop_by_hop_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t ip6_add_hop_by_hop_node;
+extern vlib_node_registration_t ip6_add_hop_by_hop_node;
 
 #define foreach_ip6_add_hop_by_hop_error \
 _(PROCESSED, "Pkts w/ added ip6 hop-by-hop options")
@@ -234,9 +238,9 @@ static char *ip6_add_hop_by_hop_error_strings[] = {
 #undef _
 };
 
-static uword
-ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   u32 n_left_from, *from, *to_next;
@@ -437,26 +441,22 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
 {
-  .function = ip6_add_hop_by_hop_node_fn,.name =
-    "ip6-add-hop-by-hop",.vector_size = sizeof (u32),.format_trace =
-    format_ip6_add_hop_by_hop_trace,.type =
-    VLIB_NODE_TYPE_INTERNAL,.n_errors =
-    ARRAY_LEN (ip6_add_hop_by_hop_error_strings),.error_strings =
-    ip6_add_hop_by_hop_error_strings,
-    /* See ip/lookup.h */
-    .n_next_nodes = IP6_HBYH_IOAM_INPUT_N_NEXT,.next_nodes =
-  {
+  .name = "ip6-add-hop-by-hop",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_add_hop_by_hop_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (ip6_add_hop_by_hop_error_strings),
+  .error_strings = ip6_add_hop_by_hop_error_strings,
+  /* See ip/lookup.h */
+  .n_next_nodes = IP6_HBYH_IOAM_INPUT_N_NEXT,
+  .next_nodes = {
 #define _(s,n) [IP6_HBYH_IOAM_INPUT_NEXT_##s] = n,
     foreach_ip6_hbyh_ioam_input_next
 #undef _
-  }
-,};
+  },
+};
 /* *INDENT-ON* */
 
-/* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_add_hop_by_hop_node,
-			      ip6_add_hop_by_hop_node_fn);
 /* The main h-b-h tracer was already invoked, no need to do much here */
 typedef struct
 {
@@ -476,6 +476,7 @@ format_ip6_pop_hop_by_hop_trace (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 int
 ip6_hbh_pop_register_option (u8 option,
 			     int options (vlib_buffer_t * b,
@@ -509,8 +510,9 @@ ip6_hbh_pop_unregister_option (u8 option)
   hm->pop_options[option] = NULL;
   return (0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
-vlib_node_registration_t ip6_pop_hop_by_hop_node;
+extern vlib_node_registration_t ip6_pop_hop_by_hop_node;
 
 #define foreach_ip6_pop_hop_by_hop_error                \
 _(PROCESSED, "Pkts w/ removed ip6 hop-by-hop options")  \
@@ -577,9 +579,9 @@ ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
     }
 }
 
-static uword
-ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
@@ -779,19 +781,297 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) =
 {
-  .function = ip6_pop_hop_by_hop_node_fn,.name =
-    "ip6-pop-hop-by-hop",.vector_size = sizeof (u32),.format_trace =
-    format_ip6_pop_hop_by_hop_trace,.type =
-    VLIB_NODE_TYPE_INTERNAL,.sibling_of = "ip6-lookup",.n_errors =
-    ARRAY_LEN (ip6_pop_hop_by_hop_error_strings),.error_strings =
-    ip6_pop_hop_by_hop_error_strings,
-    /* See ip/lookup.h */
-.n_next_nodes = 0,};
-
+  .name = "ip6-pop-hop-by-hop",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_pop_hop_by_hop_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "ip6-lookup",
+  .n_errors = ARRAY_LEN (ip6_pop_hop_by_hop_error_strings),
+  .error_strings = ip6_pop_hop_by_hop_error_strings,
+  /* See ip/lookup.h */
+  .n_next_nodes = 0,
+};
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_pop_hop_by_hop_node,
-			      ip6_pop_hop_by_hop_node_fn);
+typedef struct
+{
+  u32 protocol;
+  u32 next_index;
+} ip6_local_hop_by_hop_trace_t;
+
+#ifndef CLIB_MARCH_VARIANT
+
+/* packet trace format function */
+static u8 *
+format_ip6_local_hop_by_hop_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  ip6_local_hop_by_hop_trace_t *t =
+    va_arg (*args, ip6_local_hop_by_hop_trace_t *);
+
+  s = format (s, "IP6_LOCAL_HOP_BY_HOP: protocol %d,  next index %d\n",
+	      t->protocol, t->next_index);
+  return s;
+}
+
+vlib_node_registration_t ip6_local_hop_by_hop_node;
+
+#endif /* CLIB_MARCH_VARIANT */
+
+#define foreach_ip6_local_hop_by_hop_error                      \
+_(UNKNOWN, "Unknown protocol ip6 local h-b-h packets dropped")  \
+_(OK, "Good ip6 local h-b-h packets")
+
+typedef enum
+{
+#define _(sym,str) IP6_LOCAL_HOP_BY_HOP_ERROR_##sym,
+  foreach_ip6_local_hop_by_hop_error
+#undef _
+    IP6_LOCAL_HOP_BY_HOP_N_ERROR,
+} ip6_local_hop_by_hop_error_t;
+
+#ifndef CLIB_MARCH_VARIANT
+static char *ip6_local_hop_by_hop_error_strings[] = {
+#define _(sym,string) string,
+  foreach_ip6_local_hop_by_hop_error
+#undef _
+};
+#endif /* CLIB_MARCH_VARIANT */
+
+typedef enum
+{
+  IP6_LOCAL_HOP_BY_HOP_NEXT_DROP,
+  IP6_LOCAL_HOP_BY_HOP_N_NEXT,
+} ip6_local_hop_by_hop_next_t;
+
+always_inline uword
+ip6_local_hop_by_hop_inline (vlib_main_t * vm,
+			     vlib_node_runtime_t * node, vlib_frame_t * frame,
+			     int is_trace)
+{
+  u32 n_left_from, *from;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  u32 ok = 0;
+  u32 unknown_proto_error = node->errors[IP6_LOCAL_HOP_BY_HOP_ERROR_UNKNOWN];
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+
+  /* Note: there is only one of these */
+  ip6_local_hop_by_hop_runtime_t *rt = hm->ip6_local_hbh_runtime;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  b = bufs;
+  next = nexts;
+
+  while (n_left_from >= 4)
+    {
+      ip6_header_t *ip0, *ip1, *ip2, *ip3;
+      u8 *hbh0, *hbh1, *hbh2, *hbh3;
+
+      /* Prefetch next iteration. */
+      if (PREDICT_TRUE (n_left_from >= 8))
+	{
+	  vlib_prefetch_buffer_header (b[4], STORE);
+	  vlib_prefetch_buffer_header (b[5], STORE);
+	  vlib_prefetch_buffer_header (b[6], STORE);
+	  vlib_prefetch_buffer_header (b[7], STORE);
+	  CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (b[6]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (b[7]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	}
+
+      /*
+       * Leave current_data pointing at the IP header.
+       * It's reasonably likely that any registered handler
+       * will want to know where to find the ip6 header.
+       */
+      ip0 = vlib_buffer_get_current (b[0]);
+      ip1 = vlib_buffer_get_current (b[1]);
+      ip2 = vlib_buffer_get_current (b[2]);
+      ip3 = vlib_buffer_get_current (b[3]);
+
+      /* Look at hop-by-hop header */
+      hbh0 = ip6_next_header (ip0);
+      hbh1 = ip6_next_header (ip1);
+      hbh2 = ip6_next_header (ip2);
+      hbh3 = ip6_next_header (ip3);
+
+      /*
+       * ... to find the next header type and see if we
+       * have a handler for it...
+       */
+      next[0] = rt->next_index_by_protocol[*hbh0];
+      next[1] = rt->next_index_by_protocol[*hbh1];
+      next[2] = rt->next_index_by_protocol[*hbh2];
+      next[3] = rt->next_index_by_protocol[*hbh3];
+
+      b[0]->error = unknown_proto_error;
+      b[1]->error = unknown_proto_error;
+      b[2]->error = unknown_proto_error;
+      b[3]->error = unknown_proto_error;
+
+      /* Account for non-drop pkts */
+      ok += next[0] != 0;
+      ok += next[1] != 0;
+      ok += next[2] != 0;
+      ok += next[3] != 0;
+
+      if (is_trace)
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      ip6_local_hop_by_hop_trace_t *t =
+		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->next_index = next[0];
+	      t->protocol = *hbh0;
+	    }
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      ip6_local_hop_by_hop_trace_t *t =
+		vlib_add_trace (vm, node, b[1], sizeof (*t));
+	      t->next_index = next[1];
+	      t->protocol = *hbh1;
+	    }
+	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      ip6_local_hop_by_hop_trace_t *t =
+		vlib_add_trace (vm, node, b[2], sizeof (*t));
+	      t->next_index = next[2];
+	      t->protocol = *hbh2;
+	    }
+	  if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      ip6_local_hop_by_hop_trace_t *t =
+		vlib_add_trace (vm, node, b[3], sizeof (*t));
+	      t->next_index = next[3];
+	      t->protocol = *hbh3;
+	    }
+	}
+
+      b += 4;
+      next += 4;
+      n_left_from -= 4;
+    }
+
+  while (n_left_from > 0)
+    {
+      ip6_header_t *ip0;
+      u8 *hbh0;
+
+      ip0 = vlib_buffer_get_current (b[0]);
+
+      hbh0 = ip6_next_header (ip0);
+
+      next[0] = rt->next_index_by_protocol[*hbh0];
+
+      b[0]->error = unknown_proto_error;
+      ok += next[0] != 0;
+
+      if (is_trace)
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      ip6_local_hop_by_hop_trace_t *t =
+		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->next_index = next[0];
+	      t->protocol = *hbh0;
+	    }
+	}
+
+      b += 1;
+      next += 1;
+      n_left_from -= 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       IP6_LOCAL_HOP_BY_HOP_ERROR_OK, ok);
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (ip6_local_hop_by_hop_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
+{
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    return ip6_local_hop_by_hop_inline (vm, node, frame, 1 /* is_trace */ );
+  else
+    return ip6_local_hop_by_hop_inline (vm, node, frame, 0 /* is_trace */ );
+}
+
+#ifndef CLIB_MARCH_VARIANT
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_local_hop_by_hop_node) =
+{
+  .name = "ip6-local-hop-by-hop",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_local_hop_by_hop_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(ip6_local_hop_by_hop_error_strings),
+  .error_strings = ip6_local_hop_by_hop_error_strings,
+
+  .n_next_nodes = IP6_LOCAL_HOP_BY_HOP_N_NEXT,
+
+  /* edit / add dispositions here */
+  .next_nodes =
+  {
+    [IP6_LOCAL_HOP_BY_HOP_NEXT_DROP] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
+
+clib_error_t *
+show_ip6_hbh_command_fn (vlib_main_t * vm,
+			 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  int i;
+  u32 next_index;
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+  ip6_local_hop_by_hop_runtime_t *rt = hm->ip6_local_hbh_runtime;
+  vlib_node_t *n = vlib_get_node (vm, ip6_local_hop_by_hop_node.index);
+
+  vlib_cli_output (vm, "%-6s%s", "Proto", "Node Name");
+
+  for (i = 0; i < ARRAY_LEN (rt->next_index_by_protocol); i++)
+    {
+      if ((next_index = rt->next_index_by_protocol[i]))
+	{
+	  u32 next_node_index = n->next_nodes[next_index];
+	  vlib_node_t *next_n = vlib_get_node (vm, next_node_index);
+	  vlib_cli_output (vm, "[%3d] %v", i, next_n->name);
+	}
+    }
+
+  return 0;
+}
+
+/*?
+ * Display the set of ip6 local hop-by-hop next protocol handler nodes
+ *
+ * @cliexpar
+ * Display ip6 local hop-by-hop next protocol handler nodes
+ * @cliexcmd{show ip6 hbh}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_ip6_hbh, static) = {
+  .path = "show ip6 hbh",
+  .short_help = "show ip6 hbh",
+  .function = show_ip6_hbh_command_fn,
+};
+/* *INDENT-ON* */
+
+
+#endif /* CLIB_MARCH_VARIANT */
+
+
+#ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
 ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
 {
@@ -814,11 +1094,45 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
   clib_memset (hm->options_size, 0, sizeof (hm->options_size));
 
   vnet_classify_register_unformat_opaque_index_fn (unformat_opaque_ioam);
+  hm->ip6_local_hbh_runtime = clib_mem_alloc_aligned
+    (sizeof (ip6_local_hop_by_hop_runtime_t), CLIB_CACHE_LINE_BYTES);
 
+  memset (hm->ip6_local_hbh_runtime, 0,
+	  sizeof (ip6_local_hop_by_hop_runtime_t));
+
+  ip6_register_protocol (IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS,
+			 ip6_local_hop_by_hop_node.index);
   return (0);
 }
 
-VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_init) =
+{
+  .runs_after = VLIB_INITS("ip_main_init", "ip6_lookup_init"),
+};
+/* *INDENT-ON* */
+
+void
+ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+  vlib_main_t *vm = hm->vlib_main;
+  ip6_local_hop_by_hop_runtime_t *local_hbh_runtime
+    = hm->ip6_local_hbh_runtime;
+  u32 old_next_index;
+
+  ASSERT (protocol < ARRAY_LEN (local_hbh_runtime->next_index_by_protocol));
+
+  old_next_index = local_hbh_runtime->next_index_by_protocol[protocol];
+
+  local_hbh_runtime->next_index_by_protocol[protocol] =
+    vlib_node_add_next (vm, ip6_local_hop_by_hop_node.index, node_index);
+
+  /* Someone will eventually do this. Trust me. */
+  if (old_next_index &&
+      (old_next_index != local_hbh_runtime->next_index_by_protocol[protocol]))
+    clib_warning ("WARNING: replaced next index for protocol %d", protocol);
+}
 
 int
 ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
@@ -1157,6 +1471,7 @@ vnet_register_ioam_end_of_path_callback (void *cb)
   hm->ioam_end_of_path_cb = cb;
 }
 
+#endif /* CLIB_MARCH_VARIANT */
 /*
  * fd.io coding-style-patch-verification: ON
  *

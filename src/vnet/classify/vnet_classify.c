@@ -144,6 +144,8 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
   t->mheap = mheap_alloc (0 /* use VM */ , memory_size);
 #else
   t->mheap = create_mspace (memory_size, 1 /* locked */ );
+  /* classifier requires the memory to be contiguous, so can not expand. */
+  mspace_disable_expand (t->mheap);
 #endif
 
   vec_validate_aligned (t->buckets, nbuckets - 1, CLIB_CACHE_LINE_BYTES);
@@ -619,7 +621,6 @@ vnet_classify_add_del (vnet_classify_table_t * t,
     }
   /* Crap. Try again */
   vnet_classify_entry_free (t, save_new_v, new_log2_pages);
-  new_log2_pages++;
 
   if (resplit_once)
     goto mark_linear;

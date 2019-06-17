@@ -27,6 +27,7 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/l2/l2_learn.h>
 #include <vnet/l2/l2_bd.h>
+#include <vnet/l2/l2_bvi.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 
@@ -74,7 +75,9 @@ _(BRIDGE_FLAGS, bridge_flags)                                   \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite) \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)   \
 _(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)         \
-_(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)
+_(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)               \
+_(BVI_CREATE, bvi_create)                                       \
+_(BVI_DELETE, bvi_delete)
 
 static void
 send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
@@ -435,6 +438,7 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
     .forward = mp->forward,
     .learn = mp->learn,
     .arp_term = mp->arp_term,
+    .arp_ufwd = mp->arp_ufwd,
     .mac_age = mp->mac_age,
     .bd_id = ntohl (mp->bd_id),
     .bd_tag = mp->bd_tag
@@ -467,6 +471,7 @@ send_bridge_domain_details (l2input_main_t * l2im,
   mp->forward = bd_feature_forward (bd_config);
   mp->learn = bd_feature_learn (bd_config);
   mp->arp_term = bd_feature_arp_term (bd_config);
+  mp->arp_ufwd = bd_feature_arp_ufwd (bd_config);
   mp->bvi_sw_if_index = ntohl (bd_config->bvi_sw_if_index);
   mp->uu_fwd_sw_if_index = ntohl (bd_config->uu_fwd_sw_if_index);
   mp->mac_age = bd_config->mac_age;
@@ -549,6 +554,8 @@ bd_flags_decode (vl_api_bd_flags_t v)
     f |= L2_UU_FLOOD;
   if (v & BRIDGE_API_FLAG_ARP_TERM)
     f |= L2_ARP_TERM;
+  if (v & BRIDGE_API_FLAG_ARP_UFWD)
+    f |= L2_ARP_UFWD;
 
   return (f);
 }
@@ -993,6 +1000,37 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_VPATH_REPLY);
 }
 
+static void
+vl_api_bvi_create_t_handler (vl_api_bvi_create_t * mp)
+{
+  vl_api_bvi_create_reply_t *rmp;
+  mac_address_t mac;
+  u32 sw_if_index;
+  int rv;
+
+  mac_address_decode (mp->mac, &mac);
+
+  rv = l2_bvi_create (ntohl (mp->user_instance), &mac, &sw_if_index);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_BVI_CREATE_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_bvi_delete_t_handler (vl_api_bvi_delete_t * mp)
+{
+  vl_api_bvi_delete_reply_t *rmp;
+  int rv;
+
+  rv = l2_bvi_delete (ntohl (mp->sw_if_index));
+
+  REPLY_MACRO (VL_API_BVI_DELETE_REPLY);
+}
+
 /*
  * l2_api_hookup
  * Add vpe's API message handlers to the table.
@@ -1026,6 +1064,9 @@ l2_api_hookup (vlib_main_t * vm)
                            sizeof(vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
+
+  /* Mark VL_API_BRIDGE_DOMAIN_DUMP as mp safe */
+  am->is_mp_safe[VL_API_BRIDGE_DOMAIN_DUMP] = 1;
 
   /*
    * Set up the (msg_name, crc, message-id) table

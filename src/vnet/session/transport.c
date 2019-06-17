@@ -49,6 +49,7 @@ static double transport_pacer_period;
 
 #define TRANSPORT_PACER_MIN_MSS 	1460
 #define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
+#define TRANSPORT_PACER_MAX_BURST	(32 * TRANSPORT_PACER_MIN_MSS)
 
 u8 *
 format_transport_proto (u8 * s, va_list * args)
@@ -65,8 +66,20 @@ format_transport_proto (u8 * s, va_list * args)
     case TRANSPORT_PROTO_SCTP:
       s = format (s, "SCTP");
       break;
+    case TRANSPORT_PROTO_NONE:
+      s = format (s, "NONE");
+      break;
+    case TRANSPORT_PROTO_TLS:
+      s = format (s, "TLS");
+      break;
     case TRANSPORT_PROTO_UDPC:
       s = format (s, "UDPC");
+      break;
+    case TRANSPORT_PROTO_QUIC:
+      s = format (s, "QUIC");
+      break;
+    default:
+      s = format (s, "UNKNOWN");
       break;
     }
   return s;
@@ -87,8 +100,20 @@ format_transport_proto_short (u8 * s, va_list * args)
     case TRANSPORT_PROTO_SCTP:
       s = format (s, "S");
       break;
+    case TRANSPORT_PROTO_NONE:
+      s = format (s, "N");
+      break;
+    case TRANSPORT_PROTO_TLS:
+      s = format (s, "J");
+      break;
     case TRANSPORT_PROTO_UDPC:
       s = format (s, "U");
+      break;
+    case TRANSPORT_PROTO_QUIC:
+      s = format (s, "Q");
+      break;
+    default:
+      s = format (s, "?");
       break;
     }
   return s;
@@ -158,6 +183,10 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     *proto = TRANSPORT_PROTO_TCP;
   else if (unformat (input, "TCP"))
     *proto = TRANSPORT_PROTO_TCP;
+  else if (unformat (input, "udpc"))
+    *proto = TRANSPORT_PROTO_UDPC;
+  else if (unformat (input, "UDPC"))
+    *proto = TRANSPORT_PROTO_UDPC;
   else if (unformat (input, "udp"))
     *proto = TRANSPORT_PROTO_UDP;
   else if (unformat (input, "UDP"))
@@ -170,10 +199,10 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
     *proto = TRANSPORT_PROTO_TLS;
   else if (unformat (input, "TLS"))
     *proto = TRANSPORT_PROTO_TLS;
-  else if (unformat (input, "udpc"))
-    *proto = TRANSPORT_PROTO_UDPC;
-  else if (unformat (input, "UDPC"))
-    *proto = TRANSPORT_PROTO_UDPC;
+  else if (unformat (input, "quic"))
+    *proto = TRANSPORT_PROTO_QUIC;
+  else if (unformat (input, "QUIC"))
+    *proto = TRANSPORT_PROTO_QUIC;
   else
     return 0;
   return 1;
@@ -306,6 +335,54 @@ u8
 transport_protocol_is_cl (transport_proto_t tp)
 {
   return (tp_vfts[tp].service_type == TRANSPORT_SERVICE_CL);
+}
+
+always_inline void
+default_get_transport_endpoint (transport_connection_t * tc,
+				transport_endpoint_t * tep, u8 is_lcl)
+{
+  if (is_lcl)
+    {
+      tep->port = tc->lcl_port;
+      tep->is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (&tep->ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+    }
+  else
+    {
+      tep->port = tc->rmt_port;
+      tep->is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (&tep->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+    }
+}
+
+void
+transport_get_endpoint (transport_proto_t tp, u32 conn_index,
+			u32 thread_index, transport_endpoint_t * tep,
+			u8 is_lcl)
+{
+  if (tp_vfts[tp].get_transport_endpoint)
+    tp_vfts[tp].get_transport_endpoint (conn_index, thread_index, tep,
+					is_lcl);
+  else
+    {
+      transport_connection_t *tc;
+      tc = transport_get_connection (tp, conn_index, thread_index);
+      default_get_transport_endpoint (tc, tep, is_lcl);
+    }
+}
+
+void
+transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
+				 transport_endpoint_t * tep, u8 is_lcl)
+{
+  if (tp_vfts[tp].get_transport_listener_endpoint)
+    tp_vfts[tp].get_transport_listener_endpoint (conn_index, tep, is_lcl);
+  else
+    {
+      transport_connection_t *tc;
+      tc = transport_get_listener (tp, conn_index);
+      default_get_transport_endpoint (tc, tep, is_lcl);
+    }
 }
 
 #define PORT_MASK ((1 << 16)- 1)
@@ -540,7 +617,7 @@ spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
       pacer->bucket += inc;
     }
 
-  return clib_min (pacer->bucket, pacer->max_burst_size);
+  return clib_min (pacer->bucket, TRANSPORT_PACER_MAX_BURST);
 }
 
 static inline void
@@ -548,13 +625,6 @@ spacer_update_bucket (spacer_t * pacer, u32 bytes)
 {
   ASSERT (pacer->bucket >= bytes);
   pacer->bucket -= bytes;
-}
-
-static inline void
-spacer_update_max_burst_size (spacer_t * pacer, u32 max_burst_bytes)
-{
-  pacer->max_burst_size = clib_max (max_burst_bytes,
-				    TRANSPORT_PACER_MIN_BURST);
 }
 
 static inline void
@@ -570,12 +640,6 @@ transport_connection_tx_pacer_reset (transport_connection_t * tc,
 				     u32 start_bucket, u64 time_now)
 {
   spacer_t *pacer = &tc->pacer;
-  f64 dispatch_period;
-  u32 burst_size;
-
-  dispatch_period = transport_dispatch_period (tc->thread_index);
-  burst_size = rate_bytes_per_sec * dispatch_period;
-  spacer_update_max_burst_size (&tc->pacer, burst_size);
   spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec);
   pacer->last_update = time_now >> SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
   pacer->bucket = start_bucket;
@@ -597,10 +661,7 @@ void
 transport_connection_tx_pacer_update (transport_connection_t * tc,
 				      u64 bytes_per_sec)
 {
-  f64 dispatch_period = transport_dispatch_period (tc->thread_index);
-  u32 burst_size = 1.1 * bytes_per_sec * dispatch_period;
   spacer_set_pace_rate (&tc->pacer, bytes_per_sec);
-  spacer_update_max_burst_size (&tc->pacer, burst_size);
 }
 
 u32
@@ -677,7 +738,7 @@ void
 transport_init (void)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
+  session_main_t *smm = vnet_get_session_main ();
   u32 num_threads;
 
   if (smm->local_endpoints_table_buckets == 0)

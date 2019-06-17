@@ -132,8 +132,7 @@ format_bier_disp_lookup_trace (u8 * s, va_list * args)
     return (s);
 }
 
-static uword
-bier_disp_lookup (vlib_main_t * vm,
+VLIB_NODE_FN (bier_disp_lookup_node) (vlib_main_t * vm,
                   vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
@@ -141,7 +140,6 @@ bier_disp_lookup (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (bier_disp_lookup_node) = {
-    .function = bier_disp_lookup,
     .name = "bier-disp-lookup",
     .vector_size = sizeof (u32),
 
@@ -152,4 +150,3 @@ VLIB_REGISTER_NODE (bier_disp_lookup_node) = {
         [BIER_DISP_LOOKUP_NEXT_DISPATCH] = "bier-disp-dispatch",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (bier_disp_lookup_node, bier_disp_lookup)

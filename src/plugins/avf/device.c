@@ -377,7 +377,7 @@ avf_send_to_pf (vlib_main_t * vm, avf_device_t * ad, virtchnl_ops_t op,
   int n_retry = 5;
 
 
-  /* supppres interrupt in the next adminq receive slot
+  /* suppress interrupt in the next adminq receive slot
      as we are going to wait for response
      we only need interrupts when event is received */
   d = &ad->arq[ad->arq_next_slot];
@@ -561,7 +561,7 @@ avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad)
   virtchnl_promisc_info_t pi = { 0 };
 
   pi.vsi_id = ad->vsi_id;
-  pi.flags = 1;
+  pi.flags = FLAG_VF_UNICAST_PROMISC | FLAG_VF_MULTICAST_PROMISC;
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE, &pi,
 			 sizeof (virtchnl_promisc_info_t), 0, 0);
 }
@@ -727,7 +727,7 @@ avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
 			  sizeof (virtchnl_vf_res_request_t));
 
   /*
-   * if PF respondes, the request failed
+   * if PF responds, the request failed
    * else PF initializes restart and avf_send_to_pf returns an error
    */
   if (!error)
@@ -788,7 +788,7 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
 			      "(remote %d.%d)", ver.major, ver.minor);
 
   /*
-   * OP_GET_VF_RESOUCES
+   * OP_GET_VF_RESOURCES
    */
   if ((error = avf_op_get_vf_resources (vm, ad, &res)))
     return error;
@@ -1433,11 +1433,7 @@ clib_error_t *
 avf_init (vlib_main_t * vm)
 {
   avf_main_t *am = &avf_main;
-  clib_error_t *error;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  if ((error = vlib_call_init_function (vm, pci_bus_init)))
-    return error;
 
   vec_validate_aligned (am->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
@@ -1448,7 +1444,12 @@ avf_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (avf_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (avf_init) =
+{
+  .runs_after = VLIB_INITS ("pci_bus_init"),
+};
+/* *INDENT-OFF* */
 
 /*
  * fd.io coding-style-patch-verification: ON

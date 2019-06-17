@@ -51,42 +51,8 @@
 #include <memif/memif_all_api_h.h>
 #undef vl_api_version
 
-/*
- * A handy macro to set up a message reply.
- * Assumes that the following variables are available:
- * mp - pointer to request message
- * rmp - pointer to reply message type
- * rv - return value
- */
-#define REPLY_MACRO(t)                                          \
-do {                                                            \
-    svm_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = htons ((t)+mm->msg_id_base);              \
-    rmp->context = mp->context;                                 \
-    rmp->retval = htonl (rv);                                   \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-#define REPLY_MACRO2(t, body)                                   \
-do {                                                            \
-    svm_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = htons ((t)+mm->msg_id_base);              \
-    rmp->context = mp->context;                                 \
-    rmp->retval = htonl (rv);                                   \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
+#define REPLY_MSG_ID_BASE mm->msg_id_base
+#include <vlibapi/api_helper_macros.h>
 
 #define foreach_memif_plugin_api_msg					\
 _(MEMIF_SOCKET_FILENAME_ADD_DEL, memif_socket_filename_add_del)	\

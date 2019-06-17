@@ -7,6 +7,7 @@ import six
 import sys
 import os.path
 
+import scapy.compat
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, IPv6ExtHdrRouting,\
@@ -282,7 +283,7 @@ def fragment_rfc791(packet, fragsize, _logger=None):
     """
     logger = LoggerWrapper(_logger)
     logger.debug(ppp("Fragmenting packet:", packet))
-    packet = packet.__class__(str(packet))  # recalculate all values
+    packet = packet.__class__(scapy.compat.raw(packet))  # recalc. all values
     if len(packet[IP].options) > 0:
         raise Exception("Not implemented")
     if len(packet) <= fragsize:
@@ -290,7 +291,7 @@ def fragment_rfc791(packet, fragsize, _logger=None):
 
     pre_ip_len = len(packet) - len(packet[IP])
     ip_header_len = packet[IP].ihl * 4
-    hex_packet = str(packet)
+    hex_packet = scapy.compat.raw(packet)
     hex_headers = hex_packet[:(pre_ip_len + ip_header_len)]
     hex_payload = hex_packet[(pre_ip_len + ip_header_len):]
 
@@ -327,7 +328,7 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
     :returns: list of fragments
     """
     logger = LoggerWrapper(_logger)
-    packet = packet.__class__(str(packet))  # recalculate all values
+    packet = packet.__class__(scapy.compat.raw(packet))  # recalc. all values
     if len(packet) <= fragsize:
         return [packet]
     logger.debug(ppp("Fragmenting packet:", packet))
@@ -378,7 +379,7 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
     logger.debug(ppp("Per-fragment headers:", per_fragment_headers))
 
     ext_and_upper_layer = packet.getlayer(last_per_fragment_hdr)[1]
-    hex_payload = str(ext_and_upper_layer)
+    hex_payload = scapy.compat.raw(ext_and_upper_layer)
     logger.debug("Payload length is %s" % len(hex_payload))
     logger.debug(ppp("Ext and upper layer:", ext_and_upper_layer))
 
@@ -407,7 +408,7 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
     p[IPv6ExtHdrFragment].id = identification
     p[IPv6ExtHdrFragment].offset = 0
     p[IPv6ExtHdrFragment].m = 1
-    p = p.__class__(str(p))
+    p = p.__class__(scapy.compat.raw(p))
     logger.debug(ppp("Fragment %s:" % len(pkts), p))
     pkts.append(p)
     offset = first_payload_len_nfb * 8
@@ -424,7 +425,7 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
         p[IPv6ExtHdrFragment].id = identification
         p[IPv6ExtHdrFragment].offset = offset / 8
         p[IPv6ExtHdrFragment].m = 1
-        p = p.__class__(str(p))
+        p = p.__class__(scapy.compat.raw(p))
         logger.debug(ppp("Fragment %s:" % len(pkts), p))
         pkts.append(p)
         offset = offset + l_nfb * 8

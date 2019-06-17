@@ -62,7 +62,7 @@ static u8*
 mpls_tunnel_build_rewrite_i (void)
 {
     /*
-     * passing the adj code a NULL rewirte means 'i don't have one cos
+     * passing the adj code a NULL rewrite means 'i don't have one cos
      * t'other end is unresolved'. That's not the case here. For the mpls
      * tunnel there are just no bytes of encap to apply in the adj. We'll impose
      * the label stack once we choose a path. So return a zero length rewrite.

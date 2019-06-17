@@ -127,6 +127,9 @@ bier_test_mk_intf (u32 ninterfaces)
                                             &tm->hw_if_indicies[i],
                                             /* flag change */ 0);
 
+        error = vnet_hw_interface_set_flags(vnet_get_main(),
+                                            tm->hw_if_indicies[i],
+                                            VNET_HW_INTERFACE_FLAG_LINK_UP);
         BIER_TEST((NULL == error), "ADD interface %d", i);
 
         tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
@@ -808,7 +811,7 @@ bier_test_mpls_disp (void)
     bti = bier_table_add_or_lock(&bt_0_0_0_256, 1600);
 
     /*
-     * Add a BIER dispoition table
+     * Add a BIER disposition table
      */
     const u32 bier_disp_tbl_id = 1;
     index_t bdti1;
@@ -816,7 +819,7 @@ bier_test_mpls_disp (void)
     bdti1 = bier_disp_table_add_or_lock(bier_disp_tbl_id);
 
     /*
-     * add a bit-poistion in the table that resolves via
+     * add a bit-position in the table that resolves via
      * DISP table, i.e. a for-us bit-position
      */
     fib_route_path_t *paths_via_disp = NULL, path_via_disp = {

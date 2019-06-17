@@ -84,7 +84,7 @@ set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "vpp")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-include(cmake/memfd.cmake)
+include(cmake/syscall.cmake)
 include(cmake/api.cmake)
 include(cmake/library.cmake)
 include(cmake/exec.cmake)
@@ -98,6 +98,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   set(SUBDIRS
     vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins
     vpp-api tools/vppapigen tools/g2 tools/elftool tools/perftool cmake pkg
+    tools/appimage
   )
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
   set(SUBDIRS vppinfra)
@@ -141,4 +142,3 @@ pr("Host processor" "${CMAKE_HOST_SYSTEM_PROCESSOR}")
 pr("Target processor" "${CMAKE_SYSTEM_PROCESSOR}")
 pr("Prefix path" "${CMAKE_PREFIX_PATH}")
 pr("Install prefix" "${CMAKE_INSTALL_PREFIX}")
-

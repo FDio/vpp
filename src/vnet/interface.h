@@ -302,9 +302,6 @@ CLIB_MARCH_SFX (devclass##_tx_fn_multiarch_register) (void)		\
 }									\
 uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (devclass##_tx_fn)
 
-/* FIXME to be removed */
-#define VLIB_DEVICE_TX_FUNCTION_MULTIARCH(dev, fn)
-
 /**
  * Link Type: A description of the protocol of packets on the link.
  * On an ethernet link this maps directly into the ethertype. On a GRE tunnel
@@ -568,6 +565,10 @@ typedef struct vnet_hw_interface_t
   /* device input device_and_queue runtime index */
   uword *dq_runtime_index_by_queue;
 
+  /* numa node that hardware device connects to */
+  u8 numa_node;
+
+  u8 padding[3];
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;
@@ -660,7 +661,7 @@ typedef enum vnet_sw_interface_flags_t_
   /* Interface is disabled for forwarding: punt all traffic to slow-path. */
   VNET_SW_INTERFACE_FLAG_PUNT = (1 << 1),
 
-  VNET_SW_INTERFACE_FLAG_PROXY_ARP = (1 << 2),
+  __VNET_SW_INTERFACE_FLAG_UNSUED = (1 << 2),
 
   VNET_SW_INTERFACE_FLAG_UNNUMBERED = (1 << 3),
 
@@ -764,7 +765,7 @@ typedef enum
   _(RX_MULTICAST, rx-multicast, if)		\
   _(RX_BROADCAST, rx-broadcast, if)		\
   _(TX, tx, if)					\
-  _(TX_UNICAST, tx-unicast-miss, if)		\
+  _(TX_UNICAST, tx-unicast, if)			\
   _(TX_MULTICAST, tx-multicast, if)		\
   _(TX_BROADCAST, tx-broadcast, if)
 

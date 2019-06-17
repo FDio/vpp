@@ -7,70 +7,80 @@ Descriptions of section entries:
 	   F:	drivers/net/	all files in and below drivers/net
 	   F:	drivers/net/*	all files in drivers/net, but not below
 	   One pattern per line.  Multiple F: lines acceptable.
+	E: exclude file(s) matched by F:
 	C: Single line comment related to current section.
+	I: single word feature/component identifier
+	Y: path to feature YAML file
 
 		-----------------------------------
 
 Build System
+I:	build
 M:	Damjan Marion <damarion@cisco.com>
 F:	Makefile
-F:	src/*.ac
-F:	src/*.am
-F:	src/*.mk
-F:	src/m4/
+F:	src/CMakeLists.txt
+F:	src/cmake/
+F:	build/
 
 Build System Internal
+I:	ebuild
 M:	Dave Barach <dave@barachs.net>
 F:	build-root/Makefile
-F:	build-data/*
+F:	build-data/
 
 Doxygen
+I:	doxygen
 M:	Chris Luke <chrisy@flirble.org>
 F:	doxygen/
 
 Sphinx Documents
-M:     John DeNisco <jdenisco@cisco.com>
-M:     Ray Kinsella <raykinsella78@gmail.com>
-F:     docs/
-
-DPDK Development Packaging
-M:	Damjan Marion <damarion@cisco.com>
-F:	dpdk/
-F:	dpdk/*
+I:	docs
+M:	John DeNisco <jdenisco@cisco.com>
+M:	Ray Kinsella <raykinsella78@gmail.com>
+F:	docs/
 
 Infrastructure Library
+I:	vppinfra
 M:	Dave Barach <dave@barachs.net>
 F:	src/vppinfra/
 
-VLIB Library
+Vector Library
+I:	vlib
 M:	Dave Barach <dave@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vlib/
+E:	src/vlib/buffer*.[ch]
 
-VLIB API Libraries
+Vector Library - Buffer Management
+I:	buffers
+M:	Damjan Marion <damarion@cisco.com>
+M:	Dave Barach <dave@barachs.net>
+F:	src/vlib/buffer*.[ch]
+
+Binary API Libraries
+I:	api
 M:	Dave Barach <dave@barachs.net>
 F:	src/vlibapi/
 F:	src/vlibmemory/
 
 VNET Bidirectonal Forwarding Detection (BFD)
+I:	bfd
 M:	Klement Sekera <ksekera@cisco.com>
 F:	src/vnet/bfd/
 
 VNET Device Drivers
+I:	devices
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/
 
-VNET Device Drivers - DPDK Crypto
-M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@outlook.com>
-M:      Radu Nicolau <radu.nicolau@intel.com>
-F:	src/devices/dpdk/ipsec/
-
 VNET Feature Arcs
+I:	feature
 M:	Dave Barach <dave@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/feature/
 
 VNET FIB
+I:	fib
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/fib/
 F:	src/vnet/mfib/
@@ -78,151 +88,289 @@ F:	src/vnet/dpo
 F:	src/vnet/adj
 
 VNET IPv4 and IPv6 LPM
+I:	ip
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/ip/
 
+VNET Interface Common
+I:	interface
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/interface*.[ch]
+
 VNET Segment Routing (IPv6 and MPLS)
+I:	sr
 M:	Pablo Camarillo <pcamaril@cisco.com>
 F:	src/vnet/srv6/
 F:	src/vnet/srmpls/
 F:	src/examples/srv6-sample-localsid/
 
 VNET IPSec
-M:	Matus Fabian <matfabia@cisco.com>
+I:	ipsec
+M:	Neale Ranns <nranns@cisco.com>
 M:	Radu Nicolau <radu.nicolau@intel.com>
 F:	src/vnet/ipsec/
 
+VNET Crypto Infra
+I:	crypto
+M:	Damjan Marion <damarion@cisco.com>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/crypto/
+
+Crypto IA32 Plugin
+I:	crypto-ia32
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/crypto_ia32/
+
+Crypto openssl Plugin
+I:	crypto-openssl
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/crypto_openssl/
+
+Crypto ipsecmb Plugin
+I:	crypto-ipsecmb
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/crypto_ipsecmb/
+
 VNET L2
+I:	l2
 M:	John Lo <loj@cisco.com>
 F:	src/vnet/l2/
 
 VNET Link Layer Discovery Protocol (LLDP)
+I:	lldp
 M:	Klement Sekera <ksekera@cisco.com>
 F:	src/vnet/lldp/
 
 VNET LISP
+I:	lisp
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/lisp-cp/
 F:	src/vnet/lisp-gpe/
 
 Plugin - MAP
+I:	map
+Y:	src/plugins/map/FEATURE.yaml
 M:	Ole Troan <ot@cisco.com>
 F:	src/plugins/map
 
 VNET MPLS
+I:	mpls
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/mpls/
 
-VNET Host Stack Session Layer
+VNET Session Layer
+I:	session
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/session
 
-VNET TCP Stack
+VNET TCP
+I:	tcp
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/tcp
 
 VNET VXLAN
+I:	vxlan
 M:	John Lo <loj@cisco.com>
 F:	src/vnet/vxlan/
 
 VNET VXLAN-GPE
-M:	Keith Burns <alagalah@gmail.com>
+I:	vxlan-gpe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
 VNET IPIP
+I:	ipip
+Y:	src/vnet/ipip/FEATURE.yaml
 M:	Ole Troan <otroan@employees.org>
 F:	src/vnet/ipip/
 
 VNET TLS and TLS engine plugins
-M: 	Florin Coras <fcoras@cisco.com>
+I:	tls
+M:	Florin Coras <fcoras@cisco.com>
 M:	Ping Yu <ping.yu@intel.com>
 F:	src/vnet/tls
 F:	src/plugins/tlsopenssl
 F:	src/plugins/tlsmbedtls
 
+Plugin - Access Control List (ACL) Based Forwarding
+I:	abf
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/abf/
+
+Plugin - Group Based Policy (GBP)
+I:	gbp
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/gbp/
+
 Plugin - ACL
+I:	acl
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
-F:	src/plugins/acl.am
+
+Plugin - AVF Device driver
+I:	avf
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/avf/
+
+Plugin - DPDK
+I:	dpdk
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/dpdk/
+
+Plugin - DPDK Crypto
+I:	dpdk-ipsec
+M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@outlook.com>
+M:	Radu Nicolau <radu.nicolau@intel.com>
+F:	src/plugins/dpdk/ipsec/
 
 Plugin - flowprobe
+I:	flowprobe
+Y:	src/plugins/flowprobe/FEATURE.yaml
 M:	Ole Troan <otroan@employees.org>
 F:	src/plugins/flowprobe/
-F:	src/plugins/flowprobe.am
+
+Plugin - Group Based Policy (GBP)
+I:	gbp
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/gbp/
 
 Plugin - GTPU
+I:	gtpu
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/gtpu/
-F:	src/plugins/gtpu.am
+
+Plugin - Internet Key Exchange (IKEv2) Protocol
+I:	ikev2
+M:	Damjan Marion <damarion@cisco.com>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/ikev2/
+
+Plugin - Internet Group Management Protocol (IGMP)
+I:	igmp
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/igmp/
+
+Plugin - ixge device driver
+I:	ixge
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/ixge/
+
+Plugin - L3 Cross-Connect (L3XC)
+I:	l3xc
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/l3xc/
+
+Plugin - memif device driver
+I:	memif
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/memif/
+
+Plugin - Marvell MUSDK device driver
+I:	marvell
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/marvell/
 
 Plugin - PPPoE
+I:	pppoe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/pppoe/
-F:	src/plugins/pppoe.am
 
 Plugin - IPv6 Segment Routing Dynamic Proxy
+I:	srv6-ad
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-ad/
-F:	src/plugins/srv6_ad.am
 
 Plugin - IPv6 Segment Routing Masquerading Proxy
+I:	srv6-am
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-am/
-F:	src/plugins/srv6_am.am
 
 Plugin - IPv6 Segment Routing Static Proxy
+I:	srv6-as
 M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-as/
-F:	src/plugins/srv6_as.am
 
 Plugin - Load Balancer
-M:      Pierre Pfister <ppfister@cisco.com>
-M:      Hongjun Ni <hongjun.ni@intel.com>
-F:      src/plugins/lb/
-F:      src/plugins/lb.am
+I:	lb
+M:	Pfister <ppfister@cisco.com>
+M:	Hongjun Ni <hongjun.ni@intel.com>
+F:	src/plugins/lb/
 
 Plugin - NSH
-M:      Hongjun Ni <hongjun.ni@intel.com>
-M:      Keith Burns <alagalah@gmail.com>
-M:      Vengada <venggovi@cisco.com>
-F:      src/plugins/nsh/
-F:      src/plugins/nsh.am
+I:	nsh
+M:	Hongjun Ni <hongjun.ni@intel.com>
+M:	Vengada <venggovi@cisco.com>
+F:	src/plugins/nsh/
+
+Plugin - Time-based MAC filter
+I:	mactime
+Y:	src/plugins/mactime/FEATURE.yaml
+M:	Dave Barach <dave@barachs.net>
+F:      src/plugins/mactime/
+
+Plugin - Network Delay Simulator
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/nsim/
 
 Test Infrastructure
 M:	Klement Sekera <ksekera@cisco.com>
-M:  Paul Vinciguerra <pvinci@vinciconsulting.com>
+M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	test/
 
 SVM Library
+I:	svm
 M:	Dave Barach <dave@barachs.net>
 F:	src/svm
 
 VPP API TEST
+I:	vat
 M:	Dave Barach <dave@barachs.net>
 F:	src/vat/
 
 VPP Executable
+I:	vpp
 M:	Dave Barach <dave@barachs.net>
 F:	src/vpp/
 
 Graphical Event Viewer
+I:	g2
 M:	Dave Barach <dave@barachs.net>
 F:	src/tools/g2/
 
 Performance Tooling
+I:	perftool
 M:	Dave Barach <dave@barachs.net>
 F:	src/tools/perftool/
 
 Binary API Compiler
-M:	Dave Barach <dave@barachs.net>
+I:	vppapigen
+M:	Ole Troan <otroan@employees.org>
 F:	src/tools/vppapigen/
 
-Ganglia Telemetry Module
-M:	Dave Barach <dave@barachs.net>
-F:	gmod/
+Plugin - RDMA (ibverb) driver
+I:	rdma
+M:	Benoît Ganne <bganne@cisco.com>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/rdma/
+
+libmemif
+I:	libmemif
+M:	Damjan Marion <damarion@cisco.com>
+F:	extras/libmemif
+
+VPP Comms Library
+I:	vcl
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/vcl
+
+Statistics Segment
+I:	stats
+M:	Ole Troan <ot@cisco.com>
+F:	src/vpp/stats/
+F:	src/vpp-api/client/stat_client.[ch]
 
 THE REST
+I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
 F:	*
 F:	*/

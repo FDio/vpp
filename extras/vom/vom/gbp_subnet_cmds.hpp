@@ -25,8 +25,8 @@ namespace VOM {
 namespace gbp_subnet_cmds {
 
 /**
-* A command class that creates or updates the GBP subnet
-*/
+ * A command class that creates or updates the GBP subnet
+ */
 class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_subnet_add_del>
 {
 public:
@@ -38,7 +38,7 @@ public:
              const route::prefix_t& prefix,
              const gbp_subnet::type_t& type,
              const handle_t& itf,
-             epg_id_t epg_id);
+             sclass_t sclass);
 
   /**
    * Issue the command to VPP/HW
@@ -60,7 +60,7 @@ private:
   const route::prefix_t m_prefix;
   const gbp_subnet::type_t& m_type;
   const handle_t m_itf;
-  const epg_id_t m_epg_id;
+  const sclass_t m_sclass;
 };
 
 /**

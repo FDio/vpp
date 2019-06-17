@@ -222,7 +222,7 @@ enum ipsec_sad_flags
 {
   IPSEC_API_SAD_FLAG_NONE = 0,
   /* Enable extended sequence numbers */
-  IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM = 0x01,
+  IPSEC_API_SAD_FLAG_USE_ESN = 0x01,
   /* Enable Anti-replay */
   IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY = 0x02,
   /* IPsec tunnel mode if non-zero, else transport mode */
@@ -232,11 +232,6 @@ enum ipsec_sad_flags
   IPSEC_API_SAD_FLAG_IS_TUNNEL_V6 = 0x08,
   /* enable UDP encapsulation for NAT traversal */
   IPSEC_API_SAD_FLAG_UDP_ENCAP = 0x10,
-
-  /* come-on Ole please fix this */
-  IPSEC_API_SAD_COMBO_12 = 12,
-  IPSEC_API_SAD_COMBO_18 = 18,
-  IPSEC_API_SAD_COMBO_20 = 20,
 };
 
 enum ipsec_proto
@@ -267,6 +262,7 @@ typedef key
     @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tx_table_id - the FIB id used for encapsulated packets
+    @param salt - for use with counter mode ciphers
  */
 typedef ipsec_sad_entry
 {
@@ -287,6 +283,7 @@ typedef ipsec_sad_entry
   vl_api_address_t tunnel_src;
   vl_api_address_t tunnel_dst;
   u32 tx_table_id;
+  u32 salt;
 };
 
 /** \brief IPsec: Add/delete Security Association Database entry
@@ -306,27 +303,6 @@ define ipsec_sad_entry_add_del_reply
   u32 context;
   i32 retval;
   u32 stat_index;
-};
-
-/** \brief IPsec: Update Security Association keys
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-
-    @param sa_id - sa id
-
-    @param crypto_key - crypto keying material
-    @param integrity_key - integrity keying material
-*/
-
-autoreply define ipsec_sa_set_key
-{
-  u32 client_index;
-  u32 context;
-
-  u32 sa_id;
-
-  vl_api_key_t crypto_key;
-  vl_api_key_t integrity_key;
 };
 
 /** \brief IPsec: Get SPD interfaces
@@ -358,6 +334,7 @@ define ipsec_spd_interface_details {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add IPsec tunnel interface if nonzero, else delete
+    @param is_ip6 - tunnel v6 or v4
     @param esn - enable extended sequence numbers if nonzero, else disable
     @param anti_replay - enable anti replay check if nonzero, else disable
     @param local_ip - local IP address
@@ -378,6 +355,7 @@ define ipsec_spd_interface_details {
     @param show_instance - instance to display for intf if renumber is set
     @param udp_encap - enable UDP encapsulation for NAT traversal
     @param tx_table_id - the FIB id used after packet encap
+    @param salt - for use with counter mode ciphers
 */
 define ipsec_tunnel_if_add_del {
   u32 client_index;
@@ -385,8 +363,8 @@ define ipsec_tunnel_if_add_del {
   u8 is_add;
   u8 esn;
   u8 anti_replay;
-  u8 local_ip[4];
-  u8 remote_ip[4];
+  vl_api_address_t local_ip;
+  vl_api_address_t remote_ip;
   u32 local_spi;
   u32 remote_spi;
   u8 crypto_alg;
@@ -403,6 +381,7 @@ define ipsec_tunnel_if_add_del {
   u32 show_instance;
   u8 udp_encap;
   u32 tx_table_id;
+  u32 salt;
 };
 
 /** \brief Add/delete IPsec tunnel interface response
@@ -465,25 +444,6 @@ define ipsec_sa_details {
   u64 replay_window;
 
   u64 total_data_size;
-};
-
-/** \brief Set key on IPsec interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - index of tunnel interface
-    @param key_type - type of key being set
-    @param alg - algorithm used with key
-    @param key_len - length key in bytes
-    @param key - key
-*/
-autoreply define ipsec_tunnel_if_set_key {
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u8 key_type;
-  u8 alg;
-  u8 key_len;
-  u8 key[128];
 };
 
 /** \brief Set new SA on IPsec interface

@@ -19,17 +19,19 @@ namespace VOM {
 namespace gbp_endpoint_group_cmds {
 
 create_cmd::create_cmd(HW::item<bool>& item,
-                       epg_id_t epg_id,
+                       vnid_t vnid,
                        uint16_t sclass,
                        uint32_t bd_id,
                        route::table_id_t rd_id,
+                       const gbp_endpoint_group::retention_t& retention,
                        const handle_t& itf)
   : rpc_cmd(item)
-  , m_epg_id(epg_id)
+  , m_vnid(vnid)
   , m_sclass(sclass)
   , m_bd_id(bd_id)
   , m_rd_id(rd_id)
   , m_itf(itf)
+  , m_retention(retention)
 {
 }
 
@@ -37,7 +39,8 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_bd_id == other.m_bd_id) &&
-          (m_rd_id == other.m_rd_id) && (m_epg_id == other.m_epg_id));
+          (m_rd_id == other.m_rd_id) && (m_vnid == other.m_vnid) &&
+          (m_retention == other.m_retention));
 }
 
 rc_t
@@ -47,10 +50,11 @@ create_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.epg.uplink_sw_if_index = m_itf.value();
-  payload.epg.epg_id = m_epg_id;
+  payload.epg.vnid = m_vnid;
   payload.epg.sclass = m_sclass;
   payload.epg.bd_id = m_bd_id;
   payload.epg.rd_id = m_rd_id;
+  payload.epg.retention.remote_ep_timeout = m_retention.remote_ep_timeout;
 
   VAPI_CALL(req.execute());
 
@@ -62,22 +66,22 @@ create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "gbp-endpoint-group-create: " << m_hw_item.to_string()
-    << " epg-id:" << m_epg_id << " bd-id:" << m_bd_id << " rd-id:" << m_rd_id
+    << " vnid:" << m_vnid << " bd-id:" << m_bd_id << " rd-id:" << m_rd_id
     << " itf:" << m_itf;
 
   return (s.str());
 }
 
-delete_cmd::delete_cmd(HW::item<bool>& item, epg_id_t epg_id)
+delete_cmd::delete_cmd(HW::item<bool>& item, sclass_t sclass)
   : rpc_cmd(item)
-  , m_epg_id(epg_id)
+  , m_sclass(sclass)
 {
 }
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
 {
-  return (m_epg_id == other.m_epg_id);
+  return (m_sclass == other.m_sclass);
 }
 
 rc_t
@@ -86,7 +90,7 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.epg_id = m_epg_id;
+  payload.sclass = m_sclass;
 
   VAPI_CALL(req.execute());
 
@@ -98,7 +102,7 @@ delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "gbp-endpoint-group-delete: " << m_hw_item.to_string()
-    << " epg:" << m_epg_id;
+    << " sclass:" << m_sclass;
 
   return (s.str());
 }

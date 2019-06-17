@@ -54,6 +54,7 @@
 #include <vppinfra/bihash_template.c>
 #endif
 #include <vnet/ip/ip6_forward.h>
+#include <vnet/interface_output.h>
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
 #define OI_DECAP   0x80000000
@@ -563,211 +564,170 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
 				      vlib_frame_t * frame)
 {
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
-  u32 n_left_from, n_left_to_next, *from, *to_next;
-  ip_lookup_next_t next;
+  u32 n_left, *from;
   u32 thread_index = vm->thread_index;
   ip6_main_t *im = &ip6_main;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next = node->cached_next_index;
+  n_left = frame->n_vectors;
+  next = nexts;
 
-  while (n_left_from > 0)
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  while (n_left >= 4)
     {
-      vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
+      const load_balance_t *lb0, *lb1;
+      const ip6_header_t *ip0, *ip1;
+      u32 lbi0, hc0, lbi1, hc1;
+      const dpo_id_t *dpo0, *dpo1;
 
+      /* Prefetch next iteration. */
+      {
+	vlib_prefetch_buffer_header (b[2], STORE);
+	vlib_prefetch_buffer_header (b[3], STORE);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+	CLIB_PREFETCH (b[2]->data, sizeof (ip0[0]), STORE);
+	CLIB_PREFETCH (b[3]->data, sizeof (ip0[0]), STORE);
+      }
+
+      ip0 = vlib_buffer_get_current (b[0]);
+      ip1 = vlib_buffer_get_current (b[1]);
+      lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+      lbi1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
+
+      lb0 = load_balance_get (lbi0);
+      lb1 = load_balance_get (lbi1);
+
+      /*
+       * this node is for via FIBs we can re-use the hash value from the
+       * to node if present.
+       * We don't want to use the same hash value at each level in the recursion
+       * graph as that would lead to polarisation
+       */
+      hc0 = hc1 = 0;
+
+      if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
 	{
-	  ip_lookup_next_t next0, next1;
-	  const load_balance_t *lb0, *lb1;
-	  vlib_buffer_t *p0, *p1;
-	  u32 pi0, lbi0, hc0, pi1, lbi1, hc1;
-	  const ip6_header_t *ip0, *ip1;
-	  const dpo_id_t *dpo0, *dpo1;
-
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t *p2, *p3;
-
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, STORE);
-	    vlib_prefetch_buffer_header (p3, STORE);
-
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), STORE);
-	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), STORE);
-	  }
-
-	  pi0 = to_next[0] = from[0];
-	  pi1 = to_next[1] = from[1];
-
-	  from += 2;
-	  n_left_from -= 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
-
-	  p0 = vlib_get_buffer (vm, pi0);
-	  p1 = vlib_get_buffer (vm, pi1);
-
-	  ip0 = vlib_buffer_get_current (p0);
-	  ip1 = vlib_buffer_get_current (p1);
-	  lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  lbi1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
-
-	  lb0 = load_balance_get (lbi0);
-	  lb1 = load_balance_get (lbi1);
-
-	  /*
-	   * this node is for via FIBs we can re-use the hash value from the
-	   * to node if present.
-	   * We don't want to use the same hash value at each level in the recursion
-	   * graph as that would lead to polarisation
-	   */
-	  hc0 = hc1 = 0;
-
-	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
+	  if (PREDICT_TRUE (vnet_buffer (b[0])->ip.flow_hash))
 	    {
-	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
-		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    vnet_buffer (p0)->ip.flow_hash >> 1;
-		}
-	      else
-		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    ip6_compute_flow_hash (ip0, lb0->lb_hash_config);
-		}
-	      dpo0 =
-		load_balance_get_fwd_bucket (lb0,
-					     (hc0 &
-					      lb0->lb_n_buckets_minus_1));
+	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
+		vnet_buffer (b[0])->ip.flow_hash >> 1;
 	    }
 	  else
 	    {
-	      dpo0 = load_balance_get_bucket_i (lb0, 0);
+	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
+		ip6_compute_flow_hash (ip0, lb0->lb_hash_config);
 	    }
-	  if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
+	  dpo0 = load_balance_get_fwd_bucket
+	    (lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));
+	}
+      else
+	{
+	  dpo0 = load_balance_get_bucket_i (lb0, 0);
+	}
+      if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
+	{
+	  if (PREDICT_TRUE (vnet_buffer (b[1])->ip.flow_hash))
 	    {
-	      if (PREDICT_TRUE (vnet_buffer (p1)->ip.flow_hash))
-		{
-		  hc1 = vnet_buffer (p1)->ip.flow_hash =
-		    vnet_buffer (p1)->ip.flow_hash >> 1;
-		}
-	      else
-		{
-		  hc1 = vnet_buffer (p1)->ip.flow_hash =
-		    ip6_compute_flow_hash (ip1, lb1->lb_hash_config);
-		}
-	      dpo1 =
-		load_balance_get_fwd_bucket (lb1,
-					     (hc1 &
-					      lb1->lb_n_buckets_minus_1));
+	      hc1 = vnet_buffer (b[1])->ip.flow_hash =
+		vnet_buffer (b[1])->ip.flow_hash >> 1;
 	    }
 	  else
 	    {
-	      dpo1 = load_balance_get_bucket_i (lb1, 0);
+	      hc1 = vnet_buffer (b[1])->ip.flow_hash =
+		ip6_compute_flow_hash (ip1, lb1->lb_hash_config);
 	    }
-
-	  next0 = dpo0->dpoi_next_node;
-	  next1 = dpo1->dpoi_next_node;
-
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-	  if (PREDICT_FALSE
-	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next0 = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
-	    }
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-	  if (PREDICT_FALSE
-	      (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next1 = (dpo_is_adj (dpo1) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next1;
-	    }
-
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
-
-	  vlib_increment_combined_counter
-	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
-	  vlib_increment_combined_counter
-	    (cm, thread_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
-
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next,
-					   to_next, n_left_to_next,
-					   pi0, pi1, next0, next1);
+	  dpo1 = load_balance_get_fwd_bucket
+	    (lb1, (hc1 & (lb1->lb_n_buckets_minus_1)));
+	}
+      else
+	{
+	  dpo1 = load_balance_get_bucket_i (lb1, 0);
 	}
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      next[0] = dpo0->dpoi_next_node;
+      next[1] = dpo1->dpoi_next_node;
+
+      /* Only process the HBH Option Header if explicitly configured to do so */
+      if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
 	{
-	  ip_lookup_next_t next0;
-	  const load_balance_t *lb0;
-	  vlib_buffer_t *p0;
-	  u32 pi0, lbi0, hc0;
-	  const ip6_header_t *ip0;
-	  const dpo_id_t *dpo0;
-
-	  pi0 = from[0];
-	  to_next[0] = pi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-	  n_left_from -= 1;
-
-	  p0 = vlib_get_buffer (vm, pi0);
-
-	  ip0 = vlib_buffer_get_current (p0);
-	  lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-
-	  lb0 = load_balance_get (lbi0);
-
-	  hc0 = 0;
-	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
-	    {
-	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
-		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    vnet_buffer (p0)->ip.flow_hash >> 1;
-		}
-	      else
-		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    ip6_compute_flow_hash (ip0, lb0->lb_hash_config);
-		}
-	      dpo0 =
-		load_balance_get_fwd_bucket (lb0,
-					     (hc0 &
-					      lb0->lb_n_buckets_minus_1));
-	    }
-	  else
-	    {
-	      dpo0 = load_balance_get_bucket_i (lb0, 0);
-	    }
-
-	  next0 = dpo0->dpoi_next_node;
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-	  if (PREDICT_FALSE
-	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next0 = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
-	    }
-
-	  vlib_increment_combined_counter
-	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next,
-					   to_next, n_left_to_next,
-					   pi0, next0);
+	  next[0] = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
+	    (ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next[0];
+	}
+      /* Only process the HBH Option Header if explicitly configured to do so */
+      if (PREDICT_FALSE (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	{
+	  next[1] = (dpo_is_adj (dpo1) && im->hbh_enabled) ?
+	    (ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next[1];
 	}
 
-      vlib_put_next_frame (vm, node, next, n_left_to_next);
+      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+
+      vlib_increment_combined_counter
+	(cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b[0]));
+      vlib_increment_combined_counter
+	(cm, thread_index, lbi1, 1, vlib_buffer_length_in_chain (vm, b[1]));
+
+      b += 2;
+      next += 2;
+      n_left -= 2;
     }
+
+  while (n_left > 0)
+    {
+      const load_balance_t *lb0;
+      const ip6_header_t *ip0;
+      const dpo_id_t *dpo0;
+      u32 lbi0, hc0;
+
+      ip0 = vlib_buffer_get_current (b[0]);
+      lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+
+      lb0 = load_balance_get (lbi0);
+
+      hc0 = 0;
+      if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
+	{
+	  if (PREDICT_TRUE (vnet_buffer (b[0])->ip.flow_hash))
+	    {
+	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
+		vnet_buffer (b[0])->ip.flow_hash >> 1;
+	    }
+	  else
+	    {
+	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
+		ip6_compute_flow_hash (ip0, lb0->lb_hash_config);
+	    }
+	  dpo0 = load_balance_get_fwd_bucket
+	    (lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));
+	}
+      else
+	{
+	  dpo0 = load_balance_get_bucket_i (lb0, 0);
+	}
+
+      next[0] = dpo0->dpoi_next_node;
+      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+      /* Only process the HBH Option Header if explicitly configured to do so */
+      if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	{
+	  next[0] = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
+	    (ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next[0];
+	}
+
+      vlib_increment_combined_counter
+	(cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b[0]));
+
+      b += 1;
+      next += 1;
+      n_left -= 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip6_forward_next_trace (vm, node, frame, VLIB_TX);
@@ -1010,7 +970,7 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 	}
       p0 = vlib_get_buffer (vm, p0->next_buffer);
       data_this_buffer = vlib_buffer_get_current (p0);
-      n_this_buffer = p0->current_length;
+      n_this_buffer = clib_min (p0->current_length, n_bytes_left);
     }
 
   sum16 = ~ip_csum_fold (sum0);
@@ -1473,6 +1433,16 @@ ip6_register_protocol (u32 protocol, u32 node_index)
     vlib_node_add_next (vm, ip6_local_node.index, node_index);
 }
 
+void
+ip6_unregister_protocol (u32 protocol)
+{
+  ip6_main_t *im = &ip6_main;
+  ip_lookup_main_t *lm = &im->lookup_main;
+
+  ASSERT (protocol < ARRAY_LEN (lm->local_next_by_ip_protocol));
+  lm->local_next_by_ip_protocol[protocol] = IP_LOCAL_NEXT_PUNT;
+}
+
 clib_error_t *
 ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index,
 		    u8 refresh)
@@ -1793,7 +1763,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 			 is_locally_originated1, &next1, &error1);
 
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
-	   * wants to see the IP headerr */
+	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
 	    {
 	      p0->current_data -= rw_len0;
@@ -1807,6 +1777,10 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index0, &next0, p0);
+	    }
+	  else
+	    {
+	      p0->error = error_node->errors[error0];
 	    }
 	  if (PREDICT_TRUE (error1 == IP6_ERROR_NONE))
 	    {
@@ -1822,6 +1796,18 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index1, &next1, p1);
 	    }
+	  else
+	    {
+	      p1->error = error_node->errors[error1];
+	    }
+
+	  if (is_midchain)
+	    {
+	      /* before we paint on the next header, update the L4
+	       * checksums if required, since there's no offload on a tunnel */
+	      calc_checksums (vm, p0);
+	      calc_checksums (vm, p1);
+	    }
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_two_headers (adj0[0], adj1[0],
@@ -1829,10 +1815,12 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  if (is_midchain)
 	    {
-	      adj0->sub_type.midchain.fixup_func
-		(vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-	      adj1->sub_type.midchain.fixup_func
-		(vm, adj1, p1, adj1->sub_type.midchain.fixup_data);
+	      if (adj0->sub_type.midchain.fixup_func)
+		adj0->sub_type.midchain.fixup_func
+		  (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+	      if (adj1->sub_type.midchain.fixup_func)
+		adj1->sub_type.midchain.fixup_func
+		  (vm, adj1, p1, adj1->sub_type.midchain.fixup_data);
 	    }
 	  if (is_mcast)
 	    {
@@ -1911,6 +1899,11 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
 
+	  if (is_midchain)
+	    {
+	      calc_checksums (vm, p0);
+	    }
+
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
 
@@ -1954,11 +1947,16 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 		vnet_feature_arc_start (lm->output_feature_arc_index,
 					tx_sw_if_index0, &next0, p0);
 	    }
+	  else
+	    {
+	      p0->error = error_node->errors[error0];
+	    }
 
 	  if (is_midchain)
 	    {
-	      adj0->sub_type.midchain.fixup_func
-		(vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+	      if (adj0->sub_type.midchain.fixup_func)
+		adj0->sub_type.midchain.fixup_func
+		  (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
 	    }
 	  if (is_mcast)
 	    {
@@ -1968,8 +1966,6 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 					  &ip0->dst_address.as_u32[3],
 					  (u8 *) ip0);
 	    }
-
-	  p0->error = error_node->errors[error0];
 
 	  from += 1;
 	  n_left_from -= 1;

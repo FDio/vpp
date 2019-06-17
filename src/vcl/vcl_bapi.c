@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this
  * You may obtain a copy of the License at:
@@ -65,7 +65,7 @@ static int
 vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
 		    int fd)
 {
-  svm_fifo_segment_create_args_t _a, *a = &_a;
+  fifo_segment_create_args_t _a, *a = &_a;
   int rv;
 
   memset (a, 0, sizeof (*a));
@@ -75,7 +75,7 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
   if (type == SSVM_SEGMENT_MEMFD)
     a->memfd_fd = fd;
 
-  if ((rv = svm_fifo_segment_attach (&vcm->segment_main, a)))
+  if ((rv = fifo_segment_attach (&vcm->segment_main, a)))
     {
       clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
       return rv;
@@ -88,15 +88,15 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
 static void
 vcl_segment_detach (u64 segment_handle)
 {
-  svm_fifo_segment_main_t *sm = &vcm->segment_main;
-  svm_fifo_segment_private_t *segment;
+  fifo_segment_main_t *sm = &vcm->segment_main;
+  fifo_segment_t *segment;
   u32 segment_index;
 
   segment_index = vcl_segment_table_lookup (segment_handle);
   if (segment_index == (u32) ~ 0)
     return;
-  segment = svm_fifo_segment_get_segment (sm, segment_index);
-  svm_fifo_segment_delete (sm, segment);
+  segment = fifo_segment_get_segment (sm, segment_index);
+  fifo_segment_delete (sm, segment);
   vcl_segment_table_del (segment_handle);
   VDBG (0, "detached segment %u handle %u", segment_index, segment_handle);
 }
@@ -118,9 +118,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   if (mp->retval)
     {
-      clib_warning ("VCL<%d>: attach failed: %U", getpid (),
-		    format_api_error, ntohl (mp->retval));
-      return;
+      VERR ("attach failed: %U", format_api_error, ntohl (mp->retval));
+      goto failed;
     }
 
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
@@ -128,8 +127,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
-      clib_warning ("invalid segment handle");
-      return;
+      VERR ("invalid segment handle");
+      goto failed;
     }
 
   if (mp->n_fds)
@@ -141,12 +140,12 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 	if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0),
 				"vpp-mq-seg", SSVM_SEGMENT_MEMFD,
 				fds[n_fds++]))
-	  return;
+	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
 				SSVM_SEGMENT_MEMFD, fds[n_fds++]))
-	  return;
+	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
@@ -161,11 +160,15 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     {
       if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
 			      SSVM_SEGMENT_SHM, -1))
-	return;
+	goto failed;
     }
 
   vcm->app_index = clib_net_to_host_u32 (mp->app_index);
   vcm->app_state = STATE_APP_ATTACHED;
+  return;
+
+failed:
+  vcm->app_state = STATE_APP_FAILED;
 }
 
 static void
@@ -294,46 +297,10 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
 }
 
 static void
-  vl_api_app_cut_through_registration_add_t_handler
-  (vl_api_app_cut_through_registration_add_t * mp)
-{
-  vcl_cut_through_registration_t *ctr;
-  u32 mqc_index = ~0;
-  vcl_worker_t *wrk;
-  int *fds = 0;
-
-  if (mp->n_fds)
-    {
-      ASSERT (mp->n_fds == 2);
-      vec_validate (fds, mp->n_fds);
-      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
-    }
-
-  wrk = vcl_worker_get (mp->wrk_index);
-  ctr = vcl_ct_registration_lock_and_alloc (wrk);
-  ctr->mq = uword_to_pointer (mp->evt_q_address, svm_msg_q_t *);
-  ctr->peer_mq = uword_to_pointer (mp->peer_evt_q_address, svm_msg_q_t *);
-  VDBG (0, "Adding ct registration %u", vcl_ct_registration_index (wrk, ctr));
-
-  if (mp->n_fds && (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD))
-    {
-      svm_msg_q_set_consumer_eventfd (ctr->mq, fds[0]);
-      svm_msg_q_set_producer_eventfd (ctr->peer_mq, fds[1]);
-      mqc_index = vcl_mq_epoll_add_evfd (wrk, ctr->mq);
-      ctr->epoll_evt_conn_index = mqc_index;
-      vec_free (fds);
-    }
-  vcl_ct_registration_lookup_add (wrk, mp->evt_q_address,
-				  vcl_ct_registration_index (wrk, ctr));
-  vcl_ct_registration_unlock (wrk);
-}
-
-static void
 vl_api_bind_sock_reply_t_handler (vl_api_bind_sock_reply_t * mp)
 {
   /* Expecting a similar message on mq. So ignore this */
-  VDBG (0, "bapi msg vpp handle 0x%llx, sid %u: bind retval: %u!",
-	mp->handle, mp->context, mp->retval);
+  VDBG (0, "bapi bind retval: %u!", mp->retval);
 }
 
 static void
@@ -352,18 +319,16 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 					   mp)
 {
   if (mp->retval)
-    clib_warning ("VCL<%d>: ERROR: sid %u: disconnect failed: %U",
-		  getpid (), mp->context, format_api_error,
-		  ntohl (mp->retval));
+    VDBG (0, "ERROR: sid %u: disconnect failed: %U", mp->context,
+	  format_api_error, ntohl (mp->retval));
 }
 
 static void
-vl_api_connect_session_reply_t_handler (vl_api_connect_sock_reply_t * mp)
+vl_api_connect_sock_reply_t_handler (vl_api_connect_sock_reply_t * mp)
 {
   if (mp->retval)
-    clib_warning ("VCL<%d>: ERROR: sid %u: connect failed: %U",
-		  getpid (), mp->context, format_api_error,
-		  ntohl (mp->retval));
+    VDBG (0, "ERROR: connect failed: %U", format_api_error,
+	  ntohl (mp->retval));
 }
 
 static void
@@ -395,7 +360,7 @@ static void
 _(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   	\
 _(BIND_SOCK_REPLY, bind_sock_reply)                             	\
 _(UNBIND_SOCK_REPLY, unbind_sock_reply)                         	\
-_(CONNECT_SESSION_REPLY, connect_session_reply)                        	\
+_(CONNECT_SOCK_REPLY, connect_sock_reply)                        	\
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)			\
 _(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
@@ -403,7 +368,6 @@ _(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
 _(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
 _(UNMAP_SEGMENT, unmap_segment)						\
-_(APP_CUT_THROUGH_REGISTRATION_ADD, app_cut_through_registration_add)	\
 _(APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)			\
 
 void
@@ -458,7 +422,6 @@ vppcom_app_send_attach (void)
     (vcm->cfg.app_scope_local ? APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE : 0) |
     (vcm->cfg.app_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0) |
     (app_is_proxy ? APP_OPTIONS_FLAGS_IS_PROXY : 0) |
-    APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS |
     (vcm->cfg.use_mq_eventfd ? APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD : 0);
   bmp->options[APP_OPTIONS_PROXY_TRANSPORT] =
     (u64) ((vcm->cfg.app_proxy_transport_tcp ? 1 << TRANSPORT_PROTO_TCP : 0) |
@@ -546,10 +509,10 @@ vppcom_send_connect_sock (vcl_session_t * session)
   cmp->context = session->session_index;
   cmp->wrk_index = wrk->vpp_wrk_index;
   cmp->is_ip4 = session->transport.is_ip4;
+  cmp->transport_opts = session->transport_opts;
   clib_memcpy_fast (cmp->ip, &session->transport.rmt_ip, sizeof (cmp->ip));
   cmp->port = session->transport.rmt_port;
   cmp->proto = session->session_type;
-  clib_memcpy_fast (cmp->options, session->options, sizeof (cmp->options));
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & cmp);
 }
 
@@ -588,7 +551,6 @@ vppcom_send_bind_sock (vcl_session_t * session)
   clib_memcpy_fast (bmp->ip, &session->transport.lcl_ip, sizeof (bmp->ip));
   bmp->port = session->transport.lcl_port;
   bmp->proto = session->session_type;
-  clib_memcpy_fast (bmp->options, session->options, sizeof (bmp->options));
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
 }
 

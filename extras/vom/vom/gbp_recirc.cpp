@@ -88,7 +88,7 @@ gbp_recirc::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_recirc_cmds::create_cmd(
-      m_hw, m_itf->handle(), (m_type == type_t::EXTERNAL), m_epg->id()));
+      m_hw, m_itf->handle(), (m_type == type_t::EXTERNAL), m_epg->sclass()));
   }
 }
 
@@ -107,7 +107,7 @@ gbp_recirc::update(const gbp_recirc& r)
 {
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_recirc_cmds::create_cmd(
-      m_hw, m_itf->handle(), (m_type == type_t::EXTERNAL), m_epg->id()));
+      m_hw, m_itf->handle(), (m_type == type_t::EXTERNAL), m_epg->sclass()));
   }
 }
 
@@ -162,10 +162,10 @@ gbp_recirc::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<interface> itf =
       interface::find(payload.recirc.sw_if_index);
     std::shared_ptr<gbp_endpoint_group> epg =
-      gbp_endpoint_group::find(payload.recirc.epg_id);
+      gbp_endpoint_group::find(payload.recirc.sclass);
 
     VOM_LOG(log_level_t::DEBUG) << "data: [" << payload.recirc.sw_if_index
-                                << ", " << payload.recirc.epg_id << "]";
+                                << ", " << payload.recirc.sclass << "]";
 
     if (itf && epg) {
       gbp_recirc recirc(

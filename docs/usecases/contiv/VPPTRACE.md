@@ -1,7 +1,7 @@
 ## Using vpptrace.sh for VPP Packet Tracing
 
 VPP allows tracing of incoming packets using CLI commands `trace add` and `show trace`
-as explained [here](VPP_PACKET_TRACING_K8S.html), but it is a rather cumbersome process.
+as explained \[here\](VPP_PACKET_TRACING_K8S.html), but it is a rather cumbersome process.
 
 The buffer for captured packets is limited in size, and once it gets full the tracing stops. The user has to manually clear the buffer content, and then repeat the trace command to resume the packet capture, losing information about all packets received in the meantime.
 

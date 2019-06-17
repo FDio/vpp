@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2018-2019 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -16,23 +16,23 @@
 ##############################################################################
 add_vpp_library(svm
   SOURCES
+  fifo_segment.c
+  message_queue.c
+  queue.c
   svm.c
   ssvm.c
   svm_fifo.c
-  svm_fifo_segment.c
-  queue.c
-  message_queue.c
 
   MULTIARCH_SOURCES
   svm_fifo.c
 
   INSTALL_HEADERS
+  fifo_segment.h
+  message_queue.h
+  queue.h
   ssvm.h
   svm_common.h
   svm_fifo.h
-  svm_fifo_segment.h
-  queue.h
-  message_queue.h
   svm.h
   svmdb.h
 

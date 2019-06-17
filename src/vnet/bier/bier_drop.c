@@ -62,15 +62,15 @@ bier_drop (vlib_main_t * vm,
     u32 *buffers = vlib_frame_vector_args (frame);
     uword n_packets = frame->n_vectors;
 
+    if (node->flags & VLIB_NODE_FLAG_TRACE)
+        bier_drop_trace (vm, node, frame);
+
     vlib_error_drop_buffers (vm, node, buffers,
                              /* stride */ 1,
                              n_packets,
                              /* next */ 0,
                              0, // bier_input_node.index,
                              0);
-
-    if (node->flags & VLIB_NODE_FLAG_TRACE)
-        bier_drop_trace (vm, node, frame);
 
     return n_packets;
 }

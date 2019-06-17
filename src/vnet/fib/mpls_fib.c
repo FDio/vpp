@@ -366,7 +366,7 @@ format_mpls_fib_table_memory (u8 * s, va_list * args)
 
     n_tables = pool_elts(mpls_main.fibs);
     mem = n_tables * sizeof(mpls_fib_t);
-    s = format(s, "%=30s %=6ld %=8ld\n", "MPLS", n_tables, mem);
+    s = format(s, "%=30s %=6ld %=12ld\n", "MPLS", n_tables, mem);
 
     return (s);
 }

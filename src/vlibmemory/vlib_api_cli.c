@@ -664,7 +664,8 @@ api_trace_command_fn (vlib_main_t * vm,
   u32 nitems = 256 << 10;
   api_main_t *am = &api_main;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
-  u8 *filename;
+  u8 *filename = 0;
+  u8 *chroot_filename = 0;
   u32 first = 0;
   u32 last = (u32) ~ 0;
   FILE *fp;
@@ -685,13 +686,12 @@ api_trace_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (input, "save %s", &filename))
 	{
-	  u8 *chroot_filename;
 	  if (strstr ((char *) filename, "..")
 	      || index ((char *) filename, '/'))
 	    {
 	      vlib_cli_output (vm, "illegal characters in filename '%s'",
 			       filename);
-	      return 0;
+	      goto out;
 	    }
 
 	  chroot_filename = format (0, "/tmp/%s%c", filename, 0);
@@ -702,7 +702,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	  if (fp == NULL)
 	    {
 	      vlib_cli_output (vm, "Couldn't create %s\n", chroot_filename);
-	      return 0;
+	      goto out;
 	    }
 	  rv = vl_msg_api_trace_save (am, which, fp);
 	  fclose (fp);
@@ -724,7 +724,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	    vlib_cli_output (vm, "Unknown error while saving: %d", rv);
 	  else
 	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
-	  vec_free (chroot_filename);
+	  goto out;
 	}
       else if (unformat (input, "dump %s", &filename))
 	{
@@ -772,6 +772,9 @@ api_trace_command_fn (vlib_main_t * vm,
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
+out:
+  vec_free (filename);
+  vec_free (chroot_filename);
   return 0;
 }
 
@@ -861,8 +864,8 @@ configure:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (trace, static) =
 {
-  .path = "set api-trace [on][on tx][on rx][off][free][debug on][debug off]",
-  .short_help = "API trace",
+  .path = "set api-trace",
+  .short_help = "API trace [on][on tx][on rx][off][free][debug on][debug off]",
   .function = vl_api_trace_command,
 };
 /* *INDENT-ON* */
@@ -1082,6 +1085,7 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 
   if (compare_current)
     {
+      u8 *dashes = 0;
       ndifferences = 0;
 
       /*
@@ -1090,8 +1094,11 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
        * are identical. Otherwise, the crc is different, or a message is
        * present in only one of the tables.
        */
-      vlib_cli_output (vm, "%=60s %s", "Message Name", "Result");
-
+      vlib_cli_output (vm, "%-60s | %s", "Message Name", "Result");
+      vec_validate_init_empty (dashes, 60, '-');
+      vec_terminate_c_string (dashes);
+      vlib_cli_output (vm, "%60s-|-%s", dashes, "-----------------");
+      vec_free (dashes);
       for (i = 0; i < vec_len (table);)
 	{
 	  /* Last message lonely? */
@@ -1114,24 +1121,24 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 	  ndifferences++;
 
 	  /* Only in one of two tables? */
-	  if (strncmp ((char *) table[i].name, (char *) table[i + 1].name,
-		       vec_len (table[i].name)))
+	  if (i + 1 == vec_len (table)
+	      || strcmp ((char *) table[i].name, (char *) table[i + 1].name))
 	    {
 	    last_unique:
-	      vlib_cli_output (vm, "%-60s only in %s",
+	      vlib_cli_output (vm, "%-60s | only in %s",
 			       table[i].name, table[i].which ?
 			       "image" : "file");
 	      i++;
 	      continue;
 	    }
 	  /* In both tables, but with different signatures */
-	  vlib_cli_output (vm, "%-60s definition changed", table[i].name);
+	  vlib_cli_output (vm, "%-60s | definition changed", table[i].name);
 	  i += 2;
 	}
       if (ndifferences == 0)
 	vlib_cli_output (vm, "No api message signature differences found.");
       else
-	vlib_cli_output (vm, "Found %u api message signature differences",
+	vlib_cli_output (vm, "\nFound %u api message signature differences",
 			 ndifferences);
       goto cleanup;
     }

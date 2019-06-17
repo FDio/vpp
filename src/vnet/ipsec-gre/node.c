@@ -43,7 +43,7 @@ typedef struct {
   ip4_address_t dst;
 } ipsec_gre_rx_trace_t;
 
-u8 * format_ipsec_gre_rx_trace (u8 * s, va_list * args)
+static u8 * format_ipsec_gre_rx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -83,8 +83,7 @@ u8 * format_ipsec_gre_rx_trace (u8 * s, va_list * args)
  * <em>Next Index:</em>
  * - Dispatches the packet to the l2-input node.
 */
-static uword
-ipsec_gre_input (vlib_main_t * vm,
+VLIB_NODE_FN (ipsec_gre_input_node) (vlib_main_t * vm,
                  vlib_node_runtime_t * node,
                  vlib_frame_t * from_frame)
 {
@@ -161,7 +160,7 @@ ipsec_gre_input (vlib_main_t * vm,
 
           protocol0 = clib_net_to_host_u16 (h0->protocol);
           protocol1 = clib_net_to_host_u16 (h1->protocol);
-          if (PREDICT_TRUE(protocol0 == 0x0001))
+          if (PREDICT_TRUE(protocol0 == GRE_PROTOCOL_teb))
             {
               next0 = IPSEC_GRE_INPUT_NEXT_L2_INPUT;
               b0->error = node->errors[IPSEC_GRE_ERROR_NONE];
@@ -171,7 +170,7 @@ ipsec_gre_input (vlib_main_t * vm,
               b0->error = node->errors[IPSEC_GRE_ERROR_UNKNOWN_PROTOCOL];
               next0 = IPSEC_GRE_INPUT_NEXT_DROP;
             }
-          if (PREDICT_TRUE(protocol1 == 0x0001))
+          if (PREDICT_TRUE(protocol1 == GRE_PROTOCOL_teb))
             {
               next1 = IPSEC_GRE_INPUT_NEXT_L2_INPUT;
               b1->error = node->errors[IPSEC_GRE_ERROR_NONE];
@@ -315,7 +314,7 @@ drop1:
 	  h0 = vlib_buffer_get_current (b0);
 
           protocol0 = clib_net_to_host_u16 (h0->protocol);
-          if (PREDICT_TRUE(protocol0 == 0x0001))
+          if (PREDICT_TRUE(protocol0 == GRE_PROTOCOL_teb))
             {
               next0 = IPSEC_GRE_INPUT_NEXT_L2_INPUT;
               b0->error = node->errors[IPSEC_GRE_ERROR_NONE];
@@ -333,7 +332,7 @@ drop1:
           next0 = verr0 ? IPSEC_GRE_INPUT_NEXT_DROP : next0;
 
           /* For L2 payload set input sw_if_index to GRE tunnel for learning */
-          if (PREDICT_FALSE(next0 == IPSEC_GRE_INPUT_NEXT_L2_INPUT))
+          if (PREDICT_TRUE(next0 == IPSEC_GRE_INPUT_NEXT_L2_INPUT))
             {
               u64 key = ((u64)(tun_dst0) << 32) | (u64)(tun_src0);
 
@@ -395,7 +394,6 @@ static char * ipsec_gre_error_strings[] = {
 };
 
 VLIB_REGISTER_NODE (ipsec_gre_input_node) = {
-  .function = ipsec_gre_input,
   .name = "ipsec-gre-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -412,8 +410,6 @@ VLIB_REGISTER_NODE (ipsec_gre_input_node) = {
 
   .format_trace = format_ipsec_gre_rx_trace,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_gre_input_node, ipsec_gre_input)
 
 static clib_error_t * ipsec_gre_input_init (vlib_main_t * vm)
 {

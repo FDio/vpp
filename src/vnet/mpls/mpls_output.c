@@ -146,8 +146,7 @@ mpls_output_inline (vlib_main_t * vm,
           if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p0) <=
                            adj0[0].rewrite_header.max_l3_packet_bytes))
             {
-              p0->current_data -= rw_len0;
-              p0->current_length += rw_len0;
+              vlib_buffer_advance(p0, -rw_len0);
 
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   adj0[0].rewrite_header.sw_if_index;
@@ -167,8 +166,7 @@ mpls_output_inline (vlib_main_t * vm,
           if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p1) <=
                            adj1[0].rewrite_header.max_l3_packet_bytes))
             {
-              p1->current_data -= rw_len1;
-              p1->current_length += rw_len1;
+              vlib_buffer_advance(p1, -rw_len1);
 
               vnet_buffer (p1)->sw_if_index[VLIB_TX] =
                   adj1[0].rewrite_header.sw_if_index;
@@ -248,13 +246,12 @@ mpls_output_inline (vlib_main_t * vm,
                adj_index0,
                1,
                vlib_buffer_length_in_chain (vm, p0) + rw_len0);
-          
+
           /* Check MTU of outgoing interface. */
           if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p0) <=
                            adj0[0].rewrite_header.max_l3_packet_bytes))
             {
-              p0->current_data -= rw_len0;
-              p0->current_length += rw_len0;
+              vlib_buffer_advance(p0, -rw_len0);
 
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   adj0[0].rewrite_header.sw_if_index;
@@ -313,8 +310,7 @@ static char * mpls_error_strings[] = {
 #undef mpls_error
 };
 
-static inline uword
-mpls_output (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_output_node) (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
@@ -322,7 +318,6 @@ mpls_output (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_output_node) = {
-  .function = mpls_output,
   .name = "mpls-output",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -339,10 +334,7 @@ VLIB_REGISTER_NODE (mpls_output_node) = {
   .format_trace = format_mpls_output_trace,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_output_node, mpls_output)
-
-static inline uword
-mpls_midchain (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_midchain_node) (vlib_main_t * vm,
                vlib_node_runtime_t * node,
                vlib_frame_t * from_frame)
 {
@@ -350,7 +342,6 @@ mpls_midchain (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_midchain_node) = {
-  .function = mpls_midchain,
   .name = "mpls-midchain",
   .vector_size = sizeof (u32),
 
@@ -358,8 +349,6 @@ VLIB_REGISTER_NODE (mpls_midchain_node) = {
 
   .sibling_of = "mpls-output",
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_midchain_node, mpls_midchain)
 
 /**
  * @brief Next index values from the MPLS incomplete adj node
@@ -393,8 +382,7 @@ typedef struct mpls_adj_incomplete_trace_t_
  * We pay a cost for this 'routing' node, but an incomplete adj is the
  * exception case.
  */
-static inline uword
-mpls_adj_incomplete (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_adj_incomplete_node) (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
@@ -473,7 +461,6 @@ format_mpls_adj_incomplete_trace (u8 * s, va_list * args)
 }
 
 VLIB_REGISTER_NODE (mpls_adj_incomplete_node) = {
-  .function = mpls_adj_incomplete,
   .name = "mpls-adj-incomplete",
   .format_trace = format_mpls_adj_incomplete_trace,
   /* Takes a vector of packets. */
@@ -489,5 +476,3 @@ VLIB_REGISTER_NODE (mpls_adj_incomplete_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_adj_incomplete_node,
-                              mpls_adj_incomplete)

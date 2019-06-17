@@ -91,7 +91,7 @@ static void vl_api_cop_whitelist_enable_disable_t_handler
 /*
  * cop_api_hookup
  * Add vpe's API message handlers to the table.
- * vlib has alread mapped shared memory and
+ * vlib has already mapped shared memory and
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */

@@ -192,6 +192,9 @@ svs_ip4_table_bind (ip4_main_t * im,
 int
 svs_disable (fib_protocol_t fproto, u32 table_id, u32 sw_if_index)
 {
+  fib_prefix_t pfx = {
+    .fp_proto = fproto,
+  };
   u32 fib_index;
 
   fib_index = fib_table_find (fproto, table_id);
@@ -210,6 +213,8 @@ svs_disable (fib_protocol_t fproto, u32 table_id, u32 sw_if_index)
 			       (FIB_PROTOCOL_IP4 == fproto ?
 				"svs-ip4" :
 				"svs-ip6"), sw_if_index, 0, NULL, 0);
+
+  fib_table_entry_special_remove (fib_index, &pfx, FIB_SOURCE_PLUGIN_LOW);
 
   return (0);
 }

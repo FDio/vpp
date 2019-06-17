@@ -80,22 +80,6 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 {
   u8 l4_hdr_sz = 0;
 
-  if (gso_size)
-    {
-      if (rx_comp->flags & VMXNET3_RXCF_TCP)
-	{
-	  tcp_header_t *tcp =
-	    (tcp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
-	  l4_hdr_sz = tcp_header_bytes (tcp);
-	}
-      else if (rx_comp->flags & VMXNET3_RXCF_UDP)
-	{
-	  udp_header_t *udp =
-	    (udp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
-	  l4_hdr_sz = sizeof (*udp);
-	}
-    }
-
   if (rx_comp->flags & VMXNET3_RXCF_IP4)
     {
       ip4_header_t *ip4 = (ip4_header_t *) (hb->data +
@@ -141,6 +125,18 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 
       if (gso_size)
 	{
+	  if (rx_comp->flags & VMXNET3_RXCF_TCP)
+	    {
+	      tcp_header_t *tcp =
+		(tcp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
+	      l4_hdr_sz = tcp_header_bytes (tcp);
+	    }
+	  else if (rx_comp->flags & VMXNET3_RXCF_UDP)
+	    {
+	      udp_header_t *udp =
+		(udp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
+	      l4_hdr_sz = sizeof (*udp);
+	    }
 	  vnet_buffer2 (hb)->gso_size = gso_size;
 	  vnet_buffer2 (hb)->gso_l4_hdr_sz = l4_hdr_sz;
 	  hb->flags |= VNET_BUFFER_F_GSO;
@@ -184,6 +180,18 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 
       if (gso_size)
 	{
+	  if (rx_comp->flags & VMXNET3_RXCF_TCP)
+	    {
+	      tcp_header_t *tcp =
+		(tcp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
+	      l4_hdr_sz = tcp_header_bytes (tcp);
+	    }
+	  else if (rx_comp->flags & VMXNET3_RXCF_UDP)
+	    {
+	      udp_header_t *udp =
+		(udp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
+	      l4_hdr_sz = sizeof (*udp);
+	    }
 	  vnet_buffer2 (hb)->gso_size = gso_size;
 	  vnet_buffer2 (hb)->gso_l4_hdr_sz = l4_hdr_sz;
 	  hb->flags |= VNET_BUFFER_F_GSO;

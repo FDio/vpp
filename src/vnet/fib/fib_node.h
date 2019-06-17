@@ -39,7 +39,6 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_MPLS_TUNNEL,
     FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
     FIB_NODE_TYPE_LISP_ADJ,
-    FIB_NODE_TYPE_GRE_TUNNEL,
     FIB_NODE_TYPE_VXLAN_TUNNEL,
     FIB_NODE_TYPE_MAP_E,
     FIB_NODE_TYPE_VXLAN_GPE_TUNNEL,
@@ -49,6 +48,7 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_BIER_ENTRY,
     FIB_NODE_TYPE_VXLAN_GBP_TUNNEL,
     FIB_NODE_TYPE_IPSEC_SA,
+    FIB_NODE_TYPE_IP_PUNT_REDIRECT,
     /**
      * Marker. New types before this one. leave the test last.
      */
@@ -69,7 +69,6 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_ADJ] = "adj",				\
     [FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY] = "lisp-gpe-fwd-entry",	\
     [FIB_NODE_TYPE_LISP_ADJ] = "lisp-adj",			\
-    [FIB_NODE_TYPE_GRE_TUNNEL] = "gre-tunnel",			\
     [FIB_NODE_TYPE_VXLAN_TUNNEL] = "vxlan-tunnel",		\
     [FIB_NODE_TYPE_MAP_E] = "map-e",				\
     [FIB_NODE_TYPE_VXLAN_GPE_TUNNEL] = "vxlan-gpe-tunnel",	\
@@ -77,7 +76,8 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_BIER_FMASK] = "bier-fmask",			\
     [FIB_NODE_TYPE_BIER_ENTRY] = "bier-entry",			\
     [FIB_NODE_TYPE_VXLAN_GBP_TUNNEL] = "vxlan-gbp-tunnel",	\
-    [FIB_NODE_TYPE_IPSEC_SA] = "ipsec-sa"                       \
+    [FIB_NODE_TYPE_IPSEC_SA] = "ipsec-sa",                      \
+    [FIB_NODE_TYPE_IP_PUNT_REDIRECT] = "ip-punt-redirect"       \
 }
 
 /**

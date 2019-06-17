@@ -32,13 +32,17 @@ class P2PEthernetAPI(VppTestCase):
         for i in cls.pg_interfaces:
             i.admin_up()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(P2PEthernetAPI, cls).tearDownClass()
+
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
         p2p = VppP2PSubint(self, parent_if, sub_id, mac_pton(remote_mac))
         self.p2p_sub_ifs.append(p2p)
 
     def delete_p2p_ethernet(self, parent_if, remote_mac):
-        self.vapi.delete_p2pethernet_subif(parent_if.sw_if_index,
-                                           mac_pton(remote_mac))
+        self.vapi.p2p_ethernet_del(parent_if.sw_if_index,
+                                   mac_pton(remote_mac))
 
     def test_api(self):
         """delete/create p2p subif"""
@@ -48,22 +52,22 @@ class P2PEthernetAPI(VppTestCase):
         self.create_p2p_ethernet(self.pg0, 2, "de:ad:00:00:00:02")
         intfs = self.vapi.cli("show interface")
 
-        self.assertNotEqual(intfs.find('pg0.1'), -1)
-        self.assertNotEqual(intfs.find('pg0.2'), -1)
-        self.assertEqual(intfs.find('pg0.5'), -1)
+        self.assertIn('pg0.1', intfs)
+        self.assertIn('pg0.2', intfs)
+        self.assertNotIn('pg0.5', intfs)
 
         # create pg2.5 subif
         self.create_p2p_ethernet(self.pg0, 5, "de:ad:00:00:00:ff")
         intfs = self.vapi.cli("show interface")
-        self.assertNotEqual(intfs.find('pg0.5'), -1)
+        self.assertIn('pg0.5', intfs)
         # delete pg2.5 subif
         self.delete_p2p_ethernet(self.pg0, "de:ad:00:00:00:ff")
 
         intfs = self.vapi.cli("show interface")
 
-        self.assertNotEqual(intfs.find('pg0.1'), -1)
-        self.assertNotEqual(intfs.find('pg0.2'), -1)
-        self.assertEqual(intfs.find('pg0.5'), -1)
+        self.assertIn('pg0.1', intfs)
+        self.assertIn('pg0.2', intfs)
+        self.assertNotIn('pg0.5', intfs)
 
         self.logger.info("FFP_TEST_FINISH_0000")
 
@@ -77,10 +81,11 @@ class P2PEthernetAPI(VppTestCase):
 
         for i in range(1, clients+1):
             try:
-                macs.append(':'.join(re.findall('..', '{:02x}'.format(mac+i))))
-                self.vapi.create_p2pethernet_subif(self.pg2.sw_if_index,
-                                                   mac_pton(macs[i-1]),
-                                                   i)
+                macs.append(':'.join(re.findall('..', '{:02x}'.format(
+                    mac+i))))
+                self.vapi.p2p_ethernet_add(self.pg2.sw_if_index,
+                                           mac_pton(macs[i-1]),
+                                           i)
             except Exception:
                 self.logger.info("Failed to create subif %d %s" % (
                     i, macs[i-1]))
@@ -124,6 +129,10 @@ class P2PEthernetIPV6(VppTestCase):
         cls.pg1.configure_ipv6_neighbors()
         cls.pg1.disable_ipv6_ra()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(P2PEthernetIPV6, cls).tearDownClass()
+
     def setUp(self):
         super(P2PEthernetIPV6, self).setUp()
         for p in self.packets:
@@ -153,8 +162,8 @@ class P2PEthernetIPV6(VppTestCase):
     def delete_p2p_ethernet(self, p2p):
         p2p.unconfig_ip6()
         p2p.admin_down()
-        self.vapi.delete_p2pethernet_subif(p2p.parent.sw_if_index,
-                                           p2p.p2p_remote_mac)
+        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index,
+                                   p2p.p2p_remote_mac)
 
     def create_stream(self, src_mac=None, dst_mac=None,
                       src_ip=None, dst_ip=None, size=None):
@@ -349,6 +358,10 @@ class P2PEthernetIPV4(VppTestCase):
         cls.pg1.generate_remote_hosts(5)
         cls.pg1.configure_ipv4_neighbors()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(P2PEthernetIPV4, cls).tearDownClass()
+
     def setUp(self):
         super(P2PEthernetIPV4, self).setUp()
         for p in self.packets:
@@ -397,8 +410,8 @@ class P2PEthernetIPV4(VppTestCase):
     def delete_p2p_ethernet(self, p2p):
         p2p.unconfig_ip4()
         p2p.admin_down()
-        self.vapi.delete_p2pethernet_subif(p2p.parent.sw_if_index,
-                                           p2p.p2p_remote_mac)
+        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index,
+                                   p2p.p2p_remote_mac)
 
     def test_ip4_rx_p2p_subif(self):
         """receive ipv4 packet via p2p subinterface"""

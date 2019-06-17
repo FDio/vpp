@@ -386,7 +386,7 @@ basic IPv4 forwarding.
                      ip = packet[IP]
                      udp = packet[UDP]
                      # convert the payload to packet info object
-                     payload_info = self.payload_to_info(str(packet[Raw]))
+                     payload_info = self.payload_to_info(packet[Raw])
                      # make sure the indexes match
                      self.assert_equal(payload_info.src, src_if.sw_if_index,
                                        "source sw_if_index")

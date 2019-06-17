@@ -5,7 +5,7 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -13,6 +13,8 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
 from vpp_object import VppObject
+
+NUM_PKTS = 67
 
 
 def find_abf_policy(test, id):
@@ -88,9 +90,6 @@ class VppAbfPolicy(VppObject):
     def query_vpp_config(self):
         return find_abf_policy(self._test, self.policy_id)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("abf-policy-%d" % self.policy_id)
 
@@ -131,9 +130,6 @@ class VppAbfAttach(VppObject):
                                    self.policy_id,
                                    self.sw_if_index)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return ("abf-attach-%d-%d" % (self.policy_id, self.sw_if_index))
 
@@ -141,12 +137,20 @@ class VppAbfAttach(VppObject):
 class TestAbf(VppTestCase):
     """ ABF Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestAbf, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestAbf, cls).tearDownClass()
+
     def setUp(self):
         super(TestAbf, self).setUp()
 
-        self.create_pg_interfaces(range(4))
+        self.create_pg_interfaces(range(5))
 
-        for i in self.pg_interfaces:
+        for i in self.pg_interfaces[:4]:
             i.admin_up()
             i.config_ip4()
             i.resolve_arp()
@@ -171,7 +175,7 @@ class TestAbf(VppTestCase):
         # the application of ACLs to a forwarding path to achieve
         # ABF
         # So we construct just a few ACLs to ensure the ABF policies
-        # are correclty constructed and used. And a few path types
+        # are correctly constructed and used. And a few path types
         # to test the API path decoding.
         #
 
@@ -214,7 +218,7 @@ class TestAbf(VppTestCase):
                IP(src="1.1.1.1", dst="1.1.1.2") /
                UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100))
-        self.send_and_expect(self.pg0, p_1*65, self.pg1)
+        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg1)
 
         #
         # Attach a 'better' priority policy to the same interface
@@ -226,7 +230,7 @@ class TestAbf(VppTestCase):
         attach_2 = VppAbfAttach(self, 11, self.pg0.sw_if_index, 40)
         attach_2.add_vpp_config()
 
-        self.send_and_expect(self.pg0, p_1*65, self.pg2)
+        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg2)
 
         #
         # Attach a policy with priority in the middle
@@ -238,13 +242,13 @@ class TestAbf(VppTestCase):
         attach_3 = VppAbfAttach(self, 12, self.pg0.sw_if_index, 45)
         attach_3.add_vpp_config()
 
-        self.send_and_expect(self.pg0, p_1*65, self.pg2)
+        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg2)
 
         #
         # remove the best priority
         #
         attach_2.remove_vpp_config()
-        self.send_and_expect(self.pg0, p_1*65, self.pg3)
+        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg3)
 
         #
         # Attach one of the same policies to Pg1
@@ -257,14 +261,38 @@ class TestAbf(VppTestCase):
                IP(src="1.1.1.1", dst="1.1.1.2") /
                UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100))
-        self.send_and_expect(self.pg1, p_2 * 65, self.pg3)
+        self.send_and_expect(self.pg1, p_2 * NUM_PKTS, self.pg3)
 
         #
         # detach the policy from PG1, now expect traffic to be dropped
         #
         attach_4.remove_vpp_config()
 
-        self.send_and_assert_no_replies(self.pg1, p_2 * 65, "Detached")
+        self.send_and_assert_no_replies(self.pg1, p_2 * NUM_PKTS, "Detached")
+
+        #
+        # Swap to route via a next-hop in the non-default table
+        #
+        table_20 = VppIpTable(self, 20)
+        table_20.add_vpp_config()
+
+        self.pg4.set_table_ip4(table_20.table_id)
+        self.pg4.admin_up()
+        self.pg4.config_ip4()
+        self.pg4.resolve_arp()
+
+        abf_13 = VppAbfPolicy(self, 13, acl_1,
+                              [VppRoutePath(self.pg4.remote_ip4,
+                                            0xffffffff,
+                                            nh_table_id=table_20.table_id)])
+        abf_13.add_vpp_config()
+        attach_5 = VppAbfAttach(self, 13, self.pg0.sw_if_index, 30)
+        attach_5.add_vpp_config()
+
+        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg4)
+
+        self.pg4.unconfig_ip4()
+        self.pg4.set_table_ip4(0)
 
     def test_abf6(self):
         """ IPv6 ACL Based Forwarding
@@ -317,7 +345,7 @@ class TestAbf(VppTestCase):
         # packets are dropped because there is no route to the policy's
         # next hop
         #
-        self.send_and_assert_no_replies(self.pg1, p * 65, "no route")
+        self.send_and_assert_no_replies(self.pg1, p * NUM_PKTS, "no route")
 
         #
         # add a route resolving the next-hop
@@ -332,7 +360,7 @@ class TestAbf(VppTestCase):
         #
         # now expect packets forwarded.
         #
-        self.send_and_expect(self.pg0, p * 65, self.pg1)
+        self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
 
 if __name__ == '__main__':

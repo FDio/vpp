@@ -52,9 +52,9 @@ typedef struct dhcp_client_detect_trace_t_
   u8 extracted;
 } dhcp_client_detect_trace_t;
 
-static uword
-dhcp_client_detect_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (dhcp_client_detect_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   dhcp_client_detect_next_t next_index;
   u16 dhcp_client_port_network_order;
@@ -77,7 +77,7 @@ dhcp_client_detect_node_fn (vlib_main_t * vm,
       /*
        * This loop is optimised not so we can really quickly process DHCp
        * offers... but so we can quickly sift them out when the interface
-       * is also receving 'normal' packets
+       * is also receiving 'normal' packets
        */
       while (n_left_from >= 8 && n_left_to_next >= 4)
 	{
@@ -288,7 +288,6 @@ format_dhcp_client_detect_trace (u8 * s, va_list * args)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp_client_detect_node) = {
-  .function = dhcp_client_detect_node_fn,
   .name = "ip4-dhcp-client-detect",
   .vector_size = sizeof (u32),
   .format_trace = format_dhcp_client_detect_trace,
@@ -306,9 +305,6 @@ VLIB_REGISTER_NODE (dhcp_client_detect_node) = {
     [DHCP_CLIENT_DETECT_NEXT_EXTRACT] = "ip4-udp-lookup",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (dhcp_client_detect_node,
-                              dhcp_client_detect_node_fn);
 
 VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) =
 {

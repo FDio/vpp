@@ -50,10 +50,10 @@ format_ip_outacl_trace (u8 * s, va_list * args)
   return format_ip_in_out_acl_trace (s, 1 /* is_output */ , args);
 }
 
-vlib_node_registration_t ip4_inacl_node;
-vlib_node_registration_t ip4_outacl_node;
-vlib_node_registration_t ip6_inacl_node;
-vlib_node_registration_t ip6_outacl_node;
+extern vlib_node_registration_t ip4_inacl_node;
+extern vlib_node_registration_t ip4_outacl_node;
+extern vlib_node_registration_t ip6_inacl_node;
+extern vlib_node_registration_t ip6_outacl_node;
 
 #define foreach_ip_inacl_error                  \
 _(MISS, "input ACL misses")                     \
@@ -486,16 +486,15 @@ ip_in_out_acl_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_inacl (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_inacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return ip_in_out_acl_inline (vm, node, frame, 1 /* is_ip4 */ ,
 			       0 /* is_output */ );
 }
 
-static uword
-ip4_outacl (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_outacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
 {
   return ip_in_out_acl_inline (vm, node, frame, 1 /* is_ip4 */ ,
 			       1 /* is_output */ );
@@ -504,7 +503,6 @@ ip4_outacl (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_inacl_node) = {
-  .function = ip4_inacl,
   .name = "ip4-inacl",
   .vector_size = sizeof (u32),
   .format_trace = format_ip_inacl_trace,
@@ -518,7 +516,6 @@ VLIB_REGISTER_NODE (ip4_inacl_node) = {
 };
 
 VLIB_REGISTER_NODE (ip4_outacl_node) = {
-  .function = ip4_outacl,
   .name = "ip4-outacl",
   .vector_size = sizeof (u32),
   .format_trace = format_ip_outacl_trace,
@@ -532,19 +529,15 @@ VLIB_REGISTER_NODE (ip4_outacl_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_inacl_node, ip4_inacl);
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_outacl_node, ip4_outacl);
-
-static uword
-ip6_inacl (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_inacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return ip_in_out_acl_inline (vm, node, frame, 0 /* is_ip4 */ ,
 			       0 /* is_output */ );
 }
 
-static uword
-ip6_outacl (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_outacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
 {
   return ip_in_out_acl_inline (vm, node, frame, 0 /* is_ip4 */ ,
 			       1 /* is_output */ );
@@ -552,7 +545,6 @@ ip6_outacl (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_inacl_node) = {
-  .function = ip6_inacl,
   .name = "ip6-inacl",
   .vector_size = sizeof (u32),
   .format_trace = format_ip_inacl_trace,
@@ -566,7 +558,6 @@ VLIB_REGISTER_NODE (ip6_inacl_node) = {
 };
 
 VLIB_REGISTER_NODE (ip6_outacl_node) = {
-  .function = ip6_outacl,
   .name = "ip6-outacl",
   .vector_size = sizeof (u32),
   .format_trace = format_ip_outacl_trace,
@@ -580,9 +571,7 @@ VLIB_REGISTER_NODE (ip6_outacl_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_inacl_node, ip6_inacl);
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_outacl_node, ip6_outacl);
-
+#ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
 ip_in_out_acl_init (vlib_main_t * vm)
 {
@@ -590,6 +579,7 @@ ip_in_out_acl_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ip_in_out_acl_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 
 /*

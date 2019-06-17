@@ -126,6 +126,8 @@ mactime_enable_disable_command_fn (vlib_main_t * vm,
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
 			 mm->vnet_main, &sw_if_index))
 	;
+      else if (unformat (input, "sw_if_index %d", &sw_if_index))
+	;
       else
 	break;
     }
@@ -143,11 +145,6 @@ mactime_enable_disable_command_fn (vlib_main_t * vm,
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
       return clib_error_return
 	(0, "Invalid interface, only works on physical ports");
-      break;
-
-    case VNET_API_ERROR_UNIMPLEMENTED:
-      return clib_error_return (0,
-				"Device driver doesn't support redirection");
       break;
 
     default:
@@ -223,9 +220,12 @@ static void vl_api_mactime_add_del_range_t_handler
   clib_bihash_kv_8_8_t kv;
   int found = 1;
   clib_bihash_8_8_t *lut = &mm->lookup_table;
+  u64 data_quota;
   int i, rv = 0;
 
   feature_init (mm);
+
+  data_quota = clib_net_to_host_u64 (mp->data_quota);
 
   clib_memset (&kv, 0, sizeof (kv));
   memcpy (&kv.key, mp->mac_address, sizeof (mp->mac_address));
@@ -266,6 +266,8 @@ static void vl_api_mactime_add_del_range_t_handler
 		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_DROP;
 	      if (mp->allow)
 		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW;
+	      if (mp->allow_quota)
+		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA;
 	    }
 	  else
 	    {
@@ -275,14 +277,19 @@ static void vl_api_mactime_add_del_range_t_handler
 	      if (mp->allow)
 		dp->flags = MACTIME_DEVICE_FLAG_STATIC_ALLOW;
 	    }
+	  if (mp->no_udp_10001)
+	    dp->flags |= MACTIME_DEVICE_FLAG_DROP_UDP_10001;
+
+	  dp->data_quota = data_quota;
 
 	  /* Add the hash table entry */
 	  kv.value = dp - mm->devices;
 	  clib_bihash_add_del_8_8 (lut, &kv, 1 /* is_add */ );
 	}
-      else			/* add more ranges */
+      else			/* add more ranges, flags, etc. */
 	{
 	  dp = pool_elt_at_index (mm->devices, kv.value);
+
 	  for (i = 0; i < clib_net_to_host_u32 (mp->count); i++)
 	    {
 	      clib_timebase_range_t _r, *r = &_r;
@@ -290,6 +297,29 @@ static void vl_api_mactime_add_del_range_t_handler
 	      r->end = mp->ranges[i].end;
 	      vec_add1 (dp->ranges, r[0]);
 	    }
+
+	  if (vec_len (dp->ranges))
+	    {
+	      /* Set allow/drop based on msg flags */
+	      if (mp->drop)
+		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_DROP;
+	      if (mp->allow)
+		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW;
+	      if (mp->allow_quota)
+		dp->flags = MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA;
+	    }
+	  else
+	    {
+	      /* no ranges, it's a static allow/drop */
+	      if (mp->drop)
+		dp->flags = MACTIME_DEVICE_FLAG_STATIC_DROP;
+	      if (mp->allow)
+		dp->flags = MACTIME_DEVICE_FLAG_STATIC_ALLOW;
+	    }
+	  if (mp->no_udp_10001)
+	    dp->flags |= MACTIME_DEVICE_FLAG_DROP_UDP_10001;
+
+	  dp->data_quota = data_quota;
 	}
     }
   else				/* delete case */
@@ -423,9 +453,49 @@ VNET_FEATURE_INIT (mactime_tx, static) =
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "Time-based MAC source-address filter",
+  .description = "Time-based MAC Source Address Filter",
 };
 /* *INDENT-ON* */
+
+u8 *
+format_bytes_with_width (u8 * s, va_list * va)
+{
+  uword nbytes = va_arg (*va, u64);
+  int width = va_arg (*va, int);
+  f64 nbytes_f64;
+  u8 *fmt;
+  char *suffix = "";
+
+  if (width > 0)
+    fmt = format (0, "%%%d.3f%%s%c", width, 0);
+  else
+    fmt = format (0, "%%.3f%%s%c", 0);
+
+  if (nbytes > (1024ULL * 1024ULL * 1024ULL))
+    {
+      nbytes_f64 = ((f64) nbytes) / (1024.0 * 1024.0 * 1024.0);
+      suffix = "G";
+    }
+  else if (nbytes > (1024ULL * 1024ULL))
+    {
+      nbytes_f64 = ((f64) nbytes) / (1024.0 * 1024.0);
+      suffix = "M";
+    }
+  else if (nbytes > 1024ULL)
+    {
+      nbytes_f64 = ((f64) nbytes) / (1024.0);
+      suffix = "K";
+    }
+  else
+    {
+      nbytes_f64 = (f64) nbytes;
+      suffix = "B";
+    }
+
+  s = format (s, (char *) fmt, nbytes_f64, suffix);
+  vec_free (fmt);
+  return s;
+}
 
 static clib_error_t *
 show_mactime_command_fn (vlib_main_t * vm,
@@ -474,7 +544,7 @@ show_mactime_command_fn (vlib_main_t * vm,
   }));
   /* *INDENT-ON* */
 
-  vlib_cli_output (vm, "%-15s %18s %14s %10s %10s %10s",
+  vlib_cli_output (vm, "%-15s %18s %14s %10s %11s %13s",
 		   "Device Name", "Addresses", "Status",
 		   "AllowPkt", "AllowByte", "DropPkt");
 
@@ -499,6 +569,8 @@ show_mactime_command_fn (vlib_main_t * vm,
 	    {
 	      if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW)
 		current_status = 3;
+	      else if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA)
+		current_status = 5;
 	      else
 		current_status = 2;
 	      if (verbose)
@@ -521,6 +593,8 @@ show_mactime_command_fn (vlib_main_t * vm,
 	current_status = 2;
       if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_DROP)
 	current_status = 3;
+      if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA)
+	current_status = 4;
 
     print:
       vec_reset_length (macstring);
@@ -539,6 +613,12 @@ show_mactime_command_fn (vlib_main_t * vm,
 	case 3:
 	  status_string = "dynamic allow";
 	  break;
+	case 4:
+	  status_string = "d-quota inact";
+	  break;
+	case 5:
+	  status_string = "d-quota activ";
+	  break;
 	default:
 	  status_string = "code bug!";
 	  break;
@@ -546,9 +626,15 @@ show_mactime_command_fn (vlib_main_t * vm,
       vlib_get_combined_counter (&mm->allow_counters, dp - mm->devices,
 				 &allow);
       vlib_get_combined_counter (&mm->drop_counters, dp - mm->devices, &drop);
-      vlib_cli_output (vm, "%-15s %18s %14s %10lld %10lld %10lld",
+      vlib_cli_output (vm, "%-15s %18s %14s %10lld %U %13lld",
 		       dp->device_name, macstring, status_string,
-		       allow.packets, allow.bytes, drop.packets);
+		       allow.packets, format_bytes_with_width, allow.bytes,
+		       10, drop.packets);
+      if (dp->data_quota > 0)
+	vlib_cli_output (vm, "%-54s %s%U %s%U", " ", "Quota ",
+			 format_bytes_with_width, dp->data_quota, 10,
+			 "Use ", format_bytes_with_width,
+			 dp->data_used_in_range, 8);
       /* This is really only good for small N... */
       for (j = 0; j < vec_len (mm->arp_cache_copy); j++)
 	{

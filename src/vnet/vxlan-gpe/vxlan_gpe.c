@@ -743,6 +743,17 @@ int vnet_vxlan_gpe_add_del_tunnel
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
+  if (a->is_add)
+    {
+      /* register udp ports */
+      if (!is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_VXLAN_GPE, 1))
+	udp_register_dst_port (ngm->vlib_main, UDP_DST_PORT_VXLAN_GPE,
+			       vxlan4_gpe_input_node.index, 1 /* is_ip4 */ );
+      if (is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_VXLAN6_GPE, 0))
+	udp_register_dst_port (ngm->vlib_main, UDP_DST_PORT_VXLAN6_GPE,
+			       vxlan6_gpe_input_node.index, 0 /* is_ip4 */ );
+    }
+
   return 0;
 }
 
@@ -976,9 +987,9 @@ done:
  *
  * @cliexpar
  * Example of how to create a VXLAN-GPE Tunnel:
- * @cliexcmd{create vxlan-gpe tunnel local 10.0.3.1 local 10.0.3.3 vni 13 encap-vrf-id 7}
- * Example of how to delete a VXLAN Tunnel:
- * @cliexcmd{create vxlan tunnel src 10.0.3.1 remote 10.0.3.3 vni 13 del}
+ * @cliexcmd{create vxlan-gpe tunnel local 10.0.3.1 remote 10.0.3.3 vni 13 encap-vrf-id 7}
+ * Example of how to delete a VXLAN-GPE Tunnel:
+ * @cliexcmd{create vxlan-gpe tunnel local 10.0.3.1 remote 10.0.3.3 vni 13 del}
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_vxlan_gpe_tunnel_command, static) = {
@@ -1252,11 +1263,6 @@ vxlan_gpe_init (vlib_main_t * vm)
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
   ngm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
-
-  udp_register_dst_port (vm, UDP_DST_PORT_VXLAN_GPE,
-			 vxlan4_gpe_input_node.index, 1 /* is_ip4 */ );
-  udp_register_dst_port (vm, UDP_DST_PORT_VXLAN6_GPE,
-			 vxlan6_gpe_input_node.index, 0 /* is_ip4 */ );
 
   /* Register the list of standard decap protocols supported */
   vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IP4,

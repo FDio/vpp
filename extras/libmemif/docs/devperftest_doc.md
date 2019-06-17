@@ -16,7 +16,7 @@ icmpr-epoll:
 ```
 conn 0 0 1
 ```
-> Last argument specifies interrupt function to use. This function only respondes to ARP requests. This is important because, packet generation and transmitting is handled by a separate thread. Calling memif_tx_burst from multiple threads writing on same queue could transmit uninitialized buffers.
+> Last argument specifies interrupt function to use. This function only responds to ARP requests. This is important because, packet generation and transmitting is handled by a separate thread. Calling memif_tx_burst from multiple threads writing on same queue could transmit uninitialized buffers.
 Once connection is established, you can send ping from VPP to icmpr-epoll app to learn its mac address.
 ```
 DBGvpp# ping 192.168.1.2

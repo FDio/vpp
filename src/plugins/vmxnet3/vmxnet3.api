@@ -28,6 +28,8 @@ option version = "1.0.0";
     @param rxq_num - number of receive queues (optional - default is 1)
     @param txq_size - transmit queue size (optional - default is 1024)
     @param txq_num - number of transmit queues (optional - default is 1)
+    @param bind - automatically bind PCI to vfio-pci module
+		      (optional - default is 0)
 */
 
 define vmxnet3_create
@@ -41,6 +43,7 @@ define vmxnet3_create
   u16 rxq_num;
   u16 txq_size;
   u16 txq_num;
+  u8 bind;
 };
 
 /** \brief

@@ -79,7 +79,7 @@ fib_entry_src_rr_init (fib_entry_src_t *src)
  * and there would be 2 locks on the path-list; one since its used
  * by the cover, and 1 from here. The first lock will go when the
  * cover is removed, the second, and last, when the covered walk
- * occurs during the cover's removel - this is not a place where
+ * occurs during the cover's removal - this is not a place where
  * we can handle last lock gone.
  * In short, don't let the loop form. The usual rules of 'we must
  * let it form so we know when it breaks' don't apply here, since
@@ -175,7 +175,7 @@ fib_entry_src_rr_deactivate (fib_entry_src_t *src,
     fib_entry_t *cover;
 
     /*
-     * remove the depednecy on the covering entry
+     * remove the dependency on the covering entry
      */
     if (FIB_NODE_INDEX_INVALID != src->u.rr.fesr_cover)
     {

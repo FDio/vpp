@@ -112,6 +112,10 @@ class TestL2xcMultiInst(VppTestCase):
             super(TestL2xcMultiInst, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2xcMultiInst, cls).tearDownClass()
+
     def setUp(self):
         """
         Clear trace and packet infos before running each test.
@@ -124,8 +128,9 @@ class TestL2xcMultiInst(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestL2xcMultiInst, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2patch"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show l2patch"))
 
     @classmethod
     def create_hosts(cls, count):
@@ -235,7 +240,7 @@ class TestL2xcMultiInst(VppTestCase):
             last_info[i.sw_if_index] = None
         dst_sw_if_index = pg_if.sw_if_index
         for packet in capture:
-            payload_info = self.payload_to_info(str(packet[Raw]))
+            payload_info = self.payload_to_info(packet[Raw])
             try:
                 ip = packet[IP]
                 udp = packet[UDP]

@@ -151,7 +151,7 @@ index 3676047..ffa4473 100644
                valueFrom:
 ```
 
-If VPP is the crashing process, please follow the [CORE_FILES](CORE_FILES.html) guide and provide the coredump file.
+If VPP is the crashing process, please follow the \[CORE_FILES\](CORE_FILES.html) guide and provide the coredump file.
 
 
 ### Inspect VPP Config

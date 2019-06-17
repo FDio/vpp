@@ -22,7 +22,7 @@
 #include <vnet/bier/bier_fmask.h>
 
 /**
- * Struct maintining the per-worker thread data for BIER lookups
+ * Struct maintaining the per-worker thread data for BIER lookups
  */
 typedef struct bier_lookup_main_t_
 {
@@ -44,7 +44,7 @@ static char * bier_lookup_error_strings[] = {
 };
 
 /*
- * Keep these values sematically the same as BIER lookup
+ * Keep these values semantically the same as BIER lookup
  */
 #define foreach_bier_lookup_next                \
     _(DROP, "bier-drop")                        \
@@ -67,7 +67,7 @@ typedef enum {
 vlib_node_registration_t bier_lookup_node;
 
 /**
- * @brief Packet trace recoed for a BIER lookup
+ * @brief Packet trace record for a BIER lookup
  */
 typedef struct bier_lookup_trace_t_
 {

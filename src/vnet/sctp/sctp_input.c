@@ -84,6 +84,7 @@ typedef enum _sctp_input_next
   SCTP_INPUT_N_NEXT
 } sctp_input_next_t;
 
+#ifndef CLIB_MARCH_VARIANT
 char *
 phase_to_string (u8 phase)
 {
@@ -104,6 +105,7 @@ phase_to_string (u8 phase)
     }
   return NULL;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_sctp4_input_next                 \
   _ (DROP, "error-drop")                         \
@@ -237,7 +239,7 @@ typedef struct
 #define sctp_next_drop(is_ip4) (is_ip4 ? SCTP_NEXT_DROP4                  \
                                       : SCTP_NEXT_DROP6)
 
-void
+static void
 sctp_set_rx_trace_data (sctp_rx_trace_t * rx_trace,
 			sctp_connection_t * sctp_conn,
 			sctp_header_t * sctp_hdr, vlib_buffer_t * b0,
@@ -1116,21 +1118,21 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-static uword
-sctp4_rcv_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp4_rcv_phase_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * from_frame)
 {
   return sctp46_rcv_phase_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-sctp6_rcv_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp6_init_phase_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   return sctp46_rcv_phase_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
-u8 *
+static u8 *
 format_sctp_rx_trace_short (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -1148,7 +1150,6 @@ format_sctp_rx_trace_short (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp4_rcv_phase_node) =
 {
-  .function = sctp4_rcv_phase,
   .name = "sctp4-rcv",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -1165,12 +1166,9 @@ VLIB_REGISTER_NODE (sctp4_rcv_phase_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (sctp4_rcv_phase_node, sctp4_rcv_phase);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp6_init_phase_node) =
 {
-  .function = sctp6_rcv_phase,
   .name = "sctp6-rcv",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -1186,11 +1184,6 @@ VLIB_REGISTER_NODE (sctp6_init_phase_node) =
   .format_trace = format_sctp_rx_trace_short,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (sctp6_init_phase_node, sctp6_rcv_phase);
-
-vlib_node_registration_t sctp4_shutdown_phase_node;
-vlib_node_registration_t sctp6_shutdown_phase_node;
 
 always_inline u16
 sctp_handle_shutdown (sctp_header_t * sctp_hdr,
@@ -1469,16 +1462,16 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 
 }
 
-static uword
-sctp4_shutdown_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp4_shutdown_phase_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * from_frame)
 {
   return sctp46_shutdown_phase_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-sctp6_shutdown_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp6_shutdown_phase_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * from_frame)
 {
   return sctp46_shutdown_phase_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
@@ -1486,7 +1479,6 @@ sctp6_shutdown_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp4_shutdown_phase_node) =
 {
-  .function = sctp4_shutdown_phase,
   .name = "sctp4-shutdown",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -1503,13 +1495,9 @@ VLIB_REGISTER_NODE (sctp4_shutdown_phase_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (sctp4_shutdown_phase_node,
-			      sctp4_shutdown_phase);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp6_shutdown_phase_node) =
 {
-  .function = sctp6_shutdown_phase,
   .name = "sctp6-shutdown",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -1525,15 +1513,6 @@ VLIB_REGISTER_NODE (sctp6_shutdown_phase_node) =
   .format_trace = format_sctp_rx_trace_short,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (sctp6_shutdown_phase_node,
-			      sctp6_shutdown_phase);
-
-vlib_node_registration_t sctp4_listen_phase_node;
-vlib_node_registration_t sctp6_listen_phase_node;
-
-vlib_node_registration_t sctp4_established_phase_node;
-vlib_node_registration_t sctp6_established_phase_node;
 
 always_inline u16
 sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
@@ -1815,16 +1794,16 @@ sctp46_listen_process_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-sctp4_listen_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp4_listen_phase_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * from_frame)
 {
   return sctp46_listen_process_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-sctp6_listen_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp6_listen_phase_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * from_frame)
 {
   return sctp46_listen_process_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
@@ -1833,6 +1812,7 @@ always_inline uword
 sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				 vlib_frame_t * from_frame, int is_ip4)
 {
+  sctp_main_t *sm = vnet_get_sctp_main ();
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index, errors = 0;
 
@@ -1970,34 +1950,34 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_SCTP,
-						 my_thread_index);
+  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_SCTP,
+					      my_thread_index);
 
-  sctp_node_inc_counter (vm, is_ip4, sctp4_established_phase_node.index,
-			 sctp6_established_phase_node.index,
+  sctp_node_inc_counter (vm, is_ip4, sm->sctp4_established_phase_node_index,
+			 sm->sctp6_established_phase_node_index,
 			 SCTP_ERROR_EVENT_FIFO_FULL, errors);
   sctp_flush_frame_to_output (vm, my_thread_index, is_ip4);
 
   return from_frame->n_vectors;
 }
 
-static uword
-sctp4_established_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp4_established_phase_node) (vlib_main_t * vm,
+					     vlib_node_runtime_t * node,
+					     vlib_frame_t * from_frame)
 {
   return sctp46_established_phase_inline (vm, node, from_frame,
 					  1 /* is_ip4 */ );
 }
 
-static uword
-sctp6_established_phase (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp6_established_phase_node) (vlib_main_t * vm,
+					     vlib_node_runtime_t * node,
+					     vlib_frame_t * from_frame)
 {
   return sctp46_established_phase_inline (vm, node, from_frame,
 					  0 /* is_ip4 */ );
 }
 
-u8 *
+static u8 *
 format_sctp_rx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -2016,7 +1996,6 @@ format_sctp_rx_trace (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp4_listen_phase_node) =
 {
-  .function = sctp4_listen_phase,
   .name = "sctp4-listen",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2033,12 +2012,9 @@ VLIB_REGISTER_NODE (sctp4_listen_phase_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (sctp4_listen_phase_node, sctp4_listen_phase);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp6_listen_phase_node) =
 {
-  .function = sctp6_listen_phase,
   .name = "sctp6-listen",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2055,12 +2031,9 @@ VLIB_REGISTER_NODE (sctp6_listen_phase_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (sctp6_listen_phase_node, sctp6_listen_phase);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp4_established_phase_node) =
 {
-  .function = sctp4_established_phase,
   .name = "sctp4-established",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2077,13 +2050,9 @@ VLIB_REGISTER_NODE (sctp4_established_phase_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (sctp4_established_phase_node,
-			      sctp4_established_phase);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp6_established_phase_node) =
 {
-  .function = sctp6_established_phase,
   .name = "sctp6-established",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2099,9 +2068,6 @@ VLIB_REGISTER_NODE (sctp6_established_phase_node) =
   .format_trace = format_sctp_rx_trace_short,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (sctp6_established_phase_node,
-			      sctp6_established_phase);
 
 /*
  * This is the function executed first for the SCTP graph.
@@ -2295,16 +2261,14 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-static uword
-sctp4_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return sctp46_input_dispatcher (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-sctp6_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * from_frame)
+VLIB_NODE_FN (sctp6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return sctp46_input_dispatcher (vm, node, from_frame, 0 /* is_ip4 */ );
 }
@@ -2312,7 +2276,6 @@ sctp6_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp4_input_node) =
 {
-  .function = sctp4_input_dispatcher,
   .name = "sctp4-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2330,12 +2293,9 @@ VLIB_REGISTER_NODE (sctp4_input_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (sctp4_input_node, sctp4_input_dispatcher);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sctp6_input_node) =
 {
-  .function = sctp6_input_dispatcher,
   .name = "sctp6-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2353,11 +2313,7 @@ VLIB_REGISTER_NODE (sctp6_input_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (sctp6_input_node, sctp6_input_dispatcher);
-
-vlib_node_registration_t sctp4_input_node;
-vlib_node_registration_t sctp6_input_node;
-
+#ifndef CLIB_MARCH_VARIANT
 static void
 sctp_dispatch_table_init (sctp_main_t * tm)
 {
@@ -2561,6 +2517,7 @@ sctp_input_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (sctp_input_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

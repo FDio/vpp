@@ -75,6 +75,12 @@ typedef CLIB_PACKED (struct
 
 typedef struct
 {
+  u32 tunnel_index;
+  u32 vni;
+} geneve_encap_trace_t;
+
+typedef struct
+{
   /* Required for pool_get_aligned */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 

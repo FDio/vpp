@@ -80,10 +80,14 @@ format_l2_outacl_trace (u8 * s, va_list * args)
   return format_l2_in_out_acl_trace (s, IN_OUT_ACL_OUTPUT_TABLE_GROUP, args);
 }
 
-l2_in_out_acl_main_t l2_in_out_acl_main;
+extern l2_in_out_acl_main_t l2_in_out_acl_main;
 
-static vlib_node_registration_t l2_inacl_node;
-static vlib_node_registration_t l2_outacl_node;
+#ifndef CLIB_MARCH_VARIANT
+l2_in_out_acl_main_t l2_in_out_acl_main;
+#endif /* CLIB_MARCH_VARIANT */
+
+extern vlib_node_registration_t l2_inacl_node;
+extern vlib_node_registration_t l2_outacl_node;
 
 #define foreach_l2_inacl_error                  \
 _(NONE, "valid input ACL packets")              \
@@ -445,25 +449,24 @@ l2_in_out_acl_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-l2_inacl_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_inacl_node) (vlib_main_t * vm,
+			      vlib_node_runtime_t * node,
+			      vlib_frame_t * frame)
 {
   return l2_in_out_acl_node_fn (vm, node, frame,
 				IN_OUT_ACL_INPUT_TABLE_GROUP);
 }
 
-static uword
-l2_outacl_node_fn (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_outacl_node) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return l2_in_out_acl_node_fn (vm, node, frame,
 				IN_OUT_ACL_OUTPUT_TABLE_GROUP);
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_inacl_node,static) = {
-  .function = l2_inacl_node_fn,
+VLIB_REGISTER_NODE (l2_inacl_node) = {
   .name = "l2-input-acl",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_inacl_trace,
@@ -480,8 +483,7 @@ VLIB_REGISTER_NODE (l2_inacl_node,static) = {
   },
 };
 
-VLIB_REGISTER_NODE (l2_outacl_node,static) = {
-  .function = l2_outacl_node_fn,
+VLIB_REGISTER_NODE (l2_outacl_node) = {
   .name = "l2-output-acl",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_outacl_trace,
@@ -497,12 +499,10 @@ VLIB_REGISTER_NODE (l2_outacl_node,static) = {
        [ACL_NEXT_INDEX_DENY]  = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (l2_inacl_node, l2_inacl_node_fn)
-VLIB_NODE_FUNCTION_MULTIARCH (l2_outacl_node, l2_outacl_node_fn)
 /* *INDENT-ON* */
 
 
+#ifndef CLIB_MARCH_VARIANT
 clib_error_t *
 l2_in_out_acl_init (vlib_main_t * vm)
 {
@@ -527,6 +527,7 @@ l2_in_out_acl_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (l2_in_out_acl_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

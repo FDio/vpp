@@ -108,7 +108,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 			      adj0[0].rewrite_header.max_l3_packet_bytes)))
 	    {
 		/* Don't adjust the buffer for ttl issue; icmp-error node wants
-		 * to see the IP headerr */
+		 * to see the IP header */
 		p0->current_data -= rw_len0;
 		p0->current_length += rw_len0;
 		tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
@@ -152,16 +152,14 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
     return frame->n_vectors;
 }
 
-static uword
-adj_l2_rewrite (vlib_main_t * vm,
+VLIB_NODE_FN (adj_l2_rewrite_node) (vlib_main_t * vm,
 		vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
     return adj_l2_rewrite_inline (vm, node, frame, 0);
 }
 
-static uword
-adj_l2_midchain (vlib_main_t * vm,
+VLIB_NODE_FN (adj_l2_midchain_node) (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
 		 vlib_frame_t * frame)
 {
@@ -169,7 +167,6 @@ adj_l2_midchain (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (adj_l2_rewrite_node) = {
-    .function = adj_l2_rewrite,
     .name = "adj-l2-rewrite",
     .vector_size = sizeof (u32),
 
@@ -181,10 +178,7 @@ VLIB_REGISTER_NODE (adj_l2_rewrite_node) = {
     },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (adj_l2_rewrite_node, adj_l2_rewrite)
-
 VLIB_REGISTER_NODE (adj_l2_midchain_node) = {
-    .function = adj_l2_midchain,
     .name = "adj-l2-midchain",
     .vector_size = sizeof (u32),
 
@@ -195,5 +189,3 @@ VLIB_REGISTER_NODE (adj_l2_midchain_node) = {
 	[ADJ_L2_REWRITE_NEXT_DROP] = "error-drop",
     },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (adj_l2_midchain_node, adj_l2_midchain)

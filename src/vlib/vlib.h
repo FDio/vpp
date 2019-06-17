@@ -42,6 +42,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/elf_clib.h>
+#include <vppinfra/callback.h>
 
 /* Generic definitions. */
 #include <vlib/defs.h>
@@ -58,6 +59,7 @@ typedef u32 vlib_log_class_t;
 #include <vlib/error.h>
 #include <vlib/init.h>
 #include <vlib/node.h>
+#include <vlib/punt.h>
 #include <vlib/trace.h>
 #include <vlib/log.h>
 

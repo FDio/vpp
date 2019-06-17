@@ -49,6 +49,8 @@
  * For interfaces in Layer 3 mode, the packets will be routed.
  */
 
+#ifndef CLIB_MARCH_VARIANT
+
 /* Feature graph node names */
 static char *l2input_feat_names[] = {
 #define _(sym,name) name,
@@ -94,6 +96,7 @@ format_l2_input_features (u8 * s, va_list * args)
     }
   return s;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct
 {
@@ -119,7 +122,11 @@ format_l2input_trace (u8 * s, va_list * args)
   return s;
 }
 
+extern l2input_main_t l2input_main;
+
+#ifndef CLIB_MARCH_VARIANT
 l2input_main_t l2input_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_l2input_error			\
 _(L2INPUT,     "L2 input packets")		\
@@ -189,11 +196,13 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
 		     L2INPUT_FEAT_UU_FLOOD |
 		     L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_GBP_FWD);
 
+      if (ethertype != ETHERNET_TYPE_ARP)
+	feat_mask &= ~(L2INPUT_FEAT_ARP_UFWD);
+
       /* Disable ARP-term for non-ARP and non-ICMP6 packet */
       if (ethertype != ETHERNET_TYPE_ARP &&
 	  (ethertype != ETHERNET_TYPE_IP6 || protocol != IP_PROTOCOL_ICMP6))
 	feat_mask &= ~(L2INPUT_FEAT_ARP_TERM);
-
       /*
        * For packet from BVI - set SHG of ARP request or ICMPv6 neighbor
        * solicitation packet from BVI to 0 so it can also flood to VXLAN
@@ -455,9 +464,8 @@ l2input_node_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-l2input_node_fn (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2input_node) (vlib_main_t * vm,
+			     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return l2input_node_inline (vm, node, frame, 1 /* do_trace */ );
@@ -466,7 +474,6 @@ l2input_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2input_node) = {
-  .function = l2input_node_fn,
   .name = "l2-input",
   .vector_size = sizeof (u32),
   .format_trace = format_l2input_trace,
@@ -487,8 +494,9 @@ VLIB_REGISTER_NODE (l2input_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2input_node, l2input_node_fn)
-     clib_error_t *l2input_init (vlib_main_t * vm)
+#ifndef CLIB_MARCH_VARIANT
+clib_error_t *
+l2input_init (vlib_main_t * vm)
 {
   l2input_main_t *mp = &l2input_main;
 
@@ -699,6 +707,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 				     L2INPUT_FEAT_UU_FWD |
 				     L2INPUT_FEAT_FLOOD |
 				     L2INPUT_FEAT_LEARN |
+				     L2INPUT_FEAT_ARP_UFWD |
 				     L2INPUT_FEAT_ARP_TERM);
 
 	  /* Make sure last-chance drop is configured */
@@ -851,6 +860,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
   return 0;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * Set subinterface in bridging mode with a bridge-domain ID.
@@ -1213,6 +1223,7 @@ _(l2output_init)				\
 _(l2_patch_init)				\
 _(l2_xcrw_init)
 
+#ifndef CLIB_MARCH_VARIANT
 clib_error_t *
 l2_init (vlib_main_t * vm)
 {
@@ -1227,6 +1238,7 @@ while (0);
 }
 
 VLIB_INIT_FUNCTION (l2_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

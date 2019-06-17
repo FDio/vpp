@@ -397,7 +397,7 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
   wrk->sessions = pool_dup (parent_wrk->sessions);
   wrk->session_index_by_vpp_handles =
     hash_dup (parent_wrk->session_index_by_vpp_handles);
-  vls_table_wlock ();
+  vls_table_rlock ();
 
   /* *INDENT-OFF* */
   pool_foreach (s, wrk->sessions, ({
@@ -405,7 +405,7 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
   }));
   /* *INDENT-ON* */
 
-  vls_table_wunlock ();
+  vls_table_runlock ();
 }
 
 static void
@@ -468,7 +468,7 @@ vls_mt_rel_locks (int locks_acq)
 
 #define vls_mt_guard(_vls, _op)				\
   int _locks_acq = 0;					\
-  if (PREDICT_FALSE (vcl_get_worker_index () == ~0));	\
+  if (PREDICT_FALSE (vcl_get_worker_index () == ~0))	\
     vls_mt_add ();					\
   if (PREDICT_FALSE (vlsl->vls_mt_n_threads > 1))	\
     vls_mt_acq_locks (_vls, _op, &_locks_acq);		\
@@ -561,6 +561,9 @@ vls_attr (vls_handle_t vlsh, uint32_t op, void *buffer, uint32_t * buflen)
 {
   vcl_locked_session_t *vls;
   int rv;
+
+  if (PREDICT_FALSE (vcl_get_worker_index () == ~0))
+    vls_mt_add ();
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
@@ -735,6 +738,9 @@ vls_epoll_create (void)
   vcl_session_handle_t sh;
   vls_handle_t vlsh;
 
+  if (PREDICT_FALSE (vcl_get_worker_index () == ~0))
+    vls_mt_add ();
+
   sh = vppcom_epoll_create ();
   if (sh == INVALID_SESSION_ID)
     return VLS_INVALID_HANDLE;
@@ -861,6 +867,9 @@ vls_unshare_vcl_worker_sessions (vcl_worker_t * wrk)
   u32 current_wrk, is_current;
   vcl_locked_session_t *vls;
   vcl_session_t *s;
+
+  if (pool_elts (vcm->workers) <= 1)
+    return;
 
   current_wrk = vcl_get_worker_index ();
   is_current = current_wrk == wrk->wrk_index;

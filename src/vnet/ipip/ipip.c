@@ -20,6 +20,7 @@
 #include <vnet/ipip/ipip.h>
 #include <vnet/vnet.h>
 #include <vnet/adj/adj_nbr.h>
+#include <vnet/adj/adj_midchain.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/format.h>
@@ -185,15 +186,21 @@ ipip_tunnel_stack (adj_index_t ai)
   if ((vnet_hw_interface_get_flags (vnet_get_main (), t->hw_if_index) &
        VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
     {
-      adj_nbr_midchain_unstack (ai);
+      adj_midchain_delegate_unstack (ai);
     }
   else
     {
-      adj_nbr_midchain_stack_on_fib_entry
-	(ai,
-	 t->p2p.fib_entry_index,
-	 (t->transport == IPIP_TRANSPORT_IP6) ?
-	 FIB_FORW_CHAIN_TYPE_UNICAST_IP6 : FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
+      /* *INDENT-OFF* */
+      fib_prefix_t dst = {
+        .fp_len = t->transport == IPIP_TRANSPORT_IP6 ? 128 : 32,
+        .fp_proto = (t->transport == IPIP_TRANSPORT_IP6 ?
+                     FIB_PROTOCOL_IP6 :
+                     FIB_PROTOCOL_IP4),
+        .fp_addr = t->tunnel_dst
+      };
+      /* *INDENT-ON* */
+
+      adj_midchain_delegate_stack (ai, t->fib_index, &dst);
     }
 }
 
@@ -356,82 +363,6 @@ ipip_tunnel_db_remove (ipip_tunnel_t * t)
   t->key = NULL;
 }
 
-static ipip_tunnel_t *
-ipip_tunnel_from_fib_node (fib_node_t * node)
-{
-  ipip_main_t *gm = &ipip_main;
-  ASSERT (gm->fib_node_type == node->fn_type);
-  return ((ipip_tunnel_t *) (((char *) node) -
-			     offsetof (ipip_tunnel_t, p2p.node)));
-}
-
-static fib_node_back_walk_rc_t
-ipip_tunnel_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
-{
-  ipip_tunnel_restack (ipip_tunnel_from_fib_node (node));
-
-  return (FIB_NODE_BACK_WALK_CONTINUE);
-}
-
-static fib_node_t *
-ipip_tunnel_fib_node_get (fib_node_index_t index)
-{
-  ipip_tunnel_t *gt;
-  ipip_main_t *gm;
-
-  gm = &ipip_main;
-  gt = pool_elt_at_index (gm->tunnels, index);
-
-  return (&gt->p2p.node);
-}
-
-static void
-ipip_tunnel_last_lock_gone (fib_node_t * node)
-{
-  /*
-   * The MPLS IPIP tunnel is a root of the graph. As such
-   * it never has children and thus is never locked.
-   */
-  ASSERT (0);
-}
-
-/*
- * Virtual function table registered by IPIP tunnels
- * for participation in the FIB object graph.
- */
-const static fib_node_vft_t ipip_vft = {
-  .fnv_get = ipip_tunnel_fib_node_get,
-  .fnv_last_lock = ipip_tunnel_last_lock_gone,
-  .fnv_back_walk = ipip_tunnel_back_walk,
-};
-
-static void
-ipip_fib_add (ipip_tunnel_t * t)
-{
-  ipip_main_t *gm = &ipip_main;
-  fib_prefix_t dst = {.fp_len = t->transport == IPIP_TRANSPORT_IP6 ? 128 : 32,
-    .fp_proto =
-      t->transport ==
-      IPIP_TRANSPORT_IP6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4,
-    .fp_addr = t->tunnel_dst
-  };
-
-  t->p2p.fib_entry_index =
-    fib_table_entry_special_add (t->fib_index, &dst, FIB_SOURCE_RR,
-				 FIB_ENTRY_FLAG_NONE);
-  t->p2p.sibling_index =
-    fib_entry_child_add (t->p2p.fib_entry_index, gm->fib_node_type,
-			 t->dev_instance);
-}
-
-static void
-ipip_fib_delete (ipip_tunnel_t * t)
-{
-  fib_entry_child_remove (t->p2p.fib_entry_index, t->p2p.sibling_index);
-  fib_table_entry_delete_index (t->p2p.fib_entry_index, FIB_SOURCE_RR);
-  fib_node_deinit (&t->p2p.node);
-}
-
 int
 ipip_add_tunnel (ipip_transport_t transport,
 		 u32 instance, ip46_address_t * src, ip46_address_t * dst,
@@ -470,7 +401,6 @@ ipip_add_tunnel (ipip_transport_t transport,
 
   t->dev_instance = t_idx;	/* actual */
   t->user_instance = u_idx;	/* name */
-  fib_node_init (&t->p2p.node, gm->fib_node_type);
 
   hw_if_index = vnet_register_interface (vnm, ipip_device_class.index, t_idx,
 					 ipip_hw_interface_class.index,
@@ -507,12 +437,6 @@ ipip_add_tunnel (ipip_transport_t transport,
 
   ipip_tunnel_db_add (t, &key);
 
-  /*
-   * Source the FIB entry for the tunnel's destination and become a
-   * child thereof. The tunnel will then get poked when the forwarding
-   * for the entry updates, and the tunnel can re-stack accordingly
-   */
-  ipip_fib_add (t);
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
@@ -546,7 +470,6 @@ ipip_del_tunnel (u32 sw_if_index)
   vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
   gm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
   vnet_delete_hw_interface (vnm, t->hw_if_index);
-  ipip_fib_delete (t);
   hash_unset (gm->instance_used, t->user_instance);
   ipip_tunnel_db_remove (t);
   pool_put (gm->tunnels, t);
@@ -564,7 +487,6 @@ ipip_init (vlib_main_t * vm)
   gm->vnet_main = vnet_get_main ();
   gm->tunnel_by_key =
     hash_create_mem (0, sizeof (ipip_tunnel_key_t), sizeof (uword));
-  gm->fib_node_type = fib_node_register_new_type (&ipip_vft);
 
   return 0;
 }

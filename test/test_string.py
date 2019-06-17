@@ -13,6 +13,10 @@ class TestString(VppTestCase):
     def setUpClass(cls):
         super(TestString, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestString, cls).tearDownClass()
+
     def setUp(self):
         super(TestString, self).setUp()
 
@@ -35,7 +39,7 @@ class TestString(VppTestCase):
             error = self.vapi.cli("test string " + name)
             if error.find("failed") != -1:
                 self.logger.critical("FAILURE in the " + name + " test")
-                self.assertEqual(error.find("failed"), -1)
+                self.assertNotIn("failed", error)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

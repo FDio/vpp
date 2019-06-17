@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 from socket import AF_INET, AF_INET6, inet_pton
+import unittest
+
+from scapy.packet import Raw
+from scapy.layers.l2 import Ether
+from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from vpp_interface import VppInterface
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
+NUM_PKTS = 67
 
 
 class VppPipe(VppInterface):
@@ -38,9 +41,6 @@ class VppPipe(VppInterface):
         self._test.vapi.pipe_delete(
             self.result.sw_if_index)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "pipe-%d" % (self._sw_if_index)
 
@@ -52,14 +52,22 @@ class VppPipe(VppInterface):
         return False
 
     def set_unnumbered(self, ip_sw_if_index, is_add=True):
-        res = self._test.vapi.sw_interface_set_unnumbered(
-            self.east, ip_sw_if_index, is_add)
-        res = self._test.vapi.sw_interface_set_unnumbered(
-            self.west, ip_sw_if_index, is_add)
+        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                          self.east, is_add)
+        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                          self.west, is_add)
 
 
 class TestPipe(VppTestCase):
     """ Pipes """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestPipe, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestPipe, cls).tearDownClass()
 
     def setUp(self):
         super(TestPipe, self).setUp()
@@ -100,7 +108,7 @@ class TestPipe(VppTestCase):
                                                self.pg1.sw_if_index,
                                                enable=1)
 
-        # test bi-drectional L2 flow pg0<->pg1
+        # test bi-directional L2 flow pg0<->pg1
         p = (Ether(src=self.pg0.remote_mac,
                    dst=self.pg1.remote_mac) /
              IP(src="1.1.1.1",
@@ -108,8 +116,8 @@ class TestPipe(VppTestCase):
              UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
 
-        self.send_and_expect(self.pg0, p * 65, self.pg1)
-        self.send_and_expect(self.pg1, p * 65, self.pg0)
+        self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
 
         #
         # Attach ACL to ensure features are run on the pipe
@@ -132,8 +140,8 @@ class TestPipe(VppTestCase):
         self.vapi.acl_interface_set_acl_list(pipes[0].east,
                                              0,
                                              [acl.acl_index])
-        self.send_and_assert_no_replies(self.pg0, p * 65)
-        self.send_and_expect(self.pg1, p * 65, self.pg0)
+        self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS)
+        self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
 
         # remove from output and apply on input
         self.vapi.acl_interface_set_acl_list(pipes[0].east,
@@ -142,13 +150,13 @@ class TestPipe(VppTestCase):
         self.vapi.acl_interface_set_acl_list(pipes[0].west,
                                              1,
                                              [acl.acl_index])
-        self.send_and_assert_no_replies(self.pg0, p * 65)
-        self.send_and_expect(self.pg1, p * 65, self.pg0)
+        self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS)
+        self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
         self.vapi.acl_interface_set_acl_list(pipes[0].west,
                                              0,
                                              [])
-        self.send_and_expect(self.pg0, p * 65, self.pg1)
-        self.send_and_expect(self.pg1, p * 65, self.pg0)
+        self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
 
         #
         # L3 routes in two separate tables so a pipe can be used to L3
@@ -199,13 +207,13 @@ class TestPipe(VppTestCase):
         self.vapi.sw_interface_set_table(pipes[1].east, 0, 1)
 
         # IP is not enabled on the pipes at this point
-        self.send_and_assert_no_replies(self.pg2, p_east * 65)
+        self.send_and_assert_no_replies(self.pg2, p_east * NUM_PKTS)
 
         # IP enable the Pipes by making them unnumbered
         pipes[0].set_unnumbered(self.pg2.sw_if_index)
         pipes[1].set_unnumbered(self.pg3.sw_if_index)
 
-        self.send_and_expect(self.pg2, p_east * 65, self.pg3)
+        self.send_and_expect(self.pg2, p_east * NUM_PKTS, self.pg3)
 
         # and the return path
         p_west = (Ether(src=self.pg3.remote_mac,
@@ -214,7 +222,7 @@ class TestPipe(VppTestCase):
                      dst="1.1.1.2") /
                   UDP(sport=1234, dport=1234) /
                   Raw('\xa5' * 100))
-        self.send_and_expect(self.pg3, p_west * 65, self.pg2)
+        self.send_and_expect(self.pg3, p_west * NUM_PKTS, self.pg2)
 
         #
         # Use ACLs to test features run on the Pipes
@@ -222,8 +230,8 @@ class TestPipe(VppTestCase):
         self.vapi.acl_interface_set_acl_list(pipes[1].east,
                                              0,
                                              [acl.acl_index])
-        self.send_and_assert_no_replies(self.pg2, p_east * 65)
-        self.send_and_expect(self.pg3, p_west * 65, self.pg2)
+        self.send_and_assert_no_replies(self.pg2, p_east * NUM_PKTS)
+        self.send_and_expect(self.pg3, p_west * NUM_PKTS, self.pg2)
 
         # remove from output and apply on input
         self.vapi.acl_interface_set_acl_list(pipes[1].east,
@@ -232,13 +240,13 @@ class TestPipe(VppTestCase):
         self.vapi.acl_interface_set_acl_list(pipes[1].west,
                                              1,
                                              [acl.acl_index])
-        self.send_and_assert_no_replies(self.pg2, p_east * 65)
-        self.send_and_expect(self.pg3, p_west * 65, self.pg2)
+        self.send_and_assert_no_replies(self.pg2, p_east * NUM_PKTS)
+        self.send_and_expect(self.pg3, p_west * NUM_PKTS, self.pg2)
         self.vapi.acl_interface_set_acl_list(pipes[1].west,
                                              0,
                                              [])
-        self.send_and_expect(self.pg2, p_east * 65, self.pg3)
-        self.send_and_expect(self.pg3, p_west * 65, self.pg2)
+        self.send_and_expect(self.pg2, p_east * NUM_PKTS, self.pg3)
+        self.send_and_expect(self.pg3, p_west * NUM_PKTS, self.pg2)
 
         # cleanup (so the tables delete)
         self.pg2.unconfig_ip4()

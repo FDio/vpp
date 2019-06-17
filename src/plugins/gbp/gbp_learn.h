@@ -18,16 +18,43 @@
 
 #include <plugins/gbp/gbp.h>
 
+/**
+ * The maximum learning rate per-hashed EP
+ */
+#define GBP_ENDPOINT_HASH_LEARN_RATE (1e-2)
+
 typedef enum gbp_learn_mode_t_
 {
   GBP_LEARN_MODE_L2,
   GBP_LEARN_MODE_L3,
 } gbb_learn_mode_t;
 
+/**
+ * Grouping of global data for the GBP source EPG classification feature
+ */
+typedef struct gbp_learn_main_t_
+{
+  /**
+   * Next nodes for L2 output features
+   */
+  u32 gl_l2_input_feat_next[32];
+
+  /**
+   * logger - VLIB log class
+   */
+  vlib_log_class_t gl_logger;
+
+  /**
+   * throttles for the DP leanring
+   */
+  throttle_t gl_l2_throttle;
+  throttle_t gl_l3_throttle;
+} gbp_learn_main_t;
+
+extern gbp_learn_main_t gbp_learn_main;
+
 extern void gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode);
 extern void gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode);
-
-extern void gbp_learn_set_inactive_threshold (u32 max_age);
 
 #endif
 

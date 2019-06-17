@@ -17,7 +17,7 @@
  *
  * A BIER imposition object is present in the IP mcast output list
  * and represents the imposition of a BIER bitmask. After BIER header
- * imposition the packet is forward within the appropriate/specifid
+ * imposition the packet is forward within the appropriate/specified
  * BIER table
  */
 
@@ -38,7 +38,7 @@ typedef struct bier_imp_t_ {
     CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
 
     /**
-     * The DPO contirubted from the resolving BIER table.
+     * The DPO contributed from the resolving BIER table.
      * One per-IP protocol. This allows us to share a BIER imposition
      * object for a IPv4 and IPv6 mfib path.
      */

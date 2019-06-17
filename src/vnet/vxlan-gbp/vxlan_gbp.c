@@ -28,7 +28,7 @@
  *
  * VXLAN GBP provides the features of vxlan and carry group policy id.
  */
-
+static vlib_punt_hdl_t punt_hdl;
 
 vxlan_gbp_main_t vxlan_gbp_main;
 
@@ -394,7 +394,9 @@ int vnet_vxlan_gbp_tunnel_add_del
   int not_found;
   if (!is_ip6)
     {
-      key4.key[0] = a->dst.ip4.as_u32;
+      key4.key[0] = ip46_address_is_multicast (&a->dst) ?
+	a->dst.ip4.as_u32 :
+	a->dst.ip4.as_u32 | (((u64) a->src.ip4.as_u32) << 32);
       key4.key[1] = (((u64) a->encap_fib_index) << 32)
 	| clib_host_to_net_u32 (a->vni << 8);
       not_found =
@@ -1160,10 +1162,24 @@ vxlan_gbp_init (vlib_main_t * vm)
 
   fib_node_register_type (FIB_NODE_TYPE_VXLAN_GBP_TUNNEL, &vxlan_gbp_vft);
 
-  return 0;
+  punt_hdl = vlib_punt_client_register ("vxlan-gbp");
+
+  vlib_punt_reason_alloc (punt_hdl,
+			  "VXLAN-GBP-no-such-v4-tunnel",
+			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4]);
+  vlib_punt_reason_alloc (punt_hdl,
+			  "VXLAN-GBP-no-such-v6-tunnel",
+			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6]);
+
+  return (0);
 }
 
-VLIB_INIT_FUNCTION (vxlan_gbp_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (vxlan_gbp_init) =
+{
+  .runs_after = VLIB_INITS("punt_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

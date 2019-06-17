@@ -139,8 +139,15 @@ typedef union
       * VLIB_BUFFER_NEXT_PRESENT flag is set. */
     u32 next_buffer;
 
-    /** Used by feature subgraph arcs to visit enabled feature nodes */
-    u32 current_config_index;
+    /** The following fields can be in a union because once a packet enters
+     * the punt path, it is no longer on a feature arc */
+    union
+    {
+      /** Used by feature subgraph arcs to visit enabled feature nodes */
+      u32 current_config_index;
+      /* the reason the packet once punted */
+      u32 punt_reason;
+    };
 
     /** Opaque data used by sub-graphs for their own purposes. */
     u32 opaque[10];
@@ -394,6 +401,8 @@ typedef struct
   vlib_buffer_t buffer_template;
 } vlib_buffer_pool_t;
 
+#define VLIB_BUFFER_MAX_NUMA_NODES 32
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -409,7 +418,7 @@ typedef struct
      has never been allocated. */
   uword *buffer_known_hash;
   clib_spinlock_t buffer_known_hash_lockp;
-  u32 n_numa_nodes;
+  u8 default_buffer_pool_index_for_numa[VLIB_BUFFER_MAX_NUMA_NODES];
 
   /* config */
   u32 buffers_per_numa;

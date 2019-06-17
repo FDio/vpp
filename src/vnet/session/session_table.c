@@ -78,9 +78,9 @@ session_table_init (session_table_t * slt, u8 fib_proto)
 #undef _
 
 #define _(af,table,parm,value)                                          \
-  if (session_manager_main.configured_##af##_##table##_table_##parm)    \
+  if (session_main.configured_##af##_##table##_table_##parm)    \
     configured_##af##_##table##_table_##parm =                          \
-      session_manager_main.configured_##af##_##table##_table_##parm;
+      session_main.configured_##af##_##table##_table_##parm;
   foreach_hash_table_parameter;
 #undef _
 

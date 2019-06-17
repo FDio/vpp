@@ -24,9 +24,6 @@ class VppIpsecSpd(VppObject):
     def remove_vpp_config(self):
         self.test.vapi.ipsec_spd_add_del(self.id, is_add=0)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "ipsec-spd-%d" % self.id
 
@@ -41,7 +38,7 @@ class VppIpsecSpd(VppObject):
 class VppIpsecSpdItfBinding(VppObject):
     """
     VPP SPD DB to interface binding
-    (i.e. this SPD is used on this interfce)
+    (i.e. this SPD is used on this interface)
     """
 
     def __init__(self, test, spd, itf):
@@ -58,9 +55,6 @@ class VppIpsecSpdItfBinding(VppObject):
         self.test.vapi.ipsec_interface_add_del_spd(self.spd.id,
                                                    self.itf.sw_if_index,
                                                    is_add=0)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "bind-%s-to-%s" % (self.spd.id, self.itf)
@@ -149,9 +143,6 @@ class VppIpsecSpdEntry(VppObject):
             remote_port_stop=self.remote_port_stop,
             is_add=0)
 
-    def __str__(self):
-        return self.object_id()
-
     def object_id(self):
         return "spd-entry-%d-%d-%d-%d-%d-%d" % (self.spd.id,
                                                 self.priority,
@@ -187,7 +178,7 @@ class VppIpsecSA(VppObject):
                  crypto_alg, crypto_key,
                  proto,
                  tun_src=None, tun_dst=None,
-                 flags=None):
+                 flags=None, salt=0):
         e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
         self.id = id
@@ -197,6 +188,7 @@ class VppIpsecSA(VppObject):
         self.crypto_alg = crypto_alg
         self.crypto_key = crypto_key
         self.proto = proto
+        self.salt = salt
 
         self.tun_src = tun_src
         self.tun_dst = tun_dst
@@ -223,7 +215,8 @@ class VppIpsecSA(VppObject):
             self.proto,
             (self.tun_src if self.tun_src else []),
             (self.tun_dst if self.tun_dst else []),
-            flags=self.flags)
+            flags=self.flags,
+            salt=self.salt)
         self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
 
@@ -240,9 +233,6 @@ class VppIpsecSA(VppObject):
             (self.tun_dst if self.tun_dst else []),
             flags=self.flags,
             is_add=0)
-
-    def __str__(self):
-        return self.object_id()
 
     def object_id(self):
         return "ipsec-sa-%d" % self.id

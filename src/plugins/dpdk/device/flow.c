@@ -41,6 +41,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   struct rte_flow_item_udp udp[2] = { };
   struct rte_flow_item_tcp tcp[2] = { };
   struct rte_flow_action_mark mark = { 0 };
+  struct rte_flow_action_queue queue = { 0 };
   struct rte_flow_item *item, *items = 0;
   struct rte_flow_action *action, *actions = 0;
 
@@ -201,13 +202,38 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   vec_add2 (actions, action, 1);
   action->type = RTE_FLOW_ACTION_TYPE_PASSTHRU;
 
-  vec_add2 (actions, action, 1);
-  mark.id = fe->mark;
-  action->type = RTE_FLOW_ACTION_TYPE_MARK;
-  action->conf = &mark;
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
+    {
+      vec_add2 (actions, action, 1);
+      queue.index = f->redirect_queue;
+      action->type = RTE_FLOW_ACTION_TYPE_QUEUE;
+      action->conf = &queue;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_MARK)
+    {
+      vec_add2 (actions, action, 1);
+      mark.id = fe->mark;
+      action->type = RTE_FLOW_ACTION_TYPE_MARK;
+      action->conf = &mark;
+    }
 
   vec_add2 (actions, action, 1);
   action->type = RTE_FLOW_ACTION_TYPE_END;
+
+  rv = rte_flow_validate (xd->device_index, &ingress, items, actions,
+			  &xd->last_flow_error);
+
+  if (rv)
+    {
+      if (rv == -EINVAL)
+	rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+      else if (rv == -EEXIST)
+	rv = VNET_FLOW_ERROR_ALREADY_EXISTS;
+      else
+	rv = VNET_FLOW_ERROR_INTERNAL;
+      goto done;
+    }
 
   fe->handle = rte_flow_create (xd->device_index, &ingress, items, actions,
 				&xd->last_flow_error);

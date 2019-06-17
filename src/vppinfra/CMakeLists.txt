@@ -39,7 +39,6 @@ install(
 # vppinfra sources
 ##############################################################################
 set(VPPINFRA_SRCS
-  asm_x86.c
   backtrace.c
   cpu.c
   cuckoo_template.c
@@ -63,6 +62,7 @@ set(VPPINFRA_SRCS
   random.c
   random_buffer.c
   random_isaac.c
+  rbtree.c
   serialize.c
   slist.c
   socket.c
@@ -87,8 +87,6 @@ set(VPPINFRA_SRCS
 )
 
 set(VPPINFRA_HEADERS
-  asm_mips.h
-  asm_x86.h
   bihash_16_8.h
   bihash_24_8.h
   bihash_40_8.h
@@ -101,6 +99,7 @@ set(VPPINFRA_HEADERS
   bitops.h
   byte_order.h
   cache.h
+  callback.h
   clib_error.h
   clib.h
   cpu.h
@@ -146,7 +145,9 @@ set(VPPINFRA_HEADERS
   random_buffer.h
   random.h
   random_isaac.h
+  rbtree.h
   serialize.h
+  sha2.h
   slist.h
   smp.h
   socket.h

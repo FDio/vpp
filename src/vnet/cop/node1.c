@@ -32,8 +32,6 @@ static u8 * format_cop_input_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t cop_input_node;
-
 #define foreach_cop_input_error \
 _(PROCESSED, "COP input packets processed")
 
@@ -50,8 +48,7 @@ static char * cop_input_error_strings[] = {
 #undef _
 };
 
-static uword
-cop_input_node_fn (vlib_main_t * vm,
+VLIB_NODE_FN (cop_input_node) (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_frame_t * frame)
 {
@@ -259,7 +256,6 @@ cop_input_node_fn (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (cop_input_node) = {
-  .function = cop_input_node_fn,
   .name = "cop-input",
   .vector_size = sizeof (u32),
   .format_trace = format_cop_input_trace,
@@ -281,8 +277,6 @@ VLIB_REGISTER_NODE (cop_input_node) = {
     [RX_COP_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (cop_input_node, cop_input_node_fn)
 
 #define foreach_cop_stub                        \
 _(default-cop-whitelist, default_cop_whitelist)

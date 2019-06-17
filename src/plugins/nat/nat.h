@@ -110,6 +110,24 @@ typedef struct
   u8 cached;
 } nat44_reass_trace_t;
 
+/* NAT API Configuration flags */
+#define foreach_nat_config_flag \
+  _(0x01, IS_TWICE_NAT)         \
+  _(0x02, IS_SELF_TWICE_NAT)    \
+  _(0x04, IS_OUT2IN_ONLY)       \
+  _(0x08, IS_ADDR_ONLY)         \
+  _(0x10, IS_OUTSIDE)           \
+  _(0x20, IS_INSIDE)            \
+  _(0x40, IS_STATIC)            \
+  _(0x80, IS_EXT_HOST_VALID)    \
+
+typedef enum nat_config_flags_t_
+{
+#define _(n,f) NAT_API_##f = n,
+  foreach_nat_config_flag
+#undef _
+} nat_config_flags_t;
+
 /* External address and port allocation modes */
 #define foreach_nat_addr_and_port_alloc_alg \
   _(0, DEFAULT, "default")         \
@@ -947,7 +965,7 @@ int snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
  * @param port   L4 port number
  * @param proto  L4 protocol
  * @param vrf_id VRF ID
- * @param is_in  1 = inside network addres and por pair, 0 = outside
+ * @param is_in  1 = inside network address and port pair, 0 = outside
  *
  * @return 0 on success, non-zero value otherwise
  */
@@ -961,7 +979,7 @@ int nat44_del_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
  * @param port   L4 port number
  * @param proto  L4 protocol
  * @param vrf_id VRF ID
- * @param is_in  1 = inside network addres and por pair, 0 = outside
+ * @param is_in  1 = inside network address and port pair, 0 = outside
  *
  * @return 0 on success, non-zero value otherwise
  */
@@ -1042,7 +1060,7 @@ void nat_set_alloc_addr_and_port_default (void);
  *
  * @param addresses    vector of outside addresses
  * @param thread_index thread index
- * @param k            adddress, port and protocol
+ * @param k            address, port and protocol
  */
 void snat_free_outside_address_and_port (snat_address_t * addresses,
 					 u32 thread_index,

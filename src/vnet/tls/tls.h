@@ -92,6 +92,8 @@ typedef struct tls_main_
    */
   u8 use_test_cert_in_ca;
   char *ca_cert_path;
+  u64 first_seg_size;
+  u32 fifo_size;
 } tls_main_t;
 
 typedef struct tls_engine_vft_
@@ -107,6 +109,8 @@ typedef struct tls_engine_vft_
     u8 (*ctx_handshake_is_over) (tls_ctx_t * ctx);
   int (*ctx_start_listen) (tls_ctx_t * ctx);
   int (*ctx_stop_listen) (tls_ctx_t * ctx);
+  int (*ctx_transport_close) (tls_ctx_t * ctx);
+  int (*ctx_app_close) (tls_ctx_t * ctx);
 } tls_engine_vft_t;
 
 tls_main_t *vnet_tls_get_main (void);
@@ -119,6 +123,7 @@ int tls_add_vpp_q_builtin_rx_evt (session_t * s);
 int tls_notify_app_accept (tls_ctx_t * ctx);
 int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
+void tls_disconnect_transport (tls_ctx_t * ctx);
 #endif /* SRC_VNET_TLS_TLS_H_ */
 
 /*

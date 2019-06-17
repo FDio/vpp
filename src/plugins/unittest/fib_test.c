@@ -4585,7 +4585,7 @@ fib_test_v6 (void)
     adj_unlock(locked_ai);
 
     /*
-     * no more entires. +1 shared path-list
+     * no more entries. +1 shared path-list
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB population:%d",
              fib_path_list_db_size());
@@ -4613,7 +4613,7 @@ fib_test_v6 (void)
              "Default route is DROP");
 
     /*
-     * no more entires. -1 shared path-list
+     * no more entries. -1 shared path-list
      */
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB population:%d",
              fib_path_list_db_size());
@@ -5534,7 +5534,7 @@ fib_test_ae (void)
 
     /*
      * remove the attached route from the 2nd FIB. expect the imported
-     * entires to be removed
+     * entries to be removed
      */
     local_pfx.fp_len = 24;
     fib_table_entry_delete(import_fib_index2,
@@ -5561,7 +5561,7 @@ fib_test_ae (void)
 
     /*
      * modify the route in FIB1 so it is no longer attached. expect the imported
-     * entires to be removed
+     * entries to be removed
      */
     local_pfx.fp_len = 24;
     fib_table_entry_update_one_path(import_fib_index1,
@@ -7828,7 +7828,7 @@ fib_test_walk (void)
     FOR_EACH_TEST_CHILD(tc)
     {
         /*
-         * we don't really care how many times the children are visisted, as long as
+         * we don't really care how many times the children are visited, as long as
          * it is more than once.
          */
         FIB_TEST(1 <= vec_len(tc->ctxs),
@@ -7850,7 +7850,7 @@ fib_test_walk (void)
     FOR_EACH_TEST_CHILD(tc)
     {
         /*
-         * we don't really care how many times the children are visisted, as long as
+         * we don't really care how many times the children are visited, as long as
          * it is more than once.
          */
         FIB_TEST(1 <= vec_len(tc->ctxs),

@@ -179,7 +179,7 @@ format_ip_adjacency (u8 * s, va_list * args)
         s = format (s, "\n   counts:[%Ld:%Ld]", counts.packets, counts.bytes);
 	s = format (s, "\n   locks:%d", adj->ia_node.fn_locks);
 	s = format(s, "\n delegates:\n  ");
-        adj_delegate_format(s, adj);
+        s = adj_delegate_format(s, adj);
 
 	s = format(s, "\n children:");
         if (fib_node_list_get_size(adj->ia_node.fn_children))
@@ -213,7 +213,7 @@ adj_recursive_loop_detect (adj_index_t ai,
     case IP_LOOKUP_NEXT_ICMP_ERROR:
     case IP_LOOKUP_N_NEXT:
         /*
-         * these adjcencey types are terminal graph nodes, so there's no
+         * these adjacency types are terminal graph nodes, so there's no
          * possibility of a loop down here.
          */
 	break;
@@ -365,7 +365,7 @@ adj_child_remove (adj_index_t adj_index,
 }
 
 /*
- * Context for the walk to update the cached feture flags.
+ * Context for the walk to update the cached feature flags.
  */
 typedef struct adj_feature_update_t_
 {
@@ -537,10 +537,32 @@ static fib_node_back_walk_rc_t
 adj_back_walk_notify (fib_node_t *node,
 		      fib_node_back_walk_ctx_t *ctx)
 {
-    /*
-     * Que pasa. yo soj en el final!
-     */
-    ASSERT(0);
+    ip_adjacency_t *adj;
+
+    adj = ADJ_FROM_NODE(node);
+
+    switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+        adj_midchain_delegate_restack(adj_get_index(adj));
+        break;
+    case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_BCAST:
+    case IP_LOOKUP_NEXT_GLEAN:
+    case IP_LOOKUP_NEXT_MCAST:
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+        /*
+         * Que pasa. yo soj en el final!
+         */
+        ASSERT(0);
+        break;
+    }
 
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }
@@ -693,8 +715,8 @@ adj_cli_counters_set (vlib_main_t * vm,
 }
 
 /*?
- * Enabe/disble per-adjacency counters. This is optional because it comes with
- * a non-negligible performance cost.
+ * Enable/disable per-adjacency counters. This is optional because it comes
+ * with a non-negligible performance cost.
  ?*/
 VLIB_CLI_COMMAND (adj_cli_counters_set_command, static) = {
     .path = "adjacency counters",

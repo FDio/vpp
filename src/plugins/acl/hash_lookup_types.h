@@ -61,19 +61,9 @@ typedef struct {
   /* applied mask type index */
   u32 mask_type_index;
   /*
-   * in case of the same key having multiple entries,
-   * this holds the index of the next entry.
+   * index of applied entry, which owns the colliding_rules vector
    */
-  u32 next_applied_entry_index;
-  /*
-   * previous entry in the list of the chained ones,
-   * if ~0 then this is entry in the hash.
-   */
-  u32 prev_applied_entry_index;
-  /*
-   * chain tail, if this is the first entry
-   */
-  u32 tail_applied_entry_index;
+  u32 collision_head_ae_index;
   /*
    * Collision rule vector for matching - set only on head entry
    */

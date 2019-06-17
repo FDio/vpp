@@ -189,7 +189,9 @@ typedef struct
 	  struct
 	  {
 	    u32 next_index;	/* index of next node - ignored if "feature" node */
+	    u32 error_next_index;	/* index of next node if error - ignored if 'feature' node */
 	    u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+	    u16 owner_thread_index;
 	  };
 	  /* internal variables used during reassembly */
 	  struct
@@ -200,6 +202,7 @@ typedef struct
 	    u16 range_last;
 	    u32 next_range_bi;
 	    u16 ip6_frag_hdr_offset;
+	    u16 owner_feature_thread_index;
 	  };
 	} reass;
       };
@@ -236,9 +239,9 @@ typedef struct
     {
       u32 feature_bitmap;
       u16 bd_index;		/* bridge-domain index */
+      u16 l2fib_sn;		/* l2fib bd/int seq_num */
       u8 l2_len;		/* ethernet header length */
       u8 shg;			/* split-horizon group */
-      u16 l2fib_sn;		/* l2fib bd/int seq_num */
       u8 bd_age;		/* aging enabled */
     } l2;
 
@@ -272,7 +275,6 @@ typedef struct
     /* interface output features */
     struct
     {
-      u32 flags;
       u32 sad_index;
     } ipsec;
 
@@ -389,11 +391,7 @@ typedef struct
   {
     u8 __unused;
     u8 flags;
-    union
-    {
-      u16 src_epg;
-      u16 sclass;
-    };
+    u16 sclass;
   } gbp;
 
   /**

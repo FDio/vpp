@@ -217,10 +217,6 @@ CLIB_MARCH_SFX (node##_multiarch_register) (void)			\
 }									\
 uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
 
-
-/* FIXME to be removed */
-#define VLIB_NODE_FUNCTION_MULTIARCH(node, fn)
-
 always_inline vlib_node_registration_t *
 vlib_node_next_registered (vlib_node_registration_t * c)
 {
@@ -768,7 +764,7 @@ typedef struct
 } vlib_node_main_t;
 
 
-#define FRAME_QUEUE_MAX_NELTS 32
+#define FRAME_QUEUE_MAX_NELTS 64
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);

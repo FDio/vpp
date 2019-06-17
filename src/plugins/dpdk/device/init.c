@@ -36,6 +36,7 @@
 #include <sys/mount.h>
 #include <string.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include <dpdk/device/dpdk_priv.h>
 
@@ -157,6 +158,47 @@ dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
 }
 
+/* The funciton check_l3cache helps check if Level 3 cache exists or not on current CPUs
+  return value 1: exist.
+  return value 0: not exist.
+*/
+static int
+check_l3cache ()
+{
+
+  struct dirent *dp;
+  clib_error_t *err;
+  const char *sys_cache_dir = "/sys/devices/system/cpu/cpu0/cache";
+  DIR *dir_cache = opendir (sys_cache_dir);
+
+  if (dir_cache == NULL)
+    return -1;
+
+  while ((dp = readdir (dir_cache)) != NULL)
+    {
+      if (dp->d_type == DT_DIR)
+	{
+	  u8 *p = NULL;
+	  int level_cache = -1;
+
+	  p = format (p, "%s/%s/%s", sys_cache_dir, dp->d_name, "level");
+	  if ((err = clib_sysfs_read ((char *) p, "%d", &level_cache)))
+	    clib_error_free (err);
+
+	  if (level_cache == 3)
+	    {
+	      closedir (dir_cache);
+	      return 1;
+	    }
+	}
+    }
+
+  if (dir_cache != NULL)
+    closedir (dir_cache);
+
+  return 0;
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -177,7 +219,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 
   u32 next_hqos_cpu = 0;
   u8 af_packet_instance_num = 0;
-  u8 bond_ether_instance_num = 0;
   last_pci_addr.as_u32 = ~0;
 
   dm->hqos_cpu_first_index = 0;
@@ -229,6 +270,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       struct rte_eth_dev_info dev_info;
       struct rte_pci_device *pci_dev;
       struct rte_eth_link l;
+      dpdk_portid_t next_port_id;
       dpdk_device_config_t *devconf = 0;
       vlib_pci_addr_t pci_addr;
       uword *p = 0;
@@ -248,7 +290,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       pci_dev = dpdk_get_pci_device (&dev_info);
 
-      if (pci_dev)	/* bonded interface has no pci info */
+      if (pci_dev)
 	{
 	  pci_addr.domain = pci_dev->addr.domain;
 	  pci_addr.bus = pci_dev->addr.bus;
@@ -274,13 +316,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	devconf = &dm->conf->default_devconf;
 
       /* Handle interface naming for devices with multiple ports sharing same PCI ID */
-      if (pci_dev)
+      if (pci_dev &&
+	  ((next_port_id = rte_eth_find_next (i + 1)) != RTE_MAX_ETHPORTS))
 	{
 	  struct rte_eth_dev_info di = { 0 };
 	  struct rte_pci_device *next_pci_dev;
-	  rte_eth_dev_info_get (i + 1, &di);
+	  rte_eth_dev_info_get (next_port_id, &di);
 	  next_pci_dev = di.device ? RTE_DEV_TO_PCI (di.device) : 0;
-	  if (pci_dev && next_pci_dev &&
+	  if (next_pci_dev &&
 	      pci_addr.as_u32 != last_pci_addr.as_u32 &&
 	      memcmp (&pci_dev->addr, &next_pci_dev->addr,
 		      sizeof (struct rte_pci_addr)) == 0)
@@ -388,9 +431,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IGB:
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_I40E:
+	    case VNET_DPDK_PMD_ICE:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
 	      xd->supported_flow_actions = VNET_FLOW_ACTION_MARK |
 		VNET_FLOW_ACTION_REDIRECT_TO_NODE |
+		VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
 		VNET_FLOW_ACTION_BUFFER_ADVANCE |
 		VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP;
 
@@ -467,11 +512,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->af_packet_instance_num = af_packet_instance_num++;
 	      break;
 
-	    case VNET_DPDK_PMD_BOND:
-	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_BOND;
-	      xd->bond_instance_num = bond_ether_instance_num++;
-	      break;
-
 	    case VNET_DPDK_PMD_VIRTIO_USER:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_VIRTIO_USER;
 	      break;
@@ -499,10 +539,30 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  if (devconf->num_rx_desc)
 	    xd->nb_rx_desc = devconf->num_rx_desc;
+          else {
+
+            /* If num_rx_desc is not specified by VPP user, the current CPU is working
+            with 2M page and has no L3 cache, default num_rx_desc is changed to 512
+            from original 1024 to help reduce TLB misses.
+            */
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_rx_desc = 512;
+          }
 
 	  if (devconf->num_tx_desc)
 	    xd->nb_tx_desc = devconf->num_tx_desc;
-	}
+          else {
+
+            /* If num_tx_desc is not specified by VPP user, the current CPU is working
+            with 2M page and has no L3 cache, default num_tx_desc is changed to 512
+            from original 1024 to help reduce TLB misses.
+            */
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_tx_desc = 512;
+	  }
+       }
 
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
 	{
@@ -672,6 +732,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  hi->max_packet_bytes = mtu;
 	  hi->max_supported_packet_bytes = max_rx_frame;
+	  hi->numa_node = xd->cpu_socket;
 	}
 
       if (dm->conf->no_tx_checksum_offload == 0)
@@ -694,19 +755,30 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
 
       /*
-       * For cisco VIC vNIC, set default to VLAN strip enabled, unless
-       * specified otherwise in the startup config.
-       * For other NICs default to VLAN strip disabled, unless specified
+       * A note on Cisco VIC (PMD_ENIC) and VLAN:
+       *
+       * With Cisco VIC vNIC, every ingress packet is tagged. On a
+       * trunk vNIC (C series "standalone" server), packets on no VLAN
+       * are tagged with vlan 0. On an access vNIC (standalone or B
+       * series "blade" server), packets on the default/native VLAN
+       * are tagged with that vNIC's VLAN. VPP expects these packets
+       * to be untagged, and previously enabled VLAN strip on VIC by
+       * default. But it also broke vlan sub-interfaces.
+       *
+       * The VIC adapter has "untag default vlan" ingress VLAN rewrite
+       * mode, which removes tags from these packets. VPP now includes
+       * a local patch for the enic driver to use this untag mode, so
+       * enabling vlan stripping is no longer needed. In future, the
+       * driver + dpdk will have an API to set the mode after
+       * rte_eal_init. Then, this note and local patch will be
+       * removed.
+       */
+
+      /*
+       * VLAN stripping: default to VLAN strip disabled, unless specified
        * otherwise in the startup config.
        */
-      if (xd->pmd == VNET_DPDK_PMD_ENIC)
-	{
-	  if (devconf->vlan_strip_offload != DPDK_DEVICE_VLAN_STRIP_OFF)
-	    vlan_strip = 1;	/* remove vlan tag from VIC port by default */
-	  else
-	    dpdk_log_warn ("VLAN strip disabled for interface\n");
-	}
-      else if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
+      if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
 	vlan_strip = 1;
 
       if (vlan_strip)
@@ -842,7 +914,8 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
         (d->device_id == 0x0443 || d->device_id == 0x37c9 || d->device_id == 0x19e3))
       ;
     /* Cisco VIC */
-    else if (d->vendor_id == 0x1137 && d->device_id == 0x0043)
+    else if (d->vendor_id == 0x1137 &&
+        (d->device_id == 0x0043 || d->device_id == 0x0071))
       ;
     /* Chelsio T4/T5 */
     else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
@@ -1061,7 +1134,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   unformat_input_t sub_input;
   uword default_hugepage_sz, x;
   u8 *s, *tmp = 0;
-  u32 log_level;
   int ret, i;
   int num_whitelisted = 0;
   u8 no_pci = 0;
@@ -1075,7 +1147,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
-  log_level = RTE_LOG_NOTICE;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1093,9 +1164,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "decimal-interface-names"))
 	conf->interface_name_format_decimal = 1;
-
-      else if (unformat (input, "log-level %U", unformat_dpdk_log_level, &x))
-	log_level = x;
 
       else if (unformat (input, "no-multi-seg"))
 	conf->no_multi_seg = 1;
@@ -1299,6 +1367,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     /* default per-device config items */
     foreach_dpdk_device_config_item
 
+    /* copy vlan_strip config from default device */
+	if (devconf->vlan_strip_offload == 0 &&
+		conf->default_devconf.vlan_strip_offload > 0)
+		devconf->vlan_strip_offload =
+			conf->default_devconf.vlan_strip_offload;
+
     /* add DPDK EAL whitelist/blacklist entry */
     if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
       {
@@ -1335,7 +1409,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   /* Set up DPDK eal and packet mbuf pool early. */
 
-  rte_log_set_global_level (log_level);
   int log_fds[2] = { 0 };
   if (pipe (log_fds) == 0)
     {
@@ -1427,15 +1500,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
       ed->new_link_state = (u8) xd->link.link_status;
     }
 
-  if ((xd->flags & (DPDK_DEVICE_FLAG_ADMIN_UP | DPDK_DEVICE_FLAG_BOND_SLAVE))
-      && ((xd->link.link_status != 0) ^
-	  vnet_hw_interface_is_link_up (vnm, xd->hw_if_index)))
-    {
-      hw_flags_chg = 1;
-      hw_flags |= (xd->link.link_status ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
-    }
-
-  if (hw_flags_chg || (xd->link.link_duplex != prev_link.link_duplex))
+  if ((xd->link.link_duplex != prev_link.link_duplex))
     {
       hw_flags_chg = 1;
       switch (xd->link.link_duplex)
@@ -1453,6 +1518,14 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
   if (xd->link.link_speed != prev_link.link_speed)
     vnet_hw_interface_set_link_speed (vnm, xd->hw_if_index,
 				      xd->link.link_speed * 1000);
+
+  if (xd->link.link_status != prev_link.link_status)
+    {
+      hw_flags_chg = 1;
+
+      if (xd->link.link_status)
+	hw_flags |= VNET_HW_INTERFACE_FLAG_LINK_UP;
+    }
 
   if (hw_flags_chg)
     {
@@ -1483,13 +1556,9 @@ static uword
 dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   clib_error_t *error;
-  vnet_main_t *vnm = vnet_get_main ();
   dpdk_main_t *dm = &dpdk_main;
-  ethernet_main_t *em = &ethernet_main;
   dpdk_device_t *xd;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int i;
-  int j;
 
   error = dpdk_lib_init (dm);
 
@@ -1502,110 +1571,6 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   vec_foreach (xd, dm->devices)
   {
     dpdk_update_link_state (xd, now);
-  }
-
-  {
-    /*
-     * Extra set up for bond interfaces:
-     *  1. Setup MACs for bond interfaces and their slave links which was set
-     *     in dpdk_device_setup() but needs to be done again here to take
-     *     effect.
-     *  2. Set up info and register slave link state change callback handling.
-     *  3. Set up info for bond interface related CLI support.
-     */
-    int nports = rte_eth_dev_count_avail ();
-    if (nports > 0)
-      {
-	/* *INDENT-OFF* */
-	RTE_ETH_FOREACH_DEV(i)
-	  {
-	    xd = NULL;
-	    for (j = 0; j < nports; j++)
-	      {
-		if (dm->devices[j].port_id == i)
-		  {
-		    xd = &dm->devices[j];
-		  }
-	      }
-	    if (xd != NULL && xd->pmd == VNET_DPDK_PMD_BOND)
-	      {
-		u8 addr[6];
-		dpdk_portid_t slink[16];
-		int nlink = rte_eth_bond_slaves_get (i, slink, 16);
-		if (nlink > 0)
-		  {
-		    vnet_hw_interface_t *bhi;
-		    ethernet_interface_t *bei;
-		    int rv;
-
-		    /* Get MAC of 1st slave link */
-		    rte_eth_macaddr_get
-		      (slink[0], (struct ether_addr *) addr);
-
-		    /* Set MAC of bounded interface to that of 1st slave link */
-		    dpdk_log_info ("Set MAC for bond port %d BondEthernet%d",
-				   i, xd->bond_instance_num);
-		    rv = rte_eth_bond_mac_address_set
-		      (i, (struct ether_addr *) addr);
-		    if (rv)
-		      dpdk_log_warn ("Set MAC addr failure rv=%d", rv);
-
-		    /* Populate MAC of bonded interface in VPP hw tables */
-		    bhi = vnet_get_hw_interface
-		      (vnm, dm->devices[i].hw_if_index);
-		    bei = pool_elt_at_index
-		      (em->interfaces, bhi->hw_instance);
-		    clib_memcpy (bhi->hw_address, addr, 6);
-		    clib_memcpy (bei->address, addr, 6);
-
-		    /* Init l3 packet size allowed on bonded interface */
-		    bhi->max_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
-		    while (nlink >= 1)
-		      {		/* for all slave links */
-			int slave = slink[--nlink];
-			dpdk_device_t *sdev = &dm->devices[slave];
-			vnet_hw_interface_t *shi;
-			vnet_sw_interface_t *ssi;
-			ethernet_interface_t *sei;
-			/* Add MAC to all slave links except the first one */
-			if (nlink)
-			  {
-			    dpdk_log_info ("Add MAC for slave port %d",
-					   slave);
-			    rv = rte_eth_dev_mac_addr_add
-			      (slave, (struct ether_addr *) addr, 0);
-			    if (rv)
-			      dpdk_log_warn ("Add MAC addr failure rv=%d",
-					     rv);
-			  }
-			/* Setup slave link state change callback handling */
-			rte_eth_dev_callback_register
-			  (slave, RTE_ETH_EVENT_INTR_LSC,
-			   dpdk_port_state_callback, NULL);
-			dpdk_device_t *sxd = &dm->devices[slave];
-			sxd->flags |= DPDK_DEVICE_FLAG_BOND_SLAVE;
-			sxd->bond_port = i;
-			/* Set slaves bitmap for bonded interface */
-			bhi->bond_info = clib_bitmap_set
-			  (bhi->bond_info, sdev->hw_if_index, 1);
-			/* Set MACs and slave link flags on slave interface */
-			shi = vnet_get_hw_interface (vnm, sdev->hw_if_index);
-			ssi = vnet_get_sw_interface (vnm, sdev->sw_if_index);
-			sei = pool_elt_at_index
-			  (em->interfaces, shi->hw_instance);
-			shi->bond_info = VNET_HW_INTERFACE_BOND_INFO_SLAVE;
-			ssi->flags |= VNET_SW_INTERFACE_FLAG_BOND_SLAVE;
-			clib_memcpy (shi->hw_address, addr, 6);
-			clib_memcpy (sei->address, addr, 6);
-			/* Set l3 packet size allowed as the lowest of slave */
-			if (bhi->max_packet_bytes > shi->max_packet_bytes)
-			  bhi->max_packet_bytes = shi->max_packet_bytes;
-		      }
-		  }
-	      }
-	  }
-	/* *INDENT-ON* */
-      }
   }
 
   while (1)
@@ -1662,6 +1627,8 @@ dpdk_init (vlib_main_t * vm)
   STATIC_ASSERT (RTE_CACHE_LINE_SIZE == 1 << CLIB_LOG2_CACHE_LINE_BYTES,
 		 "DPDK RTE CACHE LINE SIZE does not match with 1<<CLIB_LOG2_CACHE_LINE_BYTES");
 
+  dpdk_cli_reference ();
+
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
   dm->conf = &dpdk_config_main;
@@ -1679,17 +1646,12 @@ dpdk_init (vlib_main_t * vm)
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
 
-  /* init CLI */
-  if ((error = vlib_call_init_function (vm, dpdk_cli_init)))
-    return error;
-
   dm->log_default = vlib_log_register_class ("dpdk", 0);
 
   return error;
 }
 
 VLIB_INIT_FUNCTION (dpdk_init);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

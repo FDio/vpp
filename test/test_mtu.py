@@ -33,6 +33,10 @@ class TestMTU(VppTestCase):
         cls.create_pg_interfaces(range(2))
         cls.interfaces = list(cls.pg_interfaces)
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMTU, cls).tearDownClass()
+
     def setUp(self):
         super(TestMTU, self).setUp()
         for i in self.interfaces:
@@ -61,7 +65,7 @@ class TestMTU(VppTestCase):
         return 'x' * len
 
     def get_mtu(self, sw_if_index):
-        rv = self.vapi.sw_interface_dump()
+        rv = self.vapi.sw_interface_dump(sw_if_index=sw_if_index)
         for i in rv:
             if i.sw_if_index == sw_if_index:
                 return i.mtu[0]

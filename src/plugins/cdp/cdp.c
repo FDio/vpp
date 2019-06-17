@@ -47,29 +47,8 @@
 #include <cdp/cdp_all_api_h.h>
 #undef vl_api_version
 
-/*
- * A handy macro to set up a message reply.
- * Assumes that the following variables are available:
- * mp - pointer to request message
- * rmp - pointer to reply message type
- * rv - return value
- */
-
-#define REPLY_MACRO(t)                                          \
-do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+cm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
+#define REPLY_MSG_ID_BASE cm->msg_id_base
+#include <vlibapi/api_helper_macros.h>
 
 /* List of message types that this plugin understands */
 
@@ -84,11 +63,17 @@ cdp_enable_disable (cdp_main_t * cm, int enable_disable)
   int rv = 0;
 
   if (enable_disable)
-    vlib_process_signal_event (cm->vlib_main, cdp_process_node.index,
-			       CDP_EVENT_ENABLE, 0);
+    {
+      vnet_cdp_create_periodic_process (cm);
+      vlib_process_signal_event (cm->vlib_main, cm->cdp_process_node_index,
+				 CDP_EVENT_ENABLE, 0);
+    }
   else
-    vlib_process_signal_event (cm->vlib_main, cdp_process_node.index,
-			       CDP_EVENT_DISABLE, 0);
+    {
+      vnet_cdp_create_periodic_process (cm);
+      vlib_process_signal_event (cm->vlib_main, cm->cdp_process_node_index,
+				 CDP_EVENT_DISABLE, 0);
+    }
   cm->enabled = enable_disable;
 
   return rv;
@@ -210,6 +195,7 @@ VLIB_INIT_FUNCTION (cdp_init);
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
+  .description = "Cisco Discovery Protocol (CDP)",
 };
 /* *INDENT-ON* */
 

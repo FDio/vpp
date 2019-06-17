@@ -681,7 +681,6 @@ memif_msg_receive (int ifd)
 
   DBG ("recvmsg fd %d", ifd);
   size = recvmsg (ifd, &mh, 0);
-  DBG ("done");
   if (size != sizeof (memif_msg_t))
     {
       if (size == 0)
@@ -903,8 +902,8 @@ int
 memif_read_ready (int fd)
 {
   int err;
-  DBG ("call recv");
+
   err = memif_msg_receive (fd);
-  DBG ("recv finished");
+
   return err;
 }

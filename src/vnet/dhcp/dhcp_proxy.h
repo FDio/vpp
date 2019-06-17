@@ -44,6 +44,12 @@ typedef enum
   DHCPV6_PROXY_N_ERROR,
 } dhcpv6_proxy_error_t;
 
+/* flags to indicate which DHCP ports should be or have been registered */
+typedef enum
+{
+  DHCP_PORT_REG_CLIENT = 0x1,
+  DHCP_PORT_REG_SERVER = 0x2,
+} dhcp_port_reg_flags_t;
 
 /**
  * @brief The Virtual Sub-net Selection information for a given RX FIB
@@ -147,7 +153,7 @@ typedef struct
   /* hash lookup specific vrf_id -> option 82 vss suboption  */
   u32 *vss_index_by_rx_fib_index[DHCP_N_PROTOS];
 
-  /* udp ports have been registered */
+  /* flags to indicate which udp ports have been registered */
   int udp_ports_registered;
 
   /* convenience */
@@ -158,9 +164,9 @@ typedef struct
 extern dhcp_proxy_main_t dhcp_proxy_main;
 
 /**
- * @brief Register the dhcp client and server ports, if not already done
+ * @brief Register the dhcp client and/or server ports, if not already done
  */
-void dhcp_maybe_register_udp_ports (void);
+void dhcp_maybe_register_udp_ports (dhcp_port_reg_flags_t ports);
 
 /**
  * @brief Send the details of a proxy session to the API client during a dump

@@ -712,21 +712,27 @@ dhcp6_client_enable_disable_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   u32 sw_if_index = ~0;
   u8 enable = 1;
+  unformat_input_t _line_input, *line_input = &_line_input;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
-      else if (unformat (input, "disable"))
+      else if (unformat (line_input, "disable"))
 	enable = 0;
       else
 	{
 	  error = clib_error_return (0, "unexpected input `%U'",
-				     format_unformat_error, input);
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
+
+  unformat_free (line_input);
 
   if (sw_if_index != ~0)
     {

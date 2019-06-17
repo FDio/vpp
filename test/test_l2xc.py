@@ -76,6 +76,10 @@ class TestL2xc(VppTestCase):
             super(TestL2xc, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2xc, cls).tearDownClass()
+
     def setUp(self):
         super(TestL2xc, self).setUp()
         self.reset_packet_infos()
@@ -85,8 +89,9 @@ class TestL2xc(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestL2xc, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2patch"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show l2patch"))
 
     @classmethod
     def create_host_lists(cls, count):
@@ -147,7 +152,7 @@ class TestL2xc(VppTestCase):
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug("Got packet on port %s: src=%u (id=%u)" %

@@ -32,7 +32,7 @@ from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from vpp_papi import MACAddress
-from vpp_papi_provider import L2_PORT_TYPE
+from vpp_l2 import L2_PORT_TYPE
 
 
 class TestIpIrb(VppTestCase):
@@ -42,10 +42,10 @@ class TestIpIrb(VppTestCase):
     def setUpClass(cls):
         """
         #. Create BD with MAC learning enabled and put interfaces to this BD.
-        #. Configure IPv4 addresses on loopback interface and routed interface.
-        #. Configure MAC address binding to IPv4 neighbors on loop0.
+        #. Configure IPv4 addresses on BVI interface and routed interface.
+        #. Configure MAC address binding to IPv4 neighbors on bvi0.
         #. Configure MAC address on pg2.
-        #. Loopback BVI interface has remote hosts, one half of hosts are
+        #. BVI interface has remote hosts, one half of hosts are
            behind pg0 second behind pg1.
         """
         super(TestIpIrb, cls).setUpClass()
@@ -54,40 +54,44 @@ class TestIpIrb(VppTestCase):
         cls.bd_id = 10
         cls.remote_hosts_count = 250
 
-        # create 3 pg interfaces, 1 loopback interface
+        # create 3 pg interfaces, 1 BVI interface
         cls.create_pg_interfaces(range(3))
-        cls.create_loopback_interfaces(1)
+        cls.create_bvi_interfaces(1)
 
         cls.interfaces = list(cls.pg_interfaces)
-        cls.interfaces.extend(cls.lo_interfaces)
+        cls.interfaces.extend(cls.bvi_interfaces)
 
         for i in cls.interfaces:
             i.admin_up()
 
         # Create BD with MAC learning enabled and put interfaces to this BD
         cls.vapi.sw_interface_set_l2_bridge(
-            cls.loop0.sw_if_index, bd_id=cls.bd_id,
+            rx_sw_if_index=cls.bvi0.sw_if_index, bd_id=cls.bd_id,
             port_type=L2_PORT_TYPE.BVI)
-        cls.vapi.sw_interface_set_l2_bridge(
-            cls.pg0.sw_if_index, bd_id=cls.bd_id)
-        cls.vapi.sw_interface_set_l2_bridge(
-            cls.pg1.sw_if_index, bd_id=cls.bd_id)
+        cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg0.sw_if_index,
+                                            bd_id=cls.bd_id)
+        cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg1.sw_if_index,
+                                            bd_id=cls.bd_id)
 
-        # Configure IPv4 addresses on loopback interface and routed interface
-        cls.loop0.config_ip4()
+        # Configure IPv4 addresses on BVI interface and routed interface
+        cls.bvi0.config_ip4()
         cls.pg2.config_ip4()
 
-        # Configure MAC address binding to IPv4 neighbors on loop0
-        cls.loop0.generate_remote_hosts(cls.remote_hosts_count)
-        cls.loop0.configure_ipv4_neighbors()
+        # Configure MAC address binding to IPv4 neighbors on bvi0
+        cls.bvi0.generate_remote_hosts(cls.remote_hosts_count)
+        cls.bvi0.configure_ipv4_neighbors()
         # configure MAC address on pg2
         cls.pg2.resolve_arp()
 
-        # Loopback BVI interface has remote hosts, one half of hosts are behind
+        # BVI interface has remote hosts, one half of hosts are behind
         # pg0 second behind pg1
         half = cls.remote_hosts_count // 2
-        cls.pg0.remote_hosts = cls.loop0.remote_hosts[:half]
-        cls.pg1.remote_hosts = cls.loop0.remote_hosts[half:]
+        cls.pg0.remote_hosts = cls.bvi0.remote_hosts[:half]
+        cls.pg1.remote_hosts = cls.bvi0.remote_hosts[half:]
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIpIrb, cls).tearDownClass()
 
     def tearDown(self):
         """Run standard test teardown and log ``show l2patch``,
@@ -95,12 +99,13 @@ class TestIpIrb(VppTestCase):
         ``show ip arp``.
         """
         super(TestIpIrb, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show l2patch"))
-            self.logger.info(self.vapi.cli("show l2fib verbose"))
-            self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
-                                           self.bd_id))
-            self.logger.info(self.vapi.cli("show ip arp"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show l2patch"))
+        self.logger.info(self.vapi.cli("show l2fib verbose"))
+        self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
+                                       self.bd_id))
+        self.logger.info(self.vapi.cli("show ip arp"))
 
     def create_stream(self, src_ip_if, dst_ip_if, packet_sizes):
         pkts = []
@@ -152,7 +157,7 @@ class TestIpIrb(VppTestCase):
         for packet in capture:
             ip = packet[IP]
             udp = packet[IP][UDP]
-            payload_info = self.payload_to_info(str(packet[IP][UDP][Raw]))
+            payload_info = self.payload_to_info(packet[IP][UDP][Raw])
 
             self.assertEqual(payload_info.dst, dst_ip_sw_if_index)
 
@@ -188,7 +193,7 @@ class TestIpIrb(VppTestCase):
         for packet in capture:
             ip = packet[IP]
             udp = packet[IP][UDP]
-            payload_info = self.payload_to_info(str(packet[IP][UDP][Raw]))
+            payload_info = self.payload_to_info(packet[IP][UDP][Raw])
             packet_index = payload_info.index
 
             self.assertEqual(payload_info.dst, dst_ip_sw_if_index)
@@ -220,32 +225,32 @@ class TestIpIrb(VppTestCase):
 
         Test scenario:
             - ip traffic from pg2 interface must ends in both pg0 and pg1
-            - arp entry present in loop0 interface for destination IP
-            - no l2 entree configured, pg0 and pg1 are same
+            - arp entry present in bvi0 interface for destination IP
+            - no l2 entry configured, pg0 and pg1 are same
         """
 
         stream = self.create_stream(
-            self.pg2, self.loop0, self.pg_if_packet_sizes)
+            self.pg2, self.bvi0, self.pg_if_packet_sizes)
         self.pg2.add_stream(stream)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        packet_count = self.get_packet_count_for_if_idx(self.loop0.sw_if_index)
+        packet_count = self.get_packet_count_for_if_idx(self.bvi0.sw_if_index)
 
         rcvd1 = self.pg0.get_capture(packet_count)
         rcvd2 = self.pg1.get_capture(packet_count)
 
-        self.verify_capture(self.loop0, self.pg2, rcvd1)
-        self.verify_capture(self.loop0, self.pg2, rcvd2)
+        self.verify_capture(self.bvi0, self.pg2, rcvd1)
+        self.verify_capture(self.bvi0, self.pg2, rcvd2)
 
         self.assertListEqual(rcvd1.res, rcvd2.res)
 
     def send_and_verify_l2_to_ip(self):
         stream1 = self.create_stream_l2_to_ip(
-            self.pg0, self.loop0, self.pg2, self.pg_if_packet_sizes)
+            self.pg0, self.bvi0, self.pg2, self.pg_if_packet_sizes)
         stream2 = self.create_stream_l2_to_ip(
-            self.pg1, self.loop0, self.pg2, self.pg_if_packet_sizes)
+            self.pg1, self.bvi0, self.pg2, self.pg_if_packet_sizes)
         self.vapi.cli("clear trace")
         self.pg0.add_stream(stream1)
         self.pg1.add_stream(stream2)
@@ -254,7 +259,7 @@ class TestIpIrb(VppTestCase):
         self.pg_start()
 
         rcvd = self.pg2.get_capture(514)
-        self.verify_capture_l2_to_ip(self.pg2, self.loop0, rcvd)
+        self.verify_capture_l2_to_ip(self.pg2, self.bvi0, rcvd)
 
     def test_ip4_irb_2(self):
         """ IPv4 IRB test 2
@@ -265,7 +270,7 @@ class TestIpIrb(VppTestCase):
         self.send_and_verify_l2_to_ip()
 
         # change the BVI's mac and resed traffic
-        self.loop0.set_mac(MACAddress("00:00:00:11:11:33"))
+        self.bvi0.set_mac(MACAddress("00:00:00:11:11:33"))
 
         self.send_and_verify_l2_to_ip()
         # check it wasn't flooded

@@ -72,6 +72,8 @@ vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t * mp)
   args.rxq_size = ntohs (mp->rxq_size);
   args.txq_size = ntohs (mp->txq_size);
   args.txq_num = ntohs (mp->txq_num);
+  args.rxq_num = ntohs (mp->rxq_num);
+  args.bind = mp->bind;
 
   vmxnet3_create_if (vm, &args);
   rv = args.rv;

@@ -15,8 +15,6 @@
 #ifndef __IPSEC_IO_H__
 #define __IPSEC_IO_H__
 
-#define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
-
 #define foreach_ipsec_output_next  \
   _ (DROP, "error-drop")
 
@@ -29,6 +27,7 @@ typedef enum
 } ipsec_output_next_t;
 
 #define foreach_ipsec_input_next   \
+  _ (PUNT, "punt-dispatch")        \
   _ (DROP, "error-drop")
 
 #define _(v, s) IPSEC_INPUT_NEXT_##v,

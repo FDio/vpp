@@ -9,10 +9,11 @@ from scapy.layers.vxlan import VXLAN
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
-from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
-from vpp_gre_interface import VppGreInterface, VppGre6Interface
-from vpp_papi_provider import L2_VTR_OP
+from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
+from vpp_gre_interface import VppGreInterface
 from collections import namedtuple
+from vpp_papi import VppEnum
+
 
 Tag = namedtuple('Tag', ['dot1', 'vlan'])
 DOT1AD = 0x88A8
@@ -53,10 +54,8 @@ class TestSpan(VppTestCase):
             i.resolve_arp()
 
         cls.vxlan = cls.vapi.vxlan_add_del_tunnel(
-            src_addr=cls.pg2.local_ip4n,
-            dst_addr=cls.pg2.remote_ip4n,
-            vni=1111,
-            is_add=1)
+            src_address=cls.pg2.local_ip4n, dst_address=cls.pg2.remote_ip4n,
+            is_add=1, vni=1111)
 
     def setUp(self):
         super(TestSpan, self).setUp()
@@ -64,16 +63,17 @@ class TestSpan(VppTestCase):
 
     def tearDown(self):
         super(TestSpan, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show interface span"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show interface span"))
 
     def xconnect(self, a, b, is_add=1):
         self.vapi.sw_interface_set_l2_xconnect(a, b, enable=is_add)
         self.vapi.sw_interface_set_l2_xconnect(b, a, enable=is_add)
 
     def bridge(self, sw_if_index, is_add=1):
-        self.vapi.sw_interface_set_l2_bridge(
-            sw_if_index, bd_id=self.bd_id, enable=is_add)
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
+                                             bd_id=self.bd_id, enable=is_add)
 
     def _remove_tag(self, packet, vlan, tag_type):
         self.assertEqual(packet.type, tag_type)
@@ -273,8 +273,9 @@ class TestSpan(VppTestCase):
 
         gre_if = VppGreInterface(self, self.pg2.local_ip4,
                                  self.pg2.remote_ip4,
-                                 type=2,
-                                 session=543)
+                                 session=543,
+                                 type=(VppEnum.vl_api_gre_tunnel_type_t.
+                                       GRE_API_TUNNEL_TYPE_ERSPAN))
 
         gre_if.add_vpp_config()
         gre_if.admin_up()
@@ -321,7 +322,8 @@ class TestSpan(VppTestCase):
 
         gre_if = VppGreInterface(self, self.pg2.local_ip4,
                                  self.pg2.remote_ip4,
-                                 type=1)
+                                 type=(VppEnum.vl_api_gre_tunnel_type_t.
+                                       GRE_API_TUNNEL_TYPE_TEB))
 
         gre_if.add_vpp_config()
         gre_if.admin_up()
@@ -526,9 +528,9 @@ class TestSpan(VppTestCase):
 
         # Create bi-directional cross-connects between pg0 and pg1
         self.vapi.sw_interface_set_l2_bridge(
-            self.sub_if.sw_if_index, bd_id=99, enable=1)
+            rx_sw_if_index=self.sub_if.sw_if_index, bd_id=99, enable=1)
         self.vapi.sw_interface_set_l2_bridge(
-            self.pg1.sw_if_index, bd_id=99, enable=1)
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=99, enable=1)
 
         # Create incoming packet streams for packet-generator interfaces
         pg0_pkts = self.create_stream(
@@ -558,9 +560,9 @@ class TestSpan(VppTestCase):
 
         self.bridge(self.pg2.sw_if_index, is_add=0)
         self.vapi.sw_interface_set_l2_bridge(
-            self.sub_if.sw_if_index, bd_id=99, enable=0)
+            rx_sw_if_index=self.sub_if.sw_if_index, bd_id=99, enable=0)
         self.vapi.sw_interface_set_l2_bridge(
-            self.pg1.sw_if_index, bd_id=99, enable=0)
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=99, enable=0)
         # Disable SPAN on pg0 (mirrored to pg2)
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)

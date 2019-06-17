@@ -128,8 +128,11 @@ static char *l2_out_feat_arc_error_strings[] = {
 #undef _
 };
 
+extern l2_in_out_feat_arc_main_t l2_in_out_feat_arc_main;
 
+#ifndef CLIB_MARCH_VARIANT
 l2_in_out_feat_arc_main_t l2_in_out_feat_arc_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define get_u16(addr) ( *((u16 *)(addr)) )
 #define L2_FEAT_ARC_VEC_SIZE 2
@@ -332,10 +335,9 @@ l2_in_out_feat_arc_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static vlib_node_registration_t l2_in_feat_arc_node;
-static uword
-l2_in_feat_arc_node_fn (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_in_feat_arc_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     return l2_in_out_feat_arc_node_fn (vm, node, frame,
@@ -347,10 +349,9 @@ l2_in_feat_arc_node_fn (vlib_main_t * vm,
 				       &l2_in_feat_arc_node, 1, 0);
 }
 
-static vlib_node_registration_t l2_out_feat_arc_node;
-static uword
-l2_out_feat_arc_node_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_out_feat_arc_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     return l2_in_out_feat_arc_node_fn (vm, node, frame,
@@ -362,10 +363,9 @@ l2_out_feat_arc_node_fn (vlib_main_t * vm,
 				       &l2_out_feat_arc_node, 1, 0);
 }
 
-static vlib_node_registration_t l2_in_feat_arc_end_node;
-static uword
-l2_in_feat_arc_end_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_in_feat_arc_end_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     return l2_in_out_feat_arc_node_fn (vm, node, frame,
@@ -377,10 +377,9 @@ l2_in_feat_arc_end_node_fn (vlib_main_t * vm,
 				       &l2_in_feat_arc_end_node, 0, 0);
 }
 
-static vlib_node_registration_t l2_out_feat_arc_end_node;
-static uword
-l2_out_feat_arc_end_node_fn (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_out_feat_arc_end_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     return l2_in_out_feat_arc_node_fn (vm, node, frame,
@@ -393,6 +392,7 @@ l2_out_feat_arc_end_node_fn (vlib_main_t * vm,
 }
 
 
+#ifndef CLIB_MARCH_VARIANT
 void
 vnet_l2_in_out_feat_arc_enable_disable (u32 sw_if_index, int is_output,
 					int enable_disable)
@@ -404,6 +404,7 @@ vnet_l2_in_out_feat_arc_enable_disable (u32 sw_if_index, int is_output,
     l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_INPUT_FEAT_ARC,
 				(u32) enable_disable);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (l2_in_ip4_arc, static) =
@@ -451,9 +452,8 @@ VNET_FEATURE_ARC_INIT (l2_in_nonip_arc, static) =
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_in_feat_arc_node,static) = {
+VLIB_REGISTER_NODE (l2_in_feat_arc_node) = {
   .name = "l2-input-feat-arc",
-  .function = l2_in_feat_arc_node_fn,
   .vector_size = sizeof (u32),
   .format_trace = format_l2_in_feat_arc_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -463,9 +463,8 @@ VLIB_REGISTER_NODE (l2_in_feat_arc_node,static) = {
 
 };
 
-VLIB_REGISTER_NODE (l2_out_feat_arc_node,static) = {
+VLIB_REGISTER_NODE (l2_out_feat_arc_node) = {
   .name = "l2-output-feat-arc",
-  .function = l2_out_feat_arc_node_fn,
   .vector_size = sizeof (u32),
   .format_trace = format_l2_out_feat_arc_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -475,17 +474,15 @@ VLIB_REGISTER_NODE (l2_out_feat_arc_node,static) = {
 
 };
 
-VLIB_REGISTER_NODE (l2_in_feat_arc_end_node,static) = {
+VLIB_REGISTER_NODE (l2_in_feat_arc_end_node) = {
   .name = "l2-input-feat-arc-end",
-  .function = l2_in_feat_arc_end_node_fn,
   .vector_size = sizeof (u32),
   .format_trace = format_l2_in_feat_arc_trace,
   .sibling_of = "l2-input-feat-arc",
 };
 
-VLIB_REGISTER_NODE (l2_out_feat_arc_end_node,static) = {
+VLIB_REGISTER_NODE (l2_out_feat_arc_end_node) = {
   .name = "l2-output-feat-arc-end",
-  .function = l2_out_feat_arc_end_node_fn,
   .vector_size = sizeof (u32),
   .format_trace = format_l2_out_feat_arc_trace,
   .sibling_of = "l2-output-feat-arc",
@@ -534,16 +531,10 @@ VNET_FEATURE_INIT (l2_out_nonip_arc_end, static) =
   .node_name = "l2-output-feat-arc-end",
   .runs_before = 0,     /* not before any other features */
 };
-
-
-VLIB_NODE_FUNCTION_MULTIARCH (l2_in_feat_arc_node, l2_in_feat_arc_node_fn)
-VLIB_NODE_FUNCTION_MULTIARCH (l2_out_feat_arc_node, l2_out_feat_arc_node_fn)
-VLIB_NODE_FUNCTION_MULTIARCH (l2_in_feat_arc_end_node, l2_in_feat_arc_end_node_fn)
-VLIB_NODE_FUNCTION_MULTIARCH (l2_out_feat_arc_end_node, l2_out_feat_arc_end_node_fn)
-
 /* *INDENT-ON* */
 
 
+#ifndef CLIB_MARCH_VARIANT
 clib_error_t *
 l2_in_out_feat_arc_init (vlib_main_t * vm)
 {
@@ -642,6 +633,7 @@ vnet_l2_feature_enable_disable (const char *arc_name, const char *node_name,
 
 
 VLIB_INIT_FUNCTION (l2_in_out_feat_arc_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

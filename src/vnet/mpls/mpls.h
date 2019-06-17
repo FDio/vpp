@@ -58,6 +58,8 @@ typedef struct
 
   /* IP4 enabled count by software interface */
   u8 *mpls_enabled_by_sw_if_index;
+
+  u32 mpls_lookup_node_index;
 } mpls_main_t;
 
 extern mpls_main_t mpls_main;

@@ -33,7 +33,9 @@ perf_event_open (struct perf_event_attr *hw_event, pid_t pid, int cpu,
 }
 
 static void
-read_current_perf_counters (vlib_main_t * vm, u64 * c0, u64 * c1)
+read_current_perf_counters (vlib_main_t * vm, u64 * c0, u64 * c1,
+			    vlib_node_runtime_t * node,
+			    vlib_frame_t * frame, int before_or_after)
 {
   int i;
   u64 *cc;
@@ -50,12 +52,18 @@ read_current_perf_counters (vlib_main_t * vm, u64 * c0, u64 * c1)
       else
 	{
 	  u64 sw_value;
-	  if (read (pm->pm_fds[i][my_thread_index], &sw_value,
-		    sizeof (sw_value)) != sizeof (sw_value))
+	  int read_result;
+	  if ((read_result = read (pm->pm_fds[i][my_thread_index], &sw_value,
+				   sizeof (sw_value)) != sizeof (sw_value)))
 	    {
 	      clib_unix_warning
-		("counter read failed, disable collection...");
-	      vm->vlib_node_runtime_perf_counter_cb = 0;
+		("counter read returned %d, expected %d",
+		 read_result, sizeof (sw_value));
+	      clib_callback_enable_disable
+		(vm->vlib_node_runtime_perf_counter_cbs,
+		 vm->vlib_node_runtime_perf_counter_cb_tmp,
+		 vm->worker_thread_main_loop_callback_lock,
+		 read_current_perf_counters, 0 /* enable */ );
 	      return;
 	    }
 	  *cc = sw_value;
@@ -171,24 +179,40 @@ enable_current_events (perfmon_main_t * pm)
       if (ioctl (fd, PERF_EVENT_IOC_ENABLE, 0) < 0)
 	clib_unix_warning ("enable ioctl");
 
+      pm->perf_event_pages[i][my_thread_index] = (void *) p;
+      pm->pm_fds[i][my_thread_index] = fd;
+    }
+
+  /*
+   * Hardware events must be all opened and enabled before aquiring
+   * pmc indices, otherwise the pmc indices might be out-dated.
+   */
+  for (i = 0; i < limit; i++)
+    {
+      p =
+	(struct perf_event_mmap_page *)
+	pm->perf_event_pages[i][my_thread_index];
+
       /*
        * Software event counters - and others not capable of being
        * read via the "rdpmc" instruction - will be read
        * by system calls.
        */
-      if (pe.type == PERF_TYPE_SOFTWARE || p->cap_user_rdpmc == 0)
+      if (p == 0 || p->cap_user_rdpmc == 0)
 	index = ~0;
       else
 	index = p->index - 1;
 
       pm->rdpmc_indices[i][my_thread_index] = index;
-      pm->perf_event_pages[i][my_thread_index] = (void *) p;
-      pm->pm_fds[i][my_thread_index] = fd;
     }
 
   pm->n_active = i;
   /* Enable the main loop counter snapshot mechanism */
-  vm->vlib_node_runtime_perf_counter_cb = read_current_perf_counters;
+  clib_callback_enable_disable
+    (vm->vlib_node_runtime_perf_counter_cbs,
+     vm->vlib_node_runtime_perf_counter_cb_tmp,
+     vm->worker_thread_main_loop_callback_lock,
+     read_current_perf_counters, 1 /* enable */ );
 }
 
 static void
@@ -199,7 +223,11 @@ disable_events (perfmon_main_t * pm)
   int i;
 
   /* Stop main loop collection */
-  vm->vlib_node_runtime_perf_counter_cb = 0;
+  clib_callback_enable_disable
+    (vm->vlib_node_runtime_perf_counter_cbs,
+     vm->vlib_node_runtime_perf_counter_cb_tmp,
+     vm->worker_thread_main_loop_callback_lock,
+     read_current_perf_counters, 0 /* enable */ );
 
   for (i = 0; i < pm->n_active; i++)
     {
@@ -225,16 +253,22 @@ worker_thread_start_event (vlib_main_t * vm)
 {
   perfmon_main_t *pm = &perfmon_main;
 
+  clib_callback_enable_disable (vm->worker_thread_main_loop_callbacks,
+				vm->worker_thread_main_loop_callback_tmp,
+				vm->worker_thread_main_loop_callback_lock,
+				worker_thread_start_event, 0 /* enable */ );
   enable_current_events (pm);
-  vm->worker_thread_main_loop_callback = 0;
 }
 
 static void
 worker_thread_stop_event (vlib_main_t * vm)
 {
   perfmon_main_t *pm = &perfmon_main;
+  clib_callback_enable_disable (vm->worker_thread_main_loop_callbacks,
+				vm->worker_thread_main_loop_callback_tmp,
+				vm->worker_thread_main_loop_callback_lock,
+				worker_thread_stop_event, 0 /* enable */ );
   disable_events (pm);
-  vm->worker_thread_main_loop_callback = 0;
 }
 
 static void
@@ -271,8 +305,11 @@ start_event (perfmon_main_t * pm, f64 now, uword event_data)
 	continue;
 
       if (all || clib_bitmap_get (pm->thread_bitmap, i))
-	vlib_mains[i]->worker_thread_main_loop_callback = (void *)
-	  worker_thread_start_event;
+	clib_callback_enable_disable
+	  (vlib_mains[i]->worker_thread_main_loop_callbacks,
+	   vlib_mains[i]->worker_thread_main_loop_callback_tmp,
+	   vlib_mains[i]->worker_thread_main_loop_callback_lock,
+	   (void *) worker_thread_start_event, 1 /* enable */ );
     }
 }
 
@@ -431,8 +468,11 @@ handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
       if (vlib_mains[i] == 0)
 	continue;
       if (all || clib_bitmap_get (pm->thread_bitmap, i))
-	vlib_mains[i]->worker_thread_main_loop_callback = (void *)
-	  worker_thread_stop_event;
+	clib_callback_enable_disable
+	  (vlib_mains[i]->worker_thread_main_loop_callbacks,
+	   vlib_mains[i]->worker_thread_main_loop_callback_tmp,
+	   vlib_mains[i]->worker_thread_main_loop_callback_lock,
+	   (void *) worker_thread_stop_event, 1 /* enable */ );
     }
 
   /* Make sure workers have stopped collection */
@@ -443,7 +483,10 @@ handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
       for (i = 1; i < vec_len (vlib_mains); i++)
 	{
 	  /* Has the worker actually stopped collecting data? */
-	  while (vlib_mains[i]->worker_thread_main_loop_callback)
+	  while (clib_callback_is_set
+		 (vlib_mains[i]->worker_thread_main_loop_callbacks,
+		  vlib_mains[i]->worker_thread_main_loop_callback_lock,
+		  read_current_perf_counters))
 	    {
 	      if (vlib_time_now (vm) > deadman)
 		{
@@ -472,8 +515,11 @@ handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
       if (vlib_mains[i] == 0)
 	continue;
       if (all || clib_bitmap_get (pm->thread_bitmap, i))
-	vlib_mains[i]->worker_thread_main_loop_callback = (void *)
-	  worker_thread_start_event;
+	clib_callback_enable_disable
+	  (vlib_mains[i]->worker_thread_main_loop_callbacks,
+	   vlib_mains[i]->worker_thread_main_loop_callback_tmp,
+	   vlib_mains[i]->worker_thread_main_loop_callback_lock,
+	   worker_thread_start_event, 1 /* enable */ );
     }
 }
 

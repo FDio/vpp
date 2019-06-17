@@ -51,6 +51,7 @@ static char *af_packet_tx_func_error_strings[] = {
 };
 
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_af_packet_device_name (u8 * s, va_list * args)
 {
@@ -61,6 +62,7 @@ format_af_packet_device_name (u8 * s, va_list * args)
   s = format (s, "host-%s", apif->host_if_name);
   return s;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static u8 *
 format_af_packet_device (u8 * s, va_list * args)
@@ -76,9 +78,9 @@ format_af_packet_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-af_packet_interface_tx (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
+						  vlib_node_runtime_t * node,
+						  vlib_frame_t * frame)
 {
   af_packet_main_t *apm = &af_packet_main;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -330,7 +332,6 @@ error:
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (af_packet_device_class) = {
   .name = "af-packet",
-  .tx_function = af_packet_interface_tx,
   .format_device_name = format_af_packet_device_name,
   .format_device = format_af_packet_device,
   .format_tx_trace = format_af_packet_tx_trace,
@@ -342,9 +343,6 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .subif_add_del_function = af_packet_subif_add_del_function,
   .mac_addr_change_function = af_packet_set_mac_address_function,
 };
-
-VLIB_DEVICE_TX_FUNCTION_MULTIARCH (af_packet_device_class,
-				   af_packet_interface_tx)
 /* *INDENT-ON* */
 
 /*

@@ -1,0 +1,13 @@
+name: Mapping of Address and Port (MAP)
+maintainer: Ole Troan <ot@cisco.com>
+features:
+  - LW46 BR (RFC7596):
+    - Fragmentation and Reassembly
+  - MAP-E BR (RFC7597)
+  - MAP-T BR (RFC7599)
+description: "IPv4 as a service mechanisms. Tunnel or translate
+              an IPv4 address, an IPv4 subnet or a shared IPv4 address.
+              In shared IPv4 address mode, only UDP, TCP and restricted
+              ICMP is supported."
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]

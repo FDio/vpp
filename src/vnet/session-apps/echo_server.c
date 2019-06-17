@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2015-2017 Cisco and/or its affiliates.
+* Copyright (c) 2017-2019 Cisco and/or its affiliates.
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at:
@@ -19,6 +19,11 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 
+#define ECHO_SERVER_DBG (0)
+#define DBG(_fmt, _args...)			\
+    if (ECHO_SERVER_DBG) 				\
+      clib_warning (_fmt, ##_args)
+
 typedef struct
 {
   /*
@@ -29,7 +34,7 @@ typedef struct
 
   u32 app_index;		/**< Server app index */
   u32 my_client_index;		/**< API client handle */
-  u32 node_index;		/**< process node index for evnt scheduling */
+  u32 node_index;		/**< process node index for event scheduling */
 
   /*
    * Config params
@@ -49,6 +54,7 @@ typedef struct
   u8 **rx_buf;			/**< Per-thread RX buffer */
   u64 byte_index;
   u32 **rx_retries;
+  u8 transport_proto;
 
   vlib_main_t *vlib_main;
 } echo_server_main_t;
@@ -56,12 +62,36 @@ typedef struct
 echo_server_main_t echo_server_main;
 
 int
+quic_echo_server_qsession_accept_callback (session_t * s)
+{
+  DBG ("QSession %u accept w/opaque %d", s->session_index, s->opaque);
+  return 0;
+}
+
+int
+quic_echo_server_session_accept_callback (session_t * s)
+{
+  echo_server_main_t *esm = &echo_server_main;
+  if (!(s->flags & SESSION_F_QUIC_STREAM))
+    return quic_echo_server_qsession_accept_callback (s);
+  DBG ("SSESSION %u accept w/opaque %d", s->session_index, s->opaque);
+
+  esm->vpp_queue[s->thread_index] =
+    session_main_get_vpp_event_queue (s->thread_index);
+  s->session_state = SESSION_STATE_READY;
+  esm->byte_index = 0;
+  ASSERT (vec_len (esm->rx_retries) > s->thread_index);
+  vec_validate (esm->rx_retries[s->thread_index], s->session_index);
+  esm->rx_retries[s->thread_index][s->session_index] = 0;
+  return 0;
+}
+
+int
 echo_server_session_accept_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
-
   esm->vpp_queue[s->thread_index] =
-    session_manager_get_vpp_event_queue (s->thread_index);
+    session_main_get_vpp_event_queue (s->thread_index);
   s->session_state = SESSION_STATE_READY;
   esm->byte_index = 0;
   ASSERT (vec_len (esm->rx_retries) > s->thread_index);
@@ -86,7 +116,7 @@ echo_server_session_reset_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-  clib_warning ("Reset session %U", format_stream_session, s, 2);
+  clib_warning ("Reset session %U", format_session, s, 2);
   a->handle = session_handle (s);
   a->app_index = esm->app_index;
   vnet_disconnect_session (a);
@@ -139,7 +169,7 @@ int
 echo_server_builtin_server_rx_callback_no_echo (session_t * s)
 {
   svm_fifo_t *rx_fifo = s->rx_fifo;
-  svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue (rx_fifo));
+  svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue_cons (rx_fifo));
   return 0;
 }
 
@@ -161,10 +191,10 @@ echo_server_rx_callback (session_t * s)
   ASSERT (rx_fifo->master_thread_index == thread_index);
   ASSERT (tx_fifo->master_thread_index == thread_index);
 
-  max_enqueue = svm_fifo_max_enqueue (tx_fifo);
+  max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
   if (!esm->is_dgram)
     {
-      max_dequeue = svm_fifo_max_dequeue (rx_fifo);
+      max_dequeue = svm_fifo_max_dequeue_cons (rx_fifo);
     }
   else
     {
@@ -174,7 +204,7 @@ echo_server_rx_callback (session_t * s)
       if (!esm->vpp_queue[s->thread_index])
 	{
 	  svm_msg_q_t *mq;
-	  mq = session_manager_get_vpp_event_queue (s->thread_index);
+	  mq = session_main_get_vpp_event_queue (s->thread_index);
 	  esm->vpp_queue[s->thread_index] = mq;
 	}
       max_enqueue -= sizeof (session_dgram_hdr_t);
@@ -195,13 +225,14 @@ echo_server_rx_callback (session_t * s)
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
-	  if (session_send_io_evt_to_thread (rx_fifo, FIFO_EVENT_BUILTIN_RX))
+	  if (session_send_io_evt_to_thread (rx_fifo,
+					     SESSION_IO_EVT_BUILTIN_RX))
 	    clib_warning ("failed to enqueue self-tap");
 
 	  vec_validate (esm->rx_retries[s->thread_index], s->session_index);
 	  if (esm->rx_retries[thread_index][s->session_index] == 500000)
 	    {
-	      clib_warning ("session stuck: %U", format_stream_session, s, 2);
+	      clib_warning ("session stuck: %U", format_session, s, 2);
 	    }
 	  if (esm->rx_retries[thread_index][s->session_index] < 500001)
 	    esm->rx_retries[thread_index][s->session_index]++;
@@ -239,20 +270,22 @@ echo_server_rx_callback (session_t * s)
       n_written = app_send_stream_raw (tx_fifo,
 				       esm->vpp_queue[thread_index],
 				       esm->rx_buf[thread_index],
-				       actual_transfer, FIFO_EVENT_APP_TX, 0);
+				       actual_transfer, SESSION_IO_EVT_TX,
+				       1 /* do_evt */ , 0);
     }
   else
     {
       n_written = app_send_dgram_raw (tx_fifo, &at,
 				      esm->vpp_queue[s->thread_index],
 				      esm->rx_buf[thread_index],
-				      actual_transfer, FIFO_EVENT_APP_TX, 0);
+				      actual_transfer, SESSION_IO_EVT_TX,
+				      1 /* do_evt */ , 0);
     }
 
   if (n_written != max_transfer)
     clib_warning ("short trout! written %u read %u", n_written, max_transfer);
 
-  if (PREDICT_FALSE (svm_fifo_max_dequeue (rx_fifo)))
+  if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;
 
   return 0;
@@ -301,6 +334,9 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   else
     echo_server_session_cb_vft.builtin_app_rx_callback =
       echo_server_rx_callback;
+  if (esm->transport_proto == TRANSPORT_PROTO_QUIC)
+    echo_server_session_cb_vft.session_accept_callback =
+      quic_echo_server_session_accept_callback;
 
   if (esm->private_segment_size)
     segment_size = esm->private_segment_size;
@@ -394,7 +430,7 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
   vec_validate (esm->rx_retries, num_threads - 1);
   for (i = 0; i < vec_len (esm->rx_retries); i++)
     vec_validate (esm->rx_retries[i],
-		  pool_elts (session_manager_main.wrk[i].sessions));
+		  pool_elts (session_main.wrk[i].sessions));
   esm->rcv_buffer_size = clib_max (esm->rcv_buffer_size, esm->fifo_size);
   for (i = 0; i < num_threads; i++)
     vec_validate (esm->rx_buf[i], esm->rcv_buffer_size);
@@ -423,6 +459,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u64 tmp, appns_flags = 0, appns_secret = 0;
   char *default_uri = "tcp://0.0.0.0/1234";
   int rv, is_stop = 0;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
 
   esm->no_echo = 0;
   esm->fifo_size = 64 << 10;
@@ -431,7 +468,6 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   esm->private_segment_count = 0;
   esm->private_segment_size = 0;
   esm->tls_engine = TLS_ENGINE_OPENSSL;
-  esm->is_dgram = 0;
   vec_free (esm->server_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -500,8 +536,11 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       clib_warning ("No uri provided! Using default: %s", default_uri);
       esm->server_uri = (char *) format (0, "%s%c", default_uri, 0);
     }
-  if (esm->server_uri[0] == 'u' && esm->server_uri[3] != 'c')
-    esm->is_dgram = 1;
+
+  if ((rv = parse_uri ((char *) esm->server_uri, &sep)))
+    return clib_error_return (0, "Uri parse error: %d", rv);
+  esm->transport_proto = sep.transport_proto;
+  esm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
 
   rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
   vec_free (appns_id);

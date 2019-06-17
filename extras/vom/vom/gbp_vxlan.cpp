@@ -14,6 +14,7 @@
  */
 
 #include "vom/gbp_vxlan.hpp"
+#include "vom/api_types.hpp"
 #include "vom/gbp_vxlan_cmds.hpp"
 #include "vom/interface.hpp"
 #include "vom/singular_db_funcs.hpp"
@@ -29,22 +30,28 @@ singular_db<gbp_vxlan::key_t, gbp_vxlan> gbp_vxlan::m_db;
 
 gbp_vxlan::event_handler gbp_vxlan::m_evh;
 
-gbp_vxlan::gbp_vxlan(uint32_t vni, const gbp_route_domain& grd)
+gbp_vxlan::gbp_vxlan(uint32_t vni,
+                     const gbp_route_domain& grd,
+                     const boost::asio::ip::address_v4& src)
   : interface(mk_name(vni),
               interface::type_t::UNKNOWN,
               interface::admin_state_t::UP)
   , m_vni(vni)
   , m_gbd()
   , m_grd(grd.singular())
+  , m_src(src)
 {
 }
-gbp_vxlan::gbp_vxlan(uint32_t vni, const gbp_bridge_domain& gbd)
+gbp_vxlan::gbp_vxlan(uint32_t vni,
+                     const gbp_bridge_domain& gbd,
+                     const boost::asio::ip::address_v4& src)
   : interface(mk_name(vni),
               interface::type_t::UNKNOWN,
               interface::admin_state_t::UP)
   , m_vni(vni)
   , m_gbd(gbd.singular())
   , m_grd()
+  , m_src(src)
 {
 }
 
@@ -53,6 +60,7 @@ gbp_vxlan::gbp_vxlan(const gbp_vxlan& vt)
   , m_vni(vt.m_vni)
   , m_gbd(vt.m_gbd)
   , m_grd(vt.m_grd)
+  , m_src(vt.m_src)
 {
 }
 
@@ -75,7 +83,7 @@ gbp_vxlan::key() const
 bool
 gbp_vxlan::operator==(const gbp_vxlan& vt) const
 {
-  return (m_vni == vt.m_vni);
+  return (m_vni == vt.m_vni && m_src == vt.m_src);
 }
 
 void
@@ -92,11 +100,11 @@ gbp_vxlan::replay()
 {
   if (rc_t::OK == m_hdl) {
     if (m_grd)
-      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_vni, false,
-                                                 m_grd->id()));
+      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_src, m_vni,
+                                                 false, m_grd->id()));
     else if (m_gbd)
-      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_vni, true,
-                                                 m_gbd->id()));
+      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_src, m_vni,
+                                                 true, m_gbd->id()));
   }
 }
 
@@ -129,11 +137,11 @@ gbp_vxlan::update(const gbp_vxlan& desired)
    */
   if (rc_t::OK != m_hdl) {
     if (m_grd)
-      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_vni, false,
-                                                 m_grd->id()));
+      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_src, m_vni,
+                                                 false, m_grd->id()));
     else if (m_gbd)
-      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_vni, true,
-                                                 m_gbd->id()));
+      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_src, m_vni,
+                                                 true, m_gbd->id()));
   }
 }
 
@@ -176,11 +184,13 @@ gbp_vxlan::event_handler::handle_populate(const client_db::key_t& key)
   for (auto& record : *cmd) {
     auto& payload = record.get_payload();
 
+    boost::asio::ip::address_v4 src = from_api(payload.tunnel.src);
+
     if (GBP_VXLAN_TUNNEL_MODE_L3 == payload.tunnel.mode) {
       auto rd = gbp_route_domain::find(payload.tunnel.bd_rd_id);
 
       if (rd) {
-        gbp_vxlan vt(payload.tunnel.vni, *rd);
+        gbp_vxlan vt(payload.tunnel.vni, *rd, src);
         OM::commit(key, vt);
         VOM_LOG(log_level_t::DEBUG) << "dump: " << vt.to_string();
       }
@@ -188,7 +198,7 @@ gbp_vxlan::event_handler::handle_populate(const client_db::key_t& key)
       auto bd = gbp_bridge_domain::find(payload.tunnel.bd_rd_id);
 
       if (bd) {
-        gbp_vxlan vt(payload.tunnel.vni, *bd);
+        gbp_vxlan vt(payload.tunnel.vni, *bd, src);
         OM::commit(key, vt);
         VOM_LOG(log_level_t::DEBUG) << "dump: " << vt.to_string();
       }

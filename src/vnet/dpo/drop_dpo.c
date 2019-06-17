@@ -41,7 +41,7 @@ drop_dpo_lock (dpo_id_t *dpo)
     /*
      * not maintaining a lock count on the drop
      * more trouble than it's worth.
-     * There always needs to be one around. no point it managaing its lifetime
+     * There always needs to be one around. no point it managing its lifetime
      */
 }
 static void

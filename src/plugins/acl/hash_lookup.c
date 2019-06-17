@@ -541,6 +541,7 @@ add_colliding_rule (acl_main_t * am,
   cr.acl_position = pae->acl_position;
   cr.applied_entry_index = applied_entry_index;
   cr.rule = am->acls[pae->acl_index].rules[pae->ace_index];
+  pae->collision_head_ae_index = head_index;
   vec_add1 (head_pae->colliding_rules, cr);
   if (ACL_HASH_LOOKUP_DEBUG > 0)
     acl_plugin_print_pae(acl_main.vlib_main, head_index, head_pae);
@@ -554,7 +555,6 @@ activate_applied_ace_hash_entry(acl_main_t *am,
 {
   clib_bihash_kv_48_8_t kv;
   ASSERT(new_index != ~0);
-  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
   DBG("activate_applied_ace_hash_entry lc_index %d new_index %d", lc_index, new_index);
 
   fill_applied_hash_ace_kv(am, applied_hash_aces, lc_index, new_index, &kv);
@@ -569,27 +569,17 @@ activate_applied_ace_hash_entry(acl_main_t *am,
   ASSERT(new_index != ~0);
   ASSERT(new_index < vec_len((*applied_hash_aces)));
   if (res == 0) {
-    /* There already exists an entry or more. Append at the end. */
     u32 first_index = result_val->applied_entry_index;
     ASSERT(first_index != ~0);
+    ASSERT(first_index < vec_len((*applied_hash_aces)));
+    /* There already exists an entry or more. Append at the end. */
     DBG("A key already exists, with applied entry index: %d", first_index);
-    applied_hash_ace_entry_t *first_pae = vec_elt_at_index((*applied_hash_aces), first_index);
-    u32 last_index = first_pae->tail_applied_entry_index;
-    ASSERT(last_index != ~0);
-    applied_hash_ace_entry_t *last_pae = vec_elt_at_index((*applied_hash_aces), last_index);
-    DBG("...advance to chained entry index: %d", last_index);
-    /* link ourselves in */
-    last_pae->next_applied_entry_index = new_index;
-    pae->prev_applied_entry_index = last_index;
-    /* adjust the pointer to the new tail */
-    first_pae->tail_applied_entry_index = new_index;
     add_colliding_rule(am, applied_hash_aces, first_index, new_index);
     return first_index;
   } else {
     /* It's the very first entry */
     hashtable_add_del(am, &kv, 1);
     ASSERT(new_index != ~0);
-    pae->tail_applied_entry_index = new_index;
     add_colliding_rule(am, applied_hash_aces, new_index, new_index);
     return new_index;
   }
@@ -773,9 +763,7 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
     pae->hitcount = 0;
     pae->hash_ace_info_index = i;
     /* we might link it in later */
-    pae->next_applied_entry_index = ~0;
-    pae->prev_applied_entry_index = ~0;
-    pae->tail_applied_entry_index = ~0;
+    pae->collision_head_ae_index = ~0;
     pae->colliding_rules = NULL;
     pae->mask_type_index = ~0;
     assign_mask_type_index_to_pae(am, lc_index, is_ip6, pae);
@@ -791,19 +779,21 @@ done:
 static u32
 find_head_applied_ace_index(applied_hash_ace_entry_t **applied_hash_aces, u32 curr_index)
 {
-  /*
-   * find back the first entry. Inefficient so might need to be a bit cleverer
-   * if this proves to be a problem..
-   */
-  u32 an_index = curr_index;
-  ASSERT(an_index != ~0);
-  applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), an_index);
-  while(head_pae->prev_applied_entry_index != ~0) {
-    an_index = head_pae->prev_applied_entry_index;
-    ASSERT(an_index != ~0);
-    head_pae = vec_elt_at_index((*applied_hash_aces), an_index);
-  }
-  return an_index;
+  ASSERT(curr_index != ~0);
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), curr_index);
+  ASSERT(pae);
+  ASSERT(pae->collision_head_ae_index != ~0);
+  return pae->collision_head_ae_index;
+}
+
+static void
+set_collision_head_ae_index(applied_hash_ace_entry_t **applied_hash_aces, collision_match_rule_t *colliding_rules, u32 new_index)
+{
+	collision_match_rule_t *cr;
+	vec_foreach(cr, colliding_rules) {
+            applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), cr->applied_entry_index);
+            pae->collision_head_ae_index = new_index;
+	}
 }
 
 static void
@@ -826,35 +816,10 @@ move_applied_ace_hash_entry(acl_main_t *am,
     acl_plugin_print_pae(am->vlib_main, old_index, pae);
   }
 
-  if (new_pae->tail_applied_entry_index == old_index) {
-    /* fix-up the tail index if we are the tail and the start */
-    new_pae->tail_applied_entry_index = new_index;
-  }
-
-  if (pae->prev_applied_entry_index != ~0) {
-    applied_hash_ace_entry_t *prev_pae = vec_elt_at_index((*applied_hash_aces), pae->prev_applied_entry_index);
-    ASSERT(prev_pae->next_applied_entry_index == old_index);
-    prev_pae->next_applied_entry_index = new_index;
-  } else {
+  if (pae->collision_head_ae_index == old_index) {
     /* first entry - so the hash points to it, update */
     add_del_hashtable_entry(am, lc_index,
                             applied_hash_aces, new_index, 1);
-    ASSERT(pae->tail_applied_entry_index != ~0);
-  }
-  if (pae->next_applied_entry_index != ~0) {
-    applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
-    ASSERT(next_pae->prev_applied_entry_index == old_index);
-    next_pae->prev_applied_entry_index = new_index;
-  } else {
-    /*
-     * Moving the very last entry, so we need to update the tail pointer in the first one.
-     */
-    u32 head_index = find_head_applied_ace_index(applied_hash_aces, old_index);
-    ASSERT(head_index != ~0);
-    applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
-
-    ASSERT(head_pae->tail_applied_entry_index == old_index);
-    head_pae->tail_applied_entry_index = new_index;
   }
   if (new_pae->colliding_rules) {
     /* update the information within the collision rule entry */
@@ -862,6 +827,7 @@ move_applied_ace_hash_entry(acl_main_t *am,
     collision_match_rule_t *cr = vec_elt_at_index (new_pae->colliding_rules, 0);
     ASSERT(cr->applied_entry_index == old_index);
     cr->applied_entry_index = new_index;
+    set_collision_head_ae_index(applied_hash_aces, new_pae->colliding_rules, new_index);
   } else {
     /* find the index in the collision rule entry on the head element */
     u32 head_index = find_head_applied_ace_index(applied_hash_aces, new_index);
@@ -881,9 +847,7 @@ move_applied_ace_hash_entry(acl_main_t *am,
     }
   }
   /* invalidate the old entry */
-  pae->prev_applied_entry_index = ~0;
-  pae->next_applied_entry_index = ~0;
-  pae->tail_applied_entry_index = ~0;
+  pae->collision_head_ae_index = ~0;
   pae->colliding_rules = NULL;
 }
 
@@ -900,40 +864,25 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
     acl_plugin_print_pae(am->vlib_main, old_index, pae);
   }
 
-  if (pae->prev_applied_entry_index != ~0) {
-    DBG("UNAPPLY = index %d has prev_applied_entry_index %d", old_index, pae->prev_applied_entry_index);
-    applied_hash_ace_entry_t *prev_pae = vec_elt_at_index((*applied_hash_aces), pae->prev_applied_entry_index);
-    ASSERT(prev_pae->next_applied_entry_index == old_index);
-    prev_pae->next_applied_entry_index = pae->next_applied_entry_index;
+  if (pae->collision_head_ae_index != old_index) {
+    DBG("UNAPPLY = index %d has collision head %d", old_index, pae->collision_head_ae_index);
 
     u32 head_index = find_head_applied_ace_index(applied_hash_aces, old_index);
     ASSERT(head_index != ~0);
-    applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
     del_colliding_rule(applied_hash_aces, head_index, old_index);
 
-    if (pae->next_applied_entry_index == ~0) {
-      /* it was a last entry we removed, update the pointer on the first one */
-      ASSERT(head_pae->tail_applied_entry_index == old_index);
-      head_pae->tail_applied_entry_index = pae->prev_applied_entry_index;
-    } else {
-      applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
-      next_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
-    }
   } else {
     /* It was the first entry. We need either to reset the hash entry or delete it */
     /* delete our entry from the collision vector first */
     del_colliding_rule(applied_hash_aces, old_index, old_index);
-    if (pae->next_applied_entry_index != ~0) {
-      /* the next element becomes the new first one, so needs the tail pointer to be set */
-      applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
-      ASSERT(pae->tail_applied_entry_index != ~0);
-      next_pae->tail_applied_entry_index = pae->tail_applied_entry_index;
+    if (vec_len(pae->colliding_rules) > 0) {
+      u32 next_pae_index = pae->colliding_rules[0].applied_entry_index;
+      applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), next_pae_index);
       /* Remove ourselves and transfer the ownership of the colliding rules vector */
       next_pae->colliding_rules = pae->colliding_rules;
-      /* unlink from the next element */
-      next_pae->prev_applied_entry_index = ~0;
+      set_collision_head_ae_index(applied_hash_aces, next_pae->colliding_rules, next_pae_index);
       add_del_hashtable_entry(am, lc_index,
-                              applied_hash_aces, pae->next_applied_entry_index, 1);
+                              applied_hash_aces, next_pae_index, 1);
     } else {
       /* no next entry, so just delete the entry in the hash table */
       add_del_hashtable_entry(am, lc_index,
@@ -944,9 +893,7 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
   release_mask_type_index(am, pae->mask_type_index);
   /* invalidate the old entry */
   pae->mask_type_index = ~0;
-  pae->prev_applied_entry_index = ~0;
-  pae->next_applied_entry_index = ~0;
-  pae->tail_applied_entry_index = ~0;
+  pae->collision_head_ae_index = ~0;
   /* always has to be 0 */
   pae->colliding_rules = NULL;
 }
@@ -1182,7 +1129,7 @@ void hash_acl_add(acl_main_t *am, int acl_index)
   void *oldheap = hash_acl_set_heap(am);
   DBG("HASH ACL add : %d", acl_index);
   int i;
-  acl_list_t *a = &am->acls[acl_index];
+  acl_rule_t *acl_rules = am->acls[acl_index].rules;
   vec_validate(am->hash_acl_infos, acl_index);
   hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
   clib_memset(ha, 0, sizeof(*ha));
@@ -1192,19 +1139,19 @@ void hash_acl_add(acl_main_t *am, int acl_index)
      is a mask type, increment a reference count for that mask type */
 
   /* avoid small requests by preallocating the entire vector before running the additions */
-  if (a->count > 0) {
-    vec_validate(ha->rules, a->count-1);
+  if (vec_len(acl_rules) > 0) {
+    vec_validate(ha->rules, vec_len(acl_rules)-1);
     vec_reset_length(ha->rules);
   }
 
-  for(i=0; i < a->count; i++) {
+  for(i=0; i < vec_len(acl_rules); i++) {
     hash_ace_info_t ace_info;
     fa_5tuple_t mask;
     clib_memset(&ace_info, 0, sizeof(ace_info));
     ace_info.acl_index = acl_index;
     ace_info.ace_index = i;
 
-    make_mask_and_match_from_rule(&mask, &a->rules[i], &ace_info);
+    make_mask_and_match_from_rule(&mask, &acl_rules[i], &ace_info);
     mask.pkt.flags_reserved = 0b000;
     ace_info.base_mask_type_index = assign_mask_type_index(am, &mask);
     /* assign the mask type index for matching itself */
@@ -1334,11 +1281,10 @@ static void
 acl_plugin_print_pae (vlib_main_t * vm, int j, applied_hash_ace_entry_t * pae)
 {
   vlib_cli_output (vm,
-		   "    %4d: acl %d rule %d action %d bitmask-ready rule %d mask type index: %d colliding_rules: %d next %d prev %d tail %d hitcount %lld acl_pos: %d",
+		   "    %4d: acl %d rule %d action %d bitmask-ready rule %d mask type index: %d colliding_rules: %d collision_head_ae_idx %d hitcount %lld acl_pos: %d",
 		   j, pae->acl_index, pae->ace_index, pae->action,
-		   pae->hash_ace_info_index, pae->mask_type_index, vec_len(pae->colliding_rules), pae->next_applied_entry_index,
-		   pae->prev_applied_entry_index,
-		   pae->tail_applied_entry_index, pae->hitcount, pae->acl_position);
+		   pae->hash_ace_info_index, pae->mask_type_index, vec_len(pae->colliding_rules), pae->collision_head_ae_index,
+		   pae->hitcount, pae->acl_position);
   int jj;
   for(jj=0; jj<vec_len(pae->colliding_rules); jj++)
     acl_plugin_print_colliding_rule(vm, jj, vec_elt_at_index(pae->colliding_rules, jj));
@@ -1511,9 +1457,11 @@ split_partition(acl_main_t *am, u32 first_index,
         clib_memset(&the_max_tuple, 0, sizeof(the_max_tuple));
 
 	int i=0;
+	collision_match_rule_t *colliding_rules = pae->colliding_rules;
 	u64 collisions = vec_len(pae->colliding_rules);
 	for(i=0; i<collisions; i++){
                 /* reload the hash acl info as it might be a different ACL# */
+		pae = vec_elt_at_index((*applied_hash_aces), colliding_rules[i].applied_entry_index);
 	        ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
 
 		DBG( "TM-collision: base_ace:%d (ace_mask:%d, first_collision_mask:%d)",
@@ -1563,8 +1511,6 @@ split_partition(acl_main_t *am, u32 first_index,
 			if(mask->pkt.as_u64 > max_tuple->pkt.as_u64)
 				max_tuple->pkt.as_u64 = mask->pkt.as_u64;
 		}
-
-		pae = pae->next_applied_entry_index == ~0 ? 0 : vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
 	}
 
 	/* Computing field with max difference between (min/max)_mask */
@@ -1691,15 +1637,19 @@ split_partition(acl_main_t *am, u32 first_index,
 	u32 r_ace_index = first_index;
         int repopulate_count = 0;
 
-//	for(i=0; i<collisions; i++){
-	for(r_ace_index=0; r_ace_index < vec_len((*applied_hash_aces)); r_ace_index++) {
+	collision_match_rule_t *temp_colliding_rules = vec_dup(colliding_rules);
+	collisions = vec_len(temp_colliding_rules);
+
+	for(i=0; i<collisions; i++){
+
+	        r_ace_index = temp_colliding_rules[i].applied_entry_index;
 
 		applied_hash_ace_entry_t *pop_pae = vec_elt_at_index((*applied_hash_aces), r_ace_index);
+	        ha = vec_elt_at_index(am->hash_acl_infos, pop_pae->acl_index);
 		DBG( "TM-Population-collision: base_ace:%d (ace_mask:%d, first_collision_mask:%d)",
 				pop_pae->ace_index, pop_pae->mask_type_index, coll_mask_type_index);
 
-		if(pop_pae->mask_type_index != coll_mask_type_index) continue;
-		u32 next_index = pop_pae->next_applied_entry_index;
+		ASSERT(pop_pae->mask_type_index == coll_mask_type_index);
 
 		ace_info = vec_elt_at_index(ha->rules, pop_pae->hash_ace_info_index);
 		mte = vec_elt_at_index(am->ace_mask_type_pool, ace_info->base_mask_type_index);
@@ -1721,8 +1671,8 @@ split_partition(acl_main_t *am, u32 first_index,
 
 		activate_applied_ace_hash_entry(am, lc_index, applied_hash_aces, r_ace_index);
 
-		r_ace_index = next_index;
 	}
+	vec_free(temp_colliding_rules);
 
 	DBG( "TM-Populate new partition-END");
 	DBG( "TM-split_partition - END");

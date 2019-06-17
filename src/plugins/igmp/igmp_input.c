@@ -445,19 +445,19 @@ VLIB_REGISTER_NODE (igmp_parse_report_node) =
 static clib_error_t *
 igmp_input_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
-
-  if ((error = vlib_call_init_function (vm, igmp_init)))
-    return error;
-
   ip4_register_protocol (IP_PROTOCOL_IGMP, igmp_input_node.index);
 
   IGMP_DBG ("input-initialized");
 
-  return (error);
+  return (0);
 }
 
-VLIB_INIT_FUNCTION (igmp_input_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (igmp_input_init) =
+{
+  .runs_after = VLIB_INITS("igmp_init"),
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -37,6 +37,18 @@
 
 geneve_main_t geneve_main;
 
+u8 *
+format_geneve_encap_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  geneve_encap_trace_t *t = va_arg (*args, geneve_encap_trace_t *);
+
+  s = format (s, "GENEVE encap to geneve_tunnel%d vni %d",
+	      t->tunnel_index, t->vni);
+  return s;
+}
+
 static u8 *
 format_decap_next (u8 * s, va_list * args)
 {
@@ -611,6 +623,17 @@ int vnet_geneve_add_del_tunnel
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
+  if (a->is_add)
+    {
+      /* register udp ports */
+      if (!is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_geneve, 1))
+	udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_geneve,
+			       geneve4_input_node.index, 1);
+      if (is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_geneve6, 0))
+	udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_geneve6,
+			       geneve6_input_node.index, 0);
+    }
+
   return 0;
 }
 
@@ -1102,11 +1125,6 @@ geneve_init (vlib_main_t * vm)
   vxm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
-
-  udp_register_dst_port (vm, UDP_DST_PORT_geneve,
-			 geneve4_input_node.index, /* is_ip4 */ 1);
-  udp_register_dst_port (vm, UDP_DST_PORT_geneve6,
-			 geneve6_input_node.index, /* is_ip4 */ 0);
 
   fib_node_register_type (FIB_NODE_TYPE_GENEVE_TUNNEL, &geneve_vft);
 

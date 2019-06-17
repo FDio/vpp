@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -321,7 +321,7 @@ print_usage_and_exit (void)
 	   "  -6               Use IPv6\n"
 	   "  -w <num>         Number of workers\n"
 	   "  -D               Use UDP transport layer\n"
-	   "  -S               Use TLS transport layer\n");
+	   "  -L               Use TLS transport layer\n");
   exit (1);
 }
 
@@ -371,7 +371,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
   vsm->cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "6DSsw:")) != -1)
+  while ((c = getopt (argc, argv, "6DLsw:")) != -1)
     switch (c)
       {
       case '6':
@@ -382,7 +382,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 	vsm->cfg.proto = VPPCOM_PROTO_UDP;
 	break;
 
-      case 'S':
+      case 'L':
 	vsm->cfg.proto = VPPCOM_PROTO_TLS;
 	break;
 

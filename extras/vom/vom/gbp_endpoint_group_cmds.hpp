@@ -34,10 +34,11 @@ public:
    * Constructor
    */
   create_cmd(HW::item<bool>& item,
-             epg_id_t epg_id,
+             vnid_t vnid,
              uint16_t sclass,
              uint32_t bd_id,
              route::table_id_t rd_id,
+             const gbp_endpoint_group::retention_t& retention,
              const handle_t& itf);
 
   /**
@@ -56,11 +57,12 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
-  const epg_id_t m_epg_id;
+  const vnid_t m_vnid;
   const uint16_t m_sclass;
   const uint32_t m_bd_id;
   const route::table_id_t m_rd_id;
   const handle_t m_itf;
+  const gbp_endpoint_group::retention_t m_retention;
 };
 
 /**
@@ -72,7 +74,7 @@ public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item, epg_id_t epg_id);
+  delete_cmd(HW::item<bool>& item, sclass_t sclass);
 
   /**
    * Issue the command to VPP/HW
@@ -90,7 +92,7 @@ public:
   bool operator==(const delete_cmd& i) const;
 
 private:
-  const epg_id_t m_epg_id;
+  const sclass_t m_sclass;
 };
 
 /**

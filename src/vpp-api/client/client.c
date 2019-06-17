@@ -35,6 +35,7 @@
 
 bool timeout_cancelled;
 bool timeout_in_progress;
+bool rx_thread_done;
 
 /*
  * Asynchronous mode:
@@ -191,6 +192,7 @@ vac_rx_thread_fn (void *arg)
 	  vl_msg_api_free((void *) msg);
 	  /* signal waiting threads that this thread is about to terminate */
 	  pthread_mutex_lock(&pm->queue_lock);
+	  rx_thread_done = true;
 	  pthread_cond_signal(&pm->terminate_cv);
 	  pthread_mutex_unlock(&pm->queue_lock);
 	  pthread_exit(0);
@@ -318,6 +320,7 @@ int
 vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
                int rx_qlen)
 {
+  rx_thread_done = false;
   int rv = 0;
   vac_main_t *pm = &vac_main;
 
@@ -389,6 +392,7 @@ vac_disconnect (void)
   api_main_t *am = &api_main;
   vac_main_t *pm = &vac_main;
   uword junk;
+  int rv = 0;
 
   if (!pm->connected_to_vlib) return 0;
 
@@ -404,9 +408,12 @@ vac_disconnect (void)
     gettimeofday(&tv, NULL);
     ts.tv_sec = tv.tv_sec + 5;
     ts.tv_nsec = 0;
+
     pthread_mutex_lock(&pm->queue_lock);
-    int rv = pthread_cond_timedwait(&pm->terminate_cv, &pm->queue_lock, &ts);
+    if (rx_thread_done == false)
+      rv = pthread_cond_timedwait(&pm->terminate_cv, &pm->queue_lock, &ts);
     pthread_mutex_unlock(&pm->queue_lock);
+
     /* now join so we wait until thread has -really- finished */
     if (rv == ETIMEDOUT)
       pthread_cancel(pm->rx_thread_handle);

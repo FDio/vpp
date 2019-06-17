@@ -142,12 +142,12 @@ igmp_listen (vlib_main_t * vm,
   /*
    * RFC 3376 Section 2
    " For a given combination of socket, interface, and multicast address,
-   only a single filter mode and source list can be in effect at any one
-   time.  However, either the filter mode or the source list, or both,
-   may be changed by subsequent IPMulticastListen requests that specify
-   the same socket, interface, and multicast address.  Each subsequent
-   request completely replaces any earlier request for the given socket,
-   interface and multicast address."
+   * only a single filter mode and source list can be in effect at any one
+   * time.  However, either the filter mode or the source list, or both,
+   * may be changed by subsequent IPMulticastListen requests that specify
+   * the same socket, interface, and multicast address.  Each subsequent
+   * request completely replaces any earlier request for the given socket,
+   * interface and multicast address."
    */
   int rv = 0;
   IGMP_DBG ("listen: (%U, %U) %U %U",
@@ -479,11 +479,7 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 static clib_error_t *
 igmp_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
   igmp_main_t *im = &igmp_main;
-
-  if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
-    return error;
 
   im->igmp_api_client_by_client_index = hash_create (0, sizeof (u32));
 
@@ -491,14 +487,18 @@ igmp_init (vlib_main_t * vm)
 
   IGMP_DBG ("initialized");
 
-  return (error);
+  return (0);
 }
 
-VLIB_INIT_FUNCTION (igmp_init);
 /* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = {
+VLIB_INIT_FUNCTION (igmp_init) =
+{
+  .runs_after = VLIB_INITS("ip4_lookup_init"),
+};
+VLIB_PLUGIN_REGISTER () =
+{
   .version = VPP_BUILD_VER,
-  .description = "IGMP messaging",
+  .description = "Internet Group Management Protocol (IGMP)",
 };
 /* *INDENT-ON* */
 

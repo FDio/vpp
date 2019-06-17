@@ -25,6 +25,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/ip/ip6_neighbor.h>
 #include <math.h>
+#include <vnet/ethernet/arp.h>
 
 tcp_main_t tcp_main;
 
@@ -67,6 +68,46 @@ tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
   };
   vlib_rpc_call_main_thread (tcp_add_del_adj_cb, (u8 *) & args,
 			     sizeof (args));
+}
+
+static void
+tcp_cc_init (tcp_connection_t * tc)
+{
+  tc->cc_algo = tcp_cc_algo_get (tcp_main.cc_algo);
+  tc->cc_algo->init (tc);
+}
+
+static void
+tcp_cc_cleanup (tcp_connection_t * tc)
+{
+  if (tc->cc_algo->cleanup)
+    tc->cc_algo->cleanup (tc);
+}
+
+void
+tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
+		      const tcp_cc_algorithm_t * vft)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  vec_validate (tm->cc_algos, type);
+
+  tm->cc_algos[type] = *vft;
+  hash_set_mem (tm->cc_algo_by_name, vft->name, type);
+}
+
+tcp_cc_algorithm_t *
+tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  return &tm->cc_algos[type];
+}
+
+tcp_cc_algorithm_type_e
+tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_cc_algo_register (++tm->cc_last_type, vft);
+  return tm->cc_last_type;
 }
 
 static u32
@@ -200,6 +241,8 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 {
   tcp_main_t *tm = &tcp_main;
 
+  TCP_EVT_DBG (TCP_EVT_DELETE, tc);
+
   /* Cleanup local endpoint if this was an active connect */
   transport_endpoint_cleanup (TRANSPORT_PROTO_TCP, &tc->c_lcl_ip,
 			      tc->c_lcl_port);
@@ -223,6 +266,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
 	tcp_add_del_adjacency (tc, 0);
 
+      tcp_cc_cleanup (tc);
       vec_free (tc->snd_sacks);
       vec_free (tc->snd_sacks_fl);
 
@@ -243,7 +287,6 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 void
 tcp_connection_del (tcp_connection_t * tc)
 {
-  TCP_EVT_DBG (TCP_EVT_DELETE, tc);
   session_transport_delete_notify (&tc->connection);
   tcp_connection_cleanup (tc);
 }
@@ -265,9 +308,14 @@ void
 tcp_connection_free (tcp_connection_t * tc)
 {
   tcp_main_t *tm = &tcp_main;
+  if (CLIB_DEBUG)
+    {
+      u8 thread_index = tc->c_thread_index;
+      clib_memset (tc, 0xFA, sizeof (*tc));
+      pool_put (tm->connections[thread_index], tc);
+      return;
+    }
   pool_put (tm->connections[tc->c_thread_index], tc);
-  if (CLIB_DEBUG > 0)
-    clib_memset (tc, 0xFA, sizeof (*tc));
 }
 
 /** Notify session that connection has been reset.
@@ -350,7 +398,16 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_ESTABLISHED:
-      if (!session_tx_fifo_max_dequeue (&tc->connection))
+      /* If closing with unread data, reset the connection */
+      if (transport_max_rx_dequeue (&tc->connection))
+	{
+	  tcp_send_reset (tc);
+	  tcp_connection_timers_reset (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	  break;
+	}
+      if (!transport_max_tx_dequeue (&tc->connection))
 	tcp_send_fin (tc);
       else
 	tc->flags |= TCP_CONN_FINPNDG;
@@ -361,7 +418,7 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_CLOSE_WAIT:
-      if (!session_tx_fifo_max_dequeue (&tc->connection))
+      if (!transport_max_tx_dequeue (&tc->connection))
 	{
 	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);
@@ -529,30 +586,6 @@ tcp_connection_fib_attach (tcp_connection_t * tc)
   tcp_connection_stack_on_fib_entry (tc);
 }
 #endif /* 0 */
-
-static void
-tcp_cc_init (tcp_connection_t * tc)
-{
-  tc->cc_algo = tcp_cc_algo_get (tcp_main.cc_algo);
-  tc->cc_algo->init (tc);
-}
-
-void
-tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
-		      const tcp_cc_algorithm_t * vft)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  vec_validate (tm->cc_algos, type);
-
-  tm->cc_algos[type] = *vft;
-}
-
-tcp_cc_algorithm_t *
-tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  return &tm->cc_algos[type];
-}
 
 /**
  * Generate random iss as per rfc6528
@@ -811,15 +844,14 @@ format_tcp_congestion (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
 
   s = format (s, "%U ", format_tcp_congestion_status, tc);
-  s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
-	      tc->cwnd, tc->ssthresh, tc->snd_rxt_bytes, tc->bytes_acked);
-  s = format (s, "%Ucc space %u prev_ssthresh %u snd_congestion %u"
-	      " dupack %u\n", format_white_space, indent,
-	      tcp_available_cc_snd_space (tc), tc->prev_ssthresh,
-	      tc->snd_congestion - tc->iss, tc->rcv_dupacks);
-  s = format (s, "%Utsecr %u tsecr_last_ack %u limited_transmit %u\n",
-	      format_white_space, indent, tc->rcv_opts.tsecr,
-	      tc->tsecr_last_ack, tc->limited_transmit - tc->iss);
+  s = format (s, "algo %s cwnd %u ssthresh %u bytes_acked %u\n",
+	      tc->cc_algo->name, tc->cwnd, tc->ssthresh, tc->bytes_acked);
+  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u rtx_bytes %u\n",
+	      format_white_space, indent, tcp_available_cc_snd_space (tc),
+	      tc->prev_cwnd, tc->prev_ssthresh, tc->snd_rxt_bytes);
+  s = format (s, "%Usnd_congestion %u dupack %u limited_transmit %u\n",
+	      format_white_space, indent, tc->snd_congestion - tc->iss,
+	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
   return s;
 }
 
@@ -838,11 +870,14 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tc->snd_wnd, tc->rcv_wnd, tc->rcv_wscale);
   s = format (s, "snd_wl1 %u snd_wl2 %u\n", tc->snd_wl1 - tc->irs,
 	      tc->snd_wl2 - tc->iss);
-  s = format (s, " flight size %u out space %u rcv_wnd_av %u\n",
+  s = format (s, " flight size %u out space %u rcv_wnd_av %u",
 	      tcp_flight_size (tc), tcp_available_output_snd_space (tc),
 	      tcp_rcv_wnd_available (tc));
-  s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
+  s = format (s, " tsval_recent %u\n", tc->tsval_recent);
+  s = format (s, " tsecr %u tsecr_last_ack %u tsval_recent_age %u",
+	      tc->rcv_opts.tsecr, tc->tsecr_last_ack,
 	      tcp_time_now () - tc->tsval_recent_age);
+  s = format (s, " snd_mss %u\n", tc->snd_mss);
   s = format (s, " rto %u rto_boff %u srtt %u us %.3f rttvar %u rtt_ts %.4f",
 	      tc->rto, tc->rto_boff, tc->srtt, tc->mrtt_us * 1000, tc->rttvar,
 	      tc->rtt_ts);
@@ -1156,13 +1191,6 @@ tcp_update_time (f64 now, u8 thread_index)
   tcp_flush_frames_to_output (wrk);
 }
 
-static u32
-tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
-{
-  tcp_connection_t *tc = (tcp_connection_t *) tconn;
-  return tcp_push_header (tc, b);
-}
-
 static void
 tcp_session_flush_data (transport_connection_t * tconn)
 {
@@ -1170,7 +1198,7 @@ tcp_session_flush_data (transport_connection_t * tconn)
   if (tc->flags & TCP_CONN_PSH_PENDING)
     return;
   tc->flags |= TCP_CONN_PSH_PENDING;
-  tc->psh_seq = tc->snd_una_max + transport_max_tx_dequeue (tconn) - 1;
+  tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (tconn) - 1;
 }
 
 /* *INDENT-OFF* */
@@ -1249,10 +1277,10 @@ tcp_timer_establish_handler (u32 conn_index)
   ASSERT (tc->state == TCP_STATE_SYN_RCVD);
   tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
   tcp_connection_set_state (tc, TCP_STATE_CLOSED);
-  /* Start cleanup. App wasn't notified yet so use delete notify as
-   * opposed to delete to cleanup session layer state. */
   tcp_connection_timers_reset (tc);
-  session_transport_delete_notify (&tc->connection);
+  /* Start cleanup. Do NOT delete the session until we do the connection
+   * cleanup. Otherwise, we end up with a dangling session index in the
+   * tcp connection. */
   tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 }
 
@@ -1277,7 +1305,7 @@ tcp_timer_establish_ao_handler (u32 conn_index)
 static void
 tcp_timer_waitclose_handler (u32 conn_index)
 {
-  u32 thread_index = vlib_get_thread_index (), rto;
+  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (conn_index, thread_index);
@@ -1302,7 +1330,7 @@ tcp_timer_waitclose_handler (u32 conn_index)
        * and switch to LAST_ACK. */
       tcp_cong_recovery_off (tc);
       /* Make sure we don't try to send unsent data */
-      tc->snd_una_max = tc->snd_nxt = tc->snd_una;
+      tc->snd_nxt = tc->snd_una;
       tcp_send_fin (tc);
       tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
 
@@ -1315,15 +1343,12 @@ tcp_timer_waitclose_handler (u32 conn_index)
       tcp_connection_timers_reset (tc);
       if (tc->flags & TCP_CONN_FINPNDG)
 	{
-	  /* If FIN pending send it before closing and wait as long as
-	   * the rto timeout would wait. Notify session layer that transport
-	   * is closed. We haven't sent everything but we did try. */
-	  tcp_cong_recovery_off (tc);
-	  tcp_send_fin (tc);
-	  rto = clib_max ((tc->rto >> tc->rto_boff) * TCP_TO_TIMER_TICK, 1);
-	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE,
-			 clib_min (rto, TCP_2MSL_TIME));
+	  /* If FIN pending, we haven't sent everything, but we did try.
+	   * Notify session layer that transport is closed. */
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  session_transport_closed_notify (&tc->connection);
+	  tcp_send_reset (tc);
+	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 	}
       else
 	{
@@ -1482,7 +1507,7 @@ tcp_main_enable (vlib_main_t * vm)
   tcp_initialize_iss_seed (tm);
 
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
-
+  tm->cc_last_type = TCP_CC_LAST;
   return error;
 }
 
@@ -1538,8 +1563,10 @@ tcp_init (vlib_main_t * vm)
 			       FIB_PROTOCOL_IP6, tcp6_output_node.index);
 
   tcp_api_reference ();
+  tm->cc_algo_by_name = hash_create_string (0, sizeof (uword));
   tm->tx_pacing = 1;
   tm->cc_algo = TCP_CC_NEWRENO;
+  tm->default_mtu = 1460;
   return 0;
 }
 
@@ -1549,15 +1576,20 @@ uword
 unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
 {
   uword *result = va_arg (*va, uword *);
+  tcp_main_t *tm = &tcp_main;
+  char *cc_algo_name;
+  u8 found = 0;
+  uword *p;
 
-  if (unformat (input, "newreno"))
-    *result = TCP_CC_NEWRENO;
-  else if (unformat (input, "cubic"))
-    *result = TCP_CC_CUBIC;
-  else
-    return 0;
+  if (unformat (input, "%s", &cc_algo_name)
+      && ((p = hash_get_mem (tm->cc_algo_by_name, cc_algo_name))))
+    {
+      *result = *p;
+      found = 1;
+    }
 
-  return 1;
+  vec_free (cc_algo_name);
+  return found;
 }
 
 uword
@@ -1602,6 +1634,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "max-rx-fifo %U", unformat_memory_size,
 			 &tm->max_rx_fifo))
 	;
+      else if (unformat (input, "mtu %d", &tm->default_mtu))
+	;
       else if (unformat (input, "no-tx-pacing"))
 	tm->tx_pacing = 0;
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
@@ -1637,14 +1671,10 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   u32 start_host_byte_order, end_host_byte_order;
   fib_prefix_t prefix;
-  vnet_sw_interface_t *si;
   fib_node_index_t fei;
   u32 fib_index = 0;
   u32 sw_if_index;
   int rv;
-  int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
-			      ip4_address_t * hi_addr, u32 fib_index,
-			      int is_del);
 
   clib_memset (&prefix, 0, sizeof (prefix));
 
@@ -1673,12 +1703,13 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
 
   sw_if_index = fib_entry_get_resolving_interface (fei);
 
-  /* Enable proxy arp on the interface */
-  si = vnet_get_sw_interface (vnm, sw_if_index);
-  si->flags |= VNET_SW_INTERFACE_FLAG_PROXY_ARP;
-
   /* Configure proxy arp across the range */
   rv = vnet_proxy_arp_add_del (start, end, fib_index, 0 /* is_del */ );
+
+  if (rv)
+    return rv;
+
+  rv = vnet_proxy_arp_enable_disable (vnm, sw_if_index, 1);
 
   if (rv)
     return rv;

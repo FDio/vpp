@@ -306,7 +306,7 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
   q = shm->vl_input_queue;
 
   e = vlib_call_init_exit_functions
-    (vm, vm->api_init_function_registrations, 1 /* call_once */ );
+    (vm, &vm->api_init_function_registrations, 1 /* call_once */ );
   if (e)
     clib_error_report (e);
 

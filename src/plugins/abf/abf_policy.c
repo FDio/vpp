@@ -76,7 +76,7 @@ abf_policy_find (u32 policy_id)
 }
 
 
-void
+int
 abf_policy_update (u32 policy_id,
 		   u32 acl_index, const fib_route_path_t * rpaths)
 {
@@ -128,6 +128,11 @@ abf_policy_update (u32 policy_id,
 
       ap = abf_policy_get (api);
       old_pl = ap->ap_pl;
+      if (ap->ap_acl != acl_index)
+	{
+	  /* Should change this error code to something more descriptive */
+	  return (VNET_API_ERROR_INVALID_VALUE);
+	}
 
       if (FIB_NODE_INDEX_INVALID != old_pl)
 	{
@@ -155,6 +160,7 @@ abf_policy_update (u32 policy_id,
 
       fib_walk_sync (abf_policy_fib_node_type, api, &ctx);
     }
+  return (0);
 }
 
 static void
@@ -184,7 +190,7 @@ abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths)
       /*
        * no such policy
        */
-      return (-1);
+      return (VNET_API_ERROR_INVALID_VALUE);
     }
   else
     {
@@ -242,6 +248,7 @@ abf_policy_cmd (vlib_main_t * vm,
   u32 acl_index, policy_id;
   fib_route_path_t *rpaths = NULL, rpath;
   u32 is_del;
+  int rv = 0;
 
   is_del = 0;
   acl_index = INDEX_INVALID;
@@ -283,7 +290,14 @@ abf_policy_cmd (vlib_main_t * vm,
 	  return 0;
 	}
 
-      abf_policy_update (policy_id, acl_index, rpaths);
+      rv = abf_policy_update (policy_id, acl_index, rpaths);
+      /* Should change this error code to something more descriptive */
+      if (rv == VNET_API_ERROR_INVALID_VALUE)
+	{
+	  vlib_cli_output (vm,
+			   "ACL index must match existing ACL index in policy");
+	  return 0;
+	}
     }
   else
     {

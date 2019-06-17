@@ -1,0 +1,185 @@
+diff --git a/scapy/layers/ipsec.py b/scapy/layers/ipsec.py
+index 69e7ae3b..0c69ba1a 100644
+--- a/scapy/layers/ipsec.py
++++ b/scapy/layers/ipsec.py
+@@ -344,7 +344,8 @@ class CryptAlgo(object):
+             encryptor = cipher.encryptor()
+ 
+             if self.is_aead:
+-                aad = struct.pack('!LL', esp.spi, esp.seq)
++                aad = struct.pack('!LQ' if sa.use_esn else '!LL',
++                                  esp.spi, esp.seq)
+                 encryptor.authenticate_additional_data(aad)
+                 data = encryptor.update(data) + encryptor.finalize()
+                 data += encryptor.tag[:self.icv_size]
+@@ -381,9 +382,9 @@ class CryptAlgo(object):
+             if self.is_aead:
+                 # Tag value check is done during the finalize method
+                 decryptor.authenticate_additional_data(
+-                    struct.pack('!LL', esp.spi, esp.seq)
++                    struct.pack('!LQ' if sa.use_esn else '!LL',
++                                esp.spi, esp.seq)
+                 )
+-
+             try:
+                 data = decryptor.update(data) + decryptor.finalize()
+             except InvalidTag as err:
+@@ -518,12 +519,16 @@ class AuthAlgo(object):
+         else:
+             return self.mac(key, self.digestmod(), default_backend())
+ 
+-    def sign(self, pkt, key):
++    def sign(self, pkt, key, trailer=None):
+         """
+         Sign an IPsec (ESP or AH) packet with this algo.
+ 
+         @param pkt:    a packet that contains a valid encrypted ESP or AH layer
+         @param key:    the authentication key, a byte string
++        @param trailer: additional data appended to the packet for ICV
++                        calculation, but not trnasmitted with the packet.
++                        For example, the high order bits of the exteneded
++                        sequence number.
+ 
+         @return: the signed packet
+         """
+@@ -534,16 +539,20 @@ class AuthAlgo(object):
+ 
+         if pkt.haslayer(ESP):
+             mac.update(raw(pkt[ESP]))
++            if trailer:
++                mac.update(trailer)
+             pkt[ESP].data += mac.finalize()[:self.icv_size]
+ 
+         elif pkt.haslayer(AH):
+             clone = zero_mutable_fields(pkt.copy(), sending=True)
+             mac.update(raw(clone))
++            if trailer:
++                mac.update(trailer)
+             pkt[AH].icv = mac.finalize()[:self.icv_size]
+ 
+         return pkt
+ 
+-    def verify(self, pkt, key):
++    def verify(self, pkt, key, trailer):
+         """
+         Check that the integrity check value (icv) of a packet is valid.
+ 
+@@ -574,6 +583,8 @@ class AuthAlgo(object):
+             clone = zero_mutable_fields(pkt.copy(), sending=False)
+ 
+         mac.update(raw(clone))
++        if trailer:
++            mac.update(trailer) # bytearray(4)) #raw(trailer))
+         computed_icv = mac.finalize()[:self.icv_size]
+ 
+         # XXX: Cannot use mac.verify because the ICV can be truncated
+@@ -757,7 +768,8 @@ class SecurityAssociation(object):
+     SUPPORTED_PROTOS = (IP, IPv6)
+ 
+     def __init__(self, proto, spi, seq_num=1, crypt_algo=None, crypt_key=None,
+-                 auth_algo=None, auth_key=None, tunnel_header=None, nat_t_header=None):
++                 auth_algo=None, auth_key=None, tunnel_header=None, nat_t_header=None,
++                 use_esn=False):
+         """
+         @param proto: the IPsec proto to use (ESP or AH)
+         @param spi: the Security Parameters Index of this SA
+@@ -771,6 +783,7 @@ class SecurityAssociation(object):
+                               to encapsulate the encrypted packets.
+         @param nat_t_header: an instance of a UDP header that will be used
+                              for NAT-Traversal.
++        @param use_esn: Use Extended Sequence Numbers
+         """
+ 
+         if proto not in (ESP, AH, ESP.name, AH.name):
+@@ -782,6 +795,7 @@ class SecurityAssociation(object):
+ 
+         self.spi = spi
+         self.seq_num = seq_num
++        self.use_esn = use_esn
+ 
+         if crypt_algo:
+             if crypt_algo not in CRYPT_ALGOS:
+@@ -827,6 +841,17 @@ class SecurityAssociation(object):
+             raise TypeError('packet spi=0x%x does not match the SA spi=0x%x' %
+                             (pkt.spi, self.spi))
+ 
++    def build_seq_num(self, num):
++        # only lower order bits are  transmitted
++        # higher order bits are used in the ICV
++        lower = num & 0xffffffff
++        upper = num >> 32
++
++        if self.use_esn:
++            return lower, struct.pack("!I", upper)
++        else:
++            return lower, None
++
+     def _encrypt_esp(self, pkt, seq_num=None, iv=None):
+ 
+         if iv is None:
+@@ -835,7 +860,8 @@ class SecurityAssociation(object):
+             if len(iv) != self.crypt_algo.iv_size:
+                 raise TypeError('iv length must be %s' % self.crypt_algo.iv_size)
+ 
+-        esp = _ESPPlain(spi=self.spi, seq=seq_num or self.seq_num, iv=iv)
++        low_seq_num, high_seq_num = self.build_seq_num(seq_num or self.seq_num)
++        esp = _ESPPlain(spi=self.spi, seq=low_seq_num, iv=iv)
+ 
+         if self.tunnel_header:
+             tunnel = self.tunnel_header.copy()
+@@ -857,7 +883,7 @@ class SecurityAssociation(object):
+         esp = self.crypt_algo.pad(esp)
+         esp = self.crypt_algo.encrypt(self, esp, self.crypt_key)
+ 
+-        self.auth_algo.sign(esp, self.auth_key)
++        self.auth_algo.sign(esp, self.auth_key, high_seq_num)
+ 
+         if self.nat_t_header:
+             nat_t_header = self.nat_t_header.copy()
+@@ -884,7 +910,8 @@ class SecurityAssociation(object):
+ 
+     def _encrypt_ah(self, pkt, seq_num=None):
+ 
+-        ah = AH(spi=self.spi, seq=seq_num or self.seq_num,
++        low_seq_num, high_seq_num = self.build_seq_num(seq_num or self.seq_num)
++        ah = AH(spi=self.spi, seq=low_seq_num,
+                 icv = b"\x00" * self.auth_algo.icv_size)
+ 
+         if self.tunnel_header:
+@@ -924,7 +951,8 @@ class SecurityAssociation(object):
+         else:
+             ip_header.plen = len(ip_header.payload) + len(ah) + len(payload)
+ 
+-        signed_pkt = self.auth_algo.sign(ip_header / ah / payload, self.auth_key)
++        signed_pkt = self.auth_algo.sign(ip_header / ah / payload,
++                                         self.auth_key, high_seq_num)
+ 
+         # sequence number must always change, unless specified by the user
+         if seq_num is None:
+@@ -955,11 +983,12 @@ class SecurityAssociation(object):
+ 
+     def _decrypt_esp(self, pkt, verify=True):
+ 
++        low_seq_num, high_seq_num = self.build_seq_num(self.seq_num)
+         encrypted = pkt[ESP]
+ 
+         if verify:
+             self.check_spi(pkt)
+-            self.auth_algo.verify(encrypted, self.auth_key)
++            self.auth_algo.verify(encrypted, self.auth_key, high_seq_num)
+ 
+         esp = self.crypt_algo.decrypt(self, encrypted, self.crypt_key,
+                                       self.crypt_algo.icv_size or
+@@ -998,9 +1027,11 @@ class SecurityAssociation(object):
+ 
+     def _decrypt_ah(self, pkt, verify=True):
+ 
++        low_seq_num, high_seq_num = self.build_seq_num(self.seq_num)
++
+         if verify:
+             self.check_spi(pkt)
+-            self.auth_algo.verify(pkt, self.auth_key)
++            self.auth_algo.verify(pkt, self.auth_key, high_seq_num)
+ 
+         ah = pkt[AH]
+         payload = ah.payload

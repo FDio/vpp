@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -30,6 +30,9 @@
 #define LDP_ENV_DEBUG     "LDP_DEBUG"
 #define LDP_ENV_APP_NAME  "LDP_APP_NAME"
 #define LDP_ENV_SID_BIT   "LDP_SID_BIT"
+#define LDP_ENV_TLS_CERT  "LDP_TLS_CERT_FILE"
+#define LDP_ENV_TLS_KEY   "LDP_TLS_KEY_FILE"
+#define LDP_ENV_TLS_TRANS "LDP_TRANSPARENT_TLS"
 
 #define LDP_SID_BIT_MIN   5
 #define LDP_SID_BIT_MAX   30

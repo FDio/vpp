@@ -17,6 +17,9 @@
 #ifndef included_stat_client_h
 #define included_stat_client_h
 
+#define STAT_VERSION_MAJOR     1
+#define STAT_VERSION_MINOR     2
+
 #include <stdint.h>
 #include <unistd.h>
 #include <vlib/counter_types.h>
@@ -43,7 +46,7 @@ typedef struct
   union
   {
     double scalar_value;
-    uint64_t error_value;
+    counter_t *error_vector;
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
     uint8_t **name_vector;
@@ -73,7 +76,10 @@ void stat_segment_data_free (stat_segment_data_t * res);
 double stat_segment_heartbeat_r (stat_client_main_t * sm);
 double stat_segment_heartbeat (void);
 
+char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
 char *stat_segment_index_to_name (uint32_t index);
+uint64_t stat_segment_version (void);
+uint64_t stat_segment_version_r (stat_client_main_t * sm);
 
 #endif /* included_stat_client_h */
 

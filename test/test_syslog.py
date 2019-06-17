@@ -5,13 +5,17 @@ from framework import VppTestCase, VppTestRunner
 from util import ppp
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
-from vpp_papi_provider import SYSLOG_SEVERITY
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
+from vpp_papi import VppEnum
 
 
 class TestSyslog(VppTestCase):
     """ Syslog Protocol Test Cases """
+
+    @property
+    def SYSLOG_SEVERITY(self):
+        return VppEnum.vl_api_syslog_severity_t
 
     @classmethod
     def setUpClass(cls):
@@ -26,6 +30,10 @@ class TestSyslog(VppTestCase):
         except Exception:
             super(TestSyslog, cls).tearDownClass()
             raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestSyslog, cls).tearDownClass()
 
     def syslog_generate(self, facility, severity, appname, msgid, sd=None,
                         msg=None):
@@ -95,7 +103,8 @@ class TestSyslog(VppTestCase):
 
     def test_syslog(self):
         """ Syslog Protocol test """
-        self.vapi.syslog_set_sender(self.pg0.remote_ip4n, self.pg0.local_ip4n)
+        self.vapi.syslog_set_sender(src_address=self.pg0.local_ip4n,
+                                    collector_address=self.pg0.remote_ip4n)
         config = self.vapi.syslog_get_sender()
         self.assertEqual(str(config.collector_address),
                          self.pg0.remote_ip4)
@@ -140,9 +149,11 @@ class TestSyslog(VppTestCase):
                            msg)
 
         self.pg_enable_capture(self.pg_interfaces)
-        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.WARN)
+        self.vapi.syslog_set_filter(
+            self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_WARN)
         filter = self.vapi.syslog_get_filter()
-        self.assertEqual(filter.severity, SYSLOG_SEVERITY.WARN)
+        self.assertEqual(filter.severity,
+                         self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_WARN)
         self.syslog_generate(SyslogFacility.local7,
                              SyslogSeverity.info,
                              appname,
@@ -167,8 +178,8 @@ class TestSyslog(VppTestCase):
                            sd1,
                            msg)
 
-        self.vapi.syslog_set_sender(self.pg0.remote_ip4n,
-                                    self.pg0.local_ip4n,
+        self.vapi.syslog_set_sender(self.pg0.local_ip4n,
+                                    self.pg0.remote_ip4n,
                                     collector_port=12345)
         config = self.vapi.syslog_get_sender()
         self.assertEqual(config.collector_port, 12345)

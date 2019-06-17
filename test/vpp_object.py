@@ -27,10 +27,29 @@ class VppObject(object):
         """ Remove the configuration for this object from vpp. """
         pass
 
-    @abc.abstractmethod
     def object_id(self):
         """ Return a unique string representing this object. """
-        pass
+        return "Undefined. for <%s %s>" % (self.__class__.__name__, id(self))
+
+    def __str__(self):
+        return self.object_id()
+
+    def __repr__(self):
+        return '<%s>' % self.object_id()
+
+    def __hash__(self):
+        return hash(self.object_id())
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        if other.object_id() == self.object_id():
+            return True
+        return False
+
+    # This can be removed when python2 support is dropped.
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class VppObjectRegistry(object):
@@ -84,6 +103,6 @@ class VppObjectRegistry(object):
         if failed:
             logger.error("REG: Couldn't remove configuration for object(s):")
             for obj in failed:
-                logger.error(moves.reprlib.repr(obj))
+                logger.error(repr(obj))
             raise Exception("Couldn't remove configuration for object(s): %s" %
                             (", ".join(str(x) for x in failed)))

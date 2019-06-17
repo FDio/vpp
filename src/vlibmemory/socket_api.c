@@ -591,7 +591,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   clib_file_t *cf;
   vl_api_shm_elem_config_t *config = 0;
   vl_shmem_hdr_t *shmem_hdr;
-  int rv;
+  int rv, tries = 1000;
 
   regp = vl_api_client_index_to_registration (mp->client_index);
   if (regp == 0)
@@ -671,6 +671,22 @@ reply:
 
   /* Send the magic "here's your sign (aka fd)" socket message */
   cf = vl_api_registration_file (regp);
+
+  /* Wait for reply to be consumed before sending the fd */
+  while (tries-- > 0)
+    {
+      int bytes;
+      rv = ioctl (cf->file_descriptor, TIOCOUTQ, &bytes);
+      if (rv < 0)
+	{
+	  clib_unix_warning ("ioctl returned");
+	  break;
+	}
+      if (bytes == 0)
+	break;
+      usleep (1e3);
+    }
+
   vl_sock_api_send_fd_msg (cf->file_descriptor, &memfd->fd, 1);
 }
 
@@ -722,8 +738,7 @@ vl_sock_api_init (vlib_main_t * vm)
       vec_free (tmp);
     }
 
-  sock->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_SEQPACKET |
-    CLIB_SOCKET_F_ALLOW_GROUP_WRITE;
+  sock->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_ALLOW_GROUP_WRITE;
   error = clib_socket_init (sock);
   if (error)
     return error;
@@ -790,13 +805,10 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (socksvr_config, "socksvr");
 
-clib_error_t *
-vlibsocket_init (vlib_main_t * vm)
+void
+vlibsocket_reference ()
 {
-  return 0;
 }
-
-VLIB_INIT_FUNCTION (vlibsocket_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

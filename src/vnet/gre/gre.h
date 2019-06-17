@@ -55,9 +55,9 @@ typedef enum gre_tunnel_type_t_
    * receiving ERSPAN packets from a GRE ERSPAN tunnel in VPP.
    */
   GRE_TUNNEL_TYPE_ERSPAN = 2,
-
-  GRE_TUNNEL_TYPE_N
 } gre_tunnel_type_t;
+
+#define GRE_TUNNEL_TYPE_N (GRE_TUNNEL_TYPE_ERSPAN + 1)
 
 #define GRE_TUNNEL_TYPE_NAMES {    \
     [GRE_TUNNEL_TYPE_L3] = "L3",   \
@@ -181,11 +181,6 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   /**
-   * Linkage into the FIB object graph
-   */
-  fib_node_t node;
-
-  /**
    * The hash table's key stored in separate memory since the tunnel_t
    * memory can realloc.
    */
@@ -206,19 +201,6 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
   gre_tunnel_type_t type;
-
-  /**
-   * The FIB entry sourced by the tunnel for its destination prefix
-   */
-  fib_node_index_t fib_entry_index;
-
-  /**
-   * The tunnel is a child of the FIB entry for its desintion. This is
-   * so it receives updates when the forwarding information for that entry
-   * changes.
-   * The tunnels sibling index on the FIB entry's dependency list.
-   */
-  u32 sibling_index;
 
   /**
    * an L2 tunnel always rquires an L2 midchain. cache here for DP.
@@ -365,16 +347,16 @@ gre_register_input_protocol (vlib_main_t * vm, gre_protocol_t protocol,
 typedef struct
 {
   u8 is_add;
-  u8 tunnel_type;
+  gre_tunnel_type_t type;
   u8 is_ipv6;
   u32 instance;
   ip46_address_t src, dst;
   u32 outer_fib_id;
   u16 session_id;
-} vnet_gre_add_del_tunnel_args_t;
+} vnet_gre_tunnel_add_del_args_t;
 
-int vnet_gre_add_del_tunnel
-  (vnet_gre_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
+extern int vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
+				    u32 * sw_if_indexp);
 
 static inline void
 gre_mk_key4 (ip4_address_t src,

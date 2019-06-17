@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -21,6 +21,8 @@
 #include <vnet/session/session.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
+
+udp_main_t udp_main;
 
 udp_connection_t *
 udp_connection_alloc (u32 thread_index)
@@ -93,6 +95,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
+  listener->owns_port = 1;
   clib_spinlock_init (&listener->rx_lock);
 
   node_index = lcl->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
@@ -166,8 +169,9 @@ udp_session_close (u32 connection_index, u32 thread_index)
   uc = udp_connection_get (connection_index, thread_index);
   if (uc)
     {
-      udp_unregister_dst_port (vm, clib_net_to_host_u16 (uc->c_lcl_port),
-			       uc->c_is_ip4);
+      if (uc->owns_port || !uc->is_connected)
+	udp_unregister_dst_port (vm, clib_net_to_host_u16 (uc->c_lcl_port),
+				 uc->c_is_ip4);
       session_transport_delete_notify (&uc->connection);
       udp_connection_free (uc);
     }
@@ -234,6 +238,7 @@ format_udp_session (u8 * s, va_list * args)
 u8 *
 format_udp_half_open_session (u8 * s, va_list * args)
 {
+  u32 __clib_unused tci = va_arg (*args, u32);
   clib_warning ("BUG");
   return 0;
 }
@@ -242,6 +247,7 @@ u8 *
 format_udp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
+  u32 __clib_unused verbose = va_arg (*args, u32);
   udp_connection_t *uc = udp_listener_get (tci);
   return format (s, "%U", format_udp_connection, uc);
 }
@@ -300,6 +306,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   uc->c_is_ip4 = rmt->is_ip4;
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
+  uc->owns_port = 1;
 
   return uc->c_c_index;
 }
@@ -342,9 +349,11 @@ int
 udpc_connection_open (transport_endpoint_cfg_t * rmt)
 {
   udp_connection_t *uc;
+  /* Reproduce the logic of udp_open_connection to find the correct thread */
+  u32 thread_index = vlib_num_workers ()? 1 : vlib_get_main ()->thread_index;
   u32 uc_index;
   uc_index = udp_open_connection (rmt);
-  uc = udp_connection_get (uc_index, vlib_get_thread_index ());
+  uc = udp_connection_get (uc_index, thread_index);
   uc->is_connected = 1;
   return uc_index;
 }
@@ -376,7 +385,7 @@ const static transport_proto_vft_t udpc_proto = {
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
-  .tx_type = TRANSPORT_TX_DEQUEUE,
+  .tx_type = TRANSPORT_TX_DGRAM,
   .service_type = TRANSPORT_SERVICE_CL,
 };
 /* *INDENT-ON* */
@@ -388,16 +397,8 @@ udp_init (vlib_main_t * vm)
   ip_main_t *im = &ip_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   u32 num_threads;
-  clib_error_t *error = 0;
   ip_protocol_info_t *pi;
   int i;
-
-  if ((error = vlib_call_init_function (vm, ip_main_init)))
-    return error;
-  if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
-    return error;
-  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
-    return error;
 
   /*
    * Registrations
@@ -436,10 +437,17 @@ udp_init (vlib_main_t * vm)
 	clib_spinlock_init (&um->peekers_readers_locks[i]);
 	clib_spinlock_init (&um->peekers_write_locks[i]);
       }
-  return error;
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (udp_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (udp_init) =
+{
+  .runs_after = VLIB_INITS("ip_main_init", "ip4_lookup_init",
+                           "ip6_lookup_init"),
+};
+/* *INDENT-ON* */
+
 
 static clib_error_t *
 show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,

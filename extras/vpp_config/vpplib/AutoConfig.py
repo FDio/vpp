@@ -351,7 +351,7 @@ class AutoConfig(object):
             vpp_main_core = node['cpu']['vpp_main_core']
         else:
             vpp_main_core = 0
-        if vpp_main_core is not 0:
+        if vpp_main_core != 0:
             cpu += '  main-core {}\n'.format(vpp_main_core)
 
         # Get workers
@@ -419,7 +419,7 @@ class AutoConfig(object):
 
         # If the total mbufs is not 0 or less than the default, set num-bufs
         logging.debug("Total mbufs: {}".format(total_mbufs))
-        if total_mbufs is not 0 and total_mbufs > 16384:
+        if total_mbufs != 0 and total_mbufs > 16384:
             devices += '\n  num-mbufs {}'.format(total_mbufs)
 
         return devices
@@ -558,7 +558,7 @@ class AutoConfig(object):
             other_cpus_end = other_cpus_start + \
                 node['cpu']['total_other_cpus'] - 1
             other_workers = None
-            if other_cpus_end is not 0:
+            if other_cpus_end != 0:
                 other_workers = (other_cpus_start, other_cpus_end)
             node['cpu']['other_workers'] = other_workers
 
@@ -572,12 +572,12 @@ class AutoConfig(object):
             #  then we shouldn't get workers
             total_workers_node = 0
             if len(ports_per_numa):
-                total_workers_node = total_vpp_cpus / len(ports_per_numa)
+                total_workers_node = total_vpp_cpus // len(ports_per_numa)
             total_main = 0
             if reserve_vpp_main_core:
                 total_main = 1
             total_mbufs = 0
-            if total_main + total_workers_node is not 0:
+            if total_main + total_workers_node != 0:
                 for item in ports_per_numa.items():
                     numa_node = item[0]
                     value = item[1]
@@ -735,7 +735,7 @@ class AutoConfig(object):
             all_workers = []
             if other_workers is not None:
                 all_workers = [other_workers]
-            if vpp_main_core is not 0:
+            if vpp_main_core != 0:
                 all_workers += [(vpp_main_core, vpp_main_core)]
             all_workers += vpp_workers
             isolated_cpus = ''
@@ -804,7 +804,7 @@ class AutoConfig(object):
                 iso_cpul = iso_cpu_str.split(',')
                 for iso_cpu in iso_cpul:
                     isocpuspl = iso_cpu.split('-')
-                    if len(isocpuspl) is 1:
+                    if len(isocpuspl) == 1:
                         current_iso_cpus += 1
                     else:
                         first = int(isocpuspl[0])
@@ -953,7 +953,9 @@ class AutoConfig(object):
         print("Then to improve performance start reserving cores and "
               "adding queues as needed.")
 
-        max_vpp_cpus = 4
+        # Leave 1 for the general system
+        total_cpus -= 1
+        max_vpp_cpus = min(total_cpus, 4)
         total_vpp_cpus = 0
         if max_vpp_cpus > 0:
             question = "\nHow many core(s) shall we reserve for " \
@@ -961,15 +963,16 @@ class AutoConfig(object):
             total_vpp_cpus = self._ask_user_range(question, 0, max_vpp_cpus, 0)
             node['cpu']['total_vpp_cpus'] = total_vpp_cpus
 
-        max_other_cores = (total_cpus - total_vpp_cpus) / 2
-        question = 'How many core(s) do you want to reserve for ' \
-                   'processes other than VPP? [0-{}][0]? '. \
-            format(str(max_other_cores))
-        total_other_cpus = self._ask_user_range(
-            question, 0, max_other_cores, 0)
-        node['cpu']['total_other_cpus'] = total_other_cpus
+        total_other_cpus = 0
+        max_other_cores = total_cpus - total_vpp_cpus
+        if max_other_cores > 0:
+            question = 'How many core(s) do you want to reserve for ' \
+                       'processes other than VPP? [0-{}][0]? '. \
+                       format(str(max_other_cores))
+            total_other_cpus = self._ask_user_range(question, 0, max_other_cores, 0)
+            node['cpu']['total_other_cpus'] = total_other_cpus
 
-        max_main_cpus = max_vpp_cpus + 1 - total_vpp_cpus
+        max_main_cpus = total_cpus - total_vpp_cpus - total_other_cpus
         reserve_vpp_main_core = False
         if max_main_cpus > 0:
             question = "Should we reserve 1 core for the VPP Main thread? "
@@ -1034,7 +1037,7 @@ class AutoConfig(object):
             node['cpu']['cpus_per_node'] = cpus_per_node
 
             # Ask the user some questions
-            if ask_questions and total_cpus >= 8:
+            if ask_questions and total_cpus >= 4:
                 self._modify_cpu_questions(node, total_cpus, numa_nodes)
 
             # Populate the interfaces with the numa node
@@ -1406,7 +1409,7 @@ class AutoConfig(object):
 
         if 'cpu' in node and 'total_mbufs' in node['cpu']:
             total_mbufs = node['cpu']['total_mbufs']
-            if total_mbufs is not 0:
+            if total_mbufs != 0:
                 print("Total Number of Buffers: {}".format(total_mbufs))
 
         vpp = VppPCIUtil(node)
@@ -1485,13 +1488,24 @@ class AutoConfig(object):
         hpg.show_huge_pages()
 
     @staticmethod
+    def has_interfaces(node):
+        """
+        Check for interfaces, return tru if there is at least one
+
+        :returns: boolean
+        """
+        if 'interfaces' in node and len(node['interfaces']):
+            return True
+        else:
+            return False
+
+    @staticmethod
     def min_system_resources(node):
         """
         Check the system for basic minimum resources, return true if
         there is enough.
 
         :returns: boolean
-        :rtype: dict
         """
 
         min_sys_res = True
@@ -1617,7 +1631,7 @@ class AutoConfig(object):
 
             # Show the current interfaces with IP addresses
             current_ints = VPPUtil.get_int_ip(node)
-            if current_ints is not {}:
+            if current_ints != {}:
                 print("\nThese are the current interfaces with IP addresses:")
                 for items in sorted(current_ints.items()):
                     name = items[0]

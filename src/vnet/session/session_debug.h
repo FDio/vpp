@@ -25,6 +25,7 @@
   _(POLL_GAP_TRACK, "poll gap track")	\
   _(POLL_DISPATCH_TIME, "dispatch time")\
   _(DISPATCH_END, "dispatch end")	\
+  _(FREE, "session free")		\
 
 typedef enum _session_evt_dbg
 {
@@ -36,6 +37,7 @@ typedef enum _session_evt_dbg
 #define SESSION_DEBUG 0 * (TRANSPORT_DEBUG > 0)
 #define SESSION_DEQ_NODE_EVTS (0)
 #define SESSION_EVT_POLL_DBG (0)
+#define SESSION_SM (0)
 
 #if SESSION_DEBUG
 
@@ -56,6 +58,21 @@ typedef enum _session_evt_dbg
     u32 data[_size];							\
   } * ed;								\
   ed = ELOG_DATA (&vlib_global_main.elog_main, _e)
+
+#if SESSION_SM
+#define SESSION_EVT_FREE_HANDLER(_s)					\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "free: idx %u",						\
+    .format_args = "i4",						\
+  };									\
+  DEC_SESSION_ETD(_s, _e, 1);						\
+  ed->data[0] =	_s->session_index;					\
+}
+#else
+#define SESSION_EVT_FREE_HANDLER(_s)
+#endif
 
 #if SESSION_DEQ_NODE_EVTS && SESSION_DEBUG > 1
 #define SESSION_EVT_DEQ_HANDLER(_s, _body)				\

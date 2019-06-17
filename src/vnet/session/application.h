@@ -74,10 +74,13 @@ typedef struct app_listener_
 {
   clib_bitmap_t *workers;	/**< workers accepting connections */
   u32 accept_rotor;		/**< last worker to accept a connection */
-  u32 al_index;
-  u32 app_index;
-  u32 local_index;
-  u32 session_index;
+  u32 al_index;			/**< app listener index in app pool */
+  u32 app_index;		/**< owning app index */
+  u32 local_index;		/**< local listening session index */
+  u32 session_index;		/**< global listening session index */
+  session_handle_t ls_handle;	/**< session handle of the local or global
+				     listening session that also identifies
+				     the app listener */
 } app_listener_t;
 
 typedef struct application_
@@ -92,7 +95,7 @@ typedef struct application_
   session_cb_vft_t cb_fns;
 
   /** Segment manager properties. Shared by all segment managers */
-  segment_manager_properties_t sm_properties;
+  segment_manager_props_t sm_properties;
 
   /** Pool of mappings that keep track of workers associated to this app */
   app_worker_map_t *worker_maps;
@@ -109,7 +112,7 @@ typedef struct application_
   app_listener_t *listeners;
 
   /*
-   * TLS Specific
+   * TLS & QUIC Specific
    */
 
   /** Certificate to be used for listen sessions */
@@ -120,6 +123,8 @@ typedef struct application_
 
   /** Preferred tls engine */
   u8 tls_engine;
+
+  u64 *quicly_ctx;
 
 } application_t;
 
@@ -171,9 +176,30 @@ void app_listener_cleanup (app_listener_t * app_listener);
 session_handle_t app_listener_handle (app_listener_t * app_listener);
 app_listener_t *app_listener_lookup (application_t * app,
 				     session_endpoint_cfg_t * sep);
+
+/**
+ * Get app listener handle for listening session
+ *
+ * For a given listening session, this can return either the session
+ * handle of the app listener associated to the listening session or,
+ * if no such app listener exists, the session's handle
+ *
+ * @param ls		listening session
+ * @return		app listener or listening session handle
+ */
+session_handle_t app_listen_session_handle (session_t * ls);
+/**
+ * Get app listener for listener session handle
+ *
+ * Should only be called on handles that have an app listener, i.e.,
+ * were obtained at the end of a @ref vnet_listen call.
+ *
+ * @param handle	handle of the app listener. This is the handle of
+ * 			either the global or local listener
+ * @return		pointer to app listener or 0
+ */
 app_listener_t *app_listener_get_w_handle (session_handle_t handle);
 app_listener_t *app_listener_get_w_session (session_t * ls);
-app_worker_t *app_listener_select_worker (app_listener_t * al);
 session_t *app_listener_get_session (app_listener_t * al);
 session_t *app_listener_get_local_session (app_listener_t * al);
 
@@ -193,14 +219,13 @@ u32 application_local_session_table (application_t * app);
 const u8 *application_name_from_index (u32 app_or_wrk);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
-u8 application_use_mq_for_ctrl (application_t * app);
 void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
 
-segment_manager_properties_t *application_get_segment_manager_properties (u32
-									  app_index);
+segment_manager_props_t *application_get_segment_manager_properties (u32
+								     app_index);
 
-segment_manager_properties_t
+segment_manager_props_t
   * application_segment_manager_properties (application_t * app);
 
 /*
@@ -224,6 +249,10 @@ int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 			       u32 opaque);
+int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
+int app_worker_reset_notify (app_worker_t * app_wrk, session_t * s);
+int app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s);
+int app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
@@ -237,7 +266,6 @@ int app_worker_del_segment_notify (app_worker_t * app_wrk,
 u32 app_worker_n_listeners (app_worker_t * app);
 session_t *app_worker_first_listener (app_worker_t * app,
 				      u8 fib_proto, u8 transport_proto);
-u8 app_worker_application_is_builtin (app_worker_t * app_wrk);
 int app_worker_send_event (app_worker_t * app, session_t * s, u8 evt);
 int app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				    u8 evt_type);

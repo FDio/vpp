@@ -97,13 +97,6 @@ get_stat_vector_r (stat_client_main_t * sm)
 			       sm->shared_header->directory_offset);
 }
 
-static stat_segment_directory_entry_t *
-get_stat_vector (void)
-{
-  stat_client_main_t *sm = &stat_client_main;
-  return get_stat_vector_r (sm);
-}
-
 int
 stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
 {
@@ -141,16 +134,19 @@ stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
 
   if (fstat (mfd, &st) == -1)
     {
+      close (mfd);
       perror ("mmap fstat failed");
       return -4;
     }
   if ((memaddr =
        mmap (NULL, st.st_size, PROT_READ, MAP_SHARED, mfd, 0)) == MAP_FAILED)
     {
+      close (mfd);
       perror ("mmap map failed");
       return -5;
     }
 
+  close (mfd);
   sm->memory_size = st.st_size;
   sm->shared_header = memaddr;
   sm->directory_vector =
@@ -173,6 +169,31 @@ stat_segment_disconnect_r (stat_client_main_t * sm)
   return;
 }
 
+typedef struct
+{
+  uint64_t epoch;
+} stat_segment_access_t;
+
+static void
+stat_segment_access_start (stat_segment_access_t * sa,
+			   stat_client_main_t * sm)
+{
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  sa->epoch = shared_header->epoch;
+  while (shared_header->in_progress != 0)
+    ;
+}
+
+static bool
+stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
+{
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+
+  if (shared_header->epoch != sa->epoch || shared_header->in_progress)
+    return false;
+  return true;
+}
+
 void
 stat_segment_disconnect (void)
 {
@@ -183,9 +204,17 @@ stat_segment_disconnect (void)
 double
 stat_segment_heartbeat_r (stat_client_main_t * sm)
 {
-  stat_segment_directory_entry_t *vec = get_stat_vector_r (sm);
-  double *hb = stat_segment_pointer (sm->shared_header, vec[4].offset);
-  return *hb;
+  stat_segment_access_t sa;
+  stat_segment_directory_entry_t *ep;
+
+  /* Has directory been update? */
+  if (sm->shared_header->epoch != sm->current_epoch)
+    return 0;
+  stat_segment_access_start (&sa, sm);
+  ep = vec_elt_at_index (sm->directory_vector, STAT_COUNTER_HEARTBEAT);
+  if (!stat_segment_access_end (&sa, sm))
+    return 0.0;
+  return ep->value;
 }
 
 double
@@ -195,14 +224,13 @@ stat_segment_heartbeat (void)
   return stat_segment_heartbeat_r (sm);
 }
 
-stat_segment_data_t
+static stat_segment_data_t
 copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 {
   stat_segment_data_t result = { 0 };
   int i;
   vlib_counter_t **combined_c;	/* Combined counter */
   counter_t **simple_c;		/* Simple counter */
-  counter_t *error_base;
   uint64_t *offset_vector;
 
   assert (sm->shared_header);
@@ -246,10 +274,16 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       break;
 
     case STAT_DIR_TYPE_ERROR_INDEX:
-      error_base =
-	stat_segment_pointer (sm->shared_header,
-			      sm->shared_header->error_offset);
-      result.error_value = error_base[ep->index];
+      /* Gather errors from all threads into a vector */
+      offset_vector = stat_segment_pointer (sm->shared_header,
+					    sm->shared_header->error_offset);
+      vec_validate (result.error_vector, vec_len (offset_vector) - 1);
+      for (i = 0; i < vec_len (offset_vector); i++)
+	{
+	  counter_t *cb =
+	    stat_segment_pointer (sm->shared_header, offset_vector[i]);
+	  result.error_vector[i] = cb[ep->index];
+	}
       break;
 
     case STAT_DIR_TYPE_NAME_VECTOR:
@@ -303,32 +337,6 @@ stat_segment_data_free (stat_segment_data_t * res)
       free (res[i].name);
     }
   vec_free (res);
-}
-
-
-typedef struct
-{
-  uint64_t epoch;
-} stat_segment_access_t;
-
-static void
-stat_segment_access_start (stat_segment_access_t * sa,
-			   stat_client_main_t * sm)
-{
-  stat_segment_shared_header_t *shared_header = sm->shared_header;
-  sa->epoch = shared_header->epoch;
-  while (shared_header->in_progress != 0)
-    ;
-}
-
-static bool
-stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
-{
-  stat_segment_shared_header_t *shared_header = sm->shared_header;
-
-  if (shared_header->epoch != sa->epoch || shared_header->in_progress)
-    return false;
-  return true;
 }
 
 uint32_t *
@@ -477,14 +485,42 @@ stat_segment_dump_entry (uint32_t index)
 }
 
 char *
+stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm)
+{
+  stat_segment_directory_entry_t *ep;
+  stat_segment_access_t sa;
+  stat_segment_directory_entry_t *vec;
+
+  /* Has directory been update? */
+  if (sm->shared_header->epoch != sm->current_epoch)
+    return 0;
+  stat_segment_access_start (&sa, sm);
+  vec = get_stat_vector_r (sm);
+  ep = vec_elt_at_index (vec, index);
+  if (!stat_segment_access_end (&sa, sm))
+    return 0;
+  return strdup (ep->name);
+}
+
+char *
 stat_segment_index_to_name (uint32_t index)
 {
-  char *name;
-  stat_segment_directory_entry_t *counter_vec = get_stat_vector ();
-  stat_segment_directory_entry_t *ep;
-  ep = vec_elt_at_index (counter_vec, index);
-  name = strdup (ep->name);
-  return name;
+  stat_client_main_t *sm = &stat_client_main;
+  return stat_segment_index_to_name_r (index, sm);
+}
+
+uint64_t
+stat_segment_version_r (stat_client_main_t * sm)
+{
+  ASSERT (sm->shared_header);
+  return sm->shared_header->version;
+}
+
+uint64_t
+stat_segment_version (void)
+{
+  stat_client_main_t *sm = &stat_client_main;
+  return stat_segment_version_r (sm);
 }
 
 /*

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2015-2017 Cisco and/or its affiliates.
+* Copyright (c) 2017-2019 Cisco and/or its affiliates.
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at:
@@ -163,7 +163,7 @@ proxy_disconnect_callback (session_t * s)
 static void
 proxy_reset_callback (session_t * s)
 {
-  clib_warning ("Reset session %U", format_stream_session, s, 2);
+  clib_warning ("Reset session %U", format_session, s, 2);
   delete_proxy_session (s, 0 /* is_active_open */ );
 }
 
@@ -212,9 +212,10 @@ proxy_rx_callback (session_t * s)
       if (svm_fifo_set_event (active_open_tx_fifo))
 	{
 	  u32 ao_thread_index = active_open_tx_fifo->master_thread_index;
-	  if (session_send_io_evt_to_thread_custom (active_open_tx_fifo,
+	  u32 ao_session_index = active_open_tx_fifo->master_session_index;
+	  if (session_send_io_evt_to_thread_custom (&ao_session_index,
 						    ao_thread_index,
-						    FIFO_EVENT_APP_TX))
+						    SESSION_IO_EVT_TX))
 	    clib_warning ("failed to enqueue tx evt");
 	}
     }
@@ -226,7 +227,7 @@ proxy_rx_callback (session_t * s)
       ASSERT (rx_fifo->master_thread_index == thread_index);
       ASSERT (tx_fifo->master_thread_index == thread_index);
 
-      max_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
+      max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
 
       if (PREDICT_FALSE (max_dequeue == 0))
 	return 0;
@@ -320,7 +321,7 @@ active_open_connected_callback (u32 app_index, u32 opaque,
    */
   ASSERT (s->thread_index == thread_index);
   if (svm_fifo_set_event (s->tx_fifo))
-    session_send_io_evt_to_thread (s->tx_fifo, FIFO_EVENT_APP_TX);
+    session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
 
   return 0;
 }
@@ -356,9 +357,10 @@ active_open_rx_callback (session_t * s)
   if (svm_fifo_set_event (proxy_tx_fifo))
     {
       u8 thread_index = proxy_tx_fifo->master_thread_index;
-      return session_send_io_evt_to_thread_custom (proxy_tx_fifo,
+      u32 session_index = proxy_tx_fifo->master_session_index;
+      return session_send_io_evt_to_thread_custom (&session_index,
 						   thread_index,
-						   FIFO_EVENT_APP_TX);
+						   SESSION_IO_EVT_TX);
     }
 
   return 0;
@@ -507,12 +509,11 @@ proxy_server_create (vlib_main_t * vm)
 
   for (i = 0; i < num_threads; i++)
     {
-      pm->active_open_event_queue[i] =
-	session_manager_get_vpp_event_queue (i);
+      pm->active_open_event_queue[i] = session_main_get_vpp_event_queue (i);
 
       ASSERT (pm->active_open_event_queue[i]);
 
-      pm->server_event_queue[i] = session_manager_get_vpp_event_queue (i);
+      pm->server_event_queue[i] = session_main_get_vpp_event_queue (i);
     }
 
   return 0;

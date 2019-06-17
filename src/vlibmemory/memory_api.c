@@ -466,6 +466,7 @@ vl_mem_api_init (const char *region_name)
    */
   am->message_bounce[VL_API_MEMCLNT_DELETE] = 1;
   am->is_mp_safe[VL_API_MEMCLNT_KEEPALIVE_REPLY] = 1;
+  am->is_mp_safe[VL_API_MEMCLNT_KEEPALIVE] = 1;
 
   vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
 
@@ -954,8 +955,10 @@ vlibmemory_init (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
   svm_map_region_args_t _a, *a = &_a;
-  clib_error_t *error;
   u8 *remove_path1, *remove_path2;
+  void vlibsocket_reference (void);
+
+  vlibsocket_reference ();
 
   /*
    * By popular request / to avoid support fires, remove any old api segment
@@ -993,9 +996,7 @@ vlibmemory_init (vlib_main_t * vm)
 
   svm_region_init_args (a);
 
-  error = vlib_call_init_function (vm, vlibsocket_init);
-
-  return error;
+  return 0;
 }
 
 void

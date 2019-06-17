@@ -13,6 +13,7 @@ top_boilerplate = '''\
  * Automatically generated: please edit the input file NOT this file!
  */
 
+#include <stdbool.h>
 #if defined(vl_msg_id)||defined(vl_union_id) \\
     || defined(vl_printfun) ||defined(vl_endianfun) \\
     || defined(vl_api_version)||defined(vl_typedefs) \\
@@ -127,10 +128,19 @@ def typedefs(objs, aliases, filename):
         tname = o.__class__.__name__
         output += duplicate_wrapper_head(o.name)
         if tname == 'Enum':
-            output += "typedef enum {\n"
+            if o.enumtype == 'u32':
+                output += "typedef enum {\n"
+            else:
+                output += "typedef enum __attribute__((__packed__)) {\n"
+
             for b in o.block:
                 output += "    %s = %s,\n" % (b[0], b[1])
             output += '} vl_api_%s_t;\n' % o.name
+            if o.enumtype != 'u32':
+                size1 = 'sizeof(vl_api_%s_t)' % o.name
+                size2 = 'sizeof(%s)' % o.enumtype
+                err_str = 'size of API enum %s is wrong' % o.name
+                output += 'STATIC_ASSERT(%s == %s, "%s");\n' % (size1, size2, err_str)
         else:
             if tname == 'Union':
                 output += "typedef VL_API_PACKED(union _vl_api_%s {\n" % o.name
@@ -285,7 +295,7 @@ def version_tuple(s, module):
 #
 # Plugin entry point
 #
-def run(input_filename, s, file_crc):
+def run(input_filename, s):
     basename = os.path.basename(input_filename)
     filename, file_extension = os.path.splitext(basename)
     output = top_boilerplate.format(datestring=datestring,
@@ -298,6 +308,6 @@ def run(input_filename, s, file_crc):
     output += endianfun(s['types'] + s['Define'])
     output += version_tuple(s, basename)
     output += bottom_boilerplate.format(input_filename=basename,
-                                        file_crc=file_crc)
+                                        file_crc=s['file_crc'])
 
     return output

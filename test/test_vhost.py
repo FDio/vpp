@@ -11,6 +11,13 @@ class TesVhostInterface(VppTestCase):
     """Vhost User Test Case
 
     """
+    @classmethod
+    def setUpClass(cls):
+        super(TesVhostInterface, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TesVhostInterface, cls).tearDownClass()
 
     def tearDown(self):
         super(TesVhostInterface, self).tearDown()
@@ -24,19 +31,19 @@ class TesVhostInterface(VppTestCase):
         self.logger.info("Vhost User add interfaces")
 
         # create interface 1 (VirtualEthernet0/0/0)
-        vhost_if1 = VppVhostInterface(self, sock_filename='/tmp/sock1')
+        vhost_if1 = VppVhostInterface(self, sock_filename=b'/tmp/sock1')
         vhost_if1.add_vpp_config()
         vhost_if1.admin_up()
 
         # create interface 2 (VirtualEthernet0/0/1)
-        vhost_if2 = VppVhostInterface(self, sock_filename='/tmp/sock2')
+        vhost_if2 = VppVhostInterface(self, sock_filename=b'/tmp/sock2')
         vhost_if2.add_vpp_config()
         vhost_if2.admin_up()
 
         # verify both interfaces in the show
         ifs = self.vapi.cli("show interface")
-        self.assertNotEqual(ifs.find('VirtualEthernet0/0/0'), -1)
-        self.assertNotEqual(ifs.find('VirtualEthernet0/0/1'), -1)
+        self.assertIn('VirtualEthernet0/0/0', ifs)
+        self.assertIn('VirtualEthernet0/0/1', ifs)
 
         # verify they are in the dump also
         if_dump = self.vapi.sw_interface_vhost_user_dump()
@@ -51,10 +58,10 @@ class TesVhostInterface(VppTestCase):
 
         ifs = self.vapi.cli("show interface")
         # verify VirtualEthernet0/0/0 still in the show
-        self.assertNotEqual(ifs.find('VirtualEthernet0/0/0'), -1)
+        self.assertIn('VirtualEthernet0/0/0', ifs)
 
         # verify VirtualEthernet0/0/1 not in the show
-        self.assertEqual(ifs.find('VirtualEthernet0/0/1'), -1)
+        self.assertNotIn('VirtualEthernet0/0/1', ifs)
 
         # verify VirtualEthernet0/0/1 is not in the dump
         if_dump = self.vapi.sw_interface_vhost_user_dump()
@@ -71,7 +78,7 @@ class TesVhostInterface(VppTestCase):
 
         # verify VirtualEthernet0/0/0 not in the show
         ifs = self.vapi.cli("show interface")
-        self.assertEqual(ifs.find('VirtualEthernet0/0/0'), -1)
+        self.assertNotIn('VirtualEthernet0/0/0', ifs)
 
         # verify VirtualEthernet0/0/0 is not in the dump
         if_dump = self.vapi.sw_interface_vhost_user_dump()
@@ -86,14 +93,14 @@ class TesVhostInterface(VppTestCase):
         # (like delete interface events from other tests)
         self.vapi.collect_events()
 
-        vhost_if = VppVhostInterface(self, sock_filename='/tmp/sock1')
+        vhost_if = VppVhostInterface(self, sock_filename=b'/tmp/sock1')
 
         # create vhost interface
         vhost_if.add_vpp_config()
         self.sleep(0.1)
         events = self.vapi.collect_events()
-        # creating interface doesn't currently create events
-        self.assert_equal(len(events), 0, "number of events")
+        # creating interface does now create events
+        self.assert_equal(len(events), 1, "number of events")
 
         vhost_if.admin_up()
         vhost_if.assert_interface_state(1, 0, expect_event=True)

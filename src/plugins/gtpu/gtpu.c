@@ -620,6 +620,17 @@ int vnet_gtpu_add_del_tunnel
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
+  if (a->is_add)
+    {
+      /* register udp ports */
+      if (!is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_GTPU, 1))
+	udp_register_dst_port (gtm->vlib_main, UDP_DST_PORT_GTPU,
+			       gtpu4_input_node.index, /* is_ip4 */ 1);
+      if (is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_GTPU6, 0))
+	udp_register_dst_port (gtm->vlib_main, UDP_DST_PORT_GTPU6,
+			       gtpu6_input_node.index, /* is_ip4 */ 0);
+    }
+
   return 0;
 }
 
@@ -1102,11 +1113,6 @@ gtpu_init (vlib_main_t * vm)
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
 
-  udp_register_dst_port (vm, UDP_DST_PORT_GTPU,
-			 gtpu4_input_node.index, /* is_ip4 */ 1);
-  udp_register_dst_port (vm, UDP_DST_PORT_GTPU6,
-			 gtpu6_input_node.index, /* is_ip4 */ 0);
-
   gtm->fib_node_type = fib_node_register_new_type (&gtpu_vft);
 
   return 0;
@@ -1117,7 +1123,7 @@ VLIB_INIT_FUNCTION (gtpu_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "GTPv1-U",
+    .description = "GPRS Tunnelling Protocol, User Data (GTPv1-U)",
 };
 /* *INDENT-ON* */
 

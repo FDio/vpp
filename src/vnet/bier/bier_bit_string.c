@@ -41,7 +41,7 @@ bier_bit_pos_is_valid (bier_bp_t bp,  const bier_bit_string_t *bbs)
 }
 
 /*
- * Validate a bit poistion
+ * Validate a bit position
  */
 #define BIER_BIT_POS_IS_VALID(_bp, _str)                                \
 {                                                                       \

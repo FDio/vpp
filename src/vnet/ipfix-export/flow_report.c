@@ -607,7 +607,7 @@ flow_report_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (flow_report_init)
+VLIB_INIT_FUNCTION (flow_report_init);
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -37,9 +37,9 @@ public:
   typedef std::set<gbp_rule> gbp_rules_t;
 
   /**
-   * The key for a contract is the pari of EPG-IDs
+   * The key for a contract is the pair of EPG-IDs
    */
-  typedef std::pair<epg_id_t, epg_id_t> key_t;
+  typedef std::pair<sclass_t, sclass_t> key_t;
 
   /**
    * A set of allowed ethertypes
@@ -49,8 +49,8 @@ public:
   /**
    * Construct a GBP contract
    */
-  gbp_contract(epg_id_t src_epg_id,
-               epg_id_t dst_epg_id,
+  gbp_contract(sclass_t sclass,
+               sclass_t dclass,
                const ACL::l3_list& acl,
                const gbp_rules_t& gpb_rules,
                const ethertype_set_t& allowed_ethertypes);
@@ -164,17 +164,17 @@ private:
   /**
    * HW configuration for the result of creating the endpoint
    */
-  HW::item<bool> m_hw;
+  HW::item<uint32_t> m_hw;
 
   /**
    * The source EPG ID
    */
-  epg_id_t m_src_epg_id;
+  sclass_t m_sclass;
 
   /**
    * The destination EPG ID
    */
-  epg_id_t m_dst_epg_id;
+  sclass_t m_dclass;
 
   /**
    * The ACL applied to traffic between the gourps

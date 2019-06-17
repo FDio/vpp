@@ -35,6 +35,7 @@ public:
    */
   create_cmd(HW::item<handle_t>& item,
              const std::string& name,
+             const boost::asio::ip::address_v4& src,
              uint32_t vni,
              bool is_l2,
              uint32_t bd_rd);
@@ -54,6 +55,7 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
+  boost::asio::ip::address_v4 m_src;
   uint32_t m_vni;
   bool m_is_l2;
   uint32_t m_bd_rd;

@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 /**
- * bier_dispositon : The BIER dispositon object
+ * bier_disposition : The BIER disposition object
  *
- * A BIER dispositon object is present in the IP mcast output list
- * and represents the dispositon of a BIER bitmask. After BIER header
- * dispositon the packet is forward within the appropriate/specifid
+ * A BIER disposition object is present in the IP mcast output list
+ * and represents the disposition of a BIER bitmask. After BIER header
+ * disposition the packet is forward within the appropriate/specified
  * BIER table
  */
 
@@ -175,7 +175,7 @@ bier_disp_entry_path_add (index_t bdei,
     old_pli = *pli;
 
     /*
-     * create a new or update the exisitng path-list for this
+     * create a new or update the existing path-list for this
      * payload protocol
      */
     if (FIB_NODE_INDEX_INVALID == *pli)
@@ -211,7 +211,7 @@ bier_disp_entry_path_remove (index_t bdei,
     old_pli = *pli;
 
     /*
-     * update the exisitng path-list for this payload protocol
+     * update the existing path-list for this payload protocol
      */
     if (FIB_NODE_INDEX_INVALID != *pli)
     {
@@ -315,7 +315,7 @@ bier_disp_entry_dpo_unlock (dpo_id_t *dpo)
 static void
 bier_disp_entry_dpo_mem_show (void)
 {
-    fib_show_memory_usage("BIER dispositon",
+    fib_show_memory_usage("BIER disposition",
                           pool_elts(bier_disp_entry_pool),
                           pool_len(bier_disp_entry_pool),
                           sizeof(bier_disp_entry_t));

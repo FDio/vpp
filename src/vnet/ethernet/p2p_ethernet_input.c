@@ -24,10 +24,10 @@
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
-vlib_node_registration_t p2p_ethernet_input_node;
+extern vlib_node_registration_t p2p_ethernet_input_node;
 
 /* packet trace format function */
-u8 *
+static u8 *
 format_p2p_ethernet_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -59,9 +59,9 @@ static char *p2p_ethernet_error_strings[] = {
 #undef _
 };
 
-static uword
-p2p_ethernet_input_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   u32 thread_index = vm->thread_index;
   u32 n_trace = vlib_get_trace_count (vm, node);
@@ -233,7 +233,6 @@ p2p_ethernet_input_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (p2p_ethernet_input_node) = {
-  .function = p2p_ethernet_input_node_fn,
   .name = "p2p-ethernet-input",
   .vector_size = sizeof (u32),
   .format_trace = format_p2p_ethernet_trace,
@@ -251,8 +250,6 @@ VLIB_REGISTER_NODE (p2p_ethernet_input_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (p2p_ethernet_input_node,
-			      p2p_ethernet_input_node_fn)
 /*
  * fd.io coding-style-patch-verification: ON
  *

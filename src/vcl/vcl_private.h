@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this
  * You may obtain a copy of the License at:
@@ -149,13 +149,6 @@ do {                                            \
 #define VCL_SESS_ATTR_TEST(ATTR, VAL)           \
   ((ATTR) & (1 << (VAL)) ? 1 : 0)
 
-typedef struct vcl_shared_session_
-{
-  u32 ss_index;
-  u32 *workers;
-  u32 session_index;
-} vcl_shared_session_t;
-
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -165,22 +158,21 @@ typedef struct
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
   u32 user_mss;			// VPP-TBD: Hack until support setsockopt(TCP_MAXSEG)
-  u8 *segment_name;
-  u32 sm_seg_index;
-  u32 client_context;
   u64 vpp_handle;
   u32 vpp_thread_index;
+
+  svm_fifo_t *ct_rx_fifo;
+  svm_fifo_t *ct_tx_fifo;
 
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
   u8 has_rx_evt;
   u32 attr;
-  u32 wait_cont_idx;
+  u64 transport_opts;
   vppcom_epoll_t vep;
   int libc_epfd;
   svm_msg_q_t *our_evt_q;
-  u64 options[16];
   vcl_session_msg_t *accept_evts_fifo;
 #if VCL_ELOG
   elog_track_t elog_track;
@@ -281,15 +273,6 @@ typedef struct vcl_worker_
   /** For deadman timers */
   clib_time_t clib_time;
 
-  /** Pool of cut through registrations */
-  vcl_cut_through_registration_t *cut_through_registrations;
-
-  /** Lock for accessing ct registration pool */
-  clib_spinlock_t ct_registration_lock;
-
-  /** Cut-through registration by mq address hash table */
-  uword *ct_registration_by_mq;
-
   /** Vector acting as buffer for mq messages */
   svm_msg_q_msg_t *mq_msg_vector;
 
@@ -336,16 +319,13 @@ typedef struct vppcom_main_t_
   /** Lock to protect worker registrations */
   clib_spinlock_t workers_lock;
 
-  /** Pool of shared sessions */
-  vcl_shared_session_t *shared_sessions;
-
   /** Lock to protect segment hash table */
   clib_rwlock_t segment_table_lock;
 
   /** Mapped segments table */
   uword *segment_table;
 
-  svm_fifo_segment_main_t segment_main;
+  fifo_segment_main_t segment_main;
 
 #ifdef VCL_ELOG
   /* VPP Event-logger */
@@ -495,7 +475,7 @@ const char *vppcom_session_state_str (vcl_session_state_t state);
 static inline u8
 vcl_session_is_ct (vcl_session_t * s)
 {
-  return (s->our_evt_q != 0);
+  return (s->ct_tx_fifo != 0);
 }
 
 static inline u8
@@ -530,19 +510,6 @@ vcl_session_closed_error (vcl_session_t * s)
  * Helpers
  */
 int vcl_wait_for_app_state_change (app_state_t app_state);
-vcl_cut_through_registration_t
-  * vcl_ct_registration_lock_and_alloc (vcl_worker_t * wrk);
-void vcl_ct_registration_del (vcl_worker_t * wrk,
-			      vcl_cut_through_registration_t * ctr);
-u32 vcl_ct_registration_index (vcl_worker_t * wrk,
-			       vcl_cut_through_registration_t * ctr);
-void vcl_ct_registration_lock (vcl_worker_t * wrk);
-void vcl_ct_registration_unlock (vcl_worker_t * wrk);
-vcl_cut_through_registration_t
-  * vcl_ct_registration_lock_and_lookup (vcl_worker_t * wrk, uword mq_addr);
-void vcl_ct_registration_lookup_add (vcl_worker_t * wrk, uword mq_addr,
-				     u32 ctr_index);
-void vcl_ct_registration_lookup_del (vcl_worker_t * wrk, uword mq_addr);
 vcl_mq_evt_conn_t *vcl_mq_evt_conn_alloc (vcl_worker_t * wrk);
 u32 vcl_mq_evt_conn_index (vcl_worker_t * wrk, vcl_mq_evt_conn_t * mqc);
 vcl_mq_evt_conn_t *vcl_mq_evt_conn_get (vcl_worker_t * wrk, u32 mq_conn_idx);
@@ -553,9 +520,6 @@ vcl_worker_t *vcl_worker_alloc_and_init (void);
 void vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp);
 int vcl_worker_register_with_vpp (void);
 int vcl_worker_set_bapi (void);
-void vcl_worker_share_sessions (vcl_worker_t * parent_wrk);
-int vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s);
-vcl_shared_session_t *vcl_shared_session_get (u32 ss_index);
 
 void vcl_flush_mq_events (void);
 void vcl_cleanup_bapi (void);
@@ -598,10 +562,7 @@ vcl_n_workers (void)
 static inline svm_msg_q_t *
 vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
 {
-  if (vcl_session_is_ct (s))
-    return wrk->vpp_event_queues[0];
-  else
-    return wrk->vpp_event_queues[s->vpp_thread_index];
+  return wrk->vpp_event_queues[s->vpp_thread_index];
 }
 
 void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,

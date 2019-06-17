@@ -1,0 +1,101 @@
+From 925981b21ca765b97540d273bd0362518eb2de48 Mon Sep 17 00:00:00 2001
+From: Chenmin Sun <chenmin.sun@intel.com>
+Date: Thu, 28 Mar 2019 04:51:19 +0800
+Subject: [PATCH] net/ice: fixed speed capability error issue
+
+Device speed capability should be specified based on different phy types
+instead of a fixed value, this patch fix the issue.
+
+Signed-off-by: Chenmin Sun <chenmin.sun@intel.com>
+---
+ drivers/net/ice/ice_ethdev.c | 17 +++++++++++----
+ drivers/net/ice/ice_ethdev.h | 40 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ice/ice_ethdev.c b/drivers/net/ice/ice_ethdev.c
+index 6ab66faeb..1073eb501 100644
+--- a/drivers/net/ice/ice_ethdev.c
++++ b/drivers/net/ice/ice_ethdev.c
+@@ -1819,6 +1819,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+ 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+ 	struct ice_vsi *vsi = pf->main_vsi;
+ 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
++	u64 phy_type_low;
++	u64 phy_type_high;
+ 
+ 	dev_info->min_rx_bufsize = ICE_BUF_SIZE_MIN;
+ 	dev_info->max_rx_pktlen = ICE_FRAME_SIZE_MAX;
+@@ -1898,10 +1900,17 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+ 			       ETH_LINK_SPEED_5G |
+ 			       ETH_LINK_SPEED_10G |
+ 			       ETH_LINK_SPEED_20G |
+-			       ETH_LINK_SPEED_25G |
+-			       ETH_LINK_SPEED_40G |
+-			       ETH_LINK_SPEED_50G |
+-			       ETH_LINK_SPEED_100G;
++			       ETH_LINK_SPEED_25G;
++
++	phy_type_low = hw->port_info->phy.phy_type_low;
++	phy_type_high = hw->port_info->phy.phy_type_high;
++
++	if (ICE_PHY_TYPE_SUPPORT_50G(phy_type_low))
++		dev_info->speed_capa |= ETH_LINK_SPEED_50G;
++
++	if (ICE_PHY_TYPE_SUPPORT_100G_LOW(phy_type_low) ||
++			ICE_PHY_TYPE_SUPPORT_100G_HIGH(phy_type_high))
++		dev_info->speed_capa |= ETH_LINK_SPEED_100G;
+ 
+ 	dev_info->nb_rx_queues = dev->data->nb_rx_queues;
+ 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;
+diff --git a/drivers/net/ice/ice_ethdev.h b/drivers/net/ice/ice_ethdev.h
+index 3cefa5b5b..249fbef20 100644
+--- a/drivers/net/ice/ice_ethdev.h
++++ b/drivers/net/ice/ice_ethdev.h
+@@ -315,4 +315,44 @@ ice_align_floor(int n)
+ 		return 0;
+ 	return 1 << (sizeof(n) * CHAR_BIT - 1 - __builtin_clz(n));
+ }
++
++#define ICE_PHY_TYPE_SUPPORT_50G(phy_type) \
++	(((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_CR2) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_SR2) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_LR2) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_KR2) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50G_LAUI2_AOC_ACC) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50G_LAUI2) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50G_AUI2_AOC_ACC) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50G_AUI2) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_CP) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_SR) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_FR) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_LR) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_KR_PAM4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50G_AUI1_AOC_ACC) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_50G_AUI1))
++
++#define ICE_PHY_TYPE_SUPPORT_100G_LOW(phy_type) \
++	(((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_CR4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_SR4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_LR4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_KR4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100G_CAUI4_AOC_ACC) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100G_CAUI4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100G_AUI4_AOC_ACC) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100G_AUI4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_CR_PAM4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_KR_PAM4) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_CP2) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_SR2) || \
++	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_DR))
++
++#define ICE_PHY_TYPE_SUPPORT_100G_HIGH(phy_type) \
++	(((phy_type) & ICE_PHY_TYPE_HIGH_100GBASE_KR2_PAM4) || \
++	((phy_type) & ICE_PHY_TYPE_HIGH_100G_CAUI2_AOC_ACC) || \
++	((phy_type) & ICE_PHY_TYPE_HIGH_100G_CAUI2) || \
++	((phy_type) & ICE_PHY_TYPE_HIGH_100G_AUI2_AOC_ACC) || \
++	((phy_type) & ICE_PHY_TYPE_HIGH_100G_AUI2))
++
+ #endif /* _ICE_ETHDEV_H_ */
+-- 
+2.17.1
+

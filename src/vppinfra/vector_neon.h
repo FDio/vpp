@@ -22,6 +22,13 @@
 #define i16x8_sub_saturate(a,b) vsubq_s16(a,b)
 /* Dummy. Aid making uniform macros */
 #define vreinterpretq_u8_u8(a)  a
+/* Implement the missing intrinsics to make uniform macros */
+#define vminvq_u64(x)   \
+({  \
+  u64 x0 = vgetq_lane_u64(x, 0);    \
+  u64 x1 = vgetq_lane_u64(x, 1);    \
+  x0 < x1 ? x0 : x1;    \
+})
 
 /* Converts all ones/zeros compare mask to bitmap. */
 always_inline u32
@@ -62,11 +69,11 @@ t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
 \
 static_always_inline int						\
 t##s##x##c##_is_all_zero (t##s##x##c x)					\
-{ return !(vaddvq_##i (x)); }						\
+{ return !!(vminvq_u##s (vceqq_##i (vdupq_n_##i(0), x))); }						\
 \
 static_always_inline int						\
 t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
-{ return t##s##x##c##_is_all_zero (a ^ b); }				\
+{ return !!(vminvq_u##s (vceqq_##i (a, b))); }				\
 \
 static_always_inline int						\
 t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
@@ -76,6 +83,14 @@ static_always_inline u32						\
 t##s##x##c##_zero_byte_mask (t##s##x##c x)			\
 { uint8x16_t v = vreinterpretq_u8_u##s (vceqq_##i (vdupq_n_##i(0), x));  \
   return u8x16_compare_byte_mask (v); } \
+\
+static_always_inline u##s##x##c						\
+t##s##x##c##_is_greater (t##s##x##c a, t##s##x##c b)			\
+{ return (u##s##x##c) vcgtq_##i (a, b); }				\
+\
+static_always_inline t##s##x##c						\
+t##s##x##c##_blend (t##s##x##c dst, t##s##x##c src, u##s##x##c mask)	\
+{ return (t##s##x##c) vbslq_##i (mask, src, dst); }
 
 foreach_neon_vec128i foreach_neon_vec128u
 

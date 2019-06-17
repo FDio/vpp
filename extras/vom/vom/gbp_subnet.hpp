@@ -82,7 +82,7 @@ public:
    */
   gbp_subnet(const gbp_route_domain& rd,
              const route::prefix_t& prefix,
-             const gbp_endpoint_group& epg);
+             sclass_t sclass);
 
   /**
    * Copy Construct
@@ -219,6 +219,11 @@ private:
    * The EPG the subnet is in
    */
   std::shared_ptr<gbp_endpoint_group> m_epg;
+
+  /**
+   * Sclass for l3-out subnets
+   */
+  sclass_t m_sclass;
 
   /**
    * A map of all bridge_domains

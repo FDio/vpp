@@ -84,25 +84,16 @@ typedef struct
   u32 user_instance;		/* Instance name being shown to user */
   u8 tc_tos;
 
-  union
+  struct
   {
-    struct
-    {
-      fib_node_t node;
-      fib_node_index_t fib_entry_index;
-      u32 sibling_index;
-    } p2p;
-    struct
-    {
-      ip6_address_t ip6_prefix;
-      ip4_address_t ip4_prefix;
-      u8 ip6_prefix_len;
-      u8 ip4_prefix_len;
-      u8 shift;
-      bool security_check;
-      u32 ip6_fib_index;
-    } sixrd;
-  };
+    ip6_address_t ip6_prefix;
+    ip4_address_t ip4_prefix;
+    u8 ip6_prefix_len;
+    u8 ip4_prefix_len;
+    u8 shift;
+    bool security_check;
+    u32 ip6_fib_index;
+  } sixrd;
 } ipip_tunnel_t;
 
 typedef struct
@@ -110,7 +101,6 @@ typedef struct
   ipip_tunnel_t *tunnels;
   uword *tunnel_by_key;
   u32 *tunnel_index_by_sw_if_index;
-  fib_node_type_t fib_node_type;
 
   /* convenience */
   vlib_main_t *vlib_main;

@@ -11,33 +11,43 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
+NUM_PKTS = 67
+
 
 class TestL2Flood(VppTestCase):
     """ L2-flood """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestL2Flood, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2Flood, cls).tearDownClass()
 
     def setUp(self):
         super(TestL2Flood, self).setUp()
 
         # 12 l2 interface and one l3
         self.create_pg_interfaces(range(13))
-        self.create_loopback_interfaces(1)
+        self.create_bvi_interfaces(1)
 
         for i in self.pg_interfaces:
             i.admin_up()
-        for i in self.lo_interfaces:
+        for i in self.bvi_interfaces:
             i.admin_up()
 
         self.pg12.config_ip4()
         self.pg12.resolve_arp()
-        self.loop0.config_ip4()
+        self.bvi0.config_ip4()
 
     def tearDown(self):
         self.pg12.unconfig_ip4()
-        self.loop0.unconfig_ip4()
+        self.bvi0.unconfig_ip4()
 
         for i in self.pg_interfaces:
             i.admin_down()
-        for i in self.lo_interfaces:
+        for i in self.bvi_interfaces:
             i.admin_down()
         super(TestL2Flood, self).tearDown()
 
@@ -47,19 +57,23 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(1)
+        self.vapi.bridge_domain_add_del(bd_id=1)
 
         #
         # add each interface to the BD. 3 interfaces per split horizon group
         #
         for i in self.pg_interfaces[0:4]:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 0)
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, shg=0)
         for i in self.pg_interfaces[4:8]:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 1)
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, shg=1)
         for i in self.pg_interfaces[8:12]:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 2)
-        for i in self.lo_interfaces:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 2,
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, shg=2)
+        for i in self.bvi_interfaces:
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, shg=2,
                                                  port_type=L2_PORT_TYPE.BVI)
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
@@ -73,25 +87,25 @@ class TestL2Flood(VppTestCase):
         # this is in SHG=0 so its flooded to all, expect the pg0 since that's
         # the ingress link
         #
-        self.pg0.add_stream(p*65)
+        self.pg0.add_stream(p*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:12]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # input on pg4 (SHG=1) expect copies on pg0->3 (SHG=0)
         # and pg8->11 (SHG=2)
         #
-        self.pg4.add_stream(p*65)
+        self.pg4.add_stream(p*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[8:12]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[4:8]:
             i.assert_nothing_captured(remark="Different SH group")
 
@@ -110,25 +124,25 @@ class TestL2Flood(VppTestCase):
         # this is in SHG=0 so its flooded to all, expect the pg0 since that's
         # the ingress link
         #
-        self.pg0.add_stream(p*65)
+        self.pg0.add_stream(p*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # input on pg4 (SHG=1) expect copies on pg0->3 (SHG=0)
         # and pg8->12 (SHG=2)
         #
-        self.pg4.add_stream(p*65)
+        self.pg4.add_stream(p*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[8:13]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
         for i in self.pg_interfaces[4:8]:
             i.assert_nothing_captured(remark="Different SH group")
 
@@ -136,13 +150,15 @@ class TestL2Flood(VppTestCase):
         # cleanup
         #
         for i in self.pg_interfaces[:12]:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, enable=0)
-        for i in self.lo_interfaces:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 2,
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, enable=0)
+        for i in self.bvi_interfaces:
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, shg=2,
                                                  port_type=L2_PORT_TYPE.BVI,
                                                  enable=0)
 
-        self.vapi.bridge_domain_add_del(1, is_add=0)
+        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
 
     def test_flood_one(self):
         """ L2 no-Flood Test """
@@ -150,14 +166,15 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(1)
+        self.vapi.bridge_domain_add_del(bd_id=1)
 
         #
         # add 2 interfaces to the BD. this means a flood goes to only
         # one member
         #
         for i in self.pg_interfaces[:2]:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 0)
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, shg=0)
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
                    src="00:00:de:ad:be:ef") /
@@ -168,14 +185,15 @@ class TestL2Flood(VppTestCase):
         #
         # input on pg0 expect copies on pg1
         #
-        self.send_and_expect(self.pg0, p*65, self.pg1)
+        self.send_and_expect(self.pg0, p*NUM_PKTS, self.pg1)
 
         #
         # cleanup
         #
         for i in self.pg_interfaces[:2]:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, enable=0)
-        self.vapi.bridge_domain_add_del(1, is_add=0)
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, enable=0)
+        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
 
     def test_uu_fwd(self):
         """ UU Flood """
@@ -183,16 +201,17 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(1, uu_flood=1)
+        self.vapi.bridge_domain_add_del(bd_id=1, uu_flood=1)
 
         #
         # add each interface to the BD. 3 interfaces per split horizon group
         #
         for i in self.pg_interfaces[0:4]:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 0)
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, shg=0)
 
         #
-        # an unknown unicast and braodcast packets
+        # an unknown unicast and broadcast packets
         #
         p_uu = (Ether(dst="00:00:00:c1:5c:00",
                       src="00:00:de:ad:be:ef") /
@@ -208,78 +227,80 @@ class TestL2Flood(VppTestCase):
         #
         # input on pg0, expected copies on pg1->4
         #
-        self.pg0.add_stream(p_uu*65)
+        self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
-        self.pg0.add_stream(p_bm*65)
+        self.pg0.add_stream(p_bm*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # use pg8 as the uu-fwd interface
         #
-        self.vapi.sw_interface_set_l2_bridge(self.pg8.sw_if_index, 1, 0,
-                                             port_type=L2_PORT_TYPE.UU_FWD)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
+            port_type=L2_PORT_TYPE.UU_FWD)
 
         #
         # expect the UU packet on the uu-fwd interface and not be flooded
         #
-        self.pg0.add_stream(p_uu*65)
+        self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg8.get_capture(65, timeout=1)
+        rx0 = self.pg8.get_capture(NUM_PKTS, timeout=1)
 
         for i in self.pg_interfaces[0:4]:
             i.assert_nothing_captured(remark="UU not flooded")
 
-        self.pg0.add_stream(p_bm*65)
+        self.pg0.add_stream(p_bm*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # remove the uu-fwd interface and expect UU to be flooded again
         #
-        self.vapi.sw_interface_set_l2_bridge(self.pg8.sw_if_index, 1, 0,
-                                             port_type=L2_PORT_TYPE.UU_FWD,
-                                             enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
+            port_type=L2_PORT_TYPE.UU_FWD, enable=0)
 
-        self.pg0.add_stream(p_uu*65)
+        self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         for i in self.pg_interfaces[1:4]:
-            rx0 = i.get_capture(65, timeout=1)
+            rx0 = i.get_capture(NUM_PKTS, timeout=1)
 
         #
         # change the BD config to not support UU-flood
         #
-        self.vapi.bridge_flags(1, 0, BRIDGE_FLAGS.UU_FLOOD)
+        self.vapi.bridge_flags(bd_id=1, is_set=0, flags=BRIDGE_FLAGS.UU_FLOOD)
 
         self.send_and_assert_no_replies(self.pg0, p_uu)
 
         #
         # re-add the uu-fwd interface
         #
-        self.vapi.sw_interface_set_l2_bridge(self.pg8.sw_if_index, 1, 0,
-                                             port_type=L2_PORT_TYPE.UU_FWD)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
+            port_type=L2_PORT_TYPE.UU_FWD)
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
 
-        self.pg0.add_stream(p_uu*65)
+        self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx0 = self.pg8.get_capture(65, timeout=1)
+        rx0 = self.pg8.get_capture(NUM_PKTS, timeout=1)
 
         for i in self.pg_interfaces[0:4]:
             i.assert_nothing_captured(remark="UU not flooded")
@@ -287,18 +308,19 @@ class TestL2Flood(VppTestCase):
         #
         # remove the uu-fwd interface
         #
-        self.vapi.sw_interface_set_l2_bridge(self.pg8.sw_if_index, 1, 0,
-                                             port_type=L2_PORT_TYPE.UU_FWD,
-                                             enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
+            port_type=L2_PORT_TYPE.UU_FWD, enable=0)
         self.send_and_assert_no_replies(self.pg0, p_uu)
 
         #
         # cleanup
         #
         for i in self.pg_interfaces[:4]:
-            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, enable=0)
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                 bd_id=1, enable=0)
 
-        self.vapi.bridge_domain_add_del(1, is_add=0)
+        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
 
 
 if __name__ == '__main__':

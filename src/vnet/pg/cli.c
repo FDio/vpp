@@ -87,7 +87,8 @@ pg_capture (pg_capture_args_t * a)
     {
       struct stat sb;
       if (stat ((char *) a->pcap_file_name, &sb) != -1)
-	return clib_error_return (0, "Cannot create pcap file");
+	return clib_error_return (0, "pcap file '%s' does not exist.",
+				  a->pcap_file_name);
     }
 
   pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
@@ -109,19 +110,26 @@ static clib_error_t *
 enable_disable_stream (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   pg_main_t *pg = &pg_main;
   int is_enable = cmd->function_arg != 0;
   u32 stream_index = ~0;
 
-  if (unformat (input, "%U", unformat_eof))
-    ;
-  else if (unformat (input, "%U", unformat_hash_vec_string,
-		     pg->stream_index_by_name, &stream_index))
-    ;
-  else
-    return clib_error_create ("unknown input `%U'",
-			      format_unformat_error, input);
+  if (!unformat_user (input, unformat_line_input, line_input))
+    goto doit;
 
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_hash_vec_string,
+		    pg->stream_index_by_name, &stream_index))
+	;
+      else
+	return clib_error_create ("unknown input `%U'",
+				  format_unformat_error, line_input);
+    }
+  unformat_free (line_input);
+
+doit:
   pg_enable_disable (stream_index, is_enable);
 
   return 0;
@@ -163,7 +171,7 @@ format_pg_edit_group (u8 * s, va_list * va)
       while (*junk_after_name && *junk_after_name != ' ')
 	junk_after_name++;
       *junk_after_name = 0;
-      s = format (s, "edit-funtion %s, ", function_name);
+      s = format (s, "edit-function %s, ", function_name);
       vec_free (function_name);
     }
 
@@ -373,6 +381,10 @@ new_stream (vlib_main_t * vm,
       else if (unformat (input, "interface %U",
 			 unformat_vnet_sw_interface, vnm,
 			 &s.sw_if_index[VLIB_RX]))
+	;
+      else if (unformat (input, "tx-interface %U",
+			 unformat_vnet_sw_interface, vnm,
+			 &s.sw_if_index[VLIB_TX]))
 	;
 
       else if (unformat (input, "pcap %s", &pcap_file_name))

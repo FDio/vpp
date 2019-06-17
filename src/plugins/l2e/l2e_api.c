@@ -82,7 +82,7 @@ vl_api_l2_emulation_t_handler (vl_api_l2_emulation_t * mp)
 /*
  * l2_api_hookup
  * Add vpe's API message handlers to the table.
- * vlib has alread mapped shared memory and
+ * vlib has already mapped shared memory and
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
@@ -141,7 +141,7 @@ VLIB_API_INIT_FUNCTION (l2e_init);
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "L2 Emulation",
+    .description = "Layer 2 (L2) Emulation",
 };
 /* *INDENT-ON* */
 

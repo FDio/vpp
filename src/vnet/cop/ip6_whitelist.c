@@ -33,8 +33,6 @@ static u8 * format_ip6_cop_whitelist_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t ip6_cop_whitelist_node;
-
 #define foreach_ip6_cop_whitelist_error                         \
 _(DROPPED, "ip6 cop whitelist packets dropped")
 
@@ -51,8 +49,7 @@ static char * ip6_cop_whitelist_error_strings[] = {
 #undef _
 };
 
-static uword
-ip6_cop_whitelist_node_fn (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_cop_whitelist_node) (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_frame_t * frame)
 {
@@ -264,7 +261,6 @@ ip6_cop_whitelist_node_fn (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip6_cop_whitelist_node) = {
-  .function = ip6_cop_whitelist_node_fn,
   .name = "ip6-cop-whitelist",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_cop_whitelist_trace,
@@ -286,8 +282,6 @@ VLIB_REGISTER_NODE (ip6_cop_whitelist_node) = {
     [RX_COP_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_cop_whitelist_node, ip6_cop_whitelist_node_fn)
 
 static clib_error_t *
 ip6_whitelist_init (vlib_main_t * vm)

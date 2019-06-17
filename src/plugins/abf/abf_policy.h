@@ -82,10 +82,10 @@ extern fib_node_type_t abf_policy_fib_node_type;
  * @param policy_id User defined Policy ID
  * @param acl_index The ACL the policy with match on
  * @param rpaths The set of paths to add to the forwarding set
+ * @return error code
  */
-extern void abf_policy_update (u32 policy_id,
-			       u32 acl_index,
-			       const fib_route_path_t * rpaths);
+extern int abf_policy_update (u32 policy_id,
+			      u32 acl_index, const fib_route_path_t * rpaths);
 
 /**
  * Delete paths from an ABF Policy. If no more paths exist, the policy

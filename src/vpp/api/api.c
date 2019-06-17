@@ -226,7 +226,7 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
 
   unformat_init_string (&input, (char *) vl_api_from_api_string (&mp->cmd),
 			vl_api_string_len (&mp->cmd));
-  vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
+  rv = vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
 
   len = vec_len (out_vec);
 
@@ -287,8 +287,7 @@ get_thread_data (vl_api_thread_data_t * td, int index)
 static void
 vl_api_show_threads_t_handler (vl_api_show_threads_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  int rv = 0, count = 0;
+  int count = 0;
 
 #if !defined(__powerpc64__)
   vl_api_registration_t *reg;
@@ -538,6 +537,8 @@ vpe_api_hookup (vlib_main_t * vm)
   /*
    * Thread-safe API messages
    */
+  am->is_mp_safe[VL_API_CONTROL_PING] = 1;
+  am->is_mp_safe[VL_API_CONTROL_PING_REPLY] = 1;
   am->is_mp_safe[VL_API_IP_ADD_DEL_ROUTE] = 1;
   am->is_mp_safe[VL_API_GET_NODE_GRAPH] = 1;
 

@@ -196,6 +196,7 @@ void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
 void BV (clib_bihash_free) (BVT (clib_bihash) * h)
 {
   vec_free (h->working_copies);
+  vec_free (h->working_copy_lengths);
 #if BIHASH_32_64_SVM == 0
   vec_free (h->freelists);
 #else
@@ -291,6 +292,9 @@ BV (make_working_copy) (BVT (clib_bihash) * h, BVT (clib_bihash_bucket) * b)
 	(h, sizeof (working_copy[0]) * (1 << b->log2_pages));
       h->working_copy_lengths[thread_index] = b->log2_pages;
       h->working_copies[thread_index] = working_copy;
+
+      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_working_copy_lost,
+				       1ULL << b->log2_pages);
     }
 
   v = BV (clib_bihash_get_value) (h, b->offset);
@@ -441,8 +445,9 @@ static inline int BV (clib_bihash_add_del_inline)
       tmp_b.refcnt = 1;
       CLIB_MEMORY_BARRIER ();
 
-      b->as_u64 = tmp_b.as_u64;
-      BV (clib_bihash_unlock_bucket) (b);
+      b->as_u64 = tmp_b.as_u64;	/* unlocks the bucket */
+      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_alloc_add, 1);
+
       return (0);
     }
 
@@ -469,11 +474,12 @@ static inline int BV (clib_bihash_add_del_inline)
        */
       for (i = 0; i < limit; i++)
 	{
-	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
+	  if (BV (clib_bihash_key_compare) (v->kvp[i].key, add_v->key))
 	    {
 	      CLIB_MEMORY_BARRIER ();	/* Add a delay */
 	      clib_memcpy_fast (&(v->kvp[i]), add_v, sizeof (*add_v));
 	      BV (clib_bihash_unlock_bucket) (b);
+	      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_replace, 1);
 	      return (0);
 	    }
 	}
@@ -496,6 +502,7 @@ static inline int BV (clib_bihash_add_del_inline)
 	      b->refcnt++;
 	      ASSERT (b->refcnt > 0);
 	      BV (clib_bihash_unlock_bucket) (b);
+	      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_add, 1);
 	      return (0);
 	    }
 	}
@@ -509,6 +516,7 @@ static inline int BV (clib_bihash_add_del_inline)
 		  CLIB_MEMORY_BARRIER ();
 		  clib_memcpy_fast (&(v->kvp[i]), add_v, sizeof (*add_v));
 		  BV (clib_bihash_unlock_bucket) (b);
+		  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_replace, 1);
 		  return (0);
 		}
 	    }
@@ -520,7 +528,7 @@ static inline int BV (clib_bihash_add_del_inline)
       for (i = 0; i < limit; i++)
 	{
 	  /* Found the key? Kill it... */
-	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
+	  if (BV (clib_bihash_key_compare) (v->kvp[i].key, add_v->key))
 	    {
 	      clib_memset (&(v->kvp[i]), 0xff, sizeof (*(add_v)));
 	      /* Is the bucket empty? */
@@ -528,6 +536,7 @@ static inline int BV (clib_bihash_add_del_inline)
 		{
 		  b->refcnt--;
 		  BV (clib_bihash_unlock_bucket) (b);
+		  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_del, 1);
 		  return (0);
 		}
 	      else		/* yes, free it */
@@ -545,6 +554,8 @@ static inline int BV (clib_bihash_add_del_inline)
 		  v = BV (clib_bihash_get_value) (h, tmp_b.offset);
 		  BV (value_free) (h, v, tmp_b.log2_pages);
 		  BV (clib_bihash_alloc_unlock) (h);
+		  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_del_free,
+						   1);
 		  return (0);
 		}
 	    }
@@ -563,9 +574,12 @@ static inline int BV (clib_bihash_add_del_inline)
   old_log2_pages = h->saved_bucket.log2_pages;
   new_log2_pages = old_log2_pages + 1;
   mark_bucket_linear = 0;
+  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_split_add, 1);
+  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_splits, old_log2_pages);
 
   working_copy = h->working_copies[thread_index];
   resplit_once = 0;
+  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_splits, 1);
 
   new_v = BV (split_and_rehash) (h, working_copy, old_log2_pages,
 				 new_log2_pages);
@@ -586,7 +600,11 @@ static inline int BV (clib_bihash_add_del_inline)
 	    BV (split_and_rehash_linear) (h, working_copy, old_log2_pages,
 					  new_log2_pages);
 	  mark_bucket_linear = 1;
+	  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_linear, 1);
 	}
+      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_resplit, 1);
+      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_splits,
+				       old_log2_pages + 1);
     }
 
   /* Try to add the new entry */
@@ -747,7 +765,7 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 		    {
 		      s = format (s, "    %d: %U\n",
 				  j * BIHASH_KVP_PER_PAGE + k,
-				  h->fmt_fn, &(v->kvp[k]));
+				  h->fmt_fn, &(v->kvp[k]), verbose);
 		    }
 		  else
 		    {

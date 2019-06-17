@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -404,7 +404,7 @@ static inline int
 vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 	       vcl_test_stats_t * stats)
 {
-  int rx_bytes, errno_val;
+  int rx_bytes;
 
   do
     {
@@ -443,7 +443,7 @@ vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 static inline int
 vcl_test_read_ds (int fd, vppcom_data_segments_t ds, vcl_test_stats_t * stats)
 {
-  int rx_bytes, errno_val;
+  int rx_bytes;
 
   do
     {
@@ -509,6 +509,7 @@ vcl_test_write (int fd, uint8_t * buf, uint32_t nbytes,
       if (tx_bytes != nbytes)
 	{
 	  nbytes_left = nbytes_left - rv;
+	  buf += rv;
 	  if (stats)
 	    stats->tx_incomp++;
 	}

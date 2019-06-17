@@ -100,6 +100,7 @@ mbedtls_ctx_free (tls_ctx_t * ctx)
   mbedtls_ssl_free (&mc->ssl);
   mbedtls_ssl_config_free (&mc->conf);
 
+  vec_free (ctx->srv_hostname);
   pool_put_index (mbedtls_main.ctx_pool[ctx->c_thread_index],
 		  mc->mbedtls_ctx_index);
 }
@@ -166,7 +167,7 @@ tls_net_send (void *ctx_indexp, const unsigned char *buf, size_t len)
   ctx_index = pointer_to_uword (ctx_indexp);
   ctx = mbedtls_ctx_get (ctx_index);
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  rv = svm_fifo_enqueue_nowait (tls_session->tx_fifo, len, buf);
+  rv = svm_fifo_enqueue (tls_session->tx_fifo, len, buf);
   if (rv < 0)
     return MBEDTLS_ERR_SSL_WANT_WRITE;
   tls_add_vpp_q_tx_evt (tls_session);
@@ -184,7 +185,7 @@ tls_net_recv (void *ctx_indexp, unsigned char *buf, size_t len)
   ctx_index = pointer_to_uword (ctx_indexp);
   ctx = mbedtls_ctx_get (ctx_index);
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  rv = svm_fifo_dequeue_nowait (tls_session->rx_fifo, len, buf);
+  rv = svm_fifo_dequeue (tls_session->rx_fifo, len, buf);
   return (rv < 0) ? 0 : rv;
 }
 
@@ -443,12 +444,12 @@ mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 
   ASSERT (mc->ssl.state == MBEDTLS_SSL_HANDSHAKE_OVER);
 
-  deq_max = svm_fifo_max_dequeue (app_session->tx_fifo);
+  deq_max = svm_fifo_max_dequeue_cons (app_session->tx_fifo);
   if (!deq_max)
     return 0;
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  enq_max = svm_fifo_max_enqueue (tls_session->tx_fifo);
+  enq_max = svm_fifo_max_enqueue_prod (tls_session->tx_fifo);
   deq_now = clib_min (deq_max, TLS_CHUNK_SIZE);
 
   if (PREDICT_FALSE (enq_max == 0))
@@ -493,12 +494,12 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
       return 0;
     }
 
-  deq_max = svm_fifo_max_dequeue (tls_session->rx_fifo);
+  deq_max = svm_fifo_max_dequeue_cons (tls_session->rx_fifo);
   if (!deq_max)
     return 0;
 
   app_session = session_get_from_handle (ctx->app_session_handle);
-  enq_max = svm_fifo_max_enqueue (app_session->rx_fifo);
+  enq_max = svm_fifo_max_enqueue_prod (app_session->rx_fifo);
   enq_now = clib_min (enq_max, TLS_CHUNK_SIZE);
 
   if (PREDICT_FALSE (enq_now == 0))
@@ -515,12 +516,12 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
       return 0;
     }
 
-  enq = svm_fifo_enqueue_nowait (app_session->rx_fifo, read,
-				 mm->rx_bufs[thread_index]);
+  enq = svm_fifo_enqueue (app_session->rx_fifo, read,
+			  mm->rx_bufs[thread_index]);
   ASSERT (enq == read);
   vec_reset_length (mm->rx_bufs[thread_index]);
 
-  if (svm_fifo_max_dequeue (tls_session->rx_fifo))
+  if (svm_fifo_max_dequeue_cons (tls_session->rx_fifo))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
   if (enq > 0)
@@ -536,6 +537,27 @@ mbedtls_handshake_is_over (tls_ctx_t * ctx)
   return (mc->ssl.state == MBEDTLS_SSL_HANDSHAKE_OVER);
 }
 
+static int
+mbedtls_transport_close (tls_ctx_t * ctx)
+{
+  if (!mbedtls_handshake_is_over (ctx))
+    {
+      session_close (session_get_from_handle (ctx->tls_session_handle));
+      return 0;
+    }
+  session_transport_closing_notify (&ctx->connection);
+  return 0;
+}
+
+static int
+mbedtls_app_close (tls_ctx_t * ctx)
+{
+  tls_disconnect_transport (ctx);
+  session_transport_delete_notify (&ctx->connection);
+  mbedtls_ctx_free (ctx);
+  return 0;
+}
+
 const static tls_engine_vft_t mbedtls_engine = {
   .ctx_alloc = mbedtls_ctx_alloc,
   .ctx_free = mbedtls_ctx_free,
@@ -548,6 +570,8 @@ const static tls_engine_vft_t mbedtls_engine = {
   .ctx_handshake_is_over = mbedtls_handshake_is_over,
   .ctx_start_listen = mbedtls_start_listen,
   .ctx_stop_listen = mbedtls_stop_listen,
+  .ctx_transport_close = mbedtls_transport_close,
+  .ctx_app_close = mbedtls_app_close,
 };
 
 int
@@ -611,13 +635,9 @@ tls_mbedtls_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   mbedtls_main_t *mm = &mbedtls_main;
-  clib_error_t *error;
   u32 num_threads;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
-
-  if ((error = vlib_call_init_function (vm, tls_init)))
-    return error;
 
   if (tls_init_ca_chain ())
     {
@@ -643,12 +663,17 @@ tls_mbedtls_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (tls_mbedtls_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (tls_mbedtls_init) =
+{
+  .runs_after = VLIB_INITS("tls_init"),
+};
+/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "mbedtls based TLS Engine",
+    .description = "Transport Layer Security (TLS) Engine, Mbedtls Based",
 };
 /* *INDENT-ON* */
 

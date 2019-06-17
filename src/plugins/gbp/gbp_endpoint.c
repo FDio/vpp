@@ -32,6 +32,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_neighbor.h>
 #include <vnet/fib/fib_walk.h>
+#include <vnet/vxlan-gbp/vxlan_gbp.h>
 
 static const char *gbp_endpoint_attr_names[] = GBP_ENDPOINT_ATTR_NAMES;
 
@@ -49,13 +50,6 @@ vlib_log_class_t gbp_ep_logger;
 
 #define GBP_ENDPOINT_INFO(...)                          \
     vlib_log_notice (gbp_ep_logger, __VA_ARGS__);
-
-/**
- * GBP Endpoint inactive timeout (in seconds)
- * If a dynamically learned Endpoint has not been heard from in this
- * amount of time it is considered inactive and discarded
- */
-static u32 GBP_ENDPOINT_INACTIVE_TIME = 30;
 
 /**
  * Pool of GBP endpoints
@@ -260,7 +254,8 @@ gbp_endpoint_alloc (const ip46_address_t * ips,
   fib_node_init (&ge->ge_node, gbp_endpoint_fib_type);
   gei = gbp_endpoint_index (ge);
   ge->ge_key.gek_gbd =
-    ge->ge_key.gek_grd = ge->ge_fwd.gef_itf = INDEX_INVALID;
+    ge->ge_key.gek_grd =
+    ge->ge_fwd.gef_itf = ge->ge_fwd.gef_fib_index = INDEX_INVALID;
   ge->ge_last_time = vlib_time_now (vlib_get_main ());
   ge->ge_key.gek_gbd = gbp_bridge_domain_index (gbd);
 
@@ -480,6 +475,7 @@ gbp_endpoint_n_learned (int n)
 
 static void
 gbp_endpoint_loc_update (gbp_endpoint_loc_t * gel,
+			 const gbp_bridge_domain_t * gb,
 			 u32 sw_if_index,
 			 index_t ggi,
 			 gbp_endpoint_flags_t flags,
@@ -514,6 +510,24 @@ gbp_endpoint_loc_update (gbp_endpoint_loc_t * gel,
 	ip46_address_copy (&gel->tun.gel_src, tun_src);
       if (NULL != tun_dst)
 	ip46_address_copy (&gel->tun.gel_dst, tun_dst);
+
+      if (ip46_address_is_multicast (&gel->tun.gel_src))
+	{
+	  /*
+	   * we learnt the EP from the multicast tunnel.
+	   * Create a unicast TEP from the packet's source
+	   * and the fixed address of the BD's parent tunnel
+	   */
+	  const gbp_vxlan_tunnel_t *gt;
+
+	  gt = gbp_vxlan_tunnel_get (gb->gb_vni);
+
+	  if (NULL != gt)
+	    {
+	      ip46_address_copy (&gel->tun.gel_src, &gt->gt_src);
+	      sw_if_index = gt->gt_sw_if_index;
+	    }
+	}
 
       /*
        * the input interface may be the parent GBP-vxlan interface,
@@ -589,7 +603,7 @@ gbb_endpoint_fwd_reset (gbp_endpoint_t * ge)
     {
       l2fib_del_entry (ge->ge_key.gek_mac.bytes,
 		       gbd->gb_bd_index, gef->gef_itf);
-      gbp_itf_set_l2_input_feature (gef->gef_itf, gei, (L2INPUT_FEAT_NONE));
+      gbp_itf_set_l2_input_feature (gef->gef_itf, gei, L2INPUT_FEAT_NONE);
       gbp_itf_set_l2_output_feature (gef->gef_itf, gei, L2OUTPUT_FEAT_NONE);
 
       gbp_itf_unlock (gef->gef_itf);
@@ -623,7 +637,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
   if (INDEX_INVALID != gel->gel_epg)
     {
       gg = gbp_endpoint_group_get (gel->gel_epg);
-      gef->gef_epg_id = gg->gg_id;
+      gef->gef_sclass = gg->gg_sclass;
     }
   else
     {
@@ -668,6 +682,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
     rewrite = NULL;
     grd = gbp_route_domain_get (ge->ge_key.gek_grd);
     fib_index = grd->grd_fib_index[pfx->fp_proto];
+    gef->gef_fib_index = fib_index;
 
     bd_add_del_ip_mac (gbd->gb_bd_index, fib_proto_to_ip46 (pfx->fp_proto),
 		       &pfx->fp_addr, &ge->ge_key.gek_mac, 1);
@@ -744,7 +759,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	     * is applied
 	     */
 	    gbp_policy_dpo_add_or_lock (fib_proto_to_dpo (pfx->fp_proto),
-					gg->gg_id, ~0, &policy_dpo);
+					gg->gg_sclass, ~0, &policy_dpo);
 
 	    fib_table_entry_special_dpo_add (fib_index, pfx,
 					     FIB_SOURCE_PLUGIN_HI,
@@ -773,7 +788,12 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
       }
   }
 
-  if (gbp_endpoint_is_local (ge) && !gbp_endpoint_is_external (ge))
+  if (gbp_endpoint_is_external (ge))
+    {
+      gbp_itf_set_l2_input_feature (gef->gef_itf, gei,
+				    L2INPUT_FEAT_GBP_LPM_CLASSIFY);
+    }
+  else if (gbp_endpoint_is_local (ge))
     {
       /*
        * non-remote endpoints (i.e. those not arriving on iVXLAN
@@ -805,7 +825,8 @@ gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
 			      u32 sw_if_index,
 			      const ip46_address_t * ips,
 			      const mac_address_t * mac,
-			      index_t gbdi, index_t grdi, epg_id_t epg_id,
+			      index_t gbdi, index_t grdi,
+			      sclass_t sclass,
 			      gbp_endpoint_flags_t flags,
 			      const ip46_address_t * tun_src,
 			      const ip46_address_t * tun_dst, u32 * handle)
@@ -829,9 +850,9 @@ gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
    * we need to determine the bridge-domain, either from the EPG or
    * the BD passed
    */
-  if (EPG_INVALID != epg_id)
+  if (SCLASS_INVALID != sclass)
     {
-      ggi = gbp_endpoint_group_find (epg_id);
+      ggi = gbp_endpoint_group_find (sclass);
 
       if (INDEX_INVALID == ggi)
 	return (VNET_API_ERROR_NO_SUCH_ENTRY);
@@ -869,7 +890,8 @@ gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
   gei = gbp_endpoint_index (ge);
   gel = gbp_endpoint_loc_find_or_add (ge, src);
 
-  gbp_endpoint_loc_update (gel, sw_if_index, ggi, flags, tun_src, tun_dst);
+  gbp_endpoint_loc_update (gel, gbd, sw_if_index, ggi, flags, tun_src,
+			   tun_dst);
 
   if (src <= best)
     {
@@ -1060,7 +1082,7 @@ gbp_endpoint_cli (vlib_main_t * vm,
   ip46_address_t ip = ip46_address_initializer, *ips = NULL;
   mac_address_t mac = ZERO_MAC_ADDRESS;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 epg_id = EPG_INVALID;
+  u32 sclass = SCLASS_INVALID;
   u32 handle = INDEX_INVALID;
   u32 sw_if_index = ~0;
   u8 add = 1;
@@ -1077,7 +1099,7 @@ gbp_endpoint_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
-      else if (unformat (input, "epg %d", &epg_id))
+      else if (unformat (input, "sclass %d", &sclass))
 	;
       else if (unformat (input, "handle %d", &handle))
 	;
@@ -1095,14 +1117,14 @@ gbp_endpoint_cli (vlib_main_t * vm,
     {
       if (~0 == sw_if_index)
 	return clib_error_return (0, "interface must be specified");
-      if (EPG_INVALID == epg_id)
-	return clib_error_return (0, "EPG-ID must be specified");
+      if (SCLASS_INVALID == sclass)
+	return clib_error_return (0, "SCLASS must be specified");
 
       rv =
 	gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
 				      sw_if_index, ips, &mac,
 				      INDEX_INVALID, INDEX_INVALID,
-				      epg_id,
+				      sclass,
 				      GBP_ENDPOINT_FLAG_NONE,
 				      NULL, NULL, &handle);
 
@@ -1340,16 +1362,22 @@ VLIB_CLI_COMMAND (gbp_endpoint_show_node, static) = {
 static void
 gbp_endpoint_check (index_t gei, f64 start_time)
 {
+  gbp_endpoint_group_t *gg;
   gbp_endpoint_loc_t *gel;
   gbp_endpoint_t *ge;
 
   ge = gbp_endpoint_get (gei);
   gel = gbp_endpoint_loc_find (ge, GBP_ENDPOINT_SRC_DP);
 
-  if ((NULL != gel) &&
-      ((start_time - ge->ge_last_time) > GBP_ENDPOINT_INACTIVE_TIME))
+  if (NULL != gel)
     {
-      gbp_endpoint_unlock (GBP_ENDPOINT_SRC_DP, gei);
+      gg = gbp_endpoint_group_get (gel->gel_epg);
+
+      if ((start_time - ge->ge_last_time) >
+	  gg->gg_retention.remote_ep_timeout)
+	{
+	  gbp_endpoint_unlock (GBP_ENDPOINT_SRC_DP, gei);
+	}
     }
 }
 
@@ -1462,22 +1490,6 @@ gbp_endpoint_scan (vlib_main_t * vm)
 {
   gbp_endpoint_scan_l2 (vm);
   gbp_endpoint_scan_l3 (vm);
-}
-
-void
-gbp_learn_set_inactive_threshold (u32 threshold)
-{
-  GBP_ENDPOINT_INACTIVE_TIME = threshold;
-
-  vlib_process_signal_event (vlib_get_main (),
-			     gbp_scanner_node.index,
-			     GBP_ENDPOINT_SCAN_SET_TIME, 0);
-}
-
-f64
-gbp_endpoint_scan_threshold (void)
-{
-  return (GBP_ENDPOINT_INACTIVE_TIME);
 }
 
 static fib_node_t *

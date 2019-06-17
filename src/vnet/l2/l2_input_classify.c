@@ -67,10 +67,12 @@ format_l2_input_classify_trace (u8 * s, va_list * args)
   return s;
 }
 
+extern l2_input_classify_main_t l2_input_classify_main;
+
+#ifndef CLIB_MARCH_VARIANT
 /** l2 input classifier main data structure. */
 l2_input_classify_main_t l2_input_classify_main;
-
-vlib_node_registration_t l2_input_classify_node;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_l2_input_classify_error               \
 _(MISS, "Classify misses")                      \
@@ -142,9 +144,9 @@ static char *l2_input_classify_error_strings[] = {
  *   Classifier hits in other than the first table
  */
 
-static uword
-l2_input_classify_node_fn (vlib_main_t * vm,
-			   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_input_classify_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_input_classify_next_t next_index;
@@ -443,7 +445,6 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_input_classify_node) = {
-  .function = l2_input_classify_node_fn,
   .name = "l2-input-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_input_classify_trace,
@@ -467,9 +468,7 @@ VLIB_REGISTER_NODE (l2_input_classify_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2_input_classify_node,
-			      l2_input_classify_node_fn);
-
+#ifndef CLIB_MARCH_VARIANT
 /** l2 input classsifier feature initialization. */
 clib_error_t *
 l2_input_classify_init (vlib_main_t * vm)
@@ -577,6 +576,7 @@ vnet_l2_input_classify_set_tables (u32 sw_if_index,
 
   return 0;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 int_l2_input_classify_command_fn (vlib_main_t * vm,

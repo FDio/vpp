@@ -412,6 +412,11 @@ va_format (u8 * s, const char *fmt, va_list * va)
   if (f > g)
     vec_add (s, g, f - g);
 
+#ifdef __COVERITY__
+  if (s == 0)
+    return (u8 *) "liar liar pants on fire s can't be zero!";
+#endif
+
   return s;
 }
 
@@ -422,6 +427,10 @@ format (u8 * s, const char *fmt, ...)
   va_start (va, fmt);
   s = va_format (s, fmt, &va);
   va_end (va);
+#ifdef __COVERITY__
+  if (s == 0)
+    return (u8 *) "liar liar pants on fire s can't be zero!";
+#endif
   return s;
 }
 

@@ -57,7 +57,7 @@ def get_logger(name):
 
 
 def get_parallel_logger(stream):
-    logger = logging.getLogger('parallel_logger_{}'.format(stream))
+    logger = logging.getLogger('parallel_logger_{!s}'.format(stream))
     logger.propagate = False
     logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler(stream)

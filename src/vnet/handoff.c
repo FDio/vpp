@@ -40,7 +40,11 @@ typedef struct
     u64 (*hash_fn) (ethernet_header_t *);
 } handoff_main_t;
 
+extern handoff_main_t handoff_main;
+
+#ifndef CLIB_MARCH_VARIANT
 handoff_main_t handoff_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct
 {
@@ -80,11 +84,9 @@ format_worker_handoff_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t handoff_node;
-
-static uword
-worker_handoff_node_fn (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (worker_handoff_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   handoff_main_t *hm = &handoff_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -159,7 +161,6 @@ worker_handoff_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (worker_handoff_node) = {
-  .function = worker_handoff_node_fn,
   .name = "worker-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_worker_handoff_trace,
@@ -173,9 +174,9 @@ VLIB_REGISTER_NODE (worker_handoff_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (worker_handoff_node, worker_handoff_node_fn)
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 int
 interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
 				  uword * bitmap, int enable_disable)
@@ -335,6 +336,7 @@ handoff_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (handoff_init);
 
+#endif /* CLIB_MARCH_VARIANT */
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -219,66 +219,46 @@ format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
 				vnet_sw_interface_t * si)
 {
   u32 indent, n_printed;
-  int i, j, n_counters;
-  static vnet_main_t **my_vnet_mains;
-
-  vec_reset_length (my_vnet_mains);
+  int j, n_counters;
+  u8 *n = 0;
 
   indent = format_get_indent (s);
   n_printed = 0;
 
-  {
-    vlib_combined_counter_main_t *cm;
-    vlib_counter_t v, vtotal;
-    u8 *n = 0;
+  n_counters = vec_len (im->combined_sw_if_counters);
 
-    for (i = 0; i < vec_len (vnet_mains); i++)
-      {
-	if (vnet_mains[i])
-	  vec_add1 (my_vnet_mains, vnet_mains[i]);
-      }
+  /* rx, tx counters... */
+  for (j = 0; j < n_counters; j++)
+    {
+      vlib_combined_counter_main_t *cm;
+      vlib_counter_t v, vtotal;
+      vtotal.packets = 0;
+      vtotal.bytes = 0;
 
-    if (vec_len (my_vnet_mains) == 0)
-      vec_add1 (my_vnet_mains, &vnet_main);
+      cm = im->combined_sw_if_counters + j;
+      vlib_get_combined_counter (cm, si->sw_if_index, &v);
+      vtotal.packets += v.packets;
+      vtotal.bytes += v.bytes;
 
-    /* Each vnet_main_t has its own copy of the interface counters */
-    n_counters = vec_len (im->combined_sw_if_counters);
+      /* Only display non-zero counters. */
+      if (vtotal.packets == 0)
+	continue;
 
-    /* rx, tx counters... */
-    for (j = 0; j < n_counters; j++)
-      {
-	vtotal.packets = 0;
-	vtotal.bytes = 0;
+      if (n_printed > 0)
+	s = format (s, "\n%U", format_white_space, indent);
+      n_printed += 2;
 
-	for (i = 0; i < vec_len (my_vnet_mains); i++)
-	  {
-	    im = &my_vnet_mains[i]->interface_main;
-	    cm = im->combined_sw_if_counters + j;
-	    vlib_get_combined_counter (cm, si->sw_if_index, &v);
-	    vtotal.packets += v.packets;
-	    vtotal.bytes += v.bytes;
-	  }
-
-	/* Only display non-zero counters. */
-	if (vtotal.packets == 0)
-	  continue;
-
-	if (n_printed > 0)
-	  s = format (s, "\n%U", format_white_space, indent);
-	n_printed += 2;
-
-	if (n)
-	  _vec_len (n) = 0;
-	n = format (n, "%s packets", cm->name);
-	s = format (s, "%-16v%16Ld", n, vtotal.packets);
-
+      if (n)
 	_vec_len (n) = 0;
-	n = format (n, "%s bytes", cm->name);
-	s = format (s, "\n%U%-16v%16Ld",
-		    format_white_space, indent, n, vtotal.bytes);
-      }
-    vec_free (n);
-  }
+      n = format (n, "%s packets", cm->name);
+      s = format (s, "%-16v%16Ld", n, vtotal.packets);
+
+      _vec_len (n) = 0;
+      n = format (n, "%s bytes", cm->name);
+      s = format (s, "\n%U%-16v%16Ld",
+		  format_white_space, indent, n, vtotal.bytes);
+    }
+  vec_free (n);
 
   {
     vlib_simple_counter_main_t *cm;
@@ -290,14 +270,10 @@ format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
       {
 	vtotal = 0;
 
-	for (i = 0; i < vec_len (my_vnet_mains); i++)
-	  {
-	    im = &my_vnet_mains[i]->interface_main;
-	    cm = im->sw_if_counters + j;
+	cm = im->sw_if_counters + j;
 
-	    v = vlib_get_simple_counter (cm, si->sw_if_index);
-	    vtotal += v;
-	  }
+	v = vlib_get_simple_counter (cm, si->sw_if_index);
+	vtotal += v;
 
 	/* Only display non-zero counters. */
 	if (vtotal == 0)
@@ -486,9 +462,7 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
   s = format (s, "policer.index: %d", o->policer.index);
   vec_add1 (s, '\n');
 
-  s = format (s,
-	      "ipsec.flags: 0x%x, ipsec.sad_index: %d",
-	      o->ipsec.flags, o->ipsec.sad_index);
+  s = format (s, "ipsec.sad_index: %d", o->ipsec.sad_index);
   vec_add1 (s, '\n');
 
   s = format (s, "map.mtu: %d", (u32) (o->map.mtu));
@@ -578,8 +552,8 @@ format_vnet_buffer_opaque2 (u8 * s, va_list * args)
   s = format (s, "loop_counter: %d", o->loop_counter);
   vec_add1 (s, '\n');
 
-  s = format (s, "gbp.flags: %x, gbp.src_epg: %d",
-	      (u32) (o->gbp.flags), (u32) (o->gbp.src_epg));
+  s = format (s, "gbp.flags: %x, gbp.sclass: %d",
+	      (u32) (o->gbp.flags), (u32) (o->gbp.sclass));
   vec_add1 (s, '\n');
 
   s = format (s, "pg_replay_timestamp: %llu", (u32) (o->pg_replay_timestamp));

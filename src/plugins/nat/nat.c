@@ -171,7 +171,7 @@ VNET_FEATURE_INIT (ip4_nat44_ed_hairpinning, static) =
 
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
-    .description = "Network Address Translation",
+    .description = "Network Address Translation (NAT)",
 };
 /* *INDENT-ON* */
 
@@ -188,11 +188,20 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 
   if (is_fwd_bypass_session (s))
     {
+      if (snat_is_unk_proto_session (s))
+	{
+	  ed_key.proto = s->in2out.port;
+	  ed_key.r_port = 0;
+	  ed_key.l_port = 0;
+	}
+      else
+	{
+	  ed_key.proto = snat_proto_to_ip_proto (s->in2out.protocol);
+	  ed_key.l_port = s->in2out.port;
+	  ed_key.r_port = s->ext_host_port;
+	}
       ed_key.l_addr = s->in2out.addr;
       ed_key.r_addr = s->ext_host_addr;
-      ed_key.l_port = s->in2out.port;
-      ed_key.r_port = s->ext_host_port;
-      ed_key.proto = snat_proto_to_ip_proto (s->in2out.protocol);
       ed_key.fib_index = 0;
       ed_kv.key[0] = ed_key.as_u64[0];
       ed_kv.key[1] = ed_key.as_u64[1];
@@ -713,7 +722,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 
 	  if (!addr_only)
 	    {
-	      if (rp->l_port != l_port || rp->e_port != e_port
+	      if ((rp->l_port != l_port && rp->e_port != e_port)
 		  || rp->proto != proto)
 		continue;
 	    }
@@ -821,6 +830,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	{
 	  fib_index = sm->inside_fib_index;
 	  vrf_id = sm->inside_vrf_id;
+	  fib_table_lock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_LOW);
 	}
 
       if (!(out2in_only || identity_nat))
@@ -2168,6 +2178,7 @@ snat_update_outside_fib (u32 sw_if_index, u32 new_fib_index,
   nat_outside_fib_t *outside_fib;
   snat_interface_t *i;
   u8 is_add = 1;
+  u8 match = 0;
 
   if (new_fib_index == old_fib_index)
     return;
@@ -2175,14 +2186,21 @@ snat_update_outside_fib (u32 sw_if_index, u32 new_fib_index,
   if (!vec_len (sm->outside_fibs))
     return;
 
-  pool_foreach (i, sm->interfaces, (
-				     {
-				     if (i->sw_if_index == sw_if_index)
-				     {
-				     if (!(nat_interface_is_outside (i)))
-				     return;}
-				     }
-		));
+  /* *INDENT-OFF* */
+  pool_foreach (i, sm->interfaces,
+    ({
+      if (i->sw_if_index == sw_if_index)
+        {
+          if (!(nat_interface_is_outside (i)))
+	    return;
+          match = 1;
+        }
+    }));
+  /* *INDENT-ON* */
+
+  if (!match)
+    return;
+
   vec_foreach (outside_fib, sm->outside_fibs)
   {
     if (outside_fib->fib_index == old_fib_index)
@@ -2269,6 +2287,7 @@ snat_init (vlib_main_t * vm)
   sm->workers = 0;
   sm->port_per_thread = 0xffff - 1024;
   sm->fq_in2out_index = ~0;
+  sm->fq_in2out_output_index = ~0;
   sm->fq_out2in_index = ~0;
   sm->udp_timeout = SNAT_UDP_TIMEOUT;
   sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;

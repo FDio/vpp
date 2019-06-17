@@ -18,13 +18,17 @@ from threading import Thread, Event
 from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
+
+import scapy.compat
 from scapy.packet import Raw
 from hook import StepHook, PollHook, VppDiedError
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
+from vpp_bvi_interface import VppBviInterface
 from vpp_papi_provider import VppPapiProvider
 from vpp_papi.vpp_stats import VPPStats
+from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
     get_logger, colorize
 from vpp_object import VppObjectRegistry
@@ -141,11 +145,13 @@ def pump_output(testclass):
 def _is_skip_aarch64_set():
     return os.getenv('SKIP_AARCH64', 'n').lower() in ('yes', 'y', '1')
 
+
 is_skip_aarch64_set = _is_skip_aarch64_set()
 
 
 def _is_platform_aarch64():
     return platform.machine() == 'aarch64'
+
 
 is_platform_aarch64 = _is_platform_aarch64()
 
@@ -154,12 +160,14 @@ def _running_extended_tests():
     s = os.getenv("EXTENDED_TESTS", "n")
     return True if s.lower() in ("y", "yes", "1") else False
 
+
 running_extended_tests = _running_extended_tests()
 
 
 def _running_on_centos():
     os_id = os.getenv("OS_ID", "")
     return True if "centos" in os_id.lower() else False
+
 
 running_on_centos = _running_on_centos
 
@@ -283,6 +291,7 @@ class VppTestCase(unittest.TestCase):
         cls.set_debug_flags(d)
         cls.vpp_bin = os.getenv('VPP_BIN', "vpp")
         cls.plugin_path = os.getenv('VPP_PLUGIN_PATH')
+        cls.test_plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
         cls.extern_plugin_path = os.getenv('EXTERN_PLUGINS')
         plugin_path = None
         if cls.plugin_path is not None:
@@ -310,15 +319,21 @@ class VppTestCase(unittest.TestCase):
                            coredump_size, "runtime-dir", cls.tempdir, "}",
                            "api-trace", "{", "on", "}", "api-segment", "{",
                            "prefix", cls.shm_prefix, "}", "cpu", "{",
-                           "main-core", str(cpu_core_number), "}", "statseg",
-                           "{", "socket-name", cls.stats_sock, "}", "plugins",
+                           "main-core", str(cpu_core_number), "}",
+                           "statseg", "{", "socket-name", cls.stats_sock, "}",
+                           "socksvr", "{", "socket-name", cls.api_sock, "}",
+                           "plugins",
                            "{", "plugin", "dpdk_plugin.so", "{", "disable",
+                           "}", "plugin", "rdma_plugin.so", "{", "disable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
                            "}"] + cls.extra_vpp_plugin_config + ["}", ]
         if cls.extra_vpp_punt_config is not None:
             cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
+        if cls.test_plugin_path is not None:
+            cls.vpp_cmdline.extend(["test_plugin_path", cls.test_plugin_path])
+
         cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
         cls.logger.info("vpp_cmdline: %s" % " ".join(cls.vpp_cmdline))
 
@@ -390,9 +405,31 @@ class VppTestCase(unittest.TestCase):
             if os.path.exists(cls.stats_sock):
                 ok = True
                 break
-            time.sleep(0.8)
+            cls.sleep(0.8)
         if not ok:
             cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
+
+    @classmethod
+    def wait_for_coredump(cls):
+        corefile = cls.tempdir + "/core"
+        if os.path.isfile(corefile):
+            cls.logger.error("Waiting for coredump to complete: %s", corefile)
+            curr_size = os.path.getsize(corefile)
+            deadline = time.time() + 60
+            ok = False
+            while time.time() < deadline:
+                cls.sleep(1)
+                size = curr_size
+                curr_size = os.path.getsize(corefile)
+                if size == curr_size:
+                    ok = True
+                    break
+            if not ok:
+                cls.logger.error("Timed out waiting for coredump to complete:"
+                                 " %s", corefile)
+            else:
+                cls.logger.error("Coredump complete: %s, size %d",
+                                 corefile, curr_size)
 
     @classmethod
     def setUpClass(cls):
@@ -407,15 +444,19 @@ class VppTestCase(unittest.TestCase):
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
+
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
+        cls.api_sock = "%s/api.sock" % cls.tempdir
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
                       datefmt="%H:%M:%S"))
         cls.file_handler.setLevel(DEBUG)
         cls.logger.addHandler(cls.file_handler)
+        cls.logger.debug("--- setUpClass() for %s called ---" %
+                         cls.__name__)
         cls.shm_prefix = os.path.basename(cls.tempdir)
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
@@ -511,14 +552,21 @@ class VppTestCase(unittest.TestCase):
 
         if hasattr(cls, 'vpp'):
             if hasattr(cls, 'vapi'):
+                cls.logger.debug("Disconnecting class vapi client on %s",
+                                 cls.__name__)
                 cls.vapi.disconnect()
+                cls.logger.debug("Deleting class vapi attribute on %s",
+                                 cls.__name__)
                 del cls.vapi
             cls.vpp.poll()
             if cls.vpp.returncode is None:
+                cls.wait_for_coredump()
                 cls.logger.debug("Sending TERM to vpp")
-                cls.vpp.kill()
+                cls.vpp.terminate()
                 cls.logger.debug("Waiting for vpp to die")
                 cls.vpp.communicate()
+            cls.logger.debug("Deleting class vpp attribute on %s",
+                             cls.__name__)
             del cls.vpp
 
         if cls.vpp_startup_failed:
@@ -551,6 +599,8 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """ Perform final cleanup after running all tests in this test-case """
+        cls.logger.debug("--- tearDownClass() for %s called ---" %
+                         cls.__name__)
         cls.reporter.send_keep_alive(cls, 'tearDownClass')
         cls.quit()
         cls.file_handler.close()
@@ -558,20 +608,27 @@ class VppTestCase(unittest.TestCase):
         if debug_framework:
             debug_internal.on_tear_down_class(cls)
 
+    def show_commands_at_teardown(self):
+        """ Allow subclass specific teardown logging additions."""
+        self.logger.info("--- No test specific show commands provided. ---")
+
     def tearDown(self):
         """ Show various debug prints after each test """
-        super(VppTestCase, self).tearDown()
         self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
-        if not self.vpp_dead:
-            self.logger.debug(self.vapi.cli("show trace max 1000"))
-            self.logger.info(self.vapi.ppcli("show interface"))
-            self.logger.info(self.vapi.ppcli("show hardware"))
-            self.logger.info(self.statistics.set_errors_str())
-            self.logger.info(self.vapi.ppcli("show run"))
-            self.logger.info(self.vapi.ppcli("show log"))
-            self.registry.remove_vpp_config(self.logger)
+
+        try:
+            if not self.vpp_dead:
+                self.logger.debug(self.vapi.cli("show trace max 1000"))
+                self.logger.info(self.vapi.ppcli("show interface"))
+                self.logger.info(self.vapi.ppcli("show hardware"))
+                self.logger.info(self.statistics.set_errors_str())
+                self.logger.info(self.vapi.ppcli("show run"))
+                self.logger.info(self.vapi.ppcli("show log"))
+                self.logger.info("Logging testcase specific show commands.")
+                self.show_commands_at_teardown()
+                self.registry.remove_vpp_config(self.logger)
             # Save/Dump VPP api trace log
             api_trace = "vpp_api_trace.%s.log" % self._testMethodName
             tmp_api_trace = "/tmp/%s" % api_trace
@@ -582,6 +639,10 @@ class VppTestCase(unittest.TestCase):
             os.rename(tmp_api_trace, vpp_api_trace_log)
             self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))
+        except VppTransportShmemIOError:
+            self.logger.debug("VppTransportShmemIOError: Vpp dead. "
+                              "Cannot log show commands.")
+            self.vpp_dead = True
         else:
             self.registry.unregister_all(self.logger)
 
@@ -589,9 +650,6 @@ class VppTestCase(unittest.TestCase):
         """ Clear trace before running each test"""
         super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
-        self.logger.debug("--- setUp() for %s.%s(%s) called ---" %
-                          (self.__class__.__name__, self._testMethodName,
-                           self._testMethodDoc))
         if self.vpp_dead:
             raise Exception("VPP is dead when setting up the test")
         self.sleep(.1, "during setUp")
@@ -683,6 +741,20 @@ class VppTestCase(unittest.TestCase):
         cls.lo_interfaces = result
         return result
 
+    @classmethod
+    def create_bvi_interfaces(cls, count):
+        """
+        Create BVI interfaces.
+
+        :param count: number of interfaces created.
+        :returns: List of created interfaces.
+        """
+        result = [VppBviInterface(cls) for i in range(count)]
+        for intf in result:
+            setattr(cls, intf.name, intf)
+        cls.bvi_interfaces = result
+        return result
+
     @staticmethod
     def extend_packet(packet, size, padding=' '):
         """
@@ -697,8 +769,8 @@ class VppTestCase(unittest.TestCase):
         packet_len = len(packet) + 4
         extend = size - packet_len
         if extend > 0:
-            num = (extend / len(padding)) + 1
-            packet[Raw].load += (padding * num)[:extend]
+            num = (extend // len(padding)) + 1
+            packet[Raw].load += (padding * num)[:extend].encode("ascii")
 
     @classmethod
     def reset_packet_infos(cls):
@@ -746,16 +818,19 @@ class VppTestCase(unittest.TestCase):
                                    info.ip, info.proto)
 
     @staticmethod
-    def payload_to_info(payload):
+    def payload_to_info(payload, payload_field='load'):
         """
         Convert packet payload to _PacketInfo object
 
         :param payload: packet payload
-
+        :type payload:  <class 'scapy.packet.Raw'>
+        :param payload_field: packet fieldname of payload "load" for
+                <class 'scapy.packet.Raw'>
+        :type payload_field: str
         :returns: _PacketInfo object containing de-serialized data from payload
 
         """
-        numbers = payload.split()
+        numbers = getattr(payload, payload_field).split()
         info = _PacketInfo()
         info.index = int(numbers[0])
         info.src = int(numbers[1])
@@ -846,22 +921,22 @@ class VppTestCase(unittest.TestCase):
 
     def assert_packet_checksums_valid(self, packet,
                                       ignore_zero_udp_checksums=True):
-        received = packet.__class__(str(packet))
+        received = packet.__class__(scapy.compat.raw(packet))
         self.logger.debug(
             ppp("Verifying packet checksums for packet:", received))
         udp_layers = ['UDP', 'UDPerror']
         checksum_fields = ['cksum', 'chksum']
         checksums = []
         counter = 0
-        temp = received.__class__(str(received))
+        temp = received.__class__(scapy.compat.raw(received))
         while True:
             layer = temp.getlayer(counter)
             if layer:
                 for cf in checksum_fields:
                     if hasattr(layer, cf):
                         if ignore_zero_udp_checksums and \
-                                        0 == getattr(layer, cf) and \
-                                        layer.name in udp_layers:
+                                0 == getattr(layer, cf) and \
+                                layer.name in udp_layers:
                             continue
                         delattr(layer, cf)
                         checksums.append((counter, cf))
@@ -870,7 +945,7 @@ class VppTestCase(unittest.TestCase):
             counter = counter + 1
         if 0 == len(checksums):
             return
-        temp = temp.__class__(str(temp))
+        temp = temp.__class__(scapy.compat.raw(temp))
         for layer, cf in checksums:
             calc_sum = getattr(temp[layer], cf)
             self.assert_equal(
@@ -887,9 +962,10 @@ class VppTestCase(unittest.TestCase):
         received_packet_checksum = getattr(received_packet[layer], field_name)
         if ignore_zero_checksum and 0 == received_packet_checksum:
             return
-        recalculated = received_packet.__class__(str(received_packet))
+        recalculated = received_packet.__class__(
+            scapy.compat.raw(received_packet))
         delattr(recalculated[layer], field_name)
-        recalculated = recalculated.__class__(str(recalculated))
+        recalculated = recalculated.__class__(scapy.compat.raw(recalculated))
         self.assert_equal(received_packet_checksum,
                           getattr(recalculated[layer], field_name),
                           "packet checksum on layer: %s" % layer)
@@ -933,29 +1009,51 @@ class VppTestCase(unittest.TestCase):
         if pkt.haslayer(ICMPv6EchoReply):
             self.assert_checksum_valid(pkt, 'ICMPv6EchoReply', 'cksum')
 
-    def assert_packet_counter_equal(self, counter, expected_value):
+    def get_packet_counter(self, counter):
         if counter.startswith("/"):
             counter_value = self.statistics.get_counter(counter)
-            self.assert_equal(counter_value, expected_value,
-                              "packet counter `%s'" % counter)
         else:
             counters = self.vapi.cli("sh errors").split('\n')
-            counter_value = -1
+            counter_value = 0
             for i in range(1, len(counters) - 1):
                 results = counters[i].split()
                 if results[1] == counter:
                     counter_value = int(results[0])
                     break
+        return counter_value
+
+    def assert_packet_counter_equal(self, counter, expected_value):
+        counter_value = self.get_packet_counter(counter)
+        self.assert_equal(counter_value, expected_value,
+                          "packet counter `%s'" % counter)
+
+    def assert_error_counter_equal(self, counter, expected_value):
+        counter_value = self.statistics.get_err_counter(counter)
+        self.assert_equal(counter_value, expected_value,
+                          "error counter `%s'" % counter)
 
     @classmethod
     def sleep(cls, timeout, remark=None):
+
+        # /* Allow sleep(0) to maintain win32 semantics, and as decreed
+        #  * by Guido, only the main thread can be interrupted.
+        # */
+        # https://github.com/python/cpython/blob/6673decfa0fb078f60587f5cb5e98460eea137c2/Modules/timemodule.c#L1892  # noqa
+        if timeout == 0:
+            # yield quantum
+            if hasattr(os, 'sched_yield'):
+                os.sched_yield()
+            else:
+                time.sleep(0)
+            return
+
         if hasattr(cls, 'logger'):
             cls.logger.debug("Starting sleep for %es (%s)", timeout, remark)
         before = time.time()
         time.sleep(timeout)
         after = time.time()
         if hasattr(cls, 'logger') and after - before > 2 * timeout:
-            cls.logger.error("unexpected time.sleep() result - "
+            cls.logger.error("unexpected self.sleep() result - "
                              "slept for %es instead of ~%es!",
                              after - before, timeout)
         if hasattr(cls, 'logger'):
@@ -978,9 +1076,11 @@ class VppTestCase(unittest.TestCase):
             i.assert_nothing_captured(remark=remark)
             timeout = 0.1
 
-    def send_and_expect(self, intf, pkts, output):
+    def send_and_expect(self, intf, pkts, output, n_rx=None):
+        if not n_rx:
+            n_rx = len(pkts)
         self.pg_send(intf, pkts)
-        rx = output.get_capture(len(pkts))
+        rx = output.get_capture(n_rx)
         return rx
 
     def send_and_expect_only(self, intf, pkts, output, timeout=None):
@@ -1163,7 +1263,7 @@ class VppTestResult(unittest.TestResult):
                     if isinstance(test, unittest.suite._ErrorHolder):
                         test_name = str(test)
                     else:
-                        test_name = "'{}' ({})".format(
+                        test_name = "'{!s}' ({!s})".format(
                             get_testcase_doc_name(test), test.id())
                     self.current_test_case_info.core_crash_test = test_name
                 self.core_crash_test_cases_info.add(
@@ -1354,6 +1454,7 @@ class Worker(Thread):
         self.logger.info(err)
         self.logger.info(single_line_delim)
         self.result = self.process.returncode
+
 
 if __name__ == '__main__':
     pass

@@ -723,6 +723,27 @@ session_lookup_listener (u32 table_index, session_endpoint_t * sep)
   return 0;
 }
 
+/**
+ * Lookup listener wildcard match
+ */
+session_t *
+session_lookup_listener_wildcard (u32 table_index, session_endpoint_t * sep)
+{
+  session_table_t *st;
+  st = session_table_get (table_index);
+  if (!st)
+    return 0;
+  if (sep->is_ip4)
+    return session_lookup_listener4_i (st, &sep->ip.ip4, sep->port,
+				       sep->transport_proto,
+				       1 /* use_wildcard */ );
+  else
+    return session_lookup_listener6_i (st, &sep->ip.ip6, sep->port,
+				       sep->transport_proto,
+				       1 /* use_wildcard */ );
+  return 0;
+}
+
 int
 session_lookup_add_half_open (transport_connection_t * tc, u64 value)
 {
@@ -1468,6 +1489,7 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   session_rule_add_del_args_t args = {
+    .transport_proto = proto,
     .table_args.lcl.fp_addr = lcl_ip,
     .table_args.lcl.fp_len = lcl_plen,
     .table_args.lcl.fp_proto = fib_proto,
