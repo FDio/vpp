@@ -179,10 +179,9 @@ compute_rewrite_encaps (ip6_address_t * sl)
   iph->protocol = IP_PROTOCOL_IPV6;
   iph->hop_limit = IPv6_DEFAULT_HOP_LIMIT;
 
-  srh = (ip6_sr_header_t *) (iph + 1);
-
   if (vec_len (sl) > 1)
     {
+      srh = (ip6_sr_header_t *) (iph + 1);
       iph->protocol = IP_PROTOCOL_IPV6_ROUTE;
       srh->protocol = IP_PROTOCOL_IPV6;
       srh->type = ROUTING_HEADER_TYPE_SR;
@@ -196,7 +195,7 @@ compute_rewrite_encaps (ip6_address_t * sl)
       vec_foreach (this_address, sl)
       {
 	clib_memcpy_fast (addrp->as_u8, this_address->as_u8,
-		     sizeof (ip6_address_t));
+		          sizeof (ip6_address_t));
 	addrp--;
       }
     }
