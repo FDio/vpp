@@ -412,7 +412,10 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   else
     {
       f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
-      vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;	/* use interface VRF */
+      /* lookup in the interface's table */
+      vnet_buffer (b)->ip.fib_index =
+	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+					     c->sw_if_index);
       ip = vlib_buffer_get_current (b);
     }
 

@@ -153,7 +153,7 @@ pppoe_fixup (vlib_main_t * vm,
   /* Swap to the the packet's output interface to the encap (not the
    * session) interface */
   t = data;
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t->encap_if_index;
+  vnet_buffer (b0)->ip.fib_index = t->encap_if_index;
 }
 
 static void

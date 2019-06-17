@@ -112,7 +112,7 @@ snat_hairpinning (snat_main_t * sm,
     {
       new_dst_addr0 = sm0.addr.as_u32;
       new_dst_port0 = sm0.port;
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
+      vnet_buffer (b0)->ip.fib_index = sm0.fib_index;
     }
   /* or active session */
   else
@@ -146,7 +146,7 @@ snat_hairpinning (snat_main_t * sm,
       s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
       new_dst_addr0 = s0->in2out.addr.as_u32;
       new_dst_port0 = s0->in2out.port;
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+      vnet_buffer (b0)->ip.fib_index = s0->in2out.fib_index;
     }
 
   /* Destination is behind the same NAT, use internal address and port */
@@ -248,7 +248,7 @@ snat_icmp_hairpinning (snat_main_t * sm,
 	}
       s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
       new_dst_addr0 = s0->in2out.addr.as_u32;
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+      vnet_buffer (b0)->ip.fib_index = s0->in2out.fib_index;
 
       /* update inner source IP address */
       old_addr0 = inner_ip0->src_address.as_u32;
@@ -315,8 +315,7 @@ snat_icmp_hairpinning (snat_main_t * sm,
 		  s0 =
 		    pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
 		  new_dst_addr0 = s0->in2out.addr.as_u32;
-		  vnet_buffer (b0)->sw_if_index[VLIB_TX] =
-		    s0->in2out.fib_index;
+		  vnet_buffer (b0)->ip.fib_index = s0->in2out.fib_index;
 		  echo0->identifier = s0->in2out.port;
 		  sum0 = icmp0->checksum;
 		  sum0 = ip_csum_update (sum0, icmp_id0, s0->in2out.port,
@@ -333,7 +332,7 @@ snat_icmp_hairpinning (snat_main_t * sm,
 
       new_dst_addr0 = m0->local_addr.as_u32;
       if (vnet_buffer (b0)->sw_if_index[VLIB_TX] == ~0)
-	vnet_buffer (b0)->sw_if_index[VLIB_TX] = m0->fib_index;
+	vnet_buffer (b0)->ip.fib_index = m0->fib_index;
     }
 change_addr:
   /* Destination is behind the same NAT, use internal address and port */
@@ -373,7 +372,7 @@ nat_hairpinning_sm_unknown_proto (snat_main_t * sm,
   ip->checksum = ip_csum_fold (sum);
 
   if (vnet_buffer (b)->sw_if_index[VLIB_TX] == ~0)
-    vnet_buffer (b)->sw_if_index[VLIB_TX] = m->fib_index;
+    vnet_buffer (b)->ip.fib_index = m->fib_index;
 }
 #endif
 
@@ -408,14 +407,14 @@ nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
 
       m = pool_elt_at_index (sm->static_mappings, value.value);
       if (vnet_buffer (b)->sw_if_index[VLIB_TX] == ~0)
-	vnet_buffer (b)->sw_if_index[VLIB_TX] = m->fib_index;
+	vnet_buffer (b)->ip.fib_index = m->fib_index;
       new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
     }
   else
     {
       s = pool_elt_at_index (sm->per_thread_data[ti].sessions, s_value.value);
       if (vnet_buffer (b)->sw_if_index[VLIB_TX] == ~0)
-	vnet_buffer (b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
+	vnet_buffer (b)->ip.fib_index = s->in2out.fib_index;
       new_addr = ip->dst_address.as_u32 = s->in2out.addr.as_u32;
     }
   sum = ip->checksum;
@@ -454,7 +453,7 @@ nat44_reass_hairpinning (snat_main_t * sm,
     {
       new_dst_addr0 = sm0.addr.as_u32;
       new_dst_port0 = sm0.port;
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
+      vnet_buffer (b0)->ip.fib_index = sm0.fib_index;
     }
   /* or active sessions */
   else
@@ -487,7 +486,7 @@ nat44_reass_hairpinning (snat_main_t * sm,
 	  s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
 	  new_dst_addr0 = s0->in2out.addr.as_u32;
 	  new_dst_port0 = s0->in2out.port;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+	  vnet_buffer (b0)->ip.fib_index = s0->in2out.fib_index;
 	}
     }
 

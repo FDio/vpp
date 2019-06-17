@@ -127,7 +127,7 @@ last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 
   s = pool_elt_at_index (lm->sessions, session_index);
 
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = s->encap_fib_index;
+  vnet_buffer (b)->ip.fib_index = s->encap_fib_index;
 
   /* Paint on an l2tpv3 hdr */
   vlib_buffer_advance (b, -(s->l2tp_hdr_size));

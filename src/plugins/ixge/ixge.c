@@ -1495,8 +1495,6 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
 	  vnet_buffer (b1)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  b0->error = node->errors[error0];
 	  b1->error = node->errors[error1];
@@ -1697,7 +1695,6 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	  b0->flags |= flags0 | (!is_eop0 << VLIB_BUFFER_LOG2_NEXT_PRESENT);
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  b0->error = node->errors[error0];
 

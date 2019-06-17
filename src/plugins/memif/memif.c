@@ -865,7 +865,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	  clib_memset (bt, 0, sizeof (vlib_buffer_t));
 	  bt->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  bt->total_length_not_including_first_buffer = 0;
-	  vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  /* initially prealloc copy_ops so we can use
 	     _vec_len instead of vec_elen */

@@ -133,7 +133,7 @@ ip6_ll_dpo_inline (vlib_main_t * vm,
 	    ip6_ll_fib_get (vnet_buffer (p0)->sw_if_index[VLIB_RX]);
 	  /* write that fib index into the packet so it's used in the
 	   * lookup node next */
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
+	  vnet_buffer (p0)->ip.fib_index = fib_index0;
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {

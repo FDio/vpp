@@ -373,7 +373,6 @@ no_more_desc:
   vlib_get_buffers (vm, to_next, ptd->bufs, n_rx_packets);
 
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = ad->sw_if_index;
-  vnet_buffer (bt)->sw_if_index[VLIB_TX] = ~0;
   bt->buffer_pool_index = rxq->buffer_pool_index;
   bt->ref_count = 1;
 

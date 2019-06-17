@@ -29,6 +29,8 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/sctp/sctp.h>
 #include <vnet/ip/punt.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 #include <vlib/unix/unix.h>
 
 #include <stdio.h>
@@ -553,13 +555,16 @@ punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
 
     case PUNT_IP4_ROUTED:
       vnet_buffer (b)->sw_if_index[VLIB_RX] = packetdesc.sw_if_index;
-      vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
+      vnet_buffer (b)->ip.fib_index =
+	ip4_fib_table_get_index_for_sw_if_index (packetdesc.sw_if_index);
+
       next_index = PUNT_SOCKET_RX_NEXT_IP4_LOOKUP;
       break;
 
     case PUNT_IP6_ROUTED:
       vnet_buffer (b)->sw_if_index[VLIB_RX] = packetdesc.sw_if_index;
-      vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
+      vnet_buffer (b)->ip.fib_index =
+	ip6_fib_table_get_index_for_sw_if_index (packetdesc.sw_if_index);
       next_index = PUNT_SOCKET_RX_NEXT_IP6_LOOKUP;
       break;
 

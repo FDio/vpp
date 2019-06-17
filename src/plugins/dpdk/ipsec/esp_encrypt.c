@@ -18,6 +18,8 @@
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/ip6_fib.h>
+#include <vnet/fib/ip4_fib.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -418,7 +420,14 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  n_left_to_next -= 1;
 		  goto trace;
 		}
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      if (is_ip6)
+		vnet_buffer (b0)->ip.fib_index =
+		  ip6_fib_table_get_index_for_sw_if_index
+		  (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	      else
+		vnet_buffer (b0)->ip.fib_index =
+		  ip4_fib_table_get_index_for_sw_if_index
+		  (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 	    }
 	  else			/* transport mode */
 	    {
