@@ -183,6 +183,17 @@ format_vnet_api_errno (u8 * s, va_list * args)
 }
 /* *INDENT-ON* */
 
+static const int defined_api_errnos[] =
+#ifdef _
+#undef _
+#endif
+#define _(a, b, c) \
+  b ,
+{ foreach_vnet_api_error };
+
+#undef _
+;
+
 #endif /* included_vnet_api_errno_h */
 
 /*
