@@ -278,7 +278,7 @@ udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
       stats->retry++;
       stats->analyse_data.pkt_sent++;
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+      vnet_buffer (b0)->ip.fib_index = 0;
       vnet_buffer (b0)->l2_classify.opaque_index = stats->flow_ctx;
 
       ip6_header_t *ip6 = vlib_buffer_get_current (b0);

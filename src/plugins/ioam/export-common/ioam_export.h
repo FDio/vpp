@@ -140,7 +140,6 @@ ioam_export_init_buffer (ioam_export_main_t * em, vlib_main_t * vm,
   b = vlib_get_buffer (vm, eb->buffer_index);
   (void) ioam_export_buffer_add_header (em, b);
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
   return (1);
 }
 

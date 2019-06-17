@@ -2917,7 +2917,7 @@ send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
   if (!b)
     return -1;
 
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+  vnet_buffer (b)->ip.fib_index = 0;
 
   next_index = (ip_addr_version (rloc) == IP4) ?
     ip4_lookup_node.index : ip6_lookup_node.index;
@@ -3029,7 +3029,7 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
     if (!b)
       continue;
 
-    vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+    vnet_buffer (b)->ip.fib_index = 0;
 
     next_index = (ip_addr_version (&lcm->active_map_server) == IP4) ?
       ip4_lookup_node.index : ip6_lookup_node.index;
@@ -3177,7 +3177,7 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
     return -1;
 
   /* set fib index to default and lookup node */
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+  vnet_buffer (b)->ip.fib_index = 0;
   next_index = (ip_addr_version (&lcm->active_map_resolver) == IP4) ?
     ip4_lookup_node.index : ip6_lookup_node.index;
 
@@ -4227,7 +4227,7 @@ send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
     return -1;
   free_map_register_records (records);
 
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+  vnet_buffer (b)->ip.fib_index = 0;
   next_index = (ip_addr_version (&lcm->active_map_resolver) == IP4) ?
     ip4_lookup_node.index : ip6_lookup_node.index;
 

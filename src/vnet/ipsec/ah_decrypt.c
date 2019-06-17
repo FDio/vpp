@@ -18,6 +18,8 @@
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -375,7 +377,6 @@ ah_decrypt_inline (vlib_main_t * vm,
       if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
 	next[0] = AH_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 
-      vnet_buffer (b[0])->sw_if_index[VLIB_TX] = (u32) ~ 0;
     trace:
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{

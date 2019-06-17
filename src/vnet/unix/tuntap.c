@@ -334,7 +334,6 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     uword n_trace = vlib_get_trace_count (vm, node);
 
     vnet_buffer (b)->sw_if_index[VLIB_RX] = tm->sw_if_index;
-    vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
     /*
      * Turn this on if you run into

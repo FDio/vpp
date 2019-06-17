@@ -49,15 +49,7 @@ format_vxlan_rx_trace (u8 * s, va_list * args)
 always_inline u32
 buf_fib_index (vlib_buffer_t * b, u32 is_ip4)
 {
-  u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
-  if (sw_if_index != (u32) ~ 0)
-    return sw_if_index;
-
-  u32 *fib_index_by_sw_if_index = is_ip4 ?
-    ip4_main.fib_index_by_sw_if_index : ip6_main.fib_index_by_sw_if_index;
-  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-
-  return vec_elt (fib_index_by_sw_if_index, sw_if_index);
+  return vnet_buffer (b)->ip.fib_index;
 }
 
 typedef vxlan4_tunnel_key_t last_tunnel_cache4;

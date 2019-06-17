@@ -129,10 +129,7 @@ vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
  *
  * It is worth noting that other than trivial UDP forwarding (transit), VXLAN GPE
  * tunnels are "establish local". This means that we don't have a TX interface as yet
- * as we need to look up where the outer-header dest is. By setting the TX index in the
- * buffer metadata to the encap FIB, we can do a lookup to get the adjacency and real TX.
- *
- *      vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
+ * as we need to look up where the outer-header dest is.
  *
  * @node vxlan-gpe-input
  * @param *vm
@@ -246,8 +243,8 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	    }
 
 	  /* Reset to look up tunnel partner in the configured FIB */
-	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = t0->encap_fib_index;
-	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] = t1->encap_fib_index;
+	  vnet_buffer (b[0])->ip.fib_index = t0->encap_fib_index;
+	  vnet_buffer (b[1])->ip.fib_index = t1->encap_fib_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = sw_if_index0;
 	  vnet_buffer (b[1])->sw_if_index[VLIB_RX] = sw_if_index1;
 	  pkts_encapsulated += 2;
@@ -341,7 +338,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  vxlan_gpe_encap_one_inline (ngm, b[0], t0, &next0, is_ip4_0);
 
 	  /* Reset to look up tunnel partner in the configured FIB */
-	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = t0->encap_fib_index;
+	  vnet_buffer (b[0])->ip.fib_index = t0->encap_fib_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = sw_if_index0;
 	  pkts_encapsulated++;
 

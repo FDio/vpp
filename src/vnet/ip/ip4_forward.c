@@ -1083,11 +1083,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index =
-	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b0)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	  t0->fib_index = vnet_buffer (b0)->ip.fib_index;
 	  clib_memcpy_fast (t0->packet_data, vlib_buffer_get_current (b0),
 			    sizeof (t0->packet_data));
 	}
@@ -1319,10 +1315,6 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
   load_balance_t *lb0;
   u32 lbi0;
 
-  vnet_buffer (b)->ip.fib_index =
-    vnet_buffer (b)->sw_if_index[VLIB_TX] != ~0 ?
-    vnet_buffer (b)->sw_if_index[VLIB_TX] : vnet_buffer (b)->ip.fib_index;
-
   if (PREDICT_FALSE (last_check->first ||
 		     (last_check->src.as_u32 != ip0->src_address.as_u32)))
     {
@@ -1384,16 +1376,6 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
   not_last_hit = last_check->first;
   not_last_hit |= ip[0]->src_address.as_u32 ^ last_check->src.as_u32;
   not_last_hit |= ip[1]->src_address.as_u32 ^ last_check->src.as_u32;
-
-  vnet_buffer (b[0])->ip.fib_index =
-    vnet_buffer (b[0])->sw_if_index[VLIB_TX] != ~0 ?
-    vnet_buffer (b[0])->sw_if_index[VLIB_TX] :
-    vnet_buffer (b[0])->ip.fib_index;
-
-  vnet_buffer (b[1])->ip.fib_index =
-    vnet_buffer (b[1])->sw_if_index[VLIB_TX] != ~0 ?
-    vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
-    vnet_buffer (b[1])->ip.fib_index;
 
   if (PREDICT_FALSE (not_last_hit))
     {
@@ -2240,8 +2222,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       /* Worth pipelining. No guarantee that adj0,1 are hot... */
       rw_len0 = adj0[0].rewrite_header.data_bytes;
       rw_len1 = adj1[0].rewrite_header.data_bytes;
-      vnet_buffer (b[0])->ip.save_rewrite_length = rw_len0;
-      vnet_buffer (b[1])->ip.save_rewrite_length = rw_len1;
 
       p = vlib_buffer_get_current (b[2]);
       CLIB_PREFETCH (p - CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES, STORE);
@@ -2290,6 +2270,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  b[0]->current_length += rw_len0;
 	  tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = tx_sw_if_index0;
+	  vnet_buffer (b[0])->ip.save_rewrite_length = rw_len0;
 
 	  if (PREDICT_FALSE
 	      (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
@@ -2309,6 +2290,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] = tx_sw_if_index1;
+	  vnet_buffer (b[1])->ip.save_rewrite_length = rw_len1;
 
 	  if (PREDICT_FALSE
 	      (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
@@ -2397,7 +2379,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
       /* Update packet buffer attributes/set output interface. */
       rw_len0 = adj0[0].rewrite_header.data_bytes;
-      vnet_buffer (b[0])->ip.save_rewrite_length = rw_len0;
 
       /* Check MTU of outgoing interface. */
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
@@ -2426,6 +2407,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  b[0]->current_length += rw_len0;
 	  tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = tx_sw_if_index0;
+	  vnet_buffer (b[0])->ip.save_rewrite_length = rw_len0;
 
 	  if (PREDICT_FALSE
 	      (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))

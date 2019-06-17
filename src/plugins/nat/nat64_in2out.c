@@ -1143,8 +1143,13 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t->is_slow_path = is_slow_path;
 	    }
 
-	  pkts_processed += next0 == NAT64_IN2OUT_NEXT_IP4_LOOKUP;
-
+	  if (next0 == NAT64_IN2OUT_NEXT_IP4_LOOKUP)
+	    {
+	      /* configure the interface's ip4 FIB for the next lookup */
+	      vnet_buffer (b0)->ip.fib_index =
+		ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+	      pkts_processed++;
+	    }
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);

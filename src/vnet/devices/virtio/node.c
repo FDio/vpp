@@ -270,7 +270,6 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    fill_gso_buffer_flags (b0, hdr);
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = vif->sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  /* if multisegment packet */
 	  if (PREDICT_FALSE (num_buffers > 1))

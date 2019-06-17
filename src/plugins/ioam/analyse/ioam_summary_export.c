@@ -316,7 +316,6 @@ ioam_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 	    b0->current_length = vec_len (fr->rewrite);
 	    b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	    vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	    vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 
 	    tp = vlib_buffer_get_current (b0);
 	    ip = &tp->ip4;

@@ -41,6 +41,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
+#include <vnet/fib/ip6_fib.h>
 
 typedef struct
 {
@@ -134,6 +135,11 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
+	  vnet_buffer (p0)->ip.fib_index =
+	    ip6_fib_table_get_index_for_sw_if_index (sw_if_index0);
+	  vnet_buffer (p1)->ip.fib_index =
+	    ip6_fib_table_get_index_for_sw_if_index (sw_if_index1);
+
 	  if (PREDICT_FALSE (ip6_address_is_multicast (&ip0->dst_address)))
 	    {
 	      arc0 = lm->mcast_feature_arc_index;
@@ -155,9 +161,6 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      arc1 = lm->ucast_feature_arc_index;
 	      next1 = IP6_INPUT_NEXT_LOOKUP;
 	    }
-
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = ~0;
 
 	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
 	  vnet_feature_arc_start (arc1, sw_if_index1, &next1, p1);
@@ -201,7 +204,8 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = IP6_INPUT_NEXT_LOOKUP;
 	    }
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
+	  vnet_buffer (p0)->ip.fib_index =
+	    ip6_fib_table_get_index_for_sw_if_index (sw_if_index0);
 	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
 
 	  vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);

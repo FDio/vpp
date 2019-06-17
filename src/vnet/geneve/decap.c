@@ -16,6 +16,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/geneve/geneve.h>
+#include <vnet/fib/fib_table.h>
 
 typedef struct
 {
@@ -50,18 +51,11 @@ format_geneve_rx_trace (u8 * s, va_list * args)
 always_inline u32
 validate_geneve_fib (vlib_buffer_t * b, geneve_tunnel_t * t, u32 is_ip4)
 {
-  u32 fib_index, sw_if_index;
+  u32 fib_index;
 
-  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-
-  if (is_ip4)
-    fib_index = (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-      vec_elt (ip4_main.fib_index_by_sw_if_index, sw_if_index) :
-      vnet_buffer (b)->sw_if_index[VLIB_TX];
-  else
-    fib_index = (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-      vec_elt (ip6_main.fib_index_by_sw_if_index, sw_if_index) :
-      vnet_buffer (b)->sw_if_index[VLIB_TX];
+  fib_index = fib_table_get_index_for_sw_if_index
+    (is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6,
+     vnet_buffer (b)->sw_if_index[VLIB_RX]);
 
   return (fib_index == t->encap_fib_index);
 }

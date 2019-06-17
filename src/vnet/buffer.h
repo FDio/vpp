@@ -147,25 +147,19 @@ typedef struct
     {
       /* Adjacency from destination IP address lookup [VLIB_TX].
          Adjacency from source IP address lookup [VLIB_RX].
-         This gets set to ~0 until source lookup is performed. */
+         This is unspecified until source lookup is performed. */
       u32 adj_index[VLIB_N_RX_TX];
 
       union
       {
 	struct
 	{
+	  /* FIB index for lookup */
+	  u32 fib_index;
+
 	  /* Flow hash value for this packet computed from IP src/dst address
 	     protocol and ports. */
 	  u32 flow_hash;
-
-	  union
-	  {
-	    /* next protocol */
-	    u32 save_protocol;
-
-	    /* Hint for transport protocols */
-	    u32 fib_index;
-	  };
 
 	  /* Rewrite length */
 	  u32 save_rewrite_length;
@@ -177,6 +171,7 @@ typedef struct
 	/* ICMP */
 	struct
 	{
+	  u32 pad[2];
 	  u8 type;
 	  u8 code;
 	  u32 data;
@@ -217,12 +212,10 @@ typedef struct
     struct
     {
       /* do not overlay w/ ip.adj_index[0,1] nor flow hash */
-      u32 pad[VLIB_N_RX_TX + 1];
+      u32 pad[VLIB_N_RX_TX + 2];
       u8 ttl;
       u8 exp;
       u8 first;
-      /* Rewrite length */
-      u32 save_rewrite_length;
       /*
        * BIER - the number of bytes in the header.
        *  the len field in the header is not authoritative. It's the
@@ -232,6 +225,8 @@ typedef struct
       {
 	u8 n_bytes;
       } bier;
+      /* Rewrite length */
+      u32 save_rewrite_length;
     } mpls;
 
     /* l2 bridging path, only valid there */
@@ -302,7 +297,8 @@ typedef struct
     /* IP Fragmentation */
     struct
     {
-      u32 pad[2];		/* do not overlay w/ ip.adj_index[0,1] */
+      u32 pad[3];		/* do not overlay w/ ip.adj_index[0,1]
+				   nor fib_index */
       u16 mtu;
       u8 next_index;
       u8 flags;			//See ip_frag.h
@@ -352,6 +348,8 @@ typedef struct
     /* SNAT */
     struct
     {
+      /* don't write over the FIB index */
+      u32 __pad[3];
       u32 flags;
     } snat;
 

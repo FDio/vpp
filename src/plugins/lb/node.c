@@ -808,7 +808,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
               sm40 = pool_elt_at_index(lbm->snat_mappings, index40);
               new_addr0 = sm40->src_ip.ip4.as_u32;
               new_port0 = sm40->src_port;
-              vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm40->fib_index;
+              vnet_buffer(b0)->ip.fib_index = sm40->fib_index;
               old_addr0 = ip40->src_address.as_u32;
               ip40->src_address.as_u32 = new_addr0;
 
@@ -873,7 +873,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
               new_addr0.as_u64[0] = sm60->src_ip.as_u64[0];
               new_addr0.as_u64[1] = sm60->src_ip.as_u64[1];
               new_port0 = sm60->src_port;
-              vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm60->fib_index;
+              vnet_buffer(b0)->ip.fib_index = sm60->fib_index;
               old_addr0.as_u64[0] = ip60->src_address.as_u64[0];
               old_addr0.as_u64[1] = ip60->src_address.as_u64[1];
               ip60->src_address.as_u64[0] = new_addr0.as_u64[0];
