@@ -148,6 +148,12 @@ clib_mem_trace (int enable)
   mheap_trace (clib_mem_get_heap (), enable);
 }
 
+int
+clib_mem_is_traced (void)
+{
+  return mheap_is_traced (clib_mem_get_heap ());
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
