@@ -784,6 +784,7 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
 	  ed->low = (uword) q & 0xFFFFFFFF;
 	  clib_warning ("WARNING: client input queue at %llx is stuffed...",
 			q);
+
 	}
     }
   VL_MSG_API_POISON (msg);
