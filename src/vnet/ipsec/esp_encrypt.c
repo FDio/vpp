@@ -367,7 +367,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      esp_update_ip4_hdr (ip4, len, /* is_transport */ 0, 0);
 	    }
 
-	  dpo = sa0->dpo + IPSEC_PROTOCOL_ESP;
+	  dpo = &sa0->dpo;
 	  if (!is_tun)
 	    {
 	      next[0] = dpo->dpoi_next_node;
