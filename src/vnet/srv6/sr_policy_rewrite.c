@@ -195,7 +195,7 @@ compute_rewrite_encaps (ip6_address_t * sl)
       vec_foreach (this_address, sl)
       {
 	clib_memcpy_fast (addrp->as_u8, this_address->as_u8,
-		          sizeof (ip6_address_t));
+			  sizeof (ip6_address_t));
 	addrp--;
       }
     }
@@ -265,7 +265,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
   vec_validate (rs, header_length - 1);
 
   srh = (ip6_sr_header_t *) rs;
-  srh->type = ROUTING_HEADER_TYPE_SR;
+  srh->type = R			  OUTING_HEADER_TYPE_SR;
   srh->segments_left = vec_len (sl) - 1;
   srh->first_segment = vec_len (sl) - 1;
   srh->length = ((sizeof (ip6_sr_header_t) +
@@ -306,7 +306,7 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
   ip6_sr_sl_t *segment_list;
 
   pool_get (sm->sid_lists, segment_list);
-  memset (segment_list, 0, sizeof (*segment_list));
+  clib_memset (segment_list, 0, sizeof (*segment_list));
 
   vec_add1 (sr_policy->segments_lists, segment_list - sm->sid_lists);
 
@@ -561,7 +561,7 @@ update_replicate (ip6_sr_policy_t * sr_policy)
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
-           u8 is_tmap, ip6_address_t *localsid_prefix)
+               u8 is_tmap, ip6_address_t *localsid_prefix)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -600,7 +600,7 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 
   /* Add an SR policy object */
   pool_get (sm->sr_policies, sr_policy);
-  memset (sr_policy, 0, sizeof (*sr_policy));
+  clib_memset (sr_policy, 0, sizeof (*sr_policy));
   clib_memcpy_fast (&sr_policy->bsid, bsid, sizeof (ip6_address_t));
   sr_policy->type = behavior;
   sr_policy->fib_table = (fib_table != (u32) ~ 0 ? fib_table : 0);	//Is default FIB 0 ?
@@ -870,7 +870,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  vec_add2 (segments, this_seg, 1);
 	  clib_memcpy_fast (this_seg->as_u8, next_address.as_u8,
-		       sizeof (*this_seg));
+		            sizeof (*this_seg));
 	}
       else if (unformat (input, "add sl"))
 	operation = 1;
@@ -884,30 +884,29 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_encap = 1;
       else if (unformat (input, "insert"))
 	is_encap = 0;
-       else if (unformat (input, "gtp4_removal sr_prefix %U/%d local_prefix %U/%d",
+      else if (unformat (input, "gtp4_removal sr_prefix %U/%d local_prefix %U/%d",
            unformat_ip6_address, &tmap_prefix,  &gtp4_mask_width,
            unformat_ip6_address, &tmap_localsid, &localsid_mask_width))
-       {
-    ip6_address_t mask;
+        {
+          ip6_address_t mask;
 
-    if (64 < localsid_mask_width) {
-        return clib_error_return (0,
-                                  "Incorrect local sid prefix width, max 64");
-    }
+          if (64 < localsid_mask_width) {
+            return clib_error_return (0, "Incorrect local sid prefix width, max 64");
+          }
 
-    ip6_address_mask_from_width(&mask, gtp4_mask_width);
-    ip6_address_mask(&tmap_prefix, &mask);
+          ip6_address_mask_from_width(&mask, gtp4_mask_width);
+          ip6_address_mask(&tmap_prefix, &mask);
 
-    ip6_address_mask_from_width(&mask, localsid_mask_width);
-    ip6_address_mask(&tmap_localsid, &mask);
+          ip6_address_mask_from_width(&mask, localsid_mask_width);
+          ip6_address_mask(&tmap_localsid, &mask);
 
-    /* add tmap prefix as the last SID */
+          /* add tmap prefix as the last SID */
 
-    vec_add2 (segments, this_seg, 1);
-    clib_memcpy_fast (this_seg->as_u8, tmap_prefix.as_u8, sizeof (*this_seg));
+          vec_add2 (segments, this_seg, 1);
+          clib_memcpy_fast (this_seg->as_u8, tmap_prefix.as_u8, sizeof (*this_seg));
 
-    is_tmap = 1;
-       }
+          is_tmap = 1;
+        }
       else if (unformat (input, "spray"))
 	is_spray = 1;
       else
@@ -928,6 +927,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
 			   SR_POLICY_TYPE_DEFAULT), fib_table,
                            is_encap, is_tmap, &tmap_localsid);
+      vector_free (segments);
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -945,6 +945,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       rv = sr_policy_mod ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
 			  sr_policy_index, fib_table, operation, segments,
 			  sl_index, weight);
+      vector_free (segments);
     }
 
   switch (rv)
@@ -1381,12 +1382,12 @@ encaps_processing_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Outer IPv6: Update length, FL, proto */
   new_l0 = vlib_buffer_length_in_chain(vm, b0) - sizeof (ip6_header_t);
   ip0->payload_length = clib_host_to_net_u16 (new_l0);
-  ip0->ip_version_traffic_class_and_flow_label =clib_host_to_net_u32 (0 | ((6 & 0xF) << 28)) ;
+  ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (0 | ((6 & 0xF) << 28)) ;
   if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE)
-  {
-    sr0 = (void *) (ip0 + 1);
-    sr0->protocol = IP_PROTOCOL_IP_IN_IP;
-  }
+    {
+      sr0 = (void *) (ip0 + 1);
+      sr0->protocol = IP_PROTOCOL_IP_IN_IP;
+    }
   else
     ip0->protocol = IP_PROTOCOL_IP_IN_IP;
 }
