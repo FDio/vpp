@@ -108,6 +108,22 @@ format_hex_bytes (u8 * s, va_list * va)
   return s;
 }
 
+u8 *
+format_hex_bytes_no_wrap (u8 * s, va_list * va)
+{
+  u8 *bytes = va_arg (*va, u8 *);
+  int n_bytes = va_arg (*va, int);
+  uword i;
+
+  if (n_bytes == 0)
+    return s;
+
+  for (i = 0; i < n_bytes; i++)
+    s = format (s, "%02x", bytes[i]);
+
+  return s;
+}
+
 /* Add variable number of spaces. */
 u8 *
 format_white_space (u8 * s, va_list * va)
