@@ -22,6 +22,9 @@
 
 #include <vlib/log.h>
 
+#define AVF_AQ_ENQ_SUSPEND_TIME		50e-6
+#define AVF_AQ_ENQ_MAX_WAIT_TIME	50e-3
+
 #define AVF_RXD_STATUS(x)		(1ULL << x)
 #define AVF_RXD_STATUS_DD		AVF_RXD_STATUS(0)
 #define AVF_RXD_STATUS_EOP		AVF_RXD_STATUS(1)
