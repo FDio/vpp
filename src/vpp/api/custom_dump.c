@@ -3249,6 +3249,156 @@ static void *vl_api_ipsec_tunnel_if_add_del_t_print
   FINISH;
 }
 
+static const char *policy_strs[] = {
+  "BYPASS",
+  "DISCARD",
+  "RESOLVE",
+  "PROTECT",
+};
+
+static const char *proto_strs[] = {
+  "ESP",
+  "AH",
+};
+
+static const char *algo_strs[] = {
+  "NONE",
+  "AES_CBC_128",
+  "AES_CBC_192",
+  "AES_CBC_256",
+  "AES_CTR_128",
+  "AES_CTR_192",
+  "AES_CTR_256",
+  "AES_GCM_128",
+  "AES_GCM_192",
+  "AES_GCM_256",
+  "DES_CBC",
+  "3DES_CBC",
+};
+
+
+static const char *integ_strs[] = {
+  "NONE",
+  "MD5_96",
+  "SHA1_96",
+  "SHA_256_96",
+  "SHA_256_128",
+  "SHA_384_192",
+  "SHA_512_256",
+};
+
+static void *vl_api_ipsec_spd_entry_add_del_t_print
+  (vl_api_ipsec_spd_entry_add_del_t * mp, void *handle)
+{
+  u8 *s;
+  const char *str;
+  vl_api_ipsec_spd_entry_t *ep;
+  int policy_host_byte_order;
+
+  ep = (vl_api_ipsec_spd_entry_t *) & mp->entry;
+
+  s = format (0, "SCRIPT: ipsec_spd_entry ");
+  s = format (s, "is_add %d spd_id %u priority %d is_outbound %d sa_id %u\n",
+	      mp->is_add,
+	      ntohl (ep->spd_id), ntohl (ep->priority), ep->is_outbound,
+	      ntohl (ep->sa_id));
+
+  policy_host_byte_order = ntohl (ep->policy);
+
+  if (policy_host_byte_order < ARRAY_LEN (policy_strs))
+    str = policy_strs[policy_host_byte_order];
+  else
+    str = "BOGUS!";
+
+  s = format (s, "  policy: %s protocol %d\n", str, ep->protocol);
+
+  s = format (s, "  remote_address_start %U remote_address_stop %U\n",
+	      format_vl_api_address,
+	      &ep->remote_address_start,
+	      format_vl_api_address, &ep->remote_address_stop);
+
+  s = format (s, "  local_address_start %U local_address_stop %U\n",
+	      format_vl_api_address,
+	      &ep->local_address_start,
+	      format_vl_api_address, &ep->local_address_stop);
+
+  s = format (s, "  remote_port_start %d remote_port_stop %d\n",
+	      ntohs (ep->remote_port_start), ntohs (ep->remote_port_stop));
+
+  s = format (s, "  local_port_start %d local_port_stop %d ",
+	      ntohs (ep->local_port_start), ntohs (ep->local_port_stop));
+
+  FINISH;
+}
+
+static void *vl_api_ipsec_interface_add_del_spd_t_print
+  (vl_api_ipsec_interface_add_del_spd_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ipsec_interface_add_del_spd ");
+  s = format (s, "is_add %d sw_if_index %d spd_id %u ",
+	      mp->is_add, ntohl (mp->sw_if_index), ntohl (mp->spd_id));
+  FINISH;
+}
+
+static void *vl_api_ipsec_spd_add_del_t_print
+  (vl_api_ipsec_spd_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ipsec_spd_add_del ");
+  s = format (s, "spd_id %u is_add %d ", ntohl (mp->spd_id), mp->is_add);
+  FINISH;
+}
+
+static void *vl_api_ipsec_sad_entry_add_del_t_print
+  (vl_api_ipsec_sad_entry_add_del_t * mp, void *handle)
+{
+  u8 *s;
+  int tmp;
+  vl_api_ipsec_sad_entry_t *ep;
+  const char *protocol_str, *algo_str, *integ_str;
+
+  protocol_str = "BOGUS protocol!";
+  algo_str = "BOGUS crypto_algorithm!";
+  integ_str = "BOGUS integrity_algorithm!";
+
+  ep = (vl_api_ipsec_sad_entry_t *) & mp->entry;
+
+  s = format (0, "SCRIPT: ipsec_sad_entry_add_del is_add ", mp->is_add);
+
+  tmp = ntohl (ep->protocol);
+  if (tmp < ARRAY_LEN (proto_strs))
+    protocol_str = proto_strs[tmp];
+
+  tmp = ntohl (ep->crypto_algorithm);
+  if (tmp < ARRAY_LEN (algo_strs))
+    algo_str = algo_strs[tmp];
+
+  tmp = ntohl (ep->integrity_algorithm);
+  if (tmp < ARRAY_LEN (integ_strs))
+    integ_str = integ_strs[tmp];
+
+  s = format (s, "proto %s crypto alg %s integ alg %s\n",
+	      protocol_str, algo_str, integ_str);
+  s = format (s, " crypto_key len %d value %U\n",
+	      ep->crypto_key.length, format_hex_bytes, ep->crypto_key.data,
+	      (int) (ep->crypto_key.length));
+  s = format (s, " integ_key len %d value %U\n",
+	      ep->integrity_key.length, format_hex_bytes,
+	      ep->integrity_key.data, (int) (ep->integrity_key.length));
+  s = format (s, " flags 0x%x ", ntohl (ep->flags));
+
+  s = format (s, "tunnel_src %U tunnel_dst %U\n",
+	      format_vl_api_address,
+	      &ep->tunnel_src, format_vl_api_address, &ep->tunnel_dst);
+  s = format (s, " tx_table_id %u salt %u ",
+	      ntohl (ep->tx_table_id), ntohl (ep->salt));
+  FINISH;
+}
+
+
 static void *vl_api_l2_interface_pbb_tag_rewrite_t_print
   (vl_api_l2_interface_pbb_tag_rewrite_t * mp, void *handle)
 {
@@ -3812,6 +3962,10 @@ _(SHOW_LISP_RLOC_PROBE_STATE, show_lisp_rloc_probe_state)               \
 _(SHOW_LISP_MAP_REGISTER_STATE, show_lisp_map_register_state)           \
 _(LISP_RLOC_PROBE_ENABLE_DISABLE, lisp_rloc_probe_enable_disable)       \
 _(LISP_MAP_REGISTER_ENABLE_DISABLE, lisp_map_register_enable_disable)   \
+_(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)		\
+_(IPSEC_SAD_ENTRY_ADD_DEL, ipsec_sad_entry_add_del)			\
+_(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)					\
+_(IPSEC_SPD_ENTRY_ADD_DEL, ipsec_spd_entry_add_del)			\
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
@@ -3851,5 +4005,7 @@ vl_msg_api_custom_dump_configure (api_main_t * am)
 /*
  * fd.io coding-style-patch-verification: ON
  *
- * Local Variables: eval: (c-set-style "gnu") End:
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
  */
