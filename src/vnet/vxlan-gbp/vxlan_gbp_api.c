@@ -81,7 +81,7 @@ vxlan_gbp_tunnel_mode_decode (vl_api_vxlan_gbp_api_tunnel_mode_t in,
       *out = VXLAN_GBP_TUNNEL_MODE_L3;
       return (0);
     }
-  return (1);
+  return (VNET_API_ERROR_INVALID_VALUE);
 }
 
 static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
@@ -108,7 +108,7 @@ static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
   rv = vxlan_gbp_tunnel_mode_decode (mp->tunnel.mode, &mode);
 
   if (rv)
-    goto out;
+      goto out;
 
   vnet_vxlan_gbp_tunnel_add_del_args_t a = {
     .is_add = mp->is_add,
