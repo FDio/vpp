@@ -937,6 +937,7 @@ set_unnumbered (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   u32 unnumbered_sw_if_index = ~0;
   u32 inherit_from_sw_if_index = ~0;
+  int __clib_unused rv;
   int enable = 1;
 
   if (unformat (input, "%U use %U",
@@ -957,7 +958,7 @@ set_unnumbered (vlib_main_t * vm,
     return clib_error_return (0, "When enabling unnumbered specify the"
 			      " IP enabled interface that it uses");
 
-  vnet_sw_interface_update_unnumbered (unnumbered_sw_if_index,
+  rv = vnet_sw_interface_update_unnumbered (unnumbered_sw_if_index,
 				       inherit_from_sw_if_index, enable);
 
   return (NULL);

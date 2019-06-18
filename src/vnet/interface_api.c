@@ -629,7 +629,7 @@ static void vl_api_sw_interface_set_unnumbered_t_handler
       goto done;
     }
 
-  vnet_sw_interface_update_unnumbered (unnumbered_sw_if_index,
+  rv = vnet_sw_interface_update_unnumbered (unnumbered_sw_if_index,
 				       sw_if_index, mp->is_add);
 done:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_UNNUMBERED_REPLY);
