@@ -108,7 +108,8 @@ static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
   rv = vxlan_gbp_tunnel_mode_decode (mp->tunnel.mode, &mode);
 
   if (rv)
-    goto out;
+    rv = VNET_API_ERROR_INVALID_VALUE;
+  goto out;
 
   vnet_vxlan_gbp_tunnel_add_del_args_t a = {
     .is_add = mp->is_add,
