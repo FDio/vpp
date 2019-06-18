@@ -424,13 +424,13 @@ update_node_counters (stat_segment_main_t * sm)
       vlib_stat_segment_lock ();
 
       stat_validate_counter_vector (&sm->directory_vector
-				    [STAT_COUNTER_NODE_CLOCKS], l);
+				    [STAT_COUNTER_NODE_CLOCKS], l - 1);
       stat_validate_counter_vector (&sm->directory_vector
-				    [STAT_COUNTER_NODE_VECTORS], l);
+				    [STAT_COUNTER_NODE_VECTORS], l - 1);
       stat_validate_counter_vector (&sm->directory_vector
-				    [STAT_COUNTER_NODE_CALLS], l);
+				    [STAT_COUNTER_NODE_CALLS], l - 1);
       stat_validate_counter_vector (&sm->directory_vector
-				    [STAT_COUNTER_NODE_SUSPENDS], l);
+				    [STAT_COUNTER_NODE_SUSPENDS], l - 1);
 
       vec_validate (sm->nodes, l - 1);
       stat_segment_directory_entry_t *ep;
