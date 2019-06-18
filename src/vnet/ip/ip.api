@@ -63,6 +63,7 @@ define ip_table_dump
 {
   u32 client_index;
   u32 context;
+  /* TODO: add table_id to filter on. */
 };
 
 /** \brief IP FIB table response
@@ -119,6 +120,7 @@ define ip_route_add_del_reply
     @param client_index - opaque cookie to identify the sender
     @param table - The table from which to dump routes (ony ID an AF are needed)
 */
+ /* TODO: add table_id to filter on. */
 define ip_route_dump
 {
   u32 client_index;
