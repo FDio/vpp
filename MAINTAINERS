@@ -377,6 +377,12 @@ M:	Ole Troan <ot@cisco.com>
 F:	src/vpp/stats/
 F:	src/vpp-api/client/stat_client.[ch]
 
+Python binding for the VPP API
+I:	papi
+M:	Ole Troan <ot@cisco.com>
+M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
+F:	src/vpp-api/python
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
