@@ -726,6 +726,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 		    {
 		      drop_one_buffer_and_count (vm, vnm, node, from - 1,
 						 VNET_INTERFACE_OUTPUT_ERROR_NO_BUFFERS_FOR_GSO);
+		      b += 1;
 		      continue;
 		    }
 
@@ -750,17 +751,14 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 			  vlib_get_new_next_frame (vm, node, next_index,
 						   to_tx, n_left_to_tx);
 			}
-		      else
+		      while (n_tx_bufs > 0)
 			{
-			  while (n_tx_bufs > 0)
-			    {
-			      to_tx[0] = from_tx_seg[0];
-			      to_tx += 1;
-			      from_tx_seg += 1;
-			      n_left_to_tx -= 1;
-			      n_tx_bufs -= 1;
-			      n_packets += 1;
-			    }
+			  to_tx[0] = from_tx_seg[0];
+			  to_tx += 1;
+			  from_tx_seg += 1;
+			  n_left_to_tx -= 1;
+			  n_tx_bufs -= 1;
+			  n_packets += 1;
 			}
 		    }
 		  n_bytes += n_tx_bytes;
@@ -776,6 +774,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 		  _vec_len (ptd->split_buffers) = 0;
 		  /* Free the now segmented buffer */
 		  vlib_buffer_free_one (vm, bi0);
+		  b += 1;
 		  continue;
 		}
 	    }
