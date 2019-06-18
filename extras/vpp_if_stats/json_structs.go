@@ -1,29 +1,27 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"git.fd.io/govpp.git/examples/bin_api/vpe"
+	"git.fd.io/govpp.git/examples/binapi/vpe"
+	"regexp"
 )
 
-type jsonVppDetails struct {
-	Program        string `json:"program"`
-	Version        string `json:"version"`
-	BuildDate      string `json:"build_date"`
-	BuildDirectory string `json:"build_directory"`
-}
-
 type jsonVppInterface struct {
-	Index      uint32 `json:"if_index"`
-	Name       string `json:"if_name"`
-	Tag        string `json:"if_tag"`
-	MacAddress string `json:"if_mac"`
-	AdminState uint8  `json:"if_admin_state"`
-	LinkState  uint8  `json:"if_link_state"`
-	LinkMTU    uint16 `json:"if_link_mtu"`
-	SubDot1ad  uint8  `json:"if_sub_dot1ad"`
-	SubID      uint32 `json:"if_sub_id"`
+	UUID           string `json:"if_uuid"`
+	Index          uint32 `json:"if_index"`
+	Name           string `json:"if_name"`
+	Type           string `json:"if_type"`
+	Tag            string `json:"if_tag"`
+	Port           uint64 `json:"-"`
+	MacAddress     string `json:"if_mac"`
+	AdminState     uint8  `json:"if_admin_state"`
+	LinkState      uint8  `json:"if_link_state"`
+	LinkMTU        uint16 `json:"if_link_mtu"`
+	LinkMTURequest uint16 `json:"-"`
+	Function       string `json:"if_func"`
+	SubDot1ad      uint8  `json:"if_sub_dot1ad"`
+	SubID          uint32 `json:"if_sub_id"`
 
 	TxBytes   uint64 `json:"if_tx_bytes"`
 	TxPackets uint64 `json:"if_tx_packets"`
@@ -35,59 +33,105 @@ type jsonVppInterface struct {
 	Punts     uint64 `json:"if_punts"`
 }
 
+type jsonVppDetails struct {
+	Program        string `json:"program"`
+	Version        string `json:"version"`
+	BuildDate      string `json:"build_date"`
+	BuildDirectory string `json:"build_directory"`
+}
+
 type jsonVppPayload struct {
 	*jsonVppDetails `json:"vpp_details"`
 	Interfaces      []*jsonVppInterface `json:"interfaces"`
 }
 
-func bytesToString(b []byte) string {
-	return string(bytes.Split(b, []byte{0})[0])
-}
-
-func toJSONVppDetails(svReply *vpe.ShowVersionReply) *jsonVppDetails {
+func toJsonVppDetails(svReply *vpe.ShowVersionReply) *jsonVppDetails {
 	return &jsonVppDetails{
-		Program:        bytesToString(svReply.Program),
-		Version:        bytesToString(svReply.Version),
-		BuildDate:      bytesToString(svReply.BuildDate),
-		BuildDirectory: bytesToString(svReply.BuildDirectory),
+		Program:        svReply.Program,
+		Version:        svReply.Version,
+		BuildDate:      svReply.BuildDate,
+		BuildDirectory: svReply.BuildDirectory,
 	}
 }
 
-func toJSONVppInterface(vppIf *vppInterface) *jsonVppInterface {
+const (
+	physical = "physical"
+	instance = "instance"
+	vservice = "vservice"
+)
+
+var (
+	uuidRegex     = regexp.MustCompile("([a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12})")
+	physNameRegex = regexp.MustCompile("Gigabit|Bond")
+	physnetRegex  = regexp.MustCompile("physnet")
+	virtualRegex  = regexp.MustCompile("Virtual")
+	vServiceRegex = regexp.MustCompile("tapcli")
+)
+
+func (v *vppInterface) getFunction() string {
+	if physNameRegex.Match(v.InterfaceName) || physnetRegex.Match(v.Tag) {
+		return physical
+	} else if virtualRegex.Match(v.InterfaceName) {
+		return instance
+	} else if vServiceRegex.Match(v.InterfaceName) {
+		return vservice
+	}
+	return ""
+}
+
+func (v *vppInterface) getUUID() string {
+	uuidMatch := uuidRegex.FindSubmatch(v.Tag)
+	if len(uuidMatch) > 1 {
+		return string(uuidMatch[1])
+	}
+	return ""
+}
+
+func (v *vppInterface) getType() string {
+	if virtualRegex.Match(v.InterfaceName) {
+		return "internal"
+	}
+	return "external"
+}
+
+func (v *vppInterface) toJson() *jsonVppInterface {
 	return &jsonVppInterface{
-		Index:      vppIf.SwIfIndex,
-		Name:       bytesToString(vppIf.InterfaceName),
-		Tag:        bytesToString(vppIf.Tag),
-		MacAddress: parseMacAddress(vppIf.L2Address, vppIf.L2AddressLength),
-		AdminState: vppIf.AdminUpDown,
-		LinkState:  vppIf.LinkUpDown,
-		LinkMTU:    vppIf.LinkMtu,
-		SubDot1ad:  vppIf.SubDot1ad,
-		SubID:      vppIf.SubID,
-		TxBytes:    vppIf.Stats.TxBytes,
-		TxPackets:  vppIf.Stats.TxPackets,
-		TxErrors:   vppIf.Stats.TxErrors,
-		RxBytes:    vppIf.Stats.RxBytes,
-		RxPackets:  vppIf.Stats.RxPackets,
-		RxErrors:   vppIf.Stats.RxErrors,
-		Drops:      vppIf.Stats.Drops,
-		Punts:      vppIf.Stats.Punts,
+		Index:      v.SwIfIndex,
+		Name:       bytesToString(v.InterfaceName),
+		Tag:        bytesToString(v.Tag),
+		MacAddress: parseMacAddress(v.L2Address, v.L2AddressLength),
+		AdminState: v.AdminUpDown,
+		LinkState:  v.LinkUpDown,
+		LinkMTU:    v.LinkMtu,
+		Function:   v.getFunction(),
+		SubDot1ad:  v.SubDot1ad,
+		SubID:      v.SubID,
+		TxBytes:    v.Stats.TxBytes,
+		TxPackets:  v.Stats.TxPackets,
+		TxErrors:   v.Stats.TxErrors,
+		RxBytes:    v.Stats.RxBytes,
+		RxPackets:  v.Stats.RxPackets,
+		RxErrors:   v.Stats.RxErrors,
+		Drops:      v.Stats.Drops,
+		Punts:      v.Stats.Punts,
+		UUID:       v.getUUID(),
+		Type:       v.getType(),
 	}
 }
 
-func toJSONVppPayload(svReply *vpe.ShowVersionReply, vppIfs []*vppInterface) *jsonVppPayload {
-	p := &jsonVppPayload{jsonVppDetails: toJSONVppDetails(svReply), Interfaces: make([]*jsonVppInterface, len(vppIfs))}
-	for index, vppIf := range vppIfs {
-		p.Interfaces[index] = toJSONVppInterface(vppIf)
+func toJsonVppPayload(svReply *vpe.ShowVersionReply, vppIfs map[uint32]*vppInterface) *jsonVppPayload {
+	p := &jsonVppPayload{jsonVppDetails: toJsonVppDetails(svReply), Interfaces: make([]*jsonVppInterface, 0)}
+	for _, vppIf := range vppIfs {
+		p.Interfaces = append(p.Interfaces, vppIf.toJson())
 	}
 	return p
 }
 
-func dumpToJSONString(v *vppConnector) (string, error) {
-	payload := toJSONVppPayload(&v.VppDetails, v.Interfaces)
+func (v *VppConnector) DumpToJson() ([]byte, error) {
+	payload := toJsonVppPayload(&v.VppDetails, v.Interfaces)
 	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
-		return "", fmt.Errorf("failed to dump to json: %v", err)
+		return nil, fmt.Errorf("failed to dump to json: %v", err)
 	}
-	return string(jsonBytes), nil
+	return jsonBytes, nil
 }
