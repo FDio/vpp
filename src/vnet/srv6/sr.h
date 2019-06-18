@@ -70,6 +70,7 @@ typedef struct
   gtpu_header_t gtpu;        /* 8 bytes */
 } __attribute__ ((packed)) ip4_gtpu_header_t;
 /* *INDENT-ON* */
+
 #define GTPU_V1_VER   (1<<5)
 
 #define GTPU_PT_GTP    (1<<4)

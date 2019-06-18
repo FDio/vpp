@@ -265,7 +265,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
   vec_validate (rs, header_length - 1);
 
   srh = (ip6_sr_header_t *) rs;
-  srh->type = R			  OUTING_HEADER_TYPE_SR;
+  srh->type = ROUTING_HEADER_TYPE_SR;
   srh->segments_left = vec_len (sl) - 1;
   srh->first_segment = vec_len (sl) - 1;
   srh->length = ((sizeof (ip6_sr_header_t) +
@@ -927,7 +927,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
 			   SR_POLICY_TYPE_DEFAULT), fib_table,
                            is_encap, is_tmap, &tmap_localsid);
-      vector_free (segments);
+      vec_free (segments);
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -945,7 +945,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       rv = sr_policy_mod ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
 			  sr_policy_index, fib_table, operation, segments,
 			  sl_index, weight);
-      vector_free (segments);
+      vec_free (segments);
     }
 
   switch (rv)
@@ -1369,12 +1369,46 @@ VLIB_REGISTER_NODE (sr_policy_rewrite_encaps_node) = {
 /* *INDENT-ON* */
 
 /**
- * @brief IPv4 encapsulation processing as per RFC2473
+ *  * @brief IPv4 encapsulation processing as per RFC2473
+ *   */
+static_always_inline void
+encaps_processing_v4 (vlib_node_runtime_t * node,
+                      vlib_buffer_t * b0,
+                      ip6_header_t * ip0, ip4_header_t * ip0_encap)
+{
+  u32 new_l0;
+  ip6_sr_header_t *sr0;
+
+  u32 checksum0;
+
+  /* Inner IPv4: Decrement TTL & update checksum */
+  ip0_encap->ttl -= 1;
+  checksum0 = ip0_encap->checksum + clib_host_to_net_u16 (0x0100);
+  checksum0 += checksum0 >= 0xffff;
+  ip0_encap->checksum = checksum0;
+
+  /* Outer IPv6: Update length, FL, proto */
+  new_l0 = ip0->payload_length + clib_net_to_host_u16 (ip0_encap->length);
+  ip0->payload_length = clib_host_to_net_u16 (new_l0);
+  ip0->ip_version_traffic_class_and_flow_label =
+    clib_host_to_net_u32 (0 | ((6 & 0xF) << 28) |
+                          ((ip0_encap->tos & 0xFF) << 20));
+  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE)
+    {
+      sr0 = (void *) (ip0 + 1);
+      sr0->protocol = IP_PROTOCOL_IP_IN_IP;
+    }
+  else
+    ip0->protocol = IP_PROTOCOL_IP_IN_IP;
+}
+
+/**
+ * @brief IPv4 encapsulation processing for TMAP
  */
 static_always_inline void
-encaps_processing_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_buffer_t * b0,
-		      ip6_header_t * ip0)
+encaps_processing_v4_tmap (vlib_main_t * vm, vlib_node_runtime_t * node,
+		           vlib_buffer_t * b0,
+		           ip6_header_t * ip0)
 {
   u32 new_l0;
   ip6_sr_header_t *sr0;
@@ -1407,6 +1441,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   next_index = node->cached_next_index;
 
+  int encap_pkts = 0, bsid_pkts = 0;
+
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
@@ -1421,13 +1457,24 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u32 next0, next1, next2, next3;
 	  next0 = next1 = next2 = next3 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
+	  ip4_header_t *ip0_encap, *ip1_encap, *ip2_encap, *ip3_encap;
           ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
           ip4_gtpu_header_t *hdr0, *hdr1, *hdr2, *hdr3;
           ip4_address_t sr_addr0, sr_addr1, sr_addr2, sr_addr3;
           ip4_address_t dst_addr0, dst_addr1, dst_addr2, dst_addr3;
-          u16 sr_port0, sr_port1, sr_port2, sr_port3;
-          u32 teid0, teid1, teid2, teid3;
+          u16 sr_port0 = 0, sr_port1 = 0, sr_port2 = 0, sr_port3 = 0;
+          u32 teid0 = 0, teid1 = 0, teid2 = 0, teid3 = 0;
+
+	  clib_memset(&sr_addr0, 0, sizeof(ip4_address_t));
+	  clib_memset(&sr_addr1, 0, sizeof(ip4_address_t));
+	  clib_memset(&sr_addr2, 0, sizeof(ip4_address_t));
+	  clib_memset(&sr_addr3, 0, sizeof(ip4_address_t));
+
+	  clib_memset(&dst_addr0, 0, sizeof(ip4_address_t));
+	  clib_memset(&dst_addr1, 0, sizeof(ip4_address_t));
+	  clib_memset(&dst_addr2, 0, sizeof(ip4_address_t));
+	  clib_memset(&dst_addr3, 0, sizeof(ip4_address_t));
 
 	  /* Prefetch next iteration. */
 	  {
@@ -1476,46 +1523,89 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sl3 =
 	    pool_elt_at_index (sm->sid_lists,
 			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
+                  vec_len (sl0->rewrite));
+          ASSERT (b1->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
+                  vec_len (sl1->rewrite));
+          ASSERT (b2->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
+                  vec_len (sl2->rewrite));
+          ASSERT (b3->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
+                  vec_len (sl3->rewrite));
 
-          hdr0 = vlib_buffer_get_current (b0);
-          hdr1 = vlib_buffer_get_current (b1);
-          hdr2 = vlib_buffer_get_current (b2);
-          hdr3 = vlib_buffer_get_current (b3);
+	  ip0_encap = vlib_buffer_get_current (b0);
+          ip1_encap = vlib_buffer_get_current (b1);
+          ip2_encap = vlib_buffer_get_current (b2);
+          ip3_encap = vlib_buffer_get_current (b3);
 
-          teid0 = hdr0->gtpu.teid;
-          teid1 = hdr1->gtpu.teid;
-          teid2 = hdr2->gtpu.teid;
-          teid3 = hdr3->gtpu.teid;
+	  if (sl0->is_tmap)
+	    {
+               hdr0 = vlib_buffer_get_current (b0);
+               teid0 = hdr0->gtpu.teid;
+               sr_addr0 = hdr0->ip4.src_address;
+               dst_addr0 = hdr0->ip4.dst_address;
+               sr_port0 = hdr0->udp.src_port;
+               vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
+               clib_memcpy_fast (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
+                       		 sl0->rewrite, vec_len (sl0->rewrite));
+	    }
+	  else
+	    {
+	      clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
+	                        sl0->rewrite, vec_len (sl0->rewrite));
+	    }
 
-          sr_addr0 = hdr0->ip4.src_address;
-          sr_addr1 = hdr1->ip4.src_address;
-          sr_addr2 = hdr2->ip4.src_address;
-          sr_addr3 = hdr3->ip4.src_address;
 
-          dst_addr0 = hdr0->ip4.dst_address;
-          dst_addr1 = hdr1->ip4.dst_address;
-          dst_addr2 = hdr2->ip4.dst_address;
-          dst_addr3 = hdr3->ip4.dst_address;
+	  if (sl1->is_tmap)
+	    {
+               hdr1 = vlib_buffer_get_current (b1);
+               teid1 = hdr1->gtpu.teid;
+               sr_addr1 = hdr1->ip4.src_address;
+               dst_addr1 = hdr1->ip4.dst_address;
+               sr_port1 = hdr1->udp.src_port;
+               vlib_buffer_advance (b1, (word) sizeof(ip4_gtpu_header_t));
+               clib_memcpy_fast (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite),
+                       		 sl1->rewrite, vec_len (sl1->rewrite));
+	    }
+	  else
+	    {
+	      clib_memcpy_fast (((u8 *) ip1_encap) - vec_len (sl1->rewrite),
+	                        sl1->rewrite, vec_len (sl1->rewrite));
+	    }
 
-          sr_port0 = hdr0->udp.src_port;
-          sr_port1 = hdr1->udp.src_port;
-          sr_port2 = hdr2->udp.src_port;
-          sr_port3 = hdr3->udp.src_port;
+	  if (sl2->is_tmap)
+	    {
+               hdr2 = vlib_buffer_get_current (b2);
+               teid2 = hdr2->gtpu.teid;
+               sr_addr2 = hdr2->ip4.src_address;
+               dst_addr2 = hdr2->ip4.dst_address;
+               sr_port2 = hdr2->udp.src_port;
+               vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
+               clib_memcpy_fast (vlib_buffer_get_current (b2) - vec_len (sl2->rewrite),
+                       		 sl2->rewrite, vec_len (sl2->rewrite));
+	    }
+	  else
+	    {
+	      clib_memcpy_fast (((u8 *) ip2_encap) - vec_len (sl2->rewrite),
+	                        sl2->rewrite, vec_len (sl2->rewrite));
+	    }
 
-          vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
-          vlib_buffer_advance (b1, (word) sizeof(ip4_gtpu_header_t));
-          vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
-          vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));
+	  if (sl3->is_tmap)
+	    {
+               hdr3 = vlib_buffer_get_current (b3);
+               teid3 = hdr3->gtpu.teid;
+               sr_addr3 = hdr3->ip4.src_address;
+               dst_addr3 = hdr3->ip4.dst_address;
+               sr_port3 = hdr3->udp.src_port;
+               vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));
+               clib_memcpy_fast (vlib_buffer_get_current (b3) - vec_len (sl3->rewrite),
+                       		 sl3->rewrite, vec_len (sl3->rewrite));
+	    }
+	  else
+	    {
+	      clib_memcpy_fast (((u8 *) ip3_encap) - vec_len (sl3->rewrite),
+	                        sl3->rewrite, vec_len (sl3->rewrite));
+	    }
 
-          clib_memcpy_fast (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
-                       sl0->rewrite, vec_len (sl0->rewrite));
-          clib_memcpy_fast (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite),
-                       sl1->rewrite, vec_len (sl1->rewrite));
-          clib_memcpy_fast (vlib_buffer_get_current (b2) - vec_len (sl2->rewrite),
-                       sl2->rewrite, vec_len (sl2->rewrite));
-          clib_memcpy_fast (vlib_buffer_get_current (b3) - vec_len (sl3->rewrite),
-                      sl3->rewrite, vec_len (sl3->rewrite));
-    
           vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
           vlib_buffer_advance (b1, -(word) vec_len (sl1->rewrite));
           vlib_buffer_advance (b2, -(word) vec_len (sl2->rewrite));
@@ -1526,11 +1616,25 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip2 = vlib_buffer_get_current (b2);
           ip3 = vlib_buffer_get_current (b3);
 
-          encaps_processing_v4 (vm, node, b0, ip0);
-          encaps_processing_v4 (vm, node, b1, ip1);
-          encaps_processing_v4 (vm, node, b2, ip2);
-          encaps_processing_v4 (vm, node, b3, ip3);
+	  if (sl0->is_tmap)
+            encaps_processing_v4_tmap (vm, node, b0, ip0);
+	  else
+            encaps_processing_v4 (node, b0, ip0, ip0_encap);
 
+	  if (sl1->is_tmap)
+            encaps_processing_v4_tmap (vm, node, b1, ip1);
+	  else
+            encaps_processing_v4 (node, b1, ip1, ip1_encap);
+	  
+	  if (sl2->is_tmap)
+            encaps_processing_v4_tmap (vm, node, b2, ip2);
+	  else
+            encaps_processing_v4 (node, b2, ip2, ip2_encap);
+	  
+	  if (sl3->is_tmap)
+            encaps_processing_v4_tmap (vm, node, b3, ip3);
+	  else
+            encaps_processing_v4 (node, b3, ip3, ip3_encap);
 
           if (PREDICT_TRUE (sl0->is_tmap))
             {
@@ -1671,6 +1775,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	    }
 
+	  encap_pkts += 4;
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, bi2, bi3,
 					   next0, next1, next2, next3);
@@ -1680,17 +1785,21 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
-	  vlib_buffer_t *b0, *tmp0;
+	  vlib_buffer_t *b0;
 	  ip6_header_t *ip0 = 0;
+	  ip4_header_t *ip0_encap = 0;
 	  ip6_sr_sl_t *sl0;
           ip6_sr_header_t *sr0;
           ip4_gtpu_header_t *hdr0;
           ip4_address_t sr_addr0;
           ip4_address_t dst_addr0;
-          u16 sr_port;
-          u32 teid0;
+          u16 sr_port = 0;
+          u32 teid0 = 0;
 
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
+
+	  clib_memset(&sr_addr0, 0, sizeof(ip4_address_t));
+	  clib_memset(&dst_addr0, 0, sizeof(ip4_address_t));
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1703,27 +1812,41 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sl0 =
 	    pool_elt_at_index (sm->sid_lists,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
+                  vec_len (sl0->rewrite));
+	  
+	  ip0_encap = vlib_buffer_get_current (b0);
 
-          // save for later use
-          hdr0 = vlib_buffer_get_current (b0);
-          teid0 = hdr0->gtpu.teid;
-          sr_addr0 = hdr0->ip4.src_address;
-          dst_addr0 = hdr0->ip4.dst_address;
-          sr_port = hdr0->udp.src_port;
+	  if (sl0->is_tmap)
+	    {
+              // save for later use
+              hdr0 = vlib_buffer_get_current (b0);
+              teid0 = hdr0->gtpu.teid;
+              sr_addr0 = hdr0->ip4.src_address;
+              dst_addr0 = hdr0->ip4.dst_address;
+              sr_port = hdr0->udp.src_port;
 
-          // go after GTPU, we are at segment header
-          vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
+              // go after GTPU, we are at segment header
+              vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
 
-          // srv header + 1 position (new one)
-          tmp0 = vlib_buffer_get_current (b0);
-          clib_memcpy_fast ((void *) tmp0 - vec_len (sl0->rewrite),
-                       sl0->rewrite, vec_len (sl0->rewrite));
+              // srv header + 1 position (new one)
+              clib_memcpy_fast ((void *) vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
+                                sl0->rewrite, vec_len (sl0->rewrite));
+	    }
+	  else
+            {
+              clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
+	                        sl0->rewrite, vec_len (sl0->rewrite));
+	    }
 
-          // first ipv6 header position
           vlib_buffer_advance (b0, -(word) vec_len (sl0->rewrite));
+
           ip0 = vlib_buffer_get_current (b0);
 
-          encaps_processing_v4 (vm, node, b0, ip0);
+	  if (sl0->is_tmap)
+            encaps_processing_v4_tmap (vm, node, b0, ip0);
+	  else
+            encaps_processing_v4 (node, b0, ip0, ip0_encap);
 
           if (PREDICT_TRUE (sl0->is_tmap))
             {
@@ -1760,12 +1883,21 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
                   }
 	    }
 
+	  encap_pkts++;
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+
+  /* Update counters */
+  vlib_node_increment_counter (vm, sr_policy_rewrite_encaps_node.index,
+                               SR_POLICY_REWRITE_ERROR_COUNTER_TOTAL,
+                               encap_pkts);
+  vlib_node_increment_counter (vm, sr_policy_rewrite_encaps_node.index,
+                               SR_POLICY_REWRITE_ERROR_COUNTER_BSID,
+                               bsid_pkts);
 
   return from_frame->n_vectors;
 }
