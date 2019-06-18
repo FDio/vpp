@@ -42,6 +42,7 @@ class StatsClientTestCase(VppTestCase):
                          "is not equal to "
                          "ending client side file descriptor count: %s" % (
                              initial_fds, ending_fds))
+
     @unittest.skip("Manual only")
     def test_mem_leak(self):
         def loop():
@@ -58,7 +59,9 @@ class StatsClientTestCase(VppTestCase):
         for j in range(100):
             loop()
         print(self.vapi.cli("show memory stats-segment verbose"))
-        print('AFTER', before, self.statistics.get_counter('/mem/statseg/used'))
+        print('AFTER', before,
+              self.statistics.get_counter('/mem/statseg/used'))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
