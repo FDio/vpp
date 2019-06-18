@@ -3,221 +3,120 @@ package main
 import (
 	"flag"
 	"fmt"
-	"git.fd.io/govpp.git"
-	"git.fd.io/govpp.git/adapter"
-	"git.fd.io/govpp.git/adapter/vppapiclient"
-	"git.fd.io/govpp.git/api"
-	"git.fd.io/govpp.git/core"
-	"git.fd.io/govpp.git/examples/bin_api/interfaces"
-	"git.fd.io/govpp.git/examples/bin_api/vpe"
-	"log"
+	"net/http"
+	"os"
+	"sync"
+	"time"
 )
 
-//////////////////////////////////////
-/////////   Data structs   ///////////
-//////////////////////////////////////
+const (
+	vppIfStatsVersion		= "2.0.4"
 
-const defaultStatsSocketPath = "/run/vpp/stats.sock"
-const defaultShmPrefix = ""
+	defaultPort             = 7670
+	vppConnectionRetryDelay = 10
+	vppConnectionRetryLimit = 60
+)
 
-func parseMacAddress(l2Address []byte, l2AddressLength uint32) string {
-	var mac string
-	for i := uint32(0); i < l2AddressLength; i++ {
-		mac += fmt.Sprintf("%02x", l2Address[i])
-		if i < l2AddressLength-1 {
-			mac += ":"
-		}
-	}
-	return mac
+type vppRestConnector struct {
+	*VppConnector
+
+	// Mutex to prevent concurrent data modification
+	mutex sync.Mutex
 }
 
-type interfaceStats struct {
-	TxBytes   uint64
-	TxPackets uint64
-	TxErrors  uint64
-	RxBytes   uint64
-	RxPackets uint64
-	RxErrors  uint64
-	Drops     uint64
-	Punts     uint64
+var vppConn *vppRestConnector
+
+func getInterfacesAndStats(w http.ResponseWriter) {
+	vppConn.mutex.Lock()
+	defer vppConn.mutex.Unlock()
+	Logger.Debugf("Fetching interfaces")
+	if err := vppConn.GetInterfaces(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	Logger.Debugf("Fetched interfaces")
+	Logger.Debugf("Fetching stats")
+	if err := vppConn.GetStatsForAllInterfaces(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	Logger.Debugf("Fetched stats")
 }
 
-type vppInterface struct {
-	interfaces.SwInterfaceDetails
-	Stats interfaceStats
-}
-
-type vppConnector struct {
-	statsSocketPath string
-	shmPrefix       string
-
-	conn  *core.Connection
-	api   api.Channel
-	stats adapter.StatsAPI
-
-	VppDetails vpe.ShowVersionReply
-	Interfaces []*vppInterface
-}
-
-//////////////////////////////////////
-/////////   VPP workflow   ///////////
-//////////////////////////////////////
-
-func (v *vppConnector) getVppVersion() error {
-	if err := v.api.SendRequest(&vpe.ShowVersion{}).ReceiveReply(&v.VppDetails); err != nil {
-		return fmt.Errorf("failed to fetch vpp version: %v", err)
-	}
-	return nil
-}
-
-func (v *vppConnector) getInterfaces() error {
-	ifCtx := v.api.SendMultiRequest(&interfaces.SwInterfaceDump{})
-	for {
-		ifDetails := interfaces.SwInterfaceDetails{}
-		stop, err := ifCtx.ReceiveReply(&ifDetails)
-		if err != nil {
-			return fmt.Errorf("failed to fetch vpp interface: %v", err)
-		}
-		if stop {
-			break
-		}
-
-		v.Interfaces = append(v.Interfaces, &vppInterface{SwInterfaceDetails: ifDetails})
-	}
-	return nil
-}
-
-func (v *vppConnector) connect() (err error) {
-	if v.conn, err = govpp.Connect(v.shmPrefix); err != nil {
-		return fmt.Errorf("failed to connect to vpp: %v", err)
-	}
-
-	if v.api, err = v.conn.NewAPIChannel(); err != nil {
-		return fmt.Errorf("failed to create api channel: %v", err)
-	}
-
-	v.stats = vppapiclient.NewStatClient(v.statsSocketPath)
-	if err = v.stats.Connect(); err != nil {
-		return fmt.Errorf("failed to connect to Stats adapter: %v", err)
-	}
-
-	return
-}
-
-func (v *vppConnector) disconnect() {
-	if v.stats != nil {
-		v.stats.Disconnect()
-	}
-	if v.conn != nil {
-		v.conn.Disconnect()
+func recoverFromFatalError(w http.ResponseWriter) {
+	if r := recover(); r != nil {
+		Logger.Warnf("Recover return data: %v", r)
+		http.Error(w, fmt.Sprintf("%v", r), http.StatusInternalServerError)
 	}
 }
 
-func (v *vppConnector) reduceCombinedCounters(stat *adapter.StatEntry) *[]adapter.CombinedCounter {
-	counters := stat.Data.(adapter.CombinedCounterStat)
-	stats := make([]adapter.CombinedCounter, len(v.Interfaces))
-	for _, workerStats := range counters {
-		for i := 0; i < len(v.Interfaces); i++ {
-			stats[i].Bytes += workerStats[i].Bytes
-			stats[i].Packets += workerStats[i].Packets
-		}
-	}
-	return &stats
-}
+func scrapeHandler(w http.ResponseWriter, r *http.Request) {
+	Logger.Debugf("Processing request from %v to %v", r.URL, r.Host)
+	defer recoverFromFatalError(w)
+	getInterfacesAndStats(w)
 
-func (v *vppConnector) reduceSimpleCounters(stat *adapter.StatEntry) *[]adapter.Counter {
-	counters := stat.Data.(adapter.SimpleCounterStat)
-	stats := make([]adapter.Counter, len(v.Interfaces))
-	for _, workerStats := range counters {
-		for i := 0; i < len(v.Interfaces); i++ {
-			stats[i] += workerStats[i]
-		}
-	}
-	return &stats
-}
-
-func (v *vppConnector) getStatsForAllInterfaces() error {
-	statsDump, err := v.stats.DumpStats("/if")
+	jsonString, err := vppConn.DumpToJson()
 	if err != nil {
-		return fmt.Errorf("failed to dump vpp Stats: %v", err)
+		Logger.Debug("Failed to dump data to json")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	stats := func(i int) *interfaceStats { return &v.Interfaces[uint32(i)].Stats }
-
-	for _, stat := range statsDump {
-		switch stat.Name {
-		case "/if/tx":
-			{
-				for i, counter := range *v.reduceCombinedCounters(stat) {
-					stats(i).TxBytes = uint64(counter.Bytes)
-					stats(i).TxPackets = uint64(counter.Packets)
-				}
-			}
-		case "/if/rx":
-			{
-				for i, counter := range *v.reduceCombinedCounters(stat) {
-					stats(i).RxBytes = uint64(counter.Bytes)
-					stats(i).RxPackets = uint64(counter.Packets)
-				}
-			}
-		case "/if/tx-error":
-			{
-				for i, counter := range *v.reduceSimpleCounters(stat) {
-					stats(i).TxErrors = uint64(counter)
-				}
-			}
-		case "/if/rx-error":
-			{
-				for i, counter := range *v.reduceSimpleCounters(stat) {
-					stats(i).RxErrors = uint64(counter)
-				}
-			}
-		case "/if/drops":
-			{
-				for i, counter := range *v.reduceSimpleCounters(stat) {
-					stats(i).Drops = uint64(counter)
-				}
-			}
-		case "/if/punt":
-			{
-				for i, counter := range *v.reduceSimpleCounters(stat) {
-					stats(i).Punts = uint64(counter)
-				}
-			}
-		}
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(jsonString)
+	Logger.Debug("Writing response")
+	if err != nil {
+		Logger.Debugf("Error while writing response: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	return nil
+	Logger.Debugf("%v %v --- %v %v\n", r.Method, r.URL, http.StatusOK, http.StatusText(http.StatusOK))
 }
-
-//////////////////////////////////////
 
 func main() {
-	statsSocketPathPtr := flag.String("stats_socket_path", defaultStatsSocketPath, "Path to vpp stats socket")
-	shmPrefixPtr := flag.String("shm_prefix", defaultShmPrefix, "Shared memory prefix (advanced)")
+	versionPtr := flag.Bool("v", false, "Prints vppifstats version")
+	portPtr := flag.Int("port", defaultPort, "Port to listen on")
+	apiSocketPathPtr := flag.String("api_socket_path", DefaultAPISocketPath, "Path to VPP API socket")
+	statsSocketPathPtr := flag.String("stats_socket_path", DefaultStatsSocketPath, "Path to VPP stats socket")
+	noConnRetryLimitPtr := flag.Bool("no_retry_limit", false, "If specified, will try to connect to VPP indefinitely")
+	logLevelPtr := flag.String("log_level", "INFO", "Log level: (DEBUG, INFO, WARN or ERROR)")
+	shmPrefixPtr := flag.String("shm_prefix", DefaultShmPrefix, "Shared memory prefix (advanced)")
 	flag.Parse()
 
-	vppConn := &vppConnector{statsSocketPath: *statsSocketPathPtr, shmPrefix: *shmPrefixPtr}
-	defer vppConn.disconnect()
-
-	if err := vppConn.connect(); err != nil {
-		log.Fatalln(err)
+	if *versionPtr == true {
+		fmt.Println(vppIfStatsVersion)
+		os.Exit(0)
 	}
 
-	if err := vppConn.getVppVersion(); err != nil {
-		log.Fatalln(err)
+	Logger.SetLevelFromString(*logLevelPtr)
+
+	vppConn = &vppRestConnector{
+		VppConnector: NewVppConnector(*apiSocketPathPtr, *statsSocketPathPtr, *shmPrefixPtr),
+	}
+	defer vppConn.Disconnect()
+
+	retries := 0
+	for {
+		if err := vppConn.Connect(); err != nil {
+			if *noConnRetryLimitPtr == false && retries >= vppConnectionRetryLimit {
+				Logger.Crit(err)
+			}
+			retries++
+			Logger.Infof("Connection to VPP failed. Retry #%v", retries)
+			time.Sleep(vppConnectionRetryDelay * time.Second)
+		} else {
+			break
+		}
 	}
 
-	if err := vppConn.getInterfaces(); err != nil {
-		log.Fatalln(err)
+	if err := vppConn.GetVppVersion(); err != nil {
+		Logger.Error(err)
+		time.Sleep(vppConnectionRetryDelay)
+		err = vppConn.GetVppVersion()
+		if err != nil {
+			Logger.Crit(err)
+		}
 	}
 
-	if err := vppConn.getStatsForAllInterfaces(); err != nil {
-		log.Fatalln(err)
-	}
+	http.HandleFunc("/", scrapeHandler)
 
-	jsonString, err := dumpToJSONString(vppConn)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	fmt.Println(jsonString)
+	address := fmt.Sprintf("localhost:%v", *portPtr)
+	Logger.Infof("Listening on %v\n", address)
+	Logger.Crit(http.ListenAndServe(address, nil))
 }

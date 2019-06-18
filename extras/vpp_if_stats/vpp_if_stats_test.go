@@ -3,8 +3,8 @@ package main
 import (
 	"git.fd.io/govpp.git/adapter"
 	"git.fd.io/govpp.git/api"
-	"git.fd.io/govpp.git/examples/bin_api/interfaces"
-	"git.fd.io/govpp.git/examples/bin_api/vpe"
+	"git.fd.io/govpp.git/examples/binapi/interfaces"
+	"git.fd.io/govpp.git/examples/binapi/vpe"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
@@ -14,8 +14,8 @@ import (
 
 var (
 	vppDetails = vpe.ShowVersionReply{
-		Program: []byte("vpe"),
-		Version: []byte("18.10"),
+		Program: "vpe",
+		Version: "18.10",
 	}
 
 	testSwIfIndex = uint32(0)
@@ -25,9 +25,9 @@ var (
 			Stats:              interfaceStats{},                                        // TODO
 		}
 	}
-	testInterfaces = func() []*vppInterface {
-		return []*vppInterface{
-			testInterface(),
+	testInterfaces = func() *map[uint32]*vppInterface {
+		return &map[uint32]*vppInterface{
+			testInterface().SwIfIndex: testInterface(),
 		}
 	}
 
@@ -112,6 +112,19 @@ func (ctx *showDetailsContext) ReceiveReply(msg api.Message) (err error) {
 	return nil
 }
 
+func TestVppIfStats_GetVppVersion(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockChannel := NewMockChannel(mockCtrl)
+	mockChannel.EXPECT().SendRequest(&vpe.ShowVersion{}).Return(&showDetailsContext{details: vppDetails})
+
+	v := &VppConnector{api: mockChannel}
+	err := v.GetVppVersion()
+	assert.NoError(t, err, "GetVppVersion should not return an error")
+	assert.Equal(t, vppDetails, v.VppDetails, "VPP details should be saved")
+}
+
 type interfaceDumpContext struct {
 	interfaces   []interfaces.SwInterfaceDetails
 	currentIndex int
@@ -126,20 +139,7 @@ func (ctx *interfaceDumpContext) ReceiveReply(msg api.Message) (lastReplyReceive
 	return stop, nil
 }
 
-func TestVppIfStats_GetVppVersion(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	mockChannel := NewMockChannel(mockCtrl)
-	mockChannel.EXPECT().SendRequest(&vpe.ShowVersion{}).Return(&showDetailsContext{details: vppDetails})
-
-	v := vppConnector{api: mockChannel}
-	err := v.getVppVersion()
-	assert.NoError(t, err, "GetVppVersion should not return an error")
-	assert.Equal(t, vppDetails, v.VppDetails, "VPP details should be saved")
-}
-
-func TestVppIfStats_GetInterfaces(t *testing.T) {
+func TestVppIfStatsCommon_GetInterfaces(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -147,8 +147,8 @@ func TestVppIfStats_GetInterfaces(t *testing.T) {
 	mockChannel := NewMockChannel(mockCtrl)
 	mockChannel.EXPECT().SendMultiRequest(&interfaces.SwInterfaceDump{}).Return(&testContext)
 
-	v := vppConnector{api: mockChannel}
-	err := v.getInterfaces()
+	v := &VppConnector{api: mockChannel}
+	err := v.GetInterfaces()
 	assert.NoError(t, err, "GetInterfaces should not return an error")
 	assert.Len(t, v.Interfaces, len(testContext.interfaces), "All dumped interfaces should be saved")
 	if len(testContext.interfaces) > 0 {
@@ -157,15 +157,15 @@ func TestVppIfStats_GetInterfaces(t *testing.T) {
 	}
 }
 
-func TestVppIfStats_GetStatsForAllInterfacesNoStats(t *testing.T) {
+func TestVppIfStatsCommon_GetStatsForAllInterfacesNoStats(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
 	mockStatsAPI := NewMockStatsAPI(mockCtrl)
 	mockStatsAPI.EXPECT().DumpStats("/if").Return([]*adapter.StatEntry{}, nil)
 
-	v := vppConnector{stats: mockStatsAPI, Interfaces: testInterfaces()}
-	err := v.getStatsForAllInterfaces()
+	v := &VppConnector{stats: mockStatsAPI, Interfaces: *testInterfaces()}
+	err := v.GetStatsForAllInterfaces()
 	assert.NoError(t, err, "GetStatsForAllInterfaces should not return an error")
 	assert.Equal(t, interfaceStats{}, v.Interfaces[testSwIfIndex].Stats, "Stats should be empty")
 }
@@ -177,16 +177,16 @@ func testStats(t *testing.T, statsDump *[]*adapter.StatEntry, expectedStats *int
 	mockStatsAPI := NewMockStatsAPI(mockCtrl)
 	mockStatsAPI.EXPECT().DumpStats("/if").Return(*statsDump, nil)
 
-	v := vppConnector{stats: mockStatsAPI, Interfaces: testInterfaces()}
-	err := v.getStatsForAllInterfaces()
+	v := &VppConnector{stats: mockStatsAPI, Interfaces: *testInterfaces()}
+	err := v.GetStatsForAllInterfaces()
 	assert.NoError(t, err, "GetStatsForAllInterfaces should not return an error")
 	assert.Equal(t, *expectedStats, v.Interfaces[testSwIfIndex].Stats, "Collected and saved stats should match")
 }
 
-func TestVppIfStats_GetStatsForAllInterfacesCombinedStats(t *testing.T) {
+func TestVppIfStatsCommon_GetStatsForAllInterfacesCombinedStats(t *testing.T) {
 	testStats(t, &testCombinedStatsDump, &testCombinedStats)
 }
 
-func TestVppIfStats_GetStatsForAllInterfacesSimpleStats(t *testing.T) {
+func TestVppIfStatsCommon_GetStatsForAllInterfacesSimpleStats(t *testing.T) {
 	testStats(t, &testSimpleStatsDump, &testSimpleStats)
 }
