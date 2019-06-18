@@ -149,6 +149,7 @@ def fib_interface_ip_prefix(test, address, length, sw_if_index):
         prefix = IPv6Network("%s/%d" % (text_type(address), length),
                              strict=False)
 
+    # TODO: refactor this to VppIpPrefix.__eq__
     for a in addrs:
         if a.sw_if_index == sw_if_index and \
            a.prefix == prefix:
@@ -426,6 +427,7 @@ class VppIpRoute(VppObject):
         self.table_id = table_id
         self.prefix = VppIpPrefix(dest_addr, dest_addr_len)
         self.register = register
+        self.stats_index = None
 
         self.encoded_paths = []
         for path in self.paths:
@@ -482,8 +484,9 @@ class VppIpRoute(VppObject):
                           self.table_id)
 
     def object_id(self):
-        return ("%d:%s/%d"
-                % (self.table_id,
+        return ("%s:%d:%s/%d"
+                % ('ip6-route' if self.prefix.address.version ==6 else 'ip-route',
+                   self.table_id,
                    self.prefix.address,
                    self.prefix.len))
 
@@ -721,7 +724,7 @@ class VppMplsRoute(VppObject):
                                self.local_label, self.eos_bit)
 
     def object_id(self):
-        return ("%d:%s/%d"
+        return ("mpls-route-%d:%s/%d"
                 % (self.table_id,
                    self.local_label,
                    20 + self.eos_bit))
