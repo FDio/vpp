@@ -67,7 +67,9 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
     }
   else
     {
-      ASSERT(mm->mpls_enabled_by_sw_if_index[sw_if_index] > 0);
+      if (mm->mpls_enabled_by_sw_if_index[sw_if_index] > 0)
+          return VNET_API_ERROR_UNEXPECTED_INTF_STATE;
+
       if (0 != --mm->mpls_enabled_by_sw_if_index[sw_if_index])
           return (0);
 
