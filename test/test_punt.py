@@ -140,8 +140,10 @@ class TestPuntSocket(VppTestCase):
 
     def verify_udp_pkts(self, rxs, n_rx, port):
         n_match = 0
+        self.logger.info(
+            'Verifying against %s packets in verify_udp_pkts.' % len(rxs))
         for rx in rxs:
-            rx.show()
+            self.logger.info(rx.show(dump=True))
             self.assertTrue(rx.haslayer(UDP))
             if rx[UDP].dport == port:
                 n_match += 1
