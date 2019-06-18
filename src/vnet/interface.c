@@ -1491,12 +1491,13 @@ vnet_hw_interface_change_mac_address (vnet_main_t * vnm, u32 hw_if_index,
 }
 
 /* update the unnumbered state of an interface*/
-void
+int
 vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
 				     u32 ip_sw_if_index, u8 enable)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *si;
+  int rv = 0;
   u32 was_unnum;
 
   si = vnet_get_sw_interface (vnm, unnumbered_sw_if_index);
@@ -1533,6 +1534,9 @@ vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
       ip4_sw_interface_enable_disable (unnumbered_sw_if_index, enable);
       ip6_sw_interface_enable_disable (unnumbered_sw_if_index, enable);
     }
+  else
+    rv = -1;
+  return rv;
 }
 
 vnet_l3_packet_type_t
