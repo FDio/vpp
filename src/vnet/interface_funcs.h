@@ -397,8 +397,8 @@ void vnet_sw_interface_set_protocol_mtu (vnet_main_t * vnm, u32 sw_if_index,
 					 u32 mtu[]);
 
 /* update the unnumbered state of an interface */
-void vnet_sw_interface_update_unnumbered (u32 sw_if_index,
-					  u32 ip_sw_if_index, u8 enable);
+int vnet_sw_interface_update_unnumbered (u32 sw_if_index,
+					 u32 ip_sw_if_index, u8 enable);
 
 int vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index,
 						    u8 enable);
