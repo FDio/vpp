@@ -76,7 +76,7 @@ _(BOND_SLAVE_NOT_ALLOWED, -80, "Operation not allowed on slave of BondEthernet")
 _(VALUE_EXIST, -81, "Value already exists")                             \
 _(SAME_SRC_DST, -82, "Source and destination are the same")             \
 _(IP6_MULTICAST_ADDRESS_NOT_PRESENT, -83, "IP6 multicast address required") \
-_(SR_POLICY_NAME_NOT_PRESENT, -84, "Segement routing policy name required") \
+_(SR_POLICY_NAME_NOT_PRESENT, -84, "Segment routing policy name required") \
 _(NOT_RUNNING_AS_ROOT, -85, "Not running as root") \
 _(ALREADY_CONNECTED, -86, "Connection to the data plane already exists") \
 _(UNSUPPORTED_JNI_VERSION, -87, "Unsupported JNI version") \
@@ -84,7 +84,7 @@ _(FAILED_TO_ATTACH_TO_JAVA_THREAD, -88, "Failed to attach to Java thread") \
 _(INVALID_WORKER, -89, "Invalid worker thread")                         \
 _(LISP_DISABLED, -90, "LISP is disabled")                               \
 _(CLASSIFY_TABLE_NOT_FOUND, -91, "Classify table not found")            \
-_(INVALID_EID_TYPE, -92, "Unsupported LSIP EID type")                   \
+_(INVALID_EID_TYPE, -92, "Unsupported LISP EID type")                   \
 _(CANNOT_CREATE_PCAP_FILE, -93, "Cannot create pcap file")              \
 _(INCORRECT_ADJACENCY_TYPE, -94, "Invalid adjacency type for this operation") \
 _(EXCEEDED_NUMBER_OF_RANGES_CAPACITY, -95, "Operation would exceed configured capacity of ranges") \
@@ -109,12 +109,12 @@ _(LISP_GPE_ENTRIES_PRESENT, -113, "LISP GPE entries are present")       \
 _(ADDRESS_FOUND_FOR_INTERFACE, -114, "Address found for interface")	\
 _(SESSION_CONNECT, -115, "Session failed to connect")              	\
 _(ENTRY_ALREADY_EXISTS, -116, "Entry already exists")			\
-_(SVM_SEGMENT_CREATE_FAIL, -117, "svm segment create fail")		\
-_(APPLICATION_NOT_ATTACHED, -118, "application not attached")           \
+_(SVM_SEGMENT_CREATE_FAIL, -117, "Svm segment create fail")		\
+_(APPLICATION_NOT_ATTACHED, -118, "Application not attached")           \
 _(BD_ALREADY_EXISTS, -119, "Bridge domain already exists")              \
 _(BD_IN_USE, -120, "Bridge domain has member interfaces")		\
 _(BD_NOT_MODIFIABLE, -121, "Bridge domain 0 can't be deleted/modified") \
-_(BD_ID_EXCEED_MAX, -122, "Bridge domain ID exceed 16M limit")		\
+_(BD_ID_EXCEED_MAX, -122, "Bridge domain ID exceeds 16M limit")		\
 _(SUBIF_DOESNT_EXIST, -123, "Subinterface doesn't exist")               \
 _(L2_MACS_EVENT_CLINET_PRESENT, -124, "Client already exist for L2 MACs events") \
 _(INVALID_QUEUE, -125, "Invalid queue")                 		\
@@ -137,10 +137,10 @@ _(APP_CONNECT_FILTERED, -141, "Connect was filtered")			\
 _(ACL_IN_USE_INBOUND, -142, "Inbound ACL in use")			\
 _(ACL_IN_USE_OUTBOUND, -143, "Outbound ACL in use")			\
 _(INIT_FAILED, -144, "Initialization Failed")				\
-_(NETLINK_ERROR, -145, "netlink error")                                 \
+_(NETLINK_ERROR, -145, "Netlink error")                                 \
 _(BIER_BSL_UNSUP, -146, "BIER bit-string-length unsupported")		\
 _(INSTANCE_IN_USE, -147, "Instance in use")				\
-_(INVALID_SESSION_ID, -148, "session ID out of range")			\
+_(INVALID_SESSION_ID, -148, "Session ID out of range")			\
 _(ACL_IN_USE_BY_LOOKUP_CONTEXT, -149, "ACL in use by a lookup context")	\
 _(INVALID_VALUE_3, -150, "Invalid value #3")                            \
 _(NON_ETHERNET, -151, "Interface is not an Ethernet interface")         \
@@ -148,7 +148,7 @@ _(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface") \
 _(INVALID_PROTOCOL, -153, "Invalid Protocol")                           \
 _(INVALID_ALGORITHM, -154, "Invalid Algorithm")                         \
 _(RSRC_IN_USE, -155, "Resource In Use")                                 \
-_(KEY_LENGTH, -156, "invalid Key Length")
+_(KEY_LENGTH, -156, "Invalid Key Length")
 
 typedef enum
 {
