@@ -945,8 +945,7 @@ class TemplateIpsec6TunProtect(object):
         p.route = VppIpRoute(self, p.remote_tun_if_host, 128,
                              [VppRoutePath(p.tun_if.remote_ip6,
                                            0xffffffff,
-                                           proto=DpoProto.DPO_PROTO_IP6)],
-                             is_ip6=1)
+                                           proto=DpoProto.DPO_PROTO_IP6)])
         p.route.add_vpp_config()
 
     def unconfig_network(self, p):
