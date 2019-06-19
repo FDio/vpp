@@ -321,13 +321,14 @@ class VppGbpBridgeDomain(VppObject):
     GBP Bridge Domain
     """
 
-    def __init__(self, test, bd, bvi, uu_fwd=None,
+    def __init__(self, test, bd, rd, bvi, uu_fwd=None,
                  bm_flood=None, learn=True, uu_drop=False, bm_drop=False):
         self._test = test
         self.bvi = bvi
         self.uu_fwd = uu_fwd
         self.bm_flood = bm_flood
         self.bd = bd
+        self.rd = rd
 
         e = VppEnum.vl_api_gbp_bridge_domain_flags_t
         if (learn):
@@ -342,6 +343,7 @@ class VppGbpBridgeDomain(VppObject):
     def add_vpp_config(self):
         self._test.vapi.gbp_bridge_domain_add(
             self.bd.bd_id,
+            self.rd.rd_id,
             self.learn,
             self.bvi.sw_if_index,
             self.uu_fwd.sw_if_index if self.uu_fwd else INDEX_INVALID,
@@ -367,9 +369,10 @@ class VppGbpRouteDomain(VppObject):
     GBP Route Domain
     """
 
-    def __init__(self, test, rd_id, t4, t6, ip4_uu=None, ip6_uu=None):
+    def __init__(self, test, rd_id, scope, t4, t6, ip4_uu=None, ip6_uu=None):
         self._test = test
         self.rd_id = rd_id
+        self.scope = scope
         self.t4 = t4
         self.t6 = t6
         self.ip4_uu = ip4_uu
@@ -378,6 +381,7 @@ class VppGbpRouteDomain(VppObject):
     def add_vpp_config(self):
         self._test.vapi.gbp_route_domain_add(
             self.rd_id,
+            self.scope,
             self.t4.table_id,
             self.t6.table_id,
             self.ip4_uu.sw_if_index if self.ip4_uu else INDEX_INVALID,
@@ -440,13 +444,14 @@ class VppGbpContract(VppObject):
     GBP Contract
     """
 
-    def __init__(self, test, sclass, dclass, acl_index,
+    def __init__(self, test, scope, sclass, dclass, acl_index,
                  rules, allowed_ethertypes):
         self._test = test
         if not isinstance(rules, list):
             raise ValueError("'rules' must be a list.")
         if not isinstance(allowed_ethertypes, list):
             raise ValueError("'allowed_ethertypes' must be a list.")
+        self.scope = scope
         self.acl_index = acl_index
         self.sclass = sclass
         self.dclass = dclass
@@ -463,6 +468,7 @@ class VppGbpContract(VppObject):
             is_add=1,
             contract={
                 'acl_index': self.acl_index,
+                'scope': self.scope,
                 'sclass': self.sclass,
                 'dclass': self.dclass,
                 'n_rules': len(rules),
@@ -477,24 +483,26 @@ class VppGbpContract(VppObject):
             is_add=0,
             contract={
                 'acl_index': self.acl_index,
+                'scope': self.scope,
                 'sclass': self.sclass,
                 'dclass': self.dclass,
                 'n_rules': 0,
                 'rules': [],
                 'n_ether_types': len(self.allowed_ethertypes),
-                'allowed_ethertypes': self.allowed_ethertypes}
-        )
+                'allowed_ethertypes': self.allowed_ethertypes})
 
     def object_id(self):
-        return "gbp-contract:[%d:%s:%d]" % (self.sclass,
-                                            self.dclass,
-                                            self.acl_index)
+        return "gbp-contract:[%d:%d:%d:%d]" % (self.scope,
+                                               self.sclass,
+                                               self.dclass,
+                                               self.acl_index)
 
     def query_vpp_config(self):
         cs = self._test.vapi.gbp_contract_dump()
         for c in cs:
-            if c.contract.sclass == self.sclass \
-                    and c.contract.dclass == self.dclass:
+            if c.contract.scope == self.scope \
+               and c.contract.sclass == self.sclass \
+               and c.contract.dclass == self.dclass:
                 return True
         return False
 
@@ -739,25 +747,6 @@ class TestGBP(VppTestCase):
         ep_flags = VppEnum.vl_api_gbp_endpoint_flags_t
 
         #
-        # Bridge Domains
-        #
-        bd1 = VppBridgeDomain(self, 1)
-        bd2 = VppBridgeDomain(self, 2)
-        bd20 = VppBridgeDomain(self, 20)
-
-        bd1.add_vpp_config()
-        bd2.add_vpp_config()
-        bd20.add_vpp_config()
-
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0)
-        gbd2 = VppGbpBridgeDomain(self, bd2, self.loop1)
-        gbd20 = VppGbpBridgeDomain(self, bd20, self.loop2)
-
-        gbd1.add_vpp_config()
-        gbd2.add_vpp_config()
-        gbd20.add_vpp_config()
-
-        #
         # Route Domains
         #
         gt4 = VppIpTable(self, 0)
@@ -769,11 +758,30 @@ class TestGBP(VppTestCase):
         nt6 = VppIpTable(self, 20, is_ip6=True)
         nt6.add_vpp_config()
 
-        rd0 = VppGbpRouteDomain(self, 0, gt4, gt6, None, None)
-        rd20 = VppGbpRouteDomain(self, 20, nt4, nt6, None, None)
+        rd0 = VppGbpRouteDomain(self, 0, 400, gt4, gt6, None, None)
+        rd20 = VppGbpRouteDomain(self, 20, 420, nt4, nt6, None, None)
 
         rd0.add_vpp_config()
         rd20.add_vpp_config()
+
+        #
+        # Bridge Domains
+        #
+        bd1 = VppBridgeDomain(self, 1)
+        bd2 = VppBridgeDomain(self, 2)
+        bd20 = VppBridgeDomain(self, 20)
+
+        bd1.add_vpp_config()
+        bd2.add_vpp_config()
+        bd20.add_vpp_config()
+
+        gbd1 = VppGbpBridgeDomain(self, bd1, rd0, self.loop0)
+        gbd2 = VppGbpBridgeDomain(self, bd2, rd0, self.loop1)
+        gbd20 = VppGbpBridgeDomain(self, bd20, rd20, self.loop2)
+
+        gbd1.add_vpp_config()
+        gbd2.add_vpp_config()
+        gbd20.add_vpp_config()
 
         #
         # 3 EPGs, 2 of which share a BD.
@@ -1183,7 +1191,7 @@ class TestGBP(VppTestCase):
         rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
         acl_index = acl.add_vpp_config([rule, rule2])
         c1 = VppGbpContract(
-            self, epgs[0].sclass, epgs[1].sclass, acl_index,
+            self, 400, epgs[0].sclass, epgs[1].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -1205,7 +1213,7 @@ class TestGBP(VppTestCase):
         # contract for the return direction
         #
         c2 = VppGbpContract(
-            self, epgs[1].sclass, epgs[0].sclass, acl_index,
+            self, 400, epgs[1].sclass, epgs[0].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -1249,7 +1257,7 @@ class TestGBP(VppTestCase):
         # A uni-directional contract from EPG 220 -> 222 'L3 routed'
         #
         c3 = VppGbpContract(
-            self, epgs[0].sclass, epgs[2].sclass, acl_index,
+            self, 400, epgs[0].sclass, epgs[2].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -1356,7 +1364,7 @@ class TestGBP(VppTestCase):
 
         acl_index2 = acl2.add_vpp_config([rule, rule2])
         c4 = VppGbpContract(
-            self, epgs[0].sclass, epgs[3].sclass, acl_index2,
+            self, 400, epgs[0].sclass, epgs[3].sclass, acl_index2,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -1399,7 +1407,7 @@ class TestGBP(VppTestCase):
             self.pg7, pkt_inter_epg_220_from_global * NUM_PKTS)
 
         c5 = VppGbpContract(
-            self, epgs[3].sclass, epgs[0].sclass, acl_index2,
+            self, 400, epgs[3].sclass, epgs[0].sclass, acl_index2,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -1529,7 +1537,7 @@ class TestGBP(VppTestCase):
         gt6 = VppIpTable(self, 1, is_ip6=True)
         gt6.add_vpp_config()
 
-        rd1 = VppGbpRouteDomain(self, 1, gt4, gt6)
+        rd1 = VppGbpRouteDomain(self, 1, 401, gt4, gt6)
         rd1.add_vpp_config()
 
         #
@@ -1559,7 +1567,8 @@ class TestGBP(VppTestCase):
         #
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, self.pg3, tun_bm)
+        gbd1 = VppGbpBridgeDomain(self, bd1, rd1, self.loop0,
+                                  self.pg3, tun_bm)
         gbd1.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
@@ -1918,7 +1927,7 @@ class TestGBP(VppTestCase):
         rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
         acl_index = acl.add_vpp_config([rule, rule2])
         c1 = VppGbpContract(
-            self, epg_220.sclass, epg_330.sclass, acl_index,
+            self, 401, epg_220.sclass, epg_330.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -2013,6 +2022,18 @@ class TestGBP(VppTestCase):
         """ GBP CONTRACTS """
 
         #
+        # Route Domains
+        #
+        gt4 = VppIpTable(self, 0)
+        gt4.add_vpp_config()
+        gt6 = VppIpTable(self, 0, is_ip6=True)
+        gt6.add_vpp_config()
+
+        rd0 = VppGbpRouteDomain(self, 0, 400, gt4, gt6, None, None)
+
+        rd0.add_vpp_config()
+
+        #
         # Bridge Domains
         #
         bd1 = VppBridgeDomain(self, 1, arp_term=0)
@@ -2021,23 +2042,11 @@ class TestGBP(VppTestCase):
         bd1.add_vpp_config()
         bd2.add_vpp_config()
 
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0)
-        gbd2 = VppGbpBridgeDomain(self, bd2, self.loop1)
+        gbd1 = VppGbpBridgeDomain(self, bd1, rd0, self.loop0)
+        gbd2 = VppGbpBridgeDomain(self, bd2, rd0, self.loop1)
 
         gbd1.add_vpp_config()
         gbd2.add_vpp_config()
-
-        #
-        # Route Domains
-        #
-        gt4 = VppIpTable(self, 0)
-        gt4.add_vpp_config()
-        gt6 = VppIpTable(self, 0, is_ip6=True)
-        gt6.add_vpp_config()
-
-        rd0 = VppGbpRouteDomain(self, 0, gt4, gt6, None, None)
-
-        rd0.add_vpp_config()
 
         #
         # 3 EPGs, 2 of which share a BD.
@@ -2141,7 +2150,7 @@ class TestGBP(VppTestCase):
         rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
         acl_index = acl.add_vpp_config([rule, rule2])
         c1 = VppGbpContract(
-            self, epgs[0].sclass, epgs[1].sclass, acl_index,
+            self, 400, epgs[0].sclass, epgs[1].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -2170,7 +2179,7 @@ class TestGBP(VppTestCase):
         # contract for the return direction
         #
         c2 = VppGbpContract(
-            self, epgs[1].sclass, epgs[0].sclass, acl_index,
+            self, 400, epgs[1].sclass, epgs[0].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -2199,7 +2208,7 @@ class TestGBP(VppTestCase):
         # contract between 220 and 222 uni-direction
         #
         c3 = VppGbpContract(
-            self, epgs[0].sclass, epgs[2].sclass, acl_index,
+            self, 400, epgs[0].sclass, epgs[2].sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -2231,7 +2240,7 @@ class TestGBP(VppTestCase):
         gt6 = VppIpTable(self, 1, is_ip6=True)
         gt6.add_vpp_config()
 
-        rd1 = VppGbpRouteDomain(self, 1, gt4, gt6)
+        rd1 = VppGbpRouteDomain(self, 1, 401, gt4, gt6)
         rd1.add_vpp_config()
 
         #
@@ -2257,8 +2266,8 @@ class TestGBP(VppTestCase):
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
 
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, self.pg3, tun_bm,
-                                  uu_drop=True, bm_drop=True)
+        gbd1 = VppGbpBridgeDomain(self, bd1, rd1, self.loop0, self.pg3,
+                                  tun_bm, uu_drop=True, bm_drop=True)
         gbd1.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
@@ -2325,7 +2334,7 @@ class TestGBP(VppTestCase):
         gt6 = VppIpTable(self, 1, is_ip6=True)
         gt6.add_vpp_config()
 
-        rd1 = VppGbpRouteDomain(self, 1, gt4, gt6)
+        rd1 = VppGbpRouteDomain(self, 1, 401, gt4, gt6)
         rd1.add_vpp_config()
 
         #
@@ -2358,7 +2367,7 @@ class TestGBP(VppTestCase):
         #
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, bd_uu_fwd,
+        gbd1 = VppGbpBridgeDomain(self, bd1, rd1, self.loop0, bd_uu_fwd,
                                   learn=False)
         gbd1.add_vpp_config()
 
@@ -2501,7 +2510,7 @@ class TestGBP(VppTestCase):
         tun_ip4_uu.add_vpp_config()
         tun_ip6_uu.add_vpp_config()
 
-        rd1 = VppGbpRouteDomain(self, 2, t4, t6, tun_ip4_uu, tun_ip6_uu)
+        rd1 = VppGbpRouteDomain(self, 2, 401, t4, t6, tun_ip4_uu, tun_ip6_uu)
         rd1.add_vpp_config()
 
         self.loop0.set_mac(self.router_mac)
@@ -2532,7 +2541,7 @@ class TestGBP(VppTestCase):
         #
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, self.pg3)
+        gbd1 = VppGbpBridgeDomain(self, bd1, rd1, self.loop0, self.pg3)
         gbd1.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
@@ -2933,7 +2942,7 @@ class TestGBP(VppTestCase):
         t6 = VppIpTable(self, 1, True)
         t6.add_vpp_config()
 
-        rd1 = VppGbpRouteDomain(self, 2, t4, t6)
+        rd1 = VppGbpRouteDomain(self, 2, 402, t4, t6)
         rd1.add_vpp_config()
 
         self.loop0.set_mac(self.router_mac)
@@ -2955,12 +2964,12 @@ class TestGBP(VppTestCase):
         #
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0)
+        gbd1 = VppGbpBridgeDomain(self, bd1, rd1, self.loop0)
         gbd1.add_vpp_config()
 
         bd2 = VppBridgeDomain(self, 2)
         bd2.add_vpp_config()
-        gbd2 = VppGbpBridgeDomain(self, bd2, self.loop1)
+        gbd2 = VppGbpBridgeDomain(self, bd2, rd1, self.loop1)
         gbd2.add_vpp_config()
 
         # ... and has a /32 and /128 applied
@@ -3007,11 +3016,13 @@ class TestGBP(VppTestCase):
 
         bd3 = VppBridgeDomain(self, 3)
         bd3.add_vpp_config()
-        gbd3 = VppGbpBridgeDomain(self, bd3, self.loop2, bd_uu1, learn=False)
+        gbd3 = VppGbpBridgeDomain(self, bd3, rd1, self.loop2,
+                                  bd_uu1, learn=False)
         gbd3.add_vpp_config()
         bd4 = VppBridgeDomain(self, 4)
         bd4.add_vpp_config()
-        gbd4 = VppGbpBridgeDomain(self, bd4, self.loop3, bd_uu2, learn=False)
+        gbd4 = VppGbpBridgeDomain(self, bd4, rd1, self.loop3,
+                                  bd_uu2, learn=False)
         gbd4.add_vpp_config()
 
         #
@@ -3111,7 +3122,7 @@ class TestGBP(VppTestCase):
         # test the src-ip hash mode
         #
         c1 = VppGbpContract(
-            self, epg_220.sclass, epg_222.sclass, acl_index,
+            self, 402, epg_220.sclass, epg_222.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -3130,7 +3141,7 @@ class TestGBP(VppTestCase):
         c1.add_vpp_config()
 
         c2 = VppGbpContract(
-            self, epg_222.sclass, epg_220.sclass, acl_index,
+            self, 402, epg_222.sclass, epg_220.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -3243,7 +3254,7 @@ class TestGBP(VppTestCase):
         # test the symmetric hash mode
         #
         c1 = VppGbpContract(
-            self, epg_220.sclass, epg_222.sclass, acl_index,
+            self, 402, epg_220.sclass, epg_222.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
@@ -3262,7 +3273,7 @@ class TestGBP(VppTestCase):
         c1.add_vpp_config()
 
         c2 = VppGbpContract(
-            self, epg_222.sclass, epg_220.sclass, acl_index,
+            self, 402, epg_222.sclass, epg_220.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
@@ -3327,7 +3338,7 @@ class TestGBP(VppTestCase):
                Raw('\xa5' * 100))]
 
         c3 = VppGbpContract(
-            self, epg_220.sclass, epg_221.sclass, acl_index,
+            self, 402, epg_220.sclass, epg_221.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
@@ -3363,7 +3374,7 @@ class TestGBP(VppTestCase):
         vx_tun_l3.add_vpp_config()
 
         c4 = VppGbpContract(
-            self, epg_221.sclass, epg_220.sclass, acl_index,
+            self, 402, epg_221.sclass, epg_220.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -3443,7 +3454,7 @@ class TestGBP(VppTestCase):
         # test the dst-ip hash mode
         #
         c5 = VppGbpContract(
-            self, epg_220.sclass, epg_221.sclass, acl_index,
+            self, 402, epg_220.sclass, epg_221.sclass, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_DST_IP,
@@ -3499,7 +3510,7 @@ class TestGBP(VppTestCase):
         t6 = VppIpTable(self, 1, True)
         t6.add_vpp_config()
 
-        rd1 = VppGbpRouteDomain(self, 2, t4, t6)
+        rd1 = VppGbpRouteDomain(self, 2, 55, t4, t6)
         rd1.add_vpp_config()
 
         self.loop0.set_mac(self.router_mac)
@@ -3530,7 +3541,7 @@ class TestGBP(VppTestCase):
         #
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, None, tun_bm)
+        gbd1 = VppGbpBridgeDomain(self, bd1, rd1, self.loop0, None, tun_bm)
         gbd1.add_vpp_config()
 
         #
@@ -3770,7 +3781,7 @@ class TestGBP(VppTestCase):
              IP(src="10.220.0.1", dst="10.221.0.1") /
              ICMP(type='echo-request'))
 
-        rxs = self.send_and_assert_no_replies(self.pg0, p * 1)
+        self.send_and_assert_no_replies(self.pg0, p * 1)
 
         #
         # contract for the external nets to communicate
@@ -3780,8 +3791,23 @@ class TestGBP(VppTestCase):
         rule6 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
         acl_index = acl.add_vpp_config([rule4, rule6])
 
+        #
+        # A contract with the wrong scope is not matched
+        #
+        c_44 = VppGbpContract(
+            self, 44, 4220, 4221, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                []),
+                VppGbpContractRule(
+                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c_44.add_vpp_config()
+        self.send_and_assert_no_replies(self.pg0, p * 1)
+
         c1 = VppGbpContract(
-            self, 4220, 4221, acl_index,
+            self, 55, 4220, 4221, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -3797,7 +3823,7 @@ class TestGBP(VppTestCase):
         # Contracts allowing ext-net 200 to talk with external EPs
         #
         c2 = VppGbpContract(
-            self, 4220, 113, acl_index,
+            self, 55, 4220, 113, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -3809,7 +3835,7 @@ class TestGBP(VppTestCase):
             [ETH_P_IP, ETH_P_IPV6])
         c2.add_vpp_config()
         c3 = VppGbpContract(
-            self, 113, 4220, acl_index,
+            self, 55, 113, 4220, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
@@ -3943,7 +3969,7 @@ class TestGBP(VppTestCase):
         # Add contracts ext-nets for 220 -> 222
         #
         c4 = VppGbpContract(
-            self, 4220, 4222, acl_index,
+            self, 55, 4220, 4222, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,

@@ -19,11 +19,13 @@ namespace VOM {
 namespace gbp_bridge_domain_cmds {
 
 create_cmd::create_cmd(HW::item<uint32_t>& item,
+                       u32 rd_id,
                        const handle_t bvi,
                        const handle_t uu_fwd,
                        const handle_t bm_flood,
                        const gbp_bridge_domain::flags_t& flags)
   : rpc_cmd(item)
+  , m_rd_id(rd_id)
   , m_bvi(bvi)
   , m_uu_fwd(uu_fwd)
   , m_bm_flood(bm_flood)
@@ -35,8 +37,9 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_hw_item.data() == other.m_hw_item.data()) &&
-          (m_bvi == other.m_bvi) && (m_uu_fwd == other.m_uu_fwd) &&
-          (m_bm_flood == other.m_bm_flood) && (m_flags == other.m_flags));
+          (m_rd_id == other.m_rd_id) && (m_bvi == other.m_bvi) &&
+          (m_uu_fwd == other.m_uu_fwd) && (m_bm_flood == other.m_bm_flood) &&
+          (m_flags == other.m_flags));
 }
 
 rc_t
@@ -47,6 +50,7 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
 
   payload.bd.bd_id = m_hw_item.data();
+  payload.bd.rd_id = m_rd_id;
   payload.bd.bvi_sw_if_index = m_bvi.value();
   payload.bd.uu_fwd_sw_if_index = m_uu_fwd.value();
   payload.bd.bm_flood_sw_if_index = m_bm_flood.value();

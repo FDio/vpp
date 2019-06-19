@@ -38,6 +38,11 @@ typedef struct gbp_policy_dpo_t_
   sclass_t gpd_sclass;
 
   /**
+   * sclass scope
+   */
+  gbp_scope_t gpd_scope;
+
+  /**
    * output sw_if_index
    */
   u32 gpd_sw_if_index;
@@ -54,6 +59,7 @@ typedef struct gbp_policy_dpo_t_
 } gbp_policy_dpo_t;
 
 extern void gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
+					gbp_scope_t scope,
 					sclass_t sclass,
 					u32 sw_if_index, dpo_id_t * dpo);
 

@@ -126,6 +126,7 @@ gbp_route_domain_db_remove (gbp_route_domain_t * grd)
 
 int
 gbp_route_domain_add_and_lock (u32 rd_id,
+			       gbp_scope_t scope,
 			       u32 ip4_table_id,
 			       u32 ip6_table_id,
 			       u32 ip4_uu_sw_if_index, u32 ip6_uu_sw_if_index)
@@ -142,6 +143,7 @@ gbp_route_domain_add_and_lock (u32 rd_id,
       pool_get_zero (gbp_route_domain_pool, grd);
 
       grd->grd_id = rd_id;
+      grd->grd_scope = scope;
       grd->grd_table_id[FIB_PROTOCOL_IP4] = ip4_table_id;
       grd->grd_table_id[FIB_PROTOCOL_IP6] = ip6_table_id;
       grd->grd_uu_sw_if_index[FIB_PROTOCOL_IP4] = ip4_uu_sw_if_index;
@@ -241,6 +243,16 @@ gbp_route_domain_get_rd_id (index_t grdi)
   return (grd->grd_id);
 }
 
+gbp_scope_t
+gbp_route_domain_get_scope (index_t grdi)
+{
+  gbp_route_domain_t *grd;
+
+  grd = gbp_route_domain_get (grdi);
+
+  return (grd->grd_scope);
+}
+
 int
 gbp_route_domain_delete (u32 rd_id)
 {
@@ -296,6 +308,7 @@ gbp_route_domain_cli (vlib_main_t * vm,
   u32 ip6_uu_sw_if_index = ~0;
   u32 ip4_table_id = ~0;
   u32 ip6_table_id = ~0;
+  u32 scope = ~0;
   u32 rd_id = ~0;
   u8 add = 1;
 
@@ -317,6 +330,8 @@ gbp_route_domain_cli (vlib_main_t * vm,
 	add = 0;
       else if (unformat (input, "rd %d", &rd_id))
 	;
+      else if (unformat (input, "scope %d", &scope))
+	;
       else
 	break;
     }
@@ -331,7 +346,8 @@ gbp_route_domain_cli (vlib_main_t * vm,
       if (~0 == ip6_table_id)
 	return clib_error_return (0, "IP6 table-ID must be specified");
 
-      gbp_route_domain_add_and_lock (rd_id, ip4_table_id,
+      gbp_route_domain_add_and_lock (rd_id, scope,
+				     ip4_table_id,
 				     ip6_table_id,
 				     ip4_uu_sw_if_index, ip6_uu_sw_if_index);
     }
