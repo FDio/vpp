@@ -174,7 +174,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if ((ip6srv0->ip.protocol == IPPROTO_IPV6_ROUTE
-	    && ip6srv0->sr.segments_left != 1)
+	    && (ip6srv0->sr.segments_left != 1 || len0 < sizeof(ip6srv_combo_header_t) + ip6srv0->sr.length *8))
 	   || (len0 < sizeof (ip6_header_t)))
             {
               next0 = SRV6_END_M_GTP4_E_NEXT_DROP;
