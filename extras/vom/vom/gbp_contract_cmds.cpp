@@ -20,12 +20,14 @@ namespace VOM {
 namespace gbp_contract_cmds {
 
 create_cmd::create_cmd(HW::item<uint32_t>& item,
+                       u32 rd_id,
                        sclass_t sclass,
                        sclass_t dclass,
                        const handle_t& acl,
                        const gbp_contract::gbp_rules_t& gbp_rules,
                        const gbp_contract::ethertype_set_t& allowed_ethertypes)
   : rpc_cmd(item)
+  , m_rd_id(rd_id)
   , m_sclass(sclass)
   , m_dclass(dclass)
   , m_acl(acl)
@@ -38,6 +40,7 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_acl == other.m_acl) && (m_sclass == other.m_sclass) &&
+          (m_rd_id == other.m_rd_id) &&
           (m_dclass == other.m_dclass) && (m_gbp_rules == other.m_gbp_rules) &&
           (m_allowed_ethertypes == other.m_allowed_ethertypes));
 }
@@ -55,6 +58,7 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.contract.acl_index = m_acl.value();
+  payload.contract.rd_id = m_rd_id;
   payload.contract.sclass = m_sclass;
   payload.contract.dclass = m_dclass;
   payload.contract.n_rules = n_rules;

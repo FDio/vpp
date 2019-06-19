@@ -759,7 +759,9 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	     * is applied
 	     */
 	    gbp_policy_dpo_add_or_lock (fib_proto_to_dpo (pfx->fp_proto),
-					gg->gg_sclass, ~0, &policy_dpo);
+                                        grd->grd_id,
+                                        gg->gg_sclass,
+                                        ~0, &policy_dpo);
 
 	    fib_table_entry_special_dpo_add (fib_index, pfx,
 					     FIB_SOURCE_PLUGIN_HI,

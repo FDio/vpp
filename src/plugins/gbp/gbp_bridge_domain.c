@@ -35,6 +35,11 @@ gbp_bridge_domain_t *gbp_bridge_domain_pool;
 gbp_bridge_domain_db_t gbp_bridge_domain_db;
 
 /**
+ * Map of BD index to contract scope
+ */
+gbp_scope_t *gbp_scope_by_bd_index;
+
+/**
  * logger
  */
 vlib_log_class_t gb_logger;
@@ -170,6 +175,7 @@ format_gbp_bridge_domain (u8 * s, va_list * args)
 
 int
 gbp_bridge_domain_add_and_lock (u32 bd_id,
+                                u32 rd_id,
 				gbp_bridge_domain_flags_t flags,
 				u32 bvi_sw_if_index,
 				u32 uu_fwd_sw_if_index,
@@ -205,6 +211,13 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       gb->gb_bm_flood_sw_if_index = bm_flood_sw_if_index;
       gb->gb_locks = 1;
       gb->gb_flags = flags;
+      gb->gb_rd_id = rd_id;
+
+      /*
+       * set the scope from the BD's R-IDD.
+       */
+      vec_validate (gbp_scope_by_bd_index, gb->gb_bd_index);
+      gbp_scope_by_bd_index[gb->gb_bd_index] = gb->gb_rd_id;
 
       /*
        * Set the BVI and uu-flood interfaces into the BD
@@ -337,8 +350,8 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
   gbp_bridge_domain_flags_t flags;
   u32 bm_flood_sw_if_index = ~0;
   u32 uu_fwd_sw_if_index = ~0;
+  u32 bd_id = ~0, rd_id = ~0;
   u32 bvi_sw_if_index = ~0;
-  u32 bd_id = ~0;
   u8 add = 1;
 
   flags = GBP_BD_FLAG_NONE;
@@ -362,19 +375,24 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 	;
       else if (unformat (input, "bd %d", &bd_id))
 	;
+      else if (unformat (input, "rd %d", &rd_id))
+	;
       else
 	break;
     }
 
   if (~0 == bd_id)
     return clib_error_return (0, "BD-ID must be specified");
+  if (~0 == rd_id)
+    return clib_error_return (0, "RD-ID must be specified");
 
   if (add)
     {
       if (~0 == bvi_sw_if_index)
 	return clib_error_return (0, "interface must be specified");
 
-      gbp_bridge_domain_add_and_lock (bd_id, flags,
+      gbp_bridge_domain_add_and_lock (bd_id, rd_id,
+                                      flags,
 				      bvi_sw_if_index,
 				      uu_fwd_sw_if_index,
 				      bm_flood_sw_if_index);
