@@ -1,0 +1,96 @@
+module vpp-interfaces {
+  yang-version 1.1;
+  namespace "http://vpp.fd.io/yang/interfaces";
+  prefix vpp-if;
+
+  organization
+    "Fast Data Project - Vector Packet Processing";
+
+  contact
+    "mail:  <mailto:vpp-dev@lists.fd.io>";
+
+  description
+    "This module contains a collection of YANG definitions for
+     FD.io/VPP interfaces operational data";
+
+  vpp-if:version "0.0.1";
+
+  revision 2019-06-19 {
+    description
+      "Initial revision.";
+  }
+
+  // extension statements
+
+  //adapted from openconfig-ext
+  extension version {
+    argument "semver" {
+      yin-element false;
+    }
+    description
+      "The Semantic version number for the module.
+        x.y.z
+      where:
+        * x corresponds to the major version,
+        * y corresponds to a minor version,
+        * z corresponds to a patch version.
+      A major version number of 0 indicates that this model is still
+      in development (whether within OpenConfig or with industry
+      partners), and is potentially subject to change.
+
+      Following a release of major version 1, all modules will
+      increment major revision number where backwards incompatible
+      changes to the model are made.
+
+      The minor version is changed when features are added to the
+      model that do not impact current clients use of the model.
+
+      The patch-level version is incremented when non-feature changes
+      (such as bugfixes or clarifications to human-readable
+      descriptions that do not impact model functionality) are made
+      that maintain backwards compatibility.";
+  }
+
+  container interfaces {
+    config false;
+    description
+      "Data nodes for the operational state of interfaces.";
+
+    list interface {
+      key "name";
+
+      description
+        "The list of interfaces on the device.
+
+         System-controlled interfaces created by the system are
+         always present in this list, whether or not they are
+         configured.";
+
+      leaf name {
+        type string;
+        description
+          "The name of the interface.";
+      }
+
+      leaf if-index {
+        type uint32;
+        description
+          "The sw_if_index value representing this interface.";
+      }
+
+      leaf speed {
+        type uint32;
+        units "kbits/second";
+        description
+            "An estimate of the interface's current bandwidth in kbits
+             per second.";
+      }
+
+      leaf link_mtu {
+        type uint16;
+        description
+            "Maximum Transmission Unit for a link";
+      }
+    }
+  }
+}
