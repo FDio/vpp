@@ -245,6 +245,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     serialize
     slist
     socket
+    spinlock
     time
     time_range
     timing_wheel
