@@ -351,12 +351,13 @@ class VppTestCase(unittest.TestCase):
         print(single_line_delim)
         print("You can debug the VPP using e.g.:")
         if cls.debug_gdbserver:
-            print("gdb " + cls.vpp_bin + " -ex 'target remote localhost:7777'")
+            print("sudo gdb " + cls.vpp_bin +
+                  " -ex 'target remote localhost:7777'")
             print("Now is the time to attach a gdb by running the above "
                   "command, set up breakpoints etc. and then resume VPP from "
                   "within gdb by issuing the 'continue' command")
         elif cls.debug_gdb:
-            print("gdb " + cls.vpp_bin + " -ex 'attach %s'" % cls.vpp.pid)
+            print("sudo gdb " + cls.vpp_bin + " -ex 'attach %s'" % cls.vpp.pid)
             print("Now is the time to attach a gdb by running the above "
                   "command and set up breakpoints etc.")
         print(single_line_delim)
