@@ -344,7 +344,7 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 	x->parent = yi;
       else
 	{
-	  rb_tree_transplant (rt, y, rb_node_right (rt, y));
+	  rb_tree_transplant (rt, y, x);
 	  y->right = z->right;
 	  yr = rb_node_right (rt, y);
 	  yr->parent = yi;
@@ -379,7 +379,8 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 	  wr = rb_node_right (rt, w);
 	  if (wl->color == RBTREE_BLACK && wr->color == RBTREE_BLACK)
 	    {
-	      w->color = RBTREE_RED;
+	      if (rb_node_index (rt, w) != RBTREE_TNIL_INDEX)
+		w->color = RBTREE_RED;
 	      x = xp;
 	    }
 	  else
@@ -390,6 +391,7 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 		  w->color = RBTREE_RED;
 		  rb_tree_rotate_right (rt, w);
 		  w = rb_node_right (rt, xp);
+		  wr = rb_node_right (rt, w);
 		}
 	      w->color = xp->color;
 	      xp->color = RBTREE_BLACK;
@@ -412,7 +414,8 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 	  wr = rb_node_right (rt, w);
 	  if (wl->color == RBTREE_BLACK && wr->color == RBTREE_BLACK)
 	    {
-	      w->color = RBTREE_RED;
+	      if (rb_node_index (rt, w) != RBTREE_TNIL_INDEX)
+		w->color = RBTREE_RED;
 	      x = xp;
 	    }
 	  else
@@ -423,6 +426,7 @@ rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 		  w->color = RBTREE_RED;
 		  rb_tree_rotate_left (rt, w);
 		  w = rb_node_left (rt, xp);
+		  wl = rb_node_left (rt, w);
 		}
 	      w->color = xp->color;
 	      xp->color = RBTREE_BLACK;
