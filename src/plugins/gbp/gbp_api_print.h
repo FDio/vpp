@@ -32,6 +32,7 @@ vl_api_gbp_bridge_domain_add_t_print (vl_api_gbp_bridge_domain_add_t * a,
 
   s = format (s, "SCRIPT: gbp_bridge_domain_add ");
   s = format (s, "bd_id %d ", ntohl (a->bd.bd_id));
+  s = format (s, "rd_id %d ", ntohl (a->bd.rd_id));
   s = format (s, "flags %d ", ntohl (a->bd.flags));
   s = format (s, "uu-fwd %d ", ntohl (a->bd.uu_fwd_sw_if_index));
   s = format (s, "bvi %d ", ntohl (a->bd.bvi_sw_if_index));
@@ -238,6 +239,7 @@ vl_api_gbp_contract_add_del_t_print (vl_api_gbp_contract_add_del_t * a,
     s = format (s, "add ");
   else
     s = format (s, "del ");
+  s = format (s, "scope %d ", ntohl (a->contract.scope));
   s = format (s, "sclass %d ", ntohs (a->contract.sclass));
   s = format (s, "dclass %d ", ntohs (a->contract.dclass));
   s = format (s, "acl_index %d \n", ntohl (a->contract.acl_index));

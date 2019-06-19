@@ -15,6 +15,7 @@
 
 #include <plugins/gbp/gbp.h>
 #include <plugins/gbp/gbp_policy_dpo.h>
+#include <plugins/gbp/gbp_bridge_domain.h>
 
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
@@ -49,8 +50,9 @@ typedef enum
 typedef struct gbp_policy_trace_t_
 {
   /* per-pkt trace data */
-  u32 sclass;
-  u32 dst_epg;
+  gbp_scope_t scope;
+  sclass_t sclass;
+  sclass_t dclass;
   u32 acl_index;
   u32 allowed;
   u32 flags;
@@ -154,6 +156,9 @@ gbp_policy_inline (vlib_main_t * vm,
 	  h0 = vlib_buffer_get_current (b0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
+	  /* zero out the key to ensure the pad space is clear */
+	  key0.as_u64 = 0;
+
 	  /*
 	   * Reflection check; in and out on an ivxlan tunnel
 	   */
@@ -176,7 +181,7 @@ gbp_policy_inline (vlib_main_t * vm,
 					     L2OUTPUT_FEAT_GBP_POLICY_PORT :
 					     L2OUTPUT_FEAT_GBP_POLICY_MAC));
 	      n_allow_a_bit++;
-	      key0.as_u32 = ~0;
+	      key0.as_u64 = ~0;
 	      goto trace;
 	    }
 
@@ -190,7 +195,11 @@ gbp_policy_inline (vlib_main_t * vm,
 					 vnet_buffer (b0)->l2.bd_index);
 
 	  if (NULL != ge0)
-	    key0.gck_dst = ge0->ge_fwd.gef_sclass;
+	    {
+	      key0.gck_dst = ge0->ge_fwd.gef_sclass;
+	      key0.gck_scope =
+		gbp_bridge_domain_get_scope (vnet_buffer (b0)->l2.bd_index);
+	    }
 	  else
 	    {
 	      /* If you cannot determine the destination EP then drop */
@@ -373,7 +382,8 @@ gbp_policy_inline (vlib_main_t * vm,
 	      gbp_policy_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sclass = key0.gck_src;
-	      t->dst_epg = key0.gck_dst;
+	      t->dclass = key0.gck_dst;
+	      t->scope = key0.gck_scope;
 	      t->acl_index = (gc0 ? gc0->gc_acl_index : ~0);
 	      t->allowed = (next0 != GBP_POLICY_NEXT_DROP);
 	      t->flags = vnet_buffer2 (b0)->gbp.flags;
@@ -422,8 +432,8 @@ format_gbp_policy_trace (u8 * s, va_list * args)
   gbp_policy_trace_t *t = va_arg (*args, gbp_policy_trace_t *);
 
   s =
-    format (s, "sclass:%d, dst:%d, acl:%d allowed:%d flags:%U",
-	    t->sclass, t->dst_epg, t->acl_index, t->allowed,
+    format (s, "scope:%d sclass:%d, dclass:%d, acl:%d allowed:%d flags:%U",
+	    t->scope, t->sclass, t->dclass, t->acl_index, t->allowed,
 	    format_vxlan_gbp_header_gpflags, t->flags);
 
   return s;
