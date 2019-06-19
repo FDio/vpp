@@ -16,6 +16,7 @@
 #ifndef __VOM_GBP_ROUTE_DOMAIN_H__
 #define __VOM_GBP_ROUTE_DOMAIN_H__
 
+#include "vom/gbp_types.hpp"
 #include "vom/interface.hpp"
 #include "vom/route_domain.hpp"
 #include "vom/singular_db.hpp"
@@ -37,12 +38,14 @@ public:
   /**
    * Construct a GBP route_domain
    */
-  gbp_route_domain(const route_domain& rd);
+  gbp_route_domain(const route_domain& rd, scope_t scope);
 
   gbp_route_domain(const route_domain& rd,
+                   scope_t scope,
                    const interface& ip4_uu_fwd,
                    const interface& ip6_uu_fwd);
   gbp_route_domain(const route_domain& rd,
+                   scope_t scope,
                    const std::shared_ptr<interface> ip4_uu_fwd,
                    const std::shared_ptr<interface> ip6_uu_fwd);
 
@@ -171,6 +174,7 @@ private:
   HW::item<uint32_t> m_id;
 
   std::shared_ptr<route_domain> m_rd;
+  scope_t m_scope;
   std::shared_ptr<interface> m_ip4_uu_fwd;
   std::shared_ptr<interface> m_ip6_uu_fwd;
 

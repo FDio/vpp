@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,24 +13,28 @@
  * limitations under the License.
  */
 
-#ifndef __GBP_TYPES_H__
-#define __GBP_TYPES_H__
+#ifndef __VOM_GBP_TYPES_H__
+#define __VOM_GBP_TYPES_H__
 
-#include <vnet/vnet.h>
+#include <stdint.h>
 
-typedef u32 vnid_t;
-#define VNID_INVALID ((u16)~0)
+namespace VOM {
 
-typedef u16 gbp_scope_t;
-typedef u16 sclass_t;
-#define SCLASS_INVALID ((u16)~0)
+/**
+ * EPG IDs are 32 bit integers
+ */
+typedef uint32_t vnid_t;
+typedef uint16_t sclass_t;
+typedef uint16_t scope_t;
 
-#endif
+}; // namespace
 
 /*
  * fd.io coding-style-patch-verification: ON
  *
  * Local Variables:
- * eval: (c-set-style "gnu")
+ * eval: (c-set-style "mozilla")
  * End:
  */
+
+#endif

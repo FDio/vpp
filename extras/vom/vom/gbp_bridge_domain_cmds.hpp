@@ -35,6 +35,7 @@ public:
    * Constructor
    */
   create_cmd(HW::item<uint32_t>& item,
+             u32 rd_id,
              const handle_t bvi,
              const handle_t uu_fwd,
              const handle_t bm_flood,
@@ -55,6 +56,7 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
+  u32 m_rd_id;
   const handle_t m_bvi;
   const handle_t m_uu_fwd;
   const handle_t m_bm_flood;
