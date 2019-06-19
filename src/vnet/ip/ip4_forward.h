@@ -53,9 +53,7 @@
 
 always_inline uword
 ip4_lookup_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame,
-		   int lookup_for_responses_to_locally_received_packets)
+		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   ip4_main_t *im = &ip4_main;
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
@@ -113,49 +111,30 @@ ip4_lookup_inline (vlib_main_t * vm,
       ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[2]);
       ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[3]);
 
-      if (!lookup_for_responses_to_locally_received_packets)
-	{
-	  mtrie0 = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
-	  mtrie1 = &ip4_fib_get (vnet_buffer (b[1])->ip.fib_index)->mtrie;
-	  mtrie2 = &ip4_fib_get (vnet_buffer (b[2])->ip.fib_index)->mtrie;
-	  mtrie3 = &ip4_fib_get (vnet_buffer (b[3])->ip.fib_index)->mtrie;
+      mtrie0 = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
+      mtrie1 = &ip4_fib_get (vnet_buffer (b[1])->ip.fib_index)->mtrie;
+      mtrie2 = &ip4_fib_get (vnet_buffer (b[2])->ip.fib_index)->mtrie;
+      mtrie3 = &ip4_fib_get (vnet_buffer (b[3])->ip.fib_index)->mtrie;
 
-	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
-	  leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, dst_addr1);
-	  leaf2 = ip4_fib_mtrie_lookup_step_one (mtrie2, dst_addr2);
-	  leaf3 = ip4_fib_mtrie_lookup_step_one (mtrie3, dst_addr3);
-	}
+      leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
+      leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, dst_addr1);
+      leaf2 = ip4_fib_mtrie_lookup_step_one (mtrie2, dst_addr2);
+      leaf3 = ip4_fib_mtrie_lookup_step_one (mtrie3, dst_addr3);
 
-      if (!lookup_for_responses_to_locally_received_packets)
-	{
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 2);
-	  leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 2);
-	  leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 2);
-	}
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
+      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 2);
+      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 2);
+      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 2);
 
-      if (!lookup_for_responses_to_locally_received_packets)
-	{
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 3);
-	  leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 3);
-	  leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 3);
-	}
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
+      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 3);
+      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 3);
+      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 3);
 
-      if (lookup_for_responses_to_locally_received_packets)
-	{
-	  lb_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_RX];
-	  lb_index1 = vnet_buffer (b[1])->ip.adj_index[VLIB_RX];
-	  lb_index2 = vnet_buffer (b[2])->ip.adj_index[VLIB_RX];
-	  lb_index3 = vnet_buffer (b[3])->ip.adj_index[VLIB_RX];
-	}
-      else
-	{
-	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-	  lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
-	  lb_index2 = ip4_fib_mtrie_leaf_get_adj_index (leaf2);
-	  lb_index3 = ip4_fib_mtrie_leaf_get_adj_index (leaf3);
-	}
+      lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+      lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+      lb_index2 = ip4_fib_mtrie_leaf_get_adj_index (leaf2);
+      lb_index3 = ip4_fib_mtrie_leaf_get_adj_index (leaf3);
 
       ASSERT (lb_index0 && lb_index1 && lb_index2 && lb_index3);
       lb0 = load_balance_get (lb_index0);
@@ -397,25 +376,11 @@ ip4_lookup_inline (vlib_main_t * vm,
       dst_addr0 = &ip0->dst_address;
       ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, b[0]);
 
-      if (!lookup_for_responses_to_locally_received_packets)
-	{
-	  mtrie0 = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
-	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
-	}
-
-      if (!lookup_for_responses_to_locally_received_packets)
-	leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
-
-      if (!lookup_for_responses_to_locally_received_packets)
-	leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
-
-      if (lookup_for_responses_to_locally_received_packets)
-	lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_RX];
-      else
-	{
-	  /* Handle default route. */
-	  lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-	}
+      mtrie0 = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
+      leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
+      lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
       ASSERT (lbi0);
       lb0 = load_balance_get (lbi0);
