@@ -940,8 +940,8 @@ sctp_update_time (f64 now, u8 thread_index)
   sctp_flush_frames_to_output (thread_index);
 }
 
-/* *INDENT OFF* */
-const static transport_proto_vft_t sctp_proto = {
+/* *INDENT-OFF* */
+static const transport_proto_vft_t sctp_proto = {
   .enable = sctp_enable_disable,
   .start_listen = sctp_session_bind,
   .stop_listen = sctp_session_unbind,
@@ -958,11 +958,12 @@ const static transport_proto_vft_t sctp_proto = {
   .format_connection = format_sctp_session,
   .format_listener = format_sctp_listener_session,
   .format_half_open = format_sctp_half_open,
-  .tx_type = TRANSPORT_TX_DEQUEUE,
-  .service_type = TRANSPORT_SERVICE_VC,
+  .transport_options = {
+    .tx_type = TRANSPORT_TX_DEQUEUE,
+    .service_type = TRANSPORT_SERVICE_VC,
+  },
 };
-
-/* *INDENT ON* */
+/* *INDENT-ON* */
 
 clib_error_t *
 sctp_init (vlib_main_t * vm)
