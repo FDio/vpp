@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "51616527_a48ec611",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-19T14:19:05Z",
+      "side": 1,
+      "message": "can we change vxlan_gbp_tunnel_mode_decode() instead to return a valid error code.",
+      "revId": "096922eb8602d05a21ffe2e15b1fa4a5f8d92f6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
