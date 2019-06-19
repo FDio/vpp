@@ -92,10 +92,7 @@
 VLIB_NODE_FN (ip4_lookup_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
 {
-  return ip4_lookup_inline (vm, node, frame,
-			    /* lookup_for_responses_to_locally_received_packets */
-			    0);
-
+  return ip4_lookup_inline (vm, node, frame);
 }
 
 static u8 *format_ip4_lookup_trace (u8 * s, va_list * args);
