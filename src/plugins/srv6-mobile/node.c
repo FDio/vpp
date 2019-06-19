@@ -174,7 +174,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if ((ip6srv0->ip.protocol == IPPROTO_IPV6_ROUTE
-	    && (ip6srv0->sr.segments_left != 1 || len0 < sizeof(ip6srv_combo_header_t) + ip6srv0->sr.length *8))
+	    && len0 < sizeof(ip6srv_combo_header_t) + ip6srv0->sr.length * 8)
 	   || (len0 < sizeof (ip6_header_t)))
             {
               next0 = SRV6_END_M_GTP4_E_NEXT_DROP;
@@ -231,18 +231,18 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
               hdr0->ip4.checksum = ip4_header_checksum (&hdr0->ip4);
 
               good_n++;
-            }
 
-	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
-	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-              srv6_end_rewrite_trace_t *tr =
-		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (tr->src.as_u8, hdr0->ip4.src_address.as_u8,
-			   sizeof (tr->src.as_u8));
-	      clib_memcpy (tr->dst.as_u8, hdr0->ip4.dst_address.as_u8,
-			   sizeof (tr->dst.as_u8));
-              tr->teid = hdr0->gtpu.teid;
+  	      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
+	          PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	        {
+                  srv6_end_rewrite_trace_t *tr =
+		    vlib_add_trace (vm, node, b0, sizeof (*tr));
+	          clib_memcpy (tr->src.as_u8, hdr0->ip4.src_address.as_u8,
+			       sizeof (tr->src.as_u8));
+	          clib_memcpy (tr->dst.as_u8, hdr0->ip4.dst_address.as_u8,
+			       sizeof (tr->dst.as_u8));
+                  tr->teid = hdr0->gtpu.teid;
+	        }
 	    }
 
           vlib_increment_combined_counter
@@ -339,8 +339,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
           dst0 = ip6srv0->ip.dst_address;
 
           len0 = vlib_buffer_length_in_chain (vm, b0);
+
           if ((ip6srv0->ip.protocol != IPPROTO_IPV6_ROUTE)
-           || (ip6srv0->sr.segments_left != 1)
 	   || (len0 < sizeof (ip6srv_combo_header_t) + 8 * ip6srv0->sr.length))
             {
               next0 = SRV6_END_M_GTP6_E_NEXT_DROP;
@@ -393,18 +393,18 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	      // UDP source port (XXX)
 	      
               good_n++;
-            }
 
-	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
-	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-              srv6_end_rewrite_trace_t *tr =
-		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (tr->src.as_u8, hdr0->ip6.src_address.as_u8,
-			   sizeof (ip6_address_t));
-	      clib_memcpy (tr->dst.as_u8, hdr0->ip6.dst_address.as_u8,
-			   sizeof (ip6_address_t));
-              tr->teid = hdr0->gtpu.teid;
+ 	      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
+	          PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	        {
+                  srv6_end_rewrite_trace_t *tr =
+		    vlib_add_trace (vm, node, b0, sizeof (*tr));
+	          clib_memcpy (tr->src.as_u8, hdr0->ip6.src_address.as_u8,
+			       sizeof (ip6_address_t));
+	          clib_memcpy (tr->dst.as_u8, hdr0->ip6.dst_address.as_u8,
+			       sizeof (ip6_address_t));
+                  tr->teid = hdr0->gtpu.teid;
+	        }
 	    }
 
           vlib_increment_combined_counter

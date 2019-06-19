@@ -48,13 +48,13 @@ const static dpo_vft_t dpo_vft = {
   .dv_format = clb_dpo_format_srv6_end_m_gtp4_e,
 };
 
-const static char *const srv6_end_nodes[] = {
+const static char *const srv6_end_m_gtp4_e_nodes[] = {
   "srv6-end-m-gtp4-e",
   NULL,
 };
 
 const static char *const *const dpo_nodes[DPO_PROTO_NUM] = {
-  [DPO_PROTO_IP6] = srv6_end_nodes,
+  [DPO_PROTO_IP6] = srv6_end_m_gtp4_e_nodes,
 };
 
 static u8 fn_name[] = "SRv6-End.M.GTP4.E-plugin";
