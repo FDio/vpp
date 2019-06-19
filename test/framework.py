@@ -76,15 +76,24 @@ class VppDiedError(Exception):
     signals_by_value = {v: k for k, v in signal.__dict__.items() if
                         k.startswith('SIG') and not k.startswith('SIG_')}
 
-    def __init__(self, rv=None):
+    def __init__(self, rv=None, testcase=None, method_name=None):
         self.rv = rv
         self.signal_name = None
+        self.testcase = testcase
+        self.method_name = method_name
+
         try:
             self.signal_name = VppDiedError.signals_by_value[-rv]
         except KeyError:
             pass
 
-        msg = "VPP subprocess died unexpectedly with return code: %d%s." % (
+        if testcase is None and method_name is None:
+            in_msg = ''
+        else:
+            in_msg = 'running %s.%s ' % (testcase, method_name)
+
+        msg = "VPP subprocess died %sunexpectedly with return code: %d%s." % (
+            in_msg,
             self.rv,
             ' [%s]' % self.signal_name if
             self.signal_name is not None else '')
@@ -672,7 +681,10 @@ class VppTestCase(unittest.TestCase):
         super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
         if self.vpp_dead:
-            raise Exception("VPP is dead when setting up the test")
+            raise VppDiedError(self.__class__.__name__, self._testMethodName,
+                               "VPP is dead when setting up the test "
+                               "(%s.%s)." % (self.__class__.__name__,
+                                             self._testMethodName))
         self.sleep(.1, "during setUp")
         self.vpp_stdout_deque.append(
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
