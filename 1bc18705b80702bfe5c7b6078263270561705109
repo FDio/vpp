@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "90594b09_39c4b6c9",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-19T03:14:16Z",
+      "side": 1,
+      "message": "It looks like you might actually want a dump/details api here.",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 37
+      },
+      "revId": "1bc18705b80702bfe5c7b6078263270561705109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
