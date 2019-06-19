@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7e77e091_2297676b",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1327,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-19T17:08:15Z",
+      "side": 1,
+      "message": "Does the vec_free need to come last?",
+      "range": {
+        "startLine": 1325,
+        "startChar": 0,
+        "endLine": 1327,
+        "endChar": 42
+      },
+      "revId": "283cd2e9afcab1407d5614d79da4354790fa059a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
