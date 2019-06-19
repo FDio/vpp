@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c16b0a85_c1673f01",
+        "filename": "extras/yang/vpp-interfaces@2019-06-19.yang",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1709
+      },
+      "writtenOn": "2019-06-19T17:21:06Z",
+      "side": 1,
+      "message": "This semantic version should be defined in another YANG model which we include. Just tell me if you think semantic versioning would be useful or not.",
+      "revId": "b8b81bec63e084a700ebf44a5be08a73fd23286a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
