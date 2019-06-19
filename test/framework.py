@@ -651,7 +651,9 @@ class VppTestCase(unittest.TestCase):
         super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
         if self.vpp_dead:
-            raise Exception("VPP is dead when setting up the test")
+            raise RuntimeError(
+                "VPP is dead when setting up the test (%s.%s)." % (
+                    self.__class__.__name__, self._testMethodName))
         self.sleep(.1, "during setUp")
         self.vpp_stdout_deque.append(
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
