@@ -313,12 +313,12 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      virtio_input_trace_t *tr;
 	      vlib_trace_buffer (vm, node, next0, b0,
-				 /* follow_chain */ 0);
+				 /* follow_chain */ 1);
 	      vlib_set_trace_count (vm, node, --n_trace);
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->hw_if_index = vif->hw_if_index;
-	      tr->len = len;
+	      tr->len = len + b0->total_length_not_including_first_buffer;
 	      clib_memcpy_fast (&tr->hdr, hdr, hdr_sz);
 	    }
 
@@ -336,7 +336,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* next packet */
 	  n_rx_packets++;
-	  n_rx_bytes += len;
+	  n_rx_bytes += (len + b0->total_length_not_including_first_buffer);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
