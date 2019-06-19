@@ -24,12 +24,14 @@ singular_db<gbp_contract::key_t, gbp_contract> gbp_contract::m_db;
 
 gbp_contract::event_handler gbp_contract::m_evh;
 
-gbp_contract::gbp_contract(sclass_t sclass,
+gbp_contract::gbp_contract(scope_t scope,
+                           sclass_t sclass,
                            sclass_t dclass,
                            const ACL::l3_list& acl,
                            const gbp_rules_t& rules,
                            const ethertype_set_t& allowed_ethertypes)
   : m_hw(false)
+  , m_scope(scope)
   , m_sclass(sclass)
   , m_dclass(dclass)
   , m_acl(acl.singular())
@@ -40,6 +42,7 @@ gbp_contract::gbp_contract(sclass_t sclass,
 
 gbp_contract::gbp_contract(const gbp_contract& gbpc)
   : m_hw(gbpc.m_hw)
+  , m_scope(gbpc.m_scope)
   , m_sclass(gbpc.m_sclass)
   , m_dclass(gbpc.m_dclass)
   , m_acl(gbpc.m_acl)
@@ -59,7 +62,7 @@ gbp_contract::~gbp_contract()
 const gbp_contract::key_t
 gbp_contract::key() const
 {
-  return (std::make_pair(m_sclass, m_dclass));
+  return (std::make_tuple(m_scope, m_sclass, m_dclass));
 }
 
 bool
@@ -72,7 +75,8 @@ void
 gbp_contract::sweep()
 {
   if (m_hw) {
-    HW::enqueue(new gbp_contract_cmds::delete_cmd(m_hw, m_sclass, m_dclass));
+    HW::enqueue(
+      new gbp_contract_cmds::delete_cmd(m_hw, m_scope, m_sclass, m_dclass));
   }
   HW::write();
 }
@@ -81,9 +85,9 @@ void
 gbp_contract::replay()
 {
   if (m_hw) {
-    HW::enqueue(new gbp_contract_cmds::create_cmd(m_hw, m_sclass, m_dclass,
-                                                  m_acl->handle(), m_gbp_rules,
-                                                  m_allowed_ethertypes));
+    HW::enqueue(new gbp_contract_cmds::create_cmd(
+      m_hw, m_scope, m_sclass, m_dclass, m_acl->handle(), m_gbp_rules,
+      m_allowed_ethertypes));
   }
 }
 
@@ -91,8 +95,8 @@ std::string
 gbp_contract::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-contract:[{" << m_sclass << ", " << m_dclass << "}, "
-    << m_acl->to_string();
+  s << "gbp-contract:[{" << m_scope << ", " << m_sclass << ", " << m_dclass
+    << "}, " << m_acl->to_string();
   if (m_gbp_rules.size()) {
     auto it = m_gbp_rules.cbegin();
     while (it != m_gbp_rules.cend()) {
@@ -115,9 +119,9 @@ gbp_contract::update(const gbp_contract& r)
    * create the table if it is not yet created
    */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new gbp_contract_cmds::create_cmd(m_hw, m_sclass, m_dclass,
-                                                  m_acl->handle(), m_gbp_rules,
-                                                  m_allowed_ethertypes));
+    HW::enqueue(new gbp_contract_cmds::create_cmd(
+      m_hw, m_scope, m_sclass, m_dclass, m_acl->handle(), m_gbp_rules,
+      m_allowed_ethertypes));
   }
 }
 
@@ -207,10 +211,10 @@ gbp_contract::event_handler::handle_populate(const client_db::key_t& key)
         allowed_ethertypes.insert(ethertype_t::from_numeric_val(et[i]));
       }
 
-      gbp_contract gbpc(payload.contract.sclass, payload.contract.dclass, *acl,
-                        rules, allowed_ethertypes);
+      gbp_contract gbpc(payload.contract.scope, payload.contract.sclass,
+                        payload.contract.dclass, *acl, rules,
+                        allowed_ethertypes);
       OM::commit(key, gbpc);
-
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpc.to_string();
     } else {
       VOM_LOG(log_level_t::ERROR) << " no ACL:" << payload.contract.acl_index;
@@ -233,7 +237,8 @@ gbp_contract::event_handler::show(std::ostream& os)
 std::ostream&
 operator<<(std::ostream& os, const gbp_contract::key_t& key)
 {
-  os << "{ " << key.first << "," << key.second << "}";
+  os << "{ " << std::get<0>(key) << "," << std::get<1>(key) << ", "
+     << std::get<2>(key) << "}";
 
   return (os);
 }

@@ -20,12 +20,14 @@ namespace VOM {
 namespace gbp_contract_cmds {
 
 create_cmd::create_cmd(HW::item<uint32_t>& item,
+                       scope_t scope,
                        sclass_t sclass,
                        sclass_t dclass,
                        const handle_t& acl,
                        const gbp_contract::gbp_rules_t& gbp_rules,
                        const gbp_contract::ethertype_set_t& allowed_ethertypes)
   : rpc_cmd(item)
+  , m_scope(scope)
   , m_sclass(sclass)
   , m_dclass(dclass)
   , m_acl(acl)
@@ -38,7 +40,8 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_acl == other.m_acl) && (m_sclass == other.m_sclass) &&
-          (m_dclass == other.m_dclass) && (m_gbp_rules == other.m_gbp_rules) &&
+          (m_scope == other.m_scope) && (m_dclass == other.m_dclass) &&
+          (m_gbp_rules == other.m_gbp_rules) &&
           (m_allowed_ethertypes == other.m_allowed_ethertypes));
 }
 
@@ -55,6 +58,7 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.contract.acl_index = m_acl.value();
+  payload.contract.scope = m_scope;
   payload.contract.sclass = m_sclass;
   payload.contract.dclass = m_dclass;
   payload.contract.n_rules = n_rules;
@@ -117,9 +121,11 @@ create_cmd::to_string() const
 }
 
 delete_cmd::delete_cmd(HW::item<uint32_t>& item,
+                       scope_t scope,
                        sclass_t sclass,
                        sclass_t dclass)
   : rpc_cmd(item)
+  , m_scope(scope)
   , m_sclass(sclass)
   , m_dclass(dclass)
 {
@@ -139,6 +145,7 @@ delete_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
   payload.contract.acl_index = ~0;
+  payload.contract.scope = m_scope;
   payload.contract.sclass = m_sclass;
   payload.contract.dclass = m_dclass;
 
@@ -151,7 +158,7 @@ std::string
 delete_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-contract-delete: " << m_hw_item.to_string()
+  s << "gbp-contract-delete: " << m_hw_item.to_string() << " scope: " << m_scope
     << " sclass:" << m_sclass << " dclass:" << m_dclass;
 
   return (s.str());
