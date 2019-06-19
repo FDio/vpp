@@ -420,7 +420,7 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
       return 0;
     }
 
-  if (!(s->flags & SESSION_F_QUIC_STREAM))
+  if (s->listener_handle == SESSION_INVALID_HANDLE)
     return quic_echo_clients_qsession_connected_callback (app_index,
 							  api_context, s,
 							  is_fail);
