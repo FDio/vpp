@@ -216,12 +216,12 @@ ah_encrypt_inline (vlib_main_t * vm,
       /* transport mode save the eth header before it is overwritten */
       if (PREDICT_FALSE (!ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	{
-	  ethernet_header_t *ieh0 = (ethernet_header_t *)
-	    ((u8 *) vlib_buffer_get_current (b[0]) -
-	     sizeof (ethernet_header_t));
-	  ethernet_header_t *oeh0 =
-	    (ethernet_header_t *) ((u8 *) ieh0 + (adv - icv_size));
-	  clib_memcpy_fast (oeh0, ieh0, sizeof (ethernet_header_t));
+	  const u32 l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
+	  u8 *l2_hdr_in = (u8 *) vlib_buffer_get_current (b[0]) - l2_len;
+
+	  u8 *l2_hdr_out = l2_hdr_in + adv - icv_size;
+
+	  clib_memcpy_le32 (l2_hdr_out, l2_hdr_in, l2_len);
 	}
 
       vlib_buffer_advance (b[0], adv - icv_size);
