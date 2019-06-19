@@ -51,10 +51,12 @@ gbp_bridge_domain::event_handler gbp_bridge_domain::m_evh;
  * Construct a new object matching the desried state
  */
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const gbp_route_domain& rd,
                                      const interface& bvi,
                                      const flags_t& flags)
   : m_id(bd.id())
   , m_bd(bd.singular())
+  , m_rd(rd.singular())
   , m_bvi(bvi.singular())
   , m_uu_fwd()
   , m_bm_flood()
@@ -63,12 +65,14 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
 }
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const gbp_route_domain& rd,
                                      const interface& bvi,
                                      const interface& uu_fwd,
                                      const interface& bm_flood,
                                      const flags_t& flags)
   : m_id(bd.id())
   , m_bd(bd.singular())
+  , m_rd(rd.singular())
   , m_bvi(bvi.singular())
   , m_uu_fwd(uu_fwd.singular())
   , m_bm_flood(bm_flood.singular())
@@ -77,12 +81,14 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
 }
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const gbp_route_domain& rd,
                                      const std::shared_ptr<interface> bvi,
                                      const std::shared_ptr<interface> uu_fwd,
                                      const std::shared_ptr<interface> bm_flood,
                                      const flags_t& flags)
   : m_id(bd.id())
   , m_bd(bd.singular())
+  , m_rd(rd.singular())
   , m_bvi(bvi)
   , m_uu_fwd(uu_fwd)
   , m_bm_flood(bm_flood)
@@ -97,12 +103,14 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
 }
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const gbp_route_domain& rd,
                                      const interface& bvi,
                                      const std::shared_ptr<interface> uu_fwd,
                                      const std::shared_ptr<interface> bm_flood,
                                      const flags_t& flags)
   : m_id(bd.id())
   , m_bd(bd.singular())
+  , m_rd(rd.singular())
   , m_bvi(bvi.singular())
   , m_uu_fwd(uu_fwd)
   , m_bm_flood(bm_flood)
@@ -117,6 +125,7 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
 gbp_bridge_domain::gbp_bridge_domain(const gbp_bridge_domain& bd)
   : m_id(bd.id())
   , m_bd(bd.m_bd)
+  , m_rd(bd.m_rd)
   , m_bvi(bd.m_bvi)
   , m_uu_fwd(bd.m_uu_fwd)
   , m_bm_flood(bd.m_bm_flood)
@@ -191,7 +200,7 @@ gbp_bridge_domain::replay()
 {
   if (rc_t::OK == m_id.rc()) {
     HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
-      m_id, (m_bvi ? m_bvi->handle() : handle_t::INVALID),
+      m_id, m_rd->id(), (m_bvi ? m_bvi->handle() : handle_t::INVALID),
       (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID),
       (m_bm_flood ? m_bm_flood->handle() : handle_t::INVALID), m_flags));
   }
@@ -236,7 +245,7 @@ gbp_bridge_domain::update(const gbp_bridge_domain& desired)
    */
   if (rc_t::OK != m_id.rc()) {
     HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
-      m_id, (m_bvi ? m_bvi->handle() : handle_t::INVALID),
+      m_id, m_rd->id(), (m_bvi ? m_bvi->handle() : handle_t::INVALID),
       (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID),
       (m_bm_flood ? m_bm_flood->handle() : handle_t::INVALID), m_flags));
   }
@@ -281,6 +290,8 @@ gbp_bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
       interface::find(payload.bd.bm_flood_sw_if_index);
     std::shared_ptr<interface> bvi =
       interface::find(payload.bd.bvi_sw_if_index);
+    std::shared_ptr<gbp_route_domain> grd =
+      gbp_route_domain::find(payload.bd.rd_id);
 
     flags_t flags = gbp_bridge_domain::flags_t::NONE;
     if (payload.bd.flags & GBP_BD_API_FLAG_DO_NOT_LEARN)
@@ -292,12 +303,13 @@ gbp_bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
     if (payload.bd.flags & GBP_BD_API_FLAG_UCAST_ARP)
       flags |= gbp_bridge_domain::flags_t::UCAST_ARP;
 
-    if (uu_fwd && bm_flood && bvi) {
-      gbp_bridge_domain bd(payload.bd.bd_id, bvi, uu_fwd, bm_flood, flags);
+    if (uu_fwd && bm_flood && bvi && grd) {
+      gbp_bridge_domain bd(payload.bd.bd_id, *grd, bvi, uu_fwd, bm_flood,
+                           flags);
       OM::commit(key, bd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
     } else if (bvi) {
-      gbp_bridge_domain bd(payload.bd.bd_id, *bvi, flags);
+      gbp_bridge_domain bd(payload.bd.bd_id, *grd, *bvi, flags);
       OM::commit(key, bd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
     } else {
@@ -323,7 +335,8 @@ gbp_bridge_domain::event_handler::handle_replay()
 dependency_t
 gbp_bridge_domain::event_handler::order() const
 {
-  return (dependency_t::VIRTUAL_TABLE);
+  /* order after gbp-route-domains */
+  return (dependency_t::ACL);
 }
 
 void

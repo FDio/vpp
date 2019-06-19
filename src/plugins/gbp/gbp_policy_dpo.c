@@ -93,6 +93,7 @@ gbp_policy_dpo_get_urpf (const dpo_id_t * dpo)
 
 void
 gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
+			    gbp_scope_t scope,
 			    sclass_t sclass, u32 sw_if_index, dpo_id_t * dpo)
 {
   gbp_policy_dpo_t *gpd;
@@ -103,6 +104,7 @@ gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
   gpd->gpd_proto = dproto;
   gpd->gpd_sw_if_index = sw_if_index;
   gpd->gpd_sclass = sclass;
+  gpd->gpd_scope = scope;
 
   if (~0 != sw_if_index)
     {
@@ -128,9 +130,9 @@ format_gbp_policy_dpo (u8 * s, va_list * ap)
   gbp_policy_dpo_t *gpd = gbp_policy_dpo_get (index);
   vnet_main_t *vnm = vnet_get_main ();
 
-  s = format (s, "gbp-policy-dpo: %U, sclass:%d out:%U",
+  s = format (s, "gbp-policy-dpo: %U, scope:%d sclass:%d out:%U",
 	      format_dpo_proto, gpd->gpd_proto,
-	      (int) gpd->gpd_sclass,
+	      gpd->gpd_scope, (int) gpd->gpd_sclass,
 	      format_vnet_sw_if_index_name, vnm, gpd->gpd_sw_if_index);
   s = format (s, "\n%U", format_white_space, indent + 2);
   s = format (s, "%U", format_dpo_id, &gpd->gpd_dpo, indent + 4);
@@ -151,6 +153,7 @@ gbp_policy_dpo_interpose (const dpo_id_t * original,
   gpd = gbp_policy_dpo_get (original->dpoi_index);
 
   gpd_clone->gpd_proto = gpd->gpd_proto;
+  gpd_clone->gpd_scope = gpd->gpd_scope;
   gpd_clone->gpd_sclass = gpd->gpd_sclass;
   gpd_clone->gpd_sw_if_index = gpd->gpd_sw_if_index;
 
@@ -233,11 +236,13 @@ static char *gbp_policy_dpo_error_strings[] = {
 
 typedef struct gbp_policy_dpo_trace_t_
 {
-  u32 sclass;
-  u32 dclass;
+  gbp_scope_t scope;
+  sclass_t sclass;
+  sclass_t dclass;
   u32 acl_index;
   u32 flags;
   u32 action;
+  u32 gci;
 } gbp_policy_dpo_trace_t;
 
 typedef enum
@@ -323,11 +328,13 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  if (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A)
 	    {
 	      next0 = gpd0->gpd_dpo.dpoi_next_node;
-	      key0.as_u32 = ~0;
+	      key0.as_u64 = ~0;
 	      n_allow_a_bit++;
 	      goto trace;
 	    }
 
+	  key0.as_u64 = 0;
+	  key0.gck_scope = gpd0->gpd_scope;
 	  key0.gck_src = vnet_buffer2 (b0)->gbp.sclass;
 	  key0.gck_dst = gpd0->gpd_sclass;
 
@@ -440,11 +447,14 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	      gbp_policy_dpo_trace_t *tr;
 
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->scope = key0.gck_scope;
 	      tr->sclass = key0.gck_src;
 	      tr->dclass = key0.gck_dst;
 	      tr->acl_index = (gc0 ? gc0->gc_acl_index : ~0);
 	      tr->flags = vnet_buffer2 (b0)->gbp.flags;
 	      tr->action = action0;
+	      tr->gci = (gc0 ? gc0 - gbp_contract_pool : INDEX_INVALID);
+
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -472,9 +482,11 @@ format_gbp_policy_dpo_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_policy_dpo_trace_t *t = va_arg (*args, gbp_policy_dpo_trace_t *);
 
-  s = format (s, " sclass:%d dclass:%d acl-index:%d flags:%U action:%d",
-	      t->sclass, t->dclass, t->acl_index,
-	      format_vxlan_gbp_header_gpflags, t->flags, t->action);
+  s =
+    format (s,
+	    "scope:%d sclass:%d dclass:%d gci:%d acl-index:%d flags:%U action:%d",
+	    t->scope, t->sclass, t->dclass, t->gci, t->acl_index,
+	    format_vxlan_gbp_header_gpflags, t->flags, t->action);
 
   return s;
 }

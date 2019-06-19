@@ -94,6 +94,7 @@ if(GBP_FILE)
     gbp_rule.cpp
     gbp_subnet_cmds.cpp
     gbp_subnet.cpp
+    gbp_types.hpp
     gbp_vxlan.cpp
     gbp_vxlan_cmds.cpp
   )
@@ -220,6 +221,7 @@ if(GBP_FILE)
     gbp_route_domain.hpp
     gbp_rule.hpp
     gbp_subnet.hpp
+    gbp_types.hpp
     gbp_vxlan.hpp
   )
 endif()
