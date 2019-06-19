@@ -16,6 +16,24 @@
       "revId": "096922eb8602d05a21ffe2e15b1fa4a5f8d92f6b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8cb7f56c_3c110299",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-19T14:23:31Z",
+      "side": 1,
+      "message": "Is it OK returning an API error for a method that is not  only called by the api?",
+      "parentUuid": "51616527_a48ec611",
+      "revId": "096922eb8602d05a21ffe2e15b1fa4a5f8d92f6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
