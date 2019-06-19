@@ -16,6 +16,24 @@
       "revId": "6533f52ac38a1c77e3d2865b3d19c02b7beb9a0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d44b5817_5a82b94e",
+        "filename": "src/plugins/acl/dataplane_node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-06-19T14:50:35Z",
+      "side": 1,
+      "message": "Yep. Currently just testing \nthe performance impact. Blindly enabling \nit gives a 10% performance hit. So I think I might need to introduce the api to enable it on a per-interface basis.",
+      "parentUuid": "9d45de1c_93ff9494",
+      "revId": "6533f52ac38a1c77e3d2865b3d19c02b7beb9a0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
