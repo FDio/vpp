@@ -134,6 +134,7 @@ class Container(object):
         self.vppctl_exec("set ip6 neighbor pg0 {} {}".format(remote_ip,
             remote_mac))
         self.vppctl_exec("set int state pg0 up")
+
     def pg_create_interface4(self, local_ip, remote_ip, local_mac, remote_mac):
         # remote_ip can't have subnet mask
 
@@ -142,6 +143,17 @@ class Container(object):
         self.vppctl_exec("set int mac address pg0 {}".format(local_mac))
         self.vppctl_exec("set int ip addr pg0 {}".format(local_ip))
         self.vppctl_exec("set ip arp pg0 {} {}".format(remote_ip,
+            remote_mac))
+        self.vppctl_exec("set int state pg0 up")
+
+    def pg_create_interface6(self, local_ip, remote_ip, local_mac, remote_mac):
+        # remote_ip can't have subnet mask
+
+        time.sleep(2)
+        self.vppctl_exec("create packet-generator interface pg0")
+        self.vppctl_exec("set int mac address pg0 {}".format(local_mac))
+        self.vppctl_exec("set int ip6 addr pg0 {}".format(local_ip))
+        self.vppctl_exec("set ip6 arp pg0 {} {}".format(remote_ip,
             remote_mac))
         self.vppctl_exec("set int state pg0 up")
 
@@ -168,6 +180,10 @@ class Container(object):
             subnet, out_if_name, next_hop_ip))
 
     def set_ip_pgroute(self, out_if_name, next_hop_ip, subnet):
+        self.vppctl_exec("ip route add {} via {} {}".format(
+            subnet, out_if_name, next_hop_ip))
+
+    def set_ipv6_pgroute(self, out_if_name, next_hop_ip, subnet):
         self.vppctl_exec("ip route add {} via {} {}".format(
             subnet, out_if_name, next_hop_ip))
 
@@ -503,7 +519,6 @@ class Program(object):
             local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
-#        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr-prefix D4::/32 local-prefix C1::/64")
         c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 local_prefix C1::/64")
         c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D1::")
 
@@ -521,6 +536,68 @@ class Program(object):
 
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
              IP(src="172.20.0.2", dst="172.20.0.1")/
+             UDP(sport=2152, dport=2152)/
+             GTP_U_Header(gtp_type="g_pdu", teid=200)/
+             IP(src="172.99.0.1", dst="172.99.0.2")/
+             ICMP())
+
+        print("Sending packet on {}:".format(c1.name))
+        p.show2()
+
+        c1.enable_trace(10)
+        c4.enable_trace(10)
+
+        c4.pg_start_capture()
+
+        c1.pg_create_stream(p)
+        c1.pg_enable()
+
+        # timeout (sleep) if needed
+        print("Sleeping")
+        time.sleep(5)
+
+        print("Receiving packet on {}:".format(c4.name))
+        for p in c4.pg_read_packets():
+            p.show2()
+
+    def test_gtp6(self):
+        # TESTS:
+        # trace add af-packet-input 10
+        # pg interface on c1 172.20.0.1
+        # pg interface on c4 B::1/120
+
+        self.start_containers()
+
+
+        c1 = self.containers.get(self.get_name(self.instance_names[0]))
+        c2 = self.containers.get(self.get_name(self.instance_names[1]))
+        c3 = self.containers.get(self.get_name(self.instance_names[2]))
+        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
+
+        c1.pg_create_interface6(local_ip="2001::1/64", remote_ip="2001::2/64",
+            local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+        c4.pg_create_interface6(local_ip="3001::2/64", remote_ip="3001::1",
+            local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
+
+        c1.vppctl_exec("set sr encaps source addr A1::1")
+        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: sr_prefix D4::/32 local_prefix C1::/64")
+        c1.vppctl_exec("sr steer l3 4001::1/128 via bsid D1::")
+        c1.vppctl_exec("sr localsid address D1:: behavior end.m.gtp6.d")
+
+        c2.vppctl_exec("sr localsid address D2:: behavior end")
+
+        c3.vppctl_exec("sr localsid address D3:: behavior end")
+
+        c4.vppctl_exec("sr localsid address D4:: behavior end.m.gtp4.e")
+
+        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
+        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
+        c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
+        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
+        c4.set_ipv6_pgroute("pg0", "3001::1", "4001::1/128")
+
+        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
+             IPv6(src="4001::2", dst="4001::1")/
              UDP(sport=2152, dport=2152)/
              GTP_U_Header(gtp_type="g_pdu", teid=200)/
              IP(src="172.99.0.1", dst="172.99.0.2")/
@@ -615,7 +692,7 @@ def get_args():
             help="Test related commands.")
 
     p3.add_argument("op", choices=[
-        "ping", "srv6", "tmap"])
+        "ping", "srv6", "tmap", "gtp6"])
 
     args = parser.parse_args()
     if not hasattr(args, "op") or not args.op:
@@ -651,6 +728,8 @@ def main(op=None, image=None, prefix=None, verbose=None, index=None, command=Non
             program.test_srv6()
         elif op == 'tmap':
             program.test_tmap()
+        elif op == 'gtp6':
+            program.test_gtp6()
 
     except Exception:
         program.logger.exception("")

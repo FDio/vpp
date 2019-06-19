@@ -11,11 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(srv6end
+add_vpp_plugin(srv6mobile
   SOURCES
-  srv6_end.c
+  gtp4_e.c
+  gtp6_e.c
+  gtp6_d.c
   node.c
 
   INSTALL_HEADERS
-  srv6_end.h
+  mobile.h
 )

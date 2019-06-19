@@ -71,6 +71,15 @@ typedef struct
 } __attribute__ ((packed)) ip4_gtpu_header_t;
 /* *INDENT-ON* */
 
+/* *INDENT-OFF* */
+typedef struct
+{
+  ip6_header_t ip6;          /* 40 bytes */
+  udp_header_t udp;          /* 8 bytes */
+  gtpu_header_t gtpu;        /* 8 bytes */
+} __attribute__ ((packed)) ip6_gtpu_header_t;
+/* *INDENT-ON* */
+
 #define GTPU_V1_VER   (1<<5)
 
 #define GTPU_PT_GTP    (1<<4)
