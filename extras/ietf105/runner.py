@@ -274,7 +274,7 @@ class Networks(object):
 
 class Program(object):
 
-    image = "ietf104-image"
+    image = "ietf105-image"
 
     name_prefix = "hck"
 
