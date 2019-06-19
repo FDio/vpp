@@ -541,7 +541,6 @@ quic_accept_stream (void *s)
 
   sctx->c_s_index = stream_session->session_index;
   stream_session->session_state = SESSION_STATE_CREATED;
-  stream_session->flags |= SESSION_F_QUIC_STREAM;
   stream_session->app_wrk_index = sctx->c_quic_ctx_id.parent_app_wrk_id;
   stream_session->connection_index = sctx->c_c_index;
   stream_session->session_type =
@@ -1194,7 +1193,6 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   QUIC_DBG (2, "Allocated stream_session, id %u, thread %u ctx %u",
 	    stream_session->session_index, stream_session->thread_index,
 	    sctx_index);
-  stream_session->flags |= SESSION_F_QUIC_STREAM;
   stream_session->app_wrk_index = app_wrk->wrk_index;
   stream_session->connection_index = sctx_index;
   stream_session->listener_handle = quic_session_handle;
@@ -1500,14 +1498,12 @@ quic_build_sockaddr (struct sockaddr *sa, socklen_t * salen,
 }
 
 static int
-quic_notify_app_connected (quic_ctx_t * ctx)
+quic_on_client_connected (quic_ctx_t * ctx)
 {
-  QUIC_DBG (1, "quic_notify_app_connected");
   session_t *quic_session;
   app_worker_t *app_wrk;
   u32 ctx_id = ctx->c_c_index;
   u32 thread_index = ctx->c_thread_index;
-  quic_ctx_t *lctx;
 
   app_wrk = app_worker_get_if_valid (ctx->c_quic_ctx_id.parent_app_wrk_id);
   if (!app_wrk)
@@ -1518,13 +1514,12 @@ quic_notify_app_connected (quic_ctx_t * ctx)
 
   quic_session = session_alloc (thread_index);
 
-  lctx = quic_ctx_get (ctx->c_quic_ctx_id.listener_ctx_id, 0);
   QUIC_DBG (2, "Allocated quic_session, id %u, thread %u",
 	    quic_session->session_index, quic_session->thread_index);
   ctx->c_s_index = quic_session->session_index;
   quic_session->app_wrk_index = ctx->c_quic_ctx_id.parent_app_wrk_id;
   quic_session->connection_index = ctx->c_c_index;
-  quic_session->listener_handle = lctx->c_s_index;
+  quic_session->listener_handle = SESSION_INVALID_HANDLE;
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
 				    ctx->c_quic_ctx_id.udp_is_ip4);
@@ -1911,7 +1906,7 @@ quic_receive (quic_ctx_t * ctx, quicly_conn_t * conn,
 	  ctx->conn_state = QUIC_CONN_STATE_READY;
 	  if (quicly_is_client (conn))
 	    {
-	      quic_notify_app_connected (ctx);
+	      quic_on_client_connected (ctx);
 	      ctx = quic_ctx_get (ctx_id, thread_index);
 	    }
 	}

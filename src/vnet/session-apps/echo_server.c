@@ -55,6 +55,7 @@ typedef struct
   u64 byte_index;
   u32 **rx_retries;
   u8 transport_proto;
+  u64 listener_handle;          /**< Session handle of the root listener */
 
   vlib_main_t *vlib_main;
 } echo_server_main_t;
@@ -72,7 +73,7 @@ int
 quic_echo_server_session_accept_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
-  if (!(s->flags & SESSION_F_QUIC_STREAM))
+  if (s->listener_handle == esm->listener_handle)
     return quic_echo_server_qsession_accept_callback (s);
   DBG ("SSESSION %u accept w/opaque %d", s->session_index, s->opaque);
 
@@ -398,12 +399,15 @@ echo_server_detach (void)
 static int
 echo_server_listen ()
 {
+  int rv;
   echo_server_main_t *esm = &echo_server_main;
   vnet_listen_args_t _a, *a = &_a;
   clib_memset (a, 0, sizeof (*a));
   a->app_index = esm->app_index;
   a->uri = esm->server_uri;
-  return vnet_bind_uri (a);
+  rv = vnet_bind_uri (a);
+  esm->listener_handle = a->handle;
+  return rv;
 }
 
 static int
