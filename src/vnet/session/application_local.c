@@ -540,6 +540,11 @@ format_ct_session (u8 * s, va_list * args)
 }
 
 /* *INDENT-OFF* */
+static transport_options_t cut_thru_t_opts = {
+  .tx_type = TRANSPORT_TX_INTERNAL,
+  .service_type = TRANSPORT_SERVICE_APP,
+};
+
 const static transport_proto_vft_t cut_thru_proto = {
   .start_listen = ct_start_listen,
   .stop_listen = ct_stop_listen,
@@ -549,10 +554,9 @@ const static transport_proto_vft_t cut_thru_proto = {
   .get_connection = ct_session_get,
   .custom_tx = ct_custom_tx,
   .app_rx_evt = ct_app_rx_evt,
-  .tx_type = TRANSPORT_TX_INTERNAL,
-  .service_type = TRANSPORT_SERVICE_APP,
   .format_listener = format_ct_listener,
   .format_connection = format_ct_session,
+  .transport_options = &cut_thru_t_opts,
 };
 /* *INDENT-ON* */
 

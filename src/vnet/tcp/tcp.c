@@ -1208,6 +1208,12 @@ tcp_session_flush_data (transport_connection_t * tconn)
 }
 
 /* *INDENT-OFF* */
+static transport_options_t tcp_t_opts = {
+  .tx_type = TRANSPORT_TX_PEEK,
+  .service_type = TRANSPORT_SERVICE_VC,
+};
+
+
 const static transport_proto_vft_t tcp_proto = {
   .enable = vnet_tcp_enable_disable,
   .start_listen = tcp_session_bind,
@@ -1227,8 +1233,7 @@ const static transport_proto_vft_t tcp_proto = {
   .format_connection = format_tcp_session,
   .format_listener = format_tcp_listener_session,
   .format_half_open = format_tcp_half_open_session,
-  .tx_type = TRANSPORT_TX_PEEK,
-  .service_type = TRANSPORT_SERVICE_VC,
+  .transport_options = &tcp_t_opts,
 };
 /* *INDENT-ON* */
 

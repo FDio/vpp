@@ -320,10 +320,17 @@ udp_session_get_half_open (u32 conn_index)
   /* We don't poll main thread if we have workers */
   thread_index = vlib_num_workers ()? 1 : 0;
   uc = udp_connection_get (conn_index, thread_index);
+  if (!uc)
+    return 0;
   return &uc->connection;
 }
 
 /* *INDENT-OFF* */
+static transport_options_t udp_t_opts = {
+  .tx_type = TRANSPORT_TX_DGRAM,
+  .service_type = TRANSPORT_SERVICE_CL,
+};
+
 const static transport_proto_vft_t udp_proto = {
   .start_listen = udp_session_bind,
   .connect = udp_open_connection,
@@ -339,8 +346,7 @@ const static transport_proto_vft_t udp_proto = {
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
-  .tx_type = TRANSPORT_TX_DGRAM,
-  .service_type = TRANSPORT_SERVICE_CL,
+  .transport_options = &udp_t_opts,
 };
 /* *INDENT-ON* */
 
@@ -354,7 +360,8 @@ udpc_connection_open (transport_endpoint_cfg_t * rmt)
   u32 uc_index;
   uc_index = udp_open_connection (rmt);
   uc = udp_connection_get (uc_index, thread_index);
-  uc->is_connected = 1;
+  if (uc)
+    uc->is_connected = 1;
   return uc_index;
 }
 
@@ -370,7 +377,12 @@ udpc_connection_listen (u32 session_index, transport_endpoint_t * lcl)
 }
 
 /* *INDENT-OFF* */
-const static transport_proto_vft_t udpc_proto = {
+static transport_options_t udpc_t_opts = {
+  .tx_type = TRANSPORT_TX_DGRAM,
+  .service_type = TRANSPORT_SERVICE_VC,
+};
+
+static const transport_proto_vft_t udpc_proto = {
   .start_listen = udpc_connection_listen,
   .stop_listen = udp_session_unbind,
   .connect = udpc_connection_open,
@@ -385,8 +397,7 @@ const static transport_proto_vft_t udpc_proto = {
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
-  .tx_type = TRANSPORT_TX_DGRAM,
-  .service_type = TRANSPORT_SERVICE_CL,
+  .transport_options = &udpc_t_opts,
 };
 /* *INDENT-ON* */
 

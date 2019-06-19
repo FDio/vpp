@@ -291,13 +291,13 @@ transport_protocol_get_vft (transport_proto_t transport_proto)
 transport_service_type_t
 transport_protocol_service_type (transport_proto_t tp)
 {
-  return tp_vfts[tp].service_type;
+  return tp_vfts[tp].transport_options->service_type;
 }
 
 transport_tx_fn_type_t
 transport_protocol_tx_fn_type (transport_proto_t tp)
 {
-  return tp_vfts[tp].tx_type;
+  return tp_vfts[tp].transport_options->tx_type;
 }
 
 void
@@ -334,7 +334,10 @@ transport_stop_listen (transport_proto_t tp, u32 conn_index)
 u8
 transport_protocol_is_cl (transport_proto_t tp)
 {
-  return (tp_vfts[tp].service_type == TRANSPORT_SERVICE_CL);
+  if (!tp_vfts[tp].transport_options)
+    return 0;
+  return (tp_vfts[tp].transport_options->service_type ==
+	  TRANSPORT_SERVICE_CL);
 }
 
 always_inline void

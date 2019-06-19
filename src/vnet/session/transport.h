@@ -19,6 +19,12 @@
 #include <vnet/vnet.h>
 #include <vnet/session/transport_types.h>
 
+typedef struct _transport_options_t
+{
+  transport_tx_fn_type_t tx_type;
+  transport_service_type_t service_type;
+} transport_options_t;
+
 /*
  * Transport protocol virtual function table
  */
@@ -74,8 +80,7 @@ typedef struct _transport_proto_vft
   /*
    * Properties
    */
-  transport_tx_fn_type_t tx_type;
-  transport_service_type_t service_type;
+  transport_options_t * transport_options;
 } transport_proto_vft_t;
 /* *INDENT-ON* */
 

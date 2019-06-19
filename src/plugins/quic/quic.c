@@ -2225,6 +2225,11 @@ static session_cb_vft_t quic_app_cb_vft = {
   .builtin_app_rx_callback = quic_app_rx_callback,
 };
 
+static transport_options_t quic_t_opts = {
+  .tx_type = TRANSPORT_TX_INTERNAL,
+  .service_type = TRANSPORT_SERVICE_APP,
+};
+
 static const transport_proto_vft_t quic_proto = {
   .connect = quic_connect,
   .close = quic_proto_on_close,
@@ -2234,13 +2239,12 @@ static const transport_proto_vft_t quic_proto = {
   .get_listener = quic_listener_get,
   .update_time = quic_update_time,
   .custom_tx = quic_custom_tx_callback,
-  .tx_type = TRANSPORT_TX_INTERNAL,
-  .service_type = TRANSPORT_SERVICE_APP,
   .format_connection = format_quic_connection,
   .format_half_open = format_quic_half_open,
   .format_listener = format_quic_listener,
   .get_transport_endpoint = quic_get_transport_endpoint,
   .get_transport_listener_endpoint = quic_get_transport_listener_endpoint,
+  .transport_options = &quic_t_opts,
 };
 /* *INDENT-ON* */
 
