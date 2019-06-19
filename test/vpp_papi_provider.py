@@ -2049,7 +2049,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_endpoint_group_del,
                         {'sclass': sclass})
 
-    def gbp_bridge_domain_add(self, bd_id, flags,
+    def gbp_bridge_domain_add(self, bd_id, rd_id, flags,
                               bvi_sw_if_index,
                               uu_fwd_sw_if_index,
                               bm_flood_sw_if_index):
@@ -2061,7 +2061,8 @@ class VppPapiProvider(object):
                                 'bvi_sw_if_index': bvi_sw_if_index,
                                 'uu_fwd_sw_if_index': uu_fwd_sw_if_index,
                                 'bm_flood_sw_if_index': bm_flood_sw_if_index,
-                                'bd_id': bd_id
+                                'bd_id': bd_id,
+                                'rd_id': rd_id
                             }})
 
     def gbp_bridge_domain_del(self, bd_id):
@@ -2070,6 +2071,7 @@ class VppPapiProvider(object):
                         {'bd_id': bd_id})
 
     def gbp_route_domain_add(self, rd_id,
+                             scope,
                              ip4_table_id,
                              ip6_table_id,
                              ip4_uu_sw_if_index,
@@ -2078,6 +2080,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_route_domain_add,
                         {'rd':
                             {
+                                'scope': scope,
                                 'ip4_table_id': ip4_table_id,
                                 'ip6_table_id': ip6_table_id,
                                 'ip4_uu_sw_if_index': ip4_uu_sw_if_index,
@@ -2135,13 +2138,14 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_subnet_dump,
                         {'_no_type_conversion': True})
 
-    def gbp_contract_add_del(self, is_add, sclass, dclass, acl_index,
+    def gbp_contract_add_del(self, is_add, scope, sclass, dclass, acl_index,
                              rules, allowed_ethertypes):
         """ GBP contract Add/Del """
         return self.api(self.papi.gbp_contract_add_del,
                         {'is_add': is_add,
                          'contract': {
                              'acl_index': acl_index,
+                             'scope': scope,
                              'sclass': sclass,
                              'dclass': dclass,
                              'n_rules': len(rules),

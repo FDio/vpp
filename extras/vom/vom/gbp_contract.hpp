@@ -17,8 +17,8 @@
 #define __VOM_GBP_CONTRACT_H__
 
 #include "vom/acl_l3_list.hpp"
-#include "vom/gbp_endpoint.hpp"
 #include "vom/gbp_rule.hpp"
+#include "vom/gbp_types.hpp"
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
 #include "vom/types.hpp"
@@ -49,7 +49,8 @@ public:
   /**
    * Construct a GBP contract
    */
-  gbp_contract(sclass_t sclass,
+  gbp_contract(scope_t scope,
+               sclass_t sclass,
                sclass_t dclass,
                const ACL::l3_list& acl,
                const gbp_rules_t& gpb_rules,
@@ -165,6 +166,11 @@ private:
    * HW configuration for the result of creating the endpoint
    */
   HW::item<uint32_t> m_hw;
+
+  /*
+   * The scope of the contract
+   */
+  scope_t m_scope;
 
   /**
    * The source EPG ID

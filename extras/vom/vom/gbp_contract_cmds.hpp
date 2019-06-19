@@ -35,6 +35,7 @@ public:
    * Constructor
    */
   create_cmd(HW::item<uint32_t>& item,
+             scope_t scope,
              sclass_t sclass,
              sclass_t dclass,
              const handle_t& acl,
@@ -57,6 +58,7 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
+  const scope_t m_scope;
   const sclass_t m_sclass;
   const sclass_t m_dclass;
   const handle_t m_acl;
@@ -74,7 +76,10 @@ public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<uint32_t>& item, sclass_t sclass, sclass_t dclass);
+  delete_cmd(HW::item<uint32_t>& item,
+             scope_t scope,
+             sclass_t sclass,
+             sclass_t dclass);
 
   /**
    * Issue the command to VPP/HW
@@ -92,6 +97,7 @@ public:
   bool operator==(const delete_cmd& i) const;
 
 private:
+  const scope_t m_scope;
   const sclass_t m_sclass;
   const sclass_t m_dclass;
 };
