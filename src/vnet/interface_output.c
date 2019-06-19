@@ -351,7 +351,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 
   vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[0]);
   tso_init_buf_from_template_base (b0, sb0, default_bflags,
-				   l4_hdr_sz + first_data_size);
+				   l234_sz + first_data_size);
 
   u32 total_src_left = n_bytes_b0 - l234_sz - first_data_size;
   if (total_src_left)
@@ -409,7 +409,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 		  csbi0 = next_bi;
 		  csb0 = vlib_get_buffer (vm, csbi0);
 		  src_left = csb0->current_length;
-		  src_ptr = csb0->data;
+		  src_ptr = vlib_buffer_get_current (csb0);
 		}
 	      else
 		{
