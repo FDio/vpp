@@ -15,7 +15,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
-#include <srv6-end/srv6_end.h>
+#include <srv6-mobile/srv6_end.h>
 
 typedef struct {
   ip6_address_t src, dst;

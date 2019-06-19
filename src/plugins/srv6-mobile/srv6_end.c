@@ -19,7 +19,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
-#include <srv6-end/srv6_end.h>
+#include <srv6-mobile/srv6_end.h>
 
 srv6_end_main_t srv6_end_main;
 
