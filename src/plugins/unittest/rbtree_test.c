@@ -160,7 +160,11 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
    * Delete all keys
    */
   for (i = 0; i < n_keys; i++)
-    rb_tree_del (rt, i);
+    {
+      rb_tree_del (rt, i);
+      if (rt->nodes[RBTREE_TNIL_INDEX].color != RBTREE_BLACK)
+	RBTREE_TEST (0, "tnil should be black");
+    }
 
   RBTREE_TEST (rb_tree_n_nodes (rt) == 1, "number nodes %u is %u",
 	       1, rb_tree_n_nodes (rt));
