@@ -43,10 +43,10 @@ create_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.bd_id = m_bd;
+  payload.entry.bd_id = m_bd;
   payload.is_add = 1;
-  to_api(m_mac, payload.mac);
-  to_api(m_ip_addr, payload.ip);
+  to_api(m_mac, payload.entry.mac);
+  to_api(m_ip_addr, payload.entry.ip);
 
   VAPI_CALL(req.execute());
 
@@ -88,10 +88,10 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.bd_id = m_bd;
+  payload.entry.bd_id = m_bd;
   payload.is_add = 0;
-  to_api(m_mac, payload.mac);
-  to_api(m_ip_addr, payload.ip);
+  to_api(m_mac, payload.entry.mac);
+  to_api(m_ip_addr, payload.entry.ip);
 
   VAPI_CALL(req.execute());
 

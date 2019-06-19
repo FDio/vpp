@@ -14,6 +14,7 @@
  */
 
 #include "vom/bridge_domain_arp_entry.hpp"
+#include "vom/api_types.hpp"
 #include "vom/bridge_domain_arp_entry_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
@@ -174,10 +175,10 @@ bridge_domain_arp_entry::event_handler::handle_populate(
   for (auto& record : *cmd) {
     auto& payload = record.get_payload();
 
-    std::shared_ptr<bridge_domain> bd = bridge_domain::find(payload.bd_id);
-    bridge_domain_arp_entry bd_ae(
-      *bd, from_bytes(payload.is_ipv6, payload.ip_address),
-      mac_address_t(payload.mac_address));
+    std::shared_ptr<bridge_domain> bd =
+      bridge_domain::find(payload.entry.bd_id);
+    bridge_domain_arp_entry bd_ae(*bd, from_api(payload.entry.ip),
+                                  from_api(payload.entry.mac));
 
     VOM_LOG(log_level_t::DEBUG) << "dump: " << bd_ae.to_string();
 

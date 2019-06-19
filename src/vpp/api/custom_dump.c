@@ -511,10 +511,10 @@ static void *vl_api_bd_ip_mac_add_del_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: bd_ip_mac_add_del ");
-  s = format (s, "bd_id %d ", ntohl (mp->bd_id));
+  s = format (s, "bd_id %d ", ntohl (mp->entry.bd_id));
 
-  s = format (s, "%U ", format_vl_api_address, &mp->ip);
-  s = format (s, "%U ", format_vl_api_mac_address, &mp->mac);
+  s = format (s, "%U ", format_vl_api_address, &mp->entry.ip);
+  s = format (s, "%U ", format_vl_api_mac_address, &mp->entry.mac);
   if (mp->is_add == 0)
     s = format (s, "del ");
 

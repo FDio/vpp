@@ -482,14 +482,20 @@ autoreply define sw_interface_set_l2_bridge
     @param ip - ipv4 or ipv6 address
     @param mac - MAC address
 */
+
+typedef bd_ip_mac
+{
+  u32 bd_id;
+  vl_api_address_t ip;
+  vl_api_mac_address_t mac;
+};
+
 autoreply define bd_ip_mac_add_del
 {
   u32 client_index;
   u32 context;
-  u32 bd_id;
   u8 is_add;
-  vl_api_address_t ip;
-  vl_api_mac_address_t mac;
+  vl_api_bd_ip_mac_t entry;
 };
 
 /** \brief Flush bridge domain IP to MAC entries
@@ -512,10 +518,7 @@ autoreply define bd_ip_mac_flush
 define bd_ip_mac_details
 {
   u32 context;
-  u32 bd_id;
-  u8 is_ipv6;
-  u8 ip_address[16];
-  vl_api_mac_address_t mac_address;
+  vl_api_bd_ip_mac_t entry;
 };
 
 /** \brief Dump bridge domain IP to MAC entries
