@@ -18,6 +18,7 @@
 
 #include "vom/acl_l3_list.hpp"
 #include "vom/gbp_endpoint.hpp"
+#include "vom/gbp_route_domain.hpp"
 #include "vom/gbp_rule.hpp"
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
@@ -49,7 +50,8 @@ public:
   /**
    * Construct a GBP contract
    */
-  gbp_contract(sclass_t sclass,
+  gbp_contract(const gbp_route_domain& grd,
+               sclass_t sclass,
                sclass_t dclass,
                const ACL::l3_list& acl,
                const gbp_rules_t& gpb_rules,
@@ -165,6 +167,11 @@ private:
    * HW configuration for the result of creating the endpoint
    */
   HW::item<uint32_t> m_hw;
+
+  /*
+   * The route domain that the contract is scoped by.
+   */
+  std::shared_ptr<gbp_route_domain> m_rd;
 
   /**
    * The source EPG ID

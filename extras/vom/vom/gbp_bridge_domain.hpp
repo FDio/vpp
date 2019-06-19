@@ -17,9 +17,9 @@
 #define __VOM_GBP_BRIDGE_DOMAIN_H__
 
 #include "vom/bridge_domain.hpp"
+#include "vom/gbp_route_domain.hpp"
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
-#include "vom/types.hpp"
 
 namespace VOM {
 
@@ -53,19 +53,23 @@ public:
    * Construct a GBP bridge_domain
    */
   gbp_bridge_domain(const bridge_domain& bd,
+                    const gbp_route_domain& rd,
                     const interface& bvi,
                     const flags_t& flags = flags_t::NONE);
   gbp_bridge_domain(const bridge_domain& bd,
+                    const gbp_route_domain& rd,
                     const interface& bvi,
                     const interface& uu_fwd,
                     const interface& bm_flood,
                     const flags_t& flags = flags_t::NONE);
   gbp_bridge_domain(const bridge_domain& bd,
+                    const gbp_route_domain& rd,
                     const std::shared_ptr<interface> bvi,
                     const std::shared_ptr<interface> uu_fwd,
                     const std::shared_ptr<interface> bm_flood,
                     const flags_t& flags = flags_t::NONE);
   gbp_bridge_domain(const bridge_domain& bd,
+                    const gbp_route_domain& rd,
                     const interface& bvi,
                     const std::shared_ptr<interface> uu_fwd,
                     const std::shared_ptr<interface> bm_flood,
@@ -192,6 +196,7 @@ private:
   HW::item<uint32_t> m_id;
 
   std::shared_ptr<bridge_domain> m_bd;
+  std::shared_ptr<gbp_route_domain> m_rd;
   std::shared_ptr<interface> m_bvi;
   std::shared_ptr<interface> m_uu_fwd;
   std::shared_ptr<interface> m_bm_flood;

@@ -38,13 +38,14 @@ typedef struct gbp_contract_key_t_
   {
     struct
     {
+      gbp_scope_t gck_scope;
       /**
        * source and destination EPGs for which the ACL applies
        */
       sclass_t gck_src;
       sclass_t gck_dst;
     };
-    u32 as_u32;
+    u64 as_u64;
   };
 } gbp_contract_key_t;
 
@@ -149,12 +150,14 @@ typedef struct gbp_contract_db_t_
   uword *gc_hash;
 } gbp_contract_db_t;
 
-extern int gbp_contract_update (sclass_t sclass,
+extern int gbp_contract_update (gbp_scope_t scope,
+				sclass_t sclass,
 				sclass_t dclass,
 				u32 acl_index,
 				index_t * rules,
 				u16 * allowed_ethertypes, u32 * stats_index);
-extern int gbp_contract_delete (sclass_t sclass, sclass_t dclass);
+extern int gbp_contract_delete (gbp_scope_t scope, sclass_t sclass,
+				sclass_t dclass);
 
 extern index_t gbp_rule_alloc (gbp_rule_action_t action,
 			       gbp_hash_mode_t hash_mode, index_t * nhs);
@@ -177,7 +180,7 @@ gbp_contract_find (gbp_contract_key_t * key)
 {
   uword *p;
 
-  p = hash_get (gbp_contract_db.gc_hash, key->as_u32);
+  p = hash_get (gbp_contract_db.gc_hash, key->as_u64);
 
   if (NULL != p)
     return (p[0]);

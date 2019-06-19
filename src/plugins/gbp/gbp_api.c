@@ -342,6 +342,7 @@ vl_api_gbp_bridge_domain_add_t_handler (vl_api_gbp_bridge_domain_add_t * mp)
   int rv = 0;
 
   rv = gbp_bridge_domain_add_and_lock (ntohl (mp->bd.bd_id),
+				       ntohl (mp->bd.rd_id),
 				       gbp_bridge_domain_flags_from_api
 				       (mp->bd.flags),
 				       ntohl (mp->bd.bvi_sw_if_index),
@@ -571,6 +572,7 @@ gbp_bridge_domain_send_details (gbp_bridge_domain_t * gb, void *args)
   mp->context = ctx->context;
 
   mp->bd.bd_id = ntohl (gb->gb_bd_id);
+  mp->bd.rd_id = ntohl (gb->gb_rd_id);
   mp->bd.bvi_sw_if_index = ntohl (gb->gb_bvi_sw_if_index);
   mp->bd.uu_fwd_sw_if_index = ntohl (gb->gb_uu_fwd_sw_if_index);
   mp->bd.bm_flood_sw_if_index = ntohl (gb->gb_bm_flood_sw_if_index);
@@ -961,13 +963,15 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 	  allowed_ethertypes[ii] = mp->contract.allowed_ethertypes[ii];
 	}
 
-      rv = gbp_contract_update (ntohs (mp->contract.sclass),
+      rv = gbp_contract_update (ntohl (mp->contract.rd_id),
+				ntohs (mp->contract.sclass),
 				ntohs (mp->contract.dclass),
 				ntohl (mp->contract.acl_index),
 				rules, allowed_ethertypes, &stats_index);
     }
   else
-    rv = gbp_contract_delete (ntohs (mp->contract.sclass),
+    rv = gbp_contract_delete (ntohl (mp->contract.rd_id),
+			      ntohs (mp->contract.sclass),
 			      ntohs (mp->contract.dclass));
 
 out:
@@ -984,6 +988,7 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
 {
   vl_api_gbp_contract_details_t *mp;
   gbp_walk_ctx_t *ctx;
+  u32 rd_id;
 
   ctx = args;
   mp = vl_msg_api_alloc (sizeof (*mp));
@@ -997,6 +1002,9 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
   mp->contract.sclass = ntohs (gbpc->gc_key.gck_src);
   mp->contract.dclass = ntohs (gbpc->gc_key.gck_dst);
   mp->contract.acl_index = ntohl (gbpc->gc_acl_index);
+
+  rd_id = gbpc->gc_key.gck_scope;
+  mp->contract.rd_id = ntohl (rd_id);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
