@@ -163,6 +163,7 @@ gbp_subnet_external_add (gbp_subnet_t * gs, u32 sw_if_index, sclass_t sclass)
   gs->gs_stitched_external.gs_sw_if_index = sw_if_index;
 
   gbp_policy_dpo_add_or_lock (fib_proto_to_dpo (gs->gs_key->gsk_pfx.fp_proto),
+			      gbp_route_domain_get_scope (gs->gs_rd),
 			      gs->gs_stitched_external.gs_sclass,
 			      gs->gs_stitched_external.gs_sw_if_index, &gpd);
 
@@ -186,6 +187,7 @@ gbp_subnet_l3_out_add (gbp_subnet_t * gs, sclass_t sclass)
   gs->gs_l3_out.gs_sclass = sclass;
 
   gbp_policy_dpo_add_or_lock (fib_proto_to_dpo (gs->gs_key->gsk_pfx.fp_proto),
+			      gbp_route_domain_get_scope (gs->gs_rd),
 			      gs->gs_l3_out.gs_sclass, ~0, &gpd);
 
   gs->gs_fei = fib_table_entry_special_dpo_add (gs->gs_key->gsk_fib_index,

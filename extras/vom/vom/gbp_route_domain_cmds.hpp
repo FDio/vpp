@@ -35,6 +35,7 @@ public:
    * Constructor
    */
   create_cmd(HW::item<uint32_t>& item,
+             scope_t scope,
              const handle_t ip4_uu_fwd,
              const handle_t ip6_uu_fwd);
 
@@ -53,6 +54,7 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
+  const scope_t m_scope;
   const handle_t m_ip4_uu_fwd;
   const handle_t m_ip6_uu_fwd;
 };
