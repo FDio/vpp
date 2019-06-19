@@ -1283,7 +1283,8 @@ session_register_transport (transport_proto_t transport_proto,
   /* *INDENT-ON* */
 
   smm->session_type_to_next[session_type] = next_index;
-  smm->session_tx_fns[session_type] = session_tx_fns[vft->tx_type];
+  smm->session_tx_fns[session_type] =
+    session_tx_fns[vft->transport_options.tx_type];
 }
 
 transport_connection_t *

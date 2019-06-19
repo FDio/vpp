@@ -757,7 +757,7 @@ tls_transport_listener_endpoint_get (u32 ctx_handle,
 }
 
 /* *INDENT-OFF* */
-const static transport_proto_vft_t tls_proto = {
+static const transport_proto_vft_t tls_proto = {
   .connect = tls_connect,
   .close = tls_disconnect,
   .start_listen = tls_start_listen,
@@ -765,13 +765,15 @@ const static transport_proto_vft_t tls_proto = {
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
   .custom_tx = tls_custom_tx_callback,
-  .tx_type = TRANSPORT_TX_INTERNAL,
-  .service_type = TRANSPORT_SERVICE_APP,
   .format_connection = format_tls_connection,
   .format_half_open = format_tls_half_open,
   .format_listener = format_tls_listener,
   .get_transport_endpoint = tls_transport_endpoint_get,
   .get_transport_listener_endpoint = tls_transport_listener_endpoint_get,
+  .transport_options = {
+    .tx_type = TRANSPORT_TX_INTERNAL,
+    .service_type = TRANSPORT_SERVICE_APP,
+  },
 };
 /* *INDENT-ON* */
 

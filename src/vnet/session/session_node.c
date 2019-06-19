@@ -395,7 +395,8 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 	}
       else
 	{
-	  if (ctx->transport_vft->tx_type == TRANSPORT_TX_DGRAM)
+	  if (ctx->transport_vft->transport_options.tx_type ==
+	      TRANSPORT_TX_DGRAM)
 	    {
 	      svm_fifo_t *f = ctx->s->tx_fifo;
 	      session_dgram_hdr_t *hdr = &ctx->hdr;
@@ -466,7 +467,7 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
     }
   else
     {
-      if (ctx->transport_vft->tx_type == TRANSPORT_TX_DGRAM)
+      if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
 	{
 	  session_dgram_hdr_t *hdr = &ctx->hdr;
 	  svm_fifo_t *f = ctx->s->tx_fifo;
@@ -572,7 +573,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
     }
   else
     {
-      if (ctx->transport_vft->tx_type == TRANSPORT_TX_DGRAM)
+      if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
 	{
 	  if (ctx->max_dequeue <= sizeof (ctx->hdr))
 	    {
@@ -782,7 +783,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     if (svm_fifo_set_event (ctx->s->tx_fifo))
       vec_add1 (wrk->pending_event_vector, *e);
 
-  if (!peek_data && ctx->transport_vft->tx_type == TRANSPORT_TX_DGRAM)
+  if (!peek_data
+      && ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
     {
       /* Fix dgram pre header */
       if (ctx->max_len_to_snd < ctx->max_dequeue)
