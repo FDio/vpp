@@ -841,10 +841,10 @@ class TestGBP(VppTestCase):
             # add the BD ARP termination entry for BVI IP
             epg.bd_arp_ip4 = VppBridgeDomainArpEntry(self, epg.bd.bd,
                                                      str(self.router_mac),
-                                                     epg.bvi_ip4)
+                                                     epg.bvi_ip4.address)
             epg.bd_arp_ip6 = VppBridgeDomainArpEntry(self, epg.bd.bd,
                                                      str(self.router_mac),
-                                                     epg.bvi_ip6)
+                                                     epg.bvi_ip6.address)
             epg.bd_arp_ip4.add_vpp_config()
             epg.bd_arp_ip6.add_vpp_config()
 
@@ -917,7 +917,8 @@ class TestGBP(VppTestCase):
 
             # add the BD ARP termination entry for floating IP
             for fip in ep.fips:
-                ba = VppBridgeDomainArpEntry(self, epg_nat.bd.bd, ep.mac, fip)
+                ba = VppBridgeDomainArpEntry(self, epg_nat.bd.bd, ep.mac,
+                                             fip.address)
                 ba.add_vpp_config()
 
                 # floating IPs route via EPG recirc
@@ -2063,7 +2064,7 @@ class TestGBP(VppTestCase):
             # add the BD ARP termination entry for BVI IP
             epg.bd_arp_ip4 = VppBridgeDomainArpEntry(self, epg.bd.bd,
                                                      str(self.router_mac),
-                                                     epg.bvi_ip4)
+                                                     epg.bvi_ip4.address)
             epg.bd_arp_ip4.add_vpp_config()
 
             # EPG in VPP

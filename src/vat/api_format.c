@@ -7300,11 +7300,11 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
 
   M (BD_IP_MAC_ADD_DEL, mp);
 
-  mp->bd_id = ntohl (bd_id);
+  mp->entry.bd_id = ntohl (bd_id);
   mp->is_add = is_add;
 
-  clib_memcpy (&mp->ip, &ip, sizeof (ip));
-  clib_memcpy (&mp->mac, &mac, sizeof (mac));
+  clib_memcpy (&mp->entry.ip, &ip, sizeof (ip));
+  clib_memcpy (&mp->entry.mac, &mac, sizeof (mac));
 
   S (mp);
   W (ret);
@@ -7349,21 +7349,12 @@ static void vl_api_bd_ip_mac_details_t_handler
   (vl_api_bd_ip_mac_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  u8 *ip = 0;
-
-  if (!mp->is_ipv6)
-    ip =
-      format (0, "%U", format_ip4_address, (ip4_address_t *) mp->ip_address);
-  else
-    ip =
-      format (0, "%U", format_ip6_address, (ip6_address_t *) mp->ip_address);
 
   print (vam->ofp,
-	 "\n%-5d %-7s %-20U %-30s",
-	 ntohl (mp->bd_id), mp->is_ipv6 ? "ip6" : "ip4",
-	 format_ethernet_address, mp->mac_address, ip);
-
-  vec_free (ip);
+	 "\n%-5d %U %U",
+	 ntohl (mp->entry.bd_id),
+	 format_vl_api_mac_address, mp->entry.mac,
+	 format_vl_api_address, &mp->entry.ip);
 }
 
 static void vl_api_bd_ip_mac_details_t_handler_json
@@ -7380,19 +7371,13 @@ static void vl_api_bd_ip_mac_details_t_handler_json
   node = vat_json_array_add (&vam->json_tree);
 
   vat_json_init_object (node);
-  vat_json_object_add_uint (node, "bd_id", ntohl (mp->bd_id));
-  vat_json_object_add_uint (node, "is_ipv6", mp->is_ipv6);
+  vat_json_object_add_uint (node, "bd_id", ntohl (mp->entry.bd_id));
   vat_json_object_add_string_copy (node, "mac_address",
-				   format (0, "%U", format_ethernet_address,
-					   &mp->mac_address));
+				   format (0, "%U", format_vl_api_mac_address,
+					   &mp->entry.mac));
   u8 *ip = 0;
 
-  if (!mp->is_ipv6)
-    ip =
-      format (0, "%U", format_ip4_address, (ip4_address_t *) mp->ip_address);
-  else
-    ip =
-      format (0, "%U", format_ip6_address, (ip6_address_t *) mp->ip_address);
+  ip = format (0, "%U", format_vl_api_address, &mp->entry.ip);
   vat_json_object_add_string_copy (node, "ip_address", ip);
   vec_free (ip);
 }
