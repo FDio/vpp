@@ -906,47 +906,13 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
 }
 
 int
-session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open_vc_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
   app_worker_t *app_wrk;
-  session_handle_t sh;
   session_t *s;
-  int rv;
-
-  tep = session_endpoint_to_transport_cfg (rmt);
-  rv = transport_connect (rmt->transport_proto, tep);
-  if (rv < 0)
-    {
-      SESSION_DBG ("Transport failed to open connection.");
-      return VNET_API_ERROR_SESSION_CONNECT;
-    }
-
-  tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
-
-  /* For dgram type of service, allocate session and fifos now */
-  app_wrk = app_worker_get (app_wrk_index);
-  s = session_alloc_for_connection (tc);
-  s->app_wrk_index = app_wrk->wrk_index;
-  s->session_state = SESSION_STATE_OPENED;
-  if (app_worker_init_connected (app_wrk, s))
-    {
-      session_free (s);
-      return -1;
-    }
-
-  sh = session_handle (s);
-  session_lookup_add_connection (tc, sh);
-
-  return app_worker_connect_notify (app_wrk, s, opaque);
-}
-
-int
-session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
-{
-  transport_connection_t *tc;
-  transport_endpoint_cfg_t *tep;
+  session_handle_t sh;
   u64 handle;
   int rv;
 
@@ -960,20 +926,42 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
 
-  /* If transport offers a stream service, only allocate session once the
-   * connection has been established.
-   * Add connection to half-open table and save app and tc index. The
-   * latter is needed to help establish the connection while the former
-   * is needed when the connect notify comes and we have to notify the
-   * external app
-   */
-  handle = (((u64) app_wrk_index) << 32) | (u64) tc->c_index;
-  session_lookup_add_half_open (tc, handle);
+  if (transport_protocol_tx_fn_type (rmt->transport_proto) ==
+      TRANSPORT_TX_DGRAM)
+    {
+      /* For dgram type of service, allocate session and fifos now */
+      app_wrk = app_worker_get (app_wrk_index);
+      s = session_alloc_for_connection (tc);
+      s->app_wrk_index = app_wrk->wrk_index;
+      s->session_state = SESSION_STATE_OPENED;
+      if (app_worker_init_connected (app_wrk, s))
+	{
+	  session_free (s);
+	  return -1;
+	}
 
-  /* Store api_context (opaque) for when the reply comes. Not the nicest
-   * thing but better than allocating a separate half-open pool.
-   */
-  tc->s_index = opaque;
+      sh = session_handle (s);
+      session_lookup_add_connection (tc, sh);
+
+      return app_worker_connect_notify (app_wrk, s, opaque);
+    }
+  else
+    {
+      /* If transport offers a stream service, only allocate session once the
+       * connection has been established.
+       * Add connection to half-open table and save app and tc index. The
+       * latter is needed to help establish the connection while the former
+       * is needed when the connect notify comes and we have to notify the
+       * external app
+       */
+      handle = (((u64) app_wrk_index) << 32) | (u64) tc->c_index;
+      session_lookup_add_half_open (tc, handle);
+
+      /* Store api_context (opaque) for when the reply comes. Not the nicest
+       * thing but better than allocating a separate half-open pool.
+       */
+      tc->s_index = opaque;
+    }
   return 0;
 }
 
@@ -993,8 +981,8 @@ typedef int (*session_open_service_fn) (u32, session_endpoint_t *, u32);
 
 /* *INDENT-OFF* */
 static session_open_service_fn session_open_srv_fns[TRANSPORT_N_SERVICES] = {
-  session_open_vc,
-  session_open_cl,
+  session_open_vc_cl,
+  session_open_vc_cl,
   session_open_app,
 };
 /* *INDENT-ON* */
@@ -1252,10 +1240,10 @@ session_segment_handle (session_t * s)
 
 /* *INDENT-OFF* */
 static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
-    session_tx_fifo_peek_and_snd,
-    session_tx_fifo_dequeue_and_snd,
-    session_tx_fifo_dequeue_internal,
-    session_tx_fifo_dequeue_and_snd
+    session_tx_fifo_peek_and_snd,       /* TRANSPORT_TX_PEEK */
+    session_tx_fifo_dequeue_and_snd,    /* TRANSPORT_TX_DEQUEUE */
+    session_tx_fifo_dequeue_internal,   /* TRANSPORT_TX_INTERNAL */
+    session_tx_fifo_dequeue_and_snd     /* TRANSPORT_TX_DGRAM */
 };
 /* *INDENT-ON* */
 

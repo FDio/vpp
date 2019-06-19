@@ -354,7 +354,8 @@ udpc_connection_open (transport_endpoint_cfg_t * rmt)
   u32 uc_index;
   uc_index = udp_open_connection (rmt);
   uc = udp_connection_get (uc_index, thread_index);
-  uc->is_connected = 1;
+  if (uc)
+    uc->is_connected = 1;
   return uc_index;
 }
 
@@ -386,7 +387,7 @@ const static transport_proto_vft_t udpc_proto = {
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
   .tx_type = TRANSPORT_TX_DGRAM,
-  .service_type = TRANSPORT_SERVICE_CL,
+  .service_type = TRANSPORT_SERVICE_VC,
 };
 /* *INDENT-ON* */
 
