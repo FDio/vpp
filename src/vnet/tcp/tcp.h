@@ -323,7 +323,8 @@ typedef struct _tcp_connection
   u32 tx_fifo_size;	/**< Tx fifo size. Used to constrain cwnd */
 
   u32 psh_seq;		/**< Add psh header for seg that includes this */
-  u32 out_next_index;	/**< Can be used to control next node in output */
+  u32 next_node_index;	/**< Can be used to control next node in output */
+  u32 next_node_opaque;	/**< Opaque to pass to next node */
 } tcp_connection_t;
 
 /* *INDENT-OFF* */
