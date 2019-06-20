@@ -79,13 +79,13 @@ M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/
 
 VNET TAP Drivers
-I:      tap
-M:      Damjan Marion <damarion@cisco.com>
-M:      Steven Luong <sluong@cisco.com>
-M:      Mohsin Kazmi <sykazmi@cisco.com>
-F:      src/vnet/devices/tap/
-F:      src/vnet/devices/virtio/node.c
-F:      src/vnet/devices/virtio/device.c
+I:	tap
+M:	Damjan Marion <damarion@cisco.com>
+M:	Steven Luong <sluong@cisco.com>
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+F:	src/vnet/devices/tap/
+F:	src/vnet/devices/virtio/node.c
+F:	src/vnet/devices/virtio/device.c
 
 VNET Feature Arcs
 I:	feature
@@ -325,14 +325,15 @@ Plugin - Time-based MAC filter
 I:	mactime
 Y:	src/plugins/mactime/FEATURE.yaml
 M:	Dave Barach <dave@barachs.net>
-F:      src/plugins/mactime/
+F:	src/plugins/mactime/
 
 Plugin - Network Delay Simulator
+I:	nsim
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 
 Test Infrastructure
-I:  tests
+I:	tests
 M:	Klement Sekera <ksekera@cisco.com>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	test/
@@ -401,6 +402,12 @@ I:	stats
 M:	Ole Troan <ot@cisco.com>
 F:	src/vpp/stats/
 F:	src/vpp-api/client/stat_client.[ch]
+
+Python binding for the VPP API
+I:	papi
+M:	Ole Troan <ot@cisco.com>
+M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
+F:	src/vpp-api/python
 
 THE REST
 I:	misc

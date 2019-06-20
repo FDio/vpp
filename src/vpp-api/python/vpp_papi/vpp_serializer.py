@@ -90,7 +90,13 @@ class BaseTypes(object):
         return self
 
     def pack(self, data, kwargs=None):
-        if not data:  # Default to zero if not specified
+        # If the caller does not specify the value for an argument,
+        # this function gets called with None for scalar values
+        # and an empty list for array values.
+        # Empty list has to be packed as 0.
+        # Other "false" values, such as 0 and "" are explicitly specified
+        # by the caller, so we do not want to substitute defaults for them.
+        if data is None or data == []:  # Default or zero if not specified
             if self.options and 'default' in self.options:
                 data = self.options['default']
             else:
