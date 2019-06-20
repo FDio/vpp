@@ -149,8 +149,15 @@ defaultmapping = {
 class CliFailedCommandError(Exception):
     """ cli command failed."""
 
+    def __init__(self, command=None, command_output=None):
+        self.command = command.strip('\n')
+        self.command_output = command_output.strip('\n')
 
-class CliSyntaxError(Exception):
+        msg = "returned %r from CLI command: %r" % (command_output, command)
+        super(CliFailedCommandError, self).__init__(msg)
+
+
+class CliSyntaxError(CliFailedCommandError):
     """ cli command had a syntax error."""
 
 
@@ -350,10 +357,12 @@ class VppPapiProvider(object):
         cli += '\n'
         r = self.papi.cli_inband(cmd=cli)
         self.hook.after_cli(cli)
-        if r.retval == -156:
-            raise CliSyntaxError(r.reply)
+        if r.retval == -158:
+            raise CliSyntaxError(command=cli,
+                                 command_output=r.reply)
         if r.retval != 0:
-            raise CliFailedCommandError(r.reply)
+            raise CliFailedCommandError(command=cli,
+                                        command_output=r.reply)
         if hasattr(r, 'reply'):
             return r.reply
 
