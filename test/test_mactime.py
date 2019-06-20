@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_papi_provider import CliFailedCommandError
 
 
 class TestMactime(VppTestCase):
@@ -35,41 +35,11 @@ class TestMactime(VppTestCase):
     def test_mactime_unittest(self):
         """ Mactime Plugin Code Coverage Test """
         cmds = ["loopback create",
-                "mactime enable-disable disable",
                 "mactime enable-disable loop0",
                 "mactime enable-disable loop0 disable",
-                "mactime enable-disable sw_if_index 9999",
-                "bin mactime_enable_disable loop0",
-                "bin mactime_enable_disable loop0 disable",
-                "bin mactime_enable_disable sw_if_index 1",
                 "set interface state loop0 up",
                 "clear mactime",
                 "set ip arp loop0 192.168.1.1 00:d0:2d:5e:86:85",
-                "bin mactime_add_del_range name sallow "
-                "mac 00:d0:2d:5e:86:85 allow-static del",
-                "bin mactime_add_del_range name sallow "
-                "mac 00:d0:2d:5e:86:85 allow-static",
-                "bin mactime_add_del_range name sallow "
-                "mac 00:d0:2d:5e:86:85 allow-static del",
-                "bin mactime_add_del_range name sallow "
-                "mac 00:d0:2d:5e:86:85 allow-static",
-                "bin mactime_add_del_range name sblock "
-                "mac 01:00:5e:7f:ff:fa drop-static",
-                "bin mactime_add_del_range name ddrop "
-                "mac c8:bc:c8:5a:ba:f3 drop-range Sun - Sat "
-                "00:00 - 23:59",
-                "bin mactime_add_del_range name dallow "
-                "mac c8:bc:c8:5a:ba:f4 allow-range Sun - Sat "
-                "00:00 - 23:59",
-                "bin mactime_add_del_range name multi "
-                "mac c8:bc:c8:f0:f0:f0 allow-range Sun - Mon "
-                "00:00 - 23:59 Tue - Sat 00:00 - 23:59",
-                "bin mactime_add_del_range bogus",
-                "bin mactime_add_del_range mac 01:00:5e:7f:f0:f0 allow-static",
-                "bin mactime_add_del_range "
-                "name tooloooooooooooooooooooooooooooooooooooooooooooooooo"
-                "nnnnnnnnnnnnnnnnnnnnnnnnnnnng mac 00:00:de:ad:be:ef "
-                "allow-static",
                 "packet-generator new {\n"
                 " name allow\n"
                 " limit 15\n"
@@ -80,7 +50,7 @@ class TestMactime(VppTestCase):
                 "   IP6: 00:d0:2d:5e:86:85 -> 00:0d:ea:d0:00:00\n"
                 "   ICMP: db00::1 -> db00::2\n"
                 "   incrementing 30\n"
-                "   }\n",
+                "   }\n"
                 "}\n",
                 "packet-generator new {\n"
                 " name deny\n"
@@ -92,7 +62,7 @@ class TestMactime(VppTestCase):
                 "   IP6: 01:00:5e:7f:ff:fa -> 00:0d:ea:d0:00:00\n"
                 "   ICMP: db00::1 -> db00::2\n"
                 "   incrementing 30\n"
-                "   }\n",
+                "   }\n"
                 "}\n",
                 "packet-generator new {\n"
                 " name ddrop\n"
@@ -104,7 +74,7 @@ class TestMactime(VppTestCase):
                 "   IP6: c8:bc:c8:5a:ba:f3 -> 00:0d:ea:d0:00:00\n"
                 "   ICMP: db00::1 -> db00::2\n"
                 "   incrementing 30\n"
-                "   }\n",
+                "   }\n"
                 "}\n",
                 "packet-generator new {\n"
                 " name dallow\n"
@@ -148,8 +118,57 @@ class TestMactime(VppTestCase):
                 "show trace",
                 "show error"]
 
+        # tuples of
+        # ('command', 'expected output')
+        invalid_commands = [
+            ("mactime enable-disable disable",
+             "mactime enable-disable: Please specify an interface..."),
+            ("mactime enable-disable sw_if_index 9999",
+             "mactime enable-disable: Invalid interface, only works on physical ports"),  # noqa
+            ("bin mactime_enable_disable loop0",
+             "binary-api: mactime_enable_disable error: Misc"),
+            ("bin mactime_enable_disable loop0 disable",
+             "binary-api: mactime_enable_disable error: Misc"),
+            ("bin mactime_enable_disable sw_if_index 1",
+             "binary-api: mactime_enable_disable error: Misc"),
+            ("bin mactime_add_del_range name sallow mac 00:d0:2d:5e:86:85 allow-static del",  # noqa
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range name sallow mac 00:d0:2d:5e:86:85 allow-static",  # noqa
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range name sallow "
+             "mac 00:d0:2d:5e:86:85 allow-static del",
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range name sallow mac 00:d0:2d:5e:86:85 allow-static",  # noqa
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range name sblock mac 01:00:5e:7f:ff:fa drop-static",  # noqa
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range name ddrop mac c8:bc:c8:5a:ba:f3 drop-range Sun - Sat 00:00 - 23:59",  # noqa
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range name dallow mac c8:bc:c8:5a:ba:f4 allow-range Sun - Sat 00:00 - 23:59",  # noqa
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range name multi mac c8:bc:c8:f0:f0:f0 allow-range Sun - Mon 00:00 - 23:59 Tue - Sat 00:00 - 23:59",  # noqa
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range bogus",
+             "mac address required, not set\n"
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range mac 01:00:5e:7f:f0:f0 allow-static",
+             "binary-api: mactime_add_del_range error: Misc"),
+            ("bin mactime_add_del_range name tooloooooooooooooooooooooooooooooooooooooooooooooooonnnnnnnnnnnnnnnnnnnnnnnnnnnng mac 00:00:de:ad:be:ef allow-static",  # noqa
+             "device name too long, max 64\n"
+             "binary-api: mactime_add_del_range error: Misc")
+        ]
+
         for cmd in cmds:
             self.logger.info(self.vapi.cli(cmd))
+
+        for cmd in invalid_commands:
+            with self.assertRaises(CliFailedCommandError) as ctx_mgr:
+                self.logger.info(self.vapi.cli(cmd[0]))
+
+            self.assertEqual(cmd[1], ctx_mgr.exception.command_output,
+                             'Msg: %s, expected: %s' %
+                             (ctx_mgr.exception.args, cmd[1]))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
