@@ -77,13 +77,13 @@ prepare_rewrite (ip6_address_t src_addr, ip6_address_t * sid_list,
       srh->length = sr_hdr_len / 8 - 1;
       srh->type = ROUTING_HEADER_TYPE_SR;
       srh->segments_left = num_sids - 1;
-      srh->first_segment = num_sids - 1;
+      srh->last_entry = num_sids - 1;
       srh->flags = 0x00;
-      srh->reserved = 0x00;
+      srh->tag = 0x0000;
 
       /* Fill segment list */
       ip6_address_t *this_address;
-      ip6_address_t *addrp = srh->segments + srh->first_segment;
+      ip6_address_t *addrp = srh->segments + srh->last_entry;
       vec_foreach (this_address, sid_list)
       {
 	*addrp = *this_address;
