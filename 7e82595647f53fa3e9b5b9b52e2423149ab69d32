@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b820efe0_028e54e8",
+        "filename": "src/tools/vppapigen/vppapigen_enumc.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-20T11:52:36Z",
+      "side": 1,
+      "message": "Can we do this without envvars?  They have to be mocked to test.",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 58
+      },
+      "revId": "7e82595647f53fa3e9b5b9b52e2423149ab69d32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
