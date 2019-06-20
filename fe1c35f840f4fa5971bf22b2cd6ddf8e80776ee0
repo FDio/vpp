@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "654df179_dab6c647",
+        "filename": "src/plugins/unittest/svm_fifo_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 837,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-20T20:15:07Z",
+      "side": 1,
+      "message": "I guess this ran out of sync and it should be -158. Can\u0027t we use VNET_API_ERROR_SYNTAX_ERROR here?",
+      "range": {
+        "startLine": 837,
+        "startChar": 34,
+        "endLine": 837,
+        "endChar": 37
+      },
+      "revId": "fe1c35f840f4fa5971bf22b2cd6ddf8e80776ee0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
