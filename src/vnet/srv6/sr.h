@@ -302,11 +302,11 @@ ip6_sr_compute_rewrite_string_insert (ip6_address_t * sl)
   srh = (ip6_sr_header_t *) rs;
   srh->type = ROUTING_HEADER_TYPE_SR;
   srh->segments_left = vec_len (sl);
-  srh->first_segment = vec_len (sl);
+  srh->last_entry = vec_len (sl);
   srh->length = ((sizeof (ip6_sr_header_t) +
 		  ((vec_len (sl) + 1) * sizeof (ip6_address_t))) / 8) - 1;
   srh->flags = 0x00;
-  srh->reserved = 0x0000;
+  srh->tag = 0x0000;
   addrp = srh->segments + vec_len (sl);
   vec_foreach (this_address, sl)
   {

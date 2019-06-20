@@ -28,7 +28,7 @@
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *   | Next Header   |  Hdr Ext Len  | Routing Type  | Segments Left |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   | First Segment |     Flags     |           RESERVED            |
+ *   |  Last Entry   |     Flags     |              Tag              |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *   |                                                               |
  *   |            Segment List[0] (128 bits IPv6 address)            |
@@ -61,13 +61,12 @@
  *
  *   o  Routing Type: TBD, to be assigned by IANA (suggested value: 4).
  *
- *   o  Segments Left.  Defined in [RFC2460], it contains the index, in
+ *   o  Segments Left.  Defined in [RFC8200], it contains the index, in
  *      the Segment List, of the next segment to inspect.  Segments Left
  *      is decremented at each segment.
  *
- *   o  First Segment: contains the index, in the Segment List, of the
- *      first segment of the path which is in fact the last element of the
- *      Segment List.
+ *   o  Last Entry: contains the index (zero based), in the Segment List,
+ *      of the the last element of the Segment List
  *
  *   o  Flags: 8 bits of flags.  Following flags are defined:
  *
@@ -94,8 +93,10 @@
  *        36 octets of the SRH represent the HMAC information.  See
  *        Section 3.1.5 for details on the HMAC TLV.
  *
- *   o  RESERVED: SHOULD be unset on transmission and MUST be ignored on
- *      receipt.
+ *   o  Tag: tag a packet as part of a class or group of packets, e.g.,
+ *      packets sharing the same set of properties. When tag is not used
+ *      at source it MUST be set to zero on transmission. When tag is not
+ *      used during SRH Processing it SHOULD be ignored.
  *
  *   o  Segment List[n]: 128 bit IPv6 addresses representing the nth
  *      segment in the Segment List.  The Segment List is encoded starting
@@ -132,7 +133,7 @@ typedef struct
   u8 segments_left;
 
   /* Pointer to the first segment in the header */
-  u8 first_segment;
+  u8 last_entry;
 
   /* Flag bits */
 #define IP6_SR_HEADER_FLAG_PROTECTED  (0x40)
@@ -142,7 +143,7 @@ typedef struct
 
   /* values 0x0, 0x4 - 0x7 are reserved */
   u8 flags;
-  u16 reserved;
+  u16 tag;
 
   /* The segment elts */
   ip6_address_t segments[0];
