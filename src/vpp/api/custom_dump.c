@@ -2227,6 +2227,17 @@ static void *vl_api_want_l2_macs_events_t_print
   FINISH;
 }
 
+static void *vl_api_want_ip_events_t_print
+  (vl_api_want_ip_events_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: want_ip_events %s",
+	      mp->enable_disable ? "enable" : "disable");
+
+  FINISH;
+}
+
 static void *vl_api_input_acl_set_interface_t_print
   (vl_api_input_acl_set_interface_t * mp, void *handle)
 {
@@ -3745,6 +3756,7 @@ _(IP_SCAN_NEIGHBOR_ENABLE_DISABLE, ip_scan_neighbor_enable_disable)     \
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(WANT_L2_MACS_EVENTS, want_l2_macs_events)                             \
+_(WANT_IP_EVENTS, want_ip_events)                                       \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
 _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \

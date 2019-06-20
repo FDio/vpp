@@ -85,6 +85,7 @@ _(IP_SCAN_NEIGHBOR_ENABLE_DISABLE, ip_scan_neighbor_enable_disable)     \
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(WANT_IP6_RA_EVENTS, want_ip6_ra_events)                               \
+_(WANT_IP_EVENTS, want_ip_events)                                       \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_DUMP, proxy_arp_dump)                                       \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
@@ -2395,6 +2396,8 @@ want_ip6_ra_events_reaper (u32 client_index)
 
 VL_MSG_API_REAPER_FUNCTION (want_ip6_ra_events_reaper);
 
+pub_sub_handler (ip_events, IP_EVENTS);
+
 static void
 vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
 {
@@ -2881,6 +2884,65 @@ vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
     ip_punt_redirect_walk (fproto, send_ip_punt_redirect_details, &ctx);
 }
 
+static void
+send_ip_event (vpe_api_main_t * am, u32 sw_if_index, u32 is_prefix_del,
+	       fib_prefix_t * pfx)
+{
+  vpe_client_registration_t *reg;
+
+  /* *INDENT-OFF* */
+  pool_foreach (reg, am->ip_events_registrations,
+  ({
+    vl_api_registration_t *vl_reg;
+    vl_reg = vl_api_client_index_to_registration (reg->client_index);
+    if (vl_reg && vl_api_can_send_msg (vl_reg))
+      {
+	vl_api_ip_event_t * event = vl_msg_api_alloc (sizeof *event);
+	clib_memset (event, 0, sizeof *event);
+	event->_vl_msg_id = htons (VL_API_IP_EVENT);
+	event->client_index = reg->client_index;
+	event->pid = reg->client_pid;
+	event->sw_if_index = htonl (sw_if_index);
+	ip_prefix_encode (pfx, &event->prefix);
+	event->is_prefix_del = is_prefix_del;
+	vl_api_send_msg (vl_reg, (u8 *) event);
+      }
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+ip4_add_del_interface_address_cb (ip4_main_t * im, uword opaque,
+				  u32 sw_if_index, ip4_address_t * address,
+				  u32 address_length, u32 if_address_index,
+				  u32 is_del)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  fib_prefix_t pfx = {
+    .fp_addr.ip4 = *address,
+    .fp_len = address_length,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+
+  send_ip_event (am, sw_if_index, is_del, &pfx);
+}
+
+static void
+ip6_add_del_interface_address_cb (ip6_main_t * im, uword opaque,
+				  u32 sw_if_index, ip6_address_t * address,
+				  u32 address_length, u32 if_address_index,
+				  u32 is_del)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  fib_prefix_t pfx = {
+    .fp_addr.ip6 = *address,
+    .fp_len = address_length,
+    .fp_proto = FIB_PROTOCOL_IP6,
+  };
+
+  send_ip_event (am, sw_if_index, is_del, &pfx);
+}
+
 #define vl_msg_name_crc_list
 #include <vnet/ip/ip.api.h>
 #undef vl_msg_name_crc_list
@@ -2897,6 +2959,10 @@ static clib_error_t *
 ip_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
+  ip4_add_del_interface_address_callback_t cb4;
+  ip6_add_del_interface_address_callback_t cb6;
+  ip6_main_t *im6 = &ip6_main;
+  ip4_main_t *im4 = &ip4_main;
 
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
@@ -2920,6 +2986,14 @@ ip_api_hookup (vlib_main_t * vm)
   setup_message_id_table (am);
 
   ra_set_publisher_node (wc_arp_process_node.index, RA_REPORT);
+
+  cb4.function = ip4_add_del_interface_address_cb;
+  cb4.function_opaque = 0;
+  vec_add1 (im4->add_del_interface_address_callbacks, cb4);
+
+  cb6.function = ip6_add_del_interface_address_cb;
+  cb6.function_opaque = 0;
+  vec_add1 (im6->add_del_interface_address_callbacks, cb6);
 
   return 0;
 }
