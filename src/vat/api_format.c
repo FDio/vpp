@@ -1522,6 +1522,21 @@ vl_api_l2_macs_event_t_handler_json (vl_api_l2_macs_event_t * mp)
   /* JSON output not supported */
 }
 
+static void
+vl_api_ip_event_t_handler (vl_api_ip_event_t * mp)
+{
+  errmsg ("ip event: pid %d sw_if_index %d prefix %U %s\n",
+	  ntohl (mp->pid), ntohl (mp->sw_if_index),
+	  format_vl_api_prefix, &mp->prefix,
+	  mp->is_prefix_del ? "deleted" : "added");
+}
+
+static void
+vl_api_ip_event_t_handler_json (vl_api_ip_event_t * mp)
+{
+  /* JSON output not supported */
+}
+
 #define vl_api_bridge_domain_details_t_endian vl_noop_handler
 #define vl_api_bridge_domain_details_t_print vl_noop_handler
 
@@ -5195,6 +5210,7 @@ _(ip_scan_neighbor_enable_disable_reply)                \
 _(want_ip4_arp_events_reply)                            \
 _(want_ip6_nd_events_reply)                             \
 _(want_l2_macs_events_reply)                            \
+_(want_ip_events_reply)                                 \
 _(input_acl_set_interface_reply)                        \
 _(ipsec_spd_add_del_reply)                              \
 _(ipsec_interface_add_del_spd_reply)                    \
@@ -5432,6 +5448,8 @@ _(WANT_IP6_ND_EVENTS_REPLY, want_ip6_nd_events_reply)			\
 _(IP6_ND_EVENT, ip6_nd_event)						\
 _(WANT_L2_MACS_EVENTS_REPLY, want_l2_macs_events_reply)			\
 _(L2_MACS_EVENT, l2_macs_event)						\
+_(WANT_IP_EVENTS_REPLY, want_ip_events_reply)				\
+_(IP_EVENT, ip_event)							\
 _(INPUT_ACL_SET_INTERFACE_REPLY, input_acl_set_interface_reply)         \
 _(IP_ADDRESS_DETAILS, ip_address_details)                               \
 _(IP_DETAILS, ip_details)                                               \
@@ -14144,6 +14162,38 @@ api_want_l2_macs_events (vat_main_t * vam)
 }
 
 static int
+api_want_ip_events (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_want_ip_events_t *mp;
+  int enable = -1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "enable"))
+	enable = 1;
+      else if (unformat (i, "disable"))
+	enable = 0;
+      else
+	break;
+    }
+
+  if (enable == -1)
+    {
+      errmsg ("missing enable|disable\n");
+      return -99;
+    }
+
+  M (WANT_IP_EVENTS, mp);
+  mp->enable_disable = enable;
+  mp->pid = htonl (getpid ());
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 api_input_acl_set_interface (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -22044,6 +22094,7 @@ _(ip_scan_neighbor_enable_disable, "[ip4|ip6|both|disable] [interval <n-min>]\n"
 _(want_ip4_arp_events, "address <ip4-address> [del]")                   \
 _(want_ip6_nd_events, "address <ip6-address> [del]")                    \
 _(want_l2_macs_events, "[disable] [learn-limit <n>] [scan-delay <n>] [max-entries <n>]") \
+_(want_ip_events,  "enable|disable")                                   \
 _(ip_address_dump, "(ipv4 | ipv6) (<intfc> | sw_if_index <id>)")        \
 _(ip_dump, "ipv4 | ipv6")                                               \
 _(ipsec_spd_add_del, "spd_id <n> [del]")                                \
