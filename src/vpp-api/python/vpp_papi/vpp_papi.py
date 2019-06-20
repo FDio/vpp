@@ -104,6 +104,9 @@ class FuncWrapper(object):
     def __call__(self, **kwargs):
         return self._func(**kwargs)
 
+    def __repr__(self):
+        return '<FuncWrapper(func=<%s(%s)>)>' % (self.__name__, self.__doc__)
+
 
 class VPPApiError(Exception):
     pass
