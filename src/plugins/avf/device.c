@@ -1516,10 +1516,20 @@ static char *avf_tx_func_error_strings[] = {
 #undef _
 };
 
+static void
+avf_clear_hw_interface_counters (u32 instance)
+{
+  avf_main_t *am = &avf_main;
+  avf_device_t *ad = vec_elt_at_index (am->devices, instance);
+  clib_memcpy_fast (&ad->last_cleared_eth_stats,
+		    &ad->eth_stats, sizeof (ad->eth_stats));
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (avf_device_class,) =
 {
   .name = "Adaptive Virtual Function (AVF) interface",
+  .clear_counters = avf_clear_hw_interface_counters,
   .format_device = format_avf_device,
   .format_device_name = format_avf_device_name,
   .admin_up_down_function = avf_interface_admin_up_down,

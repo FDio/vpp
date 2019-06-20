@@ -107,9 +107,10 @@ format_avf_device (u8 * s, va_list * args)
     s = format (s, "\n%Uerror %U", format_white_space, indent,
 		format_clib_error, ad->error);
 
-#define _(c) if (ad->eth_stats.c) \
+#define _(c) if (ad->eth_stats.c - ad->last_cleared_eth_stats.c) \
   a = format (a, "\n%U%-20U %u", format_white_space, indent + 2, \
-	      format_c_identifier, #c, ad->eth_stats.c);
+	      format_c_identifier, #c,                           \
+              ad->eth_stats.c - ad->last_cleared_eth_stats.c);
   foreach_virtchnl_eth_stats;
 #undef _
   if (a)
