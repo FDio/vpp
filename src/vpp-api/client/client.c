@@ -450,11 +450,13 @@ vac_read (char **p, int *l, u16 timeout)
   int rv;
   vl_shmem_hdr_t *shmem_hdr;
 
-  if (!pm->connected_to_vlib) return -1;
+  /* svm_queue_sub(below) returns {-1, -2} */
+  if (!pm->connected_to_vlib) return -3;
 
   *l = 0;
 
-  if (am->our_pid == 0) return (-1);
+  /* svm_queue_sub(below) returns {-1, -2} */
+  if (am->our_pid == 0) return (-4);
 
   /* Poke timeout thread */
   if (timeout)
