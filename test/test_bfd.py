@@ -25,7 +25,8 @@ from util import ppp
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_lo_interface import VppLoInterface
-from vpp_papi_provider import UnexpectedApiReturnValueError
+from vpp_papi_provider import CliFailedCommandError, \
+    UnexpectedApiReturnValueError
 from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_gre_interface import VppGreInterface
 
@@ -2391,9 +2392,15 @@ class BFDCLITestCase(VppTestCase):
 
     def cli_verify_response(self, cli, expected):
         """ execute a CLI, asserting that the response matches expectation """
-        self.assert_equal(self.vapi.cli(cli).strip(),
-                          expected,
-                          "CLI command response")
+        try:
+            self.assert_equal(self.vapi.cli(cli).strip(),
+                              expected,
+                              "CLI command response")
+        except CliFailedCommandError as exc:
+            # handle the cli error response case.
+            self.assert_equal(exc.command_output,
+                              expected,
+                              "CLI command error response")
 
     def test_show(self):
         """ show commands """
