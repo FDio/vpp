@@ -71,10 +71,12 @@ class VPPAPILexer(object):
         'union': 'UNION',
     }
 
-    tokens = ['STRING_LITERAL',
+    tokens = ['STRING_LITERAL','LPAREN', 'RPAREN',
               'ID', 'NUM'] + list(reserved.values())
 
     t_ignore_LINE_COMMENT = '//.*'
+    t_LPAREN  = r'\('
+    t_RPAREN  = r'\)'
 
     def t_NUM(self, t):
         r'0[xX][0-9a-fA-F]+|\d+'
@@ -218,12 +220,12 @@ class Enum():
         self.enumtype = enumtype
 
         count = 0
-        for i, b in enumerate(block):
-            if type(b) is list:
-                count = b[1]
-            else:
+        for b in block:
+            if 'const' not in b:
+                b['const'] = count
                 count += 1
-                block[i] = [b, count]
+            else:
+                count = b['const']
 
         self.block = block
         self.crc = str(block).encode()
@@ -503,9 +505,17 @@ class VPPAPIParser(object):
         '''enum_statement : ID '=' NUM ','
                           | ID ',' '''
         if len(p) == 5:
-            p[0] = [p[1], p[3]]
+            p[0] = {'id':p[1], 'const':p[3]}
         else:
-            p[0] = p[1]
+            p[0] = {'id':p[1]}
+
+    def p_enum_statement2(self, p):
+        '''enum_statement : LPAREN ID ',' STRING_LITERAL RPAREN '=' NUM ','
+                          | LPAREN ID ',' STRING_LITERAL RPAREN ',' '''
+        if len(p) == 9:
+            p[0] = {'id': p[2], 'desc': p[4], 'const': p[7]}
+        else:
+            p[0] = {'id': p[2], 'desc': p[4]}
 
     def p_field_options(self, p):
         '''field_options : field_option
