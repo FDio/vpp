@@ -224,6 +224,12 @@ stat_segment_heartbeat (void)
   return stat_segment_heartbeat_r (sm);
 }
 
+static bool
+offset_valid (stat_client_main_t * sm, uint64_t offset)
+{
+  return (offset > 0 && offset < sm->memory_size);
+}
+
 static stat_segment_data_t
 copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 {
@@ -244,8 +250,9 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
-      if (ep->offset == 0)
-	return result;
+      if (!offset_valid(sm, ep->offset))
+		return result;
+
       simple_c = stat_segment_pointer (sm->shared_header, ep->offset);
       result.simple_counter_vec = vec_dup (simple_c);
       offset_vector =
@@ -259,8 +266,9 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
-      if (ep->offset == 0)
-	return result;
+      if (!offset_valid(sm, ep->offset))
+		return result;
+
       combined_c = stat_segment_pointer (sm->shared_header, ep->offset);
       result.combined_counter_vec = vec_dup (combined_c);
       offset_vector =
@@ -287,8 +295,9 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       break;
 
     case STAT_DIR_TYPE_NAME_VECTOR:
-      if (ep->offset == 0)
-	return result;
+      if (!offset_valid(sm, ep->offset))
+		return result;
+
       uint8_t **name_vector =
 	stat_segment_pointer (sm->shared_header, ep->offset);
       result.name_vector = vec_dup (name_vector);
