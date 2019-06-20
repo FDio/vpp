@@ -184,11 +184,11 @@ compute_rewrite_encaps (ip6_address_t * sl)
       srh->protocol = IP_PROTOCOL_IPV6;
       srh->type = ROUTING_HEADER_TYPE_SR;
       srh->segments_left = vec_len (sl) - 1;
-      srh->first_segment = vec_len (sl) - 1;
+      srh->last_entry = vec_len (sl) - 1;
       srh->length = ((sizeof (ip6_sr_header_t) +
 		      (vec_len (sl) * sizeof (ip6_address_t))) / 8) - 1;
       srh->flags = 0x00;
-      srh->reserved = 0x00;
+      srh->tag = 0x0000;
       addrp = srh->segments + vec_len (sl) - 1;
       vec_foreach (this_address, sl)
       {
@@ -226,11 +226,11 @@ compute_rewrite_insert (ip6_address_t * sl)
   srh = (ip6_sr_header_t *) rs;
   srh->type = ROUTING_HEADER_TYPE_SR;
   srh->segments_left = vec_len (sl);
-  srh->first_segment = vec_len (sl);
+  srh->last_entry = vec_len (sl);
   srh->length = ((sizeof (ip6_sr_header_t) +
 		  ((vec_len (sl) + 1) * sizeof (ip6_address_t))) / 8) - 1;
   srh->flags = 0x00;
-  srh->reserved = 0x0000;
+  srh->tag = 0x0000;
   addrp = srh->segments + vec_len (sl);
   vec_foreach (this_address, sl)
   {
@@ -265,11 +265,11 @@ compute_rewrite_bsid (ip6_address_t * sl)
   srh = (ip6_sr_header_t *) rs;
   srh->type = ROUTING_HEADER_TYPE_SR;
   srh->segments_left = vec_len (sl) - 1;
-  srh->first_segment = vec_len (sl) - 1;
+  srh->last_entry = vec_len (sl) - 1;
   srh->length = ((sizeof (ip6_sr_header_t) +
 		  (vec_len (sl) * sizeof (ip6_address_t))) / 8) - 1;
   srh->flags = 0x00;
-  srh->reserved = 0x0000;
+  srh->tag = 0x0000;
   addrp = srh->segments + vec_len (sl) - 1;
   vec_foreach (this_address, sl)
   {
