@@ -1,13 +1,12 @@
-import signal
 import os
 import sys
 import traceback
-from log import RED, single_line_delim, double_line_delim
 import ipaddress
 from subprocess import check_output, CalledProcessError
 
 import scapy.compat
-
+import framework
+from log import RED, single_line_delim, double_line_delim
 from util import check_core_path, get_core_path
 
 
@@ -72,10 +71,6 @@ class Hook(object):
         pass
 
 
-class VppDiedError(Exception):
-    pass
-
-
 class PollHook(Hook):
     """ Hook which checks if the vpp subprocess is alive """
 
@@ -117,22 +112,11 @@ class PollHook(Hook):
 
         self.test.vpp.poll()
         if self.test.vpp.returncode is not None:
-            signaldict = dict(
-                (k, v) for v, k in reversed(sorted(signal.__dict__.items()))
-                if v.startswith('SIG') and not v.startswith('SIG_'))
-
-            if self.test.vpp.returncode in signaldict:
-                s = signaldict[abs(self.test.vpp.returncode)]
-            else:
-                s = "unknown"
-            msg = "VPP subprocess died unexpectedly with returncode %d [%s]." \
-                  % (self.test.vpp.returncode, s)
-            self.logger.critical(msg)
+            self.test.vpp_dead = True
+            raise framework.VppDiedError(rv=self.test.vpp.returncode)
             core_path = get_core_path(self.test.tempdir)
             if os.path.isfile(core_path):
                 self.on_crash(core_path)
-            self.test.vpp_dead = True
-            raise VppDiedError(msg)
 
     def before_api(self, api_name, api_args):
         """

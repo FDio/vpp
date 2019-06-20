@@ -332,7 +332,11 @@ M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 
 Test Infrastructure
+<<<<<<< HEAD
 I:  tests
+=======
+I:	tests
+>>>>>>> d84661c... tests: refactor VppDiedError.
 M:	Klement Sekera <ksekera@cisco.com>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	test/

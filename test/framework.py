@@ -5,6 +5,7 @@ import gc
 import sys
 import os
 import select
+import signal
 import unittest
 import tempfile
 import time
@@ -21,7 +22,7 @@ from logging import FileHandler, DEBUG, Formatter
 
 import scapy.compat
 from scapy.packet import Raw
-from hook import StepHook, PollHook, VppDiedError
+import hook as hookmodule
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
@@ -67,6 +68,27 @@ if os.getenv('TEST_DEBUG', "0") == "1":
   The module provides a set of tools for constructing and running tests and
   representing the results.
 """
+
+
+class VppDiedError(Exception):
+    """ exception for reporting that the subprocess has died."""
+
+    signals_by_value = {v: k for k, v in signal.__dict__.items() if
+                        k.startswith('SIG') and not k.startswith('SIG_')}
+
+    def __init__(self, rv=None):
+        self.rv = rv
+        self.signal_name = None
+        try:
+            self.signal_name = VppDiedError.signals_by_value[-rv]
+        except KeyError:
+            pass
+
+        msg = "VPP subprocess died unexpectedly with return code: %d%s." % (
+            self.rv,
+            ' [%s]' % self.signal_name if
+            self.signal_name is not None else '')
+        super(VppDiedError, self).__init__(msg)
 
 
 class _PacketInfo(object):
@@ -492,9 +514,9 @@ class VppTestCase(unittest.TestCase):
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
                                        read_timeout)
             if cls.step:
-                hook = StepHook(cls)
+                hook = hookmodule.StepHook(cls)
             else:
-                hook = PollHook(cls)
+                hook = hookmodule.PollHook(cls)
             cls.vapi.register_hook(hook)
             cls.wait_for_stats_socket()
             cls.statistics = VPPStats(socketname=cls.stats_sock)
@@ -519,10 +541,8 @@ class VppTestCase(unittest.TestCase):
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
         except Exception:
-            try:
-                cls.quit()
-            except Exception:
-                pass
+
+            cls.quit()
             raise
 
     @classmethod
