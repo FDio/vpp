@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "007999c6_4a649fc4",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-20T14:27:40Z",
+      "side": 1,
+      "message": "I\u0027m sorry.  I\u0027m still not getting it.  Shouldn\u0027t this only be if it is empty?  Setting the default to [] is the mutable default pep8 violation, yes? \nI believe None should be the only sentinel value.",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 98,
+        "endChar": 75
+      },
+      "revId": "4f2663e9528fe0337d75dda189b750c04c683099",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a17fe917_b102e8db",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-20T14:27:40Z",
+      "side": 1,
+      "message": "This is where the data \u003d\u003d [] should be set to a default, but this is a workaround because the .api parser does not support defaults for [] or typedef elements.\n\nI ran into this exact issue trying to set a default value for an unspecified packed ip address to {0,0,0,0}.",
+      "range": {
+        "startLine": 103,
+        "startChar": 16,
+        "endLine": 103,
+        "endChar": 24
+      },
+      "revId": "4f2663e9528fe0337d75dda189b750c04c683099",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
