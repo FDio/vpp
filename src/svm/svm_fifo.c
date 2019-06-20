@@ -909,10 +909,10 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
   if (PREDICT_FALSE (cursize == 0))
     return SVM_FIFO_EEMPTY;
 
-  svm_fifo_trace_add (f, tail, total_drop_bytes, 3);
-
   /* number of bytes we're going to drop */
   total_drop_bytes = clib_min (cursize, len);
+
+  svm_fifo_trace_add (f, tail, total_drop_bytes, 3);
 
   /* move head */
   head = (head + total_drop_bytes) % f->size;
