@@ -164,6 +164,7 @@ typedef struct
 
   /* stats */
   virtchnl_eth_stats_t eth_stats;
+  virtchnl_eth_stats_t last_cleared_eth_stats;
 
   /* error */
   clib_error_t *error;
