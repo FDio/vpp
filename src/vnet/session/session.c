@@ -32,18 +32,10 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
   session_event_t *evt;
   svm_msg_q_msg_t msg;
   svm_msg_q_t *mq;
-  u32 tries = 0, max_tries;
 
   mq = session_main_get_vpp_event_queue (thread_index);
-  while (svm_msg_q_try_lock (mq))
-    {
-      max_tries = vlib_get_current_process (vlib_get_main ())? 1e6 : 3;
-      if (tries++ == max_tries)
-	{
-	  SESSION_DBG ("failed to enqueue evt");
-	  return -1;
-	}
-    }
+  if (PREDICT_FALSE (svm_msg_q_lock (mq)))
+    return -1;
   if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
     {
       svm_msg_q_unlock (mq);
