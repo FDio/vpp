@@ -1352,9 +1352,8 @@ static void vl_api_show_version_reply_t_handler
       p +=
 	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
       s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      vec_free (s);
-
       errmsg ("build directory: %v\n", s);
+      vec_free (s);
     }
   vam->retval = retval;
   vam->result_ready = 1;
