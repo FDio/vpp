@@ -60,13 +60,13 @@ fi
 $SUDOCMD make bootstrap
 
 if [ "$OS_ID" == "ubuntu" ]; then
-    $SUDOCMD make pkg-deb
+    $SUDOCMD make vom-pkg-deb
 elif [ "$OS_ID" == "debian" ]; then
-    $SUDOCMD make pkg-deb
+    $SUDOCMD make vom-pkg-deb
 elif [ "$OS_ID" == "centos" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
-    $SUDOCMD make pkg-rpm
+    $SUDOCMD make vom-pkg-rpm
 elif [ "$OS_ID" == "opensuse" ]; then
-    $SUDOCMD make pkg-rpm
+    $SUDOCMD make vom-pkg-rpm
 fi
 
