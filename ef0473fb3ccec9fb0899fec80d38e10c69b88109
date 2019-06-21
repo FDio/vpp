@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ae4e93d9_db796d81",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-06-21T13:57:12Z",
+      "side": 1,
+      "message": "Why is this code being included in this patch but not in [0]?\n\nIt would be best to cherry pick [0] into 19.04 and master, then introduce this new code in a separate patch, unless I\u0027m missing the place where this is used in this patch.\n\n[0] https://gerrit.fd.io/r/20159",
+      "range": {
+        "startLine": 112,
+        "startChar": 0,
+        "endLine": 141,
+        "endChar": 17
+      },
+      "revId": "ef0473fb3ccec9fb0899fec80d38e10c69b88109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
