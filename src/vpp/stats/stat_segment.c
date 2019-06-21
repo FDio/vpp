@@ -152,7 +152,8 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, u32 cindex,
 }
 
 void
-vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
+vlib_stats_register_error_index (void *oldheap, u8 * name, u64 * em_vec,
+				 u64 index)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
@@ -162,17 +163,32 @@ vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
   ASSERT (shared_header);
 
   vlib_stat_segment_lock ();
+  u32 next_vector_index = vec_len (sm->directory_vector);
+  clib_mem_set_heap (oldheap);	/* Exit stats segment */
 
-  memcpy (e.name, name, vec_len (name));
-  e.name[vec_len (name)] = '\0';
-  e.type = STAT_DIR_TYPE_ERROR_INDEX;
-  e.offset = index;
-  e.offset_vector = 0;
-  vec_add1 (sm->directory_vector, e);
+  u32 vector_index = lookup_or_create_hash_index (oldheap, (char *) name,
+						  next_vector_index);
 
-  /* Warn clients to refresh any pointers they might be holding */
-  shared_header->directory_offset =
-    stat_segment_offset (shared_header, sm->directory_vector);
+  /* Back to stats segment */
+  clib_mem_set_heap (sm->heap);	/* Re-enter stat segment */
+
+  if (next_vector_index == vector_index)
+    {
+      memcpy (e.name, name, vec_len (name));
+      e.name[vec_len (name)] = '\0';
+      e.type = STAT_DIR_TYPE_ERROR_INDEX;
+      e.offset = index;
+      e.offset_vector = 0;
+      vec_add1 (sm->directory_vector, e);
+
+      /* Warn clients to refresh any pointers they might be holding */
+      shared_header->directory_offset =
+	stat_segment_offset (shared_header, sm->directory_vector);
+    }
+  else
+    {
+      vec_free (name);
+    }
 
   vlib_stat_segment_unlock ();
 }

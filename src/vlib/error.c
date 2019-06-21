@@ -109,10 +109,11 @@ vlib_error_drop_buffers (vlib_main_t * vm,
   return n_buffers;
 }
 
-void vlib_stats_register_error_index (u8 *, u64 *, u64)
+void vlib_stats_register_error_index (void *, u8 *, u64 *, u64)
   __attribute__ ((weak));
 void
-vlib_stats_register_error_index (u8 * notused, u64 * notused2, u64 notused3)
+vlib_stats_register_error_index (void *noutused, u8 * notused2,
+				 u64 * notused3, u64 notused4)
 {
 };
 
@@ -180,7 +181,7 @@ vlib_register_errors (vlib_main_t * vm,
       {
 	error_name = format (0, "/err/%v/%s%c", n->name, error_strings[i], 0);
 	/* Note: error_name consumed by the following call */
-	vlib_stats_register_error_index (error_name, em->counters,
+	vlib_stats_register_error_index (oldheap, error_name, em->counters,
 					 n->error_heap_index + i);
       }
   }
