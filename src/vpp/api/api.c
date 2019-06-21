@@ -60,7 +60,6 @@
 
 #include <vpp/api/vpe_msg_enum.h>
 #include <vpp/api/types.h>
-#include <vlibapi/api_types_inlines.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>

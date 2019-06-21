@@ -22,7 +22,6 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
-#include <vlibapi/api_types_inlines.h>
 
 /* define message IDs */
 #include <http_static/http_static_msg_enum.h>

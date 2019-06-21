@@ -24,11 +24,26 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* VPP API string type */
 typedef struct
 {
   u32 length;
   u8 buf[0];
 } __attribute__ ((packed)) vl_api_string_t;
+
+extern int vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str);
+extern int vl_api_vec_to_api_string (const u8 *vec, vl_api_string_t * str);
+extern u8 * vl_api_from_api_string (vl_api_string_t * astr);
+extern u32 vl_api_string_len (vl_api_string_t * astr);
+extern u8 * vl_api_from_api_to_vec (vl_api_string_t *astr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

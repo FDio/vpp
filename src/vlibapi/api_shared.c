@@ -992,6 +992,46 @@ vl_msg_pop_heap (void *oldheap)
   pthread_mutex_unlock (&am->vlib_rp->mutex);
 }
 
+int
+vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
+{
+  clib_memcpy_fast (str->buf, buf, len);
+  str->length = htonl (len);
+  return len + sizeof (u32);
+}
+
+int
+vl_api_vec_to_api_string (const u8 * vec, vl_api_string_t * str)
+{
+  u32 len = vec_len (vec);
+  clib_memcpy (str->buf, vec, len);
+  str->length = htonl (len);
+  return len + sizeof (u32);
+}
+
+/* Return a pointer to the API string (not nul terminated */
+u8 *
+vl_api_from_api_string (vl_api_string_t * astr)
+{
+  return astr->buf;
+}
+
+u32
+vl_api_string_len (vl_api_string_t * astr)
+{
+  return ntohl (astr->length);
+}
+
+/*
+ * Returns a new vector. Remember to free it after use.
+ */
+u8 *
+vl_api_from_api_to_vec (vl_api_string_t * astr)
+{
+  u8 *v = 0;
+  vec_add (v, astr->buf, ntohl (astr->length));
+  return v;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
