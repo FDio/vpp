@@ -1019,8 +1019,8 @@ format_buffer_metadata (u8 * s, va_list * args)
 	      (u32) (b->error), (u32) (b->ref_count),
 	      (u32) (b->buffer_pool_index));
   s = format (s,
-	      "trace_index: %d, len_not_first_buf: %d\n",
-	      b->trace_index, b->total_length_not_including_first_buffer);
+	      "trace_handle: 0x%x, len_not_first_buf: %d\n",
+	      b->trace_handle, b->total_length_not_including_first_buffer);
   return s;
 }
 
@@ -1091,7 +1091,8 @@ dispatch_pcap_trace (vlib_main_t * vm,
 	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      vlib_trace_header_t **h
-		= pool_elt_at_index (tm->trace_buffer_pool, b->trace_index);
+		= pool_elt_at_index (tm->trace_buffer_pool,
+				     vlib_buffer_get_trace_index (b));
 
 	      vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
 					format_vlib_trace, vm, h[0], 0);
