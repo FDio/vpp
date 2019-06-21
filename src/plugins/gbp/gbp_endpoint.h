@@ -58,11 +58,13 @@ extern u8 *format_gbp_endpoint_flags (u8 * s, va_list * args);
 
 /**
  * Sources of Endpoints in priority order. The best (lowest value) source
- * provides the forwarding information
+ * provides the forwarding information.
+ * Data-plane takes preference because the CP data is not always complete,
+ * it may not have the sclass.
  */
 #define foreach_gbp_endpoint_src    \
-  _(CP, "control-plane")            \
   _(DP, "data-plane")               \
+  _(CP, "control-plane")            \
   _(RR, "recursive-resolution")
 
 typedef enum gbp_endpoint_src_t_

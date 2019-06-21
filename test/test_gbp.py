@@ -27,11 +27,15 @@ from vpp_papi import VppEnum, MACAddress
 from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
 from vpp_neighbor import VppNeighbor
+try:
+    text_type = unicode
+except NameError:
+    text_type = str
 
 NUM_PKTS = 67
 
 
-def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):
+def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None, tep=None):
     if ip:
         vip = VppIpAddress(ip)
     if mac:
@@ -40,6 +44,11 @@ def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):
     eps = test.vapi.gbp_endpoint_dump()
 
     for ep in eps:
+        if tep:
+            src = VppIpAddress(tep[0])
+            dst = VppIpAddress(tep[1])
+            if src != ep.endpoint.tun.src or dst != ep.endpoint.tun.dst:
+                continue
         if sw_if_index:
             if ep.endpoint.sw_if_index != sw_if_index:
                 continue
@@ -50,6 +59,7 @@ def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):
         if mac:
             if vmac.packed == ep.endpoint.mac:
                 return True
+
     return False
 
 
@@ -1507,9 +1517,9 @@ class TestGBP(VppTestCase):
                 sw_if_index=recirc.recirc.sw_if_index)
 
     def wait_for_ep_timeout(self, sw_if_index=None, ip=None, mac=None,
-                            n_tries=100, s_time=1):
+                            tep=None, n_tries=100, s_time=1):
         while (n_tries):
-            if not find_gbp_endpoint(self, sw_if_index, ip, mac):
+            if not find_gbp_endpoint(self, sw_if_index, ip, mac, tep=tep):
                 return True
             n_tries = n_tries - 1
             self.sleep(s_time)
@@ -2802,12 +2812,14 @@ class TestGBP(VppTestCase):
                                 "2001:10::88", "3001::88",
                                 ep_flags.GBP_API_ENDPOINT_FLAG_REMOTE,
                                 self.pg2.local_ip4,
-                                self.pg2.remote_hosts[1].ip4,
+                                self.pg2.remote_hosts[2].ip4,
                                 mac=None)
         rep_88.add_vpp_config()
 
         #
         # Add a remote endpoint from the API that matches an existing one
+        # this is a lower priority, hence the packet is sent to the DP leanrt
+        # TEP
         #
         rep_2 = VppGbpEndpoint(self, vx_tun_l3,
                                epg_220, None,
@@ -2841,7 +2853,7 @@ class TestGBP(VppTestCase):
 
             for rx in rxs:
                 self.assertEqual(rx[IP].src, self.pg2.local_ip4)
-                self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[1].ip4)
+                self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[2].ip4)
                 self.assertEqual(rx[UDP].dport, 48879)
                 # the UDP source port is a random value for hashing
                 self.assertEqual(rx[VXLAN].gpid, 441)
@@ -2888,6 +2900,60 @@ class TestGBP(VppTestCase):
         #
         self.wait_for_ep_timeout(ip=rep_88.ip4.address)
         self.wait_for_ep_timeout(ip=rep_2.ip4.address)
+
+        #
+        # Same as above, learn a remote EP via CP and DP
+        # this time remove the DP one first. expect the CP data to remain
+        #
+        rep_3 = VppGbpEndpoint(self, vx_tun_l3,
+                               epg_220, None,
+                               "10.0.1.4", "11.0.0.103",
+                               "2001::10:3", "3001::103",
+                               ep_flags.GBP_API_ENDPOINT_FLAG_REMOTE,
+                               self.pg2.local_ip4,
+                               self.pg2.remote_hosts[1].ip4,
+                               mac=None)
+        rep_3.add_vpp_config()
+
+        p = (Ether(src=self.pg2.remote_mac,
+                   dst=self.pg2.local_mac) /
+             IP(src=self.pg2.remote_hosts[2].ip4,
+                dst=self.pg2.local_ip4) /
+             UDP(sport=1234, dport=48879) /
+             VXLAN(vni=101, gpid=441, flags=0x88) /
+             Ether(src=l['mac'], dst="00:00:00:11:11:11") /
+             IP(src="10.0.1.4", dst=ep.ip4.address) /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+        rxs = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
+
+        self.assertTrue(find_gbp_endpoint(self,
+                                          vx_tun_l3._sw_if_index,
+                                          ip=rep_3.ip4.address,
+                                          tep=[self.pg2.local_ip4,
+                                               self.pg2.remote_hosts[2].ip4]))
+
+        p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
+             IP(dst="10.0.1.4", src=ep.ip4.address) /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+        rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
+
+        # host 2 is the DP learned TEP
+        for rx in rxs:
+            self.assertEqual(rx[IP].src, self.pg2.local_ip4)
+            self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[2].ip4)
+
+        self.wait_for_ep_timeout(ip=rep_3.ip4.address,
+                                 tep=[self.pg2.local_ip4,
+                                      self.pg2.remote_hosts[2].ip4])
+
+        rxs = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg2)
+
+        # host 1 is the CP learned TEP
+        for rx in rxs:
+            self.assertEqual(rx[IP].src, self.pg2.local_ip4)
+            self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[1].ip4)
 
         #
         # shutdown with learnt endpoint present
