@@ -46,6 +46,30 @@
       "revId": "1bc18705b80702bfe5c7b6078263270561705109",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a2ac4786_9e07dd42",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-21T02:46:51Z",
+      "side": 1,
+      "message": "The majority of the dump/detail pairs take a key field to return on.  If the key field is set to ~0, then all records are returned.\n\nSee: https://gerrit.fd.io/r/#/c/20185/",
+      "parentUuid": "01f00a02_c51b4f9a",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 37
+      },
+      "revId": "1bc18705b80702bfe5c7b6078263270561705109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
