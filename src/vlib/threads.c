@@ -1673,6 +1673,7 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
 
   while (1)
     {
+      vlib_buffer_t *b;
       if (fq->head == fq->tail)
 	{
 	  fq->head_hint = fq->head;
@@ -1694,6 +1695,11 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
       ASSERT (elt->n_vectors <= VLIB_FRAME_SIZE);
 
       f = vlib_get_frame_to_node (vm, fqm->node_index);
+
+      /* If the first vector is traced, set the frame trace flag */
+      b = vlib_get_buffer (vm, from[0]);
+      if (b->flags & VLIB_BUFFER_IS_TRACED)
+	f->frame_flags |= VLIB_NODE_FLAG_TRACE;
 
       to = vlib_frame_vector_args (f);
 

@@ -280,12 +280,6 @@ ip6_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vnet_buffer_opaque_t *vnb = vnet_buffer (b);
-  if (pool_is_free_index (vm->trace_main.trace_buffer_pool, b->trace_index))
-    {
-      // this buffer's trace is gone
-      b->flags &= ~VLIB_BUFFER_IS_TRACED;
-      return;
-    }
   ip6_reass_trace_t *t = vlib_add_trace (vm, node, b, sizeof (t[0]));
   t->reass_id = reass->id;
   t->action = action;
@@ -1399,21 +1393,10 @@ ip6_reass_walk_expired (vlib_main_t * vm,
           {
             ip6_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
             u32 icmp_bi = ~0;
-            vlib_buffer_t *b = vlib_get_buffer (vm, reass->first_bi);
-            if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-              {
-                if (pool_is_free_index (vm->trace_main.trace_buffer_pool,
-                                        b->trace_index))
-                  {
-                    /* the trace is gone, don't trace this buffer anymore */
-                    b->flags &= ~VLIB_BUFFER_IS_TRACED;
-                  }
-              }
             ip6_reass_on_timeout (vm, node, rm, reass, &icmp_bi);
             if (~0 != icmp_bi)
-              {
-                vec_add1 (vec_icmp_bi, icmp_bi);
-              }
+              vec_add1 (vec_icmp_bi, icmp_bi);
+
             ip6_reass_free (rm, rt, reass);
           }
           /* *INDENT-ON* */
@@ -1433,18 +1416,7 @@ ip6_reass_walk_expired (vlib_main_t * vm,
 	      u32 bi = vec_pop (vec_icmp_bi);
 	      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 	      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-		{
-		  if (pool_is_free_index (vm->trace_main.trace_buffer_pool,
-					  b->trace_index))
-		    {
-		      /* the trace is gone, don't trace this buffer anymore */
-		      b->flags &= ~VLIB_BUFFER_IS_TRACED;
-		    }
-		  else
-		    {
-		      trace_frame = 1;
-		    }
-		}
+		trace_frame = 1;
 	      b->error = node->errors[IP6_ERROR_REASS_TIMEOUT];
 	      to_next[0] = bi;
 	      ++f->n_vectors;

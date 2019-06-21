@@ -112,7 +112,7 @@ format_vlib_buffer (u8 * s, va_list * args)
 		b->total_length_not_including_first_buffer);
 
   if (b->flags & VLIB_BUFFER_IS_TRACED)
-    s = format (s, ", trace 0x%x", b->trace_index);
+    s = format (s, ", trace handle 0x%x", b->trace_handle);
 
   if (a)
     s = format (s, "\n%U%v", format_white_space, indent, a);

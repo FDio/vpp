@@ -45,13 +45,11 @@ extern u8 *vnet_trace_dummy;
 always_inline void
 vlib_validate_trace (vlib_trace_main_t * tm, vlib_buffer_t * b)
 {
-  /*
-   * this assert seems right, but goes off constantly.
-   * disabling it appears to make the pain go away
-   */
-  ASSERT (1 || b->flags & VLIB_BUFFER_IS_TRACED);
-  ASSERT (!pool_is_free_index (tm->trace_buffer_pool, b->trace_index));
+  ASSERT (!pool_is_free_index (tm->trace_buffer_pool,
+			       vlib_buffer_get_trace_index (b)));
 }
+
+void vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b);
 
 always_inline void *
 vlib_add_trace (vlib_main_t * vm,
@@ -76,11 +74,15 @@ vlib_add_trace (vlib_main_t * vm,
       return vnet_trace_dummy;
     }
 
+  /* Are we trying to trace a handoff case? */
+  if (PREDICT_FALSE (vlib_buffer_get_trace_thread (b) != vm->thread_index))
+    vlib_add_handoff_trace (vm, b);
+
   vlib_validate_trace (tm, b);
 
   n_data_bytes = round_pow2 (n_data_bytes, sizeof (h[0]));
   n_data_words = n_data_bytes / sizeof (h[0]);
-  vec_add2_aligned (tm->trace_buffer_pool[b->trace_index], h,
+  vec_add2_aligned (tm->trace_buffer_pool[vlib_buffer_get_trace_index (b)], h,
 		    1 + n_data_words, sizeof (h[0]));
 
   h->time = vm->cpu_time_last_node_dispatch;
@@ -100,9 +102,10 @@ always_inline void
 vlib_free_trace (vlib_main_t * vm, vlib_buffer_t * b)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
+  u32 trace_index = vlib_buffer_get_trace_index (b);
   vlib_validate_trace (tm, b);
-  _vec_len (tm->trace_buffer_pool[b->trace_index]) = 0;
-  pool_put_index (tm->trace_buffer_pool, b->trace_index);
+  _vec_len (tm->trace_buffer_pool[trace_index]) = 0;
+  pool_put_index (tm->trace_buffer_pool, trace_index);
 }
 
 always_inline void
@@ -149,7 +152,8 @@ vlib_trace_buffer (vlib_main_t * vm,
   do
     {
       b->flags |= VLIB_BUFFER_IS_TRACED;
-      b->trace_index = h - tm->trace_buffer_pool;
+      b->trace_handle = vlib_buffer_make_trace_handle
+	(vm->thread_index, h - tm->trace_buffer_pool);
     }
   while (follow_chain && (b = vlib_get_next_buffer (vm, b)));
 }
@@ -160,7 +164,7 @@ vlib_buffer_copy_trace_flag (vlib_main_t * vm, vlib_buffer_t * b,
 {
   vlib_buffer_t *b_target = vlib_get_buffer (vm, bi_target);
   b_target->flags |= b->flags & VLIB_BUFFER_IS_TRACED;
-  b_target->trace_index = b->trace_index;
+  b_target->trace_handle = b->trace_handle;
 }
 
 always_inline u32
