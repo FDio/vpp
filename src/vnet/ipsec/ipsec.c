@@ -30,15 +30,37 @@ ipsec_main_t ipsec_main;
 static clib_error_t *
 ipsec_check_ah_support (ipsec_sa_t * sa)
 {
+  ipsec_main_t *im = &ipsec_main;
+
   if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
     return clib_error_return (0, "unsupported none integ-alg");
+
+  if (!vnet_crypto_is_set_handler (im->integ_algs[sa->integ_alg].alg))
+    return clib_error_return (0, "No crypto engine support for %U",
+			      format_ipsec_integ_alg, sa->integ_alg);
+
   return 0;
 }
 
 static clib_error_t *
 ipsec_check_esp_support (ipsec_sa_t * sa)
 {
-  return 0;
+  ipsec_main_t *im = &ipsec_main;
+
+  if (IPSEC_INTEG_ALG_NONE != sa->integ_alg)
+    {
+      if (!vnet_crypto_is_set_handler (im->integ_algs[sa->integ_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U",
+				  format_ipsec_integ_alg, sa->integ_alg);
+    }
+  if (IPSEC_CRYPTO_ALG_NONE != sa->crypto_alg)
+    {
+      if (!vnet_crypto_is_set_handler (im->crypto_algs[sa->crypto_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U",
+				  format_ipsec_crypto_alg, sa->crypto_alg);
+    }
+
+  return (0);
 }
 
 clib_error_t *
