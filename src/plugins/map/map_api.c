@@ -22,7 +22,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
 #include <vlibmemory/api.h>
-#include <vlibapi/api_types_inlines.h>
 
 #define vl_typedefs		/* define message structures */
 #include <map/map_all_api_h.h>
