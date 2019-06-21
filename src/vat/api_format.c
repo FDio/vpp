@@ -58,7 +58,6 @@
 #include "vat/json_format.h"
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
-#include <vlibapi/api_types_inlines.h>
 
 #include <inttypes.h>
 #include <sys/stat.h>

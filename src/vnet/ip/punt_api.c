@@ -21,7 +21,6 @@
 #include <vlibmemory/api.h>
 #include <vnet/ip/punt.h>
 #include <vnet/ip/ip_types_api.h>
-#include <vlibapi/api_types_inlines.h>
 
 #include <vnet/vnet_msg_enum.h>
 
