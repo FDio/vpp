@@ -158,9 +158,9 @@ typedef union
     /** start of 2nd cache line */
       CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
-    /** Specifies index into trace buffer if VLIB_PACKET_IS_TRACED flag is
+    /** Specifies trace buffer handle if VLIB_PACKET_IS_TRACED flag is
       * set. */
-    u32 trace_index;
+    u32 trace_handle;
 
     /** Only valid for first buffer in chain. Current length plus total length
       * given here give total number of bytes in buffer chain. */
@@ -352,6 +352,44 @@ vlib_buffer_make_headroom (vlib_buffer_t * b, u8 size)
   ASSERT (b->current_data + VLIB_BUFFER_PRE_DATA_SIZE >= size);
   b->current_data += size;
   return vlib_buffer_get_current (b);
+}
+
+/** \brief Construct a trace handle from thread and pool index
+ * @param thread Thread id
+ * @param pool_index Pool index
+ * @return trace handle
+ */
+always_inline u32
+vlib_buffer_make_trace_handle (u32 thread, u32 pool_index)
+{
+  u32 rv;
+  ASSERT (thread < 0xff);
+  ASSERT (pool_index < 0x00FFFFFF);
+  rv = (thread << 24) | (pool_index & 0x00FFFFFF);
+  return rv;
+}
+
+/** \brief Extract the thread id from a trace handle
+ * @param trace_handle the trace handle
+ * @return the thread id
+ */
+always_inline u32
+vlib_buffer_get_trace_thread (vlib_buffer_t * b)
+{
+  u32 trace_handle = b->trace_handle;
+
+  return trace_handle >> 24;
+}
+
+/** \brief Extract the trace (pool) index from a trace handle
+ * @param trace_handle the trace handle
+ * @return the trace index
+ */
+always_inline u32
+vlib_buffer_get_trace_index (vlib_buffer_t * b)
+{
+  u32 trace_handle = b->trace_handle;
+  return trace_handle & 0x00FFFFFF;
 }
 
 /** \brief Retrieve bytes from buffer head
