@@ -543,7 +543,7 @@ gbp_learn_l3 (vlib_main_t * vm,
 
 	      ge0 = gbp_endpoint_find_ip6 (&ip6_0->src_address, fib_index0);
 
-	      if (NULL == ge0)
+	      if ((NULL == ge0) || !gbp_endpoint_is_learnt (ge0))
 		{
 		  t0 = throttle_check (&glm->gl_l3_throttle,
 				       thread_index,
@@ -576,7 +576,7 @@ gbp_learn_l3 (vlib_main_t * vm,
 	      gbp_learn_get_outer (eth0, &outer_src, &outer_dst);
 	      ge0 = gbp_endpoint_find_ip4 (&ip4_0->src_address, fib_index0);
 
-	      if (NULL == ge0)
+	      if ((NULL == ge0) || !gbp_endpoint_is_learnt (ge0))
 		{
 		  t0 = throttle_check (&glm->gl_l3_throttle, thread_index,
 				       ip4_0->src_address.as_u32, seed);
