@@ -69,21 +69,9 @@ VENV_PATH=$(TEST_DIR)/run/venv
 
 ifeq ($(TEST_DEBUG),1)
 TEST_RUN_DIR:=$(VENV_PATH)/run-debug
-PYTHON_EXTRA_DEPENDS=objgraph pympler
 else
 TEST_RUN_DIR:=$(VENV_PATH)/run
-PYTHON_EXTRA_DEPENDS=
 endif
-
-PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) -r requirements.txt
-SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON) -name site-packages)
-BUILD_COV_DIR=$(TEST_DIR)/coverage
-
-PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install.done
-PIP_PATCH_DONE=$(TEST_RUN_DIR)/pip-patch.done
-PAPI_INSTALL_DONE=$(TEST_RUN_DIR)/papi-install.done
-
-PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
 
 ifeq ($(PYTHON),)
 PYTHON_INTERP=python2.7
@@ -91,10 +79,35 @@ else
 PYTHON_INTERP=$(PYTHON)
 endif
 
-$(PIP_INSTALL_DONE):
+PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
+PIP_TOOLS_VERSION=3.8.0   # Keep in sync with requirements.txt
+PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
+SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON_INTERP) -name site-packages)
+BUILD_COV_DIR=$(TEST_DIR)/coverage
+
+PIP_TOOLS_INSTALL_DONE=$(TEST_RUN_DIR)/pip-tools-install-$(PYTHON_VERSION).done
+PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install-$(PYTHON_VERSION).done
+PIP_PATCH_DONE=$(TEST_RUN_DIR)/pip-patch-$(PYTHON_VERSION).done
+PAPI_INSTALL_DONE=$(TEST_RUN_DIR)/papi-install-$(PYTHON_VERSION).done
+
+PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
+
+$(PIP_TOOLS_INSTALL_DONE):
+	@rm -rf $(VENV_PATH)
 	@mkdir -p $(TEST_RUN_DIR)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install $(PYTHON_DEPENDS)"
+	@bash -c "source $(VENV_PATH)/bin/activate && \
+		  $(PYTHON_INTERP) -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
+	@touch $@
+
+$(PYTHON_DEPENDS): $(PIP_TOOLS_INSTALL_DONE) requirements.txt
+	@bash -c "source $(VENV_PATH)/bin/activate && \
+		  CUSTOM_COMPILE_COMMAND='make test-refresh-deps (or update requirements.txt)' \
+		  $(PYTHON_INTERP) -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
+
+$(PIP_INSTALL_DONE): $(PYTHON_DEPENDS)
+	@bash -c "source $(VENV_PATH)/bin/activate && \
+		  $(PYTHON_INTERP) -m piptools sync $(PYTHON_DEPENDS)"
 	@touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
@@ -102,13 +115,21 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
 	for f in $(CURDIR)/patches/scapy-2.4/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
-		patch -p1 -d $(SCAPY_SOURCE) < $$f ; \
-	done
-	@touch $@
+		patch --forward -p1 -d $(SCAPY_SOURCE) < $$f ; \
+		retCode=$$?; \
+		[ $$retCode -gt 1 ] && exit $$retCode; \
+	done; \
+	touch $@
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -e $(WS_ROOT)/src/vpp-api/python"
 	@touch $@
+
+.PHONY: update-deps clear-deps
+refresh-deps: clean-deps $(PYTHON_DEPENDS)
+
+clean-deps:
+	@rm -f $(PYTHON_DEPENDS)
 
 define retest-func
 @env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
