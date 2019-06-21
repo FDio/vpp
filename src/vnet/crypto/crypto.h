@@ -205,6 +205,7 @@ u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 			     u32 n_ops);
 
 int vnet_crypto_set_handler (char *ops_handler_name, char *engine);
+int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 
 u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
 			 u8 * data, u16 length);
