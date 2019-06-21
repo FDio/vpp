@@ -169,7 +169,7 @@ interface_factory::new_tap_interface(
 {
   std::shared_ptr<tap_interface> sp;
   handle_t hdl(vd.sw_if_index);
-  std::string name = reinterpret_cast<const char*>(vd.host_if_name);
+  std::string name = reinterpret_cast<const char*>(vd.dev_name);
   route::prefix_t pfx(route::prefix_t::ZERO);
   boost::asio::ip::address addr;
 
