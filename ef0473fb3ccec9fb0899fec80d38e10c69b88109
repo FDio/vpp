@@ -22,6 +22,30 @@
       "revId": "ef0473fb3ccec9fb0899fec80d38e10c69b88109",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1159877d_45bbbc80",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-06-21T14:02:20Z",
+      "side": 1,
+      "message": "\u003e Why is this code being included in this patch but not in [0]?\n \u003e \n \u003e It would be best to cherry pick [0] into 19.04 and master, then\n \u003e introduce this new code in a separate patch, unless I\u0027m missing the\n \u003e place where this is used in this patch.\n\nNevermind.  I see this patch was cherry-picked into 19.01 and merged there first in [0].\n\nUnless I need another cup of coffee, it doesn\u0027t appear to have been cherry-picked to master yet.\n\n \u003e \n \u003e [0] https://gerrit.fd.io/r/20159",
+      "parentUuid": "ae4e93d9_db796d81",
+      "range": {
+        "startLine": 112,
+        "startChar": 0,
+        "endLine": 141,
+        "endChar": 17
+      },
+      "revId": "ef0473fb3ccec9fb0899fec80d38e10c69b88109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
