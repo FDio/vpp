@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "662e3988_44bd9156",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1269,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-24T21:33:32Z",
+      "side": 1,
+      "message": "tcp_program_ack(wrk, tc)\n\nWe want to let the session layer and tcp_output decide when the ack leaves.",
+      "range": {
+        "startLine": 1269,
+        "startChar": 6,
+        "endLine": 1269,
+        "endChar": 18
+      },
+      "revId": "aa322705badbef23c7dbc163909a23d894ef7ae4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
