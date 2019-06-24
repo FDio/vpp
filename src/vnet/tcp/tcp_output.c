@@ -505,6 +505,11 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 
   tcp_options_write ((u8 *) (th + 1), snd_opts);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+
+  if (wnd == 0)
+    tcp_zero_rwnd_sent_on (tc);
+  else
+    tcp_zero_rwnd_sent_off (tc);
 }
 
 /**
@@ -1263,6 +1268,28 @@ tcp_timer_delack_handler (u32 index)
   tc = tcp_connection_get (index, thread_index);
   tc->timers[TCP_TIMER_DELACK] = TCP_TIMER_HANDLE_INVALID;
   tcp_send_ack (tc);
+}
+
+/**
+ * Send Window Update ACK,
+ * ensuring that it will be sent once, if RWND became non-zero,
+ * after zero RWND has been advertised in ACK before
+ */
+void
+tcp_send_window_update_ack (tcp_connection_t * tc)
+{
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  u32 win;
+
+  if (tcp_zero_rwnd_sent (tc))
+    {
+      win = tcp_window_to_advertise (tc, tc->state);
+      if (win > 0)
+	{
+	  tcp_zero_rwnd_sent_off (tc);
+	  tcp_program_ack (wrk, tc);
+	}
+    }
 }
 
 /**
