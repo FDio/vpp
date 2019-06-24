@@ -130,6 +130,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FINRCVD, "FIN received")			\
   _(RATE_SAMPLE, "Conn does rate sampling")	\
   _(TRACK_BURST, "Track burst")			\
+  _(ZERO_RWND_SENT, "Zero RWND sent")		\
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -412,6 +413,10 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
   tcp_fastrecovery_first_off (tc);
 }
 
+#define tcp_zero_rwnd_sent(tc) (tc)->flags &= TCP_CONN_ZERO_RWND_SENT
+#define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
+#define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
+
 typedef enum _tcp_error
 {
 #define tcp_error(n,s) TCP_ERROR_##n,
@@ -682,6 +687,7 @@ void tcp_do_fastretransmits (tcp_worker_ctx_t * wrk);
 void tcp_program_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
 void tcp_program_dupack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
 void tcp_send_acks (tcp_worker_ctx_t * wrk);
+void tcp_send_window_update_ack (tcp_connection_t * tc);
 
 /*
  * Rate estimation
