@@ -431,7 +431,7 @@ list(APPEND VNET_SOURCES
   ip/ip4_pg.c
   ip/ip4_source_and_port_range_check.c
   ip/ip4_source_check.c
-  ip/ip4_reassembly.c
+  ip/reass/ip4_full_reass.c
   ip/ip6_format.c
   ip/ip6_forward.c
   ip/ip6_ll_table.c
@@ -441,7 +441,7 @@ list(APPEND VNET_SOURCES
   ip/ip6_input.c
   ip/ip6_neighbor.c
   ip/ip6_pg.c
-  ip/ip6_reassembly.c
+  ip/reass/ip6_full_reass.c
   ip/rd_cp.c
   ip/ip_neighbor.c
   ip/ip_api.c
@@ -461,9 +461,9 @@ list(APPEND VNET_SOURCES
 list(APPEND VNET_MULTIARCH_SOURCES
   ip/ip4_source_check.c
   ip/ip4_punt_drop.c
-  ip/ip4_reassembly.c
+  ip/reass/ip4_full_reass.c
   ip/ip6_hop_by_hop.c
-  ip/ip6_reassembly.c
+  ip/reass/ip6_full_reass.c
   ip/ip6_input.c
   ip/ip6_punt_drop.c
   ip/punt_node.c

@@ -1869,7 +1869,7 @@ VLIB_REGISTER_NODE (ip4_local_node) =
     [IP_LOCAL_NEXT_PUNT] = "ip4-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
-    [IP_LOCAL_NEXT_REASSEMBLY] = "ip4-reassembly",
+    [IP_LOCAL_NEXT_REASSEMBLY] = "ip4-full-reassembly",
   },
 };
 /* *INDENT-ON* */
