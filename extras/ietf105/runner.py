@@ -596,6 +596,9 @@ class Program(object):
         c3.set_ipv6_route("eth1", "A2::1", "C::/120")
         c4.set_ipv6_pgroute("pg0", "3001::1", "4001::1/128")
 
+        print("Waiting...")
+        time.sleep(60)
+
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
              IPv6(src="4001::2", dst="4001::1")/
              UDP(sport=2152, dport=2152)/
