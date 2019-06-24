@@ -185,13 +185,38 @@ typedef struct
 	/* reassembly */
 	union
 	{
-	  /* in/out variables */
-	  struct
+	  union
 	  {
-	    u32 next_index;	/* index of next node - used by custom apps */
-	    u32 error_next_index;	/* index of next node if error - used by custom apps */
-	    u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+	    /* in/out variables */
+	    struct
+	    {
+	      u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+	      u32 next_index;	/* index of next node - used by custom apps */
+	      u32 error_next_index;	/* index of next node if error - used by custom apps */
+	    };
 	    u16 owner_thread_index;
+	    /* virtual reassembly output variables */
+	    struct
+	    {
+	      u8 ip_proto;	/* protocol in ip header */
+	      union
+	      {
+		struct
+		{		/* shallow virtual reassembly case */
+		  u16 l4_src_port;	/* tcp/udp src port */
+		  u16 l4_dst_port;	/* tcp/udp dst port */
+		};
+		struct
+		{		/* deep virtual reassembly case */
+		  u32 l4_hdr_bi;	/* buffer containing l4 hdr */
+		  struct
+		  {		/* buffer indexes received chronologically */
+		    u32 first_buffer;	/* first buffer */
+		    u32 next_buffer;	/* next buffer (~0 if no next) */
+		  } chronological;
+		};
+	      };
+	    };
 	  };
 	  /* internal variables used during reassembly */
 	  struct
