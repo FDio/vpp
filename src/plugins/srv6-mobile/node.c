@@ -30,7 +30,7 @@ format_srv6_end_rewrite_trace (u8 * s, va_list * args)
   srv6_end_rewrite_trace_t *t = va_arg (*args, srv6_end_rewrite_trace_t *);
 
   return format (s, "SRv6-END-rewrite: src %U dst %U\n TEID: 0x%x",
-		 format_ip4_address, &t->src, format_ip4_address, &t->dst, t->teid);
+		 format_ip4_address, &t->src, format_ip4_address, &t->dst, clib_net_to_host_u32(t->teid));
 }
 
 
