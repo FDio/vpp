@@ -14,6 +14,7 @@ from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_object import VppObject
+from vpp_papi_provider import UnexpectedApiReturnValueError
 from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
@@ -33,6 +34,9 @@ class VppCFLOW(VppObject):
         else:
             self._passive = passive
         self._datapath = datapath           # l2 ip4 ip6
+        self._which = {'l2': 0,
+                       'ip4': 1,
+                       'ip6': 2}
         self._collect = layer               # l2 l3 l4
         self._timeout = timeout
         self._mtu = mtu
@@ -63,15 +67,19 @@ class VppCFLOW(VppObject):
             template_interval=self._timeout)
 
     def enable_flowprobe_feature(self):
-        self._test.vapi.ppcli("flowprobe feature add-del %s %s" %
-                              (self._intf, self._datapath))
+        self._test.vapi.flowprobe_tx_interface_add_del(
+            sw_if_index=getattr(self._test, self._intf).sw_if_index,
+            which=self._which[self._datapath],
+            is_add=1)
 
     def disable_exporter(self):
         self._test.vapi.cli("set ipfix exporter collector 0.0.0.0")
 
     def disable_flowprobe_feature(self):
-        self._test.vapi.cli("flowprobe feature add-del %s %s disable" %
-                            (self._intf, self._datapath))
+        self._test.vapi.flowprobe_tx_interface_add_del(
+            sw_if_index=getattr(self._test, self._intf).sw_if_index,
+            which=self._which[self._datapath],
+            is_add=0)
 
     def object_id(self):
         return "ipfix-collector-%s-%s" % (self._src, self.dst)
@@ -296,10 +304,12 @@ class MethodHolder(VppTestCase):
         """ wait for CFLOW packet and verify its correctness
 
         :param timeout: how long to wait
+        :param set_id: field to match against CFLOW packet
+        :param timeout: time to ait for matching packet in seconds.
 
         :returns: tuple (packet, time spent waiting for packet)
         """
-        self.logger.info("IPFIX: Waiting for CFLOW packet")
+        self.logger.info("IPFIX: Waiting %s sec. for CFLOW packet." % timeout)
         deadline = time.time() + timeout
         counter = 0
         # self.logger.debug(self.vapi.ppcli("show flow table"))
@@ -312,7 +322,8 @@ class MethodHolder(VppTestCase):
                 if time_left < 0 and expected:
                     # self.logger.debug(self.vapi.ppcli("show flow table"))
                     raise CaptureTimeoutError(
-                          "Packet did not arrive within timeout")
+                          "Packet did not arrive within timeout (%s sec.)" %
+                          timeout)
                 p = collector_intf.wait_for_packet(timeout=time_left)
             except CaptureTimeoutError:
                 if expected:
@@ -1076,6 +1087,34 @@ class ReenableFP(MethodHolder):
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0001")
+
+
+class TestFlowprobeApi(VppTestCase):
+    """TestFlowprobeApi"""
+
+    def test_api_flowprobe_tx_interface_add_del(self):
+        sw_if_index = self.vapi.pg_create_interface().sw_if_index
+        rv = self.vapi.sw_interface_add_del_address(
+            sw_if_index=sw_if_index,
+            is_add=1,
+            address_length=24,
+            address='\1\2\3\4'
+        )
+
+        # returns -100 (CANNOT_ENABLE_DISABLE_FEATURE) when param record is
+        # not set. Should this error response be more descriptive?
+        with self.assertRaises(UnexpectedApiReturnValueError) as ctx:
+            rv = self.vapi.flowprobe_tx_interface_add_del(
+                is_add=1,
+                which=0,
+                sw_if_index=sw_if_index)
+
+        # returns without error when flowprobe_param set first.
+        rv = self.vapi.flowprobe_params(record_l2=1)
+        rv = self.vapi.flowprobe_tx_interface_add_del(
+            is_add=1,
+            which=0,
+            sw_if_index=sw_if_index)
 
 
 if __name__ == '__main__':
