@@ -1,5 +1,5 @@
 /*
- * srv6_end_m_gtp6_e.c
+ * srv6_end_m_gtp6_d_di_di.c
  *
  * Copyright (c) 2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,20 +21,20 @@
 #include <vpp/app/version.h>
 #include <srv6-mobile/mobile.h>
 
-srv6_end_main_v6_t srv6_end_main_v6;
+srv6_end_main_v6_decap_di_t srv6_end_main_v6_decap_di;
 
 static void
-clb_dpo_lock_srv6_end_m_gtp6_e (dpo_id_t * dpo)
+clb_dpo_lock_srv6_end_m_gtp6_d_di (dpo_id_t * dpo)
 {
 }
 
 static void
-clb_dpo_unlock_srv6_end_m_gtp6_e (dpo_id_t * dpo)
+clb_dpo_unlock_srv6_end_m_gtp6_d_di (dpo_id_t * dpo)
 {
 }
 
 static u8 *
-clb_dpo_format_srv6_end_m_gtp6_e (u8 * s, va_list * args)
+clb_dpo_format_srv6_end_m_gtp6_d_di (u8 * s, va_list * args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -43,59 +43,57 @@ clb_dpo_format_srv6_end_m_gtp6_e (u8 * s, va_list * args)
 }
 
 const static dpo_vft_t dpo_vft = {
-  .dv_lock = clb_dpo_lock_srv6_end_m_gtp6_e,
-  .dv_unlock = clb_dpo_unlock_srv6_end_m_gtp6_e,
-  .dv_format = clb_dpo_format_srv6_end_m_gtp6_e,
+  .dv_lock = clb_dpo_lock_srv6_end_m_gtp6_d_di,
+  .dv_unlock = clb_dpo_unlock_srv6_end_m_gtp6_d_di,
+  .dv_format = clb_dpo_format_srv6_end_m_gtp6_d_di,
 };
 
-const static char *const srv6_end_m_gtp6_e_nodes[] = {
-  "srv6-end-m-gtp6-e",
+const static char *const srv6_end_m_gtp6_d_di_nodes[] = {
+  "srv6-end-m-gtp6-d-di",
   NULL,
 };
 
 const static char *const *const dpo_nodes[DPO_PROTO_NUM] = {
-  [DPO_PROTO_IP6] = srv6_end_m_gtp6_e_nodes,
+  [DPO_PROTO_IP6] = srv6_end_m_gtp6_d_di_nodes,
 };
 
-static u8 fn_name[] = "SRv6-End.M.GTP6.E-plugin";
-static u8 keyword_str[] = "end.m.gtp6.e";
-static u8 def_str[] = "Endpoint function with encapsulation for IPv6/GTP tunnel";
+static u8 fn_name[] = "SRv6-End.M.GTP6.D.DI-plugin";
+static u8 keyword_str[] = "end.m.gtp6.d.di";
+static u8 def_str[] = "Endpoint function with drop-in dencapsulation for IPv6/GTP tunnel";
 static u8 param_str[] = "";
 
 static u8 *
-clb_format_srv6_end_m_gtp6_e (u8 * s, va_list * args)
+clb_format_srv6_end_m_gtp6_d_di (u8 * s, va_list * args)
 {
   s = format (s, "SRv6 End format function unsupported.");
   return s;
 }
 
 static uword
-clb_unformat_srv6_end_m_gtp6_e (unformat_input_t * input, va_list * args)
+clb_unformat_srv6_end_m_gtp6_d_di (unformat_input_t * input, va_list * args)
 {
-  if (!unformat (input, "end.m.gtp6.e"))
+  if (!unformat (input, "end.m.gtp6.d.di"))
     return 0;
   return 1;
 }
 
 static int
-clb_creation_srv6_end_m_gtp6_e (ip6_sr_localsid_t * localsid)
+clb_creation_srv6_end_m_gtp6_d_di (ip6_sr_localsid_t * localsid)
 {
   return 0;
 }
 
 static int
-clb_removal_srv6_end_m_gtp6_e (ip6_sr_localsid_t * localsid)
+clb_removal_srv6_end_m_gtp6_d_di (ip6_sr_localsid_t * localsid)
 {
   return 0;
 }
 
 static clib_error_t *
-srv6_end_m_gtp6_e_init (vlib_main_t * vm)
+srv6_end_m_gtp6_d_di_init (vlib_main_t * vm)
 {
-  srv6_end_main_v6_t *sm = &srv6_end_main_v6;
-  ip6_header_t *ip6 = &sm->cache_hdr.ip6;
-  udp_header_t *udp = &sm->cache_hdr.udp;
-  gtpu_header_t *gtpu = &sm->cache_hdr.gtpu;
+  srv6_end_main_v6_decap_di_t *sm = &srv6_end_main_v6_decap_di;
+  ip6srv_combo_header_t *ip6;
   dpo_type_t dpo_type;
   vlib_node_t *node;
   u32 rc;
@@ -103,27 +101,23 @@ srv6_end_m_gtp6_e_init (vlib_main_t * vm)
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
 
-  node = vlib_get_node_by_name (vm, (u8 *) "srv6-end-m-gtp6-e");
-  sm->end_m_gtp6_e_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "srv6-end-m-gtp6-d-di");
+  sm->end_m_gtp6_d_di_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = node->index;
 
-  sm->dst_p_len = 32;
-  sm->src_p_len = 64;
+  ip6 = &sm->cache_header;
 
-  // clear the pre cached packet
-  clib_memset_u8 (ip6, 0, sizeof (ip4_gtpu_header_t));
+  clib_memset_u8 (ip6, 0, sizeof(ip6srv_combo_header_t));
 
-  // set defaults
-  ip6->ip_version_traffic_class_and_flow_label = 0x60;
-  ip6->protocol = IP_PROTOCOL_UDP;
-  ip6->hop_limit = 64;
+  // IPv6 header (default)
+  ip6->ip.ip_version_traffic_class_and_flow_label = 0x60;
+  ip6->ip.hoplimit = 64;
+  ip6->protocol = IPPROTO_IPV6_ROUTE;
 
-  udp->dst_port = clib_host_to_net_u16 (SRV6_GTP_UDP_DST_PORT);
-
-  gtpu->ver_flags = GTPU_V1_VER | GTPU_PT_GTP;
-  gtpu->type = GTPU_TYPE_GTPU;
+  // SR header (default)
+  ip6->sr.type = 4;
 
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 
@@ -134,25 +128,25 @@ srv6_end_m_gtp6_e_init (vlib_main_t * vm)
                                       param_str,
                                       64, //prefix len
                                       &dpo_type,
-                                      clb_format_srv6_end_m_gtp6_e,
-                                      clb_unformat_srv6_end_m_gtp6_e,
-                                      clb_creation_srv6_end_m_gtp6_e,
-                                      clb_removal_srv6_end_m_gtp6_e);
+                                      clb_format_srv6_end_m_gtp6_d_di,
+                                      clb_unformat_srv6_end_m_gtp6_d_di,
+                                      clb_creation_srv6_end_m_gtp6_d_di,
+                                      clb_removal_srv6_end_m_gtp6_d_di);
   if (rc < 0)
-    clib_error_return (0, "SRv6 Endpoint GTP6.E LocalSID function"
+    clib_error_return (0, "SRv6 Endpoint GTP6.D.DI LocalSID function"
                           "couldn't be registered");
   return 0;
 }
 
 /* *INDENT-OFF* */
-VNET_FEATURE_INIT (srv6_end_m_gtp6_e, static) =
+VNET_FEATURE_INIT (srv6_end_m_gtp6_d_di, static) =
 {
   .arc_name = "ip6-unicast",
-  .node_name = "srv6-end-m-gtp6-e",
+  .node_name = "srv6-end-m-gtp6-d-di",
   .runs_before = 0,
 };
 
-VLIB_INIT_FUNCTION (srv6_end_m_gtp6_e_init);
+VLIB_INIT_FUNCTION (srv6_end_m_gtp6_d_di_init);
 /* *INDENT-ON* */
 
 /*

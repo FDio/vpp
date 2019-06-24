@@ -93,6 +93,7 @@ static clib_error_t *
 srv6_end_m_gtp6_d_init (vlib_main_t * vm)
 {
   srv6_end_main_v6_decap_t *sm = &srv6_end_main_v6_decap;
+  ip6srv_combo_header_t *ip6;
   dpo_type_t dpo_type;
   vlib_node_t *node;
   u32 rc;
@@ -106,6 +107,18 @@ srv6_end_m_gtp6_d_init (vlib_main_t * vm)
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = node->index;
 
+  ip6 = &sm->cache_header;
+
+  clib_memset_u8 (ip6, 0, sizeof(ip6_srv_combo_header_t));
+
+  // IPv6 header (default)
+  ip6->ip.ip_version_traffic_class_and_flow_label = 0x60;
+  ip6->ip.hoplimit = 64;
+  ip6->ip.protocol = IPPROTO_IPV6_ROUTE;
+
+  // SR header (default)
+  ip6->sr.type = 4;
+
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 
   rc = sr_localsid_register_function (vm,
@@ -113,7 +126,7 @@ srv6_end_m_gtp6_d_init (vlib_main_t * vm)
                                       keyword_str,
                                       def_str,
                                       param_str,
-                                      32, //prefix len
+                                      64, //prefix len
                                       &dpo_type,
                                       clb_format_srv6_end_m_gtp6_d,
                                       clb_unformat_srv6_end_m_gtp6_d,

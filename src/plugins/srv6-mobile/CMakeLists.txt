@@ -16,6 +16,7 @@ add_vpp_plugin(srv6mobile
   gtp4_e.c
   gtp6_e.c
   gtp6_d.c
+  gtp6_d_di.c
   node.c
 
   INSTALL_HEADERS

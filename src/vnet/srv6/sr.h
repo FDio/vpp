@@ -54,6 +54,15 @@
 
 #define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
+/* *INDENT-OFF* */
+typedef struct
+{
+  ip6_header_t ip;
+  ip6_sr_header_t sr;
+} __attribute__ ((packed)) ip6srv_combo_header_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
 typedef struct
 {
   u8 ver_flags;
@@ -61,6 +70,7 @@ typedef struct
   u16 length;     /* length in octets of the payload */
   u32 teid;
 } __attribute__ ((packed)) gtpu_header_t;
+/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 typedef struct
@@ -139,6 +149,8 @@ typedef struct
 {
   ip6_address_t localsid;		/**< LocalSID IPv6 address */
 
+  u16 localsid_len;
+
   char end_psp;					/**< Combined with End.PSP? */
 
   u16 behavior;					/**< Behavior associated to this localsid */
@@ -156,6 +168,12 @@ typedef struct
   ip46_address_t next_hop;		/**< Next_hop for xconnect usage only */
 
   u32 nh_adj;						/**< Next_adj for xconnect usage only */
+
+  // GTP6.D
+  ip6_address_t sr_prefix;
+  u16 sr_prefix_len;
+
+  ip6_address_t bsid;
 
   void *plugin_mem;				/**< Memory to be used by the plugin callback functions */
 } ip6_sr_localsid_t;

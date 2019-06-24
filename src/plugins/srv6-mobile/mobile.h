@@ -73,10 +73,25 @@ typedef struct srv6_end_main_v6_decap_s
   u32 end_m_gtp6_d_node_index;
   u32 error_node_index;
 
+  ip6srv_combo_header_t cache_hdr;
 } srv6_end_main_v6_decap_t;
 
 extern srv6_end_main_v6_decap_t srv6_end_main_v6_decap;
 extern vlib_node_registration_t srv6_end_m_gtp6_d;
+
+typedef struct srv6_end_main_v6_decap_di_s
+{
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+
+  u32 end_m_gtp6_d_node_index;
+  u32 error_node_index;
+
+  ip6srv_combo_header_t cache_hdr;
+} srv6_end_main_v6_decap_di_t;
+
+extern srv6_end_main_v6_decap_di_t srv6_end_main_v6_decap_di;
+extern vlib_node_registration_t srv6_end_m_gtp6_d_di;
 
 #endif /* __included_srv6_end_h__ */
 
