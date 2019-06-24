@@ -2818,7 +2818,7 @@ class TestNAT44(MethodHolder):
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
         self.nat44_add_address(self.nat_addr, is_add=0)
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(9)
         ipfix = IPFIXDecoder()
         # first load template
@@ -2863,7 +2863,7 @@ class TestNAT44(MethodHolder):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.cli("ipfix flush")
         capture = self.pg3.get_capture(9)
         ipfix = IPFIXDecoder()
         # first load template
@@ -2926,7 +2926,7 @@ class TestNAT44(MethodHolder):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(9)
         ipfix = IPFIXDecoder()
         # first load template
@@ -3851,7 +3851,7 @@ class TestNAT44(MethodHolder):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(9)
         ipfix = IPFIXDecoder()
         # first load template
@@ -6776,7 +6776,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         capture = self.pg1.assert_nothing_captured()
 
         # verify IPFIX logging
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         sleep(1)
         capture = self.pg2.get_capture(10)
         ipfix = IPFIXDecoder()
@@ -7556,7 +7556,7 @@ class TestDeterministicNAT(MethodHolder):
         self.assertEqual(1000, dms[0].ses_num)
 
         # verify IPFIX logging
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         sleep(1)
         capture = self.pg2.get_capture(2)
         ipfix = IPFIXDecoder()
@@ -8792,7 +8792,7 @@ class TestNAT64(MethodHolder):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(9)
         ipfix = IPFIXDecoder()
         # first load template
@@ -8820,7 +8820,7 @@ class TestNAT64(MethodHolder):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(1)
         # verify events in data set
         for p in capture:
@@ -8865,7 +8865,7 @@ class TestNAT64(MethodHolder):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(9)
         ipfix = IPFIXDecoder()
         # first load template
@@ -8919,7 +8919,7 @@ class TestNAT64(MethodHolder):
         self.pg_start()
         p = self.pg1.get_capture(1)
         self.tcp_port_out = p[0][TCP].sport
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(10)
         ipfix = IPFIXDecoder()
         # first load template
@@ -8954,7 +8954,7 @@ class TestNAT64(MethodHolder):
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=0)
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(2)
         # verify events in data set
         for p in capture:
