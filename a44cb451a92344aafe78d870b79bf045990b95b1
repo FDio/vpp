@@ -22,6 +22,30 @@
       "revId": "a44cb451a92344aafe78d870b79bf045990b95b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bfaf8ed3_9b4695f2",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_shmem.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-24T16:49:59Z",
+      "side": 1,
+      "message": "What would the 3rd parameter be,  the message?\nThis subclasses IOError.  IOError takes(errno, strerror) as it\u0027s args.  Let me grab the doc... https://docs.python.org/2/library/exceptions.html#exceptions.EnvironmentError\n\nThe error is in line 57.  Fix coming.",
+      "parentUuid": "5ecffb59_236ecd50",
+      "range": {
+        "startLine": 116,
+        "startChar": 12,
+        "endLine": 116,
+        "endChar": 62
+      },
+      "revId": "a44cb451a92344aafe78d870b79bf045990b95b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
