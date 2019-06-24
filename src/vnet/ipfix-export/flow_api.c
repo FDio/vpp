@@ -51,13 +51,15 @@ _(IPFIX_EXPORTER_DUMP, ipfix_exporter_dump)                             \
 _(SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream)                 \
 _(IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump)               \
 _(IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del)           \
-_(IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump)
+_(IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump)                 \
+_(IPFIX_FLUSH, ipfix_flush)
 
 static void
 vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   flow_report_main_t *frm = &flow_report_main;
+  vl_api_registration_t *reg;
   vl_api_set_ipfix_exporter_reply_t *rmp;
   ip4_address_t collector, src;
   u16 collector_port = UDP_DST_PORT_ipfix;
@@ -67,6 +69,10 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
   u32 fib_id;
   u32 fib_index = ~0;
   int rv = 0;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   memcpy (collector.data, mp->collector_address, sizeof (collector.data));
   collector_port = ntohs (mp->collector_port);
@@ -155,7 +161,7 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
-    return;;
+    return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
@@ -233,6 +239,7 @@ static void
   (vl_api_ipfix_classify_table_add_del_t * mp)
 {
   vl_api_ipfix_classify_table_add_del_reply_t *rmp;
+  vl_api_registration_t *reg;
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
   flow_report_main_t *frm = &flow_report_main;
   vnet_flow_report_add_del_args_t args;
@@ -242,6 +249,10 @@ static void
   u8 ip_version;
   u8 transport_protocol;
   int rv = 0;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   classify_table_index = ntohl (mp->table_id);
   ip_version = mp->ip_version;
@@ -341,6 +352,25 @@ static void
   for (i = 0; i < vec_len (fcm->tables); i++)
     if (ipfix_classify_table_index_valid (i))
       send_ipfix_classify_table_details (i, reg, mp->context);
+}
+
+static void
+vl_api_ipfix_flush_t_handler (vl_api_ipfix_flush_t * mp)
+{
+  vl_api_ipfix_flush_reply_t *rmp;
+  vl_api_registration_t *reg;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  /* poke the flow reporting process */
+  vlib_process_signal_event (vm, flow_report_process_node.index,
+			     1 /* type_opaque */ , 0 /* data */ );
+
+  REPLY_MACRO (VL_API_IPFIX_FLUSH_REPLY);
 }
 
 /*
