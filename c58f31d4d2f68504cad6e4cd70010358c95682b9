@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e35eaaaf_94f6155d",
+        "filename": "src/vlib/trace_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-24T17:13:23Z",
+      "side": 1,
+      "message": "this function is unused.",
+      "revId": "c58f31d4d2f68504cad6e4cd70010358c95682b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
