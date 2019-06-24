@@ -12,7 +12,6 @@ from collections import deque
 from six import moves, iteritems
 from vpp_papi import VPPApiClient, mac_pton
 from hook import Hook
-from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
 
 #
@@ -155,7 +154,6 @@ class CliSyntaxError(Exception):
 
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
-    pass
 
 
 class VppPapiProvider(object):
