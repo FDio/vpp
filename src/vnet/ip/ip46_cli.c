@@ -38,8 +38,8 @@
  */
 
 #include <vnet/ip/ip.h>
-#include <vnet/ip/ip4_reassembly.h>
-#include <vnet/ip/ip6_reassembly.h>
+#include <vnet/ip/reass/ip4_full_reass.h>
+#include <vnet/ip/reass/ip6_full_reass.h>
 
 /**
  * @file
@@ -269,26 +269,26 @@ set_reassembly_command_fn (vlib_main_t * vm,
     }
 
 
-  vnet_api_error_t rv4 = ip4_reass_enable_disable (sw_if_index, ip4_on);
-  vnet_api_error_t rv6 = ip6_reass_enable_disable (sw_if_index, ip6_on);
+  vnet_api_error_t rv4 = ip4_full_reass_enable_disable (sw_if_index, ip4_on);
+  vnet_api_error_t rv6 = ip6_full_reass_enable_disable (sw_if_index, ip6_on);
   if (rv4 && rv6)
     {
       return clib_error_return (0,
-				"`ip4_reass_enable_disable' API call failed, rv=%d:%U, "
-				"`ip6_reass_enable_disable' API call failed, rv=%d:%U",
+				"`ip4_full_reass_enable_disable' API call failed, rv=%d:%U, "
+				"`ip6_full_reass_enable_disable' API call failed, rv=%d:%U",
 				(int) rv4, format_vnet_api_errno, rv4,
 				(int) rv6, format_vnet_api_errno, rv6);
     }
   else if (rv4)
     {
       return clib_error_return (0,
-				"`ip4_reass_enable_disable' API call failed, rv=%d:%U",
+				"`ip4_full_reass_enable_disable' API call failed, rv=%d:%U",
 				(int) rv4, format_vnet_api_errno, rv4);
     }
   else if (rv6)
     {
       return clib_error_return (0,
-				"`ip6_reass_enable_disable' API call failed, rv=%d:%U",
+				"`ip6_full_reass_enable_disable' API call failed, rv=%d:%U",
 				(int) rv6, format_vnet_api_errno, rv6);
     }
   return NULL;
