@@ -607,7 +607,7 @@ flowprobe_tx_interface_add_del_feature (flowprobe_main_t * fm,
   if (rv && rv != VNET_API_ERROR_VALUE_EXIST)
     {
       clib_warning ("vnet_flow_report_add_del returned %d", rv);
-      return -1;
+      return rv;
     }
 
   if (which != (u8) ~ 0)
@@ -617,14 +617,14 @@ flowprobe_tx_interface_add_del_feature (flowprobe_main_t * fm,
     }
 
   if (which == FLOW_VARIANT_IP4)
-    vnet_feature_enable_disable ("ip4-output", "flowprobe-ip4",
-				 sw_if_index, is_add, 0, 0);
+    rv = vnet_feature_enable_disable ("ip4-output", "flowprobe-ip4",
+				      sw_if_index, is_add, 0, 0);
   else if (which == FLOW_VARIANT_IP6)
-    vnet_feature_enable_disable ("ip6-output", "flowprobe-ip6",
-				 sw_if_index, is_add, 0, 0);
+    rv = vnet_feature_enable_disable ("ip6-output", "flowprobe-ip6",
+				      sw_if_index, is_add, 0, 0);
   else if (which == FLOW_VARIANT_L2)
-    vnet_feature_enable_disable ("interface-output", "flowprobe-l2",
-				 sw_if_index, is_add, 0, 0);
+    rv = vnet_feature_enable_disable ("interface-output", "flowprobe-l2",
+				      sw_if_index, is_add, 0, 0);
 
   /* Stateful flow collection */
   if (is_add && !fm->initialized)
@@ -634,7 +634,7 @@ flowprobe_tx_interface_add_del_feature (flowprobe_main_t * fm,
 	vlib_process_signal_event (vm, flowprobe_timer_node.index, 1, 0);
     }
 
-  return 0;
+  return rv;
 }
 
 /**
@@ -661,7 +661,7 @@ void vl_api_flowprobe_tx_interface_add_del_t_handler
   if (fm->record == 0)
     {
       clib_warning ("Please specify flowprobe params record first...");
-      rv = VNET_API_ERROR_CANNOT_ENABLE_DISABLE_FEATURE;
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto out;
     }
 
@@ -719,7 +719,7 @@ flowprobe_params (flowprobe_main_t * fm, u8 record_l2,
   flowprobe_record_t flags = 0;
 
   if (vec_neg_search (fm->flow_per_interface, (u8) ~ 0) != ~0)
-    return ~0;
+    return VNET_API_ERROR_VALUE_EXIST;
 
   if (record_l2)
     flags |= FLOW_RECORD_L2;
