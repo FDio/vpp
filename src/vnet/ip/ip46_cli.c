@@ -39,7 +39,9 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/ip/reass/ip4_full_reass.h>
+#include <vnet/ip/reass/ip4_dv_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
+#include <vnet/ip/reass/ip6_dv_reass.h>
 
 /**
  * @file
@@ -242,6 +244,24 @@ set_reassembly_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "Invalid interface name");
     }
 
+  enum
+  {
+    FULL,
+    DEEP_VIRTUAL,
+  } reass_type;
+  if (unformat (line_input, "full"))
+    {
+      reass_type = FULL;
+    }
+  else if (unformat (line_input, "deep-virtual"))
+    {
+      reass_type = DEEP_VIRTUAL;
+    }
+  else
+    {
+      return clib_error_return (0, "Invalid reassembly type");
+    }
+
   if (unformat (line_input, "on"))
     {
       ip4_on = 1;
@@ -268,28 +288,45 @@ set_reassembly_command_fn (vlib_main_t * vm,
 				format_unformat_error, line_input);
     }
 
-
-  vnet_api_error_t rv4 = ip4_full_reass_enable_disable (sw_if_index, ip4_on);
-  vnet_api_error_t rv6 = ip6_full_reass_enable_disable (sw_if_index, ip6_on);
+  vnet_api_error_t rv4;
+  vnet_api_error_t rv6;
+  const char *API4_NAME = "UNKNOWN";
+  const char *API6_NAME = "UNKNOWN";
+  switch (reass_type)
+    {
+    case FULL:
+      rv4 = ip4_full_reass_enable_disable (sw_if_index, ip4_on);
+      rv6 = ip6_full_reass_enable_disable (sw_if_index, ip6_on);
+      API4_NAME = "ip4_full_reass_enable_disable";
+      API6_NAME = "ip6_full_reass_enable_disable";
+      break;
+    case DEEP_VIRTUAL:
+      rv4 = ip4_dv_reass_enable_disable (sw_if_index, ip4_on);
+      rv6 = ip6_dv_reass_enable_disable (sw_if_index, ip6_on);
+      API4_NAME = "ip4_dv_reass_enable_disable";
+      API6_NAME = "ip6_dv_reass_enable_disable";
+      break;
+    }
   if (rv4 && rv6)
     {
       return clib_error_return (0,
-				"`ip4_full_reass_enable_disable' API call failed, rv=%d:%U, "
-				"`ip6_full_reass_enable_disable' API call failed, rv=%d:%U",
+				"`%s' API call failed, rv=%d:%U, "
+				"`%s' API call failed, rv=%d:%U", API4_NAME,
 				(int) rv4, format_vnet_api_errno, rv4,
-				(int) rv6, format_vnet_api_errno, rv6);
+				API6_NAME, (int) rv6, format_vnet_api_errno,
+				rv6);
     }
   else if (rv4)
     {
-      return clib_error_return (0,
-				"`ip4_full_reass_enable_disable' API call failed, rv=%d:%U",
-				(int) rv4, format_vnet_api_errno, rv4);
+      return clib_error_return (0, "`%s' API call failed, rv=%d:%U",
+				API4_NAME, (int) rv4, format_vnet_api_errno,
+				rv4);
     }
   else if (rv6)
     {
-      return clib_error_return (0,
-				"`ip6_full_reass_enable_disable' API call failed, rv=%d:%U",
-				(int) rv6, format_vnet_api_errno, rv6);
+      return clib_error_return (0, "`%s' API call failed, rv=%d:%U",
+				API6_NAME, (int) rv6, format_vnet_api_errno,
+				rv6);
     }
   return NULL;
 }
@@ -297,7 +334,7 @@ set_reassembly_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_reassembly_command, static) = {
     .path = "set interface reassembly",
-    .short_help = "set interface reassembly <interface-name> [on|off|ip4|ip6]",
+    .short_help = "set interface reassembly <interface-name> <full|deep-virtual> [on|off|ip4|ip6]",
     .function = set_reassembly_command_fn,
 };
 /* *INDENT-ON* */
