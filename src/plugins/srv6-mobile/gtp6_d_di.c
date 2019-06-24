@@ -126,7 +126,7 @@ srv6_end_m_gtp6_d_di_init (vlib_main_t * vm)
                                       keyword_str,
                                       def_str,
                                       param_str,
-                                      64, //prefix len
+                                      128, //prefix len
                                       &dpo_type,
                                       clb_format_srv6_end_m_gtp6_d_di,
                                       clb_unformat_srv6_end_m_gtp6_d_di,

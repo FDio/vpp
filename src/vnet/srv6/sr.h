@@ -171,7 +171,7 @@ typedef struct
 
   // GTP6.D
   ip6_address_t sr_prefix;
-  u16 sr_prefix_len;
+  u16 sr_prefixlen;
 
   ip6_address_t bsid;
 
