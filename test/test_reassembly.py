@@ -17,6 +17,7 @@ from util import ppp, ppc, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
+from vpp_papi import VppEnum
 
 # 35 is enough to have >257 400-byte fragments
 test_packet_count = 35
@@ -69,7 +70,7 @@ class TestIPv4Reassembly(VppTestCase):
         super(TestIPv4Reassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
@@ -197,7 +198,7 @@ class TestIPv4Reassembly(VppTestCase):
         """ long fragment chain """
 
         error_cnt_str = \
-            "/err/ip4-reassembly-feature/fragment chain too long (drop)"
+            "/err/ip4-full-reassembly-feature/fragment chain too long (drop)"
 
         error_cnt = self.statistics.get_err_counter(error_cnt_str)
 
@@ -247,11 +248,12 @@ class TestIPv4Reassembly(VppTestCase):
         self.pg_start()
 
         self.dst_if.get_capture(1)
-        self.assert_packet_counter_equal("ip4-reassembly-feature", 1)
+        self.logger.debug(self.vapi.ppcli("show error"))
+        self.assert_packet_counter_equal("ip4-full-reassembly-feature", 1)
         # TODO remove above, uncomment below once clearing of counters
         # is supported
         # self.assert_packet_counter_equal(
-        #     "/err/ip4-reassembly-feature/malformed packets", 1)
+        #     "/err/ip4-full-reassembly-feature/malformed packets", 1)
 
     def test_44924(self):
         """ compress tiny fragments """
@@ -314,11 +316,11 @@ class TestIPv4Reassembly(VppTestCase):
 
         self.dst_if.get_capture(1)
 
-        self.assert_packet_counter_equal("ip4-reassembly-feature", 1)
+        self.assert_packet_counter_equal("ip4-full-reassembly-feature", 1)
         # TODO remove above, uncomment below once clearing of counters
         # is supported
         # self.assert_packet_counter_equal(
-        #     "/err/ip4-reassembly-feature/malformed packets", 1)
+        #     "/err/ip4-full-reassembly-feature/malformed packets", 1)
 
     def test_random(self):
         """ random order reassembly """
@@ -551,7 +553,7 @@ class TestIPv4MWReassembly(VppTestCase):
         super(TestIPv4MWReassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
@@ -713,14 +715,14 @@ class TestIPv6Reassembly(VppTestCase):
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000, is_ip6=1)
-        self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     def tearDown(self):
         super(TestIPv6Reassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
@@ -883,7 +885,7 @@ class TestIPv6Reassembly(VppTestCase):
         """ long fragment chain """
 
         error_cnt_str = \
-            "/err/ip6-reassembly-feature/fragment chain too long (drop)"
+            "/err/ip6-full-reassembly-feature/fragment chain too long (drop)"
 
         error_cnt = self.statistics.get_err_counter(error_cnt_str)
 
@@ -1162,7 +1164,7 @@ class TestIPv6MWReassembly(VppTestCase):
         super(TestIPv6MWReassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
@@ -1324,7 +1326,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
         super(TestIPv4ReassemblyLocalNode, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
@@ -1463,8 +1465,8 @@ class TestFIFReassembly(VppTestCase):
         super(TestFIFReassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     def verify_capture(self, capture, ip_class, dropped_packet_indexes=[]):
