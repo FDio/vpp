@@ -496,6 +496,8 @@ svm_fifo_find_chunk (svm_fifo_t * f, u32 pos)
 	  if (pos < prev->key)
 	    {
 	      cur = rb_tree_predecessor (rt, prev);
+	      if (rb_node_is_tnil (rt, cur))
+		return 0;
 	      c = uword_to_pointer (cur->opaque, svm_fifo_chunk_t *);
 	      if (svm_fifo_chunk_includes_pos (c, pos))
 		return c;
