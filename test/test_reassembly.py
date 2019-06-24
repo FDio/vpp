@@ -503,6 +503,73 @@ class TestIPv4Reassembly(VppTestCase):
         self.src_if.assert_nothing_captured()
 
 
+class TestIPv4DVReassembly(VppTestCase):
+    """ IPv4 Deep Virtual Reassembly """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4DVReassembly, cls).setUpClass()
+
+        cls.create_pg_interfaces([0, 1])
+        cls.src_if = cls.pg0
+        cls.dst_if = cls.pg1
+
+        # setup all interfaces
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def setUp(self):
+        """ Test setup - force timeout on existing reassemblies """
+        super(TestIPv4DVReassembly, self).setUp()
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip4=True,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL)
+        self.vapi.ip_reassembly_set(
+            timeout_ms=0, max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL,
+            expire_walk_interval_ms=10)
+        self.sleep(.25)
+        self.vapi.ip_reassembly_set(
+            timeout_ms=1000000, max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL,
+            expire_walk_interval_ms=10000)
+
+    def tearDown(self):
+        super(TestIPv4DVReassembly, self).tearDown()
+        self.logger.debug(self.vapi.ppcli("show ip4-dv-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+
+    def test_basic(self):
+        """ basic reassembly """
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IP(id=1, src=self.src_if.remote_ip4,
+                dst=self.dst_if.remote_ip4) /
+             UDP(sport=1234, dport=5678) /
+             Raw("X" * 2000))
+        fragments = fragment_rfc791(p, 500)
+        # send incomplete stream with duplicates
+        incomplete_stream = fragments[:-1] + fragments[:-1]
+        self.pg_enable_capture()
+        self.src_if.add_stream(incomplete_stream)
+        self.pg_start()
+        self.logger.debug(self.vapi.ppcli("show ip4-dv-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.dst_if.assert_nothing_captured()
+        # send last fragment to complete the reassembly
+        self.src_if.add_stream(fragments[-1])
+        self.pg_start()
+        c = self.dst_if.get_capture(2*len(fragments)-1)
+        for sent, recvd in zip(fragments[:-1]+fragments, c):
+            self.assertEqual(sent[IP].src, recvd[IP].src)
+            self.assertEqual(sent[IP].dst, recvd[IP].dst)
+            self.assertEqual(sent[Raw].payload, recvd[Raw].payload)
+
+
 class TestIPv4MWReassembly(VppTestCase):
     """ IPv4 Reassembly (multiple workers) """
     worker_config = "workers %d" % worker_count
@@ -1114,6 +1181,72 @@ class TestIPv6Reassembly(VppTestCase):
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
 
 
+class TestIPv6DVReassembly(VppTestCase):
+    """ IPv6 Deep Virtual Reassembly """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv6DVReassembly, cls).setUpClass()
+
+        cls.create_pg_interfaces([0, 1])
+        cls.src_if = cls.pg0
+        cls.dst_if = cls.pg1
+
+        # setup all interfaces
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def setUp(self):
+        """ Test setup - force timeout on existing reassemblies """
+        super(TestIPv6DVReassembly, self).setUp()
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip6=True,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL)
+        self.vapi.ip_reassembly_set(
+            timeout_ms=0, max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL,
+            expire_walk_interval_ms=10, is_ip6=1)
+        self.sleep(.25)
+        self.vapi.ip_reassembly_set(
+            timeout_ms=1000000, max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL,
+            expire_walk_interval_ms=10000, is_ip6=1)
+
+    def tearDown(self):
+        super(TestIPv6DVReassembly, self).tearDown()
+        self.logger.debug(self.vapi.ppcli("show ip6-dv-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+
+    def test_basic(self):
+        """ basic reassembly """
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
+             UDP(sport=1234, dport=5678) /
+             Raw("X" * 2000))
+        fragments = fragment_rfc8200(p, 1, 500)
+        # send incomplete stream with duplicates
+        incomplete_stream = fragments[:-1] + fragments[:-1]
+        self.pg_enable_capture()
+        self.src_if.add_stream(incomplete_stream)
+        self.pg_start()
+        self.logger.debug(self.vapi.ppcli("show ip6-dv-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.dst_if.assert_nothing_captured()
+        # send last fragment to complete the reassembly
+        self.src_if.add_stream(fragments[-1])
+        self.pg_start()
+        c = self.dst_if.get_capture(2*len(fragments)-1)
+        for sent, recvd in zip(fragments[:-1]+fragments, c):
+            self.assertEqual(sent[IPv6].src, recvd[IPv6].src)
+            self.assertEqual(sent[IPv6].dst, recvd[IPv6].dst)
+            self.assertEqual(sent[Raw].payload, recvd[Raw].payload)
+
+
 class TestIPv6MWReassembly(VppTestCase):
     """ IPv6 Reassembly (multiple workers) """
     worker_config = "workers %d" % worker_count
@@ -1126,7 +1259,6 @@ class TestIPv6MWReassembly(VppTestCase):
         cls.src_if = cls.pg0
         cls.send_ifs = cls.pg_interfaces[:-1]
         cls.dst_if = cls.pg_interfaces[-1]
-
         # setup all interfaces
         for i in cls.pg_interfaces:
             i.admin_up()
