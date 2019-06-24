@@ -58,8 +58,8 @@ format_srv6_end_rewrite_trace6 (u8 * s, va_list * args)
   _(M_GTP6_D_BAD_PACKETS, "srv6 End.M.GTP6.D bad packets")
 
 #define foreach_srv6_end_v6_d_di_error \
-  _(M_GTP6_D_PACKETS, "srv6 End.M.GTP6.D.DI packets") \
-  _(M_GTP6_D_BAD_PACKETS, "srv6 End.M.GTP6.D.DI bad packets")
+  _(M_GTP6_D_DI_PACKETS, "srv6 End.M.GTP6.D.DI packets") \
+  _(M_GTP6_D_DI_BAD_PACKETS, "srv6 End.M.GTP6.D.DI bad packets")
 
 typedef enum
 {
@@ -317,8 +317,8 @@ static inline u16
 hash_uword_to_u16 (uword *key)
 {
   u16 *val;
-  val = key;
-#if uword bits == 64
+  val = (u16 *)key;
+#if uword_bits == 64
   return val[0] ^ val[1] ^ val[3] ^ val[4];
 #else
   return val[0] ^ val[1];
@@ -354,7 +354,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	  ip6_sr_localsid_t *ls0;
 
           ip6srv_combo_header_t *ip6srv0;
-          ip6_address_t src0, dst0, seg0;
+          ip6_address_t dst0, seg0;
 
           ip6_gtpu_header_t *hdr0 = NULL;
           uword len0;
@@ -378,7 +378,6 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
                                vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
           ip6srv0 = vlib_buffer_get_current (b0);
-          src0 = ip6srv0->ip.src_address;
           dst0 = ip6srv0->ip.dst_address;
 	  seg0 = ip6srv0->sr.segments[0];
 
@@ -420,7 +419,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	      u16 index;
 	      u16 offset, shift;
 
-	      index = sl0->localsid_len;
+	      index = ls0->localsid_len;
 	      index += 8;
 	      offset = index / 8;
 	      shift = index % 8;
@@ -526,7 +525,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	  ip6_sr_localsid_t *ls0;
 
           ip6_gtpu_header_t *hdr0 = NULL;
-	  uword len0
+	  uword len0;
 
 	  ip6_address_t seg0;
 	  u32 teid = 0;
@@ -534,7 +533,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	  u32 offset, shift;
 	  ip6_header_t *encap;
           
-	  u32 next0 = SRV6_END_M_GTP6_D_DI__NEXT_LOOKUP;
+	  u32 next0 = SRV6_END_M_GTP6_D_NEXT_LOOKUP;
 
           // defaults
           bi0 = from[0];
@@ -553,11 +552,11 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
-          if ((hdr0->ip.protocol != IPPROTO_UDP)
-	   || (hdr0->udp->dst_port != clib_host_to_net_u16 (SRV6_GTP_UDP_DST_PORT))
-	   || (len0 < sizeof (ipv6_gtpu_header_t)))
+          if ((hdr0->ip6.protocol != IP_PROTOCOL_UDP)
+	   || (hdr0->udp.dst_port != clib_host_to_net_u16 (SRV6_GTP_UDP_DST_PORT))
+	   || (len0 < sizeof (ip6_gtpu_header_t)))
             {
-              next0 = SRV6_END_M_GTP6_D_DI__NEXT_DROP;
+              next0 = SRV6_END_M_GTP6_D_NEXT_DROP;
 
               bad_n++;
             }
@@ -573,9 +572,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	          shift = ls0->sr_prefixlen % 8;
 
 		  offset += 1;
-		  if (PREDICT_TRUE (shitft == 0))
+		  if (PREDICT_TRUE (shift == 0))
 	            {
-	              clib_memcpy (&seg0->as_u8[offset], teidp, 4);
+	              clib_memcpy (&seg0.as_u8[offset], teidp, 4);
 		    }
 		  else
 		    {
@@ -583,8 +582,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 		      for (idx = 0; idx < 4; idx++)
 		        {
- 			  seg0->as_u8[offset + idx] |= teidp[idx] >> shift;
-			  seg0->as_u8[offset + idx + 1] |= teidp[idx] << shift;
+ 			  seg0.as_u8[offset + idx] |= teidp[idx] >> shift;
+			  seg0.as_u8[offset + idx + 1] |= teidp[idx] << shift;
 			}
 		    }
 		}
@@ -599,8 +598,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 	      uword *p;
 	      ip6srv_combo_header_t *ip6srv;
-	      struct ip6_sr_policy_t *sr_policy;
-	      struct ip6_sr_sl_t *sl;
+	      ip6_sr_policy_t *sr_policy;
+	      ip6_sr_sl_t *sl = NULL;
 	      u32 *sl_index;
 	      u32 hdr_len;
 
@@ -621,7 +620,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		    break;
 		}
 
-	      hdr_len = sizeof (ip6srv_combo_heaer_t) + vec_len (sl->segments) * sizeof(ip6_address_t);
+	      hdr_len = sizeof (ip6srv_combo_header_t) + vec_len (sl->segments) * sizeof(ip6_address_t);
 	      hdr_len += sizeof (ip6_address_t);
 
               // jump back to data[0] or pre_data if required
@@ -629,9 +628,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
               ip6srv = vlib_buffer_get_current (b0);
 
-	      clib_memcpy_fast (&ip6srv, sl0->rewrite, sizeof(ip6_sr_header_t));
+	      clib_memcpy_fast (&ip6srv, sl->rewrite, sizeof(ip6_sr_header_t));
 
-	      clib_memcpy_fast (&ip6srv, &sm->cache_header, sizeof(ip6_header_t));
+	      clib_memcpy_fast (&ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
 
 	      ip6srv->ip.payload_length = clib_host_to_net_u16 (len0 + hdr_len - sizeof(ip6_header_t));
 
@@ -641,7 +640,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		}
 	      else
 	        {
-		  ip6srv->sr.protocol = IP_PROTOCOL_IP;
+		  ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
 		}
 
 	      ip6srv->sr.segments_left += 1;
@@ -649,7 +648,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 	      ip6srv->sr.segments[0] = seg0;
 
-	      clib_memcpy_fast (&ip6srv->sr.segments[1], (u8 *)(sl0->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
+	      clib_memcpy_fast (&ip6srv->sr.segments[1], (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
 				vec_len (sl->segments));
 
               good_n++;
@@ -669,7 +668,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
           vlib_increment_combined_counter
             (((next0 ==
-               SRV6_END_M_GTP6_D_DI_NEXT_DROP) ? &(sm2->sr_ls_invalid_counters) :
+               SRV6_END_M_GTP6_D_NEXT_DROP) ? &(sm2->sr_ls_invalid_counters) :
               &(sm2->sr_ls_valid_counters)), thread_index, ls0 - sm2->localsids,
              1, vlib_buffer_length_in_chain (vm, b0));
 
@@ -680,12 +679,12 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, sm->end_m_gtp6_e_node_index,
-                               SRV6_END_ERROR_M_GTP6_D_DI_BAD_PACKETS,
+  vlib_node_increment_counter (vm, sm->end_m_gtp6_d_node_index,
+                               SRV6_END_ERROR_M_GTP6_D_BAD_PACKETS,
 			       bad_n);
 
-  vlib_node_increment_counter (vm, sm->end_m_gtp6_e_node_index,
-                               SRV6_END_ERROR_M_GTP6_D_DI_PACKETS,
+  vlib_node_increment_counter (vm, sm->end_m_gtp6_d_node_index,
+                               SRV6_END_ERROR_M_GTP6_D_PACKETS,
 			       good_n);
 
   return frame->n_vectors;
@@ -720,7 +719,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	  ip6_sr_localsid_t *ls0;
 
           ip6_gtpu_header_t *hdr0 = NULL;
-	  uword len0
+	  uword len0;
 
           ip6_address_t dst0;
 	  ip6_address_t seg0;
@@ -729,7 +728,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	  u32 offset, shift;
 	  ip6_header_t *encap;
           
-	  u32 next0 = SRV6_END_M_GTP6_D_DI__NEXT_LOOKUP;
+	  u32 next0 = SRV6_END_M_GTP6_D_DI_NEXT_LOOKUP;
 
           // defaults
           bi0 = from[0];
@@ -748,17 +747,17 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
-          if ((hdr0->ip.protocol != IPPROTO_UDP)
-	   || (hdr0->udp->dst_port != clib_host_to_net_u16 (SRV6_GTP_UDP_DST_PORT))
-	   || (len0 < sizeof (ipv6_gtpu_header_t)))
+          if ((hdr0->ip6.protocol != IP_PROTOCOL_UDP)
+	   || (hdr0->udp.dst_port != clib_host_to_net_u16 (SRV6_GTP_UDP_DST_PORT))
+	   || (len0 < sizeof (ip6_gtpu_header_t)))
             {
-              next0 = SRV6_END_M_GTP6_D_DI__NEXT_DROP;
+              next0 = SRV6_END_M_GTP6_D_DI_NEXT_DROP;
 
               bad_n++;
             }
           else
             {
-	      dst0 = hdr0->ip.dst_address;
+	      dst0 = hdr0->ip6.dst_address;
 	      seg0 = ls0->sr_prefix;
 	      teid = hdr0->gtpu.teid;
 	      teidp = (u8 *) &teid;
@@ -769,9 +768,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	          shift = ls0->sr_prefixlen % 8;
 
 		  offset += 1;
-		  if (PREDICT_TRUE (shitft == 0))
+		  if (PREDICT_TRUE (shift == 0))
 	            {
-	              clib_memcpy (&seg0->as_u8[offset], teidp, 4);
+	              clib_memcpy (&seg0.as_u8[offset], teidp, 4);
 		    }
 		  else
 		    {
@@ -779,8 +778,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 		      for (idx = 0; idx < 4; idx++)
 		        {
- 			  seg0->as_u8[offset + idx] |= teidp[idx] >> shift;
-			  seg0->as_u8[offset + idx + 1] |= teidp[idx] << shift;
+ 			  seg0.as_u8[offset + idx] |= teidp[idx] >> shift;
+			  seg0.as_u8[offset + idx + 1] |= teidp[idx] << shift;
 			}
 		    }
 		}
@@ -795,8 +794,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 	      uword *p;
 	      ip6srv_combo_header_t *ip6srv;
-	      struct ip6_sr_policy_t *sr_policy;
-	      struct ip6_sr_sl_t *sl;
+	      ip6_sr_policy_t *sr_policy;
+	      ip6_sr_sl_t *sl = NULL;
 	      u32 *sl_index;
 	      u32 hdr_len;
 
@@ -817,7 +816,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		    break;
 		}
 
-	      hdr_len = sizeof (ip6srv_combo_heaer_t) + vec_len (sl->segments) * sizeof(ip6_address_t);
+	      hdr_len = sizeof (ip6srv_combo_header_t) + vec_len (sl->segments) * sizeof(ip6_address_t);
 	      hdr_len += sizeof (ip6_address_t) * 2;
 
               // jump back to data[0] or pre_data if required
@@ -825,9 +824,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
               ip6srv = vlib_buffer_get_current (b0);
 
-	      clib_memcpy_fast (&ip6srv, sl0->rewrite, sizeof(ip6_sr_header_t));
+	      clib_memcpy_fast (&ip6srv, sl->rewrite, sizeof(ip6_sr_header_t));
 
-	      clib_memcpy_fast (&ip6srv, &sm->cache_header, sizeof(ip6_header_t));
+	      clib_memcpy_fast (&ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
 
 	      ip6srv->ip.payload_length = clib_host_to_net_u16 (len0 + hdr_len - sizeof(ip6_header_t));
 
@@ -837,7 +836,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		}
 	      else
 	        {
-		  ip6srv->sr.protocol = IP_PROTOCOL_IP;
+		  ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
 		}
 
 	      ip6srv->sr.segments_left += 2;
@@ -846,7 +845,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      ip6srv->sr.segments[0] = dst0;
 	      ip6srv->sr.segments[1] = seg0;
 
-	      clib_memcpy_fast (&ip6srv->sr.segments[2], (u8 *)(sl0->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
+	      clib_memcpy_fast (&ip6srv->sr.segments[2], (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
 				vec_len (sl->segments));
 
               good_n++;
@@ -877,11 +876,11 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, sm->end_m_gtp6_e_node_index,
+  vlib_node_increment_counter (vm, sm->end_m_gtp6_d_di_node_index,
                                SRV6_END_ERROR_M_GTP6_D_DI_BAD_PACKETS,
 			       bad_n);
 
-  vlib_node_increment_counter (vm, sm->end_m_gtp6_e_node_index,
+  vlib_node_increment_counter (vm, sm->end_m_gtp6_d_di_node_index,
                                SRV6_END_ERROR_M_GTP6_D_DI_PACKETS,
 			       good_n);
 

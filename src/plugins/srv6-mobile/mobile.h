@@ -84,7 +84,7 @@ typedef struct srv6_end_main_v6_decap_di_s
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
-  u32 end_m_gtp6_d_node_index;
+  u32 end_m_gtp6_d_di_node_index;
   u32 error_node_index;
 
   ip6srv_combo_header_t cache_hdr;

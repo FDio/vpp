@@ -319,7 +319,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	address_set = 1;
       else if (!address_set
 	       && unformat (input, "prefix %U/%d", unformat_ip6_address,
-		            &resulting_address, &prefixlen))
+		            &resulting_address, &prefix_len))
 	address_set = 1;
       else if (!address_set
 	       && unformat (input, "addr %U", unformat_ip6_address,
@@ -353,12 +353,12 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    behavior = SR_BEHAVIOR_DT4;
 	  else
 	    {
-	      if (unformat (input, "end.m.gtp6.d %U/%d", unformat_ipv6_address,
+	      if (unformat (input, "end.m.gtp6.d %U/%d", unformat_ip6_address,
 		            &sr_prefix, &sr_prefixlen)
-	       || unformat (input, "end.m.gtp6.d.di %U/%d", unformat_ipv6_address,
+	       || unformat (input, "end.m.gtp6.d.di %U/%d", unformat_ip6_address,
 		            &sr_prefix, &sr_prefixlen))
                 {
-                  if (unformat (input, "bsid %U", unformat_ipv6_address,
+                  if (unformat (input, "bsid %U", unformat_ip6_address,
 			        &bsid))
 		    {
 		    }

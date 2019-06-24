@@ -107,14 +107,14 @@ srv6_end_m_gtp6_d_di_init (vlib_main_t * vm)
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = node->index;
 
-  ip6 = &sm->cache_header;
+  ip6 = &sm->cache_hdr;
 
   clib_memset_u8 (ip6, 0, sizeof(ip6srv_combo_header_t));
 
   // IPv6 header (default)
   ip6->ip.ip_version_traffic_class_and_flow_label = 0x60;
-  ip6->ip.hoplimit = 64;
-  ip6->protocol = IPPROTO_IPV6_ROUTE;
+  ip6->ip.hop_limit = 64;
+  ip6->ip.protocol = IPPROTO_IPV6_ROUTE;
 
   // SR header (default)
   ip6->sr.type = 4;

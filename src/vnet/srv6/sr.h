@@ -323,9 +323,10 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
 extern int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u32 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index,
 		 u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
+		 ip6_address_t *sr_prefix, u32 sr_prefixlen, ip6_address_t *bsid,
 		 void *ls_plugin_mem);
 
 extern int

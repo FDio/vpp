@@ -560,7 +560,7 @@ class Program(object):
         for p in c4.pg_read_packets():
             p.show2()
 
-    def test_gtp6(self):
+    def test_gtp6_drop_in(self):
         # TESTS:
         # trace add af-packet-input 10
         # pg interface on c1 172.20.0.1
@@ -692,7 +692,7 @@ def get_args():
             help="Test related commands.")
 
     p3.add_argument("op", choices=[
-        "ping", "srv6", "tmap", "gtp6"])
+        "ping", "srv6", "tmap", "gtp6_drop_in"])
 
     args = parser.parse_args()
     if not hasattr(args, "op") or not args.op:
@@ -728,8 +728,8 @@ def main(op=None, image=None, prefix=None, verbose=None, index=None, command=Non
             program.test_srv6()
         elif op == 'tmap':
             program.test_tmap()
-        elif op == 'gtp6':
-            program.test_gtp6()
+        elif op == 'gtp6_drop_in':
+            program.test_gtp6_drop_in()
 
     except Exception:
         program.logger.exception("")
