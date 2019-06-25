@@ -12,7 +12,6 @@ from vpp_memif import MEMIF_MODE, MEMIF_ROLE, remove_all_memif_vpp_config, \
 from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
-@unittest.skipIf(True, "doesn't work with VppEnums")
 class TestMemif(VppTestCase):
     """ Memif Test Case """
 
@@ -250,8 +249,11 @@ class TestMemif(VppTestCase):
         self.assertTrue(remote_memif.wait_for_link_up(5))
 
         # add routing to remote vpp
-        VppIpRoute(self.remote_test, self.pg0._local_ip4_subnet, 24,
-                   [VppRoutePath(memif.ip4_addr, 0xffffffff)]).add_vpp_config()
+        route = VppIpRoute(self.remote_test, self.pg0._local_ip4_subnet, 24,
+                   [VppRoutePath(memif.ip4_addr, 0xffffffff)],
+                   register=False)
+
+        route.add_vpp_config()
 
         # create ICMP echo-request from local pg to remote memif
         packet_num = 10
@@ -265,6 +267,8 @@ class TestMemif(VppTestCase):
         for c in capture:
             self._verify_icmp(self.pg0, remote_memif, c, seq)
             seq += 1
+
+        route.remove_vpp_config()
 
 
 if __name__ == '__main__':
