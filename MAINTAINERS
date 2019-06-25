@@ -408,6 +408,11 @@ M:	Neale Ranns <nranns@cisco.com>
 M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	extras/vom/vom/
 
+Plugin - Host Stack Applications
+I:	hsa
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/plugins/hs_apps/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
