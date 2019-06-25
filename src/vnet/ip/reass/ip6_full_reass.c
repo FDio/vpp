@@ -1102,7 +1102,7 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	    {
 	      next0 = IP6_FULL_REASSEMBLY_NEXT_HANDOFF;
 	      if (is_feature)
-		vnet_buffer (b0)->ip.reass.owner_feature_thread_index =
+		vnet_buffer (b0)->ip.reass.owner_thread_index =
 		  kv.v.memory_owner_thread_index;
 	      else
 		vnet_buffer (b0)->ip.reass.owner_thread_index =
@@ -1122,7 +1122,7 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 		  next0 = IP6_FULL_REASSEMBLY_NEXT_HANDOFF;
 		  b0 = vlib_get_buffer (vm, bi0);
 		  if (is_feature)
-		    vnet_buffer (b0)->ip.reass.owner_feature_thread_index =
+		    vnet_buffer (b0)->ip.reass.owner_thread_index =
 		      handoff_thread_idx;
 		  else
 		    vnet_buffer (b0)->ip.reass.owner_thread_index =
@@ -1179,16 +1179,10 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 		{
 		  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		    {
-		      if (is_feature)
-			ip6_full_reass_add_trace (vm, node, rm, NULL, bi0,
-						  HANDOFF,
-						  vnet_buffer (b0)->ip.
-						  reass.owner_feature_thread_index);
-		      else
-			ip6_full_reass_add_trace (vm, node, rm, NULL, bi0,
-						  HANDOFF,
-						  vnet_buffer (b0)->ip.
-						  reass.owner_thread_index);
+		      ip6_full_reass_add_trace (vm, node, rm, NULL, bi0,
+						HANDOFF,
+						vnet_buffer (b0)->ip.
+						reass.owner_thread_index);
 		    }
 		}
 	      else if (is_feature && IP6_ERROR_NONE == error0)
@@ -1730,10 +1724,7 @@ ip6_full_reassembly_handoff_inline (vlib_main_t * vm,
 
   while (n_left_from > 0)
     {
-      ti[0] =
-	(is_feature) ? vnet_buffer (b[0])->ip.
-	reass.owner_feature_thread_index : vnet_buffer (b[0])->ip.
-	reass.owner_thread_index;
+      ti[0] = vnet_buffer (b[0])->ip.reass.owner_thread_index;
 
       if (PREDICT_FALSE
 	  ((node->flags & VLIB_NODE_FLAG_TRACE)
