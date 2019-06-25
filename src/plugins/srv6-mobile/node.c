@@ -670,7 +670,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  ip6srv->ip.src_address = dst0;
 		  ip6srv->ip.dst_address = seg0;
 
-	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x40)
+	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
 	 	    ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
 		}
 
