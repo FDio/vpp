@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "82e085b0_44fa9817",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-25T11:58:53Z",
+      "side": 1,
+      "message": "this dumps all the tables that exists, not all the routes in all the tables. So no need for a table_id filter.",
+      "revId": "5bdef230118e7b721c59687bd673dd0e5d7764e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "45530d4a_c21261f5",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-25T11:58:53Z",
+      "side": 1,
+      "message": "this one already has a table_id filter.",
+      "revId": "5bdef230118e7b721c59687bd673dd0e5d7764e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cda0bca7_89b3cb3c",
+        "filename": "test/vpp_ip_route.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-25T11:58:53Z",
+      "side": 1,
+      "message": "while you\u0027re changing this :)\n%d:%s/%d for IPv6 results in weird looking prefixes. like the default route in table 2 will be: 2::/0...\nso maybe: table-%d-%s/%d or something.",
+      "revId": "5bdef230118e7b721c59687bd673dd0e5d7764e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
