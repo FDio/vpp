@@ -52,6 +52,10 @@ class VppObject(object):
         return not self.__eq__(other)
 
 
+class VppObjectRegistryError(Exception):
+    """Exceptions raised by the object registry"""
+
+
 class VppObjectRegistry(object):
     """ Class which handles automatic configuration cleanup. """
     _shared_state = {}
@@ -70,7 +74,9 @@ class VppObjectRegistry(object):
             self._object_dict[obj.object_id()] = obj
             logger.debug("REG: registering %s" % obj)
         else:
-            logger.debug("REG: duplicate add, ignoring (%s)" % obj)
+            msg = "REG: duplicate add, ignoring (%s)" % obj
+            logger.debug(msg)
+            raise VppObjectRegistryError(msg)
 
     def unregister_all(self, logger):
         """ Remove all object registrations from registry. """
@@ -104,5 +110,6 @@ class VppObjectRegistry(object):
             logger.error("REG: Couldn't remove configuration for object(s):")
             for obj in failed:
                 logger.error(repr(obj))
-            raise Exception("Couldn't remove configuration for object(s): %s" %
-                            (", ".join(str(x) for x in failed)))
+            raise VppObjectRegistryError(
+                "Couldn't remove configuration for object(s): %s" %
+                (", ".join(str(x) for x in failed)))
