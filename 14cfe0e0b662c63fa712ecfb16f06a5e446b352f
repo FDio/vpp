@@ -16,6 +16,24 @@
       "revId": "14cfe0e0b662c63fa712ecfb16f06a5e446b352f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8609f6e5_49765f2a",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 14
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-25T12:03:07Z",
+      "side": 1,
+      "message": "Returns the whole reply instead of cutting down like with:\n\n\"API call failed, expected 0 return value instead of -121 in gbp_brid...val\u003d-121)\"",
+      "parentUuid": "54e79174_4fc67f65",
+      "revId": "14cfe0e0b662c63fa712ecfb16f06a5e446b352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
