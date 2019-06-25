@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <arpa/inet.h>
-#include <vcl/sock_test.h>
+#include <hs_apps/vcl/sock_test.h>
 #include <fcntl.h>
 #ifndef VCL_TEST
 #include <sys/un.h>

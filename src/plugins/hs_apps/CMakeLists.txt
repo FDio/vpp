@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+##############################################################################
+# vpp builtin hs apps
+##############################################################################
 add_vpp_plugin(hs_apps
   SOURCES
   echo_client.c
@@ -20,24 +23,46 @@ add_vpp_plugin(hs_apps
   proxy.c
 )
 
-option(VPP_BUILD_SESSION_ECHO_APPS "Build session echo apps." ON)
-if(VPP_BUILD_SESSION_ECHO_APPS)
+##############################################################################
+# vpp external hs apps
+##############################################################################
+option(VPP_BUILD_HS_EXTERNAL_ECHO_APPS "Build hs external echo apps." ON)
+if(VPP_BUILD_HS_EXTERNAL_ECHO_APPS)
   add_vpp_executable(tcp_echo
-    SOURCES tcp_echo.c
+    SOURCES external/tcp_echo.c
     LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
     DEPENDS api_headers
     NO_INSTALL
   )
   add_vpp_executable(quic_echo
-    SOURCES quic_echo.c
+    SOURCES external/quic_echo.c
     LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
     DEPENDS api_headers
     NO_INSTALL
   )
   add_vpp_executable(udp_echo
-    SOURCES udp_echo.c
+    SOURCES external/udp_echo.c
     LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
     DEPENDS api_headers
     NO_INSTALL
   )
-endif(VPP_BUILD_SESSION_ECHO_APPS)
+endif(VPP_BUILD_HS_EXTERNAL_ECHO_APPS)
+
+##############################################################################
+# vcl tests
+##############################################################################
+option(VPP_BUILD_VCL_TESTS "Build vcl tests." ON)
+if(VPP_BUILD_VCL_TESTS)
+  foreach(test
+    vcl_test_server
+    vcl_test_client
+    sock_test_server
+    sock_test_client
+  )
+    add_vpp_executable(${test}
+      SOURCES "vcl/${test}.c"
+      LINK_LIBRARIES vppcom pthread
+      NO_INSTALL
+    )
+  endforeach()
+endif(VPP_BUILD_VCL_TESTS)
