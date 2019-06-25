@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import sys
 
 stdlib_enum = sys.version_info >= (3, 6)
@@ -21,6 +22,10 @@ try:
 except ImportError:
     from distutils.core import setup, find_packages
 
+path = os.path.sep.join(os.path.abspath(__file__).split(os.path.sep)[:-1])
+with open(os.path.join(path, 'VERSION')) as version_file:
+    __version__ = version_file.read().strip()
+
 requirements = ['cffi >= 1.6']
 if not stdlib_enum:
     requirements.append('aenum')
@@ -29,7 +34,7 @@ if not stdlib_ipaddress:
 
 setup(
     name='vpp_papi',
-    version='1.6.2',
+    version=__version__,
     description='VPP Python binding',
     author='Ole Troan',
     author_email='ot@cisco.com',

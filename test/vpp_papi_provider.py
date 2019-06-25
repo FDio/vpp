@@ -186,10 +186,11 @@ class VppPapiProvider(object):
         except KeyError:
             pass
 
-        self.vpp = VPPApiClient(logger=test_class.logger,
-                                read_timeout=read_timeout,
-                                use_socket=use_socket,
-                                server_address=test_class.api_sock)
+        self.vppapiclient = VPPApiClient(logger=test_class.logger,
+                                         read_timeout=read_timeout,
+                                         use_socket=use_socket,
+                                         server_address=test_class.api_sock)
+        self.vpp = self.vppapiclient
         self._events = deque()
 
     def __enter__(self):
