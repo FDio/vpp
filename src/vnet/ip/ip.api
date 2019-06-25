@@ -1020,6 +1020,7 @@ enum ip_reass_type
 {
   IP_REASS_TYPE_FULL = 0,
   IP_REASS_TYPE_DEEP_VIRTUAL = 0x1,
+  IP_REASS_TYPE_SHALLOW_VIRTUAL = 0x2,
 };
 
 autoreply define ip_reassembly_set
