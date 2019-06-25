@@ -1143,6 +1143,32 @@ arp_mk_reply (vnet_main_t * vnm,
   return (next0);
 }
 
+/*
+ * we're looking for FIB sources that indicate the destination
+ * is attached. There may be interposed DPO prior to the one
+ * we are looking for
+ */
+static enum
+{ ARP_DST_FIB_NONE, ARP_DST_FIB_ADJ, ARP_DST_FIB_CONN }
+arp_dst_fib_check (const fib_node_index_t fei, fib_entry_flag_t * flags)
+{
+  const fib_entry_t * entry = fib_entry_get (fei);
+  const fib_entry_src_t *entry_src;
+  fib_source_t src;
+  /* *INDENT-OFF* */
+  FOR_EACH_SRC_ADDED(entry, entry_src, src,
+  ({
+    *flags = fib_entry_get_flags_for_source (fei, src);
+    if (fib_entry_is_sourced (fei, FIB_SOURCE_ADJ))
+        return ARP_DST_FIB_ADJ;
+      else if (FIB_ENTRY_FLAG_CONNECTED & *flags)
+        return ARP_DST_FIB_CONN;
+  }))
+  /* *INDENT-ON* */
+
+  return ARP_DST_FIB_NONE;
+}
+
 static uword
 arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
@@ -1173,7 +1199,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ethernet_header_t *eth_rx;
 	  const ip4_address_t *if_addr0;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
-	  u8 dst_is_local0, is_unnum0, is_vrrp_reply0;
+	  u8 dst_is_local0, is_vrrp_reply0;
 	  fib_node_index_t dst_fei, src_fei;
 	  const fib_prefix_t *pfx0;
 	  fib_entry_flag_t src_flags, dst_flags;
@@ -1202,15 +1228,6 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto drop;
 
 	    }
-	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
-					  &arp0->ip4_over_ethernet[1].ip4,
-					  32);
-	  dst_flags = fib_entry_get_flags (dst_fei);
-
-	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
-
-	  /* Honor unnumbered interface, if any */
-	  is_unnum0 = sw_if_index0 != conn_sw_if_index0;
 
 	  {
 	    /*
@@ -1313,8 +1330,12 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      }
 	  }
 
-	  if (fib_entry_is_sourced (dst_fei, FIB_SOURCE_ADJ))
+	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
+					  &arp0->ip4_over_ethernet[1].ip4,
+					  32);
+	  switch (arp_dst_fib_check (dst_fei, &dst_flags))
 	    {
+	    case ARP_DST_FIB_ADJ:
 	      /*
 	       * We matched an adj-fib on ths source subnet (a /32 previously
 	       * added as a result of ARP). If this request is a gratuitous
@@ -1328,21 +1349,13 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		error0 = arp_learn (vnm, am, sw_if_index0,
 				    &arp0->ip4_over_ethernet[0]);
 	      goto drop;
-	    }
-	  else if (!(FIB_ENTRY_FLAG_CONNECTED & dst_flags))
-	    {
+	    case ARP_DST_FIB_CONN:
+	      /* destination is connected, continue to process */
+	      break;
+	    case ARP_DST_FIB_NONE:
+	      /* destination is not connected, stop here */
 	      error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
 	      goto next_feature;
-	    }
-
-	  if (sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
-	    {
-	      /*
-	       * The interface the ARP was received on is not the interface
-	       * on which the covering prefix is configured. Maybe this is a
-	       * case for unnumbered.
-	       */
-	      is_unnum0 = 1;
 	    }
 
 	  dst_is_local0 = (FIB_ENTRY_FLAG_LOCAL & dst_flags);
@@ -1390,7 +1403,16 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      goto next_feature;
 	    }
-	  if (is_unnum0)
+
+	  /* Honor unnumbered interface, if any */
+	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
+	  if (sw_if_index0 != conn_sw_if_index0 ||
+	      /*
+	       * The interface the ARP was received on is not the interface
+	       * on which the covering prefix is configured. Maybe this is a
+	       * case for unnumbered.
+	       */
+	      sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
 	    {
 	      if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
 		{
