@@ -1551,29 +1551,3 @@ add_vpp_library(vnet
 )
 
 ##############################################################################
-# Session echo apps
-##############################################################################
-
-option(VPP_BUILD_SESSION_ECHO_APPS "Build session echo apps." ON)
-if(VPP_BUILD_SESSION_ECHO_APPS)
-  add_vpp_executable(tcp_echo
-    SOURCES ../tests/vnet/session/tcp_echo.c
-    LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
-    DEPENDS api_headers
-    NO_INSTALL
-    )
-  add_vpp_executable(quic_echo
-    SOURCES ../tests/vnet/session/quic_echo.c
-    LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
-    DEPENDS api_headers
-    NO_INSTALL
-    )
-  add_vpp_executable(udp_echo
-    SOURCES ../tests/vnet/session/udp_echo.c
-    LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
-    DEPENDS api_headers
-    NO_INSTALL
-    )
-endif(VPP_BUILD_SESSION_ECHO_APPS)
-
-##############################################################################
