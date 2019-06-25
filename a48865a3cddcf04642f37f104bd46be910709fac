@@ -22,6 +22,30 @@
       "revId": "a48865a3cddcf04642f37f104bd46be910709fac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "46893291_11b8e861",
+        "filename": "extras/scripts/check_commit_msg.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-06-25T14:34:21Z",
+      "side": 1,
+      "message": "Thanks, I didn\u0027t see this one.",
+      "parentUuid": "e1a6f3ac_0fcd7a19",
+      "range": {
+        "startLine": 15,
+        "startChar": 15,
+        "endLine": 15,
+        "endChar": 21
+      },
+      "revId": "a48865a3cddcf04642f37f104bd46be910709fac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
