@@ -12,7 +12,7 @@ if [ $(echo ${FEATURES} | wc -w) -eq 0 ]; then
   echo "git commit 'Subject:' line must contain at least one known feature id."
   echo "feature id(s) must be listed before ':' and space delimited "
   echo "if more then one is listed."
-  echo "Please reffer to MAINTAINERS file (I: lines) for known feature ids."
+  echo "Please reffer to the MAINTAINERS file (I: lines) for known feature ids."
   echo $ERR
   exit 1
 fi
@@ -26,8 +26,8 @@ for i in ${FEATURES}; do
   if [ ${is_known} = "false" ] ; then
     echo $ERR
     echo "Unknown feature '${i}' in commit 'Subject:' line."
-    echo "Feature must exist in MAINTAINERS file. If this commit intruduces "
-    echo "new feature, then this commit must add new entry into the "
+    echo "Feature must exist in MAINTAINERS file. If this commit introduces "
+    echo "a new feature, then this commit must add an entry to the "
     echo "MAINTAINERS file."
     echo $ERR
     exit 1
@@ -47,4 +47,3 @@ if [ ${is_known} = "false" ] ; then
   echo $ERR
   exit 1
 fi
-
