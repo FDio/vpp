@@ -1340,7 +1340,8 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
     data_len += b->total_length_not_including_first_buffer;
 
   ASSERT (!b->total_length_not_including_first_buffer
-	  || (b->flags & VLIB_BUFFER_NEXT_PRESENT));
+	  || (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  || !(b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID));
 
   SCTP_ADV_DBG_OUTPUT ("b->current_length = %u, "
 		       "b->current_data = %p "
