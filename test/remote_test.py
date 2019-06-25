@@ -59,12 +59,11 @@ class RemoteClassAttr(object):
                 return
         self._path.append(attr)
         self._remote._remote_exec(RemoteClass.SETATTR, self.path_to_str(),
-                                  True, value=val)
+                                  value=val)
 
     def __call__(self, *args, **kwargs):
-        ret = True if 'vapi' in self.path_to_str() else False
         return self._remote._remote_exec(RemoteClass.CALL, self.path_to_str(),
-                                         ret, *args, **kwargs)
+                                         *args, **kwargs)
 
 
 class RemoteClass(Process):
@@ -134,7 +133,7 @@ class RemoteClass(Process):
                 return
         setattr(RemoteClassAttr(self, None), attr, val)
 
-    def _remote_exec(self, op, path=None, ret=True, *args, **kwargs):
+    def _remote_exec(self, op, path=None, *args, **kwargs):
         """
         Execute given operation on a given, possibly nested, member remotely.
         """
@@ -153,12 +152,9 @@ class RemoteClass(Process):
         args = self._make_serializable(args)
         kwargs = self._make_serializable(kwargs)
         self._pipe[RemoteClass.PIPE_PARENT].send((op, path, args, kwargs))
-        if not ret:
-            # no return value expected
-            return None
         timeout = self._timeout
         # adjust timeout specifically for the .sleep method
-        if path.split('.')[-1] == 'sleep':
+        if path is not None and path.split('.')[-1] == 'sleep':
             if args and isinstance(args[0], (long, int)):
                 timeout += args[0]
             elif 'timeout' in kwargs:
@@ -305,7 +301,7 @@ class RemoteClass(Process):
 
     def quit_remote(self):
         """ Quit remote execution """
-        self._remote_exec(RemoteClass.QUIT, None, False)
+        self._remote_exec(RemoteClass.QUIT, None)
 
     def get_remote_value(self):
         """ Get value of a remotely held object """
