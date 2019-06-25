@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d6e887fe_4af56c10",
+        "filename": "test/test_nat.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 2866,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-25T16:23:56Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/20333",
+      "range": {
+        "startLine": 2866,
+        "startChar": 18,
+        "endLine": 2866,
+        "endChar": 36
+      },
+      "revId": "21b83e96d6076cda01ee80343840bc1166557150",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
