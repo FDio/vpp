@@ -2863,7 +2863,7 @@ class TestNAT44(MethodHolder):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.cli("ipfix flush")
+        self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(9)
         ipfix = IPFIXDecoder()
         # first load template
