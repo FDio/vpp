@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1e63e9ec_23be62b4",
+        "filename": "src/examples/handoffdemo/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-25T16:41:28Z",
+      "side": 1,
+      "message": "I am working on a way [0] for CSIT to vote -1 on edited files without valid copyright. But it can only check the year, not the organization.\n\nI can add similar logic to VPP checkstyle job, when I have some spare time.\n\n[0] https://gerrit.fd.io/r/20318",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 30
+      },
+      "revId": "a638c18375f17891a9455e717d8436158af12387",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
