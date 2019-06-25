@@ -20,7 +20,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <vcl/vcl_test.h>
+#include <hs_apps/vcl/vcl_test.h>
 
 #define SOCK_TEST_AF_UNIX_FILENAME    "/tmp/ldp_server_af_unix_socket"
 #define SOCK_TEST_MIXED_EPOLL_DATA    "Hello, world! (over an AF_UNIX socket)"
