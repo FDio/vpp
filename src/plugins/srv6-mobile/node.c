@@ -18,6 +18,8 @@
 #include <vppinfra/hash.h>
 #include <srv6-mobile/mobile.h>
 
+extern ip6_address_t sr_pr_encaps_src;
+
 typedef struct {
   ip6_address_t src, dst;
   u32 teid;
@@ -527,7 +529,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
           ip6_gtpu_header_t *hdr0 = NULL;
 	  uword len0;
 
-	  ip6_address_t seg0;
+	  ip6_address_t seg0, dst0;
 	  u32 teid = 0;
 	  u8 *teidp;
 	  u32 offset, shift;
@@ -563,6 +565,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
           else
             {
 	      seg0 = ls0->sr_prefix;
+	      dst0 = hdr0->ip6.dst_address;
 	      teid = hdr0->gtpu.teid;
 	      teidp = (u8 *) &teid;
 	      
@@ -603,24 +606,31 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	      u32 *sl_index;
 	      u32 hdr_len;
 
-	      p = mhash_get (&sm2->sr_policies_index_hash, &ls0->bsid);
-	      if (p)
-		{
-		  sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
-		}
-	      else
+	      if (ls0->bsid.as_u64 != 0 || ls0->bsid.as_u64 != 0)
 	        {
-	          continue;
-	        }
+	          p = mhash_get (&sm2->sr_policies_index_hash, &ls0->bsid);
+	          if (p)
+	  	    {
+		      sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
+		    }
+	          else
+	            {
+	              continue;
+	            }
 
-	      vec_foreach (sl_index, sr_policy->segments_lists)
-	        {
-		  sl = pool_elt_at_index (sm2->sid_lists, *sl_index);
-		  if (sl != NULL)
-		    break;
+  	          vec_foreach (sl_index, sr_policy->segments_lists)
+	            {
+		      sl = pool_elt_at_index (sm2->sid_lists, *sl_index);
+		      if (sl != NULL)
+		        break;
+		    }
 		}
 
-	      hdr_len = sizeof (ip6srv_combo_header_t) + vec_len (sl->segments) * sizeof(ip6_address_t);
+	      hdr_len = sizeof (ip6srv_combo_header_t);
+		     
+	      if (sl)
+		hdr_len += vec_len (sl->segments) * sizeof(ip6_address_t);
+
 	      hdr_len += sizeof (ip6_address_t);
 
               // jump back to data[0] or pre_data if required
@@ -628,11 +638,17 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
               ip6srv = vlib_buffer_get_current (b0);
 
-	      clib_memcpy_fast (&ip6srv, sl->rewrite, sizeof(ip6_sr_header_t));
-
-	      clib_memcpy_fast (&ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
+	      if (sl)
+	        clib_memcpy_fast (ip6srv, sl->rewrite, sizeof(ip6_sr_header_t));
+	      else
+		{
+	          clib_memcpy_fast (ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
+		  ip6srv->ip.src_address = dst0;
+		  ip6srv->ip.dst_address = seg0;
+		}
 
 	      ip6srv->ip.payload_length = clib_host_to_net_u16 (len0 + hdr_len - sizeof(ip6_header_t));
+	      ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
 	      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
 		{
@@ -643,13 +659,25 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
 		}
 
-	      ip6srv->sr.segments_left += 1;
-	      ip6srv->sr.first_segment += 1;
+	      if (sl)
+		{
+	          ip6srv->sr.segments_left += 1;
+	          ip6srv->sr.first_segment += 1;
+		}
+	      else
+		{
+	          ip6srv->sr.segments_left = 0;
+	          ip6srv->sr.first_segment = 0;
+		}
+
+	      ip6srv->sr.length += sizeof(ip6_address_t) / 8;
 
 	      ip6srv->sr.segments[0] = seg0;
 
-	      clib_memcpy_fast (&ip6srv->sr.segments[1], (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
-				vec_len (sl->segments));
+	      if (sl)
+	        clib_memcpy_fast (&ip6srv->sr.segments[1],
+	            (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
+ 		    vec_len (sl->segments));
 
               good_n++;
 
@@ -799,24 +827,31 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      u32 *sl_index;
 	      u32 hdr_len;
 
-	      p = mhash_get (&sm2->sr_policies_index_hash, &ls0->bsid);
-	      if (p)
+	      if (ls0->bsid.as_u64[0] != 0 || ls0->bsid.as_u64[1] != 0)
 		{
-		  sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
-		}
-	      else
-	        {
-	          continue;
-	        }
+	          p = mhash_get (&sm2->sr_policies_index_hash, &ls0->bsid);
+	          if (p)
+		    {
+		      sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
+		    }
+	          else
+	            {
+	              continue;
+	            }
 
-	      vec_foreach (sl_index, sr_policy->segments_lists)
-	        {
-		  sl = pool_elt_at_index (sm2->sid_lists, *sl_index);
-		  if (sl != NULL)
-		    break;
+	          vec_foreach (sl_index, sr_policy->segments_lists)
+	            {
+		      sl = pool_elt_at_index (sm2->sid_lists, *sl_index);
+		      if (sl != NULL)
+		        break;
+		    }
 		}
 
-	      hdr_len = sizeof (ip6srv_combo_header_t) + vec_len (sl->segments) * sizeof(ip6_address_t);
+	      hdr_len = sizeof (ip6srv_combo_header_t);
+	      
+	      if (sl)
+		hdr_len += vec_len (sl->segments) * sizeof(ip6_address_t);
+
 	      hdr_len += sizeof (ip6_address_t) * 2;
 
               // jump back to data[0] or pre_data if required
@@ -824,11 +859,17 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
               ip6srv = vlib_buffer_get_current (b0);
 
-	      clib_memcpy_fast (&ip6srv, sl->rewrite, sizeof(ip6_sr_header_t));
-
-	      clib_memcpy_fast (&ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
+	      if (sl)
+	        clib_memcpy_fast (ip6srv, sl->rewrite, sizeof(ip6_sr_header_t));
+	      else
+		{
+	          clib_memcpy_fast (ip6srv, &sm->cache_hdr, sizeof(ip6_header_t));
+		  ip6srv->ip.src_address = sr_pr_encaps_src;
+		  ip6srv->ip.dst_address = seg0;
+		}
 
 	      ip6srv->ip.payload_length = clib_host_to_net_u16 (len0 + hdr_len - sizeof(ip6_header_t));
+	      ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
 	      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
 		{
@@ -839,14 +880,25 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
 		}
 
-	      ip6srv->sr.segments_left += 2;
-	      ip6srv->sr.first_segment += 2;
+	      if (sl)
+	        {
+	          ip6srv->sr.segments_left += 2;
+	          ip6srv->sr.first_segment += 2;
+	        }
+	      else
+		{
+		  ip6srv->sr.segments_left += 1;
+	          ip6srv->sr.first_segment += 1;
+		}
 
+	      ip6srv->sr.length += (sizeof(ip6_address_t) * 2) /8;
 	      ip6srv->sr.segments[0] = dst0;
 	      ip6srv->sr.segments[1] = seg0;
 
-	      clib_memcpy_fast (&ip6srv->sr.segments[2], (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
-				vec_len (sl->segments));
+	      if (sl)
+	        clib_memcpy_fast (&ip6srv->sr.segments[2],
+		    (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
+		    vec_len (sl->segments));
 
               good_n++;
 
