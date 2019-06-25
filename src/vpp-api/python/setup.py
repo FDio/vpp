@@ -11,25 +11,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+try:
+    import pathlib
+except ImportError:
+    import pathlib2 as pathlib
 import sys
 
 stdlib_enum = sys.version_info >= (3, 6)
 stdlib_ipaddress = sys.version_info >= (3, 3)
+PY2 = sys.version_info >= (2, 7)
 
 try:
     from setuptools import setup, find_packages
 except ImportError:
     from distutils.core import setup, find_packages
 
+with (pathlib.Path(__file__).parent / 'VERSION').open() as version_file:
+    __version__ = version_file.read().strip()
+
 requirements = ['cffi >= 1.6']
 if not stdlib_enum:
     requirements.append('aenum')
 if not stdlib_ipaddress:
     requirements.append('ipaddress')
+if PY2:
+    requirements.append('pathlib2')
 
 setup(
     name='vpp_papi',
-    version='1.6.2',
+    version=__version__,
     description='VPP Python binding',
     author='Ole Troan',
     author_email='ot@cisco.com',
