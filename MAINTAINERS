@@ -221,6 +221,11 @@ I:	acl
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
 
+Plugin - NAT
+I:      nat
+M:      Ole Troan <ot@cisco.com>
+F:      src/plugins/nat/
+
 Plugin - AVF Device driver
 I:	avf
 M:	Damjan Marion <damarion@cisco.com>
