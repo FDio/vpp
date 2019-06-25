@@ -1146,12 +1146,8 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (PREDICT_FALSE (do_handoff))
 	    {
 	      next0 = IP4_FULL_REASS_NEXT_HANDOFF;
-	      if (is_feature)
-		vnet_buffer (b0)->ip.reass.owner_feature_thread_index =
-		  kv.v.memory_owner_thread_index;
-	      else
-		vnet_buffer (b0)->ip.reass.owner_thread_index =
-		  kv.v.memory_owner_thread_index;
+	      vnet_buffer (b0)->ip.reass.owner_thread_index =
+		kv.v.memory_owner_thread_index;
 	    }
 	  else if (reass)
 	    {
@@ -1166,12 +1162,8 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		case IP4_REASS_RC_HANDOFF:
 		  next0 = IP4_FULL_REASS_NEXT_HANDOFF;
 		  b0 = vlib_get_buffer (vm, bi0);
-		  if (is_feature)
-		    vnet_buffer (b0)->ip.reass.owner_feature_thread_index =
-		      handoff_thread_idx;
-		  else
-		    vnet_buffer (b0)->ip.reass.owner_thread_index =
-		      handoff_thread_idx;
+		  vnet_buffer (b0)->ip.reass.owner_thread_index =
+		    handoff_thread_idx;
 		  break;
 		case IP4_REASS_RC_TOO_MANY_FRAGMENTS:
 		  vlib_node_increment_counter (vm, node->node_index,
@@ -1218,16 +1210,10 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		    {
-		      if (is_feature)
-			ip4_full_reass_add_trace (vm, node, rm, NULL,
-						  bi0, HANDOFF, 0,
-						  vnet_buffer (b0)->ip.
-						  reass.owner_feature_thread_index);
-		      else
-			ip4_full_reass_add_trace (vm, node, rm, NULL,
-						  bi0, HANDOFF, 0,
-						  vnet_buffer (b0)->ip.
-						  reass.owner_thread_index);
+		      ip4_full_reass_add_trace (vm, node, rm, NULL, bi0,
+						HANDOFF, 0,
+						vnet_buffer (b0)->ip.
+						reass.owner_thread_index);
 		    }
 		}
 	      else if (is_feature && IP4_ERROR_NONE == error0)
@@ -1726,10 +1712,7 @@ ip4_full_reass_handoff_node_inline (vlib_main_t * vm,
 
   while (n_left_from > 0)
     {
-      ti[0] =
-	(is_feature) ? vnet_buffer (b[0])->ip.
-	reass.owner_feature_thread_index : vnet_buffer (b[0])->ip.
-	reass.owner_thread_index;
+      ti[0] = vnet_buffer (b[0])->ip.reass.owner_thread_index;
 
       if (PREDICT_FALSE
 	  ((node->flags & VLIB_NODE_FLAG_TRACE)

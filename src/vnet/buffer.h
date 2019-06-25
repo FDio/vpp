@@ -185,13 +185,40 @@ typedef struct
 	/* reassembly */
 	union
 	{
-	  /* in/out variables */
+	  /* group input/handoff as handoff is done before input is consumed,
+	   * this way we can handoff while keeping input variables intact */
 	  struct
 	  {
-	    u32 next_index;	/* index of next node - used by custom apps */
-	    u32 error_next_index;	/* index of next node if error - used by custom apps */
-	    u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
-	    u16 owner_thread_index;
+	    /* input variables */
+	    struct
+	    {
+	      u32 next_index;	/* index of next node - used by custom apps */
+	      u32 error_next_index;	/* index of next node if error - used by custom apps */
+	    };
+	    /* handoff variables */
+	    struct
+	    {
+	      u16 owner_thread_index;
+	    };
+	  };
+	  /* output variables */
+	  struct
+	  {
+	    union
+	    {
+	      /* shallow virtual reassembly output variables */
+	      struct
+	      {
+		u8 ip_proto;	/* protocol in ip header */
+		u16 l4_src_port;	/* tcp/udp/icmp src port */
+		u16 l4_dst_port;	/* tcp/udp/icmp dst port */
+	      };
+	      /* full reassembly output variables */
+	      struct
+	      {
+		u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+	      };
+	    };
 	  };
 	  /* internal variables used during reassembly */
 	  struct
@@ -202,11 +229,9 @@ typedef struct
 	    u16 range_last;
 	    u32 next_range_bi;
 	    u16 ip6_frag_hdr_offset;
-	    u16 owner_feature_thread_index;
 	  };
 	} reass;
       };
-
     } ip;
 
     /*
