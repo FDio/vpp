@@ -4360,7 +4360,7 @@ parse_map_reply (vlib_buffer_t * b)
   a->is_rloc_probe = MREP_RLOC_PROBE (mrep_hdr);
   if (!vlib_buffer_has_space (b, sizeof (*mrep_hdr)))
     {
-      clib_mem_free (a);
+      map_records_arg_free (a);
       return 0;
     }
   vlib_buffer_pull (b, sizeof (*mrep_hdr));
