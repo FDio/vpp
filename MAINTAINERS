@@ -21,6 +21,7 @@ F:	Makefile
 F:	src/CMakeLists.txt
 F:	src/cmake/
 F:	build/
+F:      MAINTAINERS
 
 Build System Internal
 I:	ebuild
@@ -220,6 +221,11 @@ Plugin - ACL
 I:	acl
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
+
+Plugin - NAT
+I:      nat
+M:      Ole Troan <ot@cisco.com>
+F:      src/plugins/nat/
 
 Plugin - AVF Device driver
 I:	avf
