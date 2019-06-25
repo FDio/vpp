@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "77d13512_60c7cbb3",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp_api.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-25T09:46:04Z",
+      "side": 1,
+      "message": "nothing wrong with this change in principle, but it\u0027s not related to the change in this patch.",
+      "revId": "74950751cc75c2c28e0fdd3e5aa2f170f31e5208",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "79fa97f0_c2211648",
+        "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_serializer.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-25T09:46:04Z",
+      "side": 1,
+      "message": "address",
+      "revId": "74950751cc75c2c28e0fdd3e5aa2f170f31e5208",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d427a514_87fe936e",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 749,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-25T09:46:04Z",
+      "side": 1,
+      "message": "did you consider adding a new member to the interface type? local_ip6_prefix?",
+      "revId": "74950751cc75c2c28e0fdd3e5aa2f170f31e5208",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
