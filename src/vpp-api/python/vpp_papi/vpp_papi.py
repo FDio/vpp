@@ -27,6 +27,14 @@ import threading
 import fnmatch
 import weakref
 import atexit
+
+# for PY2 compat
+try:
+    import pathlib
+except ImportError:
+    import pathlib2 as pathlib
+
+from . import vpp_exceptions
 from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
 
@@ -37,10 +45,17 @@ if sys.version[0] == '2':
 else:
     import queue as queue
 
-__all__ = ('FuncWrapper', 'VPP', 'VppApiDynamicMethodHolder',
-           'VppEnum', 'VppEnumType',
-           'VPPIOError', 'VPPRuntimeError', 'VPPValueError',
-           'VPPApiClient', )
+__all__ = ('FuncWrapper',
+           'VppApiDynamicMethodHolder',
+           'VppEnum',
+           'VppEnumType',
+           'VPP',
+           'VPPApiClient',
+           )
+
+
+with (pathlib.Path(__file__).parent.parent / 'VERSION').open() as version_file:
+    __version__ = version_file.read().strip()
 
 
 def metaclass(metaclass):
@@ -92,7 +107,12 @@ def return_logger(r):
 
 
 class VppApiDynamicMethodHolder(object):
-    pass
+
+    def __getattribute__(self, item):
+        try:
+            return object.__getattribute__(self, item)
+        except AttributeError:
+            raise vpp_exceptions.VPPApiClientNoSuchApiError(api_fn_name=item)
 
 
 class FuncWrapper(object):
@@ -102,30 +122,19 @@ class FuncWrapper(object):
         self.__doc__ = func.__doc__
 
     def __call__(self, **kwargs):
-        return self._func(**kwargs)
+        try:
+            return self._func(**kwargs)
+        except TypeError:
+            raise vpp_exceptions.VPPApiClientTypeError(
+                api_fn_name=self.__name__,
+                api_fn_args=kwargs)
+        except ValueError:
+            raise vpp_exceptions.VPPApiClientValueError(
+                api_fn_name=self.__name__,
+                api_fn_args=kwargs)
 
     def __repr__(self):
         return '<FuncWrapper(func=<%s(%s)>)>' % (self.__name__, self.__doc__)
-
-
-class VPPApiError(Exception):
-    pass
-
-
-class VPPNotImplementedError(NotImplementedError):
-    pass
-
-
-class VPPIOError(IOError):
-    pass
-
-
-class VPPRuntimeError(RuntimeError):
-    pass
-
-
-class VPPValueError(ValueError):
-    pass
 
 
 class VPPApiClient(object):
@@ -141,11 +150,21 @@ class VPPApiClient(object):
     these messages in a background thread.
     """
     apidir = None
-    VPPApiError = VPPApiError
-    VPPRuntimeError = VPPRuntimeError
-    VPPValueError = VPPValueError
-    VPPNotImplementedError = VPPNotImplementedError
-    VPPIOError = VPPIOError
+    VPPApiClientError = vpp_exceptions.VPPApiClientError
+    VPPApiClientRuntimeError = vpp_exceptions.VPPApiClientRuntimeError
+    VPPApiClientValueError = vpp_exceptions.VPPApiClientValueError
+    VPPApiClientNotImplementedError = \
+        vpp_exceptions.VPPApiClientNotImplementedError
+    VPPApiClientNoSuchApiError = vpp_exceptions.VPPApiClientNoSuchApiError
+    VPPApiClientIOError = vpp_exceptions.VPPApiClientIOError
+
+    # Provide the old name for backward compatibility.
+    # To be removed in 20.01
+    VPPApiError = vpp_exceptions.VPPApiClientError
+    VPPRuntimeError = vpp_exceptions.VPPApiClientRuntimeError
+    VPPValueError = vpp_exceptions.VPPApiClientValueError
+    VPPNotImplementedError = vpp_exceptions.VPPApiClientNotImplementedError
+    VPPIOError = vpp_exceptions.VPPApiClientIOError
 
     def process_json_file(self, apidef_file):
         api = json.load(apidef_file)
@@ -192,15 +211,15 @@ class VPPApiClient(object):
             if len(unresolved) == 0:
                 break
             if i > 3:
-                raise VPPValueError('Unresolved type definitions {}'
-                                    .format(unresolved))
+                raise VPPApiClient.VPPApiClientValueError(
+                    'Unresolved type definitions {}'.format(unresolved))
             types = unresolved
             i += 1
 
         for m in api['messages']:
             try:
                 self.messages[m[0]] = VPPMessage(m[0], m[1:])
-            except VPPNotImplementedError:
+            except VPPApiClient.VPPApiClientNotImplementedError:
                 self.logger.error('Not implemented error for {}'.format(m[0]))
 
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
@@ -256,7 +275,7 @@ class VPPApiClient(object):
                 if testmode:
                     apifiles = []
                 else:
-                    raise VPPRuntimeError
+                    raise VPPApiClient.VPPApiClientRuntimeError
 
         for file in apifiles:
             with open(file) as apidef_file:
@@ -266,7 +285,8 @@ class VPPApiClient(object):
 
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
-            raise VPPValueError(1, 'Missing JSON message definitions')
+            raise VPPApiClient.VPPApiClientValueError(
+                1, 'Missing JSON message definitions')
 
         self.transport = VppTransport(self, read_timeout=read_timeout,
                                       server_address=server_address)
@@ -285,6 +305,10 @@ class VPPApiClient(object):
                 self.context.value += 1
                 return self.context.value
     get_context = ContextId()
+
+    @property
+    def __version__(self):
+        return __version__
 
     def get_type(self, name):
         return vpp_get_type(name)
@@ -394,7 +418,8 @@ class VPPApiClient(object):
         if api_dir is None:
             api_dir = cls.find_api_dir()
             if api_dir is None:
-                raise VPPApiError("api_dir cannot be located")
+                raise VPPApiClient.VPPApiClientError(
+                    "api_dir cannot be located")
 
         if isinstance(patterns, list) or isinstance(patterns, tuple):
             patterns = [p.strip() + '.api.json' for p in patterns]
@@ -413,7 +438,8 @@ class VPPApiClient(object):
     @property
     def api(self):
         if not hasattr(self, "_api"):
-            raise VPPApiError("Not connected, api definitions not available")
+            msg = "Not connected, api definitions not available."
+            raise VPPApiClient.VPPApiClientError(msg)
         return self._api
 
     def make_function(self, msg, i, multipart, do_async):
@@ -463,7 +489,7 @@ class VPPApiClient(object):
         rv = self.transport.connect(name.encode('utf-8'), pfx,
                                     msg_handler, rx_qlen)
         if rv != 0:
-            raise VPPIOError(2, 'Connect failed')
+            raise VPPApiClient.VPPApiClientIOError(2, 'Connect failed')
         self.vpp_dictionary_maxid = self.transport.msg_table_max_index()
         self._register_functions(do_async=do_async)
 
@@ -532,7 +558,8 @@ class VPPApiClient(object):
             # No context -> async notification that we feed to the callback
             self.message_queue.put_nowait(r)
         else:
-            raise VPPIOError(2, 'RPC reply message received in event handler')
+            msg = 'RPC reply message received in event handler.'
+            raise VPPApiClient.VPPApiClientIOError(2, msg)
 
     def has_context(self, msg):
         if len(msg) < 10:
@@ -568,7 +595,8 @@ class VPPApiClient(object):
         #
         msgobj = self.id_msgdef[i]
         if not msgobj:
-            raise VPPIOError(2, 'Reply message undefined')
+            raise VPPApiClient.VPPApiClientIOError(
+                2, 'Reply message undefined')
 
         r, size = msgobj.unpack(msg, ntc=no_type_conversion)
         return r
@@ -596,8 +624,8 @@ class VPPApiClient(object):
     def validate_args(self, msg, kwargs):
         d = set(kwargs.keys()) - set(msg.field_by_name.keys())
         if d:
-            raise VPPValueError('Invalid argument {} to {}'
-                                .format(list(d), msg.name))
+            raise VPPApiClient.VPPApiClientValueError(
+                'Invalid argument {} to {}'.format(list(d), msg.name))
 
     def _call_vpp(self, i, msgdef, multipart, **kwargs):
         """Given a message, send the message and await a reply.
@@ -648,7 +676,8 @@ class VPPApiClient(object):
         while (True):
             msg = self.transport.read()
             if not msg:
-                raise VPPIOError(2, 'VPP API client: read failed')
+                raise VPPApiClient.VPPApiClientIOError(
+                    2, 'VPP API client: read failed')
             r = self.decode_incoming_msg(msg, no_type_conversion)
             msgname = type(r).__name__
             if context not in r or r.context == 0 or context != r.context:
@@ -736,6 +765,7 @@ class VPPApiClient(object):
 
 
 # Provide the old name for backward compatibility.
+# Remove in 20.01
 VPP = VPPApiClient
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4

@@ -186,10 +186,13 @@ class VppPapiProvider(object):
         except KeyError:
             pass
 
-        self.vpp = VPPApiClient(logger=test_class.logger,
-                                read_timeout=read_timeout,
-                                use_socket=use_socket,
-                                server_address=test_class.api_sock)
+        self.vppapiclient = VPPApiClient(logger=test_class.logger,
+                                         read_timeout=read_timeout,
+                                         use_socket=use_socket,
+                                         server_address=test_class.api_sock)
+        # for backward compatibility
+        # keep until 20.01
+        self.vpp = self.vppapiclient
         self._events = deque()
 
     def __enter__(self):
@@ -298,13 +301,13 @@ class VppPapiProvider(object):
 
     def connect(self):
         """Connect the API to VPP"""
-        self.vpp.connect(self.name, self.shm_prefix)
-        self.papi = self.vpp.api
-        self.vpp.register_event_callback(self)
+        self.vppapiclient.connect(self.name, self.shm_prefix)
+        self.papi = self.vppapiclient.api
+        self.vppapiclient.register_event_callback(self)
 
     def disconnect(self):
         """Disconnect the API from VPP"""
-        self.vpp.disconnect()
+        self.vppapiclient.disconnect()
 
     def api(self, api_fn, api_args, expected_retval=0):
         """ Call API function and check it's return value.
@@ -333,9 +336,9 @@ class VppPapiProvider(object):
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         else:
-            raise Exception("Internal error, unexpected value for "
-                            "self._expect_api_retval %s" %
-                            self._expect_api_retval)
+            raise RuntimeError("Internal error, unexpected value for "
+                               "self._expect_api_retval %s" %
+                               self._expect_api_retval)
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
@@ -350,7 +353,7 @@ class VppPapiProvider(object):
         cli += '\n'
         r = self.papi.cli_inband(cmd=cli)
         self.hook.after_cli(cli)
-        if r.retval == -156:
+        if r.retval == -158:
             raise CliSyntaxError(r.reply)
         if r.retval != 0:
             raise CliFailedCommandError(r.reply)
