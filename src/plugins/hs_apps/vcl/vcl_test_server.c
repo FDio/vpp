@@ -23,7 +23,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <vcl/vcl_test.h>
+#include <hs_apps/vcl/vcl_test.h>
 #include <sys/epoll.h>
 #include <vppinfra/mem.h>
 #include <pthread.h>

@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <arpa/inet.h>
-#include <vcl/vcl_test.h>
+#include <hs_apps/vcl/vcl_test.h>
 #include <pthread.h>
 
 typedef struct
