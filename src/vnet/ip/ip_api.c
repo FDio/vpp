@@ -44,8 +44,10 @@
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/reass/ip4_dv_reass.h>
+#include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vnet/ip/reass/ip4_full_reass.h>
 #include <vnet/ip/reass/ip6_dv_reass.h>
+#include <vnet/ip/reass/ip6_sv_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
 #include <vnet/ethernet/arp.h>
 #include <vnet/ip/ip_types_api.h>
@@ -2780,6 +2782,26 @@ vl_api_ip_reassembly_set_t_handler (vl_api_ip_reassembly_set_t * mp)
 				 (mp->expire_walk_interval_ms));
 	}
       break;
+    case IP_REASS_TYPE_SHALLOW_VIRTUAL:
+      if (mp->is_ip6)
+	{
+	  rv = ip6_sv_reass_set (clib_net_to_host_u32 (mp->timeout_ms),
+				 clib_net_to_host_u32 (mp->max_reassemblies),
+				 clib_net_to_host_u32
+				 (mp->max_reassembly_length),
+				 clib_net_to_host_u32
+				 (mp->expire_walk_interval_ms));
+	}
+      else
+	{
+	  rv = ip4_sv_reass_set (clib_net_to_host_u32 (mp->timeout_ms),
+				 clib_net_to_host_u32 (mp->max_reassemblies),
+				 clib_net_to_host_u32
+				 (mp->max_reassembly_length),
+				 clib_net_to_host_u32
+				 (mp->expire_walk_interval_ms));
+	}
+      break;
     }
 
   REPLY_MACRO (VL_API_IP_REASSEMBLY_SET_REPLY);
@@ -2803,7 +2825,7 @@ vl_api_ip_reassembly_get_t_handler (vl_api_ip_reassembly_get_t * mp)
   u32 max_reassemblies;
   u32 max_reassembly_length;
   u32 expire_walk_interval_ms;
-  switch (clib_net_to_host_u32 (mp->type))
+  switch ((vl_api_ip_reass_type_t) clib_net_to_host_u32 (mp->type))
     {
     case IP_REASS_TYPE_FULL:
       if (mp->is_ip6)
@@ -2835,6 +2857,20 @@ vl_api_ip_reassembly_get_t_handler (vl_api_ip_reassembly_get_t * mp)
 			    &max_reassembly_length, &expire_walk_interval_ms);
 	}
       break;
+    case IP_REASS_TYPE_SHALLOW_VIRTUAL:
+      if (mp->is_ip6)
+	{
+	  rmp->is_ip6 = 1;
+	  ip6_sv_reass_get (&timeout_ms, &max_reassemblies,
+			    &max_reassembly_length, &expire_walk_interval_ms);
+	}
+      else
+	{
+	  rmp->is_ip6 = 0;
+	  ip4_sv_reass_get (&timeout_ms, &max_reassemblies,
+			    &max_reassembly_length, &expire_walk_interval_ms);
+	}
+      break;
     }
   rmp->timeout_ms = clib_host_to_net_u32 (timeout_ms);
   rmp->max_reassemblies = clib_host_to_net_u32 (max_reassemblies);
@@ -2850,7 +2886,7 @@ void
 {
   vl_api_ip_reassembly_enable_disable_reply_t *rmp;
   int rv = 0;
-  switch (clib_net_to_host_u32 (mp->type))
+  switch ((vl_api_ip_reass_type_t) clib_net_to_host_u32 (mp->type))
     {
     case IP_REASS_TYPE_FULL:
       rv =
@@ -2871,6 +2907,17 @@ void
 	{
 	  rv =
 	    ip6_dv_reass_enable_disable (clib_net_to_host_u32
+					 (mp->sw_if_index), mp->enable_ip6);
+	}
+      break;
+    case IP_REASS_TYPE_SHALLOW_VIRTUAL:
+      rv =
+	ip4_sv_reass_enable_disable (clib_net_to_host_u32 (mp->sw_if_index),
+				     mp->enable_ip4);
+      if (0 == rv)
+	{
+	  rv =
+	    ip6_sv_reass_enable_disable (clib_net_to_host_u32
 					 (mp->sw_if_index), mp->enable_ip6);
 	}
       break;
