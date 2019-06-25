@@ -265,6 +265,11 @@ public:
   const l2_address_t& l2_address() const;
 
   /**
+   * Return the admin state
+   */
+  const admin_state_t& admin_state() const;
+
+  /**
    * Set the admin state of the interface
    *
    * N.B. All set function change only the attibute of the object on whcih

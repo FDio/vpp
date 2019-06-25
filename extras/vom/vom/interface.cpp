@@ -160,6 +160,12 @@ interface::l2_address() const
   return (m_l2_address.data());
 }
 
+const interface::admin_state_t&
+interface::admin_state() const
+{
+  return (m_state.data());
+}
+
 interface::const_iterator_t
 interface::cbegin()
 {
