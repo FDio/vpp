@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8c44bac8_6b1699b6",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp_api.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-25T11:37:08Z",
+      "side": 1,
+      "message": "Do you want me to break it out to another change?\nIt was made b/c I was getting an error in the code that went to out.  Only takes a few minutes.",
+      "parentUuid": "77d13512_60c7cbb3",
+      "revId": "74950751cc75c2c28e0fdd3e5aa2f170f31e5208",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "79fa97f0_c2211648",
         "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_serializer.py",
         "patchSetId": 23
@@ -47,6 +65,24 @@
       "writtenOn": "2019-06-25T09:46:04Z",
       "side": 1,
       "message": "did you consider adding a new member to the interface type? local_ip6_prefix?",
+      "revId": "74950751cc75c2c28e0fdd3e5aa2f170f31e5208",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23c625f5_d35c987c",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 749,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-25T11:37:08Z",
+      "side": 1,
+      "message": "No I didn\u0027t.  I learned the hard way that this is not a prefix, but more like an interface address.  Here it doesn\u0027t have to be: \nip \u003d\u003d base_address.  \n\nWhat do you suggest?",
+      "parentUuid": "d427a514_87fe936e",
       "revId": "74950751cc75c2c28e0fdd3e5aa2f170f31e5208",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
