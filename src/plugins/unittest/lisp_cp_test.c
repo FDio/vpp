@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -21,10 +21,13 @@
 #include <vlibapi/api.h>
 #include <vnet/lisp-cp/packets.h>
 
-#define _assert(e)                    \
-  error = CLIB_ERROR_ASSERT (e);      \
-  if (error)                          \
-    goto done;
+#define _assert(e)                    			\
+  error = CLIB_ERROR_ASSERT (e);      			\
+  if (error)                 		         	\
+    {							\
+      fformat(stderr, "FAIL: line %d \n\n", __LINE__);	\
+      goto done;					\
+    }
 
 static void print_chunk(u8 * b, int * offset, int c, char * des)
 {
@@ -469,7 +472,8 @@ test_lisp_map_register ()
     0x00, 0x00, 0x00, 0x00, /* auth data */
 
     /* first record */
-    0x00, 0x00, 0x03, 0x84, /* default ttl (15 minues) */
+    /* 0x00, 0x00, 0x03, 0x84, */ /* default ttl (15 minues) */
+    0x00, 0x01, 0x51, 0x80, /* default ttl (24h = 86400s) */
     0x01, 0x00, 0x00, 0x00, /* loc count, eid len, ACT, A */
     0x00, 0x00, 0x40, 0x05, /* rsvd, map ver num, AFI = MAC */
     0x01, 0x02, 0x03, 0x04,
@@ -658,26 +662,72 @@ done:
   _(lisp_parse_lcaf)                      \
   _(lisp_map_register)
 
-int run_tests (void)
+static int
+lisp_cp_serdes_tests (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_error_t * error;
 
-#define _(_test_name)                   \
-  error = test_ ## _test_name ();       \
-  if (error)                            \
-    {                                   \
-      clib_error_report (error);        \
-      return 0;                         \
-    }
+#define _(_test_name)                   		\
+  error = test_ ## _test_name ();       		\
+  if (error)                            		\
+    {                                   		\
+      fformat (stderr, "FAIL: test_" #_test_name "\n");	\
+      return -1;                        		\
+    }							\
+  else							\
+      fformat (stderr, "PASS: test_" #_test_name "\n");	\
 
   foreach_test_case
 #undef _
 
   return 0;
 }
-
-int main()
-{
-  return run_tests ();
-}
 #undef _assert
+
+static clib_error_t *
+lisp_cp_test (vlib_main_t * vm, unformat_input_t * input,
+              vlib_cli_command_t * cmd_arg)
+{
+  int res = 0;
+
+  vnet_lisp_enable_disable (1 /* enable */);
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "serdes"))
+	{
+	  res = lisp_cp_serdes_tests (vm, input);
+	}
+      else if (unformat (input, "all"))
+	{
+	  if ((res = lisp_cp_serdes_tests (vm, input)))
+	    goto done;
+	}
+      else
+	break;
+    }
+
+done:
+  vnet_lisp_enable_disable (0 /* disable */);
+  if (res)
+    return clib_error_return (0, "rbtree unit test failed");
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_cp_command, static) =
+{
+  .path = "test lisp cp",
+  .short_help = "internal lisp cp unit tests",
+  .function = lisp_cp_test,
+};
+/* *INDENT-ON* */
+
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
