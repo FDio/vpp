@@ -139,8 +139,7 @@ __clib_unused
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_sw_interface_rx_placement_dump_t_print
+static void *vl_api_sw_interface_rx_placement_dump_t_print
   (vl_api_sw_interface_rx_placement_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -710,8 +709,7 @@ static void *vl_api_bond_detach_slave_t_print
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_sw_interface_bond_dump_t_print
+static void *vl_api_sw_interface_bond_dump_t_print
   (vl_api_sw_interface_bond_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -721,8 +719,7 @@ __clib_unused
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_sw_interface_slave_dump_t_print
+static void *vl_api_sw_interface_slave_dump_t_print
   (vl_api_sw_interface_slave_dump_t * mp, void *handle)
 {
   u8 *s;
@@ -3810,6 +3807,9 @@ _(BOND_CREATE, bond_create)                                             \
 _(BOND_DELETE, bond_delete)                                             \
 _(BOND_ENSLAVE, bond_enslave)                                           \
 _(BOND_DETACH_SLAVE, bond_detach_slave)                                 \
+_(SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump)                     \
+_(SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump)                       \
+_(SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)       \
 _(TAP_CREATE_V2, tap_create_v2)                                         \
 _(TAP_DELETE_V2, tap_delete_v2)                                         \
 _(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)                   \
