@@ -18,7 +18,7 @@
 #include <vnet/vnet.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vnet/session-apps/echo_client.h>
+#include <hs_apps/echo_client.h>
 
 echo_client_main_t echo_client_main;
 

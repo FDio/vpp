@@ -17,7 +17,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
-#include <vnet/session-apps/proxy.h>
+#include <hs_apps/proxy.h>
 
 proxy_main_t proxy_main;
 

@@ -1203,22 +1203,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES session/session.api)
 
 ##############################################################################
-# session layer applications
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  session-apps/echo_client.c
-  session-apps/echo_server.c
-  session-apps/http_server.c
-  session-apps/proxy.c
-)
-
-list(APPEND VNET_HEADERS
-  session-apps/echo_client.h
-  session-apps/proxy.h
-)
-
-##############################################################################
 # TLS protocol
 ##############################################################################
 
