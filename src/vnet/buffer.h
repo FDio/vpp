@@ -203,8 +203,8 @@ typedef struct
 	      {
 		struct
 		{		/* shallow virtual reassembly case */
-		  u16 l4_src_port;	/* tcp/udp src port */
-		  u16 l4_dst_port;	/* tcp/udp dst port */
+		  u16 l4_src_port;	/* tcp/udp/icmp src port */
+		  u16 l4_dst_port;	/* tcp/udp/icmp dst port */
 		};
 		struct
 		{		/* deep virtual reassembly case */

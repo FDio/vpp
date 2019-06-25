@@ -89,7 +89,8 @@
   _ (REASS_FRAGMENT_CHAIN_TOO_LONG, "fragment chain too long (drop)")   \
   _ (REASS_NO_BUF, "out of buffers (drop)")                             \
   _ (REASS_MALFORMED_PACKET, "malformed packets")                       \
-  _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")
+  _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")    \
+  _ (REASS_UNSUPP_IP_PROT, "unsupported ip protocol")
 
 typedef enum
 {
