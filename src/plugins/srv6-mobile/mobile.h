@@ -73,7 +73,7 @@ typedef struct srv6_end_main_v6_decap_s
   u32 end_m_gtp6_d_node_index;
   u32 error_node_index;
 
-  ip6srv_combo_header_t cache_hdr;
+  ip6_header_t cache_hdr;
 } srv6_end_main_v6_decap_t;
 
 extern srv6_end_main_v6_decap_t srv6_end_main_v6_decap;
