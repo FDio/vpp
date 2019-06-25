@@ -411,6 +411,9 @@ F:	extras/vom/vom/
 Plugin - Host Stack Applications
 I:	hsa
 M:	Florin Coras <fcoras@cisco.com>
+M:	Dave Wallace <dwallacelf@gmail.com>
+M:	Aloys Augustin <aloaugus@cisco.com>
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 F:	src/plugins/hs_apps/
 
 THE REST
