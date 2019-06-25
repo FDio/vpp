@@ -34,6 +34,24 @@
       "revId": "6533f52ac38a1c77e3d2865b3d19c02b7beb9a0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1f1684a2_c37455e3",
+        "filename": "src/plugins/acl/dataplane_node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2019-06-25T16:51:30Z",
+      "side": 1,
+      "message": "may be can we keep it optional to start with .. only count packets and bytes being totally optional.. and enable it when really needed",
+      "parentUuid": "d44b5817_5a82b94e",
+      "revId": "6533f52ac38a1c77e3d2865b3d19c02b7beb9a0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
