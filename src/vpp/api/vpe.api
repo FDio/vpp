@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.1.0";
+option version = "1.1.2";
 
 /* 
  * Note: API placement cleanup in progress
@@ -281,6 +281,33 @@ define get_next_index_reply
   u32 context;
   i32 retval;
   u32 next_index;
+};
+
+enum log_level {
+  VPE_API_LOG_LEVEL_EMERG = 0,    /* emerg */
+  VPE_API_LOG_LEVEL_ALERT = 1,    /* alert */
+  VPE_API_LOG_LEVEL_CRIT = 2,     /* crit */
+  VPE_API_LOG_LEVEL_ERR = 3,      /* err  */
+  VPE_API_LOG_LEVEL_WARNING = 4,  /* warn */
+  VPE_API_LOG_LEVEL_NOTICE = 5,   /* notice */
+  VPE_API_LOG_LEVEL_INFO = 6,     /* info */
+  VPE_API_LOG_LEVEL_DEBUG = 7,    /* debug */
+  VPE_API_LOG_LEVEL_DISABLED = 8, /* disabled */
+};
+
+define log_dump {
+  u32 client_index;
+  u32 context;
+  f64 start_timestamp;
+};
+
+define log_details {
+  u32 context;
+  f64 timestamp_ticks;
+  vl_api_log_level_t level;
+  string timestamp [limit=24];
+  string msg_class [limit=32];
+  string message [limit=256];
 };
 
 /*
