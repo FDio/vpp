@@ -54,17 +54,22 @@ public:
     const static type_t TRANSPORT;
 
     /**
-     * A transport subnet, sent via the RD's UU-fwd interface
+     * A L3-out subnet
      */
     const static type_t L3_OUT;
+
+    /**
+     * An anonymous L3-out subnet
+     */
+    const static type_t ANON_L3_OUT;
 
   private:
     type_t(int v, const std::string s);
   };
 
   /**
-  * Construct an internal GBP subnet
-  */
+   * Construct an internal GBP subnet
+   */
   gbp_subnet(const gbp_route_domain& rd,
              const route::prefix_t& prefix,
              const type_t& type);
@@ -82,7 +87,8 @@ public:
    */
   gbp_subnet(const gbp_route_domain& rd,
              const route::prefix_t& prefix,
-             sclass_t sclass);
+             sclass_t sclass,
+             const type_t& type = type_t::L3_OUT);
 
   /**
    * Copy Construct
@@ -133,7 +139,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();
@@ -231,7 +239,8 @@ private:
   static singular_db<key_t, gbp_subnet> m_db;
 };
 
-std::ostream& operator<<(std::ostream& os, const gbp_subnet::key_t& key);
+std::ostream&
+operator<<(std::ostream& os, const gbp_subnet::key_t& key);
 
 }; // namespace
 
