@@ -111,6 +111,11 @@ I:	interface
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/interface*.[ch]
 
+VNET Packet Generator
+I:	pg
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/pg/
+
 VNET Segment Routing (IPv6 and MPLS)
 I:	sr
 M:	Pablo Camarillo <pcamaril@cisco.com>
