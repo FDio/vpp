@@ -36,11 +36,65 @@ typedef enum
 #undef _
 } vlib_log_level_t;
 
+typedef struct
+{
+  vlib_log_level_t level;
+  vlib_log_class_t class;
+  f64 timestamp;
+  u8 *string;
+} vlib_log_entry_t;
+
+typedef struct
+{
+  u32 index;
+  u8 *name;
+  // level of log messages kept for this subclass
+  vlib_log_level_t level;
+  // level of log messages sent to syslog for this subclass
+  vlib_log_level_t syslog_level;
+  // flag saying whether this subclass is logged to syslog
+  f64 last_event_timestamp;
+  int last_sec_count;
+  int is_throttling;
+  int rate_limit;
+} vlib_log_subclass_data_t;
+
+typedef struct
+{
+  u32 index;
+  u8 *name;
+  vlib_log_subclass_data_t *subclasses;
+} vlib_log_class_data_t;
+
+typedef struct
+{
+  vlib_log_entry_t *entries;
+  vlib_log_class_data_t *classes;
+  int size, next, count;
+
+  /* our own log class */
+  vlib_log_class_t log_class;
+
+  int default_rate_limit;
+  int default_log_level;
+  int default_syslog_log_level;
+  int unthrottle_time;
+  u32 indent;
+
+  /* time zero */
+  struct timeval time_zero_timeval;
+  f64 time_zero;
+
+} vlib_log_main_t;
+
+extern vlib_log_main_t log_main;
 
 vlib_log_class_t vlib_log_register_class (char *vlass, char *subclass);
 u32 vlib_log_get_indent ();
 void vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 	       ...);
+int last_log_entry ();
+u8 *format_vlib_log_class (u8 * s, va_list * args);
 
 #define vlib_log_emerg(...) vlib_log(VLIB_LOG_LEVEL_EMERG, __VA_ARGS__)
 #define vlib_log_alert(...) vlib_log(VLIB_LOG_LEVEL_ALERT, __VA_ARGS__)
