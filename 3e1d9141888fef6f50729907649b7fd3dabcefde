@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a946c41b_f05b916c",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 430,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2019-06-26T17:35:32Z",
+      "side": 1,
+      "message": "this is probably too picky, but the pattern here is \n4-enc\n4-dec\n6-enc\n6-dec\n4-enc\n4-dec\n6-enc\n6-dec\nuntil the last four lines which are\n4-enc\n6-enc\n4-dec\n6-dec",
+      "range": {
+        "startLine": 404,
+        "startChar": 0,
+        "endLine": 430,
+        "endChar": 11
+      },
+      "revId": "3e1d9141888fef6f50729907649b7fd3dabcefde",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c35f6e42_82b484ec",
+        "filename": "src/vnet/ipsec/ipsec_handoff.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2019-06-26T17:35:32Z",
+      "side": 1,
+      "message": "does this mean NAT traversal needs to be in-use for this to work?",
+      "range": {
+        "startLine": 55,
+        "startChar": 0,
+        "endLine": 55,
+        "endChar": 70
+      },
+      "revId": "3e1d9141888fef6f50729907649b7fd3dabcefde",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
