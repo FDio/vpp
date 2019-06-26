@@ -158,12 +158,14 @@ session_delete_loopback (u32 sw_if_index)
 {
   /* fails spectacularly  */
   /* vnet_delete_loopback_interface (sw_if_index); */
+
+  vnet_sw_interface_set_flags (vnet_get_main (), sw_if_index, 0);
 }
 
 static int
 session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 {
-  session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
+  session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
   u64 options[APP_OPTIONS_N_OPTIONS], bind4_handle, bind6_handle;
   u32 server_index;
   int error = 0;
@@ -187,8 +189,9 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   server_sep.is_ip4 = 1;
   vnet_listen_args_t bind_args = {
-    .sep = server_sep,
+    .sep_ext = server_sep,
     .app_index = 0,
+    .wrk_map_index = 0,
   };
 
   bind_args.app_index = server_index;
@@ -277,7 +280,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   u32 server_index, client_index, sw_if_index[2], tries = 0;
   u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
   u16 dummy_server_port = 1234, dummy_client_port = 5678;
-  session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
+  session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
   ip4_address_t intf_addr[3];
   transport_connection_t *tc;
   session_t *s;
@@ -344,7 +347,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   server_sep.is_ip4 = 1;
   server_sep.port = dummy_server_port;
   vnet_listen_args_t bind_args = {
-    .sep = server_sep,
+    .sep_ext = server_sep,
     .app_index = server_index,
   };
   error = vnet_listen (&bind_args);
@@ -1693,6 +1696,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     unformat_free (&tmp_input);
   vec_free (attach_args.name);
+  session_delete_loopback (sw_if_index);
   return 0;
 }
 
