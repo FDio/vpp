@@ -251,16 +251,21 @@ typedef struct tcp_bt_sample_
   u32 max_seq;			/**< Max seq number. Set for rxt samples */
   u64 delivered;		/**< Total delivered when sample taken */
   f64 delivered_time;		/**< Delivered time when sample taken */
+  f64 tx_time;			/**< Transmit time for the burst */
   u64 tx_rate;			/**< Tx pacing rate */
   tcp_bts_flags_t flags;	/**< Sample flag */
 } tcp_bt_sample_t;
 
 typedef struct tcp_rate_sample_
 {
-  u64 sample_delivered;		/**< Delivered of sample used for rate */
-  u32 delivered;		/**< Bytes delivered in ack time */
-  f64 ack_time;			/**< Time to ack the bytes delivered */
+  u64 prior_delivered;		/**< Delivered of sample used for rate */
+  f64 prior_time;		/**< Delivered time of sample used for rate */
+  f64 interval_time;		/**< Time to ack the bytes delivered */
+  f64 rtt_time;			/**< RTT for sample */
   u64 tx_rate;			/**< Tx pacing rate */
+  u32 delivered;		/**< Bytes delivered in interval time */
+  u32 acked_and_sacked;		/**< Bytes acked + sacked now */
+  u32 lost;			/**< Bytes lost now */
   tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */
 } tcp_rate_sample_t;
 

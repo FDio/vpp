@@ -857,9 +857,9 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (pool_elts (bt->samples) == 0, "sample should've been consumed");
   TCP_TEST (tc->delivered_time == 2, "delivered time should be 2");
   TCP_TEST (tc->delivered == burst, "delivered should be 100");
-  TCP_TEST (rs->ack_time == 1, "ack time should be 1");
+  TCP_TEST (rs->interval_time == 1, "ack time should be 1");
   TCP_TEST (rs->delivered == burst, "delivered should be 100");
-  TCP_TEST (rs->sample_delivered == 0, "sample delivered should be 0");
+  TCP_TEST (rs->prior_delivered == 0, "sample delivered should be 0");
   TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
 	    rs->tx_rate);
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
@@ -897,9 +897,9 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered_time == 4, "delivered time should be 4");
   TCP_TEST (tc->delivered == 3 * burst, "delivered should be 300 is %u",
 	    tc->delivered);
-  TCP_TEST (rs->ack_time == 2, "ack time should be 2");
+  TCP_TEST (rs->interval_time == 2, "ack time should be 2");
   TCP_TEST (rs->delivered == 2 * burst, "delivered should be 200");
-  TCP_TEST (rs->sample_delivered == burst, "delivered should be 100");
+  TCP_TEST (rs->prior_delivered == burst, "delivered should be 100");
   TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
 	    rs->tx_rate);
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
@@ -964,9 +964,10 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 	    3 * burst + 30, tc->delivered);
   /* All 3 samples have the same delivered number of bytes. So the first is
    * the reference for delivery estimate. */
-  TCP_TEST (rs->ack_time == 4, "ack time should be 4 is %.2f", rs->ack_time);
+  TCP_TEST (rs->interval_time == 4, "ack time should be 4 is %.2f",
+	    rs->interval_time);
   TCP_TEST (rs->delivered == 30, "delivered should be 30");
-  TCP_TEST (rs->sample_delivered == 3 * burst,
+  TCP_TEST (rs->prior_delivered == 3 * burst,
 	    "sample delivered should be %u", 3 * burst);
   TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
 	    rs->tx_rate);
@@ -1045,11 +1046,12 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered == 5 * burst + 40, "delivered should be %u is %u",
 	    5 * burst + 40, tc->delivered);
   /* A rxt was acked and delivered time for it is 8 (last ack time) */
-  TCP_TEST (rs->ack_time == 2, "ack time should be 2 is %.2f", rs->ack_time);
+  TCP_TEST (rs->interval_time == 2, "ack time should be 2 is %.2f",
+	    rs->interval_time);
   /* delivered_now - delivered_rxt ~ 5 * burst + 40 - 3 * burst - 30 */
   TCP_TEST (rs->delivered == 2 * burst + 10, "delivered should be 210 is %u",
 	    rs->delivered);
-  TCP_TEST (rs->sample_delivered == 3 * burst + 30,
+  TCP_TEST (rs->prior_delivered == 3 * burst + 30,
 	    "sample delivered should be %u", 3 * burst + 30);
   TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
 	    rs->tx_rate);
@@ -1077,12 +1079,13 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered == 7 * burst, "delivered should be %u is %u",
 	    7 * burst, tc->delivered);
   /* Last rxt was at time 8 */
-  TCP_TEST (rs->ack_time == 3, "ack time should be 3 is %.2f", rs->ack_time);
+  TCP_TEST (rs->interval_time == 3, "ack time should be 3 is %.2f",
+	    rs->interval_time);
   /* delivered_now - delivered_rxt ~ 7 * burst - 3 * burst - 30.
    * That's because we didn't retransmit any new segment. */
   TCP_TEST (rs->delivered == 4 * burst - 30, "delivered should be 160 is %u",
 	    rs->delivered);
-  TCP_TEST (rs->sample_delivered == 3 * burst + 30,
+  TCP_TEST (rs->prior_delivered == 3 * burst + 30,
 	    "sample delivered should be %u", 3 * burst + 30);
   TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
 	    rs->tx_rate);
