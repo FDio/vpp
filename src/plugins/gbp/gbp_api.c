@@ -402,6 +402,9 @@ gub_subnet_type_from_api (vl_api_gbp_subnet_type_t a, gbp_subnet_type_t * t)
     case GBP_API_SUBNET_L3_OUT:
       *t = GBP_SUBNET_L3_OUT;
       return (0);
+    case GBP_API_SUBNET_ANON_L3_OUT:
+      *t = GBP_SUBNET_ANON_L3_OUT;
+      return (0);
     case GBP_API_SUBNET_STITCHED_INTERNAL:
       *t = GBP_SUBNET_STITCHED_INTERNAL;
       return (0);
@@ -458,6 +461,9 @@ gub_subnet_type_to_api (gbp_subnet_type_t t)
       break;
     case GBP_SUBNET_L3_OUT:
       a = GBP_API_SUBNET_L3_OUT;
+      break;
+    case GBP_SUBNET_ANON_L3_OUT:
+      a = GBP_API_SUBNET_ANON_L3_OUT;
       break;
     }
 

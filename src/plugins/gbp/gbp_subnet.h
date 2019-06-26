@@ -24,6 +24,7 @@ typedef enum gbp_subnet_type_t_
   GBP_SUBNET_STITCHED_INTERNAL,
   GBP_SUBNET_STITCHED_EXTERNAL,
   GBP_SUBNET_L3_OUT,
+  GBP_SUBNET_ANON_L3_OUT,
 } gbp_subnet_type_t;
 
 extern int gbp_subnet_add (u32 rd_id,

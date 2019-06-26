@@ -231,6 +231,7 @@ enum gbp_subnet_type
   GBP_API_SUBNET_STITCHED_INTERNAL,
   GBP_API_SUBNET_STITCHED_EXTERNAL,
   GBP_API_SUBNET_L3_OUT,
+  GBP_API_SUBNET_ANON_L3_OUT,
 };
 
 typeonly define gbp_subnet
