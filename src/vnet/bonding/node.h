@@ -82,6 +82,7 @@ typedef struct
   u8 hw_addr[6];
   u8 mode;
   u8 lb;
+  u8 numa_aware;
   /* return */
   u32 sw_if_index;
   int rv;
@@ -186,6 +187,7 @@ typedef struct
   lacp_port_info_t partner;
   lacp_port_info_t actor;
   u8 individual_aggregator;
+  u8 numa_aware;
 
   u32 group;
   uword *port_number_bitmap;

@@ -388,6 +388,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   sw = vnet_get_hw_sw_interface (vnm, bif->hw_if_index);
   bif->sw_if_index = sw->sw_if_index;
   bif->group = bif->sw_if_index;
+  bif->numa_aware = args->numa_aware;
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
 
@@ -428,6 +429,8 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.hw_addr_set = 1;
       else if (unformat (line_input, "id %u", &args.id))
 	;
+      else if (unformat (line_input, "numa-aware"))
+	args.numa_aware = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -447,7 +450,7 @@ VLIB_CLI_COMMAND (bond_create_command, static) = {
   .path = "create bond",
   .short_help = "create bond mode {round-robin | active-backup | broadcast | "
     "{lacp | xor} [load-balance { l2 | l23 | l34 }]} [hw-addr <mac-address>] "
-    "[id <if-id>]",
+    "[id <if-id>] numa-aware",
   .function = bond_create_command_fn,
 };
 /* *INDENT-ON* */

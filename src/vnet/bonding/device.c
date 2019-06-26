@@ -646,9 +646,11 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   u32 n_left = frame->n_vectors;
   u32 hashes[VLIB_FRAME_SIZE], *h;
   vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw;
   bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
 						  thread_index);
   u32 p, sw_if_index;
+  int i;
 
   if (PREDICT_FALSE (bif->admin_up == 0))
     {
@@ -686,6 +688,34 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
       bond_update_sw_if_index (ptd, bif, from, bufs, &sw_if_index, n_left,
 			       /* single_sw_if_index */ 1);
       goto done;
+    }
+
+  /* update n_slaves here if numa-aware is set */
+  if (bif->numa_aware == 1)
+    {
+      uword n_numa_slaves = 0;
+
+      vec_foreach_index (i, bif->active_slaves)
+      {
+	p = *vec_elt_at_index (bif->active_slaves, i);
+	hw = vnet_get_sup_hw_interface (vnm, p);
+	if (vm->numa_node == hw->numa_node)
+	  {
+	    n_numa_slaves += 1;
+	  }
+	else
+	  {
+	    /* put ports attaching to local numa node to the first n_numa_slaves
+	       elements of bif->active_slaves */
+	    vec_del1 (bif->active_slaves, i);
+	    hash_unset (bif->active_slave_by_sw_if_index, p);
+	    vec_add1 (bif->active_slaves, p);
+	    hash_set (bif->active_slave_by_sw_if_index, p, p);
+	  }
+      }
+      /* if have at least one port attaching to local numa node, update  n_slaves */
+      if (n_numa_slaves >= 1)
+	n_slaves = n_numa_slaves;
     }
 
   if (bif->lb == BOND_LB_BC)
