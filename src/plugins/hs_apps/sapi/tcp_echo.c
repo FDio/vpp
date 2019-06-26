@@ -173,7 +173,7 @@ init_error_string_table (echo_main_t * em)
 {
   em->error_string_by_error_number = hash_create (0, sizeof (uword));
 
-#define _(n,v,s) hash_set (em->error_string_by_error_number, -v, s);
+#define _(n,v,s,x) hash_set (em->error_string_by_error_number, -v, s);
   foreach_vnet_api_error;
 #undef _
 
