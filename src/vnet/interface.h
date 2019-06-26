@@ -847,6 +847,10 @@ typedef struct
   u32 pcap_pkts_to_capture;
   uword *pcap_drop_filter_hash;
 
+  /* Buffer metadata format helper functions */
+  u8 *(**buffer_opaque_format_helpers) (vlib_buffer_t * b, u8 * s);
+  u8 *(**buffer_opaque2_format_helpers) (vlib_buffer_t * b, u8 * s);
+
   /* per-thread data */
   vnet_interface_per_thread_data_t *per_thread_data;
 
@@ -879,6 +883,12 @@ int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
 uword vnet_interface_output_node (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame);
+
+void register_format_vnet_buffer_opaque_helper
+  (u8 * (*fp) (vlib_buffer_t * b, u8 * s));
+
+void register_format_vnet_buffer_opaque2_helper
+  (u8 * (*fp) (vlib_buffer_t * b, u8 * s));
 
 #endif /* included_vnet_interface_h */
 
