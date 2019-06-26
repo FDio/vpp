@@ -12,8 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/sctp/sctp.h>
-#include <vnet/sctp/sctp_debug.h>
+
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
+
+#include <sctp/sctp.h>
+#include <sctp/sctp_debug.h>
 
 sctp_main_t sctp_main;
 
@@ -1001,6 +1005,30 @@ sctp_enable_disable (vlib_main_t * vm, u8 is_en)
   return 0;
 }
 
+static u8 *
+sctp_format_buffer_opaque_helper (const vlib_buffer_t * b, u8 * s)
+{
+  sctp_buffer_opaque_t *o = sctp_buffer_opaque (b);
+
+  s = format (s,
+	      "sctp.connection_index: %d, sctp.sid: %d, sctp.ssn: %d, "
+	      "sctp.tsn: %d, sctp.hdr_offset: %d",
+	      o->sctp.connection_index,
+	      (u32) (o->sctp.sid),
+	      (u32) (o->sctp.ssn),
+	      (u32) (o->sctp.tsn), (u32) (o->sctp.hdr_offset));
+  vec_add1 (s, '\n');
+
+  s = format
+    (s, "sctp.data_offset: %d, sctp.data_len: %d, sctp.subconn_idx: %d, "
+     "sctp.flags: 0x%x",
+     (u32) (o->sctp.data_offset),
+     (u32) (o->sctp.data_len),
+     (u32) (o->sctp.subconn_idx), (u32) (o->sctp.flags));
+  vec_add1 (s, '\n');
+  return s;
+}
+
 clib_error_t *
 sctp_init (vlib_main_t * vm)
 {
@@ -1010,8 +1038,11 @@ sctp_init (vlib_main_t * vm)
   sm->is_enabled = 0;
   sm->is_init = 0;
 
-  sctp_api_reference ();
+  /* initialize binary API */
+  sctp_plugin_api_hookup (vm);
 
+  vnet_register_format_buffer_opaque_helper
+    (sctp_format_buffer_opaque_helper);
   return 0;
 }
 
@@ -1077,6 +1108,14 @@ VLIB_CLI_COMMAND (show_sctp_command, static) =
   .path = "sctp",
   .short_help = "sctp [enable | disable]",
   .function = sctp_fn,
+};
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () =
+{
+  .version = VPP_BUILD_VER,
+  .description = "Stream Control Transmission Protocol (SCTP)",
+  .default_disabled = 1,
 };
 /* *INDENT-ON* */
 
