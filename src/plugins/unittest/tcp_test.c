@@ -852,7 +852,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (rs->ack_time == 1, "ack time should be 1");
   TCP_TEST (rs->delivered == burst, "delivered should be 100");
   TCP_TEST (rs->sample_delivered == 0, "sample delivered should be 0");
-  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+  TCP_TEST (rs->tx_rate == rate, "rate should be %u is %u", rate, rs->tx_rate);
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
 
   /* 3) track second burst at time 2 */
@@ -1059,7 +1059,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
-  TCP_TEST (pool_elts (bt->samples) == 0, "num samples should be 3 is %u",
+  TCP_TEST (pool_elts (bt->samples) == 0, "num samples should be 0 is %u",
 	    pool_elts (bt->samples));
   TCP_TEST (tc->delivered_time == 11, "delivered time should be 10");
   TCP_TEST (tc->delivered == 7 * burst, "delivered should be %u is %u",
