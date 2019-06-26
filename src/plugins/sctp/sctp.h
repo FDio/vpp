@@ -17,18 +17,44 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/sctp/sctp_timer.h>
-#include <vnet/sctp/sctp_packet.h>
+#include <sctp/sctp_timer.h>
+#include <sctp/sctp_packet.h>
 #include <vnet/session/transport.h>
 #include <vnet/session/session.h>
 
+/* SCTP buffer opaque definition */
+typedef struct
+{
+  struct
+  {
+    u32 connection_index;
+    u16 sid; /**< Stream ID */
+    u16 ssn; /**< Stream Sequence Number */
+    u32 tsn; /**< Transmission Sequence Number */
+    u16 hdr_offset;		/**< offset relative to ip hdr */
+    u16 data_offset;		/**< offset relative to ip hdr */
+    u16 data_len;		/**< data len */
+    u8 subconn_idx; /**< index of the sub_connection being used */
+    u8 flags;
+  } sctp;
+} sctp_buffer_opaque_t;
+
+STATIC_ASSERT (sizeof (sctp_buffer_opaque_t) <=
+	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
+	       "sctp_buffer_opaque_t too large for vnet_buffer_opaque_t");
+
+#define sctp_buffer_opaque(b)                           \
+  ((sctp_buffer_opaque_t *)((u8 *)((b)->opaque) +       \
+STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
+
+
 /* SCTP timers */
 #define foreach_sctp_timer              	\
-  _(T1_INIT, "T1_INIT")           			\
-  _(T1_COOKIE, "T1_COOKIE")        			\
+  _(T1_INIT, "T1_INIT")                         \
+  _(T1_COOKIE, "T1_COOKIE")                     \
   _(T2_SHUTDOWN, "T2_SHUTDOWN")         	\
-  _(T3_RXTX, "T3_RXTX")   					\
-  _(T4_HEARTBEAT, "T4_HB")					\
+  _(T3_RXTX, "T3_RXTX")                         \
+  _(T4_HEARTBEAT, "T4_HB")                      \
   _(T5_SHUTDOWN_GUARD, "T5_SHUTDOWN_GUARD")
 
 typedef enum _sctp_timers
@@ -65,7 +91,7 @@ sctp_timer_to_string (u8 timer_id)
 typedef enum _sctp_error
 {
 #define sctp_error(n,s) SCTP_ERROR_##n,
-#include <vnet/sctp/sctp_error.def>
+#include <sctp/sctp_error.def>
 #undef sctp_error
   SCTP_N_ERROR,
 } sctp_error_t;
@@ -306,6 +332,7 @@ u8 *format_sctp_connection (u8 * s, va_list * args);
 u8 *format_sctp_scoreboard (u8 * s, va_list * args);
 u8 *format_sctp_header (u8 * s, va_list * args);
 u8 *format_sctp_tx_trace (u8 * s, va_list * args);
+unformat_function_t unformat_pg_sctp_header;
 
 clib_error_t *sctp_init (vlib_main_t * vm);
 void sctp_connection_timers_init (sctp_connection_t * sctp_conn);
@@ -533,6 +560,8 @@ typedef struct _sctp_main
 
   u32 sctp4_established_phase_node_index;
   u32 sctp6_established_phase_node_index;
+
+  u16 msg_id_base;
 } sctp_main_t;
 
 extern sctp_main_t sctp_main;
@@ -552,10 +581,11 @@ sctp_buffer_hdr (vlib_buffer_t * b)
 {
   ASSERT ((signed) b->current_data >= (signed) -VLIB_BUFFER_PRE_DATA_SIZE);
   return (sctp_header_t *) (b->data + b->current_data
-			    + vnet_buffer (b)->sctp.hdr_offset);
+			    + sctp_buffer_opaque (b)->sctp.hdr_offset);
 }
 
 clib_error_t *vnet_sctp_enable_disable (vlib_main_t * vm, u8 is_en);
+clib_error_t *sctp_plugin_api_hookup (vlib_main_t * vm);
 
 always_inline sctp_connection_t *
 sctp_half_open_connection_get (u32 conn_index)

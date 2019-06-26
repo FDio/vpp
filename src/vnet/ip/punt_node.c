@@ -27,7 +27,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
 #include <vnet/tcp/tcp.h>
-#include <vnet/sctp/sctp.h>
 #include <vnet/ip/punt.h>
 #include <vlib/unix/unix.h>
 

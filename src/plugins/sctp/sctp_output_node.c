@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/sctp/sctp.h>
-#include <vnet/sctp/sctp_debug.h>
+#include <sctp/sctp.h>
+#include <sctp/sctp_debug.h>
 #include <vppinfra/random.h>
 #include <openssl/hmac.h>
 
@@ -35,7 +35,7 @@ ip4_sctp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 
 static char *sctp_error_strings[] = {
 #define sctp_error(n,s) s,
-#include <vnet/sctp/sctp_error.def>
+#include <sctp/sctp_error.def>
 #undef sctp_error
 };
 
@@ -102,8 +102,8 @@ sctp46_output_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  sctp_conn =
-	    sctp_connection_get (vnet_buffer (b0)->sctp.connection_index,
-				 my_thread_index);
+	    sctp_connection_get (sctp_buffer_opaque (b0)->
+				 sctp.connection_index, my_thread_index);
 
 	  if (PREDICT_FALSE (sctp_conn == 0))
 	    {
@@ -112,7 +112,7 @@ sctp46_output_inline (vlib_main_t * vm,
 	      goto done;
 	    }
 
-	  u8 idx = vnet_buffer (b0)->sctp.subconn_idx;
+	  u8 idx = sctp_buffer_opaque (b0)->sctp.subconn_idx;
 
 	  th0 = vlib_buffer_get_current (b0);
 
