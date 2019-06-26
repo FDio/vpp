@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7399e8e5_f0006331",
+        "filename": "src/plugins/vmxnet3/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-26T07:51:53Z",
+      "side": 1,
+      "message": "why do this?",
+      "revId": "914d51ec1e9a439811bbc546187a77636838f524",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
