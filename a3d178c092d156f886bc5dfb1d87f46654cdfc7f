@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49975f8a_7144b9eb",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 713,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-06-26T23:38:10Z",
+      "side": 1,
+      "message": "First of all, I don\u0027t understand why you need to do hash_unset and hash_set(bif-\u003eactive_slave_by_sw_if_index). Secondly, doing vec_del1 and vec_add1 inside the vec_foreach_index() looks broken to me. For example, take this data set which has 4 elements in this order [ N, X, N, N ]. N means numa node. X means it is not numa node. When i is 0, we increment n_numa_slave and move on. When i is 1, you call vec_del1. Now the vector has [ N, N, N ]. Then you call vec_add1. Now the vector has [ N, N, N, X ]. So far so good. Next iteration, i is 2, we process the vector index element of 2 which is the last N before X. n_numa_slave + 1. It is 2 now. Now the last iteration, i is 3. We hit X again. We did vec_del1 and vec_add1 which does not change the resulting vector. But we found only 2 numa nodes. We should have found 3 numa nodes.\n\nThis is data plane code. Is it realistic to do this kind of computation for every frame?",
+      "revId": "a3d178c092d156f886bc5dfb1d87f46654cdfc7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
