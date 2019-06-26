@@ -990,7 +990,7 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   /* rx pcap capture if enabled */
-  if (PREDICT_FALSE (vm->pcap[VLIB_RX].pcap_enable))
+  if (PREDICT_FALSE (vlib_global_main.pcap[VLIB_RX].pcap_enable))
     {
       u32 bi0;
 
@@ -1003,11 +1003,12 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  from++;
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  if (vm->pcap[VLIB_RX].pcap_sw_if_index == 0 ||
-	      vm->pcap[VLIB_RX].pcap_sw_if_index
+	  if (vlib_global_main.pcap[VLIB_RX].pcap_sw_if_index == 0 ||
+	      vlib_global_main.pcap[VLIB_RX].pcap_sw_if_index
 	      == vnet_buffer (b0)->sw_if_index[VLIB_RX])
 	    {
-	      pcap_add_buffer (&vm->pcap[VLIB_RX].pcap_main, vm, bi0, 512);
+	      pcap_add_buffer (&vlib_global_main.pcap[VLIB_RX].pcap_main, vm,
+			       bi0, 512);
 	    }
 	  n_left--;
 	}
