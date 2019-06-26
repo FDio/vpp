@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6643ea06_98d7f5b4",
+        "filename": "build-root/vpp_19.08-rc0~368-g98d6ee7ac_amd64.buildinfo",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-06-26T07:09:37Z",
+      "side": 1,
+      "message": "remove this file",
+      "range": {
+        "startLine": 2,
+        "startChar": 2,
+        "endLine": 6,
+        "endChar": 12
+      },
+      "revId": "c1b342cf02af7b19dfc0198a104cf07207311d60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6d20dc2b_78f7561e",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-06-26T07:09:37Z",
+      "side": 1,
+      "message": "VPP does not use this comment",
+      "range": {
+        "startLine": 295,
+        "startChar": 2,
+        "endLine": 295,
+        "endChar": 27
+      },
+      "revId": "c1b342cf02af7b19dfc0198a104cf07207311d60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "66596b15_8cda523c",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1420,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-06-26T07:09:37Z",
+      "side": 1,
+      "message": "remove this line",
+      "revId": "c1b342cf02af7b19dfc0198a104cf07207311d60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
