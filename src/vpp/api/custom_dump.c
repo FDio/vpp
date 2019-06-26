@@ -667,6 +667,10 @@ static void *vl_api_bond_create_t_print
     s = format (s, "lb %U ", format_bond_load_balance, mp->lb);
   if (mp->id != ~0)
     s = format (s, "id %u ", ntohl (mp->id));
+  if (mp->numa_aware)
+    s = format (s, "numa-aware is set in lacp mode");
+  if (mp->local_numa_only)
+    s = format (s, "local-numa-only is set in lacp mode");
   FINISH;
 }
 

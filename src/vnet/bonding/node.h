@@ -82,6 +82,8 @@ typedef struct
   u8 hw_addr[6];
   u8 mode;
   u8 lb;
+  u8 numa_aware;
+  u8 local_numa_only;
   /* return */
   u32 sw_if_index;
   int rv;
@@ -186,6 +188,17 @@ typedef struct
   lacp_port_info_t partner;
   lacp_port_info_t actor;
   u8 individual_aggregator;
+
+  /* The flag supports lacp mode only for now */
+  u8 numa_aware;
+
+  /* If the flag local_numa_only is set, it means that only slaves
+     on local numa node works for lacp mode if have at least one,
+     otherwise it works as usual. */
+  u8 local_numa_only;
+
+  /* How many slaves on local numa node are there in lacp mode? */
+  u32 n_numa_slaves;
 
   u32 group;
   uword *port_number_bitmap;

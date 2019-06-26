@@ -699,6 +699,14 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
       goto done;
     }
 
+  if ((bif->mode == BOND_MODE_LACP) && bif->local_numa_only)
+    {
+      /* if have at least one slave on local numa node, only slaves on local numa
+         node will transmit pkts when bif->local_numa_only is enabled */
+      if (bif->n_numa_slaves >= 1)
+	n_slaves = bif->n_numa_slaves;
+    }
+
   if (bif->lb == BOND_LB_L2)
     bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L2);
   else if (bif->lb == BOND_LB_L34)
@@ -723,24 +731,56 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 			   /* single_sw_if_index */ 0);
 
 done:
-  for (p = 0; p < n_slaves; p++)
+  if ((bif->mode == BOND_MODE_LACP) && bif->numa_aware)
     {
-      vlib_frame_t *f;
-      u32 *to_next;
-
-      sw_if_index = *vec_elt_at_index (bif->active_slaves, p);
-      if (PREDICT_TRUE (ptd->per_port_queue[p].n_buffers))
+      for (p = 0; p < n_slaves; p++)
 	{
-	  f = vnet_get_frame_to_sw_interface (vnm, sw_if_index);
-	  f->n_vectors = ptd->per_port_queue[p].n_buffers;
-	  to_next = vlib_frame_vector_args (f);
-	  clib_memcpy_fast (to_next, ptd->per_port_queue[p].buffers,
-			    f->n_vectors * sizeof (u32));
-	  vnet_put_frame_to_sw_interface (vnm, sw_if_index, f);
-	  ptd->per_port_queue[p].n_buffers = 0;
+	  vlib_frame_t *f;
+	  u32 *to_next;
+	  u32 i, max = 0, index = 0;
+	  /* select the port that has the most packets */
+	  for (i = 0; i < n_slaves; i++)
+	    {
+	      if (ptd->per_port_queue[i].n_buffers > max)
+		{
+		  max = ptd->per_port_queue[i].n_buffers;
+		  index = i;
+		}
+	    }
+
+	  sw_if_index = *vec_elt_at_index (bif->active_slaves, p);
+	  if (PREDICT_TRUE (ptd->per_port_queue[index].n_buffers))
+	    {
+	      f = vnet_get_frame_to_sw_interface (vnm, sw_if_index);
+	      f->n_vectors = ptd->per_port_queue[index].n_buffers;
+	      to_next = vlib_frame_vector_args (f);
+	      clib_memcpy_fast (to_next, ptd->per_port_queue[index].buffers,
+				f->n_vectors * sizeof (u32));
+	      vnet_put_frame_to_sw_interface (vnm, sw_if_index, f);
+	      ptd->per_port_queue[index].n_buffers = 0;
+	    }
 	}
     }
+  else
+    {
+      for (p = 0; p < n_slaves; p++)
+	{
+	  vlib_frame_t *f;
+	  u32 *to_next;
 
+	  sw_if_index = *vec_elt_at_index (bif->active_slaves, p);
+	  if (PREDICT_TRUE (ptd->per_port_queue[p].n_buffers))
+	    {
+	      f = vnet_get_frame_to_sw_interface (vnm, sw_if_index);
+	      f->n_vectors = ptd->per_port_queue[p].n_buffers;
+	      to_next = vlib_frame_vector_args (f);
+	      clib_memcpy_fast (to_next, ptd->per_port_queue[p].buffers,
+				f->n_vectors * sizeof (u32));
+	      vnet_put_frame_to_sw_interface (vnm, sw_if_index, f);
+	      ptd->per_port_queue[p].n_buffers = 0;
+	    }
+	}
+    }
   vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters
 				 + VNET_INTERFACE_COUNTER_TX, thread_index,
 				 bif->sw_if_index, frame->n_vectors);
