@@ -103,7 +103,8 @@ class VppPGInterface(VppInterface):
         self._in_path = self.test.tempdir + "/" + self._in_file
         self._capture_cli = "packet-generator capture pg%u pcap %s" % (
             self.pg_index, self.out_path)
-        self._cap_name = "pcap%u" % self.sw_if_index
+        self._cap_name = "pcap%u-sw_if_index-%s" % (
+            self.pg_index, self.sw_if_index)
         self._input_cli = \
             "packet-generator new pcap %s source pg%u name %s" % (
                 self.in_path, self.pg_index, self.cap_name)
