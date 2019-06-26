@@ -380,6 +380,7 @@ udpc_connection_listen (u32 session_index, transport_endpoint_t * lcl)
 static transport_options_t udpc_t_opts = {
   .tx_type = TRANSPORT_TX_DGRAM,
   .service_type = TRANSPORT_SERVICE_VC,
+  .half_open_has_fifos = 1
 };
 
 static const transport_proto_vft_t udpc_proto = {
