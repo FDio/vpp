@@ -14,6 +14,7 @@
  */
 
 #include <plugins/gbp/gbp_itf.h>
+#include <plugins/gbp/gbp_bridge_domain.h>
 
 /**
  * Attributes and configurations attached to interfaces by GBP
@@ -66,10 +67,8 @@ gbp_itf_add_and_lock (u32 sw_if_index, u32 bd_index)
       gi->gi_bd_index = bd_index;
 
       if (~0 != gi->gi_bd_index)
-	set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			 MODE_L2_BRIDGE, sw_if_index, bd_index,
-			 L2_BD_PORT_TYPE_NORMAL, 0, 0);
-
+	gbp_bridge_domain_itf_add (sw_if_index, bd_index,
+				   L2_BD_PORT_TYPE_NORMAL);
     }
 
   gi->gi_locks++;
@@ -89,8 +88,8 @@ gbp_itf_unlock (index_t gii)
   if (0 == gi->gi_locks)
     {
       if (~0 != gi->gi_bd_index)
-	set_int_l2_mode (vlib_get_main (), vnet_get_main (), MODE_L3,
-			 gi->gi_sw_if_index, 0, L2_BD_PORT_TYPE_NORMAL, 0, 0);
+	gbp_bridge_domain_itf_del (gi->gi_sw_if_index, gi->gi_bd_index,
+				   L2_BD_PORT_TYPE_NORMAL);
       vec_free (gi->gi_l2_input_fbs);
       vec_free (gi->gi_l2_output_fbs);
 
