@@ -7769,6 +7769,7 @@ api_bond_create (vat_main_t * vam)
   u8 lb;
   u8 mode_is_set = 0;
   u32 id = ~0;
+  u8 numa_only = 0;
 
   clib_memset (mac_address, 0, sizeof (mac_address));
   lb = BOND_LB_L2;
@@ -7784,6 +7785,8 @@ api_bond_create (vat_main_t * vam)
       else if (unformat (i, "hw-addr %U", unformat_ethernet_address,
 			 mac_address))
 	custom_mac = 1;
+      else if (unformat (i, "numa-only"))
+	numa_only = 1;
       else if (unformat (i, "id %u", &id))
 	;
       else
@@ -7804,6 +7807,7 @@ api_bond_create (vat_main_t * vam)
   mp->mode = mode;
   mp->lb = lb;
   mp->id = htonl (id);
+  mp->numa_only = numa_only;
 
   if (custom_mac)
     clib_memcpy (mp->mac_address, mac_address, 6);

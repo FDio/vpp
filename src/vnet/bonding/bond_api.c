@@ -83,6 +83,7 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
 
   ap->mode = mp->mode;
   ap->lb = mp->lb;
+  ap->numa_only = mp->numa_only;
   bond_create_if (vm, ap);
 
   int rv = ap->rv;
@@ -149,6 +150,7 @@ bond_send_sw_interface_details (vpe_api_main_t * am,
 		    strlen ((const char *) bond_if->interface_name)));
   mp->mode = bond_if->mode;
   mp->lb = bond_if->lb;
+  mp->numa_only = bond_if->numa_only;
   mp->active_slaves = htonl (bond_if->active_slaves);
   mp->slaves = htonl (bond_if->slaves);
 

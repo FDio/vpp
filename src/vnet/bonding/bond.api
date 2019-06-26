@@ -19,7 +19,7 @@
     the bonding device driver
 */
 
-option version = "1.0.0";
+option version = "1.0.1";
 
 /** \brief Initialize a new bond interface with the given paramters
     @param client_index - opaque cookie to identify the sender
@@ -29,6 +29,7 @@ option version = "1.0.0";
     @param mac_address - mac addr to assign to the interface if use_custom_mac is set
     @param mode - mode, required (1=round-robin, 2=active-backup, 3=xor, 4=broadcastcast, 5=lacp)
     @param lb - load balance, optional (0=l2, 1=l34, 2=l23) valid for xor and lacp modes. Otherwise ignored
+    @param numa_only - if numa_only is set, pkts will be transmitted by LAG members on local numa node only if have at least one, otherwise it works as usual.
 */
 define bond_create
 {
@@ -39,6 +40,7 @@ define bond_create
   u8 mac_address[6];
   u8 mode;
   u8 lb;
+  u8 numa_only;
 };
 
 /** \brief Reply for bond create reply
@@ -118,6 +120,7 @@ define sw_interface_bond_dump
     @param interface_name - name of interface
     @param mode - bonding mode
     @param lb - load balance algo
+    @param numa_only - enable local numa TX for lacp mode
     @param active_slaves - active slaves count
     @param slaves - config slave count
 */
@@ -129,6 +132,7 @@ define sw_interface_bond_details
   u8 interface_name[64];
   u8 mode;
   u8 lb;
+  u8 numa_only;
   u32 active_slaves;
   u32 slaves;
 };

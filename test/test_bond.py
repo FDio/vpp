@@ -65,6 +65,7 @@ class TestBondInterface(VppTestCase):
         bond0 = VppBondInterface(self,
                                  mode=3,
                                  lb=1,
+                                 numa_only=0,
                                  use_custom_mac=1,
                                  mac_address=mac)
         bond0.add_vpp_config()
