@@ -41,14 +41,18 @@
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <lacp/lacp_all_api_h.h>
-#undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
 #include <lacp/lacp_all_api_h.h>
 #undef vl_api_version
+
+/* Macro to finish up custom dump fns */
+#define FINISH                                  \
+    vec_add1 (s, 0);                            \
+    vl_print (handle, (char *)s);               \
+    vec_free (s);                               \
+    return handle;
 
 #define REPLY_MSG_ID_BASE lm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -126,6 +130,17 @@ vl_api_sw_interface_lacp_dump_t_handler (vl_api_sw_interface_lacp_dump_t * mp)
   vec_free (lacpifs);
 }
 
+static void *
+vl_api_sw_interface_lacp_dump_t_print (vl_api_sw_interface_lacp_dump_t * mp,
+				       void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_lacp_dump ");
+
+  FINISH;
+}
+
 #define vl_msg_name_crc_list
 #include <lacp/lacp_all_api_h.h>
 #undef vl_msg_name_crc_list
@@ -136,6 +151,16 @@ setup_message_id_table (lacp_main_t * lm, api_main_t * am)
 #define _(id,n,crc) \
   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + lm->msg_id_base);
   foreach_vl_msg_name_crc_lacp;
+#undef _
+}
+
+static void
+plugin_custom_dump_configure (lacp_main_t * lm)
+{
+#define _(n,f) api_main.msg_print_handlers \
+  [VL_API_##n + lm->msg_id_base]                \
+    = (void *) vl_api_##f##_t_print;
+  foreach_lacp_plugin_api_msg;
 #undef _
 }
 
@@ -169,6 +194,8 @@ lacp_plugin_api_hookup (vlib_main_t * vm)
    * Set up the (msg_name, crc, message-id) table
    */
   setup_message_id_table (lm, am);
+
+  plugin_custom_dump_configure (lm);
 
   vec_free (name);
   return 0;
