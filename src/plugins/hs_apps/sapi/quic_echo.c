@@ -146,7 +146,6 @@ echo_session_new (echo_main_t * em)
 						   1));
 }
 
-
 static int
 echo_send_rpc (echo_main_t * em, void *fp, void *arg, u32 opaque)
 {

@@ -89,6 +89,7 @@ _(LOG_DUMP, log_dump)                                                   \
 _(SHOW_VPE_SYSTEM_TIME, show_vpe_system_time)				\
 _(GET_F64_ENDIAN_VALUE, get_f64_endian_value)							\
 _(GET_F64_INCREMENT_BY_ONE, get_f64_increment_by_one)					\
+_(API_STRERROR_DUMP, api_strerror_dump)									\
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -580,6 +581,80 @@ vl_api_get_f64_increment_by_one_t_handler (vl_api_get_f64_increment_by_one_t *
     rmp->f64_value = clib_host_to_net_f64 (clib_net_to_host_f64(mp->f64_value) + 1.0);
   }));
   /* *INDENT-ON* */
+}
+
+static const int defined_api_errnos[] =
+#ifdef _
+#undef _
+#endif
+#define _(a, b, c, d) \
+  b ,
+{ foreach_vnet_api_error };
+
+#undef _
+
+static void
+send_api_strerror_details (vl_api_registration_t * reg, u32 context,
+			   i32 api_errno, u8 * strerror)
+{
+  vl_api_api_strerror_details_t *rmp;
+  u32 len = vec_len (strerror);
+
+  // allocate space for variable sized fields.
+  rmp = vl_msg_api_alloc (sizeof (*rmp) + len);
+  clib_memset (rmp, 0, sizeof (*rmp) + len);
+
+  rmp->_vl_msg_id = ntohs (VL_API_API_STRERROR_DETAILS);
+  rmp->context = context;
+
+  rmp->api_errno = clib_host_to_net_i32 (api_errno);
+  vl_api_vec_to_api_string (strerror, &rmp->strerror);
+
+}
+
+static void
+vl_api_api_strerror_dump_t_handler (vl_api_api_strerror_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+  vnet_api_error_t api_errno;
+  i32 i, num_records;
+
+  /* Indexes are positive. use -1 as invalid sentinel. */
+  i32 specified_api_errno_index = -1;
+  num_records = sizeof (defined_api_errnos) / sizeof (defined_api_errnos[0]);
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  api_errno = (i32) clib_net_to_host_i32 (mp->api_errno);
+  if (api_errno == 0x7fffffff)
+    goto next;
+
+  for (i = 0; i < num_records; i++)
+    if (api_errno == defined_api_errnos[i])
+      {
+	{
+	  specified_api_errno_index = i;
+	  goto next;
+	}
+      }
+  /* Not a valid index */
+  goto done;
+
+next:
+  for (i = 0; i < num_records; i++)
+    {
+      /* if we want all or we match the specified index for the api_errno */
+      if (0x7fffffff == api_errno || specified_api_errno_index == i)
+
+	send_api_strerror_details (reg, mp->context,
+				   defined_api_errnos[i],
+				   format (0, "%U.%c", format_vnet_api_errno,
+					   defined_api_errnos[i], 0));
+    };
+done:
+  ;
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

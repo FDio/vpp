@@ -13,10 +13,13 @@
 # limitations under the License.
 #
 import collections
+import copy
 import logging
 import socket
 import struct
 import sys
+
+_want_reversible_repr = False
 
 if sys.version_info <= (3, 4):
     from aenum import IntEnum  # noqa: F401
@@ -66,8 +69,42 @@ def conversion_unpacker(data, field_type):
     return vpp_format.conversion_unpacker_table[field_type](data)
 
 
-class BaseTypes(object):
+class ReprMixin(object):
+    def __init__(self, *args, **kwargs):
+        self._args = copy.deepcopy(args)
+        self._kwargs = copy.deepcopy(kwargs)
+
+    def __repr__(self, extra=None):
+
+        excluded_extra_fields = ['_args', '_kwargs', 'packer']
+        sep = ', ' if self._kwargs is not None else ''
+
+        if self._args is not ():
+            arg_list = '%s%s' % (sep, ', '.join(['{!s}'.format(k)
+                                                for k in self._args]))
+        else:
+            arg_list = ''
+
+        kwarg_list = ', '.join(['{!s}={!r}'.format(k, v)
+                                for k, v in self._kwargs.items()])
+        if extra is not None:
+            extra_list = ', '.join(['{!s}={!r}'.format(k, v)
+                                    for k, v in vars(self).items() if
+                                    k not in excluded_extra_fields])
+        else:
+            extra_list = ''
+
+        if _want_reversible_repr:
+            return '%s(%s%s)' % (self.__class__.__name__,
+                                 arg_list, kwarg_list)
+        else:
+            return '<%s(%s%s); extra=%s>' % (self.__class__.__name__,
+                                             arg_list, kwarg_list, extra_list)
+
+
+class BaseTypes(ReprMixin, object):
     def __init__(self, type, elements=0, options=None):
+        super(BaseTypes, self).__init__(type, elements=0, options=None)
         base_types = {'u8': '>B',
                       'i8': '>b',
                       'string': '>s',
@@ -104,8 +141,9 @@ class BaseTypes(object):
         return self.packer.unpack_from(data, offset)[0], self.packer.size
 
 
-class String(object):
+class String(ReprMixin, object):
     def __init__(self, options):
+        super(String, self).__init__(options)
         self.name = 'string'
         self.size = 1
         self.length_field_packer = BaseTypes('u32')
@@ -149,8 +187,9 @@ class VPPSerializerValueError(ValueError):
     pass
 
 
-class FixedList_u8(object):
+class FixedList_u8(ReprMixin, object):
     def __init__(self, name, field_type, num):
+        super(FixedList_u8, self).__init__(name, field_type, num)
         self.name = name
         self.num = num
         self.packer = BaseTypes(field_type, num)
@@ -188,8 +227,9 @@ class FixedList_u8(object):
         return self.packer.unpack(data, offset)
 
 
-class FixedList(object):
+class FixedList(ReprMixin, object):
     def __init__(self, name, field_type, num):
+        super(FixedList, self).__init__(name, field_type, num)
         self.num = num
         self.packer = types[field_type]
         self.size = self.packer.size * num
@@ -222,8 +262,9 @@ class FixedList(object):
         return result, total
 
 
-class VLAList(object):
+class VLAList(ReprMixin, object):
     def __init__(self, name, field_type, len_field_name, index):
+        super(VLAList, self).__init__(name, field_type, len_field_name, index)
         self.name = name
         self.field_type = field_type
         self.index = index
@@ -273,8 +314,9 @@ class VLAList(object):
         return r, total
 
 
-class VLAList_legacy():
+class VLAList_legacy(ReprMixin):
     def __init__(self, name, field_type):
+        super(VLAList_legacy, self).__init__(name, field_type)
         self.packer = types[field_type]
         self.size = self.packer.size
 
@@ -307,8 +349,10 @@ class VLAList_legacy():
         return r, total
 
 
-class VPPEnumType(object):
+class VPPEnumType(ReprMixin, object):
     def __init__(self, name, msgdef):
+        super(VPPEnumType, self).__init__(name, msgdef)
+        self.name = name
         self.size = types['u32'].size
         self.enumtype = 'u32'
         e_hash = {}
@@ -336,6 +380,11 @@ class VPPEnumType(object):
     if sys.version[0] == '2':
         __nonzero__ = __bool__
 
+    def __repr__(self):
+        extra = {'enumtype': self.enumtype,
+                 'enum': self.enum, }
+        super(VPPEnumType, self).__repr__(extra=extra)
+
     def pack(self, data, kwargs=None):
         return types[self.enumtype].pack(data)
 
@@ -344,8 +393,9 @@ class VPPEnumType(object):
         return self.enum(x), size
 
 
-class VPPUnionType(object):
+class VPPUnionType(ReprMixin):
     def __init__(self, name, msgdef):
+        super(VPPUnionType, self).__init__(name, msgdef)
         self.name = name
         self.size = 0
         self.maxindex = 0
@@ -398,7 +448,7 @@ class VPPUnionType(object):
         return self.tuple._make(r), maxsize
 
 
-class VPPTypeAlias(object):
+class VPPTypeAlias(ReprMixin):
     def __init__(self, name, msgdef):
         self.name = name
         t = vpp_get_type(msgdef['type'])
@@ -440,9 +490,10 @@ class VPPTypeAlias(object):
         return t, size
 
 
-class VPPType(object):
+class VPPType(ReprMixin):
     # Set everything up to be able to pack / unpack
     def __init__(self, name, msgdef):
+        super(VPPType, self).__init__(name, msgdef)
         self.name = name
         self.msgdef = msgdef
         self.packers = []
