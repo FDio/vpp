@@ -33,6 +33,7 @@ const gbp_subnet::type_t gbp_subnet::type_t::STITCHED_EXTERNAL(
   "stitched-external");
 const gbp_subnet::type_t gbp_subnet::type_t::TRANSPORT(2, "transport");
 const gbp_subnet::type_t gbp_subnet::type_t::L3_OUT(3, "l3-out");
+const gbp_subnet::type_t gbp_subnet::type_t::ANON_L3_OUT(4, "anon-l3-out");
 
 singular_db<gbp_subnet::key_t, gbp_subnet> gbp_subnet::m_db;
 
@@ -67,11 +68,12 @@ gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
 
 gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
                        const route::prefix_t& prefix,
-                       sclass_t sclass)
+                       sclass_t sclass,
+                       const type_t& type)
   : m_hw(false)
   , m_rd(rd.singular())
   , m_prefix(prefix)
-  , m_type(type_t::L3_OUT)
+  , m_type(type)
   , m_recirc(nullptr)
   , m_epg()
   , m_sclass(sclass)
@@ -235,6 +237,12 @@ gbp_subnet::event_handler::handle_populate(const client_db::key_t& key)
         }
         case GBP_API_SUBNET_L3_OUT: {
           gbp_subnet gs(*rd, pfx, payload.subnet.sclass);
+          OM::commit(key, gs);
+          VOM_LOG(log_level_t::DEBUG) << "read: " << gs.to_string();
+          break;
+        }
+        case GBP_API_SUBNET_ANON_L3_OUT: {
+          gbp_subnet gs(*rd, pfx, payload.subnet.sclass, type_t::ANON_L3_OUT);
           OM::commit(key, gs);
           VOM_LOG(log_level_t::DEBUG) << "read: " << gs.to_string();
           break;
