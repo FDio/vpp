@@ -532,6 +532,10 @@ typedef struct _tcp_main
   /** Default MTU to be used when establishing connections */
   u16 default_mtu;
 
+  /** Initial CWND multiplier, which multiplies MSS to determine initial CWND.
+   *  Set 0 to determine the initial CWND by another way */
+  u16 initial_cwnd;
+
   /** Number of preallocated connections */
   u32 preallocated_connections;
   u32 preallocated_half_open_connections;
@@ -809,6 +813,9 @@ tcp_flight_size (const tcp_connection_t * tc)
 always_inline u32
 tcp_initial_cwnd (const tcp_connection_t * tc)
 {
+  if (tcp_main.initial_cwnd > 0)
+    return tcp_main.initial_cwnd * tc->snd_mss;
+
   if (tc->snd_mss > 2190)
     return 2 * tc->snd_mss;
   else if (tc->snd_mss > 1095)

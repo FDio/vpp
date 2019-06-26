@@ -1573,6 +1573,7 @@ tcp_init (vlib_main_t * vm)
   tm->tx_pacing = 1;
   tm->cc_algo = TCP_CC_NEWRENO;
   tm->default_mtu = 1460;
+  tm->initial_cwnd = 0;
   return 0;
 }
 
