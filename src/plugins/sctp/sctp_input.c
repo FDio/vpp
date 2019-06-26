@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 #include <vppinfra/sparse_vec.h>
-#include <vnet/sctp/sctp.h>
-#include <vnet/sctp/sctp_packet.h>
-#include <vnet/sctp/sctp_debug.h>
+#include <sctp/sctp.h>
+#include <sctp/sctp_packet.h>
+#include <sctp/sctp_debug.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
 static char *sctp_error_strings[] = {
 #define sctp_error(n,s) s,
-#include <vnet/sctp/sctp_error.def>
+#include <sctp/sctp_error.def>
 #undef sctp_error
 };
 
@@ -785,33 +785,33 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
       return sctp_conn->sub_conn[idx].enqueue_state;
     }
 
-  vnet_buffer (b)->sctp.sid = sctp_data_chunk->stream_id;
-  vnet_buffer (b)->sctp.ssn = sctp_data_chunk->stream_seq;
+  sctp_buffer_opaque (b)->sctp.sid = sctp_data_chunk->stream_id;
+  sctp_buffer_opaque (b)->sctp.ssn = sctp_data_chunk->stream_seq;
 
   u32 tsn = clib_net_to_host_u32 (sctp_data_chunk->tsn);
 
-  vlib_buffer_advance (b, vnet_buffer (b)->sctp.data_offset);
+  vlib_buffer_advance (b, sctp_buffer_opaque (b)->sctp.data_offset);
   u32 chunk_len = vnet_sctp_get_chunk_length (&sctp_data_chunk->chunk_hdr) -
     (sizeof (sctp_payload_data_chunk_t) - sizeof (sctp_header_t));
 
-  ASSERT (vnet_buffer (b)->sctp.data_len);
+  ASSERT (sctp_buffer_opaque (b)->sctp.data_len);
   ASSERT (chunk_len);
 
   /* Padding was added: see RFC 4096 section 3.3.1 */
-  if (vnet_buffer (b)->sctp.data_len > chunk_len)
+  if (sctp_buffer_opaque (b)->sctp.data_len > chunk_len)
     {
       /* Let's change the data_len to the right amount calculated here now.
        * We cannot do that in the generic sctp46_input_dispatcher node since
        * that is common to all CHUNKS handling.
        */
-      vnet_buffer (b)->sctp.data_len = chunk_len;
+      sctp_buffer_opaque (b)->sctp.data_len = chunk_len;
       /* We need to change b->current_length so that downstream calls to
        * session_enqueue_stream_connection (called by sctp_session_enqueue_data)
        * push the correct amount of data to be enqueued.
        */
       b->current_length = chunk_len;
     }
-  n_data_bytes = vnet_buffer (b)->sctp.data_len;
+  n_data_bytes = sctp_buffer_opaque (b)->sctp.data_len;
 
   sctp_is_connection_gapping (sctp_conn, tsn, &is_gapping);
 
@@ -994,7 +994,7 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * will come from the half-open connections pool.
 	   */
 	  sctp_conn =
-	    sctp_half_open_connection_get (vnet_buffer (b0)->
+	    sctp_half_open_connection_get (sctp_buffer_opaque (b0)->
 					   sctp.connection_index);
 
 	  if (PREDICT_FALSE (sctp_conn == 0))
@@ -1339,8 +1339,8 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sctp_conn =
-	    sctp_connection_get (vnet_buffer (b0)->sctp.connection_index,
-				 my_thread_index);
+	    sctp_connection_get (sctp_buffer_opaque (b0)->
+				 sctp.connection_index, my_thread_index);
 
 	  if (PREDICT_FALSE (sctp_conn == 0))
 	    {
@@ -1642,7 +1642,8 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sctp_listener =
-	    sctp_listener_get (vnet_buffer (b0)->sctp.connection_index);
+	    sctp_listener_get (sctp_buffer_opaque (b0)->
+			       sctp.connection_index);
 
 	  if (is_ip4)
 	    {
@@ -1851,8 +1852,8 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sctp_conn =
-	    sctp_connection_get (vnet_buffer (b0)->sctp.connection_index,
-				 my_thread_index);
+	    sctp_connection_get (sctp_buffer_opaque (b0)->
+				 sctp.connection_index, my_thread_index);
 
 	  if (PREDICT_FALSE (sctp_conn == 0))
 	    {
@@ -2117,7 +2118,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  vnet_buffer (b0)->sctp.flags = 0;
+	  sctp_buffer_opaque (b0)->sctp.flags = 0;
 	  fib_index0 = vnet_buffer (b0)->ip.fib_index;
 
 	  /* Checksum computed by ipx_local no need to compute again */
@@ -2193,16 +2194,17 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto done;
 	    }
 
-	  vnet_buffer (b0)->sctp.hdr_offset =
+	  sctp_buffer_opaque (b0)->sctp.hdr_offset =
 	    (u8 *) sctp_hdr - (u8 *) vlib_buffer_get_current (b0);
 
 	  /* Session exists */
 	  if (PREDICT_TRUE (0 != sctp_conn))
 	    {
 	      /* Save connection index */
-	      vnet_buffer (b0)->sctp.connection_index = trans_conn->c_index;
-	      vnet_buffer (b0)->sctp.data_offset = n_advance_bytes0;
-	      vnet_buffer (b0)->sctp.data_len = n_data_bytes0;
+	      sctp_buffer_opaque (b0)->sctp.connection_index
+		= trans_conn->c_index;
+	      sctp_buffer_opaque (b0)->sctp.data_offset = n_advance_bytes0;
+	      sctp_buffer_opaque (b0)->sctp.data_len = n_data_bytes0;
 
 	      next0 = tm->dispatch_table[sctp_conn->state][chunk_type].next;
 	      error0 = tm->dispatch_table[sctp_conn->state][chunk_type].error;
