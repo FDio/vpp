@@ -419,8 +419,10 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
     return;
 
   rs->sample_delivered = bts->delivered;
-  rs->delivered = tc->delivered - bts->delivered;
-  rs->ack_time = tc->delivered_time - bts->delivered_time;
+//  rs->delivered = tc->delivered - bts->delivered;
+  rs->prior_delivered = bts->delivered;
+  rs->prior_delivered_time = bts->delivered_time;
+//  rs->ack_time = tc->delivered_time - bts->delivered_time;
   rs->tx_rate = bts->tx_rate;
   rs->flags = bts->flags;
 }
@@ -527,6 +529,9 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tc->sack_sb.last_sacked_bytes)
     tcp_bt_walk_samples_ooo (tc, rs);
+
+  rs->ack_time = tc->delivered_time - rs->prior_delivered_time;
+  rs->delivered = tc->delivered - rs->prior_delivered;
 }
 
 void
