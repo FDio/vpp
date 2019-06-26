@@ -794,7 +794,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_connection_t _tc, *tc = &_tc;
   sack_scoreboard_t *sb = &tc->sack_sb;
   int __clib_unused verbose = 0, i;
-  u64 rate = 100, burst = 100;
+  u64 rate = 1000, burst = 100;
   sack_block_t *sacks = 0;
   tcp_byte_tracker_t *bt;
   rb_node_t *root, *rbn;
@@ -852,7 +852,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (rs->ack_time == 1, "ack time should be 1");
   TCP_TEST (rs->delivered == burst, "delivered should be 100");
   TCP_TEST (rs->sample_delivered == 0, "sample delivered should be 0");
-  TCP_TEST (rs->tx_rate == rate, "delivered should be %u", rate);
+  TCP_TEST (rs->tx_rate == rate, "rate should be %u is %u", rate,
+	    rs->tx_rate);
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
 
   /* 3) track second burst at time 2 */
@@ -1059,9 +1060,9 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
-  TCP_TEST (pool_elts (bt->samples) == 0, "num samples should be 3 is %u",
+  TCP_TEST (pool_elts (bt->samples) == 0, "num samples should be 0 is %u",
 	    pool_elts (bt->samples));
-  TCP_TEST (tc->delivered_time == 11, "delivered time should be 10");
+  TCP_TEST (tc->delivered_time == 11, "delivered time should be 11");
   TCP_TEST (tc->delivered == 7 * burst, "delivered should be %u is %u",
 	    7 * burst, tc->delivered);
   /* Last rxt was at time 8 */
