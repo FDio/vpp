@@ -7,5 +7,5 @@ An example of a file that could be used with the virsh create command.
 
 .. literalinclude:: iperf-vm.xml
    :language: XML
-   :emphasize-lines: 42-49, 74-80
+   :emphasize-lines: 5-9, 42-49, 74-81
 

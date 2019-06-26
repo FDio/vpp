@@ -16,6 +16,7 @@ This is done with a section that looks like this
     <interface type='vhostuser'>
       <mac address='52:54:00:4c:47:f2'/>
       <source type='unix' path='/tmp//vm00.sock' mode='server'/>
+      <driver rx_queue_size='1024' tx_queue_size='1024'/>
       <model type='virtio'/>
       <alias name='net1'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
@@ -60,9 +61,10 @@ The VM is now created.
 
 Once the virtual machine is created notice the socket filename shows **Success** and
 there are **Memory Regions**. At this point the VM and FD.io VPP are connected. Also
-notice **qsz 256**. This system is running an older version of qemu. A queue size of 256
-will affect vhost throughput. The qsz should be 1024. On the web you should be able to
-find ways to install a newer version of qemu or change the queue size.
+notice **qsz 1024**. A queue size of 256 will affect vhost throughput. The qsz should
+be 1024. In QEMU 2.10.0 and libvirt 3.7.0 and later versions this is specified in the
+xml file with the line **<driver rx_queue_size='1024' tx_queue_size='1024'/>** shown above
+and in the example.
 
 .. code-block:: console
 
@@ -99,11 +101,11 @@ find ways to install a newer version of qemu or change the queue size.
       1     32    0x00000000000c0000 0x000000000ff40000 0x00007f1db9cc0000 0x00000000000c0000 0x00007f7d94ec0    000
     
      Virtqueue 0 (TX)
-      qsz 256 last_avail_idx 0 last_used_idx 0
+      qsz 1024 last_avail_idx 0 last_used_idx 0
       avail.flags 0 avail.idx 256 used.flags 1 used.idx 0
       kickfd 33 callfd 34 errfd -1
     
      Virtqueue 1 (RX)
-      qsz 256 last_avail_idx 8 last_used_idx 8
+      qsz 1024 last_avail_idx 8 last_used_idx 8
       avail.flags 0 avail.idx 8 used.flags 1 used.idx 8
       kickfd 29 callfd 35 errfd -1
