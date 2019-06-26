@@ -204,6 +204,13 @@ def printfun(objs):
         output += "void *handle)\n{\n"
         output += "    vl_print(handle, \"vl_api_%s_t:\\n\");\n" % t.name
 
+        if t.name.endswith("dump"):
+            output += "    vl_print(handle, \"SCRIPT: %s\\n\");\n" % t.name
+            output += '    return handle;\n'
+            output += "}\n\n"
+            output += "\n#endif /* vl_printfun */\n"
+            continue
+
         for o in t.block:
             if o.type != 'Field':
                 continue
