@@ -1757,13 +1757,14 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     route::ip_route *route_5 = new route::ip_route(pfx_5);
     route_5->add(*path_10);
     route_5->add(*path_9);
-    HW::item<bool> hw_route_5(true, rc_t::OK);
-    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5, 0, pfx_5, *path_9));
-    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5, 0, pfx_5, *path_10));
+    route::path_list_t pl_9_10 = {*path_9, *path_10};
+    HW::item<handle_t> hw_route_5(0, rc_t::OK);
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5, 0, pfx_5, pl_9_10));
     TRY_CHECK_RC(OM::write(ian, *route_5));
 
     route_5->remove(*path_9);
-    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5, 0, pfx_5, *path_9));
+    route::path_list_t pl_10 = {*path_10};
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5, 0, pfx_5, pl_10));
     TRY_CHECK_RC(OM::write(ian, *route_5));
 
     delete path_9;
@@ -1776,19 +1777,21 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     boost::asio::ip::address nh_12 = boost::asio::ip::address::from_string("11.11.11.12");
     route::path *path_12 = new route::path(nh_12, *itf2);
     route::ip_route *route_5_2 = new route::ip_route(rd4, pfx_5);
+    route::path_list_t pl_11 = {*path_11};
     route_5_2->add(*path_11);
-    HW::item<bool> hw_route_5_2(true, rc_t::OK);
-    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5_2, 1, pfx_5, *path_11));
+    HW::item<handle_t> hw_route_5_2(1, rc_t::OK);
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5_2, 1, pfx_5, pl_11));
     TRY_CHECK_RC(OM::write(ian, *route_5_2));
 
+    route::path_list_t pl_11_12 = {*path_11, *path_12};
     route_5_2->add(*path_12);
-    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5_2, 1, pfx_5, *path_12));
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5_2, 1, pfx_5, pl_11_12));
     TRY_CHECK_RC(OM::write(ian, *route_5_2));
 
     /*
      * An ARP entry for the neighbour on itf1
      */
-    HW::item<bool> hw_neighbour(true, rc_t::OK);
+    HW::item<handle_t> hw_neighbour(0, rc_t::OK);
     mac_address_t mac_n({0,1,2,4,5,6});
     neighbour *ne = new neighbour(itf1, nh_10, mac_n);
     ADD_EXPECT(neighbour_cmds::create_cmd(hw_neighbour, hw_ifh.data(),
@@ -1800,11 +1803,12 @@ BOOST_AUTO_TEST_CASE(test_routing) {
      * A DVR route
      */
     route::prefix_t pfx_6("6.6.6.6", 32);
-    route::path *path_l2 = new route::path(*itf2, nh_proto_t::ETHERNET);
+    route::path *path_13 = new route::path(*itf2, nh_proto_t::ETHERNET);
     route::ip_route *route_dvr = new route::ip_route(pfx_6);
-    route_dvr->add(*path_l2);
-    HW::item<bool> hw_route_dvr(true, rc_t::OK);
-    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_dvr, 0, pfx_6, *path_l2));
+    route_dvr->add(*path_13);
+    route::path_list_t pl_13 = {*path_13};
+    HW::item<handle_t> hw_route_dvr(2, rc_t::OK);
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_dvr, 0, pfx_6, pl_13));
     TRY_CHECK_RC(OM::write(ian, *route_dvr));
 
     /*
@@ -1852,15 +1856,14 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     ADD_EXPECT(neighbour_cmds::delete_cmd(hw_neighbour, hw_ifh.data(),
                                           mac_n, nh_10,
                                           neighbour::flags_t::STATIC));
-    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_dvr, 0, pfx_6, *path_l2));
-    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5, *path_11));
-    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5, *path_12));
-    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5, 0, pfx_5, *path_10));
+    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_dvr, 0, pfx_6));
+    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5));
+    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5, 0, pfx_5));
 
     delete path_10;
     delete path_11;
     delete path_12;
-    delete path_l2;
+    delete path_13;
 
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_10_unbind, hw_ifh.data(), pfx_10));
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_11_unbind, hw_ifh2.data(), pfx_11));
