@@ -79,13 +79,13 @@ M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/
 
 VNET TAP Drivers
-I:      tap
-M:      Damjan Marion <damarion@cisco.com>
-M:      Steven Luong <sluong@cisco.com>
-M:      Mohsin Kazmi <sykazmi@cisco.com>
-F:      src/vnet/devices/tap/
-F:      src/vnet/devices/virtio/node.c
-F:      src/vnet/devices/virtio/device.c
+I:	tap
+M:	Damjan Marion <damarion@cisco.com>
+M:	Steven Luong <sluong@cisco.com>
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+F:	src/vnet/devices/tap/
+F:	src/vnet/devices/virtio/node.c
+F:	src/vnet/devices/virtio/device.c
 
 VNET Feature Arcs
 I:	feature
@@ -425,6 +425,12 @@ M:	Dave Wallace <dwallacelf@gmail.com>
 M:	Aloys Augustin <aloaugus@cisco.com>
 M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 F:	src/plugins/hs_apps/
+
+Python binding for the VPP API
+I:	papi
+M:	Ole Troan <ot@cisco.com>
+M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
+F:	src/vpp-api/python
 
 THE REST
 I:	misc
