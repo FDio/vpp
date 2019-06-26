@@ -699,6 +699,14 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
       goto done;
     }
 
+  if ((bif->mode == BOND_MODE_LACP) && bif->numa_only)
+    {
+      /* if have at least one slave on local numa node, only slaves on local numa
+         node will transmit pkts when bif->local_numa_only is enabled */
+      if (bif->n_numa_slaves >= 1)
+	n_slaves = bif->n_numa_slaves;
+    }
+
   if (bif->lb == BOND_LB_L2)
     bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L2);
   else if (bif->lb == BOND_LB_L34)

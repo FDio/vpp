@@ -47,6 +47,14 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 	  }
 	vec_del1 (bif->active_slaves, i);
 	hash_unset (bif->active_slave_by_sw_if_index, sif->sw_if_index);
+	if (sif->lacp_enabled && bif->numa_only)
+	  {
+	    /* For lacp mode, if we check it is a slave on local numa node,
+	       bif->n_numa_slaves should be decreased by 1 becasue the first
+	       bif->n_numa_slaves are all slaves on local numa node */
+	    if (i < bif->n_numa_slaves)
+	      bif->n_numa_slaves--;
+	  }
 	break;
       }
   }
@@ -104,7 +112,18 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
     {
       hash_set (bif->active_slave_by_sw_if_index, sif->sw_if_index,
 		sif->sw_if_index);
-      vec_add1 (bif->active_slaves, sif->sw_if_index);
+
+      if ((sif->lacp_enabled && bif->numa_only)
+	  && (vm->numa_node == hw->numa_node))
+	{
+	  vec_insert_elts (bif->active_slaves, &sif->sw_if_index, 1,
+			   bif->n_numa_slaves);
+	  bif->n_numa_slaves++;
+	}
+      else
+	{
+	  vec_add1 (bif->active_slaves, sif->sw_if_index);
+	}
 
       /* First slave becomes active? */
       if ((vec_len (bif->active_slaves) == 1) &&
@@ -388,6 +407,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   sw = vnet_get_hw_sw_interface (vnm, bif->hw_if_index);
   bif->sw_if_index = sw->sw_if_index;
   bif->group = bif->sw_if_index;
+  bif->numa_only = args->numa_only;
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
 
@@ -428,6 +448,8 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.hw_addr_set = 1;
       else if (unformat (line_input, "id %u", &args.id))
 	;
+      else if (unformat (line_input, "numa-only"))
+	args.numa_only = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -446,7 +468,7 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (bond_create_command, static) = {
   .path = "create bond",
   .short_help = "create bond mode {round-robin | active-backup | broadcast | "
-    "{lacp | xor} [load-balance { l2 | l23 | l34 }]} [hw-addr <mac-address>] "
+    "{lacp | xor} [load-balance { l2 | l23 | l34 } {numa-only}]} [hw-addr <mac-address>] "
     "[id <if-id>]",
   .function = bond_create_command_fn,
 };
