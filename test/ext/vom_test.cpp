@@ -1864,6 +1864,11 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     delete path_11;
     delete path_12;
     delete path_13;
+    pl_9_10.clear();
+    pl_10.clear();
+    pl_13.clear();
+    pl_11_12.clear();
+    pl_11.clear();
 
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_10_unbind, hw_ifh.data(), pfx_10));
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_11_unbind, hw_ifh2.data(), pfx_11));
