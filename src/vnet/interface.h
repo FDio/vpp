@@ -809,6 +809,9 @@ typedef struct
   u32 *split_buffers;
 } vnet_interface_per_thread_data_t;
 
+typedef u8 *(*vnet_buffer_opquae_formatter_t) (const vlib_buffer_t * b,
+					       u8 * s);
+
 typedef struct
 {
   /* Hardware interfaces. */
@@ -847,6 +850,10 @@ typedef struct
   u32 pcap_pkts_to_capture;
   uword *pcap_drop_filter_hash;
 
+  /* Buffer metadata format helper functions */
+  vnet_buffer_opquae_formatter_t *buffer_opaque_format_helpers;
+  vnet_buffer_opquae_formatter_t *buffer_opaque2_format_helpers;
+
   /* per-thread data */
   vnet_interface_per_thread_data_t *per_thread_data;
 
@@ -879,6 +886,12 @@ int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
 uword vnet_interface_output_node (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame);
+
+void vnet_register_format_buffer_opaque_helper
+  (vnet_buffer_opquae_formatter_t fn);
+
+void vnet_register_format_buffer_opaque2_helper
+  (vnet_buffer_opquae_formatter_t fn);
 
 #endif /* included_vnet_interface_h */
 
