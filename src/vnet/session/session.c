@@ -753,6 +753,7 @@ void
 session_transport_delete_notify (transport_connection_t * tc)
 {
   session_t *s;
+  app_worker_t *app_wrk;
 
   /* App might've been removed already */
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
@@ -793,6 +794,8 @@ session_transport_delete_notify (transport_connection_t * tc)
     case SESSION_STATE_TRANSPORT_CLOSED:
       break;
     case SESSION_STATE_CLOSED:
+      app_wrk = app_worker_get (s->app_wrk_index);
+      app_worker_closed_notify (app_wrk, s);
       session_delete (s);
       break;
     default:

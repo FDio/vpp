@@ -439,6 +439,8 @@ application_verify_cb_fns (session_cb_vft_t * cb_fns)
     clib_warning ("No session connected callback function provided");
   if (cb_fns->session_disconnect_callback == 0)
     clib_warning ("No session disconnect callback function provided");
+  if (cb_fns->session_disconnected_callback == 0)
+    clib_warning ("No session disconnected callback function provided");
   if (cb_fns->session_reset_callback == 0)
     clib_warning ("No session reset callback function provided");
 }
