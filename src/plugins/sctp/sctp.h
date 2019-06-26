@@ -17,8 +17,8 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/sctp/sctp_timer.h>
-#include <vnet/sctp/sctp_packet.h>
+#include <sctp/sctp_timer.h>
+#include <sctp/sctp_packet.h>
 #include <vnet/session/transport.h>
 #include <vnet/session/session.h>
 
@@ -65,7 +65,7 @@ sctp_timer_to_string (u8 timer_id)
 typedef enum _sctp_error
 {
 #define sctp_error(n,s) SCTP_ERROR_##n,
-#include <vnet/sctp/sctp_error.def>
+#include <sctp/sctp_error.def>
 #undef sctp_error
   SCTP_N_ERROR,
 } sctp_error_t;
@@ -532,6 +532,8 @@ typedef struct _sctp_main
 
   u32 sctp4_established_phase_node_index;
   u32 sctp6_established_phase_node_index;
+
+  u16 msg_id_base;
 } sctp_main_t;
 
 extern sctp_main_t sctp_main;
@@ -555,6 +557,7 @@ sctp_buffer_hdr (vlib_buffer_t * b)
 }
 
 clib_error_t *vnet_sctp_enable_disable (vlib_main_t * vm, u8 is_en);
+clib_error_t *sctp_plugin_api_hookup (vlib_main_t * vm);
 
 always_inline sctp_connection_t *
 sctp_half_open_connection_get (u32 conn_index)
