@@ -1944,15 +1944,20 @@ sfifo_test_fifo_segment_hello_world (int verbose)
 static int
 sfifo_test_fifo_segment_fifo_grow (int verbose)
 {
-  int rv, fifo_size = 4096, n_chunks, n_free;
+  int rv, fifo_size = 4096, n_chunks, n_batch;
   fifo_segment_main_t *sm = &segment_main;
   fifo_segment_create_args_t _a, *a = &_a;
+  u32 n_free_chunk_bytes;
   fifo_segment_t *fs;
   svm_fifo_t *f;
 
   clib_memset (a, 0, sizeof (*a));
   a->segment_name = "fifo-test1";
-  a->segment_size = 256 << 10;
+  /* size chosen to be able to force multi chunk allocation lower */
+  a->segment_size = 208 << 10;
+
+  /* fifo allocation allocates chunks in batch */
+  n_batch = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
 
   rv = fifo_segment_create (sm, a);
 
@@ -1966,31 +1971,49 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
 
+  n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
+  SFIFO_TEST (n_chunks == n_batch - 1, "free 2^10B chunks "
+	      "should be %u is %u", n_batch - 1, n_chunks);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (n_batch - 1) * fifo_size, "free chunk bytes %u "
+	      "expected %u", rv, (n_batch - 1) * fifo_size);
+
   fifo_segment_grow_fifo (fs, f, fifo_size);
   SFIFO_TEST (f->size == 2 * fifo_size, "fifo size should be %u is %u",
 	      2 * fifo_size, f->size);
 
+  n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
+  SFIFO_TEST (n_chunks == n_batch - 2, "free 2^10B chunks "
+	      "should be %u is %u", n_batch - 2, n_chunks);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (n_batch - 2) * fifo_size, "free chunk bytes %u "
+	      "expected %u", rv, (n_batch - 2) * fifo_size);
+
   fifo_segment_grow_fifo (fs, f, 16 * fifo_size);
   SFIFO_TEST (f->size == 18 * fifo_size, "fifo size should be %u is %u",
 	      18 * fifo_size, f->size);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (n_batch - 2) * fifo_size, "free chunk bytes %u "
+	      "expected %u", rv, (n_batch - 2) * fifo_size);
 
   /*
    * Free and test free list size
    */
   fifo_segment_free_fifo (fs, f);
 
-  /* fifo allocation allocates chunks in batch */
-  n_free = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
-
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (16 + n_batch) * fifo_size, "free chunk bytes expected %u"
+	      " is %u", (16 + n_batch) * fifo_size, rv);
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == n_free, "free 2^10B chunks "
-	      "should be %u is %u", n_free, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch, "free 2^10B chunks "
+	      "should be %u is %u", n_batch, n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, 16 * fifo_size);
   SFIFO_TEST (n_chunks == 1, "free 2^14B chunks should be %u is %u", 1,
 	      n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == 1 + n_free, "free chunks should be %u is %u",
-	      1 + n_free, n_chunks);
+  SFIFO_TEST (n_chunks == 1 + n_batch, "free chunks should be %u is %u",
+	      1 + n_batch, n_chunks);
 
   /*
    * Realloc fifo
@@ -1999,24 +2022,96 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 
   fifo_segment_grow_fifo (fs, f, fifo_size);
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == n_free - 2, "free 2^10B chunks should be %u is %u",
-	      n_free - 2, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch - 2, "free 2^10B chunks should be %u is %u",
+	      n_batch - 2, n_chunks);
 
   fifo_segment_grow_fifo (fs, f, 16 * fifo_size);
   n_chunks = fifo_segment_num_free_chunks (fs, 16 * fifo_size);
   SFIFO_TEST (n_chunks == 0, "free 2^14B chunks should be %u is %u", 0,
 	      n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == n_free - 2, "free chunks should be %u is %u",
-	      n_free - 2, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch - 2, "free chunks should be %u is %u",
+	      n_batch - 2, n_chunks);
 
   /*
    * Free again
    */
   fifo_segment_free_fifo (fs, f);
   n_chunks = fifo_segment_num_free_chunks (fs, ~0);
-  SFIFO_TEST (n_chunks == 1 + n_free, "free chunks should be %u is %u",
-	      1 + n_free, n_chunks);
+  SFIFO_TEST (n_chunks == 1 + n_batch, "free chunks should be %u is %u",
+	      1 + n_batch, n_chunks);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == (16 + n_batch) * fifo_size, "free chunk bytes expected %u"
+	      " is %u", (16 + n_batch) * fifo_size, rv);
+
+  n_free_chunk_bytes = rv;
+
+  /*
+   * Allocate non power of 2 fifo/chunk and check that free chunk bytes
+   * is correctly updated
+   */
+
+  f = fifo_segment_alloc_fifo (fs, 16 * fifo_size - 1, FIFO_SEGMENT_RX_FIFO);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+
+  SFIFO_TEST (n_free_chunk_bytes - 16 * fifo_size == rv, "free chunk bytes "
+	      "expected %u is %u", n_free_chunk_bytes - 16 * fifo_size, rv);
+
+  fifo_segment_free_fifo (fs, f);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+
+  SFIFO_TEST (n_free_chunk_bytes == rv, "free chunk bytes expected %u is %u",
+	      n_free_chunk_bytes, rv);
+
+  /*
+   * Force multi chunk fifo allocation
+   */
+
+  f = fifo_segment_alloc_fifo (fs, 17 * fifo_size, FIFO_SEGMENT_RX_FIFO);
+  rv = fifo_segment_fl_chunk_bytes (fs);
+
+  /* Make sure that the non-power of two chunk freed above is correctly
+   * accounted for in the chunk free bytes reduction due to chunk allocation
+   * for the fifo, i.e., it's rounded up by 1 */
+  SFIFO_TEST (n_free_chunk_bytes - 17 * fifo_size == rv, "free chunk bytes "
+	      "expected %u is %u", n_free_chunk_bytes - 17 * fifo_size, rv);
+
+  fifo_segment_free_fifo (fs, f);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (n_free_chunk_bytes == rv, "free chunk bytes expected %u is %u",
+	      n_free_chunk_bytes, rv);
+
+  /*
+   * Allocate fifo that has all chunks
+   */
+  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes, FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (f != 0, "allocation should work");
+
+  fifo_segment_free_fifo (fs, f);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (n_free_chunk_bytes == rv, "free chunk bytes expected %u is %u",
+	      n_free_chunk_bytes, rv);
+
+  /*
+   * Try to allocate more than space available
+   */
+
+  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes + fifo_size,
+			       FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (f == 0, "allocation should fail");
+
+  /*
+   * Allocate fifo and try to grow beyond available space
+   */
+  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  rv = fifo_segment_grow_fifo (fs, f, n_free_chunk_bytes);
+
+  SFIFO_TEST (rv == -1, "grow should fail");
+
+  fifo_segment_free_fifo (fs, f);
 
   /*
    * Cleanup
@@ -2307,7 +2402,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   free_space -= (sizeof (svm_fifo_chunk_t) + 4096) * 50;
   SFIFO_TEST (rv == free_space, "free space expected %u is %u", free_space,
 	      rv);
-  rv = fifo_segment_chunk_prealloc_bytes (fs);
+  rv = fifo_segment_fl_chunk_bytes (fs);
   SFIFO_TEST (rv == 4096 * 50, "chunk free space expected %u is %u",
 	      4096 * 50, rv);
 
@@ -2329,7 +2424,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (f != 0, "fifo allocated");
   rv = fifo_segment_num_free_chunks (fs, 4096);
   SFIFO_TEST (rv == 0, "prealloc chunks expected %u is %u", 0, rv);
-  rv = fifo_segment_chunk_prealloc_bytes (fs);
+  rv = fifo_segment_fl_chunk_bytes (fs);
   SFIFO_TEST (rv == 0, "chunk free space expected %u is %u", 0, rv);
 
   /*
