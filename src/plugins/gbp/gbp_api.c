@@ -82,7 +82,8 @@
   _(GBP_CONTRACT_DUMP, gbp_contract_dump)                   \
   _(GBP_VXLAN_TUNNEL_ADD, gbp_vxlan_tunnel_add)             \
   _(GBP_VXLAN_TUNNEL_DEL, gbp_vxlan_tunnel_del)             \
-  _(GBP_VXLAN_TUNNEL_DUMP, gbp_vxlan_tunnel_dump)
+  _(GBP_VXLAN_TUNNEL_DUMP, gbp_vxlan_tunnel_dump)           \
+  _(GBP_EXT_ITF_ANON_ADD_DEL, gbp_ext_itf_anon_add_del)
 
 gbp_main_t gbp_main;
 
@@ -1135,6 +1136,34 @@ vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t * mp)
   };
 
   gbp_vxlan_walk (gbp_vxlan_tunnel_send_details, &ctx);
+}
+
+static void
+vl_api_gbp_ext_itf_anon_add_del_t_handler (vl_api_gbp_ext_itf_anon_add_del_t *
+					   mp)
+{
+  vl_api_gbp_ext_itf_anon_add_del_reply_t *rmp;
+  u32 sw_if_index = ~0;
+  vl_api_gbp_ext_itf_t *ext_itf;
+  int rv = 0;
+
+  ext_itf = &mp->ext_itf;
+  if (ext_itf)
+    sw_if_index = ntohl (ext_itf->sw_if_index);
+
+  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+    goto bad_sw_if_index;
+
+  if (mp->is_add)
+    rv = gbp_ext_itf_anon_add (sw_if_index,
+			       ntohl (ext_itf->bd_id),
+			       ntohl (ext_itf->rd_id));
+  else
+    rv = gbp_ext_itf_anon_delete (sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_GBP_EXT_ITF_ANON_ADD_DEL_REPLY + GBP_MSG_BASE);
 }
 
 /*

@@ -338,6 +338,29 @@ vl_api_gbp_ext_itf_add_del_t_print (vl_api_gbp_ext_itf_add_del_t * a,
   return handle;
 }
 
+static inline void *
+vl_api_gbp_ext_itf_anon_add_del_t_print (vl_api_gbp_ext_itf_anon_add_del_t *
+					 a, void *handle)
+{
+  u8 *s = 0;
+
+  s = format (s, "SCRIPT: gbp_ext_itf_anon_add_del ");
+  if (a->is_add)
+    s = format (s, "add ");
+  else
+    s = format (s, "del ");
+
+  s = format (s, "sw_if_index %d ", ntohl (a->ext_itf.sw_if_index));
+  s = format (s, "bd_id %d ", ntohl (a->ext_itf.bd_id));
+  s = format (s, "rd_id %d ", ntohl (a->ext_itf.rd_id));
+
+  s = format (s, "\n");
+
+  PRINT_S;
+
+  return handle;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

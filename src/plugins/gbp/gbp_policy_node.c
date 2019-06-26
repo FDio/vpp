@@ -14,7 +14,9 @@
  */
 
 #include <plugins/gbp/gbp.h>
+#include <plugins/gbp/gbp_classify.h>
 #include <plugins/gbp/gbp_policy_dpo.h>
+#include <plugins/gbp/gbp_ext_itf.h>
 
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
@@ -107,10 +109,34 @@ gbp_policy_is_ethertype_allowed (const gbp_contract_t * gc0, u16 ethertype)
   return (0);
 }
 
+static_always_inline gbp_policy_next_t
+gbp_policy_l2_feature_next (gbp_policy_main_t * gpm, vlib_buffer_t * b,
+			    const gbp_policy_type_t type)
+{
+  u32 feat_bit;
+
+  switch (type)
+    {
+    case GBP_POLICY_PORT:
+      feat_bit = L2OUTPUT_FEAT_GBP_POLICY_PORT;
+      break;
+    case GBP_POLICY_MAC:
+      feat_bit = L2OUTPUT_FEAT_GBP_POLICY_MAC;
+      break;
+    case GBP_POLICY_LPM:
+      feat_bit = L2OUTPUT_FEAT_GBP_POLICY_LPM;
+      break;
+    default:
+      return GBP_POLICY_NEXT_DROP;
+    }
+
+  return vnet_l2_feature_next (b, gpm->l2_output_feat_next[type], feat_bit);
+}
+
 static uword
 gbp_policy_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, u8 is_port_based)
+		   vlib_frame_t * frame, const gbp_policy_type_t type)
 {
   gbp_main_t *gm = &gbp_main;
   gbp_policy_main_t *gpm = &gbp_policy_main;
@@ -169,12 +195,7 @@ gbp_policy_inline (vlib_main_t * vm,
 	   */
 	  if (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A)
 	    {
-	      next0 = vnet_l2_feature_next (b0,
-					    gpm->l2_output_feat_next
-					    [is_port_based],
-					    (is_port_based ?
-					     L2OUTPUT_FEAT_GBP_POLICY_PORT :
-					     L2OUTPUT_FEAT_GBP_POLICY_MAC));
+	      next0 = gbp_policy_l2_feature_next (gpm, b0, type);
 	      n_allow_a_bit++;
 	      key0.as_u32 = ~0;
 	      goto trace;
@@ -183,15 +204,39 @@ gbp_policy_inline (vlib_main_t * vm,
 	  /*
 	   * determine the src and dst EPG
 	   */
-	  if (is_port_based)
-	    ge0 = gbp_endpoint_find_itf (sw_if_index0);
-	  else
-	    ge0 = gbp_endpoint_find_mac (h0->dst_address,
-					 vnet_buffer (b0)->l2.bd_index);
 
-	  if (NULL != ge0)
-	    key0.gck_dst = ge0->ge_fwd.gef_sclass;
+	  key0.gck_dst = SCLASS_INVALID;
+
+	  if (GBP_POLICY_LPM == type)
+	    {
+	      const ip4_address_t *ip4 = 0;
+	      const ip6_address_t *ip6 = 0;
+	      const dpo_proto_t proto =
+		gbp_classify_get_ip_address (h0, &ip4, &ip6,
+					     GBP_CLASSIFY_GET_IP_DST);
+	      if (PREDICT_TRUE (DPO_PROTO_NONE != proto))
+		{
+		  const gbp_ext_itf_t *ext_itf =
+		    gbp_ext_itf_get (sw_if_index0);
+		  const gbp_policy_dpo_t *gpd =
+		    gbp_classify_get_gpd (ip4, ip6,
+					  ext_itf->gx_fib_index[proto]);
+		  if (gpd)
+		    key0.gck_dst = gpd->gpd_sclass;
+		}
+	    }
 	  else
+	    {
+	      if (GBP_POLICY_PORT == type)
+		ge0 = gbp_endpoint_find_itf (sw_if_index0);
+	      else
+		ge0 = gbp_endpoint_find_mac (h0->dst_address,
+					     vnet_buffer (b0)->l2.bd_index);
+	      if (NULL != ge0)
+		key0.gck_dst = ge0->ge_fwd.gef_sclass;
+	    }
+
+	  if (SCLASS_INVALID == key0.gck_dst)
 	    {
 	      /* If you cannot determine the destination EP then drop */
 	      b0->error = node->errors[GBP_POLICY_ERROR_DROP_NO_DCLASS];
@@ -206,13 +251,7 @@ gbp_policy_inline (vlib_main_t * vm,
 		  /*
 		   * intra-epg allowed
 		   */
-		  next0 =
-		    vnet_l2_feature_next (b0,
-					  gpm->l2_output_feat_next
-					  [is_port_based],
-					  (is_port_based ?
-					   L2OUTPUT_FEAT_GBP_POLICY_PORT :
-					   L2OUTPUT_FEAT_GBP_POLICY_MAC));
+		  next0 = gbp_policy_l2_feature_next (gpm, b0, type);
 		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
 		  n_allow_intra++;
 		}
@@ -221,13 +260,7 @@ gbp_policy_inline (vlib_main_t * vm,
 		  /*
 		   * sclass or dclass 1 allowed
 		   */
-		  next0 =
-		    vnet_l2_feature_next (b0,
-					  gpm->l2_output_feat_next
-					  [is_port_based],
-					  (is_port_based ?
-					   L2OUTPUT_FEAT_GBP_POLICY_PORT :
-					   L2OUTPUT_FEAT_GBP_POLICY_MAC));
+		  next0 = gbp_policy_l2_feature_next (gpm, b0, type);
 		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
 		  n_allow_sclass_1++;
 		}
@@ -312,13 +345,9 @@ gbp_policy_inline (vlib_main_t * vm,
 			      switch (gu->gu_action)
 				{
 				case GBP_RULE_PERMIT:
-				  next0 = vnet_l2_feature_next
-				    (b0,
-				     gpm->l2_output_feat_next
-				     [is_port_based],
-				     (is_port_based ?
-				      L2OUTPUT_FEAT_GBP_POLICY_PORT :
-				      L2OUTPUT_FEAT_GBP_POLICY_MAC));
+				  next0 =
+				    gbp_policy_l2_feature_next (gpm, b0,
+								type);
 				  break;
 				case GBP_RULE_DENY:
 				  next0 = GBP_POLICY_NEXT_DROP;
@@ -359,12 +388,7 @@ gbp_policy_inline (vlib_main_t * vm,
 	       * the src EPG is not set when the packet arrives on an EPG
 	       * uplink interface and we do not need to apply policy
 	       */
-	      next0 =
-		vnet_l2_feature_next (b0,
-				      gpm->l2_output_feat_next[is_port_based],
-				      (is_port_based ?
-				       L2OUTPUT_FEAT_GBP_POLICY_PORT :
-				       L2OUTPUT_FEAT_GBP_POLICY_MAC));
+	      next0 = gbp_policy_l2_feature_next (gpm, b0, type);
 	    }
 
 	trace:
@@ -403,14 +427,21 @@ VLIB_NODE_FN (gbp_policy_port_node) (vlib_main_t * vm,
 				     vlib_node_runtime_t * node,
 				     vlib_frame_t * frame)
 {
-  return (gbp_policy_inline (vm, node, frame, 1));
+  return (gbp_policy_inline (vm, node, frame, GBP_POLICY_PORT));
 }
 
 VLIB_NODE_FN (gbp_policy_mac_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
 {
-  return (gbp_policy_inline (vm, node, frame, 0));
+  return (gbp_policy_inline (vm, node, frame, GBP_POLICY_MAC));
+}
+
+VLIB_NODE_FN (gbp_policy_lpm_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return (gbp_policy_inline (vm, node, frame, GBP_POLICY_LPM));
 }
 
 /* packet trace format function */
@@ -447,6 +478,21 @@ VLIB_REGISTER_NODE (gbp_policy_port_node) = {
 
 VLIB_REGISTER_NODE (gbp_policy_mac_node) = {
   .name = "gbp-policy-mac",
+  .vector_size = sizeof (u32),
+  .format_trace = format_gbp_policy_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(gbp_policy_error_strings),
+  .error_strings = gbp_policy_error_strings,
+
+  .n_next_nodes = GBP_POLICY_N_NEXT,
+  .next_nodes = {
+    [GBP_POLICY_NEXT_DROP] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (gbp_policy_lpm_node) = {
+  .name = "gbp-policy-lpm",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_policy_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
