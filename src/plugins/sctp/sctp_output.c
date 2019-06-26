@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/sctp/sctp.h>
-#include <vnet/sctp/sctp_debug.h>
+#include <sctp/sctp.h>
+#include <sctp/sctp_debug.h>
 #include <vppinfra/random.h>
 #include <openssl/hmac.h>
 

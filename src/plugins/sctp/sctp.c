@@ -12,8 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/sctp/sctp.h>
-#include <vnet/sctp/sctp_debug.h>
+
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
+
+#include <sctp/sctp.h>
+#include <sctp/sctp_debug.h>
 
 sctp_main_t sctp_main;
 
@@ -1010,7 +1014,8 @@ sctp_init (vlib_main_t * vm)
   sm->is_enabled = 0;
   sm->is_init = 0;
 
-  sctp_api_reference ();
+  /* initialize binary API */
+  sctp_plugin_api_hookup (vm);
 
   return 0;
 }
@@ -1077,6 +1082,13 @@ VLIB_CLI_COMMAND (show_sctp_command, static) =
   .path = "sctp",
   .short_help = "sctp [enable | disable]",
   .function = sctp_fn,
+};
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () =
+{
+  .version = VPP_BUILD_VER,
+  .description = "Stream Control Transmission Protocol (SCTP)"
 };
 /* *INDENT-ON* */
 

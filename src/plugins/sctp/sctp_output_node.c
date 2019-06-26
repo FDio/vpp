@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/sctp/sctp.h>
-#include <vnet/sctp/sctp_debug.h>
+#include <sctp/sctp.h>
+#include <sctp/sctp_debug.h>
 #include <vppinfra/random.h>
 #include <openssl/hmac.h>
 
@@ -35,7 +35,7 @@ ip4_sctp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 
 static char *sctp_error_strings[] = {
 #define sctp_error(n,s) s,
-#include <vnet/sctp/sctp_error.def>
+#include <sctp/sctp_error.def>
 #undef sctp_error
 };
 
