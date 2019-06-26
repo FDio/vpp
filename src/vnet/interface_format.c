@@ -361,6 +361,8 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 {
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   vnet_buffer_opaque_t *o = (vnet_buffer_opaque_t *) b->opaque;
+  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vnet_buffer_opquae_formatter_t helper_fp;
   int i;
 
   s = format (s, "raw: ");
@@ -510,25 +512,15 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 	      (u32) (o->tcp.data_len), (u32) (o->tcp.flags));
   vec_add1 (s, '\n');
 
-  s = format (s,
-	      "sctp.connection_index: %d, sctp.sid: %d, sctp.ssn: %d, "
-	      "sctp.tsn: %d, sctp.hdr_offset: %d",
-	      o->sctp.connection_index,
-	      (u32) (o->sctp.sid),
-	      (u32) (o->sctp.ssn),
-	      (u32) (o->sctp.tsn), (u32) (o->sctp.hdr_offset));
-  vec_add1 (s, '\n');
-
-  s = format
-    (s, "sctp.data_offset: %d, sctp.data_len: %d, sctp.subconn_idx: %d, "
-     "sctp.flags: 0x%x",
-     (u32) (o->sctp.data_offset),
-     (u32) (o->sctp.data_len),
-     (u32) (o->sctp.subconn_idx), (u32) (o->sctp.flags));
-  vec_add1 (s, '\n');
-
   s = format (s, "snat.flags: 0x%x", o->snat.flags);
   vec_add1 (s, '\n');
+
+  for (i = 0; i < vec_len (im->buffer_opaque_format_helpers); i++)
+    {
+      helper_fp = im->buffer_opaque_format_helpers[i];
+      s = (*helper_fp) (b, s);
+    }
+
   return s;
 }
 
@@ -537,6 +529,8 @@ format_vnet_buffer_opaque2 (u8 * s, va_list * args)
 {
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   vnet_buffer_opaque2_t *o = (vnet_buffer_opaque2_t *) b->opaque2;
+  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vnet_buffer_opquae_formatter_t helper_fp;
 
   int i;
 
@@ -558,8 +552,30 @@ format_vnet_buffer_opaque2 (u8 * s, va_list * args)
 
   s = format (s, "pg_replay_timestamp: %llu", (u32) (o->pg_replay_timestamp));
   vec_add1 (s, '\n');
+
+  for (i = 0; i < vec_len (im->buffer_opaque2_format_helpers); i++)
+    {
+      helper_fp = im->buffer_opaque2_format_helpers[i];
+      s = (*helper_fp) (b, s);
+    }
+
   return s;
 }
+
+void
+vnet_register_format_buffer_opaque_helper (vnet_buffer_opquae_formatter_t fp)
+{
+  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vec_add1 (im->buffer_opaque_format_helpers, fp);
+}
+
+void
+vnet_register_format_buffer_opaque2_helper (vnet_buffer_opquae_formatter_t fp)
+{
+  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vec_add1 (im->buffer_opaque2_format_helpers, fp);
+}
+
 
 uword
 unformat_vnet_hw_interface (unformat_input_t * input, va_list * args)

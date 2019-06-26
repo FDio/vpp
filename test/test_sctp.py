@@ -11,6 +11,7 @@ class TestSCTP(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.extra_vpp_plugin_config.append("plugin sctp_plugin.so { enable }")
         super(TestSCTP, cls).setUpClass()
 
     @classmethod
