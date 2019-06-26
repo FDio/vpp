@@ -248,7 +248,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_t * fs, u32 data_bytes)
 	    last = c;
 	  c->next = first;
 	  first = c;
-	  n_alloc += c->length;
+	  n_alloc += fl_size;
 	  c->length = clib_min (fl_size, data_bytes);
 	  data_bytes -= c->length;
 	}
@@ -783,7 +783,7 @@ fifo_segment_free_bytes (fifo_segment_t * fs)
 }
 
 u32
-fifo_segment_chunk_prealloc_bytes (fifo_segment_t * fs)
+fifo_segment_fl_chunk_bytes (fifo_segment_t * fs)
 {
   return fs->h->n_fl_chunk_bytes;
 }
