@@ -40,14 +40,18 @@
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vmxnet3/vmxnet3_all_api_h.h>
-#undef vl_printfun
 
 /* get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
 #include <vmxnet3/vmxnet3_all_api_h.h>
 #undef vl_api_version
+
+/* Macro to finish up custom dump fns */
+#define FINISH                                  \
+    vec_add1 (s, 0);                            \
+    vl_print (handle, (char *)s);               \
+    vec_free (s);                               \
+    return handle;
 
 #include <vlibapi/api_helper_macros.h>
 
@@ -86,6 +90,30 @@ vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t * mp)
   /* *INDENT-ON* */
 }
 
+static void *
+vl_api_vmxnet3_create_t_print (vl_api_vmxnet3_create_t * mp, void *handle)
+{
+  u8 *s;
+  u32 pci_addr = ntohl (mp->pci_addr);
+
+  s = format (0, "SCRIPT: vmxnet3_create ");
+  s = format (s, "%U ", format_vlib_pci_addr, &pci_addr);
+  if (mp->enable_elog)
+    s = format (s, "elog ");
+  if (mp->bind)
+    s = format (s, "bind ");
+  if (mp->rxq_size)
+    s = format (s, "rx-queue-size %u ", ntohs (mp->rxq_size));
+  if (mp->txq_size)
+    s = format (s, "tx-queue-size %u ", ntohs (mp->txq_size));
+  if (mp->rxq_num)
+    s = format (s, "num-rx-queues %u ", ntohs (mp->rxq_num));
+  if (mp->txq_num)
+    s = format (s, "num-tx-queues %u ", ntohs (mp->txq_num));
+
+  FINISH;
+}
+
 static void
 vl_api_vmxnet3_delete_t_handler (vl_api_vmxnet3_delete_t * mp)
 {
@@ -110,6 +138,17 @@ vl_api_vmxnet3_delete_t_handler (vl_api_vmxnet3_delete_t * mp)
 
 reply:
   REPLY_MACRO (VL_API_VMXNET3_DELETE_REPLY + vmxm->msg_id_base);
+}
+
+static void *
+vl_api_vmxnet3_delete_t_print (vl_api_vmxnet3_delete_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: vmxnet3_delete ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  FINISH;
 }
 
 static void
@@ -209,6 +248,16 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
   vec_free (if_name);
 }
 
+static void *
+vl_api_vmxnet3_dump_t_print (vl_api_vmxnet3_create_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: vmxnet3_dump ");
+
+  FINISH;
+}
+
 #define vl_msg_name_crc_list
 #include <vmxnet3/vmxnet3_all_api_h.h>
 #undef vl_msg_name_crc_list
@@ -219,6 +268,16 @@ setup_message_id_table (vmxnet3_main_t * vmxm, api_main_t * am)
 #define _(id,n,crc) \
   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + vmxm->msg_id_base);
   foreach_vl_msg_name_crc_vmxnet3;
+#undef _
+}
+
+static void
+plugin_custom_dump_configure (vmxnet3_main_t * vmxm)
+{
+#define _(n,f) api_main.msg_print_handlers \
+  [VL_API_##n + vmxm->msg_id_base]                \
+    = (void *) vl_api_##f##_t_print;
+  foreach_vmxnet3_plugin_api_msg;
 #undef _
 }
 
@@ -250,6 +309,8 @@ vmxnet3_plugin_api_hookup (vlib_main_t * vm)
 
   /* set up the (msg_name, crc, message-id) table */
   setup_message_id_table (vmxm, am);
+
+  plugin_custom_dump_configure (vmxm);
 
   vec_free (name);
   return 0;

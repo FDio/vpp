@@ -102,31 +102,26 @@ api_vmxnet3_create (vat_main_t * vam)
   vl_api_vmxnet3_create_t *mp;
   vmxnet3_create_if_args_t args;
   int ret;
-  u32 x[4];
+  u32 size;
 
   clib_memset (&args, 0, sizeof (vmxnet3_create_if_args_t));
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "%x:%x:%x.%x", &x[0], &x[1], &x[2], &x[3]))
-	{
-	  args.addr.domain = x[0];
-	  args.addr.bus = x[1];
-	  args.addr.slot = x[2];
-	  args.addr.function = x[3];
-	}
+      if (unformat (i, "%U", unformat_vlib_pci_addr, &args.addr))
+	;
       else if (unformat (i, "elog"))
 	args.enable_elog = 1;
       else if (unformat (i, "bind"))
 	args.bind = 1;
-      else if (unformat (i, "rx-queue-size %u", &args.rxq_size))
-	;
-      else if (unformat (i, "tx-queue-size %u", &args.txq_size))
-	;
-      else if (unformat (i, "num-tx-queues %u", &args.txq_num))
-	;
-      else if (unformat (i, "num-rx-queues %u", &args.rxq_num))
-	;
+      else if (unformat (i, "rx-queue-size %u", &size))
+	args.rxq_size = size;
+      else if (unformat (i, "tx-queue-size %u", &size))
+	args.txq_size = size;
+      else if (unformat (i, "num-tx-queues %u", &size))
+	args.txq_num = size;
+      else if (unformat (i, "num-rx-queues %u", &size))
+	args.rxq_num = size;
       else
 	{
 	  clib_warning ("unknown input '%U'", format_unformat_error, i);
