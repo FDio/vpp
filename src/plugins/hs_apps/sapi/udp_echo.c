@@ -952,7 +952,7 @@ init_error_string_table (udp_echo_main_t * utm)
 {
   utm->error_string_by_error_number = hash_create (0, sizeof (uword));
 
-#define _(n,v,s) hash_set (utm->error_string_by_error_number, -v, s);
+#define _(n,v,s,x) hash_set (utm->error_string_by_error_number, -v, s);
   foreach_vnet_api_error;
 #undef _
 

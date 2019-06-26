@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.3.0";
+option version = "1.4.0";
 
 /* 
  * Note: API placement cleanup in progress
@@ -330,6 +330,25 @@ define show_vpe_system_time_ticks_reply
   u32 context;
   i32 retval;
   f64 vpe_system_time_ticks;
+};
+
+/** \brief Provide the descriptions if api error return codes found in api_error.h
+    @param context - sender context which was passed in the request
+    @param client_index - opaque cookie to identify the sender
+    @param api_errno - The error number to filter on. (0x7fffffff returns all).  Default:  return all.
+*/
+define api_strerror_dump
+{
+  u32 client_index;
+  u32 context;
+  i32 api_errno [default=0x7fffffff];
+};
+
+define api_strerror_details
+{
+  u32 context;
+  i32 api_errno;
+  string strerror [limit=128];
 };
 
 /*
