@@ -52,6 +52,9 @@ typedef struct gpb_ext_itf_t_
 extern int gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id);
 extern int gbp_ext_itf_delete (u32 sw_if_index);
 
+extern int gbp_ext_itf_anon_add (u32 sw_if_index, u32 bd_id, u32 rd_id);
+extern int gbp_ext_itf_anon_delete (u32 sw_if_index);
+
 extern u8 *format_gbp_ext_itf (u8 * s, va_list * args);
 
 typedef walk_rc_t (*gbp_ext_itf_cb_t) (gbp_ext_itf_t * gbpe, void *ctx);
