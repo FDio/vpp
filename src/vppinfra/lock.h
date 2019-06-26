@@ -17,6 +17,7 @@
 #define included_clib_lock_h
 
 #include <vppinfra/clib.h>
+#include <vppinfra/atomics.h>
 
 #if __x86_64__
 #define CLIB_PAUSE() __builtin_ia32_pause ()
@@ -73,8 +74,15 @@ clib_spinlock_free (clib_spinlock_t * p)
 static_always_inline void
 clib_spinlock_lock (clib_spinlock_t * p)
 {
-  while (clib_atomic_test_and_set (&(*p)->lock))
-    CLIB_PAUSE ();
+  u32 free = 0;
+  while (!clib_atomic_cmp_and_swap_acq_relax_n (&(*p)->lock, &free, 1, 0))
+    {
+      /* atomic load limits number of compare_exchange executions */
+      while (clib_atomic_load_relax_n (&(*p)->lock))
+	CLIB_PAUSE ();
+      /* on failure, compare_exchange writes (*p)->lock into free */
+      free = 0;
+    }
   CLIB_LOCK_DBG (p);
 }
 
