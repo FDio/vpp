@@ -393,6 +393,7 @@ static const transport_proto_vft_t udpc_proto = {
   .transport_options = {
     .tx_type = TRANSPORT_TX_DGRAM,
     .service_type = TRANSPORT_SERVICE_VC,
+    .half_open_has_fifos = 1
   },
 };
 /* *INDENT-ON* */
