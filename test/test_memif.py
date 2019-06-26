@@ -250,8 +250,8 @@ class TestMemif(VppTestCase):
 
         # add routing to remote vpp
         route = VppIpRoute(self.remote_test, self.pg0._local_ip4_subnet, 24,
-                   [VppRoutePath(memif.ip4_addr, 0xffffffff)],
-                   register=False)
+                           [VppRoutePath(memif.ip4_addr, 0xffffffff)],
+                           register=False)
 
         route.add_vpp_config()
 
