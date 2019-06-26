@@ -48,6 +48,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/vnet.h>
 
+#include <vlib/log.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
@@ -77,13 +78,15 @@
 #define foreach_vpe_api_msg                                             \
 _(CONTROL_PING, control_ping)                                           \
 _(CLI, cli)                                                             \
-_(CLI_INBAND, cli_inband)						\
+_(CLI_INBAND, cli_inband)						                        \
 _(GET_NODE_INDEX, get_node_index)                                       \
-_(ADD_NODE_NEXT, add_node_next)						\
-_(SHOW_VERSION, show_version)						\
-_(SHOW_THREADS, show_threads)						\
+_(ADD_NODE_NEXT, add_node_next)						                    \
+_(SHOW_VERSION, show_version)						                    \
+_(SHOW_THREADS, show_threads)						                    \
 _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(GET_NEXT_INDEX, get_next_index)                                       \
+_(LOG_DUMP, log_dump)                                                   \
+_(SHOW_VPE_SYSTEM_TIME_TICKS, show_vpe_system_time_ticks)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -473,6 +476,85 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   /* *INDENT-ON* */
 }
 
+static void
+show_log_details (vl_api_registration_t * reg, u32 context,
+		  f64 timestamp_ticks, u8 * timestamp,
+		  vl_api_log_level_t * level, u8 * msg_class, u8 * message)
+{
+  u32 msg_size;
+
+  vl_api_log_details_t *rmp;
+  msg_size =
+    sizeof (*rmp) + vec_len (timestamp) + vec_len (msg_class) +
+    vec_len (message);
+
+  rmp = vl_msg_api_alloc (msg_size);
+  clib_memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id = ntohs (VL_API_LOG_DETAILS);
+
+  rmp->context = context;
+  rmp->timestamp_ticks = clib_host_to_net_f64 (timestamp_ticks);
+  rmp->level = htonl (*level);
+  char *p = (char *) &rmp->timestamp;
+
+  p += vl_api_vec_to_api_string (timestamp, (vl_api_string_t *) p);
+  p += vl_api_vec_to_api_string (msg_class, (vl_api_string_t *) p);
+  p += vl_api_vec_to_api_string (message, (vl_api_string_t *) p);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_log_dump_t_handler (vl_api_log_dump_t * mp)
+{
+
+  /* from log.c */
+  vlib_log_main_t *lm = &log_main;
+  vlib_log_entry_t *e;
+  int i = last_log_entry ();
+  int count = lm->count;
+  f64 time_offset, start_time;
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (reg == 0)
+    return;
+
+  start_time = clib_net_to_host_f64 (mp->start_timestamp);
+
+  time_offset = (f64) lm->time_zero_timeval.tv_sec
+    + (((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
+
+  while (count--)
+    {
+      e = vec_elt_at_index (lm->entries, i);
+      if (start_time <= e->timestamp + time_offset)
+	show_log_details (reg, mp->context, e->timestamp + time_offset,
+			  format (0, "%U", format_time_float, 0,
+				  e->timestamp + time_offset),
+			  (vl_api_log_level_t *) & e->level,
+			  format (0, "%U", format_vlib_log_class, e->class),
+			  e->string);
+      i = (i + 1) % lm->size;
+    }
+
+}
+
+static void
+  vl_api_show_vpe_system_time_ticks_t_handler
+  (vl_api_show_vpe_system_time_ticks_t * mp)
+{
+  int rv = 0;
+  vl_api_show_vpe_system_time_ticks_reply_t *rmp;
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_SHOW_VPE_SYSTEM_TIME_TICKS_REPLY,
+  ({
+    rmp->vpe_system_time_ticks = clib_host_to_net_f64 (unix_time_now ());
+  }));
+  /* *INDENT-ON* */
+}
+
+
 #define BOUNCE_HANDLER(nn)                                              \
 static void vl_api_##nn##_t_handler (                                   \
     vl_api_##nn##_t *mp)                                                \
@@ -531,8 +613,8 @@ vpe_api_hookup (vlib_main_t * vm)
    * Trace space for classifier mask+match
    */
   am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_TABLE].size += 5 * sizeof (u32x4);
-  am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_SESSION].size
-    += 5 * sizeof (u32x4);
+  am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_SESSION].size +=
+    5 * sizeof (u32x4);
 
   /*
    * Thread-safe API messages
@@ -653,7 +735,8 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	  /* lookup the group name */
 	  grp = NULL;
 	  while (((rv =
-		   getgrnam_r (s, &_grp, buf, vec_len (buf), &grp)) == ERANGE)
+		   getgrnam_r (s, &_grp, buf, vec_len (buf),
+			       &grp)) == ERANGE)
 		 && (vec_len (buf) <= max_buf_size))
 	    {
 	      vec_resize (buf, vec_len (buf) * 2);
