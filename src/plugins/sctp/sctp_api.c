@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * sctp_api.c - vnet sctp-layer API
+ * sctp_api.c - sctp-layer API
  *
  * Copyright (c) 2018 SUSE LLC.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,30 +17,36 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
+#include <vlib/vlib.h>
+#include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-#include <vnet/sctp/sctp.h>
+#include <sctp/sctp.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <sctp/sctp_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include <sctp/sctp_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include <sctp/sctp_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include <sctp/sctp_all_api_h.h>
 #undef vl_printfun
 
+#define vl_api_version(n,v) static u32 api_version=(v);
+#include <sctp/sctp_all_api_h.h>
+#undef vl_api_version
+
+#define REPLY_MSG_ID_BASE sctp_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_sctp_api_msg                                    \
+#define foreach_sctp_plugin_api_msg					\
 _(SCTP_ADD_SRC_DST_CONNECTION, sctp_add_src_dst_connection)		\
 _(SCTP_DEL_SRC_DST_CONNECTION, sctp_del_src_dst_connection)		\
 _(SCTP_CONFIG, sctp_config)
@@ -97,45 +103,50 @@ vl_api_sctp_config_t_handler (vl_api_sctp_config_t * mp)
 }
 
 #define vl_msg_name_crc_list
-#include <vnet/sctp/sctp.api.h>
+#include <sctp/sctp_all_api_h.h>
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (sctp_main_t * sm, api_main_t * am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
   foreach_vl_msg_name_crc_sctp;
 #undef _
 }
 
-static clib_error_t *
-sctp_api_hookup (vlib_main_t * vm)
+clib_error_t *
+sctp_plugin_api_hookup (vlib_main_t * vm)
 {
+  sctp_main_t *sm = &sctp_main;
   api_main_t *am = &api_main;
+  u8 *name;
+
+  /* Construct the API name */
+  name = format (0, "sctp_%08x%c", api_version, 0);
+
+  /* Ask for a correctly-sized block of API message decode slots */
+  sctp_main.msg_id_base = vl_msg_api_get_msg_ids
+    ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
 #define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
+    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
+                           #n,                                  \
                            vl_api_##n##_t_handler,              \
                            vl_noop_handler,                     \
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
                            sizeof(vl_api_##n##_t), 1);
-  foreach_sctp_api_msg;
+  foreach_sctp_plugin_api_msg;
 #undef _
 
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  setup_message_id_table (sm, am);
+  vec_free (name);
 
   return 0;
-}
-
-VLIB_API_INIT_FUNCTION (sctp_api_hookup);
-
-void
-sctp_api_reference (void)
-{
 }
 
 /*

@@ -12,8 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/sctp/sctp.h>
-#include <vnet/sctp/sctp_debug.h>
+
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
+
+#include <sctp/sctp.h>
+#include <sctp/sctp_debug.h>
 
 sctp_main_t sctp_main;
 
@@ -992,7 +996,8 @@ sctp_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_SCTP, &sctp_proto,
 			       FIB_PROTOCOL_IP6, sctp6_output_node.index);
 
-  sctp_api_reference ();
+  /* initialize binary API */
+  sctp_plugin_api_hookup (vm);
 
   return 0;
 }
@@ -1019,6 +1024,14 @@ VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
   .path = "show sctp punt",
   .short_help = "show sctp punt",
   .function = show_sctp_punt_fn,
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () =
+{
+  .version = VPP_BUILD_VER,
+  .description = "Stream Control Transmission Protocol (SCTP)"
 };
 /* *INDENT-ON* */
 

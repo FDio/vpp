@@ -432,6 +432,10 @@ M:	Ole Troan <ot@cisco.com>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	src/vpp-api/python
 
+Plugin - SCTP
+I:	sctp
+F:	src/plugins/sctp/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>

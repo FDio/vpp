@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 #include <vppinfra/sparse_vec.h>
-#include <vnet/sctp/sctp.h>
-#include <vnet/sctp/sctp_packet.h>
-#include <vnet/sctp/sctp_debug.h>
+#include <sctp/sctp.h>
+#include <sctp/sctp_packet.h>
+#include <sctp/sctp_debug.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
 static char *sctp_error_strings[] = {
 #define sctp_error(n,s) s,
-#include <vnet/sctp/sctp_error.def>
+#include <sctp/sctp_error.def>
 #undef sctp_error
 };
 
