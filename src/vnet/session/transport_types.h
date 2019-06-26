@@ -184,6 +184,7 @@ transport_endpoint_fib_proto (transport_endpoint_t * tep)
 }
 
 u8 transport_protocol_is_cl (transport_proto_t tp);
+u8 transport_half_open_has_fifos (transport_proto_t tp);
 transport_service_type_t transport_protocol_service_type (transport_proto_t);
 transport_tx_fn_type_t transport_protocol_tx_fn_type (transport_proto_t tp);
 
