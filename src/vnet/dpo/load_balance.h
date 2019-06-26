@@ -188,6 +188,7 @@ typedef enum load_balance_format_flags_t_ {
 extern index_t load_balance_create(u32 num_buckets,
 				   dpo_proto_t lb_proto,
 				   flow_hash_config_t fhc);
+extern flow_hash_config_t load_balance_get_default_flow_hash(dpo_proto_t lb_proto);
 extern void load_balance_multipath_update(
     const dpo_id_t *dpo,
     const load_balance_path_t * raw_next_hops,
