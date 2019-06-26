@@ -19,6 +19,7 @@
 #include <plugins/gbp/gbp_types.h>
 
 #include <vnet/fib/fib_types.h>
+#include <vnet/l2/l2_bd.h>
 
 /**
  * Bridge Domain Flags
@@ -83,6 +84,11 @@ typedef struct gbp_bridge_domain_t_
    */
   u32 gb_locks;
 } gbp_bridge_domain_t;
+
+extern void gbp_bridge_domain_itf_add (u32 sw_if_index, u32 bd_index,
+				       l2_bd_port_type_t type);
+extern void gbp_bridge_domain_itf_del (u32 sw_if_index, u32 bd_index,
+				       l2_bd_port_type_t type);
 
 extern int gbp_bridge_domain_add_and_lock (u32 bd_id,
 					   u32 rd_id,

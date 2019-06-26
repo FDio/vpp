@@ -174,6 +174,28 @@ format_gbp_bridge_domain (u8 * s, va_list * args)
   return (s);
 }
 
+void
+gbp_bridge_domain_itf_add (u32 sw_if_index, u32 bd_index,
+			   l2_bd_port_type_t type)
+{
+  set_int_l2_mode (vlib_get_main (), vnet_get_main (), MODE_L2_BRIDGE,
+		   sw_if_index, bd_index, type, 0, 0);
+  /*
+   * adding an interface to the bridge enable learning on the
+   * interface. Disable learning on the interface by default for gbp
+   * interfaces
+   */
+  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_LEARN, 0);
+}
+
+void
+gbp_bridge_domain_itf_del (u32 sw_if_index, u32 bd_index,
+			   l2_bd_port_type_t type)
+{
+  set_int_l2_mode (vlib_get_main (), vnet_get_main (), MODE_L3, sw_if_index,
+		   bd_index, type, 0, 0);
+}
+
 int
 gbp_bridge_domain_add_and_lock (u32 bd_id,
 				u32 rd_id,
@@ -197,7 +219,7 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       if (~0 == bd_index)
 	return (VNET_API_ERROR_BD_NOT_MODIFIABLE);
 
-      bd_flags_t bd_flags = L2_LEARN;
+      bd_flags_t bd_flags = L2_NONE;
       if (flags & GBP_BD_FLAG_UU_FWD_DROP)
 	bd_flags |= L2_UU_FLOOD;
       if (flags & GBP_BD_FLAG_MCAST_DROP)
@@ -225,29 +247,24 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       /*
        * Set the BVI and uu-flood interfaces into the BD
        */
-      set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-		       MODE_L2_BRIDGE, gb->gb_bvi_sw_if_index,
-		       bd_index, L2_BD_PORT_TYPE_BVI, 0, 0);
+      gbp_bridge_domain_itf_add (gb->gb_bvi_sw_if_index, bd_index,
+				 L2_BD_PORT_TYPE_BVI);
 
       if ((!(flags & GBP_BD_FLAG_UU_FWD_DROP)
 	   || (flags & GBP_BD_FLAG_UCAST_ARP))
 	  && ~0 != gb->gb_uu_fwd_sw_if_index)
-	{
-	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			   MODE_L2_BRIDGE, gb->gb_uu_fwd_sw_if_index,
-			   bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
-	}
+	gbp_bridge_domain_itf_add (gb->gb_uu_fwd_sw_if_index, bd_index,
+				   L2_BD_PORT_TYPE_UU_FWD);
       if (!(flags & GBP_BD_FLAG_MCAST_DROP)
 	  && ~0 != gb->gb_bm_flood_sw_if_index)
 	{
-	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			   MODE_L2_BRIDGE, gb->gb_bm_flood_sw_if_index,
-			   bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
+	  gbp_bridge_domain_itf_add (gb->gb_bm_flood_sw_if_index, bd_index,
+				     L2_BD_PORT_TYPE_NORMAL);
 	  gbp_learn_enable (gb->gb_bm_flood_sw_if_index, GBP_LEARN_MODE_L2);
 	}
 
       /*
-       * unset learning in the bridge + any flag(s) set above
+       * unset any flag(s) set above
        */
       bd_set_flags (vlib_get_main (), bd_index, bd_flags, 0);
 
@@ -296,20 +313,15 @@ gbp_bridge_domain_unlock (index_t index)
 		       (vnet_get_main (), gb->gb_bvi_sw_if_index),
 		       gb->gb_bd_index, gb->gb_bvi_sw_if_index);
 
-      set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-		       MODE_L3, gb->gb_bvi_sw_if_index,
-		       gb->gb_bd_index, L2_BD_PORT_TYPE_BVI, 0, 0);
+      gbp_bridge_domain_itf_del (gb->gb_bvi_sw_if_index, gb->gb_bd_index,
+				 L2_BD_PORT_TYPE_BVI);
       if (~0 != gb->gb_uu_fwd_sw_if_index)
-	{
-	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			   MODE_L3, gb->gb_uu_fwd_sw_if_index,
-			   gb->gb_bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
-	}
+	gbp_bridge_domain_itf_del (gb->gb_uu_fwd_sw_if_index, gb->gb_bd_index,
+				   L2_BD_PORT_TYPE_UU_FWD);
       if (~0 != gb->gb_bm_flood_sw_if_index)
 	{
-	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			   MODE_L3, gb->gb_bm_flood_sw_if_index,
-			   gb->gb_bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
+	  gbp_bridge_domain_itf_del (gb->gb_bm_flood_sw_if_index,
+				     gb->gb_bd_index, L2_BD_PORT_TYPE_NORMAL);
 	  gbp_learn_enable (gb->gb_bm_flood_sw_if_index, GBP_LEARN_MODE_L2);
 	}
 
