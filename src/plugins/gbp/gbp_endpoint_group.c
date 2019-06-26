@@ -138,9 +138,8 @@ gbp_endpoint_group_add_and_lock (vnid_t vnid,
 	   * Add the uplink to the BD
 	   * packets direct from the uplink have had policy applied
 	   */
-	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			   MODE_L2_BRIDGE, gg->gg_uplink_sw_if_index,
-			   gg->gg_bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
+	  gbp_bridge_domain_itf_add (gg->gg_uplink_sw_if_index,
+				     gg->gg_bd_index, L2_BD_PORT_TYPE_NORMAL);
 	  l2input_intf_bitmap_enable (gg->gg_uplink_sw_if_index,
 				      L2INPUT_FEAT_GBP_NULL_CLASSIFY, 1);
 	}
@@ -179,10 +178,8 @@ gbp_endpoint_group_unlock (index_t ggi)
 
       if (~0 != gg->gg_uplink_sw_if_index)
 	{
-	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			   MODE_L3, gg->gg_uplink_sw_if_index,
-			   gg->gg_bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
-
+	  gbp_bridge_domain_itf_del (gg->gg_uplink_sw_if_index,
+				     gg->gg_bd_index, L2_BD_PORT_TYPE_NORMAL);
 	  l2input_intf_bitmap_enable (gg->gg_uplink_sw_if_index,
 				      L2INPUT_FEAT_GBP_NULL_CLASSIFY, 0);
 	}
