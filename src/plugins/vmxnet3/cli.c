@@ -32,6 +32,7 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vmxnet3_create_if_args_t args;
+  u32 size;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -46,14 +47,14 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.enable_elog = 1;
       else if (unformat (line_input, "bind"))
 	args.bind = 1;
-      else if (unformat (line_input, "rx-queue-size %u", &args.rxq_size))
-	;
-      else if (unformat (line_input, "tx-queue-size %u", &args.txq_size))
-	;
-      else if (unformat (line_input, "num-tx-queues %u", &args.txq_num))
-	;
-      else if (unformat (line_input, "num-rx-queues %u", &args.rxq_num))
-	;
+      else if (unformat (line_input, "rx-queue-size %u", &size))
+	args.rxq_size = size;
+      else if (unformat (line_input, "tx-queue-size %u", &size))
+	args.txq_size = size;
+      else if (unformat (line_input, "num-tx-queues %u", &size))
+	args.txq_num = size;
+      else if (unformat (line_input, "num-rx-queues %u", &size))
+	args.rxq_num = size;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
