@@ -25,7 +25,6 @@ from util import ppp
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_lo_interface import VppLoInterface
-from vpp_papi_provider import UnexpectedApiReturnValueError
 from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_gre_interface import VppGreInterface
 
@@ -2377,7 +2376,7 @@ class BFDCLITestCase(VppTestCase):
     def tearDown(self):
         try:
             self.vapi.want_bfd_events(enable_disable=0)
-        except UnexpectedApiReturnValueError:
+        except self.vapi.vppapiclient.VPPApiClientUnexpectedReturnValueError:
             # some tests aren't subscribed, so this is not an issue
             pass
         self.vapi.collect_events()  # clear the event queue

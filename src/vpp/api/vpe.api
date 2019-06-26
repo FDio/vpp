@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.1.0";
+option version = "1.2.0";
 
 /* 
  * Note: API placement cleanup in progress
@@ -281,6 +281,20 @@ define get_next_index_reply
   u32 context;
   i32 retval;
   u32 next_index;
+};
+
+define api_strerror_dump
+{
+  u32 client_index;
+  u32 context;
+  i32 api_errno;
+};
+
+define api_strerror_details
+{
+  u32 context;
+  i32 api_errno [default=0x7fffffff];
+  string strerror [limit=128];
 };
 
 /*
