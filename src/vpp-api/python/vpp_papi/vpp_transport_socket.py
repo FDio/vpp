@@ -152,6 +152,8 @@ class VppTransport(object):
         if self.message_thread is not None and self.message_thread.is_alive():
             # Allow additional connect() calls.
             self.message_thread.join()
+        # Wipe message table, VPP can be restarted with different plugins.
+        self.message_table = {}
         # Collect garbage.
         self.message_thread = None
         self.socket = None
