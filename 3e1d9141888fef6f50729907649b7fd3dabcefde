@@ -2,6 +2,46 @@
   "comments": [
     {
       "key": {
+        "uuid": "6ddf388c_64c14ef9",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-06-26T19:32:16Z",
+      "side": 1,
+      "message": "The node names in this macro and the others like it (foreach_ah_encrypt_next, foreach_esp_encrypt_next, foreach_esp_decrypt_next) don\u0027t appear to be used anymore.",
+      "range": {
+        "startLine": 28,
+        "startChar": 10,
+        "endLine": 28,
+        "endChar": 22
+      },
+      "revId": "3e1d9141888fef6f50729907649b7fd3dabcefde",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "83d1f3e9_a4f3a14d",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-06-26T19:32:16Z",
+      "side": 1,
+      "message": "Is it possible that the main thread will end up being bound to this SA? If BFD packets or some other locally generated packets are the first thing sent over a tunnel, will all subsequent packets for this SA end up being processed by the main thread?",
+      "revId": "3e1d9141888fef6f50729907649b7fd3dabcefde",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a946c41b_f05b916c",
         "filename": "src/vnet/ipsec/ipsec.c",
         "patchSetId": 8
