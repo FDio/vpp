@@ -66,7 +66,7 @@ int
 sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u32 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index,
 		 u32 fib_table, ip46_address_t * nh_addr, 
-		 ip6_address_t *sr_prefix, u32 sr_prefixlen, ip6_address_t *bsid,
+		 ip6_address_t *sr_prefix, u32 sr_prefixlen,
 		 void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
@@ -176,7 +176,6 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u32 prefixlen,
   ls->localsid_len = pfx.fp_len;
   clib_memcpy (&ls->sr_prefix, sr_prefix, sizeof (ip6_address_t));
   ls->sr_prefixlen = sr_prefixlen;
-  clib_memcpy (&ls->bsid, bsid, sizeof (ip6_address_t));
   switch (behavior)
     {
     case SR_BEHAVIOR_END:
@@ -300,13 +299,11 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   void *ls_plugin_mem = 0;
   ip6_address_t sr_prefix;
   u32 sr_prefixlen = (u32) ~ 0;
-  ip6_address_t bsid;
 
   int rv;
 
   clib_memset (&resulting_address, 0, sizeof (ip6_address_t));
   clib_memset (&sr_prefix, 0, sizeof (ip6_address_t));
-  clib_memset (&bsid, 0, sizeof (ip6_address_t));
   ip46_address_reset (&next_hop);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -358,10 +355,6 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	       || unformat (input, "end.m.gtp6.d.di %U/%d", unformat_ip6_address,
 		            &sr_prefix, &sr_prefixlen))
                 {
-                  if (unformat (input, "bsid %U", unformat_ip6_address,
-			        &bsid))
-		    {
-		    }
 		}
 
 	      /* Loop over all the plugin behavior format functions */
@@ -418,7 +411,8 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			      "Error: SRv6 PSP only compatible with End and End.X");
 
   rv = sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp, behavior,
-			sw_if_index, vlan_index, fib_index, &next_hop, &sr_prefix, sr_prefixlen, &bsid,
+			sw_if_index, vlan_index, fib_index, &next_hop,
+			&sr_prefix, sr_prefixlen,
 			ls_plugin_mem);
 
   switch (rv)

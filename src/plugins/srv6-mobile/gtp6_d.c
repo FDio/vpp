@@ -93,7 +93,7 @@ static clib_error_t *
 srv6_end_m_gtp6_d_init (vlib_main_t * vm)
 {
   srv6_end_main_v6_decap_t *sm = &srv6_end_main_v6_decap;
-  ip6srv_combo_header_t *ip6;
+  ip6_header_t *ip6;
   dpo_type_t dpo_type;
   vlib_node_t *node;
   u32 rc;
@@ -112,9 +112,9 @@ srv6_end_m_gtp6_d_init (vlib_main_t * vm)
   clib_memset_u8 (ip6, 0, sizeof(ip6srv_combo_header_t));
 
   // IPv6 header (default)
-  ip6->ip.ip_version_traffic_class_and_flow_label = 0x60;
-  ip6->ip.hop_limit = 64;
-  ip6->ip.protocol = IP_PROTOCOL_IPV6;
+  ip6->ip_version_traffic_class_and_flow_label = 0x60;
+  ip6->hop_limit = 64;
+  ip6->protocol = IP_PROTOCOL_IPV6;
 
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 

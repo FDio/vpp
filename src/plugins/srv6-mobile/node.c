@@ -606,18 +606,14 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	      u32 *sl_index;
 	      u32 hdr_len;
 
-	      if (ls0->bsid.as_u64 != 0 || ls0->bsid.as_u64 != 0)
+	      p = mhash_get (&sm2->sr_policies_index_hash, &ls0->sr_prefix);
+	      if (p)
 	        {
-	          p = mhash_get (&sm2->sr_policies_index_hash, &ls0->bsid);
-	          if (p)
-	  	    {
-		      sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
-		    }
-	          else
-	            {
-	              continue;
-	            }
+	          sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
+	        }
 
+	      if (sr_policy)
+		{
   	          vec_foreach (sl_index, sr_policy->segments_lists)
 	            {
 		      sl = pool_elt_at_index (sm2->sid_lists, *sl_index);
@@ -824,18 +820,14 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      u32 *sl_index;
 	      u32 hdr_len;
 
-	      if (ls0->bsid.as_u64[0] != 0 || ls0->bsid.as_u64[1] != 0)
-		{
-	          p = mhash_get (&sm2->sr_policies_index_hash, &ls0->bsid);
-	          if (p)
-		    {
-		      sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
-		    }
-	          else
-	            {
-	              continue;
-	            }
+	      p = mhash_get (&sm2->sr_policies_index_hash, &ls0->sr_prefix);
+	      if (p)
+	        {
+		  sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
+		}
 
+	      if (sr_policy)
+		{
 	          vec_foreach (sl_index, sr_policy->segments_lists)
 	            {
 		      sl = pool_elt_at_index (sm2->sid_lists, *sl_index);
