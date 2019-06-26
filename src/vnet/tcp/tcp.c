@@ -1573,6 +1573,7 @@ tcp_init (vlib_main_t * vm)
   tm->tx_pacing = 1;
   tm->cc_algo = TCP_CC_NEWRENO;
   tm->default_mtu = 1460;
+  tm->initial_cwnd_multiplier = 0;
   return 0;
 }
 
@@ -1642,13 +1643,16 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "mtu %d", &tm->default_mtu))
 	;
+      else if (unformat (input, "initial-cwnd-multiplier %d",
+                         &tm->initial_cwnd_multiplier))
+        ;
       else if (unformat (input, "no-tx-pacing"))
 	tm->tx_pacing = 0;
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
 			 &tm->cc_algo))
 	;
       else if (unformat (input, "%U", unformat_tcp_cc_algo_cfg))
-	;
+        ;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
