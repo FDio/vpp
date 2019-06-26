@@ -116,6 +116,7 @@ int libc_close (int fd);
 
 int libc_connect (int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
+int libc_openat (int dirfd, const char *path, int flags, ...);
 #if 0
 /* TBD: dup and dup2 to be implemented later */
 int libc_dup (int fd);

@@ -1,0 +1,221 @@
+Format: 1.0
+Source: vpp
+Binary: vpp vpp-dbg vpp-dev libvppinfra libvppinfra-dev vpp-plugin-core vpp-plugin-dpdk vpp-api-python python3-vpp-api
+Architecture: amd64
+Version: 19.08-rc0~368-g98d6ee7ac
+Checksums-Md5:
+ 6ad03ca96d78cba7885f2dbf08980973 141612 libvppinfra-dev_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ a08f431d89f9baa0928cbd92645c8b2d 183588 libvppinfra_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 32ee8da57410e185049a0845b3530036 19892 python3-vpp-api_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 961978b12f6053d29e209e0a8e848a1e 19852 vpp-api-python_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 7fd5067f945ea204a5935682dbe11b87 77550964 vpp-dbg_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ ea5d2f2b2a257f8f7c6de8deb824a14e 856720 vpp-dev_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ b1d85fe3d71983c01a4fedc36cfe7935 2484544 vpp-plugin-core_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 1e42a215f195cf2a5bd77e004fd02b2f 2679184 vpp-plugin-dpdk_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 1c4ed48665e7bc531fe19e44fcd55fb2 3294484 vpp_19.08-rc0~368-g98d6ee7ac_amd64.deb
+Checksums-Sha1:
+ 51e023549a622d6c6afce1b0fc7b639c2ea52050 141612 libvppinfra-dev_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 2a25c829c0b443a0d0ad9e45b05d54625797b1da 183588 libvppinfra_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 7337ea041a7a8b48c500e7a76baa394d73249a62 19892 python3-vpp-api_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ ea0e3f892aee05a006c83961f620db2595ab0b62 19852 vpp-api-python_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ aa0560dc60dc3c7968f9518cd59cab6551d08aad 77550964 vpp-dbg_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ c28cab1ce54603463c6917874bf7d445b6f53519 856720 vpp-dev_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 019d36e721497dc47b8f2cc3e55f3810c9d130ca 2484544 vpp-plugin-core_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 43505aa1c423e0bc5303423fbb3e849459909e70 2679184 vpp-plugin-dpdk_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 0918309ccd09c2f31e1070152e798b617979ad1b 3294484 vpp_19.08-rc0~368-g98d6ee7ac_amd64.deb
+Checksums-Sha256:
+ e00048244eeeb398e9a01eec1aa4c525a8d25d55cef11b7ebb4db432a73ee06b 141612 libvppinfra-dev_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 941c2a7ec4e44b9d6f8cc859aecae5616596276b76792e78cdf6dfd4cedcd9c3 183588 libvppinfra_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ bab638d75a65632ead5c84840a2e36ed61e9233f4ed3dc1a98d1000bad65bad7 19892 python3-vpp-api_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 6014a1f00046b01d504c29cc0c91056ab3290dcd2aad998760d5d144bd9d51ce 19852 vpp-api-python_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 2d02911a6b74f9b21f305df8ff7cb97efbf6d3f80893c82d28aff0da8ae63f58 77550964 vpp-dbg_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 4437c0ff5229fd5b841c749d2f7992c72d03b436cc1f9562c85496dcd8d65e5c 856720 vpp-dev_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 2ad857f5c4cdd34a95173f84f64481229ef69254da3771a1fafa38e84355ac1d 2484544 vpp-plugin-core_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 9e64eeda6bffa47e7f0fd33a1d11b491c3bdc59f0aa3ce61d9770257fc31a40e 2679184 vpp-plugin-dpdk_19.08-rc0~368-g98d6ee7ac_amd64.deb
+ 0ac6d1d5015bacfb38bb47c5f717f763abca49bcf3ed6c5ed2004c235f8f3ca6 3294484 vpp_19.08-rc0~368-g98d6ee7ac_amd64.deb
+Build-Origin: Ubuntu
+Build-Architecture: amd64
+Build-Date: Thu, 06 Jun 2019 16:35:41 +0800
+Installed-Build-Depends:
+ autoconf (= 2.69-11),
+ automake (= 1:1.15.1-3ubuntu2),
+ autopoint (= 0.19.8.1-6ubuntu0.3),
+ autotools-dev (= 20180224.1),
+ base-files (= 10.1ubuntu2.4),
+ base-passwd (= 3.5.44),
+ bash (= 4.4.18-2ubuntu1),
+ binutils (= 2.30-21ubuntu1~18.04),
+ binutils-common (= 2.30-21ubuntu1~18.04),
+ binutils-x86-64-linux-gnu (= 2.30-21ubuntu1~18.04),
+ bsdmainutils (= 11.1.2ubuntu1),
+ bsdutils (= 1:2.31.1-0.4ubuntu3.3),
+ build-essential (= 12.4ubuntu1),
+ bzip2 (= 1.0.6-8.1),
+ coreutils (= 8.28-1ubuntu1),
+ cpp (= 4:7.3.0-3ubuntu2.1),
+ cpp-7 (= 7.3.0-27ubuntu1~18.04),
+ dash (= 0.5.8-2.10),
+ debconf (= 1.5.66),
+ debhelper (= 11.1.6ubuntu2),
+ debianutils (= 4.8.4),
+ dh-autoreconf (= 17),
+ dh-python (= 3.20180325ubuntu2),
+ dh-strip-nondeterminism (= 0.040-1.1~build1),
+ dh-systemd (= 11.1.6ubuntu2),
+ diffutils (= 1:3.6-1),
+ dpkg (= 1.19.0.5ubuntu2.1),
+ dpkg-dev (= 1.19.0.5ubuntu2.1),
+ e2fsprogs (= 1.44.1-1ubuntu1.1),
+ fdisk (= 2.31.1-0.4ubuntu3.3),
+ file (= 1:5.32-2ubuntu0.2),
+ findutils (= 4.6.0+git+20170828-2),
+ g++ (= 4:7.3.0-3ubuntu2.1),
+ g++-7 (= 7.3.0-27ubuntu1~18.04),
+ gcc (= 4:7.3.0-3ubuntu2.1),
+ gcc-7 (= 7.3.0-27ubuntu1~18.04),
+ gcc-7-base (= 7.3.0-27ubuntu1~18.04),
+ gcc-8-base (= 8.2.0-1ubuntu2~18.04),
+ gettext (= 0.19.8.1-6ubuntu0.3),
+ gettext-base (= 0.19.8.1-6ubuntu0.3),
+ grep (= 3.1-2),
+ groff-base (= 1.22.3-10),
+ gzip (= 1.6-5ubuntu1),
+ hostname (= 3.20),
+ init-system-helpers (= 1.51),
+ install-info (= 6.5.0.dfsg.1-2),
+ intltool-debian (= 0.35.0+20060710.4),
+ libacl1 (= 2.2.52-3build1),
+ libarchive-zip-perl (= 1.60-1ubuntu0.1),
+ libasan4 (= 7.3.0-27ubuntu1~18.04),
+ libatomic1 (= 8.2.0-1ubuntu2~18.04),
+ libattr1 (= 1:2.4.47-2build1),
+ libaudit-common (= 1:2.8.2-1ubuntu1),
+ libaudit1 (= 1:2.8.2-1ubuntu1),
+ libbinutils (= 2.30-21ubuntu1~18.04),
+ libblkid1 (= 2.31.1-0.4ubuntu3.3),
+ libbsd0 (= 0.8.7-1),
+ libbz2-1.0 (= 1.0.6-8.1),
+ libc-bin (= 2.27-3ubuntu1),
+ libc-dev-bin (= 2.27-3ubuntu1),
+ libc6 (= 2.27-3ubuntu1),
+ libc6-dev (= 2.27-3ubuntu1),
+ libcap-ng0 (= 0.7.7-3.1),
+ libcc1-0 (= 8.2.0-1ubuntu2~18.04),
+ libcilkrts5 (= 7.3.0-27ubuntu1~18.04),
+ libcom-err2 (= 1.44.1-1ubuntu1.1),
+ libcroco3 (= 0.6.12-2),
+ libdb5.3 (= 5.3.28-13.1ubuntu1.1),
+ libdebconfclient0 (= 0.213ubuntu1),
+ libdpkg-perl (= 1.19.0.5ubuntu2.1),
+ libexpat1 (= 2.2.5-3),
+ libext2fs2 (= 1.44.1-1ubuntu1.1),
+ libfdisk1 (= 2.31.1-0.4ubuntu3.3),
+ libffi6 (= 3.2.1-8),
+ libfile-stripnondeterminism-perl (= 0.040-1.1~build1),
+ libgcc-7-dev (= 7.3.0-27ubuntu1~18.04),
+ libgcc1 (= 1:8.2.0-1ubuntu2~18.04),
+ libgcrypt20 (= 1.8.1-4ubuntu1.1),
+ libgdbm-compat4 (= 1.14.1-6),
+ libgdbm5 (= 1.14.1-6),
+ libglib2.0-0 (= 2.56.3-0ubuntu0.18.04.1),
+ libgmp10 (= 2:6.1.2+dfsg-2),
+ libgomp1 (= 8.2.0-1ubuntu2~18.04),
+ libgpg-error0 (= 1.27-6),
+ libicu60 (= 60.2-3ubuntu3),
+ libisl19 (= 0.19-1),
+ libitm1 (= 8.2.0-1ubuntu2~18.04),
+ liblsan0 (= 8.2.0-1ubuntu2~18.04),
+ liblz4-1 (= 0.0~r131-2ubuntu3),
+ liblzma5 (= 5.2.2-1.3),
+ libmagic-mgc (= 1:5.32-2ubuntu0.2),
+ libmagic1 (= 1:5.32-2ubuntu0.2),
+ libmount1 (= 2.31.1-0.4ubuntu3.3),
+ libmpc3 (= 1.1.0-1),
+ libmpdec2 (= 2.4.2-1ubuntu1),
+ libmpfr6 (= 4.0.1-1),
+ libmpx2 (= 8.2.0-1ubuntu2~18.04),
+ libncursesw5 (= 6.1-1ubuntu1.18.04),
+ libpam-modules (= 1.1.8-3.6ubuntu2),
+ libpam-modules-bin (= 1.1.8-3.6ubuntu2),
+ libpam-runtime (= 1.1.8-3.6ubuntu2),
+ libpam0g (= 1.1.8-3.6ubuntu2),
+ libpcre3 (= 2:8.39-9),
+ libperl5.26 (= 5.26.1-6ubuntu0.3),
+ libpipeline1 (= 1.5.0-1),
+ libpython-stdlib (= 2.7.15~rc1-1),
+ libpython2.7-minimal (= 2.7.15~rc1-1ubuntu0.1),
+ libpython2.7-stdlib (= 2.7.15~rc1-1ubuntu0.1),
+ libpython3-stdlib (= 3.6.7-1~18.04),
+ libpython3.6-minimal (= 3.6.7-1~18.04),
+ libpython3.6-stdlib (= 3.6.7-1~18.04),
+ libquadmath0 (= 8.2.0-1ubuntu2~18.04),
+ libreadline7 (= 7.0-3),
+ libseccomp2 (= 2.4.1-0ubuntu0.18.04.2),
+ libselinux1 (= 2.7-2build2),
+ libsigsegv2 (= 2.12-1),
+ libsmartcols1 (= 2.31.1-0.4ubuntu3.3),
+ libsqlite3-0 (= 3.22.0-1),
+ libss2 (= 1.44.1-1ubuntu1.1),
+ libssl1.1 (= 1.1.0g-2ubuntu4.3),
+ libstdc++-7-dev (= 7.3.0-27ubuntu1~18.04),
+ libstdc++6 (= 8.2.0-1ubuntu2~18.04),
+ libsystemd0 (= 237-3ubuntu10.19),
+ libtimedate-perl (= 2.3000-2),
+ libtinfo5 (= 6.1-1ubuntu1.18.04),
+ libtool (= 2.4.6-2),
+ libtsan0 (= 8.2.0-1ubuntu2~18.04),
+ libubsan0 (= 7.3.0-27ubuntu1~18.04),
+ libudev1 (= 237-3ubuntu10.19),
+ libunistring2 (= 0.9.9-0ubuntu1),
+ libuuid1 (= 2.31.1-0.4ubuntu3.3),
+ libxml2 (= 2.9.4+dfsg1-6.1ubuntu1.2),
+ libzstd1 (= 1.3.3+dfsg-2ubuntu1),
+ linux-libc-dev (= 4.15.0-50.54),
+ login (= 1:4.5-1ubuntu1),
+ m4 (= 1.4.18-1),
+ make (= 4.1-9.1ubuntu1),
+ man-db (= 2.8.3-2ubuntu0.1),
+ mawk (= 1.3.3-17ubuntu3),
+ mime-support (= 3.60ubuntu1),
+ ncurses-base (= 6.1-1ubuntu1.18.04),
+ ncurses-bin (= 6.1-1ubuntu1.18.04),
+ patch (= 2.7.6-2ubuntu1),
+ perl (= 5.26.1-6ubuntu0.3),
+ perl-base (= 5.26.1-6ubuntu0.3),
+ perl-modules-5.26 (= 5.26.1-6ubuntu0.3),
+ po-debconf (= 1.0.20),
+ python (= 2.7.15~rc1-1),
+ python-all (= 2.7.15~rc1-1),
+ python-minimal (= 2.7.15~rc1-1),
+ python2.7 (= 2.7.15~rc1-1ubuntu0.1),
+ python2.7-minimal (= 2.7.15~rc1-1ubuntu0.1),
+ python3 (= 3.6.7-1~18.04),
+ python3-all (= 3.6.7-1~18.04),
+ python3-distutils (= 3.6.7-1~18.04),
+ python3-lib2to3 (= 3.6.7-1~18.04),
+ python3-minimal (= 3.6.7-1~18.04),
+ python3-pkg-resources (= 39.0.1-2),
+ python3-setuptools (= 39.0.1-2),
+ python3.6 (= 3.6.7-1~18.04),
+ python3.6-minimal (= 3.6.7-1~18.04),
+ readline-common (= 7.0-3),
+ sed (= 4.4-2),
+ sysvinit-utils (= 2.88dsf-59.10ubuntu1),
+ tar (= 1.29b-2ubuntu0.1),
+ util-linux (= 2.31.1-0.4ubuntu3.3),
+ xz-utils (= 5.2.2-1.3),
+ zlib1g (= 1:1.2.11.dfsg-0ubuntu2)
+Environment:
+ DEB_BUILD_OPTIONS="parallel=72"
+ LANG="en_US.UTF-8"
+ LC_ADDRESS="zh_CN.UTF-8"
+ LC_IDENTIFICATION="zh_CN.UTF-8"
+ LC_MEASUREMENT="zh_CN.UTF-8"
+ LC_MONETARY="zh_CN.UTF-8"
+ LC_NAME="zh_CN.UTF-8"
+ LC_NUMERIC="zh_CN.UTF-8"
+ LC_PAPER="zh_CN.UTF-8"
+ LC_TELEPHONE="zh_CN.UTF-8"
+ LC_TIME="en_CN.UTF-8"
+ MAKEFLAGS="w -- TAG=vpp PLATFORM=vpp"
+ SOURCE_DATE_EPOCH="1559810016"

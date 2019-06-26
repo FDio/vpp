@@ -54,6 +54,11 @@
 typedef struct ldp_worker_ctx_
 {
   u8 *io_buffer;
+  u8 io_used;
+  int last_fd;
+  char *last_path;
+  off_t last_offset;
+  size_t last_len;
   clib_time_t clib_time;
 
   /*
@@ -285,6 +290,76 @@ ldp_init (void)
   LDBG (0, "LDP initialization: done!");
 
   return 0;
+}
+
+ //If the info of last io buffer is right, just return 0, otherwise 1.
+int
+check_reuse_ldp_worker_io_buffer (int fd, off_t * offset, size_t len)
+{
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  if (!vec_len (ldpw->io_buffer))
+    ldpw->io_used = 0;
+  if (ldpw->io_used)
+    {
+      if (fd == ldpw->last_fd && *offset == ldpw->last_offset
+	  && len == ldpw->last_len)
+	return 0;
+    }
+  return 1;
+}
+
+void
+reset_ldp_worker_io_buffer ()
+{
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  vec_reset_length (ldpw->io_buffer);
+  ldpw->io_used = 0;
+}
+
+int
+check_legacy_opened_path (const char *path)
+{
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  if (ldpw->last_path == path && ldpw->io_used == 1)
+    {
+      return ldpw->last_fd;
+    }
+  return 0;
+}
+
+int
+check_legacy_opened_fd (int fd)
+{
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  if (ldpw->io_used == 1 && ldpw->last_fd == fd)
+    {
+      return 0;
+    }
+  return 1;
+}
+
+void
+update_ldp_worker_io_buffer (int in_fd, off_t offset, size_t len)
+{
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  ldpw->io_used = 1;
+  ldpw->last_fd = in_fd;
+  ldpw->last_offset = offset;
+  ldpw->last_len = len;
+}
+
+int
+openat (int dirfd, const char *path, int flags, ...)
+{
+  int rv = check_legacy_opened_path (path);
+  if (rv)
+    {
+      return rv;
+    }
+  else
+    {
+      return libc_openat (dirfd, path, flags);
+    }
 }
 
 int
@@ -1342,6 +1417,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
   vls_handle_t vlsh;
   ssize_t size = 0;
 
+
   if ((errno = -ldp_init ()))
     return -1;
 
@@ -1352,7 +1428,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
       ssize_t results = 0;
       size_t n_bytes_left = len;
       size_t bytes_to_read;
-      int nbytes;
+      int nbytes = 0;
       u8 eagain = 0;
       u32 flags, flags_len = sizeof (flags);
 
@@ -1363,6 +1439,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 		out_fd, vlsh, rv, vppcom_retval_str (rv));
 
 	  vec_reset_length (ldpw->io_buffer);
+	  ldpw->io_used = 0;
 	  errno = -rv;
 	  size = -1;
 	  goto done;
@@ -1388,6 +1465,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 	      LDBG (0, "ERROR: fd %d: vls_attr: vlsh %u returned %d (%s)!",
 		    out_fd, vlsh, size, vppcom_retval_str (size));
 	      vec_reset_length (ldpw->io_buffer);
+	      ldpw->io_used = 0;
 	      errno = -size;
 	      size = -1;
 	      goto done;
@@ -1406,6 +1484,15 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 		continue;
 	    }
 	  bytes_to_read = clib_min (n_bytes_left, bytes_to_read);
+	  if (!check_reuse_ldp_worker_io_buffer (in_fd, offset, len))
+	    {
+	      size = vls_write (vlsh, ldpw->io_buffer, bytes_to_read);
+	      goto done;
+	    }
+	  else
+	    {
+	      reset_ldp_worker_io_buffer ();
+	    }
 	  vec_validate (ldpw->io_buffer, bytes_to_read);
 	  nbytes = libc_read (in_fd, ldpw->io_buffer, bytes_to_read);
 	  if (nbytes < 0)
@@ -1413,6 +1500,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 	      if (results == 0)
 		{
 		  vec_reset_length (ldpw->io_buffer);
+		  ldpw->io_used = 0;
 		  size = -1;
 		  goto done;
 		}
@@ -1436,6 +1524,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 	      if (results == 0)
 		{
 		  vec_reset_length (ldpw->io_buffer);
+		  ldpw->io_used = 0;
 		  errno = -size;
 		  size = -1;
 		  goto done;
@@ -1449,8 +1538,17 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 	}
       while (n_bytes_left > 0);
 
+      if (results == nbytes)
+	{
+	  update_ldp_worker_io_buffer (in_fd, *offset, len);
+	  goto no_update_offset;
+	}
+
+
     update_offset:
       vec_reset_length (ldpw->io_buffer);
+      ldpw->io_used = 0;
+    no_update_offset:
       if (offset)
 	{
 	  off_t off = lseek (in_fd, *offset, SEEK_SET);
@@ -1473,6 +1571,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
     }
   else
     {
+      printf ("\nSGA---Calling libc_sendfile");
       size = libc_sendfile (out_fd, in_fd, offset, len);
     }
 

@@ -505,6 +505,13 @@ libc_close (int fd)
 }
 
 int
+libc_openat (int dirfd, const char *path, int flags, ...)
+{
+  swrap_bind_symbol_libc (openat);
+  return swrap.libc.symbols._libc_openat.f (dirfd, path, flags);
+}
+
+int
 libc_connect (int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
   swrap_bind_symbol_libc (connect);
