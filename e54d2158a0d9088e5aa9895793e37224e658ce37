@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aa0bd838_2c5b05f4",
+        "filename": "src/vnet/session/transport.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-26T18:55:42Z",
+      "side": 1,
+      "message": "To avoid the extra pointer chase, I think it\u0027d be better to embed the options as opposed to keeping a pointer to them. Any reason why you didn\u0027t follow that approach?",
+      "range": {
+        "startLine": 83,
+        "startChar": 2,
+        "endLine": 83,
+        "endChar": 42
+      },
+      "revId": "e54d2158a0d9088e5aa9895793e37224e658ce37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
