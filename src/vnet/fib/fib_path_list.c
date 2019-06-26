@@ -394,8 +394,7 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
             dproto,
             load_balance_create(vec_len(nhs),
                                 dproto,
-                                fib_table_get_default_flow_hash_config(
-                                    dpo_proto_to_fib(dproto))));
+                                load_balance_get_default_flow_hash(dproto)));
     load_balance_multipath_update(dpo, nhs,
                                   fib_path_list_fwd_flags_2_load_balance(flags));
 

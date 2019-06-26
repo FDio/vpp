@@ -172,6 +172,11 @@ I:	mpls
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/mpls/
 
+VNET BIER
+I:	bier
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/bier/
+
 VNET Session Layer
 I:	session
 M:	Florin Coras <fcoras@cisco.com>

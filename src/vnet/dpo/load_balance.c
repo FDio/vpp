@@ -22,6 +22,7 @@
 #include <vnet/adj/adj_internal.h>
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/bier/bier_fwd.h>
+#include <vnet/fib/mpls_fib.h>
 
 /*
  * distribution error tolerance for load-balancing
@@ -186,6 +187,27 @@ format_load_balance_dpo (u8 * s, va_list * args)
     u32 indent = va_arg(*args, u32);
 
     return (load_balance_format(lbi, LOAD_BALANCE_FORMAT_DETAIL, indent, s));
+}
+
+flow_hash_config_t
+load_balance_get_default_flow_hash (dpo_proto_t lb_proto)
+{
+    switch (lb_proto)
+    {
+    case DPO_PROTO_IP4:
+    case DPO_PROTO_IP6:
+        return (IP_FLOW_HASH_DEFAULT);
+
+    case DPO_PROTO_MPLS:
+        return (MPLS_FLOW_HASH_DEFAULT);
+
+    case DPO_PROTO_ETHERNET:
+    case DPO_PROTO_BIER:
+    case DPO_PROTO_NSH:
+        break;
+    }
+
+    return (0);
 }
 
 static load_balance_t *
