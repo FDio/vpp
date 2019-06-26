@@ -87,6 +87,13 @@ F:      src/vnet/devices/tap/
 F:      src/vnet/devices/virtio/node.c
 F:      src/vnet/devices/virtio/device.c
 
+VNET Etherent
+I:	ethernet
+M:	Dave Barach <dave@barachs.net>
+M:	Damjan Marion <damarion@cisco.com>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/ethernet/
+
 VNET Feature Arcs
 I:	feature
 M:	Dave Barach <dave@barachs.net>

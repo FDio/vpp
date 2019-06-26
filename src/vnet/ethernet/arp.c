@@ -1021,6 +1021,7 @@ arp_learn (vnet_main_t * vnm,
 typedef enum arp_input_next_t_
 {
   ARP_INPUT_NEXT_DROP,
+  ARP_INPUT_NEXT_DISABLED,
   ARP_INPUT_N_NEXT,
 } arp_input_next_t;
 
@@ -1075,11 +1076,84 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	     ETHERNET_ARP_ERROR_l3_dst_address_unset : error0);
 
 	  if (ETHERNET_ARP_ERROR_replies_sent == error0)
-	    vnet_feature_arc_start (am->feature_arc_index,
-				    vnet_buffer (p0)->sw_if_index[VLIB_RX],
-				    &next0, p0);
+	    {
+	      next0 = ARP_INPUT_NEXT_DISABLED;
+	      vnet_feature_arc_start (am->feature_arc_index,
+				      vnet_buffer (p0)->sw_if_index[VLIB_RX],
+				      &next0, p0);
+	    }
 	  else
 	    p0->error = node->errors[error0];
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+typedef enum arp_disabled_next_t_
+{
+  ARP_DISABLED_NEXT_DROP,
+  ARP_DISABLED_N_NEXT,
+} arp_disabled_next_t;
+
+#define foreach_arp_disabled_error					\
+  _ (DISABLED, "ARP Disabled on this interface")                    \
+
+typedef enum
+{
+#define _(sym,string) ARP_DISABLED_ERROR_##sym,
+  foreach_arp_disabled_error
+#undef _
+    ARP_DISABLED_N_ERROR,
+} arp_disabled_error_t;
+
+static char *arp_disabled_error_strings[] = {
+#define _(sym,string) string,
+  foreach_arp_disabled_error
+#undef _
+};
+
+static uword
+arp_disabled (vlib_main_t * vm,
+	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  u32 n_left_from, next_index, *from, *to_next, n_left_to_next;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
+				   /* stride */ 1,
+				   sizeof (ethernet_arp_input_trace_t));
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  arp_disabled_next_t next0 = ARP_DISABLED_NEXT_DROP;
+	  vlib_buffer_t *p0;
+	  u32 pi0, error0;
+
+	  next0 = ARP_DISABLED_NEXT_DROP;
+	  error0 = ARP_DISABLED_ERROR_DISABLED;
+
+	  pi0 = to_next[0] = from[0];
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  p0 = vlib_get_buffer (vm, pi0);
+	  p0->error = node->errors[error0];
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
@@ -1550,15 +1624,6 @@ static char *ethernet_arp_error_strings[] = {
 
 /* *INDENT-OFF* */
 
-/* Built-in ARP rx feature path definition */
-VNET_FEATURE_ARC_INIT (arp_feat, static) =
-{
-  .arc_name = "arp",
-  .start_nodes = VNET_FEATURES ("arp-input"),
-  .last_in_arc = "error-drop",
-  .arc_index_ptr = &ethernet_arp_main.feature_arc_index,
-};
-
 VLIB_REGISTER_NODE (arp_input_node, static) =
 {
   .function = arp_input,
@@ -1567,6 +1632,22 @@ VLIB_REGISTER_NODE (arp_input_node, static) =
   .n_errors = ETHERNET_ARP_N_ERROR,
   .error_strings = ethernet_arp_error_strings,
   .n_next_nodes = ARP_INPUT_N_NEXT,
+  .next_nodes = {
+    [ARP_INPUT_NEXT_DROP] = "error-drop",
+    [ARP_INPUT_NEXT_DISABLED] = "arp-disabled",
+  },
+  .format_buffer = format_ethernet_arp_header,
+  .format_trace = format_ethernet_arp_input_trace,
+};
+
+VLIB_REGISTER_NODE (arp_disabled_node, static) =
+{
+  .function = arp_disabled,
+  .name = "arp-disabled",
+  .vector_size = sizeof (u32),
+  .n_errors = ARP_DISABLED_N_ERROR,
+  .error_strings = arp_disabled_error_strings,
+  .n_next_nodes = ARP_DISABLED_N_NEXT,
   .next_nodes = {
     [ARP_INPUT_NEXT_DROP] = "error-drop",
   },
@@ -1606,11 +1687,20 @@ VLIB_REGISTER_NODE (arp_proxy_node, static) =
   .format_trace = format_ethernet_arp_input_trace,
 };
 
+/* Built-in ARP rx feature path definition */
+VNET_FEATURE_ARC_INIT (arp_feat, static) =
+{
+  .arc_name = "arp",
+  .start_nodes = VNET_FEATURES ("arp-input"),
+  .last_in_arc = "arp-disabled",
+  .arc_index_ptr = &ethernet_arp_main.feature_arc_index,
+};
+
 VNET_FEATURE_INIT (arp_reply_feat_node, static) =
 {
   .arc_name = "arp",
   .node_name = "arp-reply",
-  .runs_before = VNET_FEATURES ("error-drop"),
+  .runs_before = VNET_FEATURES ("arp-disabled"),
 };
 
 VNET_FEATURE_INIT (arp_proxy_feat_node, static) =
@@ -1618,13 +1708,14 @@ VNET_FEATURE_INIT (arp_proxy_feat_node, static) =
   .arc_name = "arp",
   .node_name = "arp-proxy",
   .runs_after = VNET_FEATURES ("arp-reply"),
-  .runs_before = VNET_FEATURES ("error-drop"),
+  .runs_before = VNET_FEATURES ("arp-disabled"),
 };
 
 VNET_FEATURE_INIT (arp_drop_feat_node, static) =
 {
   .arc_name = "arp",
-  .node_name = "error-drop",
+  .node_name = "arp-disabled",
+  .runs_before = 0,	/* last feature */
 };
 
 /* *INDENT-ON* */
