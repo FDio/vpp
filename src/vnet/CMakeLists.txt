@@ -677,33 +677,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES udp/udp.api)
 
 ##############################################################################
-# Layer 4 protocol: sctp
-##############################################################################
-list(APPEND VNET_SOURCES
-  sctp/sctp_api.c
-  sctp/sctp.c
-  sctp/sctp_pg.c
-  sctp/sctp_input.c
-  sctp/sctp_output.c
-  sctp/sctp_output_node.c
-  sctp/sctp_format.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  sctp/sctp_output_node.c
-  sctp/sctp_input.c
-)
-
-list(APPEND VNET_HEADERS
-  sctp/sctp_error.def
-  sctp/sctp_packet.h
-  sctp/sctp_timer.h
-  sctp/sctp.h
-)
-
-list(APPEND VNET_API_FILES sctp/sctp.api)
-
-##############################################################################
 # Tunnel protocol: gre
 ##############################################################################
 list(APPEND VNET_SOURCES
