@@ -2202,12 +2202,14 @@ class VppPapiProvider(object):
             self,
             mode,
             lb,
+            numa_only,
             use_custom_mac,
             mac_address='',
             interface_id=0xFFFFFFFF):
         """
         :param mode: mode
         :param lb: load balance
+        :param numa_only: tx on local numa node for lacp mode
         :param use_custom_mac: use custom mac
         :param mac_address: mac address
         :param interface_id: custom interface ID
