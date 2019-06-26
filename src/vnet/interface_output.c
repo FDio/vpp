@@ -800,7 +800,7 @@ static_always_inline void vnet_interface_pcap_tx_trace
   u32 n_left_from, *from;
   u32 sw_if_index;
 
-  if (PREDICT_TRUE (vm->pcap[VLIB_TX].pcap_enable == 0))
+  if (PREDICT_TRUE (vlib_global_main.pcap[VLIB_TX].pcap_enable == 0))
     return;
 
   if (sw_if_index_from_buffer == 0)
@@ -822,9 +822,10 @@ static_always_inline void vnet_interface_pcap_tx_trace
       if (sw_if_index_from_buffer)
 	sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
-      if (vm->pcap[VLIB_TX].pcap_sw_if_index == 0 ||
-	  vm->pcap[VLIB_TX].pcap_sw_if_index == sw_if_index)
-	pcap_add_buffer (&vm->pcap[VLIB_TX].pcap_main, vm, bi0, 512);
+      if (vlib_global_main.pcap[VLIB_TX].pcap_sw_if_index == 0 ||
+	  vlib_global_main.pcap[VLIB_TX].pcap_sw_if_index == sw_if_index)
+	pcap_add_buffer (&vlib_global_main.pcap[VLIB_TX].pcap_main, vm, bi0,
+			 512);
       from++;
       n_left_from--;
     }
