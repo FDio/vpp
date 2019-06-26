@@ -601,8 +601,9 @@ session_main_flush_all_enqueue_events (u8 transport_proto)
   return errors;
 }
 
-int
-session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+always_inline int
+session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
+				      session_state_t opened_state)
 {
   u32 opaque = 0, new_ti, new_si;
   app_worker_t *app_wrk;
@@ -645,6 +646,10 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
       return -1;
     }
 
+  s = session_get (new_si, new_ti);
+  s->session_state = opened_state;
+  session_lookup_add_connection (tc, session_handle (s));
+
   if (app_worker_connect_notify (app_wrk, s, opaque))
     {
       s = session_get (new_si, new_ti);
@@ -652,11 +657,21 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
       return -1;
     }
 
-  s = session_get (new_si, new_ti);
-  s->session_state = SESSION_STATE_READY;
-  session_lookup_add_connection (tc, session_handle (s));
-
   return 0;
+}
+
+int
+session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+{
+  return session_stream_connect_notify_inline (tc, is_fail,
+					       SESSION_STATE_READY);
+}
+
+int
+session_ho_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
+{
+  return session_stream_connect_notify_inline (tc, is_fail,
+					       SESSION_STATE_OPENED);
 }
 
 typedef struct _session_switch_pool_args
@@ -966,6 +981,8 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
    * thing but better than allocating a separate half-open pool.
    */
   tc->s_index = opaque;
+  if (transport_half_open_has_fifos (rmt->transport_proto))
+    return session_ho_stream_connect_notify (tc, 0 /* is_fail */ );
   return 0;
 }
 
