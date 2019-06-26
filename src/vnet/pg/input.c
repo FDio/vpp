@@ -1426,7 +1426,7 @@ format_pg_input_trace (u8 * s, va_list * va)
     s = format (s, "stream %d", t->stream_index);
 
   s = format (s, ", %d bytes", t->packet_length);
-  s = format (s, ", %d sw_if_index", t->sw_if_index);
+  s = format (s, ", sw_if_index %d", t->sw_if_index);
 
   s = format (s, "\n%U%U",
 	      format_white_space, indent, format_vnet_buffer, &t->buffer);
