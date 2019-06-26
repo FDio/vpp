@@ -2517,8 +2517,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
 	{
 	  u32 next_index = adj0[0].rewrite_header.next_index;
-	  b[0]->current_data -= rw_len0;
-	  b[0]->current_length += rw_len0;
+	  vlib_buffer_advance (b[0], -(word) rw_len0);
 	  tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
@@ -2535,8 +2534,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       if (PREDICT_TRUE (error1 == IP4_ERROR_NONE))
 	{
 	  u32 next_index = adj1[0].rewrite_header.next_index;
-	  b[1]->current_data -= rw_len1;
-	  b[1]->current_length += rw_len1;
+	  vlib_buffer_advance (b[1], -(word) rw_len1);
 
 	  tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] = tx_sw_if_index1;
@@ -2653,8 +2651,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
 	{
 	  u32 next_index = adj0[0].rewrite_header.next_index;
-	  b[0]->current_data -= rw_len0;
-	  b[0]->current_length += rw_len0;
+	  vlib_buffer_advance (b[0], -(word) rw_len0);
 	  tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
