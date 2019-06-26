@@ -248,7 +248,7 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_t * fs, u32 data_bytes)
 	    last = c;
 	  c->next = first;
 	  first = c;
-	  n_alloc += c->length;
+	  n_alloc += fl_size;
 	  c->length = clib_min (fl_size, data_bytes);
 	  data_bytes -= c->length;
 	}
@@ -468,6 +468,9 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
     }
   while (cur != f->start_chunk);
 
+  f->start_chunk = f->end_chunk = f->new_chunks = 0;
+  f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
+
   oldheap = ssvm_push_heap (sh);
   svm_fifo_free_chunk_lookup (f);
   ssvm_pop_heap (oldheap);
@@ -632,7 +635,7 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
   if (!fs_chunk_size_is_valid (chunk_size))
     {
       clib_warning ("chunk size out of range %d", chunk_size);
-      return 0;
+      return -1;
     }
 
   fl_index = fs_freelist_for_size (chunk_size);
@@ -651,6 +654,7 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
       if (!c)
 	{
 	  ssvm_pop_heap (oldheap);
+	  ssvm_unlock_non_recursive (sh);
 	  return -1;
 	}
     }
@@ -658,6 +662,7 @@ fifo_segment_grow_fifo (fifo_segment_t * fs, svm_fifo_t * f, u32 chunk_size)
     {
       fs->h->free_chunks[fl_index] = c->next;
       c->next = 0;
+      fs->h->n_fl_chunk_bytes -= fs_freelist_index_to_size (fl_index);
     }
 
   svm_fifo_add_chunk (f, c);
@@ -783,7 +788,7 @@ fifo_segment_free_bytes (fifo_segment_t * fs)
 }
 
 u32
-fifo_segment_chunk_prealloc_bytes (fifo_segment_t * fs)
+fifo_segment_fl_chunk_bytes (fifo_segment_t * fs)
 {
   return fs->h->n_fl_chunk_bytes;
 }
