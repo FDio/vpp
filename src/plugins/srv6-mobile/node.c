@@ -601,7 +601,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 	      uword *p;
 	      ip6srv_combo_header_t *ip6srv;
-	      ip6_sr_policy_t *sr_policy;
+	      ip6_sr_policy_t *sr_policy = NULL;
 	      ip6_sr_sl_t *sl = NULL;
 	      u32 *sl_index;
 	      u32 hdr_len;
@@ -815,7 +815,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 	      uword *p;
 	      ip6srv_combo_header_t *ip6srv;
-	      ip6_sr_policy_t *sr_policy;
+	      ip6_sr_policy_t *sr_policy = NULL;
 	      ip6_sr_sl_t *sl = NULL;
 	      u32 *sl_index;
 	      u32 hdr_len;
