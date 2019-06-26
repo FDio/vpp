@@ -242,6 +242,7 @@ tcp_bt_alloc_tx_sample (tcp_connection_t * tc, u32 min_seq)
   bts->delivered = tc->delivered;
   bts->delivered_time = tc->delivered_time;
   bts->tx_rate = transport_connection_tx_pacer_rate (&tc->connection);
+  bts->tx_time = tcp_time_now_us (tc->c_thread_index);
   bts->flags |= tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
   return bts;
 }
@@ -268,7 +269,7 @@ tcp_bt_track_tx (tcp_connection_t * tc)
   tcp_bt_sample_t *bts, *tail;
   u32 bts_index;
 
-  if (!tcp_flight_size (tc))
+  if (tc->snd_una == tc->snd_nxt)
     tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
 
   bts = tcp_bt_alloc_tx_sample (tc, tc->snd_nxt);
@@ -415,12 +416,12 @@ static void
 tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
 			      tcp_rate_sample_t * rs)
 {
-  if (rs->sample_delivered && rs->sample_delivered >= bts->delivered)
+  if (rs->prior_delivered && rs->prior_delivered >= bts->delivered)
     return;
 
-  rs->sample_delivered = bts->delivered;
-  rs->delivered = tc->delivered - bts->delivered;
-  rs->ack_time = tc->delivered_time - bts->delivered_time;
+  rs->prior_delivered = bts->delivered;
+  rs->prior_time = bts->delivered_time;
+  rs->rtt_time = bts->tx_time;
   rs->tx_rate = bts->tx_rate;
   rs->flags = bts->flags;
 }
@@ -527,6 +528,12 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tc->sack_sb.last_sacked_bytes)
     tcp_bt_walk_samples_ooo (tc, rs);
+
+  rs->interval_time = tc->delivered_time - rs->prior_time;
+  rs->delivered = tc->delivered - rs->prior_delivered;
+  rs->rtt_time = tc->delivered_time - rs->rtt_time;
+  rs->acked_and_sacked = delivered;
+  rs->lost = tc->sack_sb.last_lost_bytes;
 }
 
 void
