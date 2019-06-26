@@ -49,6 +49,14 @@ gbp_src_classify_init (vlib_main_t * vm)
 			       l2input_get_feat_names (),
 			       em->l2_input_feat_next[GBP_SRC_CLASSIFY_LPM]);
 
+  node = vlib_get_node_by_name (vm, (u8 *) "l2-gbp-lpm-anon-classify");
+  feat_bitmap_init_next_nodes (vm,
+			       node->index,
+			       L2INPUT_N_FEAT,
+			       l2input_get_feat_names (),
+			       em->l2_input_feat_next
+			       [GBP_SRC_CLASSIFY_LPM_ANON]);
+
   return 0;
 }
 
