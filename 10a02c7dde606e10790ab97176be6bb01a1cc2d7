@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "a296f251_8f3f9914",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "Some linters complain.",
+      "parentUuid": "9953dc0e_75ea72fc",
+      "range": {
+        "startLine": 1,
+        "startChar": 1,
+        "endLine": 1,
+        "endChar": 3
+      },
+      "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "780a7e79_3dbacf96",
         "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
         "patchSetId": 19
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "483d5088_dca1d055",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "Done in subclasses. See VPPApiClientValueError",
+      "parentUuid": "780a7e79_3dbacf96",
+      "range": {
+        "startLine": 29,
+        "startChar": 33,
+        "endLine": 29,
+        "endChar": 34
+      },
+      "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "39ad2c39_4c664552",
         "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
         "patchSetId": 19
@@ -59,6 +107,30 @@
       "writtenOn": "2019-06-27T19:06:22Z",
       "side": 1,
       "message": "I found [2] this:\n  The BaseException.__init__ signature is actually BaseException.__init__(*args)\n\nNot sure how that works, as later examples show usage of keyword arguments.\nBut they are not using super() with diamond inheritance between classes of different signatures, so perhaps what I wrote for previous patch remains true, and you should avoid super().\n\nToo late for me to try and find toy examples for that.\n\n[2] https://julien.danjou.info/python-exceptions-guide/",
+      "range": {
+        "startLine": 80,
+        "startChar": 52,
+        "endLine": 80,
+        "endChar": 55
+      },
+      "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ed8ae6b3_6a550dd9",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "It needs to be *arg in my signature, not the callers.  Will do in https://gerrit.fd.io/r/#/c/20393/",
+      "parentUuid": "39ad2c39_4c664552",
       "range": {
         "startLine": 80,
         "startChar": 52,
