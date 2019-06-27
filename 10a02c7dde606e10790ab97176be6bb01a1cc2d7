@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9953dc0e_75ea72fc",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-27T19:06:22Z",
+      "side": 1,
+      "message": "Why two spaces?\n\n~/fdio/vpp$ fgrep -rn \u0027# Copyright\u0027 | wc -l\n172\n~/fdio/vpp$ fgrep -rn \u0027#  Copyright\u0027 | wc -l\n2",
+      "range": {
+        "startLine": 1,
+        "startChar": 1,
+        "endLine": 1,
+        "endChar": 3
+      },
+      "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "780a7e79_3dbacf96",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-27T19:06:22Z",
+      "side": 1,
+      "message": "Will you be adding also nice __repr__ methods which list the argument values?",
+      "range": {
+        "startLine": 29,
+        "startChar": 33,
+        "endLine": 29,
+        "endChar": 34
+      },
+      "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "39ad2c39_4c664552",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-27T19:06:22Z",
+      "side": 1,
+      "message": "I found [2] this:\n  The BaseException.__init__ signature is actually BaseException.__init__(*args)\n\nNot sure how that works, as later examples show usage of keyword arguments.\nBut they are not using super() with diamond inheritance between classes of different signatures, so perhaps what I wrote for previous patch remains true, and you should avoid super().\n\nToo late for me to try and find toy examples for that.\n\n[2] https://julien.danjou.info/python-exceptions-guide/",
+      "range": {
+        "startLine": 80,
+        "startChar": 52,
+        "endLine": 80,
+        "endChar": 55
+      },
+      "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5da97a9e_63636de4",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 588,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-27T19:06:22Z",
+      "side": 1,
+      "message": "My earlier comments about self. or cls. still hold.",
+      "range": {
+        "startLine": 588,
+        "startChar": 18,
+        "endLine": 588,
+        "endChar": 33
+      },
+      "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
