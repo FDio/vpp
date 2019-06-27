@@ -180,6 +180,7 @@ typedef enum
 
 typedef struct
 {
+  u32 bi;
   ip4_sv_reass_trace_operation_e action;
   u32 reass_id;
   u32 op_id;
@@ -194,7 +195,8 @@ format_ip4_sv_reass_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_sv_reass_trace_t *t = va_arg (*args, ip4_sv_reass_trace_t *);
-  s = format (s, "reass id: %u, op id: %u ", t->reass_id, t->op_id);
+  s = format (s, "reass id: %u, op id: %u, bi: %u ", t->reass_id, t->op_id,
+	     t->bi);
   switch (t->action)
     {
     case REASS_FRAGMENT_CACHE:
@@ -217,6 +219,7 @@ ip4_sv_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   ip4_sv_reass_trace_t *t = vlib_add_trace (vm, node, b, sizeof (t[0]));
+  t->bi = bi;
   t->reass_id = reass->id;
   t->action = action;
   t->op_id = reass->trace_op_counter;

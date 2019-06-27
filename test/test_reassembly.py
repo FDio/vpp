@@ -700,6 +700,7 @@ class TestIPv4SVReassembly(VppTestCase):
         self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
         self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vapi.ppcli("clear trace"))
         self.dst_if.assert_nothing_captured()
 
         # send fragment #1 - reassembly is finished now and both fragments
