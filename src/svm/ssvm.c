@@ -117,6 +117,7 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
   sh->name = format (0, "%s", ssvm->name, 0);
   ssvm_pop_heap (oldheap);
 
+  ssvm->requested_va = requested_va;
   ssvm->sh = sh;
   ssvm->my_pid = getpid ();
   ssvm->i_am_master = 1;
