@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "df108a0a_d18aec06",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-27T18:11:01Z",
+      "side": 1,
+      "message": "static inline should be fine",
+      "range": {
+        "startLine": 604,
+        "startChar": 0,
+        "endLine": 604,
+        "endChar": 13
+      },
+      "revId": "2c84f738e784993d9a19d0f393a5fe7761f4152c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
