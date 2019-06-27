@@ -52,6 +52,24 @@
       "revId": "6533f52ac38a1c77e3d2865b3d19c02b7beb9a0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "90ad3ee1_29929ef6",
+        "filename": "src/plugins/acl/dataplane_node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-06-27T10:03:28Z",
+      "side": 1,
+      "message": "in the latest code it is optional - though the performance impact of touching the stats segment only for packets and for both packets and bytes seems about the same, so I added the switch to have it on or off. The performance impact is about 10% of the best case, but of course will depend on the config. So you can just flip the switch in the very beginning of operation and keep it on, but the other users do not have to. Is this approach okay ?",
+      "parentUuid": "1f1684a2_c37455e3",
+      "revId": "6533f52ac38a1c77e3d2865b3d19c02b7beb9a0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
