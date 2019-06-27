@@ -208,7 +208,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
 
   if (!args->host_if_name)
-    args->host_if_name = (u8 *) ifr.ifr_ifrn.ifrn_name;
+    args->host_if_name = format (0, "%s", ifr.ifr_ifrn.ifrn_name);
 
   unsigned int offload = 0;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
@@ -545,6 +545,10 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
 							       TX_QUEUE (i));
   vec_free (vif->rxq_vrings);
   vec_free (vif->txq_vrings);
+
+  vec_free (vif->host_if_name);
+  vec_free (vif->net_ns);
+  vec_free (vif->host_bridge);
 
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 0);
   clib_memset (vif, 0, sizeof (*vif));
