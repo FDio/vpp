@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a116f2bd_2bd91a21",
+        "filename": "src/vnet/session/transport.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-27T17:24:07Z",
+      "side": 1,
+      "message": "I only saw this now. I\u0027d rename it to just options, to avoid the long names, but we can do it in a future patch.",
+      "range": {
+        "startLine": 83,
+        "startChar": 22,
+        "endLine": 83,
+        "endChar": 39
+      },
+      "revId": "7f912814f66d7e5b34acfdddd76a1f47fd724ce9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
