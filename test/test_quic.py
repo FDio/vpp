@@ -131,7 +131,7 @@ class QUICEchoInternalTransferTestCase(QUICEchoInternalTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_internal_transfer(self):
         self.server()
-        self.client("no-output", "mbytes", "10")
+        self.client("no-output", "mbytes", "2")
 
 
 class QUICEchoInternalSerialTestCase(QUICEchoInternalTestCase):
@@ -139,11 +139,11 @@ class QUICEchoInternalSerialTestCase(QUICEchoInternalTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_serial_internal_transfer(self):
         self.server()
-        self.client("no-output", "mbytes", "10")
-        self.client("no-output", "mbytes", "10")
-        self.client("no-output", "mbytes", "10")
-        self.client("no-output", "mbytes", "10")
-        self.client("no-output", "mbytes", "10")
+        self.client("no-output", "mbytes", "2")
+        self.client("no-output", "mbytes", "2")
+        self.client("no-output", "mbytes", "2")
+        self.client("no-output", "mbytes", "2")
+        self.client("no-output", "mbytes", "2")
 
 
 class QUICEchoInternalMStreamTestCase(QUICEchoInternalTestCase):
