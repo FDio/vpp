@@ -16,6 +16,24 @@
       "revId": "661b4cf4d693b32e94575da50ad2117bc11edb18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cacbb3fe_8d305374",
+        "filename": "src/plugins/gbp/gbp.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-06-27T09:48:44Z",
+      "side": 1,
+      "message": "we can, but would\u0027nt it be confusing?\nIt is specific to the use of \"anonymous l3out\" interfaces. When using external EP, we do not want to use that, even if in that case, the BVI subnet is still a \u0027connected\u0027 l3out.",
+      "parentUuid": "eb240c8b_a3ede2ae",
+      "revId": "661b4cf4d693b32e94575da50ad2117bc11edb18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
