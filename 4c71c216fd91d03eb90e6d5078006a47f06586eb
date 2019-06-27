@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "135d0f22_3ec9c767",
+        "filename": "src/vpp-api/python/vpp_papi/__init__.py",
+        "patchSetId": 18
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d8a9086c_daa78ed3",
+      "range": {
+        "startLine": 1,
+        "startChar": 67,
+        "endLine": 1,
+        "endChar": 79
+      },
+      "revId": "4c71c216fd91d03eb90e6d5078006a47f06586eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "438874c1_69a8a00a",
         "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
         "patchSetId": 18
@@ -59,6 +83,30 @@
       "writtenOn": "2019-06-27T19:06:22Z",
       "side": 1,
       "message": "If I understand the point of line 195 correctly, downstream is allowed to execute\n  VPPApiClient.VPPApiClientValueError \u003d MyErrorWithCompatibleSignatureAndSemantics\nbefore creating VPPApiClient instance, to make it raise the custom exception, right?\n\nIn that case, I thing the highlighted expression should read:\n  self.VPPApiClientValueError\n\nAt least that was needed when I tried a toy example (in Python 2.7).",
+      "range": {
+        "startLine": 246,
+        "startChar": 22,
+        "endLine": 246,
+        "endChar": 44
+      },
+      "revId": "4c71c216fd91d03eb90e6d5078006a47f06586eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ff89868_b375e976",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 18
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "16efdd3c_f994113b",
       "range": {
         "startLine": 246,
         "startChar": 22,
@@ -140,6 +188,30 @@
     },
     {
       "key": {
+        "uuid": "7d89bb53_8f9d7bd9",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 18
+      },
+      "lineNbr": 566,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a341f4ed_ab934ffc",
+      "range": {
+        "startLine": 566,
+        "startChar": 39,
+        "endLine": 566,
+        "endChar": 40
+      },
+      "revId": "4c71c216fd91d03eb90e6d5078006a47f06586eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cc0a5b09_13f673bf",
         "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
         "patchSetId": 18
@@ -151,6 +223,30 @@
       "writtenOn": "2019-06-27T19:06:22Z",
       "side": 1,
       "message": "self.VPPApiClientRuntimeError :)\n\nAlso, do not raise, return empty list instead (without caching), so that line 810 works.",
+      "range": {
+        "startLine": 798,
+        "startChar": 22,
+        "endLine": 798,
+        "endChar": 34
+      },
+      "revId": "4c71c216fd91d03eb90e6d5078006a47f06586eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cae91013_f7b4e7ad",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 18
+      },
+      "lineNbr": 798,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cc0a5b09_13f673bf",
       "range": {
         "startLine": 798,
         "startChar": 22,
@@ -186,6 +282,30 @@
     },
     {
       "key": {
+        "uuid": "e53a20ab_f55bf63a",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 18
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ac0bf30b_a9cb1ce2",
+      "range": {
+        "startLine": 22,
+        "startChar": 17,
+        "endLine": 22,
+        "endChar": 24
+      },
+      "revId": "4c71c216fd91d03eb90e6d5078006a47f06586eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "333041ee_d43ff25f",
         "filename": "test/vpp_papi_provider.py",
         "patchSetId": 18
@@ -197,6 +317,30 @@
       "writtenOn": "2019-06-27T19:06:22Z",
       "side": 1,
       "message": "Good idea, but why not make the connectedness tracked already in VPPApiClient instances?",
+      "range": {
+        "startLine": 172,
+        "startChar": 8,
+        "endLine": 172,
+        "endChar": 23
+      },
+      "revId": "4c71c216fd91d03eb90e6d5078006a47f06586eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a31a834c_c6194be4",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 18
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T23:02:09Z",
+      "side": 1,
+      "message": "Done.  This was a remnant from before when Ole suggested the changes move to papi.",
+      "parentUuid": "333041ee_d43ff25f",
       "range": {
         "startLine": 172,
         "startChar": 8,
