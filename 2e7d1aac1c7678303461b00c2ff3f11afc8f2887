@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a694c92c_5c83bcc4",
+        "filename": "src/plugins/hs_apps/sapi/quic_echo.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-06-27T16:35:49Z",
+      "side": 1,
+      "message": "Eventually these should be configurable via command line args.  For now, I\u0027m fine with adding TODO comment here.",
+      "range": {
+        "startLine": 43,
+        "startChar": 0,
+        "endLine": 44,
+        "endChar": 42
+      },
+      "revId": "2e7d1aac1c7678303461b00c2ff3f11afc8f2887",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "becf880a_2691b367",
+        "filename": "src/plugins/hs_apps/sapi/quic_echo.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-06-27T16:35:49Z",
+      "side": 1,
+      "message": "Can you please convert this macro name to uppercase?\n\nI\u0027d prefer not to propagate the lowercase macro naming nomenclature used in vppinfa \u0026 vlib.",
+      "range": {
+        "startLine": 55,
+        "startChar": 8,
+        "endLine": 55,
+        "endChar": 17
+      },
+      "revId": "2e7d1aac1c7678303461b00c2ff3f11afc8f2887",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
