@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6790a70e_8253343b",
+        "filename": "docs/usecases/vhost/vhost02.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T02:09:12Z",
+      "side": 1,
+      "message": "In QEMU 2.10.0 and libvirt 3.7.0 and newer versions,\n\nhttps://bugs.launchpad.net/charm-nova-compute/+bug/1804170",
+      "range": {
+        "startLine": 65,
+        "startChar": 14,
+        "endLine": 65,
+        "endChar": 32
+      },
+      "revId": "77f0d7f2d0542f4b42024eb737d3daa88c2da8e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
