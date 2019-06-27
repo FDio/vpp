@@ -510,6 +510,7 @@ typedef struct _sctp_main
 
   /* Flag that indicates if stack is on or off */
   u8 is_enabled;
+  u8 is_init;
 
 	  /** Number of preallocated connections */
   u32 preallocated_connections;
