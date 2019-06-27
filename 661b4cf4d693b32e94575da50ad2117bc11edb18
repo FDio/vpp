@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb240c8b_a3ede2ae",
+        "filename": "src/plugins/gbp/gbp.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-06-27T09:40:24Z",
+      "side": 1,
+      "message": "can we call this the \u0027connected\u0027 L3 out?",
+      "revId": "661b4cf4d693b32e94575da50ad2117bc11edb18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
