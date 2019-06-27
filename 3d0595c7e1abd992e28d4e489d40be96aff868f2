@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "445fe728_9de1d34b",
+        "filename": "src/plugins/acl/acl.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-27T10:23:35Z",
+      "side": 1,
+      "message": "enable [default\u003dtrue];",
+      "range": {
+        "startLine": 560,
+        "startChar": 7,
+        "endLine": 560,
+        "endChar": 14
+      },
+      "revId": "3d0595c7e1abd992e28d4e489d40be96aff868f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
