@@ -49,7 +49,7 @@ typedef struct
     {
       ip6_address_t src;
       ip6_address_t dst;
-      u32 xx_id;
+      u32 fib_index;
       u32 frag_id;
       u8 unused[7];
       u8 proto;
@@ -706,6 +706,7 @@ ip6_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       *next0 = reass->next_index;
     }
   vnet_buffer (first_b)->ip.reass.estimated_mtu = reass->min_fragment_length;
+  vnet_buffer (first_b)->ip.fib_index = reass->key.fib_index;
   ip6_reass_free (rm, rt, reass);
   reass = NULL;
 free_buffers_and_return:
@@ -1013,10 +1014,20 @@ ip6_reassembly_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  kv.k.as_u64[1] = ip0->src_address.as_u64[1];
 	  kv.k.as_u64[2] = ip0->dst_address.as_u64[0];
 	  kv.k.as_u64[3] = ip0->dst_address.as_u64[1];
-	  kv.k.as_u64[4] =
-	    ((u64) vec_elt (ip6_main.fib_index_by_sw_if_index,
-			    vnet_buffer (b0)->sw_if_index[VLIB_RX])) << 32 |
-	    (u64) frag_hdr->identification;
+	  if (is_feature)
+	    {
+	      kv.k.as_u64[4] =
+		((u64) vec_elt (ip6_main.fib_index_by_sw_if_index,
+				vnet_buffer (b0)->sw_if_index[VLIB_RX])) << 32
+		| (u64) frag_hdr->identification;
+	    }
+	  else
+	    {
+	      /* non-feature must prefill ip.fib_index */
+	      kv.k.as_u64[4] =
+		((u64) (vnet_buffer (b0)->ip.fib_index)) << 32 |
+		(u64) frag_hdr->identification;
+	    }
 	  kv.k.as_u64[5] = ip0->protocol;
 
 	  ip6_reass_t *reass =
@@ -1455,9 +1466,10 @@ static u8 *
 format_ip6_reass_key (u8 * s, va_list * args)
 {
   ip6_reass_key_t *key = va_arg (*args, ip6_reass_key_t *);
-  s = format (s, "xx_id: %u, src: %U, dst: %U, frag_id: %u, proto: %u",
-	      key->xx_id, format_ip6_address, &key->src, format_ip6_address,
-	      &key->dst, clib_net_to_host_u16 (key->frag_id), key->proto);
+  s = format (s, "fib_index: %u, src: %U, dst: %U, frag_id: %u, proto: %u",
+	      key->fib_index, format_ip6_address, &key->src,
+	      format_ip6_address, &key->dst,
+	      clib_net_to_host_u16 (key->frag_id), key->proto);
   return s;
 }
 

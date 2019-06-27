@@ -20,6 +20,7 @@
  * This file contains the source code for IPv4 reassembly.
  */
 
+#include <stddef.h>		/* for offsetof */
 #include <vppinfra/vec.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
@@ -55,6 +56,10 @@
 #define IP4_REASS_DEBUG_BUFFER(...)
 #endif
 
+STATIC_ASSERT ((offsetof (vnet_buffer_opaque_t, ip.fib_index) ==
+		offsetof (vnet_buffer_opaque_t, ip.reass.fib_index_rsvd0)),
+	       "VNET buffer ip.fib_index, ip.reass.fib_index_rsvd0, not same offset");
+
 typedef enum
 {
   IP4_REASS_RC_OK,
@@ -69,7 +74,7 @@ typedef struct
   {
     struct
     {
-      u32 xx_id;
+      u32 fib_index;
       ip4_address_t src;
       ip4_address_t dst;
       u16 frag_id;
@@ -653,6 +658,7 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       *next0 = reass->next_index;
     }
   vnet_buffer (first_b)->ip.reass.estimated_mtu = reass->min_fragment_length;
+  vnet_buffer (first_b)->ip.fib_index = reass->key.fib_index;
   *error0 = IP4_ERROR_NONE;
   ip4_reass_free (rm, rt, reass);
   reass = NULL;
@@ -1044,11 +1050,20 @@ ip4_reassembly_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  ip4_reass_kv_t kv;
 		  u8 do_handoff = 0;
-
-		  kv.k.as_u64[0] =
-		    (u64) vec_elt (ip4_main.fib_index_by_sw_if_index,
-				   vnet_buffer (b0)->sw_if_index[VLIB_RX]) |
-		    (u64) ip0->src_address.as_u32 << 32;
+		  if (is_feature)
+		    {
+		      kv.k.as_u64[0] =
+			(u64) vec_elt (ip4_main.fib_index_by_sw_if_index,
+				       vnet_buffer (b0)->sw_if_index[VLIB_RX])
+			| (u64) ip0->src_address.as_u32 << 32;
+		    }
+		  else
+		    {
+		      /* non-feature must prefill ip.fib_index */
+		      kv.k.as_u64[0] =
+			(u64) vnet_buffer (b0)->ip.fib_index |
+			(u64) ip0->src_address.as_u32 << 32;
+		    }
 		  kv.k.as_u64[1] =
 		    (u64) ip0->dst_address.as_u32 |
 		    (u64) ip0->fragment_id << 32 | (u64) ip0->protocol << 48;
@@ -1441,9 +1456,10 @@ static u8 *
 format_ip4_reass_key (u8 * s, va_list * args)
 {
   ip4_reass_key_t *key = va_arg (*args, ip4_reass_key_t *);
-  s = format (s, "xx_id: %u, src: %U, dst: %U, frag_id: %u, proto: %u",
-	      key->xx_id, format_ip4_address, &key->src, format_ip4_address,
-	      &key->dst, clib_net_to_host_u16 (key->frag_id), key->proto);
+  s = format (s, "fib_index: %u, src: %U, dst: %U, frag_id: %u, proto: %u",
+	      key->fib_index, format_ip4_address, &key->src,
+	      format_ip4_address, &key->dst,
+	      clib_net_to_host_u16 (key->frag_id), key->proto);
   return s;
 }
 
