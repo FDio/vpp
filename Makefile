@@ -445,7 +445,7 @@ test-wipe-doc:
 	@make -C test wipe-doc
 
 test-cov:
-	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install japi-install
+	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
