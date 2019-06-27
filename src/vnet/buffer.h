@@ -188,8 +188,9 @@ typedef struct
 	  /* in/out variables */
 	  struct
 	  {
-	    u32 next_index;	/* index of next node - used by custom apps */
-	    u32 error_next_index;	/* index of next node if error - used by custom apps */
+	    u16 next_index;	/* index of next node - used by custom apps */
+	    u16 error_next_index;	/* index of next node if error - used by custom apps */
+	    u32 fib_index_rsvd0;	/* placeholder, so both fib_index and estimated_mtu can be updated by reass end */
 	    u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
 	    u16 owner_thread_index;
 	  };
