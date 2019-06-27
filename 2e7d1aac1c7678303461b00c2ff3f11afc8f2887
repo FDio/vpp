@@ -45,6 +45,29 @@
       "revId": "2e7d1aac1c7678303461b00c2ff3f11afc8f2887",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85c3bd81_c13990ef",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-27T18:29:31Z",
+      "side": 1,
+      "message": "Notification on tx if the fifo is empty? Why? :-)",
+      "range": {
+        "startLine": 48,
+        "startChar": 2,
+        "endLine": 48,
+        "endChar": 33
+      },
+      "revId": "2e7d1aac1c7678303461b00c2ff3f11afc8f2887",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
