@@ -84,7 +84,7 @@ class VppDiedError(Exception):
 
         try:
             self.signal_name = VppDiedError.signals_by_value[-rv]
-        except KeyError:
+        except (KeyError, TypeError):
             pass
 
         if testcase is None and method_name is None:
@@ -681,10 +681,9 @@ class VppTestCase(unittest.TestCase):
         super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
         if self.vpp_dead:
-            raise VppDiedError(self.__class__.__name__, self._testMethodName,
-                               "VPP is dead when setting up the test "
-                               "(%s.%s)." % (self.__class__.__name__,
-                                             self._testMethodName))
+
+            raise VppDiedError(rv=None, testcase=self.__class__.__name__,
+                               method_name=self._testMethodName)
         self.sleep(.1, "during setUp")
         self.vpp_stdout_deque.append(
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
