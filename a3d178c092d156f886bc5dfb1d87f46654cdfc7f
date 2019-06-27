@@ -16,6 +16,24 @@
       "revId": "a3d178c092d156f886bc5dfb1d87f46654cdfc7f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b9543b9c_b614b851",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 713,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-06-27T02:09:37Z",
+      "side": 1,
+      "message": "thanks for your pointing out. The example is very great. If the ith element in non-numa node is moved to the last one, original i+1 element becomes the current ith element and miss the needed checking.  Let me check if we can avoid this kind of computation in data plane.",
+      "parentUuid": "49975f8a_7144b9eb",
+      "revId": "a3d178c092d156f886bc5dfb1d87f46654cdfc7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
