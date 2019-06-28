@@ -638,7 +638,7 @@ echo_session_dequeue_notify (echo_session_t * s)
   int rv;
   rv = app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
 			       SESSION_IO_EVT_RX, SVM_Q_WAIT);
-  svm_fifo_clear_tx_ntf (s->rx_fifo);
+  svm_fifo_clear_deq_ntf (s->rx_fifo);
   if (rv)
     ECHO_FAIL ("app_send_io_evt_to_vpp errored %d", rv);
 }
@@ -825,7 +825,7 @@ recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
   n_read = app_recv_stream ((app_session_t *) s, rx_buf, vec_len (rx_buf));
   if (n_read <= 0)
     return 0;
-  if (svm_fifo_needs_tx_ntf (s->rx_fifo, n_read))
+  if (svm_fifo_needs_deq_ntf (s->rx_fifo, n_read))
     echo_session_dequeue_notify (s);
 
   if (em->test_return_packets)

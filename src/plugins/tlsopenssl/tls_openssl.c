@@ -333,7 +333,7 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 	}
     }
 
-  if (svm_fifo_needs_tx_ntf (app_session->tx_fifo, wrote))
+  if (svm_fifo_needs_deq_ntf (app_session->tx_fifo, wrote))
     session_dequeue_notify (app_session);
 
   if (wrote < deq_max)

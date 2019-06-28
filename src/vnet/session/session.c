@@ -449,7 +449,7 @@ session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 
   rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
 
-  if (svm_fifo_needs_tx_ntf (s->tx_fifo, max_bytes))
+  if (svm_fifo_needs_deq_ntf (s->tx_fifo, max_bytes))
     session_dequeue_notify (s);
 
   return rv;
@@ -549,7 +549,7 @@ session_dequeue_notify (session_t * s)
     return session_notify_subscribers (app_wrk->app_index, s,
 				       s->tx_fifo, SESSION_IO_EVT_TX);
 
-  svm_fifo_clear_tx_ntf (s->tx_fifo);
+  svm_fifo_clear_deq_ntf (s->tx_fifo);
 
   return 0;
 }
