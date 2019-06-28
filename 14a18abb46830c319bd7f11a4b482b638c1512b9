@@ -22,6 +22,30 @@
       "revId": "14a18abb46830c319bd7f11a4b482b638c1512b9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a77b0d9d_534f3e86",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 7
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-28T15:11:36Z",
+      "side": 1,
+      "message": "I would agree with you, but I started researching this a bit.  \n1) IEEE f64 endianess is not defined.https://stackoverflow.com/questions/2945174/floating-point-endianness.\n2) I haven\u0027t been able to transfer f64 over the api without it.\n\nI\u0027m open to alternatives that actually work. ;)",
+      "parentUuid": "6dbe757d_86727d79",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 34
+      },
+      "revId": "14a18abb46830c319bd7f11a4b482b638c1512b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
