@@ -638,7 +638,7 @@ echo_session_dequeue_notify (echo_session_t * s)
   int rv;
   rv = app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
 			       SESSION_IO_EVT_RX, SVM_Q_WAIT);
-  svm_fifo_clear_tx_ntf (s->rx_fifo);
+  svm_fifo_clear_ntf (s->rx_fifo);
   if (rv)
     ECHO_FAIL ("app_send_io_evt_to_vpp errored %d", rv);
 }

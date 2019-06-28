@@ -549,7 +549,7 @@ session_dequeue_notify (session_t * s)
     return session_notify_subscribers (app_wrk->app_index, s,
 				       s->tx_fifo, SESSION_IO_EVT_TX);
 
-  svm_fifo_clear_tx_ntf (s->tx_fifo);
+  svm_fifo_clear_ntf (s->tx_fifo);
 
   return 0;
 }
