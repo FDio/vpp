@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f4532889_2fcd7d52",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 810,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-06-28T20:26:09Z",
+      "side": 1,
+      "message": "Please delete the padding member, it\u0027s not useful given the CLIB_CACHE_LINE_ALIGN_MARK(...) macro.",
+      "revId": "dcde416d5cbe0ce1761d2e1a787a99148d461dc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
