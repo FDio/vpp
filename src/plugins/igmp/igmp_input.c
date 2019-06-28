@@ -61,7 +61,7 @@ typedef struct
 {
   u32 next_index;
   u32 sw_if_index;
-
+  u32 len;
   u8 packet_data[64];
 } igmp_input_trace_t;
 
@@ -100,10 +100,12 @@ format_igmp_parse_query_trace (u8 * s, va_list * va)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   igmp_input_trace_t *t = va_arg (*va, igmp_input_trace_t *);
 
-  s = format (s, "sw_if_index %u next-input %u",
-	      t->sw_if_index, t->next_index);
+  s = format (s, "sw_if_index %u next-input %u len %u",
+	      t->sw_if_index, t->next_index, t->len);
   s = format (s, "\n%U", format_igmp_query_v3, t->packet_data,
 	      sizeof (t->packet_data));
+  s = format (s, "\n%U", format_hex_bytes,
+	      t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
@@ -203,6 +205,7 @@ igmp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	      tr->next_index = next;
 	      tr->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+	      tr->len = vlib_buffer_length_in_chain (vm, b);
 	      clib_memcpy_fast (tr->packet_data, vlib_buffer_get_current (b),
 				sizeof (tr->packet_data));
 	    }
@@ -280,6 +283,7 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	      tr->next_index = next;
 	      tr->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+	      tr->len = vlib_buffer_length_in_chain (vm, b);
 	      clib_memcpy_fast (tr->packet_data, vlib_buffer_get_current (b),
 				sizeof (tr->packet_data));
 	    }
@@ -302,10 +306,14 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vl_api_rpc_call_main_thread (igmp_handle_query,
 					   (u8 *) args, sizeof (*args) + len);
 	    }
-	  /*
-	   * else a packet that is reporting more or less sources
-	   * than it really has, bin it
-	   */
+	  else
+	    {
+	      /*
+	       * else a packet that is reporting more or less sources
+	       * than it really has, bin it
+	       */
+	      b->error = node->errors[IGMP_ERROR_BAD_LENGTH];
+	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi, next);
