@@ -1,0 +1,148 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f8e1663b_54d88685",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T15:34:26Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a296f251_8f3f9914",
+      "range": {
+        "startLine": 1,
+        "startChar": 1,
+        "endLine": 1,
+        "endChar": 3
+      },
+      "revId": "ad0f7adb27a77b13fc02007cd917fcb0937090ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9c9f6d97_bb1b3c36",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T15:34:26Z",
+      "side": 1,
+      "message": "I do not see any __repr__. Which patch set should I be looking at?",
+      "parentUuid": "483d5088_dca1d055",
+      "range": {
+        "startLine": 29,
+        "startChar": 33,
+        "endLine": 29,
+        "endChar": 34
+      },
+      "revId": "ad0f7adb27a77b13fc02007cd917fcb0937090ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3a5fd71_892da848",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T15:34:26Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ed8ae6b3_6a550dd9",
+      "range": {
+        "startLine": 80,
+        "startChar": 52,
+        "endLine": 80,
+        "endChar": 55
+      },
+      "revId": "ad0f7adb27a77b13fc02007cd917fcb0937090ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "989f7842_b1974a40",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T15:34:26Z",
+      "side": 1,
+      "message": "I see try/except, which also works.",
+      "parentUuid": "5c7d8589_a5aaf437",
+      "range": {
+        "startLine": 296,
+        "startChar": 30,
+        "endLine": 296,
+        "endChar": 34
+      },
+      "revId": "ad0f7adb27a77b13fc02007cd917fcb0937090ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2ebdce8f_4a4cdb73",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 566,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T15:34:26Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7d89bb53_8f9d7bd9",
+      "range": {
+        "startLine": 566,
+        "startChar": 39,
+        "endLine": 566,
+        "endChar": 40
+      },
+      "revId": "ad0f7adb27a77b13fc02007cd917fcb0937090ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "10d0c7ed_3fea9afc",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 798,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T15:34:26Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "cae91013_f7b4e7ad",
+      "range": {
+        "startLine": 798,
+        "startChar": 22,
+        "endLine": 798,
+        "endChar": 34
+      },
+      "revId": "ad0f7adb27a77b13fc02007cd917fcb0937090ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
