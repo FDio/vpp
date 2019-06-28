@@ -118,6 +118,30 @@
       "revId": "1bc18705b80702bfe5c7b6078263270561705109",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ea93840d_207d40ee",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-28T10:54:49Z",
+      "side": 1,
+      "message": "What is typically done is that you would create an all_as_dump/all_as_details pair and the dump fn would take in a vip as a parameter.  If the vip is set to all 0, or all 1\u0027s, then you return the dump for all VIPs, otherwise you return the list of details for just the specified vip.",
+      "parentUuid": "4aaf9392_d9ccadce",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 37
+      },
+      "revId": "1bc18705b80702bfe5c7b6078263270561705109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
