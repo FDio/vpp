@@ -94,6 +94,30 @@
       "revId": "1bc18705b80702bfe5c7b6078263270561705109",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4aaf9392_d9ccadce",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1240
+      },
+      "writtenOn": "2019-06-28T08:21:42Z",
+      "side": 1,
+      "message": "@Hongjun Ni\nWe need a function to get both all-AS-list and per-VIP-AS-list.",
+      "parentUuid": "c24da8f8_8c6c4c2f",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 37
+      },
+      "revId": "1bc18705b80702bfe5c7b6078263270561705109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
