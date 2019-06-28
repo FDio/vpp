@@ -74,6 +74,30 @@
     },
     {
       "key": {
+        "uuid": "b03b2cc1_5e8971a8",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T16:17:20Z",
+      "side": 1,
+      "message": "__repr__ not for functions, but for exception classes.\nFor all the folks that do except, log, reraise (or pass).\n\nYour usage of super init with one argument will produce a meaningful message, but calling repr() on an exception instance will not print secondary arguments used (nor the original first argument).",
+      "parentUuid": "e894fa7a_8a61411d",
+      "range": {
+        "startLine": 29,
+        "startChar": 33,
+        "endLine": 29,
+        "endChar": 34
+      },
+      "revId": "ad0f7adb27a77b13fc02007cd917fcb0937090ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b3a5fd71_892da848",
         "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
         "patchSetId": 22
