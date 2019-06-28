@@ -70,6 +70,30 @@
       "revId": "1bc18705b80702bfe5c7b6078263270561705109",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c24da8f8_8c6c4c2f",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-06-28T02:12:56Z",
+      "side": 1,
+      "message": "Thank you Paul for comments.\n\n@Yusuke Tatsumi, \nDo you think if we need to dump all AS list? I think it make sense to dump ASs for a specific VIP.\n\nThanks,\nHongjun",
+      "parentUuid": "a2ac4786_9e07dd42",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 37
+      },
+      "revId": "1bc18705b80702bfe5c7b6078263270561705109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
