@@ -22,6 +22,30 @@
       "revId": "9d9117505f4463ef1e1b2c53712345e347cee958",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e18e1ee9_98802f9c",
+        "filename": "test/test_sctp.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-06-28T19:16:30Z",
+      "side": 1,
+      "message": "I decided to keep it just to make sure we\u0027re not completely breaking it (since the extended tests are not run). In theory this is pretty lightweight, but if people feel strongly against it, we can mark it as extended.",
+      "parentUuid": "1c510294_b7ed5437",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 9,
+        "endChar": 28
+      },
+      "revId": "9d9117505f4463ef1e1b2c53712345e347cee958",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
