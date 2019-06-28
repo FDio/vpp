@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c510294_b7ed5437",
+        "filename": "test/test_sctp.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-28T18:55:27Z",
+      "side": 1,
+      "message": "If this is not actively maintained, should this become an extended test to save CI cycles?",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 9,
+        "endChar": 28
+      },
+      "revId": "9d9117505f4463ef1e1b2c53712345e347cee958",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
