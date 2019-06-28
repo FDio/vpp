@@ -50,6 +50,30 @@
     },
     {
       "key": {
+        "uuid": "e894fa7a_8a61411d",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-28T15:49:58Z",
+      "side": 1,
+      "message": "What __repr__ do you want?  It\u0027s here:\n     def __repr__(self):\n         return \u0027\u003cFuncWrapper(func\u003d\u003c%s(%s)\u003e)\u003e\u0027 % (self.__name__, self.__doc__)\n\n\u003cFuncWrapper(func\u003d\u003cwant_ip4_arp_events(u16 _vl_msg_id, u32 client_index, u32 context, u8 enable_disable, u32 pid, vl_api_ip4_address_t ip)\u003e)\u003e",
+      "parentUuid": "9c9f6d97_bb1b3c36",
+      "range": {
+        "startLine": 29,
+        "startChar": 33,
+        "endLine": 29,
+        "endChar": 34
+      },
+      "revId": "ad0f7adb27a77b13fc02007cd917fcb0937090ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b3a5fd71_892da848",
         "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
         "patchSetId": 22
