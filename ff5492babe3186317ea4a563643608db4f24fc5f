@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3bb183e6_eb83d98c",
+        "filename": "src/plugins/gbp/gbp_bridge_domain.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-06-28T09:19:10Z",
+      "side": 1,
+      "message": "why not cache the scope directly here, so we do not have to look it up in the datapath?",
+      "revId": "ff5492babe3186317ea4a563643608db4f24fc5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
