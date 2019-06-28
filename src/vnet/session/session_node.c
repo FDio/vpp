@@ -795,7 +795,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	if (svm_fifo_set_event (ctx->s->tx_fifo))
 	  vec_add1 (wrk->pending_event_vector, *e);
 
-      if (svm_fifo_needs_tx_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
+      if (svm_fifo_needs_deq_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
 	session_dequeue_notify (ctx->s);
     }
   return SESSION_TX_OK;

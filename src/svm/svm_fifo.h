@@ -40,13 +40,13 @@ typedef struct
 #define SVM_FIFO_INVALID_INDEX		((u32)~0)
 #define SVM_FIFO_MAX_EVT_SUBSCRIBERS	7
 
-typedef enum svm_fifo_tx_ntf_
+typedef enum svm_fifo_deq_ntf_
 {
-  SVM_FIFO_NO_TX_NOTIF = 0,
-  SVM_FIFO_WANT_TX_NOTIF = 1,
-  SVM_FIFO_WANT_TX_NOTIF_IF_FULL = 2,
-  SVM_FIFO_WANT_TX_NOTIF_IF_EMPTY = 4,
-} svm_fifo_tx_ntf_t;
+  SVM_FIFO_NO_DEQ_NOTIF = 0,		/**< No notification requested */
+  SVM_FIFO_WANT_DEQ_NOTIF = 1,		/**< Notify on dequeue */
+  SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL = 2,	/**< Notify on transition from full */
+  SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY = 4,	/**< Notify on transition to empty */
+} svm_fifo_deq_ntf_t;
 
 typedef struct
 {
@@ -100,8 +100,8 @@ typedef struct _svm_fifo
   u32 head;			/**< fifo head position/byte */
   svm_fifo_chunk_t *head_chunk;	/**< tracks chunk where head lands */
   svm_fifo_chunk_t *ooo_deq;	/**< last chunk used for ooo dequeue */
-  volatile u32 want_tx_ntf;	/**< producer wants nudge */
-  volatile u32 has_tx_ntf;
+  volatile u32 want_deq_ntf;	/**< producer wants nudge */
+  volatile u32 has_deq_ntf;
 
     CLIB_CACHE_LINE_ALIGN_MARK (producer);
   u32 tail;			/**< fifo tail position/byte */
@@ -741,97 +741,97 @@ svm_fifo_unset_event (svm_fifo_t * f)
 }
 
 /**
- * Set specific want tx notification flag
+ * Set specific want notification flag
  *
- * For list of flags see @ref svm_fifo_tx_ntf_t
+ * For list of flags see @ref svm_fifo_deq_ntf_t
  *
  * @param f		fifo
  * @param ntf_type	type of notification requested
  */
 static inline void
-svm_fifo_add_want_tx_ntf (svm_fifo_t * f, u8 ntf_type)
+svm_fifo_add_want_deq_ntf (svm_fifo_t * f, u8 ntf_type)
 {
-  f->want_tx_ntf |= ntf_type;
+  f->want_deq_ntf |= ntf_type;
 }
 
 /**
- * Clear specific want tx notification flag
+ * Clear specific want notification flag
  *
- * For list of flags see @ref svm_fifo_tx_ntf_t
+ * For list of flags see @ref svm_fifo_ntf_t
  *
  * @param f 		fifo
  * @param ntf_type	type of notification to be cleared
  */
 static inline void
-svm_fifo_del_want_tx_ntf (svm_fifo_t * f, u8 ntf_type)
+svm_fifo_del_want_deq_ntf (svm_fifo_t * f, u8 ntf_type)
 {
-  f->want_tx_ntf &= ~ntf_type;
+  f->want_deq_ntf &= ~ntf_type;
 }
 
 /**
- * Clear the want tx notification flag and set has tx notification
+ * Clear the want notification flag and set has notification
  *
- * Should be used after enqueuing a tx event. This clears the
- * SVM_FIFO_WANT_TX_NOTIF flag but it does not clear
- * SVM_FIFO_WANT_TX_NOTIF_IF_FULL. If the latter was set, has_tx_ntf is
- * set to avoid enqueueing tx events for for all dequeue operations until
+ * Should be used after enqueuing an event. This clears the
+ * SVM_FIFO_WANT_NOTIF flag but it does not clear
+ * SVM_FIFO_WANT_NOTIF_IF_FULL. If the latter was set, has_ntf is
+ * set to avoid enqueueing events for for all dequeue operations until
  * it is manually cleared.
  *
  * @param f	fifo
  */
 static inline void
-svm_fifo_clear_tx_ntf (svm_fifo_t * f)
+svm_fifo_clear_deq_ntf (svm_fifo_t * f)
 {
-  /* Set the flag if want_tx_notif_if_full was the only ntf requested */
-  f->has_tx_ntf = f->want_tx_ntf == SVM_FIFO_WANT_TX_NOTIF_IF_FULL;
-  svm_fifo_del_want_tx_ntf (f, SVM_FIFO_WANT_TX_NOTIF);
+  /* Set the flag if want_notif_if_full was the only ntf requested */
+  f->has_deq_ntf = f->want_deq_ntf == SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL;
+  svm_fifo_del_want_deq_ntf (f, SVM_FIFO_WANT_DEQ_NOTIF);
 }
 
 /**
- * Clear has tx notification flag
+ * Clear has notification flag
  *
- * The fifo generates only one event per SVM_FIFO_WANT_TX_NOTIF_IF_FULL
- * request and sets has_tx_ntf. To received new events the flag must be
+ * The fifo generates only one event per SVM_FIFO_WANT_NOTIF_IF_FULL
+ * request and sets has_ntf. To received new events the flag must be
  * cleared using this function.
  *
  * @param f	fifo
  */
 static inline void
-svm_fifo_reset_tx_ntf (svm_fifo_t * f)
+svm_fifo_reset_has_deq_ntf (svm_fifo_t * f)
 {
-  f->has_tx_ntf = 0;
+  f->has_deq_ntf = 0;
 }
 
 /**
- * Check if fifo needs tx notification
+ * Check if fifo needs dequeue notification
  *
- * Determines based on tx notification request flags and state of the fifo if
- * a tx io event should be generated.
+ * Determines based on notification request flags and state of the fifo if
+ * an event should be generated.
  *
  * @param f		fifo
  * @param n_last_deq	number of bytes last dequeued
- * @return		1 if tx io event should be generated, 0 otherwise
+ * @return		1 if event should be generated, 0 otherwise
  */
 static inline u8
-svm_fifo_needs_tx_ntf (svm_fifo_t * f, u32 n_last_deq)
+svm_fifo_needs_deq_ntf (svm_fifo_t * f, u32 n_last_deq)
 {
-  u8 want_ntf = f->want_tx_ntf;
+  u8 want_ntf = f->want_deq_ntf;
 
-  if (PREDICT_TRUE (want_ntf == SVM_FIFO_NO_TX_NOTIF))
+  if (PREDICT_TRUE (want_ntf == SVM_FIFO_NO_DEQ_NOTIF))
     return 0;
-  else if (want_ntf & SVM_FIFO_WANT_TX_NOTIF)
+  else if (want_ntf & SVM_FIFO_WANT_DEQ_NOTIF)
     return 1;
-  if (want_ntf & SVM_FIFO_WANT_TX_NOTIF_IF_FULL)
+  if (want_ntf & SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL)
     {
       u32 max_deq = svm_fifo_max_dequeue_cons (f);
       u32 nitems = f->nitems;
-      if (!f->has_tx_ntf && max_deq < nitems
+      if (!f->has_deq_ntf && max_deq < nitems
 	  && max_deq + n_last_deq >= nitems)
 	return 1;
     }
-  if (want_ntf & SVM_FIFO_WANT_TX_NOTIF_IF_EMPTY)
+  if (want_ntf & SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY)
     {
-      if (!f->has_tx_ntf && svm_fifo_is_empty (f))
+      if (!f->has_deq_ntf && svm_fifo_is_empty (f))
 	return 1;
     }
   return 0;
