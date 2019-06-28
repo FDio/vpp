@@ -2837,7 +2837,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    break;
 
 	  /* Still have outstanding tx data */
-	  if (transport_max_tx_dequeue (&tc0->connection))
+	  max_dequeue = transport_max_tx_dequeue (&tc0->connection);
+	  if (max_dequeue > tc0->burst_acked)
 	    break;
 
 	  tcp_send_fin (tc0);
