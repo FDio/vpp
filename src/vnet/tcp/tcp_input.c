@@ -1698,6 +1698,10 @@ static void
 tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     u32 * error)
 {
+  /* Reject out-of-order fins */
+  if (vnet_buffer (b)->tcp.seq_end != tc->rcv_nxt)
+    return;
+
   /* Account for the FIN and send ack */
   tc->rcv_nxt += 1;
   tcp_program_ack (wrk, tc);
