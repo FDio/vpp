@@ -163,6 +163,30 @@
       "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "417ef891_a6fdf82a",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 588,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T15:34:26Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5da97a9e_63636de4",
+      "range": {
+        "startLine": 588,
+        "startChar": 18,
+        "endLine": 588,
+        "endChar": 33
+      },
+      "revId": "10a02c7dde606e10790ab97176be6bb01a1cc2d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
