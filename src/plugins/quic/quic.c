@@ -586,9 +586,9 @@ quic_accept_stream (void *s)
       quicly_reset_stream (stream, QUIC_APP_ALLOCATION_ERROR);
       return;
     }
-  svm_fifo_add_want_tx_ntf (stream_session->rx_fifo,
-			    SVM_FIFO_WANT_TX_NOTIF_IF_FULL |
-			    SVM_FIFO_WANT_TX_NOTIF_IF_EMPTY);
+  svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
+			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
+			     SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 
   rv = app_worker_accept_notify (app_wrk, stream_session);
   if (rv)
@@ -1243,9 +1243,9 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
       return app_worker_connect_notify (app_wrk, NULL, sep->opaque);
     }
 
-  svm_fifo_add_want_tx_ntf (stream_session->rx_fifo,
-			    SVM_FIFO_WANT_TX_NOTIF_IF_FULL |
-			    SVM_FIFO_WANT_TX_NOTIF_IF_EMPTY);
+  svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
+			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
+			     SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 
   stream_session->session_state = SESSION_STATE_READY;
   if (app_worker_connect_notify (app_wrk, stream_session, sep->opaque))
@@ -1842,7 +1842,7 @@ quic_custom_app_rx_callback (transport_connection_t * tc)
   session_t *stream_session = session_get (tc->s_index, tc->thread_index);
   QUIC_DBG (2, "Received app READ notification");
   quic_ack_rx_data (stream_session);
-  svm_fifo_reset_tx_ntf (stream_session->rx_fifo);
+  svm_fifo_reset_has_deq_ntf (stream_session->rx_fifo);
   return 0;
 }
 
