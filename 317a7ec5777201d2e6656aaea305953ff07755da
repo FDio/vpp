@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0d6f81c_99337354",
+        "filename": "src/vlib/log.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T14:44:28Z",
+      "side": 1,
+      "message": "I suggest to avoid C++ (and Python) reserved keywords.\nBut I see the block is just moved, so not sure how many places access this already.",
+      "range": {
+        "startLine": 42,
+        "startChar": 19,
+        "endLine": 42,
+        "endChar": 24
+      },
+      "revId": "317a7ec5777201d2e6656aaea305953ff07755da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cd0f4e21_208f973c",
+        "filename": "test/test_vpe_api.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T14:44:28Z",
+      "side": 1,
+      "message": "I do not understand, how does this correspond to the sample output in commit message?",
+      "range": {
+        "startLine": 23,
+        "startChar": 27,
+        "endLine": 23,
+        "endChar": 58
+      },
+      "revId": "317a7ec5777201d2e6656aaea305953ff07755da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76f07d30_f5bc3709",
+        "filename": "test/test_vpe_api.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T14:44:28Z",
+      "side": 1,
+      "message": "Which start_timestamp is used? Zero does not verify there is no endian error on input side.",
+      "range": {
+        "startLine": 24,
+        "startChar": 31,
+        "endLine": 24,
+        "endChar": 33
+      },
+      "revId": "317a7ec5777201d2e6656aaea305953ff07755da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
