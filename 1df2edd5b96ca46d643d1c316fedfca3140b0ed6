@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3c031a46_e079de10",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-06-28T13:44:11Z",
+      "side": 1,
+      "message": "That is size of pointer. It is probably better to hardcode 64 as before.",
+      "range": {
+        "startLine": 455,
+        "startChar": 30,
+        "endLine": 455,
+        "endChar": 44
+      },
+      "revId": "1df2edd5b96ca46d643d1c316fedfca3140b0ed6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
