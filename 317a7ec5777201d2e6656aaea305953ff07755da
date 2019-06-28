@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "7da7c4be_5d9ecba0",
+        "filename": "test/test_vpe_api.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-28T15:28:04Z",
+      "side": 1,
+      "message": "Sorry, those were the log messages from my workstation.  The logs in the CI were empty, so I added a test log entry.",
+      "parentUuid": "cd0f4e21_208f973c",
+      "range": {
+        "startLine": 23,
+        "startChar": 27,
+        "endLine": 23,
+        "endChar": 58
+      },
+      "revId": "317a7ec5777201d2e6656aaea305953ff07755da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "76f07d30_f5bc3709",
         "filename": "test/test_vpe_api.py",
         "patchSetId": 5
@@ -59,6 +83,30 @@
       "writtenOn": "2019-06-28T14:44:28Z",
       "side": 1,
       "message": "Which start_timestamp is used? Zero does not verify there is no endian error on input side.",
+      "range": {
+        "startLine": 24,
+        "startChar": 31,
+        "endLine": 24,
+        "endChar": 33
+      },
+      "revId": "317a7ec5777201d2e6656aaea305953ff07755da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f716a6c_799fa967",
+        "filename": "test/test_vpe_api.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-28T15:28:04Z",
+      "side": 1,
+      "message": "Let me add as a test. \nrv \u003d self.vapi.log_dump(start_timestamp\u003d0.0) ?",
+      "parentUuid": "76f07d30_f5bc3709",
       "range": {
         "startLine": 24,
         "startChar": 31,
