@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "30e945d9_0e1959e3",
+        "filename": "test/vpp_vhost_interface.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-06-28T18:03:09Z",
+      "side": 1,
+      "message": "Do you not need to use .gso?",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 34,
+        "endChar": 57
+      },
+      "revId": "76850c2e2e55703f34d501a21292d53ddecb4727",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
