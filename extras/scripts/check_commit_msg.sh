@@ -1,7 +1,7 @@
 #/bin/env bash
 
 KNOWN_FEATURES=$(cat MAINTAINERS | sed -ne 's/^I:[[:space:]]*//p')
-FEATURES=$(git show -s --format=%s --no-color | sed -e 's/\(.*\):.*/\1/')
+FEATURES=$(git show -s --format=%s --no-color | sed -e 's/\([a-z0-9 -]*\):.*/\1/')
 KNOWN_TYPES="feature fix refactor style docs test make"
 TYPE=$(git show -s --format=%b --no-color | sed -ne 's/^Type:[[:space:]]*//p')
 ERR="=============================== ERROR ==============================="
