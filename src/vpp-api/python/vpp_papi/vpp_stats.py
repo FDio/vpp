@@ -292,8 +292,8 @@ class VPPStats(object):
 
     def set_errors_str(self):
         '''Return all errors counters > 0 pretty printed'''
-        s = 'ERRORS:\n'
+        s = ['ERRORS:']
         error_counters = self.set_errors()
         for k in sorted(error_counters):
-            s += '{:<60}{:>10}\n'.format(k, error_counters[k])
-        return s
+            s.append('{:<60}{:>10}'.format(k, error_counters[k]))
+        return '%s\n' % '\n'.join(s)
