@@ -1466,6 +1466,10 @@ class Worker(Thread):
 
     def run(self):
         executable = self.args[0]
+        if not os.path.exists(executable) or not os.access(
+                executable, os.F_OK | os.X_OK):
+            raise EnvironmentError(
+                "executable '%r' is not found or executable.")
         self.logger.debug("Running executable w/args `%s'" % self.args)
         env = os.environ.copy()
         env.update(self.env)
