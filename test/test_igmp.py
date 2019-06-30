@@ -2,7 +2,7 @@
 
 import unittest
 
-from scapy.layers.l2 import Ether
+from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, IPOption
 from scapy.contrib.igmpv3 import IGMPv3, IGMPv3gr, IGMPv3mq, IGMPv3mr
 
@@ -194,12 +194,15 @@ class TestIgmp(VppTestCase):
 
         #
         # Send a general query (to the all router's address)
-        # expect VPP to respond with a membership report
+        # expect VPP to respond with a membership report.
+        # Pad the query with 0 - some devices in the big wild
+        # internet are prone to this.
         #
         p_g = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                IP(src=self.pg0.remote_ip4, dst='224.0.0.1', tos=0xc0) /
                IGMPv3(type="Membership Query", mrcode=100) /
-               IGMPv3mq(gaddr="0.0.0.0"))
+               IGMPv3mq(gaddr="0.0.0.0") /
+               Raw('\x00' * 10))
 
         self.send(self.pg0, p_g)
 
@@ -239,6 +242,19 @@ class TestIgmp(VppTestCase):
         capture = self.pg0.get_capture(1, timeout=10)
         self.verify_report(capture[0],
                            [IgmpRecord(h1.sg, "Mode Is Include")])
+
+        #
+        # A group and source specific query that reports more sources
+        # than the packet actually has.
+        #
+        p_gs2 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_ip4, dst='239.1.1.1', tos=0xc0,
+                    options=[IPOption(copy_flag=1, optclass="control",
+                                      option="router_alert")]) /
+                 IGMPv3(type="Membership Query", mrcode=100) /
+                 IGMPv3mq(gaddr="239.1.1.1", numsrc=4, srcaddrs=["1.1.1.1"]))
+
+        self.send_and_assert_no_replies(self.pg0, p_gs2, timeout=10)
 
         #
         # A group and source specific query, with the source NOT matching
