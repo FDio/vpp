@@ -99,6 +99,8 @@ GTAGS
 
 # Build files in the test directory
 /test/*.ok
+/test/requirements-2.txt
+/test/requirements-3.txt
 
 # vppctl command list
 /src/scripts/vppctl-cmd-list
