@@ -1457,15 +1457,24 @@ class VppTestRunner(unittest.TextTestRunner):
 
 
 class Worker(Thread):
-    def __init__(self, args, logger, env={}):
+    def __init__(self, args, logger, env=None):
         self.logger = logger
         self.args = args
+        self.process = None
         self.result = None
+        env = {} if env is None else env
         self.env = copy.deepcopy(env)
         super(Worker, self).__init__()
 
     def run(self):
         executable = self.args[0]
+        if not os.path.exists(executable) or not os.access(
+                executable, os.F_OK | os.X_OK):
+            # Exit code that means some system file did not exist,
+            # could not be opened, or had some other kind of error.
+            self.result = os.EX_OSFILE
+            raise EnvironmentError(
+                "executable '%s' is not found or executable." % executable)
         self.logger.debug("Running executable w/args `%s'" % self.args)
         env = os.environ.copy()
         env.update(self.env)
