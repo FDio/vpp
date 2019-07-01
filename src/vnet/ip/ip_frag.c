@@ -140,6 +140,25 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       more = 0;
     }
 
+  /*
+   * Calculate TCP/UDP checksums and reset the TCP/UDP offload checksum
+   * flag before fragmenting the packet
+   */
+  if (from_b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+    {
+      udp_header_t *uh =
+	(udp_header_t *) (from_b->data + vnet_buffer (from_b)->l4_hdr_offset);
+      uh->checksum = ip4_tcp_udp_compute_checksum (vm, from_b, ip4);
+      from_b->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+    }
+  else if (from_b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+    {
+      tcp_header_t *th =
+	(tcp_header_t *) (from_b->data + vnet_buffer (from_b)->l4_hdr_offset);
+      th->checksum = ip4_tcp_udp_compute_checksum (vm, from_b, ip4);
+      from_b->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+    }
+
   u8 *from_data = (void *) (ip4 + 1);
   vlib_buffer_t *org_from_b = from_b;
   u16 fo = 0;
@@ -404,6 +423,29 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   if (ip6->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
     {
       return IP_FRAG_ERROR_MALFORMED;
+    }
+
+  /*
+   * Calculate TCP/UDP checksums and reset the TCP/UDP offload checksum
+   * flag before fragmenting the packet
+   */
+  if (from_b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+    {
+      int bogus;
+      udp_header_t *uh =
+	(udp_header_t *) (from_b->data + vnet_buffer (from_b)->l4_hdr_offset);
+      uh->checksum =
+	ip6_tcp_udp_icmp_compute_checksum (vm, from_b, ip6, &bogus);
+      from_b->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+    }
+  else if (from_b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+    {
+      int bogus;
+      tcp_header_t *th =
+	(tcp_header_t *) (from_b->data + vnet_buffer (from_b)->l4_hdr_offset);
+      th->checksum =
+	ip6_tcp_udp_icmp_compute_checksum (vm, from_b, ip6, &bogus);
+      from_b->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
     }
 
   u8 *from_data = (void *) (ip6 + 1);
