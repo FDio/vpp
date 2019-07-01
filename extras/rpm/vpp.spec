@@ -2,8 +2,8 @@
 %{!?_topdir:%define _topdir %(pwd)}
 %define _vpp_build_dir   build-tool-native
 %define _unitdir         /lib/systemd/system
-%define _builddir        %{_topdir}
-%define _mu_build_dir    %{_topdir}/%{name}-%{_version}/build-root
+%{!?_builddir:%define _builddir %{_topdir}}
+%define _mu_build_dir    %{_builddir}/%{name}-%{_version}/build-root
 %define _vpp_tag	 %{getenv:TAG}
 %if "%{_vpp_tag}" == ""
 %define _vpp_tag	 vpp

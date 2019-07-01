@@ -35,12 +35,14 @@ macro(add_vpp_packaging name)
 
   # extract version from git
   execute_process(
-    COMMAND git describe --long --match v*
+    COMMAND bash -c "${CMAKE_SOURCE_DIR}/../../src/scripts/version"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE VER
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
-  string(REGEX REPLACE "v(.*)-([0-9]+)-(g[0-9a-f]+)" "\\1;\\2;\\3" VER ${VER})
+
+  string(REPLACE "~" "-" VER ${VER})
+  string(REGEX REPLACE "(.*)-([0-9]+)-(g[0-9a-f]+)" "\\1;\\2;\\3" VER ${VER})
   list(GET VER 0 tag)
   string(REPLACE "-" "~" tag ${tag})
   list(GET VER 1 commit_num)
