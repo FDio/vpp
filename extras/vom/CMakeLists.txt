@@ -21,7 +21,7 @@ include(CheckCXXCompilerFlag)
 unset (VOM_LIB_VERSION)
 execute_process(
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND bash -c "git describe | cut -f1 -d- | cut -dv -f2"
+  COMMAND bash -c "../../src/scripts/version | cut -f1 -d-"
   OUTPUT_VARIABLE VOM_LIB_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
