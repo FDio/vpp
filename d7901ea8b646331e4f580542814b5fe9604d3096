@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa0b6ce7_01cba72a",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T14:39:48Z",
+      "side": 1,
+      "message": "This is a feature request, not a defect. ;)\n\nThe next line reads: If this is not possible, a string of the form \u003c...some useful description...\u003e should be returned.\n\nThats why the angle brackets. The diagnostic information comes in the vars.\n\nfor example:\nIf this is not possible, a string of the form \u003c...some useful description...\u003e should be returned.\n\u003cString(length_field_packer\u003d\u003cBaseTypes(packer\u003d\u003cStruct object at 0x7f52b72fa688\u003e, options\u003dNone, size\u003d4)\u003e, limit\u003d64, name\u003d\u0027string\u0027, size\u003d1)\u003e",
+      "parentUuid": "a7d37af2_d5e763cb",
+      "range": {
+        "startLine": 73,
+        "startChar": 16,
+        "endLine": 73,
+        "endChar": 17
+      },
+      "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6a783905_99d0c900",
         "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
         "patchSetId": 24
@@ -36,6 +60,30 @@
       "writtenOn": "2019-07-01T12:55:56Z",
       "side": 1,
       "message": "Looking at line 72, I believe repr() called on BaseTypes instance will list keys \"packer\", \"size\" and \"options\", instead of \"types\", \"elements\" and \"options\" used by the actual constructor.\n\nOne solution would be to narrow down constructors to only store given arguments, and introduce factory class methods to perform utility computations for values of such contructors.\nAnother solution os to override the generic __repr__ with one listing actucally used arguments of current non-trivial constructors (but that needs more coding and plays less well with inheritance).\nOther solutions may be possible.",
+      "range": {
+        "startLine": 76,
+        "startChar": 16,
+        "endLine": 76,
+        "endChar": 25
+      },
+      "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d33fb68a_d91a760c",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T14:39:48Z",
+      "side": 1,
+      "message": "__repr__ does not have to be reversible.  It is not now. It currently returns: \u003cBaseTypes at 0x7f52b72fa650\u003e which is not reversible.",
+      "parentUuid": "6a783905_99d0c900",
       "range": {
         "startLine": 76,
         "startChar": 16,
@@ -105,6 +153,30 @@
       "writtenOn": "2019-07-01T12:55:56Z",
       "side": 1,
       "message": "Belongs to line 290?",
+      "range": {
+        "startLine": 296,
+        "startChar": 16,
+        "endLine": 296,
+        "endChar": 36
+      },
+      "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d24bb56c_6376dbf5",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 24
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T14:39:48Z",
+      "side": 1,
+      "message": "Yes. I\u0027ll fix.",
+      "parentUuid": "fe441f69_998494bb",
       "range": {
         "startLine": 296,
         "startChar": 16,
