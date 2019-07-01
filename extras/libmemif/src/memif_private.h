@@ -35,8 +35,7 @@
 _Static_assert (strlen (MEMIF_DEFAULT_APP_NAME) <= MEMIF_NAME_LEN,
 		"MEMIF_DEFAULT_APP_NAME max length is 32");
 
-#define MEMIF_DEFAULT_SOCKET_DIR "/run/vpp"
-#define MEMIF_DEFAULT_SOCKET_FILENAME  "memif.sock"
+#define MEMIF_DEFAULT_SOCKET_PATH "/run/vpp/memif.sock"
 #define MEMIF_DEFAULT_RING_SIZE 1024
 #define MEMIF_DEFAULT_LOG2_RING_SIZE 10
 #define MEMIF_DEFAULT_RX_QUEUES 1
@@ -66,6 +65,13 @@ _Static_assert (strlen (MEMIF_DEFAULT_APP_NAME) <= MEMIF_NAME_LEN,
 #else
 #define DBG(...)
 #endif /* MEMIF_DBG */
+
+typedef enum
+{
+  MEMIF_SOCKET_TYPE_NONE = 0,	/* unassigned, not used by any interface */
+  MEMIF_SOCKET_TYPE_LISTENER,	/* listener socket, master interface assigned */
+  MEMIF_SOCKET_TYPE_CLIENT	/* client socket, slave interface assigned */
+} memif_socket_type_t;
 
 typedef struct
 {
@@ -121,7 +127,6 @@ typedef struct memif_connection
   memif_conn_run_args_t run_args;
 
   int fd;
-  int listener_fd;
 
   memif_fn *write_fn, *read_fn, *error_fn;
 
@@ -158,8 +163,10 @@ typedef struct
 {
   int fd;
   uint16_t use_count;
+  memif_socket_type_t type;
   uint8_t *filename;
   uint16_t interface_list_len;
+  void *private_ctx;
   memif_list_elt_t *interface_list;	/* memif master interfaces listening on this socket */
 } memif_socket_t;
 
@@ -170,6 +177,8 @@ typedef struct
   struct itimerspec arm, disarm;
   uint16_t disconn_slaves;
   uint8_t app_name[MEMIF_NAME_LEN];
+
+  memif_socket_handle_t default_socket;
 
   memif_add_external_region_t *add_external_region;
   memif_get_external_region_addr_t *get_external_region_addr;
@@ -182,11 +191,11 @@ typedef struct
 
   uint16_t control_list_len;
   uint16_t interrupt_list_len;
-  uint16_t listener_list_len;
+  uint16_t socket_list_len;
   uint16_t pending_list_len;
   memif_list_elt_t *control_list;
   memif_list_elt_t *interrupt_list;
-  memif_list_elt_t *listener_list;
+  memif_list_elt_t *socket_list;
   memif_list_elt_t *pending_list;
 } libmemif_main_t;
 
