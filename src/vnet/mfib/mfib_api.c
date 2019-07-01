@@ -80,8 +80,6 @@ mfib_api_path_itf_flags_decode (vl_api_mfib_itf_flags_t in,
 {
     in = clib_net_to_host_u32(in);
 
-    if (in & MFIB_API_ITF_FLAG_NONE)
-        *out |= MFIB_ITF_FLAG_NONE;
     if (in & MFIB_API_ITF_FLAG_NEGATE_SIGNAL)
         *out |= MFIB_ITF_FLAG_NEGATE_SIGNAL;
     if (in & MFIB_API_ITF_FLAG_ACCEPT)
