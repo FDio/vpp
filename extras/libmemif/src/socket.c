@@ -471,7 +471,7 @@ memif_msg_receive_init (memif_socket_t * ms, int fd, memif_msg_t * msg)
 
 error:
   memif_msg_send_disconnect (fd, err_string, 0);
-  lm->control_fd_update (fd, MEMIF_FD_EVENT_DEL);
+  lm->control_fd_update (fd, MEMIF_FD_EVENT_DEL, c->private_ctx);
   free_list_elt (lm->pending_list, lm->pending_list_len, fd);
   close (fd);
   fd = -1;
@@ -600,7 +600,8 @@ memif_msg_receive_connect (memif_connection_t * c, memif_msg_t * msg)
 	  elt.data_struct = c;
 	  add_list_elt (&elt, &lm->interrupt_list, &lm->interrupt_list_len);
 
-	  lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ);
+	  lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ,
+				 c->private_ctx);
 	}
 
     }
@@ -630,7 +631,8 @@ memif_msg_receive_connected (memif_connection_t * c, memif_msg_t * msg)
     {
       for (i = 0; i < c->run_args.num_s2m_rings; i++)
 	{
-	  lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ);
+	  lm->control_fd_update (c->rx_queues[i].int_fd, MEMIF_FD_EVENT_READ,
+				 c->private_ctx);
 	}
     }
 
@@ -808,8 +810,7 @@ memif_msg_receive (int ifd)
 
   if (c != NULL)
     c->flags |= MEMIF_CONNECTION_FLAG_WRITE;
-/*    libmemif_main_t *lm = &libmemif_main;
-    lm->control_fd_update (c->fd, MEMIF_FD_EVENT_READ | MEMIF_FD_EVENT_MOD); */
+
   return MEMIF_ERR_SUCCESS;	/* 0 */
 }
 
@@ -853,12 +854,7 @@ memif_conn_fd_write_ready (memif_connection_t * c)
   c->msg_queue = c->msg_queue->next;
 
   c->flags &= ~MEMIF_CONNECTION_FLAG_WRITE;
-/*
-    libmemif_main_t *lm = &libmemif_main;
 
-    lm->control_fd_update (c->fd,
-        MEMIF_FD_EVENT_READ | MEMIF_FD_EVENT_WRITE | MEMIF_FD_EVENT_MOD);
-*/
   err = memif_msg_send (c->fd, &e->msg, e->fd);
   lm->free (e);
   goto done;
@@ -893,7 +889,8 @@ memif_conn_fd_accept_ready (memif_socket_t * ms)
   elt.data_struct = ms;
 
   add_list_elt (&elt, &lm->pending_list, &lm->pending_list_len);
-  lm->control_fd_update (conn_fd, MEMIF_FD_EVENT_READ | MEMIF_FD_EVENT_WRITE);
+  lm->control_fd_update (conn_fd, MEMIF_FD_EVENT_READ | MEMIF_FD_EVENT_WRITE,
+			 ms->private_ctx);
 
   return memif_msg_send_hello (conn_fd);
 }

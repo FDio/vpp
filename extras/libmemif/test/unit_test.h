@@ -34,6 +34,6 @@ int on_disconnect (memif_conn_handle_t conn, void *ctx);
 
 int on_interrupt (memif_conn_handle_t conn, void *ctx, uint16_t qid);
 
-int control_fd_update (int fd, uint8_t events);
+int control_fd_update (int fd, uint8_t events, void *ctx);
 
 #endif /* _UNIT_TEST_H_ */

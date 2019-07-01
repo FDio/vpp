@@ -148,7 +148,6 @@ START_TEST (test_create)
   ck_assert_ptr_ne (c->on_interrupt, NULL);
 
   ck_assert_str_eq ((char *)c->args.interface_name, (char *)args.interface_name);
-  ck_assert_str_eq ((char *)c->args.socket_filename, SOCKET_FILENAME);
 
   struct itimerspec timer;
   timerfd_gettime (lm->timerfd, &timer);
@@ -210,7 +209,6 @@ START_TEST (test_create_master)
   ck_assert_ptr_ne (c->on_interrupt, NULL);
 
   ck_assert_str_eq ((char *)c->args.interface_name, (char *)args.interface_name);
-  ck_assert_str_eq ((char *)c->args.socket_filename, SOCKET_FILENAME);
 
   struct stat file_stat;
 
@@ -295,9 +293,7 @@ START_TEST (test_create_mult)
   ck_assert_ptr_ne (c1->on_interrupt, NULL);
 
   ck_assert_str_eq ((char *)c->args.interface_name, (char *)args.interface_name);
-  ck_assert_str_eq ((char *)c->args.socket_filename, SOCKET_FILENAME);
   ck_assert_str_eq ((char *)c1->args.interface_name, (char *)args.interface_name);
-  ck_assert_str_eq ((char *)c1->args.socket_filename, SOCKET_FILENAME);
 
   struct itimerspec timer;
   timerfd_gettime (lm->timerfd, &timer);
@@ -720,7 +716,6 @@ START_TEST (test_get_details)
   ck_assert_str_eq ((char *)md.remote_if_name, (char *)c->remote_if_name);
   ck_assert_str_eq ((char *)md.remote_inst_name, (char *)c->remote_name);
   ck_assert_str_eq ((char *)md.secret, (char *)c->args.secret);
-  ck_assert_str_eq ((char *)md.socket_filename, (char *)c->args.socket_filename);
 
   ck_assert_uint_eq (md.id, c->args.interface_id);
   ck_assert_uint_ne (md.role, c->args.is_master);
