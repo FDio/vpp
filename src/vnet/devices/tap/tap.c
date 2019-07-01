@@ -441,6 +441,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;
   args->sw_if_index = vif->sw_if_index;
+  args->rv = 0;
   hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   if (args->tap_flags & TAP_FLAG_GSO)
