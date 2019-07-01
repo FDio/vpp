@@ -242,6 +242,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     ptclosure
     random
     random_isaac
+    rwlock
     serialize
     slist
     socket
