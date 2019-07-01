@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "86163884_4942d79d",
+        "filename": "src/vnet/devices/tap/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T10:34:16Z",
+      "side": 1,
+      "message": "\"Created %U.\\n\"",
+      "range": {
+        "startLine": 108,
+        "startChar": 26,
+        "endLine": 108,
+        "endChar": 30
+      },
+      "revId": "cb6cadacd9fe0e16b40851e857e756262020d887",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
