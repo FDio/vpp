@@ -169,7 +169,7 @@ void CV (clib_cuckoo_init) (CVT (clib_cuckoo) * h, const char *name,
 			    void *garbage_ctx)
 {
   uword log2_nbuckets = max_log2 (nbuckets);
-  nbuckets = 1 << (log2_nbuckets);
+  nbuckets = 1ULL << (log2_nbuckets);
   CLIB_CUCKOO_DBG ("New cuckoo, adjusted nbuckets %wu", nbuckets);
   CVT (clib_cuckoo_bucket) * buckets = NULL;
   vec_validate_aligned (buckets, nbuckets - 1, CLIB_CACHE_LINE_BYTES);
