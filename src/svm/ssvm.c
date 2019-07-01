@@ -213,7 +213,7 @@ ssvm_delete_shm (ssvm_private_t * ssvm)
   vec_free (fn);
   vec_free (ssvm->name);
 
-  munmap ((void *) ssvm->requested_va, ssvm->ssvm_size);
+  munmap ((void *) ssvm->sh, ssvm->ssvm_size);
 }
 
 /**
