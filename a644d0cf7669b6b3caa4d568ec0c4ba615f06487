@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9d8a4cfe_36661d4d",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T04:20:22Z",
+      "side": 1,
+      "message": "this is usually in 3rd position.",
+      "range": {
+        "startLine": 301,
+        "startChar": 3,
+        "endLine": 301,
+        "endChar": 17
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0b217f24_d8c645de",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T04:20:22Z",
+      "side": 1,
+      "message": "move to top",
+      "range": {
+        "startLine": 348,
+        "startChar": 0,
+        "endLine": 351,
+        "endChar": 11
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6ff5fa62_626ab86f",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T04:20:22Z",
+      "side": 1,
+      "message": "bool want_all \u003d (prefix.ip6.as_u64[0] \u003d\u003d ~0) \u0026\u0026 (prefix.ip6.as_u64[1] \u003d\u003d ~0);",
+      "range": {
+        "startLine": 353,
+        "startChar": 2,
+        "endLine": 353,
+        "endChar": 67
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "80f2fed7_d3c61de4",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T04:20:22Z",
+      "side": 1,
+      "message": "({\n      if (want_all || prefix \u003d\u003d vip-\u003eprefix){\n       \u003cpass in each \n        send_lb_as_details(reg, mp-\u003econtext, as_det_rec);",
+      "range": {
+        "startLine": 357,
+        "startChar": 6,
+        "endLine": 358,
+        "endChar": 50
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8b4868d7_366c32fc",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T04:20:22Z",
+      "side": 1,
+      "message": "don\u0027t need",
+      "range": {
+        "startLine": 362,
+        "startChar": 0,
+        "endLine": 381,
+        "endChar": 5
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a423655a_951ed857",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T04:20:22Z",
+      "side": 1,
+      "message": "Do you want to ass a vip argument here so you can filter on it?",
+      "range": {
+        "startLine": 109,
+        "startChar": 0,
+        "endLine": 109,
+        "endChar": 2
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e0726ec6_c07fbac3",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T04:20:22Z",
+      "side": 1,
+      "message": "details does not return a single record with \u003cvip_count\u003e entries, it returns \u003cvip_count\u003e records.",
+      "range": {
+        "startLine": 121,
+        "startChar": 0,
+        "endLine": 122,
+        "endChar": 38
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c0b3457b_83481d55",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T04:20:22Z",
+      "side": 1,
+      "message": "Details does not return all with the count.  It returns \u003cas_count\u003e records, each with a single vl_api_lb_ip_addr_t.",
+      "range": {
+        "startLine": 150,
+        "startChar": 2,
+        "endLine": 150,
+        "endChar": 15
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
