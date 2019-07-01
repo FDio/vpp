@@ -166,6 +166,30 @@
       "revId": "14a18abb46830c319bd7f11a4b482b638c1512b9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7aad0ee9_b4842207",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 7
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-01T17:06:44Z",
+      "side": 1,
+      "message": "Leaving it alone with the noop\u0027s across the wire is what this patch does.  It wraps all f64 references in the api with your noop and matches it appropriately on the papi side.\n\nWithout it, map.api treats it as u64 and gbp.api treats it as a no op.\nSo, some api\u0027s are \"correct\" and some are \"broken\" depending on your view.\n\nThe existing papi_serializer treats it as a u64.\n\nby \"leaving well enough alone\", do you want to leave it a noop on the wire?  If so, we need to commit this otherwise I can let it go.",
+      "parentUuid": "0d2fafe8_8499d899",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 34
+      },
+      "revId": "14a18abb46830c319bd7f11a4b482b638c1512b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
