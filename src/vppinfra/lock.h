@@ -118,9 +118,8 @@ clib_spinlock_unlock_if_init (clib_spinlock_t * p)
 typedef struct clib_rw_lock_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 n_readers;
-  volatile u32 n_readers_lock;
-  volatile u32 writer_lock;
+  /* -1 when W lock held, > 0 when R lock held */
+  volatile i32 rw_cnt;
 #if CLIB_DEBUG > 0
   pid_t pid;
   uword thread_index;
@@ -148,41 +147,37 @@ clib_rwlock_free (clib_rwlock_t * p)
 always_inline void
 clib_rwlock_reader_lock (clib_rwlock_t * p)
 {
-  while (clib_atomic_test_and_set (&(*p)->n_readers_lock))
-    CLIB_PAUSE ();
-
-  (*p)->n_readers += 1;
-  if ((*p)->n_readers == 1)
+  i32 cnt;
+  do
     {
-      while (clib_atomic_test_and_set (&(*p)->writer_lock))
+      /* rwlock held by a writer */
+      while ((cnt = clib_atomic_load_relax_n (&(*p)->rw_cnt)) < 0)
 	CLIB_PAUSE ();
     }
-  clib_atomic_release (&(*p)->n_readers_lock);
+  while (!clib_atomic_cmp_and_swap_acq_relax_n
+	 (&(*p)->rw_cnt, &cnt, cnt + 1, 1));
   CLIB_LOCK_DBG (p);
 }
 
 always_inline void
 clib_rwlock_reader_unlock (clib_rwlock_t * p)
 {
-  ASSERT ((*p)->n_readers > 0);
+  ASSERT ((*p)->rw_cnt > 0);
   CLIB_LOCK_DBG_CLEAR (p);
-
-  while (clib_atomic_test_and_set (&(*p)->n_readers_lock))
-    CLIB_PAUSE ();
-
-  (*p)->n_readers -= 1;
-  if ((*p)->n_readers == 0)
-    {
-      clib_atomic_release (&(*p)->writer_lock);
-    }
-  clib_atomic_release (&(*p)->n_readers_lock);
+  clib_atomic_fetch_sub_rel (&(*p)->rw_cnt, 1);
 }
 
 always_inline void
 clib_rwlock_writer_lock (clib_rwlock_t * p)
 {
-  while (clib_atomic_test_and_set (&(*p)->writer_lock))
-    CLIB_PAUSE ();
+  i32 cnt = 0;
+  do
+    {
+      /* rwlock held by writer or reader(s) */
+      while ((cnt = clib_atomic_load_relax_n (&(*p)->rw_cnt)) != 0)
+	CLIB_PAUSE ();
+    }
+  while (!clib_atomic_cmp_and_swap_acq_relax_n (&(*p)->rw_cnt, &cnt, -1, 1));
   CLIB_LOCK_DBG (p);
 }
 
@@ -190,7 +185,7 @@ always_inline void
 clib_rwlock_writer_unlock (clib_rwlock_t * p)
 {
   CLIB_LOCK_DBG_CLEAR (p);
-  clib_atomic_release (&(*p)->writer_lock);
+  clib_atomic_release (&(*p)->rw_cnt);
 }
 
 #endif

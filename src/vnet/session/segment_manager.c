@@ -280,7 +280,6 @@ segment_manager_get_segment_w_lock (segment_manager_t * sm, u32 segment_index)
 void
 segment_manager_segment_reader_unlock (segment_manager_t * sm)
 {
-  ASSERT (sm->segments_rwlock->n_readers > 0);
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
 }
 
