@@ -142,6 +142,30 @@
       "revId": "14a18abb46830c319bd7f11a4b482b638c1512b9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0d2fafe8_8499d899",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 7
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-07-01T16:34:17Z",
+      "side": 1,
+      "message": "There is no standard representation for IEEE floating-point numbers. The only advice I\u0027ve ever seen along these lines is to act as if f32/f64\u0027s were u32/u64\u0027s, and I don\u0027t consider the source of that advice even mildly trustworthy. \n\nI added noop inline functions with the appropriate names to .../src/vppinfra/byte_order.h. As opposed to discovering how many places would break the instant we did something non-trivial. \n\nSuggest leaving well enough alone.",
+      "parentUuid": "9d182032_d01e2e87",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 34
+      },
+      "revId": "14a18abb46830c319bd7f11a4b482b638c1512b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
