@@ -113,8 +113,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 {
   vcl_worker_t *wrk = vcl_worker_get (0);
   u64 segment_handle;
+  int *fds = 0, i;
   u32 n_fds = 0;
-  int *fds = 0;
 
   if (mp->retval)
     {
@@ -134,7 +134,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   if (mp->n_fds)
     {
       vec_validate (fds, mp->n_fds);
-      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
+      if (vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5))
+	goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
 	if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0),
@@ -169,13 +170,16 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
 failed:
   vcm->app_state = STATE_APP_FAILED;
+  for (i = clib_max (n_fds - 1, 0); i < vec_len (fds); i++)
+    close (fds[i]);
+  vec_free (fds);
 }
 
 static void
 vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 					   mp)
 {
-  int n_fds = 0, *fds = 0;
+  int n_fds = 0, *fds = 0, i;
   u64 segment_handle;
   vcl_worker_t *wrk;
   u32 wrk_index;
@@ -209,7 +213,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
   if (mp->n_fds)
     {
       vec_validate (fds, mp->n_fds);
-      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
+      if (vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5))
+	goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
 	if (vcl_segment_attach (vcl_vpp_worker_segment_handle (wrk_index),
@@ -243,6 +248,9 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 
 failed:
   vcm->app_state = STATE_APP_FAILED;
+  for (i = clib_max (n_fds - 1, 0); i < vec_len (fds); i++)
+    close (fds[i]);
+  vec_free (fds);
 }
 
 static void
