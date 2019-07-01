@@ -296,7 +296,7 @@ on_disconnect (memif_conn_handle_t conn, void *private_ctx)
 /* user needs to watch new fd or stop watching fd that is about to be closed.
     control fd will be modified during connection establishment to minimize CPU usage */
 int
-control_fd_update (int fd, uint8_t events)
+control_fd_update (int fd, uint8_t events, void *ctx)
 {
   /* convert memif event definitions to epoll events */
   if (events & MEMIF_FD_EVENT_DEL)
@@ -371,7 +371,7 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
       c->rx_buf_num -= rx;
 
       DBG ("freed %d buffers. %u/%u alloc/free buffers",
-	   fb, rx, MAX_MEMIF_BUFS - rx);
+	   rx, rx, MAX_MEMIF_BUFS - rx);
 
       /* transmit allocated buffers */
       err = memif_tx_burst (c->conn, qid, c->bufs, rx, &tx);
@@ -393,7 +393,7 @@ error:
     INFO ("memif_buffer_free: %s", memif_strerror (err));
   c->rx_buf_num = 0;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
 
@@ -450,7 +450,7 @@ on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
       c->rx_buf_num -= rx;
 
       DBG ("freed %d buffers. %u/%u alloc/free buffers",
-	   fb, rx, MAX_MEMIF_BUFS - rx);
+	   rx, rx, MAX_MEMIF_BUFS - rx);
 
       /* transmit allocated buffers */
       err = memif_tx_burst (c->conn, qid, c->bufs, i, &tx);
@@ -472,7 +472,7 @@ error:
     INFO ("memif_buffer_free: %s", memif_strerror (err));
   c->rx_buf_num = 0;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
 
@@ -538,7 +538,7 @@ error:
     INFO ("memif_buffer_free: %s", memif_strerror (err));
   c->rx_buf_num = 0;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
 

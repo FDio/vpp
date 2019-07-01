@@ -375,7 +375,7 @@ on_disconnect (memif_conn_handle_t conn, void *private_ctx)
 }
 
 int
-control_fd_update (int fd, uint8_t events)
+control_fd_update (int fd, uint8_t events, void *ctx)
 {
   /* convert memif event definitions to epoll events */
   if (events & MEMIF_FD_EVENT_DEL)
@@ -562,7 +562,7 @@ error:
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
   c->rx_buf_num -= rx;
-  DBG ("freed %d buffers. %u/%u alloc/free buffers", fb, c->rx_buf_num,
+  DBG ("freed %d buffers. %u/%u alloc/free buffers", rx, c->rx_buf_num,
        MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
@@ -637,7 +637,7 @@ error:
     INFO ("memif_buffer_free: %s", memif_strerror (err));
   c->rx_buf_num -= rx;
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
 

@@ -23,7 +23,7 @@
 #define _LIBMEMIF_H_
 
 /** Libmemif version. */
-#define LIBMEMIF_VERSION "2.1"
+#define LIBMEMIF_VERSION "3.0"
 /** Default name of application using libmemif. */
 #define MEMIF_DEFAULT_APP_NAME "libmemif-app"
 
@@ -101,6 +101,11 @@ typedef enum
 */
 typedef void *memif_conn_handle_t;
 
+/** \brief Memif socket handle
+    pointer of type void, pointing to internal structure
+*/
+typedef void *memif_socket_handle_t;
+
 /** \brief Memif allocator alloc
     @param size - requested allocation size
 
@@ -138,7 +143,8 @@ typedef void (memif_free_t) (void *ptr);
     This callback is called when there is new fd to watch for events on
     or if fd is about to be closed (user mey want to stop watching for events on this fd).
 */
-typedef int (memif_control_fd_update_t) (int fd, uint8_t events);
+typedef int (memif_control_fd_update_t) (int fd, uint8_t events,
+					 void *private_ctx);
 
 /** \brief Memif connection status update (callback function)
     @param conn - memif connection handle
@@ -240,7 +246,7 @@ typedef enum
 #endif /* _MEMIF_H_ */
 
 /** \brief Memif connection arguments
-    @param socket_filename - socket filename
+    @param socket - memif socket handle, if NULL default socket will be used
     @param secret - otional parameter used as interface autenthication
     @param num_s2m_rings - number of slave to master rings
     @param num_m2s_rings - number of master to slave rings
@@ -253,7 +259,7 @@ typedef enum
 */
 typedef struct
 {
-  uint8_t *socket_filename;	/*!< default = /run/vpp/memif.sock */
+  memif_socket_handle_t socket;	/*!< default = /run/vpp/memif.sock */
   uint8_t secret[24];		/*!< optional (interface authentication) */
 
   uint8_t num_s2m_rings;	/*!< default = 1 */
@@ -468,7 +474,7 @@ int memif_init (memif_control_fd_update_t * on_control_fd_update,
 int memif_cleanup ();
 
 /** \brief Memory interface create function
-    @param conn - connection handle for user app
+    @param conn - connection handle for client app
     @param args - memory interface connection arguments
     @param on_connect - inform user about connected status
     @param on_disconnect - inform user about disconnected status
@@ -625,7 +631,7 @@ int memif_cancel_poll_event ();
 
     \return memif_err_t
 */
-int memif_set_connection_request_timer(struct itimerspec timer);
+int memif_set_connection_request_timer (struct itimerspec timer);
 
 /** \brief Send connection request
     @param conn - memif connection handle
@@ -634,7 +640,35 @@ int memif_set_connection_request_timer(struct itimerspec timer);
 
     \return memif_err_t
 */
-int memif_request_connection(memif_conn_handle_t conn);
+int memif_request_connection (memif_conn_handle_t conn);
+
+/** \brief Create memif socket
+    @param sock - socket handle for client app
+    @param filename - path to socket file
+    @param private_ctx - private context
+
+    The first time an interface is assigned a socket, its type is determined.
+    For master role it's 'listener', for slave role it's 'client'. Each interface
+    requires socket of its respective type. Default socket is creted if no
+    socket handle is passed to memif_create(). It's private context is NULL.
+    If all interfaces using this socket are deleted, the socket returns
+    to its default state.
+
+    \return memif_err_t
+*/
+int memif_create_socket (memif_socket_handle_t * sock, const char * filename,
+			 void * private_ctx);
+
+/** \brief Delete memif socket
+    @param sock - socket handle for client app
+
+    When trying to free socket in use, socket will not be freed and
+    MEMIF_ERR_INVAL_ARG is returned.
+
+    \return memif_err_t
+*/
+int memif_delete_socket (memif_socket_handle_t * sock);
+
 /** @} */
 
 #endif /* _LIBMEMIF_H_ */
