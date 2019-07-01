@@ -175,7 +175,7 @@ static void
 vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 					   mp)
 {
-  int n_fds = 0, *fds = 0;
+  int n_fds = 0, *fds = 0, *fdp;
   u64 segment_handle;
   vcl_worker_t *wrk;
   u32 wrk_index;
@@ -243,6 +243,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 
 failed:
   vcm->app_state = STATE_APP_FAILED;
+  vec_foreach (fdp, fds) close (*fdp);
+  vec_free (fds);
 }
 
 static void
