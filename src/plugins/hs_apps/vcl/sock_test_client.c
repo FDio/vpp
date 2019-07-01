@@ -211,8 +211,8 @@ echo_test_client ()
 				nbytes, &tsock->stats);
 	      if (rx_bytes > 0)
 		{
-		  printf ("CLIENT (fd %d): RX (%d bytes) - '%s'\n",
-			  tsock->fd, rx_bytes, tsock->rxbuf);
+		  printf ("CLIENT (fd %d): RX (%d bytes)\n", tsock->fd,
+			  rx_bytes);
 
 		  if (tsock->stats.rx_bytes != tsock->stats.tx_bytes)
 		    printf ("CLIENT: WARNING: bytes read (%lu) "

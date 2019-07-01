@@ -339,9 +339,8 @@ af_unix_echo (void)
       errno_val = errno;
       perror ("ERROR in af_unix_echo(): read() failed");
       fprintf (stderr, "SERVER: ERROR: read(af_unix_client_fd %d (0x%x), "
-	       "\"%s\", nbytes %lu) failed (errno = %d)!\n",
-	       af_unix_client_fd, af_unix_client_fd, buffer, nbytes,
-	       errno_val);
+	       "nbytes %lu) failed (errno = %d)!\n", af_unix_client_fd,
+	       af_unix_client_fd, nbytes, errno_val);
       goto done;
     }
 
