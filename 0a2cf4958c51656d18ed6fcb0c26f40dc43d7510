@@ -22,6 +22,23 @@
       "revId": "0a2cf4958c51656d18ed6fcb0c26f40dc43d7510",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "243f8f05_d404de75",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-07-01T16:25:52Z",
+      "side": 1,
+      "message": "Please add the \"as_if_client\" variant...",
+      "revId": "0a2cf4958c51656d18ed6fcb0c26f40dc43d7510",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
