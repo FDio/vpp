@@ -398,6 +398,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
 
   // for return
   args->sw_if_index = bif->sw_if_index;
+  args->rv = 0;
 }
 
 static clib_error_t *
@@ -415,6 +416,7 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   args.id = ~0;
   args.mode = -1;
   args.lb = BOND_LB_L2;
+  args.rv = -1;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "mode %U", unformat_bond_mode, &args.mode))
@@ -438,6 +440,10 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "Missing bond mode");
 
   bond_create_if (vm, &args);
+
+  if (!args.rv)
+    vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
+		     vnet_get_main (), args.sw_if_index);
 
   return args.error;
 }
