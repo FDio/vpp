@@ -304,6 +304,7 @@ test_lisp_msg_put_mreq_with_lcaf ()
   ip_prefix_version (&ippref) = IP4;
   ip4_address_t *ip = &ip_prefix_v4 (&ippref);
   ip->as_u32 = 0x11223344;
+  ippref.len = 32;
 
   gid_address_t g = {
     .type = GID_ADDR_IP_PREFIX,
