@@ -433,42 +433,6 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
 
         for (unsigned int i = 0; i < payload.route.n_paths; i++) {
           ip_r.add(from_api(payload.route.paths[i]));
-
-          // vapi_type_fib_path& p = payload.route.paths[i];
-          /* if (p.is_local) { */
-          /*   path path_v4(path::special_t::LOCAL); */
-          /*   ip_r.add(path_v4); */
-          /* } */
-          /* } else if (p.is_drop) { */
-          /*   path path_v4(path::special_t::DROP); */
-          /*   ip_r.add(path_v4); */
-          /* } else if (p.is_unreach) { */
-          /*   path path_v4(path::special_t::UNREACH); */
-          /*   ip_r.add(path_v4); */
-          /* } else if (p.is_prohibit) { */
-          /*   path path_v4(path::special_t::PROHIBIT); */
-          /*   ip_r.add(path_v4); */
-          /* } else { */
-          /*   boost::asio::ip::address address = from_bytes(0, p.next_hop);
-           */
-          /*   std::shared_ptr<interface> itf =
-           * interface::find(p.sw_if_index); */
-          /*   if (itf) { */
-          /*     if (p.is_dvr) { */
-          /*       path path_v4(*itf, nh_proto_t::IPV4,
-           * route::path::flags_t::DVR,
-           */
-          /*                    p.weight, p.preference); */
-          /*       ip_r.add(path_v4); */
-          /*     } else { */
-          /*       path path_v4(address, *itf, p.weight, p.preference); */
-          /*       ip_r.add(path_v4); */
-          /*     } */
-          /*   } else { */
-          /*     path path_v4(rd_temp, address, p.weight, p.preference); */
-          /*     ip_r.add(path_v4); */
-          /*   } */
-          /* } */
         }
 
         VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
@@ -481,6 +445,7 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
         OM::commit(key, ip_r);
       }
     }
+    ++it;
   }
 }
 
@@ -670,6 +635,7 @@ ip_mroute::event_handler::handle_populate(const client_db::key_t& key)
         OM::commit(key, ip_r);
       }
     }
+    ++it;
   }
 }
 
