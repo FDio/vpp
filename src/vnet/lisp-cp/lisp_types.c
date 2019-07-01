@@ -1681,6 +1681,7 @@ locator_parse (void *b, locator_t * loc)
 
   loc->state = status;
   loc->local = 0;
+  loc->probed = 0;
   loc->priority = LOC_PRIORITY (h);
   loc->weight = LOC_WEIGHT (h);
   loc->mpriority = LOC_MPRIORITY (h);
