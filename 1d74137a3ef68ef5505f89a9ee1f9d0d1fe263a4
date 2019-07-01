@@ -22,6 +22,30 @@
       "revId": "1d74137a3ef68ef5505f89a9ee1f9d0d1fe263a4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c56c80df_28c05dd1",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 445,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-01T10:42:39Z",
+      "side": 1,
+      "message": "Is there specific reason to have it \"%U.\\n\" instead of \"%U\\n\"?",
+      "parentUuid": "a35005c8_8af1c11e",
+      "range": {
+        "startLine": 445,
+        "startChar": 25,
+        "endLine": 445,
+        "endChar": 31
+      },
+      "revId": "1d74137a3ef68ef5505f89a9ee1f9d0d1fe263a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
