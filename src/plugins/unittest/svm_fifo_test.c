@@ -1225,6 +1225,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	      fifo_size + 100, f->size);
   SFIFO_TEST (c->start_byte == fifo_size, "start byte expected %u is %u",
 	      fifo_size, c->start_byte);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    *  Add with fifo wrapped
@@ -1243,6 +1244,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	      fifo_size + 100, f->size);
   SFIFO_TEST (c->start_byte == fifo_size + 100, "start byte expected %u is "
 	      " %u", fifo_size + 100, c->start_byte);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Unwrap fifo
@@ -1255,6 +1257,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	      fifo_size + 200, f->size);
   SFIFO_TEST (c->start_byte == fifo_size + 100, "start byte expected %u is "
 	      "%u", fifo_size + 100, c->start_byte);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Add N chunks
@@ -1296,6 +1299,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	      fifo_size + 200 + 10 * 100, f->size);
   SFIFO_TEST (f->tail == old_tail, "new tail expected %u is %u", old_tail,
 	      f->tail);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Enqueue/dequeue tests
@@ -1351,6 +1355,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Simple enqueue/deq and data validation (2)
@@ -1377,6 +1382,42 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  /*
+   * Simple enqueue and drop
+   */
+  for (i = 0; i <= n_enqs; i++)
+    {
+      rv = svm_fifo_enqueue (f, enq_bytes, test_data + i * enq_bytes);
+      if (rv < 0)
+	SFIFO_TEST (0, "failed to enqueue");
+    }
+
+  rv = svm_fifo_dequeue_drop (f, test_n_bytes / 2);
+  SFIFO_TEST (rv == test_n_bytes / 2, "drop should be equal");
+  SFIFO_TEST (svm_fifo_is_sane (f), "head chunk should be valid");
+  rv = svm_fifo_dequeue_drop (f, test_n_bytes / 2);
+  SFIFO_TEST (rv == test_n_bytes / 2, "drop should be equal");
+  SFIFO_TEST (svm_fifo_is_sane (f), "head chunk should be valid");
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "should be empty");
+
+  /*
+   * Simple enqueue and drop all
+   */
+
+  /* Enqueue just enough data to make sure fifo is not full */
+  for (i = 0; i <= n_enqs / 2; i++)
+    {
+      rv = svm_fifo_enqueue (f, enq_bytes, test_data + i * enq_bytes);
+      if (rv < 0)
+	SFIFO_TEST (0, "failed to enqueue");
+    }
+
+  /* check drop all as well */
+  svm_fifo_dequeue_drop_all (f);
+  SFIFO_TEST (svm_fifo_is_sane (f), "head chunk should be valid");
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "should be empty");
 
   /*
    * OOO enqueues/dequeues and data validation (1)
@@ -1408,6 +1449,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * OOO enqueues/dequeues and data validation (2)
@@ -1427,8 +1469,10 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	  goto cleanup;
 	}
     }
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   svm_fifo_enqueue (f, enq_bytes, &test_data[0]);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   memset (data_buf, 0, vec_len (data_buf));
   for (i = 0; i <= n_deqs; i++)
@@ -1440,6 +1484,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
    * Cleanup
@@ -2081,6 +2126,8 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 	      32 * fifo_size);
 
   f = fifo_segment_alloc_fifo (fs, 17 * fifo_size, FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (f->flags & SVM_FIFO_F_MULTI_CHUNK, "multi chunk fifo");
+
   rv = fifo_segment_fl_chunk_bytes (fs);
 
   /* Make sure that the non-power of two chunk freed above is correctly
@@ -2450,11 +2497,13 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (rv == max_pairs * 2, "prealloc chunks expected %u is %u",
 	      max_pairs * 2, rv);
 
-  rv = fifo_segment_prealloc_fifo_chunks (fs, 4096, 2);
+  /* Because of the rbtree that was initialized above on multi-chunk fifo
+   * alloc, we only have space for 1 more fifo chunk */
+  rv = fifo_segment_prealloc_fifo_chunks (fs, 4096, 1);
   SFIFO_TEST (rv == 0, "chunk prealloc should work");
   rv = fifo_segment_num_free_chunks (fs, 4096);
-  SFIFO_TEST (rv == (max_pairs + 1) * 2, "prealloc chunks expected %u is %u",
-	      (max_pairs + 1) * 2, rv);
+  SFIFO_TEST (rv == max_pairs * 2 + 1, "prealloc chunks expected %u is %u",
+	      max_pairs * 2 + 1, rv);
 
   free_space = fifo_segment_free_bytes (fs);
   SFIFO_TEST (rv < 8192, "free bytes expected less than %u is %u", 8192, rv);
