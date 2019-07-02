@@ -344,7 +344,7 @@ tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
   if (tcp_opts_tstamp (&tc->rcv_opts))
     {
       opts->flags |= TCP_OPTS_FLAG_TSTAMP;
-      opts->tsval = tcp_time_now_w_thread (tc->c_thread_index);
+      opts->tsval = tcp_tstamp (tc);
       opts->tsecr = tc->tsval_recent;
       len += TCP_OPTION_LEN_TIMESTAMP;
     }
@@ -1605,7 +1605,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       /* For first retransmit, record timestamp (Eifel detection RFC3522) */
       if (tc->rto_boff == 1)
-	tc->snd_rxt_ts = tcp_time_now_w_thread (tc->c_thread_index);
+	tc->snd_rxt_ts = tcp_tstamp (tc);
 
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
       tcp_retransmit_timer_force_update (tc);
