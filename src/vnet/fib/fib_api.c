@@ -449,7 +449,7 @@ fib_api_path_encode (const fib_route_path_t * rpath,
     }
 }
 
-void
+int
 fib_api_route_add_del (u8 is_add,
                        u8 is_multipath,
                        u32 fib_index,
@@ -457,36 +457,46 @@ fib_api_route_add_del (u8 is_add,
                        fib_entry_flag_t entry_flags,
                        fib_route_path_t *rpaths)
 {
-  if (is_multipath)
+    if (is_multipath)
     {
-      /* Iterative path add/remove */
-      if (is_add)
-	fib_table_entry_path_add2 (fib_index,
-				   prefix,
-				   FIB_SOURCE_API,
-                                   entry_flags,
-                                   rpaths);
-      else
-	fib_table_entry_path_remove2 (fib_index,
-				      prefix,
-                                      FIB_SOURCE_API,
-                                      rpaths);
+        if (vec_len(rpaths) == 0)
+            return (VNET_API_ERROR_NO_PATHS_IN_ROUTE);
+
+        /* Iterative path add/remove */
+        if (is_add)
+            fib_table_entry_path_add2 (fib_index,
+                                       prefix,
+                                       FIB_SOURCE_API,
+                                       entry_flags,
+                                       rpaths);
+        else
+            fib_table_entry_path_remove2 (fib_index,
+                                          prefix,
+                                          FIB_SOURCE_API,
+                                          rpaths);
     }
-  else
+    else
     {
-      if (is_add)
-        /* path replacement */
-	fib_table_entry_update (fib_index,
-                                prefix,
-                                FIB_SOURCE_API,
-                                entry_flags,
-                                rpaths);
-      else
-        /* entry delete */
-	fib_table_entry_delete (fib_index,
-                                prefix,
-                                FIB_SOURCE_API);
+        if (is_add)
+        {
+            if (vec_len(rpaths) == 0)
+                return (VNET_API_ERROR_NO_PATHS_IN_ROUTE);
+
+            /* path replacement */
+            fib_table_entry_update (fib_index,
+                                    prefix,
+                                    FIB_SOURCE_API,
+                                    entry_flags,
+                                    rpaths);
+        }
+        else
+            /* entry delete */
+            fib_table_entry_delete (fib_index,
+                                    prefix,
+                                    FIB_SOURCE_API);
     }
+
+    return (0);
 }
 
 u8*
