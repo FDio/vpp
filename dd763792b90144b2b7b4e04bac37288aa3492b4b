@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e29737d8_6d574ee5",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-02T21:58:46Z",
+      "side": 1,
+      "message": "Because of the change to framework.py, this must be the fq name. I\u0027m okay with changing it for this purpose.",
+      "range": {
+        "startLine": 12,
+        "startChar": 10,
+        "endLine": 12,
+        "endChar": 16
+      },
+      "revId": "dd763792b90144b2b7b4e04bac37288aa3492b4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
