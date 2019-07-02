@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "528b137e_08e471f2",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-02T01:08:35Z",
+      "side": 1,
+      "message": "I think that \"subprocess.check_output([\u0027iperf3\u0027, \u0027-v\u0027])\" has a better chance at portability.",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 12,
+        "endChar": 6
+      },
+      "revId": "eb2a46102f2d0ca3cea85c4a73b5c52a08c56529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
