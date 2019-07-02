@@ -252,9 +252,16 @@ svm_fifo_t *svm_fifo_create (u32 size);
 /**
  * Initialize fifo
  *
+ * @param f		fifo
  * @param size		size for fifo
  */
 void svm_fifo_init (svm_fifo_t * f, u32 size);
+/**
+ * Initialize fifo chunks and rbtree
+ *
+ * @param f		fifo
+ */
+void svm_fifo_init_chunks (svm_fifo_t * f);
 /**
  * Allocate a fifo chunk on heap
  *
@@ -456,13 +463,20 @@ void svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber);
  * @return	number of out of order segments
  */
 u32 svm_fifo_n_ooo_segments (svm_fifo_t * f);
-/*
+/**
  * First out-of-order segment for fifo
  *
  * @param f	fifo
  * @return	first out-of-order segment for fifo
  */
 ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
+/**
+ * Check if fifo is sane. Debug only.
+ *
+ * @param f	fifo
+ * @return 	1 if sane, 0 otherwise
+ */
+u8 svm_fifo_is_sane (svm_fifo_t * f);
 format_function_t format_svm_fifo;
 
 /**
