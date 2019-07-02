@@ -69,11 +69,14 @@ def conversion_unpacker(data, field_type):
 class BaseTypes(object):
     def __init__(self, type, elements=0, options=None):
         base_types = {'u8': '>B',
+                      'i8': '>b',
                       'string': '>s',
                       'u16': '>H',
+                      'i16': '>h',
                       'u32': '>I',
                       'i32': '>i',
                       'u64': '>Q',
+                      'i64': '>q',
                       'f64': '=d',
                       'bool': '>?',
                       'header': '>HI'}
