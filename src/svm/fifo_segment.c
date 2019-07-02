@@ -394,6 +394,14 @@ fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
   /* (re)initialize the fifo, as in svm_fifo_create */
   svm_fifo_init (f, data_bytes);
 
+  /* Initialize chunks and rbtree for multi-chunk fifos */
+  if (f->start_chunk->next != f->start_chunk)
+    {
+      void *oldheap = ssvm_push_heap (fs->ssvm.sh);
+      svm_fifo_init_chunks (f);
+      ssvm_pop_heap (oldheap);
+    }
+
   /* If rx fifo type add to active fifos list. When cleaning up segment,
    * we need a list of active sessions that should be disconnected. Since
    * both rx and tx fifos keep pointers to the session, it's enough to track
