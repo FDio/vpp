@@ -213,7 +213,7 @@ format_gbp_rule (u8 * s, va_list * args)
     {
     case GBP_RULE_PERMIT:
     case GBP_RULE_DENY:
-      break;
+      return (s);
     case GBP_RULE_REDIRECT:
       s = format (s, ", %U", format_gbp_hash_mode, gu->gu_hash_mode);
       break;
@@ -221,19 +221,19 @@ format_gbp_rule (u8 * s, va_list * args)
 
   vec_foreach (gnhi, gu->gu_nhs)
   {
-    s = format (s, "\n      [%U]", format_gbp_next_hop, *gnhi);
+    s = format (s, "\n        [%U]", format_gbp_next_hop, *gnhi);
   }
 
   FOR_EACH_GBP_POLICY_NODE (pnode)
   {
-    s = format (s, "\n    policy-%U", format_gbp_policy_node, pnode);
+    s = format (s, "\n      policy-%U", format_gbp_policy_node, pnode);
 
     FOR_EACH_FIB_IP_PROTOCOL (fproto)
     {
       if (dpo_id_is_valid (&gu->gu_dpo[pnode][fproto]))
 	{
 	  s =
-	    format (s, "\n      %U", format_dpo_id,
+	    format (s, "\n        %U", format_dpo_id,
 		    &gu->gu_dpo[pnode][fproto], 8);
 	}
     }
@@ -642,23 +642,27 @@ format_gbp_contract (u8 * s, va_list * args)
   s = format (s, "[%d] %U: acl-index:%d",
 	      gci, format_gbp_contract_key, &gc->gc_key, gc->gc_acl_index);
 
+  s = format (s, "\n    rules:");
   vec_foreach (gui, gc->gc_rules)
   {
-    s = format (s, "\n    %d: %U", *gui, format_gbp_rule, *gui);
+    s = format (s, "\n      %d: %U", *gui, format_gbp_rule, *gui);
   }
 
-  s = format (s, "\n    allowed-ethertypes:[");
+  s = format (s, "\n    allowed-ethertypes:");
+  s = format (s, "\n      [");
   vec_foreach (et, gc->gc_allowed_ethertypes)
   {
     int host_et = clib_net_to_host_u16 (*et);
     if (0 != host_et)
       s = format (s, "0x%x, ", host_et);
   }
+  s = format (s, "]");
 
+  s = format (s, "\n    stats:");
   vlib_get_combined_counter (&gbp_contract_drop_counters, gci, &counts);
-  s = format (s, "\n   drop:[%Ld:%Ld]", counts.packets, counts.bytes);
+  s = format (s, "\n      drop:[%Ld:%Ld]", counts.packets, counts.bytes);
   vlib_get_combined_counter (&gbp_contract_permit_counters, gci, &counts);
-  s = format (s, "\n   permit:[%Ld:%Ld]", counts.packets, counts.bytes);
+  s = format (s, "\n      permit:[%Ld:%Ld]", counts.packets, counts.bytes);
 
   s = format (s, "]");
 
