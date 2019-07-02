@@ -9,6 +9,8 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
 
+iperf3 = '/usr/bin/iperf3'
+
 
 class VCLAppWorker(Worker):
     """ VCL Test Application Worker """
