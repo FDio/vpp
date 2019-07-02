@@ -94,6 +94,30 @@
       "revId": "eb2a46102f2d0ca3cea85c4a73b5c52a08c56529",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "932a902f_c0c7d887",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-02T14:47:33Z",
+      "side": 1,
+      "message": "I ran locally with iperf uninstalled and tests returned success without any timeout. I agree however that skip exception would be better than pass/failed.",
+      "parentUuid": "08636f15_a1ddec54",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 12,
+        "endChar": 6
+      },
+      "revId": "eb2a46102f2d0ca3cea85c4a73b5c52a08c56529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
