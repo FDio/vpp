@@ -77,9 +77,12 @@ class VPPAPILexer(object):
     t_ignore_LINE_COMMENT = '//.*'
 
     def t_NUM(self, t):
-        r'0[xX][0-9a-fA-F]+|-?\d+'
+        r'0[xX][0-9a-fA-F]+|-?\d+\.?\d*'
         base = 16 if t.value.startswith('0x') else 10
-        t.value = int(t.value, base)
+        if '.' in t.value:
+            t.value = float(t.value)
+        else:
+            t.value = int(t.value, base)
         return t
 
     def t_ID(self, t):
@@ -122,6 +125,7 @@ class VPPAPILexer(object):
 def crc_block_combine(block, crc):
     s = str(block).encode()
     return binascii.crc32(s, crc) & 0xffffffff
+
 
 class Service():
     def __init__(self, caller, reply, events=None, stream=False):
