@@ -46,6 +46,30 @@
       "revId": "eb2a46102f2d0ca3cea85c4a73b5c52a08c56529",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2fde533c_40f5ab51",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-02T03:07:16Z",
+      "side": 1,
+      "message": "I guess I missed something. I just ran with iperf uninstalled and the vcl tests pass, even the iperf specific ones, which raise a warning that iperf is not installed. Obviously, they won\u0027t pass with this patch since not finding iperf raises an exception instead of returning. \n\nAgain, the goal is to return test success if iperf3 is not found, not to raise an exception. So please change that.\n\nNow, looking at the framework part of the patch, I assume you want to catch errors in other tests that point to non-existent binaries. If that\u0027s that\u0027s the reason for the fq path to iperf3, I\u0027m fine with it.",
+      "parentUuid": "b694d89e_9e59fcbb",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 12,
+        "endChar": 6
+      },
+      "revId": "eb2a46102f2d0ca3cea85c4a73b5c52a08c56529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
