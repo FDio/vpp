@@ -580,9 +580,9 @@ class Program(object):
             local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3::")
+        c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
 
-        c1.vppctl_exec("sr localsid prefix 4001::/64 behavior end.m.gtp6.d.di D4::/64 bsid D1::")
+        c1.vppctl_exec("sr localsid prefix 4001::/64 behavior end.m.gtp6.d.di D4::/64")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
