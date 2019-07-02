@@ -428,6 +428,7 @@ class VppIpRoute(VppObject):
         self.prefix = VppIpPrefix(dest_addr, dest_addr_len)
         self.register = register
         self.stats_index = None
+        self.modified = False
 
         self.encoded_paths = []
         for path in self.paths:
@@ -444,6 +445,7 @@ class VppIpRoute(VppObject):
         self.encoded_paths = []
         for path in self.paths:
             self.encoded_paths.append(path.encode())
+        self.modified = True
 
         self._test.vapi.ip_route_add_del(route={'table_id': self.table_id,
                                                 'prefix': self.prefix.encode(),
@@ -468,14 +470,26 @@ class VppIpRoute(VppObject):
             self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.ip_route_add_del(route={'table_id': self.table_id,
-                                                'prefix': self.prefix.encode(),
-                                                'n_paths': len(
-                                                    self.encoded_paths),
-                                                'paths': self.encoded_paths,
-                                                },
-                                         is_add=0,
-                                         is_multipath=0)
+        # there's no need to issue different deletes for modified routes
+        # we do this only to test the two different ways to delete routes
+        # eiter by passing all the paths to remove and mutlipath=1 or
+        # passing no paths and multipath=0
+        if self.modified:
+            self._test.vapi.ip_route_add_del(
+                route={'table_id': self.table_id,
+                       'prefix': self.prefix.encode(),
+                       'n_paths': len(
+                           self.encoded_paths),
+                       'paths': self.encoded_paths},
+                is_add=0,
+                is_multipath=1)
+        else:
+            self._test.vapi.ip_route_add_del(
+                route={'table_id': self.table_id,
+                       'prefix': self.prefix.encode(),
+                       'n_paths': 0},
+                is_add=0,
+                is_multipath=0)
 
     def query_vpp_config(self):
         return find_route(self._test,

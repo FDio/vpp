@@ -97,10 +97,11 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), 0, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.route.table_id = m_id;
   payload.is_add = 0;
   payload.is_multipath = 0;
 
+  payload.route.table_id = m_id;
+  payload.route.n_paths = 0;
   payload.route.table_id = m_id;
   payload.route.prefix = to_api(m_prefix);
 
