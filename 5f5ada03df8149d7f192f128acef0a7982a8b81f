@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5eec5b53_b70c4bd3",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1152,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-02T08:57:29Z",
+      "side": 1,
+      "message": "this is the first time in this code base i\u0027ve seen an enum declared as a return type... hint hint :)",
+      "revId": "5f5ada03df8149d7f192f128acef0a7982a8b81f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "35bcbd9a_4f65dbc1",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1412,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-02T08:57:29Z",
+      "side": 1,
+      "message": "please don\u0027t put the comment inside the conditional.",
+      "revId": "5f5ada03df8149d7f192f128acef0a7982a8b81f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
