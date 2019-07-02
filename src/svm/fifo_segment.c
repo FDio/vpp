@@ -394,6 +394,14 @@ fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
   /* (re)initialize the fifo, as in svm_fifo_create */
   svm_fifo_init (f, data_bytes);
 
+  /* Initialize chunks and rbtree for multi-chunk fifos */
+  if (f->start_chunk->next != f->start_chunk)
+    {
+      void *oldheap = ssvm_push_heap (fs->ssvm.sh);
+      svm_fifo_init_chunks (f);
+      ssvm_pop_heap (oldheap);
+    }
+
   /* If rx fifo type add to active fifos list. When cleaning up segment,
    * we need a list of active sessions that should be disconnected. Since
    * both rx and tx fifos keep pointers to the session, it's enough to track
@@ -613,12 +621,16 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
   /* Calculate space requirements */
   pair_size = 2 * hdrs + rx_rounded_data_size + tx_rounded_data_size;
   space_available = fs_free_space (fs);
-  pairs_to_alloc = clib_min (space_available / pair_size, *n_fifo_pairs);
+  pairs_to_alloc = space_available / pair_size;
+  pairs_to_alloc = clib_min (pairs_to_alloc, *n_fifo_pairs);
+
+  if (!pairs_to_alloc)
+    return;
 
   if (fs_try_alloc_fifo_batch (fs, rx_fl_index, pairs_to_alloc))
-    clib_warning ("rx prealloc failed");
+    clib_warning ("rx prealloc failed: pairs %u", pairs_to_alloc);
   if (fs_try_alloc_fifo_batch (fs, tx_fl_index, pairs_to_alloc))
-    clib_warning ("tx prealloc failed");
+    clib_warning ("tx prealloc failed: pairs %u", pairs_to_alloc);
 
   /* Account for the pairs allocated */
   *n_fifo_pairs -= pairs_to_alloc;
