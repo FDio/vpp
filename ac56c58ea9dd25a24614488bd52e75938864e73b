@@ -1,0 +1,98 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b5b64137_e37d19e5",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T15:23:59Z",
+      "side": 1,
+      "message": "I believe when no keyword arguments are present, kwargs is an empty dict, not None.",
+      "range": {
+        "startLine": 53,
+        "startChar": 35,
+        "endLine": 53,
+        "endChar": 46
+      },
+      "revId": "ac56c58ea9dd25a24614488bd52e75938864e73b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ccf78ccc_f7556119",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T15:23:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "21ed2ad8_e88fabd0",
+      "range": {
+        "startLine": 65,
+        "startChar": 33,
+        "endLine": 65,
+        "endChar": 56
+      },
+      "revId": "ac56c58ea9dd25a24614488bd52e75938864e73b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "19303031_9d21316e",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T15:23:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "21ed2ad8_e88fabd0",
+      "range": {
+        "startLine": 65,
+        "startChar": 33,
+        "endLine": 65,
+        "endChar": 56
+      },
+      "revId": "ac56c58ea9dd25a24614488bd52e75938864e73b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd2bf6ed_ea68cd31",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 27
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T15:23:59Z",
+      "side": 1,
+      "message": "... but not done for this message.",
+      "range": {
+        "startLine": 298,
+        "startChar": 7,
+        "endLine": 298,
+        "endChar": 27
+      },
+      "revId": "ac56c58ea9dd25a24614488bd52e75938864e73b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
