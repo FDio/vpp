@@ -1186,6 +1186,12 @@ sfifo_test_fifo_large (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static inline u8
+sfifo_chunk_includes_pos (svm_fifo_chunk_t * c, u32 pos)
+{
+  return (pos >= c->start_byte && pos < c->start_byte + c->length);
+}
+
 static int
 sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -1377,6 +1383,44 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
 		     test_data[j]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+
+  /*
+   * Simple enqueue and drop
+   */
+  for (i = 0; i <= n_enqs; i++)
+    {
+      rv = svm_fifo_enqueue (f, enq_bytes, test_data + i * enq_bytes);
+      if (rv < 0)
+	SFIFO_TEST (0, "failed to enqueue");
+    }
+
+  rv = svm_fifo_dequeue_drop (f, test_n_bytes / 2);
+  SFIFO_TEST (rv == test_n_bytes / 2, "drop should be equal");
+  SFIFO_TEST (sfifo_chunk_includes_pos (f->head_chunk, f->head),
+	      "head chunk should be valid");
+  rv = svm_fifo_dequeue_drop (f, test_n_bytes / 2);
+  SFIFO_TEST (rv == test_n_bytes / 2, "drop should be equal");
+  SFIFO_TEST (sfifo_chunk_includes_pos (f->head_chunk, f->head),
+	      "head chunk should be valid");
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "should be empty");
+
+  /*
+   * Simple enqueue and drop all
+   */
+
+  /* Enqueue just enough data to make sure fifo is not full */
+  for (i = 0; i <= n_enqs / 2; i++)
+    {
+      rv = svm_fifo_enqueue (f, enq_bytes, test_data + i * enq_bytes);
+      if (rv < 0)
+	SFIFO_TEST (0, "failed to enqueue");
+    }
+
+  /* check drop all as well */
+  svm_fifo_dequeue_drop_all (f);
+  SFIFO_TEST (sfifo_chunk_includes_pos (f->head_chunk, f->head),
+	      "head chunk should be valid");
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "should be empty");
 
   /*
    * OOO enqueues/dequeues and data validation (1)
@@ -2081,6 +2125,8 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 	      32 * fifo_size);
 
   f = fifo_segment_alloc_fifo (fs, 17 * fifo_size, FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (f->flags & SVM_FIFO_F_MULTI_CHUNK, "multi chunk fifo");
+
   rv = fifo_segment_fl_chunk_bytes (fs);
 
   /* Make sure that the non-power of two chunk freed above is correctly
