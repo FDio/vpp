@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "e67b1390_43f212a6",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T12:32:00Z",
+      "side": 1,
+      "message": "\u003e This is a feature request\n\nWell, the whole idea of adding __repr__ is a feature request.\n\n\u003e If this is not possible\n\nBut it IS possible. Also, my quote started with \"If at all possible\".\n\nI know it is strange to have __repr__ not mandatory, while the form of its output is mandatory, but that is how I read the documentation.\n\nAs a compromise, we can say \"not possible due to development time constraints\". :)\n\nUpdate: I see next patch set makes behavior configurable, which is great.",
+      "parentUuid": "fa0b6ce7_01cba72a",
+      "range": {
+        "startLine": 73,
+        "startChar": 16,
+        "endLine": 73,
+        "endChar": 17
+      },
+      "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6a783905_99d0c900",
         "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
         "patchSetId": 24
@@ -96,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "a00f9df0_b26b1596",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T12:32:00Z",
+      "side": 1,
+      "message": "It only has to be reversible if it is possible to have reversible output. Contructors themselves seem to allow reversible output.",
+      "parentUuid": "d33fb68a_d91a760c",
+      "range": {
+        "startLine": 76,
+        "startChar": 16,
+        "endLine": 76,
+        "endChar": 25
+      },
+      "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a3f2294e_c0f5e37e",
         "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
         "patchSetId": 24
@@ -116,6 +164,30 @@
       "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f861bc5a_0658eef1",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T12:32:00Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a3f2294e_c0f5e37e",
+      "range": {
+        "startLine": 342,
+        "startChar": 20,
+        "endLine": 342,
+        "endChar": 40
+      },
+      "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -186,6 +258,30 @@
       "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f7dd1f2_72f7b1b5",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 24
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T12:32:00Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d24bb56c_6376dbf5",
+      "range": {
+        "startLine": 296,
+        "startChar": 16,
+        "endLine": 296,
+        "endChar": 36
+      },
+      "revId": "d7901ea8b646331e4f580542814b5fe9604d3096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
