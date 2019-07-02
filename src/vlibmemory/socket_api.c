@@ -439,7 +439,7 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   regp->name = format (0, "%s%c", mp->name, 0);
 
   u32 size = sizeof (*rp) + (nmsg * sizeof (vl_api_message_table_entry_t));
-  rp = vl_msg_api_alloc (size);
+  rp = vl_msg_api_alloc_zero (size);
   rp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE_REPLY);
   rp->index = htonl (sock_api_registration_handle (regp));
   rp->context = mp->context;
@@ -450,7 +450,8 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
   ({
     rp->message_table[i].index = htons(hp->value[0]);
-    strncpy((char *)rp->message_table[i].name, (char *)hp->key, 64-1);
+    strncpy_s((char *)rp->message_table[i].name, 64 /* bytes of space at dst */,
+              (char *)hp->key, 64-1 /* chars to copy, without zero byte. */);
     i++;
   }));
   /* *INDENT-ON* */
