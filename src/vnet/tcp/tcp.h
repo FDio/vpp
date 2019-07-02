@@ -372,6 +372,7 @@ typedef struct _tcp_connection
 
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
+  i64 timestamp_delta;
 } tcp_connection_t;
 
 /* *INDENT-OFF* */
@@ -918,6 +919,16 @@ always_inline u32
 tcp_time_now_w_thread (u32 thread_index)
 {
   return tcp_main.wrk_ctx[thread_index].time_now;
+}
+
+/**
+ * Generate timestamp for tcp connection
+ */
+always_inline u32
+tcp_tstamp (tcp_connection_t * tc)
+{
+  return (tcp_main.wrk_ctx[tc->c_thread_index].time_now -
+	  tc->timestamp_delta);
 }
 
 always_inline f64
