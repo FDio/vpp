@@ -31,8 +31,7 @@ update_cmd::update_cmd(HW::item<handle_t>& item,
   , m_id(id)
   , m_prefix(prefix)
   , m_pl(pl)
-{
-}
+{}
 
 bool
 update_cmd::operator==(const update_cmd& other) const
@@ -82,8 +81,7 @@ delete_cmd::delete_cmd(HW::item<handle_t>& item,
   : rpc_cmd(item)
   , m_id(id)
   , m_prefix(prefix)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -97,10 +95,11 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), 0, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.route.table_id = m_id;
   payload.is_add = 0;
   payload.is_multipath = 0;
 
+  payload.route.table_id = m_id;
+  payload.route.n_paths = 0;
   payload.route.table_id = m_id;
   payload.route.prefix = to_api(m_prefix);
 
@@ -125,8 +124,7 @@ delete_cmd::to_string() const
 dump_cmd::dump_cmd(route::table_id_t id, const l3_proto_t& proto)
   : m_id(id)
   , m_proto(proto)
-{
-}
+{}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

@@ -40,12 +40,12 @@ extern int fib_api_table_id_decode(fib_protocol_t fproto,
 /**
  * Adding routes from the API
  */
-extern void fib_api_route_add_del (u8 is_add,
-                                   u8 is_multipath,
-                                   u32 fib_index,
-                                   const fib_prefix_t * prefix,
-                                   fib_entry_flag_t entry_flags,
-                                   fib_route_path_t *rpaths);
+extern int fib_api_route_add_del (u8 is_add,
+                                  u8 is_multipath,
+                                  u32 fib_index,
+                                  const fib_prefix_t * prefix,
+                                  fib_entry_flag_t entry_flags,
+                                  fib_route_path_t *rpaths);
 
 extern u8* format_vl_api_fib_path(u8 * s, va_list * args);
 

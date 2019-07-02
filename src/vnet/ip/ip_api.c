@@ -667,13 +667,8 @@ ip_route_add_del_t_handler (vl_api_ip_route_add_del_t * mp, u32 * stats_index)
   if (0 != rv)
     goto out;
 
-  if (0 == mp->route.n_paths)
-    {
-      rv = VNET_API_ERROR_NO_PATHS_IN_ROUTE;
-      goto out;
-    }
-
-  vec_validate (rpaths, mp->route.n_paths - 1);
+  if (0 != mp->route.n_paths)
+    vec_validate (rpaths, mp->route.n_paths - 1);
 
   for (ii = 0; ii < mp->route.n_paths; ii++)
     {
@@ -690,9 +685,9 @@ ip_route_add_del_t_handler (vl_api_ip_route_add_del_t * mp, u32 * stats_index)
 	goto out;
     }
 
-  fib_api_route_add_del (mp->is_add,
-			 mp->is_multipath,
-			 fib_index, &pfx, entry_flags, rpaths);
+  rv = fib_api_route_add_del (mp->is_add,
+			      mp->is_multipath,
+			      fib_index, &pfx, entry_flags, rpaths);
 
   if (mp->is_add && 0 == rv)
     *stats_index = fib_table_entry_get_stats_index (fib_index, &pfx);
