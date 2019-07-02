@@ -39,6 +39,24 @@
       "revId": "0a2cf4958c51656d18ed6fcb0c26f40dc43d7510",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "60c8300b_c1fde0a4",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-02T12:40:01Z",
+      "side": 1,
+      "message": "Done. What about other variants (*_or_null, *_w_reg)?",
+      "parentUuid": "243f8f05_d404de75",
+      "revId": "0a2cf4958c51656d18ed6fcb0c26f40dc43d7510",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
