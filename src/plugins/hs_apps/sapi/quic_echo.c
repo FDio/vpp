@@ -401,14 +401,14 @@ echo_unformat_timing_event (unformat_input_t * input, va_list * args)
   echo_test_evt_t *a = va_arg (*args, echo_test_evt_t *);
   if (unformat (input, "start"))
     *a = ECHO_EVT_START;
-  else if (unformat (input, "qconnect"))
-    *a = ECHO_EVT_FIRST_QCONNECT;
   else if (unformat (input, "qconnected"))
     *a = ECHO_EVT_LAST_QCONNECTED;
-  else if (unformat (input, "sconnect"))
-    *a = ECHO_EVT_FIRST_SCONNECT;
+  else if (unformat (input, "qconnect"))
+    *a = ECHO_EVT_FIRST_QCONNECT;
   else if (unformat (input, "sconnected"))
     *a = ECHO_EVT_LAST_SCONNECTED;
+  else if (unformat (input, "sconnect"))
+    *a = ECHO_EVT_FIRST_SCONNECT;
   else if (unformat (input, "lastbyte"))
     *a = ECHO_EVT_LAST_BYTE;
   else if (unformat (input, "exit"))
@@ -690,13 +690,13 @@ connect_to_vpp (char *name)
       if (vl_socket_client_connect ((char *) em->socket_name, name,
 				    0 /* default rx, tx buffer */ ))
 	{
-	  clib_warning ("socket connect failed");
+	  ECHO_FAIL ("socket connect failed");
 	  return -1;
 	}
 
       if (vl_socket_client_init_shm (0, 1 /* want_pthread */ ))
 	{
-	  clib_warning ("init shm api failed");
+	  ECHO_FAIL ("init shm api failed");
 	  return -1;
 	}
     }
@@ -704,7 +704,7 @@ connect_to_vpp (char *name)
     {
       if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
 	{
-	  clib_warning ("shmem connect failed");
+	  ECHO_FAIL ("shmem connect failed");
 	  return -1;
 	}
     }
@@ -730,7 +730,7 @@ print_global_stats (echo_main_t * em)
   u8 *s = format (0, "%U:%U",
 		  echo_format_timing_event, em->timing_start_event,
 		  echo_format_timing_event, em->timing_end_event);
-  fformat (stdout, "Timinig %s\n", s);
+  fformat (stdout, "Timing %s\n", s);
   fformat (stdout, "-------- TX --------\n");
   fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds\n",
 	   em->tx_total, em->tx_total / (1ULL << 20),
@@ -1878,7 +1878,7 @@ main (int argc, char **argv)
   if (connect_to_vpp (app_name) < 0)
     {
       svm_region_exit ();
-      fformat (stderr, "Couldn't connect to vpe, exiting...\n");
+      fformat (stderr, "ECHO-ERROR: Couldn't connect to vpe, exiting...\n");
       exit (1);
     }
 
@@ -1887,7 +1887,7 @@ main (int argc, char **argv)
   application_send_attach (em);
   if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
     {
-      fformat (stderr, "Couldn't attach to vpp, exiting...\n");
+      fformat (stderr, "ECHO-ERROR: Couldn't attach to vpp, exiting...\n");
       exit (1);
     }
   if (em->i_am_master)
@@ -1901,7 +1901,7 @@ main (int argc, char **argv)
   application_detach (em);
   if (wait_for_state_change (em, STATE_DETACHED, TIMEOUT))
     {
-      fformat (stderr, "Couldn't detach to vpp, exiting...\n");
+      fformat (stderr, "ECHO-ERROR: Couldn't detach from vpp, exiting...\n");
       exit (1);
     }
   if (em->use_sock_api)
