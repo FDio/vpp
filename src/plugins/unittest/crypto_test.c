@@ -33,7 +33,7 @@ sort_registrations (void *a0, void *a1)
 static void
 print_results (vlib_main_t * vm, unittest_crypto_test_registration_t ** rv,
 	       vnet_crypto_op_t * ops, vnet_crypto_op_chunk_t * chunks,
-	       u32 n_ops, int verbose)
+	       u32 n_ops, crypto_test_main_t * tm)
 {
   int i;
   unittest_crypto_test_registration_t *r;
@@ -45,7 +45,7 @@ print_results (vlib_main_t * vm, unittest_crypto_test_registration_t ** rv,
   {
     int fail = 0;
     r = rv[op->user_data];
-    unittest_crypto_test_data_t *exp_pt = 0, *exp_ct = 0;
+    unittest_crypto_test_data_t *exp_pt = 0, *exp_ct = 0, exp_pt_data;
     unittest_crypto_test_data_t *exp_digest = 0, *exp_tag = 0;
     unittest_crypto_test_data_t *exp_pt_chunks = 0, *exp_ct_chunks = 0;
 
@@ -60,8 +60,17 @@ print_results (vlib_main_t * vm, unittest_crypto_test_registration_t ** rv,
 	break;
       case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
       case VNET_CRYPTO_OP_TYPE_DECRYPT:
-	exp_pt = &r->plaintext;
-	exp_pt_chunks = r->pt_chunks;
+	if (r->plaintext_incremental)
+	  {
+	    exp_pt_data.length = r->plaintext_incremental;
+	    exp_pt_data.data = tm->inc_data;
+	    exp_pt = &exp_pt_data;
+	  }
+	else
+	  {
+	    exp_pt = &r->plaintext;
+	    exp_pt_chunks = r->pt_chunks;
+	  }
 	break;
       case VNET_CRYPTO_OP_TYPE_HMAC:
 	exp_digest = &r->digest;
@@ -129,9 +138,9 @@ print_results (vlib_main_t * vm, unittest_crypto_test_registration_t ** rv,
 
     vlib_cli_output (vm, "%-60v%s%v", s, vec_len (err) ? "FAIL: " : "OK",
 		     err);
-    if (verbose)
+    if (tm->verbose)
       {
-	if (verbose == 2)
+	if (tm->verbose == 2)
 	  fail = 1;
 
 	if (exp_ct && fail)
@@ -161,103 +170,278 @@ print_results (vlib_main_t * vm, unittest_crypto_test_registration_t ** rv,
   vec_free (s);
 }
 
-static clib_error_t *
-test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
+static void
+validate_data (u8 ** data, u32 len)
 {
+  u32 i, diff, old_len;
+  if (vec_len (data[0]) >= len)
+    return;
+
+  old_len = vec_len (data[0]);
+  diff = len - vec_len (data[0]);
+  vec_validate (data[0], old_len + diff - 1);
+  for (i = old_len; i < len; i++)
+    data[0][i] = (u8) i;
+}
+
+static void
+generate_digest (vlib_main_t * vm,
+		 unittest_crypto_test_registration_t * r,
+		 vnet_crypto_op_id_t id)
+{
+  crypto_test_main_t *cm = &crypto_test_main;
+  vnet_crypto_op_t op[1];
+  vnet_crypto_op_init (op, id);
+  vec_validate (r->digest.data, r->digest.length - 1);
+  op->src = cm->inc_data;
+  op->len = r->plaintext_incremental;
+  op->digest = r->digest.data;
+  op->digest_len = r->digest.length;
+  op->key_index = vnet_crypto_key_add (vm, r->alg,
+				       cm->inc_data, r->key.length);
+
+  /* at this point openssl is set for each algo */
+  vnet_crypto_process_ops (vm, op, 1);
+}
+
+static int
+restore_engines (u32 * engs)
+{
+  return 0;
   vnet_crypto_main_t *cm = &crypto_main;
-  unittest_crypto_test_registration_t *r = tm->test_registrations;
-  unittest_crypto_test_registration_t **rv = 0;
-  vnet_crypto_alg_data_t *ad;
-  vnet_crypto_op_t *ops = 0, *op, *chained_ops = 0;
-  vnet_crypto_op_t *current_chained_op = 0, *current_op = 0;
-  vnet_crypto_op_chunk_t *chunks = 0, ch;
-  vnet_crypto_key_index_t *key_indices = 0;
-  u8 *computed_data = 0;
-  u32 computed_data_total_len = 0, n_ops = 0, n_chained_ops = 0;
-  unittest_crypto_test_data_t *pt, *ct;
-  u32 i, j;
+  u32 i;
+  vnet_crypto_engine_t *ce;
 
-  /* construct registration vector */
-  while (r)
+  for (i = 1; i < VNET_CRYPTO_N_OP_IDS; i++)
     {
-      vec_add1 (rv, r);
-      ad = vec_elt_at_index (cm->algs, r->alg);
+      vnet_crypto_op_data_t *od = &cm->opt_data[i];
 
-      for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+      if (engs[i] != ~0)
 	{
-	  vnet_crypto_op_id_t id = ad->op_by_type[i];
-
-	  if (id == 0)
-	    continue;
-
-	  switch (i)
-	    {
-	    case VNET_CRYPTO_OP_TYPE_ENCRYPT:
-	    case VNET_CRYPTO_OP_TYPE_DECRYPT:
-	    case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
-	      if (r->is_chained)
-		{
-		  ct = r->ct_chunks;
-		  j = 0;
-		  while (ct->data)
-		    {
-		      if (j > CRYPTO_TEST_MAX_OP_CHUNKS)
-			return clib_error_return (0,
-						  "test case '%s' exceeds extra data!",
-						  r->name);
-		      computed_data_total_len += ct->length;
-		      ct++;
-		      j++;
-		    }
-		  n_chained_ops += 1;
-		}
-	      else
-		{
-		  computed_data_total_len += r->ciphertext.length;
-		  n_ops += 1;
-		}
-	      break;
-	    case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT:
-	      computed_data_total_len += r->ciphertext.length;
-	      computed_data_total_len += r->tag.length;
-	      if (r->is_chained)
-		{
-		  ct = r->ct_chunks;
-		  j = 0;
-		  while (ct->data)
-		    {
-		      if (j > CRYPTO_TEST_MAX_OP_CHUNKS)
-			return clib_error_return (0,
-						  "test case '%s' exceeds extra data!",
-						  r->name);
-		      computed_data_total_len += ct->length;
-		      ct++;
-		      j++;
-		    }
-		  n_chained_ops += 1;
-		}
-	      else
-		n_ops += 1;
-	      break;
-	    case VNET_CRYPTO_OP_TYPE_HMAC:
-	      computed_data_total_len += r->digest.length;
-	      if (r->is_chained)
-		n_chained_ops += 1;
-	      else
-		n_ops += 1;
-	      break;
-	    default:
-	      break;
-	    };
+	  ce = vec_elt_at_index (cm->engines, engs[i]);
+	  od->active_engine_index_simple = engs[i];
+	  cm->ops_handlers[i] = ce->ops_handlers[i];
 	}
-
-      /* next */
-      r = r->next;
     }
 
-  /* no tests registered */
+  return 0;
+}
+
+static int
+save_current_engines (u32 * engs)
+{
+  return 0;
+  vnet_crypto_main_t *cm = &crypto_main;
+  uword *p;
+  u32 i;
+  vnet_crypto_engine_t *ce;
+
+  p = hash_get_mem (cm->engine_index_by_name, "openssl");
+  if (!p)
+    return -1;
+
+  ce = vec_elt_at_index (cm->engines, p[0]);
+
+  /* set openssl for all crypto algs to generate expected data */
+  for (i = 1; i < VNET_CRYPTO_N_OP_IDS; i++)
+    {
+      vnet_crypto_op_data_t *od = &cm->opt_data[i];
+      if (od->active_engine_index_simple != ~0)
+	{
+	  /* save engine index */
+	  engs[i] = od->active_engine_index_simple;
+	  od->active_engine_index_simple = ce - cm->engines;
+	  cm->ops_handlers[i] = ce->ops_handlers[i];
+	}
+    }
+
+  return 0;
+}
+
+static clib_error_t *
+test_crypto_incremental (vlib_main_t * vm, crypto_test_main_t * tm,
+			 unittest_crypto_test_registration_t ** rv, u32 n_ops,
+			 u32 computed_data_total_len)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_alg_data_t *ad;
+  vnet_crypto_key_index_t *key_indices = 0;
+  u32 i;
+  unittest_crypto_test_registration_t *r;
+  vnet_crypto_op_t *ops = 0, *op;
+  u8 *encrypted_data = 0, *decrypted_data = 0, *s = 0, *err = 0;
+
   if (n_ops == 0)
     return 0;
+
+  vec_validate_aligned (encrypted_data, computed_data_total_len - 1,
+			CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (decrypted_data, computed_data_total_len - 1,
+			CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ops, n_ops - 1, CLIB_CACHE_LINE_BYTES);
+  computed_data_total_len = 0;
+
+  op = ops;
+  /* first stage: encrypt only */
+
+  vec_foreach_index (i, rv)
+  {
+    r = rv[i];
+    int t;
+    ad = vec_elt_at_index (cm->algs, r->alg);
+    for (t = 0; t < VNET_CRYPTO_OP_N_TYPES; t++)
+      {
+	vnet_crypto_op_id_t id = ad->op_by_type[t];
+
+	if (id == 0)
+	  continue;
+
+	switch (t)
+	  {
+	  case VNET_CRYPTO_OP_TYPE_ENCRYPT:
+	    vnet_crypto_op_init (op, id);
+	    op->iv = tm->inc_data;
+	    op->key_index = vnet_crypto_key_add (vm, r->alg,
+						 tm->inc_data, r->key.length);
+	    vec_add1 (key_indices, op->key_index);
+	    op->len = r->plaintext_incremental;
+	    op->src = tm->inc_data;
+	    op->dst = encrypted_data + computed_data_total_len;
+	    computed_data_total_len += r->plaintext_incremental;
+	    op->user_data = i;
+	    op++;
+	    break;
+	  case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT:
+	    vnet_crypto_op_init (op, id);
+	    op->iv = tm->inc_data;
+	    op->key_index = vnet_crypto_key_add (vm, r->alg,
+						 tm->inc_data, r->key.length);
+	    vec_add1 (key_indices, op->key_index);
+	    op->aad = tm->inc_data;
+	    op->aad_len = r->aad.length;
+	    op->len = r->plaintext_incremental;
+	    op->dst = encrypted_data + computed_data_total_len;
+	    computed_data_total_len += r->plaintext_incremental;
+	    op->src = tm->inc_data;
+	    op->tag = encrypted_data + computed_data_total_len;
+	    computed_data_total_len += r->tag.length;
+	    op->tag_len = r->tag.length;
+	    op->user_data = i;
+	    op++;
+	    break;
+	  case VNET_CRYPTO_OP_TYPE_HMAC:
+	    /* compute hmac in the next stage */
+	    op->op = VNET_CRYPTO_OP_NONE;
+	    computed_data_total_len += r->digest.length;
+	    op->user_data = i;
+	    op++;
+	    break;
+	  default:
+	    break;
+	  };
+      }
+  }
+
+  vnet_crypto_process_ops (vm, ops, n_ops);
+  computed_data_total_len = 0;
+
+  /* second stage: hash/decrypt previously encrypted data */
+  op = ops;
+
+  vec_foreach_index (i, rv)
+  {
+    r = rv[i];
+    int t;
+    ad = vec_elt_at_index (cm->algs, r->alg);
+    for (t = 0; t < VNET_CRYPTO_OP_N_TYPES; t++)
+      {
+	vnet_crypto_op_id_t id = ad->op_by_type[t];
+
+	if (id == 0)
+	  continue;
+
+	switch (t)
+	  {
+	  case VNET_CRYPTO_OP_TYPE_DECRYPT:
+	    vnet_crypto_op_init (op, id);
+	    op->iv = tm->inc_data;
+	    op->key_index = vnet_crypto_key_add (vm, r->alg,
+						 tm->inc_data, r->key.length);
+	    vec_add1 (key_indices, op->key_index);
+	    op->len = r->plaintext_incremental;
+	    op->src = encrypted_data + computed_data_total_len;
+	    op->dst = decrypted_data + computed_data_total_len;
+	    computed_data_total_len += r->plaintext_incremental;
+	    op->user_data = i;
+	    op++;
+	    break;
+	  case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
+	    vnet_crypto_op_init (op, id);
+	    op->iv = tm->inc_data;
+	    op->key_index = vnet_crypto_key_add (vm, r->alg,
+						 tm->inc_data, r->key.length);
+	    vec_add1 (key_indices, op->key_index);
+	    op->aad = tm->inc_data;
+	    op->aad_len = r->aad.length;
+	    op->len = r->plaintext_incremental;
+	    op->dst = decrypted_data + computed_data_total_len;
+	    op->src = encrypted_data + computed_data_total_len;
+	    computed_data_total_len += r->plaintext_incremental;
+
+	    op->tag = encrypted_data + computed_data_total_len;
+	    computed_data_total_len += r->tag.length;
+	    op->tag_len = r->tag.length;
+	    op->user_data = i;
+	    op++;
+	    break;
+	  case VNET_CRYPTO_OP_TYPE_HMAC:
+	    vnet_crypto_op_init (op, id);
+	    op->key_index = vnet_crypto_key_add (vm, r->alg,
+						 tm->inc_data, r->key.length);
+	    vec_add1 (key_indices, op->key_index);
+	    op->src = tm->inc_data;
+	    op->len = r->plaintext_incremental;
+	    op->digest_len = r->digest.length;
+	    op->digest = encrypted_data + computed_data_total_len;
+	    computed_data_total_len += r->digest.length;
+	    op->user_data = i;
+	    op++;
+	    break;
+	  default:
+	    break;
+	  };
+
+      }
+  }
+
+  vnet_crypto_process_ops (vm, ops, n_ops);
+  print_results (vm, rv, ops, 0, n_ops, tm);
+
+  vec_foreach_index (i, key_indices) vnet_crypto_key_del (vm, key_indices[i]);
+  vec_free (tm->inc_data);
+  vec_free (ops);
+  vec_free (encrypted_data);
+  vec_free (decrypted_data);
+  vec_free (err);
+  vec_free (s);
+  return 0;
+}
+
+static clib_error_t *
+test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
+		    unittest_crypto_test_registration_t ** rv, u32 n_ops,
+		    u32 n_chained_ops, u32 computed_data_total_len)
+{
+  unittest_crypto_test_data_t *pt, *ct;
+  vnet_crypto_op_chunk_t *chunks = 0, ch;
+  unittest_crypto_test_registration_t *r;
+  vnet_crypto_op_t *ops = 0, *op, *chained_ops = 0;
+  vnet_crypto_op_t *current_chained_op = 0, *current_op = 0;
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_alg_data_t *ad;
+  vnet_crypto_key_index_t *key_indices = 0;
+  u8 *computed_data = 0;
+  u32 i;
 
   vec_sort_with_function (rv, sort_registrations);
 
@@ -457,9 +641,8 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
   vnet_crypto_process_chained_ops (vm, chained_ops, chunks,
 				   vec_len (chained_ops));
 
-  print_results (vm, rv, ops, chunks, vec_len (ops), tm->verbose);
-  print_results (vm, rv, chained_ops, chunks, vec_len (chained_ops),
-		 tm->verbose);
+  print_results (vm, rv, ops, chunks, vec_len (ops), tm);
+  print_results (vm, rv, chained_ops, chunks, vec_len (chained_ops), tm);
 
   vec_foreach_index (i, key_indices) vnet_crypto_key_del (vm, key_indices[i]);
 
@@ -467,7 +650,6 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
   vec_free (ops);
   vec_free (chained_ops);
   vec_free (chunks);
-  vec_free (rv);
   return 0;
 }
 
@@ -498,8 +680,157 @@ test_crypto_get_key_sz (vnet_crypto_alg_t alg)
     default:
       return 0;
     }
-
   return 0;
+}
+
+static clib_error_t *
+test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
+{
+  clib_error_t *err = 0;
+  vnet_crypto_main_t *cm = &crypto_main;
+  unittest_crypto_test_registration_t *r = tm->test_registrations;
+  unittest_crypto_test_registration_t **static_tests = 0, **inc_tests = 0;
+  u32 i, j, n_ops_static = 0, n_ops_incr = 0, n_chained_ops = 0;
+  vnet_crypto_alg_data_t *ad;
+  u32 computed_data_total_len = 0;
+  u32 computed_data_total_incr_len = 0;
+  u32 saved_engs[VNET_CRYPTO_N_OP_IDS] = { ~0, };
+  unittest_crypto_test_data_t *ct;
+
+  /* pre-allocate plaintext data with reasonable length */
+  validate_data (&tm->inc_data, 2048);
+
+  int rc = save_current_engines (saved_engs);
+  if (rc)
+    return clib_error_return (0, "failed to set default crypto engine!");
+
+  /* construct registration vector */
+  while (r)
+    {
+      if (r->plaintext_incremental)
+	vec_add1 (inc_tests, r);
+      else
+	vec_add1 (static_tests, r);
+
+      ad = vec_elt_at_index (cm->algs, r->alg);
+
+      for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+	{
+	  vnet_crypto_op_id_t id = ad->op_by_type[i];
+
+	  if (id == 0)
+	    continue;
+
+	  switch (i)
+	    {
+	    case VNET_CRYPTO_OP_TYPE_ENCRYPT:
+	      if (r->plaintext_incremental)
+		{
+		  computed_data_total_incr_len += r->plaintext_incremental;
+		  n_ops_incr += 1;
+		}
+	      /* fall though */
+	    case VNET_CRYPTO_OP_TYPE_DECRYPT:
+	    case VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT:
+	      if (r->is_chained)
+		{
+		  ct = r->ct_chunks;
+		  j = 0;
+		  while (ct->data)
+		    {
+		      if (j > CRYPTO_TEST_MAX_OP_CHUNKS)
+			return clib_error_return (0,
+						  "test case '%s' exceeds extra data!",
+						  r->name);
+		      computed_data_total_len += ct->length;
+		      ct++;
+		      j++;
+		    }
+		  n_chained_ops += 1;
+		}
+	      else if (!r->plaintext_incremental)
+		{
+		  computed_data_total_len += r->ciphertext.length;
+		  n_ops_static += 1;
+		}
+	      break;
+	    case VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT:
+	      if (r->plaintext_incremental)
+		{
+		  computed_data_total_incr_len += r->plaintext_incremental;
+		  computed_data_total_incr_len += r->tag.length;
+		  n_ops_incr += 1;
+		}
+	      else
+		{
+		  computed_data_total_len += r->ciphertext.length;
+		  computed_data_total_len += r->tag.length;
+		  if (r->is_chained)
+		    {
+		      ct = r->ct_chunks;
+		      j = 0;
+		      while (ct->data)
+			{
+			  if (j > CRYPTO_TEST_MAX_OP_CHUNKS)
+			    return clib_error_return (0,
+						      "test case '%s' exceeds extra data!",
+						      r->name);
+			  computed_data_total_len += ct->length;
+			  ct++;
+			  j++;
+			}
+		      n_chained_ops += 1;
+		    }
+		  else
+		    n_ops_static += 1;
+		}
+	      break;
+	    case VNET_CRYPTO_OP_TYPE_HMAC:
+	      if (r->plaintext_incremental)
+		{
+		  computed_data_total_incr_len += r->digest.length;
+		  n_ops_incr += 1;
+		  generate_digest (vm, r, id);
+		}
+	      else
+		{
+		  computed_data_total_len += r->digest.length;
+		  if (r->is_chained)
+		    n_chained_ops += 1;
+		  else
+		    n_ops_static += 1;
+		}
+	      break;
+	    default:
+	      break;
+	    };
+	}
+
+      /* next: */
+      r = r->next;
+    }
+  restore_engines (saved_engs);
+
+  err = test_crypto_static (vm, tm, static_tests, n_ops_static, n_chained_ops,
+			    computed_data_total_len);
+  if (err)
+    goto done;
+
+  err = test_crypto_incremental (vm, tm, inc_tests, n_ops_incr,
+				 computed_data_total_incr_len);
+
+  r = tm->test_registrations;
+  while (r)
+    {
+      if (r->plaintext_incremental)
+	vec_free (r->digest.data);
+      r = r->next;
+    }
+
+done:
+  vec_free (inc_tests);
+  vec_free (static_tests);
+  return err;
 }
 
 static clib_error_t *
