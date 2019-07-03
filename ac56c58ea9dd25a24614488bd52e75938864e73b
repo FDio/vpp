@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "966a78de_a79e3eb6",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 27
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-03T12:45:52Z",
+      "side": 1,
+      "message": "can you construct the strings you need with some macro magic?\n\nstatic const char* full_desc_string[]\u003d\\\n#define _(a, b, c) VNET_API_ERROR ## b ## \":\" ## c\n{ foreach_vnet_api_error };",
+      "revId": "ac56c58ea9dd25a24614488bd52e75938864e73b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e6fe5bc8_9b7146c0",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 27
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-03T12:45:52Z",
+      "side": 1,
+      "message": "can you declare this here and define it once elsewhere. this file is included by all of vnet.",
+      "revId": "ac56c58ea9dd25a24614488bd52e75938864e73b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b5b64137_e37d19e5",
         "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
         "patchSetId": 27
