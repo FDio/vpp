@@ -57,8 +57,14 @@ ERROR = 2
 SKIP = 3
 TEST_RUN = 4
 
+
+def get_truthy_envar(envvar):
+    return os.getenv(envvar, "").lower() in \
+           ("y", "yes", "1")
+
+
 debug_framework = False
-if os.getenv('TEST_DEBUG', "0") == "1":
+if get_truthy_envar('TEST_DEBUG'):
     debug_framework = True
     import debug_internal
 
@@ -174,7 +180,7 @@ def pump_output(testclass):
 
 
 def _is_skip_aarch64_set():
-    return os.getenv('SKIP_AARCH64', 'n').lower() in ('yes', 'y', '1')
+    return get_truthy_envar('SKIP_AARCH64')
 
 
 is_skip_aarch64_set = _is_skip_aarch64_set()
@@ -188,8 +194,7 @@ is_platform_aarch64 = _is_platform_aarch64()
 
 
 def _running_extended_tests():
-    s = os.getenv("EXTENDED_TESTS", "n")
-    return True if s.lower() in ("y", "yes", "1") else False
+    return get_truthy_envar("EXTENDED_TESTS")
 
 
 running_extended_tests = _running_extended_tests()
@@ -243,6 +248,7 @@ class VppTestCase(unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
     """
+    get_truthy_envar = staticmethod(get_truthy_envar)
 
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
@@ -314,11 +320,10 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def setUpConstants(cls):
         """ Set-up the test case class based on environment variables """
-        s = os.getenv("STEP", "n")
-        cls.step = True if s.lower() in ("y", "yes", "1") else False
+        cls.step = get_truthy_envar('STEP')
         d = os.getenv("DEBUG", None)
         c = os.getenv("CACHE_OUTPUT", "1")
-        cls.cache_vpp_output = False if c.lower() in ("n", "no", "0") else True
+        cls.cache_vpp_output = get_truthy_envar('CACHE_OUTPUT')
         cls.set_debug_flags(d)
         cls.vpp_bin = os.getenv('VPP_BIN', "vpp")
         cls.plugin_path = os.getenv('VPP_PLUGIN_PATH')
