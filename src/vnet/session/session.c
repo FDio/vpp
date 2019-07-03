@@ -55,6 +55,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       evt->rpc_args.fp = data;
       evt->rpc_args.arg = args;
       break;
+    case SESSION_IO_EVT_RX:
     case SESSION_IO_EVT_TX:
     case SESSION_IO_EVT_TX_FLUSH:
     case SESSION_IO_EVT_BUILTIN_RX:
