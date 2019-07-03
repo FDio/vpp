@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "77ecd729_89c41ba5",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-03T08:34:11Z",
+      "side": 1,
+      "message": "Please, either add is_anon to existing gbp_ext_itf_add_del api or refactor this to a separate class.",
+      "range": {
+        "startLine": 200,
+        "startChar": 0,
+        "endLine": 206,
+        "endChar": 32
+      },
+      "revId": "70e0696375f592db825c90aa5cd547293b9447e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
