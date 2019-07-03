@@ -31,6 +31,7 @@ typedef struct unittest_crypto_test_registration
   vnet_crypto_alg_t alg;
   unittest_crypto_test_data_t iv, key, digest, plaintext, ciphertext, aad,
     tag;
+  u32 plaintext_incremental;
   u8 is_chained;
 
   /* plaintext and cipher text data used for testing chained buffers */
@@ -45,6 +46,7 @@ typedef struct unittest_crypto_test_registration
 typedef struct
 {
   int verbose;
+  u8 *inc_data;
 
   /* perf */
   vnet_crypto_alg_t alg;
