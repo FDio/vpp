@@ -55,7 +55,7 @@ linearize_negative_current_data (vlib_main_t * vm)
       b->current_length = 14 + data_size;
     }
 
-  vlib_buffer_chain_linearize (vm, vlib_get_buffer (vm, bi[0]));
+  (void) vlib_buffer_chain_linearize (vm, vlib_get_buffer (vm, bi[0]));
 
   return 0;
 }

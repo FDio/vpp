@@ -18921,7 +18921,7 @@ static void
 vl_api_mpls_route_details_t_handler (vl_api_mpls_route_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  int count = ntohl (mp->mr_route.mr_n_paths);
+  int count = (int) clib_net_to_host_u32 (mp->mr_route.mr_n_paths);
   vl_api_fib_path_t *fp;
   int i;
 
@@ -18941,7 +18941,7 @@ static void vl_api_mpls_route_details_t_handler_json
   (vl_api_mpls_route_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  int count = ntohl (mp->mr_route.mr_n_paths);
+  int count = (int) clib_host_to_net_u32 (mp->mr_route.mr_n_paths);
   vat_json_node_t *node = NULL;
   vl_api_fib_path_t *fp;
   int i;

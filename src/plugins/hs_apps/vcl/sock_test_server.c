@@ -343,7 +343,8 @@ af_unix_echo (void)
 	       af_unix_client_fd, nbytes, errno_val);
       goto done;
     }
-
+  /* Make the buffer is NULL-terminated. */
+  buffer[sizeof (buffer) - 1] = 0;
   printf ("SERVER (AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
 
   if (!strncmp (SOCK_TEST_MIXED_EPOLL_DATA, (const char *) buffer, nbytes))

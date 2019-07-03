@@ -2063,6 +2063,11 @@ ethernet_register_input_type (vlib_main_t * vm,
   }
 
   ti = ethernet_get_type_info (em, type);
+  if (ti == 0)
+    {
+      clib_warning ("type_info NULL for type %d", type);
+      return;
+    }
   ti->node_index = node_index;
   ti->next_index = vlib_node_add_next (vm,
 				       ethernet_input_node.index, node_index);
