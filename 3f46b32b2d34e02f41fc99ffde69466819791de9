@@ -16,6 +16,24 @@
       "revId": "3f46b32b2d34e02f41fc99ffde69466819791de9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "54bf9ec6_a72193a4",
+        "filename": "doxygen/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-07-03T17:18:51Z",
+      "side": 1,
+      "message": "I\u0027ll have to hand-audit the list. We don\u0027t want skip any of these directories if they don\u0027t happen to have a .md file in them...\n\nGood thought, though. I\u0027m on it...",
+      "parentUuid": "1d11004e_6f8c94f4",
+      "revId": "3f46b32b2d34e02f41fc99ffde69466819791de9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
