@@ -34,6 +34,24 @@
       "revId": "3f46b32b2d34e02f41fc99ffde69466819791de9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b462f60d_30708c00",
+        "filename": "doxygen/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2019-07-03T18:07:32Z",
+      "side": 1,
+      "message": "Ah yes, this isn\u0027t just the list of directories for Markdown files, but the source directories to look in, too. \n\nNow I remember why I didn\u0027t do similar before; there are (or, were, perhaps) some directories with source in that we didn\u0027t want to process. But in general, if we have documentation we want to include, it should be safe to say the source in that directory should be included too - and if that source is currently missing in the docs, it\u0027s disappointing nobody noticed.\n\nIf it doesn\u0027t hurt, the dupes here may be ok, if you think your hand audit ends up too tedious. :)",
+      "parentUuid": "54bf9ec6_a72193a4",
+      "revId": "3f46b32b2d34e02f41fc99ffde69466819791de9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
