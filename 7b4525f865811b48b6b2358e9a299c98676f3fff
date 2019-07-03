@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "64f00dcc_1c828219",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-03T15:44:52Z",
+      "side": 1,
+      "message": "Isn\u0027t it enough for this to be a u32? Probably having it at the end of the struct is not very efficient, but we\u0027ll fix that later.",
+      "range": {
+        "startLine": 375,
+        "startChar": 2,
+        "endLine": 375,
+        "endChar": 5
+      },
+      "revId": "7b4525f865811b48b6b2358e9a299c98676f3fff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ff5499a7_a5ee53b5",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 924,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-03T15:44:52Z",
+      "side": 1,
+      "message": "Typically, when providing description for functions in header files we use doxygen formatting. Also, I\u0027d change the description to something like:\n\n/** \n * Generate timestamp for tcp connection\n */",
+      "range": {
+        "startLine": 924,
+        "startChar": 0,
+        "endLine": 924,
+        "endChar": 34
+      },
+      "revId": "7b4525f865811b48b6b2358e9a299c98676f3fff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "043e21f5_af792093",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 926,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-03T15:44:52Z",
+      "side": 1,
+      "message": "Please rename to tcp_tstamp (..) or tcp_timestamp (..)",
+      "range": {
+        "startLine": 926,
+        "startChar": 0,
+        "endLine": 926,
+        "endChar": 25
+      },
+      "revId": "7b4525f865811b48b6b2358e9a299c98676f3fff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
