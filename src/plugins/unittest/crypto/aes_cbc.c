@@ -122,6 +122,20 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_cbc) = {
   .ciphertext = TEST_DATA (ciphertext256),
 };
 
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_incr) = {
+  .name = "NIST SP 800-38A incr (1024 B)",
+  .alg = VNET_CRYPTO_ALG_AES_256_CBC,
+  .key.length = 32,
+  .plaintext_incremental = 1024,
+};
+
+UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_incr2) = {
+  .name = "NIST SP 800-38A incr (1056 B)",
+  .alg = VNET_CRYPTO_ALG_AES_256_CBC,
+  .key.length = 32,
+  .plaintext_incremental = 1056,
+};
+
 /* *INDENT-ON* */
 
 /*

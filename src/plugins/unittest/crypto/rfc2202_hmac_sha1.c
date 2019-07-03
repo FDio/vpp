@@ -218,6 +218,16 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7) = {
 };
 /* *INDENT-ON* */
 
+/* *INDENT-OFF* */
+UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_inc) = {
+  .name = "HMAC-SHA-1 incremental (1024 B)",
+  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .plaintext_incremental = 1024,
+  .key.length = 80,
+  .digest.length = 12,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

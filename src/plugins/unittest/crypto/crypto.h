@@ -29,6 +29,7 @@ typedef struct unittest_crypto_test_registration
   vnet_crypto_alg_t alg;
   unittest_crypto_test_data_t iv, key, digest, plaintext, ciphertext, aad,
     tag;
+  u32 plaintext_incremental;
 
   /* next */
   struct unittest_crypto_test_registration *next;
@@ -38,6 +39,7 @@ typedef struct unittest_crypto_test_registration
 typedef struct
 {
   int verbose;
+  u8 *inc_data;
 
   /* perf */
   vnet_crypto_alg_t alg;
