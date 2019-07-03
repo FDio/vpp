@@ -46,6 +46,30 @@
       "revId": "063366eb23a81ea2d4079d291a2ff534acf75d2d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "259babcf_51ec0492",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-03T15:56:23Z",
+      "side": 0,
+      "message": "Yes, but as explained in the answer, the memory mapped file goes in /tmp or some other temporary directory pointed to by some env variable. Personal experience has been that iperf server/client runs on any system without privileges. Have you seen it fail in some setup? If yes, could you provide more details?\n\nAdditionally, note that the sockets are actually opened against vpp\u0027s host stack through ldp and vcl, i.e., iperf will be using tcp in vpp not in the kernel.",
+      "parentUuid": "b5e60c0c_22d03ff8",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 37
+      },
+      "revId": "063366eb23a81ea2d4079d291a2ff534acf75d2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
