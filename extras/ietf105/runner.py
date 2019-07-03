@@ -568,21 +568,24 @@ class Program(object):
 
         self.start_containers()
 
+        print("Deleting the old containers...")
+        time.sleep(30)
+        print("Starting the new containers...")
 
         c1 = self.containers.get(self.get_name(self.instance_names[0]))
         c2 = self.containers.get(self.get_name(self.instance_names[1]))
         c3 = self.containers.get(self.get_name(self.instance_names[2]))
         c4 = self.containers.get(self.get_name(self.instance_names[-1]))
 
-        c1.pg_create_interface6(local_ip="2001::1/64", remote_ip="2001::2/64",
+        c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
             local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
-        c4.pg_create_interface6(local_ip="3001::2/64", remote_ip="3001::1",
+        c4.pg_create_interface(local_ip="B::1/120", remote_ip="B::2",
             local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
         c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
 
-        c1.vppctl_exec("sr localsid prefix 4001::/64 behavior end.m.gtp6.d.di D4::/64")
+        c1.vppctl_exec("sr localsid prefix D::/64 behavior end.m.gtp6.d.di D4::/64")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
@@ -594,13 +597,12 @@ class Program(object):
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
         c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
         c3.set_ipv6_route("eth1", "A2::1", "C::/120")
-        c4.set_ipv6_pgroute("pg0", "3001::1", "4001::1/128")
 
         print("Waiting...")
-        time.sleep(60)
+        time.sleep(30)
 
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
-             IPv6(src="4001::2", dst="4001::1")/
+                IPv6(src="C::2", dst="D::2")/
              UDP(sport=2152, dport=2152)/
              GTP_U_Header(gtp_type="g_pdu", teid=200)/
              IP(src="172.99.0.1", dst="172.99.0.2")/

@@ -870,6 +870,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 		  ip6srv->sr.segments_left += 1;
 	          ip6srv->sr.first_segment += 1;
+		  ip6srv->sr.type = ROUTING_HEADER_TYPE_SR;
 		}
 
 	      ip6srv->ip.payload_length = clib_host_to_net_u16 (len0 + hdr_len - sizeof(ip6_header_t));
