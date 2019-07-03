@@ -21,7 +21,6 @@ def have_app(app):
 
 
 _have_iperf3 = have_app(iperf3)
-_have_permissions = os.geteuid() == 0
 
 
 class VCLAppWorker(Worker):
@@ -185,7 +184,6 @@ class VCLTestCase(VppTestCase):
         self.vapi.session_enable_disable(is_enabled=0)
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
-    @unittest.skipUnless(_have_permissions, 'Need to run as root. Skipping.')
     def thru_host_stack_test(self, server_app, server_args,
                              client_app, client_args):
         self.env = {'VCL_API_PREFIX': self.shm_prefix,
@@ -286,7 +284,6 @@ class LDPCutThruTestCase(VCLTestCase):
                            "sock_test_client", self.client_echo_test_args)
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
-    @unittest.skipUnless(_have_permissions, 'Need to run as root. Skipping.')
     def test_ldp_cut_thru_iperf3(self):
         """ run LDP cut thru iperf3 test """
 
@@ -304,6 +301,7 @@ class LDPCutThruTestCase(VCLTestCase):
                            self.client_uni_dir_nsock_test_args)
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skip("sock test apps need to be improved")
     def test_ldp_cut_thru_bi_dir_nsock(self):
         """ run LDP cut thru bi-directional (multiple sockets) test """
 
@@ -635,7 +633,6 @@ class LDPThruHostStackIperf(VCLTestCase):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
-    @unittest.skipUnless(_have_permissions, 'Need to run as root. Skipping.')
     def test_ldp_thru_host_stack_iperf3(self):
         """ run LDP thru host stack iperf3 test """
 
@@ -692,7 +689,6 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            self.client_ipv6_echo_test_args)
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
-    @unittest.skipUnless(_have_permissions, 'Need to run as root. Skipping.')
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_ipv6_cut_thru_iperf3(self):
         """ run LDP IPv6 cut thru iperf3 test """
@@ -711,6 +707,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            self.client_ipv6_uni_dir_nsock_test_args)
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skip("sock test apps need to be improved")
     def test_ldp_ipv6_cut_thru_bi_dir_nsock(self):
         """ run LDP IPv6 cut thru bi-directional (multiple sockets) test """
 
