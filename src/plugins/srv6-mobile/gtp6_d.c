@@ -73,7 +73,7 @@ static uword
 clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
-  srv6_end_gtp6_d_param *ls_mem;
+  srv6_end_gtp6_param_t *ls_mem;
   ip6_address_t sr_prefix;
   u16 sr_prefixlen;
   int sr_prefix_set = 0;
@@ -83,7 +83,7 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat "%U/%d", unformat_ip6_address, &sr_prefix, &sr_prefixlen)
+      if (unformat (input,"%U/%d", unformat_ip6_address, &sr_prefix, &sr_prefixlen))
         {
 	  sr_prefix_set = 1;
 	  break;
@@ -94,7 +94,7 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
     return 0;
 
   ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
-  clib_memset (ls_mem, 0, sizoef *ls_mem);
+  clib_memset (ls_mem, 0, sizeof *ls_mem);
   *plugin_mem_p = ls_mem;
 
   ls_mem->sr_prefix = sr_prefix;
