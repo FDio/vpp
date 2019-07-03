@@ -19,9 +19,16 @@
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_route_domain.h>
 #include <plugins/gbp/gbp_policy_dpo.h>
+#include <plugins/gbp/gbp_contract.h>
 
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/drop_dpo.h>
+
+char *gbp_contract_error_strings[] = {
+#define _(sym,string) string,
+  foreach_gbp_contract_error
+#undef _
+};
 
 /**
  * Single contract DB instance
