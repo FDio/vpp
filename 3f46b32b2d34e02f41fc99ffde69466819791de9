@@ -52,6 +52,24 @@
       "revId": "3f46b32b2d34e02f41fc99ffde69466819791de9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "81a09d42_10deed7c",
+        "filename": "doxygen/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-07-03T18:10:25Z",
+      "side": 1,
+      "message": "Although I tried to be careful, pruning the list turned out to be a giant fail. Half of the documentation mysteriously vanished. Duplicate directories seem OK, perhaps we can leave well enough alone?",
+      "parentUuid": "b462f60d_30708c00",
+      "revId": "3f46b32b2d34e02f41fc99ffde69466819791de9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
