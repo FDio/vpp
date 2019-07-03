@@ -22,6 +22,30 @@
       "revId": "70e0696375f592db825c90aa5cd547293b9447e2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0532c362_d514fea5",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-07-03T08:44:07Z",
+      "side": 1,
+      "message": "Not sure what is the best solution here: apart from add/del, it is the same VPP object, so if you list gbp ext-itf, you will get both anon and non-anon ext-itf.\nI initially add its own function: https://gerrit.fd.io/r/c/20440/3/test/vpp_papi_provider.py#2089 but reverted back to this based on comment from Neale.\nWhat would be a correct solution? I can fully duplicate the object of course but frankly I do not think it is the right thing to do.",
+      "parentUuid": "77ecd729_89c41ba5",
+      "range": {
+        "startLine": 200,
+        "startChar": 0,
+        "endLine": 206,
+        "endChar": 32
+      },
+      "revId": "70e0696375f592db825c90aa5cd547293b9447e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
