@@ -14,9 +14,26 @@
  */
 
 #include <plugins/gbp/gbp.h>
-#include <plugins/gbp/gbp_policy_dpo.h>
+#include <plugins/gbp/gbp_policy.h>
+#include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 
 gbp_policy_main_t gbp_policy_main;
+
+/* packet trace format function */
+u8 *
+format_gbp_policy_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  gbp_policy_trace_t *t = va_arg (*args, gbp_policy_trace_t *);
+
+  s =
+    format (s, "scope:%d sclass:%d, dclass:%d, allowed:%d flags:%U", t->scope,
+	    t->sclass, t->dclass, t->allowed, format_vxlan_gbp_header_gpflags,
+	    t->flags);
+
+  return s;
+}
 
 static clib_error_t *
 gbp_policy_init (vlib_main_t * vm)
