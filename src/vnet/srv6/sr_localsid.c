@@ -298,7 +298,6 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int rv;
 
   clib_memset (&resulting_address, 0, sizeof (ip6_address_t));
-  clib_memset (&sr_prefix, 0, sizeof (ip6_address_t));
   ip46_address_reset (&next_hop);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
