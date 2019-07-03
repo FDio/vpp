@@ -56,9 +56,6 @@ typedef struct srv6_end_main_v6_s
   u32 end_m_gtp6_e_node_index;
   u32 error_node_index;
 
-  u32 dst_p_len;
-  u32 src_p_len;
-
   ip6_gtpu_header_t cache_hdr;
 } srv6_end_main_v6_t;
 

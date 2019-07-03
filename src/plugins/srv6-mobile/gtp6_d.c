@@ -109,7 +109,7 @@ srv6_end_m_gtp6_d_init (vlib_main_t * vm)
 
   ip6 = &sm->cache_hdr;
 
-  clib_memset_u8 (ip6, 0, sizeof(ip6srv_combo_header_t));
+  clib_memset_u8 (ip6, 0, sizeof(ip6_header_t));
 
   // IPv6 header (default)
   ip6->ip_version_traffic_class_and_flow_label = 0x60;

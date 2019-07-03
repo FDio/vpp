@@ -109,11 +109,8 @@ srv6_end_m_gtp6_e_init (vlib_main_t * vm)
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = node->index;
 
-  sm->dst_p_len = 32;
-  sm->src_p_len = 64;
-
   // clear the pre cached packet
-  clib_memset_u8 (ip6, 0, sizeof (ip4_gtpu_header_t));
+  clib_memset_u8 (ip6, 0, sizeof (ip6_gtpu_header_t));
 
   // set defaults
   ip6->ip_version_traffic_class_and_flow_label = 0x60;
