@@ -729,12 +729,10 @@ if __name__ == '__main__':
     debug = os.getenv("DEBUG", "n").lower() in ["gdb", "gdbserver"]
 
     debug_core = os.getenv("DEBUG", "").lower() == "core"
-    compress_core = os.getenv("CORE_COMPRESS", "").lower() in ("y", "yes", "1")
+    compress_core = VppTestCase.get_truthy_env_var("CORE_COMPRESS")
 
-    step = os.getenv("STEP", "n").lower() in ("y", "yes", "1")
-
-    force_foreground = os.getenv("FORCE_FOREGROUND", "").lower() in \
-        ("y", "yes", "1")
+    step = VppTestCase.get_truthy_env_var("STEP")
+    force_foreground = VppTestCase.get_truthy_env_var("FORCE_FOREGROUND")
 
     run_interactive = debug or step or force_foreground
 
