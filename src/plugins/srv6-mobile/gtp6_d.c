@@ -65,7 +65,12 @@ static u8 param_str[] = "<sr-prefix>/<sr-prefixlen>";
 static u8 *
 clb_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
 {
-  s = format (s, "SRv6 End format function unsupported.");
+  srv6_end_gtp6_param_t *ls_mem = va_arg (*args, void *);
+
+  s = format (s, "SRv6 End gtp6.d\n\t");
+
+  s = format (s, "SR Prefix: %U/%d\n", format_ip6_address, &ls_mem->sr_prefix, ls_mem->sr_prefixlen);
+
   return s;
 }
 
@@ -76,22 +81,11 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
   srv6_end_gtp6_param_t *ls_mem;
   ip6_address_t sr_prefix;
   u16 sr_prefixlen;
-  int sr_prefix_set = 0;
 
-  if (!unformat (input, "end.m.gtp6.d"))
-    return 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat (input, "end.m.gtp6.d %U/%d", unformat_ip6_address, &sr_prefix, &sr_prefixlen))
     {
-      if (unformat (input,"%U/%d", unformat_ip6_address, &sr_prefix, &sr_prefixlen))
-        {
-	  sr_prefix_set = 1;
-	  break;
-	}
+      return 0;
     }
-
-  if (sr_prefix_set == 0)
-    return 0;
 
   ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
   clib_memset (ls_mem, 0, sizeof *ls_mem);
