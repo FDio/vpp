@@ -57,9 +57,28 @@ ERROR = 2
 SKIP = 3
 TEST_RUN = 4
 
-debug_framework = False
-if os.getenv('TEST_DEBUG', "0") == "1":
-    debug_framework = True
+
+class BoolEnvironmentVariable(object):
+
+    def __init__(self, env_var_name, default='n', true_values=None):
+        self.name = env_var_name
+        self.default = default
+        self.true_values = true_values if true_values is not None else \
+            ("y", "yes", "1")
+
+    def __bool__(self):
+        return os.getenv(self.name, self.default).lower() in self.true_values
+
+    if sys.version_info[0] == 2:
+        __nonzero__ = __bool__
+
+    def __repr__(self):
+        return 'BoolEnvironmentVariable(%r, default=%r, true_values=%r)' % \
+               (self.name, self.default, self.true_values)
+
+
+debug_framework = BoolEnvironmentVariable('TEST_DEBUG')
+if debug_framework:
     import debug_internal
 
 """
@@ -174,7 +193,7 @@ def pump_output(testclass):
 
 
 def _is_skip_aarch64_set():
-    return os.getenv('SKIP_AARCH64', 'n').lower() in ('yes', 'y', '1')
+    return BoolEnvironmentVariable('SKIP_AARCH64')
 
 
 is_skip_aarch64_set = _is_skip_aarch64_set()
@@ -188,8 +207,7 @@ is_platform_aarch64 = _is_platform_aarch64()
 
 
 def _running_extended_tests():
-    s = os.getenv("EXTENDED_TESTS", "n")
-    return True if s.lower() in ("y", "yes", "1") else False
+    return BoolEnvironmentVariable("EXTENDED_TESTS")
 
 
 running_extended_tests = _running_extended_tests()
@@ -243,6 +261,7 @@ class VppTestCase(unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
     """
+    get_truthy_envar = staticmethod(BoolEnvironmentVariable)
 
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
@@ -314,9 +333,9 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def setUpConstants(cls):
         """ Set-up the test case class based on environment variables """
-        s = os.getenv("STEP", "n")
-        cls.step = True if s.lower() in ("y", "yes", "1") else False
+        cls.step = BoolEnvironmentVariable('STEP')
         d = os.getenv("DEBUG", None)
+        # inverted case to handle '' == True
         c = os.getenv("CACHE_OUTPUT", "1")
         cls.cache_vpp_output = False if c.lower() in ("n", "no", "0") else True
         cls.set_debug_flags(d)
