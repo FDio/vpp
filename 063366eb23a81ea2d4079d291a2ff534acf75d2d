@@ -94,6 +94,30 @@
       "revId": "063366eb23a81ea2d4079d291a2ff534acf75d2d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7e7c9eed_357af685",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-03T20:27:46Z",
+      "side": 0,
+      "message": "Wow. I\u0027d like to have the tests always run without sudo, so if it\u0027s not too much to ask, can we defer this until you hit it again?\n\nJust let me know, and I\u0027d be glad to help debug/solve the issue.",
+      "parentUuid": "da9eeced_e885a5f2",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 37
+      },
+      "revId": "063366eb23a81ea2d4079d291a2ff534acf75d2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
