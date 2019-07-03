@@ -324,7 +324,6 @@ extern int
 sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index,
 		 u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
-		 ip6_address_t *sr_prefix, u16 sr_prefixlen,
 		 void *ls_plugin_mem);
 
 extern int

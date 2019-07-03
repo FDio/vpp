@@ -66,7 +66,6 @@ int
 sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index,
 		 u32 fib_table, ip46_address_t * nh_addr, 
-		 ip6_address_t * sr_prefix, u16 sr_prefixlen,
 		 void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
@@ -174,11 +173,6 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
   ls->nh_adj = (u32) ~ 0;
   ls->fib_table = fib_table;
   ls->localsid_len = pfx.fp_len;
-  if (sr_prefix)
-    clib_memcpy (&ls->sr_prefix, sr_prefix, sizeof (ip6_address_t));
-  else
-    clib_memset (&ls->sr_prefix, 0, sizeof (ip6_header_t));
-  ls->sr_prefixlen = sr_prefixlen;
   switch (behavior)
     {
     case SR_BEHAVIOR_END:
@@ -300,8 +294,6 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   char address_set = 0;
   char behavior = 0;
   void *ls_plugin_mem = 0;
-  ip6_address_t sr_prefix;
-  u16 sr_prefixlen = 0;
 
   int rv;
 
@@ -353,13 +345,6 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    behavior = SR_BEHAVIOR_DT4;
 	  else
 	    {
-	      if (unformat (input, "end.m.gtp6.d %U/%d", unformat_ip6_address,
-		            &sr_prefix, &sr_prefixlen)
-	       || unformat (input, "end.m.gtp6.d.di %U/%d", unformat_ip6_address,
-		            &sr_prefix, &sr_prefixlen))
-                {
-		}
-
 	      /* Loop over all the plugin behavior format functions */
 	      sr_localsid_fn_registration_t *plugin = 0, **vec_plugins = 0;
 	      sr_localsid_fn_registration_t **plugin_it = 0;
@@ -415,7 +400,6 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   rv = sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp, behavior,
 			sw_if_index, vlan_index, fib_index, &next_hop,
-			&sr_prefix, sr_prefixlen,
 			ls_plugin_mem);
 
   switch (rv)

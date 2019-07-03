@@ -58,7 +58,6 @@ static void vl_api_sr_localsid_add_del_t_handler
   (vl_api_sr_localsid_add_del_t * mp)
 {
   vl_api_sr_localsid_add_del_reply_t *rmp;
-  ip6_address_t sr_prefix;
   int rv = 0;
 /*
  * int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
@@ -73,7 +72,6 @@ static void vl_api_sr_localsid_add_del_t_handler
   ip46_address_t prefix;
 
   clib_memset (&prefix, 0, sizeof (ip46_address_t));
-  clib_memset (&sr_prefix, 0, sizeof (ip6_address_t));
   if ((mp->nh_addr4[0] | mp->nh_addr4[1] | mp->
        nh_addr4[2] | mp->nh_addr4[3]) != 0)
     memcpy (&prefix.ip4, mp->nh_addr4, sizeof (prefix.ip4));
@@ -87,7 +85,7 @@ static void vl_api_sr_localsid_add_del_t_handler
 			ntohl (mp->sw_if_index),
 			ntohl (mp->vlan_index),
 			ntohl (mp->fib_table), &prefix, 
-			&sr_prefix, 0, NULL);
+			NULL);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SR_LOCALSID_ADD_DEL_REPLY);

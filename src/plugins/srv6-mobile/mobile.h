@@ -28,6 +28,11 @@
 
 #define SRV6_GTP_UDP_DST_PORT 2152
 
+typedef struct srv6_end_gtp6_param_s
+{
+  ip6_address_t sr_prefix;
+  u16 sr_prefixlen;
+} srv6_end_gtp6_param_t;
 
 typedef struct srv6_end_main_v4_s
 {

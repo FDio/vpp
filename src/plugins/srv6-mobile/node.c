@@ -525,6 +525,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
           u32 bi0;
 	  vlib_buffer_t *b0;
 	  ip6_sr_localsid_t *ls0;
+	  srv6_end_gtp6_param_t *ls_param;
 
           ip6_gtpu_header_t *hdr0 = NULL;
 	  uword len0;
@@ -550,6 +551,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
             pool_elt_at_index (sm2->localsids,
                                vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
+	  ls_param = (srv6_end_gtp6_param_t *)ls0->plugin_mem;
+
           hdr0 = vlib_buffer_get_current (b0);
 
           len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -564,15 +567,15 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
             }
           else
             {
-	      seg0 = ls0->sr_prefix;
+	      seg0 = ls_param->sr_prefix;
 	      dst0 = hdr0->ip6.dst_address;
 	      teid = hdr0->gtpu.teid;
 	      teidp = (u8 *) &teid;
 	      
-	      if (ls0->sr_prefixlen != 0)
+	      if (ls_param->sr_prefixlen != 0)
 		{
-	          offset = ls0->sr_prefixlen / 8;
-	          shift = ls0->sr_prefixlen % 8;
+	          offset = ls_param->sr_prefixlen / 8;
+	          shift = ls_param->sr_prefixlen % 8;
 
 		  offset += 1;
 		  if (PREDICT_TRUE (shift == 0))
@@ -606,7 +609,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	      u32 *sl_index;
 	      u32 hdr_len;
 
-	      p = mhash_get (&sm2->sr_policies_index_hash, &ls0->sr_prefix);
+	      p = mhash_get (&sm2->sr_policies_index_hash, &ls_param->sr_prefix);
 	      if (p)
 	        {
 	          sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);
@@ -720,6 +723,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
   ip6_sr_main_t *sm2 = &sr_main;
   u32 n_left_from, next_index, *from, *to_next;
   u32 thread_index = vm->thread_index;
+  srv6_end_gtp6_param_t *ls_param;
 
   u32 good_n = 0, bad_n = 0;
 
@@ -764,6 +768,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
             pool_elt_at_index (sm2->localsids,
                                vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
+	  ls_param = (srv6_end_gtp6_param_t *)ls0->plugin_mem;
+
           hdr0 = vlib_buffer_get_current (b0);
 
           len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -779,14 +785,14 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
           else
             {
 	      dst0 = hdr0->ip6.dst_address;
-	      seg0 = ls0->sr_prefix;
+	      seg0 = ls_param->sr_prefix;
 	      teid = hdr0->gtpu.teid;
 	      teidp = (u8 *) &teid;
 	      
-	      if (ls0->sr_prefixlen != 0)
+	      if (ls_param->sr_prefixlen != 0)
 		{
-	          offset = ls0->sr_prefixlen / 8;
-	          shift = ls0->sr_prefixlen % 8;
+	          offset = ls_param->sr_prefixlen / 8;
+	          shift = ls_param->sr_prefixlen % 8;
 
 		  offset += 1;
 		  if (PREDICT_TRUE (shift == 0))
@@ -820,7 +826,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      u32 *sl_index;
 	      u32 hdr_len;
 
-	      p = mhash_get (&sm2->sr_policies_index_hash, &ls0->sr_prefix);
+	      p = mhash_get (&sm2->sr_policies_index_hash, &ls_param->sr_prefix);
 	      if (p)
 	        {
 		  sr_policy = pool_elt_at_index (sm2->sr_policies, p[0]);

@@ -60,7 +60,7 @@ const static char *const *const dpo_nodes[DPO_PROTO_NUM] = {
 static u8 fn_name[] = "SRv6-End.M.GTP6.D-plugin";
 static u8 keyword_str[] = "end.m.gtp6.d";
 static u8 def_str[] = "Endpoint function with dencapsulation for IPv6/GTP tunnel";
-static u8 param_str[] = "";
+static u8 param_str[] = "<sr-prefix>/<sr-prefixlen>";
 
 static u8 *
 clb_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
@@ -72,8 +72,34 @@ clb_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
 static uword
 clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
 {
+  void **plugin_mem_p = va_arg (*args, void **);
+  srv6_end_gtp6_d_param *ls_mem;
+  ip6_address_t sr_prefix;
+  u16 sr_prefixlen;
+  int sr_prefix_set = 0;
+
   if (!unformat (input, "end.m.gtp6.d"))
     return 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat "%U/%d", unformat_ip6_address, &sr_prefix, &sr_prefixlen)
+        {
+	  sr_prefix_set = 1;
+	  break;
+	}
+    }
+
+  if (sr_prefix_set == 0)
+    return 0;
+
+  ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
+  clib_memset (ls_mem, 0, sizoef *ls_mem);
+  *plugin_mem_p = ls_mem;
+
+  ls_mem->sr_prefix = sr_prefix;
+  ls_mem->sr_prefixlen = sr_prefixlen;
+
   return 1;
 }
 
