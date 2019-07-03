@@ -16,9 +16,10 @@
 #ifndef __GBP_CONTRACT_H__
 #define __GBP_CONTRACT_H__
 
+#include <plugins/gbp/gbp.h>
 #include <plugins/gbp/gbp_types.h>
 
-#define foreach_gbp_policy_error                           \
+#define foreach_gbp_contract_error                         \
   _(ALLOW_NO_SCLASS,    "allow-no-sclass")                 \
   _(ALLOW_INTRA,        "allow-intra-sclass")              \
   _(ALLOW_A_BIT,        "allow-a-bit-set")                 \
@@ -28,6 +29,17 @@
   _(DROP_ETHER_TYPE,    "drop-ether-type")                 \
   _(DROP_NO_CONTRACT,   "drop-no-contract")                \
   _(DROP_NO_DCLASS,     "drop-no-dclass")
+
+typedef enum
+{
+#define _(sym,str) GBP_CONTRACT_ERROR_##sym,
+  foreach_gbp_contract_error
+#undef _
+    GBP_CONTRACT_N_ERROR,
+#define GBP_CONTRACT_N_ERROR GBP_CONTRACT_N_ERROR
+} gbp_contract_error_t;
+
+extern char *gbp_contract_error_strings[GBP_CONTRACT_N_ERROR];
 
 /**
  * The key for an Contract
@@ -207,8 +219,129 @@ gbp_rule_get (index_t gui)
 extern vlib_combined_counter_main_t gbp_contract_permit_counters;
 extern vlib_combined_counter_main_t gbp_contract_drop_counters;
 
-#endif
+typedef enum
+{
+  GBP_CONTRACT_APPLY_L2,
+  GBP_CONTRACT_APPLY_IP4,
+  GBP_CONTRACT_APPLY_IP6,
+} gbp_contract_apply_type_t;
 
+static_always_inline gbp_rule_action_t
+gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
+		    gbp_contract_key_t * key, vlib_buffer_t * b,
+		    gbp_rule_t ** rule, u32 * intra, u32 * sclass1,
+		    gbp_contract_error_t * err,
+		    gbp_contract_apply_type_t type)
+{
+  fa_5tuple_opaque_t fa_5tuple;
+  const gbp_contract_t *contract;
+  index_t contract_index;
+  u32 acl_pos, acl_match, rule_match, trace_bitmap;
+  u16 etype;
+  u8 ip6, action;
+
+  *rule = 0;
+
+  if (key->gck_src == key->gck_dst)
+    {
+      /* intra-epg allowed */
+      (*intra)++;
+      *err = GBP_CONTRACT_ERROR_ALLOW_INTRA;
+      return GBP_RULE_PERMIT;
+    }
+
+  if (1 == key->gck_src || 1 == key->gck_dst)
+    {
+      /* sclass 1 allowed */
+      (*sclass1)++;
+      *err = GBP_CONTRACT_ERROR_ALLOW_SCLASS_1;
+      return GBP_RULE_PERMIT;
+    }
+
+  /* look for contract */
+  contract_index = gbp_contract_find (key);
+  if (INDEX_INVALID == contract_index)
+    {
+      *err = GBP_CONTRACT_ERROR_DROP_NO_CONTRACT;
+      return GBP_RULE_DENY;
+    }
+
+  contract = gbp_contract_get (contract_index);
+
+  *err = GBP_CONTRACT_ERROR_DROP_CONTRACT;
+
+  switch (type)
+    {
+    case GBP_CONTRACT_APPLY_IP4:
+      ip6 = 0;
+      break;
+    case GBP_CONTRACT_APPLY_IP6:
+      ip6 = 1;
+      break;
+    case GBP_CONTRACT_APPLY_L2:
+      {
+	/* check ethertype */
+	etype =
+	  ((u16 *) (vlib_buffer_get_current (b) +
+		    vnet_buffer (b)->l2.l2_len))[-1];
+
+	if (~0 == vec_search (contract->gc_allowed_ethertypes, etype))
+	  {
+	    *err = GBP_CONTRACT_ERROR_DROP_ETHER_TYPE;
+	    goto contract_deny;
+	  }
+
+	switch (clib_net_to_host_u16 (etype))
+	  {
+	  case ETHERNET_TYPE_IP4:
+	    ip6 = 0;
+	    break;
+	  case ETHERNET_TYPE_IP6:
+	    ip6 = 1;
+	    break;
+	  default:
+	    goto contract_deny;
+	  }
+      }
+      break;
+    }
+
+  /* check ACL */
+  action = 0;
+  acl_plugin_fill_5tuple_inline (gm->acl_plugin.p_acl_main,
+				 contract->gc_lc_index, b, ip6,
+				 0 /* is_input */ ,
+				 GBP_CONTRACT_APPLY_L2 ==
+				 type /* is_l2_path */ , &fa_5tuple);
+  acl_plugin_match_5tuple_inline (gm->acl_plugin.p_acl_main,
+				  contract->gc_lc_index, &fa_5tuple, ip6,
+				  &action, &acl_pos, &acl_match, &rule_match,
+				  &trace_bitmap);
+  if (action <= 0)
+    goto contract_deny;
+
+  *rule = gbp_rule_get (contract->gc_rules[rule_match]);
+  switch ((*rule)->gu_action)
+    {
+    case GBP_RULE_PERMIT:
+    case GBP_RULE_REDIRECT:
+      *err = GBP_CONTRACT_ERROR_ALLOW_CONTRACT;
+      vlib_increment_combined_counter (&gbp_contract_permit_counters,
+				       vm->thread_index, contract_index, 1,
+				       vlib_buffer_length_in_chain (vm, b));
+      return (*rule)->gu_action;
+    case GBP_RULE_DENY:
+      break;
+    }
+
+contract_deny:
+  vlib_increment_combined_counter (&gbp_contract_drop_counters,
+				   vm->thread_index, contract_index, 1,
+				   vlib_buffer_length_in_chain (vm, b));
+  return GBP_RULE_DENY;
+}
+
+#endif /* __GBP_CONTRACT_H__ */
 /*
  * fd.io coding-style-patch-verification: ON
  *

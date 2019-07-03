@@ -36,7 +36,6 @@
 #include <plugins/gbp/gbp_types.h>
 #include <plugins/gbp/gbp_endpoint.h>
 #include <plugins/gbp/gbp_endpoint_group.h>
-#include <plugins/gbp/gbp_contract.h>
 #include <plugins/gbp/gbp_subnet.h>
 #include <plugins/gbp/gbp_recirc.h>
 
