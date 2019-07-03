@@ -7,6 +7,9 @@
 # Ticket: <JIRA #id>
 # Type: <type>
 # Fixes: <offending-git-commit-id>
+# Depends-on: <gerrit_url> (repeat line as needed)
+# Needed-by: <gerrit_url> (repeat line as needed)
+#
 # Change-Id: <sha1>
 # Signed-off-by: <email>
 #
@@ -28,6 +31,8 @@
 #
 # Fixes: If type is fix refers to the original commit (optional).
 # Ticket: Refers to JIRA ticket if it exists (optional).
+# Depends-on: refers to a change-set this change-set depends on (optional).
+# Needed-by:  refers to a change-set that relies on this one. (optional).
 #
 # --------------------
 # Remember to:
