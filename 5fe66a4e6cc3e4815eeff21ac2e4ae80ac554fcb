@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d47a9ce4_32334dc9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 12
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-03T10:57:52Z",
+      "side": 1,
+      "message": "\u0027\u003d\u0027\n\nAlso for line 20.",
+      "range": {
+        "startLine": 9,
+        "startChar": 66,
+        "endLine": 9,
+        "endChar": 69
+      },
+      "revId": "5fe66a4e6cc3e4815eeff21ac2e4ae80ac554fcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b37f2bc8_6821bf13",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-03T10:57:52Z",
+      "side": 1,
+      "message": "Describe how does the sensing work. Current logic requires caller to not change the input value from default.\n\nOther logic could be better. For example \"increment by one\" with default input 10.0 would need correct endian value on server side for client to see 11.",
+      "range": {
+        "startLine": 286,
+        "startChar": 59,
+        "endLine": 286,
+        "endChar": 77
+      },
+      "revId": "5fe66a4e6cc3e4815eeff21ac2e4ae80ac554fcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8f6f3aa4_fdaad036",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-03T10:57:52Z",
+      "side": 1,
+      "message": "Describe the fields actually present (f64_one, f64_one_result).",
+      "range": {
+        "startLine": 289,
+        "startChar": 11,
+        "endLine": 289,
+        "endChar": 21
+      },
+      "revId": "5fe66a4e6cc3e4815eeff21ac2e4ae80ac554fcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1863615c_0e16bdba",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-03T10:57:52Z",
+      "side": 1,
+      "message": "Split to two comment blocks (one for get_f64_endian_value, one for get_f64_endian_value_reply).",
+      "range": {
+        "startLine": 290,
+        "startChar": 0,
+        "endLine": 290,
+        "endChar": 2
+      },
+      "revId": "5fe66a4e6cc3e4815eeff21ac2e4ae80ac554fcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
