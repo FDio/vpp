@@ -22,6 +22,8 @@ extern ip6_address_t sr_pr_encaps_src;
 
 typedef struct {
   ip6_address_t src, dst;
+  ip6_address_t sr_prefix;
+  u16 sr_prefixlen;
   u32 teid;
 } srv6_end_rewrite_trace_t;
 
@@ -43,8 +45,9 @@ format_srv6_end_rewrite_trace6 (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   srv6_end_rewrite_trace_t *t = va_arg (*args, srv6_end_rewrite_trace_t *);
 
-  return format (s, "SRv6-END-rewrite: src %U dst %U\n TEID: 0x%x",
-		 format_ip6_address, &t->src, format_ip6_address, &t->dst, t->teid);
+  return format (s, "SRv6-END-rewrite: src %U dst %U\n TEID: 0x%x\n sr_prefix: %U/%d",
+		 format_ip6_address, &t->src, format_ip6_address, &t->dst, t->teid,
+		 format_ip6_address, &t->sr_prefix, t->sr_prefixlen);
 }
 
 #define foreach_srv6_end_v4_error \
@@ -687,6 +690,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	          clib_memcpy (tr->dst.as_u8, ip6srv->ip.dst_address.as_u8,
 			       sizeof (ip6_address_t));
                   tr->teid = teid;
+		  clib_memcpy (tr->sr_prefix.as_u8, ls_param->sr_prefix.as_u8, sizeof (ip6_address_t));
+		  tr->sr_prefixlen = ls_param->sr_prefixlen;
 	        }
 	    }
 
@@ -906,6 +911,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	          clib_memcpy (tr->dst.as_u8, ip6srv->ip.dst_address.as_u8,
 			       sizeof (ip6_address_t));
                   tr->teid = teid;
+		  clib_memcpy (tr->sr_prefix.as_u8, ls_param->sr_prefix.as_u8, sizeof (ip6_address_t));
+		  tr->sr_prefixlen = ls_param->sr_prefixlen;
 	        }
 	    }
 
