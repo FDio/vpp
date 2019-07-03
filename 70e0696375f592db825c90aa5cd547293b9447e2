@@ -46,6 +46,30 @@
       "revId": "70e0696375f592db825c90aa5cd547293b9447e2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ed005fe1_0758dfc1",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-03T11:49:45Z",
+      "side": 1,
+      "message": "I think the add/del change to the api is the correct action. Neale thoughts?",
+      "parentUuid": "0532c362_d514fea5",
+      "range": {
+        "startLine": 200,
+        "startChar": 0,
+        "endLine": 206,
+        "endChar": 32
+      },
+      "revId": "70e0696375f592db825c90aa5cd547293b9447e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
