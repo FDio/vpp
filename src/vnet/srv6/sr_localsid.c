@@ -63,10 +63,10 @@ static dpo_type_t sr_localsid_d_dpo_type;
  * @return 0 on success, error otherwise.
  */
 int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u32 prefixlen,
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index,
 		 u32 fib_table, ip46_address_t * nh_addr, 
-		 ip6_address_t *sr_prefix, u32 sr_prefixlen,
+		 ip6_address_t * sr_prefix, u16 sr_prefixlen,
 		 void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
@@ -174,7 +174,10 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u32 prefixlen,
   ls->nh_adj = (u32) ~ 0;
   ls->fib_table = fib_table;
   ls->localsid_len = pfx.fp_len;
-  clib_memcpy (&ls->sr_prefix, sr_prefix, sizeof (ip6_address_t));
+  if (sr_prefix)
+    clib_memcpy (&ls->sr_prefix, sr_prefix, sizeof (ip6_address_t));
+  else
+    clib_memset (&ls->sr_prefix, 0, sizeof (ip6_header_t));
   ls->sr_prefixlen = sr_prefixlen;
   switch (behavior)
     {
@@ -289,7 +292,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   ip6_sr_main_t *sm = &sr_main;
   u32 sw_if_index = (u32) ~ 0, vlan_index = (u32) ~ 0, fib_index = 0;
-  u32 prefix_len = (u32) ~ 0;
+  u16 prefix_len = 0;
   int is_del = 0;
   int end_psp = 0;
   ip6_address_t resulting_address;
@@ -298,7 +301,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   char behavior = 0;
   void *ls_plugin_mem = 0;
   ip6_address_t sr_prefix;
-  u32 sr_prefixlen = (u32) ~ 0;
+  u16 sr_prefixlen = 0;
 
   int rv;
 
