@@ -31,6 +31,7 @@
 #include <gbp/gbp_bridge_domain.h>
 #include <gbp/gbp_route_domain.h>
 #include <gbp/gbp_ext_itf.h>
+#include <gbp/gbp_contract.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
