@@ -82,8 +82,7 @@
   _(GBP_CONTRACT_DUMP, gbp_contract_dump)                   \
   _(GBP_VXLAN_TUNNEL_ADD, gbp_vxlan_tunnel_add)             \
   _(GBP_VXLAN_TUNNEL_DEL, gbp_vxlan_tunnel_del)             \
-  _(GBP_VXLAN_TUNNEL_DUMP, gbp_vxlan_tunnel_dump)           \
-  _(GBP_EXT_ITF_ANON_ADD_DEL, gbp_ext_itf_anon_add_del)
+  _(GBP_VXLAN_TUNNEL_DUMP, gbp_vxlan_tunnel_dump)
 
 gbp_main_t gbp_main;
 
@@ -733,7 +732,8 @@ vl_api_gbp_ext_itf_add_del_t_handler (vl_api_gbp_ext_itf_add_del_t * mp)
 
   if (mp->is_add)
     rv = gbp_ext_itf_add (sw_if_index,
-			  ntohl (ext_itf->bd_id), ntohl (ext_itf->rd_id));
+			  ntohl (ext_itf->bd_id), ntohl (ext_itf->rd_id),
+			  ntohl (ext_itf->flags));
   else
     rv = gbp_ext_itf_delete (sw_if_index);
 
@@ -757,6 +757,7 @@ gbp_ext_itf_send_details (gbp_ext_itf_t * gx, void *args)
   mp->_vl_msg_id = ntohs (VL_API_GBP_EXT_ITF_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
+  mp->ext_itf.flags = ntohl (gx->gx_flags);
   mp->ext_itf.bd_id = ntohl (gbp_bridge_domain_get_bd_id (gx->gx_bd));
   mp->ext_itf.rd_id = ntohl (gbp_route_domain_get_rd_id (gx->gx_rd));
   mp->ext_itf.sw_if_index = ntohl (gx->gx_itf);
@@ -1151,34 +1152,6 @@ vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t * mp)
   };
 
   gbp_vxlan_walk (gbp_vxlan_tunnel_send_details, &ctx);
-}
-
-static void
-vl_api_gbp_ext_itf_anon_add_del_t_handler (vl_api_gbp_ext_itf_anon_add_del_t *
-					   mp)
-{
-  vl_api_gbp_ext_itf_anon_add_del_reply_t *rmp;
-  u32 sw_if_index = ~0;
-  vl_api_gbp_ext_itf_t *ext_itf;
-  int rv = 0;
-
-  ext_itf = &mp->ext_itf;
-  if (ext_itf)
-    sw_if_index = ntohl (ext_itf->sw_if_index);
-
-  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
-    goto bad_sw_if_index;
-
-  if (mp->is_add)
-    rv = gbp_ext_itf_anon_add (sw_if_index,
-			       ntohl (ext_itf->bd_id),
-			       ntohl (ext_itf->rd_id));
-  else
-    rv = gbp_ext_itf_anon_delete (sw_if_index);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_GBP_EXT_ITF_ANON_ADD_DEL_REPLY + GBP_MSG_BASE);
 }
 
 /*
