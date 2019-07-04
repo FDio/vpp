@@ -194,6 +194,10 @@ will capture usable vpp core files in /tmp/dumps.
     # ulimit -c unlimited
     # echo 2 > /proc/sys/fs/suid_dumpable
 
+If you start VPP from systemd, you also need to edit
+/lib/systemd/system/vpp.service and uncomment the "LimitCORE=infinity"
+line before restarting VPP.
+
 Vpp core files often appear enormous. Gzip typically compresses them
 to manageable sizes. A multi-GByte corefile often compresses to 10-20
 Mbytes.
