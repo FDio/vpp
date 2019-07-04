@@ -1,0 +1,12 @@
+diff --git a/lib/quicly.c b/lib/quicly.c
+index fac85f2..80e1bcd 100644
+--- a/lib/quicly.c
++++ b/lib/quicly.c
+@@ -3240,6 +3240,7 @@ static int initiate_close(quicly_conn_t *conn, int err, uint64_t frame_type, con
+ int quicly_close(quicly_conn_t *conn, int err, const char *reason_phrase)
+ {
+     assert(err == 0 || QUICLY_ERROR_IS_QUIC_APPLICATION(err));
++    update_now(conn->super.ctx);
+
+     return initiate_close(conn, err, QUICLY_FRAME_TYPE_PADDING /* used when err == 0 */, reason_phrase);
+ }
