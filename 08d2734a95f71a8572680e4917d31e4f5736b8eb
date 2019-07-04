@@ -1,0 +1,51 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bed3d3cb_a1a8a779",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 14
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-04T17:48:52Z",
+      "side": 1,
+      "message": "Adding new messages is not forward compatible, so I would use \"1.2.0\".",
+      "range": {
+        "startLine": 22,
+        "startChar": 17,
+        "endLine": 22,
+        "endChar": 24
+      },
+      "revId": "08d2734a95f71a8572680e4917d31e4f5736b8eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2980a020_567e2d23",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 14
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-04T17:48:52Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1863615c_0e16bdba",
+      "range": {
+        "startLine": 290,
+        "startChar": 0,
+        "endLine": 290,
+        "endChar": 2
+      },
+      "revId": "08d2734a95f71a8572680e4917d31e4f5736b8eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
