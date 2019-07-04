@@ -32,11 +32,30 @@
  **/
 
 #define QUIC_DEBUG               0
-
-#define QUIC_DEFAULT_CA_CERT_PATH        "/etc/ssl/certs/ca-certificates.crt"
-
 #define QUIC_TSTAMP_RESOLUTION  0.001	/* QUIC tick resolution (1ms) */
+#define QUIC_TIMER_HANDLE_INVALID ((u32) ~0)
+#define QUIC_SESSION_INVALID ((u32) ~0 - 1)
+#define QUIC_MAX_PACKET_SIZE 1280
 
+#define QUIC_INT_MAX  0x3FFFFFFFFFFFFFFF
+#define QUIC_FIFO_SIZE (64 << 10)
+#define QUIC_SEND_PACKET_VEC_SIZE 16
+
+/* Taken from quicly.c */
+#define QUICLY_QUIC_BIT 0x40
+
+#define QUICLY_PACKET_TYPE_INITIAL (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0)
+#define QUICLY_PACKET_TYPE_0RTT (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x10)
+#define QUICLY_PACKET_TYPE_HANDSHAKE (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x20)
+#define QUICLY_PACKET_TYPE_RETRY (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x30)
+#define QUICLY_PACKET_TYPE_BITMASK 0xf0
+
+/* error codes */
+#define QUIC_ERROR_FULL_FIFO 0xff10
+#define QUIC_APP_ERROR_CLOSE_NOTIFY QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0)
+#define QUIC_APP_ALLOCATION_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x1)
+#define QUIC_APP_ACCEPT_NOTIFY_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x2)
+#define QUIC_APP_CONNECT_NOTIFY_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x3)
 
 #if QUIC_DEBUG
 #define QUIC_DBG(_lvl, _fmt, _args...)   \
@@ -46,29 +65,39 @@
 #define QUIC_DBG(_lvl, _fmt, _args...)
 #endif
 
-#define QUIC_CONN_STATE_OPENED    0
-#define QUIC_CONN_STATE_HANDSHAKE 1
-#define QUIC_CONN_STATE_READY     2
+typedef enum quic_ctx_conn_state_
+{
+  QUIC_CONN_STATE_OPENED,
+  QUIC_CONN_STATE_HANDSHAKE,
+  QUIC_CONN_STATE_READY,
+  QUIC_CONN_STATE_PASSIVE_CLOSING,
+} quic_ctx_conn_state_t;
+
+
+typedef enum quic_ctx_flags_
+{
+  QUIC_F_IS_STREAM = (1 << 0),
+  QUIC_F_IS_LISTENER = (1 << 1),
+} quic_ctx_flags_t;
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct quic_ctx_id_
+typedef struct quic_ctx_id_
 {
-  u32 parent_app_wrk_id;
-  u32 parent_app_id;
-  union {
-    CLIB_PACKED (struct {
-      session_handle_t udp_session_handle;
+  union { /** QUIC ctx case */
+    struct {
       quicly_conn_t *conn;
       u32 listener_ctx_id;
+      u32 client_opaque;
+      u8 *srv_hostname;
+      u8 conn_state;
       u8 udp_is_ip4;
-    });
-    CLIB_PACKED (struct {
+    };
+    struct { /** STREAM ctx case */
       quicly_stream_t *stream;
       u32 quic_connection_ctx_id;
-    });
+    };
   };
-  u8 is_stream;
-}) quic_ctx_id_t;
+} quic_ctx_id_t;
 /* *INDENT-ON* */
 
 STATIC_ASSERT (sizeof (quic_ctx_id_t) <= 42, "ctx id must be less than 42");
@@ -82,11 +111,11 @@ typedef struct quic_ctx_
     transport_connection_t connection;
     quic_ctx_id_t c_quic_ctx_id;
   };
-  u8 *srv_hostname;
-  u32 client_opaque;
+  session_handle_t udp_session_handle;
   u32 timer_handle;
-  u8 conn_state;
-  u8 is_listener;
+  u32 parent_app_wrk_id;
+  u32 parent_app_id;
+  u8 flags;
 } quic_ctx_t;
 
 typedef struct quic_stream_data_
@@ -118,8 +147,6 @@ typedef struct quic_main_
   quicly_context_t quicly_ctx;
   ptls_handshake_properties_t hs_properties;
   quicly_cid_plaintext_t next_cid;
-  u8 use_test_cert_in_ca;
-  char *ca_cert_path;
 } quic_main_t;
 
 #endif /* __included_quic_h__ */
