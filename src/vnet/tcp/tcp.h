@@ -387,6 +387,7 @@ struct _tcp_cc_algorithm
   void (*congestion) (tcp_connection_t * tc);
   void (*loss) (tcp_connection_t * tc);
   void (*recovered) (tcp_connection_t * tc);
+  void (*undo_recovery) (tcp_connection_t * tc);
 };
 /* *INDENT-ON* */
 
@@ -963,6 +964,19 @@ static inline void
 tcp_cc_loss (tcp_connection_t * tc)
 {
   tc->cc_algo->loss (tc);
+}
+
+static inline void
+tcp_cc_recovered (tcp_connection_t * tc)
+{
+  tc->cc_algo->recovered (tc);
+}
+
+static inline void
+tcp_cc_undo_recovery (tcp_connection_t * tc)
+{
+  if (tc->cc_algo->undo_recovery)
+    tc->cc_algo->undo_recovery (tc);
 }
 
 always_inline void
