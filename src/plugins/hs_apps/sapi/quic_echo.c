@@ -58,7 +58,7 @@
     clib_warning ("ECHO-ERROR: "_fmt, ##_args); 	\
   }
 
-typedef enum
+typedef enum echo_session_flag_
 {
   SESSION_FLAG_NOFLAG = 0,
   SESSION_FLAG_SHOULD_CLOSE = 1,
@@ -1309,11 +1309,6 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
     }
 
   s = pool_elt_at_index (em->sessions, p[0]);
-  if (s->session_type == QUIC_SESSION_TYPE_STREAM)
-    s->flags |= SESSION_FLAG_SHOULD_CLOSE;	/* tell thread to close session */
-  else
-    echo_cleanup_session (em, s);	/* We can clean Qsessions right away */
-
   app_alloc_ctrl_evt_to_vpp (s->vpp_evt_q, app_evt,
 			     SESSION_CTRL_EVT_DISCONNECTED_REPLY);
   rmp = (session_disconnected_reply_msg_t *) app_evt->evt->data;
@@ -1321,6 +1316,11 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
   rmp->handle = mp->handle;
   rmp->context = mp->context;
   app_send_ctrl_evt_to_vpp (s->vpp_evt_q, app_evt);
+
+  if (s->session_type == QUIC_SESSION_TYPE_STREAM)
+    s->flags |= SESSION_FLAG_SHOULD_CLOSE;	/* tell thread to close session */
+  else
+    echo_cleanup_session (em, s);	/* We can clean Qsessions right away */
 
   if (s->session_type == QUIC_SESSION_TYPE_STREAM)
     session_print_stats (em, s);
@@ -1460,7 +1460,11 @@ server_run (echo_main_t * em)
 
   /* Cleanup */
   server_send_unbind (em);
-  wait_for_state_change (em, STATE_DISCONNECTED, TIMEOUT);
+  if (wait_for_state_change (em, STATE_DISCONNECTED, TIMEOUT))
+    {
+      ECHO_FAIL ("Timeout waiting for state disconnected");
+      return;
+    }
 }
 
 /*
@@ -1627,8 +1631,8 @@ vl_api_unbind_uri_reply_t_handler (vl_api_unbind_uri_reply_t * mp)
   echo_main_t *em = &echo_main;
   if (mp->retval != 0)
     {
-      /* ECHO_FAIL ("returned %d", ntohl (mp->retval));
-         return;  FIXME : UDPC issue */
+      ECHO_FAIL ("returned %d", ntohl (mp->retval));
+      return;
     }
   em->state = STATE_DISCONNECTED;
   listen_session = pool_elt_at_index (em->sessions, em->listen_session_index);
