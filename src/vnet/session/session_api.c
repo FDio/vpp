@@ -640,6 +640,7 @@ vl_api_unbind_uri_t_handler (vl_api_unbind_uri_t * mp)
     {
       a->uri = (char *) mp->uri;
       a->app_index = app->app_index;
+      a->wrk_map_index = 0;
       rv = vnet_unbind_uri (a);
     }
   else

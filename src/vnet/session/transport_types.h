@@ -86,7 +86,8 @@ typedef struct _transport_connection
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
 
-  u8 flags;			/**< Transport specific flags */
+  u16 flags;			/**< Transport specific flags */
+  u8 no_lookup;			/**< if set, doesn't register in lookup >*/
   transport_stats_t stats;	/**< Transport connection stats */
   spacer_t pacer;		/**< Simple transport pacer */
 
