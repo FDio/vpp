@@ -1472,26 +1472,22 @@ done:
  * Reset congestion control, switch cwnd to loss window and try again.
  */
 static void
-tcp_rxt_timeout_cc (tcp_connection_t * tc)
+tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
 {
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 6);
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
-  /* Cleanly recover cc (also clears up fast retransmit) */
+  /* Clear fast recovery state if needed */
   if (tcp_in_fastrecovery (tc))
-    {
-      /* TODO be less aggressive about this */
-      scoreboard_clear (&tc->sack_sb);
-      tcp_cc_fastrecovery_exit (tc);
-    }
-  else
-    tc->rcv_dupacks = 0;
+    tcp_cc_fastrecovery_clear (tc);
+
+  /* Let cc algo decide loss cwnd and ssthresh */
+  tcp_cc_loss (tc);
 
   /* Start again from the beginning */
-  tc->cc_algo->congestion (tc);
-  tc->cwnd = tcp_loss_wnd (tc);
   tc->snd_congestion = tc->snd_nxt;
+  tc->rcv_dupacks = 0;
   tc->rtt_ts = 0;
   tc->cwnd_acc_bytes = 0;
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 2 * tc->snd_mss);
@@ -1577,11 +1573,12 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
        * to first un-acked byte  */
       tc->rto_boff += 1;
 
+      /* TODO be less aggressive about clearing scoreboard */
+      scoreboard_clear (&tc->sack_sb);
+
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
-	tcp_rxt_timeout_cc (tc);
-      else
-	scoreboard_clear (&tc->sack_sb);
+	tcp_cc_init_rxt_timeout (tc);
 
       if (tc->flags & TCP_CONN_RATE_SAMPLE)
 	tcp_bt_flush_samples (tc);
