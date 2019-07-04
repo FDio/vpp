@@ -8,6 +8,11 @@ ExecStartPre=-/sbin/modprobe uio_pci_generic
 ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
 ExecStopPost=/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api
 Restart=always
+# Uncomment the following line to enable VPP coredumps on crash
+# You still need to configure the rest of the system to collect them, see
+# https://fdio-vpp.readthedocs.io/en/latest/troubleshooting/reportingissues/reportingissues.html#core-files
+# for details
+#LimitCORE=infinity
 
 [Install]
 WantedBy=multi-user.target
