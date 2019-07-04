@@ -18,6 +18,12 @@
 
 #include <gbp/gbp.h>
 
+enum
+{
+  GBP_EXT_ITF_F_NONE = 0,
+  GBP_EXT_ITF_F_ANON = 1 << 0,
+};
+
 /**
  * An external interface maps directly to an oflex L3ExternalInterface.
  * The special characteristics of an external interface is the way the source
@@ -46,14 +52,16 @@ typedef struct gpb_ext_itf_t_
    */
   u32 gx_fib_index[DPO_PROTO_NUM];
 
+  /**
+   * The associated flags
+   */
+  u32 gx_flags;
+
 } gbp_ext_itf_t;
 
 
-extern int gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id);
+extern int gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id, u32 flags);
 extern int gbp_ext_itf_delete (u32 sw_if_index);
-
-extern int gbp_ext_itf_anon_add (u32 sw_if_index, u32 bd_id, u32 rd_id);
-extern int gbp_ext_itf_anon_delete (u32 sw_if_index);
 
 extern u8 *format_gbp_ext_itf (u8 * s, va_list * args);
 
