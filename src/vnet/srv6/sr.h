@@ -54,6 +54,15 @@
 
 #define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
+/* *INDENT-OFF* */
+typedef struct
+{
+  ip6_header_t ip;
+  ip6_sr_header_t sr;
+} __attribute__ ((packed)) ip6srv_combo_header_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
 typedef struct
 {
   u8 ver_flags;
@@ -61,6 +70,7 @@ typedef struct
   u16 length;     /* length in octets of the payload */
   u32 teid;
 } __attribute__ ((packed)) gtpu_header_t;
+/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 typedef struct
@@ -69,6 +79,15 @@ typedef struct
   udp_header_t udp;            /* 8 bytes */
   gtpu_header_t gtpu;        /* 8 bytes */
 } __attribute__ ((packed)) ip4_gtpu_header_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  ip6_header_t ip6;          /* 40 bytes */
+  udp_header_t udp;          /* 8 bytes */
+  gtpu_header_t gtpu;        /* 8 bytes */
+} __attribute__ ((packed)) ip6_gtpu_header_t;
 /* *INDENT-ON* */
 
 #define GTPU_V1_VER   (1<<5)
@@ -130,6 +149,8 @@ typedef struct
 {
   ip6_address_t localsid;		/**< LocalSID IPv6 address */
 
+  u16 localsid_len;
+
   char end_psp;					/**< Combined with End.PSP? */
 
   u16 behavior;					/**< Behavior associated to this localsid */
@@ -147,6 +168,10 @@ typedef struct
   ip46_address_t next_hop;		/**< Next_hop for xconnect usage only */
 
   u32 nh_adj;						/**< Next_adj for xconnect usage only */
+
+  // GTP6.D
+  ip6_address_t sr_prefix;
+  u16 sr_prefixlen;
 
   void *plugin_mem;				/**< Memory to be used by the plugin callback functions */
 } ip6_sr_localsid_t;
@@ -296,7 +321,7 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
 extern int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 		 char end_psp, u8 behavior, u32 sw_if_index,
 		 u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
 		 void *ls_plugin_mem);

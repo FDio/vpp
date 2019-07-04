@@ -1,5 +1,5 @@
 /*
- * srv6_end.c
+ * srv6_end_m_gtp4_e.c
  *
  * Copyright (c) 2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +19,9 @@
 #include <vnet/adj/adj.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
-#include <srv6-mobile/srv6_end.h>
+#include <srv6-mobile/mobile.h>
 
-srv6_end_main_t srv6_end_main;
+srv6_end_main_v4_t srv6_end_main_v4;
 
 static void
 clb_dpo_lock_srv6_end_m_gtp4_e (dpo_id_t * dpo)
@@ -48,13 +48,13 @@ const static dpo_vft_t dpo_vft = {
   .dv_format = clb_dpo_format_srv6_end_m_gtp4_e,
 };
 
-const static char *const srv6_end_nodes[] = {
+const static char *const srv6_end_m_gtp4_e_nodes[] = {
   "srv6-end-m-gtp4-e",
   NULL,
 };
 
 const static char *const *const dpo_nodes[DPO_PROTO_NUM] = {
-  [DPO_PROTO_IP6] = srv6_end_nodes,
+  [DPO_PROTO_IP6] = srv6_end_m_gtp4_e_nodes,
 };
 
 static u8 fn_name[] = "SRv6-End.M.GTP4.E-plugin";
@@ -90,9 +90,9 @@ clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 }
 
 static clib_error_t *
-srv6_end_init (vlib_main_t * vm)
+srv6_end_m_gtp4_e_init (vlib_main_t * vm)
 {
-  srv6_end_main_t *sm = &srv6_end_main;
+  srv6_end_main_v4_t *sm = &srv6_end_main_v4;
   ip4_header_t *ip4 = &sm->cache_hdr.ip4;
   udp_header_t *udp = &sm->cache_hdr.udp;
   gtpu_header_t *gtpu = &sm->cache_hdr.gtpu;
@@ -140,7 +140,7 @@ srv6_end_init (vlib_main_t * vm)
                                       clb_creation_srv6_end_m_gtp4_e,
                                       clb_removal_srv6_end_m_gtp4_e);
   if (rc < 0)
-    clib_error_return (0, "SRv6 Endpoint LocalSID function"
+    clib_error_return (0, "SRv6 Endpoint GTP4.E LocalSID function"
                           "couldn't be registered");
   return 0;
 }
@@ -153,11 +153,11 @@ VNET_FEATURE_INIT (srv6_end_m_gtp4_e, static) =
   .runs_before = 0,
 };
 
-VLIB_INIT_FUNCTION (srv6_end_init);
+VLIB_INIT_FUNCTION (srv6_end_m_gtp4_e_init);
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "SRv6 Endpoint",
+  .description = "SRv6 GTP Endpoint Functions",
 };
 /* *INDENT-ON* */
 
