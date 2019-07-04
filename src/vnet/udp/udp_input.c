@@ -133,6 +133,11 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      s0 = session_lookup_safe4 (fib_index0, &ip40->dst_address,
 					 &ip40->src_address, udp0->dst_port,
 					 udp0->src_port, TRANSPORT_PROTO_UDP);
+	      if (!s0)
+		s0 = session_lookup_safe4 (fib_index0, &ip40->dst_address,
+					   &ip40->src_address, udp0->dst_port,
+					   udp0->src_port,
+					   TRANSPORT_PROTO_UDPC);
 	      lcl_addr = &ip40->dst_address;
 	      rmt_addr = &ip40->src_address;
 
@@ -143,6 +148,11 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      s0 = session_lookup_safe6 (fib_index0, &ip60->dst_address,
 					 &ip60->src_address, udp0->dst_port,
 					 udp0->src_port, TRANSPORT_PROTO_UDP);
+	      if (!s0)
+		s0 = session_lookup_safe6 (fib_index0, &ip60->dst_address,
+					   &ip60->src_address, udp0->dst_port,
+					   udp0->src_port,
+					   TRANSPORT_PROTO_UDPC);
 	      lcl_addr = &ip60->dst_address;
 	      rmt_addr = &ip60->src_address;
 	    }
@@ -208,6 +218,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  child0->c_is_ip4 = is_ip4;
 		  child0->c_fib_index = tc0->fib_index;
 		  child0->is_connected = 1;
+		  child0->c_proto = tc0->proto;
 
 		  if (session_stream_accept (&child0->connection,
 					     tc0->s_index, tc0->thread_index,
@@ -247,7 +258,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  clib_spinlock_lock (&uc0->rx_lock);
 	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
-						     TRANSPORT_PROTO_UDP,
+						     uc0->c_proto,
 						     1 /* queue evt */ );
 	  clib_spinlock_unlock (&uc0->rx_lock);
 	  ASSERT (wrote0 > 0);
@@ -279,6 +290,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   errors = session_main_flush_all_enqueue_events (TRANSPORT_PROTO_UDP);
+  udp_input_inc_counter (vm, is_ip4, UDP_ERROR_EVENT_FIFO_FULL, errors);
+  errors = session_main_flush_all_enqueue_events (TRANSPORT_PROTO_UDPC);
   udp_input_inc_counter (vm, is_ip4, UDP_ERROR_EVENT_FIFO_FULL, errors);
   return frame->n_vectors;
 }
