@@ -649,7 +649,8 @@ session_stream_connect_notify_inline (transport_connection_t * tc, u8 is_fail,
 
   s = session_get (new_si, new_ti);
   s->session_state = opened_state;
-  session_lookup_add_connection (tc, session_handle (s));
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_add_connection (tc, session_handle (s));
 
   if (app_worker_connect_notify (app_wrk, s, opaque))
     {
@@ -716,7 +717,8 @@ session_dgram_connect_notify (transport_connection_t * tc,
   new_s->rx_fifo->master_session_index = new_s->session_index;
   new_s->rx_fifo->master_thread_index = new_s->thread_index;
   new_s->session_state = SESSION_STATE_READY;
-  session_lookup_add_connection (tc, session_handle (new_s));
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_add_connection (tc, session_handle (new_s));
 
   /*
    * Ask thread owning the old session to clean it up and make us the tx
@@ -901,7 +903,8 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
   if ((rv = app_worker_init_accepted (s)))
     return rv;
 
-  session_lookup_add_connection (tc, session_handle (s));
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_add_connection (tc, session_handle (s));
 
   /* Shoulder-tap the server */
   if (notify)
@@ -944,9 +947,11 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
       return -1;
     }
 
-  sh = session_handle (s);
-  session_lookup_add_connection (tc, sh);
-
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    {
+      sh = session_handle (s);
+      session_lookup_add_connection (tc, sh);
+    }
   return app_worker_connect_notify (app_wrk, s, opaque);
 }
 
@@ -1079,7 +1084,8 @@ session_stop_listen (session_t * s)
   if (!tc)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
 
-  session_lookup_del_connection (tc);
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_del_connection (tc);
   transport_stop_listen (tp, s->connection_index);
   return 0;
 }
