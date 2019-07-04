@@ -76,9 +76,11 @@ vxlan4_gbp_find_tunnel (vxlan_gbp_main_t * vxm, last_tunnel_cache4 * cache,
   vxlan4_gbp_tunnel_key_t key4;
   int rv;
 
-  key4.key[1] = ((u64) fib_index << 32) | vxlan_gbp0->vni_reserved;
-  key4.key[0] = (((u64) ip4_0->dst_address.as_u32 << 32) |
-		 ip4_0->src_address.as_u32);
+  key4.key[1] = (((u64) fib_index << 32) |
+		 (vxlan_gbp0->vni_reserved &
+		  clib_host_to_net_u32 (0xffffff00)));
+  key4.key[0] =
+    (((u64) ip4_0->dst_address.as_u32 << 32) | ip4_0->src_address.as_u32);
 
   if (PREDICT_FALSE (key4.key[0] != cache->key[0] ||
 		     key4.key[1] != cache->key[1]))
@@ -122,7 +124,9 @@ vxlan6_gbp_find_tunnel (vxlan_gbp_main_t * vxm, last_tunnel_cache6 * cache,
     .key = {
 	    [0] = ip6_0->src_address.as_u64[0],
 	    [1] = ip6_0->src_address.as_u64[1],
-	    [2] = (((u64) fib_index) << 32) | vxlan_gbp0->vni_reserved,
+	    [2] = ((((u64) fib_index) << 32) |
+		   (vxlan_gbp0->vni_reserved &
+		    clib_host_to_net_u32 (0xffffff00))),
 	    }
   };
   int rv;
@@ -293,13 +297,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 	  vlib_buffer_advance (b0, sizeof *vxlan_gbp0);
 	  vlib_buffer_advance (b1, sizeof *vxlan_gbp1);
 
+	  u8 i_and_g0 = ((flags0 & VXLAN_GBP_FLAGS_GI) == VXLAN_GBP_FLAGS_GI);
+	  u8 i_and_g1 = ((flags1 & VXLAN_GBP_FLAGS_GI) == VXLAN_GBP_FLAGS_GI);
+
 	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
-	  if (PREDICT_FALSE
-	      (t0 == NULL
-	       || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
+	  if (PREDICT_FALSE (t0 == NULL || !i_and_g0))
 	    {
-	      if (t0 != NULL
-		  && flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G))
+	      if (t0 != NULL && !i_and_g0)
 		{
 		  error0 = VXLAN_GBP_ERROR_BAD_FLAGS;
 		  vlib_increment_combined_counter
@@ -335,11 +339,9 @@ vxlan_gbp_input (vlib_main_t * vm,
 	  vnet_buffer2 (b0)->gbp.sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
 
 
-	  if (PREDICT_FALSE
-	      (t1 == 0 || flags1 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
+	  if (PREDICT_FALSE (t1 == NULL || !i_and_g1))
 	    {
-	      if (t1 != 0
-		  && flags1 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G))
+	      if (t1 != NULL && !i_and_g1)
 		{
 		  error1 = VXLAN_GBP_ERROR_BAD_FLAGS;
 		  vlib_increment_combined_counter
@@ -443,13 +445,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 
 	  /* pop (ip, udp, vxlan_gbp) */
 	  vlib_buffer_advance (b0, sizeof (*vxlan_gbp0));
+
+	  u8 i_and_g0 = ((flags0 & VXLAN_GBP_FLAGS_GI) == VXLAN_GBP_FLAGS_GI);
+
 	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
-	  if (PREDICT_FALSE
-	      (t0 == NULL
-	       || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
+	  if (PREDICT_FALSE (t0 == NULL || !i_and_g0))
 	    {
-	      if (t0 != NULL
-		  && flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G))
+	      if (t0 != NULL && !i_and_g0)
 		{
 		  error0 = VXLAN_GBP_ERROR_BAD_FLAGS;
 		  vlib_increment_combined_counter
