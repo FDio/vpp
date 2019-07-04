@@ -357,9 +357,10 @@ udpc_connection_open (transport_endpoint_cfg_t * rmt)
   u32 thread_index = vlib_num_workers ()? 1 : vlib_get_main ()->thread_index;
   u32 uc_index;
   uc_index = udp_open_connection (rmt);
+  if (uc_index == (u32) ~ 0)
+    return -1;
   uc = udp_connection_get (uc_index, thread_index);
-  if (uc)
-    uc->is_connected = 1;
+  uc->is_connected = 1;
   return uc_index;
 }
 
@@ -367,11 +368,13 @@ u32
 udpc_connection_listen (u32 session_index, transport_endpoint_t * lcl)
 {
   udp_connection_t *listener;
-  u32 li;
-  li = udp_session_bind (session_index, lcl);
-  listener = udp_listener_get (li);
+  u32 li_index;
+  li_index = udp_session_bind (session_index, lcl);
+  if (li_index == (u32) ~ 0)
+    return -1;
+  listener = udp_listener_get (li_index);
   listener->is_connected = 1;
-  return li;
+  return li_index;
 }
 
 /* *INDENT-OFF* */

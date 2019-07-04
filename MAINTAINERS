@@ -199,6 +199,11 @@ I:	tcp
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/tcp
 
+VNET UDP
+I:	udp
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/vnet/udp
+
 VNET VXLAN
 I:	vxlan
 M:	John Lo <loj@cisco.com>
