@@ -973,6 +973,20 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16x16 zero = { 0 };
   u16x16 stairs = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 #endif
+#ifdef CLIB_HAVE_VEC128
+  u16x8 et8_ip4 = u16x8_splat (et_ip4);
+  u16x8 et8_ip6 = u16x8_splat (et_ip6);
+  u16x8 et8_mpls = u16x8_splat (et_mpls);
+  u16x8 et8_vlan = u16x8_splat (et_vlan);
+  u16x8 et8_dot1ad = u16x8_splat (et_dot1ad);
+  u16x8 next8_ip4 = u16x8_splat (next_ip4);
+  u16x8 next8_ip6 = u16x8_splat (next_ip6);
+  u16x8 next8_mpls = u16x8_splat (next_mpls);
+  u16x8 next8_l2 = u16x8_splat (next_l2);
+  u16x8 zero8 = { 0 };
+  u16 _stairs8[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  u16x8 stairs8 = u16x8_load_unaligned ((void *) _stairs8);
+#endif
 
   etype = etypes;
   n_left = n_packets;
@@ -1020,6 +1034,44 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next += 16;
 	  n_left -= 16;
 	  i += 16;
+	  continue;
+	}
+#endif
+#ifdef CLIB_HAVE_VEC128
+      if (n_left >= 8)
+	{
+	  u16x8 r = zero8;
+	  u16x8 e8 = u16x8_load_unaligned (etype);
+	  if (main_is_l3)
+	    {
+	      r += (e8 == et8_ip4) & next8_ip4;
+	      r += (e8 == et8_ip6) & next8_ip6;
+	      r += (e8 == et8_mpls) & next8_mpls;
+	    }
+	  else
+	    r = ((e8 != et8_vlan) & (e8 != et8_dot1ad)) & next8_l2;
+	  u16x8_store_unaligned (r, next);
+
+	  if (!u16x8_is_all_zero (r == zero8))
+	    {
+	      if (u16x8_is_all_zero (r))
+		{
+		  u16x8_store_unaligned (u16x8_splat (i) + stairs8,
+					 slowpath_indices + n_slowpath);
+		  n_slowpath += 8;
+		}
+	      else
+		{
+		  for (int j = 0; j < 8; j++)
+		    if (next[j] == 0)
+		      slowpath_indices[n_slowpath++] = i + j;
+		}
+	    }
+
+	  etype += 8;
+	  next += 8;
+	  n_left -= 8;
+	  i += 8;
 	  continue;
 	}
 #endif
