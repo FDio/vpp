@@ -379,13 +379,14 @@ struct _tcp_cc_algorithm
 {
   const char *name;
   uword (*unformat_cfg) (unformat_input_t * input);
+  void (*init) (tcp_connection_t * tc);
+  void (*cleanup) (tcp_connection_t * tc);
   void (*rcv_ack) (tcp_connection_t * tc, tcp_rate_sample_t *rs);
   void (*rcv_cong_ack) (tcp_connection_t * tc, tcp_cc_ack_t ack,
 			tcp_rate_sample_t *rs);
   void (*congestion) (tcp_connection_t * tc);
+  void (*loss) (tcp_connection_t * tc);
   void (*recovered) (tcp_connection_t * tc);
-  void (*init) (tcp_connection_t * tc);
-  void (*cleanup) (tcp_connection_t * tc);
 };
 /* *INDENT-ON* */
 
@@ -900,7 +901,7 @@ int tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 int tcp_fast_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 			 u32 burst_size);
 void tcp_cc_init_congestion (tcp_connection_t * tc);
-void tcp_cc_fastrecovery_exit (tcp_connection_t * tc);
+void tcp_cc_fastrecovery_clear (tcp_connection_t * tc);
 
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 
@@ -956,6 +957,12 @@ tcp_cc_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 		     tcp_rate_sample_t * rs)
 {
   tc->cc_algo->rcv_cong_ack (tc, ack_type, rs);
+}
+
+static inline void
+tcp_cc_loss (tcp_connection_t * tc)
+{
+  tc->cc_algo->loss (tc);
 }
 
 always_inline void
