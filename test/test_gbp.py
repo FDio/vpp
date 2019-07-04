@@ -1719,14 +1719,15 @@ class TestGBP(VppTestCase):
         # Learn new EPs from GARP packets received on the BD's mcast tunnel
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a known EPG
-            # arriving on an unknown TEP
+            # add some junk in the reserved field of the vxlan-header
+            # next to the VNI. we should accept since reserved bits are
+            # ignored on rx.
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst="239.1.1.1") /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=88, gpid=112, flags=0x88) /
+                 VXLAN(vni=88, reserved2=0x80, gpid=112, flags=0x88) /
                  Ether(src=l['mac'], dst="ff:ff:ff:ff:ff:ff") /
                  ARP(op="who-has",
                      psrc=l['ip'], pdst=l['ip'],
@@ -1832,12 +1833,14 @@ class TestGBP(VppTestCase):
         #
         for l in learnt:
             # a packet with an sclass from a known EPG
+            # set a reserved bit in addition to the G and I
+            # reserved bits should not be checked on rx.
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=112, flags=0x88) /
+                 VXLAN(vni=99, gpid=112, flags=0xc8) /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /

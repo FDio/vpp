@@ -209,6 +209,12 @@ I:	vxlan-gpe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
+VNET VXLAN-GBP
+I:	vxlan-gbp
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/vxlan-gbp/
+
 VNET IPIP
 I:	ipip
 Y:	src/vnet/ipip/FEATURE.yaml
