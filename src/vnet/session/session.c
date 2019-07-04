@@ -946,7 +946,6 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   sh = session_handle (s);
   session_lookup_add_connection (tc, sh);
-
   return app_worker_connect_notify (app_wrk, s, opaque);
 }
 
@@ -1079,7 +1078,8 @@ session_stop_listen (session_t * s)
   if (!tc)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
 
-  session_lookup_del_connection (tc);
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_del_connection (tc);
   transport_stop_listen (tp, s->connection_index);
   return 0;
 }

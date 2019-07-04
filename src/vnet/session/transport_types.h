@@ -39,6 +39,14 @@ typedef enum transport_service_type_
   TRANSPORT_N_SERVICES
 } transport_service_type_t;
 
+typedef enum transport_connection_flags_
+{
+  TRANSPORT_CONNECTION_F_IS_TX_PACED = 1 << 0,
+  TRANSPORT_CONNECTION_F_NO_LOOKUP = 1 << 1, /**< Don't register connection in lookup
+						  Does not apply to local apps and
+						  transports using the network layer (udp/tcp) */
+} transport_connection_flags_t;
+
 typedef struct _transport_stats
 {
   u64 tx_bytes;
@@ -119,8 +127,6 @@ typedef struct _transport_connection
 #define c_pacer connection.pacer
 #define c_flags connection.flags
 } transport_connection_t;
-
-#define TRANSPORT_CONNECTION_F_IS_TX_PACED	1 << 0
 
 typedef enum _transport_proto
 {
