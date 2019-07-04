@@ -39,6 +39,12 @@ typedef enum transport_service_type_
   TRANSPORT_N_SERVICES
 } transport_service_type_t;
 
+typedef enum transport_flag_t_
+{
+  TRANSPORT_F_NONE = 0,
+  TRANSPORT_F_NO_LOOKUP = 1,	/**<if set, doesn't register in lookup>*/
+} transport_flag_t;
+
 typedef struct _transport_stats
 {
   u64 tx_bytes;
