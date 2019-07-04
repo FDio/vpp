@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "edefef6e_38efd300",
+        "filename": "src/vnet/tcp/tcp_bt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 1823
+      },
+      "writtenOn": "2019-07-04T13:41:22Z",
+      "side": 1,
+      "message": "This looks good, just trying to compare this with the linux API.\n\nrs-\u003eack_time looks like the interval time for the sampling interval.  Could you rename it interval_time?\n\nCan you also include some additional fields in the rate sample structure: rtt_time, losses, acked_sacked and prior_in_flight.\n\n  - rtt_time : RTT of last (S)ACKed packet (or -1)\n    This is being measured on the ack path in tcp_update_rtt - can it be added to the rate sample\n\n  - losses - freshly marked lost \n  - acked_sacked - freshly ACKed or SACKed\n  - prior_in_flight - packets in flight at the time of the Ack received\n\n\nThere was a check in the linux implementation for when the interval time is less than the min_rtt on the connection.   I think this is worth including - but requires that the min_rtt is tracked on the connection.",
+      "revId": "390ae452c36dd74c877b267a4231cbf273343e58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
