@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "21c40f8c_e101e302",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-04T17:14:54Z",
+      "side": 1,
+      "message": "That looks like it fits in 32 bits (i32 being the other option) so encode it as such. Ultimately, you only care that the u32 returned by wrk_ctx[].time_now wraps to the right value. So, even if timestamp value is N and you want to get N+1 out of the subtraction, you could make delta \u003d (u32) ~0.",
+      "parentUuid": "c46dc7ee_8819d387",
+      "range": {
+        "startLine": 375,
+        "startChar": 2,
+        "endLine": 375,
+        "endChar": 5
+      },
+      "revId": "7b4525f865811b48b6b2358e9a299c98676f3fff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ff5499a7_a5ee53b5",
         "filename": "src/vnet/tcp/tcp.h",
         "patchSetId": 1
