@@ -236,6 +236,7 @@ udp_connection_clone_safe (u32 connection_index, u32 thread_index)
   new_c->c_thread_index = current_thread_index;
   new_c->c_c_index = udp_connection_index (new_c);
   new_c->is_connected = old_c->is_connected;
+  new_c->c_proto = old_c->c_proto;
   new_c->c_fib_index = old_c->c_fib_index;
   return new_c;
 }

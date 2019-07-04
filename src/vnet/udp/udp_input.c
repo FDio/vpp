@@ -208,6 +208,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  child0->c_is_ip4 = is_ip4;
 		  child0->c_fib_index = tc0->fib_index;
 		  child0->is_connected = 1;
+		  child0->c_proto = tc0->proto;
 
 		  if (session_stream_accept (&child0->connection,
 					     tc0->s_index, tc0->thread_index,
@@ -247,7 +248,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  clib_spinlock_lock (&uc0->rx_lock);
 	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
-						     TRANSPORT_PROTO_UDP,
+						     uc0->c_proto,
 						     1 /* queue evt */ );
 	  clib_spinlock_unlock (&uc0->rx_lock);
 	  ASSERT (wrote0 > 0);
