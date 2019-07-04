@@ -1483,14 +1483,17 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
     {
       /* TODO be less aggressive about this */
       scoreboard_clear (&tc->sack_sb);
-      tcp_cc_fastrecovery_exit (tc);
+//      tcp_cc_fastrecovery_exit (tc);  // THIS
+      tcp_cc_fastrecovery_clear (tc);
     }
   else
     tc->rcv_dupacks = 0;
 
+  tc->cc_algo->loss (tc);
+
   /* Start again from the beginning */
-  tc->cc_algo->congestion (tc);
-  tc->cwnd = tcp_loss_wnd (tc);
+//  tc->cc_algo->congestion (tc); // THIS?
+//  tc->cwnd = tcp_loss_wnd (tc); // THIS
   tc->snd_congestion = tc->snd_nxt;
   tc->rtt_ts = 0;
   tc->cwnd_acc_bytes = 0;
