@@ -9,6 +9,7 @@ ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
 Type=simple
 Restart=on-failure
 RestartSec=5s
+LimitCORE=infinity
 
 [Install]
 WantedBy=multi-user.target
