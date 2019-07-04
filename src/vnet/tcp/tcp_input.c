@@ -1183,20 +1183,31 @@ tcp_cc_recovery_exit (tcp_connection_t * tc)
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
-#ifndef CLIB_MARCH_VARIANT
-void
-tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
+static inline void
+tcp_cc_fastrecovery_clear_inline (tcp_connection_t * tc)
 {
-  tc->cc_algo->recovered (tc);
   tc->snd_rxt_bytes = 0;
   tc->rcv_dupacks = 0;
-  tc->snd_rxt_bytes = 0;
   tc->rtt_ts = 0;
 
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_first_off (tc);
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
+}
+
+static void
+tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
+{
+  tc->cc_algo->recovered (tc);
+  tcp_cc_fastrecovery_clear_inline (tc);
+}
+
+#ifndef CLIB_MARCH_VARIANT
+void
+tcp_cc_fastrecovery_clear (tcp_connection_t * tc)
+{
+  tcp_cc_fastrecovery_clear_inline (tc);
 }
 #endif /* CLIB_MARCH_VARIANT */
 

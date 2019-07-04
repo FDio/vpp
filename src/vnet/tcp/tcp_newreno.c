@@ -22,6 +22,13 @@ newreno_congestion (tcp_connection_t * tc)
 }
 
 void
+newreno_loss (tcp_connection_t * tc)
+{
+  tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
+  tc->cwnd = tcp_loss_wnd (tc);
+}
+
+static void
 newreno_recovered (tcp_connection_t * tc)
 {
   tc->cwnd = tc->ssthresh;
@@ -82,6 +89,7 @@ newreno_conn_init (tcp_connection_t * tc)
 const static tcp_cc_algorithm_t tcp_newreno = {
   .name = "newreno",
   .congestion = newreno_congestion,
+  .loss = newreno_loss,
   .recovered = newreno_recovered,
   .rcv_ack = newreno_rcv_ack,
   .rcv_cong_ack = newreno_rcv_cong_ack,
