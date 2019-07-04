@@ -34,7 +34,7 @@ format_srv6_end_rewrite_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   srv6_end_rewrite_trace_t *t = va_arg (*args, srv6_end_rewrite_trace_t *);
 
-  return format (s, "SRv6-END-rewrite: src %U dst %U\n TEID: 0x%x",
+  return format (s, "SRv6-END-rewrite: src %U dst %U\n\tTEID: 0x%x",
 		 format_ip4_address, &t->src, format_ip4_address, &t->dst, clib_net_to_host_u32(t->teid));
 }
 
@@ -45,7 +45,7 @@ format_srv6_end_rewrite_trace6 (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   srv6_end_rewrite_trace_t *t = va_arg (*args, srv6_end_rewrite_trace_t *);
 
-  return format (s, "SRv6-END-rewrite: src %U dst %U\n TEID: 0x%x\n sr_prefix: %U/%d",
+  return format (s, "SRv6-END-rewrite: src %U dst %U\n\tTEID: 0x%x\n\tsr_prefix: %U/%d",
 		 format_ip6_address, &t->src, format_ip6_address, &t->dst, t->teid,
 		 format_ip6_address, &t->sr_prefix, t->sr_prefixlen);
 }
