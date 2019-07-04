@@ -583,7 +583,10 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  offset += 1;
 		  if (PREDICT_TRUE (shift == 0))
 	            {
-	              clib_memcpy (&seg0.as_u8[offset], teidp, 4);
+	              seg0.as_u8[offset] = teidp[0];
+		      seg0.as_u8[offset+1] = teidp[1];
+		      seg0.as_u8[offset+2] = teidp[2];
+		      seg0.as_u8[offset+3] = teidp[3];
 		    }
 		  else
 		    {
@@ -646,7 +649,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 	      if (sl)
 		{
-	          clib_memcpy_fast (ip6srv, sl->rewrite, sizeof(ip6_sr_header_t));
+	          clib_memcpy_fast (ip6srv, sl->rewrite, vec_len (sl->rewrite));
 
 	          ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
@@ -663,7 +666,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 
 	          clib_memcpy_fast (&ip6srv->sr.segments[1],
 	            (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
- 		    vec_len (sl->segments));
+ 		    vec_len (sl->segments) * sizeof(ip6_address_t));
 		}
 	      else
 		{
@@ -802,7 +805,10 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  offset += 1;
 		  if (PREDICT_TRUE (shift == 0))
 	            {
-	              clib_memcpy (&seg0.as_u8[offset], teidp, 4);
+	              seg0.as_u8[offset] = teidp[0];
+		      seg0.as_u8[offset+1] = teidp[1];
+		      seg0.as_u8[offset+2] = teidp[2];
+		      seg0.as_u8[offset+3] = teidp[3];
 		    }
 		  else
 		    {
@@ -861,7 +867,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 	      if (sl)
 		{
-	          clib_memcpy_fast (ip6srv, sl->rewrite, sizeof(ip6_sr_header_t));
+	          clib_memcpy_fast (ip6srv, sl->rewrite, vec_len (sl->rewrite));
 
 	          ip6srv->sr.segments_left += 2;
 	          ip6srv->sr.first_segment += 2;
@@ -890,14 +896,29 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		  ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
 		}
 
-	      ip6srv->sr.length += (sizeof(ip6_address_t) * 2) /8;
+	      ip6srv->sr.length += ((sizeof(ip6_address_t) * 2) / 8);
 	      ip6srv->sr.segments[0] = dst0;
 	      ip6srv->sr.segments[1] = seg0;
 
 	      if (sl)
-	        clib_memcpy_fast (&ip6srv->sr.segments[2],
-		    (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
-		    vec_len (sl->segments));
+	        {
+#if 0
+		  ip6_address_t *this_address;
+		  ip6_address_t *addrp;
+
+		  addrp = ip6srv->sr.segments + vec_len (sl->segments) + 1;
+		  vec_foreach (this_address, sl->segments)
+		    {
+		      clib_memcpy_fast (addrp->as_u8, this_address->as_u8,
+				 	sizeof (ip6_address_t));
+		      addrp--;
+		    }
+#else
+	          clib_memcpy_fast (&ip6srv->sr.segments[2],
+	            (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
+ 		    vec_len (sl->segments) * sizeof(ip6_address_t));
+#endif
+		}
 
               good_n++;
 

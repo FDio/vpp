@@ -80,9 +80,10 @@ clb_unformat_srv6_end_m_gtp6_d_di (unformat_input_t * input, va_list * args)
   void **plugin_mem_p = va_arg (*args, void **);
   srv6_end_gtp6_param_t *ls_mem;
   ip6_address_t sr_prefix;
-  u16 sr_prefixlen;
+  u32 sr_prefixlen = 0;
 
-  if (!unformat (input, "end.m.gtp6.d.di %U/%d", unformat_ip6_address, &sr_prefix, &sr_prefixlen))
+  if (!unformat (input, "end.m.gtp6.d.di %U/%d",
+	 unformat_ip6_address, &sr_prefix, &sr_prefixlen))
     {
       return 0;
     }
@@ -106,6 +107,12 @@ clb_creation_srv6_end_m_gtp6_d_di (ip6_sr_localsid_t * localsid)
 static int
 clb_removal_srv6_end_m_gtp6_d_di (ip6_sr_localsid_t * localsid)
 {
+  srv6_end_gtp6_param_t *ls_mem;
+
+  ls_mem = localsid->plugin_mem;
+
+  clib_mem_free (ls_mem);
+
   return 0;
 }
 

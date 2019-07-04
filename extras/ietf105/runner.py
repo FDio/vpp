@@ -597,6 +597,7 @@ class Program(object):
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
         c3.set_ipv6_route("eth2", "A3::2", "D4::/32")
         c3.set_ipv6_route("eth1", "A2::1", "C::/120")
+        c4.set_ip_pgroute("pg0", "B::2", "D::2/128")
 
         print("Waiting...")
         time.sleep(30)
