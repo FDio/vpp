@@ -1183,8 +1183,9 @@ tcp_cc_recovery_exit (tcp_connection_t * tc)
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
-static inline void
-tcp_cc_fastrecovery_clear_inline (tcp_connection_t * tc)
+#ifndef CLIB_MARCH_VARIANT
+void
+tcp_cc_fastrecovery_clear (tcp_connection_t * tc)
 {
   tc->snd_rxt_bytes = 0;
   tc->rcv_dupacks = 0;
@@ -1194,20 +1195,6 @@ tcp_cc_fastrecovery_clear_inline (tcp_connection_t * tc)
   tcp_fastrecovery_first_off (tc);
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
-}
-
-static void
-tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
-{
-  tc->cc_algo->recovered (tc);
-  tcp_cc_fastrecovery_clear_inline (tc);
-}
-
-#ifndef CLIB_MARCH_VARIANT
-void
-tcp_cc_fastrecovery_clear (tcp_connection_t * tc)
-{
-  tcp_cc_fastrecovery_clear_inline (tc);
 }
 #endif /* CLIB_MARCH_VARIANT */
 
@@ -1224,8 +1211,9 @@ tcp_cc_congestion_undo (tcp_connection_t * tc)
     }
   else if (tcp_in_fastrecovery (tc))
     {
-      tcp_cc_fastrecovery_exit (tc);
+      tcp_cc_fastrecovery_clear (tc);
     }
+  tcp_cc_undo_recovery (tc);
   ASSERT (tc->rto_boff == 0);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 5);
 }
@@ -1266,7 +1254,10 @@ tcp_cc_recover (tcp_connection_t * tc)
   if (tcp_in_recovery (tc))
     tcp_cc_recovery_exit (tc);
   else if (tcp_in_fastrecovery (tc))
-    tcp_cc_fastrecovery_exit (tc);
+    {
+      tcp_cc_recovered (tc);
+      tcp_cc_fastrecovery_clear (tc);
+    }
 
   ASSERT (tc->rto_boff == 0);
   ASSERT (!tcp_in_cong_recovery (tc));
