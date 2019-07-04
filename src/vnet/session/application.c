@@ -212,7 +212,8 @@ app_listener_alloc_and_init (application_t * app,
        * are not related to network fibs, i.e., cannot be added as
        * connections */
       tc = session_get_transport (ls);
-      session_lookup_add_connection (tc, lh);
+      if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+	session_lookup_add_connection (tc, lh);
     }
 
   if (!ls)
