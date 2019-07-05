@@ -557,7 +557,7 @@ always_inline void
 session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 			       u32 max_segs, u8 peek_data)
 {
-  u32 n_bytes_per_buf, n_bytes_per_seg;
+  u32 n_bytes_per_buf, n_bytes_per_seg, n_bytes_last_seg;
   ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
   if (peek_data)
     {
@@ -604,6 +604,8 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
   /* Check if we're tx constrained by the node */
   ctx->n_segs_per_evt = ceil ((f64) ctx->max_len_to_snd / ctx->snd_mss);
+  ASSERT (ctx->n_segs_per_evt > 0);
+
   if (ctx->n_segs_per_evt > max_segs)
     {
       ctx->n_segs_per_evt = max_segs;
@@ -612,8 +614,14 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
   n_bytes_per_buf = vlib_buffer_get_default_data_size (vm);
   ASSERT (n_bytes_per_buf > TRANSPORT_MAX_HDRS_LEN);
-  n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->snd_mss;
+  if (ctx->n_segs_per_evt > 1)
+    n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->snd_mss;
+  else
+    n_bytes_per_seg = ctx->max_len_to_snd;
   ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+  n_bytes_last_seg =
+    ctx->max_len_to_snd - ((ctx->n_segs_per_evt - 1) * n_bytes_per_seg);
+  ctx->n_bufs_last_seg = ceil ((f64) n_bytes_last_seg / n_bytes_per_buf);
   ctx->deq_per_buf = clib_min (ctx->snd_mss, n_bytes_per_buf);
   ctx->deq_per_first_buf = clib_min (ctx->snd_mss,
 				     n_bytes_per_buf -
@@ -675,7 +683,11 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     return SESSION_TX_NO_DATA;
 
-  n_bufs_needed = ctx->n_segs_per_evt * ctx->n_bufs_per_seg;
+  if (ctx->n_segs_per_evt > 1)
+    n_bufs_needed =
+      (ctx->n_segs_per_evt - 1) * ctx->n_bufs_per_seg + ctx->n_bufs_last_seg;
+  else
+    n_bufs_needed = ctx->n_bufs_per_seg;
   vec_validate_aligned (wrk->tx_buffers, n_bufs_needed - 1,
 			CLIB_CACHE_LINE_BYTES);
   n_bufs = vlib_buffer_alloc (vm, wrk->tx_buffers, n_bufs_needed);
