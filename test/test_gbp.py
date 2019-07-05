@@ -1969,10 +1969,10 @@ class TestGBP(VppTestCase):
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
-                VppGbpContractRule(
-                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
-                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
-                    [])],
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                 [])],
             [ETH_P_IP, ETH_P_IPV6])
         c1.add_vpp_config()
 
@@ -1987,8 +1987,8 @@ class TestGBP(VppTestCase):
         #
         # send UU packets from the local EP
         #
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
         self.logger.info(self.vapi.cli("sh gbp bridge"))
+        self.logger.info(self.vapi.cli("sh bridge-domain 1 detail"))
         p_uu = (Ether(src=ep.mac, dst="00:11:11:11:11:11") /
                 IP(dst="10.0.0.133", src=ep.ip4.address) /
                 UDP(sport=1234, dport=1234) /
@@ -2015,6 +2015,26 @@ class TestGBP(VppTestCase):
             self.assertFalse(rx[VXLAN].gpflags.A)
             self.assertFalse(rx[VXLAN].gpflags.D)
 
+        acl = VppGbpAcl(self)
+        rule = acl.create_rule(permit_deny=1, proto=17)
+        rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
+        acl_index = acl.add_vpp_config([rule, rule2])
+        c2 = VppGbpContract(
+            self, 401, epg_330.sclass, epg_220.sclass, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                []),
+                VppGbpContractRule(
+                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                    [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c2.add_vpp_config()
+
+        for l in learnt:
+            self.wait_for_ep_timeout(vx_tun_l2_1.sw_if_index,
+                                     mac=l['mac'])
         #
         # Check v6 Endpoints learning
         #
@@ -2025,17 +2045,53 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=113, flags=0x88, gpflags='A') /
+                 VXLAN(vni=99, gpid=113, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IPv6(src=l['ip6'], dst=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
 
             rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
+            rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
 
-            self.assertTrue(find_gbp_endpoint(self,
-                                              vx_tun_l2_1.sw_if_index,
-                                              mac=l['mac']))
+            self.assertTrue(find_gbp_endpoint(
+                self,
+                vx_tun_l2_1.sw_if_index,
+                ip=l['ip6'],
+                tep=[self.pg2.local_ip4,
+                     self.pg2.remote_hosts[1].ip4]))
+
+        self.logger.info(self.vapi.cli("sh int"))
+        self.logger.info(self.vapi.cli("sh vxlan-gbp tunnel"))
+        self.logger.info(self.vapi.cli("sh gbp vxlan"))
+        self.logger.info(self.vapi.cli("sh gbp endpoint"))
+        self.logger.info(self.vapi.cli("sh gbp interface"))
+
+        #
+        # EP moves to a different TEP
+        #
+        for l in learnt:
+            # a packet with an sclass from a known EPG
+            p = (Ether(src=self.pg2.remote_mac,
+                       dst=self.pg2.local_mac) /
+                 IP(src=self.pg2.remote_hosts[2].ip4,
+                    dst=self.pg2.local_ip4) /
+                 UDP(sport=1234, dport=48879) /
+                 VXLAN(vni=99, gpid=113, flags=0x88) /
+                 Ether(src=l['mac'], dst=ep.mac) /
+                 IPv6(src=l['ip6'], dst=ep.ip6.address) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+
+            rx = self.send_and_expect(self.pg2, p * 1, self.pg0)
+            rx = self.send_and_expect(self.pg2, p * NUM_PKTS, self.pg0)
+
+            self.assertTrue(find_gbp_endpoint(
+                self,
+                vx_tun_l2_1.sw_if_index,
+                mac=l['mac'],
+                tep=[self.pg2.local_ip4,
+                     self.pg2.remote_hosts[2].ip4]))
 
         #
         # v6 remote EP reachability
@@ -2050,7 +2106,7 @@ class TestGBP(VppTestCase):
 
             for rx in rxs:
                 self.assertEqual(rx[IP].src, self.pg2.local_ip4)
-                self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[1].ip4)
+                self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[2].ip4)
                 self.assertEqual(rx[UDP].dport, 48879)
                 # the UDP source port is a random value for hashing
                 self.assertEqual(rx[VXLAN].gpid, 112)
@@ -2070,9 +2126,6 @@ class TestGBP(VppTestCase):
         self.pg2.unconfig_ip4()
         self.pg3.unconfig_ip4()
         self.pg4.unconfig_ip4()
-
-        self.logger.info(self.vapi.cli("sh int"))
-        self.logger.info(self.vapi.cli("sh gbp vxlan"))
 
     def test_gbp_contract(self):
         """ GBP Contracts """
@@ -3819,9 +3872,6 @@ class TestGBP(VppTestCase):
         vlan_144.admin_up()
         # vlan_102 is not poped
 
-        ext_itf = VppGbpExtItf(self, self.loop0, bd1, rd1)
-        ext_itf.add_vpp_config()
-
         #
         # an unicast vxlan-gbp for inter-RD traffic
         #
@@ -4591,9 +4641,6 @@ class TestGBP(VppTestCase):
         #
         VppL2Vtr(self, self.vlan_100, L2_VTR_OP.L2_POP_1).add_vpp_config()
         VppL2Vtr(self, self.vlan_101, L2_VTR_OP.L2_POP_1).add_vpp_config()
-
-        ext_itf = VppGbpExtItf(self, self.loop0, bd1, rd1)
-        ext_itf.add_vpp_config()
 
         #
         # vlan_100 and vlan_101 are anonymous l3-out interfaces

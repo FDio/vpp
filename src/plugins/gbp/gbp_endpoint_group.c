@@ -19,6 +19,7 @@
 #include <plugins/gbp/gbp_endpoint.h>
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_route_domain.h>
+#include <plugins/gbp/gbp_itf.h>
 
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
@@ -87,7 +88,6 @@ gbp_endpoint_group_add_and_lock (vnid_t vnid,
 
   if (INDEX_INVALID == ggi)
     {
-      gbp_bridge_domain_t *gb;
       fib_protocol_t fproto;
       index_t gbi, grdi;
 
@@ -104,16 +104,14 @@ gbp_endpoint_group_add_and_lock (vnid_t vnid,
 	  return (VNET_API_ERROR_NO_SUCH_FIB);
 	}
 
-      gb = gbp_bridge_domain_get (gbi);
-
       pool_get_zero (gbp_endpoint_group_pool, gg);
 
       gg->gg_vnid = vnid;
       gg->gg_rd = grdi;
       gg->gg_gbd = gbi;
-      gg->gg_bd_index = gb->gb_bd_index;
 
       gg->gg_uplink_sw_if_index = uplink_sw_if_index;
+      gbp_itf_hdl_reset (&gg->gg_uplink_itf);
       gg->gg_locks = 1;
       gg->gg_sclass = sclass;
       gg->gg_retention = *retention;
@@ -138,10 +136,11 @@ gbp_endpoint_group_add_and_lock (vnid_t vnid,
 	   * Add the uplink to the BD
 	   * packets direct from the uplink have had policy applied
 	   */
-	  gbp_bridge_domain_itf_add (gg->gg_uplink_sw_if_index,
-				     gg->gg_bd_index, L2_BD_PORT_TYPE_NORMAL);
-	  l2input_intf_bitmap_enable (gg->gg_uplink_sw_if_index,
-				      L2INPUT_FEAT_GBP_NULL_CLASSIFY, 1);
+	  gg->gg_uplink_itf =
+	    gbp_itf_l2_add_and_lock (gg->gg_uplink_sw_if_index, gbi);
+
+	  gbp_itf_l2_set_input_feature (gg->gg_uplink_itf,
+					L2INPUT_FEAT_GBP_NULL_CLASSIFY);
 	}
 
       hash_set (gbp_endpoint_group_db.gg_hash_sclass,
@@ -176,13 +175,8 @@ gbp_endpoint_group_unlock (index_t ggi)
 
       gg = pool_elt_at_index (gbp_endpoint_group_pool, ggi);
 
-      if (~0 != gg->gg_uplink_sw_if_index)
-	{
-	  gbp_bridge_domain_itf_del (gg->gg_uplink_sw_if_index,
-				     gg->gg_bd_index, L2_BD_PORT_TYPE_NORMAL);
-	  l2input_intf_bitmap_enable (gg->gg_uplink_sw_if_index,
-				      L2INPUT_FEAT_GBP_NULL_CLASSIFY, 0);
-	}
+      gbp_itf_unlock (&gg->gg_uplink_itf);
+
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {
 	dpo_reset (&gg->gg_dpo[fproto]);
@@ -332,16 +326,15 @@ u8 *
 format_gbp_endpoint_group (u8 * s, va_list * args)
 {
   gbp_endpoint_group_t *gg = va_arg (*args, gbp_endpoint_group_t*);
-  vnet_main_t *vnm = vnet_get_main ();
 
   if (NULL != gg)
-    s = format (s, "[%d] %d, sclass:%d bd:[%d,%d] rd:[%d] uplink:%U retention:%U locks:%d",
+    s = format (s, "[%d] %d, sclass:%d bd:%d rd:%d uplink:%U retention:%U locks:%d",
                 gg - gbp_endpoint_group_pool,
                 gg->gg_vnid,
                 gg->gg_sclass,
-                gbp_endpoint_group_get_bd_id(gg), gg->gg_bd_index,
+                gg->gg_gbd,
                 gg->gg_rd,
-                format_vnet_sw_if_index_name, vnm, gg->gg_uplink_sw_if_index,
+                format_gbp_itf_hdl, gg->gg_uplink_itf,
                 format_gbp_endpoint_retention, &gg->gg_retention,
                 gg->gg_locks);
   else

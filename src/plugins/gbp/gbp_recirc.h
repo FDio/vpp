@@ -17,6 +17,7 @@
 #define __GBP_RECIRC_H__
 
 #include <plugins/gbp/gbp_types.h>
+#include <plugins/gbp/gbp_itf.h>
 #include <vnet/fib/fib_types.h>
 
 /**
@@ -51,7 +52,7 @@ typedef struct gpb_recirc_t_
   /**
    */
   u32 gr_sw_if_index;
-  u32 gr_itf;
+  gbp_itf_hdl_t gr_itf;
 
   /**
    * The endpoint created to represent the reric interface
