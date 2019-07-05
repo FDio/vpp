@@ -17,6 +17,7 @@
 #define __GBP_BRIDGE_DOMAIN_H__
 
 #include <plugins/gbp/gbp_types.h>
+#include <plugins/gbp/gbp_itf.h>
 
 #include <vnet/fib/fib_types.h>
 #include <vnet/l2/l2_bd.h>
@@ -70,7 +71,7 @@ typedef struct gbp_bridge_domain_t_
   /**
    * The BD's interface to sned Broadcast and multicast packets
    */
-  u32 gb_bm_flood_sw_if_index;
+  gbp_itf_hdl_t gb_bm_flood_itf;
 
   /**
    * The index of the BD's VNI interface on which packets from
@@ -85,9 +86,11 @@ typedef struct gbp_bridge_domain_t_
   u32 gb_locks;
 } gbp_bridge_domain_t;
 
-extern void gbp_bridge_domain_itf_add (u32 sw_if_index, u32 bd_index,
+extern void gbp_bridge_domain_itf_add (index_t gbdi,
+				       u32 sw_if_index,
 				       l2_bd_port_type_t type);
-extern void gbp_bridge_domain_itf_del (u32 sw_if_index, u32 bd_index,
+extern void gbp_bridge_domain_itf_del (index_t gbdi,
+				       u32 sw_if_index,
 				       l2_bd_port_type_t type);
 
 extern int gbp_bridge_domain_add_and_lock (u32 bd_id,

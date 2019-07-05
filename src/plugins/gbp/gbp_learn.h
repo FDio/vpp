@@ -23,12 +23,6 @@
  */
 #define GBP_ENDPOINT_HASH_LEARN_RATE (1e-2)
 
-typedef enum gbp_learn_mode_t_
-{
-  GBP_LEARN_MODE_L2,
-  GBP_LEARN_MODE_L3,
-} gbb_learn_mode_t;
-
 /**
  * Grouping of global data for the GBP source EPG classification feature
  */
@@ -53,8 +47,8 @@ typedef struct gbp_learn_main_t_
 
 extern gbp_learn_main_t gbp_learn_main;
 
-extern void gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode);
-extern void gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode);
+extern void gbp_learn_enable (u32 sw_if_index);
+extern void gbp_learn_disable (u32 sw_if_index);
 
 #endif
 

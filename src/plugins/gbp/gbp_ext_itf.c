@@ -44,7 +44,7 @@ format_gbp_ext_itf (u8 * s, va_list * args)
   gbp_ext_itf_t *gx = va_arg (*args, gbp_ext_itf_t *);
 
   return (format (s, "%U%s in %U",
-		  format_gbp_itf, gx->gx_itf,
+		  format_gbp_itf_hdl, gx->gx_itf,
 		  (gx->gx_flags & GBP_EXT_ITF_F_ANON) ? " [anon]" : "",
 		  format_gbp_bridge_domain, gx->gx_bd));
 }
@@ -85,7 +85,7 @@ gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id, u32 flags)
 
       gx->gx_bd = gbi;
       gx->gx_rd = gri;
-      gx->gx_itf = sw_if_index;
+      gbp_itf_hdl_reset (&gx->gx_itf);
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {
@@ -96,14 +96,13 @@ gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id, u32 flags)
       if (flags & GBP_EXT_ITF_F_ANON)
 	{
 	  /* add interface to the BD */
-	  index_t itf = gbp_itf_add_and_lock (sw_if_index,
-					      gbp_bridge_domain_get
-					      (gbi)->gb_bd_index);
+	  gx->gx_itf = gbp_itf_l2_add_and_lock (sw_if_index, gbi);
+
 	  /* setup GBP L2 features on this interface */
-	  gbp_itf_set_l2_input_feature (itf, 0,
+	  gbp_itf_l2_set_input_feature (gx->gx_itf,
 					L2INPUT_FEAT_GBP_LPM_ANON_CLASSIFY |
 					L2INPUT_FEAT_LEARN);
-	  gbp_itf_set_l2_output_feature (itf, 0,
+	  gbp_itf_l2_set_output_feature (gx->gx_itf,
 					 L2OUTPUT_FEAT_GBP_POLICY_LPM);
 	}
 
@@ -136,9 +135,7 @@ gbp_ext_itf_delete (u32 sw_if_index)
 
       GBP_EXT_ITF_DBG ("del: %U", format_gbp_ext_itf, gx);
 
-      if (gx->gx_flags & GBP_EXT_ITF_F_ANON)
-	gbp_itf_unlock (gx->gx_itf);
-
+      gbp_itf_unlock (&gx->gx_itf);
       gbp_route_domain_unlock (gx->gx_rd);
       gbp_bridge_domain_unlock (gx->gx_bd);
 
