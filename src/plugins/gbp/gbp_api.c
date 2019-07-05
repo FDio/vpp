@@ -240,7 +240,8 @@ gbp_endpoint_send_details (index_t gei, void *args)
     }
   else
     {
-      mp->endpoint.sw_if_index = ntohl (gef->gef_itf);
+      mp->endpoint.sw_if_index =
+	ntohl (gbp_itf_get_sw_if_index (gef->gef_itf));
     }
   mp->endpoint.sclass = ntohs (ge->ge_fwd.gef_sclass);
   mp->endpoint.n_ips = n_ips;
@@ -588,7 +589,8 @@ gbp_bridge_domain_send_details (gbp_bridge_domain_t * gb, void *args)
   mp->bd.rd_id = ntohl (gr->grd_id);
   mp->bd.bvi_sw_if_index = ntohl (gb->gb_bvi_sw_if_index);
   mp->bd.uu_fwd_sw_if_index = ntohl (gb->gb_uu_fwd_sw_if_index);
-  mp->bd.bm_flood_sw_if_index = ntohl (gb->gb_bm_flood_sw_if_index);
+  mp->bd.bm_flood_sw_if_index =
+    ntohl (gbp_itf_get_sw_if_index (gb->gb_bm_flood_itf));
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -763,7 +765,7 @@ gbp_ext_itf_send_details (gbp_ext_itf_t * gx, void *args)
   mp->ext_itf.flags = ntohl (gx->gx_flags);
   mp->ext_itf.bd_id = ntohl (gbp_bridge_domain_get_bd_id (gx->gx_bd));
   mp->ext_itf.rd_id = ntohl (gbp_route_domain_get_rd_id (gx->gx_rd));
-  mp->ext_itf.sw_if_index = ntohl (gx->gx_itf);
+  mp->ext_itf.sw_if_index = ntohl (gbp_itf_get_sw_if_index (gx->gx_itf));
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 

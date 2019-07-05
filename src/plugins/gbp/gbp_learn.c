@@ -22,35 +22,21 @@
 gbp_learn_main_t gbp_learn_main;
 
 void
-gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode)
+gbp_learn_enable (u32 sw_if_index)
 {
-  if (GBP_LEARN_MODE_L2 == mode)
-    {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 1);
-    }
-  else
-    {
-      vnet_feature_enable_disable ("ip4-unicast",
-				   "gbp-learn-ip4", sw_if_index, 1, 0, 0);
-      vnet_feature_enable_disable ("ip6-unicast",
-				   "gbp-learn-ip6", sw_if_index, 1, 0, 0);
-    }
+  vnet_feature_enable_disable ("ip4-unicast",
+			       "gbp-learn-ip4", sw_if_index, 1, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast",
+			       "gbp-learn-ip6", sw_if_index, 1, 0, 0);
 }
 
 void
-gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode)
+gbp_learn_disable (u32 sw_if_index)
 {
-  if (GBP_LEARN_MODE_L2 == mode)
-    {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 0);
-    }
-  else
-    {
-      vnet_feature_enable_disable ("ip4-unicast",
-				   "gbp-learn-ip4", sw_if_index, 0, 0, 0);
-      vnet_feature_enable_disable ("ip6-unicast",
-				   "gbp-learn-ip6", sw_if_index, 0, 0, 0);
-    }
+  vnet_feature_enable_disable ("ip4-unicast",
+			       "gbp-learn-ip4", sw_if_index, 0, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast",
+			       "gbp-learn-ip6", sw_if_index, 0, 0, 0);
 }
 
 static clib_error_t *

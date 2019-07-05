@@ -17,6 +17,7 @@
 #define __GBP_ENDPOINT_H__
 
 #include <plugins/gbp/gbp_types.h>
+#include <plugins/gbp/gbp_itf.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/mac_address.h>
 
@@ -122,7 +123,7 @@ typedef struct gbp_endpoint_loc_t_
   /**
    * The interface on which the EP is connected
    */
-  u32 gel_sw_if_index;
+  gbp_itf_hdl_t gel_itf;
 
   /**
    * Endpoint flags
@@ -158,7 +159,7 @@ typedef struct gbp_endpoint_fwd_t_
   /**
    * The interface on which the EP is connected
    */
-  index_t gef_itf;
+  gbp_itf_hdl_t gef_itf;
 
   /**
    * The L3 adj, if created

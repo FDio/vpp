@@ -14,7 +14,6 @@
  */
 
 #include <plugins/gbp/gbp_vxlan.h>
-#include <plugins/gbp/gbp_itf.h>
 #include <plugins/gbp/gbp_learn.h>
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_route_domain.h>
@@ -30,9 +29,8 @@
  */
 typedef struct vxlan_tunnel_ref_t_
 {
+  gbp_itf_hdl_t vxr_itf;
   u32 vxr_sw_if_index;
-  index_t vxr_itf;
-  u32 vxr_locks;
   index_t vxr_parent;
   gbp_vxlan_tunnel_layer_t vxr_layer;
 } vxlan_tunnel_ref_t;
@@ -45,27 +43,27 @@ uword *gv_db;
 /**
  * Logger
  */
-vlib_log_class_t gt_logger;
+static vlib_log_class_t gt_logger;
 
 /**
  * Pool of template tunnels
  */
-gbp_vxlan_tunnel_t *gbp_vxlan_tunnel_pool;
+static gbp_vxlan_tunnel_t *gbp_vxlan_tunnel_pool;
 
 /**
  * Pool of child tunnels
  */
-vxlan_tunnel_ref_t *vxlan_tunnel_ref_pool;
+static vxlan_tunnel_ref_t *vxlan_tunnel_ref_pool;
 
 /**
  * DB of template interfaces by SW interface index
  */
-index_t *gbp_vxlan_tunnel_db;
+static index_t *gbp_vxlan_tunnel_db;
 
 /**
  * DB of child interfaces by SW interface index
  */
-index_t *vxlan_tunnel_ref_db;
+static index_t *vxlan_tunnel_ref_db;
 
 /**
  * handle registered with the ;unt infra
@@ -80,7 +78,6 @@ static char *gbp_vxlan_tunnel_layer_strings[] = {
 
 #define GBP_VXLAN_TUN_DBG(...)                          \
     vlib_log_debug (gt_logger, __VA_ARGS__);
-
 
 
 gbp_vxlan_tunnel_t *
@@ -103,13 +100,37 @@ format_vxlan_tunnel_ref (u8 * s, va_list * args)
 
   vxr = vxlan_tunnel_ref_get (vxri);
 
-  s = format (s, "[%U locks:%d]", format_vnet_sw_if_index_name,
-	      vnet_get_main (), vxr->vxr_sw_if_index, vxr->vxr_locks);
+  s = format (s, "[%U]", format_gbp_itf_hdl, vxr->vxr_itf);
 
   return (s);
 }
 
-static u32
+static void
+gdb_vxlan_dep_del (u32 sw_if_index)
+{
+  vxlan_tunnel_ref_t *vxr;
+  gbp_vxlan_tunnel_t *gt;
+  index_t vxri;
+  u32 pos;
+
+  vxr = vxlan_tunnel_ref_get (vxlan_tunnel_ref_db[sw_if_index]);
+  vxri = vxr - vxlan_tunnel_ref_pool;
+  gt = gbp_vxlan_tunnel_get (vxr->vxr_parent);
+
+  GBP_VXLAN_TUN_DBG ("del-dep:%U", format_vxlan_tunnel_ref, vxri);
+
+  vxlan_tunnel_ref_db[vxr->vxr_sw_if_index] = INDEX_INVALID;
+  pos = vec_search (gt->gt_tuns, vxri);
+
+  ASSERT (~0 != pos);
+  vec_del1 (gt->gt_tuns, pos);
+
+  vnet_vxlan_gbp_tunnel_del (vxr->vxr_sw_if_index);
+
+  pool_put (vxlan_tunnel_ref_pool, vxr);
+}
+
+static gbp_itf_hdl_t
 gdb_vxlan_dep_add (gbp_vxlan_tunnel_t * gt,
 		   const ip46_address_t * src, const ip46_address_t * dst)
 {
@@ -136,7 +157,7 @@ gdb_vxlan_dep_add (gbp_vxlan_tunnel_t * gt,
       vxri = vxlan_tunnel_ref_db[sw_if_index];
 
       vxr = vxlan_tunnel_ref_get (vxri);
-      vxr->vxr_locks++;
+      gbp_itf_lock (vxr->vxr_itf);
     }
   else if (0 == rv)
     {
@@ -151,7 +172,6 @@ gdb_vxlan_dep_add (gbp_vxlan_tunnel_t * gt,
       vxri = (vxr - vxlan_tunnel_ref_pool);
       vxr->vxr_parent = gt - gbp_vxlan_tunnel_pool;
       vxr->vxr_sw_if_index = sw_if_index;
-      vxr->vxr_locks = 1;
       vxr->vxr_layer = gt->gt_layer;
 
       /*
@@ -170,8 +190,8 @@ gdb_vxlan_dep_add (gbp_vxlan_tunnel_t * gt,
 	  gbp_bridge_domain_t *gbd;
 
 	  gbd = gbp_bridge_domain_get (gt->gt_gbd);
-	  vxr->vxr_itf = gbp_itf_add_and_lock (vxr->vxr_sw_if_index,
-					       gt->gt_bd_index);
+	  vxr->vxr_itf = gbp_itf_l2_add_and_lock_w_free
+	    (vxr->vxr_sw_if_index, gt->gt_gbd, gdb_vxlan_dep_del);
 
 	  ofeat = L2OUTPUT_FEAT_GBP_POLICY_MAC;
 	  ifeat = L2INPUT_FEAT_NONE;
@@ -179,27 +199,23 @@ gdb_vxlan_dep_add (gbp_vxlan_tunnel_t * gt,
 	  if (!(gbd->gb_flags & GBP_BD_FLAG_DO_NOT_LEARN))
 	    ifeat |= L2INPUT_FEAT_GBP_LEARN;
 
-	  gbp_itf_set_l2_output_feature (vxr->vxr_itf,
-					 vxr->vxr_sw_if_index, ofeat);
-	  gbp_itf_set_l2_input_feature (vxr->vxr_itf,
-					vxr->vxr_sw_if_index, ifeat);
+	  gbp_itf_l2_set_output_feature (vxr->vxr_itf, ofeat);
+	  gbp_itf_l2_set_input_feature (vxr->vxr_itf, ifeat);
 	}
       else
 	{
-	  const gbp_route_domain_t *grd;
-	  fib_protocol_t fproto;
+	  vxr->vxr_itf = gbp_itf_l3_add_and_lock_w_free
+	    (vxr->vxr_sw_if_index, gt->gt_grd, gdb_vxlan_dep_del);
 
-	  grd = gbp_route_domain_get (gt->gt_grd);
-
-	  FOR_EACH_FIB_IP_PROTOCOL (fproto)
-	    ip_table_bind (fproto, vxr->vxr_sw_if_index,
-			   grd->grd_table_id[fproto], 1);
-
-	  gbp_learn_enable (vxr->vxr_sw_if_index, GBP_LEARN_MODE_L3);
+	  gbp_itf_l3_set_input_feature (vxr->vxr_itf, GBP_ITF_L3_FEAT_LEARN);
 	}
     }
+  else
+    {
+      return (GBP_ITF_HDL_INVALID);
+    }
 
-  return (sw_if_index);
+  return (vxr->vxr_itf);
 }
 
 u32
@@ -216,6 +232,22 @@ vxlan_gbp_tunnel_get_parent (u32 sw_if_index)
 
   return (gt->gt_sw_if_index);
 }
+
+gbp_itf_hdl_t
+vxlan_gbp_tunnel_lock_itf (u32 sw_if_index)
+{
+  ASSERT ((sw_if_index < vec_len (vxlan_tunnel_ref_db)) &&
+	  (INDEX_INVALID != vxlan_tunnel_ref_db[sw_if_index]));
+
+  vxlan_tunnel_ref_t *vxr;
+
+  vxr = vxlan_tunnel_ref_get (vxlan_tunnel_ref_db[sw_if_index]);
+
+  gbp_itf_lock (vxr->vxr_itf);
+
+  return (vxr->vxr_itf);
+}
+
 
 gbp_vxlan_tunnel_type_t
 gbp_vxlan_tunnel_get_type (u32 sw_if_index)
@@ -235,7 +267,7 @@ gbp_vxlan_tunnel_get_type (u32 sw_if_index)
   return (GBP_VXLAN_TEMPLATE_TUNNEL);
 }
 
-u32
+gbp_itf_hdl_t
 gbp_vxlan_tunnel_clone_and_lock (u32 sw_if_index,
 				 const ip46_address_t * src,
 				 const ip46_address_t * dst)
@@ -246,84 +278,26 @@ gbp_vxlan_tunnel_clone_and_lock (u32 sw_if_index,
   gti = gbp_vxlan_tunnel_db[sw_if_index];
 
   if (INDEX_INVALID == gti)
-    return (~0);
+    return (GBP_ITF_HDL_INVALID);
 
   gt = pool_elt_at_index (gbp_vxlan_tunnel_pool, gti);
 
   return (gdb_vxlan_dep_add (gt, src, dst));
 }
 
-static void
-gdb_vxlan_dep_del (index_t vxri)
-{
-  vxlan_tunnel_ref_t *vxr;
-  gbp_vxlan_tunnel_t *gt;
-  u32 pos;
-
-  vxr = vxlan_tunnel_ref_get (vxri);
-  gt = gbp_vxlan_tunnel_get (vxr->vxr_parent);
-
-  GBP_VXLAN_TUN_DBG ("del-dep:%U", format_vxlan_tunnel_ref, vxri);
-
-  vxlan_tunnel_ref_db[vxr->vxr_sw_if_index] = INDEX_INVALID;
-  pos = vec_search (gt->gt_tuns, vxri);
-
-  ASSERT (~0 != pos);
-  vec_del1 (gt->gt_tuns, pos);
-
-  if (GBP_VXLAN_TUN_L2 == vxr->vxr_layer)
-    {
-      gbp_itf_set_l2_output_feature (vxr->vxr_itf, vxr->vxr_sw_if_index,
-				     L2OUTPUT_FEAT_NONE);
-      gbp_itf_set_l2_input_feature (vxr->vxr_itf, vxr->vxr_sw_if_index,
-				    L2INPUT_FEAT_NONE);
-      gbp_itf_unlock (vxr->vxr_itf);
-    }
-  else
-    {
-      fib_protocol_t fproto;
-
-      FOR_EACH_FIB_IP_PROTOCOL (fproto)
-	ip_table_bind (fproto, vxr->vxr_sw_if_index, 0, 0);
-      gbp_learn_disable (vxr->vxr_sw_if_index, GBP_LEARN_MODE_L3);
-    }
-
-  vnet_vxlan_gbp_tunnel_del (vxr->vxr_sw_if_index);
-
-  pool_put (vxlan_tunnel_ref_pool, vxr);
-}
-
 void
 vxlan_gbp_tunnel_unlock (u32 sw_if_index)
 {
-  vxlan_tunnel_ref_t *vxr;
-  index_t vxri;
+  /* vxlan_tunnel_ref_t *vxr; */
+  /* index_t vxri; */
 
-  vxri = vxlan_tunnel_ref_db[sw_if_index];
+  /* vxri = vxlan_tunnel_ref_db[sw_if_index]; */
 
-  ASSERT (vxri != INDEX_INVALID);
+  /* ASSERT (vxri != INDEX_INVALID); */
 
-  vxr = vxlan_tunnel_ref_get (vxri);
-  vxr->vxr_locks--;
+  /* vxr = vxlan_tunnel_ref_get (vxri); */
 
-  if (0 == vxr->vxr_locks)
-    {
-      gdb_vxlan_dep_del (vxri);
-    }
-}
-
-void
-vxlan_gbp_tunnel_lock (u32 sw_if_index)
-{
-  vxlan_tunnel_ref_t *vxr;
-  index_t vxri;
-
-  vxri = vxlan_tunnel_ref_db[sw_if_index];
-
-  ASSERT (vxri != INDEX_INVALID);
-
-  vxr = vxlan_tunnel_ref_get (vxri);
-  vxr->vxr_locks++;
+  /* gdb_vxlan_dep_del (vxri); */
 }
 
 void
@@ -374,23 +348,20 @@ format_gbp_vxlan_tunnel (u8 * s, va_list * args)
   gbp_vxlan_tunnel_t *gt = gbp_vxlan_tunnel_get (dev_instance);
   index_t *vxri;
 
-  s = format (s, "GBP VXLAN tunnel: hw:%d sw:%d vni:%d %U",
-	      gt->gt_hw_if_index, gt->gt_sw_if_index, gt->gt_vni,
+  s = format (s, " [%d] gbp-vxlan-tunnel: hw:%d sw:%d vni:%d %U",
+	      dev_instance, gt->gt_hw_if_index,
+	      gt->gt_sw_if_index, gt->gt_vni,
 	      format_gbp_vxlan_tunnel_layer, gt->gt_layer);
   if (GBP_VXLAN_TUN_L2 == gt->gt_layer)
-    s = format (s, " BD:%d bd-index:%d", gt->gt_bd_rd_id, gt->gt_bd_index);
+    s = format (s, " BD:%d gbd-index:%d", gt->gt_bd_rd_id, gt->gt_gbd);
   else
-    s = format (s, " RD:%d fib-index:[%d,%d]",
-		gt->gt_bd_rd_id,
-		gt->gt_fib_index[FIB_PROTOCOL_IP4],
-		gt->gt_fib_index[FIB_PROTOCOL_IP6]);
+    s = format (s, " RD:%d grd-index:%d", gt->gt_bd_rd_id, gt->gt_grd);
 
-  s = format (s, " children:[");
+  s = format (s, "   dependents:");
   vec_foreach (vxri, gt->gt_tuns)
   {
-    s = format (s, "%U, ", format_vxlan_tunnel_ref, *vxri);
+    s = format (s, "\n    %U, ", format_vxlan_tunnel_ref, *vxri);
   }
-  s = format (s, "]");
 
   return s;
 }
@@ -536,35 +507,18 @@ gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
 	  gb = gbp_bridge_domain_get (gbi);
 
 	  gt->gt_gbd = gbi;
-	  gt->gt_bd_index = gb->gb_bd_index;
 	  gb->gb_vni = gti;
 	  /* set it up as a GBP interface */
-	  gt->gt_itf = gbp_itf_add_and_lock (gt->gt_sw_if_index,
-					     gt->gt_bd_index);
-	  gbp_learn_enable (gt->gt_sw_if_index, GBP_LEARN_MODE_L2);
+	  gt->gt_itf = gbp_itf_l2_add_and_lock (gt->gt_sw_if_index,
+						gt->gt_gbd);
+	  gbp_itf_l2_set_input_feature (gt->gt_itf, L2INPUT_FEAT_GBP_LEARN);
 	}
       else
 	{
-	  gbp_route_domain_t *grd;
-	  fib_protocol_t fproto;
-
-	  grd = gbp_route_domain_get (grdi);
-
 	  gt->gt_grd = grdi;
-	  grd->grd_vni_sw_if_index = gt->gt_sw_if_index;
-
-	  gbp_learn_enable (gt->gt_sw_if_index, GBP_LEARN_MODE_L3);
-
-	  ip4_sw_interface_enable_disable (gt->gt_sw_if_index, 1);
-	  ip6_sw_interface_enable_disable (gt->gt_sw_if_index, 1);
-
-	  FOR_EACH_FIB_IP_PROTOCOL (fproto)
-	  {
-	    gt->gt_fib_index[fproto] = grd->grd_fib_index[fproto];
-
-	    ip_table_bind (fproto, gt->gt_sw_if_index,
-			   grd->grd_table_id[fproto], 1);
-	  }
+	  gt->gt_itf = gbp_itf_l3_add_and_lock (gt->gt_sw_if_index,
+						gt->gt_grd);
+	  gbp_itf_l3_set_input_feature (gt->gt_itf, GBP_ITF_L3_FEAT_LEARN);
 	}
 
       /*
@@ -616,23 +570,14 @@ gbp_vxlan_tunnel_del (u32 vni)
       ASSERT (0 == vec_len (gt->gt_tuns));
       vec_free (gt->gt_tuns);
 
+      gbp_itf_unlock (&gt->gt_itf);
+
       if (GBP_VXLAN_TUN_L2 == gt->gt_layer)
 	{
-	  gbp_learn_disable (gt->gt_sw_if_index, GBP_LEARN_MODE_L2);
-	  gbp_itf_unlock (gt->gt_itf);
 	  gbp_bridge_domain_unlock (gt->gt_gbd);
 	}
       else
 	{
-	  fib_protocol_t fproto;
-
-	  FOR_EACH_FIB_IP_PROTOCOL (fproto)
-	    ip_table_bind (fproto, gt->gt_sw_if_index, 0, 0);
-
-	  ip4_sw_interface_enable_disable (gt->gt_sw_if_index, 0);
-	  ip6_sw_interface_enable_disable (gt->gt_sw_if_index, 0);
-
-	  gbp_learn_disable (gt->gt_sw_if_index, GBP_LEARN_MODE_L3);
 	  gbp_route_domain_unlock (gt->gt_grd);
 	}
 
@@ -654,6 +599,9 @@ static clib_error_t *
 gbp_vxlan_show (vlib_main_t * vm,
 		unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+
+  vlib_cli_output (vm, "GBP-VXLAN Interfaces:");
+
   gbp_vxlan_walk (gbp_vxlan_tunnel_show_one, vm);
 
   return (NULL);
