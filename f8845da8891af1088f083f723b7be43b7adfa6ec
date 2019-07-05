@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "27ef5cbf_59df1a4a",
+        "filename": "src/plugins/gbp/gbp_ext_itf.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-05T10:43:43Z",
+      "side": 1,
+      "message": "probably better to retrieve it from gbp_bridge_domain_get(gbi)-\u003egb_bd_index",
+      "revId": "f8845da8891af1088f083f723b7be43b7adfa6ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
