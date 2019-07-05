@@ -16,6 +16,24 @@
       "revId": "390ae452c36dd74c877b267a4231cbf273343e58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e9b3e2a2_f7e247bc",
+        "filename": "src/vnet/tcp/tcp_bt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-05T01:20:39Z",
+      "side": 1,
+      "message": "I called it ack_time to avoid confusion with send_time, which we don\u0027t compute. I believe linux computes a minimum for the two and that\u0027s what interval_time is. Instead of computing snd_time, which is used to make sure we don\u0027t overestimate the delivery rate due to aggregate/burst acks, we have in the rate sample the tx pacing rate. So, if delivered/ack_time \u003e tx_pacing_rate, the sample is probably wrong. Is that enough for you and what name do you prefer?\n\nAs for the other params:\n- rtt_time: so you\u0027d need the last rtt sample? Basically tcp_time_now_w_thread (tc-\u003ec_thread_index) - tc-\u003ercv_opts.tsecr. We could but the reason I didn\u0027t add it was because it\u0027s not mentioned in the draft and as far as I can tell linux doesn\u0027t compute it. If it\u0027s exactly the difference above, can\u0027t you compute it in the cc algo? I\u0027m asking because we don\u0027t store the rtt sample, we only use it to compute smrtt and it doesn\u0027t seem to be related to the sample. \n- losses: this is going to be a bit tricky because we compute only loss aggregates, but I\u0027ll try to come up with something. \n- acked_sacked: tc-\u003ebytes_acked + tc-\u003esack_sb.last_sacked_bytes? I can add that\n- prior_in_flight: not sure I understand what this is. Is this packets in flight \"now\", i.e., when the sample is computed, or packets in flight at the time the bytes for which the sample is computed were sent? If the former, it\u0027s tcp_flight_size () while if the latter, we don\u0027t keep this as state. Does it map onto something linux tracks?\n- min_rtt: you can validate samples with the tx_pacing rate. So do you still need the min_rtt?",
+      "parentUuid": "edefef6e_38efd300",
+      "revId": "390ae452c36dd74c877b267a4231cbf273343e58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
