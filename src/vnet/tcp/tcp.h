@@ -288,6 +288,11 @@ typedef enum _tcp_cc_ack_t
   TCP_CC_PARTIALACK
 } tcp_cc_ack_t;
 
+typedef enum tcp_cc_event_
+{
+  TCP_CC_EVT_START_TX,
+} tcp_cc_event_t;
+
 typedef struct _tcp_connection
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -388,6 +393,7 @@ struct _tcp_cc_algorithm
   void (*loss) (tcp_connection_t * tc);
   void (*recovered) (tcp_connection_t * tc);
   void (*undo_recovery) (tcp_connection_t * tc);
+  void (*event) (tcp_connection_t *tc, tcp_cc_event_t evt);
 };
 /* *INDENT-ON* */
 
@@ -977,6 +983,13 @@ tcp_cc_undo_recovery (tcp_connection_t * tc)
 {
   if (tc->cc_algo->undo_recovery)
     tc->cc_algo->undo_recovery (tc);
+}
+
+static inline void
+tcp_cc_event (tcp_connection_t * tc, tcp_cc_event_t evt)
+{
+  if (tc->cc_algo->event)
+    tc->cc_algo->event (tc, evt);
 }
 
 always_inline void
