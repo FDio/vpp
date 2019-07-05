@@ -275,7 +275,10 @@ gbp_contract_mk_adj (gbp_next_hop_t * gnh, fib_protocol_t fproto)
   gnh->gnh_ai[fproto] =
     adj_nbr_add_or_lock_w_rewrite (fproto,
 				   fib_proto_to_link (fproto),
-				   &gnh->gnh_ip, ge->ge_fwd.gef_itf, rewrite);
+				   &gnh->gnh_ip,
+				   gbp_itf_get_sw_if_index (ge->
+							    ge_fwd.gef_itf),
+				   rewrite);
 
   adj_unlock (old_ai);
 }

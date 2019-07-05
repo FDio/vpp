@@ -245,8 +245,8 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 	  /*
 	   * check for new EP or a moved EP
 	   */
-	  if (NULL == ge0 || ge0->ge_fwd.gef_itf != sw_if_index0)
-
+	  if (NULL == ge0 ||
+	      gbp_itf_get_sw_if_index (ge0->ge_fwd.gef_itf) != sw_if_index0)
 	    {
 	      /*
 	       * use the last 4 bytes of the mac address as the hash for the EP
