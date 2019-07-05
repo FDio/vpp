@@ -78,7 +78,7 @@ geneve_input (vlib_main_t * vm,
   u32 last_tunnel_index = ~0;
   geneve4_tunnel_key_t last_key4;
   geneve6_tunnel_key_t last_key6;
-  u32 pkts_decapsulated = 0;
+  u32 pkts_decapsulated = 0, ip_header_length;
   u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
@@ -95,6 +95,7 @@ geneve_input (vlib_main_t * vm,
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
   stats_n_packets = stats_n_bytes = 0;
+  ip_header_length = is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
 
   while (n_left_from > 0)
     {
@@ -166,30 +167,14 @@ geneve_input (vlib_main_t * vm,
 	    }
 
 	  /* pop (ip, udp, geneve) */
-	  if (is_ip4)
-	    {
-	      vlib_buffer_advance
-		(b0,
-		 sizeof (*ip4_0) + sizeof (udp_header_t) +
-		 GENEVE_BASE_HEADER_LENGTH +
-		 vnet_get_geneve_options_len (geneve0));
-	      vlib_buffer_advance (b1,
-				   sizeof (*ip4_1) + sizeof (udp_header_t) +
-				   GENEVE_BASE_HEADER_LENGTH +
-				   vnet_get_geneve_options_len (geneve1));
-	    }
-	  else
-	    {
-	      vlib_buffer_advance
-		(b0,
-		 sizeof (*ip6_0) + sizeof (udp_header_t) +
-		 GENEVE_BASE_HEADER_LENGTH +
-		 vnet_get_geneve_options_len (geneve0));
-	      vlib_buffer_advance (b0,
-				   sizeof (*ip6_0) + sizeof (udp_header_t) +
-				   GENEVE_BASE_HEADER_LENGTH +
-				   vnet_get_geneve_options_len (geneve1));
-	    }
+	  vlib_buffer_advance (b0,
+			       ip_header_length + sizeof (udp_header_t) +
+			       GENEVE_BASE_HEADER_LENGTH +
+			       vnet_get_geneve_options_len (geneve0));
+	  vlib_buffer_advance (b1,
+			       ip_header_length + sizeof (udp_header_t) +
+			       GENEVE_BASE_HEADER_LENGTH +
+			       vnet_get_geneve_options_len (geneve1));
 
 	  tunnel_index0 = ~0;
 	  error0 = 0;
@@ -582,22 +567,10 @@ geneve_input (vlib_main_t * vm,
 	    }
 
 	  /* pop (ip, udp, geneve) */
-	  if (is_ip4)
-	    {
-	      vlib_buffer_advance
-		(b0,
-		 sizeof (*ip4_0) + sizeof (udp_header_t) +
-		 GENEVE_BASE_HEADER_LENGTH +
-		 vnet_get_geneve_options_len (geneve0));
-	    }
-	  else
-	    {
-	      vlib_buffer_advance
-		(b0,
-		 sizeof (*ip6_0) + sizeof (udp_header_t) +
-		 GENEVE_BASE_HEADER_LENGTH +
-		 vnet_get_geneve_options_len (geneve0));
-	    }
+	  vlib_buffer_advance (b0,
+			       ip_header_length + sizeof (udp_header_t) +
+			       GENEVE_BASE_HEADER_LENGTH +
+			       vnet_get_geneve_options_len (geneve0));
 
 	  tunnel_index0 = ~0;
 	  error0 = 0;
