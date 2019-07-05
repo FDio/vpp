@@ -37,12 +37,6 @@ typedef struct gpb_route_domain_t_
   u32 grd_table_id[FIB_PROTOCOL_IP_MAX];
 
   /**
-   * The RD's VNI interface on which packets from unkown endpoints
-   * arrive
-   */
-  u32 grd_vni_sw_if_index;
-
-  /**
    * The interfaces on which to send packets to unnknown EPs
    */
   u32 grd_uu_sw_if_index[FIB_PROTOCOL_IP_MAX];
