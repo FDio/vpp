@@ -425,6 +425,9 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 
   if (tc->flags & TCP_CONN_RATE_SAMPLE)
     tc->flags |= TCP_CONN_TRACK_BURST;
+
+  if (tc->snd_una == tc->snd_nxt)
+    tcp_cc_event (tc, TCP_CC_EVT_START_TX);
 }
 
 void
