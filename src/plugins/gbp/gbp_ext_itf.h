@@ -35,7 +35,7 @@ typedef struct gpb_ext_itf_t_
   /**
    * The interface
    */
-  u32 gx_itf;
+  gbp_itf_hdl_t gx_itf;
 
   /**
    * The BD this external interface is a member of
