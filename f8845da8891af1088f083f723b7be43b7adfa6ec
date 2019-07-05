@@ -16,6 +16,24 @@
       "revId": "f8845da8891af1088f083f723b7be43b7adfa6ec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "88010c22_964eeea7",
+        "filename": "src/plugins/gbp/gbp_ext_itf.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-07-05T12:46:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "27ef5cbf_59df1a4a",
+      "revId": "f8845da8891af1088f083f723b7be43b7adfa6ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
