@@ -96,7 +96,10 @@ gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id, u32 flags)
       if (flags & GBP_EXT_ITF_F_ANON)
 	{
 	  /* add interface to the BD */
-	  index_t itf = gbp_itf_add_and_lock (sw_if_index, bd_id);
+	  u32 bd_index = bd_find_index (&bd_main, bd_id);
+	  if (~0 == bd_index)
+	    return (VNET_API_ERROR_BD_NOT_MODIFIABLE);
+	  index_t itf = gbp_itf_add_and_lock (sw_if_index, bd_index);
 	  /* setup GBP L2 features on this interface */
 	  gbp_itf_set_l2_input_feature (itf, 0,
 					L2INPUT_FEAT_GBP_LPM_ANON_CLASSIFY |
