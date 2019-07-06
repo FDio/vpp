@@ -185,8 +185,8 @@ geneve_input (vlib_main_t * vm,
 		 sizeof (*ip6_0) + sizeof (udp_header_t) +
 		 GENEVE_BASE_HEADER_LENGTH +
 		 vnet_get_geneve_options_len (geneve0));
-	      vlib_buffer_advance (b0,
-				   sizeof (*ip6_0) + sizeof (udp_header_t) +
+	      vlib_buffer_advance (b1,
+				   sizeof (*ip6_1) + sizeof (udp_header_t) +
 				   GENEVE_BASE_HEADER_LENGTH +
 				   vnet_get_geneve_options_len (geneve1));
 	    }
