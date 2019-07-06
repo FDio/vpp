@@ -775,6 +775,7 @@ scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
   sack_scoreboard_hole_t *left, *right;
   u32 bytes = 0, blks = 0;
 
+  sb->last_lost_bytes = 0;
   sb->lost_bytes = 0;
   sb->sacked_bytes = 0;
   left = scoreboard_last_hole (sb);
@@ -803,6 +804,7 @@ scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
       do
 	{
 	  sb->lost_bytes += scoreboard_hole_bytes (right);
+	  sb->last_lost_bytes += left->is_lost ? 0 : left->end - left->start;
 	  left->is_lost = 1;
 	  left = scoreboard_prev_hole (sb, right);
 	  if (left)
@@ -914,6 +916,7 @@ scoreboard_clear (sack_scoreboard_t * sb)
   sb->high_sacked = 0;
   sb->high_rxt = 0;
   sb->lost_bytes = 0;
+  sb->last_lost_bytes = 0;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
 }
 #endif /* CLIB_MARCH_VARIANT */
@@ -934,13 +937,14 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc)
 }
 
 #ifndef CLIB_MARCH_VARIANT
+
 void
 tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 {
-  sack_scoreboard_t *sb = &tc->sack_sb;
-  sack_block_t *blk, tmp;
   sack_scoreboard_hole_t *hole, *next_hole, *last_hole;
   u32 blk_index = 0, old_sacked_bytes, hole_index;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_block_t *blk, tmp;
   int i, j;
 
   sb->last_sacked_bytes = 0;
@@ -1055,7 +1059,6 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		      sb->last_bytes_delivered += sb->high_sacked - hole->end;
 		    }
 		}
-
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
@@ -1102,6 +1105,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   scoreboard_update_bytes (tc, sb);
   sb->last_sacked_bytes = sb->sacked_bytes
     - (old_sacked_bytes - sb->last_bytes_delivered);
+
   ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
   ASSERT (sb->sacked_bytes == 0 || tcp_in_recovery (tc)
 	  || sb->sacked_bytes < tc->snd_nxt - seq_max (tc->snd_una, ack));
@@ -1109,6 +1113,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  - seq_max (tc->snd_una, ack) || tcp_in_recovery (tc));
   ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
 	  || sb->holes[sb->head].start == ack + sb->snd_una_adv);
+  ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
+
   TCP_EVT_DBG (TCP_EVT_CC_SCOREBOARD, tc);
 }
 #endif /* CLIB_MARCH_VARIANT */
