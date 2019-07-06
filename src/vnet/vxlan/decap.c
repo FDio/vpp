@@ -201,12 +201,19 @@ vxlan_input (vlib_main_t * vm,
   last_tunnel_cache4 last4;
   last_tunnel_cache6 last6;
   u32 pkts_dropped = 0;
+  u32 ip_udp_hdr_length;
   u32 thread_index = vlib_get_thread_index ();
 
   if (is_ip4)
-    clib_memset (&last4, 0xff, sizeof last4);
+    {
+      clib_memset (&last4, 0xff, sizeof last4);
+      ip_udp_hdr_length = sizeof (udp_header_t) + sizeof (ip4_header_t);
+    }
   else
-    clib_memset (&last6, 0xff, sizeof last6);
+    {
+      clib_memset (&last6, 0xff, sizeof last6);
+      ip_udp_hdr_length = sizeof (udp_header_t) + sizeof (ip6_header_t);
+    }
 
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_left_from = from_frame->n_vectors;
@@ -228,19 +235,10 @@ vxlan_input (vlib_main_t * vm,
       vxlan_header_t *vxlan0 = cur0;
       vxlan_header_t *vxlan1 = cur1;
 
+      void *ip_0, *ip_1;
 
-      ip4_header_t *ip4_0, *ip4_1;
-      ip6_header_t *ip6_0, *ip6_1;
-      if (is_ip4)
-	{
-	  ip4_0 = cur0 - sizeof (udp_header_t) - sizeof (ip4_header_t);
-	  ip4_1 = cur1 - sizeof (udp_header_t) - sizeof (ip4_header_t);
-	}
-      else
-	{
-	  ip6_0 = cur0 - sizeof (udp_header_t) - sizeof (ip6_header_t);
-	  ip6_1 = cur1 - sizeof (udp_header_t) - sizeof (ip6_header_t);
-	}
+      ip_0 = cur0 - ip_udp_hdr_length;
+      ip_1 = cur1 - ip_udp_hdr_length;
 
       /* pop vxlan */
       vlib_buffer_advance (b[0], sizeof *vxlan0);
@@ -250,11 +248,11 @@ vxlan_input (vlib_main_t * vm,
       u32 fi1 = buf_fib_index (b[1], is_ip4);
 
       vxlan_decap_info_t di0 = is_ip4 ?
-	vxlan4_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan0, &stats_if0) :
-	vxlan6_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan0, &stats_if0);
+	vxlan4_find_tunnel (vxm, &last4, fi0, ip_0, vxlan0, &stats_if0) :
+	vxlan6_find_tunnel (vxm, &last6, fi0, ip_0, vxlan0, &stats_if0);
       vxlan_decap_info_t di1 = is_ip4 ?
-	vxlan4_find_tunnel (vxm, &last4, fi1, ip4_1, vxlan1, &stats_if1) :
-	vxlan6_find_tunnel (vxm, &last6, fi1, ip6_1, vxlan1, &stats_if1);
+	vxlan4_find_tunnel (vxm, &last4, fi1, ip_1, vxlan1, &stats_if1) :
+	vxlan6_find_tunnel (vxm, &last6, fi1, ip_1, vxlan1, &stats_if1);
 
       /* Prefetch next iteration. */
       CLIB_PREFETCH (b[2]->data, CLIB_CACHE_LINE_BYTES, LOAD);
@@ -339,12 +337,9 @@ vxlan_input (vlib_main_t * vm,
       /* udp leaves current_data pointing at the vxlan header */
       void *cur0 = vlib_buffer_get_current (b[0]);
       vxlan_header_t *vxlan0 = cur0;
-      ip4_header_t *ip4_0;
-      ip6_header_t *ip6_0;
-      if (is_ip4)
-	ip4_0 = cur0 - sizeof (udp_header_t) - sizeof (ip4_header_t);
-      else
-	ip6_0 = cur0 - sizeof (udp_header_t) - sizeof (ip6_header_t);
+      void *ip_0;
+
+      ip_0 = cur0 - ip_udp_hdr_length;
 
       /* pop (ip, udp, vxlan) */
       vlib_buffer_advance (b[0], sizeof (*vxlan0));
@@ -352,8 +347,8 @@ vxlan_input (vlib_main_t * vm,
       u32 fi0 = buf_fib_index (b[0], is_ip4);
 
       vxlan_decap_info_t di0 = is_ip4 ?
-	vxlan4_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan0, &stats_if0) :
-	vxlan6_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan0, &stats_if0);
+	vxlan4_find_tunnel (vxm, &last4, fi0, ip_0, vxlan0, &stats_if0) :
+	vxlan6_find_tunnel (vxm, &last6, fi0, ip_0, vxlan0, &stats_if0);
 
       uword len0 = vlib_buffer_length_in_chain (vm, b[0]);
 
