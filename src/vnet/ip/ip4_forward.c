@@ -1320,6 +1320,12 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
     vnet_buffer (b)->sw_if_index[VLIB_TX] != ~0 ?
     vnet_buffer (b)->sw_if_index[VLIB_TX] : vnet_buffer (b)->ip.fib_index;
 
+  /*
+   * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
+   *  adjacency for the destination address (the local interface address).
+   * vnet_buffer()->ip.adj_index[VLIB_TX] will be set to the index of the
+   *  adjacency for the source address (the remote sender's address)
+   */
   if (PREDICT_FALSE (last_check->first ||
 		     (last_check->src.as_u32 != ip0->src_address.as_u32)))
     {
@@ -1329,8 +1335,9 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
       leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
       lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
+      vnet_buffer (b)->ip.adj_index[VLIB_RX] =
+	vnet_buffer (b)->ip.adj_index[VLIB_TX];
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = lbi0;
-      vnet_buffer (b)->ip.adj_index[VLIB_RX] = lbi0;
 
       lb0 = load_balance_get (lbi0);
       dpo0 = load_balance_get_bucket_i (lb0, 0);
@@ -1360,8 +1367,9 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
     }
   else
     {
+      vnet_buffer (b)->ip.adj_index[VLIB_RX] =
+	vnet_buffer (b)->ip.adj_index[VLIB_TX];
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = last_check->lbi;
-      vnet_buffer (b)->ip.adj_index[VLIB_RX] = last_check->lbi;
       *error0 = last_check->error;
       last_check->first = 0;
     }
@@ -1392,6 +1400,12 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
     vnet_buffer (b[1])->ip.fib_index;
 
+  /*
+   * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
+   *  adjacency for the destination address (the local interface address).
+   * vnet_buffer()->ip.adj_index[VLIB_TX] will be set to the index of the
+   *  adjacency for the source address (the remote sender's address)
+   */
   if (PREDICT_FALSE (not_last_hit))
     {
       mtrie[0] = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
@@ -1413,11 +1427,13 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
       lbi[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf[0]);
       lbi[1] = ip4_fib_mtrie_leaf_get_adj_index (leaf[1]);
 
+      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] =
+	vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
       vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = lbi[0];
-      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = lbi[0];
 
+      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] =
+	vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
       vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = lbi[1];
-      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] = lbi[1];
 
       lb[0] = load_balance_get (lbi[0]);
       lb[1] = load_balance_get (lbi[1]);
@@ -1447,11 +1463,13 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     }
   else
     {
+      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] =
+	vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
       vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = last_check->lbi;
-      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = last_check->lbi;
 
+      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] =
+	vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
       vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = last_check->lbi;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] = last_check->lbi;
 
       error[0] = last_check->error;
       error[1] = last_check->error;
