@@ -6,7 +6,7 @@ from scapy.layers.ipsec import ESP
 from scapy.layers.l2 import Ether, Raw, GRE
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from framework import VppTestRunner, is_skip_aarch64_set, is_platform_aarch64
+from framework import VppTestRunner
 from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTun6Tests, \
     IpsecTun4, IpsecTun6,  IpsecTcpTests,  config_tun_params
 from vpp_ipsec_tun_interface import VppIpsecTunInterface
@@ -450,8 +450,6 @@ class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
             self.assertEqual(c['packets'], 127)
 
 
-@unittest.skipIf(is_skip_aarch64_set and is_platform_aarch64,
-                 "test doesn't work on aarch64")
 class TestIpsecGreTebIfEsp(TemplateIpsec,
                            IpsecTun4Tests):
     """ Ipsec GRE TEB ESP - TUN tests """
