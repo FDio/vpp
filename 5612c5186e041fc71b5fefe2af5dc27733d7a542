@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74f318ed_e6124d8b",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-08T13:02:26Z",
+      "side": 1,
+      "message": "This is the packer for scalars.  Don\u0027t you want to do the test in FixedList.pack() and/or FixedList_u8, no?",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 102,
+        "endChar": 77
+      },
+      "revId": "5612c5186e041fc71b5fefe2af5dc27733d7a542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
