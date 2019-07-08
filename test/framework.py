@@ -656,6 +656,7 @@ class VppTestCase(unittest.TestCase):
                 self.logger.info(self.statistics.set_errors_str())
                 self.logger.info(self.vapi.ppcli("show run"))
                 self.logger.info(self.vapi.ppcli("show log"))
+                self.logger.info(self.vapi.ppcli("show bihash"))
                 self.logger.info("Logging testcase specific show commands.")
                 self.show_commands_at_teardown()
                 self.registry.remove_vpp_config(self.logger)
