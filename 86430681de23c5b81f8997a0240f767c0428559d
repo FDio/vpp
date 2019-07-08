@@ -2,6 +2,75 @@
   "comments": [
     {
       "key": {
+        "uuid": "280ca98b_53df2545",
+        "filename": "src/plugins/hs_apps/echo_server.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 516,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T10:34:51Z",
+      "side": 1,
+      "message": "VNET_API_ERROR_SYNTAX_ERROR",
+      "range": {
+        "startLine": 516,
+        "startChar": 36,
+        "endLine": 516,
+        "endChar": 40
+      },
+      "revId": "86430681de23c5b81f8997a0240f767c0428559d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06e0e4db_1838e36a",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1257,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T10:34:51Z",
+      "side": 1,
+      "message": "VNET_API_ERROR_SYNTAX_ERROR",
+      "range": {
+        "startLine": 1257,
+        "startChar": 36,
+        "endLine": 1257,
+        "endChar": 40
+      },
+      "revId": "86430681de23c5b81f8997a0240f767c0428559d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "da072f7a_82cdff3f",
+        "filename": "src/plugins/ioam/ip6/ioam_cache.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T10:34:51Z",
+      "side": 1,
+      "message": "VNET_API_ERROR_SYNTAX_ERROR",
+      "range": {
+        "startLine": 355,
+        "startChar": 36,
+        "endLine": 355,
+        "endChar": 40
+      },
+      "revId": "86430681de23c5b81f8997a0240f767c0428559d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5111be8b_c1dce45f",
         "filename": "src/vlib/pci/pci.c",
         "patchSetId": 13
@@ -30,6 +99,29 @@
       "writtenOn": "2019-07-08T07:53:20Z",
       "side": 1,
       "message": "and here.",
+      "revId": "86430681de23c5b81f8997a0240f767c0428559d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8c7bed5a_b8097c35",
+        "filename": "src/vppinfra/error.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T10:34:51Z",
+      "side": 1,
+      "message": "Single empty line.",
+      "range": {
+        "startLine": 103,
+        "startChar": 38,
+        "endLine": 103,
+        "endChar": 39
+      },
       "revId": "86430681de23c5b81f8997a0240f767c0428559d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
