@@ -1270,6 +1270,7 @@ ip6_reass_set (u32 timeout_ms, u32 max_reassemblies,
 	  clib_bihash_free_48_8 (&ip6_reass_main.hash);
 	  clib_memcpy_fast (&ip6_reass_main.hash, &new_hash,
 			    sizeof (ip6_reass_main.hash));
+	  clib_bihash_copied (&ip6_reass_main.hash, &new_hash);
 	}
     }
   return 0;
