@@ -304,6 +304,11 @@ extern int vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds,
 extern int vppcom_worker_register (void);
 
 /**
+ * Unregister current worker
+ */
+extern void vppcom_worker_unregister (void);
+
+/**
  * Retrieve current worker index
  */
 extern int vppcom_worker_index (void);
