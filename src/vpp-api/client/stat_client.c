@@ -322,6 +322,8 @@ stat_segment_access_start (stat_segment_access_t * sa,
   sa->epoch = shared_header->epoch;
   while (shared_header->in_progress != 0)
     ;
+  sm->directory_vector = stat_segment_pointer
+    (sm->shared_header, sm->shared_header->directory_offset);
 }
 
 static bool
