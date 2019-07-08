@@ -38,6 +38,8 @@
  */
 
 #include <sys/stat.h>
+#include <sys/fcntl.h>
+
 
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
@@ -87,8 +89,18 @@ pg_capture (pg_capture_args_t * a)
     {
       struct stat sb;
       if (stat ((char *) a->pcap_file_name, &sb) != -1)
-	return clib_error_return (0, "pcap file '%s' does not exist.",
+	return clib_error_return (0, "pcap file '%s' already exists.",
 				  a->pcap_file_name);
+      /* touch the file so it exists */
+      int fd =
+	open ((char *) a->pcap_file_name, O_CREAT | O_TRUNC | O_WRONLY, 0664);
+      if (fd < 0)
+	{
+	  return clib_error_return (0,
+				    "can not open pcap file '%s' for writing.",
+				    a->pcap_file_name);
+	}
+      close (fd);
     }
 
   pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
