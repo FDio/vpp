@@ -822,7 +822,9 @@ static int
 vppcom_session_unbind (u32 session_handle)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
+  session_accepted_msg_t *accepted_msg;
   vcl_session_t *session = 0;
+  vcl_session_msg_t *evt;
   u64 vpp_handle;
 
   session = vcl_session_get_w_handle (wrk, session_handle);
@@ -832,6 +834,18 @@ vppcom_session_unbind (u32 session_handle)
   vpp_handle = session->vpp_handle;
   session->vpp_handle = ~0;
   session->session_state = STATE_DISCONNECT;
+
+  /* Flush pending accept events, if any */
+  while (clib_fifo_elts (session->accept_evts_fifo))
+    {
+      clib_fifo_sub2 (session->accept_evts_fifo, evt);
+      accepted_msg = &evt->accepted_msg;
+      vcl_session_table_del_vpp_handle (wrk, accepted_msg->handle);
+      vcl_send_session_accepted_reply (session->vpp_evt_q,
+				       accepted_msg->context,
+				       session->vpp_handle, -1);
+    }
+  clib_fifo_free (session->accept_evts_fifo);
 
   VDBG (1, "session %u [0x%llx]: sending unbind!", session->session_index,
 	vpp_handle);
