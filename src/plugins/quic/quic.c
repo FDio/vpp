@@ -83,8 +83,8 @@ quic_format_err (u8 * s, va_list * args)
     case QUICLY_TRANSPORT_ERROR_FLOW_CONTROL:
       s = format (s, "QUICLY_TRANSPORT_ERROR_FLOW_CONTROL");
       break;
-    case QUICLY_TRANSPORT_ERROR_STREAM_ID:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_STREAM_ID");
+    case QUICLY_TRANSPORT_ERROR_STREAM_LIMIT:
+      s = format (s, "QUICLY_TRANSPORT_ERROR_STREAM_LIMIT");
       break;
     case QUICLY_TRANSPORT_ERROR_STREAM_STATE:
       s = format (s, "QUICLY_TRANSPORT_ERROR_STREAM_STATE");
@@ -1298,8 +1298,8 @@ allocate_quicly_ctx (application_t * app, u8 is_client)
   quicly_ctx->event_log.cb = quicly_new_default_event_logger (stderr);
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
-  quicly_ctx->transport_params.max_streams_uni = QUIC_INT_MAX;
-  quicly_ctx->transport_params.max_streams_bidi = QUIC_INT_MAX;
+  quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
+  quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_stream_data.bidi_local = (QUIC_FIFO_SIZE - 1);	/* max_enq is SIZE - 1 */
   quicly_ctx->transport_params.max_stream_data.bidi_remote = (QUIC_FIFO_SIZE - 1);	/* max_enq is SIZE - 1 */
   quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
