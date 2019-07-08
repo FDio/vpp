@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74bfde0f_b39fb57f",
+        "filename": "src/vnet/session/transport_types.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-08T14:41:29Z",
+      "side": 1,
+      "message": "Could you move this either to the side of TRANSPORT_CONNECTION_F_NO_LOOKUP. Something like:\n  /**\u003c comment line wrapped at 79\n          more here */\n\nOr directly above with format: /** comment */",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 47,
+        "endChar": 85
+      },
+      "revId": "5d0208276a1dc542c9d234d90a15610b65f4d31d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
