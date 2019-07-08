@@ -102,6 +102,20 @@ format_vl_api_mac_address (u8 * s, va_list * args)
   return (format (s, "%U", format_ethernet_address, mac));
 }
 
+u8 *
+format_vl_api_version (u8 * s, va_list * args)
+{
+  vl_api_version_t *ver = va_arg (*args, vl_api_version_t *);
+  s = format(s, "%d.%d.%d", ver->major, ver->minor, ver->patch);
+  if (ver->pre_release[0] != 0)
+  {
+    s = format(s, "-%v", ver->pre_release);
+    if (ver->build_metadata[0] != 0)
+    s = format(s, "+%v", ver->build_metadata);
+    }
+  return s;
+}
+
 uword
 unformat_vl_api_mac_address (unformat_input_t * input, va_list * args)
 {
@@ -219,3 +233,19 @@ unformat_vl_api_mprefix (unformat_input_t * input, va_list * args)
    return (1);
 }
 
+uword unformat_vl_api_version (unformat_input_t * input, va_list * args)
+{
+vl_api_version_t *ver = va_arg (*args, vl_api_version_t *);
+
+if (unformat (input, "%d.%d.%d-%s+%s",  ver->major, ver->minor, ver->patch, ver->pre_release, ver->build_metadata
+                ))
+      return (1);
+else if (unformat (input, "%d.%d.%d-%s",  ver->major, ver->minor, ver->patch, ver->pre_release
+                ))
+      return (1);
+else if (unformat (input, "%d.%d.%d",  ver->major, ver->minor, ver->patch
+                ))
+      return (1);
+
+  return (0);
+}

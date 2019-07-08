@@ -1,0 +1,13 @@
+
+typeonly define version
+{
+  u32 major;
+  u32 minor;
+  u32 patch;
+
+  /* since we can't guarantee that only fixed length args will follow the typedef,
+     string type not supported for typedef for now. */
+  u8 pre_release[17];           /* 16 + "\0" */
+  u8 build_metadata[17];        /* 16 + "\0" */
+};
+

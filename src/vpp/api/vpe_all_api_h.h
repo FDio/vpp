@@ -26,6 +26,7 @@
 #undef included_from_layer_3
 
 /* Include the current layer (third) vpp API definition layer */
+#include <vpp/api/vpe_types.api.h>
 #include <vpp/api/vpe.api.h>
 
 /*
