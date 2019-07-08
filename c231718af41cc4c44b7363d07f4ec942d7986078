@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "96cf7488_858a9032",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 15
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T08:34:21Z",
+      "side": 1,
+      "message": "In other change you are adding version to vpp_papi package, so we can use that to detect PAPI changes not coming from editing .api files. So no big deal for this Change.",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 23
+      },
+      "revId": "c231718af41cc4c44b7363d07f4ec942d7986078",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "51c5ee2b_d55b4ad4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 15
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T08:34:21Z",
+      "side": 1,
+      "message": "\u0027\u003d\u0027\n\nNot sure how I missed there are three copies of the character present in the commit message.",
+      "range": {
+        "startLine": 20,
+        "startChar": 61,
+        "endLine": 20,
+        "endChar": 64
+      },
+      "revId": "c231718af41cc4c44b7363d07f4ec942d7986078",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
