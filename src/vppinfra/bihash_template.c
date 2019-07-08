@@ -519,6 +519,13 @@ static inline int BV (clib_bihash_add_del_inline)
 	{
 	  if (BV (clib_bihash_key_compare) (v->kvp[i].key, add_v->key))
 	    {
+	      /* Add but do not overwrite? */
+	      if (is_add == 2)
+		{
+		  BV (clib_bihash_unlock_bucket) (b);
+		  return (-2);
+		}
+
 	      CLIB_MEMORY_BARRIER ();	/* Add a delay */
 	      clib_memcpy_fast (&(v->kvp[i]), add_v, sizeof (*add_v));
 	      BV (clib_bihash_unlock_bucket) (b);
