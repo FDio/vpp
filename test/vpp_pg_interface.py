@@ -137,7 +137,15 @@ class VppPGInterface(VppInterface):
                                            self.out_history_counter,
                                            self._out_file)
         # FIXME this should be an API, but no such exists atm
-        self.test.vapi.cli(self.capture_cli)
+        try:
+            self.test.vapi.cli(self.capture_cli)
+        except CliFailedCommandError:
+            self.test.logger.debug("CliFailedCommandError: %s failed, rename+retry" % self.capture_cli)
+            self._rename_previous_capture_file(self.out_path,
+                                           self.out_history_counter,
+                                           self._out_file)
+            self.test.vapi.cli(self.capture_cli)
+
         self._pcap_reader = None
 
     def disable_capture(self):
