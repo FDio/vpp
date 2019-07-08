@@ -83,6 +83,30 @@
     },
     {
       "key": {
+        "uuid": "b700969b_8467ff92",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T17:06:36Z",
+      "side": 1,
+      "message": "Done where? In patch set #29 I still see\n  self._kwargs is not None\ninstead of\n  not self._kwargs",
+      "parentUuid": "10b472f6_d15f952f",
+      "range": {
+        "startLine": 53,
+        "startChar": 35,
+        "endLine": 53,
+        "endChar": 46
+      },
+      "revId": "ac56c58ea9dd25a24614488bd52e75938864e73b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ccf78ccc_f7556119",
         "filename": "src/vpp-api/python/vpp_papi/vpp_exceptions.py",
         "patchSetId": 27
