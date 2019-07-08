@@ -334,6 +334,16 @@ app_worker_reset_notify (app_worker_t * app_wrk, session_t * s)
 }
 
 int
+app_worker_cleanup_notify (app_worker_t * app_wrk, session_t * s,
+			   session_cleanup_ntf_t ntf)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  if (app->cb_fns.session_cleanup_callback)
+    app->cb_fns.session_cleanup_callback (s, ntf);
+  return 0;
+}
+
+int
 app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s)
 {
   application_t *app = application_get (app_wrk->app_index);

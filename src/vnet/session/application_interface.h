@@ -39,6 +39,9 @@ typedef struct _stream_session_cb_vft
   /** Notify app that session is closing */
   void (*session_disconnect_callback) (session_t * s);
 
+  /** Notify app that session or transport are about to be removed */
+  void (*session_cleanup_callback) (session_t * s, session_cleanup_ntf_t ntf);
+
   /** Notify app that session was reset */
   void (*session_reset_callback) (session_t * s);
 

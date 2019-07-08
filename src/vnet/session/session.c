@@ -179,9 +179,21 @@ session_free (session_t * s)
   pool_put (session_main.wrk[s->thread_index].sessions, s);
 }
 
+static void
+session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
+{
+  app_worker_t *app_wrk;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (!app_wrk)
+    return;
+  app_worker_cleanup_notify (app_wrk, s, ntf);
+}
+
 void
 session_free_w_fifos (session_t * s)
 {
+  session_cleanup_notify (s, SESSION_CLEANUP_SESSION);
   segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
   session_free (s);
 }
@@ -774,9 +786,6 @@ session_transport_delete_notify (transport_connection_t * tc)
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
 
-  /* Make sure we don't try to send anything more */
-  svm_fifo_dequeue_drop_all (s->tx_fifo);
-
   switch (s->session_state)
     {
     case SESSION_STATE_CREATED:
@@ -794,6 +803,8 @@ session_transport_delete_notify (transport_connection_t * tc)
        * are assumed to have been removed from the lookup table */
       session_lookup_del_session (s);
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      svm_fifo_dequeue_drop_all (s->tx_fifo);
       break;
     case SESSION_STATE_CLOSING:
     case SESSION_STATE_CLOSED_WAITING:
@@ -805,14 +816,18 @@ session_transport_delete_notify (transport_connection_t * tc)
       session_lookup_del_session (s);
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
       session_program_transport_close (s);
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      svm_fifo_dequeue_drop_all (s->tx_fifo);
       break;
     case SESSION_STATE_TRANSPORT_CLOSED:
       break;
     case SESSION_STATE_CLOSED:
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       session_delete (s);
       break;
     default:
       clib_warning ("session state %u", s->session_state);
+      session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       session_delete (s);
       break;
     }
