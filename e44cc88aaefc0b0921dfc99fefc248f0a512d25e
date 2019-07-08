@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "f53d61d1_42bef716",
+        "filename": "test/framework.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-08T16:05:59Z",
+      "side": 1,
+      "message": "To do what you propose, we would need to create a class called EnvironmentVariable() and customize __bool__.\n\nThat might look cleaner.",
+      "parentUuid": "aa7cfc4e_b666fa3c",
+      "range": {
+        "startLine": 61,
+        "startChar": 4,
+        "endLine": 61,
+        "endChar": 20
+      },
+      "revId": "e44cc88aaefc0b0921dfc99fefc248f0a512d25e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d2d1c9c1_3ed21276",
         "filename": "test/framework.py",
         "patchSetId": 4
