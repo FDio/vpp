@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "77bd1a0c_7a95f60f",
+        "filename": "src/vnet/udp/udp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-08T17:39:38Z",
+      "side": 1,
+      "message": "Isn\u0027t this handled in the memcpy above?",
+      "range": {
+        "startLine": 239,
+        "startChar": 2,
+        "endLine": 239,
+        "endChar": 7
+      },
+      "revId": "d518201868078cbfb733e3eca0d87745f0661937",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
