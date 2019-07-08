@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c71bb67_fb144e60",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-08T14:40:51Z",
+      "side": 1,
+      "message": "probably doesn\u0027t belong here, but is an attribute of the testcase.",
+      "range": {
+        "startLine": 100,
+        "startChar": 8,
+        "endLine": 100,
+        "endChar": 34
+      },
+      "revId": "8224b7b35ddbabcd037a62242370da5bbb55f5de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
