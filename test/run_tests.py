@@ -11,6 +11,7 @@ import threading
 import signal
 import psutil
 import re
+import multiprocessing
 from multiprocessing import Process, Pipe, cpu_count
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
@@ -737,13 +738,21 @@ if __name__ == '__main__':
 
     run_interactive = debug or step or force_foreground
 
+    try:
+        num_cpus = len(os.sched_getaffinity(0))
+    except AttributeError:
+        num_cpus = multiprocessing.cpu_count()
+    shm_free = psutil.disk_usage('/dev/shm').free
+
+    print('OS reports %s available cpu(s). Free shm: %s' % (
+        num_cpus, "{:,}MB".format(shm_free / (1024 * 1024))))
+
     test_jobs = os.getenv("TEST_JOBS", "1").lower()  # default = 1 process
     if test_jobs == 'auto':
         if run_interactive:
             concurrent_tests = 1
             print('Interactive mode required, running on one core')
         else:
-            shm_free = psutil.disk_usage('/dev/shm').free
             shm_max_processes = 1
             if shm_free < min_req_shm:
                 raise Exception('Not enough free space in /dev/shm. Required '
@@ -757,8 +766,11 @@ if __name__ == '__main__':
                   % concurrent_tests)
     elif test_jobs.isdigit():
         concurrent_tests = int(test_jobs)
+        print("Running on %s core(s) as set by 'TEST_JOBS'." %
+              concurrent_tests)
     else:
         concurrent_tests = 1
+        print('Running on one core.')
 
     if run_interactive and concurrent_tests > 1:
         raise NotImplementedError(
