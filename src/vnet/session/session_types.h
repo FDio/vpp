@@ -108,6 +108,12 @@ session_endpoint_is_zero (session_endpoint_t * sep)
 typedef u8 session_type_t;
 typedef u64 session_handle_t;
 
+typedef enum
+{
+  SESSION_CLEANUP_TRANSPORT,
+  SESSION_CLEANUP_SESSION,
+} session_cleanup_ntf_t;
+
 /*
  * Session states
  */
