@@ -67,12 +67,14 @@ lookup_or_create_hash_index (u8 * name, u32 next_vector_index)
   hash_pair_t *hp;
 
   /* Must be called in the context of the main heap */
-  ASSERT (clib_mem_get_heap != sm->heap);
+  ASSERT (clib_mem_get_heap () != sm->heap);
 
   hp = hash_get_pair (sm->directory_vector_by_name, name);
   if (!hp)
     {
-      hash_set (sm->directory_vector_by_name, name, next_vector_index);
+      /* we allocate our private copy of 'name' */
+      hash_set (sm->directory_vector_by_name, format (0, "%s%c", name, 0),
+		next_vector_index);
       index = next_vector_index;
     }
   else
@@ -187,10 +189,6 @@ vlib_stats_register_error_index (void *oldheap, u8 * name, u64 * em_vec,
       /* Warn clients to refresh any pointers they might be holding */
       shared_header->directory_offset =
 	stat_segment_offset (shared_header, sm->directory_vector);
-    }
-  else
-    {
-      vec_free (name);
     }
 
   vlib_stat_segment_unlock ();
