@@ -327,8 +327,11 @@ class VPPEnumType(object):
     def __getattr__(self, name):
         return self.enum[name]
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
+
+    if sys.version[0] == '2':
+        __nonzero__ = __bool__
 
     def pack(self, data, kwargs=None):
         return types[self.enumtype].pack(data)
