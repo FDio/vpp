@@ -34,6 +34,7 @@ add_custom_target(vpp_version_h
 option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
 
 set(VPP_API_FILES
+  api/vpe_types.api
   api/vpe.api
 )
 
