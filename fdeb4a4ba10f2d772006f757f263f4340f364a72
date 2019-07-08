@@ -22,6 +22,23 @@
       "revId": "fdeb4a4ba10f2d772006f757f263f4340f364a72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55e615aa_2d67ae4d",
+        "filename": "src/plugins/linux-intf-pair/lip.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2019-07-08T16:09:23Z",
+      "side": 1,
+      "message": "Great start for an important problem.  Question: what about ICMP traffic?  The Kernel for TAP0 may send back ICMP port unreachable in response to traffic forwarded to it that was really being handled by VPP, the far side may respond adversely to that ICMP port unreachable message.",
+      "revId": "fdeb4a4ba10f2d772006f757f263f4340f364a72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
