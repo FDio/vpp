@@ -3,7 +3,7 @@ import unittest
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import UDP
 
-from framework import VppTestRunner, is_skip_aarch64_set, is_platform_aarch64
+from framework import VppTestRunner
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
     IPsecIPv4Params, IPsecIPv6Params, \
@@ -352,8 +352,6 @@ class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests):
     pass
 
 
-@unittest.skipIf(is_skip_aarch64_set and is_platform_aarch64,
-                 "test doesn't work on aarch64")
 class TestIpsecEspAll(ConfigIpsecESP,
                       IpsecTra4, IpsecTra6,
                       IpsecTun4, IpsecTun6):
@@ -463,6 +461,8 @@ class TestIpsecEspAll(ConfigIpsecESP,
                         p.crypt_key = algo['key']
                         p.salt = algo['salt']
                         p.flags = p.flags | flag
+
+                    self.reporter.send_keep_alive(self)
 
                     #
                     # configure the SPDs. SAs, etc
