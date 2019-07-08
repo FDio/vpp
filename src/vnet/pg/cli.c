@@ -39,6 +39,7 @@
 
 #include <sys/stat.h>
 
+
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 
@@ -82,14 +83,6 @@ pg_capture (pg_capture_args_t * a)
 {
   pg_main_t *pg = &pg_main;
   pg_interface_t *pi;
-
-  if (a->is_enabled == 1)
-    {
-      struct stat sb;
-      if (stat ((char *) a->pcap_file_name, &sb) != -1)
-	return clib_error_return (0, "pcap file '%s' does not exist.",
-				  a->pcap_file_name);
-    }
 
   pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
   vec_free (pi->pcap_file_name);

@@ -8,6 +8,7 @@ import scapy.compat
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
 from vpp_interface import VppInterface
+from vpp_papi_provider import CliFailedCommandError
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
@@ -138,6 +139,16 @@ class VppPGInterface(VppInterface):
                                            self._out_file)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
+
+        # try:
+        #    self.test.vapi.cli(self.capture_cli)
+        #except CliFailedCommandError:
+        #    self.test.logger.debug("CliFailedCommandError: %s failed, rename+retry" % self.capture_cli)
+        #    self._rename_previous_capture_file(self.out_path,
+        #                                   self.out_history_counter,
+        #                                   self._out_file)
+        #    self.test.vapi.cli(self.capture_cli)
+
         self._pcap_reader = None
 
     def disable_capture(self):
