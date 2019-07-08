@@ -234,19 +234,31 @@ static void
 ipsec_tunnel_feature_set (ipsec_main_t * im, ipsec_tunnel_if_t * t, u8 enable)
 {
   u8 arc;
+  u32 esp4_feature_index, esp6_feature_index;
+  ipsec_sa_t *sa;
+
+  sa = ipsec_sa_get (t->output_sa_index);
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE)
+    {
+      esp4_feature_index = im->esp4_no_crypto_tun_feature_index;
+      esp6_feature_index = im->esp6_no_crypto_tun_feature_index;
+    }
+  else
+    {
+      esp4_feature_index = im->esp4_encrypt_tun_feature_index;
+      esp6_feature_index = im->esp6_encrypt_tun_feature_index;
+    }
 
   arc = vnet_get_feature_arc_index ("ip4-output");
 
-  vnet_feature_enable_disable_with_index (arc,
-					  im->esp4_encrypt_tun_feature_index,
+  vnet_feature_enable_disable_with_index (arc, esp4_feature_index,
 					  t->sw_if_index, enable,
 					  &t->output_sa_index,
 					  sizeof (t->output_sa_index));
 
   arc = vnet_get_feature_arc_index ("ip6-output");
 
-  vnet_feature_enable_disable_with_index (arc,
-					  im->esp6_encrypt_tun_feature_index,
+  vnet_feature_enable_disable_with_index (arc, esp6_feature_index,
 					  t->sw_if_index, enable,
 					  &t->output_sa_index,
 					  sizeof (t->output_sa_index));
@@ -562,6 +574,13 @@ ipsec_tunnel_if_init (vlib_main_t * vm)
 
   udp_register_dst_port (vm, UDP_DST_PORT_ipsec, ipsec4_if_input_node.index,
 			 1);
+
+  /* set up feature nodes to drop outbound packets with no crypto alg set */
+  ipsec_add_feature ("ip4-output", "esp4-no-crypto",
+		     &im->esp4_no_crypto_tun_feature_index);
+  ipsec_add_feature ("ip6-output", "esp6-no-crypto",
+		     &im->esp6_no_crypto_tun_feature_index);
+
   return 0;
 }
 

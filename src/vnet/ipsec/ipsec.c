@@ -122,7 +122,7 @@ ipsec_add_node (vlib_main_t * vm, const char *node_name,
   *out_next_index = vlib_node_add_next (vm, prev_node->index, node->index);
 }
 
-static void
+void
 ipsec_add_feature (const char *arc_name,
 		   const char *node_name, u32 * out_feature_index)
 {
