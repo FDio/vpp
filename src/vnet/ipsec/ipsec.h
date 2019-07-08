@@ -142,6 +142,10 @@ typedef struct
   u32 esp4_encrypt_tun_feature_index;
   u32 esp6_encrypt_tun_feature_index;
 
+  /* tun nodes to drop packets when no crypto alg set on outbound SA */
+  u32 esp4_no_crypto_tun_feature_index;
+  u32 esp6_no_crypto_tun_feature_index;
+
   /* pool of ah backends */
   ipsec_ah_backend_t *ah_backends;
   /* pool of esp backends */
@@ -240,6 +244,9 @@ ipsec_sa_get (u32 sa_index)
 {
   return (pool_elt_at_index (ipsec_main.sad, sa_index));
 }
+
+void ipsec_add_feature (const char *arc_name, const char *node_name,
+			u32 * out_feature_index);
 
 #endif /* __IPSEC_H__ */
 
