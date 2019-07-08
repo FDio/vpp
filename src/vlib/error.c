@@ -160,15 +160,18 @@ vlib_register_errors (vlib_main_t * vm,
   /* Register counter indices in the stat segment directory */
   {
     int i;
-    u8 *error_name;
+    u8 *error_name = 0;
 
     for (i = 0; i < n_errors; i++)
       {
-	error_name = format (0, "/err/%v/%s%c", n->name, error_strings[i], 0);
-	/* Note: error_name consumed by the following call */
+	vec_reset_length (error_name);
+	error_name =
+	  format (error_name, "/err/%v/%s%c", n->name, error_strings[i], 0);
 	vlib_stats_register_error_index (oldheap, error_name, em->counters,
 					 n->error_heap_index + i);
       }
+
+    vec_free (error_name);
   }
 
   /* (re)register the em->counters base address, switch back to main heap */
