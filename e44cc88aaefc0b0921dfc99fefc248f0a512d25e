@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "753b5969_9b883bb5",
+        "filename": "test/framework.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-08T15:53:01Z",
+      "side": 1,
+      "message": "This is truthy, not bool.\n\u003e\u003e\u003ebool(\u0027n\u0027)\nTrue\n\nSee:\nhttps://vegaskid.net/2018/02/truth-about-boolean-values-python/\n\nI\u0027ll change it to get_truthy_env_var",
+      "parentUuid": "d6e46454_80f3b89d",
+      "range": {
+        "startLine": 61,
+        "startChar": 4,
+        "endLine": 61,
+        "endChar": 20
+      },
+      "revId": "e44cc88aaefc0b0921dfc99fefc248f0a512d25e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d2d1c9c1_3ed21276",
         "filename": "test/framework.py",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2019-07-08T15:31:41Z",
       "side": 1,
       "message": "is this also a truthy value ? Worth adding a default argument \"\u003d0\" to that newly introduced function ?",
+      "range": {
+        "startLine": 325,
+        "startChar": 0,
+        "endLine": 325,
+        "endChar": 42
+      },
+      "revId": "e44cc88aaefc0b0921dfc99fefc248f0a512d25e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "936afc18_4cb5d6ce",
+        "filename": "test/framework.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-08T15:53:01Z",
+      "side": 1,
+      "message": "This is an inverted case where the variable actually should be DONT_CACHE_OUTPUT to be truthy.  The implementer wanted  that an empty string (as opposed to an undefined env var) should evaluate to true.",
+      "parentUuid": "d2d1c9c1_3ed21276",
       "range": {
         "startLine": 325,
         "startChar": 0,
