@@ -3357,6 +3357,13 @@ vppcom_worker_register (void)
   return VPPCOM_OK;
 }
 
+void
+vppcom_worker_unregister (void)
+{
+  vcl_worker_cleanup (vcl_worker_get_current (), 1 /* notify vpp */ );
+  vcl_set_worker_index (~0);
+}
+
 int
 vppcom_worker_index (void)
 {
