@@ -1291,6 +1291,7 @@ ip4_reass_set (u32 timeout_ms, u32 max_reassemblies,
 	  clib_bihash_free_16_8 (&ip4_reass_main.hash);
 	  clib_memcpy_fast (&ip4_reass_main.hash, &new_hash,
 			    sizeof (ip4_reass_main.hash));
+	  clib_bihash_copied (&ip4_reass_main.hash, &new_hash);
 	}
     }
   return 0;

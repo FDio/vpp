@@ -1000,6 +1000,10 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   vl_api_l2_macs_event_t *mp = 0;
   vl_api_registration_t *reg = 0;
 
+  /* Don't scan the l2 fib if it hasn't been instantiated yet */
+  if (alloc_arena (h) == 0)
+    return 0.0;
+
   if (client)
     {
       mp = allocate_mac_evt_buf (client, cl_idx);

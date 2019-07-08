@@ -129,6 +129,7 @@ BVS (clib_bihash)
 
   u32 nbuckets;
   u32 log2_nbuckets;
+  u64 memory_size;
   u8 *name;
 
   u64 *freelists;
@@ -156,6 +157,8 @@ BVS (clib_bihash)
 #endif
 
 } BVT (clib_bihash);
+
+extern void **clib_all_bihashes;
 
 #if BIHASH_32_64_SVM
 #undef alloc_arena_next
@@ -313,6 +316,8 @@ int BV (clib_bihash_search) (BVT (clib_bihash) * h,
 
 void BV (clib_bihash_foreach_key_value_pair) (BVT (clib_bihash) * h,
 					      void *callback, void *arg);
+void *clib_all_bihash_set_heap (void);
+void clib_bihash_copied (void *dst, void *src);
 
 format_function_t BV (format_bihash);
 format_function_t BV (format_bihash_kvp);
@@ -325,6 +330,9 @@ static inline int BV (clib_bihash_search_inline_with_hash)
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
   int i, limit;
+
+  if (PREDICT_FALSE (alloc_arena (h) == 0))
+    return -1;
 
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];
@@ -389,6 +397,9 @@ static inline void BV (clib_bihash_prefetch_data)
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
 
+  if (PREDICT_FALSE (alloc_arena (h) == 0))
+    return;
+
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];
 
@@ -413,6 +424,9 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   int i, limit;
 
   ASSERT (valuep);
+
+  if (PREDICT_FALSE (alloc_arena (h) == 0))
+    return -1;
 
   bucket_index = hash & (h->nbuckets - 1);
   b = &h->buckets[bucket_index];

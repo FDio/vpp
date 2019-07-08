@@ -40,6 +40,7 @@ install(
 ##############################################################################
 set(VPPINFRA_SRCS
   backtrace.c
+  bihash_all_vector.c
   cpu.c
   cuckoo_template.c
   elf.c
