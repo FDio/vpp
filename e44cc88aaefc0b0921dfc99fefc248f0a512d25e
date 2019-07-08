@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d6e46454_80f3b89d",
+        "filename": "test/framework.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-07-08T15:31:41Z",
+      "side": 1,
+      "message": "sorry for somewhat of a bikeshed comment... but \"envar\" glues two words in a somewhat counter-intuitive (for me) fashion, and \"truthy\" sounds a bit slang....  what do you think \"get_bool_env_var\" or maybe just \"getenv_bool\" ?",
+      "range": {
+        "startLine": 61,
+        "startChar": 4,
+        "endLine": 61,
+        "endChar": 20
+      },
+      "revId": "e44cc88aaefc0b0921dfc99fefc248f0a512d25e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d2d1c9c1_3ed21276",
+        "filename": "test/framework.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-07-08T15:31:41Z",
+      "side": 1,
+      "message": "is this also a truthy value ? Worth adding a default argument \"\u003d0\" to that newly introduced function ?",
+      "range": {
+        "startLine": 325,
+        "startChar": 0,
+        "endLine": 325,
+        "endChar": 42
+      },
+      "revId": "e44cc88aaefc0b0921dfc99fefc248f0a512d25e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
