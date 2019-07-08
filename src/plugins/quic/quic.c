@@ -307,6 +307,14 @@ quic_ctx_get (u32 ctx_index, u32 thread_index)
 }
 
 static quic_ctx_t *
+quic_ctx_get_if_valid (u32 ctx_index, u32 thread_index)
+{
+  if (pool_is_free_index (quic_main.ctx_pool[thread_index], ctx_index))
+    return 0;
+  return pool_elt_at_index (quic_main.ctx_pool[thread_index], ctx_index);
+}
+
+static quic_ctx_t *
 quic_get_conn_ctx (quicly_conn_t * conn)
 {
   u64 conn_data;
@@ -1494,7 +1502,9 @@ quic_connect (transport_endpoint_cfg_t * tep)
 static void
 quic_proto_on_close (u32 ctx_index, u32 thread_index)
 {
-  quic_ctx_t *ctx = quic_ctx_get (ctx_index, thread_index);
+  quic_ctx_t *ctx = quic_ctx_get_if_valid (ctx_index, thread_index);
+  if (!ctx)
+    return;
 #if QUIC_DEBUG >= 2
   session_t *stream_session =
     session_get (ctx->c_s_index, ctx->c_thread_index);
