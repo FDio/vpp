@@ -22,6 +22,30 @@
       "revId": "5612c5186e041fc71b5fefe2af5dc27733d7a542",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "27d3a799_5a024589",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T14:11:03Z",
+      "side": 1,
+      "message": "\u003e This is the packer for scalars.\n\nOh. Then I understand even less.\n\nI looked back, patch set #3 fail make test, console output [0] (see \"14:22:46  error: cannot convert argument to integer\").\nLooking closely at the test, I believe, the empty list is created here [1], and the type [2] is a list, albeit with the size taken from another field, not from a constant.\n\nI have I feeling the proper fix is to prevent list types from inheriting BaseTypes.pack().\nIt is also possible that the error does not come from that particular empty list, but from something else involved in that call.\n\n[0] https://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-beta-verify-master-ubuntu1804/7739/console-timestamp.log.gz\n[1] https://github.com/FDio/vpp/blob/81cfa9cf388a742bad0d71ba1c92debb04c6cdba/test/test_gbp.py#L470\n[2] https://github.com/FDio/vpp/blob/3918bdbcbb6459fe61eb5ab8bd1c30bf287e39ce/src/plugins/gbp/gbp.api#L314",
+      "parentUuid": "74f318ed_e6124d8b",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 102,
+        "endChar": 77
+      },
+      "revId": "5612c5186e041fc71b5fefe2af5dc27733d7a542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
