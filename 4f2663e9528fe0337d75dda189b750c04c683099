@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "13a49d5c_fa0511af",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T11:57:24Z",
+      "side": 1,
+      "message": "I have tried to find where does [] come from, but have not found the exact place.\n\n\u003e I believe None should be the only sentinel value.\n\nI agree, but I do not know where to fix that.",
+      "parentUuid": "007999c6_4a649fc4",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 98,
+        "endChar": 75
+      },
+      "revId": "4f2663e9528fe0337d75dda189b750c04c683099",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a17fe917_b102e8db",
         "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
         "patchSetId": 5
@@ -45,6 +69,30 @@
       "revId": "4f2663e9528fe0337d75dda189b750c04c683099",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a09aec8b_84c4b98e",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-08T11:57:24Z",
+      "side": 1,
+      "message": "No, this line should be skipped (condition at line 99) when caller specifies explicit (but zero) value.\nAdded a TODO to signal the curent fix is not complete.",
+      "parentUuid": "a17fe917_b102e8db",
+      "range": {
+        "startLine": 103,
+        "startChar": 16,
+        "endLine": 103,
+        "endChar": 24
+      },
+      "revId": "4f2663e9528fe0337d75dda189b750c04c683099",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
