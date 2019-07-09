@@ -188,8 +188,8 @@ class QUICEchoExternalTestCase(QUICTestCase):
             _args,
             self.logger)
         self.worker_client.start()
-        self.worker_client.join()
-        self.worker_server.join()
+        self.worker_client.join(self.timeout)
+        self.worker_server.join(self.timeout)
         self.sleep(self.post_test_sleep)
 
     def validate_external_test_results(self):
