@@ -55,7 +55,14 @@
     echo_main_t *em = &echo_main;	\
     em->has_failed = 1;		\
     em->time_to_stop = 1;		\
-    clib_warning ("ECHO-ERROR: "_fmt, ##_args); 	\
+    ECHO_LOG ("ECHO-ERROR: "_fmt, ##_args); 	\
+  }
+
+#define ECHO_LOG(_fmt,_args...)	\
+  {					\
+    echo_main_t *em = &echo_main;	\
+    if (!em->output_json)		\
+      clib_warning (_fmt, ##_args); 	\
   }
 
 typedef struct
@@ -205,6 +212,7 @@ typedef struct
   data_source_t data_source;
   u8 send_quic_disconnects;	/* actively send disconnect */
   u8 send_stream_disconnects;	/* actively send disconnect */
+  u8 output_json;
 
   u8 *appns_id;
   u64 appns_flags;
@@ -222,7 +230,7 @@ typedef struct
   u64 rx_total;
 
   /* Event based timing : start & end depend on CLI specified events */
-  u8 first_sconnect_sent;	/* Sent the first Stream session connect ? */
+  u8 events_sent;
   f64 start_time;
   f64 end_time;
   u8 timing_start_event;
@@ -651,10 +659,13 @@ wait_for_segment_allocation (u64 segment_handle)
 static void
 quic_echo_notify_event (echo_main_t * em, echo_test_evt_t e)
 {
+  if (em->events_sent & e)
+    return;
   if (em->timing_start_event == e)
     em->start_time = clib_time_now (&em->clib_time);
   else if (em->timing_end_event == e)
     em->end_time = clib_time_now (&em->clib_time);
+  em->events_sent |= e;
 }
 
 static void
@@ -755,27 +766,62 @@ static void
 session_print_stats (echo_main_t * em, echo_session_t * session)
 {
   f64 deltat = clib_time_now (&em->clib_time) - session->start;
-  fformat (stdout, "Session 0x%x done in %.6fs RX[%.4f] TX[%.4f] Gbit/s\n",
-	   session->vpp_session_handle, deltat,
-	   (session->bytes_received * 8.0) / deltat / 1e9,
-	   (session->bytes_sent * 8.0) / deltat / 1e9);
+  ECHO_LOG ("Session 0x%x done in %.6fs RX[%.4f] TX[%.4f] Gbit/s\n",
+	    session->vpp_session_handle, deltat,
+	    (session->bytes_received * 8.0) / deltat / 1e9,
+	    (session->bytes_sent * 8.0) / deltat / 1e9);
+}
+
+static void
+echo_event_didnt_happen (u8 e)
+{
+  echo_main_t *em = &echo_main;
+  u8 *s = format (0, "%U", echo_format_timing_event, e);
+  ECHO_LOG ("Expected event %s to happend, which did not", s);
+  em->has_failed = 1;
+}
+
+static void
+print_global_json_stats (echo_main_t * em)
+{
+  if (!(em->events_sent & em->timing_start_event))
+    return echo_event_didnt_happen (em->timing_start_event);
+  if (!(em->events_sent & em->timing_end_event))
+    return echo_event_didnt_happen (em->timing_end_event);
+  f64 deltat = em->end_time - em->start_time;
+  u8 *start_evt =
+    format (0, "%U", echo_format_timing_event, em->timing_start_event);
+  u8 *end_evt =
+    format (0, "%U", echo_format_timing_event, em->timing_end_event);
+  fformat (stdout, "{\n");
+  fformat (stdout, "\"time\": \"%.9f\",\n", deltat);
+  fformat (stdout, "\"start_evt\": \"%s\",\n", start_evt);
+  fformat (stdout, "\"end_evt\": \"%s\",\n", end_evt);
+  fformat (stdout, "\"rx_data\": %lld,\n", em->rx_total);
+  fformat (stdout, "\"tx_rx\": %lld,\n", em->tx_total);
+  fformat (stdout, "}\n");
 }
 
 static void
 print_global_stats (echo_main_t * em)
 {
+  u8 *s;
+  if (!(em->events_sent & em->timing_start_event))
+    return echo_event_didnt_happen (em->timing_start_event);
+  if (!(em->events_sent & em->timing_end_event))
+    return echo_event_didnt_happen (em->timing_end_event);
   f64 deltat = em->end_time - em->start_time;
-  u8 *s = format (0, "%U:%U",
-		  echo_format_timing_event, em->timing_start_event,
-		  echo_format_timing_event, em->timing_end_event);
+  s = format (0, "%U:%U",
+	      echo_format_timing_event, em->timing_start_event,
+	      echo_format_timing_event, em->timing_end_event);
   fformat (stdout, "Timing %s\n", s);
   fformat (stdout, "-------- TX --------\n");
-  fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds\n",
+  fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.6f seconds\n",
 	   em->tx_total, em->tx_total / (1ULL << 20),
 	   em->tx_total / (1ULL << 30), deltat);
   fformat (stdout, "%.4f Gbit/second\n", (em->tx_total * 8.0) / deltat / 1e9);
   fformat (stdout, "-------- RX --------\n");
-  fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds\n",
+  fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.6f seconds\n",
 	   em->rx_total, em->rx_total / (1ULL << 20),
 	   em->rx_total / (1ULL << 30), deltat);
   fformat (stdout, "%.4f Gbit/second\n", (em->rx_total * 8.0) / deltat / 1e9);
@@ -859,12 +905,12 @@ test_recv_bytes (echo_main_t * em, echo_session_t * s, u8 * rx_buf,
       expected = (s->bytes_received + i) & 0xff;
       if (rx_buf[i] == expected || em->max_test_msg > 0)
 	continue;
-      clib_warning ("Session 0x%lx byte %lld was 0x%x expected 0x%x",
-		    s->vpp_session_handle, s->bytes_received + i, rx_buf[i],
-		    expected);
+      ECHO_LOG ("Session 0x%lx byte %lld was 0x%x expected 0x%x",
+		s->vpp_session_handle, s->bytes_received + i, rx_buf[i],
+		expected);
       em->max_test_msg--;
       if (em->max_test_msg == 0)
-	clib_warning ("Too many errors, hiding next ones");
+	ECHO_LOG ("Too many errors, hiding next ones");
       if (em->test_return_packets == RETURN_PACKETS_ASSERT)
 	ECHO_FAIL ("test-bytes errored");
     }
@@ -1054,10 +1100,9 @@ session_bound_handler (session_bound_msg_t * mp)
 		 clib_net_to_host_u32 (mp->retval));
       return;
     }
-
-  clib_warning ("listening on %U:%u", format_ip46_address, mp->lcl_ip,
-		mp->lcl_is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-		clib_net_to_host_u16 (mp->lcl_port));
+  ECHO_LOG ("listening on %U:%u", format_ip46_address, mp->lcl_ip,
+	    mp->lcl_is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+	    clib_net_to_host_u16 (mp->lcl_port));
 
   /* Allocate local session and set it up */
   listen_session = echo_session_alloc (em);
@@ -1124,6 +1169,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
 
   if (listen_session->session_type == QUIC_SESSION_TYPE_LISTEN)
     {
+      quic_echo_notify_event (em, ECHO_EVT_FIRST_QCONNECT);
       session->session_type = QUIC_SESSION_TYPE_QUIC;
       if (em->cb_vft.quic_accepted_cb)
 	em->cb_vft.quic_accepted_cb (mp, session->session_index);
@@ -1132,6 +1178,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
   else if (em->i_am_master)
     {
       session->session_type = QUIC_SESSION_TYPE_STREAM;
+      quic_echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
       if (em->cb_vft.server_stream_accepted_cb)
 	em->cb_vft.server_stream_accepted_cb (mp, session->session_index);
       clib_atomic_fetch_add (&em->n_clients_connected, 1);
@@ -1139,6 +1186,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
   else
     {
       session->session_type = QUIC_SESSION_TYPE_STREAM;
+      quic_echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
       if (em->cb_vft.client_stream_accepted_cb)
 	em->cb_vft.client_stream_accepted_cb (mp, session->session_index);
       clib_atomic_fetch_add (&em->n_clients_connected, 1);
@@ -1249,17 +1297,13 @@ echo_on_connected_connect (session_connected_msg_t * mp, u32 session_index)
   u8 *uri = format (0, "QUIC://session/%lu", mp->handle);
   u64 i;
 
-  if (!em->first_sconnect_sent)
-    {
-      em->first_sconnect_sent = 1;
-      quic_echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
-    }
+  quic_echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < em->n_stream_clients; i++)
     echo_send_connect (em, uri, session_index);
 
-  clib_warning ("Qsession 0x%llx connected to %U:%d",
-		mp->handle, format_ip46_address, &mp->lcl.ip,
-		mp->lcl.is_ip4, clib_net_to_host_u16 (mp->lcl.port));
+  ECHO_LOG ("Qsession 0x%llx connected to %U:%d",
+	    mp->handle, format_ip46_address, &mp->lcl.ip,
+	    mp->lcl.is_ip4, clib_net_to_host_u16 (mp->lcl.port));
 }
 
 static void
@@ -1313,11 +1357,7 @@ echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
   u8 *uri = format (0, "QUIC://session/%lu", mp->handle);
   u32 i;
 
-  if (!em->first_sconnect_sent)
-    {
-      em->first_sconnect_sent = 1;
-      quic_echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
-    }
+  quic_echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < em->n_stream_clients; i++)
     echo_send_connect (em, uri, session_index);
 }
@@ -1334,8 +1374,8 @@ echo_on_accept_log_ip (session_accepted_msg_t * mp, u32 session_index)
 {
   u8 *ip_str;
   ip_str = format (0, "%U", format_ip46_address, &mp->rmt.ip, mp->rmt.is_ip4);
-  clib_warning ("Accepted session from: %s:%d", ip_str,
-		clib_net_to_host_u16 (mp->rmt.port));
+  ECHO_LOG ("Accepted session from: %s:%d", ip_str,
+	    clib_net_to_host_u16 (mp->rmt.port));
 
 }
 
@@ -1466,7 +1506,7 @@ handle_mq_event (session_event_t * e)
     case SESSION_IO_EVT_RX:
       break;
     default:
-      clib_warning ("unhandled event %u", e->event_type);
+      ECHO_LOG ("unhandled event %u", e->event_type);
     }
 }
 
@@ -1846,10 +1886,20 @@ print_usage_and_exit (void)
 	   "  sclose=[Y|N|W]      When a stream is done (RX & TX),     send close[Y] wait for close[W] or pass[N]\n"
 	   "  qclose=[Y|N|W]      When a connection is done (RX & TX), send close[Y] wait for close[W] or pass[N]\n"
 	   "\n"
-	   "  nclients N[/M]       Open N QUIC connections, each one with M streams (M defaults to 1)\n"
-	   "  nthreads N           Use N busy loop threads for data [in addition to main & msg queue]\n"
-	   "  TX=1337[Kb|Mb|GB]    Send 1337 [K|M|G]bytes, use TX=RX to reflect the data\n"
-	   "  RX=1337[Kb|Mb|GB]    Expect 1337 [K|M|G]bytes\n"
+	   "  time START:END      Time between evts START & END, events being :\n"
+	   "                       start - Start of the app\n"
+	   "                       qconnect    - first Connection connect sent\n"
+	   "                       qconnected  - last Connection connected\n"
+	   "                       sconnect    - first Stream connect sent\n"
+	   "                       sconnected  - last Stream got connected\n"
+	   "                       lastbyte    - Last expected byte received\n"
+	   "                       exit        - Exiting of the app\n"
+	   "  json                Only output global stats in json\n"
+	   "\n"
+	   "  nclients N[/M]      Open N QUIC connections, each one with M streams (M defaults to 1)\n"
+	   "  nthreads N          Use N busy loop threads for data [in addition to main & msg queue]\n"
+	   "  TX=1337[Kb|Mb|GB]   Send 1337 [K|M|G]bytes, use TX=RX to reflect the data\n"
+	   "  RX=1337[Kb|Mb|GB]   Expect 1337 [K|M|G]bytes\n"
 	   "\n"
 	   "Default config is :\n"
 	   "server nclients 1/1 RX=64Kb TX=RX\n"
@@ -1922,6 +1972,8 @@ quic_echo_process_opts (int argc, char **argv)
 	;
       else if (unformat (a, "RX=%U", unformat_data, &em->bytes_to_receive))
 	;
+      else if (unformat (a, "json"))
+	em->output_json = 1;
       else
 	if (unformat
 	    (a, "sclose=%U", unformat_close, &em->send_stream_disconnects))
@@ -2021,7 +2073,7 @@ main (int argc, char **argv)
   if (connect_to_vpp (app_name) < 0)
     {
       svm_region_exit ();
-      fformat (stderr, "ECHO-ERROR: Couldn't connect to vpe, exiting...\n");
+      ECHO_FAIL ("ECHO-ERROR: Couldn't connect to vpe, exiting...\n");
       exit (1);
     }
 
@@ -2030,7 +2082,7 @@ main (int argc, char **argv)
   application_send_attach (em);
   if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
     {
-      fformat (stderr, "ECHO-ERROR: Couldn't attach to vpp, exiting...\n");
+      ECHO_FAIL ("ECHO-ERROR: Couldn't attach to vpp, exiting...\n");
       exit (1);
     }
   if (em->i_am_master)
@@ -2038,20 +2090,23 @@ main (int argc, char **argv)
   else
     clients_run (em);
   quic_echo_notify_event (em, ECHO_EVT_EXIT);
-  print_global_stats (em);
+  if (em->output_json)
+    print_global_json_stats (em);
+  else
+    print_global_stats (em);
   echo_free_sessions (em);
   echo_assert_test_suceeded (em);
   application_detach (em);
   if (wait_for_state_change (em, STATE_DETACHED, TIMEOUT))
     {
-      fformat (stderr, "ECHO-ERROR: Couldn't detach from vpp, exiting...\n");
+      ECHO_FAIL ("ECHO-ERROR: Couldn't detach from vpp, exiting...\n");
       exit (1);
     }
   if (em->use_sock_api)
     vl_socket_client_disconnect ();
   else
     vl_client_disconnect_from_vlib ();
-  fformat (stdout, "Test complete !\n");
+  ECHO_LOG ("Test complete !\n");
   exit (em->has_failed);
 }
 
