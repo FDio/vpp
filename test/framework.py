@@ -261,7 +261,6 @@ class VppTestCase(unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
     """
-    get_truthy_envar = staticmethod(BoolEnvironmentVariable)
 
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
