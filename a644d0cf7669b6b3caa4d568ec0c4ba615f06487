@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "ae1d8a92_8dbbf148",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9d8a4cfe_36661d4d",
+      "range": {
+        "startLine": 301,
+        "startChar": 3,
+        "endLine": 301,
+        "endChar": 17
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0b217f24_d8c645de",
         "filename": "src/plugins/lb/api.c",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2019-07-01T04:20:22Z",
       "side": 1,
       "message": "move to top",
+      "range": {
+        "startLine": 348,
+        "startChar": 0,
+        "endLine": 351,
+        "endChar": 11
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "df4934c5_30217780",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0b217f24_d8c645de",
       "range": {
         "startLine": 348,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "812ccd8c_2e8c0df9",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6ff5fa62_626ab86f",
+      "range": {
+        "startLine": 353,
+        "startChar": 2,
+        "endLine": 353,
+        "endChar": 67
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "80f2fed7_d3c61de4",
         "filename": "src/plugins/lb/api.c",
         "patchSetId": 4
@@ -82,6 +154,30 @@
       "writtenOn": "2019-07-01T04:20:22Z",
       "side": 1,
       "message": "({\n      if (want_all || prefix \u003d\u003d vip-\u003eprefix){\n       \u003cpass in each \n        send_lb_as_details(reg, mp-\u003econtext, as_det_rec);",
+      "range": {
+        "startLine": 357,
+        "startChar": 6,
+        "endLine": 358,
+        "endChar": 50
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f5534d5_0a8794fe",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "80f2fed7_d3c61de4",
       "range": {
         "startLine": 357,
         "startChar": 6,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "6359052f_73d1ff2d",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8b4868d7_366c32fc",
+      "range": {
+        "startLine": 362,
+        "startChar": 0,
+        "endLine": 381,
+        "endChar": 5
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a423655a_951ed857",
         "filename": "src/plugins/lb/lb.api",
         "patchSetId": 4
@@ -128,6 +248,30 @@
       "writtenOn": "2019-07-01T04:20:22Z",
       "side": 1,
       "message": "Do you want to ass a vip argument here so you can filter on it?",
+      "range": {
+        "startLine": 109,
+        "startChar": 0,
+        "endLine": 109,
+        "endChar": 2
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "467687b6_31ffeb26",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "I don\u0027t think so, since we use this command just for dump all vip list.",
+      "parentUuid": "a423655a_951ed857",
       "range": {
         "startLine": 109,
         "startChar": 0,
@@ -163,6 +307,30 @@
     },
     {
       "key": {
+        "uuid": "63842a4e_968c0e8b",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e0726ec6_c07fbac3",
+      "range": {
+        "startLine": 121,
+        "startChar": 0,
+        "endLine": 122,
+        "endChar": 38
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "39f2f984_151bde90",
         "filename": "src/plugins/lb/lb.api",
         "patchSetId": 4
@@ -186,6 +354,30 @@
     },
     {
       "key": {
+        "uuid": "a90994b3_c7abb06c",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "I think do not need to replace it, since this is clear to API users.",
+      "parentUuid": "39f2f984_151bde90",
+      "range": {
+        "startLine": 135,
+        "startChar": 0,
+        "endLine": 137,
+        "endChar": 11
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c0b3457b_83481d55",
         "filename": "src/plugins/lb/lb.api",
         "patchSetId": 4
@@ -197,6 +389,30 @@
       "writtenOn": "2019-07-01T04:20:22Z",
       "side": 1,
       "message": "Details does not return all with the count.  It returns \u003cas_count\u003e records, each with a single vl_api_lb_ip_addr_t.",
+      "range": {
+        "startLine": 150,
+        "startChar": 2,
+        "endLine": 150,
+        "endChar": 15
+      },
+      "revId": "a644d0cf7669b6b3caa4d568ec0c4ba615f06487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "881067f2_3ed5b6f3",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-07-09T01:56:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c0b3457b_83481d55",
       "range": {
         "startLine": 150,
         "startChar": 2,
