@@ -562,6 +562,9 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
       else
 	error = clib_error_return (0, "unknown input '%U'",
 				   format_unformat_error, line_input);
+
+      if (error)
+	break;
     }
 
   unformat_free (line_input);
