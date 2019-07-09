@@ -770,7 +770,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    ctx->n_segs_per_evt, ctx->s, n_trace);
   if (PREDICT_FALSE (n_bufs))
     {
-      clib_warning ("not all buffers consumed");
       vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
     }
   *n_tx_packets += ctx->n_segs_per_evt;
