@@ -1608,7 +1608,6 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 {
     fib_node_index_t old_path_list, fib_entry_index;
     fib_path_list_flags_t pl_flags;
-    const fib_route_path_t *rpath;
     fib_entry_src_t *esrc;
 
     esrc = fib_entry_src_find(fib_entry, source);
@@ -1655,10 +1654,7 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 
     pl_flags = fib_entry_src_flags_2_path_list_flags(flags);
 
-    vec_foreach(rpath, rpaths)
-    {
-	fib_entry_flags_update(fib_entry, rpath, &pl_flags, esrc);
-    }
+    fib_entry_flags_update(fib_entry, rpaths, &pl_flags, esrc);
 
     FIB_ENTRY_SRC_VFT_INVOKE(esrc, fesv_path_swap,
                              (esrc, fib_entry,
