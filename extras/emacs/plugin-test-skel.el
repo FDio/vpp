@@ -185,24 +185,8 @@ static void " plugin-name "_api_hookup (vat_main_t *vam)
 #undef _
 }
 
-clib_error_t * vat_plugin_register (vat_main_t *vam)
-{
-  " plugin-name "_test_main_t * " main-p " = &" plugin-name "_test_main;
-  u8 * name;
+VAT_PLUGIN_REGISTER(" plugin-name");
 
-  " main-p "->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, \"" plugin-name "_%08x%c\", api_version, 0);
-  " main-p "->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (" main-p "->msg_id_base != (u16) ~0)
-    " plugin-name "_api_hookup (vam);
-
-  vec_free(name);
-
-  return 0;
-}
 /*
  * fd.io coding-style-patch-verification: " capital-oh-en "
  *

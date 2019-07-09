@@ -385,6 +385,11 @@ I:	vpp
 M:	Dave Barach <dave@barachs.net>
 F:	src/vpp/
 
+Emacs templates
+I:	emacs
+M:	Dave Barach <dave@barachs.net>
+F:	extras/emacs/
+
 Graphical Event Viewer
 I:	g2
 M:	Dave Barach <dave@barachs.net>
