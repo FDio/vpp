@@ -306,25 +306,7 @@ nsim_api_hookup (vat_main_t * vam)
 #undef _
 }
 
-clib_error_t *
-vat_plugin_register (vat_main_t * vam)
-{
-  nsim_test_main_t *sm = &nsim_test_main;
-  u8 *name;
-
-  sm->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "nsim_%08x%c", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (sm->msg_id_base != (u16) ~ 0)
-    nsim_api_hookup (vam);
-
-  vec_free (name);
-
-  return 0;
-}
+VAT_PLUGIN_REGISTER (nsim);
 
 /*
  * fd.io coding-style-patch-verification: ON

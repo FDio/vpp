@@ -154,6 +154,10 @@ vat_plugin_register (vat_main_t * vam)
 
   name = format (0, "stn_%08x%c", api_version, 0);
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+  vec_free (name);
+
+  if (sm->msg_id_base == (u16) ~ 0)
+    return clib_error_return (0, "stn plugin not loaded...");
 
   /* Get the control ping ID */
 #define _(id,n,crc) \
@@ -164,8 +168,6 @@ vat_plugin_register (vat_main_t * vam)
 
   if (sm->msg_id_base != (u16) ~ 0)
     stn_vat_api_hookup (vam);
-
-  vec_free (name);
 
   return 0;
 }

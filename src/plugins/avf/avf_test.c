@@ -202,7 +202,7 @@ _(avf_create, "<pci-address> [rx-queue-size <size>] "		\
 _(avf_delete, "<sw_if_index>")
 
 static void
-avf_vat_api_hookup (vat_main_t * vam)
+avf_api_hookup (vat_main_t * vam)
 {
   avf_test_main_t *avm __attribute__ ((unused)) = &avf_test_main;
 #define _(N,n)                                                  \
@@ -226,24 +226,7 @@ avf_vat_api_hookup (vat_main_t * vam)
 #undef _
 }
 
-clib_error_t *
-vat_plugin_register (vat_main_t * vam)
-{
-  avf_test_main_t *avm = &avf_test_main;
-  u8 *name;
-
-  avm->vat_main = vam;
-
-  name = format (0, "avf_%08x%c", api_version, 0);
-  avm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (avm->msg_id_base != (u16) ~ 0)
-    avf_vat_api_hookup (vam);
-
-  vec_free (name);
-
-  return 0;
-}
+VAT_PLUGIN_REGISTER (avf);
 
 /*
  * fd.io coding-style-patch-verification: ON

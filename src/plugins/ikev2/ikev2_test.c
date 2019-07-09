@@ -807,7 +807,7 @@ _(ikev2_initiate_del_child_sa, "<ispi>")                                \
 _(ikev2_initiate_rekey_child_sa, "<ispi>")
 
 static void
-ikev2_vat_api_hookup (vat_main_t * vam)
+ikev2_api_hookup (vat_main_t * vam)
 {
   ikev2_test_main_t *sm = &ikev2_test_main;
   /* Hook up handlers for replies from the data plane plug-in */
@@ -833,24 +833,7 @@ ikev2_vat_api_hookup (vat_main_t * vam)
 #undef _
 }
 
-clib_error_t *
-vat_plugin_register (vat_main_t * vam)
-{
-  ikev2_test_main_t *sm = &ikev2_test_main;
-  u8 *name;
-
-  sm->vat_main = vam;
-
-  name = format (0, "ikev2_%08x%c", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (sm->msg_id_base != (u16) ~ 0)
-    ikev2_vat_api_hookup (vam);
-
-  vec_free (name);
-
-  return 0;
-}
+VAT_PLUGIN_REGISTER (ikev2);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -206,6 +206,10 @@ vat_plugin_register (vat_main_t * vam)
   /* Ask the vpp engine for the first assigned message-id */
   name = format (0, "lacp_%08x%c", api_version, 0);
   lm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+  vec_free (name);
+
+  if (lm->msg_id_base == (u16) ~ 0)
+    return clib_error_return (0, "lacp plugin not loaded...");
 
   /* Get the control ping ID */
 #define _(id,n,crc) \
@@ -216,8 +220,6 @@ vat_plugin_register (vat_main_t * vam)
 
   if (lm->msg_id_base != (u16) ~ 0)
     lacp_vat_api_hookup (vam);
-
-  vec_free (name);
 
   return 0;
 }

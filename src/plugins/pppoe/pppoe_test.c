@@ -283,7 +283,7 @@ _(pppoe_add_del_session,                                                 \
 _(pppoe_session_dump, "[<intfc> | sw_if_index <nn>]")                    \
 
 static void
-pppoe_vat_api_hookup (vat_main_t *vam)
+pppoe_api_hookup (vat_main_t *vam)
 {
   pppoe_test_main_t * pem = &pppoe_test_main;
   /* Hook up handlers for replies from the data plane plug-in */
@@ -309,22 +309,4 @@ pppoe_vat_api_hookup (vat_main_t *vam)
 #undef _
 }
 
-clib_error_t * vat_plugin_register (vat_main_t *vam)
-{
-  pppoe_test_main_t * pem = &pppoe_test_main;
-
-  u8 * name;
-
-  pem->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "pppoe_%08x%c", api_version, 0);
-  pem->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (pem->msg_id_base != (u16) ~0)
-    pppoe_vat_api_hookup (vam);
-
-  vec_free(name);
-
-  return 0;
-}
+VAT_PLUGIN_REGISTER(pppoe);
