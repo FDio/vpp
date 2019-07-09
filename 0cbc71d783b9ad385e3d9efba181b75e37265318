@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e11cf44e_95dc487e",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-09T13:26:37Z",
+      "side": 1,
+      "message": "Never used.",
+      "range": {
+        "startLine": 264,
+        "startChar": 4,
+        "endLine": 264,
+        "endChar": 20
+      },
+      "revId": "0cbc71d783b9ad385e3d9efba181b75e37265318",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
