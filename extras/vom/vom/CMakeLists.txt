@@ -191,6 +191,8 @@ list(APPEND VOM_SOURCES
   vxlan_gbp_tunnel_cmds.cpp
   vxlan_tunnel_cmds.cpp
   vxlan_tunnel.cpp
+  sr_localsids_cmds.cpp
+  sr_localsids.cpp
 )
 
 if(ACL_FILE)
@@ -295,6 +297,7 @@ list(APPEND VOM_HEADERS
   types.hpp
   api_types.hpp
   vxlan_tunnel.hpp
+  sr_localsids.hpp
 )
 
 add_definitions(-Wall -Werror -std=gnu++11)
