@@ -132,8 +132,7 @@ static int
 fib_urpf_itf_cmp_for_sort (void * v1,
 			   void * v2)
 {
-    fib_node_index_t *i1 = v1, *i2 = v2;
-
+    const adj_index_t *i1 = v1, *i2 = v2;
     return (*i2 < *i1);
 }
 
@@ -151,49 +150,21 @@ fib_urpf_list_bake (index_t ui)
     ASSERT(!(urpf->furpf_flags & FIB_URPF_LIST_BAKED));
 
     if (vec_len(urpf->furpf_itfs) > 1)
-    {
-	u32 i,j;
-
-	/*
-	 * cat list | sort | uniq > rpf_list
-	 */
-	vec_sort_with_function(urpf->furpf_itfs, fib_urpf_itf_cmp_for_sort);
-
-	i = 0, j = 1;
-	while (j < vec_len(urpf->furpf_itfs))
-	{
-	    if (urpf->furpf_itfs[i] == urpf->furpf_itfs[j])
-	    {
-		/*
-		 * the itfacenct entries are the same.
-		 * search forward for a unique one
-		 */
-		while (urpf->furpf_itfs[i] == urpf->furpf_itfs[j] &&
-		       j < vec_len(urpf->furpf_itfs))
-		{
-		    j++;
-		}
-		if (j == vec_len(urpf->furpf_itfs))
-		{
-		    /*
-		     * ran off the end without finding a unique index.
-		     * we are done.
-		     */
-		    break;
-		}
-		else
-		{
-		    urpf->furpf_itfs[i+1] = urpf->furpf_itfs[j];
-		}
-	    }
-	    i++, j++;
-	}
-
-	/*
-	 * set the length of the vector to the number of unique itfs
-	 */
-	_vec_len(urpf->furpf_itfs) = i+1;
-    }
+      {
+        u32 i, j;
+        /*
+         * cat list | sort | uniq > rpf_list
+         */
+        /* sort */
+        vec_sort_with_function(urpf->furpf_itfs, fib_urpf_itf_cmp_for_sort);
+        /* remove duplicates */
+        i = 0;
+        for (j=1; j<vec_len(urpf->furpf_itfs); j++)
+          if (urpf->furpf_itfs[i] != urpf->furpf_itfs[j])
+            urpf->furpf_itfs[++i] = urpf->furpf_itfs[j];
+        /* set the length of the vector to the number of unique itfs */
+        _vec_len(urpf->furpf_itfs) = i+1;
+      }
 
     urpf->furpf_flags |= FIB_URPF_LIST_BAKED;
 }
