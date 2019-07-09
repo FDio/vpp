@@ -262,6 +262,9 @@ class VppTestCase(unittest.TestCase):
     classes. It provides methods to create and run test case.
     """
 
+    # default to waiting up to 2 min after sending SIGTERM
+    terminate_timeout = 120
+
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
 
@@ -612,7 +615,7 @@ class VppTestCase(unittest.TestCase):
                 cls.logger.debug("Sending TERM to vpp")
                 cls.vpp.terminate()
                 cls.logger.debug("Waiting for vpp to die")
-                cls.vpp.communicate()
+                cls.vpp.communicate(timeout=cls.terminate_timeout)
             cls.logger.debug("Deleting class vpp attribute on %s",
                              cls.__name__)
             del cls.vpp
