@@ -423,6 +423,9 @@ test-all-debug:
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_debug,test)
 
+papi-wipe:
+	@make -C test papi-wipe
+
 test-help:
 	@make -C test help
 
