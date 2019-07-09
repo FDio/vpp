@@ -557,11 +557,19 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
 	if (unformat (line_input, "%U", unformat_vlib_node, vm, &node_index))
 	valid_node_name = 1;
       else if (!valid_node_name)
-	error = clib_error_return (0, "unknown node name: '%U'",
-				   format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown node name: '%U'",
+				     format_unformat_error, line_input);
+	  /* consume invalid node name to prevent looping (and eventually
+	   * running out of memory) */
+	  unformat (line_input, "%s", NULL);
+	}
       else
-	error = clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  unformat (line_input, "%s", NULL);
+	}
     }
 
   unformat_free (line_input);
