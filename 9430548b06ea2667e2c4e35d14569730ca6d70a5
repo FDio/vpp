@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "557ea664_9e39d1cf",
+        "filename": "src/vlib/node_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 572,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-07-09T22:15:36Z",
+      "side": 1,
+      "message": "shouldn\u0027t be simpler to just do \"if (error) break;\" here?",
+      "revId": "9430548b06ea2667e2c4e35d14569730ca6d70a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
