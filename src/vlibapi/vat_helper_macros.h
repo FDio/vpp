@@ -109,5 +109,26 @@ do {                                                            \
     }                                                           \
 } while(0);
 
+#define VAT_PLUGIN_REGISTER(plug)                               \
+clib_error_t * vat_plugin_register (vat_main_t *vam)            \
+{                                                               \
+  plug##_test_main_t * mp = &plug##_test_main;                  \
+  u8 * name;                                                    \
+                                                                \
+  mp->vat_main = vam;                                           \
+                                                                \
+  /* Ask the vpp engine for the first assigned message-id */    \
+  name = format (0, #plug "_%08x%c", api_version, 0);           \
+  mp->msg_id_base =                                             \
+      vl_client_get_first_plugin_msg_id ((char *) name);        \
+  vec_free(name);                                               \
+                                                                \
+  if (mp->msg_id_base != (u16) ~0)                              \
+    plug##_api_hookup (vam);                                    \
+  else                                                          \
+    return clib_error_return (0, #plug " plugin not loaded...");\
+  return 0;                                                     \
+}
+
 
 #endif /* __vat_helper_macros_h__ */

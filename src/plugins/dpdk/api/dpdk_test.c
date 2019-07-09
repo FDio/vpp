@@ -77,7 +77,7 @@ _(sw_interface_set_dpdk_hqos_tctbl_reply)
 foreach_standard_reply_retval_handler;
 #undef _
 
-/* 
+/*
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
  */
@@ -336,7 +336,7 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
   return 0;
 }
 
-/* 
+/*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
  */
@@ -361,36 +361,19 @@ static void dpdk_api_hookup (vat_main_t *vam)
                           vl_noop_handler,                      \
                           vl_api_##n##_t_endian,                \
                           vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1); 
+                          sizeof(vl_api_##n##_t), 1);
   foreach_vpe_api_reply_msg;
 #undef _
 
   /* API messages we can send */
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
   foreach_vpe_api_msg;
-#undef _    
-    
+#undef _
+
   /* Help strings */
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
   foreach_vpe_api_msg;
 #undef _
 }
 
-clib_error_t * vat_plugin_register (vat_main_t *vam)
-{
-  dpdk_test_main_t * dm = &dpdk_test_main;
-  u8 * name;
-
-  dm->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "dpdk_%08x%c", api_version, 0);
-  dm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (dm->msg_id_base != (u16) ~0)
-    dpdk_api_hookup (vam);
-  
-  vec_free(name);
-  
-  return 0;
-}
+VAT_PLUGIN_REGISTER(dpdk);

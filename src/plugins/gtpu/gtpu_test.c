@@ -450,7 +450,7 @@ _(gtpu_add_del_tunnel,                                                 \
 _(gtpu_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 
 static void
-gtpu_vat_api_hookup (vat_main_t *vam)
+gtpu_api_hookup (vat_main_t *vam)
 {
   gtpu_test_main_t * gtm = &gtpu_test_main;
   /* Hook up handlers for replies from the data plane plug-in */
@@ -476,22 +476,4 @@ gtpu_vat_api_hookup (vat_main_t *vam)
 #undef _
 }
 
-clib_error_t * vat_plugin_register (vat_main_t *vam)
-{
-  gtpu_test_main_t * gtm = &gtpu_test_main;
-
-  u8 * name;
-
-  gtm->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "gtpu_%08x%c", api_version, 0);
-  gtm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (gtm->msg_id_base != (u16) ~0)
-    gtpu_vat_api_hookup (vam);
-
-  vec_free(name);
-
-  return 0;
-}
+VAT_PLUGIN_REGISTER(gtpu);

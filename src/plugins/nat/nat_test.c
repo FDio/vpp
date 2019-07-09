@@ -1171,11 +1171,12 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   /* Ask the vpp engine for the first assigned message-id */
   name = format (0, "nat_%08x%c", api_version, 0);
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+  vec_free(name);
 
   if (sm->msg_id_base != (u16) ~0)
     snat_vat_api_hookup (vam);
-
-  vec_free(name);
+  else
+    return clib_error_return (0, "nat plugin not loaded...");
 
   return 0;
 }

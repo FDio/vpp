@@ -330,6 +330,10 @@ vat_plugin_register (vat_main_t * vam)
 
   name = format (0, "vmxnet3_%08x%c", api_version, 0);
   vxm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+  vec_free (name);
+
+  if (vxm->msg_id_base == (u16) ~ 0)
+    return clib_error_return (0, "vmxnet3 plugin not loaded...");
 
   /* Get the control ping ID */
 #define _(id,n,crc) \
@@ -338,10 +342,7 @@ vat_plugin_register (vat_main_t * vam)
 #undef _
   vxm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
 
-  if (vxm->msg_id_base != (u16) ~ 0)
-    vmxnet3_vat_api_hookup (vam);
-
-  vec_free (name);
+  vmxnet3_vat_api_hookup (vam);
 
   return 0;
 }

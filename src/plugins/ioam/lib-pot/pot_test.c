@@ -111,7 +111,7 @@ foreach_standard_reply_retval_handler;
 foreach_custom_reply_retval_handler;
 #undef _
 
-/* 
+/*
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
  */
@@ -167,7 +167,7 @@ static int api_pot_profile_add (vat_main_t *vam)
         rv = -99;
         goto OUT;
       }
-    
+
     M2(POT_PROFILE_ADD, mp, vec_len(name));
 
     mp->list_name_len = vec_len(name);
@@ -187,11 +187,11 @@ static int api_pot_profile_add (vat_main_t *vam)
       }
     mp->id = id;
     mp->max_bits = bits;
-      
+
     S(mp);
     W (ret);
     return ret;
-  
+
 OUT:
     vec_free(name);
     return(rv);
@@ -206,7 +206,7 @@ static int api_pot_profile_activate (vat_main_t *vam)
     u8 id = 0;
     int rv = 0;
     int ret;
-    
+
     while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
       {
         if (unformat(input, "name %s", &name))
@@ -223,17 +223,17 @@ static int api_pot_profile_activate (vat_main_t *vam)
         rv = -99;
         goto OUT;
       }
-    
+
     M2(POT_PROFILE_ACTIVATE, mp, vec_len(name));
 
     mp->list_name_len = vec_len(name);
     clib_memcpy(mp->list_name, name, mp->list_name_len);
     mp->id = id;
-      
+
     S(mp);
     W (ret);
     return ret;
-  
+
 OUT:
     vec_free(name);
     return(rv);
@@ -244,7 +244,7 @@ static int api_pot_profile_del (vat_main_t *vam)
 {
     vl_api_pot_profile_del_t *mp;
     int ret;
-   
+
     M(POT_PROFILE_DEL, mp);
     mp->list_name_len = 0;
     S(mp);
@@ -274,7 +274,7 @@ static int api_pot_profile_show_config_dump (vat_main_t *vam)
     return ret;
 }
 
-/* 
+/*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
  */
@@ -287,7 +287,7 @@ _(pot_profile_activate, "name <name> id [0-1] ")    			\
 _(pot_profile_del, "[id <nn>]")                                         \
 _(pot_profile_show_config_dump, "id [0-1]")
 
-static void 
+static void
 pot_vat_api_hookup (vat_main_t *vam)
 {
     pot_test_main_t * sm = &pot_test_main;
@@ -299,20 +299,21 @@ pot_vat_api_hookup (vat_main_t *vam)
                            vl_noop_handler,                     \
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1); 
+                           sizeof(vl_api_##n##_t), 1);
     foreach_vpe_api_reply_msg;
 #undef _
 
     /* API messages we can send */
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
     foreach_vpe_api_msg;
-#undef _    
-    
+#undef _
+
     /* Help strings */
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
     foreach_vpe_api_msg;
 #undef _
 }
+
 
 clib_error_t *
 pot_vat_plugin_register (vat_main_t *vam)
@@ -324,11 +325,12 @@ pot_vat_plugin_register (vat_main_t *vam)
 
   name = format (0, "ioam_pot_%08x%c", api_version, 0);
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+  vec_free(name);
 
   if (sm->msg_id_base != (u16) ~0)
     pot_vat_api_hookup (vam);
-  
-  vec_free(name);
-  
+  else
+    return clib_error_return (0, "ioam_pot plugin not loaded...");
+
   return 0;
 }

@@ -33,19 +33,19 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* define message structures */
 #define vl_typedefs
-#include <sample/sample_all_api_h.h> 
+#include <sample/sample_all_api_h.h>
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun             /* define message structures */
-#include <sample/sample_all_api_h.h> 
+#include <sample/sample_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <sample/sample_all_api_h.h> 
+#include <sample/sample_all_api_h.h>
 #undef vl_printfun
 
 /* Get the API version number. */
@@ -81,7 +81,7 @@ _(sample_macswap_enable_disable_reply)
 foreach_standard_reply_retval_handler;
 #undef _
 
-/* 
+/*
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
  */
@@ -108,12 +108,12 @@ static int api_sample_macswap_enable_disable (vat_main_t * vam)
         else
             break;
     }
-    
+
     if (sw_if_index == ~0) {
         errmsg ("missing interface name / explicit sw_if_index number \n");
         return -99;
     }
-    
+
     /* Construct the API message */
     M(SAMPLE_MACSWAP_ENABLE_DISABLE, mp);
     mp->sw_if_index = ntohl (sw_if_index);
@@ -127,7 +127,7 @@ static int api_sample_macswap_enable_disable (vat_main_t * vam)
     return ret;
 }
 
-/* 
+/*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
  */
@@ -145,35 +145,19 @@ static void sample_api_hookup (vat_main_t *vam)
                            vl_noop_handler,                     \
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1); 
+                           sizeof(vl_api_##n##_t), 1);
     foreach_vpe_api_reply_msg;
 #undef _
 
     /* API messages we can send */
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
     foreach_vpe_api_msg;
-#undef _    
-    
+#undef _
+
     /* Help strings */
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
     foreach_vpe_api_msg;
 #undef _
 }
 
-clib_error_t * vat_plugin_register (vat_main_t *vam)
-{
-  sample_test_main_t * sm = &sample_test_main;
-  u8 * name;
-
-  sm->vat_main = vam;
-
-  name = format (0, "sample_%08x%c", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (sm->msg_id_base != (u16) ~0)
-    sample_api_hookup (vam);
-  
-  vec_free(name);
-  
-  return 0;
-}
+VAT_PLUGIN_REGISTER(sample);

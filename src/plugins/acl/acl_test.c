@@ -1489,7 +1489,7 @@ _(acl_plugin_get_conn_table_max_entries, "")
 
 
 static
-void acl_vat_api_hookup (vat_main_t *vam)
+void acl_api_hookup (vat_main_t *vam)
 {
     acl_test_main_t * sm = &acl_test_main;
     /* Hook up handlers for replies from the data plane plug-in */
@@ -1515,20 +1515,4 @@ void acl_vat_api_hookup (vat_main_t *vam)
 #undef _
 }
 
-clib_error_t * vat_plugin_register (vat_main_t *vam)
-{
-  acl_test_main_t * sm = &acl_test_main;
-  u8 * name;
-
-  sm->vat_main = vam;
-
-  name = format (0, "acl_%08x%c", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-
-  if (sm->msg_id_base != (u16) ~0)
-    acl_vat_api_hookup (vam);
-
-  vec_free(name);
-
-  return 0;
-}
+VAT_PLUGIN_REGISTER(acl);
