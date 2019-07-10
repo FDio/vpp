@@ -111,6 +111,11 @@ typedef struct punt_client_db_t_
   void *clients_by_ip_proto;
 } punt_client_db_t;
 
+typedef struct punt_thread_data_t_
+{
+  struct iovec *iovecs;
+} punt_thread_data_t;
+
 typedef struct
 {
   int socket_fd;
@@ -122,6 +127,7 @@ typedef struct
   vlib_node_t *interface_output_node;
   u32 *ready_fds;
   u32 *rx_buffers;
+  punt_thread_data_t *thread_data;
   vlib_punt_hdl_t hdl;
 } punt_main_t;
 
