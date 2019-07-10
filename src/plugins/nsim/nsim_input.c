@@ -127,7 +127,7 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (is_trace)
 	    {
-	      b0 = vlib_get_buffer (vm, ep->buffer_index);
+	      b0 = vlib_get_buffer (vm, bi0);
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
 		  nsim_tx_trace_t *t =

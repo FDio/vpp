@@ -162,7 +162,7 @@ nsim_inline (vlib_main_t * vm,
 	  ep->rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	  if (is_cross_connect)
 	    {
-	      ep->tx_sw_if_index =
+	      ep->tx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
 		(vnet_buffer (b[0])->sw_if_index[VLIB_RX] ==
 		 nsm->sw_if_index0) ? nsm->sw_if_index1 : nsm->sw_if_index0;
 	      ep->output_next_index =
@@ -204,7 +204,7 @@ nsim_inline (vlib_main_t * vm,
 	  ep->rx_sw_if_index = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
 	  if (is_cross_connect)
 	    {
-	      ep->tx_sw_if_index =
+	      ep->tx_sw_if_index = vnet_buffer (b[1])->sw_if_index[VLIB_TX] =
 		(vnet_buffer (b[1])->sw_if_index[VLIB_RX] ==
 		 nsm->sw_if_index0) ? nsm->sw_if_index1 : nsm->sw_if_index0;
 	      ep->output_next_index =
@@ -245,7 +245,7 @@ nsim_inline (vlib_main_t * vm,
 	  ep->rx_sw_if_index = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
 	  if (is_cross_connect)
 	    {
-	      ep->tx_sw_if_index =
+	      ep->tx_sw_if_index = vnet_buffer (b[2])->sw_if_index[VLIB_TX] =
 		(vnet_buffer (b[2])->sw_if_index[VLIB_RX] ==
 		 nsm->sw_if_index0) ? nsm->sw_if_index1 : nsm->sw_if_index0;
 	      ep->output_next_index =
@@ -286,7 +286,7 @@ nsim_inline (vlib_main_t * vm,
 	  ep->rx_sw_if_index = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
 	  if (is_cross_connect)
 	    {
-	      ep->tx_sw_if_index =
+	      ep->tx_sw_if_index = vnet_buffer (b[3])->sw_if_index[VLIB_TX] =
 		(vnet_buffer (b[3])->sw_if_index[VLIB_RX] ==
 		 nsm->sw_if_index0) ? nsm->sw_if_index1 : nsm->sw_if_index0;
 	      ep->output_next_index =
@@ -362,7 +362,7 @@ slow_path:
 	  ep->rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	  if (is_cross_connect)
 	    {
-	      ep->tx_sw_if_index =
+	      ep->tx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
 		(vnet_buffer (b[0])->sw_if_index[VLIB_RX] ==
 		 nsm->sw_if_index0) ? nsm->sw_if_index1 : nsm->sw_if_index0;
 	      ep->output_next_index =

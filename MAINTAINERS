@@ -366,6 +366,7 @@ M:	Dave Barach <dave@barachs.net>
 F:      src/plugins/mactime/
 
 Plugin - Network Delay Simulator
+I:	nsim
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 
