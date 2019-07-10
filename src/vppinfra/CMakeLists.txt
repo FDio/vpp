@@ -123,6 +123,7 @@ set(VPPINFRA_HEADERS
   hash.h
   heap.h
   lb_hash_hash.h
+  llist.h
   lock.h
   longjmp.h
   macros.h
