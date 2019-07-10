@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "56679222_c8e0d455",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 1823
+      },
+      "writtenOn": "2019-07-10T07:59:39Z",
+      "side": 1,
+      "message": "u64 prior_delivered;\t\t/**\u003c Delivered of sample used for rate */\n\nThis comment could be improved, e.g. \"bytes delivered\" at prior_time\n\nAlso as a general comment it would be good to indicate the units in the comments (i.e. these are bytes rather than packets)",
+      "range": {
+        "startLine": 261,
+        "startChar": 2,
+        "endLine": 261,
+        "endChar": 65
+      },
+      "revId": "c80ad26dbb7bc02ef4d6b47312a1c37613ee6df6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
