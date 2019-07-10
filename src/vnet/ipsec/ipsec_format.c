@@ -187,13 +187,11 @@ format_ipsec_policy (u8 * s, va_list * args)
   s = format (s, "\n     local addr range %U - %U port range %u - %u",
 	      format_ip46_address, &p->laddr.start, ip_type,
 	      format_ip46_address, &p->laddr.stop, ip_type,
-	      clib_net_to_host_u16 (p->lport.start),
-	      clib_net_to_host_u16 (p->lport.stop));
+              p->lport.start, p->lport.stop);
   s = format (s, "\n     remote addr range %U - %U port range %u - %u",
 	      format_ip46_address, &p->raddr.start, ip_type,
 	      format_ip46_address, &p->raddr.stop, ip_type,
-	      clib_net_to_host_u16 (p->rport.start),
-	      clib_net_to_host_u16 (p->rport.stop));
+              p->rport.start, p->rport.stop);
 
   vlib_get_combined_counter (&ipsec_spd_policy_counters, pi, &counts);
   s = format (s, "\n     packets %u bytes %u", counts.packets, counts.bytes);
