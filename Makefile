@@ -605,6 +605,7 @@ verify: install-dep $(BR)/.deps.ok install-ext-deps
 	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
+	@make vom-pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-18.04)
 	$(call banner,"Running tests")
 	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
