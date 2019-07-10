@@ -77,10 +77,28 @@ memif_msg_enq_ack (memif_if_t * mif)
   e->fd = -1;
 }
 
+static void
+memif_msg_strlcpy (u8 * dest, u32 len, const u8 * src)
+{
+  len = clib_min (len - 1, vec_len (src));
+  memcpy (dest, src, len);
+  dest[len] = '\0';
+}
+
+static void
+memif_msg_snprintf (u8 * dest, u32 len, const char *fmt, ...)
+{
+  va_list va;
+  va_start (va, fmt);
+  u8 *s = va_format (0, fmt, &va);
+  va_end (va);
+  memif_msg_strlcpy (dest, len, s);
+  vec_free (s);
+}
+
 static clib_error_t *
 memif_msg_enq_hello (clib_socket_t * sock)
 {
-  u8 *s;
   memif_msg_t msg = { 0 };
   memif_msg_hello_t *h = &msg.hello;
   msg.type = MEMIF_MSG_TYPE_HELLO;
@@ -90,16 +108,13 @@ memif_msg_enq_hello (clib_socket_t * sock)
   h->max_s2m_ring = MEMIF_MAX_S2M_RING;
   h->max_region = MEMIF_MAX_REGION;
   h->max_log2_ring_size = MEMIF_MAX_LOG2_RING_SIZE;
-  s = format (0, "VPP %s%c", VPP_BUILD_VER, 0);
-  strncpy ((char *) h->name, (char *) s, sizeof (h->name) - 1);
-  vec_free (s);
+  memif_msg_snprintf (h->name, sizeof (h->name), "VPP %s", VPP_BUILD_VER);
   return clib_socket_sendmsg (sock, &msg, sizeof (memif_msg_t), 0, 0);
 }
 
 static void
 memif_msg_enq_init (memif_if_t * mif)
 {
-  u8 *s;
   memif_msg_fifo_elt_t *e;
   clib_fifo_add2 (mif->msg_queue, e);
   memif_msg_init_t *i = &e->msg.init;
@@ -109,12 +124,9 @@ memif_msg_enq_init (memif_if_t * mif)
   i->version = MEMIF_VERSION;
   i->id = mif->id;
   i->mode = mif->mode;
-  s = format (0, "VPP %s%c", VPP_BUILD_VER, 0);
-  strncpy ((char *) i->name, (char *) s, sizeof (i->name) - 1);
+  memif_msg_snprintf (i->name, sizeof (i->name), "VPP %s", VPP_BUILD_VER);
   if (mif->secret)
-    strncpy ((char *) i->secret, (char *) mif->secret,
-	     sizeof (i->secret) - 1);
-  vec_free (s);
+    memif_msg_strlcpy (i->secret, sizeof (i->secret), mif->secret);
 }
 
 static void
@@ -162,13 +174,11 @@ memif_msg_enq_connect (memif_if_t * mif)
   memif_msg_fifo_elt_t *e;
   clib_fifo_add2 (mif->msg_queue, e);
   memif_msg_connect_t *c = &e->msg.connect;
-  u8 *s;
 
   e->msg.type = MEMIF_MSG_TYPE_CONNECT;
   e->fd = -1;
-  s = format (0, "%U%c", format_memif_device_name, mif->dev_instance, 0);
-  strncpy ((char *) c->if_name, (char *) s, sizeof (c->if_name) - 1);
-  vec_free (s);
+  memif_msg_snprintf (c->if_name, sizeof (c->if_name), "%U",
+		      format_memif_device_name, mif->dev_instance);
 }
 
 static void
@@ -177,13 +187,11 @@ memif_msg_enq_connected (memif_if_t * mif)
   memif_msg_fifo_elt_t *e;
   clib_fifo_add2 (mif->msg_queue, e);
   memif_msg_connected_t *c = &e->msg.connected;
-  u8 *s;
 
   e->msg.type = MEMIF_MSG_TYPE_CONNECTED;
   e->fd = -1;
-  s = format (0, "%U%c", format_memif_device_name, mif->dev_instance, 0);
-  strncpy ((char *) c->if_name, (char *) s, sizeof (c->if_name) - 1);
-  vec_free (s);
+  memif_msg_snprintf (c->if_name, sizeof (c->if_name), "%U",
+		      format_memif_device_name, mif->dev_instance);
 }
 
 clib_error_t *
@@ -194,7 +202,7 @@ memif_msg_send_disconnect (memif_if_t * mif, clib_error_t * err)
   memif_msg_disconnect_t *d = &msg.disconnect;
 
   d->code = err->code;
-  strncpy ((char *) d->string, (char *) err->what, sizeof (d->string) - 1);
+  memif_msg_strlcpy (d->string, sizeof (d->string), err->what);
 
   return clib_socket_sendmsg (mif->sock, &msg, sizeof (memif_msg_t), 0, 0);
 }
