@@ -763,6 +763,7 @@ ip_punt_init (vlib_main_t * vm)
 {
   clib_error_t *error = NULL;
   punt_main_t *pm = &punt_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   pm->is_configured = false;
   pm->interface_output_node =
@@ -772,6 +773,9 @@ ip_punt_init (vlib_main_t * vm)
     return error;
 
   pm->hdl = vlib_punt_client_register ("ip-punt");
+
+  vec_validate_aligned (pm->thread_data, tm->n_vlib_mains,
+			CLIB_CACHE_LINE_BYTES);
 
   return (error);
 }
