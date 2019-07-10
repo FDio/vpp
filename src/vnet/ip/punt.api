@@ -131,18 +131,21 @@ autoreply define punt_socket_deregister {
     vl_api_punt_t punt;
 };
 
-/** \brief Dump all of the excpetion punt reasons
+typedef punt_reason
+{
+    u32 id;
+    string name;
+};
+
+/** \brief Dump all or one of the excpetion punt reasons
+*   @param - If the string is not set punt dump all reasons
+*            else dump only the one specified
 */
 define punt_reason_dump
 {
     u32 client_index;
     u32 context;
-};
-
-typedef punt_reason
-{
-    u32 id;
-    string name;
+    vl_api_punt_reason_t reason;
 };
 
 define punt_reason_details

@@ -74,7 +74,8 @@ ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
       b->error = node->errors[IPSEC_IF_INPUT_ERROR_SPI_0];
       b->punt_reason =
 	ipsec_punt_reason[(ip4->protocol == IP_PROTOCOL_UDP ?
-			   IPSEC_PUNT_IP4_SPI_UDP_0 : IPSEC_PUNT_IP4_SPI_0)];
+			   IPSEC_PUNT_IP4_SPI_UDP_0 :
+			   IPSEC_PUNT_IP4_NO_SUCH_TUNNEL)];
     }
   else
     {
@@ -90,16 +91,9 @@ ipsec_ip6_if_no_tunnel (vlib_node_runtime_t * node,
 			vlib_buffer_t * b,
 			const esp_header_t * esp, u16 offset)
 {
-  if (PREDICT_FALSE (0 == esp->spi))
-    {
-      b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
-      b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_SPI_0];
-    }
-  else
-    {
-      b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
-      b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
-    }
+  b->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+  b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
+
   vlib_buffer_advance (b, -offset);
   return (IPSEC_INPUT_NEXT_PUNT);
 }
