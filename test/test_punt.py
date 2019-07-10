@@ -823,7 +823,6 @@ class TestExceptionPuntSocket(TestPuntSocket):
         #
         cfgs = dict()
         cfgs['ipsec4-no-such-tunnel'] = {'spi': 99, 'udp': False}
-        cfgs['ipsec4-spi-0'] = {'spi': 0, 'udp': False}
         cfgs['ipsec4-spi-o-udp-0'] = {'spi': 0, 'udp': True}
 
         #
@@ -1068,6 +1067,24 @@ class TestPunt(VppTestCase):
         """ Exception Path testing """
 
         #
+        # dump the punt registered reasons
+        #  search for a few we know should be there
+        #
+        rs = self.vapi.punt_reason_dump()
+
+        reasons = ["ipsec6-no-such-tunnel",
+                   "ipsec4-no-such-tunnel",
+                   "ipsec4-spi-o-udp-0"]
+
+        for reason in reasons:
+            found = False
+            for r in rs:
+                if r.reason.name == reason:
+                    found = True
+                    break
+            self.assertTrue(found)
+
+        #
         # Using the test CLI we will hook in a exception path to
         # send ACL deny packets out of pg0 and pg1.
         # the ACL is src,dst = 1.1.1.1,1.1.1.2
@@ -1101,6 +1118,14 @@ class TestPunt(VppTestCase):
         self.vapi.cli("test punt pg2")
 
         #
+        # dump the punt reasons to learn the IDs assigned
+        #
+        rs = self.vapi.punt_reason_dump(reason={'name': "reason-v4"})
+        r4 = rs[0].reason.id
+        rs = self.vapi.punt_reason_dump(reason={'name': "reason-v6"})
+        r6 = rs[0].reason.id
+
+        #
         # pkts now dropped
         #
         self.send_and_assert_no_replies(self.pg2, p4*NUM_PKTS)
@@ -1117,8 +1142,8 @@ class TestPunt(VppTestCase):
         self.assertEqual(stats, 2*NUM_PKTS)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][7]['packets'], NUM_PKTS)
-        self.assertEqual(stats[0][8]['packets'], NUM_PKTS)
+        self.assertEqual(stats[0][r4]['packets'], NUM_PKTS)
+        self.assertEqual(stats[0][r6]['packets'], NUM_PKTS)
 
         #
         # use the test CLI to test a client that punts exception
@@ -1145,8 +1170,8 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][7]['packets'], 2*NUM_PKTS)
-        self.assertEqual(stats[0][8]['packets'], 2*NUM_PKTS)
+        self.assertEqual(stats[0][r4]['packets'], 2*NUM_PKTS)
+        self.assertEqual(stats[0][r6]['packets'], 2*NUM_PKTS)
 
         #
         # add another registration for the same reason to send packets
@@ -1192,33 +1217,14 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][7]['packets'], 3*NUM_PKTS)
-        self.assertEqual(stats[0][8]['packets'], 3*NUM_PKTS)
+        self.assertEqual(stats[0][r4]['packets'], 3*NUM_PKTS)
+        self.assertEqual(stats[0][r6]['packets'], 3*NUM_PKTS)
 
         self.logger.info(self.vapi.cli("show vlib graph punt-dispatch"))
         self.logger.info(self.vapi.cli("show punt client"))
         self.logger.info(self.vapi.cli("show punt reason"))
         self.logger.info(self.vapi.cli("show punt stats"))
         self.logger.info(self.vapi.cli("show punt db"))
-
-        #
-        # dump the punt registered reasons
-        #  search for a few we know should be there
-        #
-        rs = self.vapi.punt_reason_dump()
-
-        reasons = ["ipsec6-no-such-tunnel",
-                   "ipsec4-no-such-tunnel",
-                   "ipsec6-spi-0",
-                   "ipsec4-spi-0"]
-
-        for reason in reasons:
-            found = False
-            for r in rs:
-                if r.reason.name == reason:
-                    found = True
-                    break
-            self.assertTrue(found)
 
 
 if __name__ == '__main__':
