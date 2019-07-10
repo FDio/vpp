@@ -2036,7 +2036,7 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
       rmp = vl_msg_api_alloc (len);
       clib_memset (rmp, 0, len);
 
-      sp = (void *) &m->locals +
+      sp = (void *) &rmp->locals +
 	sizeof (vl_api_nat44_lb_addr_port_t) * pool_elts (m->locals);
       vl_api_to_api_string (vec_len (m->tag), (char *) m->tag, sp);
     }
