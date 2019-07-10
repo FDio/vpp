@@ -52,11 +52,14 @@ gbp_endpoint_group_get (index_t i)
 }
 
 void
-gbp_endpoint_group_lock (index_t i)
+gbp_endpoint_group_lock (index_t ggi)
 {
   gbp_endpoint_group_t *gg;
 
-  gg = gbp_endpoint_group_get (i);
+  if (INDEX_INVALID == ggi)
+    return;
+
+  gg = gbp_endpoint_group_get (ggi);
   gg->gg_locks++;
 }
 

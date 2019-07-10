@@ -498,18 +498,12 @@ gbp_endpoint_loc_update (const gbp_endpoint_t * ge,
 
   gbp_endpoint_n_learned (is_learnt - was_learnt);
 
-  if (INDEX_INVALID == gel->gel_epg)
-    {
-      gel->gel_epg = ggi;
-      if (INDEX_INVALID != gel->gel_epg)
-	{
-	  gbp_endpoint_group_lock (gel->gel_epg);
-	}
-    }
-  else
-    {
-      ASSERT (gel->gel_epg == ggi);
-    }
+  /*
+   * update the EPG
+   */
+  gbp_endpoint_group_lock (ggi);
+  gbp_endpoint_group_unlock (gel->gel_epg);
+  gel->gel_epg = ggi;
 
   if (gel->gel_flags & GBP_ENDPOINT_FLAG_REMOTE)
     {
