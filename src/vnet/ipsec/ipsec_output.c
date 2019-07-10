@@ -82,16 +82,16 @@ ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
     if (PREDICT_FALSE (p->protocol && (p->protocol != pr)))
       continue;
 
-    if (ra < p->raddr.start.ip4.as_u32)
+    if (ra < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
       continue;
 
-    if (ra > p->raddr.stop.ip4.as_u32)
+    if (ra > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
       continue;
 
-    if (la < p->laddr.start.ip4.as_u32)
+    if (la < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
       continue;
 
-    if (la > p->laddr.stop.ip4.as_u32)
+    if (la > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
       continue;
 
     if (PREDICT_FALSE
@@ -246,8 +246,10 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  p0 = ipsec6_output_policy_match (spd0,
 					   &ip6_0->src_address,
 					   &ip6_0->dst_address,
-					   udp0->src_port,
-					   udp0->dst_port, ip6_0->protocol);
+					   clib_net_to_host_u16
+					   (udp0->src_port),
+					   clib_net_to_host_u16
+					   (udp0->dst_port), ip6_0->protocol);
 	}
       else
 	{
@@ -263,9 +265,14 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 #endif
 
 	  p0 = ipsec_output_policy_match (spd0, ip0->protocol,
-					  ip0->src_address.as_u32,
-					  ip0->dst_address.as_u32,
-					  udp0->src_port, udp0->dst_port);
+					  clib_net_to_host_u32
+					  (ip0->src_address.as_u32),
+					  clib_net_to_host_u32
+					  (ip0->dst_address.as_u32),
+					  clib_net_to_host_u16
+					  (udp0->src_port),
+					  clib_net_to_host_u16
+					  (udp0->dst_port));
 	}
       tcp0 = (void *) udp0;
 
