@@ -179,6 +179,28 @@ gbp_learn_get_outer (const ethernet_header_t * eh0,
   *outer_dst = ip0->dst_address;
 }
 
+always_inline int
+gbp_endpoint_update_required (const gbp_endpoint_t * ge0,
+			      u32 rx_sw_if_index, sclass_t sclass)
+{
+  /* Conditions for [re]learning this EP */
+
+  /* 1. it doesn't have a dataplane source */
+  if (!gbp_endpoint_is_learnt (ge0))
+    return (!0);
+
+  /* 2. has the input interface changed */
+  if (gbp_itf_get_sw_if_index (ge0->ge_fwd.gef_itf) != rx_sw_if_index)
+    return (!0);
+
+  /* 3. has the sclass changed */
+  if (sclass != ge0->ge_fwd.gef_sclass)
+    return (!0);
+
+  /* otherwise it's unchanged */
+  return (0);
+}
+
 VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame)
@@ -246,7 +268,7 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 	   * check for new EP or a moved EP
 	   */
 	  if (NULL == ge0 ||
-	      gbp_itf_get_sw_if_index (ge0->ge_fwd.gef_itf) != sw_if_index0)
+	      gbp_endpoint_update_required (ge0, sw_if_index0, sclass0))
 	    {
 	      /*
 	       * use the last 4 bytes of the mac address as the hash for the EP
@@ -543,7 +565,8 @@ gbp_learn_l3 (vlib_main_t * vm,
 
 	      ge0 = gbp_endpoint_find_ip6 (&ip6_0->src_address, fib_index0);
 
-	      if ((NULL == ge0) || !gbp_endpoint_is_learnt (ge0))
+	      if ((NULL == ge0) ||
+		  gbp_endpoint_update_required (ge0, sw_if_index0, sclass0))
 		{
 		  t0 = throttle_check (&glm->gl_l3_throttle,
 				       thread_index,
@@ -576,7 +599,8 @@ gbp_learn_l3 (vlib_main_t * vm,
 	      gbp_learn_get_outer (eth0, &outer_src, &outer_dst);
 	      ge0 = gbp_endpoint_find_ip4 (&ip4_0->src_address, fib_index0);
 
-	      if ((NULL == ge0) || !gbp_endpoint_is_learnt (ge0))
+	      if ((NULL == ge0) ||
+		  gbp_endpoint_update_required (ge0, sw_if_index0, sclass0))
 		{
 		  t0 = throttle_check (&glm->gl_l3_throttle, thread_index,
 				       ip4_0->src_address.as_u32, seed);
