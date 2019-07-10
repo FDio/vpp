@@ -234,6 +234,11 @@ F:	src/vnet/tls
 F:	src/plugins/tlsopenssl
 F:	src/plugins/tlsmbedtls
 
+VNET SYSLOG
+I:	syslog
+M:	Matus Fabian <matfabia@cisco.com>
+F:	src/vnet/syslog
+
 Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
 M:	Neale Ranns <nranns@cisco.com>

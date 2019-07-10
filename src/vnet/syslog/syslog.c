@@ -72,7 +72,7 @@ format_syslog_structured_data (u8 * s, va_list * args)
   if (vec_len (sds))
     {
       for (i = 0; i < vec_len (sds); i++)
-	s = format (s, "[%s]", sds[i]);
+	s = format (s, "[%v]", sds[i]);
     }
   /* if zero structured data elemts field must contain NILVALUE */
   else
