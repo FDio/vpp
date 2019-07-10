@@ -223,6 +223,7 @@ typedef struct
 {
   punt_client_t client;
   u8 is_midchain;
+  u8 packet_data[64];
 } udp_punt_trace_t;
 
 static u8 *
@@ -238,6 +239,9 @@ format_udp_punt_trace (u8 * s, va_list * args)
       s = format (s, "\n%U(buffer is part of chain)", format_white_space,
 		  indent);
     }
+  s = format (s, "\n%U%U", format_white_space, indent,
+	      format_hex_bytes, t->packet_data, sizeof (t->packet_data));
+
   return s;
 }
 
@@ -325,13 +329,6 @@ punt_socket_inline (vlib_main_t * vm,
 
       struct sockaddr_un *caddr = &c->caddr;
 
-      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  udp_punt_trace_t *t;
-	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
-	  clib_memcpy_fast (&t->client, c, sizeof (t->client));
-	}
-
       /* Re-set iovecs if present. */
       if (iovecs)
 	_vec_len (iovecs) = 0;
@@ -348,6 +345,16 @@ punt_socket_inline (vlib_main_t * vm,
       vec_add2 (iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
+
+      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  udp_punt_trace_t *t;
+	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
+	  clib_memcpy_fast (&t->client, c, sizeof (t->client));
+	  clib_memcpy_fast (t->packet_data,
+			    vlib_buffer_get_current (b),
+			    sizeof (t->packet_data));
+	}
 
       if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
