@@ -264,7 +264,6 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
   vnet_main_t *vnm = va_arg (*va, vnet_main_t *);
   ethernet_arp_ip4_entry_t *e = va_arg (*va, ethernet_arp_ip4_entry_t *);
   vnet_sw_interface_t *si;
-  u8 *flags = 0;
 
   if (!e)
     return format (s, "%=12s%=16s%=6s%=20s%=24s", "Time", "IP4",
@@ -272,24 +271,12 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
 
   si = vnet_get_sw_interface (vnm, e->sw_if_index);
 
-  if (e->flags & IP_NEIGHBOR_FLAG_STATIC)
-    flags = format (flags, "S");
-
-  if (e->flags & IP_NEIGHBOR_FLAG_DYNAMIC)
-    flags = format (flags, "D");
-
-  if (e->flags & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY)
-    flags = format (flags, "N");
-
-  s = format (s, "%=12U%=16U%=6s%=20U%U",
-	      format_vlib_time, vnm->vlib_main, e->time_last_updated,
-	      format_ip4_address, &e->ip4_address,
-	      flags ? (char *) flags : "",
-	      format_mac_address_t, &e->mac,
-	      format_vnet_sw_interface_name, vnm, si);
-
-  vec_free (flags);
-  return s;
+  return format (s, "%=12U%=16U%=6U%=20U%U",
+		 format_vlib_time, vnm->vlib_main, e->time_last_updated,
+		 format_ip4_address, &e->ip4_address,
+		 format_ip_neighbor_flags, e->flags,
+		 format_mac_address_t, &e->mac,
+		 format_vnet_sw_interface_name, vnm, si);
 }
 
 typedef struct
