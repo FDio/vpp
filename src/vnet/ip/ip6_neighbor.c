@@ -358,10 +358,10 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
     flags = format (flags, "N");
 
   si = vnet_get_sw_interface (vnm, n->key.sw_if_index);
-  s = format (s, "%=12U%=45U%=6s%=20U%=40U",
+  s = format (s, "%=12U%=45U%=6v%=20U%=40U",
 	      format_vlib_time, vm, n->time_last_updated,
 	      format_ip6_address, &n->key.ip6_address,
-	      flags ? (char *) flags : "",
+	      flags,
 	      format_mac_address_t, &n->mac,
 	      format_vnet_sw_interface_name, vnm, si);
 
