@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "115c1db1_ac844ce6",
+        "filename": "src/vlib/pci/pci.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-10T12:40:38Z",
+      "side": 1,
+      "message": "remove this include.",
+      "revId": "61e00ab42e000e61b5ad095481a78fc982752ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37bf2bcf_339ec7c9",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-10T12:40:38Z",
+      "side": 1,
+      "message": "remove this include.",
+      "revId": "61e00ab42e000e61b5ad095481a78fc982752ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
