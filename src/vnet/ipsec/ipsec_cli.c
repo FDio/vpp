@@ -291,16 +291,12 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	{
 	  p.lport.start = tmp;
 	  p.lport.stop = tmp2;
-	  p.lport.start = clib_host_to_net_u16 (p.lport.start);
-	  p.lport.stop = clib_host_to_net_u16 (p.lport.stop);
 	}
       else
 	if (unformat (line_input, "remote-port-range %u - %u", &tmp, &tmp2))
 	{
 	  p.rport.start = tmp;
 	  p.rport.stop = tmp2;
-	  p.rport.start = clib_host_to_net_u16 (p.rport.start);
-	  p.rport.stop = clib_host_to_net_u16 (p.rport.stop);
 	}
       else
 	{
