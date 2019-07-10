@@ -281,10 +281,10 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
   if (e->flags & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY)
     flags = format (flags, "N");
 
-  s = format (s, "%=12U%=16U%=6s%=20U%U",
+  s = format (s, "%=12U%=16U%=6v%=20U%U",
 	      format_vlib_time, vnm->vlib_main, e->time_last_updated,
 	      format_ip4_address, &e->ip4_address,
-	      flags ? (char *) flags : "",
+	      flags,
 	      format_mac_address_t, &e->mac,
 	      format_vnet_sw_interface_name, vnm, si);
 
