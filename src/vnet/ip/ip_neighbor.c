@@ -47,6 +47,23 @@ typedef struct
 
 static ip_neighbor_scan_config_t ip_neighbor_scan_conf;
 
+u8 *
+format_ip_neighbor_flags (u8 * s, va_list * args)
+{
+  const ip_neighbor_flags_t flags = va_arg (*args, int);
+
+  if (flags & IP_NEIGHBOR_FLAG_STATIC)
+    s = format (s, "S");
+
+  if (flags & IP_NEIGHBOR_FLAG_DYNAMIC)
+    s = format (s, "D");
+
+  if (flags & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY)
+    s = format (s, "N");
+
+  return s;
+}
+
 int
 ip_neighbor_add (const ip46_address_t * ip,
 		 ip46_type_t type,
