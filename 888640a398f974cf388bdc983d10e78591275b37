@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cada64b5_f531a818",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-10T12:41:47Z",
+      "side": 0,
+      "message": "try not to make these whitespace only changes.",
+      "revId": "888640a398f974cf388bdc983d10e78591275b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
