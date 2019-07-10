@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6bdf43c0_56056331",
+        "filename": "src/vnet/ip/ip6_neighbor.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-10T14:39:17Z",
+      "side": 1,
+      "message": "you could write a format_ip_neighbor_flags instead and reuse in the ARP case too.",
+      "revId": "57748611474af6ace608c24474d8b5f9537fdea8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
