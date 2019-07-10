@@ -111,6 +111,11 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  to_next += 1;
 	  n_left_to_next -= 1;
 
+	  /* setup tx sw_if_index for nsim_cross_connect case */
+	  b0 = vlib_get_buffer (vm, bi0);
+	  if (vnet_buffer (b0)->sw_if_index[VLIB_TX] == ~0)
+	    vnet_buffer (b0)->sw_if_index[VLIB_TX] = ep->tx_sw_if_index;
+
 	  next0 = ep->output_next_index;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -127,7 +132,6 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (is_trace)
 	    {
-	      b0 = vlib_get_buffer (vm, ep->buffer_index);
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
 		  nsim_tx_trace_t *t =
