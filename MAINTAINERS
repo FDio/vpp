@@ -400,10 +400,15 @@ I:	vmxnet3
 M:	Steven Luong <sluong@cisco.com>
 F:	src/plugins/vmxnet3/
 
-Binary API Compiler
+Binary API Compiler for Python
 I:	vppapigen
 M:	Ole Troan <otroan@employees.org>
 F:	src/tools/vppapigen/
+
+Binary API Compiler for C and C++
+I:	vapi
+M:	Ole Troan <ot@cisco.com>
+F:	src/vpp-api/vapi
 
 Plugin - RDMA (ibverb) driver
 I:	rdma

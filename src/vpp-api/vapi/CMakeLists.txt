@@ -79,6 +79,9 @@ install(
   vapi_dbg.h
   vapi.hpp
   vapi_internal.h
+  vapi_c_gen.py
+  vapi_json_parser.py
+  vapi_cpp_gen.py
 
   DESTINATION include/vapi
   COMPONENT vpp-dev
