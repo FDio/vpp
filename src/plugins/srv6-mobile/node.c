@@ -245,10 +245,28 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
               u32 teid;
               u8 *teid8p = (u8 *)&teid;
-              teid8p[0] = dst0.as_u8[9];
-              teid8p[1] = dst0.as_u8[10];
-              teid8p[2] = dst0.as_u8[11];
-              teid8p[3] = dst0.as_u8[12];
+	      u16 index;
+	      u16 offset, shift;
+
+	      index = ls0->localsid_len;
+	      index += 8;
+
+	      offset = index / 8;
+	      shift = index % 8;
+
+	      if (PREDICT_TRUE(shift == 0)) {
+	        teid8p[0] = dst0.as_u8[offset];
+                teid8p[1] = dst0.as_u8[offset + 1];
+                teid8p[2] = dst0.as_u8[offset + 2];
+                teid8p[3] = dst0.as_u8[offset + 3];
+	      } else {
+		for (index = offset; index < offset + 4; index ++) {
+		  *teid8p = dst0.as_u8[index] << shift;
+		  *teid8p |= dst0.as_u8[index + 1] >> (8 - shift);
+		  teid8p++;
+		}
+	      }
+
               hdr0->gtpu.teid = teid;
               hdr0->gtpu.length = clib_host_to_net_u16 (len0);
 
