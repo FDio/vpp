@@ -69,6 +69,11 @@ typedef struct
   struct sockaddr_un caddr;
 } punt_client_t;
 
+typedef struct punt_thread_data_t_
+{
+  struct iovec *iovecs;
+} punt_thread_data_t;
+
 typedef struct
 {
   int socket_fd;
@@ -80,6 +85,7 @@ typedef struct
   vlib_node_t *interface_output_node;
   u32 *ready_fds;
   u32 *rx_buffers;
+  punt_thread_data_t *thread_data;
 } punt_main_t;
 extern punt_main_t punt_main;
 
