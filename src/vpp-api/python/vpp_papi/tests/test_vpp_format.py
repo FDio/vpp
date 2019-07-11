@@ -15,6 +15,7 @@
 import ipaddress
 import socket
 import unittest
+
 try:
     text_type = unicode
 except NameError:
@@ -31,11 +32,11 @@ ip4_prefix = '%s/%s' % (ip4_addr, ip4_prefix_len)
 ipv4_network = ipaddress.IPv4Network(text_type(ip4_prefix))
 ip4_addr_format_vl_api_address_t = {'un': {'ip4': b'\x01\x02\x03\x04'},
                                     'af': 0}
-ip4_addr_format_vl_api_prefix_t = {'prefix':
+ip4_addr_format_vl_api_prefix_t = {'address':                                # noqa: E127,E501
                                        {'un': {'ip4': b'\x01\x02\x03\x04'},
                                         'af': 0},
                                    'len': ip4_prefix_len}
-ip4_addr_format_vl_api_prefix_packed_t = {'prefix': b'\x01\x02\x03\x04',
+ip4_addr_format_vl_api_prefix_packed_t = {'address': b'\x01\x02\x03\x04',
                                           'len': ip4_prefix_len}
 
 ip6_addr = 'dead::'
@@ -49,7 +50,7 @@ ip6_addr_format_vl_api_address_t = {'un': {'ip6': b'\xde\xad\x00\x00'
                                                   b'\x00\x00\x00\x00'
                                                   b'\x00\x00\x00\x00'},
                                     'af': 1}
-ip6_addr_format_vl_api_prefix_t = {'prefix':
+ip6_addr_format_vl_api_prefix_t = {'address':       # noqa: E127
                                        {'af': 1,
                                         'un': {
                                             'ip6': b'\xde\xad\x00\x00'
@@ -57,10 +58,10 @@ ip6_addr_format_vl_api_prefix_t = {'prefix':
                                                    b'\x00\x00\x00\x00'
                                                    b'\x00\x00\x00\x00'}},
                                    'len': ip6_prefix_len}
-ip6_addr_format_vl_api_prefix_packed_t = {'prefix': b'\xde\xad\x00\x00'
-                                                    b'\x00\x00\x00\x00'
-                                                    b'\x00\x00\x00\x00'
-                                                    b'\x00\x00\x00\x00',
+ip6_addr_format_vl_api_prefix_packed_t = {'address': b'\xde\xad\x00\x00'   # noqa: E127,E501
+                                                     b'\x00\x00\x00\x00'
+                                                     b'\x00\x00\x00\x00'
+                                                     b'\x00\x00\x00\x00',
                                           'len': ip6_prefix_len}
 
 
@@ -97,7 +98,6 @@ class TestVppFormat(unittest.TestCase):
                             ip6_addr_format_vl_api_prefix_t),
                            ])
     def test_format_vl_api_prefix_t(self, _, arg, expected):
-
         res = vpp_format.format_vl_api_prefix_t(arg)
         self.assertEqual(res, expected)
 
@@ -115,7 +115,6 @@ class TestVppFormat(unittest.TestCase):
         res = vpp_format.format_vl_api_ip4_prefix_t(ipv4_network)
         self.assertEqual(res, ip4_addr_format_vl_api_prefix_packed_t)
 
-
     def test_format_vl_api_ip6_prefix_t_raises(self):
         # PY2: raises socket.error
         # PY3: raises OSError
@@ -127,4 +126,3 @@ class TestVppFormat(unittest.TestCase):
         # PY3: raises OSError
         with self.assertRaises((socket.error, OSError)):
             res = vpp_format.format_vl_api_ip4_prefix_t(ip6_prefix)
-

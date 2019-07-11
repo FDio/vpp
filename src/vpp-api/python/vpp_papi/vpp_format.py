@@ -102,11 +102,11 @@ conversion_table = {
     },
     'vl_api_prefix_t':
     {
-        'IPv4Network': lambda o: {'prefix':
+        'IPv4Network': lambda o: {'address':
                                   {'af': ADDRESS_IP4, 'un':
                                    {'ip4': o.network_address.packed}},
                                   'len': o.prefixlen},
-        'IPv6Network': lambda o: {'prefix':
+        'IPv6Network': lambda o: {'address':
                                   {'af': ADDRESS_IP6, 'un':
                                    {'ip6': o.network_address.packed}},
                                   'len': o.prefixlen},
