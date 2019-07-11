@@ -120,15 +120,15 @@ typedef enum
   STATE_DETACHED
 } connection_state_t;
 
-typedef enum
+typedef enum echo_test_evt_
 {
-  ECHO_EVT_START,		/* app starts */
-  ECHO_EVT_FIRST_QCONNECT,	/* First connect Quic session sent */
-  ECHO_EVT_LAST_QCONNECTED,	/* All Quic session are connected */
-  ECHO_EVT_FIRST_SCONNECT,	/* First connect Stream session sent */
-  ECHO_EVT_LAST_SCONNECTED,	/* All Stream session are connected */
-  ECHO_EVT_LAST_BYTE,		/* Last byte received */
-  ECHO_EVT_EXIT,		/* app exits */
+  ECHO_EVT_START = 1,		/* app starts */
+  ECHO_EVT_FIRST_QCONNECT = (1 << 1),	/* First connect Quic session sent */
+  ECHO_EVT_LAST_QCONNECTED = (1 << 2),	/* All Quic session are connected */
+  ECHO_EVT_FIRST_SCONNECT = (1 << 3),	/* First connect Stream session sent */
+  ECHO_EVT_LAST_SCONNECTED = (1 << 4),	/* All Stream session are connected */
+  ECHO_EVT_LAST_BYTE = (1 << 5),	/* Last byte received */
+  ECHO_EVT_EXIT = (1 << 6),	/* app exits */
 } echo_test_evt_t;
 
 typedef struct _quic_echo_cb_vft
