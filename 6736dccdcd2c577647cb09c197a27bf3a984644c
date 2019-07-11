@@ -22,6 +22,30 @@
       "revId": "6736dccdcd2c577647cb09c197a27bf3a984644c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "549d6a36_60535741",
+        "filename": "Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 794
+      },
+      "writtenOn": "2019-07-11T13:49:41Z",
+      "side": 1,
+      "message": "The code uses CPack, and in particular it calls the macro \"add_vpp_packaging\" (https://github.com/FDio/vpp/blob/master/src/cmake/pack.cmake).\n\nHere depending on the platform, deb or rpm packages are built.\n\nI can split into \"-deb\" and \"-rpm\" but they will end up calling the same code, and it can be confusing because, for instance on ubuntu, it will build a deb package even in case of \"make libmemif-pkg-rpm\".",
+      "parentUuid": "aa78f6d2_bc29b474",
+      "range": {
+        "startLine": 209,
+        "startChar": 46,
+        "endLine": 209,
+        "endChar": 53
+      },
+      "revId": "6736dccdcd2c577647cb09c197a27bf3a984644c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
