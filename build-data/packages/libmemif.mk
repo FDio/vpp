@@ -38,3 +38,8 @@ libmemif_configure = \
 libmemif_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
 
 libmemif_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install
+
+libmemif-package: libmemif-install
+	@$(CMAKE) -DCMAKE_INSTALL_PREFIX:PATH=/usr $(PACKAGE_BUILD_DIR)/libmemif
+	@$(CMAKE) --build $(PACKAGE_BUILD_DIR)/libmemif -- package
+	@find $(PACKAGE_BUILD_DIR)/libmemif -type f \( -name \*.deb -o -name \*.rpm \) -exec mv {} $(CURDIR) \;
