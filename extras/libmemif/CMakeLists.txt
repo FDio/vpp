@@ -16,6 +16,8 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(memif)
 set(CMAKE_C_STANDARD 11)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 include(CheckCCompilerFlag)
 include(CheckFunctionExists)
 
@@ -25,7 +27,7 @@ execute_process(
   OUTPUT_VARIABLE CMAKE_DEPS_FOLDER
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-include(${CMAKE_DEPS_FOLDER}/library.cmake)
+include(BuildMacros.cmake)
 include(${CMAKE_DEPS_FOLDER}/pack.cmake)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -49,7 +51,6 @@ endif()
 include_directories(src)
 set(LIBMEMIF memif)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(Check 0.10.0)
 if (CHECK_FOUND)
   include_directories(${CHECK_INCLUDE_DIR})
@@ -62,7 +63,7 @@ add_subdirectory(src)
 add_subdirectory(examples)
 
 add_vpp_packaging(
-  NAME "memif"
+  NAME "libmemif"
   VENDOR "fd.io"
   DESCRIPTION "Shared Memory Interface"
 )
