@@ -32,12 +32,10 @@ list(APPEND MEMIF_SOURCES
 
 include_directories(${HEADERS_DIR})
 
-add_vpp_library(${LIBMEMIF}
+build_library(${LIBMEMIF}
+  SHARED
   SOURCES ${MEMIF_SOURCES}
-
   INSTALL_HEADERS ${MEMIF_HEADERS}
-
   LINK_LIBRARIES ${CMAKE_THREAD_LIBS_INIT}
-
   COMPONENT libmemif
 )
