@@ -519,14 +519,14 @@ class Program(object):
             local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/64 local_prefix C1::/64")
+        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 local_prefix C1::/64")
         c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D1::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.m.gtp4.e")
+        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
@@ -580,14 +580,14 @@ class Program(object):
             local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/64 local_prefix C1::/64")
+        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 local_prefix C1::/64")
         c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D1::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("sr localsid prefix D4::/64 behavior end.m.gtp4.e")
+        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
