@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aa78f6d2_bc29b474",
+        "filename": "Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-11T13:40:15Z",
+      "side": 1,
+      "message": "You probably need to split into *-pkg-deb and *-pkg-rpm goals, until your code supports both at once (which it currently does not, I believe).",
+      "range": {
+        "startLine": 209,
+        "startChar": 46,
+        "endLine": 209,
+        "endChar": 53
+      },
+      "revId": "6736dccdcd2c577647cb09c197a27bf3a984644c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
