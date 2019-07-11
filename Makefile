@@ -206,6 +206,7 @@ help:
 	@echo " pkg-deb-debug       - build DEB debug packages"
 	@echo " vom-pkg-deb         - build vom DEB packages"
 	@echo " vom-pkg-deb-debug   - build vom DEB debug packages"
+	@echo " libmemif-pkg        - build libmemif DEB/RPM package"
 	@echo " pkg-rpm             - build RPM packages"
 	@echo " install-ext-deps    - install external development dependencies"
 	@echo " ctags               - (re)generate ctags database"
@@ -514,6 +515,9 @@ vom-pkg-deb:
 	$(call make,$(PLATFORM),vpp-package-deb)
 	$(call make,$(PLATFORM),vom-package-deb)
 
+libmemif-pkg:
+	$(call make,$(PLATFORM),libmemif-package)
+
 pkg-deb-debug:
 	$(call make,$(PLATFORM)_debug,vpp-package-deb)
 
@@ -605,6 +609,7 @@ verify: install-dep $(BR)/.deps.ok install-ext-deps
 	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
+	@make libmemif-pkg
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-18.04)
 	$(call banner,"Running tests")
 	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
