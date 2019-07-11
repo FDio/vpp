@@ -62,7 +62,7 @@ add_subdirectory(src)
 add_subdirectory(examples)
 
 add_vpp_packaging(
-  NAME "memif"
+  NAME "libmemif"
   VENDOR "fd.io"
   DESCRIPTION "Shared Memory Interface"
 )
