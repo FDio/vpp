@@ -46,6 +46,53 @@
       "revId": "6736dccdcd2c577647cb09c197a27bf3a984644c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9a8f51fd_fc740a2c",
+        "filename": "Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-11T15:47:06Z",
+      "side": 1,
+      "message": "\u003e https://github.com/FDio/vpp/blob/master/src/cmake/pack.cmake\n\nOk, I see that it also handles rhel-like OS (despite the comment at lines 14-16 saying \"DEB packaging\")...",
+      "parentUuid": "549d6a36_60535741",
+      "range": {
+        "startLine": 209,
+        "startChar": 46,
+        "endLine": 209,
+        "endChar": 53
+      },
+      "revId": "6736dccdcd2c577647cb09c197a27bf3a984644c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e99d92ed_d61d908f",
+        "filename": "build-data/packages/libmemif.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-11T15:47:06Z",
+      "side": 1,
+      "message": "... but I am concerned with this part.",
+      "range": {
+        "startLine": 44,
+        "startChar": 43,
+        "endLine": 44,
+        "endChar": 50
+      },
+      "revId": "6736dccdcd2c577647cb09c197a27bf3a984644c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
