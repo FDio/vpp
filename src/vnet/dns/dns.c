@@ -103,8 +103,7 @@ dns_enable_disable (dns_main_t * dm, int is_enable)
       if (dm->cache_entry_by_name == 0)
 	{
 	  if (n_vlib_mains > 1)
-	    dm->cache_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-						     CLIB_CACHE_LINE_BYTES);
+	    clib_spinlock_init (&dm->cache_lock);
 
 	  dm->cache_entry_by_name = hash_create_string (0, sizeof (uword));
 	}

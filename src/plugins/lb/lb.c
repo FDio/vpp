@@ -18,6 +18,7 @@
 #include <vpp/app/version.h>
 #include <vnet/api_errno.h>
 #include <vnet/udp/udp.h>
+#include <vppinfra/lock.h>
 
 //GC runs at most once every so many seconds
 #define LB_GARBAGE_RUN 60
@@ -27,8 +28,8 @@
 
 lb_main_t lb_main;
 
-#define lb_get_writer_lock() do {} while(clib_atomic_test_and_set (lb_main.writer_lock))
-#define lb_put_writer_lock() clib_atomic_release (lb_main.writer_lock)
+#define lb_get_writer_lock() clib_spinlock_lock (&lb_main.writer_lock)
+#define lb_put_writer_lock() clib_spinlock_unlock (&lb_main.writer_lock)
 
 static void lb_as_stack (lb_as_t *as);
 
@@ -289,7 +290,7 @@ static void lb_vip_garbage_collection(lb_vip_t *vip)
   lb_snat6_key_t m_key6;
   clib_bihash_kv_24_8_t kv6, value6;
   lb_snat_mapping_t *m = 0;
-  ASSERT (lbm->writer_lock[0]);
+  CLIB_SPINLOCK_ASSERT_LOCKED (&lbm->writer_lock);
 
   u32 now = (u32) vlib_time_now(vlib_get_main());
   if (!clib_u32_loop_gt(now, vip->last_garbage_collection + LB_GARBAGE_RUN))
@@ -384,7 +385,7 @@ static void lb_vip_update_new_flow_table(lb_vip_t *vip)
   lb_as_t *as;
   lb_pseudorand_t *pr, *sort_arr = 0;
 
-  ASSERT (lbm->writer_lock[0]); //We must have the lock
+  CLIB_SPINLOCK_ASSERT_LOCKED (&lbm->writer_lock); // We must have the lock
 
   //Check if some AS is configured or not
   i = 0;
@@ -496,7 +497,8 @@ int lb_vip_port_find_index(ip46_address_t *prefix, u8 plen,
 {
   lb_main_t *lbm = &lb_main;
   lb_vip_t *vip;
-  ASSERT (lbm->writer_lock[0]); //This must be called with the lock owned
+  /* This must be called with the lock owned */
+  CLIB_SPINLOCK_ASSERT_LOCKED (&lbm->writer_lock);
   ip46_prefix_normalize(prefix, plen);
   pool_foreach(vip, lbm->vips, {
       if ((vip->flags & LB_AS_FLAGS_USED) &&
@@ -560,7 +562,8 @@ int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u8 protocol,
 static int lb_as_find_index_vip(lb_vip_t *vip, ip46_address_t *address, u32 *as_index)
 {
   lb_main_t *lbm = &lb_main;
-  ASSERT (lbm->writer_lock[0]); //This must be called with the lock owned
+  /* This must be called with the lock owned */
+  CLIB_SPINLOCK_ASSERT_LOCKED (&lbm->writer_lock);
   lb_as_t *as;
   u32 *asi;
   pool_foreach(asi, vip->as_indexes, {
@@ -1384,8 +1387,7 @@ lb_init (vlib_main_t * vm)
 
   lbm->per_cpu = 0;
   vec_validate(lbm->per_cpu, tm->n_vlib_mains - 1);
-  lbm->writer_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,  CLIB_CACHE_LINE_BYTES);
-  lbm->writer_lock[0] = 0;
+  clib_spinlock_init (&lbm->writer_lock);
   lbm->per_cpu_sticky_buckets = LB_DEFAULT_PER_CPU_STICKY_BUCKETS;
   lbm->flow_timeout = LB_DEFAULT_FLOW_TIMEOUT;
   lbm->ip4_src_address.as_u32 = 0xffffffff;

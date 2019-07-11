@@ -1269,9 +1269,8 @@ vnet_interface_init (vlib_main_t * vm)
 	 sizeof (b->opaque), sizeof (vnet_buffer_opaque_t));
     }
 
-  im->sw_if_counter_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-						   CLIB_CACHE_LINE_BYTES);
-  im->sw_if_counter_lock[0] = 1;	/* should be no need */
+  clib_spinlock_init (&im->sw_if_counter_lock);
+  clib_spinlock_lock (&im->sw_if_counter_lock);	/* should be no need */
 
   vec_validate (im->sw_if_counters, VNET_N_SIMPLE_INTERFACE_COUNTER - 1);
 #define _(E,n,p)							\
@@ -1286,7 +1285,7 @@ vnet_interface_init (vlib_main_t * vm)
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_##E].stat_segment_name = "/" #p "/" #n;
   foreach_combined_interface_counter_name
 #undef _
-    im->sw_if_counter_lock[0] = 0;
+    clib_spinlock_unlock (&im->sw_if_counter_lock);
 
   im->device_class_by_name = hash_create_string ( /* size */ 0,
 						 sizeof (uword));

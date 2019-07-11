@@ -197,8 +197,7 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 
   t = pool_elt_at_index (vcm->tables, table->classify_table_index);
 
-  while (clib_atomic_test_and_set (t->writer_lock))
-    ;
+  clib_spinlock_lock (&t->writer_lock);
 
   for (i = 0; i < t->nbuckets; i++)
     {
@@ -385,7 +384,7 @@ flush:
       bi0 = ~0;
     }
 
-  clib_atomic_release (t->writer_lock);
+  clib_spinlock_unlock (&t->writer_lock);
   return f;
 }
 

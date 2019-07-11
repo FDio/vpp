@@ -187,7 +187,7 @@ typedef struct
   void *mheap;
 
   /* Writer (only) lock for this table */
-  volatile u32 *writer_lock;
+  clib_spinlock_t writer_lock;
 
 } vnet_classify_table_t;
 

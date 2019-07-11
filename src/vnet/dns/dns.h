@@ -97,7 +97,7 @@ typedef struct
 
   /** Find cached record by name */
   uword *cache_entry_by_name;
-  uword *cache_lock;
+  clib_spinlock_t cache_lock;
 
   /** enable / disable flag */
   int is_enabled;
@@ -196,8 +196,7 @@ dns_cache_lock (dns_main_t * dm)
 {
   if (dm->cache_lock)
     {
-      while (clib_atomic_test_and_set (dm->cache_lock))
-	CLIB_PAUSE ();
+      clib_spinlock_lock (&dm->cache_lock);
     }
 }
 
@@ -206,7 +205,7 @@ dns_cache_unlock (dns_main_t * dm)
 {
   if (dm->cache_lock)
     {
-      clib_atomic_release (dm->cache_lock);
+      clib_spinlock_unlock (&dm->cache_lock);
     }
 }
 

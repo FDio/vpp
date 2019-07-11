@@ -22,6 +22,7 @@
 #include <ioam/lib-e2e/e2e_util.h>
 #include <ioam/lib-trace/trace_util.h>
 #include <ioam/lib-trace/trace_config.h>
+#include <vppinfra/lock.h>
 
 #define IOAM_FLOW_TEMPLATE_ID    260
 #define IOAM_TRACE_MAX_NODES      10
@@ -123,7 +124,7 @@ typedef struct ioam_analyser_data_t_
   struct ioam_analyser_data_t_ *chached_data_list;
 
   /** Lock to since we use this to export the data in other thread. */
-  volatile u32 *writer_lock;
+  clib_spinlock_t writer_lock;
 } ioam_analyser_data_t;
 
 always_inline f64
@@ -191,8 +192,7 @@ ip6_ioam_analyse_set_paths_down (ioam_analyser_data_t * data)
   ioam_path_map_t *path;
   u8 k, i;
 
-  while (clib_atomic_test_and_set (data->writer_lock))
-    ;
+  clib_spinlock_lock (&data->writer_lock);
 
   trace_data = &data->trace_data;
 
@@ -208,7 +208,7 @@ ip6_ioam_analyse_set_paths_down (ioam_analyser_data_t * data)
       for (k = 0; k < trace_record->num_nodes; k++)
 	path[k].state_up = 0;
     }
-  clib_atomic_release (data->writer_lock);
+  clib_spinlock_unlock (&data->writer_lock);
 }
 
 always_inline void
@@ -225,8 +225,7 @@ ip6_ioam_analyse_hbh_trace_loopback (ioam_analyser_data_t * data,
   u16 size_of_traceopt_per_node;
   u16 size_of_all_traceopts;
 
-  while (clib_atomic_test_and_set (data->writer_lock))
-    ;
+  clib_spinlock_lock (&data->writer_lock);
 
   trace_data = &data->trace_data;
 
@@ -277,7 +276,7 @@ ip6_ioam_analyse_hbh_trace_loopback (ioam_analyser_data_t * data,
 	}
     }
 end:
-  clib_atomic_release (data->writer_lock);
+  clib_spinlock_unlock (&data->writer_lock);
 }
 
 always_inline int
@@ -295,8 +294,7 @@ ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t * data,
   ioam_path_map_t *path = NULL;
   ioam_analyse_trace_record *trace_record;
 
-  while (clib_atomic_test_and_set (data->writer_lock))
-    ;
+  clib_spinlock_lock (&data->writer_lock);
 
   trace_data = &data->trace_data;
 
@@ -409,7 +407,7 @@ found_match:
 	(u32) ((sum + delay) / (data->seqno_data.rx_packets + 1));
     }
 DONE:
-  clib_atomic_release (data->writer_lock);
+  clib_spinlock_unlock (&data->writer_lock);
   return 0;
 }
 
@@ -417,13 +415,12 @@ always_inline int
 ip6_ioam_analyse_hbh_e2e (ioam_analyser_data_t * data,
 			  ioam_e2e_packet_t * e2e, u16 len)
 {
-  while (clib_atomic_test_and_set (data->writer_lock))
-    ;
+  clib_spinlock_lock (&data->writer_lock);
 
   ioam_analyze_seqno (&data->seqno_data,
 		      (u64) clib_net_to_host_u32 (e2e->e2e_data));
 
-  clib_atomic_release (data->writer_lock);
+  clib_spinlock_unlock (&data->writer_lock);
 
   return 0;
 }
@@ -509,10 +506,7 @@ ioam_analyse_init_data (ioam_analyser_data_t * data)
    * get extended in future to maintain history of data */
   vec_validate_aligned (data->chached_data_list, 0, CLIB_CACHE_LINE_BYTES);
 
-  data->writer_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-					      CLIB_CACHE_LINE_BYTES);
-
-  clib_atomic_release (data->writer_lock);
+  clib_spinlock_init (&data->writer_lock);
 
   trace_data = &(data->trace_data);
   for (j = 0; j < IOAM_MAX_PATHS_PER_FLOW; j++)
