@@ -200,7 +200,7 @@ private:
   std::shared_ptr<interface> m_bvi;
   std::shared_ptr<interface> m_uu_fwd;
   std::shared_ptr<interface> m_bm_flood;
-  const flags_t& m_flags;
+  flags_t m_flags;
 
   /**
    * A map of all bridge_domains
