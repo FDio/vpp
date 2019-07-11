@@ -289,6 +289,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   n_left = n_packets;
   mb = ptd->mbufs;
 
+#if (CLIB_N_PREFETCHES >= 8)
   while (n_left >= 8)
     {
       u32 or_flags;
@@ -353,6 +354,61 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       mb += 4;
       n_left -= 4;
     }
+#elif (CLIB_N_PREFETCHES >= 4)
+  while (n_left >= 4)
+    {
+      vlib_buffer_t *b2, *b3;
+      u32 or_flags;
+
+      CLIB_PREFETCH (mb[2], CLIB_CACHE_LINE_BYTES, STORE);
+      CLIB_PREFETCH (mb[3], CLIB_CACHE_LINE_BYTES, STORE);
+      b2 = vlib_buffer_from_rte_mbuf (mb[2]);
+      CLIB_PREFETCH (b2, CLIB_CACHE_LINE_BYTES, LOAD);
+      b3 = vlib_buffer_from_rte_mbuf (mb[3]);
+      CLIB_PREFETCH (b3, CLIB_CACHE_LINE_BYTES, LOAD);
+
+      b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
+      b[1] = vlib_buffer_from_rte_mbuf (mb[1]);
+
+      or_flags = b[0]->flags | b[1]->flags;
+      all_or_flags |= or_flags;
+
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
+
+      if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  dpdk_validate_rte_mbuf (vm, b[0], 1);
+	  dpdk_validate_rte_mbuf (vm, b[1], 1);
+	}
+      else
+	{
+	  dpdk_validate_rte_mbuf (vm, b[0], 0);
+	  dpdk_validate_rte_mbuf (vm, b[1], 0);
+	}
+
+      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
+			 (or_flags &
+			  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+			   | VNET_BUFFER_F_OFFLOAD_IP_CKSUM
+			   | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))))
+	{
+	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);
+	  dpdk_buffer_tx_offload (xd, b[1], mb[1]);
+	}
+
+      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, b[0]);
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, b[1]);
+	}
+
+      mb += 2;
+      n_left -= 2;
+    }
+#endif
   while (n_left > 0)
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
