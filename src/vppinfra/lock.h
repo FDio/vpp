@@ -42,6 +42,9 @@ do {							\
 #define CLIB_LOCK_DBG_CLEAR(_p)
 #endif
 
+#define CLIB_SPINLOCK_IS_LOCKED(_p) (*(_p))->lock
+#define CLIB_SPINLOCK_ASSERT_LOCKED(_p) ASSERT(CLIB_SPINLOCK_IS_LOCKED((_p)))
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
