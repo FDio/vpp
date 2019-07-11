@@ -41,6 +41,7 @@
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_24_8.h>
 #include <lb/lbhash.h>
+#include <vppinfra/lock.h>
 
 #define LB_DEFAULT_PER_CPU_STICKY_BUCKETS 1 << 10
 #define LB_DEFAULT_FLOW_TIMEOUT 40
@@ -561,7 +562,7 @@ typedef struct {
    */
   u16 msg_id_base;
 
-  volatile u32 *writer_lock;
+  clib_spinlock_t writer_lock;
 
   /* convenience */
   vlib_main_t *vlib_main;

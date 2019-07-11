@@ -28,6 +28,7 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
+#include <vppinfra/lock.h>
 
 #include <vlib/threads.h>
 
@@ -62,7 +63,7 @@ typedef struct
   /* Vector of per thread ioam_export_buffer_t to buffer pool index */
   u32 *buffer_per_thread;
   /* Lock per thread to swap buffers between worker and timer process */
-  volatile u32 **lockp;
+  clib_spinlock_t *lockp;
 
   /* time scale transform */
   u32 unix_time_0;
@@ -194,9 +195,7 @@ ioam_export_thread_buffer_init (ioam_export_main_t * em, vlib_main_t * vm)
 	  ioam_export_thread_buffer_free (em);
 	  return (-2);
 	}
-      em->lockp[i] = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-					     CLIB_CACHE_LINE_BYTES);
-      clib_memset ((void *) em->lockp[i], 0, CLIB_CACHE_LINE_BYTES);
+      clib_spinlock_init (&em->lockp[i]);
     }
   return (1);
 }
@@ -404,7 +403,7 @@ ioam_export_process_common (ioam_export_main_t * em, vlib_main_t * vm,
       for (i = 0; i < vec_len (em->buffer_per_thread); i++)
 	{
 	  /* If the worker thread is processing export records ignore further checks */
-	  if (*em->lockp[i] == 1)
+	  if (CLIB_SPINLOCK_IS_LOCKED (&em->lockp[i]))
 	    continue;
 	  eb = pool_elt_at_index (em->buffer_pool, em->buffer_per_thread[i]);
 	  if (eb->records_in_this_buffer > 0
@@ -436,11 +435,10 @@ ioam_export_process_common (ioam_export_main_t * em, vlib_main_t * vm,
 	   */
 	  for (i = 0; i < vec_len (thread_index); i++)
 	    {
-	      while (clib_atomic_test_and_set (em->lockp[thread_index[i]]))
-		;
+	      clib_spinlock_lock (&em->lockp[thread_index[i]]);
 	      em->buffer_per_thread[thread_index[i]] =
 		vec_pop (vec_buffer_indices);
-	      clib_atomic_release (em->lockp[thread_index[i]]);
+	      clib_spinlock_unlock (&em->lockp[thread_index[i]]);
 	    }
 
 	  /* Send the buffers */
@@ -479,7 +477,7 @@ do {                                                                           \
   from = vlib_frame_vector_args (F);                                           \
   n_left_from = (F)->n_vectors;                                                \
   next_index = (N)->cached_next_index;                                         \
-  while (clib_atomic_test_and_set ((EM)->lockp[(VM)->thread_index]));	       \
+  clib_spinlock_lock (&(EM)->lockp[(VM)->thread_index]);	               \
   my_buf = ioam_export_get_my_buffer (EM, (VM)->thread_index);                 \
   my_buf->touched_at = vlib_time_now (VM);                                     \
   while (n_left_from > 0)                                                      \
@@ -622,7 +620,7 @@ do {                                                                           \
     }                                                                          \
   vlib_node_increment_counter (VM, export_node.index,                          \
 			       EXPORT_ERROR_RECORDED, pkts_recorded);          \
-  *(EM)->lockp[(VM)->thread_index] = 0;                                        \
+  clib_spinlock_unlock (&(EM)->lockp[(VM)->thread_index]);                     \
 } while(0)
 
 #endif /* __included_ioam_export_h__ */
