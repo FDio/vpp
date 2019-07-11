@@ -371,6 +371,9 @@ extern u32 fib_node_child_add(fib_node_type_t parent_type,
 extern void fib_node_child_remove(fib_node_type_t parent_type,
                                   fib_node_index_t parent_index,
                                   fib_node_index_t sibling_index);
+extern void fib_node_child_peek_front(fib_node_type_t parent_type,
+                                      fib_node_index_t parent_index,
+                                      fib_node_ptr_t *ptr);
 
 extern fib_node_back_walk_rc_t fib_node_back_walk_one(fib_node_ptr_t *ptr,
                                                       fib_node_back_walk_ctx_t *ctx);
