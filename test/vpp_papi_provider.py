@@ -61,7 +61,6 @@ defaultmapping = {
     'ip6nd_send_router_solicitation': {'irt': 1, 'mrt': 120, },
     'ip_add_del_route': {'next_hop_sw_if_index': 4294967295,
                          'next_hop_weight': 1, 'next_hop_via_label': 1048576,
-                         'next_hop_id': 4294967295,
                          'classify_table_index': 4294967295, 'is_add': 1, },
     'ip_mroute_add_del': {'is_add': 1, },
     'ip_neighbor_add_del': {'is_add': 1, },
@@ -1719,9 +1718,7 @@ class VppPapiProvider(object):
              'bde_bp': bp,
              'bde_payload_proto': payload_proto,
              'bde_n_paths': 1,
-             'bde_paths': [{'next_hop': next_hop,
-                            'table_id': next_hop_tbl_id,
-                            'afi': next_hop_afi,
+             'bde_paths': [{'table_id': next_hop_tbl_id,
                             'rpf_id': next_hop_rpf_id,
                             'n_labels': 0,
                             'label_stack': lstack}],
@@ -1890,7 +1887,6 @@ class VppPapiProvider(object):
                         'policy': policy,
                         'priority': priority,
                         'is_outbound': is_outbound,
-                        'is_ip_any': is_ip_any
                     }
             })
 
