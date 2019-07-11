@@ -526,7 +526,7 @@ class Program(object):
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e")
+        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e C1::/64")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
@@ -587,7 +587,7 @@ class Program(object):
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e")
+        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e C1::/64")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")

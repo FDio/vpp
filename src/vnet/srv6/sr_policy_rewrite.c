@@ -1483,7 +1483,9 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip4_address_t dst_addr0, dst_addr1, dst_addr2, dst_addr3;
           u16 sr_port0 = 0, sr_port1 = 0, sr_port2 = 0, sr_port3 = 0;
           u32 teid0 = 0, teid1 = 0, teid2 = 0, teid3 = 0;
+	  u8 *teidp0 = NULL, *teidp1 = NULL, *teidp2 = NULL, *teidp3 = NULL;
 	  u32 offset, shift;
+	  u32 index;
 
 	  clib_memset(&sr_addr0, 0, sizeof(ip4_address_t));
 	  clib_memset(&sr_addr1, 0, sizeof(ip4_address_t));
@@ -1560,6 +1562,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
                hdr0 = vlib_buffer_get_current (b0);
                teid0 = hdr0->gtpu.teid;
+	       teidp0 = (u8 *)&teid0;
                sr_addr0 = hdr0->ip4.src_address;
                dst_addr0 = hdr0->ip4.dst_address;
                sr_port0 = hdr0->udp.src_port;
@@ -1579,6 +1582,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
                hdr1 = vlib_buffer_get_current (b1);
                teid1 = hdr1->gtpu.teid;
+	       teidp1 = (u8 *)&teid1;
                sr_addr1 = hdr1->ip4.src_address;
                dst_addr1 = hdr1->ip4.dst_address;
                sr_port1 = hdr1->udp.src_port;
@@ -1597,6 +1601,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
                hdr2 = vlib_buffer_get_current (b2);
                teid2 = hdr2->gtpu.teid;
+	       teidp2 =  (u8 *)&teid2;
                sr_addr2 = hdr2->ip4.src_address;
                dst_addr2 = hdr2->ip4.dst_address;
                sr_port2 = hdr2->udp.src_port;
@@ -1615,6 +1620,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
                hdr3 = vlib_buffer_get_current (b3);
                teid3 = hdr3->gtpu.teid;
+	       teidp3 = (u8 *)&teid3;
                sr_addr3 = hdr3->ip4.src_address;
                dst_addr3 = hdr3->ip4.dst_address;
                sr_port3 = hdr3->udp.src_port;
@@ -1667,19 +1673,22 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      shift = sl0->sr_prefixlen % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-		clib_memcpy_fast(&sr0->segments->as_u8[offset], &dst_addr0.as_u32, 4);
-		clib_memcpy_fast(&sr0->segments->as_u8[offset+5], &teid0, 4);
-	      } else {
-		u32 index;
+		for (index = 0; index < 4; index++) {
+		  sr0->segments->as_u8[offset + index] = dst_addr0.as_u8[index];
+		}
 
+		for (index = 0; index < 4; index++) {
+		  sr0->segments->as_u8[offset+5+index] = teidp0[index];
+		}
+	      } else {
 		for (index = 0; index < 4; index++) {
 		  sr0->segments->as_u8[offset + index] |= dst_addr0.as_u8[index] >> shift;
 		  sr0->segments->as_u8[offset + index + 1] |= dst_addr0.as_u8[index] << (8 - shift);
 		}
 
 		for (index = 0; index < 4; index++) {
-		  sr0->segments->as_u8[offset + 5 + index] |=  ((u8 *) &teid0)[index] >> shift;
-		  sr0->segments->as_u8[offset + 6 + index] |=  ((u8 *) &teid0)[index] << (8 - shift);
+		  sr0->segments->as_u8[offset + 5 + index] |=  teidp0[index] >> shift;
+		  sr0->segments->as_u8[offset + 6 + index] |=  teidp0[index] << (8 - shift);
 		}
 	      }
 
@@ -1689,17 +1698,19 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip0->src_address.as_u8[0], &sl0->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip0->src_address.as_u8[offset], &sr_addr0.as_u32, 4);
-		ip0->src_address.as_u8[offset + 4] = sr_port0;
+		clib_memcpy_fast(&ip0->src_address.as_u8[offset+4], &sr_port0, 2);
 	      } else {
-		u32 index;
+		u8 *pp = (u8 *)&sr_port0;
 
 		for (index = 0; index < 4; index++) {
 		  ip0->src_address.as_u8[offset] |= sr_addr0.as_u8[index] >> shift;
 		  ip0->src_address.as_u8[offset + 1] |= sr_addr0.as_u8[index] << (8 - shift);
 		}
 
-		ip0->src_address.as_u8[offset + 4] |= (sr_port0 >> shift);
-		ip0->src_address.as_u8[offset + 5] |= (sr_port0 << (8 - shift));
+		for (index = 0; index < 2; index++) {
+		  ip0->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
+		  ip0->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
+		}
 	      }
             }
 
@@ -1711,19 +1722,22 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      shift = sl1->sr_prefixlen % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-		clib_memcpy_fast(&sr1->segments->as_u8[offset], &dst_addr1.as_u32, 4);
-		clib_memcpy_fast(&sr1->segments->as_u8[offset+5], &teid1, 4);
-	      } else {
-		u32 index;
+		for (index = 0; index < 4; index++) {
+		  sr1->segments->as_u8[offset + index] = dst_addr1.as_u8[index];
+		}
 
+		for (index = 0; index < 4; index++) {
+		  sr1->segments->as_u8[offset+5+index] = teidp1[index];
+		}
+	      } else {
 		for (index = 0; index < 4; index++) {
 		  sr1->segments->as_u8[offset + index] |= dst_addr1.as_u8[index] >> shift;
 		  sr1->segments->as_u8[offset + index + 1] |= dst_addr1.as_u8[index] << (8 - shift);
 		}
 
 		for (index = 0; index < 4; index++) {
-		  sr1->segments->as_u8[offset + 5 + index] |=  ((u8 *) &teid1)[index] >> shift;
-		  sr1->segments->as_u8[offset + 6 + index] |=  ((u8 *) &teid1)[index] << (8 - shift);
+		  sr1->segments->as_u8[offset + 5 + index] |=  teidp1[index] >> shift;
+		  sr1->segments->as_u8[offset + 6 + index] |=  teidp1[index] << (8 - shift);
 		}
 	      }
 
@@ -1733,17 +1747,19 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip1->src_address.as_u8[0], &sl1->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip1->src_address.as_u8[offset], &sr_addr1.as_u32, 4);
-		ip1->src_address.as_u8[offset + 4] = sr_port1;
+		clib_memcpy_fast(&ip1->src_address.as_u8[offset+4], &sr_port1, 2);
 	      } else {
-		u32 index;
+		u8 *pp = (u8 *)&sr_port1;
 
 		for (index = 0; index < 4; index++) {
 		  ip1->src_address.as_u8[offset] |= sr_addr1.as_u8[index] >> shift;
 		  ip1->src_address.as_u8[offset + 1] |= sr_addr1.as_u8[index] << (8 - shift);
 		}
 
-		ip1->src_address.as_u8[offset + 4] |= (sr_port1 >> shift);
-		ip1->src_address.as_u8[offset + 5] |= (sr_port1 << (8 - shift));
+		for (index = 0; index < 2; index++) {
+		  ip1->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
+		  ip1->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
+		}
 	      }
             }
 
@@ -1755,19 +1771,22 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      shift = sl2->sr_prefixlen % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-		clib_memcpy_fast(&sr2->segments->as_u8[offset], &dst_addr2.as_u32, 4);
-		clib_memcpy_fast(&sr2->segments->as_u8[offset+5], &teid2, 4);
-	      } else {
-		u32 index;
+		for (index = 0; index < 4; index++) {
+		  sr2->segments->as_u8[offset + index] = dst_addr2.as_u8[index];
+		}
 
+		for (index = 0; index < 4; index++) {
+		  sr2->segments->as_u8[offset+5+index] = teidp2[index];
+		}
+	      } else {
 		for (index = 0; index < 4; index++) {
 		  sr2->segments->as_u8[offset + index] |= dst_addr2.as_u8[index] >> shift;
 		  sr2->segments->as_u8[offset + index + 1] |= dst_addr2.as_u8[index] << (8 - shift);
 		}
 
 		for (index = 0; index < 4; index++) {
-		  sr2->segments->as_u8[offset + 5 + index] |=  ((u8 *) &teid2)[index] >> shift;
-		  sr2->segments->as_u8[offset + 6 + index] |=  ((u8 *) &teid2)[index] << (8 - shift);
+		  sr2->segments->as_u8[offset + 5 + index] |=  teidp2[index] >> shift;
+		  sr2->segments->as_u8[offset + 6 + index] |=  teidp2[index] << (8 - shift);
 		}
 	      }
 
@@ -1777,17 +1796,19 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip2->src_address.as_u8[0], &sl2->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip2->src_address.as_u8[offset], &sr_addr2.as_u32, 4);
-		ip2->src_address.as_u8[offset + 4] = sr_port2;
+		clib_memcpy_fast(&ip2->src_address.as_u8[offset+4], &sr_port2, 2);
 	      } else {
-		u32 index;
+		u8 *pp = (u8 *)&sr_port2;
 
 		for (index = 0; index < 4; index++) {
 		  ip2->src_address.as_u8[offset] |= sr_addr2.as_u8[index] >> shift;
 		  ip2->src_address.as_u8[offset + 1] |= sr_addr2.as_u8[index] << (8 - shift);
 		}
 
-		ip2->src_address.as_u8[offset + 4] |= (sr_port2 >> shift);
-		ip2->src_address.as_u8[offset + 5] |= (sr_port2 << (8 - shift));
+		for (index = 0; index < 2; index++) {
+		  ip2->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
+		  ip2->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
+		}
 	      }
             }
 
@@ -1799,19 +1820,22 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      shift = sl3->sr_prefixlen % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-		clib_memcpy_fast(&sr3->segments->as_u8[offset], &dst_addr3.as_u32, 4);
-		clib_memcpy_fast(&sr3->segments->as_u8[offset+5], &teid3, 4);
-	      } else {
-		u32 index;
+		for (index = 0; index < 4; index++) {
+		  sr3->segments->as_u8[offset + index] = dst_addr3.as_u8[index];
+		}
 
+		for (index = 0; index < 4; index++) {
+		  sr3->segments->as_u8[offset+5+index] = teidp3[index];
+		}
+	      } else {
 		for (index = 0; index < 4; index++) {
 		  sr3->segments->as_u8[offset + index] |= dst_addr3.as_u8[index] >> shift;
 		  sr3->segments->as_u8[offset + index + 1] |= dst_addr3.as_u8[index] << (8 - shift);
 		}
 
 		for (index = 0; index < 4; index++) {
-		  sr3->segments->as_u8[offset + 5 + index] |=  ((u8 *) &teid3)[index] >> shift;
-		  sr3->segments->as_u8[offset + 6 + index] |=  ((u8 *) &teid3)[index] << (8 - shift);
+		  sr3->segments->as_u8[offset + 5 + index] |=  teidp3[index] >> shift;
+		  sr3->segments->as_u8[offset + 6 + index] |=  teidp3[index] << (8 - shift);
 		}
 	      }
 
@@ -1821,17 +1845,19 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip3->src_address.as_u8[0], &sl3->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip3->src_address.as_u8[offset], &sr_addr3.as_u32, 4);
-		ip3->src_address.as_u8[offset + 4] = sr_port3;
+		clib_memcpy_fast(&ip3->src_address.as_u8[offset+4], &sr_port3, 2);
 	      } else {
-		u32 index;
+		u8 *pp = (u8 *)&sr_port3;
 
 		for (index = 0; index < 4; index++) {
 		  ip3->src_address.as_u8[offset] |= sr_addr3.as_u8[index] >> shift;
 		  ip3->src_address.as_u8[offset + 1] |= sr_addr3.as_u8[index] << (8 - shift);
 		}
 
-		ip3->src_address.as_u8[offset + 4] |= (sr_port3 >> shift);
-		ip3->src_address.as_u8[offset + 5] |= (sr_port3 << (8 - shift));
+		for (index = 0; index < 2; index++) {
+		  ip3->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
+		  ip3->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
+		}
 	      }
             }
 
@@ -1937,9 +1963,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip4_gtpu_header_t *hdr0;
           ip4_address_t sr_addr0;
           ip4_address_t dst_addr0;
-          u16 sr_port = 0;
+          u16 sr_port0 = 0;
           u32 teid0 = 0;
+	  u8 *teidp0 = NULL;
 	  u32 offset, shift;
+	  u32 index;
 
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 
@@ -1967,9 +1995,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
               // save for later use
               hdr0 = vlib_buffer_get_current (b0);
               teid0 = hdr0->gtpu.teid;
+	      teidp0 = (u8 *)&teid0;
               sr_addr0 = hdr0->ip4.src_address;
               dst_addr0 = hdr0->ip4.dst_address;
-              sr_port = hdr0->udp.src_port;
+              sr_port0 = hdr0->udp.src_port;
 
               // go after GTPU, we are at segment header
               vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
@@ -2003,19 +2032,22 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      shift = sl0->sr_prefixlen % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-		clib_memcpy_fast(&sr0->segments->as_u8[offset], &dst_addr0.as_u32, 4);
-		clib_memcpy_fast(&sr0->segments->as_u8[offset+5], &teid0, 4);
-	      } else {
-		u32 index;
+		for (index = 0; index < 4; index++) {
+		  sr0->segments->as_u8[offset + index] = dst_addr0.as_u8[index];
+		}
 
+		for (index = 0; index < 4; index++) {
+		  sr0->segments->as_u8[offset+5+index] = teidp0[index];
+		}
+	      } else {
 		for (index = 0; index < 4; index++) {
 		  sr0->segments->as_u8[offset + index] |= dst_addr0.as_u8[index] >> shift;
 		  sr0->segments->as_u8[offset + index + 1] |= dst_addr0.as_u8[index] << (8 - shift);
 		}
 
 		for (index = 0; index < 4; index++) {
-		  sr0->segments->as_u8[offset + 5 + index] |=  ((u8 *) &teid0)[index] >> shift;
-		  sr0->segments->as_u8[offset + 6 + index] |=  ((u8 *) &teid0)[index] << (8 - shift);
+		  sr0->segments->as_u8[offset + 5 + index] |=  teidp0[index] >> shift;
+		  sr0->segments->as_u8[offset + 6 + index] |=  teidp0[index] << (8 - shift);
 		}
 	      }
 
@@ -2025,17 +2057,19 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip0->src_address.as_u8[0], &sl0->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip0->src_address.as_u8[offset], &sr_addr0.as_u32, 4);
-		ip0->src_address.as_u8[offset + 4] = sr_port;
+		clib_memcpy_fast(&ip0->src_address.as_u8[offset+4], &sr_port0, 2);
 	      } else {
-		u32 index;
+		u8 *pp = (u8 *)&sr_port0;
 
 		for (index = 0; index < 4; index++) {
 		  ip0->src_address.as_u8[offset] |= sr_addr0.as_u8[index] >> shift;
 		  ip0->src_address.as_u8[offset + 1] |= sr_addr0.as_u8[index] << (8 - shift);
 		}
 
-		ip0->src_address.as_u8[offset + 4] |= (sr_port >> shift);
-		ip0->src_address.as_u8[offset + 5] |= (sr_port << (8 - shift));
+		for (index = 0; index < 2; index++) {
+		  ip0->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
+		  ip0->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
+		}
 	      }
             }
 	  
