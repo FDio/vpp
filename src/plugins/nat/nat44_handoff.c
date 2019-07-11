@@ -27,6 +27,7 @@
 typedef struct
 {
   u32 next_worker_index;
+  u32 trace_index;
   u8 in2out;
 } nat44_handoff_trace_t;
 
@@ -60,8 +61,8 @@ format_nat44_handoff_trace (u8 * s, va_list * args)
 
   tag = t->in2out ? "IN2OUT" : "OUT2IN";
   s =
-    format (s, "NAT44_%s_WORKER_HANDOFF: next-worker %d", tag,
-	    t->next_worker_index);
+    format (s, "NAT44_%s_WORKER_HANDOFF: next-worker %d trace index %d", tag,
+	    t->next_worker_index, t->trace_index);
 
   return s;
 }
@@ -125,6 +126,7 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  nat44_handoff_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->next_worker_index = ti[0];
+	  t->trace_index = vlib_buffer_get_trace_index (b[0]);
 	  t->in2out = is_in2out;
 	}
 
