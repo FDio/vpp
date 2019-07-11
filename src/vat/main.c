@@ -33,7 +33,7 @@ connect_to_vpe (char *name)
   vat_main_t *vam = &vat_main;
   api_main_t *am = &api_main;
 
-  if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
+  if (vl_client_connect_to_vlib ("/vpe-api", name, 0xfff) < 0)
     return -1;
 
   vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
