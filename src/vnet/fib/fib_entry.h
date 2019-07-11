@@ -363,6 +363,12 @@ typedef struct fib_entry_src_t_ {
     fib_node_index_t fes_pl;
 
     /**
+     * ref count. this can go high with many tunnels referring to the same
+     * destination prefix.
+     */
+    u32 fes_ref_count;
+
+    /**
      * Flags the source contributes to the entry
      */
     fib_entry_flag_t fes_entry_flags;
@@ -376,13 +382,6 @@ typedef struct fib_entry_src_t_ {
      * Flags on the source
      */
     fib_entry_src_flag_t fes_flags;
-
-    /**
-     * 1 bytes ref count. This is not the number of users of the Entry
-     * (which is itself not large, due to path-list sharing), but the number
-     * of times a given source has been added. Which is even fewer
-     */
-    u8 fes_ref_count;
     
     /**
      * Source specific info
