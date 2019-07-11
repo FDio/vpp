@@ -684,12 +684,49 @@ fib_walk_prio_queue_enquue (fib_walk_priority_t prio,
     return (sibling);
 }
 
+static void
+fib_walk_ctx_merge (fib_walk_t *fwalk,
+                    fib_node_back_walk_ctx_t *ctx)
+{
+    fib_node_back_walk_ctx_t *last;
+
+    /*
+     * check whether the walk context can be merged with the most recent.
+     * the most recent was the one last added and is thus at the back of the vector.
+     * we can merge walks if the reason for the walk is the same.
+     */
+    last = vec_end(fwalk->fw_ctx) - 1;
+
+    if (last->fnbw_reason == ctx->fnbw_reason)
+    {
+        /*
+         * copy the largest of the depth values. in the presence of a loop,
+         * the same walk will merge with itself. if we take the smaller depth
+         * then it will never end.
+         */
+        last->fnbw_depth = ((last->fnbw_depth >= ctx->fnbw_depth) ?
+                            last->fnbw_depth :
+                            ctx->fnbw_depth);
+    }
+    else
+    {
+        /*
+         * walks could not be merged, this means that the walk infront needs to
+         * perform different action to this one that has caught up. the one in
+         * front was scheduled first so append the new walk context to the back
+         * of the list.
+         */
+        vec_add1(fwalk->fw_ctx, *ctx);
+    }
+}
+
 void
 fib_walk_async (fib_node_type_t parent_type,
 		fib_node_index_t parent_index,
 		fib_walk_priority_t prio,
 		fib_node_back_walk_ctx_t *ctx)
 {
+    fib_node_ptr_t front;
     fib_walk_t *fwalk;
 
     if (FIB_NODE_GRAPH_MAX_DEPTH < ++ctx->fnbw_depth)
@@ -717,6 +754,27 @@ fib_walk_async (fib_node_type_t parent_type,
         return (fib_walk_sync(parent_type, parent_index, ctx));
     }
 
+    /*
+     * have a peek at the front of the parent's dependency queue
+     */
+    fib_node_child_peek_front(parent_type,
+                              parent_index,
+                              &front);
+
+    /*
+     * if what's on the front is a walk then merge it with this one.
+     */
+    if (FIB_NODE_TYPE_WALK == front.fnp_type)
+    {
+        fwalk = fib_walk_get(front.fnp_index);
+
+        fib_walk_ctx_merge(fwalk, ctx);
+
+        FIB_WALK_DBG(fwalk, "async-start-skip: %U",
+                     format_fib_node_bw_reason, ctx->fnbw_reason);
+
+        return;
+    }
 
     fwalk = fib_walk_alloc(parent_type,
 			   parent_index,
@@ -894,39 +952,11 @@ static fib_node_back_walk_rc_t
 fib_walk_back_walk_notify (fib_node_t *node,
 			   fib_node_back_walk_ctx_t *ctx)
 {
-    fib_node_back_walk_ctx_t *last;
     fib_walk_t *fwalk;
 
     fwalk = fib_walk_get_from_node(node);
 
-    /*
-     * check whether the walk context can be merged with the most recent.
-     * the most recent was the one last added and is thus at the back of the vector.
-     * we can merge walks if the reason for the walk is the same.
-     */
-    last = vec_end(fwalk->fw_ctx) - 1;
-
-    if (last->fnbw_reason == ctx->fnbw_reason)
-    {
-        /*
-         * copy the largest of the depth values. in the presence of a loop,
-         * the same walk will merge with itself. if we take the smaller depth
-         * then it will never end.
-         */
-        last->fnbw_depth = ((last->fnbw_depth >= ctx->fnbw_depth) ?
-                            last->fnbw_depth :
-                            ctx->fnbw_depth);
-    }
-    else
-    {
-        /*
-         * walks could not be merged, this means that the walk infront needs to
-         * perform different action to this one that has caught up. the one in
-         * front was scheduled first so append the new walk context to the back
-         * of the list.
-         */
-        vec_add1(fwalk->fw_ctx, *ctx);
-    }
+    fib_walk_ctx_merge(fwalk, ctx);
 
     return (FIB_NODE_BACK_WALK_MERGE);
 }

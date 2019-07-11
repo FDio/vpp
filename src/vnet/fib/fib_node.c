@@ -120,6 +120,18 @@ fib_node_child_add (fib_node_type_t parent_type,
 }
 
 void
+fib_node_child_peek_front (fib_node_type_t parent_type,
+                           fib_node_index_t parent_index,
+                           fib_node_ptr_t *ptr)
+{
+    fib_node_t *parent;
+
+    parent = fn_vfts[parent_type].fnv_get(parent_index);
+
+    fib_node_list_get_front(parent->fn_children, ptr);
+}
+
+void
 fib_node_child_remove (fib_node_type_t parent_type,
                        fib_node_index_t parent_index,
                        fib_node_index_t sibling_index)

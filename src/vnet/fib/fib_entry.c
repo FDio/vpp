@@ -790,7 +790,19 @@ fib_entry_post_update_actions (fib_entry_t *fib_entry,
 	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
     };
 
-    fib_walk_sync(FIB_NODE_TYPE_ENTRY, fib_entry_get_index(fib_entry), &bw_ctx);
+    if (FIB_SOURCE_RR == source)
+    {
+        fib_walk_async(FIB_NODE_TYPE_ENTRY,
+                       fib_entry_get_index(fib_entry),
+                       FIB_WALK_PRIORITY_LOW,
+                       &bw_ctx);
+    }
+    else
+    {
+        fib_walk_sync(FIB_NODE_TYPE_ENTRY,
+                      fib_entry_get_index(fib_entry),
+                      &bw_ctx);
+    }
 
     /*
      * then inform any covered prefixes
