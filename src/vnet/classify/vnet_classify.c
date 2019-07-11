@@ -152,10 +152,7 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
   vec_validate_aligned (t->buckets, nbuckets - 1, CLIB_CACHE_LINE_BYTES);
   oldheap = clib_mem_set_heap (t->mheap);
 
-  t->writer_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-					   CLIB_CACHE_LINE_BYTES);
-  t->writer_lock[0] = 0;
-
+  clib_spinlock_init (&t->writer_lock);
   clib_mem_set_heap (oldheap);
   return (t);
 }
@@ -193,7 +190,7 @@ vnet_classify_entry_alloc (vnet_classify_table_t * t, u32 log2_pages)
   u32 required_length;
   void *oldheap;
 
-  ASSERT (t->writer_lock[0]);
+  CLIB_SPINLOCK_ASSERT_LOCKED (&t->writer_lock);
   required_length =
     (sizeof (vnet_classify_entry_t) + (t->match_n_vectors * sizeof (u32x4)))
     * t->entries_per_page * (1 << log2_pages);
@@ -222,7 +219,7 @@ static void
 vnet_classify_entry_free (vnet_classify_table_t * t,
 			  vnet_classify_entry_t * v, u32 log2_pages)
 {
-  ASSERT (t->writer_lock[0]);
+  CLIB_SPINLOCK_ASSERT_LOCKED (&t->writer_lock);
 
   ASSERT (vec_len (t->freelists) > log2_pages);
 
@@ -447,8 +444,7 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 
   hash >>= t->log2_nbuckets;
 
-  while (clib_atomic_test_and_set (t->writer_lock))
-    CLIB_PAUSE ();
+  clib_spinlock_lock (&t->writer_lock);
 
   /* First elt in the bucket? */
   if (b->offset == 0)
@@ -640,8 +636,7 @@ expand_ok:
   vnet_classify_entry_free (t, v, old_log2_pages);
 
 unlock:
-  CLIB_MEMORY_BARRIER ();
-  t->writer_lock[0] = 0;
+  clib_spinlock_unlock (&t->writer_lock);
   return rv;
 }
 

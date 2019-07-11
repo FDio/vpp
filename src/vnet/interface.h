@@ -43,6 +43,7 @@
 #include <vlib/vlib.h>
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
+#include <vppinfra/lock.h>
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;
@@ -836,7 +837,7 @@ typedef struct
 
   /* Software interface counters both simple and combined
      packet and byte counters. */
-  volatile u32 *sw_if_counter_lock;
+  clib_spinlock_t sw_if_counter_lock;
   vlib_simple_counter_main_t *sw_if_counters;
   vlib_combined_counter_main_t *combined_sw_if_counters;
 
@@ -868,15 +869,14 @@ static inline void
 vnet_interface_counter_lock (vnet_interface_main_t * im)
 {
   if (im->sw_if_counter_lock)
-    while (clib_atomic_test_and_set (im->sw_if_counter_lock))
-      /* zzzz */ ;
+    clib_spinlock_lock (&im->sw_if_counter_lock);
 }
 
 static inline void
 vnet_interface_counter_unlock (vnet_interface_main_t * im)
 {
   if (im->sw_if_counter_lock)
-    clib_atomic_release (im->sw_if_counter_lock);
+    clib_spinlock_unlock (&im->sw_if_counter_lock);
 }
 
 void vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add);

@@ -306,7 +306,7 @@ typedef struct {
   u16 ip4_reass_allocated;
   u16 *ip4_reass_hash_table;
   u16 ip4_reass_fifo_last;
-  volatile u32 *ip4_reass_lock;
+  clib_spinlock_t ip4_reass_lock;
 
   /* Counters */
   u32 ip4_reass_buffered_counter;
@@ -329,7 +329,7 @@ typedef struct {
   u16 ip6_reass_allocated;
   u16 *ip6_reass_hash_table;
   u16 ip6_reass_fifo_last;
-  volatile u32 *ip6_reass_lock;
+  clib_spinlock_t ip6_reass_lock;
 
   /* Counters */
   u32 ip6_reass_buffered_counter;
@@ -502,8 +502,8 @@ map_ip4_reass_get(u32 src, u32 dst, u16 fragment_id,
 void
 map_ip4_reass_free(map_ip4_reass_t *r, u32 **pi_to_drop);
 
-#define map_ip4_reass_lock() while (clib_atomic_test_and_set (map_main.ip4_reass_lock)) { CLIB_PAUSE (); }
-#define map_ip4_reass_unlock() do {CLIB_MEMORY_BARRIER(); *map_main.ip4_reass_lock = 0;} while(0)
+#define map_ip4_reass_lock() clib_spinlock_lock (&map_main.ip4_reass_lock)
+#define map_ip4_reass_unlock() clib_spinlock_unlock (&map_main.ip4_reass_lock)
 
 static_always_inline void
 map_ip4_reass_get_fragments(map_ip4_reass_t *r, u32 **pi)
@@ -527,8 +527,8 @@ map_ip6_reass_get(ip6_address_t *src, ip6_address_t *dst, u32 fragment_id,
 void
 map_ip6_reass_free(map_ip6_reass_t *r, u32 **pi_to_drop);
 
-#define map_ip6_reass_lock() while (clib_atomic_test_and_set (map_main.ip6_reass_lock)) { CLIB_PAUSE (); }
-#define map_ip6_reass_unlock() do {CLIB_MEMORY_BARRIER(); *map_main.ip6_reass_lock = 0;} while(0)
+#define map_ip6_reass_lock() clib_spinlock_lock (&map_main.ip6_reass_lock)
+#define map_ip6_reass_unlock() clib_spinlock_unlock (&map_main.ip6_reass_lock)
 
 int
 map_ip6_reass_add_fragment(map_ip6_reass_t *r, u32 pi,
@@ -589,6 +589,7 @@ map_domain_counter_lock (map_main_t *mm)
     while (clib_atomic_test_and_set (mm->counter_lock))
       /* zzzz */ ;
 }
+
 static inline void
 map_domain_counter_unlock (map_main_t *mm)
 {
