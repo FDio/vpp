@@ -852,9 +852,9 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   char is_spray = 0;
   char is_tmap = 0;
   ip6_address_t tmap_prefix, tmap_localsid;
-  u16 sr_prefixlen;
-  u16 localsid_len;
-  u32 gtp4_mask_width = 0, localsid_mask_width=0;
+  u16 sr_prefixlen = 0;
+  u16 localsid_len = 0;
+  u32 gtp4_mask_width = 0, localsid_mask_width = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1474,7 +1474,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u32 next0, next1, next2, next3;
 	  next0 = next1 = next2 = next3 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
-	  ip6_header_t *encap0, *encap1, *encap2, *encap3;
+	  ip6_header_t *encap0 = NULL, *encap1 = NULL, *encap2 = NULL, *encap3 = NULL;
 	  ip4_header_t *ip0_encap, *ip1_encap, *ip2_encap, *ip3_encap;
           ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
@@ -1930,7 +1930,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  ip6_header_t *ip0 = 0;
-	  ip6_header_t *encap0;
+	  ip6_header_t *encap0 = NULL;
 	  ip4_header_t *ip0_encap = 0;
 	  ip6_sr_sl_t *sl0;
           ip6_sr_header_t *sr0;
