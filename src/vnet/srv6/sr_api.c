@@ -114,7 +114,7 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
   rv = sr_policy_add ((ip6_address_t *) & mp->bsid_addr,
 		      segments,
 		      ntohl (mp->sids.weight),
-		      mp->type, ntohl (mp->fib_table), mp->is_encap, 0, NULL);
+		      mp->type, ntohl (mp->fib_table), mp->is_encap, 0, 0, NULL, 0);
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
