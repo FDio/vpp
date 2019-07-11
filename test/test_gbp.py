@@ -426,27 +426,53 @@ class VppGbpContractNextHop():
                 'rd_id': self.rd.rd_id}
 
 
-class VppGbpContractRule():
-    def __init__(self, action, hash_mode, nhs=None):
-        self.action = action
+class VppGbpContractNextHopSet():
+    def __init__(self, hash_mode, nhs=None):
         self.hash_mode = hash_mode
-        self.nhs = [] if nhs is None else nhs
+        self.nhs = nhs if nhs is not None else []
 
     def encode(self):
         nhs = []
         for nh in self.nhs:
             nhs.append(nh.encode())
         while len(nhs) < 8:
-            nhs.append({})
-        return {'action': self.action,
-                'nh_set': {
-                    'hash_mode': self.hash_mode,
-                    'n_nhs': len(self.nhs),
-                    'nhs': nhs}}
+            nhs.append({})  # vl_api_gbp_next_hop_t
+        return {'hash_mode': self.hash_mode,
+                'n_nhs': len(nhs),
+                'nhs': nhs}
 
     def __repr__(self):
-        return '<VppGbpContractRule action=%s, hash_mode=%s>' % (
-            self.action, self.hash_mode)
+        return '<VppGbpContractNextHopSet hash_mode=%s, nhs=%s>' % (
+            self.hash_mode, self.nhs)
+
+
+class VppGbpContractRule():
+    def __init__(self, action, hash_mode=None, nhs=None, nh_set=None):
+        if action not in VppEnum.vl_api_gbp_rule_action_t:
+            raise ValueError("action' expected as member of "
+                             "'vl_api_gbp_rule_action_t'. "
+                             "recvd: %r.", type(action))
+        if hash_mode not in VppEnum.vl_api_gbp_hash_mode_t:
+            raise ValueError("hash_mode' expected as member of "
+                             "'vl_api_gbp_hash_mode_t'. "
+                             "recvd: %s.", type(hash_mode))
+
+        self.action = action
+        if nh_set is None:
+            self.nh_set = VppGbpContractNextHopSet(hash_mode, nhs)
+        else:
+            if not isinstance(VppGbpContractNextHopSet, nh_set):
+                raise ValueError("'nh_set' must be VppGbpContractNextHopSet.")
+            self.nh_set = nh_set
+
+    def encode(self):
+        return {'action': self.action,
+                'nh_set': self.nh_set.encode(),
+                }
+
+    def __repr__(self):
+        return '<VppGbpContractRule action=%r, nh_set=%r>' % (
+            self.action, self.nh_set)
 
 
 class VppGbpContract(VppObject):
@@ -457,10 +483,16 @@ class VppGbpContract(VppObject):
     def __init__(self, test, scope, sclass, dclass, acl_index,
                  rules, allowed_ethertypes):
         self._test = test
-        if not isinstance(rules, list):
+        if type(rules) is not list:
             raise ValueError("'rules' must be a list.")
-        if not isinstance(allowed_ethertypes, list):
+        for rule in rules:
+            if not isinstance(rule, VppGbpContractRule):
+                raise TypeError("'rule' must be 'VppGbpContractRule'. "
+                                "Recvd: %r" % rule)
+        if type(allowed_ethertypes) is not list:
             raise ValueError("'allowed_ethertypes' must be a list.")
+        if scope is not int and (scope & 0xffff) != scope:
+            raise ValueError("'scope' must be 'u16' got %r." % scope)
         self.scope = scope
         self.acl_index = acl_index
         self.sclass = sclass
@@ -469,6 +501,7 @@ class VppGbpContract(VppObject):
         self.allowed_ethertypes = allowed_ethertypes
         while (len(self.allowed_ethertypes) < 16):
             self.allowed_ethertypes.append(0)
+        self.stats_index = None
 
     def add_vpp_config(self):
         rules = []
@@ -4111,10 +4144,12 @@ class TestGBP(VppTestCase):
             self, 44, 4220, 4221, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 []),
                 VppGbpContractRule(
                     VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
-                    [])],
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                [])],
             [ETH_P_IP, ETH_P_IPV6])
         c_44.add_vpp_config()
         self.send_and_assert_no_replies(self.pg0, p * 1)
