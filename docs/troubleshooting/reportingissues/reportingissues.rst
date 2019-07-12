@@ -238,6 +238,33 @@ Even given a byte-for-byte identical source tree, it's easy to build
 dramatically different binary artifacts. All it takes is a different
 toolchain version.
 
+
+Compressed Core Files
+---------------------
+
+Depending on operational requirements, it's possible to compress
+corefiles as they are generated. Please note that it takes several
+seconds' worth of wall-clock time to compress a vpp core file on the
+fly, during which all packet processing activities are suspended.
+
+To create compressed core files on the fly, create the following
+script, e.g. in /usr/local/bin/compressed_corefiles, owned by root,
+executable:
+
+.. code-block:: console
+
+  #!/bin/sh
+  exec /bin/gzip -f - >"/tmp/dumps/core-$1.$2.gz"
+
+Adjust the kernel core file pattern as shown:
+
+.. code-block:: console
+
+  sysctl -w kernel.core_pattern="|/usr/local/bin/compressed_corefiles %e %t"
+
+Core File Summary
+-----------------
+
 Bottom line: please follow core file handling instructions to the
 letter. It's not complicated. Simply copy the exact Debian packages or
 RPMs which correspond to core files to accessible locations.
