@@ -787,7 +787,7 @@ tls_register_engine (const tls_engine_vft_t * vft, tls_engine_type_t type)
 static clib_error_t *
 tls_init (vlib_main_t * vm)
 {
-  u32 add_segment_size = (4096ULL << 20) - 1, first_seg_size = 32 << 20;
+  u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads, fifo_size = 128 << 10;
   vnet_app_attach_args_t _a, *a = &_a;
