@@ -30,6 +30,8 @@
 #include <picotls/openssl.h>
 #include <picotls/pembase64.h>
 
+#include <quic/quic_crypto.h>
+
 static quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
 
@@ -2539,7 +2541,40 @@ quic_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (quic_init);
 
+static clib_error_t *
+quic_plugin_crypto_command_fn (vlib_main_t * vm,
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "vpp"))
+	{
+	  quic_tlsctx.cipher_suites = vpp_crypto_cipher_suites;
+	  return 0;
+	}
+      else if (unformat (input, "picotls"))
+	{
+	  quic_tlsctx.cipher_suites = ptls_openssl_cipher_suites;
+	  return 0;
+	}
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  return clib_error_return (0, "unknown input '%U'",
+			    format_unformat_error, input);
+}
+
 /* *INDENT-OFF* */
+VLIB_CLI_COMMAND(quic_plugin_crypto_command, static)=
+{
+	.path = "quic set crypto api",
+	.short_help = "quic set crypto api [picotls, vpp]",
+	.function = quic_plugin_crypto_command_fn,
+};
+
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
