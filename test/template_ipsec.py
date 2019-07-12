@@ -1,6 +1,7 @@
 import unittest
 import socket
 import struct
+import sys
 
 from scapy.layers.inet import IP, ICMP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation, ESP
@@ -8,8 +9,14 @@ from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 
 from framework import VppTestCase, VppTestRunner
+
 from util import ppp, reassemble4
 from vpp_papi import VppEnum
+
+if sys.version_info < (3, 2):
+    import functools32 as functools
+else:
+    import functools
 
 
 class IPsecIPv4Params(object):
@@ -218,32 +225,57 @@ class TemplateIpsec(VppTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show hardware"))
+        print('gen_encrypt_pkts: %r' % repr(
+            self._gen_encrypt_pkts.cache_info()))
+        print('gen_encrypt_pkts6: %r' % repr(
+                self._gen_encrypt_pkts6.cache_info()))
+        print('gen_pkts: %r' % repr(
+            self._gen_pkts.cache_info()))
+        print('gen_pkts6: %r' % repr(
+            self._gen_pkts6.cache_info()))
+
+    @functools.lru_cache(maxsize=1024)
+    def _gen_encrypt_pkts(self, sa, sw_intf, src, dst, payload_size=54):
+        return (Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IP(src=src, dst=dst) /
+                           ICMP() / Raw('X' * payload_size)))
+
+    @functools.lru_cache(maxsize=1024)
+    def _gen_encrypt_pkts6(self, sa, sw_intf, src, dst, payload_size=54):
+        return (Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IPv6(src=src, dst=dst) /
+                           ICMPv6EchoRequest(id=0, seq=1,
+                                             data='X' * payload_size)))
+
+    @functools.lru_cache(maxsize=1024)
+    def _gen_pkts(self, sw_intf, src, dst, payload_size=54):
+        return (Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                IP(src=src, dst=dst) / ICMP() / Raw('X' * payload_size))
+
+    @functools.lru_cache(maxsize=1024)
+    def _gen_pkts6(self, sw_intf, src, dst, payload_size=54):
+        return (Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                IPv6(src=src, dst=dst) /
+                ICMPv6EchoRequest(id=0, seq=1, data='X' * payload_size))
 
     def gen_encrypt_pkts(self, sa, sw_intf, src, dst, count=1,
                          payload_size=54):
-        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                sa.encrypt(IP(src=src, dst=dst) /
-                           ICMP() / Raw('X' * payload_size))
-                for i in range(count)]
+        return [self._gen_encrypt_pkts(sa, sw_intf, src, dst, payload_size)
+                for _ in range(count)]
 
     def gen_encrypt_pkts6(self, sa, sw_intf, src, dst, count=1,
                           payload_size=54):
-        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                sa.encrypt(IPv6(src=src, dst=dst) /
-                           ICMPv6EchoRequest(id=0, seq=1,
-                                             data='X' * payload_size))
-                for i in range(count)]
+        return [self._gen_encrypt_pkts6(sa, sw_intf, src, dst, payload_size)
+                for _ in range(count)]
 
-    def gen_pkts(self, sw_intf, src, dst, count=1, payload_size=54):
-        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                IP(src=src, dst=dst) / ICMP() / Raw('X' * payload_size)
-                for i in range(count)]
+    def gen_pkts(self, sw_intf, src, dst, count=1,
+                 payload_size=54):
+        return [self._gen_pkts(sw_intf, src, dst, payload_size)
+                for _ in range(count)]
 
     def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
-        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                IPv6(src=src, dst=dst) /
-                ICMPv6EchoRequest(id=0, seq=1, data='X' * payload_size)
-                for i in range(count)]
+        return [self._gen_pkts6(sw_intf, src, dst, payload_size)
+                for _ in range(count)]
 
 
 class IpsecTcp(object):

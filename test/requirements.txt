@@ -5,6 +5,7 @@ cffi                                    # MIT
 cryptography!=2.0                       # BSD/Apache-2.0
 deprecation>=2.0.6                      # Apache-2.0
 faulthandler; python_version < '3.3' #  # BSD License (2 clause)
+functools32>=3.2.3-2; python_version < '3.2'     # PSF
 flake8                                  # MIT
 ipaddress; python_version < '3.3'       # PSF
 parameterized>=0.6.1                    # BSD
