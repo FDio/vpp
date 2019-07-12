@@ -17,14 +17,11 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*; \
     mv /usr/sbin/tcpdump /usr/bin/tcpdump
 
-RUN set -eux; \
-    mkdir -p {{vpp_path}}
-
-COPY . / {{vpp_path}}/
-
-WORKDIR {{vpp_path}}
+WORKDIR /tmp
 
 RUN set -eux; \
+    git clone -b ietf105-hackathon https://github.com/filvarga/srv6-mobile.git; \
+    cd /tmp/srv6-mobile; \
     make wipe; \
     export UNATTENDED=y; \
     make install-dep; \
@@ -33,11 +30,11 @@ RUN set -eux; \
     make pkg-deb; \
     rm -rf .ccache; \
     find . -type f -name '*.o' -delete ; \
-    cd {{vpp_path}}/build-root; \
+    cd /tmp/srv6-mobile/build-root; \
     rm vpp-api-python_*.deb; \
     dpkg -i *.deb ; \
-    cp {{vpp_path}}/startup.conf /etc/startup.conf; \
-    rm -rf {{vpp_path}}
+    cp /tmp/srv6-mobile/extras/ietf105/startup.conf.j2 /etc/startup.conf; \
+    rm -rf /tmp/srv6-mobile
 
 WORKDIR /
  
