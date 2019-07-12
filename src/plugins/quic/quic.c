@@ -1677,7 +1677,8 @@ static u8 *
 format_quic_half_open (u8 * s, va_list * args)
 {
   u32 qc_index = va_arg (*args, u32);
-  quic_ctx_t *ctx = quic_ctx_get (qc_index, vlib_get_thread_index ());
+  u32 thread_index = va_arg (*args, u32);
+  quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
   s = format (s, "[QUIC] half-open app %u", ctx->parent_app_id);
   return s;
 }
@@ -1687,8 +1688,9 @@ static u8 *
 format_quic_listener (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
+  u32 thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
-  quic_ctx_t *ctx = quic_ctx_get (tci, vlib_get_thread_index ());
+  quic_ctx_t *ctx = quic_ctx_get (tci, thread_index);
   if (ctx)
     {
       ASSERT (quic_ctx_is_listener (ctx));
