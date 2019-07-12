@@ -1632,32 +1632,30 @@ format_quic_ctx (u8 * s, va_list * args)
 {
   quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
   u32 verbose = va_arg (*args, u32);
+  u8 *str = 0;
 
   if (!ctx)
     return s;
-  s = format (s, "[#%d][Q] ", ctx->c_thread_index);
+  str = format (str, "[#%d][Q] ", ctx->c_thread_index);
 
-  if (!quic_ctx_is_listener (ctx))
-    {
-      s = format (s, "%s Session: ", quic_ctx_is_stream (ctx) ?
-		  "Stream" : "Quic");
-      if (verbose)
-	s = format (s, "app %d wrk %d", ctx->parent_app_id,
-		    ctx->parent_app_wrk_id);
-    }
+  if (quic_ctx_is_listener (ctx))
+    str = format (str, "Listener, UDP %ld", ctx->udp_session_handle);
+  else if (quic_ctx_is_stream (ctx))
+    str = format (str, "Stream %ld conn %d",
+		  ctx->c_quic_ctx_id.stream->stream_id,
+		  ctx->c_quic_ctx_id.quic_connection_ctx_id);
+  else				/* connection */
+    str = format (str, "Conn %d UDP %d", ctx->c_c_index,
+		  ctx->udp_session_handle);
+
+  str = format (str, " app %d wrk %d", ctx->parent_app_id,
+		ctx->parent_app_wrk_id);
+
+  if (verbose == 1)
+    s = format (s, "%-50s%-15d", str, ctx->c_quic_ctx_id.conn_state);
   else
-    {
-      if (ctx->c_is_ip4)
-	s = format (s, "%U:%d->%U:%d", format_ip4_address, &ctx->c_lcl_ip4,
-		    clib_net_to_host_u16 (ctx->c_lcl_port),
-		    format_ip4_address, &ctx->c_rmt_ip4,
-		    clib_net_to_host_u16 (ctx->c_rmt_port));
-      else
-	s = format (s, "%U:%d->%U:%d", format_ip6_address, &ctx->c_lcl_ip6,
-		    clib_net_to_host_u16 (ctx->c_lcl_port),
-		    format_ip6_address, &ctx->c_rmt_ip6,
-		    clib_net_to_host_u16 (ctx->c_rmt_port));
-    }
+    s = format (s, "%s\n", str);
+  vec_free (str);
   return s;
 }
 
@@ -1668,8 +1666,7 @@ format_quic_connection (u8 * s, va_list * args)
   u32 thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
-  if (ctx)
-    s = format (s, "%-50U", format_quic_ctx, ctx, verbose);
+  s = format (s, "%U", format_quic_ctx, ctx, verbose);
   return s;
 }
 
@@ -1679,7 +1676,8 @@ format_quic_half_open (u8 * s, va_list * args)
   u32 qc_index = va_arg (*args, u32);
   u32 thread_index = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
-  s = format (s, "[QUIC] half-open app %u", ctx->parent_app_id);
+  s =
+    format (s, "[#%d][Q] half-open app %u", thread_index, ctx->parent_app_id);
   return s;
 }
 
@@ -1691,11 +1689,7 @@ format_quic_listener (u8 * s, va_list * args)
   u32 thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (tci, thread_index);
-  if (ctx)
-    {
-      ASSERT (quic_ctx_is_listener (ctx));
-      s = format (s, "%-50U", format_quic_ctx, ctx, verbose);
-    }
+  s = format (s, "%U", format_quic_ctx, ctx, verbose);
   return s;
 }
 
