@@ -607,6 +607,63 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
   l->n_bytes += vlib_buffer_length_in_chain (vm, b);
 }
 
+static const u8 dmac_mask_bytes[8] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, };
+static const u8 dmac_igbit_bytes[8] = { 0x01, };
+
+static const u64 *dmac_mask = (u64 *) dmac_mask_bytes;
+static const u64 *dmac_igbit = (u64 *) dmac_igbit_bytes;
+
+static_always_inline void
+eth_input_dmac_check (u64 * if_addrs, u64 * dmac, u8 * dmac_bad)
+{
+  u64 *if_addr;
+
+  vec_foreach (if_addr, if_addrs)
+  {
+    u64 r0;
+
+    r0 = dmac[0] & *dmac_mask;
+
+    if ((r0 == *if_addr) || (r0 & *dmac_igbit))
+      {
+	*dmac_bad = 0;
+	return;
+      }
+  }
+
+  *dmac_bad = 1;
+}
+
+static_always_inline void
+eth_input_dmac_check_extra_addrs (ethernet_interface_t * ei, u64 * dmacs,
+				  u8 * dmacs_bad, u32 n_packets)
+{
+  mac_address_t *addr;
+  u64 *if_addrs = 0;
+  u32 n_left = n_packets;
+  u64 *dmac = dmacs;
+  u8 *dmac_bad = dmacs_bad;
+
+  /* convert extra MAC addrs for this interface to u64 */
+  vec_foreach (addr, ei->secondary_addrs)
+  {
+    vec_add1 (if_addrs, (((u64 *) addr)[0] & *dmac_mask));
+  }
+
+  while (n_left)
+    {
+      /* if dmac didn't match primary HW addr, check extra addrs */
+      if (*dmac_bad)
+	eth_input_dmac_check (if_addrs, dmac, dmac_bad);
+
+      n_left -= 1;
+      dmac += 1;
+      dmac_bad += 1;
+    }
+
+  vec_free (if_addrs);
+}
+
 /* process frame of buffers, store ethertype into array and update
    buffer metadata fields depending on interface being l2 or l3 assuming that
    packets are untagged. For tagged packets those fields are updated later.
@@ -638,6 +695,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   i32 n_left = n_packets;
   vlib_buffer_t *b[20];
   u32 *from;
+  ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
 
   from = buffer_indices;
 
@@ -705,6 +763,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (dmac_check)
     {
+      u8 found_bad_dmac = 0;
       u64 mask = clib_net_to_host_u64 (0xFFFFFFFFFFFF0000);
       u64 igbit = clib_net_to_host_u64 (0x0100000000000000);
       u64 hwaddr = (*(u64 *) hi->hw_address) & mask;
@@ -728,6 +787,9 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  *(u32 *) (dmac_bad + 0) = u8x32_msb_mask ((u8x32) (r0));
 	  *(u32 *) (dmac_bad + 4) = u8x32_msb_mask ((u8x32) (r1));
+
+	  if (((u64 *) dmac_bad)[0])
+	    found_bad_dmac = 1;
 
 	  /* next */
 	  dmac += 8;
@@ -753,12 +815,19 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  dmac_bad[2] = r2;
 	  dmac_bad[3] = r3;
 
+	  if ((r0 != 0) || (r1 != 0) || (r2 != 0) || (r3 != 0))
+	    found_bad_dmac = 1;
+
 	  /* next */
 	  dmac += 4;
 	  dmac_bad += 4;
 	  n_left -= 4;
 	}
 #endif
+
+      /* If there are secondary addresses, check bad dmacs against them */
+      if (found_bad_dmac && vec_len (ei->secondary_addrs))
+	eth_input_dmac_check_extra_addrs (ei, dmacs, dmacs_bad, n_packets);
     }
 
   next_ip4 = em->l3_next.input_next_ip4;

@@ -154,6 +154,9 @@ typedef struct ethernet_interface
 
   /* Ethernet (MAC) address for this interface. */
   u8 address[6];
+
+  /* Secondary MAC addresses for this interface */
+  mac_address_t *secondary_addrs;
 } ethernet_interface_t;
 
 extern vnet_hw_interface_class_t ethernet_hw_interface_class;
@@ -310,6 +313,10 @@ ethernet_get_type_info (ethernet_main_t * em, ethernet_type_t type)
 
 ethernet_interface_t *ethernet_get_interface (ethernet_main_t * em,
 					      u32 hw_if_index);
+mac_address_t *ethernet_interface_add_del_address (ethernet_main_t * em,
+						   u32 hw_if_index,
+						   const u8 * address,
+						   u8 is_add);
 
 clib_error_t *ethernet_register_interface (vnet_main_t * vnm,
 					   u32 dev_class_index,
