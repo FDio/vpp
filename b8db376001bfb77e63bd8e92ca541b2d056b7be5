@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8d359bc2_da0a234c",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2407,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T18:24:58Z",
+      "side": 1,
+      "message": "You may want to move this more to the left. The formatter won\u0027t do it because indenting is off",
+      "range": {
+        "startLine": 2391,
+        "startChar": 0,
+        "endLine": 2407,
+        "endChar": 0
+      },
+      "revId": "b8db376001bfb77e63bd8e92ca541b2d056b7be5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
