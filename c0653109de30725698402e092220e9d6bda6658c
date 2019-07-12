@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4092539f_f8f319fd",
+        "filename": "src/plugins/nat/nat_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2037,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-12T02:04:13Z",
+      "side": 1,
+      "message": "vl_msg_api_alloc_zero",
+      "range": {
+        "startLine": 2036,
+        "startChar": 6,
+        "endLine": 2037,
+        "endChar": 32
+      },
+      "revId": "c0653109de30725698402e092220e9d6bda6658c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a7926c1c_f26a6cd3",
+        "filename": "src/plugins/nat/nat_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2041,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-12T02:04:13Z",
+      "side": 1,
+      "message": "vl_api_vec_to_api_string (m-\u003etag, (vl_api_string_t *) sp);",
+      "range": {
+        "startLine": 2041,
+        "startChar": 6,
+        "endLine": 2041,
+        "endChar": 67
+      },
+      "revId": "c0653109de30725698402e092220e9d6bda6658c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "92c18edb_ac84a22e",
+        "filename": "src/plugins/nat/nat_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2047,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-12T02:04:13Z",
+      "side": 1,
+      "message": "vl_msg_api_alloc_zero",
+      "range": {
+        "startLine": 2046,
+        "startChar": 6,
+        "endLine": 2047,
+        "endChar": 32
+      },
+      "revId": "c0653109de30725698402e092220e9d6bda6658c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
