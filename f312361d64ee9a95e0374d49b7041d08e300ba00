@@ -1,0 +1,280 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "67aac47f_8290e0f8",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_client.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 878,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "reformat",
+      "range": {
+        "startLine": 877,
+        "startChar": 4,
+        "endLine": 878,
+        "endChar": 9
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f784234f_8c685c3e",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_client.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1131,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "Move to line above",
+      "range": {
+        "startLine": 1131,
+        "startChar": 1,
+        "endLine": 1131,
+        "endChar": 35
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0fb5d506_267946ec",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "\u0026\u0026 \n\nCheck if the formatter allows you to do:\nsession-\u003eis_connectable_listener \u003d session-\u003esession_type \u003d\u003d VPPCOM_PROTO_QUIC\n(newline align to \u003d here, but gerrit won\u0027t work) \u0026\u0026 !listen_session-\u003eis_connectable_listener",
+      "range": {
+        "startLine": 317,
+        "startChar": 0,
+        "endLine": 318,
+        "endChar": 68
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25795419_9eefbe43",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1114,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "Hm, instead of adding this as a session property, can\u0027t you just check if the transport has the property here?\n\nAlso I guess you want logical or here: \"||\"",
+      "range": {
+        "startLine": 1114,
+        "startChar": 38,
+        "endLine": 1114,
+        "endChar": 72
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e1048ba2_0c27499b",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1301,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "logical \u0026\u0026 ?",
+      "range": {
+        "startLine": 1301,
+        "startChar": 42,
+        "endLine": 1301,
+        "endChar": 43
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "39ec7468_1b98fa20",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1465,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "Can\u0027t this be set when session is created/accepted? Or better yet, can\u0027t we check using the session type only when needed?",
+      "range": {
+        "startLine": 1464,
+        "startChar": 0,
+        "endLine": 1465,
+        "endChar": 67
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c0bc813d_a53dcacc",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1478,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "Reformat to have something on first line as well",
+      "range": {
+        "startLine": 1477,
+        "startChar": 14,
+        "endLine": 1478,
+        "endChar": 6
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ef0fd043_e01aedfc",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1551,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "Reformat",
+      "range": {
+        "startLine": 1551,
+        "startChar": 5,
+        "endLine": 1551,
+        "endChar": 9
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fbc3eb2f_d3b47c33",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "Needed?",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 19
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5a4241e8_377d9578",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "VCL_INVALID_HANDLE otherwise we\u0027ll quickly get clashes. But is this used anywhere and should it be public.",
+      "range": {
+        "startLine": 48,
+        "startChar": 8,
+        "endLine": 48,
+        "endChar": 22
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "acb8508b_a1ce9aba",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "vcl_proto_allows_cal_on_all () or something like that? As in, proto allows connect and listen on all sessions? Or can this be qualified further?",
+      "range": {
+        "startLine": 100,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 38
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87bac0c4_cf5840c2",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-12T17:46:08Z",
+      "side": 1,
+      "message": "Should this public or private? I\u0027d expect the app to know what it called.",
+      "range": {
+        "startLine": 93,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 1
+      },
+      "revId": "f312361d64ee9a95e0374d49b7041d08e300ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
