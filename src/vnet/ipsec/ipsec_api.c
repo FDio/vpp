@@ -513,12 +513,13 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ip_address_decode (&mp->entry.tunnel_dst, &tun_dst);
 
   if (mp->is_add)
-    rv = ipsec_sa_add (id, spi, proto,
-		       crypto_alg, &crypto_key,
-		       integ_alg, &integ_key, flags,
-		       0, mp->entry.salt, &tun_src, &tun_dst, &sa_index);
+    rv = ipsec_sa_add_and_lock (id, spi, proto,
+				crypto_alg, &crypto_key,
+				integ_alg, &integ_key, flags,
+				0, mp->entry.salt, &tun_src, &tun_dst,
+				&sa_index);
   else
-    rv = ipsec_sa_del (id);
+    rv = ipsec_sa_unlock_id (id);
 
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;

@@ -32,12 +32,12 @@ typedef struct ipsec_ep_t_
 typedef struct ipsec_tun_protect_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 itp_out_sa;
+  index_t itp_out_sa;
 
   /* not using a vector since we want the memory inline
    * with this struct */
   u32 itp_n_sa_in;
-  u32 itp_in_sas[4];
+  index_t itp_in_sas[4];
 
   u32 itp_sw_if_index;
 

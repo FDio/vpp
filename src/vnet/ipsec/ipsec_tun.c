@@ -191,6 +191,7 @@ static void
 ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
 {
   ipsec_sa_t *sa;
+  index_t sai;
 
   ipsec_tun_protect_feature_set (itp, 0);
 
@@ -199,9 +200,16 @@ ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
   ({
     ipsec_sa_unset_IS_PROTECT (sa);
   }));
-  /* *INDENT-ON* */
 
   ipsec_tun_protect_db_remove (im, itp);
+
+  ipsec_sa_unlock(itp->itp_out_sa);
+
+  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
+  ({
+    ipsec_sa_unlock(sai);
+  }));
+  /* *INDENT-ON* */
 }
 
 index_t
@@ -229,7 +237,7 @@ ipsec_tun_protect_update (u32 sw_if_index, u32 sa_out, u32 * sas_in)
 
   vec_foreach_index (ii, sas_in)
   {
-    sas_in[ii] = ipsec_get_sa_index_by_sa_id (sas_in[ii]);
+    sas_in[ii] = ipsec_sa_find_and_lock (sas_in[ii]);
     if (~0 == sas_in[ii])
       {
 	rv = VNET_API_ERROR_INVALID_VALUE;
@@ -237,7 +245,7 @@ ipsec_tun_protect_update (u32 sw_if_index, u32 sa_out, u32 * sas_in)
       }
   }
 
-  sa_out = ipsec_get_sa_index_by_sa_id (sa_out);
+  sa_out = ipsec_sa_find_and_lock (sa_out);
 
   if (~0 == sa_out)
     {

@@ -42,11 +42,13 @@ test_ipsec_command_fn (vlib_main_t * vm,
       ipsec_sa_t *sa;
       u32 sa_index;
 
-      sa_index = ipsec_get_sa_index_by_sa_id (sa_id);
+      sa_index = ipsec_sa_find_and_lock (sa_id);
       sa = pool_elt_at_index (im->sad, sa_index);
 
       sa->seq = seq_num & 0xffffffff;
       sa->seq_hi = seq_num >> 32;
+
+      ipsec_sa_unlock (sa_index);
     }
   else
     {
