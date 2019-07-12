@@ -173,6 +173,11 @@ M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/lisp-cp/
 F:	src/vnet/lisp-gpe/
 
+VNET GSO
+I: gso
+M: Andrew Yourtchenko <ayourtch@gmail.com>
+F: src/vnet/interface_output.c
+
 Plugin - MAP
 I:	map
 Y:	src/plugins/map/FEATURE.yaml
