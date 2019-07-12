@@ -225,6 +225,19 @@ class Containers(object):
                     tag=self.image, rm=True)
         return ref
 
+    def release(self, path, vpp_path):
+        env = Environment(
+                loader=FileSystemLoader(path),
+                trim_blocks=True)
+
+        self.tmp_render(join(vpp_path, "Dockerfile"),
+                env.get_template("Dockerfile.j2.release"),
+                {'vpp_path': vpp_path})
+
+        ref, _ = self.client.images.build(path=vpp_path,
+                    tag=self.image, rm=True)
+        return ref
+
     def new(self, name):
         return Container.new(self.client, self.image, name)
 
@@ -519,14 +532,14 @@ class Program(object):
             local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 local_prefix C1::/64")
+        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 v6src_prefix C1::/64")
         c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D1::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e C1::/64")
+        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e v4src_position 64")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
@@ -580,14 +593,14 @@ class Program(object):
             local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
-        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 local_prefix C1::/64")
+        c1.vppctl_exec("sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 v6src_prefix C1::/64")
         c1.vppctl_exec("sr steer l3 172.20.0.1/32 via bsid D1::")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
         c3.vppctl_exec("sr localsid address D3:: behavior end")
 
-        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e C1::/64")
+        c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e v4src_position 64")
 
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
@@ -914,6 +927,9 @@ class Program(object):
         # TODO: optimize build process for speed and image size
         self.containers.build(self.path, self.vpp_path)
 
+    def release_image(self):
+        self.containers.release(self.path, self.vpp_path)
+
     def vppctl(self, index, command=None):
         if index >= len(self.instance_names):
             return
@@ -943,7 +959,7 @@ def get_args():
             help="Infrastructure related commands.")
 
     p1.add_argument("op", choices=[
-        'stop', 'start', 'status', 'restart', 'build'])
+        'stop', 'start', 'status', 'restart', 'build', 'release'])
     
     p1.add_argument("--prefix")
     p1.add_argument("--image")
@@ -984,6 +1000,8 @@ def main(op=None, image=None, prefix=None, verbose=None, index=None, command=Non
     try:
         if op == 'build':
             program.build_image()
+        elif op == 'release':
+            program.release_image()
         elif op == 'stop':
             program.stop_containers()
         elif op == 'start':

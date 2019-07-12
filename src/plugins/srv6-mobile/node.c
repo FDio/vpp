@@ -150,6 +150,18 @@ typedef enum
   SRV6_END_M_GTP6_D_DI_N_NEXT,
 } srv6_end_m_gtp6_d_di_next_t;
 
+static inline u16
+hash_uword_to_u16 (uword *key)
+{
+  u16 *val;
+  val = (u16 *)key;
+#if uword_bits == 64
+  return val[0] ^ val[1] ^ val[3] ^ val[4];
+#else
+  return val[0] ^ val[1];
+#endif
+}
+
 // Function for SRv6 GTP4.E function.
 VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
                                   vlib_node_runtime_t * node,
@@ -219,6 +231,14 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
             }
           else
             {
+              u32 teid;
+              u8 *teid8p = (u8 *)&teid;
+	      u32 index;
+	      u32 offset, shift;
+	      uword key;
+	      u16 port;
+	      void *p;
+
               // we need to be sure there is enough space before 
               // ip6srv0 header, there is some extra space
               // in the pre_data area for this kind of
@@ -237,6 +257,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 		}
 
               // get length of encapsulated IPv6 packet (the remaining part)
+	      p = vlib_buffer_get_current (b0);
+
               len0 = vlib_buffer_length_in_chain (vm, b0);
 
               // jump back to data[0] or pre_data if required
@@ -245,11 +267,6 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
               hdr0 = vlib_buffer_get_current (b0);
 
               clib_memcpy (hdr0, &sm->cache_hdr, sizeof (ip4_gtpu_header_t));
-
-              u32 teid;
-              u8 *teid8p = (u8 *)&teid;
-	      u32 index;
-	      u32 offset, shift;
 
 	      offset = ls0->localsid_len / 8;
 	      shift = ls0->localsid_len % 8;
@@ -283,31 +300,42 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	      shift = ls_param->local_prefixlen % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
+#if 0
 		u8 *pp;
-
 		pp = (u8 *) &hdr0->udp.src_port;
+#endif
 
 		for (index = 0; index < 4; index ++) {
 		  hdr0->ip4.src_address.as_u8[index] = src0.as_u8[offset + index];
 		}
 
+#if 0
 		for (index = 0; index < 2; index++) {
 		  pp[index] = src0.as_u8[offset + 4 + index];
 		}
+#endif
 	      } else {
+#if 0
 		u8 *pp;
-
 		pp = (u8 *) &hdr0->udp.src_port;
+#endif
+
 		for (index = 0; index < 4; index ++) {
 		  hdr0->ip4.src_address.as_u8[index] = src0.as_u8[offset + index] << shift;
 		  hdr0->ip4.src_address.as_u8[index] |= src0.as_u8[offset + index + 1] >> (8 - shift);
 		}
 
+#if 0
 		for (index = 0; index < 2; index++) {
 		  pp[index] = src0.as_u8[offset + index + 4] << shift;
 		  pp[index] |= src0.as_u8[offset + index + 5] >> (8 - shift);
 		}
+#endif
 	      }
+
+	      key = hash_memory(p, len0, 0);
+	      port = hash_uword_to_u16(&key);
+	      hdr0->udp.src_port = port;
 
               hdr0->udp.length = clib_host_to_net_u16 (len0 +
                   sizeof (udp_header_t) + sizeof (gtpu_header_t));
@@ -371,18 +399,6 @@ VLIB_REGISTER_NODE (srv6_end_m_gtp4_e) = {
     [SRV6_END_M_GTP4_E_NEXT_LOOKUP] = "ip4-lookup",
   },
 };
-
-static inline u16
-hash_uword_to_u16 (uword *key)
-{
-  u16 *val;
-  val = (u16 *)key;
-#if uword_bits == 64
-  return val[0] ^ val[1] ^ val[3] ^ val[4];
-#else
-  return val[0] ^ val[1];
-#endif
-}
 
 // Function for SRv6 GTP6.E function
 VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
