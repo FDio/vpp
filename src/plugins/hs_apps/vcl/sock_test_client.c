@@ -620,8 +620,9 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	  return -1;
 	}
 
-      if (!scm->test_socket)
-	memset (tsock, 0, sizeof (*tsock));
+      memset (&tsock[scm->num_test_sockets], 0,
+	      sizeof (vcl_test_session_t) * (num_test_sockets -
+					     scm->num_test_sockets));
 
       scm->test_socket = tsock;
       for (i = scm->num_test_sockets; i < num_test_sockets; i++)
