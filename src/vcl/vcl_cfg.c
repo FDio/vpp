@@ -580,8 +580,7 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
       clib_memcpy (vcm->cfg.namespace_id, env_var_str, ns_id_vec_len);
 
       VCFG_DBG (0, "VCL<%d>: configured namespace_id (%s) from "
-		VPPCOM_ENV_APP_NAMESPACE_ID "!", getpid (),
-		(char *) vcm->cfg.namespace_id);
+		VPPCOM_ENV_APP_NAMESPACE_ID "!", getpid (), env_var_str);
     }
   env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
   if (env_var_str)
