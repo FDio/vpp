@@ -24,12 +24,25 @@ service {
   rpc memclnt_read_timeout returns null;
   rpc rx_thread_exit returns null;
   rpc trace_plugin_msg_ids returns null;
+  rpc unknown_message returns null;
 };
 
 /*
- * Create a client registration 
+ * Reply to an unknown message-ID. Can't use the name "xxx_reply" because
+ * it annoys vppapigen.
  */
-manual_print 
+define unknown_message
+{
+    u32 client_index;
+    u32 context;
+    u16 bad_msg_id;
+};
+
+
+/*
+ * Create a client registration
+ */
+manual_print
 define memclnt_create {
     u32 context;                /* opaque value to be returned in the reply */
     i32 ctx_quota;              /* requested punt context quota */
@@ -47,7 +60,7 @@ define memclnt_create_reply {
 };
 
 /*
- * Delete a client registration 
+ * Delete a client registration
  */
 manual_print
 define memclnt_delete {
@@ -153,7 +166,7 @@ typedef message_table_entry
 };
 
 /*
- * Create a socket client registration. 
+ * Create a socket client registration.
  */
 define sockclnt_create {
     u32 context;                /* opaque value to be returned in the reply */
@@ -170,7 +183,7 @@ define sockclnt_create_reply {
 };
 
 /*
- * Delete a client registration 
+ * Delete a client registration
  */
 define sockclnt_delete {
     u32 client_index;

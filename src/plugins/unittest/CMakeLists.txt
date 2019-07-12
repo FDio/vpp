@@ -13,6 +13,7 @@
 
 add_vpp_plugin(unittest
   SOURCES
+  api_test.c
   bier_test.c
   bihash_test.c
   crypto_test.c

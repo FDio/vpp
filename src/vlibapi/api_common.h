@@ -156,6 +156,7 @@ void vl_msg_api_set_handlers (int msg_id, char *msg_name,
 			      void *print, int msg_size, int traced);
 void vl_msg_api_clean_handlers (int msg_id);
 void vl_msg_api_config (vl_msg_api_msg_config_t *);
+void vl_msg_api_force_config (vl_msg_api_msg_config_t *);
 void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
 void vl_msg_api_queue_handler (svm_queue_t * q);
 

@@ -420,6 +420,32 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & rmp);
 }
 
+/*
+ * Handler for msg_id = 0, msg_id out of range errors
+ */
+static void
+vl_api_illegal_msg_id_t_handler (vl_api_unknown_message_t * mp)
+{
+  vl_api_unknown_message_t *rmp;
+  vl_api_registration_t *reg;
+
+  /* See if the message is well-formed enough to reply... */
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (reg == NULL)
+    {
+      clib_warning ("incorrect client_index %d, msg_id %d",
+		    clib_net_to_host_u32 (mp->client_index),
+		    clib_net_to_host_u16 (mp->_vl_msg_id));
+      return;
+    }
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->context = mp->context;
+  rmp->bad_msg_id = mp->_vl_msg_id;
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
 #define foreach_vlib_api_msg                            \
 _(MEMCLNT_CREATE, memclnt_create)                       \
 _(MEMCLNT_DELETE, memclnt_delete)                       \
@@ -443,6 +469,16 @@ vl_mem_api_init (const char *region_name)
 
   if ((rv = vl_map_shmem (region_name, 1 /* is_vlib */ )) < 0)
     return rv;
+
+  c->id = 0;
+  c->name = "illegal_msg_id";
+  c->handler = vl_api_illegal_msg_id_t_handler;
+  c->cleanup = vl_noop_handler;
+  c->size = sizeof (vl_api_unknown_message_t);
+  c->traced = 0;		/* don't trace */
+  c->replay = 0;		/* don't replay client create/delete msgs */
+  c->message_bounce = 0;	/* don't bounce this message */
+  vl_msg_api_force_config (c);
 
 #define _(N,n) do {                                             \
     c->id = VL_API_##N;                                         \

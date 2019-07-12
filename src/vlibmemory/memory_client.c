@@ -361,7 +361,15 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & rmp);
 }
 
+static void
+vl_api_unknown_message_t_handler (vl_api_unknown_message_t * mp)
+{
+  clib_warning ("BUG: sent unknown message id %d",
+		clib_net_to_host_u16 (mp->bad_msg_id));
+}
+
 #define foreach_api_msg                         \
+_(UNKNOWN_MESSAGE, unknown_message)             \
 _(RX_THREAD_EXIT, rx_thread_exit)               \
 _(MEMCLNT_CREATE_REPLY, memclnt_create_reply)   \
 _(MEMCLNT_DELETE_REPLY, memclnt_delete_reply)	\

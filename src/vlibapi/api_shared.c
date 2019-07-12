@@ -524,7 +524,12 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
     }
   else
     {
-      clib_warning ("no handler for msg id %d", id);
+      /* Use the illegal message-id handler... */
+      handler = (void *) am->msg_handlers[0];
+      vl_msg_api_barrier_trace_context (am->msg_names[0]);
+      vl_msg_api_barrier_sync ();
+      (*handler) (the_msg, vm, node);
+      vl_msg_api_barrier_release ();
     }
 
   /*
@@ -681,8 +686,8 @@ _(api_trace_cfg)				\
 _(message_bounce)				\
 _(is_mp_safe)
 
-void
-vl_msg_api_config (vl_msg_api_msg_config_t * c)
+static void
+msg_config_internal (vl_msg_api_msg_config_t * c, int force)
 {
   api_main_t *am = &api_main;
 
@@ -693,7 +698,7 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
    * this way, I thought I'd make it easy to debug if I ever do
    * it again... (;-)...
    */
-  if (c->id == 0)
+  if (c->id == 0 && force == 0)
     {
       if (c->name)
 	clib_warning ("Trying to register %s with a NULL msg id!", c->name);
@@ -724,6 +729,18 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   am->api_trace_cfg[c->id].size = c->size;
   am->api_trace_cfg[c->id].trace_enable = c->traced;
   am->api_trace_cfg[c->id].replay_enable = c->replay;
+}
+
+void
+vl_msg_api_config (vl_msg_api_msg_config_t * c)
+{
+  msg_config_internal (c, 0 /* force */ );
+}
+
+void
+vl_msg_api_force_config (vl_msg_api_msg_config_t * c)
+{
+  msg_config_internal (c, 1 /* force */ );
 }
 
 /*
