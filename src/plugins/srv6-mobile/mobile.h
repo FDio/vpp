@@ -34,6 +34,12 @@ typedef struct srv6_end_gtp6_param_s
   u32 sr_prefixlen;
 } srv6_end_gtp6_param_t;
 
+typedef struct srv6_end_gtp4_param_s
+{
+  ip6_address_t local_prefix;
+  u32 local_prefixlen;
+} srv6_end_gtp4_param_t;
+
 typedef struct srv6_end_main_v4_s
 {
 

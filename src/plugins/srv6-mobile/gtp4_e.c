@@ -65,15 +65,34 @@ static u8 param_str[] = "";
 static u8 *
 clb_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
 {
-  s = format (s, "SRv6 End format function unsupported.");
+  srv6_end_gtp4_param_t *ls_mem = va_arg (*args, void *);
+
+  s = format (s, "SRv6 End gtp4.e\n\t");
+
+  s = format (s, "Local Prefix: %U/%d\n", format_ip6_address, &ls_mem->local_prefix, ls_mem->local_prefixlen);
+
   return s;
 }
 
 static uword
 clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 {
-  if (!unformat (input, "end.m.gtp4.e"))
+  void **plugin_mem_p = va_arg (*args, void **);
+  srv6_end_gtp4_param_t *ls_mem;
+  ip6_address_t local_prefix;
+  u32 local_prefixlen;
+
+  if (!unformat (input, "end.m.gtp4.e %U/%d",
+	  unformat_ip6_address, &local_prefix, &local_prefixlen))
     return 0;
+
+  ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
+  clib_memset (ls_mem, 0, sizeof *ls_mem);
+  *plugin_mem_p = ls_mem;
+
+  ls_mem->local_prefix = local_prefix;
+  ls_mem->local_prefixlen = local_prefixlen;
+
   return 1;
 }
 
@@ -86,6 +105,12 @@ clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 static int
 clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 {
+  srv6_end_gtp4_param_t *ls_mem;
+
+  ls_mem = localsid->plugin_mem;
+
+  clib_mem_free(ls_mem);
+
   return 0;
 }
 

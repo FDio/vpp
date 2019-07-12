@@ -178,6 +178,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
           u32 bi0;
 	  vlib_buffer_t *b0;
 	  ip6_sr_localsid_t *ls0;
+	  srv6_end_gtp4_param_t *ls_param;
 
           ip6srv_combo_header_t *ip6srv0;
           ip6_address_t src0, dst0;
@@ -199,6 +200,8 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	  ls0 =
             pool_elt_at_index (sm2->localsids,
                                vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+
+	  ls_param = (srv6_end_gtp4_param_t *)ls0->plugin_mem;
 
           ip6srv0 = vlib_buffer_get_current (b0);
           src0 = ip6srv0->ip.src_address;
@@ -245,24 +248,30 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 
               u32 teid;
               u8 *teid8p = (u8 *)&teid;
-	      u16 index;
-	      u16 offset, shift;
+	      u32 index;
+	      u32 offset, shift;
 
-	      index = ls0->localsid_len;
-	      index += 8;
-
-	      offset = index / 8;
-	      shift = index % 8;
+	      offset = ls0->localsid_len / 8;
+	      shift = ls0->localsid_len % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-	        teid8p[0] = dst0.as_u8[offset];
-                teid8p[1] = dst0.as_u8[offset + 1];
-                teid8p[2] = dst0.as_u8[offset + 2];
-                teid8p[3] = dst0.as_u8[offset + 3];
+		for (index = 0; index < 4; index++) {
+		  hdr0->ip4.dst_address.as_u8[index] = dst0.as_u8[offset + index];
+		}
+
+	        teid8p[0] = dst0.as_u8[offset + 5];
+                teid8p[1] = dst0.as_u8[offset + 6];
+                teid8p[2] = dst0.as_u8[offset + 7];
+                teid8p[3] = dst0.as_u8[offset + 8];
 	      } else {
-		for (index = offset; index < offset + 4; index ++) {
-		  *teid8p = dst0.as_u8[index] << shift;
-		  *teid8p |= dst0.as_u8[index + 1] >> (8 - shift);
+		for (index = 0; index < 4; index ++) {
+		  hdr0->ip4.dst_address.as_u8[index] = dst0.as_u8[offset + index] << shift;
+		  hdr0->ip4.dst_address.as_u8[index] |= dst0.as_u8[offset + index + 1] >> (8 - shift);
+		}
+
+		for (index = 0; index < 4; index ++) {
+		  *teid8p = dst0.as_u8[offset + 5 + index] << shift;
+		  *teid8p |= dst0.as_u8[offset + 6 + index] >> (8 - shift);
 		  teid8p++;
 		}
 	      }
@@ -270,12 +279,39 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
               hdr0->gtpu.teid = teid;
               hdr0->gtpu.length = clib_host_to_net_u16 (len0);
 
-              hdr0->udp.src_port = src0.as_u16[6];
+	      offset = ls_param->local_prefixlen / 8;
+	      shift = ls_param->local_prefixlen % 8;
+
+	      if (PREDICT_TRUE(shift == 0)) {
+		u8 *pp;
+
+		pp = (u8 *) &hdr0->udp.src_port;
+
+		for (index = 0; index < 4; index ++) {
+		  hdr0->ip4.src_address.as_u8[index] = src0.as_u8[offset + index];
+		}
+
+		for (index = 0; index < 2; index++) {
+		  pp[index] = src0.as_u8[offset + 4 + index];
+		}
+	      } else {
+		u8 *pp;
+
+		pp = (u8 *) &hdr0->udp.src_port;
+		for (index = 0; index < 4; index ++) {
+		  hdr0->ip4.src_address.as_u8[index] = src0.as_u8[offset + index] << shift;
+		  hdr0->ip4.src_address.as_u8[index] |= src0.as_u8[offset + index + 1] >> (8 - shift);
+		}
+
+		for (index = 0; index < 2; index++) {
+		  pp[index] = src0.as_u8[offset + index + 4] << shift;
+		  pp[index] |= src0.as_u8[offset + index + 5] >> (8 - shift);
+		}
+	      }
+
               hdr0->udp.length = clib_host_to_net_u16 (len0 +
                   sizeof (udp_header_t) + sizeof (gtpu_header_t));
 
-              hdr0->ip4.src_address.as_u32 = src0.as_u32[2];
-              hdr0->ip4.dst_address.as_u32 = dst0.as_u32[1];
               hdr0->ip4.length = clib_host_to_net_u16 (len0 +
                   sizeof (ip4_gtpu_header_t));
 
