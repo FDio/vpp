@@ -796,6 +796,7 @@ session_transport_delete_notify (transport_connection_t * tc)
       break;
     case SESSION_STATE_ACCEPTING:
     case SESSION_STATE_TRANSPORT_CLOSING:
+    case SESSION_STATE_CLOSING:
       /* If transport finishes or times out before we get a reply
        * from the app, mark transport as closed and wait for reply
        * before removing the session. Cleanup session table in advance
@@ -806,18 +807,17 @@ session_transport_delete_notify (transport_connection_t * tc)
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
       break;
-    case SESSION_STATE_CLOSING:
-    case SESSION_STATE_CLOSED_WAITING:
+    case SESSION_STATE_APP_CLOSED:
       /* Cleanup lookup table as transport needs to still be valid.
        * Program transport close to ensure that all session events
        * have been cleaned up. Once transport close is called, the
        * session is just removed because both transport and app have
        * confirmed the close*/
       session_lookup_del_session (s);
-      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
-      session_program_transport_close (s);
+      s->session_state = SESSION_STATE_CLOSED;
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
+      session_program_transport_close (s);
       break;
     case SESSION_STATE_TRANSPORT_CLOSED:
       break;
@@ -834,16 +834,17 @@ session_transport_delete_notify (transport_connection_t * tc)
 }
 
 /**
- * Notification from transport that session can be closed
+ * Notification from transport that it is closed
  *
- * Should be called by transport only if it was closed with non-empty
- * tx fifo and once it decides to begin the closing procedure prior to
- * issuing a delete notify. This gives the chance to the session layer
- * to cleanup any outstanding events.
+ * Should be called by transport, prior to calling delete notify, once it
+ * knows that no more data will be exchanged. This could serve as an
+ * early acknowledgment of an active close especially if transport delete
+ * can be delayed a long time, e.g., tcp time-wait.
  */
 void
 session_transport_closed_notify (transport_connection_t * tc)
 {
+  app_worker_t *app_wrk;
   session_t *s;
 
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
@@ -855,6 +856,7 @@ session_transport_closed_notify (transport_connection_t * tc)
     {
       session_transport_closing_notify (tc);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
+      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
     }
   /* If app close has not been received or has not yet resulted in
    * a transport close, only mark the session transport as closed */
@@ -863,8 +865,13 @@ session_transport_closed_notify (transport_connection_t * tc)
       session_lookup_del_session (s);
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
     }
-  else
+  /* In all closing states but transport closed switch to closed */
+  else if (s->session_state != SESSION_STATE_TRANSPORT_CLOSED)
     s->session_state = SESSION_STATE_CLOSED;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (app_wrk)
+    app_worker_transport_closed_notify (app_wrk, s);
 }
 
 /**
@@ -1117,10 +1124,6 @@ session_close (session_t * s)
        * acknowledge the close */
       if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
 	session_program_transport_close (s);
-
-      /* Session already closed. Clear the tx fifo */
-      if (s->session_state == SESSION_STATE_CLOSED)
-	svm_fifo_dequeue_drop_all (s->tx_fifo);
       return;
     }
 
@@ -1138,23 +1141,21 @@ session_close (session_t * s)
 void
 session_transport_close (session_t * s)
 {
-  /* If transport is already closed, just free the session */
-  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+  if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
-      session_free_w_fifos (s);
+      /* If transport is already closed, just free the session */
+      if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+	session_free_w_fifos (s);
       return;
     }
 
-  /* If tx queue wasn't drained, change state to closed waiting for transport.
-   * This way, the transport, if it so wishes, can continue to try sending the
-   * outstanding data (in closed state it cannot). It MUST however at one
-   * point, either after sending everything or after a timeout, call delete
-   * notify. This will finally lead to the complete cleanup of the session.
+  /* If the tx queue wasn't drained, the transport can continue to try
+   * sending the outstanding data (in closed state it cannot). It MUST however
+   * at one point, either after sending everything or after a timeout, call
+   * delete notify. This will finally lead to the complete cleanup of the
+   * session.
    */
-  if (svm_fifo_max_dequeue_cons (s->tx_fifo))
-    s->session_state = SESSION_STATE_CLOSED_WAITING;
-  else
-    s->session_state = SESSION_STATE_CLOSED;
+  s->session_state = SESSION_STATE_APP_CLOSED;
 
   transport_close (session_get_transport_proto (s), s->connection_index,
 		   s->thread_index);
