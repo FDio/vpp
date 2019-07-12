@@ -326,6 +326,15 @@ app_worker_close_notify (app_worker_t * app_wrk, session_t * s)
 }
 
 int
+app_worker_transport_closed_notify (app_worker_t * app_wrk, session_t * s)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  if (app->cb_fns.session_transport_closed_callback)
+    app->cb_fns.session_transport_closed_callback (s);
+  return 0;
+}
+
+int
 app_worker_reset_notify (app_worker_t * app_wrk, session_t * s)
 {
   application_t *app = application_get (app_wrk->app_index);
