@@ -427,7 +427,10 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
 	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
 	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
 
-#define gso_mtu_sz(b) (vnet_buffer2(b)->gso_size + vnet_buffer2(b)->gso_l4_hdr_sz + vnet_buffer(b)->l4_hdr_offset)
+#define gso_mtu_sz(b) (vnet_buffer2(b)->gso_size + \
+                       vnet_buffer2(b)->gso_l4_hdr_sz + \
+                       vnet_buffer(b)->l4_hdr_offset - \
+                       vnet_buffer (b)->l3_hdr_offset)
 
 
 format_function_t format_vnet_buffer;
