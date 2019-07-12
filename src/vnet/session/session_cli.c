@@ -68,7 +68,8 @@ format_session (u8 * s, va_list * args)
   if (verbose == 1)
     {
       u8 post_accept = ss->session_state >= SESSION_STATE_ACCEPTING;
-      u8 hasf = post_accept | session_tx_is_dgram (ss);
+      u8 hasf = post_accept
+	|| session_transport_service_type (ss) == TRANSPORT_SERVICE_CL;
       u32 rxf, txf;
 
       rxf = hasf ? svm_fifo_max_dequeue (ss->rx_fifo) : 0;
