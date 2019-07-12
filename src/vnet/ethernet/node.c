@@ -607,6 +607,68 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
   l->n_bytes += vlib_buffer_length_in_chain (vm, b);
 }
 
+static_always_inline void
+eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
+				    u64 * dmacs, u8 * dmacs_bad,
+				    u32 n_packets)
+{
+  u64 mask = clib_net_to_host_u64 (0xFFFFFFFFFFFF0000);
+  u64 igbit = clib_net_to_host_u64 (0x0100000000000000);
+  u64 hwaddr = (*(u64 *) hi->hw_address) & mask;
+  u64 *dmac = dmacs;
+  u8 *dmac_bad = dmacs_bad;
+
+  i32 n_left = n_packets;
+
+#ifdef CLIB_HAVE_VEC256
+  u64x4 igbit4 = u64x4_splat (igbit);
+  u64x4 mask4 = u64x4_splat (mask);
+  u64x4 hwaddr4 = u64x4_splat (hwaddr);
+  while (n_left > 0)
+    {
+      u64x4 r0, r1;
+      r0 = u64x4_load_unaligned (dmac + 0) & mask4;
+      r1 = u64x4_load_unaligned (dmac + 4) & mask4;
+
+      r0 = (r0 != hwaddr4) & ((r0 & igbit4) == 0);
+      r1 = (r1 != hwaddr4) & ((r1 & igbit4) == 0);
+
+      *(u32 *) (dmac_bad + 0) = u8x32_msb_mask ((u8x32) (r0));
+      *(u32 *) (dmac_bad + 4) = u8x32_msb_mask ((u8x32) (r1));
+
+      /* next */
+      dmac += 8;
+      dmac_bad += 8;
+      n_left -= 8;
+    }
+#else
+  while (n_left > 0)
+    {
+      u64 r0, r1, r2, r3;
+
+      r0 = dmac[0] & mask;
+      r1 = dmac[1] & mask;
+      r2 = dmac[2] & mask;
+      r3 = dmac[3] & mask;
+
+      r0 = (r0 != hwaddr) && ((r0 & igbit) == 0);
+      r1 = (r1 != hwaddr) && ((r1 & igbit) == 0);
+      r2 = (r2 != hwaddr) && ((r2 & igbit) == 0);
+      r3 = (r3 != hwaddr) && ((r3 & igbit) == 0);
+
+      dmac_bad[0] = r0;
+      dmac_bad[1] = r1;
+      dmac_bad[2] = r2;
+      dmac_bad[3] = r3;
+
+      /* next */
+      dmac += 4;
+      dmac_bad += 4;
+      n_left -= 4;
+    }
+#endif
+}
+
 /* process frame of buffers, store ethertype into array and update
    buffer metadata fields depending on interface being l2 or l3 assuming that
    packets are untagged. For tagged packets those fields are updated later.
@@ -704,62 +766,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   if (dmac_check)
-    {
-      u64 mask = clib_net_to_host_u64 (0xFFFFFFFFFFFF0000);
-      u64 igbit = clib_net_to_host_u64 (0x0100000000000000);
-      u64 hwaddr = (*(u64 *) hi->hw_address) & mask;
-      u64 *dmac = dmacs;
-      u8 *dmac_bad = dmacs_bad;
-
-      n_left = n_packets;
-
-#ifdef CLIB_HAVE_VEC256
-      u64x4 igbit4 = u64x4_splat (igbit);
-      u64x4 mask4 = u64x4_splat (mask);
-      u64x4 hwaddr4 = u64x4_splat (hwaddr);
-      while (n_left > 0)
-	{
-	  u64x4 r0, r1;
-	  r0 = u64x4_load_unaligned (dmac + 0) & mask4;
-	  r1 = u64x4_load_unaligned (dmac + 4) & mask4;
-
-	  r0 = (r0 != hwaddr4) & ((r0 & igbit4) == 0);
-	  r1 = (r1 != hwaddr4) & ((r1 & igbit4) == 0);
-
-	  *(u32 *) (dmac_bad + 0) = u8x32_msb_mask ((u8x32) (r0));
-	  *(u32 *) (dmac_bad + 4) = u8x32_msb_mask ((u8x32) (r1));
-
-	  /* next */
-	  dmac += 8;
-	  dmac_bad += 8;
-	  n_left -= 8;
-	}
-#else
-      while (n_left > 0)
-	{
-	  u64 r0, r1, r2, r3;
-	  r0 = dmac[0] & mask;
-	  r1 = dmac[1] & mask;
-	  r2 = dmac[2] & mask;
-	  r3 = dmac[3] & mask;
-
-	  r0 = (r0 != hwaddr) && ((r0 & igbit) == 0);
-	  r1 = (r1 != hwaddr) && ((r1 & igbit) == 0);
-	  r2 = (r2 != hwaddr) && ((r2 & igbit) == 0);
-	  r3 = (r3 != hwaddr) && ((r3 & igbit) == 0);
-
-	  dmac_bad[0] = r0;
-	  dmac_bad[1] = r1;
-	  dmac_bad[2] = r2;
-	  dmac_bad[3] = r3;
-
-	  /* next */
-	  dmac += 4;
-	  dmac_bad += 4;
-	  n_left -= 4;
-	}
-#endif
-    }
+    eth_input_process_frame_dmac_check (hi, dmacs, dmacs_bad, n_packets);
 
   next_ip4 = em->l3_next.input_next_ip4;
   next_ip6 = em->l3_next.input_next_ip6;
