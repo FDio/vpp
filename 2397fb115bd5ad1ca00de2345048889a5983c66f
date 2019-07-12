@@ -16,6 +16,24 @@
       "revId": "2397fb115bd5ad1ca00de2345048889a5983c66f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f4afd753_d3a4dda5",
+        "filename": "src/svm/ssvm.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-07-12T13:42:14Z",
+      "side": 1,
+      "message": "it failed when running unit tests on my resource-constraint VM on my development laptop, and as we tested the case for the USE_DLMALLOC\u003d\u003d0 case, I figured out it was better to also test it there\nBut obviously it is a matter of running VPP with less than say 8GB-16GB memory",
+      "parentUuid": "8228eed1_80767fc1",
+      "revId": "2397fb115bd5ad1ca00de2345048889a5983c66f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
