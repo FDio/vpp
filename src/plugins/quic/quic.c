@@ -2483,7 +2483,7 @@ static const transport_proto_vft_t quic_proto = {
 static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
-  u32 add_segment_size = (4096ULL << 20) - 1, segment_size = 512 << 20;
+  u32 segment_size = 256 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   vnet_app_attach_args_t _a, *a = &_a;
@@ -2502,7 +2502,7 @@ quic_init (vlib_main_t * vm)
   a->options = options;
   a->name = format (0, "quic");
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = add_segment_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
