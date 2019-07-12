@@ -713,6 +713,7 @@ u8 *
 format_sctp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
   sctp_connection_t *tc = sctp_listener_get (tci);
   return format (s, "%U", format_sctp_connection_id, tc);
 }
@@ -931,6 +932,7 @@ u8 *
 format_sctp_half_open (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
   sctp_connection_t *sctp_conn = sctp_half_open_connection_get (tci);
   return format (s, "%U", format_sctp_connection_id, sctp_conn);
 }

@@ -492,6 +492,7 @@ static u8 *
 format_ct_listener (u8 * s, va_list * args)
 {
   u32 tc_index = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
   u32 __clib_unused verbose = va_arg (*args, u32);
   ct_connection_t *ct = ct_connection_get (tc_index);
   s = format (s, "%-50U", format_ct_connection_id, ct);

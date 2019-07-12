@@ -239,6 +239,7 @@ u8 *
 format_udp_half_open_session (u8 * s, va_list * args)
 {
   u32 __clib_unused tci = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
   clib_warning ("BUG");
   return 0;
 }
@@ -247,6 +248,7 @@ u8 *
 format_udp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
   u32 __clib_unused verbose = va_arg (*args, u32);
   udp_connection_t *uc = udp_listener_get (tci);
   return format (s, "%U", format_udp_connection, uc);
