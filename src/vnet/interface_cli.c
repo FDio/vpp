@@ -1192,6 +1192,80 @@ done:
   return error;
 }
 
+static clib_error_t *
+interface_add_del_mac_address (vlib_main_t * vm, unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t *si = NULL;
+  clib_error_t *error = 0;
+  u32 sw_if_index = ~0;
+  u8 mac[6] = { 0 };
+  u8 is_add, is_del;
+
+  is_add = is_del = 0;
+
+  if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      error = clib_error_return (0, "unknown interface `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+  if (!unformat_user (input, unformat_ethernet_address, mac))
+    {
+      error = clib_error_return (0, "expected mac address `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "add"))
+	is_add = 1;
+      else if (unformat (input, "del"))
+	is_del = 1;
+      else
+	break;
+    }
+
+  if (is_add == is_del)
+    {
+      error = clib_error_return (0, "must choose one of add or del");
+      goto done;
+    }
+
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+  error =
+    vnet_hw_interface_add_del_mac_address (vnm, si->hw_if_index, mac, is_add);
+
+done:
+  return error;
+}
+
+/*?
+ * The '<em>set interface secondary-mac-address </em>' command allows adding
+ * or deleting extra MAC addresses on a given interface without changing the
+ * default MAC address. This could allow packets sent to these MAC addresses
+ * to be received without setting the interface to promiscuous mode.
+ * Not all interfaces support this operation. The ones that do are mostly
+ * hardware NICs, though virtio does also.
+ *
+ * @cliexpar
+ * @parblock
+ * Example of how to add a secondary MAC Address on an interface:
+ * @cliexcmd{set interface secondary-mac-address GigabitEthernet0/8/0 aa:bb:cc:dd:ee:01 add}
+ * Example of how to delete a secondary MAC address from an interface:
+ * @cliexcmd{set interface secondary-mac-address GigabitEthernet0/8/0 aa:bb:cc:dd:ee:01 del}
+ * @endparblock
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (interface_add_del_mac_address_cmd, static) = {
+  .path = "set interface secondary-mac-address",
+  .short_help = "set interface secondary-mac-address <interface> <mac-address> [(add|del)]",
+  .function = interface_add_del_mac_address,
+};
+/* *INDENT-ON* */
+
 /*?
  * The '<em>set interface mac address </em>' command allows to set MAC address of given interface.
  * In case of NIC interfaces the one has to support MAC address change. A side effect of MAC address
