@@ -306,6 +306,46 @@ vlib_get_buffer_indices_with_offset (vlib_main_t * vm, void **b, u32 * bi,
       count -= 8;
     }
 #endif
+#ifdef CLIB_HAVE_VEC128
+  u64x2 off2 = u64x2_splat (vm->buffer_main->buffer_mem_start - offset);
+
+  while (count >= 8)
+    {
+      /* load 2 pointers into 128-bit register */
+      u64x2 v0 = u64x2_load_unaligned (b);
+      u64x2 v1 = u64x2_load_unaligned (b + 2);
+      u64x2 v2 = u64x2_load_unaligned (b + 4);
+      u64x2 v3 = u64x2_load_unaligned (b + 6);
+      u32x4 v4, v5, v6, v7, v8, v9;
+
+      v0 -= off2;
+      v1 -= off2;
+      v2 -= off2;
+      v3 -= off2;
+
+      v0 >>= CLIB_LOG2_CACHE_LINE_BYTES;
+      v1 >>= CLIB_LOG2_CACHE_LINE_BYTES;
+      v2 >>= CLIB_LOG2_CACHE_LINE_BYTES;
+      v3 >>= CLIB_LOG2_CACHE_LINE_BYTES;
+
+      /* convert each u64 into 2 x u32 */
+      v4 = (u32x4) v0;
+      v5 = (u32x4) v1;
+      v6 = (u32x4) v2;
+      v7 = (u32x4) v3;
+
+      /* reconnect the lower u32 values in two registers into a single 128-bit register */
+      v8 = u32x4_even_elements (v4, v5);
+      v9 = u32x4_even_elements (v6, v7);
+
+      /* store 128-bit registers and save them to the array of buffer indices */
+      u32x4_store_unaligned (v8, bi);
+      u32x4_store_unaligned (v9, bi + 4);
+      bi += 8;
+      b += 8;
+      count -= 8;
+    }
+#endif
   while (count >= 4)
     {
       /* equivalent non-nector implementation */

@@ -748,6 +748,17 @@ i16x8_xcombine_even_elements (i16x8 a, i16x8 b)
 #endif
 }
 
+static_always_inline u32x4
+u32x4_even_elements (u32x4 a, u32x4 b)
+{
+#ifdef __clang__
+  return (u32x4) __builtin_shufflevector (a, b, 0, 2, 4, 6);
+#else
+  u32x4 m = { 0, 2, 4, 6 };
+  return (u32x4) __builtin_shuffle (a, b, m);
+#endif
+}
+
 #endif /* included_vector_sse2_h */
 
 /*
