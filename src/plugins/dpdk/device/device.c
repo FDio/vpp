@@ -43,6 +43,29 @@ static char *dpdk_tx_func_error_strings[] = {
 };
 
 static clib_error_t *
+dpdk_add_del_mac_address (vnet_hw_interface_t * hi,
+			  const u8 * address, u8 is_add)
+{
+  int error;
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+
+  if (is_add)
+    error = rte_eth_dev_mac_addr_add (xd->port_id,
+				      (struct rte_ether_addr *) address, 0);
+  else
+    error = rte_eth_dev_mac_addr_remove (xd->port_id,
+					 (struct rte_ether_addr *) address);
+
+  if (error)
+    {
+      return clib_error_return (0, "mac address add/del failed: %d", error);
+    }
+
+  return NULL;
+}
+
+static clib_error_t *
 dpdk_set_mac_address (vnet_hw_interface_t * hi,
 		      const u8 * old_address, const u8 * address)
 {
@@ -600,6 +623,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .subif_add_del_function = dpdk_subif_add_del_function,
   .rx_redirect_to_node = dpdk_set_interface_next_node,
   .mac_addr_change_function = dpdk_set_mac_address,
+  .mac_addr_add_del_function = dpdk_add_del_mac_address,
   .format_flow = format_dpdk_flow,
   .flow_ops_function = dpdk_flow_ops_fn,
 };
