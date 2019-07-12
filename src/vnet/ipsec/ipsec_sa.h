@@ -140,7 +140,6 @@ typedef struct
   };
   udp_header_t udp_hdr;
 
-
   fib_node_t node;
   u32 id;
   u32 stat_index;
@@ -198,28 +197,27 @@ extern vlib_combined_counter_main_t ipsec_sa_counters;
 
 extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
 
-extern int ipsec_sa_add (u32 id,
-			 u32 spi,
-			 ipsec_protocol_t proto,
-			 ipsec_crypto_alg_t crypto_alg,
-			 const ipsec_key_t * ck,
-			 ipsec_integ_alg_t integ_alg,
-			 const ipsec_key_t * ik,
-			 ipsec_sa_flags_t flags,
-			 u32 tx_table_id,
-			 u32 salt,
-			 const ip46_address_t * tunnel_src_addr,
-			 const ip46_address_t * tunnel_dst_addr,
-			 u32 * sa_index);
-extern u32 ipsec_sa_del (u32 id);
+extern int ipsec_sa_add_and_lock (u32 id,
+				  u32 spi,
+				  ipsec_protocol_t proto,
+				  ipsec_crypto_alg_t crypto_alg,
+				  const ipsec_key_t * ck,
+				  ipsec_integ_alg_t integ_alg,
+				  const ipsec_key_t * ik,
+				  ipsec_sa_flags_t flags,
+				  u32 tx_table_id,
+				  u32 salt,
+				  const ip46_address_t * tunnel_src_addr,
+				  const ip46_address_t * tunnel_dst_addr,
+				  u32 * sa_index);
+extern index_t ipsec_sa_find_and_lock (u32 id);
+extern int ipsec_sa_unlock_id (u32 id);
+extern void ipsec_sa_unlock (index_t sai);
 extern void ipsec_sa_clear (index_t sai);
 extern void ipsec_sa_set_crypto_alg (ipsec_sa_t * sa,
 				     ipsec_crypto_alg_t crypto_alg);
 extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,
 				    ipsec_integ_alg_t integ_alg);
-
-extern u8 ipsec_is_sa_used (u32 sa_index);
-extern u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);
 
 typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t * sa, void *ctx);
 extern void ipsec_sa_walk (ipsec_sa_walk_cb_t cd, void *ctx);
