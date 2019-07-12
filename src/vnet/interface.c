@@ -1435,6 +1435,39 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
   return error;
 }
 
+clib_error_t *
+vnet_hw_interface_add_del_mac_address (vnet_main_t * vnm,
+				       u32 hw_if_index,
+				       const u8 * mac_address,
+				       u8 is_add)
+{
+  clib_error_t *error = 0;
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hi->dev_class_index);
+  if (dev_class->mac_addr_add_del_function)
+    error = dev_class->mac_addr_add_del_function (hi, mac_address, is_add);
+
+  if (!error)
+    {
+      vnet_hw_interface_class_t *hw_class;
+
+      hw_class = vnet_get_hw_interface_class (vnm, hi->hw_class_index);
+
+      if (NULL != hw_class->mac_addr_add_del_function)
+	hw_class->mac_addr_add_del_function (hi, mac_address, is_add);
+    }
+  else
+    {
+      error =
+	clib_error_return
+	  (0, "Secondary MAC Addresses not supported for interface index %u",
+	   hw_if_index);
+    }
+  return error;
+}
+
 static clib_error_t *
 vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
 					     u32 hw_if_index,
