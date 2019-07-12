@@ -2878,6 +2878,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_connection_timers_reset (tc0);
 	  tcp_connection_set_state (tc0, TCP_STATE_TIME_WAIT);
 	  tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
+	  session_transport_closed_notify (&tc0->connection);
 	  goto drop;
 
 	  break;
@@ -3004,6 +3005,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_connection_timers_reset (tc0);
 	  tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 	  tcp_program_ack (wrk, tc0);
+	  session_transport_closed_notify (&tc0->connection);
 	  break;
 	case TCP_STATE_TIME_WAIT:
 	  /* Remain in the TIME-WAIT state. Restart the time-wait
