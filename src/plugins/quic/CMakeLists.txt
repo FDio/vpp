@@ -31,6 +31,7 @@ if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
   add_vpp_plugin(quic
     SOURCES
     quic.c
+    quic_crypto.c
 
     INSTALL_HEADERS
     quic.h
