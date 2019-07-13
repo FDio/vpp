@@ -234,8 +234,12 @@ class Containers(object):
                 env.get_template("Dockerfile.j2.release"),
                 {'vpp_path': vpp_path})
 
+        self.tmp_render(join(vpp_path, "startup.conf"),
+                env.get_template("startup.conf.j2"),
+                {'vpp_path': vpp_path})
+
         ref, _ = self.client.images.build(path=vpp_path,
-                    tag=self.image, rm=True)
+                    tag="ietf105-release-image", rm=True)
         return ref
 
     def new(self, name):
@@ -928,7 +932,24 @@ class Program(object):
         self.containers.build(self.path, self.vpp_path)
 
     def release_image(self):
+        instance = self.containers.new("release-build")
+
+        system("mkdir {}/deb".format(self.vpp_path))
+
+        system("docker cp release-build:{}/build-root/libvppinfra_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+        system("docker cp release-build:{}/build-root/libvppinfra-dev_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+        system("docker cp release-build:{}/build-root/python3-vpp-api_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+        system("docker cp release-build:{}/build-root/vpp_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+        system("docker cp release-build:{}/build-root/vpp-dbg_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+        system("docker cp release-build:{}/build-root/vpp-dev_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+        system("docker cp release-build:{}/build-root/vpp-plugin-core_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+        system("docker cp release-build:{}/build-root/vpp-plugin-dpdk_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+
+        instance.rem()
+
         self.containers.release(self.path, self.vpp_path)
+
+        system("rm -rf {}/deb".format(self.vpp_path))
 
     def vppctl(self, index, command=None):
         if index >= len(self.instance_names):
@@ -952,6 +973,9 @@ def get_args():
 
     parser.add_argument("--verbose", choices=[
         'error', 'debug', 'info'])
+
+    parser.add_argument('--image', choices=[
+        'debug', 'release'])
 
     subparsers = parser.add_subparsers()
 
@@ -990,10 +1014,17 @@ def get_args():
     return vars(args)
 
 
-def main(op=None, image=None, prefix=None, verbose=None, index=None, command=None):
+def main(op=None, prefix=None, verbose=None, image=None, index=None, command=None):
 
     if verbose:
         basicConfig(level=verbose_levels[verbose])
+
+    if image == 'release':
+        image="ietf105-release-image"
+    elif image == 'debug':
+        image="ietf105-image"
+
+    print("Verified image: {}".format(image))
 
     program = Program(image, prefix)
 
