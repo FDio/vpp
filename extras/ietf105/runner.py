@@ -934,22 +934,13 @@ class Program(object):
     def release_image(self):
         instance = self.containers.new("release-build")
 
-        system("mkdir {}/deb".format(self.vpp_path))
-
-        system("docker cp release-build:{}/build-root/libvppinfra_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
-        system("docker cp release-build:{}/build-root/libvppinfra-dev_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
-        system("docker cp release-build:{}/build-root/python3-vpp-api_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
-        system("docker cp release-build:{}/build-root/vpp_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
-        system("docker cp release-build:{}/build-root/vpp-dbg_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
-        system("docker cp release-build:{}/build-root/vpp-dev_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
-        system("docker cp release-build:{}/build-root/vpp-plugin-core_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
-        system("docker cp release-build:{}/build-root/vpp-plugin-dpdk_19.04-rc0~1230-gc2089eb98_amd64.deb {}/deb/".format(self.vpp_path, self.vpp_path))
+        system("docker cp release-build:{}/vpp-package.tgz {}/".format(self.vpp_path, self.vpp_path))
 
         instance.rem()
 
         self.containers.release(self.path, self.vpp_path)
 
-        system("rm -rf {}/deb".format(self.vpp_path))
+        system("rm -rf {}/vpp-package.tgz".format(self.vpp_path))
 
     def vppctl(self, index, command=None):
         if index >= len(self.instance_names):

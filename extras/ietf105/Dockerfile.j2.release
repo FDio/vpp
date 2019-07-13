@@ -24,9 +24,10 @@ WORKDIR /tmp
 
 COPY startup.conf /etc/startup.conf
 
-COPY deb/ /tmp
+COPY vpp-package.tgz /tmp
 
 RUN set -eux; \
+    tar xzf vpp-package.tgz; \
     dpkg -i *.deb ; \
     rm -rf *.deb
 
