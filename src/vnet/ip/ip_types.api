@@ -22,11 +22,57 @@ enum address_family {
   ADDRESS_IP6,
 };
 
+/* ECN code points - RFC 3168
+   https://tools.ietf.org/html/rfc3168
+*/
+enum ip_ecn : u8 {
+  IP_API_ECN_NONE = 0,
+  IP_API_ECN_ECT0 = 1,
+  IP_API_ECN_ECT1 = 2,
+  IP_API_ECN_CE = 3,
+};
+
+/* DSCP code points - RFC 2474
+   https://tools.ietf.org/html/rfc2474
+*/
+
+enum ip_dscp : u8 {
+  IP_API_DSCP_CS0 =  0,
+  IP_API_DSCP_CS1 = 8,
+  IP_API_DSCP_AF11 = 10,
+  IP_API_DSCP_AF12 = 12,
+  IP_API_DSCP_AF13 = 14,
+  IP_API_DSCP_CS2 =  16,
+  IP_API_DSCP_AF21 = 18,
+  IP_API_DSCP_AF22 = 20,
+  IP_API_DSCP_AF23 = 22,
+  IP_API_DSCP_CS3 =  24,
+  IP_API_DSCP_AF31 = 26,
+  IP_API_DSCP_AF32 = 28,
+  IP_API_DSCP_AF33 = 30,
+  IP_API_DSCP_CS4 =  32,
+  IP_API_DSCP_AF41 = 34,
+  IP_API_DSCP_AF42 = 36,
+  IP_API_DSCP_AF43 = 38,
+  IP_API_DSCP_CS5 =  40,
+  IP_API_DSCP_EF =   46,
+  IP_API_DSCP_CS6 =  48,
+  IP_API_DSCP_CS7 =  50,
+};
+
 enum ip_proto {
+  IP_API_PROTO_HOPOPT = 0,
+  IP_API_PROTO_ICMP = 1,
+  IP_API_PROTO_IGMP = 2,
   IP_API_PROTO_TCP = 6,
   IP_API_PROTO_UDP = 17,
+  IP_API_PROTO_GRE = 47,
+  IP_API_PROTO_AH = 50,
+  IP_API_PROTO_ESP = 51,
   IP_API_PROTO_EIGRP = 88,
   IP_API_PROTO_OSPF = 89,
+  IP_API_PROTO_SCTP = 132,
+  IP_API_PROTO_RESERVED = 255,
 };
 
 union address_union {
