@@ -6,8 +6,11 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
     inetutils-traceroute \
     ca-certificates \
-    build-essential \
-    git gdb sudo \
+    libmbedcrypto1 \
+    libmbedtls10 \
+    libmbedx509-0 \
+    libnuma1 \
+    sudo \
     iputils-ping \
     net-tools \
     iproute2 \
@@ -19,22 +22,13 @@ RUN set -eux; \
 
 WORKDIR /tmp
 
+COPY startup.conf /etc/startup.conf
+
+COPY deb/ /tmp
+
 RUN set -eux; \
-    git clone -b ietf105-hackathon https://github.com/filvarga/srv6-mobile.git; \
-    cd /tmp/srv6-mobile; \
-    make wipe; \
-    export UNATTENDED=y; \
-    make install-dep; \
-    rm -rf /var/lib/apt/lists/* ; \
-    make build; \
-    make pkg-deb; \
-    rm -rf .ccache; \
-    find . -type f -name '*.o' -delete ; \
-    cd /tmp/srv6-mobile/build-root; \
-    rm vpp-api-python_*.deb; \
     dpkg -i *.deb ; \
-    cp /tmp/srv6-mobile/extras/ietf105/startup.conf.j2 /etc/startup.conf; \
-    rm -rf /tmp/srv6-mobile
+    rm -rf *.deb
 
 WORKDIR /
  

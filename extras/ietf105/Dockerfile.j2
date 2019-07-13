@@ -36,8 +36,7 @@ RUN set -eux; \
     cd {{vpp_path}}/build-root; \
     rm vpp-api-python_*.deb; \
     dpkg -i *.deb ; \
-    cp {{vpp_path}}/startup.conf /etc/startup.conf; \
-    rm -rf {{vpp_path}}
+    cp {{vpp_path}}/startup.conf /etc/startup.conf
 
 WORKDIR /
  
