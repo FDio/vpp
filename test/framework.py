@@ -114,8 +114,8 @@ class VppDiedError(Exception):
         msg = "VPP subprocess died %sunexpectedly with return code: %d%s." % (
             in_msg,
             self.rv,
-            ' [%s]' % self.signal_name if
-            self.signal_name is not None else '')
+            ' [%s]' % (self.signal_name if
+                       self.signal_name is not None else ''))
         super(VppDiedError, self).__init__(msg)
 
 
