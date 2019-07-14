@@ -11,7 +11,7 @@ import "vnet/ip/ip_types.api";
     @param flow_timeout - Time in seconds after which, if no packet is received
            for a given flow, the flow is removed from the established flow table.
 */
-autoreply define lb_conf
+autoreply manual_print define lb_conf
 {
   u32 client_index;
   u32 context;
@@ -37,7 +37,7 @@ autoreply define lb_conf
            for this VIP (must be power of 2).
     @param is_del - The VIP should be removed.
 */
-autoreply define lb_add_del_vip {
+autoreply manual_print define lb_add_del_vip {
   u32 client_index;
   u32 context;
   u8 ip_prefix[16];
@@ -64,7 +64,7 @@ autoreply define lb_add_del_vip {
     @param is_del - The AS should be removed.
     @param is_flush - The sessions related to this AS should be flushed.
 */
-autoreply define lb_add_del_as {
+autoreply manual_print define lb_add_del_as {
   u32 client_index;
   u32 context;
   u8 vip_ip_prefix[16];
@@ -84,7 +84,7 @@ autoreply define lb_add_del_as {
     @param protocol - tcp or udp.
     @param port - destination port.
 */
-autoreply define lb_flush_vip {
+autoreply manual_print define lb_flush_vip {
   u32 client_index;
   u32 context;
   u8 ip_prefix[16];
