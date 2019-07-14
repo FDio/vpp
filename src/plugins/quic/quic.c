@@ -402,40 +402,86 @@ quic_disconnect_transport (quic_ctx_t * ctx)
 }
 
 static void
-quic_connection_closed (u32 ctx_index, u32 thread_index, u8 notify_transport)
+quic_connection_delete (quic_ctx_t * ctx)
 {
-  QUIC_DBG (2, "QUIC connection closed");
   tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
-  quic_ctx_t *ctx;
 
-  ctx = quic_ctx_get (ctx_index, thread_index);
+  QUIC_DBG (2, "Deleting connection %u", ctx->c_c_index);
+
   ASSERT (!quic_ctx_is_stream (ctx));
-  /*  TODO if connection is not established, just delete the session? */
 
   /*  Stop the timer */
   if (ctx->timer_handle != QUIC_TIMER_HANDLE_INVALID)
     {
-      tw = &quic_main.wrk_ctx[thread_index].timer_wheel;
+      tw = &quic_main.wrk_ctx[ctx->c_thread_index].timer_wheel;
       tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
     }
 
   /*  Delete the connection from the connection map */
   conn = ctx->c_quic_ctx_id.conn;
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
-  QUIC_DBG (2, "Deleting conn with id %lu %lu", kv.key[0], kv.key[1]);
+  QUIC_DBG (2, "Deleting conn with id %lu %lu from map", kv.key[0],
+	    kv.key[1]);
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 0 /* is_add */ );
 
   quic_disconnect_transport (ctx);
-  if (notify_transport)
-    session_transport_closing_notify (&ctx->connection);
-  else
-    session_transport_delete_notify (&ctx->connection);
-  /*  Do not try to send anything anymore */
-  quicly_free (ctx->c_quic_ctx_id.conn);
+
+  if (ctx->c_quic_ctx_id.conn)
+    quicly_free (ctx->c_quic_ctx_id.conn);
   ctx->c_quic_ctx_id.conn = NULL;
+
+  session_transport_delete_notify (&ctx->connection);
   quic_ctx_free (ctx);
+}
+
+/**
+ * Called when quicly return an error
+ * This function interacts tightly with quic_proto_on_close
+ */
+static void
+quic_connection_closed (quic_ctx_t * ctx)
+{
+  QUIC_DBG (2, "QUIC connection %u/%u closed", ctx->c_thread_index,
+	    ctx->c_c_index);
+
+  /* TODO if connection is not established, just delete the session? */
+  /* Actually should send connect or accept error */
+
+  switch (ctx->c_quic_ctx_id.conn_state)
+    {
+    case QUIC_CONN_STATE_READY:
+      /* Error on an opened connection (timeout...)
+         This puts the session in closing state, we should receive a notification
+         when the app has closed its session */
+      session_transport_reset_notify (&ctx->connection);
+      /* This ensures we delete the connection when the app confirms the close */
+      ctx->c_quic_ctx_id.conn_state =
+	QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED;
+      break;
+    case QUIC_CONN_STATE_PASSIVE_CLOSING:
+      ctx->c_quic_ctx_id.conn_state =
+	QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED;
+      /* quic_proto_on_close will eventually be called when the app confirms the close
+         , we delete the connection at that point */
+      break;
+    case QUIC_CONN_STATE_PASSIVE_CLOSING_APP_CLOSED:
+      /* App already confirmed close, we can delete the connection */
+      session_transport_delete_notify (&ctx->connection);
+      quic_connection_delete (ctx);
+      break;
+    case QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED:
+      QUIC_DBG (0, "BUG");
+      break;
+    case QUIC_CONN_STATE_ACTIVE_CLOSING:
+      session_transport_delete_notify (&ctx->connection);
+      quic_connection_delete (ctx);
+      break;
+    default:
+      QUIC_DBG (0, "BUG");
+      break;
+    }
 }
 
 static int
@@ -534,8 +580,7 @@ quic_send_packets (quic_ctx_t * ctx)
     {
       clib_warning ("Tried to send packets on non existing app worker %u",
 		    ctx->parent_app_wrk_id);
-      quic_connection_closed (ctx->c_c_index, ctx->c_thread_index,
-			      1 /* notify_transport */ );
+      quic_connection_delete (ctx);
       return 1;
     }
   app = application_get (app_wrk->app_index);
@@ -577,8 +622,7 @@ quicly_error:
   if (err && err != QUICLY_ERROR_PACKET_IGNORED
       && err != QUICLY_ERROR_FREE_CONNECTION)
     clib_warning ("Quic error '%U'.", quic_format_err, err);
-  quic_connection_closed (ctx->c_c_index, ctx->c_thread_index,
-			  1 /* notify_transport */ );
+  quic_connection_closed (ctx);
   return 1;
 }
 
@@ -1298,8 +1342,8 @@ allocate_quicly_ctx (application_t * app, u8 is_client)
   quicly_ctx->event_log.cb = quicly_new_default_event_logger (stderr);
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
-  quicly_ctx->transport_params.max_streams_uni = (uint64_t)1 << 60;
-  quicly_ctx->transport_params.max_streams_bidi = (uint64_t)1 << 60;
+  quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
+  quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_stream_data.bidi_local = (QUIC_FIFO_SIZE - 1);	/* max_enq is SIZE - 1 */
   quicly_ctx->transport_params.max_stream_data.bidi_remote = (QUIC_FIFO_SIZE - 1);	/* max_enq is SIZE - 1 */
   quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
@@ -1506,17 +1550,30 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
       quicly_reset_stream (stream, QUIC_APP_ERROR_CLOSE_NOTIFY);
       quic_send_packets (ctx);
     }
-  else if (ctx->c_quic_ctx_id.conn_state == QUIC_CONN_STATE_PASSIVE_CLOSING)
-    quic_connection_closed (ctx->c_c_index, ctx->c_thread_index,
-			    0 /* notify_transport */ );
-  else
+
+  switch (ctx->c_quic_ctx_id.conn_state)
     {
+    case QUIC_CONN_STATE_READY:
+      ctx->c_quic_ctx_id.conn_state = QUIC_CONN_STATE_ACTIVE_CLOSING;
       quicly_conn_t *conn = ctx->c_quic_ctx_id.conn;
       /* Start connection closing. Keep sending packets until quicly_send
          returns QUICLY_ERROR_FREE_CONNECTION */
       quicly_close (conn, QUIC_APP_ERROR_CLOSE_NOTIFY, "Closed by peer");
       /* This also causes all streams to be closed (and the cb called) */
       quic_send_packets (ctx);
+      break;
+    case QUIC_CONN_STATE_PASSIVE_CLOSING:
+      ctx->c_quic_ctx_id.conn_state =
+	QUIC_CONN_STATE_PASSIVE_CLOSING_APP_CLOSED;
+      /* send_packets will eventually return an error, we delete the conn at
+         that point */
+      break;
+    case QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED:
+      quic_connection_delete (ctx);
+      break;
+    default:
+      QUIC_DBG (0, "BUG");
+      break;
     }
 }
 
