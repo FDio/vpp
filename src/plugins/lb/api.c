@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <vnet/vnet.h>
+#include <vnet/plugin/plugin.h>
 #include <lb/lb.h>
 
 #include <vppinfra/byte_order.h>
@@ -20,50 +22,42 @@
 #include <vlibapi/api.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vpp/app/version.h>
 
-
-#define vl_msg_id(n,h) n,
-typedef enum {
-#include <lb/lb.api.h>
-    /* We'll want to know how many messages IDs we need... */
-    VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
-
+/* define message IDs */
+#include <lb/lb_msg_enum.h>
 
 /* define message structures */
 #define vl_typedefs
-#include <lb/lb.api.h>
+#include <lb/lb_all_api_h.h>
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <lb/lb.api.h>
+#include <lb/lb_all_api_h.h>
 #undef vl_endianfun
 
+/* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#define vl_printfun
+#include <lb/lb_all_api_h.h>
+#undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <lb/lb.api.h>
+#include <lb/lb_all_api_h.h>
 #undef vl_api_version
-
-#define vl_msg_name_crc_list
-#include <lb/lb.api.h>
-#undef vl_msg_name_crc_list
-
 
 #define REPLY_MSG_ID_BASE lbm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-static void
-setup_message_id_table (lb_main_t * lbm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + lbm->msg_id_base);
-  foreach_vl_msg_name_crc_lb;
-#undef _
-}
+/* List of message types that this plugin understands */
+#define foreach_lb_plugin_api_msg            \
+_(LB_CONF, lb_conf)                          \
+_(LB_ADD_DEL_VIP, lb_add_del_vip)            \
+_(LB_ADD_DEL_AS, lb_add_del_as)              \
+_(LB_FLUSH_VIP, lb_flush_vip)                \
+
 
 /* Macro to finish up custom dump fns */
 #define FINISH                                  \
@@ -290,20 +284,11 @@ static void *vl_api_lb_flush_vip_t_print
   FINISH;
 }
 
-/* List of message types that this plugin understands */
-#define foreach_lb_plugin_api_msg            \
-_(LB_CONF, lb_conf)                          \
-_(LB_ADD_DEL_VIP, lb_add_del_vip)            \
-_(LB_ADD_DEL_AS, lb_add_del_as)              \
-_(LB_FLUSH_VIP, lb_flush_vip)
-
-static clib_error_t * lb_api_init (vlib_main_t * vm)
+/* Set up the API message handling tables */
+static clib_error_t *
+lb_plugin_api_hookup (vlib_main_t *vm)
 {
-  lb_main_t *lbm = &lb_main;
-  u8 *name = format (0, "lb_%08x%c", api_version, 0);
-  lbm->msg_id_base = vl_msg_api_get_msg_ids
-      ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
+lb_main_t *lbm = &lb_main;
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers((VL_API_##N + lbm->msg_id_base),     \
                            #n,                  \
@@ -315,10 +300,44 @@ static clib_error_t * lb_api_init (vlib_main_t * vm)
   foreach_lb_plugin_api_msg;
 #undef _
 
+    return 0;
+}
+
+#define vl_msg_name_crc_list
+#include <lb/lb_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (lb_main_t * lmp, api_main_t * am)
+{
+#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + lmp->msg_id_base);
+  foreach_vl_msg_name_crc_lb ;
+#undef _
+}
+
+static clib_error_t * lb_api_init (vlib_main_t * vm)
+{
+  lb_main_t * lbm = &lb_main;
+  clib_error_t * error = 0;
+  u8 * name;
+
+  lbm->vlib_main = vm;
+  lbm->vnet_main = vnet_get_main();
+
+  name = format (0, "lb_%08x%c", api_version, 0);
+
+  /* Ask for a correctly-sized block of API message decode slots */
+  lbm->msg_id_base = vl_msg_api_get_msg_ids
+      ((char *) name, VL_MSG_FIRST_AVAILABLE);
+
+  error = lb_plugin_api_hookup (vm);
+
   /* Add our API messages to the global name_crc hash table */
   setup_message_id_table (lbm, &api_main);
 
-  return 0;
+  vec_free (name);
+
+  return error;
 }
 
 VLIB_INIT_FUNCTION (lb_api_init);
