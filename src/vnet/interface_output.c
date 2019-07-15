@@ -231,6 +231,23 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 }
 
 static_always_inline u16
+tso_segment_vxlan_tunnel_fixup (vlib_main_t * vm,
+				vnet_interface_per_thread_data_t * ptd,
+				vlib_buffer_t * sb0, i32 tunnel_size)
+{
+  u16 n_tx_bufs = vec_len (ptd->split_buffers);
+  u16 i = 0;
+  vlib_buffer_advance (sb0, -tunnel_size);
+  while (i < n_tx_bufs)
+    {
+      vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[i]);
+      clib_memcpy_fast (b0 - tunnel_size, sb0, tunnel_size);
+      vlib_buffer_advance (b0, -tunnel_size);
+    }
+  return i;
+}
+
+static_always_inline u16
 tso_alloc_tx_bufs (vlib_main_t * vm,
 		   vnet_interface_per_thread_data_t * ptd,
 		   vlib_buffer_t * b0, u16 l4_hdr_sz)
@@ -326,6 +343,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
   ASSERT (sb0->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID);
   ASSERT (sb0->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID);
   ASSERT (sb0->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+
   u16 gso_size = vnet_buffer2 (sb0)->gso_size;
 
   int l4_hdr_sz = vnet_buffer2 (sb0)->gso_l4_hdr_sz;
@@ -692,6 +710,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (b[0]->flags & VNET_BUFFER_F_GSO))
 		{
+		  i32 tunnel_size = 0;
 		  /*
 		   * Undo the enqueue of the b0 - it is not going anywhere,
 		   * and will be freed either after it's segmented or
@@ -703,6 +722,21 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 		  n_bytes -= n_bytes_b0;
 		  n_packets -= 1;
 
+
+		  if (PREDICT_FALSE
+		      (b[0]->flags & VNET_BUFFER_F_GSO_VXLAN_TUNNEL))
+		    {
+		      tunnel_size =
+			b[0]->current_data -
+			vnet_buffer2 (b[0])->gso_l2_hdr_offset;
+		      vlib_buffer_advance (b[0], -tunnel_size);
+		      vnet_buffer (b[0])->l2_hdr_offset =
+			vnet_buffer2 (b[0])->gso_l2_hdr_offset;
+		      vnet_buffer (b[0])->l3_hdr_offset =
+			vnet_buffer2 (b[0])->gso_l3_hdr_offset;
+		      vnet_buffer (b[0])->l4_hdr_offset =
+			vnet_buffer2 (b[0])->gso_l4_hdr_offset;
+		    }
 		  u32 n_tx_bytes = 0;
 
 		  n_tx_bytes =
@@ -717,6 +751,10 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 		      continue;
 		    }
 
+		  if (PREDICT_FALSE
+		      (b[0]->flags & VNET_BUFFER_F_GSO_VXLAN_TUNNEL))
+		    tso_segment_vxlan_tunnel_fixup (vm, ptd, b[0],
+						    tunnel_size);
 		  u16 n_tx_bufs = vec_len (ptd->split_buffers);
 		  u32 *from_tx_seg = ptd->split_buffers;
 

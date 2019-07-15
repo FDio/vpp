@@ -67,13 +67,13 @@
   _(18, IS_DVR, "dvr", 1)                               \
   _(19, QOS_DATA_VALID, "qos-data-valid", 0)            \
   _(20, GSO, "gso", 0)                                  \
-  _(21, AVAIL1, "avail1", 1)                            \
-  _(22, AVAIL2, "avail2", 1)                            \
-  _(23, AVAIL3, "avail3", 1)                            \
-  _(24, AVAIL4, "avail4", 1)                            \
-  _(25, AVAIL5, "avail5", 1)                            \
-  _(26, AVAIL6, "avail6", 1)                            \
-  _(27, AVAIL7, "avail7", 1)
+  _(21, GSO_VXLAN_TUNNEL, "gso-vxlan-tunnel", 0)        \
+  _(22, AVAIL1, "avail1", 1)                            \
+  _(23, AVAIL2, "avail2", 1)                            \
+  _(24, AVAIL3, "avail3", 1)                            \
+  _(25, AVAIL4, "avail4", 1)                            \
+  _(26, AVAIL5, "avail5", 1)                            \
+  _(27, AVAIL6, "avail6", 1)
 
 /*
  * Please allocate the FIRST available bit, redefine
@@ -83,8 +83,7 @@
 
 #define VNET_BUFFER_FLAGS_ALL_AVAIL                                     \
   (VNET_BUFFER_F_AVAIL1 | VNET_BUFFER_F_AVAIL2 | VNET_BUFFER_F_AVAIL3 | \
-   VNET_BUFFER_F_AVAIL4 | VNET_BUFFER_F_AVAIL5 | VNET_BUFFER_F_AVAIL6 | \
-   VNET_BUFFER_F_AVAIL7)
+   VNET_BUFFER_F_AVAIL4 | VNET_BUFFER_F_AVAIL5 | VNET_BUFFER_F_AVAIL6)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -392,10 +391,13 @@ typedef struct
    * in case the egress interface is not GSO-enabled - then we need to perform
    * the segmentation, and use this value to cut the payload appropriately.
    */
+  u16 gso_flags;
   u16 gso_size;
   /* size of L4 prototol header */
   u16 gso_l4_hdr_sz;
-
+  i16 gso_l4_hdr_offset;
+  i16 gso_l3_hdr_offset;
+  i16 gso_l2_hdr_offset;
   /* The union below has a u64 alignment, so this space is unused */
   u32 __unused2[1];
 
@@ -413,7 +415,7 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
-    u32 unused[8];
+    u32 unused[6];
   };
 } vnet_buffer_opaque2_t;
 
