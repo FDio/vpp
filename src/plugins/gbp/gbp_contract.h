@@ -310,9 +310,9 @@ gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
   action = 0;
   acl_plugin_fill_5tuple_inline (gm->acl_plugin.p_acl_main,
 				 contract->gc_lc_index, b, ip6,
-				 0 /* is_input */ ,
-				 GBP_CONTRACT_APPLY_L2 ==
-				 type /* is_l2_path */ , &fa_5tuple);
+				 GBP_CONTRACT_APPLY_L2 != type /* input */ ,
+				 GBP_CONTRACT_APPLY_L2 == type /* l2_path */ ,
+				 &fa_5tuple);
   acl_plugin_match_5tuple_inline (gm->acl_plugin.p_acl_main,
 				  contract->gc_lc_index, &fa_5tuple, ip6,
 				  &action, &acl_pos, &acl_match, &rule_match,
