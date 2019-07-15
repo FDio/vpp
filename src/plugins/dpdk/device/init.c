@@ -786,14 +786,24 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  int vlan_off;
 	  vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
 	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
-          if (vlan_off)
-	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
-	  else
-	    xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) == 0)
+	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
 	    dpdk_log_info ("VLAN strip enabled for interface\n");
 	  else
 	    dpdk_log_warn ("VLAN strip cannot be supported by interface\n");
+	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	}
+      else
+	{
+	  int vlan_off;
+	  vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
+
+	  if (vlan_off & ETH_VLAN_STRIP_OFFLOAD)
+	    {
+	      vlan_off &= ~ETH_VLAN_STRIP_OFFLOAD;
+	      if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
+		dpdk_log_warn ("set VLAN offload failed\n");
+	    }
+	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 	}
 
       if (hi)
