@@ -237,7 +237,9 @@ tso_alloc_tx_bufs (vlib_main_t * vm,
 {
   u32 n_bytes_b0 = vlib_buffer_length_in_chain (vm, b0);
   u16 gso_size = vnet_buffer2 (b0)->gso_size;
-  u16 l234_sz = vnet_buffer (b0)->l4_hdr_offset + l4_hdr_sz;
+  u16 l234_sz =
+    vnet_buffer (b0)->l4_hdr_offset + l4_hdr_sz -
+    vnet_buffer (b0)->l2_hdr_offset;
   /* rounded-up division */
   u16 n_bufs = (n_bytes_b0 - l234_sz + (gso_size - 1)) / gso_size;
   u16 n_alloc;
@@ -251,68 +253,136 @@ tso_alloc_tx_bufs (vlib_main_t * vm,
       vlib_buffer_free (vm, ptd->split_buffers, n_alloc);
       return 0;
     }
-  return 1;
+  return n_bufs;
 }
 
+
+
 static_always_inline void
-tso_init_buf_from_template_base (vlib_buffer_t * nb0, vlib_buffer_t * b0,
-				 u32 flags, u16 length)
+tso_fix_header (vlib_buffer_t * buf, u32 seq_num, u16 ip_length, u8 tcp_flags)
 {
-  nb0->current_data = 0;
-  nb0->total_length_not_including_first_buffer = 0;
-  nb0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID | flags;
-  clib_memcpy_fast (&nb0->opaque, &b0->opaque, sizeof (nb0->opaque));
-  clib_memcpy_fast (nb0->data, b0->data, length);
-  nb0->current_length = length;
+  ip4_header_t *ip4_header =
+    (ip4_header_t *) (buf->data + vnet_buffer (buf)->l3_hdr_offset);
+  tcp_header_t *tcp_header =
+    (tcp_header_t *) (buf->data + vnet_buffer (buf)->l4_hdr_offset);
+
+  ip4_header->length = clib_host_to_net_u16 (ip_length);
+  tcp_header->seq_number = clib_host_to_net_u32 (seq_num);
 }
 
-static_always_inline void
-tso_init_buf_from_template (vlib_main_t * vm, vlib_buffer_t * nb0,
-			    vlib_buffer_t * b0, u16 template_data_sz,
-			    u16 gso_size, u8 ** p_dst_ptr, u16 * p_dst_left,
-			    u32 next_tcp_seq, u32 flags)
+static_always_inline u32
+tso_segment_buffer_inline (vlib_main_t * vm, vlib_buffer_t * src_buf,
+			   u32 * dst_bufs_i, u32 n_bytes, u16 gso_size,
+			   u16 n_bufs, int do_tx_offloads)
 {
-  tso_init_buf_from_template_base (nb0, b0, flags, template_data_sz);
 
-  *p_dst_left =
-    clib_min (gso_size,
-	      vlib_buffer_get_default_data_size (vm) - template_data_sz);
-  *p_dst_ptr = nb0->data + template_data_sz;
-
+  vlib_buffer_t *current_buffer = src_buf;
   tcp_header_t *tcp =
-    (tcp_header_t *) (nb0->data + vnet_buffer (nb0)->l4_hdr_offset);
-  tcp->seq_number = clib_host_to_net_u32 (next_tcp_seq);
+    (tcp_header_t *) (src_buf->data + vnet_buffer (src_buf)->l4_hdr_offset);
+  u8 save_tcp_flags, tcp_flags_no_fin_psh, dst_idx = 0, is_new_dst = 1;
+  u8 *src_header, *src_data, *dst_data;
+  u16 l234_hdr_size, current_seg_data_left, current_dst_left;
+  u32 tcp_seq, b_flags, tx_bytes = 0;
+  int l4_hdr_size;
+
+  l4_hdr_size = vnet_buffer2 (src_buf)->gso_l4_hdr_sz;
+  l234_hdr_size =
+    vnet_buffer (src_buf)->l4_hdr_offset -
+    vnet_buffer (src_buf)->l2_hdr_offset + l4_hdr_size;
+
+  tcp->checksum = 0;
+
+  src_header = src_buf->data + vnet_buffer (src_buf)->l2_hdr_offset;
+  src_data = src_header + l234_hdr_size;
+
+  save_tcp_flags = tcp->flags;
+  tcp_flags_no_fin_psh = tcp->flags & ~(TCP_FLAG_FIN | TCP_FLAG_PSH);
+  b_flags = src_buf->flags & ~(VNET_BUFFER_F_GSO | VLIB_BUFFER_NEXT_PRESENT);
+
+  current_seg_data_left = src_buf->current_length - l234_hdr_size;
+
+  tcp_seq = clib_net_to_host_u32 (tcp->seq_number);
+
+  n_bytes -= l234_hdr_size;
+
+  while (n_bytes)
+    {
+      ASSERT (dst_idx <= n_bufs);
+      u16 data_copy_size, data_size_per_buf;
+      data_size_per_buf = clib_min (n_bytes, gso_size - l234_hdr_size);
+      vlib_buffer_t *dst_buf;
+
+      if (current_seg_data_left == 0
+	  && (current_buffer->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  current_buffer = vlib_get_buffer (vm, current_buffer->next_buffer);
+	  src_data = current_buffer->data;
+	  current_seg_data_left = current_buffer->current_length;
+	  continue;
+	}
+      if (is_new_dst)
+	{
+	  u16 ip_length;
+	  dst_buf = vlib_get_buffer (vm, dst_bufs_i[dst_idx]);
+	  current_dst_left =
+	    clib_min (gso_size, vlib_buffer_get_default_data_size (vm));
+	  ip_length =
+	    clib_min (current_dst_left,
+		      n_bytes + l234_hdr_size) - sizeof (ethernet_header_t);
+
+	  clib_memcpy_fast (dst_buf->opaque, src_buf->opaque,
+			    sizeof (vnet_buffer_opaque_t));
+	  clib_memcpy_fast (dst_buf->data, src_header, l234_hdr_size);
+
+	  dst_buf->current_length += l234_hdr_size;
+
+	  tx_bytes += l234_hdr_size;
+	  current_dst_left -= l234_hdr_size;
+	  dst_buf->flags = b_flags;
+	  dst_data = dst_buf->data + l234_hdr_size;
+
+	  vnet_buffer (dst_buf)->l3_hdr_offset =
+	    vnet_buffer (src_buf)->l3_hdr_offset -
+	    vnet_buffer (src_buf)->l2_hdr_offset;
+	  vnet_buffer (dst_buf)->l4_hdr_offset =
+	    vnet_buffer (src_buf)->l4_hdr_offset -
+	    vnet_buffer (src_buf)->l2_hdr_offset;
+
+	  if (n_bytes <= current_dst_left)
+	    //last tso buffer
+	    tso_fix_header (dst_buf, tcp_seq, ip_length, save_tcp_flags);
+	  else
+	    tso_fix_header (dst_buf, tcp_seq, ip_length,
+			    tcp_flags_no_fin_psh);
+	}
+
+      data_copy_size =
+	clib_min (data_size_per_buf,
+		  clib_min (current_seg_data_left, current_dst_left));
+
+      clib_memcpy_fast (dst_data, src_data, data_copy_size);
+      tx_bytes += data_copy_size;
+      tcp_seq += data_copy_size;
+      src_data += data_copy_size;
+      dst_data += data_copy_size;
+      n_bytes -= data_copy_size;
+      current_seg_data_left -= data_copy_size;
+      current_dst_left -= data_copy_size;
+      dst_buf->current_length += data_copy_size;
+
+      if (current_dst_left == 0)
+	{
+	  is_new_dst = 1;
+	  dst_idx++;
+	  if (do_tx_offloads)
+	    calc_checksums (vm, dst_buf);
+	}
+      else
+	is_new_dst = 0;
+    }
+
+  return tx_bytes;
 }
-
-static_always_inline void
-tso_fixup_segmented_buf (vlib_buffer_t * b0, u8 tcp_flags, int is_ip6)
-{
-  u16 l3_hdr_offset = vnet_buffer (b0)->l3_hdr_offset;
-  u16 l4_hdr_offset = vnet_buffer (b0)->l4_hdr_offset;
-  ip4_header_t *ip4 = (ip4_header_t *) (b0->data + l3_hdr_offset);
-  ip6_header_t *ip6 = (ip6_header_t *) (b0->data + l3_hdr_offset);
-  tcp_header_t *tcp = (tcp_header_t *) (b0->data + l4_hdr_offset);
-
-  tcp->flags = tcp_flags;
-
-  if (is_ip6)
-    ip6->payload_length =
-      clib_host_to_net_u16 (b0->current_length -
-			    vnet_buffer (b0)->l4_hdr_offset);
-  else
-    ip4->length =
-      clib_host_to_net_u16 (b0->current_length -
-			    vnet_buffer (b0)->l3_hdr_offset);
-}
-
-/**
- * Allocate the necessary number of ptd->split_buffers,
- * and segment the possibly chained buffer(s) from b0 into
- * there.
- *
- * Return the cumulative number of bytes sent or zero
- * if allocation failed.
- */
 
 static_always_inline u32
 tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
@@ -320,126 +390,26 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 		    u32 n_bytes_b0)
 {
   u32 n_tx_bytes = 0;
-  int is_ip4 = sb0->flags & VNET_BUFFER_F_IS_IP4;
-  int is_ip6 = sb0->flags & VNET_BUFFER_F_IS_IP6;
-  ASSERT (is_ip4 || is_ip6);
+  //int is_ip4 = sb0->flags & VNET_BUFFER_F_IS_IP4;
+  //int is_ip6 = sb0->flags & VNET_BUFFER_F_IS_IP6;
   ASSERT (sb0->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID);
   ASSERT (sb0->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID);
   ASSERT (sb0->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
   u16 gso_size = vnet_buffer2 (sb0)->gso_size;
+  u16 l4_hdr_sz = vnet_buffer2 (sb0)->gso_l4_hdr_sz;
+  u16 n_bufs;
 
-  int l4_hdr_sz = vnet_buffer2 (sb0)->gso_l4_hdr_sz;
-  u8 save_tcp_flags = 0;
-  u8 tcp_flags_no_fin_psh = 0;
-  u32 next_tcp_seq = 0;
-
-  tcp_header_t *tcp =
-    (tcp_header_t *) (sb0->data + vnet_buffer (sb0)->l4_hdr_offset);
-  next_tcp_seq = clib_net_to_host_u32 (tcp->seq_number);
-  /* store original flags for last packet and reset FIN and PSH */
-  save_tcp_flags = tcp->flags;
-  tcp_flags_no_fin_psh = tcp->flags & ~(TCP_FLAG_FIN | TCP_FLAG_PSH);
-  tcp->checksum = 0;
-
-  u32 default_bflags =
-    sb0->flags & ~(VNET_BUFFER_F_GSO | VLIB_BUFFER_NEXT_PRESENT);
-  u16 l234_sz = vnet_buffer (sb0)->l4_hdr_offset + l4_hdr_sz;
-  int first_data_size = clib_min (gso_size, sb0->current_length - l234_sz);
-  next_tcp_seq += first_data_size;
-
-  if (PREDICT_FALSE (!tso_alloc_tx_bufs (vm, ptd, sb0, l4_hdr_sz)))
+  n_bufs = tso_alloc_tx_bufs (vm, ptd, sb0, l4_hdr_sz);
+  if (PREDICT_FALSE (!n_bufs))
     return 0;
 
-  vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[0]);
-  tso_init_buf_from_template_base (b0, sb0, default_bflags,
-				   l234_sz + first_data_size);
-
-  u32 total_src_left = n_bytes_b0 - l234_sz - first_data_size;
-  if (total_src_left)
-    {
-      /* Need to copy more segments */
-      u8 *src_ptr, *dst_ptr;
-      u16 src_left, dst_left;
-      /* current source buffer */
-      vlib_buffer_t *csb0 = sb0;
-      u32 csbi0 = sbi0;
-      /* current dest buffer */
-      vlib_buffer_t *cdb0;
-      u16 dbi = 1;		/* the buffer [0] is b0 */
-
-      src_ptr = sb0->data + l234_sz + first_data_size;
-      src_left = sb0->current_length - l234_sz - first_data_size;
-      b0->current_length = l234_sz + first_data_size;
-
-      tso_fixup_segmented_buf (b0, tcp_flags_no_fin_psh, is_ip6);
-      if (do_tx_offloads)
-	calc_checksums (vm, b0);
-
-      /* grab a second buffer and prepare the loop */
-      ASSERT (dbi < vec_len (ptd->split_buffers));
-      cdb0 = vlib_get_buffer (vm, ptd->split_buffers[dbi++]);
-      tso_init_buf_from_template (vm, cdb0, b0, l234_sz, gso_size, &dst_ptr,
-				  &dst_left, next_tcp_seq, default_bflags);
-
-      /* an arbitrary large number to catch the runaway loops */
-      int nloops = 2000;
-      while (total_src_left)
-	{
-	  if (nloops-- <= 0)
-	    clib_panic ("infinite loop detected");
-	  u16 bytes_to_copy = clib_min (src_left, dst_left);
-
-	  clib_memcpy_fast (dst_ptr, src_ptr, bytes_to_copy);
-
-	  src_left -= bytes_to_copy;
-	  src_ptr += bytes_to_copy;
-	  total_src_left -= bytes_to_copy;
-	  dst_left -= bytes_to_copy;
-	  dst_ptr += bytes_to_copy;
-	  next_tcp_seq += bytes_to_copy;
-	  cdb0->current_length += bytes_to_copy;
-
-	  if (0 == src_left)
-	    {
-	      int has_next = (csb0->flags & VLIB_BUFFER_NEXT_PRESENT);
-	      u32 next_bi = csb0->next_buffer;
-
-	      /* init src to the next buffer in chain */
-	      if (has_next)
-		{
-		  csbi0 = next_bi;
-		  csb0 = vlib_get_buffer (vm, csbi0);
-		  src_left = csb0->current_length;
-		  src_ptr = vlib_buffer_get_current (csb0);
-		}
-	      else
-		{
-		  ASSERT (total_src_left == 0);
-		  break;
-		}
-	    }
-	  if (0 == dst_left && total_src_left)
-	    {
-	      if (do_tx_offloads)
-		calc_checksums (vm, cdb0);
-	      n_tx_bytes += cdb0->current_length;
-	      ASSERT (dbi < vec_len (ptd->split_buffers));
-	      cdb0 = vlib_get_buffer (vm, ptd->split_buffers[dbi++]);
-	      tso_init_buf_from_template (vm, cdb0, b0, l234_sz,
-					  gso_size, &dst_ptr, &dst_left,
-					  next_tcp_seq, default_bflags);
-	    }
-	}
-
-      tso_fixup_segmented_buf (cdb0, save_tcp_flags, is_ip6);
-      if (do_tx_offloads)
-	calc_checksums (vm, cdb0);
-
-      n_tx_bytes += cdb0->current_length;
-    }
-  n_tx_bytes += b0->current_length;
+  n_tx_bytes =
+    tso_segment_buffer_inline (vm, sb0, ptd->split_buffers, n_bytes_b0,
+			       gso_size, n_bufs, do_tx_offloads);
   return n_tx_bytes;
 }
+
+
 
 static_always_inline void
 drop_one_buffer_and_count (vlib_main_t * vm, vnet_main_t * vnm,
