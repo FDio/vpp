@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "69ddf9a5_76918e92",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-15T15:01:03Z",
+      "side": 1,
+      "message": "I do not see any option for (re)building papi only.",
+      "range": {
+        "startLine": 7,
+        "startChar": 25,
+        "endLine": 7,
+        "endChar": 33
+      },
+      "revId": "02126a7f6a4f7cc762f7d91ee50e87dc08b6a3bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "955d218d_036bbd06",
+        "filename": "test/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-15T15:01:03Z",
+      "side": 1,
+      "message": "delete?",
+      "range": {
+        "startLine": 279,
+        "startChar": 31,
+        "endLine": 279,
+        "endChar": 38
+      },
+      "revId": "02126a7f6a4f7cc762f7d91ee50e87dc08b6a3bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
