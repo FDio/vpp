@@ -104,6 +104,12 @@ do {									\
  */
 #define clib_llist_is_empty(LP,name,H) ((H) == clib_llist_next((LP),name,(H)))
 /**
+ * Check if element is linked in a list
+ */
+#define clib_llist_is_linked(E,name)					\
+  ((E)->name.next != CLIB_LLIST_INVALID_INDEX				\
+   && (E)->name.prev != CLIB_LLIST_INVALID_INDEX)
+/**
  * Insert entry between previous and next
  *
  * Internal use.
@@ -175,7 +181,22 @@ do {									\
   _lprev (_ll_var (N),name) = _lprev (E,name);				\
   _lnext (E,name) = _lprev (E,name) = CLIB_LLIST_INVALID_INDEX;		\
 }while (0)
-
+/**
+ * Removes and returns the first element in the list.
+ *
+ * The element is not freed. It's the responsability of the caller to
+ * free it.
+ *
+ * @param LP	linked list pool
+ * @param name	list anchor name
+ * @param E	storage the first entry
+ * @param H	list head entry
+ */
+#define clib_llist_pop_head(LP,name,E,H)				\
+do {									\
+  E = clib_llist_next (LP,name,H);					\
+  clib_llist_remove (LP,name,E);					\
+} while (0)
 /**
  * Splice two lists at a given position
  *
