@@ -860,7 +860,7 @@ class TestExceptionPuntSocket(TestPuntSocket):
                 pkt = pkt / UDP(sport=666, dport=4500)
             pkt = (pkt / ESP(spi=cfg['spi'], seq=3) /
                    Raw('\xa5' * 100))
-            cfg['pkts'] = [pkt]
+            cfg['pkts'] = pkt * 15
 
         #
         # send packets for each SPI we expect to be punted

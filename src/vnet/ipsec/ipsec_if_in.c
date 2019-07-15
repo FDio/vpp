@@ -149,6 +149,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       esp_header_t *esp0, *esp1;
       u32 len0, len1;
       u16 buf_adv0, buf_adv1;
+      u16 buf_rewind0, buf_rewind1;
       u32 tid0, tid1;
       ipsec_tunnel_if_t *t0, *t1;
       ipsec4_tunnel_key_t key40, key41;
@@ -185,11 +186,12 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		(esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40) +
 				  sizeof (udp_header_t));
 	      buf_adv0 = 0;
+	      buf_rewind0 = ip4_header_bytes (ip40) + sizeof (udp_header_t);
 	    }
 	  else
 	    {
 	      esp0 = (esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40));
-	      buf_adv0 = ip4_header_bytes (ip40);
+	      buf_rewind0 = buf_adv0 = ip4_header_bytes (ip40);
 	    }
 	  /* NAT UDP port 4500 case, don't advance any more */
 	  if (ip41->protocol == IP_PROTOCOL_UDP)
@@ -198,11 +200,12 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		(esp_header_t *) ((u8 *) ip41 + ip4_header_bytes (ip41) +
 				  sizeof (udp_header_t));
 	      buf_adv1 = 0;
+	      buf_rewind1 = ip4_header_bytes (ip40) + sizeof (udp_header_t);
 	    }
 	  else
 	    {
 	      esp1 = (esp_header_t *) ((u8 *) ip41 + ip4_header_bytes (ip41));
-	      buf_adv1 = ip4_header_bytes (ip41);
+	      buf_rewind1 = buf_adv1 = ip4_header_bytes (ip41);
 	    }
 	}
 
@@ -262,7 +265,8 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  next[0] =
-		    ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40, buf_adv0);
+		    ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40,
+					    buf_rewind0);
 		  n_no_tunnel++;
 		  goto pkt1;
 		}
@@ -358,7 +362,8 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  next[1] =
-		    ipsec_ip4_if_no_tunnel (node, b[1], esp1, ip41, buf_adv1);
+		    ipsec_ip4_if_no_tunnel (node, b[1], esp1, ip41,
+					    buf_rewind1);
 		  n_no_tunnel++;
 		  goto trace1;
 		}
