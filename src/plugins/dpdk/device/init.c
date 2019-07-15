@@ -266,7 +266,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   RTE_ETH_FOREACH_DEV(i)
     {
       u8 addr[6];
-      u8 vlan_strip = 0;
+      int vlan_off;
       struct rte_eth_dev_info dev_info;
       struct rte_pci_device *pci_dev;
       struct rte_eth_link l;
@@ -778,22 +778,26 @@ dpdk_lib_init (dpdk_main_t * dm)
        * VLAN stripping: default to VLAN strip disabled, unless specified
        * otherwise in the startup config.
        */
-      if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
-	vlan_strip = 1;
 
-      if (vlan_strip)
+      vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
+      if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
 	{
-	  int vlan_off;
-	  vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
 	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
-          if (vlan_off)
-	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
-	  else
-	    xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) == 0)
+	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
 	    dpdk_log_info ("VLAN strip enabled for interface\n");
 	  else
 	    dpdk_log_warn ("VLAN strip cannot be supported by interface\n");
+	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	}
+      else
+	{
+	  if (vlan_off & ETH_VLAN_STRIP_OFFLOAD)
+	    {
+	      vlan_off &= ~ETH_VLAN_STRIP_OFFLOAD;
+	      if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
+		dpdk_log_warn ("set VLAN offload failed\n");
+	    }
+	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 	}
 
       if (hi)
