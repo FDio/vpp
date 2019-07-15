@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc4d9d8c_85bb3b55",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2581,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-15T17:34:37Z",
+      "side": 1,
+      "message": "Fix formatting here",
+      "range": {
+        "startLine": 2579,
+        "startChar": 0,
+        "endLine": 2581,
+        "endChar": 44
+      },
+      "revId": "38811ba2ffa651b3c4caebcdea3dcd0afd9a084d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3ad5d165_2f1c3fb2",
+        "filename": "src/plugins/quic/vpp_quic_crypto.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-15T17:34:37Z",
+      "side": 1,
+      "message": "Throughout the code we prefer C style comments, e.g.,  /* Do Nothing */",
+      "range": {
+        "startLine": 69,
+        "startChar": 2,
+        "endLine": 69,
+        "endChar": 15
+      },
+      "revId": "38811ba2ffa651b3c4caebcdea3dcd0afd9a084d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0ae6da56_093af876",
+        "filename": "src/plugins/quic/vpp_quic_crypto.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-15T17:34:37Z",
+      "side": 1,
+      "message": "You could typedef this to clear up the api. \n\ntypedef void (*quicly_do_transform_fn) (ptls_cipher_context_t *,  void *, const void *, size_t)",
+      "range": {
+        "startLine": 89,
+        "startChar": 4,
+        "endLine": 91,
+        "endChar": 19
+      },
+      "revId": "38811ba2ffa651b3c4caebcdea3dcd0afd9a084d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
