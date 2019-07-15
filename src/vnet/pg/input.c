@@ -1574,8 +1574,8 @@ fill_gso_buffer_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 						(b0)->l4_hdr_offset);
 	  l4_hdr_sz = tcp_header_bytes (tcp);
 	  tcp->checksum = 0;
-	  vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
-	  vnet_buffer2 (b0)->gso_size = packet_data_size;
+	  vnet_buffer2 (b0)->gso.gso_l4_hdr_sz = l4_hdr_sz;
+	  vnet_buffer2 (b0)->gso.gso_size = packet_data_size;
 	  b0->flags |= VNET_BUFFER_F_GSO;
 	}
       else if (l4_proto == IP_PROTOCOL_UDP)
@@ -1584,7 +1584,7 @@ fill_gso_buffer_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	  udp_header_t *udp = (udp_header_t *) (b0->data +
 						vnet_buffer
 						(b0)->l4_hdr_offset);
-	  vnet_buffer2 (b0)->gso_l4_hdr_sz = sizeof (*udp);
+	  vnet_buffer2 (b0)->gso.gso_l4_hdr_sz = sizeof (*udp);
 	  udp->checksum = 0;
 	}
     }

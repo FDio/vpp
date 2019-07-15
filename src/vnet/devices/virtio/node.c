@@ -201,16 +201,16 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
   if (hdr->gso_type == VIRTIO_NET_HDR_GSO_TCPV4)
     {
       ASSERT (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM);
-      vnet_buffer2 (b0)->gso_size = hdr->gso_size;
-      vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
+      vnet_buffer2 (b0)->gso.gso_size = hdr->gso_size;
+      vnet_buffer2 (b0)->gso.gso_l4_hdr_sz = l4_hdr_sz;
       b0->flags |= VNET_BUFFER_F_GSO;
       b0->flags |= VNET_BUFFER_F_IS_IP4;
     }
   if (hdr->gso_type == VIRTIO_NET_HDR_GSO_TCPV6)
     {
       ASSERT (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM);
-      vnet_buffer2 (b0)->gso_size = hdr->gso_size;
-      vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
+      vnet_buffer2 (b0)->gso.gso_size = hdr->gso_size;
+      vnet_buffer2 (b0)->gso.gso_l4_hdr_sz = l4_hdr_sz;
       b0->flags |= VNET_BUFFER_F_GSO;
       b0->flags |= VNET_BUFFER_F_IS_IP6;
     }
