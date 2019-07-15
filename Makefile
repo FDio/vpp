@@ -218,6 +218,8 @@ help:
 	@echo " wipe-doxygen        - wipe all generated documentation"
 	@echo " checkfeaturelist    - check FEATURE.yaml according to schema"
 	@echo " featurelist         - dump feature list in markdown"
+	@echo " json-api-files      - (re)-generate json api files"
+	@echo " json-api-files-debug - (re)-generate json api files for debug target"
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv         - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean        - Remove the generated files from the Sphinx docs"
@@ -533,6 +535,12 @@ dpdk-install-dev:
 
 install-ext-deps:
 	make -C build/external install-$(PKG)
+
+json-api-files:
+	$(WS_ROOT)/src/tools/vppapigen/generate_json.py
+
+json-api-files-debug:
+	$(WS_ROOT)/src/tools/vppapigen/generate_json.py --debug-target
 
 ctags: ctags.files
 	@ctags --totals --tag-relative -L $<
