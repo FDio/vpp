@@ -162,13 +162,49 @@ class TestGSO(VppTestCase):
         rxs = self.send_and_expect(self.pg2, [p43], self.pg1, 119)
         size = 0
         for rx in rxs:
-            rx.show()
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
             self.assertEqual(rx[IP].src, self.pg2.remote_ip4)
             self.assertEqual(rx[IP].dst, self.pg1.remote_ip4)
             size += rx[IP].len - 20
         size -= 20  # TCP header
+        self.assertEqual(size, 65200)
+
+        #
+        # Send jumbo frame with gso enabled only on input interface and
+        # create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg2
+        # into BD.
+        #
+        self.single_tunnel_bd = 10
+        r = self.vapi.vxlan_add_del_tunnel(src_address=self.pg0.local_ip4n,
+                                           dst_address=self.pg0.remote_ip4n,
+                                           is_add=1, vni=self.single_tunnel_bd)
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                             bd_id=self.single_tunnel_bd)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.single_tunnel_bd)
+
+        p44 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
+               IP(src=self.pg2.remote_ip4, dst="172.16.3.3", flags='DF') /
+               TCP(sport=1234, dport=1234) /
+               Raw('\xa5' * 65200))
+
+        self.pg0.enable_capture()
+        rxs = self.send_and_expect(self.pg2, [p44], self.pg0, 45)
+
+        size = 0
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, self.pg0.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
+            self.assertEqual(rx[IP].src, self.pg0.local_ip4)
+            self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assertEqual(rx[VXLAN].vni, 10)
+            inner = rx[VXLAN].payload
+            self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
+            self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
+            self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
+            self.assertEqual(inner[IP].dst, "172.16.3.3")
+            size += inner[IP].len - 20 - 20
         self.assertEqual(size, 65200)
 
 if __name__ == '__main__':
