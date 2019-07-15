@@ -25,6 +25,7 @@
  */
 
 #include <vppinfra/clib_error.h>
+#include <vppinfra/elog.h>
 #include <vlibapi/api_types.h>
 #include <svm/svm_common.h>
 #include <svm/queue.h>
@@ -338,6 +339,10 @@ typedef struct
 
   /** List of API client reaper functions */
   _vl_msg_api_function_list_elt_t *reaper_function_registrations;
+
+  /** event log */
+  elog_main_t *elog_main;
+  int elog_trace_api_messages;
 
 } api_main_t;
 

@@ -24,6 +24,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
+#include <vppinfra/elog.h>
 #include <vppinfra/time.h>
 #include <vppinfra/macros.h>
 #include <vppinfra/socket.h>
@@ -214,6 +215,10 @@ typedef struct
 
   socket_client_main_t *socket_client_main;
   u8 *socket_name;
+
+#if VPP_API_TEST_BUILTIN == 0
+  elog_main_t elog_main;
+#endif
 
   /* Convenience */
   vlib_main_t *vlib_main;
