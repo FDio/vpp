@@ -15,6 +15,7 @@
 #ifndef __included_session_h__
 #define __included_session_h__
 
+#include <vppinfra/llist.h>
 #include <vnet/session/session_types.h>
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/session_debug.h>
@@ -61,6 +62,12 @@ typedef struct session_tx_context_
   session_dgram_hdr_t hdr;
 } session_tx_context_t;
 
+typedef struct session_evt_elt
+{
+  clib_llist_anchor_t evt_list;
+  session_event_t evt;
+} session_evt_elt_t;
+
 typedef struct session_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -86,17 +93,20 @@ typedef struct session_worker_
   /** Vector of tx buffer free lists */
   u32 *tx_buffers;
 
-  /** Vector of partially read events */
-  session_event_t *free_event_vector;
+  /** Pool of session event list elements */
+  session_evt_elt_t *event_elts;
 
-  /** Vector of active event vectors */
-  session_event_t *pending_event_vector;
+  /** Head of list of elements */
+  clib_llist_index_t new_head;
 
-  /** Vector of postponed disconnects */
-  session_event_t *pending_disconnects;
+  /** Head of list of pending events */
+  clib_llist_index_t pending_head;
 
-  /** Vector of postponed events */
-  session_event_t *postponed_event_vector;
+  /** Head of list of postponed events */
+  clib_llist_index_t postponed_head;
+
+  /** Head of list of disconnect events */
+  clib_llist_index_t disconnects_head;
 
   /** Peekers rw lock */
   clib_rwlock_t peekers_rw_locks;
@@ -108,7 +118,7 @@ typedef struct session_worker_
 typedef int (session_fifo_rx_fn) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  session_worker_t * wrk,
-				  session_event_t * e, int *n_tx_pkts);
+				  session_evt_elt_t * e, int *n_tx_pkts);
 
 extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
@@ -185,6 +195,60 @@ extern vlib_node_registration_t session_queue_pre_input_node;
 
 #define SESSION_Q_PROCESS_FLUSH_FRAMES	1
 #define SESSION_Q_PROCESS_STOP		2
+
+static inline session_evt_elt_t *
+session_evt_elt_alloc (session_worker_t * wrk)
+{
+  session_evt_elt_t *elt;
+  pool_get (wrk->event_elts, elt);
+  return elt;
+}
+
+static inline void
+session_evt_elt_free (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  pool_put (wrk->event_elts, elt);
+}
+
+static inline session_evt_elt_t *
+session_evt_pending_head (session_worker_t * wrk)
+{
+  return pool_elt_at_index (wrk->event_elts, wrk->pending_head);
+}
+
+static inline session_evt_elt_t *
+session_evt_postponed_head (session_worker_t * wrk)
+{
+  return pool_elt_at_index (wrk->event_elts, wrk->postponed_head);
+}
+
+static inline session_evt_elt_t *
+session_evt_pending_disconnects_head (session_worker_t * wrk)
+{
+  return pool_elt_at_index (wrk->event_elts, wrk->disconnects_head);
+}
+
+static inline void
+session_evt_add_pending (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
+		       session_evt_pending_head (wrk));
+}
+
+static inline void
+session_evt_add_postponed (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
+		       session_evt_postponed_head (wrk));
+}
+
+static inline void
+session_evt_add_pending_disconnects (session_worker_t * wrk,
+				     session_evt_elt_t * elt)
+{
+  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
+		       session_evt_pending_disconnects_head (wrk));
+}
 
 always_inline u8
 session_is_valid (u32 si, u8 thread_index)
