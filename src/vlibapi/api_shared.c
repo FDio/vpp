@@ -398,6 +398,26 @@ msg_handler_internal (api_main_t * am,
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   u8 *(*print_fp) (void *, void *);
 
+  if (PREDICT_FALSE (am->elog_trace_api_messages))
+    {
+      /* *INDENT-OFF* */
+      ELOG_TYPE_DECLARE (e) =
+        {
+          .format = "api-msg: %s",
+          .format_args = "T4",
+        };
+      /* *INDENT-ON* */
+      struct
+      {
+	u32 c;
+      } *ed;
+      ed = ELOG_DATA (am->elog_main, e);
+      if (id < vec_len (am->msg_names))
+	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
+      else
+	ed->c = elog_string (am->elog_main, "BOGUS");
+    }
+
   if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
     {
       if (trace_it)
@@ -436,28 +456,35 @@ msg_handler_internal (api_main_t * am,
 
   if (free_it)
     vl_msg_api_free (the_msg);
-}
 
-static u32
-elog_id_for_msg_name (vlib_main_t * vm, const char *msg_name)
-{
-  uword *p, r;
-  static uword *h;
-  u8 *name_copy;
+  if (PREDICT_FALSE (am->elog_trace_api_messages))
+    {
+      /* *INDENT-OFF* */
+      ELOG_TYPE_DECLARE (e) =
+        {
+          .format = "api-msg-done(%s): %s",
+          .format_args = "t4T4",
+          .n_enum_strings = 2,
+          .enum_strings =
+          {
+            "barrier",
+            "mp-safe",
+          }
+        };
+      /* *INDENT-ON* */
 
-  if (!h)
-    h = hash_create_string (0, sizeof (uword));
-
-  p = hash_get_mem (h, msg_name);
-  if (p)
-    return p[0];
-  r = elog_string (&vm->elog_main, "%s", msg_name);
-
-  name_copy = format (0, "%s%c", msg_name, 0);
-
-  hash_set_mem (h, name_copy, r);
-
-  return r;
+      struct
+      {
+	u32 barrier;
+	u32 c;
+      } *ed;
+      ed = ELOG_DATA (am->elog_main, e);
+      if (id < vec_len (am->msg_names))
+	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
+      else
+	ed->c = elog_string (am->elog_main, "BOGUS");
+      ed->barrier = !am->is_mp_safe[id];
+    }
 }
 
 /* This is only to be called from a vlib/vnet app */
@@ -471,7 +498,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
   u8 *(*print_fp) (void *, void *);
   int is_mp_safe = 1;
 
-  if (PREDICT_FALSE (vm->elog_trace_api_messages))
+  if (PREDICT_FALSE (am->elog_trace_api_messages))
     {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
@@ -484,11 +511,11 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
       {
 	u32 c;
       } *ed;
-      ed = ELOG_DATA (&vm->elog_main, e);
+      ed = ELOG_DATA (am->elog_main, e);
       if (id < vec_len (am->msg_names))
-	ed->c = elog_id_for_msg_name (vm, (const char *) am->msg_names[id]);
+	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
       else
-	ed->c = elog_id_for_msg_name (vm, "BOGUS");
+	ed->c = elog_string (am->elog_main, "BOGUS");
     }
 
   if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
@@ -534,7 +561,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
   if (!(am->message_bounce[id]))
     vl_msg_api_free (the_msg);
 
-  if (PREDICT_FALSE (vm->elog_trace_api_messages))
+  if (PREDICT_FALSE (am->elog_trace_api_messages))
     {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
@@ -555,11 +582,11 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
 	u32 barrier;
 	u32 c;
       } *ed;
-      ed = ELOG_DATA (&vm->elog_main, e);
+      ed = ELOG_DATA (am->elog_main, e);
       if (id < vec_len (am->msg_names))
-	ed->c = elog_id_for_msg_name (vm, (const char *) am->msg_names[id]);
+	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
       else
-	ed->c = elog_id_for_msg_name (vm, "BOGUS");
+	ed->c = elog_string (am->elog_main, "BOGUS");
       ed->barrier = is_mp_safe;
     }
 }
@@ -1031,6 +1058,32 @@ vl_api_from_api_to_vec (vl_api_string_t * astr)
   u8 *v = 0;
   vec_add (v, astr->buf, clib_net_to_host_u32 (astr->length));
   return v;
+}
+
+void
+vl_api_set_elog_main (elog_main_t * m)
+{
+  api_main_t *am = &api_main;
+  am->elog_main = m;
+}
+
+int
+vl_api_set_elog_trace_api_messages (int enable)
+{
+  int rv;
+  api_main_t *am = &api_main;
+
+  rv = am->elog_trace_api_messages;
+  am->elog_trace_api_messages = enable;
+  return rv;
+}
+
+int
+vl_api_get_elog_trace_api_messages (void)
+{
+  api_main_t *am = &api_main;
+
+  return am->elog_trace_api_messages;
 }
 
 /*

@@ -85,6 +85,9 @@
 #define __plugin_msg_base 0
 #include <vlibapi/vat_helper_macros.h>
 
+void vl_api_set_elog_main (elog_main_t * m);
+int vl_api_set_elog_trace_api_messages (int enable);
+
 #if VPP_API_TEST_BUILTIN == 0
 #include <netdb.h>
 
@@ -164,7 +167,8 @@ errmsg (char *fmt, ...)
     if (vam->ifp != stdin)
       fformat (vam->ofp, "%s(%d): \n", vam->current_file,
 	       vam->input_line_number);
-    fformat (vam->ofp, (char *) s);
+    else
+      fformat (vam->ofp, "%s\n", (char *) s);
     fflush (vam->ofp);
   }
 #endif
@@ -21403,6 +21407,98 @@ comment (vat_main_t * vam)
 }
 
 static int
+elog_save (vat_main_t * vam)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  elog_main_t *em = &vam->elog_main;
+  unformat_input_t *i = vam->input;
+  char *file, *chroot_file;
+  clib_error_t *error;
+
+  if (!unformat (i, "%s", &file))
+    {
+      errmsg ("expected file name, got `%U'", format_unformat_error, i);
+      return 0;
+    }
+
+  /* It's fairly hard to get "../oopsie" through unformat; just in case */
+  if (strstr (file, "..") || index (file, '/'))
+    {
+      errmsg ("illegal characters in filename '%s'", file);
+      return 0;
+    }
+
+  chroot_file = (char *) format (0, "/tmp/%s%c", file, 0);
+
+  vec_free (file);
+
+  errmsg ("Saving %wd of %wd events to %s",
+	  elog_n_events_in_buffer (em),
+	  elog_buffer_capacity (em), chroot_file);
+
+  error = elog_write_file (em, chroot_file, 1 /* flush ring */ );
+  vec_free (chroot_file);
+
+  if (error)
+    clib_error_report (error);
+#else
+  errmsg ("Use the vpp event loger...");
+#endif
+
+  return 0;
+}
+
+static int
+elog_setup (vat_main_t * vam)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  elog_main_t *em = &vam->elog_main;
+  unformat_input_t *i = vam->input;
+  u32 nevents = 128 << 10;
+
+  (void) unformat (i, "nevents %d", &nevents);
+
+  elog_init (em, nevents);
+  vl_api_set_elog_main (em);
+  vl_api_set_elog_trace_api_messages (1);
+  errmsg ("Event logger initialized with %u events", nevents);
+#else
+  errmsg ("Use the vpp event loger...");
+#endif
+  return 0;
+}
+
+static int
+elog_enable (vat_main_t * vam)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  elog_main_t *em = &vam->elog_main;
+
+  elog_enable_disable (em, 1 /* enable */ );
+  vl_api_set_elog_trace_api_messages (1);
+  errmsg ("Event logger enabled...");
+#else
+  errmsg ("Use the vpp event loger...");
+#endif
+  return 0;
+}
+
+static int
+elog_disable (vat_main_t * vam)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  elog_main_t *em = &vam->elog_main;
+
+  elog_enable_disable (em, 0 /* enable */ );
+  vl_api_set_elog_trace_api_messages (1);
+  errmsg ("Event logger disabled...");
+#else
+  errmsg ("Use the vpp event loger...");
+#endif
+  return 0;
+}
+
+static int
 statseg (vat_main_t * vam)
 {
   ssvm_private_t *ssvmp = &vam->stat_segment;
@@ -22286,6 +22382,10 @@ _(dump_ipv6_table, "usage: dump_ipv6_table")                    \
 _(dump_macro_table, "usage: dump_macro_table ")                 \
 _(dump_node_table, "usage: dump_node_table")			\
 _(dump_msg_api_table, "usage: dump_msg_api_table")		\
+_(elog_setup, "usage: elog_setup [nevents, default 128K]")      \
+_(elog_disable, "usage: elog_disable")                          \
+_(elog_enable, "usage: elog_enable")                            \
+_(elog_save, "usage: elog_save <filename>")                     \
 _(get_msg_id, "usage: get_msg_id name_and_crc")			\
 _(echo, "usage: echo <message>")				\
 _(exec, "usage: exec <vpe-debug-CLI-command>")                  \

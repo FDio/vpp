@@ -44,28 +44,6 @@ vlib_thread_main_t vlib_thread_main;
  * imapacts observed timings.
  */
 
-u32
-elog_global_id_for_msg_name (const char *msg_name)
-{
-  uword *p, r;
-  static uword *h;
-  u8 *name_copy;
-
-  if (!h)
-    h = hash_create_string (0, sizeof (uword));
-
-  p = hash_get_mem (h, msg_name);
-  if (p)
-    return p[0];
-  r = elog_string (&vlib_global_main.elog_main, "%s", msg_name);
-
-  name_copy = format (0, "%s%c", msg_name, 0);
-
-  hash_set_mem (h, name_copy, r);
-
-  return r;
-}
-
 static inline void
 barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
 {
@@ -86,8 +64,8 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->count = (int) vlib_worker_threads[0].barrier_sync_count;
-  ed->caller = elog_global_id_for_msg_name
-    (vlib_worker_threads[0].barrier_caller);
+  ed->caller = elog_string (&vlib_global_main.elog_main,
+			    (char *) vlib_worker_threads[0].barrier_caller);
   ed->t_entry = (int) (1000000.0 * t_entry);
   ed->t_open = (int) (1000000.0 * t_open);
   ed->t_closed = (int) (1000000.0 * t_closed);
@@ -113,8 +91,8 @@ barrier_trace_sync_rec (f64 t_entry)
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->depth = (int) vlib_worker_threads[0].recursion_level - 1;
-  ed->caller = elog_global_id_for_msg_name
-    (vlib_worker_threads[0].barrier_caller);
+  ed->caller = elog_string (&vlib_global_main.elog_main,
+			    (char *) vlib_worker_threads[0].barrier_caller);
 }
 
 static inline void
