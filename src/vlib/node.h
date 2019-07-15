@@ -400,8 +400,8 @@ typedef struct vlib_frame_t
 
 typedef struct
 {
-  /* Frame index. */
-  u32 frame_index;
+  /* Frame pointer. */
+  vlib_frame_t *frame;
 
   /* Node runtime for this next. */
   u32 node_runtime_index;
@@ -440,7 +440,6 @@ always_inline void
 vlib_next_frame_init (vlib_next_frame_t * nf)
 {
   clib_memset (nf, 0, sizeof (nf[0]));
-  nf->frame_index = ~0;
   nf->node_runtime_index = ~0;
 }
 
@@ -451,7 +450,7 @@ typedef struct
   u32 node_runtime_index;
 
   /* Frame index (in the heap). */
-  u32 frame_index;
+  vlib_frame_t *frame;
 
   /* Start of next frames for this node. */
   u32 next_frame_index;
@@ -537,8 +536,8 @@ typedef struct
   /* Number of allocated frames for this scalar/vector size. */
   u32 n_alloc_frames;
 
-  /* Vector of free frame indices for this scalar/vector size. */
-  u32 *free_frame_indices;
+  /* Vector of free frames for this scalar/vector size. */
+  vlib_frame_t **free_frames;
 } vlib_frame_size_t;
 
 typedef struct

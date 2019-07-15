@@ -182,7 +182,7 @@ rdma_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   nf =
     vlib_node_runtime_get_next_frame (vm, node, rd->per_interface_next_index);
-  f = vlib_get_frame (vm, nf->frame_index);
+  f = vlib_get_frame (vm, nf->frame);
   f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
   /* FIXME: f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK; */
 
