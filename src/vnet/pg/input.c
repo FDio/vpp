@@ -1567,7 +1567,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	  pg_interface_t *pi;
 	  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left);
 	  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-	  f = vlib_get_frame (vm, nf->frame_index);
+	  f = vlib_get_frame (vm, nf->frame);
 	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
 
 	  ef = vlib_frame_scalar_args (f);

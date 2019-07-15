@@ -117,7 +117,7 @@ get_frame_size_info (vlib_node_main_t * nm,
 #endif
 }
 
-static u32
+static vlib_frame_t *
 vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
 			  u32 frame_flags)
 {
@@ -125,7 +125,7 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
   vlib_frame_size_t *fs;
   vlib_node_t *to_node;
   vlib_frame_t *f;
-  u32 fi, l, n, scalar_size, vector_size;
+  u32 l, n, scalar_size, vector_size;
 
   to_node = vlib_get_node (vm, to_node_index);
 
@@ -134,17 +134,15 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
 
   fs = get_frame_size_info (nm, scalar_size, vector_size);
   n = vlib_frame_bytes (scalar_size, vector_size);
-  if ((l = vec_len (fs->free_frame_indices)) > 0)
+  if ((l = vec_len (fs->free_frames)) > 0)
     {
       /* Allocate from end of free list. */
-      fi = fs->free_frame_indices[l - 1];
-      f = vlib_get_frame_no_check (vm, fi);
-      _vec_len (fs->free_frame_indices) = l - 1;
+      f = fs->free_frames[l - 1];
+      _vec_len (fs->free_frames) = l - 1;
     }
   else
     {
       f = clib_mem_alloc_aligned_no_fail (n, VLIB_FRAME_ALIGN);
-      fi = vlib_frame_index_no_check (vm, f);
     }
 
   /* Poison frame when debugging. */
@@ -167,12 +165,12 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
 
   fs->n_alloc_frames += 1;
 
-  return fi;
+  return f;
 }
 
 /* Allocate a frame for from FROM_NODE to TO_NODE via TO_NEXT_INDEX.
    Returns frame index. */
-static u32
+static vlib_frame_t *
 vlib_frame_alloc (vlib_main_t * vm, vlib_node_runtime_t * from_node_runtime,
 		  u32 to_next_index)
 {
@@ -188,10 +186,10 @@ vlib_frame_alloc (vlib_main_t * vm, vlib_node_runtime_t * from_node_runtime,
 vlib_frame_t *
 vlib_get_frame_to_node (vlib_main_t * vm, u32 to_node_index)
 {
-  u32 fi = vlib_frame_alloc_to_node (vm, to_node_index,
-				     /* frame_flags */
-				     VLIB_FRAME_FREE_AFTER_DISPATCH);
-  return vlib_get_frame (vm, fi);
+  vlib_frame_t *f = vlib_frame_alloc_to_node (vm, to_node_index,
+					      /* frame_flags */
+					      VLIB_FRAME_FREE_AFTER_DISPATCH);
+  return vlib_get_frame (vm, f);
 }
 
 void
@@ -208,7 +206,7 @@ vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index, vlib_frame_t * f)
   vec_add2 (vm->node_main.pending_frames, p, 1);
 
   f->frame_flags |= VLIB_FRAME_PENDING;
-  p->frame_index = vlib_frame_index (vm, f);
+  p->frame = vlib_get_frame (vm, f);
   p->node_runtime_index = to_node->runtime_index;
   p->next_frame_index = VLIB_PENDING_FRAME_NO_NEXT_FRAME;
 }
@@ -220,14 +218,11 @@ vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f)
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *node;
   vlib_frame_size_t *fs;
-  u32 frame_index;
 
   ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
 
   node = vlib_get_node (vm, r->node_index);
   fs = get_frame_size_info (nm, node->scalar_size, node->vector_size);
-
-  frame_index = vlib_frame_index (vm, f);
 
   ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
 
@@ -235,13 +230,12 @@ vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f)
   if (CLIB_DEBUG > 0)
     {
       vlib_next_frame_t *nf;
-      vec_foreach (nf, vm->node_main.next_frames)
-	ASSERT (nf->frame_index != frame_index);
+      vec_foreach (nf, vm->node_main.next_frames) ASSERT (nf->frame != f);
     }
 
   f->frame_flags &= ~(VLIB_FRAME_IS_ALLOCATED | VLIB_FRAME_NO_APPEND);
 
-  vec_add1 (fs->free_frame_indices, frame_index);
+  vec_add1 (fs->free_frames, f);
   ASSERT (fs->n_alloc_frames > 0);
   fs->n_alloc_frames -= 1;
 }
@@ -257,7 +251,7 @@ show_frame_stats (vlib_main_t * vm,
   vec_foreach (fs, nm->frame_sizes)
   {
     u32 n_alloc = fs->n_alloc_frames;
-    u32 n_free = vec_len (fs->free_frame_indices);
+    u32 n_free = vec_len (fs->free_frames);
 
     if (n_alloc + n_free > 0)
       vlib_cli_output (vm, "%=6d%=12d%=12d",
@@ -321,11 +315,11 @@ vlib_next_frame_change_ownership (vlib_main_t * vm,
       if (next_frame->flags & VLIB_FRAME_PENDING)
 	{
 	  vlib_pending_frame_t *p;
-	  if (next_frame->frame_index != ~0)
+	  if (next_frame->frame != NULL)
 	    {
 	      vec_foreach (p, nm->pending_frames)
 	      {
-		if (p->frame_index == next_frame->frame_index)
+		if (p->frame == next_frame->frame)
 		  {
 		    p->next_frame_index =
 		      next_frame - vm->node_main.next_frames;
@@ -377,11 +371,11 @@ vlib_get_next_frame_internal (vlib_main_t * vm,
   /* ??? Don't need valid flag: can use frame_index == ~0 */
   if (PREDICT_FALSE (!(nf->flags & VLIB_FRAME_IS_ALLOCATED)))
     {
-      nf->frame_index = vlib_frame_alloc (vm, node, next_index);
+      nf->frame = vlib_frame_alloc (vm, node, next_index);
       nf->flags |= VLIB_FRAME_IS_ALLOCATED;
     }
 
-  f = vlib_get_frame (vm, nf->frame_index);
+  f = nf->frame;
 
   /* Has frame been removed from pending vector (e.g. finished dispatching)?
      If so we can reuse frame. */
@@ -403,13 +397,12 @@ vlib_get_next_frame_internal (vlib_main_t * vm,
          two redundant frames from node -> next node. */
       if (!(nf->flags & VLIB_FRAME_NO_FREE_AFTER_DISPATCH))
 	{
-	  vlib_frame_t *f_old = vlib_get_frame (vm, nf->frame_index);
+	  vlib_frame_t *f_old = vlib_get_frame (vm, nf->frame);
 	  f_old->frame_flags |= VLIB_FRAME_FREE_AFTER_DISPATCH;
 	}
 
       /* Allocate new frame to replace full one. */
-      nf->frame_index = vlib_frame_alloc (vm, node, next_index);
-      f = vlib_get_frame (vm, nf->frame_index);
+      f = nf->frame = vlib_frame_alloc (vm, node, next_index);
       n_used = f->n_vectors;
     }
 
@@ -438,7 +431,7 @@ vlib_put_next_frame_validate (vlib_main_t * vm,
   u32 n_before, n_after;
 
   nf = vlib_node_runtime_get_next_frame (vm, rt, next_index);
-  f = vlib_get_frame (vm, nf->frame_index);
+  f = vlib_get_frame (vm, nf->frame);
 
   ASSERT (n_vectors_left <= VLIB_FRAME_SIZE);
   n_after = VLIB_FRAME_SIZE - n_vectors_left;
@@ -475,7 +468,7 @@ vlib_put_next_frame (vlib_main_t * vm,
     vlib_put_next_frame_validate (vm, r, next_index, n_vectors_left);
 
   nf = vlib_node_runtime_get_next_frame (vm, r, next_index);
-  f = vlib_get_frame (vm, nf->frame_index);
+  f = vlib_get_frame (vm, nf->frame);
 
   /* Make sure that magic number is still there.  Otherwise, caller
      has overrun frame meta data. */
@@ -511,7 +504,7 @@ vlib_put_next_frame (vlib_main_t * vm,
 
 	  vec_add2 (nm->pending_frames, p, 1);
 
-	  p->frame_index = nf->frame_index;
+	  p->frame = nf->frame;
 	  p->node_runtime_index = nf->node_runtime_index;
 	  p->next_frame_index = nf - nm->next_frames;
 	  nf->flags |= VLIB_FRAME_PENDING;
@@ -525,7 +518,7 @@ vlib_put_next_frame (vlib_main_t * vm,
 	   */
 	  if (0 && r->thread_index != next_runtime->thread_index)
 	    {
-	      nf->frame_index = ~0;
+	      nf->frame = NULL;
 	      nf->flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_IS_ALLOCATED);
 	    }
 	}
@@ -1335,7 +1328,7 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
   vlib_frame_t *f;
   vlib_next_frame_t *nf, nf_dummy;
   vlib_node_runtime_t *n;
-  u32 restore_frame_index;
+  vlib_frame_t *restore_frame;
   vlib_pending_frame_t *p;
 
   /* See comment below about dangling references to nm->pending_frames */
@@ -1344,13 +1337,20 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
   n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL],
 			p->node_runtime_index);
 
-  f = vlib_get_frame (vm, p->frame_index);
+  f = vlib_get_frame (vm, p->frame);
   if (p->next_frame_index == VLIB_PENDING_FRAME_NO_NEXT_FRAME)
     {
       /* No next frame: so use dummy on stack. */
       nf = &nf_dummy;
       nf->flags = f->frame_flags & VLIB_NODE_FLAG_TRACE;
-      nf->frame_index = ~p->frame_index;
+      /* WARNING: overly clever trick ahead...
+       *
+       *   ensure that nf->frame != p->frame
+       *
+       * The resulting invalid pointer is (hopefully) not used anywhere...
+       */
+      nf->frame =
+	uword_to_pointer (~pointer_to_uword (p->frame), vlib_frame_t *);
     }
   else
     nf = vec_elt_at_index (nm->next_frames, p->next_frame_index);
@@ -1359,13 +1359,13 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
 
   /* Force allocation of new frame while current frame is being
      dispatched. */
-  restore_frame_index = ~0;
-  if (nf->frame_index == p->frame_index)
+  restore_frame = NULL;
+  if (nf->frame == p->frame)
     {
-      nf->frame_index = ~0;
+      nf->frame = NULL;
       nf->flags &= ~VLIB_FRAME_IS_ALLOCATED;
       if (!(n->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH))
-	restore_frame_index = p->frame_index;
+	restore_frame = p->frame;
     }
 
   /* Frame must be pending. */
@@ -1387,7 +1387,7 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
   f->frame_flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_NO_APPEND);
 
   /* Frame is ready to be used again, so restore it. */
-  if (restore_frame_index != ~0)
+  if (restore_frame != NULL)
     {
       /*
        * We musn't restore a frame that is flagged to be freed. This
@@ -1415,10 +1415,10 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
       nf = vec_elt_at_index (nm->next_frames, p->next_frame_index);
       nf->flags |= VLIB_FRAME_IS_ALLOCATED;
 
-      if (~0 == nf->frame_index)
+      if (NULL == nf->frame)
 	{
 	  /* no new frame has been assigned to this node, use the saved one */
-	  nf->frame_index = restore_frame_index;
+	  nf->frame = restore_frame;
 	  f->n_vectors = 0;
 	}
       else
@@ -1552,7 +1552,7 @@ dispatch_process (vlib_main_t * vm,
       n_vectors = 0;
       pool_get (nm->suspended_process_frames, pf);
       pf->node_runtime_index = node->runtime_index;
-      pf->frame_index = f ? vlib_frame_index (vm, f) : ~0;
+      pf->frame = f;
       pf->next_frame_index = ~0;
 
       p->n_suspends += 1;
@@ -1620,7 +1620,7 @@ dispatch_suspended_process (vlib_main_t * vm,
 
   node_runtime = &p->node_runtime;
   node = vlib_get_node (vm, node_runtime->node_index);
-  f = pf->frame_index != ~0 ? vlib_get_frame (vm, pf->frame_index) : 0;
+  f = pf->frame;
 
   vlib_elog_main_loop_event (vm, node_runtime->node_index, t,
 			     f ? f->n_vectors : 0, /* is_after */ 0);

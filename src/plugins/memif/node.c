@@ -364,7 +364,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_frame_t *f;
 	  ethernet_input_frame_t *ef;
 	  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-	  f = vlib_get_frame (vm, nf->frame_index);
+	  f = vlib_get_frame (vm, nf->frame);
 	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
 
 	  ef = vlib_frame_scalar_args (f);
