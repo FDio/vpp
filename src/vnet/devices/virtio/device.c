@@ -153,7 +153,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       if (b->flags & VNET_BUFFER_F_IS_IP4)
 	{
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
-	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  hdr->gso_size = vnet_buffer2 (b)->gso.gso_size;
 	  hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 	  hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x22;
 	  hdr->csum_offset = 0x10;
@@ -161,7 +161,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       else
 	{
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
-	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  hdr->gso_size = vnet_buffer2 (b)->gso.gso_size;
 	  hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 	  hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x36;
 	  hdr->csum_offset = 0x10;

@@ -137,8 +137,8 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 		(udp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
 	      l4_hdr_sz = sizeof (*udp);
 	    }
-	  vnet_buffer2 (hb)->gso_size = gso_size;
-	  vnet_buffer2 (hb)->gso_l4_hdr_sz = l4_hdr_sz;
+	  vnet_buffer2 (hb)->gso.gso_size = gso_size;
+	  vnet_buffer2 (hb)->gso.gso_l4_hdr_sz = l4_hdr_sz;
 	  hb->flags |= VNET_BUFFER_F_GSO;
 	}
       vlib_buffer_advance (hb, device_input_next_node_advance[next[0]]);
@@ -192,8 +192,8 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 		(udp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
 	      l4_hdr_sz = sizeof (*udp);
 	    }
-	  vnet_buffer2 (hb)->gso_size = gso_size;
-	  vnet_buffer2 (hb)->gso_l4_hdr_sz = l4_hdr_sz;
+	  vnet_buffer2 (hb)->gso.gso_size = gso_size;
+	  vnet_buffer2 (hb)->gso.gso_l4_hdr_sz = l4_hdr_sz;
 	  hb->flags |= VNET_BUFFER_F_GSO;
 	}
       vlib_buffer_advance (hb, device_input_next_node_advance[next[0]]);

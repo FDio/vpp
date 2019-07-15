@@ -192,7 +192,7 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
 	       * lro is enable
 	       */
 	      ASSERT (vd->lro_enable == 1);
-	      gso_size = vnet_buffer2 (b0)->gso_size;
+	      gso_size = vnet_buffer2 (b0)->gso.gso_size;
 	      hdr_len = vnet_buffer (b0)->l4_hdr_offset +
 		sizeof (ethernet_header_t);
 	    }

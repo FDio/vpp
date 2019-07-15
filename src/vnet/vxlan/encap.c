@@ -63,6 +63,18 @@ u8 * format_vxlan_encap_trace (u8 * s, va_list * args)
 }
 #endif
 
+static_always_inline void
+vxlan_set_gso_flags (vlib_buffer_t * b0, u8 is_ip4)
+{
+              vnet_buffer2 (b0)->gso.gso_flags = VNET_BUFFER_F_GSO_VXLAN_TUNNEL;
+              vnet_buffer2 (b0)->gso.gso_flags |=
+                (is_ip4 ? VNET_BUFFER_F_GSO_OUTER_IP4 :
+                          VNET_BUFFER_F_GSO_OUTER_IP6);
+              vnet_buffer2 (b0)->gso.gso_l2_hdr_offset = vnet_buffer (b0)->l2_hdr_offset;
+              vnet_buffer2 (b0)->gso.gso_l3_hdr_offset = vnet_buffer (b0)->l3_hdr_offset;
+              vnet_buffer2 (b0)->gso.gso_l4_hdr_offset = vnet_buffer (b0)->l4_hdr_offset;
+}
+
 always_inline uword
 vxlan_encap_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -172,6 +184,16 @@ vxlan_encap_inline (vlib_main_t * vm,
 
           ASSERT(t0->rewrite_header.data_bytes == underlay_hdr_len);
           ASSERT(t1->rewrite_header.data_bytes == underlay_hdr_len);
+
+        if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_GSO))
+          {
+            vxlan_set_gso_flags (b0, is_ip4);
+          }
+        if (PREDICT_FALSE (b1->flags & VNET_BUFFER_F_GSO))
+          {
+            vxlan_set_gso_flags (b1, is_ip4);
+          }
+
           vnet_rewrite_two_headers(*t0, *t1, vlib_buffer_get_current(b0), vlib_buffer_get_current(b1), underlay_hdr_len);
 
           vlib_buffer_advance (b0, -underlay_hdr_len);
@@ -348,6 +370,12 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 
           ASSERT(t0->rewrite_header.data_bytes == underlay_hdr_len);
+
+          if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_GSO))
+            {
+              vxlan_set_gso_flags (b0, is_ip4);
+            }
+
           vnet_rewrite_one_header(*t0, vlib_buffer_get_current(b0), underlay_hdr_len);
 
           vlib_buffer_advance (b0, -underlay_hdr_len);

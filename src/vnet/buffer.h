@@ -360,6 +360,20 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
 
+#define foreach_vnet_buffer_flag_gso        \
+  _( 0, VXLAN_TUNNEL)                       \
+  _( 1, OUTER_IP4)                          \
+  _( 2, OUTER_IP6)
+
+typedef enum gso_flag_t_
+{
+#define _(bit, name) VNET_BUFFER_F_GSO_##name  = (1 << bit),
+  foreach_vnet_buffer_flag_gso
+#undef _
+} __clib_packed gso_flag_t;
+
+STATIC_ASSERT_SIZEOF (gso_flag_t, 1);
+
 /* Full cache line (64 bytes) of additional space */
 typedef struct
 {
@@ -392,9 +406,17 @@ typedef struct
    * in case the egress interface is not GSO-enabled - then we need to perform
    * the segmentation, and use this value to cut the payload appropriately.
    */
-  u16 gso_size;
-  /* size of L4 prototol header */
-  u16 gso_l4_hdr_sz;
+  struct
+  {
+    gso_flag_t gso_flags;
+    u8 __unused;
+    u16 gso_size;
+    /* size of L4 prototol header */
+    u16 gso_l4_hdr_sz;
+    i16 gso_l4_hdr_offset;
+    i16 gso_l3_hdr_offset;
+    i16 gso_l2_hdr_offset;
+  } gso;
 
   /* The union below has a u64 alignment, so this space is unused */
   u32 __unused2[1];
@@ -413,7 +435,7 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
-    u32 unused[8];
+    u32 unused[6];
   };
 } vnet_buffer_opaque2_t;
 
@@ -427,11 +449,10 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
 	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
 	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
 
-#define gso_mtu_sz(b) (vnet_buffer2(b)->gso_size + \
-                       vnet_buffer2(b)->gso_l4_hdr_sz + \
+#define gso_mtu_sz(b) (vnet_buffer2(b)->gso.gso_size + \
+                       vnet_buffer2(b)->gso.gso_l4_hdr_sz + \
                        vnet_buffer(b)->l4_hdr_offset - \
                        vnet_buffer (b)->l3_hdr_offset)
-
 
 format_function_t format_vnet_buffer;
 
