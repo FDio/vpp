@@ -208,7 +208,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
 
   if (!args->host_if_name)
-    args->host_if_name = format (0, "%s", ifr.ifr_ifrn.ifrn_name);
+    args->host_if_name = (void *) ifr.ifr_ifrn.ifrn_name;
 
   unsigned int offload = 0;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
@@ -413,12 +413,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   clib_memcpy (vif->mac_addr, args->mac_addr, 6);
 
-  vif->host_if_name = args->host_if_name;
-  args->host_if_name = 0;
-  vif->net_ns = args->host_namespace;
-  args->host_namespace = 0;
-  vif->host_bridge = args->host_bridge;
-  args->host_bridge = 0;
+  vif->host_if_name = format (0, "%s%c", args->host_if_name, 0);
+  vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
+  vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
   vif->host_mtu_size = args->host_mtu_size;
   clib_memcpy (vif->host_mac_addr, args->host_mac_addr, 6);
   vif->host_ip4_prefix_len = args->host_ip4_prefix_len;
@@ -490,6 +487,11 @@ error:
 							       TX_QUEUE (i));
   vec_free (vif->rxq_vrings);
   vec_free (vif->txq_vrings);
+
+  vec_free (vif->host_if_name);
+  vec_free (vif->net_ns);
+  vec_free (vif->host_bridge);
+
   clib_memset (vif, 0, sizeof (virtio_if_t));
   pool_put (vim->interfaces, vif);
 
