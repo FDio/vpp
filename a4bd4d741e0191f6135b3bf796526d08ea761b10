@@ -22,6 +22,30 @@
       "revId": "a4bd4d741e0191f6135b3bf796526d08ea761b10",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4714f42d_859f2ea1",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 655,
+      "author": {
+        "id": 1709
+      },
+      "writtenOn": "2019-07-15T08:59:55Z",
+      "side": 1,
+      "message": "Thanks for the feedback.\n\nvlib_unix_get_runtime_dir() returns runtime_dir attribute from \u0027struct unix_main_t\u0027. But, this attribute is set in unix_config which is executed after statseg_config.\n\nI think the proper way to do it is to have unix_config executed before statseg_config.\nThe runtime directory (/run/vpp.. or /run/user/XXX/vpp) must be created when parsing of \u0027unix\u0027 section is done in unix_config.\nThen, statseg_config, unix_cli_config, vl_socket_api_init can safely do socket creation without checking that runtime directory has been created.\n\nMy question is how to make sure that unix_config is ran before statseg_config, unix_cli_config \u0026 vl_socket_api_init ?",
+      "parentUuid": "d8609962_15899ab9",
+      "range": {
+        "startLine": 642,
+        "startChar": 0,
+        "endLine": 655,
+        "endChar": 5
+      },
+      "revId": "a4bd4d741e0191f6135b3bf796526d08ea761b10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
