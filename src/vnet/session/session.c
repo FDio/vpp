@@ -122,18 +122,25 @@ static void
 session_program_transport_close (session_t * s)
 {
   u32 thread_index = vlib_get_thread_index ();
+  session_evt_elt_t *elt;
   session_worker_t *wrk;
-  session_event_t *evt;
+//  session_event_t *evt;
 
   /* If we are in the handler thread, or being called with the worker barrier
    * held, just append a new event to pending disconnects vector. */
   if (vlib_thread_is_main_w_barrier () || thread_index == s->thread_index)
     {
       wrk = session_main_get_worker (s->thread_index);
-      vec_add2 (wrk->pending_disconnects, evt, 1);
-      clib_memset (evt, 0, sizeof (*evt));
-      evt->session_handle = session_handle (s);
-      evt->event_type = SESSION_CTRL_EVT_CLOSE;
+      elt = session_evt_elt_alloc (wrk);
+      clib_memset (&elt->evt, 0, sizeof (session_event_t));
+      elt->evt.session_handle = session_handle (s);
+      elt->evt.event_type = SESSION_CTRL_EVT_CLOSE;
+      session_evt_add_pending_disconnects (wrk, elt);
+
+//      vec_add2 (wrk->pending_disconnects, evt, 1);
+//      clib_memset (evt, 0, sizeof (*evt));
+//      evt->session_handle = session_handle (s);
+//      evt->event_type = SESSION_CTRL_EVT_CLOSE;
     }
   else
     session_send_ctrl_evt_to_thread (s, SESSION_CTRL_EVT_CLOSE);
