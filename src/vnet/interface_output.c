@@ -230,6 +230,71 @@ calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
   b->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
 }
 
+static_always_inline void
+tso_segment_vxlan_tunnel_headers_fixup (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  u8 l4_proto = 0, is_ip6 = 0;
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  ethernet_header_t *eh = (ethernet_header_t *) vlib_buffer_get_current (b);
+  u16 ethertype = clib_net_to_host_u16 (eh->type);
+  u16 l2hdr_sz = sizeof (ethernet_header_t);
+  if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
+    {
+      ip4 = (ip4_header_t *) (vlib_buffer_get_current (b) + l2hdr_sz);
+      l4_proto = ip4->protocol;
+      vnet_buffer (b)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
+      ip4->length = clib_host_to_net_u16 (b->current_length - l2hdr_sz);
+      ip4->checksum = ip4_header_checksum (ip4);
+    }
+  else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
+    {
+      ip6 = (ip6_header_t *) (vlib_buffer_get_current (b) + l2hdr_sz);
+      /* FIXME IPv6 EH traversal */
+      vnet_buffer (b)->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
+      l4_proto = ip6->protocol;
+      ip6->payload_length =
+	clib_host_to_net_u16 (b->current_length -
+			      vnet_buffer (b)->l4_hdr_offset);
+      is_ip6 = 1;
+    }
+  if (l4_proto == IP_PROTOCOL_UDP)
+    {
+      int bogus;
+      udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b) +
+					    vnet_buffer (b)->l4_hdr_offset);
+      udp->length =
+	clib_host_to_net_u16 (b->current_length -
+			      vnet_buffer (b)->l4_hdr_offset);
+      udp->checksum = 0;
+      //uh->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
+      if (is_ip6)
+	udp->checksum =
+	  ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+    }
+}
+
+static_always_inline u16
+tso_segment_vxlan_tunnel_fixup (vlib_main_t * vm,
+				vnet_interface_per_thread_data_t * ptd,
+				vlib_buffer_t * sb0, i32 tunnel_size)
+{
+  u16 n_tx_bufs = vec_len (ptd->split_buffers);
+  u16 i = 0;
+  vlib_buffer_advance (sb0, -tunnel_size);
+  while (i < n_tx_bufs)
+    {
+      vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[i]);
+      vlib_buffer_advance (b0, -tunnel_size);
+      clib_memcpy_fast (vlib_buffer_get_current (b0) - tunnel_size,
+			vlib_buffer_get_current (sb0), tunnel_size);
+      tso_segment_vxlan_tunnel_headers_fixup (vm, b0);
+      i++;
+    }
+  vnet_buffer2 (sb0)->gso_flags &= ~VNET_BUFFER_F_GSO_VXLAN_TUNNEL;
+  return i;
+}
+
 static_always_inline u16
 tso_alloc_tx_bufs (vlib_main_t * vm,
 		   vnet_interface_per_thread_data_t * ptd,
@@ -326,6 +391,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
   ASSERT (sb0->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID);
   ASSERT (sb0->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID);
   ASSERT (sb0->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+
   u16 gso_size = vnet_buffer2 (sb0)->gso_size;
 
   int l4_hdr_sz = vnet_buffer2 (sb0)->gso_l4_hdr_sz;
@@ -692,6 +758,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (b[0]->flags & VNET_BUFFER_F_GSO))
 		{
+		  i32 tunnel_size = 0;
 		  /*
 		   * Undo the enqueue of the b0 - it is not going anywhere,
 		   * and will be freed either after it's segmented or
@@ -703,6 +770,23 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 		  n_bytes -= n_bytes_b0;
 		  n_packets -= 1;
 
+
+		  if (PREDICT_FALSE
+		      (vnet_buffer2 (b[0])->gso_flags &
+		       VNET_BUFFER_F_GSO_VXLAN_TUNNEL))
+		    {
+		      tunnel_size -=
+			b[0]->current_data -
+			vnet_buffer2 (b[0])->gso_l2_hdr_offset;
+		      vlib_buffer_advance (b[0], tunnel_size);
+		      vnet_buffer (b[0])->l2_hdr_offset =
+			vnet_buffer2 (b[0])->gso_l2_hdr_offset;
+		      vnet_buffer (b[0])->l3_hdr_offset =
+			vnet_buffer2 (b[0])->gso_l3_hdr_offset;
+		      vnet_buffer (b[0])->l4_hdr_offset =
+			vnet_buffer2 (b[0])->gso_l4_hdr_offset;
+		      n_bytes_b0 -= tunnel_size;
+		    }
 		  u32 n_tx_bytes = 0;
 
 		  n_tx_bytes =
@@ -711,12 +795,18 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 
 		  if (PREDICT_FALSE (n_tx_bytes == 0))
 		    {
+		      printf (" dropping packet\n");
 		      drop_one_buffer_and_count (vm, vnm, node, from - 1,
 						 VNET_INTERFACE_OUTPUT_ERROR_NO_BUFFERS_FOR_GSO);
 		      b += 1;
 		      continue;
 		    }
 
+		  if (PREDICT_FALSE
+		      (vnet_buffer2 (b[0])->gso_flags &
+		       VNET_BUFFER_F_GSO_VXLAN_TUNNEL))
+		    tso_segment_vxlan_tunnel_fixup (vm, ptd, b[0],
+						    tunnel_size);
 		  u16 n_tx_bufs = vec_len (ptd->split_buffers);
 		  u32 *from_tx_seg = ptd->split_buffers;
 
