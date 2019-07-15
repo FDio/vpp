@@ -3099,7 +3099,7 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
   /* first try static mappings without port */
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
     {
-      make_sm_kv (&kv, &ip->dst_address, 0, rx_fib_index, 0);
+      make_sm_kv (&kv, &ip->dst_address, 0, 0, 0);
       if (!clib_bihash_search_8_8
 	  (&sm->static_mapping_by_external, &kv, &value))
 	{
@@ -3151,7 +3151,7 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
   /* try static mappings with port */
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
     {
-      make_sm_kv (&kv, &ip->dst_address, proto, rx_fib_index,
+      make_sm_kv (&kv, &ip->dst_address, proto, 0,
 		  clib_net_to_host_u16 (port));
       if (!clib_bihash_search_8_8
 	  (&sm->static_mapping_by_external, &kv, &value))
