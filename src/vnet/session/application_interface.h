@@ -385,7 +385,6 @@ app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,
   svm_msg_q_lock_and_alloc_msg_w_ring (mq,
 				       SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, &app_evt->msg);
-  svm_msg_q_unlock (mq);
   app_evt->evt = svm_msg_q_msg_data (mq, &app_evt->msg);
   clib_memset (app_evt->evt, 0, sizeof (*app_evt->evt));
   app_evt->evt->event_type = evt_type;
@@ -394,7 +393,7 @@ app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,
 static inline void
 app_send_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt)
 {
-  svm_msg_q_add (mq, &app_evt->msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (mq, &app_evt->msg);
 }
 
 /**
