@@ -594,7 +594,7 @@ docs: $(DOCS_DIR)
 docs-clean:
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh clean)
 
-verify: install-dep $(BR)/.deps.ok install-ext-deps
+pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building sample-plugin")
@@ -609,6 +609,8 @@ ifeq ($(OS_ID),ubuntu)
 	$(call banner,"Building VOM $(PKG) package")
 	@make vom-pkg-deb
 endif
+
+verify: pkg-verify
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-18.04)
 	$(call banner,"Running tests")
 	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
