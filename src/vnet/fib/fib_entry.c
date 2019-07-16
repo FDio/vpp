@@ -28,6 +28,8 @@
 #include <vnet/fib/fib_internal.h>
 #include <vnet/fib/fib_attached_export.h>
 #include <vnet/fib/fib_path_ext.h>
+#include <vnet/fib/fib_entry_delegate.h>
+#include <vnet/fib/fib_entry_track.h>
 
 /*
  * Array of strings/names for the FIB sources
@@ -203,14 +205,13 @@ format_fib_entry (u8 * s, va_list * args)
 
         if (level >= FIB_ENTRY_FORMAT_DETAIL2)
         {
-            fib_entry_delegate_type_t fdt;
-            fib_entry_delegate_t *fed;
+            index_t *fedi;
 
             s = format (s, " Delegates:\n");
-            FOR_EACH_DELEGATE(fib_entry, fdt, fed,
+            vec_foreach(fedi, fib_entry->fe_delegates)
             {
-                s = format(s, "  %U\n", format_fib_entry_deletegate, fed);
-            });
+                s = format(s, "  %U\n", format_fib_entry_delegate, *fedi);
+            }
         }
     }
 
@@ -464,8 +465,8 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
     }
     else
     {
-        fed = fib_entry_delegate_get(fib_entry,
-                                     fib_entry_chain_type_to_delegate_type(fct));
+        fed = fib_entry_delegate_find(fib_entry,
+                                      fib_entry_chain_type_to_delegate_type(fct));
 
         if (NULL == fed)
         {
@@ -1486,7 +1487,7 @@ fib_entry_is_resolved (fib_node_index_t fib_entry_index)
 
     fib_entry = fib_entry_get(fib_entry_index);
 
-    fed = fib_entry_delegate_get(fib_entry, FIB_ENTRY_DELEGATE_BFD);
+    fed = fib_entry_delegate_find(fib_entry, FIB_ENTRY_DELEGATE_BFD);
 
     if (NULL == fed)
     {
@@ -1642,6 +1643,8 @@ fib_entry_module_init (void)
 {
     fib_node_register_type(FIB_NODE_TYPE_ENTRY, &fib_entry_vft);
     fib_entry_logger = vlib_log_register_class("fib", "entry");
+
+    fib_entry_track_module_init();
 }
 
 fib_route_path_t *

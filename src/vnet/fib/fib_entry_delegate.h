@@ -17,6 +17,7 @@
 #define __FIB_ENTRY_DELEGATE_T__
 
 #include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_entry.h>
 
 /**
  * Delegate types
@@ -47,6 +48,10 @@ typedef enum fib_entry_delegate_type_t_ {
      */
     FIB_ENTRY_DELEGATE_BFD,
     /**
+     * Tracker
+     */
+    FIB_ENTRY_DELEGATE_TRACK,
+    /**
      * Attached import/export functionality
      */
     FIB_ENTRY_DELEGATE_ATTACHED_IMPORT,
@@ -59,19 +64,7 @@ typedef enum fib_entry_delegate_type_t_ {
          _fdt <= FIB_ENTRY_DELEGATE_CHAIN_NSH;                \
          _fdt++)                                              \
     {                                                         \
-        _fed = fib_entry_delegate_get(_entry, _fdt);          \
-        if (NULL != _fed) {                                   \
-            _body;                                            \
-        }                                                     \
-    }                                                         \
-}
-#define FOR_EACH_DELEGATE(_entry, _fdt, _fed, _body)          \
-{                                                             \
-    for (_fdt = FIB_ENTRY_DELEGATE_CHAIN_UNICAST_IP4;         \
-         _fdt <= FIB_ENTRY_DELEGATE_ATTACHED_EXPORT;          \
-         _fdt++)                                              \
-    {                                                         \
-        _fed = fib_entry_delegate_get(_entry, _fdt);          \
+        _fed = fib_entry_delegate_find(_entry, _fdt);         \
         if (NULL != _fed) {                                   \
             _body;                                            \
         }                                                     \
@@ -87,6 +80,15 @@ typedef enum fib_bfd_state_t_
     FIB_BFD_STATE_UP,
     FIB_BFD_STATE_DOWN,
 } fib_bfd_state_t;
+
+/**
+ * State for FIB entry tracking
+ */
+typedef struct fib_entry_delegate_track_t_
+{
+    fib_node_t fedt_node;
+    u32 fedt_sibling;
+} fib_entry_delegate_track_t;
 
 /**
  * A Delagate is a means to implmenet the Delagation design pattern; the extension of an
@@ -134,17 +136,22 @@ typedef struct fib_entry_delegate_t_
          * BFD state
          */
         fib_bfd_state_t fd_bfd_state;
+
+        /**
+         * tracker state
+         */
+        fib_entry_delegate_track_t fd_track;
     };
 } fib_entry_delegate_t;
 
 struct fib_entry_t_;
 
-extern void fib_entry_delegate_remove(struct fib_entry_t_ *fib_entry,
+extern void fib_entry_delegate_remove(fib_entry_t *fib_entry,
                                       fib_entry_delegate_type_t type);
 
-extern fib_entry_delegate_t *fib_entry_delegate_find_or_add(struct fib_entry_t_ *fib_entry,
+extern fib_entry_delegate_t *fib_entry_delegate_find_or_add(fib_entry_t *fib_entry,
                                                             fib_entry_delegate_type_t fdt);
-extern fib_entry_delegate_t *fib_entry_delegate_get(const struct fib_entry_t_ *fib_entry,
+extern fib_entry_delegate_t *fib_entry_delegate_find(const fib_entry_t *fib_entry,
                                                     fib_entry_delegate_type_t type);
 
 extern fib_forward_chain_type_t fib_entry_delegate_type_to_chain_type(
@@ -153,6 +160,9 @@ extern fib_forward_chain_type_t fib_entry_delegate_type_to_chain_type(
 extern fib_entry_delegate_type_t fib_entry_chain_type_to_delegate_type(
      fib_forward_chain_type_t type);
 
-extern u8 *format_fib_entry_deletegate(u8 * s, va_list * args);
+extern u8 *format_fib_entry_delegate(u8 * s, va_list * args);
+
+extern fib_node_index_t fib_entry_delegate_get_index (const fib_entry_delegate_t *fed);
+extern fib_entry_delegate_t * fib_entry_delegate_get (fib_node_index_t fedi);
 
 #endif

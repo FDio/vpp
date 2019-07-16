@@ -15,6 +15,7 @@
 
 #include <vnet/udp/udp_encap.h>
 #include <vnet/fib/fib_entry.h>
+#include <vnet/fib/fib_entry_track.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/dpo/drop_dpo.h>
 
@@ -117,14 +118,10 @@ udp_encap_add_and_lock (fib_protocol_t proto,
     .fp_addr = *dst_ip,
   };
 
-  ue->ue_fib_entry_index =
-    fib_table_entry_special_add (fib_index,
-				 &dst_pfx,
-				 FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
-  ue->ue_fib_sibling =
-    fib_entry_child_add (ue->ue_fib_entry_index,
-			 FIB_NODE_TYPE_UDP_ENCAP, uei);
-
+  ue->ue_fib_entry_index = fib_entry_track (fib_index,
+					    &dst_pfx,
+					    FIB_NODE_TYPE_UDP_ENCAP,
+					    uei, &ue->ue_fib_sibling);
   udp_encap_restack (ue);
 
   return (uei);
@@ -322,9 +319,7 @@ udp_encap_fib_last_lock_gone (fib_node_t * node)
      */
   dpo_reset (&ue->ue_dpo);
 
-  fib_entry_child_remove (ue->ue_fib_entry_index, ue->ue_fib_sibling);
-  fib_table_entry_delete_index (ue->ue_fib_entry_index, FIB_SOURCE_RR);
-
+  fib_entry_untrack (ue->ue_fib_entry_index, ue->ue_fib_sibling);
 
   pool_put (udp_encap_pool, ue);
 }

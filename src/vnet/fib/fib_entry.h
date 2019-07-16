@@ -17,7 +17,6 @@
 #define __FIB_ENTRY_H__
 
 #include <vnet/fib/fib_node.h>
-#include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/adj/adj.h>
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/dpo.h>
@@ -505,9 +504,9 @@ typedef struct fib_entry_t_ {
     u32 fe_sibling;
 
     /**
-     * A vector of delegates.
+     * A vector of delegate indices.
      */
-    fib_entry_delegate_t *fe_delegates;
+    index_t *fe_delegates;
 } fib_entry_t;
 
 #define FOR_EACH_FIB_ENTRY_FLAG(_item) \

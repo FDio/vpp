@@ -16,6 +16,7 @@
  */
 
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
 #include <vppinfra/crc32.h>
@@ -385,10 +386,8 @@ map_fib_resolve (map_main_pre_resolved_t * pr,
     .fp_addr = *addr,
   };
 
-  pr->fei = fib_table_entry_special_add (0,	// default fib
-					 &pfx,
-					 FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
-  pr->sibling = fib_entry_child_add (pr->fei, FIB_NODE_TYPE_MAP_E, proto);
+  pr->fei = fib_entry_track (0,	// default fib
+			     &pfx, FIB_NODE_TYPE_MAP_E, proto, &pr->sibling);
   map_stack (pr);
 }
 
@@ -396,18 +395,10 @@ static void
 map_fib_unresolve (map_main_pre_resolved_t * pr,
 		   fib_protocol_t proto, u8 len, const ip46_address_t * addr)
 {
-  fib_prefix_t pfx = {
-    .fp_proto = proto,
-    .fp_len = len,
-    .fp_addr = *addr,
-  };
-
   if (pr->fei != FIB_NODE_INDEX_INVALID)
     {
-      fib_entry_child_remove (pr->fei, pr->sibling);
+      fib_entry_untrack (pr->fei, pr->sibling);
 
-      fib_table_entry_special_remove (0,	// default fib
-				      &pfx, FIB_SOURCE_RR);
       dpo_reset (&pr->dpo);
 
       pr->fei = FIB_NODE_INDEX_INVALID;
