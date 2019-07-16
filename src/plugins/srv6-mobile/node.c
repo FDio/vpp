@@ -300,37 +300,14 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	      shift = ls_param->local_prefixlen % 8;
 
 	      if (PREDICT_TRUE(shift == 0)) {
-#if 0
-		u8 *pp;
-		pp = (u8 *) &hdr0->udp.src_port;
-#endif
-
 		for (index = 0; index < 4; index ++) {
 		  hdr0->ip4.src_address.as_u8[index] = src0.as_u8[offset + index];
 		}
-
-#if 0
-		for (index = 0; index < 2; index++) {
-		  pp[index] = src0.as_u8[offset + 4 + index];
-		}
-#endif
 	      } else {
-#if 0
-		u8 *pp;
-		pp = (u8 *) &hdr0->udp.src_port;
-#endif
-
 		for (index = 0; index < 4; index ++) {
 		  hdr0->ip4.src_address.as_u8[index] = src0.as_u8[offset + index] << shift;
 		  hdr0->ip4.src_address.as_u8[index] |= src0.as_u8[offset + index + 1] >> (8 - shift);
 		}
-
-#if 0
-		for (index = 0; index < 2; index++) {
-		  pp[index] = src0.as_u8[offset + index + 4] << shift;
-		  pp[index] |= src0.as_u8[offset + index + 5] >> (8 - shift);
-		}
-#endif
 	      }
 
 	      key = hash_memory(p, len0, 0);
@@ -487,7 +464,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 
               hdr0 = vlib_buffer_get_current (b0);
 
-              clib_memcpy (hdr0, &sm->cache_hdr, sizeof (ip6_gtpu_header_t));
+              clib_memcpy_fast (hdr0, &sm->cache_hdr, sizeof (ip6_gtpu_header_t));
 
               u32 teid;
               u8 *teid8p = (u8 *)&teid;
@@ -519,9 +496,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
               hdr0->udp.length = clib_host_to_net_u16 (len0 +
                   sizeof (udp_header_t) + sizeof (gtpu_header_t));
 
-	      clib_memcpy (hdr0->ip6.src_address.as_u8, dst0.as_u8,
+	      clib_memcpy_fast (hdr0->ip6.src_address.as_u8, dst0.as_u8,
 			   sizeof(ip6_address_t));
-	      clib_memcpy (hdr0->ip6.dst_address.as_u8, &seg0.as_u8,
+	      clib_memcpy_fast (hdr0->ip6.dst_address.as_u8, &seg0.as_u8,
 			   sizeof(ip6_address_t));
 
               hdr0->ip6.payload_length = clib_host_to_net_u16 (len0 +
@@ -972,22 +949,9 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 
 	      if (sl)
 	        {
-#if 0
-		  ip6_address_t *this_address;
-		  ip6_address_t *addrp;
-
-		  addrp = ip6srv->sr.segments + vec_len (sl->segments) + 1;
-		  vec_foreach (this_address, sl->segments)
-		    {
-		      clib_memcpy_fast (addrp->as_u8, this_address->as_u8,
-				 	sizeof (ip6_address_t));
-		      addrp--;
-		    }
-#else
 	          clib_memcpy_fast (&ip6srv->sr.segments[2],
 	            (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
  		    vec_len (sl->segments) * sizeof(ip6_address_t));
-#endif
 		}
 
               good_n++;

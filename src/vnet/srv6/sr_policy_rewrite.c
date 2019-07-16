@@ -1481,9 +1481,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip4_gtpu_header_t *hdr0, *hdr1, *hdr2, *hdr3;
           ip4_address_t sr_addr0, sr_addr1, sr_addr2, sr_addr3;
           ip4_address_t dst_addr0, dst_addr1, dst_addr2, dst_addr3;
-#if 0
-          u16 sr_port0 = 0, sr_port1 = 0, sr_port2 = 0, sr_port3 = 0;
-#endif
           u32 teid0 = 0, teid1 = 0, teid2 = 0, teid3 = 0;
 	  u8 *teidp0 = NULL, *teidp1 = NULL, *teidp2 = NULL, *teidp3 = NULL;
 	  u32 offset, shift;
@@ -1567,9 +1564,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       teidp0 = (u8 *)&teid0;
                sr_addr0 = hdr0->ip4.src_address;
                dst_addr0 = hdr0->ip4.dst_address;
-#if 0
-               sr_port0 = hdr0->udp.src_port;
-#endif
                vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
 	       encap0 = vlib_buffer_get_current (b0);
                clib_memcpy_fast (vlib_buffer_get_current (b0) - vec_len (sl0->rewrite),
@@ -1589,9 +1583,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       teidp1 = (u8 *)&teid1;
                sr_addr1 = hdr1->ip4.src_address;
                dst_addr1 = hdr1->ip4.dst_address;
-#if 0
-               sr_port1 = hdr1->udp.src_port;
-#endif
                vlib_buffer_advance (b1, (word) sizeof(ip4_gtpu_header_t));
 	       encap1 = vlib_buffer_get_current (b1);
                clib_memcpy_fast (vlib_buffer_get_current (b1) - vec_len (sl1->rewrite),
@@ -1610,9 +1601,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       teidp2 =  (u8 *)&teid2;
                sr_addr2 = hdr2->ip4.src_address;
                dst_addr2 = hdr2->ip4.dst_address;
-#if 0
-               sr_port2 = hdr2->udp.src_port;
-#endif
                vlib_buffer_advance (b2, (word) sizeof(ip4_gtpu_header_t));
 	       encap2 = vlib_buffer_get_current (b2);
                clib_memcpy_fast (vlib_buffer_get_current (b2) - vec_len (sl2->rewrite),
@@ -1631,9 +1619,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       teidp3 = (u8 *)&teid3;
                sr_addr3 = hdr3->ip4.src_address;
                dst_addr3 = hdr3->ip4.dst_address;
-#if 0
-               sr_port3 = hdr3->udp.src_port;
-#endif
                vlib_buffer_advance (b3, (word) sizeof(ip4_gtpu_header_t));
 	       encap3 = vlib_buffer_get_current (b3);
                clib_memcpy_fast (vlib_buffer_get_current (b3) - vec_len (sl3->rewrite),
@@ -1708,25 +1693,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip0->src_address.as_u8[0], &sl0->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip0->src_address.as_u8[offset], &sr_addr0.as_u32, 4);
-#if 0
-		clib_memcpy_fast(&ip0->src_address.as_u8[offset+4], &sr_port0, 2);
-#endif
 	      } else {
-#if 0
-		u8 *pp = (u8 *)&sr_port0;
-#endif
-
 		for (index = 0; index < 4; index++) {
 		  ip0->src_address.as_u8[offset] |= sr_addr0.as_u8[index] >> shift;
 		  ip0->src_address.as_u8[offset + 1] |= sr_addr0.as_u8[index] << (8 - shift);
 		}
-
-#if 0
-		for (index = 0; index < 2; index++) {
-		  ip0->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
-		  ip0->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
-		}
-#endif
 	      }
             }
 
@@ -1763,25 +1734,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip1->src_address.as_u8[0], &sl1->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip1->src_address.as_u8[offset], &sr_addr1.as_u32, 4);
-#if 0
-		clib_memcpy_fast(&ip1->src_address.as_u8[offset+4], &sr_port1, 2);
-#endif
 	      } else {
-#if 0
-		u8 *pp = (u8 *)&sr_port1;
-#endif
-
 		for (index = 0; index < 4; index++) {
 		  ip1->src_address.as_u8[offset] |= sr_addr1.as_u8[index] >> shift;
 		  ip1->src_address.as_u8[offset + 1] |= sr_addr1.as_u8[index] << (8 - shift);
 		}
-
-#if 0
-		for (index = 0; index < 2; index++) {
-		  ip1->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
-		  ip1->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
-		}
-#endif
 	      }
             }
 
@@ -1818,25 +1775,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip2->src_address.as_u8[0], &sl2->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip2->src_address.as_u8[offset], &sr_addr2.as_u32, 4);
-#if 0
-		clib_memcpy_fast(&ip2->src_address.as_u8[offset+4], &sr_port2, 2);
-#endif
 	      } else {
-#if 0
-		u8 *pp = (u8 *)&sr_port2;
-#endif
-
 		for (index = 0; index < 4; index++) {
 		  ip2->src_address.as_u8[offset] |= sr_addr2.as_u8[index] >> shift;
 		  ip2->src_address.as_u8[offset + 1] |= sr_addr2.as_u8[index] << (8 - shift);
 		}
-
-#if 0
-		for (index = 0; index < 2; index++) {
-		  ip2->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
-		  ip2->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
-		}
-#endif
 	      }
             }
 
@@ -1873,25 +1816,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip3->src_address.as_u8[0], &sl3->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip3->src_address.as_u8[offset], &sr_addr3.as_u32, 4);
-#if 0
-		clib_memcpy_fast(&ip3->src_address.as_u8[offset+4], &sr_port3, 2);
-#endif
 	      } else {
-#if 0
-		u8 *pp = (u8 *)&sr_port3;
-#endif
-
 		for (index = 0; index < 4; index++) {
 		  ip3->src_address.as_u8[offset] |= sr_addr3.as_u8[index] >> shift;
 		  ip3->src_address.as_u8[offset + 1] |= sr_addr3.as_u8[index] << (8 - shift);
 		}
-
-#if 0
-		for (index = 0; index < 2; index++) {
-		  ip3->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
-		  ip3->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
-		}
-#endif
 	      }
             }
 
@@ -1997,9 +1926,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip4_gtpu_header_t *hdr0;
           ip4_address_t sr_addr0;
           ip4_address_t dst_addr0;
-#if 0
-          u16 sr_port0 = 0;
-#endif
           u32 teid0 = 0;
 	  u8 *teidp0 = NULL;
 	  u32 offset, shift;
@@ -2034,9 +1960,6 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      teidp0 = (u8 *)&teid0;
               sr_addr0 = hdr0->ip4.src_address;
               dst_addr0 = hdr0->ip4.dst_address;
-#if 0
-              sr_port0 = hdr0->udp.src_port;
-#endif
 
               // go after GTPU, we are at segment header
               vlib_buffer_advance (b0, (word) sizeof(ip4_gtpu_header_t));
@@ -2095,25 +2018,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy_fast(&ip0->src_address.as_u8[0], &sl0->local_prefix.as_u8[0], 16);
 	      if (PREDICT_TRUE(shift == 0)) {
 		clib_memcpy_fast(&ip0->src_address.as_u8[offset], &sr_addr0.as_u32, 4);
-#if 0
-		clib_memcpy_fast(&ip0->src_address.as_u8[offset+4], &sr_port0, 2);
-#endif
 	      } else {
-#if 0
-		u8 *pp = (u8 *)&sr_port0;
-#endif
-
 		for (index = 0; index < 4; index++) {
 		  ip0->src_address.as_u8[offset] |= sr_addr0.as_u8[index] >> shift;
 		  ip0->src_address.as_u8[offset + 1] |= sr_addr0.as_u8[index] << (8 - shift);
 		}
-
-#if 0
-		for (index = 0; index < 2; index++) {
-		  ip0->src_address.as_u8[offset + 4] |= (pp[index] >> shift);
-		  ip0->src_address.as_u8[offset + 5] |= (pp[index] << (8 - shift));
-		}
-#endif
 	      }
             }
 	  
