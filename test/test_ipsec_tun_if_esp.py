@@ -63,6 +63,55 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
         super(TemplateIpsec4TunIfEsp, self).tearDown()
 
 
+class TemplateIpsec4TunIfEspUdp(TemplateIpsec):
+    """ IPsec UDP tunnel interface tests """
+
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt"
+    encryption_type = ESP
+
+    @classmethod
+    def setUpClass(cls):
+        super(TemplateIpsec4TunIfEspUdp, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TemplateIpsec4TunIfEspUdp, cls).tearDownClass()
+
+    def setUp(self):
+        super(TemplateIpsec4TunIfEspUdp, self).setUp()
+
+        self.tun_if = self.pg0
+
+        p = self.ipv4_params
+        p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
+                   IPSEC_API_SAD_FLAG_UDP_ENCAP)
+        p.nat_header = UDP(sport=5454, dport=4500)
+
+        p.tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
+                                        p.scapy_tun_spi, p.crypt_algo_vpp_id,
+                                        p.crypt_key, p.crypt_key,
+                                        p.auth_algo_vpp_id, p.auth_key,
+                                        p.auth_key, udp_encap=True)
+        p.tun_if.add_vpp_config()
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+        p.tun_if.config_ip6()
+
+        r = VppIpRoute(self, p.remote_tun_if_host, 32,
+                       [VppRoutePath(p.tun_if.remote_ip4,
+                                     0xffffffff)])
+        r.add_vpp_config()
+        r = VppIpRoute(self, p.remote_tun_if_host6, 128,
+                       [VppRoutePath(p.tun_if.remote_ip6,
+                                     0xffffffff,
+                                     proto=DpoProto.DPO_PROTO_IP6)])
+        r.add_vpp_config()
+
+    def tearDown(self):
+        super(TemplateIpsec4TunIfEspUdp, self).tearDown()
+
+
 class TestIpsec4TunIfEsp1(TemplateIpsec4TunIfEsp, IpsecTun4Tests):
     """ Ipsec ESP - TUN tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
@@ -92,6 +141,16 @@ class TestIpsec4TunIfEsp1(TemplateIpsec4TunIfEsp, IpsecTun4Tests):
                            count=1, payload_size=1800, n_rx=2)
         self.vapi.sw_interface_set_mtu(p.tun_if.sw_if_index,
                                        [9000, 0, 0, 0])
+
+
+class TestIpsec4TunIfEspUdp(TemplateIpsec4TunIfEspUdp, IpsecTun4Tests):
+    """ Ipsec ESP UDP tests """
+
+    tun4_input_node = "ipsec4-if-input"
+
+    def test_keepalive(self):
+        """ IPSEC NAT Keepalive """
+        self.verify_keepalive(self.ipv4_params)
 
 
 class TestIpsec4TunIfEsp2(TemplateIpsec4TunIfEsp, IpsecTcpTests):
@@ -661,19 +720,26 @@ class TestIpsecGreIfEsp(TemplateIpsec,
 class TemplateIpsec4TunProtect(object):
     """ IPsec IPv4 Tunnel protect """
 
+    encryption_type = ESP
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_input_node = "ipsec4-tun-input"
+
     def config_sa_tra(self, p):
         config_tun_params(p, self.encryption_type, self.tun_if)
 
         p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
                                   p.auth_algo_vpp_id, p.auth_key,
                                   p.crypt_algo_vpp_id, p.crypt_key,
-                                  self.vpp_esp_protocol)
+                                  self.vpp_esp_protocol,
+                                  flags=p.flags)
         p.tun_sa_out.add_vpp_config()
 
         p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
                                  p.auth_algo_vpp_id, p.auth_key,
                                  p.crypt_algo_vpp_id, p.crypt_key,
-                                 self.vpp_esp_protocol)
+                                 self.vpp_esp_protocol,
+                                 flags=p.flags)
         p.tun_sa_in.add_vpp_config()
 
     def config_sa_tun(self, p):
@@ -684,7 +750,8 @@ class TemplateIpsec4TunProtect(object):
                                   p.crypt_algo_vpp_id, p.crypt_key,
                                   self.vpp_esp_protocol,
                                   self.tun_if.remote_addr[p.addr_type],
-                                  self.tun_if.local_addr[p.addr_type])
+                                  self.tun_if.local_addr[p.addr_type],
+                                  flags=p.flags)
         p.tun_sa_out.add_vpp_config()
 
         p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
@@ -692,7 +759,8 @@ class TemplateIpsec4TunProtect(object):
                                  p.crypt_algo_vpp_id, p.crypt_key,
                                  self.vpp_esp_protocol,
                                  self.tun_if.remote_addr[p.addr_type],
-                                 self.tun_if.local_addr[p.addr_type])
+                                 self.tun_if.local_addr[p.addr_type],
+                                 flags=p.flags)
         p.tun_sa_in.add_vpp_config()
 
     def config_protect(self, p):
@@ -731,10 +799,6 @@ class TestIpsec4TunProtect(TemplateIpsec,
                            TemplateIpsec4TunProtect,
                            IpsecTun4):
     """ IPsec IPv4 Tunnel protect - transport mode"""
-
-    encryption_type = ESP
-    tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
 
     def setUp(self):
         super(TestIpsec4TunProtect, self).setUp()
@@ -783,6 +847,47 @@ class TestIpsec4TunProtect(TemplateIpsec,
         self.unconfig_protect(np)
         self.unconfig_sa(np)
         self.unconfig_network(p)
+
+
+class TestIpsec4TunProtectUdp(TemplateIpsec,
+                              TemplateIpsec4TunProtect,
+                              IpsecTun4):
+    """ IPsec IPv4 Tunnel protect - transport mode"""
+
+    def setUp(self):
+        super(TestIpsec4TunProtectUdp, self).setUp()
+
+        self.tun_if = self.pg0
+
+        p = self.ipv4_params
+        p.flags = (VppEnum.vl_api_ipsec_sad_flags_t.
+                   IPSEC_API_SAD_FLAG_UDP_ENCAP)
+        p.nat_header = UDP(sport=5454, dport=4500)
+        self.config_network(p)
+        self.config_sa_tra(p)
+        self.config_protect(p)
+
+    def tearDown(self):
+        p = self.ipv4_params
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
+        self.unconfig_network(p)
+        super(TestIpsec4TunProtectUdp, self).tearDown()
+
+    def test_tun_44(self):
+        """IPSEC UDP tunnel protect"""
+
+        p = self.ipv4_params
+
+        self.verify_tun_44(p, count=127)
+        c = p.tun_if.get_rx_stats()
+        self.assertEqual(c['packets'], 127)
+        c = p.tun_if.get_tx_stats()
+        self.assertEqual(c['packets'], 127)
+
+    def test_keepalive(self):
+        """ IPSEC NAT Keepalive """
+        self.verify_keepalive(self.ipv4_params)
 
 
 class TestIpsec4TunProtectTun(TemplateIpsec,

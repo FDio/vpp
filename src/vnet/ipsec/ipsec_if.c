@@ -284,7 +284,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 
   if (!is_ip6)
     {
-      key4.remote_ip = args->remote_ip.ip4.as_u32;
+      key4.remote_ip.as_u32 = args->remote_ip.ip4.as_u32;
       key4.spi = clib_host_to_net_u32 (args->remote_spi);
       p = hash_get (im->ipsec4_if_pool_index_by_key, key4.as_u64);
     }
@@ -375,8 +375,14 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 	hash_set_mem_alloc (&im->ipsec6_if_pool_index_by_key, &key6,
 			    t - im->tunnel_interfaces);
       else
-	hash_set (im->ipsec4_if_pool_index_by_key, key4.as_u64,
-		  t - im->tunnel_interfaces);
+	{
+	  hash_set (im->ipsec4_if_pool_index_by_key, key4.as_u64,
+		    t - im->tunnel_interfaces);
+	  if (1 == hash_elts (im->ipsec4_if_pool_index_by_key))
+	    udp_register_dst_port (vlib_get_main (),
+				   UDP_DST_PORT_ipsec,
+				   ipsec4_if_input_node.index, 1);
+	}
 
       hw_if_index = vnet_register_interface (vnm, ipsec_device_class.index,
 					     t - im->tunnel_interfaces,
@@ -427,9 +433,13 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       if (is_ip6)
 	hash_unset_mem_free (&im->ipsec6_if_pool_index_by_key, &key6);
       else
-	hash_unset (im->ipsec4_if_pool_index_by_key, key4.as_u64);
-
+	{
+	  hash_unset (im->ipsec4_if_pool_index_by_key, key4.as_u64);
+	  if (0 == hash_elts (im->ipsec4_if_pool_index_by_key))
+	    udp_unregister_dst_port (vlib_get_main (), UDP_DST_PORT_ipsec, 1);
+	}
       hash_unset (im->ipsec_if_real_dev_by_show_dev, t->show_instance);
+
       im->ipsec_if_by_sw_if_index[t->sw_if_index] = ~0;
 
       /* delete input and output SA */
@@ -506,7 +516,7 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 	  ipsec4_tunnel_key_t key;
 
 	  /* unset old inbound hash entry. packets should stop arriving */
-	  key.remote_ip = old_sa->tunnel_src_addr.ip4.as_u32;
+	  key.remote_ip.as_u32 = old_sa->tunnel_src_addr.ip4.as_u32;
 	  key.spi = clib_host_to_net_u32 (old_sa->spi);
 
 	  p = hash_get (im->ipsec4_if_pool_index_by_key, key.as_u64);
@@ -515,7 +525,7 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 
 	  /* set new inbound SA, then set new hash entry */
 	  t->input_sa_index = sa_index;
-	  key.remote_ip = sa->tunnel_src_addr.ip4.as_u32;
+	  key.remote_ip.as_u32 = sa->tunnel_src_addr.ip4.as_u32;
 	  key.spi = clib_host_to_net_u32 (sa->spi);
 
 	  hash_set (im->ipsec4_if_pool_index_by_key, key.as_u64,
@@ -571,9 +581,6 @@ ipsec_tunnel_if_init (vlib_main_t * vm)
 						     (ipsec6_tunnel_key_t),
 						     sizeof (uword));
   im->ipsec_if_real_dev_by_show_dev = hash_create (0, sizeof (uword));
-
-  udp_register_dst_port (vm, UDP_DST_PORT_ipsec, ipsec4_if_input_node.index,
-			 1);
 
   /* set up feature nodes to drop outbound packets with no crypto alg set */
   ipsec_add_feature ("ip4-output", "esp4-no-crypto",
