@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc1b2d36_805ce25a",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 637,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-16T14:02:08Z",
+      "side": 1,
+      "message": "reply\n\nThe meaning of \"modern\" changes over time.\n(Also, space after equals.)",
+      "range": {
+        "startLine": 637,
+        "startChar": 16,
+        "endLine": 637,
+        "endChar": 22
+      },
+      "revId": "22eeb0d1866d4c60c5158ae52744581e14f4902f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "024acd14_8233205d",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-16T14:02:08Z",
+      "side": 1,
+      "message": "Does this mean you cannot have reply mismatch on no-reply dumps?",
+      "range": {
+        "startLine": 659,
+        "startChar": 40,
+        "endLine": 659,
+        "endChar": 46
+      },
+      "revId": "22eeb0d1866d4c60c5158ae52744581e14f4902f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bbdf1186_af7b18e7",
+        "filename": "test/test_map.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-16T14:02:08Z",
+      "side": 1,
+      "message": "rl?",
+      "range": {
+        "startLine": 78,
+        "startChar": 11,
+        "endLine": 78,
+        "endChar": 13
+      },
+      "revId": "22eeb0d1866d4c60c5158ae52744581e14f4902f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
