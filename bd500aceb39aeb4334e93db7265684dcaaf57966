@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0a68f135_ff74aca5",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-07-16T22:50:28Z",
+      "side": 1,
+      "message": "ASSERT to make sure bif-\u003en_numa_slaves does not drop below 0.",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ce268ef_2aaf7209",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-07-16T22:50:28Z",
+      "side": 1,
+      "message": "It is wrong to allow numa-only to configure on all modes.",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "73744d67_f641783c",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 702,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-07-16T22:50:28Z",
+      "side": 1,
+      "message": "Do we need this check in the data plane? We carefully only increment bif-\u003en_numa_slaves in the control plane when the condition is right.",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d73f32ca_c1441279",
+        "filename": "src/vpp/api/custom_dump.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 671,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-07-16T22:50:28Z",
+      "side": 1,
+      "message": "numa-only should be placed after lb mode, not at the end.",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
