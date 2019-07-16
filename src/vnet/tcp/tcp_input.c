@@ -3364,9 +3364,9 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
     }
 }
 
-static inline tcp_connection_t *
+always_inline tcp_connection_t *
 tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
-			 u8 is_ip4)
+			 u8 is_ip4, u8 is_nolookup)
 {
   u32 fib_index = vnet_buffer (b)->ip.fib_index;
   int n_advance_bytes, n_data_bytes;
@@ -3395,10 +3395,12 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	  return 0;
 	}
 
-      tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
-					  &ip4->src_address, tcp->dst_port,
-					  tcp->src_port, TRANSPORT_PROTO_TCP,
-					  thread_index, &result);
+      if (!is_nolookup)
+	tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
+					    &ip4->src_address, tcp->dst_port,
+					    tcp->src_port,
+					    TRANSPORT_PROTO_TCP, thread_index,
+					    &result);
     }
   else
     {
@@ -3420,19 +3422,30 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	  *error = TCP_ERROR_LENGTH;
 	  return 0;
 	}
-      if (PREDICT_FALSE
-	  (ip6_address_is_link_local_unicast (&ip6->dst_address)))
-	{
-	  ip4_main_t *im = &ip4_main;
-	  fib_index = vec_elt (im->fib_index_by_sw_if_index,
-			       vnet_buffer (b)->sw_if_index[VLIB_RX]);
-	}
 
-      tc = session_lookup_connection_wt6 (fib_index, &ip6->dst_address,
-					  &ip6->src_address, tcp->dst_port,
-					  tcp->src_port, TRANSPORT_PROTO_TCP,
-					  thread_index, &result);
+      if (!is_nolookup)
+	{
+	  if (PREDICT_FALSE
+	      (ip6_address_is_link_local_unicast (&ip6->dst_address)))
+	    {
+	      ip4_main_t *im = &ip4_main;
+	      fib_index = vec_elt (im->fib_index_by_sw_if_index,
+				   vnet_buffer (b)->sw_if_index[VLIB_RX]);
+	    }
+
+	  tc = session_lookup_connection_wt6 (fib_index, &ip6->dst_address,
+					      &ip6->src_address,
+					      tcp->dst_port, tcp->src_port,
+					      TRANSPORT_PROTO_TCP,
+					      thread_index, &result);
+	}
     }
+
+  if (is_nolookup)
+    tc =
+      (transport_connection_t *) tcp_connection_get (vnet_buffer (b)->
+						     tcp.connection_index,
+						     thread_index);
 
   vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
   vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
@@ -3475,7 +3488,7 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
 
 always_inline uword
 tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, int is_ip4)
+		    vlib_frame_t * frame, int is_ip4, u8 is_nolookup)
 {
   u32 n_left_from, *from, thread_index = vm->thread_index;
   tcp_main_t *tm = vnet_get_tcp_main ();
@@ -3506,8 +3519,10 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       next[0] = next[1] = TCP_INPUT_NEXT_DROP;
 
-      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4);
-      tc1 = tcp_input_lookup_buffer (b[1], thread_index, &error1, is_ip4);
+      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4,
+				     is_nolookup);
+      tc1 = tcp_input_lookup_buffer (b[1], thread_index, &error1, is_ip4,
+				     is_nolookup);
 
       if (PREDICT_TRUE (!tc0 + !tc1 == 0))
 	{
@@ -3557,7 +3572,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       next[0] = TCP_INPUT_NEXT_DROP;
-      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4);
+      tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4,
+				     is_nolookup);
       if (PREDICT_TRUE (tc0 != 0))
 	{
 	  ASSERT (tcp_lookup_is_valid (tc0, tcp_buffer_hdr (b[0])));
@@ -3579,16 +3595,74 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
+VLIB_NODE_FN (tcp4_input_nolookup_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * from_frame)
+{
+  return tcp46_input_inline (vm, node, from_frame, 1 /* is_ip4 */ ,
+			     1 /* is_nolookup */ );
+}
+
+VLIB_NODE_FN (tcp6_input_nolookup_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * from_frame)
+{
+  return tcp46_input_inline (vm, node, from_frame, 0 /* is_ip4 */ ,
+			     1 /* is_nolookup */ );
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (tcp4_input_nolookup_node) =
+{
+  .name = "tcp4-input-nolookup",
+  /* Takes a vector of packets. */
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_strings = tcp_error_strings,
+  .n_next_nodes = TCP_INPUT_N_NEXT,
+  .next_nodes =
+  {
+#define _(s,n) [TCP_INPUT_NEXT_##s] = n,
+    foreach_tcp4_input_next
+#undef _
+  },
+  .format_buffer = format_tcp_header,
+  .format_trace = format_tcp_rx_trace,
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (tcp6_input_nolookup_node) =
+{
+  .name = "tcp6-input-nolookup",
+  /* Takes a vector of packets. */
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_strings = tcp_error_strings,
+  .n_next_nodes = TCP_INPUT_N_NEXT,
+  .next_nodes =
+  {
+#define _(s,n) [TCP_INPUT_NEXT_##s] = n,
+    foreach_tcp6_input_next
+#undef _
+  },
+  .format_buffer = format_tcp_header,
+  .format_trace = format_tcp_rx_trace,
+};
+/* *INDENT-ON* */
+
 VLIB_NODE_FN (tcp4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
 {
-  return tcp46_input_inline (vm, node, from_frame, 1 /* is_ip4 */ );
+  return tcp46_input_inline (vm, node, from_frame, 1 /* is_ip4 */ ,
+			     0 /* is_nolookup */ );
 }
 
 VLIB_NODE_FN (tcp6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
 {
-  return tcp46_input_inline (vm, node, from_frame, 0 /* is_ip4 */ );
+  return tcp46_input_inline (vm, node, from_frame, 0 /* is_ip4 */ ,
+			     0 /* is_nolookup */ );
 }
 
 /* *INDENT-OFF* */
