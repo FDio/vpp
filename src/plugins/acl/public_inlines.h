@@ -100,7 +100,7 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
   u8 proto;
 
   u8 tmp_l4_flags = 0;
-  fa_packet_info_t tmp_pkt = { .is_ip6 = is_ip6, .mask_type_index_lsb = ~0 };
+  fa_packet_info_t tmp_pkt = { .l4_valid = 1, .is_ip6 = is_ip6, .mask_type_index_lsb = ~0 };
 
   if (is_ip6)
     {
@@ -161,36 +161,56 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
     }
   tmp_l4_flags |= is_input ? FA_SK_L4_FLAG_IS_INPUT : 0;
 
-  if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
+  if (IP_PROTOCOL_TCP == proto)
     {
-      tcp_header_t *tcph = vlib_buffer_get_current (b0) + l4_offset;
-      udp_header_t *udph = vlib_buffer_get_current (b0) + l4_offset;
-      tmp_pkt.l4_valid = 1;
-
-      if (PREDICT_FALSE(icmp_protos_v4v6[is_ip6] == proto))
-	{
-          icmp46_header_t *icmph = vlib_buffer_get_current (b0) + l4_offset;
-	  ports[0] = icmph->type;
-	  ports[1] = icmph->code;
-          /* ICMP needs special handling */
-          tmp_l4_flags |= FA_SK_L4_FLAG_IS_SLOWPATH;
-	}
-      else if (IP_PROTOCOL_TCP == proto)
-	{
+      const tcp_header_t *tcph = vlib_buffer_get_current (b0) + l4_offset;
+      if (PREDICT_TRUE(vlib_buffer_has_space(b0, sizeof(*tcph))))
+        {
           ports[0] = clib_net_to_host_u16(tcph->src_port);
           ports[1] = clib_net_to_host_u16(tcph->dst_port);
 	  tmp_pkt.tcp_flags = tcph->flags;
 	  tmp_pkt.tcp_flags_valid = 1;
-	}
-      else if (IP_PROTOCOL_UDP == proto)
-	{
+        }
+      else
+        {
+          /* not enough room for a valid tcp header */
+          tmp_pkt.l4_valid = 0;
+        }
+    }
+  else if (IP_PROTOCOL_UDP == proto)
+    {
+      const udp_header_t *udph = vlib_buffer_get_current (b0) + l4_offset;
+      if (PREDICT_TRUE(vlib_buffer_has_space(b0, sizeof(*udph))))
+        {
           ports[0] = clib_net_to_host_u16(udph->src_port);
           ports[1] = clib_net_to_host_u16(udph->dst_port);
         }
       else
         {
+          /* not enough room for a valid udp header */
+          tmp_pkt.l4_valid = 0;
+        }
+    }
+  else if (icmp_protos_v4v6[is_ip6] == proto)
+    {
+      const icmp46_header_t *icmph = vlib_buffer_get_current (b0) + l4_offset;
+      if (PREDICT_TRUE(vlib_buffer_has_space(b0, sizeof(*icmph))))
+        {
+	  ports[0] = icmph->type;
+	  ports[1] = icmph->code;
+          /* ICMP needs special handling */
           tmp_l4_flags |= FA_SK_L4_FLAG_IS_SLOWPATH;
         }
+      else
+        {
+          /* not enough room for a valid icmp header */
+          tmp_pkt.l4_valid = 0;
+        }
+    }
+  else
+    {
+      /* not tcp, udp or icmp */
+      tmp_l4_flags |= FA_SK_L4_FLAG_IS_SLOWPATH;
     }
 
   p5tuple_pkt->as_u64 = tmp_pkt.as_u64;
