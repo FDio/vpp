@@ -1485,8 +1485,8 @@ vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
       if (session_main.is_enabled)
 	return 0;
 
-      session_node_enable_disable (is_en);
       error = session_manager_main_enable (vm);
+      session_node_enable_disable (is_en);
     }
   else
     {
