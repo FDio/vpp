@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2ff2225b_0239f9fb",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-16T12:25:03Z",
+      "side": 1,
+      "message": "\"{}.{}\".format(__name__, self.__class__.__name__)",
+      "range": {
+        "startLine": 208,
+        "startChar": 39,
+        "endLine": 208,
+        "endChar": 47
+      },
+      "revId": "b078923d680ebe8de53b3abbf401054859e71093",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "04d30145_b1d184c2",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-16T12:25:03Z",
+      "side": 1,
+      "message": "s \u003d \u0027Calling {}({})\u0027.format(msgdef.name,\n    \u0027 \u0027.join([\u0027{}:{}\u0027.format(k, v) for k, v in kwargs.items()]))",
+      "range": {
+        "startLine": 619,
+        "startChar": 8,
+        "endLine": 622,
+        "endChar": 16
+      },
+      "revId": "b078923d680ebe8de53b3abbf401054859e71093",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "26341cbc_bd8ef1d8",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 658,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-16T12:25:03Z",
+      "side": 1,
+      "message": "!r",
+      "range": {
+        "startLine": 658,
+        "startChar": 39,
+        "endLine": 658,
+        "endChar": 41
+      },
+      "revId": "b078923d680ebe8de53b3abbf401054859e71093",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
