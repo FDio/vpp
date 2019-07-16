@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "c1bd6142_a47ea4ee",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-16T11:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b848970b_bbf43e66",
+      "range": {
+        "startLine": 545,
+        "startChar": 0,
+        "endLine": 545,
+        "endChar": 0
+      },
+      "revId": "843494c8bda40c2e0fbc8400a25598b115ff8b7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "219f4c6a_b2afba0b",
         "filename": "src/tools/vppapigen/generate_json.py",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2019-07-16T10:37:36Z",
       "side": 1,
       "message": "parents\u003dTrue",
+      "range": {
+        "startLine": 81,
+        "startChar": 36,
+        "endLine": 81,
+        "endChar": 37
+      },
+      "revId": "843494c8bda40c2e0fbc8400a25598b115ff8b7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b88e5e9e_5d4bc1c1",
+        "filename": "src/tools/vppapigen/generate_json.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-16T11:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "219f4c6a_b2afba0b",
       "range": {
         "startLine": 81,
         "startChar": 36,
