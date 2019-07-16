@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8fc21144_7a87056d",
+        "filename": "src/tools/vppapigen/generate_json.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-16T12:07:50Z",
+      "side": 1,
+      "message": "The correct value depends on how \"deep\" srcdir is.",
+      "range": {
+        "startLine": 53,
+        "startChar": 63,
+        "endLine": 53,
+        "endChar": 64
+      },
+      "revId": "d7cb46b7ad4ac4dc035a04034040ec6298514529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
