@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "b8639d15_f5dc55ac",
+        "filename": "src/tools/vppapigen/generate_json.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-16T15:03:15Z",
+      "side": 1,
+      "message": "\u003e Not really\n\nReally (for patch set #3):\n\n~/fdio/vpp$ make json-api-files\n/home/vrpolak/fdio/vpp/src/tools/vppapigen/generate_json.py\nSearching \u0027/home/vrpolak/fdio/vpp/src\u0027 for .api files.\nsrc_file: /home/vrpolak/fdio/vpp/src/vnet/interface.api\nTraceback (most recent call last):\n  File \"/home/vrpolak/fdio/vpp/src/tools/vppapigen/generate_json.py\", line 93, in \u003cmodule\u003e\n    main()\n  File \"/home/vrpolak/fdio/vpp/src/tools/vppapigen/generate_json.py\", line 88, in main\n    vppapigen(vppapigen_bin, output_dir, src_dir, f)\n  File \"/home/vrpolak/fdio/vpp/src/tools/vppapigen/generate_json.py\", line 54, in vppapigen\n    output_dir_map[src_file.as_posix().split(\u0027/\u0027)[src_dir_depth]],\nKeyError: \u0027fdio\u0027\nmake: *** [Makefile:540: json-api-files] Error 1",
+      "parentUuid": "fc3b56be_19e2a584",
+      "range": {
+        "startLine": 53,
+        "startChar": 63,
+        "endLine": 53,
+        "endChar": 64
+      },
+      "revId": "d7cb46b7ad4ac4dc035a04034040ec6298514529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5dc0cd66_bbbfb7ef",
         "filename": "src/tools/vppapigen/generate_json.py",
         "patchSetId": 2
@@ -93,6 +117,30 @@
       "revId": "d7cb46b7ad4ac4dc035a04034040ec6298514529",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "de566666_9b5abf86",
+        "filename": "src/tools/vppapigen/generate_json.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-16T15:03:15Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1b3f7300_8818b996",
+      "range": {
+        "startLine": 88,
+        "startChar": 34,
+        "endLine": 88,
+        "endChar": 37
+      },
+      "revId": "d7cb46b7ad4ac4dc035a04034040ec6298514529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
