@@ -189,9 +189,9 @@ done
 for file in $(cd %{buildroot}%{_libdir} && find . -type f -print | sed -e 's/^\.\///')
 do
 	# make lib symlinks
-	( cd %{buildroot}%{_libdir} && 
+	( cd %{buildroot}%{_libdir} &&
           ln -fs $file $(echo $file | sed -e 's/\(\.so\.[0-9]\+\).*/\1/') )
-	( cd %{buildroot}%{_libdir} && 
+	( cd %{buildroot}%{_libdir} &&
           ln -fs $file $(echo $file | sed -e 's/\(\.so\)\.[0-9]\+.*/\1/') )
 done
 for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/vpp/share/vpp/api  -type f -name '*.api.json' -print )
@@ -228,7 +228,7 @@ install -m 0644 $MODULES \
 #
 # devel
 #
-for dir in %{_mu_build_dir}/%{_vpp_install_dir}/{vom,vpp}/include/
+for dir in %{_mu_build_dir}/%{_vpp_install_dir}/vpp/include/
 do
 	for subdir in $(cd ${dir} && find . -type d -print)
 	do

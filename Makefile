@@ -204,8 +204,8 @@ help:
 	@echo " run-vat             - run vpp-api-test tool"
 	@echo " pkg-deb             - build DEB packages"
 	@echo " pkg-deb-debug       - build DEB debug packages"
-	@echo " vom-pkg-deb         - build vom DEB packages"
-	@echo " vom-pkg-deb-debug   - build vom DEB debug packages"
+	@echo " vom-pkg             - build vom RPM/DEB packages"
+	@echo " vom-pkg-debug       - build vom RPM/DEB debug packages"
 	@echo " pkg-rpm             - build RPM packages"
 	@echo " install-ext-deps    - install external development dependencies"
 	@echo " ctags               - (re)generate ctags database"
@@ -510,16 +510,14 @@ run-vat:
 pkg-deb:
 	$(call make,$(PLATFORM),vpp-package-deb)
 
-vom-pkg-deb:
-	$(call make,$(PLATFORM),vpp-package-deb)
-	$(call make,$(PLATFORM),vom-package-deb)
+vom-pkg:
+	$(call make,$(PLATFORM),vom-package)
 
 pkg-deb-debug:
 	$(call make,$(PLATFORM)_debug,vpp-package-deb)
 
-vom-pkg-deb-debug:
-	$(call make,$(PLATFORM)_debug,vpp-package-deb)
-	$(call make,$(PLATFORM)_debug,vom-package-deb)
+vom-pkg-debug:
+	$(call make,$(PLATFORM)_debug,vom-package)
 
 pkg-rpm: dist
 	make -C extras/rpm
@@ -605,10 +603,8 @@ pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
-ifeq ($(OS_ID),ubuntu)
 	$(call banner,"Building VOM $(PKG) package")
-	@make vom-pkg-deb
-endif
+	@make vom-pkg
 
 verify: pkg-verify
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-18.04)
