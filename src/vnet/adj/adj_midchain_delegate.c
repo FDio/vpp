@@ -16,6 +16,7 @@
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
 
 /**
  * Midchain stacker delegate
@@ -121,13 +122,11 @@ adj_midchain_delegate_stack (adj_index_t ai,
         amd->amd_fei = FIB_NODE_INDEX_INVALID;
         adj_delegate_add(adj, ADJ_DELEGATE_MIDCHAIN, amd - amd_pool);
 
-        amd->amd_fei = fib_table_entry_special_add(fib_index,
-                                                   pfx,
-                                                   FIB_SOURCE_RR,
-                                                   FIB_ENTRY_FLAG_NONE);
-        amd->amd_sibling = fib_entry_child_add(amd->amd_fei,
-                                               FIB_NODE_TYPE_ADJ,
-                                               ai);
+        amd->amd_fei = fib_entry_track(fib_index,
+                                       pfx,
+                                       FIB_NODE_TYPE_ADJ,
+                                       ai,
+                                       &amd->amd_sibling);
     }
     adj_midchain_delegate_restack_i(ai, amd);
 }
@@ -145,8 +144,7 @@ adj_midchain_delegate_adj_deleted (adj_delegate_t *ad)
 
     amd = pool_elt_at_index(amd_pool, ad->ad_index);
 
-    fib_entry_child_remove (amd->amd_fei, amd->amd_sibling);
-    fib_table_entry_delete_index (amd->amd_fei, FIB_SOURCE_RR);
+    fib_entry_untrack(amd->amd_fei, amd->amd_sibling);
 
     pool_put(amd_pool, amd);
 }

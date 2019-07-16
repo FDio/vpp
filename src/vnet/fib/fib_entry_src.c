@@ -23,6 +23,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_path_ext.h>
 #include <vnet/fib/fib_urpf_list.h>
+#include <vnet/fib/fib_entry_delegate.h>
 
 /*
  * per-source type vft

@@ -1288,6 +1288,7 @@ list(APPEND VNET_SOURCES
   fib/fib_entry_src_lisp.c
   fib/fib_entry_cover.c
   fib/fib_entry_delegate.c
+  fib/fib_entry_track.c
   fib/fib_path_list.c
   fib/fib_path.c
   fib/fib_path_ext.c

@@ -99,8 +99,8 @@ fib_entry_ae_add_or_lock (fib_node_index_t connected)
     fib_entry_t *entry;
 
     entry = fib_entry_get(connected);
-    fed = fib_entry_delegate_get(entry,
-                                 FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
+    fed = fib_entry_delegate_find(entry,
+                                  FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
 
     if (NULL == fed)
     {
@@ -317,8 +317,8 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 {
     fib_entry_delegate_t *fed;
 
-    fed = fib_entry_delegate_get(fib_entry,
-                                 FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
+    fed = fib_entry_delegate_find(fib_entry,
+                                  FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
 
     if (NULL != fed)
     {
@@ -362,8 +362,8 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 
 	    export_entry = fib_entry_get(import->faei_export_entry);
 
-            fed = fib_entry_delegate_get(export_entry,
-                                         FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
+            fed = fib_entry_delegate_find(export_entry,
+                                          FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
             ASSERT(NULL != fed);
 
 	    export = pool_elt_at_index(fib_ae_export_pool, fed->fd_index);
@@ -400,8 +400,8 @@ fib_attached_export_covered_added (fib_entry_t *cover,
 {
     fib_entry_delegate_t *fed;
 
-    fed = fib_entry_delegate_get(cover,
-                                 FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
+    fed = fib_entry_delegate_find(cover,
+                                  FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
 
     if (NULL != fed)
     {
@@ -432,8 +432,8 @@ fib_attached_export_covered_removed (fib_entry_t *cover,
 {
     fib_entry_delegate_t *fed;
 
-    fed = fib_entry_delegate_get(cover,
-                                 FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
+    fed = fib_entry_delegate_find(cover,
+                                  FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
 
     if (NULL != fed)
     {
@@ -463,8 +463,8 @@ fib_attached_export_cover_modified_i (fib_entry_t *fib_entry)
 {
     fib_entry_delegate_t *fed;
 
-    fed = fib_entry_delegate_get(fib_entry,
-                                 FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
+    fed = fib_entry_delegate_find(fib_entry,
+                                  FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
 
     if (NULL != fed)
     {

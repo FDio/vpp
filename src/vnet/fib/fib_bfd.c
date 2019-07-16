@@ -94,8 +94,8 @@ fib_bfd_notify (bfd_listen_event_e event,
          * The creation of a new session
          */
         if ((FIB_NODE_INDEX_INVALID != fei) &&
-            (fed = fib_entry_delegate_get(fib_entry_get(fei),
-                                          FIB_ENTRY_DELEGATE_BFD)))
+            (fed = fib_entry_delegate_find(fib_entry_get(fei),
+                                           FIB_ENTRY_DELEGATE_BFD)))
         {
             /*
              * already got state for this entry
@@ -132,8 +132,8 @@ fib_bfd_notify (bfd_listen_event_e event,
          */
         ASSERT(FIB_NODE_INDEX_INVALID != fei);
 
-        fed = fib_entry_delegate_get(fib_entry_get(fei),
-                                     FIB_ENTRY_DELEGATE_BFD);
+        fed = fib_entry_delegate_find(fib_entry_get(fei),
+                                      FIB_ENTRY_DELEGATE_BFD);
 
         if (NULL != fed)
         {
@@ -156,8 +156,8 @@ fib_bfd_notify (bfd_listen_event_e event,
              * no FIB entry
              */
         }
-        else if (fib_entry_delegate_get(fib_entry_get(fei),
-                                        FIB_ENTRY_DELEGATE_BFD))
+        else if (fib_entry_delegate_find(fib_entry_get(fei),
+                                         FIB_ENTRY_DELEGATE_BFD))
         {
             /*
              * has an associated BFD tracking delegate
