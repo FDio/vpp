@@ -19,6 +19,9 @@
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport_types.h>
 
+#define SESSION_INVALID_INDEX ((u32)~0)
+#define SESSION_INVALID_HANDLE ((u64)~0)
+
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
   _(u8, transport_proto)					\
