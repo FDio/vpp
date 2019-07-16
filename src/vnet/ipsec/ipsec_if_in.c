@@ -200,7 +200,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		(esp_header_t *) ((u8 *) ip41 + ip4_header_bytes (ip41) +
 				  sizeof (udp_header_t));
 	      buf_adv1 = 0;
-	      buf_rewind1 = ip4_header_bytes (ip40) + sizeof (udp_header_t);
+	      buf_rewind1 = ip4_header_bytes (ip41) + sizeof (udp_header_t);
 	    }
 	  else
 	    {
