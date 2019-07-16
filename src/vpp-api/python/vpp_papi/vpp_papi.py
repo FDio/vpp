@@ -30,8 +30,6 @@ import atexit
 from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
 
-logger = logging.getLogger(__name__)
-
 if sys.version[0] == '2':
     import Queue as queue
 else:
@@ -76,19 +74,6 @@ if sys.version[0] == '2':
 else:
     def vpp_iterator(d):
         return d.items()
-
-
-def call_logger(msgdef, kwargs):
-    s = 'Calling {}('.format(msgdef.name)
-    for k, v in kwargs.items():
-        s += '{}:{} '.format(k, v)
-    s += ')'
-    return s
-
-
-def return_logger(r):
-    s = 'Return from {}'.format(r)
-    return s
 
 
 class VppApiDynamicMethodHolder(object):
@@ -220,7 +205,8 @@ class VPPApiClient(object):
         to report at (from the loglevels in the logging module).
         """
         if logger is None:
-            logger = logging.getLogger(__name__)
+            logger = logging.getLogger(
+                "{}.{}".format(__name__, self.__class__.__name__))
             if loglevel is not None:
                 logger.setLevel(loglevel)
         self.logger = logger
@@ -631,7 +617,9 @@ class VPPApiClient(object):
             pass
         self.validate_args(msgdef, kwargs)
 
-        logging.debug(call_logger(msgdef, kwargs))
+        s = 'Calling {}({})'.format(msgdef.name,
+            ','.join(['{!r}:{!r}'.format(k, v) for k, v in kwargs.items()]))
+        self.logger.debug(s)
 
         b = msgdef.pack(kwargs)
         self.transport.suspend()
@@ -666,7 +654,7 @@ class VPPApiClient(object):
 
         self.transport.resume()
 
-        logger.debug(return_logger(rl))
+        self.logger.debug('Return from {!r}'.format(r))
         return rl
 
     def _call_vpp_async(self, i, msg, **kwargs):
