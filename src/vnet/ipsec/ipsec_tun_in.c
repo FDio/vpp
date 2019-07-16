@@ -32,6 +32,8 @@
   _(DISABLED, "ipsec packets received on disabled interface")     \
   _(NO_TUNNEL, "no matching tunnel")                              \
   _(TUNNEL_MISMATCH, "SPI-tunnel mismatch")                       \
+  _(NAT_KEEPALIVE, "NAT Keepalive")                               \
+  _(TOO_SHORT, "Too Short")                                       \
   _(SPI_0, "SPI 0")
 
 static char *ipsec_tun_protect_input_error_strings[] = {
@@ -59,7 +61,12 @@ typedef enum ipsec_tun_next_t_
 
 typedef struct
 {
-  u32 spi;
+  union
+  {
+    ipsec4_tunnel_key_t key4;
+    ipsec6_tunnel_key_t key6;
+  };
+  u8 is_ip6;
   u32 seq;
 } ipsec_tun_protect_input_trace_t;
 
@@ -71,7 +78,12 @@ format_ipsec_tun_protect_input_trace (u8 * s, va_list * args)
   ipsec_tun_protect_input_trace_t *t =
     va_arg (*args, ipsec_tun_protect_input_trace_t *);
 
-  s = format (s, "IPSec: spi %u seq %u", t->spi, t->seq);
+  if (t->is_ip6)
+    s = format (s, "IPSec: %U seq %u",
+		format_ipsec6_tunnel_key, &t->key6, t->seq);
+  else
+    s = format (s, "IPSec: %U seq %u",
+		format_ipsec4_tunnel_key, &t->key4, t->seq);
   return s;
 }
 
@@ -160,8 +172,10 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       ip4_header_t *ip40;
       ip6_header_t *ip60;
       esp_header_t *esp0;
+      u16 buf_rewind0;
 
-      ip40 = vlib_buffer_get_current (b[0]);
+      ip40 =
+	(ip4_header_t *) (b[0]->data + vnet_buffer (b[0])->l3_hdr_offset);
 
       if (is_ip6)
 	{
@@ -178,11 +192,12 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		(esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40) +
 				  sizeof (udp_header_t));
 	      hdr_sz0 = 0;
+	      buf_rewind0 = ip4_header_bytes (ip40) + sizeof (udp_header_t);
 	    }
 	  else
 	    {
 	      esp0 = (esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40));
-	      hdr_sz0 = ip4_header_bytes (ip40);
+	      buf_rewind0 = hdr_sz0 = ip4_header_bytes (ip40);
 	    }
 	}
 
@@ -190,6 +205,19 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
          just like a norml IP-IP tunnel */
       vlib_buffer_advance (b[0], hdr_sz0);
       len0 = vlib_buffer_length_in_chain (vm, b[0]);
+
+      if (len0 < sizeof (esp_header_t))
+	{
+	  if (esp0->spi_bytes[0] == 0xff)
+	    b[0]->error =
+	      node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_NAT_KEEPALIVE];
+	  else
+	    b[0]->error =
+	      node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_TOO_SHORT];
+
+	  next[0] = IPSEC_INPUT_NEXT_DROP;
+	  goto trace00;
+	}
 
       if (is_ip6)
 	{
@@ -219,7 +247,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
-	  key40.remote_ip = ip40->src_address.as_u32;
+	  key40.remote_ip = ip40->src_address;
 	  key40.spi = esp0->spi;
 
 	  if (key40.as_u64 == last_key4.as_u64)
@@ -238,6 +266,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  next[0] = ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40);
+		  vlib_buffer_advance (b[0], -buf_rewind0);
 		  n_no_tunnel++;
 		  goto trace00;
 		}
@@ -342,7 +371,11 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ipsec_tun_protect_input_trace_t *tr =
 		vlib_add_trace (vm, node, b[0], sizeof (*tr));
-	      tr->spi = clib_host_to_net_u32 (esp0->spi);
+	      if (is_ip6)
+		clib_memcpy (&tr->key6, &key60, sizeof (tr->key6));
+	      else
+		clib_memcpy (&tr->key4, &key40, sizeof (tr->key4));
+	      tr->is_ip6 = is_ip6;
 	      tr->seq = clib_host_to_net_u32 (esp0->seq);
 	    }
 	}

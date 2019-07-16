@@ -27,7 +27,7 @@ class VppIpsecTunInterface(VppTunnelInterface):
         else:
             self.local_ip = self.parent_if.local_ip4
             self.remote_ip = self.parent_if.remote_ip4
-        self.udp_encap = False
+        self.udp_encap = udp_encap
 
     def add_vpp_config(self):
         r = self.test.vapi.ipsec_tunnel_if_add_del(

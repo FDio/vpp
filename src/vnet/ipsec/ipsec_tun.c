@@ -98,10 +98,14 @@ ipsec_tun_protect_db_add (ipsec_main_t * im, const ipsec_tun_protect_t * itp)
       if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
         {
           ipsec4_tunnel_key_t key = {
-            .remote_ip = itp->itp_crypto.dst.ip4.as_u32,
+            .remote_ip = itp->itp_crypto.dst.ip4,
             .spi = clib_host_to_net_u32 (sa->spi),
           };
           hash_set (im->tun4_protect_by_key, key.as_u64, res.as_u64);
+          if (1 == hash_elts(im->tun4_protect_by_key))
+            udp_register_dst_port (vlib_get_main(),
+                                   UDP_DST_PORT_ipsec,
+                                   ipsec4_tun_input_node.index, 1);
         }
       else
         {
@@ -127,10 +131,14 @@ ipsec_tun_protect_db_remove (ipsec_main_t * im,
       if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
         {
           ipsec4_tunnel_key_t key = {
-            .remote_ip = itp->itp_crypto.dst.ip4.as_u32,
+            .remote_ip = itp->itp_crypto.dst.ip4,
             .spi = clib_host_to_net_u32 (sa->spi),
           };
           hash_unset (im->tun4_protect_by_key, &key);
+          if (0 == hash_elts(im->tun4_protect_by_key))
+            udp_unregister_dst_port (vlib_get_main(),
+                                     UDP_DST_PORT_ipsec,
+                                     1);
         }
       else
         {
@@ -359,10 +367,10 @@ ipsec_tun_protect_del (u32 sw_if_index)
 
   pool_put (ipsec_protect_pool, itp);
 
-  /* if (0 == hash_elts (im->tun4_protect_by_key)) */
-  /*   ip4_unregister_protocol (IP_PROTOCOL_IPSEC_ESP); */
-  /* if (0 == hash_elts (im->tun6_protect_by_key)) */
-  /*   ip6_unregister_protocol (IP_PROTOCOL_IPSEC_ESP); */
+  if (0 == hash_elts (im->tun4_protect_by_key))
+    ip4_unregister_protocol (IP_PROTOCOL_IPSEC_ESP);
+  if (0 == hash_elts (im->tun6_protect_by_key))
+    ip6_unregister_protocol (IP_PROTOCOL_IPSEC_ESP);
 
   return (0);
 }

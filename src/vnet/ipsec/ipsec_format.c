@@ -259,9 +259,7 @@ format_ipsec_sa_flags (u8 * s, va_list * args)
 {
   ipsec_sa_flags_t flags = va_arg (*args, int);
 
-  if (0)
-    ;
-#define _(v, f, str) else if (flags & IPSEC_SA_FLAG_##f) s = format(s, "%s ", str);
+#define _(v, f, str) if (flags & IPSEC_SA_FLAG_##f) s = format(s, "%s ", str);
   foreach_ipsec_sa_flags
 #undef _
     return (s);
@@ -285,10 +283,8 @@ format_ipsec_sa (u8 * s, va_list * args)
 
   sa = pool_elt_at_index (im->sad, sai);
 
-  s = format (s, "[%d] sa %d (0x%x) spi %u (0x%08x) mode %s%s protocol %s %U",
+  s = format (s, "[%d] sa %u (0x%x) spi %u (0x%08x) protocol:%s flags:[%U]",
 	      sai, sa->id, sa->id, sa->spi, sa->spi,
-	      ipsec_sa_is_set_IS_TUNNEL (sa) ? "tunnel" : "transport",
-	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "-ip6" : "",
 	      sa->protocol ? "esp" : "ah", format_ipsec_sa_flags, sa->flags);
 
   if (!(flags & IPSEC_FORMAT_DETAIL))
@@ -399,6 +395,32 @@ format_ipsec_tun_protect (u8 * s, va_list * args)
   /* *INDENT-ON* */
 
 done:
+  return (s);
+}
+
+u8 *
+format_ipsec4_tunnel_key (u8 * s, va_list * args)
+{
+  ipsec4_tunnel_key_t *key = va_arg (*args, ipsec4_tunnel_key_t *);
+
+  s = format (s, "remote:%U spi:%u (0x%08x)",
+	      format_ip4_address, &key->remote_ip,
+	      clib_net_to_host_u32 (key->spi),
+	      clib_net_to_host_u32 (key->spi));
+
+  return (s);
+}
+
+u8 *
+format_ipsec6_tunnel_key (u8 * s, va_list * args)
+{
+  ipsec6_tunnel_key_t *key = va_arg (*args, ipsec6_tunnel_key_t *);
+
+  s = format (s, "remote:%U spi:%u (0x%08x)",
+	      format_ip6_address, &key->remote_ip,
+	      clib_net_to_host_u32 (key->spi),
+	      clib_net_to_host_u32 (key->spi));
+
   return (s);
 }
 

@@ -942,6 +942,58 @@ VLIB_CLI_COMMAND (ipsec_tun_protect_show_node, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+ipsec_tun_protect_hash_show (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  {
+    ipsec_tun_lkup_result_t value;
+    ipsec4_tunnel_key_t key;
+
+    vlib_cli_output (vm, "IPv4:");
+
+    /* *INDENT-OFF* */
+    hash_foreach(key.as_u64, value.as_u64, im->tun4_protect_by_key,
+    ({
+      vlib_cli_output (vm, " %U", format_ipsec4_tunnel_key, &key);
+      vlib_cli_output (vm, "  tun:%d sa:%d", value.tun_index, value.sa_index);
+    }));
+    /* *INDENT-ON* */
+  }
+
+  {
+    ipsec_tun_lkup_result_t value;
+    ipsec6_tunnel_key_t *key;
+
+    vlib_cli_output (vm, "IPv6:");
+
+    /* *INDENT-OFF* */
+    hash_foreach_mem(key, value.as_u64, im->tun6_protect_by_key,
+    ({
+      vlib_cli_output (vm, " %U", format_ipsec6_tunnel_key, key);
+      vlib_cli_output (vm, "  tun:%d sa:%d", value.tun_index, value.sa_index);
+    }));
+    /* *INDENT-ON* */
+  }
+
+  return NULL;
+}
+
+/**
+ * show IPSEC tunnel protection hash tables
+ */
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ipsec_tun_protect_hash_show_node, static) =
+{
+  .path = "show ipsec protect-hash",
+  .function = ipsec_tun_protect_hash_show,
+  .short_help =  "show ipsec protect-hash",
+};
+/* *INDENT-ON* */
+
 clib_error_t *
 ipsec_cli_init (vlib_main_t * vm)
 {

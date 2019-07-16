@@ -558,6 +558,8 @@ class IpsecTun4(object):
     def verify_encrypted(self, p, sa, rxs):
         decrypt_pkts = []
         for rx in rxs:
+            if p.nat_header:
+                self.assertEqual(rx[UDP].dport, 4500)
             self.assert_packet_checksums_valid(rx)
             self.assertEqual(len(rx) - len(Ether()), rx[IP].len)
             try:
@@ -641,6 +643,23 @@ class IpsecTun4(object):
             self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         self.verify_counters4(p, count)
+
+    def verify_keepalive(self, p):
+        pkt = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
+               IP(src=p.remote_tun_if_host, dst=self.tun_if.local_ip4) /
+               UDP(sport=333, dport=4500) /
+               Raw(0xff))
+        self.send_and_assert_no_replies(self.tun_if, pkt*31)
+        self.assert_error_counter_equal(
+            '/err/%s/NAT Keepalive' % self.tun4_input_node, 31)
+
+        pkt = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
+               IP(src=p.remote_tun_if_host, dst=self.tun_if.local_ip4) /
+               UDP(sport=333, dport=4500) /
+               Raw(0xfe))
+        self.send_and_assert_no_replies(self.tun_if, pkt*31)
+        self.assert_error_counter_equal(
+            '/err/%s/Too Short' % self.tun4_input_node, 31)
 
 
 class IpsecTun4Tests(IpsecTun4):
