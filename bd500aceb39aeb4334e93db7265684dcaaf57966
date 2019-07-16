@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "4fd7c8d9_1df27767",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 7785,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-07-16T22:51:52Z",
+      "side": 1,
+      "message": "numa-only should not be allowed on all modes.",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0a68f135_ff74aca5",
         "filename": "src/vnet/bonding/cli.c",
         "patchSetId": 4
