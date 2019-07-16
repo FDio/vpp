@@ -185,7 +185,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
       kv.key[2] = sm_key.as_u64[2];
       kv.value = sm - nm->sm;
       if (clib_bihash_add_del_24_8 (&nm->sm_l, &kv, 1))
-	nat_log_warn ("nat66-static-map-by-local add key failed");
+	nat_elog_warn ("nat66-static-map-by-local add key failed");
       sm_key.addr.as_u64[0] = e_addr->as_u64[0];
       sm_key.addr.as_u64[1] = e_addr->as_u64[1];
       sm_key.fib_index = 0;
@@ -193,7 +193,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
       kv.key[1] = sm_key.as_u64[1];
       kv.key[2] = sm_key.as_u64[2];
       if (clib_bihash_add_del_24_8 (&nm->sm_e, &kv, 1))
-	nat_log_warn ("nat66-static-map-by-external add key failed");
+	nat_elog_warn ("nat66-static-map-by-external add key failed");
 
       vlib_validate_combined_counter (&nm->session_counters, kv.value);
       vlib_zero_combined_counter (&nm->session_counters, kv.value);
@@ -205,7 +205,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
 
       kv.value = sm - nm->sm;
       if (clib_bihash_add_del_24_8 (&nm->sm_l, &kv, 0))
-	nat_log_warn ("nat66-static-map-by-local delete key failed");
+	nat_elog_warn ("nat66-static-map-by-local delete key failed");
       sm_key.addr.as_u64[0] = e_addr->as_u64[0];
       sm_key.addr.as_u64[1] = e_addr->as_u64[1];
       sm_key.fib_index = 0;
@@ -213,7 +213,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
       kv.key[1] = sm_key.as_u64[1];
       kv.key[2] = sm_key.as_u64[2];
       if (clib_bihash_add_del_24_8 (&nm->sm_e, &kv, 0))
-	nat_log_warn ("nat66-static-map-by-external delete key failed");
+	nat_elog_warn ("nat66-static-map-by-external delete key failed");
       fib_table_unlock (sm->fib_index, FIB_PROTOCOL_IP6,
 			FIB_SOURCE_PLUGIN_HI);
       pool_put (nm->sm, sm);

@@ -232,7 +232,7 @@ nat_ip4_reass_create (ip4_address_t src, ip4_address_t dst, u16 frag_id,
 
   if (srm->ip4_reass_n >= srm->ip4_max_reass)
     {
-      nat_log_warn ("no free resassembly slot");
+      nat_elog_warn ("no free resassembly slot");
       goto unlock;
     }
 
@@ -263,7 +263,7 @@ nat_ip4_reass_create (ip4_address_t src, ip4_address_t dst, u16 frag_id,
   reass->flags = 0;
   reass->classify_next = NAT_REASS_IP4_CLASSIFY_NONE;
   if (clib_bihash_add_del_16_8 (&srm->ip4_reass_hash, &kv, 1))
-    nat_log_warn ("ip4_reass_hash add key failed");
+    nat_elog_warn ("ip4_reass_hash add key failed");
 
 unlock:
   clib_spinlock_unlock_if_init (&srm->ip4_reass_lock);
@@ -326,7 +326,7 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
 	{
 	  clib_dlist_addhead (srm->ip4_reass_lru_list_pool,
 			      srm->ip4_reass_head_index, oldest_index);
-	  nat_log_warn ("no free resassembly slot");
+	  nat_elog_warn ("no free resassembly slot");
 	  reass = 0;
 	  goto unlock;
 	}
@@ -535,7 +535,7 @@ nat_ip6_reass_find_or_create (ip6_address_t src, ip6_address_t dst,
 	{
 	  clib_dlist_addhead (srm->ip6_reass_lru_list_pool,
 			      srm->ip6_reass_head_index, oldest_index);
-	  nat_log_warn ("no free resassembly slot");
+	  nat_elog_warn ("no free resassembly slot");
 	  reass = 0;
 	  goto unlock;
 	}

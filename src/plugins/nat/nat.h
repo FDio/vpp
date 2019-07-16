@@ -23,6 +23,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/api_errno.h>
+#include <vppinfra/elog.h>
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/dlist.h>
@@ -128,6 +129,22 @@ typedef enum nat_config_flags_t_
 #undef _
 } nat_config_flags_t;
 
+/* NAT API Logging Levels */
+#define foreach_nat_log_level \
+  _(0x00, LOG_NONE)           \
+  _(0x01, LOG_ERROR)          \
+  _(0x02, LOG_WARNING)        \
+  _(0x03, LOG_NOTICE)         \
+  _(0x04, LOG_INFO)           \
+  _(0x05, LOG_DEBUG)
+
+typedef enum nat_log_level_t_
+{
+#define _(n,f) SNAT_##f = n,
+  foreach_nat_log_level
+#undef _
+} nat_log_level_t;
+
 /* External address and port allocation modes */
 #define foreach_nat_addr_and_port_alloc_alg \
   _(0, DEFAULT, "default")         \
@@ -141,7 +158,6 @@ typedef enum
 #undef _
 } nat_addr_and_port_alloc_alg_t;
 
-
 /* Supported L4 protocols */
 #define foreach_snat_protocol \
   _(UDP, 0, udp, "udp")       \
@@ -154,7 +170,6 @@ typedef enum
   foreach_snat_protocol
 #undef _
 } snat_protocol_t;
-
 
 /* Session state */
 #define foreach_snat_session_state          \
@@ -542,7 +557,6 @@ typedef struct snat_main_s
   u32 ed_hairpin_dst_node_index;
   u32 ed_hairpin_src_node_index;
 
-
   /* Deterministic NAT mappings */
   snat_det_map_t *det_maps;
 
@@ -585,6 +599,9 @@ typedef struct snat_main_s
 
   /* log class */
   vlib_log_class_t log_class;
+
+  /* logging level */
+  u8 log_level;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -743,6 +760,115 @@ unformat_function_t unformat_snat_protocol;
   vlib_log(VLIB_LOG_LEVEL_INFO, snat_main.log_class, __VA_ARGS__)
 #define nat_log_debug(...)\
   vlib_log(VLIB_LOG_LEVEL_DEBUG, snat_main.log_class, __VA_ARGS__)
+
+static inline u32
+elog_id_for_msg_name (vlib_main_t * vm, const char *msg_name)
+{
+  uword *p, r;
+  static uword *h;
+  u8 *name_copy;
+
+  if (!h)
+    h = hash_create_string (0, sizeof (uword));
+
+  p = hash_get_mem (h, msg_name);
+  if (p)
+    return p[0];
+  r = elog_string (&vm->elog_main, "%s", msg_name);
+
+  name_copy = format (0, "%s%c", msg_name, 0);
+
+  hash_set_mem (h, name_copy, r);
+
+  return r;
+}
+
+/*
+#define nat_elog(nat_elog_sev, nat_elog_str)                        \
+do                                                                  \
+  {                                                                 \
+    snat_main_t *sm = &snat_main;                                   \
+    if (PREDICT_FALSE (sm->log_level >= NAT_LOG_INFO))              \
+      {                                                             \
+        ELOG_TYPE_DECLARE (e) =                                     \
+          {                                                         \
+            .format = "nat-msg: (info) %s",                         \
+            .format_args = "T4",                                    \
+          };                                                        \
+        CLIB_PACKED(struct                                          \
+        {                                                           \
+          u32 c;                                                    \
+        }) *ed;                                                     \
+        ed = ELOG_DATA (&sm->vlib_main->elog_main, e);              \
+        ed->c = elog_id_for_msg_name (sm->vlib_main, nat_elog_str); \
+      }                                                             \
+  } while (0);
+*/
+
+#define nat_elog(nat_log_level, nat_elog_fmt)           \
+do                                                      \
+  {                                                     \
+    snat_main_t *sm = &snat_main;                       \
+    if (PREDICT_FALSE (sm->log_level >= nat_log_level)) \
+      {                                                 \
+        ELOG_TYPE_DECLARE (e) =                         \
+          {                                             \
+            .format = "nat-msg: " nat_elog_fmt,         \
+            .format_args = "",                          \
+          };                                            \
+        ELOG_DATA (&sm->vlib_main->elog_main, e);       \
+      }                                                 \
+  } while (0);
+
+#define nat_elog_X1(nat_log_level, nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1) \
+do                                                                                    \
+  {                                                                                   \
+    snat_main_t *sm = &snat_main;                                                     \
+    if (PREDICT_FALSE (sm->log_level >= nat_log_level))                               \
+      {                                                                               \
+        ELOG_TYPE_DECLARE (e) =                                                       \
+          {                                                                           \
+            .format = "nat-msg: " nat_elog_fmt_str,                                   \
+            .format_args = nat_elog_fmt_arg,                                          \
+          };                                                                          \
+        CLIB_PACKED(struct                                                            \
+          {                                                                           \
+            typeof (nat_elog_val1) val1;                                              \
+          }) *ed;                                                                     \
+        ed = ELOG_DATA (&sm->vlib_main->elog_main, e);                                \
+        ed->val1 = nat_elog_val1;                                                     \
+      }                                                                               \
+  } while (0);
+
+#define nat_elog_notice(nat_elog_str) \
+  nat_elog (SNAT_LOG_INFO, "(notice) " nat_elog_str)
+
+#define nat_elog_notice_X1(nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1) \
+  nat_elog_X1(SNAT_LOG_NOTICE, "(notice) " nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1)
+
+#define nat_elog_warn(nat_elog_str) \
+  nat_elog(SNAT_LOG_WARNING, "(warning) " nat_elog_str)
+
+#define nat_elog_warn_X1(nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1) \
+  nat_elog_X1(SNAT_LOG_WARNING, "(warning) " nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1)
+
+#define nat_elog_err(nat_elog_str) \
+  nat_elog(SNAT_LOG_ERROR, "(error) " nat_elog_str)
+
+#define nat_elog_err_X1(nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1) \
+  nat_elog_X1(SNAT_LOG_ERROR, "(error) " nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1)
+
+#define nat_elog_debug(nat_elog_str) \
+  nat_elog(SNAT_LOG_DEBUG, "(debug) " nat_elog_str)
+
+#define nat_elog_debug_X1(nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1) \
+  nat_elog_X1(SNAT_LOG_DEBUG, "(debug) " nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1)
+
+#define nat_elog_info(nat_elog_str) \
+  nat_elog(SNAT_LOG_INFO, "(info) " nat_elog_str)
+
+#define nat_elog_info_X1(nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1) \
+  nat_elog_X1(SNAT_LOG_INFO, "(info) " nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1)
 
 /* ICMP session match functions */
 u32 icmp_match_in2out_fast (snat_main_t * sm, vlib_node_runtime_t * node,

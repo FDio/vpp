@@ -175,7 +175,8 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
   snat_user_key_t u_key;
   snat_user_t *u;
 
-  nat_log_debug ("session deleted %U", format_snat_session, tsm, ses);
+  // TODO: convert to elog
+  /* nat_log_debug ("session deleted %U", format_snat_session, tsm, ses); */
 
   clib_dlist_remove (tsm->list_pool, ses->per_user_index);
   pool_put_index (tsm->list_pool, ses->per_user_index);
@@ -227,8 +228,9 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
   if (nat44_is_ses_closed (ses)
       && !(ses->flags & SNAT_SESSION_FLAG_OUTPUT_FEATURE))
     {
-      nat_log_debug ("TCP close connection %U", format_snat_session,
-		     &sm->per_thread_data[thread_index], ses);
+      // TODO: convert to elog
+      /* nat_log_debug ("TCP close connection %U", format_snat_session,
+         &sm->per_thread_data[thread_index], ses); */
       nat_free_session_data (sm, ses, thread_index, 0);
       nat44_delete_session (sm, ses, thread_index);
       return 1;
@@ -261,8 +263,9 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
     }
   if (nat44_is_ses_closed (ses))
     {
-      nat_log_debug ("TCP close connection %U", format_snat_session,
-		     &sm->per_thread_data[thread_index], ses);
+      // TODO: convert to elog
+      /* nat_log_debug ("TCP close connection %U", format_snat_session,
+         &sm->per_thread_data[thread_index], ses); */
       nat_free_session_data (sm, ses, thread_index, 0);
       nat44_delete_session (sm, ses, thread_index);
       return 1;
