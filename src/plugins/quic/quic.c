@@ -1495,7 +1495,7 @@ quic_connect (transport_endpoint_cfg_t * tep)
   QUIC_DBG (2, "Called quic_connect");
   session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) tep;
   sep = (session_endpoint_cfg_t *) tep;
-  if (sep->transport_opts)
+  if (sep->port == 0)		/* TODO add mask on transport_opts */
     return quic_connect_new_stream (sep);
   else
     return quic_connect_new_connection (sep);
