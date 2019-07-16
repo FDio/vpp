@@ -40,6 +40,6 @@ vom_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
 
 vom_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install
 
-vom-package-deb: vom-install
+vom-package: vom-install
 	@$(CMAKE) --build $(PACKAGE_BUILD_DIR)/vom -- package
-	@find $(PACKAGE_BUILD_DIR)/vom -name '*.deb' -exec mv {} $(CURDIR) \;
+	@find $(PACKAGE_BUILD_DIR)/vom -type f \( -name '*.deb' -o -name '*.rpm' \) -exec mv {} $(CURDIR) \;

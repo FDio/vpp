@@ -223,7 +223,7 @@ chmod -x %{buildroot}%{python_sitelib}/vpp_papi/*.txt
 #
 # devel
 #
-for dir in %{_vpp_install_dir}/{vom,vpp}/include/
+for dir in %{_vpp_install_dir}/vpp/include/
 do
 	for subdir in $(cd ${dir} && find . -type d -print)
 	do
