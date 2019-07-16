@@ -16,6 +16,7 @@
 #include <vnet/fib/fib_entry_cover.h>
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_node_list.h>
+#include <vnet/fib/fib_entry_delegate.h>
 
 u32
 fib_entry_cover_track (fib_entry_t* cover,
@@ -27,7 +28,7 @@ fib_entry_cover_track (fib_entry_t* cover,
 
     ASSERT(fib_entry_get_index(cover) != covered);
 
-    fed = fib_entry_delegate_get(cover, FIB_ENTRY_DELEGATE_COVERED);
+    fed = fib_entry_delegate_find(cover, FIB_ENTRY_DELEGATE_COVERED);
 
     if (NULL == fed)
     {
@@ -48,7 +49,7 @@ fib_entry_cover_untrack (fib_entry_t* cover,
 
     FIB_ENTRY_DBG(cover, "cover-untrack @ %d", tracked_index);
 
-    fed = fib_entry_delegate_get(cover, FIB_ENTRY_DELEGATE_COVERED);
+    fed = fib_entry_delegate_find(cover, FIB_ENTRY_DELEGATE_COVERED);
 
     if (NULL == fed)
         return;
@@ -90,7 +91,7 @@ fib_entry_cover_walk (fib_entry_t *cover,
 {
     fib_entry_delegate_t *fed;
 
-    fed = fib_entry_delegate_get(cover, FIB_ENTRY_DELEGATE_COVERED);
+    fed = fib_entry_delegate_find(cover, FIB_ENTRY_DELEGATE_COVERED);
 
     if (NULL == fed)
         return;

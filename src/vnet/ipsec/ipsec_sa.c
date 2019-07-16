@@ -17,6 +17,7 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/udp/udp.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
 #include <vnet/ipsec/ipsec_tun.h>
 
 /**
@@ -217,12 +218,11 @@ ipsec_sa_add (u32 id,
 	  return VNET_API_ERROR_NO_SUCH_FIB;
 	}
 
-      sa->fib_entry_index = fib_table_entry_special_add (sa->tx_fib_index,
-							 &pfx,
-							 FIB_SOURCE_RR,
-							 FIB_ENTRY_FLAG_NONE);
-      sa->sibling = fib_entry_child_add (sa->fib_entry_index,
-					 FIB_NODE_TYPE_IPSEC_SA, sa_index);
+      sa->fib_entry_index = fib_entry_track (sa->tx_fib_index,
+                                             &pfx,
+                                             FIB_NODE_TYPE_IPSEC_SA,
+                                             sa_index,
+                                             &sa->sibling);
       ipsec_sa_stack (sa);
 
       /* generate header templates */
@@ -302,10 +302,7 @@ ipsec_sa_del (u32 id)
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
-      fib_entry_child_remove (sa->fib_entry_index, sa->sibling);
-      fib_table_entry_special_remove
-	(sa->tx_fib_index,
-	 fib_entry_get_prefix (sa->fib_entry_index), FIB_SOURCE_RR);
+      fib_entry_untrack(sa->fib_entry_index, sa->sibling);
       dpo_reset (&sa->dpo);
     }
   vnet_crypto_key_del (vm, sa->crypto_key_index);
