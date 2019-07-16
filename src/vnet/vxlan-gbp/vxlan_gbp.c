@@ -16,6 +16,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/adj/rewrite.h>
@@ -529,12 +530,11 @@ int vnet_vxlan_gbp_tunnel_add_del
 	   * re-stack accordingly
 	   */
 	  vtep_addr_ref (&t->src);
-	  t->fib_entry_index = fib_table_entry_special_add
-	    (t->encap_fib_index, &tun_dst_pfx, FIB_SOURCE_RR,
-	     FIB_ENTRY_FLAG_NONE);
-	  t->sibling_index = fib_entry_child_add
-	    (t->fib_entry_index, FIB_NODE_TYPE_VXLAN_GBP_TUNNEL,
-	     dev_instance);
+	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
+						&tun_dst_pfx,
+						FIB_NODE_TYPE_VXLAN_GBP_TUNNEL,
+						dev_instance,
+						&t->sibling_index);
 	  vxlan_gbp_tunnel_restack_dpo (t);
 	}
       else
@@ -640,8 +640,7 @@ int vnet_vxlan_gbp_tunnel_add_del
       if (!ip46_address_is_multicast (&t->dst))
 	{
 	  vtep_addr_unref (&t->src);
-	  fib_entry_child_remove (t->fib_entry_index, t->sibling_index);
-	  fib_table_entry_delete_index (t->fib_entry_index, FIB_SOURCE_RR);
+	  fib_entry_untrack (t->fib_entry_index, t->sibling_index);
 	}
       else if (vtep_addr_unref (&t->dst) == 0)
 	{
