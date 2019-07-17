@@ -334,6 +334,10 @@ typedef struct
     clib_bitmap_t * workers;
   u32 hqos_enabled;
   dpdk_device_config_hqos_t hqos;
+  u8 tso;
+#define DPDK_DEVICE_TSO_DEFAULT 0
+#define DPDK_DEVICE_TSO_OFF 1
+#define DPDK_DEVICE_TSO_ON  2
 } dpdk_device_config_t;
 
 typedef struct
