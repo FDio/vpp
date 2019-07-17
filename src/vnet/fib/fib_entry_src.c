@@ -1827,27 +1827,22 @@ fib_entry_get_flags_for_source (fib_node_index_t entry_index,
     return (FIB_ENTRY_FLAG_NONE);
 }
 
+fib_source_t
+fib_entry_get_source_i (const fib_entry_t *fib_entry)
+{
+    /* the vector of sources is deliberately arranged in priority order */
+    if (0 == vec_len(fib_entry->fe_srcs))
+        return (FIB_SOURCE_INVALID);
+    return (vec_elt(fib_entry->fe_srcs, 0).fes_src);
+}
+
 fib_entry_flag_t
 fib_entry_get_flags_i (const fib_entry_t *fib_entry)
 {
-    fib_entry_flag_t flags;
-
-    /*
-     * the vector of sources is deliberately arranged in priority order
-     */
+    /* the vector of sources is deliberately arranged in priority order */
     if (0 == vec_len(fib_entry->fe_srcs))
-    {
-	flags = FIB_ENTRY_FLAG_NONE;
-    }
-    else
-    {
-	fib_entry_src_t *esrc;
-
-	esrc = vec_elt_at_index(fib_entry->fe_srcs, 0);
-	flags = esrc->fes_entry_flags;
-    }
-
-    return (flags);
+        return (FIB_ENTRY_FLAG_NONE);
+    return (vec_elt(fib_entry->fe_srcs, 0).fes_entry_flags);
 }
 
 void
