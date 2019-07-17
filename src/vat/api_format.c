@@ -58,6 +58,7 @@
 #include "vat/json_format.h"
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
+#include <vpp/stats/stat_segment.h>
 
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -5928,17 +5929,12 @@ api_want_interface_events (vat_main_t * vam)
   return ret;
 }
 
-
-/* Note: non-static, called once to set up the initial intfc table */
-int
-api_sw_interface_dump (vat_main_t * vam)
+static void
+reset_name_table (vat_main_t * vam)
 {
-  vl_api_sw_interface_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  hash_pair_t *p;
   name_sort_t *nses = 0, *ns;
   sw_interface_subif_t *sub = NULL;
-  int ret;
+  hash_pair_t *p;
 
   /* Toss the old name table */
   /* *INDENT-OFF* */
@@ -5964,6 +5960,17 @@ api_sw_interface_dump (vat_main_t * vam)
 
   /* recreate the interface name hash table */
   vam->sw_if_index_by_interface_name = hash_create_string (0, sizeof (uword));
+}
+
+/* Note: non-static, called once to set up the initial intfc table */
+int
+api_sw_interface_dump (vat_main_t * vam)
+{
+  vl_api_sw_interface_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  reset_name_table (vam);
 
   /*
    * Ask for all interface names. Otherwise, the epic catalog of
@@ -21423,6 +21430,92 @@ comment (vat_main_t * vam)
   return 0;
 }
 
+/* $$$$ These need to be in an exported header file... */
+struct stat_client_main_t
+{
+  uint64_t current_epoch;
+  stat_segment_shared_header_t *shared_header;
+  stat_segment_directory_entry_t *directory_vector;
+  ssize_t memory_size;
+};
+
+typedef struct
+{
+  uint64_t epoch;
+} stat_segment_access_t;
+
+static void
+stat_segment_access_start (stat_segment_access_t * sa,
+			   stat_client_main_t * sm)
+{
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  sa->epoch = shared_header->epoch;
+  while (shared_header->in_progress != 0)
+    ;
+  sm->directory_vector = stat_segment_pointer (sm->shared_header,
+					       sm->
+					       shared_header->directory_offset);
+}
+
+static bool
+stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
+{
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+
+  if (shared_header->epoch != sa->epoch || shared_header->in_progress)
+    return false;
+  return true;
+}
+
+/* $$$$ END move to exported header file */
+
+static int
+update_interface_table (vat_main_t * vam)
+{
+  stat_segment_access_t sa;
+  stat_segment_shared_header_t *sh;
+  stat_segment_directory_entry_t *dir, *ep;
+  u64 *offset_vector;
+  u8 *name, *name_copy;
+  int i;
+
+  if (vam->stat_client_main == 0)
+    {
+      errmsg ("must be connected to the vpp stats segment...\n");
+      return -99;
+    }
+
+again:
+  reset_name_table (vam);
+
+  /* recreate the interface name hash table */
+  vam->sw_if_index_by_interface_name = hash_create_string (0, sizeof (uword));
+
+  stat_segment_access_start (&sa, vam->stat_client_main);
+  sh = vam->stat_client_main->shared_header;
+
+  dir = stat_segment_pointer (sh, sh->directory_offset);
+  ep = &dir[STAT_COUNTER_INTERFACE_NAMES];
+
+  offset_vector = stat_segment_pointer (sh, ep->offset_vector);
+
+  for (i = 0; i < vec_len (offset_vector); i++)
+    {
+      name = stat_segment_pointer (sh, offset_vector[i]);
+      if (name == NULL)
+	continue;
+
+      name_copy = format (0, "%s%c", name, 0);
+
+      hash_set_mem (vam->sw_if_index_by_interface_name, name_copy, i);
+    }
+
+  if (stat_segment_access_end (&sa, vam->stat_client_main) == 0)
+    goto again;
+
+  return 0;
+}
+
 static int
 elog_save (vat_main_t * vam)
 {
@@ -22414,7 +22507,8 @@ _(search_node_table, "usage: search_node_table <name>...")	\
 _(set, "usage: set <variable-name> <value>")                    \
 _(script, "usage: script <file-name>")                          \
 _(statseg, "usage: statseg")                                    \
-_(unset, "usage: unset <variable-name>")
+_(unset, "usage: unset <variable-name>")			\
+_(update_interface_table, "usage: update_interface_table")
 
 #define _(N,n)                                  \
     static void vl_api_##n##_t_handler_uni      \

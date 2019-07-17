@@ -835,7 +835,7 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       s = format (s, "%v", hi_sup->name);
       if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
 	s = format (s, ".%d", si->sub.id);
-      s = format (s, "%c", 0);
+      vec_add1 (s, 0);
       sm->interfaces[sw_if_index] = s;
     }
   else

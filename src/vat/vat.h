@@ -33,6 +33,7 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vpp-api/client/stat_client.h>
 
 #include "vat/json_format.h"
 
@@ -216,6 +217,7 @@ typedef struct
   socket_client_main_t *socket_client_main;
   u8 *socket_name;
 
+  struct stat_client_main_t *stat_client_main;
   elog_main_t elog_main;
 
   /* Convenience */
