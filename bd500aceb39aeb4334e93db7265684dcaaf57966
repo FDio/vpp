@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "0f846cb5_15de5070",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-07-17T02:18:10Z",
+      "side": 1,
+      "message": "Good comment and add it. Redefine n_numa_slaves to s16 from u32 to help check.",
+      "parentUuid": "0a68f135_ff74aca5",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5ce268ef_2aaf7209",
         "filename": "src/vnet/bonding/cli.c",
         "patchSetId": 4
@@ -47,6 +65,24 @@
       "writtenOn": "2019-07-16T22:50:28Z",
       "side": 1,
       "message": "It is wrong to allow numa-only to configure on all modes.",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7276554d_29908dea",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-07-17T02:18:10Z",
+      "side": 1,
+      "message": "fix it later.",
+      "parentUuid": "5ce268ef_2aaf7209",
       "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "16b92166_fe567e54",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 702,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-07-17T02:18:10Z",
+      "side": 1,
+      "message": "If I understand right, you mean, we update n_numa_slaves which works for lacp only, so once \nif (bif-\u003en_nujma_salves \u003e\u003d 1) is true, we can update n_slaves -\u003e bif-\u003en_numa_slaves; right?",
+      "parentUuid": "73744d67_f641783c",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d73f32ca_c1441279",
         "filename": "src/vpp/api/custom_dump.c",
         "patchSetId": 4
@@ -81,6 +135,24 @@
       "writtenOn": "2019-07-16T22:50:28Z",
       "side": 1,
       "message": "numa-only should be placed after lb mode, not at the end.",
+      "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3aedd358_58ceb6aa",
+        "filename": "src/vpp/api/custom_dump.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 671,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-07-17T02:18:10Z",
+      "side": 1,
+      "message": "Ok. fix it.",
+      "parentUuid": "d73f32ca_c1441279",
       "revId": "bd500aceb39aeb4334e93db7265684dcaaf57966",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
