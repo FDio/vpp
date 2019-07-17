@@ -486,6 +486,14 @@ class TestIpsecEspAll(ConfigIpsecESP,
                     #
                     self.unconfig_network()
 
+                    #
+                    # reconfigure the network and SA to run the
+                    # anti replay tests
+                    #
+                    self.config_network(self.params.values())
+                    self.verify_tra_anti_replay()
+                    self.unconfig_network()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

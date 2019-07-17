@@ -203,7 +203,7 @@ ah_decrypt_inline (vlib_main_t * vm,
       pd->seq = clib_host_to_net_u32 (ah0->seq_no);
 
       /* anti-replay check */
-      if (ipsec_sa_anti_replay_check (sa0, &ah0->seq_no))
+      if (ipsec_sa_anti_replay_check (sa0, pd->seq))
 	{
 	  b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
 	  next[0] = AH_DECRYPT_NEXT_DROP;
@@ -303,7 +303,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
-	  ipsec_sa_anti_replay_advance (sa0, clib_host_to_net_u32 (pd->seq));
+	  ipsec_sa_anti_replay_advance (sa0, pd->seq);
 	}
 
       u16 ah_hdr_len = sizeof (ah_header_t) + pd->icv_size
