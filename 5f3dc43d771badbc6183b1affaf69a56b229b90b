@@ -16,6 +16,24 @@
       "revId": "5f3dc43d771badbc6183b1affaf69a56b229b90b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4401bbda_9a2709bd",
+        "filename": "test/vpp_bond_interface.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-07-17T05:43:30Z",
+      "side": 1,
+      "message": "thanks for the reminder. will fix it.",
+      "parentUuid": "b8f4a93d_02438bf2",
+      "revId": "5f3dc43d771badbc6183b1affaf69a56b229b90b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
