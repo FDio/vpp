@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c7a220a2_56d0b9ea",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-17T12:48:46Z",
+      "side": 1,
+      "message": "If strlen() is used, not only strings have to be NULL-terminated, they also should only contain NULL character at the end. Either make sure it is the case, or make sure users understand the substring after first NULL character is ignored.",
+      "range": {
+        "startLine": 10,
+        "startChar": 25,
+        "endLine": 10,
+        "endChar": 40
+      },
+      "revId": "b11e4aefbee765c0c09bbe1386ec78920f9162fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
