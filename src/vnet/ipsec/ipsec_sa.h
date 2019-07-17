@@ -19,8 +19,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_node.h>
 
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (64)
-
 #define foreach_ipsec_crypto_alg    \
   _ (0, NONE, "none")               \
   _ (1, AES_CBC_128, "aes-cbc-128") \
@@ -232,18 +230,34 @@ extern uword unformat_ipsec_integ_alg (unformat_input_t * input,
 				       va_list * args);
 extern uword unformat_ipsec_key (unformat_input_t * input, va_list * args);
 
+/*
+ * Anti Replay definitions
+ */
+
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (64)
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE-1)
+
+/*
+ * sequence number less than the lower bound are outside of the window
+ * From RFC4303 Appendix A:
+ *  Bl = Tl - W + 1
+ */
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND(_tl) (_tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1)
+
+/*
+ * Anti replay check.
+ *  inputs need to be in host byte order.
+ */
 always_inline int
-ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 * seqp)
+ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
 {
-  u32 seq, diff, tl, th;
+  u32 diff, tl, th;
+
   if ((sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
     return 0;
 
-  seq = clib_net_to_host_u32 (*seqp);
-
-  if ((sa->flags & IPSEC_SA_FLAG_USE_ESN) == 0)
+  if (!ipsec_sa_is_set_USE_ESN (sa))
     {
-
       if (PREDICT_TRUE (seq > sa->last_seq))
 	return 0;
 
@@ -261,50 +275,113 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 * seqp)
   th = sa->last_seq_hi;
   diff = tl - seq;
 
-  if (PREDICT_TRUE (tl >= (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE - 1)))
+  if (PREDICT_TRUE (tl >= (IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX)))
     {
-      if (seq >= (tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1))
+      /*
+       * the last sequence number VPP recieved is more than one
+       * window size greater than zero.
+       * Case A from RFC4303 Appendix A.
+       */
+      if (seq < IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND (tl))
 	{
-	  sa->seq_hi = th;
-	  if (seq <= tl)
-	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-	  else
-	    return 0;
+	  /*
+	   * the received sequence number is lower than the lower bound
+	   * of the window, this could mean either a replay packet or that
+	   * the high sequence number has wrapped. if it decrypts corrently
+	   * then it's the latter.
+	   */
+	  sa->seq_hi = th + 1;
+	  return 0;
 	}
       else
 	{
-	  sa->seq_hi = th + 1;
-	  return 0;
+	  /*
+	   * the recieved sequence number greater than the low
+	   * end of the window.
+	   */
+	  sa->seq_hi = th;
+	  if (seq <= tl)
+	    /*
+	     * The recieved seq number is within bounds of the window
+	     * check if it's a duplicate
+	     */
+	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  else
+	    /*
+	     * The received sequence number is greater than the window
+	     * upper bound. this packet will move the window along, assuming
+	     * it decrypts correctly.
+	     */
+	    return 0;
 	}
     }
   else
     {
-      if (seq >= (tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1))
+      /*
+       * the last sequence number VPP recieved is within one window
+       * size of zero, i.e. 0 < TL < WINDOW_SIZE, the lower bound is thus a
+       * large sequence number.
+       * Note that the check below uses unsiged integer arthimetic, so the
+       * RHS will be a larger number.
+       * Case B from RFC4303 Appendix A.
+       */
+      if (seq < IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND (tl))
 	{
-	  sa->seq_hi = th - 1;
-	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  /*
+	   * the sequence number is less than the lower bound.
+	   */
+	  if (seq <= tl)
+	    {
+	      /*
+	       * the packet is within the window upper bound.
+	       * check for duplicates.
+	       */
+	      sa->seq_hi = th;
+	      return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	    }
+	  else
+	    {
+	      /*
+	       * the packet is less the window lower bound or greater than
+	       * the higher bound, depending on how you look at it...
+	       * We're assuming, given that the last sequence number received,
+	       * TL < WINDOW_SIZE, that a largeer seq num is more likely to be
+	       * a packet that moves the window forward, than a packet that has
+	       * wrapped the high sequence again. If it were the latter then
+	       * we've lost close to 2^32 packets.
+	       */
+	      sa->seq_hi = th;
+	      return 0;
+	    }
 	}
       else
 	{
-	  sa->seq_hi = th;
-	  if (seq <= tl)
-	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-	  else
-	    return 0;
+	  /*
+	   * the packet seq number is between the lower bound (a large nubmer)
+	   * and MAX_SEQ_NUM. This is in the window since the window upper bound
+	   * tl > 0.
+	   * However, since TL is the other side of 0 to the received
+	   * packet, the SA has moved on to a higher sequence number.
+	   */
+	  sa->seq_hi = th - 1;
+	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
 	}
     }
 
   return 0;
 }
 
+/*
+ * Anti replay window advance
+ *  inputs need to be in host byte order.
+ */
 always_inline void
-ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seqp)
+ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seq)
 {
-  u32 pos, seq;
+  u32 pos;
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
     return;
 
-  seq = clib_host_to_net_u32 (seqp);
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ESN))
     {
       int wrap = sa->seq_hi - sa->last_seq_hi;

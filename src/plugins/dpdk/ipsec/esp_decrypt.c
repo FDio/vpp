@@ -235,7 +235,8 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  /* anti-replay check */
-	  if (ipsec_sa_anti_replay_check (sa0, &esp0->seq))
+	  if (ipsec_sa_anti_replay_check
+	      (sa0, clib_host_to_net_u32 (esp0->seq)))
 	    {
 	      clib_warning ("failed anti-replay check");
 	      if (is_ip6)
@@ -549,7 +550,8 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 
 	  iv_size = cipher_alg->iv_len;
 
-	  ipsec_sa_anti_replay_advance (sa0, esp0->seq);
+	  ipsec_sa_anti_replay_advance (sa0,
+					clib_host_to_net_u32 (esp0->seq));
 
 	  /* if UDP encapsulation is used adjust the address of the IP header */
 	  if (ipsec_sa_is_set_UDP_ENCAP (sa0)
