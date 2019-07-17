@@ -72,11 +72,25 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
   uword *p;
   int rv;
   u8 pref_length = 128;
+  u8 is_ipv4 = 0;
+  ip4_address_t localsid_addr4;;
+  u16 prefixlen4;
   sr_localsid_fn_registration_t *plugin = 0;
 
   ip6_sr_localsid_t *ls = 0;
 
   dpo_id_t dpo = DPO_INVALID;
+
+  if (localsid_addr->as_u32[0] == 0 && localsid_addr->as_u32[1] == 0
+    && localsid_addr->as_u16[4] == 0 && localsid_addr->as_u16[5] == 0xffff)
+    {
+      is_ipv4 = 1;
+      localsid_addr4.as_u32 = localsid_addr->as_u32[3];
+      if (prefixlen != 0)
+        prefixlen4 = prefixlen - 96;
+      else
+	prefixlen4 = 32;
+    }
 
   /* Search for the item */
   p = mhash_get (&sm->sr_localsids_index_hash, localsid_addr);
@@ -108,7 +122,14 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 			}
 	};
 
-	fib_table_entry_delete (fib_table_find (FIB_PROTOCOL_IP6,
+	if (is_ipv4)
+	  {
+	    pfx.fp_proto = FIB_PROTOCOL_IP4;
+	    pfx.fp_len = prefixlen4;
+	    pfx.fp_addr.ip4 = localsid_addr4;
+	  }
+
+	fib_table_entry_delete (fib_table_find ((is_ipv4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
 				fib_table), &pfx, FIB_SOURCE_SR);
 
 	/* In case it is a Xconnect iface remove the (OIF, NHOP) adj */
@@ -145,16 +166,25 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
     .fp_len = pref_length,
   };
 
-  if (prefixlen != 0)
+  if (is_ipv4)
     {
-      pfx.fp_len = prefixlen;
+      pfx.fp_proto = FIB_PROTOCOL_IP4;
+      pfx.fp_len = prefixlen4;
+      pfx.fp_addr.ip4 = localsid_addr4;
+    }
+  else
+    {
+      pfx.fp_addr.as_u64[0] = localsid_addr->as_u64[0];
+      pfx.fp_addr.as_u64[1] = localsid_addr->as_u64[1];
+
+      if (prefixlen != 0)
+        {
+          pfx.fp_len = prefixlen;
+        }
     }
 
-  pfx.fp_addr.as_u64[0] = localsid_addr->as_u64[0];
-  pfx.fp_addr.as_u64[1] = localsid_addr->as_u64[1];
-
   /* Lookup the FIB index associated to the table id provided */
-  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP6, fib_table);
+  u32 fib_index = fib_table_find ((is_ipv4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6), fib_table);
   if (fib_index == ~0)
     return -3;
 
@@ -172,7 +202,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
   ls->behavior = behavior;
   ls->nh_adj = (u32) ~ 0;
   ls->fib_table = fib_table;
-  ls->localsid_len = pfx.fp_len;
+  ls->localsid_len = is_ipv4 ? pfx.fp_len + 96 : pfx.fp_len;
   switch (behavior)
     {
     case SR_BEHAVIOR_END:
@@ -249,7 +279,8 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr, u16 prefixlen,
 	  pool_put (sm->localsids, ls);
 	  return -6;
 	}
-      dpo_set (&dpo, plugin->dpo, DPO_PROTO_IP6, ls - sm->localsids);
+      dpo_set (&dpo, plugin->dpo, (is_ipv4 ? DPO_PROTO_IP4 : DPO_PROTO_IP6), ls - sm->localsids);
+      //dpo_set (&dpo, plugin->dpo, DPO_PROTO_IP6, ls - sm->localsids);
     }
 
   /* Set hash key for searching localsid by address */
