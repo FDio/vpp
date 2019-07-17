@@ -71,7 +71,21 @@ clb_format_srv6_end_m_gtp4_d (u8 * s, va_list * args)
 
   s = format (s, "SR Prefix: %U/%d, ", format_ip6_address, &ls_mem->sr_prefix, ls_mem->sr_prefixlen);
 
-  s = format (s, "v6src Prefix: %U/%d\n", format_ip6_address, &ls_mem->v6src_prefix, ls_mem->v6src_prefixlen);
+  s = format (s, "v6src Prefix: %U/%d", format_ip6_address, &ls_mem->v6src_prefix, ls_mem->v6src_prefixlen);
+
+  if (ls_mem->nhtype != SRV6_NHTYPE_NONE)
+    {
+      if (ls_mem->nhtype == SRV6_NHTYPE_IPV4)
+        s = format (s, ", NHType IPv4\n");
+      else if (ls_mem->nhtype == SRV6_NHTYPE_IPV6)
+        s = format (s, ", NHType IPv6\n");
+      else if (ls_mem->nhtype == SRV6_NHTYPE_NON_IP)
+        s = format (s, ", NHType Non-IP\n");
+      else
+        s = format (s, ", NHType Unknow(%d)\n", ls_mem->nhtype);
+    }
+  else
+    s = format(s, "\n");
 
   return s;
 }
@@ -85,10 +99,33 @@ clb_unformat_srv6_end_m_gtp4_d (unformat_input_t * input, va_list * args)
   u32 sr_prefixlen;
   ip6_address_t v6src_prefix;
   u32 v6src_prefixlen;
+  u8 nhtype;
 
-  if (!unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d",
+  if (unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d",
 	 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
 	 unformat_ip6_address, &v6src_prefix, &v6src_prefixlen))
+    {
+      nhtype = SRV6_NHTYPE_NONE;
+    }
+  else if (unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d nhtype ipv4",
+	 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
+	 unformat_ip6_address, &v6src_prefix, &v6src_prefixlen))
+    {
+      nhtype = SRV6_NHTYPE_IPV4;
+    }
+  else if (unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d nhtype ipv6",
+	 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
+	 unformat_ip6_address, &v6src_prefix, &v6src_prefixlen))
+    {
+      nhtype = SRV6_NHTYPE_IPV6;
+    }
+  else if (unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d nhtype non-ip",
+	 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
+	 unformat_ip6_address, &v6src_prefix, &v6src_prefixlen))
+    {
+      nhtype = SRV6_NHTYPE_NON_IP;
+    }
+  else
     {
       return 0;
     }
@@ -102,6 +139,8 @@ clb_unformat_srv6_end_m_gtp4_d (unformat_input_t * input, va_list * args)
 
   ls_mem->v6src_prefix = v6src_prefix;
   ls_mem->v6src_prefixlen = v6src_prefixlen;
+
+  ls_mem->nhtype = nhtype;
 
   return 1;
 }
