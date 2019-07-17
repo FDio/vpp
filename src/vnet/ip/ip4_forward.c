@@ -297,6 +297,7 @@ ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
     *result_ia = result ? ia : 0;
   return result;
 }
+#endif
 
 static void
 ip4_add_subnet_bcast_route (u32 fib_index,
@@ -485,6 +486,7 @@ ip4_del_interface_routes (ip4_main_t * im,
   fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 void
 ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 {
@@ -675,6 +677,45 @@ ip4_directed_broadcast (u32 sw_if_index, u8 enable)
   /* *INDENT-ON* */
 }
 #endif
+
+static clib_error_t *
+ip4_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+{
+  ip4_main_t *im = &ip4_main;
+  ip_interface_address_t *ia;
+  ip4_address_t *a;
+  u32 is_admin_up, fib_index;
+
+  /* Fill in lookup tables with default table (0). */
+  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
+
+  vec_validate_init_empty (im->
+			   lookup_main.if_address_pool_index_by_sw_if_index,
+			   sw_if_index, ~0);
+
+  is_admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
+
+  fib_index = vec_elt (im->fib_index_by_sw_if_index, sw_if_index);
+
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (&im->lookup_main, ia, sw_if_index,
+                                0 /* honor unnumbered */,
+  ({
+    a = ip_interface_address_get_address (&im->lookup_main, ia);
+    if (is_admin_up)
+      ip4_add_interface_routes (sw_if_index,
+				im, fib_index,
+				ia);
+    else
+      ip4_del_interface_routes (im, fib_index,
+				a, ia->address_length);
+  }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip4_sw_interface_admin_up_down);
 
 /* Built-in ip4 unicast rx feature path definition */
 /* *INDENT-OFF* */
