@@ -1491,7 +1491,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
     clib_memcpy_fast (&session->transport.rmt_ip.ip6, server_ep->ip,
 		      sizeof (ip6_address_t));
   session->transport.rmt_port = server_ep->port;
-  session->transport_opts = VCL_INVALID_SESSION_HANDLE;
+  session->parent_handle = VCL_INVALID_SESSION_HANDLE;
 
   VDBG (0, "session handle %u: connecting to server %s %U "
 	"port %d proto %s", session_handle,
@@ -1556,7 +1556,7 @@ vppcom_session_stream_connect (uint32_t session_handle,
   session->transport.is_ip4 = parent_session->transport.is_ip4;
   session->transport.rmt_ip.ip4.as_u32 = (uint32_t) 1;
   session->transport.rmt_port = 0;
-  session->transport_opts = parent_session->vpp_handle;
+  session->parent_handle = parent_session->vpp_handle;
 
   VDBG (0, "session handle %u: connecting to session %u [0x%llx]",
 	session_handle, parent_session_handle, parent_session->vpp_handle);
