@@ -572,6 +572,12 @@ elog_string (elog_main_t * em, char *fmt, ...)
   em->string_table_tmp = va_format (em->string_table_tmp, fmt, &va);
   va_end (va);
 
+  /* String table entries MUST be NULL terminated */
+  len = vec_len (em->string_table_tmp);
+  ASSERT (len > 0);
+  if (em->string_table_tmp[len - 1] != 0)
+    vec_add1 (em->string_table_tmp, 0);
+
   /* See if we already have this string in the string table */
   p = hash_get_mem (em->string_table_hash, em->string_table_tmp);
 
@@ -582,11 +588,7 @@ elog_string (elog_main_t * em, char *fmt, ...)
       return (p[0]);
     }
 
-  /* We don't, so add it. String table entries MUST be NULL terminated */
-  len = vec_len (em->string_table_tmp);
-  ASSERT (len > 0);
-  if (em->string_table_tmp[len - 1] != 0)
-    vec_add1 (em->string_table_tmp, 0);
+  /* We don't, so add it. */
 
   offset = vec_len (em->string_table);
   vec_append (em->string_table, em->string_table_tmp);
