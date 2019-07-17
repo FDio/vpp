@@ -22,6 +22,30 @@
       "revId": "b11e4aefbee765c0c09bbe1386ec78920f9162fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a9fa319b_728343ae",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-07-17T13:04:15Z",
+      "side": 1,
+      "message": "Sure, but it is the common semantic with NULL-terminated C-string. I agree we are not as consistent as we could in VPP between non-NULL terminated string vectors and NULL-terminated C-string, but it is not the only place by far.",
+      "parentUuid": "c7a220a2_56d0b9ea",
+      "range": {
+        "startLine": 10,
+        "startChar": 25,
+        "endLine": 10,
+        "endChar": 40
+      },
+      "revId": "b11e4aefbee765c0c09bbe1386ec78920f9162fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
