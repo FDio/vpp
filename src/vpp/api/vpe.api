@@ -186,6 +186,7 @@ define show_version_reply
   string version [limit = 32];
   string build_date [limit = 32];
   string build_directory [limit = 256];
+  u8 dummy;
 };
 
 
