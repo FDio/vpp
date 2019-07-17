@@ -1334,10 +1334,10 @@ allocate_quicly_ctx (application_t * app, u8 is_client)
  *****************************************************************************/
 
 static int
-quic_connect_new_stream (session_endpoint_cfg_t * sep)
+quic_connect_new_stream (session_t * quic_session, u32 opaque)
 {
   uint64_t quic_session_handle;
-  session_t *quic_session, *stream_session;
+  session_t *stream_session;
   quic_stream_data_t *stream_data;
   quicly_stream_t *stream;
   quicly_conn_t *conn;
@@ -1347,12 +1347,11 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
   int rv;
 
   /*  Find base session to which the user want to attach a stream */
-  quic_session_handle = sep->transport_opts;
-  QUIC_DBG (2, "Opening new stream (qsession %u)", sep->transport_opts);
-  quic_session = session_get_from_handle (quic_session_handle);
+  quic_session_handle = session_handle (quic_session);
+  QUIC_DBG (2, "Opening new stream (qsession %u)", quic_session_handle);
 
-  if (quic_session->session_type !=
-      session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, sep->is_ip4))
+  if (session_type_transport_proto (quic_session->session_type) !=
+      TRANSPORT_PROTO_QUIC)
     {
       QUIC_DBG (1, "received incompatible session");
       return -1;
@@ -1415,7 +1414,7 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
       quicly_reset_stream (stream, QUIC_APP_ALLOCATION_ERROR);
       session_free_w_fifos (stream_session);
       quic_ctx_free (sctx);
-      return app_worker_connect_notify (app_wrk, NULL, sep->opaque);
+      return app_worker_connect_notify (app_wrk, NULL, opaque);
     }
 
   svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
@@ -1423,7 +1422,7 @@ quic_connect_new_stream (session_endpoint_cfg_t * sep)
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 
   stream_session->session_state = SESSION_STATE_READY;
-  if (app_worker_connect_notify (app_wrk, stream_session, sep->opaque))
+  if (app_worker_connect_notify (app_wrk, stream_session, opaque))
     {
       QUIC_DBG (1, "failed to notify app");
       quicly_reset_stream (stream, QUIC_APP_CONNECT_NOTIFY_ERROR);
@@ -1494,9 +1493,12 @@ quic_connect (transport_endpoint_cfg_t * tep)
 {
   QUIC_DBG (2, "Called quic_connect");
   session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) tep;
+  session_t *quic_session;
   sep = (session_endpoint_cfg_t *) tep;
-  if (sep->port == 0)		/* TODO add mask on transport_opts */
-    return quic_connect_new_stream (sep);
+
+  quic_session = session_get_from_handle_if_valid (sep->parent_handle);
+  if (quic_session)
+    return quic_connect_new_stream (quic_session, sep->opaque);
   else
     return quic_connect_new_connection (sep);
 }
