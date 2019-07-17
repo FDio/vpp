@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b8f4a93d_02438bf2",
+        "filename": "test/vpp_bond_interface.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-07-17T04:27:19Z",
+      "side": 1,
+      "message": "Can\u0027t use minus sign for variable name.",
+      "revId": "5f3dc43d771badbc6183b1affaf69a56b229b90b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
