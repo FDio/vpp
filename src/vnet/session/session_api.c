@@ -889,7 +889,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->sep.transport_proto = mp->proto;
       a->sep.peer.fib_index = mp->vrf;
       a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
-      a->sep_ext.transport_opts = mp->transport_opts;
+      a->sep_ext.parent_handle = mp->parent_handle;
       if (mp->hostname_len)
 	{
 	  vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);

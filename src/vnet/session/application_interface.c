@@ -79,10 +79,9 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
       return 1;
     }
   else if (unformat (input, "%U://session/%lu", unformat_transport_proto,
-		     &transport_proto, &sep->transport_opts))
+		     &transport_proto, &sep->parent_handle))
     {
       sep->transport_proto = transport_proto;
-      sep->is_ip4 = 1;
       sep->ip.ip4.as_u32 = 1;	/* ip need to be non zero in vnet */
       return 1;
     }
