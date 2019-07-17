@@ -341,6 +341,7 @@ typedef struct vppcom_main_t_
 extern vppcom_main_t *vcm;
 
 #define VCL_INVALID_SESSION_INDEX ((u32)~0)
+#define VCL_INVALID_SESSION_HANDLE ((u64)~0)
 #define VCL_INVALID_SEGMENT_INDEX ((u32)~0)
 #define VCL_INVALID_SEGMENT_HANDLE ((u64)~0)
 
