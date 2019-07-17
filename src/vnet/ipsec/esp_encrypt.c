@@ -65,6 +65,7 @@ typedef struct
   u32 sa_index;
   u32 spi;
   u32 seq;
+  u32 sa_seq_hi;
   u8 udp_encap;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -80,8 +81,9 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
 
   s =
     format (s,
-	    "esp: sa-index %d spi %u (0x%08x) seq %u crypto %U integrity %U%s",
-	    t->sa_index, t->spi, t->spi, t->seq, format_ipsec_crypto_alg,
+	    "esp: sa-index %d spi %u (0x%08x) seq %u sa-seq-hi %u crypto %U integrity %U%s",
+	    t->sa_index, t->spi, t->spi, t->seq, t->sa_seq_hi,
+	    format_ipsec_crypto_alg,
 	    t->crypto_alg, format_ipsec_integ_alg, t->integ_alg,
 	    t->udp_encap ? " udp-encap-enabled" : "");
   return s;
@@ -521,7 +523,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						    sizeof (*tr));
 	  tr->sa_index = sa_index0;
 	  tr->spi = sa0->spi;
-	  tr->seq = sa0->seq - 1;
+	  tr->seq = sa0->seq;
+	  tr->sa_seq_hi = sa0->seq_hi;
 	  tr->udp_encap = ipsec_sa_is_set_UDP_ENCAP (sa0);
 	  tr->crypto_alg = sa0->crypto_alg;
 	  tr->integ_alg = sa0->integ_alg;
