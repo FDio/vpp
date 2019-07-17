@@ -37,6 +37,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   svm
   vatplugin
   vppinfra
+  vppapiclient
   Threads::Threads
   rt m dl crypto
 )
@@ -65,4 +66,3 @@ add_vpp_executable(vpp_restart
   SOURCES restart.c
   LINK_LIBRARIES svm svmdb vppinfra Threads::Threads rt
 )
-

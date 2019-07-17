@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <limits.h>
 
+extern stat_client_main_t stat_client_main;
 vat_main_t vat_main;
 
 #include <vlibapi/api_helper_macros.h>
@@ -326,6 +327,7 @@ main (int argc, char **argv)
   u8 *this_input_file;
   u8 interactive = 1;
   u8 json_output = 0;
+  u8 *stat_socket_name = 0;
   int i;
   f64 timeout;
 
@@ -370,6 +372,8 @@ main (int argc, char **argv)
 	{
 	  vl_set_memory_root_path ((char *) chroot_prefix);
 	}
+      else if (unformat (a, "stat socket %s", &stat_socket_name))
+	;
       else
 	{
 	  fformat
@@ -380,6 +384,17 @@ main (int argc, char **argv)
 	     argv[0]);
 	  exit (1);
 	}
+    }
+
+  if (stat_socket_name)
+    {
+      if (stat_segment_connect ((char *) stat_socket_name) < 0)
+	{
+	  fformat (stderr, "stat segment socket '%s' not found",
+		   stat_socket_name);
+	  exit (1);
+	}
+      vam->stat_client_main = &stat_client_main;
     }
 
   if (output_file)
