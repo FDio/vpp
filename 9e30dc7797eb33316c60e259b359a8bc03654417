@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "66a7aa04_55c6587e",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2220,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-07-17T14:44:22Z",
+      "side": 1,
+      "message": "add numa_only here.",
+      "revId": "9e30dc7797eb33316c60e259b359a8bc03654417",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
