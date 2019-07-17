@@ -210,6 +210,80 @@ class TestIPv4(VppTestCase):
             self.verify_capture(i, pkts)
 
 
+class TestIPV4IfAddrRoute(VppTestCase):
+    """ IPv4 Interface Addr Route Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPV4IfAddrRoute, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPV4IfAddrRoute, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPV4IfAddrRoute, self).setUp()
+
+        # create 1 pg interface
+        self.create_pg_interfaces(range(1))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        super(TestIPV4IfAddrRoute, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def test_ipv4_ifaddr_route(self):
+        """ IPv4 Interface Address Route test
+
+        Test scenario:
+
+            - Create loopback
+            - Configure IPv4 address on loopback
+            - Verify that address is not in the FIB
+            - Bring loopback up
+            - Verify that address is in the FIB now
+            - Bring loopback down
+            - Verify that address is not in the FIB anymore
+            - Bring loopback up
+            - Configure IPv4 address on loopback
+            - Verify that address is in the FIB now
+        """
+
+        # create a loopback and configure IPv4
+        loopbacks = self.create_loopback_interfaces(1)
+        lo_if = self.lo_interfaces[0]
+
+        lo_if.local_ip4_prefix_len = 32
+        lo_if.config_ip4()
+
+        # The intf was down when addr was added -> entry not in FIB
+        fib4_dump = self.vapi.ip_route_dump(0)
+        self.assertFalse(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
+
+        # When intf is brought up, entry is added
+        lo_if.admin_up()
+        fib4_dump = self.vapi.ip_route_dump(0)
+        self.assertTrue(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
+
+        # When intf is brought down, entry is removed
+        lo_if.admin_down()
+        fib4_dump = self.vapi.ip_route_dump(0)
+        self.assertFalse(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
+
+        # Remove addr, bring up interface, re-add -> entry in FIB
+        lo_if.unconfig_ip4()
+        lo_if.admin_up()
+        lo_if.config_ip4()
+        fib4_dump = self.vapi.ip_route_dump(0)
+        self.assertTrue(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
+
+
 class TestICMPEcho(VppTestCase):
     """ ICMP Echo Test Case """
 
