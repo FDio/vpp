@@ -28,6 +28,12 @@
  */
 typedef enum fib_source_t_ {
     /**
+     * An invalid source
+     * This is not a real source, so don't use it to source a prefix.
+     * It exists here to provide a value for inexistant/uninitialized source
+     */
+    FIB_SOURCE_INVALID = 0,
+    /**
      * Marker. Add new values after this one.
      */
     FIB_SOURCE_FIRST,
@@ -156,6 +162,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
 #define FIB_SOURCE_MAX (FIB_SOURCE_LAST+1)
 
 #define FIB_SOURCES {					\
+    [FIB_SOURCE_INVALID] = "invalid",			\
     [FIB_SOURCE_SPECIAL] = "special",			\
     [FIB_SOURCE_INTERFACE] = "interface",		\
     [FIB_SOURCE_PROXY] = "proxy",                       \

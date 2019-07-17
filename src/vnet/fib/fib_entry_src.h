@@ -33,9 +33,9 @@ extern vlib_log_class_t fib_entry_logger;
                    format_fib_prefix,                   \
                    &_e->fe_prefix,                      \
                    format_fib_entry_flags,              \
-                    _e->fe_srcs[0].fes_entry_flags,     \
+                   fib_entry_get_flags_i(_e),           \
                    format_fib_source,                   \
-                   _e->fe_srcs[0].fes_src,              \
+                   fib_entry_get_source_i(_e),          \
                    ##_args);                            \
 }
 
@@ -316,6 +316,7 @@ extern void fib_entry_src_inherit (const fib_entry_t *cover,
 
 extern fib_forward_chain_type_t fib_entry_get_default_chain_type(
     const fib_entry_t *fib_entry);
+extern fib_source_t fib_entry_get_source_i(const fib_entry_t *fib_entry);
 extern fib_entry_flag_t fib_entry_get_flags_i(const fib_entry_t *fib_entry);
 
 extern fib_path_list_flags_t fib_entry_src_flags_2_path_list_flags(
