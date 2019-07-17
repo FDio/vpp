@@ -38,9 +38,6 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
-#define SESSION_INVALID_INDEX ((u32)~0)
-#define SESSION_INVALID_HANDLE ((u64)~0)
-
 #define CHECK(expected, result, _fmt, _args...)		\
     if (expected != result)				\
       ECHO_FAIL ("expected %d, got %d : " _fmt, expected, result, ##_args);
