@@ -36,12 +36,17 @@ typedef struct srv6_end_gtp6_param_s
 
 typedef struct srv6_end_gtp4_param_s
 {
-  u32 local_prefixlen;
+  ip6_address_t sr_prefix;
+  u32 sr_prefixlen;
+
+  ip6_address_t v6src_prefix;
+  u32 v6src_prefixlen;
+
+  u32 v4src_position;
 } srv6_end_gtp4_param_t;
 
 typedef struct srv6_end_main_v4_s
 {
-
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
@@ -55,7 +60,19 @@ typedef struct srv6_end_main_v4_s
 
 } srv6_end_main_v4_t;
 
+typedef struct srv6_end_main_v4_decap_s
+{
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+
+  u32 end_m_gtp4_d_node_index;
+  u32 error_node_index;
+
+  ip6_header_t cache_hdr;
+} srv6_end_main_v4_decap_t;
+
 extern srv6_end_main_v4_t srv6_end_main_v4;
+extern srv6_end_main_v4_decap_t srv6_end_main_v4_decap;
 extern vlib_node_registration_t srv6_end_m_gtp4_e;
 
 typedef struct srv6_end_main_v6_s
