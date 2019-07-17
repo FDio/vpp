@@ -173,7 +173,7 @@ typedef struct
   int n_accepted_sessions;
   u8 has_rx_evt;
   u32 attr;
-  u64 transport_opts;
+  u64 parent_handle;
   vppcom_epoll_t vep;
   int libc_epfd;
   svm_msg_q_t *our_evt_q;

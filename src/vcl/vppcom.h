@@ -105,7 +105,7 @@ typedef struct vppcom_endpt_t_
   uint8_t is_ip4;
   uint8_t *ip;
   uint16_t port;
-  uint64_t transport_opts;
+  uint64_t parent_handle;
 } vppcom_endpt_t;
 
 typedef uint32_t vcl_session_handle_t;
