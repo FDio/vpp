@@ -103,17 +103,17 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
       nhtype = SRV6_NHTYPE_NONE;
     }
   else if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv4",
-	 unformat_ip6_address, &sr_prefix, &sr_prefixklen))
+	 unformat_ip6_address, &sr_prefix, &sr_prefixlen))
     {
       nhtype = SRV6_NHTYPE_IPV4;
     }
   else if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv6",
-	 unformat_ip6_address, &sr_prefix, &sr_prefixklen))
+	 unformat_ip6_address, &sr_prefix, &sr_prefixlen))
     {
       nhtype = SRV6_NHTYPE_IPV6;
     }
   else if (unformat (input, "end.m.gtp6.d %U/%d nh-type none",
-	 unformat_ip6_address, &sr_prefix, &sr_prefixklen))
+	 unformat_ip6_address, &sr_prefix, &sr_prefixlen))
     {
       nhtype = SRV6_NHTYPE_NON_IP;
     }
