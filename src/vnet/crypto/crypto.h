@@ -65,8 +65,7 @@ typedef enum
   _(PENDING, "pending") \
   _(COMPLETED, "completed") \
   _(FAIL_NO_HANDLER, "no-handler") \
-  _(FAIL_BAD_HMAC, "bad-hmac") \
-  _(FAIL_DECRYPT, "decrypt-fail")
+  _(FAIL_BAD_HMAC, "bad-hmac")
 
 typedef enum
 {
