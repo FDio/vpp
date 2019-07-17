@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include(GNUInstallDirs)
+
 macro(add_vpp_library lib)
   cmake_parse_arguments(ARG
     ""
@@ -34,7 +36,7 @@ macro(add_vpp_library lib)
   endif()
   install(
     TARGETS ${lib}
-    DESTINATION lib
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
     COMPONENT ${ARG_COMPONENT}
   )
 
@@ -48,7 +50,7 @@ macro(add_vpp_library lib)
       get_filename_component(dir ${file} DIRECTORY)
       install(
 	FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
-	DESTINATION include/${lib}/${dir}
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${lib}/${dir}
 	COMPONENT vpp-dev
       )
     endforeach()
@@ -64,7 +66,7 @@ macro(add_vpp_library lib)
       get_filename_component(dir ${file} DIRECTORY)
       install(
 	FILES ${file}
-	DESTINATION include/${lib}/${dir}
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${lib}/${dir}
 	COMPONENT ${ARG_COMPONENT}-dev
       )
     endforeach()
