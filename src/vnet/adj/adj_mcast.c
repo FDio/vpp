@@ -329,7 +329,12 @@ format_adj_mcast (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
     CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
-    ip_adjacency_t * adj = adj_get(index);
+    ip_adjacency_t * adj;
+
+    if (!adj_is_valid(index))
+      return format(s, "<invalid adjacency>");
+
+    adj = adj_get(index);
 
     s = format(s, "%U-mcast: ",
                format_fib_protocol, adj->ia_nh_proto);
