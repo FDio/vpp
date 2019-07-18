@@ -113,6 +113,7 @@ define ip_route_add_del_reply
   u32 context;
   i32 retval;
   u32 stats_index;
+  u8 dummy;
 };
 
 /** \brief Dump IP routes from a table
