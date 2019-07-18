@@ -512,7 +512,7 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_DEQ, ctx->s, ({
 	ed->data[0] = SESSION_IO_EVT_TX;
-	ed->data[1] = ctx->max_dequeue;
+	ed->data[1] = ctx->can_deq;
 	ed->data[2] = len_to_deq;
 	ed->data[3] = ctx->left_to_snd;
   }));
@@ -559,23 +559,23 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 			       u32 max_segs, u8 peek_data)
 {
   u32 n_bytes_per_buf, n_bytes_per_seg;
-  ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
+  ctx->max_deq = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
   if (peek_data)
     {
       /* Offset in rx fifo from where to peek data */
       ctx->tx_offset = ctx->transport_vft->tx_fifo_offset (ctx->tc);
-      if (PREDICT_FALSE (ctx->tx_offset >= ctx->max_dequeue))
+      if (PREDICT_FALSE (ctx->tx_offset >= ctx->max_deq))
 	{
 	  ctx->max_len_to_snd = 0;
 	  return;
 	}
-      ctx->max_dequeue -= ctx->tx_offset;
+      ctx->can_deq = ctx->max_deq - ctx->tx_offset;
     }
   else
     {
       if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
 	{
-	  if (ctx->max_dequeue <= sizeof (ctx->hdr))
+	  if (ctx->max_deq <= sizeof (ctx->hdr))
 	    {
 	      ctx->max_len_to_snd = 0;
 	      return;
@@ -583,18 +583,20 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
 			 (u8 *) & ctx->hdr);
 	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
-	  ctx->max_dequeue = ctx->hdr.data_length - ctx->hdr.data_offset;
+	  ctx->can_deq = ctx->hdr.data_length - ctx->hdr.data_offset;
 	}
+      else
+	ctx->can_deq = ctx->max_deq;
     }
-  ASSERT (ctx->max_dequeue > 0);
+  ASSERT (ctx->can_deq > 0);
 
   /* Ensure we're not writing more than transport window allows */
-  if (ctx->max_dequeue < ctx->snd_space)
+  if (ctx->can_deq < ctx->snd_space)
     {
       /* Constrained by tx queue. Try to send only fully formed segments */
       ctx->max_len_to_snd =
-	(ctx->max_dequeue > ctx->snd_mss) ?
-	ctx->max_dequeue - ctx->max_dequeue % ctx->snd_mss : ctx->max_dequeue;
+	(ctx->can_deq > ctx->snd_mss) ?
+	ctx->can_deq - ctx->can_deq % ctx->snd_mss : ctx->can_deq;
       /* TODO Nagle ? */
     }
   else
@@ -619,6 +621,20 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
   ctx->deq_per_first_buf = clib_min (ctx->snd_mss,
 				     n_bytes_per_buf -
 				     TRANSPORT_MAX_HDRS_LEN);
+}
+
+always_inline int
+session_has_more_data (session_tx_context_t *ctx, u32 max_deq, u8 peek_data)
+{
+  if (peek_data)
+    return ctx->max_deq < max_deq;
+  else
+    {
+      if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
+	return max_deq > 0;
+      else
+	return ctx->max_deq - ctx->max_len_to_snd < max_deq;
+    }
 }
 
 always_inline int
@@ -661,21 +677,24 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 						   vm->clib_time.
 						   last_cpu_time,
 						   ctx->snd_mss);
-  if (ctx->snd_space == 0 || ctx->snd_mss == 0)
+  /* snd_space == 0 || snd_mss == 0 */
+  if (ctx->snd_space * ctx->snd_mss == 0)
     {
       session_evt_add_pending (wrk, elt);
       return SESSION_TX_NO_DATA;
     }
 
-  /* Allow enqueuing of a new event */
-  svm_fifo_unset_event (ctx->s->tx_fifo);
-
-  /* Check how much we can pull. */
   session_tx_set_dequeue_params (vm, ctx, VLIB_FRAME_SIZE - *n_tx_packets,
 				 peek_data);
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
-    return SESSION_TX_NO_DATA;
+    {
+      svm_fifo_unset_event (ctx->s->tx_fifo);
+      if (ctx->max_deq < svm_fifo_max_dequeue_cons (ctx->s->tx_fifo))
+	if (svm_fifo_set_event (ctx->s->tx_fifo))
+	  session_evt_add_pending (wrk, elt);
+      return SESSION_TX_NO_DATA;
+    }
 
   n_bufs_needed = ctx->n_segs_per_evt * ctx->n_bufs_per_seg;
   vec_validate_aligned (wrk->tx_buffers, n_bufs_needed - 1,
@@ -766,38 +785,53 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       n_left_to_next, bi0, next0);
     }
 
+  ASSERT (ctx->left_to_snd == 0);
+
   if (PREDICT_FALSE (n_trace > 0))
     session_tx_trace_frame (vm, node, next_index, to_next,
 			    ctx->n_segs_per_evt, ctx->s, n_trace);
   if (PREDICT_FALSE (n_bufs))
-    {
-      vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
-    }
+    vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+
   *n_tx_packets += ctx->n_segs_per_evt;
   transport_connection_update_tx_stats (ctx->tc, ctx->max_len_to_snd);
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-
-  /* If we couldn't dequeue all bytes mark as partially read */
-  ASSERT (ctx->left_to_snd == 0);
-  if (ctx->max_len_to_snd < ctx->max_dequeue)
-    if (svm_fifo_set_event (ctx->s->tx_fifo))
-      session_evt_add_pending (wrk, elt);
 
   if (!peek_data
       && ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
     {
       /* Fix dgram pre header */
-      if (ctx->max_len_to_snd < ctx->max_dequeue)
+      if (ctx->max_len_to_snd < ctx->can_deq)
 	svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
 				 sizeof (session_dgram_pre_hdr_t));
-      /* More data needs to be read */
-      else if (svm_fifo_max_dequeue_cons (ctx->s->tx_fifo) > 0)
-	if (svm_fifo_set_event (ctx->s->tx_fifo))
-	  session_evt_add_pending (wrk, elt);
 
       if (svm_fifo_needs_deq_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
 	session_dequeue_notify (ctx->s);
     }
+
+  /* If we couldn't dequeue all bytes mark as partially read */
+  if (ctx->max_len_to_snd < ctx->can_deq)
+    {
+      session_evt_add_pending (wrk, elt);
+    }
+  else
+    {
+      u32 max_deq = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
+
+      if (session_has_more_data (ctx, max_deq, peek_data))
+	{
+	  session_evt_add_pending (wrk, elt);
+	}
+      else
+	{
+	  svm_fifo_unset_event (ctx->s->tx_fifo);
+	  /* Data was just enqueued. Make sure we have event */
+	  if (max_deq < svm_fifo_max_dequeue_cons (ctx->s->tx_fifo))
+	    if (svm_fifo_set_event (ctx->s->tx_fifo))
+	      session_evt_add_pending (wrk, elt);
+	}
+    }
+
   return SESSION_TX_OK;
 }
 
