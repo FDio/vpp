@@ -52,9 +52,9 @@ static void
 app_listener_free (application_t * app, app_listener_t * app_listener)
 {
   clib_bitmap_free (app_listener->workers);
-  pool_put (app->listeners, app_listener);
   if (CLIB_DEBUG)
     clib_memset (app_listener, 0xfa, sizeof (*app_listener));
+  pool_put (app->listeners, app_listener);
 }
 
 session_handle_t
