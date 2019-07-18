@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d01158e3_3386440c",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-18T14:18:24Z",
+      "side": 1,
+      "message": "Please put it outside of interface type condition.",
+      "revId": "525faf799884ed9ff663f33dc1ee3f5175246f38",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cd9400e0_7218d5c1",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-18T14:18:24Z",
+      "side": 1,
+      "message": "remove this line also :)",
+      "revId": "525faf799884ed9ff663f33dc1ee3f5175246f38",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
