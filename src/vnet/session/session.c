@@ -155,11 +155,10 @@ session_program_transport_close (session_t * s)
   if (vlib_thread_is_main_w_barrier () || thread_index == s->thread_index)
     {
       wrk = session_main_get_worker (s->thread_index);
-      elt = session_evt_elt_alloc (wrk);
+      elt = session_evt_alloc_ctrl (wrk);
       clib_memset (&elt->evt, 0, sizeof (session_event_t));
       elt->evt.session_handle = session_handle (s);
       elt->evt.event_type = SESSION_CTRL_EVT_CLOSE;
-      session_evt_add_ctrl (wrk, elt);
     }
   else
     session_send_ctrl_evt_to_thread (s, SESSION_CTRL_EVT_CLOSE);
@@ -188,6 +187,7 @@ session_alloc (u32 thread_index)
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->app_index = APP_INVALID_INDEX;
+  s->old_evt = CLIB_LLIST_INVALID_INDEX;
   return s;
 }
 
