@@ -60,7 +60,7 @@ const static char *const *const dpo_nodes[DPO_PROTO_NUM] = {
 static u8 fn_name[] = "SRv6-End.M.GTP4.D-plugin";
 static u8 keyword_str[] = "end.m.gtp4.d";
 static u8 def_str[] = "Endpoint function with dencapsulation for IPv6/GTP tunnel";
-static u8 param_str[] = "<sr-prefix>/<sr-prefixlen> v6src_prefix <v6src_prefix>/<prefixlen>";
+static u8 param_str[] = "<sr-prefix>/<sr-prefixlen> v6src_prefix <v6src_prefix>/<prefixlen> [nhtype <nhtype>]";
 
 static u8 *
 clb_format_srv6_end_m_gtp4_d (u8 * s, va_list * args)
@@ -101,13 +101,7 @@ clb_unformat_srv6_end_m_gtp4_d (unformat_input_t * input, va_list * args)
   u32 v6src_prefixlen;
   u8 nhtype;
 
-  if (unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d",
-	 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
-	 unformat_ip6_address, &v6src_prefix, &v6src_prefixlen))
-    {
-      nhtype = SRV6_NHTYPE_NONE;
-    }
-  else if (unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d nhtype ipv4",
+  if (unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d nhtype ipv4",
 	 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
 	 unformat_ip6_address, &v6src_prefix, &v6src_prefixlen))
     {
@@ -124,6 +118,12 @@ clb_unformat_srv6_end_m_gtp4_d (unformat_input_t * input, va_list * args)
 	 unformat_ip6_address, &v6src_prefix, &v6src_prefixlen))
     {
       nhtype = SRV6_NHTYPE_NON_IP;
+    }
+  else if (unformat (input, "end.m.gtp4.d %U/%d v6src_prefix %U/%d",
+	 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
+	 unformat_ip6_address, &v6src_prefix, &v6src_prefixlen))
+    {
+      nhtype = SRV6_NHTYPE_NONE;
     }
   else
     {
