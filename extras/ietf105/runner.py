@@ -658,7 +658,7 @@ class Program(object):
 
         c1.vppctl_exec("set sr encaps source addr A1::1")
         c1.vppctl_exec("sr policy add bsid D4:: next D2:: next D3::")
-        c1.vppctl_exec("sr localsid prefix ::ffff:ac14:0001/128 behavior end.m.gtp4.d D4::/32 v6src_prefix C1::/64")
+        c1.vppctl_exec("sr localsid prefix ::ffff:ac14:0001/128 behavior end.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv4")
 
         c2.vppctl_exec("sr localsid address D2:: behavior end")
 
@@ -666,7 +666,6 @@ class Program(object):
 
         c4.vppctl_exec("sr localsid prefix D4::/32 behavior end.m.gtp4.e v4src_position 64")
 
-        #c1.set_ipv6_route("eth1", "A1::2", "D2::/128")
         c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
         c2.set_ipv6_route("eth1", "A1::1", "C::/120")
         c3.set_ipv6_route("eth2", "A3::2", "D4::/32")

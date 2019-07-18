@@ -564,10 +564,33 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 		  ip6srv->sr.length += sizeof(ip6_address_t) / 8;
 		  ip6srv->sr.segments[0] = seg;
 
-		  if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
-		    ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
-		  else
-		    ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+		  if (ls_param->nhtype == SRV6_NHTYPE_NONE)
+	 	    {
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
+		        ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
+		      else
+		        ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+		    {
+		      ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
+			{
+			  // Bad encap packet.
+			}
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
+		    {
+		      ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+			{
+			  // Bad encap packet.
+			}
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
+		    {
+		      ip6srv->sr.protocol = IP_PROTOCOL_NONE;
+		    }
 
 		  clib_memcpy_fast (&ip6srv->sr.segments[1],
 				  (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
@@ -579,8 +602,33 @@ VLIB_NODE_FN (srv6_end_m_gtp4_d) (vlib_main_t * vm,
 
 		  ip6srv->ip.dst_address = seg;
 
-		  if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
-		    ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		  if (ls_param->nhtype == SRV6_NHTYPE_NONE)
+	 	    {
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
+		        ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
+		      else
+		        ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+		    {
+		      ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
+			{
+			  // Bad encap packet.
+			}
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
+		    {
+		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+			{
+			  // Bad encap packet.
+			}
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
+		    {
+		      ip6srv->ip.protocol = IP_PROTOCOL_NONE;
+		    }
 		}
 
  	      ip6srv->ip.src_address = src6;
@@ -980,10 +1028,33 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	          ip6srv->sr.length += sizeof(ip6_address_t) / 8;
 	          ip6srv->sr.segments[0] = seg0;
 
-	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
-		    ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
-		  else
-		    ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+		  if (ls_param->nhtype == SRV6_NHTYPE_NONE)
+	 	    {
+	              if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
+		        ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
+		      else
+		        ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+	 	    {
+		      ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
+			{
+			  // Bad encap packet.
+			}
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
+	 	    {
+		      ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+			{
+			  // Bad encap packet.
+			}
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
+	 	    {
+		      ip6srv->sr.protocol = IP_PROTOCOL_NONE;
+		    }
 
 	          clib_memcpy_fast (&ip6srv->sr.segments[1],
 	            (u8 *)(sl->rewrite + sizeof(ip6_header_t) + sizeof(ip6_sr_header_t)),
@@ -996,8 +1067,31 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		  ip6srv->ip.src_address = dst0;
 		  ip6srv->ip.dst_address = seg0;
 
-	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
-	 	    ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		  if (ls_param->nhtype == SRV6_NHTYPE_NONE)
+		    {
+	              if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+	 	        ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+		    {
+		      ip6srv->ip.protocol = IP_PROTOCOL_IP_IN_IP;
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
+			{
+			  // Bad encap packet.
+			}
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
+		    {
+		      ip6srv->ip.protocol = IP_PROTOCOL_IPV6;
+		      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+			{
+			  // Bad encap packet.
+			}
+		    }
+		  else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
+		    {
+		      ip6srv->ip.protocol = IP_PROTOCOL_NONE;
+		    }
 		}
 
 	      ip6srv->ip.payload_length = clib_host_to_net_u16 (len0 + hdr_len - sizeof(ip6_header_t));
@@ -1202,15 +1296,34 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      ip6srv->ip.payload_length = clib_host_to_net_u16 (len0 + hdr_len - sizeof(ip6_header_t));
 	      ip6srv->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
-	      if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
-		{
-		  ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
-		}
-	      else
+ 	      if (ls_param->nhtype == SRV6_NHTYPE_NONE)
 	        {
-		  ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60)
+	            ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
+	          else
+	            ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+	        }
+	      else if (ls_param->nhtype == SRV6_NHTYPE_IPV4)
+	        {
+	          ip6srv->sr.protocol = IP_PROTOCOL_IP_IN_IP;
+	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x40)
+	  	    {
+		      // Bad encap packet.
+		    }
 		}
-
+	      else if (ls_param->nhtype == SRV6_NHTYPE_IPV6)
+	        {
+	          ip6srv->sr.protocol = IP_PROTOCOL_IPV6;
+	          if ((encap->ip_version_traffic_class_and_flow_label & 0xF0) != 0x60)
+	  	    {
+		      // Bad encap packet.
+		    }
+	        }
+	      else if (ls_param->nhtype == SRV6_NHTYPE_NON_IP)
+	        {
+	          ip6srv->sr.protocol = IP_PROTOCOL_NONE;
+	        }
+	      
 	      ip6srv->sr.length += ((sizeof(ip6_address_t) * 2) / 8);
 	      ip6srv->sr.segments[0] = dst0;
 	      ip6srv->sr.segments[1] = seg0;

@@ -28,14 +28,27 @@
 
 #define SRV6_GTP_UDP_DST_PORT 2152
 
+#define SRV6_NHTYPE_NONE 	0
+#define SRV6_NHTYPE_IPV4 	1
+#define SRV6_NHTYPE_IPV6 	2
+#define SRV6_NHTYPE_NON_IP	3
+
+#ifndef IP_PROTOCOL_NONE
+#define IP_PROTOCOL_NONE	59
+#endif
+
 typedef struct srv6_end_gtp6_param_s
 {
+  u8 nhtype;
+
   ip6_address_t sr_prefix;
   u32 sr_prefixlen;
 } srv6_end_gtp6_param_t;
 
 typedef struct srv6_end_gtp4_param_s
 {
+  u8 nhtype;
+
   ip6_address_t sr_prefix;
   u32 sr_prefixlen;
 
