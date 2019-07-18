@@ -172,8 +172,12 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
   snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
 						       thread_index);
   clib_bihash_kv_8_8_t kv, value;
-  snat_user_key_t u_key;
   snat_user_t *u;
+  const snat_user_key_t u_key = {
+    .addr = ses->in2out.addr,
+    .fib_index = ses->in2out.fib_index
+  };
+  const u8 u_static = snat_is_session_static (ses);
 
   clib_dlist_remove (tsm->list_pool, ses->per_user_index);
   pool_put_index (tsm->list_pool, ses->per_user_index);
@@ -181,13 +185,11 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
   vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			   pool_elts (tsm->sessions));
 
-  u_key.addr = ses->in2out.addr;
-  u_key.fib_index = ses->in2out.fib_index;
   kv.key = u_key.as_u64;
   if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
     {
       u = pool_elt_at_index (tsm->users, value.value);
-      if (snat_is_session_static (ses))
+      if (u_static)
 	u->nstaticsessions--;
       else
 	u->nsessions--;
