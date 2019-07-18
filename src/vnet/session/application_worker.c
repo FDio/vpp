@@ -109,9 +109,9 @@ app_worker_free (app_worker_t * app_wrk)
 	segment_manager_free (sm);
     }
 
-  pool_put (app_workers, app_wrk);
   if (CLIB_DEBUG)
     clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));
+  pool_put (app_workers, app_wrk);
 }
 
 application_t *
