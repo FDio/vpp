@@ -84,8 +84,11 @@ M:	Damjan Marion <damarion@cisco.com>
 M:	Steven Luong <sluong@cisco.com>
 M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	src/vnet/devices/tap/
-F:	src/vnet/devices/virtio/node.c
-F:	src/vnet/devices/virtio/device.c
+
+VNET Native Virtio Drivers
+I:      virtio
+M:      Mohsin Kazmi <sykazmi@cisco.com>
+F:      src/vnet/devices/virtio/
 
 VNET Etherent
 I:	ethernet
