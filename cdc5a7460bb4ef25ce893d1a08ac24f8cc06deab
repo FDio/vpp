@@ -22,6 +22,30 @@
       "revId": "cdc5a7460bb4ef25ce893d1a08ac24f8cc06deab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f8bc0181_34fd91bf",
+        "filename": "src/tools/vppapigen/generate_json.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-18T14:29:32Z",
+      "side": 1,
+      "message": "https://stackoverflow.com/a/3294899",
+      "parentUuid": "a35f2081_8ecb3406",
+      "range": {
+        "startLine": 40,
+        "startChar": 13,
+        "endLine": 40,
+        "endChar": 27
+      },
+      "revId": "cdc5a7460bb4ef25ce893d1a08ac24f8cc06deab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
