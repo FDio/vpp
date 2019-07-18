@@ -58,9 +58,9 @@ udp_connection_alloc (u32 thread_index)
 void
 udp_connection_free (udp_connection_t * uc)
 {
-  pool_put (udp_main.connections[uc->c_thread_index], uc);
   if (CLIB_DEBUG)
     clib_memset (uc, 0xFA, sizeof (*uc));
+  pool_put (udp_main.connections[uc->c_thread_index], uc);
 }
 
 void
