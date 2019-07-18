@@ -21,20 +21,23 @@ BASE_DIR = subprocess.check_output('git rev-parse --show-toplevel',
 vppapigen_bin = pathlib.Path(
     '%s/src/tools/vppapigen/vppapigen.py' % BASE_DIR).as_posix()
 
-api_types = ['vnet', 'plugins']
 src_dir_depth = 3
 output_path = pathlib.Path(
     '%s/build-root/install-vpp-native/vpp/share/vpp/api/' % BASE_DIR)
 output_path_debug = pathlib.Path(
     '%s/build-root/install-vpp_debug-native/vpp/share/vpp/api/' % BASE_DIR)
 
-output_dir_map = {'vnet': 'core',
-                  'plugins': 'plugins'}
+output_dir_map = {
+    'plugins': 'plugins',
+    'vlibmemory': 'core',
+    'vnet': 'core',
+    'vpp': 'core',
+}
 
 
 def api_search_globs(src_dir):
     globs = []
-    for g in api_types:
+    for g in output_dir_map:
         globs.extend(list(src_dir.glob('%s/**/*.api' % g)))
     return globs
 
