@@ -3,6 +3,7 @@
 * @subpage release_notes_1908
 * @subpage release_notes_19041
 * @subpage release_notes_1904
+* @subpage release_notes_19013
 * @subpage release_notes_19012
 * @subpage release_notes_19011
 * @subpage release_notes_1901
@@ -396,6 +397,14 @@ Found 90 api message signature differences
 | ------- | ------- |
 | [7c44d78ef](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c44d78ef) | IKEv2 to plugin |
 
+
+@page release_notes_19013 Release notes for VPP 19.01.3
+
+This is bug fix release.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1901)
 
 @page release_notes_19012 Release notes for VPP 19.01.2
 
