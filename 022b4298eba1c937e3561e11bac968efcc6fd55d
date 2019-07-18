@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a65b43c8_18db198c",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-18T14:35:39Z",
+      "side": 1,
+      "message": "would you please try removing this check entirely? I can\u0027t figure out the reason for it.",
+      "range": {
+        "startLine": 88,
+        "startChar": 0,
+        "endLine": 104,
+        "endChar": 5
+      },
+      "revId": "022b4298eba1c937e3561e11bac968efcc6fd55d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
