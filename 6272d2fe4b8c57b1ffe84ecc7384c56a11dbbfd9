@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "40fbfa27_f249601f",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-18T10:36:57Z",
+      "side": 1,
+      "message": "do you need the VXLAN_TUNNEL flag? When is packet a VXLAN_TUNNEL but not a VXLAN_IP4_TUNNEL or VXLAN_IP6_TUNNEL. \nyou can instead define VXLAN_TUNNEL \u003d (VXLAN_IP4_TUNNEL | VXLAN_IP6_TUNNEL)\nso you can check for either.",
+      "revId": "6272d2fe4b8c57b1ffe84ecc7384c56a11dbbfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "450cd683_b5459322",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 448,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-18T10:36:57Z",
+      "side": 1,
+      "message": "if you\u0027re going to define the enum flags here, which is fine, then don\u0027t use an annonymous enum. instead give it a new type and use the type when declare the gso_flags member. If you use strong typing the compiler can help you with any bugs.",
+      "revId": "6272d2fe4b8c57b1ffe84ecc7384c56a11dbbfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
