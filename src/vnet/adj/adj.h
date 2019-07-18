@@ -432,7 +432,13 @@ extern int adj_per_adj_counters;
 static inline ip_adjacency_t *
 adj_get (adj_index_t adj_index)
 {
-    return (vec_elt_at_index(adj_pool, adj_index));
+    return (pool_elt_at_index(adj_pool, adj_index));
+}
+
+static inline int
+adj_is_valid(adj_index_t adj_index)
+{
+  return !(pool_is_free_index(adj_pool, adj_index));
 }
 
 /**
