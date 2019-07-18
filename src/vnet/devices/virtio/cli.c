@@ -59,7 +59,7 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
-                "[feature-mask <hex-mask>]",
+                "[feature-mask <hex-mask>] [gso-enabled]",
   .function = virtio_pci_create_command_fn,
 };
 /* *INDENT-ON* */
