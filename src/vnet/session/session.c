@@ -189,6 +189,7 @@ session_alloc (u32 thread_index)
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->app_index = APP_INVALID_INDEX;
+  s->old_evt = CLIB_LLIST_INVALID_INDEX;
   return s;
 }
 

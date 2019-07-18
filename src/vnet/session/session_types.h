@@ -162,17 +162,17 @@ typedef struct session_
   /** State in session layer state machine. See @ref session_state_t */
   volatile u8 session_state;
 
+  /** Index of the thread that allocated the session */
+  u8 thread_index;
+
+  /** Session flags. See @ref session_flags_t */
+  u8 flags;
+
   /** Index in thread pool where session was allocated */
   u32 session_index;
 
   /** Index of the app worker that owns the session */
   u32 app_wrk_index;
-
-  /** Index of the thread that allocated the session */
-  u8 thread_index;
-
-  /** Session flags. See @ref session_flags_t */
-  u32 flags;
 
   /** Index of the transport connection associated to the session */
   u32 connection_index;
@@ -188,6 +188,8 @@ typedef struct session_
     /** App listener index in app's listener pool if a listener */
     u32 al_index;
   };
+
+  u32 old_evt;
 
   /** Opaque, for general use */
   u32 opaque;
