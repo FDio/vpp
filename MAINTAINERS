@@ -87,6 +87,11 @@ F:	src/vnet/devices/tap/
 F:	src/vnet/devices/virtio/node.c
 F:	src/vnet/devices/virtio/device.c
 
+VNET Native Virtio Drivers
+I:      virtio
+M:      Mohsin Kazmi <sykazmi@cisco.com>
+F:      src/vnet/devices/virtio/
+
 VNET Etherent
 I:	ethernet
 M:	Dave Barach <dave@barachs.net>
