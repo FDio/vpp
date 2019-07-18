@@ -139,6 +139,10 @@ format_ip_adjacency (u8 * s, va_list * args)
 
     adj_index = va_arg (*args, u32);
     fiaf = va_arg (*args, format_ip_adjacency_flags_t);
+
+    if (!adj_is_valid(adj_index))
+      return format(s, "<invalid adjacency>");
+
     adj = adj_get(adj_index);
 
     switch (adj->lookup_next_index)
