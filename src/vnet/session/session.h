@@ -48,7 +48,8 @@ typedef struct session_tx_context_
   session_t *s;
   transport_proto_vft_t *transport_vft;
   transport_connection_t *tc;
-  u32 max_dequeue;
+  u32 max_deq;
+  u32 can_deq;
   u32 snd_space;
   u32 left_to_snd;
   u32 tx_offset;
@@ -123,6 +124,7 @@ extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
+session_evt_elt_t * session_evt_alloc_ctrl (session_worker_t * wrk);
 
 typedef struct session_main_
 {
@@ -185,40 +187,6 @@ extern vlib_node_registration_t session_queue_pre_input_node;
 
 #define SESSION_Q_PROCESS_FLUSH_FRAMES	1
 #define SESSION_Q_PROCESS_STOP		2
-
-static inline session_evt_elt_t *
-session_evt_elt_alloc (session_worker_t * wrk)
-{
-  session_evt_elt_t *elt;
-  pool_get (wrk->event_elts, elt);
-  return elt;
-}
-
-static inline void
-session_evt_elt_free (session_worker_t * wrk, session_evt_elt_t * elt)
-{
-  pool_put (wrk->event_elts, elt);
-}
-
-static inline session_evt_elt_t *
-session_evt_old_head (session_worker_t * wrk)
-{
-  return pool_elt_at_index (wrk->event_elts, wrk->old_head);
-}
-
-static inline void
-session_evt_add_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
-{
-  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       pool_elt_at_index (wrk->event_elts, wrk->ctrl_head));
-}
-
-static inline void
-session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
-{
-  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       session_evt_old_head (wrk));
-}
 
 always_inline u8
 session_is_valid (u32 si, u8 thread_index)
