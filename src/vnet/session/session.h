@@ -48,7 +48,8 @@ typedef struct session_tx_context_
   session_t *s;
   transport_proto_vft_t *transport_vft;
   transport_connection_t *tc;
-  u32 max_dequeue;
+  u32 max_deq;
+  u32 can_deq;
   u32 snd_space;
   u32 left_to_snd;
   u32 tx_offset;
@@ -186,40 +187,6 @@ extern vlib_node_registration_t session_queue_pre_input_node;
 #define SESSION_Q_PROCESS_FLUSH_FRAMES	1
 #define SESSION_Q_PROCESS_STOP		2
 
-static inline session_evt_elt_t *
-session_evt_elt_alloc (session_worker_t * wrk)
-{
-  session_evt_elt_t *elt;
-  pool_get (wrk->event_elts, elt);
-  return elt;
-}
-
-static inline void
-session_evt_elt_free (session_worker_t * wrk, session_evt_elt_t * elt)
-{
-  pool_put (wrk->event_elts, elt);
-}
-
-static inline session_evt_elt_t *
-session_evt_old_head (session_worker_t * wrk)
-{
-  return pool_elt_at_index (wrk->event_elts, wrk->old_head);
-}
-
-static inline void
-session_evt_add_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
-{
-  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       pool_elt_at_index (wrk->event_elts, wrk->ctrl_head));
-}
-
-static inline void
-session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
-{
-  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       session_evt_old_head (wrk));
-}
-
 always_inline u8
 session_is_valid (u32 si, u8 thread_index)
 {
@@ -272,6 +239,42 @@ session_get_from_handle_if_valid (session_handle_t handle)
   u32 session_index, thread_index;
   session_parse_handle (handle, &session_index, &thread_index);
   return session_get_if_valid (session_index, thread_index);
+}
+
+static inline session_evt_elt_t *
+session_evt_elt_alloc (session_worker_t * wrk)
+{
+  session_evt_elt_t *elt;
+  pool_get (wrk->event_elts, elt);
+  return elt;
+}
+
+static inline void
+session_evt_elt_free (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  pool_put (wrk->event_elts, elt);
+}
+
+static inline session_evt_elt_t *
+session_evt_old_head (session_worker_t * wrk)
+{
+  return pool_elt_at_index (wrk->event_elts, wrk->old_head);
+}
+
+static inline void
+session_evt_add_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
+		       pool_elt_at_index (wrk->event_elts, wrk->ctrl_head));
+}
+
+static inline void
+session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  session_t *s = session_get (elt->evt.session_index, wrk->vm->thread_index);
+  s->old_evt = clib_llist_entry_index (wrk->event_elts, elt);
+  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
+		       session_evt_old_head (wrk));
 }
 
 u64 session_segment_handle (session_t * s);
