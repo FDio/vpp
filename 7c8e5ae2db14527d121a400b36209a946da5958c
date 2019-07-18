@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c2e4cffd_a70fc607",
+        "filename": "MAINTAINERS",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-18T14:46:53Z",
+      "side": 1,
+      "message": "remove these virtio references",
+      "range": {
+        "startLine": 88,
+        "startChar": 20,
+        "endLine": 88,
+        "endChar": 26
+      },
+      "revId": "7c8e5ae2db14527d121a400b36209a946da5958c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
