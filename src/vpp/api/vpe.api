@@ -165,7 +165,7 @@ define add_node_next_reply
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-define show_version
+define version_show
 {
   u32 client_index;
   u32 context;
@@ -178,7 +178,7 @@ define show_version
     @param version  - version of the program
     @param build_directory - root of the workspace where the program was built
 */
-define show_version_reply
+define version_show_reply
 {
   u32 context;
   i32 retval;
