@@ -746,23 +746,42 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 			       u32 max_segs, u8 peek_data)
 {
   u32 n_bytes_per_buf, n_bytes_per_seg;
-  ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
+
+  ctx->max_deq = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
+  ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
+
+  if (PREDICT_FALSE (ctx->snd_mss == 0))
+    {
+      ctx->max_len_to_snd = 0;
+      return;
+    }
+
+  ctx->snd_space = transport_connection_snd_space (ctx->tc,
+						   vm->clib_time.
+						   last_cpu_time,
+						   ctx->snd_mss);
+  if (ctx->snd_space == 0)
+    {
+      ctx->max_len_to_snd = 0;
+      return;
+    }
+
   if (peek_data)
     {
       /* Offset in rx fifo from where to peek data */
       ctx->tx_offset = ctx->transport_vft->tx_fifo_offset (ctx->tc);
-      if (PREDICT_FALSE (ctx->tx_offset >= ctx->max_dequeue))
+      if (PREDICT_FALSE (ctx->tx_offset >= ctx->max_deq))
 	{
 	  ctx->max_len_to_snd = 0;
 	  return;
 	}
-      ctx->max_dequeue -= ctx->tx_offset;
+      ctx->can_deq = ctx->max_deq - ctx->tx_offset;
     }
   else
     {
       if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
 	{
-	  if (ctx->max_dequeue <= sizeof (ctx->hdr))
+	  if (ctx->max_deq <= sizeof (ctx->hdr))
 	    {
 	      ctx->max_len_to_snd = 0;
 	      return;
@@ -770,18 +789,20 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
 			 (u8 *) & ctx->hdr);
 	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
-	  ctx->max_dequeue = ctx->hdr.data_length - ctx->hdr.data_offset;
+	  ctx->can_deq = ctx->hdr.data_length - ctx->hdr.data_offset;
 	}
+      else
+	ctx->can_deq = ctx->max_deq;
     }
-  ASSERT (ctx->max_dequeue > 0);
+  ASSERT (ctx->can_deq > 0);
 
   /* Ensure we're not writing more than transport window allows */
-  if (ctx->max_dequeue < ctx->snd_space)
+  if (ctx->can_deq < ctx->snd_space)
     {
       /* Constrained by tx queue. Try to send only fully formed segments */
       ctx->max_len_to_snd =
-	(ctx->max_dequeue > ctx->snd_mss) ?
-	ctx->max_dequeue - ctx->max_dequeue % ctx->snd_mss : ctx->max_dequeue;
+	(ctx->can_deq > ctx->snd_mss) ?
+	ctx->can_deq - ctx->can_deq % ctx->snd_mss : ctx->can_deq;
       /* TODO Nagle ? */
     }
   else
@@ -809,6 +830,73 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 }
 
 always_inline int
+session_has_more_data (session_tx_context_t *ctx, u32 max_deq, u8 peek_data)
+{
+  if (peek_data)
+    return ctx->max_deq < max_deq;
+  else
+    {
+      if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
+	return max_deq > 0;
+      else
+	return ctx->max_deq - ctx->max_len_to_snd < max_deq;
+    }
+}
+
+always_inline void
+session_event_update (session_worker_t * wrk, session_evt_elt_t *elt,
+                      u8 peek_data, u8 have_deq)
+{
+  session_tx_context_t *ctx = &wrk->ctx;
+  u32 max_deq;
+
+  /* If new, move to old to ensure fairness */
+  if (ctx->s->old_evt == CLIB_LLIST_INVALID_INDEX)
+    {
+      ctx->s->old_evt = clib_llist_entry_index (wrk->event_elts, elt);
+      session_evt_add_old (wrk, elt);
+      return;
+    }
+
+  if (have_deq)
+    {
+      if ((peek_data && ctx->max_len_to_snd < ctx->max_deq)
+	  || (!peek_data && svm_fifo_max_dequeue_cons (ctx->s->tx_fifo)))
+	{
+	  session_evt_add_old (wrk, elt);
+	  return;
+	}
+    }
+  else
+    {
+      if (!ctx->snd_space && ctx->max_deq)
+	{
+	  session_evt_add_old (wrk, elt);
+	  return;
+	}
+    }
+
+  max_deq = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
+
+  if (session_has_more_data (ctx, max_deq, peek_data))
+    {
+      session_evt_add_old (wrk, elt);
+    }
+  else
+    {
+      svm_fifo_unset_event (ctx->s->tx_fifo);
+      ctx->s->old_evt = CLIB_LLIST_INVALID_INDEX;
+      /* Data was just enqueued. Make sure we have event */
+      if (max_deq < svm_fifo_max_dequeue_cons (ctx->s->tx_fifo))
+	if (svm_fifo_set_event (ctx->s->tx_fifo))
+	  {
+	    ctx->s->old_evt = clib_llist_entry_index (wrk->event_elts, elt);
+	    session_evt_add_old (wrk, elt);
+	  }
+    }
+}
+
+always_inline int
 session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				vlib_node_runtime_t * node,
 				session_evt_elt_t * elt,
@@ -827,7 +915,10 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   if (PREDICT_FALSE ((rv = session_tx_not_ready (ctx->s, peek_data))))
     {
       if (rv < 2)
-	session_evt_add_old (wrk, elt);
+	{
+	  ctx->s->old_evt = clib_llist_entry_index (wrk->event_elts, elt);
+	  session_evt_add_old (wrk, elt);
+	}
       return SESSION_TX_NO_DATA;
     }
 
@@ -862,26 +953,13 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	}
     }
 
-  ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
-  ctx->snd_space = transport_connection_snd_space (ctx->tc,
-						   vm->clib_time.
-						   last_cpu_time,
-						   ctx->snd_mss);
-
-  if (ctx->snd_space == 0 || ctx->snd_mss == 0)
-    {
-      session_evt_add_old (wrk, elt);
-      return SESSION_TX_NO_DATA;
-    }
-
-  /* Allow enqueuing of a new event */
-  svm_fifo_unset_event (ctx->s->tx_fifo);
-
-  /* Check how much we can pull. */
   session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
-    return SESSION_TX_NO_DATA;
+    {
+      session_event_update (wrk, elt, peek_data, 0);
+      return SESSION_TX_NO_DATA;
+    }
 
   n_bufs_needed = ctx->n_segs_per_evt * ctx->n_bufs_per_seg;
   vec_validate_aligned (wrk->tx_buffers, n_bufs_needed - 1,
@@ -891,9 +969,9 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     {
       if (n_bufs)
 	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
-      session_evt_add_old (wrk, elt);
       vlib_node_increment_counter (wrk->vm, node->node_index,
 				   SESSION_QUEUE_ERROR_NO_BUFFER, 1);
+      session_event_update (wrk, elt, peek_data, 1);
       return SESSION_TX_NO_BUFFERS;
     }
 
@@ -985,30 +1063,22 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   transport_connection_update_tx_bytes (ctx->tc, ctx->max_len_to_snd);
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
-  SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
-	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
-
-  /* If we couldn't dequeue all bytes mark as partially read */
-  ASSERT (ctx->left_to_snd == 0);
-  if (ctx->max_len_to_snd < ctx->max_dequeue)
-    if (svm_fifo_set_event (ctx->s->tx_fifo))
-      session_evt_add_old (wrk, elt);
+  SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_deq,
+               ctx->max_len_to_snd < ctx->can_deq, wrk->last_vlib_time);
 
   if (!peek_data
       && ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
     {
       /* Fix dgram pre header */
-      if (ctx->max_len_to_snd < ctx->max_dequeue)
+      if (ctx->max_len_to_snd < ctx->can_deq)
 	svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
 				 sizeof (session_dgram_pre_hdr_t));
-      /* More data needs to be read */
-      else if (svm_fifo_max_dequeue_cons (ctx->s->tx_fifo) > 0)
-	if (svm_fifo_set_event (ctx->s->tx_fifo))
-	  session_evt_add_old (wrk, elt);
-
       if (svm_fifo_needs_deq_ntf (ctx->s->tx_fifo, ctx->max_len_to_snd))
 	session_dequeue_notify (ctx->s);
     }
+
+  session_event_update (wrk, elt, peek_data, 1);
+
   return SESSION_TX_OK;
 }
 
