@@ -191,10 +191,12 @@ static void
 tcp_half_open_connection_del (tcp_connection_t * tc)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
+  u32 index;
   clib_spinlock_lock_if_init (&tm->half_open_lock);
-  pool_put_index (tm->half_open_connections, tc->c_c_index);
+  index = tc->c_c_index;
   if (CLIB_DEBUG)
     clib_memset (tc, 0xFA, sizeof (*tc));
+  pool_put_index (tm->half_open_connections, index);
   clib_spinlock_unlock_if_init (&tm->half_open_lock);
 }
 
