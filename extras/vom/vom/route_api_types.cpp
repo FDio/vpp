@@ -123,11 +123,68 @@ from_api(const vapi_type_fib_path& p)
   return (route::path(route::path::special_t::DROP));
 };
 
+vapi_enum_ip_dscp
+to_api(const ip_dscp_t& d)
+{
+  return static_cast<vapi_enum_ip_dscp>((int)d);
+}
+const ip_dscp_t&
+from_api(vapi_enum_ip_dscp d)
+{
+  switch (d) {
+    case IP_API_DSCP_CS0:
+      return ip_dscp_t::DSCP_CS0;
+    case IP_API_DSCP_CS1:
+      return ip_dscp_t::DSCP_CS1;
+    case IP_API_DSCP_CS2:
+      return ip_dscp_t::DSCP_CS2;
+    case IP_API_DSCP_CS3:
+      return ip_dscp_t::DSCP_CS3;
+    case IP_API_DSCP_CS4:
+      return ip_dscp_t::DSCP_CS4;
+    case IP_API_DSCP_CS5:
+      return ip_dscp_t::DSCP_CS5;
+    case IP_API_DSCP_CS6:
+      return ip_dscp_t::DSCP_CS6;
+    case IP_API_DSCP_CS7:
+      return ip_dscp_t::DSCP_CS7;
+    case IP_API_DSCP_EF:
+      return ip_dscp_t::DSCP_EF;
+    case IP_API_DSCP_AF11:
+      return ip_dscp_t::DSCP_AF11;
+    case IP_API_DSCP_AF12:
+      return ip_dscp_t::DSCP_AF12;
+    case IP_API_DSCP_AF13:
+      return ip_dscp_t::DSCP_AF13;
+    case IP_API_DSCP_AF21:
+      return ip_dscp_t::DSCP_AF21;
+    case IP_API_DSCP_AF22:
+      return ip_dscp_t::DSCP_AF22;
+    case IP_API_DSCP_AF23:
+      return ip_dscp_t::DSCP_AF23;
+    case IP_API_DSCP_AF31:
+      return ip_dscp_t::DSCP_AF31;
+    case IP_API_DSCP_AF32:
+      return ip_dscp_t::DSCP_AF32;
+    case IP_API_DSCP_AF33:
+      return ip_dscp_t::DSCP_AF33;
+    case IP_API_DSCP_AF41:
+      return ip_dscp_t::DSCP_AF41;
+    case IP_API_DSCP_AF42:
+      return ip_dscp_t::DSCP_AF42;
+    case IP_API_DSCP_AF43:
+      return ip_dscp_t::DSCP_AF43;
+  }
+
+  return ip_dscp_t::DSCP_CS0;
+}
+
 }; // namespace VOM
-   /*
-    * fd.io coding-style-patch-verification: ON
-    *
-    * Local Variables:
-    * eval: (c-set-style "mozilla")
-    * End:
-    */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "mozilla")
+ * End:
+ */

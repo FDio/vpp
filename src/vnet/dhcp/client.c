@@ -17,6 +17,7 @@
 #include <vnet/dhcp/client.h>
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/qos/qos_types.h>
 
 dhcp_client_main_t dhcp_client_main;
 static u8 *format_dhcp_client_state (u8 * s, va_list * va);
@@ -434,6 +435,19 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   ip->ttl = 128;
   ip->protocol = IP_PROTOCOL_UDP;
 
+  ip->tos = c->dscp;
+
+  if (ip->tos)
+    {
+      /*
+       * Setup the buffer's QoS settings so any QoS marker on the egress
+       * interface, that might set VLAN CoS bits, based on this DSCP setting
+       */
+      vnet_buffer2 (b)->qos.source = QOS_SOURCE_IP;
+      vnet_buffer2 (b)->qos.bits = ip->tos;
+      b->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
+    }
+
   if (is_broadcast)
     {
       /* src = 0.0.0.0, dst = 255.255.255.255 */
@@ -825,6 +839,9 @@ format_dhcp_client (u8 * s, va_list * va)
 	      format_vnet_sw_if_index_name, dcm->vnet_main, c->sw_if_index,
 	      format_dhcp_client_state, c->state);
 
+  if (0 != c->dscp)
+    s = format (s, "dscp %d ", c->dscp);
+
   if (c->leased_address.as_u32)
     {
       s = format (s, "addr %U/%d gw %U",
@@ -942,6 +959,7 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       c->hostname = a->hostname;
       c->client_identifier = a->client_identifier;
       c->set_broadcast_flag = a->set_broadcast_flag;
+      c->dscp = a->dscp;
       c->ai_ucast = ADJ_INDEX_INVALID;
       c->ai_bcast = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
 					 VNET_LINK_IP4,
@@ -1011,7 +1029,7 @@ dhcp_client_config (u32 is_add,
 		    u8 * hostname,
 		    u8 * client_id,
 		    dhcp_event_cb_t event_callback,
-		    u8 set_broadcast_flag, u32 pid)
+		    u8 set_broadcast_flag, ip_dscp_t dscp, u32 pid)
 {
   dhcp_client_add_del_args_t _a, *a = &_a;
   int rv;
@@ -1023,6 +1041,7 @@ dhcp_client_config (u32 is_add,
   a->pid = pid;
   a->event_callback = event_callback;
   a->set_broadcast_flag = set_broadcast_flag;
+  a->dscp = dscp;
   vec_validate (a->hostname, strlen ((char *) hostname) - 1);
   strncpy ((char *) a->hostname, (char *) hostname, vec_len (a->hostname));
   vec_validate (a->client_identifier, strlen ((char *) client_id) - 1);

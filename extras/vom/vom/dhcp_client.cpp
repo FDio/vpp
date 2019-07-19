@@ -15,6 +15,7 @@
 
 #include "vom/dhcp_client.hpp"
 #include "vom/dhcp_client_cmds.hpp"
+#include "vom/route_api_types.hpp"
 #include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
@@ -47,11 +48,13 @@ dhcp_client::event_handler dhcp_client::m_evh;
 dhcp_client::dhcp_client(const interface& itf,
                          const std::string& hostname,
                          bool set_broadcast_flag,
+                         const ip_dscp_t& dscp,
                          event_listener* ev)
   : m_itf(itf.singular())
   , m_hostname(hostname)
   , m_client_id(l2_address_t::ZERO)
   , m_set_broadcast_flag(set_broadcast_flag)
+  , m_dscp(dscp)
   , m_binding(0)
   , m_evl(ev)
   , m_event_cmd(get_event_cmd())
@@ -62,11 +65,13 @@ dhcp_client::dhcp_client(const interface& itf,
                          const std::string& hostname,
                          const l2_address_t& client_id,
                          bool set_broadcast_flag,
+                         const ip_dscp_t& dscp,
                          event_listener* ev)
   : m_itf(itf.singular())
   , m_hostname(hostname)
   , m_client_id(client_id)
   , m_set_broadcast_flag(set_broadcast_flag)
+  , m_dscp(dscp)
   , m_binding(0)
   , m_evl(ev)
   , m_event_cmd(get_event_cmd())
@@ -78,6 +83,7 @@ dhcp_client::dhcp_client(const dhcp_client& o)
   , m_hostname(o.m_hostname)
   , m_client_id(o.m_client_id)
   , m_set_broadcast_flag(o.m_set_broadcast_flag)
+  , m_dscp(o.m_dscp)
   , m_binding(0)
   , m_evl(o.m_evl)
   , m_event_cmd(o.m_event_cmd)
@@ -96,7 +102,7 @@ bool
 dhcp_client::operator==(const dhcp_client& l) const
 {
   return ((key() == l.key()) && (m_hostname == l.m_hostname) &&
-          (m_client_id == l.m_client_id));
+          (m_client_id == l.m_client_id && m_dscp == l.m_dscp));
 }
 
 const dhcp_client::key_t&
@@ -125,8 +131,8 @@ void
 dhcp_client::replay()
 {
   if (m_binding) {
-    HW::enqueue(new dhcp_client_cmds::bind_cmd(m_binding, m_itf->handle(),
-                                               m_hostname, m_client_id));
+    HW::enqueue(new dhcp_client_cmds::bind_cmd(
+      m_binding, m_itf->handle(), m_hostname, m_client_id, false, m_dscp));
   }
 }
 
@@ -135,7 +141,8 @@ dhcp_client::to_string() const
 {
   std::ostringstream s;
   s << "DHCP-client: " << m_itf->to_string() << " hostname:" << m_hostname
-    << " client_id:[" << m_client_id << "] " << m_binding.to_string();
+    << " client_id:[" << m_client_id << "] "
+    << "dscp:" << m_dscp.to_string() << " " << m_binding.to_string();
   if (m_lease)
     s << " " << m_lease->to_string();
   else
@@ -151,8 +158,8 @@ dhcp_client::update(const dhcp_client& desired)
    * the desired state is always that the interface should be created
    */
   if (!m_binding) {
-    HW::enqueue(new dhcp_client_cmds::bind_cmd(m_binding, m_itf->handle(),
-                                               m_hostname, m_client_id));
+    HW::enqueue(new dhcp_client_cmds::bind_cmd(
+      m_binding, m_itf->handle(), m_hostname, m_client_id, false, m_dscp));
   }
 
   if (desired.m_lease)
@@ -276,7 +283,8 @@ dhcp_client::event_handler::handle_populate(const client_db::key_t& key)
     std::string hostname =
       reinterpret_cast<const char*>(payload.lease.hostname);
     l2_address_t l2(payload.client.id + 1);
-    dhcp_client dc(*itf, hostname, l2, payload.client.set_broadcast_flag);
+    dhcp_client dc(*itf, hostname, l2, payload.client.set_broadcast_flag,
+                   from_api(payload.client.dscp));
     dc.lease(std::make_shared<dhcp_client::lease_t>(
       s, itf, from_bytes(0, payload.lease.router_address), pfx, hostname,
       mac_address_t(payload.lease.host_mac)));

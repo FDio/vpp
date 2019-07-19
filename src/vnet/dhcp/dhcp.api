@@ -15,6 +15,8 @@
 
 option version = "2.0.1";
 
+import "vnet/ip/ip_types.api";
+
 /** \brief DHCP Proxy config add / del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -70,6 +72,7 @@ autoreply define dhcp_proxy_set_vss
            via dhcp_compl_event API message if non-zero
     @param set_broadcast_flag - in the DHCP Discover to control
                                 how the resulting OFFER is addressed.
+    @param dscp - DSCP value set in IP packets sent by the client
     @param pid - sender's pid
 */
 typeonly define dhcp_client
@@ -79,6 +82,7 @@ typeonly define dhcp_client
   u8 id[64];
   u8 want_dhcp_event;
   u8 set_broadcast_flag;
+  vl_api_ip_dscp_t dscp;
   u32 pid;
 };
 

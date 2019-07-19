@@ -34,8 +34,8 @@ enum ip_ecn : u8 {
 
 /* DSCP code points - RFC 2474
    https://tools.ietf.org/html/rfc2474
+   Values other than these RFC defined values are accepted.
 */
-
 enum ip_dscp : u8 {
   IP_API_DSCP_CS0 =  0,
   IP_API_DSCP_CS1 = 8,

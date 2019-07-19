@@ -96,6 +96,37 @@ nh_proto_t::from_address(const boost::asio::ip::address& addr)
   return IPV4;
 }
 
+const ip_dscp_t ip_dscp_t::DSCP_CS0(0, "CS0");
+const ip_dscp_t ip_dscp_t::DSCP_CS1(8, "CS1");
+const ip_dscp_t ip_dscp_t::DSCP_CS2(16, "CS2");
+const ip_dscp_t ip_dscp_t::DSCP_CS3(24, "CS3");
+const ip_dscp_t ip_dscp_t::DSCP_CS4(32, "CS4");
+const ip_dscp_t ip_dscp_t::DSCP_CS5(40, "CS5");
+const ip_dscp_t ip_dscp_t::DSCP_CS6(48, "CS6");
+const ip_dscp_t ip_dscp_t::DSCP_CS7(50, "CS7");
+const ip_dscp_t ip_dscp_t::DSCP_AF11(10, "AF11");
+const ip_dscp_t ip_dscp_t::DSCP_AF12(12, "AF12");
+const ip_dscp_t ip_dscp_t::DSCP_AF13(14, "AF13");
+const ip_dscp_t ip_dscp_t::DSCP_AF21(18, "AF21");
+const ip_dscp_t ip_dscp_t::DSCP_AF22(20, "AF22");
+const ip_dscp_t ip_dscp_t::DSCP_AF23(22, "AF23");
+const ip_dscp_t ip_dscp_t::DSCP_AF31(26, "AF31");
+const ip_dscp_t ip_dscp_t::DSCP_AF32(28, "AF32");
+const ip_dscp_t ip_dscp_t::DSCP_AF33(30, "AF33");
+const ip_dscp_t ip_dscp_t::DSCP_AF41(34, "AF41");
+const ip_dscp_t ip_dscp_t::DSCP_AF42(36, "AF42");
+const ip_dscp_t ip_dscp_t::DSCP_AF43(38, "AF43");
+const ip_dscp_t ip_dscp_t::DSCP_EF(46, "EF");
+
+ip_dscp_t::ip_dscp_t(int v, const std::string& s)
+  : enum_base<ip_dscp_t>(v, s)
+{
+}
+ip_dscp_t::ip_dscp_t(int v)
+  : enum_base<ip_dscp_t>(v, std::to_string(v))
+{
+}
+
 /**
  * The all Zeros prefix
  */

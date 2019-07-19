@@ -1032,7 +1032,8 @@ class VppPapiProvider(object):
                            client_id='',
                            is_add=1,
                            set_broadcast_flag=1,
-                           want_dhcp_events=0):
+                           want_dhcp_events=0,
+                           dscp=0):
         return self.api(
             self.papi.dhcp_client_config,
             {
@@ -1043,6 +1044,7 @@ class VppPapiProvider(object):
                     'id': client_id,
                     'want_dhcp_event': want_dhcp_events,
                     'set_broadcast_flag': set_broadcast_flag,
+                    'dscp': dscp,
                     'pid': os.getpid()}
             })
 
