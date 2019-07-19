@@ -494,6 +494,7 @@ vhost_user_socket_read (clib_file_t * uf)
       ASSERT (vui->virtio_net_hdr_sz < VLIB_BUFFER_PRE_DATA_SIZE);
       vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
       vui->is_ready = 0;
+      vhost_user_update_iface_state (vui);
       break;
 
     case VHOST_USER_SET_MEM_TABLE:
