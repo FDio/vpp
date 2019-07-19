@@ -44,9 +44,11 @@ enum fib_path_flags
 {
   FIB_API_PATH_FLAG_NONE = 0,
   /* the path must resolve via an attached route */
-  FIB_API_PATH_FLAG_RESOLVE_VIA_ATTACHED,
+  FIB_API_PATH_FLAG_RESOLVE_VIA_ATTACHED = 1,
   /* the path must resolve via a host route */
-  FIB_API_PATH_FLAG_RESOLVE_VIA_HOST,
+  FIB_API_PATH_FLAG_RESOLVE_VIA_HOST = 2,
+  /* pop a Pseudo Wire Control Word as well */
+  FIB_API_PATH_FLAG_POP_PW_CW = 4,
 };
 
 /* \brief A description of the 'next-hop' for a path

@@ -43,6 +43,7 @@
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/dpo/l3_proxy_dpo.h>
 #include <vnet/dpo/ip6_ll_dpo.h>
+#include <vnet/dpo/pw_cw.h>
 
 /**
  * Array of char* names for the DPO types and protos
@@ -588,6 +589,7 @@ dpo_module_init (vlib_main_t * vm)
     mpls_disp_dpo_module_init();
     dvr_dpo_module_init();
     l3_proxy_dpo_module_init();
+    pw_cw_dpo_module_init();
 
     return (NULL);
 }

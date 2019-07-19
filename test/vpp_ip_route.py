@@ -64,6 +64,7 @@ class FibPathFlags:
     FIB_PATH_FLAG_NONE = 0
     FIB_PATH_FLAG_RESOLVE_VIA_ATTACHED = 1
     FIB_PATH_FLAG_RESOLVE_VIA_HOST = 2
+    FIB_PATH_FLAG_POP_PW_CW = 4
 
 
 class MplsLspMode:

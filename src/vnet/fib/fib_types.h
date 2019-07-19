@@ -383,6 +383,11 @@ typedef enum fib_route_path_flags_t_
     FIB_ROUTE_PATH_ICMP_UNREACH = (1 << 15),
     FIB_ROUTE_PATH_ICMP_PROHIBIT = (1 << 16),
     FIB_ROUTE_PATH_CLASSIFY = (1 << 17),
+
+    /**
+     * Pop a Psuedo Wire Control Word
+     */
+    FIB_ROUTE_PATH_POP_PW_CW = (1 << 18),
 } fib_route_path_flags_t;
 
 /**

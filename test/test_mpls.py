@@ -2043,89 +2043,133 @@ class TestMPLSL2(VppTestCase):
     def test_vpls(self):
         """ Virtual Private LAN Service """
         #
-        # Create an L2 MPLS tunnel
+        # Create a L2 MPLS tunnels
         #
-        mpls_tun = VppMPLSTunnelInterface(
+        mpls_tun1 = VppMPLSTunnelInterface(
             self,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(42)])],
             is_l2=1)
-        mpls_tun.add_vpp_config()
-        mpls_tun.admin_up()
+        mpls_tun1.add_vpp_config()
+        mpls_tun1.admin_up()
+
+        mpls_tun2 = VppMPLSTunnelInterface(
+            self,
+            [VppRoutePath(self.pg0.remote_ip4,
+                          self.pg0.sw_if_index,
+                          labels=[VppMplsLabel(43)])],
+            is_l2=1)
+        mpls_tun2.add_vpp_config()
+        mpls_tun2.admin_up()
 
         #
-        # Create a label entry to for 55 that does L2 input to the tunnel
+        # Create a label entries, 55 and 56, that do L2 input to the tunnel
+        # the latter includes a Psuedo Wire Control Word
         #
         route_55_eos = VppMplsRoute(
             self, 55, 1,
             [VppRoutePath("0.0.0.0",
-                          mpls_tun.sw_if_index,
+                          mpls_tun1.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
                           proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)],
             eos_proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)
+
+        route_56_eos = VppMplsRoute(
+            self, 56, 1,
+            [VppRoutePath("0.0.0.0",
+                          mpls_tun2.sw_if_index,
+                          type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
+                          flags=FibPathFlags.FIB_PATH_FLAG_POP_PW_CW,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)],
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)
+
+        # move me
+        route_56_eos.add_vpp_config()
         route_55_eos.add_vpp_config()
+
+        self.logger.info(self.vapi.cli("sh mpls fib 56"))
 
         #
         # add to tunnel to the customers bridge-domain
         #
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=mpls_tun.sw_if_index, bd_id=1)
+            rx_sw_if_index=mpls_tun1.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=mpls_tun2.sw_if_index, bd_id=1)
         self.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=1)
 
         #
-        # Packet from the customer interface and from the core
+        # Packet from host on the customer interface to each host
+        # reachable over the core, and vice-versa
         #
-        p_cust = (Ether(dst="00:00:de:ad:ba:be",
-                        src="00:00:de:ad:be:ef") /
-                  IP(src="10.10.10.10", dst="11.11.11.11") /
-                  UDP(sport=1234, dport=1234) /
-                  Raw('\xa5' * 100))
-        p_core = (Ether(src="00:00:de:ad:ba:be",
-                        dst="00:00:de:ad:be:ef") /
-                  IP(dst="10.10.10.10", src="11.11.11.11") /
-                  UDP(sport=1234, dport=1234) /
-                  Raw('\xa5' * 100))
+        p_cust1 = (Ether(dst="00:00:de:ad:ba:b1",
+                         src="00:00:de:ad:be:ef") /
+                   IP(src="10.10.10.10", dst="11.11.11.11") /
+                   UDP(sport=1234, dport=1234) /
+                   Raw('\xa5' * 100))
+        p_cust2 = (Ether(dst="00:00:de:ad:ba:b2",
+                         src="00:00:de:ad:be:ef") /
+                   IP(src="10.10.10.10", dst="11.11.11.12") /
+                   UDP(sport=1234, dport=1234) /
+                   Raw('\xa5' * 100))
+        p_core1 = (Ether(dst=self.pg0.local_mac,
+                         src=self.pg0.remote_mac) /
+                   MPLS(label=55, ttl=64) /
+                   Ether(src="00:00:de:ad:ba:b1",
+                         dst="00:00:de:ad:be:ef") /
+                   IP(dst="10.10.10.10", src="11.11.11.11") /
+                   UDP(sport=1234, dport=1234) /
+                   Raw('\xa5' * 100))
+        p_core2 = (Ether(dst=self.pg0.local_mac,
+                         src=self.pg0.remote_mac) /
+                   MPLS(label=56, ttl=64) /
+                   Raw('\x01' * 4) /  # PW CW
+                   Ether(src="00:00:de:ad:ba:b2",
+                         dst="00:00:de:ad:be:ef") /
+                   IP(dst="10.10.10.10", src="11.11.11.12") /
+                   UDP(sport=1234, dport=1234) /
+                   Raw('\xa5' * 100))
 
         #
         # The BD is learning, so send in one of each packet to learn
         #
-        p_core_encap = (Ether(dst=self.pg0.local_mac,
-                              src=self.pg0.remote_mac) /
-                        MPLS(label=55, ttl=64) /
-                        p_core)
 
-        self.pg1.add_stream(p_cust)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.add_stream(p_core_encap)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
+        # 2 packets due to BD flooding
+        rx = self.send_and_expect(self.pg1, p_cust1, self.pg0, n_rx=2)
+        rx = self.send_and_expect(self.pg1, p_cust2, self.pg0, n_rx=2)
 
-        # we've learnt this so expect it be be forwarded
-        rx0 = self.pg1.get_capture(1)
+        # we've learnt this so expect it be be forwarded not flooded
+        rx = self.send_and_expect(self.pg0, [p_core1], self.pg1)
+        self.assertEqual(rx[0][Ether].dst, p_cust1[Ether].src)
+        self.assertEqual(rx[0][Ether].src, p_cust1[Ether].dst)
 
-        self.assertEqual(rx0[0][Ether].dst, p_core[Ether].dst)
-        self.assertEqual(rx0[0][Ether].src, p_core[Ether].src)
+        rx = self.send_and_expect(self.pg0, [p_core2], self.pg1)
+        self.assertEqual(rx[0][Ether].dst, p_cust2[Ether].src)
+        self.assertEqual(rx[0][Ether].src, p_cust2[Ether].dst)
 
         #
-        # now a stream in each direction
+        # now a stream in each direction from each host
         #
-        self.pg1.add_stream(p_cust * NUM_PKTS)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx0 = self.pg0.get_capture(NUM_PKTS)
-
-        self.verify_capture_tunneled_ethernet(rx0, p_cust*NUM_PKTS,
+        rx = self.send_and_expect(self.pg1, p_cust1 * NUM_PKTS, self.pg0)
+        self.verify_capture_tunneled_ethernet(rx, p_cust1 * NUM_PKTS,
                                               [VppMplsLabel(42)])
+
+        rx = self.send_and_expect(self.pg1, p_cust2 * NUM_PKTS, self.pg0)
+        self.verify_capture_tunneled_ethernet(rx, p_cust2 * NUM_PKTS,
+                                              [VppMplsLabel(43)])
+
+        rx = self.send_and_expect(self.pg0, p_core1 * NUM_PKTS, self.pg1)
+        rx = self.send_and_expect(self.pg0, p_core2 * NUM_PKTS, self.pg1)
 
         #
         # remove interfaces from customers bridge-domain
         #
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=mpls_tun.sw_if_index, bd_id=1, enable=0)
+            rx_sw_if_index=mpls_tun1.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=mpls_tun2.sw_if_index, bd_id=1, enable=0)
         self.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0)
 
