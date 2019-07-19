@@ -186,6 +186,8 @@ fib_api_path_decode (vl_api_fib_path_t *in,
         out->frp_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_HOST;
     if (in->flags & FIB_API_PATH_FLAG_RESOLVE_VIA_ATTACHED)
         out->frp_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED;
+    if (in->flags & FIB_API_PATH_FLAG_POP_PW_CW)
+        out->frp_flags |= FIB_ROUTE_PATH_POP_PW_CW;
 
     switch (in->type)
     {

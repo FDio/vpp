@@ -26,6 +26,7 @@
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
+#include <vnet/dpo/pw_cw.h>
 
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
@@ -1233,6 +1234,8 @@ fib_path_route_flags_to_cfg_flags (const fib_route_path_t *rpath)
 {
     fib_path_cfg_flags_t cfg_flags = FIB_PATH_CFG_FLAG_NONE;
 
+    if (rpath->frp_flags & FIB_ROUTE_PATH_POP_PW_CW)
+	cfg_flags |= FIB_PATH_CFG_FLAG_POP_PW_CW;
     if (rpath->frp_flags & FIB_ROUTE_PATH_RESOLVE_VIA_HOST)
 	cfg_flags |= FIB_PATH_CFG_FLAG_RESOLVE_HOST;
     if (rpath->frp_flags & FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED)
@@ -2380,6 +2383,16 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
     case FIB_PATH_TYPE_BIER_IMP:
     case FIB_PATH_TYPE_DVR:
         break;
+    }
+
+    if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_POP_PW_CW)
+    {
+        dpo_id_t tmp = DPO_INVALID;
+
+        dpo_copy(&tmp, dpo);
+
+        pw_cw_dpo_create(&tmp, dpo);
+        dpo_reset(&tmp);
     }
 }
 

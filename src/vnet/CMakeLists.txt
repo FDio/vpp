@@ -1364,6 +1364,7 @@ list(APPEND VNET_SOURCES
   dpo/mpls_label_dpo.c
   dpo/l3_proxy_dpo.c
   dpo/dvr_dpo.c
+  dpo/pw_cw.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES

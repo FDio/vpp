@@ -537,6 +537,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED;
         }
+        else if (unformat (input, "pop-pw-cw"))
+        {
+            rpath->frp_flags |= FIB_ROUTE_PATH_POP_PW_CW;
+        }
         else if (unformat (input,
                            "ip4-lookup-in-table %d",
                            &rpath->frp_fib_index))
