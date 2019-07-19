@@ -33,27 +33,16 @@ macro(add_vpp_packaging name)
     set(OS_${_name} ${_value})
   endforeach()
 
-  # extract version from git
   execute_process(
-    COMMAND git describe --long --match v*
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    OUTPUT_VARIABLE VER
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/../..
+    COMMAND scripts/version
+    OUTPUT_VARIABLE VPP_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
-  string(REGEX REPLACE "v(.*)-([0-9]+)-(g[0-9a-f]+)" "\\1;\\2;\\3" VER ${VER})
-  list(GET VER 0 tag)
-  string(REPLACE "-" "~" tag ${tag})
-  list(GET VER 1 commit_num)
-  list(GET VER 2 commit_name)
 
   #define DEB and RPM version numbers
-  if(${commit_num} EQUAL 0)
-    set(deb_ver "${tag}")
-    set(rpm_ver "${tag}")
-  else()
-    set(deb_ver "${tag}~${commit_num}~${commit_name}")
-    set(rpm_ver "${tag}~${commit_num}_${commit_name}")
-  endif()
+  set(deb_ver "${VPP_VERSION}")
+  set(rpm_ver "${VPP_VERSION}")
 
   get_cmake_property(components COMPONENTS)
 
