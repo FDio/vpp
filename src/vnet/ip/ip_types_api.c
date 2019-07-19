@@ -95,6 +95,18 @@ ip_proto_encode (ip_protocol_t ipp)
   return (clib_host_to_net_u32 (IP_API_PROTO_TCP));
 }
 
+ip_dscp_t
+ip_dscp_decode (u8 in)
+{
+  return ((ip_dscp_t) in);
+}
+
+u8
+ip_dscp_encode (ip_dscp_t dscp)
+{
+  return (dscp);
+}
+
 void
 ip6_address_encode (const ip6_address_t * in, vl_api_ip6_address_t out)
 {

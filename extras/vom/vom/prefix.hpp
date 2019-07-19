@@ -75,6 +75,45 @@ private:
  */
 std::ostream& operator<<(std::ostream& os, const l3_proto_t& l3p);
 
+/**
+ * IP DSCP values
+ */
+class ip_dscp_t : public enum_base<ip_dscp_t>
+{
+public:
+  /* unfortunately some of the CSX names are defined in terminos.h
+   * as macros, hence the longer names */
+  const static ip_dscp_t DSCP_CS0;
+  const static ip_dscp_t DSCP_CS1;
+  const static ip_dscp_t DSCP_CS2;
+  const static ip_dscp_t DSCP_CS3;
+  const static ip_dscp_t DSCP_CS4;
+  const static ip_dscp_t DSCP_CS5;
+  const static ip_dscp_t DSCP_CS6;
+  const static ip_dscp_t DSCP_CS7;
+  const static ip_dscp_t DSCP_AF11;
+  const static ip_dscp_t DSCP_AF12;
+  const static ip_dscp_t DSCP_AF13;
+  const static ip_dscp_t DSCP_AF21;
+  const static ip_dscp_t DSCP_AF22;
+  const static ip_dscp_t DSCP_AF23;
+  const static ip_dscp_t DSCP_AF31;
+  const static ip_dscp_t DSCP_AF32;
+  const static ip_dscp_t DSCP_AF33;
+  const static ip_dscp_t DSCP_AF41;
+  const static ip_dscp_t DSCP_AF42;
+  const static ip_dscp_t DSCP_AF43;
+  const static ip_dscp_t DSCP_EF;
+
+  /**
+   * Constructor allows the creation of any DSCP value
+   */
+  ip_dscp_t(int v);
+
+private:
+  ip_dscp_t(int v, const std::string& s);
+};
+
 namespace route {
 /**
  * type def the table-id
