@@ -113,6 +113,10 @@ typedef struct session_worker_
 
   u32 last_tx_packets;
 
+#if SESSION_DEBUG
+  /** last event poll time by thread */
+  f64 last_event_poll;
+#endif
 } session_worker_t;
 
 typedef int (session_fifo_rx_fn) (vlib_main_t * vm,
@@ -177,14 +181,6 @@ typedef struct session_main_
 
   /** Preallocate session config parameter */
   u32 preallocated_sessions;
-
-#if SESSION_DEBUG
-  /**
-   * last event poll time by thread
-   * Debug only. Will cause false cache-line sharing as-is
-   */
-  f64 *last_event_poll_by_thread;
-#endif
 
 } session_main_t;
 
