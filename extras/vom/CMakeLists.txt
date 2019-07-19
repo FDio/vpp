@@ -37,8 +37,18 @@ find_package(Boost OPTIONAL_COMPONENTS system filesystem)
 
 add_subdirectory(vom)
 
+set(VPP_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../../src")
+# scripts/version provides ALSO the build number
+execute_process(
+  WORKING_DIRECTORY ${VPP_SRC}
+  COMMAND scripts/version
+  OUTPUT_VARIABLE VPP_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 add_vpp_packaging(
   NAME "vom"
   VENDOR "fd.io"
   DESCRIPTION "VPP Object Model"
+  VERSION ${VPP_VERSION}
 )

@@ -61,8 +61,17 @@ endif ()
 add_subdirectory(src)
 add_subdirectory(examples)
 
+# scripts/version provides ALSO the build number
+execute_process(
+  WORKING_DIRECTORY ${VPP_SRC}
+  COMMAND scripts/version
+  OUTPUT_VARIABLE VPP_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 add_vpp_packaging(
   NAME "memif"
   VENDOR "fd.io"
   DESCRIPTION "Shared Memory Interface"
+  VERSION ${VPP_VERSION}
 )
