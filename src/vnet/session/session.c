@@ -176,7 +176,7 @@ session_free (session_t * s)
       pool_put (session_main.wrk[thread_index].sessions, s);
       return;
     }
-  SESSION_EVT_DBG (SESSION_EVT_FREE, s);
+  SESSION_EVT (SESSION_EVT_FREE, s);
   pool_put (session_main.wrk[s->thread_index].sessions, s);
 }
 
@@ -518,12 +518,7 @@ session_enqueue_notify_inline (session_t * s)
       return 0;
     }
 
-  /* *INDENT-OFF* */
-  SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
-      ed->data[0] = SESSION_IO_EVT_RX;
-      ed->data[1] = svm_fifo_max_dequeue_prod (s->rx_fifo);
-  }));
-  /* *INDENT-ON* */
+  SESSION_EVT (SESSION_EVT_ENQ, s, svm_fifo_max_dequeue_prod (s->rx_fifo));
 
   s->flags &= ~SESSION_F_RX_EVT;
   if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
@@ -1392,10 +1387,6 @@ session_manager_main_enable (vlib_main_t * vm)
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
     }
-
-#if SESSION_DEBUG
-  vec_validate (smm->last_event_poll_by_thread, num_threads - 1);
-#endif
 
   /* Allocate vpp event queues segment and queue */
   session_vpp_event_queues_allocate (smm);
