@@ -95,6 +95,37 @@ ip_proto_encode (ip_protocol_t ipp)
   return (clib_host_to_net_u32 (IP_API_PROTO_TCP));
 }
 
+int
+ip_dscp_decode (u8 in, ip_dscp_t * out)
+{
+  switch (in)
+    {
+#define _(n,s)                                 \
+      case IP_API_DSCP_##s:                    \
+        *out = IP_DSCP_##s;                    \
+        return (0);
+      foreach_ip_dscp
+#undef _
+    }
+  return (-1);
+}
+
+u8
+ip_dscp_encode (ip_dscp_t dscp)
+{
+  switch (dscp)
+    {
+#define _(n,s)                                                  \
+      case IP_DSCP_##s:                                         \
+        return (IP_API_DSCP_##s);
+      foreach_ip_dscp
+#undef _
+    }
+
+  ASSERT (0);
+  return (IP_API_DSCP_CS0);
+}
+
 void
 ip6_address_encode (const ip6_address_t * in, vl_api_ip6_address_t out)
 {

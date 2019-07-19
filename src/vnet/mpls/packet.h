@@ -1,6 +1,3 @@
-#ifndef included_vnet_mpls_packet_h
-#define included_vnet_mpls_packet_h
-
 /*
  * MPLS packet format
  *
@@ -17,6 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#ifndef included_vnet_mpls_packet_h
+#define included_vnet_mpls_packet_h
+
+#include <vnet/ip/ip_packet.h>
 
 /**
  * A label value only, i.e. 20bits.
@@ -55,7 +57,7 @@ typedef enum mpls_eos_bit_t_
 /**
  * When in uniform mode convert an IPv[46] DSCP value to an MPLS EXP value
  */
-static inline u8 ip_dscp_to_mpls_exp (u8 tos)
+static inline u8 ip_dscp_to_mpls_exp (ip_dscp_t tos)
 {
     return (tos >> 5);
 }

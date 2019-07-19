@@ -26,6 +26,9 @@ void to_api(const route::path& p, vapi_type_fib_path& o);
 
 route::path from_api(const vapi_type_fib_path& p);
 
+vapi_enum_ip_dscp to_api(const ip_dscp_t& d);
+const ip_dscp_t& from_api(vapi_enum_ip_dscp d);
+
 }; // namespace VOM
 
 /*
