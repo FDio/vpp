@@ -2452,9 +2452,75 @@ class TestGBP(VppTestCase):
                              pkt_inter_epg_220_to_222 * 65,
                              eps[3].itf)
 
+        #
+        # remove previous contracts
+        # no further communication allowed
+        #
         c3.remove_vpp_config()
         c1.remove_vpp_config()
         c2.remove_vpp_config()
+
+        self.send_and_assert_no_replies(self.pg0, pkt_inter_epg_220_to_221)
+        self.send_and_assert_no_replies(eps[0].itf,
+                                        pkt_inter_epg_220_to_222 * 65)
+
+        #
+        # contract between 220 and *
+        # sclass 1 is used as wildcard value VPP GBP contract definition
+        #
+        c4 = VppGbpContract(
+            self, 400, epgs[0].sclass, 1, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                 [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c4.add_vpp_config()
+
+        self.send_and_expect(eps[0].itf,
+                             pkt_inter_epg_220_to_221 * 65,
+                             eps[2].itf)
+        self.send_and_expect(eps[0].itf,
+                             pkt_inter_epg_220_to_222 * 65,
+                             eps[3].itf)
+
+        #
+        # contract between * and 221
+        # sclass 1 is used as wildcard value VPP GBP contract definition
+        #
+        c5 = VppGbpContract(
+            self, 400, 1, epgs[1].sclass, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                []),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                 [])],
+            [ETH_P_IP, ETH_P_IPV6])
+        c5.add_vpp_config()
+
+        self.send_and_expect(eps[0].itf,
+                             pkt_inter_epg_220_to_221 * 65,
+                             eps[2].itf)
+
+        pkt_inter_epg_222_to_221 = (Ether(src=self.pg3.remote_mac,
+                                          dst=str(self.router_mac)) /
+                                    IPv6(src=eps[3].ip6.address,
+                                         dst=eps[2].ip6.address) /
+                                    UDP(sport=1234, dport=1234) /
+                                    Raw('\xa5' * 100))
+        self.send_and_expect(eps[3].itf,
+                             pkt_inter_epg_222_to_221 * 65,
+                             eps[2].itf)
+
+        c4.remove_vpp_config()
+        c5.remove_vpp_config()
         acl.remove_vpp_config()
 
     def test_gbp_bd_drop_flags(self):
@@ -4424,7 +4490,7 @@ class TestGBP(VppTestCase):
               Dot1Q(vlan=100) /
               IP(src="10.220.0.1", dst="10.222.0.1") /
               UDP(sport=1222, dport=1235) /
-             Raw('\xa5' * 100))]
+              Raw('\xa5' * 100))]
 
         rxs = self.send_and_expect(self.pg0, p, self.pg7)
 
@@ -4468,7 +4534,7 @@ class TestGBP(VppTestCase):
               Dot1Q(vlan=100) /
               IPv6(src="10:220::1", dst="10:222::1") /
               UDP(sport=7777, dport=8881) /
-             Raw('\xa5' * 100))]
+              Raw('\xa5' * 100))]
 
         self.logger.info(self.vapi.cli("sh ip6 fib 10:222::1"))
         rxs = self.send_and_expect(self.pg0, p, self.pg7)

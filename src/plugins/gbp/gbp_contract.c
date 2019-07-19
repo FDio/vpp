@@ -37,6 +37,8 @@ gbp_contract_db_t gbp_contract_db;
 
 gbp_contract_t *gbp_contract_pool;
 
+int gbp_contract_wildcard;
+
 vlib_log_class_t gc_logger;
 
 fib_node_type_t gbp_next_hop_fib_type;
@@ -497,6 +499,9 @@ gbp_contract_update (gbp_scope_t scope,
       gci = gc - gbp_contract_pool;
       hash_set (gbp_contract_db.gc_hash, key.as_u64, gci);
 
+      if (1 == sclass || 1 == dclass)
+	gbp_contract_wildcard++;
+
       vlib_validate_combined_counter (&gbp_contract_drop_counters, gci);
       vlib_zero_combined_counter (&gbp_contract_drop_counters, gci);
       vlib_validate_combined_counter (&gbp_contract_permit_counters, gci);
@@ -546,6 +551,9 @@ gbp_contract_delete (gbp_scope_t scope, sclass_t sclass, sclass_t dclass)
 
       hash_unset (gbp_contract_db.gc_hash, key.as_u64);
       pool_put (gbp_contract_pool, gc);
+
+      if (1 == sclass || 1 == dclass)
+	gbp_contract_wildcard--;
 
       return (0);
     }
