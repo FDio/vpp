@@ -38,7 +38,7 @@ find_package(Boost OPTIONAL_COMPONENTS system filesystem)
 add_subdirectory(vom)
 
 add_vpp_packaging(
-  NAME "vom"
-  VENDOR "fd.io"
-  DESCRIPTION "VPP Object Model"
+  "vom"
+  "fd.io"
+  "VPP Object Model"
 )
