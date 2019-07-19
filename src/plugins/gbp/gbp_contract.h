@@ -186,6 +186,7 @@ extern u8 *format_gbp_contract (u8 * s, va_list * args);
  * DP functions and databases
  */
 extern gbp_contract_db_t gbp_contract_db;
+extern int gbp_contract_wildcard;
 
 always_inline index_t
 gbp_contract_find (gbp_contract_key_t * key)
@@ -260,6 +261,23 @@ gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
 
   /* look for contract */
   contract_index = gbp_contract_find (key);
+  if (INDEX_INVALID == contract_index && gbp_contract_wildcard > 0)
+    {
+      /*
+       * we use slcass 1 as wildcard, as sclass 1 traffic will never match any
+       * contract anyway
+       */
+      sclass_t src = key->gck_src;
+      key->gck_src = 1;
+      contract_index = gbp_contract_find (key);
+      if (INDEX_INVALID == contract_index)
+	{
+	  key->gck_src = src;
+	  key->gck_dst = 1;
+	  contract_index = gbp_contract_find (key);
+	}
+    }
+
   if (INDEX_INVALID == contract_index)
     {
       *err = GBP_CONTRACT_ERROR_DROP_NO_CONTRACT;
