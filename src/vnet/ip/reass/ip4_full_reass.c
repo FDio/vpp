@@ -1040,11 +1040,12 @@ ip4_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
       reass->data_len == reass->last_packet_octet + 1)
     {
       *handoff_thread_idx = reass->sendout_thread_index;
+      int handoff =
+	reass->memory_owner_thread_index != reass->sendout_thread_index;
       rc =
 	ip4_full_reass_finalize (vm, node, rm, rt, reass, bi0, next0, error0,
 				 is_custom_app);
-      if (IP4_REASS_RC_OK == rc
-	  && reass->memory_owner_thread_index != reass->sendout_thread_index)
+      if (IP4_REASS_RC_OK == rc && handoff)
 	{
 	  rc = IP4_REASS_RC_HANDOFF;
 	}
