@@ -885,13 +885,13 @@ ip6_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
       else
 	{
 	  // overlapping fragment - not allowed by RFC 8200
-	  ip6_full_reass_drop_all (vm, node, rm, reass);
-	  ip6_full_reass_free (rm, rt, reass);
 	  if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ip6_full_reass_add_trace (vm, node, rm, reass, *bi0,
 					RANGE_OVERLAP, ~0);
 	    }
+	  ip6_full_reass_drop_all (vm, node, rm, reass);
+	  ip6_full_reass_free (rm, rt, reass);
 	  *next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
 	  *error0 = IP6_ERROR_REASS_OVERLAPPING_FRAGMENT;
 	  return IP6_FULL_REASS_RC_OK;
@@ -911,11 +911,12 @@ check_if_done_maybe:
       reass->data_len == reass->last_packet_octet + 1)
     {
       *handoff_thread_idx = reass->sendout_thread_index;
+      int handoff =
+	reass->memory_owner_thread_index != reass->sendout_thread_index;
       ip6_full_reass_rc_t rc =
 	ip6_full_reass_finalize (vm, node, rm, rt, reass, bi0, next0, error0,
 				 is_custom_app);
-      if (IP6_FULL_REASS_RC_OK == rc
-	  && reass->memory_owner_thread_index != reass->sendout_thread_index)
+      if (IP6_FULL_REASS_RC_OK == rc && handoff)
 	{
 	  return IP6_FULL_REASS_RC_HANDOFF;
 	}
