@@ -176,7 +176,7 @@ session_free (session_t * s)
       pool_put (session_main.wrk[thread_index].sessions, s);
       return;
     }
-  SESSION_EVT_DBG (SESSION_EVT_FREE, s);
+  SESSION_EVT (SESSION_EVT_FREE, s);
   pool_put (session_main.wrk[s->thread_index].sessions, s);
 }
 
@@ -519,7 +519,7 @@ session_enqueue_notify_inline (session_t * s)
     }
 
   /* *INDENT-OFF* */
-  SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
+  SESSION_EVT(SESSION_EVT_ENQ, s, ({
       ed->data[0] = SESSION_IO_EVT_RX;
       ed->data[1] = svm_fifo_max_dequeue_prod (s->rx_fifo);
   }));
