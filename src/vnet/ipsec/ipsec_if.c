@@ -375,14 +375,8 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 	hash_set_mem_alloc (&im->ipsec6_if_pool_index_by_key, &key6,
 			    t - im->tunnel_interfaces);
       else
-	{
-	  hash_set (im->ipsec4_if_pool_index_by_key, key4.as_u64,
-		    t - im->tunnel_interfaces);
-	  if (1 == hash_elts (im->ipsec4_if_pool_index_by_key))
-	    udp_register_dst_port (vlib_get_main (),
-				   UDP_DST_PORT_ipsec,
-				   ipsec4_if_input_node.index, 1);
-	}
+	hash_set (im->ipsec4_if_pool_index_by_key, key4.as_u64,
+		  t - im->tunnel_interfaces);
 
       hw_if_index = vnet_register_interface (vnm, ipsec_device_class.index,
 					     t - im->tunnel_interfaces,
@@ -433,11 +427,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       if (is_ip6)
 	hash_unset_mem_free (&im->ipsec6_if_pool_index_by_key, &key6);
       else
-	{
-	  hash_unset (im->ipsec4_if_pool_index_by_key, key4.as_u64);
-	  if (0 == hash_elts (im->ipsec4_if_pool_index_by_key))
-	    udp_unregister_dst_port (vlib_get_main (), UDP_DST_PORT_ipsec, 1);
-	}
+	hash_unset (im->ipsec4_if_pool_index_by_key, key4.as_u64);
       hash_unset (im->ipsec_if_real_dev_by_show_dev, t->show_instance);
 
       im->ipsec_if_by_sw_if_index[t->sw_if_index] = ~0;
@@ -588,6 +578,8 @@ ipsec_tunnel_if_init (vlib_main_t * vm)
   ipsec_add_feature ("ip6-output", "esp6-no-crypto",
 		     &im->esp6_no_crypto_tun_feature_index);
 
+  udp_register_dst_port (vlib_get_main (),
+			 UDP_DST_PORT_ipsec, ipsec4_if_input_node.index, 1);
   return 0;
 }
 
