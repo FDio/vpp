@@ -480,10 +480,15 @@ msg_handler_internal (api_main_t * am,
       } *ed;
       ed = ELOG_DATA (am->elog_main, e);
       if (id < vec_len (am->msg_names))
-	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
+	{
+	  ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
+	  ed->barrier = !am->is_mp_safe[id];
+	}
       else
-	ed->c = elog_string (am->elog_main, "BOGUS");
-      ed->barrier = !am->is_mp_safe[id];
+	{
+	  ed->c = elog_string (am->elog_main, "BOGUS");
+	  ed->barrier = 0;
+	}
     }
 }
 
