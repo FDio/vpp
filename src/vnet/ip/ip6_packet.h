@@ -383,13 +383,13 @@ typedef struct
   ip6_address_t src_address, dst_address;
 } ip6_header_t;
 
-always_inline u8
+always_inline ip_dscp_t
 ip6_traffic_class (const ip6_header_t * i)
 {
   return (i->ip_version_traffic_class_and_flow_label & 0x0FF00000) >> 20;
 }
 
-static_always_inline u8
+static_always_inline ip_dscp_t
 ip6_traffic_class_network_order (const ip6_header_t * ip6)
 {
   return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
@@ -397,7 +397,7 @@ ip6_traffic_class_network_order (const ip6_header_t * ip6)
 }
 
 static_always_inline void
-ip6_set_traffic_class_network_order (ip6_header_t * ip6, u8 dscp)
+ip6_set_traffic_class_network_order (ip6_header_t * ip6, ip_dscp_t dscp)
 {
   u32 tmp =
     clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label);

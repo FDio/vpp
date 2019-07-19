@@ -84,6 +84,44 @@ typedef enum
 #undef _
 } ip_multicast_group_t;
 
+
+/**
+ * The set of RFC defined DSCP values.
+ */
+#define foreach_ip_dscp                       \
+  _(0, CS0)                                   \
+  _(8, CS1)                                   \
+  _(10, AF11)                                 \
+  _(12, AF12)                                 \
+  _(14, AF13)                                 \
+  _(16, CS2)                                  \
+  _(18, AF21)                                 \
+  _(20, AF22)                                 \
+  _(22, AF23)                                 \
+  _(24, CS3)                                  \
+  _(26, AF31)                                 \
+  _(28, AF32)                                 \
+  _(30, AF33)                                 \
+  _(32, CS4)                                  \
+  _(34, AF41)                                 \
+  _(36, AF42)                                 \
+  _(38, AF43)                                 \
+  _(40, CS5)                                  \
+  _(46, EF)                                   \
+  _(48, CS6)                                  \
+  _(50, CS7)
+
+typedef enum ip_dscp_t_
+{
+#define _(n,f) IP_DSCP_##f = n,
+  foreach_ip_dscp
+#undef _
+} __clib_packed ip_dscp_t;
+
+STATIC_ASSERT_SIZEOF (ip_dscp_t, 1);
+
+extern u8 *format_ip_dscp (u8 * s, va_list * va);
+
 /* IP checksum support. */
 
 static_always_inline u16

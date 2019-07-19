@@ -87,6 +87,9 @@ typedef struct dhcp_client_t_
   u8 client_hardware_address[6];
   u8 client_detect_feature_enabled;
 
+  /* IP DSCP to set in sent packets */
+  ip_dscp_t dscp;
+
   dhcp_event_cb_t event_callback;
 } dhcp_client_t;
 
@@ -118,6 +121,7 @@ typedef struct
   /* Information used for event callback */
   u32 client_index;
   u32 pid;
+  ip_dscp_t dscp;
   dhcp_event_cb_t event_callback;
 } dhcp_client_add_del_args_t;
 
@@ -140,7 +144,8 @@ extern int dhcp_client_config (u32 is_add,
 			       u8 * hostname,
 			       u8 * client_id,
 			       dhcp_event_cb_t event_callback,
-			       u8 set_broadcast_flag, u32 pid);
+			       u8 set_broadcast_flag,
+			       ip_dscp_t dscp, u32 pid);
 
 /**
  * callback function for clients walking the DHCP client configurations

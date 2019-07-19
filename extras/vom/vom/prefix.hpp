@@ -75,6 +75,38 @@ private:
  */
 std::ostream& operator<<(std::ostream& os, const l3_proto_t& l3p);
 
+/**
+ * IP DSCP values
+ */
+class ip_dscp_t : public enum_base<ip_dscp_t>
+{
+public:
+  const static ip_dscp_t CS0;
+  const static ip_dscp_t CS1;
+  const static ip_dscp_t CS2;
+  const static ip_dscp_t CS3;
+  const static ip_dscp_t CS4;
+  const static ip_dscp_t CS5;
+  const static ip_dscp_t CS6;
+  const static ip_dscp_t CS7;
+  const static ip_dscp_t AF11;
+  const static ip_dscp_t AF12;
+  const static ip_dscp_t AF13;
+  const static ip_dscp_t AF21;
+  const static ip_dscp_t AF22;
+  const static ip_dscp_t AF23;
+  const static ip_dscp_t AF31;
+  const static ip_dscp_t AF32;
+  const static ip_dscp_t AF33;
+  const static ip_dscp_t AF41;
+  const static ip_dscp_t AF42;
+  const static ip_dscp_t AF43;
+  const static ip_dscp_t EF;
+
+private:
+  ip_dscp_t(int v, const std::string& s);
+};
+
 namespace route {
 /**
  * type def the table-id

@@ -20,7 +20,7 @@ from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
 from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
 from scapy.utils6 import in6_ptop
-from vpp_papi import mac_pton
+from vpp_papi import mac_pton, VppEnum
 
 DHCP4_CLIENT_PORT = 68
 DHCP4_SERVER_PORT = 67
@@ -210,7 +210,7 @@ class TestDHCP(VppTestCase):
         data = self.validate_relay_options(pkt, intf, intf.local_ip4,
                                            vpn_id, fib_id, oui)
 
-    def verify_orig_dhcp_pkt(self, pkt, intf):
+    def verify_orig_dhcp_pkt(self, pkt, intf, dscp):
         ether = pkt[Ether]
         self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")
         self.assertEqual(ether.src, intf.local_mac)
@@ -218,14 +218,15 @@ class TestDHCP(VppTestCase):
         ip = pkt[IP]
         self.assertEqual(ip.dst, "255.255.255.255")
         self.assertEqual(ip.src, "0.0.0.0")
+        self.assertEqual(ip.tos, dscp)
 
         udp = pkt[UDP]
         self.assertEqual(udp.dport, DHCP4_SERVER_PORT)
         self.assertEqual(udp.sport, DHCP4_CLIENT_PORT)
 
     def verify_orig_dhcp_discover(self, pkt, intf, hostname, client_id=None,
-                                  broadcast=1):
-        self.verify_orig_dhcp_pkt(pkt, intf)
+                                  broadcast=1, dscp=0):
+        self.verify_orig_dhcp_pkt(pkt, intf, dscp)
 
         self.verify_dhcp_msg_type(pkt, "discover")
         self.verify_dhcp_has_option(pkt, "hostname", hostname)
@@ -240,8 +241,9 @@ class TestDHCP(VppTestCase):
             self.assertEqual(bootp.flags, 0x0000)
 
     def verify_orig_dhcp_request(self, pkt, intf, hostname, ip,
-                                 broadcast=1):
-        self.verify_orig_dhcp_pkt(pkt, intf)
+                                 broadcast=1,
+                                 dscp=0):
+        self.verify_orig_dhcp_pkt(pkt, intf, dscp)
 
         self.verify_dhcp_msg_type(pkt, "request")
         self.verify_dhcp_has_option(pkt, "hostname", hostname)
@@ -1215,6 +1217,7 @@ class TestDHCP(VppTestCase):
     def test_dhcp_client(self):
         """ DHCP Client"""
 
+        vdscp = VppEnum.vl_api_ip_dscp_t
         hostname = 'universal-dp'
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -1302,17 +1305,20 @@ class TestDHCP(VppTestCase):
 
         #
         # Start the procedure again. this time have VPP send the client-ID
+        # and set the DSCP value
         #
         self.pg3.admin_down()
         self.sleep(1)
         self.pg3.admin_up()
         self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname,
-                                     client_id=self.pg3.local_mac)
+                                     client_id=self.pg3.local_mac,
+                                     dscp=vdscp.IP_API_DSCP_EF)
 
         rx = self.pg3.get_capture(1)
 
         self.verify_orig_dhcp_discover(rx[0], self.pg3, hostname,
-                                       self.pg3.local_mac)
+                                       self.pg3.local_mac,
+                                       dscp=vdscp.IP_API_DSCP_EF)
 
         # TODO: VPP DHCP client should not accept DHCP OFFER message with
         # the XID (Transaction ID) not matching the XID of the most recent
@@ -1325,7 +1331,8 @@ class TestDHCP(VppTestCase):
 
         rx = self.pg3.get_capture(1)
         self.verify_orig_dhcp_request(rx[0], self.pg3, hostname,
-                                      self.pg3.local_ip4)
+                                      self.pg3.local_ip4,
+                                      dscp=vdscp.IP_API_DSCP_EF)
 
         #
         # unicast the ack to the offered address
