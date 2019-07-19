@@ -34,8 +34,8 @@ typedef enum _session_evt_dbg
 #undef _
 } session_evt_dbg_e;
 
-#define SESSION_DEBUG 0 * (TRANSPORT_DEBUG > 0)
-#define SESSION_DEQ_NODE_EVTS (0)
+#define SESSION_DEBUG 2 * (TRANSPORT_DEBUG > 0)
+#define SESSION_DEQ_NODE_EVTS (1)
 #define SESSION_EVT_POLL_DBG (0)
 #define SESSION_SM (0)
 
@@ -75,15 +75,17 @@ typedef enum _session_evt_dbg
 #endif
 
 #if SESSION_DEQ_NODE_EVTS && SESSION_DEBUG > 1
-#define SESSION_EVT_DEQ_HANDLER(_s, _body)				\
+#define SESSION_EVT_DEQ_HANDLER(_s, _now, _max, _ts)			\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "deq: id %d len %d rd %d wnd %d",				\
-    .format_args = "i4i4i4i4",						\
+    .format = "deq: now %u max %d ts %d",				\
+    .format_args = "i4i4i4",						\
   };									\
   DEC_SESSION_ETD(_s, _e, 4);						\
-  do { _body; } while (0);						\
+  ed->data[0] = _now;							\
+  ed->data[1] = _max;							\
+  ed->data[2] = _ts * 1000000.0;					\
 }
 
 #define SESSION_EVT_ENQ_HANDLER(_s, _body)				\
@@ -96,7 +98,12 @@ typedef enum _session_evt_dbg
   DEC_SESSION_ETD(_s, _e, 2);						\
   do { _body; } while (0);						\
 }
+#else
+#define SESSION_EVT_DEQ_HANDLER(_s, _body)
+#define SESSION_EVT_ENQ_HANDLER(_s, _body)
+#endif /* SESSION_DEQ_NODE_EVTS */
 
+#if SESSION_DEQ_NODE_EVTS > 1
 #define SESSION_EVT_DEQ_NODE_HANDLER(_node_evt)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -113,10 +120,8 @@ typedef enum _session_evt_dbg
   ed->data[0] = _node_evt;						\
 }
 #else
-#define SESSION_EVT_DEQ_HANDLER(_s, _body)
-#define SESSION_EVT_ENQ_HANDLER(_s, _body)
 #define SESSION_EVT_DEQ_NODE_HANDLER(_node_evt)
-#endif /* SESSION_DEQ_NODE_EVTS */
+#endif
 
 #if SESSION_EVT_POLL_DBG && SESSION_DEBUG > 1
 #define SESSION_EVT_POLL_GAP(_smm, _ti)					\

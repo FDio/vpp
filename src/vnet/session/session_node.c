@@ -508,15 +508,6 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
    */
   if (PREDICT_FALSE (ctx->n_bufs_per_seg > 1 && ctx->left_to_snd))
     session_tx_fifo_chain_tail (vm, ctx, b, n_bufs, peek_data);
-
-  /* *INDENT-OFF* */
-  SESSION_EVT_DBG(SESSION_EVT_DEQ, ctx->s, ({
-	ed->data[0] = SESSION_IO_EVT_TX;
-	ed->data[1] = ctx->max_dequeue;
-	ed->data[2] = len_to_deq;
-	ed->data[3] = ctx->left_to_snd;
-  }));
-  /* *INDENT-ON* */
 }
 
 always_inline u8
@@ -700,6 +691,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   ctx->left_to_snd = ctx->max_len_to_snd;
   n_left = ctx->n_segs_per_evt;
+
+  SESSION_EVT_DBG (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd,
+		   ctx->max_dequeue, wrk->last_vlib_time);
 
   while (n_left >= 4)
     {
