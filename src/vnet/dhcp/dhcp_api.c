@@ -28,6 +28,7 @@
 #include <vnet/dhcp/dhcp6_ia_na_client_dp.h>
 #include <vnet/dhcp/dhcp6_client_common_dp.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -293,14 +294,15 @@ static void vl_api_dhcp_client_config_t_handler
   vlib_main_t *vm = vlib_get_main ();
   vl_api_dhcp_client_config_reply_t *rmp;
   u32 sw_if_index;
+  ip_dscp_t dscp;
   int rv = 0;
 
-  sw_if_index = ntohl (mp->client.sw_if_index);
-  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
-    {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-      goto bad_sw_if_index;
-    }
+  VALIDATE_SW_IF_INDEX (&(mp->client))
+    sw_if_index = ntohl (mp->client.sw_if_index);
+  rv = ip_dscp_decode (mp->client.dscp, &dscp);
+
+  if (rv)
+    goto out;
 
   rv = dhcp_client_config (mp->is_add,
 			   mp->client_index,
@@ -311,10 +313,12 @@ static void vl_api_dhcp_client_config_t_handler
 			   (mp->client.want_dhcp_event ?
 			    dhcp_compl_event_callback :
 			    NULL),
-			   mp->client.set_broadcast_flag, mp->client.pid);
+			   mp->client.set_broadcast_flag,
+			   dscp, mp->client.pid);
 
   BAD_SW_IF_INDEX_LABEL;
 
+out:
   REPLY_MACRO (VL_API_DHCP_CLIENT_CONFIG_REPLY);
 }
 
