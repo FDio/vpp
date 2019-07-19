@@ -508,15 +508,6 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
    */
   if (PREDICT_FALSE (ctx->n_bufs_per_seg > 1 && ctx->left_to_snd))
     session_tx_fifo_chain_tail (vm, ctx, b, n_bufs, peek_data);
-
-  /* *INDENT-OFF* */
-  SESSION_EVT_DBG(SESSION_EVT_DEQ, ctx->s, ({
-	ed->data[0] = SESSION_IO_EVT_TX;
-	ed->data[1] = ctx->max_dequeue;
-	ed->data[2] = len_to_deq;
-	ed->data[3] = ctx->left_to_snd;
-  }));
-  /* *INDENT-ON* */
 }
 
 always_inline u8
@@ -777,6 +768,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   transport_connection_update_tx_stats (ctx->tc, ctx->max_len_to_snd);
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
+  SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
+	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
+
   /* If we couldn't dequeue all bytes mark as partially read */
   ASSERT (ctx->left_to_snd == 0);
   if (ctx->max_len_to_snd < ctx->max_dequeue)
@@ -865,15 +859,13 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   svm_msg_q_t *mq;
   void (*fp) (void *);
 
-  SESSION_EVT_DBG (SESSION_EVT_POLL_GAP_TRACK, smm, thread_index);
+  SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
 
   /*
    *  Update transport time
    */
   session_update_dispatch_period (wrk, now, thread_index);
   transport_update_time (now, thread_index);
-
-  SESSION_EVT_DBG (SESSION_EVT_DEQ_NODE, 0);
 
   /* Make sure postponed events are handled first */
   new_he = pool_elt_at_index (wrk->event_elts, wrk->new_head);
@@ -1032,7 +1024,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_node_increment_counter (vm, session_queue_node.index,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);
 
-  SESSION_EVT_DBG (SESSION_EVT_DISPATCH_END, smm, thread_index);
+  SESSION_EVT (SESSION_EVT_DISPATCH_END, wrk, n_tx_packets);
 
   return n_tx_packets;
 }

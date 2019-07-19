@@ -24,6 +24,7 @@
   _(DEQ_NODE, "dequeue")		\
   _(POLL_GAP_TRACK, "poll gap track")	\
   _(POLL_DISPATCH_TIME, "dispatch time")\
+  _(DISPATCH_START, "dispatch start")	\
   _(DISPATCH_END, "dispatch end")	\
   _(FREE, "session free")		\
 
@@ -35,7 +36,7 @@ typedef enum _session_evt_dbg
 } session_evt_dbg_e;
 
 #define SESSION_DEBUG 0 * (TRANSPORT_DEBUG > 0)
-#define SESSION_DEQ_NODE_EVTS (0)
+#define SESSION_DEQ_EVTS (0)
 #define SESSION_EVT_POLL_DBG (0)
 #define SESSION_SM (0)
 
@@ -74,27 +75,30 @@ typedef enum _session_evt_dbg
 #define SESSION_EVT_FREE_HANDLER(_s)
 #endif
 
-#if SESSION_DEQ_NODE_EVTS && SESSION_DEBUG > 1
-#define SESSION_EVT_DEQ_HANDLER(_s, _body)				\
+#if SESSION_DEQ_EVTS
+#define SESSION_EVT_DEQ_HANDLER(_s, _now, _max, _has_evt, _ts)		\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "deq: id %d len %d rd %d wnd %d",				\
+    .format = "deq: now %u max %d evt %u ts %d",			\
     .format_args = "i4i4i4i4",						\
   };									\
   DEC_SESSION_ETD(_s, _e, 4);						\
-  do { _body; } while (0);						\
+  ed->data[0] = _now;							\
+  ed->data[1] = _max;							\
+  ed->data[2] = _has_evt;						\
+  ed->data[3] = _ts * 1000000.0;					\
 }
 
-#define SESSION_EVT_ENQ_HANDLER(_s, _body)				\
+#define SESSION_EVT_ENQ_HANDLER(_s, _len)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "enq: id %d length %d",					\
-    .format_args = "i4i4",						\
+    .format = "enq: length %d",						\
+    .format_args = "i4",						\
   };									\
-  DEC_SESSION_ETD(_s, _e, 2);						\
-  do { _body; } while (0);						\
+  DEC_SESSION_ETD(_s, _e, 1);						\
+  ed->data[0] = _len;							\
 }
 
 #define SESSION_EVT_DEQ_NODE_HANDLER(_node_evt)				\
@@ -119,7 +123,7 @@ typedef enum _session_evt_dbg
 #endif /* SESSION_DEQ_NODE_EVTS */
 
 #if SESSION_EVT_POLL_DBG && SESSION_DEBUG > 1
-#define SESSION_EVT_POLL_GAP(_smm, _ti)					\
+#define SESSION_EVT_POLL_GAP(_wrk)					\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
@@ -127,21 +131,19 @@ typedef enum _session_evt_dbg
     .format_args = "i4",						\
   };									\
   DEC_SESSION_ED(_e, 1);						\
-  ed->data[0] =	(u32) ((now -						\
-      _smm->last_event_poll_by_thread[_ti])*1000000.0);			\
+  ed->data[0] =	(u32) ((now - _wrk->last_event_poll)*1000000.0);	\
 }
-#define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_smm, _ti)			\
+#define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_wrk)			\
 {									\
-  if (PREDICT_TRUE (smm->last_event_poll_by_thread[_ti] != 0.0))	\
-    if (now > smm->last_event_poll_by_thread[_ti] + 500e-6)		\
+  if (PREDICT_TRUE (smm->last_event_poll != 0.0))			\
+    if (now > smm->last_event_poll + 500e-6)				\
       SESSION_EVT_POLL_GAP(smm, _ti);					\
-  _smm->last_event_poll_by_thread[_ti] = now;				\
+  _wrk->last_event_poll = now;						\
 }
 
-#define SESSION_EVT_POLL_DISPATCH_TIME_HANDLER(_smm, _ti)		\
+#define SESSION_EVT_POLL_DISPATCH_TIME_HANDLER(_wrk)			\
 {									\
-  f64 diff = vlib_time_now (vlib_get_main ()) -				\
-	       _smm->last_event_poll_by_thread[_ti];			\
+  f64 diff = vlib_time_now (vlib_get_main ()) - _wrk->last_event_poll;  \
   if (diff > 5e-2)							\
     {									\
       ELOG_TYPE_DECLARE (_e) =						\
@@ -155,23 +157,31 @@ typedef enum _session_evt_dbg
 }
 
 #else
-#define SESSION_EVT_POLL_GAP(_smm, _my_thread_index)
-#define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_smm, _my_thread_index)
-#define SESSION_EVT_POLL_DISPATCH_TIME_HANDLER(_smm, _ti)
+#define SESSION_EVT_POLL_GAP(_wrk)
+#define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_wrk)
+#define SESSION_EVT_POLL_DISPATCH_TIME_HANDLER(_wrk)
 #endif /* SESSION_EVT_POLL_DBG */
 
-#define SESSION_EVT_DISPATCH_END_HANDLER(_smm, _ti)			\
+#define SESSION_EVT_DISPATCH_START_HANDLER(_wrk)			\
 {									\
-  SESSION_EVT_DEQ_NODE_HANDLER(1);					\
-  SESSION_EVT_POLL_DISPATCH_TIME_HANDLER(_smm, _ti);			\
+  if (SESSION_DEQ_EVTS > 1)						\
+    SESSION_EVT_DEQ_NODE_HANDLER (0);					\
+  SESSION_EVT_POLL_GAP_TRACK_HANDLER (wrk);				\
+}
+
+#define SESSION_EVT_DISPATCH_END_HANDLER(_wrk, _ntx)			\
+{									\
+  if (SESSION_DEQ_EVTS > 1 || _ntx)					\
+    SESSION_EVT_DEQ_NODE_HANDLER (1);					\
+  SESSION_EVT_POLL_DISPATCH_TIME_HANDLER(_wrk);				\
 }
 
 #define CONCAT_HELPER(_a, _b) _a##_b
 #define CC(_a, _b) CONCAT_HELPER(_a, _b)
-#define SESSION_EVT_DBG(_evt, _args...) CC(_evt, _HANDLER)(_args)
+#define SESSION_EVT(_evt, _args...) CC(_evt, _HANDLER)(_args)
 
 #else
-#define SESSION_EVT_DBG(_evt, _args...)
+#define SESSION_EVT(_evt, _args...)
 #define SESSION_DBG(_fmt, _args...)
 #endif /* SESSION_DEBUG */
 
