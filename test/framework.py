@@ -362,13 +362,16 @@ class VppTestCase(unittest.TestCase):
             coredump_size = "coredump-size unlimited"
 
         cpu_core_number = cls.get_least_used_cpu()
+        if not hasattr(cls, "worker_config"):
+            cls.worker_config = ""
 
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
                            "{", "nodaemon", debug_cli, "full-coredump",
                            coredump_size, "runtime-dir", cls.tempdir, "}",
                            "api-trace", "{", "on", "}", "api-segment", "{",
                            "prefix", cls.shm_prefix, "}", "cpu", "{",
-                           "main-core", str(cpu_core_number), "}",
+                           "main-core", str(cpu_core_number),
+                           cls.worker_config, "}",
                            "statseg", "{", "socket-name", cls.stats_sock, "}",
                            "socksvr", "{", "socket-name", cls.api_sock, "}",
                            "plugins",
