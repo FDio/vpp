@@ -294,6 +294,23 @@ format_ip_address_family (u8 * s, va_list * args)
   return (format (s, "unknown"));
 }
 
+u8 *
+format_ip_dscp (u8 * s, va_list * va)
+{
+  ip_dscp_t dscp = va_arg (*va, u32);	// int promotion of u8
+
+  switch (dscp)
+    {
+#define _(n,v)                                                  \
+    case IP_DSCP_##v:                                           \
+      return (format (s, "%s", #v));
+      foreach_ip_dscp
+#undef _
+    }
+
+  return (format (s, "unknon"));
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
