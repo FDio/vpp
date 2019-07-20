@@ -59,11 +59,12 @@ Let's try following command to instantiate a topology:
 $ ./runner.py infra start
 ```
 
-This test method instantiates 4 VPP containers with following topology:
+This command instantiates 4 VPP containers with following topology:
 
 ![Topology Diagram](extras/ietf105/topo-init.png)
 
-The packet-generator C1::2 generate an ICMP IPv6 packet and send it out to B1::2. VPP1
+You can check the instantiated docker instances with "docker ps".
+
 
 ```
 $ docker ps
@@ -93,6 +94,8 @@ vpp#
 ### Test Scenarios
 #### SRv6 Drop-in for GTP-U/UDP/IPv4
 
+![Topology Diagram](extras/ietf105/topo-test_gtp4.png)
+
 IPv4 payload over GTP-U:
 
 ```
@@ -106,6 +109,8 @@ $ ./runner.py test tmap_ipv6
 ```
 
 #### SRv6 Drop-in for GTP-U/UDP/IPv6
+
+![Topology Diagram](extras/ietf105/topo-test_gtp6.png)
 
 IPv4 payload over GTP-U:
 
@@ -134,7 +139,4 @@ $ ./runner.py test gtp6_ipv6
 ```
 
 ## More information
-TBD
-
-## Test Framework
 TBD
