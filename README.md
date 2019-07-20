@@ -8,7 +8,7 @@ The functions of the translation take advantage of SRv6 network programmability.
 [SRv6 Mobile User Plane](https://tools.ietf.org/html/draft-ietf-dmm-srv6-mobile-uplane-05) defines the user plane protocol using SRv6
 including following stateless translations:
 
-- T.M.GTP4.D:  
+- **T.M.GTP4.D:**  
    GTP-U over UDP/IPv4 -> SRv6
 - End.M.GTP4.E:  
    SRv6 -> GTP-U over UDP/IPv4
