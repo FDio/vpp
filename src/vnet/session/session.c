@@ -1377,7 +1377,7 @@ session_manager_main_enable (vlib_main_t * vm)
     {
       wrk = &smm->wrk[i];
       wrk->new_head = clib_llist_make_head (wrk->event_elts, evt_list);
-      wrk->pending_head = clib_llist_make_head (wrk->event_elts, evt_list);
+      wrk->old_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->postponed_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->disconnects_head = clib_llist_make_head (wrk->event_elts,
 						    evt_list);
