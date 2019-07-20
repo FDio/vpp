@@ -9,13 +9,13 @@ The functions of the translation take advantage of SRv6 network programmability.
 including following stateless translations:
 
 - T.M.GTP4.D:
-    - GTP-U over UDP/IPv4 -> SRv6
+	- GTP-U over UDP/IPv4 -> SRv6
 - End.M.GTP4.E:
-    - SRv6 -> GTP-U over UDP/IPv4
+	- SRv6 -> GTP-U over UDP/IPv4
 - End.M.GTP6.D: 
-    - GTP-U over UDP/IPv6 -> SRv6
+	- GTP-U over UDP/IPv6 -> SRv6
 - End.M.GTP6.E: 
-    - SRv6 -> GTP-U over UDP/IPv6
+	- SRv6 -> GTP-U over UDP/IPv6
 
 These functions benefit both user plane(overlay) to be able to utilize data plane(underlay) networks properly. And also it benefits
 data plane to be able to handle user plane in routing paradigm.
