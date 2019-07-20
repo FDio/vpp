@@ -78,11 +78,11 @@ typedef struct session_worker_
   /** vpp event message queue for worker */
   svm_msg_q_t *vpp_event_queue;
 
-  /** Our approximation of a "complete" dispatch loop period */
-  f64 dispatch_period;
-
   /** vlib_time_now last time around the track */
   f64 last_vlib_time;
+
+  /** Convenience pointer to this worker's vlib_main */
+  vlib_main_t *vm;
 
   /** Per-proto vector of sessions to enqueue */
   u32 *session_to_enqueue[TRANSPORT_N_PROTO];
@@ -100,7 +100,7 @@ typedef struct session_worker_
   clib_llist_index_t new_head;
 
   /** Head of list of pending events */
-  clib_llist_index_t pending_head;
+  clib_llist_index_t old_head;
 
   /** Head of list of postponed events */
   clib_llist_index_t postponed_head;
@@ -111,18 +111,15 @@ typedef struct session_worker_
   /** Peekers rw lock */
   clib_rwlock_t peekers_rw_locks;
 
-  u32 last_tx_packets;
-
 #if SESSION_DEBUG
   /** last event poll time by thread */
   f64 last_event_poll;
 #endif
 } session_worker_t;
 
-typedef int (session_fifo_rx_fn) (vlib_main_t * vm,
+typedef int (session_fifo_rx_fn) (session_worker_t * wrk,
 				  vlib_node_runtime_t * node,
-				  session_worker_t * wrk,
-				  session_evt_elt_t * e, int *n_tx_pkts);
+				  session_evt_elt_t * e, int *n_tx_packets);
 
 extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
@@ -207,9 +204,9 @@ session_evt_elt_free (session_worker_t * wrk, session_evt_elt_t * elt)
 }
 
 static inline session_evt_elt_t *
-session_evt_pending_head (session_worker_t * wrk)
+session_evt_old_head (session_worker_t * wrk)
 {
-  return pool_elt_at_index (wrk->event_elts, wrk->pending_head);
+  return pool_elt_at_index (wrk->event_elts, wrk->old_head);
 }
 
 static inline session_evt_elt_t *
@@ -225,10 +222,10 @@ session_evt_pending_disconnects_head (session_worker_t * wrk)
 }
 
 static inline void
-session_evt_add_pending (session_worker_t * wrk, session_evt_elt_t * elt)
+session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
 {
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       session_evt_pending_head (wrk));
+		       session_evt_old_head (wrk));
 }
 
 static inline void
@@ -475,12 +472,6 @@ transport_rx_fifo_has_ooo_data (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->c_index, tc->thread_index);
   return svm_fifo_has_ooo_data (s->rx_fifo);
-}
-
-always_inline f64
-transport_dispatch_period (u32 thread_index)
-{
-  return session_main.wrk[thread_index].dispatch_period;
 }
 
 always_inline f64
