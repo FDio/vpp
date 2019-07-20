@@ -1377,12 +1377,12 @@ session_manager_main_enable (vlib_main_t * vm)
     {
       wrk = &smm->wrk[i];
       wrk->new_head = clib_llist_make_head (wrk->event_elts, evt_list);
-      wrk->pending_head = clib_llist_make_head (wrk->event_elts, evt_list);
+      wrk->old_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->postponed_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->disconnects_head = clib_llist_make_head (wrk->event_elts,
 						    evt_list);
+      wrk->vm = vlib_mains[i];
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
-      wrk->dispatch_period = 500e-6;
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
