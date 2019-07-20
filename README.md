@@ -8,16 +8,16 @@ The functions of the translation take advantage of SRv6 network programmability.
 [SRv6 Mobile User Plane](https://tools.ietf.org/html/draft-ietf-dmm-srv6-mobile-uplane-05) defines the user plane protocol using SRv6
 including following stateless translations:
 
-- T.M.GTP4.D:
-	- GTP-U over UDP/IPv4 -> SRv6
-- End.M.GTP4.E:
-	- SRv6 -> GTP-U over UDP/IPv4
-- End.M.GTP6.D: 
-	- GTP-U over UDP/IPv6 -> SRv6
-- End.M.GTP6.E: 
-	- SRv6 -> GTP-U over UDP/IPv6
+- T.M.GTP4.D:  
+   GTP-U over UDP/IPv4 -> SRv6
+- End.M.GTP4.E:  
+   SRv6 -> GTP-U over UDP/IPv4
+- End.M.GTP6.D:   
+   GTP-U over UDP/IPv6 -> SRv6
+- End.M.GTP6.E:  
+   SRv6 -> GTP-U over UDP/IPv6
 
-These functions benefit both user plane(overlay) to be able to utilize data plane(underlay) networks properly. And also it benefits
+These functions benefit user plane(overlay) to be able to utilize data plane(underlay) networks properly. And also it benefits
 data plane to be able to handle user plane in routing paradigm.
 
 ## Getting started
@@ -25,6 +25,7 @@ To play with SRv6 Mobile User Plane on VPP, you need to install following packag
 
 	docker
 	python3
+	pip3
 
 	Python packages (use pip):
 	docker
@@ -53,6 +54,7 @@ $ ./runner.py test tmap
 ```
 
 IPv6 payload over GTP-U:
+
 ```
 $ ./runner.py test tmap_ipv6
 ```
@@ -66,6 +68,7 @@ $ ./runner.py test gtp6_drop_in
 ```
 
 IPv6 payload over GTP-U:
+
 ```
 $ ./runner.py test gtp6_drop_in_ipv6
 ```
