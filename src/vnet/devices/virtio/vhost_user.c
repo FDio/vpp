@@ -41,6 +41,7 @@
 
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
+#include <vlibapi/api_helper_macros.h>
 
 /**
  * @file
@@ -1249,6 +1250,9 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
   vnet_hw_interface_t *hwif;
   u16 qid;
 
+  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
       hwif->dev_class_index != vhost_user_device_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -1532,6 +1536,9 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   int rv = 0;
   vnet_hw_interface_t *hwif;
   uword *if_index;
+
+  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
       hwif->dev_class_index != vhost_user_device_class.index)

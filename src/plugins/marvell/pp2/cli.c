@@ -94,6 +94,9 @@ mrvl_pp2_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "please specify interface name or sw_if_index");
 
+  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+    return clib_error_return (0, "invalid sw_if_index %d", sw_if_index);
+
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == NULL || mrvl_pp2_device_class.index != hw->dev_class_index)
     return clib_error_return (0, "not a Marvell PP2 interface");

@@ -132,8 +132,8 @@ typedef union
     /** index of buffer pool this buffer belongs. */
     u8 buffer_pool_index;
 
-    /** Error code for buffers to be enqueued to error handler.  */
-    vlib_error_t error;
+    /** was: vlib_error_t error. */
+    u8 pad[2];
 
     /** Next buffer for this linked-list of buffers. Only valid if
       * VLIB_BUFFER_NEXT_PRESENT flag is set. */
@@ -166,8 +166,11 @@ typedef union
       * given here give total number of bytes in buffer chain. */
     u32 total_length_not_including_first_buffer;
 
+    /** Error code for buffers to be enqueued to error handler.  */
+    vlib_error_t error;
+
     /**< More opaque data, see ../vnet/vnet/buffer.h */
-    u32 opaque2[14];
+    u32 opaque2[13];
 
     /** start of third cache line */
       CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
