@@ -91,41 +91,61 @@ connecting to: hck-vpp-1
 vpp#
 ```
 
-### Test Scenarios
-#### SRv6 Drop-in for GTP-U/UDP/IPv4
+## Test Scenarios
+### SRv6 Drop-in between GTP-U tunnel
 
-![Topology Diagram](extras/ietf105/topo-test_gtp4.png)
+This test scenario introduces SRv6 path between GTP-U tunnel transparently. A GTP-U packet sent out from one end to another is translated to SRv6 and then back to GTP-U. All GTP-U tunnel identifiers are preserved in IPv6 header and SRH.
 
-IPv4 payload over GTP-U:
+
+#### GTP-U over UDP/IPv4 case
+
+This case uses SRv6 end functions, T.M.GTP4.D and End.M.GTP4.E.
+
+![Topology Diagram](extras/ietf105/topo-test_gtp4d.png)
+
+VPP1 is configured with "T.M.GTP4.D", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv4 toward the packet capture. VPP1 translates it to SRv6 toward D4::TEID with SR policy <D2::, D3::> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
+
+To start this case with IPv4 payload over GTP-U, you can run:
 
 ```
 $ ./runner.py test tmap
 ```
 
-IPv6 payload over GTP-U:
+If you want to use IPv6 payload instead of IPv4, you can run:
 
 ```
 $ ./runner.py test tmap_ipv6
 ```
 
-#### SRv6 Drop-in for GTP-U/UDP/IPv6
 
-![Topology Diagram](extras/ietf105/topo-test_gtp6.png)
+#### GTP-U over UDP/IPv6 case
 
-IPv4 payload over GTP-U:
+This case uses SRv6 end functions, End.M.GTP6.D.Di and End.M.GTP6.E.
+
+![Topology Diagram](extras/ietf105/topo-test_gtp6d.png)
+
+VPP1 is configured with "End.M.GTP6.D.Di", and VPP4 is configured with "End.M.GTP4.E". Others are configured with "End". The packet generator sends a GTP-U packet over UDP/IPv6 toward D:: of the packet capture. VPP1 translates it to SRv6 toward D:: with SR policy <D2::, D3::, D4::TEID> in SRH. VPP4 translates the SRv6 packet to the original GTP-U packet and send out to the packet capture.
+
+To start this case with IPv4 payload over GTP-U, you can run:
 
 ```
 $ ./runner.py test gtp6_drop_in
 ```
 
-IPv6 payload over GTP-U:
+If you want to use IPv6 payload instead of IPv4, you can run:
 
 ```
 $ ./runner.py test gtp6_drop_in_ipv6
 ```
 
 
-#### SRv6 from GTP-U/UDP/IPv6
+### GTP-U to SRv6
+
+This test scenario demonstrates GTP-U to SRv6 translation. A GTP-U packet sent out from one end to another is translated to SRv6.
+
+#### GTP-U over UDP/IPv6 case
+
+![Topology Diagram](extras/ietf105/topo-test_gtp6.png)
 
 IPv4 payload over GTP-U:
 
