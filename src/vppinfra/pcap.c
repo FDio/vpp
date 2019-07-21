@@ -73,6 +73,7 @@
 clib_error_t *
 pcap_close (pcap_main_t * pm)
 {
+  fsync (pm->file_descriptor);
   close (pm->file_descriptor);
   pm->flags &= ~PCAP_MAIN_INIT_DONE;
   pm->file_descriptor = -1;

@@ -92,6 +92,7 @@ class VppPGInterface(VppInterface):
 
         r = test.vapi.pg_create_interface(pg_index)
         self.set_sw_if_index(r.sw_if_index)
+        self._name = r.interface_name
 
         self._in_history_counter = 0
         self._out_history_counter = 0
@@ -101,8 +102,6 @@ class VppPGInterface(VppInterface):
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._in_file = "pg%u_in.pcap" % self.pg_index
         self._in_path = self.test.tempdir + "/" + self._in_file
-        self._capture_cli = "packet-generator capture pg%u pcap %s" % (
-            self.pg_index, self.out_path)
         self._cap_name = "pcap%u-sw_if_index-%s" % (
             self.pg_index, self.sw_if_index)
         self._input_cli = \
@@ -127,7 +126,7 @@ class VppPGInterface(VppInterface):
             self.test.logger.debug("OSError: Could not rename %s %s" %
                                    (path, file))
 
-    def enable_capture(self):
+    def enable_capture(self, count=0):
         """ Enable capture on this packet-generator interface
             of at most n packets.
             If n < 0, this is no limit
@@ -136,12 +135,16 @@ class VppPGInterface(VppInterface):
         self._rename_previous_capture_file(self.out_path,
                                            self.out_history_counter,
                                            self._out_file)
-        # FIXME this should be an API, but no such exists atm
-        self.test.vapi.cli(self.capture_cli)
+
+        self.test.vapi.pg_capture(interface_id=self.pg_index,
+                                  count=count,
+                                  is_enabled=1,
+                                  pcap_file_name=self._out_path)
         self._pcap_reader = None
 
     def disable_capture(self):
-        self.test.vapi.cli("%s disable" % self.capture_cli)
+        self.test.vapi.pg_capture(interface_id=self.pg_index,
+                                  is_enabled=0)
 
     def add_stream(self, pkts, nb_replays=None):
         """
@@ -218,6 +221,9 @@ class VppPGInterface(VppInterface):
                 self.test.get_packet_count_for_if_idx(self.sw_if_index)
             based_on = "based on stored packet_infos"
             if expected_count == 0:
+                print(
+                    self._test.vapi.pg_capture_dump(
+                        sw_if_index=self._sw_if_index))
                 raise Exception(
                     "Internal error, expected packet count for %s is 0!" %
                     name)
@@ -246,10 +252,14 @@ class VppPGInterface(VppInterface):
             remaining_time -= elapsed_time
         if capture:
             self.generate_debug_aid("count-mismatch")
+            print(self._test.vapi.pg_capture_dump(
+                sw_if_index=self._sw_if_index))
             raise Exception("Captured packets mismatch, captured %s packets, "
                             "expected %s packets on %s" %
                             (len(capture.res), expected_count, name))
         else:
+            print(self._test.vapi.pg_capture_dump(
+                sw_if_index=self._sw_if_index))
             raise Exception("No packets captured on %s" % name)
 
     def assert_nothing_captured(self, remark=None, filter_out_fn=is_ipv6_misc):
@@ -270,10 +280,16 @@ class VppPGInterface(VppInterface):
                 pass
             self.generate_debug_aid("empty-assert")
             if remark:
+                print(
+                    self._test.vapi.pg_capture_dump(
+                        sw_if_index=self._sw_if_index))
                 raise AssertionError(
                     "Non-empty capture file present for interface %s (%s)" %
                     (self.name, remark))
             else:
+                print(
+                    self._test.vapi.pg_capture_dump(
+                        sw_if_index=self._sw_if_index))
                 raise AssertionError("Capture file present for interface %s" %
                                      self.name)
 
@@ -305,30 +321,10 @@ class VppPGInterface(VppInterface):
             return False
         return True
 
-    def verify_enough_packet_data_in_pcap(self):
-        """
-        Check if enough data is available in file handled by internal pcap
-        reader so that a whole packet can be read.
+    def verify_flushed_pcap(self, sw_if_index):
+        details = self._test.vapi.pg_capture_dump(sw_if_index=sw_if_index)
 
-        :returns: True if enough data present, else False
-        """
-        orig_pos = self._pcap_reader.f.tell()  # save file position
-        enough_data = False
-        # read packet header from pcap
-        packet_header_size = 16
-        caplen = None
-        end_pos = None
-        hdr = self._pcap_reader.f.read(packet_header_size)
-        if len(hdr) == packet_header_size:
-            # parse the capture length - caplen
-            sec, usec, caplen, wirelen = struct.unpack(
-                self._pcap_reader.endian + "IIII", hdr)
-            self._pcap_reader.f.seek(0, 2)  # seek to end of file
-            end_pos = self._pcap_reader.f.tell()  # get position at end
-            if end_pos >= orig_pos + len(hdr) + caplen:
-                enough_data = True  # yay, we have enough data
-        self._pcap_reader.f.seek(orig_pos, 0)  # restore original position
-        return enough_data
+        return False if details[0].file_descriptor > 0 else True
 
     def wait_for_packet(self, timeout, filter_out_fn=is_ipv6_misc):
         """
@@ -342,6 +338,9 @@ class VppPGInterface(VppInterface):
         deadline = time.time() + timeout
         if self._pcap_reader is None:
             if not self.wait_for_capture_file(timeout):
+                print(
+                    self._test.vapi.pg_capture_dump(
+                        sw_if_index=self._sw_if_index))
                 raise CaptureTimeoutError("Capture file %s did not appear "
                                           "within timeout" % self.out_path)
             while time.time() < deadline:
@@ -353,6 +352,8 @@ class VppPGInterface(VppInterface):
                         "Exception in scapy.PcapReader(%s): %s" %
                         (self.out_path, format_exc()))
         if not self._pcap_reader:
+            print(self._test.vapi.pg_capture_dump(
+                sw_if_index=self._sw_if_index))
             raise CaptureTimeoutError("Capture file %s did not appear within "
                                       "timeout" % self.out_path)
 
@@ -363,7 +364,7 @@ class VppPGInterface(VppInterface):
             poll = True
             self.test.logger.debug("Polling for packet")
         while time.time() < deadline or poll:
-            if not self.verify_enough_packet_data_in_pcap():
+            if not self.verify_flushed_pcap(self._sw_if_index):
                 self._test.sleep(0)  # yield
                 poll = False
                 continue
@@ -381,6 +382,7 @@ class VppPGInterface(VppInterface):
             self._test.sleep(0)  # yield
             poll = False
         self.test.logger.debug("Timeout - no packets received")
+        print(self._test.vapi.pg_capture_dump(sw_if_index=self._sw_if_index))
         raise CaptureTimeoutError("Packet didn't arrive within timeout")
 
     def create_arp_req(self):
@@ -433,6 +435,8 @@ class VppPGInterface(VppInterface):
         except:
             self.test.logger.error(
                 ppp("Unexpected response to ARP request:", captured_packet))
+            print(self._test.vapi.pg_capture_dump(
+                sw_if_index=self._sw_if_index))
             raise
 
     def resolve_ndp(self, pg_interface=None, timeout=1):
@@ -463,6 +467,9 @@ class VppPGInterface(VppInterface):
             except:
                 self.test.logger.error(
                     "Timeout while waiting for NDP response")
+                print(
+                    self._test.vapi.pg_capture_dump(
+                        sw_if_index=self._sw_if_index))
                 raise
             ndp_reply = captured_packet.copy()  # keep original for exception
             try:

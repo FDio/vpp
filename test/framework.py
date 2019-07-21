@@ -111,7 +111,7 @@ class VppDiedError(Exception):
         else:
             in_msg = 'running %s.%s ' % (testcase, method_name)
 
-        msg = "VPP subprocess died %sunexpectedly with return code: %d%s." % (
+        msg = "VPP subprocess died %sunexpectedly with return code: %s%s." % (
             in_msg,
             self.rv,
             ' [%s]' % (self.signal_name if
@@ -554,7 +554,8 @@ class VppTestCase(unittest.TestCase):
                 cls.logger.critical(
                     "VPP died shortly after startup, check the"
                     " output to standard error for possible cause")
-                raise
+                raise VppDiedError(rv=None, testcase=cls.__name__,
+                                   method_name=cls._testMethodName)
             try:
                 cls.vapi.connect()
             except Exception:
