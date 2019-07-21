@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1bfd87a2_37c5656e",
+        "filename": "src/cmake/pack.cmake",
+        "patchSetId": 6
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 794
+      },
+      "writtenOn": "2019-07-21T13:04:32Z",
+      "side": 1,
+      "message": "Please do not change the signature of this macro since it is used also by other projects (libmemif for instance). Instead check that the cmake version used is \u003e\u003d 3.5 (I believe the code is already checking that, e.g. [1]).\n\n[1] https://github.com/FDio/vpp/blob/master/extras/vom/CMakeLists.txt",
+      "revId": "6f3f25828bf439c23b61d61f61b5532feb8b1f10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
