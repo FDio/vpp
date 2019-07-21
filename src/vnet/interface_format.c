@@ -190,7 +190,7 @@ format_vnet_sw_if_index_name (u8 * s, va_list * args)
   u32 sw_if_index = va_arg (*args, u32);
   vnet_sw_interface_t *si;
 
-  si = vnet_get_sw_interface_safe (vnm, sw_if_index);
+  si = vnet_get_sw_interface_or_null (vnm, sw_if_index);
 
   if (NULL == si)
     {
