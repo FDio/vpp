@@ -16,6 +16,9 @@
 #ifndef included_vppinfra_pcap_funcs_h
 #define included_vppinfra_pcap_funcs_h
 
+/** flush data to output file & close. */
+clib_error_t *pcap_close (pcap_main_t * pm);
+
 /** Write out data to output file. */
 clib_error_t *pcap_write (pcap_main_t * pm);
 

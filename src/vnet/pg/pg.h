@@ -300,7 +300,7 @@ typedef struct
   u32 id;
 
   pcap_main_t pcap_main;
-  u8 *pcap_file_name;
+  u8 state;			/* 0=disabled, 1=enabled */
 } pg_interface_t;
 
 /* Per VLIB node data. */

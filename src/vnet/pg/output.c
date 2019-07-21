@@ -74,10 +74,10 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			    sizeof (t->buffer.pre_data));
 	}
 
-      if (pif->pcap_file_name != 0)
+      if (pif->state != 0)
 	pcap_add_buffer (&pif->pcap_main, vm, bi0, ETHERNET_MAX_PACKET_BYTES);
     }
-  if (pif->pcap_file_name != 0)
+  if (pif->state != 0)
     pcap_write (&pif->pcap_main);
 
 

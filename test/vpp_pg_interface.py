@@ -2,6 +2,7 @@ import os
 import time
 import socket
 import struct
+import sys
 from traceback import format_exc, format_stack
 
 import scapy.compat
@@ -16,6 +17,13 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
 from util import ppp, ppc
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
 from scapy.utils import inet_pton, inet_ntop
+
+if sys.version_info[0] == 2:
+    import subprocess32 as subprocess
+else:
+    import subprocess
+
+fuser_bin = '/bin/fuser'
 
 
 class CaptureTimeoutError(Exception):
@@ -305,30 +313,17 @@ class VppPGInterface(VppInterface):
             return False
         return True
 
-    def verify_enough_packet_data_in_pcap(self):
-        """
-        Check if enough data is available in file handled by internal pcap
-        reader so that a whole packet can be read.
+    @staticmethod
+    def verify_flushed_pcap(vpp_pid, pcap_file):
+        try:
+            result = subprocess.check_output(
+                '%s %s' % (fuser_bin, pcap_file),
+                stderr=subprocess.DEVNULL, shell=True)
 
-        :returns: True if enough data present, else False
-        """
-        orig_pos = self._pcap_reader.f.tell()  # save file position
-        enough_data = False
-        # read packet header from pcap
-        packet_header_size = 16
-        caplen = None
-        end_pos = None
-        hdr = self._pcap_reader.f.read(packet_header_size)
-        if len(hdr) == packet_header_size:
-            # parse the capture length - caplen
-            sec, usec, caplen, wirelen = struct.unpack(
-                self._pcap_reader.endian + "IIII", hdr)
-            self._pcap_reader.f.seek(0, 2)  # seek to end of file
-            end_pos = self._pcap_reader.f.tell()  # get position at end
-            if end_pos >= orig_pos + len(hdr) + caplen:
-                enough_data = True  # yay, we have enough data
-        self._pcap_reader.f.seek(orig_pos, 0)  # restore original position
-        return enough_data
+        except OSError:
+            raise RuntimeError('%r not installed.' % fuser_bin)
+
+        return False if vpp_pid in result.split() else True
 
     def wait_for_packet(self, timeout, filter_out_fn=is_ipv6_misc):
         """
@@ -363,7 +358,7 @@ class VppPGInterface(VppInterface):
             poll = True
             self.test.logger.debug("Polling for packet")
         while time.time() < deadline or poll:
-            if not self.verify_enough_packet_data_in_pcap():
+            if not self.verify_flushed_pcap(self._test.vpp.pid, self.out_path):
                 self._test.sleep(0)  # yield
                 poll = False
                 continue

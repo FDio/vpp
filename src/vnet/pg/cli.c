@@ -83,25 +83,24 @@ pg_capture (pg_capture_args_t * a)
   pg_main_t *pg = &pg_main;
   pg_interface_t *pi;
 
-  if (a->is_enabled == 1)
-    {
-      struct stat sb;
-      if (stat ((char *) a->pcap_file_name, &sb) != -1)
-	return clib_error_return (0, "pcap file '%s' does not exist.",
-				  a->pcap_file_name);
-    }
-
   pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
-  vec_free (pi->pcap_file_name);
   clib_memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
 
-  if (a->is_enabled == 0)
-    return 0;
-
-  pi->pcap_file_name = a->pcap_file_name;
-  pi->pcap_main.file_name = (char *) pi->pcap_file_name;
-  pi->pcap_main.n_packets_to_capture = a->count;
-  pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+  if (a->is_enabled == 1)
+    {
+      pi->pcap_main.file_name = (char *) a->pcap_file_name;
+      pi->pcap_main.n_packets_to_capture = a->count;
+      pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+      /* create the pcap file and write the header */
+      pcap_write (&pi->pcap_main);
+      pi->state = 1;
+    }
+  else if (pi->state == 1)
+    {
+      pi->state = 0;
+      pcap_write (&pi->pcap_main);
+      pcap_close (&pi->pcap_main);
+    }
 
   return 0;
 }

@@ -63,7 +63,7 @@ endif
 DEB_DEPENDS  = curl build-essential autoconf automake ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
-DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
+DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev psmisc
 DEB_DEPENDS += python-all python3-all python3-setuptools python-dev
 DEB_DEPENDS += python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
@@ -87,7 +87,7 @@ RPM_DEPENDS += boost boost-devel
 RPM_DEPENDS += selinux-policy selinux-policy-devel
 RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
-RPM_DEPENDS += mbedtls-devel
+RPM_DEPENDS += mbedtls-devel psmisc
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
