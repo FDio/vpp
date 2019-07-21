@@ -272,6 +272,14 @@ typedef struct
 
 extern vpe_api_main_t vpe_api_main;
 
+#ifndef FINISH
+#define FINISH                                  \
+    vec_add1 (s, 0);                            \
+    vl_print (handle, (char *)s);               \
+    vec_free (s);                               \
+    return handle;
+#endif
+
 #endif /* __api_helper_macros_h__ */
 
 /*

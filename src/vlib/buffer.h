@@ -132,12 +132,11 @@ typedef union
     /** index of buffer pool this buffer belongs. */
     u8 buffer_pool_index;
 
-    /** Error code for buffers to be enqueued to error handler.  */
-    vlib_error_t error;
+    /** available */
+    u8 dont_waste_me[2];
 
-    /** Next buffer for this linked-list of buffers. Only valid if
-      * VLIB_BUFFER_NEXT_PRESENT flag is set. */
-    u32 next_buffer;
+    /** Error handle */
+    vlib_error_t error;
 
     /** The following fields can be in a union because once a packet enters
      * the punt path, it is no longer on a feature arc */
@@ -158,6 +157,10 @@ typedef union
     /** start of 2nd cache line */
       CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
+    /** Next buffer for this linked-list of buffers. Only valid if
+      * VLIB_BUFFER_NEXT_PRESENT flag is set. */
+    u32 next_buffer;
+
     /** Specifies index into trace buffer if VLIB_PACKET_IS_TRACED flag is
       * set. */
     u32 trace_index;
@@ -167,7 +170,7 @@ typedef union
     u32 total_length_not_including_first_buffer;
 
     /**< More opaque data, see ../vnet/vnet/buffer.h */
-    u32 opaque2[14];
+    u32 opaque2[13];
 
     /** start of third cache line */
       CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);

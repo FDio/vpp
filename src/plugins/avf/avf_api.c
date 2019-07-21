@@ -19,6 +19,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vlibapi/api_helper_macros.h>
 
 #include <avf/avf.h>
 
@@ -93,6 +94,12 @@ vl_api_avf_delete_t_handler (vl_api_avf_delete_t * mp)
   avf_device_t *ad;
   vnet_hw_interface_t *hw;
   int rv = 0;
+
+  if (!vnet_sw_if_index_is_api_valid (htonl(mp->sw_if_index)))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto reply;
+    }
 
   hw = vnet_get_sup_hw_interface (vnm, htonl (mp->sw_if_index));
   if (hw == NULL || avf_device_class.index != hw->dev_class_index)

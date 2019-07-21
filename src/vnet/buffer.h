@@ -421,7 +421,7 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
-    u32 unused[8];
+    u32 unused[7];
   };
 } vnet_buffer_opaque2_t;
 

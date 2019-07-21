@@ -97,6 +97,12 @@ vl_api_virtio_pci_delete_t_handler (vl_api_virtio_pci_delete_t * mp)
   vl_api_virtio_pci_delete_reply_t *rmp;
   vl_api_registration_t *reg;
 
+  if (!vnet_sw_if_index_is_api_valid (ntohl(mp->sw_if_index)))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto reply;
+    }
+
   hw = vnet_get_sup_hw_interface (vnm, htonl (mp->sw_if_index));
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
     {

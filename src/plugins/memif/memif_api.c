@@ -209,10 +209,17 @@ vl_api_memif_delete_t_handler (vl_api_memif_delete_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   vl_api_memif_delete_reply_t *rmp;
-  vnet_hw_interface_t *hi =
-    vnet_get_sup_hw_interface (vnm, ntohl (mp->sw_if_index));
+  vnet_hw_interface_t *hi;
   memif_if_t *mif;
   int rv = 0;
+
+  if (!vnet_sw_if_index_is_api_valid (ntohl(mp->sw_if_index)))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto reply;
+    }
+
+  hi = vnet_get_sup_hw_interface (vnm, ntohl (mp->sw_if_index));
 
   if (hi == NULL || memif_device_class.index != hi->dev_class_index)
     rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -222,6 +229,7 @@ vl_api_memif_delete_t_handler (vl_api_memif_delete_t * mp)
       rv = memif_delete_if (vm, mif);
     }
 
+ reply:
   REPLY_MACRO (VL_API_MEMIF_DELETE_REPLY);
 }
 
