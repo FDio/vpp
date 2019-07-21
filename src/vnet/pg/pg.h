@@ -300,7 +300,10 @@ typedef struct
   u32 id;
 
   pcap_main_t pcap_main;
-  u8 *pcap_file_name;
+  u8 state;			/* 0=disabled, 1=enabled */
+  f64 enable_timestamp;
+  f64 disable_timestamp;
+  f64 timeout;
 } pg_interface_t;
 
 /* Per VLIB node data. */
@@ -352,6 +355,8 @@ void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s,
 
 /* Find/create free packet-generator interface index. */
 u32 pg_interface_add_or_get (pg_main_t * pg, uword stream_index);
+
+u8 * format_pg_interface_name (u8 * s, va_list * args);
 
 always_inline pg_node_t *
 pg_get_node (uword node_index)

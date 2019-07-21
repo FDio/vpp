@@ -113,7 +113,7 @@ format_pg_output_trace (u8 * s, va_list * va)
   return s;
 }
 
-static u8 *
+u8 *
 format_pg_interface_name (u8 * s, va_list * args)
 {
   pg_main_t *pg = &pg_main;

@@ -2772,7 +2772,7 @@ static void *vl_api_pg_capture_t_print
 
   s = format (0, "SCRIPT: pg_capture ");
   s = format (0, "if_id %d ", ntohl (mp->interface_id));
-  s = format (0, "pcap %s", mp->pcap_file_name);
+  s = format (0, "pcap %s", vl_api_from_api_string(&mp->pcap_file_name));
   if (mp->count != ~0)
     s = format (s, "count %d ", ntohl (mp->count));
   if (!mp->is_enabled)
@@ -2787,7 +2787,7 @@ static void *vl_api_pg_enable_disable_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: pg_enable_disable ");
-  if (ntohl (mp->stream_name_length) > 0)
+  if (vl_api_string_len (&mp->stream_name) > 0)
     s = format (s, "stream %s", mp->stream_name);
   if (!mp->is_enabled)
     s = format (s, "disable");
