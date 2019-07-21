@@ -99,7 +99,7 @@ format_ip_punt_redirect_trace (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *si;
 
-  si = vnet_get_sw_interface_safe (vnm, t->redirect.tx_sw_if_index);
+  si = vnet_get_sw_interface_or_null (vnm, t->redirect.tx_sw_if_index);
 
   if (NULL != si)
     s = format (s, "via %U on %U using adj:%d",

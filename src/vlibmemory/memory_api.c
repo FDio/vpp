@@ -421,10 +421,10 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
 }
 
 #define foreach_vlib_api_msg                            \
-_(MEMCLNT_CREATE, memclnt_create)                       \
-_(MEMCLNT_DELETE, memclnt_delete)                       \
-_(MEMCLNT_KEEPALIVE, memclnt_keepalive)                 \
-_(MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply)	\
+ _(MEMCLNT_CREATE, memclnt_create, 1)                   \
+ _(MEMCLNT_DELETE, memclnt_delete, 1)                   \
+ _(MEMCLNT_KEEPALIVE, memclnt_keepalive, 0)             \
+ _(MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply, 0)
 
 /*
  * memory_api_init
@@ -444,7 +444,7 @@ vl_mem_api_init (const char *region_name)
   if ((rv = vl_map_shmem (region_name, 1 /* is_vlib */ )) < 0)
     return rv;
 
-#define _(N,n) do {                                             \
+#define _(N,n,trace) do {                                       \
     c->id = VL_API_##N;                                         \
     c->name = #n;                                               \
     c->handler = vl_api_##n##_t_handler;                        \
@@ -452,7 +452,7 @@ vl_mem_api_init (const char *region_name)
     c->endian = vl_api_##n##_t_endian;                          \
     c->print = vl_api_##n##_t_print;                            \
     c->size = sizeof(vl_api_##n##_t);                           \
-    c->traced = 1; /* trace, so these msgs print */             \
+    c->traced = trace; /* trace, so these msgs print */         \
     c->replay = 0; /* don't replay client create/delete msgs */ \
     c->message_bounce = 0; /* don't bounce this message */	\
     vl_msg_api_config(c);} while (0);
