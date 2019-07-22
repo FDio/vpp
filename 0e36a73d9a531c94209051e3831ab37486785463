@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ab8f8bfe_fd04b5f0",
+        "filename": "src/plugins/lacp/lacp_doc.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-07-22T16:02:59Z",
+      "side": 1,
+      "message": "The symbol convention is square brackets are optional, and braces are required. Is numa-only optional or required?",
+      "revId": "0e36a73d9a531c94209051e3831ab37486785463",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
