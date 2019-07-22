@@ -57,13 +57,37 @@ typedef struct
 
 memory_client_main_t memory_client_main;
 
+void
+vl_client_set_thread_index (void)
+{
+  int i;
+  /*
+   * Find an unused slot in the per-cpu-mheaps array,
+   * and grab it for this thread. We need to be able to
+   * push/pop the thread heap without affecting other thread(s).
+   */
+  if (__os_thread_index == 0)
+    {
+      for (i = 0; i < ARRAY_LEN (clib_per_cpu_mheaps); i++)
+	{
+	  if (clib_per_cpu_mheaps[i] == 0)
+	    {
+	      /* Copy the main thread mheap pointer */
+	      clib_per_cpu_mheaps[i] = clib_per_cpu_mheaps[0];
+	      __os_thread_index = i;
+	      break;
+	    }
+	}
+      ASSERT (__os_thread_index > 0);
+    }
+}
+
 static void *
 rx_thread_fn (void *arg)
 {
   svm_queue_t *q;
   memory_client_main_t *mm = &memory_client_main;
   api_main_t *am = &api_main;
-  int i;
 
   q = am->vl_input_queue;
 
@@ -71,25 +95,7 @@ rx_thread_fn (void *arg)
   if (setjmp (mm->rx_thread_jmpbuf) == 0)
     {
       mm->rx_thread_jmpbuf_valid = 1;
-      /*
-       * Find an unused slot in the per-cpu-mheaps array,
-       * and grab it for this thread. We need to be able to
-       * push/pop the thread heap without affecting other thread(s).
-       */
-      if (__os_thread_index == 0)
-	{
-	  for (i = 0; i < ARRAY_LEN (clib_per_cpu_mheaps); i++)
-	    {
-	      if (clib_per_cpu_mheaps[i] == 0)
-		{
-		  /* Copy the main thread mheap pointer */
-		  clib_per_cpu_mheaps[i] = clib_per_cpu_mheaps[0];
-		  __os_thread_index = i;
-		  break;
-		}
-	    }
-	  ASSERT (__os_thread_index > 0);
-	}
+      vl_client_set_thread_index ();
       while (1)
 	vl_msg_api_queue_handler (q);
     }
