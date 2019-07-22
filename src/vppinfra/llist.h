@@ -52,6 +52,22 @@ typedef struct clib_llist_anchor
  */
 #define clib_llist_entry_index(LP,E) ((E) - (LP))
 /**
+ * Get prev list entry index
+ *
+ * @param E	pool entry
+ * @name	list anchor name
+ * @return	previous index
+ */
+#define clib_llist_prev_index(E,name) _lprev(E,name)
+/**
+ * Get next list entry index
+ *
+ * @param E	pool entry
+ * @name	list anchor name
+ * @return	next index
+ */
+#define clib_llist_next_index(E,name) _lnext(E,name)
+/**
  * Get next pool entry
  *
  * @param LP	linked list pool

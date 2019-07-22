@@ -650,7 +650,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     }
 
   ctx->snd_space = transport_connection_snd_space (ctx->tc,
-						   wrk->vm->clib_time.
+						   vm->clib_time.
 						   last_cpu_time,
 						   ctx->snd_mss);
 
@@ -679,6 +679,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       if (n_bufs)
 	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
       session_evt_add_old (wrk, elt);
+      vlib_node_increment_counter (wrk->vm, node->node_index,
+	                           SESSION_QUEUE_ERROR_NO_BUFFER, 1);
       return SESSION_TX_NO_BUFFERS;
     }
 
@@ -839,23 +841,18 @@ session_event_dispatch (session_worker_t * wrk, vlib_node_runtime_t * node,
 {
   session_main_t *smm = &session_main;
   app_worker_t *app_wrk;
+  clib_llist_index_t ei;
   void (*fp) (void *);
   session_event_t *e;
   session_t *s;
-  int rv;
 
+  ei = clib_llist_entry_index (wrk->event_elts, elt);
   e = &elt->evt;
+
   switch (e->event_type)
     {
     case SESSION_IO_EVT_TX_FLUSH:
     case SESSION_IO_EVT_TX:
-      /* Don't try to send more that one frame per dispatch cycle */
-      if (*n_tx_packets == VLIB_FRAME_SIZE)
-	{
-	  session_evt_add_postponed (wrk, elt);
-	  return;
-	}
-
       s = session_event_get_session (e, thread_index);
       if (PREDICT_FALSE (!s))
 	{
@@ -866,14 +863,7 @@ session_event_dispatch (session_worker_t * wrk, vlib_node_runtime_t * node,
       wrk->ctx.s = s;
       /* Spray packets in per session type frames, since they go to
        * different nodes */
-      rv = (smm->session_tx_fns[s->session_type]) (wrk, node, elt,
-						   n_tx_packets);
-      if (PREDICT_FALSE (rv == SESSION_TX_NO_BUFFERS))
-	{
-	  vlib_node_increment_counter (wrk->vm, node->node_index,
-				       SESSION_QUEUE_ERROR_NO_BUFFER, 1);
-	  break;
-	}
+      (smm->session_tx_fns[s->session_type]) (wrk, node, elt, n_tx_packets);
       break;
     case SESSION_IO_EVT_RX:
       s = session_event_get_session (e, thread_index);
@@ -939,6 +929,11 @@ session_event_dispatch (session_worker_t * wrk, vlib_node_runtime_t * node,
     default:
       clib_warning ("unhandled event type %d", e->event_type);
     }
+
+  /* Regrab elements in case pool moved */
+  elt = pool_elt_at_index (wrk->event_elts, ei);
+  if (!clib_llist_elt_is_linked (elt, evt_list))
+    session_evt_elt_free (wrk, elt);
 }
 
 static uword
@@ -948,9 +943,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_main_t *smm = vnet_get_session_main ();
   u32 thread_index = vm->thread_index, n_to_dequeue;
   session_worker_t *wrk = &smm->wrk[thread_index];
-  session_evt_elt_t *elt, *new_he, *new_te, *old_he;
-  session_evt_elt_t *disconnects_he, *postponed_he;
+  session_evt_elt_t *elt, *new_he, *old_he;
   svm_msg_q_msg_t _msg, *msg = &_msg;
+  clib_llist_index_t new_ti, old_ti;
   int i, n_tx_packets = 0;
   svm_msg_q_t *mq;
 
@@ -963,12 +958,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    */
   transport_update_time (wrk->last_vlib_time, thread_index);
 
-  /* Make sure postponed events are handled first */
-  new_he = pool_elt_at_index (wrk->event_elts, wrk->new_head);
-  new_te = clib_llist_prev (wrk->event_elts, evt_list, new_he);
-
-  postponed_he = pool_elt_at_index (wrk->event_elts, wrk->postponed_head);
-  clib_llist_splice (wrk->event_elts, evt_list, new_te, postponed_he);
+  /*
+   *  Dequeue new events
+   */
 
   /* Try to dequeue what is available. Don't wait for lock.
    * XXX: we may need priorities here */
@@ -992,30 +984,55 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       svm_msg_q_unlock (mq);
     }
 
-  old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
-  disconnects_he = pool_elt_at_index (wrk->event_elts, wrk->disconnects_head);
 
-  new_te = clib_llist_prev (wrk->event_elts, evt_list, new_he);
-  clib_llist_splice (wrk->event_elts, evt_list, new_te, old_he);
-  new_te = clib_llist_prev (wrk->event_elts, evt_list, new_he);
-  clib_llist_splice (wrk->event_elts, evt_list, new_te, disconnects_he);
+  /*
+   * Handle the new events list: ctrl and io events.
+   */
+
+  new_he = pool_elt_at_index (wrk->event_elts, wrk->new_head);
+  new_ti = clib_llist_prev_index (new_he, evt_list);
 
   while (!clib_llist_is_empty (wrk->event_elts, evt_list, new_he))
     {
-      clib_llist_index_t ei;
+      session_evt_type_t et;
 
       clib_llist_pop_first (wrk->event_elts, evt_list, elt, new_he);
-      ei = clib_llist_entry_index (wrk->event_elts, elt);
+      et = elt->evt.event_type;
+
+      /* Postpone tx events if we can't handle them this dispatch cycle */
+      if (n_tx_packets >= VLIB_FRAME_SIZE
+	  && (et == SESSION_IO_EVT_TX || et == SESSION_IO_EVT_TX_FLUSH))
+	{
+	  clib_llist_add (wrk->event_elts, evt_list, elt, new_he);
+	  continue;
+	}
 
       session_event_dispatch (wrk, node, elt, thread_index, &n_tx_packets);
 
-      /* Regrab elements in case pool moved */
-      elt = pool_elt_at_index (wrk->event_elts, ei);
-      if (!clib_llist_elt_is_linked (elt, evt_list))
-	session_evt_elt_free (wrk, elt);
-
-      new_he = pool_elt_at_index (wrk->event_elts, wrk->new_head);
+      /* Regrab in case pool moved */
+      new_he = pool_elt_at_index(wrk->event_elts, wrk->new_head);
+      if (new_ti == clib_llist_next_index (new_he, evt_list))
+	break;
     }
+
+  /*
+   * Handle the old list: io events only
+   */
+
+  old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
+  old_ti = clib_llist_prev_index (old_he, evt_list);
+
+  while (!clib_llist_is_empty (wrk->event_elts, evt_list, old_he))
+    {
+      clib_llist_pop_first (wrk->event_elts, evt_list, elt, old_he);
+
+      session_event_dispatch (wrk, node, elt, thread_index, &n_tx_packets);
+
+      old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
+      if (n_tx_packets >= VLIB_FRAME_SIZE
+	  || clib_llist_next_index (old_he, evt_list) == old_ti)
+	break;
+    };
 
   vlib_node_increment_counter (vm, session_queue_node.index,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);
