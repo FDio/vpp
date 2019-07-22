@@ -56,6 +56,7 @@ set(VPPINFRA_SRCS
   macros.c
   maplog.c
   mhash.c
+  mpcap.c
   pcap.c
   pmalloc.c
   pool.c
@@ -136,6 +137,7 @@ set(VPPINFRA_HEADERS
   mhash.h
   mheap_bootstrap.h
   mheap.h
+  mpcap.h
   os.h
   pcap.h
   pcap_funcs.h
