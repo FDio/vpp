@@ -162,7 +162,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       */
 	      tc0 = session_get_transport (s0);
 	      uc0 = udp_get_connection_from_transport (tc0);
-	      if (uc0->is_connected)
+	      if (uc0->flags & UDP_CONN_F_CONNECTED)
 		{
 		  /*
 		   * Clone the transport. It will be cleaned up with the
@@ -190,7 +190,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      tc0 = listen_session_get_transport (s0);
 	      uc0 = udp_get_connection_from_transport (tc0);
-	      if (uc0->is_connected)
+	      if (uc0->flags & UDP_CONN_F_CONNECTED)
 		{
 		  child0 = udp_connection_alloc (my_thread_index);
 		  if (is_ip4)
@@ -207,7 +207,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  child0->c_rmt_port = udp0->src_port;
 		  child0->c_is_ip4 = is_ip4;
 		  child0->c_fib_index = tc0->fib_index;
-		  child0->is_connected = 1;
+		  child0->flags |= UDP_CONN_F_CONNECTED;
 
 		  if (session_stream_accept (&child0->connection,
 					     tc0->s_index, tc0->thread_index,
