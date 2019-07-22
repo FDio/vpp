@@ -150,7 +150,6 @@ bier_lookup (vlib_main_t * vm,
              * reset the fmask and clone storage vectors
              */
             vec_reset_length (blm->blm_fmasks[thread_index]);
-            vec_reset_length (blm->blm_clones[thread_index]);
 
             /*
              * Loop through the buckets in the header
@@ -217,6 +216,7 @@ bier_lookup (vlib_main_t * vm,
             u32 n_clones;
 
             n_clones = vec_len(blm->blm_fmasks[thread_index]);
+            vec_validate(blm->blm_clones[thread_index], n_clones - 1);
 
             if (PREDICT_TRUE(0 != n_clones))
             {
@@ -225,8 +225,9 @@ bier_lookup (vlib_main_t * vm,
                                                n_clones,
 					       VLIB_BUFFER_CLONE_HEAD_SIZE);
 
-                if (num_cloned != vec_len(blm->blm_fmasks[thread_index]))
+                if (num_cloned != n_clones)
                 {
+                  vec_set_len(blm->blm_clones[thread_index], n_clones);
                     vlib_node_increment_counter
                         (vm, node->node_index,
                          BIER_LOOKUP_ERROR_BUFFER_ALLOCATION_FAILURE, 1);
