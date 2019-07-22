@@ -113,6 +113,7 @@ typedef enum
   STATE_ATTACHED,
   STATE_LISTEN,
   STATE_READY,
+  STATE_DATA_DONE,
   STATE_DISCONNECTED,
   STATE_DETACHED
 } connection_state_t;
@@ -213,6 +214,7 @@ typedef struct
   u64 appns_secret;
 
   pthread_t *client_thread_handles;
+  pthread_t message_queue_handle;
   u32 *thread_args;
   u32 n_clients;		/* Target number of QUIC sessions */
   u32 n_stream_clients;		/* Target Number of STREAM sessions per QUIC session */
@@ -237,12 +239,22 @@ typedef struct
    * vpp. If sock api is used, shm binary api is subsequently bootstrapped
    * and all other messages are exchanged using shm IPC. */
   u8 use_sock_api;
+  svm_msg_q_t *rpc_queue;
 
   /* Limit the number of incorrect data messages */
   int max_test_msg;
 
   fifo_segment_main_t segment_main;
 } echo_main_t;
+
+typedef void (*echo_rpc_t) (void *arg, u32 opaque);
+
+typedef struct
+{
+  void *fp;
+  void *arg;
+  u32 opaque;
+} echo_rpc_msg_t;
 
 echo_main_t echo_main;
 
@@ -359,6 +371,8 @@ format_quic_echo_state (u8 * s, va_list * args)
     return format (s, "STATE_LISTEN");
   if (state == STATE_READY)
     return format (s, "STATE_READY");
+  if (state == STATE_DATA_DONE)
+    return format (s, "STATE_DATA_DONE");
   if (state == STATE_DISCONNECTED)
     return format (s, "STATE_DISCONNECTED");
   if (state == STATE_DETACHED)
@@ -498,6 +512,33 @@ echo_session_alloc (echo_main_t * em)
   return session;
 }
 
+static int
+echo_send_rpc (echo_main_t * em, void *fp, void *arg, u32 opaque)
+{
+  svm_msg_q_msg_t msg;
+  echo_rpc_msg_t *evt;
+  if (PREDICT_FALSE (svm_msg_q_lock (em->rpc_queue)))
+    return -1;
+  if (PREDICT_FALSE (svm_msg_q_ring_is_full (em->rpc_queue, 0)))
+    {
+      svm_msg_q_unlock (em->rpc_queue);
+      return -2;
+    }
+  msg = svm_msg_q_alloc_msg_w_ring (em->rpc_queue, 0);
+  if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
+    {
+      svm_msg_q_unlock (em->rpc_queue);
+      return -2;
+    }
+  evt = (echo_rpc_msg_t *) svm_msg_q_msg_data (em->rpc_queue, &msg);
+  evt->arg = arg;
+  evt->opaque = opaque;
+  evt->fp = fp;
+
+  svm_msg_q_add_and_unlock (em->rpc_queue, &msg);
+  return 0;
+}
+
 /*
  *
  *  Session API Calls
@@ -596,8 +637,9 @@ server_send_unbind (echo_main_t * em)
 }
 
 static void
-echo_send_connect (echo_main_t * em, u8 * uri, u32 opaque)
+echo_send_connect (u8 * uri, u32 opaque)
 {
+  echo_main_t *em = &echo_main;
   vl_api_connect_uri_t *cmp;
   cmp = vl_msg_api_alloc (sizeof (*cmp));
   clib_memset (cmp, 0, sizeof (*cmp));
@@ -1337,7 +1379,7 @@ echo_on_connected_connect (session_connected_msg_t * mp, u32 session_index)
 
   quic_echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < em->n_stream_clients; i++)
-    echo_send_connect (em, uri, session_index);
+    echo_send_rpc (em, echo_send_connect, (void *) uri, session_index);
 
   ECHO_LOG (0, "Qsession 0x%llx connected to %U:%d",
 	    mp->handle, format_ip46_address, &mp->lcl.ip,
@@ -1397,7 +1439,7 @@ echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
 
   quic_echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < em->n_stream_clients; i++)
-    echo_send_connect (em, uri, session_index);
+    echo_send_rpc (em, echo_send_connect, (void *) uri, session_index);
 }
 
 static void
@@ -1552,47 +1594,57 @@ static int
 wait_for_state_change (echo_main_t * em, connection_state_t state,
 		       f64 timeout)
 {
-  svm_msg_q_msg_t msg;
-  session_event_t *e;
   f64 end_time = clib_time_now (&em->clib_time) + timeout;
-
   while (!timeout || clib_time_now (&em->clib_time) < end_time)
     {
-      if (em->state == state)
+      if (em->state == state || em->time_to_stop)
 	return 0;
-      if (em->time_to_stop == 1)
-	return 0;
-      if (!em->our_event_queue || em->state < STATE_ATTACHED)
-	continue;
-
-      if (svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_NOWAIT, 0))
-	continue;
-      e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-      handle_mq_event (e);
-      svm_msg_q_free_msg (em->our_event_queue, &msg);
     }
   ECHO_LOG (1, "timeout waiting for %U", format_quic_echo_state, state);
   return -1;
 }
 
 static void
-echo_event_loop (echo_main_t * em)
+echo_process_rpcs (echo_main_t * em)
 {
+  echo_rpc_msg_t *rpc;
   svm_msg_q_msg_t msg;
-  session_event_t *e;
-
-  ECHO_LOG (1, "Waiting for data on %u clients", em->n_clients_connected);
-  while (em->n_clients_connected | em->n_quic_clients_connected)
+  while (em->state < STATE_DATA_DONE)
     {
-      int rc = svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_TIMEDWAIT, 1);
-      if (PREDICT_FALSE (rc == ETIMEDOUT && em->time_to_stop))
-	break;
-      if (rc == ETIMEDOUT)
+      if (svm_msg_q_sub (em->rpc_queue, &msg, SVM_Q_TIMEDWAIT, 1))
 	continue;
-      e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-      handle_mq_event (e);
-      svm_msg_q_free_msg (em->our_event_queue, &msg);
+      rpc = svm_msg_q_msg_data (em->rpc_queue, &msg);
+      ((echo_rpc_t) rpc->fp) (rpc->arg, rpc->opaque);
+      svm_msg_q_free_msg (em->rpc_queue, &msg);
     }
+}
+
+static void *
+echo_event_loop (void *arg)
+{
+  echo_main_t *em = &echo_main;
+  session_event_t *e;
+  svm_msg_q_msg_t msg;
+  int rv;
+  ASSERT (em->state >= STATE_ATTACHED && em->our_event_queue);
+  ECHO_LOG (1, "Waiting for data on %u clients", em->n_clients_connected);
+  while (1)
+    {
+      if (!(rv = svm_msg_q_sub (em->our_event_queue,
+				&msg, SVM_Q_TIMEDWAIT, 1)))
+	{
+	  e = svm_msg_q_msg_data (em->our_event_queue, &msg);
+	  handle_mq_event (e);
+	  svm_msg_q_free_msg (em->our_event_queue, &msg);
+	}
+      if (rv == ETIMEDOUT
+	  && (em->time_to_stop || em->state == STATE_DETACHED))
+	break;
+      if (!em->n_clients_connected && !em->n_quic_clients_connected &&
+	  em->state == STATE_READY)
+	em->state = STATE_DATA_DONE;
+    }
+  pthread_exit (0);
 }
 
 static void
@@ -1601,28 +1653,15 @@ clients_run (echo_main_t * em)
   u64 i;
   quic_echo_notify_event (em, ECHO_EVT_FIRST_QCONNECT);
   for (i = 0; i < em->n_clients; i++)
-    echo_send_connect (em, em->uri, SESSION_INVALID_INDEX);
-
-  if (wait_for_state_change (em, STATE_READY, TIMEOUT))
-    {
-      ECHO_FAIL ("Timeout waiting for state ready");
-      return;
-    }
-
-  echo_event_loop (em);
+    echo_send_connect (em->uri, SESSION_INVALID_INDEX);
+  echo_process_rpcs (em);
 }
 
 static void
 server_run (echo_main_t * em)
 {
   server_send_listen (em);
-  if (wait_for_state_change (em, STATE_READY, 0))
-    {
-      ECHO_FAIL ("Timeout waiting for state ready");
-      return;
-    }
-  echo_event_loop (em);
-
+  echo_process_rpcs (em);
   /* Cleanup */
   server_send_unbind (em);
   if (wait_for_state_change (em, STATE_DISCONNECTED, TIMEOUT))
@@ -1637,7 +1676,6 @@ server_run (echo_main_t * em)
  *  Session API handlers
  *
  */
-
 
 static void
 vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
@@ -1858,15 +1896,17 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
   if (mp->context == SESSION_INVALID_INDEX)
     {
       ECHO_LOG (1, "Retrying connect %s", em->uri);
-      echo_send_connect (em, em->uri, SESSION_INVALID_INDEX);
+      echo_send_rpc (em, echo_send_connect, (void *) em->uri,
+		     SESSION_INVALID_INDEX);
     }
   else
     {
       session = pool_elt_at_index (em->sessions, mp->context);
       uri = format (0, "QUIC://session/%lu", session->vpp_session_handle);
       ECHO_LOG (1, "Retrying connect %s", uri);
-      echo_send_connect (em, uri, mp->context);
+      echo_send_rpc (em, echo_send_connect, (void *) uri, mp->context);
     }
+
 }
 
 #define foreach_quic_echo_msg                            		\
@@ -1937,6 +1977,7 @@ print_usage_and_exit (void)
 	   "                       exit        - Exiting of the app\n"
 	   "  json                Output global stats in json\n"
 	   "  log=N               Set the log level to [0: no output, 1:errors, 2:log]\n"
+	   "  max-connects=N      Don't do more than N parallel connect_uri\n"
 	   "\n"
 	   "  nclients N[/M]      Open N QUIC connections, each one with M streams (M defaults to 1)\n"
 	   "  nthreads N          Use N busy loop threads for data [in addition to main & msg queue]\n"
@@ -2072,6 +2113,8 @@ main (int argc, char **argv)
   fifo_segment_main_t *sm = &em->segment_main;
   char *app_name;
   u32 n_clients, i;
+  svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
+  u32 rpc_queue_size;
 
   clib_mem_init_thread_safe (0, 256 << 20);
   clib_memset (em, 0, sizeof (*em));
@@ -2110,6 +2153,18 @@ main (int argc, char **argv)
   for (i = 0; i < em->tx_buf_size; i++)
     em->connect_test_data[i] = i & 0xff;
 
+  rpc_queue_size = 4 << 10;
+  /* *INDENT-OFF* */
+  svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
+    {rpc_queue_size, sizeof (echo_rpc_msg_t), 0},
+  };
+  /* *INDENT-ON* */
+  cfg->consumer_pid = 0;
+  cfg->n_rings = 1;
+  cfg->q_nitems = rpc_queue_size;
+  cfg->ring_cfgs = rc;
+  em->rpc_queue = svm_msg_q_alloc (cfg);
+
   setup_signal_handlers ();
   quic_echo_api_hookup (em);
 
@@ -2117,7 +2172,7 @@ main (int argc, char **argv)
   if (connect_to_vpp (app_name) < 0)
     {
       svm_region_exit ();
-      ECHO_FAIL ("ECHO-ERROR: Couldn't connect to vpe, exiting...\n");
+      ECHO_FAIL ("Couldn't connect to vpe, exiting...\n");
       exit (1);
     }
 
@@ -2126,7 +2181,13 @@ main (int argc, char **argv)
   application_send_attach (em);
   if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
     {
-      ECHO_FAIL ("ECHO-ERROR: Couldn't attach to vpp, exiting...\n");
+      ECHO_FAIL ("Couldn't attach to vpp, exiting...\n");
+      exit (1);
+    }
+  if (pthread_create (&em->message_queue_handle,
+		      NULL /*attr */ , echo_event_loop, 0))
+    {
+      ECHO_FAIL ("pthread create errored\n");
       exit (1);
     }
   if (em->i_am_master)
@@ -2144,6 +2205,13 @@ main (int argc, char **argv)
   if (wait_for_state_change (em, STATE_DETACHED, TIMEOUT))
     {
       ECHO_FAIL ("ECHO-ERROR: Couldn't detach from vpp, exiting...\n");
+      exit (1);
+    }
+  int *rv;
+  pthread_join (em->message_queue_handle, (void **) &rv);
+  if (rv)
+    {
+      ECHO_FAIL ("mq pthread errored %d", rv);
       exit (1);
     }
   if (em->use_sock_api)
