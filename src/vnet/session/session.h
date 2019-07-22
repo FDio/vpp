@@ -102,9 +102,6 @@ typedef struct session_worker_
   /** Head of list of pending events */
   clib_llist_index_t old_head;
 
-  /** Head of list of postponed events */
-  clib_llist_index_t postponed_head;
-
   /** Head of list of disconnect events */
   clib_llist_index_t disconnects_head;
 
@@ -210,12 +207,6 @@ session_evt_old_head (session_worker_t * wrk)
 }
 
 static inline session_evt_elt_t *
-session_evt_postponed_head (session_worker_t * wrk)
-{
-  return pool_elt_at_index (wrk->event_elts, wrk->postponed_head);
-}
-
-static inline session_evt_elt_t *
 session_evt_pending_disconnects_head (session_worker_t * wrk)
 {
   return pool_elt_at_index (wrk->event_elts, wrk->disconnects_head);
@@ -226,13 +217,6 @@ session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
 {
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
 		       session_evt_old_head (wrk));
-}
-
-static inline void
-session_evt_add_postponed (session_worker_t * wrk, session_evt_elt_t * elt)
-{
-  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       session_evt_postponed_head (wrk));
 }
 
 static inline void
