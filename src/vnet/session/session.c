@@ -134,7 +134,7 @@ session_program_transport_close (session_t * s)
       clib_memset (&elt->evt, 0, sizeof (session_event_t));
       elt->evt.session_handle = session_handle (s);
       elt->evt.event_type = SESSION_CTRL_EVT_CLOSE;
-      session_evt_add_pending_disconnects (wrk, elt);
+      session_evt_add_ctrl (wrk, elt);
     }
   else
     session_send_ctrl_evt_to_thread (s, SESSION_CTRL_EVT_CLOSE);
@@ -1376,11 +1376,9 @@ session_manager_main_enable (vlib_main_t * vm)
   for (i = 0; i < num_threads; i++)
     {
       wrk = &smm->wrk[i];
+      wrk->ctrl_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->new_head = clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->old_head = clib_llist_make_head (wrk->event_elts, evt_list);
-      wrk->postponed_head = clib_llist_make_head (wrk->event_elts, evt_list);
-      wrk->disconnects_head = clib_llist_make_head (wrk->event_elts,
-						    evt_list);
       wrk->vm = vlib_mains[i];
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
 
