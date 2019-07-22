@@ -44,7 +44,7 @@ quic_ctx_alloc (u32 thread_index)
 
   memset (ctx, 0, sizeof (quic_ctx_t));
   ctx->c_thread_index = thread_index;
-  QUIC_DBG (1, "Allocated quic_ctx %u on thread %u",
+  QUIC_DBG (3, "Allocated quic_ctx %u on thread %u",
 	    ctx - qm->ctx_pool[thread_index], thread_index);
   return ctx - qm->ctx_pool[thread_index];
 }
@@ -634,8 +634,7 @@ quic_accept_stream (void *s)
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 
-  rv = app_worker_accept_notify (app_wrk, stream_session);
-  if (rv)
+  if ((rv = app_worker_accept_notify (app_wrk, stream_session)))
     {
       QUIC_DBG (1, "failed to notify accept worker app");
       session_free_w_fifos (stream_session);
@@ -1130,6 +1129,7 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
       quicly_stream_t *stream = ctx->stream;
       quicly_reset_stream (stream, QUIC_APP_ERROR_CLOSE_NOTIFY);
       quic_send_packets (ctx);
+      return;
     }
 
   switch (ctx->conn_state)
@@ -1355,6 +1355,7 @@ quic_on_client_connected (quic_ctx_t * ctx)
   app_worker_t *app_wrk;
   u32 ctx_id = ctx->c_c_index;
   u32 thread_index = ctx->c_thread_index;
+  int rv;
 
   app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_id);
   if (!app_wrk)
@@ -1381,9 +1382,10 @@ quic_on_client_connected (quic_ctx_t * ctx)
     }
 
   quic_session->session_state = SESSION_STATE_CONNECTING;
-  if (app_worker_connect_notify (app_wrk, quic_session, ctx->client_opaque))
+  if ((rv = app_worker_connect_notify (app_wrk, quic_session,
+				       ctx->client_opaque)))
     {
-      QUIC_DBG (1, "failed to notify app");
+      QUIC_DBG (1, "failed to notify app %d", rv);
       quic_proto_on_close (ctx_id, thread_index);
       return -1;
     }
@@ -1824,8 +1826,7 @@ quic_create_quic_session (quic_ctx_t * ctx)
       return rv;
     }
   app_wrk = app_worker_get (quic_session->app_wrk_index);
-  rv = app_worker_accept_notify (app_wrk, quic_session);
-  if (rv)
+  if ((rv = app_worker_accept_notify (app_wrk, quic_session)))
     {
       QUIC_DBG (1, "failed to notify accept worker app");
       return rv;
