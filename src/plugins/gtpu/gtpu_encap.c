@@ -470,6 +470,22 @@ gtpu_encap_inline (vlib_main_t * vm,
               tr->teid = t1->teid;
             }
 
+	  if (PREDICT_FALSE(b2->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              gtpu_encap_trace_t *tr =
+                vlib_add_trace (vm, node, b2, sizeof (*tr));
+              tr->tunnel_index = t2 - gtm->tunnels;
+              tr->teid = t2->teid;
+           }
+
+          if (PREDICT_FALSE(b3->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              gtpu_encap_trace_t *tr =
+                vlib_add_trace (vm, node, b3, sizeof (*tr));
+              tr->tunnel_index = t3 - gtm->tunnels;
+              tr->teid = t3->teid;
+            }
+
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, bi1, bi2, bi3,
