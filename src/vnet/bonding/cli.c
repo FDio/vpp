@@ -478,7 +478,7 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (bond_create_command, static) = {
   .path = "create bond",
   .short_help = "create bond mode {round-robin | active-backup | broadcast | "
-    "{lacp | xor} [load-balance { l2 | l23 | l34 } {numa-only}]} [hw-addr <mac-address>] "
+    "{lacp | xor} [load-balance { l2 | l23 | l34 } [numa-only]]} [hw-addr <mac-address>] "
     "[id <if-id>]",
   .function = bond_create_command_fn,
 };

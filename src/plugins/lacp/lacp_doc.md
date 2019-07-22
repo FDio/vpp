@@ -15,7 +15,7 @@ a high bandwidth transmission medium and create a fault-tolerant link.
 ### Configuration
 
 1. Create the bond interface
-create bond mode lacp [hw-addr <mac-address>] [load-balance { l2 | l23 | l34 }]
+create bond mode lacp [hw-addr <mac-address>] [load-balance { l2 | l23 | l34 } [numa-only]]
 
 2. Enslave the physical interface to the bond
 bond add <bond-interface-name> <slave-interface> [passive] [long-timeout]"
