@@ -52,6 +52,22 @@ typedef struct clib_llist_anchor
  */
 #define clib_llist_entry_index(LP,E) ((E) - (LP))
 /**
+ * Get prev list entry index
+ *
+ * @param E	pool entry
+ * @name	list anchor name
+ * @return	previous index
+ */
+#define clib_llist_prev_index(E,name) _lprev(E,name)
+/**
+ * Get next list entry index
+ *
+ * @param E	pool entry
+ * @name	list anchor name
+ * @return	next index
+ */
+#define clib_llist_next_index(E,name) _lnext(E,name)
+/**
  * Get next pool entry
  *
  * @param LP	linked list pool
@@ -245,6 +261,28 @@ do {									\
       _ll_var (n) = clib_llist_next (LP,name,E);			\
       do { body; } while (0);						\
       (E) = _ll_var (n);						\
+    }									\
+} while (0)
+/**
+ * Walk list starting at head safe
+ *
+ * @param LP	linked list pool
+ * @param name	list anchor name
+ * @param HI	head index
+ * @param EI	entry index iterator
+ * @param body	code to be executed
+ */
+#define clib_llist_foreach_safe(LP,name,H,E,body)			\
+do {									\
+  clib_llist_index_t _ll_var (HI) = clib_llist_entry_index (LP, H);	\
+  clib_llist_index_t _ll_var (EI), _ll_var (NI);			\
+  _ll_var (EI) = _lnext ((H),name);					\
+  while (_ll_var (EI) != _ll_var (HI))					\
+    { 									\
+      (E) = pool_elt_at_index (LP, _ll_var (EI));			\
+      _ll_var (NI) = _lnext ((E),name);					\
+      do { body; } while (0);						\
+      _ll_var (EI) = _ll_var (NI);					\
     }									\
 } while (0)
 /**

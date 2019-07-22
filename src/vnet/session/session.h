@@ -96,17 +96,14 @@ typedef struct session_worker_
   /** Pool of session event list elements */
   session_evt_elt_t *event_elts;
 
+  /** Head of control events list */
+  clib_llist_index_t ctrl_head;
+
   /** Head of list of elements */
   clib_llist_index_t new_head;
 
   /** Head of list of pending events */
   clib_llist_index_t old_head;
-
-  /** Head of list of postponed events */
-  clib_llist_index_t postponed_head;
-
-  /** Head of list of disconnect events */
-  clib_llist_index_t disconnects_head;
 
   /** Peekers rw lock */
   clib_rwlock_t peekers_rw_locks;
@@ -203,44 +200,21 @@ session_evt_elt_free (session_worker_t * wrk, session_evt_elt_t * elt)
   pool_put (wrk->event_elts, elt);
 }
 
-static inline session_evt_elt_t *
-session_evt_old_head (session_worker_t * wrk)
-{
-  return pool_elt_at_index (wrk->event_elts, wrk->old_head);
-}
-
-static inline session_evt_elt_t *
-session_evt_postponed_head (session_worker_t * wrk)
-{
-  return pool_elt_at_index (wrk->event_elts, wrk->postponed_head);
-}
-
-static inline session_evt_elt_t *
-session_evt_pending_disconnects_head (session_worker_t * wrk)
-{
-  return pool_elt_at_index (wrk->event_elts, wrk->disconnects_head);
-}
-
 static inline void
 session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
 {
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       session_evt_old_head (wrk));
+		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
 }
 
-static inline void
-session_evt_add_postponed (session_worker_t * wrk, session_evt_elt_t * elt)
+static inline session_evt_elt_t *
+session_evt_alloc_ctrl (session_worker_t * wrk)
 {
+  session_evt_elt_t *elt;
+  elt = session_evt_elt_alloc (wrk);
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       session_evt_postponed_head (wrk));
-}
-
-static inline void
-session_evt_add_pending_disconnects (session_worker_t * wrk,
-				     session_evt_elt_t * elt)
-{
-  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       session_evt_pending_disconnects_head (wrk));
+		       pool_elt_at_index (wrk->event_elts, wrk->ctrl_head));
+  return elt;
 }
 
 static inline session_evt_elt_t *
