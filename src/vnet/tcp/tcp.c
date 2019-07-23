@@ -347,6 +347,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       session_transport_reset_notify (&tc->connection);
       tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+      session_transport_closed_notify (&tc->connection);
       break;
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_FIN_WAIT_1:
@@ -359,6 +360,7 @@ tcp_connection_reset (tcp_connection_t * tc)
        * be still trying to send data */
       session_transport_closed_notify (&tc->connection);
       tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+      session_transport_closed_notify (&tc->connection);
       break;
     case TCP_STATE_CLOSED:
     case TCP_STATE_TIME_WAIT:
@@ -408,6 +410,7 @@ tcp_connection_close (tcp_connection_t * tc)
 	  tcp_connection_timers_reset (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	  session_transport_closed_notify (&tc->connection);
 	  break;
 	}
       if (!transport_max_tx_dequeue (&tc->connection))
@@ -1351,12 +1354,12 @@ tcp_timer_waitclose_handler (u32 conn_index)
       break;
     case TCP_STATE_FIN_WAIT_1:
       tcp_connection_timers_reset (tc);
+      session_transport_closed_notify (&tc->connection);
       if (tc->flags & TCP_CONN_FINPNDG)
 	{
 	  /* If FIN pending, we haven't sent everything, but we did try.
 	   * Notify session layer that transport is closed. */
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
-	  session_transport_closed_notify (&tc->connection);
 	  tcp_send_reset (tc);
 	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 	}
