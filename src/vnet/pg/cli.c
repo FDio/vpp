@@ -649,7 +649,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 {
   pg_main_t *pg = &pg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 if_id;
+  u32 if_id, gso_enabled = 0, gso_size = 0;
   clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -659,7 +659,17 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "interface pg%u", &if_id))
 	;
-
+      else if (unformat (line_input, "gso-enabled"))
+	{
+	  gso_enabled = 1;
+	  if (unformat (line_input, "gso-size %u", &gso_size))
+	    ;
+	  else
+	    {
+	      error = clib_error_create ("gso enabled but gso size missing");
+	      goto done;
+	    }
+	}
       else
 	{
 	  error = clib_error_create ("unknown input `%U'",
@@ -668,7 +678,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	}
     }
 
-  pg_interface_add_or_get (pg, if_id);
+  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size);
 
 done:
   unformat_free (line_input);
@@ -679,7 +689,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
   .path = "create packet-generator",
-  .short_help = "create packet-generator interface <interface name>",
+  .short_help = "create packet-generator interface <interface name> [gso-enabled gso-size <size>]",
   .function = create_pg_if_cmd_fn,
 };
 /* *INDENT-ON* */
