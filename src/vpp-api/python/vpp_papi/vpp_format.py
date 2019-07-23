@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+import datetime
 from socket import inet_pton, AF_INET6, AF_INET
 import socket
 import ipaddress
@@ -117,6 +117,11 @@ conversion_table = {
         'MACAddress': lambda o: o.packed,
         'str': lambda s: macaddress.mac_pton(s)
     },
+    'vl_api_timestamp_t':
+    {
+        'datetime.datetime': lambda o:
+        (o - datetime.datetime(1970, 1, 1)).total_seconds()
+    }
 }
 
 
@@ -142,4 +147,6 @@ conversion_unpacker_table = {
     'vl_api_address_t': lambda o: unformat_api_address_t(o),
     'vl_api_prefix_t': lambda o: unformat_api_prefix_t(o),
     'vl_api_mac_address_t': lambda o: macaddress.MACAddress(o),
+    'vl_api_timestamp_t': lambda o: datetime.datetime.fromtimestamp(o),
+    'vl_api_timedelta_t': lambda o: datetime.timedelta(seconds=o),
 }
