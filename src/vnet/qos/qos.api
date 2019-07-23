@@ -22,7 +22,7 @@
 
 option version = "1.0.0";
 
-enum qos_source
+enum qos_source : u8
 {
   QOS_API_SOURCE_EXT = 0,
   QOS_API_SOURCE_VLAN = 1,
@@ -30,76 +30,164 @@ enum qos_source
   QOS_API_SOURCE_IP = 3,
 };
 
-/** \brief Enable/Disable QoS recording
-    The QoS bits from the packet at the specified input layer are copied
-    into the packet. Recording should be used in conjunction with marking
-    @param sw_if_index - The interface on which recording is enabled.
-    @param enable - enable=1 or disable the feature
-    @param input_source - The input source/layer at which the QoS bits
-                          are copied from the packet. See qos_source_t.
-*/
+/**
+ * QoS recording.
+ * @param sw_if_index - The interface on which recording is enabled.
+ * @param input_source - The input source/layer at which the QoS bits
+                         are copied from the packet. See qos_source_t.
+ */
+typedef qos_record
+{
+  u32 sw_if_index;
+  vl_api_qos_source_t input_source;
+};
+
+/**
+ * Enable/Disable QoS recording
+ * The QoS bits from the packet at the specified input layer are copied
+ * into the packet. Recording should be used in conjunction with marking
+ * @param enable - enable=1 or disable the feature
+ * @param record - Recording configuration
+ */
 autoreply define qos_record_enable_disable
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  vl_api_qos_source_t input_source;
   u8 enable;
+  vl_api_qos_record_t record;
 };
 
-/** \brief A row within a QoS map
-    Each value translates from an input value to an output.
-*/
-typeonly define qos_egress_map_row
+/**
+ * Dump the QoS record configs
+ */
+define qos_record_dump
 {
-  u8  outputs[256];
+  u32 client_index;
+  u32 context;
 };
 
-/** \brief Update a QoS Map
-    A QoS map, translates from the QoS value in the packet set by the 'record'
-    feature, to the value used for output in the 'mark' feature.
-    There is one row in the map for each input/record source.
-    The MAP is then applied to the egress interface at for a given output source
-    @param map_id - client provided identifier for the map
-    @param rows - one row (per-input source) of output values
-*/
+/**
+ * Details of QoS recording configs
+ */
+define qos_record_details
+{
+  u32 context;
+  vl_api_qos_record_t record;
+};
+
+/**
+ * @brief A row within a QoS map
+ *  Each value translates from an input value to an output.
+ */
+typedef qos_egress_map_row
+{
+  u8 outputs[256];
+};
+
+/**
+ * QoS Translation Map
+ *
+ * @param id - client provided identifier for the map
+ * @param rows - one row (per-input source) of output values
+ */
+typedef qos_egress_map
+{
+  u32 id;
+  vl_api_qos_egress_map_row_t rows[4];
+};
+
+/**
+ *  @brief Update a QoS Map
+ *   A QoS map, translates from the QoS value in the packet set by the 'record'
+ *   feature, to the value used for output in the 'mark' feature.
+ *   There is one row in the map for each input/record source.
+ *   The MAP is then applied to the egress interface at for a given output source
+ * @param map - The Map
+ */
 autoreply define qos_egress_map_update
 {
   u32 client_index;
   u32 context;
-  u32 map_id;
-  vl_api_qos_egress_map_row_t rows[4];
+  vl_api_qos_egress_map_t map;
 };
 
-/** \brief Delete a Qos Map
-    @param map_id - ID of the map to delete
-*/
+/**
+ * @brief Delete a Qos Map
+ * @param map_id - ID of the map to delete
+ */
 autoreply define qos_egress_map_delete
 {
   u32 client_index;
   u32 context;
-  u32 map_id;
+  u32 id;
 };
 
-/** \brief Enable/Disable QoS marking
-    The QoS bits from the packet are mapped (using the desired egress map)
-    into the header of the 'output-source'. Marking should be used in
-    conjunction with recording
-    @param sw_if_index - The interface on which recording is enabled.
-    @param enable - enable=1 or disable the feature
-    @param output_source - The output source/layer at which the QoS bits
-                           are written into the packet. See qos_source_t.
-    @param map_id - The ID of the MAP in which the translation from input
-                    to output is performed.
-*/
+/**
+ * Dump the QoS egress maps
+ */
+define qos_egress_map_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * QoS map details
+ */
+define qos_egress_map_details
+{
+  u32 context;
+  vl_api_qos_egress_map_t map;
+};
+
+/**
+ * QoS marking Cponfiguration
+ * The QoS bits from the buffer are mapped (using the desired egress map)
+ * into the header of the 'output-source'. Marking should be used in
+ * conjunction with recording
+ * @param sw_if_index - The interface on which recording is enabled.
+ * @param output_source - The output source/layer at which the QoS bits
+ *                        are written into the packet. See qos_source_t.
+ * @param map_id - The ID of the MAP in which the translation from input
+ *                 to output is performed.
+ */
+typedef qos_mark
+{
+  u32 sw_if_index;
+  u32 map_id;
+  vl_api_qos_source_t output_source;
+};
+
+/**
+ * @brief Enable/Disable QoS marking
+ * @param enable - enable=1 or disable the feature
+ * @param mark - Marking config
+ */
 autoreply define qos_mark_enable_disable
 {
   u32 client_index;
   u32 context;
-  u32 map_id;
-  u32 sw_if_index;
-  vl_api_qos_source_t output_source;
   u8 enable;
+  vl_api_qos_mark_t mark;
+};
+
+/**
+ * Dump QoS marking configs
+ */
+define qos_mark_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/**
+ * QoS marking details
+ */
+autoreply define qos_mark_details
+{
+  u32 context;
+  vl_api_qos_mark_t mark;
 };
 
 /*

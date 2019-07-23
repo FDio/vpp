@@ -21373,8 +21373,8 @@ api_qos_record_enable_disable (vat_main_t * vam)
 
   M (QOS_RECORD_ENABLE_DISABLE, mp);
 
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->input_source = qs;
+  mp->record.sw_if_index = ntohl (sw_if_index);
+  mp->record.input_source = qs;
   mp->enable = enable;
 
   S (mp);
