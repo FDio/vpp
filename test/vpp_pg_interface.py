@@ -46,6 +46,18 @@ class VppPGInterface(VppInterface):
         return self._pg_index
 
     @property
+    def gso_enabled(self):
+        """gso enabled on packet-generator interface"""
+        if self._gso_enabled == 0:
+            return "gso-disabled"
+        return "gso-enabled"
+
+    @property
+    def gso_size(self):
+        """gso size on packet-generator interface"""
+        return self._gso_size
+
+    @property
     def out_path(self):
         """pcap file path - captured packets"""
         return self._out_path
@@ -86,17 +98,19 @@ class VppPGInterface(VppInterface):
         self._out_history_counter += 1
         return v
 
-    def __init__(self, test, pg_index):
+    def __init__(self, test, pg_index, gso, gso_size):
         """ Create VPP packet-generator interface """
         super(VppPGInterface, self).__init__(test)
 
-        r = test.vapi.pg_create_interface(pg_index)
+        r = test.vapi.pg_create_interface(pg_index, gso, gso_size)
         self.set_sw_if_index(r.sw_if_index)
 
         self._in_history_counter = 0
         self._out_history_counter = 0
         self._out_assert_counter = 0
         self._pg_index = pg_index
+        self._gso_enabled = gso
+        self._gso_size = gso_size
         self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._in_file = "pg%u_in.pcap" % self.pg_index
