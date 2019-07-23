@@ -117,6 +117,24 @@ qos_mark_disable (u32 sw_if_index, qos_source_t output_source)
   return (0);
 }
 
+void
+qos_mark_walk (qos_mark_walk_cb_t fn, void *c)
+{
+  qos_source_t qs;
+
+  FOR_EACH_QOS_SOURCE (qs)
+  {
+    u32 sw_if_index;
+
+    vec_foreach_index (sw_if_index, qos_mark_configs[qs])
+    {
+      if (INDEX_INVALID != qos_mark_configs[qs][sw_if_index])
+	fn (sw_if_index,
+	    qos_egress_map_get_id (qos_mark_configs[qs][sw_if_index]), qs, c);
+    }
+  }
+}
+
 static clib_error_t *
 qos_mark_cli (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -174,6 +192,90 @@ VLIB_CLI_COMMAND (qos_egress_map_interface_command, static) = {
   .path = "qos mark",
   .short_help = "qos mark <SOURCE> <INTERFACE> id <MAP>",
   .function = qos_mark_cli,
+  .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+static void
+qos_mark_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
+{
+  index_t qemis[QOS_N_SOURCES];
+  qos_source_t qs;
+  bool set;
+
+  set = false;
+  clib_memset_u32 (qemis, INDEX_INVALID, QOS_N_SOURCES);
+
+  FOR_EACH_QOS_SOURCE (qs)
+  {
+    if (vec_len (qos_mark_configs[qs]) <= sw_if_index)
+      continue;
+    if (INDEX_INVALID != (qemis[qs] = qos_mark_configs[qs][sw_if_index]))
+      set = true;
+  }
+
+  if (set)
+    {
+      vlib_cli_output (vm, " %U:", format_vnet_sw_if_index_name,
+		       vnet_get_main (), sw_if_index);
+
+      FOR_EACH_QOS_SOURCE (qs)
+      {
+	if (qemis[qs] != INDEX_INVALID)
+	  vlib_cli_output (vm, "  %U: map:%d", format_qos_source, qs,
+			   qemis[qs]);
+      }
+    }
+}
+
+static clib_error_t *
+qos_mark_show (vlib_main_t * vm,
+	       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  qos_source_t qs;
+  u32 sw_if_index;
+
+  sw_if_index = ~0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_vnet_sw_interface,
+		    vnm, &sw_if_index))
+	;
+    }
+
+  if (~0 == sw_if_index)
+    {
+      u32 ii, n_ints = 0;
+
+      FOR_EACH_QOS_SOURCE (qs)
+      {
+	n_ints = clib_max (n_ints, vec_len (qos_mark_configs[qs]));
+      }
+
+      for (ii = 0; ii < n_ints; ii++)
+	{
+	  qos_mark_show_one_interface (vm, ii);
+	}
+    }
+  else
+    qos_mark_show_one_interface (vm, sw_if_index);
+
+  return (NULL);
+}
+
+/*?
+ * Show Egress Qos Maps
+ *
+ * @cliexpar
+ * @cliexcmd{show qos egress map}
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (qos_mark_show_command, static) = {
+  .path = "show qos mark",
+  .short_help = "show qos mark [interface]",
+  .function = qos_mark_show,
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
