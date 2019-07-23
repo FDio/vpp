@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1e278928_8234a26b",
+        "filename": "src/vpp-api/vapi/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-07-23T18:40:56Z",
+      "side": 1,
+      "message": "These scripts should be included in /usr/share/vpp which is where vppapigen_c.py and vppapigen_json.py are installed.\n\nThey do not belong in /usr/include/vapi which is for C and C++ header files.",
+      "range": {
+        "startLine": 82,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 17
+      },
+      "revId": "bed7058bfc41deee956f5a447ab35d74b933578a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
