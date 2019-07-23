@@ -36,9 +36,9 @@ typedef enum
 
 typedef enum
 {
-  UDP_CONN_F_CONNECTED,		/**< connected mode */
-  UDP_CONN_F_OWNS_PORT,		/**< port belong to conn (UDPC) */
-  UDP_CONN_F_CLOSING,		/**< conn closed with data */
+  UDP_CONN_F_CONNECTED = 1 << 0,	/**< connected mode */
+  UDP_CONN_F_OWNS_PORT = 1 << 1,	/**< port belong to conn (UDPC) */
+  UDP_CONN_F_CLOSING = 2 << 2,		/**< conn closed with data */
 } udp_conn_flags_t;
 
 typedef struct
