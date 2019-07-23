@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b0c129aa_acc513e9",
+        "filename": "src/plugins/acl/acl_types.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-23T16:07:10Z",
+      "side": 1,
+      "message": "you\u0027re missing the copyright.",
+      "revId": "a2b01ca87744721b52bddcbd9449050e58fcd1d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
