@@ -70,7 +70,8 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
   if (a->is_add)
     {
       if (a->sw_if_index != APP_NAMESPACE_INVALID_INDEX
-	  && !vnet_get_sw_interface_safe (vnet_get_main (), a->sw_if_index))
+	  && !vnet_get_sw_interface_or_null (vnet_get_main (),
+					     a->sw_if_index))
 	return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
 

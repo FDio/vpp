@@ -170,7 +170,7 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       if (is_set)
 	{
 	  vnet_sw_interface_t *sw_if =
-	    vnet_get_sw_interface_safe (&vnet_main, sw_if_index);
+	    vnet_get_sw_interface_or_null (&vnet_main, sw_if_index);
 	  vnet_hw_interface_t *hw_if =
 	    vnet_get_hw_interface (&vnet_main, sw_if->hw_if_index);
 	  u8 *s = format (NULL, "UDP echo source is: %v\n", hw_if->name);

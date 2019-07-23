@@ -94,7 +94,9 @@ vl_api_avf_delete_t_handler (vl_api_avf_delete_t * mp)
   vnet_hw_interface_t *hw;
   int rv = 0;
 
-  hw = vnet_get_sup_hw_interface (vnm, htonl (mp->sw_if_index));
+  hw =
+    vnet_get_sup_hw_interface_api_visible_or_null (vnm,
+						   htonl (mp->sw_if_index));
   if (hw == NULL || avf_device_class.index != hw->dev_class_index)
     {
       rv = VNET_API_ERROR_INVALID_INTERFACE;
