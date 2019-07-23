@@ -15,6 +15,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from vpp_papi import VppEnum
+from vpp_qos import VppQosRecord, VppQosEgressMap, VppQosMark
 
 NUM_PKTS = 67
 
@@ -77,7 +78,7 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        self.vapi.qos_egress_map_update(1, rows)
+        qem1 = VppQosEgressMap(self, 1, rows).add_vpp_config()
 
         #
         # For table 2 (and up) use the value n for everything
@@ -89,7 +90,7 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        self.vapi.qos_egress_map_update(2, rows)
+        qem2 = VppQosEgressMap(self, 2, rows).add_vpp_config()
 
         output = [scapy.compat.chb(3)] * 256
         os = b''.join(output)
@@ -98,7 +99,7 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        self.vapi.qos_egress_map_update(3, rows)
+        qem3 = VppQosEgressMap(self, 3, rows).add_vpp_config()
 
         output = [scapy.compat.chb(4)] * 256
         os = b''.join(output)
@@ -106,32 +107,29 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os},
                 {'outputs': os}]
-        self.vapi.qos_egress_map_update(4, rows)
-        self.vapi.qos_egress_map_update(5, rows)
-        self.vapi.qos_egress_map_update(6, rows)
-        self.vapi.qos_egress_map_update(7, rows)
 
+        qem4 = VppQosEgressMap(self, 4, rows).add_vpp_config()
+        qem5 = VppQosEgressMap(self, 5, rows).add_vpp_config()
+        qem6 = VppQosEgressMap(self, 6, rows).add_vpp_config()
+        qem7 = VppQosEgressMap(self, 7, rows).add_vpp_config()
+
+        self.assertTrue(qem7.query_vpp_config())
         self.logger.info(self.vapi.cli("sh qos eg map"))
 
         #
         # Bind interface pgN to table n
         #
-        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          1,
-                                          1)
-        self.vapi.qos_mark_enable_disable(self.pg2.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          2,
-                                          1)
-        self.vapi.qos_mark_enable_disable(self.pg3.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          3,
-                                          1)
-        self.vapi.qos_mark_enable_disable(self.pg4.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          4,
-                                          1)
+        qm1 = VppQosMark(self, self.pg1, qem1,
+                         self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
+        qm2 = VppQosMark(self, self.pg2, qem2,
+                         self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
+        qm3 = VppQosMark(self, self.pg3, qem3,
+                         self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
+        qm4 = VppQosMark(self, self.pg4, qem4,
+                         self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
+        self.assertTrue(qm3.query_vpp_config())
+
+        self.logger.info(self.vapi.cli("sh qos mark"))
 
         #
         # packets ingress on Pg0
@@ -160,9 +158,10 @@ class TestQOS(VppTestCase):
         #
         # Enable QoS recording on IP input for pg0
         #
-        self.vapi.qos_record_enable_disable(self.pg0.sw_if_index,
-                                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                            1)
+        qr1 = VppQosRecord(self, self.pg0,
+                           self.QOS_SOURCE.QOS_API_SOURCE_IP)
+        qr1.add_vpp_config()
+        self.logger.info(self.vapi.cli("sh qos record"))
 
         #
         # send the same packets, this time expect the input TOS of 1
@@ -218,14 +217,11 @@ class TestQOS(VppTestCase):
         #
         # remove the map on pg2 and pg3, now expect an unchanged IP tos
         #
-        self.vapi.qos_mark_enable_disable(self.pg2.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          2,
-                                          0)
-        self.vapi.qos_mark_enable_disable(self.pg3.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          3,
-                                          0)
+        qm2.remove_vpp_config()
+        qm3.remove_vpp_config()
+        self.logger.info(self.vapi.cli("sh qos mark"))
+
+        self.assertFalse(qm3.query_vpp_config())
         self.logger.info(self.vapi.cli("sh int feat pg2"))
 
         p_v4[IP].dst = self.pg2.remote_ip4
@@ -249,9 +245,8 @@ class TestQOS(VppTestCase):
         #
         # disable the input recording on pg0
         #
-        self.vapi.qos_record_enable_disable(self.pg0.sw_if_index,
-                                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                            0)
+        self.assertTrue(qr1.query_vpp_config())
+        qr1.remove_vpp_config()
 
         #
         # back to an unchanged TOS value
@@ -263,14 +258,8 @@ class TestQOS(VppTestCase):
         #
         # disable the egress map on pg1 and pg4
         #
-        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          1,
-                                          0)
-        self.vapi.qos_mark_enable_disable(self.pg4.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          4,
-                                          0)
+        qm1.remove_vpp_config()
+        qm4.remove_vpp_config()
 
         #
         # unchanged Tos on pg1
@@ -278,17 +267,6 @@ class TestQOS(VppTestCase):
         rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg1)
         for p in rx:
             self.assertEqual(p[IP].tos, 254)
-
-        #
-        # clean-up the map
-        #
-        self.vapi.qos_egress_map_delete(1)
-        self.vapi.qos_egress_map_delete(4)
-        self.vapi.qos_egress_map_delete(2)
-        self.vapi.qos_egress_map_delete(3)
-        self.vapi.qos_egress_map_delete(5)
-        self.vapi.qos_egress_map_delete(6)
-        self.vapi.qos_egress_map_delete(7)
 
     def test_qos_mpls(self):
         """ QoS Mark/Record MPLS """
@@ -313,7 +291,7 @@ class TestQOS(VppTestCase):
                 {'outputs': os3},
                 {'outputs': os4}]
 
-        self.vapi.qos_egress_map_update(1, rows)
+        qem1 = VppQosEgressMap(self, 1, rows).add_vpp_config()
 
         #
         # a route with 1 MPLS label
@@ -337,13 +315,10 @@ class TestQOS(VppTestCase):
         # enable IP QoS recording on the input Pg0 and MPLS egress marking
         # on Pg1
         #
-        self.vapi.qos_record_enable_disable(self.pg0.sw_if_index,
-                                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                            1)
-        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_MPLS,
-                                          1,
-                                          1)
+        qr1 = VppQosRecord(self, self.pg0,
+                           self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
+        qm1 = VppQosMark(self, self.pg1, qem1,
+                         self.QOS_SOURCE.QOS_API_SOURCE_MPLS).add_vpp_config()
 
         #
         # packet that will get one label added and 3 labels added resp.
@@ -385,14 +360,12 @@ class TestQOS(VppTestCase):
         # enable MPLS QoS recording on the input Pg0 and IP egress marking
         # on Pg1
         #
-        self.vapi.qos_record_enable_disable(
-            self.pg0.sw_if_index,
-            self.QOS_SOURCE.QOS_API_SOURCE_MPLS,
-            1)
-        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          1,
-                                          1)
+        qr2 = VppQosRecord(
+            self, self.pg0,
+            self.QOS_SOURCE.QOS_API_SOURCE_MPLS).add_vpp_config()
+        qm2 = VppQosMark(
+            self, self.pg1, qem1,
+            self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
 
         #
         # MPLS x-connect - COS according to pg1 map
@@ -440,26 +413,6 @@ class TestQOS(VppTestCase):
         for p in rx:
             self.assertEqual(p[IP].tos, from_mpls)
 
-        #
-        # cleanup
-        #
-        self.vapi.qos_record_enable_disable(self.pg0.sw_if_index,
-                                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                            0)
-        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_MPLS,
-                                          1,
-                                          0)
-        self.vapi.qos_record_enable_disable(
-            self.pg0.sw_if_index,
-            self.QOS_SOURCE.QOS_API_SOURCE_MPLS,
-            0)
-        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          1,
-                                          0)
-        self.vapi.qos_egress_map_delete(1)
-
     def test_qos_vlan(self):
         """QoS mark/record VLAN """
 
@@ -475,7 +428,7 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        self.vapi.qos_egress_map_update(1, rows)
+        qem1 = VppQosEgressMap(self, 1, rows).add_vpp_config()
 
         sub_if = VppDot1QSubint(self, self.pg0, 11)
 
@@ -488,25 +441,22 @@ class TestQOS(VppTestCase):
         #
         # enable VLAN QoS recording/marking on the input Pg0 subinterface and
         #
-        self.vapi.qos_record_enable_disable(
-            sub_if.sw_if_index,
-            self.QOS_SOURCE.QOS_API_SOURCE_VLAN,
-            1)
-        self.vapi.qos_mark_enable_disable(sub_if.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_VLAN,
-                                          1,
-                                          1)
+        qr_v = VppQosRecord(
+            self, sub_if,
+            self.QOS_SOURCE.QOS_API_SOURCE_VLAN).add_vpp_config()
+        qm_v = VppQosMark(
+            self, sub_if, qem1,
+            self.QOS_SOURCE.QOS_API_SOURCE_VLAN).add_vpp_config()
 
         #
         # IP marking/recording on pg1
         #
-        self.vapi.qos_record_enable_disable(self.pg1.sw_if_index,
-                                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                            1)
-        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          1,
-                                          1)
+        qr_ip = VppQosRecord(
+            self, self.pg1,
+            self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
+        qm_ip = VppQosMark(
+            self, self.pg1, qem1,
+            self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
 
         #
         # a routes to/from sub-interface
@@ -575,22 +525,6 @@ class TestQOS(VppTestCase):
         #
         sub_if.unconfig_ip4()
         sub_if.unconfig_ip6()
-
-        self.vapi.qos_record_enable_disable(
-            sub_if.sw_if_index,
-            self.QOS_SOURCE.QOS_API_SOURCE_VLAN,
-            0)
-        self.vapi.qos_mark_enable_disable(sub_if.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_VLAN,
-                                          1,
-                                          0)
-        self.vapi.qos_record_enable_disable(self.pg1.sw_if_index,
-                                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                            0)
-        self.vapi.qos_mark_enable_disable(self.pg1.sw_if_index,
-                                          self.QOS_SOURCE.QOS_API_SOURCE_IP,
-                                          1,
-                                          0)
 
 
 if __name__ == '__main__':
