@@ -59,7 +59,7 @@ format_session (u8 * s, va_list * args)
   u32 tp = session_get_transport_proto (ss);
   u8 *str = 0;
 
-  if (ss->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+  if (ss->session_state >= SESSION_STATE_TRANSPORT_DELETED)
     {
       s = format (s, "[%u:%u] CLOSED", ss->thread_index, ss->session_index);
       return s;
@@ -330,7 +330,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
       /* *INDENT-OFF* */
       pool_foreach (s, pool, ({
-        if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+        if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
           {
             n_closed += 1;
             continue;
