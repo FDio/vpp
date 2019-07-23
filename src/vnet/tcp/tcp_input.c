@@ -2824,6 +2824,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  tcp_connection_set_state (tc0, TCP_STATE_CLOSED);
 		  tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+		  session_transport_closed_notify (&tc0->connection);
 		  goto drop;
 		}
 
@@ -2898,6 +2899,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  tcp_connection_set_state (tc0, TCP_STATE_CLOSED);
+	  session_transport_closed_notify (&tc0->connection);
 
 	  /* Don't free the connection from the data path since
 	   * we can't ensure that we have no packets already enqueued
