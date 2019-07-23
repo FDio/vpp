@@ -107,7 +107,7 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "please specify interface name or sw_if_index");
 
-  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
   if (hw == NULL || rdma_device_class.index != hw->dev_class_index)
     return clib_error_return (0, "not a RDMA interface");
 

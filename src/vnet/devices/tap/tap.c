@@ -514,7 +514,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   virtio_if_t *vif;
   vnet_hw_interface_t *hw;
 
-  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
@@ -565,8 +565,10 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
-  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  vnet_hw_interface_t *hw;
   clib_error_t *err = 0;
+
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
 
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;

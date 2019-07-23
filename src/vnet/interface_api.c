@@ -1385,6 +1385,9 @@ interface_api_hookup (vlib_main_t * vm)
   am->is_mp_safe[VL_API_SW_INTERFACE_DETAILS] = 1;
   am->is_mp_safe[VL_API_SW_INTERFACE_TAG_ADD_DEL] = 1;
 
+  /* Do not replay VL_API_SW_INTERFACE_DUMP messages */
+  am->api_trace_cfg[VL_API_SW_INTERFACE_DUMP].replay_enable = 0;
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */

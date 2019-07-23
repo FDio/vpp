@@ -1250,8 +1250,10 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
   vnet_hw_interface_t *hwif;
   u16 qid;
 
-  if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
-      hwif->dev_class_index != vhost_user_device_class.index)
+  if (!
+      (hwif =
+       vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index))
+      || hwif->dev_class_index != vhost_user_device_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vui = pool_elt_at_index (vum->vhost_user_interfaces, hwif->dev_instance);
@@ -1534,8 +1536,10 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   vnet_hw_interface_t *hwif;
   uword *if_index;
 
-  if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
-      hwif->dev_class_index != vhost_user_device_class.index)
+  if (!
+      (hwif =
+       vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index))
+      || hwif->dev_class_index != vhost_user_device_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   if (sock_filename == NULL || !(strlen (sock_filename) > 0))
@@ -1658,7 +1662,7 @@ vhost_user_delete_command_fn (vlib_main_t * vm,
 		&sw_if_index))
 	{
 	  vnet_hw_interface_t *hwif =
-	    vnet_get_sup_hw_interface (vnm, sw_if_index);
+	    vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
 	  if (hwif == NULL ||
 	      vhost_user_device_class.index != hwif->dev_class_index)
 	    {

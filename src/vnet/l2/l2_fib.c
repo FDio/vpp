@@ -95,12 +95,13 @@ format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args)
   if (sw_if_index == ~0)
     return format (s, "N/A");
 
-  vnet_sw_interface_t *swif = vnet_get_sw_interface_safe (vnm, sw_if_index);
+  vnet_sw_interface_t *swif =
+    vnet_get_sw_interface_or_null (vnm, sw_if_index);
   if (!swif)
     return format (s, "Stale");
 
   return format (s, "%U", format_vnet_sw_interface_name, vnm,
-		 vnet_get_sw_interface_safe (vnm, sw_if_index));
+		 vnet_get_sw_interface_or_null (vnm, sw_if_index));
 }
 
 typedef struct l2fib_dump_walk_ctx_t_
