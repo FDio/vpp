@@ -16,6 +16,24 @@
       "revId": "0e36a73d9a531c94209051e3831ab37486785463",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c6fda011_832d3de2",
+        "filename": "src/plugins/lacp/lacp_doc.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-07-23T01:27:37Z",
+      "side": 1,
+      "message": "thanks for your comments, square brackets are what I want. numa-only should be optional and is disabled by default.",
+      "parentUuid": "ab8f8bfe_fd04b5f0",
+      "revId": "0e36a73d9a531c94209051e3831ab37486785463",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
