@@ -167,6 +167,14 @@ list(APPEND VOM_SOURCES
   pipe.cpp
   pipe_cmds.cpp
   prefix.cpp
+  qos_map.cpp
+  qos_map_cmds.cpp
+  qos_mark.cpp
+  qos_mark_cmds.cpp
+  qos_record.cpp
+  qos_record_cmds.cpp
+  qos_types.cpp
+  qos_types_api.cpp
   ra_config.cpp
   ra_prefix.cpp
   route.cpp
@@ -269,6 +277,10 @@ list(APPEND VOM_HEADERS
   om.hpp
   pipe.hpp
   prefix.hpp
+  qos_map.hpp
+  qos_mark.hpp
+  qos_record.hpp
+  qos_types.hpp
   ra_config.hpp
   ra_prefix.hpp
   route.hpp

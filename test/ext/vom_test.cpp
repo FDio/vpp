@@ -78,6 +78,12 @@
 #include "vom/nat_binding_cmds.hpp"
 #include "vom/pipe.hpp"
 #include "vom/pipe_cmds.hpp"
+#include "vom/qos_mark.hpp"
+#include "vom/qos_mark_cmds.hpp"
+#include "vom/qos_map.hpp"
+#include "vom/qos_map_cmds.hpp"
+#include "vom/qos_record.hpp"
+#include "vom/qos_record_cmds.hpp"
 
 using namespace boost;
 using namespace VOM;
@@ -485,6 +491,30 @@ public:
                     else if (typeid(*f_exp) == typeid(pipe_cmds::delete_cmd))
                     {
                         rc = handle_derived<pipe_cmds::delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(QoS::mark_cmds::create_cmd))
+                    {
+                        rc = handle_derived<QoS::mark_cmds::create_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(QoS::mark_cmds::delete_cmd))
+                    {
+                        rc = handle_derived<QoS::mark_cmds::delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(QoS::record_cmds::create_cmd))
+                    {
+                        rc = handle_derived<QoS::record_cmds::create_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(QoS::record_cmds::delete_cmd))
+                    {
+                        rc = handle_derived<QoS::record_cmds::delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(QoS::map_cmds::create_cmd))
+                    {
+                        rc = handle_derived<QoS::map_cmds::create_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(QoS::map_cmds::delete_cmd))
+                    {
+                        rc = handle_derived<QoS::map_cmds::delete_cmd>(f_exp, f_act);
                     }
                     else
                     {
@@ -2185,6 +2215,55 @@ BOOST_AUTO_TEST_CASE(test_pipes) {
     ADD_EXPECT(pipe_cmds::delete_cmd(hw_hdl, hw_hdl_pair));
     ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
     TRY_CHECK(OM::remove(gk));
+}
+
+BOOST_AUTO_TEST_CASE(test_qos) {
+    VppInit vi;
+    const std::string albert = "AlbertCamus";
+    rc_t rc = rc_t::OK;
+
+    /*
+     * Create an interface on which to enable QoS
+     */
+    std::string itf_name = "host1";
+    interface itf(itf_name,
+                  interface::type_t::AFPACKET,
+                  interface::admin_state_t::UP);
+    HW::item<handle_t> hw_ifh(2, rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
+    TRY_CHECK_RC(OM::write(albert, itf));
+
+    QoS::map::outputs_t out;
+    out[0][5] = 5;
+    out[3][6] = 6;
+
+    QoS::map qem(1, out);
+
+    HW::item<bool> hw_qem(true, rc_t::OK);
+    ADD_EXPECT(QoS::map_cmds::create_cmd(hw_qem, 1, out));
+    TRY_CHECK_RC(OM::write(albert, qem));
+
+    QoS::record *qr = new QoS::record(itf, QoS::source_t::IP);
+    HW::item<bool> hw_qr(true, rc_t::OK);
+    ADD_EXPECT(QoS::record_cmds::create_cmd(hw_qr, hw_ifh.data(), QoS::source_t::IP));
+    TRY_CHECK_RC(OM::write(albert, *qr));
+
+    QoS::mark *qm = new QoS::mark(itf, qem, QoS::source_t::IP);
+    HW::item<bool> hw_qm(true, rc_t::OK);
+    ADD_EXPECT(QoS::mark_cmds::create_cmd(hw_qm, hw_ifh.data(), 1, QoS::source_t::IP));
+    TRY_CHECK_RC(OM::write(albert, *qm));
+
+    delete qr;
+    delete qm;
+    ADD_EXPECT(QoS::mark_cmds::delete_cmd(hw_qm, hw_ifh.data(), QoS::source_t::IP));
+    ADD_EXPECT(QoS::map_cmds::delete_cmd(hw_qem, 1));
+    ADD_EXPECT(QoS::record_cmds::delete_cmd(hw_qr, hw_ifh.data(), QoS::source_t::IP));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf_name));
+    TRY_CHECK(OM::remove(albert));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
