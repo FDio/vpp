@@ -52,8 +52,10 @@ vlib_error_drop_buffers (vlib_main_t * vm,
 {
   u32 n_left_this_frame, n_buffers_left, *args, n_args_left;
   vlib_error_t drop_error;
+  vlib_node_t *n;
 
-  drop_error = vlib_error_set (drop_error_node, drop_error_code);
+  n = vlib_get_node (vm, drop_error_node);
+  drop_error = n->error_heap_index + drop_error_code;
 
   n_buffers_left = n_buffers;
   while (n_buffers_left > 0)
@@ -116,6 +118,8 @@ vlib_register_errors (vlib_main_t * vm,
 		      u32 node_index, u32 n_errors, char *error_strings[])
 {
   vlib_error_main_t *em = &vm->error_main;
+  vlib_node_main_t *nm = &vm->node_main;
+
   vlib_node_t *n = vlib_get_node (vm, node_index);
   uword l;
   void *oldheap;
@@ -182,11 +186,14 @@ vlib_register_errors (vlib_main_t * vm,
     uword i;
 
     clib_memset (&t, 0, sizeof (t));
+    if (n_errors > 0)
+      vec_validate (nm->node_by_error, n->error_heap_index + n_errors - 1);
     for (i = 0; i < n_errors; i++)
       {
 	t.format = (char *) format (0, "%v %s: %%d",
 				    n->name, error_strings[i]);
 	vm->error_elog_event_types[n->error_heap_index + i] = t;
+	nm->node_by_error[n->error_heap_index + i] = n->index;
       }
   }
 }
