@@ -116,6 +116,11 @@ I:	ip
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/ip/
 
+VNET QoS
+I:	qos
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/qos/
+
 VNET Interface Common
 I:	interface
 M:	Dave Barach <dave@barachs.net>
