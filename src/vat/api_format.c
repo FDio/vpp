@@ -19749,12 +19749,24 @@ api_pg_create_interface (vat_main_t * vam)
   unformat_input_t *input = vam->input;
   vl_api_pg_create_interface_t *mp;
 
-  u32 if_id = ~0;
+  u32 if_id = ~0, gso_size = 0;
+  u8 gso_enabled = 0;
   int ret;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "if_id %d", &if_id))
 	;
+      else if (unformat (input, "gso-enabled"))
+	{
+	  gso_enabled = 1;
+	  if (unformat (input, "gso-size %u", &gso_size))
+	    ;
+	  else
+	    {
+	      errmsg ("missing gso-size");
+	      return -99;
+	    }
+	}
       else
 	break;
     }
@@ -19768,6 +19780,7 @@ api_pg_create_interface (vat_main_t * vam)
   M (PG_CREATE_INTERFACE, mp);
   mp->context = 0;
   mp->interface_id = ntohl (if_id);
+  mp->gso_enabled = gso_enabled;
 
   S (mp);
   W (ret);
@@ -22324,7 +22337,7 @@ _(ipfix_classify_table_dump, "")                                        \
 _(sw_interface_span_enable_disable, "[l2] [src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | dst_sw_if_index <id>] [both|rx|tx]]]") \
 _(sw_interface_span_dump, "[l2]")                                           \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
-_(pg_create_interface, "if_id <nn>")                                    \
+_(pg_create_interface, "if_id <nn> [gso-enabled gso-size <size>]")      \
 _(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
 _(pg_enable_disable, "[stream <id>] disable")                           \
 _(ip_source_and_port_range_check_add_del,                               \

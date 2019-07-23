@@ -2761,6 +2761,8 @@ static void *vl_api_pg_create_interface_t_print
 
   s = format (0, "SCRIPT: pg_create_interface ");
   s = format (0, "if_id %d", ntohl (mp->interface_id));
+  s = format (0, "gso-enabled %u", mp->gso_enabled);
+  s = format (0, "gso-size %u", ntohl (mp->gso_size));
 
   FINISH;
 }
