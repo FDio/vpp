@@ -793,13 +793,14 @@ session_transport_delete_notify (transport_connection_t * tc)
     case SESSION_STATE_ACCEPTING:
     case SESSION_STATE_TRANSPORT_CLOSING:
     case SESSION_STATE_CLOSING:
+    case SESSION_STATE_TRANSPORT_CLOSED:
       /* If transport finishes or times out before we get a reply
        * from the app, mark transport as closed and wait for reply
        * before removing the session. Cleanup session table in advance
        * because transport will soon be closed and closed sessions
        * are assumed to have been removed from the lookup table */
       session_lookup_del_session (s);
-      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+      s->session_state = SESSION_STATE_TRANSPORT_DELETED;
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
       break;
@@ -815,7 +816,7 @@ session_transport_delete_notify (transport_connection_t * tc)
       svm_fifo_dequeue_drop_all (s->tx_fifo);
       session_program_transport_close (s);
       break;
-    case SESSION_STATE_TRANSPORT_CLOSED:
+    case SESSION_STATE_TRANSPORT_DELETED:
       break;
     case SESSION_STATE_CLOSED:
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
@@ -858,11 +859,10 @@ session_transport_closed_notify (transport_connection_t * tc)
    * a transport close, only mark the session transport as closed */
   else if (s->session_state <= SESSION_STATE_CLOSING)
     {
-      session_lookup_del_session (s);
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
     }
-  /* In all closing states but transport closed switch to closed */
-  else if (s->session_state != SESSION_STATE_TRANSPORT_CLOSED)
+  /* If app also closed, switch to closed */
+  else if (s->session_state == SESSION_STATE_APP_CLOSED)
     s->session_state = SESSION_STATE_CLOSED;
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
@@ -1118,7 +1118,8 @@ session_close (session_t * s)
     {
       /* Session will only be removed once both app and transport
        * acknowledge the close */
-      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED
+	  || s->session_state == SESSION_STATE_TRANSPORT_DELETED)
 	session_program_transport_close (s);
       return;
     }
@@ -1139,8 +1140,10 @@ session_transport_close (session_t * s)
 {
   if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
-      /* If transport is already closed, just free the session */
-      if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
+	s->session_state = SESSION_STATE_CLOSED;
+      /* If transport is already deleted, just free the session */
+      else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
 	session_free_w_fifos (s);
       return;
     }
