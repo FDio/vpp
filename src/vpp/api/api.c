@@ -486,20 +486,17 @@ show_log_details (vl_api_registration_t * reg, u32 context,
   u32 msg_size;
 
   vl_api_log_details_t *rmp;
-  msg_size =
-    sizeof (*rmp) + vec_len (timestamp) + vec_len (msg_class) +
-    vec_len (message);
+  msg_size = sizeof (*rmp) + vec_len (msg_class) + vec_len (message);
 
   rmp = vl_msg_api_alloc (msg_size);
   clib_memset (rmp, 0, msg_size);
   rmp->_vl_msg_id = ntohs (VL_API_LOG_DETAILS);
 
   rmp->context = context;
-  rmp->timestamp_ticks = clib_host_to_net_f64 (timestamp_ticks);
+  rmp->timestamp = clib_host_to_net_f64 (timestamp_ticks);
   rmp->level = htonl (*level);
-  char *p = (char *) &rmp->timestamp;
+  char *p = (char *) &rmp->msg_class;
 
-  p += vl_api_vec_to_api_string (timestamp, (vl_api_string_t *) p);
   p += vl_api_vec_to_api_string (msg_class, (vl_api_string_t *) p);
   p += vl_api_vec_to_api_string (message, (vl_api_string_t *) p);
 
