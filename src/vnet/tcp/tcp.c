@@ -358,7 +358,6 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       /* Make sure we mark the session as closed. In some states we may
        * be still trying to send data */
-      session_transport_closed_notify (&tc->connection);
       tcp_connection_set_state (tc, TCP_STATE_CLOSED);
       session_transport_closed_notify (&tc->connection);
       break;
