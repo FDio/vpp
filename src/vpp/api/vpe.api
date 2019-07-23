@@ -380,6 +380,31 @@ define get_f64_increment_by_one_reply
   f64 f64_value;
 };
 
+/** \brief Sync barrier, wait, release barrier.
+    Useful for testing general API impact on performance.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param wait - how long to wait in nanoseconds
+*/
+define wait_with_barrier {
+  u32 client_index;
+  u32 context;
+  f64 wait;
+};
+
+/** \brief Report how long actually was the wait within the barrier.
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param inner_time - how long waited within barrier, in nanoseconds
+    @param outer_time - how long hold, wait and release took together
+*/
+define wait_with_barrier_reply {
+  u32 context;
+  i32 retval;
+  f64 inner_time;
+  f64 outer_time;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
