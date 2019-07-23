@@ -80,6 +80,7 @@ PYTHON_INTERP=$(PYTHON)
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
+PIP_VERSION=19.1.1
 PIP_TOOLS_VERSION=3.8.0   # Keep in sync with requirements.txt
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON_INTERP) -name site-packages)
@@ -96,6 +97,9 @@ $(PIP_TOOLS_INSTALL_DONE):
 	@rm -rf $(VENV_PATH)
 	@mkdir -p $(TEST_RUN_DIR)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
+	# pip version pinning
+	@bash -c "source $(VENV_PATH)/bin/activate && \
+		  $(PYTHON_INTERP) -m pip install pip===$(PIP_VERSION)"
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  $(PYTHON_INTERP) -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
 	@touch $@
