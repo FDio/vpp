@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1e599eb_27375926",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-23T16:14:18Z",
+      "side": 1,
+      "message": "The python part expects seconds. The parameter should be renamed?",
+      "range": {
+        "startLine": 315,
+        "startChar": 44,
+        "endLine": 315,
+        "endChar": 52
+      },
+      "revId": "72b67f5751566908d441458a0e378922c9247849",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93dc6441_3fcc011f",
+        "filename": "src/vpp/api/vpe_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-23T16:14:18Z",
+      "side": 1,
+      "message": "Why is this file needed in this Change?",
+      "revId": "72b67f5751566908d441458a0e378922c9247849",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
