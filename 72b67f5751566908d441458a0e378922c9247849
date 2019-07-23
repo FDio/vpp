@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5c72589c_26c02364",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-23T20:05:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a1e599eb_27375926",
+      "range": {
+        "startLine": 315,
+        "startChar": 44,
+        "endLine": 315,
+        "endChar": 52
+      },
+      "revId": "72b67f5751566908d441458a0e378922c9247849",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "93dc6441_3fcc011f",
         "filename": "src/vpp/api/vpe_types.api",
         "patchSetId": 2
@@ -36,6 +60,24 @@
       "writtenOn": "2019-07-23T16:14:18Z",
       "side": 1,
       "message": "Why is this file needed in this Change?",
+      "revId": "72b67f5751566908d441458a0e378922c9247849",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "faeccb6b_9c7411bf",
+        "filename": "src/vpp/api/vpe_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-23T20:05:17Z",
+      "side": 1,
+      "message": "So that the types can be imported/used by other api\u0027s.\nvl_api_timestamp_t converts in papi to datetime.datetime and vl_api_timedelta_t converts to datetime.timedelta.\n\nFor example, log_details(_0\u003d832, context\u003d14, timestamp\u003ddatetime.datetime(2019, 7, 23, 16, 4, 7, 471465), level\u003d\u003cvl_api_log_level_t.VPE_API_LOG_LEVEL_NOTICE: 5\u003e, msg_class\u003du\u0027fib/entry\u0027, message\u003du\u0027this is a test\u0027)",
+      "parentUuid": "93dc6441_3fcc011f",
       "revId": "72b67f5751566908d441458a0e378922c9247849",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
