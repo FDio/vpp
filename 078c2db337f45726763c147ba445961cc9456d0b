@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6d0bc5e3_ab195267",
+        "filename": "test/test_gso.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-24T07:34:11Z",
+      "side": 1,
+      "message": "some explanations of what scenarios are being tested here would be helpful",
+      "revId": "078c2db337f45726763c147ba445961cc9456d0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
