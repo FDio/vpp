@@ -75,20 +75,21 @@
 #undef vl_printfun
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                             \
-_(CONTROL_PING, control_ping)                                           \
-_(CLI, cli)                                                             \
-_(CLI_INBAND, cli_inband)						                        \
-_(GET_NODE_INDEX, get_node_index)                                       \
-_(ADD_NODE_NEXT, add_node_next)						                    \
-_(SHOW_VERSION, show_version)						                    \
-_(SHOW_THREADS, show_threads)						                    \
-_(GET_NODE_GRAPH, get_node_graph)                                       \
-_(GET_NEXT_INDEX, get_next_index)                                       \
-_(LOG_DUMP, log_dump)                                                   \
-_(SHOW_VPE_SYSTEM_TIME_TICKS, show_vpe_system_time_ticks)				\
-_(GET_F64_ENDIAN_VALUE, get_f64_endian_value)							\
-_(GET_F64_INCREMENT_BY_ONE, get_f64_increment_by_one)					\
+#define foreach_vpe_api_msg					\
+_(CONTROL_PING, control_ping)					\
+_(CLI, cli)							\
+_(CLI_INBAND, cli_inband)					\
+_(GET_NODE_INDEX, get_node_index)				\
+_(ADD_NODE_NEXT, add_node_next)					\
+_(SHOW_VERSION, show_version)					\
+_(SHOW_THREADS, show_threads)					\
+_(GET_NODE_GRAPH, get_node_graph)				\
+_(GET_NEXT_INDEX, get_next_index)				\
+_(LOG_DUMP, log_dump)						\
+_(SHOW_VPE_SYSTEM_TIME_TICKS, show_vpe_system_time_ticks)	\
+_(GET_F64_ENDIAN_VALUE, get_f64_endian_value)			\
+_(GET_F64_INCREMENT_BY_ONE, get_f64_increment_by_one)		\
+_(WAIT_WITH_BARRIER, wait_with_barrier)				\
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -584,6 +585,31 @@ vl_api_get_f64_increment_by_one_t_handler (vl_api_get_f64_increment_by_one_t *
   REPLY_MACRO2(VL_API_GET_F64_INCREMENT_BY_ONE_REPLY,
   ({
     rmp->f64_value = clib_host_to_net_f64 (clib_net_to_host_f64(mp->f64_value) + 1.0);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_wait_with_barrier_t_handler (vl_api_wait_with_barrier_t * mp)
+{
+  int rv = 0;
+  vlib_main_t *vm = vlib_get_main ();
+  f64 t0, t1, t2, t3;
+  vl_api_wait_with_barrier_reply_t *rmp;
+
+  t0 = vlib_time_now (vm);
+  vl_msg_api_barrier_sync ();
+  t1 = vlib_time_now (vm);
+  vlib_time_wait (vm, mp->wait);
+  t2 = vlib_time_now (vm);
+  vl_msg_api_barrier_release ();
+  t3 = vlib_time_now (vm);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_WAIT_WITH_BARRIER_REPLY,
+  ({
+    rmp->inner_time = clib_host_to_net_f64 (t2 - t1);
+    rmp->outer_time = clib_host_to_net_f64 (t3 - t0);
   }));
   /* *INDENT-ON* */
 }

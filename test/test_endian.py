@@ -36,3 +36,15 @@ class TestEndian(framework.VppTestCase):
         rv = self.vapi.get_f64_increment_by_one(f64_value=42.0)
         self.assertEqual(rv.f64_value, expected, 'Expected %r, received:%r.'
                          % (expected, rv.f64_value))
+
+    def test_wait_with_barrier(self):
+        expected = 0.1
+        rv = self.vapi.wait_with_barrier(wait=expected)
+        self.assertAlmostEqual(
+            rv.inner_time, expected, places=5, msg='Expected %r, received:%r.'
+            % (expected, rv.inner_time))
+        self.assertAlmostEqual(
+            rv.outer_time, expected, places=5, msg='Expected %r, received:%r.'
+            % (expected, rv.outer_time))
+        self.assertGreater(rv.outer_time, rv.inner_time, 'Outer %r, inner:%r.'
+                           % (rv.outer_time, rv.inner_time))
