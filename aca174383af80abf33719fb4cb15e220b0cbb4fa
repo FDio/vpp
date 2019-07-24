@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "0a7779f0_066b294b",
+        "filename": "extras/libmemif/CMakeLists.txt",
+        "patchSetId": 10
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-07-24T11:54:56Z",
+      "side": 1,
+      "message": "libmemif doesn\u0027t have anything with VPP, one day it may be moved to separate repo, so referring to VPP src tree is wrong....",
+      "range": {
+        "startLine": 66,
+        "startChar": 20,
+        "endLine": 66,
+        "endChar": 30
+      },
+      "revId": "aca174383af80abf33719fb4cb15e220b0cbb4fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a3e4e59d_e616dd6c",
         "filename": "src/examples/sample-plugin/CMakeLists.txt",
         "patchSetId": 10
