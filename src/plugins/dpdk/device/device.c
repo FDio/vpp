@@ -214,7 +214,7 @@ static_always_inline void
 dpdk_prefetch_buffer (vlib_main_t * vm, struct rte_mbuf *mb)
 {
   vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
-  CLIB_PREFETCH (mb, 2 * CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH (mb, sizeof (struct rte_mbuf), STORE);
   CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
