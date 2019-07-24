@@ -901,8 +901,6 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
     }
   else
     {
-      lm->disconn_slaves++;
-
       elt.key = -1;
       elt.data_struct = conn;
       if ((index =
@@ -916,7 +914,7 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
 
       /* try connectiong to master */
       err = memif_request_connection (conn);
-      if ((err < 0) && (lm->disconn_slaves == 1))
+      if ((err != MEMIF_ERR_SUCCESS) && (lm->disconn_slaves == 0))
 	{
 	  /* connection failed, arm reconnect timer (if not armed) */
 	  if (timerfd_settime (lm->timerfd, 0, &lm->arm, NULL) < 0)
@@ -925,6 +923,7 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
 	      goto error;
 	    }
 	}
+	lm->disconn_slaves++;
     }
 
   *c = conn;
@@ -995,8 +994,9 @@ memif_request_connection (memif_conn_handle_t c)
     }
   else
     {
+      err = memif_syscall_error_handler (errno);
       strcpy ((char *) conn->remote_disconnect_string,
-	      memif_strerror (memif_syscall_error_handler (errno)));
+	      memif_strerror (err));
       goto error;
     }
 
