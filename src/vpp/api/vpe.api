@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.4.0";
+option version = "1.5.0";
 
 /* 
  * Note: API placement cleanup in progress
@@ -378,6 +378,33 @@ define get_f64_increment_by_one_reply
   u32 context;
   u32 retval;
   f64 f64_value;
+};
+
+/** \brief Sync barrier, wait, release barrier.
+    Useful for testing the impact of API-related stalls on performance.
+    @param client_index - Opaque cookie to identify the sender.
+    @param context - Sender context, to match reply w/ request.
+    @param wait - How long to wait, in seconds.
+*/
+define wait_with_barrier
+{
+  u32 client_index;
+  u32 context;
+  f64 wait;
+};
+
+/** \brief Report how long actually was the wait.
+    @param context - Sender context, to match reply w/ request.
+    @param retval - Return code for the request.
+    @param inner_time - How long waited within barrier, in seconds.
+    @param outer_time - How long did hold, wait and release take altogether.
+*/
+define wait_with_barrier_reply
+{
+  u32 context;
+  i32 retval;
+  f64 inner_time;
+  f64 outer_time;
 };
 
 /*
