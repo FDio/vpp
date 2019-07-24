@@ -1711,6 +1711,7 @@ memif_buffer_enq_tx (memif_conn_handle_t conn, uint16_t qid,
       ring->desc[slot & mask].offset =
 	(uint32_t) (b0->data -
 		    c->regions[ring->desc[slot & mask].region].addr);
+      ring->desc[slot & mask].flags &= ~MEMIF_DESC_FLAG_NEXT;
       ring->desc[slot & mask].flags |=
 	(b0->flags & MEMIF_BUFFER_FLAG_NEXT) ? MEMIF_DESC_FLAG_NEXT : 0;
 
