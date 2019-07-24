@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1360d5d7_a483fa29",
+        "filename": "extras/vom/vom/qos_mark.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-24T16:37:57Z",
+      "side": 1,
+      "message": "Can we make it a reference instead of giving a copy?",
+      "range": {
+        "startLine": 45,
+        "startChar": 1,
+        "endLine": 45,
+        "endChar": 14
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "50375ac4_a47f65ce",
+        "filename": "extras/vom/vom/qos_record.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-24T16:37:57Z",
+      "side": 1,
+      "message": "Can we use reference here instead of providing a copy. As it is \"const\" here, so I believe, there will not be any modifications to key_t.",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 14
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "09f0be4d_1463f5a4",
+        "filename": "extras/vom/vom/qos_record_cmds.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-24T16:37:57Z",
+      "side": 1,
+      "message": "Do we want to have reference variables in cmd classes? Otherwise, I would like to remove the reference to make it more consistent with rest of the code.",
+      "range": {
+        "startLine": 57,
+        "startChar": 16,
+        "endLine": 57,
+        "endChar": 17
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9e0132dc_75f440c0",
+        "filename": "extras/vom/vom/qos_record_cmds.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-24T16:37:57Z",
+      "side": 1,
+      "message": "same here",
+      "range": {
+        "startLine": 89,
+        "startChar": 16,
+        "endLine": 89,
+        "endChar": 17
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b03cfeb_99327de3",
+        "filename": "extras/vom/vom/qos_types.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-24T16:37:57Z",
+      "side": 1,
+      "message": "Can you please remove it?",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 16
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
