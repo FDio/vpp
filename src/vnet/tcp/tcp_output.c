@@ -142,8 +142,11 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
    * Figure out how much space we have available
    */
   available_space = transport_max_rx_enqueue (&tc->connection);
-  if (PREDICT_FALSE (available_space < tc->rcv_opts.mss))
-    available_space = 0;
+  if (PREDICT_FALSE (available_space < tc->snd_mss))
+    {
+      tc->rcv_wnd = 0;
+      return;
+    }
 
   /*
    * Use the above and what we know about what we've previously advertised
