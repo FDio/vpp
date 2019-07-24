@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "17097208_8cb09a7e",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-24T16:19:04Z",
+      "side": 1,
+      "message": "gso_flag_t",
+      "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
