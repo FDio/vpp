@@ -88,13 +88,15 @@ nsh_output_inline (vlib_main_t * vm,
           nsh_base_header_t *hdr0;
           ethernet_header_t * eth_hdr0;
           vlib_buffer_t * p0;
-          u32 pi0, rw_len0, adj_index0, next0, error0;
+          u32 pi0, adj_index0, next0, error0;
 
           ip_adjacency_t * adj1;
           nsh_base_header_t *hdr1;
           ethernet_header_t * eth_hdr1;
           vlib_buffer_t * p1;
-          u32 pi1, rw_len1, adj_index1, next1, error1;
+          u32 pi1, adj_index1, next1, error1;
+          int pkt_len0, pkt_len1;
+          word rw_len0, rw_len1;
 
           /* Prefetch next iteration. */
           {
@@ -141,27 +143,27 @@ nsh_output_inline (vlib_main_t * vm,
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
           rw_len1 = adj1[0].rewrite_header.data_bytes;
+          pkt_len0 = vlib_buffer_length_in_chain (vm, p0);
+          pkt_len1 = vlib_buffer_length_in_chain (vm, p1);
 
           /* Bump the adj counters for packet and bytes */
-          vlib_increment_combined_counter
-              (&adjacency_counters,
-               thread_index,
-               adj_index0,
-               1,
-               vlib_buffer_length_in_chain (vm, p0) + rw_len0);
-          vlib_increment_combined_counter
-              (&adjacency_counters,
-               thread_index,
-               adj_index1,
-               1,
-               vlib_buffer_length_in_chain (vm, p1) + rw_len1);
-
+          if (adj_index0 == adj_index1)
+          {
+            vlib_increment_combined_counter (&adjacency_counters, thread_index, adj_index0, 2,
+               pkt_len0 + rw_len0 + pkt_len1 + rw_len1);
+          }
+          else
+          {
+            vlib_increment_combined_counter (&adjacency_counters, thread_index, adj_index0, 1,
+               pkt_len0 + rw_len0);
+            vlib_increment_combined_counter (&adjacency_counters, thread_index, adj_index1, 1,
+               pkt_len1 + rw_len1);
+          }
           /* Check MTU of outgoing interface. */
-          if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p0) <=
+          if (PREDICT_TRUE(pkt_len0 <=
                            adj0[0].rewrite_header.max_l3_packet_bytes))
             {
-              p0->current_data -= rw_len0;
-              p0->current_length += rw_len0;
+              vlib_buffer_advance (p0, -rw_len0);
 
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   adj0[0].rewrite_header.sw_if_index;
@@ -178,11 +180,10 @@ nsh_output_inline (vlib_main_t * vm,
               error0 = IP4_ERROR_MTU_EXCEEDED;
               next0 = NSH_OUTPUT_NEXT_DROP;
             }
-          if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p1) <=
+          if (PREDICT_TRUE(pkt_len1 <=
                            adj1[0].rewrite_header.max_l3_packet_bytes))
             {
-              p1->current_data -= rw_len1;
-              p1->current_length += rw_len1;
+              vlib_buffer_advance (p1, -rw_len1);
 
               vnet_buffer (p1)->sw_if_index[VLIB_TX] =
                   adj1[0].rewrite_header.sw_if_index;
@@ -236,7 +237,9 @@ nsh_output_inline (vlib_main_t * vm,
           nsh_base_header_t *hdr0;
           ethernet_header_t * eth_hdr0;
           vlib_buffer_t * p0;
-          u32 pi0, rw_len0, adj_index0, next0, error0;
+          u32 pi0, adj_index0, next0, error0;
+          int pkt_len0;
+          word rw_len0;
 
           pi0 = to_next[0] = from[0];
 
@@ -256,20 +259,15 @@ nsh_output_inline (vlib_main_t * vm,
 
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
+          pkt_len0 = vlib_buffer_length_in_chain (vm, p0);
 
-          vlib_increment_combined_counter
-              (&adjacency_counters,
-               thread_index,
-               adj_index0,
-               1,
-               vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+          vlib_increment_combined_counter (&adjacency_counters, thread_index, adj_index0, 1,
+               pkt_len0 + rw_len0);
 
           /* Check MTU of outgoing interface. */
-          if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p0) <=
-                           adj0[0].rewrite_header.max_l3_packet_bytes))
+          if (PREDICT_TRUE(pkt_len0 <= adj0[0].rewrite_header.max_l3_packet_bytes))
             {
-              p0->current_data -= rw_len0;
-              p0->current_length += rw_len0;
+              vlib_buffer_advance (p0, -rw_len0);
 
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   adj0[0].rewrite_header.sw_if_index;
