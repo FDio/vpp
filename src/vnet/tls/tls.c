@@ -602,7 +602,18 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   lctx->tcp_is_ip4 = sep->is_ip4;
   lctx->tls_ctx_engine = engine_type;
 
-  tls_vfts[engine_type].ctx_start_listen (lctx);
+  if (tls_vfts[engine_type].ctx_start_listen (lctx))
+    {
+      vnet_unlisten_args_t a = {
+	.handle = lctx->tls_session_handle,
+	.app_index = tls_main.app_index,
+	.wrk_map_index = 0
+      };
+      if ((vnet_unlisten (&a)))
+	clib_warning ("unlisten returned");
+      tls_listener_ctx_free (lctx);
+      lctx_index = SESSION_INVALID_INDEX;
+    }
 
   TLS_DBG (1, "Started listening %d, engine type %d", lctx_index,
 	   engine_type);
