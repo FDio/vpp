@@ -618,7 +618,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				session_evt_elt_t * elt,
 				int *n_tx_packets, u8 peek_data)
 {
-  u32 next_index, next0, next1, *to_next, n_left_to_next;
+  u32 next_index, next0, next1, *to_next, n_left_to_next, max_burst;
   u32 n_trace, n_bufs_needed = 0, n_left, pbi;
   session_tx_context_t *ctx = &wrk->ctx;
   session_main_t *smm = &session_main;
@@ -637,6 +637,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   next_index = smm->session_type_to_next[ctx->s->session_type];
   next0 = next1 = next_index;
+  max_burst = VLIB_FRAME_SIZE - *n_tx_packets;
 
   tp = session_get_transport_proto (ctx->s);
   ctx->transport_vft = transport_protocol_get_vft (tp);
@@ -647,6 +648,20 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     {
       if (ctx->transport_vft->flush_data)
 	ctx->transport_vft->flush_data (ctx->tc);
+    }
+
+  if (ctx->s->flags & SESSION_F_CUSTOM_TX)
+    {
+      u32 n_custom_tx;
+      ctx->s->flags &= ~SESSION_F_CUSTOM_TX;
+      n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, max_burst);
+      *n_tx_packets += n_custom_tx;
+      max_burst -= n_custom_tx;
+      if (!max_burst)
+	{
+	  session_evt_add_old (wrk, elt);
+	  return SESSION_TX_OK;
+	}
     }
 
   ctx->snd_space = transport_connection_snd_space (ctx->tc,
@@ -664,8 +679,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   svm_fifo_unset_event (ctx->s->tx_fifo);
 
   /* Check how much we can pull. */
-  session_tx_set_dequeue_params (vm, ctx, VLIB_FRAME_SIZE - *n_tx_packets,
-				 peek_data);
+  session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     return SESSION_TX_NO_DATA;
@@ -823,7 +837,8 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
   if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
   svm_fifo_unset_event (s->tx_fifo);
-  return transport_custom_tx (session_get_transport_proto (s), s);
+  return transport_custom_tx (session_get_transport_proto (s), s,
+			      VLIB_FRAME_SIZE - *n_tx_packets);
 }
 
 always_inline session_t *

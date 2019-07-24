@@ -317,7 +317,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
        * SEG.TSval */
       else if (!tcp_rst (th0))
 	{
-	  tcp_program_ack (wrk, tc0);
+	  tcp_program_ack (tc0);
 	  TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	  goto error;
 	}
@@ -340,7 +340,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 	    }
 	  else
 	    {
-	      tcp_program_ack (wrk, tc0);
+	      tcp_program_ack (tc0);
 	      TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, tc0);
 	      *error0 = TCP_ERROR_SYN_ACKS_RCVD;
 	    }
@@ -368,7 +368,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
       /* If not RST, send dup ack */
       if (!tcp_rst (th0))
 	{
-	  tcp_program_dupack (wrk, tc0);
+	  tcp_program_dupack (tc0);
 	  TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	}
       goto error;
@@ -391,7 +391,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
   if (PREDICT_FALSE (tcp_syn (th0)))
     {
       /* As per RFC5961 send challenge ack instead of reset */
-      tcp_program_ack (wrk, tc0);
+      tcp_program_ack (tc0);
       *error0 = TCP_ERROR_SPURIOUS_SYN;
       goto error;
     }
@@ -1199,6 +1199,7 @@ tcp_cc_fastrecovery_clear (tcp_connection_t * tc)
 
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_first_off (tc);
+  tc->flags &= ~TCP_CONN_FRXT_PENDING;
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
@@ -1305,81 +1306,6 @@ tcp_should_fastrecover (tcp_connection_t * tc)
 	  || tcp_should_fastrecover_sack (tc));
 }
 
-#ifndef CLIB_MARCH_VARIANT
-void
-tcp_program_fastretransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
-{
-  if (!(tc->flags & TCP_CONN_FRXT_PENDING))
-    {
-      vec_add1 (wrk->pending_fast_rxt, tc->c_c_index);
-      tc->flags |= TCP_CONN_FRXT_PENDING;
-    }
-}
-
-void
-tcp_do_fastretransmits (tcp_worker_ctx_t * wrk)
-{
-  u32 *ongoing_fast_rxt, burst_bytes, sent_bytes, thread_index;
-  u32 max_burst_size, burst_size, n_segs = 0, n_segs_now;
-  tcp_connection_t *tc;
-  u64 last_cpu_time;
-  int i;
-
-  if (vec_len (wrk->pending_fast_rxt) == 0
-      && vec_len (wrk->postponed_fast_rxt) == 0)
-    return;
-
-  thread_index = wrk->vm->thread_index;
-  last_cpu_time = wrk->vm->clib_time.last_cpu_time;
-  ongoing_fast_rxt = wrk->ongoing_fast_rxt;
-  vec_append (ongoing_fast_rxt, wrk->postponed_fast_rxt);
-  vec_append (ongoing_fast_rxt, wrk->pending_fast_rxt);
-
-  _vec_len (wrk->postponed_fast_rxt) = 0;
-  _vec_len (wrk->pending_fast_rxt) = 0;
-
-  max_burst_size = VLIB_FRAME_SIZE / vec_len (ongoing_fast_rxt);
-  max_burst_size = clib_max (max_burst_size, 1);
-
-  for (i = 0; i < vec_len (ongoing_fast_rxt); i++)
-    {
-      tc = tcp_connection_get (ongoing_fast_rxt[i], thread_index);
-      if (!tc)
-	continue;
-      if (!tcp_in_fastrecovery (tc))
-	{
-	  tc->flags &= ~TCP_CONN_FRXT_PENDING;
-	  continue;
-	}
-
-      if (n_segs >= VLIB_FRAME_SIZE)
-	{
-	  vec_add1 (wrk->postponed_fast_rxt, ongoing_fast_rxt[i]);
-	  continue;
-	}
-
-      tc->flags &= ~TCP_CONN_FRXT_PENDING;
-      burst_size = clib_min (max_burst_size, VLIB_FRAME_SIZE - n_segs);
-      burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
-							 last_cpu_time);
-      burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
-      if (!burst_size)
-	{
-	  tcp_program_fastretransmit (wrk, tc);
-	  continue;
-	}
-
-      n_segs_now = tcp_fast_retransmit (wrk, tc, burst_size);
-      sent_bytes = clib_min (n_segs_now * tc->snd_mss, burst_bytes);
-      transport_connection_tx_pacer_update_bytes (&tc->connection,
-						  sent_bytes);
-      n_segs += n_segs_now;
-    }
-  _vec_len (ongoing_fast_rxt) = 0;
-  wrk->ongoing_fast_rxt = ongoing_fast_rxt;
-}
-#endif /* CLIB_MARCH_VARIANT */
-
 /**
  * One function to rule them all ... and in the darkness bind them
  */
@@ -1393,7 +1319,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
     {
       if (tc->bytes_acked)
 	goto partial_ack;
-      tcp_program_fastretransmit (tcp_get_worker (tc->c_thread_index), tc);
+      tcp_program_fastretransmit (tc);
       return;
     }
   /*
@@ -1449,8 +1375,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  pacer_wnd = clib_max (0.1 * tc->cwnd, 2 * tc->snd_mss);
 	  tcp_connection_tx_pacer_reset (tc, pacer_wnd,
 					 0 /* start bucket */ );
-	  tcp_program_fastretransmit (tcp_get_worker (tc->c_thread_index),
-				      tc);
+	  tcp_program_fastretransmit (tc);
 	  return;
 	}
       else if (!tc->bytes_acked
@@ -1571,7 +1496,7 @@ partial_ack:
   /*
    * Since this was a partial ack, try to retransmit some more data
    */
-  tcp_program_fastretransmit (tcp_get_worker (tc->c_thread_index), tc);
+  tcp_program_fastretransmit (tc);
 }
 
 /**
@@ -1712,7 +1637,7 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 
   /* Account for the FIN and send ack */
   tc->rcv_nxt += 1;
-  tcp_program_ack (wrk, tc);
+  tcp_program_ack (tc);
   /* Enter CLOSE-WAIT and notify session. To avoid lingering
    * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
   tcp_connection_set_state (tc, TCP_STATE_CLOSE_WAIT);
@@ -1976,7 +1901,7 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	   * retransmissions since we may not have any data to send */
 	  if (seq_leq (vnet_buffer (b)->tcp.seq_end, tc->rcv_nxt))
 	    {
-	      tcp_program_ack (wrk, tc);
+	      tcp_program_ack (tc);
 	      error = TCP_ERROR_SEGMENT_OLD;
 	      goto done;
 	    }
@@ -1996,7 +1921,7 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
       /* RFC2581: Enqueue and send DUPACK for fast retransmit */
       error = tcp_session_enqueue_ooo (tc, b, n_data_bytes);
-      tcp_program_dupack (wrk, tc);
+      tcp_program_dupack (tc);
       TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc, vnet_buffer (b)->tcp);
       goto done;
     }
@@ -2013,7 +1938,7 @@ in_order:
       goto done;
     }
 
-  tcp_program_ack (wrk, tc);
+  tcp_program_ack (tc);
 
 done:
   return error;
@@ -2591,7 +2516,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
-	  tcp_program_ack (wrk, new_tc0);
+	  tcp_program_ack (new_tc0);
 	}
 
     drop:
@@ -2921,7 +2846,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (!is_fin0)
 	    goto drop;
 
-	  tcp_program_ack (wrk, tc0);
+	  tcp_program_ack (tc0);
 	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 	  goto drop;
 
@@ -2961,7 +2886,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	case TCP_STATE_ESTABLISHED:
 	  /* Account for the FIN and send ack */
 	  tc0->rcv_nxt += 1;
-	  tcp_program_ack (wrk, tc0);
+	  tcp_program_ack (tc0);
 	  tcp_connection_set_state (tc0, TCP_STATE_CLOSE_WAIT);
 	  tcp_program_disconnect (wrk, tc0);
 	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
@@ -2995,7 +2920,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    {
 	      tcp_connection_set_state (tc0, TCP_STATE_CLOSING);
-	      tcp_program_ack (wrk, tc0);
+	      tcp_program_ack (tc0);
 	      /* Wait for ACK for our FIN but not forever */
 	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	    }
@@ -3006,7 +2931,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_connection_set_state (tc0, TCP_STATE_TIME_WAIT);
 	  tcp_connection_timers_reset (tc0);
 	  tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
-	  tcp_program_ack (wrk, tc0);
+	  tcp_program_ack (tc0);
 	  session_transport_closed_notify (&tc0->connection);
 	  break;
 	case TCP_STATE_TIME_WAIT:
