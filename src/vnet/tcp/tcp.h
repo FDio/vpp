@@ -464,20 +464,8 @@ typedef struct tcp_worker_ctx_
   /** tx frames for ip 4/6 lookup nodes */
   vlib_frame_t *ip_lookup_tx_frames[2];
 
-  /** vector of connections needing fast rxt */
-  u32 *pending_fast_rxt;
-
-  /** vector of connections now doing fast rxt */
-  u32 *ongoing_fast_rxt;
-
-  /** vector of connections that will do fast rxt */
-  u32 *postponed_fast_rxt;
-
   /** vector of pending ack dequeues */
   u32 *pending_deq_acked;
-
-  /** vector of pending acks */
-  u32 *pending_acks;
 
   /** vector of pending disconnect notifications */
   u32 *pending_disconnects;
@@ -700,14 +688,11 @@ void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
 void tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, u8 is_ip4);
 void tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk);
-void tcp_program_fastretransmit (tcp_worker_ctx_t * wrk,
-				 tcp_connection_t * tc);
-void tcp_do_fastretransmits (tcp_worker_ctx_t * wrk);
-
-void tcp_program_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
-void tcp_program_dupack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
-void tcp_send_acks (tcp_worker_ctx_t * wrk);
 void tcp_send_window_update_ack (tcp_connection_t * tc);
+
+void tcp_program_ack (tcp_connection_t * tc);
+void tcp_program_dupack (tcp_connection_t * tc);
+void tcp_program_fastretransmit (tcp_connection_t * tc);
 
 /*
  * Rate estimation
@@ -961,6 +946,7 @@ tcp_set_time_now (tcp_worker_ctx_t * wrk)
 
 u32 tcp_session_push_header (transport_connection_t * tconn,
 			     vlib_buffer_t * b);
+int tcp_session_custom_tx (void *conn, u32 max_burst_size);
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
