@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "97ed6a0b_a9d56327",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-24T16:02:14Z",
+      "side": 1,
+      "message": "I have changed VXLAN_IP4_TUNNEL and VXLAN_IP6_TUNNEL to OUTER_IP4 and OUTER_IP6 respectively. These flags can be used for other tunnels type such as IVXLAN or IPIP.",
+      "parentUuid": "40fbfa27_f249601f",
+      "revId": "6272d2fe4b8c57b1ffe84ecc7384c56a11dbbfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "450cd683_b5459322",
         "filename": "src/vnet/buffer.h",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2019-07-18T10:36:57Z",
       "side": 1,
       "message": "if you\u0027re going to define the enum flags here, which is fine, then don\u0027t use an annonymous enum. instead give it a new type and use the type when declare the gso_flags member. If you use strong typing the compiler can help you with any bugs.",
+      "revId": "6272d2fe4b8c57b1ffe84ecc7384c56a11dbbfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a431f8d2_cccab42d",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 448,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-24T16:02:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "450cd683_b5459322",
       "revId": "6272d2fe4b8c57b1ffe84ecc7384c56a11dbbfd9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
