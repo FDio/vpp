@@ -375,8 +375,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "connect should work");
 
   /* wait for stuff to happen */
-  while ((connected_session_index == ~0
-	  || vec_len (tcp_main.wrk_ctx[0].pending_acks)) && ++tries < 100)
+  while (connected_session_index == ~0 && ++tries < 100)
     vlib_process_suspend (vm, 100e-3);
   clib_warning ("waited %.1f seconds for connections", tries / 10.0);
   SESSION_TEST ((connected_session_index != ~0), "session should exist");

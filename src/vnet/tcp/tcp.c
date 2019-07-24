@@ -1196,8 +1196,6 @@ tcp_update_time (f64 now, u8 thread_index)
 
   tcp_set_time_now (wrk);
   tw_timer_expire_timers_16t_2w_512sl (&wrk->timer_wheel, now);
-  tcp_do_fastretransmits (wrk);
-  tcp_send_acks (wrk);
   tcp_flush_frames_to_output (wrk);
 }
 
@@ -1228,6 +1226,7 @@ const static transport_proto_vft_t tcp_proto = {
   .update_time = tcp_update_time,
   .tx_fifo_offset = tcp_session_tx_fifo_offset,
   .flush_data = tcp_session_flush_data,
+  .custom_tx = tcp_session_custom_tx,
   .format_connection = format_tcp_session,
   .format_listener = format_tcp_listener_session,
   .format_half_open = format_tcp_half_open_session,
@@ -1476,17 +1475,9 @@ tcp_main_enable (vlib_main_t * vm)
 
   for (thread = 0; thread < num_threads; thread++)
     {
-      vec_validate (tm->wrk_ctx[thread].pending_fast_rxt, 255);
-      vec_validate (tm->wrk_ctx[thread].ongoing_fast_rxt, 255);
-      vec_validate (tm->wrk_ctx[thread].postponed_fast_rxt, 255);
       vec_validate (tm->wrk_ctx[thread].pending_deq_acked, 255);
-      vec_validate (tm->wrk_ctx[thread].pending_acks, 255);
       vec_validate (tm->wrk_ctx[thread].pending_disconnects, 255);
-      vec_reset_length (tm->wrk_ctx[thread].pending_fast_rxt);
-      vec_reset_length (tm->wrk_ctx[thread].ongoing_fast_rxt);
-      vec_reset_length (tm->wrk_ctx[thread].postponed_fast_rxt);
       vec_reset_length (tm->wrk_ctx[thread].pending_deq_acked);
-      vec_reset_length (tm->wrk_ctx[thread].pending_acks);
       vec_reset_length (tm->wrk_ctx[thread].pending_disconnects);
       tm->wrk_ctx[thread].vm = vlib_mains[thread];
 
