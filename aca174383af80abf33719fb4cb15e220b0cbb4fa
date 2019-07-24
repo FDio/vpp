@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3b99cb36_04544972",
+        "filename": "extras/libmemif/CMakeLists.txt",
+        "patchSetId": 10
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1709
+      },
+      "writtenOn": "2019-07-24T12:09:03Z",
+      "side": 1,
+      "message": "Ok, you don\u0027t mind if it duplicates what script/version already does? \nTypically, I am thinking to generate a version from the output of \u0027git describe\u0027 in each CmakeList file i.e. libmemif/CMakeLists.txt, vom/CMakeLists and src/examples/sample-plugin/CmakeLists.txt.",
+      "parentUuid": "0a7779f0_066b294b",
+      "range": {
+        "startLine": 66,
+        "startChar": 20,
+        "endLine": 66,
+        "endChar": 30
+      },
+      "revId": "aca174383af80abf33719fb4cb15e220b0cbb4fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a3e4e59d_e616dd6c",
         "filename": "src/examples/sample-plugin/CMakeLists.txt",
         "patchSetId": 10
