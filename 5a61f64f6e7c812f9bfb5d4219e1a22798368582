@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa99d305_88a6366f",
+        "filename": "src/plugins/memif/socket.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-24T12:56:50Z",
+      "side": 1,
+      "message": "Similar fixes can be used in other parts of VPP.\nCompare to https://gerrit.fd.io/r/20401 which uses existing strncpy_s.",
+      "range": {
+        "startLine": 81,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 17
+      },
+      "revId": "5a61f64f6e7c812f9bfb5d4219e1a22798368582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b06908a_6c8a6913",
+        "filename": "src/plugins/memif/socket.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-24T12:56:50Z",
+      "side": 1,
+      "message": "I think you should also zero all the subsequent bytes, up to (line 81) len-1,\nor make sure the destination field has ben zeroed beforehand.\n\nAlso, If the u8 array destination field values _have_ to contain ending zero byte (as opposed to fitting into the array size without it), add a comment to their (e.g. memif_msg_init_t) definition.\n\nFinally, extras/libmemif/ also uses strncpy related to fixed size array field, so it should get fixed similarly.",
+      "range": {
+        "startLine": 85,
+        "startChar": 7,
+        "endLine": 85,
+        "endChar": 10
+      },
+      "revId": "5a61f64f6e7c812f9bfb5d4219e1a22798368582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
