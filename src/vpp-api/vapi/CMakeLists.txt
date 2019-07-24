@@ -74,12 +74,24 @@ add_vpp_library(vapiclient
 
 install(
   FILES
-  vapi.h
-  vapi_common.h
-  vapi_dbg.h
-  vapi.hpp
-  vapi_internal.h
+    vapi.h
+    vapi_common.h
+    vapi_dbg.h
+    vapi.hpp
+    vapi_internal.h
+  DESTINATION
+    include/vapi
+  COMPONENT
+    vpp-dev
+)
 
-  DESTINATION include/vapi
-  COMPONENT vpp-dev
+install(
+  FILES
+    vapi_c_gen.py
+    vapi_json_parser.py
+    vapi_cpp_gen.py
+  DESTINATION
+    share/vpp
+  COMPONENT
+    vpp-dev
 )
