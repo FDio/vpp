@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a154e829_9589cab3",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-07-24T11:34:42Z",
+      "side": 1,
+      "message": "avoid duplication i.e.\n\n#if defined (CLIB_HAVE_VEC256) || defined (CLIB_HAVE_VEC128)\n#if defined (CLIB_HAVE_VEC256)\n...\n#else\n...\n#endif\n // ASSERTS HERE\n#else",
+      "range": {
+        "startLine": 465,
+        "startChar": 0,
+        "endLine": 488,
+        "endChar": 5
+      },
+      "revId": "94461d32ebc37c8de38c9ceabbc5cf0ad2126ee8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c0a44f5e_b91c21e2",
+        "filename": "src/vppinfra/vector_sse42.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-07-24T11:34:42Z",
+      "side": 1,
+      "message": "Why is this needed? What\u0027s wrong with just using \u0027a + b\u0027",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 78,
+        "endChar": 1
+      },
+      "revId": "94461d32ebc37c8de38c9ceabbc5cf0ad2126ee8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
