@@ -243,6 +243,26 @@ session_evt_add_pending_disconnects (session_worker_t * wrk,
 		       session_evt_pending_disconnects_head (wrk));
 }
 
+static inline session_evt_elt_t *
+session_evt_alloc_new (session_worker_t * wrk)
+{
+  session_evt_elt_t *elt;
+  elt = session_evt_elt_alloc (wrk);
+  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
+		       pool_elt_at_index (wrk->event_elts, wrk->new_head));
+  return elt;
+}
+
+static inline session_evt_elt_t *
+session_evt_alloc_old (session_worker_t * wrk)
+{
+  session_evt_elt_t *elt;
+  elt = session_evt_elt_alloc (wrk);
+  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
+		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
+  return elt;
+}
+
 always_inline u8
 session_is_valid (u32 si, u8 thread_index)
 {
@@ -394,6 +414,8 @@ void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 				     void *rpc_args);
 void session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
 					   void *rpc_args);
+void session_add_self_custom_tx_evt (transport_connection_t * tc,
+				     u8 has_prio);
 transport_connection_t *session_get_transport (session_t * s);
 void session_get_endpoint (session_t * s, transport_endpoint_t * tep,
 			   u8 is_lcl);
