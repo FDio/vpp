@@ -153,7 +153,7 @@ vnet_rewrite_get_data_internal (vnet_rewrite_header_t * rw, int max_size)
 
 always_inline void
 _vnet_rewrite_one_header (vnet_rewrite_header_t * h0,
-			  void *packet0, int max_size, int most_likely_size)
+			  void *packet0, int most_likely_size)
 {
   /* 0xfefe => poisoned adjacency => crash */
   ASSERT (h0->data_bytes != 0xfefe);
@@ -172,8 +172,7 @@ _vnet_rewrite_one_header (vnet_rewrite_header_t * h0,
 always_inline void
 _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
 			   vnet_rewrite_header_t * h1,
-			   void *packet0,
-			   void *packet1, int max_size, int most_likely_size)
+			   void *packet0, void *packet1, int most_likely_size)
 {
   /* 0xfefe => poisoned adjacency => crash */
   ASSERT (h0->data_bytes != 0xfefe);
@@ -198,13 +197,11 @@ _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
 
 #define vnet_rewrite_one_header(rw0,p0,most_likely_size)	\
   _vnet_rewrite_one_header (&((rw0).rewrite_header), (p0),	\
-			    sizeof ((rw0).rewrite_data),	\
 			    (most_likely_size))
 
 #define vnet_rewrite_two_headers(rw0,rw1,p0,p1,most_likely_size)	\
   _vnet_rewrite_two_headers (&((rw0).rewrite_header), &((rw1).rewrite_header), \
 			     (p0), (p1),				\
-			     sizeof ((rw0).rewrite_data),		\
 			     (most_likely_size))
 
 always_inline void
