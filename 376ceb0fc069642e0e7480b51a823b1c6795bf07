@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "03d719a8_16dbbef7",
+        "filename": "extras/libmemif/CMakeLists.txt",
+        "patchSetId": 15
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-07-24T12:01:24Z",
+      "side": 1,
+      "message": "Please remove this as a part of this patch. libmemif should be completely independent of VPP and at some point it may move to separate repo.",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 52
+      },
+      "revId": "376ceb0fc069642e0e7480b51a823b1c6795bf07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
