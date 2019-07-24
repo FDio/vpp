@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f9f416d_16c2b6bd",
+        "filename": ".git_commit_template.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-24T15:37:29Z",
+      "side": 1,
+      "message": "\u003creference\u003e\n\nThat way it is not specific for a particular review software.",
+      "range": {
+        "startLine": 10,
+        "startChar": 14,
+        "endLine": 10,
+        "endChar": 26
+      },
+      "revId": "a41b7d7e27ca3419c59f11f797e492f53d497c26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
