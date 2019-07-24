@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d238f950_140f1cd3",
+        "filename": "src/vpp/api/custom_dump.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2765,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-07-24T11:48:10Z",
+      "side": 1,
+      "message": "What is GSO size?",
+      "range": {
+        "startLine": 2765,
+        "startChar": 18,
+        "endLine": 2765,
+        "endChar": 26
+      },
+      "revId": "4b25825ceac06e7f08b5381cd86914fc1c7cebc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
