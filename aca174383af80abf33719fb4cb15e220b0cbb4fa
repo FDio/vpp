@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a3e4e59d_e616dd6c",
+        "filename": "src/examples/sample-plugin/CMakeLists.txt",
+        "patchSetId": 10
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-07-24T11:52:39Z",
+      "side": 1,
+      "message": "Idea of sample plugin is to provide template for people to create out-if-tree plugin so this is not going to work. implications are:\n- such plugin may have different versioning scheme\n- such plugin may be in different git repo\n- such plugin may even not be in git repo",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 12,
+        "endChar": 48
+      },
+      "revId": "aca174383af80abf33719fb4cb15e220b0cbb4fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
