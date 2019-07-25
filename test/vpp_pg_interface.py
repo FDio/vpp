@@ -132,7 +132,8 @@ class VppPGInterface(VppInterface):
             of at most n packets.
             If n < 0, this is no limit
         """
-
+        # disable the capture to flush the capture
+        self.disable_capture()
         self._rename_previous_capture_file(self.out_path,
                                            self.out_history_counter,
                                            self._out_file)
