@@ -239,8 +239,7 @@ dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
 		 (u8 *) & client->domain_server_address[i],
 		 sizeof (ip4_address_t));
 
-  if (NULL != client->l2_rewrite)
-    clib_memcpy (&lease->host_mac[0], client->l2_rewrite + 6, 6);
+  clib_memcpy (&lease->host_mac[0], client->client_hardware_address, 6);
 }
 
 static void

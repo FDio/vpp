@@ -210,21 +210,29 @@ class TestDHCP(VppTestCase):
         data = self.validate_relay_options(pkt, intf, intf.local_ip4,
                                            vpn_id, fib_id, oui)
 
-    def verify_orig_dhcp_pkt(self, pkt, intf):
+    def verify_orig_dhcp_pkt(self, pkt, intf, l2_bc=True):
         ether = pkt[Ether]
-        self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")
+        if l2_bc:
+            self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")
+        else:
+            self.assertEqual(ether.dst, intf.remote_mac)
         self.assertEqual(ether.src, intf.local_mac)
 
         ip = pkt[IP]
-        self.assertEqual(ip.dst, "255.255.255.255")
-        self.assertEqual(ip.src, "0.0.0.0")
+
+        if (l2_bc):
+            self.assertEqual(ip.dst, "255.255.255.255")
+            self.assertEqual(ip.src, "0.0.0.0")
+        else:
+            self.assertEqual(ip.dst, intf.remote_ip4)
+            self.assertEqual(ip.src, intf.local_ip4)
 
         udp = pkt[UDP]
         self.assertEqual(udp.dport, DHCP4_SERVER_PORT)
         self.assertEqual(udp.sport, DHCP4_CLIENT_PORT)
 
     def verify_orig_dhcp_discover(self, pkt, intf, hostname, client_id=None,
-                                  broadcast=1):
+                                  broadcast=True):
         self.verify_orig_dhcp_pkt(pkt, intf)
 
         self.verify_dhcp_msg_type(pkt, "discover")
@@ -240,15 +248,21 @@ class TestDHCP(VppTestCase):
             self.assertEqual(bootp.flags, 0x0000)
 
     def verify_orig_dhcp_request(self, pkt, intf, hostname, ip,
-                                 broadcast=1):
-        self.verify_orig_dhcp_pkt(pkt, intf)
+                                 broadcast=True,
+                                 l2_bc=True):
+        self.verify_orig_dhcp_pkt(pkt, intf, l2_bc=l2_bc)
 
         self.verify_dhcp_msg_type(pkt, "request")
         self.verify_dhcp_has_option(pkt, "hostname", hostname)
         self.verify_dhcp_has_option(pkt, "requested_addr", ip)
         bootp = pkt[BOOTP]
-        self.assertEqual(bootp.ciaddr, "0.0.0.0")
+
+        if l2_bc:
+            self.assertEqual(bootp.ciaddr, "0.0.0.0")
+        else:
+            self.assertEqual(bootp.ciaddr, intf.local_ip4)
         self.assertEqual(bootp.giaddr, "0.0.0.0")
+
         if broadcast:
             self.assertEqual(bootp.flags, 0x8000)
         else:
@@ -1382,7 +1396,7 @@ class TestDHCP(VppTestCase):
         rx = self.pg3.get_capture(1)
 
         self.verify_orig_dhcp_discover(rx[0], self.pg3, hostname,
-                                       broadcast=0)
+                                       broadcast=False)
 
         #
         # Send back on offer, unicasted to the offered address.
@@ -1404,10 +1418,11 @@ class TestDHCP(VppTestCase):
         rx = self.pg3.get_capture(1)
         self.verify_orig_dhcp_request(rx[0], self.pg3, hostname,
                                       self.pg3.local_ip4,
-                                      broadcast=0)
+                                      broadcast=False)
 
         #
-        # Send an acknowledgment
+        # Send an acknowledgment, the lease renewal time is 2 seconds
+        # so we should expect the renew straight after
         #
         p_ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
                  IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
@@ -1419,6 +1434,7 @@ class TestDHCP(VppTestCase):
                                ('router', self.pg3.remote_ip4),
                                ('server_id', self.pg3.remote_ip4),
                                ('lease_time', 43200),
+                               ('renewal_time', 2),
                                'end']))
 
         self.pg3.add_stream(p_ack)
@@ -1440,11 +1456,33 @@ class TestDHCP(VppTestCase):
         self.assertTrue(find_route(self, self.pg3.local_ip4, 24))
         self.assertTrue(find_route(self, self.pg3.local_ip4, 32))
 
-        # remove the left over ARP entry
-        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      self.pg3.remote_mac,
-                                      self.pg3.remote_ip4,
-                                      is_add=0)
+        #
+        # wait for the unicasted renewal
+        #  the first attempt will be an ARP packet, since we have not yet
+        #  responded to VPP's request
+        #
+        self.logger.info(self.vapi.cli("sh dhcp client intfc pg3 verbose"))
+        rx = self.pg3.get_capture(1, timeout=10)
+
+        self.assertEqual(rx[0][ARP].pdst, self.pg3.remote_ip4)
+
+        # respond to the arp
+        p_arp = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
+                 ARP(op="is-at",
+                     hwdst=self.pg3.local_mac,
+                     hwsrc=self.pg3.remote_mac,
+                     pdst=self.pg3.local_ip4,
+                     psrc=self.pg3.remote_ip4))
+        self.pg3.add_stream(p_arp)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # the next packet is the unicasted renewal
+        rx = self.pg3.get_capture(1, timeout=10)
+        self.verify_orig_dhcp_request(rx[0], self.pg3, hostname,
+                                      self.pg3.local_ip4,
+                                      l2_bc=False,
+                                      broadcast=False)
 
         #
         # read the DHCP client details from a dump
@@ -1468,6 +1506,12 @@ class TestDHCP(VppTestCase):
         self.assertEqual(clients[0].lease.host_address.rstrip('\0'),
                          self.pg3.local_ip4n)
 
+        # remove the left over ARP entry
+        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
+                                      self.pg3.remote_mac,
+                                      self.pg3.remote_ip4,
+                                      is_add=0)
+
         #
         # remove the DHCP config
         #
@@ -1482,9 +1526,11 @@ class TestDHCP(VppTestCase):
         #
         # Start the procedure again. Use requested lease time option.
         #
+        hostname += "-2"
         self.pg3.admin_down()
         self.sleep(1)
         self.pg3.admin_up()
+        self.pg_enable_capture(self.pg_interfaces)
         self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname)
 
         rx = self.pg3.get_capture(1)
