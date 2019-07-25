@@ -92,7 +92,7 @@ mpcap_init (mpcap_main_t * pm)
     return 0;
 
   if (!pm->file_name)
-    pm->file_name = "/tmp/vnet.mpcap";
+    pm->file_name = "/tmp/vppinfra.mpcap";
 
   if (pm->flags & MPCAP_FLAG_THREAD_SAFE)
     clib_spinlock_init (&pm->lock);
@@ -172,16 +172,23 @@ mpcap_map (mpcap_main_t * pm)
   u32 min_packet_bytes = ~0;
   u32 max_packet_bytes = 0;
 
-  if (stat (pm->file_name, &statb) < 0)
+  fd = open (pm->file_name, O_RDONLY);
+  if (fd < 0)
+    {
+      error = clib_error_return_unix (0, "open `%s'", pm->file_name);
+      goto done;
+    }
+
+  if (fstat (fd, &statb) < 0)
     {
       error = clib_error_return_unix (0, "stat `%s'", pm->file_name);
       goto done;
     }
 
-  fd = open (pm->file_name, O_RDONLY);
-  if (fd < 0)
+  if ((statb.st_mode & S_IFREG) == 0)
     {
-      error = clib_error_return_unix (0, "open `%s'", pm->file_name);
+      error = clib_error_return (0, "'%s' is not a regular file",
+				 pm->file_name);
       goto done;
     }
 
@@ -206,6 +213,8 @@ mpcap_map (mpcap_main_t * pm)
   if (fh->magic != 0xa1b2c3d4)
     {
       error = clib_error_return (0, "bad magic `%s'", pm->file_name);
+      pm->flags &= ~(MPCAP_FLAG_INIT_DONE);
+      (void) munmap (pm->file_baseva, pm->max_file_size);
       goto done;
     }
 
