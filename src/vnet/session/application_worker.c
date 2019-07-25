@@ -600,7 +600,10 @@ app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s, u8 lock)
   (void) svm_fifo_set_event (s->rx_fifo);
 
   if (app_enqueue_evt (mq, &msg, lock))
-    return -1;
+    {
+      svm_fifo_unset_event (s->rx_fifo);
+      return -1;
+    }
   return 0;
 }
 
