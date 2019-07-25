@@ -109,11 +109,6 @@ VLIB_NODE_FN (cop_input_node) (vlib_main_t * vm,
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
 
-          proto0 = VNET_COP_DEFAULT;
-          proto1 = VNET_COP_DEFAULT;
-          advance0 = 0;
-          advance1 = 0;
-
           if (en0->type == clib_host_to_net_u16(ETHERNET_TYPE_IP4))
             {
               proto0 = VNET_COP_IP4;
@@ -123,6 +118,11 @@ VLIB_NODE_FN (cop_input_node) (vlib_main_t * vm,
             {
               proto0 = VNET_COP_IP6;
               advance0 = sizeof(ethernet_header_t);
+            }
+          else
+            {
+              proto0 = VNET_COP_DEFAULT;
+              advance0 = 0;
             }
 
           if (en1->type == clib_host_to_net_u16(ETHERNET_TYPE_IP4))
@@ -134,6 +134,11 @@ VLIB_NODE_FN (cop_input_node) (vlib_main_t * vm,
             {
               proto1 = VNET_COP_IP6;
               advance1 = sizeof(ethernet_header_t);
+            }
+          else
+            {
+              proto1 = VNET_COP_DEFAULT;
+              advance1 = 0;
             }
 
 	  ccm0 = cm->cop_config_mains + proto0;
@@ -209,9 +214,6 @@ VLIB_NODE_FN (cop_input_node) (vlib_main_t * vm,
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 
-          proto0 = VNET_COP_DEFAULT;
-          advance0 = 0;
-
           if (en0->type == clib_host_to_net_u16(ETHERNET_TYPE_IP4))
             {
               proto0 = VNET_COP_IP4;
@@ -221,6 +223,11 @@ VLIB_NODE_FN (cop_input_node) (vlib_main_t * vm,
             {
               proto0 = VNET_COP_IP6;
               advance0 = sizeof(ethernet_header_t);
+            }
+          else
+            {
+              proto0 = VNET_COP_DEFAULT;
+              advance0 = 0;
             }
 
 	  ccm0 = cm->cop_config_mains + proto0;
