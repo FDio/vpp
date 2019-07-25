@@ -1,53 +1,111 @@
-# VPP1
+# What's `runner.py` doing?
 
-## Linux
-    sysctl net.ipv6.conf.all.disable_ipv6=0
-    ip link add tmp1 type veth peer name tmp2
-    ip link set dev tmp1 up
-    ip link set dev tmp2 up
-    ip -6 addr add a20::2/120 dev tmp2
-    ip -6 route del default
-    ip -6 route add default dev tmp2 via a20::1
+## Common configurations
 
-    ping a30::2
+### VPP1
+```
+create host-interface name eth1
+set int ip addr host-eth1 A1::1/120
+set int state host-eth1 up
+ip route add ::/0 via host-eth1 A1::2
+```
 
-## VPP SRv6
 
-    create host-interface name tmp1
-    set interface ip address host-tmp1 a20::1/120
-    set interface state host-tmp1 up
-    set sr encaps source addr C1::
-    sr policy add bsid c1::999:1 next c2:: next c3:: next c4::
-    sr steer l3 a30::/120 via bsid c1::999:1
+### VPP2
 
-# VPP2
+```
+create host-interface name eth1
+set int ip addr host-eth1 A1::2/120
+create host-interface name eth2
+set int ip addr host-eth2 A2::1/120
+set int state host-eth1 up
+set int state host-eth2 up
+ip route add ::/0 via host-eth2 A2::2
+```
 
-## VPP SRv6
 
-    sr localsid address C2:: behavior end
+### VPP3
 
-# VPP3
+```
+create host-interface name eth1
+set int ip addr host-eth1 A2::2/120
+create host-interface name eth2
+set int ip addr host-eth2 A3::1/120
+set int state host-eth1 up
+set int state host-eth2 up
+ip route add ::/0 via host-eth1 A2::1
+```
 
-## VPP SRv6
+### VPP4
 
-    sr localsid address C3:: behavior end
+```
+create host-interface name eth1
+set int ip addr host-eth1 A3::2/120
+set int state host-eth1 up
+ip route add ::/0 via host-eth1 A3::1
+```
 
-# VPP4
 
-## Linux
-    sysctl net.ipv6.conf.all.disable_ipv6=0
-    ip link add tmp1 type veth peer name tmp2
-    ip link set dev tmp1 up
-    ip link set dev tmp2 up
-    ip -6 addr add a30::2/120 dev tmp2
-    ip -6 route del default
-    ip -6 route add default dev tmp2 via a30::1
+## Drop-in for GTP-U over IPv4
 
-## VPP SRv6
-    create host-interface name tmp1
-    set interface ip address host-tmp1 a30::1/120
-    set interface state host-tmp1 up
-    sr localsid address C4:: behavior end.dx6 host-tmp1 a30::2
+What's happened when you run `test tmap`:
+
+    $ ./runner.py test tmap
+
+
+Setting up a virtual interface of packet generator:
+
+#### VPP1
+
+```
+create packet-generator interface pg0
+set int mac address pg0 aa:bb:cc:dd:ee:01
+set int ip addr pg0 172.16.0.1/30
+set ip arp pg0 172.16.0.2/30 aa:bb:cc:dd:ee:02
+```
+
+#### VPP4
+
+```
+create packet-generator interface pg0
+set int mac address pg0 aa:bb:cc:dd:ee:11
+set int ip addr pg0 1.0.0.2/30
+set ip arp pg0 1.0.0.1 aa:bb:cc:dd:ee:22
+```
+
+SRv6 and IP routing settings:
+
+#### VPP1
+
+```
+sr policy add bsid D1:: next D2:: next D3:: gtp4_removal sr_prefix D4::/32 v6src_prefix C1::/64
+sr steer l3 172.20.0.1/32 via bsid D1::
+
+```
+
+#### VPP2
+
+```
+sr localsid address D2:: behavior end
+ip route add D3::/128 via host-eth2 A2::2
+```
+
+#### VPP3
+
+```
+sr localsid address D3:: behavior end
+ip route add D4::/32 via host-eth2 A3::2
+```
+
+#### VPP4
+
+```
+sr localsid prefix D4::/32 behavior end.m.gtp4.e v4src_position 64
+ip route add 172.20.0.1/32 via pg0 1.0.0.1
+```
+
+
+
 
 ## Packet generator and testing
 
@@ -113,4 +171,3 @@
 
     sr localsid address C3:: behavior end.m.gtp4.e
     sr localsid address 2001:200:0:1ce1:3000:757f:0:2 behavior end.m.gtp4.e
-
