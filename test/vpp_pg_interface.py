@@ -97,7 +97,8 @@ class VppPGInterface(VppInterface):
         self._out_history_counter = 0
         self._out_assert_counter = 0
         self._pg_index = pg_index
-        self._out_file = "pg%u_out.pcap" % self.pg_index
+        self._out_file = "pg%u_out_curr_ts:%f.pcap" % \
+            (self.pg_index, time.time())
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._in_file = "pg%u_in.pcap" % self.pg_index
         self._in_path = self.test.tempdir + "/" + self._in_file
