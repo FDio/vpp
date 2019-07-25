@@ -84,14 +84,17 @@ packet_is_cdp (ethernet_header_t * eth)
 	   (snap->oui[2] == 0x0C)));
 }
 
-static inline u32
+static inline void
 bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_buffer_t * b, u32 bond_sw_if_index)
+			vlib_buffer_t * b, u32 bond_sw_if_index,
+			u32 * n_rx_packets, u32 * n_rx_bytes)
 {
   u16 *ethertype_p, ethertype;
   ethernet_vlan_header_t *vlan;
   ethernet_header_t *eth = (ethernet_header_t *) vlib_buffer_get_current (b);
 
+  (*n_rx_packets)++;
+  *n_rx_bytes += b->current_length;
   ethertype = clib_mem_unaligned (&eth->type, u16);
   if (!ethernet_frame_is_tagged (ntohs (ethertype)))
     {
@@ -102,7 +105,7 @@ bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  /* Change the physical interface to bond interface */
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = bond_sw_if_index;
-	  return 1;
+	  return;
 	}
     }
   else
@@ -122,32 +125,25 @@ bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  /* Change the physical interface to bond interface */
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = bond_sw_if_index;
-	  return 1;
+	  return;
 	}
     }
 
   vlib_error_count (vm, node->node_index, BOND_INPUT_ERROR_PASS_THRU, 1);
-  return 0;
+  return;
 }
 
 static inline void
 bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  u32 * last_slave_sw_if_index, u32 slave_sw_if_index,
-		  u32 packet_count,
 		  u32 * bond_sw_if_index, vlib_buffer_t * b,
 		  u32 * next_index, vlib_error_t * error)
 {
-  u16 thread_index = vm->thread_index;
   slave_if_t *sif;
   bond_if_t *bif;
 
   if (PREDICT_TRUE (*last_slave_sw_if_index == slave_sw_if_index))
     return;
-
-  if (packet_count)
-    vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
-				   VNET_INTERFACE_COUNTER_RX, thread_index,
-				   *last_slave_sw_if_index, packet_count);
 
   *last_slave_sw_if_index = slave_sw_if_index;
   *next_index = BOND_INPUT_NEXT_DROP;
@@ -184,7 +180,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
   u32 bond_sw_if_index = 0;
   vlib_error_t error = 0;
   u32 next_index = 0;
-  u32 cnt = 0;
+  u32 n_rx_bytes = 0, n_rx_packets = 0;
 
   /* Vector of buffer / pkt indices we're supposed to process */
   from = vlib_frame_vector_args (frame);
@@ -237,54 +233,53 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      cnt +=
-		bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index);
-	      cnt +=
-		bond_sw_if_idx_rewrite (vm, node, b[1], bond_sw_if_index);
-	      cnt +=
-		bond_sw_if_idx_rewrite (vm, node, b[2], bond_sw_if_index);
-	      cnt +=
-		bond_sw_if_idx_rewrite (vm, node, b[3], bond_sw_if_index);
+	      bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index,
+				      &n_rx_packets, &n_rx_bytes);
+	      bond_sw_if_idx_rewrite (vm, node, b[1], bond_sw_if_index,
+				      &n_rx_packets, &n_rx_bytes);
+	      bond_sw_if_idx_rewrite (vm, node, b[2], bond_sw_if_index,
+				      &n_rx_packets, &n_rx_bytes);
+	      bond_sw_if_idx_rewrite (vm, node, b[3], bond_sw_if_index,
+				      &n_rx_packets, &n_rx_bytes);
 	    }
 	}
       else
 	{
-
 	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[0],
-			    cnt, &bond_sw_if_index, b[0], &next_index,
-			    &error);
+			    &bond_sw_if_index, b[0], &next_index, &error);
 	  next[0] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[0]->error = error;
 	  else
-	    cnt += bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index);
+	    bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index,
+				    &n_rx_packets, &n_rx_bytes);
 
 	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[1],
-			    cnt, &bond_sw_if_index, b[1], &next_index,
-			    &error);
+			    &bond_sw_if_index, b[1], &next_index, &error);
 	  next[1] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[1]->error = error;
 	  else
-	    cnt += bond_sw_if_idx_rewrite (vm, node, b[1], bond_sw_if_index);
+	    bond_sw_if_idx_rewrite (vm, node, b[1], bond_sw_if_index,
+				    &n_rx_packets, &n_rx_bytes);
 
 	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[2],
-			    cnt, &bond_sw_if_index, b[2], &next_index,
-			    &error);
+			    &bond_sw_if_index, b[2], &next_index, &error);
 	  next[2] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[2]->error = error;
 	  else
-	    cnt += bond_sw_if_idx_rewrite (vm, node, b[2], bond_sw_if_index);
+	    bond_sw_if_idx_rewrite (vm, node, b[2], bond_sw_if_index,
+				    &n_rx_packets, &n_rx_bytes);
 
 	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[3],
-			    cnt, &bond_sw_if_index, b[3], &next_index,
-			    &error);
+			    &bond_sw_if_index, b[3], &next_index, &error);
 	  next[3] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[3]->error = error;
 	  else
-	    cnt += bond_sw_if_idx_rewrite (vm, node, b[3], bond_sw_if_index);
+	    bond_sw_if_idx_rewrite (vm, node, b[3], bond_sw_if_index,
+				    &n_rx_packets, &n_rx_bytes);
 	}
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
@@ -303,12 +298,13 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
     {
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[0],
-			cnt, &bond_sw_if_index, b[0], &next_index, &error);
+			&bond_sw_if_index, b[0], &next_index, &error);
       next[0] = next_index;
       if (next_index == BOND_INPUT_NEXT_DROP)
 	b[0]->error = error;
       else
-	bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index);
+	bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index,
+				&n_rx_packets, &n_rx_bytes);
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
@@ -344,9 +340,10 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
     }
 
   /* increase rx counters */
-  vlib_increment_simple_counter
-    (vnet_main.interface_main.sw_if_counters +
-     VNET_INTERFACE_COUNTER_RX, thread_index, bond_sw_if_index, cnt);
+  vlib_increment_combined_counter
+    (vnet_main.interface_main.combined_sw_if_counters +
+     VNET_INTERFACE_COUNTER_RX, thread_index, bond_sw_if_index, n_rx_packets,
+     n_rx_bytes);
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   vlib_node_increment_counter (vm, bond_input_node.index,
