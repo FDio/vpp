@@ -40,4 +40,7 @@ add_vpp_plugin(unittest
   unittest.c
   util_test.c
   test_buffer.c
+
+  API_FILES
+  unittest.api
 )

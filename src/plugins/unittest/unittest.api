@@ -1,0 +1,104 @@
+/*
+ * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Copyright (c) 2019. Vinci Consulting Corp.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines various API messages which are generally
+    only used for testing low-level VPP components.
+*/
+
+option version = "0.0.0";
+
+/** \brief f64 types are not standardized across the wire. Sense wire format in each direction by sending the f64 value 1.0.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param f64_one - The constant of 1.0.  If you send a different value, expect an rv=VNET_API_ERROR_API_ENDIAN_FAILED.
+*/
+define get_f64_endian_value
+{
+  u32 client_index;
+  u32 context;
+  f64 f64_one [default=1.0];
+};
+
+/** \brief get_f64_endian_value reply message
+    @param context - sender context which was passed in the request
+    @param retval - return value - VNET_API_ERROR_API_ENDIAN_FAILED if f64_one != 1.0
+    @param f64_one_result - The value of 'f64 1.0'
+*/
+define get_f64_endian_value_reply
+{
+  u32 context;
+  u32 retval;
+  f64 f64_one_result;
+};
+
+/** \brief Verify f64 wire format by sending a value and receiving the value + 1.0
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param f64_value - The value you want to test.  Default: 1.0.
+*/
+define get_f64_increment_by_one
+{
+  u32 client_index;
+  u32 context;
+  f64 f64_value [default=1.0];
+};
+
+/** \brief get_f64_increment_by_one reply
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param f64_value - The input f64_value incremented by 1.0.
+*/
+define get_f64_increment_by_one_reply
+{
+  u32 context;
+  u32 retval;
+  f64 f64_value;
+};
+
+/** \brief Sync barrier, wait, release barrier.
+    Useful for testing the impact of API-related stalls on performance.
+    @param client_index - Opaque cookie to identify the sender.
+    @param context - Sender context, to match reply w/ request.
+    @param wait - How long to wait, in seconds.
+*/
+define wait_with_barrier
+{
+  u32 client_index;
+  u32 context;
+  f64 wait;
+};
+
+/** \brief Report how long actually was the wait.
+    @param context - Sender context, to match reply w/ request.
+    @param retval - Return code for the request.
+    @param inner_time - How long waited within barrier, in seconds.
+    @param outer_time - How long did hold, wait and release take altogether.
+*/
+define wait_with_barrier_reply
+{
+  u32 context;
+  i32 retval;
+  f64 inner_time;
+  f64 outer_time;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

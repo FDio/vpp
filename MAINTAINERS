@@ -383,6 +383,12 @@ I:	nsim
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 
+Plugin - unittest
+I:	unittest
+M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/plugins/unittest
+
 Test Infrastructure
 I:	tests
 M:	Klement Sekera <ksekera@cisco.com>
