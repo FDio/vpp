@@ -175,7 +175,6 @@ session_mq_disconnected_handler (void *data)
   svm_msg_q_lock_and_alloc_msg_w_ring (app_wrk->event_queue,
 				       SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
-  svm_msg_q_unlock (app_wrk->event_queue);
   evt = svm_msg_q_msg_data (app_wrk->event_queue, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED_REPLY;
@@ -183,7 +182,7 @@ session_mq_disconnected_handler (void *data)
   rmp->handle = mp->handle;
   rmp->context = mp->context;
   rmp->retval = rv;
-  svm_msg_q_add (app_wrk->event_queue, msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (app_wrk->event_queue, msg);
 }
 
 static void
@@ -250,13 +249,12 @@ session_mq_worker_update_handler (void *data)
       svm_msg_q_lock_and_alloc_msg_w_ring (app_wrk->event_queue,
 					   SESSION_MQ_CTRL_EVT_RING,
 					   SVM_Q_WAIT, msg);
-      svm_msg_q_unlock (app_wrk->event_queue);
       evt = svm_msg_q_msg_data (app_wrk->event_queue, msg);
       clib_memset (evt, 0, sizeof (*evt));
       evt->event_type = SESSION_CTRL_EVT_REQ_WORKER_UPDATE;
       wump = (session_req_worker_update_msg_t *) evt->data;
       wump->session_handle = mp->handle;
-      svm_msg_q_add (app_wrk->event_queue, msg, SVM_Q_WAIT);
+      svm_msg_q_add_and_unlock (app_wrk->event_queue, msg);
       return;
     }
 
@@ -268,7 +266,6 @@ session_mq_worker_update_handler (void *data)
   svm_msg_q_lock_and_alloc_msg_w_ring (app_wrk->event_queue,
 				       SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
-  svm_msg_q_unlock (app_wrk->event_queue);
   evt = svm_msg_q_msg_data (app_wrk->event_queue, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_WORKER_UPDATE_REPLY;
@@ -277,7 +274,7 @@ session_mq_worker_update_handler (void *data)
   rmp->rx_fifo = pointer_to_uword (s->rx_fifo);
   rmp->tx_fifo = pointer_to_uword (s->tx_fifo);
   rmp->segment_handle = session_segment_handle (s);
-  svm_msg_q_add (app_wrk->event_queue, msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (app_wrk->event_queue, msg);
 
   /*
    * Retransmit messages that may have been lost
