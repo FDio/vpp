@@ -469,6 +469,8 @@ class TestIgmp(VppTestCase):
         h10.add_vpp_config()
 
         capture = self.pg0.get_capture(2, timeout=10)
+        # wait for a little bit
+        self.sleep(1)
 
         #
         # remove state, expect the report for the removal
