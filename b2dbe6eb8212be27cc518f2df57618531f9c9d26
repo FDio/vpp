@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6427a67c_ef559e48",
+        "filename": "src/plugins/quic/certs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-07-25T17:43:04Z",
+      "side": 1,
+      "message": "certs",
+      "range": {
+        "startLine": 40,
+        "startChar": 26,
+        "endLine": 40,
+        "endChar": 31
+      },
+      "revId": "b2dbe6eb8212be27cc518f2df57618531f9c9d26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1bfaa100_861d9857",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-07-25T17:43:04Z",
+      "side": 1,
+      "message": "I\u0027m generally allergic to hard-coded values ;)\n\nWhat happens when transport_connection_t changes?\n\nWhile I agree this is better than nothing, I\u0027d recommend that 42 be calculated based on the offset of the 1st field being accessed in transport_connection_t by quic.",
+      "range": {
+        "startLine": 120,
+        "startChar": 58,
+        "endLine": 120,
+        "endChar": 60
+      },
+      "revId": "b2dbe6eb8212be27cc518f2df57618531f9c9d26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "abbd3ae9_b310926b",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-07-25T17:43:04Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 122,
+        "startChar": 58,
+        "endLine": 122,
+        "endChar": 60
+      },
+      "revId": "b2dbe6eb8212be27cc518f2df57618531f9c9d26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
