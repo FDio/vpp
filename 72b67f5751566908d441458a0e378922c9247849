@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "6a52d655_9f98da25",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_format.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-07-25T10:39:34Z",
+      "side": 1,
+      "message": "This loses precision, timedelta rounds up [0] to microseconds. I prefer to use float.\nMicrosecond precision may be enough for timestamp type, but still not sure whether easier formatting is worth losing precision there.\n\n[0] https://docs.python.org/3.7/library/datetime.html#datetime.timedelta",
+      "range": {
+        "startLine": 151,
+        "startChar": 36,
+        "endLine": 151,
+        "endChar": 54
+      },
+      "revId": "72b67f5751566908d441458a0e378922c9247849",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a1e599eb_27375926",
         "filename": "src/vpp/api/vpe.api",
         "patchSetId": 2
