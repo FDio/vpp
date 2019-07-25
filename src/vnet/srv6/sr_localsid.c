@@ -210,7 +210,8 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
     }
 
   /* Set DPO */
-  if (ls->behavior == SR_BEHAVIOR_END || ls->behavior == SR_BEHAVIOR_X)
+  if (ls->behavior == SR_BEHAVIOR_END || ls->behavior == SR_BEHAVIOR_X
+      || ls->behavior == SR_BEHAVIOR_T)
     dpo_set (&dpo, sr_localsid_dpo_type, DPO_PROTO_IP6, ls - sm->localsids);
   else if (ls->behavior > SR_BEHAVIOR_D_FIRST
 	   && ls->behavior < SR_BEHAVIOR_LAST)
