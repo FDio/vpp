@@ -34,6 +34,24 @@
       "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "60d7db98_dcc13646",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-25T07:30:25Z",
+      "side": 1,
+      "message": "then declare the enum as packed.",
+      "parentUuid": "28162f5e_b886867e",
+      "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
