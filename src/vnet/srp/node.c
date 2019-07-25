@@ -402,7 +402,7 @@ srp_control_input (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  s0 = (void *) (b0->data + b0->current_data);
+	  s0 = vlib_buffer_get_current(b0);
 	  l2_len0 = vlib_buffer_length_in_chain (vm, b0);
 	  l3_len0 = l2_len0 - STRUCT_OFFSET_OF (srp_generic_control_header_t, control);
 
