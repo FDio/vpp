@@ -93,6 +93,30 @@
       "revId": "94461d32ebc37c8de38c9ceabbc5cf0ad2126ee8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d4a75f9d_21f11b5d",
+        "filename": "src/vppinfra/vector_sse42.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2019-07-25T14:17:40Z",
+      "side": 1,
+      "message": "Lijian, I am not sure if we should make the assertions on x86 unless it is documented clearly somewhere. I would rather let x86 experts make such assertions.",
+      "parentUuid": "0a1195f2_1799491b",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 78,
+        "endChar": 1
+      },
+      "revId": "94461d32ebc37c8de38c9ceabbc5cf0ad2126ee8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
