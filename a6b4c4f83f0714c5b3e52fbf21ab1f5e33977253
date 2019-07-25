@@ -70,6 +70,24 @@
       "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9d6e07c7_f13769df",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-25T09:46:01Z",
+      "side": 1,
+      "message": "it will be as big as it needs to be to fit the highest flag value.",
+      "parentUuid": "a8bd9665_69d3e53f",
+      "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
