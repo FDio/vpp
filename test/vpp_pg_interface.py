@@ -97,9 +97,11 @@ class VppPGInterface(VppInterface):
         self._out_history_counter = 0
         self._out_assert_counter = 0
         self._pg_index = pg_index
-        self._out_file = "pg%u_out.pcap" % self.pg_index
+        self._out_file = "pg%u_out_pid%u.pcap" % \
+                         (self.pg_index, os.getpid())
         self._out_path = self.test.tempdir + "/" + self._out_file
-        self._in_file = "pg%u_in.pcap" % self.pg_index
+        self._in_file = "pg%u_in_pid%u.pcap" % \
+                        (self.pg_index, os.getpid())
         self._in_path = self.test.tempdir + "/" + self._in_file
         self._capture_cli = "packet-generator capture pg%u pcap %s" % (
             self.pg_index, self.out_path)
@@ -132,7 +134,8 @@ class VppPGInterface(VppInterface):
             of at most n packets.
             If n < 0, this is no limit
         """
-
+        # disable the capture to flush the capture
+        self.disable_capture()
         self._rename_previous_capture_file(self.out_path,
                                            self.out_history_counter,
                                            self._out_file)
