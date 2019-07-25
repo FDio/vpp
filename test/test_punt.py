@@ -679,6 +679,8 @@ class TestIP6PuntSocket(TestPuntSocket):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
+        # give a chance to punt socket to collect all packets
+        self.sleep(1)
         self.pg0.get_capture(0)
         rx = self.socket_client_close()
 

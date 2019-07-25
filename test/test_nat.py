@@ -3670,9 +3670,21 @@ class TestNAT44(MethodHolder):
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
+        reas_cfg1 = self.vapi.nat_get_reass()
+        # this test was intermittently failing in some cases
+        # until we temporarily bump the reassembly timeouts
+        self.vapi.nat_set_reass(timeout=20, max_reass=1024, max_frag=5,
+                                drop_frag=0)
+
         self.frag_in_order(proto=IP_PROTOS.tcp)
         self.frag_in_order(proto=IP_PROTOS.udp)
         self.frag_in_order(proto=IP_PROTOS.icmp)
+
+        # restore the reassembly timeouts
+        self.vapi.nat_set_reass(timeout=reas_cfg1.ip4_timeout,
+                                max_reass=reas_cfg1.ip4_max_reass,
+                                max_frag=reas_cfg1.ip4_max_frag,
+                                drop_frag=reas_cfg1.ip4_drop_frag)
 
     def test_frag_forwarding(self):
         """ NAT44 forwarding fragment test """
@@ -4514,7 +4526,17 @@ class TestNAT44EndpointDependent(MethodHolder):
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
         self.vapi.nat44_forwarding_enable_disable(enable=True)
+        reas_cfg1 = self.vapi.nat_get_reass()
+        # this test was intermittently failing in some cases
+        # until we temporarily bump the reassembly timeouts
+        self.vapi.nat_set_reass(timeout=20, max_reass=1024, max_frag=5,
+                                drop_frag=0)
         self.frag_in_order(proto=IP_PROTOS.tcp, dont_translate=True)
+        # restore the reassembly timeouts
+        self.vapi.nat_set_reass(timeout=reas_cfg1.ip4_timeout,
+                                max_reass=reas_cfg1.ip4_max_reass,
+                                max_frag=reas_cfg1.ip4_max_frag,
+                                drop_frag=reas_cfg1.ip4_drop_frag)
 
     def test_frag_out_of_order(self):
         """ NAT44 translate fragments arriving out of order """
