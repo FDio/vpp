@@ -535,34 +535,7 @@ app_worker_application_is_builtin (app_worker_t * app_wrk)
 }
 
 static inline int
-app_enqueue_evt (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, u8 lock)
-{
-  if (PREDICT_FALSE (svm_msg_q_is_full (mq)))
-    {
-      clib_warning ("evt q full");
-      svm_msg_q_free_msg (mq, msg);
-      if (lock)
-	svm_msg_q_unlock (mq);
-      return -1;
-    }
-
-  if (lock)
-    {
-      svm_msg_q_add_and_unlock (mq, msg);
-      return 0;
-    }
-
-  /* Even when not locking the ring, we must wait for queue mutex */
-  if (svm_msg_q_add (mq, msg, SVM_Q_WAIT))
-    {
-      clib_warning ("msg q add returned");
-      return -1;
-    }
-  return 0;
-}
-
-static inline int
-app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s, u8 lock)
+app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s)
 {
   session_event_t *evt;
   svm_msg_q_msg_t msg;
@@ -579,33 +552,35 @@ app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s, u8 lock)
     return 0;
 
   mq = app_wrk->event_queue;
-  if (lock)
-    svm_msg_q_lock (mq);
+  svm_msg_q_lock (mq);
+
+  if (PREDICT_FALSE (svm_msg_q_is_full (mq)))
+    {
+      clib_warning ("evt q full");
+      svm_msg_q_unlock (mq);
+      return -1;
+    }
 
   if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
     {
       clib_warning ("evt q rings full");
-      if (lock)
-	svm_msg_q_unlock (mq);
+      svm_msg_q_unlock (mq);
       return -1;
     }
 
   msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  ASSERT (!svm_msg_q_msg_is_invalid (&msg));
-
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
   evt->session_index = s->rx_fifo->client_session_index;
   evt->event_type = SESSION_IO_EVT_RX;
 
   (void) svm_fifo_set_event (s->rx_fifo);
+  svm_msg_q_add_and_unlock (mq, &msg);
 
-  if (app_enqueue_evt (mq, &msg, lock))
-    return -1;
   return 0;
 }
 
 static inline int
-app_send_io_evt_tx (app_worker_t * app_wrk, session_t * s, u8 lock)
+app_send_io_evt_tx (app_worker_t * app_wrk, session_t * s)
 {
   svm_msg_q_t *mq;
   session_event_t *evt;
@@ -615,49 +590,39 @@ app_send_io_evt_tx (app_worker_t * app_wrk, session_t * s, u8 lock)
     return app_worker_builtin_tx (app_wrk, s);
 
   mq = app_wrk->event_queue;
-  if (lock)
-    svm_msg_q_lock (mq);
+  svm_msg_q_lock (mq);
+
+  if (PREDICT_FALSE (svm_msg_q_is_full (mq)))
+    {
+      clib_warning ("evt q full");
+      svm_msg_q_unlock (mq);
+      return -1;
+    }
 
   if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
     {
       clib_warning ("evt q rings full");
-      if (lock)
-	svm_msg_q_unlock (mq);
+      svm_msg_q_unlock (mq);
       return -1;
     }
 
   msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  ASSERT (!svm_msg_q_msg_is_invalid (&msg));
-
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
   evt->event_type = SESSION_IO_EVT_TX;
   evt->session_index = s->tx_fifo->client_session_index;
 
-  return app_enqueue_evt (mq, &msg, lock);
+  svm_msg_q_add_and_unlock (mq, &msg);
+  return 0;
 }
 
 /* *INDENT-OFF* */
 typedef int (app_send_evt_handler_fn) (app_worker_t *app,
-				       session_t *s,
-				       u8 lock);
+				       session_t *s);
 static app_send_evt_handler_fn * const app_send_evt_handler_fns[2] = {
     app_send_io_evt_rx,
     app_send_io_evt_tx,
 };
 /* *INDENT-ON* */
-
-/**
- * Send event to application
- *
- * Logic from queue perspective is non-blocking. If there's
- * not enough space to enqueue a message, we return.
- */
-int
-app_worker_send_event (app_worker_t * app, session_t * s, u8 evt_type)
-{
-  ASSERT (app && evt_type <= SESSION_IO_EVT_TX);
-  return app_send_evt_handler_fns[evt_type] (app, s, 0 /* lock */ );
-}
 
 /**
  * Send event to application
@@ -669,7 +634,7 @@ int
 app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				u8 evt_type)
 {
-  return app_send_evt_handler_fns[evt_type] (app, s, 1 /* lock */ );
+  return app_send_evt_handler_fns[evt_type] (app, s);
 }
 
 u8 *
