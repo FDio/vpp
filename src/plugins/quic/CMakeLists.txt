@@ -30,11 +30,10 @@ if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
   include_directories (${QUICLY_INCLUDE_DIR})
   add_vpp_plugin(quic
     SOURCES
+    certs.c
+    error.c
     quic.c
     quic_crypto.c
-
-    INSTALL_HEADERS
-    quic.h
 
     LINK_LIBRARIES ${QUIC_LINK_LIBRARIES}
   )
