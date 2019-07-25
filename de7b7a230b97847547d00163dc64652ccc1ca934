@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "4f030f9b_4c956a6e",
+        "filename": "extras/vom/vom/qos_mark.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-25T07:40:03Z",
+      "side": 1,
+      "message": "no. because the key is dynamically constructed. if we did it would be a reference to a deleted object.",
+      "parentUuid": "1360d5d7_a483fa29",
+      "range": {
+        "startLine": 45,
+        "startChar": 1,
+        "endLine": 45,
+        "endChar": 14
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "50375ac4_a47f65ce",
         "filename": "extras/vom/vom/qos_record.hpp",
         "patchSetId": 3
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "0bbc98c3_d7261e82",
+        "filename": "extras/vom/vom/qos_record.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-25T07:40:03Z",
+      "side": 1,
+      "message": "no. we return a temporary object.",
+      "parentUuid": "50375ac4_a47f65ce",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 14
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "09f0be4d_1463f5a4",
         "filename": "extras/vom/vom/qos_record_cmds.hpp",
         "patchSetId": 3
@@ -59,6 +107,30 @@
       "writtenOn": "2019-07-24T16:37:57Z",
       "side": 1,
       "message": "Do we want to have reference variables in cmd classes? Otherwise, I would like to remove the reference to make it more consistent with rest of the code.",
+      "range": {
+        "startLine": 57,
+        "startChar": 16,
+        "endLine": 57,
+        "endChar": 17
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "489a89a7_e63d1798",
+        "filename": "extras/vom/vom/qos_record_cmds.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-25T07:40:03Z",
+      "side": 1,
+      "message": "it\u0027s a reference to the value in the QoS::record class, the lifetime of this class always extends passed the lifetime of the command, so the reference is safe. the cost of a copy is low, you can remove the reference if you like.\nin other case like the map class the copy of the outputs_t is not trivial, so a reference is preferabe.",
+      "parentUuid": "09f0be4d_1463f5a4",
       "range": {
         "startLine": 57,
         "startChar": 16,
@@ -105,6 +177,30 @@
       "writtenOn": "2019-07-24T16:37:57Z",
       "side": 1,
       "message": "Can you please remove it?",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 16
+      },
+      "revId": "de7b7a230b97847547d00163dc64652ccc1ca934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "51d1fb71_4e2f22e4",
+        "filename": "extras/vom/vom/qos_types.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-25T07:40:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1b03cfeb_99327de3",
       "range": {
         "startLine": 19,
         "startChar": 0,
