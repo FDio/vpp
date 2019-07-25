@@ -20,262 +20,19 @@
 #include <vnet/session/session.h>
 #include <vlib/unix/plugin.h>
 #include <vpp/app/version.h>
-#include <openssl/pem.h>
 
 #include <vppinfra/lock.h>
 
 #include <quic/quic.h>
+#include <quic/certs.h>
+#include <quic/error.h>
+#include <quic/quic_crypto.h>
 
 #include <quicly/defaults.h>
-#include <picotls/openssl.h>
-#include <picotls/pembase64.h>
 
-#include <quic/quic_crypto.h>
 
 static quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
-
-static u8 *
-quic_format_err (u8 * s, va_list * args)
-{
-  u64 code = va_arg (*args, u64);
-  switch (code)
-    {
-    case 0:
-      s = format (s, "no error");
-      break;
-      /* app errors */
-    case QUIC_ERROR_FULL_FIFO:
-      s = format (s, "full fifo");
-      break;
-    case QUIC_APP_ERROR_CLOSE_NOTIFY:
-      s = format (s, "QUIC_APP_ERROR_CLOSE_NOTIFY");
-      break;
-    case QUIC_APP_ALLOCATION_ERROR:
-      s = format (s, "QUIC_APP_ALLOCATION_ERROR");
-      break;
-    case QUIC_APP_ACCEPT_NOTIFY_ERROR:
-      s = format (s, "QUIC_APP_ACCEPT_NOTIFY_ERROR");
-      break;
-    case QUIC_APP_CONNECT_NOTIFY_ERROR:
-      s = format (s, "QUIC_APP_CONNECT_NOTIFY_ERROR");
-      break;
-      /* quicly errors */
-    case QUICLY_ERROR_PACKET_IGNORED:
-      s = format (s, "QUICLY_ERROR_PACKET_IGNORED");
-      break;
-    case QUICLY_ERROR_SENDBUF_FULL:
-      s = format (s, "QUICLY_ERROR_SENDBUF_FULL");
-      break;
-    case QUICLY_ERROR_FREE_CONNECTION:
-      s = format (s, "QUICLY_ERROR_FREE_CONNECTION");
-      break;
-    case QUICLY_ERROR_RECEIVED_STATELESS_RESET:
-      s = format (s, "QUICLY_ERROR_RECEIVED_STATELESS_RESET");
-      break;
-    case QUICLY_TRANSPORT_ERROR_NONE:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_NONE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_INTERNAL:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_INTERNAL");
-      break;
-    case QUICLY_TRANSPORT_ERROR_SERVER_BUSY:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_SERVER_BUSY");
-      break;
-    case QUICLY_TRANSPORT_ERROR_FLOW_CONTROL:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_FLOW_CONTROL");
-      break;
-    case QUICLY_TRANSPORT_ERROR_STREAM_LIMIT:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_STREAM_LIMIT");
-      break;
-    case QUICLY_TRANSPORT_ERROR_STREAM_STATE:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_STREAM_STATE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_FINAL_OFFSET:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_FINAL_OFFSET");
-      break;
-    case QUICLY_TRANSPORT_ERROR_FRAME_ENCODING:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_FRAME_ENCODING");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TRANSPORT_PARAMETER:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_TRANSPORT_PARAMETER");
-      break;
-    case QUICLY_TRANSPORT_ERROR_VERSION_NEGOTIATION:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_VERSION_NEGOTIATION");
-      break;
-    case QUICLY_TRANSPORT_ERROR_PROTOCOL_VIOLATION:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_PROTOCOL_VIOLATION");
-      break;
-    case QUICLY_TRANSPORT_ERROR_INVALID_MIGRATION:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_INVALID_MIGRATION");
-      break;
-      /* picotls errors */
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_CLOSE_NOTIFY):
-      s =
-	format (s, "PTLS_ALERT_CLOSE_NOTIFY");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_UNEXPECTED_MESSAGE):
-      s =
-	format (s, "PTLS_ALERT_UNEXPECTED_MESSAGE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_BAD_RECORD_MAC):
-      s =
-	format (s, "PTLS_ALERT_BAD_RECORD_MAC");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_HANDSHAKE_FAILURE):
-      s =
-	format (s, "PTLS_ALERT_HANDSHAKE_FAILURE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_BAD_CERTIFICATE):
-      s =
-	format (s, "PTLS_ALERT_BAD_CERTIFICATE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_CERTIFICATE_REVOKED):
-      s =
-	format (s, "PTLS_ALERT_CERTIFICATE_REVOKED");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_CERTIFICATE_EXPIRED):
-      s =
-	format (s, "PTLS_ALERT_CERTIFICATE_EXPIRED");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_CERTIFICATE_UNKNOWN):
-      s =
-	format (s, "PTLS_ALERT_CERTIFICATE_UNKNOWN");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_ILLEGAL_PARAMETER):
-      s =
-	format (s, "PTLS_ALERT_ILLEGAL_PARAMETER");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_UNKNOWN_CA):
-      s =
-	format (s, "PTLS_ALERT_UNKNOWN_CA");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_DECODE_ERROR):
-      s =
-	format (s, "PTLS_ALERT_DECODE_ERROR");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_DECRYPT_ERROR):
-      s =
-	format (s, "PTLS_ALERT_DECRYPT_ERROR");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_PROTOCOL_VERSION):
-      s =
-	format (s, "PTLS_ALERT_PROTOCOL_VERSION");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_INTERNAL_ERROR):
-      s =
-	format (s, "PTLS_ALERT_INTERNAL_ERROR");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_USER_CANCELED):
-      s =
-	format (s, "PTLS_ALERT_USER_CANCELED");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_MISSING_EXTENSION):
-      s =
-	format (s, "PTLS_ALERT_MISSING_EXTENSION");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_UNRECOGNIZED_NAME):
-      s =
-	format (s, "PTLS_ALERT_UNRECOGNIZED_NAME");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_CERTIFICATE_REQUIRED):
-      s =
-	format (s, "PTLS_ALERT_CERTIFICATE_REQUIRED");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ALERT_NO_APPLICATION_PROTOCOL):
-      s =
-	format (s, "PTLS_ALERT_NO_APPLICATION_PROTOCOL");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_NO_MEMORY):
-      s =
-	format (s, "PTLS_ERROR_NO_MEMORY");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_IN_PROGRESS):
-      s =
-	format (s, "PTLS_ERROR_IN_PROGRESS");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_LIBRARY):
-      s =
-	format (s, "PTLS_ERROR_LIBRARY");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_INCOMPATIBLE_KEY):
-      s =
-	format (s, "PTLS_ERROR_INCOMPATIBLE_KEY");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_SESSION_NOT_FOUND):
-      s =
-	format (s, "PTLS_ERROR_SESSION_NOT_FOUND");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_STATELESS_RETRY):
-      s =
-	format (s, "PTLS_ERROR_STATELESS_RETRY");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_NOT_AVAILABLE):
-      s =
-	format (s, "PTLS_ERROR_NOT_AVAILABLE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_COMPRESSION_FAILURE):
-      s =
-	format (s, "PTLS_ERROR_COMPRESSION_FAILURE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_BER_INCORRECT_ENCODING):
-      s =
-	format (s, "PTLS_ERROR_BER_INCORRECT_ENCODING");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_BER_MALFORMED_TYPE):
-      s =
-	format (s, "PTLS_ERROR_BER_MALFORMED_TYPE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_BER_MALFORMED_LENGTH):
-      s =
-	format (s, "PTLS_ERROR_BER_MALFORMED_LENGTH");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_BER_EXCESSIVE_LENGTH):
-      s =
-	format (s, "PTLS_ERROR_BER_EXCESSIVE_LENGTH");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_BER_ELEMENT_TOO_SHORT):
-      s =
-	format (s, "PTLS_ERROR_BER_ELEMENT_TOO_SHORT");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_BER_UNEXPECTED_EOC):
-      s =
-	format (s, "PTLS_ERROR_BER_UNEXPECTED_EOC");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_DER_INDEFINITE_LENGTH):
-      s =
-	format (s, "PTLS_ERROR_DER_INDEFINITE_LENGTH");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_INCORRECT_ASN1_SYNTAX):
-      s =
-	format (s, "PTLS_ERROR_INCORRECT_ASN1_SYNTAX");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_INCORRECT_PEM_KEY_VERSION):
-      s =
-	format (s, "PTLS_ERROR_INCORRECT_PEM_KEY_VERSION");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_INCORRECT_PEM_ECDSA_KEY_VERSION):
-      s =
-	format (s, "PTLS_ERROR_INCORRECT_PEM_ECDSA_KEY_VERSION");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_INCORRECT_PEM_ECDSA_CURVE):
-      s =
-	format (s, "PTLS_ERROR_INCORRECT_PEM_ECDSA_CURVE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_INCORRECT_PEM_ECDSA_KEYSIZE):
-      s =
-	format (s, "PTLS_ERROR_INCORRECT_PEM_ECDSA_KEYSIZE");
-      break;
-    case QUICLY_TRANSPORT_ERROR_TLS_ALERT_BASE + PTLS_ERROR_TO_ALERT (PTLS_ERROR_INCORRECT_ASN1_ECDSA_KEY_SYNTAX):
-      s =
-	format (s, "PTLS_ERROR_INCORRECT_ASN1_ECDSA_KEY_SYNTAX");
-      break;
-    default:
-      s = format (s, "unknown error 0x%lx", code);
-      break;
-    }
-  return s;
-}
 
 static u32
 quic_ctx_alloc (u32 thread_index)
@@ -385,7 +142,7 @@ quic_ack_rx_data (session_t * stream_session)
     quic_ctx_get (stream_session->connection_index,
 		  stream_session->thread_index);
   ASSERT (quic_ctx_is_stream (sctx));
-  stream = sctx->c_quic_ctx_id.stream;
+  stream = sctx->stream;
   stream_data = (quic_stream_data_t *) stream->data;
 
   f = stream_session->rx_fifo;
@@ -430,7 +187,7 @@ quic_connection_delete (quic_ctx_t * ctx)
     }
 
   /*  Delete the connection from the connection map */
-  conn = ctx->c_quic_ctx_id.conn;
+  conn = ctx->conn;
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
   QUIC_DBG (2, "Deleting conn with id %lu %lu from map", kv.key[0],
 	    kv.key[1]);
@@ -438,9 +195,9 @@ quic_connection_delete (quic_ctx_t * ctx)
 
   quic_disconnect_transport (ctx);
 
-  if (ctx->c_quic_ctx_id.conn)
-    quicly_free (ctx->c_quic_ctx_id.conn);
-  ctx->c_quic_ctx_id.conn = NULL;
+  if (ctx->conn)
+    quicly_free (ctx->conn);
+  ctx->conn = NULL;
 
   session_transport_delete_notify (&ctx->connection);
   quic_ctx_free (ctx);
@@ -459,7 +216,7 @@ quic_connection_closed (quic_ctx_t * ctx)
   /* TODO if connection is not established, just delete the session? */
   /* Actually should send connect or accept error */
 
-  switch (ctx->c_quic_ctx_id.conn_state)
+  switch (ctx->conn_state)
     {
     case QUIC_CONN_STATE_READY:
       /* Error on an opened connection (timeout...)
@@ -467,12 +224,10 @@ quic_connection_closed (quic_ctx_t * ctx)
          when the app has closed its session */
       session_transport_reset_notify (&ctx->connection);
       /* This ensures we delete the connection when the app confirms the close */
-      ctx->c_quic_ctx_id.conn_state =
-	QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED;
+      ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED;
       break;
     case QUIC_CONN_STATE_PASSIVE_CLOSING:
-      ctx->c_quic_ctx_id.conn_state =
-	QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED;
+      ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED;
       /* quic_proto_on_close will eventually be called when the app confirms the close
          , we delete the connection at that point */
       break;
@@ -566,9 +321,7 @@ quic_send_packets (quic_ctx_t * ctx)
 
   /* We have sctx, get qctx */
   if (quic_ctx_is_stream (ctx))
-    ctx =
-      quic_ctx_get (ctx->c_quic_ctx_id.quic_connection_ctx_id,
-		    ctx->c_thread_index);
+    ctx = quic_ctx_get (ctx->quic_connection_ctx_id, ctx->c_thread_index);
 
   ASSERT (!quic_ctx_is_stream (ctx));
 
@@ -576,7 +329,7 @@ quic_send_packets (quic_ctx_t * ctx)
   if (!udp_session)
     goto quicly_error;
 
-  conn = ctx->c_quic_ctx_id.conn;
+  conn = ctx->conn;
 
   if (!conn)
     return 0;
@@ -831,10 +584,10 @@ quic_accept_stream (void *s)
   sctx = quic_ctx_get (sctx_id, qctx->c_thread_index);
   sctx->parent_app_wrk_id = qctx->parent_app_wrk_id;
   sctx->parent_app_id = qctx->parent_app_id;
-  sctx->c_quic_ctx_id.quic_connection_ctx_id = qctx->c_c_index;
+  sctx->quic_connection_ctx_id = qctx->c_c_index;
   sctx->c_c_index = sctx_id;
   sctx->c_s_index = stream_session->session_index;
-  sctx->c_quic_ctx_id.stream = stream;
+  sctx->stream = stream;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sctx->flags |= QUIC_F_IS_STREAM;
 
@@ -848,8 +601,7 @@ quic_accept_stream (void *s)
   stream_session->app_wrk_index = sctx->parent_app_wrk_id;
   stream_session->connection_index = sctx->c_c_index;
   stream_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
-				    qctx->c_quic_ctx_id.udp_is_ip4);
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, qctx->udp_is_ip4);
   quic_session = session_get (qctx->c_s_index, qctx->c_thread_index);
   stream_session->listener_handle = listen_session_get_handle (quic_session);
 
@@ -902,7 +654,7 @@ quic_on_closed_by_peer (quicly_closed_by_peer_t * self, quicly_conn_t * conn,
 		session_handle (quic_session), quic_format_err, code,
 		reason_len, reason);
 #endif
-  ctx->c_quic_ctx_id.conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING;
+  ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING;
   session_transport_closing_notify (&ctx->connection);
 }
 
@@ -977,7 +729,7 @@ quic_update_timer (quic_ctx_t * ctx)
   session_t *quic_session;
 
   /*  This timeout is in ms which is the unit of our timer */
-  next_timeout = quicly_get_first_timeout (ctx->c_quic_ctx_id.conn);
+  next_timeout = quicly_get_first_timeout (ctx->conn);
   next_interval = next_timeout - quic_get_time (NULL);
 
   if (next_timeout == 0 || next_interval <= 0)
@@ -1126,197 +878,6 @@ static ptls_context_t quic_tlsctx = {
 };
 /* *INDENT-ON* */
 
-static int
-ptls_compare_separator_line (const char *line, const char *begin_or_end,
-			     const char *label)
-{
-  int ret = strncmp (line, "-----", 5);
-  size_t text_index = 5;
-
-  if (ret == 0)
-    {
-      size_t begin_or_end_length = strlen (begin_or_end);
-      ret = strncmp (line + text_index, begin_or_end, begin_or_end_length);
-      text_index += begin_or_end_length;
-    }
-
-  if (ret == 0)
-    {
-      ret = line[text_index] - ' ';
-      text_index++;
-    }
-
-  if (ret == 0)
-    {
-      size_t label_length = strlen (label);
-      ret = strncmp (line + text_index, label, label_length);
-      text_index += label_length;
-    }
-
-  if (ret == 0)
-    {
-      ret = strncmp (line + text_index, "-----", 5);
-    }
-
-  return ret;
-}
-
-static int
-ptls_get_bio_pem_object (BIO * bio, const char *label, ptls_buffer_t * buf)
-{
-  int ret = PTLS_ERROR_PEM_LABEL_NOT_FOUND;
-  char line[256];
-  ptls_base64_decode_state_t state;
-
-  /* Get the label on a line by itself */
-  while (BIO_gets (bio, line, 256))
-    {
-      if (ptls_compare_separator_line (line, "BEGIN", label) == 0)
-	{
-	  ret = 0;
-	  ptls_base64_decode_init (&state);
-	  break;
-	}
-    }
-  /* Get the data in the buffer */
-  while (ret == 0 && BIO_gets (bio, line, 256))
-    {
-      if (ptls_compare_separator_line (line, "END", label) == 0)
-	{
-	  if (state.status == PTLS_BASE64_DECODE_DONE
-	      || (state.status == PTLS_BASE64_DECODE_IN_PROGRESS
-		  && state.nbc == 0))
-	    {
-	      ret = 0;
-	    }
-	  else
-	    {
-	      ret = PTLS_ERROR_INCORRECT_BASE64;
-	    }
-	  break;
-	}
-      else
-	{
-	  ret = ptls_base64_decode (line, &state, buf);
-	}
-    }
-
-  return ret;
-}
-
-static int
-ptls_load_bio_pem_objects (BIO * bio, const char *label, ptls_iovec_t * list,
-			   size_t list_max, size_t * nb_objects)
-{
-  int ret = 0;
-  size_t count = 0;
-
-  *nb_objects = 0;
-
-  if (ret == 0)
-    {
-      while (count < list_max)
-	{
-	  ptls_buffer_t buf;
-
-	  ptls_buffer_init (&buf, "", 0);
-
-	  ret = ptls_get_bio_pem_object (bio, label, &buf);
-
-	  if (ret == 0)
-	    {
-	      if (buf.off > 0 && buf.is_allocated)
-		{
-		  list[count].base = buf.base;
-		  list[count].len = buf.off;
-		  count++;
-		}
-	      else
-		{
-		  ptls_buffer_dispose (&buf);
-		}
-	    }
-	  else
-	    {
-	      ptls_buffer_dispose (&buf);
-	      break;
-	    }
-	}
-    }
-
-  if (ret == PTLS_ERROR_PEM_LABEL_NOT_FOUND && count > 0)
-    {
-      ret = 0;
-    }
-
-  *nb_objects = count;
-
-  return ret;
-}
-
-#define PTLS_MAX_CERTS_IN_CONTEXT 16
-
-static int
-ptls_load_bio_certificates (ptls_context_t * ctx, BIO * bio)
-{
-  int ret = 0;
-
-  ctx->certificates.list =
-    (ptls_iovec_t *) malloc (PTLS_MAX_CERTS_IN_CONTEXT *
-			     sizeof (ptls_iovec_t));
-
-  if (ctx->certificates.list == NULL)
-    {
-      ret = PTLS_ERROR_NO_MEMORY;
-    }
-  else
-    {
-      ret =
-	ptls_load_bio_pem_objects (bio, "CERTIFICATE", ctx->certificates.list,
-				   PTLS_MAX_CERTS_IN_CONTEXT,
-				   &ctx->certificates.count);
-    }
-
-  return ret;
-}
-
-static inline void
-load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data)
-{
-  BIO *cert_bio;
-  cert_bio = BIO_new_mem_buf (cert_data, -1);
-  if (ptls_load_bio_certificates (ctx, cert_bio) != 0)
-    {
-      BIO_free (cert_bio);
-      fprintf (stderr, "failed to load certificate:%s\n", strerror (errno));
-      exit (1);
-    }
-  BIO_free (cert_bio);
-}
-
-static inline void
-load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
-{
-  static ptls_openssl_sign_certificate_t sc;
-  EVP_PKEY *pkey;
-  BIO *key_bio;
-
-  key_bio = BIO_new_mem_buf (pk_data, -1);
-  pkey = PEM_read_bio_PrivateKey (key_bio, NULL, NULL, NULL);
-  BIO_free (key_bio);
-
-  if (pkey == NULL)
-    {
-      fprintf (stderr, "failed to read private key from app configuration\n");
-      exit (1);
-    }
-
-  ptls_openssl_init_sign_certificate (&sc, pkey);
-  EVP_PKEY_free (pkey);
-
-  ctx->sign_certificate = &sc.super;
-}
-
 static void
 allocate_quicly_ctx (application_t * app, u8 is_client)
 {
@@ -1421,12 +982,12 @@ quic_connect_new_stream (session_t * quic_session, u32 opaque)
 
   sctx->parent_app_wrk_id = qctx->parent_app_wrk_id;
   sctx->parent_app_id = qctx->parent_app_id;
-  sctx->c_quic_ctx_id.quic_connection_ctx_id = qctx->c_c_index;
+  sctx->quic_connection_ctx_id = qctx->c_c_index;
   sctx->c_c_index = sctx_index;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sctx->flags |= QUIC_F_IS_STREAM;
 
-  conn = qctx->c_quic_ctx_id.conn;
+  conn = qctx->conn;
 
   if (!conn || !quicly_connection_is_ready (conn))
     return -1;
@@ -1436,7 +997,7 @@ quic_connect_new_stream (session_t * quic_session, u32 opaque)
       QUIC_DBG (2, "Stream open failed with %d", rv);
       return -1;
     }
-  sctx->c_quic_ctx_id.stream = stream;
+  sctx->stream = stream;
 
   QUIC_DBG (2, "Opened stream %d, creating session", stream->stream_id);
 
@@ -1447,8 +1008,7 @@ quic_connect_new_stream (session_t * quic_session, u32 opaque)
   stream_session->connection_index = sctx_index;
   stream_session->listener_handle = quic_session_handle;
   stream_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
-				    qctx->c_quic_ctx_id.udp_is_ip4);
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, qctx->udp_is_ip4);
 
   sctx->c_s_index = stream_session->session_index;
 
@@ -1497,20 +1057,20 @@ quic_connect_new_connection (session_endpoint_cfg_t * sep)
   ctx->parent_app_wrk_id = sep->app_wrk_index;
   ctx->c_s_index = QUIC_SESSION_INVALID;
   ctx->c_c_index = ctx_index;
-  ctx->c_quic_ctx_id.udp_is_ip4 = sep->is_ip4;
+  ctx->udp_is_ip4 = sep->is_ip4;
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
-  ctx->c_quic_ctx_id.conn_state = QUIC_CONN_STATE_HANDSHAKE;
-  ctx->c_quic_ctx_id.client_opaque = sep->opaque;
+  ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
+  ctx->client_opaque = sep->opaque;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   if (sep->hostname)
     {
-      ctx->c_quic_ctx_id.srv_hostname = format (0, "%v", sep->hostname);
-      vec_terminate_c_string (ctx->c_quic_ctx_id.srv_hostname);
+      ctx->srv_hostname = format (0, "%v", sep->hostname);
+      vec_terminate_c_string (ctx->srv_hostname);
     }
   else
     {
       /*  needed by quic for crypto + determining client / server */
-      ctx->c_quic_ctx_id.srv_hostname =
+      ctx->srv_hostname =
 	format (0, "%U", format_ip46_address, &sep->ip, sep->is_ip4);
     }
 
@@ -1560,16 +1120,16 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
 #endif
   if (quic_ctx_is_stream (ctx))
     {
-      quicly_stream_t *stream = ctx->c_quic_ctx_id.stream;
+      quicly_stream_t *stream = ctx->stream;
       quicly_reset_stream (stream, QUIC_APP_ERROR_CLOSE_NOTIFY);
       quic_send_packets (ctx);
     }
 
-  switch (ctx->c_quic_ctx_id.conn_state)
+  switch (ctx->conn_state)
     {
     case QUIC_CONN_STATE_READY:
-      ctx->c_quic_ctx_id.conn_state = QUIC_CONN_STATE_ACTIVE_CLOSING;
-      quicly_conn_t *conn = ctx->c_quic_ctx_id.conn;
+      ctx->conn_state = QUIC_CONN_STATE_ACTIVE_CLOSING;
+      quicly_conn_t *conn = ctx->conn;
       /* Start connection closing. Keep sending packets until quicly_send
          returns QUICLY_ERROR_FREE_CONNECTION */
       quicly_close (conn, QUIC_APP_ERROR_CLOSE_NOTIFY, "Closed by peer");
@@ -1577,8 +1137,7 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
       quic_send_packets (ctx);
       break;
     case QUIC_CONN_STATE_PASSIVE_CLOSING:
-      ctx->c_quic_ctx_id.conn_state =
-	QUIC_CONN_STATE_PASSIVE_CLOSING_APP_CLOSED;
+      ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING_APP_CLOSED;
       /* send_packets will eventually return an error, we delete the conn at
          that point */
       break;
@@ -1703,8 +1262,7 @@ format_quic_ctx (u8 * s, va_list * args)
     str = format (str, "Listener, UDP %ld", ctx->udp_session_handle);
   else if (quic_ctx_is_stream (ctx))
     str = format (str, "Stream %ld conn %d",
-		  ctx->c_quic_ctx_id.stream->stream_id,
-		  ctx->c_quic_ctx_id.quic_connection_ctx_id);
+		  ctx->stream->stream_id, ctx->quic_connection_ctx_id);
   else				/* connection */
     str = format (str, "Conn %d UDP %d", ctx->c_c_index,
 		  ctx->udp_session_handle);
@@ -1713,7 +1271,7 @@ format_quic_ctx (u8 * s, va_list * args)
 		ctx->parent_app_wrk_id);
 
   if (verbose == 1)
-    s = format (s, "%-50s%-15d", str, ctx->c_quic_ctx_id.conn_state);
+    s = format (s, "%-50s%-15d", str, ctx->conn_state);
   else
     s = format (s, "%s\n", str);
   vec_free (str);
@@ -1806,20 +1364,17 @@ quic_on_client_connected (quic_ctx_t * ctx)
   quic_session->connection_index = ctx->c_c_index;
   quic_session->listener_handle = SESSION_INVALID_HANDLE;
   quic_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
-				    ctx->c_quic_ctx_id.udp_is_ip4);
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
 
   if (app_worker_init_connected (app_wrk, quic_session))
     {
       QUIC_DBG (1, "failed to app_worker_init_connected");
       quic_proto_on_close (ctx_id, thread_index);
-      return app_worker_connect_notify (app_wrk, NULL,
-					ctx->c_quic_ctx_id.client_opaque);
+      return app_worker_connect_notify (app_wrk, NULL, ctx->client_opaque);
     }
 
   quic_session->session_state = SESSION_STATE_CONNECTING;
-  if (app_worker_connect_notify
-      (app_wrk, quic_session, ctx->c_quic_ctx_id.client_opaque))
+  if (app_worker_connect_notify (app_wrk, quic_session, ctx->client_opaque))
     {
       QUIC_DBG (1, "failed to notify app");
       quic_proto_on_close (ctx_id, thread_index);
@@ -1855,7 +1410,7 @@ quic_receive_connection (void *arg)
   new_ctx->c_thread_index = thread_index;
   new_ctx->c_c_index = new_ctx_id;
 
-  conn = new_ctx->c_quic_ctx_id.conn;
+  conn = new_ctx->conn;
   quic_store_conn_ctx (conn, new_ctx);
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
   kv.value = ((u64) thread_index) << 32 | (u64) new_ctx_id;
@@ -1885,7 +1440,7 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
   memcpy (temp_ctx, ctx, sizeof (quic_ctx_t));
 
   /*  Remove from lookup hash, timer wheel and thread-local pool */
-  conn = ctx->c_quic_ctx_id.conn;
+  conn = ctx->conn;
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 0 /* is_add */ );
   if (ctx->timer_handle != QUIC_TIMER_HANDLE_INVALID)
@@ -1986,17 +1541,17 @@ quic_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   quic_build_sockaddr (sa, &salen, &tc->rmt_ip, tc->rmt_port, tc->is_ip4);
 
   ret =
-    quicly_connect (&ctx->c_quic_ctx_id.conn,
+    quicly_connect (&ctx->conn,
 		    (quicly_context_t *) app->quicly_ctx,
-		    (char *) ctx->c_quic_ctx_id.srv_hostname, sa, salen,
+		    (char *) ctx->srv_hostname, sa, salen,
 		    &quic_main.next_cid, &quic_main.hs_properties, NULL);
   ++quic_main.next_cid.master_id;
   /*  Save context handle in quicly connection */
-  quic_store_conn_ctx (ctx->c_quic_ctx_id.conn, ctx);
+  quic_store_conn_ctx (ctx->conn, ctx);
   assert (ret == 0);
 
   /*  Register connection in connections map */
-  conn = ctx->c_quic_ctx_id.conn;
+  conn = ctx->conn;
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
   kv.value = ((u64) thread_index) << 32 | (u64) ctx_index;
   QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
@@ -2043,14 +1598,14 @@ quic_session_accepted_callback (session_t * udp_session)
   ctx->c_s_index = QUIC_SESSION_INVALID;
   ctx->udp_session_handle = session_handle (udp_session);
   QUIC_DBG (2, "ACCEPTED UDP 0x%lx", ctx->udp_session_handle);
-  ctx->c_quic_ctx_id.listener_ctx_id = udp_listen_session->opaque;
+  ctx->listener_ctx_id = udp_listen_session->opaque;
   lctx = quic_ctx_get (udp_listen_session->opaque,
 		       udp_listen_session->thread_index);
-  ctx->c_quic_ctx_id.udp_is_ip4 = lctx->c_is_ip4;
+  ctx->udp_is_ip4 = lctx->c_is_ip4;
   ctx->parent_app_id = lctx->parent_app_id;
   ctx->parent_app_wrk_id = lctx->parent_app_wrk_id;
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
-  ctx->c_quic_ctx_id.conn_state = QUIC_CONN_STATE_OPENED;
+  ctx->conn_state = QUIC_CONN_STATE_OPENED;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   udp_session->opaque = ctx->parent_app_id;
@@ -2123,7 +1678,7 @@ quic_custom_tx_callback (void *s, u32 max_burst_size)
   if (!svm_fifo_max_dequeue (stream_session->tx_fifo))
     return 0;
 
-  stream = ctx->c_quic_ctx_id.stream;
+  stream = ctx->stream;
   if (!quicly_sendstate_is_open (&stream->sendstate))
     {
       QUIC_DBG (1, "Warning: tried to send on closed stream");
@@ -2174,7 +1729,7 @@ quic_find_packet_ctx (u32 * ctx_thread, u32 * ctx_index,
 	  return -1;
 	}
       ctx_ = quic_ctx_get (index, vlib_get_thread_index ());
-      conn_ = ctx_->c_quic_ctx_id.conn;
+      conn_ = ctx_->conn;
       if (conn_ && quicly_is_destination (conn_, sa, salen, packet))
 	{
 	  QUIC_DBG (3, "Connection found");
@@ -2204,12 +1759,11 @@ quic_receive (quic_ctx_t * ctx, quicly_conn_t * conn,
   /* ctx pointer may change if a new stream is opened */
   ctx = quic_ctx_get (ctx_id, thread_index);
   /* Conn may be set to null if the connection is terminated */
-  if (ctx->c_quic_ctx_id.conn
-      && ctx->c_quic_ctx_id.conn_state == QUIC_CONN_STATE_HANDSHAKE)
+  if (ctx->conn && ctx->conn_state == QUIC_CONN_STATE_HANDSHAKE)
     {
       if (quicly_connection_is_ready (conn))
 	{
-	  ctx->c_quic_ctx_id.conn_state = QUIC_CONN_STATE_READY;
+	  ctx->conn_state = QUIC_CONN_STATE_READY;
 	  if (quicly_is_client (conn))
 	    {
 	      quic_on_client_connected (ctx);
@@ -2234,13 +1788,12 @@ quic_create_quic_session (quic_ctx_t * ctx)
   quic_session->session_state = SESSION_STATE_LISTENING;
   ctx->c_s_index = quic_session->session_index;
 
-  lctx = quic_ctx_get (ctx->c_quic_ctx_id.listener_ctx_id, 0);
+  lctx = quic_ctx_get (ctx->listener_ctx_id, 0);
 
   quic_session->app_wrk_index = lctx->parent_app_wrk_id;
   quic_session->connection_index = ctx->c_c_index;
   quic_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC,
-				    ctx->c_quic_ctx_id.udp_is_ip4);
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
   quic_session->listener_handle = lctx->c_s_index;
 
   /* TODO: don't alloc fifos when we don't transfer data on this session
@@ -2290,8 +1843,8 @@ quic_create_connection (quicly_context_t * quicly_ctx,
   ctx = quic_ctx_get (ctx_index, thread_index);
   /* Save ctx handle in quicly connection */
   quic_store_conn_ctx (conn, ctx);
-  ctx->c_quic_ctx_id.conn = conn;
-  ctx->c_quic_ctx_id.conn_state = QUIC_CONN_STATE_HANDSHAKE;
+  ctx->conn = conn;
+  ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
 
   quic_create_quic_session (ctx);
 
@@ -2415,7 +1968,7 @@ quic_app_rx_callback (session_t * udp_session)
 	  if (err == 0)
 	    {
 	      ctx = quic_ctx_get (ctx_index, thread_index);
-	      quic_receive (ctx, ctx->c_quic_ctx_id.conn, packet);
+	      quic_receive (ctx, ctx->conn, packet);
 	    }
 	  else if (ctx_thread != UINT32_MAX)
 	    {
