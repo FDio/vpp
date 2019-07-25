@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "0540211a_a3c032b2",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-07-25T06:16:04Z",
+      "side": 1,
+      "message": "will do.",
+      "parentUuid": "a154e829_9589cab3",
+      "range": {
+        "startLine": 465,
+        "startChar": 0,
+        "endLine": 488,
+        "endChar": 5
+      },
+      "revId": "94461d32ebc37c8de38c9ceabbc5cf0ad2126ee8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c0a44f5e_b91c21e2",
         "filename": "src/vppinfra/vector_sse42.h",
         "patchSetId": 6
@@ -36,6 +60,30 @@
       "writtenOn": "2019-07-24T11:34:42Z",
       "side": 1,
       "message": "Why is this needed? What\u0027s wrong with just using \u0027a + b\u0027",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 78,
+        "endChar": 1
+      },
+      "revId": "94461d32ebc37c8de38c9ceabbc5cf0ad2126ee8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0a1195f2_1799491b",
+        "filename": "src/vppinfra/vector_sse42.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-07-25T06:16:04Z",
+      "side": 1,
+      "message": "There\u0027s no problem using \u0027a+b\u0027 on x86, but on Arm, compiler team is suggesting using intrinsics consistently, instead of gcc vector extension, to avoid endianess issue fixing intrinsics and gcc vector extension on big endian Arm CPUs. So I added the wrappers for the basic operations for x86 also.\n\nBelow is suggested by the compiler team will below comments.\n\"\nNeon is fundamentally a little-endian oriented design.  When vectors are used in big-endian, the layout of the lanes within the registers remains little-endian, even though the byte-order of the elements is switched.\nThe ACLE intrinsics reflect this in their design so they work fine at all times.\n\nGCC\u0027s vector model is natural endian, the lane ordering of the elements of a vector register changes between big and little endian modes: in little endian the lanes are counted from the least significant bit, in big endian they are counted from the most significant bit.  GCC\u0027s vector extensions to languages like C reflect this and the model works fine at all times.\n\nHowever, if you try to mix code written in both styles you\u0027ll run into problems because the lane counting does not match up and things just get confused.  The result is generally that programs just give the wrong results in very hard to understand ways.\n\n\"",
+      "parentUuid": "c0a44f5e_b91c21e2",
       "range": {
         "startLine": 75,
         "startChar": 0,
