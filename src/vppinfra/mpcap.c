@@ -172,16 +172,16 @@ mpcap_map (mpcap_main_t * pm)
   u32 min_packet_bytes = ~0;
   u32 max_packet_bytes = 0;
 
-  if (stat (pm->file_name, &statb) < 0)
-    {
-      error = clib_error_return_unix (0, "stat `%s'", pm->file_name);
-      goto done;
-    }
-
   fd = open (pm->file_name, O_RDONLY);
   if (fd < 0)
     {
       error = clib_error_return_unix (0, "open `%s'", pm->file_name);
+      goto done;
+    }
+
+  if (fstat (fd, &statb) < 0)
+    {
+      error = clib_error_return_unix (0, "fstat `%s'", pm->file_name);
       goto done;
     }
 
