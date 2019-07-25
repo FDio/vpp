@@ -71,6 +71,7 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_API_FILES
   interface.api
+  interface_types.api
   ip/ip_types.api
 )
 
@@ -155,7 +156,9 @@ list(APPEND VNET_HEADERS
   ethernet/p2p_ethernet.h
 )
 
-list(APPEND VNET_API_FILES ethernet/p2p_ethernet.api)
+list(APPEND VNET_API_FILES
+  ethernet/p2p_ethernet.api
+  ethernet/ethernet_types.api)
 
 ##############################################################################
 # Layer 2 protocol: Ethernet bridging
@@ -1311,6 +1314,8 @@ list(APPEND VNET_HEADERS
   fib/fib_entry_delegate.h
 )
 
+list(APPEND VNET_API_FILES fib/fib_types.api)
+
 ##############################################################################
 # ADJ
 ##############################################################################
@@ -1418,6 +1423,8 @@ list(APPEND VNET_HEADERS
   mfib/mfib_types.h
   mfib/mfib_table.h
 )
+
+list(APPEND VNET_API_FILES mfib/mfib_types.api)
 
 ##############################################################################
 # Utilities
