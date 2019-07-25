@@ -1121,11 +1121,10 @@ class VppTestCase(unittest.TestCase):
     def send_and_assert_no_replies(self, intf, pkts, remark="", timeout=None):
         self.pg_send(intf, pkts)
         if not timeout:
-            timeout = 1
+            timeout = 0.1
         for i in self.pg_interfaces:
             i.get_capture(0, timeout=timeout)
             i.assert_nothing_captured(remark=remark)
-            timeout = 0.1
 
     def send_and_expect(self, intf, pkts, output, n_rx=None):
         if not n_rx:
