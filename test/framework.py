@@ -1122,6 +1122,7 @@ class VppTestCase(unittest.TestCase):
         self.pg_send(intf, pkts)
         if not timeout:
             timeout = 1
+
         for i in self.pg_interfaces:
             i.get_capture(0, timeout=timeout)
             i.assert_nothing_captured(remark=remark)
