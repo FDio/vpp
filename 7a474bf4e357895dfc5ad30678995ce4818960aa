@@ -22,6 +22,30 @@
       "revId": "7a474bf4e357895dfc5ad30678995ce4818960aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fbba30cc_9cda74c9",
+        "filename": "src/vnet/ip/ip4_reassembly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-07-25T06:08:29Z",
+      "side": 1,
+      "message": "There\u0027s no problem with \u0027if (next_index !\u003d next0)\u0027.\nBut seems some gcc version reports warning over \u0027if (next_index !\u003d next_index)\u0027, that\u0027s why I added an intermediate variable \u0027next0 \u003d next_index\u0027 to skip the warning.",
+      "parentUuid": "db761033_881198e6",
+      "range": {
+        "startLine": 381,
+        "startChar": 4,
+        "endLine": 381,
+        "endChar": 35
+      },
+      "revId": "7a474bf4e357895dfc5ad30678995ce4818960aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
