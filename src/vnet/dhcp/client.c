@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <vlib/vlib.h>
+#include <vlibmemory/api.h>
 #include <vnet/dhcp/client.h>
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/fib/fib_table.h>
@@ -50,7 +51,6 @@ static char *dhcp_client_process_stat_strings[] = {
     "DHCP unknown packets sent",
 };
 
-
 static void
 dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 {
@@ -74,18 +74,6 @@ dhcp_client_release_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 				 (void *) &c->leased_address,
 				 c->subnet_mask_width, 1 /*is_del */ );
 }
-
-static void
-set_l2_rewrite (dhcp_client_main_t * dcm, dhcp_client_t * c)
-{
-  /* Acquire the L2 rewrite string for the indicated sw_if_index */
-  c->l2_rewrite = vnet_build_rewrite_for_sw_interface (dcm->vnet_main,
-						       c->sw_if_index,
-						       VNET_LINK_IP4,
-						       0 /* broadcast */ );
-}
-
-void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
 static void
 dhcp_client_proc_callback (uword * client_index)
@@ -141,6 +129,14 @@ dhcp_client_addr_callback (dhcp_client_t * c)
           ~0, 1, NULL,	// no label stack
           FIB_ROUTE_PATH_FLAG_NONE);
       /* *INDENT-ON* */
+    }
+  if (c->dhcp_server.as_u32)
+    {
+      ip46_address_t dst = {
+	.ip4 = c->dhcp_server,
+      };
+      c->ai_ucast = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
+					 VNET_LINK_IP4, &dst, c->sw_if_index);
     }
 
   /*
@@ -378,7 +374,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   vlib_frame_t *f;
   dhcp_option_t *o;
   u16 udp_length, ip_length;
-  u32 counter_index;
+  u32 counter_index, node_index;
 
   /* Interface(s) down? */
   if ((hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
@@ -397,35 +393,37 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
 
   /* Build a dhcpv4 pkt from whole cloth */
   b = vlib_get_buffer (vm, bi);
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
 
   ASSERT (b->current_data == 0);
 
   vnet_buffer (b)->sw_if_index[VLIB_RX] = c->sw_if_index;
+
   if (is_broadcast)
     {
-      f = vlib_get_frame_to_node (vm, hw->output_node_index);
-      vnet_buffer (b)->sw_if_index[VLIB_TX] = c->sw_if_index;
-      clib_memcpy (b->data, c->l2_rewrite, vec_len (c->l2_rewrite));
-      ip = (void *)
-	(((u8 *) vlib_buffer_get_current (b)) + vec_len (c->l2_rewrite));
+      node_index = ip4_rewrite_node.index;
+      vnet_buffer (b)->ip.adj_index[VLIB_TX] = c->ai_bcast;
     }
   else
     {
-      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
-      vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;	/* use interface VRF */
-      ip = vlib_buffer_get_current (b);
+      ip_adjacency_t *adj = adj_get (c->ai_ucast);
+
+      if (IP_LOOKUP_NEXT_ARP == adj->lookup_next_index)
+	node_index = ip4_arp_node.index;
+      else
+	node_index = ip4_rewrite_node.index;
+      vnet_buffer (b)->ip.adj_index[VLIB_TX] = c->ai_ucast;
     }
 
   /* Enqueue the packet right now */
+  f = vlib_get_frame_to_node (vm, node_index);
   to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
   f->n_vectors = 1;
+  vlib_put_frame_to_node (vm, node_index, f);
 
-  if (is_broadcast)
-    vlib_put_frame_to_node (vm, hw->output_node_index, f);
-  else
-    vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
-
+  /* build the headers */
+  ip = vlib_buffer_get_current (b);
   udp = (udp_header_t *) (ip + 1);
   dhcp = (dhcp_header_t *) (udp + 1);
 
@@ -452,7 +450,8 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_server);
 
   /* Send the interface MAC address */
-  clib_memcpy (dhcp->client_hardware_address, c->l2_rewrite + 6, 6);
+  clib_memcpy (dhcp->client_hardware_address,
+	       vnet_sw_interface_get_hw_address (vnm, c->sw_if_index), 6);
 
   /* And remember it for rx-packet-for-us checking */
   clib_memcpy (c->client_hardware_address, dhcp->client_hardware_address,
@@ -553,8 +552,6 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
 
   /* fix ip length, checksum and udp length */
   ip_length = vlib_buffer_length_in_chain (vm, b);
-  if (is_broadcast)
-    ip_length -= vec_len (c->l2_rewrite);
 
   ip->length = clib_host_to_net_u16 (ip_length);
   ip->checksum = ip4_header_checksum (ip);
@@ -837,7 +834,6 @@ format_dhcp_client (u8 * s, va_list * va)
 
       vec_foreach (addr, c->domain_server_address)
 	s = format (s, " dns %U", format_ip4_address, addr);
-      vec_add1 (s, '\n');
     }
   else
     {
@@ -846,8 +842,17 @@ format_dhcp_client (u8 * s, va_list * va)
 
   if (verbose)
     {
-      s = format (s, "retry count %d, next xmt %.2f",
-		  c->retry_count, c->next_transmit);
+      s =
+	format (s,
+		"\n lease: lifetime:%d renewal-interval:%d expires:%.2f (now:%.2f)",
+		c->lease_lifetime, c->lease_renewal_interval,
+		c->lease_expires, vlib_time_now (dcm->vlib_main));
+      s =
+	format (s, "\n retry-count:%d, next-xmt:%.2f", c->retry_count,
+		c->next_transmit);
+      s =
+	format (s, "\n adjacencies:[unicast:%d broadcast:%d]", c->ai_ucast,
+		c->ai_bcast);
     }
   return s;
 }
@@ -937,12 +942,17 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       c->hostname = a->hostname;
       c->client_identifier = a->client_identifier;
       c->set_broadcast_flag = a->set_broadcast_flag;
+      c->ai_ucast = ADJ_INDEX_INVALID;
+      c->ai_bcast = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
+					 VNET_LINK_IP4,
+					 &ADJ_BCAST_ADDR, c->sw_if_index);
+
       do
 	{
 	  c->transaction_id = random_u32 (&dcm->seed);
 	}
       while (c->transaction_id == 0);
-      set_l2_rewrite (dcm, c);
+
       hash_set (dcm->client_by_sw_if_index, a->sw_if_index, c - dcm->clients);
 
       /*
@@ -980,11 +990,13 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 	}
       dhcp_client_release_address (dcm, c);
 
+      adj_unlock (c->ai_ucast);
+      adj_unlock (c->ai_bcast);
+
       vec_free (c->domain_server_address);
       vec_free (c->option_55_data);
       vec_free (c->hostname);
       vec_free (c->client_identifier);
-      vec_free (c->l2_rewrite);
       hash_unset (dcm->client_by_sw_if_index, c->sw_if_index);
       pool_put (dcm->clients, c);
     }
