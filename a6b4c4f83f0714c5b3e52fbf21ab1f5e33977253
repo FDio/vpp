@@ -52,6 +52,24 @@
       "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a8bd9665_69d3e53f",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-25T09:08:50Z",
+      "side": 1,
+      "message": "Will it be fixed size if packed will be used? As we need to mention how many bytes are unused?",
+      "parentUuid": "60d7db98_dcc13646",
+      "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
