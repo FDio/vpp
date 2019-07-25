@@ -239,6 +239,12 @@ Y:	src/vnet/ipip/FEATURE.yaml
 M:	Ole Troan <otroan@employees.org>
 F:	src/vnet/ipip/
 
+VNET DHCP
+I:	dhcp
+M:	Dave Barach <dave@barachs.net>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/dhcp/
+
 VNET TLS and TLS engine plugins
 I:	tls
 M:	Florin Coras <fcoras@cisco.com>
