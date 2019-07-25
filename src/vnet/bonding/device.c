@@ -751,11 +751,6 @@ done:
 	  ptd->per_port_queue[p].n_buffers = 0;
 	}
     }
-
-  vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters
-				 + VNET_INTERFACE_COUNTER_TX, thread_index,
-				 bif->sw_if_index, frame->n_vectors);
-
   return frame->n_vectors;
 }
 
