@@ -375,7 +375,8 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
 
   vec_validate (a, 1);
   a->uri = (char *) ecm->connect_uri;
-  parse_uri (a->uri, &sep);
+  if (parse_uri (a->uri, &sep))
+    return -1;
   sep.parent_handle = session_handle (s);
 
   for (stream_n = 0; stream_n < ecm->quic_streams; stream_n++)
