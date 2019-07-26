@@ -122,13 +122,11 @@ flow_classify_inline (vlib_main_t * vm,
 
       t1 = pool_elt_at_index (vcm->tables, table_index1);
 
-      vnet_buffer (b0)->l2_classify.hash =
-	vnet_classify_hash_packet (t0, (u8 *) h0);
+      vnet_buffer (b0)->l2_classify.hash = vnet_classify_hash_packet (t0, h0);
 
       vnet_classify_prefetch_bucket (t0, vnet_buffer (b0)->l2_classify.hash);
 
-      vnet_buffer (b1)->l2_classify.hash =
-	vnet_classify_hash_packet (t1, (u8 *) h1);
+      vnet_buffer (b1)->l2_classify.hash = vnet_classify_hash_packet (t1, h1);
 
       vnet_classify_prefetch_bucket (t1, vnet_buffer (b1)->l2_classify.hash);
 
@@ -158,8 +156,7 @@ flow_classify_inline (vlib_main_t * vm,
 	fcm->classify_table_index_by_sw_if_index[tid][sw_if_index0];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
-      vnet_buffer (b0)->l2_classify.hash =
-	vnet_classify_hash_packet (t0, (u8 *) h0);
+      vnet_buffer (b0)->l2_classify.hash = vnet_classify_hash_packet (t0, h0);
 
       vnet_buffer (b0)->l2_classify.table_index = table_index0;
       vnet_classify_prefetch_bucket (t0, vnet_buffer (b0)->l2_classify.hash);
@@ -230,7 +227,7 @@ flow_classify_inline (vlib_main_t * vm,
 	    {
 	      hash0 = vnet_buffer (b0)->l2_classify.hash;
 	      t0 = pool_elt_at_index (vcm->tables, table_index0);
-	      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
+	      e0 = vnet_classify_find_entry (t0, h0, hash0, now);
 	      if (e0)
 		{
 		  hits++;
@@ -241,7 +238,7 @@ flow_classify_inline (vlib_main_t * vm,
 		  vnet_classify_add_del_session (vcm, table_index0,
 						 h0, ~0, 0, 0, 0, 0, 1);
 		  /* increment counter */
-		  vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
+		  vnet_classify_find_entry (t0, h0, hash0, now);
 		}
 	    }
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)

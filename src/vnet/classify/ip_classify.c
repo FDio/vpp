@@ -109,13 +109,11 @@ ip_classify_inline (vlib_main_t * vm,
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
-      h0 = (void *) vlib_buffer_get_current (b0) -
-	ethernet_buffer_header_size (b0);
+      h0 = vlib_buffer_get_current (b0) - ethernet_buffer_header_size (b0);
 
       bi1 = from[1];
       b1 = vlib_get_buffer (vm, bi1);
-      h1 = (void *) vlib_buffer_get_current (b1) -
-	ethernet_buffer_header_size (b1);
+      h1 = vlib_buffer_get_current (b1) - ethernet_buffer_header_size (b1);
 
       cd_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
       cd0 = classify_dpo_get (cd_index0);
@@ -129,13 +127,11 @@ ip_classify_inline (vlib_main_t * vm,
 
       t1 = pool_elt_at_index (vcm->tables, table_index1);
 
-      vnet_buffer (b0)->l2_classify.hash =
-	vnet_classify_hash_packet (t0, (u8 *) h0);
+      vnet_buffer (b0)->l2_classify.hash = vnet_classify_hash_packet (t0, h0);
 
       vnet_classify_prefetch_bucket (t0, vnet_buffer (b0)->l2_classify.hash);
 
-      vnet_buffer (b1)->l2_classify.hash =
-	vnet_classify_hash_packet (t1, (u8 *) h1);
+      vnet_buffer (b1)->l2_classify.hash = vnet_classify_hash_packet (t1, h1);
 
       vnet_classify_prefetch_bucket (t1, vnet_buffer (b1)->l2_classify.hash);
 
@@ -159,16 +155,14 @@ ip_classify_inline (vlib_main_t * vm,
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
-      h0 = (void *) vlib_buffer_get_current (b0) -
-	ethernet_buffer_header_size (b0);
+      h0 = vlib_buffer_get_current (b0) - ethernet_buffer_header_size (b0);
 
       cd_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
       cd0 = classify_dpo_get (cd_index0);
       table_index0 = cd0->cd_table_index;
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
-      vnet_buffer (b0)->l2_classify.hash =
-	vnet_classify_hash_packet (t0, (u8 *) h0);
+      vnet_buffer (b0)->l2_classify.hash = vnet_classify_hash_packet (t0, h0);
 
       vnet_buffer (b0)->l2_classify.table_index = table_index0;
       vnet_classify_prefetch_bucket (t0, vnet_buffer (b0)->l2_classify.hash);
@@ -237,7 +231,7 @@ ip_classify_inline (vlib_main_t * vm,
 	      hash0 = vnet_buffer (b0)->l2_classify.hash;
 	      t0 = pool_elt_at_index (vcm->tables, table_index0);
 
-	      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
+	      e0 = vnet_classify_find_entry (t0, h0, hash0, now);
 	      if (e0)
 		{
 		  vnet_buffer (b0)->l2_classify.opaque_index
@@ -262,9 +256,8 @@ ip_classify_inline (vlib_main_t * vm,
 			  break;
 			}
 
-		      hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
-		      e0 = vnet_classify_find_entry
-			(t0, (u8 *) h0, hash0, now);
+		      hash0 = vnet_classify_hash_packet (t0, h0);
+		      e0 = vnet_classify_find_entry (t0, h0, hash0, now);
 		      if (e0)
 			{
 			  vnet_buffer (b0)->l2_classify.opaque_index
