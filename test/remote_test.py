@@ -10,7 +10,7 @@ import six
 from six import moves
 
 from framework import VppTestCase
-from aenum import Enum
+from enum import Enum
 
 
 class SerializableClassCopy(object):

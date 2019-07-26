@@ -11,7 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(PythonInterp 2.7)
+#find_package(PythonInterp 2.7)
+find_package(PythonInterp 3.6)
 
 if(PYTHONINTERP_FOUND)
   install(
