@@ -1644,7 +1644,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
   echo_main_t *em = &echo_main;
-  int *fds = 0;
+  int *fds = 0, i;
   u32 n_fds = 0;
   u64 segment_handle;
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
@@ -1670,13 +1670,14 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   if (mp->n_fds)
     {
       vec_validate (fds, mp->n_fds);
-      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
+      if (vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5))
+	goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
 	if (ssvm_segment_attach (0, SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  {
 	    ECHO_FAIL ("svm_fifo_segment_attach failed");
-	    return;
+	    goto failed;
 	  }
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
@@ -1685,7 +1686,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 	  {
 	    ECHO_FAIL ("svm_fifo_segment_attach ('%s') failed",
 		       mp->segment_name);
-	    return;
+	    goto failed;
 	  }
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	svm_msg_q_set_consumer_eventfd (em->our_event_queue, fds[n_fds++]);
@@ -1708,6 +1709,11 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   ECHO_LOG (1, "Mapped segment 0x%lx", segment_handle);
 
   em->state = STATE_ATTACHED;
+
+failed:
+  for (i = clib_max (n_fds - 1, 0); i < vec_len (fds); i++)
+    close (fds[i]);
+  vec_free (fds);
 }
 
 static void
