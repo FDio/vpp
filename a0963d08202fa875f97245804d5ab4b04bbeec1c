@@ -34,6 +34,24 @@
       "revId": "a0963d08202fa875f97245804d5ab4b04bbeec1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c71af403_b01cd33b",
+        "filename": "src/vppinfra/elog.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2019-07-26T20:13:25Z",
+      "side": 1,
+      "message": "That is the generated code with -O0. With -O2 the generated code is:\n\nCLIB_MEMORY_BARRIER (); *em-\u003elock \u003d 0; generates\n        dmb     ish\n        str     wzr, [x0]\nand clib_atomic_release (em-\u003elock); generates\n        stlr    wzr, [x0]\n\n(The extra instructions due to spilling of the registers on stack disappear. But both these convey the point about the barrier)\n\n\u0027dmb ish\u0027 is a full barrier and \u0027stlr\u0027 acts as one-way barrier (allowing the memory accesses after the \u0027stlr\u0027 to occur before \u0027stlr\u0027, but not vice-versa)",
+      "parentUuid": "f218df81_2937c419",
+      "revId": "a0963d08202fa875f97245804d5ab4b04bbeec1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
