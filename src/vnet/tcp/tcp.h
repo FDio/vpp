@@ -577,6 +577,9 @@ extern vlib_node_registration_t tcp6_rcv_process_node;
 extern vlib_node_registration_t tcp4_listen_node;
 extern vlib_node_registration_t tcp6_listen_node;
 
+#define tcp_node(_node_id, _is_ip4) 					\
+  ((_is_ip4) ? tcp4_##_node_id##_node : tcp6_##_node_id##_node)
+
 always_inline tcp_main_t *
 vnet_get_tcp_main ()
 {
