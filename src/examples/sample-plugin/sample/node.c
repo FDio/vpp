@@ -76,8 +76,8 @@ typedef enum
  *
  * Node costs 30 clocks/pkt at a vector size of 51
  */
-#define VERSION_1 1
 
+#define VERSION_1 1
 #ifdef VERSION_1
 #define foreach_mac_address_offset              \
 _(0)                                            \
@@ -570,6 +570,94 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_node_increment_counter (vm, sample_node.index,
 			       SAMPLE_ERROR_SWAPPED, pkts_swapped);
 
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    {
+      int i;
+      b = bufs;
+
+      for (i = 0; i < frame->n_vectors; i++)
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      ethernet_header_t *en;
+	      sample_trace_t *t =
+		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	      t->next_index = SAMPLE_NEXT_INTERFACE_OUTPUT;
+	      en = vlib_buffer_get_current (b[0]);
+	      clib_memcpy_fast (t->new_src_mac, en->src_address,
+				sizeof (t->new_src_mac));
+	      clib_memcpy_fast (t->new_dst_mac, en->dst_address,
+				sizeof (t->new_dst_mac));
+	      b++;
+	    }
+	  else
+	    break;
+	}
+    }
+  return frame->n_vectors;
+}
+#endif
+
+/*
+ * This version computes all of the buffer pointers in
+ * one motion, uses a fully pipelined loop model, and
+ * traces the entire frame in one motion.
+ *
+ * It's performance-competative with other coding paradigms,
+ * and it's the simplest way to write performant vpp code
+ */
+
+
+#ifdef VERSION_4
+
+#define u8x16_shuffle __builtin_shuffle
+
+static u8x16 swapmac =
+  { 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15 };
+
+/* Final stage in the pipeline, do the mac swap */
+static inline u32
+last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+{
+  u8x16 src_dst0;
+  src_dst0 = ((u8x16 *) vlib_buffer_get_current (b))[0];
+  src_dst0 = u8x16_shuffle (src_dst0, swapmac);
+  ((u8x16 *) vlib_buffer_get_current (b))[0] = src_dst0;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] =
+    vnet_buffer (b)->sw_if_index[VLIB_RX];
+  /* set next-index[] to 0 for this buffer */
+  return 0;
+}
+
+/*
+ * Add a couple of nil stages to increase the prefetch stride.
+ * For any specific platform, the optimal prefetch stride may differ.
+ */
+static inline void
+stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+{
+}
+
+static inline void
+stage2 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+{
+}
+
+#define NSTAGES 4
+#define STAGE_INLINE inline __attribute__((__always_inline__))
+
+#define stage0 generic_stage0
+
+#include <vnet/pipeline.h>
+
+VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame)
+{
+  dispatch_pipeline (vm, node, frame);
+
+  vlib_node_increment_counter (vm, sample_node.index,
+			       SAMPLE_ERROR_SWAPPED, frame->n_vectors);
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
       int i;
