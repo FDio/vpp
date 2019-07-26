@@ -16,6 +16,24 @@
       "revId": "a0963d08202fa875f97245804d5ab4b04bbeec1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f218df81_2937c419",
+        "filename": "src/vppinfra/elog.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1840
+      },
+      "writtenOn": "2019-07-26T15:07:32Z",
+      "side": 1,
+      "message": "CLIB_MEMORY_BARRIER (); *em-\u003elock \u003d 0; generates\n        dmb     ish\n        ldr     x0, [sp, 8]\n        ldr     x0, [x0]\n        str     wzr, [x0]\n\nand clib_atomic_release (em-\u003elock); generates\n        ldr     x0, [sp, 8]\n        ldr     x0, [x0]\n        stlr    wzr, [x0]",
+      "parentUuid": "8516e566_8a7e91c6",
+      "revId": "a0963d08202fa875f97245804d5ab4b04bbeec1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
