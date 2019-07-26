@@ -60,6 +60,8 @@ typedef struct _spacer
   u64 last_update;
 } spacer_t;
 
+#define TRANSPORT_CONN_ID_LEN	44
+
 /*
  * Protocol independent transport properties associated to a session
  */
@@ -77,24 +79,26 @@ typedef struct _transport_connection
       ip46_address_t lcl_ip;	/**< Local IP */
       u16 rmt_port;		/**< Remote port */
       u16 lcl_port;		/**< Local port */
+      u32 fib_index;		/**< Network namespace */
       u8 is_ip4;		/**< Flag if IP4 connection */
       u8 proto;			/**< Protocol id */
-      u32 fib_index;		/**< Network namespace */
+      u8 unused[2];		/**< First field after id wants to be
+				     4-byte aligned) */
     };
     /*
      * Opaque connection ID
      */
-    u8 opaque_conn_id[42];
+    u8 opaque_conn_id[TRANSPORT_CONN_ID_LEN];
   };
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
   u32 thread_index;		/**< Worker-thread index */
+  u8 flags;			/**< Transport specific flags */
 
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
 
-  u8 flags;			/**< Transport specific flags */
   transport_stats_t stats;	/**< Transport connection stats */
   spacer_t pacer;		/**< Simple transport pacer */
 
@@ -127,6 +131,9 @@ typedef struct _transport_connection
 #define c_pacer connection.pacer
 #define c_flags connection.flags
 } transport_connection_t;
+
+STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index)
+	       == TRANSPORT_CONN_ID_LEN, "update conn id len");
 
 typedef enum _transport_proto
 {

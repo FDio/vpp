@@ -37,22 +37,23 @@
 #endif
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct tls_cxt_id_
+typedef struct tls_cxt_id_
 {
-  u32 parent_app_wrk_index;
   union {
     session_handle_t app_session_handle;
     u32 parent_app_api_ctx;
   };
   session_handle_t tls_session_handle;
+  u32 parent_app_wrk_index;
   u32 ssl_ctx;
   u32 listener_ctx_index;
   u8 tcp_is_ip4;
   u8 tls_engine_id;
-}) tls_ctx_id_t;
+} tls_ctx_id_t;
 /* *INDENT-ON* */
 
-STATIC_ASSERT (sizeof (tls_ctx_id_t) <= 42, "ctx id must be less than 42");
+STATIC_ASSERT (sizeof (tls_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
+	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
 
 typedef struct tls_ctx_
 {
