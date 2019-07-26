@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "69a0771b_b2187c0e",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-07-26T21:54:42Z",
+      "side": 1,
+      "message": "I guess I\u0027m the one guilty for that. Here\u0027s my penance https://gerrit.fd.io/r/c/20888/\n\nAfter some \"artistic disagreement\" with the compiler, which I lost, TRANSPORT_CONN_ID_LEN is now 44 bytes",
+      "parentUuid": "1bfaa100_861d9857",
+      "range": {
+        "startLine": 120,
+        "startChar": 58,
+        "endLine": 120,
+        "endChar": 60
+      },
+      "revId": "b2dbe6eb8212be27cc518f2df57618531f9c9d26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "abbd3ae9_b310926b",
         "filename": "src/plugins/quic/quic.h",
         "patchSetId": 2
