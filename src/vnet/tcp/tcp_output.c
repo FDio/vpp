@@ -843,6 +843,8 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
 
   tcp_enqueue_to_ip_lookup_now (wrk, b, bi, is_ip4, fib_index);
   TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
+  vlib_node_increment_counter (vm, tcp_node_index (output, tc->c_is_ip4),
+			       TCP_ERROR_RST_SENT, 1);
 }
 
 /**
@@ -858,6 +860,9 @@ tcp_send_reset (tcp_connection_t * tc)
   tcp_header_t *th;
   u16 tcp_hdr_opts_len, advertise_wnd, opts_write_len;
   u8 flags;
+
+  if (vm != vlib_get_main ())
+    clib_warning ("too good for friday");
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     return;
@@ -892,6 +897,10 @@ tcp_send_reset (tcp_connection_t * tc)
     }
   tcp_enqueue_to_ip_lookup_now (wrk, b, bi, tc->c_is_ip4, tc->c_fib_index);
   TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
+//  if (tcp_node(output, tc->c_is_ip4).index != tcp4_output_node.index)
+//    os_panic ();
+  vlib_node_increment_counter (vm, tcp_node_index (output, tc->c_is_ip4),
+			       TCP_ERROR_RST_SENT, 1);
 }
 
 static void
