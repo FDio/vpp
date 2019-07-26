@@ -40,20 +40,20 @@ as follows:
 	#ifdef vl_msg_id
 	vl_msg_id(VL_API_SW_INTERFACE_SET_FLAGS, vl_api_sw_interface_set_flags_t_handler)
 	vl_msg_id(VL_API_SW_INTERFACE_SET_FLAGS_REPLY, vl_api_sw_interface_set_flags_reply_t_handler)
-	#endif      
+	#endif
 	/****** Message names ******/
 
 	#ifdef vl_msg_name
 	vl_msg_name(vl_api_sw_interface_set_flags_t, 1)
 	vl_msg_name(vl_api_sw_interface_set_flags_reply_t, 1)
-	#endif      
+	#endif
 	/****** Message name, crc list ******/
 
 	#ifdef vl_msg_name_crc_list
 	#define foreach_vl_msg_name_crc_interface \
 	_(VL_API_SW_INTERFACE_SET_FLAGS, sw_interface_set_flags, f890584a) \
 	_(VL_API_SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply, dfbf3afa) \
-	#endif      
+	#endif
 	/****** Typedefs *****/
 
 	#ifdef vl_typedefs
@@ -182,6 +182,80 @@ and `src/vlibapi/api_shared.c
 <https://docs.fd.io/vpp/18.11/d6/dd1/api__shared_8c.html>`_. See also
 the debug CLI command "api trace"
 
+API trace replay caveats
+________________________
+
+The vpp instance which replays a binary API trace must have the same
+message-ID numbering space as the vpp instance which captured the
+trace. The replay instance **must** load the same set of plugins as
+the capture instance. Otherwise, API messages will be processed by the
+**wrong** API message handlers!
+
+Always start vpp with command-line arguments which include an
+"api-trace on" stanza, so vpp will start tracing binary API messages
+from the beginning:
+
+.. code-block:: console
+
+   api-trace {
+     on
+   }
+
+Given a binary api trace in /tmp/api_trace, do the following to work
+out the set of plugins:
+
+.. code-block:: console
+
+   DBGvpp# api trace custom-dump /tmp/api_trace
+   vl_api_trace_plugin_msg_ids: abf_54307ba2 first 846 last 855
+   vl_api_trace_plugin_msg_ids: acl_0d7265b0 first 856 last 893
+   vl_api_trace_plugin_msg_ids: cdp_8f707b96 first 894 last 895
+   vl_api_trace_plugin_msg_ids: flowprobe_f2f0286c first 898 last 901
+   <etc>
+
+Here, we see the "abf," "acl," "cdp," and "flowprobe" plugins. Use the
+list of plugins to construct a matching "plugins" command-line argument
+stanza:
+
+.. code-block:: console
+
+    plugins {
+   	## Disable all plugins, selectively enable specific plugins
+    	plugin default { disable }
+    	plugin abf_plugin.so { enable }
+    	plugin acl_plugin.so { enable }
+    	plugin cdp_plugin.so { enable }
+    	plugin flowprobe_plugin.so { enable }
+    }
+
+To begin with, use the same vpp image that captured a trace to replay
+it. It's perfectly fair to rebuild the vpp replay instance, to add
+scaffolding to facilitate setting gdb breakpoints on complex
+conditions or similar.
+
+API trace interface issues
+__________________________
+
+Along the same lines, it may be necessary to manufacture [simulated]
+physical interfaces so that an API trace will replay correctly. "show
+interface" on the trace origin system can help. An API trace
+"custom-dump" as shown above may make it obvious how many loopback
+interfaces to create. If you see vhost interfaces being created and
+then configured, the first such configuration message in the trace
+will tell you how many physical interfaces were involved.
+
+.. code-block:: console
+
+  SCRIPT: create_vhost_user_if socket /tmp/foosock server
+  SCRIPT: sw_interface_set_flags sw_if_index 3 admin-up
+
+In this case, it's fair to guess that one needs to create two loopback
+interfaces to "help" the trace replay correctly.
+
+These issues can be mitigated to a certain extent by replaying the
+trace on the system which created it, but in a field debug case that's
+not a realistic.
+
 Client connection details
 _________________________
 
@@ -194,7 +268,7 @@ Establishing a binary API connection to VPP from a C-language client is easy:
 	{
 	  vat_main_t *vam = &vat_main;
 	  api_main_t *am = &api_main;
-	  if (vl_client_connect_to_vlib ("/vpe-api", client_name, 
+	  if (vl_client_connect_to_vlib ("/vpe-api", client_name,
 	                                client_message_queue_length) < 0)
 	    return -1;
 	  /* Memorize vpp's binary API message input queue address */
@@ -202,7 +276,7 @@ Establishing a binary API connection to VPP from a C-language client is easy:
 	  /* And our client index */
 	  vam->my_client_index = am->my_client_index;
 	  return 0;
-	}       
+	}
 
 32 is a typical value for client_message_queue_length. VPP *cannot*
 block when it needs to send an API message to a binary API client. The
@@ -337,7 +411,7 @@ Set up message handlers about as follows:
 	#undef vl_printfun
 	/* Define a list of all message that the client handles */
 	#define foreach_vpe_api_reply_msg                            \
-	   _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           
+	   _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)
 	   static clib_error_t *
 	   my_api_hookup (vlib_main_t * vm)
 	   {
@@ -374,7 +448,7 @@ followed by minor adjustments of this form:
 API message numbering in plugins
 --------------------------------
 
-Binary API message numbering in plugins relies on vpp to issue a block 
+Binary API message numbering in plugins relies on vpp to issue a block
 of message-ID's for the plugin to use:
 
 .. code-block:: C
