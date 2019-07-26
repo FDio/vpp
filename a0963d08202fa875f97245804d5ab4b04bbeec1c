@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8516e566_8a7e91c6",
+        "filename": "src/vppinfra/elog.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-07-26T14:01:46Z",
+      "side": 1,
+      "message": "Mind sharing the assembly code difference on aarch64?",
+      "revId": "a0963d08202fa875f97245804d5ab4b04bbeec1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
