@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import json
 
@@ -374,7 +374,7 @@ class JsonParser(object):
                     self.unions[union.name] = union
                     self.logger.debug("Parsed union: %s" % union)
                     self.unions_by_json[path].append(union)
-                for name, body in j['aliases'].iteritems():
+                for name, body in j['aliases'].items():
                     if name in self.aliases:
                         progress = progress + 1
                         continue
