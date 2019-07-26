@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3690bcd5_e7030491",
+        "filename": "src/plugins/hs_apps/sapi/quic_echo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1674,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-07-26T13:59:00Z",
+      "side": 1,
+      "message": "ECHO_FAIL(\"vl_socket_client_recv_fd_msg failed\");\ngoto failed;",
+      "range": {
+        "startLine": 1674,
+        "startChar": 0,
+        "endLine": 1674,
+        "endChar": 13
+      },
+      "revId": "3caaca41f07e5fbce0684c549406c705bfdbef12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
