@@ -190,7 +190,7 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       ed_kv.key[0] = ed_key.as_u64[0];
       ed_kv.key[1] = ed_key.as_u64[1];
       if (clib_bihash_add_del_16_8 (&tsm->out2in_ed, &ed_kv, 0))
-	nat_log_warn ("out2in_ed key del failed");
+	nat_elog_warn ("out2in_ed key del failed");
 
       if (snat_is_unk_proto_session (s))
 	goto delete;
@@ -299,7 +299,7 @@ slow_path_ed (snat_main_t * sm,
     {
       b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
-      nat_log_notice ("maximum sessions exceeded");
+      nat_elog_notice ("maximum sessions exceeded");
       return NAT_IN2OUT_ED_NEXT_DROP;
     }
 
@@ -318,7 +318,7 @@ slow_path_ed (snat_main_t * sm,
 					       sm->port_per_thread,
 					       tsm->snat_thread_index))
 	{
-	  nat_log_notice ("addresses exhausted");
+	  nat_elog_notice ("addresses exhausted");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
 	  return NAT_IN2OUT_ED_NEXT_DROP;
 	}
@@ -346,7 +346,7 @@ slow_path_ed (snat_main_t * sm,
   u = nat_user_get_or_create (sm, &key->l_addr, rx_fib_index, thread_index);
   if (!u)
     {
-      nat_log_warn ("create NAT user failed");
+      nat_elog_warn ("create NAT user failed");
       if (!is_sm)
 	snat_free_outside_address_and_port (sm->addresses,
 					    thread_index, &key1);
@@ -357,7 +357,7 @@ slow_path_ed (snat_main_t * sm,
   if (!s)
     {
       nat44_delete_user_with_no_session (sm, u, thread_index);
-      nat_log_warn ("create NAT session failed");
+      nat_elog_warn ("create NAT session failed");
       if (!is_sm)
 	snat_free_outside_address_and_port (sm->addresses,
 					    thread_index, &key1);
@@ -409,7 +409,7 @@ slow_path_ed (snat_main_t * sm,
   if (clib_bihash_add_or_overwrite_stale_16_8 (&tsm->in2out_ed, kv,
 					       nat44_i2o_ed_is_idle_session_cb,
 					       &ctx))
-    nat_log_notice ("in2out-ed key add failed");
+    nat_elog_notice ("in2out-ed key add failed");
 
   make_ed_kv (kv, &key1.addr, &key->r_addr, key->proto, s->out2in.fib_index,
 	      key1.port, key->r_port);
@@ -417,7 +417,7 @@ slow_path_ed (snat_main_t * sm,
   if (clib_bihash_add_or_overwrite_stale_16_8 (&tsm->out2in_ed, kv,
 					       nat44_o2i_ed_is_idle_session_cb,
 					       &ctx))
-    nat_log_notice ("out2in-ed key add failed");
+    nat_elog_notice ("out2in-ed key add failed");
 
   *sessionp = s;
 
@@ -562,8 +562,6 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
       s = pool_elt_at_index (tsm->sessions, value.value);
       if (nat44_is_ses_closed (s))
 	{
-	  nat_log_debug ("TCP close connection %U", format_snat_session,
-			 &sm->per_thread_data[thread_index], s);
 	  nat_free_session_data (sm, s, thread_index, 0);
 	  nat44_delete_session (sm, s, thread_index);
 	}
@@ -780,7 +778,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
 	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
-	  nat_log_notice ("maximum sessions exceeded");
+	  nat_elog_notice ("maximum sessions exceeded");
 	  return 0;
 	}
 
@@ -788,7 +786,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 				  thread_index);
       if (!u)
 	{
-	  nat_log_warn ("create NAT user failed");
+	  nat_elog_warn ("create NAT user failed");
 	  return 0;
 	}
 
@@ -857,7 +855,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
       if (!s)
 	{
 	  nat44_delete_user_with_no_session (sm, u, thread_index);
-	  nat_log_warn ("create NAT session failed");
+	  nat_elog_warn ("create NAT session failed");
 	  return 0;
 	}
 
@@ -878,13 +876,13 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 		  rx_fib_index, 0, 0);
       s_kv.value = s - tsm->sessions;
       if (clib_bihash_add_del_16_8 (&tsm->in2out_ed, &s_kv, 1))
-	nat_log_notice ("in2out key add failed");
+	nat_elog_notice ("in2out key add failed");
 
       make_ed_kv (&s_kv, &s->out2in.addr, &ip->dst_address, ip->protocol,
 		  outside_fib_index, 0, 0);
       s_kv.value = s - tsm->sessions;
       if (clib_bihash_add_del_16_8 (&tsm->out2in_ed, &s_kv, 1))
-	nat_log_notice ("out2in key add failed");
+	nat_elog_notice ("out2in key add failed");
     }
 
   /* Update IP checksum */
@@ -1860,7 +1858,7 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 	    {
 	      next0 = NAT_IN2OUT_ED_NEXT_DROP;
 	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_REASS];
-	      nat_log_notice ("maximum reassemblies exceeded");
+	      nat_elog_notice ("maximum reassemblies exceeded");
 	      goto trace0;
 	    }
 
@@ -1963,7 +1961,7 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 		      (thread_index, reass0, bi0, &fragments_to_drop))
 		    {
 		      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_FRAG];
-		      nat_log_notice
+		      nat_elog_notice
 			("maximum fragments per reassembly exceeded");
 		      next0 = NAT_IN2OUT_ED_NEXT_DROP;
 		      goto trace0;

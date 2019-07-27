@@ -250,6 +250,33 @@ vl_api_nat_worker_dump_t_print (vl_api_nat_worker_dump_t * mp, void *handle)
 }
 
 static void
+vl_api_nat_set_log_level_t_handler (vl_api_nat_set_log_level_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_set_log_level_reply_t *rmp;
+  int rv = 0;
+
+  if (sm->log_level > NAT_LOG_DEBUG)
+    rv = VNET_API_ERROR_UNSUPPORTED;
+  else
+    sm->log_level = mp->log_level;
+
+  REPLY_MACRO (VL_API_NAT_SET_WORKERS_REPLY);
+}
+
+static void *
+vl_api_nat_set_log_level_t_print (vl_api_nat_set_log_level_t *
+				  mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_set_log_level ");
+  s = format (s, "log_level %d", mp->log_level);
+
+  FINISH;
+}
+
+static void
 vl_api_nat_ipfix_enable_disable_t_handler (vl_api_nat_ipfix_enable_disable_t *
 					   mp)
 {
@@ -3523,6 +3550,7 @@ vl_api_nat66_static_mapping_dump_t_print (vl_api_nat66_static_mapping_dump_t *
 _(NAT_CONTROL_PING, nat_control_ping)                                   \
 _(NAT_SHOW_CONFIG, nat_show_config)                                     \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
+_(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
 _(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
 _(NAT_SET_REASS, nat_set_reass)                                         \
