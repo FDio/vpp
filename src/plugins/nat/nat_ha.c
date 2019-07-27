@@ -176,8 +176,15 @@ nat_ha_resync_fin (void)
     return;
 
   ha->in_resync = 0;
-  nat_log_info ("resync completed with result %s",
-		ha->resync_ack_missed ? "FAILED" : "SUCESS");
+  if (ha->resync_ack_missed)
+    {
+      nat_elog_info ("resync completed with result FAILED");
+    }
+  else
+    {
+      nat_elog_info ("resync completed with result SUCCESS");
+    }
+
   if (ha->event_callback)
     ha->event_callback (ha->client_index, ha->pid, ha->resync_ack_missed);
 }
@@ -224,7 +231,8 @@ nat_ha_ack_recv (u32 seq, u32 thread_index)
       }
     vec_free (td->resend_queue[i].data);
     vec_del1 (td->resend_queue, i);
-    nat_log_debug ("ACK for seq %d received", clib_net_to_host_u32 (seq));
+    nat_elog_debug_X1 ("ACK for seq %d received", "i4",
+		       clib_net_to_host_u32 (seq));
 
     return;
   }
@@ -251,8 +259,8 @@ nat_ha_resend_scan (f64 now, u32 thread_index)
     /* maximum retry reached delete cached data */
     if (td->resend_queue[i].retry_count >= NAT_HA_RETRIES)
       {
-	nat_log_notice ("seq %d missed",
-			clib_net_to_host_u32 (td->resend_queue[i].seq));
+	nat_elog_notice_X1 ("seq %d missed", "i4",
+			    clib_net_to_host_u32 (td->resend_queue[i].seq));
 	if (td->resend_queue[i].is_resync)
 	  {
 	    clib_atomic_fetch_add (&ha->resync_ack_missed, 1);
@@ -267,14 +275,14 @@ nat_ha_resend_scan (f64 now, u32 thread_index)
       }
 
     /* retry to send non-ACKed data */
-    nat_log_debug ("state sync seq %d resend",
-		   clib_net_to_host_u32 (td->resend_queue[i].seq));
+    nat_elog_debug_X1 ("state sync seq %d resend", "i4",
+		       clib_net_to_host_u32 (td->resend_queue[i].seq));
     td->resend_queue[i].retry_count++;
     vlib_increment_simple_counter (&ha->counters[NAT_HA_COUNTER_RETRY_COUNT],
 				   thread_index, 0, 1);
     if (vlib_buffer_alloc (vm, &bi, 1) != 1)
       {
-	nat_log_warn ("HA NAT state sync can't allocate buffer");
+	nat_elog_warn ("HA NAT state sync can't allocate buffer");
 	return;
       }
     b = vlib_get_buffer (vm, bi);
@@ -368,7 +376,7 @@ nat_ha_set_listener (ip4_address_t * addr, u16 port, u32 path_mtu)
 	{
 	  udp_register_dst_port (ha->vlib_main, port, nat_ha_node.index, 1);
 	}
-      nat_log_info ("HA listening on port %d for state sync", port);
+      nat_elog_info_X1 ("HA listening on port %d for state sync", "i4", port);
     }
 
   return 0;
@@ -489,7 +497,8 @@ nat_ha_event_process (nat_ha_event_t * event, f64 now, u32 thread_index)
       nat_ha_recv_refresh (event, now, thread_index);
       break;
     default:
-      nat_log_notice ("Unsupported HA event type %d", event->event_type);
+      nat_elog_notice_X1 ("Unsupported HA event type %d", "i4",
+			  event->event_type);
       break;
     }
 }
@@ -587,7 +596,7 @@ nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
 
       if (vlib_buffer_alloc (vm, &bi, 1) != 1)
 	{
-	  nat_log_warn ("HA NAT state sync can't allocate buffer");
+	  nat_elog_warn ("HA NAT state sync can't allocate buffer");
 	  return;
 	}
 
@@ -783,7 +792,7 @@ nat_ha_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   vlib_process_wait_for_event (vm);
   event_type = vlib_process_get_events (vm, &event_data);
   if (event_type)
-    nat_log_info ("nat-ha-process: bogus kickoff event received");
+    nat_elog_info ("nat-ha-process: bogus kickoff event received");
   vec_reset_length (event_data);
 
   while (1)
