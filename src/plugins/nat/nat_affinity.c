@@ -115,7 +115,7 @@ nat_affinity_flush_service (u32 affinity_per_service_list_head_index)
       kv.key[1] = a->key.as_u64[1];
       pool_put_index (nam->affinity_pool, elt->value);
       if (clib_bihash_add_del_16_8 (&nam->affinity_hash, &kv, 0))
-	nat_log_warn ("affinity key del failed");
+	nat_elog_warn ("affinity key del failed");
       pool_put_index (nam->list_pool, elt_index);
     }
   pool_put_index (nam->list_pool, affinity_per_service_list_head_index);
@@ -151,7 +151,7 @@ nat_affinity_find_and_lock (ip4_address_t client_addr,
 	  pool_put_index (nam->list_pool, a->per_service_index);
 	  pool_put_index (nam->affinity_pool, value.value);
 	  if (clib_bihash_add_del_16_8 (&nam->affinity_hash, &kv, 0))
-	    nat_log_warn ("affinity key del failed");
+	    nat_elog_warn ("affinity key del failed");
 	  rv = 1;
 	  goto unlock;
 	}
@@ -179,7 +179,7 @@ affinity_is_expired_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 	  pool_put_index (nam->list_pool, a->per_service_index);
 	  pool_put_index (nam->affinity_pool, kv->value);
 	  if (clib_bihash_add_del_16_8 (&nam->affinity_hash, kv, 0))
-	    nat_log_warn ("affinity key del failed");
+	    nat_elog_warn ("affinity key del failed");
 	  return 1;
 	}
     }
@@ -205,7 +205,7 @@ nat_affinity_create_and_lock (ip4_address_t client_addr,
   if (!clib_bihash_search_16_8 (&nam->affinity_hash, &kv, &value))
     {
       rv = 1;
-      nat_log_notice ("affinity key already exist");
+      nat_elog_notice ("affinity key already exist");
       goto unlock;
     }
 
@@ -216,7 +216,7 @@ nat_affinity_create_and_lock (ip4_address_t client_addr,
 					     affinity_is_expired_cb, NULL);
   if (rv)
     {
-      nat_log_notice ("affinity key add failed");
+      nat_elog_notice ("affinity key add failed");
       pool_put (nam->affinity_pool, a);
       goto unlock;
     }
