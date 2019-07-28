@@ -343,84 +343,84 @@ vppcom_cfg_read_file (char *conf_fname)
 			getpid (), vcl_cfg->segment_size,
 			vcl_cfg->segment_size);
 	    }
-	  else if (unformat (line_input, "segment-size %d",
+	  else if (unformat (line_input, "segment-size %u",
 			     &vcl_cfg->segment_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured segment_size %d (0x%x)",
+	      VCFG_DBG (0, "VCL<%d>: configured segment_size %u (0x%x)",
 			getpid (), vcl_cfg->segment_size,
 			vcl_cfg->segment_size);
 	    }
 	  else if (unformat (line_input, "add-segment-size 0x%x",
 			     &vcl_cfg->add_segment_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured add_segment_size 0x%x (%d)",
+	      VCFG_DBG (0, "VCL<%d>: configured add_segment_size 0x%x (%u)",
 			getpid (), vcl_cfg->add_segment_size,
 			vcl_cfg->add_segment_size);
 	    }
-	  else if (unformat (line_input, "add-segment-size %d",
+	  else if (unformat (line_input, "add-segment-size %u",
 			     &vcl_cfg->add_segment_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured add_segment_size %d (0x%x)",
+	      VCFG_DBG (0, "VCL<%d>: configured add_segment_size %u (0x%x)",
 			getpid (), vcl_cfg->add_segment_size,
 			vcl_cfg->add_segment_size);
 	    }
-	  else if (unformat (line_input, "preallocated-fifo-pairs %d",
+	  else if (unformat (line_input, "preallocated-fifo-pairs %u",
 			     &vcl_cfg->preallocated_fifo_pairs))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured preallocated_fifo_pairs %d "
+	      VCFG_DBG (0, "VCL<%d>: configured preallocated_fifo_pairs %u "
 			"(0x%x)", getpid (), vcl_cfg->preallocated_fifo_pairs,
 			vcl_cfg->preallocated_fifo_pairs);
 	    }
-	  else if (unformat (line_input, "rx-fifo-size 0x%lx",
+	  else if (unformat (line_input, "rx-fifo-size 0x%x",
 			     &vcl_cfg->rx_fifo_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured rx_fifo_size 0x%x (%d)",
+	      VCFG_DBG (0, "VCL<%d>: configured rx_fifo_size 0x%x (%u)",
 			getpid (), vcl_cfg->rx_fifo_size,
 			vcl_cfg->rx_fifo_size);
 	    }
-	  else if (unformat (line_input, "rx-fifo-size %d",
+	  else if (unformat (line_input, "rx-fifo-size %u",
 			     &vcl_cfg->rx_fifo_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured rx_fifo_size %d (0x%x)",
+	      VCFG_DBG (0, "VCL<%d>: configured rx_fifo_size %u (0x%x)",
 			getpid (), vcl_cfg->rx_fifo_size,
 			vcl_cfg->rx_fifo_size);
 	    }
-	  else if (unformat (line_input, "tx-fifo-size 0x%lx",
+	  else if (unformat (line_input, "tx-fifo-size 0x%x",
 			     &vcl_cfg->tx_fifo_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured tx_fifo_size 0x%x (%d)",
+	      VCFG_DBG (0, "VCL<%d>: configured tx_fifo_size 0x%x (%u)",
 			getpid (), vcl_cfg->tx_fifo_size,
 			vcl_cfg->tx_fifo_size);
 	    }
-	  else if (unformat (line_input, "tx-fifo-size %ld",
+	  else if (unformat (line_input, "tx-fifo-size %u",
 			     &vcl_cfg->tx_fifo_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured tx_fifo_size %d (0x%x)",
+	      VCFG_DBG (0, "VCL<%d>: configured tx_fifo_size %u (0x%x)",
 			getpid (), vcl_cfg->tx_fifo_size,
 			vcl_cfg->tx_fifo_size);
 	    }
-	  else if (unformat (line_input, "event-queue-size 0x%lx",
+	  else if (unformat (line_input, "event-queue-size 0x%x",
 			     &vcl_cfg->event_queue_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured event_queue_size 0x%x (%d)",
+	      VCFG_DBG (0, "VCL<%d>: configured event_queue_size 0x%x (%u)",
 			getpid (), vcl_cfg->event_queue_size,
 			vcl_cfg->event_queue_size);
 	    }
-	  else if (unformat (line_input, "event-queue-size %ld",
+	  else if (unformat (line_input, "event-queue-size %u",
 			     &vcl_cfg->event_queue_size))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured event_queue_size %d (0x%x)",
+	      VCFG_DBG (0, "VCL<%d>: configured event_queue_size %u (0x%x)",
 			getpid (), vcl_cfg->event_queue_size,
 			vcl_cfg->event_queue_size);
 	    }
-	  else if (unformat (line_input, "listen-queue-size 0x%lx",
+	  else if (unformat (line_input, "listen-queue-size 0x%x",
 			     &vcl_cfg->listen_queue_size))
 	    {
 	      VCFG_DBG (0, "VCL<%d>: configured listen_queue_size 0x%x (%u)",
 			getpid (), vcl_cfg->listen_queue_size,
 			vcl_cfg->listen_queue_size);
 	    }
-	  else if (unformat (line_input, "listen-queue-size %ld",
+	  else if (unformat (line_input, "listen-queue-size %u",
 			     &vcl_cfg->listen_queue_size))
 	    {
 	      VCFG_DBG (0, "VCL<%d>: configured listen_queue_size %u (0x%x)",
@@ -472,9 +472,8 @@ vppcom_cfg_read_file (char *conf_fname)
 	  else if (unformat (line_input, "namespace-secret %lu",
 			     &vcl_cfg->namespace_secret))
 	    {
-	      VCFG_DBG (0,
-			"VCL<%d>: configured namespace_secret %llu (0x%llx)",
-			getpid (),
+	      VCFG_DBG (0, "VCL<%d>: configured namespace_secret %llu "
+			"(0x%llx)", getpid (),
 			(unsigned long long) vcl_cfg->namespace_secret,
 			(unsigned long long) vcl_cfg->namespace_secret);
 	    }
