@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "075f8295_5f9b9faa",
+        "filename": "src/cmake/pack.cmake",
+        "patchSetId": 12
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1709
+      },
+      "writtenOn": "2019-07-28T16:08:08Z",
+      "side": 1,
+      "message": "Maybe, this should be \"-\" but packages built with debian build system really seem to use \"~\" for the moment.\nThe goal of this commit is to have consistency between the cmake packaging system and the official debian build packaging system.\nYou can see here packages \"vpp\", \"libvppinfra\", ...:\n* https://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-beta-verify-master-ubuntu1804/8937/archives/build-root/\n* https://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-arm-verify-master-ubuntu1804/4595/archives/build-root/\n* https://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-verify-master-ubuntu1604/20797/archives/build-root/",
+      "parentUuid": "5dd77389_0d8e3bb9",
+      "range": {
+        "startLine": 56,
+        "startChar": 54,
+        "endLine": 56,
+        "endChar": 55
+      },
+      "revId": "f870201763314865dc70c3f2b10254ede1429e60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cb37b405_00fd53e7",
         "filename": "src/cmake/pack.cmake",
         "patchSetId": 12
@@ -36,6 +60,30 @@
       "writtenOn": "2019-07-26T18:22:38Z",
       "side": 1,
       "message": "This should be \u0027-\u0027 not \u0027~\u0027 for debian packages",
+      "range": {
+        "startLine": 59,
+        "startChar": 39,
+        "endLine": 59,
+        "endChar": 40
+      },
+      "revId": "f870201763314865dc70c3f2b10254ede1429e60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2e253edb_b212abb0",
+        "filename": "src/cmake/pack.cmake",
+        "patchSetId": 12
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1709
+      },
+      "writtenOn": "2019-07-28T16:08:08Z",
+      "side": 1,
+      "message": "Yes totally, thanks :).",
+      "parentUuid": "cb37b405_00fd53e7",
       "range": {
         "startLine": 59,
         "startChar": 39,
