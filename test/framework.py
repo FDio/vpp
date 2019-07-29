@@ -20,6 +20,8 @@ from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
 
+import six
+
 import scapy.compat
 from scapy.packet import Raw
 import hook as hookmodule
@@ -37,6 +39,8 @@ from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+
+from builtins import bytes, str
 
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
@@ -628,20 +632,16 @@ class VppTestCase(unittest.TestCase):
             stdout_log(single_line_delim)
             stdout_log('VPP output to stdout while running %s:', cls.__name__)
             stdout_log(single_line_delim)
-            vpp_output = "".join(cls.vpp_stdout_deque)
-            with open(cls.tempdir + '/vpp_stdout.txt', 'w') as f:
+            if isinstance(cls.vpp_stdout_deque, six.string_types):
+              vpp_output = "".join(cls.vpp_stdout_deque)
+              with open(cls.tempdir + '/vpp_stdout.txt', 'w') as f:
                 f.write(vpp_output)
-            stdout_log('\n%s', vpp_output)
-            stdout_log(single_line_delim)
+              stdout_log('\n%s', vpp_output)
+              stdout_log(single_line_delim)
 
         if hasattr(cls, 'vpp_stderr_deque'):
             stderr_log(single_line_delim)
             stderr_log('VPP output to stderr while running %s:', cls.__name__)
-            stderr_log(single_line_delim)
-            vpp_output = "".join(cls.vpp_stderr_deque)
-            with open(cls.tempdir + '/vpp_stderr.txt', 'w') as f:
-                f.write(vpp_output)
-            stderr_log('\n%s', vpp_output)
             stderr_log(single_line_delim)
 
     @classmethod
@@ -762,7 +762,7 @@ class VppTestCase(unittest.TestCase):
         cls._captures = []
 
     @classmethod
-    def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
+    def create_pg_interfaces(cls, interfaces):
         """
         Create packet-generator interfaces.
 
@@ -772,7 +772,7 @@ class VppTestCase(unittest.TestCase):
         """
         result = []
         for i in interfaces:
-            intf = VppPGInterface(cls, i, gso, gso_size)
+            intf = VppPGInterface(cls, i)
             setattr(cls, intf.name, intf)
             result.append(intf)
         cls.pg_interfaces = result

@@ -135,7 +135,7 @@ class TestL2bd(VppTestCase):
             cls.hosts_by_pg_idx[pg_if.sw_if_index] = []
             hosts = cls.hosts_by_pg_idx[pg_if.sw_if_index]
             packets = []
-            for j in range(start_nr, end_nr):
+            for j in range(int(start_nr), int(end_nr)):
                 host = Host(
                     "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
                     "172.17.1%02x.%u" % (pg_if.sw_if_index, j))
