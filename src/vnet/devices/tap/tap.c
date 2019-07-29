@@ -126,6 +126,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   clib_file_t t = { 0 };
   clib_error_t *err = 0;
   int fd = -1;
+  char *host_if_name = 0;
 
   if (args->id != ~0)
     {
@@ -208,7 +209,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
 
   if (!args->host_if_name)
-    args->host_if_name = (void *) ifr.ifr_ifrn.ifrn_name;
+    host_if_name = ifr.ifr_ifrn.ifrn_name;
+  else
+    host_if_name = (char *) args->host_if_name;
 
   unsigned int offload = 0;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
@@ -239,7 +242,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	  goto error;
 	}
       args->error = vnet_netlink_set_link_netns (vif->ifindex, fd,
-						 (char *) args->host_if_name);
+						 host_if_name);
       if (args->error)
 	{
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
@@ -252,21 +255,20 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 						args->host_namespace);
 	  goto error;
 	}
-      if ((vif->ifindex = if_nametoindex ((char *) args->host_if_name)) == 0)
+      if ((vif->ifindex = if_nametoindex (host_if_name)) == 0)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
 	  args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
-						args->host_if_name);
+						host_if_name);
 	  goto error;
 	}
     }
   else
     {
-      if (args->host_if_name)
+      if (host_if_name)
 	{
 	  args->error = vnet_netlink_set_link_name (vif->ifindex,
-						    (char *)
-						    args->host_if_name);
+						    host_if_name);
 	  if (args->error)
 	    {
 	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
@@ -413,7 +415,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   clib_memcpy (vif->mac_addr, args->mac_addr, 6);
 
-  vif->host_if_name = format (0, "%s%c", args->host_if_name, 0);
+  vif->host_if_name = format (0, "%s%c", host_if_name, 0);
   vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
   vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
   vif->host_mtu_size = args->host_mtu_size;
