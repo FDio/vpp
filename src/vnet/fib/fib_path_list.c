@@ -181,7 +181,10 @@ fib_path_list_hash (fib_path_list_t *path_list)
 
     ASSERT(path_list);
 
-    new_path_list_hash = old_path_list_hash = vec_len(path_list->fpl_paths);
+    new_path_list_hash =
+        old_path_list_hash =
+            (vec_len(path_list->fpl_paths) << 16 |
+             (path_list->fpl_flags & FIB_PATH_LIST_KEY_FLAGS));
 
     vec_foreach (path_index, path_list->fpl_paths)
     {
