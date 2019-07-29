@@ -39,3 +39,4 @@ The Developers section covers the following areas:
    fib20/index.rst
    buildwireshark
    punt
+   quic_plugin
