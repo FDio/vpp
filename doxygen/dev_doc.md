@@ -16,3 +16,4 @@ Programming notes for developers.
 - @subpage stats_doc
 - @subpage if_stats_client_doc
 - @subpage api_lang_doc
+- @subpage handoff_queue_demo_plugin
