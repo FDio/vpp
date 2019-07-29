@@ -104,6 +104,13 @@ typedef enum fib_path_list_flags_t_ {
 	 _item <= FIB_PATH_LIST_ATTRIBUTE_LAST;		\
 	 _item++)
 
+/**
+ * The flags on a path-list that contribute to its key in the DB.
+ * So path-lists with these flags different are not conisdered the
+ * same.
+ */
+#define FIB_PATH_LIST_KEY_FLAGS (FIB_PATH_LIST_FLAG_NO_URPF)
+
 extern fib_node_index_t fib_path_list_create(fib_path_list_flags_t flags,
 					     const fib_route_path_t *paths);
 extern fib_node_index_t fib_path_list_create_special(dpo_proto_t nh_proto,
