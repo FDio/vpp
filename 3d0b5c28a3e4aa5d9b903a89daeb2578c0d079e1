@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "bc1a99f8_4d9e8c1b",
+        "filename": "src/cmake/pack.cmake",
+        "patchSetId": 13
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1709
+      },
+      "writtenOn": "2019-07-29T12:58:32Z",
+      "side": 1,
+      "message": "cmake_parse_arguments was part of a CMakeModule in 3.4 and lower and became a built-in in \u003e\u003d3.5. Because other project than VOM could want to leverage this macro, I check cmake version here.\n\nhttps://cmake.org/cmake/help/v3.6/module/CMakeParseArguments.html",
+      "parentUuid": "270c10e4_f227a597",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 37
+      },
+      "revId": "3d0b5c28a3e4aa5d9b903a89daeb2578c0d079e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8a3c347d_5a283fd1",
         "filename": "src/cmake/pack.cmake",
         "patchSetId": 13
@@ -36,6 +60,30 @@
       "writtenOn": "2019-07-29T12:33:58Z",
       "side": 1,
       "message": "Please don\u0027t use explicit checks for 3.6 or greater! If you are intended to use cmake 3.5 as baseline, everything should be working fine with it.",
+      "range": {
+        "startLine": 82,
+        "startChar": 4,
+        "endLine": 82,
+        "endChar": 43
+      },
+      "revId": "3d0b5c28a3e4aa5d9b903a89daeb2578c0d079e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ae818658_5ff757b9",
+        "filename": "src/cmake/pack.cmake",
+        "patchSetId": 13
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 1709
+      },
+      "writtenOn": "2019-07-29T12:58:32Z",
+      "side": 1,
+      "message": "Yes, I am not doing any check for 3.6 it is just to tell people why I am using CPACK_PACKAGE_FILE_NAME (any version) rather than CPACK_DEBIAN_FILE_NAME (\u003e\u003d3.6)",
+      "parentUuid": "8a3c347d_5a283fd1",
       "range": {
         "startLine": 82,
         "startChar": 4,
