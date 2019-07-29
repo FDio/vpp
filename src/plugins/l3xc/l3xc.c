@@ -199,6 +199,7 @@ l3xc_cmd (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   fib_route_path_t *rpaths = NULL, rpath;
   u32 sw_if_index, is_del, is_ip6;
+  dpo_proto_t payload_proto;
   vnet_main_t *vnm;
   int rv = 0;
 
@@ -224,7 +225,7 @@ l3xc_cmd (vlib_main_t * vm,
       else if (unformat (line_input, "add"))
 	is_del = 0;
       else if (unformat (line_input, "via %U",
-			 unformat_fib_route_path, &rpath))
+			 unformat_fib_route_path, &rpath, &payload_proto))
 	vec_add1 (rpaths, rpath);
       else
 	return (clib_error_return (0, "unknown input '%U'",
