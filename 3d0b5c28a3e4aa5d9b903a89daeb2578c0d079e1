@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "15f8284c_d05e3e64",
+        "filename": "src/cmake/pack.cmake",
+        "patchSetId": 13
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-29T14:53:44Z",
+      "side": 1,
+      "message": "Why do you need conditional include here, if it is built-in? We build the libraries using cmake 3.5 or above. Please remove this conditional include.",
+      "parentUuid": "bc1a99f8_4d9e8c1b",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 37
+      },
+      "revId": "3d0b5c28a3e4aa5d9b903a89daeb2578c0d079e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8a3c347d_5a283fd1",
         "filename": "src/cmake/pack.cmake",
         "patchSetId": 13
@@ -88,6 +112,53 @@
         "startLine": 82,
         "startChar": 4,
         "endLine": 82,
+        "endChar": 43
+      },
+      "revId": "3d0b5c28a3e4aa5d9b903a89daeb2578c0d079e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a32142ef_a33e91ef",
+        "filename": "src/cmake/pack.cmake",
+        "patchSetId": 13
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-29T14:53:44Z",
+      "side": 1,
+      "message": "Please remove this comment!",
+      "parentUuid": "ae818658_5ff757b9",
+      "range": {
+        "startLine": 82,
+        "startChar": 4,
+        "endLine": 82,
+        "endChar": 43
+      },
+      "revId": "3d0b5c28a3e4aa5d9b903a89daeb2578c0d079e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9e278866_9b55a311",
+        "filename": "src/cmake/pack.cmake",
+        "patchSetId": 13
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-07-29T14:53:44Z",
+      "side": 1,
+      "message": "Please remove this comment!",
+      "range": {
+        "startLine": 93,
+        "startChar": 4,
+        "endLine": 93,
         "endChar": 43
       },
       "revId": "3d0b5c28a3e4aa5d9b903a89daeb2578c0d079e1",
