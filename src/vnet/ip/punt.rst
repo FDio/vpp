@@ -1,9 +1,9 @@
-.. _punt:
+.. _dev_punt:
+
+.. toctree::
 
 Punting Packets
 ===============
-
-.. toctree::
 
 Overview
 ________
@@ -17,8 +17,8 @@ A popular meaning of punt is to send packets to the user/control-plane.
 This is specific option of the more general case above, where VPP is
 handing the packet to the control-plane for further prosessing.
 
-The Punt Infrastructe
----------------------
+The Punt Infrastructure
+_______________________
 
 Exception packets are those that a given node cannot handle via normal
 mecahnisms.
@@ -37,7 +37,7 @@ that the source node would otherise drop.
 
 
 Punting to the Control Plane
-----------------------------
+____________________________
 
 Active Punt
 -----------
@@ -47,11 +47,10 @@ want to receive and this is where I want it sent.
 
 Currently there exists 3 ways to describe how to match/classify the
 packets to be punted:
-...
- 1) a matching UDP port
- 2) a matching IP protocol (i.e. OSPF)
- 3) a matching punt excpetion reason (see above)
-...
+
+1) a matching UDP port
+2) a matching IP protocol (i.e. OSPF)
+3) a matching punt excpetion reason (see above)
 
 Depending on the type/classification of the packet to be punted, that
 active punt will register itself into the VLIB graph to receive those

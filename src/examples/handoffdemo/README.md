@@ -1,4 +1,4 @@
-# Handoff queue demo plugin
+# Handoff queue demo plugin {#handoff_queue_demo_plugin}
 
 This plugin provides a simplified example of how to hand off
 packets between threads. I used it to debug packet-tracer handoff
