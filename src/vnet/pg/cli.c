@@ -87,7 +87,7 @@ pg_capture (pg_capture_args_t * a)
     {
       struct stat sb;
       if (stat ((char *) a->pcap_file_name, &sb) != -1)
-	return clib_error_return (0, "pcap file '%s' does not exist.",
+	return clib_error_return (0, "pcap file '%s' already exists.",
 				  a->pcap_file_name);
     }
 
