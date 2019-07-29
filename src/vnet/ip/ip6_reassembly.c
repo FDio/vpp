@@ -1181,7 +1181,9 @@ VLIB_REGISTER_NODE (ip6_reass_node_feature) = {
 VNET_FEATURE_INIT (ip6_reassembly_feature, static) = {
     .arc_name = "ip6-unicast",
     .node_name = "ip6-reassembly-feature",
-    .runs_before = VNET_FEATURES ("ip6-lookup"),
+    .runs_before = VNET_FEATURES ("ip6-lookup",
+                                  "esp6-decrypt",
+                                  "ah6-decrypt"),
     .runs_after = 0,
 };
 /* *INDENT-ON* */
