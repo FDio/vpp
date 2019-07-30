@@ -692,9 +692,9 @@ reply:
 }
 
 #define foreach_vlib_api_msg                    	\
-_(SOCKCLNT_CREATE, sockclnt_create)             	\
-_(SOCKCLNT_DELETE, sockclnt_delete)			\
-_(SOCK_INIT_SHM, sock_init_shm)
+  _(SOCKCLNT_CREATE, sockclnt_create, 0)             	\
+  _(SOCKCLNT_DELETE, sockclnt_delete, 0)		\
+  _(SOCK_INIT_SHM, sock_init_shm, 0)
 
 clib_error_t *
 vl_sock_api_init (vlib_main_t * vm)
@@ -710,13 +710,13 @@ vl_sock_api_init (vlib_main_t * vm)
   if (sm->socket_name == 0)
     return 0;
 
-#define _(N,n)                                                  \
+#define _(N,n,t)						\
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
                            vl_api_##n##_t_handler,              \
                            vl_noop_handler,                     \
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+                           sizeof(vl_api_##n##_t), t);
   foreach_vlib_api_msg;
 #undef _
 

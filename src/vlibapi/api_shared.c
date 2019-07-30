@@ -223,14 +223,40 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
     }
 
   /* Write the file header */
-  fh.nitems = vec_len (tp->traces);
-  fh.endian = tp->endian;
+  u32 nmsg = hash_elts (am->msg_index_by_name_and_crc);
   fh.wrapped = tp->wrapped;
+  fh.nitems = clib_host_to_net_u32 (vec_len (tp->traces));
+  fh.nitems_msgtbl = clib_host_to_net_u32 (nmsg);
 
   if (fwrite (&fh, sizeof (fh), 1, fp) != 1)
     {
       return (-10);
     }
+
+  /* Write the message table */
+  hash_pair_t *hp;
+  struct msgtable
+  {
+    u16 id;
+    char name[64];
+  } __attribute__ ((packed));
+  struct msgtable *m = 0;
+
+  vec_validate (m, nmsg);
+  i = 0;
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+  ({
+    m[i].id = htons(hp->value[0]);
+    strcpy_s(m[i].name, 64, (char *)hp->key);
+    i++;
+  }));
+
+  if (fwrite (m, sizeof (struct msgtable), nmsg, fp) != nmsg)
+    {
+      return (-14);
+    }
+  vec_free(m);
 
   /* No-wrap case */
   if (tp->wrapped == 0)
@@ -407,58 +433,58 @@ msg_handler_internal (api_main_t * am,
           .format_args = "T4",
         };
       /* *INDENT-ON* */
-      struct
-      {
-	u32 c;
-      } *ed;
-      ed = ELOG_DATA (am->elog_main, e);
-      if (id < vec_len (am->msg_names))
-	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
-      else
-	ed->c = elog_string (am->elog_main, "BOGUS");
-    }
-
-  if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
-    {
-      if (trace_it)
-	vl_msg_api_trace (am, am->rx_trace, the_msg);
-
-      if (am->msg_print_flag)
-	{
-	  fformat (stdout, "[%d]: %s\n", id, am->msg_names[id]);
-	  print_fp = (void *) am->msg_print_handlers[id];
-	  if (print_fp == 0)
-	    {
-	      fformat (stdout, "  [no registered print fn]\n");
-	    }
-	  else
-	    {
-	      (*print_fp) (the_msg, stdout);
-	    }
-	}
-
-      if (do_it)
-	{
-	  if (!am->is_mp_safe[id])
-	    {
-	      vl_msg_api_barrier_trace_context (am->msg_names[id]);
-	      vl_msg_api_barrier_sync ();
-	    }
-	  (*am->msg_handlers[id]) (the_msg);
-	  if (!am->is_mp_safe[id])
-	    vl_msg_api_barrier_release ();
-	}
-    }
+  struct
+  {
+    u32 c;
+  } *ed;
+  ed = ELOG_DATA (am->elog_main, e);
+  if (id < vec_len (am->msg_names))
+    ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
   else
-    {
-      clib_warning ("no handler for msg id %d", id);
-    }
+    ed->c = elog_string (am->elog_main, "BOGUS");
+}
 
-  if (free_it)
-    vl_msg_api_free (the_msg);
+if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
+  {
+    if (trace_it)
+      vl_msg_api_trace (am, am->rx_trace, the_msg);
 
-  if (PREDICT_FALSE (am->elog_trace_api_messages))
-    {
+    if (am->msg_print_flag)
+      {
+	fformat (stdout, "[%d]: %s\n", id, am->msg_names[id]);
+	print_fp = (void *) am->msg_print_handlers[id];
+	if (print_fp == 0)
+	  {
+	    fformat (stdout, "  [no registered print fn]\n");
+	  }
+	else
+	  {
+	    (*print_fp) (the_msg, stdout);
+	  }
+      }
+
+    if (do_it)
+      {
+	if (!am->is_mp_safe[id])
+	  {
+	    vl_msg_api_barrier_trace_context (am->msg_names[id]);
+	    vl_msg_api_barrier_sync ();
+	  }
+	(*am->msg_handlers[id]) (the_msg);
+	if (!am->is_mp_safe[id])
+	  vl_msg_api_barrier_release ();
+      }
+  }
+else
+  {
+    clib_warning ("no handler for msg id %d", id);
+  }
+
+if (free_it)
+  vl_msg_api_free (the_msg);
+
+if (PREDICT_FALSE (am->elog_trace_api_messages))
+  {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =
         {
@@ -473,23 +499,23 @@ msg_handler_internal (api_main_t * am,
         };
       /* *INDENT-ON* */
 
-      struct
+    struct
+    {
+      u32 barrier;
+      u32 c;
+    } *ed;
+    ed = ELOG_DATA (am->elog_main, e);
+    if (id < vec_len (am->msg_names))
       {
-	u32 barrier;
-	u32 c;
-      } *ed;
-      ed = ELOG_DATA (am->elog_main, e);
-      if (id < vec_len (am->msg_names))
-	{
-	  ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
-	  ed->barrier = !am->is_mp_safe[id];
-	}
-      else
-	{
-	  ed->c = elog_string (am->elog_main, "BOGUS");
-	  ed->barrier = 0;
-	}
-    }
+	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
+	ed->barrier = !am->is_mp_safe[id];
+      }
+    else
+      {
+	ed->c = elog_string (am->elog_main, "BOGUS");
+	ed->barrier = 0;
+      }
+  }
 }
 
 /* This is only to be called from a vlib/vnet app */
