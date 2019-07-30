@@ -880,65 +880,61 @@ pselect (int nfds, fd_set * __restrict readfds,
 /* If transparent TLS mode is turned on, then ldp will load key and cert.
  */
 static int
-load_tls_cert (vls_handle_t vlsh)
+load_cert_and_key (vls_handle_t vlsh, u8 load_cert, u8 load_key)
 {
-  char *env_var_str = getenv (LDP_ENV_TLS_CERT);
-  char inbuf[4096];
-  char *tls_cert;
+  char *key_env_var_str = getenv (LDP_ENV_TLS_KEY);
+  char *cert_env_var_str = getenv (LDP_ENV_TLS_CERT);
+  char kinbuf[4096];
+  char cinbuf[4096];
+  char *tls_cert = NULL;
+  char *tls_key = NULL;
   int cert_size;
-  FILE *fp;
-
-  if (env_var_str)
-    {
-      fp = fopen (env_var_str, "r");
-      if (fp == NULL)
-	{
-	  LDBG (0, "ERROR: failed to open cert file %s \n", env_var_str);
-	  return -1;
-	}
-      cert_size = fread (inbuf, sizeof (char), sizeof (inbuf), fp);
-      tls_cert = inbuf;
-      vppcom_session_tls_add_cert (vlsh_to_session_index (vlsh), tls_cert,
-				   cert_size);
-      fclose (fp);
-    }
-  else
-    {
-      LDBG (0, "ERROR: failed to read LDP environment %s\n",
-	    LDP_ENV_TLS_CERT);
-      return -1;
-    }
-  return 0;
-}
-
-static int
-load_tls_key (vls_handle_t vlsh)
-{
-  char *env_var_str = getenv (LDP_ENV_TLS_KEY);
-  char inbuf[4096];
-  char *tls_key;
   int key_size;
-  FILE *fp;
+  FILE *cfp;
+  FILE *kfp;
 
-  if (env_var_str)
-    {
-      fp = fopen (env_var_str, "r");
-      if (fp == NULL)
-	{
-	  LDBG (0, "ERROR: failed to open key file %s \n", env_var_str);
-	  return -1;
-	}
-      key_size = fread (inbuf, sizeof (char), sizeof (inbuf), fp);
-      tls_key = inbuf;
-      vppcom_session_tls_add_key (vlsh_to_session_index (vlsh), tls_key,
-				  key_size);
-      fclose (fp);
-    }
-  else
+  if (load_key && !key_env_var_str)
     {
       LDBG (0, "ERROR: failed to read LDP environment %s\n", LDP_ENV_TLS_KEY);
       return -1;
     }
+  if (load_cert && !cert_env_var_str)
+    {
+      LDBG (0, "ERROR: failed to read LDP environment %s\n", LDP_ENV_TLS_KEY);
+      return -1;
+    }
+
+  if (load_key)
+    {
+      kfp = fopen (key_env_var_str, "r");
+      if (kfp == NULL)
+	{
+	  LDBG (0, "ERROR: failed to open key file %s \n", key_env_var_str);
+	  return -1;
+	}
+      key_size = fread (kinbuf, sizeof (char), sizeof (kinbuf), kfp);
+      tls_key = kinbuf;
+    }
+  if (load_cert)
+    {
+      cfp = fopen (cert_env_var_str, "r");
+      if (cfp == NULL)
+	{
+	  LDBG (0, "ERROR: failed to open cert file %s \n", cert_env_var_str);
+	  if (load_key)
+	    fclose (kfp);
+	  return -1;
+	}
+      cert_size = fread (cinbuf, sizeof (char), sizeof (cinbuf), cfp);
+      tls_cert = cinbuf;
+    }
+  vppcom_session_crypto_context_add (vlsh_to_session_index (vlsh), tls_cert,
+				     cert_size, tls_key, key_size);
+  if (load_key)
+    fclose (kfp);
+  if (load_cert)
+    fclose (cfp);
+
   return 0;
 }
 
@@ -977,7 +973,7 @@ socket (int domain, int type, int protocol)
 	{
 	  if (ldp->transparent_tls)
 	    {
-	      if (load_tls_cert (vlsh) < 0 || load_tls_key (vlsh) < 0)
+	      if (load_cert_and_key (vlsh, 1 /* cert */ , 1 /* key */ ))
 		{
 		  return -1;
 		}

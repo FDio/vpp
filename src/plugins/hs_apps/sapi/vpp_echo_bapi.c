@@ -28,9 +28,6 @@ void
 echo_send_attach (echo_main_t * em)
 {
   vl_api_application_attach_t *bmp;
-  vl_api_application_tls_cert_add_t *cert_mp;
-  vl_api_application_tls_key_add_t *key_mp;
-
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   clib_memset (bmp, 0, sizeof (*bmp));
 
@@ -54,24 +51,26 @@ echo_send_attach (echo_main_t * em)
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = em->appns_secret;
     }
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+}
 
-  cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + test_srv_crt_rsa_len);
-  clib_memset (cert_mp, 0, sizeof (*cert_mp));
-  cert_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_CERT_ADD);
-  cert_mp->client_index = em->my_client_index;
-  cert_mp->context = ntohl (0xfeedface);
-  cert_mp->cert_len = clib_host_to_net_u16 (test_srv_crt_rsa_len);
-  clib_memcpy_fast (cert_mp->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & cert_mp);
-
-  key_mp = vl_msg_api_alloc (sizeof (*key_mp) + test_srv_key_rsa_len);
-  clib_memset (key_mp, 0, sizeof (*key_mp) + test_srv_key_rsa_len);
-  key_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_KEY_ADD);
-  key_mp->client_index = em->my_client_index;
-  key_mp->context = ntohl (0xfeedface);
-  key_mp->key_len = clib_host_to_net_u16 (test_srv_key_rsa_len);
-  clib_memcpy_fast (key_mp->key, test_srv_key_rsa, test_srv_key_rsa_len);
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & key_mp);
+void
+echo_send_crypto_context_add (echo_main_t * em)
+{
+  vl_api_crypto_context_add_t *bmp;
+  bmp =
+    vl_msg_api_alloc (sizeof (*bmp) + test_srv_crt_rsa_len +
+		      test_srv_key_rsa_len);
+  clib_memset (bmp, 0, sizeof (*bmp));
+  bmp->_vl_msg_id = ntohs (VL_API_CRYPTO_CONTEXT_ADD);
+  bmp->client_index = em->my_client_index;
+  bmp->context = ntohl (0xfeedface);
+  bmp->engine = em->crypto_ctx_engine;
+  bmp->cert_len = clib_host_to_net_u16 (test_srv_crt_rsa_len);
+  bmp->key_len = clib_host_to_net_u16 (test_srv_key_rsa_len);
+  clib_memcpy_fast (bmp->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  clib_memcpy_fast (bmp->key + test_srv_crt_rsa_len, test_srv_key_rsa,
+		    test_srv_key_rsa_len);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 }
 
 void
@@ -97,6 +96,7 @@ echo_send_listen (echo_main_t * em)
   bmp->_vl_msg_id = ntohs (VL_API_BIND_URI);
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
+  bmp->crypto_context_index = em->crypto_ctx_index;
   memcpy (bmp->uri, em->uri, vec_len (em->uri));
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 }
@@ -380,28 +380,23 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 }
 
 static void
-  vl_api_application_tls_cert_add_reply_t_handler
-  (vl_api_application_tls_cert_add_reply_t * mp)
-{
-  if (mp->retval)
-    ECHO_FAIL ("failed to add tls cert");
-}
-
-static void
-  vl_api_application_tls_key_add_reply_t_handler
-  (vl_api_application_tls_key_add_reply_t * mp)
-{
-  if (mp->retval)
-    ECHO_FAIL ("failed to add tls key");
-}
-
-static void
 vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
 {
   echo_main_t *em = &echo_main;
   if (mp->retval && (em->proto_cb_vft->connected_cb))
     em->proto_cb_vft->connected_cb ((session_connected_bundled_msg_t *) mp,
 				    mp->context, 1 /* is_failed */ );
+}
+
+static void
+vl_api_crypto_context_add_reply_t_handler (vl_api_crypto_context_add_reply_t *
+					   mp)
+{
+  if (mp->retval)
+    {
+      ECHO_FAIL ("failed to add crypto context");
+      return;
+    }
 }
 
 #define foreach_quic_echo_msg                                           \
@@ -412,8 +407,7 @@ _(APPLICATION_ATTACH_REPLY, application_attach_reply)                   \
 _(APPLICATION_DETACH_REPLY, application_detach_reply)                   \
 _(MAP_ANOTHER_SEGMENT, map_another_segment)                             \
 _(UNMAP_SEGMENT, unmap_segment)                                         \
-_(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)       \
-_(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)         \
+_(CRYPTO_CONTEXT_ADD_REPLY, crypto_context_add_reply)                   \
 _(CONNECT_URI_REPLY, connect_uri_reply)         \
 
 void

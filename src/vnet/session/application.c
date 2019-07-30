@@ -540,8 +540,6 @@ application_alloc_and_init (app_init_args_t * a)
     props->evt_q_size = options[APP_OPTIONS_EVT_QUEUE_SIZE];
   if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
     props->use_mq_eventfd = 1;
-  if (options[APP_OPTIONS_TLS_ENGINE])
-    app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
   props->segment_type = seg_type;
 
   /* Add app to lookup by api_client_index table */
@@ -591,8 +589,6 @@ application_free (application_t * app)
   if (application_is_builtin (app))
     application_name_table_del (app);
   vec_free (app->name);
-  vec_free (app->tls_cert);
-  vec_free (app->tls_key);
   pool_put (app_main.app_pool, app);
 }
 
@@ -1296,30 +1292,6 @@ application_get_segment_manager_properties (u32 app_index)
   return &app->sm_properties;
 }
 
-clib_error_t *
-vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a)
-{
-  application_t *app;
-  app = application_get (a->app_index);
-  if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
-				   0, "app %u doesn't exist", a->app_index);
-  app->tls_cert = vec_dup (a->cert);
-  return 0;
-}
-
-clib_error_t *
-vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a)
-{
-  application_t *app;
-  app = application_get (a->app_index);
-  if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
-				   0, "app %u doesn't exist", a->app_index);
-  app->tls_key = vec_dup (a->key);
-  return 0;
-}
-
 static void
 application_format_listeners (application_t * app, int verbose)
 {
@@ -1512,6 +1484,35 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
       /* *INDENT-ON* */
     }
 
+  return 0;
+}
+
+static crypto_ctx_t *
+crypto_ctx_alloc ()
+{
+  crypto_ctx_t *crctx;
+  pool_get (app_main.crypto_ctx_pool, crctx);
+  clib_memset (crctx, 0, sizeof (*crctx));
+  crctx->cr_index = crctx - app_main.crypto_ctx_pool;
+  return crctx;
+}
+
+crypto_ctx_t *
+crypto_context_get (u32 cr_index)
+{
+  crypto_ctx_t *crctx =
+    pool_elt_at_index (app_main.crypto_ctx_pool, cr_index);
+  return crctx;
+}
+
+clib_error_t *
+vnet_crypto_context_add (vnet_crypto_context_add_args_t * a)
+{
+  crypto_ctx_t *crctx = crypto_ctx_alloc ();
+  crctx->cert = vec_dup (a->cert);
+  crctx->key = vec_dup (a->key);
+  crctx->engine = a->engine;
+  a->index = crctx->cr_index;
   return 0;
 }
 

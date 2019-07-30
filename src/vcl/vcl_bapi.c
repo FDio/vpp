@@ -340,28 +340,14 @@ vl_api_connect_sock_reply_t_handler (vl_api_connect_sock_reply_t * mp)
 }
 
 static void
-  vl_api_application_tls_cert_add_reply_t_handler
-  (vl_api_application_tls_cert_add_reply_t * mp)
+vl_api_crypto_context_add_reply_t_handler (vl_api_crypto_context_add_reply_t *
+					   mp)
 {
   if (mp->retval)
     {
-      clib_warning ("VCL<%d>: add cert failed: %U", getpid (),
+      clib_warning ("VCL<%d>: add crypto failed: %U", getpid (),
 		    format_api_error, ntohl (mp->retval));
-      return;
     }
-}
-
-static void
-  vl_api_application_tls_key_add_reply_t_handler
-  (vl_api_application_tls_key_add_reply_t * mp)
-{
-  if (mp->retval)
-    {
-      clib_warning ("VCL<%d>: add key failed: %U", getpid (),
-		    format_api_error, ntohl (mp->retval));
-      return;
-    }
-
 }
 
 #define foreach_sock_msg                                        	\
@@ -372,8 +358,7 @@ _(CONNECT_SOCK_REPLY, connect_sock_reply)                        	\
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)			\
 _(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
-_(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
-_(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
+_(CRYPTO_CONTEXT_ADD_REPLY, crypto_context_add_reply)  	\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
 _(UNMAP_SEGMENT, unmap_segment)						\
 _(APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)			\
@@ -441,7 +426,6 @@ vppcom_app_send_attach (void)
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     vcm->cfg.preallocated_fifo_pairs;
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = vcm->cfg.event_queue_size;
-  bmp->options[APP_OPTIONS_TLS_ENGINE] = TLS_ENGINE_OPENSSL;
   if (nsid_len)
     {
       bmp->namespace_id_len = nsid_len;
@@ -579,38 +563,22 @@ vppcom_send_unbind_sock (vcl_worker_t * wrk, u64 vpp_handle)
 }
 
 void
-vppcom_send_application_tls_cert_add (vcl_session_t * session, char *cert,
-				      u32 cert_len)
+vppcom_send_crypto_context_add (vcl_session_t * session, char *cert,
+				u32 cert_len, char *key, u32 key_len)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_application_tls_cert_add_t *cert_mp;
+  vl_api_crypto_context_add_t *crypto_mp;
 
-  cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + cert_len);
-  clib_memset (cert_mp, 0, sizeof (*cert_mp));
-  cert_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_CERT_ADD);
-  cert_mp->client_index = wrk->my_client_index;
-  cert_mp->context = session->session_index;
-  cert_mp->cert_len = clib_host_to_net_u16 (cert_len);
-  clib_memcpy_fast (cert_mp->cert, cert, cert_len);
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & cert_mp);
-
-}
-
-void
-vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
-				     u32 key_len)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_application_tls_key_add_t *key_mp;
-
-  key_mp = vl_msg_api_alloc (sizeof (*key_mp) + key_len);
-  clib_memset (key_mp, 0, sizeof (*key_mp));
-  key_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_KEY_ADD);
-  key_mp->client_index = wrk->my_client_index;
-  key_mp->context = session->session_index;
-  key_mp->key_len = clib_host_to_net_u16 (key_len);
-  clib_memcpy_fast (key_mp->key, key, key_len);
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & key_mp);
+  crypto_mp = vl_msg_api_alloc (sizeof (*crypto_mp) + cert_len + key_len);
+  clib_memset (crypto_mp, 0, sizeof (*crypto_mp));
+  crypto_mp->_vl_msg_id = ntohs (VL_API_CRYPTO_CONTEXT_ADD);
+  crypto_mp->context = session->session_index;
+  crypto_mp->engine = CRYPTO_ENGINE_OPENSSL;
+  crypto_mp->cert_len = clib_host_to_net_u16 (cert_len);
+  crypto_mp->key_len = clib_host_to_net_u16 (key_len);
+  clib_memcpy_fast (crypto_mp->cert, cert, cert_len);
+  clib_memcpy_fast (crypto_mp->key + cert_len, key, key_len);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & crypto_mp);
 
 }
 

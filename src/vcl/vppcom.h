@@ -301,10 +301,9 @@ extern int vppcom_session_read_segments (uint32_t session_handle,
 					 vppcom_data_segments_t ds);
 extern void vppcom_session_free_segments (uint32_t session_handle,
 					  vppcom_data_segments_t ds);
-extern int vppcom_session_tls_add_cert (uint32_t session_handle, char *cert,
-					uint32_t cert_len);
-extern int vppcom_session_tls_add_key (uint32_t session_handle, char *key,
-				       uint32_t key_len);
+extern int vppcom_session_crypto_context_add (uint32_t session_handle,
+					      char *cert, uint32_t cert_len,
+					      char *key, uint32_t key_len);
 extern int vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds,
 				     uint32_t max_bytes);
 extern int vppcom_unformat_proto (uint8_t * proto, char *proto_str);

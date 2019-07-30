@@ -56,8 +56,7 @@ _(SESSION_ENABLE_DISABLE, session_enable_disable)                   	\
 _(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)				\
 _(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
 _(SESSION_RULES_DUMP, session_rules_dump)				\
-_(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
-_(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
+_(CRYPTO_CONTEXT_ADD, crypto_context_add)				\
 _(APP_WORKER_ADD_DEL, app_worker_add_del)				\
 
 static int
@@ -228,6 +227,28 @@ mq_send_session_accepted_cb (session_t * s)
   svm_msg_q_add_and_unlock (app_mq, msg);
 
   return 0;
+}
+
+static inline void
+mq_send_crypto_context_added_evt (app_worker_t * app_wrk,
+				  u32 crypto_context_index, u32 context)
+{
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  crypto_context_added_msg_t *mp;
+  svm_msg_q_t *app_mq;
+  session_event_t *evt;
+
+  app_mq = app_wrk->event_queue;
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return;
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = CRYPTO_CTX_EVT_ADDED;
+  mp = (crypto_context_added_msg_t *) evt->data;
+  mp->crypto_index = crypto_context_index;
+  mp->client_index = app_wrk->api_client_index;
+  mp->context = context;
+  svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
 static inline void
@@ -1237,83 +1258,59 @@ vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 }
 
 static void
-vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
-					   mp)
+vl_api_crypto_context_add_t_handler (vl_api_crypto_context_add_t * mp)
 {
-  vl_api_app_namespace_add_del_reply_t *rmp;
-  vnet_app_add_tls_cert_args_t _a, *a = &_a;
+  vl_api_crypto_context_add_reply_t *rmp;
+  vnet_crypto_context_add_args_t _a, *a = &_a;
   clib_error_t *error;
-  application_t *app;
-  u32 cert_len;
+  application_t *app = 0;
+  app_worker_t *app_wrk;
+  u32 cert_len, key_len;
   int rv = 0;
   if (!session_main_is_enabled ())
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
     }
-  if (!(app = application_lookup (mp->client_index)))
+  app = application_lookup (mp->client_index);
+  if (!app)
     {
       rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
       goto done;
     }
+
+
   clib_memset (a, 0, sizeof (*a));
-  a->app_index = app->app_index;
   cert_len = clib_net_to_host_u16 (mp->cert_len);
   if (cert_len > 10000)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto done;
     }
-  vec_validate (a->cert, cert_len);
-  clib_memcpy_fast (a->cert, mp->cert, cert_len);
-  if ((error = vnet_app_add_tls_cert (a)))
-    {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
-    }
-  vec_free (a->cert);
-done:
-  REPLY_MACRO (VL_API_APPLICATION_TLS_CERT_ADD_REPLY);
-}
-
-static void
-vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
-					  mp)
-{
-  vl_api_app_namespace_add_del_reply_t *rmp;
-  vnet_app_add_tls_key_args_t _a, *a = &_a;
-  clib_error_t *error;
-  application_t *app;
-  u32 key_len;
-  int rv = 0;
-  if (!session_main_is_enabled ())
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto done;
-    }
-  if (!(app = application_lookup (mp->client_index)))
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-      goto done;
-    }
-  clib_memset (a, 0, sizeof (*a));
-  a->app_index = app->app_index;
   key_len = clib_net_to_host_u16 (mp->key_len);
   if (key_len > 10000)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto done;
     }
+  vec_validate (a->cert, cert_len);
   vec_validate (a->key, key_len);
-  clib_memcpy_fast (a->key, mp->key, key_len);
-  if ((error = vnet_app_add_tls_key (a)))
+  clib_memcpy_fast (a->cert, mp->cert, cert_len);
+  clib_memcpy_fast (a->key, mp->key + cert_len, key_len);
+  a->engine = mp->engine;
+  if ((error = vnet_crypto_context_add (a)))
     {
       rv = clib_error_get_code (error);
       clib_error_report (error);
     }
+  vec_free (a->cert);
   vec_free (a->key);
+
+  app_wrk = application_get_worker (app, 0);
+  mq_send_crypto_context_added_evt (app_wrk, a->index, mp->context);
+
 done:
-  REPLY_MACRO (VL_API_APPLICATION_TLS_KEY_ADD_REPLY);
+  REPLY_MACRO (VL_API_CRYPTO_CONTEXT_ADD_REPLY);
 }
 
 static clib_error_t *

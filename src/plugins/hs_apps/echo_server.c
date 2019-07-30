@@ -319,8 +319,7 @@ create_api_loopback (vlib_main_t * vm)
 static int
 echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
-  vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
-  vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
+  vnet_crypto_context_add_args_t _a_crypto, *a_crypto = &_a_crypto;;
   echo_server_main_t *esm = &echo_server_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
@@ -350,7 +349,6 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = esm->fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = esm->fifo_size;
   a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = esm->private_segment_count;
-  a->options[APP_OPTIONS_TLS_ENGINE] = esm->tls_engine;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     esm->prealloc_fifos ? esm->prealloc_fifos : 1;
 
@@ -369,17 +367,13 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
     }
   esm->app_index = a->app_index;
 
-  clib_memset (a_cert, 0, sizeof (*a_cert));
-  a_cert->app_index = a->app_index;
-  vec_validate (a_cert->cert, test_srv_crt_rsa_len);
-  clib_memcpy_fast (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
-  vnet_app_add_tls_cert (a_cert);
+  clib_memset (a_crypto, 0, sizeof (*a_crypto));
+  vec_validate (a_crypto->cert, test_srv_crt_rsa_len);
+  clib_memcpy_fast (a_crypto->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  vec_validate (a_crypto->key, test_srv_key_rsa_len);
+  clib_memcpy_fast (a_crypto->key, test_srv_key_rsa, test_srv_key_rsa_len);
+  vnet_crypto_context_add (a_crypto);
 
-  clib_memset (a_key, 0, sizeof (*a_key));
-  a_key->app_index = a->app_index;
-  vec_validate (a_key->key, test_srv_key_rsa_len);
-  clib_memcpy_fast (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
-  vnet_app_add_tls_key (a_key);
   return 0;
 }
 
@@ -471,7 +465,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   esm->prealloc_fifos = 0;
   esm->private_segment_count = 0;
   esm->private_segment_size = 0;
-  esm->tls_engine = TLS_ENGINE_OPENSSL;
+  esm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   vec_free (esm->server_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)

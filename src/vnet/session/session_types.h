@@ -44,6 +44,7 @@ typedef struct _session_endpoint_cfg
   u8 original_tp;
   u8 *hostname;
   u64 parent_handle;
+  u32 crypto_ctx_index;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\
@@ -303,6 +304,7 @@ typedef enum
   SESSION_CTRL_EVT_REQ_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE_REPLY,
+  CRYPTO_CTX_EVT_ADDED,
 } session_evt_type_t;
 
 /* Deprecated and will be removed. Use types above */

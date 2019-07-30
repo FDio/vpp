@@ -591,6 +591,14 @@ session_reset_handler (session_reset_msg_t * mp)
 }
 
 static void
+echo_crypto_context_added_handle (crypto_context_added_msg_t * mp)
+{
+  echo_main_t *em = &echo_main;
+  em->crypto_ctx_index = mp->crypto_index;
+  em->state = STATE_ATTACHED_WCRYPTO;
+}
+
+static void
 handle_mq_event (session_event_t * e)
 {
   switch (e->event_type)
@@ -609,6 +617,10 @@ handle_mq_event (session_event_t * e)
       break;
     case SESSION_CTRL_EVT_RESET:
       session_reset_handler ((session_reset_msg_t *) e->data);
+      break;
+    case CRYPTO_CTX_EVT_ADDED:
+      echo_crypto_context_added_handle ((crypto_context_added_msg_t *)
+					e->data);
       break;
     case SESSION_IO_EVT_RX:
       break;
@@ -724,6 +736,7 @@ print_usage_and_exit (void)
 	   "                       exit        - Exiting of the app\n"
 	   "  json                Output global stats in json\n"
 	   "  log=N               Set the log level to [0: no output, 1:errors, 2:log]\n"
+	   "  crypto [engine]     Set the crypto engine [openssl, vpp, picotls, mbedtls]\n"
 	   "\n"
 	   "  nclients N          Open N clients sending data\n"
 	   "  nthreads N          Use N busy loop threads for data [in addition to main & msg queue]\n"
@@ -811,6 +824,11 @@ echo_process_opts (int argc, char **argv)
 	  em->n_connects = em->n_clients;
 	}
       else if (unformat (a, "nthreads %d", &em->n_rx_threads))
+	;
+      else
+	if (unformat
+	    (a, "crypto %U", echo_unformat_crypto_engine,
+	     &em->crypto_ctx_engine))
 	;
       else if (unformat (a, "appns %_%v%_", &em->appns_id))
 	;
@@ -938,6 +956,8 @@ main (int argc, char **argv)
   em->tx_buf_size = 1 << 20;
   em->data_source = ECHO_INVALID_DATA_SOURCE;
   em->uri = format (0, "%s%c", "tcp://0.0.0.0/1234", 0);
+  em->crypto_ctx_index = ~0;
+  em->crypto_ctx_engine = CRYPTO_ENGINE_NONE;
   echo_set_each_proto_defaults_before_opts (em);
   echo_process_opts (argc, argv);
   echo_process_uri (em);
@@ -1000,6 +1020,20 @@ main (int argc, char **argv)
     {
       ECHO_FAIL ("pthread create errored\n");
       exit (1);
+    }
+  if (em->crypto_ctx_engine == CRYPTO_ENGINE_NONE)
+    /* when no crypto engine specified, dont expect crypto ctx */
+    em->state = STATE_ATTACHED_WCRYPTO;
+  else
+    {
+      ECHO_LOG (1, "Adding crypto context %U", echo_format_crypto_engine,
+		em->crypto_ctx_engine);
+      echo_send_crypto_context_add (em);
+      if (wait_for_state_change (em, STATE_ATTACHED_WCRYPTO, TIMEOUT))
+	{
+	  ECHO_FAIL ("Couldn't add crypto context to vpp\n");
+	  exit (1);
+	}
     }
   for (i = 0; i < em->n_rx_threads; i++)
     if (pthread_create (&em->data_thread_handles[i],

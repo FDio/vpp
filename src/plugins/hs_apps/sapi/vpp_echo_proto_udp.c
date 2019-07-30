@@ -51,7 +51,6 @@ udp_echo_connected_cb (session_connected_bundled_msg_t * mp,
       return;			/* Dont handle bapi connect errors for now */
     }
 
-  ECHO_LOG (1, "Connected session 0x%lx -> URI", mp->handle);
   session->accepted_session_count = 0;
   session->session_type = ECHO_SESSION_TYPE_STREAM;
 
