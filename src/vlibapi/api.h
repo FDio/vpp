@@ -30,9 +30,9 @@
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED ( struct {
-   u8 endian;
-   u8 wrapped;
    u32 nitems;
+   u32 msgtbl_size;
+   u8 wrapped;
 }) vl_api_trace_file_header_t;
 /* *INDENT-ON* */
 
