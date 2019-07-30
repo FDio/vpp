@@ -10,7 +10,7 @@ Descriptions of section entries:
 	E: exclude file(s) matched by F:
 	C: Single line comment related to current section.
 	I: single word feature/component identifier
-	Y: path to feature YAML file
+	Y: path to feature YAMML file
 
 		-----------------------------------
 
