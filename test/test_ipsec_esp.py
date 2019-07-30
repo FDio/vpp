@@ -3,7 +3,7 @@ import unittest
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import UDP
 
-from framework import VppTestRunner
+from framework import VppTestRunner, running_extended_tests
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
     IPsecIPv4Params, IPsecIPv6Params, \
@@ -352,6 +352,8 @@ class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests):
     pass
 
 
+# This class takes a grand total of 600 seconds to run.
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class TestIpsecEspAll(ConfigIpsecESP,
                       IpsecTra4, IpsecTra6,
                       IpsecTun4, IpsecTun6):
