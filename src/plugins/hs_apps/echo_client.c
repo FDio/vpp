@@ -626,6 +626,7 @@ static session_cb_vft_t echo_clients = {
 static clib_error_t *
 echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
+  vnet_crypto_context_add_args_t _a_crypto, *a_crypto = &_a_crypto;;
   u32 prealloc_fifos, segment_size = 256 << 20;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
@@ -654,7 +655,6 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = ecm->private_segment_count;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  options[APP_OPTIONS_TLS_ENGINE] = ecm->tls_engine;
   if (appns_id)
     {
       options[APP_OPTIONS_FLAGS] |= appns_flags;
@@ -665,6 +665,13 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 
   if ((rv = vnet_application_attach (a)))
     return clib_error_return (0, "attach returned %d", rv);
+
+  clib_memset (a_crypto, 0, sizeof (*a_crypto));
+  vec_validate (a_crypto->cert, test_srv_crt_rsa_len);
+  clib_memcpy_fast (a_crypto->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  vec_validate (a_crypto->key, test_srv_key_rsa_len);
+  clib_memcpy_fast (a_crypto->key, test_srv_key_rsa, test_srv_key_rsa_len);
+  vnet_crypto_context_add (a_crypto);
 
   ecm->app_index = a->app_index;
   return 0;
@@ -771,7 +778,7 @@ echo_clients_command_fn (vlib_main_t * vm,
   ecm->test_bytes = 0;
   ecm->test_failed = 0;
   ecm->vlib_main = vm;
-  ecm->tls_engine = TLS_ENGINE_OPENSSL;
+  ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   ecm->no_copy = 0;
   ecm->run_test = ECHO_CLIENTS_STARTING;
 

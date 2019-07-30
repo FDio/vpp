@@ -44,6 +44,7 @@ typedef struct _session_endpoint_cfg
   u8 original_tp;
   u8 *hostname;
   u64 parent_handle;
+  u32 crypto_ctx_index;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\

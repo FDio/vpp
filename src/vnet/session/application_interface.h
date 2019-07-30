@@ -135,23 +135,30 @@ typedef struct _vnet_disconnect_args_t
 
 typedef struct _vnet_application_add_tls_cert_args_t
 {
-  u32 app_index;
   u8 *cert;
-} vnet_app_add_tls_cert_args_t;
-
-typedef struct _vnet_application_add_tls_key_args_t
-{
-  u32 app_index;
   u8 *key;
-} vnet_app_add_tls_key_args_t;
+  u8 engine;
+  u32 index;
+} vnet_crypto_context_add_args_t;
 
-typedef enum tls_engine_type_
+typedef enum crypto_engine_type_
 {
-  TLS_ENGINE_NONE,
-  TLS_ENGINE_MBEDTLS,
-  TLS_ENGINE_OPENSSL,
-  TLS_N_ENGINES
-} tls_engine_type_t;
+  CRYPTO_ENGINE_NONE,
+  CRYPTO_ENGINE_MBEDTLS,
+  CRYPTO_ENGINE_OPENSSL,
+  CRYPTO_ENGINE_PICOTLS,
+  CRYPTO_ENGINE_VPP,
+  CRYPTO_N_ENGINES
+} crypto_engine_type_t;
+
+typedef struct crypto_ctx_
+{
+  u64 opaque;
+  u8 *key;
+  u8 *cert;
+  u32 cr_index;			/* index in crypto context pool */
+  u8 engine;
+} crypto_ctx_t;
 
 /* Application attach options */
 typedef enum
@@ -168,7 +175,6 @@ typedef enum
   APP_OPTIONS_NAMESPACE_SECRET,
   APP_OPTIONS_PROXY_TRANSPORT,
   APP_OPTIONS_ACCEPT_COOKIE,
-  APP_OPTIONS_TLS_ENGINE,
   APP_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 
@@ -229,8 +235,8 @@ int vnet_connect (vnet_connect_args_t * a);
 int vnet_unlisten (vnet_unlisten_args_t * a);
 int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
-clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
-clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
+crypto_ctx_t *crypto_context_get (u32 cr_index);
+clib_error_t *vnet_crypto_context_add (vnet_crypto_context_add_args_t * a);
 
 typedef struct app_session_transport_
 {

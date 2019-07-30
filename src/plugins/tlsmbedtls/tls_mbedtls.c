@@ -80,7 +80,7 @@ mbedtls_ctx_alloc (void)
 
   clib_memset (*ctx, 0, sizeof (mbedtls_ctx_t));
   (*ctx)->ctx.c_thread_index = thread_index;
-  (*ctx)->ctx.tls_ctx_engine = TLS_ENGINE_MBEDTLS;
+  (*ctx)->ctx.tls_ctx_engine = CRYPTO_ENGINE_MBEDTLS;
   (*ctx)->mbedtls_ctx_index = ctx - tm->ctx_pool[thread_index];
   return ((*ctx)->mbedtls_ctx_index);
 }
@@ -276,10 +276,9 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   mbedtls_main_t *mm = &mbedtls_main;
-  app_worker_t *app_wrk;
-  application_t *app;
   void *ctx_ptr;
   int rv;
+  crypto_ctx_t *crctx = crypto_context_get (ctx->crypto_ctx_index);
 
   mbedtls_ssl_init (&mc->ssl);
   mbedtls_ssl_config_init (&mc->conf);
@@ -289,12 +288,7 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
   /*
    * 1. Cert
    */
-  app_wrk = app_worker_get (ctx->parent_app_wrk_index);
-  if (!app_wrk)
-    return -1;
-
-  app = application_get (app_wrk->app_index);
-  if (!app->tls_cert || !app->tls_key)
+  if (!crctx->cert || !crctx->key)
     {
       TLS_DBG (1, " failed\n  ! tls cert and/or key not configured %d",
 	       ctx->parent_app_wrk_index);
@@ -302,8 +296,8 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
     }
 
   rv = mbedtls_x509_crt_parse (&mc->srvcert,
-			       (const unsigned char *) app->tls_cert,
-			       vec_len (app->tls_cert));
+			       (const unsigned char *) crctx->cert,
+			       vec_len (crctx->cert));
   if (rv != 0)
     {
       TLS_DBG (1, " failed\n  !  mbedtls_x509_crt_parse returned %d", rv);
@@ -311,8 +305,8 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
     }
 
   rv = mbedtls_pk_parse_key (&mc->pkey,
-			     (const unsigned char *) app->tls_key,
-			     vec_len (app->tls_key), NULL, 0);
+			     (const unsigned char *) crctx->key,
+			     vec_len (crctx->key), NULL, 0);
   if (rv != 0)
     {
       TLS_DBG (1, " failed\n  !  mbedtls_pk_parse_key returned %d", rv);
@@ -659,7 +653,7 @@ tls_mbedtls_init (vlib_main_t * vm)
   vec_validate (mm->rx_bufs, num_threads - 1);
   vec_validate (mm->tx_bufs, num_threads - 1);
 
-  tls_register_engine (&mbedtls_engine, TLS_ENGINE_MBEDTLS);
+  tls_register_engine (&mbedtls_engine, CRYPTO_ENGINE_MBEDTLS);
   return 0;
 }
 
