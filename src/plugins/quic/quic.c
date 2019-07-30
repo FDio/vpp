@@ -927,8 +927,15 @@ allocate_quicly_ctx (application_t * app, u8 is_client)
 				      &ptls_openssl_sha256, key_vec);
   if (!is_client && app->tls_key != NULL && app->tls_cert != NULL)
     {
-      load_bio_private_key (quicly_ctx->tls, (char *) app->tls_key);
-      load_bio_certificate_chain (quicly_ctx->tls, (char *) app->tls_cert);
+      if (load_bio_private_key (quicly_ctx->tls, (char *) app->tls_key))
+	{
+	  QUIC_DBG (1, "failed to read private key from app configuration\n");
+	}
+      if (load_bio_certificate_chain (quicly_ctx->tls,
+				      (char *) app->tls_cert))
+	{
+	  QUIC_DBG (1, "failed to load certificate\n");
+	}
     }
 }
 
