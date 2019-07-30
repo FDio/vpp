@@ -656,6 +656,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
   tcp_cc_init (tc);
+
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);
 
@@ -670,6 +671,8 @@ tcp_connection_init_vars (tcp_connection_t * tc)
 
   if (tc->flags & TCP_CONN_RATE_SAMPLE)
     tcp_bt_init (tc);
+
+  tc->ts_start = tcp_time_now_us (tc->c_thread_index);
 }
 
 static int
@@ -864,6 +867,23 @@ format_tcp_congestion (u8 * s, va_list * args)
 }
 
 static u8 *
+format_tcp_stats (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  u32 indent = format_get_indent (s);
+  s = format (s, "in segs %lu dsegs %lu bytes %lu dupacks %u\n",
+	      tc->segs_in, tc->data_segs_in, tc->bytes_in, tc->dupacks_in);
+  s = format (s, "%Uout segs %lu dsegs %lu bytes %lu dupacks %u\n",
+	      format_white_space, indent, tc->segs_out,
+	      tc->data_segs_out, tc->bytes_out, tc->dupacks_out);
+  s = format (s, "%Ufr %u tr %u rxt segs %lu bytes %lu duration %.3f",
+	      format_white_space, indent, tc->fr_occur,
+	      tc->tr_occur, tc->segs_retrans, tc->bytes_retrans,
+	      tcp_time_now_us (tc->c_thread_index) - tc->ts_start);
+  return s;
+}
+
+static u8 *
 format_tcp_vars (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
@@ -896,6 +916,7 @@ format_tcp_vars (u8 * s, va_list * args)
     {
       s = format (s, " sboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
 		  tc);
+      s = format (s, " stats: %U\n", format_tcp_stats, tc);
     }
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
