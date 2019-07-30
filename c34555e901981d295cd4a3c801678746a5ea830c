@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ec925a91_82b52acc",
+        "filename": "test/test_l2xc_multi_instance.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-30T16:52:01Z",
+      "side": 1,
+      "message": "why do we need six? Where are you using it?",
+      "range": {
+        "startLine": 56,
+        "startChar": 0,
+        "endLine": 56,
+        "endChar": 10
+      },
+      "revId": "c34555e901981d295cd4a3c801678746a5ea830c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "80a0a76f_3f5ca377",
+        "filename": "test/test_l2xc_multi_instance.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-30T16:52:01Z",
+      "side": 1,
+      "message": "//",
+      "range": {
+        "startLine": 145,
+        "startChar": 8,
+        "endLine": 145,
+        "endChar": 35
+      },
+      "revId": "c34555e901981d295cd4a3c801678746a5ea830c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bc9c3dcc_ce2173c7",
+        "filename": "test/test_l2xc_multi_instance.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-30T16:52:01Z",
+      "side": 1,
+      "message": "You don\u0027t need this.  Fix L145.",
+      "range": {
+        "startLine": 152,
+        "startChar": 12,
+        "endLine": 152,
+        "endChar": 55
+      },
+      "revId": "c34555e901981d295cd4a3c801678746a5ea830c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55e39cf6_6e50a51e",
+        "filename": "test/test_tcp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-30T16:52:01Z",
+      "side": 1,
+      "message": "We need to test for \"failed\" by convention, to maintain parity across the unit tests.",
+      "range": {
+        "startLine": 112,
+        "startChar": 8,
+        "endLine": 112,
+        "endChar": 34
+      },
+      "revId": "c34555e901981d295cd4a3c801678746a5ea830c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
