@@ -2545,7 +2545,7 @@ vl_api_ip_probe_neighbor_t_handler (vl_api_ip_probe_neighbor_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO (VL_API_PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY);
+  REPLY_MACRO (VL_API_IP_PROBE_NEIGHBOR_REPLY);
 }
 
 static void
