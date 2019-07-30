@@ -520,6 +520,8 @@ class VppTestCase(unittest.TestCase):
         cls.registry = VppObjectRegistry()
         cls.vpp_startup_failed = False
         cls.reporter = KeepAliveReporter()
+        cls.test_start_time = time.time()
+        cls.test_elapsed_time = 0
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
@@ -650,6 +652,8 @@ class VppTestCase(unittest.TestCase):
         cls.logger.debug("--- tearDownClass() for %s called ---" %
                          cls.__name__)
         cls.reporter.send_keep_alive(cls, 'tearDownClass')
+        cls.test_elapsed_time = time.time() - cls.test_start_time
+        cls.logger.error("Elapsed time: %f sec" % cls.test_elapsed_time)
         cls.quit()
         cls.file_handler.close()
         cls.reset_packet_infos()
