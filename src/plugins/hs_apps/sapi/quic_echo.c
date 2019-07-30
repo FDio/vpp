@@ -110,6 +110,7 @@ enum quic_session_state_t
 typedef enum
 {
   STATE_START,
+  STATE_HALF_ATTACHED,
   STATE_ATTACHED,
   STATE_LISTEN,
   STATE_READY,
@@ -242,6 +243,7 @@ typedef struct
   int max_test_msg;
 
   fifo_segment_main_t segment_main;
+  volatile u32 crypto_ctx_index;
 } echo_main_t;
 
 echo_main_t echo_main;
@@ -508,8 +510,7 @@ void
 application_send_attach (echo_main_t * em)
 {
   vl_api_application_attach_t *bmp;
-  vl_api_application_tls_cert_add_t *cert_mp;
-  vl_api_application_tls_key_add_t *key_mp;
+  vl_api_crypto_context_add_t *crypto_mp;
 
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   clib_memset (bmp, 0, sizeof (*bmp));
@@ -535,23 +536,18 @@ application_send_attach (echo_main_t * em)
     }
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 
-  cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + test_srv_crt_rsa_len);
-  clib_memset (cert_mp, 0, sizeof (*cert_mp));
-  cert_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_CERT_ADD);
-  cert_mp->client_index = em->my_client_index;
-  cert_mp->context = ntohl (0xfeedface);
-  cert_mp->cert_len = clib_host_to_net_u16 (test_srv_crt_rsa_len);
-  clib_memcpy_fast (cert_mp->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & cert_mp);
-
-  key_mp = vl_msg_api_alloc (sizeof (*key_mp) + test_srv_key_rsa_len);
-  clib_memset (key_mp, 0, sizeof (*key_mp) + test_srv_key_rsa_len);
-  key_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_KEY_ADD);
-  key_mp->client_index = em->my_client_index;
-  key_mp->context = ntohl (0xfeedface);
-  key_mp->key_len = clib_host_to_net_u16 (test_srv_key_rsa_len);
-  clib_memcpy_fast (key_mp->key, test_srv_key_rsa, test_srv_key_rsa_len);
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & key_mp);
+  crypto_mp =
+    vl_msg_api_alloc (sizeof (*crypto_mp) + test_srv_crt_rsa_len +
+		      test_srv_key_rsa_len);
+  clib_memset (crypto_mp, 0, sizeof (*crypto_mp));
+  crypto_mp->_vl_msg_id = ntohs (VL_API_CRYPTO_CONTEXT_ADD);
+  crypto_mp->context = ntohl (0xfeedface);
+  crypto_mp->cert_len = clib_host_to_net_u16 (test_srv_crt_rsa_len);
+  crypto_mp->key_len = clib_host_to_net_u16 (test_srv_key_rsa_len);
+  clib_memcpy_fast (crypto_mp->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  clib_memcpy_fast (crypto_mp->key + test_srv_crt_rsa_len, test_srv_key_rsa,
+		    test_srv_key_rsa_len);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & crypto_mp);
 }
 
 void
@@ -568,7 +564,7 @@ application_detach (echo_main_t * em)
 }
 
 static void
-server_send_listen (echo_main_t * em)
+server_send_listen (echo_main_t * em, u32 crypto_context_index)
 {
   vl_api_bind_uri_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
@@ -577,6 +573,7 @@ server_send_listen (echo_main_t * em)
   bmp->_vl_msg_id = ntohs (VL_API_BIND_URI);
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
+  bmp->crypto_context_index = crypto_context_index;
   memcpy (bmp->uri, em->uri, vec_len (em->uri));
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 }
@@ -1615,7 +1612,7 @@ clients_run (echo_main_t * em)
 static void
 server_run (echo_main_t * em)
 {
-  server_send_listen (em);
+  server_send_listen (em, em->crypto_ctx_index);
   if (wait_for_state_change (em, STATE_READY, 0))
     {
       ECHO_FAIL ("Timeout waiting for state ready");
@@ -1711,7 +1708,10 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   clib_spinlock_unlock (&em->segment_handles_lock);
   ECHO_LOG (1, "Mapped segment 0x%lx", segment_handle);
 
-  em->state = STATE_ATTACHED;
+  if (em->state == STATE_START)
+    em->state = STATE_HALF_ATTACHED;
+  else
+    em->state = STATE_ATTACHED;
   return;
 failed:
   for (i = clib_max (n_fds - 1, 0); i < vec_len (fds); i++)
@@ -1851,19 +1851,21 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 }
 
 static void
-  vl_api_application_tls_cert_add_reply_t_handler
-  (vl_api_application_tls_cert_add_reply_t * mp)
+vl_api_crypto_context_add_reply_t_handler (vl_api_crypto_context_add_reply_t *
+					   mp)
 {
+  echo_main_t *em = &echo_main;
   if (mp->retval)
-    ECHO_FAIL ("failed to add tls cert");
-}
-
-static void
-  vl_api_application_tls_key_add_reply_t_handler
-  (vl_api_application_tls_key_add_reply_t * mp)
-{
-  if (mp->retval)
-    ECHO_FAIL ("failed to add tls key");
+    {
+    ECHO_FAIL ("failed to add crypto context")}
+  else
+    {
+      em->crypto_ctx_index = mp->cr_index;
+      if (em->state == STATE_START)
+	em->state = STATE_HALF_ATTACHED;
+      else
+	em->state = STATE_ATTACHED;
+    }
 }
 
 static void
@@ -1897,8 +1899,7 @@ _(APPLICATION_ATTACH_REPLY, application_attach_reply)   		\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)			\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)				\
 _(UNMAP_SEGMENT, unmap_segment)			                        \
-_(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)	\
-_(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)		\
+_(CRYPTO_CONTEXT_ADD_REPLY, crypto_context_add_reply)			\
 _(CONNECT_URI_REPLY, connect_uri_reply)		\
 
 void
@@ -2117,6 +2118,7 @@ main (int argc, char **argv)
   em->data_source = ECHO_INVALID_DATA_SOURCE;
   em->uri = format (0, "%s%c", "quic://0.0.0.0/1234", 0);
   em->cb_vft = default_cb_vft;
+  em->crypto_ctx_index = ~0;
   quic_echo_process_opts (argc, argv);
 
   n_clients = em->n_clients * em->n_stream_clients;

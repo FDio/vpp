@@ -72,6 +72,7 @@ typedef enum
   STATE_FAILED = 0x20,
   STATE_UPDATED = 0x40,
   STATE_LISTEN_NO_MQ = 0x80,
+  STATE_CRYPTO_SET = 0x100,
 } vcl_session_state_t;
 
 #define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_VPP_CLOSING)
@@ -607,10 +608,8 @@ void vppcom_send_disconnect_session (u64 vpp_handle);
 void vppcom_send_bind_sock (vcl_session_t * session);
 void vppcom_send_unbind_sock (vcl_worker_t * wrk, u64 vpp_handle);
 void vppcom_api_hookup (void);
-void vppcom_send_application_tls_cert_add (vcl_session_t * session,
-					   char *cert, u32 cert_len);
-void vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
-					  u32 key_len);
+void vppcom_send_crypto_context_add (vcl_session_t * session, char *cert,
+				     u32 cert_len, char *key, u32 key_len);
 void vcl_send_app_worker_add_del (u8 is_add);
 void vcl_send_child_worker_del (vcl_worker_t * wrk);
 
