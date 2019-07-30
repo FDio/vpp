@@ -1,6 +1,6 @@
 Descriptions of section entries:
 
-	M: Maintainer Full name and E-mail address: Full Name <address@domain>
+	M: MMaintainer Full name and E-mail address: Full Name <address@domain>
 	   One maintainer per line.  Multiple M: lines acceptable.
 	F: Files and directories with wildcard patterns.
 	   A trailing slash includes all files and subdirectory files.
