@@ -228,6 +228,7 @@ endian_strings = {
     'i16': 'clib_net_to_host_u16',
     'i32': 'clib_net_to_host_u32',
     'i64': 'clib_net_to_host_u64',
+    'f64': 'clib_net_to_host_u64',
 }
 
 
