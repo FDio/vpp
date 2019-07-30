@@ -471,6 +471,11 @@ M:	Ole Troan <ot@cisco.com>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	src/vpp-api/python
 
+VAPI
+I:	vapi
+M:	Ole Troan <ot@cisco.com>
+F:	src/vpp-api/vapi
+
 Plugin - SCTP
 I:	sctp
 F:	src/plugins/sctp/
