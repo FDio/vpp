@@ -174,7 +174,7 @@ ptls_load_bio_certificates (ptls_context_t * ctx, BIO * bio)
   return ret;
 }
 
-void
+int
 load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data)
 {
   BIO *cert_bio;
@@ -182,13 +182,13 @@ load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data)
   if (ptls_load_bio_certificates (ctx, cert_bio) != 0)
     {
       BIO_free (cert_bio);
-      clib_warning ("failed to load certificate:%s\n", strerror (errno));
-      exit (1);
+      return -1;
     }
   BIO_free (cert_bio);
+  return 0;
 }
 
-void
+int
 load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
 {
   static ptls_openssl_sign_certificate_t sc;
@@ -200,13 +200,11 @@ load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
   BIO_free (key_bio);
 
   if (pkey == NULL)
-    {
-      clib_warning ("failed to read private key from app configuration\n");
-      exit (1);
-    }
+    return -1;
 
   ptls_openssl_init_sign_certificate (&sc, pkey);
   EVP_PKEY_free (pkey);
 
   ctx->sign_certificate = &sc.super;
+  return 0;
 }

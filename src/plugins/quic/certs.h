@@ -32,9 +32,9 @@ int ptls_load_bio_pem_objects (BIO * bio, const char *label,
 
 int ptls_load_bio_certificates (ptls_context_t * ctx, BIO * bio);
 
-void load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data);
+int load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data);
 
-void load_bio_private_key (ptls_context_t * ctx, const char *pk_data);
+int load_bio_private_key (ptls_context_t * ctx, const char *pk_data);
 
 
 #endif /* __included_quic_certs_h__ */
