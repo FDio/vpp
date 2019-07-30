@@ -1412,7 +1412,7 @@ quic_receive_connection (void *arg)
 
 
   memcpy (new_ctx, temp_ctx, sizeof (quic_ctx_t));
-  free (temp_ctx);
+  clib_mem_free (temp_ctx);
 
   new_ctx->c_thread_index = thread_index;
   new_ctx->c_c_index = new_ctx_id;
@@ -1434,22 +1434,17 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
 {
   tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   quic_ctx_t *ctx, *temp_ctx;
-  clib_bihash_kv_16_8_t kv;
-  quicly_conn_t *conn;
   u32 thread_index = vlib_get_thread_index ();
 
   QUIC_DBG (2, "Transferring conn %u to thread %u", ctx_index, dest_thread);
 
-  temp_ctx = malloc (sizeof (quic_ctx_t));
+  temp_ctx = clib_mem_alloc (sizeof (quic_ctx_t));
   ASSERT (temp_ctx);
   ctx = quic_ctx_get (ctx_index, thread_index);
 
   memcpy (temp_ctx, ctx, sizeof (quic_ctx_t));
 
-  /*  Remove from lookup hash, timer wheel and thread-local pool */
-  conn = ctx->conn;
-  quic_make_connection_key (&kv, quicly_get_master_id (conn));
-  clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 0 /* is_add */ );
+  /*  Remove from timer wheel and thread-local pool */
   if (ctx->timer_handle != QUIC_TIMER_HANDLE_INVALID)
     {
       tw = &quic_main.wrk_ctx[thread_index].timer_wheel;
@@ -1480,8 +1475,35 @@ quic_transfer_connection_rpc (void *arg)
  */
 static void
 quic_move_connection_to_thread (u32 ctx_index, u32 owner_thread,
-				u32 to_thread)
+				u32 to_thread,
+				quicly_decoded_packet_t * packet)
 {
+  clib_bihash_kv_16_8_t kv;
+  clib_bihash_16_8_t *h;
+
+  if (owner_thread == UINT32_MAX)
+    {
+      QUIC_DBG (3, "Connection already moving to right thread");
+      return;
+    }
+
+  /* Mark connection as moving in the conn map */
+  h = &quic_main.connection_hash;
+  quic_make_connection_key (&kv, &packet->cid.dest.plaintext);
+  if (clib_bihash_search_16_8 (h, &kv, &kv) != 0)
+    {
+      QUIC_DBG (0, "Bug: conn to move not found");
+      return;
+    }
+  kv.value |= (u64) UINT32_MAX << 32;
+  if (clib_bihash_add_del_16_8
+      (&quic_main.connection_hash, &kv, /* is_add */ 1))
+    {
+      QUIC_DBG (0, "Bug: cannot update conn in lookup hash");
+      return;
+    }
+
+  /* Send rpc to owner thread to move conn */
   QUIC_DBG (2, "Requesting transfer of conn %u from thread %u", ctx_index,
 	    owner_thread);
   u64 arg = ((u64) ctx_index) << 32 | to_thread;
@@ -1531,7 +1553,6 @@ quic_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 
   ctx->udp_session_handle = session_handle (udp_session);
   udp_session->opaque = ctx->parent_app_id;
-  udp_session->session_state = SESSION_STATE_READY;
 
   /* Init QUIC lib connection
    * Generate required sockaddr & salen */
@@ -1693,6 +1714,7 @@ tx_end:
 
 /*
  * Returns 0 if a matching connection is found and is on the right thread.
+ * Otherwise returns -1.
  * If a connection is found, even on the wrong thread, ctx_thread and ctx_index
  * will be set.
  */
@@ -1714,7 +1736,7 @@ quic_find_packet_ctx (u32 * ctx_thread, u32 * ctx_index,
   if (clib_bihash_search_16_8 (h, &kv, &kv) == 0)
     {
       u32 index = kv.value & UINT32_MAX;
-      u8 thread_id = kv.value >> 32;
+      u32 thread_id = kv.value >> 32;
       /* Check if this connection belongs to this thread, otherwise
        * ask for it to be moved */
       if (thread_id != caller_thread_index)
@@ -1969,11 +1991,11 @@ quic_app_rx_callback (session_t * udp_session)
 	      ctx = quic_ctx_get (ctx_index, thread_index);
 	      quic_receive (ctx, ctx->conn, packet);
 	    }
-	  else if (ctx_thread != UINT32_MAX)
+	  else if (ctx_index != UINT32_MAX)
 	    {
 	      /*  Connection found but on wrong thread, ask move */
 	      quic_move_connection_to_thread (ctx_index, ctx_thread,
-					      thread_index);
+					      thread_index, &packet);
 	    }
 	  else if ((packet.octets.base[0] & QUICLY_PACKET_TYPE_BITMASK) ==
 		   QUICLY_PACKET_TYPE_INITIAL)
