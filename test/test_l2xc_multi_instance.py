@@ -53,6 +53,7 @@
 
 import unittest
 import random
+import six
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -148,7 +149,7 @@ class TestL2xcMultiInst(VppTestCase):
             start_nr = macs_per_if * i
             end_nr = count if i == (n_int - 1) else macs_per_if * (i + 1)
             hosts = cls.hosts_by_pg_idx[pg_if.sw_if_index]
-            for j in range(start_nr, end_nr):
+            for j in range(int(start_nr), int(end_nr)):
                 host = Host(
                     "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
                     "172.17.1%02u.%u" % (pg_if.sw_if_index, j))

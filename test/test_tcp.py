@@ -109,7 +109,7 @@ class TestTCPUnitTests(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertNotIn("failed", error)
+        self.assertNotIn(0, error)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
