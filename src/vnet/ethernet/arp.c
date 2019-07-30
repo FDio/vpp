@@ -460,6 +460,8 @@ arp_enable (ethernet_arp_main_t * am, u32 sw_if_index)
   am->ethernet_arp_by_sw_if_index[sw_if_index].enabled = 1;
 
   vnet_feature_enable_disable ("arp", "arp-reply", sw_if_index, 1, NULL, 0);
+  vnet_feature_enable_disable ("arp", "arp-disabled", sw_if_index, 0, NULL,
+			       0);
 }
 
 static int
@@ -478,6 +480,8 @@ arp_disable (ethernet_arp_main_t * am, u32 sw_if_index)
   if (!arp_is_enabled (am, sw_if_index))
     return;
 
+  vnet_feature_enable_disable ("arp", "arp-disabled", sw_if_index, 1, NULL,
+			       0);
   vnet_feature_enable_disable ("arp", "arp-reply", sw_if_index, 0, NULL, 0);
 
   eai = &am->ethernet_arp_by_sw_if_index[sw_if_index];
@@ -1707,7 +1711,7 @@ VNET_FEATURE_ARC_INIT (arp_feat, static) =
 {
   .arc_name = "arp",
   .start_nodes = VNET_FEATURES ("arp-input"),
-  .last_in_arc = "arp-disabled",
+  .last_in_arc = "error-drop",
   .arc_index_ptr = &ethernet_arp_main.feature_arc_index,
 };
 
@@ -3048,9 +3052,10 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
 static clib_error_t *
 vnet_arp_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+
   if (!is_add && sw_if_index != ~0)
     {
-      ethernet_arp_main_t *am = &ethernet_arp_main;
       ethernet_arp_ip4_entry_t *e;
       /* *INDENT-OFF* */
       pool_foreach (e, am->ip4_entry_pool, ({
@@ -3063,6 +3068,12 @@ vnet_arp_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
         vnet_arp_unset_ip4_over_ethernet_internal (vnm, &args);
       }));
       /* *INDENT-ON* */
+      arp_disable (am, sw_if_index);
+    }
+  else if (is_add)
+    {
+      vnet_feature_enable_disable ("arp", "arp-disabled",
+				   sw_if_index, 1, NULL, 0);
     }
 
   return (NULL);
