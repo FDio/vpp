@@ -309,7 +309,10 @@ typedef struct _tcp_connection
   u16 flags;			/**< Connection flags (see tcp_conn_flags_e) */
   u32 timers[TCP_N_TIMERS];	/**< Timer handles into timer wheel */
 
-  /* TODO RFC4898 */
+  u64 segs_in;		/** RFC4022/4898 tcpHCInSegs/tcpEStatsPerfSegsIn */
+  u64 bytes_in;		/** RFC4898 tcpEStatsPerfHCDataOctetsIn */
+  u64 segs_out;		/** RFC4898 tcpEStatsPerfSegsOut */
+  u64 bytes_out;	/** RFC4898 tcpEStatsPerfHCDataOctetsOut */
 
   /** Send sequence variables RFC793 */
   u32 snd_una;		/**< oldest unacknowledged sequence number */
@@ -319,6 +322,9 @@ typedef struct _tcp_connection
   u32 snd_wl2;		/**< ack number used for last snd.wnd update */
   u32 snd_nxt;		/**< next seq number to be sent */
   u16 snd_mss;		/**< Effective send max seg (data) size */
+
+  u64 data_segs_in;	/** RFC4898 tcpEStatsPerfDataSegsIn */
+  u64 data_segs_out;	/** RFC4898 tcpEStatsPerfDataSegsOut */
 
   /** Receive sequence variables RFC793 */
   u32 rcv_nxt;		/**< next sequence number expected */
@@ -382,9 +388,10 @@ typedef struct _tcp_connection
   f64 delivered_time;		/**< Time last bytes were acked */
   tcp_byte_tracker_t *bt;	/**< Tx byte tracker */
 
+  f64 ts_start;		/**< Timestamp when connection initialized */
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
-  u32 timestamp_delta;
+  u32 timestamp_delta;	/**< Offset for timestamp */
 } tcp_connection_t;
 
 /* *INDENT-OFF* */
