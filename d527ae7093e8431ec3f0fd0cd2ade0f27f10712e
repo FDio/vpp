@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "86ff286d_44ae9fc9",
+        "filename": "test/test_l2bd.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-07-30T16:54:04Z",
+      "side": 1,
+      "message": "Fix L128 instead.",
+      "range": {
+        "startLine": 138,
+        "startChar": 12,
+        "endLine": 138,
+        "endChar": 55
+      },
+      "revId": "d527ae7093e8431ec3f0fd0cd2ade0f27f10712e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
