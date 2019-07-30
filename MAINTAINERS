@@ -435,6 +435,11 @@ I:	vppapigen
 M:	Ole Troan <otroan@employees.org>
 F:	src/tools/vppapigen/
 
+API trace tool
+I:	vppapitrace
+M:	Ole Troan <otroan@employees.org>
+F:	src/tools/vppapitrace/
+
 Binary API Compiler for C and C++
 I:	vapi
 M:	Ole Troan <ot@cisco.com>
