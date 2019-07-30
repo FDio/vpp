@@ -1137,6 +1137,9 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
     tc->snd_nxt += data_len;
   tc->rcv_las = tc->rcv_nxt;
 
+  tc->bytes_out += data_len;
+  tc->data_segs_out += 1;
+
   TCP_EVT_DBG (TCP_EVT_PKTIZE, tc);
 }
 
@@ -1410,14 +1413,14 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   /* Start is beyond snd_congestion */
   start = tc->snd_una + offset;
   if (seq_geq (start, tc->snd_congestion))
-    goto done;
+    return 0;
 
   /* Don't overshoot snd_congestion */
   if (seq_gt (start + max_deq_bytes, tc->snd_congestion))
     {
       max_deq_bytes = tc->snd_congestion - start;
       if (max_deq_bytes == 0)
-	goto done;
+	return 0;
     }
 
   n_bytes = tcp_prepare_segment (wrk, tc, offset, max_deq_bytes, b);
@@ -1431,7 +1434,8 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 	tcp_bt_track_rxt (tc, start, start + n_bytes);
     }
 
-done:
+  tc->bytes_retrans += n_bytes;
+  tc->segs_retrans += 1;
   TCP_EVT_DBG (TCP_EVT_CC_RTX, tc, offset, n_bytes);
   return n_bytes;
 }
@@ -2193,6 +2197,8 @@ tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
 
   if (!TCP_ALWAYS_ACK)
     tcp_timer_reset (tc0, TCP_TIMER_DELACK);
+
+  tc0->segs_out += 1;
 }
 
 always_inline uword
