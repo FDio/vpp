@@ -106,6 +106,24 @@
       "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9db2ab9b_8b1323c9",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-30T14:47:01Z",
+      "side": 1,
+      "message": "if the flags highest value is less than 256 then the flags enum type will precisely 1 byte. if it\u0027s 256 or greater and less than 0xffff it will be precisely 2 bytes. you can adjust the padding as the size of the type grows. You can add static_asserts to verify any size conditions you need. for example, you could put all of these gso related fields into a struct gso_buffer_t and static_assert that it\u0027s size is a multiple of u32.",
+      "parentUuid": "9793431b_77b4cb21",
+      "revId": "a6b4c4f83f0714c5b3e52fbf21ab1f5e33977253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
