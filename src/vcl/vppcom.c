@@ -2187,24 +2187,24 @@ check_mq:
 }
 
 static inline void
-vep_verify_epoll_chain (vcl_worker_t * wrk, u32 vep_idx)
+vep_verify_epoll_chain (vcl_worker_t * wrk, u32 vep_handle)
 {
   vcl_session_t *session;
   vppcom_epoll_t *vep;
-  u32 sid = vep_idx;
+  u32 sh = vep_handle;
 
   if (VPPCOM_DEBUG <= 2)
     return;
 
-  session = vcl_session_get (wrk, vep_idx);
+  session = vcl_session_get_w_handle (wrk, vep_handle);
   if (PREDICT_FALSE (!session))
     {
-      VDBG (0, "ERROR: Invalid vep_idx (%u)!", vep_idx);
+      VDBG (0, "ERROR: Invalid vep_idx (%u)!", vep_handle);
       goto done;
     }
   if (PREDICT_FALSE (!session->is_vep))
     {
-      VDBG (0, "ERROR: vep_idx (%u) is not a vep!", vep_idx);
+      VDBG (0, "ERROR: vep_idx (%u) is not a vep!", vep_handle);
       goto done;
     }
   vep = &session->vep;
@@ -2212,50 +2212,50 @@ vep_verify_epoll_chain (vcl_worker_t * wrk, u32 vep_idx)
 	"{\n"
 	"   is_vep         = %u\n"
 	"   is_vep_session = %u\n"
-	"   next_sid       = 0x%x (%u)\n"
-	"}\n", vep_idx, session->is_vep, session->is_vep_session,
+	"   next_sh        = 0x%x (%u)\n"
+	"}\n", vep_handle, session->is_vep, session->is_vep_session,
 	vep->next_sh, vep->next_sh);
 
-  for (sid = vep->next_sh; sid != ~0; sid = vep->next_sh)
+  for (sh = vep->next_sh; sh != ~0; sh = vep->next_sh)
     {
-      session = vcl_session_get (wrk, sid);
+      session = vcl_session_get_w_handle (wrk, sh);
       if (PREDICT_FALSE (!session))
 	{
-	  VDBG (0, "ERROR: Invalid sid (%u)!", sid);
+	  VDBG (0, "ERROR: Invalid sid (%u)!", sh);
 	  goto done;
 	}
       if (PREDICT_FALSE (session->is_vep))
 	{
-	  VDBG (0, "ERROR: sid (%u) is a vep!", vep_idx);
+	  VDBG (0, "ERROR: sid (%u) is a vep!", vep_handle);
 	}
       else if (PREDICT_FALSE (!session->is_vep_session))
 	{
-	  VDBG (0, "ERROR: session (%u) is not a vep session!", sid);
+	  VDBG (0, "ERROR: session (%u) is not a vep session!", sh);
 	  goto done;
 	}
       vep = &session->vep;
-      if (PREDICT_FALSE (vep->vep_sh != vep_idx))
+      if (PREDICT_FALSE (vep->vep_sh != vep_handle))
 	VDBG (0, "ERROR: session (%u) vep_idx (%u) != vep_idx (%u)!",
-	      sid, session->vep.vep_sh, vep_idx);
+	      sh, session->vep.vep_sh, vep_handle);
       if (session->is_vep_session)
 	{
 	  VDBG (0, "vep_idx[%u]: sid 0x%x (%u)\n"
 		"{\n"
-		"   next_sid       = 0x%x (%u)\n"
-		"   prev_sid       = 0x%x (%u)\n"
-		"   vep_idx        = 0x%x (%u)\n"
+		"   next_sh        = 0x%x (%u)\n"
+		"   prev_sh        = 0x%x (%u)\n"
+		"   vep_sh         = 0x%x (%u)\n"
 		"   ev.events      = 0x%x\n"
 		"   ev.data.u64    = 0x%llx\n"
 		"   et_mask        = 0x%x\n"
 		"}\n",
-		vep_idx, sid, sid, vep->next_sh, vep->next_sh, vep->prev_sh,
+		vep_handle, sh, sh, vep->next_sh, vep->next_sh, vep->prev_sh,
 		vep->prev_sh, vep->vep_sh, vep->vep_sh, vep->ev.events,
 		vep->ev.data.u64, vep->et_mask);
 	}
     }
 
 done:
-  VDBG (0, "vep_idx (%u): Dump complete!\n", vep_idx);
+  VDBG (0, "vep_sh (%u): Dump complete!\n", vep_handle);
 }
 
 int
