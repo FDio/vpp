@@ -535,10 +535,10 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
   if (vsm->cfg.proto == VPPCOM_PROTO_TLS
       || vsm->cfg.proto == VPPCOM_PROTO_QUIC)
     {
-      vppcom_session_tls_add_cert (wrk->listen_fd, vcl_test_crt_rsa,
-				   vcl_test_crt_rsa_len);
-      vppcom_session_tls_add_key (wrk->listen_fd, vcl_test_key_rsa,
-				  vcl_test_key_rsa_len);
+      vppcom_session_crypto_context_add (wrk->listen_fd, vcl_test_crt_rsa,
+					 vcl_test_crt_rsa_len,
+					 vcl_test_key_rsa,
+					 vcl_test_key_rsa_len);
     }
 
   rv = vppcom_session_bind (wrk->listen_fd, &vsm->cfg.endpt);

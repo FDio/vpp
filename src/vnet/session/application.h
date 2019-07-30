@@ -111,21 +111,6 @@ typedef struct application_
   /** Pool of listeners for the app */
   app_listener_t *listeners;
 
-  /*
-   * TLS & QUIC Specific
-   */
-
-  /** Certificate to be used for listen sessions */
-  u8 *tls_cert;
-
-  /** PEM encoded key */
-  u8 *tls_key;
-
-  /** Preferred tls engine */
-  u8 tls_engine;
-
-  u64 *quicly_ctx;
-
 } application_t;
 
 typedef struct app_main_
@@ -144,6 +129,11 @@ typedef struct app_main_
    * Hash table of builtin apps by name
    */
   uword *app_by_name;
+
+  /**
+   * Pool from which we allocate crypto contexts
+   */
+  crypto_ctx_t *crypto_ctx_pool;
 } app_main_t;
 
 typedef struct app_init_args_

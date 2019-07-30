@@ -988,8 +988,7 @@ static session_cb_vft_t http_static_server_session_cb_vft = {
 static int
 http_static_server_attach ()
 {
-  vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
-  vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
+  vnet_crypto_context_add_args_t _a_crypto, *a_crypto = &_a_crypto;;
   http_static_server_main_t *hsm = &http_static_server_main;
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
@@ -1022,17 +1021,12 @@ http_static_server_attach ()
   vec_free (a->name);
   hsm->app_index = a->app_index;
 
-  clib_memset (a_cert, 0, sizeof (*a_cert));
-  a_cert->app_index = a->app_index;
-  vec_validate (a_cert->cert, test_srv_crt_rsa_len);
-  clib_memcpy_fast (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
-  vnet_app_add_tls_cert (a_cert);
-
-  clib_memset (a_key, 0, sizeof (*a_key));
-  a_key->app_index = a->app_index;
-  vec_validate (a_key->key, test_srv_key_rsa_len);
-  clib_memcpy_fast (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
-  vnet_app_add_tls_key (a_key);
+  clib_memset (a_crypto, 0, sizeof (*a_crypto));
+  vec_validate (a_crypto->cert, test_srv_crt_rsa_len);
+  clib_memcpy_fast (a_crypto->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  vec_validate (a_crypto->key, test_srv_key_rsa_len);
+  clib_memcpy_fast (a_crypto->key, test_srv_key_rsa, test_srv_key_rsa_len);
+  vnet_crypto_context_add (a_crypto);
 
   return 0;
 }
