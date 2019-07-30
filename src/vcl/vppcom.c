@@ -1238,8 +1238,9 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
 }
 
 int
-vppcom_session_tls_add_cert (uint32_t session_handle, char *cert,
-			     uint32_t cert_len)
+vppcom_session_crypto_context_add (uint32_t session_handle, char *cert,
+				   uint32_t cert_len, char *key,
+				   uint32_t key_len)
 {
 
   vcl_worker_t *wrk = vcl_worker_get_current ();
@@ -1252,37 +1253,14 @@ vppcom_session_tls_add_cert (uint32_t session_handle, char *cert,
   if (cert_len == 0 || cert_len == ~0)
     return VPPCOM_EBADFD;
 
-  /*
-   * Send listen request to vpp and wait for reply
-   */
-  vppcom_send_application_tls_cert_add (session, cert, cert_len);
-
-  return VPPCOM_OK;
-
-}
-
-int
-vppcom_session_tls_add_key (uint32_t session_handle, char *key,
-			    uint32_t key_len)
-{
-
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vcl_session_t *session = 0;
-
-  session = vcl_session_get_w_handle (wrk, session_handle);
-  if (!session)
-    return VPPCOM_EBADFD;
-
   if (key_len == 0 || key_len == ~0)
     return VPPCOM_EBADFD;
-
   /*
    * Send listen request to vpp and wait for reply
    */
-  vppcom_send_application_tls_key_add (session, key, key_len);
+  vppcom_send_crypto_context_add (session, cert, cert_len, key, key_len);
 
   return VPPCOM_OK;
-
 
 }
 

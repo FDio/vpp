@@ -111,6 +111,7 @@ typedef struct quic_ctx_
   u32 timer_handle;
   u32 parent_app_wrk_id;
   u32 parent_app_id;
+  u32 crypto_ctx_index;
   u8 flags;
 } quic_ctx_t;
 
@@ -124,6 +125,13 @@ STATIC_ASSERT (offsetof (quic_ctx_t, _sctx_end_marker) <=
 	       TRANSPORT_CONN_ID_LEN,
 	       "connection data must be less than TRANSPORT_CONN_ID_LEN bytes");
 
+/* single-entry session cache */
+typedef struct quic_session_cache_
+{
+  ptls_encrypt_ticket_t super;
+  uint8_t id[32];
+  ptls_iovec_t data;
+} quic_session_cache_t;
 
 typedef struct quic_stream_data_
 {
@@ -147,6 +155,9 @@ typedef struct quic_main_
   quic_worker_ctx_t *wrk_ctx;
   clib_bihash_16_8_t connection_hash;	/* quicly connection id -> conn handle */
   f64 tstamp_ticks_per_clock;
+
+  ptls_cipher_suite_t ***quic_ciphers;	/* available ciphers by crypto engine */
+  quic_session_cache_t session_cache;
 
   /*
    * Config
