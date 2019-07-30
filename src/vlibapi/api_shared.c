@@ -189,6 +189,29 @@ vl_msg_api_trace_free (api_main_t * am, vl_api_trace_which_t which)
   return 0;
 }
 
+u8 *
+vl_api_serialize_message_table (api_main_t * am, u8 * vector)
+{
+  serialize_main_t _sm, *sm = &_sm;
+  hash_pair_t *hp;
+  u32 nmsg = hash_elts (am->msg_index_by_name_and_crc);
+
+  serialize_open_vector (sm, vector);
+
+  /* serialize the count */
+  serialize_integer (sm, nmsg, sizeof (u32));
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+  ({
+    serialize_likely_small_unsigned_integer (sm, hp->value[0]);
+    serialize_cstring (sm, (char *) hp->key);
+  }));
+  /* *INDENT-ON* */
+
+  return serialize_close_vector (sm);
+}
+
 int
 vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
 {
@@ -223,14 +246,23 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
     }
 
   /* Write the file header */
-  fh.nitems = vec_len (tp->traces);
-  fh.endian = tp->endian;
   fh.wrapped = tp->wrapped;
+  fh.nitems = clib_host_to_net_u32 (vec_len (tp->traces));
+  u8 *m = vl_api_serialize_message_table (am, 0);
+  clib_warning ("Message table length %d", vec_len (m));
+  fh.msgtbl_size = clib_host_to_net_u32 (vec_len (m));
 
   if (fwrite (&fh, sizeof (fh), 1, fp) != 1)
     {
       return (-10);
     }
+
+  /* Write the message table */
+  if (fwrite (m, vec_len (m), 1, fp) != 1)
+    {
+      return (-14);
+    }
+  vec_free (m);
 
   /* No-wrap case */
   if (tp->wrapped == 0)
