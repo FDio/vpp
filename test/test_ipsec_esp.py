@@ -352,6 +352,8 @@ class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests):
     pass
 
 
+# This class takes a grand total of 600 seconds to run.
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class TestIpsecEspAll(ConfigIpsecESP,
                       IpsecTra4, IpsecTra6,
                       IpsecTun4, IpsecTun6):
