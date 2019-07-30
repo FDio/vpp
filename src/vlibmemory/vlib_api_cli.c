@@ -402,10 +402,9 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   struct stat statb;
   size_t file_size;
   u8 *msg;
-  u8 endian_swap_needed = 0;
   api_main_t *am = &api_main;
   u8 *tmpbuf = 0;
-  u32 nitems;
+  u32 nitems, nitems_msgtbl;
   void **saved_print_handlers = 0;
 
   fd = open ((char *) filename, O_RDONLY);
@@ -443,14 +442,8 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
     }
   close (fd);
 
-  if ((clib_arch_is_little_endian && hp->endian == VL_API_BIG_ENDIAN)
-      || (clib_arch_is_big_endian && hp->endian == VL_API_LITTLE_ENDIAN))
-    endian_swap_needed = 1;
-
-  if (endian_swap_needed)
-    nitems = ntohl (hp->nitems);
-  else
-    nitems = hp->nitems;
+  nitems = ntohl (hp->nitems);
+  nitems_msgtbl = ntohl (hp->nitems_msgtbl);
 
   if (last_index == (u32) ~ 0)
     {
@@ -473,9 +466,25 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       saved_print_handlers = (void **) vec_dup (am->msg_print_handlers);
       vl_msg_api_custom_dump_configure (am);
     }
-
-
   msg = (u8 *) (hp + 1);
+
+  struct msgtable
+  {
+    u16 id;
+    char name[64];
+  } __attribute__ ((packed));
+  struct msgtable *m = (struct msgtable *) msg;
+
+  u16 *msgid_vec = 0;
+  for (i = 0; i < nitems_msgtbl; i++)
+    {
+      u16 index1 = vl_msg_api_get_msg_index ((u8 *) m[i].name);
+      u16 index2 = ntohs (m[i].id);
+      vec_validate (msgid_vec, index2);
+      msgid_vec[index2] = index1;
+    }
+
+  msg += nitems_msgtbl * sizeof (struct msgtable);
 
   for (i = 0; i < first_index; i++)
     {
@@ -486,11 +495,9 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       size = clib_host_to_net_u32 (*(u32 *) msg);
       msg += sizeof (u32);
 
-      if (clib_arch_is_little_endian)
-	msg_id = ntohs (*((u16 *) msg));
-      else
-	msg_id = *((u16 *) msg);
-
+      msg_id = ntohs (*((u16 *) msg));
+      if (msg_id < vec_len (msgid_vec))
+	msg_id = msgid_vec[msg_id];
       cfgp = am->api_trace_cfg + msg_id;
       if (!cfgp)
 	{
@@ -507,7 +514,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   for (; i <= last_index; i++)
     {
       trace_cfg_t *cfgp;
-      u16 *msg_idp;
       u16 msg_id;
       int size;
 
@@ -517,10 +523,11 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       size = clib_host_to_net_u32 (*(u32 *) msg);
       msg += sizeof (u32);
 
-      if (clib_arch_is_little_endian)
-	msg_id = ntohs (*((u16 *) msg));
-      else
-	msg_id = *((u16 *) msg);
+      msg_id = ntohs (*((u16 *) msg));
+      if (msg_id < vec_len (msgid_vec))
+	{
+	  msg_id = msgid_vec[msg_id];
+	}
 
       cfgp = am->api_trace_cfg + msg_id;
       if (!cfgp)
@@ -536,35 +543,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       vec_validate (tmpbuf, size - 1 + sizeof (uword));
       clib_memcpy (tmpbuf + sizeof (uword), msg, size);
       clib_memset (tmpbuf, 0xf, sizeof (uword));
-
-      /*
-       * Endian swap if needed. All msg data is supposed to be
-       * in network byte order. All msg handlers are supposed to
-       * know that. The generic message dumpers don't know that.
-       * One could fix apigen, I suppose.
-       */
-      if ((which == DUMP && clib_arch_is_little_endian) || endian_swap_needed)
-	{
-	  void (*endian_fp) (void *);
-	  if (msg_id >= vec_len (am->msg_endian_handlers)
-	      || (am->msg_endian_handlers[msg_id] == 0))
-	    {
-	      vlib_cli_output (vm, "Ugh: msg id %d no endian swap\n", msg_id);
-	      munmap (hp, file_size);
-	      vec_free (tmpbuf);
-	      am->replay_in_progress = 0;
-	      return;
-	    }
-	  endian_fp = am->msg_endian_handlers[msg_id];
-	  (*endian_fp) (tmpbuf + sizeof (uword));
-	}
-
-      /* msg_id always in network byte order */
-      if (clib_arch_is_little_endian)
-	{
-	  msg_idp = (u16 *) (tmpbuf + sizeof (uword));
-	  *msg_idp = msg_id;
-	}
 
       switch (which)
 	{
