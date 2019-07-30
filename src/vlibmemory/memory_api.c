@@ -426,8 +426,8 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
  */
 
 #define foreach_vlib_api_msg                            \
-_(MEMCLNT_CREATE, memclnt_create, 1)                    \
-_(MEMCLNT_DELETE, memclnt_delete, 1)                    \
+_(MEMCLNT_CREATE, memclnt_create, 0)                    \
+_(MEMCLNT_DELETE, memclnt_delete, 0)                    \
 _(MEMCLNT_KEEPALIVE, memclnt_keepalive, 0)              \
 _(MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply, 0)
 
