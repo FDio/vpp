@@ -26,6 +26,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
@@ -36,6 +37,7 @@ find_package(Threads REQUIRED)
 find_package(Boost OPTIONAL_COMPONENTS system filesystem)
 
 add_subdirectory(vom)
+add_subdirectory(cmake)
 
 add_vpp_packaging(
   NAME "vom"

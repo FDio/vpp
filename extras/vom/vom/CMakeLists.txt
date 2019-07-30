@@ -300,7 +300,7 @@ list(APPEND VOM_HEADERS
   vxlan_tunnel.hpp
 )
 
-add_definitions(-Wall -Werror -std=gnu++11)
+add_definitions(-Wall -Werror -std=gnu++11 -g)
 add_library(vom SHARED ${VOM_SOURCES})
 if (VOM_LIB_VERSION)
   set_target_properties(vom PROPERTIES SOVERSION ${VOM_LIB_VERSION})
