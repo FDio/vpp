@@ -68,29 +68,6 @@ vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-u8 *
-vl_api_serialize_message_table (api_main_t * am, u8 * vector)
-{
-  serialize_main_t _sm, *sm = &_sm;
-  hash_pair_t *hp;
-  u32 nmsg = hash_elts (am->msg_index_by_name_and_crc);
-
-  serialize_open_vector (sm, vector);
-
-  /* serialize the count */
-  serialize_integer (sm, nmsg, sizeof (u32));
-
-  /* *INDENT-OFF* */
-  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
-  ({
-    serialize_likely_small_unsigned_integer (sm, hp->value[0]);
-    serialize_cstring (sm, (char *) hp->key);
-  }));
-  /* *INDENT-ON* */
-
-  return serialize_close_vector (sm);
-}
-
 static void
 vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
 {
