@@ -145,7 +145,7 @@ vlib_trace_buffer (vlib_main_t * vm,
 				     (struct vlib_trace_main_t *) tm);
     }
 
-  //vlib_trace_next_frame (vm, r, next_index);
+  vlib_trace_next_frame (vm, r, next_index);
 
   pool_get (tm->trace_buffer_pool, h);
 
