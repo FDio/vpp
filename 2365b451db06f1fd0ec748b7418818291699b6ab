@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e7d0def_14d9ac42",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4013,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-07-30T16:21:08Z",
+      "side": 1,
+      "message": "I do not get why p4 goes to spine proxy as sep1 is a local SEP",
+      "revId": "2365b451db06f1fd0ec748b7418818291699b6ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
