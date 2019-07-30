@@ -365,6 +365,9 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 
       *error0 = TCP_ERROR_RCV_WND;
 
+      tc0->errors.below_data_wnd += seq_lt (vnet_buffer (b0)->tcp.seq_end,
+					    tc0->rcv_las);
+
       /* If not RST, send dup ack */
       if (!tcp_rst (th0))
 	{
@@ -1174,6 +1177,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
   tc->cc_algo->congestion (tc);
+  tc->fr_occurences += 1;
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 4);
 }
 #endif /* CLIB_MARCH_VARIANT */
@@ -1524,6 +1528,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	  goto process_ack;
 	}
 
+      tc->errors.above_ack_wnd += 1;
       *error = TCP_ERROR_ACK_FUTURE;
       TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 0,
 		   vnet_buffer (b)->tcp.ack_number);
@@ -1533,6 +1538,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   /* If old ACK, probably it's an old dupack */
   if (PREDICT_FALSE (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una)))
     {
+      tc->errors.below_ack_wnd += 1;
       *error = TCP_ERROR_ACK_OLD;
       TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 1,
 		   vnet_buffer (b)->tcp.ack_number);
@@ -1547,6 +1553,7 @@ process_ack:
   /*
    * Looks okay, process feedback
    */
+
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number);
 
@@ -1577,6 +1584,7 @@ process_ack:
   if (tcp_ack_is_cc_event (tc, b, prev_snd_wnd, prev_snd_una, &is_dack))
     {
       tcp_cc_handle_event (tc, &rs, is_dack);
+      tc->dupacks_in += is_dack;
       if (!tcp_in_cong_recovery (tc))
 	{
 	  *error = TCP_ERROR_ACK_OK;
@@ -1741,6 +1749,7 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
   ASSERT (data_len);
   written = session_enqueue_stream_connection (&tc->connection, b, 0,
 					       1 /* queue event */ , 1);
+  tc->bytes_in += written;
 
   TCP_EVT_DBG (TCP_EVT_INPUT, tc, 0, data_len, written);
 
@@ -1801,6 +1810,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
     }
 
   TCP_EVT_DBG (TCP_EVT_INPUT, tc, 1, data_len, data_len);
+  tc->bytes_in += data_len;
 
   /* Update SACK list if in use */
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
@@ -1889,6 +1899,7 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   vlib_buffer_advance (b, vnet_buffer (b)->tcp.data_offset);
   n_data_bytes = vnet_buffer (b)->tcp.data_len;
   ASSERT (n_data_bytes);
+  tc->data_segs_in += 1;
 
   /* Handle out-of-order data */
   if (PREDICT_FALSE (vnet_buffer (b)->tcp.seq_number != tc->rcv_nxt))
@@ -1923,6 +1934,8 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       error = tcp_session_enqueue_ooo (tc, b, n_data_bytes);
       tcp_program_dupack (tc);
       TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc, vnet_buffer (b)->tcp);
+      tc->errors.above_data_wnd += seq_gt (vnet_buffer (b)->tcp.seq_end,
+					   tc->rcv_las + tc->rcv_wnd);
       goto done;
     }
 
@@ -3398,6 +3411,7 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
   flags = tcp->flags & filter_flags;
   *next = tm->dispatch_table[tc->state][flags].next;
   *error = tm->dispatch_table[tc->state][flags].error;
+  tc->segs_in += 1;
 
   if (PREDICT_FALSE (*error == TCP_ERROR_DISPATCH
 		     || *next == TCP_INPUT_NEXT_RESET))
