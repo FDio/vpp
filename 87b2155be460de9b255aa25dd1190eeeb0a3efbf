@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8a267d55_fbcd7a24",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-07-31T15:04:22Z",
+      "side": 1,
+      "message": "GSO in VPP only does TSO, essentially. So, really rather than segment here and have everyone bear the cost of that code, I still believe it should be done in VXLAN interface, before adding the headers; and then the GSO flag cleared...",
+      "range": {
+        "startLine": 789,
+        "startChar": 1,
+        "endLine": 791,
+        "endChar": 41
+      },
+      "revId": "87b2155be460de9b255aa25dd1190eeeb0a3efbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "47837e70_b4842510",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-07-31T15:04:22Z",
+      "side": 1,
+      "message": "I think rather than just setting the flags you should be segmenting the TCP right here. The function to do so might be refactored/reused from current version in interface_output.c",
+      "range": {
+        "startLine": 176,
+        "startChar": 8,
+        "endLine": 195,
+        "endChar": 11
+      },
+      "revId": "87b2155be460de9b255aa25dd1190eeeb0a3efbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7be32fef_e70a241d",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-07-31T15:04:22Z",
+      "side": 1,
+      "message": "but if you decided to just set flags, probably inline func for this is probably a good idea ?",
+      "range": {
+        "startLine": 376,
+        "startChar": 0,
+        "endLine": 382,
+        "endChar": 89
+      },
+      "revId": "87b2155be460de9b255aa25dd1190eeeb0a3efbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d8e262e5_e3feee9d",
+        "filename": "test/test_gso.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-07-31T15:04:22Z",
+      "side": 1,
+      "message": "separate testcase, please.",
+      "revId": "87b2155be460de9b255aa25dd1190eeeb0a3efbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
