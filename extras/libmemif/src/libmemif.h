@@ -23,7 +23,7 @@
 #define _LIBMEMIF_H_
 
 /** Libmemif version. */
-#define LIBMEMIF_VERSION "3.0"
+#define LIBMEMIF_VERSION "3.1"
 /** Default name of application using libmemif. */
 #define MEMIF_DEFAULT_APP_NAME "libmemif-app"
 
@@ -95,6 +95,12 @@ typedef enum
 /** update events */
 #define MEMIF_FD_EVENT_MOD   (1 << 4)
 /** @} */
+
+/** \brief Memif per thread main handle
+    Pointer of type void, pointing to internal structure.
+    Used to identify internal per thread database.
+*/
+typedef void *memif_per_thread_main_handle_t;
 
 /** \brief Memif connection handle
     pointer of type void, pointing to internal structure
@@ -227,6 +233,24 @@ void memif_register_external_region (memif_add_external_region_t * ar,
 				     memif_del_external_region_t * dr,
 				     memif_get_external_buffer_offset_t * go);
 
+/** \brief Register external region
+    @param pt_main - per thread main handle
+    @param ar - add external region callback
+    @param gr - get external region addr callback
+    @param dr - delete external region callback
+    @param go - get external buffer offset callback (optional)
+*/
+void memif_per_thread_register_external_region (memif_per_thread_main_handle_t
+						pt_main,
+						memif_add_external_region_t *
+						ar,
+						memif_get_external_region_addr_t
+						* gr,
+						memif_del_external_region_t *
+						dr,
+						memif_get_external_buffer_offset_t
+						* go);
+
 /** @} */
 
 /**
@@ -246,7 +270,9 @@ typedef enum
 #endif /* _MEMIF_H_ */
 
 /** \brief Memif connection arguments
-    @param socket - memif socket handle, if NULL default socket will be used
+    @param pt_main - per thread main handle, if NULL global database is used
+    @param socket - memif socket handle, if NULL default socket will be used.
+                    socket must be registered in a provided database.
     @param secret - otional parameter used as interface autenthication
     @param num_s2m_rings - number of slave to master rings
     @param num_m2s_rings - number of master to slave rings
@@ -465,6 +491,28 @@ int memif_init (memif_control_fd_update_t * on_control_fd_update,
 		char *app_name, memif_alloc_t * memif_alloc,
 		memif_realloc_t * memif_realloc, memif_free_t * memif_free);
 
+/** \brief Memif per thread initialization
+    @param pt_main - per thread main handle
+    @param private_ctx - private context
+    @param on_control_fd_update - if control fd updates inform user to watch new fd
+    @param app_name - application name (will be truncated to 32 chars)
+    @param memif_alloc - cutom memory allocator, NULL = default
+    @param memif_realloc - custom memory reallocation, NULL = default
+    @param memif_free - custom memory free, NULL = default
+
+    Per thread version of memif_init ().
+    Instead of using global database, creates and initializes unique database,
+    identified by 'memif_per_thread_main_handle_t'.
+
+    \return memif_err_t
+*/
+int memif_per_thread_init (memif_per_thread_main_handle_t * pt_main,
+			   void *private_ctx,
+			   memif_control_fd_update_t * on_control_fd_update,
+			   char *app_name, memif_alloc_t * memif_alloc,
+			   memif_realloc_t * memif_realloc,
+			   memif_free_t * memif_free);
+
 /** \brief Memif cleanup
 
     Free libmemif internal allocations.
@@ -472,6 +520,15 @@ int memif_init (memif_control_fd_update_t * on_control_fd_update,
     \return 0
 */
 int memif_cleanup ();
+
+/** \brief Memif per thread cleanup
+    @param pt_main - per thread main handle
+
+    Free libmemif internal allocations and sets the handle to NULL.
+
+    \return memif_err_t
+*/
+int memif_per_thread_cleanup (memif_per_thread_main_handle_t * pt_main);
 
 /** \brief Memory interface create function
     @param conn - connection handle for client app
@@ -520,6 +577,19 @@ int memif_create (memif_conn_handle_t * conn, memif_conn_args_t * args,
 
 */
 int memif_control_fd_handler (int fd, uint8_t events);
+
+/** \brief Memif per thread control file descriptor handler
+    @param pt_main - per thread main handle
+    @param fd - file descriptor on which the event occured
+    @param events - event type(s) that occured
+
+    Per thread version of memif_control_fd_handler.
+
+    \return memif_err_t
+
+*/
+int memif_per_thread_control_fd_handler (memif_per_thread_main_handle_t
+					 pt_main, int fd, uint8_t events);
 
 /** \brief Memif delete
     @param conn - pointer to memif connection handle
@@ -608,6 +678,17 @@ int memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
 */
 int memif_poll_event (int timeout);
 
+/** \brief Memif poll event
+    @param pt_main - per thread main handle
+    @param timeout - timeout in seconds
+
+    Per thread version of memif_poll_event.
+
+    \return memif_err_t
+*/
+int memif_per_thread_poll_event (memif_per_thread_main_handle_t pt_main,
+				 int timeout);
+
 /** \brief Send signal to stop concurrently running memif_poll_event().
 
     The function, however, does not wait for memif_poll_event() to stop.
@@ -622,6 +703,15 @@ int memif_poll_event (int timeout);
 */
 #define MEMIF_HAVE_CANCEL_POLL_EVENT 1
 int memif_cancel_poll_event ();
+/** \brief Send signal to stop concurrently running memif_poll_event().
+    @param pt_main - per thread main handle
+
+    Per thread version of memif_cancel_poll_event.
+
+    \return memif_err_t
+*/
+int memif_per_thread_cancel_poll_event (memif_per_thread_main_handle_t
+					pt_main);
 
 /** \brief Set connection request timer value
     @param timer - new timer value
@@ -632,6 +722,19 @@ int memif_cancel_poll_event ();
     \return memif_err_t
 */
 int memif_set_connection_request_timer (struct itimerspec timer);
+
+/** \brief Set connection request timer value
+    @param pt_main - per thread main handle
+    @param timer - new timer value
+
+    Per thread version of memif_set_connection_request_timer
+
+    \return memif_err_t
+*/
+int
+memif_per_thread_set_connection_request_timer (memif_per_thread_main_handle_t
+					       pt_main,
+					       struct itimerspec timer);
 
 /** \brief Send connection request
     @param conn - memif connection handle
@@ -656,8 +759,22 @@ int memif_request_connection (memif_conn_handle_t conn);
 
     \return memif_err_t
 */
-int memif_create_socket (memif_socket_handle_t * sock, const char * filename,
-			 void * private_ctx);
+int memif_create_socket (memif_socket_handle_t * sock, const char *filename,
+			 void *private_ctx);
+
+/** \brief Create memif socket
+    @param pt_main - per thread main handle
+    @param sock - socket handle for client app
+    @param filename - path to socket file
+    @param private_ctx - private context
+
+    Per thread version of memif_create_sopcket.
+
+    \return memif_err_t
+*/
+int memif_per_thread_create_socket (memif_per_thread_main_handle_t pt_main,
+				    memif_socket_handle_t * sock,
+				    const char *filename, void *private_ctx);
 
 /** \brief Delete memif socket
     @param sock - socket handle for client app
@@ -668,6 +785,15 @@ int memif_create_socket (memif_socket_handle_t * sock, const char * filename,
     \return memif_err_t
 */
 int memif_delete_socket (memif_socket_handle_t * sock);
+
+/** \brief Get socket filename
+    @param sock - socket handle for client app
+
+    Return constant pointer to socket filename.
+
+    \return cosnt char *
+*/
+const char *memif_get_socket_filename (memif_socket_handle_t sock);
 
 /** @} */
 
