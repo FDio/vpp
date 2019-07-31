@@ -38,3 +38,4 @@ The Developers section covers the following areas:
    eventviewer
    fib20/index.rst
    buildwireshark
+   cross_compile_osx.rst
