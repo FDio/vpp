@@ -120,6 +120,8 @@ typedef struct
   memif_log2_ring_size_t log2_ring_size;
 } memif_conn_run_args_t;
 
+struct libmemif_main;
+
 typedef struct memif_connection
 {
   uint16_t index;
@@ -165,18 +167,24 @@ typedef struct
   uint16_t use_count;
   memif_socket_type_t type;
   uint8_t *filename;
+  /* unique database */
+  struct libmemif_main *lm;
   uint16_t interface_list_len;
   void *private_ctx;
   memif_list_elt_t *interface_list;	/* memif master interfaces listening on this socket */
 } memif_socket_t;
 
-typedef struct
+typedef struct libmemif_main
 {
   memif_control_fd_update_t *control_fd_update;
   int timerfd;
+  int epfd;
+  int poll_cancel_fd;
   struct itimerspec arm, disarm;
   uint16_t disconn_slaves;
   uint8_t app_name[MEMIF_NAME_LEN];
+
+  void *private_ctx;
 
   memif_socket_handle_t default_socket;
 
@@ -200,7 +208,6 @@ typedef struct
 } libmemif_main_t;
 
 extern libmemif_main_t libmemif_main;
-extern int memif_epfd;
 
 /* main.c */
 
@@ -215,13 +222,15 @@ int memif_disconnect_internal (memif_connection_t * c);
 /* map errno to memif error code */
 int memif_syscall_error_handler (int err_code);
 
-int add_list_elt (memif_list_elt_t * e, memif_list_elt_t ** list,
+int add_list_elt (libmemif_main_t *lm, memif_list_elt_t * e, memif_list_elt_t ** list,
 		  uint16_t * len);
 
 int get_list_elt (memif_list_elt_t ** e, memif_list_elt_t * list,
 		  uint16_t len, int key);
 
 int free_list_elt (memif_list_elt_t * list, uint16_t len, int key);
+
+libmemif_main_t *get_libmemif_main (memif_socket_t * ms);
 
 #ifndef __NR_memfd_create
 #if defined __x86_64__
