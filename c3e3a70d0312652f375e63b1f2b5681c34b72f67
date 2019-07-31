@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d540f6e0_97a79a55",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-31T16:21:02Z",
+      "side": 1,
+      "message": "please change this too.",
+      "revId": "c3e3a70d0312652f375e63b1f2b5681c34b72f67",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
