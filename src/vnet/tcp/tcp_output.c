@@ -1769,11 +1769,14 @@ static int
 tcp_fast_retransmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 			    u32 burst_size)
 {
-  u32 offset, n_segs = 0, n_written, bi;
+  u32 offset, n_segs = 0, n_written, bi, available_wnd;
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
 
   offset = tc->snd_nxt - tc->snd_una;
+  available_wnd = tc->snd_wnd - offset;
+  burst_size = clib_min (burst_size, available_wnd / tc->snd_mss);
+
   while (n_segs < burst_size)
     {
       n_written = tcp_prepare_segment (wrk, tc, offset, tc->snd_mss, &b);
