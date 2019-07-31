@@ -116,6 +116,39 @@ nat_show_workers_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 static clib_error_t *
+snat_set_log_level_command_fn (vlib_main_t * vm,
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  snat_main_t *sm = &snat_main;
+  u8 log_level = SNAT_LOG_NONE;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (!unformat (line_input, "level %d", &log_level))
+    {
+      error = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+      goto done;
+    }
+  if (log_level > SNAT_LOG_DEBUG)
+    {
+      error = clib_error_return (0, "unknown logging level '%d'", log_level);
+      goto done;
+    }
+  sm->log_level = log_level;
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
 snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
 					      unformat_input_t * input,
 					      vlib_cli_command_t * cmd)
@@ -1941,6 +1974,19 @@ VLIB_CLI_COMMAND (nat_show_timeouts_command, static) = {
   .path = "show nat timeouts",
   .short_help = "show nat timeouts",
   .function = nat_show_timeouts_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat set logging level}
+ * To set NAT logging level use:
+ * Set nat logging level
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_set_log_level_command, static) = {
+  .path = "nat set logging level",
+  .function = snat_set_log_level_command_fn,
+  .short_help = "nat set logging level <level>",
 };
 
 /*?

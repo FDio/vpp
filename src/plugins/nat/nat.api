@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "5.0.0";
+option version = "5.1.0";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
 
@@ -118,6 +118,27 @@ define nat_show_config_reply
   u32 nat64_bib_memory_size;
   u32 nat64_st_buckets;
   u32 nat64_st_memory_size;
+};
+
+enum nat_log_level : u8
+{
+  NAT_LOG_NONE = 0x00,
+  NAT_LOG_ERROR = 0x01,
+  NAT_LOG_WARNING = 0x02,
+  NAT_LOG_NOTICE = 0x03,
+  NAT_LOG_INFO = 0x04,
+  NAT_LOG_DEBUG = 0x05,
+};
+
+/** \brief Set NAT logging level
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param log_level - logging level
+*/
+autoreply define nat_set_log_level {
+  u32 client_index;
+  u32 context;
+  vl_api_nat_log_level_t log_level;
 };
 
 /** \brief Set NAT workers
