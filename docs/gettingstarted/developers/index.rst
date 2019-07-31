@@ -39,3 +39,4 @@ The Developers section covers the following areas:
    fib20/index.rst
    buildwireshark
    punt
+   cross_compile_osx.rst
