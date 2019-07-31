@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f99ef26e_0eaf504b",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3728,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-31T13:46:17Z",
+      "side": 1,
+      "message": "why is this an unknown TEP? It\u0027s programmed on the line below...",
+      "revId": "d59f76c6186d8ac5b0a31c4086a6771d654cab31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
