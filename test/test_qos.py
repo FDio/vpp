@@ -15,7 +15,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from vpp_papi import VppEnum
-from vpp_qos import VppQosRecord, VppQosEgressMap, VppQosMark
+from vpp_qos import VppQosRecord, VppQosEgressMap, VppQosMark, VppQosStore
 
 NUM_PKTS = 67
 
@@ -63,7 +63,7 @@ class TestQOS(VppTestCase):
         super(TestQOS, self).tearDown()
 
     def test_qos_ip(self):
-        """ QoS Mark/Record IP """
+        """ QoS Mark/Record/Store IP """
 
         #
         # for table 1 map the n=0xff possible values of input QoS mark,
@@ -247,6 +247,32 @@ class TestQOS(VppTestCase):
         #
         self.assertTrue(qr1.query_vpp_config())
         qr1.remove_vpp_config()
+
+        #
+        # back to an unchanged TOS value
+        #
+        rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg1)
+        for p in rx:
+            self.assertEqual(p[IP].tos, 254)
+
+        #
+        # enable QoS stroe instead of record
+        #
+        qst1 = VppQosStore(self, self.pg0,
+                           self.QOS_SOURCE.QOS_API_SOURCE_IP,
+                           5).add_vpp_config()
+        self.logger.info(self.vapi.cli("sh qos store"))
+
+        p_v4[IP].dst = self.pg1.remote_ip4
+        rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg1)
+        for p in rx:
+            self.assertEqual(p[IP].tos, 250)
+
+        #
+        # disable the input storing on pg0
+        #
+        self.assertTrue(qst1.query_vpp_config())
+        qst1.remove_vpp_config()
 
         #
         # back to an unchanged TOS value

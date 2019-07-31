@@ -14,13 +14,20 @@
  * limitations under the License.
  */
 
-/** \file
+/**
+ * @file
+ * This file defines QoS record, store and mark API messages which are generally
+ *    called through a shared memory interface.
+ *
+ * Definitions of verbs:
+ *  store: write a QoS value into the buffer meta-data
+ *  record: Extract a QoS value from a packet header and store it.
+ *  mark: Make a change to the content of a packet header by writing a stored
+ *        QoS value
+ */
+option version = "1.1.0";
 
-    This file defines QoS record and mark API messages which are generally
-    called through a shared memory interface.
-*/
-
-option version = "1.0.0";
+import "vnet/ip/ip_types.api";
 
 enum qos_source : u8
 {
@@ -28,6 +35,55 @@ enum qos_source : u8
   QOS_API_SOURCE_VLAN = 1,
   QOS_API_SOURCE_MPLS = 2,
   QOS_API_SOURCE_IP = 3,
+};
+
+/**
+ * QoS store.
+ * @param sw_if_index - The interface on which store is enabled.
+ * @param input_source - The input source/layer at which the QoS bits are stored
+ *                       See qos_source_t. This determines what packets have a
+ *                       value stored. i.e. If IP is seleted this affects on IP
+ *                       packets.
+ * @param value - The value to store.
+ */
+typedef qos_store
+{
+  u32 sw_if_index;
+  vl_api_qos_source_t input_source;
+  u8 value;
+};
+
+/**
+ * Enable/Disable QoS storing
+ * The QoS bits from the packet at the specified input layer are copied
+ * into the packet. Storeing should be used in conjunction with marking
+ * @param enable - enable=1 or disable the feature
+ * @param store - Store configuration
+ */
+autoreply define qos_store_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u8 enable;
+  vl_api_qos_store_t store;
+};
+
+/**
+ * Dump the QoS store configs
+ */
+define qos_store_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/**
+ * Details of QoS recording configs
+ */
+define qos_store_details
+{
+  u32 context;
+  vl_api_qos_store_t store;
 };
 
 /**
