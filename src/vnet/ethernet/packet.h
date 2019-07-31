@@ -151,7 +151,7 @@ ethernet_vlan_header_get_priority_net_order (ethernet_vlan_header_t * h)
 {
   u8 *bytes = (u8 *) (&h->priority_cfi_and_id);
 
-  return (bytes[0] >> 5);
+  return (bytes[0] >> 4);
 }
 
 /* VLAN with ethertype first and vlan id second */
