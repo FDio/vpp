@@ -715,17 +715,32 @@ typedef struct _session_switch_pool_args
   u32 new_session_index;
 } session_switch_pool_args_t;
 
+/**
+ * Notify old thread of the session pool switch
+ */
 static void
 session_switch_pool (void *cb_args)
 {
   session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
+  app_worker_t *app_wrk;
   session_t *s;
+
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
   s->tx_fifo->master_session_index = args->new_session_index;
   s->tx_fifo->master_thread_index = args->new_thread_index;
   transport_cleanup (session_get_transport_proto (s), s->connection_index,
 		     s->thread_index);
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (app_wrk)
+    {
+      session_handle_t new_sh;
+      new_sh = session_make_handle (args->new_session_index,
+				    args->new_thread_index);
+      app_worker_migrate_notify (app_wrk, s, new_sh);
+    }
+
   session_free (s);
   clib_mem_free (cb_args);
 }

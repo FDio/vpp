@@ -373,6 +373,15 @@ app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s)
 }
 
 int
+app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
+			   session_handle_t new_sh)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  app->cb_fns.session_migrate_callback (s, new_sh);
+  return 0;
+}
+
+int
 app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 {
   segment_manager_t *sm;
