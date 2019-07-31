@@ -489,15 +489,28 @@ class TestQOS(VppTestCase):
                 UDP(sport=1234, dport=1234) /
                 Raw(scapy.compat.chb(100) * NUM_PKTS))
 
+        p_v3 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                Dot1Q(vlan=11, prio=1) /
+                IP(src="1.1.1.1", dst="10.0.0.2", tos=2) /
+                UDP(sport=1234, dport=1234) /
+                Raw(scapy.compat.chb(100) * NUM_PKTS))
+
         rx = self.send_and_expect(self.pg1, p_v2 * NUM_PKTS, self.pg0)
 
         for p in rx:
+            self.assertEqual(p[Dot1Q].prio, 7)
+            self.assertEqual(p[Dot1Q].id, 0)
+
+        rx = self.send_and_expect(self.pg1, p_v3 * NUM_PKTS, self.pg0)
+
+        for p in rx:
             self.assertEqual(p[Dot1Q].prio, 6)
+            self.assertEqual(p[Dot1Q].id, 1)
 
         rx = self.send_and_expect(self.pg0, p_v1 * NUM_PKTS, self.pg1)
 
         for p in rx:
-            self.assertEqual(p[IP].tos, 254)
+            self.assertEqual(p[IP].tos, 253)
 
         p_v1 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
                 Dot1Q(vlan=11, prio=2) /
@@ -513,12 +526,13 @@ class TestQOS(VppTestCase):
         rx = self.send_and_expect(self.pg1, p_v2 * NUM_PKTS, self.pg0)
 
         for p in rx:
-            self.assertEqual(p[Dot1Q].prio, 6)
+            self.assertEqual(p[Dot1Q].prio, 7)
+            self.assertEqual(p[Dot1Q].id, 0)
 
         rx = self.send_and_expect(self.pg0, p_v1 * NUM_PKTS, self.pg1)
 
         for p in rx:
-            self.assertEqual(p[IPv6].tc, 253)
+            self.assertEqual(p[IPv6].tc, 251)
 
         #
         # cleanup
