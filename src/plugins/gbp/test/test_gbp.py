@@ -3725,6 +3725,7 @@ class TestGBP(VppTestCase):
 
         #
         # learn a remote EP in EPG 221
+        #   packets coming from unknown remote EPs will be leant & redirected
         #
         vx_tun_l3 = VppGbpVxlanTunnel(
             self, 444, rd1.rd_id,
@@ -3735,13 +3736,19 @@ class TestGBP(VppTestCase):
         c4 = VppGbpContract(
             self, 402, epg_221.sclass, epg_220.sclass, acl_index,
             [VppGbpContractRule(
-                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
-                []),
+                [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                       sep1.ip4, sep1.epg.rd),
+                 VppGbpContractNextHop(sep2.vmac, sep2.epg.bd,
+                                       sep2.ip4, sep2.epg.rd)]),
                 VppGbpContractRule(
-                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
+                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                     VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
-                    [])],
+                    [VppGbpContractNextHop(sep3.vmac, sep3.epg.bd,
+                                           sep3.ip6, sep3.epg.rd),
+                     VppGbpContractNextHop(sep4.vmac, sep4.epg.bd,
+                                           sep4.ip6, sep4.epg.rd)])],
             [ETH_P_IP, ETH_P_IPV6])
         c4.add_vpp_config()
 
@@ -3756,7 +3763,14 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg7, [p], self.pg0)
+        # unknown remote EP to local EP redirected
+        rxs = self.send_and_expect(self.pg7, [p], sep1.itf)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, routed_src_mac)
+            self.assertEqual(rx[Ether].dst, sep1.mac)
+            self.assertEqual(rx[IP].src, "10.0.0.88")
+            self.assertEqual(rx[IP].dst, ep1.ip4.address)
 
         # endpoint learnt via the parent GBP-vxlan interface
         self.assertTrue(find_gbp_endpoint(self,
@@ -3774,7 +3788,14 @@ class TestGBP(VppTestCase):
              UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg7, [p], self.pg0)
+        # unknown remote EP to local EP redirected (ipv6)
+        rxs = self.send_and_expect(self.pg7, [p], sep3.itf)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, routed_src_mac)
+            self.assertEqual(rx[Ether].dst, sep3.mac)
+            self.assertEqual(rx[IPv6].src, "2001:10::88")
+            self.assertEqual(rx[IPv6].dst, ep1.ip6.address)
 
         # endpoint learnt via the parent GBP-vxlan interface
         self.assertTrue(find_gbp_endpoint(self,
