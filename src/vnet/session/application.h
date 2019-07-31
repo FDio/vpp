@@ -255,6 +255,8 @@ int app_worker_transport_closed_notify (app_worker_t * app_wrk,
 int app_worker_reset_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_cleanup_notify (app_worker_t * app_wrk, session_t * s,
 			       session_cleanup_ntf_t ntf);
+int app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
+			       session_handle_t new_sh);
 int app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s);
 int app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,

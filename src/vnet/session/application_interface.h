@@ -48,6 +48,9 @@ typedef struct _stream_session_cb_vft
   /** Notify app that session was reset */
   void (*session_reset_callback) (session_t * s);
 
+  /** Notify app that session pool migration happened */
+  void (*session_migrate_callback) (session_t * s, session_handle_t new_sh);
+
   /** Direct RX callback for built-in application */
   int (*builtin_app_rx_callback) (session_t * session);
 
