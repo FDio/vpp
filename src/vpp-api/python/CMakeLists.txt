@@ -11,14 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(PythonInterp 2.7)
+find_package(Python2 COMPONENTS Interpreter)
 
-if(PYTHONINTERP_FOUND)
+if(Python2_FOUND)
   install(
     CODE "
     execute_process(
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      COMMAND ${PYTHON_EXECUTABLE} ./setup.py
+      COMMAND ${Python2_EXECUTABLE} ./setup.py
 	install
 	  --root /
 	  --prefix=${CMAKE_INSTALL_PREFIX}
