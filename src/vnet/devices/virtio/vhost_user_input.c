@@ -585,10 +585,24 @@ vhost_user_if_input (vlib_main_t * vm,
 	      data_offset = 0;
 	    }
 	  hdr = map_guest_mem (vui, desc_table[current].addr, &map_hint);
+	  if (PREDICT_FALSE (hdr == 0))
+	    {
+	      vlib_error_count (vm, node->node_index,
+				VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
+	      goto out;
+	    }
 	  b_data = (u8 *) hdr + data_offset;
 	  if (indirect)
-	    hdr = map_guest_mem (vui, desc_table[desc_current].addr,
-				 &map_hint);
+	    {
+	      hdr = map_guest_mem (vui, desc_table[desc_current].addr,
+				   &map_hint);
+	      if (PREDICT_FALSE (hdr == 0))
+		{
+		  vlib_error_count (vm, node->node_index,
+				    VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
+		  goto out;
+		}
+	    }
 	  vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
 	}
 
