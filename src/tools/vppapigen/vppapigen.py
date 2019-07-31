@@ -134,6 +134,10 @@ class Service():
         self.stream = stream
         self.events = [] if events is None else events
 
+    def __repr__(self):
+        return "Service(caller={!r}, reply={!r}, events={!r}, stream={!r})".\
+            format(self.caller, self.reply, self.events, self.stream)
+
 
 class Typedef():
     def __init__(self, name, flags, block):
@@ -151,24 +155,28 @@ class Typedef():
         global_type_add(name, self)
 
     def __repr__(self):
-        return self.name + str(self.flags) + str(self.block)
+        return "Typedef(name={!r}, flags={!r}, block={!r})".format(
+            self.name, self.flags, self.block)
 
 
 class Using():
     def __init__(self, name, alias):
         self.name = name
 
+        # save constructor values for repr()
+        self._alias = alias
+
         if isinstance(alias, Array):
-            a = { 'type': alias.fieldtype,  # noqa: E201
-                  'length': alias.length }  # noqa: E202
+            a = {'type': alias.fieldtype,
+                 'length': alias.length}
         else:
-            a = { 'type': alias.fieldtype }  # noqa: E201,E202
+            a = {'type': alias.fieldtype}
         self.alias = a
         self.crc = str(alias).encode()
         global_type_add(name, self)
 
     def __repr__(self):
-        return self.name + str(self.alias)
+        return "Using(name={!r}, alias={!r})".format(self.name, self._alias)
 
 
 class Union():
@@ -182,7 +190,7 @@ class Union():
         global_type_add(name, self)
 
     def __repr__(self):
-        return str(self.block)
+        return "Union(name={!r}, block={!r})".format(self.name, self.block)
 
 
 class Define():
@@ -213,7 +221,8 @@ class Define():
                 block.remove(b)
 
     def __repr__(self):
-        return self.name + str(self.flags) + str(self.block)
+        return "Define(name={!r}, flags={!r}, block={!r})".format(
+            self.name, self.flags, self.block)
 
 
 class Enum():
@@ -234,7 +243,8 @@ class Enum():
         global_type_add(name, self)
 
     def __repr__(self):
-        return self.name + str(self.block)
+        return "Enum(name={!r}, block={!r}, enumtype={!r})".format(
+            self.name, self.block, self.enumtype)
 
 
 class Import():
@@ -257,7 +267,7 @@ class Import():
                 self.result = parser.parse_file(fd, None)
 
     def __repr__(self):
-        return self.filename
+        return "Import(filename={!r})".format(self.filename)
 
 
 class Option():
@@ -266,7 +276,7 @@ class Option():
         self.crc = str(option).encode()
 
     def __repr__(self):
-        return str(self.option)
+        return "Option({!r})".format(self.option)
 
     def __getitem__(self, index):
         return self.option[index]
@@ -276,6 +286,11 @@ class Array():
     def __init__(self, fieldtype, name, length):
         self.type = 'Array'
         self.fieldtype = fieldtype
+
+        # save constructor values for repr()
+        self._name = name
+        self._length = length
+
         self.fieldname = name
         if type(length) is str:
             self.lengthfield = length
@@ -285,8 +300,8 @@ class Array():
             self.lengthfield = None
 
     def __repr__(self):
-        return str([self.fieldtype, self.fieldname, self.length,
-                    self.lengthfield])
+        return "Array(fieldtype={!r}, name={!r}, length={!r})".format(
+            self.fieldtype, self._name, self._length)
 
 
 class Field():
@@ -297,7 +312,8 @@ class Field():
         self.limit = limit
 
     def __repr__(self):
-        return str([self.fieldtype, self.fieldname])
+        return "Field(fieldtype={!r}, name={!r}, limit={!r})".format(
+            self.fieldtype, self.fieldname, self.limit)
 
 
 class Coord(object):
@@ -517,13 +533,13 @@ class VPPAPIParser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = { **p[1], **p[2] }
+            p[0] = {**p[1], **p[2]}
 
     def p_field_option(self, p):
         '''field_option : ID '=' assignee ','
                         | ID '=' assignee
         '''
-        p[0] = { p[1]: p[3] }
+        p[0] = {p[1]: p[3]}
 
     def p_declaration(self, p):
         '''declaration : type_specifier ID ';'
@@ -766,6 +782,7 @@ def dirlist_add(dirs):
 def dirlist_get():
     return dirlist
 
+
 def foldup_blocks(block, crc):
     for b in block:
         # Look up CRC in user defined types
@@ -779,10 +796,12 @@ def foldup_blocks(block, crc):
                 pass
     return crc
 
+
 def foldup_crcs(s):
     for f in s:
         f.crc = foldup_blocks(f.block,
                               binascii.crc32(f.crc))
+
 
 #
 # Main
