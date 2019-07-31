@@ -40,3 +40,4 @@ The Developers section covers the following areas:
    buildwireshark
    punt
    quic_plugin
+   cross_compile_macos.rst
