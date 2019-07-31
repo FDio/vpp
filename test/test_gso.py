@@ -162,7 +162,6 @@ class TestGSO(VppTestCase):
         rxs = self.send_and_expect(self.pg2, [p43], self.pg1, 119)
         size = 0
         for rx in rxs:
-            rx.show()
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
             self.assertEqual(rx[IP].src, self.pg2.remote_ip4)
@@ -170,6 +169,7 @@ class TestGSO(VppTestCase):
             size += rx[IP].len - 20
         size -= 20  # TCP header
         self.assertEqual(size, 65200)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
