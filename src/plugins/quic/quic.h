@@ -124,6 +124,19 @@ STATIC_ASSERT (offsetof (quic_ctx_t, _sctx_end_marker) <=
 	       TRANSPORT_CONN_ID_LEN,
 	       "connection data must be less than TRANSPORT_CONN_ID_LEN bytes");
 
+typedef enum quic_crypto_engine_
+{
+  CRYPTO_ENGINE_VPP,
+  CRYPTO_ENGINE_PICOTLS,
+} quic_crypto_engine_t;
+
+/* single-entry session cache */
+typedef struct quic_session_cache_
+{
+  ptls_encrypt_ticket_t super;
+  uint8_t id[32];
+  ptls_iovec_t data;
+} quic_session_cache_t;
 
 typedef struct quic_stream_data_
 {
@@ -147,6 +160,10 @@ typedef struct quic_main_
   quic_worker_ctx_t *wrk_ctx;
   clib_bihash_16_8_t connection_hash;	/* quicly connection id -> conn handle */
   f64 tstamp_ticks_per_clock;
+
+  ptls_cipher_suite_t ***quic_ciphers;	/* available ciphers by crypto engine */
+  u8 default_cipher;
+  quic_session_cache_t session_cache;
 
   /*
    * Config
