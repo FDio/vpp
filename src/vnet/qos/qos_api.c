@@ -20,6 +20,7 @@
 #include <vnet/api_errno.h>
 
 #include <vnet/qos/qos_record.h>
+#include <vnet/qos/qos_store.h>
 #include <vnet/qos/qos_mark.h>
 #include <vnet/qos/qos_egress_map.h>
 
@@ -45,6 +46,8 @@
 #define foreach_qos_api_msg                                             \
   _(QOS_RECORD_ENABLE_DISABLE, qos_record_enable_disable)               \
   _(QOS_RECORD_DUMP, qos_record_dump)                                   \
+  _(QOS_STORE_ENABLE_DISABLE, qos_store_enable_disable)                 \
+  _(QOS_STORE_DUMP, qos_store_dump)                                     \
   _(QOS_EGRESS_MAP_DELETE, qos_egress_map_delete)                       \
   _(QOS_EGRESS_MAP_UPDATE, qos_egress_map_update)                       \
   _(QOS_EGRESS_MAP_DUMP, qos_egress_map_dump)                           \
@@ -142,6 +145,81 @@ vl_api_qos_record_dump_t_handler (vl_api_qos_record_dump_t * mp)
     .context = mp->context,
   };
   qos_record_walk (send_qos_record_details, &ctx);
+}
+
+void
+vl_api_qos_store_enable_disable_t_handler (vl_api_qos_store_enable_disable_t
+					   * mp)
+{
+  vl_api_qos_store_enable_disable_reply_t *rmp;
+  qos_source_t qs;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (&(mp->store));
+
+  rv = qos_source_decode (mp->store.input_source, &qs);
+
+  if (QOS_SOURCE_IP != qs)
+    {
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+
+  if (0 == rv)
+    {
+      if (mp->enable)
+	rv = qos_store_enable (ntohl (mp->store.sw_if_index), qs,
+			       mp->store.value);
+      else
+	rv = qos_store_disable (ntohl (mp->store.sw_if_index), qs);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_QOS_STORE_ENABLE_DISABLE_REPLY);
+}
+
+typedef struct qos_store_send_walk_ctx_t_
+{
+  vl_api_registration_t *reg;
+  u32 context;
+} qos_store_send_walk_ctx_t;
+
+static walk_rc_t
+send_qos_store_details (u32 sw_if_index,
+			qos_source_t input_source, qos_bits_t value, void *c)
+{
+  qos_store_send_walk_ctx_t *ctx;
+  vl_api_qos_store_details_t *mp;
+
+  ctx = c;
+  mp = vl_msg_api_alloc_zero (sizeof (*mp));
+
+  mp->_vl_msg_id = ntohs (VL_API_QOS_STORE_DETAILS);
+  mp->context = ctx->context;
+  mp->store.sw_if_index = htonl (sw_if_index);
+  mp->store.input_source = qos_source_encode (input_source);
+  mp->store.value = value;
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
+static void
+vl_api_qos_store_dump_t_handler (vl_api_qos_store_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  qos_store_send_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+  qos_store_walk (send_qos_store_details, &ctx);
 }
 
 void

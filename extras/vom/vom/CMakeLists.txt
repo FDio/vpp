@@ -173,6 +173,8 @@ list(APPEND VOM_SOURCES
   qos_mark_cmds.cpp
   qos_record.cpp
   qos_record_cmds.cpp
+  qos_store.cpp
+  qos_store_cmds.cpp
   qos_types.cpp
   qos_types_api.cpp
   ra_config.cpp
@@ -280,6 +282,7 @@ list(APPEND VOM_HEADERS
   qos_map.hpp
   qos_mark.hpp
   qos_record.hpp
+  qos_store.hpp
   qos_types.hpp
   ra_config.hpp
   ra_prefix.hpp

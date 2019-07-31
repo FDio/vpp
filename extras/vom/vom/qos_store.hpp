@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_QOS_MAP_H__
-#define __VOM_QOS_MAP_H__
+#ifndef __VOM_QOS_STORE_H__
+#define __VOM_QOS_STORE_H__
 
 #include <ostream>
 
@@ -28,21 +28,15 @@ namespace VOM {
  */
 namespace QoS {
 
-/**
- * A QoS map determines how value from one source are translated to
- * values of another source
- */
-class map : public object_base
+class store : public object_base
 {
 public:
-  typedef std::array<std::array<bits_t, 256>, 4> outputs_t;
+  store(const interface& i, const source_t& source, bits_t value);
+  store(const store& r);
 
-  map(uint32_t id, const outputs_t& o);
-  map(const map& r);
+  ~store();
 
-  ~map();
-
-  typedef uint32_t key_t;
+  typedef std::pair<interface::key_t, source_t> key_t;
 
   /**
    * Return the object's key
@@ -50,24 +44,19 @@ public:
   const key_t key() const;
 
   /**
-   * Return the object's ID
-   */
-  const key_t id() const;
-
-  /**
    * comparison operator
    */
-  bool operator==(const map& bdae) const;
+  bool operator==(const store& bdae) const;
 
   /**
    * Return the matching 'singular instance'
    */
-  std::shared_ptr<map> singular() const;
+  std::shared_ptr<store> singular() const;
 
   /**
    * Find the instnace of the bridge_domain domain in the OM
    */
-  static std::shared_ptr<map> find(const key_t& k);
+  static std::shared_ptr<store> find(const key_t& k);
 
   /**
    * Dump all bridge_domain-doamin into the stream provided
@@ -123,12 +112,12 @@ private:
   /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
    */
-  void update(const map& obj);
+  void update(const store& obj);
 
   /**
    * Find or add the instnace of the bridge_domain domain in the OM
    */
-  static std::shared_ptr<map> find_or_add(const map& temp);
+  static std::shared_ptr<store> find_or_add(const store& temp);
 
   /*
    * It's the VPPHW class that updates the objects in HW
@@ -138,7 +127,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<key_t, map>;
+  friend class singular_db<key_t, store>;
 
   /**
    * Sweep/reap the object if still stale
@@ -152,22 +141,29 @@ private:
   HW::item<bool> m_config;
 
   /**
-   * unique ID of the MAP.
+   * The interface the endpoint is attached to.
    */
-  uint32_t m_id;
+  std::shared_ptr<interface> m_itf;
 
   /**
-   * outputs from the translation
+   * QoS source to store from
    */
-  outputs_t m_outputs;
+  source_t m_src;
+
+  /**
+   * QoS Value to store in the buffer
+   */
+  bits_t m_value;
 
   /**
    * A map of all bridge_domains
    */
-  static singular_db<key_t, map> m_db;
+  static singular_db<key_t, store> m_db;
 };
 
 }; // namesapce QoS
+
+std::ostream& operator<<(std::ostream& os, const QoS::store::key_t& key);
 
 }; // namespace VOM
 
