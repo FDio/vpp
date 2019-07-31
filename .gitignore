@@ -106,3 +106,6 @@ GTAGS
 # No core files
 **/core
 
+# extra scripts config
+/extras/scripts/.config/
+

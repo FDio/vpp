@@ -42,6 +42,13 @@ ifneq ($(wildcard /opt/rh/devtoolset-7/enable),)
 vpp_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/devtoolset-7/root/bin"
 endif
 
+ifneq ($(VPP_TOOLCHAIN_FILE),)
+vpp_cmake_args += -DCMAKE_TOOLCHAIN_FILE=$(VPP_TOOLCHAIN_FILE)
+endif
+ifneq ($(VPP_EXPORT_COMPILE_COMMANDS),)
+vpp_cmake_args += -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+endif
+
 vpp_configure_depend += external-install
 vpp_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
