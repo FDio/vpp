@@ -492,7 +492,7 @@ class TestQOS(VppTestCase):
         rx = self.send_and_expect(self.pg1, p_v2 * NUM_PKTS, self.pg0)
 
         for p in rx:
-            self.assertEqual(p[Dot1Q].prio, 6)
+            self.assertEqual(p[Dot1Q].prio, 7)
 
         rx = self.send_and_expect(self.pg0, p_v1 * NUM_PKTS, self.pg1)
 
@@ -513,7 +513,7 @@ class TestQOS(VppTestCase):
         rx = self.send_and_expect(self.pg1, p_v2 * NUM_PKTS, self.pg0)
 
         for p in rx:
-            self.assertEqual(p[Dot1Q].prio, 6)
+            self.assertEqual(p[Dot1Q].prio, 7)
 
         rx = self.send_and_expect(self.pg0, p_v1 * NUM_PKTS, self.pg1)
 
