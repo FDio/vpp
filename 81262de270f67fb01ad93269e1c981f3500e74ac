@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "2f1c7d3b_764fb248",
+        "filename": "test/test_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-07-31T12:43:21Z",
+      "side": 1,
+      "message": "i meant to remove that.",
+      "parentUuid": "ddec527b_ffb8c944",
+      "range": {
+        "startLine": 144,
+        "startChar": 0,
+        "endLine": 145,
+        "endChar": 45
+      },
+      "revId": "81262de270f67fb01ad93269e1c981f3500e74ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5ada0610_dcb3cbf6",
         "filename": "test/test_punt.py",
         "patchSetId": 1
