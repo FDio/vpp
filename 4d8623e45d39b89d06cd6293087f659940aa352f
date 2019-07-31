@@ -1,0 +1,169 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2bcd424c_f1f1594d",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "I would formalize the text a little, to say.\n\n\"This section is overview of the options available to implement ACLs in FD.io VPP. As there are a number of way\u0027s to address ACL-like functionality, it is worth a separate survey of these options with some commentary on features and performance.\"",
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d771fcf3_45e9dc38",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "remove \"under the Apache 2 License\".",
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ba65caad_68f7b14a",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "remove TBD and replace with a \"Not Measured\"",
+      "range": {
+        "startLine": 39,
+        "startChar": 24,
+        "endLine": 39,
+        "endChar": 34
+      },
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cf2ae2e4_64904c0b",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "Simplify into \"Stateful Actions (sf)\", then remove the \"Actions\" bullet below.",
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "218bbefd_e1104396",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "Simplify into \"Stateless Actions (sl)\", then remove the \"Actions\" bullet below.",
+      "range": {
+        "startLine": 90,
+        "startChar": 0,
+        "endLine": 90,
+        "endChar": 10
+      },
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2728f7cc_bae6edb2",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "Fix alignment, compared to previous bullet above.",
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "09647f8b_122f4dca",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "FD.io VPP COP is ...",
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fb8486ad_ba186fb7",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "Remove \"These form of white-listing is called COP in FD.io\nVPP, for reasons I can\u0027t remember. COP needs to be enabled on specific\ninterfaces.\"",
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b95c66a2_99536e2c",
+        "filename": "docs/usecases/acls.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2019-07-31T12:02:31Z",
+      "side": 1,
+      "message": "The most flexible form of ACLs in FD.io VPP enable the user to match anywhere in the first 80bytes of the packet header.",
+      "revId": "4d8623e45d39b89d06cd6293087f659940aa352f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
