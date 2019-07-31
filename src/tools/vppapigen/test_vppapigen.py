@@ -26,8 +26,8 @@ class TestTypedef(unittest.TestCase):
 
     def test_duplicatetype(self):
         test_string = '''
-        typeonly define foo1 { u8 dummy; };
-        typeonly define foo1 { u8 dummy; };
+        typedef foo1 { u8 dummy; };
+        typedef foo1 { u8 dummy; };
         '''
         self.assertRaises(KeyError, self.parser.parse_string, test_string)
 
@@ -39,23 +39,29 @@ class TestDefine(unittest.TestCase):
 
     def test_unknowntype(self):
         test_string = 'define foo { foobar foo;};'
-        self.assertRaises(ParseError, self.parser.parse_string, test_string)
+        with self.assertRaises(ParseError) as ctx:
+            self.parser.parse_string(test_string)
+        self.assertIn('Undefined type: foobar', str(ctx.exception))
+
         test_string = 'define { u8 foo;};'
-        self.assertRaises(ParseError, self.parser.parse_string, test_string)
+        with self.assertRaises(ParseError) as ctx:
+            self.parser.parse_string(test_string)
 
     def test_flags(self):
         test_string = '''
           manual_print dont_trace manual_endian define foo { u8 foo; };
+          define foo_reply {u32 context; i32 retval; };
         '''
         r = self.parser.parse_string(test_string)
         self.assertIsNotNone(r)
         s = self.parser.process(r)
         self.assertIsNotNone(s)
-        for d in s['defines']:
-            self.assertTrue(d.dont_trace)
-            self.assertTrue(d.manual_endian)
-            self.assertTrue(d.manual_print)
-            self.assertFalse(d.autoreply)
+        for d in s['Define']:
+            if d.name == 'foo':
+                self.assertTrue(d.dont_trace)
+                self.assertTrue(d.manual_endian)
+                self.assertTrue(d.manual_print)
+                self.assertFalse(d.autoreply)
 
         test_string = '''
           nonexisting_flag define foo { u8 foo; };
@@ -71,11 +77,14 @@ class TestService(unittest.TestCase):
 
     def test_service(self):
         test_string = '''
-         service foo { rpc foo (show_version) returns (show_version) };
+         autoreply define show_version { u8 foo;};
+         service { rpc show_version returns show_version_reply; };
         '''
         r = self.parser.parse_string(test_string)
-        print('R', r)
+        s = self.parser.process(r)
+        self.assertEqual(s['Service'][0].caller, 'show_version')
+        self.assertEqual(s['Service'][0].reply, 'show_version_reply')
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)

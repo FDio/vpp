@@ -22,10 +22,15 @@ sys.dont_write_bytecode = True
 # Global dictionary of new types (including enums)
 global_types = {}
 
+seen_imports = {}
+
 
 def global_type_add(name, obj):
     '''Add new type to the dictionary of types '''
     type_name = 'vl_api_' + name + '_t'
+    if type_name in global_types:
+        raise KeyError("Attempted redefinition of {!r} with {!r}.".format(
+            name, obj))
     global_types[type_name] = obj
 
 
@@ -320,20 +325,35 @@ class Enum():
 
 
 class Import():
+
+    def __new__(cls, *args, **kwargs):
+        if args[0] not in seen_imports:
+            instance = super().__new__(cls)
+            instance._initialized = False
+            seen_imports[args[0]] = instance
+
+        return seen_imports[args[0]]
+
     def __init__(self, filename):
-        self.filename = filename
-
-        # Deal with imports
-        parser = VPPAPI(filename=filename)
-        dirlist = dirlist_get()
-        f = filename
-        for dir in dirlist:
-            f = os.path.join(dir, filename)
-            if os.path.exists(f):
-                break
-
-        with open(f, encoding='utf-8') as fd:
-            self.result = parser.parse_file(fd, None)
+        if self._initialized:
+            return
+        else:
+            self.filename = filename
+            # Deal with imports
+            parser = VPPAPI(filename=filename)
+            dirlist = dirlist_get()
+            f = filename
+            for dir in dirlist:
+                f = os.path.join(dir, filename)
+                if os.path.exists(f):
+                    break
+            if sys.version[0] == '2':
+                with open(f) as fd:
+                    self.result = parser.parse_file(fd, None)
+            else:
+                with open(f, encoding='utf-8') as fd:
+                    self.result = parser.parse_file(fd, None)
+            self._initialized = True
 
     def __repr__(self):
         return self.filename
@@ -859,9 +879,10 @@ class VPPAPI(object):
                 continue
             if isinstance(o, Import):
                 result.append(o)
-                self.process_imports(o.result, True, result)
+                result = self.process_imports(o.result, True, result)
             else:
                 result.append(o)
+        return result
 
 
 # Add message ids to each message.
@@ -955,7 +976,7 @@ def main():
     if args.output_module == 'C':
         s = parser.process(parsed_objects)
     else:
-        parser.process_imports(parsed_objects, False, result)
+        result = parser.process_imports(parsed_objects, False, result)
         s = parser.process(result)
 
     # Add msg_id field
