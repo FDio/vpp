@@ -82,6 +82,8 @@ class VppPGInterface(VppInterface):
         """CLI string to load the injected packets"""
         if self._nb_replays is not None:
             return "%s limit %d" % (self._input_cli, self._nb_replays)
+        if self._worker is not None:
+            return "%s worker %d" % (self._input_cli, self._worker)
         return self._input_cli
 
     @property
@@ -158,13 +160,14 @@ class VppPGInterface(VppInterface):
     def disable_capture(self):
         self.test.vapi.cli("%s disable" % self.capture_cli)
 
-    def add_stream(self, pkts, nb_replays=None):
+    def add_stream(self, pkts, nb_replays=None, worker=None):
         """
         Add a stream of packets to this packet-generator
 
         :param pkts: iterable packets
 
         """
+        self._worker = worker
         self._nb_replays = nb_replays
         self._rename_previous_capture_file(self.in_path,
                                            self.in_history_counter,
