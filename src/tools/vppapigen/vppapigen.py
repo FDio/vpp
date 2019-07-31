@@ -23,6 +23,8 @@ global_types = {}
 def global_type_add(name, obj):
     '''Add new type to the dictionary of types '''
     type_name = 'vl_api_' + name + '_t'
+    if type_name in global_types:
+        raise KeyError
     global_types[type_name] = obj
 
 
