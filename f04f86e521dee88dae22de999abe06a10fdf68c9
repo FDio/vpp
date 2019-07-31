@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b383409_e10c06fb",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 877,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2019-07-31T14:54:36Z",
+      "side": 1,
+      "message": "clib_mem_alloc maybe?",
+      "range": {
+        "startLine": 877,
+        "startChar": 39,
+        "endLine": 877,
+        "endChar": 45
+      },
+      "revId": "f04f86e521dee88dae22de999abe06a10fdf68c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
