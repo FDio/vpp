@@ -22,6 +22,7 @@ list(APPEND EXAMPLES_LIST
   icmp_responder/main.c
   icmp_responder-epoll/main.c
   icmp_responder-mt/main.c
+  icmp_responder-mt_3-1/main.c
   icmp_responder-eb/main.c
   icmp_responder-zero-copy-slave/main.c
 )
@@ -33,4 +34,3 @@ foreach (EXAMPLE_SRC ${EXAMPLES_LIST})
   target_include_directories(${EXECUTABLE} PRIVATE $<BUILD_INTERFACE:${HEADERS_DIR}>)
   target_link_libraries(${EXECUTABLE} ${LIBMEMIF} ${CMAKE_THREAD_LIBS_INIT})
 endforeach()
-
