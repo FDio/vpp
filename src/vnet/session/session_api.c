@@ -438,11 +438,19 @@ done:
   return 0;
 }
 
+static void
+mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
+{
+  clib_warning ("not yet supported");
+}
+
+
 static session_cb_vft_t session_mq_cb_vft = {
   .session_accept_callback = mq_send_session_accepted_cb,
   .session_disconnect_callback = mq_send_session_disconnected_cb,
   .session_connected_callback = mq_send_session_connected_cb,
   .session_reset_callback = mq_send_session_reset_cb,
+  .session_migrate_callback = mq_send_session_migrate_cb,
   .add_segment_callback = send_add_segment_callback,
   .del_segment_callback = send_del_segment_callback,
 };

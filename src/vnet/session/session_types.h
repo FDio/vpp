@@ -275,6 +275,12 @@ session_parse_handle (session_handle_t handle, u32 * index,
   *thread_index = session_thread_from_handle (handle);
 }
 
+static inline session_handle_t
+session_make_handle (u32 session_index, u32 thread_index)
+{
+  return (((u64) thread_index << 32) | (u64) session_index);
+}
+
 typedef enum
 {
   SESSION_IO_EVT_RX,
