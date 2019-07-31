@@ -94,7 +94,7 @@ START_TEST (test_init_epoll)
   ck_assert_ptr_ne (lm, NULL);
   ck_assert_ptr_ne (lm->control_fd_update, NULL);
   ck_assert_int_gt (lm->timerfd, 2);
-  ck_assert_int_gt (memif_epfd, -1);
+  ck_assert_int_gt (lm->epfd, -1);
 
   if (lm->timerfd > 0)
     close (lm->timerfd);
