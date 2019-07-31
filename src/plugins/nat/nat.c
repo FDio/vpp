@@ -2554,26 +2554,49 @@ snat_static_mapping_match (snat_main_t * sm,
 	{
 	  if (PREDICT_FALSE (lb != 0))
 	    *lb = m->affinity ? AFFINITY_LB_NAT : LB_NAT;
-	  if (m->affinity)
+	  if (m->affinity && !nat_affinity_find_and_lock (ext_host_addr[0],
+							  match.addr,
+							  match.protocol,
+							  match.port,
+							  &backend_index))
 	    {
-	      if (nat_affinity_find_and_lock (ext_host_addr[0], match.addr,
-					      match.protocol, match.port,
-					      &backend_index))
-		goto get_local;
-
 	      local = pool_elt_at_index (m->locals, backend_index);
 	      mapping->addr = local->addr;
 	      mapping->port = clib_host_to_net_u16 (local->port);
 	      mapping->fib_index = local->fib_index;
 	      goto end;
 	    }
-	get_local:
-          /* *INDENT-OFF* */
-          pool_foreach_index (i, m->locals,
-          ({
-            vec_add1 (tmp, i);
-          }));
-          /* *INDENT-ON* */
+	  // pick locals matching this worker
+	  if (PREDICT_FALSE (sm->num_workers > 1))
+	    {
+	      u32 thread_index = vlib_get_thread_index ();
+              /* *INDENT-OFF* */
+              pool_foreach_index (i, m->locals,
+              ({
+                local = pool_elt_at_index (m->locals, i);
+
+                ip4_header_t ip = {
+		  .src_address = local->addr,
+	        };
+
+	        if (sm->worker_in2out_cb (&ip, m->fib_index) ==
+		    thread_index)
+                  {
+                    vec_add1 (tmp, i);
+                  }
+              }));
+              /* *INDENT-ON* */
+	      ASSERT (vec_len (tmp) != 0);
+	    }
+	  else
+	    {
+              /* *INDENT-OFF* */
+              pool_foreach_index (i, m->locals,
+              ({
+                vec_add1 (tmp, i);
+              }));
+              /* *INDENT-ON* */
+	    }
 	  hi = vec_len (tmp) - 1;
 	  local = pool_elt_at_index (m->locals, tmp[hi]);
 	  rand = 1 + (random_u32 (&sm->random_seed) % local->prefix);
@@ -2586,15 +2609,6 @@ snat_static_mapping_match (snat_main_t * sm,
 	  local = pool_elt_at_index (m->locals, tmp[lo]);
 	  if (!(local->prefix >= rand))
 	    return 1;
-	  if (PREDICT_FALSE (sm->num_workers > 1))
-	    {
-	      ip4_header_t ip = {
-		.src_address = local->addr,
-	      };
-	      if (sm->worker_in2out_cb (&ip, m->fib_index) !=
-		  vlib_get_thread_index ())
-		goto get_local;
-	    }
 	  mapping->addr = local->addr;
 	  mapping->port = clib_host_to_net_u16 (local->port);
 	  mapping->fib_index = local->fib_index;
