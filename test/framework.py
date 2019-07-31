@@ -973,8 +973,6 @@ class VppTestCase(unittest.TestCase):
     def assert_packet_checksums_valid(self, packet,
                                       ignore_zero_udp_checksums=True):
         received = packet.__class__(scapy.compat.raw(packet))
-        self.logger.debug(
-            ppp("Verifying packet checksums for packet:", received))
         udp_layers = ['UDP', 'UDPerror']
         checksum_fields = ['cksum', 'chksum']
         checksums = []
