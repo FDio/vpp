@@ -296,7 +296,7 @@ START_TEST (test_send_hello)
 		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
-  if ((err = memif_msg_send_hello (conn.fd)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_msg_send_hello (get_libmemif_main (conn.args.socket), conn.fd)) != MEMIF_ERR_SUCCESS)
     ck_assert_msg (err == MEMIF_ERR_BAD_FD,
 		   "err code: %u, err msg: %s", err, memif_strerror (err));
 }
@@ -387,7 +387,7 @@ START_TEST (test_recv_init)
   memif_list_elt_t elt;
   elt.key = 69;
   elt.data_struct = &conn;
-  add_list_elt (&elt, &ms.interface_list, &ms.interface_list_len);
+  add_list_elt (get_libmemif_main (conn.args.socket), &elt, &ms.interface_list, &ms.interface_list_len);
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
