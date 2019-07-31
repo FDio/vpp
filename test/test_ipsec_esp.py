@@ -3,6 +3,7 @@ import unittest
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import UDP
 
+from parameterized import parameterized
 from framework import VppTestRunner
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
@@ -363,11 +364,9 @@ class TestIpsecEspAll(ConfigIpsecESP,
     def tearDown(self):
         super(TestIpsecEspAll, self).tearDown()
 
-    def test_crypto_algs(self):
-        """All engines AES-[CBC, GCM]-[128, 192, 256] 3DES-CBC w/ & w/o ESN"""
-
-        # foreach VPP crypto engine
-        engines = ["ia32", "ipsecmb", "openssl"]
+    @parameterized.expand(["ia32", "ipsecmb", "openssl"])
+    def test_crypto_algs(self, engine):
+        """AES-[CBC, GCM]-[128, 192, 256] 3DES-CBC w/ & w/o ESN"""
 
         # foreach crypto algorithm
         algos = [{'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
@@ -431,68 +430,64 @@ class TestIpsecEspAll(ConfigIpsecESP,
         flags = [0,
                  VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_USE_ESN]
 
+        self.vapi.cli("set crypto handler all %s" % engine)
         #
-        # loop through the VPP engines
+        # loop through each of the algorithms
         #
-        for engine in engines:
-            self.vapi.cli("set crypto handler all %s" % engine)
-            #
-            # loop through each of the algorithms
-            #
-            for algo in algos:
-                # with self.subTest(algo=algo['scapy']):
-                for flag in flags:
-                    #
-                    # setup up the config paramters
-                    #
-                    self.ipv4_params = IPsecIPv4Params()
-                    self.ipv6_params = IPsecIPv6Params()
+        for algo in algos:
+            # with self.subTest(algo=algo['scapy']):
+            for flag in flags:
+                #
+                # setup up the config paramters
+                #
+                self.ipv4_params = IPsecIPv4Params()
+                self.ipv6_params = IPsecIPv6Params()
 
-                    self.params = {self.ipv4_params.addr_type:
-                                   self.ipv4_params,
-                                   self.ipv6_params.addr_type:
-                                   self.ipv6_params}
+                self.params = {self.ipv4_params.addr_type:
+                               self.ipv4_params,
+                               self.ipv6_params.addr_type:
+                               self.ipv6_params}
 
-                    for _, p in self.params.items():
-                        p.auth_algo_vpp_id = algo['vpp-integ']
-                        p.crypt_algo_vpp_id = algo['vpp-crypto']
-                        p.crypt_algo = algo['scapy-crypto']
-                        p.auth_algo = algo['scapy-integ']
-                        p.crypt_key = algo['key']
-                        p.salt = algo['salt']
-                        p.flags = p.flags | flag
+                for _, p in self.params.items():
+                    p.auth_algo_vpp_id = algo['vpp-integ']
+                    p.crypt_algo_vpp_id = algo['vpp-crypto']
+                    p.crypt_algo = algo['scapy-crypto']
+                    p.auth_algo = algo['scapy-integ']
+                    p.crypt_key = algo['key']
+                    p.salt = algo['salt']
+                    p.flags = p.flags | flag
 
-                    self.reporter.send_keep_alive(self)
+                self.reporter.send_keep_alive(self)
 
-                    #
-                    # configure the SPDs. SAs, etc
-                    #
-                    self.config_network(self.params.values())
+                #
+                # configure the SPDs. SAs, etc
+                #
+                self.config_network(self.params.values())
 
-                    #
-                    # run some traffic.
-                    #  An exhautsive 4o6, 6o4 is not necessary
-                    #  for each algo
-                    #
-                    self.verify_tra_basic6(count=NUM_PKTS)
-                    self.verify_tra_basic4(count=NUM_PKTS)
-                    self.verify_tun_66(self.params[socket.AF_INET6],
-                                       count=NUM_PKTS)
-                    self.verify_tun_44(self.params[socket.AF_INET],
-                                       count=NUM_PKTS)
+                #
+                # run some traffic.
+                #  An exhautsive 4o6, 6o4 is not necessary
+                #  for each algo
+                #
+                self.verify_tra_basic6(count=NUM_PKTS)
+                self.verify_tra_basic4(count=NUM_PKTS)
+                self.verify_tun_66(self.params[socket.AF_INET6],
+                                   count=NUM_PKTS)
+                self.verify_tun_44(self.params[socket.AF_INET],
+                                   count=NUM_PKTS)
 
-                    #
-                    # remove the SPDs, SAs, etc
-                    #
-                    self.unconfig_network()
+                #
+                # remove the SPDs, SAs, etc
+                #
+                self.unconfig_network()
 
-                    #
-                    # reconfigure the network and SA to run the
-                    # anti replay tests
-                    #
-                    self.config_network(self.params.values())
-                    self.verify_tra_anti_replay()
-                    self.unconfig_network()
+                #
+                # reconfigure the network and SA to run the
+                # anti replay tests
+                #
+                self.config_network(self.params.values())
+                self.verify_tra_anti_replay()
+                self.unconfig_network()
 
 
 if __name__ == '__main__':
