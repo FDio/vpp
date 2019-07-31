@@ -84,6 +84,8 @@
 #include "vom/qos_map_cmds.hpp"
 #include "vom/qos_record.hpp"
 #include "vom/qos_record_cmds.hpp"
+#include "vom/qos_store.hpp"
+#include "vom/qos_store_cmds.hpp"
 
 using namespace boost;
 using namespace VOM;
@@ -507,6 +509,14 @@ public:
                     else if (typeid(*f_exp) == typeid(QoS::record_cmds::delete_cmd))
                     {
                         rc = handle_derived<QoS::record_cmds::delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(QoS::store_cmds::create_cmd))
+                    {
+                        rc = handle_derived<QoS::store_cmds::create_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(QoS::store_cmds::delete_cmd))
+                    {
+                        rc = handle_derived<QoS::store_cmds::delete_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(QoS::map_cmds::create_cmd))
                     {
@@ -2251,16 +2261,24 @@ BOOST_AUTO_TEST_CASE(test_qos) {
     ADD_EXPECT(QoS::record_cmds::create_cmd(hw_qr, hw_ifh.data(), QoS::source_t::IP));
     TRY_CHECK_RC(OM::write(albert, *qr));
 
+    QoS::store *qs = new QoS::store(itf, QoS::source_t::IP, 55);
+    HW::item<bool> hw_qs(true, rc_t::OK);
+    ADD_EXPECT(QoS::store_cmds::create_cmd(hw_qs, hw_ifh.data(), QoS::source_t::IP, 55));
+    TRY_CHECK_RC(OM::write(albert, *qs));
+
     QoS::mark *qm = new QoS::mark(itf, qem, QoS::source_t::IP);
     HW::item<bool> hw_qm(true, rc_t::OK);
     ADD_EXPECT(QoS::mark_cmds::create_cmd(hw_qm, hw_ifh.data(), 1, QoS::source_t::IP));
     TRY_CHECK_RC(OM::write(albert, *qm));
 
+    STRICT_ORDER_OFF();
     delete qr;
     delete qm;
+    delete qs;
     ADD_EXPECT(QoS::mark_cmds::delete_cmd(hw_qm, hw_ifh.data(), QoS::source_t::IP));
     ADD_EXPECT(QoS::map_cmds::delete_cmd(hw_qem, 1));
     ADD_EXPECT(QoS::record_cmds::delete_cmd(hw_qr, hw_ifh.data(), QoS::source_t::IP));
+    ADD_EXPECT(QoS::store_cmds::delete_cmd(hw_qs, hw_ifh.data(), QoS::source_t::IP));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf_name));
     TRY_CHECK(OM::remove(albert));

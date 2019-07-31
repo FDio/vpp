@@ -24,6 +24,8 @@ namespace VOM {
  */
 namespace QoS {
 
+typedef uint8_t bits_t;
+
 /**
  * The Source of the QoS classification (i.e. which header the bits are
  * associated with).

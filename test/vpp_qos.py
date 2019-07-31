@@ -42,6 +42,44 @@ class VppQosRecord(VppObject):
         return ("qos-record-%s-%d" % (self.intf, self.source))
 
 
+class VppQosStore(VppObject):
+    """ QoS Store(ing) configuration """
+
+    def __init__(self, test, intf, source, value):
+        self._test = test
+        self.intf = intf
+        self.source = source
+        self.value = value
+
+    def add_vpp_config(self):
+        self._test.vapi.qos_store_enable_disable(
+            enable=1,
+            store={'sw_if_index': self.intf.sw_if_index,
+                   'input_source': self.source,
+                   'value': self.value})
+        self._test.registry.register(self, self._test.logger)
+        return self
+
+    def remove_vpp_config(self):
+        self._test.vapi.qos_store_enable_disable(
+            enable=0,
+            store={'sw_if_index': self.intf.sw_if_index,
+                   'input_source': self.source})
+
+    def query_vpp_config(self):
+        rs = self._test.vapi.qos_store_dump()
+
+        for r in rs:
+            if self.intf.sw_if_index == r.store.sw_if_index and \
+               self.source == r.store.input_source and \
+               self.value == r.store.value:
+                return True
+        return False
+
+    def object_id(self):
+        return ("qos-store-%s-%d" % (self.intf, self.source))
+
+
 class VppQosEgressMap(VppObject):
     """ QoS Egress Map(ping) configuration """
 
