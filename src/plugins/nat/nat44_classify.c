@@ -154,7 +154,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 			  next0 = NAT44_CLASSIFY_NEXT_DROP;
 			  b0->error =
 			    node->errors[NAT44_CLASSIFY_ERROR_MAX_REASS];
-			  nat_log_notice ("maximum reassemblies exceeded");
+			  nat_elog_notice ("maximum reassemblies exceeded");
 			  goto enqueue0;
 			}
 		      if (!clib_bihash_search_16_8 (&tsm->in2out_ed, &ed_kv0,
@@ -204,7 +204,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 		      next0 = NAT44_CLASSIFY_NEXT_DROP;
 		      b0->error =
 			node->errors[NAT44_CLASSIFY_ERROR_MAX_REASS];
-		      nat_log_notice ("maximum reassemblies exceeded");
+		      nat_elog_notice ("maximum reassemblies exceeded");
 		      goto enqueue0;
 		    }
 		  /* check if first fragment has arrived */
@@ -217,7 +217,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 			{
 			  b0->error =
 			    node->errors[NAT44_CLASSIFY_ERROR_MAX_FRAG];
-			  nat_log_notice
+			  nat_elog_notice
 			    ("maximum fragments per reassembly exceeded");
 			  next0 = NAT44_CLASSIFY_NEXT_DROP;
 			  goto enqueue0;
@@ -288,7 +288,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 			  next0 = NAT44_CLASSIFY_NEXT_DROP;
 			  b0->error =
 			    node->errors[NAT44_CLASSIFY_ERROR_MAX_REASS];
-			  nat_log_notice ("maximum reassemblies exceeded");
+			  nat_elog_notice ("maximum reassemblies exceeded");
 			  goto enqueue0;
 			}
 		      /* save classification for future fragments and set past
@@ -317,7 +317,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 		      next0 = NAT44_CLASSIFY_NEXT_DROP;
 		      b0->error =
 			node->errors[NAT44_CLASSIFY_ERROR_MAX_REASS];
-		      nat_log_notice ("maximum reassemblies exceeded");
+		      nat_elog_notice ("maximum reassemblies exceeded");
 		      goto enqueue0;
 		    }
 		  if (reass0->classify_next == NAT_REASS_IP4_CLASSIFY_NONE)
@@ -328,7 +328,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 			{
 			  b0->error =
 			    node->errors[NAT44_CLASSIFY_ERROR_MAX_FRAG];
-			  nat_log_notice
+			  nat_elog_notice
 			    ("maximum fragments per reassembly exceeded");
 			  next0 = NAT44_CLASSIFY_NEXT_DROP;
 			  goto enqueue0;
