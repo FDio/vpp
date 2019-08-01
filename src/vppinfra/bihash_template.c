@@ -42,9 +42,8 @@ void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 
   bucket_size = h->nbuckets * sizeof (h->buckets[0]);
   h->buckets = BV (alloc_aligned) (h, bucket_size);
-
-  h->alloc_lock = BV (alloc_aligned) (h, CLIB_CACHE_LINE_BYTES);
-  h->alloc_lock[0] = 0;
+  CLIB_MEMORY_BARRIER ();
+  h->instantiated = 1;
 }
 
 void BV (clib_bihash_init)
@@ -58,6 +57,7 @@ void BV (clib_bihash_init)
   h->nbuckets = nbuckets;
   h->log2_nbuckets = max_log2 (nbuckets);
   h->memory_size = memory_size;
+  h->instantiated = 0;
   alloc_arena (h) = 0;
 
   /*
@@ -78,6 +78,15 @@ void BV (clib_bihash_init)
   oldheap = clib_all_bihash_set_heap ();
   vec_add1 (clib_all_bihashes, (void *) h);
   clib_mem_set_heap (oldheap);
+
+
+  /*
+   * Set up the lock now, so we can use it to make the first add
+   * thread-safe
+   */
+  h->alloc_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+					  CLIB_CACHE_LINE_BYTES);
+  h->alloc_lock[0] = 0;
 
 #if BIHASH_INSTANTIATE_IMMEDIATELY
   BV (clib_bihash_instantiate) (h);
@@ -216,9 +225,10 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
 {
   int i;
 
-  if (PREDICT_FALSE (alloc_arena (h) == 0))
+  if (PREDICT_FALSE (h->instantiated == 0))
     goto never_initialized;
 
+  h->instantiated = 0;
   vec_free (h->working_copies);
   vec_free (h->working_copy_lengths);
 #if BIHASH_32_64_SVM == 0
@@ -452,12 +462,19 @@ static inline int BV (clib_bihash_add_del_inline)
   int mark_bucket_linear;
   int resplit_once;
 
-  /* Create the table (is_add=1), or flunk the request now (is_add=0) */
-  if (PREDICT_FALSE (alloc_arena (h) == 0))
+  /*
+   * Create the table (is_add=1,2), or flunk the request now (is_add=0)
+   * Use the alloc_lock to protect the instantiate operation.
+   */
+  if (PREDICT_FALSE (h->instantiated == 0))
     {
       if (is_add == 0)
 	return (-1);
-      BV (clib_bihash_instantiate) (h);
+
+      BV (clib_bihash_alloc_lock) (h);
+      if (h->instantiated == 0)
+	BV (clib_bihash_instantiate) (h);
+      BV (clib_bihash_alloc_unlock) (h);
     }
 
   hash = BV (clib_bihash_hash) (add_v);
