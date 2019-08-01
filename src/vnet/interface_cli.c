@@ -1700,8 +1700,6 @@ pcap_trace_command_internal (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd, int rx_tx)
 {
-#define PCAP_DEF_PKT_TO_CAPTURE (1000)
-
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *filename;
   u8 *chroot_filename = 0;
@@ -1722,6 +1720,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	  if (vm->pcap[rx_tx].pcap_enable == 0)
 	    {
 	      enabled = 1;
+	      vm->pcap[rx_tx].pcap_main.n_packets_to_capture =
+		PCAP_DEF_PKT_TO_CAPTURE;
 	    }
 	  else
 	    {
@@ -1812,9 +1812,7 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	    {
 	      vlib_cli_output
 		(vm, "max is %d for any interface to file %s",
-		 vm->pcap[rx_tx].pcap_main.n_packets_to_capture ?
-		 vm->pcap[rx_tx].pcap_main.n_packets_to_capture
-		 : PCAP_DEF_PKT_TO_CAPTURE,
+		 vm->pcap[rx_tx].pcap_main.n_packets_to_capture,
 		 vm->pcap[rx_tx].pcap_main.file_name ?
 		 (u8 *) vm->pcap[rx_tx].pcap_main.file_name :
 		 (u8 *) "/tmp/vpe.pcap");
@@ -1822,10 +1820,7 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	  else
 	    {
 	      vlib_cli_output (vm, "max is %d for interface %U to file %s",
-			       vm->pcap[rx_tx].pcap_main.n_packets_to_capture
-			       ? vm->pcap[rx_tx].
-			       pcap_main.n_packets_to_capture :
-			       PCAP_DEF_PKT_TO_CAPTURE,
+			       vm->pcap[rx_tx].pcap_main.n_packets_to_capture,
 			       format_vnet_sw_if_index_name, vnm,
 			       vm->pcap[rx_tx].pcap_sw_if_index,
 			       vm->pcap[rx_tx].

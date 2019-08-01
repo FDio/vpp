@@ -153,12 +153,6 @@ typedef struct vlib_main_t
   /* pcap rx / tx tracing */
   vnet_pcap_t pcap[VLIB_N_RX_TX];
 
-  int pcap_enable;
-  pcap_main_t pcap_main;
-  u8 *pcap_filename;
-  u32 pcap_sw_if_index;
-  u32 pcap_pkts_to_capture;
-
   /* Error handling. */
   vlib_error_main_t error_main;
 

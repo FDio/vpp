@@ -1407,7 +1407,7 @@ pcap_drop_trace_command_fn (vlib_main_t * vm,
 
 	      clib_memset (&im->pcap_main, 0, sizeof (im->pcap_main));
 	      im->pcap_main.file_name = (char *) im->pcap_filename;
-	      im->pcap_main.n_packets_to_capture = 100;
+	      im->pcap_main.n_packets_to_capture = PCAP_DEF_PKT_TO_CAPTURE;
 	      if (im->pcap_pkts_to_capture)
 		im->pcap_main.n_packets_to_capture = im->pcap_pkts_to_capture;
 
