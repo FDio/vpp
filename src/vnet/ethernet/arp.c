@@ -1711,7 +1711,7 @@ VNET_FEATURE_ARC_INIT (arp_feat, static) =
 {
   .arc_name = "arp",
   .start_nodes = VNET_FEATURES ("arp-input"),
-  .last_in_arc = "error-drop",
+  .last_in_arc = "arp-disabled",
   .arc_index_ptr = &ethernet_arp_main.feature_arc_index,
 };
 
@@ -1730,10 +1730,17 @@ VNET_FEATURE_INIT (arp_proxy_feat_node, static) =
   .runs_before = VNET_FEATURES ("arp-disabled"),
 };
 
-VNET_FEATURE_INIT (arp_drop_feat_node, static) =
+VNET_FEATURE_INIT (arp_disabled_feat_node, static) =
 {
   .arc_name = "arp",
   .node_name = "arp-disabled",
+  .runs_before = VNET_FEATURES ("error-drop"),
+};
+
+VNET_FEATURE_INIT (arp_drop_feat_node, static) =
+{
+  .arc_name = "arp",
+  .node_name = "error-drop",
   .runs_before = 0,	/* last feature */
 };
 
