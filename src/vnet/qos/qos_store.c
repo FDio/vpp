@@ -168,6 +168,7 @@ qos_store_cli (vlib_main_t * vm,
   qs = 0xff;
   enable = 1;
   sw_if_index = ~0;
+  value = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -188,6 +189,8 @@ qos_store_cli (vlib_main_t * vm,
 
   if (~0 == sw_if_index)
     return clib_error_return (0, "interface must be specified");
+  if (~0 == value)
+    return clib_error_return (0, "value to be stored must be specified");
   if (0xff == qs)
     return clib_error_return (0, "input location must be specified");
 
