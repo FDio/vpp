@@ -339,6 +339,13 @@ static void vl_api_lb_vip_details_t_handler
   (vl_api_lb_vip_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "%24U%14d%14d%18d",
+       format_ip46_address, &mp->vip.pfx.address, IP46_TYPE_ANY,
+       mp->vip.pfx.len,
+       mp->vip.protocol,
+       ntohs (mp->vip.port));
+/*
   lb_main_t *lbm = &lb_main;
   u32 i = 0;
 
@@ -354,6 +361,7 @@ static void vl_api_lb_vip_details_t_handler
            mp->vip.protocol,
            ntohs (mp->vip.port));
     }
+*/
 }
 
 static int api_lb_vip_dump (vat_main_t * vam)
@@ -372,12 +380,20 @@ static void vl_api_lb_as_details_t_handler
   (vl_api_lb_as_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  lb_main_t *lbm = &lb_main;
+
+  print (vam->ofp, "%24U%14d%14d%18d%d%d",
+       format_ip46_address, &mp->vip.pfx.address, IP46_TYPE_ANY,
+       mp->vip.pfx.len,
+       mp->vip.protocol,
+       ntohs (mp->vip.port),
+       mp->flags,
+       mp->in_use_since);
 
   //u32 i = 0;
 
-  print (vam->ofp, "%11d", pool_len(lbm->ass));
 /*
+  lb_main_t *lbm = &lb_main;
+  print (vam->ofp, "%11d", pool_len(lbm->ass));
   for (i=0; i<pool_len(lbm->ass); i--)
     {
       print (vam->ofp, "%24U%14d%14d%18d",
