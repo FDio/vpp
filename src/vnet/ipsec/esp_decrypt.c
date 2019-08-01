@@ -376,6 +376,35 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       sa0 = vec_elt_at_index (im->sad, pd->sa_index);
 
+      /*
+       * redo the anti-reply check
+       * in this frame say we have sequence numbers, s, s+1, s+1, s+1
+       * and s and s+1 are in the window. When we did the anti-replay
+       * check above we did so against the state of the window (W),
+       * after packet s-1. So each of the packets in the sequence will be
+       * accepted.
+       * This time s will be cheked against Ws-1, s+1 chceked against Ws
+       * (i.e. the window state is updated/advnaced)
+       * so this time the successive s+! packet will be dropped.
+       * This is a consequence of batching the decrypts. If the
+       * check-dcrypt-advance process was done for each packet it would
+       * be fine. But we batch the decrypts because it's much more efficient
+       * to do so in SW and if we offload to HW and the process is async.
+       *
+       * You're probably thinking, but this means an attacker can send the
+       * above sequence and cause VPP to perform decrpyts that will fail,
+       * and that's true. But if the attacker can determine s (a valid
+       * sequence number in the window) which is non-trivial, it can generate
+       * a sequence s, s+1, s+2, s+3, ... s+n and nothing will prevent any
+       * implementation, sequential or batching, from decrypting these.
+       */
+      if (ipsec_sa_anti_replay_check (sa0, pd->seq))
+	{
+	  b[0]->error = node->errors[ESP_DECRYPT_ERROR_REPLAY];
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto trace;
+	}
+
       ipsec_sa_anti_replay_advance (sa0, pd->seq);
 
       esp_footer_t *f = (esp_footer_t *) (b[0]->data + pd->current_data +

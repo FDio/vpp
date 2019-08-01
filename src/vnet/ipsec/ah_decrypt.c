@@ -303,6 +303,13 @@ ah_decrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
+	  /* redo the anit-reply check. see esp_decrypt for details */
+	  if (ipsec_sa_anti_replay_check (sa0, pd->seq))
+	    {
+	      b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
+	      next[0] = AH_DECRYPT_NEXT_DROP;
+	      goto trace;
+	    }
 	  ipsec_sa_anti_replay_advance (sa0, pd->seq);
 	}
 
