@@ -318,6 +318,21 @@ class IpsecTra4(object):
         self.assert_error_counter_equal(replay_node_name, replay_count)
 
         #
+        # now send a batch of packets all with the same sequence number
+        # the first packet in the batch is legitimate, the rest bogus
+        #
+        pkts = (Ether(src=self.tra_if.remote_mac,
+                      dst=self.tra_if.local_mac) /
+                p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                          dst=self.tra_if.local_ip4) /
+                                       ICMP(),
+                                       seq_num=35))
+        recv_pkts = self.send_and_expect(self.tra_if, pkts * 8,
+                                         self.tra_if, n_rx=1)
+        replay_count += 7
+        self.assert_error_counter_equal(replay_node_name, replay_count)
+
+        #
         # now move the window over to 257 (more than one byte) and into Case A
         #
         pkt = (Ether(src=self.tra_if.remote_mac,
