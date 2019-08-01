@@ -60,6 +60,27 @@
 /* Per CPU heaps. */
 extern void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 
+always_inline void
+clib_mem_set_thread_index (void)
+{
+  /*
+   * Find an unused slot in the per-cpu-mheaps array,
+   * and grab it for this thread. We need to be able to
+   * push/pop the thread heap without affecting other thread(s).
+   */
+  int i;
+  if (__os_thread_index != 0)
+    return;
+  for (i = 0; i < ARRAY_LEN (clib_per_cpu_mheaps); i++)
+    if (clib_atomic_bool_cmp_and_swap (&clib_per_cpu_mheaps[i],
+				       0, clib_per_cpu_mheaps[0]))
+      {
+	os_set_thread_index (i);
+	break;
+      }
+  ASSERT (__os_thread_index > 0);
+}
+
 always_inline void *
 clib_mem_get_per_cpu_heap (void)
 {
