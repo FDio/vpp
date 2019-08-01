@@ -255,7 +255,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
   )
     add_vpp_executable(test_${test}
       SOURCES test_${test}.c
-      LINK_LIBRARIES vppinfra
+      LINK_LIBRARIES vppinfra pthread
       )
   endforeach()
 

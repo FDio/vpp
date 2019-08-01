@@ -110,12 +110,12 @@ test_rwlock (rwlock_test_main_t * rtm, f64 * elapse_time)
       for (uword t_num = 0; t_num < rtm->threads_per_core; t_num++)
 	{
 	  uword t_index = cores_set * rtm->threads_per_core + t_num;
-	  if (error = pthread_create (&pthread[t_index], NULL,
-				      &read_shared_counter, rtm))
+	  if ((error = pthread_create (&pthread[t_index], NULL,
+				       &read_shared_counter, rtm)))
 	    clib_unix_warning ("pthread_create failed with %d", error);
 
-	  if (error = pthread_setaffinity_np (pthread[t_index],
-					      sizeof (cpu_set_t), &cpuset))
+	  if ((error = pthread_setaffinity_np (pthread[t_index],
+					       sizeof (cpu_set_t), &cpuset)))
 	    clib_unix_warning ("pthread_set_affinity_np failed with %d",
 			       error);
 	}
@@ -138,12 +138,12 @@ test_rwlock (rwlock_test_main_t * rtm, f64 * elapse_time)
       for (uword t_num = 0; t_num < rtm->threads_per_core; t_num++)
 	{
 	  uword t_index = cores_set * rtm->threads_per_core + t_num;
-	  if (error = pthread_create (&pthread[t_index], NULL,
-				      &write_shared_counter, rtm))
+	  if ((error = pthread_create (&pthread[t_index], NULL,
+				       &write_shared_counter, rtm)))
 	    clib_unix_warning ("pthread_create failed with %d", error);
 
-	  if (error = pthread_setaffinity_np (pthread[t_index],
-					      sizeof (cpu_set_t), &cpuset))
+	  if ((error = pthread_setaffinity_np (pthread[t_index],
+					       sizeof (cpu_set_t), &cpuset)))
 	    clib_unix_warning ("pthread_set_affinity_np failed with %d",
 			       error);
 	}
@@ -157,7 +157,7 @@ test_rwlock (rwlock_test_main_t * rtm, f64 * elapse_time)
   for (uword thread_num = 0; thread_num < total_threads; thread_num++)
     {
       f64 *time;
-      if (error = pthread_join (pthread[thread_num], (void *) &time))
+      if ((error = pthread_join (pthread[thread_num], (void *) &time)))
 	clib_unix_warning ("pthread_join failed with %d", error);
       *elapse_time += *time;
       vec_free (time);
