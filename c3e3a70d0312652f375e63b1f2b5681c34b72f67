@@ -16,6 +16,24 @@
       "revId": "c3e3a70d0312652f375e63b1f2b5681c34b72f67",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1c2d1e2b_e9b63358",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 1457
+      },
+      "writtenOn": "2019-08-01T03:23:07Z",
+      "side": 1,
+      "message": "Changed..\nhttps://gerrit.fd.io/r/c/vpp/+/20986",
+      "parentUuid": "d540f6e0_97a79a55",
+      "revId": "c3e3a70d0312652f375e63b1f2b5681c34b72f67",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
