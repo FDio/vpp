@@ -141,7 +141,7 @@ quic_get_quicly_ctx_from_ctx (quic_ctx_t * ctx)
 }
 
 static quicly_context_t *
-quic_get_quicly_ctx_from_udp (u32 udp_session_handle)
+quic_get_quicly_ctx_from_udp (u64 udp_session_handle)
 {
   session_t *udp_session;
   application_t *app;
@@ -1405,6 +1405,7 @@ quic_receive_connection (void *arg)
   quic_ctx_t *temp_ctx, *new_ctx;
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
+  session_t *udp_session;
 
   temp_ctx = arg;
   new_ctx_id = quic_ctx_alloc (thread_index);
@@ -1429,7 +1430,12 @@ quic_receive_connection (void *arg)
   new_ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   quic_update_timer (new_ctx);
 
-  /*  Trigger read on this connection ? */
+  /*  Trigger write on this connection if necessary */
+  udp_session = session_get_from_handle (new_ctx->udp_session_handle);
+  if (svm_fifo_max_dequeue (udp_session->tx_fifo))
+    if (session_send_io_evt_to_thread (udp_session->tx_fifo,
+				       SESSION_IO_EVT_TX))
+      QUIC_DBG (4, "Cannot send TX event");
 }
 
 static void
@@ -1458,60 +1464,6 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
   /*  Send connection to destination thread */
   session_send_rpc_evt_to_thread (dest_thread, quic_receive_connection,
 				  (void *) temp_ctx);
-}
-
-static void
-quic_transfer_connection_rpc (void *arg)
-{
-  u64 arg_int = (u64) arg;
-  u32 ctx_index, dest_thread;
-
-  ctx_index = (u32) (arg_int >> 32);
-  dest_thread = (u32) (arg_int & UINT32_MAX);
-  quic_transfer_connection (ctx_index, dest_thread);
-}
-
-/*
- * This assumes that the connection is not yet associated to a session
- * So currently it only works on the client side when receiving the first packet
- * from the server
- */
-static void
-quic_move_connection_to_thread (u32 ctx_index, u32 owner_thread,
-				u32 to_thread,
-				quicly_decoded_packet_t * packet)
-{
-  clib_bihash_kv_16_8_t kv;
-  clib_bihash_16_8_t *h;
-
-  if (owner_thread == UINT32_MAX)
-    {
-      QUIC_DBG (3, "Connection already moving to right thread");
-      return;
-    }
-
-  /* Mark connection as moving in the conn map */
-  h = &quic_main.connection_hash;
-  quic_make_connection_key (&kv, &packet->cid.dest.plaintext);
-  if (clib_bihash_search_16_8 (h, &kv, &kv) != 0)
-    {
-      QUIC_DBG (0, "Bug: conn to move not found");
-      return;
-    }
-  kv.value |= (u64) UINT32_MAX << 32;
-  if (clib_bihash_add_del_16_8
-      (&quic_main.connection_hash, &kv, /* is_add */ 1))
-    {
-      QUIC_DBG (0, "Bug: cannot update conn in lookup hash");
-      return;
-    }
-
-  /* Send rpc to owner thread to move conn */
-  QUIC_DBG (2, "Requesting transfer of conn %u from thread %u", ctx_index,
-	    owner_thread);
-  u64 arg = ((u64) ctx_index) << 32 | to_thread;
-  session_send_rpc_evt_to_thread (owner_thread, quic_transfer_connection_rpc,
-				  (void *) arg);
 }
 
 static int
@@ -1578,11 +1530,11 @@ quic_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 1 /* is_add */ );
 
-  quic_send_packets (ctx);
-
   /*  UDP stack quirk? preemptively transfer connection if that happens */
   if (udp_session->thread_index != thread_index)
     quic_transfer_connection (ctx_index, udp_session->thread_index);
+  else
+    quic_send_packets (ctx);
 
   return ret;
 }
@@ -1602,7 +1554,31 @@ quic_session_reset_callback (session_t * s)
 static void
 quic_session_migrate_callback (session_t * s, session_handle_t new_sh)
 {
-  QUIC_DBG (2, "Quic session migrate callback");
+  /*
+   * TODO we need better way to get the connection from the session
+   * This will become possible once we stop storing the app id in the UDP
+   * session opaque
+   */
+  u32 thread_index = vlib_get_thread_index ();
+  u64 old_session_handle = session_handle (s);
+  u32 new_thread = session_thread_from_handle (new_sh);
+  quic_ctx_t *ctx;
+
+  QUIC_DBG (1, "Session %x migrated to %lx", s->session_index, new_sh);
+  /* *INDENT-OFF* */
+  pool_foreach (ctx, quic_main.ctx_pool[thread_index],
+    ({
+      if (ctx->udp_session_handle == old_session_handle)
+        {
+          /*  Right ctx found, move associated conn */
+          QUIC_DBG (5, "Found right ctx: %x", ctx->c_c_index);
+          ctx->udp_session_handle = new_sh;
+          quic_transfer_connection (ctx->c_c_index, new_thread);
+          return;
+        }
+    }));
+  /* *INDENT-ON* */
+  QUIC_DBG (0, "BUG: Connection to migrate not found");
 }
 
 int
@@ -1663,7 +1639,6 @@ quic_del_segment_callback (u32 client_index, u64 seg_handle)
   /* No-op for builtin */
   return 0;
 }
-
 
 static int
 quic_custom_app_rx_callback (transport_connection_t * tc)
@@ -2001,9 +1976,9 @@ quic_app_rx_callback (session_t * udp_session)
 	    }
 	  else if (ctx_index != UINT32_MAX)
 	    {
-	      /*  Connection found but on wrong thread, ask move */
-	      quic_move_connection_to_thread (ctx_index, ctx_thread,
-					      thread_index, &packet);
+	      /* Connection found but on wrong thread, just wait for
+	       * session_migrate_callback to be called */
+	      return 0;
 	    }
 	  else if ((packet.octets.base[0] & QUICLY_PACKET_TYPE_BITMASK) ==
 		   QUICLY_PACKET_TYPE_INITIAL)
