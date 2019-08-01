@@ -141,7 +141,7 @@ quic_get_quicly_ctx_from_ctx (quic_ctx_t * ctx)
 }
 
 static quicly_context_t *
-quic_get_quicly_ctx_from_udp (u32 udp_session_handle)
+quic_get_quicly_ctx_from_udp (u64 udp_session_handle)
 {
   session_t *udp_session;
   application_t *app;
@@ -1405,6 +1405,7 @@ quic_receive_connection (void *arg)
   quic_ctx_t *temp_ctx, *new_ctx;
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
+  session_t *udp_session;
 
   temp_ctx = arg;
   new_ctx_id = quic_ctx_alloc (thread_index);
@@ -1429,7 +1430,12 @@ quic_receive_connection (void *arg)
   new_ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   quic_update_timer (new_ctx);
 
-  /*  Trigger read on this connection ? */
+  /*  Trigger read on this connection */
+  udp_session = session_get_from_handle (new_ctx->udp_session_handle);
+  if (svm_fifo_set_event (udp_session->rx_fifo))
+    if (session_send_io_evt_to_thread (udp_session->rx_fifo,
+				       SESSION_IO_EVT_BUILTIN_RX))
+      QUIC_DBG (4, "Cannot send RX event");
 }
 
 static void
@@ -1602,7 +1608,52 @@ quic_session_reset_callback (session_t * s)
 static void
 quic_session_migrate_callback (session_t * s, session_handle_t new_sh)
 {
-  QUIC_DBG (2, "Quic session migrate callback");
+  /*
+   * TODO we need better way to get the connection from the session
+   * This will become possible once we stop storing the app id in the UDP
+   * session opaque
+   */
+  u32 thread_index = vlib_get_thread_index ();
+  u64 old_session_handle = session_handle (s);
+  u32 new_thread = session_thread_from_handle (new_sh);
+  clib_bihash_kv_16_8_t kv;
+  clib_bihash_16_8_t *h;
+  quic_ctx_t *ctx;
+
+  QUIC_DBG (1, "Session %x migrated to %lx", s->session_index, new_sh);
+  /* *INDENT-OFF* */
+  pool_foreach (ctx, quic_main.ctx_pool[thread_index],
+    ({
+      if (ctx->udp_session_handle == old_session_handle)
+        {
+          /*  Right ctx found, move associated conn */
+          QUIC_DBG (5, "Found right ctx: %x", ctx->c_c_index);
+          ctx->udp_session_handle = new_sh;
+          /* Mark connection as moving in the conn map */
+          h = &quic_main.connection_hash;
+          quic_make_connection_key (&kv, quicly_get_master_id (ctx->conn));
+          if (clib_bihash_search_16_8 (h, &kv, &kv) != 0)
+            {
+              QUIC_DBG (0, "Bug: conn to move not found");
+              return;
+            }
+          if (kv.value >> 32 == UINT32_MAX)
+            {
+              QUIC_DBG (3, "Connection already moving, skipping");
+              return;
+            }
+          kv.value |= ((u64) UINT32_MAX) << 32;
+          if (clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv,
+                                        /* is_add */ 1))
+            {
+              QUIC_DBG (0, "Bug: cannot update conn in lookup hash");
+              return;
+            }
+          quic_transfer_connection (ctx->c_c_index, new_thread);
+          return;
+        }
+    }));
+  /* *INDENT-ON* */
 }
 
 int
@@ -1663,7 +1714,6 @@ quic_del_segment_callback (u32 client_index, u64 seg_handle)
   /* No-op for builtin */
   return 0;
 }
-
 
 static int
 quic_custom_app_rx_callback (transport_connection_t * tc)
