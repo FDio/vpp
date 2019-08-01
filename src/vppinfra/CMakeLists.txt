@@ -72,7 +72,6 @@ set(VPPINFRA_SRCS
   string.c
   time.c
   time_range.c
-  timer.c
   timing_wheel.c
   tw_timer_2t_1w_2048sl.c
   tw_timer_16t_2w_512sl.c
@@ -159,7 +158,6 @@ set(VPPINFRA_HEADERS
   string.h
   time.h
   time_range.h
-  timer.h
   timing_wheel.h
   tw_timer_16t_1w_2048sl.h
   tw_timer_16t_2w_512sl.h
