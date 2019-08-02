@@ -213,7 +213,6 @@ tcp_half_open_connection_cleanup (tcp_connection_t * tc)
   /* Make sure this is the owning thread */
   if (tc->c_thread_index != vlib_get_thread_index ())
     return 1;
-  tcp_timer_reset (tc, TCP_TIMER_ESTABLISH_AO);
   tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT_SYN);
   tcp_half_open_connection_del (tc);
   return 0;
@@ -1289,55 +1288,6 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 }
 
 static void
-tcp_timer_keep_handler (u32 conn_index)
-{
-  u32 thread_index = vlib_get_thread_index ();
-  tcp_connection_t *tc;
-
-  tc = tcp_connection_get (conn_index, thread_index);
-  tc->timers[TCP_TIMER_KEEP] = TCP_TIMER_HANDLE_INVALID;
-
-  tcp_connection_close (tc);
-}
-
-static void
-tcp_timer_establish_handler (u32 conn_index)
-{
-  tcp_connection_t *tc;
-
-  tc = tcp_connection_get (conn_index, vlib_get_thread_index ());
-  /* note: the connection may have already disappeared */
-  if (PREDICT_FALSE (tc == 0))
-    return;
-  ASSERT (tc->state == TCP_STATE_SYN_RCVD);
-  tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
-  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
-  tcp_connection_timers_reset (tc);
-  /* Start cleanup. Do NOT delete the session until we do the connection
-   * cleanup. Otherwise, we end up with a dangling session index in the
-   * tcp connection. */
-  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
-}
-
-static void
-tcp_timer_establish_ao_handler (u32 conn_index)
-{
-  tcp_connection_t *tc;
-
-  tc = tcp_half_open_connection_get (conn_index);
-  if (!tc)
-    return;
-
-  ASSERT (tc->state == TCP_STATE_SYN_SENT);
-  /* Notify app if we haven't tried to clean this up already */
-  if (!(tc->flags & TCP_CONN_HALF_OPEN_DONE))
-    session_stream_connect_notify (&tc->connection, 1 /* fail */ );
-
-  tc->timers[TCP_TIMER_ESTABLISH_AO] = TCP_TIMER_HANDLE_INVALID;
-  tcp_connection_cleanup (tc);
-}
-
-static void
 tcp_timer_waitclose_handler (u32 conn_index)
 {
   u32 thread_index = vlib_get_thread_index ();
@@ -1346,6 +1296,7 @@ tcp_timer_waitclose_handler (u32 conn_index)
   tc = tcp_connection_get (conn_index, thread_index);
   if (!tc)
     return;
+
   tc->timers[TCP_TIMER_WAITCLOSE] = TCP_TIMER_HANDLE_INVALID;
 
   switch (tc->state)
@@ -1412,11 +1363,8 @@ static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
     tcp_timer_retransmit_handler,
     tcp_timer_delack_handler,
     tcp_timer_persist_handler,
-    tcp_timer_keep_handler,
     tcp_timer_waitclose_handler,
     tcp_timer_retransmit_syn_handler,
-    tcp_timer_establish_handler,
-    tcp_timer_establish_ao_handler,
 };
 /* *INDENT-ON* */
 
