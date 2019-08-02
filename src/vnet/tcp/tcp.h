@@ -322,44 +322,41 @@ typedef struct _tcp_connection
   u64 segs_out;		/** RFC4898 tcpEStatsPerfSegsOut */
   u64 bytes_out;	/** RFC4898 tcpEStatsPerfHCDataOctetsOut */
 
-  /** Send sequence variables RFC793 */
   u32 snd_una;		/**< oldest unacknowledged sequence number */
-  u32 snd_una_max;	/**< newest unacknowledged sequence number + 1*/
   u32 snd_wnd;		/**< send window */
-  u32 snd_wl1;		/**< seq number used for last snd.wnd update */
-  u32 snd_wl2;		/**< ack number used for last snd.wnd update */
   u32 snd_nxt;		/**< next seq number to be sent */
   u16 snd_mss;		/**< Effective send max seg (data) size */
 
-  u64 data_segs_in;	/** RFC4898 tcpEStatsPerfDataSegsIn */
-  u64 data_segs_out;	/** RFC4898 tcpEStatsPerfDataSegsOut */
-
-  /** Receive sequence variables RFC793 */
   u32 rcv_nxt;		/**< next sequence number expected */
   u32 rcv_wnd;		/**< receive window we expect */
-
   u32 rcv_las;		/**< rcv_nxt at last ack sent/rcv_wnd update */
-  u32 iss;		/**< initial sent sequence */
-  u32 irs;		/**< initial remote sequence */
 
-  /* Options */
-  u8 snd_opts_len;		/**< Tx options len */
-  u8 rcv_wscale;		/**< Window scale to advertise to peer */
-  u8 snd_wscale;		/**< Window scale to use when sending */
+  u64 data_segs_in;	/** RFC4898 tcpEStatsPerfDataSegsIn */
+
+  u32 snd_una_max;	/**< newest unacknowledged sequence number + 1*/
+  u32 snd_wl1;		/**< seq number used for last snd.wnd update */
+  u32 snd_wl2;		/**< ack number used for last snd.wnd update */
+
+  tcp_options_t rcv_opts;	/**< Rx options for connection */
   u32 tsval_recent;		/**< Last timestamp received */
   u32 tsval_recent_age;		/**< When last updated tstamp_recent*/
-  tcp_options_t snd_opts;	/**< Tx options for connection */
-  tcp_options_t rcv_opts;	/**< Rx options for connection */
+
+  /* RTT and RTO */
+  u32 rto;		/**< Retransmission timeout */
+  u32 rto_boff;		/**< Index for RTO backoff */
+  u32 srtt;		/**< Smoothed RTT */
+  u32 rttvar;		/**< Smoothed mean RTT difference. Approximates variance */
+  u32 rtt_seq;		/**< Sequence number for tracked ACK */
+  f64 rtt_ts;		/**< Timestamp for tracked ACK */
+  f64 mrtt_us;		/**< High precision mrtt from tracked acks */
 
   sack_block_t *snd_sacks;	/**< Vector of SACKs to send. XXX Fixed size? */
-  u8 snd_sack_pos;		/**< Position in vec of first block to send */
   sack_block_t *snd_sacks_fl;	/**< Vector for building new list */
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
 
   u16 rcv_dupacks;	/**< Number of recent DUPACKs received */
   u32 dupacks_in;	/**< RFC4898 tcpEStatsStackDupAcksIn*/
-  u8 pending_dupacks;	/**< Number of DUPACKs to be sent */
-  u32 dupacks_out;	/**< RFC4898 tcpEStatsPathDupAcksOut */
+  u8 snd_wscale;	/**< Peer's window scale */
 
   /* Congestion control */
   u32 cwnd;		/**< Congestion window */
@@ -380,19 +377,25 @@ typedef struct _tcp_connection
   u32 fr_occurences;	/**< fast-retransmit occurrences RFC4898
 			     tcpEStatsStackFastRetran */
   u32 tr_occurences;	/**< timer-retransmit occurrences */
+
+  u8 pending_dupacks;	/**< Number of DUPACKs to be sent */
+
+  /*
+   * Send Variables
+   */
+
+  u8 snd_opts_len;		/**< Tx options len */
+  u8 rcv_wscale;		/**< Our window scale */
+  tcp_options_t snd_opts;	/**< Tx options for connection */
+
+  u8 snd_sack_pos;		/**< Position in vec of first block to send */
+  u32 dupacks_out;	/**< RFC4898 tcpEStatsPathDupAcksOut */
+
   u64 bytes_retrans;	/**< RFC4898 tcpEStatsPerfOctetsRetrans */
   u64 segs_retrans;	/**< RFC4898 tcpEStatsPerfSegsRetrans*/
-
-  /* RTT and RTO */
-  u32 rto;		/**< Retransmission timeout */
-  u32 rto_boff;		/**< Index for RTO backoff */
-  u32 srtt;		/**< Smoothed RTT */
-  u32 rttvar;		/**< Smoothed mean RTT difference. Approximates variance */
-  u32 rtt_seq;		/**< Sequence number for tracked ACK */
-  f64 rtt_ts;		/**< Timestamp for tracked ACK */
-  f64 mrtt_us;		/**< High precision mrtt from tracked acks */
-
+  u64 data_segs_out;	/** RFC4898 tcpEStatsPerfDataSegsOut */
   u32 psh_seq;		/**< Add psh header for seg that includes this */
+
   u32 next_node_index;	/**< Can be used to control next node in output */
   u32 next_node_opaque;	/**< Opaque to pass to next node */
   u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
@@ -406,6 +409,8 @@ typedef struct _tcp_connection
 
   tcp_errors_t errors;	/**< Soft connection errors */
 
+  u32 iss;		/**< initial sent sequence */
+  u32 irs;		/**< initial remote sequence */
   f64 start_ts;		/**< Timestamp when connection initialized */
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */

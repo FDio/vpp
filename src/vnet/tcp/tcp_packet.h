@@ -142,13 +142,12 @@ typedef struct _sack_block
 
 typedef struct
 {
-  u8 flags;		/** Option flags, see above */
-
-  u16 mss;		/**< Maximum segment size advertised */
-  u8 wscale;		/**< Window scale advertised */
+  sack_block_t *sacks;	/**< SACK blocks */
   u32 tsval;		/**< Timestamp value */
   u32 tsecr;		/**< Echoed/reflected time stamp */
-  sack_block_t *sacks;	/**< SACK blocks */
+  u16 mss;		/**< Maximum segment size advertised */
+  u8 flags;		/** Option flags, see above */
+  u8 wscale;		/**< Window scale advertised */
   u8 n_sack_blocks;	/**< Number of SACKs blocks */
 } tcp_options_t;
 
