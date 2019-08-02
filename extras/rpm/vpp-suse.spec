@@ -144,7 +144,7 @@ This package contains the python bindings for the vpp api
 export VPP_BUILD_USER=suse
 export VPP_BUILD_HOST=SUSE
 
-make -C build-root V=1 CC=gcc-7 CXX=g++-7 PLATFORM=vpp TAG=vpp install-packages
+make -C build-root V=1 CC=gcc-7 CXX=g++-7 PLATFORM=${PLATFORM} TAG=vpp install-packages
 
 cd %{_vpp_build_dir}/../src/vpp-api/python && %{py2_build}
 

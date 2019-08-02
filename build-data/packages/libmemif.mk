@@ -14,12 +14,6 @@
 libmemif_source = extras
 libmemif_configure_subdir = libmemif
 
-ifneq ($(shell which cmake3),)
-CMAKE?=cmake3
-else
-CMAKE?=cmake
-endif
-
 libmemif_cmake_args ?=
 libmemif_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
 libmemif_cmake_args += -DCMAKE_C_FLAGS="$($(TAG)_TAG_CFLAGS)"
@@ -33,7 +27,7 @@ endif
 
 libmemif_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
-  $(CMAKE) -G Ninja $(libmemif_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)
+  $(CMAKE) $(CMAKE_CROSS_ARGS) -G Ninja $(libmemif_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)
 
 libmemif_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
 
