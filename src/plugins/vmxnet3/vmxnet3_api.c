@@ -251,7 +251,7 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
 }
 
 static void *
-vl_api_vmxnet3_dump_t_print (vl_api_vmxnet3_create_t * mp, void *handle)
+vl_api_vmxnet3_dump_t_print (vl_api_vmxnet3_dump_t * mp, void *handle)
 {
   u8 *s;
 
