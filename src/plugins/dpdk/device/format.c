@@ -602,8 +602,11 @@ format_dpdk_device (u8 * s, va_list * args)
 	  vec_free (s2);
 	}
 
-      s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
-		  format_dpdk_device_module_info, xd);
+      if (1 < verbose)
+	{
+	  s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
+		      format_dpdk_device_module_info, xd);
+	}
 
       s = format (s, "%Umax rx packet len: %d\n", format_white_space,
 		  indent + 2, di.max_rx_pktlen);
