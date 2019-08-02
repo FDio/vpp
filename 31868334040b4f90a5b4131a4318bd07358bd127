@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "728f0e12_5a6b4d60",
+        "filename": "test/test_qos.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 495,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-02T09:12:31Z",
+      "side": 1,
+      "message": "please also test for the correct value of the cfi bit.\n self.assertEqual(p[Dot1Q].id, ......)",
+      "revId": "31868334040b4f90a5b4131a4318bd07358bd127",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f9923f5e_04868970",
+        "filename": "test/test_qos.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-02T09:12:31Z",
+      "side": 1,
+      "message": "here we see the effect of changing the get function to include the CFI.\nplease add another test-case that sets the CFI value in the input packet.",
+      "revId": "31868334040b4f90a5b4131a4318bd07358bd127",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
