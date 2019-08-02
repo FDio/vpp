@@ -71,11 +71,8 @@ format_function_t format_tcp_rcv_sacks;
   _(RETRANSMIT, "RETRANSMIT")           \
   _(DELACK, "DELAYED ACK")              \
   _(PERSIST, "PERSIST")                 \
-  _(KEEP, "KEEP")                       \
   _(WAITCLOSE, "WAIT CLOSE")            \
   _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
-  _(ESTABLISH, "ESTABLISH")		\
-  _(ESTABLISH_AO, "ESTABLISH_AO")	\
 
 typedef enum _tcp_timers
 {
@@ -98,7 +95,6 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_TO_TIMER_TICK       TCP_TICK*10	/* Period for converting from TCP
 						 * ticks to timer units */
 #define TCP_DELACK_TIME         1	/* 0.1s */
-#define TCP_ESTABLISH_TIME      750	/* 75s */
 #define TCP_SYN_RCVD_TIME	600	/* 60s */
 #define TCP_2MSL_TIME           300	/* 30s */
 #define TCP_CLOSEWAIT_TIME	20	/* 2s */
@@ -113,6 +109,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_RTO_SYN_RETRIES 3	/* SYN retries without doubling RTO */
 #define TCP_RTO_INIT 1 * THZ	/* Initial retransmit timer */
 #define TCP_RTO_BOFF_MAX 8	/* Max number of retries before reset */
+#define TCP_ESTABLISH_TIME (60 * THZ)	/* Active open establish timeout */
 
 /** TCP connection flags */
 #define foreach_tcp_connection_flag             \

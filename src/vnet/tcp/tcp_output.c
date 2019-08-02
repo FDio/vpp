@@ -942,7 +942,6 @@ tcp_send_syn (tcp_connection_t * tc)
    * Setup retransmit and establish timers before requesting buffer
    * such that we can return if we've ran out.
    */
-  tcp_timer_set (tc, TCP_TIMER_ESTABLISH_AO, TCP_ESTABLISH_TIME);
   tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
 		    tc->rto * TCP_TO_TIMER_TICK);
 
@@ -1467,8 +1466,8 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   tcp_recovery_on (tc);
 }
 
-static inline void
-tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
+void
+tcp_timer_retransmit_handler (u32 tc_index)
 {
   u32 thread_index = vlib_get_thread_index ();
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
@@ -1477,25 +1476,17 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
 
-  if (is_syn)
-    {
-      tc = tcp_half_open_connection_get (index);
-      /* Note: the connection may have transitioned to ESTABLISHED... */
-      if (PREDICT_FALSE (tc == 0 || tc->state != TCP_STATE_SYN_SENT))
-	return;
-      tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
-    }
-  else
-    {
-      tc = tcp_connection_get (index, thread_index);
-      /* Note: the connection may have been closed and pool_put */
-      if (PREDICT_FALSE (tc == 0 || tc->state == TCP_STATE_SYN_SENT))
-	return;
-      tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
-      /* Wait-close and retransmit could pop at the same time */
-      if (tc->state == TCP_STATE_CLOSED)
-	return;
-    }
+  tc = tcp_connection_get (tc_index, thread_index);
+
+  /* Note: the connection may have been closed and pool_put */
+  if (PREDICT_FALSE (tc == 0 || tc->state == TCP_STATE_SYN_SENT))
+    return;
+
+  tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
+
+  /* Wait-close and retransmit could pop at the same time */
+  if (tc->state == TCP_STATE_CLOSED)
+    return;
 
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
@@ -1551,19 +1542,20 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
-	tcp_cc_init_rxt_timeout (tc);
+	{
+	  tcp_cc_init_rxt_timeout (tc);
+	  /* Record timestamp. Eifel detection algorithm RFC3522 */
+	  tc->snd_rxt_ts = tcp_tstamp (tc);
+	}
 
       if (tc->flags & TCP_CONN_RATE_SAMPLE)
 	tcp_bt_flush_samples (tc);
 
       /* If we've sent beyond snd_congestion, update it */
       tc->snd_congestion = seq_max (tc->snd_nxt, tc->snd_congestion);
-
       tc->snd_nxt = tc->snd_una;
-      tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
-      /* Send one segment. Note that n_bytes may be zero due to buffer
-       * shortfall */
+      /* Send one segment. n_bytes may be zero due to buffer shortfall */
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss, &b);
       if (!n_bytes)
 	{
@@ -1572,72 +1564,38 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	}
 
       bi = vlib_get_buffer_index (vm, b);
-
-      /* For first retransmit, record timestamp (Eifel detection RFC3522) */
-      if (tc->rto_boff == 1)
-	tc->snd_rxt_ts = tcp_tstamp (tc);
-
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+
+      tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
       tcp_retransmit_timer_force_update (tc);
-    }
-  /* Retransmit for SYN */
-  else if (tc->state == TCP_STATE_SYN_SENT)
-    {
-      /* Half-open connection actually moved to established but we were
-       * waiting for syn retransmit to pop to call cleanup from the right
-       * thread. */
-      if (tc->flags & TCP_CONN_HALF_OPEN_DONE)
-	{
-	  if (tcp_half_open_connection_cleanup (tc))
-	    TCP_DBG ("could not remove half-open connection");
-	  return;
-	}
-
-      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
-
-      /* Try without increasing RTO a number of times. If this fails,
-       * start growing RTO exponentially */
-      tc->rto_boff += 1;
-      if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
-	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
-
-      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
-			tc->rto * TCP_TO_TIMER_TICK);
-
-      if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
-	{
-	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN, 1);
-	  return;
-	}
-
-      b = vlib_get_buffer (vm, bi);
-      tcp_init_buffer (vm, b);
-      tcp_make_syn (tc, b);
-
-      tc->rtt_ts = 0;
-      TCP_EVT_DBG (TCP_EVT_SYN_RXT, tc, 0);
-
-      /* This goes straight to ipx_lookup. Retransmit timer set already */
-      tcp_push_ip_hdr (wrk, tc, b);
-      tcp_enqueue_to_ip_lookup (wrk, b, bi, tc->c_is_ip4, tc->c_fib_index);
     }
   /* Retransmit SYN-ACK */
   else if (tc->state == TCP_STATE_SYN_RCVD)
     {
       TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
 
-      tc->rto_boff += 1;
-      if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
-	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
       tc->rtt_ts = 0;
 
-      tcp_retransmit_timer_force_update (tc);
+      /* Passive open establish timeout */
+      if (tc->rto > TCP_ESTABLISH_TIME >> 1)
+	{
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	  tcp_connection_timers_reset (tc);
+	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+	  return;
+	}
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
 	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
 	  return;
 	}
+
+      tc->rto_boff += 1;
+      if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
+	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
+
+      tcp_retransmit_timer_force_update (tc);
 
       b = vlib_get_buffer (vm, bi);
       tcp_init_buffer (vm, b);
@@ -1654,16 +1612,72 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
     }
 }
 
+/**
+ * SYN retransmit timer handler. Active open only.
+ */
 void
-tcp_timer_retransmit_handler (u32 index)
+tcp_timer_retransmit_syn_handler (u32 tc_index)
 {
-  tcp_timer_retransmit_handler_i (index, 0);
-}
+  u32 thread_index = vlib_get_thread_index ();
+  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+  vlib_main_t *vm = wrk->vm;
+  tcp_connection_t *tc;
+  vlib_buffer_t *b = 0;
+  u32 bi;
 
-void
-tcp_timer_retransmit_syn_handler (u32 index)
-{
-  tcp_timer_retransmit_handler_i (index, 1);
+  tc = tcp_half_open_connection_get (tc_index);
+
+  /* Note: the connection may have transitioned to ESTABLISHED... */
+  if (PREDICT_FALSE (tc == 0 || tc->state != TCP_STATE_SYN_SENT))
+    return;
+
+  tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
+
+  /* Half-open connection actually moved to established but we were
+   * waiting for syn retransmit to pop to call cleanup from the right
+   * thread. */
+  if (tc->flags & TCP_CONN_HALF_OPEN_DONE)
+    {
+      if (tcp_half_open_connection_cleanup (tc))
+	TCP_DBG ("could not remove half-open connection");
+      return;
+    }
+
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+  tc->rtt_ts = 0;
+
+  /* Active open establish timeout */
+  if (tc->rto >= TCP_ESTABLISH_TIME >> 1)
+    {
+      session_stream_connect_notify (&tc->connection, 1 /* fail */ );
+      tcp_connection_cleanup (tc);
+      return;
+    }
+
+  if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
+    {
+      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+      return;
+    }
+
+  /* Try without increasing RTO a number of times. If this fails,
+   * start growing RTO exponentially */
+  tc->rto_boff += 1;
+  if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
+    tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
+
+  b = vlib_get_buffer (vm, bi);
+  tcp_init_buffer (vm, b);
+  tcp_make_syn (tc, b);
+
+  TCP_EVT_DBG (TCP_EVT_SYN_RXT, tc, 0);
+
+  /* This goes straight to ipx_lookup */
+  tcp_push_ip_hdr (wrk, tc, b);
+  tcp_enqueue_to_ip_lookup (wrk, b, bi, tc->c_is_ip4, tc->c_fib_index);
+
+  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
+		    tc->rto * TCP_TO_TIMER_TICK);
 }
 
 /**
