@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 DH_VERBOSE = 1
 DEB_BUILD_OPTIONS = noddebs
-PKG=vpp-ext-deps
+PKG_NAME=vpp-ext-deps
 
 VERSION = $(shell dpkg-parsechangelog | sed -nr '/^Version:/s/Version: //p')
 BASE_VER = $(word 1, $(subst -, ,$(VERSION)))
@@ -23,5 +23,5 @@ override_dh_auto_configure:
 
 override_dh_install:
 	make $(MAKE_ARGS) install
-	dh_install -p$(PKG) --autodest /opt
+	dh_install -p$(PKG_NAME) --autodest /opt
 
