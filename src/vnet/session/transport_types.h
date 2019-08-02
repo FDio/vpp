@@ -47,17 +47,11 @@ typedef enum transport_connection_flags_
 						  transports using the network layer (udp/tcp) */
 } transport_connection_flags_t;
 
-typedef struct _transport_stats
-{
-  u64 tx_bytes;
-} transport_stats_t;
-
 typedef struct _spacer
 {
   u64 bucket;
-  u32 max_burst_size;
-  f32 tokens_per_period;
   u64 last_update;
+  f32 tokens_per_period;
 } spacer_t;
 
 #define TRANSPORT_CONN_ID_LEN	44
@@ -77,9 +71,9 @@ typedef struct _transport_connection
     {
       ip46_address_t rmt_ip;	/**< Remote IP */
       ip46_address_t lcl_ip;	/**< Local IP */
+      u32 fib_index;		/**< Network namespace */
       u16 rmt_port;		/**< Remote port */
       u16 lcl_port;		/**< Local port */
-      u32 fib_index;		/**< Network namespace */
       u8 is_ip4;		/**< Flag if IP4 connection */
       u8 proto;			/**< Protocol id */
       u8 unused[2];		/**< First field after id wants to be
@@ -99,13 +93,18 @@ typedef struct _transport_connection
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
 
-  transport_stats_t stats;	/**< Transport connection stats */
   spacer_t pacer;		/**< Simple transport pacer */
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
   u32 cc_stat_tstamp;		/**< CC stats timestamp */
 #endif
+
+  /**
+   * Transport specific state starts in next cache line. Meant to avoid
+   * alignment surprises in transports when base class changes.
+   */
+    CLIB_CACHE_LINE_ALIGN_MARK (end);
 
   /** Macros for 'derived classes' where base is named "connection" */
 #define c_lcl_ip connection.lcl_ip
@@ -134,6 +133,11 @@ typedef struct _transport_connection
 
 STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index)
 	       == TRANSPORT_CONN_ID_LEN, "update conn id len");
+
+/* Warn if size changes. Two cache lines is already generous, hopefully we
+ * won't have to outgrow that. */
+STATIC_ASSERT (sizeof (transport_connection_t) == 2 * CLIB_CACHE_LINE_BYTES,
+	       "moved into 3rd cache line");
 
 typedef enum _transport_proto
 {
