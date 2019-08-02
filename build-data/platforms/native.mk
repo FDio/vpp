@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Get platform-specific configuraion
-$(foreach d,$(SOURCE_PATH_BUILD_DATA_DIRS),	\
-  $(eval -include $(d)/platforms/$(PLATFORM).mk))
+ARCH = native
+
+ROOT_PACKAGES = vpp vom
+
+-include ../build-data/platforms/common.mk

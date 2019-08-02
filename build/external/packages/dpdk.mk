@@ -12,10 +12,9 @@
 # limitations under the License.
 
 DPDK_PKTMBUF_HEADROOM        ?= 128
-DPDK_CACHE_LINE_SIZE         ?= 64
+DPDK_CACHE_LINE_SIZE         ?= 128
 DPDK_DOWNLOAD_DIR            ?= $(DL_CACHE_DIR)
 DPDK_DEBUG                   ?= n
-DPDK_AARCH64_GENERIC         ?= y
 DPDK_MLX4_PMD                ?= n
 DPDK_MLX5_PMD                ?= n
 DPDK_TAP_PMD                 ?= n
@@ -28,7 +27,9 @@ DPDK_TAR_URL                 := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
 DPDK_18.11_TARBALL_MD5_CKSUM := 04b86f4a77f4f81a7fbd26467dd2ea9f
 DPDK_19.02_TARBALL_MD5_CKSUM := 23944a2cdee061aa4bd72ebe7d836db0
 DPDK_19.05_TARBALL_MD5_CKSUM := fe22ad1bab1539945119047b0fdf1105
-MACHINE=$(shell uname -m)
+
+ARCH                         ?= native
+MACHINE                      =  $(shell uname -m)
 
 # replace dot with space, and if 3rd word exists we deal with stable dpdk rel
 ifeq ($(word 3,$(subst ., ,$(DPDK_VERSION))),)
@@ -37,7 +38,13 @@ else
 DPDK_SOURCE := $(B)/dpdk-stable-$(DPDK_VERSION)
 endif
 
-ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
+ifeq ($(ARCH),native)
+TARGET_MACHINE = $(MACHINE)
+else
+TARGET_MACHINE = $(ARCH)
+endif
+
+ifeq ($(TARGET_MACHINE),$(filter $(TARGET_MACHINE),x86_64))
   AESNI ?= y
   DPDK_BUILD_DEPS := ipsec-mb-install
 else
@@ -52,6 +59,7 @@ else
 DPDK_CC=gcc
 endif
 
+ifeq ($(ARCH),native)
 ##############################################################################
 # Intel x86
 ##############################################################################
@@ -64,15 +72,9 @@ DPDK_TUNE             ?= core-avx2
 # ARM64
 ##############################################################################
 else ifeq ($(MACHINE),aarch64)
-CROSS :=
-export CROSS
 DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= armv8a
 DPDK_TUNE             ?= generic
-ifeq (y, $(DPDK_AARCH64_GENERIC))
-DPDK_CACHE_LINE_SIZE  := 128
-# assign aarch64 variant specific options
-else
 CPU_IMP_ARM                     = 0x41
 CPU_IMP_CAVIUM                  = 0x43
 
@@ -117,14 +119,12 @@ $(warning Unknown Cavium CPU)
 endif
 endif
 
-# finish of assigning aarch64 variant specific options
-endif
-
 ##############################################################################
 # Unknown platform
 ##############################################################################
 else
-$(error Unknown platform)
+$(error Unknown platform: $(MACHINE))
+endif
 endif
 
 # compiler/linker custom arguments
