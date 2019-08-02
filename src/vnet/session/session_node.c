@@ -780,7 +780,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
 
   *n_tx_packets += ctx->n_segs_per_evt;
-  transport_connection_update_tx_stats (ctx->tc, ctx->max_len_to_snd);
+  transport_connection_update_tx_bytes (ctx->tc, ctx->max_len_to_snd);
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
