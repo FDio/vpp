@@ -47,4 +47,4 @@ default_root_packages = bash coreutils sysvinit util-linux mingetty procps
 i686_arch = i686
 x86_64_arch = x86_64
 ppc_arch = ppc
-
+aarch64_arch = aarch64

@@ -135,9 +135,9 @@ DPDK_CPU_CFLAGS := -pie -fPIC
 endif
 
 ifeq ($(DPDK_DEBUG),n)
-DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
+DPDK_EXTRA_CFLAGS += -g -mtune=$(DPDK_TUNE)
 else
-DPDK_EXTRA_CFLAGS := -g -O0
+DPDK_EXTRA_CFLAGS += -g -O0
 endif
 
 # -Wimplicit-fallthrough was introduced starting from GCC 7,
@@ -281,6 +281,10 @@ endif
 dpdk-patch: $(B)/.dpdk-patch.ok
 
 $(B)/.dpdk-config.ok: $(B)/.dpdk-patch.ok $(B)/custom-config
+	echo "DPDK_MAKE_ARGS: $(DPDK_MAKE_ARGS)"
+	echo "DPDK_MAKE_EXTRA_ARGS: $(DPDK_MAKE_EXTRA_ARGS)"
+	echo "DPDK_EXTRA_LDFLAGS: $(DPDK_EXTRA_LDFLAGS)"
+	echo "DPDK_EXTRA_CFLAGS: $(DPDK_EXTRA_CFLAGS)"
 	@make $(DPDK_MAKE_ARGS) config
 	@touch $@
 

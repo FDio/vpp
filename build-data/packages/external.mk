@@ -44,8 +44,33 @@ ifneq ($(DPDK_PLATFORM_TARGET),)
 DPDK_MAKE_ARGS += DPDK_TARGET=$(DPDK_PLATFORM_TARGET)
 endif
 
+DPDK_MACHINE=$(strip $($(PLATFORM)_dpdk_machine))
+ifneq ($(DPDK_MACHINE),)
+DPDK_MAKE_ARGS += DPDK_MACHINE=$(DPDK_MACHINE)
+endif
+
+DPDK_TUNE=$(strip $($(PLATFORM)_dpdk_tune))
+ifneq ($(DPDK_TUNE),)
+DPDK_MAKE_ARGS += DPDK_TUNE=$(DPDK_TUNE)
+endif
+
+#DPDK_CROSS=$(strip $($(PLATFORM)_dpdk_cross))
+#ifneq ($(DPDK_CROSS),)
+#DPDK_MAKE_ARGS += CROSS=$(DPDK_CROSS)
+#endif
+
 ifneq (,$(TARGET_PLATFORM))
 DPDK_MAKE_ARGS += DPDK_AARCH64_GENERIC=n
+endif
+
+DPDK_EXTRA_CFLAGS=$(strip $($(PLATFORM)_dpdk_extra_cflags))
+ifneq ($(DPDK_EXTRA_CFLAGS),)
+DPDK_MAKE_ARGS += DPDK_EXTRA_CFLAGS="$(DPDK_EXTRA_CFLAGS)"
+endif
+
+DPDK_EXTRA_LDFLAGS=$(strip $($(PLATFORM)_dpdk_extra_ldflags))
+ifneq ($(DPDK_EXTRA_LDFLAGS),)
+DPDK_MAKE_ARGS += DPDK_EXTRA_LDFLAGS="$(DPDK_EXTRA_LDFLAGS)"
 endif
 
 DPDK_MAKE_EXTRA_ARGS = $(strip $($(PLATFORM)_dpdk_make_extra_args))
