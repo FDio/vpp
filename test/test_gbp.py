@@ -3848,7 +3848,7 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[IPv6].dst, "2001:10::88")
 
         #
-        # redirect to programmed remote SEP in EPG 320
+        # a programmed remote SEP in EPG 320
         #
 
         # gbp vxlan tunnel for the remote SEP
@@ -3870,7 +3870,7 @@ class TestGBP(VppTestCase):
         sep5.add_vpp_config()
 
         #
-        # redirect from local l3out to remote (known, then unknown) SEP
+        # local l3out redirect tests
         #
 
         # add local l3out
@@ -3944,6 +3944,10 @@ class TestGBP(VppTestCase):
         VppGbpSubnet(self, rd1, "10:221::", 64,
                      VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
                      sclass=4221).add_vpp_config()
+
+        #
+        # l3out redirect to remote (known, then unknown) SEP
+        #
 
         # packets from 1 external subnet to the other
         p = [(Ether(src=eep1.mac, dst=self.router_mac) /
@@ -4020,7 +4024,36 @@ class TestGBP(VppTestCase):
             self.assertEqual(rxip.dst, txip.dst)
 
         #
-        # redirect remote EP to remote SEP
+        # l3out redirect to local SEP
+        #
+
+        # change the contract between l3out to redirect to local SEPs
+        # instead of remote SEP
+        VppGbpContract(
+            self, 402, 4220, 4221, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_DST_IP,
+                [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                       sep1.ip4, sep1.epg.rd)]),
+                VppGbpContractRule(
+                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_DST_IP,
+                    [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                           sep1.ip6, sep1.epg.rd)])],
+            [ETH_P_IP, ETH_P_IPV6]).add_vpp_config()
+
+        rxs = self.send_and_expect(self.pg0, p, sep1.itf)
+        for rx, tx in zip(rxs, p):
+            self.assertEqual(rx[Ether].src, routed_src_mac)
+            self.assertEqual(rx[Ether].dst, sep1.mac)
+            rxip = rx[Ether].payload
+            txip = tx[Ether].payload
+            self.assertEqual(rxip.src, txip.src)
+            self.assertEqual(rxip.dst, txip.dst)
+
+        #
+        # redirect remote EP to remote (known then unknown) SEP
         #
 
         # remote SEP known again
