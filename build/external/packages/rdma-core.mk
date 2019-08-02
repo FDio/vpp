@@ -38,6 +38,7 @@ RDMA_FILES := include/infiniband/verbs.h \
 define  rdma-core_config_cmds
 	cd $(rdma-core_build_dir) && \
 	  $(CMAKE) -G Ninja $(rdma-core_src_dir) \
+	    $(CMAKE_CROSS_ARGS) \
 	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0 \
 	    -DCMAKE_BUILD_TYPE=$(RDMA_BUILD_TYPE) \
 	    -DCMAKE_C_FLAGS='-fPIC -fvisibility=hidden' > $(rdma-core_config_log)

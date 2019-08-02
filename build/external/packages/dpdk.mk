@@ -15,11 +15,11 @@ DPDK_PKTMBUF_HEADROOM        ?= 128
 DPDK_CACHE_LINE_SIZE         ?= 64
 DPDK_DOWNLOAD_DIR            ?= $(DL_CACHE_DIR)
 DPDK_DEBUG                   ?= n
-DPDK_AARCH64_GENERIC         ?= y
 DPDK_MLX4_PMD                ?= n
 DPDK_MLX5_PMD                ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
+DPDK_AARCH64_GENERIC         ?= y
 
 DPDK_VERSION                 ?= 19.08
 DPDK_BASE_URL                ?= http://fast.dpdk.org/rel
@@ -28,7 +28,9 @@ DPDK_TAR_URL                 := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
 DPDK_18.11_TARBALL_MD5_CKSUM := 04b86f4a77f4f81a7fbd26467dd2ea9f
 DPDK_19.05_TARBALL_MD5_CKSUM := fe22ad1bab1539945119047b0fdf1105
 DPDK_19.08_TARBALL_MD5_CKSUM := 8a6f5bd844b7a06b34787063409298ed
-MACHINE=$(shell uname -m)
+
+ARCH                         ?= native
+HOST_ARCH                    =  $(shell uname -m)
 
 # replace dot with space, and if 3rd word exists we deal with stable dpdk rel
 ifeq ($(word 3,$(subst ., ,$(DPDK_VERSION))),)
@@ -37,7 +39,13 @@ else
 DPDK_SOURCE := $(B)/dpdk-stable-$(DPDK_VERSION)
 endif
 
-ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
+ifeq ($(ARCH),native)
+TARGET_ARCH = $(HOST_ARCH)
+else
+TARGET_ARCH = $(ARCH)
+endif
+
+ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86_64))
   AESNI ?= y
   DPDK_BUILD_DEPS := ipsec-mb-install
 else
@@ -52,20 +60,19 @@ else
 DPDK_CC=gcc
 endif
 
+ifeq ($(ARCH),native)
 ##############################################################################
 # Intel x86
 ##############################################################################
-ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
-DPDK_TARGET           ?= $(MACHINE)-native-linuxapp-$(DPDK_CC)
+ifeq ($(HOST_ARCH),$(filter $(HOST_ARCH),x86_64 i686))
+DPDK_TARGET           ?= $(HOST_ARCH)-native-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= nhm
 DPDK_TUNE             ?= core-avx2
 
 ##############################################################################
 # ARM64
 ##############################################################################
-else ifeq ($(MACHINE),aarch64)
-CROSS :=
-export CROSS
+else ifeq ($(HOST_ARCH),aarch64)
 DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= armv8a
 DPDK_TUNE             ?= generic
@@ -124,7 +131,8 @@ endif
 # Unknown platform
 ##############################################################################
 else
-$(error Unknown platform)
+$(error Unknown arch: $(HOST_ARCH))
+endif
 endif
 
 # compiler/linker custom arguments
