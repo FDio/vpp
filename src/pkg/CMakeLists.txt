@@ -39,6 +39,6 @@ file(WRITE ${CMAKE_BINARY_DIR}/debian/compat "9\n")
 add_custom_target(package-deb
   COMMENT "Building .deb packages..."
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-  COMMAND "dpkg-buildpackage" "-us" "-uc" "-b"
+  COMMAND "dpkg-buildpackage" "-us" "-uc" "--build=any"
   USES_TERMINAL
 )

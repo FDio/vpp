@@ -170,10 +170,10 @@ groupadd -f -r vpp
 %endif
 %if %{with aesni}
     make bootstrap
-    make -C build-root PLATFORM=vpp TAG=%{_vpp_tag} install-packages
+    make -C build-root PLATFORM=${PLATFORM} TAG=%{_vpp_tag} install-packages
 %else
     make bootstrap AESNI=n
-    make -C build-root PLATFORM=vpp AESNI=n TAG=%{_vpp_tag} install-packages
+    make -C build-root PLATFORM=${PLATFORM} AESNI=n TAG=%{_vpp_tag} install-packages
 %endif
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
 cd %{_mu_build_dir}/../src/vpp-api/python && %py3_build
@@ -211,9 +211,9 @@ done
 for file in $(cd %{buildroot}%{_libdir} && find . -type f -print | sed -e 's/^\.\///')
 do
 	# make lib symlinks
-	( cd %{buildroot}%{_libdir} && 
+	( cd %{buildroot}%{_libdir} &&
           ln -fs $file $(echo $file | sed -e 's/\(\.so\.[0-9]\+\).*/\1/') )
-	( cd %{buildroot}%{_libdir} && 
+	( cd %{buildroot}%{_libdir} &&
           ln -fs $file $(echo $file | sed -e 's/\(\.so\)\.[0-9]\+.*/\1/') )
 done
 for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/vpp/share/vpp/api  -type f -name '*.api.json' -print )
