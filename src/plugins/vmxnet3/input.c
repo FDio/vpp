@@ -76,7 +76,7 @@ vmxnet3_rx_comp_ring_advance_next (vmxnet3_rxq_t * rxq)
 
 static_always_inline void
 vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
-			u16 * next, u16 gso_size)
+			u16 gso_size)
 {
   u8 l4_hdr_sz = 0;
 
@@ -92,7 +92,6 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
       hb->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 	VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 	VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP4;
-      next[0] = VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
 
       /* checksum offload */
       if (!(rx_comp->index & VMXNET3_RXCI_CNC))
@@ -141,7 +140,6 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 	  vnet_buffer2 (hb)->gso_l4_hdr_sz = l4_hdr_sz;
 	  hb->flags |= VNET_BUFFER_F_GSO;
 	}
-      vlib_buffer_advance (hb, device_input_next_node_advance[next[0]]);
     }
   else if (rx_comp->flags & VMXNET3_RXCF_IP6)
     {
@@ -152,7 +150,6 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
       hb->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 	VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 	VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP6;
-      next[0] = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
 
       /* checksum offload */
       if (!(rx_comp->index & VMXNET3_RXCI_CNC))
@@ -196,10 +193,7 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 	  vnet_buffer2 (hb)->gso_l4_hdr_sz = l4_hdr_sz;
 	  hb->flags |= VNET_BUFFER_F_GSO;
 	}
-      vlib_buffer_advance (hb, device_input_next_node_advance[next[0]]);
     }
-  else
-    next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 }
 
 static_always_inline uword
@@ -387,17 +381,14 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  if (PREDICT_FALSE (known_next))
-	    {
-	      next[0] = next_index;
-	    }
+	    next[0] = next_index;
 	  else
 	    {
 	      ethernet_header_t *e = (ethernet_header_t *) hb->data;
 
-	      if (ethernet_frame_is_tagged (e->type))
-		next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-	      else
-		vmxnet3_handle_offload (rx_comp, hb, next, gso_size);
+	      next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+	      if (!ethernet_frame_is_tagged (e->type))
+		vmxnet3_handle_offload (rx_comp, hb, gso_size);
 	    }
 
 	  n_rx_packets++;
