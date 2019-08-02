@@ -605,9 +605,8 @@ format_transport_pacer (u8 * s, va_list * args)
 {
   spacer_t *pacer = va_arg (*args, spacer_t *);
 
-  s = format (s, "bucket %u max_burst %u tokens/period %.3f last_update %x",
-	      pacer->bucket, pacer->max_burst_size, pacer->tokens_per_period,
-	      pacer->last_update);
+  s = format (s, "bucket %u tokens/period %.3f last_update %x",
+	      pacer->bucket, pacer->tokens_per_period, pacer->last_update);
   return s;
 }
 
@@ -709,9 +708,8 @@ transport_connection_tx_pacer_rate (transport_connection_t * tc)
 }
 
 void
-transport_connection_update_tx_stats (transport_connection_t * tc, u32 bytes)
+transport_connection_update_tx_bytes (transport_connection_t * tc, u32 bytes)
 {
-  tc->stats.tx_bytes += bytes;
   if (transport_connection_is_tx_paced (tc))
     spacer_update_bucket (&tc->pacer, bytes);
 }

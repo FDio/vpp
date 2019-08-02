@@ -237,16 +237,15 @@ transport_connection_is_tx_paced (transport_connection_t * tc)
 u8 *format_transport_pacer (u8 * s, va_list * args);
 
 /**
- * Update tx byte stats for transport connection
+ * Update tx bytes for paced transport connection
  *
- * If tx pacing is enabled, this also updates pacer bucket to account for the
+ * If tx pacing is enabled, this update pacer bucket to account for the
  * amount of bytes that have been sent.
  *
  * @param tc		transport connection
- * @param pkts		packets recently sent
  * @param bytes		bytes recently sent
  */
-void transport_connection_update_tx_stats (transport_connection_t * tc,
+void transport_connection_update_tx_bytes (transport_connection_t * tc,
 					   u32 bytes);
 
 void
