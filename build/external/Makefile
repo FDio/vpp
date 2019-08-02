@@ -55,7 +55,14 @@ config: dpdk-config rdma-core-config
 ##############################################################################
 
 DEB_VER := $(PKG_VERSION)
+
 DEB_ARCH=$(shell dpkg --print-architecture 2> /dev/null)
+TARGET_ARCH=
+ifeq ($(PLATFORM),aarch64-generic)
+DEB_ARCH=arm64
+TARGET_ARCH=--target-arch=arm64
+endif
+
 DEV_DEB=vpp-ext-deps_$(DEB_VER)-$(PKG_SUFFIX)_$(DEB_ARCH).deb
 INSTALLED_VER=$(shell dpkg-query --showformat='$${Version}' --show vpp-ext-deps 2> /dev/null)
 
@@ -69,7 +76,7 @@ deb/debian/changelog: Makefile
 	@echo " -- VPP Dev <vpp-dev@lists.fd.io>  $(shell date -R)" >> $@
 
 $(DEV_DEB): deb/debian/changelog
-	@cd deb && dpkg-buildpackage -b -uc -us
+	@cd deb && dpkg-buildpackage -b -uc -us $(TARGET_ARCH)
 	git clean -fdx deb
 
 build-deb: $(DEV_DEB)

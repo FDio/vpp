@@ -26,6 +26,11 @@ override_dh_strip:
 	dh_strip --dbg-package=vpp-dbg
 
 DEB_HOST_MULTIARCH = $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+# x86_64-linux-gnu on x86_64 platform or aarch64-linux-gnu on aarch64 platform
+# let us to change for cross platform packaging ...
+ifeq ($(PLATFORM),aarch64-generic)
+DEB_HOST_MULTIARCH = aarch64-linux-gnu
+endif
 
 override_dh_install:
 	@for c in @VPP_COMPONENTS@; do \
@@ -50,3 +55,9 @@ override_dh_install:
 	    @CMAKE_SOURCE_DIR@/scripts/remove-rpath debian/$$c ; \
 	  fi ; \
 	done
+
+# to have proper architecture string included in the package name ...
+ifeq ($(PLATFORM),aarch64-generic)
+override_dh_gencontrol:
+	dh_gencontrol -- -DArchitecture=arm64
+endif

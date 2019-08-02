@@ -21,13 +21,13 @@ picotls_build_dir := $(B)/build-picotls
 
 define  quicly_build_cmds
 	@cd $(quicly_build_dir) && \
-		$(CMAKE) -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
+		$(CMAKE) $(CMAKE_CROSS_ARGS) -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
 		$(quicly_src_dir) > $(quicly_build_log)
 	@$(MAKE) $(MAKE_ARGS) -C $(quicly_build_dir) > $(quicly_build_log)
 
 	@mkdir -p $(picotls_build_dir)
 	@cd $(picotls_build_dir) && \
-		$(CMAKE) -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
+		$(CMAKE) $(CMAKE_CROSS_ARGS) -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
 		$(quicly_src_dir)/deps/picotls > $(quicly_build_log)
 endef
 

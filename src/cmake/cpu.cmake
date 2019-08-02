@@ -15,8 +15,12 @@
 # Cache line size detection
 ##############################################################################
 if(CMAKE_CROSSCOMPILING)
-  message(STATUS "Cross-compiling - cache line size detection disabled")
-  set(VPP_LOG2_CACHE_LINE_SIZE 6)
+  if(DEFINED VPP_LOG2_CACHE_LINE_SIZE)
+    message(STATUS "Cross-compiling - using cache line size from VPP_LOG2_CACHE_LINE_SIZE")
+  else()
+    message(STATUS "Cross-compiling - cache line size detection disabled, using 6")
+    set(VPP_LOG2_CACHE_LINE_SIZE 6)
+  endif()
 elseif(DEFINED VPP_LOG2_CACHE_LINE_SIZE)
   # Cache line size assigned via cmake args
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
@@ -58,7 +62,11 @@ set(VPP_LOG2_CACHE_LINE_SIZE ${VPP_LOG2_CACHE_LINE_SIZE}
 ##############################################################################
 # CPU optimizations and multiarch support
 ##############################################################################
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+if(CMAKE_CROSSCOMPILING)
+  message(STATUS "Cross-compiling - march, mtune detection disabled, using CMAKE_MARCH_VARIANTS")
+  set(CMAKE_C_FLAGS "${CMAKE_MARCH_C_FLAG} ${CMAKE_C_FLAGS}")
+  list(APPEND MARCH_VARIANTS "${CMAKE_MARCH_VARIANTS}")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   set(CMAKE_C_FLAGS "-march=corei7 -mtune=corei7-avx ${CMAKE_C_FLAGS}")
   check_c_compiler_flag("-march=core-avx2" compiler_flag_march_core_avx2)
   if(compiler_flag_march_core_avx2)

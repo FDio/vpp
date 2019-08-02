@@ -141,22 +141,33 @@ find_build_data_file_fn = $(shell				\
 # ARCH, PLATFORM
 ######################################################################
 
-NATIVE_ARCH = $(shell gcc -dumpmachine | sed -e 's/\([a-zA-Z_0-9]*\)-.*/\1/')
+HOST_ARCH = $(shell uname -m)
 
 # Find all platforms.mk that we can, including those from build-root
 $(foreach d,$(FULL_SOURCE_PATH), \
   $(eval -include $(d)/platforms.mk))
 
-# Platform should be defined somewhere by specifying $($(PLATFORM)_arch)
-ARCH = $(strip $($(PLATFORM)_arch))
 ifeq ($(ARCH),)
-  $(error "Unknown platform `$(PLATFORM)'")
+  $(error "ARCH not specified in platform file for '$(PLATFORM)'")
+else
+export ARCH
 endif
+
+ifeq ($(ARCH),native)
+TARGET_ARCH = $(HOST_ARCH)
+else
+TARGET_ARCH = $(ARCH)
+endif
+
+export TARGET_ARCH
+export CMAKE_MARCH_VARIANTS  # used in cpu.cmake
+export CMAKE_MARCH_C_FLAG  # used in cpu.cmake
+export CMAKE_CROSS_ARGS  # external dependencies need this
 
 # map e.g. ppc7450 -> ppc
 BASIC_ARCH = \
    ${shell case '$(ARCH)' in \
-      (native) echo $(NATIVE_ARCH) ;; \
+      (native) echo $(HOST_ARCH) ;; \
       (i*86*) echo i386 ;; \
       (ppc*|powerpc*) echo ppc ;; \
       (*) echo '$(ARCH)' ;; \
@@ -167,18 +178,14 @@ BIARCH = 64
 
 aarch64_libdir = 64
 x86_64_libdir = $(BIARCH)
-native_libdir = $($(NATIVE_ARCH)_libdir)
+native_libdir = $($(HOST_ARCH)_libdir)
 
 # lib or lib64 depending
 arch_lib_dir = lib$($(BASIC_ARCH)_libdir)
 
-# OS to configure for.  configure --host will be set to $(ARCH)-$(OS)
+# OS to configure for. configure --host will be set to $(ARCH)-$(OS)
 # Allow per-platform overrides
-
-OS = $(strip $($(PLATFORM)_os))
-ifeq ($(OS),)
-  OS = mu-linux
-endif
+OS ?= mu-linux
 
 spu_target = spu
 native_target =
@@ -186,15 +193,10 @@ native_target =
 is_native = $(if $(ARCH:native=),,true)
 not_native = $(if $(ARCH:native=),true,)
 
-ARCH_TARGET_tmp = $(call ifdef_fn,$(ARCH)_target,$(ARCH)-$(OS))
-TARGET = $(call ifdef_fn,$(PLATFORM)_target,$(ARCH_TARGET_tmp))
-TARGET_PREFIX = $(if $(not_native),$(TARGET)-,)
-
-# CPU microarchitecture detection. 
-# Either set <platform>_march in build-data/platforms/<platform>.mk,
+# CPU microarchitecture detection.
+# Either set MARCH in build-data/platforms/<platform>.mk,
 # or detect and use the build-host instruction set
 
-MARCH = $(strip $($(PLATFORM)_march))
 ifeq ($(MARCH),)
   ifneq ($(wildcard $(TOOL_INSTALL_DIR)/bin/$(TARGET)-gcc),)
     TARGET_GCC = $(TOOL_INSTALL_DIR)/bin/$(TARGET)-gcc
@@ -221,7 +223,6 @@ else
 endif
 export MARCH
 
-MTUNE = $(strip $($(PLATFORM)_mtune))
 ifeq ($(MTUNE),)
   MTUNE = generic
 endif
@@ -230,13 +231,21 @@ endif
 # Generic build stuff
 ######################################################################
 
+ifneq ($(shell which cmake3),)
+CMAKE?=cmake3
+else
+CMAKE?=cmake
+endif
+
+export CMAKE
+
 # The package we are currently working on
 PACKAGE = $*
 
 # Build/install tags.  This lets you have different CFLAGS/CPPFLAGS/LDFLAGS
 # for e.g. debug versus optimized compiles.  Each tag has its own set of build/install
 # areas.
-TAG = 
+TAG =
 TAG_PREFIX = $(if $(TAG),$(TAG)-)
 
 # yes you need the space
@@ -259,8 +268,8 @@ IMAGES_PREFIX = images-$(TAG_PREFIX)
 tool_or_package_fn = $(if $(is_build_tool),tool,package)
 
 # Directory where packages are built & installed
-BUILD_DIR = $(MU_BUILD_ROOT_DIR)/$(BUILD_PREFIX_$(call tool_or_package_fn))$(ARCH)
-INSTALL_DIR = $(MU_BUILD_ROOT_DIR)/$(INSTALL_PREFIX)$(ARCH)
+BUILD_DIR = $(MU_BUILD_ROOT_DIR)/$(BUILD_PREFIX_$(call tool_or_package_fn))$(PLATFORM)
+INSTALL_DIR = $(MU_BUILD_ROOT_DIR)/$(INSTALL_PREFIX)$(PLATFORM)
 
 PLATFORM_IMAGE_DIR = $(MU_BUILD_ROOT_DIR)/$(IMAGES_PREFIX)$(PLATFORM)
 
@@ -309,8 +318,8 @@ endif
 
 # Always prefer our own tools to those installed on system.
 # Note: ccache-bin must be before tool bin.
-# 
-# Removed LD_LIBRARY_PATH from BUILD_ENV (drb, 10/31/17):  
+#
+# Removed LD_LIBRARY_PATH from BUILD_ENV (drb, 10/31/17):
 # export LD_LIBRARY_PATH=$(TOOL_INSTALL_DIR)/lib64:$(TOOL_INSTALL_DIR)/lib
 #   Reported to cause trouble. Only of historical interest, since we no longer
 #   build a full tool chain from source.
@@ -482,7 +491,7 @@ resolve_dependencies_fn = $(call resolve_dependencies2_fn,$(1),resolve_dependenc
 BIARCH = 64
 
 x86_64_libdir = $(BIARCH)
-native_libdir = $($(NATIVE_ARCH)_libdir)
+native_libdir = $($(HOST_ARCH)_libdir)
 
 # lib or lib64 depending
 arch_lib_dir = lib$($(BASIC_ARCH)_libdir)
@@ -617,7 +626,7 @@ check_platform =								\
 	     try make PLATFORM=$(PLATFORM) install-tools) ;			\
     exit 1 ;									\
   fi
-    
+
 configure_check_timestamp =						\
   @$(BUILD_ENV) ;							\
   $(check_platform) ;							\
@@ -733,6 +742,10 @@ install_check_timestamp =					\
 %-install: %-build
 	$(install_check_timestamp)
 
+.PHONY: %-install-$(PKG)
+%-install-$(PKG):
+	$($(PACKAGE)_install_$(PKG))
+
 ######################################################################
 # Source code managment
 ######################################################################
@@ -805,7 +818,7 @@ pull-all:
 	make PLATFORM=$(PLATFORM) $(patsubst %,%-pull-all,$(ROOT_PACKAGES))
 
 .PHONY: %-diff
-%-diff:									
+%-diff:
 	@$(BUILD_ENV) ;							\
 	d=$(call find_source_fn,$(PACKAGE_SOURCE)) ;			\
 	$(call build_msg_fn,Git diff $(PACKAGE)) ;			\
@@ -814,12 +827,11 @@ pull-all:
         else								\
 	 $(call build_msg_fn, $(PACKAGE) not a git directory) ;		\
 	fi
-            
 
 
 # generate diffs for everything in source path
 .PHONY: diff-all
-diff-all:								
+diff-all:
 	@$(BUILD_ENV) ;							\
 	$(call build_msg_fn,Generate diffs) ;				\
 	for r in $(ABSOLUTE_SOURCE_PATH); do				\
@@ -917,17 +929,18 @@ basic_system_image_install =				\
   mkdir -p bin lib mnt proc root sbin sys tmp etc ;	\
   mkdir -p usr usr/{bin,sbin} usr/lib ;			\
   mkdir -p var var/{lib,lock,log,run,tmp} ;		\
-  mkdir -p var/lock/subsys var/lib/urandom 
+  mkdir -p var/lock/subsys var/lib/urandom
 
 .PHONY: basic_system-image_install
 basic_system-image_install: # linuxrc-install
-	$(if $(not_native),							\
-	     $(call image_install_fn,basic_system,$(TARGET_TOOL_INSTALL_DIR)),)
+    $(call banner,"Basic system image install is deprecated, use make install-dep from repository root")
+#	$(if $(not_native),							\
+#	     $(call image_install_fn,basic_system,$(TARGET_TOOL_INSTALL_DIR)),)
 
-ROOT_PACKAGES = $(if $($(PLATFORM)_root_packages),$($(PLATFORM)_root_packages),$(default_root_packages))
+ROOT_PACKAGES := $(if $(ROOT_PACKAGES),$(ROOT_PACKAGES),$(default_root_packages))
 
 .PHONY: install-packages
-install-packages: $(patsubst %,%-find-source,$(ROOT_PACKAGES))	
+install-packages: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	@$(BUILD_ENV) ;							        \
 	set -eu$(BUILD_DEBUG) ;							\
 	d=$(MU_BUILD_ROOT_DIR)/packages-$(PLATFORM) ;				\
@@ -944,12 +957,12 @@ install-packages: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	    $(call build_msg_fn, Stripping symbols from files) ;		\
 	    find $${d} -type f							\
 		-exec								\
-		  $(TARGET_PREFIX)strip						\
+		  $(TARGET)-strip						\
 		    --strip-unneeded '{}' ';'					\
 		    >& /dev/null ;						\
 	else									\
 	    $(call build_msg_fn, NOT stripping symbols) ;			\
-	fi 
+	fi
 
 # readonly root squashfs image
 # Note: $(call build_msg_fn) does not seem to work inside of fakeroot so we use echo
@@ -979,7 +992,7 @@ $(PLATFORM_IMAGE_DIR)/ro.img ro-image: $(patsubst %,%-find-source,$(ROOT_PACKAGE
 	      echo @@@@ Stripping symbols from files @@@@ ;		\
 	      find $${tmp_dir} -type f					\
 		-exec							\
-		  $(TARGET_PREFIX)strip					\
+		  $(TARGET)-strip					\
 		    --strip-unneeded '{}' ';'				\
 		    >& /dev/null ;					\
 	  else								\
@@ -1004,7 +1017,7 @@ MKFS_JFFS2_BYTE_ORDER_x86_64 = -l
 MKFS_JFFS2_BYTE_ORDER_i686 = -l
 MKFS_JFFS2_BYTE_ORDER_ppc = -b
 MKFS_JFFS2_BYTE_ORDER_mips = -b
-MKFS_JFFS2_BYTE_ORDER_native = $(MKFS_JFFS2_BYTE_ORDER_$(NATIVE_ARCH))
+MKFS_JFFS2_BYTE_ORDER_native = $(MKFS_JFFS2_BYTE_ORDER_$(HOST_ARCH))
 
 MKFS_JFFS2_SECTOR_SIZE_IN_KBYTES = \
   $(call ifdef_fn,$(PLATFORM)_jffs2_sector_size_in_kbytes,256)
@@ -1089,7 +1102,7 @@ ccache-install:
 	$(MAKE) -C $(MU_BUILD_ROOT_DIR)	ccache-build
 	mkdir -p $(TOOL_INSTALL_DIR)/ccache-bin
 	ln -sf $(MU_BUILD_ROOT_DIR)/build-tool-native/ccache/ccache \
-		$(TOOL_INSTALL_DIR)/ccache-bin/$(TARGET_PREFIX)gcc 
+		$(TOOL_INSTALL_DIR)/ccache-bin/$(TARGET)-gcc
 
 TOOL_MAKE = $(MAKE) is_build_tool=yes
 

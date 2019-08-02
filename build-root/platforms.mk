@@ -34,17 +34,9 @@
 #  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-# Platform selects e.g. Linux config file
-PLATFORM = native
-
-native_arch = native
+# Default platform if one is not specified
+PLATFORM ?= native
 
 # Default for which packages go into read-only image
 # used to have pam
 default_root_packages = bash coreutils sysvinit util-linux mingetty procps
-
-# Linux based platforms (PLATFORM=i686 PLATFORM=ppc etc.)
-i686_arch = i686
-x86_64_arch = x86_64
-ppc_arch = ppc
-
