@@ -2439,7 +2439,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       new_tc0->c_thread_index = my_thread_index;
       new_tc0->rcv_nxt = vnet_buffer (b0)->tcp.seq_end;
       new_tc0->irs = seq0;
-      new_tc0->timers[TCP_TIMER_ESTABLISH_AO] = TCP_TIMER_HANDLE_INVALID;
       new_tc0->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
       new_tc0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
@@ -2714,7 +2713,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	  tcp_retransmit_timer_reset (tc0);
-	  tcp_timer_reset (tc0, TCP_TIMER_ESTABLISH);
 	  if (session_stream_accept_notify (&tc0->connection))
 	    {
 	      error0 = TCP_ERROR_MSG_QUEUE_FULL;
@@ -3160,7 +3158,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       TCP_EVT_DBG (TCP_EVT_SYN_RCVD, child0, 1);
       child0->tx_fifo_size = transport_tx_fifo_size (&child0->connection);
       tcp_send_synack (child0);
-      tcp_timer_set (child0, TCP_TIMER_ESTABLISH, TCP_SYN_RCVD_TIME);
 
     drop:
 
