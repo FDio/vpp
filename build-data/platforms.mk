@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Pick up per-platform makefile fragments
+# Get platform-specific configuraion
 $(foreach d,$(SOURCE_PATH_BUILD_DATA_DIRS),	\
-  $(eval -include $(d)/platforms/*.mk))
-
+  $(eval -include $(d)/platforms/$(PLATFORM).mk))

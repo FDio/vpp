@@ -15,12 +15,6 @@ vom_configure_depend = vpp-install
 vom_source = extras
 vom_configure_subdir = vom
 
-ifneq ($(shell which cmake3),)
-CMAKE?=cmake3
-else
-CMAKE?=cmake
-endif
-
 vom_cmake_args ?=
 vom_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
 vom_cmake_args += -DCMAKE_CXX_FLAGS="$($(TAG)_TAG_CPPFLAGS)"
@@ -34,7 +28,7 @@ endif
 
 vom_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
-  $(CMAKE) -G Ninja $(vom_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)
+  $(CMAKE) $(CMAKE_CROSS_ARGS) -G Ninja $(vom_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)
 
 vom_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
 
