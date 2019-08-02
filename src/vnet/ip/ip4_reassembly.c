@@ -1203,8 +1203,7 @@ VNET_FEATURE_INIT (ip4_reassembly_feature, static) = {
     .arc_name = "ip4-unicast",
     .node_name = "ip4-reassembly-feature",
     .runs_before = VNET_FEATURES ("ip4-lookup",
-                                  "esp4-decrypt",
-                                  "ah4-decrypt"),
+                                  "ipsec4-input-feature"),
     .runs_after = 0,
 };
 /* *INDENT-ON* */

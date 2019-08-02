@@ -1182,8 +1182,7 @@ VNET_FEATURE_INIT (ip6_reassembly_feature, static) = {
     .arc_name = "ip6-unicast",
     .node_name = "ip6-reassembly-feature",
     .runs_before = VNET_FEATURES ("ip6-lookup",
-                                  "esp6-decrypt",
-                                  "ah6-decrypt"),
+                                  "ipsec6-input-feature"),
     .runs_after = 0,
 };
 /* *INDENT-ON* */
