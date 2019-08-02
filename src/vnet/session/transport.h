@@ -246,7 +246,7 @@ u8 *format_transport_pacer (u8 * s, va_list * args);
  * @param pkts		packets recently sent
  * @param bytes		bytes recently sent
  */
-void transport_connection_update_tx_stats (transport_connection_t * tc,
+void transport_connection_update_tx_bytes (transport_connection_t * tc,
 					   u32 bytes);
 
 void

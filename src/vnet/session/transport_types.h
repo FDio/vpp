@@ -55,7 +55,6 @@ typedef struct _transport_stats
 typedef struct _spacer
 {
   u64 bucket;
-  u32 max_burst_size;
   f32 tokens_per_period;
   u64 last_update;
 } spacer_t;
@@ -99,13 +98,18 @@ typedef struct _transport_connection
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
 
-  transport_stats_t stats;	/**< Transport connection stats */
   spacer_t pacer;		/**< Simple transport pacer */
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
   u32 cc_stat_tstamp;		/**< CC stats timestamp */
 #endif
+
+  /**
+   * Transport specific state starts in next cache line. This avoids
+   * alignment surprises in transports when base class changes.
+   */
+    CLIB_CACHE_LINE_ALIGN_MARK (end);
 
   /** Macros for 'derived classes' where base is named "connection" */
 #define c_lcl_ip connection.lcl_ip
@@ -134,6 +138,10 @@ typedef struct _transport_connection
 
 STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index)
 	       == TRANSPORT_CONN_ID_LEN, "update conn id len");
+
+/* Warning in case we go beyond 2 cache lines */
+STATIC_ASSERT (sizeof (transport_connection_t) == 2 * CLIB_CACHE_LINE_BYTES,
+	       "moved into 3rd cache line");
 
 typedef enum _transport_proto
 {
