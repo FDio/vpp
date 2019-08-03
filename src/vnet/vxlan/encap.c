@@ -93,10 +93,9 @@ vxlan_encap_inline (vlib_main_t * vm,
   u8 const underlay_hdr_len = is_ip4 ?
     sizeof(ip4_vxlan_header_t) : sizeof(ip6_vxlan_header_t);
   u16 const l3_len = is_ip4 ? sizeof(ip4_header_t) : sizeof(ip6_header_t);
-  u32 const csum_flags = is_ip4 ?
-    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4 |
-    VNET_BUFFER_F_OFFLOAD_UDP_CKSUM :
-    VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+  u32 const csum_flags = is_ip4 ? VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+      VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM :
+      VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 
   while (n_left_from > 0)
     {
