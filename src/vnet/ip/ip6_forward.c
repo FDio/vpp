@@ -993,10 +993,18 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
     }
 
   n_bytes_left = n_this_buffer = payload_length_host_byte_order;
-  if (p0 && n_this_buffer + headers_size > p0->current_length)
-    n_this_buffer =
-      p0->current_length >
-      headers_size ? p0->current_length - headers_size : 0;
+
+  if (p0)
+    {
+      u32 n_ip_bytes_this_buffer =
+	p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
+      if (n_this_buffer + headers_size > n_ip_bytes_this_buffer)
+	{
+	  n_this_buffer = p0->current_length > headers_size ?
+	    n_ip_bytes_this_buffer - headers_size : 0;
+	}
+    }
+
   while (1)
     {
       sum0 = ip_incremental_checksum (sum0, data_this_buffer, n_this_buffer);
