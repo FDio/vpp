@@ -4,7 +4,7 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from vpp_ip import DpoProto, INVALID_INDEX
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
     MRouteItfFlags, MRouteEntryFlags, VppIpTable, VppMplsTable, \
@@ -1393,6 +1393,57 @@ class TestMPLS(VppTestCase):
                                              [VppMplsLabel(34)],
                                              dst_ip="ff01::1")
         self.send_and_assert_no_replies(self.pg0, tx, "RPF-ID drop 56")
+
+    def test_6pe(self):
+        """ MPLS 6PE """
+
+        #
+        # Add a non-recursive route with a single out label
+        #
+        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                    [VppRoutePath(self.pg0.remote_ip4,
+                                                  self.pg0.sw_if_index,
+                                                  labels=[VppMplsLabel(45)])])
+        route_10_0_0_1.add_vpp_config()
+
+        # bind a local label to the route
+        binding = VppMplsIpBind(self, 44, "10.0.0.1", 32)
+        binding.add_vpp_config()
+
+        #
+        # a labelled v6 route that resolves through the v4
+        #
+        route_2001_3 = VppIpRoute(
+            self, "2001::3", 128,
+            [VppRoutePath("10.0.0.1",
+                          INVALID_INDEX,
+                          labels=[VppMplsLabel(32)])])
+        route_2001_3.add_vpp_config()
+
+        tx = self.create_stream_ip6(self.pg0, "2001::3")
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+
+        self.verify_capture_labelled_ip6(self.pg0, rx, tx,
+                                         [VppMplsLabel(45),
+                                          VppMplsLabel(32)])
+
+        #
+        # and a v4 recursive via the v6
+        #
+        route_20_3 = VppIpRoute(
+            self, "20.0.0.3", 32,
+            [VppRoutePath("2001::3",
+                          INVALID_INDEX,
+                          labels=[VppMplsLabel(99)])])
+        route_20_3.add_vpp_config()
+
+        tx = self.create_stream_ip4(self.pg0, "20.0.0.3")
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+
+        self.verify_capture_labelled_ip4(self.pg0, rx, tx,
+                                         [VppMplsLabel(45),
+                                          VppMplsLabel(32),
+                                          VppMplsLabel(99)])
 
 
 class TestMPLSDisabled(VppTestCase):
