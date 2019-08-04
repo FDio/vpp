@@ -922,7 +922,7 @@ vppcom_app_exit (void)
   vcl_set_worker_index (~0);
   vcl_elog_stop (vcm);
   if (vec_len (vcm->workers) == 1)
-    vl_client_disconnect_from_vlib ();
+    vppcom_disconnect_from_vpp ();
   else
     vl_client_send_disconnect (1 /* vpp should cleanup */ );
 }
