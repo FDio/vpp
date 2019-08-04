@@ -681,6 +681,17 @@ vppcom_connect_to_vpp (char *app_name)
   return VPPCOM_OK;
 }
 
+void
+vppcom_disconnect_from_vpp (void)
+{
+  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+
+  if (vcl_cfg->vpp_api_socket_name)
+    vl_socket_client_disconnect ();
+  else
+    vl_client_disconnect_from_vlib ();
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

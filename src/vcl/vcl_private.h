@@ -598,6 +598,7 @@ void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
  * VCL Binary API
  */
 int vppcom_connect_to_vpp (char *app_name);
+void vppcom_disconnect_from_vpp (void);
 void vppcom_init_error_string_table (void);
 void vppcom_send_session_enable_disable (u8 is_enable);
 void vppcom_app_send_attach (void);
