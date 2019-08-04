@@ -307,6 +307,7 @@ class VppRoutePath(object):
                 'afi': self.proto,
                 'is_udp_encap': self.is_udp_encap,
                 'n_labels': len(self.nh_labels),
+                'next_hop_proto': self.proto,
                 'label_stack': self.encode_labels()}
 
     def __eq__(self, other):
@@ -399,6 +400,7 @@ class VppIpRoute(VppObject):
                     next_hop_n_out_labels=len(lstack),
                     next_hop_out_label_stack=lstack,
                     next_hop_via_label=path.nh_via_label,
+                    next_hop_proto=path.proto,
                     next_hop_id=path.next_hop_id,
                     is_resolve_host=path.is_resolve_host,
                     is_resolve_attached=path.is_resolve_attached,

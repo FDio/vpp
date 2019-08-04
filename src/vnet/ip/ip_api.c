@@ -1044,8 +1044,13 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp,
   clib_memcpy (&pfx.fp_addr.ip4, mp->dst_address, sizeof (pfx.fp_addr.ip4));
 
   ip46_address_t nh;
-  clib_memset (&nh, 0, sizeof (nh));
-  memcpy (&nh.ip4, mp->next_hop_address, sizeof (nh.ip4));
+  if (DPO_PROTO_IP4 == mp->next_hop_proto)
+    {
+      clib_memset (&nh, 0, sizeof (nh));
+      memcpy (&nh.ip4, mp->next_hop_address, sizeof (nh.ip4));
+    }
+  else
+    memcpy (&nh.ip6, mp->next_hop_address, sizeof (nh.ip6));
 
   n_labels = mp->next_hop_n_out_labels;
   if (n_labels == 0)
@@ -1078,7 +1083,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp,
 				mp->is_dvr,
 				mp->is_source_lookup,
 				mp->is_udp_encap,
-				fib_index, &pfx, DPO_PROTO_IP4,
+				fib_index, &pfx, mp->next_hop_proto,
 				&nh,
 				ntohl (mp->next_hop_id),
 				ntohl (mp->next_hop_sw_if_index),
@@ -1118,8 +1123,14 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp,
   clib_memcpy (&pfx.fp_addr.ip6, mp->dst_address, sizeof (pfx.fp_addr.ip6));
 
   ip46_address_t nh;
-  clib_memset (&nh, 0, sizeof (nh));
-  memcpy (&nh.ip6, mp->next_hop_address, sizeof (nh.ip6));
+
+  if (DPO_PROTO_IP4 == mp->next_hop_proto)
+    {
+      clib_memset (&nh, 0, sizeof (nh));
+      memcpy (&nh.ip4, mp->next_hop_address, sizeof (nh.ip4));
+    }
+  else
+    memcpy (&nh.ip6, mp->next_hop_address, sizeof (nh.ip6));
 
   n_labels = mp->next_hop_n_out_labels;
   if (n_labels == 0)
@@ -1152,7 +1163,7 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp,
 				mp->is_dvr,
 				mp->is_source_lookup,
 				mp->is_udp_encap,
-				fib_index, &pfx, DPO_PROTO_IP6,
+				fib_index, &pfx, mp->next_hop_proto,
 				&nh, ntohl (mp->next_hop_id),
 				ntohl (mp->next_hop_sw_if_index),
 				next_hop_fib_index,

@@ -29,6 +29,7 @@ from vpp_papi import VppEnum
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
+from vpp_ip import DpoProto
 
 
 # NAT HA protocol event data
@@ -8775,6 +8776,7 @@ class TestDSliteCE(MethodHolder):
 
         self.vapi.ip_add_del_route(dst_address=aftr_ip6_n,
                                    dst_address_length=128,
+                                   next_hop_proto=DpoProto.DPO_PROTO_IP6,
                                    next_hop_address=self.pg1.remote_ip6n,
                                    next_hop_sw_if_index=self.pg1.sw_if_index,
                                    is_ipv6=1)

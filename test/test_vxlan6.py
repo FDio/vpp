@@ -10,6 +10,8 @@ from scapy.layers.inet6 import IPv6, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
+from vpp_ip import DpoProto
+
 
 class TestVxlan6(BridgeDomain, VppTestCase):
     """ VXLAN over IPv6 Test Case """
@@ -91,6 +93,7 @@ class TestVxlan6(BridgeDomain, VppTestCase):
             # add host route so dest ip will not be resolved
             cls.vapi.ip_add_del_route(dst_address=dest_ip6n,
                                       dst_address_length=128,
+                                      next_hop_proto=DpoProto.DPO_PROTO_IP6,
                                       next_hop_address=next_hop, is_ipv6=1)
             r = cls.vapi.vxlan_add_del_tunnel(src_address=cls.pg0.local_ip6n,
                                               dst_address=dest_ip6n, is_ipv6=1,

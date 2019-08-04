@@ -9,6 +9,7 @@ from scapy.data import IP_PROTOS
 
 from framework import VppTestCase
 from util import ppp
+from vpp_ip import DpoProto
 
 """ TestLB is a subclass of  VPPTestCase classes.
 
@@ -55,6 +56,7 @@ class TestLB(VppTestCase):
             cls.vapi.ip_add_del_route(dst_address=dst4, dst_address_length=24,
                                       next_hop_address=cls.pg1.remote_ip4n)
             cls.vapi.ip_add_del_route(dst_address=dst6, dst_address_length=16,
+                                      next_hop_proto=DpoProto.DPO_PROTO_IP6,
                                       next_hop_address=cls.pg1.remote_ip6n,
                                       is_ipv6=1)
             cls.vapi.lb_conf(ip4_src_address="39.40.41.42",

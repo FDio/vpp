@@ -7,6 +7,7 @@ from ipaddress import IPv4Address, IPv6Address, AddressValueError
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
+from vpp_ip import DpoProto
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -182,13 +183,19 @@ class TestECMP(VppTestCase):
 
         for pg_if in self.pg_interfaces[1:]:
             for nh_host in pg_if.remote_hosts:
-                nh_host_ip = nh_host.ip4 if is_ipv6 == 0 else nh_host.ip6
+                if is_ipv6:
+                    nh_host_ip = nh_host.ip6
+                    next_hop_proto = DpoProto.DPO_PROTO_IP6
+                else:
+                    nh_host_ip = nh_host.ip4
+                    next_hop_proto = DpoProto.DPO_PROTO_IP4
                 next_hop_address = socket.inet_pton(af, nh_host_ip)
                 next_hop_sw_if_index = pg_if.sw_if_index
                 self.vapi.ip_add_del_route(
                     dst_address=dst_ip,
                     dst_address_length=dst_prefix_len,
                     next_hop_address=next_hop_address,
+                    next_hop_proto=next_hop_proto,
                     next_hop_sw_if_index=next_hop_sw_if_index,
                     is_ipv6=is_ipv6, is_multipath=1)
                 self.logger.info("Route via %s on %s created" %
