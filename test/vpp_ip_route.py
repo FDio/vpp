@@ -389,6 +389,13 @@ class VppIpRoute(VppObject):
         else:
             for path in self.paths:
                 lstack = path.encode_labels()
+                nh_proto = 0
+
+                # cross AF next-hop
+                if self.is_ip6 and path.proto == DpoProto.DPO_PROTO_IP4:
+                    nh_proto = 1
+                elif not self.is_ip6 and path.proto == DpoProto.DPO_PROTO_IP6:
+                    nh_proto = 2
 
                 r = self._test.vapi.ip_add_del_route(
                     dst_address=self.dest_addr,
@@ -400,6 +407,7 @@ class VppIpRoute(VppObject):
                     next_hop_out_label_stack=lstack,
                     next_hop_via_label=path.nh_via_label,
                     next_hop_id=path.next_hop_id,
+                    next_hop_proto=nh_proto,
                     is_resolve_host=path.is_resolve_host,
                     is_resolve_attached=path.is_resolve_attached,
                     is_ipv6=self.is_ip6, is_local=self.is_local,
