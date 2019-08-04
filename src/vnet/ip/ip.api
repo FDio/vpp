@@ -384,6 +384,7 @@ autoreply define sw_interface_ip6_enable_disable
                                  are used for forwarding. lower value is better.
     @param next_hop_id - Used when the path resolves via an object that has a unique
                          identifier.
+    @param next_hop_proto - The protocol of the next-hop (address) (IPv4=0, IPv6=1)
     @param dst_address_length - 
     @param dst_address[16] - 
     @param next_hop_address[16] - 
