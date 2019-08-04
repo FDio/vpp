@@ -31,6 +31,7 @@ class VppGreInterface(VppInterface):
         self.set_sw_if_index(r.sw_if_index)
         self.generate_remote_hosts()
         self.test.registry.register(self, self.test.logger)
+        return self
 
     def remove_vpp_config(self):
         self.unconfig()

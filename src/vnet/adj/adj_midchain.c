@@ -515,6 +515,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
      */
     ASSERT((adj->lookup_next_index == IP_LOOKUP_NEXT_ARP) ||
            (adj->lookup_next_index == IP_LOOKUP_NEXT_GLEAN) ||
+           (adj->lookup_next_index == IP_LOOKUP_NEXT_MCAST) ||
            (adj->lookup_next_index == IP_LOOKUP_NEXT_BCAST));
 
     adj_midchain_setup(adj_index, fixup, fixup_data, flags);
