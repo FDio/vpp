@@ -107,7 +107,7 @@ lacp_pick_packet_template (slave_if_t * sif)
 void
 lacp_send_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
 {
-  if (sif->mode != BOND_MODE_LACP)
+  if ((sif->mode != BOND_MODE_LACP) || (sif->port_enabled == 0))
     {
       lacp_stop_timer (&sif->periodic_timer);
       return;
@@ -374,16 +374,18 @@ lacp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
   sif = bond_get_slave_by_sw_if_index (sw_if_index);
   if (sif)
     {
-      sif->port_enabled = flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP;
+      if (sif->lacp_enabled == 0)
+	return 0;
+
+      /* port_enabled is both admin up and hw link up */
+      sif->port_enabled = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) &&
+			   vnet_sw_interface_is_link_up (vnm, sw_if_index));
       if (sif->port_enabled == 0)
 	{
-	  if (sif->lacp_enabled)
-	    {
-	      lacp_init_neighbor (sif, sif->actor_admin.system,
-				  ntohs (sif->actor_admin.port_number),
-				  ntohs (sif->actor_admin.key));
-	      lacp_init_state_machines (vm, sif);
-	    }
+	  lacp_init_neighbor (sif, sif->actor_admin.system,
+			      ntohs (sif->actor_admin.port_number),
+			      ntohs (sif->actor_admin.key));
+	  lacp_init_state_machines (vm, sif);
 	}
     }
 
@@ -404,15 +406,19 @@ lacp_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   sif = bond_get_slave_by_sw_if_index (sw->sw_if_index);
   if (sif)
     {
-      if (!(flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
+      if (sif->lacp_enabled == 0)
+	return 0;
+
+      /* port_enabled is both admin up and hw link up */
+      sif->port_enabled = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) &&
+			   vnet_sw_interface_is_admin_up (vnm,
+							  sw->sw_if_index));
+      if (sif->port_enabled == 0)
 	{
-	  if (sif->lacp_enabled)
-	    {
-	      lacp_init_neighbor (sif, sif->actor_admin.system,
-				  ntohs (sif->actor_admin.port_number),
-				  ntohs (sif->actor_admin.key));
-	      lacp_init_state_machines (vm, sif);
-	    }
+	  lacp_init_neighbor (sif, sif->actor_admin.system,
+			      ntohs (sif->actor_admin.port_number),
+			      ntohs (sif->actor_admin.key));
+	  lacp_init_state_machines (vm, sif);
 	}
     }
 
