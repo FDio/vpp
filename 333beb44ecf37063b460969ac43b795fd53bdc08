@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "584c245e_9e5d3aba",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1605,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-05T15:30:28Z",
+      "side": 1,
+      "message": "You may want to store the new session handle here.\n\nThat is, the session changed worker, so the handle will be different. So all the places where the previous handle was saved will need to be looked up and updated ...",
+      "range": {
+        "startLine": 1605,
+        "startChar": 2,
+        "endLine": 1605,
+        "endChar": 48
+      },
+      "revId": "333beb44ecf37063b460969ac43b795fd53bdc08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
