@@ -808,6 +808,25 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
 
 /* *INDENT-ON* */
 
+static clib_error_t *
+bond_slave_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+{
+  bond_main_t *bm = &bond_main;
+  slave_if_t *sif;
+  bond_detach_slave_args_t args = { 0 };
+
+  if (is_add)
+    return 0;
+  sif = bond_get_slave_by_sw_if_index (sw_if_index);
+  if (!sif)
+    return 0;
+  args.slave = sw_if_index;
+  bond_detach_slave (bm->vlib_main, &args);
+  return args.error;
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (bond_slave_interface_add_del);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

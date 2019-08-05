@@ -30,7 +30,7 @@ lacp_dump_ifs (lacp_interface_details_t ** out_lacpifs)
 
   /* *INDENT-OFF* */
   pool_foreach (sif, bm->neighbors,
-    if ((sif->port_enabled == 0) || (sif->lacp_enabled == 0))
+    if (sif->lacp_enabled == 0)
       continue;
     vec_add2(r_lacpifs, lacpif, 1);
     clib_memset (lacpif, 0, sizeof (*lacpif));
@@ -88,7 +88,7 @@ show_lacp (vlib_main_t * vm, u32 * sw_if_indices)
   for (i = 0; i < vec_len (sw_if_indices); i++)
     {
       sif = bond_get_slave_by_sw_if_index (sw_if_indices[i]);
-      if (!sif || (sif->port_enabled == 0) || (sif->lacp_enabled == 0))
+      if (!sif || (sif->lacp_enabled == 0))
 	continue;
       bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
       vlib_cli_output (vm,
@@ -157,7 +157,7 @@ show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
   for (i = 0; i < vec_len (sw_if_indices); i++)
     {
       sif = bond_get_slave_by_sw_if_index (sw_if_indices[i]);
-      if (!sif || (sif->port_enabled == 0) || (sif->lacp_enabled == 0))
+      if (!sif || (sif->lacp_enabled == 0))
 	continue;
       vlib_cli_output (vm, "  %U", format_vnet_sw_if_index_name,
 		       vnet_get_main (), sif->sw_if_index);
@@ -186,6 +186,7 @@ show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
 			 now - sif->last_marker_pdu_sent_time);
       vlib_cli_output (vm, "    debug: %d", sif->debug);
       vlib_cli_output (vm, "    loopback port: %d", sif->loopback_port);
+      vlib_cli_output (vm, "    port_enabled: %d", sif->port_enabled);
       vlib_cli_output (vm, "    port moved: %d", sif->port_moved);
       vlib_cli_output (vm, "    ready_n: %d", sif->ready_n);
       vlib_cli_output (vm, "    ready: %d", sif->ready);
