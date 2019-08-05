@@ -109,7 +109,7 @@ format_ip46_address (u8 * s, va_list * args)
     format (s, "%U", format_ip6_address, &ip46->ip6);
 }
 
-static uword
+uword
 unformat_data (unformat_input_t * input, va_list * args)
 {
   u64 _a;
@@ -127,7 +127,7 @@ unformat_data (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-static u8 *
+u8 *
 format_api_error (u8 * s, va_list * args)
 {
   echo_common_main_t *ecm = &echo_common_main;
@@ -143,7 +143,7 @@ format_api_error (u8 * s, va_list * args)
   return s;
 }
 
-static void
+void
 init_error_string_table ()
 {
   echo_common_main_t *ecm = &echo_common_main;

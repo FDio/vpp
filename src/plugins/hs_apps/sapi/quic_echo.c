@@ -1846,7 +1846,7 @@ main (int argc, char **argv)
   quic_echo_api_hookup (em);
 
   app_name = em->i_am_master ? "quic_echo_server" : "quic_echo_client";
-  if (connect_to_vpp (app_name) < 0)
+  if (connect_to_vpp (app_name))
     {
       svm_region_exit ();
       ECHO_FAIL ("Couldn't connect to vpe, exiting...\n");
