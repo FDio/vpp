@@ -34,8 +34,8 @@ if(VPP_BUILD_HS_SAPI_APPS)
     DEPENDS api_headers
     NO_INSTALL
   )
-  add_vpp_executable(quic_echo
-    SOURCES sapi/quic_echo.c
+  add_vpp_executable(vpp_echo
+    SOURCES sapi/vpp_echo.c
     LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
     DEPENDS api_headers
     NO_INSTALL

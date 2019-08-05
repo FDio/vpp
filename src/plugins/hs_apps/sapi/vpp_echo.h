@@ -13,26 +13,13 @@
  * limitations under the License.
  */
 
+#ifndef __included_vpp_echo_h__
+#define __included_vpp_echo_h__
+
 #include <stdio.h>
 #include <signal.h>
 
 #include <vnet/session/application_interface.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_printfun
 
 #define NITER 4000000
 #define TIMEOUT 10.0
@@ -44,17 +31,25 @@
 #define ECHO_FAIL(_fmt,_args...)	\
   {					\
     echo_main_t *em = &echo_main;	\
-    em->has_failed = 1;		\
+    em->has_failed = 1;			\
     em->time_to_stop = 1;		\
     if (em->log_lvl > 0)		\
-      clib_warning ("ECHO-ERROR: "_fmt, ##_args); 	\
+	 clib_warning ("ECHO-ERROR: "_fmt, ##_args);	\
   }
 
 #define ECHO_LOG(lvl, _fmt,_args...)	\
   {					\
     echo_main_t *em = &echo_main;	\
     if (em->log_lvl > lvl)		\
-      clib_warning (_fmt, ##_args); 	\
+	 clib_warning (_fmt, ##_args);	\
+  }
+
+#define ECHO_REGISTER_PROTO(proto, vft)			\
+  static void __clib_constructor			\
+  vpp_echo_init_##proto ()				\
+  {							\
+    echo_common_main_t *ecm = &echo_common_main;	\
+    ecm->available_proto_cb_vft[proto] = &vft;		\
   }
 
 typedef struct
@@ -71,7 +66,7 @@ typedef struct
   f64 start;
   u32 listener_index;		/* listener index in echo session pool */
   u32 idle_cycles;		/* consecutive enq/deq with no data */
-  volatile u64 accepted_session_count;	/* sessions we accepted */
+  volatile u64 accepted_session_count;	/* sessions we accepted (as a listener) */
 } echo_session_t;
 
 typedef enum
@@ -92,19 +87,19 @@ enum echo_close_f_t
 
 enum quic_session_type_t
 {
-  QUIC_SESSION_TYPE_QUIC,
-  QUIC_SESSION_TYPE_STREAM,
-  QUIC_SESSION_TYPE_LISTEN,
+  ECHO_SESSION_TYPE_QUIC,
+  ECHO_SESSION_TYPE_STREAM,
+  ECHO_SESSION_TYPE_LISTEN,
 };
 
 enum quic_session_state_t
 {
-  QUIC_SESSION_STATE_INITIAL,
-  QUIC_SESSION_STATE_READY,
-  QUIC_SESSION_STATE_AWAIT_CLOSING,	/* Data transfer is done, wait for close evt */
-  QUIC_SESSION_STATE_AWAIT_DATA,	/* Peer closed, wait for outstanding data */
-  QUIC_SESSION_STATE_CLOSING,	/* told vpp to close */
-  QUIC_SESSION_STATE_CLOSED,	/* closed in vpp */
+  ECHO_SESSION_STATE_INITIAL,
+  ECHO_SESSION_STATE_READY,
+  ECHO_SESSION_STATE_AWAIT_CLOSING,	/* Data transfer is done, wait for close evt */
+  ECHO_SESSION_STATE_AWAIT_DATA,	/* Peer closed, wait for outstanding data */
+  ECHO_SESSION_STATE_CLOSING,	/* told vpp to close */
+  ECHO_SESSION_STATE_CLOSED,	/* closed in vpp */
 };
 
 typedef enum
@@ -129,20 +124,24 @@ typedef enum echo_test_evt_
   ECHO_EVT_EXIT = (1 << 6),	/* app exits */
 } echo_test_evt_t;
 
-typedef struct _quic_echo_cb_vft
+typedef struct echo_proto_cb_vft_
 {
-  void (*quic_connected_cb) (session_connected_msg_t * mp, u32 session_index);
-  void (*client_stream_connected_cb) (session_connected_msg_t * mp,
-				      u32 session_index);
-  void (*server_stream_connected_cb) (session_connected_msg_t * mp,
-				      u32 session_index);
-  void (*quic_accepted_cb) (session_accepted_msg_t * mp, u32 session_index);
-  void (*client_stream_accepted_cb) (session_accepted_msg_t * mp,
-				     u32 session_index);
-  void (*server_stream_accepted_cb) (session_accepted_msg_t * mp,
-				     u32 session_index);
-} quic_echo_cb_vft_t;
-
+  void (*connected_cb) (session_connected_msg_t * mp,
+			echo_session_t * session);
+  void (*connect_failed_cb) (u32 context);
+  void (*accepted_cb) (session_accepted_msg_t * mp, echo_session_t * session);
+  void (*reset_cb) (session_reset_msg_t * mp, echo_session_t * s);
+  void (*disconnected_cb) (session_disconnected_msg_t * mp,
+			   echo_session_t * s);
+  void (*cleanup_cb) (echo_session_t * s);
+  void (*disconnected_reply_cb) (echo_session_t * s);
+  int (*process_opts_cb) (unformat_input_t * a);
+  void (*set_defaults_before_opts_cb) (void);
+  void (*set_defaults_after_opts_cb) (void);
+  void (*print_usage_cb) (void);
+  void (*cleanup_parent_died_cb) (echo_session_t * s);
+  void (*bound_uri_cb) (session_bound_msg_t * mp, echo_session_t * session);
+} echo_proto_cb_vft_t;
 
 typedef enum
 {
@@ -153,8 +152,8 @@ typedef enum
 
 typedef struct teardown_stat_
 {
-  u32 q; /* quic sessions */
-  u32 s; /* stream sessions */
+  u32 q;			/* quic sessions */
+  u32 s;			/* stream sessions */
 } teardown_stat_t;
 
 typedef struct
@@ -172,9 +171,9 @@ typedef struct
   uword *session_index_by_vpp_handles;	/* Hash table : quic_echo s_id -> vpp s_handle */
   clib_spinlock_t sid_vpp_handles_lock;	/* Hash table lock */
 
-  uword *shared_segment_handles;	/* Hash table : segment_names -> 1*/
+  uword *shared_segment_handles;	/* Hash table : segment_names -> 1 */
   clib_spinlock_t segment_handles_lock;	/* Hash table lock */
-  quic_echo_cb_vft_t cb_vft;	/* cb vft for QUIC scenarios */
+  echo_proto_cb_vft_t *proto_cb_vft;
   svm_msg_q_t *rpc_msq_queue;	/* MQ between quic_echo threads */
   fifo_segment_main_t segment_main;
 
@@ -196,7 +195,6 @@ typedef struct
   u32 rx_buf_size;
   u32 tx_buf_size;
   data_source_t data_source;	/* Use no/dummy/mirrored data */
-  u8 send_quic_disconnects;	/* actively send disconnect */
   u8 send_stream_disconnects;	/* actively send disconnect */
   u8 output_json;		/* Output stats as JSON */
   u8 log_lvl;			/* Verbosity of the logging */
@@ -208,25 +206,27 @@ typedef struct
 
   pthread_t *data_thread_handles;	/* vec of data thread handles */
   pthread_t mq_thread_handle;	/* Message queue thread handle */
-  u32 *data_thread_args;
+  u32 *volatile data_thread_args;
 
-  u32 n_clients;		/* Target number of QUIC sessions */
-  u32 n_stream_clients;		/* Target Number of STREAM sessions per QUIC session */
-  volatile u32 n_quic_clients_connected;	/* Number of connected QUIC sessions */
-  volatile u32 n_clients_connected;	/* Number of STREAM sessions connected */
+  u32 n_connects;		/* Target number of connects to send */
+  u32 n_sessions;		/* Number of sessions to prealloc */
+  u32 n_clients;		/* Target number of clients doing RX/TX */
   u32 n_rx_threads;		/* Number of data threads */
-  volatile u32 nxt_available_sidx; /* next unused prealloced session_index */
 
-  struct {
+  volatile u32 n_clients_connected;	/* Number of STREAM sessions connected */
+  volatile u32 nxt_available_sidx;	/* next unused prealloced session_index */
+
+  struct
+  {
     u64 tx_total;
     u64 rx_total;
-    teardown_stat_t reset_count; /* received reset from vpp */
-    teardown_stat_t close_count; /* received close from vpp */
-    teardown_stat_t active_count; /* sent close to vpp */
-    teardown_stat_t clean_count; /* cleaned up stale session */
+    teardown_stat_t reset_count;	/* received reset from vpp */
+    teardown_stat_t close_count;	/* received close from vpp */
+    teardown_stat_t active_count;	/* sent close to vpp */
+    teardown_stat_t clean_count;	/* cleaned up stale session */
   } stats;
 
-  struct /* Event based timing : start & end depend on CLI specified events */
+  struct			/* Event based timing : start & end depend on CLI specified events */
   {
     f64 start_time;
     f64 end_time;
@@ -234,7 +234,26 @@ typedef struct
     u8 start_event;
     u8 end_event;
   } timing;
+
+  struct
+  {
+    u32 transport_proto;
+    ip46_address_t ip;
+    u32 port;
+    u8 is_ip4;
+  } uri_elts;
 } echo_main_t;
+
+echo_main_t echo_main;
+
+typedef struct
+{
+  /* VNET_API_ERROR_FOO -> "Foo" hash table */
+  uword *error_string_by_error_number;
+  echo_proto_cb_vft_t *available_proto_cb_vft[TRANSPORT_N_PROTO];
+} echo_common_main_t;
+
+echo_common_main_t echo_common_main;
 
 typedef void (*echo_rpc_t) (void *arg, u32 opaque);
 
@@ -244,3 +263,13 @@ typedef struct
   void *arg;
   u32 opaque;
 } echo_rpc_msg_t;
+
+#endif /* __included_vpp_echo_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
