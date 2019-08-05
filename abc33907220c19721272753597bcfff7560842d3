@@ -22,6 +22,30 @@
       "revId": "abc33907220c19721272753597bcfff7560842d3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98a955ae_83c39de1",
+        "filename": "src/plugins/hs_apps/sapi/udp_echo.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 930,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-05T15:33:29Z",
+      "side": 1,
+      "message": "Yes, indeed,\nI was wondering if it wouldn\u0027t be better to have only one echo app that supports multiple protocols (instead of sharing the common logic), in a plugin-ish way (i.e. with vfts). That would mean echo_app.c \u0026 echo_app.h importing echo_quic_proto.c echo_tcp_proto.c and so on...",
+      "parentUuid": "bcdfc6d7_7cf9bd8a",
+      "range": {
+        "startLine": 930,
+        "startChar": 0,
+        "endLine": 930,
+        "endChar": 22
+      },
+      "revId": "abc33907220c19721272753597bcfff7560842d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
