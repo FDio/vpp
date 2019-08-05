@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b94bb5a5_091612ec",
+        "filename": "src/vnet/session/application_worker.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-05T14:37:59Z",
+      "side": 1,
+      "message": "All applications that use udpc must implement this function, otherwise it won\u0027t work properly. So, if a southbound notification makes its way here, it needs to be delivered",
+      "range": {
+        "startLine": 380,
+        "startChar": 2,
+        "endLine": 380,
+        "endChar": 43
+      },
+      "revId": "4561aa7bdb43edaa45a36c76ccd260ffda8f2eb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
