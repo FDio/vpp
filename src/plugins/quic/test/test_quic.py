@@ -173,7 +173,7 @@ class QUICEchoExternalTestCase(QUICTestCase):
         _args = self.server_echo_test_args + list(args)
         self.worker_server = QUICAppWorker(
             self.build_dir,
-            "quic_echo",
+            "vpp_echo",
             _args,
             self.logger)
         self.worker_server.start()
@@ -184,7 +184,7 @@ class QUICEchoExternalTestCase(QUICTestCase):
         # self.client_echo_test_args += "use-svm-api"
         self.worker_client = QUICAppWorker(
             self.build_dir,
-            "quic_echo",
+            "vpp_echo",
             _args,
             self.logger)
         self.worker_client.start()
