@@ -57,7 +57,7 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   struct ibv_send_wr wr[VLIB_FRAME_SIZE], *w = wr;
   struct ibv_sge sge[VLIB_FRAME_SIZE], *s = sge;
-  int i;
+  int i, ret;
 
   f = from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -155,12 +155,13 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
   for (i = 0; i < 5; i++)
     {
       rdma_device_output_free (vm, txq);
-      if (0 == ibv_post_send (txq->qp, w, &w))
+      ret = ibv_post_send (txq->qp, w, &w);
+      if (0 == ret)
 	break;
     }
   clib_spinlock_unlock_if_init (&txq->lock);
 
-  n_tx_packets = w == wr ? frame->n_vectors : w - wr;
+  n_tx_packets = 0 == ret ? frame->n_vectors : w - wr;
   n_tx_failed = frame->n_vectors - n_tx_packets;
 
   if (PREDICT_FALSE (n_tx_failed))
