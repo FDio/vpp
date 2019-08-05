@@ -162,7 +162,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       */
 	      tc0 = session_get_transport (s0);
 	      uc0 = udp_get_connection_from_transport (tc0);
-	      if (uc0->flags & UDP_CONN_F_CONNECTED)
+	      if (uc0->flags & UDP_CONN_F_CONNECTED
+		  && s0->thread_index != vlib_get_thread_index ())
 		{
 		  /*
 		   * Clone the transport. It will be cleaned up with the

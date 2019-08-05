@@ -377,7 +377,8 @@ app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
 			   session_handle_t new_sh)
 {
   application_t *app = application_get (app_wrk->app_index);
-  app->cb_fns.session_migrate_callback (s, new_sh);
+  if (app->cb_fns.session_migrate_callback)
+    app->cb_fns.session_migrate_callback (s, new_sh);
   return 0;
 }
 
