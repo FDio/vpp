@@ -967,6 +967,9 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
   if (!svm_fifo_chunk_includes_pos (f->head_chunk, head))
     f->head_chunk = svm_fifo_find_chunk (f, head);
 
+  if (PREDICT_FALSE (f->flags & SVM_FIFO_F_GROW))
+    svm_fifo_try_grow (f, head);
+
   /* store-rel: consumer owned index (paired with load-acq in producer) */
   clib_atomic_store_rel_n (&f->head, head);
 
@@ -976,11 +979,15 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
 void
 svm_fifo_dequeue_drop_all (svm_fifo_t * f)
 {
-  /* consumer foreign index */
-  u32 tail = clib_atomic_load_acq_n (&f->tail);
+  u32 tail, head;
+
+  f_load_head_tail_cons (f, &head, &tail);
 
   if (!svm_fifo_chunk_includes_pos (f->head_chunk, tail))
     f->head_chunk = svm_fifo_find_chunk (f, tail);
+
+  if (PREDICT_FALSE (f->flags & SVM_FIFO_F_GROW))
+    svm_fifo_try_grow (f, head);
 
   /* store-rel: consumer owned index (paired with load-acq in producer) */
   clib_atomic_store_rel_n (&f->head, tail);
