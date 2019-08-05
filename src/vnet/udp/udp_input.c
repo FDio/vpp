@@ -164,21 +164,27 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      uc0 = udp_get_connection_from_transport (tc0);
 	      if (uc0->flags & UDP_CONN_F_CONNECTED)
 		{
-		  /*
-		   * Clone the transport. It will be cleaned up with the
-		   * session once we notify the session layer.
-		   */
-		  new_uc0 = udp_connection_clone_safe (s0->connection_index,
-						       s0->thread_index);
-		  ASSERT (s0->session_index == new_uc0->c_s_index);
+		  if (s0->thread_index != vlib_get_thread_index ())
+		    {
+		      /*
+		       * Clone the transport. It will be cleaned up with the
+		       * session once we notify the session layer.
+		       */
+		      new_uc0 =
+			udp_connection_clone_safe (s0->connection_index,
+						   s0->thread_index);
+		      ASSERT (s0->session_index == new_uc0->c_s_index);
 
-		  /*
-		   * Drop the 'lock' on pool resize
-		   */
-		  session_pool_remove_peeker (s0->thread_index);
-		  session_dgram_connect_notify (&new_uc0->connection,
-						s0->thread_index, &s0);
-		  tc0 = &new_uc0->connection;
+		      /*
+		       * Drop the 'lock' on pool resize
+		       */
+		      session_pool_remove_peeker (s0->thread_index);
+		      session_dgram_connect_notify (&new_uc0->connection,
+						    s0->thread_index, &s0);
+		      tc0 = &new_uc0->connection;
+		    }
+		  else
+		    s0->session_state = SESSION_STATE_READY;
 		}
 	    }
 	  else if (s0->session_state == SESSION_STATE_READY)
