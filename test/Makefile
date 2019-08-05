@@ -73,12 +73,11 @@ else
 TEST_RUN_DIR:=$(VENV_PATH)/run
 endif
 
-#ifeq ($(PYTHON),)
-#PYTHON_INTERP=python2.7
-#else
-#PYTHON_INTERP=$(PYTHON)
-#endif
+ifeq ($(PYTHON), python2)
+PYTHON_INTERP=python2.7
+else
 PYTHON_INTERP=python3.6
+endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
 PIP_VERSION=19.1.1

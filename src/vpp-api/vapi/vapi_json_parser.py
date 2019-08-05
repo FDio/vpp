@@ -1,6 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import json
+import six
 
 
 class ParseError (Exception):
@@ -374,19 +375,34 @@ class JsonParser(object):
                     self.unions[union.name] = union
                     self.logger.debug("Parsed union: %s" % union)
                     self.unions_by_json[path].append(union)
-                for name, body in j['aliases'].items():
-                    if name in self.aliases:
-                        progress = progress + 1
-                        continue
-                    if 'length' in body:
-                        array_len = body['length']
-                    else:
-                        array_len = None
-                    t = self.types[body['type']]
-                    alias = self.alias_class(name, t, array_len)
-                    self.aliases[name] = alias
-                    self.logger.debug("Parsed alias: %s" % alias)
-                    self.aliases_by_json[path].append(alias)
+                if (six.PY2):
+                    for name, body in j['aliases'].iteritems():
+                        if name in self.aliases:
+                            progress = progress + 1
+                            continue
+                        if 'length' in body:
+                            array_len = body['length']
+                        else:
+                            array_len = None
+                        t = self.types[body['type']]
+                        alias = self.alias_class(name, t, array_len)
+                        self.aliases[name] = alias
+                        self.logger.debug("Parsed alias: %s" % alias)
+                        self.aliases_by_json[path].append(alias)
+                if (six.PY3):
+                    for name, body in j['aliases'].items():
+                        if name in self.aliases:
+                            progress = progress + 1
+                            continue
+                        if 'length' in body:
+                            array_len = body['length']
+                        else:
+                            array_len = None
+                        t = self.types[body['type']]
+                        alias = self.alias_class(name, t, array_len)
+                        self.aliases[name] = alias
+                        self.logger.debug("Parsed alias: %s" % alias)
+                        self.aliases_by_json[path].append(alias)
                 for t in j['types']:
                     if t[0] in self.types:
                         progress = progress + 1

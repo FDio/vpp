@@ -10,8 +10,11 @@ import six
 from six import moves
 
 from framework import VppTestCase
-from enum import Enum
 
+if (six.PY2):
+    from aenum import Enum
+if (six.PY3):
+    from enum import Enum
 
 class SerializableClassCopy(object):
     """
