@@ -1599,6 +1599,12 @@ quic_session_reset_callback (session_t * s)
   clib_warning ("UDP session reset???");
 }
 
+static void
+quic_session_migrate_callback (session_t * s, session_handle_t new_sh)
+{
+  QUIC_DBG (2, "Quic session migrate callback");
+}
+
 int
 quic_session_accepted_callback (session_t * udp_session)
 {
@@ -2082,6 +2088,7 @@ static session_cb_vft_t quic_app_cb_vft = {
   .session_disconnect_callback = quic_session_disconnect_callback,
   .session_connected_callback = quic_session_connected_callback,
   .session_reset_callback = quic_session_reset_callback,
+  .session_migrate_callback = quic_session_migrate_callback,
   .add_segment_callback = quic_add_segment_callback,
   .del_segment_callback = quic_del_segment_callback,
   .builtin_app_rx_callback = quic_app_rx_callback,
