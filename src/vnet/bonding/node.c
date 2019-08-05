@@ -394,23 +394,16 @@ bond_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
   sif = bond_get_slave_by_sw_if_index (sw_if_index);
   if (sif)
     {
-      sif->port_enabled = flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP;
       if (sif->lacp_enabled)
 	return 0;
 
+      /* port_enabled is both admin up and hw link up */
+      sif->port_enabled = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) &&
+			   vnet_sw_interface_is_link_up (vnm, sw_if_index));
       if (sif->port_enabled == 0)
-	{
-	  bond_disable_collecting_distributing (vm, sif);
-	}
+	bond_disable_collecting_distributing (vm, sif);
       else
-	{
-	  vnet_main_t *vnm = vnet_get_main ();
-	  vnet_hw_interface_t *hw =
-	    vnet_get_sup_hw_interface (vnm, sw_if_index);
-
-	  if (hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
-	    bond_enable_collecting_distributing (vm, sif);
-	}
+	bond_enable_collecting_distributing (vm, sif);
     }
 
   return 0;
@@ -433,14 +426,14 @@ bond_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       if (sif->lacp_enabled)
 	return 0;
 
-      if (!(flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
-	{
-	  bond_disable_collecting_distributing (vm, sif);
-	}
-      else if (sif->port_enabled)
-	{
-	  bond_enable_collecting_distributing (vm, sif);
-	}
+      /* port_enabled is both admin up and hw link up */
+      sif->port_enabled = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) &&
+			   vnet_sw_interface_is_admin_up (vnm,
+							  sw->sw_if_index));
+      if (sif->port_enabled == 0)
+	bond_disable_collecting_distributing (vm, sif);
+      else
+	bond_enable_collecting_distributing (vm, sif);
     }
 
   return 0;
