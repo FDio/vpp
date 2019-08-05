@@ -875,6 +875,7 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
 
   quicly_ctx_data_t *quicly_ctx_data =
     clib_mem_alloc (sizeof (quicly_ctx_data_t));
+  clib_memset (quicly_ctx_data, 0, sizeof (*quicly_ctx_data));	/* picotls depends on this */
   quicly_ctx = &quicly_ctx_data->quicly_ctx;
   ptls_context_t *ptls_ctx = &quicly_ctx_data->ptls_ctx;
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
