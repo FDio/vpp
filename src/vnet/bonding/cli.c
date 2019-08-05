@@ -576,7 +576,8 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
   pool_get (bm->neighbors, sif);
   clib_memset (sif, 0, sizeof (*sif));
   sw = pool_elt_at_index (im->sw_interfaces, args->slave);
-  sif->port_enabled = sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP;
+  /* port_enabled is both admin up and hw link up */
+  sif->port_enabled = vnet_sw_interface_is_up (vnm, sw->sw_if_index);
   sif->sw_if_index = sw->sw_if_index;
   sif->hw_if_index = sw->hw_if_index;
   sif->packet_template_index = (u8) ~ 0;
@@ -642,8 +643,7 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
       if (bm->lacp_enable_disable)
 	(*bm->lacp_enable_disable) (vm, bif, sif, 1);
     }
-  else if (sif->port_enabled &&
-	   (sif_hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
+  else if (sif->port_enabled)
     {
       bond_enable_collecting_distributing (vm, sif);
     }
