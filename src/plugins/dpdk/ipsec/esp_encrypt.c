@@ -333,7 +333,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  if (ipsec_sa_is_set_IS_TUNNEL (sa0))
 	    {
 	      rewrite_len = 0;
-	      if (!is_ip6 && !ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))	/* ip4inip4 */
+	      if (!ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))	/* ip4 */
 		{
 		  /* in tunnel mode send it back to FIB */
 		  priv->next = DPDK_CRYPTO_INPUT_NEXT_IP4_LOOKUP;
@@ -342,7 +342,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  vlib_buffer_advance (b0, -adv);
 		  oh0 = vlib_buffer_get_current (b0);
 		  ouh0 = vlib_buffer_get_current (b0);
-		  next_hdr_type = IP_PROTOCOL_IP_IN_IP;
+		  next_hdr_type = (is_ip6 ?
+				   IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP);
 		  /*
 		   * oh0->ip4.ip_version_and_header_length = 0x45;
 		   * oh0->ip4.tos = ih0->ip4.tos;
@@ -373,9 +374,9 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  esp0->spi = clib_host_to_net_u32 (sa0->spi);
 		  esp0->seq = clib_host_to_net_u32 (sa0->seq);
 		}
-	      else if (is_ip6 && ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
+	      else
 		{
-		  /* ip6inip6 */
+		  /* ip6 */
 		  /* in tunnel mode send it back to FIB */
 		  priv->next = DPDK_CRYPTO_INPUT_NEXT_IP6_LOOKUP;
 
@@ -385,7 +386,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  ih6_0 = (ip6_and_esp_header_t *) ih0;
 		  oh6_0 = vlib_buffer_get_current (b0);
 
-		  next_hdr_type = IP_PROTOCOL_IPV6;
+		  next_hdr_type = (is_ip6 ?
+				   IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP);
 
 		  oh6_0->ip6.ip_version_traffic_class_and_flow_label =
 		    ih6_0->ip6.ip_version_traffic_class_and_flow_label;
@@ -404,21 +406,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  oh6_0->esp.spi = clib_host_to_net_u32 (sa0->spi);
 		  oh6_0->esp.seq = clib_host_to_net_u32 (sa0->seq);
 		}
-	      else		/* unsupported ip4inip6, ip6inip4 */
-		{
-		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp6_encrypt_node.index,
-						 ESP_ENCRYPT_ERROR_NOSUP, 1);
-		  else
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp4_encrypt_node.index,
-						 ESP_ENCRYPT_ERROR_NOSUP, 1);
-		  to_next[0] = bi0;
-		  to_next += 1;
-		  n_left_to_next -= 1;
-		  goto trace;
-		}
+
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
 	  else			/* transport mode */
@@ -487,7 +475,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  f0->pad_length = pad_bytes;
 	  f0->next_header = next_hdr_type;
 
-	  if (is_ip6)
+	  if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
 	    {
 	      u16 len = b0->current_length - sizeof (ip6_header_t);
 	      oh6_0->ip6.payload_length =
