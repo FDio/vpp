@@ -19,9 +19,10 @@ if (NOT IBVERBS_INCLUDE_DIR)
 endif()
 
 vpp_plugin_find_library(rdma IBVERBS_LIB libibverbs.a)
+vpp_plugin_find_library(rdma RDMA_UTIL_LIB librdma_util.a)
 vpp_plugin_find_library(rdma MLX5_LIB libmlx5.a)
 
-if (NOT IBVERBS_LIB OR NOT MLX5_LIB)
+if (NOT IBVERBS_LIB OR NOT RDMA_UTIL_LIB OR NOT MLX5_LIB)
   message(WARNING "rdma plugin - ibverbs not found - rdma plugin disabled")
   return()
 endif()
@@ -30,7 +31,7 @@ if (MLX5_LIB)
   string_append(RDMA_LINK_FLAGS "-Wl,--whole-archive,${MLX5_LIB},--no-whole-archive")
 endif()
 
-set(CMAKE_REQUIRED_FLAGS "-fPIC -shared ${IBVERBS_LIB} ${RDMA_LINK_FLAGS}")
+set(CMAKE_REQUIRED_FLAGS "-fPIC -shared ${IBVERBS_LIB} ${RDMA_UTIL_LIB} ${RDMA_LINK_FLAGS}")
 CHECK_C_SOURCE_COMPILES("" IBVERBS_COMPILES_CHECK)
 
 if (NOT IBVERBS_COMPILES_CHECK)
@@ -58,4 +59,5 @@ add_vpp_plugin(rdma
 
   LINK_LIBRARIES
   ${IBVERBS_LIB}
+  ${RDMA_UTIL_LIB}
 )
