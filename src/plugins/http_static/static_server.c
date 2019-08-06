@@ -628,7 +628,7 @@ http_static_server_rx_callback (session_t * s)
 	  request[i + 2] == 'T' && request[i + 3] == ' ')
 	goto find_end;
     }
-  send_error (hs, "400 Bad Request");
+  send_error (hs, "405 Method Not Allowed");
   goto close_session;
 
 find_end:
@@ -655,7 +655,7 @@ find_end:
   else
     path = format (0, "%s/%s%c", hsm->www_root, request, 0);
 
-  if (0)
+  if (1)
     clib_warning ("GET '%s'", path);
 
   /* Try to find the file. 2x special cases to find index.html */
@@ -685,7 +685,12 @@ find_end:
 	    }
 	  else
 	    {
-	      transport_connection_t *tc;
+	      transport_endpoint_t endpoint;
+              transport_proto_t proto;
+              u16 local_port;
+              int print_port = 0;
+              u8 *port_str = 0;
+
 	      /*
 	       * To make this bit work correctly, we need to know our local
 	       * IP address, etc. and send it in the redirect...
@@ -694,15 +699,30 @@ find_end:
 
 	      vec_delete (path, vec_len (hsm->www_root) - 1, 0);
 
+	      session_get_endpoint (s, &endpoint, 1 /* is_local */);
 
-	      tc = session_get_transport (s);
+              local_port = clib_net_to_host_u16 (endpoint.port);
+
+              proto = session_type_transport_proto (s->session_type);
+
+              if ((proto == TRANSPORT_PROTO_TCP && local_port != 80)
+                  || (proto == TRANSPORT_PROTO_TLS && local_port != 443))
+                {
+                  print_port = 1;
+                  port_str = format (0, ":%u", (u32) local_port);
+                }
+
 	      redirect = format (0, "HTTP/1.1 301 Moved Permanently\r\n"
-				 "Location: http://%U%s\r\n"
+				 "Location: http%s://%U%s%s\r\n"
 				 "Connection: close\r\n",
-				 format_ip46_address, &tc->lcl_ip, tc->is_ip4,
+                                 proto == TRANSPORT_PROTO_TLS ? "s":"",
+				 format_ip46_address, &endpoint.ip, endpoint.is_ip4,
+                                 print_port ? port_str : (u8 *) "",
 				 path);
-	      if (0)
+	      if (1)
 		clib_warning ("redirect: %s", redirect);
+
+              vec_free (port_str);
 
 	      static_send_data (hs, redirect, vec_len (redirect), 0);
 	      hs->session_state = HTTP_STATE_RESPONSE_SENT;
@@ -1012,6 +1032,7 @@ http_static_server_attach ()
     hsm->fifo_size ? hsm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hsm->prealloc_fifos;
+  a->options[APP_OPTIONS_TLS_ENGINE] = TLS_ENGINE_OPENSSL;
 
   if (vnet_application_attach (a))
     {
