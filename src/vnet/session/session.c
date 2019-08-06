@@ -565,6 +565,31 @@ session_enqueue_notify (session_t * s)
   return session_enqueue_notify_inline (s);
 }
 
+static void
+session_enqueue_notify_rpc (void *arg)
+{
+  session_handle_t sh = (session_handle_t) arg;
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (sh);
+  if (!s)
+    return;
+
+  session_enqueue_notify (s);
+}
+
+/**
+ * Like session_enqueue_notify, but can be called from a thread that does not
+ * own the session.
+ */
+void
+session_enqueue_notify_thread (session_handle_t sh)
+{
+  u32 thread_index = session_thread_from_handle (sh);
+  session_send_rpc_evt_to_thread (thread_index,
+				  session_enqueue_notify_rpc, (void *) sh);
+}
+
 int
 session_dequeue_notify (session_t * s)
 {
@@ -739,6 +764,9 @@ session_switch_pool (void *cb_args)
       new_sh = session_make_handle (args->new_session_index,
 				    args->new_thread_index);
       app_worker_migrate_notify (app_wrk, s, new_sh);
+
+      /* Trigger app read on the new thread */
+      session_enqueue_notify_thread (new_sh);
     }
 
   session_free (s);
