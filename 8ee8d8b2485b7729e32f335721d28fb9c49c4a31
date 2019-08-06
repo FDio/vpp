@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ccd497d6_daca1c04",
+        "filename": "src/vlibmemory/memory_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-08-06T11:24:36Z",
+      "side": 1,
+      "message": "Why shouldn\u0027t we trace client create / delete messages? They\u0027re not replayed. I\u0027ve learned some interesting things from the client names...",
+      "revId": "8ee8d8b2485b7729e32f335721d28fb9c49c4a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8c61d4aa_fad46319",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 695,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-08-06T11:24:36Z",
+      "side": 1,
+      "message": "Same comment: why not include these in the trace?",
+      "revId": "8ee8d8b2485b7729e32f335721d28fb9c49c4a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
