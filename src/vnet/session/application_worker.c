@@ -646,6 +646,47 @@ app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
   return app_send_evt_handler_fns[evt_type] (app, s);
 }
 
+typedef struct send_event_rpc_args_
+{
+  session_handle_t handle;
+  u8 evt_type;
+} send_event_rpc_args_t;
+
+static void
+app_worker_lock_and_send_event_rpc (void *arg)
+{
+  send_event_rpc_args_t *a = (send_event_rpc_args_t *) arg;
+  app_worker_t *app_wrk;
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (a->handle);
+  if (!s)
+    goto done;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (!app_wrk)
+    goto done;
+
+  app_worker_lock_and_send_event (app_wrk, s, a->evt_type);
+done:
+  clib_mem_free (a);
+}
+
+/**
+ * Send event to application in the thread that owns the session
+ */
+void
+app_worker_lock_and_send_event_to_thread (session_handle_t sh, u8 evt_type)
+{
+  send_event_rpc_args_t *a = clib_mem_alloc (sizeof (send_event_rpc_args_t));
+  u32 thread_index = session_thread_from_handle (sh);
+  a->handle = sh;
+  a->evt_type = evt_type;
+  session_send_rpc_evt_to_thread (thread_index,
+				  app_worker_lock_and_send_event_rpc,
+				  (void *) a);
+}
+
 u8 *
 format_app_worker_listener (u8 * s, va_list * args)
 {
