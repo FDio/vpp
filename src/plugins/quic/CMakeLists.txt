@@ -16,6 +16,7 @@ message(STATUS "Looking for quicly")
 unset(QUIC_LINK_LIBRARIES)
 
 find_path(QUICLY_INCLUDE_DIR NAMES quicly.h)
+find_path(PICOTLS_INCLUDE_DIR NAMES picotls.h)
 find_library (QUICLY_LIBRARY NAMES "libquicly.a")
 find_library (PICOTLS_CORE_LIBRARY NAMES "libpicotls-core.a")
 find_library (PICOTLS_OPENSSL_LIBRARY NAMES "libpicotls-openssl.a")
@@ -28,6 +29,11 @@ list(APPEND QUIC_LINK_LIBRARIES
 
 if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
   include_directories (${QUICLY_INCLUDE_DIR})
+
+  if(PICOTLS_INCLUDE_DIR)
+    include_directories (${PICOTLS_INCLUDE_DIR})
+  endif()
+
   add_vpp_plugin(quic
     SOURCES
     certs.c
