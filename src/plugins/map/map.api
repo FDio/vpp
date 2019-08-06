@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "3.1.0";
+option version = "4.0.0";
 
 import "vnet/ip/ip_types.api";
 
@@ -281,19 +281,19 @@ autoreply define map_param_set_security_check
 /** \brief Set MAP traffic class parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param copy - 1 = copy packet class/TOS field, 0 = use class instead
-    @param class - class field value when copy == 0
+    @param copy - 1 = copy packet class/TOS field, 0 = use tc_class instead
+    @param tc_class - class field value when copy == 0
 */
 autoreply define map_param_set_traffic_class
 {
   u32 client_index;
   u32 context;
   bool copy;
-  u8 class;
+  u8 tc_class;
 };
 
 
-/** \brief Set MAP TCP parammeters
+/** \brief Set MAP TCP parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @parma tcp_mss - TCP MSS clamping value

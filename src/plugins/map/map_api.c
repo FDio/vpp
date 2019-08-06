@@ -523,7 +523,7 @@ static void
   vl_api_map_param_set_traffic_class_reply_t *rmp;
   int rv;
 
-  rv = map_param_set_traffic_class (mp->copy, mp->class);
+  rv = map_param_set_traffic_class (mp->copy, mp->tc_class);
 
   REPLY_MACRO (VL_API_MAP_PARAM_SET_TRAFFIC_CLASS_REPLY);
 }
