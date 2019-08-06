@@ -587,8 +587,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 	    {
 	      if (f0->next_header == IP_PROTOCOL_IP_IN_IP)
 		next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
-	      else if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa0)
-		       && f0->next_header == IP_PROTOCOL_IPV6)
+	      else if (f0->next_header == IP_PROTOCOL_IPV6)
 		next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
 	      else
 		{
