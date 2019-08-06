@@ -110,6 +110,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  int wrote0;
 	  void *rmt_addr, *lcl_addr;
 	  session_dgram_hdr_t hdr0;
+	  u8 queue_event = 1;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -182,6 +183,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      session_dgram_connect_notify (&new_uc0->connection,
 						    s0->thread_index, &s0);
 		      tc0 = &new_uc0->connection;
+		      uc0 = new_uc0;
+		      queue_event = 0;
 		    }
 		  else
 		    s0->session_state = SESSION_STATE_READY;
@@ -254,7 +257,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  clib_spinlock_lock (&uc0->rx_lock);
 	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
 						     TRANSPORT_PROTO_UDP,
-						     1 /* queue evt */ );
+						     queue_event);
 	  clib_spinlock_unlock (&uc0->rx_lock);
 	  ASSERT (wrote0 > 0);
 
