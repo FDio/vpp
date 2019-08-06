@@ -1765,38 +1765,6 @@ quic_find_packet_ctx (u32 * ctx_thread, u32 * ctx_index,
 }
 
 static int
-quic_receive (quic_ctx_t * ctx, quicly_conn_t * conn,
-	      quicly_decoded_packet_t packet)
-{
-  int rv;
-  u32 ctx_id = ctx->c_c_index;
-  u32 thread_index = ctx->c_thread_index;
-  /* TODO : QUICLY_ERROR_PACKET_IGNORED sould be handled */
-  rv = quicly_receive (conn, &packet);
-  if (rv)
-    {
-      QUIC_DBG (2, "quicly_receive errored %U", quic_format_err, rv);
-      return 0;
-    }
-  /* ctx pointer may change if a new stream is opened */
-  ctx = quic_ctx_get (ctx_id, thread_index);
-  /* Conn may be set to null if the connection is terminated */
-  if (ctx->conn && ctx->conn_state == QUIC_CONN_STATE_HANDSHAKE)
-    {
-      if (quicly_connection_is_ready (conn))
-	{
-	  ctx->conn_state = QUIC_CONN_STATE_READY;
-	  if (quicly_is_client (conn))
-	    {
-	      quic_on_client_connected (ctx);
-	      ctx = quic_ctx_get (ctx_id, thread_index);
-	    }
-	}
-    }
-  return quic_send_packets (ctx);
-}
-
-static int
 quic_create_quic_session (quic_ctx_t * ctx)
 {
   session_t *quic_session;
@@ -1909,30 +1877,175 @@ quic_reset_connection (u64 udp_session_handle,
   return rv;
 }
 
-static int
-quic_app_rx_callback (session_t * udp_session)
+typedef struct quic_rx_packet_ctx_
 {
-  /*  Read data from UDP rx_fifo and pass it to the quicly conn. */
   quicly_decoded_packet_t packet;
+  u8 data[QUIC_MAX_PACKET_SIZE];
+  u32 ctx_index;
+  u32 thread_index;
+} quic_rx_packet_ctx_t;
+
+static void
+check_quic_client_connected (struct quic_rx_packet_ctx_ *quic_rx_ctx)
+{
+  /* ctx pointer may change if a new stream is opened */
+  quic_ctx_t *ctx = quic_ctx_get (quic_rx_ctx->ctx_index,
+				  quic_rx_ctx->thread_index);
+  /* Conn may be set to null if the connection is terminated */
+  if (ctx->conn && ctx->conn_state == QUIC_CONN_STATE_HANDSHAKE)
+    {
+      if (quicly_connection_is_ready (ctx->conn))
+	{
+	  ctx->conn_state = QUIC_CONN_STATE_READY;
+	  if (quicly_is_client (ctx->conn))
+	    {
+	      quic_on_client_connected (ctx);
+	      ctx =
+		quic_ctx_get (quic_rx_ctx->ctx_index,
+			      quic_rx_ctx->thread_index);
+	    }
+	}
+    }
+
+}
+
+static int
+quic_process_one_rx_packet (u64 udp_session_handle,
+			    quicly_context_t * quicly_ctx, svm_fifo_t * f,
+			    u32 * fifo_offset, u32 * max_packet, u32 packet_n,
+			    quic_rx_packet_ctx_t * packet_ctx)
+{
   session_dgram_hdr_t ph;
-  application_t *app;
   quic_ctx_t *ctx = NULL;
-  svm_fifo_t *f;
   size_t plen;
   struct sockaddr_in6 sa6;
   struct sockaddr *sa = (struct sockaddr *) &sa6;
   socklen_t salen;
-  u32 max_deq, full_len, ctx_index = UINT32_MAX, ctx_thread = UINT32_MAX, ret;
-  u8 *data;
-  int err;
+  u32 full_len, ret;
+  int err, rv = 0;
+  packet_ctx->thread_index = UINT32_MAX;
+  packet_ctx->ctx_index = UINT32_MAX;
+  u32 thread_index = vlib_get_thread_index ();
   u32 *opening_ctx_pool, *ctx_index_ptr;
+  u32 cur_deq = svm_fifo_max_dequeue (f) - *fifo_offset;
+
+  if (cur_deq == 0)
+    {
+      *max_packet = packet_n + 1;
+      return 0;
+    }
+
+  if (cur_deq < SESSION_CONN_HDR_LEN)
+    {
+      QUIC_DBG (1, "Not enough data for even a header in RX");
+      return 1;
+    }
+  ret = svm_fifo_peek (f, *fifo_offset, SESSION_CONN_HDR_LEN, (u8 *) & ph);
+  if (ret != SESSION_CONN_HDR_LEN)
+    {
+      QUIC_DBG (1, "Not enough data for header in RX");
+      return 1;
+    }
+  ASSERT (ph.data_offset == 0);
+  full_len = ph.data_length + SESSION_CONN_HDR_LEN;
+  if (full_len > cur_deq)
+    {
+      QUIC_DBG (1, "Not enough data in fifo RX");
+      return 1;
+    }
+
+  /* Quicly can read len bytes from the fifo at offset:
+   * ph.data_offset + SESSION_CONN_HDR_LEN */
+  ret =
+    svm_fifo_peek (f, SESSION_CONN_HDR_LEN + *fifo_offset, ph.data_length,
+		   packet_ctx->data);
+  if (ret != ph.data_length)
+    {
+      QUIC_DBG (1, "Not enough data peeked in RX");
+      return 1;
+    }
+
+  rv = 0;
+  quic_build_sockaddr (sa, &salen, &ph.rmt_ip, ph.rmt_port, ph.is_ip4);
+  quicly_ctx = quic_get_quicly_ctx_from_udp (udp_session_handle);
+  plen =
+    quicly_decode_packet (quicly_ctx, &packet_ctx->packet, packet_ctx->data,
+			  ph.data_length);
+
+  if (plen == SIZE_MAX)
+    {
+      *fifo_offset += SESSION_CONN_HDR_LEN + ph.data_length;
+      return 1;
+    }
+
+  err =
+    quic_find_packet_ctx (&packet_ctx->thread_index, &packet_ctx->ctx_index,
+			  sa, salen, &packet_ctx->packet, thread_index);
+  if (err == 0)
+    {
+      ctx = quic_ctx_get (packet_ctx->ctx_index, thread_index);
+      rv = quicly_receive (ctx->conn, &packet_ctx->packet);
+      if (rv)
+	QUIC_DBG (1, "quicly_receive return error %d", rv);
+    }
+  else if (packet_ctx->thread_index != UINT32_MAX)
+    {
+      /*  Connection found but on wrong thread, ask move */
+      quic_move_connection_to_thread (packet_ctx->ctx_index,
+				      packet_ctx->thread_index, thread_index,
+				      &packet_ctx->packet);
+      *max_packet = packet_n + 1;
+      return 0;
+    }
+  else if ((packet_ctx->packet.octets.base[0] & QUICLY_PACKET_TYPE_BITMASK) ==
+	   QUICLY_PACKET_TYPE_INITIAL)
+    {
+      /*  Try to find matching "opening" ctx */
+      opening_ctx_pool = quic_main.wrk_ctx[thread_index].opening_ctx_pool;
+
+	/* *INDENT-OFF* */
+	pool_foreach (ctx_index_ptr, opening_ctx_pool,
+	({
+	ctx = quic_ctx_get (*ctx_index_ptr, thread_index);
+	if (ctx->udp_session_handle == udp_session_handle)
+		{
+		/*  Right ctx found, create conn & remove from pool */
+		quic_create_connection(*ctx_index_ptr, sa, salen, packet_ctx->packet);
+		pool_put (opening_ctx_pool, ctx_index_ptr);
+		*max_packet = packet_n + 1;
+		packet_ctx->thread_index = thread_index;
+		packet_ctx->ctx_index = *ctx_index_ptr;
+      		goto updateOffset;
+		}
+	}));
+	/* *INDENT-ON* */
+    }
+  else
+    {
+      quic_reset_connection (udp_session_handle, sa, salen,
+			     packet_ctx->packet);
+    }
+
+updateOffset:
+  *fifo_offset += SESSION_CONN_HDR_LEN + ph.data_length;
+  return 0;
+}
+
+static int
+quic_app_rx_callback (session_t * udp_session)
+{
+  /*  Read data from UDP rx_fifo and pass it to the quicly conn. */
+  application_t *app;
+  quic_ctx_t *ctx = NULL;
+  svm_fifo_t *f;
+  u32 max_deq;
   u32 app_index = udp_session->opaque;
   u64 udp_session_handle = session_handle (udp_session);
   int rv = 0;
-  u32 thread_index = vlib_get_thread_index ();
-  quicly_context_t *quicly_ctx;
-
   app = application_get_if_valid (app_index);
+  u32 thread_index = vlib_get_thread_index ();
+  quic_rx_packet_ctx_t packets_ctx[16];
+
   if (!app)
     {
       QUIC_DBG (1, "Got RX on detached app");
@@ -1946,89 +2059,32 @@ quic_app_rx_callback (session_t * udp_session)
       f = udp_session->rx_fifo;
       max_deq = svm_fifo_max_dequeue (f);
       if (max_deq == 0)
-	return 0;
-
-      if (max_deq < SESSION_CONN_HDR_LEN)
 	{
-	  QUIC_DBG (1, "Not enough data for even a header in RX");
-	  return 1;
-	}
-      ret = svm_fifo_peek (f, 0, SESSION_CONN_HDR_LEN, (u8 *) & ph);
-      if (ret != SESSION_CONN_HDR_LEN)
-	{
-	  QUIC_DBG (1, "Not enough data for header in RX");
-	  return 1;
-	}
-      ASSERT (ph.data_offset == 0);
-      full_len = ph.data_length + SESSION_CONN_HDR_LEN;
-      if (full_len > max_deq)
-	{
-	  QUIC_DBG (1, "Not enough data in fifo RX");
-	  return 1;
+	  return 0;
 	}
 
-      /* Quicly can read len bytes from the fifo at offset:
-       * ph.data_offset + SESSION_CONN_HDR_LEN */
-      data = malloc (ph.data_length);
-      ret = svm_fifo_peek (f, SESSION_CONN_HDR_LEN, ph.data_length, data);
-      if (ret != ph.data_length)
+      u32 fifo_offset = 0;
+      u32 max_packets = 16;
+      for (int i = 0; i < max_packets; i++)
 	{
-	  QUIC_DBG (1, "Not enough data peeked in RX");
-	  free (data);
-	  return 1;
+	  quic_process_one_rx_packet (udp_session_handle,
+				      (quicly_context_t *) app->quicly_ctx, f,
+				      &fifo_offset, &max_packets, i,
+				      &packets_ctx[i]);
 	}
 
-      rv = 0;
-      quic_build_sockaddr (sa, &salen, &ph.rmt_ip, ph.rmt_port, ph.is_ip4);
-
-      quicly_ctx = quic_get_quicly_ctx_from_udp (udp_session_handle);
-      plen = quicly_decode_packet (quicly_ctx, &packet, data, ph.data_length);
-      if (plen != SIZE_MAX)
+      for (int i = 0; i < max_packets; i++)
 	{
+	  if (packets_ctx[i].thread_index != thread_index)
+	    continue;
 
-	  err = quic_find_packet_ctx (&ctx_thread, &ctx_index, sa, salen,
-				      &packet, thread_index);
-	  if (err == 0)
-	    {
-	      ctx = quic_ctx_get (ctx_index, thread_index);
-	      quic_receive (ctx, ctx->conn, packet);
-	    }
-	  else if (ctx_index != UINT32_MAX)
-	    {
-	      /*  Connection found but on wrong thread, ask move */
-	      quic_move_connection_to_thread (ctx_index, ctx_thread,
-					      thread_index, &packet);
-	    }
-	  else if ((packet.octets.base[0] & QUICLY_PACKET_TYPE_BITMASK) ==
-		   QUICLY_PACKET_TYPE_INITIAL)
-	    {
-	      /*  Try to find matching "opening" ctx */
-	      opening_ctx_pool =
-		quic_main.wrk_ctx[thread_index].opening_ctx_pool;
-
-              /* *INDENT-OFF* */
-              pool_foreach (ctx_index_ptr, opening_ctx_pool,
-              ({
-                ctx = quic_ctx_get (*ctx_index_ptr, thread_index);
-                if (ctx->udp_session_handle == udp_session_handle)
-                  {
-                    /*  Right ctx found, create conn & remove from pool */
-                    quic_create_connection (*ctx_index_ptr, sa, salen, packet);
-                    pool_put (opening_ctx_pool, ctx_index_ptr);
-                    goto ctx_search_done;
-                  }
-              }));
-              /* *INDENT-ON* */
-
-	    }
-	  else
-	    {
-	      quic_reset_connection (udp_session_handle, sa, salen, packet);
-	    }
+	  ctx =
+	    quic_ctx_get (packets_ctx[i].ctx_index,
+			  packets_ctx[i].thread_index);
+	  check_quic_client_connected (&packets_ctx[i]);
+	  quic_send_packets (ctx);
 	}
-    ctx_search_done:
-      svm_fifo_dequeue_drop (f, full_len);
-      free (data);
+      svm_fifo_dequeue_drop (f, fifo_offset);
     }
   while (1);
   return rv;

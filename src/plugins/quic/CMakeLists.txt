@@ -28,6 +28,7 @@ list(APPEND QUIC_LINK_LIBRARIES
 
 if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
   include_directories (${QUICLY_INCLUDE_DIR})
+  include_directories (${PICOTLS_INCLUDE_DIR})
   add_vpp_plugin(quic
     SOURCES
     certs.c
