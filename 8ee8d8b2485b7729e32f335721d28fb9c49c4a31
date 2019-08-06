@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "1563b935_623871bf",
+        "filename": "src/vlibapi/api_shared.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-08-06T11:27:49Z",
+      "side": 1,
+      "message": "This line argues for using vppinfra/serialize: saves length as a \"likely small integer\", wastes no space on padding, can handle names longer than 64 bytes.",
+      "revId": "8ee8d8b2485b7729e32f335721d28fb9c49c4a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ccd497d6_daca1c04",
         "filename": "src/vlibmemory/memory_api.c",
         "patchSetId": 4
