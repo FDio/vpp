@@ -739,6 +739,10 @@ session_switch_pool (void *cb_args)
       new_sh = session_make_handle (args->new_session_index,
 				    args->new_thread_index);
       app_worker_migrate_notify (app_wrk, s, new_sh);
+
+      /* Send event on rx fifo to trigger read */
+      if (svm_fifo_set_event (s->rx_fifo))
+	session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_BUILTIN_RX);
     }
 
   session_free (s);
