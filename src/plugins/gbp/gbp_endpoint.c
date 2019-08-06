@@ -1083,6 +1083,7 @@ gbp_endpoint_cli (vlib_main_t * vm,
   u32 sclass = SCLASS_INVALID;
   u32 handle = INDEX_INVALID;
   u32 sw_if_index = ~0;
+  u32 flags = GBP_ENDPOINT_FLAG_NONE;
   u8 add = 1;
   int rv;
 
@@ -1107,6 +1108,8 @@ gbp_endpoint_cli (vlib_main_t * vm,
 	vec_add1 (ips, ip);
       else if (unformat (input, "mac %U", unformat_mac_address, &mac))
 	;
+      else if (unformat (input, "flags 0x%x", &flags))
+	;
       else
 	break;
     }
@@ -1122,9 +1125,7 @@ gbp_endpoint_cli (vlib_main_t * vm,
 	gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
 				      sw_if_index, ips, &mac,
 				      INDEX_INVALID, INDEX_INVALID,
-				      sclass,
-				      GBP_ENDPOINT_FLAG_NONE,
-				      NULL, NULL, &handle);
+				      sclass, flags, NULL, NULL, &handle);
 
       if (rv)
 	return clib_error_return (0, "GBP Endpoint update returned %d", rv);
@@ -1148,13 +1149,13 @@ gbp_endpoint_cli (vlib_main_t * vm,
  * Configure a GBP Endpoint
  *
  * @cliexpar
- * @cliexstart{set gbp endpoint [del] <interface> epg <ID> ip <IP>}
+ * @cliexstart{gbp endpoint del <handle> | [add] <interface> sclass <SCLASS> ip <IP> mac <MAC> [flags <flags>]}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_endpoint_cli_node, static) = {
   .path = "gbp endpoint",
-  .short_help = "gbp endpoint [del] <interface> epg <ID> ip <IP> mac <MAC>",
+  .short_help = "gbp endpoint del <handle> | [add] <interface> sclass <SCLASS> ip <IP> mac <MAC> [flags <flags>]",
   .function = gbp_endpoint_cli,
 };
 /* *INDENT-ON* */
