@@ -182,6 +182,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      session_dgram_connect_notify (&new_uc0->connection,
 						    s0->thread_index, &s0);
 		      tc0 = &new_uc0->connection;
+		      uc0 = new_uc0;
 		    }
 		  else
 		    s0->session_state = SESSION_STATE_READY;
