@@ -275,6 +275,8 @@ session_t *app_worker_first_listener (app_worker_t * app,
 int app_worker_send_event (app_worker_t * app, session_t * s, u8 evt);
 int app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				    u8 evt_type);
+void app_worker_lock_and_send_event_to_thread (session_handle_t sh,
+                                               u8 evt_type);
 session_t *app_worker_proxy_listener (app_worker_t * app, u8 fib_proto,
 				      u8 transport_proto);
 u8 *format_app_worker (u8 * s, va_list * args);
