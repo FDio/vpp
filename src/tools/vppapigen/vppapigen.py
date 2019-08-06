@@ -5,6 +5,7 @@ import ply.lex as lex
 import ply.yacc as yacc
 import sys
 import argparse
+import keyword
 import logging
 import binascii
 import os
@@ -293,6 +294,9 @@ class Field():
     def __init__(self, fieldtype, name, limit=None):
         self.type = 'Field'
         self.fieldtype = fieldtype
+        if name in keyword.kwlist:
+            raise ValueError("Fieldname {!r} is a python keyword and is not "
+                             "accessible via the python API. ".format(name))
         self.fieldname = name
         self.limit = limit
 
