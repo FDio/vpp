@@ -655,7 +655,7 @@ find_end:
   else
     path = format (0, "%s/%s%c", hsm->www_root, request, 0);
 
-  if (0)
+  if (1)
     clib_warning ("GET '%s'", path);
 
   /* Try to find the file. 2x special cases to find index.html */
@@ -1012,6 +1012,7 @@ http_static_server_attach ()
     hsm->fifo_size ? hsm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hsm->prealloc_fifos;
+  a->options[APP_OPTIONS_TLS_ENGINE] = TLS_ENGINE_OPENSSL;
 
   if (vnet_application_attach (a))
     {

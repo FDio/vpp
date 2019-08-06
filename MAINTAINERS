@@ -300,6 +300,11 @@ Y:	src/plugins/flowprobe/FEATURE.yaml
 M:	Ole Troan <otroan@employees.org>
 F:	src/plugins/flowprobe/
 
+Plugin - http_static
+I:	http_static
+M:	Dave Barach <dbarach@cisco.com>
+F:	src/plugins/http_static/
+
 Plugin - Group Based Policy (GBP)
 I:	gbp
 M:	Neale Ranns <nranns@cisco.com>
