@@ -1384,6 +1384,9 @@ gbp_endpoint_scan_l2 (vlib_main_t * vm)
   f64 last_start, start_time, delta_t;
   int i, j, k;
 
+  if (!gte_table->instantiated)
+    return;
+
   delta_t = 0;
   last_start = start_time = vlib_time_now (vm);
 
@@ -1435,6 +1438,9 @@ gbp_endpoint_scan_l3 (vlib_main_t * vm)
   clib_bihash_24_8_t *gte_table = &gbp_ep_db.ged_by_ip_rd;
   f64 last_start, start_time, delta_t;
   int i, j, k;
+
+  if (!gte_table->instantiated)
+    return;
 
   delta_t = 0;
   last_start = start_time = vlib_time_now (vm);
