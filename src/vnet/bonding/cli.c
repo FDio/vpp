@@ -20,6 +20,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/bonding/node.h>
+#include <vpp/stats/stat_segment.h>
 
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
@@ -95,7 +96,9 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 	}
     }
   clib_spinlock_unlock_if_init (&bif->lockp);
-
+  if (bif->mode == BOND_MODE_LACP)
+    statseg_lacp_interface_update_state (sif->sw_if_index, sif->actor.state,
+					 /* is_add */ 1);
   return;
 }
 
@@ -164,7 +167,9 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 	}
     }
   clib_spinlock_unlock_if_init (&bif->lockp);
-
+  if (bif->mode == BOND_MODE_LACP)
+    statseg_lacp_interface_update_state (sif->sw_if_index, sif->actor.state,
+					 /* is_add */ 1);
   return;
 }
 
@@ -671,6 +676,9 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
 	clib_error_return (0,
 			   "Error encountered on input feature arc enable");
     }
+  if (bif->mode == BOND_MODE_LACP)
+    statseg_lacp_interface_update_state (sif->sw_if_index, sif->actor.state,
+					 /* is_add */ 1);
 }
 
 static clib_error_t *
@@ -741,6 +749,9 @@ bond_detach_slave (vlib_main_t * vm, bond_detach_slave_args_t * args)
       return;
     }
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+  if (bif->mode == BOND_MODE_LACP)
+    statseg_lacp_interface_update_state (sif->sw_if_index, sif->actor.state,
+					 /* is_add */ 0);
   bond_delete_neighbor (vm, bif, sif);
 }
 

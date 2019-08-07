@@ -310,6 +310,28 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 	}
       break;
 
+    case STAT_DIR_TYPE_NAME_VALUE_VECTOR:
+      if (ep->offset == 0)
+	return result;
+      stat_segment_name_value_t *name_value_vector =
+	stat_segment_pointer (sm->shared_header, ep->offset_vector);
+      vec_validate (result.name_value_vec, vec_len (name_value_vector) - 1);
+      for (i = 0; i < vec_len (name_value_vector); i++)
+	{
+	  if (name_value_vector[i].name)
+	    {
+	      u8 *name = stat_segment_pointer (sm->shared_header,
+					       (uint64_t)
+					       name_value_vector[i].name);
+	      vec_validate (result.name_value_vec[i], 0);
+	      result.name_value_vec[i]->name = vec_dup (name);
+	      result.name_value_vec[i]->value = name_value_vector[i].value;
+	    }
+	  else
+	    result.name_value_vec[i] = 0;
+	}
+      break;
+
     default:
       fprintf (stderr, "Unknown type: %d\n", ep->type);
     }
@@ -333,6 +355,15 @@ stat_segment_data_free (stat_segment_data_t * res)
 	  for (j = 0; j < vec_len (res[i].combined_counter_vec); j++)
 	    vec_free (res[i].combined_counter_vec[j]);
 	  vec_free (res[i].combined_counter_vec);
+	  break;
+	case STAT_DIR_TYPE_NAME_VALUE_VECTOR:
+	  for (j = 0; j < vec_len (res[i].name_value_vec); j++)
+	    if (res[i].name_value_vec[j])
+	      {
+		vec_free (res[i].name_value_vec[j]->name);
+		vec_free (res[i].name_value_vec[j]);
+	      }
+	  vec_free (res[i].name_value_vec);
 	  break;
 	default:
 	  ;
