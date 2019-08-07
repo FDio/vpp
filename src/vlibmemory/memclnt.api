@@ -114,7 +114,7 @@ define get_first_msg_id_reply {
 /*
  * Get API version table (includes built-in and plugins)
  */
-typeonly define module_version {
+typedef module_version {
   u32 major;
   u32 minor;
   u32 patch;

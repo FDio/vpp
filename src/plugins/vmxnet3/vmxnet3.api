@@ -80,7 +80,7 @@ autoreply define vmxnet3_delete
     @param tx_consume - tx consume index
 */
 
-typeonly define vmxnet3_tx_list
+typedef vmxnet3_tx_list
 {
   u16 tx_qsize;
   u16 tx_next;
@@ -96,7 +96,7 @@ typeonly define vmxnet3_tx_list
     @param rx_consume - rx consume index
 */
 
-typeonly define vmxnet3_rx_list
+typedef vmxnet3_rx_list
 {
   u16 rx_qsize;
   u16 rx_fill[2];
