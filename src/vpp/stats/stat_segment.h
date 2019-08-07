@@ -107,5 +107,10 @@ extern stat_segment_main_t stat_segment_main;
 
 clib_error_t *
 stat_segment_register_gauge (u8 *names, stat_segment_update_fn update_fn, u32 index);
+clib_error_t *
+stat_segment_register_state_counter(u8 *name, u32 *index);
+clib_error_t *
+stat_segment_deregister_state_counter(u32 index);
+void stat_segment_set_state_counter (u32 index, u64 value);
 
 #endif
