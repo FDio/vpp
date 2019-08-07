@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "812e8698_ace040b2",
+        "filename": "src/vlibmemory/socket_api.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-07T15:04:22Z",
+      "side": 1,
+      "message": "Can we merge this after 19.08 because otherwise people will be surprised about the change of name.",
+      "range": {
+        "startLine": 26,
+        "startChar": 34,
+        "endLine": 26,
+        "endChar": 43
+      },
+      "revId": "5143e658cd62534755b8dfcc83681acb01d81fb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
