@@ -27,7 +27,7 @@ import "vnet/fib/fib_types.api";
     @param bt_sub_domain - the sud-domain
     @param bt_bit_header_length - the number of bits in the header length
 */
-typeonly define bier_table_id
+typedef bier_table_id
 {
   u8 bt_set;
   u8 bt_sub_domain;

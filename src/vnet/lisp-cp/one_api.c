@@ -27,11 +27,6 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_api_one_remote_locator_t_endian vl_noop_handler
-#define vl_api_one_remote_locator_t_print vl_noop_handler
-#define vl_api_one_local_locator_t_endian vl_noop_handler
-#define vl_api_one_local_locator_t_print vl_noop_handler
-
 #define vl_api_one_add_del_locator_set_t_endian vl_noop_handler
 #define vl_api_one_add_del_locator_set_t_print vl_noop_handler
 #define vl_api_one_add_del_remote_mapping_t_endian vl_noop_handler
@@ -42,13 +37,9 @@
 #define vl_api_one_add_del_remote_mapping_t_endian vl_noop_handler
 #define vl_api_one_add_del_remote_mapping_t_print vl_noop_handler
 
-#define vl_api_one_l2_arp_entry_t_endian vl_noop_handler
-#define vl_api_one_l2_arp_entry_t_print vl_noop_handler
 #define vl_api_one_add_del_l2_arp_entry vl_noop_handler
 #define vl_api_one_l2_arp_bd_get vl_noop_handler
 
-#define vl_api_one_ndp_entry_t_endian vl_noop_handler
-#define vl_api_one_ndp_entry_t_print vl_noop_handler
 #define vl_api_one_ndp_entries_get_reply_t_endian vl_noop_handler
 #define vl_api_one_ndp_entries_get_reply_t_print vl_noop_handler
 

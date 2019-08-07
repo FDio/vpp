@@ -65,7 +65,7 @@ enum lb_nat_protocol
     @param protocol - tcp or udp.
     @param port - destination port.
 */
-typeonly define lb_vip
+typedef lb_vip
 {
   vl_api_prefix_t pfx;
   vl_api_ip_proto_t protocol;
