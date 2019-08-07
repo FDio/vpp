@@ -1043,6 +1043,7 @@ echo_on_connected_connect (session_connected_msg_t * mp, u32 session_index)
 static void
 echo_on_connected_send (session_connected_msg_t * mp, u32 session_index)
 {
+  static u32 client_index = 0;
   echo_main_t *em = &echo_main;
   echo_session_t *session;
 
@@ -1050,7 +1051,8 @@ echo_on_connected_send (session_connected_msg_t * mp, u32 session_index)
   session->bytes_to_send = em->bytes_to_send;
   session->bytes_to_receive = em->bytes_to_receive;
   session->session_state = QUIC_SESSION_STATE_READY;
-  em->data_thread_args[em->n_clients_connected] = session->session_index;
+  em->data_thread_args[client_index] = session->session_index;
+  client_index++;
 }
 
 static void
@@ -1063,13 +1065,15 @@ echo_on_connected_error (session_connected_msg_t * mp, u32 session_index)
 static void
 echo_on_accept_recv (session_accepted_msg_t * mp, u32 session_index)
 {
+  static u32 client_index = 0;
   echo_main_t *em = &echo_main;
   echo_session_t *session;
 
   session = pool_elt_at_index (em->sessions, session_index);
   session->bytes_to_send = em->bytes_to_send;
   session->bytes_to_receive = em->bytes_to_receive;
-  em->data_thread_args[em->n_clients_connected] = session->session_index;
+  em->data_thread_args[client_index] = session->session_index;
+  client_index++;
   session->session_state = QUIC_SESSION_STATE_READY;
 }
 

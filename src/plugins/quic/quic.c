@@ -141,7 +141,7 @@ quic_get_quicly_ctx_from_ctx (quic_ctx_t * ctx)
 }
 
 static quicly_context_t *
-quic_get_quicly_ctx_from_udp (u32 udp_session_handle)
+quic_get_quicly_ctx_from_udp (u64 udp_session_handle)
 {
   session_t *udp_session;
   application_t *app;

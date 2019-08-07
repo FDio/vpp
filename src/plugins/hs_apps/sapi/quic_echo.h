@@ -208,7 +208,7 @@ typedef struct
 
   pthread_t *data_thread_handles;	/* vec of data thread handles */
   pthread_t mq_thread_handle;	/* Message queue thread handle */
-  u32 *data_thread_args;
+  u32 * volatile data_thread_args;
 
   u32 n_clients;		/* Target number of QUIC sessions */
   u32 n_stream_clients;		/* Target Number of STREAM sessions per QUIC session */
