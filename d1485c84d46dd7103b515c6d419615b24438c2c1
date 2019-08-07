@@ -16,6 +16,24 @@
       "revId": "d1485c84d46dd7103b515c6d419615b24438c2c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "da9194c1_da6645d0",
+        "filename": "src/vnet/udp/udp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-07T16:14:33Z",
+      "side": 1,
+      "message": "Hi Aloys, \n\nAre you thinking about scenarios when we get packets spread over multiple dispatch cycles? Otherwise, queue_event guards against it on the first packet, no?",
+      "parentUuid": "91d99a52_f48c981d",
+      "revId": "d1485c84d46dd7103b515c6d419615b24438c2c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
