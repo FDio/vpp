@@ -140,7 +140,8 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 
 static_always_inline void
 rdma_device_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 const rdma_device_t * rd, u32 n_left, const u32 * bi)
+			 const rdma_device_t * rd, u32 n_left, const u32 * bi,
+			 u32 next_index)
 {
   u32 n_trace, i;
 
@@ -153,10 +154,10 @@ rdma_device_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_buffer_t *b;
       rdma_input_trace_t *tr;
       b = vlib_get_buffer (vm, bi[0]);
-      vlib_trace_buffer (vm, node, rd->per_interface_next_index, b,
+      vlib_trace_buffer (vm, node, next_index, b,
 			 /* follow_chain */ 0);
       tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-      tr->next_index = rd->per_interface_next_index;
+      tr->next_index = next_index;
       tr->hw_if_index = rd->hw_if_index;
 
       /* next */
@@ -170,18 +171,18 @@ rdma_device_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 static_always_inline void
 rdma_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    const rdma_device_t * rd)
+			    const rdma_device_t * rd, u32 next_index)
 {
   vlib_next_frame_t *nf;
   vlib_frame_t *f;
   ethernet_input_frame_t *ef;
 
-  if (PREDICT_FALSE
-      (VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT != rd->per_interface_next_index))
+  if (PREDICT_FALSE (VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT != next_index))
     return;
 
   nf =
-    vlib_node_runtime_get_next_frame (vm, node, rd->per_interface_next_index);
+    vlib_node_runtime_get_next_frame (vm, node,
+				      VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT);
   f = vlib_get_frame (vm, nf->frame);
   f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
   /* FIXME: f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK; */
@@ -247,8 +248,13 @@ rdma_device_input_load_wc (u32 n_left_from, struct ibv_wc * wc, u32 * to_next,
 
 static_always_inline void
 rdma_device_input_bufs_init (u32 n_left_from, vlib_buffer_t ** bufs,
-			     u32 * bufsz, u32 sw_if_index)
+			     u32 * bufsz, u32 sw_if_index, vlib_buffer_t * bt)
 {
+  vnet_buffer (bt)->sw_if_index[VLIB_RX] = sw_if_index;
+  vnet_buffer (bt)->sw_if_index[VLIB_TX] = ~0;
+  bt->buffer_pool_index = bufs[0]->buffer_pool_index;
+  bt->ref_count = 1;
+
   while (n_left_from >= 4)
     {
       if (PREDICT_TRUE (n_left_from >= 8))
@@ -260,20 +266,15 @@ rdma_device_input_bufs_init (u32 n_left_from, vlib_buffer_t ** bufs,
 	  CLIB_PREFETCH (&bufsz[4 + 0], 4 * sizeof (bufsz[0]), LOAD);
 	}
 
+      vlib_buffer_copy_template (bufs[0], bt);
+      vlib_buffer_copy_template (bufs[1], bt);
+      vlib_buffer_copy_template (bufs[2], bt);
+      vlib_buffer_copy_template (bufs[3], bt);
+
       bufs[0]->current_length = bufsz[0];
       bufs[1]->current_length = bufsz[1];
       bufs[2]->current_length = bufsz[2];
       bufs[3]->current_length = bufsz[3];
-
-      vnet_buffer (bufs[0])->sw_if_index[VLIB_RX] = sw_if_index;
-      vnet_buffer (bufs[1])->sw_if_index[VLIB_RX] = sw_if_index;
-      vnet_buffer (bufs[2])->sw_if_index[VLIB_RX] = sw_if_index;
-      vnet_buffer (bufs[3])->sw_if_index[VLIB_RX] = sw_if_index;
-
-      vnet_buffer (bufs[0])->sw_if_index[VLIB_TX] = ~0;
-      vnet_buffer (bufs[1])->sw_if_index[VLIB_TX] = ~0;
-      vnet_buffer (bufs[2])->sw_if_index[VLIB_TX] = ~0;
-      vnet_buffer (bufs[3])->sw_if_index[VLIB_TX] = ~0;
 
       bufs += 4;
       bufsz += 4;
@@ -282,9 +283,8 @@ rdma_device_input_bufs_init (u32 n_left_from, vlib_buffer_t ** bufs,
 
   while (n_left_from >= 1)
     {
+      vlib_buffer_copy_template (bufs[0], bt);
       bufs[0]->current_length = bufsz[0];
-      vnet_buffer (bufs[0])->sw_if_index[VLIB_RX] = sw_if_index;
-      vnet_buffer (bufs[0])->sw_if_index[VLIB_TX] = ~0;
 
       bufs += 1;
       bufsz += 1;
@@ -300,8 +300,8 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
   struct ibv_wc wc[VLIB_FRAME_SIZE];
   u32 bufsz[VLIB_FRAME_SIZE];
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
-  u32 *to_next, n_left_to_next;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], bt;
+  u32 next_index, *to_next, n_left_to_next;
   u32 n_rx_packets, n_rx_bytes;
 
   n_rx_packets = ibv_poll_cq (rxq->cq, VLIB_FRAME_SIZE, wc);
@@ -312,16 +312,22 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       return 0;
     }
 
-  vlib_get_new_next_frame (vm, node, rd->per_interface_next_index, to_next,
-			   n_left_to_next);
+  clib_memset_u64 (&bt, 0,
+		   STRUCT_OFFSET_OF (vlib_buffer_t,
+				     template_end) / sizeof (u64));
+  next_index = rd->per_interface_next_index;
+  if (PREDICT_FALSE (vnet_device_input_have_features (rd->sw_if_index)))
+    vnet_feature_start_device_input_x1 (rd->sw_if_index, &next_index, &bt);
+
+  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
   n_rx_bytes = rdma_device_input_load_wc (n_rx_packets, wc, to_next, bufsz);
   vlib_get_buffers (vm, to_next, bufs, n_rx_packets);
-  rdma_device_input_bufs_init (n_rx_packets, bufs, bufsz, rd->sw_if_index);
-  rdma_device_input_trace (vm, node, rd, n_rx_packets, to_next);
-  rdma_device_input_ethernet (vm, node, rd);
+  rdma_device_input_bufs_init (n_rx_packets, bufs, bufsz, rd->sw_if_index,
+			       &bt);
+  rdma_device_input_trace (vm, node, rd, n_rx_packets, to_next, next_index);
+  rdma_device_input_ethernet (vm, node, rd, next_index);
 
-  vlib_put_next_frame (vm, node, rd->per_interface_next_index,
-		       n_left_to_next - n_rx_packets);
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next - n_rx_packets);
 
   vlib_increment_combined_counter
     (vnm->interface_main.combined_sw_if_counters +
