@@ -34,7 +34,7 @@ autoreply define mactime_enable_disable
  * times are in double-precision fp seconds since 1/1/1970,
  * which was a Thursday.
  */
-typeonly define time_range
+typedef time_range
 {
   f64 start;                    /**< start of the time range  */
   f64 end;                      /**< end of the time range */

@@ -51,7 +51,7 @@ define abf_plugin_get_version_reply
     @param n_paths Number of paths
     @param paths The set of forwarding paths that are being added or removed.
  */
-typeonly define abf_policy
+typedef abf_policy
 {
   u32 policy_id;
   u32 acl_index;
@@ -96,7 +96,7 @@ define abf_policy_dump
               on this interface. lower value is 'better'
     @param is_ipv6 Does this attachment apply to IPv6 packets (or IPv4)
 */
-typeonly define abf_itf_attach
+typedef abf_itf_attach
 {
   u32 policy_id;
   u32 sw_if_index;
