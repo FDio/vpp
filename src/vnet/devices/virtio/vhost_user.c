@@ -498,10 +498,14 @@ vhost_user_socket_read (clib_file_t * uf)
       ASSERT (vui->virtio_net_hdr_sz < VLIB_BUFFER_PRE_DATA_SIZE);
       vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vui->hw_if_index);
       if (vui->enable_gso &&
-	  (vui->features & (1ULL << FEAT_VIRTIO_NET_F_GUEST_CSUM)))
-	hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+	  ((vui->features & FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS)
+	   == FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS))
+	hw->flags |=
+	  (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+	   VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
       else
-	hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+	hw->flags &= ~(VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+		       VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
       vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
       vui->is_ready = 0;
       vhost_user_update_iface_state (vui);
