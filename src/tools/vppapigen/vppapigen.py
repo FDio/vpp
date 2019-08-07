@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-from __future__ import print_function
 import ply.lex as lex
 import ply.yacc as yacc
 import sys
@@ -8,6 +7,8 @@ import argparse
 import logging
 import binascii
 import os
+
+log = logging.getLogger('vppapigen')
 
 # Ensure we don't leave temporary files around
 sys.dont_write_bytecode = True
@@ -249,12 +250,9 @@ class Import():
             f = os.path.join(dir, filename)
             if os.path.exists(f):
                 break
-        if sys.version[0] == '2':
-            with open(f) as fd:
-                self.result = parser.parse_file(fd, None)
-        else:
-            with open(f, encoding='utf-8') as fd:
-                self.result = parser.parse_file(fd, None)
+
+        with open(f, encoding='utf-8') as fd:
+            self.result = parser.parse_file(fd, None)
 
     def __repr__(self):
         return self.filename
@@ -766,6 +764,7 @@ def dirlist_add(dirs):
 def dirlist_get():
     return dirlist
 
+
 def foldup_blocks(block, crc):
     for b in block:
         # Look up CRC in user defined types
@@ -779,32 +778,32 @@ def foldup_blocks(block, crc):
                 pass
     return crc
 
+
 def foldup_crcs(s):
     for f in s:
         f.crc = foldup_blocks(f.block,
                               binascii.crc32(f.crc))
 
+
 #
 # Main
 #
 def main():
+    if sys.version_info < (3, 5,):
+        log.exception('vppapigen requires a supported version of python. '
+                      'Please use version 3.5 or greater. '
+                      'Using {}'.format(sys.version))
+        return 1
+
     cliparser = argparse.ArgumentParser(description='VPP API generator')
     cliparser.add_argument('--pluginpath', default=""),
     cliparser.add_argument('--includedir', action='append'),
-    if sys.version[0] == '2':
-        cliparser.add_argument('--input', type=argparse.FileType('r'),
-                               default=sys.stdin)
-        cliparser.add_argument('--output', nargs='?',
-                               type=argparse.FileType('w'),
-                               default=sys.stdout)
-
-    else:
-        cliparser.add_argument('--input',
-                               type=argparse.FileType('r', encoding='UTF-8'),
-                               default=sys.stdin)
-        cliparser.add_argument('--output', nargs='?',
-                               type=argparse.FileType('w', encoding='UTF-8'),
-                               default=sys.stdout)
+    cliparser.add_argument('--input',
+                           type=argparse.FileType('r', encoding='UTF-8'),
+                           default=sys.stdin)
+    cliparser.add_argument('--output', nargs='?',
+                           type=argparse.FileType('w', encoding='UTF-8'),
+                           default=sys.stdout)
 
     cliparser.add_argument('output_module', nargs='?', default='C')
     cliparser.add_argument('--debug', action='store_true')
@@ -827,7 +826,6 @@ def main():
         logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
     else:
         logging.basicConfig()
-    log = logging.getLogger('vppapigen')
 
     parser = VPPAPI(debug=args.debug, filename=filename, logger=log)
     parsed_objects = parser.parse_file(args.input, log)
@@ -874,7 +872,8 @@ def main():
     else:
         pluginpath = args.pluginpath + '/'
     if pluginpath == '':
-        raise Exception('Output plugin not found')
+        log.exception('Output plugin not found')
+        return 1
     module_path = '{}vppapigen_{}.py'.format(pluginpath,
                                              args.output_module.lower())
 
@@ -882,16 +881,19 @@ def main():
         plugin = SourceFileLoader(args.output_module,
                                   module_path).load_module()
     except Exception as err:
-        raise Exception('Error importing output plugin: {}, {}'
-                        .format(module_path, err))
+        log.exception('Error importing output plugin: {}, {}'
+                      .format(module_path, err))
+        return 1
 
     result = plugin.run(filename, s)
     if result:
         print(result, file=args.output)
     else:
-        raise Exception('Running plugin failed: {} {}'
-                        .format(filename, result))
+        log.exception('Running plugin failed: {} {}'
+                      .format(filename, result))
+        return 1
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
