@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+2: Dave Barach <openvpp@barachs.net>
+Code-Review+1: Benoît Ganne <bganne@cisco.com>
+Submitted-by: Andrew Yourtchenko <ayourtch@gmail.com>
+Submitted-at: Wed, 07 Aug 2019 08:54:43 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/20931
+Project: vpp
+Branch: refs/heads/master
