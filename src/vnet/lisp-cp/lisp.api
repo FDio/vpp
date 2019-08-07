@@ -15,7 +15,7 @@
 
 option version = "1.0.0";
 
-typeonly manual_print manual_endian define local_locator
+typedef local_locator
 {
   u32 sw_if_index;
   u8 priority;
@@ -307,7 +307,7 @@ define show_lisp_map_request_mode_reply
   u8 mode;
 };
 
-typeonly manual_endian manual_print define remote_locator
+typedef remote_locator
 {
   u8 is_ip4;
   u8 priority;
@@ -559,7 +559,7 @@ define lisp_eid_table_dump
     @param reid_prefix_len - remote EID IP prefix length
     @param leid_prefix_len - local EID IP prefix length
   */
-typeonly manual_print manual_endian define lisp_adjacency
+typedef lisp_adjacency
 {
   u8 eid_type;
   u8 reid[16];

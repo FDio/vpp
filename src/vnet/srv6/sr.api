@@ -18,12 +18,12 @@ option version = "1.2.0";
 
 /** \brief SRv6 SID
 */
-typeonly define srv6_sid
+typedef srv6_sid
 {
   u8 addr[16];
 };
 
-typeonly define srv6_sid_list
+typedef srv6_sid_list
 {
   u8 num_sids;
   u32 weight;
@@ -59,7 +59,7 @@ autoreply define sr_localsid_add_del
   u8 nh_addr4[4];
 };
 
-typeonly define sr_ip6_address
+typedef sr_ip6_address
 {
   u8 data[16];
 };

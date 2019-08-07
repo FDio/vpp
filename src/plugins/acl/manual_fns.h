@@ -121,61 +121,6 @@ format_acl_action(u8 *s, u8 action)
 }
 
 static inline void *
-vl_api_acl_rule_t_print (vl_api_acl_rule_t * a, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "  %s ", a->is_ipv6 ? "ipv6" : "ipv4");
-  s = format_acl_action (s, a->is_permit);
-  s = format (s, " \\\n");
-
-  if (a->is_ipv6)
-    s = format (s, "    src %U/%d dst %U/%d \\\n",
-		format_ip6_address, a->src_ip_addr, a->src_ip_prefix_len,
-		format_ip6_address, a->dst_ip_addr, a->dst_ip_prefix_len);
-  else
-    s = format (s, "    src %U/%d dst %U/%d \\\n",
-		format_ip4_address, a->src_ip_addr, a->src_ip_prefix_len,
-		format_ip4_address, a->dst_ip_addr, a->dst_ip_prefix_len);
-  s = format (s, "    proto %d \\\n", a->proto);
-  s = format (s, "    sport %d-%d dport %d-%d \\\n",
-	      clib_net_to_host_u16 (a->srcport_or_icmptype_first),
-	      clib_net_to_host_u16 (a->srcport_or_icmptype_last),
-	      clib_net_to_host_u16 (a->dstport_or_icmpcode_first),
-	      clib_net_to_host_u16 (a->dstport_or_icmpcode_last));
-
-  s = format (s, "    tcpflags %u mask %u, \\",
-	      a->tcp_flags_value, a->tcp_flags_mask);
-  PRINT_S;
-  return handle;
-}
-
-
-
-static inline void *
-vl_api_macip_acl_rule_t_print (vl_api_macip_acl_rule_t * a, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "  %s %s \\\n", a->is_ipv6 ? "ipv6" : "ipv4",
-              a->is_permit ? "permit" : "deny");
-
-  s = format (s, "    src mac %U mask %U \\\n",
-	      format_ethernet_address, a->src_mac,
-	      format_ethernet_address, a->src_mac_mask);
-
-  if (a->is_ipv6)
-    s = format (s, "    src ip %U/%d, \\",
-		format_ip6_address, a->src_ip_addr, a->src_ip_prefix_len);
-  else
-    s = format (s, "    src ip %U/%d, \\",
-		format_ip4_address, a->src_ip_addr, a->src_ip_prefix_len);
-
-  PRINT_S;
-  return handle;
-}
-
-static inline void *
 vl_api_acl_add_replace_t_print (vl_api_acl_add_replace_t * a, void *handle)
 {
   u8 *s = 0;

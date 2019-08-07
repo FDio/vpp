@@ -165,7 +165,7 @@ autoreply define want_l2_macs_events
                     3 => MAC move (sw_if_index changed)
     @param flags - flag bits to provide other info, not yet used
 */
-typeonly define mac_entry
+typedef mac_entry
 {
   u32 sw_if_index;
   u8  mac_addr[6];
@@ -284,7 +284,7 @@ define bridge_domain_dump
     @param sw_if_index - sw_if_index in the domain
     @param shg - split horizon group for the interface
 */
-typeonly manual_print manual_endian define bridge_domain_sw_if
+typedef bridge_domain_sw_if
 {
   u32 context;
   u32 sw_if_index;

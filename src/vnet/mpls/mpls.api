@@ -40,7 +40,7 @@ autoreply define mpls_ip_bind_unbind
   vl_api_prefix_t mb_prefix;
 };
 
-typeonly define mpls_tunnel
+typedef mpls_tunnel
 {
   u32 mt_sw_if_index;
   u32 mt_tunnel_index;
@@ -99,7 +99,7 @@ manual_endian manual_print define mpls_tunnel_details
                      is not set by the client, then VPP will generate
 		     something meaningfull.
 */
-typeonly define mpls_table
+typedef mpls_table
 {
   u32 mt_table_id;
   u8  mt_name[64];
@@ -137,7 +137,7 @@ define mpls_table_details
     @param mr_n_paths - The number of paths
     @param mr_paths - The paths
 */
-typeonly define mpls_route
+typedef mpls_route
 {
   u32 mr_table_id;
   u32 mr_label;

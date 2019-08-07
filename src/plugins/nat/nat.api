@@ -893,7 +893,7 @@ define nat44_user_session_details {
     @param probability - probability of the internal node to be randomly matched
     @param vrf_id - VRF id
 */
-typeonly manual_endian define nat44_lb_addr_port {
+typedef nat44_lb_addr_port {
   vl_api_ip4_address_t addr;
   u16 port;
   u8 probability;
