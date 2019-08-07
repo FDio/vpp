@@ -76,6 +76,22 @@ vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
 }
 
 void
+vlib_validate_bond_counter (vlib_simple_counter_main_t * cm, u32 bond_index,
+			    u32 slave_index)
+{
+  int i;
+  void *oldheap = vlib_stats_push_heap (cm->counters);
+
+  vec_validate (cm->counters, bond_index);
+  for (i = 0; i <= bond_index; i++)
+    vec_validate_aligned (cm->counters[i], slave_index,
+			  CLIB_CACHE_LINE_BYTES);
+
+  vlib_stats_pop_heap (cm, oldheap, slave_index,
+		       2 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */ );
+}
+
+void
 vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();

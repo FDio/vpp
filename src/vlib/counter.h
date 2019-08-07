@@ -297,6 +297,33 @@ vlib_zero_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
     }
 }
 
+/** bond set counter
+    @param cm - (vlib_simple_counter_main_t *) simple counter main pointer
+    @param bond_index - (u32) the bond index
+    @param slave_index - (u32) the slave index
+    @param value - (u64) value to set
+*/
+always_inline void
+vlib_bond_set_counter (vlib_simple_counter_main_t * cm,
+		       u32 bond_index, u32 slave_index, u64 value)
+{
+  counter_t *my_counters;
+
+  ASSERT (bond_index < vec_len (cm->counters));
+  my_counters = cm->counters[bond_index];
+  ASSERT (slave_index < vec_len (my_counters));
+  my_counters[slave_index] = value;
+}
+
+/** validate a bond counter
+    @param cm - (vlib_simple_counter_main_t *) pointer to the counter collection
+    @param bindex - (u32) bond index of the counter to validate
+    @param sindex - (u32) slave index of the counter to validate
+*/
+
+void vlib_validate_bond_counter (vlib_simple_counter_main_t * cm,
+				 u32 bindex, u32 sindex);
+
 /** validate a simple counter
     @param cm - (vlib_simple_counter_main_t *) pointer to the counter collection
     @param index - (u32) index of the counter to validate

@@ -38,6 +38,7 @@ typedef enum
  STAT_COUNTER_NODE_NAMES,
  STAT_COUNTER_MEM_STATSEG_TOTAL,
  STAT_COUNTER_MEM_STATSEG_USED,
+ STAT_COUNTER_INTERFACE_BOND_STATES,
  STAT_COUNTERS
 } stat_segment_counter_t;
 
@@ -57,7 +58,8 @@ typedef enum
   _(INTERFACE_NAMES, NAME_VECTOR, names, /if)                   \
   _(NODE_NAMES, NAME_VECTOR, names, /sys/node)                  \
   _(MEM_STATSEG_TOTAL, SCALAR_INDEX, total, /mem/statseg)       \
-  _(MEM_STATSEG_USED, SCALAR_INDEX, used, /mem/statseg)
+  _(MEM_STATSEG_USED, SCALAR_INDEX, used, /mem/statseg)         \
+  _(INTERFACE_BOND_STATES, NAME_VALUE_VECTOR, bond, /if)
 
 typedef struct
 {
@@ -139,5 +141,7 @@ extern stat_segment_main_t stat_segment_main;
 
 clib_error_t *
 stat_segment_register_gauge (u8 *names, stat_segment_update_fn update_fn, u32 index);
+extern clib_error_t *
+statseg_lacp_interface_update_state (u32 sw_if_index, u8 state, u8 is_add);
 
 #endif

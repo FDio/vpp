@@ -22,6 +22,9 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface.h>
 
+#define foreach_bond_stat_segment_oper_name                       \
+  _(actor-state, /if/bond)
+
 #define LACP_FAST_PERIODIC_TIMER        1.0
 #define LACP_SHORT_TIMOUT_TIME          (LACP_FAST_PERIODIC_TIMER * 3)
 #define LACP_SLOW_PERIODIC_TIMER        30.0
@@ -367,6 +370,8 @@ typedef struct
   uword *slave_by_sw_if_index;
 
   bond_per_thread_data_t *per_thread_data;
+
+  vlib_simple_counter_main_t stats;
 } bond_main_t;
 
 /* bond packet trace capture */

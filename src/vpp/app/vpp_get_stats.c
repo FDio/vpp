@@ -182,7 +182,8 @@ reconnect:
       for (i = 0; i < vec_len (dir); i++)
 	{
 	  char *n = stat_segment_index_to_name (dir[i]);
-	  printf ("%s\n", n);
+	  if (n)
+	    printf ("%s\n", n);
 	  free (n);
 	}
       break;
@@ -231,6 +232,16 @@ reconnect:
 		if (res[i].name_vector[k])
 		  fformat (stdout, "[%d]: %s %s\n", k, res[i].name_vector[k],
 			   res[i].name);
+	      break;
+
+	    case STAT_DIR_TYPE_NAME_VALUE_VECTOR:
+	      if (res[i].name_value_vec == 0)
+		continue;
+	      for (k = 0; k < vec_len (res[i].name_value_vec); k++)
+		if (res[i].name_value_vec[k])
+		  fformat (stdout, "[%d]: <%s %u> %s\n", k,
+			   res[i].name_value_vec[k]->name,
+			   res[i].name_value_vec[k]->value, res[i].name);
 	      break;
 
 	    default:

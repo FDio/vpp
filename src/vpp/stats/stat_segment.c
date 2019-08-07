@@ -879,6 +879,59 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   return 0;
 }
 
+clib_error_t *
+statseg_lacp_interface_update_state (u32 sw_if_index, u8 state, u8 is_add)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+
+  void *oldheap = vlib_stats_push_heap (sm->interfaces);
+  vlib_stat_segment_lock ();
+
+  stat_segment_directory_entry_t *ep;
+  ep = &sm->directory_vector[STAT_COUNTER_INTERFACE_BOND_STATES];
+  ep->offset = stat_segment_offset (shared_header, sm->interfaces);
+
+  typedef struct
+  {
+    u64 name;
+    u64 value;
+  } stat_segment_name_value_t;
+
+  stat_segment_name_value_t *offset_vector =
+    ep->offset_vector ? stat_segment_pointer (shared_header,
+					      ep->offset_vector) : 0;
+
+  if (is_add)
+    {
+      vec_validate (offset_vector, sw_if_index);
+
+      if (sm->interfaces[sw_if_index])
+	{
+	  offset_vector[sw_if_index].name =
+	    stat_segment_offset (shared_header, sm->interfaces[sw_if_index]);
+	  offset_vector[sw_if_index].value = state;
+	}
+      else
+	{
+	  offset_vector[sw_if_index].name = 0;
+	  offset_vector[sw_if_index].value = 0;
+	}
+    }
+  else
+    {
+      offset_vector[sw_if_index].name = 0;
+      offset_vector[sw_if_index].value = 0;
+    }
+
+  ep->offset_vector = stat_segment_offset (shared_header, offset_vector);
+
+  vlib_stat_segment_unlock ();
+  clib_mem_set_heap (oldheap);
+
+  return 0;
+}
+
 VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (statseg_sw_interface_add_del);
 
