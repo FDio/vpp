@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """ ACL plugin extended stateful tests """
 
-import unittest
+import framework
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import unittest
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, TCP

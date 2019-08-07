@@ -2,7 +2,7 @@
 import binascii
 import random
 import socket
-import unittest
+import framework
 
 import scapy.compat
 from scapy.contrib.mpls import MPLS
@@ -12,6 +12,7 @@ from scapy.packet import Raw
 from six import moves
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \

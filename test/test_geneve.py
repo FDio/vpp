@@ -2,8 +2,9 @@
 
 import socket
 from util import ip4n_range, ip4_range
-import unittest
+import framework
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
