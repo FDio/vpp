@@ -297,6 +297,14 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
   return rv;
 }
 
+static void
+openssl_confirm_app_close_and_free (tls_ctx_t * ctx)
+{
+  tls_disconnect_transport (ctx);
+  session_transport_delete_notify (&ctx->connection);
+  openssl_ctx_free (ctx);
+}
+
 static inline int
 openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 {
@@ -342,7 +350,11 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 check_tls_fifo:
 
   if (BIO_ctrl_pending (oc->rbio) <= 0)
-    return wrote;
+    {
+      if (ctx->app_closed && !deq_max)
+	openssl_confirm_app_close_and_free (ctx);
+      return wrote;
+    }
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
   f = tls_session->tx_fifo;
@@ -744,9 +756,16 @@ openssl_transport_close (tls_ctx_t * ctx)
 static int
 openssl_app_close (tls_ctx_t * ctx)
 {
-  tls_disconnect_transport (ctx);
-  session_transport_delete_notify (&ctx->connection);
-  openssl_ctx_free (ctx);
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  session_t *app_session;
+
+  /* Wait for all data to be written to tcp */
+  app_session = session_get_from_handle (ctx->app_session_handle);
+  if (BIO_ctrl_pending (oc->rbio) <= 0
+      && svm_fifo_max_dequeue_cons (app_session->tx_fifo))
+    openssl_confirm_app_close_and_free (ctx);
+  else
+    ctx->app_closed = 1;
   return 0;
 }
 
