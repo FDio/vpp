@@ -297,11 +297,6 @@ vlib_zero_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
     }
 }
 
-/** validate a simple counter
-    @param cm - (vlib_simple_counter_main_t *) pointer to the counter collection
-    @param index - (u32) index of the counter to validate
-*/
-
 void vlib_validate_simple_counter (vlib_simple_counter_main_t * cm,
 				   u32 index);
 /** validate a combined counter
