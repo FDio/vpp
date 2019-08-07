@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4bec2ca9_64bb0576",
+        "filename": "src/tools/vppapitrace/vppapitrace.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-08-07T15:15:04Z",
+      "side": 1,
+      "message": "First .encode, only then look at size, because that gives you the number of bytes to read when unserializing.",
+      "range": {
+        "startLine": 71,
+        "startChar": 8,
+        "endLine": 71,
+        "endChar": 14
+      },
+      "revId": "8e72bf91782f0adf7eedaac5c8f1196331778d93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c230db23_22443a4e",
+        "filename": "src/tools/vppapitrace/vppapitrace.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-08-07T15:15:04Z",
+      "side": 1,
+      "message": "\u003e For consistency, always use \"\"\"triple double quotes\"\"\" around docstrings.\n\nhttps://www.python.org/dev/peps/pep-0257/",
+      "range": {
+        "startLine": 160,
+        "startChar": 4,
+        "endLine": 160,
+        "endChar": 7
+      },
+      "revId": "8e72bf91782f0adf7eedaac5c8f1196331778d93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "88b070e2_6c96b3dc",
+        "filename": "src/tools/vppapitrace/vppapitrace.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-08-07T15:15:04Z",
+      "side": 1,
+      "message": "Pep-0257 does not directly discourage this, the algorithm [1] will process it correctly, and pylint does not mind, but I still dislike this indent level.\n\n[1] https://www.python.org/dev/peps/pep-0257/#handling-docstring-indentation",
+      "range": {
+        "startLine": 161,
+        "startChar": 4,
+        "endLine": 161,
+        "endChar": 7
+      },
+      "revId": "8e72bf91782f0adf7eedaac5c8f1196331778d93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
