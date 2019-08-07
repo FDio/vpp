@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "91d99a52_f48c981d",
+        "filename": "src/vnet/udp/udp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2019-08-07T09:44:55Z",
+      "side": 1,
+      "message": "Hi Florin,\n\nIf we do this, I think the event will be triggered before the session_migrate_callback will be called on the app. That means the app will receive an event on a session it has no knowledge of... This is not necessarily a problem if the app only depends on what\u0027s in the session opaque (which is copied) to figure out what to do, but I think it might be one for an app that depends on both the opaque and the thread index of the session.",
+      "revId": "d1485c84d46dd7103b515c6d419615b24438c2c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
