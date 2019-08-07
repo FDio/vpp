@@ -367,6 +367,8 @@ typedef struct
   uword *slave_by_sw_if_index;
 
   bond_per_thread_data_t *per_thread_data;
+
+  u32 **stats;
 } bond_main_t;
 
 /* bond packet trace capture */
