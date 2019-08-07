@@ -60,7 +60,7 @@
     - no packet received on all 4 pg-l2 interfaces
 """
 
-import unittest
+import framework
 import random
 
 from scapy.packet import Raw
@@ -68,6 +68,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import Host, ppp
 from vpp_papi import mac_pton
 

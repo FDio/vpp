@@ -6,7 +6,6 @@ import sys
 import os
 import select
 import signal
-import unittest
 import tempfile
 import time
 import faulthandler
@@ -50,6 +49,11 @@ try:
     input = raw_input
 except NameError:
     pass
+
+if sys.version_info[0] < 3:
+    import unittest2 as unittest
+else:
+    import unittest
 
 PASS = 0
 FAIL = 1

@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """Test framework utility functions tests"""
 
-import unittest
+import framework
 from framework import VppTestRunner
+from framework import unittest
 from vpp_papi import mac_pton, mac_ntop
 
 

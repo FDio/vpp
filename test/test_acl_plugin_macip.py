@@ -8,7 +8,7 @@ import random
 from socket import inet_ntop, inet_pton, AF_INET, AF_INET6
 from struct import pack, unpack
 import re
-import unittest
+import framework
 
 import scapy.compat
 from scapy.packet import Raw

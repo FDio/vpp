@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import unittest
+import framework
 from framework import VppTestCase, VppTestRunner
 
 from vpp_udp_encap import find_udp_encap, VppUdpEncap

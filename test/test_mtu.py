@@ -8,7 +8,7 @@
 # - Verify that sub-interfaces inherit MTU correctly
 # - Different types of interfaces?
 #
-import unittest
+import framework
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
 from scapy.layers.inet import ICMP
 from framework import VppTestCase, VppTestRunner

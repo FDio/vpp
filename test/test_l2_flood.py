@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 import socket
 
 from framework import VppTestCase, VppTestRunner

@@ -1,11 +1,12 @@
 #!/usr/bin/env python2.7
 
-import unittest
+import framework
 import time
 import psutil
 from vpp_papi.vpp_stats import VPPStats
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 
 
 class StatsClientTestCase(VppTestCase):

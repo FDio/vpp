@@ -8,7 +8,7 @@
 # - Verify that sending Jumbo frame with GSO enabled correctly
 # - Verify that sending Jumbo frame with GSO enabled only on ingress interface
 #
-import unittest
+import framework
 
 from scapy.packet import Raw
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig

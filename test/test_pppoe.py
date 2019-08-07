@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import socket
-import unittest
+import framework
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether

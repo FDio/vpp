@@ -1,4 +1,4 @@
-import unittest
+import framework
 import socket
 import copy
 
@@ -7,6 +7,7 @@ from scapy.layers.l2 import Ether, Raw, GRE
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from framework import VppTestRunner
+from framework import unittest
 from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTun6Tests, \
     IpsecTun4, IpsecTun6,  IpsecTcpTests,  config_tun_params
 from vpp_ipsec_tun_interface import VppIpsecTunInterface

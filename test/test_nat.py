@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import socket
-import unittest
+import framework
 import struct
 import random
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import unittest
 
 import scapy.compat
 from scapy.layers.inet import IP, TCP, UDP, ICMP
