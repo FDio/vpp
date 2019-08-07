@@ -20,6 +20,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/bonding/node.h>
+#include <vlib/counter.h>
 
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
@@ -96,7 +97,9 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
     }
   clib_spinlock_unlock_if_init (&bif->lockp);
 
-  return;
+  if (bif->mode == BOND_MODE_LACP)
+    vlib_bond_set_counter (&bm->stats, bif->sw_if_index, sif->sw_if_index,
+			   sif->actor.state);
 }
 
 void
@@ -165,7 +168,9 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
     }
   clib_spinlock_unlock_if_init (&bif->lockp);
 
-  return;
+  if (bif->mode == BOND_MODE_LACP)
+    vlib_bond_set_counter (&bm->stats, bif->sw_if_index, sif->sw_if_index,
+			   sif->actor.state);
 }
 
 int
@@ -278,6 +283,8 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
   if ((bif->mode == BOND_MODE_LACP) && bm->lacp_enable_disable)
     (*bm->lacp_enable_disable) (vm, bif, sif, 0);
 
+  if (bif->mode == BOND_MODE_LACP)
+    vlib_bond_set_counter (&bm->stats, bif->sw_if_index, sif->sw_if_index, 0);
   pool_put (bm->neighbors, sif);
 }
 
@@ -639,6 +646,8 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
 
   if (bif->mode == BOND_MODE_LACP)
     {
+      vlib_validate_bond_counter (&bm->stats, bif->sw_if_index,
+				  sif->sw_if_index);
       if (bm->lacp_enable_disable)
 	(*bm->lacp_enable_disable) (vm, bif, sif, 1);
     }
@@ -894,8 +903,13 @@ bond_cli_init (vlib_main_t * vm)
   vec_validate_aligned (bm->per_thread_data,
 			vlib_get_thread_main ()->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
-
-  return 0;
+  bm->stats.name = "bond";
+  bm->stats.stat_segment_name = "/if/bond";
+#define _(a, b)					\
+  bm->stats.stat_segment_name = #b "/" #a;
+  foreach_bond_stat_segment_oper_name
+#undef _
+    return 0;
 }
 
 VLIB_INIT_FUNCTION (bond_cli_init);
