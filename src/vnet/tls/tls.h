@@ -76,6 +76,8 @@ typedef struct tls_ctx_
 
   u8 is_passive_close;
   u8 resume;
+  u8 app_closed;
+  u8 no_app_session;
   u8 *srv_hostname;
 } tls_ctx_t;
 
