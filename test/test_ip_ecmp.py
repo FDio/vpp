@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 import random
 import socket
 from ipaddress import IPv4Address, IPv6Address, AddressValueError
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import ppp
 
 from scapy.packet import Raw

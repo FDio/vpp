@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase
+from framework import unittest
 
 
 class TestL2tp(VppTestCase):

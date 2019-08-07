@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 """IP{4,6} over IP{v,6} tunnel functional tests"""
 
-import unittest
+import framework
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment
 from scapy.all import fragment, fragment6, RandShort, defragment6
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from socket import AF_INET, AF_INET6, inet_pton

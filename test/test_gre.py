@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 
 import scapy.compat
 from scapy.packet import Raw
@@ -10,6 +10,7 @@ from scapy.layers.inet6 import IPv6
 from scapy.volatile import RandMAC, RandIP
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto

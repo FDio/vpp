@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 """ Vpp QUIC tests """
 
-import unittest
+import framework
 import os
 import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
+from framework import unittest
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 

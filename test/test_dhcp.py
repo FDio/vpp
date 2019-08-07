@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 import socket
 import struct
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import unittest
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr

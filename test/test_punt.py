@@ -8,11 +8,6 @@ import struct
 import copy
 from struct import unpack, unpack_from
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
 from util import ppp, ppc
 from re import compile
 import scapy.compat
@@ -25,6 +20,7 @@ from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
 from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
 import six
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath

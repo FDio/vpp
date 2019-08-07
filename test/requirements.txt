@@ -15,3 +15,4 @@ subprocess32                            # PSF
 syslog_rfc5424_parser>=0.3.1            # ISC
 objgraph                                # MIT
 pympler                                 # Apache-2.0
+unittest2; python_version < '3.3'       # PSF

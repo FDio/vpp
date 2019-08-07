@@ -3,7 +3,7 @@ from __future__ import print_function
 import binascii
 import random
 import socket
-import unittest
+import framework
 import time
 import re
 
@@ -13,6 +13,7 @@ from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import unittest
 from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
 from util import ppp

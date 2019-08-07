@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from vpp_sub_interface import VppDot1QSubint
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \

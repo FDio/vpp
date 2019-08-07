@@ -1,9 +1,10 @@
 import socket
-import unittest
+import framework
 
 from scapy.layers.ipsec import AH
 
 from framework import VppTestRunner
+from framework import unittest
 from template_ipsec import TemplateIpsec, IpsecTra46Tests, IpsecTun46Tests, \
     config_tun_params, config_tra_params, IPsecIPv4Params, IPsecIPv6Params, \
     IpsecTra4, IpsecTun4, IpsecTra6, IpsecTun6

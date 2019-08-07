@@ -6,7 +6,6 @@ import sys
 import os
 import select
 import signal
-import unittest
 import tempfile
 import time
 import faulthandler
@@ -50,6 +49,11 @@ try:
     input = raw_input
 except NameError:
     pass
+
+if sys.version_info[0] < 3:
+    import unittest2 as unittest
+else:
+    import unittest
 
 PASS = 0
 FAIL = 1
@@ -1145,11 +1149,6 @@ class VppTestCase(unittest.TestCase):
                 timeout = 0.1
 
         return rx
-
-    def runTest(self):
-        """ unittest calls runTest when TestCase is instantiated without a
-        test case.  Use case: Writing unittests against VppTestCase"""
-        pass
 
 
 def get_testcase_doc_name(test):

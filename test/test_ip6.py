@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import socket
-import unittest
+import framework
 
 from parameterized import parameterized
 import scapy.compat
@@ -19,6 +19,7 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
 from six import moves
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import ppp, ip6_normalize, mk_ll_addr
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \

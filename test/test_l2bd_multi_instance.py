@@ -62,7 +62,7 @@
     - check BD data by parsing output of bridge_domain_dump API command
 """
 
-import unittest
+import framework
 import random
 
 from scapy.packet import Raw
@@ -70,6 +70,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import unittest
 from util import Host, ppp
 
 

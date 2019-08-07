@@ -2,7 +2,7 @@
 """ACL plugin Test Case HLD:
 """
 
-import unittest
+import framework
 import random
 
 from scapy.packet import Raw
@@ -11,6 +11,7 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import Host, ppp
 
 from vpp_lo_interface import VppLoInterface

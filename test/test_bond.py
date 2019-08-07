@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import socket
-import unittest
+import framework
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP

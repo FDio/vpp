@@ -23,7 +23,7 @@
 
 """
 
-import unittest
+import framework
 from random import choice
 
 from scapy.packet import Raw
@@ -31,6 +31,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from vpp_papi import MACAddress
 from vpp_l2 import L2_PORT_TYPE
 

@@ -8,6 +8,7 @@ from scapy.packet import Raw
 from scapy.data import IP_PROTOS
 
 from framework import VppTestCase
+from framework import unittest
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX

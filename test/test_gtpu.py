@@ -2,7 +2,7 @@
 
 import socket
 from util import ip4n_range, ip4_range
-import unittest
+import framework
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 

@@ -13,7 +13,7 @@
 #  limitations under the License.
 import datetime
 import time
-import unittest
+import framework
 from framework import VppTestCase
 
 enable_print = False

@@ -6,7 +6,7 @@ from __future__ import division
 import binascii
 import hashlib
 import time
-import unittest
+import framework
 from random import randint, shuffle, getrandbits
 from socket import AF_INET, AF_INET6, inet_ntop
 from struct import pack, unpack
@@ -21,6 +21,7 @@ from scapy.packet import Raw
 from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import unittest
 from util import ppp
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-import unittest
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
 from vpp_l2 import L2_PORT_TYPE
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint

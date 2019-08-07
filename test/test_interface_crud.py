@@ -11,12 +11,13 @@
     - vxlan (TBD)
 """
 
-import unittest
+import framework
 
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 
 
 class TestLoopbackInterfaceCRUD(VppTestCase):

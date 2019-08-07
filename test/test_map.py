@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 import ipaddress
-import unittest
+import framework
 from ipaddress import IPv6Network, IPv4Network
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 

@@ -1,10 +1,10 @@
 import socket
-import unittest
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import UDP
 
 from parameterized import parameterized
 from framework import VppTestRunner
+from framework import unittest
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
     IPsecIPv4Params, IPsecIPv6Params, \

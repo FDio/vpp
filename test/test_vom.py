@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 """ VAPI test """
 
-import unittest
+import framework
 import os
 import signal
 from framework import VppTestCase, running_extended_tests, \
     VppTestRunner, Worker
+from framework import unittest
 
 
 @unittest.skipUnless(running_extended_tests, "part of extended tests")

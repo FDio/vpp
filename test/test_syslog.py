@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import ppp
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP

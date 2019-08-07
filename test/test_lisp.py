@@ -2,7 +2,7 @@
 
 import abc
 import six
-import unittest
+import framework
 
 from scapy.fields import BitField, ByteField, FlagsField, IntField
 from scapy.packet import bind_layers, Packet, Raw
@@ -10,6 +10,7 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from lisp import VppLocalMapping, VppLispAdjacency, VppLispLocator, \
     VppLispLocatorSet, VppRemoteMapping
 from util import ppp, ForeignAddressFactory

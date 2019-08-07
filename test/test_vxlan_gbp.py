@@ -2,8 +2,9 @@
 
 import socket
 from util import ip4_range, reassemble4_ether
-import unittest
+import framework
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from template_bd import BridgeDomain
 from vpp_ip import VppIpAddress
 

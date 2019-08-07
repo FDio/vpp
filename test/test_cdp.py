@@ -8,6 +8,7 @@ from scapy.contrib.cdp import CDPMsgDeviceID, CDPMsgSoftwareVersion, \
         CDPMsgPlatform, CDPMsgPortID, CDPv2_HDR
 
 from framework import VppTestCase
+from framework import unittest
 from scapy.all import raw
 from re import compile
 from time import sleep

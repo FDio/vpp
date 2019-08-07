@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 
 from framework import VppTestCase, VppTestRunner
 
