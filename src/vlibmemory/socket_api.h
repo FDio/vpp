@@ -22,7 +22,10 @@
 #include <svm/ssvm.h>
 #include <vppinfra/file.h>
 
-#define API_SOCKET_FILE "/run/vpp-api.sock"
+/* Deprecated */
+#define API_SOCKET_FILE "/run/vpp/api.sock"
+
+#define API_SOCKET_FILENAME "api.sock"
 
 typedef struct
 {

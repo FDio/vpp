@@ -723,22 +723,6 @@ vl_sock_api_init (vlib_main_t * vm)
   vec_resize (sm->input_buffer, 4096);
 
   sock->config = (char *) sm->socket_name;
-
-  /* mkdir of file socket, only under /run  */
-  if (strncmp (sock->config, "/run", 4) == 0)
-    {
-      u8 *tmp = format (0, "%s", sock->config);
-      int i = vec_len (tmp);
-      while (i && tmp[--i] != '/')
-	;
-
-      tmp[i] = 0;
-
-      if (i)
-	vlib_unix_recursive_mkdir ((char *) tmp);
-      vec_free (tmp);
-    }
-
   sock->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_ALLOW_GROUP_WRITE;
   error = clib_socket_init (sock);
   if (error)
@@ -791,16 +775,21 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "socket-name %s", &sm->socket_name))
 	;
+      /* DEPRECATE: default keyword is ignored */
       else if (unformat (input, "default"))
-	{
-	  sm->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
-	}
+	;
       else
 	{
 	  return clib_error_return (0, "unknown input '%U'",
 				    format_unformat_error, input);
 	}
     }
+
+  if (!vec_len (sm->socket_name))
+    sm->socket_name = format (0, "%s/%s", vlib_unix_get_runtime_dir (),
+			      API_SOCKET_FILENAME);
+  vec_terminate_c_string (sm->socket_name);
+
   return 0;
 }
 
