@@ -20,6 +20,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/bonding/node.h>
+#include <vpp/stats/stat_segment.h>
 
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
@@ -96,7 +97,9 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
     }
   clib_spinlock_unlock_if_init (&bif->lockp);
 
-  return;
+  if (bif->mode == BOND_MODE_LACP)
+    stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
+				    [sif->sw_if_index], sif->actor.state);
 }
 
 void
@@ -165,7 +168,9 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
     }
   clib_spinlock_unlock_if_init (&bif->lockp);
 
-  return;
+  if (bif->mode == BOND_MODE_LACP)
+    stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
+				    [sif->sw_if_index], sif->actor.state);
 }
 
 int
@@ -277,6 +282,10 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
 
   if ((bif->mode == BOND_MODE_LACP) && bm->lacp_enable_disable)
     (*bm->lacp_enable_disable) (vm, bif, sif, 0);
+
+  if (bif->mode == BOND_MODE_LACP)
+    stat_segment_deregister_state_counter
+      (bm->stats[bif->sw_if_index][sif->sw_if_index]);
 
   pool_put (bm->neighbors, sif);
 }
@@ -573,6 +582,24 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
 	clib_error_return (0, "bond interface cannot be enslaved");
       return;
     }
+  if (bif->mode == BOND_MODE_LACP)
+    {
+      u8 *name = format (0, "/if/lacp/%u/%u/state", bif->sw_if_index,
+			 args->slave);
+
+      vec_validate (bm->stats, bif->sw_if_index);
+      vec_validate (bm->stats[bif->sw_if_index], args->slave);
+
+      args->error = stat_segment_register_state_counter
+	(name, &bm->stats[bif->sw_if_index][args->slave]);
+      vec_free (name);
+      if (args->error != 0)
+	{
+	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+	  return;
+	}
+    }
+
   pool_get (bm->neighbors, sif);
   clib_memset (sif, 0, sizeof (*sif));
   sw = pool_elt_at_index (im->sw_interfaces, args->slave);

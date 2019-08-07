@@ -358,6 +358,10 @@ format_stat_dir_entry (u8 * s, va_list * args)
       type_name = "ErrIndex";
       break;
 
+    case STAT_DIR_TYPE_NAME_VECTOR:
+      type_name = "NameVector";
+      break;
+
     default:
       type_name = "illegal!";
       break;
@@ -734,7 +738,6 @@ VLIB_INIT_FUNCTION (statseg_init) =
 };
 /* *INDENT-ON* */
 
-
 clib_error_t *
 stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
 			     u32 caller_index)
@@ -776,6 +779,73 @@ stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
   gauge->directory_index = next_vector_index;
 
   return NULL;
+}
+
+clib_error_t *
+stat_segment_register_state_counter (u8 * name, u32 * index)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  void *oldheap;
+  stat_segment_directory_entry_t e;
+
+  ASSERT (shared_header);
+  ASSERT (vlib_get_thread_index () == 0);
+
+  u32 next_vector_index = vec_len (sm->directory_vector);
+  u32 vector_index = lookup_or_create_hash_index (name,
+						  next_vector_index);
+
+  if (vector_index < next_vector_index)	/* Already registered */
+    return clib_error_return (0, "%v is already registered", name);
+
+  oldheap = vlib_stats_push_heap (NULL);
+  vlib_stat_segment_lock ();
+
+  memset (&e, 0, sizeof (e));
+  e.type = STAT_DIR_TYPE_SCALAR_INDEX;
+
+  memcpy (e.name, name, vec_len (name));
+  vec_add1 (sm->directory_vector, e);
+
+  shared_header->directory_offset =
+    stat_segment_offset (shared_header, sm->directory_vector);
+
+  vlib_stat_segment_unlock ();
+  clib_mem_set_heap (oldheap);
+
+  *index = next_vector_index;
+  return 0;
+}
+
+clib_error_t *
+stat_segment_deregister_state_counter (u32 index)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  stat_segment_directory_entry_t *e;
+
+  ASSERT (shared_header);
+
+  if (index > vec_len (sm->directory_vector))
+    return clib_error_return (0, "%u index does not exist", index);
+
+  e = &sm->directory_vector[index];
+  if (e->type != STAT_DIR_TYPE_SCALAR_INDEX)
+    return clib_error_return (0, "%u index cannot be deleted", index);
+
+  hash_unset (sm->directory_vector_by_name, &e->name);
+  vec_del1 (sm->directory_vector, index);
+  return 0;
+}
+
+void
+stat_segment_set_state_counter (u32 index, u64 value)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+
+  ASSERT (index < vec_len (sm->directory_vector));
+  sm->directory_vector[index].index = value;
 }
 
 static clib_error_t *
