@@ -225,8 +225,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      error0 = UDP_ERROR_CREATE_SESSION;
 		      goto trace0;
 		    }
-		  s0 =
-		    session_get (child0->c_s_index, child0->c_thread_index);
+		  s0 = session_get (child0->c_s_index,
+				    child0->c_thread_index);
 		  s0->session_state = SESSION_STATE_READY;
 		  tc0 = &child0->connection;
 		  uc0 = udp_get_connection_from_transport (tc0);
@@ -255,9 +255,22 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  hdr0.is_ip4 = is_ip4;
 
 	  clib_spinlock_lock (&uc0->rx_lock);
-	  wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
-						     TRANSPORT_PROTO_UDP,
-						     queue_event);
+	  /* If session is owned by another thread and rx event needed,
+	   * enqueue event now while we still have the peeker lock */
+	  if (s0->thread_index != my_thread_index)
+	    {
+	      wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
+							 TRANSPORT_PROTO_UDP,
+							 /* queue event */ 0);
+	      if (queue_event && !svm_fifo_has_event (s0->rx_fifo))
+		session_enqueue_notify (s0);
+	    }
+	  else
+	    {
+	      wrote0 = session_enqueue_dgram_connection (s0, &hdr0, b0,
+							 TRANSPORT_PROTO_UDP,
+							 queue_event);
+	    }
 	  clib_spinlock_unlock (&uc0->rx_lock);
 	  ASSERT (wrote0 > 0);
 
@@ -287,7 +300,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  errors = session_main_flush_all_enqueue_events (TRANSPORT_PROTO_UDP);
+  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP,
+					      my_thread_index);
   udp_input_inc_counter (vm, is_ip4, UDP_ERROR_EVENT_FIFO_FULL, errors);
   return frame->n_vectors;
 }
