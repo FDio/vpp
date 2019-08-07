@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import unittest
+import framework
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, GRE, ERSPAN
@@ -8,6 +8,8 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
+
 from util import Host, ppp
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
 from vpp_gre_interface import VppGreInterface

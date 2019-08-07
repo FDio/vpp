@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """ L2BD ARP term Test """
 
-import unittest
+import framework
 import random
 import copy
 
@@ -19,6 +19,7 @@ from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import Host, ppp
 
 

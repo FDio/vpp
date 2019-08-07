@@ -51,7 +51,7 @@
     - no packet received on all of l2-pg interfaces (no cross-connect created)
 """
 
-import unittest
+import framework
 import random
 
 from scapy.packet import Raw
@@ -59,6 +59,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import Host, ppp
 
 

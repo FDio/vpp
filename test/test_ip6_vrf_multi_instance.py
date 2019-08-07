@@ -63,7 +63,7 @@
     - no packet received in case of pg-ip6 interfaces in different VRFs
 """
 
-import unittest
+import framework
 import random
 import socket
 
@@ -75,6 +75,7 @@ from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
 from scapy.pton_ntop import inet_ntop
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import ppp
 from vrf import VRFState
 

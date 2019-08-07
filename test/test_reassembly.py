@@ -2,7 +2,7 @@
 
 from random import shuffle
 import six
-import unittest
+import framework
 
 from parameterized import parameterized
 import scapy.compat
@@ -14,6 +14,7 @@ from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from util import ppp, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
 from vpp_ip import DpoProto

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from socket import AF_INET, AF_INET6
-import unittest
+import framework
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q

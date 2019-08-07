@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
-import unittest
+import framework
 
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, \
     VppIpTable, FibPathProto

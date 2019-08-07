@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from framework import VppTestCase
+from framework import unittest
 
 
 class TestBuffers(VppTestCase):

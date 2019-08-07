@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import socket
-import unittest
+import framework
 from framework import VppTestCase, VppTestRunner
+from framework import unittest
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether

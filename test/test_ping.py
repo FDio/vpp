@@ -6,6 +6,7 @@ from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
 from framework import VppTestCase
+from framework import unittest
 from util import ppp
 
 """ TestPing is a subclass of  VPPTestCase classes.
