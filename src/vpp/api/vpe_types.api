@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-typeonly define version
+typedef version
 {
   u32 major;
   u32 minor;

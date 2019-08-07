@@ -75,7 +75,7 @@ autoreply define dhcp_proxy_set_vss
     @param dscp - DSCP value set in IP packets sent by the client
     @param pid - sender's pid
 */
-typeonly define dhcp_client
+typedef dhcp_client
 {
   u32 sw_if_index;
   u8 hostname[64];
@@ -103,7 +103,7 @@ autoreply define dhcp_client_config
 /** \brief Struct representing domain server
     @param address - IP address
 */
-typeonly manual_print manual_endian define domain_server
+typedef domain_server
 {
   u8 address[16];
 };
@@ -117,7 +117,7 @@ typeonly manual_print manual_endian define domain_server
     @param router_address - Router IP address
     @param host_mac - Host MAC address
 */
-typeonly define dhcp_lease
+typedef dhcp_lease
 {
   u32 sw_if_index;
   u8 state;
@@ -177,7 +177,7 @@ define dhcp_proxy_dump
   u8  is_ip6;
 };
 
-typeonly manual_print manual_endian define dhcp_server
+typedef dhcp_server
 {
   u32 server_vrf_id;
   u8 dhcp_server[16];
@@ -228,7 +228,7 @@ autoreply define dhcp6_clients_enable_disable
     @param valid_time - valid lifetime
     @param preferred_time - preferred lifetime
 */
-typeonly define dhcp6_address_info
+typedef dhcp6_address_info
 {
   u8 address[16];
   u32 valid_time;
@@ -241,7 +241,7 @@ typeonly define dhcp6_address_info
     @param valid_time - valid lifetime
     @param preferred_time - preferred lifetime
 */
-typeonly define dhcp6_pd_prefix_info
+typedef dhcp6_pd_prefix_info
 {
   u8 prefix[16];
   u8 prefix_length;

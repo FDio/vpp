@@ -448,7 +448,9 @@ class VPPAPIParser(object):
         '''define : flist DEFINE ID '{' block_statements_opt '}' ';' '''
         # Legacy typedef
         if 'typeonly' in p[1]:
-            p[0] = Typedef(p[3], p[1], p[5])
+            self._parse_error('legacy typedef. use typedef: {} {}[{}];'
+                              .format(p[1], p[2], p[4]),
+                              self._token_coord(p, 1))
         else:
             p[0] = Define(p[3], p[1], p[5])
 

@@ -167,7 +167,7 @@ typedef gbp_endpoint_retention
   u32 remote_ep_timeout;
 };
 
-typeonly define gbp_endpoint_group
+typedef gbp_endpoint_group
 {
   u32 vnid;
   u16 sclass;
@@ -202,7 +202,7 @@ define gbp_endpoint_group_details
   vl_api_gbp_endpoint_group_t epg;
 };
 
-typeonly define gbp_recirc
+typedef gbp_recirc
 {
   u32 sw_if_index;
   u16 sclass;
@@ -238,7 +238,7 @@ enum gbp_subnet_type
   GBP_API_SUBNET_ANON_L3_OUT,
 };
 
-typeonly define gbp_subnet
+typedef gbp_subnet
 {
   u32 rd_id;
   u32 sw_if_index;
@@ -399,7 +399,7 @@ enum gbp_ext_itf_flags
   GBP_API_EXT_ITF_F_ANON = 1,
 };
 
-typeonly define gbp_ext_itf
+typedef gbp_ext_itf
 {
   u32 sw_if_index;
   u32 bd_id;

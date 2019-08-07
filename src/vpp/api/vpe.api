@@ -213,7 +213,7 @@ define show_threads
     @param core - thread pinned to actual physical core.
     @param cpu_socket - thread is running on which cpu socket.
 */
-typeonly define thread_data
+typedef thread_data
 {
   u32 id;
   u8 name[64];

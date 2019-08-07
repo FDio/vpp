@@ -15,7 +15,7 @@
 
 option version = "1.0.0";
 
-typeonly manual_print manual_endian define one_local_locator
+typedef one_local_locator
 {
   u32 sw_if_index;
   u8 priority;
@@ -355,7 +355,7 @@ define show_one_map_request_mode_reply
   u8 mode;
 };
 
-typeonly manual_endian manual_print define one_remote_locator
+typedef one_remote_locator
 {
   u8 is_ip4;
   u8 priority;
@@ -434,7 +434,7 @@ define one_l2_arp_entries_get
   u32 bd;
 };
 
-typeonly manual_print manual_endian define one_l2_arp_entry
+typedef one_l2_arp_entry
 {
   u8 mac[6];
   u32 ip4;
@@ -471,7 +471,7 @@ define one_ndp_entries_get
   u32 bd;
 };
 
-typeonly manual_print manual_endian define one_ndp_entry
+typedef one_ndp_entry
 {
   u8 mac[6];
   u8 ip6[16];
@@ -768,7 +768,7 @@ define one_eid_table_dump
     @param reid_prefix_len - remote EID IP prefix length
     @param leid_prefix_len - local EID IP prefix length
   */
-typeonly manual_print manual_endian define one_adjacency
+typedef one_adjacency
 {
   u8 eid_type;
   u8 reid[16];

@@ -27,10 +27,6 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_api_remote_locator_t_endian vl_noop_handler
-#define vl_api_remote_locator_t_print vl_noop_handler
-#define vl_api_local_locator_t_endian vl_noop_handler
-#define vl_api_local_locator_t_print vl_noop_handler
 
 #define vl_api_lisp_add_del_locator_set_t_endian vl_noop_handler
 #define vl_api_lisp_add_del_locator_set_t_print vl_noop_handler

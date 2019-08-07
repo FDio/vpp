@@ -28,7 +28,7 @@ enum mfib_itf_flags
 
 /** \brief mFIB path
 */
-typeonly define mfib_path
+typedef mfib_path
 {
   vl_api_mfib_itf_flags_t itf_flags;
   vl_api_fib_path_t path;
