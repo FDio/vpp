@@ -207,6 +207,8 @@ ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
     lm->fib_result_n_bytes = sizeof (uword);
 
   lm->is_ip6 = is_ip6;
+  mhash_init (&lm->prefix_to_if_prefix_index, sizeof (uword),
+	      sizeof (ip_interface_prefix_key_t));
   if (is_ip6)
     {
       lm->format_address_and_length = format_ip6_address_and_length;

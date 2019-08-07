@@ -86,6 +86,24 @@ typedef u32 flow_hash_config_t;
 /* An all zeros address */
 extern const ip46_address_t zero_addr;
 
+typedef struct
+{
+  fib_prefix_t prefix;
+
+  u32 sw_if_index;
+} ip_interface_prefix_key_t;
+
+typedef struct
+{
+  /* key - prefix and sw_if_index */
+  ip_interface_prefix_key_t key;
+
+  /* number of addresses in this prefix on the interface */
+  u16 ref_count;
+
+  /* index of the interface address used as a default source address */
+  u32 src_ia_index;
+} ip_interface_prefix_t;
 
 typedef struct
 {
@@ -130,6 +148,12 @@ typedef struct ip_lookup_main_t
   /** Head of doubly linked list of interface addresses for each software interface.
      ~0 means this interface has no address. */
   u32 *if_address_pool_index_by_sw_if_index;
+
+  /** Pool of prefixes containing addresses assigned to interfaces */
+  ip_interface_prefix_t *if_prefix_pool;
+
+  /** Hash table mapping prefix to index in interface prefix pool */
+  mhash_t prefix_to_if_prefix_index;
 
   /** First table index to use for this interface, ~0 => none */
   u32 *classify_table_index_by_sw_if_index;
@@ -176,6 +200,13 @@ ip_interface_address_get_address (ip_lookup_main_t * lm,
 				  ip_interface_address_t * a)
 {
   return mhash_key_to_mem (&lm->address_to_if_address_index, a->address_key);
+}
+
+always_inline ip_interface_prefix_t *
+ip_get_interface_prefix (ip_lookup_main_t * lm, ip_interface_prefix_key_t * k)
+{
+  uword *p = mhash_get (&lm->prefix_to_if_prefix_index, k);
+  return p ? pool_elt_at_index (lm->if_prefix_pool, p[0]) : 0;
 }
 
 /* *INDENT-OFF* */

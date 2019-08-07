@@ -15,7 +15,9 @@ from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsTable, VppIpTable, FibPathType, find_route
+    VppMplsTable, VppIpTable, FibPathType, find_route, \
+    VppIpInterfaceAddress
+from vpp_ip import VppIpAddress
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 
@@ -210,19 +212,19 @@ class TestIPv4(VppTestCase):
             self.verify_capture(i, pkts)
 
 
-class TestIPV4IfAddrRoute(VppTestCase):
+class TestIPv4IfAddrRoute(VppTestCase):
     """ IPv4 Interface Addr Route Test Case """
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPV4IfAddrRoute, cls).setUpClass()
+        super(TestIPv4IfAddrRoute, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPV4IfAddrRoute, cls).tearDownClass()
+        super(TestIPv4IfAddrRoute, cls).tearDownClass()
 
     def setUp(self):
-        super(TestIPV4IfAddrRoute, self).setUp()
+        super(TestIPv4IfAddrRoute, self).setUp()
 
         # create 1 pg interface
         self.create_pg_interfaces(range(1))
@@ -233,10 +235,61 @@ class TestIPV4IfAddrRoute(VppTestCase):
             i.resolve_arp()
 
     def tearDown(self):
-        super(TestIPV4IfAddrRoute, self).tearDown()
+        super(TestIPv4IfAddrRoute, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.admin_down()
+
+    def test_ipv4_ifaddrs_same_prefix(self):
+        """ IPv4 Interface Addresses Same Prefix test
+
+        Test scenario:
+
+            - Verify no route in FIB for prefix 10.10.10.0/24
+            - Configure IPv4 address 10.10.10.10/24 on an interface
+            - Verify route in FIB for prefix 10.10.10.0/24
+            - Configure IPv4 address 10.10.10.20/24 on an interface
+            - Delete 10.10.10.10/24 from interface
+            - Verify route in FIB for prefix 10.10.10.0/24
+            - Delete 10.10.10.20/24 from interface
+            - Verify no route in FIB for prefix 10.10.10.0/24
+        """
+
+        # create two addresses, verify route not present
+        if_addr1 = VppIpInterfaceAddress(self, self.pg0,
+                                         VppIpAddress("10.10.10.10"), 24)
+        if_addr2 = VppIpInterfaceAddress(self, self.pg0,
+                                         VppIpAddress("10.10.10.20"), 24)
+        self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertFalse(find_route(self, "10.10.10.10", 32))
+        self.assertFalse(find_route(self, "10.10.10.20", 32))
+        self.assertFalse(find_route(self, "10.10.10.255", 32))
+        self.assertFalse(find_route(self, "10.10.10.0", 32))
+
+        # configure first address, verify route present
+        if_addr1.add_vpp_config()
+        self.assertTrue(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertTrue(find_route(self, "10.10.10.10", 32))
+        self.assertFalse(find_route(self, "10.10.10.20", 32))
+        self.assertTrue(find_route(self, "10.10.10.255", 32))
+        self.assertTrue(find_route(self, "10.10.10.0", 32))
+
+        # configure second address, delete first, verify route not removed
+        if_addr2.add_vpp_config()
+        if_addr1.remove_vpp_config()
+        self.assertTrue(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertFalse(find_route(self, "10.10.10.10", 32))
+        self.assertTrue(find_route(self, "10.10.10.20", 32))
+        self.assertTrue(find_route(self, "10.10.10.255", 32))
+        self.assertTrue(find_route(self, "10.10.10.0", 32))
+
+        # delete second address, verify route removed
+        if_addr2.remove_vpp_config()
+        self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.0/24
+        self.assertFalse(find_route(self, "10.10.10.10", 32))
+        self.assertFalse(find_route(self, "10.10.10.20", 32))
+        self.assertFalse(find_route(self, "10.10.10.255", 32))
+        self.assertFalse(find_route(self, "10.10.10.0", 32))
 
     def test_ipv4_ifaddr_route(self):
         """ IPv4 Interface Address Route test

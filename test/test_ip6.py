@@ -20,10 +20,11 @@ from six import moves
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ip6_normalize, mk_ll_addr
-from vpp_ip import DpoProto
+from vpp_ip import DpoProto, VppIpAddress
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsRoute, VppMplsTable, VppIpTable, FibPathType
+    VppMplsRoute, VppMplsTable, VppIpTable, FibPathType, \
+    VppIpInterfaceAddress
 from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
@@ -933,6 +934,80 @@ class TestIPv6(TestIPv6ND):
         # Reset the periodic advertisements back to default values
         #
         self.pg0.ip6_ra_config(no=1, suppress=1, send_unicast=0)
+
+
+class TestIPv6IfAddrRoute(VppTestCase):
+    """ IPv6 Interface Addr Route Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv6IfAddrRoute, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv6IfAddrRoute, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPv6IfAddrRoute, self).setUp()
+
+        # create 1 pg interface
+        self.create_pg_interfaces(range(1))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        super(TestIPv6IfAddrRoute, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip6()
+            i.admin_down()
+
+    def test_ipv6_ifaddrs_same_prefix(self):
+        """ IPv6 Interface Addresses Same Prefix test
+
+        Test scenario:
+
+            - Verify no route in FIB for prefix 2001:10::/64
+            - Configure IPv4 address 2001:10::10/64  on an interface
+            - Verify route in FIB for prefix 2001:10::/64
+            - Configure IPv4 address 2001:10::20/64 on an interface
+            - Delete 2001:10::10/64 from interface
+            - Verify route in FIB for prefix 2001:10::/64
+            - Delete 2001:10::20/64 from interface
+            - Verify no route in FIB for prefix 2001:10::/64
+        """
+
+        addr1 = "2001:10::10"
+        addr2 = "2001:10::20"
+
+        if_addr1 = VppIpInterfaceAddress(self, self.pg0,
+                                         VppIpAddress(addr1), 64)
+        if_addr2 = VppIpInterfaceAddress(self, self.pg0,
+                                         VppIpAddress(addr2), 64)
+        self.assertFalse(if_addr1.query_vpp_config())  # 2001:10::/64
+        self.assertFalse(find_route(self, addr1, 128))
+        self.assertFalse(find_route(self, addr2, 128))
+
+        # configure first address, verify route present
+        if_addr1.add_vpp_config()
+        self.assertTrue(if_addr1.query_vpp_config())  # 2001:10::/64
+        self.assertTrue(find_route(self, addr1, 128))
+        self.assertFalse(find_route(self, addr2, 128))
+
+        # configure second address, delete first, verify route not removed
+        if_addr2.add_vpp_config()
+        if_addr1.remove_vpp_config()
+        self.assertTrue(if_addr1.query_vpp_config())  # 2001:10::/64
+        self.assertFalse(find_route(self, addr1, 128))
+        self.assertTrue(find_route(self, addr2, 128))
+
+        # delete second address, verify route removed
+        if_addr2.remove_vpp_config()
+        self.assertFalse(if_addr1.query_vpp_config())  # 2001:10::/64
+        self.assertFalse(find_route(self, addr1, 128))
+        self.assertFalse(find_route(self, addr2, 128))
 
 
 class TestICMPv6Echo(VppTestCase):

@@ -339,6 +339,108 @@ ip4_add_subnet_bcast_route (u32 fib_index,
 }
 
 static void
+ip4_add_interface_prefix_routes (ip4_main_t *im,
+				 u32 sw_if_index,
+				 u32 fib_index,
+				 ip_interface_address_t * a)
+{
+  ip_lookup_main_t *lm = &im->lookup_main;
+  ip_interface_prefix_t *if_prefix;
+  ip4_address_t *address = ip_interface_address_get_address (lm, a);
+
+  ip_interface_prefix_key_t key = {
+    .prefix = {
+      .fp_len = a->address_length,
+      .fp_proto = FIB_PROTOCOL_IP4,
+      .fp_addr.ip4.as_u32 = address->as_u32 & im->fib_masks[a->address_length],
+    },
+    .sw_if_index = sw_if_index,
+  };
+
+  fib_prefix_t pfx_special = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+
+  /* If prefix already set on interface, just increment ref count & return */
+  if_prefix = ip_get_interface_prefix (lm, &key);
+  if (if_prefix)
+    {
+      if_prefix->ref_count += 1;
+      return;
+    }
+
+  /* New prefix - allocate a pool entry, initialize it, add to the hash */
+  pool_get (lm->if_prefix_pool, if_prefix);
+  if_prefix->ref_count = 1;
+  if_prefix->src_ia_index = a - lm->if_address_pool;
+  clib_memcpy (&if_prefix->key, &key, sizeof (key));
+  mhash_set (&lm->prefix_to_if_prefix_index, &key,
+	     if_prefix - lm->if_prefix_pool, 0 /* old value */);
+
+  /* length <= 30 - add glean, drop first address, maybe drop bcast address */
+  if (a->address_length <= 30)
+    {
+      pfx_special.fp_len = a->address_length;
+      pfx_special.fp_addr.ip4.as_u32 = address->as_u32;
+
+      /* set the glean route for the prefix */
+      fib_table_entry_update_one_path (fib_index, &pfx_special,
+				       FIB_SOURCE_INTERFACE,
+				       (FIB_ENTRY_FLAG_CONNECTED |
+					FIB_ENTRY_FLAG_ATTACHED),
+				       DPO_PROTO_IP4,
+				       /* No next-hop address */
+				       NULL,
+				       sw_if_index,
+                                       /* invalid FIB index */
+                                       ~0,
+                                       1,
+                                       /* no out-label stack */
+                                       NULL,
+                                       FIB_ROUTE_PATH_FLAG_NONE);
+
+      /* set a drop route for the base address of the prefix */
+      pfx_special.fp_len = 32;
+      pfx_special.fp_addr.ip4.as_u32 =
+	address->as_u32 & im->fib_masks[a->address_length];
+
+      if (pfx_special.fp_addr.ip4.as_u32 != address->as_u32)
+	fib_table_entry_special_add (fib_index, &pfx_special,
+				     FIB_SOURCE_INTERFACE,
+				     (FIB_ENTRY_FLAG_DROP |
+				      FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT));
+
+      /* set a route for the broadcast address of the prefix */
+      pfx_special.fp_len = 32;
+      pfx_special.fp_addr.ip4.as_u32 =
+	address->as_u32 | ~im->fib_masks[a->address_length];
+      if (pfx_special.fp_addr.ip4.as_u32 != address->as_u32)
+	ip4_add_subnet_bcast_route (fib_index, &pfx_special, sw_if_index);
+
+
+    }
+  /* length == 31 - add an attached route for the other address */
+  else if (a->address_length == 31)
+    {
+      pfx_special.fp_len = 32;
+      pfx_special.fp_addr.ip4.as_u32 =
+	address->as_u32 ^ clib_host_to_net_u32(1);
+
+      fib_table_entry_update_one_path (fib_index, &pfx_special,
+				       FIB_SOURCE_INTERFACE,
+				       (FIB_ENTRY_FLAG_ATTACHED),
+				       DPO_PROTO_IP4,
+				       &pfx_special.fp_addr,
+				       sw_if_index,
+                                       /* invalid FIB index */
+                                       ~0,
+                                       1,
+                                       NULL,
+                                       FIB_ROUTE_PATH_FLAG_NONE);
+    }
+}
+
+static void
 ip4_add_interface_routes (u32 sw_if_index,
 			  ip4_main_t * im, u32 fib_index,
 			  ip_interface_address_t * a)
@@ -346,67 +448,13 @@ ip4_add_interface_routes (u32 sw_if_index,
   ip_lookup_main_t *lm = &im->lookup_main;
   ip4_address_t *address = ip_interface_address_get_address (lm, a);
   fib_prefix_t pfx = {
-    .fp_len = a->address_length,
+    .fp_len = 32,
     .fp_proto = FIB_PROTOCOL_IP4,
     .fp_addr.ip4 = *address,
   };
 
-  if (pfx.fp_len <= 30)
-    {
-      /* a /30 or shorter - add a glean for the network address */
-      fib_table_entry_update_one_path (fib_index, &pfx,
-                                       FIB_SOURCE_INTERFACE,
-                                       (FIB_ENTRY_FLAG_CONNECTED |
-                                        FIB_ENTRY_FLAG_ATTACHED),
-                                       DPO_PROTO_IP4,
-                                       /* No next-hop address */
-                                       NULL,
-                                       sw_if_index,
-                                       // invalid FIB index
-                                       ~0,
-                                       1,
-                                       // no out-label stack
-                                       NULL,
-                                       FIB_ROUTE_PATH_FLAG_NONE);
-
-      /* Add the two broadcast addresses as drop */
-      fib_prefix_t net_pfx = {
-        .fp_len = 32,
-        .fp_proto = FIB_PROTOCOL_IP4,
-        .fp_addr.ip4.as_u32 = address->as_u32 & im->fib_masks[pfx.fp_len],
-      };
-      if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
-        fib_table_entry_special_add(fib_index,
-                                    &net_pfx,
-                                    FIB_SOURCE_INTERFACE,
-                                    (FIB_ENTRY_FLAG_DROP |
-                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT));
-      net_pfx.fp_addr.ip4.as_u32 |= ~im->fib_masks[pfx.fp_len];
-      if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
-        ip4_add_subnet_bcast_route(fib_index, &net_pfx, sw_if_index);
-    }
-  else if (pfx.fp_len == 31)
-    {
-      u32 mask = clib_host_to_net_u32(1);
-      fib_prefix_t net_pfx = pfx;
-
-      net_pfx.fp_len = 32;
-      net_pfx.fp_addr.ip4.as_u32 ^= mask;
-
-      /* a /31 - add the other end as an attached host */
-      fib_table_entry_update_one_path (fib_index, &net_pfx,
-                                       FIB_SOURCE_INTERFACE,
-                                       (FIB_ENTRY_FLAG_ATTACHED),
-                                       DPO_PROTO_IP4,
-                                       &net_pfx.fp_addr,
-                                       sw_if_index,
-                                       // invalid FIB index
-                                       ~0,
-                                       1,
-                                       NULL,
-                                       FIB_ROUTE_PATH_FLAG_NONE);
-    }
-  pfx.fp_len = 32;
+  /* set special routes for the prefix if needed */
+  ip4_add_interface_prefix_routes (im, sw_if_index, fib_index, a);
 
   if (sw_if_index < vec_len (lm->classify_table_index_by_sw_if_index))
     {
@@ -443,7 +491,131 @@ ip4_add_interface_routes (u32 sw_if_index,
 }
 
 static void
-ip4_del_interface_routes (ip4_main_t * im,
+ip4_del_interface_prefix_routes (ip4_main_t * im,
+				 u32 sw_if_index,
+				 u32 fib_index,
+				 ip4_address_t * address,
+				 u32 address_length)
+{
+  ip_lookup_main_t *lm = &im->lookup_main;
+  ip_interface_prefix_t *if_prefix;
+
+  ip_interface_prefix_key_t key = {
+    .prefix = {
+      .fp_len = address_length,
+      .fp_proto = FIB_PROTOCOL_IP4,
+      .fp_addr.ip4.as_u32 = address->as_u32 & im->fib_masks[address_length],
+    },
+    .sw_if_index = sw_if_index,
+  };
+
+  fib_prefix_t pfx_special = {
+    .fp_len = 32,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+
+  if_prefix = ip_get_interface_prefix (lm, &key);
+  if (!if_prefix)
+    {
+      clib_warning ("Prefix not found while deleting %U",
+		    format_ip4_address_and_length, address, address_length);
+      return;
+    }
+
+  if_prefix->ref_count -= 1;
+
+  /*
+   * Routes need to be adjusted if:
+   * - deleting last intf addr in prefix
+   * - deleting intf addr used as default source address in glean adjacency
+   *
+   * We're done now otherwise
+   */
+  if ((if_prefix->ref_count > 0) &&
+      !pool_is_free_index (lm->if_address_pool, if_prefix->src_ia_index))
+    return;
+
+  /* length <= 30, delete glean route, first address, last address */
+  if (address_length <= 30)
+    {
+
+      /* remove glean route for prefix */
+      pfx_special.fp_addr.ip4 = *address;
+      pfx_special.fp_len = address_length;
+      fib_table_entry_delete (fib_index, &pfx_special, FIB_SOURCE_INTERFACE);
+
+      /* if no more intf addresses in prefix, remove other special routes */
+      if (!if_prefix->ref_count)
+	{
+	  /* first address in prefix */
+	  pfx_special.fp_addr.ip4.as_u32 =
+	    address->as_u32 & im->fib_masks[address_length];
+	  pfx_special.fp_len = 32;
+
+	  if (pfx_special.fp_addr.ip4.as_u32 != address->as_u32)
+	  fib_table_entry_special_remove (fib_index,
+					  &pfx_special,
+					  FIB_SOURCE_INTERFACE);
+
+	  /* prefix broadcast address */
+	  pfx_special.fp_addr.ip4.as_u32 =
+	    address->as_u32 | ~im->fib_masks[address_length];
+	  pfx_special.fp_len = 32;
+
+	  if (pfx_special.fp_addr.ip4.as_u32 != address->as_u32)
+	  fib_table_entry_special_remove (fib_index,
+					  &pfx_special,
+					  FIB_SOURCE_INTERFACE);
+	}
+      else
+	/* default source addr just got deleted, find another */
+	{
+	  ip_interface_address_t *new_src_ia = NULL;
+	  ip4_address_t *new_src_addr = NULL;
+
+	  new_src_addr =
+	    ip4_interface_address_matching_destination
+	      (im, address, sw_if_index, &new_src_ia);
+
+	  if_prefix->src_ia_index = new_src_ia - lm->if_address_pool;
+
+	  pfx_special.fp_len = address_length;
+	  pfx_special.fp_addr.ip4 = *new_src_addr;
+
+	  /* set new glean route for the prefix */
+	  fib_table_entry_update_one_path (fib_index, &pfx_special,
+					   FIB_SOURCE_INTERFACE,
+					   (FIB_ENTRY_FLAG_CONNECTED |
+					    FIB_ENTRY_FLAG_ATTACHED),
+					   DPO_PROTO_IP4,
+					   /* No next-hop address */
+					   NULL,
+					   sw_if_index,
+					   /* invalid FIB index */
+					   ~0,
+					   1,
+					   /* no out-label stack */
+					   NULL,
+					   FIB_ROUTE_PATH_FLAG_NONE);
+	  return;
+	}
+    }
+  /* length == 31, delete attached route for the other address */
+  else if (address_length == 31)
+    {
+      pfx_special.fp_addr.ip4.as_u32 =
+	address->as_u32 ^ clib_host_to_net_u32(1);
+
+      fib_table_entry_delete (fib_index, &pfx_special, FIB_SOURCE_INTERFACE);
+    }
+
+  mhash_unset (&lm->prefix_to_if_prefix_index, &key, 0 /* old_value */);
+  pool_put (lm->if_prefix_pool, if_prefix);
+}
+
+static void
+ip4_del_interface_routes (u32 sw_if_index,
+			  ip4_main_t * im,
 			  u32 fib_index,
 			  ip4_address_t * address, u32 address_length)
 {
@@ -453,34 +625,8 @@ ip4_del_interface_routes (ip4_main_t * im,
     .fp_addr.ip4 = *address,
   };
 
-  if (pfx.fp_len <= 30)
-    {
-      fib_prefix_t net_pfx = {
-        .fp_len = 32,
-        .fp_proto = FIB_PROTOCOL_IP4,
-        .fp_addr.ip4.as_u32 = address->as_u32 & im->fib_masks[pfx.fp_len],
-      };
-      if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
-        fib_table_entry_special_remove(fib_index,
-                                       &net_pfx,
-                                       FIB_SOURCE_INTERFACE);
-      net_pfx.fp_addr.ip4.as_u32 |= ~im->fib_masks[pfx.fp_len];
-      if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
-        fib_table_entry_special_remove(fib_index,
-                                       &net_pfx,
-                                       FIB_SOURCE_INTERFACE);
-      fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
-    }
-    else if (pfx.fp_len == 31)
-    {
-      u32 mask = clib_host_to_net_u32(1);
-      fib_prefix_t net_pfx = pfx;
-
-      net_pfx.fp_len = 32;
-      net_pfx.fp_addr.ip4.as_u32 ^= mask;
-
-      fib_table_entry_delete (fib_index, &net_pfx, FIB_SOURCE_INTERFACE);
-    }
+  ip4_del_interface_prefix_routes (im, sw_if_index, fib_index,
+				   address, address_length);
 
   pfx.fp_len = 32;
   fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
@@ -579,6 +725,13 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
                                                       address,
                                                       address_length))
                      {
+		       /* an intf may have >1 addr from the same prefix */
+		       if ((sw_if_index == sif->sw_if_index) &&
+			   (ia->address_length == address_length) &&
+			   (x->as_u32 != address->as_u32))
+		         continue;
+
+		       /* error if the length or intf was different */
                        vnm->api_errno = VNET_API_ERROR_DUPLICATE_IF_ADDRESS;
 
                        return
@@ -610,7 +763,8 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
   if (vnet_sw_interface_is_admin_up (vnm, sw_if_index))
     {
       if (is_del)
-	ip4_del_interface_routes (im, ip4_af.fib_index, address,
+	ip4_del_interface_routes (sw_if_index,
+				  im, ip4_af.fib_index, address,
 				  address_length);
       else
 	ip4_add_interface_routes (sw_if_index,
@@ -712,7 +866,8 @@ ip4_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 				im, fib_index,
 				ia);
     else
-      ip4_del_interface_routes (im, fib_index,
+      ip4_del_interface_routes (sw_if_index,
+				im, fib_index,
 				a, ia->address_length);
   }));
   /* *INDENT-ON* */
