@@ -516,7 +516,7 @@ session_tx_not_ready (session_t * s, u8 peek_data)
        * session is not ready or closed */
       if (s->session_state < SESSION_STATE_READY)
 	return 1;
-      if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+      if (s->session_state == SESSION_STATE_TRANSPORT_DELETED)
 	return 2;
     }
   return 0;
