@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "025fc896_fa6f1405",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1909,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2019-08-08T14:52:52Z",
+      "side": 1,
+      "message": "It looks like ctx is set but never used afterwards.",
+      "range": {
+        "startLine": 1909,
+        "startChar": 1,
+        "endLine": 1909,
+        "endChar": 2
+      },
+      "revId": "c791f231d9c54618049d266b9699c9712d39f385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf07508e_9f70f915",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2002,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2019-08-08T14:52:52Z",
+      "side": 1,
+      "message": "The logic here will change with https://gerrit.fd.io/r/c/vpp/+/21011, please reflect the changes here: \n- the comparison should be packet_ctx-\u003ectx_index!\u003d UINT32_MAX\n- remove the call to quic_move_connection_thread",
+      "revId": "c791f231d9c54618049d266b9699c9712d39f385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "44de963f_59f97550",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2026,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2019-08-08T14:52:52Z",
+      "side": 1,
+      "message": "Even if we set INDENT_OFF so that indent is not confused by the pool_foreach macro, please try to match the indentation style of the rest of the file ;-)",
+      "revId": "c791f231d9c54618049d266b9699c9712d39f385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
