@@ -650,7 +650,7 @@ svm_fifo_max_write_chunk (svm_fifo_t * f)
 {
   u32 head, tail;
   f_load_head_tail_prod (f, &head, &tail);
-  return tail > head ? f->size - tail : f_free_count (f, head, tail);
+  return tail >= head ? f->size - tail : f_free_count (f, head, tail);
 }
 
 static inline u8 *
