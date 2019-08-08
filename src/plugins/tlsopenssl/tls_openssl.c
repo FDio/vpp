@@ -253,6 +253,14 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	      char buf[512];
 	      ERR_error_string (ERR_get_error (), buf);
 	      clib_warning ("Err: %s", buf);
+	      /*
+	       * Cleanup pre-allocated app session and close transport
+	       */
+	      session_free (session_get (ctx->c_s_index,
+					 ctx->c_thread_index));
+	      tls_disconnect_transport (ctx);
+	      openssl_ctx_free (ctx);
+	      return -1;
 	    }
 	  break;
 	}
