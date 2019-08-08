@@ -61,6 +61,10 @@ openssl_ctx_free (tls_ctx_t * ctx)
   vec_free (ctx->srv_hostname);
   pool_put_index (openssl_main.ctx_pool[ctx->c_thread_index],
 		  oc->openssl_ctx_index);
+  clib_warning ("FREE ctx %u associated to app session %u tcp session %u", oc->openssl_ctx_index,
+                ctx->connection.s_index, ctx->tls_session_handle & 0xffffffff);
+  if (CLIB_DEBUG)
+    memset (ctx, 0xfc, sizeof (*ctx));
 }
 
 tls_ctx_t *
@@ -156,13 +160,19 @@ openssl_try_handshake_write (openssl_ctx_t * oc, session_t * tls_session)
   if (read <= 0)
     return 0;
 
+  if (deq_now > 131072 || read > deq_now)
+    os_panic ();
   svm_fifo_enqueue_nocopy (f, read);
   tls_add_vpp_q_tx_evt (tls_session);
 
   if (read < enq_max)
     {
+      clib_warning ("doing this for tcp session %u", tls_session->session_index);
       deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max - read);
       rv = BIO_read (oc->rbio, svm_fifo_tail (f), deq_now);
+      clib_warning ("tail %p rv %d", svm_fifo_tail (f), rv);
+      if (deq_now > 131072 || rv > (int) deq_now)
+        os_panic ();
       if (rv > 0)
 	{
 	  svm_fifo_enqueue_nocopy (f, rv);
@@ -233,6 +243,33 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 
       rv = SSL_do_handshake (oc->ssl);
       err = SSL_get_error (oc->ssl, rv);
+
+      if (err == SSL_ERROR_SSL)
+	{
+	  char buf[512];
+	  ERR_error_string (ERR_get_error (), buf);
+	  clib_warning ("Err: %s", buf);
+	  /*
+	   * Cleanup pre-allocated app session and close transport
+	   */
+	  clib_warning("cleanup app session %u close tcp session %u context %u",
+		       ctx->c_s_index,
+		       session_index_from_handle(ctx->tls_session_handle),
+		       oc->openssl_ctx_index);
+	  if (SSL_is_server (oc->ssl))
+	    {
+	      session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
+	      ctx->no_app_session = 1;
+	      ctx->c_s_index = SESSION_INVALID_INDEX;
+	      tls_disconnect_transport (ctx);
+	    }
+	  else
+	    tls_notify_app_connected (ctx, /* is failed */ 1);
+
+//	  openssl_ctx_free (ctx);
+	  return -1;
+	}
+
       openssl_try_handshake_write (oc, tls_session);
 #ifdef HAVE_OPENSSL_ASYNC
       if (err == SSL_ERROR_WANT_ASYNC)
@@ -248,29 +285,22 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 
       if (err != SSL_ERROR_WANT_WRITE)
 	{
-	  if (err == SSL_ERROR_SSL)
-	    {
-	      char buf[512];
-	      ERR_error_string (ERR_get_error (), buf);
-	      clib_warning ("Err: %s", buf);
-	      /*
-	       * Cleanup pre-allocated app session and close transport
-	       */
-	      session_free (session_get (ctx->c_s_index,
-					 ctx->c_thread_index));
-	      tls_disconnect_transport (ctx);
-	      openssl_ctx_free (ctx);
-	      return -1;
-	    }
+	  char buf[512];
+	  ERR_error_string (ERR_get_error (), buf);
+	  clib_warning ("err %u fifo %u rv %d Err: %s", err,
+	                svm_fifo_max_dequeue_cons (tls_session->rx_fifo), rv, buf);
 	  break;
 	}
     }
+
   TLS_DBG (2, "tls state for %u is %s", oc->openssl_ctx_index,
 	   SSL_state_string_long (oc->ssl));
 
   if (SSL_in_init (oc->ssl))
     return 0;
 
+  clib_warning ("established ctx %u app session %u tcp session %u", oc->openssl_ctx_index,
+                ctx->c_s_index, ctx->tls_session_handle & 0xffffffff);
   /*
    * Handshake complete
    */
@@ -306,11 +336,10 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 }
 
 static void
-openssl_confirm_app_close_and_free (tls_ctx_t * ctx)
+openssl_confirm_app_close (tls_ctx_t * ctx)
 {
   tls_disconnect_transport (ctx);
-  session_transport_delete_notify (&ctx->connection);
-  openssl_ctx_free (ctx);
+  session_transport_closed_notify (&ctx->connection);
 }
 
 static inline int
@@ -377,21 +406,37 @@ check_tls_fifo:
       return wrote;
     }
 
+  if (deq_now > 131072 || read > deq_now)
+    os_panic ();
+
+  if (tls_session->rx_fifo->size != 131072)
+    os_panic ();
+
   svm_fifo_enqueue_nocopy (f, read);
   tls_add_vpp_q_tx_evt (tls_session);
 
   if (read < enq_max && BIO_ctrl_pending (oc->rbio) > 0)
     {
+      clib_warning ("doing this for tcp session %u wrote %u", tls_session->session_index, read);
+      clib_warning ("tail %p max pos %p", svm_fifo_tail (f),
+                    f->tail_chunk->data + f->tail_chunk->length);
       deq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max - read);
       read = BIO_read (oc->rbio, svm_fifo_tail (f), deq_now);
+      clib_warning ("head %u tail %u enq_max %u read %u deq_now %u",
+                    f->head, f->tail, enq_max, read, deq_now);
       if (read > 0)
 	svm_fifo_enqueue_nocopy (f, read);
+      if (deq_now > 131072 || read > deq_now)
+        os_panic ();
     }
+
+  if (tls_session->rx_fifo->size != 131072)
+    os_panic ();
 
   if (BIO_ctrl_pending (oc->rbio) > 0)
     tls_add_vpp_q_builtin_tx_evt (app_session);
   else if (ctx->app_closed)
-    openssl_confirm_app_close_and_free (ctx);
+    openssl_confirm_app_close (ctx);
 
   return wrote;
 }
@@ -769,7 +814,7 @@ openssl_app_close (tls_ctx_t * ctx)
   app_session = session_get_from_handle (ctx->app_session_handle);
   if (BIO_ctrl_pending (oc->rbio) <= 0
       && !svm_fifo_max_dequeue_cons (app_session->tx_fifo))
-    openssl_confirm_app_close_and_free (ctx);
+    openssl_confirm_app_close (ctx);
   else
     ctx->app_closed = 1;
   return 0;

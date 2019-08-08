@@ -653,6 +653,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       ctx->s->flags &= ~SESSION_F_CUSTOM_TX;
       n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, max_burst);
       *n_tx_packets += n_custom_tx;
+      if (ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+	return SESSION_TX_OK;
       max_burst -= n_custom_tx;
       if (!max_burst)
 	{
@@ -660,6 +662,14 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	  return SESSION_TX_OK;
 	}
     }
+
+  if (ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+    {
+      clib_warning ("session %u in wrong state here", ctx->s->session_index);
+      return 0;
+    }
+
+  ASSERT (ctx->s->session_state < SESSION_STATE_TRANSPORT_CLOSED);
 
   ctx->snd_space = transport_connection_snd_space (ctx->tc,
 						   vm->clib_time.

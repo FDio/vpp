@@ -260,6 +260,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   return 0;
 
 failed:
+  session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
+  ctx->no_app_session = 1;
   tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
   return app_worker_connect_notify (app_wrk, 0, ctx->parent_app_api_context);
 }
@@ -324,6 +326,10 @@ tls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 static inline int
 tls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 {
+  if (tls_session->tx_fifo->size != 131072
+      || tls_session->rx_fifo->size != 131072 )
+    os_panic ();
+
   return tls_vfts[ctx->tls_ctx_engine].ctx_read (ctx, tls_session);
 }
 
@@ -342,7 +348,6 @@ tls_ctx_app_close (tls_ctx_t * ctx)
 void
 tls_ctx_free (tls_ctx_t * ctx)
 {
-  vec_free (ctx->srv_hostname);
   tls_vfts[ctx->tls_ctx_engine].ctx_free (ctx);
 }
 
@@ -357,6 +362,7 @@ tls_session_reset_callback (session_t * s)
 {
   tls_ctx_t *ctx;
 
+  clib_warning ("session %u reset", s->session_index);
   ctx = tls_ctx_get (s->opaque);
   session_transport_reset_notify (&ctx->connection);
   tls_disconnect_transport (ctx);
@@ -383,6 +389,8 @@ tls_session_disconnect_callback (session_t * tls_session)
   TLS_DBG (1, "TCP disconnecting handle %x session %u", tls_session->opaque,
 	   tls_session->session_index);
 
+  clib_warning ("diconnect for %u with context %u", tls_session->session_index,
+                tls_session->opaque & 0xfffff);
   ctx = tls_ctx_get (tls_session->opaque);
   ctx->is_passive_close = 1;
   tls_ctx_transport_close (ctx);
@@ -415,6 +423,9 @@ tls_session_accept_callback (session_t * tls_session)
   app_session->session_state = SESSION_STATE_CLOSED;
   ctx->c_s_index = app_session->session_index;
 
+  clib_warning ("alloc app session %u tcp session %u ctx %u", ctx->c_s_index,
+                ctx->tls_session_handle & 0xffffffff, ctx_handle & 0xfffff);
+
   TLS_DBG (1, "Accept on listener %u new connection [%u]%x",
 	   tls_listener->opaque, vlib_get_thread_index (), ctx_handle);
 
@@ -427,6 +438,7 @@ tls_app_rx_callback (session_t * tls_session)
   tls_ctx_t *ctx;
 
   ctx = tls_ctx_get (tls_session->opaque);
+  ASSERT (tls_session->session_index == (ctx->tls_session_handle & 0xffffffff));
   tls_ctx_read (ctx, tls_session);
   return 0;
 }
@@ -484,6 +496,21 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
   return tls_ctx_init_client (ctx);
 }
 
+static void
+tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
+{
+  if (ntf == SESSION_CLEANUP_TRANSPORT)
+    return;
+  clib_warning ("session %u for ctx %u deleted", s->session_index, s->opaque & 0xffffff);
+  tls_ctx_t *ctx = tls_ctx_get (s->opaque);
+  if (!ctx->no_app_session)
+    {
+      clib_warning ("propagating northbound");
+      session_transport_delete_notify (&ctx->connection);
+    }
+  tls_ctx_free (ctx);
+}
+
 /* *INDENT-OFF* */
 static session_cb_vft_t tls_app_cb_vft = {
   .session_accept_callback = tls_session_accept_callback,
@@ -493,6 +520,7 @@ static session_cb_vft_t tls_app_cb_vft = {
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
+  .session_cleanup_callback = tls_app_session_cleanup,
 };
 /* *INDENT-ON* */
 
@@ -804,7 +832,7 @@ tls_register_engine (const tls_engine_vft_t * vft, tls_engine_type_t type)
 static clib_error_t *
 tls_init (vlib_main_t * vm)
 {
-  u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
+  u32 add_segment_size = 2560 << 20, first_seg_size = 32 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads, fifo_size = 128 << 10;
   vnet_app_attach_args_t _a, *a = &_a;
