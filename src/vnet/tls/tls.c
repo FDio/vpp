@@ -357,7 +357,12 @@ tls_ctx_handshake_is_over (tls_ctx_t * ctx)
 void
 tls_session_reset_callback (session_t * s)
 {
-  clib_warning ("called...");
+  tls_ctx_t *ctx;
+
+  ctx = tls_ctx_get (s->opaque);
+  session_transport_reset_notify (&ctx->connection);
+  session_transport_closed_notify (&ctx->connection);
+  tls_disconnect_transport (ctx);
 }
 
 int
