@@ -457,7 +457,7 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
   tcp_fastrecovery_first_off (tc);
 }
 
-#define tcp_zero_rwnd_sent(tc) (tc)->flags &= TCP_CONN_ZERO_RWND_SENT
+#define tcp_zero_rwnd_sent(tc) ((tc)->flags & TCP_CONN_ZERO_RWND_SENT)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
 
