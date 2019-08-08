@@ -512,12 +512,21 @@ session_tx_not_ready (session_t * s, u8 peek_data)
 {
   if (peek_data)
     {
+      if (PREDICT_TRUE (s->session_state == SESSION_STATE_READY))
+	return 0;
       /* Can retransmit for closed sessions but can't send new data if
        * session is not ready or closed */
-      if (s->session_state < SESSION_STATE_READY)
+      else if (s->session_state < SESSION_STATE_READY)
 	return 1;
-      if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
-	return 2;
+      else if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+	{
+	  /* Allow closed transports to still send custom packets.
+	   * For instance, tcp may want to send acks in time-wait. */
+	  if (s->session_state != SESSION_STATE_TRANSPORT_DELETED
+	      && (s->flags & SESSION_F_CUSTOM_TX))
+	    return 0;
+	  return 2;
+	}
     }
   return 0;
 }
@@ -639,7 +648,6 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   tp = session_get_transport_proto (ctx->s);
   ctx->transport_vft = transport_protocol_get_vft (tp);
   ctx->tc = session_tx_get_transport (ctx, peek_data);
-  ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
 
   if (PREDICT_FALSE (e->event_type == SESSION_IO_EVT_TX_FLUSH))
     {
@@ -653,6 +661,9 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       ctx->s->flags &= ~SESSION_F_CUSTOM_TX;
       n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, max_burst);
       *n_tx_packets += n_custom_tx;
+      if (PREDICT_FALSE
+	  (ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
+	return SESSION_TX_OK;
       max_burst -= n_custom_tx;
       if (!max_burst)
 	{
@@ -661,6 +672,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	}
     }
 
+  ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
   ctx->snd_space = transport_connection_snd_space (ctx->tc,
 						   vm->clib_time.
 						   last_cpu_time,
