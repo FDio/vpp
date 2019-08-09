@@ -107,6 +107,24 @@
     },
     {
       "key": {
+        "uuid": "05433c02_8a30bea5",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-08-09T15:05:33Z",
+      "side": 1,
+      "message": "Hi Neale, \n\nThanks for the explain. I got the idea. This means a QAT crypto engine working in a polling mode needs to write the dequeued ops from the hardware into the engine queue for workers to pick up. This brings up a second question - possibly for Filip: \n\nwhy are the queues are algorithm indexed? Not to mention you need up to 29 queues per thread, it does not take QAT into consideration - as again QAT has limited hardware queues, we have to gather the ops from different queues and enqueue to the one hardware queue, and then we have to reclassify so the dequeued ops can be distributed to the crypto engine queues - right before the worker gather them possibly from all these 29 queues into a burst of packets for the next node. Even worse such unnecessary process may have to be done twice - since the crypto engine does not support chained operation.",
+      "parentUuid": "9219d7af_a2a4788c",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "800f86d7_39b4e9ed",
         "filename": "src/vnet/crypto/crypto.c",
         "patchSetId": 9
