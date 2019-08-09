@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "887e833d_5d2965ee",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-09T13:21:10Z",
+      "side": 1,
+      "message": "how many queues do we need here? does this represent a significant saving over creating these at  init time? maybe if there is a register async capable engine.",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "45581f85_178a78ad",
         "filename": "src/vnet/crypto/crypto.c",
         "patchSetId": 9
@@ -153,6 +170,57 @@
       "side": 1,
       "message": "\u0027vnet_crypto_op_t data\u0027 field contains everything you need. Buffer index is stored in user_data, so calling vlib_get_buffer() you get the buffer pointer.",
       "parentUuid": "a3aa2245_a44c1a87",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "10a7a9e1_7fb7b82e",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-09T13:21:10Z",
+      "side": 1,
+      "message": "*jobs; not *jobs[0];",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e20d61c4_04575867",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-09T13:21:10Z",
+      "side": 1,
+      "message": "can these also be allocated from the per-thread data to save this vec_add/vec_del overhead for each packet?",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "22acbdec_71eba7eb",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-09T13:21:10Z",
+      "side": 1,
+      "message": "j can be NULL either because the queue is empty or because of contention. to you want to break from the loop in the case of the former?",
       "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
