@@ -125,6 +125,24 @@
     },
     {
       "key": {
+        "uuid": "51f4e18f_b9418f3e",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-08-09T15:16:32Z",
+      "side": 1,
+      "message": "One correction - no need to do twice as chained op is supported.",
+      "parentUuid": "05433c02_8a30bea5",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "800f86d7_39b4e9ed",
         "filename": "src/vnet/crypto/crypto.c",
         "patchSetId": 9
