@@ -33,7 +33,7 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 		${IPSECMB_LINK_FLAGS}
 		)
 
-	target_compile_options(crypto_ipsecmb_plugin PRIVATE "-march=silvermont")
+	target_compile_options(crypto_ipsecmb_plugin PRIVATE "-march=silvermont" "-maes")
 	message(STATUS "Intel IPSecMB found: ${IPSECMB_INCLUDE_DIR}")
 else()
 	message(STATUS "Intel IPSecMB not found")
