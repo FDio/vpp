@@ -205,6 +205,28 @@ vpp_ssl_async_retry_func (tls_ctx_t * ctx, openssl_resume_handler * handler)
 
 #endif
 
+static void
+openssl_handle_handshake_failure (tls_ctx_t * ctx)
+{
+  if (SSL_is_server (((openssl_ctx_t *) ctx)->ssl))
+    {
+      /*
+       * Cleanup pre-allocated app session and close transport
+       */
+      session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
+      ctx->no_app_session = 1;
+      ctx->c_s_index = SESSION_INVALID_INDEX;
+      tls_disconnect_transport (ctx);
+    }
+  else
+    {
+      /*
+       * Also handles cleanup of the pre-allocated session
+       */
+      tls_notify_app_connected (ctx, /* is failed */ 1);
+    }
+}
+
 int
 openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 {
@@ -240,19 +262,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	  ERR_error_string (ERR_get_error (), buf);
 	  clib_warning ("Err: %s", buf);
 
-	  /*
-	   * Cleanup pre-allocated app session and close transport
-	   */
-	  if (SSL_is_server (oc->ssl))
-	    {
-	      session_free (session_get (ctx->c_s_index,
-					 ctx->c_thread_index));
-	      ctx->no_app_session = 1;
-	      ctx->c_s_index = SESSION_INVALID_INDEX;
-	      tls_disconnect_transport (ctx);
-	    }
-	  else
-	    tls_notify_app_connected (ctx, /* is failed */ 1);
+	  openssl_handle_handshake_failure (ctx);
 	  return -1;
 	}
 
@@ -758,7 +768,7 @@ openssl_transport_close (tls_ctx_t * ctx)
 {
   if (!openssl_handshake_is_over (ctx))
     {
-      session_close (session_get_from_handle (ctx->tls_session_handle));
+      openssl_handle_handshake_failure (ctx);
       return 0;
     }
   session_transport_closing_notify (&ctx->connection);
