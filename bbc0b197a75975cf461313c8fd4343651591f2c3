@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "45581f85_178a78ad",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-08-09T08:44:03Z",
+      "side": 1,
+      "message": "Hi, this part raises a bit concern to me. To me this part is too multi-core CPU based crypto oriented. Let Quickassist goes through this code will suffer the performance quite a bit.",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a3aa2245_a44c1a87",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-08-09T08:44:03Z",
+      "side": 1,
+      "message": "In case the hardware acceleration crypto engine is used (say Quickassist) can I get the physical addresses of buffer/digest/aad from this structure?",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
