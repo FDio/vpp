@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "079538c5_842e6780",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-08-09T11:26:31Z",
+      "side": 1,
+      "message": "What I meant was the crypto engine queue design.\n\nFrom your implementation I had the impression:\n1. The queue architecture is fixed in crypto interface.\n2. Although the API works in burst mode, the enqueue operation is done one at a time and the dequeue operation is purely atomic.\n\nThis way I believe will suit multi-core CPU based crypto engines nicely working towards the same queue to share the workload cached in this queue. \n \nHowever for Quickassist (QAT) the assumption is different:\n- A QAT hardware queue can support the ops with mixed algorithms(cipher/auth/aead, and chained), and the number of hardware queues per QAT VF is limited.\n- The cost of \"kicking\" the QAT hardware starting encryption is relatively high. So it is more preferably using burst operation mode, which means maing multiple ops pushed into and fetched out from QAT at one time. In this case the cost of \"kicking\" can be averaged out by the number of ops.\n\nTo me the queue architecture is crypto engine specific, so instead of sharing the queue operation detail amongst all crypto engines underneath, I think it is better to hide inside the crypto engine. The crypto interface implementation could only pass the queue index into the crypto engine.",
+      "parentUuid": "627df583_6ee5800e",
+      "revId": "bbc0b197a75975cf461313c8fd4343651591f2c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a3aa2245_a44c1a87",
         "filename": "src/vnet/crypto/crypto.h",
         "patchSetId": 9
