@@ -406,6 +406,7 @@ tls_session_accept_callback (session_t * tls_session)
   tls_session->opaque = ctx_handle;
   ctx->tls_session_handle = session_handle (tls_session);
   ctx->listener_ctx_index = tls_listener->opaque;
+  ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   /* Preallocate app session. Avoids allocating a session post handshake
    * on tls_session rx and potentially invalidating the session pool */
@@ -464,6 +465,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->tls_ctx_handle = ctx_handle;
+  ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   TLS_DBG (1, "TCP connect for %u returned %u. New connection [%u]%x",
 	   ho_ctx_index, is_fail, vlib_get_thread_index (),
