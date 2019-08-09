@@ -235,7 +235,7 @@ session_delete (session_t * s)
 
   /* Delete from the main lookup table. */
   if ((rv = session_lookup_del_session (s)))
-    clib_warning ("hash delete error, rv %d", rv);
+    clib_warning ("session %u hash delete rv %d", s->session_index, rv);
 
   session_free_w_fifos (s);
 }
