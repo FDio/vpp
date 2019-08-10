@@ -1,5 +1,3 @@
-pip-tools==3.8.0                        # BSD   Keep this in sync with Makefile's PIP_TOOLS_VERSION
-
 aenum>= 2.1.2; python_version < '3.6'   # BSD
 cffi                                    # MIT
 cryptography!=2.0                       # BSD/Apache-2.0
