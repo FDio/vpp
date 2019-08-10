@@ -102,7 +102,7 @@ PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.m
 PIP_VERSION=20.1.1
 # Keep in sync with requirements.txt
 PIP_TOOLS_VERSION=5.1.2
-PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
+PYTHON_DEPENDS=requirements.txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 BUILD_COV_DIR=$(TEST_BR)/coverage
 
@@ -120,21 +120,13 @@ $(PIP_TOOLS_INSTALL_DONE):
 	@rm -rf $(VENV_PATH)
 	@mkdir -p $(VENV_RUN_DIR)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	# pip version pinning
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m pip install pip===$(PIP_VERSION)"
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
 	@touch $@
 
-$(PYTHON_DEPENDS): requirements.txt
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  CUSTOM_COMPILE_COMMAND='make test-refresh-deps (or update requirements.txt)' \
-		  $(PYTHON_INTERP) -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
+$(PYTHON_DEPENDS): $(PIP_TOOLS_INSTALL_DONE)
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -r $(PYTHON_DEPENDS)"
+	@touch $@
 
-$(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m piptools sync $(PYTHON_DEPENDS)"
+$(PIP_INSTALL_DONE): $(PYTHON_DEPENDS)
 	@touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
@@ -269,8 +261,10 @@ wipe: reset
 	@rm -rf $(VENV_PATH)
 	@rm -rf $(patsubst %,%/__pycache__, $(VPP_TEST_DIRS) $(BUILD_TEST_SRC))
 
-$(TEST_DOC_BR): $(PIP_INSTALL_DONE)
+$(TEST_DOC_BR):
 	@mkdir -p $@
+	@bash -c "source $(VENV_PATH)/bin/activate && \
+		  $(PYTHON_INTERP) -m pip install sphinx sphinx-rtd-theme"
 	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc html"
 
 .PHONY: doc
