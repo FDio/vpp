@@ -231,7 +231,6 @@ help:
 	@echo " test-wipe-cov        - wipe code coverage report for test framework"
 	@echo " test-wipe-papi       - wipe test framework papi test code"
 	@echo " test-checkstyle      - check PEP8 compliance for test framework"
-	@echo " test-refresh-deps    - refresh the Python dependencies for the tests"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]                  - set build verbosity level"
