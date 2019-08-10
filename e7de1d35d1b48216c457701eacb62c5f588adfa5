@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f27faeff_86a7769e",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-08-10T02:04:29Z",
+      "side": 1,
+      "message": "remove the noqa comments since you removed the spaces.",
+      "range": {
+        "startLine": 185,
+        "startChar": 0,
+        "endLine": 188,
+        "endChar": 60
+      },
+      "revId": "e7de1d35d1b48216c457701eacb62c5f588adfa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
