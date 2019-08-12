@@ -901,12 +901,12 @@ if (tcp_cc_time_to_print_stats (_tc))					\
       num_threads = 1 /* main thread */  + vtm->n_threads;		\
       vec_validate (buffer_fail_counters, num_threads - 1);		\
     }									\
-  if (PREDICT_FALSE (tcp_main.buffer_fail_fraction != 0.0))		\
+  if (PREDICT_FALSE (tcp_cfg.buffer_fail_fraction != 0.0))		\
     {									\
       if (PREDICT_TRUE (buffer_fail_counters[thread_index] > 0))	\
         {								\
           if ((1.0 / (f32) (buffer_fail_counters[thread_index]))	\
-              < tcp_main.buffer_fail_fraction)				\
+              < tcp_cfg.buffer_fail_fraction)				\
             {								\
               buffer_fail_counters[thread_index] = 0.0000001;		\
               return -1;						\
