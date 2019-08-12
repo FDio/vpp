@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "52c42a3a_5189a821",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-12T16:47:14Z",
+      "side": 1,
+      "message": "Any reason for not making a vpp_echo_common.h file with declarations of all the common functions and including only that here?",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 39
+      },
+      "revId": "61d6d9eb28912faf4b511ace16d35392b409ec3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "45b47415_b484dbb7",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-12T16:47:14Z",
+      "side": 1,
+      "message": "Does the base really depend on the derived class?",
+      "range": {
+        "startLine": 25,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 45
+      },
+      "revId": "61d6d9eb28912faf4b511ace16d35392b409ec3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
