@@ -31,33 +31,6 @@
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 
-#define foreach_nat_in2out_ed_error                     \
-_(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
-_(IN2OUT_PACKETS, "good in2out packets processed")      \
-_(OUT_OF_PORTS, "out of ports")                         \
-_(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
-_(DROP_FRAGMENT, "drop fragment")                       \
-_(MAX_REASS, "maximum reassemblies exceeded")           \
-_(MAX_FRAG, "maximum fragments per reassembly exceeded")\
-_(NON_SYN, "non-SYN packet try to create session")      \
-_(TCP_PACKETS, "TCP packets")                           \
-_(UDP_PACKETS, "UDP packets")                           \
-_(ICMP_PACKETS, "ICMP packets")                         \
-_(OTHER_PACKETS, "other protocol packets")              \
-_(FRAGMENTS, "fragments")                               \
-_(CACHED_FRAGMENTS, "cached fragments")                 \
-_(PROCESSED_FRAGMENTS, "processed fragments")
-
-
-typedef enum
-{
-#define _(sym,str) NAT_IN2OUT_ED_ERROR_##sym,
-  foreach_nat_in2out_ed_error
-#undef _
-    NAT_IN2OUT_ED_N_ERROR,
-} nat_in2out_ed_error_t;
-
 static char *nat_in2out_ed_error_strings[] = {
 #define _(sym,string) string,
   foreach_nat_in2out_ed_error
@@ -98,55 +71,6 @@ format_nat_in2out_ed_trace (u8 * s, va_list * args)
 	      t->sw_if_index, t->next_index, t->session_index);
 
   return s;
-}
-
-static_always_inline int
-icmp_get_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
-{
-  icmp46_header_t *icmp0;
-  nat_ed_ses_key_t key0;
-  icmp_echo_header_t *echo0, *inner_echo0 = 0;
-  ip4_header_t *inner_ip0 = 0;
-  void *l4_header = 0;
-  icmp46_header_t *inner_icmp0;
-
-  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
-  echo0 = (icmp_echo_header_t *) (icmp0 + 1);
-
-  if (!icmp_is_error_message (icmp0))
-    {
-      key0.proto = IP_PROTOCOL_ICMP;
-      key0.l_addr = ip0->src_address;
-      key0.r_addr = ip0->dst_address;
-      key0.l_port = echo0->identifier;
-      key0.r_port = 0;
-    }
-  else
-    {
-      inner_ip0 = (ip4_header_t *) (echo0 + 1);
-      l4_header = ip4_next_header (inner_ip0);
-      key0.proto = inner_ip0->protocol;
-      key0.r_addr = inner_ip0->src_address;
-      key0.l_addr = inner_ip0->dst_address;
-      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
-	{
-	case SNAT_PROTOCOL_ICMP:
-	  inner_icmp0 = (icmp46_header_t *) l4_header;
-	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
-	  key0.r_port = 0;
-	  key0.l_port = inner_echo0->identifier;
-	  break;
-	case SNAT_PROTOCOL_UDP:
-	case SNAT_PROTOCOL_TCP:
-	  key0.l_port = ((tcp_udp_header_t *) l4_header)->dst_port;
-	  key0.r_port = ((tcp_udp_header_t *) l4_header)->src_port;
-	  break;
-	default:
-	  return NAT_IN2OUT_ED_ERROR_UNSUPPORTED_PROTOCOL;
-	}
-    }
-  *p_key0 = key0;
-  return 0;
 }
 
 #ifndef CLIB_MARCH_VARIANT
@@ -497,7 +421,7 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
   if (ip->protocol == IP_PROTOCOL_ICMP)
     {
       key.as_u64[0] = key.as_u64[1] = 0;
-      if (icmp_get_ed_key (ip, &key))
+      if (get_icmp_i2o_ed_key (ip, &key))
 	return 0;
       key.fib_index = 0;
       kv.key[0] = key.as_u64[0];
@@ -616,7 +540,7 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
   rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
 
   key.as_u64[0] = key.as_u64[1] = 0;
-  err = icmp_get_ed_key (ip, &key);
+  err = get_icmp_i2o_ed_key (ip, &key);
   if (err != 0)
     {
       b->error = node->errors[err];
