@@ -1345,6 +1345,7 @@ list(APPEND VNET_HEADERS
   adj/adj_glean.h
   adj/adj_nsh.h
   adj/adj_nbr.h
+  adj/adj_midchain.h
   adj/rewrite.h
 )
 
