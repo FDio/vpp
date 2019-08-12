@@ -153,6 +153,20 @@ rdma_dev_set_ucast (rdma_device_t * rd)
   return 0;
 }
 
+static clib_error_t *
+rdma_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
+{
+  rdma_main_t *rm = &rdma_main;
+  rdma_device_t *rd = vec_elt_at_index (rm->devices, hw->dev_instance);
+  mac_address_from_bytes (&rd->hwaddr, new);
+  if (!(rd->flags & RDMA_DEVICE_F_PROMISC) && rdma_dev_set_ucast (rd))
+    {
+      mac_address_from_bytes (&rd->hwaddr, old);
+      return clib_error_return_unix (0, "MAC update failed");
+    }
+  return 0;
+}
+
 static u32
 rdma_dev_change_mtu (rdma_device_t * rd)
 {
@@ -735,7 +749,7 @@ static char *rdma_tx_func_error_strings[] = {
 };
 
 /* *INDENT-OFF* */
-VNET_DEVICE_CLASS (rdma_device_class,) =
+VNET_DEVICE_CLASS (rdma_device_class) =
 {
   .name = "RDMA interface",
   .format_device = format_rdma_device,
@@ -744,6 +758,7 @@ VNET_DEVICE_CLASS (rdma_device_class,) =
   .rx_redirect_to_node = rdma_set_interface_next_node,
   .tx_function_n_errors = RDMA_TX_N_ERROR,
   .tx_function_error_strings = rdma_tx_func_error_strings,
+  .mac_addr_change_function = rdma_mac_change,
 };
 /* *INDENT-ON* */
 
