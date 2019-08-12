@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "a080668b_38bff692",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 721,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-08-12T16:22:39Z",
+      "side": 1,
+      "message": "In next patch...",
+      "parentUuid": "5f035bb0_b0ea25a2",
+      "range": {
+        "startLine": 721,
+        "startChar": 6,
+        "endLine": 721,
+        "endChar": 7
+      },
+      "revId": "47a7eb9cb89436eee9023f175c6b1ef495f0ebd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9fb849e4_32a8d639",
         "filename": "src/plugins/http_static/static_server.c",
         "patchSetId": 2
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "6a789559_a4165452",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-08-12T16:22:39Z",
+      "side": 1,
+      "message": "In next patch",
+      "parentUuid": "9fb849e4_32a8d639",
+      "range": {
+        "startLine": 785,
+        "startChar": 11,
+        "endLine": 785,
+        "endChar": 12
+      },
+      "revId": "47a7eb9cb89436eee9023f175c6b1ef495f0ebd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "98a8667f_62bf7e72",
         "filename": "src/plugins/http_static/static_server.c",
         "patchSetId": 2
@@ -68,6 +116,30 @@
       "revId": "47a7eb9cb89436eee9023f175c6b1ef495f0ebd7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a751a15a_f2b8536a",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1649,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-08-12T16:22:39Z",
+      "side": 1,
+      "message": "In next patch...",
+      "parentUuid": "98a8667f_62bf7e72",
+      "range": {
+        "startLine": 1649,
+        "startChar": 41,
+        "endLine": 1649,
+        "endChar": 55
+      },
+      "revId": "47a7eb9cb89436eee9023f175c6b1ef495f0ebd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
