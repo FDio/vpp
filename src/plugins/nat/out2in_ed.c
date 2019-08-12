@@ -32,33 +32,6 @@
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 
-#define foreach_nat_out2in_ed_error                     \
-_(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
-_(OUT2IN_PACKETS, "good out2in packets processed")      \
-_(OUT_OF_PORTS, "out of ports")                         \
-_(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(NO_TRANSLATION, "no translation")                     \
-_(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
-_(DROP_FRAGMENT, "drop fragment")                       \
-_(MAX_REASS, "maximum reassemblies exceeded")           \
-_(MAX_FRAG, "maximum fragments per reassembly exceeded")\
-_(NON_SYN, "non-SYN packet try to create session")      \
-_(TCP_PACKETS, "TCP packets")                           \
-_(UDP_PACKETS, "UDP packets")                           \
-_(ICMP_PACKETS, "ICMP packets")                         \
-_(OTHER_PACKETS, "other protocol packets")              \
-_(FRAGMENTS, "fragments")                               \
-_(CACHED_FRAGMENTS, "cached fragments")                 \
-_(PROCESSED_FRAGMENTS, "processed fragments")
-
-typedef enum
-{
-#define _(sym,str) NAT_OUT2IN_ED_ERROR_##sym,
-  foreach_nat_out2in_ed_error
-#undef _
-    NAT_OUT2IN_ED_N_ERROR,
-} nat_out2in_ed_error_t;
-
 static char *nat_out2in_ed_error_strings[] = {
 #define _(sym,string) string,
   foreach_nat_out2in_ed_error
@@ -345,55 +318,6 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
   return s;
 }
 
-static_always_inline int
-icmp_get_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
-{
-  icmp46_header_t *icmp0;
-  nat_ed_ses_key_t key0;
-  icmp_echo_header_t *echo0, *inner_echo0 = 0;
-  ip4_header_t *inner_ip0;
-  void *l4_header = 0;
-  icmp46_header_t *inner_icmp0;
-
-  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
-  echo0 = (icmp_echo_header_t *) (icmp0 + 1);
-
-  if (!icmp_is_error_message (icmp0))
-    {
-      key0.proto = IP_PROTOCOL_ICMP;
-      key0.l_addr = ip0->dst_address;
-      key0.r_addr = ip0->src_address;
-      key0.l_port = echo0->identifier;
-      key0.r_port = 0;
-    }
-  else
-    {
-      inner_ip0 = (ip4_header_t *) (echo0 + 1);
-      l4_header = ip4_next_header (inner_ip0);
-      key0.proto = inner_ip0->protocol;
-      key0.l_addr = inner_ip0->src_address;
-      key0.r_addr = inner_ip0->dst_address;
-      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
-	{
-	case SNAT_PROTOCOL_ICMP:
-	  inner_icmp0 = (icmp46_header_t *) l4_header;
-	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
-	  key0.l_port = inner_echo0->identifier;
-	  key0.r_port = 0;
-	  break;
-	case SNAT_PROTOCOL_UDP:
-	case SNAT_PROTOCOL_TCP:
-	  key0.l_port = ((tcp_udp_header_t *) l4_header)->src_port;
-	  key0.r_port = ((tcp_udp_header_t *) l4_header)->dst_port;
-	  break;
-	default:
-	  return -1;
-	}
-    }
-  *p_key0 = key0;
-  return 0;
-}
-
 static int
 next_src_nat (snat_main_t * sm, ip4_header_t * ip, u8 proto, u16 src_port,
 	      u16 dst_port, u32 thread_index, u32 rx_fib_index)
@@ -423,7 +347,7 @@ create_bypass_for_fwd (snat_main_t * sm, ip4_header_t * ip, u32 rx_fib_index,
 
   if (ip->protocol == IP_PROTOCOL_ICMP)
     {
-      if (icmp_get_ed_key (ip, &key))
+      if (get_icmp_o2i_ed_key (ip, &key))
 	return;
     }
   else if (ip->protocol == IP_PROTOCOL_UDP || ip->protocol == IP_PROTOCOL_TCP)
@@ -515,7 +439,7 @@ create_bypass_for_fwd_worker (snat_main_t * sm, ip4_header_t * ip,
   ip4_header_t ip_wkr = {
     .src_address = ip->dst_address,
   };
-  u32 thread_index = sm->worker_in2out_cb (&ip_wkr, rx_fib_index);
+  u32 thread_index = sm->worker_in2out_cb (&ip_wkr, rx_fib_index, 0);
 
   create_bypass_for_fwd (sm, ip, rx_fib_index, thread_index);
 }
@@ -540,7 +464,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
   sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
   rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
 
-  if (icmp_get_ed_key (ip, &key))
+  if (get_icmp_o2i_ed_key (ip, &key))
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_UNSUPPORTED_PROTOCOL];
       next = NAT44_ED_OUT2IN_NEXT_DROP;
