@@ -935,7 +935,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	  ip4_header_t ip = {
 	    .src_address = m->local_addr,
 	  };
-	  vec_add1 (m->workers, sm->worker_in2out_cb (&ip, m->fib_index));
+	  vec_add1 (m->workers, sm->worker_in2out_cb (&ip, m->fib_index, 0));
 	  tsm = vec_elt_at_index (sm->per_thread_data, m->workers[0]);
 	}
       else
@@ -1302,7 +1302,8 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	      };
 	      bitmap =
 		clib_bitmap_set (bitmap,
-				 sm->worker_in2out_cb (&ip, m->fib_index), 1);
+				 sm->worker_in2out_cb (&ip, m->fib_index, 0),
+				 1);
 	    }
 	}
 
@@ -1390,7 +1391,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                 .src_address = local->addr,
               };
               tsm = vec_elt_at_index (sm->per_thread_data,
-                                      sm->worker_in2out_cb (&ip, m->fib_index));
+                                      sm->worker_in2out_cb (&ip, m->fib_index, 0));
             }
           else
             tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
@@ -1543,7 +1544,8 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 	    .src_address = local->addr,
 	  };
 	  tsm = vec_elt_at_index (sm->per_thread_data,
-				  sm->worker_in2out_cb (&ip, m->fib_index));
+				  sm->worker_in2out_cb (&ip, m->fib_index,
+							0));
 	}
       else
 	tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
@@ -1596,7 +1598,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
         ip4_header_t ip;
         ip.src_address.as_u32 = local->addr.as_u32,
         bitmap = clib_bitmap_set (bitmap,
-                                  sm->worker_in2out_cb (&ip, local->fib_index),
+                                  sm->worker_in2out_cb (&ip, local->fib_index, 0),
                                   1);
       }
   }));
@@ -2160,6 +2162,7 @@ snat_set_workers (uword * bitmap)
     ({
       vec_add1(sm->workers, i);
       sm->per_thread_data[sm->first_worker_index + i].snat_thread_index = j;
+      sm->per_thread_data[sm->first_worker_index + i].thread_index = i;
       j++;
     }));
   /* *INDENT-ON* */
@@ -2297,7 +2300,7 @@ snat_init (vlib_main_t * vm)
   sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->forwarding_enabled = 0;
   sm->log_class = vlib_log_register_class ("nat", 0);
-  sm->log_level = SNAT_LOG_NONE;
+  sm->log_level = SNAT_LOG_ERROR;
   sm->mss_clamping = 0;
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
@@ -2579,7 +2582,7 @@ snat_static_mapping_match (snat_main_t * sm,
 		  .src_address = local->addr,
 	        };
 
-	        if (sm->worker_in2out_cb (&ip, m->fib_index) ==
+	        if (sm->worker_in2out_cb (&ip, m->fib_index, 0) ==
 		    thread_index)
                   {
                     vec_add1 (tmp, i);
@@ -2946,7 +2949,8 @@ format_ed_session_kvp (u8 * s, va_list * args)
 }
 
 static u32
-snat_get_worker_in2out_cb (ip4_header_t * ip0, u32 rx_fib_index0)
+snat_get_worker_in2out_cb (ip4_header_t * ip0, u32 rx_fib_index0,
+			   u8 is_output)
 {
   snat_main_t *sm = &snat_main;
   u32 next_worker_index = 0;
@@ -2965,7 +2969,8 @@ snat_get_worker_in2out_cb (ip4_header_t * ip0, u32 rx_fib_index0)
 }
 
 static u32
-snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
+snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0,
+			   u8 is_output)
 {
   snat_main_t *sm = &snat_main;
   udp_header_t *udp;
@@ -3101,15 +3106,182 @@ no_reass:
 }
 
 static u32
-nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
+nat44_ed_get_worker_in2out_cb (ip4_header_t * ip, u32 rx_fib_index,
+			       u8 is_output)
+{
+  snat_main_t *sm = &snat_main;
+  u32 next_worker_index = sm->first_worker_index;
+  u32 hash;
+
+  clib_bihash_kv_16_8_t kv16, value16;
+  snat_main_per_thread_data_t *tsm;
+  udp_header_t *udp;
+
+  if (PREDICT_FALSE (is_output))
+    {
+      u32 fib_index = sm->outside_fib_index;
+      nat_outside_fib_t *outside_fib;
+      fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+      fib_prefix_t pfx = {
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_len = 32,
+	.fp_addr = {
+		    .ip4.as_u32 = ip->dst_address.as_u32,
+		    }
+	,
+      };
+
+      // this is after translation has occured in a in2out node before
+      // reaching output feature
+      // if SYN packet we should ignore is_output !!
+      // if is output-feature and the translation already occured it will
+      // have to be looked up inside sessions
+      udp = ip4_next_header (ip);
+
+      switch (vec_len (sm->outside_fibs))
+	{
+	case 0:
+	  fib_index = sm->outside_fib_index;
+	  break;
+	case 1:
+	  fib_index = sm->outside_fibs[0].fib_index;
+	  break;
+	default:
+            /* *INDENT-OFF* */
+            vec_foreach (outside_fib, sm->outside_fibs)
+              {
+                fei = fib_table_lookup (outside_fib->fib_index, &pfx);
+                if (FIB_NODE_INDEX_INVALID != fei)
+                  {
+                    if (fib_entry_get_resolving_interface (fei) != ~0)
+                      {
+                        fib_index = outside_fib->fib_index;
+                        break;
+                      }
+                  }
+              }
+            /* *INDENT-ON* */
+	  break;
+	}
+
+      make_ed_kv (&kv16, &ip->src_address, &ip->dst_address,
+		  ip->protocol, fib_index, udp->src_port, udp->dst_port);
+
+      /* *INDENT-OFF* */
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          if (PREDICT_TRUE (!clib_bihash_search_16_8 (&tsm->out2in_ed,
+                                                      &kv16, &value16)))
+            {
+              next_worker_index += tsm->thread_index;
+
+              nat_elog_debug_handoff (
+                "HANDOFF IN2OUT-OUTPUT-FEATURE (session)",
+                next_worker_index, fib_index,
+		clib_net_to_host_u32 (ip->src_address.as_u32),
+		clib_net_to_host_u32 (ip->dst_address.as_u32));
+
+              return next_worker_index;
+            }
+        }
+      /* *INDENT-ON* */
+    }
+
+  hash = ip->src_address.as_u32 + (ip->src_address.as_u32 >> 8) +
+    (ip->src_address.as_u32 >> 16) + (ip->src_address.as_u32 >> 24);
+
+  if (PREDICT_TRUE (is_pow2 (_vec_len (sm->workers))))
+    next_worker_index += sm->workers[hash & (_vec_len (sm->workers) - 1)];
+  else
+    next_worker_index += sm->workers[hash % _vec_len (sm->workers)];
+
+  if (PREDICT_TRUE (!is_output))
+    {
+      nat_elog_debug_handoff ("HANDOFF IN2OUT",
+			      next_worker_index, rx_fib_index,
+			      clib_net_to_host_u32 (ip->src_address.as_u32),
+			      clib_net_to_host_u32 (ip->dst_address.as_u32));
+    }
+  else
+    {
+      nat_elog_debug_handoff ("HANDOFF IN2OUT-OUTPUT-FEATURE",
+			      next_worker_index, rx_fib_index,
+			      clib_net_to_host_u32 (ip->src_address.as_u32),
+			      clib_net_to_host_u32 (ip->dst_address.as_u32));
+    }
+
+  return next_worker_index;
+}
+
+static u32
+nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index,
+			       u8 is_output)
 {
   snat_main_t *sm = &snat_main;
   clib_bihash_kv_8_8_t kv, value;
+  clib_bihash_kv_16_8_t kv16, value16;
+  snat_main_per_thread_data_t *tsm;
+
   u32 proto, next_worker_index = 0;
   udp_header_t *udp;
   u16 port;
   snat_static_mapping_t *m;
   u32 hash;
+
+  proto = ip_proto_to_snat_proto (ip->protocol);
+
+  if (PREDICT_TRUE (proto == SNAT_PROTOCOL_UDP || proto == SNAT_PROTOCOL_TCP))
+    {
+      udp = ip4_next_header (ip);
+
+      make_ed_kv (&kv16, &ip->dst_address, &ip->src_address,
+		  ip->protocol, rx_fib_index, udp->dst_port, udp->src_port);
+
+      /* *INDENT-OFF* */
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          if (PREDICT_TRUE (!clib_bihash_search_16_8 (&tsm->out2in_ed,
+                                                      &kv16, &value16)))
+            {
+              next_worker_index = sm->first_worker_index + tsm->thread_index;
+              nat_elog_debug_handoff ("HANDOFF OUT2IN (session)",
+                          next_worker_index, rx_fib_index,
+			  clib_net_to_host_u32 (ip->src_address.as_u32),
+			  clib_net_to_host_u32 (ip->dst_address.as_u32));
+              return next_worker_index;
+            }
+          }
+        /* *INDENT-ON* */
+    }
+  else if (proto == SNAT_PROTOCOL_ICMP)
+    {
+      nat_ed_ses_key_t key;
+
+      if (!get_icmp_o2i_ed_key (ip, &key))
+	{
+
+	  key.fib_index = rx_fib_index;
+	  kv16.key[0] = key.as_u64[0];
+	  kv16.key[1] = key.as_u64[1];
+
+          /* *INDENT-OFF* */
+          vec_foreach (tsm, sm->per_thread_data)
+            {
+              if (PREDICT_TRUE (!clib_bihash_search_16_8 (&tsm->out2in_ed,
+                                                          &kv16, &value16)))
+                {
+                  next_worker_index = sm->first_worker_index +
+                                      tsm->thread_index;
+                  nat_elog_debug_handoff ("HANDOFF OUT2IN (session)",
+                              next_worker_index, rx_fib_index,
+			      clib_net_to_host_u32 (ip->src_address.as_u32),
+			      clib_net_to_host_u32 (ip->dst_address.as_u32));
+                  return next_worker_index;
+                }
+            }
+          /* *INDENT-ON* */
+	}
+    }
 
   /* first try static mappings without port */
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
@@ -3119,17 +3291,17 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
 	  (&sm->static_mapping_by_external, &kv, &value))
 	{
 	  m = pool_elt_at_index (sm->static_mappings, value.value);
-	  return m->workers[0];
+	  next_worker_index = m->workers[0];
+	  goto done;
 	}
     }
-
-  proto = ip_proto_to_snat_proto (ip->protocol);
 
   /* unknown protocol */
   if (PREDICT_FALSE (proto == ~0))
     {
       /* use current thread */
-      return vlib_get_thread_index ();
+      next_worker_index = vlib_get_thread_index ();
+      goto done;
     }
 
   udp = ip4_next_header (ip);
@@ -3158,7 +3330,8 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
 	      port = ((tcp_udp_header_t *) l4_header)->src_port;
 	      break;
 	    default:
-	      return vlib_get_thread_index ();
+	      next_worker_index = vlib_get_thread_index ();
+	      goto done;
 	    }
 	}
     }
@@ -3173,15 +3346,20 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
 	{
 	  m = pool_elt_at_index (sm->static_mappings, value.value);
 	  if (!is_lb_static_mapping (m))
-	    return m->workers[0];
+	    {
+	      next_worker_index = m->workers[0];
+	      goto done;
+	    }
 
 	  hash = ip->src_address.as_u32 + (ip->src_address.as_u32 >> 8) +
 	    (ip->src_address.as_u32 >> 16) + (ip->src_address.as_u32 >> 24);
 
 	  if (PREDICT_TRUE (is_pow2 (_vec_len (m->workers))))
-	    return m->workers[hash & (_vec_len (m->workers) - 1)];
+	    next_worker_index =
+	      m->workers[hash & (_vec_len (m->workers) - 1)];
 	  else
-	    return m->workers[hash % _vec_len (m->workers)];
+	    next_worker_index = m->workers[hash % _vec_len (m->workers)];
+	  goto done;
 	}
     }
 
@@ -3190,6 +3368,10 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
   next_worker_index +=
     sm->workers[(clib_net_to_host_u16 (port) - 1024) / sm->port_per_thread];
 
+done:
+  nat_elog_debug_handoff ("HANDOFF OUT2IN", next_worker_index, rx_fib_index,
+			  clib_net_to_host_u32 (ip->src_address.as_u32),
+			  clib_net_to_host_u32 (ip->dst_address.as_u32));
   return next_worker_index;
 }
 
@@ -3650,7 +3832,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (sm->endpoint_dependent)
 	{
-	  sm->worker_in2out_cb = snat_get_worker_in2out_cb;
+	  sm->worker_in2out_cb = nat44_ed_get_worker_in2out_cb;
 	  sm->worker_out2in_cb = nat44_ed_get_worker_out2in_cb;
 	  sm->in2out_node_index = nat44_ed_in2out_node.index;
 	  sm->in2out_output_node_index = nat44_ed_in2out_output_node.index;
@@ -3976,7 +4158,7 @@ nat44_del_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
   if (sm->num_workers > 1)
     tsm =
       vec_elt_at_index (sm->per_thread_data,
-			sm->worker_in2out_cb (&ip, fib_index));
+			sm->worker_in2out_cb (&ip, fib_index, 0));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 
@@ -4020,7 +4202,7 @@ nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
   if (sm->num_workers > 1)
     tsm =
       vec_elt_at_index (sm->per_thread_data,
-			sm->worker_in2out_cb (&ip, fib_index));
+			sm->worker_in2out_cb (&ip, fib_index, 0));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 
