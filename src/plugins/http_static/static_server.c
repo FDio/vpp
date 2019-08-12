@@ -237,6 +237,37 @@ http_static_server_sessions_writer_unlock (void)
   clib_rwlock_writer_unlock (&http_static_server_main.sessions_lock);
 }
 
+/** \brief Start a session cleanup timer
+ */
+static void
+http_static_server_session_timer_start (http_session_t * hs)
+{
+  http_static_server_main_t *hsm = &http_static_server_main;
+  u32 hs_handle;
+
+  /* The session layer may fire a callback at a later date... */
+  if (!pool_is_free (hsm->sessions[hs->thread_index], hs))
+    {
+      hs_handle = hs->thread_index << 24 | hs->session_index;
+      clib_spinlock_lock (&http_static_server_main.tw_lock);
+      hs->timer_handle = tw_timer_start_2t_1w_2048sl
+	(&http_static_server_main.tw, hs_handle, 0, 60);
+      clib_spinlock_unlock (&http_static_server_main.tw_lock);
+    }
+}
+
+/** \brief stop a session cleanup timer
+ */
+static void
+http_static_server_session_timer_stop (http_session_t * hs)
+{
+  if (hs->timer_handle == ~0)
+    return;
+  clib_spinlock_lock (&http_static_server_main.tw_lock);
+  tw_timer_stop_2t_1w_2048sl (&http_static_server_main.tw, hs->timer_handle);
+  clib_spinlock_unlock (&http_static_server_main.tw_lock);
+}
+
 /** \brief Allocate an http session
  */
 static http_session_t *
@@ -270,9 +301,20 @@ static void
 http_static_server_session_free (http_session_t * hs)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
+
+  /* Make sure the timer is stopped... */
+  http_static_server_session_timer_stop (hs);
   pool_put (hsm->sessions[hs->thread_index], hs);
+
   if (CLIB_DEBUG)
-    memset (hs, 0xfa, sizeof (*hs));
+    {
+      u32 save_thread_index;
+      save_thread_index = hs->thread_index;
+      /* Poison the entry, preserve timer state and thread index */
+      memset (hs, 0xfa, sizeof (*hs));
+      hs->timer_handle = ~0;
+      hs->thread_index = save_thread_index;
+    }
 }
 
 /** \brief add a session to the vpp < -- > http session index map
@@ -310,31 +352,6 @@ http_static_server_session_lookup (u32 thread_index, u32 s_index)
       return http_static_server_session_get (thread_index, hs_index);
     }
   return 0;
-}
-
-/** \brief Start a session cleanup timer
- */
-static void
-http_static_server_session_timer_start (http_session_t * hs)
-{
-  u32 hs_handle;
-  hs_handle = hs->thread_index << 24 | hs->session_index;
-  clib_spinlock_lock (&http_static_server_main.tw_lock);
-  hs->timer_handle = tw_timer_start_2t_1w_2048sl (&http_static_server_main.tw,
-						  hs_handle, 0, 60);
-  clib_spinlock_unlock (&http_static_server_main.tw_lock);
-}
-
-/** \brief stop a session cleanup timer
- */
-static void
-http_static_server_session_timer_stop (http_session_t * hs)
-{
-  if (hs->timer_handle == ~0)
-    return;
-  clib_spinlock_lock (&http_static_server_main.tw_lock);
-  tw_timer_stop_2t_1w_2048sl (&http_static_server_main.tw, hs->timer_handle);
-  clib_spinlock_unlock (&http_static_server_main.tw_lock);
 }
 
 /** \brief Detach cache entry from session
@@ -379,7 +396,6 @@ http_static_server_session_cleanup (http_session_t * hs)
   http_static_server_session_lookup_del (hs->thread_index,
 					 hs->vpp_session_index);
   vec_free (hs->rx_buf);
-  http_static_server_session_timer_stop (hs);
   http_static_server_session_free (hs);
 }
 
@@ -647,7 +663,7 @@ state_closed (session_t * s, http_session_t * hs,
 {
   clib_warning ("WARNING: http session %d, called from %U",
 		hs->session_index, format_state_machine_called_from, cf);
-  return 0;
+  return -1;
 }
 
 static void
@@ -685,7 +701,7 @@ state_established (session_t * s, http_session_t * hs,
     {
       send_error (hs, "400 Bad Request");
       close_session (hs);
-      return 0;
+      return -1;
     }
 
   /* We only handle GET requests at the moment */
@@ -701,7 +717,7 @@ state_established (session_t * s, http_session_t * hs,
 
   send_error (hs, "405 Method Not Allowed");
   close_session (hs);
-  return 0;
+  return -1;
 
 find_end:
 
@@ -754,7 +770,7 @@ find_end:
 	      vec_free (path);
 	      send_error (hs, "404 Not Found");
 	      close_session (hs);
-	      return 0;
+	      return -1;
 	    }
 	  else
 	    {
@@ -802,7 +818,7 @@ find_end:
 	      vec_free (redirect);
 	      vec_free (path);
 	      close_session (hs);
-	      return 0;
+	      return -1;
 	    }
 	}
     }
@@ -886,7 +902,7 @@ find_end:
 	      clib_error_report (error);
 	      vec_free (hs->path);
 	      close_session (hs);
-	      return 0;
+	      return -1;
 	    }
 	  /* Create a cache entry for it */
 	  pool_get (hsm->cache_pool, dp);
@@ -1038,6 +1054,8 @@ http_static_server_rx_tx_callback (session_t * s,
     {
       fp = state_funcs[hs->session_state];
       rv = (*fp) (s, hs, cf);
+      if (rv < 0)
+	goto session_closed;
     }
   while (rv);
 
@@ -1045,6 +1063,7 @@ http_static_server_rx_tx_callback (session_t * s,
   http_static_server_session_timer_stop (hs);
   http_static_server_session_timer_start (hs);
 
+session_closed:
   http_static_server_sessions_reader_unlock ();
   return 0;
 }
