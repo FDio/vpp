@@ -49,3 +49,22 @@ It should work in containers as long as:
  - the `ib_uverbs` module is loaded
  - the device nodes `/dev/infiniband/uverbs[0-9]+` are usable from the
    container (but see [security considerations](#Security considerations))
+
+### SR-IOV VFs support
+It should work on SR-IOV VFs the same way it does with PFs. Because of VFs
+security containment features, make sure the MAC address of the rdma VPP
+interface matches the MAC address assigned to the underlying VF.
+For example:
+```
+host# echo 1 > /sys/class/infiniband/mlx5_0/device/sriov_numvfs
+host# ip l set dev enp94s0f0 vf 0 mac 92:5d:f5:df:b1:6f spoof on trust off
+host# ip l set dev enp94s0f2 up
+vpp# create int rdma host-if enp94s0f2 name rdma-0
+vpp# set int mac address rdma-0 92:5d:f5:df:b1:6f
+```
+If you plan to use L2 features such as switching, make sure the underlying
+VF is configured in trusted mode and spoof-checking is disabled (of course, be
+aware of the [security considerations](#Security considerations)):
+```
+host# ip l set dev enp94s0f0 vf 0 spoof off trust on
+```
