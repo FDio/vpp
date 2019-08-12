@@ -3808,6 +3808,8 @@ do {                                                       	\
     TCP_ERROR_NONE);
   _(CLOSING, TCP_FLAG_FIN | TCP_FLAG_SYN | TCP_FLAG_ACK,
     TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(CLOSING, TCP_FLAG_FIN | TCP_FLAG_SYN | TCP_FLAG_RST,
+    TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(CLOSING, TCP_FLAG_FIN | TCP_FLAG_SYN | TCP_FLAG_RST | TCP_FLAG_ACK,
     TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   /* FIN confirming that the peer (app) has closed */
