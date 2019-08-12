@@ -129,7 +129,7 @@ snat_set_log_level_command_fn (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (!unformat (line_input, "level %d", &log_level))
+  if (!unformat (line_input, "%d", &log_level))
     {
       error = clib_error_return (0, "unknown input '%U'",
 				 format_unformat_error, line_input);

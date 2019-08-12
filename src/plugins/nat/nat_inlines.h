@@ -343,6 +343,105 @@ make_sm_kv (clib_bihash_kv_8_8_t * kv, ip4_address_t * addr, u8 proto,
   kv->value = ~0ULL;
 }
 
+static_always_inline int
+get_icmp_i2o_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
+{
+  icmp46_header_t *icmp0;
+  nat_ed_ses_key_t key0;
+  icmp_echo_header_t *echo0, *inner_echo0 = 0;
+  ip4_header_t *inner_ip0 = 0;
+  void *l4_header = 0;
+  icmp46_header_t *inner_icmp0;
+
+  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
+  echo0 = (icmp_echo_header_t *) (icmp0 + 1);
+
+  if (!icmp_is_error_message (icmp0))
+    {
+      key0.proto = IP_PROTOCOL_ICMP;
+      key0.l_addr = ip0->src_address;
+      key0.r_addr = ip0->dst_address;
+      key0.l_port = echo0->identifier;
+      key0.r_port = 0;
+    }
+  else
+    {
+      inner_ip0 = (ip4_header_t *) (echo0 + 1);
+      l4_header = ip4_next_header (inner_ip0);
+      key0.proto = inner_ip0->protocol;
+      key0.r_addr = inner_ip0->src_address;
+      key0.l_addr = inner_ip0->dst_address;
+      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
+	{
+	case SNAT_PROTOCOL_ICMP:
+	  inner_icmp0 = (icmp46_header_t *) l4_header;
+	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
+	  key0.r_port = 0;
+	  key0.l_port = inner_echo0->identifier;
+	  break;
+	case SNAT_PROTOCOL_UDP:
+	case SNAT_PROTOCOL_TCP:
+	  key0.l_port = ((tcp_udp_header_t *) l4_header)->dst_port;
+	  key0.r_port = ((tcp_udp_header_t *) l4_header)->src_port;
+	  break;
+	default:
+	  return NAT_IN2OUT_ED_ERROR_UNSUPPORTED_PROTOCOL;
+	}
+    }
+  *p_key0 = key0;
+  return 0;
+}
+
+
+static_always_inline int
+get_icmp_o2i_ed_key (ip4_header_t * ip0, nat_ed_ses_key_t * p_key0)
+{
+  icmp46_header_t *icmp0;
+  nat_ed_ses_key_t key0;
+  icmp_echo_header_t *echo0, *inner_echo0 = 0;
+  ip4_header_t *inner_ip0;
+  void *l4_header = 0;
+  icmp46_header_t *inner_icmp0;
+
+  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
+  echo0 = (icmp_echo_header_t *) (icmp0 + 1);
+
+  if (!icmp_is_error_message (icmp0))
+    {
+      key0.proto = IP_PROTOCOL_ICMP;
+      key0.l_addr = ip0->dst_address;
+      key0.r_addr = ip0->src_address;
+      key0.l_port = echo0->identifier;
+      key0.r_port = 0;
+    }
+  else
+    {
+      inner_ip0 = (ip4_header_t *) (echo0 + 1);
+      l4_header = ip4_next_header (inner_ip0);
+      key0.proto = inner_ip0->protocol;
+      key0.l_addr = inner_ip0->src_address;
+      key0.r_addr = inner_ip0->dst_address;
+      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
+	{
+	case SNAT_PROTOCOL_ICMP:
+	  inner_icmp0 = (icmp46_header_t *) l4_header;
+	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
+	  key0.l_port = inner_echo0->identifier;
+	  key0.r_port = 0;
+	  break;
+	case SNAT_PROTOCOL_UDP:
+	case SNAT_PROTOCOL_TCP:
+	  key0.l_port = ((tcp_udp_header_t *) l4_header)->src_port;
+	  key0.r_port = ((tcp_udp_header_t *) l4_header)->dst_port;
+	  break;
+	default:
+	  return -1;
+	}
+    }
+  *p_key0 = key0;
+  return 0;
+}
+
 always_inline void
 mss_clamping (snat_main_t * sm, tcp_header_t * tcp, ip_csum_t * sum)
 {
