@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f035bb0_b0ea25a2",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 721,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-12T13:57:39Z",
+      "side": 1,
+      "message": "Looks like debug state left in code, otherwise, no need for this line.",
+      "range": {
+        "startLine": 721,
+        "startChar": 6,
+        "endLine": 721,
+        "endChar": 7
+      },
+      "revId": "47a7eb9cb89436eee9023f175c6b1ef495f0ebd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9fb849e4_32a8d639",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-12T13:57:39Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 785,
+        "startChar": 11,
+        "endLine": 785,
+        "endChar": 12
+      },
+      "revId": "47a7eb9cb89436eee9023f175c6b1ef495f0ebd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98a8667f_62bf7e72",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1649,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-12T13:57:39Z",
+      "side": 1,
+      "message": "My attempt to make the help indicate that one of the two options is mandatory but both are acceptable.\n\nsessions|cache [cache|sessions]",
+      "range": {
+        "startLine": 1649,
+        "startChar": 41,
+        "endLine": 1649,
+        "endChar": 55
+      },
+      "revId": "47a7eb9cb89436eee9023f175c6b1ef495f0ebd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
