@@ -85,7 +85,7 @@ void
 tcp_update_rcv_mss (tcp_connection_t * tc)
 {
   /* TODO find our iface MTU */
-  tc->mss = tcp_main.default_mtu - sizeof (tcp_header_t);
+  tc->mss = tcp_cfg.default_mtu - sizeof (tcp_header_t);
 }
 
 /**
@@ -103,7 +103,7 @@ tcp_initial_wnd_unscaled (tcp_connection_t * tc)
      tcp_update_rcv_mss (tc);
      TCP_IW_N_SEGMENTS * tc->mss;
    */
-  return TCP_MIN_RX_FIFO_SIZE;
+  return tcp_cfg.min_rx_fifo;
 }
 
 /**
@@ -113,17 +113,9 @@ tcp_initial_wnd_unscaled (tcp_connection_t * tc)
 u32
 tcp_initial_window_to_advertise (tcp_connection_t * tc)
 {
-  tcp_main_t *tm = &tcp_main;
-  u32 max_fifo;
-
-  /* Initial wnd for SYN. Fifos are not allocated yet.
-   * Use some predefined value. For SYN-ACK we still want the
-   * scale to be computed in the same way */
-  max_fifo = tm->max_rx_fifo ? tm->max_rx_fifo : TCP_MAX_RX_FIFO_SIZE;
-
   /* Compute rcv wscale only if peer advertised support for it */
   if (tc->state != TCP_STATE_SYN_RCVD || tcp_opts_wscale (&tc->rcv_opts))
-    tc->rcv_wscale = tcp_window_compute_scale (max_fifo);
+    tc->rcv_wscale = tcp_window_compute_scale (tcp_cfg.max_rx_fifo);
 
   tc->rcv_wnd = tcp_initial_wnd_unscaled (tc);
 
@@ -276,7 +268,7 @@ tcp_make_syn_options (tcp_options_t * opts, u8 wnd_scale)
   u8 len = 0;
 
   opts->flags |= TCP_OPTS_FLAG_MSS;
-  opts->mss = tcp_main.default_mtu;	/*XXX discover that */
+  opts->mss = tcp_cfg.default_mtu;	/*XXX discover that */
   len += TCP_OPTION_LEN_MSS;
 
   opts->flags |= TCP_OPTS_FLAG_WSCALE;
@@ -1529,7 +1521,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  session_transport_closing_notify (&tc->connection);
 	  tcp_connection_timers_reset (tc);
-	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.closewait_time);
 	  return;
 	}
 
@@ -1581,7 +1573,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	{
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  tcp_connection_timers_reset (tc);
-	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+	  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.cleanup_time);
 	  return;
 	}
 
