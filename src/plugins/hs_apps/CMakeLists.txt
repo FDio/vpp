@@ -34,12 +34,6 @@ if(VPP_BUILD_HS_SAPI_APPS)
     DEPENDS api_headers
     NO_INSTALL
   )
-  add_vpp_executable(udp_echo
-    SOURCES sapi/udp_echo.c
-    LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
-    DEPENDS api_headers
-    NO_INSTALL
-  )
 endif(VPP_BUILD_HS_SAPI_APPS)
 
 ##############################################################################

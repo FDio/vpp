@@ -24,6 +24,7 @@
 #include <hs_apps/sapi/vpp_echo_bapi.c>
 #include <hs_apps/sapi/vpp_echo_proto_quic.c>
 #include <hs_apps/sapi/vpp_echo_proto_tcp.c>
+#include <hs_apps/sapi/vpp_echo_proto_udp.c>
 
 static void
 echo_session_prealloc (echo_main_t * em)
