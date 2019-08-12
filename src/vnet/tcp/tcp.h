@@ -33,8 +33,6 @@
 #define TCP_CC_DATA_SZ 24
 
 #define TCP_DUPACK_THRESHOLD 	3
-#define TCP_MAX_RX_FIFO_SIZE 	32 << 20
-#define TCP_MIN_RX_FIFO_SIZE	4 << 10
 #define TCP_IW_N_SEGMENTS 	10
 #define TCP_ALWAYS_ACK		1	/**< On/off delayed acks */
 #define TCP_USE_SACKS		1	/**< Disable only for testing */
@@ -91,17 +89,9 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 
 #define TCP_TIMER_HANDLE_INVALID ((u32) ~0)
 
-/* Timer delays as multiples of 100ms */
-#define TCP_TO_TIMER_TICK       TCP_TICK*10	/* Period for converting from TCP
-						 * ticks to timer units */
-#define TCP_DELACK_TIME         1	/* 0.1s */
-#define TCP_SYN_RCVD_TIME	600	/* 60s */
-#define TCP_2MSL_TIME           300	/* 30s */
-#define TCP_CLOSEWAIT_TIME	20	/* 2s */
-#define TCP_TIMEWAIT_TIME	100	/* 10s */
-#define TCP_FINWAIT1_TIME	600	/* 60s */
-#define TCP_CLEANUP_TIME	1	/* 0.1s */
-#define TCP_TIMER_PERSIST_MIN	2	/* 0.2s */
+#define TCP_TIMER_TICK		0.1		/**< Timer tick in seconds */
+#define TCP_TO_TIMER_TICK       TCP_TICK*10	/**< Factor for converting
+						     ticks to timer ticks */
 
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */
 #define TCP_RTO_MIN 0.2 * THZ	/* Min RTO (200ms) - lower than standard */
@@ -511,6 +501,66 @@ typedef struct tcp_iss_seed_
   u64 second;
 } tcp_iss_seed_t;
 
+typedef struct tcp_configuration_
+{
+  /** Max rx fifo size for a session (in bytes). It is used in to compute the
+   *  rfc 7323 window scaling factor */
+  u32 max_rx_fifo;
+
+  /** Min rx fifo for a session (in bytes) */
+  u32 min_rx_fifo;
+
+  /** Default MTU to be used when establishing connections */
+  u16 default_mtu;
+
+  /** Initial CWND multiplier, which multiplies MSS to determine initial CWND.
+   *  Set 0 to determine the initial CWND by another way */
+  u16 initial_cwnd_multiplier;
+
+  /** Enable tx pacing for new connections */
+  u8 enable_tx_pacing;
+
+  /** Default congestion control algorithm type */
+  tcp_cc_algorithm_type_e cc_algo;
+
+  /** Delayed ack time (disabled) */
+  u16 delack_time;
+
+  /** Timer ticks to wait for close from app */
+  u16 closewait_time;
+
+  /** Timer ticks to wait in time-wait. Also known as 2MSL */
+  u16 timewait_time;
+
+  /** Timer ticks to wait in fin-wait1 to send fin and rcv fin-ack */
+  u16 finwait1_time;
+
+  /** Timer ticks to wait in last ack for ack */
+  u16 lastack_time;
+
+  /** Timer ticks to wait in fin-wait2 for fin */
+  u16 finwait2_time;
+
+  /** Timer ticks to wait in closing for fin ack */
+  u16 closing_time;
+
+  /** Timer ticks to wait before cleaning up the connection */
+  u16 cleanup_time;
+
+  /** Number of preallocated connections */
+  u32 preallocated_connections;
+
+  /** Number of preallocated half-open connections */
+  u32 preallocated_half_open_connections;
+
+  /** Vectors of src addresses. Optional unless one needs > 63K active-opens */
+  ip4_address_t *ip4_src_addrs;
+  ip6_address_t *ip6_src_addrs;
+
+  /** Fault-injection. Debug only */
+  f64 buffer_fail_fraction;
+} tcp_configuration_t;
+
 typedef struct _tcp_main
 {
   /* Per-worker thread tcp connection pools */
@@ -528,17 +578,17 @@ typedef struct _tcp_main
   /** per-worker context */
   tcp_worker_ctx_t *wrk_ctx;
 
-  /* Pool of half-open connections on which we've sent a SYN */
+  /** Pool of half-open connections on which we've sent a SYN */
   tcp_connection_t *half_open_connections;
   clib_spinlock_t half_open_lock;
 
   /** vlib buffer size */
   u32 bytes_per_buffer;
 
-  /* Seed used to generate random iss */
+  /** Seed used to generate random iss */
   tcp_iss_seed_t iss_seed;
 
-  /* Congestion control algorithms registered */
+  /** Congestion control algorithms registered */
   tcp_cc_algorithm_t *cc_algos;
 
   /** Hash table of cc algorithms by name */
@@ -547,45 +597,23 @@ typedef struct _tcp_main
   /** Last cc algo registered */
   tcp_cc_algorithm_type_e cc_last_type;
 
-  /*
-   * Configuration
-   */
-
-  /* Flag that indicates if stack is on or off */
+  /** Flag that indicates if stack is on or off */
   u8 is_enabled;
 
-  /** Max rx fifo size for a session. It is used in to compute the
-   *  rfc 7323 window scaling factor */
-  u32 max_rx_fifo;
-
-  /** Default MTU to be used when establishing connections */
-  u16 default_mtu;
-
-  /** Initial CWND multiplier, which multiplies MSS to determine initial CWND.
-   *  Set 0 to determine the initial CWND by another way */
-  u16 initial_cwnd_multiplier;
-
-  /** Number of preallocated connections */
-  u32 preallocated_connections;
-  u32 preallocated_half_open_connections;
-
-  /** Vectors of src addresses. Optional unless one needs > 63K active-opens */
-  ip4_address_t *ip4_src_addresses;
-  u32 last_v4_address_rotor;
-  u32 last_v6_address_rotor;
-  ip6_address_t *ip6_src_addresses;
-
-  /** Enable tx pacing for new connections */
-  u8 tx_pacing;
-
+  /** Flag that indicates if v4 punting is enabled */
   u8 punt_unknown4;
+
+  /** Flag that indicates if v6 punting is enabled */
   u8 punt_unknown6;
 
-  /** fault-injection */
-  f64 buffer_fail_fraction;
+  /** Rotor for v4 source addresses */
+  u32 last_v4_addr_rotor;
 
-  /** Default congestion control algorithm type */
-  tcp_cc_algorithm_type_e cc_algo;
+  /** Rotor for v6 source addresses */
+  u32 last_v6_addr_rotor;
+
+  /** Protocol configuration */
+  tcp_configuration_t cfg;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
@@ -602,6 +630,7 @@ extern vlib_node_registration_t tcp6_rcv_process_node;
 extern vlib_node_registration_t tcp4_listen_node;
 extern vlib_node_registration_t tcp6_listen_node;
 
+#define tcp_cfg tcp_main.cfg
 #define tcp_node_index(node_id, is_ip4) 				\
   ((is_ip4) ? tcp4_##node_id##_node.index : tcp6_##node_id##_node.index)
 
@@ -842,8 +871,8 @@ tcp_flight_size (const tcp_connection_t * tc)
 always_inline u32
 tcp_initial_cwnd (const tcp_connection_t * tc)
 {
-  if (tcp_main.initial_cwnd_multiplier > 0)
-    return tcp_main.initial_cwnd_multiplier * tc->snd_mss;
+  if (tcp_cfg.initial_cwnd_multiplier > 0)
+    return tcp_cfg.initial_cwnd_multiplier * tc->snd_mss;
 
   if (tc->snd_mss > 2190)
     return 2 * tc->snd_mss;
@@ -1089,16 +1118,14 @@ tcp_persist_timer_set (tcp_connection_t * tc)
 {
   /* Reuse RTO. It's backed off in handler */
   tcp_timer_set (tc, TCP_TIMER_PERSIST,
-		 clib_max (tc->rto * TCP_TO_TIMER_TICK,
-			   TCP_TIMER_PERSIST_MIN));
+		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
 }
 
 always_inline void
 tcp_persist_timer_update (tcp_connection_t * tc)
 {
   tcp_timer_update (tc, TCP_TIMER_PERSIST,
-		    clib_max (tc->rto * TCP_TO_TIMER_TICK,
-			      TCP_TIMER_PERSIST_MIN));
+		    clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
 }
 
 always_inline void
