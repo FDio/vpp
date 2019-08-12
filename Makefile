@@ -92,7 +92,6 @@ RPM_DEPENDS += mbedtls-devel
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
 	RPM_DEPENDS += subunit subunit-devel
-	RPM_DEPENDS += compat-openssl10-devel
 	RPM_DEPENDS += python3-devel python3-ply
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
@@ -422,9 +421,6 @@ test-all-debug:
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp_debug vom-install,)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_debug,test)
-
-papi-wipe:
-	@make -C test papi-wipe
 
 test-help:
 	@make -C test help
