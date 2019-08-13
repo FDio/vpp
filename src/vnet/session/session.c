@@ -568,10 +568,10 @@ session_enqueue_notify (session_t * s)
 static void
 session_enqueue_notify_rpc (void *arg)
 {
-  session_handle_t sh = (session_handle_t) arg;
+  u32 session_index = pointer_to_uword (arg);
   session_t *s;
 
-  s = session_get_from_handle_if_valid (sh);
+  s = session_get_if_valid (session_index, vlib_get_thread_index ());
   if (!s)
     return;
 
@@ -586,8 +586,15 @@ void
 session_enqueue_notify_thread (session_handle_t sh)
 {
   u32 thread_index = session_thread_from_handle (sh);
+  u32 session_index = session_index_from_handle (sh);
+
+  /*
+   * Pass session index (u32) as opposed to handle (u64) in case pointers
+   * are not 64-bit.
+   */
   session_send_rpc_evt_to_thread (thread_index,
-				  session_enqueue_notify_rpc, (void *) sh);
+				  session_enqueue_notify_rpc,
+				  uword_to_pointer (session_index, void *));
 }
 
 int
