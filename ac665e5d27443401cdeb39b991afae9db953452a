@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "d60a5e1b_5e69d00e",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2019-08-13T08:32:43Z",
+      "side": 1,
+      "message": "This doesn\u0027t actually work, the DEB_DEPENDS lines need to be changed to this:\n$(eval DEB_DEPENDS +\u003d libssl-dev:arm64 libmbedtls-dev:arm64 uuid-dev:arm64)",
+      "parentUuid": "7340b6f6_6248e6f1",
+      "range": {
+        "startLine": 306,
+        "startChar": 0,
+        "endLine": 317,
+        "endChar": 69
+      },
+      "revId": "ac665e5d27443401cdeb39b991afae9db953452a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "be0732a6_ed2e9309",
         "filename": "build-data/packages/vpp.mk",
         "patchSetId": 3
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "a59a37c3_f9c6592f",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2019-08-13T08:32:43Z",
+      "side": 1,
+      "message": "Ok, I can add this",
+      "parentUuid": "be0732a6_ed2e9309",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 40,
+        "endChar": 40
+      },
+      "revId": "ac665e5d27443401cdeb39b991afae9db953452a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "639cdb76_2b501359",
         "filename": "src/cmake/cpu.cmake",
         "patchSetId": 3
@@ -59,6 +107,30 @@
       "writtenOn": "2019-08-13T06:31:51Z",
       "side": 1,
       "message": "Even this can be passed from aarch64.mk right?",
+      "range": {
+        "startLine": 67,
+        "startChar": 21,
+        "endLine": 67,
+        "endChar": 39
+      },
+      "revId": "ac665e5d27443401cdeb39b991afae9db953452a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2307e517_3fbe87c9",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 3
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2019-08-13T08:32:43Z",
+      "side": 1,
+      "message": "Yes, this should be in the platform mk file",
+      "parentUuid": "639cdb76_2b501359",
       "range": {
         "startLine": 67,
         "startChar": 21,
