@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be0732a6_ed2e9309",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-08-13T06:31:51Z",
+      "side": 1,
+      "message": "In this patch you are cross compiling dpdk with in VPP but at least we require to link VPP with our own dpdk library (external linking). Hence can we add following\n\nifneq ($($(PLATFORM)_uses_dpdk),no)\nvpp_configure_depend +\u003d external-install\nendif\n\nsuch that if any build-data/platforms/$(PLATFORMS).mk does not require internal DPDK compilation that can happen.",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 40,
+        "endChar": 40
+      },
+      "revId": "ac665e5d27443401cdeb39b991afae9db953452a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "639cdb76_2b501359",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 3
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-08-13T06:31:51Z",
+      "side": 1,
+      "message": "Even this can be passed from aarch64.mk right?",
+      "range": {
+        "startLine": 67,
+        "startChar": 21,
+        "endLine": 67,
+        "endChar": 39
+      },
+      "revId": "ac665e5d27443401cdeb39b991afae9db953452a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
