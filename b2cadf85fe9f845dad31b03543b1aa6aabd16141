@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be4dc671_fd5e6578",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-08-13T09:30:40Z",
+      "side": 1,
+      "message": "I think the check should be ifneq($(USE_EXTERNAL_DPDK_BUILD), no). As there is no need to explicitly mention this variable in $(platform).mk as \"no\". \n\nAlso I prefer $($(PLATFORM)_uses_external_dpdk) instead of $(USE_EXTERNAL_DPDK_BUILD). That aligns with older convention. dpaa2.mk still have that variable",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 40,
+        "endChar": 38
+      },
+      "revId": "b2cadf85fe9f845dad31b03543b1aa6aabd16141",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
