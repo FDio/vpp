@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "0de11455_15991e65",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2019-08-13T09:08:56Z",
+      "side": 1,
+      "message": "Right, my comment was just a caveat that it won\u0027t work anywhere regardless :-)\n\nIn any case, this patch is supposed to support at least Ubuntu1804, which is the distro we\u0027re targeting. If you have any ideas on how to make the whole thing more generic, I\u0027d by happy to implement them.",
+      "parentUuid": "3b455895_277018cf",
+      "range": {
+        "startLine": 306,
+        "startChar": 0,
+        "endLine": 317,
+        "endChar": 69
+      },
+      "revId": "ac665e5d27443401cdeb39b991afae9db953452a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "be0732a6_ed2e9309",
         "filename": "build-data/packages/vpp.mk",
         "patchSetId": 3
