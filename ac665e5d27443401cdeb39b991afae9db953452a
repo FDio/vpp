@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "3b455895_277018cf",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2019-08-13T08:53:47Z",
+      "side": 1,
+      "message": "My comment was with respect to Ubuntu packages. We do not uses Ubuntu on target. Its busybox so I have to verify",
+      "parentUuid": "d60a5e1b_5e69d00e",
+      "range": {
+        "startLine": 306,
+        "startChar": 0,
+        "endLine": 317,
+        "endChar": 69
+      },
+      "revId": "ac665e5d27443401cdeb39b991afae9db953452a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "be0732a6_ed2e9309",
         "filename": "build-data/packages/vpp.mk",
         "patchSetId": 3
