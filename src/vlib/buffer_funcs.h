@@ -992,6 +992,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   d->current_data = s->current_data;
   d->current_length = s->current_length;
   d->flags = s->flags & flag_mask;
+  d->trace_handle = s->trace_handle;
   d->total_length_not_including_first_buffer =
     s->total_length_not_including_first_buffer;
   clib_memcpy_fast (d->opaque, s->opaque, sizeof (s->opaque));
@@ -1138,6 +1139,7 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
 	}
       d->flags = (s->flags & VLIB_BUFFER_COPY_CLONE_FLAGS_MASK) |
 	VLIB_BUFFER_NEXT_PRESENT;
+      d->trace_handle = s->trace_handle;
       clib_memcpy_fast (d->opaque, s->opaque, sizeof (s->opaque));
       clib_memcpy_fast (d->opaque2, s->opaque2, sizeof (s->opaque2));
       clib_memcpy_fast (vlib_buffer_get_current (d),
