@@ -35,7 +35,7 @@
 #
 
 # Platform selects e.g. Linux config file
-PLATFORM = native
+PLATFORM = vpp
 
 native_arch = native
 
