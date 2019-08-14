@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "48b237be_8f37cf96",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-14T17:25:42Z",
+      "side": 1,
+      "message": "Yes indeed, the only issue is the connect_failed_cb is a binary api callback and the connected_cb a message queue cb, so we would need to cast the mp depending on the is_failed param",
+      "parentUuid": "0d78b8d2_70d56554",
+      "range": {
+        "startLine": 126,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 42
+      },
+      "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bbf4f018_29baa3c1",
         "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
         "patchSetId": 7
@@ -36,6 +60,30 @@
       "writtenOn": "2019-08-14T16:10:29Z",
       "side": 1,
       "message": "Is this used anywhere?",
+      "range": {
+        "startLine": 139,
+        "startChar": 9,
+        "endLine": 139,
+        "endChar": 31
+      },
+      "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c92296e9_595156ce",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-14T17:25:42Z",
+      "side": 1,
+      "message": "It is used in echo_check_closed_listener (triggered when a listener is closed and we still have open sessions accepted on it), but might be worth bundling it with cleanup_cb with some parameter to differentiate between the two",
+      "parentUuid": "bbf4f018_29baa3c1",
       "range": {
         "startLine": 139,
         "startChar": 9,
