@@ -374,6 +374,11 @@ ipsec_init (vlib_main_t * vm)
   vec_validate (im->integ_algs, IPSEC_INTEG_N_ALG - 1);
   ipsec_main_integ_alg_t *i;
 
+  i = &im->integ_algs[IPSEC_INTEG_ALG_MD5_96];
+  i->op_id = VNET_CRYPTO_OP_MD5_HMAC;
+  i->alg = VNET_CRYPTO_ALG_HMAC_MD5;
+  i->icv_size = 12;
+
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA1_96];
   i->op_id = VNET_CRYPTO_OP_SHA1_HMAC;
   i->alg = VNET_CRYPTO_ALG_HMAC_SHA1;
