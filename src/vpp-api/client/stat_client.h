@@ -23,21 +23,11 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <vlib/counter_types.h>
-
-typedef enum
-{
-  STAT_DIR_TYPE_ILLEGAL = 0,
-  STAT_DIR_TYPE_SCALAR_INDEX,
-  STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
-  STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
-  STAT_DIR_TYPE_ERROR_INDEX,
-  STAT_DIR_TYPE_NAME_VECTOR,
-} stat_directory_type_t;
+#include <stdbool.h>
+#include <vpp/stats/stat_segment_shared.h>
 
 /* Default socket to exchange segment fd */
 #define STAT_SEGMENT_SOCKET_FILE "/run/vpp/stats.sock"
-
-typedef struct stat_client_main_t stat_client_main_t;
 
 typedef struct
 {
@@ -52,6 +42,16 @@ typedef struct
     uint8_t **name_vector;
   };
 } stat_segment_data_t;
+
+typedef struct
+{
+  uint64_t current_epoch;
+  stat_segment_shared_header_t *shared_header;
+  stat_segment_directory_entry_t *directory_vector;
+  ssize_t memory_size;
+} stat_client_main_t;
+
+extern stat_client_main_t stat_client_main;
 
 stat_client_main_t *stat_client_get (void);
 void stat_client_free (stat_client_main_t * sm);
@@ -80,6 +80,35 @@ char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
 char *stat_segment_index_to_name (uint32_t index);
 uint64_t stat_segment_version (void);
 uint64_t stat_segment_version_r (stat_client_main_t * sm);
+
+typedef struct
+{
+  uint64_t epoch;
+} stat_segment_access_t;
+
+static inline void
+stat_segment_access_start (stat_segment_access_t * sa,
+			   stat_client_main_t * sm)
+{
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  sa->epoch = shared_header->epoch;
+  while (shared_header->in_progress != 0)
+    ;
+  sm->directory_vector = (stat_segment_directory_entry_t *)
+    stat_segment_pointer (sm->shared_header,
+			  sm->shared_header->directory_offset);
+}
+
+static inline bool
+stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
+{
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+
+  if (shared_header->epoch != sa->epoch || shared_header->in_progress)
+    return false;
+  return true;
+}
+
 
 #endif /* included_stat_client_h */
 
