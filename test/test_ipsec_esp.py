@@ -366,7 +366,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
 
     @parameterized.expand(["ia32", "ipsecmb", "openssl"])
     def test_crypto_algs(self, engine):
-        """AES-[CBC, GCM]-[128, 192, 256] 3DES-CBC w/ & w/o ESN"""
+        """AES-[CBC, GCM]-[128, 192, 256] 3DES-CBC SHA1 MD5 w/ & w/o ESN"""
 
         # foreach crypto algorithm
         algos = [{'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
@@ -396,9 +396,9 @@ class TestIpsecEspAll(ConfigIpsecESP,
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_128),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
-                                IPSEC_API_INTEG_ALG_SHA1_96),
+                                IPSEC_API_INTEG_ALG_MD5_96),
                   'scapy-crypto': "AES-CBC",
-                  'scapy-integ': "HMAC-SHA1-96",
+                  'scapy-integ': "HMAC-MD5-96",
                   'salt': 0,
                   'key': "JPjyOWBeVEQiMe7h"},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
