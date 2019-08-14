@@ -28,17 +28,9 @@
 #include <assert.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/lock.h>
-#include "stat_client.h"
 #include <stdatomic.h>
 #include <vpp/stats/stat_segment.h>
-
-struct stat_client_main_t
-{
-  uint64_t current_epoch;
-  stat_segment_shared_header_t *shared_header;
-  stat_segment_directory_entry_t *directory_vector;
-  ssize_t memory_size;
-};
+#include <vpp-api/client/stat_client.h>
 
 stat_client_main_t stat_client_main;
 
@@ -167,34 +159,6 @@ stat_segment_disconnect_r (stat_client_main_t * sm)
 {
   munmap (sm->shared_header, sm->memory_size);
   return;
-}
-
-typedef struct
-{
-  uint64_t epoch;
-} stat_segment_access_t;
-
-static void
-stat_segment_access_start (stat_segment_access_t * sa,
-			   stat_client_main_t * sm)
-{
-  stat_segment_shared_header_t *shared_header = sm->shared_header;
-  sa->epoch = shared_header->epoch;
-  while (shared_header->in_progress != 0)
-    ;
-  sm->directory_vector = stat_segment_pointer (sm->shared_header,
-					       sm->
-					       shared_header->directory_offset);
-}
-
-static bool
-stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
-{
-  stat_segment_shared_header_t *shared_header = sm->shared_header;
-
-  if (shared_header->epoch != sa->epoch || shared_header->in_progress)
-    return false;
-  return true;
 }
 
 void
