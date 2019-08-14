@@ -176,7 +176,6 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr)
 	    (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID
 	     | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
 	}
       if (l4_proto == IP_PROTOCOL_TCP)
 	{
