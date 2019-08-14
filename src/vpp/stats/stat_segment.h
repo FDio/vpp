@@ -19,7 +19,6 @@
 #include <stdatomic.h>
 #include <vlib/vlib.h>
 #include <vppinfra/socket.h>
-#include <vpp-api/client/stat_client.h>
 
 typedef enum
 {
@@ -58,6 +57,16 @@ typedef enum
   _(NODE_NAMES, NAME_VECTOR, names, /sys/node)                  \
   _(MEM_STATSEG_TOTAL, SCALAR_INDEX, total, /mem/statseg)       \
   _(MEM_STATSEG_USED, SCALAR_INDEX, used, /mem/statseg)
+
+typedef enum
+{
+  STAT_DIR_TYPE_ILLEGAL = 0,
+  STAT_DIR_TYPE_SCALAR_INDEX,
+  STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
+  STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
+  STAT_DIR_TYPE_ERROR_INDEX,
+  STAT_DIR_TYPE_NAME_VECTOR,
+} stat_directory_type_t;
 
 typedef struct
 {
