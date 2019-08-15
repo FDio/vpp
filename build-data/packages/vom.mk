@@ -23,7 +23,7 @@ endif
 
 vom_cmake_args ?=
 vom_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
-vom_cmake_args += -DCMAKE_CXX_FLAGS="$($(TAG)_TAG_CPPFLAGS)"
+vom_cmake_args += -DCMAKE_CXX_FLAGS="$($(TAG)_TAG_CXXFLAGS)"
 vom_cmake_args += -DCMAKE_SHARED_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
 vom_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(PACKAGE_INSTALL_DIR)/../vpp"
 
