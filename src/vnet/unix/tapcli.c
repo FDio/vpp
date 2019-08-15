@@ -753,6 +753,13 @@ tapcli_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
+u8 *
+format_tapcli_tx_trace (u8 * s, va_list * va)
+{
+  s = format (s, "tapcli tx trace is not supported");
+  return s;
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (tapcli_dev_class,static) = {
   .name = "tapcli",
@@ -761,6 +768,7 @@ VNET_DEVICE_CLASS (tapcli_dev_class,static) = {
   .rx_redirect_to_node = tapcli_set_interface_next_node,
   .name_renumber = tap_name_renumber,
   .admin_up_down_function = tapcli_interface_admin_up_down,
+  .format_tx_trace = format_tapcli_tx_trace,
 };
 /* *INDENT-ON* */
 
