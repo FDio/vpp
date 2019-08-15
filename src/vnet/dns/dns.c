@@ -650,7 +650,8 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
 
 out:
 
-  vlib_process_signal_event_mt (dm->vlib_main, dns_resolver_node.index,
+  vlib_process_signal_event_mt (dm->vlib_main,
+				dm->resolver_process_node_index,
 				DNS_RESOLVER_EVENT_PENDING, 0);
 }
 

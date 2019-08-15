@@ -171,7 +171,7 @@ dns46_reply_node_fn (vlib_main_t * vm,
 	  /*
 	   * Deal with everything in process ctx on the main thread
 	   */
-	  vlib_process_signal_event_mt (vm, dns_resolver_node.index,
+	  vlib_process_signal_event_mt (vm, dm->resolver_process_node_index,
 					DNS_RESOLVER_EVENT_RESOLVED,
 					(uword) resp0);
 	  error0 = DNS46_REPLY_ERROR_PROCESSED;
