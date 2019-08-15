@@ -22,6 +22,30 @@
       "revId": "b2cadf85fe9f845dad31b03543b1aa6aabd16141",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "45ceaf79_2c53c6cf",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2019-08-15T09:29:44Z",
+      "side": 1,
+      "message": "Okay, not having to specify USE_EXTERNAL_DPDK_BUILD makes sense.\n\nI changed the naming convention because it didn\u0027t make sense to me. We\u0027re building for only one platform (at least I didn\u0027t see the support for build for multiple platform, although I could be wrong), so I changed the naming convention to be less confusing.\n\nThe older .mk files were not working anyway (by which I mean builds for those platforms didn\u0027t work, at least for me), so I didn\u0027t think this change would impact much. The authors of those platform can easily change the .mk files if they wish to re-add the support.",
+      "parentUuid": "be4dc671_fd5e6578",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 40,
+        "endChar": 38
+      },
+      "revId": "b2cadf85fe9f845dad31b03543b1aa6aabd16141",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
