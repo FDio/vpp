@@ -214,13 +214,17 @@ format_vhost_trace (u8 * s, va_list * va)
   CLIB_UNUSED (vnet_main_t * vnm) = vnet_get_main ();
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_trace_t *t = va_arg (*va, vhost_trace_t *);
-  vhost_user_intf_t *vui = pool_elt_at_index (vum->vhost_user_interfaces,
-					      t->device_index);
+  vhost_user_intf_t *vui = vum->vhost_user_interfaces + t->device_index;
+  vnet_sw_interface_t *sw;
+  u32 indent;
 
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, vui->sw_if_index);
-
-  u32 indent = format_get_indent (s);
-
+  if (pool_is_free (vum->vhost_user_interfaces, vui))
+    {
+      s = format (s, "vhost-user interface is deleted");
+      return s;
+    }
+  sw = vnet_get_sw_interface (vnm, vui->sw_if_index);
+  indent = format_get_indent (s);
   s = format (s, "%U %U queue %d\n", format_white_space, indent,
 	      format_vnet_sw_interface_name, vnm, sw, t->qid);
 
