@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "f7a469d4_ffe04a72",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-15T06:51:35Z",
+      "side": 1,
+      "message": "That\u0027s only if the binary api \"connect\" fails in the session api handler, isn\u0027t it? Otherwise, if the transport handshake (if the transport is vc) fails then an mq message is exchanged. \n\nMaybe then we could just construct a fake session_connected_msg_t in the binary api handler to handle the first case. Going forward, as we move away from the binary api, we should only have to deal with mq messages.",
+      "parentUuid": "48b237be_8f37cf96",
+      "range": {
+        "startLine": 126,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 42
+      },
+      "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bbf4f018_29baa3c1",
         "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
         "patchSetId": 7
@@ -89,6 +113,53 @@
         "startChar": 9,
         "endLine": 139,
         "endChar": 31
+      },
+      "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "64253a41_e646c365",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-15T06:51:35Z",
+      "side": 1,
+      "message": "If possible, we probably should.",
+      "parentUuid": "c92296e9_595156ce",
+      "range": {
+        "startLine": 139,
+        "startChar": 9,
+        "endLine": 139,
+        "endChar": 31
+      },
+      "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ea122e5b_4424a3b4",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_proto_quic.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-15T06:51:35Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be handled identically for all transports? \n\nAlso, you\u0027re not updating eqm-\u003en_quic_clients_connected here, so must you check it? That is, can you have em-\u003en_clients_connected \u003d\u003d 0 and n_quic_clients_connected !\u003d 0?",
+      "range": {
+        "startLine": 422,
+        "startChar": 0,
+        "endLine": 429,
+        "endChar": 32
       },
       "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
