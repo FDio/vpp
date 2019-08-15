@@ -391,14 +391,19 @@ validate_and_reset_acl_counters (acl_main_t * am, u32 acl_index)
       /* filled in once only */
       am->combined_acl_counters[i].stat_segment_name = (void *)
 	format (0, "/acl/%d/matches%c", i, 0);
-      clib_warning ("add stats segment: %s",
-		    am->combined_acl_counters[i].stat_segment_name);
-      i32 rule_count = vec_len (am->acls[acl_index].rules);
+      i32 rule_count = vec_len (am->acls[i].rules);
       /* Validate one extra so we always have at least one counter for an ACL */
       vlib_validate_combined_counter (&am->combined_acl_counters[i],
 				      rule_count);
-      vlib_zero_combined_counter (&am->combined_acl_counters[i], rule_count);
+      vlib_clear_combined_counters (&am->combined_acl_counters[i]);
     }
+
+  /* (re)validate for the actual ACL that is getting added/updated */
+  i32 rule_count = vec_len (am->acls[acl_index].rules);
+  /* Validate one extra so we always have at least one counter for an ACL */
+  vlib_validate_combined_counter (&am->combined_acl_counters[acl_index],
+				  rule_count);
+  vlib_clear_combined_counters (&am->combined_acl_counters[acl_index]);
   acl_plugin_counter_unlock (am);
 }
 
@@ -1945,7 +1950,7 @@ static void
   vl_api_acl_stats_intf_counters_enable_reply_t *rmp;
   int rv;
 
-  rv = acl_stats_intf_counters_enable_disable (am, ntohl (mp->enable));
+  rv = acl_stats_intf_counters_enable_disable (am, mp->enable);
 
   REPLY_MACRO (VL_API_ACL_DEL_REPLY);
 }
