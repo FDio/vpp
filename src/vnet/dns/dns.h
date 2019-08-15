@@ -127,7 +127,6 @@ extern dns_main_t dns_main;
 extern vlib_node_registration_t dns46_reply_node;
 extern vlib_node_registration_t dns4_request_node;
 extern vlib_node_registration_t dns6_request_node;
-extern vlib_node_registration_t dns_resolver_node;
 
 #define foreach_dns46_request_error                                     \
 _(NONE, "No error")							\

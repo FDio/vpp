@@ -38,8 +38,6 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-vlib_node_registration_t dns_resolver_node;
-
 extern int
 vnet_dns_response_to_reply (u8 * response,
 			    vl_api_dns_resolve_name_reply_t * rmp,
