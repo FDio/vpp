@@ -2302,7 +2302,6 @@ always_inline uword
 tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame, int is_ip4)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
   u32 n_left_from, *from, *first_buffer, errors = 0;
   u32 my_thread_index = vm->thread_index;
   tcp_worker_ctx_t *wrk = tcp_get_worker (my_thread_index);
@@ -2433,10 +2432,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* Valid SYN or SYN-ACK. Move connection from half-open pool to
        * current thread pool. */
-      pool_get (tm->connections[my_thread_index], new_tc0);
-      clib_memcpy_fast (new_tc0, tc0, sizeof (*new_tc0));
-      new_tc0->c_c_index = new_tc0 - tm->connections[my_thread_index];
-      new_tc0->c_thread_index = my_thread_index;
+      new_tc0 = tcp_connection_alloc_w_base (my_thread_index, tc0);
       new_tc0->rcv_nxt = vnet_buffer (b0)->tcp.seq_end;
       new_tc0->irs = seq0;
       new_tc0->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
@@ -3105,6 +3101,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       child0->c_is_ip4 = is_ip4;
       child0->state = TCP_STATE_SYN_RCVD;
       child0->c_fib_index = lc0->c_fib_index;
+      child0->cc_algo = lc0->cc_algo;
 
       if (is_ip4)
 	{
