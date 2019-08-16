@@ -1263,17 +1263,11 @@ const static transport_proto_vft_t tcp_proto = {
 void
 tcp_connection_tx_pacer_update (tcp_connection_t * tc)
 {
-  f64 srtt;
-  u64 rate;
-
   if (!transport_connection_is_tx_paced (&tc->connection))
     return;
 
-  srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
-  /* TODO should constrain to interface's max throughput but
-   * we don't have link speeds for sw ifs ..*/
-  rate = tc->cwnd / srtt;
-  transport_connection_tx_pacer_update (&tc->connection, rate);
+  transport_connection_tx_pacer_update (&tc->connection,
+					tcp_cc_get_pacing_rate (tc));
 }
 
 void
