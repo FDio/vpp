@@ -293,6 +293,7 @@ typedef enum
   UNIX_CLI_PARSE_ACTION_WORDRIGHT,	/**< Jump cursor to start of right word */
   UNIX_CLI_PARSE_ACTION_ERASELINELEFT,	/**< Erase line to left of cursor */
   UNIX_CLI_PARSE_ACTION_ERASELINERIGHT,	/**< Erase line to right & including cursor */
+  UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT,	/**< Erase word left */
   UNIX_CLI_PARSE_ACTION_CLEAR,		/**< Clear the terminal */
   UNIX_CLI_PARSE_ACTION_REVSEARCH,	/**< Search backwards in command history */
   UNIX_CLI_PARSE_ACTION_FWDSEARCH,	/**< Search forwards in command history */
@@ -359,6 +360,7 @@ static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
   _(CTL ('D'), UNIX_CLI_PARSE_ACTION_ERASERIGHT),
   _(CTL ('U'), UNIX_CLI_PARSE_ACTION_ERASELINELEFT),
   _(CTL ('K'), UNIX_CLI_PARSE_ACTION_ERASELINERIGHT),
+  _(CTL ('W'), UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT),
   _(CTL ('Y'), UNIX_CLI_PARSE_ACTION_YANK),
   _(CTL ('L'), UNIX_CLI_PARSE_ACTION_CLEAR),
   _(ESC "b", UNIX_CLI_PARSE_ACTION_WORDLEFT),	/* Alt-B */
@@ -1614,6 +1616,51 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       _vec_len (cf->current_command) = cf->cursor;
 
       cf->search_mode = 0;
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT:
+      /* calculate num of caracter to be erased */
+      delta = 0;
+      while (cf->cursor > delta
+	     && cf->current_command[cf->cursor - delta - 1] == ' ')
+	delta++;
+      while (cf->cursor > delta
+	     && cf->current_command[cf->cursor - delta - 1] != ' ')
+	delta++;
+
+      if (vec_len (cf->current_command))
+	{
+	  if (cf->cursor > 0)
+	    {
+	      /* move cursor left delta times */
+	      for (j = delta; j > 0; j--, cf->cursor--)
+		unix_vlib_cli_output_cursor_left (cf, uf);
+	      save = cf->current_command + cf->cursor;
+
+	      /* redraw remainder of line */
+	      memmove (cf->current_command + cf->cursor,
+		       cf->current_command + cf->cursor + delta,
+		       _vec_len (cf->current_command) - cf->cursor - delta);
+	      unix_vlib_cli_output_cooked (cf, uf,
+					   cf->current_command + cf->cursor,
+					   _vec_len (cf->current_command) -
+					   cf->cursor);
+	      cf->cursor += _vec_len (cf->current_command) - cf->cursor;
+
+	      /* print delta amount of blank spaces,
+	       * then finally fix the cursor position */
+	      for (j = delta; j > 0; j--, cf->cursor--)
+		unix_vlib_cli_output_cursor_left (cf, uf);
+	      for (j = delta; j > 0; j--, cf->cursor++)
+		unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+	      for (; (cf->current_command + cf->cursor) > save; cf->cursor--)
+		unix_vlib_cli_output_cursor_left (cf, uf);
+	      _vec_len (cf->current_command) -= delta;
+	    }
+	}
+      cf->search_mode = 0;
+      cf->excursion = 0;
+      vec_reset_length (cf->search_key);
       break;
 
     case UNIX_CLI_PARSE_ACTION_LEFT:
