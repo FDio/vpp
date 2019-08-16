@@ -315,6 +315,7 @@ VLIB_CLI_COMMAND (show_lacp_command, static) = {
   .path = "show lacp",
   .short_help = "show lacp [<interface>] [details]",
   .function = show_lacp_fn,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 

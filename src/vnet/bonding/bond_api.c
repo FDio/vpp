@@ -258,6 +258,12 @@ bond_api_hookup (vlib_main_t * vm)
   foreach_bond_api_msg;
 #undef _
 
+  /* Mark these APIs as mp safe */
+  am->is_mp_safe[VL_API_SW_INTERFACE_BOND_DUMP] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_BOND_DETAILS] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_SLAVE_DUMP] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_SLAVE_DETAILS] = 1;
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */
