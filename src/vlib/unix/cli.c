@@ -293,6 +293,7 @@ typedef enum
   UNIX_CLI_PARSE_ACTION_WORDRIGHT,	/**< Jump cursor to start of right word */
   UNIX_CLI_PARSE_ACTION_ERASELINELEFT,	/**< Erase line to left of cursor */
   UNIX_CLI_PARSE_ACTION_ERASELINERIGHT,	/**< Erase line to right & including cursor */
+  UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT,	/**< Erase word left */
   UNIX_CLI_PARSE_ACTION_CLEAR,		/**< Clear the terminal */
   UNIX_CLI_PARSE_ACTION_REVSEARCH,	/**< Search backwards in command history */
   UNIX_CLI_PARSE_ACTION_FWDSEARCH,	/**< Search forwards in command history */
@@ -359,6 +360,7 @@ static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
   _(CTL ('D'), UNIX_CLI_PARSE_ACTION_ERASERIGHT),
   _(CTL ('U'), UNIX_CLI_PARSE_ACTION_ERASELINELEFT),
   _(CTL ('K'), UNIX_CLI_PARSE_ACTION_ERASELINERIGHT),
+  _(CTL ('W'), UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT),
   _(CTL ('Y'), UNIX_CLI_PARSE_ACTION_YANK),
   _(CTL ('L'), UNIX_CLI_PARSE_ACTION_CLEAR),
   _(ESC "b", UNIX_CLI_PARSE_ACTION_WORDLEFT),	/* Alt-B */
@@ -1614,6 +1616,65 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       _vec_len (cf->current_command) = cf->cursor;
 
       cf->search_mode = 0;
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT:
+      /* calculate num of caracter to be erased */
+      delta = 0;
+      while (cf->cursor > delta
+	     && cf->current_command[cf->cursor - delta - 1] == ' ')
+	delta++;
+      while (cf->cursor > delta
+	     && cf->current_command[cf->cursor - delta - 1] != ' ')
+	delta++;
+
+      /* loop the same procedure as UNIX_CLI_PARSE_ACTION_ERASE */
+      while ((delta--) > 0)
+	{
+	  if (vec_len (cf->current_command))
+	    {
+	      if (cf->cursor == vec_len (cf->current_command))
+		{
+		  unix_vlib_cli_output_cursor_left (cf, uf);
+		  cf->cursor--;
+		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+		  cf->cursor++;
+		  unix_vlib_cli_output_cursor_left (cf, uf);
+		  cf->cursor--;
+		  _vec_len (cf->current_command)--;
+		}
+	      else if (cf->cursor > 0)
+		{
+		  /* shift everything at & to the right of the cursor left by 1 */
+		  j = vec_len (cf->current_command) - cf->cursor;
+		  memmove (cf->current_command + cf->cursor - 1,
+			   cf->current_command + cf->cursor, j);
+		  _vec_len (cf->current_command)--;
+
+		  /* redraw the rest of the line */
+		  unix_vlib_cli_output_cursor_left (cf, uf);
+		  cf->cursor--;
+		  unix_vlib_cli_output_cooked (cf, uf,
+					       cf->current_command +
+					       cf->cursor, j);
+		  cf->cursor += j;
+		  /* erase last char */
+		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+		  cf->cursor++;
+
+		  /* and shift the terminal cursor back where it should be */
+		  j += 2;	/* account for old string length and offset position */
+		  while (--j)
+		    {
+		      unix_vlib_cli_output_cursor_left (cf, uf);
+		      cf->cursor--;
+		    }
+		}
+	    }
+	  cf->search_mode = 0;
+	  cf->excursion = 0;
+	  vec_reset_length (cf->search_key);
+	}
       break;
 
     case UNIX_CLI_PARSE_ACTION_LEFT:
