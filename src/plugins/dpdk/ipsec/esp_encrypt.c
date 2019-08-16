@@ -475,13 +475,13 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  f0->pad_length = pad_bytes;
 	  f0->next_header = next_hdr_type;
 
-	  if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
+	  if (oh6_0)
 	    {
 	      u16 len = b0->current_length - sizeof (ip6_header_t);
 	      oh6_0->ip6.payload_length =
 		clib_host_to_net_u16 (len - rewrite_len);
 	    }
-	  else
+	  else if (oh0)
 	    {
 	      oh0->ip4.length =
 		clib_host_to_net_u16 (b0->current_length - rewrite_len);
@@ -494,6 +494,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 					  ip4_header_bytes (&ouh0->ip4));
 		}
 	    }
+	  else			/* should never happen */
+	    clib_warning ("No outer header found for ESP packet");
 
 	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
