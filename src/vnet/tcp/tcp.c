@@ -1578,7 +1578,7 @@ VLIB_INIT_FUNCTION (tcp_init);
 uword
 unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
 {
-  uword *result = va_arg (*va, uword *);
+  tcp_cc_algorithm_type_e *result = va_arg (*va, tcp_cc_algorithm_type_e *);
   tcp_main_t *tm = &tcp_main;
   char *cc_algo_name;
   u8 found = 0;
