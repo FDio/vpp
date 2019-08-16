@@ -73,7 +73,6 @@ tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
 static void
 tcp_cc_init (tcp_connection_t * tc)
 {
-  tc->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
   tc->cc_algo->init (tc);
 }
 
@@ -136,6 +135,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
   listener->state = TCP_STATE_LISTEN;
+  listener->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
 
   tcp_connection_timers_init (listener);
 
@@ -301,6 +301,19 @@ tcp_connection_alloc (u8 thread_index)
 
   pool_get (tm->connections[thread_index], tc);
   clib_memset (tc, 0, sizeof (*tc));
+  tc->c_c_index = tc - tm->connections[thread_index];
+  tc->c_thread_index = thread_index;
+  return tc;
+}
+
+tcp_connection_t *
+tcp_connection_alloc_w_base (u8 thread_index, tcp_connection_t * base)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_connection_t *tc;
+
+  pool_get (tm->connections[thread_index], tc);
+  clib_memcpy_fast (tc, base, sizeof (*tc));
   tc->c_c_index = tc - tm->connections[thread_index];
   tc->c_thread_index = thread_index;
   return tc;
@@ -738,6 +751,7 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   tc->c_is_ip4 = rmt->is_ip4;
   tc->c_proto = TRANSPORT_PROTO_TCP;
   tc->c_fib_index = rmt->fib_index;
+  tc->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 

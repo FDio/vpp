@@ -705,6 +705,8 @@ void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
 int tcp_half_open_connection_cleanup (tcp_connection_t * tc);
 tcp_connection_t *tcp_connection_alloc (u8 thread_index);
+tcp_connection_t *tcp_connection_alloc_w_base (u8 thread_index,
+					       tcp_connection_t * base);
 void tcp_connection_free (tcp_connection_t * tc);
 void tcp_connection_reset (tcp_connection_t * tc);
 int tcp_configure_v4_source_address_range (vlib_main_t * vm,
