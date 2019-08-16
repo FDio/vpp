@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "3f355f73_447f6236",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-16T11:39:05Z",
+      "side": 1,
+      "message": "Agreed, made a \u0027session_connected_bundled_msg_t\u0027 that is an union of both message types. We differentiate on the is_failed param",
+      "parentUuid": "f7a469d4_ffe04a72",
+      "range": {
+        "startLine": 126,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 42
+      },
+      "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bbf4f018_29baa3c1",
         "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
         "patchSetId": 7
@@ -144,6 +168,30 @@
     },
     {
       "key": {
+        "uuid": "45fdf030_e3fd6c58",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-16T11:39:05Z",
+      "side": 1,
+      "message": "Refactoring this, it felt a lot easier to bundle the two calls together (I had some duplicated logic)",
+      "parentUuid": "64253a41_e646c365",
+      "range": {
+        "startLine": 139,
+        "startChar": 9,
+        "endLine": 139,
+        "endChar": 31
+      },
+      "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ea122e5b_4424a3b4",
         "filename": "src/plugins/hs_apps/sapi/vpp_echo_proto_quic.c",
         "patchSetId": 7
@@ -155,6 +203,30 @@
       "writtenOn": "2019-08-15T06:51:35Z",
       "side": 1,
       "message": "Shouldn\u0027t this be handled identically for all transports? \n\nAlso, you\u0027re not updating eqm-\u003en_quic_clients_connected here, so must you check it? That is, can you have em-\u003en_clients_connected \u003d\u003d 0 and n_quic_clients_connected !\u003d 0?",
+      "range": {
+        "startLine": 422,
+        "startChar": 0,
+        "endLine": 429,
+        "endChar": 32
+      },
+      "revId": "98250ea4e963bb5cc71a49f7584cafe4aa5faae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e53c2cc8_7a7a105e",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_proto_quic.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-16T11:39:05Z",
+      "side": 1,
+      "message": "This could be handled for all transports (indeed udp \u0026 tcp have the same callback, which is now included in cleanup_cb). The reason for it to be protocol specific is that  \u0027n_quic_clients_connected\u0027 is a quic parameter, so it\u0027s the reponsibility of proto_quic to inc/dec it based on the session_type. I can make it transparent for the proto imple, but it\u0027ll make the quic callback logic a bit more difficult to understand / or force vpp_echo.c to be quic aware.",
+      "parentUuid": "ea122e5b_4424a3b4",
       "range": {
         "startLine": 422,
         "startChar": 0,
