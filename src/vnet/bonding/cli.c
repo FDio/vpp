@@ -880,6 +880,7 @@ VLIB_CLI_COMMAND (show_bond_command, static) = {
   .path = "show bond",
   .short_help = "show bond [details]",
   .function = show_bond_fn,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
