@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f459889a_2e47090d",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-08-17T15:33:20Z",
+      "side": 1,
+      "message": "why do we care to return this value ? just for the future ?",
+      "range": {
+        "startLine": 251,
+        "startChar": 9,
+        "endLine": 251,
+        "endChar": 16
+      },
+      "revId": "0bf8f02925b182d2ca7afd8ba7bd6c84ebaa971a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "05133ddf_4dfc5335",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-08-17T15:33:20Z",
+      "side": 1,
+      "message": "assume b-\u003ecurrent_data \u003d 42.\n\nWhat will be the value of b-\u003edata[0..41] after the new buffer is initialized from the template base ? Would we not need to copy those bytes from the template ?",
+      "range": {
+        "startLine": 262,
+        "startChar": 2,
+        "endLine": 262,
+        "endChar": 18
+      },
+      "revId": "0bf8f02925b182d2ca7afd8ba7bd6c84ebaa971a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
