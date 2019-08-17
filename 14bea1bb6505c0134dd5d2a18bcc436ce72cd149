@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "617dd37f_e16f4b73",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-08-17T15:54:18Z",
+      "side": 1,
+      "message": "It is a great function to calculate the ethernet header size including vlan(s). But it is useful after the ethernet_input node. While here in device input node, we can\u0027t use it as above mentioned function calculate the vlan headers length using vlan flags.",
+      "parentUuid": "a0039144_a4619fc0",
+      "range": {
+        "startLine": 154,
+        "startChar": 0,
+        "endLine": 154,
+        "endChar": 48
+      },
+      "revId": "14bea1bb6505c0134dd5d2a18bcc436ce72cd149",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5e6821f8_ac01e013",
         "filename": "src/vnet/pg/input.c",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2019-08-17T15:38:29Z",
       "side": 1,
       "message": "Same comment as in the other file - would ethernet_buffer_header_size(b) work here and then it\u0027s a two dozen lines diff turning into a 2-line diff ?",
+      "range": {
+        "startLine": 1542,
+        "startChar": 0,
+        "endLine": 1542,
+        "endChar": 48
+      },
+      "revId": "14bea1bb6505c0134dd5d2a18bcc436ce72cd149",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "47e7a9d4_c3055672",
+        "filename": "src/vnet/pg/input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1542,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-08-17T15:54:18Z",
+      "side": 1,
+      "message": "same answer as above :)",
+      "parentUuid": "5e6821f8_ac01e013",
       "range": {
         "startLine": 1542,
         "startChar": 0,
