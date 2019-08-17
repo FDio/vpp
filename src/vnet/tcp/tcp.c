@@ -464,6 +464,18 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
   tcp_connection_cleanup (tc);
 }
 
+static void
+tcp_session_reset (u32 conn_index, u32 thread_index)
+{
+  tcp_connection_t *tc;
+  tc = tcp_connection_get (conn_index, thread_index);
+  session_transport_closed_notify (&tc->connection);
+  tcp_send_reset (tc);
+  tcp_connection_timers_reset (tc);
+  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, tcp_cfg.cleanup_time);
+}
+
 /**
  * Initialize all connection timers as invalid
  */
@@ -1244,6 +1256,7 @@ const static transport_proto_vft_t tcp_proto = {
   .connect = tcp_session_open,
   .close = tcp_session_close,
   .cleanup = tcp_session_cleanup,
+  .reset = tcp_session_reset,
   .send_mss = tcp_session_send_mss,
   .send_space = tcp_session_send_space,
   .update_time = tcp_update_time,
