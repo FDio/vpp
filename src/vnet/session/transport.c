@@ -324,6 +324,15 @@ transport_close (transport_proto_t tp, u32 conn_index, u8 thread_index)
   tp_vfts[tp].close (conn_index, thread_index);
 }
 
+void
+transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index)
+{
+  if (tp_vfts[tp].reset)
+    tp_vfts[tp].reset (conn_index, thread_index);
+  else
+    tp_vfts[tp].close (conn_index, thread_index);
+}
+
 u32
 transport_start_listen (transport_proto_t tp, u32 session_index,
 			transport_endpoint_t * tep)
