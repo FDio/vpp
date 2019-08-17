@@ -144,7 +144,7 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 }
 
 static void
-session_program_transport_close (session_t * s)
+session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
 {
   u32 thread_index = vlib_get_thread_index ();
   session_evt_elt_t *elt;
@@ -158,10 +158,10 @@ session_program_transport_close (session_t * s)
       elt = session_evt_alloc_ctrl (wrk);
       clib_memset (&elt->evt, 0, sizeof (session_event_t));
       elt->evt.session_handle = session_handle (s);
-      elt->evt.event_type = SESSION_CTRL_EVT_CLOSE;
+      elt->evt.event_type = evt;
     }
   else
-    session_send_ctrl_evt_to_thread (s, SESSION_CTRL_EVT_CLOSE);
+    session_send_ctrl_evt_to_thread (s, evt);
 }
 
 session_t *
@@ -888,7 +888,7 @@ session_transport_delete_notify (transport_connection_t * tc)
       s->session_state = SESSION_STATE_CLOSED;
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
-      session_program_transport_close (s);
+      session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       break;
     case SESSION_STATE_TRANSPORT_DELETED:
       break;
@@ -1194,12 +1194,26 @@ session_close (session_t * s)
        * acknowledge the close */
       if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED
 	  || s->session_state == SESSION_STATE_TRANSPORT_DELETED)
-	session_program_transport_close (s);
+	session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       return;
     }
 
   s->session_state = SESSION_STATE_CLOSING;
-  session_program_transport_close (s);
+  session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
+}
+
+/**
+ * Force a close without waiting for data to be flushed
+ */
+void
+session_reset (session_t * s)
+{
+  if (s->session_state >= SESSION_STATE_CLOSING)
+    return;
+  /* Drop all outstanding tx data */
+  svm_fifo_dequeue_drop_all (s->tx_fifo);
+  s->session_state = SESSION_STATE_CLOSING;
+  session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_RESET);
 }
 
 /**
@@ -1231,6 +1245,26 @@ session_transport_close (session_t * s)
   s->session_state = SESSION_STATE_APP_CLOSED;
 
   transport_close (session_get_transport_proto (s), s->connection_index,
+		   s->thread_index);
+}
+
+/**
+ * Force transport close
+ */
+void
+session_transport_reset (session_t * s)
+{
+  if (s->session_state >= SESSION_STATE_APP_CLOSED)
+    {
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
+	s->session_state = SESSION_STATE_CLOSED;
+      else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+	session_free_w_fifos (s);
+      return;
+    }
+
+  s->session_state = SESSION_STATE_APP_CLOSED;
+  transport_reset (session_get_transport_proto (s), s->connection_index,
 		   s->thread_index);
 }
 

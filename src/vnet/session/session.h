@@ -376,7 +376,9 @@ int session_open (u32 app_index, session_endpoint_t * tep, u32 opaque);
 int session_listen (session_t * s, session_endpoint_cfg_t * sep);
 int session_stop_listen (session_t * s);
 void session_close (session_t * s);
+void session_reset (session_t * s);
 void session_transport_close (session_t * s);
+void session_transport_reset (session_t * s);
 void session_transport_cleanup (session_t * s);
 int session_send_io_evt_to_thread (svm_fifo_t * f,
 				   session_evt_type_t evt_type);

@@ -902,6 +902,12 @@ session_event_dispatch (session_worker_t * wrk, vlib_node_runtime_t * node,
 	break;
       session_transport_close (s);
       break;
+    case SESSION_CTRL_EVT_RESET:
+      s = session_get_from_handle_if_valid (e->session_handle);
+      if (PREDICT_FALSE (!s))
+	break;
+      session_transport_reset (s);
+      break;
     case SESSION_IO_EVT_BUILTIN_RX:
       s = session_event_get_session (e, thread_index);
       if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))

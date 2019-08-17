@@ -39,6 +39,7 @@ typedef struct _transport_proto_vft
   u32 (*stop_listen) (u32 conn_index);
   int (*connect) (transport_endpoint_cfg_t * rmt);
   void (*close) (u32 conn_index, u32 thread_index);
+  void (*reset) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
   clib_error_t *(*enable) (vlib_main_t * vm, u8 is_en);
 
@@ -96,6 +97,7 @@ do {								\
 
 int transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep);
 void transport_close (transport_proto_t tp, u32 conn_index, u8 thread_index);
+void transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index);
 u32 transport_start_listen (transport_proto_t tp, u32 session_index,
 			    transport_endpoint_t * tep);
 u32 transport_stop_listen (transport_proto_t tp, u32 conn_index);
