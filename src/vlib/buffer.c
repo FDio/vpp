@@ -657,7 +657,7 @@ vlib_buffer_main_init_numa_node (struct vlib_main_t *vm, u32 numa_node,
 				 u8 * index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  clib_error_t *error;
+  clib_error_t *error = 0;
   u32 physmem_map_index;
   uword n_pages, pagesize;
   u32 buffers_per_numa;
@@ -693,7 +693,7 @@ retry:
     }
 
   if (error)
-    return error;
+    goto done;
 
   vec_reset_length (name);
   name = format (name, "default-numa-%d%c", numa_node, 0);
@@ -703,9 +703,14 @@ retry:
 				    physmem_map_index);
 
   if (*index == (u8) ~ 0)
-    return clib_error_return (0, "maximum number of buffer pools reached");
+    {
+      error = clib_error_return (0, "maximum number of buffer pools reached");
+      goto done;
+    }
 
-  return 0;
+done:
+  vec_free (name);
+  return error;
 }
 
 void
