@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b167d05_c50a9c6a",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-08-19T15:52:27Z",
+      "side": 1,
+      "message": "keyword.iskeyword(name)\n\nDiscovered when I was checking whether \"type\" [0] is a reserved keyword (it is not).\n\n[0] https://github.com/FDio/vpp/blob/9d42087149a6870965896be74dc6260f72d2cac9/src/vnet/policer/policer.api#L51",
+      "range": {
+        "startLine": 297,
+        "startChar": 11,
+        "endLine": 297,
+        "endChar": 33
+      },
+      "revId": "ff47fb64569ddbd65ef34c33e7cafc030c69a34e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
