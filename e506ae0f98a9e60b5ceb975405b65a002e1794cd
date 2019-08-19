@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4c30c6c3_7c5bcda3",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 660,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-08-19T09:20:25Z",
+      "side": 1,
+      "message": "not needed, as error value is unconditionally assigned bellow",
+      "range": {
+        "startLine": 660,
+        "startChar": 0,
+        "endLine": 660,
+        "endChar": 26
+      },
+      "revId": "e506ae0f98a9e60b5ceb975405b65a002e1794cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
