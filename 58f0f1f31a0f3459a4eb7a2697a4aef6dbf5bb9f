@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d61e004c_69489baf",
+        "filename": "RELEASE.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-08-19T08:23:51Z",
+      "side": 1,
+      "message": "Maybe add to infra:\n- RDMA: bump rdma-core to v25.0",
+      "revId": "58f0f1f31a0f3459a4eb7a2697a4aef6dbf5bb9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "07180ab3_1ff0281c",
+        "filename": "RELEASE.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-08-19T08:23:51Z",
+      "side": 1,
+      "message": "Add to plugins:\n- rdma: add support for promiscuous mode (l2-switching and xconnect)",
+      "revId": "58f0f1f31a0f3459a4eb7a2697a4aef6dbf5bb9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
