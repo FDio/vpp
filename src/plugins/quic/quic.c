@@ -2053,10 +2053,10 @@ quic_app_rx_callback (session_t * udp_session)
 	  if (packets_ctx[i].thread_index != thread_index)
 	    continue;
 
+	  check_quic_client_connected (&packets_ctx[i]);
 	  ctx =
 	    quic_ctx_get (packets_ctx[i].ctx_index,
 			  packets_ctx[i].thread_index);
-	  check_quic_client_connected (&packets_ctx[i]);
 	  quic_send_packets (ctx);
 	}
       svm_fifo_dequeue_drop (f, fifo_offset);
