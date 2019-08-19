@@ -16,6 +16,7 @@
 #include <openssl/ssl.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
+
 #ifdef HAVE_OPENSSL_ASYNC
 #include <openssl/async.h>
 #endif
@@ -26,9 +27,9 @@
 #include <ctype.h>
 #include <tlsopenssl/tls_openssl.h>
 
-#define MAX_CRYPTO_LEN 16
+#define MAX_CRYPTO_LEN 64
 
-static openssl_main_t openssl_main;
+openssl_main_t openssl_main;
 static u32
 openssl_ctx_alloc (void)
 {
@@ -850,7 +851,7 @@ tls_init_ca_chain (void)
   return (rv < 0 ? -1 : 0);
 }
 
-static int
+int
 tls_openssl_set_ciphers (char *ciphers)
 {
   openssl_main_t *om = &openssl_main;
@@ -876,8 +877,10 @@ tls_openssl_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   openssl_main_t *om = &openssl_main;
+  clib_error_t *error = 0;
   u32 num_threads;
 
+  error = tls_openssl_api_init (vm);
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
   SSL_library_init ();
@@ -899,7 +902,7 @@ tls_openssl_init (vlib_main_t * vm)
   tls_openssl_set_ciphers
     ("ALL:!ADH:!LOW:!EXP:!MD5:!RC4-SHA:!DES-CBC3-SHA:@STRENGTH");
 
-  return 0;
+  return error;
 }
 /* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (tls_openssl_init) =
@@ -961,7 +964,7 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   else
     {
-      if (!openssl_engine_register (engine_name, engine_alg))
+      if (openssl_engine_register (engine_name, engine_alg) < 0)
 	{
 	  return clib_error_return (0, "failed to register %s polling",
 				    engine_name);

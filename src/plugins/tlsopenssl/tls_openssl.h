@@ -45,6 +45,9 @@ typedef struct openssl_main_
   openssl_ctx_t ***ctx_pool;
   openssl_listen_ctx_t *lctx_pool;
 
+  /* API message ID base */
+  u16 msg_id_base;
+
   X509_STORE *cert_store;
   u8 *ciphers;
   int engine_init;
@@ -69,6 +72,8 @@ int tls_async_openssl_callback (SSL * s, void *evt);
 void openssl_polling_start (ENGINE * engine);
 int openssl_engine_register (char *engine, char *alg);
 void openssl_async_node_enable_disable (u8 is_en);
+clib_error_t *tls_openssl_api_init (vlib_main_t * vm);
+int tls_openssl_set_ciphers (char *ciphers);
 
 /*
  * fd.io coding-style-patch-verification: ON
