@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "d0530c99_465b4cee",
+        "filename": "docs/gettingstarted/developers/cross_compile_osx.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-19T15:38:30Z",
+      "side": 1,
+      "message": "Indeed :) changed it",
+      "parentUuid": "0bbb78ec_0b18567b",
+      "range": {
+        "startLine": 3,
+        "startChar": 21,
+        "endLine": 3,
+        "endChar": 24
+      },
+      "revId": "378624ab9cbe8275234aa34511545e01648ae8ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "462966f5_ca23f9db",
         "filename": "docs/gettingstarted/developers/cross_compile_osx.rst",
         "patchSetId": 5
@@ -42,6 +66,24 @@
     },
     {
       "key": {
+        "uuid": "17a80841_245e3797",
+        "filename": "docs/gettingstarted/developers/cross_compile_osx.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-19T15:38:30Z",
+      "side": 1,
+      "message": "Added crosstool-ng, the problem with gnu-indent is brew packages it in version 2.2.12 and afaik vpp checkstyle depends on 2.2.11 (There is a line in the doc about installing it)",
+      "parentUuid": "462966f5_ca23f9db",
+      "revId": "378624ab9cbe8275234aa34511545e01648ae8ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b1477320_051b4f4b",
         "filename": "docs/gettingstarted/developers/cross_compile_osx.rst",
         "patchSetId": 5
@@ -53,6 +95,30 @@
       "writtenOn": "2019-08-19T09:37:36Z",
       "side": 1,
       "message": "What about creating script which does the work and putting it into extras/scripts...",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 46
+      },
+      "revId": "378624ab9cbe8275234aa34511545e01648ae8ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4573aa4e_56d31bde",
+        "filename": "docs/gettingstarted/developers/cross_compile_osx.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-08-19T15:38:30Z",
+      "side": 1,
+      "message": "You\u0027re right, might be easier for the end user with an extra script.\nAdded cross_compile_macos.sh that does configuration, build \u0026 compile_commands\n\nBut I don\u0027t now if it\u0027s ideal to have such a wrapper around make...",
+      "parentUuid": "b1477320_051b4f4b",
       "range": {
         "startLine": 22,
         "startChar": 0,
