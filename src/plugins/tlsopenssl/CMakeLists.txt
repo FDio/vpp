@@ -19,6 +19,16 @@ if(OPENSSL_FOUND)
     tls_openssl.c
     tls_async.c
 
+    API_FILES
+    tls_openssl.api
+
+    INSTALL_HEADERS
+    tls_openssl_all_api_h.h
+    tls_openssl_msg_enum.h
+
+    API_TEST_SOURCES
+    tls_openssl_test.c
+
     LINK_LIBRARIES
     ${OPENSSL_LIBRARIES}
   )

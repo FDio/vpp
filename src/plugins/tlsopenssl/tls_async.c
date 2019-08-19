@@ -143,7 +143,7 @@ openssl_engine_register (char *engine_name, char *algorithm)
   if (registered < 0)
     {
       clib_error ("engine %s is not regisered in VPP", engine_name);
-      return 0;
+      return -1;
     }
 
   ENGINE_load_builtin_engines ();
@@ -153,7 +153,7 @@ openssl_engine_register (char *engine_name, char *algorithm)
   if (engine == NULL)
     {
       clib_warning ("Failed to find engine ENGINE_by_id %s", engine_name);
-      return 0;
+      return -1;
     }
 
   om->engine = engine;
@@ -168,7 +168,7 @@ openssl_engine_register (char *engine_name, char *algorithm)
 	{
 	  clib_warning ("Failed to set engine %s algorithm %s\n",
 			engine_name, algorithm);
-	  return 0;
+	  return -1;
 	}
     }
   else
@@ -177,13 +177,13 @@ openssl_engine_register (char *engine_name, char *algorithm)
 	{
 	  clib_warning ("Failed to set engine %s to all algorithm",
 			engine_name);
-	  return 0;
+	  return -1;
 	}
     }
 
   om->start_polling = 1;
 
-  return 1;
+  return 0;
 
 }
 
