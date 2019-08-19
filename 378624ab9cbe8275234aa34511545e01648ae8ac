@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0bbb78ec_0b18567b",
+        "filename": "docs/gettingstarted/developers/cross_compile_osx.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-08-19T09:37:36Z",
+      "side": 1,
+      "message": "isn\u0027t official name now macOS :)",
+      "range": {
+        "startLine": 3,
+        "startChar": 21,
+        "endLine": 3,
+        "endChar": 24
+      },
+      "revId": "378624ab9cbe8275234aa34511545e01648ae8ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "462966f5_ca23f9db",
+        "filename": "docs/gettingstarted/developers/cross_compile_osx.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-08-19T09:37:36Z",
+      "side": 1,
+      "message": "crosstool-ng  gnu-indent ?",
+      "revId": "378624ab9cbe8275234aa34511545e01648ae8ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b1477320_051b4f4b",
+        "filename": "docs/gettingstarted/developers/cross_compile_osx.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-08-19T09:37:36Z",
+      "side": 1,
+      "message": "What about creating script which does the work and putting it into extras/scripts...",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 46
+      },
+      "revId": "378624ab9cbe8275234aa34511545e01648ae8ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
