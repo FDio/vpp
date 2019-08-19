@@ -394,6 +394,12 @@ I:	nsim
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
 
+Plugin - Marvell OCTEON TX2
+I:	octeontx2
+M:	Nitin Saxena <nsaxena@marvell.com>
+M:	Kommula Shiva Shankar <kshankar@marvell.com>
+F:	src/plugins/octeontx2/
+
 Test Infrastructure
 I:	tests
 M:	Klement Sekera <ksekera@cisco.com>
