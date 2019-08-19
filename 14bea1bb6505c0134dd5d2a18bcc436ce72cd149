@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f70eb6a4_8c7f87fe",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 944,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-19T21:35:36Z",
+      "side": 0,
+      "message": "Why not change the macro?",
+      "range": {
+        "startLine": 944,
+        "startChar": 40,
+        "endLine": 944,
+        "endChar": 54
+      },
+      "revId": "14bea1bb6505c0134dd5d2a18bcc436ce72cd149",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "724def44_1467b5d0",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-19T21:35:36Z",
+      "side": 1,
+      "message": "To keep things separated/cleaner, could you move all the api related changes to tls_openssl_api.c?",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 24
+      },
+      "revId": "ac00854e0a6e9659d3a65606ac9d523f2db086c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fab1623c_da111944",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-19T21:35:36Z",
+      "side": 1,
+      "message": "Let the pools be first, since those are accessed more often than the msg_id_base",
+      "range": {
+        "startLine": 46,
+        "startChar": 2,
+        "endLine": 47,
+        "endChar": 0
+      },
+      "revId": "ac00854e0a6e9659d3a65606ac9d523f2db086c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f50e1910_9a5cb22f",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-19T21:35:36Z",
+      "side": 1,
+      "message": "Is this actually needed? I assume you only initialize it on the main thread. The rest of the workers can\u0027t use it.",
+      "range": {
+        "startLine": 56,
+        "startChar": 0,
+        "endLine": 57,
+        "endChar": 25
+      },
+      "revId": "ac00854e0a6e9659d3a65606ac9d523f2db086c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
