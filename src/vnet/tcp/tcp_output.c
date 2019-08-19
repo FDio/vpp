@@ -868,23 +868,7 @@ tcp_send_reset (tcp_connection_t * tc)
   opts_write_len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
   ASSERT (opts_write_len == tc->snd_opts_len);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
-  if (tc->c_is_ip4)
-    {
-      ip4_header_t *ih4;
-      ih4 = vlib_buffer_push_ip4 (vm, b, &tc->c_lcl_ip.ip4,
-				  &tc->c_rmt_ip.ip4, IP_PROTOCOL_TCP, 0);
-      th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih4);
-    }
-  else
-    {
-      int bogus = ~0;
-      ip6_header_t *ih6;
-      ih6 = vlib_buffer_push_ip6 (vm, b, &tc->c_lcl_ip.ip6,
-				  &tc->c_rmt_ip.ip6, IP_PROTOCOL_TCP);
-      th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih6, &bogus);
-      ASSERT (!bogus);
-    }
-  tcp_enqueue_to_ip_lookup_now (wrk, b, bi, tc->c_is_ip4, tc->c_fib_index);
+  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
   TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
   vlib_node_increment_counter (vm, tcp_node_index (output, tc->c_is_ip4),
 			       TCP_ERROR_RST_SENT, 1);
@@ -2181,16 +2165,9 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 
 always_inline void
 tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
-			  u32 * error0, u16 * next0, u8 is_ip4)
+			  vlib_node_runtime_t * error_node, u16 * next0,
+			  u8 is_ip4)
 {
-
-  if (PREDICT_FALSE (tc0->state == TCP_STATE_CLOSED))
-    {
-      *error0 = TCP_ERROR_INVALID_CONNECTION;
-      *next0 = TCP_OUTPUT_NEXT_DROP;
-      return;
-    }
-
   /* If next_index is not drop use it */
   if (tc0->next_node_index)
     {
@@ -2203,8 +2180,16 @@ tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
 
   if (!is_ip4)
     {
+      u32 error0 = 0;
+
       if (PREDICT_FALSE (ip6_address_is_link_local_unicast (&tc0->c_rmt_ip6)))
-	tcp_output_handle_link_local (tc0, b0, next0, error0);
+	tcp_output_handle_link_local (tc0, b0, next0, &error0);
+
+      if (PREDICT_FALSE (error0))
+	{
+	  b0->error = error_node->errors[error0];
+	  return;
+	}
     }
 
   if (!TCP_ALWAYS_ACK)
@@ -2220,6 +2205,9 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, thread_index = vm->thread_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
+  vlib_node_runtime_t *error_node;
+
+  error_node = vlib_node_get_runtime (vm, tcp_node_index (output, is_ip4));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2234,7 +2222,6 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left_from >= 4)
     {
-      u32 error0 = TCP_ERROR_PKTS_SENT, error1 = TCP_ERROR_PKTS_SENT;
       tcp_connection_t *tc0, *tc1;
 
       {
@@ -2255,8 +2242,8 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       tcp_output_push_ip (vm, b[0], tc0, is_ip4);
       tcp_output_push_ip (vm, b[1], tc1, is_ip4);
 
-      tcp_output_handle_packet (tc0, b[0], &error0, &next[0], is_ip4);
-      tcp_output_handle_packet (tc1, b[1], &error1, &next[1], is_ip4);
+      tcp_output_handle_packet (tc0, b[0], error_node, &next[0], is_ip4);
+      tcp_output_handle_packet (tc1, b[1], error_node, &next[1], is_ip4);
 
       b += 2;
       next += 2;
@@ -2264,7 +2251,6 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   while (n_left_from > 0)
     {
-      u32 error0 = TCP_ERROR_PKTS_SENT;
       tcp_connection_t *tc0;
 
       if (n_left_from > 1)
@@ -2278,7 +2264,7 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				thread_index);
 
       tcp_output_push_ip (vm, b[0], tc0, is_ip4);
-      tcp_output_handle_packet (tc0, b[0], &error0, &next[0], is_ip4);
+      tcp_output_handle_packet (tc0, b[0], error_node, &next[0], is_ip4);
 
       b += 1;
       next += 1;
@@ -2286,6 +2272,8 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  vlib_node_increment_counter (vm, tcp_node_index (output, is_ip4),
+			       TCP_ERROR_PKTS_SENT, frame->n_vectors);
   return frame->n_vectors;
 }
 
