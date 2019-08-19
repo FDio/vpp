@@ -1,0 +1,209 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "71483abc_0d92b936",
+        "filename": "test/test_lb.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "Just curious why this file is different from most of the others.\n\nIt doesn\u0027t have a separate \"import framework\" statement and is missing the following clause at the bottom of the file:\n\nif __name__ \u003d\u003d \u0027__main__\u0027:\n    unittest.main(testRunner\u003dVppTestRunner)\n\nWhy do most of the files have both import statements?",
+      "range": {
+        "startLine": 11,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 30
+      },
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "07c3cb19_a1bcc609",
+        "filename": "test/test_p2p_ethernet.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "This file is also different --\u003e missing the statement:\n\n\u0027from framework import unittest\u0027",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 12,
+        "endChar": 48
+      },
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "01e54c3a_18237704",
+        "filename": "test/test_ping.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "if __name__ \u003d\u003d \u0027__main__\u0027:\n    unittest.main(testRunner\u003dVppTestRunner)",
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "68cc83ec_6e6477e7",
+        "filename": "test/test_pppoe.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "Missing:  \u0027from framework import unittest\u0027",
+      "range": {
+        "startLine": 11,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 48
+      },
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b07554b1_1c9ea0aa",
+        "filename": "test/test_punt.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "Missing: \u0027import framework\u0027",
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a64edd14_0b79737c",
+        "filename": "test/test_session.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "Missing: \u0027from framework import unittest\u0027",
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3dd53ddc_fbe922ea",
+        "filename": "test/test_srmpls.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "Missing \u0027from framework import unittest\u0027",
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d4899593_cc2681fd",
+        "filename": "test/test_svs.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "Missing: \u0027from framework import unittest\u0027",
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4bfc221d_6ec8757b",
+        "filename": "test/test_udp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "Missing \u0027from framework import unittest\u0027",
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "581704aa_233dffc0",
+        "filename": "test/test_vpe_api.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "Missing: \u0027from framework import unittest\u0027",
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "339f7024_451953c1",
+        "filename": "test/test_vpe_api.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-08-19T15:42:42Z",
+      "side": 1,
+      "message": "if __name__ \u003d\u003d \u0027__main__\u0027:\n    unittest.main(testRunner\u003dVppTestRunner)",
+      "revId": "bc091706ebe19ab9078418df32e5a42feb8a588a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
