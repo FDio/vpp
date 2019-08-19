@@ -248,7 +248,8 @@ vnet_dns_send_dns4_request (dns_main_t * dm,
   fib_index = fib_table_find (prefix.fp_proto, 0 /* default VRF for now */ );
   if (fib_index == (u32) ~ 0)
     {
-      clib_warning ("no fib table");
+      if (0)
+	clib_warning ("no fib table");
       return;
     }
 
@@ -257,7 +258,8 @@ vnet_dns_send_dns4_request (dns_main_t * dm,
   /* Couldn't find route to destination. Bail out. */
   if (fei == FIB_NODE_INDEX_INVALID)
     {
-      clib_warning ("no route to DNS server");
+      if (0)
+	clib_warning ("no route to DNS server");
       return;
     }
 
@@ -265,9 +267,10 @@ vnet_dns_send_dns4_request (dns_main_t * dm,
 
   if (sw_if_index == ~0)
     {
-      clib_warning
-	("route to %U exists, fei %d, get_resolving_interface returned"
-	 " ~0", format_ip4_address, &prefix.fp_addr, fei);
+      if (0)
+	clib_warning
+	  ("route to %U exists, fei %d, get_resolving_interface returned"
+	   " ~0", format_ip4_address, &prefix.fp_addr, fei);
       return;
     }
 
@@ -365,7 +368,8 @@ vnet_dns_send_dns6_request (dns_main_t * dm,
   fib_index = fib_table_find (prefix.fp_proto, 0 /* default VRF for now */ );
   if (fib_index == (u32) ~ 0)
     {
-      clib_warning ("no fib table");
+      if (0)
+	clib_warning ("no fib table");
       return;
     }
 
@@ -1061,6 +1065,7 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
 	goto found_last_request;
       }
   clib_warning ("pool elt %d supposedly pending, but not found...", ep_index);
+  return -1;
 
 found_last_request:
 
@@ -2206,46 +2211,51 @@ format_dns_cache (u8 * s, va_list * args)
       return s;
     }
 
-  /* *INDENT-OFF* */
-  pool_foreach (ep, dm->entries,
-  ({
-    if (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID)
-      {
-        ASSERT (ep->dns_response);
-        if (ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC)
-          ss = "[S] ";
-        else
-          ss = "    ";
+  s = format (s, "DNS cache contains %d entries\n", pool_elts (dm->entries));
 
-        if (verbose < 2 && ep->flags & DNS_CACHE_ENTRY_FLAG_CNAME)
-          s = format (s, "%s%s -> %s", ss, ep->name, ep->cname);
-        else
-          s = format (s, "%s%s -> %U", ss, ep->name,
-                      format_dns_reply,
-                      ep->dns_response,
-                      verbose);
-        if (!(ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC))
+  if (verbose > 0)
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (ep, dm->entries,
+      ({
+        if (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID)
           {
-            f64 time_left = ep->expiration_time - now;
-            if (time_left > 0.0)
-              s = format (s, "  TTL left %.1f", time_left);
+            ASSERT (ep->dns_response);
+            if (ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC)
+              ss = "[S] ";
             else
-              s = format (s, "  EXPIRED");
+              ss = "    ";
 
-            if (verbose > 2)
-              s = format (s, "    %d client notifications pending\n",
-                          vec_len(ep->pending_requests));
+            if (verbose < 2 && ep->flags & DNS_CACHE_ENTRY_FLAG_CNAME)
+              s = format (s, "%s%s -> %s", ss, ep->name, ep->cname);
+            else
+              s = format (s, "%s%s -> %U", ss, ep->name,
+                          format_dns_reply,
+                          ep->dns_response,
+                          verbose);
+            if (!(ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC))
+              {
+                f64 time_left = ep->expiration_time - now;
+                if (time_left > 0.0)
+                  s = format (s, "  TTL left %.1f", time_left);
+                else
+                  s = format (s, "  EXPIRED");
+
+                if (verbose > 2)
+                  s = format (s, "    %d client notifications pending\n",
+                              vec_len(ep->pending_requests));
+              }
           }
-      }
-    else
-      {
-        ASSERT (ep->dns_request);
-        s = format (s, "[P] %U", format_dns_reply, ep->dns_request,
-                    verbose);
-      }
-    vec_add1 (s, '\n');
-  }));
-  /* *INDENT-ON* */
+        else
+          {
+            ASSERT (ep->dns_request);
+            s = format (s, "[P] %U", format_dns_reply, ep->dns_request,
+                        verbose);
+          }
+        vec_add1 (s, '\n');
+      }));
+      /* *INDENT-ON* */
+    }
 
   dns_cache_unlock (dm);
 
@@ -2764,6 +2774,7 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
   dns_rr_t *rr;
   u8 *rrptr;
   int is_fail = 0;
+  int is_recycle = (b0 != 0);
 
   ASSERT (ep && ep->dns_response);
 
@@ -2804,6 +2815,16 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
 	return;
       b0 = vlib_get_buffer (vm, bi);
     }
+  else
+    {
+      /* Use the buffer we were handed. Reinitialize it... */
+      vlib_buffer_t bt = { };
+      /* push/pop the reference count */
+      u8 save_ref_count = b0->ref_count;
+      vlib_buffer_copy_template (b0, &bt);
+      b0->ref_count = save_ref_count;
+      bi = vlib_get_buffer_index (vm, b0);
+    }
 
   if (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
     vlib_buffer_free_one (vm, b0->next_buffer);
@@ -2817,9 +2838,6 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
    */
   b0->flags |= (VNET_BUFFER_F_LOCALLY_ORIGINATED
 		| VLIB_BUFFER_TOTAL_LENGTH_VALID);
-  b0->current_data = 0;
-  b0->current_length = 0;
-  b0->total_length_not_including_first_buffer = 0;
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;	/* "local0" */
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = 0;	/* default VRF for now */
 
@@ -2971,12 +2989,18 @@ found_src_address:
   udp->checksum = 0;
   vec_free (reply);
 
-  /* Ship it to ip4_lookup */
-  f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
-  to_next = vlib_frame_vector_args (f);
-  to_next[0] = bi;
-  f->n_vectors = 1;
-  vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
+  /*
+   * Ship pkts made out of whole cloth to ip4_lookup
+   * Caller will ship recycled dns reply packets to ip4_lookup
+   */
+  if (is_recycle == 0)
+    {
+      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi;
+      f->n_vectors = 1;
+      vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
+    }
 }
 
 /*

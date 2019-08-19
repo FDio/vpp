@@ -150,7 +150,9 @@ _(DISABLED, "DNS pkts punted (feature disabled)")       \
 _(PROCESSED, "DNS reply pkts processed")                \
 _(NO_ELT, "No DNS pool element")                        \
 _(FORMAT_ERROR, "DNS format errors")                    \
-_(TEST_DROP, "DNS reply pkt dropped for test purposes")
+_(TEST_DROP, "DNS reply pkt dropped for test purposes") \
+_(MULTIPLE_REPLY, "DNS multiple reply packets")	        \
+_(NO_UNRESOLVED_ENTRY, "No unresolved entry for pkt")
 
 typedef enum
 {
