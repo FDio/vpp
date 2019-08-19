@@ -500,6 +500,11 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 				  vlib_default_runtime_dir, 0);
     }
 
+  /* Ensure the runtime directory is created */
+  error = vlib_unix_recursive_mkdir ((char *) um->runtime_dir);
+  if (error)
+    return error;
+
   error = setup_signal_handlers (um);
   if (error)
     return error;
