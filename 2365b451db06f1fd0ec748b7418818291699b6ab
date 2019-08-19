@@ -16,6 +16,24 @@
       "revId": "2365b451db06f1fd0ec748b7418818291699b6ab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cca4805d_607cb468",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4013,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-08-19T08:17:33Z",
+      "side": 1,
+      "message": "sep1 is not configured at this point, so there is no local SEP. It is configured at line 4094.",
+      "parentUuid": "3e7d0def_14d9ac42",
+      "revId": "2365b451db06f1fd0ec748b7418818291699b6ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
