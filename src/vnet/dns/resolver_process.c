@@ -59,6 +59,8 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
   u16 flags;
   u16 rcode;
   int i;
+  int entry_was_valid;
+  int remove_count;
   int rv = 0;
 
   d = (dns_header_t *) reply;
@@ -72,6 +74,8 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
   if (pool_is_free_index (dm->entries, pool_index))
     {
       vec_free (reply);
+      if (0)
+	clib_warning ("pool index %d is free", pool_index);
       vlib_node_increment_counter (vm, dns46_reply_node.index,
 				   DNS46_REPLY_ERROR_NO_ELT, 1);
       dns_cache_unlock (dm);
@@ -149,8 +153,29 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
 reply:
   /* Save the response */
   ep->dns_response = reply;
-  /* Pick some sensible default. */
+
+  /*
+   * Pick a sensible default cache entry expiration time.
+   * We don't play the 10-second timeout game.
+   */
   ep->expiration_time = now + 600.0;
+
+  if (0)
+    clib_warning ("resolving '%s', was %s valid",
+		  ep->name, (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) ?
+		  "already" : "not");
+  /*
+   * The world is a mess. A single DNS request sent to e.g. 8.8.8.8
+   * may yield multiple, subtly different responses - all with the same
+   * DNS protocol-level ID.
+   *
+   * Last response wins in terms of what ends up in the cache.
+   * First response wins in terms of the response sent to the client.
+   */
+
+  /* Strong hint that we may not find a pending resolution entry */
+  entry_was_valid = (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) ? 1 : 0;
+
   if (vec_len (ep->dns_response))
     ep->flags |= DNS_CACHE_ENTRY_FLAG_VALID;
 
@@ -218,17 +243,27 @@ reply:
     }
   vec_free (ep->pending_requests);
 
+  remove_count = 0;
   for (i = 0; i < vec_len (dm->unresolved_entries); i++)
     {
       if (dm->unresolved_entries[i] == pool_index)
 	{
 	  vec_delete (dm->unresolved_entries, 1, i);
-	  goto found;
+	  remove_count++;
+	  i--;
 	}
     }
-  clib_warning ("pool index %d AWOL from unresolved vector", pool_index);
+  /* See multiple response comment above... */
+  if (remove_count == 0)
+    {
+      u32 error_code = entry_was_valid ? DNS46_REPLY_ERROR_MULTIPLE_REPLY :
+	DNS46_REPLY_ERROR_NO_UNRESOLVED_ENTRY;
 
-found:
+      vlib_node_increment_counter (vm, dns46_reply_node.index, error_code, 1);
+      dns_cache_unlock (dm);
+      return;
+    }
+
   /* Deal with bogus names, server issues, etc. */
   switch (rcode)
     {
@@ -240,13 +275,13 @@ found:
     case DNS_RCODE_NOT_IMPLEMENTED:
     case DNS_RCODE_REFUSED:
       if (ep->server_af == 0)
-	clib_warning ("name server %U backfire",
+	clib_warning ("name server %U can't resolve '%s'",
 		      format_ip4_address,
-		      dm->ip4_name_servers + ep->server_rotor);
+		      dm->ip4_name_servers + ep->server_rotor, ep->name);
       else
-	clib_warning ("name server %U backfire",
+	clib_warning ("name server %U can't resolve '%s'",
 		      format_ip6_address,
-		      dm->ip6_name_servers + ep->server_rotor);
+		      dm->ip6_name_servers + ep->server_rotor, ep->name);
       /* FALLTHROUGH */
     case DNS_RCODE_NAME_ERROR:
     case DNS_RCODE_FORMAT_ERROR:
@@ -254,6 +289,7 @@ found:
       vnet_dns_delete_entry_by_index_nolock (dm, ep - dm->entries);
       break;
     }
+
 
   dns_cache_unlock (dm);
   return;
