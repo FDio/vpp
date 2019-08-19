@@ -42,6 +42,9 @@ typedef struct tls_listen_ctx_opensl_
 
 typedef struct openssl_main_
 {
+  /* API message ID base */
+  u16 msg_id_base;
+
   openssl_ctx_t ***ctx_pool;
   openssl_listen_ctx_t *lctx_pool;
 
@@ -49,6 +52,9 @@ typedef struct openssl_main_
   u8 *ciphers;
   int engine_init;
   int async;
+
+  /* convenience */
+  vlib_main_t *vlib_main;
 } openssl_main_t;
 
 typedef struct openssl_tls_callback_
