@@ -696,6 +696,8 @@ static void *vl_api_bond_enslave_t_print
     s = format (s, "passive ");
   if (mp->is_long_timeout)
     s = format (s, "long-timeout ");
+  if (mp->weight)
+    s = format (s, "weight %u", ntohl (mp->weight));
 
   FINISH;
 }

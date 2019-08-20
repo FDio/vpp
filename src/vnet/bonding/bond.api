@@ -19,7 +19,7 @@
     the bonding device driver
 */
 
-option version = "1.0.1";
+option version = "1.0.2";
 
 /** \brief Initialize a new bond interface with the given paramters
     @param client_index - opaque cookie to identify the sender
@@ -74,6 +74,7 @@ autoreply define bond_delete
     @param bond_sw_if_index - bond sw_if_index
     @param is_passive - interface does not initiate the lacp protocol, remote must be active speaker
     @param is_long_timeout - 90 seconds vs default 3 seconds neighbor timeout
+    @param weight - weight (valid only for active-backup, others ignore)
 */
 define bond_enslave
 {
@@ -83,6 +84,7 @@ define bond_enslave
   u32 bond_sw_if_index;
   u8 is_passive;
   u8 is_long_timeout;
+  u32 weight;
 };
 
 /** \brief Reply for bond enslave reply
@@ -162,6 +164,8 @@ define sw_interface_slave_details
   u8 interface_name[64];
   u8 is_passive;
   u8 is_long_timeout;
+  u8 is_local_numa;
+  u32 weight;
 };
 
 /*
