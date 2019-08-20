@@ -4413,7 +4413,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.ipfix_domain_id = 1
             cls.tcp_external_port = 80
 
-            cls.create_pg_interfaces(range(7))
+            cls.create_pg_interfaces(range(9))
             cls.interfaces = list(cls.pg_interfaces[0:3])
 
             for i in cls.interfaces:
@@ -4493,6 +4493,16 @@ class TestNAT44EndpointDependent(MethodHolder):
 
             cls.pg5.resolve_arp()
             cls.pg6.resolve_arp()
+
+            cls.pg7.admin_up()
+            cls.pg7.config_ip4()
+            cls.pg7.resolve_arp()
+            cls.pg7.generate_remote_hosts(3)
+            cls.pg7.configure_ipv4_neighbors()
+
+            cls.pg8.admin_up()
+            cls.pg8.config_ip4()
+            cls.pg8.resolve_arp()
 
         except Exception:
             super(TestNAT44EndpointDependent, cls).tearDownClass()
@@ -4767,6 +4777,115 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.assertEqual(users[0][0], 1)
         sessions = self.statistics.get_counter('/nat44/total-sessions')
         self.assertEqual(sessions[0][0], 3)
+
+    def test_dynamic_output_feature_vrf(self):
+        """ NAT44 dynamic translation test: output-feature, VRF"""
+
+        # other then default (0)
+        new_vrf_id = 22
+
+        self.nat44_add_address(self.nat_addr)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_output_feature(
+            sw_if_index=self.pg7.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_interface_add_del_output_feature(
+            sw_if_index=self.pg8.sw_if_index,
+            is_add=1)
+
+        try:
+            self.vapi.ip_table_add_del(is_add=1, table_id=new_vrf_id)
+
+            self.pg7.unconfig_ip4()
+            self.pg7.set_table_ip4(new_vrf_id)
+            self.pg7.config_ip4()
+            self.pg7.resolve_arp()
+
+            self.pg8.unconfig_ip4()
+            self.pg8.set_table_ip4(new_vrf_id)
+            self.pg8.config_ip4()
+            self.pg8.resolve_arp()
+
+            nat_config = self.vapi.nat_show_config()
+            self.assertEqual(1, nat_config.endpoint_dependent)
+
+            # in2out
+            tcpn = self.statistics.get_err_counter(
+                '/err/nat44-ed-in2out-slowpath/TCP packets')
+            udpn = self.statistics.get_err_counter(
+                '/err/nat44-ed-in2out-slowpath/UDP packets')
+            icmpn = self.statistics.get_err_counter(
+                '/err/nat44-ed-in2out-slowpath/ICMP packets')
+            totaln = self.statistics.get_err_counter(
+                '/err/nat44-ed-in2out-slowpath/good in2out packets processed')
+
+            pkts = self.create_stream_in(self.pg7, self.pg8)
+            self.pg7.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg8.get_capture(len(pkts))
+            self.verify_capture_out(capture)
+
+            err = self.statistics.get_err_counter(
+                '/err/nat44-ed-in2out-slowpath/TCP packets')
+            self.assertEqual(err - tcpn, 1)
+            err = self.statistics.get_err_counter(
+                '/err/nat44-ed-in2out-slowpath/UDP packets')
+            self.assertEqual(err - udpn, 1)
+            err = self.statistics.get_err_counter(
+                '/err/nat44-ed-in2out-slowpath/ICMP packets')
+            self.assertEqual(err - icmpn, 1)
+            err = self.statistics.get_err_counter(
+                '/err/nat44-ed-in2out-slowpath/good in2out packets processed')
+            self.assertEqual(err - totaln, 3)
+
+            # out2in
+            tcpn = self.statistics.get_err_counter(
+                '/err/nat44-ed-out2in/TCP packets')
+            udpn = self.statistics.get_err_counter(
+                '/err/nat44-ed-out2in/UDP packets')
+            icmpn = self.statistics.get_err_counter(
+                '/err/nat44-ed-out2in-slowpath/ICMP packets')
+            totaln = self.statistics.get_err_counter(
+                '/err/nat44-ed-out2in/good out2in packets processed')
+
+            pkts = self.create_stream_out(self.pg8)
+            self.pg8.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg7.get_capture(len(pkts))
+            self.verify_capture_in(capture, self.pg7)
+
+            err = self.statistics.get_err_counter(
+                '/err/nat44-ed-out2in/TCP packets')
+            self.assertEqual(err - tcpn, 1)
+            err = self.statistics.get_err_counter(
+                '/err/nat44-ed-out2in/UDP packets')
+            self.assertEqual(err - udpn, 1)
+            err = self.statistics.get_err_counter(
+                '/err/nat44-ed-out2in-slowpath/ICMP packets')
+            self.assertEqual(err - icmpn, 1)
+            err = self.statistics.get_err_counter(
+                '/err/nat44-ed-out2in/good out2in packets processed')
+            self.assertEqual(err - totaln, 2)
+
+            users = self.statistics.get_counter('/nat44/total-users')
+            self.assertEqual(users[0][0], 1)
+            sessions = self.statistics.get_counter('/nat44/total-sessions')
+            self.assertEqual(sessions[0][0], 3)
+
+        finally:
+            self.pg7.unconfig_ip4()
+            self.pg7.set_table_ip4(1)
+            self.pg7.config_ip4()
+            self.pg7.resolve_arp()
+
+            self.pg8.unconfig_ip4()
+            self.pg8.set_table_ip4(1)
+            self.pg8.config_ip4()
+            self.pg8.resolve_arp()
+
+            self.vapi.ip_table_add_del(is_add=0, table_id=new_vrf_id)
 
     def test_forwarding(self):
         """ NAT44 forwarding test """

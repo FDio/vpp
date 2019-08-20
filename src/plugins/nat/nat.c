@@ -2199,6 +2199,16 @@ snat_update_outside_fib (u32 sw_if_index, u32 new_fib_index,
           match = 1;
         }
     }));
+
+  pool_foreach (i, sm->output_feature_interfaces,
+    ({
+      if (i->sw_if_index == sw_if_index)
+        {
+          if (!(nat_interface_is_outside (i)))
+	    return;
+          match = 1;
+        }
+    }));
   /* *INDENT-ON* */
 
   if (!match)
