@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "c427fc85_79bb105f",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-08-20T01:45:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fab1623c_da111944",
+      "range": {
+        "startLine": 46,
+        "startChar": 2,
+        "endLine": 47,
+        "endChar": 0
+      },
+      "revId": "ac00854e0a6e9659d3a65606ac9d523f2db086c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f50e1910_9a5cb22f",
         "filename": "src/plugins/tlsopenssl/tls_openssl.h",
         "patchSetId": 5
@@ -68,6 +92,30 @@
       "revId": "ac00854e0a6e9659d3a65606ac9d523f2db086c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b8bcd854_2a3356a8",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-08-20T01:45:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f50e1910_9a5cb22f",
+      "range": {
+        "startLine": 56,
+        "startChar": 0,
+        "endLine": 57,
+        "endChar": 25
+      },
+      "revId": "ac00854e0a6e9659d3a65606ac9d523f2db086c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
