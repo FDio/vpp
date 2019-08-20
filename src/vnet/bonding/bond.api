@@ -19,7 +19,7 @@
     the bonding device driver
 */
 
-option version = "1.0.1";
+option version = "1.0.2";
 
 /** \brief Initialize a new bond interface with the given paramters
     @param client_index - opaque cookie to identify the sender
@@ -154,6 +154,8 @@ define sw_interface_slave_dump
     @param interface_name - name of interface
     @param is_passve - interface does not initiate the lacp protocol, remote must be active speaker
     @param is_long_timeout - 90 seconds vs default 3 seconds neighbor timeout
+    @param is_local_numa - the slave interface is local numa
+    @param weight - the weight for the slave interface (active-backup mode only)
 */
 define sw_interface_slave_details
 {
@@ -162,6 +164,22 @@ define sw_interface_slave_details
   u8 interface_name[64];
   u8 is_passive;
   u8 is_long_timeout;
+  u8 is_local_numa;
+  u32 weight;
+};
+
+/** \brief Interface set bond weight
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - slave interface for which to set the weight
+    @param weight - weight value to be set for the slave interface
+*/
+autoreply define sw_interface_set_bond_weight
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 weight;
 };
 
 /*

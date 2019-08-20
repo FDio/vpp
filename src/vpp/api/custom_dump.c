@@ -700,6 +700,18 @@ static void *vl_api_bond_enslave_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_set_bond_weight_t_print
+  (vl_api_sw_interface_set_bond_weight_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_bond_weight ");
+  s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
+  s = format (s, "weight %u ", ntohl (mp->weight));
+
+  FINISH;
+}
+
 static void *vl_api_bond_detach_slave_t_print
   (vl_api_bond_detach_slave_t * mp, void *handle)
 {
@@ -3774,6 +3786,7 @@ _(BOND_CREATE, bond_create)                                             \
 _(BOND_DELETE, bond_delete)                                             \
 _(BOND_ENSLAVE, bond_enslave)                                           \
 _(BOND_DETACH_SLAVE, bond_detach_slave)                                 \
+_(SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight)           \
 _(SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump)                     \
 _(SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump)                       \
 _(SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)       \
