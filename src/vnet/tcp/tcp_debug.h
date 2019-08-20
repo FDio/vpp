@@ -18,83 +18,143 @@
 
 #include <vlib/vlib.h>
 
-#define TCP_DEBUG (1)
+#define TCP_DEBUG_ALWAYS (1)
+#define TCP_DEBUG_ENABLE (1)
+#define TCP_DEBUG (TCP_DEBUG_ALWAYS || TCP_DEBUG_ENABLE)
 #define TCP_DEBUG_SM (0)
 #define TCP_DEBUG_CC (0)
 #define TCP_DEBUG_CC_STAT (0)
 #define TCP_DEBUG_BUFFER_ALLOCATION (0)
 
-#define foreach_tcp_dbg_evt		\
-  _(INIT, "")				\
-  _(DEALLOC, "")			\
-  _(OPEN, "open")			\
-  _(CLOSE, "close")			\
-  _(BIND, "bind")			\
-  _(UNBIND, "unbind")			\
-  _(DELETE, "delete")			\
-  _(SYN_SENT, "SYN sent")		\
-  _(SYNACK_SENT, "SYNACK sent")		\
-  _(SYNACK_RCVD, "SYNACK rcvd")		\
-  _(SYN_RXT, "SYN retransmit")		\
-  _(FIN_SENT, "FIN sent")		\
-  _(ACK_SENT, "ACK sent")		\
-  _(DUPACK_SENT, "DUPACK sent")		\
-  _(RST_SENT, "RST sent")		\
-  _(SYN_RCVD, "SYN rcvd")		\
-  _(ACK_RCVD, "ACK rcvd")		\
-  _(DUPACK_RCVD, "DUPACK rcvd")		\
-  _(FIN_RCVD, "FIN rcvd")		\
-  _(RST_RCVD, "RST rcvd")		\
-  _(STATE_CHANGE, "state change")	\
-  _(PKTIZE, "packetize")		\
-  _(INPUT, "in")			\
-  _(SND_WND, "snd_wnd update")		\
-  _(OUTPUT, "output")			\
-  _(TIMER_POP, "timer pop")		\
-  _(CC_RTX, "retransmit")		\
-  _(CC_EVT, "cc event")			\
-  _(CC_PACK, "cc partial ack")		\
-  _(CC_STAT, "cc stats")		\
-  _(CC_RTO_STAT, "cc rto stats")	\
-  _(CC_SCOREBOARD, "scoreboard stats")	\
-  _(CC_SACKS, "snd sacks stats")	\
-  _(CC_INPUT, "ooo data delivered")	\
-  _(SEG_INVALID, "invalid segment")	\
-  _(PAWS_FAIL, "failed paws check")	\
-  _(ACK_RCV_ERR, "invalid ack")		\
-  _(RCV_WND_SHRUNK, "shrunk rcv_wnd")	\
+#if TCP_DEBUG > 0
+#define TRANSPORT_DEBUG (1)
+#endif
 
-typedef enum _tcp_dbg
+#define CONCAT_HELPER(_a, _b) _a##_b
+#define CC(_a, _b) CONCAT_HELPER(_a, _b)
+
+#define tcp_evt_dbg_lvl(_evt) CC(_evt, _LVL)
+#define tcp_evt_dbg_grp(_evt) CC(_evt, _GRP)
+#define tcp_evt_handler(_evt, _args...) CC(_evt, _HANDLER) (_args)
+#define tcp_evt_grp_dbg_lvl(_evt) tcp_evt_dbg.group_dbg_lvl[tcp_evt_dbg_grp (_evt)]
+
+#define foreach_tcp_evt_grp					\
+  _(MAIN, "main")						\
+  _(SM, "state machine")					\
+  _(CC, "congestion control")					\
+  _(CC_STAT, "cc stats")					\
+
+typedef enum tcp_evt_grp_
 {
-#define _(sym, str) TCP_DBG_##sym,
+#define _(sym, str) TCP_EVT_GRP_ ## sym,
+  foreach_tcp_evt_grp
+#undef _
+  TCP_EVT_N_GRP
+} tcp_evt_grp_e;
+
+typedef struct tcp_evt_dbg_
+{
+  u8 group_dbg_lvl[TCP_EVT_N_GRP];
+  u32 *free_track_indices;
+} tcp_evt_dbg_t;
+
+extern tcp_evt_dbg_t tcp_evt_dbg;
+
+#define foreach_tcp_dbg_evt					\
+  _(INIT, 		MAIN, 1, "init")			\
+  _(DEALLOC, 		MAIN, 1, "dealloc")			\
+  _(OPEN, 		MAIN, 1, "open")			\
+  _(CLOSE, 		MAIN, 1, "close")			\
+  _(BIND, 		MAIN, 1, "bind")			\
+  _(UNBIND, 		MAIN, 1, "unbind")			\
+  _(DELETE, 		MAIN, 1, "delete")			\
+  _(SYN_RCVD, 		MAIN, 1, "SYN rcvd")			\
+  _(STATE_CHANGE, 	MAIN, 1, "state change")		\
+  _(SYN_SENT, 		SM, 1, "SYN sent")			\
+  _(SYN_RXT, 		SM, 1, "SYN retransmit")		\
+  _(SYNACK_SENT, 	SM, 1, "SYNACK sent")			\
+  _(SYNACK_RCVD, 	SM, 1, "SYNACK rcvd")			\
+  _(FIN_SENT, 		SM, 1, "FIN sent")			\
+  _(FIN_RCVD, 		SM, 1, "FIN rcvd")			\
+  _(RST_SENT, 		SM, 1, "RST sent")			\
+  _(RST_RCVD, 		SM, 1, "RST rcvd")			\
+  _(TIMER_POP, 		SM, 1, "timer pop")			\
+  _(SEG_INVALID, 	SM, 2, "invalid segment")		\
+  _(PAWS_FAIL, 		SM, 2, "failed paws check")		\
+  _(ACK_RCV_ERR, 	SM, 2, "invalid ack")			\
+  _(RCV_WND_SHRUNK, 	SM, 2, "shrunk rcv_wnd")		\
+  _(ACK_SENT, 		SM, 3, "ACK sent")			\
+  _(ACK_RCVD, 		SM, 3, "ACK rcvd")			\
+  _(PKTIZE, 		SM, 3, "packetize")			\
+  _(INPUT, 		SM, 3, "in")				\
+  _(OUTPUT, 		SM, 4, "output")			\
+  _(SND_WND, 		SM, 4, "snd_wnd update")		\
+  _(CC_EVT, 		CC, 1, "cc event")			\
+  _(CC_RTX, 		CC, 2, "retransmit")			\
+  _(CC_PACK, 		CC, 2, "cc partial ack")		\
+  _(DUPACK_SENT, 	CC, 2, "DUPACK sent")			\
+  _(DUPACK_RCVD, 	CC, 2, "DUPACK rcvd")			\
+  _(CC_SCOREBOARD, 	CC, 2, "scoreboard stats")		\
+  _(CC_SACKS, 		CC, 2, "snd sacks stats")		\
+  _(CC_INPUT, 		CC, 2, "ooo data delivered")		\
+  _(CC_STAT, 		CC_STAT, 1, "cc stats")			\
+  _(CC_RTO_STAT,	CC_STAT, 1, "cc rto stats")		\
+
+typedef enum tcp_evt_types_
+{
+#define _(sym, grp, lvl, str) TCP_EVT_##sym,
   foreach_tcp_dbg_evt
 #undef _
-} tcp_dbg_e;
+} tcp_evt_types_e;
 
-typedef enum _tcp_dbg_evt
+typedef enum tcp_evt_lvl_
 {
-#define _(sym, str) TCP_EVT_##sym,
+#define _(sym, grp, lvl, str) TCP_EVT_## sym ## _LVL = lvl,
   foreach_tcp_dbg_evt
 #undef _
-} tcp_dbg_evt_e;
+} tcp_evt_lvl_e;
+
+typedef enum tcp_evt_to_grp_
+{
+#define _(sym, grp, lvl, str) TCP_EVT_ ## sym ## _GRP = TCP_EVT_GRP_ ## grp,
+  foreach_tcp_dbg_evt
+#undef _
+} tcp_evt_to_grp_e;
+
+#define DECLARE_ETD(_tc, _e, _size)					\
+struct									\
+{									\
+  u32 data[_size];							\
+} * ed;									\
+ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, _e, 			\
+                      _tc->c_elog_track)				\
+
+
+#if TCP_DEBUG_ALWAYS > 0
+#define TCP_EVT_DBG(_evt, _args...) 					\
+  if (PREDICT_FALSE (tcp_evt_grp_dbg_lvl (_evt) >= tcp_evt_dbg_lvl(_evt)))\
+    tcp_evt_handler(_evt, _args)
+#define TCP_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
+#elif TCP_DEBUG_COMPILE > 0
+#define TCP_EVT_DBG(_evt, _args...) tcp_evt_handler(_evt, _args)
+#define TCP_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
+#else
+#define TCP_EVT_DBG(_evt, _args...)
+#define TCP_DBG(_fmt, _args...)
+#endif
+
+/*
+ * Event handlers definitions
+ */
+
+void tcp_evt_track_register (elog_track_t *et);
+void tcp_debug_init (void);
 
 #if TCP_DEBUG
-
-#define TRANSPORT_DEBUG (1)
 
 /*
  * Infra and evt track setup
  */
-
-#define TCP_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
-
-#define DECLARE_ETD(_tc, _e, _size)					\
-  struct								\
-  {									\
-    u32 data[_size];							\
-  } * ed;								\
-  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main,			\
-			_e, _tc->c_elog_track)
 
 #define TCP_DBG_IP_TAG_LCL(_tc)						\
 {									\
@@ -151,14 +211,15 @@ typedef enum _tcp_dbg_evt
 			 clib_net_to_host_u16(_tc->c_lcl_port),		\
 			 _tc->c_rmt_ip.ip6.as_u8[15], 			\
 			 clib_net_to_host_u16(_tc->c_rmt_port), 0);	\
-  elog_track_register (&vlib_global_main.elog_main, &_tc->c_elog_track);\
+  tcp_evt_track_register (&_tc->c_elog_track);				\
   TCP_DBG_IP_TAG_LCL(_tc);						\
   TCP_DBG_IP_TAG_RMT(_tc);						\
 }
 
 #define TCP_EVT_DEALLOC_HANDLER(_tc, ...)				\
 {									\
-  vec_free (_tc->c_elog_track.name);					\
+  vec_add1 (tcp_evt_dbg.free_track_indices, 				\
+            _tc->c_elog_track.track_index_plus_one - 1);		\
 }
 
 #define TCP_EVT_OPEN_HANDLER(_tc, ...)					\
@@ -236,18 +297,12 @@ typedef enum _tcp_dbg_evt
   TCP_EVT_DEALLOC_HANDLER(_tc);						\
 }
 
-#define CONCAT_HELPER(_a, _b) _a##_b
-#define CC(_a, _b) CONCAT_HELPER(_a, _b)
-#define TCP_EVT_DBG(_evt, _args...) CC(_evt, _HANDLER)(_args)
-#else
-#define TCP_EVT_DBG(_evt, _args...)
-#define TCP_DBG(_fmt, _args...)
 #endif
 
 /*
  * State machine
  */
-#if TCP_DEBUG_SM
+#if TCP_DEBUG_SM > 0 || TCP_DEBUG_ALWAYS
 
 #define TCP_EVT_STATE_CHANGE_HANDLER(_tc, ...)				\
 {									\
@@ -395,8 +450,7 @@ if (_tc)								\
 #define TCP_EVT_TIMER_POP_HANDLER(_tc_index, _timer_id, ...)            \
 {                                                               	\
   tcp_connection_t *_tc;                                        	\
-  if (_timer_id == TCP_TIMER_RETRANSMIT_SYN 				\
-      || _timer_id == TCP_TIMER_ESTABLISH_AO)                        	\
+  if (_timer_id == TCP_TIMER_RETRANSMIT_SYN)                        	\
     {                                                           	\
       _tc = tcp_half_open_connection_get (_tc_index);           	\
     }                                                           	\
@@ -448,7 +502,7 @@ if (_tc)								\
 #define TCP_EVT_TIMER_POP_HANDLER(_tc_index, _timer_id, ...)
 #endif
 
-#if TCP_DEBUG_SM > 1
+#if TCP_DEBUG_SM > 1 || TCP_DEBUG_ALWAYS
 #define TCP_EVT_SEG_INVALID_HANDLER(_tc, _btcp, ...)			\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -523,7 +577,7 @@ if (_av > 0) 								\
 #define TCP_EVT_RCV_WND_SHRUNK_HANDLER(_tc, _obs, _av, ...)
 #endif
 
-#if TCP_DEBUG_SM > 2
+#if TCP_DEBUG_SM > 2 || TCP_DEBUG_ALWAYS
 
 #define TCP_EVT_ACK_SENT_HANDLER(_tc, ...)				\
 {									\
@@ -600,7 +654,7 @@ if (_av > 0) 								\
 /*
  * State machine verbose
  */
-#if TCP_DEBUG_SM > 3
+#if TCP_DEBUG_SM > 3 || TCP_DEBUG_ALWAYS
 #define TCP_EVT_SND_WND_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -632,7 +686,7 @@ if (_av > 0) 								\
  * Congestion Control
  */
 
-#if TCP_DEBUG_CC
+#if TCP_DEBUG_CC || TCP_DEBUG_ALWAYS
 
 #define TCP_EVT_CC_EVT_PRINT(_tc, _sub_evt)				\
 {									\
@@ -672,7 +726,7 @@ if (_av > 0) 								\
 
 #endif
 
-#if TCP_DEBUG_CC > 1
+#if TCP_DEBUG_CC > 1 || TCP_DEBUG_ALWAYS
 #define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)		\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -801,7 +855,7 @@ if (TCP_DEBUG_CC > 1)							\
 /*
  * Congestion control stats
  */
-#if TCP_DEBUG_CC_STAT
+#if TCP_DEBUG_CC_STAT || TCP_DEBUG_ALWAYS
 
 #define STATS_INTERVAL 1
 
@@ -889,7 +943,7 @@ if (tcp_cc_time_to_print_stats (_tc))					\
 /*
  * Buffer allocation
  */
-#if TCP_DEBUG_BUFFER_ALLOCATION
+#if TCP_DEBUG_BUFFER_ALLOCATION || TCP_DEBUG_ALWAYS
 
 #define TCP_DBG_BUFFER_ALLOC_MAYBE_FAIL(thread_index)			\
 {									\
