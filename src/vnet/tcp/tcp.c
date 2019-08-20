@@ -139,7 +139,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 
   tcp_connection_timers_init (listener);
 
-  TCP_EVT_DBG (TCP_EVT_BIND, listener);
+  TCP_EVT (TCP_EVT_BIND, listener);
 
   return listener->c_c_index;
 }
@@ -158,7 +158,7 @@ tcp_connection_unbind (u32 listener_index)
 
   tc = pool_elt_at_index (tm->listener_pool, listener_index);
 
-  TCP_EVT_DBG (TCP_EVT_UNBIND, tc);
+  TCP_EVT (TCP_EVT_UNBIND, tc);
 
   /* Poison the entry */
   if (CLIB_DEBUG > 0)
@@ -240,7 +240,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 {
   tcp_main_t *tm = &tcp_main;
 
-  TCP_EVT_DBG (TCP_EVT_DELETE, tc);
+  TCP_EVT (TCP_EVT_DELETE, tc);
 
   /* Cleanup local endpoint if this was an active connect */
   transport_endpoint_cleanup (TRANSPORT_PROTO_TCP, &tc->c_lcl_ip,
@@ -340,7 +340,7 @@ tcp_connection_free (tcp_connection_t * tc)
 void
 tcp_connection_reset (tcp_connection_t * tc)
 {
-  TCP_EVT_DBG (TCP_EVT_RST_RCVD, tc);
+  TCP_EVT (TCP_EVT_RST_RCVD, tc);
   switch (tc->state)
     {
     case TCP_STATE_SYN_RCVD:
@@ -397,7 +397,7 @@ tcp_connection_reset (tcp_connection_t * tc)
 void
 tcp_connection_close (tcp_connection_t * tc)
 {
-  TCP_EVT_DBG (TCP_EVT_CLOSE, tc);
+  TCP_EVT (TCP_EVT_CLOSE, tc);
 
   /* Send/Program FIN if needed and switch state */
   switch (tc->state)
@@ -767,7 +767,7 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 
-  TCP_EVT_DBG (TCP_EVT_OPEN, tc);
+  TCP_EVT (TCP_EVT_OPEN, tc);
   tc->state = TCP_STATE_SYN_SENT;
   tcp_init_snd_vars (tc);
   tcp_send_syn (tc);
@@ -775,12 +775,6 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
 
   return tc->c_c_index;
 }
-
-const char *tcp_dbg_evt_str[] = {
-#define _(sym, str) str,
-  foreach_tcp_dbg_evt
-#undef _
-};
 
 const char *tcp_fsm_states[] = {
 #define _(sym, str) str,
@@ -1401,7 +1395,7 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
       connection_index = expired_timers[i] & 0x0FFFFFFF;
       timer_id = expired_timers[i] >> 28;
 
-      TCP_EVT_DBG (TCP_EVT_TIMER_POP, connection_index, timer_id);
+      TCP_EVT (TCP_EVT_TIMER_POP, connection_index, timer_id);
 
       /* Handle expiration */
       (*timer_expiration_handlers[timer_id]) (connection_index);
