@@ -47,6 +47,7 @@
 _(BOND_CREATE, bond_create)                      \
 _(BOND_DELETE, bond_delete)                      \
 _(BOND_ENSLAVE, bond_enslave)                    \
+_(SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight) \
 _(BOND_DETACH_SLAVE, bond_detach_slave)          \
 _(SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump)\
 _(SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump)
@@ -114,6 +115,25 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
   bond_enslave (vm, ap);
 
   REPLY_MACRO (VL_API_BOND_ENSLAVE_REPLY);
+}
+
+static void
+  vl_api_sw_interface_set_bond_weight_t_handler
+  (vl_api_sw_interface_set_bond_weight_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  bond_set_intf_weight_args_t _a, *ap = &_a;
+  vl_api_sw_interface_set_bond_weight_reply_t *rmp;
+  int rv = 0;
+
+  clib_memset (ap, 0, sizeof (*ap));
+
+  ap->sw_if_index = ntohl (mp->sw_if_index);
+  ap->weight = ntohl (mp->weight);
+
+  bond_set_intf_weight (vm, ap);
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_BOND_WEIGHT_REPLY);
 }
 
 static void
@@ -200,6 +220,8 @@ bond_send_sw_interface_slave_details (vpe_api_main_t * am,
 		    strlen ((const char *) slave_if->interface_name)));
   mp->is_passive = slave_if->is_passive;
   mp->is_long_timeout = slave_if->is_long_timeout;
+  mp->is_local_numa = slave_if->is_local_numa;
+  mp->weight = htonl (slave_if->weight);
 
   mp->context = context;
   vl_api_send_msg (reg, (u8 *) mp);
