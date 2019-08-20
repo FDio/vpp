@@ -50,8 +50,7 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi,
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
 
-  error = rte_eth_dev_default_mac_addr_set (xd->port_id,
-					    (struct ether_addr *) address);
+  error = rte_eth_dev_default_mac_addr_set (xd->port_id, (void *) address);
 
   if (error)
     {
