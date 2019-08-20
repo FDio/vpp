@@ -9,6 +9,7 @@ This section provides information about the features that are provided for each 
 .. toctree::
    :maxdepth: 1
 
+   vpp1908
    vpp1904
    vpp1901
    vpp18.10
