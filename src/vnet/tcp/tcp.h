@@ -697,7 +697,7 @@ always_inline void
 tcp_connection_set_state (tcp_connection_t * tc, tcp_state_t state)
 {
   tc->state = state;
-  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
+  TCP_EVT (TCP_EVT_STATE_CHANGE, tc);
 }
 
 void tcp_connection_close (tcp_connection_t * tc);
