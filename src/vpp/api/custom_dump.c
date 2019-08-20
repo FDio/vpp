@@ -690,8 +690,8 @@ static void *vl_api_bond_enslave_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: bond_enslave ");
-  s = format (s, "bond_sw_if_index %u ", mp->bond_sw_if_index);
-  s = format (s, "sw_if_index %u ", mp->sw_if_index);
+  s = format (s, "bond_sw_if_index %u ", ntohl (mp->bond_sw_if_index));
+  s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
   if (mp->is_passive)
     s = format (s, "passive ");
   if (mp->is_long_timeout)
