@@ -97,6 +97,7 @@ typedef struct
   u32 group;
   u8 is_passive;
   u8 is_long_timeout;
+  u32 weight;
   /* return */
   int rv;
   clib_error_t *error;
@@ -130,6 +131,8 @@ typedef struct
   u8 interface_name[64];
   u8 is_passive;
   u8 is_long_timeout;
+  u8 is_local_numa;
+  u32 weight;
   u32 active_slaves;
 } slave_interface_details_t;
 
@@ -159,11 +162,6 @@ typedef struct
   u8 mode;
   u8 lb;
 
-  /* This flag works for active-backup mode only
-     and marks if the working port is local numa. */
-  u8 is_local_numa;
-  /* current working sw_if_index in active-bakeup mode. */
-  u32 sw_if_index_working;
   /* the last slave index for the rr lb */
   u32 lb_rr_last_index;
 
@@ -238,6 +236,9 @@ typedef struct
 
   /* neighbor vlib hw_if_index */
   u32 hw_if_index;
+
+  /* weight -- valid only for active backup */
+  u32 weight;
 
   /* actor does not initiate the protocol exchange */
   u8 is_passive;
@@ -336,6 +337,9 @@ typedef struct
 
   /* pdu sent */
   u64 marker_pdu_sent;
+
+  /* slave is numa node */
+  u8 is_local_numa;
 } slave_if_t;
 
 typedef void (*lacp_enable_disable_func) (vlib_main_t * vm, bond_if_t * bif,

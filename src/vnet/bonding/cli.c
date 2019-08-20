@@ -28,8 +28,6 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
   bond_if_t *bif;
   int i;
   uword p;
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hw;
   u8 switching_active = 0;
 
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
@@ -39,12 +37,10 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
     p = *vec_elt_at_index (bif->active_slaves, i);
     if (p == sif->sw_if_index)
       {
-	if (sif->sw_if_index == bif->sw_if_index_working)
-	  {
-	    switching_active = 1;
-	    if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
-	      bif->is_local_numa = 0;
-	  }
+	if ((bif->mode == BOND_MODE_ACTIVE_BACKUP) && (i == 0) &&
+	    (vec_len (bif->active_slaves) > 1))
+	  /* deleting the active slave for active-backup */
+	  switching_active = 1;
 	vec_del1 (bif->active_slaves, i);
 	hash_unset (bif->active_slave_by_sw_if_index, sif->sw_if_index);
 	if (sif->lacp_enabled && bif->numa_only)
@@ -63,40 +59,52 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
   }
 
   /* We get a new slave just becoming active */
-  if ((bif->mode == BOND_MODE_ACTIVE_BACKUP) && switching_active)
-    {
-      if ((vec_len (bif->active_slaves) >= 1))
-	{
-	  /* scan all slaves and try to find the first slave with local numa node. */
-	  vec_foreach_index (i, bif->active_slaves)
-	  {
-	    p = *vec_elt_at_index (bif->active_slaves, i);
-	    hw = vnet_get_sup_hw_interface (vnm, p);
-	    if (vm->numa_node == hw->numa_node)
-	      {
-		bif->sw_if_index_working = p;
-		bif->is_local_numa = 1;
-		vlib_process_signal_event (bm->vlib_main,
-					   bond_process_node.index,
-					   BOND_SEND_GARP_NA,
-					   bif->hw_if_index);
-		break;
-	      }
-	  }
-	}
-
-      /* No local numa node is found in the active slave set. Use the first slave */
-      if ((bif->is_local_numa == 0) && (vec_len (bif->active_slaves) >= 1))
-	{
-	  p = *vec_elt_at_index (bif->active_slaves, 0);
-	  bif->sw_if_index_working = p;
-	  vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
-				     BOND_SEND_GARP_NA, bif->hw_if_index);
-	}
-    }
+  if (switching_active)
+    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+			       BOND_SEND_GARP_NA, bif->hw_if_index);
   clib_spinlock_unlock_if_init (&bif->lockp);
 
   return;
+}
+
+static int
+bond_slave_sort (void *a1, void *a2)
+{
+  u32 *s1 = a1;
+  u32 *s2 = a2;
+  slave_if_t *sif1 = bond_get_slave_by_sw_if_index (*s1);
+  slave_if_t *sif2 = bond_get_slave_by_sw_if_index (*s2);
+
+  ASSERT (sif1);
+  ASSERT (sif2);
+  /*
+   * sort entries according to preference rules:
+   * 1. biggest weight
+   * 2. numa-node
+   * 3. lowest sw_if_index (for deterministic behavior)
+   *
+   */
+  if (sif2->weight > sif1->weight)
+    return 1;
+  else if (sif2->weight < sif1->weight)
+    return -1;
+  else
+    {
+      if (sif2->is_local_numa > sif1->is_local_numa)
+	return 1;
+      else if (sif2->is_local_numa < sif1->is_local_numa)
+	return -1;
+      else
+	{
+	  if (sif1->sw_if_index > sif2->sw_if_index)
+	    return 1;
+	  else if (sif1->sw_if_index < sif2->sw_if_index)
+	    return -1;
+	  else
+	    ASSERT (0);
+	}
+    }
+  return 0;
 }
 
 void
@@ -106,8 +114,6 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
-  int i;
-  uword p;
 
   bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
@@ -124,42 +130,25 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 	  bif->n_numa_slaves++;
 	}
       else
-	{
-	  vec_add1 (bif->active_slaves, sif->sw_if_index);
-	}
+	vec_add1 (bif->active_slaves, sif->sw_if_index);
 
-      /* First slave becomes active? */
-      if ((vec_len (bif->active_slaves) == 1) &&
-	  (bif->mode == BOND_MODE_ACTIVE_BACKUP))
+      sif->is_local_numa = (vm->numa_node == hw->numa_node) ? 1 : 0;
+      if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
 	{
-	  bif->sw_if_index_working = sif->sw_if_index;
-	  bif->is_local_numa = (vm->numa_node == hw->numa_node) ? 1 : 0;
-	  vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
-				     BOND_SEND_GARP_NA, bif->hw_if_index);
-	}
-      else if ((vec_len (bif->active_slaves) > 1)
-	       && (bif->mode == BOND_MODE_ACTIVE_BACKUP)
-	       && bif->is_local_numa == 0)
-	{
-	  if (vm->numa_node == hw->numa_node)
+	  if (vec_len (bif->active_slaves) == 1)
+	    /* First slave becomes active? */
+	    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+				       BOND_SEND_GARP_NA, bif->hw_if_index);
+	  else
 	    {
-	      vec_foreach_index (i, bif->active_slaves)
-	      {
-		p = *vec_elt_at_index (bif->active_slaves, 0);
-		if (p == sif->sw_if_index)
-		  break;
+	      u32 old_active = bif->active_slaves[0];
 
-		vec_del1 (bif->active_slaves, 0);
-		hash_unset (bif->active_slave_by_sw_if_index, p);
-		vec_add1 (bif->active_slaves, p);
-		hash_set (bif->active_slave_by_sw_if_index, p, p);
-	      }
-	      bif->sw_if_index_working = sif->sw_if_index;
-	      bif->is_local_numa = 1;
-	      vlib_process_signal_event (bm->vlib_main,
-					 bond_process_node.index,
-					 BOND_SEND_GARP_NA, bif->hw_if_index);
-
+	      vec_sort_with_function (bif->active_slaves, bond_slave_sort);
+	      if (old_active != bif->active_slaves[0])
+		vlib_process_signal_event (bm->vlib_main,
+					   bond_process_node.index,
+					   BOND_SEND_GARP_NA,
+					   bif->hw_if_index);
 	    }
 	}
     }
@@ -233,6 +222,8 @@ bond_dump_slave_ifs (slave_interface_details_t ** out_slaveifs,
 	slaveif->sw_if_index = sif->sw_if_index;
 	slaveif->is_passive = sif->is_passive;
 	slaveif->is_long_timeout = sif->is_long_timeout;
+	slaveif->is_local_numa = sif->is_local_numa;
+	slaveif->weight = sif->weight;
       }
   }
   *out_slaveifs = r_slaveifs;
@@ -585,6 +576,8 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
   sif->group = args->group;
   sif->bif_dev_instance = bif->dev_instance;
   sif->mode = bif->mode;
+  if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
+    sif->weight = args->weight;
 
   sif->is_long_timeout = args->is_long_timeout;
   if (args->is_long_timeout)
@@ -692,6 +685,8 @@ enslave_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (unformat (line_input, "%U %U",
 		    unformat_vnet_sw_interface, vnm, &args.group,
 		    unformat_vnet_sw_interface, vnm, &args.slave))
+	;
+      else if (unformat (line_input, "weight %u", &args.weight))
 	;
       else if (unformat (line_input, "passive"))
 	args.is_passive = 1;
@@ -835,6 +830,14 @@ show_bond_details (vlib_main_t * vm)
       {
         vlib_cli_output (vm, "    %U", format_vnet_sw_if_index_name,
 			 vnet_get_main (), *sw_if_index);
+	if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
+	  {
+	    slave_if_t *sif = bond_get_slave_by_sw_if_index (*sw_if_index);
+	    if (sif)
+	      vlib_cli_output (vm, "      weight: %u, is_local_numa: %u, "
+			       "sw_if_index: %u", sif->weight,
+			       sif->is_local_numa, sif->sw_if_index);
+	  }
       }
     vlib_cli_output (vm, "  number of slaves: %d", vec_len (bif->slaves));
     vec_foreach (sw_if_index, bif->slaves)
