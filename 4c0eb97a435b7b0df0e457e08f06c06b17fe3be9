@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54ea6474_57b51010",
+        "filename": "RELEASE.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-08-20T08:55:38Z",
+      "side": 1,
+      "message": "Can you please add:\n- gso (experimental)\n  - Add support for tag interfaces",
+      "revId": "4c0eb97a435b7b0df0e457e08f06c06b17fe3be9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
