@@ -2096,8 +2096,9 @@ static void vl_api_sw_interface_slave_details_t_handler
   vat_main_t *vam = &vat_main;
 
   print (vam->ofp,
-	 "%-25s %-12d %-12d %d", mp->interface_name,
-	 ntohl (mp->sw_if_index), mp->is_passive, mp->is_long_timeout);
+	 "%-25s %-12d %-7d %-12d %-10d %-10d", mp->interface_name,
+	 ntohl (mp->sw_if_index), mp->is_passive, mp->is_long_timeout,
+	 ntohl (mp->weight), mp->is_local_numa);
 }
 
 static void vl_api_sw_interface_slave_details_t_handler_json
@@ -2119,6 +2120,8 @@ static void vl_api_sw_interface_slave_details_t_handler_json
 				   mp->interface_name);
   vat_json_object_add_uint (node, "passive", mp->is_passive);
   vat_json_object_add_uint (node, "long_timeout", mp->is_long_timeout);
+  vat_json_object_add_uint (node, "weight", ntohl (mp->weight));
+  vat_json_object_add_uint (node, "is_local_numa", mp->is_local_numa);
 }
 
 static int
@@ -2149,8 +2152,9 @@ api_sw_interface_slave_dump (vat_main_t * vam)
     }
 
   print (vam->ofp,
-	 "\n%-25s %-12s %-12s %s",
-	 "slave interface name", "sw_if_index", "passive", "long_timeout");
+	 "\n%-25s %-12s %-7s %-12s %-10s %-10s",
+	 "slave interface name", "sw_if_index", "passive", "long_timeout",
+	 "weight", "local numa");
 
   /* Get list of bond interfaces */
   M (SW_INTERFACE_SLAVE_DUMP, mp);
@@ -7863,6 +7867,7 @@ api_bond_enslave (vat_main_t * vam)
   u32 bond_sw_if_index_is_set = 0;
   u32 sw_if_index;
   u8 sw_if_index_is_set = 0;
+  u32 weight = 0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -7874,6 +7879,8 @@ api_bond_enslave (vat_main_t * vam)
       else if (unformat (i, "passive %d", &is_passive))
 	;
       else if (unformat (i, "long-timeout %d", &is_long_timeout))
+	;
+      else if (unformat (i, "weight %u", &weight))
 	;
       else
 	break;
@@ -7897,6 +7904,7 @@ api_bond_enslave (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_long_timeout = is_long_timeout;
   mp->is_passive = is_passive;
+  mp->weight = ntohl (weight);
 
   /* send it... */
   S (mp);
