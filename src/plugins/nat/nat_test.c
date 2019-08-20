@@ -64,6 +64,7 @@ snat_test_main_t snat_test_main;
 #define foreach_standard_reply_retval_handler    \
 _(nat44_add_del_address_range_reply)             \
 _(nat44_interface_add_del_feature_reply)         \
+_(nat44_interface_add_del_output_feature_reply)  \
 _(nat44_add_del_static_mapping_reply)            \
 _(nat_set_workers_reply)                         \
 _(nat44_add_del_interface_addr_reply)            \
@@ -98,6 +99,8 @@ _(NAT44_ADD_DEL_ADDRESS_RANGE_REPLY,                            \
   nat44_add_del_address_range_reply)                            \
 _(NAT44_INTERFACE_ADD_DEL_FEATURE_REPLY,                        \
   nat44_interface_add_del_feature_reply)                        \
+_(NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY,                 \
+  nat44_interface_add_del_output_feature_reply)                 \
 _(NAT44_ADD_DEL_STATIC_MAPPING_REPLY,                           \
   nat44_add_del_static_mapping_reply)                           \
 _(NAT_CONTROL_PING_REPLY, nat_control_ping_reply)               \
@@ -133,6 +136,8 @@ static int api_nat44_add_del_address_range (vat_main_t * vam)
   u32 start_host_order, end_host_order;
   vl_api_nat44_add_del_address_range_t * mp;
   u8 is_add = 1;
+  u8 twice_nat = 0;
+  int vrf_id = ~0;
   int count;
   int ret;
 
@@ -144,6 +149,10 @@ static int api_nat44_add_del_address_range (vat_main_t * vam)
         ;
       else if (unformat (i, "%U", unformat_ip4_address, &start_addr))
         end_addr = start_addr;
+      else if (unformat (i, "twice-nat"))
+        twice_nat = 1;
+      else if (unformat (i, "vrf %u", &vrf_id))
+        ;
       else if (unformat (i, "del"))
         is_add = 0;
       else
@@ -176,6 +185,9 @@ static int api_nat44_add_del_address_range (vat_main_t * vam)
 
   memcpy (mp->first_ip_address, &start_addr, 4);
   memcpy (mp->last_ip_address, &end_addr, 4);
+  mp->vrf_id = vrf_id;
+  if (twice_nat)
+    mp->flags = (vl_api_nat_config_flags_t)NAT_API_IS_TWICE_NAT;
   mp->is_add = is_add;
 
   S(mp);
@@ -219,6 +231,52 @@ static int api_nat44_interface_add_del_feature (vat_main_t * vam)
     }
 
   M(NAT44_INTERFACE_ADD_DEL_FEATURE, mp);
+  mp->sw_if_index = ntohl(sw_if_index);
+  mp->is_add = is_add;
+  if (is_inside)
+    mp->flags |= NAT_API_IS_INSIDE;
+
+  S(mp);
+  W (ret);
+  return ret;
+}
+
+static int api_nat44_interface_add_del_output_feature (vat_main_t * vam)
+{
+  unformat_input_t * i = vam->input;
+  vl_api_nat44_interface_add_del_output_feature_t * mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 is_inside = 1;
+  u8 is_add = 1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+        sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+        sw_if_index_set = 1;
+      else if (unformat (i, "out"))
+        is_inside = 0;
+      else if (unformat (i, "in"))
+        is_inside = 1;
+      else if (unformat (i, "del"))
+        is_add = 0;
+      else
+        {
+          clib_warning("unknown input '%U'", format_unformat_error, i);
+          return -99;
+        }
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("interface / sw_if_index required\n");
+      return -99;
+    }
+
+  M(NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE, mp);
   mp->sw_if_index = ntohl(sw_if_index);
   mp->is_add = is_add;
   if (is_inside)
@@ -578,6 +636,7 @@ static int api_nat44_add_del_interface_addr (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
+  u8 twice_nat = 0;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -586,6 +645,8 @@ static int api_nat44_add_del_interface_addr (vat_main_t * vam)
         sw_if_index_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
         sw_if_index_set = 1;
+      else if (unformat (i, "twice-nat"))
+        twice_nat = 1;
       else if (unformat (i, "del"))
         is_add = 0;
       else
@@ -603,7 +664,8 @@ static int api_nat44_add_del_interface_addr (vat_main_t * vam)
 
   M(NAT44_ADD_DEL_INTERFACE_ADDR, mp);
   mp->sw_if_index = ntohl(sw_if_index);
-
+  if (twice_nat)
+    mp->flags = (vl_api_nat_config_flags_t)NAT_API_IS_TWICE_NAT;
   mp->is_add = is_add;
 
   S(mp);
@@ -1099,8 +1161,11 @@ static int api_nat_det_session_dump(vat_main_t * vam)
  * and that the data plane plugin processes
  */
 #define foreach_vpe_api_msg                                       \
-_(nat44_add_del_address_range, "<start-addr> [- <end-addr] [del]")\
+_(nat44_add_del_address_range,                                    \
+  "<start-addr> [- <end-addr>] [vrf <table-id>] [twice-nat] [del]") \
 _(nat44_interface_add_del_feature,                                \
+  "<intfc> | sw_if_index <id> [in] [out] [del]")                  \
+_(nat44_interface_add_del_output_feature,                         \
   "<intfc> | sw_if_index <id> [in] [out] [del]")                  \
 _(nat44_add_del_static_mapping, "local_addr <ip>"                 \
   " (external_addr <ip> | external_if <intfc> |"                  \
@@ -1113,7 +1178,7 @@ _(nat44_address_dump, "")                                         \
 _(nat44_interface_dump, "")                                       \
 _(nat_worker_dump, "")                                            \
 _(nat44_add_del_interface_addr,                                   \
-  "<intfc> | sw_if_index <id> [del]")                             \
+  "<intfc> | sw_if_index <id> [twice-nat] [del]")                 \
 _(nat44_interface_addr_dump, "")                                  \
 _(nat_ipfix_enable_disable, "[domain <id>] [src_port <n>] "       \
   "[disable]")                                                    \
