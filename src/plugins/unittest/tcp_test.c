@@ -762,7 +762,7 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
       tc0->rcv_opts.mss = 1450;
       tcp_connection_init_vars (tc0);
 
-      TCP_EVT_DBG (TCP_EVT_OPEN, tc0);
+      TCP_EVT (TCP_EVT_OPEN, tc0);
 
       if (session_stream_accept (&tc0->connection, 0 /* listener index */ ,
 				 0 /* thread index */ , 0 /* notify */ ))
