@@ -86,13 +86,9 @@ class TestBondInterface(VppTestCase):
 
         # enslave pg0 and pg1 to BondEthernet0
         self.logger.info("bond enslave interface pg0 to BondEthernet0")
-        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index,
-                                         is_passive=0,
-                                         is_long_timeout=0)
+        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
         self.logger.info("bond enslave interface pg1 to BondEthernet0")
-        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index,
-                                         is_passive=0,
-                                         is_long_timeout=0)
+        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
 
         # verify both slaves in BondEthernet0
         if_dump = self.vapi.sw_interface_slave_dump(bond0.sw_if_index)
@@ -275,6 +271,7 @@ class TestBondInterface(VppTestCase):
         # verify BondEthernet0 is not in the dump
         if_dump = self.vapi.sw_interface_bond_dump()
         self.assertFalse(bond0.is_interface_config_in_dump(if_dump))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
