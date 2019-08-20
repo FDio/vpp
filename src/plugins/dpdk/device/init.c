@@ -576,7 +576,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  addr[1] = 0xfe;
 	}
       else
-	rte_eth_macaddr_get (i, (struct ether_addr *) addr);
+	rte_eth_macaddr_get (i, (void *) addr);
 
       if (xd->tx_q_used < tm->n_vlib_mains)
 	dpdk_device_lock_init (xd);
