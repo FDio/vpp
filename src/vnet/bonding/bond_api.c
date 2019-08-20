@@ -110,6 +110,7 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
   ap->slave = ntohl (mp->sw_if_index);
   ap->is_passive = mp->is_passive;
   ap->is_long_timeout = mp->is_long_timeout;
+  ap->weight = ntohl (mp->weight);
 
   bond_enslave (vm, ap);
 
@@ -200,6 +201,8 @@ bond_send_sw_interface_slave_details (vpe_api_main_t * am,
 		    strlen ((const char *) slave_if->interface_name)));
   mp->is_passive = slave_if->is_passive;
   mp->is_long_timeout = slave_if->is_long_timeout;
+  mp->is_local_numa = slave_if->is_local_numa;
+  mp->weight = htonl (slave_if->weight);
 
   mp->context = context;
   vl_api_send_msg (reg, (u8 *) mp);
