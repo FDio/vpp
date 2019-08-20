@@ -29,8 +29,8 @@ class VppBondInterface(VppInterface):
 
     def enslave_vpp_bond_interface(self,
                                    sw_if_index,
-                                   is_passive,
-                                   is_long_timeout):
+                                   is_passive=0,
+                                   is_long_timeout=0):
         self.test.vapi.bond_enslave(sw_if_index,
                                     self.sw_if_index,
                                     is_passive,
