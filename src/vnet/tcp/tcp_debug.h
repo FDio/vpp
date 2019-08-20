@@ -18,7 +18,7 @@
 
 #include <vlib/vlib.h>
 
-#define TCP_DEBUG (1)
+#define TCP_DEBUG (0)
 #define TCP_DEBUG_SM (0)
 #define TCP_DEBUG_CC (0)
 #define TCP_DEBUG_CC_STAT (0)
