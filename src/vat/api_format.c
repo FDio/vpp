@@ -2031,6 +2031,49 @@ static void vl_api_bond_detach_slave_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static int
+api_sw_interface_set_bond_weight (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_bond_weight_t *mp;
+  u32 sw_if_index = ~0;
+  u32 weight = 0;
+  u8 weight_enter = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "weight %u", &weight))
+	weight_enter = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+  if (weight_enter == 0)
+    {
+      errmsg ("missing valid weight");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_SET_BOND_WEIGHT, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->weight = ntohl (weight);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 static void vl_api_sw_interface_bond_details_t_handler
   (vl_api_sw_interface_bond_details_t * mp)
 {
@@ -2096,8 +2139,9 @@ static void vl_api_sw_interface_slave_details_t_handler
   vat_main_t *vam = &vat_main;
 
   print (vam->ofp,
-	 "%-25s %-12d %-12d %d", mp->interface_name,
-	 ntohl (mp->sw_if_index), mp->is_passive, mp->is_long_timeout);
+	 "%-25s %-12d %-7d %-12d %-10d %-10d", mp->interface_name,
+	 ntohl (mp->sw_if_index), mp->is_passive, mp->is_long_timeout,
+	 ntohl (mp->weight), mp->is_local_numa);
 }
 
 static void vl_api_sw_interface_slave_details_t_handler_json
@@ -2119,6 +2163,8 @@ static void vl_api_sw_interface_slave_details_t_handler_json
 				   mp->interface_name);
   vat_json_object_add_uint (node, "passive", mp->is_passive);
   vat_json_object_add_uint (node, "long_timeout", mp->is_long_timeout);
+  vat_json_object_add_uint (node, "weight", ntohl (mp->weight));
+  vat_json_object_add_uint (node, "is_local_numa", mp->is_local_numa);
 }
 
 static int
@@ -2149,8 +2195,9 @@ api_sw_interface_slave_dump (vat_main_t * vam)
     }
 
   print (vam->ofp,
-	 "\n%-25s %-12s %-12s %s",
-	 "slave interface name", "sw_if_index", "passive", "long_timeout");
+	 "\n%-25s %-12s %-7s %-12s %-10s %-10s",
+	 "slave interface name", "sw_if_index", "passive", "long_timeout",
+	 "weight", "local numa");
 
   /* Get list of bond interfaces */
   M (SW_INTERFACE_SLAVE_DUMP, mp);
@@ -5072,6 +5119,7 @@ _(sw_interface_set_vxlan_bypass_reply)                  \
 _(sw_interface_set_geneve_bypass_reply)                 \
 _(sw_interface_set_vxlan_gpe_bypass_reply)              \
 _(sw_interface_set_l2_bridge_reply)                     \
+_(sw_interface_set_bond_weight_reply)                   \
 _(bridge_domain_add_del_reply)                          \
 _(sw_interface_set_l2_xconnect_reply)                   \
 _(l2fib_add_del_reply)                                  \
@@ -5274,6 +5322,7 @@ _(BOND_CREATE_REPLY, bond_create_reply)	   			        \
 _(BOND_DELETE_REPLY, bond_delete_reply)			  	        \
 _(BOND_ENSLAVE_REPLY, bond_enslave_reply)				\
 _(BOND_DETACH_SLAVE_REPLY, bond_detach_slave_reply)			\
+_(SW_INTERFACE_SET_BOND_WEIGHT_REPLY, sw_interface_set_bond_weight_reply) \
 _(SW_INTERFACE_BOND_DETAILS, sw_interface_bond_details)                 \
 _(SW_INTERFACE_SLAVE_DETAILS, sw_interface_slave_details)               \
 _(IP_ROUTE_ADD_DEL_REPLY, ip_route_add_del_reply)			\
@@ -21756,13 +21805,14 @@ _(sw_interface_virtio_pci_dump, "")                                     \
 _(bond_create,                                                          \
   "[hw-addr <mac-addr>] {round-robin | active-backup | "                \
   "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "        \
-  "[id <if-id>]")                                                       \
+  "[id <if-id>]")							\
 _(bond_delete,                                                          \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(bond_enslave,                                                         \
-  "sw_if_index <n> bond <sw_if_index> [is_passive] [is_long_timeout]")	\
+  "sw_if_index <n> bond <sw_if_index> [is_passive] [is_long_timeout]")  \
 _(bond_detach_slave,                                                    \
   "sw_if_index <n>")							\
+ _(sw_interface_set_bond_weight, "<intfc> | sw_if_index <nn> weight <value>") \
 _(sw_interface_bond_dump, "")                                           \
 _(sw_interface_slave_dump,                                              \
   "<vpp-if-name> | sw_if_index <id>")                                   \
