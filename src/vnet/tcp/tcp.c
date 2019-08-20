@@ -776,11 +776,11 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   return tc->c_c_index;
 }
 
-const char *tcp_dbg_evt_str[] = {
-#define _(sym, str) str,
-  foreach_tcp_dbg_evt
-#undef _
-};
+//const char *tcp_dbg_evt_str[] = {
+//#define _(sym, str) str,
+//  foreach_tcp_dbg_evt
+//#undef _
+//};
 
 const char *tcp_fsm_states[] = {
 #define _(sym, str) str,
