@@ -190,7 +190,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
   am->my_registration = 0;
   am->vl_input_queue = vl_input_queue;
 
-  mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_create_t));
+  mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_create_t) + strnlen_s (name, 64));
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE);
   mp->ctx_quota = ctx_quota;

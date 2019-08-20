@@ -38,16 +38,19 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
+#if 0
 static inline void *
 vl_api_memclnt_create_t_print (vl_api_memclnt_create_t * a, void *handle)
 {
   vl_print (handle, "vl_api_memclnt_create_t:\n");
-  vl_print (handle, "name: %s\n", a->name);
+  vl_print (handle, "name: %.*s\n", vl_api_string_len(&a->name),
+	    vl_api_from_api_string(&a->name));
   vl_print (handle, "input_queue: 0x%wx\n", a->input_queue);
   vl_print (handle, "context: %u\n", (unsigned) a->context);
   vl_print (handle, "ctx_quota: %ld\n", (long) a->ctx_quota);
   return handle;
 }
+#endif
 
 static inline void *
 vl_api_memclnt_delete_t_print (vl_api_memclnt_delete_t * a, void *handle)

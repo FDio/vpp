@@ -126,8 +126,13 @@ class String(object):
                                                                     offset)
         if length == 0:
             return b'', 0
+        print('STRING: {} {} {} {}'.format(length, length_field_size, offset, len(data)))
         p = BaseTypes('u8', length)
-        x, size = p.unpack(data, offset + length_field_size)
+        try:
+            x, size = p.unpack(data, offset + length_field_size)
+        except Exception as err:
+              logger.exception('Error unpacking string: {} {}'.format(self.name, err))
+              raise
         x2 = x.split(b'\0', 1)[0]
         return (x2.decode('utf8'), size + length_field_size)
 

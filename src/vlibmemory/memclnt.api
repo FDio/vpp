@@ -29,7 +29,6 @@ service {
 /*
  * Create a client registration 
  */
-manual_print 
 define memclnt_create {
     u32 context;                /* opaque value to be returned in the reply */
     i32 ctx_quota;              /* requested punt context quota */

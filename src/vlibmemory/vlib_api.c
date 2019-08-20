@@ -189,7 +189,7 @@ send_one_plugin_msg_ids_msg (u8 * name, u16 first_msg_id, u16 last_msg_id)
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
   svm_queue_t *q;
 
-  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + strnlen_s ((char *) name, 64));
   clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_TRACE_PLUGIN_MSG_IDS);

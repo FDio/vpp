@@ -32,6 +32,8 @@ def walk_defs(s, is_message = False):
         d = []
         d.append(t.name)
         for b in t.block:
+            if b.type == 'Option':
+                continue
             if b.type == 'Field':
                 if b.limit:
                     d.append([b.fieldtype, b.fieldname, b.limit])
@@ -68,6 +70,6 @@ def run(filename, s):
     j['enums'] = walk_enums([o for o in s['types'] if o.__class__.__name__ == 'Enum'])
     j['services'] = walk_services(s['Service'])
     j['options'] = s['Option']
-    j['aliases'] = s['Alias']
+    j['aliases'] = {k : v.alias for k, v in s['Alias'].items()}
     j['vl_api_version'] = hex(s['file_crc'])
     return json.dumps(j, indent=4, separators=(',', ': '))

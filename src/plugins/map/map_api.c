@@ -17,6 +17,7 @@
  *------------------------------------------------------------------
  */
 
+#include <vnet/ip/ip_types_api.h>
 #include <map/map.h>
 #include <map/map_msg_enum.h>
 #include <vnet/ip/ip.h>
