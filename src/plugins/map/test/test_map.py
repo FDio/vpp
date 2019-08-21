@@ -7,6 +7,7 @@ from ipaddress import IPv6Network, IPv4Network
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from util import fragment_rfc791
 
 import scapy.compat
 from scapy.layers.l2 import Ether, Raw
@@ -49,22 +50,25 @@ class TestMAP(VppTestCase):
             i.unconfig_ip6()
             i.admin_down()
 
-    def send_and_assert_encapped(self, tx, ip6_src, ip6_dst, dmac=None):
+    def send_and_assert_encapped(self, packets, ip6_src, ip6_dst, dmac=None):
         if not dmac:
             dmac = self.pg1.remote_mac
 
-        self.pg0.add_stream(tx)
+        self.pg0.add_stream(packets)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg1.get_capture(1)
-        rx = rx[0]
+        capture = self.pg1.get_capture(len(packets))
+        for rx, tx in zip(capture, packets):
+            self.assertEqual(rx[Ether].dst, dmac)
+            self.assertEqual(rx[IP].src, tx[IP].src)
+            self.assertEqual(rx[IPv6].src, ip6_src)
+            self.assertEqual(rx[IPv6].dst, ip6_dst)
 
-        self.assertEqual(rx[Ether].dst, dmac)
-        self.assertEqual(rx[IP].src, tx[IP].src)
-        self.assertEqual(rx[IPv6].src, ip6_src)
-        self.assertEqual(rx[IPv6].dst, ip6_dst)
+    def send_and_assert_encapped_one(self, packet, ip6_src, ip6_dst,
+                                     dmac=None):
+        return self.send_and_assert_encapped([packet], ip6_src, ip6_dst, dmac)
 
     def test_api_map_domain_dump(self):
         map_dst = '2001::/64'
@@ -75,7 +79,6 @@ class TestMAP(VppTestCase):
                                          ip6_prefix=map_dst,
                                          ip6_src=map_src,
                                          tag=tag).index
-
         rv = self.vapi.map_domain_dump()
 
         # restore the state early so as to not impact subsequent tests.
@@ -101,7 +104,7 @@ class TestMAP(VppTestCase):
         # Add a route to the MAP-BR
         #
         map_br_pfx = "2001::"
-        map_br_pfx_len = 64
+        map_br_pfx_len = 32
         map_route = VppIpRoute(self,
                                map_br_pfx,
                                map_br_pfx_len,
@@ -112,14 +115,20 @@ class TestMAP(VppTestCase):
         #
         # Add a domain that maps from pg0 to pg1
         #
-        map_dst = '2001::/64'
+        map_dst = '2001::/32'
         map_src = '3000::1/128'
         client_pfx = '192.168.0.0/16'
+        map_translated_addr = '2001:0:101:7000:0:c0a8:101:7'
         tag = 'MAP-E tag.'
         self.vapi.map_add_domain(ip4_prefix=client_pfx,
                                  ip6_prefix=map_dst,
                                  ip6_src=map_src,
+                                 ea_bits_len=20,
+                                 psid_offset=4,
+                                 psid_length=4,
                                  tag=tag)
+
+        self.vapi.map_param_set_security_check(enable=1, fragments=1)
 
         # Enable MAP on interface.
         self.vapi.map_if_enable_disable(is_enable=1,
@@ -137,6 +146,8 @@ class TestMAP(VppTestCase):
         for p in rx:
             self.validate(p[1], v4_reply)
 
+        self.logger.debug("show trace")
+
         #
         # Fire in a v4 packet that will be encapped to the BR
         #
@@ -145,7 +156,23 @@ class TestMAP(VppTestCase):
               UDP(sport=20000, dport=10000) /
               Raw('\xa5' * 100))
 
-        self.send_and_assert_encapped(v4, "3000::1", "2001::c0a8:0:0")
+        self.send_and_assert_encapped_one(v4, "3000::1", map_translated_addr)
+
+        self.logger.debug("show trace")
+        #
+        # Verify reordered fragments are able to pass as well
+        #
+        v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+              IP(id=1, src=self.pg0.remote_ip4, dst='192.168.1.1') /
+              UDP(sport=20000, dport=10000) /
+              Raw('\xa5' * 1000))
+
+        frags = fragment_rfc791(v4, 400)
+        frags.reverse()
+
+        self.send_and_assert_encapped(frags, "3000::1", map_translated_addr)
+
+        self.logger.debug("show trace")
 
         # Enable MAP on interface.
         self.vapi.map_if_enable_disable(is_enable=1,
@@ -165,12 +192,12 @@ class TestMAP(VppTestCase):
 
         #
         # Fire in a V6 encapped packet.
-        #  expect a decapped packet on the inside ip4 link
+        # expect a decapped packet on the inside ip4 link
         #
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-             IPv6(dst='3000::1', src="2001::1") /
+             IPv6(dst='3000::1', src=map_translated_addr) /
              IP(dst=self.pg0.remote_ip4, src='192.168.1.1') /
-             UDP(sport=20000, dport=10000) /
+             UDP(sport=10000, dport=20000) /
              Raw('\xa5' * 100))
 
         self.pg1.add_stream(p)
@@ -184,6 +211,33 @@ class TestMAP(VppTestCase):
         self.assertFalse(rx.haslayer(IPv6))
         self.assertEqual(rx[IP].src, p[IP].src)
         self.assertEqual(rx[IP].dst, p[IP].dst)
+
+        #
+        # Verify encapped reordered fragments pass as well
+        #
+        p = (IP(id=1, dst=self.pg0.remote_ip4, src='192.168.1.1') /
+             UDP(sport=10000, dport=20000) /
+             Raw('\xa5' * 1500))
+        frags = fragment_rfc791(p, 400)
+        frags.reverse()
+
+        stream = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+                  IPv6(dst='3000::1', src=map_translated_addr) /
+                  x for x in frags)
+
+        self.pg1.add_stream(stream)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture(len(frags))
+
+        for r in rx:
+            self.assertFalse(r.haslayer(IPv6))
+            self.assertEqual(r[IP].src, p[IP].src)
+            self.assertEqual(r[IP].dst, p[IP].dst)
+
+        return
 
         #
         # Pre-resolve. No API for this!!
@@ -202,9 +256,9 @@ class TestMAP(VppTestCase):
                                                  self.pg1.sw_if_index)])
         pre_res_route.add_vpp_config()
 
-        self.send_and_assert_encapped(v4, "3000::1",
-                                      "2001::c0a8:0:0",
-                                      dmac=self.pg1.remote_hosts[2].mac)
+        self.send_and_assert_encapped_one(v4, "3000::1",
+                                          "2001::c0a8:0:0",
+                                          dmac=self.pg1.remote_hosts[2].mac)
 
         #
         # change the route to the pre-solved next-hop
@@ -213,9 +267,9 @@ class TestMAP(VppTestCase):
                                            self.pg1.sw_if_index)])
         pre_res_route.add_vpp_config()
 
-        self.send_and_assert_encapped(v4, "3000::1",
-                                      "2001::c0a8:0:0",
-                                      dmac=self.pg1.remote_hosts[3].mac)
+        self.send_and_assert_encapped_one(v4, "3000::1",
+                                          "2001::c0a8:0:0",
+                                          dmac=self.pg1.remote_hosts[3].mac)
 
         #
         # cleanup. The test infra's object registry will ensure
