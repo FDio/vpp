@@ -62,7 +62,6 @@
 #include <vnet/policer/policer.api.h>
 #include <vnet/ethernet/p2p_ethernet.api.h>
 #include <vnet/tcp/tcp.api.h>
-#include <vnet/dns/dns.api.h>
 #include <vnet/udp/udp.api.h>
 #include <vnet/bier/bier.api.h>
 #include <vnet/ip/punt.api.h>

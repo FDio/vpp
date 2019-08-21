@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/dns/dns.h>
+#include <dns/dns.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
