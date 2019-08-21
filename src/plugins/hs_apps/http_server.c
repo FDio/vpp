@@ -429,7 +429,7 @@ found:
   html = format (html, "%v", reply);
   html = format (html, html_footer);
   /* And the http reply */
-  http = format (0, http_ok, vec_len (http_ok));
+  http = format (0, http_ok);
   http = format (http, http_response, vec_len (html), html);
 
   /* Send it */
