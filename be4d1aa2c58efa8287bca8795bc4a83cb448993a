@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b1d42d24_dd77d388",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-08-21T08:49:40Z",
+      "side": 1,
+      "message": "autoreply define\n\nLess maintenance than the block at lines 25-31.",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 5,
+        "endChar": 6
+      },
+      "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "764a4d19_e3db2ab7",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-08-21T08:49:40Z",
+      "side": 1,
+      "message": "string engine [limit\u003d64];\n\nShould help with questions whether the string is zero terminated.",
+      "range": {
+        "startLine": 16,
+        "startChar": 4,
+        "endLine": 16,
+        "endChar": 18
+      },
+      "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f613e72d_cf0aa378",
+        "filename": "src/plugins/tlsopenssl/tls_openssl_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-08-21T08:49:40Z",
+      "side": 1,
+      "message": "How do you know the byte array is zero terminated?\nLuckily, the values seem to be only used for strcmp against known strings, so malicious client should not be able to do anything really bad with them.",
+      "range": {
+        "startLine": 65,
+        "startChar": 11,
+        "endLine": 65,
+        "endChar": 30
+      },
+      "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
