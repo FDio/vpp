@@ -197,6 +197,26 @@ format_ip46_address (u8 * s, va_list * args)
  * VPPCOM Utility Functions
  */
 
+static void
+vcl_send_listen (vcl_worker_t *wrk, vcl_session_t *s)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_bind_msg_t *rmp;
+  svm_msg_q_t * mq;
+
+  mq = vcl_worker_ctrl_mq (wrk);
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_LISTEN);
+  rmp = (session_bind_msg_t *) app_evt->evt->data;
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->client_index = wrk->my_client_index;
+  rmp->context = s->session_index;
+  rmp->wrk_index = wrk->vpp_wrk_index;
+  rmp->is_ip4 = s->transport.is_ip4;
+  clib_memcpy_fast (&rmp->ip, &s->transport.lcl_ip, sizeof (rmp->ip));
+  rmp->port = s->transport.lcl_port;
+  rmp->proto = s->session_type;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+}
 
 static void
 vcl_send_session_accepted_reply (svm_msg_q_t * mq, u32 context,
@@ -1169,7 +1189,7 @@ vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep)
     }
 
   session->transport.is_ip4 = ep->is_ip4;
-  if (ep->is_ip4)
+ if (ep->is_ip4)
     clib_memcpy_fast (&session->transport.lcl_ip.ip4, ep->ip,
 		      sizeof (ip4_address_t));
   else
@@ -1220,7 +1240,7 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
   /*
    * Send listen request to vpp and wait for reply
    */
-  vppcom_send_bind_sock (listen_session);
+  vcl_send_listen (wrk, listen_session);
   rv = vppcom_wait_for_session_state_change (listen_session->session_index,
 					     STATE_LISTEN,
 					     vcm->cfg.session_timeout);

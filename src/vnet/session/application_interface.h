@@ -261,6 +261,18 @@ typedef struct
 #undef _
 } app_session_t;
 
+typedef struct session_bind_msg_
+{
+  u32 client_index;
+  u32 context;	/* Not needed but keeping it for compatibility with bapi */
+  u32 wrk_index;
+  u32 vrf;
+  u16 port;
+  u8 proto;
+  u8 is_ip4;
+  ip46_address_t ip;
+} __clib_packed session_bind_msg_t;
+
 typedef struct session_bound_msg_
 {
   u32 context;

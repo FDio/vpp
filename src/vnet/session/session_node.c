@@ -25,12 +25,59 @@
 #include <vnet/session/session_debug.h>
 #include <svm/queue.h>
 
+#define session_mq_should_rpc_main() (vlib_num_workers () 		\
+				      && vlib_get_thread_index () != 0)
+
+static void session_mq_listen_handler (void *data);
 static void session_mq_accepted_reply_handler (void *data);
+
+static void
+bind_cb (void *data, u32 data_len)
+{
+  session_mq_listen_handler (data);
+}
 
 static void
 accepted_notify_cb (void *data, u32 data_len)
 {
   session_mq_accepted_reply_handler (data);
+}
+
+static void session_mq_listen_handler (void *data)
+{
+  session_bind_msg_t *mp = (session_bind_msg_t *) data;
+  vnet_listen_args_t _a, *a = &_a;
+  app_worker_t *app_wrk;
+  application_t *app;
+  int rv;
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  if (session_mq_should_rpc_main ())
+    {
+      vl_api_rpc_call_main_thread (bind_cb, data,
+                                   sizeof (session_bind_msg_t));
+      return;
+    }
+
+  clib_memset (a, 0, sizeof (*a));
+  a->sep.is_ip4 = mp->is_ip4;
+  clib_memcpy_fast (&a->sep.ip, &mp->ip, sizeof (mp->ip));
+  a->sep.port = mp->port;
+  a->sep.fib_index = mp->vrf;
+  a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
+  a->sep.transport_proto = mp->proto;
+  a->app_index = app->app_index;
+  a->wrk_map_index = mp->wrk_index;
+
+  if ((rv = vnet_listen (a)))
+    clib_warning ("listen returned: %d", rv);
+
+  app_wrk = application_get_worker (app, mp->wrk_index);
+  mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, rv);
+  return;
 }
 
 static void
@@ -926,6 +973,9 @@ session_event_dispatch (session_worker_t * wrk, vlib_node_runtime_t * node,
       fp = e->rpc_args.fp;
       (*fp) (e->rpc_args.arg);
       break;
+    case SESSION_CTRL_EVT_LISTEN:
+      session_mq_listen_handler (e->data);
+      break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       session_mq_disconnected_handler (e->data);
       break;
@@ -991,13 +1041,15 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  svm_msg_q_sub_w_lock (mq, msg);
 	  evt = svm_msg_q_msg_data (mq, msg);
 	  if (evt->event_type > SESSION_IO_EVT_BUILTIN_TX)
-	    elt = session_evt_alloc_ctrl (wrk);
+	    {
+	      elt = session_evt_alloc_ctrl (wrk);
+	      clib_memcpy_fast (&elt->ctrl_evt, evt, sizeof (elt->ctrl_evt));
+	    }
 	  else
-	    elt = session_evt_alloc_new (wrk);
-	  /* Works because reply messages are smaller than a session evt.
-	   * If we ever need to support bigger messages this needs to be
-	   * fixed */
-	  clib_memcpy_fast (&elt->evt, evt, sizeof (elt->evt));
+	    {
+	      elt = session_evt_alloc_new (wrk);
+	      clib_memcpy_fast (&elt->evt, evt, sizeof (elt->evt));
+	    }
 	  svm_msg_q_free_msg (mq, msg);
 	}
       svm_msg_q_unlock (mq);
