@@ -162,12 +162,14 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (MEMIF_SOCKET_FILENAME_ADD_DEL, mp);
+  M2 (MEMIF_SOCKET_FILENAME_ADD_DEL, mp, strlen ((char *) socket_filename));
 
   mp->is_add = is_add;
   mp->socket_id = htonl (socket_id);
-  strncpy ((char *) mp->socket_filename,
-	   (char *) socket_filename, sizeof (mp->socket_filename) - 1);
+  char *p = (char *) &mp->socket_filename;
+  p +=
+    vl_api_to_api_string (strlen ((char *) socket_filename),
+			  (char *) socket_filename, (vl_api_string_t *) p);
 
   vec_free (socket_filename);
 
@@ -259,7 +261,7 @@ api_memif_create (vat_main_t * vam)
       return -99;
     }
 
-  M (MEMIF_CREATE, mp);
+  M2 (MEMIF_CREATE, mp, strlen ((char *) secret));
 
   mp->mode = mode;
   mp->id = clib_host_to_net_u32 (id);
@@ -269,7 +271,9 @@ api_memif_create (vat_main_t * vam)
   mp->socket_id = clib_host_to_net_u32 (socket_id);
   if (secret != 0)
     {
-      strncpy ((char *) mp->secret, (char *) secret, 16);
+      char *p = (char *) &mp->secret;
+      p += vl_api_to_api_string (strlen ((char *) secret), (char *) secret,
+				 (vl_api_string_t *) p);
       vec_free (secret);
     }
   memcpy (mp->hw_addr, hw_addr, 6);
@@ -382,8 +386,8 @@ vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
 	   clib_net_to_host_u32 (mp->socket_id),
 	   mp->role ? "slave" : "master",
 	   ntohl (mp->ring_size), ntohs (mp->buffer_size),
-	   mp->admin_up_down ? "up" : "down",
-	   mp->link_up_down ? "up" : "down");
+	   (mp->flags & IF_STATUS_API_FLAG_ADMIN_UP) ? "up" : "down",
+	   (mp->flags & IF_STATUS_API_FLAG_LINK_UP) ? "up" : "down");
 }
 
 /* memif_socket_filename_dump API */
