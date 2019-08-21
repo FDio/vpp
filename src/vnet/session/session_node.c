@@ -25,12 +25,153 @@
 #include <vnet/session/session_debug.h>
 #include <svm/queue.h>
 
-static void session_mq_accepted_reply_handler (void *data);
+#define app_check_thread_and_barrier(_fn, _arg)				\
+  if (!vlib_thread_is_main_w_barrier ())				\
+    {									\
+     vlib_rpc_call_main_thread (_fn, (u8 *) _arg, sizeof(*_arg));	\
+      return;								\
+   }
 
 static void
-accepted_notify_cb (void *data, u32 data_len)
+session_mq_listen_handler (void *data)
 {
-  session_mq_accepted_reply_handler (data);
+  session_listen_msg_t *mp = (session_listen_msg_t *) data;
+  vnet_listen_args_t _a, *a = &_a;
+  app_worker_t *app_wrk;
+  application_t *app;
+  int rv;
+
+  app_check_thread_and_barrier (session_mq_listen_handler, mp);
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->sep.is_ip4 = mp->is_ip4;
+  clib_memcpy_fast (&a->sep.ip, &mp->ip, sizeof (mp->ip));
+  a->sep.port = mp->port;
+  a->sep.fib_index = mp->vrf;
+  a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
+  a->sep.transport_proto = mp->proto;
+  a->app_index = app->app_index;
+  a->wrk_map_index = mp->wrk_index;
+
+  if ((rv = vnet_listen (a)))
+    clib_warning ("listen returned: %d", rv);
+
+  app_wrk = application_get_worker (app, mp->wrk_index);
+  mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, rv);
+  return;
+}
+
+static void
+session_mq_connect_handler (void *data)
+{
+  session_connect_msg_t *mp = (session_connect_msg_t *) data;
+  vnet_connect_args_t _a, *a = &_a;
+  app_worker_t *app_wrk;
+  application_t *app;
+  int rv;
+
+  app_check_thread_and_barrier (session_mq_connect_handler, mp);
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  clib_memset(a, 0, sizeof (*a));
+  a->sep.is_ip4 = mp->is_ip4;
+  clib_memcpy_fast (&a->sep.ip, &mp->ip, sizeof(mp->ip));
+  a->sep.port = mp->port;
+  a->sep.transport_proto = mp->proto;
+  a->sep.peer.fib_index = mp->vrf;
+  a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
+  a->sep_ext.parent_handle = mp->parent_handle;
+  if (mp->hostname_len)
+    {
+      vec_validate(a->sep_ext.hostname, mp->hostname_len - 1);
+      clib_memcpy_fast (a->sep_ext.hostname, mp->hostname, mp->hostname_len);
+    }
+  a->api_context = mp->context;
+  a->app_index = app->app_index;
+  a->wrk_map_index = mp->wrk_index;
+
+  if ((rv = vnet_connect (a)))
+    {
+      clib_warning("connect returned: %U", format_vnet_api_errno, rv);
+      app_wrk = application_get_worker (app, mp->wrk_index);
+      mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0,
+                                    /* is_fail */ 1);
+    }
+
+  vec_free(a->sep_ext.hostname);
+}
+
+static void
+session_mq_disconnect_handler (void *data)
+{
+  session_disconnect_msg_t *mp = (session_disconnect_msg_t *) data;
+  vnet_disconnect_args_t _a, *a = &_a;
+  application_t *app;
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  app_check_thread_and_barrier (session_mq_disconnect_handler, mp);
+
+  a->app_index = app->app_index;
+  a->handle = mp->handle;
+  vnet_disconnect_session (a);
+}
+
+static void
+app_mq_detach_handler (void *data)
+{
+  app_detach_msg_t *mp = (app_detach_msg_t *) data;
+  vnet_app_detach_args_t _a, *a = &_a;
+  application_t *app;
+
+  app_check_thread_and_barrier (app_mq_detach_handler, mp);
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  a->app_index = app->app_index;
+  a->api_client_index = mp->client_index;
+  vnet_application_detach (a);
+}
+
+static void
+session_mq_unlisten_handler (void *data)
+{
+  session_unlisten_msg_t *mp = (session_unlisten_msg_t *) data;
+  vnet_unlisten_args_t _a, *a = &_a;
+  app_worker_t *app_wrk;
+  application_t *app;
+  int rv;
+
+  app_check_thread_and_barrier (session_mq_unlisten_handler, mp);
+
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  clib_memset(a, 0, sizeof (*a));
+  a->app_index = app->app_index;
+  a->handle = mp->handle;
+  a->wrk_map_index = mp->wrk_index;
+  if ((rv = vnet_unlisten (a)))
+    clib_warning("unlisten returned: %d", rv);
+
+  app_wrk = application_get_worker (app, a->wrk_map_index);
+  if (!app_wrk)
+    return;
+
+  mq_send_unlisten_cb (app_wrk, mp->handle, mp->context, rv);
 }
 
 static void
@@ -56,8 +197,8 @@ session_mq_accepted_reply_handler (void *data)
   if (vlib_num_workers () && vlib_get_thread_index () != 0
       && session_thread_from_handle (mp->handle) == 0)
     {
-      vl_api_rpc_call_main_thread (accepted_notify_cb, data,
-				   sizeof (session_accepted_reply_msg_t));
+      vlib_rpc_call_main_thread (session_mq_accepted_reply_handler,
+                                 (u8 *) mp, sizeof(*mp));
       return;
     }
 
@@ -896,18 +1037,6 @@ session_event_dispatch (session_worker_t * wrk, vlib_node_runtime_t * node,
       transport_app_rx_evt (session_get_transport_proto (s),
 			    s->connection_index, s->thread_index);
       break;
-    case SESSION_CTRL_EVT_CLOSE:
-      s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
-	break;
-      session_transport_close (s);
-      break;
-    case SESSION_CTRL_EVT_RESET:
-      s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
-	break;
-      session_transport_reset (s);
-      break;
     case SESSION_IO_EVT_BUILTIN_RX:
       s = session_event_get_session (e, thread_index);
       if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))
@@ -926,6 +1055,30 @@ session_event_dispatch (session_worker_t * wrk, vlib_node_runtime_t * node,
       fp = e->rpc_args.fp;
       (*fp) (e->rpc_args.arg);
       break;
+    case SESSION_CTRL_EVT_CLOSE:
+      s = session_get_from_handle_if_valid (e->session_handle);
+      if (PREDICT_FALSE (!s))
+	break;
+      session_transport_close (s);
+      break;
+    case SESSION_CTRL_EVT_RESET:
+      s = session_get_from_handle_if_valid (e->session_handle);
+      if (PREDICT_FALSE (!s))
+	break;
+      session_transport_reset (s);
+      break;
+    case SESSION_CTRL_EVT_LISTEN:
+      session_mq_listen_handler (e->data);
+      break;
+    case SESSION_CTRL_EVT_UNLISTEN:
+      session_mq_unlisten_handler (e->data);
+      break;
+    case SESSION_CTRL_EVT_CONNECT:
+      session_mq_connect_handler (e->data);
+      break;
+    case SESSION_CTRL_EVT_DISCONNECT:
+      session_mq_disconnect_handler (e->data);
+      break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       session_mq_disconnected_handler (e->data);
       break;
@@ -942,6 +1095,9 @@ session_event_dispatch (session_worker_t * wrk, vlib_node_runtime_t * node,
       break;
     case SESSION_CTRL_EVT_WORKER_UPDATE:
       session_mq_worker_update_handler (e->data);
+      break;
+    case APP_CTRL_EVT_DETACH:
+      app_mq_detach_handler (e->data);
       break;
     default:
       clib_warning ("unhandled event type %d", e->event_type);
@@ -991,13 +1147,15 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  svm_msg_q_sub_w_lock (mq, msg);
 	  evt = svm_msg_q_msg_data (mq, msg);
 	  if (evt->event_type > SESSION_IO_EVT_BUILTIN_TX)
-	    elt = session_evt_alloc_ctrl (wrk);
+	    {
+	      elt = session_evt_alloc_ctrl (wrk);
+	      clib_memcpy_fast (&elt->ctrl_evt, evt, sizeof (elt->ctrl_evt));
+	    }
 	  else
-	    elt = session_evt_alloc_new (wrk);
-	  /* Works because reply messages are smaller than a session evt.
-	   * If we ever need to support bigger messages this needs to be
-	   * fixed */
-	  clib_memcpy_fast (&elt->evt, evt, sizeof (elt->evt));
+	    {
+	      elt = session_evt_alloc_new (wrk);
+	      clib_memcpy_fast (&elt->evt, evt, sizeof (elt->evt));
+	    }
 	  svm_msg_q_free_msg (mq, msg);
 	}
       svm_msg_q_unlock (mq);
