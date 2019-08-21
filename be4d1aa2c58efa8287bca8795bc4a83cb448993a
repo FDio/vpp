@@ -73,6 +73,29 @@
     },
     {
       "key": {
+        "uuid": "a2183d5a_e7ee0855",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-21T17:53:15Z",
+      "side": 1,
+      "message": "Ping, if you\u0027re preparing a new patch to address Vratko\u0027s comments, could you rename this to async_enable. For context check vpp-dev discussion about async being a reserved python keyword.",
+      "range": {
+        "startLine": 13,
+        "startChar": 8,
+        "endLine": 13,
+        "endChar": 13
+      },
+      "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "764a4d19_e3db2ab7",
         "filename": "src/plugins/tlsopenssl/tls_openssl.api",
         "patchSetId": 7
