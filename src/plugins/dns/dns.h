@@ -21,9 +21,10 @@
 #include <vppinfra/error.h>
 
 #include <vppinfra/hash.h>
-#include <vnet/dns/dns_packet.h>
+#include <dns/dns_packet.h>
 #include <vnet/ip/ip.h>
 #include <vppinfra/lock.h>
+#include <vlibapi/api_common.h>
 
 typedef struct
 {
@@ -117,9 +118,13 @@ typedef struct
   u32 max_ttl_in_seconds;
   u32 random_seed;
 
+  /** message-ID base */
+  u16 msg_id_base;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+  api_main_t *api_main;
 } dns_main_t;
 
 extern dns_main_t dns_main;

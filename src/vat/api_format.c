@@ -2565,70 +2565,6 @@ static void vl_api_create_vhost_user_if_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static void vl_api_dns_resolve_name_reply_t_handler
-  (vl_api_dns_resolve_name_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-
-      if (retval == 0)
-	{
-	  if (mp->ip4_set)
-	    clib_warning ("ip4 address %U", format_ip4_address,
-			  (ip4_address_t *) mp->ip4_address);
-	  if (mp->ip6_set)
-	    clib_warning ("ip6 address %U", format_ip6_address,
-			  (ip6_address_t *) mp->ip6_address);
-	}
-      else
-	clib_warning ("retval %d", retval);
-    }
-}
-
-static void vl_api_dns_resolve_name_reply_t_handler_json
-  (vl_api_dns_resolve_name_reply_t * mp)
-{
-  clib_warning ("not implemented");
-}
-
-static void vl_api_dns_resolve_ip_reply_t_handler
-  (vl_api_dns_resolve_ip_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-
-      if (retval == 0)
-	{
-	  clib_warning ("canonical name %s", mp->name);
-	}
-      else
-	clib_warning ("retval %d", retval);
-    }
-}
-
-static void vl_api_dns_resolve_ip_reply_t_handler_json
-  (vl_api_dns_resolve_ip_reply_t * mp)
-{
-  clib_warning ("not implemented");
-}
-
-
 static void vl_api_ip_address_details_t_handler
   (vl_api_ip_address_details_t * mp)
 {
@@ -5256,8 +5192,6 @@ _(p2p_ethernet_del_reply)                               \
 _(lldp_config_reply)                                    \
 _(sw_interface_set_lldp_reply)				\
 _(tcp_configure_src_addresses_reply)			\
-_(dns_enable_disable_reply)                             \
-_(dns_name_server_add_del_reply)			\
 _(session_rule_add_del_reply)				\
 _(ip_container_proxy_add_del_reply)                     \
 _(output_acl_set_interface_reply)                       \
@@ -5574,10 +5508,6 @@ _(LLDP_CONFIG_REPLY, lldp_config_reply)                                 \
 _(SW_INTERFACE_SET_LLDP_REPLY, sw_interface_set_lldp_reply)		\
 _(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)	\
 _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
-_(DNS_ENABLE_DISABLE_REPLY, dns_enable_disable_reply)                   \
-_(DNS_NAME_SERVER_ADD_DEL_REPLY, dns_name_server_add_del_reply)		\
-_(DNS_RESOLVE_NAME_REPLY, dns_resolve_name_reply)			\
-_(DNS_RESOLVE_IP_REPLY, dns_resolve_ip_reply)				\
 _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
 _(SESSION_RULES_DETAILS, session_rules_details)				\
 _(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
@@ -20954,172 +20884,6 @@ api_sock_init_shm (vat_main_t * vam)
 #endif
 }
 
-static int
-api_dns_enable_disable (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_dns_enable_disable_t *mp;
-  u8 enable_disable = 1;
-  int ret;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "disable"))
-	enable_disable = 0;
-      if (unformat (line_input, "enable"))
-	enable_disable = 1;
-      else
-	break;
-    }
-
-  /* Construct the API message */
-  M (DNS_ENABLE_DISABLE, mp);
-  mp->enable = enable_disable;
-
-  /* send it... */
-  S (mp);
-  /* Wait for the reply */
-  W (ret);
-  return ret;
-}
-
-static int
-api_dns_resolve_name (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_dns_resolve_name_t *mp;
-  u8 *name = 0;
-  int ret;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%s", &name))
-	;
-      else
-	break;
-    }
-
-  if (vec_len (name) > 127)
-    {
-      errmsg ("name too long");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (DNS_RESOLVE_NAME, mp);
-  memcpy (mp->name, name, vec_len (name));
-  vec_free (name);
-
-  /* send it... */
-  S (mp);
-  /* Wait for the reply */
-  W (ret);
-  return ret;
-}
-
-static int
-api_dns_resolve_ip (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_dns_resolve_ip_t *mp;
-  int is_ip6 = -1;
-  ip4_address_t addr4;
-  ip6_address_t addr6;
-  int ret;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U", unformat_ip6_address, &addr6))
-	is_ip6 = 1;
-      else if (unformat (line_input, "%U", unformat_ip4_address, &addr4))
-	is_ip6 = 0;
-      else
-	break;
-    }
-
-  if (is_ip6 == -1)
-    {
-      errmsg ("missing address");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (DNS_RESOLVE_IP, mp);
-  mp->is_ip6 = is_ip6;
-  if (is_ip6)
-    memcpy (mp->address, &addr6, sizeof (addr6));
-  else
-    memcpy (mp->address, &addr4, sizeof (addr4));
-
-  /* send it... */
-  S (mp);
-  /* Wait for the reply */
-  W (ret);
-  return ret;
-}
-
-static int
-api_dns_name_server_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_dns_name_server_add_del_t *mp;
-  u8 is_add = 1;
-  ip6_address_t ip6_server;
-  ip4_address_t ip4_server;
-  int ip6_set = 0;
-  int ip4_set = 0;
-  int ret = 0;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", unformat_ip6_address, &ip6_server))
-	ip6_set = 1;
-      else if (unformat (i, "%U", unformat_ip4_address, &ip4_server))
-	ip4_set = 1;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (ip4_set && ip6_set)
-    {
-      errmsg ("Only one server address allowed per message");
-      return -99;
-    }
-  if ((ip4_set + ip6_set) == 0)
-    {
-      errmsg ("Server address required");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (DNS_NAME_SERVER_ADD_DEL, mp);
-
-  if (ip6_set)
-    {
-      memcpy (mp->server_address, &ip6_server, sizeof (ip6_address_t));
-      mp->is_ip6 = 1;
-    }
-  else
-    {
-      memcpy (mp->server_address, &ip4_server, sizeof (ip4_address_t));
-      mp->is_ip6 = 0;
-    }
-
-  mp->is_add = is_add;
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply, return good/bad news  */
-  W (ret);
-  return ret;
-}
-
 static void
 vl_api_session_rules_details_t_handler (vl_api_session_rules_details_t * mp)
 {
@@ -22384,12 +22148,6 @@ _(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>]\n
 _(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
 _(sock_init_shm, "size <nnn>")						\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
-_(dns_enable_disable, "[enable][disable]")				\
-_(dns_name_server_add_del, "<ip-address> [del]")			\
-_(dns_resolve_name, "<hostname>")					\
-_(dns_resolve_ip, "<ip4|ip6>")						\
-_(dns_name_server_add_del, "<ip-address> [del]")			\
-_(dns_resolve_name, "<hostname>")					\
 _(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
   "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
 _(session_rules_dump, "")						\

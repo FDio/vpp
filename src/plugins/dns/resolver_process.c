@@ -13,36 +13,37 @@
  * limitations under the License.
  */
 
-#include <vnet/dns/dns.h>
+#include <dns/dns.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
-#include <vnet/vnet_msg_enum.h>
+/* define message IDs */
+#include <dns/dns_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include <dns/dns_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include <dns/dns_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include <dns/dns_all_api_h.h>
 #undef vl_printfun
 
 #include <vlibapi/api_helper_macros.h>
 
-extern int
+int
 vnet_dns_response_to_reply (u8 * response,
 			    vl_api_dns_resolve_name_reply_t * rmp,
 			    u32 * min_ttlp);
-extern int
+int
 vnet_dns_response_to_name (u8 * response,
 			   vl_api_dns_resolve_ip_reply_t * rmp,
 			   u32 * min_ttlp);
@@ -197,7 +198,8 @@ reply:
 
 	    rmp = vl_msg_api_alloc (sizeof (*rmp));
 	    rmp->_vl_msg_id =
-	      clib_host_to_net_u16 (VL_API_DNS_RESOLVE_NAME_REPLY);
+	      clib_host_to_net_u16 (VL_API_DNS_RESOLVE_NAME_REPLY
+				    + dm->msg_id_base);
 	    rmp->context = pr->client_context;
 	    min_ttl = ~0;
 	    rv = vnet_dns_response_to_reply (ep->dns_response, rmp, &min_ttl);
@@ -218,7 +220,8 @@ reply:
 
 	    rmp = vl_msg_api_alloc (sizeof (*rmp));
 	    rmp->_vl_msg_id =
-	      clib_host_to_net_u16 (VL_API_DNS_RESOLVE_IP_REPLY);
+	      clib_host_to_net_u16 (VL_API_DNS_RESOLVE_IP_REPLY
+				    + dm->msg_id_base);
 	    rmp->context = pr->client_context;
 	    min_ttl = ~0;
 	    rv = vnet_dns_response_to_name (ep->dns_response, rmp, &min_ttl);
