@@ -7,17 +7,6 @@ from vpp_ip import VppIpPrefix
 from vpp_papi import VppEnum
 
 
-class MEMIF_ROLE:
-    MASTER = 0
-    SLAVE = 1
-
-
-class MEMIF_MODE:
-    ETHERNET = 0
-    IP = 1
-    PUNT_INJECT = 2
-
-
 def get_if_dump(dump, sw_if_index):
     for d in dump:
         if (d.sw_if_index == sw_if_index):
@@ -127,7 +116,8 @@ class VppMemif(VppObject):
             return False
         while True:
             dump = self.query_vpp_config()
-            if dump.link_up_down == 1:
+            f = VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_LINK_UP
+            if dump.flags & f:
                 return True
             self._test.sleep(step)
             timeout -= step

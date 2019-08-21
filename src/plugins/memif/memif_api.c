@@ -26,6 +26,8 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 
 /* define message IDs */
 #include <memif/memif_msg_enum.h>
@@ -93,7 +95,7 @@ void
   socket_filename = 0;
   mp->socket_filename[ARRAY_LEN (mp->socket_filename) - 1] = 0;
   len = strlen ((char *) mp->socket_filename);
-  if (len > 0)
+  if (mp->is_add)
     {
       vec_validate (socket_filename, len);
       memcpy (socket_filename, mp->socket_filename, len);
@@ -122,6 +124,7 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   u32 ring_size = MEMIF_DEFAULT_RING_SIZE;
   static const u8 empty_hw_addr[6];
   int rv = 0;
+  mac_address_t mac;
 
   /* id */
   args.id = clib_net_to_host_u32 (mp->id);
@@ -139,10 +142,12 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
     }
 
   /* role */
-  args.is_master = (mp->role == 0);
+  args.is_master = (ntohl (mp->role) == MEMIF_ROLE_API_MASTER);
 
   /* mode */
-  args.mode = mp->mode;
+  args.mode = ntohl (mp->mode);
+
+  args.is_zero_copy = mp->no_zero_copy ? 0 : 1;
 
   /* enable zero-copy */
   args.is_zero_copy = 1;
@@ -182,9 +187,10 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
     }
 
   /* MAC address */
-  if (memcmp (mp->hw_addr, empty_hw_addr, 6) != 0)
+  mac_address_decode (mp->hw_addr, &mac);
+  if (memcmp (&mac, empty_hw_addr, 6) != 0)
     {
-      memcpy (args.hw_addr, mp->hw_addr, 6);
+      memcpy (args.hw_addr, &mac, 6);
       args.hw_addr_set = 1;
     }
 
@@ -257,7 +263,7 @@ send_memif_details (vl_api_registration_t * reg,
 
   if (hwif->hw_address)
     {
-      memcpy (mp->hw_addr, hwif->hw_address, ARRAY_LEN (mp->hw_addr));
+      mac_address_encode ((mac_address_t *) hwif->hw_address, mp->hw_addr);
     }
 
   mp->id = clib_host_to_net_u32 (mif->id);
@@ -265,12 +271,22 @@ send_memif_details (vl_api_registration_t * reg,
   msf = pool_elt_at_index (mm->socket_files, mif->socket_file_index);
   mp->socket_id = clib_host_to_net_u32 (msf->socket_id);
 
-  mp->role = (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ? 1 : 0;
+  mp->role =
+    (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ? MEMIF_ROLE_API_SLAVE :
+    MEMIF_ROLE_API_MASTER;
+  mp->role = htonl (mp->role);
+  mp->mode = htonl (mif->mode);
   mp->ring_size = htonl (1 << mif->run.log2_ring_size);
   mp->buffer_size = htons (mif->run.buffer_size);
+  mp->zero_copy = (mif->flags & MEMIF_IF_FLAG_ZERO_COPY) ? 1 : 0;
 
-  mp->admin_up_down = (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;
-  mp->link_up_down = (hwif->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ? 1 : 0;
+  mp->flags = 0;
+  mp->flags |= (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
+    IF_STATUS_API_FLAG_ADMIN_UP : 0;
+  mp->flags |= (hwif->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ?
+    IF_STATUS_API_FLAG_LINK_UP : 0;
+  mp->flags = htonl (mp->flags);
+
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
