@@ -108,10 +108,10 @@ vcl_vpp_worker_segment_handle (u32 wrk_index)
 }
 
 static void
-vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
-					   mp)
+vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 {
   vcl_worker_t *wrk = vcl_worker_get (0);
+  svm_msg_q_t *ctrl_mq;
   u64 segment_handle;
   int *fds = 0, i;
   u32 n_fds = 0;
@@ -122,8 +122,10 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       goto failed;
     }
 
-  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
-					   svm_msg_q_t *);
+  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
+  vec_validate (wrk->vpp_event_queues, mp->vpp_ctrl_mq_thread);
+  wrk->vpp_event_queues[mp->vpp_ctrl_mq_thread] = ctrl_mq;
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
@@ -370,7 +372,7 @@ _(BIND_SOCK_REPLY, bind_sock_reply)                             	\
 _(UNBIND_SOCK_REPLY, unbind_sock_reply)                         	\
 _(CONNECT_SOCK_REPLY, connect_sock_reply)                        	\
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)			\
-_(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
+_(APP_ATTACH_REPLY, app_attach_reply)           			\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
 _(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
 _(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
@@ -414,7 +416,7 @@ void
 vppcom_app_send_attach (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_application_attach_t *bmp;
+  vl_api_app_attach_t *bmp;
   u8 nsid_len = vec_len (vcm->cfg.namespace_id);
   u8 app_is_proxy = (vcm->cfg.app_proxy_transport_tcp ||
 		     vcm->cfg.app_proxy_transport_udp);
@@ -422,7 +424,7 @@ vppcom_app_send_attach (void)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
+  bmp->_vl_msg_id = ntohs (VL_API_APP_ATTACH);
   bmp->client_index = wrk->my_client_index;
   bmp->context = htonl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
