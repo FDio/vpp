@@ -342,6 +342,8 @@ typedef struct {
   lpm_t *ip4_prefix_tbl;
   lpm_t *ip6_prefix_tbl;
   lpm_t *ip6_src_prefix_tbl;
+
+  uword ip4_sv_reass_custom_next_index;
 } map_main_t;
 
 /*
