@@ -37,40 +37,47 @@ enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 size;
-  u32 n_enq;
   struct ibv_cq *cq;
   struct ibv_wq *wq;
+  u32 *bufs;
+  u32 size;
+  u32 head;
+  u32 tail;
 } rdma_rxq_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 size;
-  u32 n_enq;
+  clib_spinlock_t lock;
   struct ibv_cq *cq;
   struct ibv_qp *qp;
-  clib_spinlock_t lock;
+  u32 *bufs;
+  u32 size;
+  u32 head;
+  u32 tail;
 } rdma_txq_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 flags;
-  u32 per_interface_next_index;
 
-  u32 dev_instance;
-  u32 sw_if_index;
-  u32 hw_if_index;
-
-  u32 async_event_clib_file_index;
-
+  /* following fields are accessed in datapath */
   rdma_rxq_t *rxqs;
   rdma_txq_t *txqs;
+  u32 flags;
+  u32 per_interface_next_index;
+  u32 sw_if_index;
+  u32 hw_if_index;
+  u32 lkey;			/* cache of mr->lkey */
+  u8 pool;			/* buffer pool index */
 
+  /* fields below are not accessed in datapath */
+  vlib_pci_device_info_t *pci;
   u8 *name;
+  u8 *linux_ifname;
   mac_address_t hwaddr;
-  vlib_pci_addr_t pci_addr;
+  u32 async_event_clib_file_index;
+  u32 dev_instance;
 
   struct ibv_context *ctx;
   struct ibv_pd *pd;
@@ -80,7 +87,6 @@ typedef struct
   struct ibv_flow *flow_ucast;
   struct ibv_flow *flow_mcast;
 
-  /* error */
   clib_error_t *error;
 } rdma_device_t;
 
