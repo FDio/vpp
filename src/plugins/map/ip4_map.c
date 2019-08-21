@@ -20,8 +20,6 @@
 #include <vnet/ip/ip_frag.h>
 #include <vnet/ip/ip4_to_ip6.h>
 
-vlib_node_registration_t ip4_map_reass_node;
-
 enum ip4_map_next_e
 {
   IP4_MAP_NEXT_IP6_LOOKUP,
@@ -30,79 +28,41 @@ enum ip4_map_next_e
 #endif
   IP4_MAP_NEXT_IP4_FRAGMENT,
   IP4_MAP_NEXT_IP6_FRAGMENT,
-  IP4_MAP_NEXT_REASS,
   IP4_MAP_NEXT_ICMP_ERROR,
   IP4_MAP_NEXT_DROP,
   IP4_MAP_N_NEXT,
 };
 
-enum ip4_map_reass_next_t
-{
-  IP4_MAP_REASS_NEXT_IP6_LOOKUP,
-  IP4_MAP_REASS_NEXT_IP4_FRAGMENT,
-  IP4_MAP_REASS_NEXT_DROP,
-  IP4_MAP_REASS_N_NEXT,
-};
-
-typedef struct
-{
-  u32 map_domain_index;
-  u16 port;
-  u8 cached;
-} map_ip4_map_reass_trace_t;
-
-u8 *
-format_ip4_map_reass_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  map_ip4_map_reass_trace_t *t = va_arg (*args, map_ip4_map_reass_trace_t *);
-  return format (s, "MAP domain index: %d L4 port: %u Status: %s",
-		 t->map_domain_index, t->port,
-		 t->cached ? "cached" : "forwarded");
-}
-
 static_always_inline u16
-ip4_map_port_and_security_check (map_domain_t * d, ip4_header_t * ip,
-				 u32 * next, u8 * error)
+ip4_map_port_and_security_check (map_domain_t * d, vlib_buffer_t * b0,
+				 u8 * error)
 {
-  u16 port = 0;
-
+  u16 port;
   if (d->psid_length > 0)
     {
-      if (ip4_get_fragment_offset (ip) == 0)
+      ip4_header_t *ip = vlib_buffer_get_current (b0);
+
+      if (PREDICT_FALSE
+	  ((ip->ip_version_and_header_length != 0x45)
+	   || clib_host_to_net_u16 (ip->length) < 28))
 	{
-	  if (PREDICT_FALSE
-	      ((ip->ip_version_and_header_length != 0x45)
-	       || clib_host_to_net_u16 (ip->length) < 28))
-	    {
-	      return 0;
-	    }
-	  port = ip4_get_port (ip, 0);
-	  if (port)
-	    {
-	      /* Verify that port is not among the well-known ports */
-	      if ((d->psid_offset > 0)
-		  && (clib_net_to_host_u16 (port) <
-		      (0x1 << (16 - d->psid_offset))))
-		{
-		  *error = MAP_ERROR_ENCAP_SEC_CHECK;
-		}
-	      else
-		{
-		  if (ip4_get_fragment_more (ip))
-		    *next = IP4_MAP_NEXT_REASS;
-		  return (port);
-		}
-	    }
-	  else
-	    {
-	      *error = MAP_ERROR_BAD_PROTOCOL;
-	    }
+	  return 0;
+	}
+
+      if (ip4_get_fragment_more (ip) || ip4_get_fragment_offset (ip))
+	port = vnet_buffer (b0)->ip.reass.l4_dst_port;
+      else
+	port = ip4_get_port (ip, 0);
+
+      /* Verify that port is not among the well-known ports */
+      if ((d->psid_offset > 0)
+	  && (clib_net_to_host_u16 (port) < (0x1 << (16 - d->psid_offset))))
+	{
+	  *error = MAP_ERROR_ENCAP_SEC_CHECK;
 	}
       else
 	{
-	  *next = IP4_MAP_NEXT_REASS;
+	  return port;
 	}
     }
   return (0);
@@ -258,8 +218,8 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /*
 	   * Shared IPv4 address
 	   */
-	  port0 = ip4_map_port_and_security_check (d0, ip40, &next0, &error0);
-	  port1 = ip4_map_port_and_security_check (d1, ip41, &next1, &error1);
+	  port0 = ip4_map_port_and_security_check (d0, p0, &error0);
+	  port1 = ip4_map_port_and_security_check (d1, p1, &error1);
 
 	  /* Decrement IPv4 TTL */
 	  ip4_map_decrement_ttl (ip40, &error0);
@@ -280,11 +240,9 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  u64 dal61 = map_get_pfx (d1, da41, dp41);
 	  u64 dar60 = map_get_sfx (d0, da40, dp40);
 	  u64 dar61 = map_get_sfx (d1, da41, dp41);
-	  if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE
-	      && next0 != IP4_MAP_NEXT_REASS)
+	  if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE)
 	    error0 = MAP_ERROR_NO_BINDING;
-	  if (dal61 == 0 && dar61 == 0 && error1 == MAP_ERROR_NONE
-	      && next1 != IP4_MAP_NEXT_REASS)
+	  if (dal61 == 0 && dar61 == 0 && error1 == MAP_ERROR_NONE)
 	    error1 = MAP_ERROR_NO_BINDING;
 
 	  /* construct ipv6 header */
@@ -314,7 +272,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  /*
 	   * Determine next node. Can be one of:
-	   * ip6-lookup, ip6-rewrite, ip4-fragment, ip4-virtreass, error-drop
+	   * ip6-lookup, ip6-rewrite, ip4-fragment, error-drop
 	   */
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
 	    {
@@ -346,7 +304,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  /*
 	   * Determine next node. Can be one of:
-	   * ip6-lookup, ip6-rewrite, ip4-fragment, ip4-virtreass, error-drop
+	   * ip6-lookup, ip6-rewrite, ip4-fragment, error-drop
 	   */
 	  if (PREDICT_TRUE (error1 == MAP_ERROR_NONE))
 	    {
@@ -430,7 +388,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /*
 	   * Shared IPv4 address
 	   */
-	  port0 = ip4_map_port_and_security_check (d0, ip40, &next0, &error0);
+	  port0 = ip4_map_port_and_security_check (d0, p0, &error0);
 
 	  /* Decrement IPv4 TTL */
 	  ip4_map_decrement_ttl (ip40, &error0);
@@ -443,8 +401,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  u16 dp40 = clib_net_to_host_u16 (port0);
 	  u64 dal60 = map_get_pfx (d0, da40, dp40);
 	  u64 dar60 = map_get_sfx (d0, da40, dp40);
-	  if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE
-	      && next0 != IP4_MAP_NEXT_REASS)
+	  if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE)
 	    error0 = MAP_ERROR_NO_BINDING;
 
 	  /* construct ipv6 header */
@@ -463,7 +420,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  /*
 	   * Determine next node. Can be one of:
-	   * ip6-lookup, ip6-rewrite, ip4-fragment, ip4-virtreass, error-drop
+	   * ip6-lookup, ip6-rewrite, ip4-fragment, error-drop
 	   */
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
 	    {
@@ -511,195 +468,6 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return frame->n_vectors;
 }
 
-/*
- * ip4_map_reass
- */
-static uword
-ip4_map_reass (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
-  vlib_node_runtime_t *error_node =
-    vlib_node_get_runtime (vm, ip4_map_reass_node.index);
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
-  map_main_t *mm = &map_main;
-  vlib_combined_counter_main_t *cm = mm->domain_counters;
-  u32 thread_index = vm->thread_index;
-  u32 *fragments_to_drop = NULL;
-  u32 *fragments_to_loopback = NULL;
-
-  while (n_left_from > 0)
-    {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 pi0;
-	  vlib_buffer_t *p0;
-	  map_domain_t *d0;
-	  u8 error0 = MAP_ERROR_NONE;
-	  ip4_header_t *ip40;
-	  i32 port0 = 0;
-	  ip6_header_t *ip60;
-	  u32 next0 = IP4_MAP_REASS_NEXT_IP6_LOOKUP;
-	  u32 map_domain_index0 = ~0;
-	  u8 cached = 0;
-
-	  pi0 = to_next[0] = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-
-	  p0 = vlib_get_buffer (vm, pi0);
-	  ip60 = vlib_buffer_get_current (p0);
-	  ip40 = (ip4_header_t *) (ip60 + 1);
-	  d0 =
-	    ip4_map_get_domain (&ip40->dst_address, &map_domain_index0,
-				&error0);
-
-	  map_ip4_reass_lock ();
-	  map_ip4_reass_t *r = map_ip4_reass_get (ip40->src_address.as_u32,
-						  ip40->dst_address.as_u32,
-						  ip40->fragment_id,
-						  ip40->protocol,
-						  &fragments_to_drop);
-	  if (PREDICT_FALSE (!r))
-	    {
-	      // Could not create a caching entry
-	      error0 = MAP_ERROR_FRAGMENT_MEMORY;
-	    }
-	  else if (PREDICT_TRUE (ip4_get_fragment_offset (ip40)))
-	    {
-	      if (r->port >= 0)
-		{
-		  // We know the port already
-		  port0 = r->port;
-		}
-	      else if (map_ip4_reass_add_fragment (r, pi0))
-		{
-		  // Not enough space for caching
-		  error0 = MAP_ERROR_FRAGMENT_MEMORY;
-		  map_ip4_reass_free (r, &fragments_to_drop);
-		}
-	      else
-		{
-		  cached = 1;
-		}
-	    }
-	  else if ((port0 = ip4_get_port (ip40, 0)) == 0)
-	    {
-	      // Could not find port. We'll free the reassembly.
-	      error0 = MAP_ERROR_BAD_PROTOCOL;
-	      port0 = 0;
-	      map_ip4_reass_free (r, &fragments_to_drop);
-	    }
-	  else
-	    {
-	      r->port = port0;
-	      map_ip4_reass_get_fragments (r, &fragments_to_loopback);
-	    }
-
-#ifdef MAP_IP4_REASS_COUNT_BYTES
-	  if (!cached && r)
-	    {
-	      r->forwarded += clib_host_to_net_u16 (ip40->length) - 20;
-	      if (!ip4_get_fragment_more (ip40))
-		r->expected_total =
-		  ip4_get_fragment_offset (ip40) * 8 +
-		  clib_host_to_net_u16 (ip40->length) - 20;
-	      if (r->forwarded >= r->expected_total)
-		map_ip4_reass_free (r, &fragments_to_drop);
-	    }
-#endif
-
-	  map_ip4_reass_unlock ();
-
-	  // NOTE: Most operations have already been performed by ip4_map
-	  // All we need is the right destination address
-	  ip60->dst_address.as_u64[0] =
-	    map_get_pfx_net (d0, ip40->dst_address.as_u32, port0);
-	  ip60->dst_address.as_u64[1] =
-	    map_get_sfx_net (d0, ip40->dst_address.as_u32, port0);
-
-	  if (PREDICT_FALSE
-	      (d0->mtu
-	       && (clib_net_to_host_u16 (ip60->payload_length) +
-		   sizeof (*ip60) > d0->mtu)))
-	    {
-	      // TODO: vnet_buffer (p0)->ip_frag.header_offset = sizeof (*ip60);
-	      vnet_buffer (p0)->ip_frag.next_index = IP4_FRAG_NEXT_IP6_LOOKUP;
-	      vnet_buffer (p0)->ip_frag.mtu = d0->mtu;
-	      vnet_buffer (p0)->ip_frag.flags = IP_FRAG_FLAG_IP6_HEADER;
-	      next0 = IP4_MAP_REASS_NEXT_IP4_FRAGMENT;
-	    }
-
-	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      map_ip4_map_reass_trace_t *tr =
-		vlib_add_trace (vm, node, p0, sizeof (*tr));
-	      tr->map_domain_index = map_domain_index0;
-	      tr->port = port0;
-	      tr->cached = cached;
-	    }
-
-	  if (cached)
-	    {
-	      //Dequeue the packet
-	      n_left_to_next++;
-	      to_next--;
-	    }
-	  else
-	    {
-	      if (error0 == MAP_ERROR_NONE)
-		vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
-						 thread_index,
-						 map_domain_index0, 1,
-						 clib_net_to_host_u16
-						 (ip60->payload_length) + 40);
-	      next0 =
-		(error0 == MAP_ERROR_NONE) ? next0 : IP4_MAP_REASS_NEXT_DROP;
-	      p0->error = error_node->errors[error0];
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					       n_left_to_next, pi0, next0);
-	    }
-
-	  //Loopback when we reach the end of the inpu vector
-	  if (n_left_from == 0 && vec_len (fragments_to_loopback))
-	    {
-	      from = vlib_frame_vector_args (frame);
-	      u32 len = vec_len (fragments_to_loopback);
-	      if (len <= VLIB_FRAME_SIZE)
-		{
-		  clib_memcpy_fast (from, fragments_to_loopback,
-				    sizeof (u32) * len);
-		  n_left_from = len;
-		  vec_reset_length (fragments_to_loopback);
-		}
-	      else
-		{
-		  clib_memcpy_fast (from, fragments_to_loopback +
-				    (len - VLIB_FRAME_SIZE),
-				    sizeof (u32) * VLIB_FRAME_SIZE);
-		  n_left_from = VLIB_FRAME_SIZE;
-		  _vec_len (fragments_to_loopback) = len - VLIB_FRAME_SIZE;
-		}
-	    }
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-
-  map_send_all_to_node (vm, fragments_to_drop, node,
-			&error_node->errors[MAP_ERROR_FRAGMENT_DROPPED],
-			IP4_MAP_REASS_NEXT_DROP);
-
-  vec_free (fragments_to_drop);
-  vec_free (fragments_to_loopback);
-  return frame->n_vectors;
-}
-
 static char *map_error_strings[] = {
 #define _(sym,string) string,
   foreach_map_error
@@ -712,8 +480,8 @@ VNET_FEATURE_INIT (ip4_map_feature, static) =
 {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-map",
-  .runs_before =
-  VNET_FEATURES ("ip4-flow-classify"),
+  .runs_before = VNET_FEATURES ("ip4-flow-classify"),
+  .runs_after = VNET_FEATURES("ip4-sv-reassembly-feature"),
 };
 
 VLIB_REGISTER_NODE(ip4_map_node) = {
@@ -734,29 +502,8 @@ VLIB_REGISTER_NODE(ip4_map_node) = {
 #endif
     [IP4_MAP_NEXT_IP4_FRAGMENT] = "ip4-frag",
     [IP4_MAP_NEXT_IP6_FRAGMENT] = "ip6-frag",
-    [IP4_MAP_NEXT_REASS] = "ip4-map-reass",
     [IP4_MAP_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [IP4_MAP_NEXT_DROP] = "error-drop",
-  },
-};
-/* *INDENT-ON* */
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE(ip4_map_reass_node) = {
-  .function = ip4_map_reass,
-  .name = "ip4-map-reass",
-  .vector_size = sizeof(u32),
-  .format_trace = format_ip4_map_reass_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = MAP_N_ERROR,
-  .error_strings = map_error_strings,
-
-  .n_next_nodes = IP4_MAP_REASS_N_NEXT,
-  .next_nodes = {
-    [IP4_MAP_REASS_NEXT_IP6_LOOKUP] = "ip6-lookup",
-    [IP4_MAP_REASS_NEXT_IP4_FRAGMENT] = "ip4-frag",
-    [IP4_MAP_REASS_NEXT_DROP] = "error-drop",
   },
 };
 /* *INDENT-ON* */

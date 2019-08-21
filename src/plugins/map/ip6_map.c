@@ -17,6 +17,7 @@
 #include <vnet/ip/ip_frag.h>
 #include <vnet/ip/ip4_to_ip6.h>
 #include <vnet/ip/ip6_to_ip4.h>
+#include <vnet/ip/reass/ip4_sv_reass.h>
 
 enum ip6_map_next_e
 {
@@ -117,8 +118,9 @@ ip6_map_sec_check (map_domain_t * d, u16 port, ip4_header_t * ip4,
 }
 
 static_always_inline void
-ip6_map_security_check (map_domain_t * d, ip4_header_t * ip4,
-			ip6_header_t * ip6, u32 * next, u8 * error)
+ip6_map_security_check (map_domain_t * d, vlib_buffer_t * b0,
+			ip4_header_t * ip4, ip6_header_t * ip6, u32 * next,
+			u8 * error)
 {
   map_main_t *mm = &map_main;
   if (d->ea_bits_len || d->rules)
@@ -143,7 +145,12 @@ ip6_map_security_check (map_domain_t * d, ip4_header_t * ip4,
 	    }
 	  else
 	    {
-	      *next = mm->sec_check_frag ? IP6_MAP_NEXT_IP4_REASS : *next;
+	      if (mm->sec_check_frag)
+		{
+		  vnet_buffer (b0)->ip.reass.next_index =
+		    map_main.ip4_sv_reass_custom_next_index;
+		  *next = IP6_MAP_NEXT_IP4_REASS;
+		}
 	    }
 	}
     }
@@ -297,7 +304,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  if (d0)
 	    {
 	      /* MAP inbound security check */
-	      ip6_map_security_check (d0, ip40, ip60, &next0, &error0);
+	      ip6_map_security_check (d0, p0, ip40, ip60, &next0, &error0);
 
 	      if (PREDICT_TRUE (error0 == MAP_ERROR_NONE &&
 				next0 == IP6_MAP_NEXT_IP4_LOOKUP))
@@ -329,7 +336,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  if (d1)
 	    {
 	      /* MAP inbound security check */
-	      ip6_map_security_check (d1, ip41, ip61, &next1, &error1);
+	      ip6_map_security_check (d1, p1, ip41, ip61, &next1, &error1);
 
 	      if (PREDICT_TRUE (error1 == MAP_ERROR_NONE &&
 				next1 == IP6_MAP_NEXT_IP4_LOOKUP))
@@ -484,7 +491,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  if (d0)
 	    {
 	      /* MAP inbound security check */
-	      ip6_map_security_check (d0, ip40, ip60, &next0, &error0);
+	      ip6_map_security_check (d0, p0, ip40, ip60, &next0, &error0);
 
 	      if (PREDICT_TRUE (error0 == MAP_ERROR_NONE &&
 				next0 == IP6_MAP_NEXT_IP4_LOOKUP))
@@ -823,8 +830,6 @@ ip6_map_ip4_reass (vlib_main_t * vm,
   map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = mm->domain_counters;
   u32 thread_index = vm->thread_index;
-  u32 *fragments_to_drop = NULL;
-  u32 *fragments_to_loopback = NULL;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -845,7 +850,6 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 	  i32 port0 = 0;
 	  u32 map_domain_index0 = ~0;
 	  u32 next0 = IP6_MAP_IP4_REASS_NEXT_IP4_LOOKUP;
-	  u8 cached = 0;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
@@ -861,65 +865,7 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 	    ip4_map_get_domain ((ip4_address_t *) & ip40->src_address.as_u32,
 				&map_domain_index0, &error0);
 
-	  map_ip4_reass_lock ();
-	  //This node only deals with fragmented ip4
-	  map_ip4_reass_t *r = map_ip4_reass_get (ip40->src_address.as_u32,
-						  ip40->dst_address.as_u32,
-						  ip40->fragment_id,
-						  ip40->protocol,
-						  &fragments_to_drop);
-	  if (PREDICT_FALSE (!r))
-	    {
-	      // Could not create a caching entry
-	      error0 = MAP_ERROR_FRAGMENT_MEMORY;
-	    }
-	  else if (PREDICT_TRUE (ip4_get_fragment_offset (ip40)))
-	    {
-	      // This is a fragment
-	      if (r->port >= 0)
-		{
-		  // We know the port already
-		  port0 = r->port;
-		}
-	      else if (map_ip4_reass_add_fragment (r, pi0))
-		{
-		  // Not enough space for caching
-		  error0 = MAP_ERROR_FRAGMENT_MEMORY;
-		  map_ip4_reass_free (r, &fragments_to_drop);
-		}
-	      else
-		{
-		  cached = 1;
-		}
-	    }
-	  else if ((port0 = ip4_get_port (ip40, 1)) == 0)
-	    {
-	      // Could not find port from first fragment. Stop reassembling.
-	      error0 = MAP_ERROR_BAD_PROTOCOL;
-	      port0 = 0;
-	      map_ip4_reass_free (r, &fragments_to_drop);
-	    }
-	  else
-	    {
-	      // Found port. Remember it and loopback saved fragments
-	      r->port = port0;
-	      map_ip4_reass_get_fragments (r, &fragments_to_loopback);
-	    }
-
-#ifdef MAP_IP4_REASS_COUNT_BYTES
-	  if (!cached && r)
-	    {
-	      r->forwarded += clib_host_to_net_u16 (ip40->length) - 20;
-	      if (!ip4_get_fragment_more (ip40))
-		r->expected_total =
-		  ip4_get_fragment_offset (ip40) * 8 +
-		  clib_host_to_net_u16 (ip40->length) - 20;
-	      if (r->forwarded >= r->expected_total)
-		map_ip4_reass_free (r, &fragments_to_drop);
-	    }
-#endif
-
-	  map_ip4_reass_unlock ();
+	  port0 = vnet_buffer (p0)->ip.reass.l4_src_port;
 
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
 	    error0 =
@@ -929,7 +875,7 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE
 	      (d0->mtu && (clib_host_to_net_u16 (ip40->length) > d0->mtu)
-	       && error0 == MAP_ERROR_NONE && !cached))
+	       && error0 == MAP_ERROR_NONE))
 	    {
 	      vnet_buffer (p0)->ip_frag.flags = 0;
 	      vnet_buffer (p0)->ip_frag.next_index = IP4_FRAG_NEXT_IP4_LOOKUP;
@@ -943,61 +889,23 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
 	      tr->map_domain_index = map_domain_index0;
 	      tr->port = port0;
-	      tr->cached = cached;
 	    }
 
-	  if (cached)
-	    {
-	      //Dequeue the packet
-	      n_left_to_next++;
-	      to_next--;
-	    }
-	  else
-	    {
-	      if (error0 == MAP_ERROR_NONE)
-		vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
-						 thread_index,
-						 map_domain_index0, 1,
-						 clib_net_to_host_u16
-						 (ip40->length));
-	      next0 =
-		(error0 ==
-		 MAP_ERROR_NONE) ? next0 : IP6_MAP_IP4_REASS_NEXT_DROP;
-	      p0->error = error_node->errors[error0];
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					       n_left_to_next, pi0, next0);
-	    }
+	  if (error0 == MAP_ERROR_NONE)
+	    vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
+					     thread_index,
+					     map_domain_index0, 1,
+					     clib_net_to_host_u16
+					     (ip40->length));
+	  next0 =
+	    (error0 == MAP_ERROR_NONE) ? next0 : IP6_MAP_IP4_REASS_NEXT_DROP;
+	  p0->error = error_node->errors[error0];
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
 
-	  //Loopback when we reach the end of the inpu vector
-	  if (n_left_from == 0 && vec_len (fragments_to_loopback))
-	    {
-	      from = vlib_frame_vector_args (frame);
-	      u32 len = vec_len (fragments_to_loopback);
-	      if (len <= VLIB_FRAME_SIZE)
-		{
-		  clib_memcpy_fast (from, fragments_to_loopback,
-				    sizeof (u32) * len);
-		  n_left_from = len;
-		  vec_reset_length (fragments_to_loopback);
-		}
-	      else
-		{
-		  clib_memcpy_fast (from, fragments_to_loopback +
-				    (len - VLIB_FRAME_SIZE),
-				    sizeof (u32) * VLIB_FRAME_SIZE);
-		  n_left_from = VLIB_FRAME_SIZE;
-		  _vec_len (fragments_to_loopback) = len - VLIB_FRAME_SIZE;
-		}
-	    }
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  map_send_all_to_node (vm, fragments_to_drop, node,
-			&error_node->errors[MAP_ERROR_FRAGMENT_DROPPED],
-			IP6_MAP_IP4_REASS_NEXT_DROP);
-
-  vec_free (fragments_to_drop);
-  vec_free (fragments_to_loopback);
   return frame->n_vectors;
 }
 
@@ -1195,7 +1103,7 @@ VLIB_REGISTER_NODE(ip6_map_node) = {
     [IP6_MAP_NEXT_IP4_REWRITE] = "ip4-load-balance",
 #endif
     [IP6_MAP_NEXT_IP6_REASS] = "ip6-map-ip6-reass",
-    [IP6_MAP_NEXT_IP4_REASS] = "ip6-map-ip4-reass",
+    [IP6_MAP_NEXT_IP4_REASS] = "ip4-sv-reassembly-custom-next",
     [IP6_MAP_NEXT_IP4_FRAGMENT] = "ip4-frag",
     [IP6_MAP_NEXT_IP6_ICMP_RELAY] = "ip6-map-icmp-relay",
     [IP6_MAP_NEXT_IP6_LOCAL] = "ip6-local",
@@ -1256,6 +1164,18 @@ VLIB_REGISTER_NODE(ip6_map_icmp_relay_node, static) = {
   },
 };
 /* *INDENT-ON* */
+
+clib_error_t *
+ip6_map_init (vlib_main_t * vm)
+{
+  map_main.ip4_sv_reass_custom_next_index =
+    ip4_sv_reass_custom_register_next_node (ip6_map_ip4_reass_node.index);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ip6_map_init) =
+{
+.runs_after = VLIB_INITS ("map_init"),};
 
 /*
  * fd.io coding-style-patch-verification: ON
