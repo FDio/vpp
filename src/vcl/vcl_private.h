@@ -250,6 +250,7 @@ typedef struct vcl_worker_
 
   /** VPP binary api input queue */
   svm_queue_t *vl_input_queue;
+  svm_msg_q_t *ctrl_mq;
 
   /** Message queues epoll fd. Initialized only if using mqs with eventfds */
   int mqs_epfd;
@@ -547,6 +548,7 @@ vcl_worker_t *vcl_worker_alloc_and_init (void);
 void vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp);
 int vcl_worker_register_with_vpp (void);
 int vcl_worker_set_bapi (void);
+svm_msg_q_t *vcl_worker_ctrl_mq (vcl_worker_t * wrk);
 
 void vcl_flush_mq_events (void);
 void vcl_cleanup_bapi (void);
@@ -603,10 +605,8 @@ void vppcom_init_error_string_table (void);
 void vppcom_send_session_enable_disable (u8 is_enable);
 void vppcom_app_send_attach (void);
 void vppcom_app_send_detach (void);
-void vppcom_send_connect_sock (vcl_session_t * session);
+void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 void vppcom_send_disconnect_session (u64 vpp_handle);
-void vppcom_send_bind_sock (vcl_session_t * session);
-void vppcom_send_unbind_sock (vcl_worker_t * wrk, u64 vpp_handle);
 void vppcom_api_hookup (void);
 void vppcom_send_application_tls_cert_add (vcl_session_t * session,
 					   char *cert, u32 cert_len);
