@@ -26,6 +26,8 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 
 /* define message IDs */
 #include <memif/memif_msg_enum.h>
@@ -73,7 +75,6 @@ void
   memif_main_t *mm = &memif_main;
   u8 is_add;
   u32 socket_id;
-  u32 len;
   u8 *socket_filename;
   vl_api_memif_socket_filename_add_del_reply_t *rmp;
   int rv;
@@ -91,12 +92,15 @@ void
 
   /* socket filename */
   socket_filename = 0;
-  mp->socket_filename[ARRAY_LEN (mp->socket_filename) - 1] = 0;
-  len = strlen ((char *) mp->socket_filename);
-  if (len > 0)
+  if (mp->is_add)
     {
-      vec_validate (socket_filename, len);
-      memcpy (socket_filename, mp->socket_filename, len);
+      if (vl_api_from_api_string (&mp->socket_filename)[0] == 0)
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  goto reply;
+	}
+      socket_filename =
+	format (0, "%s%c", vl_api_from_api_string (&mp->socket_filename), 0);
     }
 
   rv = memif_socket_filename_add_del (is_add, socket_id, socket_filename);
@@ -122,6 +126,7 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   u32 ring_size = MEMIF_DEFAULT_RING_SIZE;
   static const u8 empty_hw_addr[6];
   int rv = 0;
+  mac_address_t mac;
 
   /* id */
   args.id = clib_net_to_host_u32 (mp->id);
@@ -130,19 +135,24 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   args.socket_id = clib_net_to_host_u32 (mp->socket_id);
 
   /* secret */
-  mp->secret[ARRAY_LEN (mp->secret) - 1] = 0;
-  if (strlen ((char *) mp->secret) > 0)
+  if (vl_api_from_api_string (&mp->secret)[0] != 0)
     {
-      vec_validate (args.secret, strlen ((char *) mp->secret));
-      strncpy ((char *) args.secret, (char *) mp->secret,
-	       vec_len (args.secret));
+      args.secret =
+	format (0, "%s%c", vl_api_from_api_string (&mp->secret), 0);
+      if (strlen ((char *) args.secret) > MEMIF_SECRET_SIZE)
+	{
+	  rv = VNET_API_ERROR_INVALID_ARGUMENT;
+	  goto reply;
+	}
     }
 
   /* role */
-  args.is_master = (mp->role == 0);
+  args.is_master = (ntohl (mp->role) == MEMIF_ROLE_API_MASTER);
 
   /* mode */
-  args.mode = mp->mode;
+  args.mode = ntohl (mp->mode);
+
+  args.is_zero_copy = mp->no_zero_copy ? 0 : 1;
 
   /* rx/tx queues */
   if (args.is_master == 0)
@@ -179,9 +189,10 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
     }
 
   /* MAC address */
-  if (memcmp (mp->hw_addr, empty_hw_addr, 6) != 0)
+  mac_address_decode (mp->hw_addr, &mac);
+  if (memcmp (&mac, empty_hw_addr, 6) != 0)
     {
-      memcpy (args.hw_addr, mp->hw_addr, 6);
+      memcpy (args.hw_addr, &mac, 6);
       args.hw_addr_set = 1;
     }
 
@@ -242,19 +253,17 @@ send_memif_details (vl_api_registration_t * reg,
 
   hwif = vnet_get_sup_hw_interface (vnm, swif->sw_if_index);
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc (sizeof (*mp) + strlen ((char *) interface_name));
   clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = htons (VL_API_MEMIF_DETAILS + mm->msg_id_base);
   mp->context = context;
 
   mp->sw_if_index = htonl (swif->sw_if_index);
-  strncpy ((char *) mp->if_name,
-	   (char *) interface_name, ARRAY_LEN (mp->if_name) - 1);
 
   if (hwif->hw_address)
     {
-      memcpy (mp->hw_addr, hwif->hw_address, ARRAY_LEN (mp->hw_addr));
+      mac_address_encode ((mac_address_t *) hwif->hw_address, mp->hw_addr);
     }
 
   mp->id = clib_host_to_net_u32 (mif->id);
@@ -262,12 +271,27 @@ send_memif_details (vl_api_registration_t * reg,
   msf = pool_elt_at_index (mm->socket_files, mif->socket_file_index);
   mp->socket_id = clib_host_to_net_u32 (msf->socket_id);
 
-  mp->role = (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ? 1 : 0;
+  mp->role =
+    (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ? MEMIF_ROLE_API_SLAVE :
+    MEMIF_ROLE_API_MASTER;
+  mp->role = clib_host_to_net_u32 (mp->role);
+  mp->mode = mif->mode;
+  mp->mode = clib_host_to_net_u32 (mp->mode);
   mp->ring_size = htonl (1 << mif->run.log2_ring_size);
   mp->buffer_size = htons (mif->run.buffer_size);
+  mp->zero_copy = (mif->flags & MEMIF_IF_FLAG_ZERO_COPY) ? 1 : 0;
 
-  mp->admin_up_down = (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;
-  mp->link_up_down = (hwif->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ? 1 : 0;
+  mp->flags = 0;
+  mp->flags |= (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
+    IF_STATUS_API_FLAG_ADMIN_UP : 0;
+  mp->flags |= (hwif->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ?
+    IF_STATUS_API_FLAG_LINK_UP : 0;
+  mp->flags = htonl (mp->flags);
+
+  char *p = (char *) &mp->if_name;
+  p +=
+    vl_api_to_api_string (strlen ((char *) interface_name),
+			  (char *) interface_name, (vl_api_string_t *) p);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -315,7 +339,7 @@ send_memif_socket_filename_details (vl_api_registration_t * reg,
   vl_api_memif_socket_filename_details_t *mp;
   memif_main_t *mm = &memif_main;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc (sizeof (*mp) + strlen ((char *) socket_filename));
   clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = htons (VL_API_MEMIF_SOCKET_FILENAME_DETAILS
@@ -323,8 +347,10 @@ send_memif_socket_filename_details (vl_api_registration_t * reg,
   mp->context = context;
 
   mp->socket_id = clib_host_to_net_u32 (socket_id);
-  strncpy ((char *) mp->socket_filename,
-	   (char *) socket_filename, ARRAY_LEN (mp->socket_filename) - 1);
+  char *p = (char *) &mp->socket_filename;
+  p +=
+    vl_api_to_api_string (strlen ((char *) socket_filename),
+			  (char *) socket_filename, (vl_api_string_t *) p);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
