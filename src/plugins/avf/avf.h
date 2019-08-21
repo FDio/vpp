@@ -320,7 +320,8 @@ avf_rxd_is_not_dd (avf_rx_desc_t * d)
 
 typedef struct
 {
-  u32 next_index;
+  u16 qid;
+  u16 next_index;
   u32 hw_if_index;
   u64 qw1s[AVF_RX_MAX_DESC_IN_CHAIN];
 } avf_input_trace_t;
