@@ -21,6 +21,8 @@
 #include <map/map.h>
 #include <map/map_msg_enum.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/reass/ip4_sv_reass.h>
+#include <vnet/ip/reass/ip6_sv_reass.h>
 #include <vnet/fib/fib_table.h>
 #include <vlibmemory/api.h>
 
@@ -632,6 +634,8 @@ map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 
   if (is_translation == false)
     {
+      ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, is_enable);
+      ip6_sv_reass_enable_disable_with_refcnt (sw_if_index, is_enable);
       vnet_feature_enable_disable ("ip4-unicast", "ip4-map", sw_if_index,
 				   is_enable ? 1 : 0, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "ip6-map", sw_if_index,
