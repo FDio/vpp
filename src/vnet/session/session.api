@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-option version = "1.6.0";
+option version = "1.7.0";
 
 /** \brief client->vpp, attach application to session layer
+ 	### WILL BE DEPRECATED POST 20.01 ###
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param initial_segment_size - size of the initial shm segment to be 
+    @param initial_segment_size - size of the initial shm segment to be
     							  allocated
     @param options - segment size, fifo sizes, etc.
     @param namespace_id_len - length of the namespace id c-string
@@ -32,17 +33,18 @@ option version = "1.6.0";
     u8 namespace_id_len;
     u8 namespace_id [64];
  };
- 
+
  /** \brief Application attach reply
+ 	### WILL BE DEPRECATED POST 20.01 ###
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
-    @param app_event_queue_address - vpp event queue address or 0 if this 
+    @param app_event_queue_address - vpp event queue address or 0 if this
                                  	 connection shouldn't send events
     @param n_fds - number of fds exchanged
     @param fd_flags - set of flags that indicate which fds are to be expected
-    				  over the socket (set only if socket transport available) 
+    				  over the socket (set only if socket transport available)
     @param segment_size - size of first shm segment
-    @param segment_name_length - length of segment name 
+    @param segment_name_length - length of segment name
     @param segment_name - name of segment client needs to attach to
     @param app_index - index of the newly created app
     @param segment_handle - handle for segment
@@ -57,6 +59,51 @@ define application_attach_reply {
     u8 segment_name_length;
     u8 segment_name[128];
     u32 app_index;
+    u64 segment_handle;
+};
+
+/** \brief Application attach to session layer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param options - segment size, fifo sizes, etc.
+    @param namespace_id_len - length of the namespace id c-string
+    @param namespace_id - 0 terminted c-string
+*/
+ define app_attach {
+    u32 client_index;
+    u32 context;
+    u64 options[16];
+    u8 namespace_id_len;
+    u8 namespace_id[64];
+ };
+
+ /** \brief Application attach reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param app_mq - app message queue
+    @param vpp_ctrl_mq - vpp message queue for control events that should
+    					 be handled in main thread, i.e., bind/connect
+    @param vpp_ctrl_mq_thread_index - thread index of the ctrl mq
+    @param app_index - index of the newly created app
+    @param n_fds - number of fds exchanged
+    @param fd_flags - set of flags that indicate which fds are to be expected
+    				  over the socket (set only if socket transport available)
+    @param segment_size - size of first shm segment
+    @param segment_name_length - length of segment name
+    @param segment_name - name of segment client needs to attach to
+    @param segment_handle - handle for segment
+*/
+define app_attach_reply {
+    u32 context;
+    i32 retval;
+    u64 app_mq;
+    u64 vpp_ctrl_mq;
+    u8 vpp_ctrl_mq_thread;
+    u32 app_index;
+    u8 n_fds;
+    u8 fd_flags;
+    u32 segment_size;
+    string segment_name[limit=128];
     u64 segment_handle;
 };
 
@@ -96,12 +143,12 @@ autoreply define application_detach {
     u32 client_index;
     u32 context;
  };
- 
+
 /** \brief vpp->client, please map an additional shared memory segment
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-   	@param fd_flags - set of flags that indicate which, if any, fds are 
-   					  to be expected over the socket. This is set only if 
+   	@param fd_flags - set of flags that indicate which, if any, fds are
+   					  to be expected over the socket. This is set only if
    					  socket transport available
     @param segment_size - size of the segment to be mapped
     @param segment_name - name of the segment to be mapped
@@ -120,7 +167,7 @@ autoreply define map_another_segment {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param segment_name - segment name
-    @param segment_handle - handle of the segment to be unmapped 
+    @param segment_handle - handle of the segment to be unmapped
 */
 autoreply define unmap_segment {
     u32 client_index;
@@ -159,10 +206,10 @@ autoreply define unbind_uri {
 /** \brief Connect to a given URI
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param client_queue_address - binary API client queue address. Used by 
+    @param client_queue_address - binary API client queue address. Used by
     							  local server when connect was redirected.
     @param options - socket options, fifo sizes, etc. passed by vpp to the
-    				 server when redirecting connects 
+    				 server when redirecting connects
     @param uri - a URI, e.g. "tcp4://0.0.0.0/0/80"
                  "tcp6://::/0/80" [ipv6], etc.
 */
@@ -206,7 +253,7 @@ define disconnect_session_reply {
     @param vrf - bind namespace
     @param is_ip4 - flag that is 1 if ip address family is IPv4
     @param ip - ip address
-    @param port - port 
+    @param port - port
     @param proto - protocol 0 - TCP 1 - UDP
     @param options - socket options, fifo sizes, etc.
 */
@@ -222,7 +269,7 @@ autoreply define bind_sock {
   u64 options[16];
 };
 
-/** \brief Unbind 
+/** \brief Unbind
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param wrk_index - index of worker requesting the bind
@@ -239,13 +286,13 @@ autoreply define unbind_sock {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param wrk_index - worker that requests the connect
-    @param client_queue_address - client's API queue address. Non-zero when 
+    @param client_queue_address - client's API queue address. Non-zero when
                                   used to perform redirects
     @param options - socket options, fifo sizes, etc. when doing redirects
     @param vrf - connection namespace
     @param is_ip4 - flag that is 1 if ip address family is IPv4
     @param ip - ip address
-    @param port - port 
+    @param port - port
     @param proto - protocol 0 - TCP 1 - UDP
     @param hostname-len - length of hostname
     @param hostname - destination's hostname. If present, used by protocols
@@ -314,8 +361,8 @@ define app_worker_add_del
     @param app_event_queue_address - vpp event queue address of new worker
     @param n_fds - number of fds exchanged
     @param fd_flags - set of flags that indicate which fds are to be expected
-    				  over the socket (set only if socket transport available) 
-    @param segment_name_length - length of segment name 
+    				  over the socket (set only if socket transport available)
+    @param segment_name_length - length of segment name
     @param segment_name - name of segment client needs to attach to
     @param segment_handle - handle for segment
 */
