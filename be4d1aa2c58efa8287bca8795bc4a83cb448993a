@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "73820879_0314a1f4",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-08-21T08:58:02Z",
+      "side": 1,
+      "message": "Thanks for the reminder. I will add a patch to change to autoreply. BTW, could you please share me some info how autoreply works?",
+      "parentUuid": "b1d42d24_dd77d388",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 5,
+        "endChar": 6
+      },
+      "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "764a4d19_e3db2ab7",
         "filename": "src/plugins/tlsopenssl/tls_openssl.api",
         "patchSetId": 7
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "bb4529f8_ac5002eb",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-08-21T08:58:02Z",
+      "side": 1,
+      "message": "I once refer to http_static.api to use string, but it seems some problem to handle a string variable, so I decide to use this definition.",
+      "parentUuid": "764a4d19_e3db2ab7",
+      "range": {
+        "startLine": 16,
+        "startChar": 4,
+        "endLine": 16,
+        "endChar": 18
+      },
+      "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f613e72d_cf0aa378",
         "filename": "src/plugins/tlsopenssl/tls_openssl_api.c",
         "patchSetId": 7
@@ -68,6 +116,30 @@
       "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0943e371_70c2ed32",
+        "filename": "src/plugins/tlsopenssl/tls_openssl_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-08-21T08:58:02Z",
+      "side": 1,
+      "message": "okay, can add check to make sure it is less than 64.",
+      "parentUuid": "f613e72d_cf0aa378",
+      "range": {
+        "startLine": 65,
+        "startChar": 11,
+        "endLine": 65,
+        "endChar": 30
+      },
+      "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
