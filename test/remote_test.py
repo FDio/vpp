@@ -248,12 +248,14 @@ class RemoteClass(Process):
             if name[0] == '_':
                 if name in ['__weakref__']:
                     continue
+                if name in ['__dict__']:
+                    continue
                 if not (name.startswith('__') and name.endswith('__')):
                     continue
             if callable(member) and not isinstance(member, property):
                 continue
             if not self._serializable(member):
-                continue
+                member = self._make_serializable(member)
             setattr(copy, name, member)
         return copy
 
