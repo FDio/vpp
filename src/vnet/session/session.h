@@ -62,11 +62,18 @@ typedef struct session_tx_context_
   session_dgram_hdr_t hdr;
 } session_tx_context_t;
 
+#define SESSION_CTRL_MSG_MAX_SIZE 64
+
 typedef struct session_evt_elt
 {
   clib_llist_anchor_t evt_list;
   session_event_t evt;
 } session_evt_elt_t;
+
+typedef struct session_ctrl_evt_data_
+{
+  u8 data[SESSION_CTRL_MSG_MAX_SIZE];
+} session_evt_ctrl_data_t;
 
 typedef struct session_worker_
 {
@@ -95,6 +102,9 @@ typedef struct session_worker_
 
   /** Pool of session event list elements */
   session_evt_elt_t *event_elts;
+
+  /** Pool of ctrl events data buffers */
+  session_evt_ctrl_data_t *ctrl_evts_data;
 
   /** Head of control events list */
   clib_llist_index_t ctrl_head;
@@ -207,6 +217,14 @@ session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
 		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
 }
 
+static inline u32
+session_evt_ctrl_data_alloc (session_worker_t * wrk)
+{
+  session_evt_ctrl_data_t *data;
+  pool_get (wrk->ctrl_evts_data, data);
+  return (data - wrk->ctrl_evts_data);
+}
+
 static inline session_evt_elt_t *
 session_evt_alloc_ctrl (session_worker_t * wrk)
 {
@@ -215,6 +233,20 @@ session_evt_alloc_ctrl (session_worker_t * wrk)
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
 		       pool_elt_at_index (wrk->event_elts, wrk->ctrl_head));
   return elt;
+}
+
+static inline void *
+session_evt_ctrl_data (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  return (void *) (pool_elt_at_index (wrk->ctrl_evts_data,
+				      elt->evt.ctrl_data_index));
+}
+
+static inline void
+session_evt_ctrl_data_free (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  ASSERT (elt->evt.event_type > SESSION_IO_EVT_BUILTIN_TX);
+  pool_put_index (wrk->ctrl_evts_data, elt->evt.ctrl_data_index);
 }
 
 static inline session_evt_elt_t *

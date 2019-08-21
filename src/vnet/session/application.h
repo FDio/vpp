@@ -284,6 +284,15 @@ int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
+
+/* Needed while we support both bapi and mq ctrl messages */
+int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
+			      session_handle_t handle, int rv);
+int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
+				  session_t * s, u8 is_fail);
+void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
+			     u32 context, int rv);
+
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
 /*

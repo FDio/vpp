@@ -295,20 +295,47 @@ typedef enum
   SESSION_IO_EVT_BUILTIN_TX,
   SESSION_CTRL_EVT_RPC,
   SESSION_CTRL_EVT_CLOSE,
+  SESSION_CTRL_EVT_RESET,
   SESSION_CTRL_EVT_BOUND,
   SESSION_CTRL_EVT_UNLISTEN_REPLY,
   SESSION_CTRL_EVT_ACCEPTED,
   SESSION_CTRL_EVT_ACCEPTED_REPLY,
   SESSION_CTRL_EVT_CONNECTED,
-  SESSION_CTRL_EVT_CONNECTED_REPLY,
   SESSION_CTRL_EVT_DISCONNECTED,
   SESSION_CTRL_EVT_DISCONNECTED_REPLY,
-  SESSION_CTRL_EVT_RESET,
   SESSION_CTRL_EVT_RESET_REPLY,
   SESSION_CTRL_EVT_REQ_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE_REPLY,
+  SESSION_CTRL_EVT_DISCONNECT,
+  SESSION_CTRL_EVT_CONNECT,
+  SESSION_CTRL_EVT_CONNECT_URI,
+  SESSION_CTRL_EVT_LISTEN,
+  SESSION_CTRL_EVT_LISTEN_URI,
+  SESSION_CTRL_EVT_UNLISTEN,
+  SESSION_CTRL_EVT_APP_DETACH,
 } session_evt_type_t;
+
+#define foreach_session_ctrl_evt				\
+  _(LISTEN, listen)						\
+  _(LISTEN_URI, listen_uri)					\
+  _(BOUND, bound)						\
+  _(UNLISTEN, unlisten)						\
+  _(UNLISTEN_REPLY, unlisten_reply)				\
+  _(ACCEPTED, accepted)						\
+  _(ACCEPTED_REPLY, accepted_reply)				\
+  _(CONNECT, connect)						\
+  _(CONNECT_URI, connect_uri)					\
+  _(CONNECTED, connected)					\
+  _(DISCONNECT, disconnect)					\
+  _(DISCONNECTED, disconnected)					\
+  _(DISCONNECTED_REPLY, disconnected_reply)			\
+  _(RESET_REPLY, reset_reply)					\
+  _(REQ_WORKER_UPDATE, req_worker_update)			\
+  _(WORKER_UPDATE, worker_update)				\
+  _(WORKER_UPDATE_REPLY, worker_update_reply)			\
+  _(APP_DETACH, app_detach)					\
+
 
 /* Deprecated and will be removed. Use types above */
 #define FIFO_EVENT_APP_RX SESSION_IO_EVT_RX
@@ -339,6 +366,7 @@ typedef struct
     u32 session_index;
     session_handle_t session_handle;
     session_rpc_args_t rpc_args;
+    u32 ctrl_data_index;
     struct
     {
       u8 data[0];
