@@ -3638,29 +3638,6 @@ static void *vl_api_app_namespace_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_lldp_config_t_print
-  (vl_api_lldp_config_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: lldp_config ");
-  s = format (s, "system_name %s ", mp->system_name);
-  s = format (s, "tx_hold %d ", ntohl (mp->tx_hold));
-  s = format (s, "tx_interval %d ", ntohl (mp->tx_interval));
-  FINISH;
-}
-
-static void *vl_api_dns_enable_disable_t_print
-  (vl_api_dns_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dns_enable_disable ");
-  s = format (s, "%s ", mp->enable ? "enable" : "disable");
-
-  FINISH;
-}
-
 static void *vl_api_sw_interface_set_lldp_t_print
   (vl_api_sw_interface_set_lldp_t * mp, void *handle)
 {
@@ -3690,45 +3667,15 @@ static void *vl_api_sw_interface_set_lldp_t_print
   FINISH;
 }
 
-static void *vl_api_dns_name_server_add_del_t_print
-  (vl_api_dns_name_server_add_del_t * mp, void *handle)
+static void *vl_api_lldp_config_t_print
+  (vl_api_lldp_config_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: dns_name_server_add_del ");
-  if (mp->is_ip6)
-    s = format (s, "%U ", format_ip6_address,
-		(ip6_address_t *) mp->server_address);
-  else
-    s = format (s, "%U ", format_ip4_address,
-		(ip4_address_t *) mp->server_address);
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_dns_resolve_name_t_print
-  (vl_api_dns_resolve_name_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dns_resolve_name ");
-  s = format (s, "%s ", mp->name);
-  FINISH;
-}
-
-static void *vl_api_dns_resolve_ip_t_print
-  (vl_api_dns_resolve_ip_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dns_resolve_ip ");
-  if (mp->is_ip6)
-    s = format (s, "%U ", format_ip6_address, mp->address);
-  else
-    s = format (s, "%U ", format_ip4_address, mp->address);
+  s = format (0, "SCRIPT: lldp_config ");
+  s = format (s, "system_name %s ", mp->system_name);
+  s = format (s, "tx_hold %d ", ntohl (mp->tx_hold));
+  s = format (s, "tx_interval %d ", ntohl (mp->tx_interval));
   FINISH;
 }
 
@@ -4006,10 +3953,6 @@ _(TCP_CONFIGURE_SRC_ADDRESSES, tcp_configure_src_addresses)		\
 _(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)                         \
 _(LLDP_CONFIG, lldp_config)                                             \
 _(SW_INTERFACE_SET_LLDP, sw_interface_set_lldp)				\
-_(DNS_ENABLE_DISABLE, dns_enable_disable)                               \
-_(DNS_NAME_SERVER_ADD_DEL, dns_name_server_add_del)                     \
-_(DNS_RESOLVE_NAME, dns_resolve_name)					\
-_(DNS_RESOLVE_IP, dns_resolve_ip)					\
 _(SESSION_RULE_ADD_DEL, session_rule_add_del)                           \
 _(OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)                   \
 _(QOS_RECORD_ENABLE_DISABLE, qos_record_enable_disable)			\
