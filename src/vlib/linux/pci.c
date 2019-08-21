@@ -1247,9 +1247,9 @@ vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
 		 di->vendor_id, di->device_id, di->driver_name,
 		 di->iommu_group);
 
-  if (strncmp ("vfio-pci", (char *) di->driver_name, 8) == 0)
+  if (clib_strncmp ("vfio-pci", (char *) di->driver_name, 8) == 0)
     err = add_device_vfio (vm, p, di, 0);
-  else if (strncmp ("uio_pci_generic", (char *) di->driver_name, 8) == 0)
+  else if (clib_strncmp ("uio_pci_generic", (char *) di->driver_name, 8) == 0)
     err = add_device_uio (vm, p, di, 0);
   else
     err = clib_error_create ("device not bound to 'vfio-pci' or "
