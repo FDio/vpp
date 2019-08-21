@@ -22,6 +22,30 @@
       "revId": "5d8233f2e061707b5478f2c04eeec1706a562693",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "56fdc847_6785ead1",
+        "filename": "build-root/platforms.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2019-08-21T07:21:29Z",
+      "side": 1,
+      "message": "I don\u0027t know about native being neutral, since nothing seems to be working with PLATFORM\u003dnative. When this is set to native, make targets from build-root fail (when PLATFORM is not specified):\n\nmake UNATTENDED\u003dyes -C build-root TAG\u003dvpp_clang CC\u003dclang CXX\u003dclang install-packages\nmake: Entering directory \u0027/home/jlinkes/workspace/fdio/vpp/build-root\u0027\n@@@@ Arch for platform \u0027native\u0027 is native @@@@\n@@@@ Finding source for bash @@@@\n@@@@ Package bash not found with path /home/jlinkes/workspace/fdio/vpp/build-root/.. @@@@\nMakefile:777: recipe for target \u0027bash-find-source\u0027 failed\nmake: *** [bash-find-source] Error 1\nmake: Leaving directory \u0027/home/jlinkes/workspace/fdio/vpp/build-root\u0027",
+      "parentUuid": "bba65f7d_571f1713",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 38,
+        "endChar": 14
+      },
+      "revId": "5d8233f2e061707b5478f2c04eeec1706a562693",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
