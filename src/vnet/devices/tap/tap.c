@@ -31,6 +31,7 @@
 #include <linux/rtnetlink.h>
 
 #include <vlib/vlib.h>
+#include <vlib/physmem.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
@@ -112,6 +113,7 @@ open_netns_fd (char *netns)
 void
 tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 {
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *vim = &virtio_main;
   tap_main_t *tm = &tap_main;
@@ -391,7 +393,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vhost_mem = clib_mem_alloc (i);
   clib_memset (vhost_mem, 0, i);
   vhost_mem->nregions = 1;
-  vhost_mem->regions[0].memory_size = (1ULL << 47) - 4096;
+  vhost_mem->regions[0].memory_size = vpm->max_size;
+  vhost_mem->regions[0].guest_phys_addr = vpm->base_addr;
+  vhost_mem->regions[0].userspace_addr =
+    vhost_mem->regions[0].guest_phys_addr;
   _IOCTL (vif->fd, VHOST_SET_MEM_TABLE, vhost_mem);
 
   if ((args->error =
