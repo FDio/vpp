@@ -65,7 +65,11 @@ typedef struct session_tx_context_
 typedef struct session_evt_elt
 {
   clib_llist_anchor_t evt_list;
-  session_event_t evt;
+  union
+  {
+    session_event_t evt;
+    u8 ctrl_evt[64];
+  };
 } session_evt_elt_t;
 
 typedef struct session_worker_

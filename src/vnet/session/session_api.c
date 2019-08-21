@@ -43,6 +43,7 @@
 #define foreach_session_api_msg                                         \
 _(MAP_ANOTHER_SEGMENT_REPLY, map_another_segment_reply)                 \
 _(APPLICATION_ATTACH, application_attach)				\
+_(APP_ATTACH, app_attach)						\
 _(APPLICATION_DETACH, application_detach)				\
 _(BIND_URI, bind_uri)                                                   \
 _(UNBIND_URI, unbind_uri)                                               \
@@ -298,7 +299,7 @@ mq_send_session_reset_cb (session_t * s)
 				 SESSION_CTRL_EVT_RESET);
 }
 
-static int
+int
 mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 			      session_t * s, u8 is_fail)
 {
@@ -378,7 +379,7 @@ done:
   return 0;
 }
 
-static int
+int
 mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 			  session_handle_t handle, int rv)
 {
@@ -466,6 +467,7 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
   REPLY_MACRO (VL_API_SESSION_ENABLE_DISABLE_REPLY);
 }
 
+/* ### WILL BE DEPRECATED POST 20.01 ### */
 static void
 vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 {
@@ -554,6 +556,107 @@ done:
 	rmp->app_event_queue_address = pointer_to_uword (a->app_evt_q);
 	rmp->n_fds = n_fds;
 	rmp->fd_flags = fd_flags;
+	rmp->segment_handle = clib_host_to_net_u64 (a->segment_handle);
+      }
+  }));
+  /* *INDENT-ON* */
+
+  if (n_fds)
+    session_send_fds (reg, fds, n_fds);
+}
+
+static void
+vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
+{
+  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
+  vl_api_app_attach_reply_t *rmp;
+  ssvm_private_t *segp, *evt_q_segment;
+  vnet_app_attach_args_t _a, *a = &_a;
+  u8 fd_flags = 0, ctrl_thread;
+  vl_api_registration_t *reg;
+  svm_msg_q_t *ctrl_mq;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (session_main_is_enabled () == 0)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
+		 sizeof (mp->options),
+		 "Out of options, fix api message definition");
+
+  clib_memset (a, 0, sizeof (*a));
+  a->api_client_index = mp->client_index;
+  a->options = mp->options;
+  a->session_cb_vft = &session_mq_cb_vft;
+  if (mp->namespace_id_len > 64)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  if (mp->namespace_id_len)
+    {
+      vec_validate (a->namespace_id, mp->namespace_id_len - 1);
+      clib_memcpy_fast (a->namespace_id, mp->namespace_id,
+			mp->namespace_id_len);
+    }
+
+  if ((rv = vnet_application_attach (a)))
+    {
+      clib_warning ("attach returned: %d", rv);
+      vec_free (a->namespace_id);
+      goto done;
+    }
+  vec_free (a->namespace_id);
+
+  /* Send event queues segment */
+  if ((evt_q_segment = session_main_get_evt_q_segment ()))
+    {
+      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
+      fds[n_fds] = evt_q_segment->fd;
+      n_fds += 1;
+    }
+  /* Send fifo segment fd if needed */
+  if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
+    {
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = a->segment->fd;
+      n_fds += 1;
+    }
+  if (a->options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+    {
+      fd_flags |= SESSION_FD_F_MQ_EVENTFD;
+      fds[n_fds] = svm_msg_q_get_producer_eventfd (a->app_evt_q);
+      n_fds += 1;
+    }
+
+done:
+
+  ctrl_thread = vlib_num_workers ()? 1 : 0;
+  ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_APP_ATTACH_REPLY, ({
+    if (!rv)
+      {
+	segp = a->segment;
+	rmp->app_index = clib_host_to_net_u32 (a->app_index);
+	rmp->app_mq = pointer_to_uword (a->app_evt_q);
+	rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+	rmp->vpp_ctrl_mq_thread = ctrl_thread;
+	rmp->n_fds = n_fds;
+	rmp->fd_flags = fd_flags;
+	if (vec_len (segp->name))
+	  {
+	    memcpy (rmp->segment_name, segp->name, vec_len (segp->name));
+	    rmp->segment_name_length = vec_len (segp->name);
+	  }
+	rmp->segment_size = segp->ssvm_size;
 	rmp->segment_handle = clib_host_to_net_u64 (a->segment_handle);
       }
   }));

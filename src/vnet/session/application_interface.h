@@ -261,6 +261,18 @@ typedef struct
 #undef _
 } app_session_t;
 
+typedef struct session_bind_msg_
+{
+  u32 client_index;
+  u32 context;	/* Not needed but keeping it for compatibility with bapi */
+  u32 wrk_index;
+  u32 vrf;
+  u16 port;
+  u8 proto;
+  u8 is_ip4;
+  ip46_address_t ip;
+} __clib_packed session_listen_msg_t;
+
 typedef struct session_bound_msg_
 {
   u32 context;
@@ -306,6 +318,21 @@ typedef struct session_accepted_reply_msg_
 /* Make sure this is not too large, otherwise it won't fit when dequeued in
  * the session queue node */
 STATIC_ASSERT (sizeof (session_accepted_reply_msg_t) <= 16, "accept reply");
+
+typedef struct session_connect_msg_
+{
+  u32 client_index;
+  u32 context;
+  u32 wrk_index;
+  u32 vrf;
+  u16 port;
+  u8 proto;
+  u8 is_ip4;
+  ip46_address_t ip;
+  u8 hostname_len;
+  u8 hostname[16];
+  u64 parent_handle;
+} __clib_packed session_connect_msg_t;
 
 typedef struct session_connected_msg_
 {
