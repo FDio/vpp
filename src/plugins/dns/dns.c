@@ -1,4 +1,3 @@
-<<<<<<< HEAD   (1c586d misc: 19.08 new features)
 /*
  * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,31 +13,50 @@
  * limitations under the License.
  */
 
-#include <vnet/dns/dns.h>
-
 #include <vnet/vnet.h>
-#include <vnet/fib/fib.h>
-#include <vlibmemory/api.h>
-
 #include <vnet/udp/udp.h>
+#include <vnet/plugin/plugin.h>
+#include <vnet/fib/fib_table.h>
+#include <dns/dns.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vlibapi/api.h>
+#include <vlibmemory/api.h>
+#include <vpp/app/version.h>
+#include <stdbool.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+/* define message IDs */
+#include <dns/dns_msg_enum.h>
+
+/* define message structures */
+#define vl_typedefs
+#include <dns/dns_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+/* define generated endian-swappers */
+#define vl_endianfun
+#include <dns/dns_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include <dns/dns_all_api_h.h>
 #undef vl_printfun
 
+/* Get the API version number */
+#define vl_api_version(n,v) static u32 api_version=(v);
+#include <dns/dns_all_api_h.h>
+#undef vl_api_version
+
+#define REPLY_MSG_ID_BASE dm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
+
+/* Macro to finish up custom dump fns */
+#define FINISH                                  \
+    vec_add1 (s, 0);                            \
+    vl_print (handle, (char *)s);               \
+    vec_free (s);                               \
+    return handle;
 
 dns_main_t dns_main;
 
@@ -822,6 +840,10 @@ vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
   /* In case we can't actually answer the question right now... */
   *retp = 0;
 
+  /* binary API caller might forget to set the name. Guess how we know. */
+  if (name[0] == 0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
   dns_cache_lock (dm);
 search_again:
   p = hash_get_mem (dm->cache_entry_by_name, name);
@@ -1556,42 +1578,23 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
 }
 
 #define vl_msg_name_crc_list
-#include <vpp/api/vpe_all_api_h.h>
+#include <dns/dns_all_api_h.h>
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (dns_main_t * dm)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (dm->api_main, #n "_" #crc, dm->msg_id_base + id);
   foreach_vl_msg_name_crc_dns;
 #undef _
 }
 
-#define foreach_dns_api_msg                             \
+#define foreach_dns_plugin_api_msg                      \
 _(DNS_ENABLE_DISABLE, dns_enable_disable)               \
 _(DNS_NAME_SERVER_ADD_DEL, dns_name_server_add_del)     \
 _(DNS_RESOLVE_NAME, dns_resolve_name)			\
 _(DNS_RESOLVE_IP, dns_resolve_ip)
-
-static clib_error_t *
-dns_api_hookup (vlib_main_t * vm)
-{
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_dns_api_msg;
-#undef _
-
-  setup_message_id_table (&api_main);
-  return 0;
-}
-
-VLIB_API_INIT_FUNCTION (dns_api_hookup);
-
 
 static clib_error_t *
 dns_config_fn (vlib_main_t * vm, unformat_input_t * input)
@@ -1612,22 +1615,6 @@ dns_config_fn (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (dns_config_fn, "dns");
-
-static clib_error_t *
-dns_init (vlib_main_t * vm)
-{
-  dns_main_t *dm = &dns_main;
-
-  dm->vlib_main = vm;
-  dm->vnet_main = vnet_get_main ();
-  dm->name_cache_size = 65535;
-  dm->max_ttl_in_seconds = 86400;
-  dm->random_seed = 0xDEADDABE;
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (dns_init);
 
 uword
 unformat_dns_reply (unformat_input_t * input, va_list * args)
@@ -2298,6 +2285,44 @@ VLIB_CLI_COMMAND (show_dns_cache_command) =
   .function = show_dns_cache_command_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+show_dns_servers_command_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  dns_main_t *dm = &dns_main;
+  int i;
+
+  if ((vec_len (dm->ip4_name_servers) + vec_len (dm->ip6_name_servers)) == 0)
+    return clib_error_return (0, "No name servers configured...");
+
+  if (vec_len (dm->ip4_name_servers))
+    {
+      vlib_cli_output (vm, "ip4 name servers:");
+      for (i = 0; i < vec_len (dm->ip4_name_servers); i++)
+	vlib_cli_output (vm, "%U", format_ip4_address,
+			 dm->ip4_name_servers + i);
+    }
+  if (vec_len (dm->ip6_name_servers))
+    {
+      vlib_cli_output (vm, "ip6 name servers:");
+      for (i = 0; i < vec_len (dm->ip6_name_servers); i++)
+	vlib_cli_output (vm, "%U", format_ip6_address,
+			 dm->ip4_name_servers + i);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_dns_server_command) =
+{
+  .path = "show dns servers",
+  .short_help = "show dns servers",
+  .function = show_dns_servers_command_fn,
+};
+/* *INDENT-ON* */
+
 
 static clib_error_t *
 dns_cache_add_del_command_fn (vlib_main_t * vm,
@@ -3004,6 +3029,130 @@ found_src_address:
     }
 }
 
+static void *vl_api_dns_enable_disable_t_print
+  (vl_api_dns_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dns_enable_disable ");
+  s = format (s, "%s ", mp->enable ? "enable" : "disable");
+
+  FINISH;
+}
+
+static void *vl_api_dns_name_server_add_del_t_print
+  (vl_api_dns_name_server_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dns_name_server_add_del ");
+  if (mp->is_ip6)
+    s = format (s, "%U ", format_ip6_address,
+		(ip6_address_t *) mp->server_address);
+  else
+    s = format (s, "%U ", format_ip4_address,
+		(ip4_address_t *) mp->server_address);
+
+  if (mp->is_add == 0)
+    s = format (s, "del ");
+
+  FINISH;
+}
+
+static void *vl_api_dns_resolve_name_t_print
+  (vl_api_dns_resolve_name_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dns_resolve_name ");
+  s = format (s, "%s ", mp->name);
+  FINISH;
+}
+
+static void *vl_api_dns_resolve_ip_t_print
+  (vl_api_dns_resolve_ip_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dns_resolve_ip ");
+  if (mp->is_ip6)
+    s = format (s, "%U ", format_ip6_address, mp->address);
+  else
+    s = format (s, "%U ", format_ip4_address, mp->address);
+  FINISH;
+}
+
+static void
+dns_custom_dump_configure (dns_main_t * dm)
+{
+#define _(n,f) dm->api_main->msg_print_handlers \
+  [VL_API_##n + dm->msg_id_base]                \
+    = (void *) vl_api_##f##_t_print;
+  foreach_dns_plugin_api_msg;
+#undef _
+}
+
+/* Set up the API message handling tables */
+static clib_error_t *
+dns_plugin_api_hookup (vlib_main_t * vm)
+{
+  dns_main_t *dmp = &dns_main;
+#define _(N,n)                                                  \
+    vl_msg_api_set_handlers((VL_API_##N + dmp->msg_id_base),    \
+                           #n,					\
+                           vl_api_##n##_t_handler,              \
+                           vl_noop_handler,                     \
+                           vl_api_##n##_t_endian,               \
+                           vl_api_##n##_t_print,                \
+                           sizeof(vl_api_##n##_t), 1);
+  foreach_dns_plugin_api_msg;
+#undef _
+
+  return 0;
+}
+
+static clib_error_t *
+dns_init (vlib_main_t * vm)
+{
+  dns_main_t *dm = &dns_main;
+  u8 *name;
+
+  dm->vlib_main = vm;
+  dm->vnet_main = vnet_get_main ();
+  dm->name_cache_size = 1000;
+  dm->max_ttl_in_seconds = 86400;
+  dm->random_seed = 0xDEADDABE;
+  dm->api_main = &api_main;
+
+  name = format (0, "dns_%08x%c", api_version, 0);
+
+  /* Ask for a correctly-sized block of API message decode slots */
+  dm->msg_id_base = vl_msg_api_get_msg_ids
+    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+
+  (void) dns_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (dm);
+
+  dns_custom_dump_configure (dm);
+
+  vec_free (name);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (dns_init);
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () =
+{
+  .version = VPP_BUILD_VER,
+  .description = "Simple DNS name resolver",
+};
+/* *INDENT-ON* */
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
@@ -3011,5 +3160,3 @@ found_src_address:
  * eval: (c-set-style "gnu")
  * End:
  */
-=======
->>>>>>> CHANGE (34af0c dns: make the dns name resolver a plugin)
