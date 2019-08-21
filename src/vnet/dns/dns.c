@@ -821,6 +821,10 @@ vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
   /* In case we can't actually answer the question right now... */
   *retp = 0;
 
+  /* binary API caller might forget to set the name. Guess how we know. */
+  if (name[0] == 0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
   dns_cache_lock (dm);
 search_again:
   p = hash_get_mem (dm->cache_entry_by_name, name);
