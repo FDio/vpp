@@ -396,6 +396,7 @@ no_more_desc:
 	  vlib_trace_buffer (vm, node, next_index, b, /* follow_chain */ 0);
 	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	  tr->next_index = next_index;
+	  tr->qid = qid;
 	  tr->hw_if_index = ad->hw_if_index;
 	  tr->qw1s[0] = ptd->qw1s[i];
 	  for (j = 1; j < AVF_RX_MAX_DESC_IN_CHAIN; j++)
