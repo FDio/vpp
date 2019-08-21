@@ -132,11 +132,8 @@ ldp_worker_get_current (void)
 static inline void
 ldp_set_app_name (char *app_name)
 {
-  int rv = snprintf (ldp->app_name, LDP_APP_NAME_MAX,
-		     "ldp-%d-%s", getpid (), app_name);
-
-  if (rv >= LDP_APP_NAME_MAX)
-    app_name[LDP_APP_NAME_MAX - 1] = 0;
+  snprintf (ldp->app_name, LDP_APP_NAME_MAX,
+	    "ldp-%d-%s", getpid (), app_name);
 }
 
 static inline char *
