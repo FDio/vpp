@@ -276,6 +276,12 @@ vcl_worker_set_bapi (void)
   return -1;
 }
 
+svm_msg_q_t *
+vcl_worker_ctrl_mq (vcl_worker_t * wrk)
+{
+  return wrk->ctrl_mq;
+}
+
 void
 vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index)
 {

@@ -92,10 +92,10 @@ session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
-  /* only event supported for now is disconnect */
-  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE);
-  return session_send_evt_to_thread (s, 0, s->thread_index,
-				     SESSION_CTRL_EVT_CLOSE);
+  /* only events supported are disconnect and reset */
+  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE
+	  || evt_type == SESSION_CTRL_EVT_RESET);
+  return session_send_evt_to_thread (s, 0, s->thread_index, evt_type);
 }
 
 void
