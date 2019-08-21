@@ -108,10 +108,10 @@ vcl_vpp_worker_segment_handle (u32 wrk_index)
 }
 
 static void
-vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
-					   mp)
+vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 {
   vcl_worker_t *wrk = vcl_worker_get (0);
+  svm_msg_q_t *ctrl_mq;
   u64 segment_handle;
   int *fds = 0, i;
   u32 n_fds = 0;
@@ -122,8 +122,11 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       goto failed;
     }
 
-  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
-					   svm_msg_q_t *);
+  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
+  vec_validate (wrk->vpp_event_queues, mp->vpp_ctrl_mq_thread);
+  wrk->vpp_event_queues[mp->vpp_ctrl_mq_thread] = ctrl_mq;
+  wrk->ctrl_mq = ctrl_mq;
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
@@ -370,7 +373,7 @@ _(BIND_SOCK_REPLY, bind_sock_reply)                             	\
 _(UNBIND_SOCK_REPLY, unbind_sock_reply)                         	\
 _(CONNECT_SOCK_REPLY, connect_sock_reply)                        	\
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)			\
-_(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
+_(APP_ATTACH_REPLY, app_attach_reply)           			\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
 _(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
 _(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
@@ -414,7 +417,7 @@ void
 vppcom_app_send_attach (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_application_attach_t *bmp;
+  vl_api_app_attach_t *bmp;
   u8 nsid_len = vec_len (vcm->cfg.namespace_id);
   u8 app_is_proxy = (vcm->cfg.app_proxy_transport_tcp ||
 		     vcm->cfg.app_proxy_transport_udp);
@@ -422,7 +425,7 @@ vppcom_app_send_attach (void)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
+  bmp->_vl_msg_id = ntohs (VL_API_APP_ATTACH);
   bmp->client_index = wrk->my_client_index;
   bmp->context = htonl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
@@ -502,80 +505,6 @@ vcl_send_child_worker_del (vcl_worker_t * child_wrk)
   mp->wrk_index = clib_host_to_net_u32 (child_wrk->vpp_wrk_index);
 
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
-}
-
-void
-vppcom_send_connect_sock (vcl_session_t * session)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_connect_sock_t *cmp;
-
-  cmp = vl_msg_api_alloc (sizeof (*cmp));
-  memset (cmp, 0, sizeof (*cmp));
-  cmp->_vl_msg_id = ntohs (VL_API_CONNECT_SOCK);
-  cmp->client_index = wrk->my_client_index;
-  cmp->context = session->session_index;
-  cmp->wrk_index = wrk->vpp_wrk_index;
-  cmp->is_ip4 = session->transport.is_ip4;
-  cmp->parent_handle = session->parent_handle;
-  clib_memcpy_fast (cmp->ip, &session->transport.rmt_ip, sizeof (cmp->ip));
-  cmp->port = session->transport.rmt_port;
-  cmp->proto = session->session_type;
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & cmp);
-}
-
-void
-vppcom_send_disconnect_session (u64 vpp_handle)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_disconnect_session_t *dmp;
-
-  dmp = vl_msg_api_alloc (sizeof (*dmp));
-  memset (dmp, 0, sizeof (*dmp));
-  dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
-  dmp->client_index = wrk->my_client_index;
-  dmp->handle = vpp_handle;
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & dmp);
-}
-
-/* VPP combines bind and listen as one operation. VCL manages the separation
- * of bind and listen locally via vppcom_session_bind() and
- * vppcom_session_listen() */
-void
-vppcom_send_bind_sock (vcl_session_t * session)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_bind_sock_t *bmp;
-
-  /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
-  bmp = vl_msg_api_alloc (sizeof (*bmp));
-  memset (bmp, 0, sizeof (*bmp));
-
-  bmp->_vl_msg_id = ntohs (VL_API_BIND_SOCK);
-  bmp->client_index = wrk->my_client_index;
-  bmp->context = session->session_index;
-  bmp->wrk_index = wrk->vpp_wrk_index;
-  bmp->is_ip4 = session->transport.is_ip4;
-  clib_memcpy_fast (bmp->ip, &session->transport.lcl_ip, sizeof (bmp->ip));
-  bmp->port = session->transport.lcl_port;
-  bmp->proto = session->session_type;
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
-}
-
-void
-vppcom_send_unbind_sock (vcl_worker_t * wrk, u64 vpp_handle)
-{
-  vl_api_unbind_sock_t *ump;
-
-  ump = vl_msg_api_alloc (sizeof (*ump));
-  memset (ump, 0, sizeof (*ump));
-
-  ump->_vl_msg_id = ntohs (VL_API_UNBIND_SOCK);
-  ump->client_index = wrk->my_client_index;
-  ump->wrk_index = wrk->vpp_wrk_index;
-  ump->handle = vpp_handle;
-  ump->context = wrk->wrk_index;
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & ump);
 }
 
 void
