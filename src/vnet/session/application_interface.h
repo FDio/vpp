@@ -261,6 +261,25 @@ typedef struct
 #undef _
 } app_session_t;
 
+typedef struct session_listen_msg_
+{
+  u32 client_index;
+  u32 context;			/* Not needed but keeping it for compatibility with bapi */
+  u32 wrk_index;
+  u32 vrf;
+  u16 port;
+  u8 proto;
+  u8 is_ip4;
+  ip46_address_t ip;
+} __clib_packed session_listen_msg_t;
+
+typedef struct session_listen_uri_msg_
+{
+  u32 client_index;
+  u32 context;
+  u8 uri[56];
+} __clib_packed session_listen_uri_msg_t;
+
 typedef struct session_bound_msg_
 {
   u32 context;
@@ -276,6 +295,14 @@ typedef struct session_bound_msg_
   u8 segment_name_length;
   u8 segment_name[128];
 } __clib_packed session_bound_msg_t;
+
+typedef struct session_unlisten_msg_
+{
+  u32 client_index;
+  u32 context;
+  u32 wrk_index;
+  session_handle_t handle;
+} __clib_packed session_unlisten_msg_t;
 
 typedef struct session_unlisten_reply_msg_
 {
@@ -303,9 +330,27 @@ typedef struct session_accepted_reply_msg_
   u64 handle;
 } __clib_packed session_accepted_reply_msg_t;
 
-/* Make sure this is not too large, otherwise it won't fit when dequeued in
- * the session queue node */
-STATIC_ASSERT (sizeof (session_accepted_reply_msg_t) <= 16, "accept reply");
+typedef struct session_connect_msg_
+{
+  u32 client_index;
+  u32 context;
+  u32 wrk_index;
+  u32 vrf;
+  u16 port;
+  u8 proto;
+  u8 is_ip4;
+  ip46_address_t ip;
+  u8 hostname_len;
+  u8 hostname[16];
+  u64 parent_handle;
+} __clib_packed session_connect_msg_t;
+
+typedef struct session_connect_uri_msg_
+{
+  u32 client_index;
+  u32 context;
+  u8 uri[56];
+} __clib_packed session_connect_uri_msg_t;
 
 typedef struct session_connected_msg_
 {
@@ -324,6 +369,13 @@ typedef struct session_connected_msg_
   u8 segment_name[64];
   transport_endpoint_t lcl;
 } __clib_packed session_connected_msg_t;
+
+typedef struct session_disconnect_msg_
+{
+  u32 client_index;
+  u32 context;
+  session_handle_t handle;
+} __clib_packed session_disconnect_msg_t;
 
 typedef struct session_disconnected_msg_
 {
@@ -374,6 +426,12 @@ typedef struct session_worker_update_reply_msg_
   uword tx_fifo;
   u64 segment_handle;
 } __clib_packed session_worker_update_reply_msg_t;
+
+typedef struct session_app_detach_msg_
+{
+  u32 client_index;
+  u32 context;
+} session_app_detach_msg_t;
 
 typedef struct app_session_event_
 {
