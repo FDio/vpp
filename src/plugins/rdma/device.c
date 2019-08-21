@@ -266,8 +266,7 @@ rdma_async_event_error_ready (clib_file_t * f)
 {
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd = vec_elt_at_index (rm->devices, f->private_data);
-  return clib_error_return (0, "RDMA async event error for device %U",
-			    format_vlib_pci_addr, &rd->pci_addr);
+  return clib_error_return (0, "RDMA: %s: async event error", rd->name);
 }
 
 static clib_error_t *
@@ -293,8 +292,7 @@ rdma_async_event_read_ready (clib_file_t * f)
     case IBV_EVENT_DEVICE_FATAL:
       rd->flags &= ~RDMA_DEVICE_F_LINK_UP;
       vnet_hw_interface_set_flags (vnm, rd->hw_if_index, 0);
-      vlib_log_emerg (rm->log_class, "Fatal RDMA error for device %U",
-		      format_vlib_pci_addr, &rd->pci_addr);
+      vlib_log_emerg (rm->log_class, "%s: fatal error", rd->name);
       break;
     default:
       rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "unhandeld RDMA async event %i",
@@ -326,8 +324,7 @@ rdma_async_event_init (rdma_device_t * rd)
   t.file_descriptor = rd->ctx->async_fd;
   t.error_function = rdma_async_event_error_ready;
   t.private_data = rd->dev_instance;
-  t.description =
-    format (0, "RMDA %U async event", format_vlib_pci_addr, &rd->pci_addr);
+  t.description = format (0, "%s async event", rd->name);
 
   rd->async_event_clib_file_index = clib_file_add (&file_main, &t);
   return 0;
@@ -393,6 +390,7 @@ rdma_dev_cleanup (rdma_device_t * rd)
   vec_free (rd->rxqs);
   vec_free (rd->txqs);
   vec_free (rd->name);
+  vlib_pci_free_device_info (rd->pci);
   pool_put (rm->devices, rd);
 }
 
@@ -406,6 +404,7 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   vec_validate_aligned (rd->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (rd->rxqs, qid);
   rxq->size = n_desc;
+  vec_validate_aligned (rxq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
 
   if ((rxq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
     return clib_error_return_unix (0, "Create CQ Failed");
@@ -482,6 +481,7 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   vec_validate_aligned (rd->txqs, qid, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (rd->txqs, qid);
   txq->size = n_desc;
+  vec_validate_aligned (txq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
 
   if ((txq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
     return clib_error_return_unix (0, "Create CQ Failed");
@@ -492,7 +492,6 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   qpia.cap.max_send_wr = n_desc;
   qpia.cap.max_send_sge = 1;
   qpia.qp_type = IBV_QPT_RAW_PACKET;
-  qpia.sq_sig_all = 1;
 
   if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
     return clib_error_return_unix (0, "Queue Pair create failed");
@@ -549,6 +548,7 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
 			    bm->buffer_mem_size,
 			    IBV_ACCESS_LOCAL_WRITE)) == 0)
     return clib_error_return_unix (0, "Register MR Failed");
+  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
 
   return 0;
 }
@@ -573,11 +573,13 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   rdma_main_t *rm = &rdma_main;
-  rdma_device_t *rd = 0;
-  struct ibv_device **dev_list = 0;
+  rdma_device_t *rd;
+  vlib_pci_addr_t pci_addr;
+  struct ibv_device **dev_list;
   int n_devs;
-  u8 *s = 0, *s2 = 0;
+  u8 *s;
   u16 qid;
+  int i;
 
   args->rxq_size = args->rxq_size ? args->rxq_size : 2 * VLIB_FRAME_SIZE;
   args->txq_size = args->txq_size ? args->txq_size : 2 * VLIB_FRAME_SIZE;
@@ -588,40 +590,16 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
       args->rv = VNET_API_ERROR_INVALID_VALUE;
       args->error =
 	clib_error_return (0, "rx queue number must be a power of two");
-      return;
-    }
-
-  if (!is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
-    {
-      args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (0, "queue size must be a power of two");
-      return;
-    }
-
-  pool_get_zero (rm->devices, rd);
-  rd->dev_instance = rd - rm->devices;
-  rd->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  rd->name = vec_dup (args->name);
-
-  /* check if device exist and if it is bound to mlx5_core */
-  s = format (s, "/sys/class/net/%s/device/driver/module%c", args->ifname, 0);
-  s2 = clib_sysfs_link_to_name ((char *) s);
-
-  if (s2 == 0 || strncmp ((char *) s2, "mlx5_core", 9) != 0)
-    {
-      args->error =
-	clib_error_return (0,
-			   "invalid interface (only mlx5 supported for now)");
       goto err0;
     }
 
-  /* extract PCI address */
-  vec_reset_length (s);
-  s = format (s, "/sys/class/net/%s/device%c", args->ifname, 0);
-  if (sysfs_path_to_pci_addr ((char *) s, &rd->pci_addr) == 0)
+  if (args->rxq_size < VLIB_FRAME_SIZE || args->txq_size < VLIB_FRAME_SIZE ||
+      !is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
     {
-      args->error = clib_error_return (0, "cannot find PCI address");
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error =
+	clib_error_return (0, "queue size must be a power of two >= %i",
+			   VLIB_FRAME_SIZE);
       goto err0;
     }
 
@@ -630,12 +608,39 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
     {
       args->error =
 	clib_error_return_unix (0,
-				"no RDMA devices available, errno = %d. "
-				"Is the ib_uverbs module loaded?", errno);
+				"no RDMA devices available. Is the ib_uverbs module loaded?");
       goto err0;
     }
 
-  for (int i = 0; i < n_devs; i++)
+  /* get PCI address */
+  s = format (0, "/sys/class/net/%s/device%c", args->ifname, 0);
+  if (sysfs_path_to_pci_addr ((char *) s, &pci_addr) == 0)
+    {
+      args->error =
+	clib_error_return (0, "cannot find PCI address for device ");
+      goto err1;
+    }
+
+  pool_get_zero (rm->devices, rd);
+  rd->dev_instance = rd - rm->devices;
+  rd->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  rd->name = format (0, "%s", args->name);
+  rd->linux_ifname = format (0, "%s", args->ifname);
+
+  rd->pci = vlib_pci_get_device_info (vm, &pci_addr, &args->error);
+  if (!rd->pci)
+    goto err2;
+  rd->pool = vlib_buffer_pool_get_default_for_numa (vm, rd->pci->numa_node);
+
+  if (strncmp ((char *) rd->pci->driver_name, "mlx5_core", 9))
+    {
+      args->error =
+	clib_error_return (0,
+			   "invalid interface (only mlx5 supported for now)");
+      goto err2;
+    }
+
+  for (i = 0; i < n_devs; i++)
     {
       vlib_pci_addr_t addr;
 
@@ -645,7 +650,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
       if (sysfs_path_to_pci_addr ((char *) s, &addr) == 0)
 	continue;
 
-      if (addr.as_u32 != rd->pci_addr.as_u32)
+      if (addr.as_u32 != rd->pci->addr.as_u32)
 	continue;
 
       if ((rd->ctx = ibv_open_device (dev_list[i])))
@@ -654,7 +659,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   if ((args->error =
        rdma_dev_init (vm, rd, args->rxq_size, args->txq_size, args->rxq_num)))
-    goto err1;
+    goto err2;
 
   if ((args->error = rdma_register_interface (vnm, rd)))
     goto err2;
@@ -675,6 +680,8 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 				    rdma_input_node.index);
   vec_foreach_index (qid, rd->rxqs)
     vnet_hw_interface_assign_rx_thread (vnm, rd->hw_if_index, qid, ~0);
+
+  vec_free (s);
   return;
 
 err3:
@@ -683,10 +690,9 @@ err2:
   rdma_dev_cleanup (rd);
 err1:
   ibv_free_device_list (dev_list);
-err0:
-  vec_free (s2);
   vec_free (s);
   args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+err0:
   vlib_log_err (rm->log_class, "%U", format_clib_error, args->error);
 }
 
