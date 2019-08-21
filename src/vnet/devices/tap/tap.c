@@ -391,7 +391,13 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vhost_mem = clib_mem_alloc (i);
   clib_memset (vhost_mem, 0, i);
   vhost_mem->nregions = 1;
-  vhost_mem->regions[0].memory_size = (1ULL << 47) - 4096;
+  vhost_mem->regions[0].memory_size =
+    (u64) vm->physmem_main.pmalloc_main->max_pages <<
+    vm->physmem_main.pmalloc_main->def_log2_page_sz;
+  vhost_mem->regions[0].guest_phys_addr =
+    (u64) vm->physmem_main.pmalloc_main->base;
+  vhost_mem->regions[0].userspace_addr =
+    vhost_mem->regions[0].guest_phys_addr;
   _IOCTL (vif->fd, VHOST_SET_MEM_TABLE, vhost_mem);
 
   if ((args->error =
