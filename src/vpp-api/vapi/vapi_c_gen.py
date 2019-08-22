@@ -14,7 +14,10 @@ class CField(Field):
 
     def get_c_def(self):
         if self.len is not None:
-            return "%s %s[%d];" % (self.type.get_c_name(), self.name, self.len)
+            try:
+                return "%s %s[%d];" % (self.type.get_c_name(), self.name, self.len)
+            except:
+                raise Exception("%s %s[%s];" % (self.type.get_c_name(), self.name, self.len))
         else:
             return "%s %s;" % (self.type.get_c_name(), self.name)
 
