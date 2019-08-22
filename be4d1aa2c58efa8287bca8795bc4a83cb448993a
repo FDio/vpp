@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "07ac2747_f3a044be",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-08-22T01:29:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a2183d5a_e7ee0855",
+      "range": {
+        "startLine": 13,
+        "startChar": 8,
+        "endLine": 13,
+        "endChar": 13
+      },
+      "revId": "be4d1aa2c58efa8287bca8795bc4a83cb448993a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "764a4d19_e3db2ab7",
         "filename": "src/plugins/tlsopenssl/tls_openssl.api",
         "patchSetId": 7
