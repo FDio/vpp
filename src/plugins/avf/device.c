@@ -693,7 +693,8 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
 
   imi->vecmap[0].vector_id = 1;
   imi->vecmap[0].vsi_id = ad->vsi_id;
-  imi->vecmap[0].rxq_map = 1;
+  imi->vecmap[0].rxq_map = (1 << ad->n_rx_queues) - 1;
+  imi->vecmap[0].txq_map = (1 << ad->n_tx_queues) - 1;
 
   avf_log_debug (ad, "config_irq_map: vsi_id %u vector_id %u rxq_map %u",
 		 ad->vsi_id, imi->vecmap[0].vector_id,
