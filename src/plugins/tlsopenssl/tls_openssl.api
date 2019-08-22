@@ -2,7 +2,7 @@
 
 option version = "2.0.0";
 
-define tls_openssl_set_engine {
+autoreply define tls_openssl_set_engine {
     /* Client identifier, set from api_main.my_client_index */
     u32 client_index;
 
@@ -10,7 +10,7 @@ define tls_openssl_set_engine {
     u32 context;
 
     /* if async is enabled */
-    u32 async;
+    u32 async_enable;
 
     /* engine name */
     u8 engine[64];
@@ -20,12 +20,4 @@ define tls_openssl_set_engine {
 
     /* cipher */
     u8 ciphers[64];
-};
-
-define tls_openssl_set_engine_reply {
-    /* From the request */
-    u32 context;
-
-    /* Return value, zero means all OK */
-    i32 retval;
 };
