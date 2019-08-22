@@ -68,7 +68,7 @@ dns_cache_clear (dns_main_t * dm)
   if (dm->is_enabled == 0)
     return VNET_API_ERROR_NAME_RESOLUTION_NOT_ENABLED;
 
-  dns_cache_lock (dm);
+  dns_cache_lock (dm, 1);
 
   /* *INDENT-OFF* */
   pool_foreach (ep, dm->entries,
@@ -721,7 +721,7 @@ dns_delete_by_name (dns_main_t * dm, u8 * name)
   if (dm->is_enabled == 0)
     return VNET_API_ERROR_NAME_RESOLUTION_NOT_ENABLED;
 
-  dns_cache_lock (dm);
+  dns_cache_lock (dm, 2);
   p = hash_get_mem (dm->cache_entry_by_name, name);
   if (!p)
     {
@@ -755,7 +755,7 @@ delete_random_entry (dns_main_t * dm)
     return VNET_API_ERROR_UNSPECIFIED;
 #endif
 
-  dns_cache_lock (dm);
+  dns_cache_lock (dm, 3);
   limit = pool_elts (dm->entries);
   start_index = random_u32 (&dm->random_seed) % limit;
 
@@ -792,7 +792,7 @@ dns_add_static_entry (dns_main_t * dm, u8 * name, u8 * dns_reply_data)
   if (dm->is_enabled == 0)
     return VNET_API_ERROR_NAME_RESOLUTION_NOT_ENABLED;
 
-  dns_cache_lock (dm);
+  dns_cache_lock (dm, 4);
   p = hash_get_mem (dm->cache_entry_by_name, name);
   if (p)
     {
@@ -844,7 +844,7 @@ vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
   if (name[0] == 0)
     return VNET_API_ERROR_INVALID_VALUE;
 
-  dns_cache_lock (dm);
+  dns_cache_lock (dm, 5);
 search_again:
   p = hash_get_mem (dm->cache_entry_by_name, name);
   if (p)
@@ -903,9 +903,8 @@ search_again:
 	      name = ep->cname;
 	      goto search_again;
 	    }
-
-	  /* Note: caller must drop the lock! */
 	  *retp = ep;
+	  dns_cache_unlock (dm);
 	  return (0);
 	}
       else
@@ -2133,7 +2132,7 @@ format_dns_cache (u8 * s, va_list * args)
       return s;
     }
 
-  dns_cache_lock (dm);
+  dns_cache_lock (dm, 6);
 
   if (name)
     {
@@ -2736,7 +2735,7 @@ test_dns_expire_command_fn (vlib_main_t * vm,
   else
     return clib_error_return (0, "no name provided");
 
-  dns_cache_lock (dm);
+  dns_cache_lock (dm, 7);
 
   p = hash_get_mem (dm->cache_entry_by_name, name);
   if (!p)

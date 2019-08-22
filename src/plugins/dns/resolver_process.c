@@ -70,7 +70,7 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
 
   /* $$$ u16 limits cache to 65K entries, fix later multiple dst ports */
   pool_index = clib_net_to_host_u16 (d->id);
-  dns_cache_lock (dm);
+  dns_cache_lock (dm, 10);
 
   if (pool_is_free_index (dm->entries, pool_index))
     {
@@ -306,7 +306,7 @@ retry_scan (dns_main_t * dm, f64 now)
 
   for (i = 0; i < vec_len (dm->unresolved_entries); i++)
     {
-      dns_cache_lock (dm);
+      dns_cache_lock (dm, 11);
       ep = pool_elt_at_index (dm->entries, dm->unresolved_entries[i]);
 
       ASSERT ((ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) == 0);

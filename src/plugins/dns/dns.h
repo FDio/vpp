@@ -99,6 +99,7 @@ typedef struct
   /** Find cached record by name */
   uword *cache_entry_by_name;
   clib_spinlock_t cache_lock;
+  int cache_lock_tag;
 
   /** enable / disable flag */
   int is_enabled;
@@ -198,11 +199,14 @@ void vnet_dns_create_resolver_process (dns_main_t * dm);
 format_function_t format_dns_reply;
 
 static inline void
-dns_cache_lock (dns_main_t * dm)
+dns_cache_lock (dns_main_t * dm, int tag)
 {
   if (dm->cache_lock)
     {
+      ASSERT (tag);
+      ASSERT (dm->cache_lock_tag == 0);
       clib_spinlock_lock (&dm->cache_lock);
+      dm->cache_lock_tag = tag;
     }
 }
 
@@ -211,6 +215,8 @@ dns_cache_unlock (dns_main_t * dm)
 {
   if (dm->cache_lock)
     {
+      ASSERT (dm->cache_lock_tag);
+      dm->cache_lock_tag = 0;
       clib_spinlock_unlock (&dm->cache_lock);
     }
 }
