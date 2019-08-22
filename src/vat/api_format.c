@@ -15060,7 +15060,7 @@ api_get_first_msg_id (vat_main_t * vam)
     }
 
   M (GET_FIRST_MSG_ID, mp);
-  clib_memcpy (mp->name, name, vec_len (name));
+  vl_api_vec_to_api_string(name, &mp->name);
   S (mp);
   W (ret);
   return ret;
