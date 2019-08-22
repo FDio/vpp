@@ -128,21 +128,23 @@ print_global_json_stats (echo_main_t * em)
   u8 *end_evt =
     format (0, "%U", echo_format_timing_event, em->timing.end_event);
   fformat (stdout, "{\n");
-  fformat (stdout, "\"time\": \"%.9f\",\n", deltat);
-  fformat (stdout, "\"start_evt\": \"%s\",\n", start_evt);
-  fformat (stdout, "\"end_evt\": \"%s\",\n", end_evt);
-  fformat (stdout, "\"rx_data\": %lld,\n", em->stats.rx_total);
-  fformat (stdout, "\"tx_rx\": %lld,\n", em->stats.tx_total);
-  fformat (stdout, "\"closing\": {\n");
-  fformat (stdout, "  \"reset\": { \"q\": %d, \"s\": %d },\n",
+  fformat (stdout, "  \"role\": \"%s\",\n",
+	   em->i_am_master ? "server" : "client");
+  fformat (stdout, "  \"time\": \"%.9f\",\n", deltat);
+  fformat (stdout, "  \"start_evt\": \"%s\",\n", start_evt);
+  fformat (stdout, "  \"end_evt\": \"%s\",\n", end_evt);
+  fformat (stdout, "  \"rx_data\": %lld,\n", em->stats.rx_total);
+  fformat (stdout, "  \"tx_rx\": %lld,\n", em->stats.tx_total);
+  fformat (stdout, "  \"closing\": {\n");
+  fformat (stdout, "    \"reset\": { \"q\": %d, \"s\": %d },\n",
 	   em->stats.reset_count.q, em->stats.reset_count.s);
-  fformat (stdout, "  \"close\": { \"q\": %d, \"s\": %d },\n",
+  fformat (stdout, "    \"close\": { \"q\": %d, \"s\": %d },\n",
 	   em->stats.close_count.q, em->stats.close_count.s);
-  fformat (stdout, "  \"active\": { \"q\": %d, \"s\": %d },\n",
+  fformat (stdout, "    \"active\": { \"q\": %d, \"s\": %d },\n",
 	   em->stats.active_count.q, em->stats.active_count.s);
-  fformat (stdout, "  \"clean\": { \"q\": %d, \"s\": %d }\n",
+  fformat (stdout, "    \"clean\": { \"q\": %d, \"s\": %d }\n",
 	   em->stats.clean_count.q, em->stats.clean_count.s);
-  fformat (stdout, "}\n");
+  fformat (stdout, "  }\n");
   fformat (stdout, "}\n");
 }
 
