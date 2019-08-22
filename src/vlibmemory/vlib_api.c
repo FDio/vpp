@@ -56,10 +56,12 @@ static inline void *
 vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 				     void *handle)
 {
-  vl_print (handle, "vl_api_trace_plugin_msg_ids: %s first %u last %u\n",
-	    a->plugin_name,
+  u8 *plugin_name = vl_api_from_api_to_vec (&a->plugin_name);
+  vl_print (handle, "vl_api_trace_plugin_msg_ids: %v first %u last %u\n",
+	    plugin_name,
 	    clib_host_to_net_u16 (a->first_msg_id),
 	    clib_host_to_net_u16 (a->last_msg_id));
+  vec_free (plugin_name);
   return handle;
 }
 
@@ -76,7 +78,6 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
   uword *p;
   api_main_t *am = &api_main;
   vl_api_msg_range_t *rp;
-  u8 name[64];
   u16 first_msg_id = ~0;
   int rv = -7;			/* VNET_API_ERROR_INVALID_VALUE */
 
@@ -86,8 +87,7 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
 
   if (am->msg_range_by_name == 0)
     goto out;
-  strncpy ((char *) name, (char *) mp->name, ARRAY_LEN (name));
-  name[ARRAY_LEN (name) - 1] = '\0';
+  u8 *name = vl_api_from_api_to_vec (&mp->name);
   p = hash_get_mem (am->msg_range_by_name, name);
   if (p == 0)
     goto out;
@@ -97,6 +97,7 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
   rv = 0;
 
 out:
+  vec_free (name);
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID_REPLY);
   rmp->context = mp->context;
@@ -133,10 +134,8 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
       rmp->api_versions[i].major = htonl (vl->major);
       rmp->api_versions[i].minor = htonl (vl->minor);
       rmp->api_versions[i].patch = htonl (vl->patch);
-      strncpy ((char *) rmp->api_versions[i].name, vl->name,
-	       ARRAY_LEN (rmp->api_versions[i].name));
-      rmp->api_versions[i].name[ARRAY_LEN (rmp->api_versions[i].name) - 1] =
-	'\0';
+      vl_api_to_api_string (strnlen (vl->name, 64), vl->name,
+			    &rmp->api_versions[i].name);
     }
 
   vl_api_send_msg (reg, (u8 *) rmp);
@@ -193,8 +192,8 @@ send_one_plugin_msg_ids_msg (u8 * name, u16 first_msg_id, u16 last_msg_id)
   clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_TRACE_PLUGIN_MSG_IDS);
-  strncpy ((char *) mp->plugin_name, (char *) name,
-	   sizeof (mp->plugin_name) - 1);
+  vl_api_to_api_string (strnlen_s ((char *) name, 64), (char *) name,
+			&mp->plugin_name);
   mp->first_msg_id = clib_host_to_net_u16 (first_msg_id);
   mp->last_msg_id = clib_host_to_net_u16 (last_msg_id);
 
@@ -625,11 +624,14 @@ vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
   if (am->replay_in_progress == 0)
     return;
 
-  p = hash_get_mem (am->msg_range_by_name, mp->plugin_name);
+  u8 *plugin_name = vl_api_from_api_to_vec (&mp->plugin_name);
+  vec_add1 (plugin_name, 0);
+
+  p = hash_get_mem (am->msg_range_by_name, plugin_name);
   if (p == 0)
     {
       clib_warning ("WARNING: traced plugin '%s' not in current image",
-		    mp->plugin_name);
+		    plugin_name);
       return;
     }
 
@@ -637,16 +639,17 @@ vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
   if (rp->first_msg_id != clib_net_to_host_u16 (mp->first_msg_id))
     {
       clib_warning ("WARNING: traced plugin '%s' first message id %d not %d",
-		    mp->plugin_name, clib_net_to_host_u16 (mp->first_msg_id),
+		    plugin_name, clib_net_to_host_u16 (mp->first_msg_id),
 		    rp->first_msg_id);
     }
 
   if (rp->last_msg_id != clib_net_to_host_u16 (mp->last_msg_id))
     {
       clib_warning ("WARNING: traced plugin '%s' last message id %d not %d",
-		    mp->plugin_name, clib_net_to_host_u16 (mp->last_msg_id),
+		    plugin_name, clib_net_to_host_u16 (mp->last_msg_id),
 		    rp->last_msg_id);
     }
+  vec_free (plugin_name);
 }
 
 #define foreach_rpc_api_msg                     \
