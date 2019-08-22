@@ -235,8 +235,11 @@ tso_alloc_tx_bufs (vlib_main_t * vm,
 		   vlib_buffer_t * b0, u32 n_bytes_b0, u16 l234_sz,
 		   u16 gso_size)
 {
+  u16 size =
+    clib_min (gso_size, vlib_buffer_get_default_data_size (vm) - l234_sz);
+
   /* rounded-up division */
-  u16 n_bufs = (n_bytes_b0 - l234_sz + (gso_size - 1)) / gso_size;
+  u16 n_bufs = (n_bytes_b0 - l234_sz + (size - 1)) / size;
   u16 n_alloc;
 
   ASSERT (n_bufs > 0);
@@ -326,6 +329,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
   ASSERT (sb0->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID);
   ASSERT (sb0->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
   u16 gso_size = vnet_buffer2 (sb0)->gso_size;
+  u16 n_alloc_bufs = 0;
 
   int l4_hdr_sz = vnet_buffer2 (sb0)->gso_l4_hdr_sz;
   u8 save_tcp_flags = 0;
@@ -348,7 +352,9 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
   next_tcp_seq += first_data_size;
 
   if (PREDICT_FALSE
-      (!tso_alloc_tx_bufs (vm, ptd, sb0, n_bytes_b0, l234_sz, gso_size)))
+      ((n_alloc_bufs =
+	tso_alloc_tx_bufs (vm, ptd, sb0, n_bytes_b0, l234_sz,
+			   gso_size)) == 0))
     return 0;
 
   vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[0]);
@@ -376,7 +382,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 	calc_checksums (vm, b0);
 
       /* grab a second buffer and prepare the loop */
-      ASSERT (dbi < vec_len (ptd->split_buffers));
+      ASSERT (dbi < n_alloc_bufs);
       cdb0 = vlib_get_buffer (vm, ptd->split_buffers[dbi++]);
       tso_init_buf_from_template (vm, cdb0, b0, l234_sz, gso_size, &dst_ptr,
 				  &dst_left, next_tcp_seq, default_bflags);
@@ -423,7 +429,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 	      if (do_tx_offloads)
 		calc_checksums (vm, cdb0);
 	      n_tx_bytes += cdb0->current_length;
-	      ASSERT (dbi < vec_len (ptd->split_buffers));
+	      ASSERT (dbi < n_alloc_bufs);
 	      cdb0 = vlib_get_buffer (vm, ptd->split_buffers[dbi++]);
 	      tso_init_buf_from_template (vm, cdb0, b0, l234_sz,
 					  gso_size, &dst_ptr, &dst_left,
