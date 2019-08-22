@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a6fcce28_f20bb8ed",
+        "filename": "src/plugins/tlsopenssl/tls_openssl_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-22T14:57:38Z",
+      "side": 1,
+      "message": "If the goal here is to make sure that your strings are 0 terminated, just vec_validate all your strings to the max value from the api, clib_memcpy from mp to your temporary vectors (tmp, engine, alg) and set the last value to 0.\n\nAnother option would be to pass string lengths in the api.",
+      "range": {
+        "startLine": 72,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 17
+      },
+      "revId": "99b670e41a682dcc62e53b463101ad1708ab342f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
