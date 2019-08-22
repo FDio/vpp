@@ -436,7 +436,8 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
 
   ASSERT (regp->registration_type == REGISTRATION_TYPE_SOCKET_SERVER);
 
-  regp->name = format (0, "%s%c", mp->name, 0);
+  regp->name = vl_api_from_api_to_vec (&mp->name);
+  vec_add1 (regp->name, 0);
 
   u32 size = sizeof (*rp) + (nmsg * sizeof (vl_api_message_table_entry_t));
   rp = vl_msg_api_alloc_zero (size);
