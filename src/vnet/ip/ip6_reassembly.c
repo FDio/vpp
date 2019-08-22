@@ -904,8 +904,6 @@ check_if_done_maybe:
   if (~0 != reass->last_packet_octet &&
       reass->data_len == reass->last_packet_octet + 1)
     {
-      return ip6_reass_finalize (vm, node, rm, rt, reass, bi0, next0, error0,
-				 is_custom_app);
       *handoff_thread_idx = reass->sendout_thread_index;
       ip6_reass_rc_t rc =
 	ip6_reass_finalize (vm, node, rm, rt, reass, bi0, next0, error0,
