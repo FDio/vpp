@@ -170,5 +170,37 @@ class TestGSO(VppTestCase):
         size -= 20  # TCP header
         self.assertEqual(size, 65200)
 
+        #
+        # Send jumbo frame with gso enabled only on input interface with 9K MTU
+        # and DF bit is unset. GSO packet will be fragmented. GSO size will be
+        # 8960.
+        #
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
+        self.create_pg_interfaces(range(5, 6), 1, 8960)
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.config_ip6()
+            i.disable_ipv6_ra()
+            i.resolve_arp()
+            i.resolve_ndp()
+
+        self.vapi.sw_interface_set_mtu(self.pg5.sw_if_index, [9000, 0, 0, 0])
+        p44 = (Ether(src=self.pg5.remote_mac, dst=self.pg5.local_mac) /
+               IP(src=self.pg5.remote_ip4, dst=self.pg1.remote_ip4) /
+               TCP(sport=1234, dport=1234) /
+               Raw('\xa5' * 65200))
+
+        self.pg1.enable_capture()
+        rxs = self.send_and_expect(self.pg5, [p44], self.pg1, 33)
+        size = 0
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, self.pg1.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
+            self.assertEqual(rx[IP].src, self.pg5.remote_ip4)
+            self.assertEqual(rx[IP].dst, self.pg1.remote_ip4)
+        size = rxs[32][TCP].seq + rxs[32][IP].len - 20 - 20
+        self.assertEqual(size, 65200)
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -235,8 +235,11 @@ tso_alloc_tx_bufs (vlib_main_t * vm,
 		   vlib_buffer_t * b0, u32 n_bytes_b0, u16 l234_sz,
 		   u16 gso_size)
 {
+  u16 size =
+    clib_min (gso_size, vlib_buffer_get_default_data_size (vm) - l234_sz);
+
   /* rounded-up division */
-  u16 n_bufs = (n_bytes_b0 - l234_sz + (gso_size - 1)) / gso_size;
+  u16 n_bufs = (n_bytes_b0 - l234_sz + (size - 1)) / size;
   u16 n_alloc;
 
   ASSERT (n_bufs > 0);
