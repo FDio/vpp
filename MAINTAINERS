@@ -263,6 +263,11 @@ I:	abf
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/abf/
 
+Plugin - Simple DNS name resolver
+I:	dns
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/dns/
+
 Plugin - Group Based Policy (GBP)
 I:	gbp
 M:	Neale Ranns <nranns@cisco.com>
