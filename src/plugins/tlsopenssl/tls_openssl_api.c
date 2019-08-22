@@ -55,32 +55,42 @@ extern openssl_main_t openssl_main;
 
 /* API message handler */
 static void
-vl_api_tls_openssl_set_engine_t_handler (vl_api_tls_openssl_set_engine_t *mp)
+vl_api_tls_openssl_set_engine_t_handler (vl_api_tls_openssl_set_engine_t * mp)
 {
   vl_api_tls_openssl_set_engine_reply_t *rmp;
   openssl_main_t *om = &openssl_main;
-  char *engine, *alg, *ciphers;
+  char *engine, *alg;
+  char *ciphers;
   int rv;
 
-  engine = (char *)&mp->engine;
-  alg = (char *)&mp->algorithm;
-  ciphers = (char *)&mp->ciphers;
-
-  if (mp->async)
+  if (mp->async_enable)
     {
       om->async = 1;
       openssl_async_node_enable_disable (1);
     }
 
+  ciphers = (char *) &mp->ciphers;
   if (ciphers[0])
-    tls_openssl_set_ciphers (ciphers);
-  rv = openssl_engine_register (engine, alg);
+    {
+      if (strnlen (ciphers, 63) >= 63)
+	ciphers[63] = '\0';
+      tls_openssl_set_ciphers (ciphers);
+    }
+
+  engine = (char *) mp->engine;
+  if (strnlen (engine, 63) >= 63)
+    engine[63] = '\0';
+  alg = (char *) mp->algorithm;
+  if (strnlen (alg, 63) >= 63)
+    alg[63] = '\0';
+  rv = openssl_engine_register ((char *) engine, (char *) alg);
 
   REPLY_MACRO (VL_API_TLS_OPENSSL_SET_ENGINE_REPLY);
 }
 
 /* Set up the API message handling tables */
-static clib_error_t *tls_openssl_plugin_api_hookup (vlib_main_t *vm)
+static clib_error_t *
+tls_openssl_plugin_api_hookup (vlib_main_t * vm)
 {
   openssl_main_t *om = &openssl_main;
 #define _(N, n)                                                         \
@@ -98,7 +108,8 @@ static clib_error_t *tls_openssl_plugin_api_hookup (vlib_main_t *vm)
 #include <tlsopenssl/tls_openssl_all_api_h.h>
 #undef vl_msg_name_crc_list
 
-static void setup_message_id_table (openssl_main_t *om, api_main_t *am)
+static void
+setup_message_id_table (openssl_main_t * om, api_main_t * am)
 {
 #define _(id, n, crc) \
   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + om->msg_id_base);
@@ -106,7 +117,8 @@ static void setup_message_id_table (openssl_main_t *om, api_main_t *am)
 #undef _
 }
 
-clib_error_t *tls_openssl_api_init (vlib_main_t *vm)
+clib_error_t *
+tls_openssl_api_init (vlib_main_t * vm)
 {
   openssl_main_t *om = &openssl_main;
   clib_error_t *error = 0;
@@ -116,7 +128,7 @@ clib_error_t *tls_openssl_api_init (vlib_main_t *vm)
 
   /* Ask for a correctly-sized block of API message decode slots */
   om->msg_id_base =
-      vl_msg_api_get_msg_ids ((char *)name, VL_MSG_FIRST_AVAILABLE);
+    vl_msg_api_get_msg_ids ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
   error = tls_openssl_plugin_api_hookup (vm);
 
@@ -126,3 +138,11 @@ clib_error_t *tls_openssl_api_init (vlib_main_t *vm)
 
   return error;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

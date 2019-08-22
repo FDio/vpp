@@ -127,24 +127,24 @@ api_tls_openssl_set_engine (vat_main_t * vam)
     engine_alg = format (0, "ALL");
   else
     {
-      for (int i = 0; i < strnlen ((char *) engine_alg, 64); i++)
+      for (int i = 0; i < strnlen ((char *) engine_alg, 63); i++)
 	engine_alg[i] = toupper (engine_alg[i]);
     }
 
 
   /* Construct the API message */
   M (TLS_OPENSSL_SET_ENGINE, mp);
-  mp->async = async;
+  mp->async_enable = async;
 
   clib_memcpy_fast (mp->engine, engine_name,
-		    strnlen ((const char *) engine_name, 64));
+		    strnlen ((const char *) engine_name, 63));
 
   clib_memcpy_fast (mp->algorithm, engine_alg,
-		    strnlen ((const char *) engine_alg, 64));
+		    strnlen ((const char *) engine_alg, 63));
 
   if (ciphers)
     clib_memcpy_fast (mp->ciphers, ciphers,
-		      strnlen ((const char *) ciphers, 64));
+		      strnlen ((const char *) ciphers, 63));
 
   /* send it... */
   S (mp);
