@@ -359,14 +359,11 @@ show_version_cb (vapi_ctx_t ctx, void *caller_ctx,
 {
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (true, is_last);
-  ck_assert_str_eq ("vpe", (char *) vl_api_from_api_string (&p->program));
+  ck_assert_str_eq ("vpe", (char *) p->program);
   printf
     ("show_version_reply: program: `%s', version: `%s', build directory: "
-     "`%s', build date: `%s'\n",
-     vl_api_from_api_string (&p->program),
-     vl_api_from_api_string (&p->version),
-     vl_api_from_api_string (&p->build_directory),
-     vl_api_from_api_string (&p->build_date));
+     "`%s', build date: `%s'\n", p->program, p->version, p->build_directory,
+     p->build_date);
   ++*(int *) caller_ctx;
   return VAPI_OK;
 }
@@ -514,7 +511,7 @@ sw_interface_dump_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
     {
       ck_assert (NULL != reply);
       printf ("Interface dump entry: [%u]: %s\n", reply->sw_if_index,
-	      reply->interface_name.buf);
+	      reply->interface_name);
       size_t i = 0;
       for (i = 0; i < dctx->num_ifs; ++i)
 	{
@@ -802,9 +799,7 @@ generic_cb (vapi_ctx_t ctx, void *callback_ctx, vapi_msg_id_t id, void *msg)
   ck_assert_int_eq (id, vapi_msg_id_show_version_reply);
   ck_assert_ptr_ne (NULL, msg);
   vapi_msg_show_version_reply *reply = msg;
-  ck_assert_str_eq ("vpe",
-		    (char *) vl_api_from_api_string (&reply->
-						     payload.program));
+  ck_assert_str_eq ("vpe", (char *) reply->payload.program);
   return VAPI_OK;
 }
 
