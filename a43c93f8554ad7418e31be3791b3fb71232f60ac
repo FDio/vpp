@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a6ee596_24a6829c",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 394,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-08-23T10:40:31Z",
+      "side": 0,
+      "message": "Why not just changing this to ~0ULL ?",
+      "range": {
+        "startLine": 394,
+        "startChar": 38,
+        "endLine": 394,
+        "endChar": 57
+      },
+      "revId": "a43c93f8554ad7418e31be3791b3fb71232f60ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
