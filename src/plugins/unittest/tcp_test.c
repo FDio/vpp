@@ -1094,6 +1094,19 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->app_limited == 0, "app limited should be cleared");
 
   /*
+   * 9) test flush
+   */
+
+  tcp_bt_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  session_main.wrk[thread_index].last_vlib_time = 12;
+  tcp_bt_track_tx (tc);
+  tc->snd_nxt += burst;
+
+  tcp_bt_flush_samples (tc);
+
+  /*
    * Cleanup
    */
   vec_free (sacks);
