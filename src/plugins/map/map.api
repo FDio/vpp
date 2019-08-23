@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "3.1.0";
+option version = "4.1.0";
 
 import "vnet/ip/ip_types.api";
 
@@ -40,7 +40,7 @@ define map_add_domain
   u8 psid_offset;
   u8 psid_length;
   u16 mtu;
-  string tag[limit=64];
+  string tag[64];
 };
 
 /** \brief Reply for MAP domain add
@@ -121,7 +121,7 @@ define map_domain_details
   u8 psid_length;
   u8 flags;
   u16 mtu;
-  string tag[limit=64];
+  string tag[64];
 };
 
 define map_rule_dump

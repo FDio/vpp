@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "5.1.0";
+option version = "5.2.0";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
 
@@ -171,7 +171,7 @@ define nat_worker_details {
   u32 context;
   u32 worker_index;
   u32 lcore_id;
-  string name;
+  string name[64];
 };
 
 /** \brief Enable/disable NAT IPFIX logging
@@ -678,7 +678,7 @@ autoreply define nat44_add_del_static_mapping {
   u16 external_port;
   vl_api_interface_index_t external_sw_if_index;
   u32 vrf_id;
-  string tag;
+  string tag[64];
 };
 
 /** \brief Dump NAT44 static mappings
@@ -717,7 +717,7 @@ define nat44_static_mapping_details {
   u16 external_port;
   vl_api_interface_index_t external_sw_if_index;
   u32 vrf_id;
-  string tag;
+  string tag[64];
 };
 
 /** \brief Add/delete NAT44 identity mapping
@@ -743,7 +743,7 @@ autoreply define nat44_add_del_identity_mapping {
   u16 port;
   vl_api_interface_index_t sw_if_index;
   u32 vrf_id;
-  string tag;
+  string tag[64];
 };
 
 /** \brief Dump NAT44 identity mappings
@@ -773,7 +773,7 @@ define nat44_identity_mapping_details {
   u16 port;
   vl_api_interface_index_t sw_if_index;
   u32 vrf_id;
-  string tag;
+  string tag[64];
 };
 
 /** \brief Add/delete NAT44 pool address from specific interfce
@@ -927,9 +927,9 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u16 external_port;
   u8 protocol;
   u32 affinity;
+  string tag[64];
   u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
-  string tag;
 };
 
 /** \brief Add/delete NAT44 load-balancing static mapping rule backend
@@ -983,9 +983,9 @@ manual_endian define nat44_lb_static_mapping_details {
   u8 protocol;
   vl_api_nat_config_flags_t flags;
   u32 affinity;
+  string tag[64];
   u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
-  string tag;
 };
 
 /** \brief Delete NAT44 session

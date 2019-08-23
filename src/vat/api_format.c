@@ -1333,30 +1333,10 @@ static void vl_api_show_version_reply_t_handler
 
   if (retval >= 0)
     {
-      u8 *s = 0;
-      char *p = (char *) &mp->program;
-
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("        program: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("        version: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("     build date: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("build directory: %v\n", s);
-      vec_free (s);
+      errmsg ("        program: %s", mp->program);
+      errmsg ("        version: %s", mp->version);
+      errmsg ("     build date: %s", mp->build_date);
+      errmsg ("build directory: %s", mp->build_directory);
     }
   vam->retval = retval;
   vam->result_ready = 1;
@@ -1370,22 +1350,11 @@ static void vl_api_show_version_reply_t_handler_json
 
   vat_json_init_object (&node);
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  char *p = (char *) &mp->program;
-  vat_json_object_add_string_copy (&node, "program",
-				   vl_api_from_api_string ((vl_api_string_t *)
-							   p));
-  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
-  vat_json_object_add_string_copy (&node, "version",
-				   vl_api_from_api_string ((vl_api_string_t *)
-							   p));
-  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
-  vat_json_object_add_string_copy (&node, "build_date",
-				   vl_api_from_api_string ((vl_api_string_t *)
-							   p));
-  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
+  vat_json_object_add_string_copy (&node, "program", mp->program);
+  vat_json_object_add_string_copy (&node, "version", mp->version);
+  vat_json_object_add_string_copy (&node, "build_date", mp->build_date);
   vat_json_object_add_string_copy (&node, "build_directory",
-				   vl_api_from_api_string ((vl_api_string_t *)
-							   p));
+				   mp->build_directory);
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);

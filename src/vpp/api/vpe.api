@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.5.0";
+option version = "1.6.0";
 
 import "vpp/api/vpe_types.api";
 
@@ -92,7 +92,7 @@ define cli_inband
 {
   u32 client_index;
   u32 context;
-  string cmd;
+  string cmd[];
 };
 
 /** \brief vpe parser cli string response
@@ -110,7 +110,7 @@ define cli_inband_reply
 {
   u32 context;
   i32 retval;
-  string reply;
+  string reply[];
 };
 
 /** \brief Get node index using name request
@@ -184,10 +184,10 @@ define show_version_reply
 {
   u32 context;
   i32 retval;
-  string program [limit = 32];
-  string version [limit = 32];
-  string build_date [limit = 32];
-  string build_directory [limit = 256];
+  string program[32];
+  string version[32];
+  string build_date[32];
+  string build_directory[256];
 };
 
 
@@ -295,8 +295,8 @@ define log_details {
   u32 context;
   vl_api_timestamp_t timestamp;
   vl_api_log_level_t level;
-  string msg_class [limit=32];
-  string message [limit=256];
+  string msg_class[32];
+  string message[256];
 };
 
 /** \brief Show the current system timestamp.

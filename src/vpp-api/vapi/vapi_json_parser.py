@@ -177,12 +177,15 @@ class Message(object):
                     p = field_class(field_name=field[1],
                                     field_type=field_type)
                 elif l == 3:
-                    if field[2] == 0:
+                    if field[2] == 0 and field[0] != 'string':
                         raise ParseError(
                             "While parsing message `%s': variable length "
                             "array `%s' doesn't have reference to member "
                             "containing the actual length" % (
                                 name, field[1]))
+                    if field[0] == 'string' and field[2] > 0:
+                        field_type = json_parser.lookup_type_like_id('u8')
+
                     p = field_class(
                         field_name=field[1],
                         field_type=field_type,

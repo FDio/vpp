@@ -150,6 +150,25 @@ class Typedef():
                 self.manual_endian = True
         global_type_add(name, self)
 
+        self.vla = False
+
+        for i, b in enumerate(block):
+            if isinstance(b, Array):
+                if b.length == 0:
+                    self.vla = True
+                    if i + 1 < len(block):
+                        raise ValueError(
+                            'VLA field "{}" must be the last '
+                            'field in message "{}"'
+                            .format(b.fieldname, name))
+            elif b.fieldtype == 'string':
+                self.vla = True
+                if i + 1 < len(block):
+                    raise ValueError(
+                        'VLA field "{}" must be the last '
+                        'field in message "{}"'
+                        .format(b.fieldname, name))
+
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
 
@@ -157,12 +176,13 @@ class Typedef():
 class Using():
     def __init__(self, name, alias):
         self.name = name
+        self.vla = False
 
         if isinstance(alias, Array):
-            a = { 'type': alias.fieldtype,  # noqa: E201
-                  'length': alias.length }  # noqa: E202
+            a = {'type': alias.fieldtype,
+                 'length': alias.length}
         else:
-            a = { 'type': alias.fieldtype }  # noqa: E201,E202
+            a = {'type': alias.fieldtype}
         self.alias = a
         self.crc = str(alias).encode()
         global_type_add(name, self)
@@ -206,11 +226,28 @@ class Define():
             elif f == 'autoreply':
                 self.autoreply = True
 
-        for b in block:
+        for i, b in enumerate(block):
             if isinstance(b, Option):
                 if b[1] == 'singular' and b[2] == 'true':
                     self.singular = True
                 block.remove(b)
+
+            if isinstance(b, Array) and b.vla and i + 1 < len(block):
+                raise ValueError(
+                    'VLA field "{}" must be the last field in message "{}"'
+                    .format(b.fieldname, name))
+            elif b.fieldtype.startswith('vl_api_'):
+                if (global_types[b.fieldtype].vla and i + 1 < len(block)):
+                    raise ValueError(
+                        'VLA field "{}" must be the last '
+                        'field in message "{}"'
+                        .format(b.fieldname, name))
+            elif b.fieldtype == 'string' and b.length == 0:
+                if i + 1 < len(block):
+                    raise ValueError(
+                        'VLA field "{}" must be the last '
+                        'field in message "{}"'
+                        .format(b.fieldname, name))
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
@@ -220,6 +257,7 @@ class Enum():
     def __init__(self, name, block, enumtype='u32'):
         self.name = name
         self.enumtype = enumtype
+        self.vla = False
 
         count = 0
         for i, b in enumerate(block):
@@ -273,16 +311,19 @@ class Option():
 
 
 class Array():
-    def __init__(self, fieldtype, name, length):
+    def __init__(self, fieldtype, name, length, modern_vla=False):
         self.type = 'Array'
         self.fieldtype = fieldtype
         self.fieldname = name
+        self.modern_vla = modern_vla
         if type(length) is str:
             self.lengthfield = length
             self.length = 0
+            self.vla = True
         else:
             self.length = length
             self.lengthfield = None
+            self.vla = False
 
     def __repr__(self):
         return str([self.fieldtype, self.fieldname, self.length,
@@ -293,6 +334,11 @@ class Field():
     def __init__(self, fieldtype, name, limit=None):
         self.type = 'Field'
         self.fieldtype = fieldtype
+
+        if self.fieldtype == 'string':
+            raise ValueError("The string type {!r} is an "
+                             "array type ".format(name))
+
         self.fieldname = name
         self.limit = limit
 
@@ -517,13 +563,18 @@ class VPPAPIParser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = { **p[1], **p[2] }
+            p[0] = {**p[1], **p[2]}
 
     def p_field_option(self, p):
-        '''field_option : ID '=' assignee ','
+        '''field_option : ID
+                        | ID '=' assignee ','
                         | ID '=' assignee
+
         '''
-        p[0] = { p[1]: p[3] }
+        if len(p) == 2:
+            p[0] = {p[1]: None}
+        else:
+            p[0] = {p[1]: p[3]}
 
     def p_declaration(self, p):
         '''declaration : type_specifier ID ';'
@@ -536,9 +587,14 @@ class VPPAPIParser(object):
             self._parse_error('ERROR')
         self.fields.append(p[2])
 
+    def p_declaration_array_vla(self, p):
+        '''declaration : type_specifier ID '[' ']' ';' '''
+        p[0] = Array(p[1], p[2], 0, modern_vla=True)
+
     def p_declaration_array(self, p):
         '''declaration : type_specifier ID '[' NUM ']' ';'
                        | type_specifier ID '[' ID ']' ';' '''
+
         if len(p) != 7:
             return self._parse_error(
                 'array: %s' % p.value,
@@ -775,7 +831,7 @@ def foldup_blocks(block, crc):
             try:
                 crc = crc_block_combine(t.block, crc)
                 return foldup_blocks(t.block, crc)
-            except:
+            except AttributeError:
                 pass
     return crc
 

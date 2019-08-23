@@ -1893,7 +1893,7 @@ class TestNAT44(MethodHolder):
             is_add=1)
         sm = self.vapi.nat44_static_mapping_dump()
         self.assertEqual(len(sm), 1)
-        self.assertEqual((sm[0].tag).split(b'\0', 1)[0], b'')
+        self.assertEqual(sm[0].tag, '')
         self.assertEqual(sm[0].protocol, 0)
         self.assertEqual(sm[0].local_port, 0)
         self.assertEqual(sm[0].external_port, 0)

@@ -66,22 +66,16 @@ static void vl_api_http_static_enable_t_handler
   vl_api_http_static_enable_reply_t *rmp;
   http_static_main_t *hmp = &http_static_main;
   int rv;
-  u8 *www_root = 0;
-  u8 *uri = 0;
 
-  char *p = (char *) &mp->www_root;
-  www_root = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-  uri = vl_api_from_api_to_vec ((vl_api_string_t *) p);
+  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
+  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
 
   rv = http_static_server_enable_api
     (ntohl (mp->fifo_size),
      ntohl (mp->cache_size_limit),
      ntohl (mp->prealloc_fifos),
-     ntohl (mp->private_segment_size), www_root, uri);
+     ntohl (mp->private_segment_size), mp->www_root, mp->uri);
 
-  vec_free (www_root);
-  vec_free (uri);
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_REPLY);
 }
 

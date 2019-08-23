@@ -11,11 +11,47 @@ from ipaddress import *
 
 
 class TestLimits(unittest.TestCase):
+    def test_string(self):
+        fixed_string = VPPType('fixed_string',
+                               [['string', 'name', 16]])
+
+        b = fixed_string.pack({'name': 'foobar'})
+        self.assertEqual(len(b), 16)
+
+        # Ensure string is nul terminated
+        self.assertEqual(b.decode('ascii')[6], '\x00')
+
+        nt, size = fixed_string.unpack(b)
+        self.assertEqual(size, 16)
+        self.assertEqual(nt.name, 'foobar')
+
+        # Empty string
+        b = fixed_string.pack({'name': ''})
+        self.assertEqual(len(b), 16)
+        nt, size = fixed_string.unpack(b)
+        self.assertEqual(size, 16)
+        self.assertEqual(nt.name, '')
+
+        # String too long
+        with self.assertRaises(VPPSerializerValueError):
+            b = fixed_string.pack({'name': 'foobarfoobar1234'})
+
+        variable_string = VPPType('variable_string',
+                                  [['string', 'name', 0]])
+        b = variable_string.pack({'name': 'foobar'})
+        self.assertEqual(len(b), 4 + len('foobar'))
+
+        nt, size = variable_string.unpack(b)
+        self.assertEqual(size, 4 + len('foobar'))
+        self.assertEqual(nt.name, 'foobar')
+        self.assertEqual(len(nt.name), len('foobar'))
+
+
     def test_limit(self):
         limited_type = VPPType('limited_type_t',
-                               [['string', 'name', {'limit': 16}]])
+                               [['string', 'name', 0, {'limit': 16}]])
         unlimited_type = VPPType('limited_type_t',
-                                 [['string', 'name']])
+                                 [['string', 'name', 0]])
 
         b = limited_type.pack({'name': 'foobar'})
         self.assertEqual(len(b), 10)
