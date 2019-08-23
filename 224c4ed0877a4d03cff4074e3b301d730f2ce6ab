@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7ed34868_1a7a7d0a",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-08-23T07:14:11Z",
+      "side": 1,
+      "message": "You might as well use the convenience functions in ip_types_api.h?\nip_address_decode()/ip_address_encode().",
+      "revId": "224c4ed0877a4d03cff4074e3b301d730f2ce6ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
