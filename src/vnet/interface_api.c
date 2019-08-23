@@ -327,8 +327,9 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
 
   if (mp->name_filter_valid)
     {
-      mp->name_filter[ARRAY_LEN (mp->name_filter) - 1] = 0;
-      filter = format (0, "%s%c", mp->name_filter, 0);
+      filter =
+	format (0, ".*%s", vl_api_string_len (&mp->name_filter),
+		vl_api_from_api_string (&mp->name_filter), 0);
     }
 
   char *strcasestr (char *, char *);	/* lnx hdr file botch */

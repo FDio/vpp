@@ -105,27 +105,42 @@ class BaseTypes(object):
 
 
 class String(object):
-    def __init__(self, options):
-        self.name = 'string'
+    def __init__(self, name, num, options):
+        self.name = name
+        self.num = num
         self.size = 1
         self.length_field_packer = BaseTypes('u32')
-        self.limit = options['limit'] if 'limit' in options else None
-
-    def pack(self, list, kwargs=None):
-        if not list:
-            return self.length_field_packer.pack(0) + b""
-        if self.limit and len(list) > self.limit:
+        self.limit = options['limit'] if 'limit' in options else num
+        self.fixed = True if num else False
+        if self.fixed and not self.limit:
             raise VPPSerializerValueError(
                 "Invalid argument length for: {}, {} maximum {}".
                 format(list, len(list), self.limit))
 
-        return self.length_field_packer.pack(len(list)) + list.encode('utf8')
+    def pack(self, list, kwargs=None):
+        if not list:
+            if self.fixed:
+                return b"\x00" * self.limit
+            return self.length_field_packer.pack(0) + b""
+        if self.limit and len(list) > self.limit - 1:
+            raise VPPSerializerValueError(
+                "Invalid argument length for: {}, {} maximum {}".
+                format(list, len(list), self.limit - 1))
+        if self.fixed:
+            return list.encode('ascii').ljust(self.limit, b'\x00')
+        return self.length_field_packer.pack(len(list)) + list.encode('ascii')
 
     def unpack(self, data, offset=0, result=None, ntc=False):
+        if self.fixed:
+            p = BaseTypes('u8', self.num)
+            s = p.unpack(data, offset)
+            s2 = s[0].split(b'\0', 1)[0]
+            return (s2.decode('ascii'), self.num)
+
         length, length_field_size = self.length_field_packer.unpack(data,
                                                                     offset)
         if length == 0:
-            return b'', 0
+            return '', 0
         p = BaseTypes('u8', length)
         x, size = p.unpack(data, offset + length_field_size)
         x2 = x.split(b'\0', 1)[0]
@@ -181,10 +196,6 @@ class FixedList_u8(object):
                 'Invalid array length for "{}" got {}'
                 ' expected {}'
                 .format(self.name, len(data[offset:]), self.num))
-        if self.field_type == 'string':
-            s = self.packer.unpack(data, offset)
-            s2 = s[0].split(b'\0', 1)[0]
-            return (s2.decode('utf-8'), self.num)
         return self.packer.unpack(data, offset)
 
 
@@ -473,10 +484,17 @@ class VPPType(object):
             if fieldlen == 3:  # list
                 list_elements = f[2]
                 if list_elements == 0:
-                    p = VLAList_legacy(f_name, f_type)
+                    if f_type == 'string':
+                        p = String(f_name, 0, self.options)
+                    else:
+                        p = VLAList_legacy(f_name, f_type)
                     self.packers.append(p)
-                elif f_type == 'u8' or f_type == 'string':
+                elif f_type == 'u8':
                     p = FixedList_u8(f_name, f_type, list_elements)
+                    self.packers.append(p)
+                    size += p.size
+                elif f_type == 'string':
+                    p = String(f_name, list_elements, self.options)
                     self.packers.append(p)
                     size += p.size
                 else:

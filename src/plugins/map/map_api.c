@@ -53,8 +53,8 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   int rv = 0;
   u32 index;
   u8 flags = 0;
-  u8 *vtag = 0;
-  vtag = vl_api_from_api_to_vec (&mp->tag);
+
+  u8 *tag = format (0, "%s", mp->tag);
   rv =
     map_create_domain ((ip4_address_t *) & mp->ip4_prefix.address,
 		       mp->ip4_prefix.len,
@@ -62,9 +62,8 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 		       mp->ip6_prefix.len,
 		       (ip6_address_t *) & mp->ip6_src.address,
 		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
-		       mp->psid_length, &index, ntohs (mp->mtu), flags, vtag);
-  vec_free (vtag);
-
+		       mp->psid_length, &index, ntohs (mp->mtu), flags, tag);
+  vec_free (tag);
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MAP_ADD_DOMAIN_REPLY,
   ({
@@ -140,7 +139,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->flags = d->flags;
     rmp->mtu = htons(d->mtu);
 
-    vl_api_vec_to_api_string (de->tag, &rmp->tag );
+    strncpy ((char *) rmp->tag, (char *) de->tag, ARRAY_LEN(rmp->tag)-1);
 
     vl_api_send_msg (reg, (u8 *) rmp);
   }));
