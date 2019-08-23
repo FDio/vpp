@@ -153,8 +153,15 @@ def typedefs(objs, aliases, filename):
                     if b.lengthfield:
                         output += "    %s %s[0];\n" % (api2c(b.fieldtype), b.fieldname)
                     else:
-                        output += "    %s %s[%s];\n" % (api2c(b.fieldtype), b.fieldname,
-                                                        b.length)
+                        # Fixed length strings decay to nul terminated u8
+                        if b.fieldtype == 'string':
+                            if b.modern_vla:
+                                output += '    {} {};\n'.format(api2c(b.fieldtype), b.fieldname)
+                            else:
+                                output += '    u8 {}[{}];\n'.format(b.fieldname, b.length)
+                        else:
+                            output += "    %s %s[%s];\n" % (api2c(b.fieldtype), b.fieldname,
+                                                            b.length)
                 else:
                     raise ValueError("Error in processing array type %s" % b)
 
