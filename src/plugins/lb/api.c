@@ -120,7 +120,7 @@ vl_api_lb_add_del_vip_t_handler
       mp->protocol = ~0;
     }
 
-  memcpy (&(args.prefix), &mp->pfx, sizeof(args.prefix));
+  ip_address_decode (&mp->pfx.address, &(args.prefix));
 
   if (mp->is_del) {
     u32 vip_index;
@@ -210,14 +210,10 @@ vl_api_lb_add_del_as_t_handler
   int rv = 0;
   u32 vip_index;
   ip46_address_t vip_ip_prefix;
-
-  memcpy(&vip_ip_prefix, &mp->pfx,
-              sizeof(vip_ip_prefix));
-
   ip46_address_t as_address;
 
-  memcpy(&as_address, &mp->as_address,
-         sizeof(as_address));
+  ip_address_decode (&mp->pfx.address, &vip_ip_prefix);
+  ip_address_decode (&mp->as_address, &as_address);
 
   if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->pfx.len,
                               mp->protocol, ntohs(mp->port), &vip_index)))
