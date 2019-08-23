@@ -927,9 +927,9 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u16 external_port;
   u8 protocol;
   u32 affinity;
+  string tag [limit=64, fixed];
   u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
-  string tag;
 };
 
 /** \brief Add/delete NAT44 load-balancing static mapping rule backend
@@ -983,9 +983,9 @@ manual_endian define nat44_lb_static_mapping_details {
   u8 protocol;
   vl_api_nat_config_flags_t flags;
   u32 affinity;
+  string tag [limit=64, fixed];
   u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
-  string tag;
 };
 
 /** \brief Delete NAT44 session

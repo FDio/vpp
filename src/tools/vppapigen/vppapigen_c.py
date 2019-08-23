@@ -127,6 +127,7 @@ def typedefs(objs, aliases, filename):
     for o in objs:
         tname = o.__class__.__name__
         output += duplicate_wrapper_head(o.name)
+        padn = 0
         if tname == 'Enum':
             if o.enumtype == 'u32':
                 output += "typedef enum {\n"
@@ -149,6 +150,11 @@ def typedefs(objs, aliases, filename):
             for b in o.block:
                 if b.type == 'Field':
                     output += "    %s %s;\n" % (api2c(b.fieldtype), b.fieldname)
+                    if b.limit and 'fixed' in b.limit:
+                        if 'limit' not in b.limit:
+                            raise ValueError("Error in processing field type %s" % b)
+                        output += '    u8 __pad{}[{}];\n'.format(padn, b.limit['limit'])
+                        padn += 1
                 elif b.type == 'Array':
                     if b.lengthfield:
                         output += "    %s %s[0];\n" % (api2c(b.fieldtype), b.fieldname)

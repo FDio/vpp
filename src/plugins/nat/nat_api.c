@@ -1242,9 +1242,7 @@ static void
   else if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
     twice_nat = TWICE_NAT_SELF;
 
-  tag = vec_new (u8, len);
-
-  memcpy (tag, mp->tag.buf, len);
+  tag = vl_api_from_api_to_vec (&mp->tag);
   vec_terminate_c_string (tag);
 
   rv = snat_add_static_mapping (local_addr, external_addr, local_port,
@@ -1442,7 +1440,6 @@ static void
   int rv = 0;
   snat_protocol_t proto = ~0;
   u8 *tag = 0;
-  u32 len = 0;
 
   if (sm->deterministic)
     {
@@ -1462,10 +1459,7 @@ static void
   else
     memcpy (&addr.as_u8, mp->ip_address, 4);
 
-  len = vl_api_string_len (&mp->tag);
-
-  tag = vec_new (u8, len);
-  memcpy (tag, mp->tag.buf, len);
+  tag = vl_api_from_api_to_vec (&mp->tag);
   vec_terminate_c_string (tag);
 
   rv =
@@ -1936,9 +1930,7 @@ static void
   nat44_lb_addr_port_t *locals = 0;
   ip4_address_t e_addr;
   snat_protocol_t proto;
-  vl_api_string_t *sp;
   u8 *tag = 0;
-  u32 len = 0;
 
   if (!sm->endpoint_dependent)
     {
@@ -1957,14 +1949,7 @@ static void
   else if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
     twice_nat = TWICE_NAT_SELF;
 
-  sp = (void *) &mp->locals +
-    sizeof (vl_api_nat44_lb_addr_port_t) *
-    clib_net_to_host_u32 (mp->local_num);
-
-  len = vl_api_string_len (sp);
-
-  tag = vec_new (u8, len);
-  memcpy (tag, sp->buf, len);
+  tag = vl_api_from_api_to_vec (&mp->tag);
   vec_terminate_c_string (tag);
 
   rv =
@@ -2051,7 +2036,6 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
   snat_main_t *sm = &snat_main;
   nat44_lb_addr_port_t *ap;
   vl_api_nat44_lb_addr_port_t *locals;
-  vl_api_string_t *sp;
   u32 local_num = 0;
   u32 len = sizeof (*rmp);
 
@@ -2061,10 +2045,7 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
 	sizeof (nat44_lb_addr_port_t) + vec_len (m->tag);
       rmp = vl_msg_api_alloc (len);
       clib_memset (rmp, 0, len);
-
-      sp = (void *) &rmp->locals +
-	sizeof (vl_api_nat44_lb_addr_port_t) * pool_elts (m->locals);
-      vl_api_to_api_string (vec_len (m->tag), (char *) m->tag, sp);
+      vl_api_to_api_string (vec_len (m->tag), (char *) m->tag, &rmp->tag);
     }
   else
     {

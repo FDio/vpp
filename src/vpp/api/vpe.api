@@ -184,9 +184,9 @@ define show_version_reply
 {
   u32 context;
   i32 retval;
-  string program [limit = 32];
-  string version [limit = 32];
-  string build_date [limit = 32];
+  string program [limit = 32, fixed];
+  string version [limit = 32, fixed];
+  string build_date [limit = 32, fixed];
   string build_directory [limit = 256];
 };
 
@@ -295,7 +295,7 @@ define log_details {
   u32 context;
   vl_api_timestamp_t timestamp;
   vl_api_log_level_t level;
-  string msg_class [limit=32];
+  string msg_class [limit=32, fixed];
   string message [limit=256];
 };
 
