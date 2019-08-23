@@ -647,8 +647,8 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
   for (auto& itf_record : *cmd) {
     auto payload = itf_record.get_payload();
     VOM_LOG(log_level_t::DEBUG) << "dump: [" << payload.sw_if_index
-                                << " name:" << (char*)payload.interface_name.buf
-                                << " tag:" << (char*)payload.tag.buf << "]";
+                                << " name:" << (char*)payload.interface_name
+                                << " tag:" << (char*)payload.tag << "]";
 
     std::shared_ptr<interface> itf = interface_factory::new_interface(payload);
 
