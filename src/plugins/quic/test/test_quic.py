@@ -124,7 +124,6 @@ class QUICEchoInternalTestCase(QUICTestCase):
 
 class QUICEchoInternalTransferTestCase(QUICEchoInternalTestCase):
     """QUIC Echo Internal Transfer Test Case"""
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_internal_transfer(self):
         self.server()
         self.client("no-output", "mbytes", "2")
@@ -132,7 +131,6 @@ class QUICEchoInternalTransferTestCase(QUICEchoInternalTestCase):
 
 class QUICEchoInternalSerialTestCase(QUICEchoInternalTestCase):
     """QUIC Echo Internal Serial Transfer Test Case"""
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_serial_internal_transfer(self):
         self.server()
         self.client("no-output", "mbytes", "2")
@@ -144,7 +142,6 @@ class QUICEchoInternalSerialTestCase(QUICEchoInternalTestCase):
 
 class QUICEchoInternalMStreamTestCase(QUICEchoInternalTestCase):
     """QUIC Echo Internal MultiStream Test Case"""
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_internal_multistream_transfer(self):
         self.server()
         self.client("nclients", "10", "mbytes", "1", "no-output")
@@ -215,7 +212,6 @@ class QUICEchoExternalTestCase(QUICTestCase):
 
 class QUICEchoExternalTransferTestCase(QUICEchoExternalTestCase):
     """QUIC Echo External Transfer Test Case"""
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_external_transfer(self):
         self.server()
         self.client()
@@ -226,7 +222,6 @@ class QUICEchoExternalServerStreamTestCase(QUICEchoExternalTestCase):
     """QUIC Echo External Transfer Server Stream Test Case"""
     quic_setup = "serverstream"
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_external_transfer_server_stream(self):
         self.server("TX=1Kb", "RX=0")
         self.client("TX=0", "RX=1Kb")
