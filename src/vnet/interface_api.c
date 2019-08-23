@@ -200,14 +200,8 @@ send_sw_interface_details (vpe_api_main_t * am,
   vnet_hw_interface_t *hi =
     vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
 
-  uint32_t if_name_len = strlen ((char *) interface_name);
-  u8 *tag = vnet_get_sw_interface_tag (vnet_get_main (), swif->sw_if_index);
-  uint32_t tag_len = 0;
-  if (tag != NULL)
-    tag_len = strlen ((char *) tag);
-  vl_api_sw_interface_details_t *mp =
-    vl_msg_api_alloc (sizeof (*mp) + if_name_len + tag_len);
-  clib_memset (mp, 0, sizeof (*mp) + if_name_len + tag_len);
+  vl_api_sw_interface_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_DETAILS);
   mp->sw_if_index = ntohl (swif->sw_if_index);
   mp->sup_sw_if_index = ntohl (swif->sup_sw_if_index);
@@ -244,6 +238,9 @@ send_sw_interface_details (vpe_api_main_t * am,
   mp->mtu[VNET_MTU_MPLS] = ntohl (swif->mtu[VNET_MTU_MPLS]);
 
   mp->context = context;
+
+  strncpy ((char *) mp->interface_name,
+	   (char *) interface_name, ARRAY_LEN (mp->interface_name) - 1);
 
   /* Send the L2 address for ethernet physical intfcs */
   if (swif->sup_sw_if_index == swif->sw_if_index
@@ -306,12 +303,9 @@ send_sw_interface_details (vpe_api_main_t * am,
       mp->i_sid = i_sid;
     }
 
-  char *p = (char *) &mp->interface_name;
-  p +=
-    vl_api_to_api_string (if_name_len, (char *) interface_name,
-			  (vl_api_string_t *) p);
-  if (tag != NULL)
-    vl_api_to_api_string (tag_len, (char *) tag, (vl_api_string_t *) p);
+  u8 *tag = vnet_get_sw_interface_tag (vnet_get_main (), swif->sw_if_index);
+  if (tag)
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
 
   vl_api_send_msg (rp, (u8 *) mp);
 }
@@ -356,7 +350,8 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   if (mp->name_filter_valid)
     {
       filter =
-	format (0, "%s%c", vl_api_from_api_string (&mp->name_filter), 0);
+	format (0, ".*%s", vl_api_string_len (&mp->name_filter),
+		vl_api_from_api_string (&mp->name_filter), 0);
     }
 
   char *strcasestr (char *, char *);	/* lnx hdr file botch */
@@ -884,13 +879,14 @@ static void vl_api_sw_interface_tag_add_del_t_handler
 
   if (mp->is_add)
     {
-      if (vl_api_from_api_string (&mp->tag)[0] == 0)
+      if (mp->tag[0] == 0)
 	{
 	  rv = VNET_API_ERROR_INVALID_VALUE;
 	  goto out;
 	}
 
-      tag = format (0, "%s%c", vl_api_from_api_string (&mp->tag), 0);
+      mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
+      tag = format (0, "%s%c", mp->tag, 0);
       vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
     }
   else
