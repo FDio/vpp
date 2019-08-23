@@ -254,21 +254,16 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
   char *vpe_api_get_version (void);
   char *vpe_api_get_build_date (void);
 
-  u32 program_len = strnlen_s ("vpe", 32);
-  u32 version_len = strnlen_s (vpe_api_get_version (), 32);
-  u32 build_date_len = strnlen_s (vpe_api_get_build_date (), 32);
-  u32 build_directory_len = strnlen_s (vpe_api_get_build_directory (), 256);
-
-  u32 n = program_len + version_len + build_date_len + build_directory_len;
-
   /* *INDENT-OFF* */
-  REPLY_MACRO3(VL_API_SHOW_VERSION_REPLY, n,
+  REPLY_MACRO2(VL_API_SHOW_VERSION_REPLY,
   ({
-    char *p = (char *)&rmp->program;
-    p += vl_api_to_api_string(program_len, "vpe", (vl_api_string_t *)p);
-    p += vl_api_to_api_string(version_len, vpe_api_get_version(), (vl_api_string_t *)p);
-    p += vl_api_to_api_string(build_date_len, vpe_api_get_build_date(), (vl_api_string_t *)p);
-    vl_api_to_api_string(build_directory_len, vpe_api_get_build_directory(), (vl_api_string_t *)p);
+    strncpy ((char *) rmp->program, "vpe", ARRAY_LEN(rmp->program)-1);
+    strncpy ((char *) rmp->build_directory, vpe_api_get_build_directory(),
+             ARRAY_LEN(rmp->build_directory)-1);
+    strncpy ((char *) rmp->version, vpe_api_get_version(),
+             ARRAY_LEN(rmp->version)-1);
+    strncpy ((char *) rmp->build_date, vpe_api_get_build_date(),
+             ARRAY_LEN(rmp->build_date)-1);
   }));
   /* *INDENT-ON* */
 }
@@ -495,10 +490,11 @@ show_log_details (vl_api_registration_t * reg, u32 context,
   rmp->context = context;
   rmp->timestamp = clib_host_to_net_f64 (timestamp);
   rmp->level = htonl (*level);
-  char *p = (char *) &rmp->msg_class;
 
-  p += vl_api_vec_to_api_string (msg_class, (vl_api_string_t *) p);
-  p += vl_api_vec_to_api_string (message, (vl_api_string_t *) p);
+  strncpy ((char *) rmp->msg_class, (char *) msg_class,
+	   ARRAY_LEN (rmp->msg_class) - 1);
+  strncpy ((char *) rmp->message, (char *) message,
+	   ARRAY_LEN (rmp->message) - 1);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
