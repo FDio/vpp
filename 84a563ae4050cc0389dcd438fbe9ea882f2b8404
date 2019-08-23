@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c9ec701_2a70ffa9",
+        "filename": "src/tools/vppapitrace/vppapitrace.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-08-23T16:14:23Z",
+      "side": 0,
+      "message": "Should we have a verify job to gate against this kind of errors?",
+      "range": {
+        "startLine": 73,
+        "startChar": 49,
+        "endLine": 73,
+        "endChar": 51
+      },
+      "revId": "84a563ae4050cc0389dcd438fbe9ea882f2b8404",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
