@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "732056e4_4235cffc",
+        "filename": "src/plugins/tlsopenssl/tls_openssl_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-23T22:19:50Z",
+      "side": 1,
+      "message": "You can\u0027t be sure that the string is properly terminated. Just make ciphers[63] \u003d 0, unconditionally. Same issue lower.",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 20
+      },
+      "revId": "6b15b02c2e126ad2b225d52eed4ea8af241aa09b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
