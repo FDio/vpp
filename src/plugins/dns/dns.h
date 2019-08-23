@@ -21,9 +21,10 @@
 #include <vppinfra/error.h>
 
 #include <vppinfra/hash.h>
-#include <vnet/dns/dns_packet.h>
+#include <dns/dns_packet.h>
 #include <vnet/ip/ip.h>
 #include <vppinfra/lock.h>
+#include <vlibapi/api_common.h>
 
 typedef struct
 {
@@ -98,6 +99,7 @@ typedef struct
   /** Find cached record by name */
   uword *cache_entry_by_name;
   clib_spinlock_t cache_lock;
+  int cache_lock_tag;
 
   /** enable / disable flag */
   int is_enabled;
@@ -117,9 +119,13 @@ typedef struct
   u32 max_ttl_in_seconds;
   u32 random_seed;
 
+  /** message-ID base */
+  u16 msg_id_base;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+  api_main_t *api_main;
 } dns_main_t;
 
 extern dns_main_t dns_main;
@@ -193,11 +199,14 @@ void vnet_dns_create_resolver_process (dns_main_t * dm);
 format_function_t format_dns_reply;
 
 static inline void
-dns_cache_lock (dns_main_t * dm)
+dns_cache_lock (dns_main_t * dm, int tag)
 {
   if (dm->cache_lock)
     {
+      ASSERT (tag);
+      ASSERT (dm->cache_lock_tag == 0);
       clib_spinlock_lock (&dm->cache_lock);
+      dm->cache_lock_tag = tag;
     }
 }
 
@@ -206,6 +215,8 @@ dns_cache_unlock (dns_main_t * dm)
 {
   if (dm->cache_lock)
     {
+      ASSERT (dm->cache_lock_tag);
+      dm->cache_lock_tag = 0;
       clib_spinlock_unlock (&dm->cache_lock);
     }
 }

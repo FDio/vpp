@@ -245,11 +245,6 @@ M:	Dave Barach <dave@barachs.net>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/dhcp/
 
-VNET DNS
-I:	dns
-M:	Dave Barach <dave@barachs.net>
-F:	src/vnet/dns/
-
 VNET TLS and TLS engine plugins
 I:	tls
 M:	Florin Coras <fcoras@cisco.com>
@@ -398,6 +393,11 @@ Plugin - Network Delay Simulator
 I:	nsim
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/nsim/
+
+Plugin - Simple DNS name resolver
+I:	dns
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/dns/
 
 Test Infrastructure
 I:	tests
