@@ -544,6 +544,7 @@ tcp_bt_flush_samples (tcp_connection_t * tc)
   u32 *samples = 0, *si;
 
   vec_validate (samples, pool_elts (bt->samples) - 1);
+  vec_reset_length (samples);
 
   /* *INDENT-OFF* */
   pool_foreach (bts, bt->samples, ({
