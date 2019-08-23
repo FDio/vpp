@@ -28,7 +28,7 @@ from collections import namedtuple
 from vpp_papi import MACAddress, VPPApiJSONFiles
 import base64
 import os
-
+import textwrap
 
 def serialize_likely_small_unsigned_integer(x):
     r = x
@@ -70,7 +70,7 @@ def unserialize_likely_small_unsigned_integer(data, offset):
 def serialize_cstring(s):
     bstring = s.encode('utf8')
     l = len(bstring)
-    b = serialize_likely_small_unsigned_integer(l))
+    b = serialize_likely_small_unsigned_integer(l)
     b += struct.pack('{}s'.format(l), bstring)
     return b
 
@@ -262,6 +262,55 @@ vpp.connect(name='vppapitrace')
 
     return s
 
+def todump_items(k, v, level):
+    klen = len(k) if k else 0
+    spaces = '  ' * level + ' ' * (klen + 3)
+    wrapper = textwrap.TextWrapper(initial_indent="", subsequent_indent=spaces, width=60)
+    s = ''
+    if type(v) is dict:
+        if k:
+            s += '   ' * level + '{}:\n'.format(k)
+        for k2, v2 in v.items():
+            s += todump_items(k2, v2, level + 1)
+        return s
+
+    if type(v) is list:
+        for v2 in v:
+            s += '{}'.format(todump_items(k, v2, level))
+        return s
+
+    if type(v) is bytes:
+        w = wrapper.fill(bytes.hex(v))
+        s += '   ' * level + '{}: {}\n'.format(k, w)
+    else:
+        if type(v) is str:
+            v = wrapper.fill(v)
+        s += '   ' * level + '{}: {}\n'.format(k, v)
+    return s
+
+
+def todump(messages, services):
+    import pprint
+    pp = pprint.PrettyPrinter()
+
+    s = ''
+    for m in messages:
+        if m['name'] not in services:
+            s += '# ignoring reply message: {}\n'.format(m['name'])
+            continue
+        #if m['name'] in message_filter:
+        #    s += '# ignoring message {}\n'.format(m['name'])
+        #    continue
+        for k in argument_filter:
+            try:
+                m['args'].pop(k)
+            except KeyError:
+                pass
+        a = pp.pformat(m['args'])
+        s += '{}:\n'.format(m['name'])
+        s += todump_items(None, m['args'], 0)
+    return s
+
 
 def init_api(apidir):
     # Read API definitions
@@ -327,17 +376,21 @@ def generate(args):
     JSON = 1
     APITRACE = 2
     PYTHON = 3
+    DUMP = 4
 
     filename, file_extension = os.path.splitext(args.input)
     input_type = JSON if file_extension == '.json' else APITRACE
 
     filename, file_extension = os.path.splitext(args.output)
-    if file_extension == '.json' or filename == '-':
-        output_type = JSON
-    elif file_extension == '.py':
-        output_type = PYTHON
+    if args.todump:
+        output_type = DUMP
     else:
-        output_type = APITRACE
+        if file_extension == '.json' or filename == '-':
+            output_type = JSON
+        elif file_extension == '.py':
+            output_type = PYTHON
+        else:
+            output_type = APITRACE
 
     if input_type == output_type:
         sys.exit("error: Nothing to convert between")
@@ -372,6 +425,10 @@ def generate(args):
             s = json.dumps(result, cls=VPPEncoder, default=vpp_encoder)
             x = json.loads(s, object_hook=vpp_decode)
             s = topython(x, services)
+        elif output_type == DUMP:
+            s = json.dumps(result, cls=VPPEncoder, default=vpp_encoder)
+            x = json.loads(s, object_hook=vpp_decode)
+            s = todump(x, services)
         else:
             s = json.dumps(result, cls=VPPEncoder,
                            default=vpp_encoder, indent=4 * ' ')
@@ -409,6 +466,7 @@ def main():
                                            help='Convert API trace to JSON or Python and back')
     parser_convert.add_argument('input',
                                 help='Input file (API trace | JSON)')
+    parser_convert.add_argument('--todump', action='store_true', help='Output text format')
     parser_convert.add_argument('output',
                                 help='Output file (Python | JSON | API trace)')
     parser_convert.set_defaults(func=generate)
@@ -424,7 +482,6 @@ def main():
     parser_replay.set_defaults(func=replay)
 
     args = parser.parse_args()
-
     if args.debug:
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
