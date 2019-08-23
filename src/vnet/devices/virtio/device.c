@@ -343,6 +343,22 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
 				       0 /* no do_gso */ );
 }
 
+VNET_DEVICE_CLASS_TX_FN (tap_device_class) (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    vlib_frame_t * frame)
+{
+  virtio_main_t *nm = &virtio_main;
+  vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
+  virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
+  vnet_main_t *vnm = vnet_get_main ();
+
+  if (vnm->interface_main.gso_interface_count > 0)
+    return virtio_interface_tx_inline (vm, node, frame, vif, 1 /* do_gso */ );
+  else
+    return virtio_interface_tx_inline (vm, node, frame, vif,
+				       0 /* no do_gso */ );
+}
+
 static void
 virtio_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
 				u32 node_index)
@@ -419,6 +435,23 @@ virtio_subif_add_del_function (vnet_main_t * vnm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (virtio_device_class) = {
   .name = "virtio",
+  .format_device_name = format_virtio_device_name,
+  .format_device = format_virtio_device,
+  .format_tx_trace = format_virtio_tx_trace,
+  .tx_function_n_errors = VIRTIO_TX_N_ERROR,
+  .tx_function_error_strings = virtio_tx_func_error_strings,
+  .rx_redirect_to_node = virtio_set_interface_next_node,
+  .clear_counters = virtio_clear_hw_interface_counters,
+  .admin_up_down_function = virtio_interface_admin_up_down,
+  .subif_add_del_function = virtio_subif_add_del_function,
+  .rx_mode_change_function = virtio_interface_rx_mode_change,
+};
+/* *INDENT-ON* */
+
+
+/* *INDENT-OFF* */
+VNET_DEVICE_CLASS (tap_device_class) = {
+  .name = "tap",
   .format_device_name = format_virtio_device_name,
   .format_device = format_virtio_device,
   .format_tx_trace = format_virtio_tx_trace,

@@ -199,7 +199,10 @@ send_sw_interface_details (vpe_api_main_t * am,
 {
   vnet_hw_interface_t *hi =
     vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
-
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (am->vnet_main, hi->dev_class_index);
+  u8 *if_dev_type = (u8 *) dev_class->name;
+  uint32_t if_dev_type_len = strlen ((char *) if_dev_type);
   uint32_t if_name_len = strlen ((char *) interface_name);
   u8 *tag = vnet_get_sw_interface_tag (vnet_get_main (), swif->sw_if_index);
   uint32_t tag_len = 0;
@@ -306,7 +309,10 @@ send_sw_interface_details (vpe_api_main_t * am,
       mp->i_sid = i_sid;
     }
 
-  char *p = (char *) &mp->interface_name;
+  char *p = (char *) &mp->interface_dev_type;
+  p +=
+    vl_api_to_api_string (if_dev_type_len, (char *) if_dev_type,
+			  (vl_api_string_t *) p);
   p +=
     vl_api_to_api_string (if_name_len, (char *) interface_name,
 			  (vl_api_string_t *) p);

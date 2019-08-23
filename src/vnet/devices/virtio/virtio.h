@@ -195,6 +195,7 @@ typedef struct
 
 extern virtio_main_t virtio_main;
 extern vnet_device_class_t virtio_device_class;
+extern vnet_device_class_t tap_device_class;
 extern vlib_node_registration_t virtio_input_node;
 
 clib_error_t *virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx,

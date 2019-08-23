@@ -428,7 +428,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     clib_memcpy (&vif->host_ip6_addr, &args->host_ip6_addr, 16);
 
   vif->type = VIRTIO_IF_TYPE_TAP;
-  args->error = ethernet_register_interface (vnm, virtio_device_class.index,
+  args->error = ethernet_register_interface (vnm, tap_device_class.index,
 					     vif->dev_instance,
 					     vif->mac_addr,
 					     &vif->hw_if_index,
@@ -518,7 +518,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   vnet_hw_interface_t *hw;
 
   hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
-  if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
+  if (hw == NULL || tap_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
@@ -573,7 +573,7 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
 
   hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
 
-  if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
+  if (hw == NULL || tap_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);

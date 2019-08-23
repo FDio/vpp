@@ -184,6 +184,7 @@ define sw_interface_details
   u16 b_vlanid;
   u32 i_sid;
 
+  string interface_dev_type;
   /* Interface name */
   string interface_name;
   string tag;
