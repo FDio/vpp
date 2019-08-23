@@ -185,8 +185,8 @@ define sw_interface_details
   u32 i_sid;
 
   /* Interface name */
-  string interface_name;
-  string tag;
+  string interface_name [limit=64, fixed];
+  string tag [limit=64];
 };
 
 /** \brief Request all or filtered subset of sw_interface_details

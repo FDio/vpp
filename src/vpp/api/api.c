@@ -259,16 +259,13 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
   u32 build_date_len = strnlen_s (vpe_api_get_build_date (), 32);
   u32 build_directory_len = strnlen_s (vpe_api_get_build_directory (), 256);
 
-  u32 n = program_len + version_len + build_date_len + build_directory_len;
-
   /* *INDENT-OFF* */
-  REPLY_MACRO3(VL_API_SHOW_VERSION_REPLY, n,
+  REPLY_MACRO3(VL_API_SHOW_VERSION_REPLY, build_directory_len,
   ({
-    char *p = (char *)&rmp->program;
-    p += vl_api_to_api_string(program_len, "vpe", (vl_api_string_t *)p);
-    p += vl_api_to_api_string(version_len, vpe_api_get_version(), (vl_api_string_t *)p);
-    p += vl_api_to_api_string(build_date_len, vpe_api_get_build_date(), (vl_api_string_t *)p);
-    vl_api_to_api_string(build_directory_len, vpe_api_get_build_directory(), (vl_api_string_t *)p);
+    vl_api_to_api_string(program_len, "vpe", &rmp->program);
+    vl_api_to_api_string(version_len, vpe_api_get_version(), &rmp->version);
+    vl_api_to_api_string(build_date_len, vpe_api_get_build_date(), &rmp->build_date);
+    vl_api_to_api_string(build_directory_len, vpe_api_get_build_directory(), &rmp->build_directory);
   }));
   /* *INDENT-ON* */
 }
@@ -495,10 +492,9 @@ show_log_details (vl_api_registration_t * reg, u32 context,
   rmp->context = context;
   rmp->timestamp = clib_host_to_net_f64 (timestamp);
   rmp->level = htonl (*level);
-  char *p = (char *) &rmp->msg_class;
 
-  p += vl_api_vec_to_api_string (msg_class, (vl_api_string_t *) p);
-  p += vl_api_vec_to_api_string (message, (vl_api_string_t *) p);
+  vl_api_vec_to_api_string (msg_class, &rmp->msg_class);
+  vl_api_vec_to_api_string (message, &rmp->message);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }

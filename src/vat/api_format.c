@@ -1324,30 +1324,18 @@ static void vl_api_show_version_reply_t_handler
 
   if (retval >= 0)
     {
-      u8 *s = 0;
-      char *p = (char *) &mp->program;
-
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("        program: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("        version: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("     build date: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("build directory: %v\n", s);
-      vec_free (s);
+      errmsg ("        program: %.*s",
+	      vl_api_string_len (&mp->program),
+	      vl_api_from_api_string (&mp->program));
+      errmsg ("        version: %.*s",
+	      vl_api_string_len (&mp->version),
+	      vl_api_from_api_string (&mp->version));
+      errmsg ("     build date: %.*s",
+	      vl_api_string_len (&mp->build_date),
+	      vl_api_from_api_string (&mp->build_date));
+      errmsg ("build directory: %.*s",
+	      vl_api_string_len (&mp->build_directory),
+	      vl_api_from_api_string (&mp->build_directory));
     }
   vam->retval = retval;
   vam->result_ready = 1;

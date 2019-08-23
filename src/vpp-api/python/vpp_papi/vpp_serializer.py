@@ -110,15 +110,23 @@ class String(object):
         self.size = 1
         self.length_field_packer = BaseTypes('u32')
         self.limit = options['limit'] if 'limit' in options else None
+        self.fixed = True if 'fixed' in options else False
+        if self.fixed and not self.limit:
+            raise VPPSerializerValueError(
+                "Invalid argument length for: {}, {} maximum {}".
+                format(list, len(list), self.limit))
 
     def pack(self, list, kwargs=None):
         if not list:
+            if self.fixed:
+                return self.length_field_packer.pack(0) + " " * self.limit
             return self.length_field_packer.pack(0) + b""
         if self.limit and len(list) > self.limit:
             raise VPPSerializerValueError(
                 "Invalid argument length for: {}, {} maximum {}".
                 format(list, len(list), self.limit))
-
+        if self.fixed:
+            return self.length_field_packer.pack(len(list)) + list.encode('utf8').ljust(self.limit)
         return self.length_field_packer.pack(len(list)) + list.encode('utf8')
 
     def unpack(self, data, offset=0, result=None, ntc=False):
@@ -129,6 +137,8 @@ class String(object):
         p = BaseTypes('u8', length)
         x, size = p.unpack(data, offset + length_field_size)
         x2 = x.split(b'\0', 1)[0]
+        if self.fixed:
+            size = self.limit
         return (x2.decode('utf8'), size + length_field_size)
 
 
