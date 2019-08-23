@@ -974,8 +974,7 @@ static void vl_api_sw_interface_details_t_handler
   (vl_api_sw_interface_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  u8 *s = format (0, "%s%c",
-		  vl_api_from_api_string (&mp->interface_name), 0);
+  u8 *s = format (0, "%s%c", mp->interface_name, 0);
 
   hash_set_mem (vam->sw_if_index_by_interface_name, s,
 		ntohl (mp->sw_if_index));
@@ -1027,7 +1026,7 @@ static void vl_api_sw_interface_details_t_handler_json
   vat_json_object_add_bytes (node, "l2_address", mp->l2_address,
 			     sizeof (mp->l2_address));
   vat_json_object_add_string_copy (node, "interface_name",
-				   mp->interface_name.buf);
+				   mp->interface_name);
   vat_json_object_add_uint (node, "flags", mp->flags);
   vat_json_object_add_uint (node, "link_duplex", mp->link_duplex);
   vat_json_object_add_uint (node, "link_speed", mp->link_speed);
@@ -1324,30 +1323,10 @@ static void vl_api_show_version_reply_t_handler
 
   if (retval >= 0)
     {
-      u8 *s = 0;
-      char *p = (char *) &mp->program;
-
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("        program: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("        version: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("     build date: %v\n", s);
-      vec_free (s);
-
-      p +=
-	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
-      s = vl_api_from_api_to_vec ((vl_api_string_t *) p);
-      errmsg ("build directory: %v\n", s);
-      vec_free (s);
+      errmsg ("        program: %s", mp->program);
+      errmsg ("        version: %s", mp->version);
+      errmsg ("     build date: %s", mp->build_date);
+      errmsg ("build directory: %s", mp->build_directory);
     }
   vam->retval = retval;
   vam->result_ready = 1;
@@ -1361,22 +1340,11 @@ static void vl_api_show_version_reply_t_handler_json
 
   vat_json_init_object (&node);
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  char *p = (char *) &mp->program;
-  vat_json_object_add_string_copy (&node, "program",
-				   vl_api_from_api_string ((vl_api_string_t *)
-							   p));
-  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
-  vat_json_object_add_string_copy (&node, "version",
-				   vl_api_from_api_string ((vl_api_string_t *)
-							   p));
-  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
-  vat_json_object_add_string_copy (&node, "build_date",
-				   vl_api_from_api_string ((vl_api_string_t *)
-							   p));
-  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
+  vat_json_object_add_string_copy (&node, "program", mp->program);
+  vat_json_object_add_string_copy (&node, "version", mp->version);
+  vat_json_object_add_string_copy (&node, "build_date", mp->build_date);
   vat_json_object_add_string_copy (&node, "build_directory",
-				   vl_api_from_api_string ((vl_api_string_t *)
-							   p));
+				   mp->build_directory);
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
@@ -20367,7 +20335,7 @@ api_sw_interface_tag_add_del (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = enable;
   if (enable)
-    vl_api_to_api_string (strlen ((char *) tag), (char *) tag, &mp->tag);
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
   vec_free (tag);
 
   S (mp);
