@@ -320,9 +320,9 @@ autoreply define connect_sock {
   u8 ip[16];
   u16 port;
   u8 proto;
+  u64 parent_handle;
   u8 hostname_len;
   u8 hostname[hostname_len];
-  u64 parent_handle;
 };
 
 /** \brief ask app to add a new cut-through registration
