@@ -319,7 +319,7 @@ u32 ip6_fib_table_fwding_lookup_with_if_index (ip6_main_t * im,
 					       const ip6_address_t * dst)
 {
     u32 fib_index = vec_elt (im->fib_index_by_sw_if_index, sw_if_index);
-    return ip6_fib_table_fwding_lookup(im, fib_index, dst);
+    return ip6_fib_table_fwding_lookup(fib_index, dst);
 }
 
 u32

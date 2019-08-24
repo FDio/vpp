@@ -14,6 +14,9 @@
  */
 
 #include <vppinfra/sparse_vec.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
+#include <vnet/dpo/load_balance.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/session/session.h>
@@ -2596,6 +2599,29 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
+
+#if 0
+always_inline void
+tcp46_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
+{
+  vnet_main_t * vnm = vnet_get_main ();
+  const dpo_id_t * dpo;
+  const load_balance_t * lb;
+  vnet_hw_interface_t * hw_if;
+  u32 sw_if_idx, lb_idx;
+
+  if (is_ipv4)
+  {
+    ip4_address_t * dst_addr = &(tc->c_rmt_ip.ip4);
+    lb_idx = ip4_fib_forwarding_lookup (tc->c_fib_index, dst_addr); 
+  }
+  else
+  {
+    ip6_address_t * dst_addr = &(tc->c_rmt_ip.ip6);
+    lb_idx = ip6_fib_table_fwding_lookup (&ip6_main, )
+  }
+}
+#endif
 
 /**
  * Handles reception for all states except LISTEN, SYN-SENT and ESTABLISHED

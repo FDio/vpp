@@ -108,10 +108,10 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p0);
 	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p1);
 
-	  lbi0 = ip6_fib_table_fwding_lookup (im,
+	  lbi0 = ip6_fib_table_fwding_lookup (
 					      vnet_buffer (p0)->ip.fib_index,
 					      dst_addr0);
-	  lbi1 = ip6_fib_table_fwding_lookup (im,
+	  lbi1 = ip6_fib_table_fwding_lookup (
 					      vnet_buffer (p1)->ip.fib_index,
 					      dst_addr1);
 
@@ -237,7 +237,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  dst_addr0 = &ip0->dst_address;
 	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p0);
-	  lbi0 = ip6_fib_table_fwding_lookup (im,
+	  lbi0 = ip6_fib_table_fwding_lookup (
 					      vnet_buffer (p0)->ip.fib_index,
 					      dst_addr0);
 

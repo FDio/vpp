@@ -304,9 +304,7 @@ svs_input_inline (vlib_main_t * vm,
 	      ip6_header_t *ip0;
 
 	      ip0 = vlib_buffer_get_current (b0);
-	      lbi0 = ip6_fib_table_fwding_lookup (&ip6_main,
-						  svs_itf_db[fproto]
-						  [sw_if_index0],
+	      lbi0 = ip6_fib_table_fwding_lookup (svs_itf_db[fproto][sw_if_index0],
 						  &ip0->src_address);
 	    }
 	  lb0 = load_balance_get (lbi0);

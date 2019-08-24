@@ -64,9 +64,7 @@ extern void ip6_fib_table_walk(u32 fib_index,
                                void *ctx);
 
 always_inline u32
-ip6_fib_table_fwding_lookup (ip6_main_t * im,
-                             u32 fib_index,
-                             const ip6_address_t * dst)
+ip6_fib_table_fwding_lookup (u32 fib_index, const ip6_address_t * dst)
 {
     ip6_fib_table_instance_t *table;
     clib_bihash_kv_24_8_t kv, value;
