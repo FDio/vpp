@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "26c69ad1_b6d6091f",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-08-24T02:13:24Z",
+      "side": 1,
+      "message": "Will do.",
+      "parentUuid": "8c885515_c0164356",
+      "revId": "b97741502368a6b9b5b3c2e38e134408f6245fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6ed7d8fd_50297be8",
         "filename": "src/vnet/devices/tap/tap.c",
         "patchSetId": 1
@@ -42,6 +60,30 @@
     },
     {
       "key": {
+        "uuid": "78c5f53d_d670cad4",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 396,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-08-24T02:13:24Z",
+      "side": 1,
+      "message": "ok. will do.",
+      "parentUuid": "6ed7d8fd_50297be8",
+      "range": {
+        "startLine": 395,
+        "startChar": 4,
+        "endLine": 396,
+        "endChar": 52
+      },
+      "revId": "b97741502368a6b9b5b3c2e38e134408f6245fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "13d07a6a_e1844b78",
         "filename": "src/vnet/devices/tap/tap.c",
         "patchSetId": 1
@@ -53,6 +95,30 @@
       "writtenOn": "2019-08-23T10:40:31Z",
       "side": 1,
       "message": "vpm-\u003ebase_addr;",
+      "range": {
+        "startLine": 398,
+        "startChar": 4,
+        "endLine": 398,
+        "endChar": 46
+      },
+      "revId": "b97741502368a6b9b5b3c2e38e134408f6245fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a139d33_ef91e7c6",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2019-08-24T02:13:24Z",
+      "side": 1,
+      "message": "will do.",
+      "parentUuid": "13d07a6a_e1844b78",
       "range": {
         "startLine": 398,
         "startChar": 4,
