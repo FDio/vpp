@@ -56,7 +56,6 @@ VLIB_NODE_FN (ip6_cop_whitelist_node) (vlib_main_t * vm,
   u32 n_left_from, * from, * to_next;
   cop_feature_type_t next_index;
   cop_main_t *cm = &cop_main;
-  ip6_main_t * im6 = &ip6_main;
   vlib_combined_counter_main_t * vcm = &load_balance_main.lbm_via_counters;
   u32 thread_index = vm->thread_index;
 
@@ -119,7 +118,7 @@ VLIB_NODE_FN (ip6_cop_whitelist_node) (vlib_main_t * vm,
                &next0,
                sizeof (c0[0]));
 
-          lb_index0 = ip6_fib_table_fwding_lookup (im6, c0->fib_index, 
+          lb_index0 = ip6_fib_table_fwding_lookup (c0->fib_index, 
 						    &ip0->src_address);
 	  lb0 = load_balance_get (lb_index0);
           dpo0 = load_balance_get_bucket_i(lb0, 0);
@@ -143,7 +142,7 @@ VLIB_NODE_FN (ip6_cop_whitelist_node) (vlib_main_t * vm,
                &next1,
                sizeof (c1[0]));
 
-          lb_index1 = ip6_fib_table_fwding_lookup (im6, c1->fib_index, 
+          lb_index1 = ip6_fib_table_fwding_lookup (c1->fib_index, 
 						    &ip1->src_address);
 
 	  lb1 = load_balance_get (lb_index1);
@@ -223,7 +222,7 @@ VLIB_NODE_FN (ip6_cop_whitelist_node) (vlib_main_t * vm,
                &next0,
                sizeof (c0[0]));
 
-          lb_index0 = ip6_fib_table_fwding_lookup (im6, c0->fib_index, 
+          lb_index0 = ip6_fib_table_fwding_lookup (c0->fib_index, 
 						    &ip0->src_address);
 
 	  lb0 = load_balance_get (lb_index0);
