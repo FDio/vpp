@@ -23,23 +23,17 @@
 __thread uword __vcl_worker_index = ~0;
 
 static int
-vcl_wait_for_segment (u64 segment_handle)
+vcl_segment_is_mounted (vcl_worker_t * wrk, u64 segment_handle)
 {
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  u32 wait_for_seconds = 10, segment_index;
-  f64 timeout;
+  u32 segment_index;
 
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     return 0;
 
-  timeout = clib_time_now (&wrk->clib_time) + wait_for_seconds;
-  while (clib_time_now (&wrk->clib_time) < timeout)
-    {
-      segment_index = vcl_segment_table_lookup (segment_handle);
-      if (segment_index != VCL_INVALID_SEGMENT_INDEX)
-	return 0;
-      usleep (10);
-    }
+  segment_index = vcl_segment_table_lookup (segment_handle);
+  if (segment_index != VCL_INVALID_SEGMENT_INDEX)
+    return 0;
+
   return 1;
 }
 
@@ -371,9 +365,9 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
       goto error;
     }
 
-  if (vcl_wait_for_segment (mp->segment_handle))
+  if (vcl_segment_is_mounted (wrk, mp->segment_handle))
     {
-      VDBG (0, "ERROR: segment for session %u couldn't be mounted!",
+      VDBG (0, "ERROR: segment for session %u is not mounted!",
 	    session->session_index);
       goto error;
     }
@@ -459,9 +453,9 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 					 svm_msg_q_t *);
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  if (vcl_wait_for_segment (mp->segment_handle))
+  if (vcl_segment_is_mounted (wrk, mp->segment_handle))
     {
-      VDBG (0, "segment for session %u couldn't be mounted!",
+      VDBG (0, "segment for session %u is not mounted!",
 	    session->session_index);
       session->session_state = STATE_FAILED | STATE_DISCONNECT;
       vcl_send_session_disconnect (wrk, session);
@@ -481,9 +475,9 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     {
       session->ct_rx_fifo = uword_to_pointer (mp->ct_rx_fifo, svm_fifo_t *);
       session->ct_tx_fifo = uword_to_pointer (mp->ct_tx_fifo, svm_fifo_t *);
-      if (vcl_wait_for_segment (mp->ct_segment_handle))
+      if (vcl_segment_is_mounted (wrk, mp->ct_segment_handle))
 	{
-	  VDBG (0, "ct segment for session %u couldn't be mounted!",
+	  VDBG (0, "ct segment for session %u is not mounted!",
 		session->session_index);
 	  session->session_state = STATE_FAILED | STATE_DISCONNECT;
 	  vcl_send_session_disconnect (wrk, session);
@@ -715,9 +709,9 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
       VDBG (0, "unknown handle 0x%llx", msg->handle);
       return;
     }
-  if (vcl_wait_for_segment (msg->segment_handle))
+  if (vcl_segment_is_mounted (wrk, msg->segment_handle))
     {
-      clib_warning ("segment for session %u couldn't be mounted!",
+      clib_warning ("segment for session %u is not mounted!",
 		    s->session_index);
       return;
     }
@@ -735,6 +729,48 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 
   VDBG (0, "session %u[0x%llx] moved to worker %u", s->session_index,
 	s->vpp_handle, wrk->wrk_index);
+}
+
+static void
+vcl_session_app_add_segment_handler (vcl_worker_t * wrk, void *data)
+{
+  ssvm_segment_type_t seg_type = SSVM_SEGMENT_SHM;
+  session_app_add_segment_msg_t *msg;
+  u64 segment_handle;
+  int fd = -1;
+
+  msg = (session_app_add_segment_msg_t *) data;
+
+  if (msg->fd_flags)
+    {
+      vl_socket_client_recv_fd_msg (&fd, 1, 5);
+      seg_type = SSVM_SEGMENT_MEMFD;
+    }
+
+  segment_handle = msg->segment_handle;
+  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+    {
+      clib_warning ("invalid segment handle");
+      return;
+    }
+
+  if (vcl_segment_attach (segment_handle, (char *) msg->segment_name,
+			  seg_type, fd))
+    {
+      VDBG (0, "vcl_segment_attach ('%s') failed", msg->segment_name);
+      return;
+    }
+
+  VDBG (1, "mapped new segment '%s' size %d", msg->segment_name,
+	msg->segment_size);
+}
+
+static void
+vcl_session_app_del_segment_handler (vcl_worker_t * wrk, void *data)
+{
+  session_app_del_segment_msg_t *msg = (session_app_del_segment_msg_t *) data;
+  vcl_segment_detach (msg->segment_handle);
+  VDBG (1, "Unmapped segment: %d", msg->segment_handle);
 }
 
 static int
@@ -781,6 +817,12 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
       vcl_session_worker_update_reply_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
+      vcl_session_app_add_segment_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
+      vcl_session_app_del_segment_handler (wrk, e->data);
       break;
     default:
       clib_warning ("unhandled %u", e->event_type);
@@ -2094,6 +2136,12 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
+      vcl_session_app_add_segment_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
+      vcl_session_app_del_segment_handler (wrk, e->data);
+      break;
     default:
       clib_warning ("unhandled: %u", e->event_type);
       break;
@@ -2671,6 +2719,12 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
       vcl_session_worker_update_reply_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
+      vcl_session_app_add_segment_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
+      vcl_session_app_del_segment_handler (wrk, e->data);
       break;
     default:
       VDBG (0, "unhandled: %u", e->event_type);
