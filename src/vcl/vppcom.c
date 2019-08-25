@@ -734,6 +734,48 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 	s->vpp_handle, wrk->wrk_index);
 }
 
+static void
+vcl_session_app_add_segment_handler (vcl_worker_t * wrk, void *data)
+{
+  ssvm_segment_type_t seg_type = SSVM_SEGMENT_SHM;
+  session_app_add_segment_msg_t *msg;
+  u64 segment_handle;
+  int fd = -1;
+
+  msg = (session_app_add_segment_msg_t *) data;
+
+  if (msg->fd_flags)
+    {
+      vl_socket_client_recv_fd_msg (&fd, 1, 5);
+      seg_type = SSVM_SEGMENT_MEMFD;
+    }
+
+  segment_handle = msg->segment_handle;
+  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+    {
+      clib_warning ("invalid segment handle");
+      return;
+    }
+
+  if (vcl_segment_attach (segment_handle, (char *) msg->segment_name,
+			  seg_type, fd))
+    {
+      VDBG (0, "vcl_segment_attach ('%s') failed", msg->segment_name);
+      return;
+    }
+
+  VDBG (1, "mapped new segment '%s' size %d", msg->segment_name,
+	msg->segment_size);
+}
+
+static void
+vcl_session_app_del_segment_handler (vcl_worker_t * wrk, void *data)
+{
+  session_app_del_segment_msg_t *msg = (session_app_del_segment_msg_t *) data;
+  vcl_segment_detach (msg->segment_handle);
+  VDBG (1, "Unmapped segment: %d", msg->segment_handle);
+}
+
 static int
 vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 {
@@ -778,6 +820,12 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
       vcl_session_worker_update_reply_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
+      vcl_session_app_add_segment_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
+      vcl_session_app_del_segment_handler (wrk, e->data);
       break;
     default:
       clib_warning ("unhandled %u", e->event_type);
@@ -2064,6 +2112,12 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
+      vcl_session_app_add_segment_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
+      vcl_session_app_del_segment_handler (wrk, e->data);
+      break;
     default:
       clib_warning ("unhandled: %u", e->event_type);
       break;
@@ -2640,6 +2694,12 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
       vcl_session_worker_update_reply_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
+      vcl_session_app_add_segment_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
+      vcl_session_app_del_segment_handler (wrk, e->data);
       break;
     default:
       VDBG (0, "unhandled: %u", e->event_type);
