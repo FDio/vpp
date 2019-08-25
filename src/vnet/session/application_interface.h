@@ -433,6 +433,23 @@ typedef struct app_detach_msg_
   u32 context;
 } app_detach_msg_t;
 
+typedef struct app_map_another_segment_msg_
+{
+  u32 client_index;
+  u32 context;
+  u8 fd_flags;
+  u32 segment_size;
+  u8 segment_name[128];
+  u64 segment_handle;
+} app_map_another_segment_msg_t;
+
+typedef struct app_unmap_segment_msg_
+{
+  u32 client_index;
+  u32 context;
+  u64 segment_handle;
+} app_unmap_segment_msg_t;
+
 typedef struct app_session_event_
 {
   svm_msg_q_msg_t msg;
