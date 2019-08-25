@@ -187,6 +187,7 @@ autoreply define application_detach {
  };
 
 /** \brief vpp->client, please map an additional shared memory segment
+	### WILL BE DEPRECATED POST 20.01 ###
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
    	@param fd_flags - set of flags that indicate which, if any, fds are
@@ -206,6 +207,7 @@ autoreply define map_another_segment {
 };
 
 /** \brief vpp->client unmap shared memory segment
+	### WILL BE DEPRECATED POST 20.01 ###
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param segment_name - segment name
