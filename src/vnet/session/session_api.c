@@ -81,6 +81,7 @@ session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
   return 0;
 }
 
+/* ### WILL BE DEPRECATED POST 20.01 ### */
 static int
 send_add_segment_callback (u32 api_client_index, u64 segment_handle)
 {
@@ -130,6 +131,7 @@ send_add_segment_callback (u32 api_client_index, u64 segment_handle)
   return 0;
 }
 
+/* ### WILL BE DEPRECATED POST 20.01 ### */
 static int
 send_del_segment_callback (u32 api_client_index, u64 segment_handle)
 {
@@ -470,7 +472,103 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
   clib_warning ("not supported");
 }
 
-static session_cb_vft_t session_mq_cb_vft = {
+static int
+mq_send_add_segment_cb (u32 app_wrk_index, u64 segment_handle)
+{
+  int fds[SESSION_N_FD_TYPE], n_fds = 0;
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_app_add_segment_msg_t *mp;
+  vl_api_registration_t *reg;
+  app_worker_t *app_wrk;
+  session_event_t *evt;
+  svm_msg_q_t *app_mq;
+  fifo_segment_t *fs;
+  ssvm_private_t *sp;
+  u8 fd_flags = 0;
+
+  app_wrk = app_worker_get (app_wrk_index);
+
+  reg = vl_mem_api_client_index_to_registration (app_wrk->api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no api registration for client: %u",
+		    app_wrk->api_client_index);
+      return -1;
+    }
+
+  fs = segment_manager_get_segment_w_handle (segment_handle);
+  sp = &fs->ssvm;
+  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
+    {
+      if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+	{
+	  clib_warning ("can't send memfd fd");
+	  return -1;
+	}
+
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = sp->fd;
+      n_fds += 1;
+    }
+
+  app_mq = app_wrk->event_queue;
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return -1;
+
+  if (n_fds)
+    return session_send_fds (reg, fds, n_fds);
+
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_APP_ADD_SEGMENT;
+  mp = (session_app_add_segment_msg_t *) evt->data;
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->segment_size = sp->ssvm_size;
+  mp->fd_flags = fd_flags;
+  mp->segment_handle = segment_handle;
+  strncpy ((char *) mp->segment_name, (char *) sp->name,
+	   sizeof (mp->segment_name) - 1);
+
+  svm_msg_q_add_and_unlock (app_mq, msg);
+
+  return 0;
+}
+
+static int
+mq_send_del_segment_cb (u32 app_wrk_index, u64 segment_handle)
+{
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_app_del_segment_msg_t *mp;
+  vl_api_registration_t *reg;
+  app_worker_t *app_wrk;
+  session_event_t *evt;
+  svm_msg_q_t *app_mq;
+
+  app_wrk = app_worker_get (app_wrk_index);
+  reg = vl_mem_api_client_index_to_registration (app_wrk->api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", app_wrk->api_client_index);
+      return -1;
+    }
+
+  app_mq = app_wrk->event_queue;
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return -1;
+
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_APP_ADD_SEGMENT;
+  mp = (session_app_del_segment_msg_t *) evt->data;
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->segment_handle = segment_handle;
+  svm_msg_q_add_and_unlock (app_mq, msg);
+
+  return 0;
+}
+
+/* ### WILL BE DEPRECATED POST 20.01 ### */
+static session_cb_vft_t session_mq_cb_vft_old = {
   .session_accept_callback = mq_send_session_accepted_cb,
   .session_disconnect_callback = mq_send_session_disconnected_cb,
   .session_connected_callback = mq_send_session_connected_cb,
@@ -478,6 +576,16 @@ static session_cb_vft_t session_mq_cb_vft = {
   .session_migrate_callback = mq_send_session_migrate_cb,
   .add_segment_callback = send_add_segment_callback,
   .del_segment_callback = send_del_segment_callback,
+};
+
+static session_cb_vft_t session_mq_cb_vft = {
+  .session_accept_callback = mq_send_session_accepted_cb,
+  .session_disconnect_callback = mq_send_session_disconnected_cb,
+  .session_connected_callback = mq_send_session_connected_cb,
+  .session_reset_callback = mq_send_session_reset_cb,
+  .session_migrate_callback = mq_send_session_migrate_cb,
+  .add_segment_callback = mq_send_add_segment_cb,
+  .del_segment_callback = mq_send_del_segment_cb,
 };
 
 static void
@@ -519,7 +627,7 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   clib_memset (a, 0, sizeof (*a));
   a->api_client_index = mp->client_index;
   a->options = mp->options;
-  a->session_cb_vft = &session_mq_cb_vft;
+  a->session_cb_vft = &session_mq_cb_vft_old;
   if (mp->namespace_id_len > 64)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
@@ -887,6 +995,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
     }
 }
 
+/* ### WILL BE DEPRECATED POST 20.01 ### */
 static void
 vl_api_map_another_segment_reply_t_handler (vl_api_map_another_segment_reply_t
 					    * mp)

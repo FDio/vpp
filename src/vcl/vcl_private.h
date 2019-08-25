@@ -622,6 +622,10 @@ void vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
 void vcl_send_app_worker_add_del (u8 is_add);
 void vcl_send_child_worker_del (vcl_worker_t * wrk);
 
+int vcl_segment_attach (u64 segment_handle, char *name,
+			ssvm_segment_type_t type, int fd);
+void vcl_segment_detach (u64 segment_handle);
+
 u32 vcl_max_nsid_len (void);
 
 u8 *format_api_error (u8 * s, va_list * args);

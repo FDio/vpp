@@ -29,13 +29,13 @@ typedef struct certificate_
   u8 *cert;
 } app_cert_key_pair_t;
 
-typedef struct _stream_session_cb_vft
+typedef struct session_cb_vft_
 {
   /** Notify server of new segment */
-  int (*add_segment_callback) (u32 api_client_index, u64 segment_handle);
+  int (*add_segment_callback) (u32 app_wrk_index, u64 segment_handle);
 
   /** Notify server of new segment */
-  int (*del_segment_callback) (u32 api_client_index, u64 segment_handle);
+  int (*del_segment_callback) (u32 app_wrk_index, u64 segment_handle);
 
   /** Notify server of newly accepted session */
   int (*session_accept_callback) (session_t * new_session);
@@ -482,6 +482,23 @@ typedef struct session_app_detach_msg_
   u32 client_index;
   u32 context;
 } session_app_detach_msg_t;
+
+typedef struct app_map_another_segment_msg_
+{
+  u32 client_index;
+  u32 context;
+  u8 fd_flags;
+  u32 segment_size;
+  u8 segment_name[128];
+  u64 segment_handle;
+} session_app_add_segment_msg_t;
+
+typedef struct app_unmap_segment_msg_
+{
+  u32 client_index;
+  u32 context;
+  u64 segment_handle;
+} session_app_del_segment_msg_t;
 
 typedef struct app_session_event_
 {
