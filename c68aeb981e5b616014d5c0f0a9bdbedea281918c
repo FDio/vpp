@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "936f7db3_db463b35",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1657,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2019-08-25T14:48:03Z",
+      "side": 1,
+      "message": "I understand re-using the existing erase code to make this work; however redrawing the remainder of the line for every character erased is pretty inefficient. It would be okay for a first-approximation, but I wonder if you could rework this to defer redrawing the rest of the line until after moving the cursor left.\n\nSomething like, perhaps:\nmove left delta times\nredraw remainder of line\nprint delta amount of blank spaces,\nthen finally fix the cursor position.",
+      "revId": "c68aeb981e5b616014d5c0f0a9bdbedea281918c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
