@@ -593,28 +593,6 @@ echo_get_session_from_handle (echo_main_t * em, u64 handle)
 }
 
 int
-wait_for_segment_allocation (u64 segment_handle)
-{
-  echo_main_t *em = &echo_main;
-  f64 timeout;
-  timeout = clib_time_now (&em->clib_time) + TIMEOUT;
-  uword *segment_present;
-  ECHO_LOG (3, "Waiting for segment 0x%lx...", segment_handle);
-  while (clib_time_now (&em->clib_time) < timeout)
-    {
-      clib_spinlock_lock (&em->segment_handles_lock);
-      segment_present = hash_get (em->shared_segment_handles, segment_handle);
-      clib_spinlock_unlock (&em->segment_handles_lock);
-      if (segment_present != 0)
-	return 0;
-      if (em->time_to_stop == 1)
-	return 0;
-    }
-  ECHO_LOG (2, "timeout wait_for_segment_allocation (0x%lx)", segment_handle);
-  return -1;
-}
-
-int
 wait_for_state_change (echo_main_t * em, connection_state_t state,
 		       f64 timeout)
 {
