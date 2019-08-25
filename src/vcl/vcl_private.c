@@ -397,6 +397,47 @@ vcl_session_write_ready (vcl_session_t * session)
   return svm_fifo_max_enqueue_prod (session->tx_fifo);
 }
 
+int
+vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
+		    int fd)
+{
+  fifo_segment_create_args_t _a, *a = &_a;
+  int rv;
+
+  memset (a, 0, sizeof (*a));
+  a->segment_name = (char *) name;
+  a->segment_type = type;
+
+  if (type == SSVM_SEGMENT_MEMFD)
+    a->memfd_fd = fd;
+
+  if ((rv = fifo_segment_attach (&vcm->segment_main, a)))
+    {
+      clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
+      return rv;
+    }
+  vcl_segment_table_add (segment_handle, a->new_segment_indices[0]);
+  vec_reset_length (a->new_segment_indices);
+  return 0;
+}
+
+void
+vcl_segment_detach (u64 segment_handle)
+{
+  fifo_segment_main_t *sm = &vcm->segment_main;
+  fifo_segment_t *segment;
+  u32 segment_index;
+
+  segment_index = vcl_segment_table_lookup (segment_handle);
+  if (segment_index == (u32) ~ 0)
+    return;
+  segment = fifo_segment_get_segment (sm, segment_index);
+  fifo_segment_delete (sm, segment);
+  vcl_segment_table_del (segment_handle);
+  VDBG (0, "detached segment %u handle %u", segment_index, segment_handle);
+}
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
