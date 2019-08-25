@@ -710,6 +710,66 @@ session_reset_handler (session_reset_msg_t * mp)
 }
 
 static void
+add_segment_handler (session_app_add_segment_msg_t * mp)
+{
+  fifo_segment_main_t *sm = &echo_main.segment_main;
+  fifo_segment_create_args_t _a, *a = &_a;
+  echo_main_t *em = &echo_main;
+  int *fds = 0, i;
+  char *seg_name = (char *) mp->segment_name;
+  u64 segment_handle = mp->segment_handle;
+
+  if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
+    {
+      vec_validate (fds, 1);
+      if (vl_socket_client_recv_fd_msg (fds, 1, 5))
+	{
+	  ECHO_FAIL (ECHO_FAIL_VL_API_RECV_FD_MSG,
+		     "vl_socket_client_recv_fd_msg failed");
+	  goto failed;
+	}
+
+      if (echo_ssvm_segment_attach (seg_name, SSVM_SEGMENT_MEMFD, fds[0]))
+	{
+	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
+		     "svm_fifo_segment_attach ('%s') "
+		     "failed on SSVM_SEGMENT_MEMFD", seg_name);
+	  goto failed;
+	}
+      vec_free (fds);
+    }
+  else
+    {
+      clib_memset (a, 0, sizeof (*a));
+      a->segment_name = seg_name;
+      a->segment_size = mp->segment_size;
+      /* Attach to the segment vpp created */
+      if (fifo_segment_attach (sm, a))
+	{
+	  ECHO_FAIL (ECHO_FAIL_VL_API_FIFO_SEG_ATTACH,
+		     "fifo_segment_attach ('%s') failed", seg_name);
+	  goto failed;
+	}
+    }
+  echo_segment_handle_add_del (em, segment_handle, 1 /* add */ );
+  ECHO_LOG (2, "Mapped segment 0x%lx", segment_handle);
+  return;
+
+failed:
+  for (i = 0; i < vec_len (fds); i++)
+    close (fds[i]);
+  vec_free (fds);
+}
+
+static void
+del_segment_handler (session_app_del_segment_msg_t * mp)
+{
+  echo_main_t *em = &echo_main;
+  echo_segment_handle_add_del (em, mp->segment_handle, 0 /* add */ );
+  ECHO_LOG (2, "Unmaped segment 0x%lx", mp->segment_handle);
+}
+
+static void
 handle_mq_event (session_event_t * e)
 {
   switch (e->event_type)
@@ -728,6 +788,12 @@ handle_mq_event (session_event_t * e)
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
       return session_unlisten_handler ((session_unlisten_reply_msg_t *)
 				       e->data);
+    case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
+      add_segment_handler ((session_app_add_segment_msg_t *) e->data);
+      break;
+    case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
+      del_segment_handler ((session_app_del_segment_msg_t *) e->data);
+      break;
     case SESSION_IO_EVT_RX:
       break;
     default:

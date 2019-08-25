@@ -198,8 +198,8 @@ echo_send_disconnect_session (echo_main_t * em, void *args)
  *
  */
 
-static int
-ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
+int
+echo_ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
 {
   fifo_segment_create_args_t _a, *a = &_a;
   fifo_segment_main_t *sm = &echo_main.segment_main;
@@ -218,7 +218,7 @@ ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
   return 0;
 }
 
-static inline void
+void
 echo_segment_handle_add_del (echo_main_t * em, u64 segment_handle, u8 add)
 {
   clib_spinlock_lock (&em->segment_handles_lock);
@@ -315,7 +315,7 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	}
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
-	if (ssvm_segment_attach (0, SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	if (echo_ssvm_segment_attach (0, SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  {
 	    ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 		       "svm_fifo_segment_attach failed on SSVM_SEGMENT_MEMFD");
@@ -323,8 +323,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	  }
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-	if (ssvm_segment_attach ((char *) mp->segment_name,
-				 SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	if (echo_ssvm_segment_attach ((char *) mp->segment_name,
+				      SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  {
 	    ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 		       "svm_fifo_segment_attach ('%s') "
@@ -338,8 +338,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
     }
   else
     {
-      if (ssvm_segment_attach ((char *) mp->segment_name, SSVM_SEGMENT_SHM,
-			       -1))
+      if (echo_ssvm_segment_attach
+	  ((char *) mp->segment_name, SSVM_SEGMENT_SHM, -1))
 	{
 	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 		     "svm_fifo_segment_attach ('%s') "
@@ -371,74 +371,11 @@ vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
   echo_main.state = STATE_DETACHED;
 }
 
-static void
-vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
-{
-  echo_main_t *em = &echo_main;
-  u64 segment_handle = clib_net_to_host_u64 (mp->segment_handle);
-  echo_segment_handle_add_del (em, segment_handle, 0 /* add */ );
-  ECHO_LOG (2, "Unmaped segment 0x%lx", segment_handle);
-}
-
-static void
-vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
-{
-  fifo_segment_main_t *sm = &echo_main.segment_main;
-  fifo_segment_create_args_t _a, *a = &_a;
-  echo_main_t *em = &echo_main;
-  int *fds = 0, i;
-  char *seg_name = (char *) mp->segment_name;
-  u64 segment_handle = clib_net_to_host_u64 (mp->segment_handle);
-
-  if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-    {
-      vec_validate (fds, 1);
-      if (vl_socket_client_recv_fd_msg (fds, 1, 5))
-	{
-	  ECHO_FAIL (ECHO_FAIL_VL_API_RECV_FD_MSG,
-		     "vl_socket_client_recv_fd_msg failed");
-	  goto failed;
-	}
-
-      if (ssvm_segment_attach (seg_name, SSVM_SEGMENT_MEMFD, fds[0]))
-	{
-	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
-		     "svm_fifo_segment_attach ('%s') "
-		     "failed on SSVM_SEGMENT_MEMFD", seg_name);
-	  goto failed;
-	}
-      vec_free (fds);
-    }
-  else
-    {
-      clib_memset (a, 0, sizeof (*a));
-      a->segment_name = seg_name;
-      a->segment_size = mp->segment_size;
-      /* Attach to the segment vpp created */
-      if (fifo_segment_attach (sm, a))
-	{
-	  ECHO_FAIL (ECHO_FAIL_VL_API_FIFO_SEG_ATTACH,
-		     "fifo_segment_attach ('%s') failed", seg_name);
-	  goto failed;
-	}
-    }
-  echo_segment_handle_add_del (em, segment_handle, 1 /* add */ );
-  ECHO_LOG (2, "Mapped segment 0x%lx", segment_handle);
-  return;
-
-failed:
-  for (i = 0; i < vec_len (fds); i++)
-    close (fds[i]);
-  vec_free (fds);
-}
-
 #define foreach_quic_echo_msg                                    \
 _(APP_ATTACH_REPLY, app_attach_reply)                            \
 _(APPLICATION_DETACH_REPLY, application_detach_reply)            \
-_(MAP_ANOTHER_SEGMENT, map_another_segment)                      \
 _(APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)      \
-_(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)      \
-_(UNMAP_SEGMENT, unmap_segment)
+_(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)
 
 void
 echo_api_hookup (echo_main_t * em)

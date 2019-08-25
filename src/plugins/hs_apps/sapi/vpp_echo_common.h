@@ -434,6 +434,9 @@ void echo_notify_event (echo_main_t * em, echo_test_evt_t e);
 void echo_session_print_stats (echo_main_t * em, echo_session_t * session);
 u8 *echo_format_crypto_engine (u8 * s, va_list * args);
 uword echo_unformat_crypto_engine (unformat_input_t * input, va_list * args);
+int echo_ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd);
+void echo_segment_handle_add_del (echo_main_t * em, u64 segment_handle,
+				  u8 add);
 
 /* Binary API */
 
