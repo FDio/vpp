@@ -525,7 +525,8 @@ int
 app_worker_add_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
 {
   application_t *app = application_get (app_wrk->app_index);
-  return app->cb_fns.add_segment_callback (app_wrk->api_client_index,
+
+  return app->cb_fns.add_segment_callback (app_wrk->wrk_index,
 					   segment_handle);
 }
 
@@ -533,7 +534,7 @@ int
 app_worker_del_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
 {
   application_t *app = application_get (app_wrk->app_index);
-  return app->cb_fns.del_segment_callback (app_wrk->api_client_index,
+  return app->cb_fns.del_segment_callback (app_wrk->wrk_index,
 					   segment_handle);
 }
 

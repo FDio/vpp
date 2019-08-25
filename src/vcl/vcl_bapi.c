@@ -61,46 +61,6 @@ static void
     vcm->app_state = STATE_APP_ENABLED;
 }
 
-static int
-vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
-		    int fd)
-{
-  fifo_segment_create_args_t _a, *a = &_a;
-  int rv;
-
-  memset (a, 0, sizeof (*a));
-  a->segment_name = (char *) name;
-  a->segment_type = type;
-
-  if (type == SSVM_SEGMENT_MEMFD)
-    a->memfd_fd = fd;
-
-  if ((rv = fifo_segment_attach (&vcm->segment_main, a)))
-    {
-      clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
-      return rv;
-    }
-  vcl_segment_table_add (segment_handle, a->new_segment_indices[0]);
-  vec_reset_length (a->new_segment_indices);
-  return 0;
-}
-
-static void
-vcl_segment_detach (u64 segment_handle)
-{
-  fifo_segment_main_t *sm = &vcm->segment_main;
-  fifo_segment_t *segment;
-  u32 segment_index;
-
-  segment_index = vcl_segment_table_lookup (segment_handle);
-  if (segment_index == (u32) ~ 0)
-    return;
-  segment = fifo_segment_get_segment (sm, segment_index);
-  fifo_segment_delete (sm, segment);
-  vcl_segment_table_del (segment_handle);
-  VDBG (0, "detached segment %u handle %u", segment_index, segment_handle);
-}
-
 static u64
 vcl_vpp_worker_segment_handle (u32 wrk_index)
 {
@@ -258,46 +218,6 @@ failed:
 }
 
 static void
-vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
-{
-  ssvm_segment_type_t seg_type = SSVM_SEGMENT_SHM;
-  u64 segment_handle;
-  int fd = -1;
-
-  if (mp->fd_flags)
-    {
-      vl_socket_client_recv_fd_msg (&fd, 1, 5);
-      seg_type = SSVM_SEGMENT_MEMFD;
-    }
-
-  segment_handle = clib_net_to_host_u64 (mp->segment_handle);
-  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
-    {
-      clib_warning ("invalid segment handle");
-      return;
-    }
-
-  if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
-			  seg_type, fd))
-    {
-      clib_warning ("VCL<%d>: svm_fifo_segment_attach ('%s') failed",
-		    getpid (), mp->segment_name);
-      return;
-    }
-
-  VDBG (1, "VCL<%d>: mapped new segment '%s' size %d", getpid (),
-	mp->segment_name, mp->segment_size);
-}
-
-static void
-vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
-{
-  u64 segment_handle = clib_net_to_host_u64 (mp->segment_handle);
-  vcl_segment_detach (segment_handle);
-  VDBG (1, "Unmapped segment: %d", segment_handle);
-}
-
-static void
   vl_api_application_tls_cert_add_reply_t_handler
   (vl_api_application_tls_cert_add_reply_t * mp)
 {
@@ -320,8 +240,6 @@ _(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   	\
 _(APP_ATTACH_REPLY, app_attach_reply)           			\
 _(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
 _(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
-_(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
-_(UNMAP_SEGMENT, unmap_segment)						\
 _(APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)			\
 
 void
