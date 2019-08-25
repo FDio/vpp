@@ -22,6 +22,30 @@
       "revId": "6b15b02c2e126ad2b225d52eed4ea8af241aa09b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7dfcc77b_d34b0a1d",
+        "filename": "src/plugins/tlsopenssl/tls_openssl_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-08-25T15:01:22Z",
+      "side": 1,
+      "message": "in this case, I might stick to the previous version as the format is used in ike2 API already.",
+      "parentUuid": "732056e4_4235cffc",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 20
+      },
+      "revId": "6b15b02c2e126ad2b225d52eed4ea8af241aa09b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
