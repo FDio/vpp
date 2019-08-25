@@ -22,6 +22,30 @@
       "revId": "99b670e41a682dcc62e53b463101ad1708ab342f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "49b09b64_4df82586",
+        "filename": "src/plugins/tlsopenssl/tls_openssl_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-08-25T15:01:22Z",
+      "side": 1,
+      "message": "This code just refers from the code in ikev2.api.",
+      "parentUuid": "a6fcce28_f20bb8ed",
+      "range": {
+        "startLine": 72,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 17
+      },
+      "revId": "99b670e41a682dcc62e53b463101ad1708ab342f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
