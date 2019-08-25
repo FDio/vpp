@@ -96,7 +96,7 @@ gbp_classify_get_gpd (const ip4_address_t * ip4, const ip6_address_t * ip6,
   if (ip4)
     lbi = ip4_fib_forwarding_lookup (fib_index, ip4);
   else if (ip6)
-    lbi = ip6_fib_table_fwding_lookup (&ip6_main, fib_index, ip6);
+    lbi = ip6_fib_table_fwding_lookup (fib_index, ip6);
   else
     return 0;
 

@@ -1140,7 +1140,7 @@ ip6_urpf_loose_check (ip6_main_t * im, vlib_buffer_t * b, ip6_header_t * i)
     (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
     fib_index : vnet_buffer (b)->sw_if_index[VLIB_TX];
 
-  lbi = ip6_fib_table_fwding_lookup (im, fib_index, &i->src_address);
+  lbi = ip6_fib_table_fwding_lookup (fib_index, &i->src_address);
   lb0 = load_balance_get (lbi);
 
   return (fib_urpf_check_size (lb0->lb_urpf));
