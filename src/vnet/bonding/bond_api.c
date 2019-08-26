@@ -23,6 +23,7 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -77,12 +78,12 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
 
   if (mp->use_custom_mac)
     {
-      clib_memcpy (ap->hw_addr, mp->mac_address, 6);
+      mac_address_decode (mp->mac_address, (mac_address_t *) ap->hw_addr);
       ap->hw_addr_set = 1;
     }
 
-  ap->mode = mp->mode;
-  ap->lb = mp->lb;
+  ap->mode = ntohl (mp->mode);
+  ap->lb = ntohl (mp->lb);
   ap->numa_only = mp->numa_only;
   bond_create_if (vm, ap);
 
@@ -139,20 +140,21 @@ bond_send_sw_interface_details (vpe_api_main_t * am,
 				u32 context)
 {
   vl_api_sw_interface_bond_details_t *mp;
+  u32 name_len = strlen ((char *) bond_if->interface_name);
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  mp = vl_msg_api_alloc (sizeof (*mp) + name_len);
+  clib_memset (mp, 0, sizeof (*mp) + name_len);
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_BOND_DETAILS);
   mp->sw_if_index = htonl (bond_if->sw_if_index);
   mp->id = htonl (bond_if->id);
-  clib_memcpy (mp->interface_name, bond_if->interface_name,
-	       MIN (ARRAY_LEN (mp->interface_name) - 1,
-		    strlen ((const char *) bond_if->interface_name)));
-  mp->mode = bond_if->mode;
-  mp->lb = bond_if->lb;
+  mp->mode = htonl (bond_if->mode);
+  mp->lb = htonl (bond_if->lb);
   mp->numa_only = bond_if->numa_only;
   mp->active_slaves = htonl (bond_if->active_slaves);
   mp->slaves = htonl (bond_if->slaves);
+
+  vl_api_to_api_string (name_len, (char *) bond_if->interface_name,
+			&mp->interface_name);
 
   mp->context = context;
   vl_api_send_msg (reg, (u8 *) mp);
@@ -191,15 +193,15 @@ bond_send_sw_interface_slave_details (vpe_api_main_t * am,
 {
   vl_api_sw_interface_slave_details_t *mp;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  u32 name_len = strlen ((const char *) slave_if->interface_name);
+  mp = vl_msg_api_alloc (sizeof (*mp) + name_len);
+  clib_memset (mp, 0, sizeof (*mp) + name_len);
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_SLAVE_DETAILS);
   mp->sw_if_index = htonl (slave_if->sw_if_index);
-  clib_memcpy (mp->interface_name, slave_if->interface_name,
-	       MIN (ARRAY_LEN (mp->interface_name) - 1,
-		    strlen ((const char *) slave_if->interface_name)));
   mp->is_passive = slave_if->is_passive;
   mp->is_long_timeout = slave_if->is_long_timeout;
+  vl_api_to_api_string (name_len, (char *) slave_if->interface_name,
+			&mp->interface_name);
 
   mp->context = context;
   vl_api_send_msg (reg, (u8 *) mp);
