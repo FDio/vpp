@@ -2169,6 +2169,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
   u8 *filename = 0;
   u32 max = 1000;
   int enabled = 0;
+  int disabled = 0;
   int is_error = 0;
   clib_error_t *error = 0;
   u32 node_index, add;
@@ -2211,6 +2212,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 		  else
 		    vlib_cli_output (vm, "saved to %s...", pm->file_name);
 		}
+	      disabled = 0;
 	      vm->dispatch_pcap_enable = 0;
 	    }
 	  else
@@ -2293,12 +2295,14 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 
   if (is_error == 0)
     {
-      /* Clean up from previous run */
-      vec_free (pm->file_name);
-      vec_free (pm->pcap_data);
+      if (disabled)
+	{
+	  /* Clean up from previous run */
+	  vec_free (pm->file_name);
+	  vec_free (pm->pcap_data);
 
-      memset (pm, 0, sizeof (*pm));
-      pm->n_packets_to_capture = max;
+	  memset (pm, 0, sizeof (*pm));
+	}
 
       if (enabled)
 	{
@@ -2310,6 +2314,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	  pm->packet_type = PCAP_PACKET_TYPE_vpp;
 	  if (pm->lock == 0)
 	    clib_spinlock_init (&(pm->lock));
+	  pm->n_packets_to_capture = max;
 	  vm->dispatch_pcap_enable = 1;
 	  vlib_cli_output (vm, "pcap dispatch capture on...");
 	}
