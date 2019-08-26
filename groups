@@ -3,5 +3,4 @@
 1b0d08159b442fd162f25583dd2ec2868f8a6531                            	GitHub Replication
 9636bfbb05e221edd58cd9215d5bfa1ad071fcc5                            	vppmaintainerplugin-permissions
 global:Change-Owner                                                 	Change Owner
-global:Project-Owners                                               	Project Owners
 ldap:cn=fdio-gerrit-vpp-committers,ou=Groups,dc=freestandards,dc=org	ldap/fdio-gerrit-vpp-committers
