@@ -629,7 +629,8 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
 
   imi->vecmap[0].vector_id = 1;
   imi->vecmap[0].vsi_id = ad->vsi_id;
-  imi->vecmap[0].rxq_map = 1;
+  imi->vecmap[0].rxq_map = (1 << ad->n_rx_queues) - 1;
+  imi->vecmap[0].txq_map = (1 << ad->n_tx_queues) - 1;
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_IRQ_MAP, msg, msg_len, 0,
 			 0);
 }
