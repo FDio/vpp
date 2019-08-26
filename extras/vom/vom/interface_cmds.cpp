@@ -102,9 +102,8 @@ af_packet_create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
 
   payload.use_random_hw_addr = 1;
-  memset(payload.host_if_name, 0, sizeof(payload.host_if_name));
-  memcpy(payload.host_if_name, m_name.c_str(),
-         std::min(m_name.length(), sizeof(payload.host_if_name)));
+  payload.host_if_name.length = m_name.length();
+  memcpy(payload.host_if_name.buf, m_name.c_str(), payload.host_if_name.length);
 
   VAPI_CALL(req.execute());
 
@@ -247,9 +246,8 @@ af_packet_delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  memset(payload.host_if_name, 0, sizeof(payload.host_if_name));
-  memcpy(payload.host_if_name, m_name.c_str(),
-         std::min(m_name.length(), sizeof(payload.host_if_name)));
+  payload.host_if_name.length = m_name.length();
+  memcpy(payload.host_if_name.buf, m_name.c_str(), payload.host_if_name.length);
 
   VAPI_CALL(req.execute());
 

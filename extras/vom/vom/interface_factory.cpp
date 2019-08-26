@@ -153,7 +153,7 @@ interface_factory::new_af_packet_interface(
   const vapi_payload_af_packet_details& vd)
 {
   std::shared_ptr<interface> sp;
-  std::string name = reinterpret_cast<const char*>(vd.host_if_name);
+  std::string name = reinterpret_cast<const char*>(vd.host_if_name.buf);
   handle_t hdl(vd.sw_if_index);
 
   sp =
