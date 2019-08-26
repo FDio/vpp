@@ -43,11 +43,11 @@ create_cmd::issue(connection& con)
     payload.use_custom_mac = 1;
   }
 
-  payload.mode = m_mode.value();
+  payload.mode = (vapi_enum_bond_mode)m_mode.value();
   if ((m_mode == bond_interface::mode_t::XOR ||
        m_mode == bond_interface::mode_t::LACP) &&
       m_lb != bond_interface::lb_t::UNSPECIFIED)
-    payload.lb = m_lb.value();
+    payload.lb = (vapi_enum_bond_lb_algo)m_lb.value();
 
   VAPI_CALL(req.execute());
 
