@@ -235,6 +235,7 @@ ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask)
     }
   else
     {
+      mask->as_u64[0] = 0xffffffffffffffffL;
       mask->as_u64[1] =
 	clib_host_to_net_u64 (0xffffffffffffffffL << (128 - pref_len));
     }
