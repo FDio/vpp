@@ -28,8 +28,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
   , m_mode(mode)
   , m_lb(lb)
   , m_l2_address(l2_address)
-{
-}
+{}
 
 rc_t
 create_cmd::issue(connection& con)
@@ -43,11 +42,11 @@ create_cmd::issue(connection& con)
     payload.use_custom_mac = 1;
   }
 
-  payload.mode = m_mode.value();
+  payload.mode = (vapi_enum_bond_mode)m_mode.value();
   if ((m_mode == bond_interface::mode_t::XOR ||
        m_mode == bond_interface::mode_t::LACP) &&
       m_lb != bond_interface::lb_t::UNSPECIFIED)
-    payload.lb = m_lb.value();
+    payload.lb = (vapi_enum_bond_lb_algo)m_lb.value();
 
   VAPI_CALL(req.execute());
 
@@ -71,8 +70,7 @@ create_cmd::to_string() const
 
 delete_cmd::delete_cmd(HW::item<handle_t>& item)
   : interface::delete_cmd<vapi::Bond_delete>(item)
-{
-}
+{}
 
 rc_t
 delete_cmd::issue(connection& con)
@@ -100,9 +98,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

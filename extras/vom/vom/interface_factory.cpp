@@ -116,8 +116,8 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
      * sw_if_index
      */
   } else if (interface::type_t::BOND == type) {
-    sp = bond_interface(name, state, l2_address,
-                        bond_interface::mode_t::UNSPECIFIED)
+    sp = bond_interface(
+           name, state, l2_address, bond_interface::mode_t::UNSPECIFIED)
            .singular();
   } else {
     sp = interface(name, type, state, tag).singular();
@@ -194,7 +194,7 @@ interface_factory::new_bond_interface(
   const vapi_payload_sw_interface_bond_details& vd)
 {
   std::shared_ptr<bond_interface> sp;
-  std::string name = reinterpret_cast<const char*>(vd.interface_name);
+  std::string name = reinterpret_cast<const char*>(vd.interface_name.buf);
   handle_t hdl(vd.sw_if_index);
   bond_interface::mode_t mode =
     bond_interface::mode_t::from_numeric_val(vd.mode);
@@ -212,7 +212,7 @@ interface_factory::new_bond_member_interface(
   const vapi_payload_sw_interface_slave_details& vd)
 {
   std::shared_ptr<bond_member> sp;
-  std::string name = reinterpret_cast<const char*>(vd.interface_name);
+  std::string name = reinterpret_cast<const char*>(vd.interface_name.buf);
   handle_t hdl(vd.sw_if_index);
   bond_member::mode_t mode =
     bond_member::mode_t::from_numeric_val(vd.is_passive);
