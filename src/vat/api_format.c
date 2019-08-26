@@ -18196,7 +18196,7 @@ api_af_packet_create (vat_main_t * vam)
 
   M (AF_PACKET_CREATE, mp);
 
-  clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
+  vl_api_to_api_string (vec_len (host_if_name), (char *) host_if_name, &mp->host_if_name);
   clib_memcpy (mp->hw_addr, hw_addr, 6);
   mp->use_random_hw_addr = random_hw_addr;
   vec_free (host_if_name);
@@ -18244,7 +18244,7 @@ api_af_packet_delete (vat_main_t * vam)
 
   M (AF_PACKET_DELETE, mp);
 
-  clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
+  vl_api_to_api_string (vec_len (host_if_name), (char * ) host_if_name, &mp->host_if_name);
   vec_free (host_if_name);
 
   S (mp);
@@ -18276,7 +18276,7 @@ static void vl_api_af_packet_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  vat_json_object_add_string_copy (node, "dev_name", mp->host_if_name);
+  vat_json_object_add_string_copy (node, "dev_name", mp->host_if_name.buf);
 }
 
 static int

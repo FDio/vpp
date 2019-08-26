@@ -57,8 +57,7 @@ vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
   u8 *host_if_name = NULL;
   u32 sw_if_index;
 
-  host_if_name = format (0, "%s", mp->host_if_name);
-  vec_add1 (host_if_name, 0);
+  host_if_name = format (0, "%s", vl_api_from_api_string (&mp->host_if_name));
 
   rv = af_packet_create_if (vm, host_if_name,
 			    mp->use_random_hw_addr ? 0 : mp->hw_addr,
@@ -82,8 +81,7 @@ vl_api_af_packet_delete_t_handler (vl_api_af_packet_delete_t * mp)
   int rv = 0;
   u8 *host_if_name = NULL;
 
-  host_if_name = format (0, "%s", mp->host_if_name);
-  vec_add1 (host_if_name, 0);
+  host_if_name = format (0, "%s", vl_api_from_api_string (&mp->host_if_name));
 
   rv = af_packet_delete_if (vm, host_if_name);
 
@@ -100,7 +98,7 @@ static void
   vl_api_af_packet_delete_reply_t *rmp;
   int rv = 0;
 
-  rv = af_packet_set_l4_cksum_offload (vm, mp->sw_if_index, mp->set);
+  rv = af_packet_set_l4_cksum_offload (vm, ntohl (mp->sw_if_index), mp->set);
   REPLY_MACRO (VL_API_AF_PACKET_SET_L4_CKSUM_OFFLOAD_REPLY);
 }
 
@@ -110,13 +108,12 @@ af_packet_send_details (vpe_api_main_t * am,
 			af_packet_if_detail_t * af_packet_if, u32 context)
 {
   vl_api_af_packet_details_t *mp;
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  u32 name_len = strlen ((const char *) af_packet_if->host_if_name);
+  mp = vl_msg_api_alloc (sizeof (*mp) + name_len);
+  clib_memset (mp, 0, sizeof (*mp) + name_len);
   mp->_vl_msg_id = htons (VL_API_AF_PACKET_DETAILS);
   mp->sw_if_index = htonl (af_packet_if->sw_if_index);
-  clib_memcpy (mp->host_if_name, af_packet_if->host_if_name,
-	       MIN (ARRAY_LEN (mp->host_if_name) - 1,
-		    strlen ((const char *) af_packet_if->host_if_name)));
+  vl_api_to_api_string (name_len, (char *) af_packet_if->host_if_name, &mp->host_if_name);
 
   mp->context = context;
   vl_api_send_msg (reg, (u8 *) mp);
