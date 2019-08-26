@@ -408,6 +408,34 @@ validate_and_reset_acl_counters (acl_main_t * am, u32 acl_index)
 }
 
 static int
+acl_api_ip4_invalid_prefix (void *ip4_pref_raw, u8 ip4_prefix_len)
+{
+  ip4_address_t ip4_addr;
+  ip4_address_t ip4_mask;
+  ip4_address_t ip4_masked_addr;
+
+  memcpy (&ip4_addr, ip4_pref_raw, sizeof (ip4_addr));
+  ip4_preflen_to_mask (ip4_prefix_len, &ip4_mask);
+  ip4_masked_addr.as_u32 = ip4_addr.as_u32 & ip4_mask.as_u32;
+  return (ip4_masked_addr.as_u32 != ip4_addr.as_u32);
+}
+
+static int
+acl_api_ip6_invalid_prefix (void *ip6_pref_raw, u8 ip6_prefix_len)
+{
+  ip6_address_t ip6_addr;
+  ip6_address_t ip6_mask;
+  ip6_address_t ip6_masked_addr;
+
+  memcpy (&ip6_addr, ip6_pref_raw, sizeof (ip6_addr));
+  ip6_preflen_to_mask (ip6_prefix_len, &ip6_mask);
+  ip6_masked_addr.as_u64[0] = ip6_addr.as_u64[0] & ip6_mask.as_u64[0];
+  ip6_masked_addr.as_u64[1] = ip6_addr.as_u64[1] & ip6_mask.as_u64[1];
+  return (ip6_masked_addr.as_u64[0] != ip6_addr.as_u64[0]
+	  || ip6_masked_addr.as_u64[1] != ip6_addr.as_u64[1]);
+}
+
+static int
 acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	      u32 * acl_list_index, u8 * tag)
 {
@@ -420,6 +448,43 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   if (am->trace_acl > 255)
     clib_warning ("API dbg: acl_add_list index %d tag %s", *acl_list_index,
 		  tag);
+
+  /* check if what they request is consistent */
+  for (i = 0; i < count; i++)
+    {
+      if (rules[i].is_ipv6)
+	{
+	  if (rules[i].src_ip_prefix_len > 128)
+	    return VNET_API_ERROR_INVALID_VALUE;
+	  if (rules[i].dst_ip_prefix_len > 128)
+	    return VNET_API_ERROR_INVALID_VALUE;
+	  if (acl_api_ip6_invalid_prefix
+	      (&rules[i].src_ip_addr, rules[i].src_ip_prefix_len))
+	    return VNET_API_ERROR_INVALID_SRC_ADDRESS;
+	  if (acl_api_ip6_invalid_prefix
+	      (&rules[i].dst_ip_addr, rules[i].dst_ip_prefix_len))
+	    return VNET_API_ERROR_INVALID_DST_ADDRESS;
+	}
+      else
+	{
+	  if (rules[i].src_ip_prefix_len > 32)
+	    return VNET_API_ERROR_INVALID_VALUE;
+	  if (rules[i].dst_ip_prefix_len > 32)
+	    return VNET_API_ERROR_INVALID_VALUE;
+	  if (acl_api_ip4_invalid_prefix
+	      (&rules[i].src_ip_addr, rules[i].src_ip_prefix_len))
+	    return VNET_API_ERROR_INVALID_SRC_ADDRESS;
+	  if (acl_api_ip4_invalid_prefix
+	      (&rules[i].dst_ip_addr, rules[i].dst_ip_prefix_len))
+	    return VNET_API_ERROR_INVALID_DST_ADDRESS;
+	}
+      if (ntohs (rules[i].srcport_or_icmptype_first) >
+	  ntohs (rules[i].srcport_or_icmptype_last))
+	return VNET_API_ERROR_INVALID_VALUE_2;
+      if (ntohs (rules[i].dstport_or_icmpcode_first) >
+	  ntohs (rules[i].dstport_or_icmpcode_last))
+	return VNET_API_ERROR_INVALID_VALUE_2;
+    }
 
   if (*acl_list_index != ~0)
     {
