@@ -2039,8 +2039,8 @@ static void vl_api_sw_interface_bond_details_t_handler
   print (vam->ofp,
 	 "%-16s %-12d %-12U %-13U %-14u %-14u",
 	 mp->interface_name, ntohl (mp->sw_if_index),
-	 format_bond_mode, mp->mode, format_bond_load_balance, mp->lb,
-	 ntohl (mp->active_slaves), ntohl (mp->slaves));
+	 format_bond_mode, ntohl (mp->mode), format_bond_load_balance,
+	 ntohl (mp->lb), ntohl (mp->active_slaves), ntohl (mp->slaves));
 }
 
 static void vl_api_sw_interface_bond_details_t_handler_json
@@ -2059,9 +2059,9 @@ static void vl_api_sw_interface_bond_details_t_handler_json
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   vat_json_object_add_string_copy (node, "interface_name",
-				   mp->interface_name);
-  vat_json_object_add_uint (node, "mode", mp->mode);
-  vat_json_object_add_uint (node, "load_balance", mp->lb);
+				   mp->interface_name.buf);
+  vat_json_object_add_uint (node, "mode", ntohl (mp->mode));
+  vat_json_object_add_uint (node, "load_balance", ntohl (mp->lb));
   vat_json_object_add_uint (node, "active_slaves", ntohl (mp->active_slaves));
   vat_json_object_add_uint (node, "slaves", ntohl (mp->slaves));
 }
@@ -2116,7 +2116,7 @@ static void vl_api_sw_interface_slave_details_t_handler_json
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   vat_json_object_add_string_copy (node, "interface_name",
-				   mp->interface_name);
+				   mp->interface_name.buf);
   vat_json_object_add_uint (node, "passive", mp->is_passive);
   vat_json_object_add_uint (node, "long_timeout", mp->is_long_timeout);
 }
@@ -7726,8 +7726,8 @@ api_bond_create (vat_main_t * vam)
 
   mp->use_custom_mac = custom_mac;
 
-  mp->mode = mode;
-  mp->lb = lb;
+  mp->mode = htonl (mode);
+  mp->lb = htonl (lb);
   mp->id = htonl (id);
   mp->numa_only = numa_only;
 
