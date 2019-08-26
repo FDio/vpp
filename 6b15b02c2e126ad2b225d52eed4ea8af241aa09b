@@ -46,6 +46,30 @@
       "revId": "6b15b02c2e126ad2b225d52eed4ea8af241aa09b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cacb7999_846abb44",
+        "filename": "src/plugins/tlsopenssl/tls_openssl_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-08-26T22:41:33Z",
+      "side": 1,
+      "message": "Which is? format (0, \"%s\", mp-\u003emsg\")? Underneath format uses strlen on the argument, so if that argument is not a string, it won\u0027t work. \n\nSo if you really want to sanitize your data, either 1) force the last entry in the vector to 0, and then you can safely (char *) cast it or 2) pass the length of the string as an argument and then you can create e new vector by memcpy length out of the mp array and optionally 0 terminate it as well.",
+      "parentUuid": "7dfcc77b_d34b0a1d",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 20
+      },
+      "revId": "6b15b02c2e126ad2b225d52eed4ea8af241aa09b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
