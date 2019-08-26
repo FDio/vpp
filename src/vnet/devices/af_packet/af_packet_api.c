@@ -100,7 +100,7 @@ static void
   vl_api_af_packet_delete_reply_t *rmp;
   int rv = 0;
 
-  rv = af_packet_set_l4_cksum_offload (vm, mp->sw_if_index, mp->set);
+  rv = af_packet_set_l4_cksum_offload (vm, ntohl (mp->sw_if_index), mp->set);
   REPLY_MACRO (VL_API_AF_PACKET_SET_L4_CKSUM_OFFLOAD_REPLY);
 }
 
