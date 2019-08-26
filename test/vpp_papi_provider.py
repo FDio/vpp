@@ -33,6 +33,7 @@ defaultmapping = {
     'bier_imp_add': {'is_add': 1, },
     'bier_route_add_del': {'is_add': 1, },
     'bier_table_add_del': {'is_add': 1, },
+    'bond_create': {'mac_address': '', 'id': 0xFFFFFFFF},
     'bridge_domain_add_del': {'flood': 1, 'uu_flood': 1, 'forward': 1,
                               'learn': 1, 'is_add': 1, },
     'bvi_create': {'user_instance': 4294967295, },
