@@ -344,13 +344,14 @@ VLIB_CLI_COMMAND (ipsec_policy_add_del_command, static) = {
 /* *INDENT-ON* */
 
 static void
-ipsec_sa_show_all (vlib_main_t * vm, ipsec_main_t * im)
+ipsec_sa_show_all (vlib_main_t * vm, ipsec_main_t * im, u8 detail)
 {
   u32 sai;
 
   /* *INDENT-OFF* */
   pool_foreach_index (sai, im->sad, ({
-    vlib_cli_output(vm, "%U", format_ipsec_sa, sai, IPSEC_FORMAT_BRIEF);
+    vlib_cli_output(vm, "%U", format_ipsec_sa, sai,
+                    (detail ? IPSEC_FORMAT_DETAIL : IPSEC_FORMAT_BRIEF));
   }));
   /* *INDENT-ON* */
 }
@@ -404,7 +405,7 @@ show_ipsec_command_fn (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  ipsec_sa_show_all (vm, im);
+  ipsec_sa_show_all (vm, im, 0);
   ipsec_spd_show_all (vm, im);
   ipsec_spd_bindings_show_all (vm, im);
   ipsec_tunnel_show_all (vm, im);
@@ -426,17 +427,20 @@ show_ipsec_sa_command_fn (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
   u32 sai = ~0;
+  u8 detail = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "%u", &sai))
 	;
+      if (unformat (input, "detail"))
+	detail = 1;
       else
 	break;
     }
 
   if (~0 == sai)
-    ipsec_sa_show_all (vm, im);
+    ipsec_sa_show_all (vm, im, detail);
   else
     vlib_cli_output (vm, "%U", format_ipsec_sa, sai, IPSEC_FORMAT_DETAIL);
 
