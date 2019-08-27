@@ -676,7 +676,7 @@ typedef enum vnet_sw_interface_flags_t_
 
   VNET_SW_INTERFACE_FLAG_UNNUMBERED = (1 << 3),
 
-  VNET_SW_INTERFACE_FLAG_BOND_SLAVE = (1 << 4),
+  __VNET_SW_INTERFACE_FLAG_UNUSED2 = (1 << 4),
 
   /* Interface does not appear in CLI/API */
   VNET_SW_INTERFACE_FLAG_HIDDEN = (1 << 5),
