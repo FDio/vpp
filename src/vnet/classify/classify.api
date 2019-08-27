@@ -13,14 +13,16 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
+
+import "vnet/interface_types.api";
 
 /** \brief Add/Delete classification table request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add- if non-zero add the table, else delete it
     @param del_chain - if non-zero delete the whole chain of tables
-    @param table_index - if add, reuturns index of the created table, else specifies the table to delete  
+    @param table_index - if add, reuturns index of the created table, else specifies the table to delete
     @param nbuckets - number of buckets when adding a table
     @param memory_size - memory size when adding a table
     @param match_n_vectors - number of match vectors
@@ -44,17 +46,17 @@ define classify_add_del_table
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 del_chain;
-  u32 table_index;
-  u32 nbuckets;
-  u32 memory_size;
-  u32 skip_n_vectors;
-  u32 match_n_vectors;
-  u32 next_table_index;
-  u32 miss_next_index;
-  u32 current_data_flag;
-  i32 current_data_offset;
+  bool is_add;
+  bool del_chain;
+  u32 table_index [default=0xffffffff];
+  u32 nbuckets [default=2];
+  u32 memory_size [default=2097152];
+  u32 skip_n_vectors [default=0];
+  u32 match_n_vectors [default=1];
+  u32 next_table_index [default=0xffffffff];
+  u32 miss_next_index [default=0xffffffff];
+  u32 current_data_flag [default=0];
+  i32 current_data_offset [default=0];
   u32 mask_len;
   u8 mask[mask_len];
 };
@@ -73,6 +75,14 @@ define classify_add_del_table_reply
   u32 new_table_index;
   u32 skip_n_vectors;
   u32 match_n_vectors;
+};
+
+enum classify_action : u8
+{
+  CLASSIFY_API_ACTION_NONE = 0,
+  CLASSIFY_API_ACTION_SET_IP4_FIB_INDEX = 1,
+  CLASSIFY_API_ACTION_SET_IP6_FIB_INDEX = 2,
+  CLASSIFY_API_ACTION_SET_METADATA = 3,
 };
 
 /** \brief Classify add / del session request
@@ -110,13 +120,13 @@ autoreply define classify_add_del_session
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   u32 table_index;
-  u32 hit_next_index;
-  u32 opaque_index;
-  i32 advance;
-  u8 action;
-  u32 metadata;
+  u32 hit_next_index [default=0xffffffff];
+  u32 opaque_index [default=0xffffffff];
+  i32 advance [default=0];
+  vl_api_classify_action_t action [default=0];
+  u32 metadata [default=0];
   u32 match_len;
   u8 match[match_len];
 };
@@ -136,23 +146,33 @@ autoreply define policer_classify_set_interface
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 ip4_table_index;
   u32 ip6_table_index;
   u32 l2_table_index;
-  u8 is_add;
+  bool is_add;
 };
+
+enum policer_classify_table : u8
+{
+  POLICER_CLASSIFY_API_TABLE_IP4,
+  POLICER_CLASSIFY_API_TABLE_IP6,
+  POLICER_CLASSIFY_API_TABLE_L2,
+};
+
 
 /** \brief Get list of policer classify interfaces and tables
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param type - classify table type
+    @param sw_if_index - filter on sw_if_index
 */
 define policer_classify_dump
 {
   u32 client_index;
   u32 context;
-  u8 type;
+  vl_api_policer_classify_table_t type;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 /** \brief Policer iclassify operational state response.
@@ -163,7 +183,7 @@ define policer_classify_dump
 define policer_classify_details
 {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 table_index;
 };
 
@@ -199,7 +219,7 @@ define classify_table_by_interface
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Reply for classify table id by interface index request
@@ -214,7 +234,7 @@ define classify_table_by_interface_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 l2_table_id;
   u32 ip4_table_id;
   u32 ip6_table_id;
@@ -306,21 +326,29 @@ define classify_session_details
 autoreply define flow_classify_set_interface {
     u32 client_index;
     u32 context;
-    u32 sw_if_index;
+    vl_api_interface_index_t sw_if_index;
     u32 ip4_table_index;
     u32 ip6_table_index;
-    u8  is_add;
+    bool is_add;
+};
+
+enum flow_classify_table : u8
+{
+  FLOW_CLASSIFY_API_TABLE_IP4,
+  FLOW_CLASSIFY_API_TABLE_IP6,
 };
 
 /** \brief Get list of flow classify interfaces and tables
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param type - classify table type
+    @param type - flow classify table type
+    @param sw_if_index - filter on sw_if_index
 */
 define flow_classify_dump {
     u32 client_index;
     u32 context;
-    u8 type;
+    vl_api_flow_classify_table_t type;
+    vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
 /** \brief Flow classify operational state response.
@@ -330,11 +358,11 @@ define flow_classify_dump {
 */
 define flow_classify_details {
     u32 context;
-    u32 sw_if_index;
+    vl_api_interface_index_t sw_if_index;
     u32 table_index;
 };
 
-/** \brief Set/unset the classification table for an interface request 
+/** \brief Set/unset the classification table for an interface request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_ipv6 - ipv6 if non-zero, else ipv4
@@ -345,8 +373,8 @@ autoreply define classify_set_interface_ip_table
 {
   u32 client_index;
   u32 context;
-  u8 is_ipv6;
-  u32 sw_if_index;
+  bool is_ipv6;
+  vl_api_interface_index_t sw_if_index;
   u32 table_index;		/* ~0 => off */
 };
 
@@ -362,12 +390,12 @@ autoreply define classify_set_interface_l2_tables
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   /* 3 x ~0 => off */
   u32 ip4_table_index;
   u32 ip6_table_index;
   u32 other_table_index;
-  u8 is_input;
+  bool is_input;
 };
 
 /** \brief Set/unset input ACL interface
@@ -385,11 +413,11 @@ autoreply define input_acl_set_interface
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 ip4_table_index;
   u32 ip6_table_index;
   u32 l2_table_index;
-  u8 is_add;
+  bool is_add;
 };
 
 /** \brief Set/unset output ACL interface
@@ -407,11 +435,11 @@ autoreply define output_acl_set_interface
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 ip4_table_index;
   u32 ip6_table_index;
   u32 l2_table_index;
-  u8 is_add;
+  bool is_add;
 };
 
 /*
@@ -419,4 +447,3 @@ autoreply define output_acl_set_interface
  * eval: (c-set-style "gnu")
  * End:
  */
- 
