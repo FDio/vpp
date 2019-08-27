@@ -76,19 +76,6 @@ tcp_window_compute_scale (u32 window)
 }
 
 /**
- * Update max segment size we're able to process.
- *
- * The value is constrained by our interface's MTU and IP options. It is
- * also what we advertise to our peer.
- */
-void
-tcp_update_rcv_mss (tcp_connection_t * tc)
-{
-  /* TODO find our iface MTU */
-  tc->mss = tcp_cfg.default_mtu - sizeof (tcp_header_t);
-}
-
-/**
  * TCP's initial window
  */
 always_inline u32
@@ -263,16 +250,16 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
 }
 
 static int
-tcp_make_syn_options (tcp_options_t * opts, u8 wnd_scale)
+tcp_make_syn_options (tcp_connection_t * tc, tcp_options_t * opts)
 {
   u8 len = 0;
 
   opts->flags |= TCP_OPTS_FLAG_MSS;
-  opts->mss = tcp_cfg.default_mtu;	/*XXX discover that */
+  opts->mss = tc->mss;
   len += TCP_OPTION_LEN_MSS;
 
   opts->flags |= TCP_OPTS_FLAG_WSCALE;
-  opts->wscale = wnd_scale;
+  opts->wscale = tc->rcv_wscale;
   len += TCP_OPTION_LEN_WINDOW_SCALE;
 
   opts->flags |= TCP_OPTS_FLAG_TSTAMP;
@@ -379,7 +366,7 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
     case TCP_STATE_SYN_RCVD:
       return tcp_make_synack_options (tc, opts);
     case TCP_STATE_SYN_SENT:
-      return tcp_make_syn_options (opts, tc->rcv_wscale);
+      return tcp_make_syn_options (tc, opts);
     default:
       clib_warning ("State not handled! %d", state);
       return 0;
@@ -422,29 +409,6 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
     tcp_cc_event (tc, TCP_CC_EVT_START_TX);
 }
 
-void
-tcp_init_mss (tcp_connection_t * tc)
-{
-  u16 default_min_mss = 536;
-  tcp_update_rcv_mss (tc);
-
-  /* TODO cache mss and consider PMTU discovery */
-  tc->snd_mss = clib_min (tc->rcv_opts.mss, tc->mss);
-
-  if (tc->snd_mss < 45)
-    {
-      /* Assume that at least the min default mss works */
-      tc->snd_mss = default_min_mss;
-      tc->rcv_opts.mss = default_min_mss;
-    }
-
-  /* We should have enough space for 40 bytes of options */
-  ASSERT (tc->snd_mss > 45);
-
-  /* If we use timestamp option, account for it */
-  if (tcp_opts_tstamp (&tc->rcv_opts))
-    tc->snd_mss -= TCP_OPTION_LEN_TIMESTAMP;
-}
 #endif /* CLIB_MARCH_VARIANT */
 
 static void *
@@ -542,7 +506,7 @@ tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
 
   /* Make and write options */
   clib_memset (&snd_opts, 0, sizeof (snd_opts));
-  tcp_opts_len = tcp_make_syn_options (&snd_opts, tc->rcv_wscale);
+  tcp_opts_len = tcp_make_syn_options (tc, &snd_opts);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->iss,
