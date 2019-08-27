@@ -211,7 +211,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   q = regp->vl_input_queue = (svm_queue_t *) (uword) mp->input_queue;
 
-  regp->name = vl_api_from_api_to_vec (&mp->name);
+  regp->name = format (0, "%s", mp->name);
   vec_add1 (regp->name, 0);
 
   if (am->serialized_message_table_in_shmem == 0)

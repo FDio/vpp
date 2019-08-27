@@ -167,9 +167,48 @@ class Message(object):
             else:
                 field_type = json_parser.lookup_type_like_id(field[0])
                 logger.debug("Parsing message field `%s'" % field)
-                f = parse_field(field_class, fields, field, field_type)
-                logger.debug("Parsed field `%s'" % f)
-                fields.append(f)
+                l = len(field)
+                if any(type(n) is dict for n in field):
+                    l -= 1
+                if l == 2:
+                    if self.header is not None and\
+                            self.header.has_field(field[1]):
+                        continue
+                    p = field_class(field_name=field[1],
+                                    field_type=field_type)
+                elif l == 3:
+                    if field[2] == 0:
+                        raise ParseError(
+                            "While parsing message `%s': variable length "
+                            "array `%s' doesn't have reference to member "
+                            "containing the actual length" % (
+                                name, field[1]))
+                    p = field_class(
+                        field_name=field[1],
+                        field_type=field_type,
+                        array_len=field[2])
+                elif l == 4:
+                    nelem_field = None
+                    for f in fields:
+                        if f.name == field[3]:
+                            nelem_field = f
+                    if nelem_field is None:
+                        raise ParseError(
+                            "While parsing message `%s': couldn't find "
+                            "variable length array `%s' member containing "
+                            "the actual length `%s'" % (
+                                name, field[1], field[3]))
+                    p = field_class(
+                        field_name=field[1],
+                        field_type=field_type,
+                        array_len=field[2],
+                        nelem_field=nelem_field)
+                else:
+                    raise Exception("Don't know how to parse message "
+                                    "definition for message `%s': `%s'" %
+                                    (m, m[1:]))
+                logger.debug("Parsed field `%s'" % p)
+                fields.append(p)
         self.fields = fields
         self.depends = [f.type for f in self.fields]
         logger.debug("Parsed message: %s" % self)
@@ -179,48 +218,6 @@ class Message(object):
             (self.name,
              "], [".join([str(f) for f in self.fields]),
              self.crc)
-
-
-def parse_field(field_class, fields, field, field_type):
-    l = len(field)
-    if l > 2:
-        if type(field[2]) is dict:
-            if "limit" in field[2]:
-                array_len = field[2]["limit"]
-            else:
-                l -= 1
-        else:
-            array_len = field[2]
-
-    if l == 2:
-        return field_class(field_name=field[1],
-                           field_type=field_type)
-    elif l == 3:
-        if field[2] == 0:
-            raise ParseError("While parsing type `%s': array `%s' has "
-                             "variable length" % (name, field[1]))
-        return field_class(field_name=field[1],
-                           field_type=field_type,
-                           array_len=array_len)
-    elif l == 4:
-        nelem_field = None
-        for f in fields:
-            if f.name == field[3]:
-                nelem_field = f
-        if nelem_field is None:
-            raise ParseError(
-                "While parsing message `%s': couldn't find "
-                "variable length array `%s' member containing "
-                "the actual length `%s'" % (
-                    name, field[1], field[3]))
-        return field_class(field_name=field[1],
-                           field_type=field_type,
-                           array_len=array_len,
-                           nelem_field=nelem_field)
-    else:
-        raise ParseError(
-            "Don't know how to parse field `%s' of type definition "
-            "for type `%s'" % (field, t))
 
 
 class StructType (Type, Struct):
@@ -236,8 +233,36 @@ class StructType (Type, Struct):
                 continue
             field_type = json_parser.lookup_type_like_id(field[0])
             logger.debug("Parsing type field `%s'" % field)
-            f = parse_field(field_class, fields, field, field_type)
-            fields.append(f)
+            if len(field) == 2:
+                p = field_class(field_name=field[1],
+                                field_type=field_type)
+            elif len(field) == 3:
+                if field[2] == 0:
+                    raise ParseError("While parsing type `%s': array `%s' has "
+                                     "variable length" % (name, field[1]))
+                p = field_class(field_name=field[1],
+                                field_type=field_type,
+                                array_len=field[2])
+            elif len(field) == 4:
+                nelem_field = None
+                for f in fields:
+                    if f.name == field[3]:
+                        nelem_field = f
+                if nelem_field is None:
+                    raise ParseError(
+                        "While parsing message `%s': couldn't find "
+                        "variable length array `%s' member containing "
+                        "the actual length `%s'" % (
+                            name, field[1], field[3]))
+                p = field_class(field_name=field[1],
+                                field_type=field_type,
+                                array_len=field[2],
+                                nelem_field=nelem_field)
+            else:
+                raise ParseError(
+                    "Don't know how to parse field `%s' of type definition "
+                    "for type `%s'" % (field, t))
+            fields.append(p)
         Type.__init__(self, name)
         Struct.__init__(self, name, fields)
 
