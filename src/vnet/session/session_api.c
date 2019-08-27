@@ -968,9 +968,16 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
       if ((rv = vnet_unlisten (a)))
 	clib_warning ("unlisten returned: %d", rv);
     }
+  else
+    {
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+    }
 
 done:
   REPLY_MACRO (VL_API_UNBIND_SOCK_REPLY);
+
+  if (!app)
+    return;
 
   app_wrk = application_get_worker (app, a->wrk_map_index);
   if (!app_wrk)
