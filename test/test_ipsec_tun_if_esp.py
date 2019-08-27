@@ -411,6 +411,14 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                   'scapy-crypto': "AES-CBC",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
+                  'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"},
+                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                                 IPSEC_API_CRYPTO_ALG_NONE),
+                  'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
+                                IPSEC_API_INTEG_ALG_SHA1_96),
+                  'scapy-crypto': "NULL",
+                  'scapy-integ': "HMAC-SHA1-96",
+                  'salt': 0,
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}]
 
         for engine in engines:

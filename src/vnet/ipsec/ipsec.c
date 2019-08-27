@@ -320,6 +320,13 @@ ipsec_init (vlib_main_t * vm)
 
   vec_validate (im->crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
 
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_NONE;
+  a->enc_op_id = VNET_CRYPTO_OP_NONE;
+  a->dec_op_id = VNET_CRYPTO_OP_NONE;
+  a->alg = VNET_CRYPTO_ALG_NONE;
+  a->iv_size = 0;
+  a->block_size = 1;
+
   a = im->crypto_algs + IPSEC_CRYPTO_ALG_DES_CBC;
   a->enc_op_id = VNET_CRYPTO_OP_DES_CBC_ENC;
   a->dec_op_id = VNET_CRYPTO_OP_DES_CBC_DEC;

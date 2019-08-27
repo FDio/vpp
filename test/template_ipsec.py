@@ -379,7 +379,7 @@ class IpsecTra4(object):
 
         # a malformed 'runt' packet
         #  created by a mis-constructed SA
-        if (ESP == self.encryption_type):
+        if (ESP == self.encryption_type and p.crypt_algo != "NULL"):
             bogus_sa = SecurityAssociation(self.encryption_type,
                                            p.vpp_tra_spi)
             pkt = (Ether(src=self.tra_if.remote_mac,
