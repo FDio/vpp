@@ -16,9 +16,10 @@ from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
+from vpp_classifier import TestClassifier
 
 
-class TestClassifyAcl(VppTestCase):
+class TestClassifyAcl(TestClassifier):
     """ Classifier-based L2 input and output ACL Test Case """
 
     # traffic types
@@ -88,6 +89,7 @@ class TestClassifyAcl(VppTestCase):
         variables and configure VPP.
         """
         super(TestClassifyAcl, cls).setUpClass()
+        cls.af = None
 
         try:
             # Create 2 pg interfaces
@@ -138,9 +140,7 @@ class TestClassifyAcl(VppTestCase):
 
     def setUp(self):
         super(TestClassifyAcl, self).setUp()
-
         self.acl_tbl_idx = {}
-        self.reset_packet_infos()
 
     def tearDown(self):
         """
@@ -164,60 +164,6 @@ class TestClassifyAcl(VppTestCase):
 
         super(TestClassifyAcl, self).tearDown()
 
-    def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show inacl type l2"))
-        self.logger.info(self.vapi.ppcli("show outacl type l2"))
-        self.logger.info(self.vapi.ppcli("show classify tables verbose"))
-        self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
-                                         % self.bd_id))
-
-    @staticmethod
-    def build_mac_mask(dst_mac='', src_mac='', ether_type=''):
-        """Build MAC ACL mask data with hexstring format
-
-        :param str dst_mac: source MAC address <0-ffffffffffff>
-        :param str src_mac: destination MAC address <0-ffffffffffff>
-        :param str ether_type: ethernet type <0-ffff>
-        """
-
-        return ('{!s:0>12}{!s:0>12}{!s:0>4}'.format(
-            dst_mac, src_mac, ether_type)).rstrip('0')
-
-    @staticmethod
-    def build_mac_match(dst_mac='', src_mac='', ether_type=''):
-        """Build MAC ACL match data with hexstring format
-
-        :param str dst_mac: source MAC address <x:x:x:x:x:x>
-        :param str src_mac: destination MAC address <x:x:x:x:x:x>
-        :param str ether_type: ethernet type <0-ffff>
-        """
-        if dst_mac:
-            dst_mac = dst_mac.replace(':', '')
-        if src_mac:
-            src_mac = src_mac.replace(':', '')
-
-        return ('{!s:0>12}{!s:0>12}{!s:0>4}'.format(
-            dst_mac, src_mac, ether_type)).rstrip('0')
-
-    def create_classify_table(self, key, mask, data_offset=0, is_add=1):
-        """Create Classify Table
-
-        :param str key: key for classify table (ex, ACL name).
-        :param str mask: mask value for interested traffic.
-        :param int match_n_vectors:
-        :param int is_add: option to configure classify table.
-            - create(1) or delete(0)
-        """
-        r = self.vapi.classify_add_del_table(
-            is_add,
-            binascii.unhexlify(mask),
-            match_n_vectors=(len(mask) - 1) // 32 + 1,
-            miss_next_index=0,
-            current_data_flag=1,
-            current_data_offset=data_offset)
-        self.assertIsNotNone(r, 'No response msg for add_del_table')
-        self.acl_tbl_idx[key] = r.new_table_index
-
     def create_classify_session(self, intf, table_index, match,
                                 hit_next_index=0xffffffff, is_add=1):
         """Create Classify Session
@@ -225,45 +171,17 @@ class TestClassifyAcl(VppTestCase):
         :param VppInterface intf: Interface to apply classify session.
         :param int table_index: table index to identify classify table.
         :param str match: matched value for interested traffic.
-        :param int pbr_action: enable/disable PBR feature.
-        :param int vrfid: VRF id.
         :param int is_add: option to configure classify session.
             - create(1) or delete(0)
         """
+        self._resolve_mask_match(match)
         r = self.vapi.classify_add_del_session(
-            is_add,
-            table_index,
-            binascii.unhexlify(match),
+            is_add=is_add,
+            table_index=table_index,
+            match=self.mask_match,
+            match_len=self.mask_match_len,
             hit_next_index=hit_next_index)
         self.assertIsNotNone(r, 'No response msg for add_del_session')
-
-    def input_acl_set_interface(self, intf, table_index, is_add=1):
-        """Configure Input ACL interface
-
-        :param VppInterface intf: Interface to apply Input ACL feature.
-        :param int table_index: table index to identify classify table.
-        :param int is_add: option to configure classify session.
-            - enable(1) or disable(0)
-        """
-        r = self.vapi.input_acl_set_interface(
-            is_add,
-            intf.sw_if_index,
-            l2_table_index=table_index)
-        self.assertIsNotNone(r, 'No response msg for acl_set_interface')
-
-    def output_acl_set_interface(self, intf, table_index, is_add=1):
-        """Configure Output ACL interface
-
-        :param VppInterface intf: Interface to apply Output ACL feature.
-        :param int table_index: table index to identify classify table.
-        :param int is_add: option to configure classify session.
-            - enable(1) or disable(0)
-        """
-        r = self.vapi.output_acl_set_interface(
-            is_add,
-            intf.sw_if_index,
-            l2_table_index=table_index)
-        self.assertIsNotNone(r, 'No response msg for acl_set_interface')
 
     def create_hosts(self, count, start=0):
         """

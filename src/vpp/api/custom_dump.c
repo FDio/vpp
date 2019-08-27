@@ -2428,13 +2428,13 @@ static void *vl_api_policer_classify_dump_t_print
   s = format (0, "SCRIPT: policer_classify_dump ");
   switch (mp->type)
     {
-    case POLICER_CLASSIFY_TABLE_IP4:
+    case POLICER_CLASSIFY_API_TABLE_IP4:
       s = format (s, "type ip4 ");
       break;
-    case POLICER_CLASSIFY_TABLE_IP6:
+    case POLICER_CLASSIFY_API_TABLE_IP6:
       s = format (s, "type ip6 ");
       break;
-    case POLICER_CLASSIFY_TABLE_L2:
+    case POLICER_CLASSIFY_API_TABLE_L2:
       s = format (s, "type l2 ");
       break;
     default:
@@ -3406,10 +3406,10 @@ static void *vl_api_flow_classify_dump_t_print
   s = format (0, "SCRIPT: flow_classify_dump ");
   switch (mp->type)
     {
-    case FLOW_CLASSIFY_TABLE_IP4:
+    case FLOW_CLASSIFY_API_TABLE_IP4:
       s = format (s, "type ip4 ");
       break;
-    case FLOW_CLASSIFY_TABLE_IP6:
+    case FLOW_CLASSIFY_API_TABLE_IP6:
       s = format (s, "type ip6 ");
       break;
     default:
