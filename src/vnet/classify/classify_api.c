@@ -229,12 +229,18 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
   policer_classify_main_t *pcm = &policer_classify_main;
   u32 *vec_tbl;
   int i;
+  u32 filter_sw_if_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
+  filter_sw_if_index = ntohl (mp->sw_if_index);
+  if (filter_sw_if_index != ~0)
+    vec_tbl =
+      &pcm->classify_table_index_by_sw_if_index[mp->type][filter_sw_if_index];
+  else
+    vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
 
   if (vec_len (vec_tbl))
     {
@@ -505,12 +511,18 @@ vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
   flow_classify_main_t *pcm = &flow_classify_main;
   u32 *vec_tbl;
   int i;
+  u32 filter_sw_if_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
+  filter_sw_if_index = ntohl (mp->sw_if_index);
+  if (filter_sw_if_index != ~0)
+    vec_tbl =
+      &pcm->classify_table_index_by_sw_if_index[mp->type][filter_sw_if_index];
+  else
+    vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
 
   if (vec_len (vec_tbl))
     {
