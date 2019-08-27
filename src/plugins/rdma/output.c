@@ -182,7 +182,7 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
 
   clib_spinlock_lock_if_init (&txq->lock);
 
-  for (i = 0; i < 5 && n_left_from >= 0; i++)
+  for (i = 0; i < 5 && n_left_from > 0; i++)
     {
       u32 n_enq;
       rdma_device_output_free (vm, txq);
