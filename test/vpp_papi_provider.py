@@ -42,10 +42,6 @@ defaultmapping = {
                               'learn': 1, 'is_add': 1, },
     'bvi_create': {'user_instance': 4294967295, },
     'bvi_delete': {},
-    'classify_add_del_table': {'match_n_vectors': 1, 'table_index': 4294967295,
-                               'nbuckets': 2, 'memory_size': 2097152,
-                               'next_table_index': 4294967295,
-                               'miss_next_index': 4294967295, },
     'gbp_subnet_add_del': {'sw_if_index': 4294967295, 'epg_id': 65535, },
     'geneve_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                               'decap_next_index': 4294967295, },
@@ -717,84 +713,6 @@ class VppPapiProvider(object):
                  'mt_n_paths': len(paths),
                  'mt_paths': paths,
              }})
-
-    def classify_add_del_table(
-            self,
-            is_add,
-            mask,
-            match_n_vectors=1,
-            table_index=0xFFFFFFFF,
-            nbuckets=2,
-            memory_size=2097152,
-            skip_n_vectors=0,
-            next_table_index=0xFFFFFFFF,
-            miss_next_index=0xFFFFFFFF,
-            current_data_flag=0,
-            current_data_offset=0):
-        """
-        :param is_add:
-        :param mask:
-        :param match_n_vectors: (Default value = 1)
-        :param table_index: (Default value = 0xFFFFFFFF)
-        :param nbuckets:  (Default value = 2)
-        :param memory_size:  (Default value = 2097152)
-        :param skip_n_vectors:  (Default value = 0)
-        :param next_table_index:  (Default value = 0xFFFFFFFF)
-        :param miss_next_index:  (Default value = 0xFFFFFFFF)
-        :param current_data_flag:  (Default value = 0)
-        :param current_data_offset:  (Default value = 0)
-        """
-        mask_len = ((len(mask) - 1) // 16 + 1) * 16
-        mask = mask + b'\0' * (mask_len - len(mask))
-        return self.api(
-            self.papi.classify_add_del_table,
-            {'is_add': is_add,
-             'table_index': table_index,
-             'nbuckets': nbuckets,
-             'memory_size': memory_size,
-             'skip_n_vectors': skip_n_vectors,
-             'match_n_vectors': match_n_vectors,
-             'next_table_index': next_table_index,
-             'miss_next_index': miss_next_index,
-             'current_data_flag': current_data_flag,
-             'current_data_offset': current_data_offset,
-             'mask_len': mask_len,
-             'mask': mask})
-
-    def classify_add_del_session(
-            self,
-            is_add,
-            table_index,
-            match,
-            opaque_index=0xFFFFFFFF,
-            hit_next_index=0xFFFFFFFF,
-            advance=0,
-            action=0,
-            metadata=0):
-        """
-        :param is_add:
-        :param table_index:
-        :param match:
-        :param opaque_index:  (Default value = 0xFFFFFFFF)
-        :param hit_next_index:  (Default value = 0xFFFFFFFF)
-        :param advance:  (Default value = 0)
-        :param action:  (Default value = 0)
-        :param metadata:  (Default value = 0)
-        """
-
-        match_len = ((len(match) - 1) // 16 + 1) * 16
-        match = match + b'\0' * (match_len - len(match))
-        return self.api(
-            self.papi.classify_add_del_session,
-            {'is_add': is_add,
-             'table_index': table_index,
-             'hit_next_index': hit_next_index,
-             'opaque_index': opaque_index,
-             'advance': advance,
-             'action': action,
-             'metadata': metadata,
-             'match_len': match_len,
-             'match': match})
 
     def input_acl_set_interface(
             self,
