@@ -424,6 +424,14 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-crypto': "3DES",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
+                  'key': "JPjyOWBeVEQiMe7h00112233"},
+                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                                 IPSEC_API_CRYPTO_ALG_NONE),
+                  'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
+                                IPSEC_API_INTEG_ALG_SHA1_96),
+                  'scapy-crypto': "NULL",
+                  'scapy-integ': "HMAC-SHA1-96",
+                  'salt': 0,
                   'key': "JPjyOWBeVEQiMe7h00112233"}]
 
         # with and without ESN
