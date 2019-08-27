@@ -395,8 +395,8 @@ vl_socket_client_connect (char *socket_path, char *client_name,
 
   mp = vl_socket_client_msg_alloc (sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE);
-
-  vl_api_to_api_string (strnlen_s (client_name, 64), client_name, &mp->name);
+  strncpy ((char *) mp->name, client_name, sizeof (mp->name) - 1);
+  mp->name[sizeof (mp->name) - 1] = 0;
   mp->context = 0xfeedface;
 
   clib_time_init (&scm->clib_time);
