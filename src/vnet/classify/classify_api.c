@@ -154,7 +154,7 @@ static void vl_api_classify_add_del_session_t_handler
   hit_next_index = ntohl (mp->hit_next_index);
   opaque_index = ntohl (mp->opaque_index);
   advance = ntohl (mp->advance);
-  action = mp->action;
+  action = ntohl (mp->action);
   metadata = ntohl (mp->metadata);
   match_len = ntohl (mp->match_len);
 
@@ -234,7 +234,7 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
   if (!reg)
     return;
 
-  vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
+  vec_tbl = pcm->classify_table_index_by_sw_if_index[htonl (mp->type)];
 
   if (vec_len (vec_tbl))
     {
@@ -510,7 +510,7 @@ vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
   if (!reg)
     return;
 
-  vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
+  vec_tbl = pcm->classify_table_index_by_sw_if_index[htonl (mp->type)];
 
   if (vec_len (vec_tbl))
     {
