@@ -238,7 +238,8 @@ ipsec_tunnel_feature_set (ipsec_main_t * im, ipsec_tunnel_if_t * t, u8 enable)
   ipsec_sa_t *sa;
 
   sa = ipsec_sa_get (t->output_sa_index);
-  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE)
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+      sa->integ_alg == IPSEC_INTEG_ALG_NONE)
     {
       esp4_feature_index = im->esp4_no_crypto_tun_feature_index;
       esp6_feature_index = im->esp6_no_crypto_tun_feature_index;
