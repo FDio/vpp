@@ -273,6 +273,11 @@ I:	geneve
 M:	N/A
 F:	src/vnet/geneve/
 
+VNET Classify
+I:	classify
+M:	N/A
+F:	src/vnet/classify/
+
 Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
 M:	Neale Ranns <nranns@cisco.com>
