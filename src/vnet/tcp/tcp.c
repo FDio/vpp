@@ -638,6 +638,46 @@ tcp_generate_random_iss (tcp_connection_t * tc)
 }
 
 /**
+ * Update max segment size we're able to process.
+ *
+ * The value is constrained by our interface's MTU and IP options. It is
+ * also what we advertise to our peer.
+ */
+static void
+tcp_init_rcv_mss (tcp_connection_t * tc)
+{
+  u8 ip_hdr_len;
+
+  ip_hdr_len = tc->c_is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
+  tc->mss = tcp_cfg.default_mtu - sizeof (tcp_header_t) - ip_hdr_len;
+}
+
+static void
+tcp_init_mss (tcp_connection_t * tc)
+{
+  u16 default_min_mss = 536;
+
+  tcp_init_rcv_mss (tc);
+
+  /* TODO consider PMTU discovery */
+  tc->snd_mss = clib_min (tc->rcv_opts.mss, tc->mss);
+
+  if (tc->snd_mss < 45)
+    {
+      /* Assume that at least the min default mss works */
+      tc->snd_mss = default_min_mss;
+      tc->rcv_opts.mss = default_min_mss;
+    }
+
+  /* We should have enough space for 40 bytes of options */
+  ASSERT (tc->snd_mss > 45);
+
+  /* If we use timestamp option, account for it */
+  if (tcp_opts_tstamp (&tc->rcv_opts))
+    tc->snd_mss -= TCP_OPTION_LEN_TIMESTAMP;
+}
+
+/**
  * Initialize connection send variables.
  */
 void
@@ -651,6 +691,7 @@ tcp_init_snd_vars (tcp_connection_t * tc)
    */
   tcp_set_time_now (tcp_get_worker (vlib_get_thread_index ()));
 
+  tcp_init_rcv_mss (tc);
   tc->iss = tcp_generate_random_iss (tc);
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
@@ -1541,7 +1582,7 @@ tcp_configuration_init (void)
   tcp_cfg.max_rx_fifo = 32 << 20;
   tcp_cfg.min_rx_fifo = 4 << 10;
 
-  tcp_cfg.default_mtu = 1460;
+  tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
   tcp_cfg.cc_algo = TCP_CC_NEWRENO;
