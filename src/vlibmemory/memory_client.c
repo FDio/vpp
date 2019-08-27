@@ -195,7 +195,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
   mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE);
   mp->ctx_quota = ctx_quota;
   mp->input_queue = (uword) vl_input_queue;
-  vl_api_to_api_string (strnlen_s (name, 64), name, &mp->name);
+  strncpy ((char *) mp->name, name, sizeof (mp->name) - 1);
 
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
 
@@ -517,8 +517,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   clib_time_t clib_time;
   u16 rv = ~0;
 
-  size_t plugin_name_len = strnlen_s (plugin_name, 128);
-  if (plugin_name_len == 128)
+  if (strlen (plugin_name) + 1 > sizeof (mp->name))
     return (rv);
 
   clib_memset (&clib_time, 0, sizeof (clib_time));
@@ -539,7 +538,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
       clib_memset (mp, 0, sizeof (*mp));
       mp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID);
       mp->client_index = am->my_client_index;
-      vl_api_to_api_string (plugin_name_len, plugin_name, &mp->name);
+      strncpy ((char *) mp->name, plugin_name, sizeof (mp->name) - 1);
 
       if (vl_socket_client_write () <= 0)
 	goto sock_err;
@@ -564,7 +563,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
       clib_memset (mp, 0, sizeof (*mp));
       mp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID);
       mp->client_index = am->my_client_index;
-      vl_api_to_api_string (plugin_name_len, plugin_name, &mp->name);
+      strncpy ((char *) mp->name, plugin_name, sizeof (mp->name) - 1);
 
       vl_msg_api_send_shmem (am->shmem_hdr->vl_input_queue, (u8 *) & mp);
 

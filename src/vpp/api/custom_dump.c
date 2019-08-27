@@ -2045,10 +2045,8 @@ static void *vl_api_memclnt_create_t_print
   (vl_api_memclnt_create_t * mp, void *handle)
 {
   u8 *s;
-  u8 *name = vl_api_from_api_to_vec (&mp->name);
 
-  s = format (0, "SCRIPT: memclnt_create name %v ", name);
-  vec_free (name);
+  s = format (0, "SCRIPT: memclnt_create name %s ", mp->name);
 
   FINISH;
 }
@@ -2057,11 +2055,9 @@ static void *vl_api_sockclnt_create_t_print
   (vl_api_sockclnt_create_t * mp, void *handle)
 {
   u8 *s;
-  u8 *name = vl_api_from_api_to_vec (&mp->name);
 
-  s = format (0, "SCRIPT: sockclnt_create name %s ", name);
+  s = format (0, "SCRIPT: sockclnt_create name %s ", mp->name);
 
-  vec_free (name);
   FINISH;
 }
 

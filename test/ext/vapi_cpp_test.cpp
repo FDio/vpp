@@ -49,11 +49,11 @@ void verify_show_version_reply (const Show_version_reply &r)
   auto &p = r.get_payload ();
   printf ("show_version_reply: program: `%s', version: `%s', build directory: "
           "`%s', build date: `%s'\n",
-          vl_api_from_api_string (p.program),
-          vl_api_from_api_string (p.version),
-          vl_api_from_api_string (p.build_directory),
-          vl_api_from_api_string (p.build_date));
-  ck_assert_str_eq ("vpe", (char *)vl_api_from_api_string (p.program));
+          vl_api_from_api_string (&p.program),
+          vl_api_from_api_string (&p.version),
+          vl_api_from_api_string (&p.build_directory),
+          vl_api_from_api_string (&p.build_date));
+  ck_assert_str_eq ("vpe", (char *)vl_api_from_api_string (&p.program));
 }
 
 Connection con;
