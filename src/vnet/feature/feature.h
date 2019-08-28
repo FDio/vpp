@@ -192,7 +192,7 @@ void
 vnet_config_update_feature_count (vnet_feature_main_t * fm, u8 arc,
 				  u32 sw_if_index, int is_add);
 
-u32 vnet_get_feature_index (u8 arc, const char *s);
+__clib_export u32 vnet_get_feature_index (u8 arc, const char *s);
 __clib_export u8 vnet_get_feature_arc_index (const char *s);
 __clib_export vnet_feature_registration_t *vnet_get_feature_reg (const char *arc_name,
 								 const char *node_name);

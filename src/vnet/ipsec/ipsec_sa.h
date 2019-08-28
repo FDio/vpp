@@ -325,7 +325,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto, ipsec_crypto_alg
 		       ipsec_sa_flags_t flags, ipsec_sa_tfs_type_t tfs_type, void *tfs_config,
 		       u32 salt, u16 src_port, u16 dst_port, u32 anti_replay_window_size,
 		       const tunnel_t *tun, u32 *sa_out_index);
-extern int ipsec_sa_bind (u32 id, u32 worker, bool bind);
+__clib_export extern int ipsec_sa_bind (u32 id, u32 worker, bool bind);
 __clib_export extern index_t ipsec_sa_find_and_lock (u32 id);
 __clib_export extern int ipsec_sa_unlock_id (u32 id);
 __clib_export extern void ipsec_sa_unlock (index_t sai);
@@ -339,7 +339,7 @@ extern void ipsec_sa_walk (ipsec_sa_walk_cb_t cd, void *ctx);
 extern u8 *format_ipsec_replay_window (u8 *s, va_list *args);
 extern u8 *format_ipsec_crypto_alg (u8 *s, va_list *args);
 extern u8 *format_ipsec_integ_alg (u8 *s, va_list *args);
-extern u8 *format_ipsec_sa (u8 *s, va_list *args);
+__clib_export extern u8 *format_ipsec_sa (u8 *s, va_list *args);
 extern u8 *format_ipsec_key (u8 *s, va_list *args);
 extern u8 *format_ipsec_sa_tfs_type (u8 *s, va_list *args);
 extern uword unformat_ipsec_crypto_alg (unformat_input_t *input,

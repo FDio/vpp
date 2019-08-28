@@ -352,12 +352,12 @@ __clib_export void ipsec_set_async_mode (u32 is_enabled);
 __clib_export extern void ipsec_register_udp_port (u16 udp_port, u8 is_ip4);
 __clib_export extern void ipsec_unregister_udp_port (u16 udp_port, u8 is_ip4);
 
-extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm,
-						 u8 next_header,
-						 const char *next_node);
+__clib_export extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm, u8 next_header,
+							       const char *next_node);
 
-extern void ipsec_add_node (vlib_main_t *vm, const char *node_name, const char *prev_node_name,
-			    u32 *out_node_index, u32 *out_next_index);
+__clib_export extern void ipsec_add_node (vlib_main_t *vm, const char *node_name,
+					  const char *prev_node_name, u32 *out_node_index,
+					  u32 *out_next_index);
 
 #include <vnet/ipsec/ipsec_funcs.h>
 
