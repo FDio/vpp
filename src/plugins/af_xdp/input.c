@@ -22,33 +22,576 @@
 #include <vnet/devices/devices.h>
 
 #include <af_xdp/af_xdp.h>
+#include <af_xdp/xsk_defs.h>
 
-#define foreach_af_xdp_input_error \
-  _(BUFFER_ALLOC, "buffer alloc error")
+#define foreach_af_xdp_rx_func_error           \
+_(_GET_NEXT_FRAME, "get next frame error")   \
+_(_FQ_RESERVE,     "FQ reserve fatal error") \
+_(_NO_INPUT,       "nothing on input")	/// just for profiling, remove then
 
 typedef enum
 {
-#define _(f,s) AF_XDP_INPUT_ERROR_##f,
-  foreach_af_xdp_input_error
+#define _(f,s) AF_XDP_RX_ERROR_##f,
+  foreach_af_xdp_rx_func_error
 #undef _
-    AF_XDP_INPUT_N_ERROR,
-} af_xdp_input_error_t;
+    AF_XDP_RX_N_ERROR,
+} af_xdp_rx_func_error_t;
 
-static __clib_unused char *af_xdp_input_error_strings[] = {
+//static __clib_unused char *af_xdp_rx_func_error_strings[] = {
+static char *af_xdp_rx_func_error_strings[] = {
 #define _(n,s) s,
-  foreach_af_xdp_input_error
+  foreach_af_xdp_rx_func_error
 #undef _
 };
 
+always_inline void
+add_trace (uword trace_cnt, vlib_main_t * vm, vlib_node_runtime_t * node,
+	   vlib_buffer_t * buffer, u32 next_index, u32 hw_if_index)
+{
+  af_xdp_input_trace_t *tr;
+  vlib_trace_buffer (vm, node, next_index, buffer, /* follow_chain */ 0);
+  vlib_set_trace_count (vm, node, trace_cnt);
+  tr = vlib_add_trace (vm, node, buffer, sizeof (*tr));
+  tr->next_index = next_index;
+  tr->hw_if_index = hw_if_index;
+}
 
+always_inline void
+buffer_add_to_chain (vlib_main_t * vm, u32 bi, u32 first_bi, u32 prev_bi)
+{
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  vlib_buffer_t *first_b = vlib_get_buffer (vm, first_bi);
+  vlib_buffer_t *prev_b = vlib_get_buffer (vm, prev_bi);
+
+  /* update first buffer */
+  first_b->total_length_not_including_first_buffer += b->current_length;
+
+  /* update previous buffer */
+  prev_b->next_buffer = bi;
+  prev_b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+
+  /* update current buffer */
+  b->next_buffer = 0;
+}
+
+always_inline int
+refill_rx_buffer (vlib_main_t * vm, u32 thread_index)
+{
+  af_xdp_main_t *am = &af_xdp_main;
+  u32 n_free_bufs = vec_len (am->rx_buffers[thread_index]);
+
+  /* Why *3 ? Because
+   *
+   *
+   */
+#define RX_BUFFERS_CNT (VLIB_FRAME_SIZE * 3)
+
+  if (n_free_bufs < RX_BUFFERS_CNT)
+    {
+      vec_validate (am->rx_buffers[thread_index], RX_BUFFERS_CNT);
+
+      n_free_bufs +=
+	vlib_buffer_alloc (vm, &am->rx_buffers[thread_index][n_free_bufs],
+			   RX_BUFFERS_CNT - n_free_bufs);
+
+      _vec_len (am->rx_buffers[thread_index]) = n_free_bufs;
+    }
+
+  return n_free_bufs;
+
+#undef RX_BUFFERS_CNT
+}
+
+#if 0
 static_always_inline uword
 af_xdp_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, af_xdp_device_t * ad,
 			    u16 qid)
 {
   uword n_rx_packets = 0;
+//  af_xdp_main_t *am = &af_xdp_main;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  u32 n_free_bufs;
+  u32 n_rx_bytes = 0;
+  u32 *to_next = 0;
+  uword n_trace = vlib_get_trace_count (vm, node);
+  u32 thread_index = vm->thread_index;
+  u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
+  u32 min_bufs = FRAME_SIZE / n_buffer_bytes;
+  u32 n_batch = 0;
+
+  struct xsk_socket_info *xsk = ad->xsk;
+//  struct xdp_uqueue *uq = &xsk->rx;
+//  struct xdp_desc *r = uq->ring;
+
+  if (ad->per_interface_next_index != ~0)
+    next_index = ad->per_interface_next_index;
+
+  n_free_bufs = refill_rx_buffer (vm, thread_index);
+
+  struct xdp_desc descs[BATCH_SIZE];
+  vlib_buffer_t *b0 = 0, *first_b0 = 0;
+  u32 next0 = next_index;
+  u32 i = 0;			/// rename
+
+  u32 n_left_to_next;
+  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+//  n_batch = xq_nb_avail (uq, BATCH_SIZE);
+
+  while (n_free_bufs > min_bufs)
+    {
+      if (PREDICT_FALSE (0 == n_batch))
+	{
+//        *uq->consumer = uq->cached_cons;
+//        umem_fill_to_kernel_ex (&xsk->umem->fq, descs, i);
+//        i = 0;
+//        n_batch = xq_nb_avail (uq, BATCH_SIZE);
+//        if (PREDICT_FALSE (0 == n_batch))
+//          break;
+	}
+      if (PREDICT_FALSE (0 == n_left_to_next))
+	{
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	  b0 = 0, first_b0 = 0;
+	  next0 = next_index;
+	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+	  if (PREDICT_FALSE (0 == n_left_to_next))
+	    break;
+	}
+
+//      int idx = uq->cached_cons++ & DEFAULT_RX_RING_MASK;
+//      descs[i] = r[idx];
+//
+//      u8 *pktdata = xq_get_data (xsk, descs[i].addr);
+//      u32 pktdata_len = descs[i].len;
+//      u32 offset = 0;
+      u32 bi0 = 0, first_bi0 = 0, prev_bi0;
+//
+//      while (pktdata_len)
+//      {
+//        n_free_bufs--;
+//        prev_bi0 = bi0;
+//        bi0 = am->rx_buffers[thread_index][n_free_bufs];
+//        b0 = vlib_get_buffer (vm, bi0);
+//        _vec_len (am->rx_buffers[thread_index]) = n_free_bufs;
+//
+//        /* copy data */
+//        u32 bytes_to_copy =
+//          pktdata_len > n_buffer_bytes ? n_buffer_bytes : pktdata_len;
+//        b0->current_data = 0;
+//        clib_memcpy_fast (((u8 *) vlib_buffer_get_current (b0)),
+//                          pktdata + offset, bytes_to_copy);
+//        b0->current_length = bytes_to_copy;
+//
+//        if (offset == 0)
+//          {
+//            b0->total_length_not_including_first_buffer = 0;
+//            b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+//            vnet_buffer (b0)->sw_if_index[VLIB_RX] = ad->sw_if_index;
+//            vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+//            first_bi0 = bi0;
+//            first_b0 = vlib_get_buffer (vm, first_bi0);
+//          }
+//        else
+//          buffer_add_to_chain (vm, bi0, first_bi0, prev_bi0);
+//
+//        offset += bytes_to_copy;
+//        pktdata_len -= bytes_to_copy;
+//      }
+
+      n_rx_packets++;		/// TODO check counters correctness
+      n_rx_bytes += descs[i].len;
+      to_next[0] = first_bi0;
+      to_next += 1;
+      n_left_to_next--;
+      n_batch--;
+      i++;
+
+      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+      /* redirect if feature path enabled */
+      vnet_feature_start_device_input_x1 (ad->sw_if_index, &next0, first_b0);
+
+      /* trace */
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
+      if (PREDICT_FALSE (n_trace > 0))
+	{
+	  af_xdp_input_trace_t *tr;
+	  vlib_trace_buffer (vm, node, next0, first_b0, /* follow_chain */ 0);
+	  vlib_set_trace_count (vm, node, --n_trace);
+	  tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
+	  tr->next_index = next0;
+	  tr->hw_if_index = ad->hw_if_index;
+	}
+
+      /* enque and take next packet */
+      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+				       n_left_to_next, first_bi0, next0);
+    }
+//  *uq->consumer = uq->cached_cons;
+//  umem_fill_to_kernel_ex (&xsk->umem->fq, descs, i);
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+  vlib_increment_combined_counter
+    (vnet_get_main ()->interface_main.combined_sw_if_counters
+     + VNET_INTERFACE_COUNTER_RX,
+     vlib_get_thread_index (), ad->hw_if_index, n_rx_packets, n_rx_bytes);
+
+  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+  return n_rx_packets;
+
+  return 0;
+}
+#endif
+
+// -> rxq_deq
+//always_inline u32
+//process_pkt (vlib_main_t * vm, const u8 *pktdata, u32 pktdata_len)
+//{
+//  u32 thread_index = vm->thread_index;
+//      u32 offset = 0;
+//      u32 bi0 = 0, first_bi0 = 0, prev_bi0;
+//
+//      while (pktdata_len)
+//      {
+//        n_free_bufs--; /// move n_free_bufs to am->... and refill accordingly
+//        prev_bi0 = bi0;
+//        bi0 = am->rx_buffers[thread_index][n_free_bufs];
+//        b0 = vlib_get_buffer (vm, bi0);
+//        _vec_len (am->rx_buffers[thread_index]) = n_free_bufs;
+//
+//        /* copy data */
+//        u32 bytes_to_copy =
+//          pktdata_len > n_buffer_bytes ? n_buffer_bytes : pktdata_len;
+//        b0->current_data = 0;
+//        clib_memcpy_fast (((u8 *) vlib_buffer_get_current (b0)),
+//                          pktdata + offset, bytes_to_copy);
+//        b0->current_length = bytes_to_copy;
+//
+//        if (offset == 0)
+//          {
+//            b0->total_length_not_including_first_buffer = 0;
+//            b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+//            vnet_buffer (b0)->sw_if_index[VLIB_RX] = ad->sw_if_index;
+//            vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+//            first_bi0 = bi0;
+//            first_b0 = vlib_get_buffer (vm, first_bi0);
+//          }
+//        else
+//          buffer_add_to_chain (vm, bi0, first_bi0, prev_bi0);
+//
+//        offset += bytes_to_copy;
+//        pktdata_len -= bytes_to_copy;
+//      }
+//
+//  return n_free_bufs;
+//}
+
+
+static_always_inline void
+refill_fq (vlib_main_t * vm, vlib_node_runtime_t * node,
+	   struct xsk_socket_info *xsk)
+{
+  u32 stock_frames, i, idx_fq = 0;
+  int rv;
+
+  /* Stuff the ring with as much frames as possible */
+  stock_frames = xsk_prod_nb_free (&xsk->umem->fq,
+				   xsk_umem_free_frames (xsk));
+
+  if (stock_frames)
+    {
+      rv = xsk_ring_prod__reserve (&xsk->umem->fq, stock_frames, &idx_fq);
+
+      if (rv != stock_frames)
+	vlib_error_count (vm, node->node_index, AF_XDP_RX_ERROR__FQ_RESERVE,
+			  1);
+
+      for (i = 0; i < stock_frames; i++)
+	*xsk_ring_prod__fill_addr (&xsk->umem->fq, idx_fq++) =
+	  xsk_alloc_umem_frame (xsk);
+
+      xsk_ring_prod__submit (&xsk->umem->fq, stock_frames);
+    }
+}
+
+#define RX_BATCH_SIZE VLIB_FRAME_SIZE
+
+	/// use qid or remove it
+static_always_inline uword
+af_xdp_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame, af_xdp_device_t * ad,
+			    u16 qid)
+{
+  af_xdp_main_t *am = &af_xdp_main;
+  uword n_rx_packets = 0;
+  u32 n_rx_bytes = 0;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  u32 n_free_bufs;
+  u32 *to_next = 0;
+  uword n_trace = vlib_get_trace_count (vm, node);
+  u32 thread_index = vm->thread_index;
+  u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
+//  u32 min_bufs = FRAME_SIZE / n_buffer_bytes;
+  u32 n, n_batch;
+  u32 idx_rx;
+  struct xsk_socket_info *xsk = ad->xsk;
+  vlib_buffer_t *b0 = 0, *first_b0 = 0;
+  u32 n_left_to_next, next0;
+
+  if (ad->per_interface_next_index != ~0)
+    next_index = ad->per_interface_next_index;
+
+  n_free_bufs = refill_rx_buffer (vm, thread_index);
+
+  n_batch = n = xsk_ring_cons__peek (&xsk->rx, RX_BATCH_SIZE, &idx_rx);
+  if (PREDICT_FALSE (!n_batch))
+    {
+      vlib_error_count (vm, node->node_index, AF_XDP_RX_ERROR__NO_INPUT, 1);
+      return 0;
+    }
+
+//  u32 next0 = next_index; /// check if not needed, if comes to tx then probably not
+  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+  while (n--)			/// predict true ??
+    {
+      if (PREDICT_FALSE (0 == n_left_to_next))
+	{
+	  /// try to replace with enqueue / some sindle call look for api
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+//        b0 = 0, first_b0 = 0;
+//        next0 = next_index;
+	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+	  if (PREDICT_FALSE (0 == n_left_to_next))
+	    {
+	      vlib_error_count (vm, node->node_index,
+				AF_XDP_RX_ERROR__GET_NEXT_FRAME, 1);
+	      break;
+	    }
+	}
+
+      u64 addr = xsk_ring_cons__rx_desc (&xsk->rx, idx_rx)->addr;
+      u32 pktdata_len = xsk_ring_cons__rx_desc (&xsk->rx, idx_rx)->len;
+      u8 *pktdata = xsk_umem__get_data (xsk->umem->buffer, addr);
+
+///
+      u32 offset = 0;
+      u32 bi0 = 0, first_bi0 = 0, prev_bi0;
+      while (pktdata_len)
+	{
+	  n_free_bufs--;
+	  prev_bi0 = bi0;
+	  bi0 = am->rx_buffers[thread_index][n_free_bufs];
+	  b0 = vlib_get_buffer (vm, bi0);
+	  _vec_len (am->rx_buffers[thread_index]) = n_free_bufs;
+
+	  /* copy data */
+	  u32 bytes_to_copy =
+	    pktdata_len > n_buffer_bytes ? n_buffer_bytes : pktdata_len;
+	  b0->current_data = 0;
+	  clib_memcpy_fast (((u8 *) vlib_buffer_get_current (b0)),
+			    pktdata + offset, bytes_to_copy);
+	  b0->current_length = bytes_to_copy;
+
+	  if (offset == 0)
+	    {
+	      b0->total_length_not_including_first_buffer = 0;
+	      b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = ad->sw_if_index;
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      first_bi0 = bi0;
+	      first_b0 = vlib_get_buffer (vm, first_bi0);
+	    }
+	  else
+	    buffer_add_to_chain (vm, bi0, first_bi0, prev_bi0);
+
+	  offset += bytes_to_copy;
+	  pktdata_len -= bytes_to_copy;
+	}
+///
+
+      xsk_free_umem_frame (xsk, addr);	/// if needed to lock, free / alloc by batches
+
+      n_rx_packets++;
+      n_rx_bytes += xsk_ring_cons__rx_desc (&xsk->rx, idx_rx)->len;
+      to_next[0] = first_bi0;
+      to_next += 1;		/// ++
+      n_left_to_next--;
+      idx_rx++;
+
+      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+      /* redirect if feature path enabled */
+      vnet_feature_start_device_input_x1 (ad->sw_if_index, &next0, first_b0);
+
+      /* trace */
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
+      if (PREDICT_FALSE (n_trace > 0))
+	add_trace (--n_trace, vm, node, first_b0, next0, ad->hw_if_index);
+
+      /* enque and take next packet */
+      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+				       n_left_to_next, first_bi0, next0);
+    }
+
+  refill_fq (vm, node, xsk);
+  xsk_ring_cons__release (&xsk->rx, n_batch);
+
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+  vlib_increment_combined_counter
+    (vnet_get_main ()->interface_main.combined_sw_if_counters
+     + VNET_INTERFACE_COUNTER_RX,
+     vlib_get_thread_index (), ad->hw_if_index, n_rx_packets, n_rx_bytes);
+
+  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+
   return n_rx_packets;
 }
+
+//#define RX_BATCH_SIZE 16
+//
+//static_always_inline uword
+//af_xdp_device_input_inline_2 (vlib_main_t * vm, vlib_node_runtime_t * node,
+//                          vlib_frame_t * frame, af_xdp_device_t * ad,
+//                          u16 qid)
+//{
+//  uword n_rx_packets = 0;
+////  af_xdp_main_t *am = &af_xdp_main;
+//  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+//  u32 n_free_bufs;
+//  u32 n_rx_bytes = 0;
+//  u32 *to_next = 0;
+//  uword n_trace = vlib_get_trace_count (vm, node);
+//  u32 thread_index = vm->thread_index;
+//  u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
+//  u32 min_bufs = FRAME_SIZE / n_buffer_bytes;
+//  u32 n_batch = 0;
+//  u32 idx_rx = 0, idx_fq = 0;
+//
+//  struct xsk_socket_info *xsk = ad->xsk;
+////  struct xdp_uqueue *uq = &xsk->rx;
+////  struct xdp_desc *r = uq->ring;
+//
+//  if (ad->per_interface_next_index != ~0)
+//    next_index = ad->per_interface_next_index;
+//
+//  n_free_bufs = refill_rx_buffer (vm, thread_index);
+//
+//  struct xdp_desc descs[RX_BATCH_SIZE];
+//  vlib_buffer_t *b0 = 0, *first_b0 = 0;
+//  u32 next0 = next_index;
+//  u32 i = 0;                  /// rename
+//
+//  u32 n_left_to_next;
+//  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+////  n_batch = xq_nb_avail (uq, RX_BATCH_SIZE);
+//  n_batch = xsk_ring_cons__peek (&xsk->rx, RX_BATCH_SIZE, &idx_rx);
+//
+//  while (n_free_bufs > min_bufs)
+//    {
+//      if (PREDICT_FALSE (0 == n_batch))
+//      {
+////        *uq->consumer = uq->cached_cons;
+////        umem_fill_to_kernel_ex (&xsk->umem->fq, descs, i);
+////        i = 0;
+////        n_batch = xq_nb_avail (uq, RX_BATCH_SIZE);
+////        if (PREDICT_FALSE (0 == n_batch))
+////          break;
+//      }
+//      if (PREDICT_FALSE (0 == n_left_to_next))
+//      {
+//        vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+//        b0 = 0, first_b0 = 0;
+//        next0 = next_index;
+//        vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+//        if (PREDICT_FALSE (0 == n_left_to_next))
+//          break;
+//      }
+//
+////      int idx = uq->cached_cons++ & DEFAULT_RX_RING_MASK;
+////      descs[i] = r[idx];
+////
+////      u8 *pktdata = xq_get_data (xsk, descs[i].addr);
+////      u32 pktdata_len = descs[i].len;
+////      u32 offset = 0;
+//      u32 bi0 = 0, first_bi0 = 0, prev_bi0;
+////
+////      while (pktdata_len)
+////      {
+////        n_free_bufs--;
+////        prev_bi0 = bi0;
+////        bi0 = am->rx_buffers[thread_index][n_free_bufs];
+////        b0 = vlib_get_buffer (vm, bi0);
+////        _vec_len (am->rx_buffers[thread_index]) = n_free_bufs;
+////
+////        /* copy data */
+////        u32 bytes_to_copy =
+////          pktdata_len > n_buffer_bytes ? n_buffer_bytes : pktdata_len;
+////        b0->current_data = 0;
+////        clib_memcpy_fast (((u8 *) vlib_buffer_get_current (b0)),
+////                          pktdata + offset, bytes_to_copy);
+////        b0->current_length = bytes_to_copy;
+////
+////        if (offset == 0)
+////          {
+////            b0->total_length_not_including_first_buffer = 0;
+////            b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+////            vnet_buffer (b0)->sw_if_index[VLIB_RX] = ad->sw_if_index;
+////            vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+////            first_bi0 = bi0;
+////            first_b0 = vlib_get_buffer (vm, first_bi0);
+////          }
+////        else
+////          buffer_add_to_chain (vm, bi0, first_bi0, prev_bi0);
+////
+////        offset += bytes_to_copy;
+////        pktdata_len -= bytes_to_copy;
+////      }
+//
+//      n_rx_packets++;         /// TODO check counters correctness
+//      n_rx_bytes += descs[i].len;
+//      to_next[0] = first_bi0;
+//      to_next += 1;
+//      n_left_to_next--;
+//      n_batch--;
+//      i++;
+//
+//      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+//      /* redirect if feature path enabled */
+//      vnet_feature_start_device_input_x1 (ad->sw_if_index, &next0, first_b0);
+//
+//      /* trace */
+//      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
+//      if (PREDICT_FALSE (n_trace > 0))
+//      {
+//        af_xdp_input_trace_t *tr;
+//        vlib_trace_buffer (vm, node, next0, first_b0, /* follow_chain */ 0);
+//        vlib_set_trace_count (vm, node, --n_trace);
+//        tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
+//        tr->next_index = next0;
+//        tr->hw_if_index = ad->hw_if_index;
+//      }
+//
+//      /* enque and take next packet */
+//      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+//                                     n_left_to_next, first_bi0, next0);
+//    }
+////  *uq->consumer = uq->cached_cons;
+////  umem_fill_to_kernel_ex (&xsk->umem->fq, descs, i);
+//  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+//
+//  vlib_increment_combined_counter
+//    (vnet_get_main ()->interface_main.combined_sw_if_counters
+//     + VNET_INTERFACE_COUNTER_RX,
+//     vlib_get_thread_index (), ad->hw_if_index, n_rx_packets, n_rx_bytes);
+//
+//  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+//  return n_rx_packets;
+//
+//  return 0;
+//}
+
+#undef RX_BATCH_SIZE
 
 VLIB_NODE_FN (af_xdp_input_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
@@ -72,15 +615,14 @@ VLIB_NODE_FN (af_xdp_input_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (af_xdp_input_node) = {
-  .name = "af_xdp-input",
+  .name = "af-xdp-input",
   .sibling_of = "device-input",
   .format_trace = format_af_xdp_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
-  .n_errors = AF_XDP_INPUT_N_ERROR,
-  .error_strings = af_xdp_input_error_strings,
+  .n_errors = AF_XDP_RX_N_ERROR,
+  .error_strings = af_xdp_rx_func_error_strings,
 };
-
 /* *INDENT-ON* */
 
 
