@@ -148,13 +148,32 @@ typedef struct _vnet_application_add_tls_key_args_t
   u8 *key;
 } vnet_app_add_tls_key_args_t;
 
-typedef enum tls_engine_type_
+typedef struct _vnet_add_crypto_ctx_args_
 {
-  TLS_ENGINE_NONE,
-  TLS_ENGINE_MBEDTLS,
-  TLS_ENGINE_OPENSSL,
-  TLS_N_ENGINES
-} tls_engine_type_t;
+  u8 *cert;
+  u8 *key;
+  u8 engine;
+  u32 index;
+} vnet_add_crypto_ctx_args_t;
+
+typedef enum crypto_engine_type_
+{
+  CRYPTO_ENGINE_NONE,
+  CRYPTO_ENGINE_MBEDTLS,
+  CRYPTO_ENGINE_OPENSSL,
+  CRYPTO_ENGINE_PICOTLS,
+  CRYPTO_ENGINE_VPP,
+  CRYPTO_N_ENGINES
+} crypto_engine_type_t;
+
+typedef struct crypto_ctx_
+{
+  u64 opaque;
+  u8 *key;
+  u8 *cert;
+  u32 cr_index;			/* index in crypto context pool */
+  u8 engine;
+} crypto_ctx_t;
 
 /* Application attach options */
 typedef enum
@@ -234,6 +253,7 @@ int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
 clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
 clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
+int vnet_add_crypto_ctx (vnet_add_crypto_ctx_args_t * a);
 
 typedef struct app_session_transport_
 {
@@ -277,7 +297,7 @@ typedef struct session_listen_uri_msg_
 {
   u32 client_index;
   u32 context;
-  u8 uri[56];
+  u8 uri[60];
 } __clib_packed session_listen_uri_msg_t;
 
 typedef struct session_bound_msg_
@@ -349,7 +369,7 @@ typedef struct session_connect_uri_msg_
 {
   u32 client_index;
   u32 context;
-  u8 uri[56];
+  u8 uri[60];
 } __clib_packed session_connect_uri_msg_t;
 
 typedef struct session_connected_msg_
@@ -376,6 +396,22 @@ typedef struct session_disconnect_msg_
   u32 context;
   session_handle_t handle;
 } __clib_packed session_disconnect_msg_t;
+
+typedef struct crypto_ctx_add_msg_
+{
+  u32 client_index;
+  u32 context;
+  u8 *cert;
+  u8 *key;
+  u8 engine;
+} __clib_packed add_crypto_ctx_msg_t;
+
+typedef struct crypto_ctx_added_msg_
+{
+  u32 client_index;
+  u32 context;
+  u32 crypto_index;
+} __clib_packed add_crypto_ctx_reply_msg_t;
 
 typedef struct session_disconnected_msg_
 {

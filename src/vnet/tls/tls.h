@@ -79,6 +79,7 @@ typedef struct tls_ctx_
   u8 app_closed;
   u8 no_app_session;
   u8 *srv_hostname;
+  u32 crypto_ctx_index;
 } tls_ctx_t;
 
 typedef struct tls_main_
@@ -118,7 +119,7 @@ typedef struct tls_engine_vft_
 
 tls_main_t *vnet_tls_get_main (void);
 void tls_register_engine (const tls_engine_vft_t * vft,
-			  tls_engine_type_t type);
+			  crypto_engine_type_t type);
 int tls_add_vpp_q_rx_evt (session_t * s);
 int tls_add_vpp_q_tx_evt (session_t * s);
 int tls_add_vpp_q_builtin_tx_evt (session_t * s);

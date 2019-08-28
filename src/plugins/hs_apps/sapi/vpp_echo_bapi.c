@@ -45,6 +45,8 @@ echo_send_attach (echo_main_t * em)
   bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[APP_OPTIONS_SEGMENT_SIZE] = 256 << 20;
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = 256;
+  if (em->crypto_engine)
+    bmp->options[APP_OPTIONS_TLS_ENGINE] = em->crypto_engine;
   if (em->appns_id)
     {
       bmp->namespace_id_len = vec_len (em->appns_id);
