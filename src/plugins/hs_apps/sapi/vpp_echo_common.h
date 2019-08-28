@@ -82,6 +82,8 @@
   _(ECHO_FAIL_SESSION_RESET, "ECHO_FAIL_SESSION_RESET")                 \
   _(ECHO_FAIL_VL_API_CERT_KEY_ADD_REPLY,                                \
     "ECHO_FAIL_VL_API_CERT_KEY_ADD_REPLY")                              \
+  _(ECHO_FAIL_VL_API_CRYPTO_CONTEXT_ADD_REPLY,                          \
+    "ECHO_FAIL_VL_API_CRYPTO_CONTEXT_ADD_REPLY")                        \
   _(ECHO_FAIL_VL_API_CERT_KEY_DEL_REPLY,                                \
     "ECHO_FAIL_VL_API_CERT_KEY_DEL_REPLY")                              \
   _(ECHO_FAIL_GET_SESSION_FROM_HANDLE,                                  \
@@ -204,6 +206,7 @@ typedef enum
 {
   STATE_START,
   STATE_ATTACHED_NO_CERT,
+  STATE_ATTACHED_CERT_KEY,
   STATE_ATTACHED,
   STATE_LISTEN,
   STATE_READY,
@@ -308,8 +311,9 @@ typedef struct
   u8 log_lvl;			/* Verbosity of the logging */
   int max_test_msg;		/* Limit the number of incorrect data messages */
   u32 evt_q_size;		/* Size of the vpp MQ (app<->vpp events) */
-  u32 crypto_ctx_engine;	/* crypto engine used */
   u32 ckpair_index;		/* Cert key pair used */
+  u32 crypto_context_index;
+  u8 crypto_engine;		/* crypto engine used */
 
   u8 *appns_id;
   u64 appns_flags;
@@ -411,6 +415,7 @@ void echo_send_disconnect_session (u64 handle, u32 opaque);
 void echo_api_hookup (echo_main_t * em);
 void echo_send_add_cert_key (echo_main_t * em);
 void echo_send_del_cert_key (echo_main_t * em);
+void echo_send_add_crypto_context (echo_main_t * em);
 
 #endif /* __included_vpp_echo_common_h__ */
 

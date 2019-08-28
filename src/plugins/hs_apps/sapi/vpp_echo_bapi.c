@@ -68,6 +68,23 @@ echo_send_detach (echo_main_t * em)
 }
 
 void
+echo_send_add_crypto_context (echo_main_t * em)
+{
+  vl_api_app_add_crypto_context_t *bmp;
+  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  clib_memset (bmp, 0, sizeof (*bmp));
+
+  bmp->_vl_msg_id = ntohs (VL_API_APP_ADD_CRYPTO_CONTEXT);
+  bmp->client_index = em->my_client_index;
+  bmp->context = ntohl (0xfeedface);
+  bmp->engine = em->crypto_engine;
+  bmp->proto = em->uri_elts.transport_proto;
+  bmp->ckpair_index = clib_host_to_net_u32 (em->ckpair_index);
+
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+}
+
+void
 echo_send_add_cert_key (echo_main_t * em)
 {
   u32 cert_len = test_srv_crt_rsa_len;
@@ -119,7 +136,7 @@ echo_send_listen (echo_main_t * em)
   clib_memcpy_fast (&mp->ip, &em->uri_elts.ip, sizeof (mp->ip));
   mp->port = em->uri_elts.port;
   mp->proto = em->uri_elts.transport_proto;
-  mp->ckpair_index = em->ckpair_index;
+  mp->crypto_context_index = em->crypto_context_index;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
@@ -159,7 +176,7 @@ echo_send_connect (u64 parent_session_handle, u32 opaque)
   mp->port = em->uri_elts.port;
   mp->proto = em->uri_elts.transport_proto;
   mp->parent_handle = parent_session_handle;
-  mp->ckpair_index = em->ckpair_index;
+  mp->crypto_context_index = em->crypto_context_index;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
@@ -228,6 +245,28 @@ echo_segment_handle_add_del (echo_main_t * em, u64 segment_handle, u8 add)
  */
 
 static void
+  vl_api_app_add_crypto_context_reply_t_handler
+  (vl_api_app_add_crypto_context_reply_t * mp)
+{
+  echo_main_t *em = &echo_main;
+  if (mp->retval)
+    {
+      ECHO_FAIL (ECHO_FAIL_VL_API_CRYPTO_CONTEXT_ADD_REPLY,
+		 "Adding crypto context returned %d",
+		 clib_net_to_host_u32 (mp->retval));
+      return;
+    }
+  /* No concurrency here, only bapi thread writes */
+  if (em->state != STATE_ATTACHED_CERT_KEY)
+    {
+      ECHO_FAIL (ECHO_FAIL_VL_API_CRYPTO_CONTEXT_ADD_REPLY, "Wrong state");
+      return;
+    }
+  em->crypto_context_index = clib_net_to_host_u32 (mp->index);
+  em->state = STATE_ATTACHED;
+}
+
+static void
   vl_api_app_add_cert_key_pair_reply_t_handler
   (vl_api_app_add_cert_key_pair_reply_t * mp)
 {
@@ -246,7 +285,7 @@ static void
       return;
     }
   em->ckpair_index = clib_net_to_host_u32 (mp->index);
-  em->state = STATE_ATTACHED;
+  em->state = STATE_ATTACHED_CERT_KEY;
 }
 
 static void
@@ -424,12 +463,13 @@ failed:
   vec_free (fds);
 }
 
-#define foreach_quic_echo_msg                              \
-_(APP_ATTACH_REPLY, app_attach_reply)                      \
-_(APPLICATION_DETACH_REPLY, application_detach_reply)      \
-_(MAP_ANOTHER_SEGMENT, map_another_segment)                \
-_(APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)\
-_(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)\
+#define foreach_quic_echo_msg                                    \
+_(APP_ATTACH_REPLY, app_attach_reply)                            \
+_(APPLICATION_DETACH_REPLY, application_detach_reply)            \
+_(MAP_ANOTHER_SEGMENT, map_another_segment)                      \
+_(APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)      \
+_(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)      \
+_(APP_ADD_CRYPTO_CONTEXT_REPLY, app_add_crypto_context_reply)    \
 _(UNMAP_SEGMENT, unmap_segment)
 
 void

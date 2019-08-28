@@ -45,7 +45,6 @@ typedef struct tls_cxt_id_
   };
   session_handle_t tls_session_handle;
   u32 parent_app_wrk_index;
-  u32 ssl_ctx;
   u32 listener_ctx_index;
   u8 tcp_is_ip4;
   u8 tls_engine_id;
@@ -68,7 +67,6 @@ typedef struct tls_ctx_
 #define listener_ctx_index c_tls_ctx_id.listener_ctx_index
 #define tcp_is_ip4 c_tls_ctx_id.tcp_is_ip4
 #define tls_ctx_engine c_tls_ctx_id.tls_engine_id
-#define tls_ssl_ctx c_tls_ctx_id.ssl_ctx
 #define tls_ctx_handle c_c_index
   /* Temporary storage for session open opaque. Overwritten once
    * underlying tcp connection is established */
@@ -79,8 +77,14 @@ typedef struct tls_ctx_
   u8 app_closed;
   u8 no_app_session;
   u8 *srv_hostname;
-  u32 ckpair_index;
+  u32 crypto_context_index;
 } tls_ctx_t;
+
+typedef struct tls_crypto_context_
+{
+  crypto_context_t crctx;	     /**< Needs to be first> */
+  void *engine_context;
+} tls_crypto_context_t;
 
 typedef struct tls_main_
 {
@@ -90,6 +94,7 @@ typedef struct tls_main_
   clib_rwlock_t half_open_rwlock;
   u8 **rx_bufs;
   u8 **tx_bufs;
+  tls_crypto_context_t *crypto_ctx_pool;
 
   /*
    * Config
@@ -111,10 +116,11 @@ typedef struct tls_engine_vft_
   int (*ctx_read) (tls_ctx_t * ctx, session_t * tls_session);
   int (*ctx_write) (tls_ctx_t * ctx, session_t * app_session);
     u8 (*ctx_handshake_is_over) (tls_ctx_t * ctx);
-  int (*ctx_start_listen) (tls_ctx_t * ctx);
-  int (*ctx_stop_listen) (tls_ctx_t * ctx);
   int (*ctx_transport_close) (tls_ctx_t * ctx);
   int (*ctx_app_close) (tls_ctx_t * ctx);
+  int (*add_crypto_context) (tls_crypto_context_t * crctx, u64 options[16]);
+  int (*free_crypto_context) (tls_crypto_context_t * crctx);
+  crypto_context_t *(*crypto_context_alloc) (void);
 } tls_engine_vft_t;
 
 tls_main_t *vnet_tls_get_main (void);
@@ -128,6 +134,8 @@ int tls_notify_app_accept (tls_ctx_t * ctx);
 int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 void tls_disconnect_transport (tls_ctx_t * ctx);
+tls_crypto_context_t *tls_crypto_context_get (u32 cr_index);
+
 #endif /* SRC_VNET_TLS_TLS_H_ */
 
 /*
