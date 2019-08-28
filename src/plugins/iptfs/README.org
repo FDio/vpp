@@ -1,0 +1,3467 @@
+* IPTFS
+
+This is an implementation of IPsec IPTFS documented by:
+
+   https://datatracker.ietf.org/doc/draft-ietf-ipsecme-iptfs/
+
+** Copyright (c) 2019-2020, LabN Consulting, L.L.C.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+** Configurations:
+
+It is very important that the worker configuration is done correctly. The
+iptfs-output-worker must not be co-located with the RX/TX of the offered load or
+there will be correlation between the offered load and the packet timing.
+
+It is enough to have 3 cores available. One for VPP main thread, one shared by
+~iptfs-output-worker~ (the tx side of the IPTFS tunnel) as well as the interface
+used for RX on the tunnel, everything else will be placed on a last core.
+
+The optimal configuration for operation at multi-gigabit tunnel rates is
+to have a unique core per function:
+
+ - ~iptfs-decap-worker~ :: The IPTFS Tunnel decapsulation core tunnel packets
+   are deaggregated and assembled into their user packets and then delivered to
+   the outbound user interface.
+ - ~iptfs-decrypt-worker~ :: The IPTFS Tunnel TFS RX core for decrypting tunnel
+   packets.
+ - ~iptfs-encap-worker~ :: The core which handles constructing TFS tunnel
+   packets from user packets.
+ - ~iptfs-output-worker~ :: The IPTFS Tunnel TX TFS core
+ - ~iptfs-zpool-worker~ :: The core which handles creating zero'd buffers for
+   use by the encapuslation as well as the output routines. This single core can
+   be shared by all tunnels, and normally does not need to be different.
+
+The code will automatically divide up available workers (cores) to use for each
+of these functions if there are enough workers configured (i.e., optimally 5, 9,
+13, ...)
+
+The below statistics were derived using the following hardware and example
+configurations below.
+
+#+begin_example
+  $ vppctl show cpu
+  Model name:               Intel(R) Xeon(R) Silver 4116 CPU @ 2.10GHz
+  Microarch model (family): [0x6] Skylake ([0x55] Skylake X/SP) stepping 0x4
+  Base frequency:           2.09 GHz
+
+  $ vppctl show hardware
+  ..
+  TenGigabitEthernet65/0/0           2     up   TenGigabitEthernet65/0/0
+    Link speed: 10 Gbps
+    Intel 82599
+  TenGigabitEthernet65/0/1           2     up   TenGigabitEthernet65/0/1
+    Link speed: 10 Gbps
+    Intel 82599
+#+end_example
+
+The 5 worker (core) configuration has been observed to support the following
+offered load, with the test done using bidirectionally offered load (user). The
+IPTFS tunnel rate at 9900 Mbps (99% line rate of the 10GBps NIC)
+
+| packet size[s]         |    offered load | Total | bandwidth |   Total |
+|                        | (no drops) Mpps |  Mpps |    (Gbps) | BW Gbps |
+|------------------------+-----------------+-------+-----------+---------|
+| 40b packets            |            5.21 | 10.42 |      2.67 |    5.34 |
+| 576b packets           |            2.01 |  4.02 |      9.55 |    19.1 |
+| 1442b packets          |             .80 |  1.61 |      9.38 |   18.77 |
+| 1500b packets          |             .77 |  1.55 |      9.35 |   18.70 |
+| i-mix (7,4,1 of above) |            3.02 |  6.04 |      8.78 |   17.54 |
+|                        |                 |       |           |         |
+
+#+begin_src ditaa
+                  11.11.11.0/24
+                +---------------------+
+            User|                     |
+                |                     |
+            .11 |                     |
+  +--------------------------+        |
+  | TenGigabitEthernet65/0/0 |        |
+  |        == DUT1 ==        |        |
+  | TenGigabitEthernet65/0/1 |        |
+  +--------------------------+   .254 |
+            .11 |                +--------+
+                |                | port 0 |
+     [IPTFS] 13.13.13.0/24       |  trex  |
+                |                | port 1 |
+            .12 |                +--------+
+  +--------------------------+   .254 |
+  | TenGigabitEthernet65/0/1 |        |
+  |        == DUT2 ==        |        |
+  | TenGigabitEthernet65/0/0 |        |
+  +--------------------------+        |
+            .12 |                     |
+                |                     |
+           User |                     |
+                +---------------------+
+                  12.12.12.0/24
+#+end_src
+
+*** Startup Config (~/etc/vpp/startup.conf~)
+
+#+begin_example
+  unix {
+     interactive
+     log /tmp/vpp.log
+     coredump-size unlimited full-coredump
+     gid vpp
+     cli-listen /run/vpp/cli.sock
+  }
+  cpu { main-core 0 workers 5 }
+  api-trace { on }
+  socksvr { default }
+  statseg { default }
+  buffers { default data-size 10240 buffers-per-numa 30720 }
+  plugins { path ..path-to-build-dir../vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins }
+  dpdk { dev 0000:65:0.0 dev 0000:65:0.1 }
+  punt { socket /tmp/punt-server.sock }
+#+end_example
+
+*** DUT1 Config
+
+#+begin_example
+  set dpdk interface descriptors TenGigabitEthernet65/0/0 rx 2048 tx 2048
+  set dpdk interface descriptors TenGigabitEthernet65/0/1 rx 2048 tx 2048
+  ipsec select backend esp 0
+  set interface rx-placement TenGigabitEthernet65/0/0 worker 0
+  set interface rx-placement TenGigabitEthernet65/0/1 worker 1
+  set int state TenGigabitEthernet65/0/0 up
+  set int ip address TenGigabitEthernet65/0/0 11.11.11.11/24
+
+  set int state TenGigabitEthernet65/0/1 up
+  set int ip address TenGigabitEthernet65/0/1 13.13.13.11/24
+
+  ipsec itf create instance 0
+  ipsec sa add 11 spi 112 esp crypto-key 4a506a794f574265564551694d6537684a506a794f574265564551694d653768 crypto-alg aes-gcm-256 salt 0x1A2B tunnel-src 13.13.13.12 tunnel-dst 13.13.13.11 use-esn use-anti-replay inbound tfs iptfs-nocc  iptfs-no-pad-trace
+  ipsec sa add 21 spi 111 esp crypto-key 4a506a794f574265564551694d6537684a506a794f574265564551694d653768 crypto-alg aes-gcm-256 salt 0x1A2B tunnel-src 13.13.13.11 tunnel-dst 13.13.13.12 use-esn use-anti-replay tfs iptfs-nocc iptfs-ethernet-bitrate 9900000000 iptfs-mtu 1500 iptfs-max-delay-us 10000  iptfs-no-pad-trace
+  ipsec tunnel protect ipsec0 sa-in 11 sa-out 21
+  set interface unnumbered ipsec0 use TenGigabitEthernet65/0/1
+  set interface state ipsec0 up
+
+  ip route add 16.0.0.0/24 via 11.11.11.253
+  ip route add 12.12.12.0/24 via ipsec0
+  ip route add 48.0.0.0/24 via ipsec0
+#+end_example
+
+*** DUT2 Config
+
+#+begin_example
+  set dpdk interface descriptors TenGigabitEthernet65/0/0 rx 2048 tx 2048
+  set dpdk interface descriptors TenGigabitEthernet65/0/1 rx 2048 tx 2048
+
+  ipsec select backend esp 0
+  set interface rx-placement TenGigabitEthernet65/0/0 worker 0
+  set interface rx-placement TenGigabitEthernet65/0/1 worker 1
+
+  set int state TenGigabitEthernet65/0/0 up
+  set int ip address TenGigabitEthernet65/0/0 12.12.12.12/24
+
+  set int state TenGigabitEthernet65/0/1 up
+  set int ip address TenGigabitEthernet65/0/1 13.13.13.12/24
+
+  ipsec itf create instance 0
+  ipsec sa add 11 spi 111 esp crypto-key 4a506a794f574265564551694d6537684a506a794f574265564551694d653768 crypto-alg aes-gcm-256 salt 0x1A2B tunnel-src 13.13.13.11 tunnel-dst 13.13.13.12 use-esn use-anti-replay inbound tfs iptfs-nocc  iptfs-no-pad-trace
+  ipsec sa add 21 spi 112 esp crypto-key 4a506a794f574265564551694d6537684a506a794f574265564551694d653768 crypto-alg aes-gcm-256 salt 0x1A2B tunnel-src 13.13.13.12 tunnel-dst 13.13.13.11 use-esn use-anti-replay tfs iptfs-nocc iptfs-ethernet-bitrate 9900000000 iptfs-mtu 1500 iptfs-max-delay-us 10000  iptfs-no-pad-trace
+  ipsec tunnel protect ipsec0 sa-in 11 sa-out 21
+  set interface unnumbered ipsec0 use TenGigabitEthernet65/0/1
+  set interface state ipsec0 up
+
+  ip route add 48.0.0.0/24 via 12.12.12.253
+  ip route add 11.11.11.0/24 via ipsec0
+  ip route add 16.0.0.0/24 via ipsec0
+#+end_example
+
+*** TREX (~/etc/trex_cfg.yaml~)
+
+#+begin_src yaml
+  - port_limit    : 2
+    version       : 2
+    low_end       : false
+    c             : 8
+    # List of interfaces. Change to suit your setup. Use ./dpdk_setup_ports.py -s to see available options
+    interfaces    : ["65:00.0", "65:00.1"]
+    port_info     :
+                   - ip         : 11.11.11.253
+                     default_gw : 11.11.11.11
+                   - ip         : 12.12.12.253
+                     default_gw : 12.12.12.12
+#+end_src
+
+** Automation
+
+There is a full automation testing suite located under ~vpp/automation~. As an
+example use, 2 of the invocations used to obtain the above configurations and data
+were as follows:
+
+#+begin_example
+
+576b: ~/w/vpp/automation/runtests.py -U 576 -w 5 -d 120 -r 9900M --testbed=B \
+      -v -p 100  test_verify_nodrop.py --native-crypto
+
+IMIX: ~/w/vpp/automation/runtests.py -U 1442 -w 5 -d 120 -r 9900M --testbed=B \
+      -v -p 100  test_verify_nodrop.py --native-crypto
+
+#+end_example
+
+The data for "testbed B" needs to be added to ~vpp/automation/testbed_data.json~
+or placed in ~/etc/vpp-lab-data/testbed_data.json~ where it will be merged with
+the distributed ~vpp/automation/testbed_data.json~.
+
+** Turn-Key Docker Example
+
+The distributed automation software can run tests within docker. And provided
+one has docker configured correctly and built VPP the following command can be
+used to run automation tests within docker. A public trex image is used so that
+does not need to be setup either.
+
+NOTE: docker does not support high speed operation of the tunnel due to the
+overhead of the virtual interfaces being utilized.
+
+#+begin_example
+
+~/w/vpp/automation/runtests.py -U 576 -w 5 -d 120 -r 100M --testbed=docker \
+      -v -p 100  test_verify_nodrop.py --native-crypto
+
+#+end_example
+
+** Obtaining TREX
+
+- https://trex-tgn.cisco.com/
+- If you are building from source:
+#+begin_src bash
+  cd linux_dpdk
+  ./b configure
+  ./b build
+#+end_src
+- Install it somewhere (probably /opt/trex/vX.XX) that has access to a port
+  conencted to each port on the MBs under test.
+
+** Launching TREX Server
+
+Make sure you have TREX config setup, and launch TREX only after VPP is up on
+your Macchiatobins. This is important b/c TREX will do ARP to discover it's
+default gw.
+
+#+begin_src bash
+  ln -s  /opt/trex/v2.57 /opt/trex/current
+  cd /opt/trex/current
+  sudo ./t-rex-64 -i
+  # ... some live output
+#+end_src
+
+Worth noting that it needs to arp for IPs on the selected interfaces, if your
+test doesn't work this is a good first thing to look for.
+
+** Using TREX
+
+- Goto another shell and run the console, and then a command:
+  (https://trex-tgn.cisco.com/trex/doc/trex_vm_manual.html)
+
+#+begin_src bash
+  cd /opt/trex/v2.57
+  ./trex-console
+  ...
+
+  trex> start -f stl/imix.py -m 30kpps --port 0
+  trex> start -f stl/imix.py -m 30kpps --port 1
+  trex> tui
+#+end_src
+
+The above 2 commands will start an imix packet flow at 30Kpps in both
+directions, which translates to just under 100Mbps of traffic per direction. The
+last command "tui" prints a live dashboard of the packet flow.
+
+
+* Random Notes Taken During Development
+** Congestion Control Algorithm
+
+RFC5348 (TFRC) and RFC4342 (DCCP)
+(Worth nothing RFC2649 High Speed TCP)
+
+*** X_recv - Receive rate.
+
+This is the estimate of the rate the other side received data at at the time of
+receiving a feedback packet. Given we send at a fixed interface we know exactly
+what the receive rate was is at the receiver. It's whatever our current send
+rate is between current time and the echo'd timestamp in the past * our
+send-rate.
+
+*** RTO no feedback timeout value
+
+RTO = max(4*R, 2*s/X) (s/X is pktsize/bytes-per-sec so pdelay)
+RTO = max(4*R, 2 * pdelay)
+
+*** No Feeback Received
+
+This RTO value is used as a timeout for no-feedback-received in section 4.4 to
+cut the send rate when no feedback has been received that would otherwise cause
+the rate to adjust.
+
+*** Section 8.2.1 Determine if rate limited during last interval
+
+This is simple, look at pdelay if it's the original value or not on receipt
+of the feedback. XXX what about slow-startup
+
+
+*** Main CC formula
+
+The main formula for congestion control is
+#+begin_example
+                                      1
+      X_Pps = -----------------------------------------------
+              R * (sqrt(2*p/3) + 12*sqrt(3*p/8)*p*(1+32*p^2))
+#+end_example
+
+If p == 1 then this is (R * 243.315981117).
+
+Where ~R~ is the round trip estimate in seconds, and p is the inverse loss event
+rate calculated by the receiver
+
+So here are some max pps given zero loss (1/R)
+
+|     RTT |          pps |          p==1 | max-bw 1430 kbps | max-bw 576 kbps |
+|---------+--------------+---------------+------------------+-----------------|
+|       1 | 4.1098821e-3 | 243.315981117 |      0.047017051 |     0.017754691 |
+|    .010 |   0.41098821 | 243.315981117 |        4.7017051 |       1.7754691 |
+|    .001 |    4.1098821 | 243.315981117 |        47.017051 |       17.754691 |
+|   .0001 |    41.098821 | 243.315981117 |        470.17051 |       177.54691 |
+| .000008 |    513.73526 | 243.315981117 |        5877.1314 |       2219.3363 |
+| .000001 |    4109.8821 | 243.315981117 |        47017.051 |       17754.691 |
+#+TBLFM: $2=1/$1*$3::$4=($2*1430*8)/1e3::$5=($2*540*8)/1e3
+
+What are some values realistic values of p and their effects.
+
+#+tblname: p-table-values
+|   p0 |          p |         f(p) | PPS (RTT 20ms) | BW (RTT 20ms) |   Drop%/s | PPS (RTT 1ms) | BW (RTT 1ms) | Drop%/s | PPS (RTT 10us) | BW (RTT 10us) | Drop%/s |
+|------+------------+--------------+----------------+---------------+-----------+---------------+--------------+---------+----------------+---------------+---------|
+|    1 |          1 |    243.31598 |     0.20549411 |  2.3508526e-3 |    486.63 |     4.1098821 |  0.047017051 |   24.33 |      410.98821 |     4.7017051 |    0.24 |
+|    2 |        0.5 |    23.960036 |      2.0868082 |   0.023873086 |     95.84 |     41.736164 |   0.47746172 |    4.79 |      4173.6164 |     47.746172 |    0.05 |
+|    3 | 0.33333333 |    6.9139328 |      7.2317741 |   0.082731496 |     41.48 |     144.63548 |    1.6546299 |    2.07 |      14463.548 |     165.46299 |    0.02 |
+|    4 |       0.25 |    3.1639243 |      15.803159 |    0.18078814 |     25.31 |     316.06319 |    3.6157629 |    1.27 |      31606.319 |     361.57629 |    0.01 |
+|    5 |        0.2 |    1.8637173 |      26.828103 |    0.30691350 |     18.64 |     536.56206 |    6.1382700 |    0.93 |      53656.206 |     613.82700 |    0.01 |
+|    6 | 0.16666667 |    1.2777778 |      39.130434 |    0.44765216 |     15.33 |     782.60868 |    8.9530433 |    0.77 |      78260.868 |     895.30433 |    0.01 |
+|    7 | 0.14285714 |   0.96450837 |      51.839882 |    0.59304825 |     13.50 |     1036.7976 |    11.860965 |    0.68 |      103679.76 |     1186.0965 |    0.01 |
+|    8 |      0.125 |   0.77581442 |      64.448402 |    0.73728972 |     12.41 |     1288.9680 |    14.745794 |    0.62 |      128896.80 |     1474.5794 |    0.01 |
+|    9 | 0.11111111 |   0.65185323 |      76.704383 |    0.87749814 |     11.73 |     1534.0877 |    17.549963 |    0.59 |      153408.77 |     1754.9963 |    0.01 |
+|  1e1 |        0.1 |   0.56493917 |      88.505104 |     1.0124984 |     11.30 |     1770.1021 |    20.249968 |    0.56 |      177010.21 |     2024.9968 |    0.01 |
+|  5e1 |       0.02 |   0.13652071 |      366.24480 |     4.1898405 |     13.65 |     7324.8960 |    83.796810 |    0.68 |      732489.60 |     8379.6810 |    0.01 |
+|  1e2 |       0.01 |  0.089021642 |      561.66117 |     6.4254038 |     17.80 |     11233.223 |    128.50807 |    0.89 |      1123322.3 |     12850.807 |    0.01 |
+|  5e2 |       2e-3 |  0.037172188 |      1345.0917 |     15.387849 |     37.17 |     26901.833 |    307.75697 |    1.86 |      2690183.3 |     30775.697 |    0.02 |
+|  1e3 |       1e-3 |  0.026052275 |      1919.2182 |     21.955856 |     52.10 |     38384.364 |    439.11712 |    2.61 |      3838436.4 |     43911.712 |    0.03 |
+|  5e3 |       2e-4 |  0.011567790 |      4322.3468 |     49.447647 |    115.68 |     86446.936 |    988.95295 |    5.78 |      8644693.6 |     98895.295 |    0.06 |
+|  1e4 |       1e-4 | 8.1723143e-3 |      6118.2179 |     69.992413 |    163.45 |     122364.36 |    1399.8483 |    8.17 |      12236436. |     139984.83 |    0.08 |
+|  5e4 |       2e-5 | 3.6521410e-3 |      13690.600 |     156.62046 |    365.21 |     273811.99 |    3132.4092 |   18.26 |      27381199. |     313240.92 |    0.18 |
+|  1e5 |       1e-5 | 2.5822213e-3 |      19363.174 |     221.51471 |    516.44 |     387263.48 |    4430.2942 |   25.82 |      38726348. |     443029.42 |    0.26 |
+|  5e5 |       2e-6 | 1.1547213e-3 |      43300.492 |     495.35763 |   1154.72 |     866009.83 |    9907.1525 |   57.74 |      86600983. |     990715.25 |    0.58 |
+|  1e6 |       1e-6 | 8.1650393e-4 |      61236.692 |     700.54776 |   1633.01 |     1224733.8 |    14010.955 |   81.65 |     122473380. |     1401095.5 |    0.82 |
+|  1e7 |       1e-7 | 2.5819912e-4 |      193648.99 |     2215.3444 |   5163.98 |     3872979.9 |    44306.890 |  258.20 |     387297990. |     4430689.0 |    2.58 |
+|  1e8 |       1e-8 | 8.1649665e-5 |      612372.38 |     7005.5400 |  16329.93 |     12247448. |    140110.81 |  816.50 |    1224744800. |     14011081. |    8.16 |
+|  1e9 |       1e-9 | 2.5819889e-5 |      1936491.7 |     22153.465 |  51639.78 |     38729833. |    443069.29 | 2581.99 |    3872983300. |     44306929. |   25.82 |
+| 1e10 |      1e-10 | 8.1649658e-6 |      6123724.4 |     70055.407 | 163299.32 |    122474490. |    1401108.2 | 8164.97 |   12247449000. |    140110820. |   81.65 |
+#+TBLFM: $2=1/$1::$3=(sqrt((2*$2)/3) + 12*sqrt((3*$2)/8)*$2*(1+32*($2*$2)))::$4=1/(.020 * $3)::$5=($4*1430*8)/1e6::$6=100*($1/$4);%.2f::$7=1/(.001 * $3)::$8=($7*1430*8)/1e6::$9=100*($1/$7);%.2f::$10=1/(.000010 * $3)::$11=($10*1430*8)/1e6::$12=100*($1/$10);%.2f
+
+#+begin_src gnuplot :var data=p-table-values :file output.png
+    set xlabel "1/p i.e., 1/(packets w/o loss interval)"
+    set ylabel "f(p)"
+set xtics rotate
+  set logscale xy
+    plot data using 1:3 with line
+#+end_src
+
+#+RESULTS:
+[[file:output.png]]
+
+#+tblname: output-100ms
+|  p0 |          p |         f(p) | RTT |         PPS |    BW (Mbps) |      Drops/s |  RTT/drop |
+|-----+------------+--------------+-----+-------------+--------------+--------------+-----------|
+|   1 |          1 |    243.31598 |  .1 | 0.041098821 | 4.7017051e-4 |  0.041098821 | 243.31598 |
+|   2 |        0.5 |    23.960036 |  .1 |  0.41736164 | 4.7746172e-3 |   0.20868082 | 47.920072 |
+|   3 | 0.33333333 |    6.9139328 |  .1 |   1.4463548 |  0.016546299 |   0.48211827 | 20.741799 |
+|   4 |       0.25 |    3.1639243 |  .1 |   3.1606319 |  0.036157629 |   0.79015798 | 12.655697 |
+|   5 |        0.2 |    1.8637173 |  .1 |   5.3656206 |  0.061382700 |    1.0731241 | 9.3185866 |
+|   6 | 0.16666667 |    1.2777778 |  .1 |   7.8260868 |  0.089530433 |    1.3043478 | 7.6666668 |
+|   7 | 0.14285714 |   0.96450837 |  .1 |   10.367976 |   0.11860965 |    1.4811394 | 6.7515588 |
+|   8 |      0.125 |   0.77581442 |  .1 |   12.889680 |   0.14745794 |      1.61121 | 6.2065156 |
+|   9 | 0.11111111 |   0.65185323 |  .1 |   15.340877 |   0.17549963 |    1.7045419 | 5.8666789 |
+| 1e1 |        0.1 |   0.56493917 |  .1 |   17.701021 |   0.20249968 |    1.7701021 | 5.6493916 |
+| 5e1 |       0.02 |   0.13652071 |  .1 |   73.248960 |   0.83796810 |    1.4649792 | 6.8260355 |
+| 1e2 |       0.01 |  0.089021642 |  .1 |   112.33223 |    1.2850807 |    1.1233223 | 8.9021646 |
+| 5e2 |       2e-3 |  0.037172188 |  .1 |   269.01833 |    3.0775697 |   0.53803666 | 18.586094 |
+| 1e3 |       1e-3 |  0.026052275 |  .1 |   383.84364 |    4.3911712 |   0.38384364 | 26.052275 |
+| 5e3 |       2e-4 |  0.011567790 |  .1 |   864.46936 |    9.8895295 |   0.17289387 | 57.838950 |
+| 1e4 |       1e-4 | 8.1723143e-3 |  .1 |   1223.6436 |    13.998483 |   0.12236436 | 81.723142 |
+| 5e4 |       2e-5 | 3.6521410e-3 |  .1 |   2738.1199 |    31.324092 |  0.054762398 | 182.60705 |
+| 1e5 |       1e-5 | 2.5822213e-3 |  .1 |   3872.6348 |    44.302942 |  0.038726348 | 258.22213 |
+| 5e5 |       2e-6 | 1.1547213e-3 |  .1 |   8660.0983 |    99.071525 |  0.017320197 | 577.36065 |
+| 1e6 |       1e-6 | 8.1650393e-4 |  .1 |   12247.338 |    140.10955 |  0.012247338 | 816.50396 |
+| 1e7 |       1e-7 | 2.5819912e-4 |  .1 |   38729.799 |    443.06890 | 3.8729799e-3 | 2581.9912 |
+| 1e8 |       1e-8 | 8.1649665e-5 |  .1 |   122474.48 |    1401.1081 | 1.2247448e-3 | 8164.9663 |
+| 1e9 |       1e-9 | 2.5819889e-5 |  .1 |   387298.33 |    4430.6929 | 3.8729833e-4 | 25819.889 |
+| 5e9 |      2e-10 | 1.1547005e-5 |  .1 |   866025.43 |    9907.3309 | 1.7320509e-4 | 57735.025 |
+#+TBLFM: $2=1/$1::$3=(sqrt((2*$2)/3) + 12*sqrt((3*$2)/8)*$2*(1+32*($2*$2)))::$5=1/($4 * $3)::$6=($5*1430*8)/1e6::$7=($5/$1)::$8=$1/($4*$5)
+
+#+tblname: output-20ms
+|  p0 |          p |         f(p) |  RTT |        PPS |    BW (Mbps) |      Drops/s |  RTT/drop |
+|-----+------------+--------------+------+------------+--------------+--------------+-----------|
+|   1 |          1 |    243.31598 | .020 | 0.20549411 | 2.3508526e-3 |   0.20549411 | 243.31598 |
+|   2 |        0.5 |    23.960036 | .020 |  2.0868082 |  0.023873086 |    1.0434041 | 47.920072 |
+|   3 | 0.33333333 |    6.9139328 | .020 |  7.2317741 |  0.082731496 |    2.4105914 | 20.741798 |
+|   4 |       0.25 |    3.1639243 | .020 |  15.803159 |   0.18078814 |    3.9507898 | 12.655698 |
+|   5 |        0.2 |    1.8637173 | .020 |  26.828103 |   0.30691350 |    5.3656206 | 9.3185866 |
+|   6 | 0.16666667 |    1.2777778 | .020 |  39.130434 |   0.44765216 |     6.521739 | 7.6666668 |
+|   7 | 0.14285714 |   0.96450837 | .020 |  51.839882 |   0.59304825 |    7.4056974 | 6.7515586 |
+|   8 |      0.125 |   0.77581442 | .020 |  64.448402 |   0.73728972 |    8.0560503 | 6.2065154 |
+|   9 | 0.11111111 |   0.65185323 | .020 |  76.704383 |   0.87749814 |    8.5227092 | 5.8666791 |
+| 1e1 |        0.1 |   0.56493917 | .020 |  88.505104 |    1.0124984 |    8.8505104 | 5.6493917 |
+| 5e1 |       0.02 |   0.13652071 | .020 |  366.24480 |    4.1898405 |     7.324896 | 6.8260355 |
+| 1e2 |       0.01 |  0.089021642 | .020 |  561.66117 |    6.4254038 |    5.6166117 | 8.9021643 |
+| 5e2 |       2e-3 |  0.037172188 | .020 |  1345.0917 |    15.387849 |    2.6901834 | 18.586093 |
+| 1e3 |       1e-3 |  0.026052275 | .020 |  1919.2182 |    21.955856 |    1.9192182 | 26.052275 |
+| 5e3 |       2e-4 |  0.011567790 | .020 |  4322.3468 |    49.447647 |   0.86446936 | 57.838950 |
+| 1e4 |       1e-4 | 8.1723143e-3 | .020 |  6118.2179 |    69.992413 |   0.61182179 | 81.723144 |
+| 5e4 |       2e-5 | 3.6521410e-3 | .020 |  13690.600 |    156.62046 |     0.273812 | 182.60704 |
+| 1e5 |       1e-5 | 2.5822213e-3 | .020 |  19363.174 |    221.51471 |   0.19363174 | 258.22213 |
+| 5e5 |       2e-6 | 1.1547213e-3 | .020 |  43300.492 |    495.35763 |  0.086600984 | 577.36065 |
+| 1e6 |       1e-6 | 8.1650393e-4 | .020 |  61236.692 |    700.54776 |  0.061236692 | 816.50394 |
+| 1e7 |       1e-7 | 2.5819912e-4 | .020 |  193648.99 |    2215.3444 |  0.019364899 | 2581.9913 |
+| 1e8 |       1e-8 | 8.1649665e-5 | .020 |  612372.38 |    7005.5400 | 6.1237238e-3 | 8164.9666 |
+| 1e9 |       1e-9 | 2.5819889e-5 | .020 |  1936491.7 |    22153.465 | 1.9364917e-3 | 25819.889 |
+| 5e9 |      2e-10 | 1.1547005e-5 | .020 |  4330127.2 |    49536.655 | 8.6602544e-4 | 57735.025 |
+#+TBLFM: $2=1/$1::$3=(sqrt((2*$2)/3) + 12*sqrt((3*$2)/8)*$2*(1+32*($2*$2)))::$5=1/($4 * $3)::$6=($5*1430*8)/1e6::$7=($5/$1)::$8=$1/($4*$5)
+
+#+tblname: output-1ms
+|  p0 |          p |         f(p) |  RTT |       PPS |   BW (Mbps) |     Drops/s |  RTT/drop |
+|-----+------------+--------------+------+-----------+-------------+-------------+-----------|
+|   1 |          1 |    243.31598 | .001 | 4.1098821 | 0.047017051 |   4.1098821 | 243.31598 |
+|   2 |        0.5 |    23.960036 | .001 | 41.736164 |  0.47746172 |   20.868082 | 47.920072 |
+|   3 | 0.33333333 |    6.9139328 | .001 | 144.63548 |   1.6546299 |   48.211827 | 20.741799 |
+|   4 |       0.25 |    3.1639243 | .001 | 316.06319 |   3.6157629 |   79.015798 | 12.655697 |
+|   5 |        0.2 |    1.8637173 | .001 | 536.56206 |   6.1382700 |   107.31241 | 9.3185866 |
+|   6 | 0.16666667 |    1.2777778 | .001 | 782.60868 |   8.9530433 |   130.43478 | 7.6666668 |
+|   7 | 0.14285714 |   0.96450837 | .001 | 1036.7976 |   11.860965 |   148.11394 | 6.7515588 |
+|   8 |      0.125 |   0.77581442 | .001 | 1288.9680 |   14.745794 |     161.121 | 6.2065156 |
+|   9 | 0.11111111 |   0.65185323 | .001 | 1534.0877 |   17.549963 |   170.45419 | 5.8666789 |
+| 1e1 |        0.1 |   0.56493917 | .001 | 1770.1021 |   20.249968 |   177.01021 | 5.6493916 |
+| 5e1 |       0.02 |   0.13652071 | .001 | 7324.8960 |   83.796810 |   146.49792 | 6.8260355 |
+| 1e2 |       0.01 |  0.089021642 | .001 | 11233.223 |   128.50807 |   112.33223 | 8.9021646 |
+| 5e2 |       2e-3 |  0.037172188 | .001 | 26901.833 |   307.75697 |   53.803666 | 18.586094 |
+| 1e3 |       1e-3 |  0.026052275 | .001 | 38384.364 |   439.11712 |   38.384364 | 26.052275 |
+| 5e3 |       2e-4 |  0.011567790 | .001 | 86446.936 |   988.95295 |   17.289387 | 57.838950 |
+| 1e4 |       1e-4 | 8.1723143e-3 | .001 | 122364.36 |   1399.8483 |   12.236436 | 81.723142 |
+| 5e4 |       2e-5 | 3.6521410e-3 | .001 | 273811.99 |   3132.4092 |   5.4762398 | 182.60705 |
+| 1e5 |       1e-5 | 2.5822213e-3 | .001 | 387263.48 |   4430.2942 |   3.8726348 | 258.22213 |
+| 5e5 |       2e-6 | 1.1547213e-3 | .001 | 866009.83 |   9907.1525 |   1.7320197 | 577.36065 |
+| 1e6 |       1e-6 | 8.1650393e-4 | .001 | 1224733.8 |   14010.955 |   1.2247338 | 816.50396 |
+| 1e7 |       1e-7 | 2.5819912e-4 | .001 | 3872979.9 |   44306.890 |  0.38729799 | 2581.9912 |
+| 1e8 |       1e-8 | 8.1649665e-5 | .001 | 12247448. |   140110.81 |  0.12247448 | 8164.9663 |
+| 1e9 |       1e-9 | 2.5819889e-5 | .001 | 38729833. |   443069.29 | 0.038729833 | 25819.889 |
+| 5e9 |      2e-10 | 1.1547005e-5 | .001 | 86602543. |   990733.09 | 0.017320509 | 57735.025 |
+#+TBLFM: $2=1/$1::$3=(sqrt((2*$2)/3) + 12*sqrt((3*$2)/8)*$2*(1+32*($2*$2)))::$5=1/($4 * $3)::$6=($5*1430*8)/1e6::$7=($5/$1)::$8=$1/($4*$5)
+
+#+tblname: output-1us
+|   p0 |          p |         f(p) |     RTT |           PPS |   BW (Mbps) |   Drops/s |  RTT/drop |
+|------+------------+--------------+---------+---------------+-------------+-----------+-----------|
+|    1 |          1 |    243.31598 | .000001 |     4109.8821 |   47.017051 | 4109.8821 | 243.31598 |
+|    2 |        0.5 |    23.960036 | .000001 |     41736.164 |   477.46172 | 20868.082 | 47.920072 |
+|    3 | 0.33333333 |    6.9139328 | .000001 |     144635.48 |   1654.6299 | 48211.827 | 20.741799 |
+|    4 |       0.25 |    3.1639243 | .000001 |     316063.19 |   3615.7629 | 79015.798 | 12.655697 |
+|    5 |        0.2 |    1.8637173 | .000001 |     536562.06 |   6138.2700 | 107312.41 | 9.3185866 |
+|    6 | 0.16666667 |    1.2777778 | .000001 |     782608.68 |   8953.0433 | 130434.78 | 7.6666668 |
+|    7 | 0.14285714 |   0.96450837 | .000001 |     1036797.6 |   11860.965 | 148113.94 | 6.7515588 |
+|    8 |      0.125 |   0.77581442 | .000001 |     1288968.0 |   14745.794 |   161121. | 6.2065156 |
+|    9 | 0.11111111 |   0.65185323 | .000001 |     1534087.7 |   17549.963 | 170454.19 | 5.8666789 |
+|  1e1 |        0.1 |   0.56493917 | .000001 |     1770102.1 |   20249.968 | 177010.21 | 5.6493916 |
+|  5e1 |       0.02 |   0.13652071 | .000001 |     7324896.0 |   83796.810 | 146497.92 | 6.8260355 |
+|  1e2 |       0.01 |  0.089021642 | .000001 |     11233223. |   128508.07 | 112332.23 | 8.9021646 |
+|  5e2 |       2e-3 |  0.037172188 | .000001 |     26901833. |   307756.97 | 53803.666 | 18.586094 |
+|  1e3 |       1e-3 |  0.026052275 | .000001 |     38384364. |   439117.12 | 38384.364 | 26.052275 |
+|  5e3 |       2e-4 |  0.011567790 | .000001 |     86446936. |   988952.95 | 17289.387 | 57.838950 |
+|  1e4 |       1e-4 | 8.1723143e-3 | .000001 |    122364360. |   1399848.3 | 12236.436 | 81.723142 |
+|  5e4 |       2e-5 | 3.6521410e-3 | .000001 |    273811990. |   3132409.2 | 5476.2398 | 182.60705 |
+|  1e5 |       1e-5 | 2.5822213e-3 | .000001 |    387263480. |   4430294.2 | 3872.6348 | 258.22213 |
+|  5e5 |       2e-6 | 1.1547213e-3 | .000001 |    866009830. |   9907152.5 | 1732.0197 | 577.36065 |
+|  1e6 |       1e-6 | 8.1650393e-4 | .000001 |   1224733800. |   14010955. | 1224.7338 | 816.50396 |
+|  1e7 |       1e-7 | 2.5819912e-4 | .000001 |   3872979900. |   44306890. | 387.29799 | 2581.9912 |
+|  1e8 |       1e-8 | 8.1649665e-5 | .000001 |  12247448000. |  140110810. | 122.47448 | 8164.9663 |
+|  1e9 |       1e-9 | 2.5819889e-5 | .000001 |  38729833000. |  443069290. | 38.729833 | 25819.889 |
+|  5e9 |      2e-10 | 1.1547005e-5 | .000001 |  86602543000. |  990733090. | 17.320509 | 57735.025 |
+| 1e10 |      1e-10 | 8.1649658e-6 | .000001 | 122474490000. | 1401108200. | 12.247449 | 81649.656 |
+#+TBLFM: $2=1/$1::$3=(sqrt((2*$2)/3) + 12*sqrt((3*$2)/8)*$2*(1+32*($2*$2)))::$5=1/($4 * $3)::$6=($5*1430*8)/1e6::$7=($5/$1)::$8=$1/($4*$5)
+
+Well given we have a fixed rate tunnel (normally) and we gather RTT worth of
+packets into a single loss event, then the minimum value of p is the number of
+packets in a RTT interval.
+
+*** Symetrically timed tunnels on short path (low delay)
+
+If the tunnel is symmetrically paced then RTT will be one packet so minimum p
+will be 1.
+
+*** Symetrically timed tunnels on long path (high delay)
+
+Here we have RTT influenced by a path with significant delay. So many packets
+may be in flight if sending at a high rate, so minimum p will be larger in
+particular it will be RTT / fixed-packet-delay (pacing).
+
+*** Asymetrically timed tunnels on short path (low delay)
+**** fast sender, slow receiver
+    * fixed-packet-delay is small (fast) on A (sending packets)
+    * fixed-packet-delay is large (slow) on B (returning loss info)
+**** slow sender, fast receiver
+
+** Lost Events, Loss Intervals
+
+
+#+begin_example
+
+
+ S         S  S                  S  S    S          S
+ 0         a0 a1                 b0 b1   c0         d0
+ |---------|--|------------------|--|----|----------|--------
+           +--R--+--R--+         +--R--+ +--R--+    +--R--+
+           |-- LI-A (Sb0-Sa0) ---|       |----------|
+                                 |-------|   LI-C
+                                   LI-B    (Sd0-Sc0)
+                                 (Sc0-Sb0)
+ |---------|---------------------|-------|----------|--------
+     I4            I3               I2        I1       I0
+
+#+end_example
+
+** Learning VPP Notes
+
+| vlib_node_t            | Description - Node for processing vectors               |
+|------------------------+---------------------------------------------------------|
+| name                   | name of node                                            |
+| index                  | index of node                                           |
+| runtime_index          | index of runtime node                                   |
+| scalar_size            |                                                         |
+| vector_size            |                                                         |
+| next_nodes             | array of next node indices                              |
+| next_node_names        | names of above.                                         |
+| next_slot_by_node      | reverse mapping (hash) of node index to next_nodes slot |
+| sibling_of             | name of sibling                                         |
+| sibling_bitmap         | bitmap of sibling indices                               |
+| prev_node_bitmap       | bitmap of node indices that feed the node               |
+| owner_node_index       |                                                         |
+| owner_next_index       |                                                         |
+| n_vectors_by_next_node | counters for vectors to each next node                  |
+| n_errors               | number of errors array                                  |
+| error_heap_handle      |                                                         |
+| error_heap_index       |                                                         |
+| error_strings          |                                                         |
+
+| vlib_frame_t | Description - "Stack Frame" to node.           |
+|--------------+------------------------------------------------|
+| frame_flags  | frame flags                                    |
+| flags        | user flags                                     |
+| scalar_size  | number of scalar bytes in arguments            |
+| vector_size  | number of bytes per vector argument (element?) |
+| n_vectors    | number of vector elements currently in frame   |
+| arguments    | scalar and vector arguments to next node       |
+
+| vlib_next_frame_t           | Description                                                 |
+|-----------------------------+-------------------------------------------------------------|
+| frame_index                 | "pointer" to frame                                          |
+| node_runtime_index          | runtime node index this frame is for                        |
+| flags                       | next frame flags                                            |
+| vectors_since_last_overflow | number of vectors enqueued to this next since last overflow |
+
+| vlib_pending_frame_t | Description - A frame pending for dispatch by main loop to node |
+|----------------------+-----------------------------------------------------------------|
+| frame_index          | "pointer" to frame                                              |
+| node_runtime_index   | runtime node index this pending frame is for                    |
+| next_frame_index     | start of next frames for "this" node.                           |
+
+| vlib_runtime_node_t | Description - tracks frames and keeps stats                   |
+|---------------------+---------------------------------------------------------------|
+| function            | function to call to run the node                              |
+| next_frame_index    | start of next frames for this node                            |
+| node_index          | "poiner" to this node's vlib_node_t                           |
+| flags               | copy from vlib_node_t                                         |
+| n_next_nodes        | number of slots for next nodes (copied from vlib_node_t)      |
+| thread_index        | thread this node runs on                                      |
+| runtime_data        | thread specific runtime data, init on create or with template |
+| errors              | (vlib_node_t->n_errors) vector of vlib_error_t for this node  |
+
+| vlib_process_t                   | Description - A process                         |
+|----------------------------------+-------------------------------------------------|
+| node_runtime                     | "pointer" to node runtime                       |
+| <longjmpstuff>                   | data for return/resume                          |
+| flags                            |                                                 |
+| suspended_process_frame_index    |                                                 |
+| pending_event_data_by_type_index | vectors of pending event data                   |
+| non_empty_event_type_bitmap      | events pending (non-empty vector of event data) |
+| one_time_event_type_bitmap       | one time events bitmap                          |
+
+| vlib_node_main_t            | Description - Data structure organizing owning nodes   |
+|                             | one per thread?                                        |
+|-----------------------------+--------------------------------------------------------|
+| nodes                       | vector? of node *pointers*                             |
+| node_by_name                | hash of node indices by name                           |
+| pending_int..ndrun..indices | vector of input node indices with pending interrupts   |
+| next_frames                 | vector of next frames                                  |
+| pending_frames              | vector of internal nodes frames waiting to be called   |
+| timing_wheel                | ...                                                    |
+| current_process_index       | current running process or ~0                          |
+| suspended_process_frames    | pool of pending process frames                         |
+| frame_size_hash             | (scalar/vector)sz to frame_sizes index                 |
+| frame_sizes                 | per size frame allocation information              ??? |
+| node_registrations          | node registrations added by constructors               |
+|                             |                                                        |
+
+| vlib_main_t        | Description - Main structure |
+|--------------------+------------------------------|
+| buffer_main        | pointer to buffer main       |
+| node_main          | ...                          |
+| cli_main           | ...                          |
+| trace_main         | ...                          |
+| dispatch_pcap_main | pcap main                    |
+| error_main         | ...                          |
+| elog_main          | ...                          |
+| thread_index       | info for this main/thread.   |
+| cpu_id             |                              |
+| numa_node          |                              |
+
+*** Threading
+
+    - dpdk has an VLIB_INIT_FUNCTION (dpdk_thread_init) which installs a thread
+    launch callback for placement.
+    - vlib_thread_init is called early in vlib_main()
+    - worker threads are placed on each core in start_workers.
+
+*** Architecture Notes
+
+    - A runtime node has a vector of next_frame_t indexed by each next_node index,
+    so there is one next_frame_t for each next node.
+
+    - There's a vector of vlib_pending_frame_t that point to pending frames. These
+    frames may or may not be pointed to by vlib_next_frame_ts.
+
+    - It's safe to get multiple frames per next node, the "lost" ones are tracked by
+    the vlib_pending_frame_t. It *would* be a bug to get next frame for a next node
+    that was full
+
+    - Next nodes can only be INTERNAL (see vlib_put_next_frame_validate assuming this).
+
+    - Sibling Nodes have no predefined next nodes, next nodes are added later and
+    get added to all the siblings at the same time.
+
+*** Worker Callbacks
+    - One can setup a worker callback that runs in the worker context prior to
+      processing any packets. This could be used during a main-loop which is
+      inside the barrier to be processed when the barrier exits.
+    - NOTE this does *not* run prior to packets being put to nodes from the
+      handoff queues. so packets can be sitting in the handoff queue and need to
+      be dealt with if nodes use this.
+
+*** Handoff Frame Queues
+    - For handing off packets to a node on any worker, one allocates a frame queue.
+    - A frame queue is system wide targeted for a single node and assigned an index.
+    - Frame Queue Main -- One main per frame queue index in
+      vlib_thread_main.frame_queue_mains
+
+      - Per Thread Frame Queues (Consuming) (fqm->vlib_frame_queues)
+        - Used to dequeue inside a worker thread.
+        - queue_hi_thresh is set to frame_queue_nelts - num_threads (i.e., workers+main)
+          - This is used to check for congestion
+
+        - Producing threads atomically move tail to obtain a
+          vlib_frame_queue_elt_t from the queue. So this design is good for many
+          producers, not as much singular producers (e.g., SW implementation of
+          load balancer to worker threads)?
+
+        - Drop On Congestion will cause the producer to drop if there is not
+          enough vlib_frame_queue_elt_ts available. If we want to cause back
+          pressure on the producing node maybe don't set this.
+
+      - Per Thread Data (fqm->per_thread_data) -- temp storage.
+        - Used to enqueue inside a worker thread.
+        - Temporary thread storage used inside vlib_buffer_enqueue_to_thread
+
+        vlib_frame_queue_elt_t **handoff_queue_elt_by_thread_index;
+        vlib_frame_queue_t **congested_handoff_queue_by_thread_index;
+
+        - ~handoff_queue_elt_by_thread_index~ is a vector of elements and either
+          0 or point to an element on a frame queue that is used for enqueuing
+          to a worker thread.
+        - The element is allocated from the queue found by looking at fqm for
+          the given frame queue index and allocating from the frame queue for
+          the destination thread.
+
+*** Buffer Pools and DPDK (mem pools)
+**** structure
+     - rte_mempool_objhdr + rte_mbuf + vlib_buffer_t
+       - mempool objhdr
+         - mp (mempool pointer)
+         - iova (va of mbuf or physmem of mbuf)
+         - next (link into mempool elt_list - buggy as it's re-used?)
+
+**** init
+     - Global VLIB_BUFFER_SET_EXT_HDR_SIZE (sizeof (struct rte_mempool_objhdr) + sizeof (struct rte_mbuf));
+     - dpdk_config (called during config) calls dpdk_buffer_pools_create.
+     - dpdk_buffer_pools_create
+       - sets up rte_mempool_ops
+       - calls dpdk_buffer_pool_init for each of the pools found in buffer_main.
+     - dpdk_buffer_pool_init (for each vpp buffer pool)
+       - creates empty "cache" and "no cache" mem pools (rte_mempol_create_empty)
+       - stores pointers to these in 2 arrays indexted by buffer pool index (shared)
+       - dpdk_mempool_by_buffer_pool_index[bp->index] = mp;
+       - dpdk_no_cache_mempool_by_buffer_pool_index[bp->index] = nmp;
+       - saves buffer pool index in mempool's pool_id
+       - init's mempool private area with
+         - "mbuf_data_room_size" (vlib_buffer_t pre_data + data size)
+         - "mbuf_priv_size" (vlib_buffer_t size - pre_data size)
+       - for all buffers in buffer pool
+         - setup rte_mempool_objhdr
+           - init iova
+           - link into cached mempool elt_list
+           - Ripe for a BUG! re-link into non-cached mempool elt_list
+             - this only works b/c we never modify the list again.
+         - add note bihash
+
+       - rte_mempool_obj_iterate (rte_pktmbuf_init) on *only* the cached mem
+         pool list -- this is very similar to what rte_pktmbuf_reset and detach does.
+         - setup mbuf->buf_* fields (e.g., buffer address and iova)
+         - set pool pointer
+         - set data_off to to +128 of data area (i.e., buffer->data)
+         - set nbsegs = 1
+         - set invalid port
+         - set next to NULL
+         - *set refcnt to 1*
+       - add a mbuf template in global array based on the first buffer in pool
+       that is now initailized after the iterate rte_pktmbuf_init above.
+       - for all buffers in buffer pool (again)
+       - copy the buffer pools buffer template to each buffer
+         - this is not based on the mbuf template just initailized above
+         - rte_pktmbuf_reset each buffer
+       - mark each buffer VLIB_BUFFER_EXT_HDR_VALID
+       - map DMA pages if any ethernet devices exist.
+     - INDIRECT DATA SUPPORT: register global vlib buffer callbacks
+       - dpdk_buffer_attach
+       - dpdk_buffer_detach
+       - dpdk_buffer_free
+       - dpdk_buffer_free_seg
+
+**** Free paths:
+     - vlib_buffer_free_inline - follow vlib_buffer chain
+       - if indirect calls vlib_buffer_dpdk_free_seg (vm, b[0]);
+         - Does not do any ref_count check here.
+         - calls rte_pktmbuf_free_seg on buffers' mbuf
+       - else
+         - NOTE: this path is not calling any dpdk rte functions.
+         - NOTE: this is probably a bug as it will free a buffer with multiple
+           indirect references.
+         - validates buffer
+         - if ref_count is 0 after subtracting
+           - copies template over buffer
+             - This will NULL the next_buffer and flag fields.
+           - queues for free
+         - vlib_buffer_pool_put all queued frees.
+     - vlib_buffer_pool_put
+       - add buffers to cached buffers array for thread.
+       - if threads cached buffers > 4 * VLIB_FRAME_SIZE
+         - move VLIB_FRAME_SIZE cached buffers to shared buffers array.
+
+     - rte_pktmbuf_free - follow mbuf chain
+       - for each mbuf in mbuf chain call rte_pktmbuf_free_seg
+
+     - rte_pktmbuf_free_seg
+       - calls rte_pktmbuf_prefree_seg
+         - if this returns mbuf calls rte_mbuf_raw_free on it.
+
+     - rte_pktmbuf_prefree_seg
+       - if ref count is > 1 or after subtracting is not 0.
+         - return NULL.
+       - if not direct buffer,
+         - rte_pktmbuf_detach
+           - __rte_pktmbuf_free_direct
+             - get indirect (referenced) mbuf
+               - subtract 1 from refcount of referenced if not 0 done
+               - refcount is zero
+               - clear referenced next pointer set nb_segs to 1
+               - set referenced ref count to 1
+               - rte_mbuf_raw_free
+       - clear mbuf->next and set seg to 1 if not.
+       - set ref count to 1
+       - return (i.e., free it)
+     - rte_mbuf_raw_free
+       - rte_mempool_put
+         - rte_mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
+           - rte_mempool_generic_put
+             - __mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
+               - vpp uses no dpdk cache.
+                 - rte_mempool_ops_enqueue_bulk
+               - else
+                 - put in cache if not too big (> 512 i.e., RTE_MEMPOOL_CACHE_MAX_SIZE)
+                   - if cache too big trim (return to pool) by calling
+                     - rte_mempool_ops_enqueue_bulk
+     - rte_mempool_ops_enqueue_bulk
+       - ops->enqueue(mp, obj_table, n);
+         - dpdk_ops_vpp_enqueue
+         - or dpdk_ops_vpp_enqueue_no_cache
+     - dpdk_ops_vpp_enqueue
+       - vlib_buffer_copy_template
+       - vlib_buffer_pool_put
+     - dpdk_ops_vpp_enqueue_no_cache
+       - if ref_count is 0 after subtracting
+         - vlib_buffer_copy_template
+         - vlib_buffer_pool_put
+
+**** rte_mempool_ops (callbacks)
+***** rte_mempool_ops "vpp"
+      - dpdk_ops_vpp_alloc
+      - dpdk_ops_vpp_free
+      - dpdk_ops_vpp_get_count - warning returns 0
+      - dpdk_ops_vpp_enqueue
+      - dpdk_ops_vpp_dequeue
+
+***** rte_mempool_ops "vpp-no-cache"
+      - dpdk_ops_vpp_alloc
+      - dpdk_ops_vpp_free
+      - dpdk_ops_vpp_get_count_no_cache - does indirect lookup based on pool_id then calls cache version
+      - dpdk_ops_vpp_enqueue_no_cache
+      - dpdk_ops_vpp_dequeue_no_cache - error
+
+**** callbacks
+     - dpdk_buffer_attach
+       - maybe rte_pktmbuf_reset's referenced
+       - rte_pktmbuf_attach referenced to referencing
+       - set VLIB_BUFFER_INDIRECT flag
+       - store pointer to referenced buffer in referencing buffer's data area
+     - dpdk_buffer_detach
+       - rte_pktmbuf_detach on the buffer
+       - clear VLIB_BUFFER_INDIRECT flag
+     - dpdk_buffer_free
+       - calls rte_pktmbuf_free on mbuf of buffer
+     - dpdk_buffer_free_seg
+       - calls rte_pktmbuf_free_seg on mbuf of buffer
+
+** Random Solution Notes
+*** Tunnel vs. policy routing IPTFS internals..
+- When using a tunnel interface iptfs_encap is entered directly (i.e., not from
+  ipsec) using the feature ipx-input feature arc entry (iptfs-encapX-tun). We
+  then queue these packets to the iptfs_output process. When the output process
+  is going to send them to be encrypted they lose the "is_tun" bit which
+  makes them look like they are not on a tunnel interface anymore, but are
+  policy routed. [XXX: this is a little out of date, there's a pacer in between now]
+
+  For dpdk it doesn't change either way how things are forwarded. For vnet it does.
+
+  For vnet then we have 2 cases, but both of them look like policy routing when
+  coming from iptfs_output. In order for this to work for tunnels we set the
+  opaque buffer data sad_index to the tunnel's SA which has the correct DPO
+  setup. esp_encrypt then uses the DPO b/c it's thinks it's not on a tunnel. The
+  DPO for the tunnel is initialized when the SA for the tunnel interface is
+  created and is done in the function ~ipsec_sa_stack~.
+
+  When using policy iptfs_encap is entered directly from ipsec_output.c using
+  a specific next index, there is no is_tun set, and the DPO used in
+  esp_encrypt later is already correct.
+
+*** Musings on Buffer Calculations
+  10G 64b pps = 10000000000 / 64 = 156250000
+  10G 576b pps = 10000000000 / 576 = 17361111.1111
+  10G 1500b pps = 10000000000 / 1500 = 6666666.66667
+  imix 7,4,1  =
+  (7 * 10000000000 / 64 + 4 * 10000000000 / 576  + 10000000000 / 1500) / 12 =  97,488,425.9258
+
+So.. I started thinking more about buffer requirements and did some quick calculations.
+
+  10G 64b pps = 10000000000 / 64 = 156250000
+  10G 576b pps = 10000000000 / 576 = 17361111.1111
+  10G 1500b pps = 10000000000 / 1500 = 6666666.66667
+  imix 7,4,1  =
+  (7 * 10000000000 / 64 + 4 * 10000000000 / 576  + 10000000000 / 1500) / 12 =  97,488,425.9258
+
+So about 97.5M packets per second with i-Mix distribution.
+
+So we could pick buffers based on some fraction of a second. But I think we
+ might be able to get closer to what we need if we just consider how VPP works.
+
+There are up to 256 packets (vector) per frame in a graph node (it's "stack").
+Let's assume we are operating at line rate. So we would need 256 * number of
+nodes over our "feature arc" in the graph b/c it's running like a pipeline.
+
+Here's a packet trace (nodes only)
+
+Here's one from VM (IP input): 13 nodes
+00:01:21:555909: dpdk-input
+00:01:21:556877: ethernet-input
+00:01:21:557253: ip4-input
+00:01:21:557396: ip4-lookup
+00:01:21:557526: ip4-midchain
+00:01:21:557662: iptfs-encap4-tun
+00:00:33:083115: iptfs-output
+00:00:33:092215: dpdk-esp4-encrypt
+00:36:23:376706: dpdk-crypto-input
+00:36:23:376722: ip4-lookup
+00:36:23:376726: ip4-rewrite
+00:36:23:376729: GigabitEthernet0/e/0-output
+00:36:23:376733: GigabitEthernet0/e/0-tx
+
+Here's one from VM (TFS input): 13 nodes
+00:34:45:517550: dpdk-input
+00:34:45:518279: ethernet-input
+00:34:45:518619: ip4-input
+00:34:45:518752: ip4-lookup
+00:34:45:518862: ip4-local
+00:34:45:518982: ipsec4-if-input
+00:34:45:519047: dpdk-esp4-decrypt
+[ and from the decrypt node ]
+00:00:17:919589: dpdk-crypto-input
+00:00:17:919602: dpdk-esp4-decrypt-post
+00:00:17:919605: iptfs-decap
+00:00:17:919763: ip4-input-no-checksum
+00:00:17:919769: ip4-lookup
+00:00:17:919774: ip4-load-balance
+00:00:17:919777: ip4-rewrite
+00:00:17:919781: GigabitEthernet0/a/0-output
+00:00:17:919786: GigabitEthernet0/a/0-tx
+
+So that's 26 frames combined from both directions, call it 32 to be safe for
+now.
+
+32 * 256 = 8k packets in the pipeline cache at any one time * 2 (directions) is
+16k per interface pair. This doesn't account for a few things though, e.g., the
+crypto offload will allow more buffering for packets waiting to be
+encrypted/decrypted.
+
+So let's double again to 32k for an interface pair.
+
+If we say 10k per packet that's (32*1024) * 10240 = 335544320 ~= 320M.
+
+Presumably this means wer can get by on 1 1G hugepage.
+
+** VPP ARM meeting notes
+- 2.8Mpps with 10k flows of 64 octet packets.
+- 5.3Mpps old value.
+- 20-30% mbuf overhead parsing in DPDK, look into native driver.
+
+** Nice watch commands:
+  watch 'bash -c "$CMD"'
+
+  - CMD="vppctl show runtime | awk 'BEGIN{p=0;} /Thread 5/{p=1;} p==1 {print;}'"
+  - CMD="vppctl show runtime | awk 'BEGIN{p=0;} /Thread ./{p=0;} /Thread 2/{p=1;} p==1 {print;}'"
+
+** Commands for debugging
+docker-compose exec $M vppctl clear trace; docker-compose exec $M vppctl trace add iptfs-output 100; docker-compose exec $M vppctl trace add dpdk-input 100; docker-compose exec $M vppctl trace add dpdk-crypto-input 100;
+
+docker-compose exec trex ./trex-console
+ start -f /vpp/docker/trex-tfs/imix.py -d 2 -p 1 -m 10pps
+
+docker-compose exec trex ./trex-console
+ start -f /vpp/docker/trex-tfs/imix-tun.py -d 2 -p 1 -m 10pps
+
+ start -f /vpp/docker/trex-tfs/imix-tun.py -m 150kpps
+
+ start -f /vpp/docker/trex-tfs/imix-tun.py -m 300kpps
+
+docker-compose logs m1 > m1.logs
+docker-compose logs m2 > m1.logs
+docker-compose exec m1 vppctl show trace max 1000 > m1.trace
+docker-compose exec m2 vppctl show trace max 1000 > m2.trace
+
+** GDB and other useful tidbits
+
+  - SA 1 SATD :: (((ipsec_sa_iptfs_data_t *)&ipsec_main.sad[1]->tfs_data)
+  - buffer pools :: vlib_mains[0]->buffer_main->buffer_pools
+  - buffer count :: vlib_mains[0]->buffer_main->buffer_pools[0]->n_buffers
+  - zbuffer :: call vl( ((ipsec_sa_iptfs_data_t *)&ipsec_main.sad[1]->tfs_data)->tfs_encap.zbuffers)
+   watch "sudo $(which vppctl) show buff && (sudo $(which vppctl) show err | grep \"IPTFS-reorder-warn\")"
+
+** JQ:
+jq '.[] | .description, ( .statistics | "TXRATE: " + .[]."tx-rate" + " RXRATE: " + .[]."rx-rate" )'
+jq '.[] | .description, ( .statistics | "tx0: " + .0."tx-rate" + " -> rx1: " + .1."rx-rate" ), ( .statistics | "tx1: " + .1."tx-rate" + " rx0: " + .0."rx-rate" )
+
+** Functional Validation Notes
+*** 10G
+    10G L1 Rate
+    iptfs-packet-size 1500
+    iptfs total rate 9752925872
+    iptfs payload rate 9375812738
+    ipsec payload size = 1446
+    iptfs payload size = 1442
+    iptfs pps = 812743
+
+    iptfs-rate
+    9752925872/(1500*8) = 812743.822667
+
+    #+begin_src python
+      def line_rate_to_ip_pps(l1_rate, ipmtu):
+          emtu = ipmtu + 14 + 4 + 8 + 12
+          return float(l1_rate) / (emtu * 8)
+
+      def _payload_size(target_mtu, gcm):
+          # IPsec/ESP packets are aligned to 4 byte boundary.
+          # target_mtu = target_mtu - (target_mtu % 4)
+          assert(target_mtu % 4 == 0)
+          imtu = target_mtu - 20 - 8 - 2
+          if gcm:
+              imtu -= 8 + 16 # IV + ICV = 1440
+          return imtu
+
+
+      def _iptfs_rate(l1_rate, target_mtu, gcm):
+          ps = _payload_size(target_mtu, gcm) - 4
+          return line_rate_to_ip_pps(l1_rate, target_mtu) * ps
+
+      def line_rate_to_iptfs_encap_pps(l1_rate, ipmtu, iptfs_mtu, gcm):
+          """Convert an l1 line rate to number of inner IP packets per second for a given
+          IP MTU using (or not) GCM encryption
+          """
+          rate = _iptfs_rate(l1_rate, iptfs_mtu, gcm)
+          return rate / ipmtu
+
+      pps = line_rate_to_iptfs_encap_pps(10 * 1000**3, 1442, 1500, True)
+      return pps
+    #+end_src
+
+    #+RESULTS:
+    : 812743.823146944
+
+    #+begin_src C
+      unsigned long emtu = 1500 + 14 + 4 + 8 + 12;
+      printf("ppns: %.12f\n", ((double)10000000000 / (emtu * 8)) / 1e9 );
+      printf("ppi: %.12f\n", ((double)10000000000 / (emtu * 8)) / (1e9 / 1.55e3));
+      printf("ppi: %.12f\n", ((double)40000000000 / (emtu * 8)) / (1e9 / 1.55e3));
+      printf("ppi: %.12f\n", ((double)100000000000 / (emtu * 8)) / (1e9 / 1.55e3));
+      printf("%.12f\n", 1.55e3 );
+      printf("%.12f\n", 1e9 / 1.55e3 );
+      printf("%.12f\n", 12.5 * 1.55e3 );
+      printf("%.12f\n", (12.5 * 1.55e3) / 84);
+
+    #+end_src
+
+    #+RESULTS:
+    |             ppns: |  0.000812743823 |
+    |              ppi: |  1.259752925878 |
+    |              ppi: |  5.039011703511 |
+    |              ppi: | 12.597529258778 |
+    |            1550.0 |                 |
+    | 645161.2903225806 |                 |
+    |           19375.0 |                 |
+    |  230.654761904762 |                 |
+
+
+ pps =  rate / emtu * 8
+ pps * emtu * 8 =  rate
+
+*** Tests:
+    for s in $(seq 100 100 1500) 1466; do for t in 99.0 99.9 99.99 99.999 99.9999 99.99999 100; do ./runtests.py -v --logdir ..../iptfs/results -p=$t -U $s -T B -n -d 80 -r 100M test_verify_latency.py; done; done
+
+** Switch configs:
+*** Configure tap for one direction of trex on user side:
+ mirror-port ethernet 23
+ interface ethernet 19
+  mon ethe 23 out
+ interface ethernet 20
+  mon ethe 23 in
+
+ interface ethernet 19
+  no mon ethe 24 out
+ interface ethernet 20
+  no mon ethe 24 in
+
+*** Confiugre tap for tunnel traffic on one port.
+ mirror-port ethernet 24
+ interface ethernet 20
+  mon ethe 24 both
+
+ interface ethernet 20
+  no mon ethe 24 both
+
+** clib_ring
+*** empty
+    next = 0, n_enq = 0
+ | 0 | 1 | 2 |
+ |---+---+---|
+ |   |   |   |
+ |   |   |   |
+   X
+
+*** Enq +1
+ | 0 | 1 | 2 |
+ |---+---+---+
+ | A |   |   |
+       X
+  N=1
+
+*** Enq +1
+ | 0 | 1 | 2 |
+ |---+---+---+
+ | A | B |   |
+           X
+  N=2
+
+*** Deq +1
+   | 0 | 1 | 2 |
+   |---+---+---+
+   | A | B |   |
+ 1:          X
+ 2:  V
+
+  N=1
+
+*** Enq +1
+
+ | 0 | 1 | 2 |
+ |---+---+---+
+ |   | B | C |
+   X
+  N=2
+
+*** Deq 1
+ | 0 | 1 | 2 |
+ |---+---+---+
+ |   |   | C |
+   X           X - N
+    N=1
+
+ | 0 | 1 | 2 |
+ |---+---+---+
+ |   | B | C |
+   X
+
+ So we havekkkkkkkk
+ | 0 | 1 | 2 | 3 |
+ |---+---+---+---|
+ | E |   |   | D |
+       X
+       if next < number enqueued then we have a wrap around.
+       otherwise all the elements directly precede next.
+       ammoutn on left side is X, so amount on right is (num_elms - X) and it's
+       index is vec_len - amount on right.
+
+       if
+
+
+       So to dequeue N elms
+       if N > n_elm, N = n_elm.
+
+       if next >= n_elms just copy from the left and decrement n_elms
+       if next < n_elms:
+         get amount on right (n_elms - next)
+         min = minimum of amount on right and requested
+         copy min from right
+         decrement requested and n_elms
+         if requested do normal from let.
+ N=2
+ X=1
+ if
+ veclen + next -
+ (5) -
+
+** Runtime analysis of timing the output node:
+*** Encrypted
+
+ Thread 5 vpp_wk_4 (lcore 5)
+ Time 193.3, 10 sec internal node vector rate 2.68
+   vector rates in 1.4269e6, out 1.4269e6, drop 0.0000e0, punt 0.0000e0
+
+
+ Time 665.1, 10 sec internal node vector rate 2.90
+   vector rates in 1.4601e6, out 1.4601e6, drop 0.0000e0, punt 0.0000e0
+  | Name                           | State   |     Calls |   Packets | Suspends | ns/{Pkt,Call} | Pkts/Call | Flags |
+  |--------------------------------+---------+-----------+-----------+----------+---------------+-----------+-------|
+  | TenGigabitEthernet65/0/1-outpu | active  | 170999770 | 485551122 |        0 |        3.75e1 |      2.84 |     0 |
+  | TenGigabitEthernet65/0/1-tx    | active  | 170999770 | 485551122 |        0 |        6.80e1 |      2.84 |     2 |
+  | dpdk-crypto-input              | polling | 170999770 | 485551122 |        0 |        8.11e2 |      2.84 |   100 |
+  | dpdk-esp4-encrypt              | active  | 170999770 | 485551127 |        0 |        2.11e2 |      2.84 |     2 |
+  | ip4-lookup                     | active  | 170999770 | 485551122 |        0 |        5.04e1 |      2.84 |     0 |
+  | ip4-rewrite                    | active  | 170999770 | 485551122 |        0 |        4.28e1 |      2.84 |     0 |
+  | iptfs-output                   | polling | 170999770 | 485551127 |        0 |        1.34e2 |      2.84 |   100 |
+  |--------------------------------+---------+-----------+-----------+----------+---------------+-----------+-------|
+  |                                |         |           |           |          |        1354.7 |           |       |
+  #+TBLFM: @>$6=vsum(@I..@II)
+
+
+  | Name                           | State   |    Calls |   Packets | Suspends | ns/{Pkt,Call} | Pkts/Call | Flags |
+  |--------------------------------+---------+----------+-----------+----------+---------------+-----------+-------|
+  | TenGigabitEthernet65/0/1-outpu | active  | 48403658 | 137902739 |        0 |        3.72e1 |      2.85 |     0 |
+  | TenGigabitEthernet65/0/1-tx    | active  | 48403658 | 137902739 |        0 |        6.78e1 |      2.85 |     2 |
+  | dpdk-crypto-input              | polling | 75440020 | 137902739 |        0 |        8.22e2 |      1.83 |   100 |
+  | dpdk-esp4-encrypt              | active  | 48403659 | 137902741 |        0 |        2.12e2 |      2.85 |     2 |
+  | ip4-lookup                     | active  | 48403658 | 137902739 |        0 |        5.15e1 |      2.85 |     0 |
+  | ip4-rewrite                    | active  | 48403658 | 137902739 |        0 |        4.28e1 |      2.85 |     0 |
+  | iptfs-output                   | polling | 48403659 | 137902741 |        0 |        1.33e2 |      2.85 |   100 |
+  |--------------------------------+---------+----------+-----------+----------+---------------+-----------+-------|
+  |                                |         |          |           |          |        1366.3 |           |       |
+  #+TBLFM: @>$6=vsum(@I..@II)
+
+ So one 1500b iptfs per 1366.3
+ max per second => 1e9/1336.3 = 748334.954726  pps
+ max banwidith => (1e9/1336.3)*1500*8 =>  8980019456.71
+
+*** NULL encryption
+
+  | Name                           | State   |       Calls |    Packets | Suspends | ns/{Pkt,Call} | Pkts/Call | Flags |
+  |--------------------------------+---------+-------------+------------+----------+---------------+-----------+-------|
+  | TenGigabitEthernet65/0/1-outpu | active  |  5276015852 | 5301898101 |        0 |        9.34e1 |      1.00 |     0 |
+  | TenGigabitEthernet65/0/1-tx    | active  |  5276015852 | 5301898101 |        0 |        9.33e1 |      1.00 |     2 |
+  | dpdk-crypto-input              | polling | 10968004359 | 5301898101 |        0 |        1.97e2 |       .48 |   100 |
+  | dpdk-esp4-encrypt              | active  |  5276015851 | 5301898100 |        0 |        2.96e2 |      1.00 |     2 |
+  | ip4-lookup                     | active  |  5276015852 | 5301898101 |        0 |        1.29e2 |      1.00 |     0 |
+  | ip4-rewrite                    | active  |  5276015852 | 5301898101 |        0 |        9.26e1 |      1.00 |     0 |
+  | iptfs-output                   | polling | 10968004359 | 5301898100 |        0 |        4.08e2 |       .48 |   100 |
+  |--------------------------------+---------+-------------+------------+----------+---------------+-----------+-------|
+  |                                |         |             |            |          |        1309.3 |           |       |
+  #+TBLFM: @>$6=vsum(@I..@II)
+
+ Thread 5 vpp_wk_4 (lcore 5)
+ Time 41.4, 10 sec internal node vector rate 1.01
+   vector rates in 1.4615e6, out 1.4615e6, drop 0.0000e0, punt 0.0000e0
+  | Name                           | State   |    Calls |  Packets | Suspends | ns/{Pkt,Call} | Pkts/Call | Flags |
+  |--------------------------------+---------+----------+----------+----------+---------------+-----------+-------|
+  | TenGigabitEthernet65/0/1-outpu | active  | 30040722 | 30269571 |        0 |        9.28e1 |      1.01 |     0 |
+  | TenGigabitEthernet65/0/1-tx    | active  | 30040722 | 30269571 |        0 |        9.35e1 |      1.01 |     2 |
+  | dpdk-crypto-input              | polling | 38645347 | 30269571 |        0 |        1.51e2 |       .78 |   100 |
+  | dpdk-esp4-encrypt              | active  | 30040721 | 30269570 |        0 |        3.26e2 |      1.01 |     2 |
+  | ip4-lookup                     | active  | 30040722 | 30269571 |        0 |        1.19e2 |      1.01 |     0 |
+  | ip4-rewrite                    | active  | 30040722 | 30269571 |        0 |        9.03e1 |      1.01 |     0 |
+  | iptfs-output                   | polling | 38645347 | 30269570 |        0 |        4.56e2 |       .78 |   100 |
+  |--------------------------------+---------+----------+----------+----------+---------------+-----------+-------|
+  |                                |         |          |          |          |        1328.6 |           |       |
+  #+TBLFM: @>$6=vsum(@I..@II)
+
+  1550
+   c
+  1814/7.2 117936000.=
+*** Encryption cost:
+
+ Cost difference per packet is 8.22e2ns - 1.51e2ns = 700ns
+
+ 25*1500*8=300 000Mbps
+
+**** System:
+ Architecture:                    x86_64
+ CPU op-mode(s):                  32-bit, 64-bit
+ Byte Order:                      Little Endian
+ Address sizes:                   46 bits physical, 48 bits virtual
+ CPU(s):                          24
+ On-line CPU(s) list:             0-23
+ Thread(s) per core:              2
+ Core(s) per socket:              12
+ Socket(s):                       1
+ NUMA node(s):                    1
+ Vendor ID:                       GenuineIntel
+ CPU family:                      6
+ Model:                           85
+ Model name:                      Intel(R) Xeon(R) Silver 4116 CPU @ 2.10GHz
+ Stepping:                        4
+ CPU MHz:                         2400.045
+ BogoMIPS:                        4200.00
+ Virtualization:                  VT-x
+ L1d cache:                       384 KiB
+ L1i cache:                       384 KiB
+ L2 cache:                        12 MiB
+ L3 cache:                        16.5 MiB
+ NUMA node0 CPU(s):               0-23
+ Vulnerability Itlb multihit:     KVM: Mitigation: Split huge pages
+ Vulnerability L1tf:              Mitigation; PTE Inversion; VMX conditional cache flushes, SMT vulnerable
+ Vulnerability Mds:               Mitigation; Clear CPU buffers; SMT vulnerable
+ Vulnerability Meltdown:          Mitigation; PTI
+ Vulnerability Spec store bypass: Mitigation; Speculative Store Bypass disabled via prctl and seccomp
+ Vulnerability Spectre v1:        Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+ Vulnerability Spectre v2:        Mitigation; Full generic retpoline, IBPB conditional, IBRS_FW, STIBP conditional, RSB filling
+ Vulnerability Tsx async abort:   Mitigation; Clear CPU buffers; SMT vulnerable
+ Flags:                           fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl vmx smx
+                                  est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cdp_l3 invpcid_single pti intel_ppin ssbd mba ibrs ibpb stibp tpr_shadow vnmi flexpriority ept vpid ept_ad fsg
+                                  sbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm cqm mpx rdt_a avx512f avx512dq rdseed adx smap clflushopt clwb intel_pt avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local dtherm ida arat pln pts pku ospke md_clear flus
+                                  h_l1d
+
+** Performance with 2 rx queues 2-connections
+*** dpdk crypto
+
+ Global Statistitcs
+
+ connection   : localhost, Port 4501                  total_tx_L2  : 22.02 Gb/sec
+ version      : STL @ v2.81                           total_tx_L1  : 22.76 Gb/sec
+ cpu_util.    : 3.03% @ 8 cores (8 per dual port)     total_rx     : 13.45 Gb/sec
+ rx_cpu_util. : 0.0% / 0 pkt/sec                      total_pps    : 4.63 Mpkt/sec
+ async_util.  : 0.03% / 1.57 KB/sec                   drop_rate    : 8.58 Gb/sec
+ total_cps.   : 0 cps/sec                             queue_full   : 0 pkts
+
+ Port Statistics
+
+    port    |         0         |         1         |       total
+ -----------+-------------------+-------------------+------------------
+ owner      |            chopps |            chopps |
+ link       |                UP |                UP |
+ state      |      TRANSMITTING |      TRANSMITTING |
+ speed      |           40 Gb/s |           40 Gb/s |
+ CPU util.  |             3.03% |             3.03% |
+ --         |                   |                   |
+ Tx bps L2  |        11.01 Gbps |        11.01 Gbps |        22.02 Gbps
+ Tx bps L1  |        11.38 Gbps |        11.38 Gbps |        22.76 Gbps
+ Tx pps     |         2.32 Mpps |         2.32 Mpps |         4.63 Mpps
+ Line Util. |           28.46 % |           28.46 % |
+ ---        |                   |                   |
+ Rx bps     |          6.7 Gbps |         6.74 Gbps |        13.45 Gbps
+ Rx pps     |         1.41 Mpps |         1.42 Mpps |         2.83 Mpps
+ ----       |                   |                   |
+ opackets   |       10247305315 |       10247299020 |       20494604335
+ ipackets   |        6129055043 |        6145897238 |       12274952281
+ obytes     |     6086899353546 |     6086895617880 |    12173794971426
+ ibytes     |     3640658690196 |     3650662959372 |     7291321649568
+ tx-pkts    |       10.25 Gpkts |       10.25 Gpkts |       20.49 Gpkts
+ rx-pkts    |        6.13 Gpkts |        6.15 Gpkts |       12.27 Gpkts
+ tx-bytes   |           6.09 TB |           6.09 TB |          12.17 TB
+ rx-bytes   |           3.64 TB |           3.65 TB |           7.29 TB
+ -----      |                   |                   |
+ oerrors    |                 0 |                 0 |                 0
+ ierrors    |                 0 |                 0 |                 0
+
+ status:  -
+
+ Press 'ESC' for navigation panel...
+ status:
+
+ tui(read-only)>
+
+*** With multiple decrypt threads and native crypto
+
+ Global Statistitcs
+
+ connection   : localhost, Port 4501                  total_tx_L2  : 22 Gb/sec
+ version      : STL @ v2.81                           total_tx_L1  : 22.74 Gb/sec
+ cpu_util.    : 3.16% @ 8 cores (8 per dual port)     total_rx     : 20.99 Gb/sec
+ rx_cpu_util. : 0.0% / 0 pkt/sec                      total_pps    : 4.63 Mpkt/sec
+ async_util.  : 0.03% / 1.54 KB/sec                   drop_rate    : 0 b/sec
+ total_cps.   : 0 cps/sec                             queue_full   : 0 pkts
+
+ Port Statistics
+
+    port    |         0         |         1         |       total
+ -----------+-------------------+-------------------+------------------
+ owner      |            chopps |            chopps |
+ link       |                UP |                UP |
+ state      |      TRANSMITTING |      TRANSMITTING |
+ speed      |           40 Gb/s |           40 Gb/s |
+ CPU util.  |             3.16% |             3.16% |
+ --         |                   |                   |
+ Tx bps L2  |           11 Gbps |           11 Gbps |           22 Gbps
+ Tx bps L1  |        11.37 Gbps |        11.37 Gbps |        22.74 Gbps
+ Tx pps     |         2.31 Mpps |         2.31 Mpps |         4.63 Mpps
+ Line Util. |           28.42 % |           28.42 % |
+ ---        |                   |                   |
+ Rx bps     |        10.33 Gbps |        10.66 Gbps |        20.99 Gbps
+ Rx pps     |         2.17 Mpps |         2.24 Mpps |         4.42 Mpps
+ ----       |                   |                   |
+ opackets   |         541635398 |         541628818 |        1083264216
+ ipackets   |         508543831 |         524699012 |        1033242843
+ obytes     |      321731422254 |      321727514328 |      643458936582
+ ibytes     |      302075035614 |      311671213128 |      613746248742
+ tx-pkts    |      541.64 Mpkts |      541.63 Mpkts |        1.08 Gpkts
+ rx-pkts    |      508.54 Mpkts |       524.7 Mpkts |        1.03 Gpkts
+ tx-bytes   |         321.73 GB |         321.73 GB |         643.46 GB
+ rx-bytes   |         302.08 GB |         311.67 GB |         613.75 GB
+ -----      |                   |                   |
+ oerrors    |                 0 |                 0 |                 0
+ ierrors    |                 0 |                 0 |                 0
+
+ status:  |
+
+ Press 'ESC' for navigation panel...
+ status: unknown command: 'b'
+
+ tui(read-only)>
+** Isolation Requirements
+   In order to fully isolate the worker output thread we have to set some kernel
+   parameters
+
+   See also: https://wiki.fd.io/view/VPP/How_To_Optimize_Performance_(System_Tuning)
+
+   intel_pstate=disable
+   intel_idle.max_cstate=0
+   processor.max_cstate=1
+   isolcpus=1-5 nohz_full=1-5 rcu_nocbs=1-5
+
+** Performance with no decap threads
+ Every 1.0s: bash -c "$CMD"                                                                                 Mon Sep 28 04:31:15 2020
+
+ Thread 1 vpp_wk_0 (lcore 1)
+ Time 209.6, 10 sec internal node vector rate 9.94 loops/sec 1206103.57
+   vector rates in 1.6796e6, out 1.3579e6, drop 0.0000e0, punt 0.0000e0
+              Name                 State         Calls          Vectors        Suspends      Packet-Clocks   Vectors/Call
+ dpdk-input                       polling         288817873       284547727               0          3.54e2             .99
+ ethernet-input                   active           26987750       284547727               0          5.74e1           10.54
+ ip4-input-no-checksum            active           26987750       284547727               0          5.09e1           10.54
+ ip4-lookup                       active           26987750       284547727               0          4.82e1           10.54
+ ip4-midchain                     active           26987750       284547727               0          7.27e1           10.54
+ iptfs-encap4-tun                 active           26987750       284547727               0          6.08e2           10.54
+ iptfs-pacer                      polling         288817873        67429282               0          9.69e2             .23
+ ---------------
+ Thread 2 vpp_wk_1 (lcore 2)
+ Time 209.6, 10 sec internal node vector rate 1.01 loops/sec 1334415.51
+   vector rates in 3.2455e5, out 3.2455e5, drop 0.0000e0, punt 0.0000e0
+              Name                 State         Calls          Vectors        Suspends      Packet-Clocks   Vectors/Call
+ dpdk-input                       polling         301443749        68012167               0          1.68e3             .23
+ esp4-decrypt-tun                 active           67484716        68012167               0          1.80e3            1.01
+ ethernet-input                   active           67484716        68012167               0          3.04e2            1.01
+ ip4-input-no-checksum            active           67484716        68012167               0          2.20e2            1.01
+ ip4-local                        active           67484716        68012167               0          2.25e2            1.01
+ ip4-lookup                       active           67484716        68012167               0          2.14e2            1.01
+ ipsec4-tun-input                 active           67484716        68012167               0          2.82e2            1.01
+ iptfs-decap-reorder              active           67484716        68012167               0          1.19e3            1.01
+ ---------------
+ Thread 3 vpp_wk_2 (lcore 3)
+ Time 209.6, 10 sec internal node vector rate 3.86 loops/sec 817071.34
+   vector rates in 1.6779e6, out 1.3579e6, drop 2.1919e3, punt 0.0000e0
+              Name                 State         Calls          Vectors        Suspends      Packet-Clocks   Vectors/Call
+ HundredGigabitEthernet65/0/0-o   active           65437419       284550273               0          5.97e1            4.35
+ HundredGigabitEthernet65/0/0-t   active           65437419       284550273               0          2.55e2            4.35
+ drop                             active             450083          459332               0          3.01e2            1.02
+ ip4-input-no-checksum            active           65437419       284550273               0          8.39e1            4.35
+ ip4-load-balance                 active           65437419       284550273               0          5.57e1            4.35
+ ip4-lookup                       active           65437419       284550273               0          6.96e1            4.35
+ ip4-rewrite                      active           65437419       284550273               0          6.93e1            4.35
+ iptfs-decap                      active           67484716       351626197               0          3.33e2            5.21
+ ---------------
+ Thread 4 vpp_wk_3 (lcore 4)
+ Time 209.6, 10 sec internal node vector rate 1.00 loops/sec 2267540.38
+   vector rates in 3.2455e5, out 3.2455e5, drop 0.0000e0, punt 0.0000e0
+              Name                 State         Calls          Vectors        Suspends      Packet-Clocks   Vectors/Call
+ HundredGigabitEthernet65/0/1-o   active           67985943        68011029               0          2.16e2            1.00
+ HundredGigabitEthernet65/0/1-t   active           67985943        68011029               0          7.62e2            1.00
+ esp4-encrypt                     active           67985943        68011029               0          2.19e3            1.00
+ ip4-load-balance                 active           67985943        68011029               0          1.93e2            1.00
+ ip4-rewrite                      active           67985943        68011029               0          2.15e2            1.00
+ iptfs-output                     polling         514788928        68011029               0          1.66e3             .13
+ ---------------
+ Thread 5 vpp_wk_4 (lcore 5)
+ Time 209.6, 10 sec internal node vector rate 0.00 loops/sec 5753813.07
+   vector rates in 3.1947e5, out 0.0000e0, drop 0.0000e0, punt 0.0000e0
+              Name                 State         Calls          Vectors        Suspends      Packet-Clocks   Vectors/Call
+ iptfs-zpool-poller               polling        1243294850        66946025               0          2.84e3             .05
+    Count                    Node                  Reason
+        925               iptfs-pacer              IPTFS-pacer-err packets dropped to catch up.
+   67997861            esp4-decrypt-tun            ESP pkts received
+   67997861            ipsec4-tun-input            good packets received
+     459337               iptfs-decap              IPTFS-decap-ok skip all pad in fragment sequence
+       1692              iptfs-output              IPTFS-output-err time slots dropped to catch up
+   67998049              esp4-encrypt              ESP pkts received
+
+** Notes on avoiding pads.
+
+These are notes that were written prior to the iptfs_pacer node whos job it now
+is to finish unfinished packets off if it is there time to go. Notice that it
+talks about locking, there are no locks between encap and pacer anymore as they
+run in the same thread/core. A Lockless ring now exists between the pacer and
+the output thread (core).
+
+*** OLD: In output worker:
+    - Only send in progress packets if they are the only available when we enter
+      the output node function, otherwise remember we didn't run one of our slots
+      and return to give others nodes a chance to run (e.g., the encrypter,
+      output routine etc), which will give the encap routine a chance to finish
+      the packet.
+*** OLD: In the encap routine.
+    - We normally release the output queue lock after each packet enqueue;
+      however, if we only have an in progress packet available, then hold the
+      lock until we are done processing a batch of packets (or we have
+      constructed a full packet) to allow for a better chance of filling the in
+      progress packet.
+
+    - This still allows for an inadvertent pad fragment to be sent if the output
+      function returns (not sending an in-progress), and then it runs again prior
+      to encap routine looping back to handle a new user packet (to add to the in
+      progress).
+
+    - If we want perfection we need to hold the queue lock the entire time we are
+      processing a batch of packets. This isn't reasonable right now since we
+      have only 1 worker handling multiple SAs. If we had a worker per SA then
+      this would be more reasonable, it would add to the chunk size to the output
+      routine, but wouldn't be impacting any other SAs. We can easily toggle
+      between these two though by either releasing or not releasing the lock that
+      we held b/c of inprogress when we construct a fully formed packet.
+
+    - We may have multiple encap nodes running simultaneously if we have multiple
+      user interfaces input workers. If this happens then we cannot hold this
+      lock as described above as it would block other user input workers. To
+      handle multiple input workers, we probably should split the output queue
+      into an input and output queue and have a single encap worker handle an SA
+      taking packets fromt he input queue so that it can hold the lock on the
+      output queue.
+
+** Older Packet Trace
+*** IP4 Forward
+**** Native
+ root@m2:~# vppctl show trace
+ ------------------- Start of thread 0 vpp_main -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 1 vpp_wk_0 -------------------
+ Packet 1
+
+ 00:00:32:656839: mrvl-pp2-input
+   pp2: mv-ppio-0/0 (1) next-node ip4-input-no-checksum
+     l3_offset 16 (0x10) ip_hdlen 5 ec 2 es 0 pool_id 8 hwf_sync 0 l4_chk_ok 0
+     ip_frg 0 ipv4_hdr_err 0 l4_info 2 l3_info 1 buf_header 0 lookup_id 9 cpu_code 0
+     pppoe 0 l3_cast_info 0 l2_cast_info 0 vlan_info 0 byte_count 592 (0x250)
+     gem_port_id 0 color 0 gop_sop_u 0 key_hash_enable 1 l4chk 51565 (0xc96d)
+     timestamp 0 buf_phys_ptr_lo 1885074112 (0x705bf2c0) buf_phys_ptr_hi 3
+     key_hash 2595122 (0x279932) buf_virt_ptr_lo 292835 (0x477e3) buf_virt_ptr_hi 0
+     buf_qset_no 0 buf_type 0 mod_dscp 0 mod_pri 0 mdscp 0 mpri 0 mgpid 0 port_num 0
+
+ 00:00:32:656855: ip4-input-no-checksum
+   UDP: 48.0.0.103 -> 16.0.0.103
+     tos 0x00, ttl 64, length 576, checksum 0x37df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+ 00:00:32:656869: ip4-lookup
+   fib 0 dpo-idx 21 flow hash: 0x00000000
+   UDP: 48.0.0.103 -> 16.0.0.103
+     tos 0x00, ttl 64, length 576, checksum 0x37df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+ 00:00:32:656878: ip4-load-balance
+   fib 0 dpo-idx 17 flow hash: 0x00000000
+   UDP: 48.0.0.103 -> 16.0.0.103
+     tos 0x00, ttl 64, length 576, checksum 0x37df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+   fib 0 dpo-idx 2 flow hash: 0x00000000
+   UDP: 48.0.0.103 -> 16.0.0.103
+     tos 0x00, ttl 64, length 576, checksum 0x37df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+ 00:00:32:656882: ip4-rewrite
+   tx_sw_if_index 2 dpo-idx 2 : ipv4 via 192.168.51.42 mv-ppio-1/0: mtu:9000 0051821121010051821122010800 flow hash: 0x00000000
+   00000000: 005182112101005182112201080045000240000100003f1138df300000671000
+   00000020: 006700350035022cca39787878787878787878787878787878787878
+ 00:00:32:656886: mv-ppio-1/0-output
+   mv-ppio-1/0 ip4 l2_hdr_offset_valid l3_hdr_offset_valid l4_hdr_offset_valid
+   IP4: 00:51:82:11:22:01 -> 00:51:82:11:21:01
+   UDP: 48.0.0.103 -> 16.0.0.103
+     tos 0x00, ttl 63, length 576, checksum 0x38df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+
+ ------------------- Start of thread 2 vpp_wk_1 -------------------
+ Packet 1
+
+ 00:00:32:659869: mrvl-pp2-input
+   pp2: mv-ppio-1/0 (2) next-node ip4-input-no-checksum
+     l3_offset 16 (0x10) ip_hdlen 5 ec 2 es 0 pool_id 9 hwf_sync 0 l4_chk_ok 0
+     ip_frg 0 ipv4_hdr_err 0 l4_info 2 l3_info 1 buf_header 0 lookup_id 9 cpu_code 0
+     pppoe 0 l3_cast_info 0 l2_cast_info 0 vlan_info 0 byte_count 592 (0x250)
+     gem_port_id 0 color 0 gop_sop_u 0 key_hash_enable 1 l4chk 51565 (0xc96d)
+     timestamp 0 buf_phys_ptr_lo 1880089408 (0x700fe340) buf_phys_ptr_hi 3
+     key_hash 6668960 (0x65c2a0) buf_virt_ptr_lo 253892 (0x3dfc4) buf_virt_ptr_hi 0
+     buf_qset_no 0 buf_type 0 mod_dscp 0 mod_pri 0 mdscp 0 mpri 0 mgpid 0 port_num 0
+
+ 00:00:32:659874: ip4-input-no-checksum
+   UDP: 16.0.0.103 -> 48.0.0.103
+     tos 0x00, ttl 63, length 576, checksum 0x38df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+ 00:00:32:659876: ip4-lookup
+   fib 0 dpo-idx 19 flow hash: 0x00000000
+   UDP: 16.0.0.103 -> 48.0.0.103
+     tos 0x00, ttl 63, length 576, checksum 0x38df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+ 00:00:32:659879: ip4-load-balance
+   fib 0 dpo-idx 3 flow hash: 0x00000000
+   UDP: 16.0.0.103 -> 48.0.0.103
+     tos 0x00, ttl 63, length 576, checksum 0x38df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+ 00:00:32:659880: ip4-rewrite
+   tx_sw_if_index 1 dpo-idx 3 : ipv4 via 192.168.52.254 mv-ppio-0/0: mtu:9000 f8f21e3c15ed0051821122000800 flow hash: 0x00000000
+   00000000: f8f21e3c15ed005182112200080045000240000100003e1139df100000673000
+   00000020: 006700350035022cca39787878787878787878787878787878787878
+ 00:00:32:659882: mv-ppio-0/0-output
+   mv-ppio-0/0 ip4 l2_hdr_offset_valid l3_hdr_offset_valid l4_hdr_offset_valid
+   IP4: 00:51:82:11:22:00 -> f8:f2:1e:3c:15:ed
+   UDP: 16.0.0.103 -> 48.0.0.103
+     tos 0x00, ttl 62, length 576, checksum 0x39df
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 556, checksum 0xca39
+
+ ------------------- Start of thread 3 vpp_wk_2 -------------------
+ No packets in trace buffer
+
+**** DPDK
+ root@m2:~# vppctl trace add dpdk-input 1
+ root@m2:~# vppctl show trace
+ ------------------- Start of thread 0 vpp_main -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 1 vpp_wk_0 -------------------
+ Packet 1
+
+ 00:00:56:192018: dpdk-input
+   UnknownEthernet1 rx queue 0
+   buffer 0x116dd4: current data 66, length 60, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x1000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 1, nb_segs 1, pkt_len 60
+     buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x62d6eb00
+     packet_type 0x211 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_L4_CKSUM_BAD (0x0008) L4 cksum of RX pkt. is not OK
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+       RTE_PTYPE_L4_UDP (0x0200) UDP packet
+   0x0000: 00:00:00:00:00:00 -> 00:00:00:00:00:00
+ 00:00:56:192025: ethernet-input
+   frame: flags 0x3, hw-if-index 2, sw-if-index 2
+   IP4: 00:51:82:11:21:01 -> 00:51:82:11:22:01
+ 00:00:56:192028: ip4-input-no-checksum
+   UDP: 16.0.0.253 -> 48.0.0.253
+     tos 0x00, ttl 63, length 46, checksum 0x39c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:56:192029: ip4-lookup
+   fib 0 dpo-idx 19 flow hash: 0x00000000
+   UDP: 16.0.0.253 -> 48.0.0.253
+     tos 0x00, ttl 63, length 46, checksum 0x39c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:56:192032: ip4-load-balance
+   fib 0 dpo-idx 3 flow hash: 0x00000000
+   UDP: 16.0.0.253 -> 48.0.0.253
+     tos 0x00, ttl 63, length 46, checksum 0x39c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:56:192033: ip4-rewrite
+   tx_sw_if_index 1 dpo-idx 3 : ipv4 via 192.168.52.254 UnknownEthernet0: mtu:9000 f8f21e3c15ed0051821122000800 flow hash: 0x00000000
+   00000000: f8f21e3c15ed00518211220008004500002e000100003e113ac5100000fd3000
+   00000020: 00fd00350035001a8312787878787878787878787878787878787878
+ 00:00:56:192034: UnknownEthernet0-output
+   UnknownEthernet0 l4-cksum-computed l4-cksum-correct l2_hdr_offset_valid l3_hdr_offset_valid
+   IP4: 00:51:82:11:22:00 -> f8:f2:1e:3c:15:ed
+   UDP: 16.0.0.253 -> 48.0.0.253
+     tos 0x00, ttl 62, length 46, checksum 0x3ac5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:56:192046: UnknownEthernet0-tx
+   UnknownEthernet0 tx queue 1
+   buffer 0x116dd4: current data 66, length 60, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x1000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct l2-hdr-offset 66 l3-hdr-offset 80
+   PKT MBUF: port 1, nb_segs 1, pkt_len 60
+     buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x62d6eb00
+     packet_type 0x211 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_L4_CKSUM_BAD (0x0008) L4 cksum of RX pkt. is not OK
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+       RTE_PTYPE_L4_UDP (0x0200) UDP packet
+   IP4: 00:51:82:11:22:00 -> f8:f2:1e:3c:15:ed
+   UDP: 16.0.0.253 -> 48.0.0.253
+     tos 0x00, ttl 62, length 46, checksum 0x3ac5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312  BUF  1: 0x7f6c21e680, tlnif 0, seg len 60, ehv y, ind n
+ PKT MBUF: buf_addr 0x7b71f6eb00, nb_segs 1, pkt_len 60
+   buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x62d6eb00
+
+ ------------------- Start of thread 2 vpp_wk_1 -------------------
+ Packet 1
+
+ 00:00:56:191963: dpdk-input
+   UnknownEthernet0 rx queue 0
+   buffer 0x1448a4: current data 66, length 60, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x2000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 0, nb_segs 1, pkt_len 60
+     buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x76045300
+     packet_type 0x211 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_L4_CKSUM_BAD (0x0008) L4 cksum of RX pkt. is not OK
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+       RTE_PTYPE_L4_UDP (0x0200) UDP packet
+   0x0000: 00:00:00:00:00:00 -> 00:00:00:00:00:00
+ 00:00:56:191979: ethernet-input
+   frame: flags 0x3, hw-if-index 1, sw-if-index 1
+   IP4: f8:f2:1e:3c:15:ed -> 00:51:82:11:22:00
+ 00:00:56:191985: ip4-input-no-checksum
+   UDP: 48.0.0.253 -> 16.0.0.253
+     tos 0x00, ttl 64, length 46, checksum 0x38c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:56:191994: ip4-lookup
+   fib 0 dpo-idx 21 flow hash: 0x00000000
+   UDP: 48.0.0.253 -> 16.0.0.253
+     tos 0x00, ttl 64, length 46, checksum 0x38c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:56:191999: ip4-load-balance
+   fib 0 dpo-idx 17 flow hash: 0x00000000
+   UDP: 48.0.0.253 -> 16.0.0.253
+     tos 0x00, ttl 64, length 46, checksum 0x38c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+   fib 0 dpo-idx 2 flow hash: 0x00000000
+   UDP: 48.0.0.253 -> 16.0.0.253
+     tos 0x00, ttl 64, length 46, checksum 0x38c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:56:192001: ip4-rewrite
+   tx_sw_if_index 2 dpo-idx 2 : ipv4 via 192.168.51.42 UnknownEthernet1: mtu:9000 0051821121010051821122010800 flow hash: 0x00000000
+   00000000: 00518211210100518211220108004500002e000100003f1139c5300000fd1000
+   00000020: 00fd00350035001a8312787878787878787878787878787878787878
+ 00:00:56:192005: UnknownEthernet1-output
+   UnknownEthernet1 l4-cksum-computed l4-cksum-correct l2_hdr_offset_valid l3_hdr_offset_valid
+   IP4: 00:51:82:11:22:01 -> 00:51:82:11:21:01
+   UDP: 48.0.0.253 -> 16.0.0.253
+     tos 0x00, ttl 63, length 46, checksum 0x39c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:56:192007: UnknownEthernet1-tx
+   UnknownEthernet1 tx queue 2
+   buffer 0x1448a4: current data 66, length 60, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x2000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct l2-hdr-offset 66 l3-hdr-offset 80
+   PKT MBUF: port 0, nb_segs 1, pkt_len 60
+     buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x76045300
+     packet_type 0x211 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_L4_CKSUM_BAD (0x0008) L4 cksum of RX pkt. is not OK
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+       RTE_PTYPE_L4_UDP (0x0200) UDP packet
+   IP4: 00:51:82:11:22:01 -> 00:51:82:11:21:01
+   UDP: 48.0.0.253 -> 16.0.0.253
+     tos 0x00, ttl 63, length 46, checksum 0x39c5
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312  BUF  1: 0x7f6c21e680, tlnif 0, seg len 60, ehv y, ind n
+ PKT MBUF: buf_addr 0x7b73645300, nb_segs 1, pkt_len 60
+   buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x76045300
+
+ ------------------- Start of thread 3 vpp_wk_2 -------------------
+ No packets in trace buffer
+
+*** IPTFS
+**** DPDK
+ root@m2:~# vppctl show trace
+ ------------------- Start of thread 0 vpp_main -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 1 vpp_wk_0 -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 2 vpp_wk_1 -------------------
+ Packet 1
+
+ 00:00:34:769639: dpdk-input
+   UnknownEthernet1 rx queue 0
+   buffer 0x12eb81: current data 66, length 1570, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x2000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 1, nb_segs 1, pkt_len 1570
+     buf_len 10368, data_len 1570, ol_flags 0x180, data_off 194, phys_addr 0x6215c180
+     packet_type 0x11 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+       PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+   0x0000: 00:00:00:00:00:00 -> 00:00:00:00:00:00
+ 00:00:34:769653: ethernet-input
+   frame: flags 0x3, hw-if-index 2, sw-if-index 2
+   IP4: 00:51:82:11:21:01 -> 00:51:82:11:22:01
+ 00:00:34:769656: ip4-input-no-checksum
+   IPSEC_ESP: 192.168.51.42 -> 192.168.51.43
+     tos 0x00, ttl 253, length 1556, checksum 0xd011
+     fragment id 0x0000
+ 00:00:34:769665: ip4-lookup
+   fib 0 dpo-idx 6 flow hash: 0x00000000
+   IPSEC_ESP: 192.168.51.42 -> 192.168.51.43
+     tos 0x00, ttl 253, length 1556, checksum 0xd011
+     fragment id 0x0000
+ 00:00:34:769669: ip4-local
+     IPSEC_ESP: 192.168.51.42 -> 192.168.51.43
+       tos 0x00, ttl 253, length 1556, checksum 0xd011
+       fragment id 0x0000
+ 00:00:34:769670: ipsec4-if-input
+   IPSec: remote:192.168.51.42 spi:2030 (0x000007ee) seq 912268
+ 00:00:34:769671: dpdk-esp4-decrypt
+   cipher aes-gcm-256 auth none iv_size 0 trunc_size 0 next_header 0
+   ESP: spi 2030 (0x000007ee), seq 912268
+ 00:00:34:769693: dpdk-esp4-decrypt-post
+   cipher aes-gcm-256 auth none
+   IPTFS Basic Header: flags: 0 resv 0 offset 0
+
+ ------------------- Start of thread 3 vpp_wk_2 -------------------
+ Packet 1
+
+ 00:00:34:777606: dpdk-input
+   UnknownEthernet0 rx queue 0
+   buffer 0x144a4d: current data 66, length 60, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x3000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 0, nb_segs 1, pkt_len 60
+     buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x73e52780
+     packet_type 0x211 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_L4_CKSUM_BAD (0x0008) L4 cksum of RX pkt. is not OK
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+       RTE_PTYPE_L4_UDP (0x0200) UDP packet
+   0x0000: 00:00:00:00:00:00 -> 00:00:00:00:00:00
+ 00:00:34:777615: ethernet-input
+   frame: flags 0x3, hw-if-index 1, sw-if-index 1
+   IP4: f8:f2:1e:3c:15:ed -> 00:51:82:11:22:00
+ 00:00:34:777621: ip4-input-no-checksum
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777625: ip4-lookup
+   fib 0 dpo-idx 21 flow hash: 0x00000000
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777628: ip4-load-balance
+   fib 0 dpo-idx 3 flow hash: 0x00000000
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777631: ip4-midchain
+     UDP: 48.0.0.54 -> 16.0.0.54
+       tos 0x00, ttl 63, length 46, checksum 0x3b53
+       fragment id 0x0001
+     UDP: 53 -> 53
+       length 26, checksum 0x8312
+ 00:00:34:777635: iptfs-encap4-tun
+   sa_index: 1
+
+**** DPDK crypto-input
+
+ root@m2:~# vppctl trace add dpdk-crypto-input 1
+ root@m2:~# vppctl show trace
+ ------------------- Start of thread 0 vpp_main -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 1 vpp_wk_0 -------------------
+ Packet 1
+
+ 00:03:51:572446: dpdk-crypto-input
+   cryptodev-id 0 next-index 1
+ 00:03:51:572453: ip4-lookup
+   fib 0 dpo-idx 2 flow hash: 0x00000000
+   IPSEC_ESP: 192.168.51.43 -> 192.168.51.42
+     tos 0x00, ttl 254, length 1556, checksum 0xcf11
+     fragment id 0x0000
+ 00:03:51:572456: ip4-rewrite
+   tx_sw_if_index 2 dpo-idx 2 : ipv4 via 192.168.51.42 UnknownEthernet1: mtu:9000 0051821121010051821122010800 flow hash: 0x00000000
+   00000000: 00518211210100518211220108004500061400000000fd32d011c0a8332bc0a8
+   00000020: 332a00000bcc0106da7676da060100000000fd6b4c4f000006140000
+ 00:03:51:572458: UnknownEthernet1-output
+   UnknownEthernet1
+   IP4: 00:51:82:11:22:01 -> 00:51:82:11:21:01
+   IPSEC_ESP: 192.168.51.43 -> 192.168.51.42
+     tos 0x00, ttl 253, length 1556, checksum 0xd011
+     fragment id 0x0000
+ 00:03:51:572461: UnknownEthernet1-tx
+   UnknownEthernet1 tx queue 1
+   buffer 0x11e28a: current data -14, length 1570, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x1000000
+   PKT MBUF: port 65535, nb_segs 1, pkt_len 1570
+     buf_len 10368, data_len 1570, ol_flags 0x0, data_off 114, phys_addr 0x62314600
+     packet_type 0x0 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+   IP4: 00:51:82:11:22:01 -> 00:51:82:11:21:01
+   IPSEC_ESP: 192.168.51.43 -> 192.168.51.42
+     tos 0x00, ttl 253, length 1556, checksum 0xd011
+     fragment id 0x0000  BUF  1: 0x7f39890680, tlnif 0, seg len 1570, ehv n, ind n
+ PKT MBUF: buf_addr 0x7b3ff14600, nb_segs 1, pkt_len 1570
+   buf_len 10368, data_len 1570, ol_flags 0x0, data_off 114, phys_addr 0x62314600
+
+ ------------------- Start of thread 2 vpp_wk_1 -------------------
+ Packet 1
+
+ 00:00:34:769639: dpdk-input
+   UnknownEthernet1 rx queue 0
+   buffer 0x12eb81: current data 66, length 1570, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x2000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 1, nb_segs 1, pkt_len 1570
+     buf_len 10368, data_len 1570, ol_flags 0x180, data_off 194, phys_addr 0x6215c180
+     packet_type 0x11 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+       PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+   0x0000: 00:00:00:00:00:00 -> 00:00:00:00:00:00
+ 00:00:34:769653: ethernet-input
+   frame: flags 0x3, hw-if-index 2, sw-if-index 2
+   IP4: 00:51:82:11:21:01 -> 00:51:82:11:22:01
+ 00:00:34:769656: ip4-input-no-checksum
+   IPSEC_ESP: 192.168.51.42 -> 192.168.51.43
+     tos 0x00, ttl 253, length 1556, checksum 0xd011
+     fragment id 0x0000
+ 00:00:34:769665: ip4-lookup
+   fib 0 dpo-idx 6 flow hash: 0x00000000
+   IPSEC_ESP: 192.168.51.42 -> 192.168.51.43
+     tos 0x00, ttl 253, length 1556, checksum 0xd011
+     fragment id 0x0000
+ 00:00:34:769669: ip4-local
+     IPSEC_ESP: 192.168.51.42 -> 192.168.51.43
+       tos 0x00, ttl 253, length 1556, checksum 0xd011
+       fragment id 0x0000
+ 00:00:34:769670: ipsec4-if-input
+   IPSec: remote:192.168.51.42 spi:2030 (0x000007ee) seq 912268
+ 00:00:34:769671: dpdk-esp4-decrypt
+   cipher aes-gcm-256 auth none iv_size 0 trunc_size 0 next_header 0
+   ESP: spi 2030 (0x000007ee), seq 912268
+ 00:00:34:769693: dpdk-esp4-decrypt-post
+   cipher aes-gcm-256 auth none
+   IPTFS Basic Header: flags: 0 resv 0 offset 0
+
+ Packet 2
+
+ 00:03:51:572426: dpdk-crypto-input
+   cryptodev-id 0 next-index 4
+ 00:03:51:572431: dpdk-esp4-decrypt-post
+   cipher aes-gcm-256 auth none
+   IPTFS Basic Header: flags: 0 resv 0 offset 0
+ 00:03:51:572433: iptfs-decap
+   IPTFS Basic Header: flags: 0 resv 0 offset 0
+ 00:03:51:572450: drop
+   iptfs-decap: IPTFS all-pad received
+
+ ------------------- Start of thread 3 vpp_wk_2 -------------------
+ Packet 1
+
+ 00:00:34:777606: dpdk-input
+   UnknownEthernet0 rx queue 0
+   buffer 0x144a4d: current data 66, length 60, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x3000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 0, nb_segs 1, pkt_len 60
+     buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x73e52780
+     packet_type 0x211 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_L4_CKSUM_BAD (0x0008) L4 cksum of RX pkt. is not OK
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+       RTE_PTYPE_L4_UDP (0x0200) UDP packet
+   0x0000: 00:00:00:00:00:00 -> 00:00:00:00:00:00
+ 00:00:34:777615: ethernet-input
+   frame: flags 0x3, hw-if-index 1, sw-if-index 1
+   IP4: f8:f2:1e:3c:15:ed -> 00:51:82:11:22:00
+ 00:00:34:777621: ip4-input-no-checksum
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777625: ip4-lookup
+   fib 0 dpo-idx 21 flow hash: 0x00000000
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777628: ip4-load-balance
+   fib 0 dpo-idx 3 flow hash: 0x00000000
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777631: ip4-midchain
+     UDP: 48.0.0.54 -> 16.0.0.54
+       tos 0x00, ttl 63, length 46, checksum 0x3b53
+       fragment id 0x0001
+     UDP: 53 -> 53
+       length 26, checksum 0x8312
+ 00:00:34:777635: iptfs-encap4-tun
+   sa_index: 1
+
+*** iptfs_output
+*** Mini
+ ------------------- Start of thread 0 vpp_main -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 1 vpp_wk_0 -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 2 vpp_wk_1 -------------------
+ 00:00:34:769639: dpdk-input
+ 00:00:34:769653: ethernet-input
+ 00:00:34:769656: ip4-input-no-checksum
+ 00:00:34:769665: ip4-lookup
+ 00:00:34:769669: ip4-local
+ 00:00:34:769670: ipsec4-if-input
+ 00:00:34:769671: dpdk-esp4-decrypt
+ 00:00:34:769693: dpdk-esp4-decrypt-post
+ ------------------- Start of thread 3 vpp_wk_2 -------------------
+ 00:00:34:777606: dpdk-input
+ 00:00:34:777615: ethernet-input
+ 00:00:34:777621: ip4-input-no-checksum
+ 00:00:34:777625: ip4-lookup
+ 00:00:34:777628: ip4-load-balance
+ 00:00:34:777631: ip4-midchain
+ 00:00:34:777635: iptfs-encap4-tun
+
+**** DPDK crypto-input
+ ------------------- Start of thread 0 vpp_main -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 2 vpp_wk_1 -------------------
+ Packet 1
+
+ 00:00:34:769639: dpdk-input
+ 00:00:34:769653: ethernet-input
+ 00:00:34:769656: ip4-input-no-checksum
+ 00:00:34:769665: ip4-lookup
+ 00:00:34:769669: ip4-local
+ 00:00:34:769670: ipsec4-if-input
+ 00:00:34:769671: dpdk-esp4-decrypt
+ 00:00:34:769693: dpdk-esp4-decrypt-post
+
+ Packet 2
+
+ 00:03:51:572426: dpdk-crypto-input
+   cryptodev-id 0 next-index 4
+ 00:03:51:572431: dpdk-esp4-decrypt-post
+   cipher aes-gcm-256 auth none
+   IPTFS Basic Header: flags: 0 resv 0 offset 0
+ 00:03:51:572433: iptfs-decap
+   IPTFS Basic Header: flags: 0 resv 0 offset 0
+ 00:03:51:572450: drop
+   iptfs-decap: IPTFS all-pad received
+
+ ------------------- Start of thread 3 vpp_wk_2 -------------------
+ Packet 1
+
+ 00:00:34:777606: dpdk-input
+   UnknownEthernet0 rx queue 0
+   buffer 0x144a4d: current data 66, length 60, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x3000000
+                    ext-hdr-valid
+                    l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 0, nb_segs 1, pkt_len 60
+     buf_len 10368, data_len 60, ol_flags 0x88, data_off 194, phys_addr 0x73e52780
+     packet_type 0x211 l2_len 14 l3_len 20 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_L4_CKSUM_BAD (0x0008) L4 cksum of RX pkt. is not OK
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+       RTE_PTYPE_L4_UDP (0x0200) UDP packet
+   0x0000: 00:00:00:00:00:00 -> 00:00:00:00:00:00
+ 00:00:34:777615: ethernet-input
+   frame: flags 0x3, hw-if-index 1, sw-if-index 1
+   IP4: f8:f2:1e:3c:15:ed -> 00:51:82:11:22:00
+ 00:00:34:777621: ip4-input-no-checksum
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777625: ip4-lookup
+   fib 0 dpo-idx 21 flow hash: 0x00000000
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777628: ip4-load-balance
+   fib 0 dpo-idx 3 flow hash: 0x00000000
+   UDP: 48.0.0.54 -> 16.0.0.54
+     tos 0x00, ttl 64, length 46, checksum 0x3a53
+     fragment id 0x0001
+   UDP: 53 -> 53
+     length 26, checksum 0x8312
+ 00:00:34:777631: ip4-midchain
+     UDP: 48.0.0.54 -> 16.0.0.54
+       tos 0x00, ttl 63, length 46, checksum 0x3b53
+       fragment id 0x0001
+     UDP: 53 -> 53
+       length 26, checksum 0x8312
+ 00:00:34:777635: iptfs-encap4-tun
+   sa_index: 1
+
+ r
+*** Trace:
+ Here's one from VM (IP input): 13 nodes
+ (wk2 - thread 3)
+ 00:01:21:555909: dpdk-input
+ 00:01:21:556877: ethernet-input
+ 00:01:21:557253: ip4-input
+ 00:01:21:557396: ip4-lookup
+ 00:01:21:557526: ip4-midchain
+ 00:01:21:557662: iptfs-encap4-tun
+ (wk0 thread 1)
+ 00:00:33:083115: iptfs-output
+ 00:00:33:092215: dpdk-esp4-encrypt
+ 00:36:23:376706: dpdk-crypto-input
+ 00:36:23:376722: ip4-lookup
+ 00:36:23:376726: ip4-rewrite
+ 00:36:23:376729: GigabitEthernet0/e/0-output
+ 00:36:23:376733: GigabitEthernet0/e/0-tx
+
+ (wk1 thread 2)
+ 00:34:45:517550: dpdk-input                   mrvl-pp2-input
+ 00:34:45:518279: ethernet-input                     |
+ 00:34:45:518619: ip4-input                    ip4-input-no-checksum
+ 00:34:45:518752: ip4-lookup                   ip4-lookup ...
+ 00:34:45:518862: ip4-local                    ip4-local
+ 00:34:45:518982: ipsec4-if-input              ipsec4-if-input
+ 00:34:45:519047: dpdk-esp4-decrypt            esp4_decrypt
+ 00:00:17:919589: dpdk-crypto-input                  |
+ 00:00:17:919602: dpdk-esp4-decrypt-post             |
+ 00:00:17:919605: iptfs-decap                  iptfs-decap
+ 00:00:17:919763: ip4-input-no-checksum        ip4-input-no-checksum
+ 00:00:17:919769: ip4-lookup                   ip4-lookup
+ 00:00:17:919774: ip4-load-balance             ip4-load-balance
+ 00:00:17:919777: ip4-rewrite                  ip4-rewrite
+ 00:00:17:919781: GigabitEthernet0/a/0-output        |
+ 00:00:17:919786: GigabitEthernet0/a/0-tx      mrvl-pp2-tx
+
+** Newer Trace using ipsec0 tunnel. Ping from 11.11.11.253 to 12.12.12.12
+
+ 2020-05-10 10:40:05.277582: 0: iptfs_tfs_data_init:243: iptfs_tfs_data_init: inbound TFS SA
+ 2020-05-10 10:40:05.277594: 0: iptfs_tfs_data_init:399: iptfs_tfs_data_init: TFS
+ config: iptfs-use-chaining iptfs-no-pad-only iptfs-no-pad-trace
+ iptfs-max-delay-us 100000 iptfs-packet-size 1500 iptfs-ethernet-bitrate
+ 1000000bps iptfs-reorder-window 5 data: INBOUND: nextseq 0 fragnext 0
+ frag_buffer 0xffffffff encap-thread 4
+
+ 2020-05-10 10:40:05.278521: 0: iptfs_tfs_data_init:399: iptfs_tfs_data_init: TFS
+ config: iptfs-use-chaining iptfs-no-pad-only iptfs-no-pad-trace
+ iptfs-max-delay-us 100000 iptfs-packet-size 1500 iptfs-ethernet-bitrate
+ 1000000bps iptfs-reorder-window 5 data: OUTBOUND: qlen 9 qsize 0 [max 11916]
+ ring 0 [max 9] lastdue 0 pdelay 12304000ns (12.304ms) pps: 81.274382314694 ipsec
+ payload size: 1470 iptfs payload size: 1466 max payload rate: 953185.95578674bps
+ zpool_target 1792 output-thread 5 zpool-thread 3
+
+
+ USER THREAD:
+ ------------------- Start of User thread 1 vpp_wk_0 -------------------
+ Packet 1 [ This is PING Request ]
+
+ 00:00:14:215554: dpdk-input
+   TenGigabitEthernet65/0/0 rx queue 0
+   buffer 0x3feb11e: current data 0, length 98, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x1000000
+                     tot-len-valid ext-hdr-valid
+                     l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 0, nb_segs 1, pkt_len 98
+     buf_len 10368, data_len 98, ol_flags 0x180, data_off 128, phys_addr 0xffac4800
+     packet_type 0x11 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+       PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+   IP4: f8:f2:1e:3c:14:b4 -> f8:f2:1e:3c:08:28
+   ICMP: 11.11.11.253 -> 12.12.12.12
+     tos 0x00, ttl 64, length 84, checksum 0xc8e0
+     fragment id 0x42a9, flags DONT_FRAGMENT
+   ICMP echo_request checksum 0xd5b1
+ 00:00:14:215561: ethernet-input
+   frame: flags 0x3, hw-if-index 1, sw-if-index 1
+   IP4: f8:f2:1e:3c:14:b4 -> f8:f2:1e:3c:08:28
+ 00:00:14:215575: ip4-input-no-checksum
+   ICMP: 11.11.11.253 -> 12.12.12.12
+     tos 0x00, ttl 64, length 84, checksum 0xc8e0
+     fragment id 0x42a9, flags DONT_FRAGMENT
+   ICMP echo_request checksum 0xd5b1
+ 00:00:14:215583: ip4-lookup
+   fib 0 dpo-idx 4 flow hash: 0x00000000
+   ICMP: 11.11.11.253 -> 12.12.12.12
+     tos 0x00, ttl 64, length 84, checksum 0xc8e0
+     fragment id 0x42a9, flags DONT_FRAGMENT
+   ICMP echo_request checksum 0xd5b1
+ 00:00:14:215590: ip4-midchain
+     ICMP: 11.11.11.253 -> 12.12.12.12
+       tos 0x00, ttl 63, length 84, checksum 0xc9e0
+       fragment id 0x42a9, flags DONT_FRAGMENT
+     ICMP echo_request checksum 0xd5b1
+ 00:00:14:215595: iptfs-encap4-tun
+   sa_index: 1
+
+ XXX shouldn't we see encap-enq here?
+ XXX maybe not, we are re-using the user packet for the IPTFS payload
+
+ ------------------- Start of IPTFS RX (decap-reorder) thread 2 vpp_wk_1 -------------------
+
+ Packet 1 [ This is PING reply in IPTFS ]
+
+ 00:00:14:233012: dpdk-input
+   TenGigabitEthernet65/0/1 rx queue 0
+   buffer 0x3fe9d8c: current data 0, length 1514, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x2000000
+                     tot-len-valid ext-hdr-valid
+                     l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 1, nb_segs 1, pkt_len 1514
+     buf_len 10368, data_len 1514, ol_flags 0x180, data_off 128, phys_addr 0xffa76380
+     packet_type 0x11 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+       PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+   IP4: f8:f2:1e:3c:09:b1 -> f8:f2:1e:3c:08:29
+   IPSEC_ESP: 13.13.13.12 -> 13.13.13.11
+     tos 0x00, ttl 253, length 1500, checksum 0x83bf
+     fragment id 0x0000
+ 00:00:14:233015: ethernet-input
+   frame: flags 0x3, hw-if-index 2, sw-if-index 2
+   IP4: f8:f2:1e:3c:09:b1 -> f8:f2:1e:3c:08:29
+ 00:00:14:233018: ip4-input-no-checksum
+   IPSEC_ESP: 13.13.13.12 -> 13.13.13.11
+     tos 0x00, ttl 253, length 1500, checksum 0x83bf
+     fragment id 0x0000
+ 00:00:14:233020: ip4-lookup
+   fib 0 dpo-idx 6 flow hash: 0x00000000
+   IPSEC_ESP: 13.13.13.12 -> 13.13.13.11
+     tos 0x00, ttl 253, length 1500, checksum 0x83bf
+     fragment id 0x0000
+ 00:00:14:233021: ip4-local
+     IPSEC_ESP: 13.13.13.12 -> 13.13.13.11
+       tos 0x00, ttl 253, length 1500, checksum 0x83bf
+       fragment id 0x0000
+ 00:00:14:233022: ipsec4-if-input
+   IPSec: remote:13.13.13.12 spi:1211 (0x000004bb) seq 1
+ 00:00:14:233029: dpdk-esp4-decrypt
+   cipher none auth none iv_size 0 trunc_size 0 next_header 0
+   ESP: spi 1211 (0x000004bb), seq 1
+
+ Packet 2
+
+ 00:00:14:233040: dpdk-crypto-input
+   cryptodev-id 0 next-index 4
+ 00:00:14:233042: dpdk-esp4-decrypt-post
+   cipher none auth none
+   IPTFS Basic Header: flags: 0 resv 0 offset 0
+
+ XXX shouldn't we see decap-reorder here with a HANDOFF?
+
+ ------------------- Start of ZPOOL thread 3 vpp_wk_2 -------------------
+ No packets in trace buffer
+ ------------------- Start of DECAP thread 4 vpp_wk_3 -------------------
+ Packet 1 [ This is HANDOFF from Decrypt of IPTFS ]
+
+ 00:00:14:233052: handoff_trace
+   HANDED-OFF: from thread 2 trace index 1
+ 00:00:14:233052: iptfs-decap
+     IPTFS Basic Header: flags: 0 resv 0 offset 0:
+     datablock  0: type: IPv4 offset:    4 pktlen:   84
+     datablock  1: type: Pad  offset:   88 pktlen: 1382
+ 00:00:14:233059: ip4-input-no-checksum
+   ICMP: 12.12.12.12 -> 11.11.11.253
+     tos 0x00, ttl 64, length 84, checksum 0xdf9c
+     fragment id 0x2bed, flags DONT_FRAGMENT
+   ICMP echo_reply checksum 0xddb1
+ 00:00:14:233062: ip4-lookup
+   fib 0 dpo-idx 2 flow hash: 0x00000000
+   ICMP: 12.12.12.12 -> 11.11.11.253
+     tos 0x00, ttl 64, length 84, checksum 0xdf9c
+     fragment id 0x2bed, flags DONT_FRAGMENT
+   ICMP echo_reply checksum 0xddb1
+ 00:00:14:233064: ip4-rewrite
+   tx_sw_if_index 1 dpo-idx 2 : ipv4 via 11.11.11.253 TenGigabitEthernet65/0/0: mtu:9000 f8f21e3c14b4f8f21e3c08280800 flow hash: 0x00000000
+   00000000: f8f21e3c14b4f8f21e3c08280800450000542bed40003f01e09c0c0c0c0c0b0b
+   00000020: 0bfd0000ddb13ac6000111dab75e000000005d7b0200000000001011
+ 00:00:14:233065: TenGigabitEthernet65/0/0-output
+   TenGigabitEthernet65/0/0
+   IP4: f8:f2:1e:3c:08:28 -> f8:f2:1e:3c:14:b4
+   ICMP: 12.12.12.12 -> 11.11.11.253
+     tos 0x00, ttl 63, length 84, checksum 0xe09c
+     fragment id 0x2bed, flags DONT_FRAGMENT
+   ICMP echo_reply checksum 0xddb1
+ 00:00:14:233066: TenGigabitEthernet65/0/0-tx
+   TenGigabitEthernet65/0/0 tx queue 4
+   buffer 0x3fe9d8c: current data 32, length 98, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x4000000
+                     tot-len-valid ext-hdr-valid
+    FOO: PKT MBUF: port 1, nb_segs 1, pkt_len 98
+           buf_len 10368, data_len 98, ol_flags 0x180, data_off 160, phys_addr 0xffa76380
+           packet_type 0x11 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+           rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+           Packet Offload Flags
+             PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+             PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+           Packet Types
+             RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+             RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+    ETHER: IP4: f8:f2:1e:3c:08:28 -> f8:f2:1e:3c:14:b4
+           ICMP: 12.12.12.12 -> 11.11.11.253
+             tos 0x00, ttl 63, length 84, checksum 0xe09c
+             fragment id 0x2bed, flags DONT_FRAGMENT
+           ICMP echo_reply checksum 0xddb1
+   PKT MBUF: buf_addr 0x10ffa76380, nb_segs 1, pkt_len 98
+    buf_len 10368, data_len 98, ol_flags 0x180, data_off-128 32, phys_addr 0xffa76380
+   Packet Dump
+    00000: f8 f2 1e 3c 14 b4 f8 f2 1e 3c 08 28 08 00 45 00 [...<.....<.(..E.]
+    00010: 00 54 2b ed 40 00 3f 01 e0 9c 0c 0c 0c 0c 0b 0b [.T+.@.?.........]
+    00020: 0b fd 00 00 dd b1 3a c6 00 01 11 da b7 5e 00 00 [......:......^..]
+    00030: 00 00 5d 7b 02 00 00 00 00 00 10 11 12 13 14 15 [..]{............]
+    00040: 16 17 18 19 1a 1b 1c 1d 1e 1f 20 21 22 23 24 25 [.......... !"#$%]
+    00050: 26 27 28 29 2a 2b 2c 2d 2e 2f 30 31 32 33 34 35 [&'()*+,-./012345]
+    00060: 36 37                                           [67]
+
+ ------------------- Start of OUTPUT thread 5 vpp_wk_4 -------------------
+
+ Packet 1 [ This is interesting is the handoff trace b/c it's noticing it's from
+ another thread (the user RX thread) automatically? ]
+
+ Where is the iptfs-output trace?
+
+ 00:00:14:224236: handoff_trace
+   HANDED-OFF: from thread 1 trace index 0
+ 00:00:14:224236: dpdk-esp4-encrypt
+   spi 1112 seq 1 seq_hi 0 iv_size 0 trunc_size 0
+   pad_bytes 0 next_header 143
+   cipher none auth none
+     IPTFS Basic Header: flags: 0 resv 0 offset 0
+
+ Packet 2 [ This is encrypted IPTFS output with Ping Request ]
+
+ 00:00:14:224267: dpdk-crypto-input
+   cryptodev-id 0 next-index 1
+ 00:00:14:224268: ip4-lookup
+   fib 0 dpo-idx 3 flow hash: 0x00000000
+   IPSEC_ESP: 13.13.13.11 -> 13.13.13.12
+     tos 0x00, ttl 254, length 1500, checksum 0x82bf
+     fragment id 0x0000
+ 00:00:14:224271: ip4-rewrite
+   tx_sw_if_index 2 dpo-idx 3 : ipv4 via 13.13.13.12 TenGigabitEthernet65/0/1: mtu:9000 f8f21e3c09b1f8f21e3c08290800 flow hash: 0x00000000
+   00000000: f8f21e3c09b1f8f21e3c08290800450005dc00000000fd3283bf0d0d0d0b0d0d
+   00000020: 0d0c0000045800000001000000004500005442a940003f01c9e00b0b
+ 00:00:14:224274: TenGigabitEthernet65/0/1-output
+   TenGigabitEthernet65/0/1
+   IP4: f8:f2:1e:3c:08:29 -> f8:f2:1e:3c:09:b1
+   IPSEC_ESP: 13.13.13.11 -> 13.13.13.12
+     tos 0x00, ttl 253, length 1500, checksum 0x83bf
+     fragment id 0x0000
+ 00:00:14:224276: TenGigabitEthernet65/0/1-tx
+   TenGigabitEthernet65/0/1 tx queue 5
+   buffer 0x3feb11e: current data -32, length 1514, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x5000001
+                     tot-len-valid ext-hdr-valid
+    FOO: PKT MBUF: port 0, nb_segs 1, pkt_len 1514
+           buf_len 10368, data_len 1514, ol_flags 0x180, data_off 96, phys_addr 0xffac4800
+           packet_type 0x11 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+           rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+           Packet Offload Flags
+             PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+             PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+           Packet Types
+             RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+             RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+    ETHER: IP4: f8:f2:1e:3c:08:29 -> f8:f2:1e:3c:09:b1
+           IPSEC_ESP: 13.13.13.11 -> 13.13.13.12
+             tos 0x00, ttl 253, length 1500, checksum 0x83bf
+             fragment id 0x0000
+   PKT MBUF: buf_addr 0x10ffac4800, nb_segs 1, pkt_len 1514
+    buf_len 10368, data_len 1514, ol_flags 0x180, data_off-128 -32, phys_addr 0xffac4800
+   Packet Dump (truncated)
+    00000: f8 f2 1e 3c 09 b1 f8 f2 1e 3c 08 29 08 00 45 00 [...<.....<.)..E.]
+    00010: 05 dc 00 00 00 00 fd 32 83 bf 0d 0d 0d 0b 0d 0d [.......2........]
+    00020: 0d 0c 00 00 04 58 00 00 00 01 00 00 00 00 45 00 [.....X........E.]
+    00030: 00 54 42 a9 40 00 3f 01 c9 e0 0b 0b 0b fd 0c 0c [.TB.@.?.........]
+    00040: 0c 0c 08 00 d5 b1 3a c6 00 01 11 da b7 5e 00 00 [......:......^..]
+    00050: 00 00 5d 7b 02 00 00 00 00 00 10 11 12 13 14 15 [..]{............]
+    00060: 16 17 18 19 1a 1b 1c 1d 1e 1f 20 21 22 23 24 25 [.......... !"#$%]
+     ...
+    005d0:                               00 00 00 00 00 00 [          ......]
+    005e0: 00 00 00 00 00 00 00 00 00 8f                   [..........]
+
+
+
+*** Capture 2
+
+ $ vppctl show trace
+ ------------------- Start of thread 0 vpp_main -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 1 vpp_wk_0 -------------------
+ Packet 1
+
+ 00:00:08:845351: dpdk-input
+   TenGigabitEthernet65/0/0 rx queue 0
+   buffer 0x3feb11e: current data 0, length 98, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x1000000
+                     tot-len-valid ext-hdr-valid
+                     l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 0, nb_segs 1, pkt_len 98
+     buf_len 10368, data_len 98, ol_flags 0x180, data_off 128, phys_addr 0xffac4800
+     packet_type 0x11 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+       PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+   IP4: f8:f2:1e:3c:14:b4 -> f8:f2:1e:3c:08:28
+   ICMP: 11.11.11.253 -> 12.12.12.12
+     tos 0x00, ttl 64, length 84, checksum 0x21dc
+     fragment id 0xe9ad, flags DONT_FRAGMENT
+   ICMP echo_request checksum 0xaea9
+ 00:00:08:845366: ethernet-input
+   frame: flags 0x3, hw-if-index 1, sw-if-index 1
+   IP4: f8:f2:1e:3c:14:b4 -> f8:f2:1e:3c:08:28
+ 00:00:08:845382: ip4-input-no-checksum
+   ICMP: 11.11.11.253 -> 12.12.12.12
+     tos 0x00, ttl 64, length 84, checksum 0x21dc
+     fragment id 0xe9ad, flags DONT_FRAGMENT
+   ICMP echo_request checksum 0xaea9
+ 00:00:08:845389: ip4-lookup
+   fib 0 dpo-idx 4 flow hash: 0x00000000
+   ICMP: 11.11.11.253 -> 12.12.12.12
+     tos 0x00, ttl 64, length 84, checksum 0x21dc
+     fragment id 0xe9ad, flags DONT_FRAGMENT
+   ICMP echo_request checksum 0xaea9
+ 00:00:08:845396: ip4-midchain
+     ICMP: 11.11.11.253 -> 12.12.12.12
+       tos 0x00, ttl 63, length 84, checksum 0x22dc
+       fragment id 0xe9ad, flags DONT_FRAGMENT
+     ICMP echo_request checksum 0xaea9
+ 00:00:08:845402: iptfs-encap4-tun
+   sa_index: 1
+
+ ------------------- Start of thread 2 vpp_wk_1 -------------------
+ Packet 1
+
+ 00:00:08:854265: dpdk-input
+   TenGigabitEthernet65/0/1 rx queue 0
+   buffer 0x3fe9d8c: current data 0, length 1514, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x2000000
+                     tot-len-valid ext-hdr-valid
+                     l4-cksum-computed l4-cksum-correct
+   PKT MBUF: port 1, nb_segs 1, pkt_len 1514
+     buf_len 10368, data_len 1514, ol_flags 0x180, data_off 128, phys_addr 0xffa76380
+     packet_type 0x11 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+     rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+     Packet Offload Flags
+       PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+       PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+     Packet Types
+       RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+       RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+   IP4: f8:f2:1e:3c:09:b1 -> f8:f2:1e:3c:08:29
+   IPSEC_ESP: 13.13.13.12 -> 13.13.13.11
+     tos 0x00, ttl 253, length 1500, checksum 0x83bf
+     fragment id 0x0000
+ 00:00:08:854273: ethernet-input
+   frame: flags 0x3, hw-if-index 2, sw-if-index 2
+   IP4: f8:f2:1e:3c:09:b1 -> f8:f2:1e:3c:08:29
+ 00:00:08:854282: ip4-input-no-checksum
+   IPSEC_ESP: 13.13.13.12 -> 13.13.13.11
+     tos 0x00, ttl 253, length 1500, checksum 0x83bf
+     fragment id 0x0000
+ 00:00:08:854287: ip4-lookup
+   fib 0 dpo-idx 6 flow hash: 0x00000000
+   IPSEC_ESP: 13.13.13.12 -> 13.13.13.11
+     tos 0x00, ttl 253, length 1500, checksum 0x83bf
+     fragment id 0x0000
+ 00:00:08:854291: ip4-local
+     IPSEC_ESP: 13.13.13.12 -> 13.13.13.11
+       tos 0x00, ttl 253, length 1500, checksum 0x83bf
+       fragment id 0x0000
+ 00:00:08:854295: ipsec4-if-input
+   IPSec: remote:13.13.13.12 spi:1211 (0x000004bb) seq 1
+ 00:00:08:854299: dpdk-esp4-decrypt
+   cipher none auth none iv_size 0 trunc_size 0 next_header 0
+   ESP: spi 1211 (0x000004bb), seq 1
+
+ Packet 2
+
+ 00:00:08:854324: dpdk-crypto-input
+   cryptodev-id 0 next-index 4
+ 00:00:08:854328: dpdk-esp4-decrypt-post
+   cipher none auth none
+   IPTFS Basic Header: flags: 0 resv 0 offset 0
+
+ ------------------- Start of thread 3 vpp_wk_2 -------------------
+ No packets in trace buffer
+ ------------------- Start of thread 4 vpp_wk_3 -------------------
+ Packet 1
+
+ 00:00:08:854345: handoff_trace
+   HANDED-OFF: from thread 2 trace index 1
+ 00:00:08:854345: iptfs-decap
+     IPTFS Basic Header: flags: 0 resv 0 offset 0:
+     datablock  0: type: IPv4 offset:    4 pktlen:   84
+     datablock  1: type: Pad  offset:   88 pktlen: 1382
+ 00:00:08:854358: ip4-input-no-checksum
+   ICMP: 12.12.12.12 -> 11.11.11.253
+     tos 0x00, ttl 64, length 84, checksum 0xdf9c
+     fragment id 0x2bed, flags DONT_FRAGMENT
+   ICMP echo_reply checksum 0xb6a9
+ 00:00:08:854371: ip4-lookup
+   fib 0 dpo-idx 2 flow hash: 0x00000000
+   ICMP: 12.12.12.12 -> 11.11.11.253
+     tos 0x00, ttl 64, length 84, checksum 0xdf9c
+     fragment id 0x2bed, flags DONT_FRAGMENT
+   ICMP echo_reply checksum 0xb6a9
+ 00:00:08:854376: ip4-rewrite
+   tx_sw_if_index 1 dpo-idx 2 : ipv4 via 11.11.11.253 TenGigabitEthernet65/0/0: mtu:9000 f8f21e3c14b4f8f21e3c08280800 flow hash: 0x00000000
+   00000000: f8f21e3c14b4f8f21e3c08280800450000542bed40003f01e09c0c0c0c0c0b0b
+   00000020: 0bfd0000b6a9411d0001e7e8b75e00000000a41d0600000000001011
+ 00:00:08:854380: TenGigabitEthernet65/0/0-output
+   TenGigabitEthernet65/0/0
+   IP4: f8:f2:1e:3c:08:28 -> f8:f2:1e:3c:14:b4
+   ICMP: 12.12.12.12 -> 11.11.11.253
+     tos 0x00, ttl 63, length 84, checksum 0xe09c
+     fragment id 0x2bed, flags DONT_FRAGMENT
+   ICMP echo_reply checksum 0xb6a9
+ 00:00:08:854385: TenGigabitEthernet65/0/0-tx
+   TenGigabitEthernet65/0/0 tx queue 4
+   buffer 0x3fe9d8c: current data 32, length 98, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x4000000
+                     tot-len-valid ext-hdr-valid
+    FOO: PKT MBUF: port 1, nb_segs 1, pkt_len 98
+           buf_len 10368, data_len 98, ol_flags 0x180, data_off 160, phys_addr 0xffa76380
+           packet_type 0x11 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+           rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+           Packet Offload Flags
+             PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+             PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+           Packet Types
+             RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+             RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+    ETHER: IP4: f8:f2:1e:3c:08:28 -> f8:f2:1e:3c:14:b4
+           ICMP: 12.12.12.12 -> 11.11.11.253
+             tos 0x00, ttl 63, length 84, checksum 0xe09c
+             fragment id 0x2bed, flags DONT_FRAGMENT
+           ICMP echo_reply checksum 0xb6a9
+   PKT MBUF: buf_addr 0x10ffa76380, nb_segs 1, pkt_len 98
+    buf_len 10368, data_len 98, ol_flags 0x180, data_off-128 32, phys_addr 0xffa76380
+   Packet Dump
+    00000: f8 f2 1e 3c 14 b4 f8 f2 1e 3c 08 28 08 00 45 00 [...<.....<.(..E.]
+    00010: 00 54 2b ed 40 00 3f 01 e0 9c 0c 0c 0c 0c 0b 0b [.T+.@.?.........]
+    00020: 0b fd 00 00 b6 a9 41 1d 00 01 e7 e8 b7 5e 00 00 [......A......^..]
+    00030: 00 00 a4 1d 06 00 00 00 00 00 10 11 12 13 14 15 [................]
+    00040: 16 17 18 19 1a 1b 1c 1d 1e 1f 20 21 22 23 24 25 [.......... !"#$%]
+    00050: 26 27 28 29 2a 2b 2c 2d 2e 2f 30 31 32 33 34 35 [&'()*+,-./012345]
+    00060: 36 37                                           [67]
+
+ ------------------- Start of thread 5 vpp_wk_4 -------------------
+ Packet 1
+
+ 00:00:08:851581: handoff_trace
+   HANDED-OFF: from thread 1 trace index 0
+ 00:00:08:851581: iptfs-output
+     IPTFS Basic Header: flags: 0 resv 0 offset 0:[output gen: 526 pkt 0 of 1]:
+     datablock  0: type: IPv4 offset:    4 pktlen:   84
+     datablock  1: type: Pad  offset:   88 pktlen: 1382
+ 00:00:08:851622: dpdk-esp4-encrypt
+   spi 1112 seq 1 seq_hi 0 iv_size 0 trunc_size 0
+   pad_bytes 0 next_header 143
+   cipher none auth none
+     IPTFS Basic Header: flags: 0 resv 0 offset 0
+
+ Packet 2
+
+ 00:00:08:851659: dpdk-crypto-input
+   cryptodev-id 0 next-index 1
+ 00:00:08:851663: ip4-lookup
+   fib 0 dpo-idx 3 flow hash: 0x00000000
+   IPSEC_ESP: 13.13.13.11 -> 13.13.13.12
+     tos 0x00, ttl 254, length 1500, checksum 0x82bf
+     fragment id 0x0000
+ 00:00:08:851671: ip4-rewrite
+   tx_sw_if_index 2 dpo-idx 3 : ipv4 via 13.13.13.12 TenGigabitEthernet65/0/1: mtu:9000 f8f21e3c09b1f8f21e3c08290800 flow hash: 0x00000000
+   00000000: f8f21e3c09b1f8f21e3c08290800450005dc00000000fd3283bf0d0d0d0b0d0d
+   00000020: 0d0c00000458000000010000000045000054e9ad40003f0122dc0b0b
+ 00:00:08:851676: TenGigabitEthernet65/0/1-output
+   TenGigabitEthernet65/0/1
+   IP4: f8:f2:1e:3c:08:29 -> f8:f2:1e:3c:09:b1
+   IPSEC_ESP: 13.13.13.11 -> 13.13.13.12
+     tos 0x00, ttl 253, length 1500, checksum 0x83bf
+     fragment id 0x0000
+ 00:00:08:851682: TenGigabitEthernet65/0/1-tx
+   TenGigabitEthernet65/0/1 tx queue 5
+   buffer 0x3feb11e: current data -32, length 1514, buffer-pool 0, ref-count 1, totlen-nifb 0, trace handle 0x5000001
+                     tot-len-valid ext-hdr-valid
+    FOO: PKT MBUF: port 0, nb_segs 1, pkt_len 1514
+           buf_len 10368, data_len 1514, ol_flags 0x180, data_off 96, phys_addr 0xffac4800
+           packet_type 0x11 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0
+           rss 0x0 fdir.hi 0x0 fdir.lo 0x0
+           Packet Offload Flags
+             PKT_RX_IP_CKSUM_GOOD (0x0080) IP cksum of RX pkt. is valid
+             PKT_RX_L4_CKSUM_GOOD (0x0100) L4 cksum of RX pkt. is valid
+           Packet Types
+             RTE_PTYPE_L2_ETHER (0x0001) Ethernet packet
+             RTE_PTYPE_L3_IPV4 (0x0010) IPv4 packet without extension headers
+    ETHER: IP4: f8:f2:1e:3c:08:29 -> f8:f2:1e:3c:09:b1
+           IPSEC_ESP: 13.13.13.11 -> 13.13.13.12
+             tos 0x00, ttl 253, length 1500, checksum 0x83bf
+             fragment id 0x0000
+   PKT MBUF: buf_addr 0x10ffac4800, nb_segs 1, pkt_len 1514
+    buf_len 10368, data_len 1514, ol_flags 0x180, data_off-128 -32, phys_addr 0xffac4800
+   Packet Dump (truncated)
+    00000: f8 f2 1e 3c 09 b1 f8 f2 1e 3c 08 29 08 00 45 00 [...<.....<.)..E.]
+    00010: 05 dc 00 00 00 00 fd 32 83 bf 0d 0d 0d 0b 0d 0d [.......2........]
+    00020: 0d 0c 00 00 04 58 00 00 00 01 00 00 00 00 45 00 [.....X........E.]
+    00030: 00 54 e9 ad 40 00 3f 01 22 dc 0b 0b 0b fd 0c 0c [.T..@.?.".......]
+    00040: 0c 0c 08 00 ae a9 41 1d 00 01 e7 e8 b7 5e 00 00 [......A......^..]
+    00050: 00 00 a4 1d 06 00 00 00 00 00 10 11 12 13 14 15 [................]
+    00060: 16 17 18 19 1a 1b 1c 1d 1e 1f 20 21 22 23 24 25 [.......... !"#$%]
+     ...
+    005d0:                               00 00 00 00 00 00 [          ......]
+    005e0: 00 00 00 00 00 00 00 00 00 8f                   [..........]
+
+
+ (
+
+** Old Marvel Info
+*** native driver Link errors.
+   - /var/build/mb-build/openwrt-dd/staging_dir/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.3.0_glibc-2.22/lib/gcc/aarch64-openwrt-linux-gnu/5.3.0/../../../../aarch64-openwrt-linux-gnu/bin/ld: /var/build/mb-build/openwrt-dd/staging_dir/target-aarch64_cortex-a53+neon-vfpv4_glibc-2.22/usr/lib/
+
+     libmusdk.a(libmusdk_la-uio_find_devices_byname.o): relocation R_AARCH64_ADR_PREL_PG_HI21 against external symbol
+     `alphasort@@GLIBC_2.17' can not be used when making a shared object; recompile with -fPIC
+
+   - /var/build/mb-build/openwrt-dd/staging_dir/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.3.0_glibc-2.22/lib/gcc/aarch64-openwrt-linux-gnu/5.3.0/../../../../aarch64-openwrt-linux-gnu/bin/ld: /var/build/mb-build/openwrt-dd/staging_dir/target-aarch64_cortex-a53+neon-vfpv4_glibc-2.22/usr/lib/
+     libmusdk.a(libmusdk_la-uio_find_devices_byname.o)(.text+0xa0):
+
+   - /var/build/mb-build/openwrt-dd/staging_dir/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.3.0_glibc-2.22/lib/gcc/aarch64-openwrt-linux-gnu/5.3.0/../../../../aarch64-openwrt-linux-gnu/bin/ld: /var/build/mb-build/openwrt-dd/staging_dir/target-aarch64_cortex-a53+neon-vfpv4_glibc-2.22/usr/lib/
+     libmusdk.a(libmusdk_la-uio_find_devices_byname.o)(.text+0xa0):
+     unresolvable R_AARCH64_ADR_PREL_PG_HI21 relocation against symbol `alphasort@@GLIBC_2.17'
+
+*** Notes from meeting.
+
+- 20-30% throughput.
+- native iperf 1Mpps 1.5G bidir
+- dpdk iperf 4G bidir
+- dpdk crypto offload interruption in the pipeline
+- vpp run to completion
+- vpp cypto engines
+-
+- Indirect buffers.
+-
+
+*** Indirect Buffering
+   [side note: 65536 / 4 = 16384]
+
+**** Max TX Descriptors (per TX Queue) = 16368
+
+    #define MVPP2_TXQ_DESC_SIZE_REG		0x2088
+    #define MVPP2_TXQ_DESC_HWF_SIZE_REG		0x208c
+    #define MVPP2_TXQ_DESC_SIZE_MASK		0x3ff0
+
+**** Max TX Descriptors (Agg Q per CPU) = 16368
+
+    #define MVPP2_AGGR_TXQ_DESC_SIZE_REG(cpu)	(0x2140 + 4 * (cpu))
+    #define MVPP2_AGGR_TXQ_DESC_SIZE_MASK	0x3ff0
+
+**** Calculations
+
+     - 9000 / 20 (IPmin)   == 450
+     - 9000 / 28 (UDPmin)  == 321
+     - 9000 / 40 (TCPmin)  == 225
+     - 9000 / 46 (TCPmin)  == 2xx
+     - 9000 / 64 (ethmin)  == 140
+     - 9000 / 128 (vppmin) == 70
+
+[ tunnel packet refcnt > 256 yes ]
+ |   |   |   |
+[ ] [ ] [ ] [ ] New Vlib_buffer_ts
+
+MB descriptor 32b
+
+--------
+- DPDK mbuf 64b - 128b 256b
+- Vpp buffer overhead.
+- Buffer data
+--------
+
+RDMA - VPP using with bifurcated kernel interface, maybe a native bluefield.
+
+
+* VPP Architecture Notes
+
+- A runtime node has a vector of next_frame_t indexed by each next_node index,
+  so there is one next_frame_t for each next node.
+
+- There's a vector of vlib_pending_frame_t that point to pending frames. These
+  frames may or may not be pointed to by vlib_next_frame_ts.
+
+- It's safe to get multiple frames per next node, the "lost" ones are tracked by
+the vlib_pending_frame_t. It *would* be a bug to get next frame for a next node
+that was full
+
+- Next nodes can only be INTERNAL (see vlib_put_next_frame_validate assuming this).
+
+- Sibling Nodes have no predefined next nodes, next nodes are added later and
+  get added to all the siblings at the same time.
+
+
+** mrvl packet path
+
+*** input routine
+
+    - allocates array for descriptors.
+    - receives descriptors into this array.
+    - get's a cookie (buffer_index) for each descriptor.
+    - loop on descriptors adding them to_next frames.
+
+    - XXX This is taking all the time.
+    - get num buffs (pp2_bpool_get_num_buffs (inq->bpool, &n_bufs))
+
+     	cpu_slot = GET_HW_BASE(pool)[PP2_DEFAULT_REGSPACE].va;
+	num = pp2_reg_read(cpu_slot, MVPP2_BM_POOL_PTRS_NUM_REG(pool->id))
+				& MVPP22_BM_POOL_PTRS_NUM_MASK;
+	num += pp2_reg_read(cpu_slot, MVPP2_BM_BPPI_PTRS_NUM_REG(pool->id))
+				& MVPP2_BM_BPPI_PTR_NUM_MASK;
+	/* HW has one buffer ready and is not reflected in "external + internal" counters */
+	if (num)
+		num++;
+
+    - subtract value from inq->size result is "XXX" of bufs
+    - for each of these "XXX" nbufs
+      - fetch the buffer release entry array.
+      - allocate buffers (vlib_alloc_buffers) of batch size (frame size == 256)
+      - for each of these new buffers
+        - store pointer to buffer, index and pool in release buffer entry
+      - put buffs in pool (pp2_bpool_put_buffs (ptd->hif, ptd->bre, &i))
+      - free any that we couldn't put in pool.
+
+**  PP HW
+- 32 RxQueues per port.
+- 8 TxQueues per port
+- Descriptor Manager (DM) moves desc from TxAggQ to TxQ
+- TxDMA processes TxQueues
+- RxDMA generates Rx desc and DM puts them into RxQueues
+
+*** Rx Queues
+- organized into groups (same as port count 4)
+- Each group can get any number of available Queues with alloc group size of 4 queueus
+- Queue_High is assigned by port number or by classifier depending on CLS_SWFWD_PCTRL
+- Queue_Low is configured by classifier per packet.
+- Rx Queue Fields
+  - Starting Address
+  - Size
+  - Occupied Desc Threshold (above which generate interrupt)
+  - Non-Occupied Desc Threshold (below which generate almost full interrupt)
+  - Next Desc (index of next descriptor for DM to fill a packet into).
+
+*** Buffer Management Controller (BM)
+    - 16 Buffer Pointer (BP) pools [8 on v3]
+    - 128KB per pool (16K BPs) (BPPE)
+    - 512 BPs per pool internal memory (BPPI) [1024 v3]
+    - Error/Int on over/underflow
+    - DMA for copying BPs from/to memory
+    - Monitor usages
+
+**** Buffer Pools
+     - in external memory (BPPE) and internal BPPI.
+     - Use DMA to move from BPPE to BPPI
+**** Action
+     - BPPE init by SW.
+     - SW allocates buffer memory and area for BPPE
+     - After BM enabled new BPs are added through release operations of BPs into BPPE
+     - Threshold too many free in BPPI, HW moves to BPPE
+     - Threshold too few in  BPPI, HW moves from BPPE.
+     - BPPI
+
+     - Multiple BPPx are useful for different packet sizes. Maybe not so much in VPP.
+
+     - RxQueue Groups area associates with a BPPx
+
+
+**** VPP and Buffer Pools
+#define MV_SYS_DMA_MEM_SZ		(2 << 20) # not for buffers
+
+#define NUM_HIFS_RSVD			4 (15 = 0xf)
+#define NUM_BPOOLS_RSVD			7 (127 = 0xff)
+
+***** mrvl_pp2_main_init
+       - initialize the system
+
+       - for each thread:
+         - hif_params.match = (char *) s;
+         - hif_params.out_size = 2048;	/* FIXME */
+         - pp2_hif_init (&hif_params, &ptd->hif)
+           - descs = PP2_NUM_PKT_PROC * PP2_MAX_NUM_PUT_BUFFS (struct pp2_ppio_desc)
+           -
+           - Create AGGR_TXQ for each of the PPV2 instances. (1)
+	   - pp2_dm_if_init(pp2_ptr, hif_slot, pp2_id, params->out_size, params->mem);
+           -
+***** mrvl_pp2_create_if
+       - Allocate N input queues (q) ppif->inqs
+         - set size to value from CLI or 512 (FRAME_SIZE * 2).
+       - Allocate M output queues (number of workers/cores) ppif->outqs
+       - pp2_netdev_get_ppio_info ((char *) args->name, &pp2_id, &port_id))
+       - Allocate Buffers
+         - s = format (s,
+         - So pp2_id = whatever (0?) pool_id = whatever + 8 (8?)
+         - bpool_params.match = "pool-%d:%d%c", pp2_id, pp2_id + 8, 0);
+         - bpool_params.buff_len = vlib_buffer_get_default_data_size (vm);
+         /* FIXME +64 ? */
+         - pp2_bpool_init (&bpool_params, &ppif->inqs[0].bpool)
+           - buf_size = params.buff_len
+           - buf_num = MVPP2_BM_POOL_SIZE_MAX (16 * 1024 - (MVPP2_BM_POOL_PTR_ALIGN / 4)) = (16k - 32)
+	   - pp2_bm_pool_create(pp2_ptr, &param)
+             - bufnum multiple 8, bufsize multiple of 32.
+             - allocate pp2_mb_pool
+	     - bppe_num = bm_pool->bm_pool_buf_num;
+	     - bppe_size = (2 * sizeof(uint64_t));
+	     - bppe_region_size = (bppe_num * bppe_size);
+	     - pp2_bm_hw_pool_create(cpu_slot, bm_pool->bm_pool_id, bppe_num, bm_pool->bm_pool_phys_base))
+               - Setting the HW registers
+               - Set address
+               - Read size
+               - if zero, write size (number of bufs)
+               - otherwise fail if different number
+               - mark set thresholds and start bit.
+	     - pp2_bm_pool_bufsize_set(cpu, poolid, buf_size)
+         - This is setting the buffer pool for the input queue for this interface.
+       - Initialize Input Q and Output Qs
+         - Each output q gets CLI specified number of slots.
+
+***** mrvl_pp2_device_receive_input
+      - Get FRAME_SIZE number of descriptors
+      - n_desc = pp2_ppio_recv - Copying Descriptors (I thought this was DMA!)
+      - foreach descriptor - for (i = 0; i < n_desc; i++)
+        - ptd->buffers[i] = pp2_ppio_inq_desc_get_cookie (&ptd->descs[i]);
+      - for each descriptor
+        - get buffer index
+        - get buffer
+          - set l2_hdr_offset (2), [l3_hdr_offset, [l4_hdr_offset]], flags, current data, current_length
+          - check for feature arc on interface for given next node index
+            - if set, setup feature config and advance buffer by offset given by
+              next value for device.
+      - fill frames with descriptor buffers pointers
+        - n_left_to_next
+      - XXXXXXXXXXXXXX now check if we have more buffers waiting
+      - This is extremely expensive.
+
+
+***** mrvl_pp2_interface_tx
+      - Get num outq done (uses qid, but maybe we dont?).
+      - if n_done
+        - mask = outq->size - 1 so say 64k then mask is 0xFFFF
+        - get min of done and outq->size - (outq->tail & mask)
+        -
+say qsz = 8
+qhead = 0
+qtail = 0
+
+** Results:
+
+** 4*FRAME cache
+*** Native
+[02:03:03 dpdk1:~]$ while sleep 1; do iperf -m -w 1000K -c 192.168.52.68 -d; done
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52900 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57150
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.48 GBytes  8.14 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.69 GBytes  3.17 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52902 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57152
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.58 GBytes  8.23 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.65 GBytes  3.13 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+-
+
+*** DPDK
+[02:05:20 dpdk1:~]$ while sleep 1; do iperf -m -w 1000K -c 192.168.52.68 -d; done
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52906 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57156
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.70 GBytes  8.34 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.84 GBytes  3.29 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52908 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57158
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.70 GBytes  8.33 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.86 GBytes  3.31 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+-
+
+** 16*FRAME cache
+*** Native
+
+[02:14:40 dpdk1:~]$ while sleep 1; do iperf -m -w 1000K -c 192.168.52.68 -d; done
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52924 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57174
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.19 GBytes  7.90 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.80 GBytes  3.26 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52926 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57176
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.32 GBytes  8.01 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.76 GBytes  3.22 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52928 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57178
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.24 GBytes  7.94 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.81 GBytes  3.27 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52930 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57180
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.27 GBytes  7.97 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.80 GBytes  3.26 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+-
+*** DPDK
+
+[02:16:22 dpdk1:~]$ while sleep 1; do iperf -m -w 1000K -c 192.168.52.68 -d; done
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52934 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57184
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.75 GBytes  8.38 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.84 GBytes  3.30 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+------------------------------------------------------------
+Server listening on TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+------------------------------------------------------------
+Client connecting to 192.168.52.68, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested 1000 KByte)
+------------------------------------------------------------
+[  3] local 192.168.50.65 port 52936 connected with 192.168.52.68 port 5001
+[  5] local 192.168.50.65 port 5001 connected with 192.168.52.68 port 57186
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0-10.0 sec  9.63 GBytes  8.27 Gbits/sec
+[  3] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+[  5]  0.0-10.0 sec  3.86 GBytes  3.31 Gbits/sec
+[  5] MSS size 1448 bytes (MTU 1500 bytes, ethernet)
+-
+
+** Show commands after running 6 hours:
+
+** m1
+root@m1:~# vppctl show buffers
+Pool Name            Index NUMA  Size  Data Size  Total  Avail  Cached   Used
+default-numa-0         0     0   2432     2048    17240  11640   1628    3972
+root@m1:~# vppctl show run
+Thread 0 vpp_main (lcore 3)
+Time 21782.0, average vectors/node 100, last 128 main loops 0.00 per node 0.00
+  vector rates in 0.0000e0, out 4.5909e-5, drop 0.0000e0, punt 0.0000e0
+             Name                 State         Calls          Vectors        Suspends         Clocks       Vectors/Call
+acl-plugin-fa-cleaner-process  event wait                0               0               1          2.04e2            0.00
+api-rx-from-ring                any wait                 0               0            1100          1.92e2            0.00
+avf-process                    event wait                0               0               1          1.44e2            0.00
+bfd-process                    event wait                0               0               1          1.88e2            0.00
+bond-process                   event wait                0               0               1          4.90e1            0.00
+dhcp-client-process             any wait                 0               0             218          5.93e1            0.00
+dhcp6-client-cp-process         any wait                 0               0               1          4.70e1            0.00
+dhcp6-pd-client-cp-process      any wait                 0               0               1          2.80e1            0.00
+dhcp6-pd-reply-publisher-proce event wait                0               0               1          2.70e1            0.00
+dhcp6-reply-publisher-process  event wait                0               0               1          2.50e1            0.00
+fib-walk                        any wait                 0               0           10891          2.97e1            0.00
+flow-report-process             any wait                 0               0               1          2.80e1            0.00
+flowprobe-timer-process         any wait                 0               0               1          1.47e2            0.00
+gbp-scanner                    event wait                0               0               1          1.68e2            0.00
+igmp-timer-process             event wait                0               0               1          1.41e2            0.00
+ikev2-manager-process           any wait                 0               0           21780          2.04e1            0.00
+ioam-export-process             any wait                 0               0               1          3.40e1            0.00
+ip-neighbor-scan-process        any wait                 0               0             364          4.87e1            0.00
+ip-route-resolver-process       any wait                 0               0             218          4.26e1            0.00
+ip4-reassembly-expire-walk      any wait                 0               0            2179          3.97e1            0.00
+ip6-icmp-neighbor-discovery-ev  any wait                 0               0           21780          1.38e1            0.00
+ip6-reassembly-expire-walk      any wait                 0               0            2179          3.79e1            0.00
+iptfs-output                    any wait                 0               0            2179          2.96e1            0.00
+l2fib-mac-age-scanner-process  event wait                0               0               1           500e1            0.00
+lldp-process                   event wait                0               0               1          1.14e5            0.00
+memif-process                  event wait                0               0               1          2.43e2            0.00
+mrvl-pp2-input                   polling      127013733951               0               0          1.41e0            0.00
+mv-ppio-1/0-output               active                  1               1               0          2.32e2             100
+mv-ppio-1/0-tx                   active                  1               1               0          1.02e3             100
+nat-det-expire-walk               done                   1               0               0          7.29e1            0.00
+nat-ha-process                 event wait                0               0               1          1.66e2            0.00
+nat64-expire-walk              event wait                0               0               1          6.90e1            0.00
+nsh-md2-ioam-export-process     any wait                 0               0               1          9.52e4            0.00
+rd-cp-process                   any wait                 0               0               1          3.70e1            0.00
+send-dhcp6-client-message-proc  any wait                 0               0               1          3.20e1            0.00
+send-dhcp6-pd-client-message-p  any wait                 0               0               1          3.10e1            0.00
+send-rs-process                 any wait                 0               0               1          2.90e1            0.00
+startup-config-process            done                   1               0               1          5.45e7            0.00
+statseg-collector-process       time wait                0               0            2179          2.51e2            0.00
+udp-ping-process                any wait                 0               0               1          1.48e2            0.00
+unix-cli-local:6                 active                  6               0              13         2.13e11            0.00
+unix-cli-new-session            any wait                 0               0              20          2.89e7            0.00
+unix-epoll-input                 polling         123915839               0               0          2.78e1            0.00
+vhost-user-process              any wait                 0               0               1          4.79e1            0.00
+vhost-user-send-interrupt-proc  any wait                 0               0               1          5.60e1            0.00
+vpe-link-state-process         event wait                0               0               2          7.59e1            0.00
+vxlan-gpe-ioam-export-process   any wait                 0               0               1          5.50e1            0.00
+wildcard-ip4-arp-publisher-pro event wait                0               0               1          3.30e1            0.00
+---------------
+Thread 1 vpp_wk_0 (lcore 0)
+Time 21782.0, average vectors/node 29.24, last 128 main loops 0.00 per node 0.00
+  vector rates in 4.0089e4, out 4.0089e4, drop 4.9123e-3, punt 0.0000e0
+             Name                 State         Calls          Vectors        Suspends         Clocks       Vectors/Call
+arp-input                        active                  1               1               0          5.89e1             100
+arp-reply                        active                  1               1               0          5.25e2             100
+drop                             active                107             107               0          7.77e1             100
+error-drop                       active                107             107               0          5.80e1             100
+ethernet-input                   active                  1               1               0          1.23e2             100
+ip4-input-no-checksum            active           29862874       873234663               0          1.69e0           29.24
+ip4-lookup                       active           29862874       873234663               0          1.22e0           29.24
+ip4-rewrite                      active           29862874       873234663               0          1.19e0           29.24
+mrvl-pp2-input                   polling        6525291340       873234770               0          6.02e2             .13
+mv-ppio-0/0-output               active           29862874       873234663               0         4.92e-1           29.24
+mv-ppio-0/0-tx                   active           29862874       873234663               0          2.34e0           29.24
+unix-epoll-input                 polling           6366142               0               0          1.05e1            0.00
+---------------
+Thread 2 vpp_wk_1 (lcore 1)
+Time 21782.0, average vectors/node 20.86, last 128 main loops 0.00 per node 0.00
+  vector rates in 4.0219e4, out 3.6264e4, drop 3.9546e3, punt 0.0000e0
+             Name                 State         Calls          Vectors        Suspends         Clocks       Vectors/Call
+arp-input                        active                  7               7               0          4.03e1             100
+arp-reply                        active                  7               7               0          3.62e2             100
+drop                             active            7969727        86139895               0          1.92e0           10.81
+error-drop                       active            7969727        86139895               0         9.00e-1           10.81
+ethernet-input                   active                  7               7               0          9.80e1             100
+interface-output                 active                  2               2               0          5.45e1             100
+ip4-drop                         active            7969720        86139886               0         4.93e-1           10.81
+ip4-input-no-checksum            active           41998805       876045164               0          1.92e0           20.86
+ip4-load-balance                 active           34029085       789905278               0         8.06e-1           23.21
+ip4-lookup                       active           41998805       876045164               0          1.25e0           20.86
+ip4-rewrite                      active           34029085       789905278               0          1.29e0           23.21
+ip6-input                        active                  3               4               0          8.69e1            1.33
+ip6-not-enabled                  active                  3               4               0          2.23e1            1.33
+mrvl-pp2-input                   polling        7414825662       876045175               0          5.97e2             .12
+mv-ppio-0/0-output               active                  2               2               0          7.00e1             100
+mv-ppio-0/0-tx                   active                  2               2               0          1.30e2             100
+mv-ppio-1/0-output               active           34029085       789905278               0         5.60e-1           23.21
+mv-ppio-1/0-tx                   active           34029085       789905278               0          2.67e0           23.21
+unix-epoll-input                 polling           7233981               0               0          1.05e1            0.00
+---------------
+Thread 3 vpp_wk_2 (lcore 2)
+Time 21782.0, average vectors/node 0.00, last 128 main loops 0.00 per node 0.00
+  vector rates in 0.0000e0, out 0.0000e0, drop 0.0000e0, punt 0.0000e0
+             Name                 State         Calls          Vectors        Suspends         Clocks       Vectors/Call
+mrvl-pp2-input                   polling      153648892734               0               0          1.55e0            0.00
+unix-epoll-input                 polling         149901363               0               0          8.47e0            0.00
+
+root@m1:~# vppctl show node counters
+   Count                    Node                  Reason
+       106             mrvl-pp2-input             MAC error (CRC error)
+         1             ethernet-input             no error
+  86139890                null-node               blackholed packets
+         2                arp-reply               ARP replies sent
+         4                arp-reply               ARP request IP4 source address learned
+         1             ethernet-input             no error
+
+root@m1:~# vppctl show interface
+              Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
+local0                            0     down          0/0/0/0
+mv-ppio-0/0                       1      up          9000/0/0/0     rx packets             876045175
+                                                                    rx bytes            325449189454
+                                                                    tx packets             873234665
+                                                                    tx bytes            224733575108
+                                                                    drops                   86139895
+                                                                    ip4                    876045164
+                                                                    ip6                            4
+mv-ppio-1/0                       2      up          9000/0/0/0     rx packets             873234770
+                                                                    rx bytes            224733648306
+                                                                    tx packets             789905279
+                                                                    tx bytes            294625467344
+                                                                    drops                        107
+                                                                    ip4                    873234663
+
+root@m1:~# vppctl show hardware
+              Name                Idx   Link  Hardware
+local0                             0    down  local0
+  Link speed: unknown
+  local
+mv-ppio-0/0                        1     up   mv-ppio-0/0
+  Link speed: unknown
+  Ethernet address 00:51:82:11:21:00
+  Interface statistics:
+    rx packets                      876045175
+    rx fullq dropped                      936
+    rx bm dropped                       37933
+    tx packets                      873234665
+  Input queue 0 statistics:
+    enq desc                        876045175
+    drop fullq                            936
+    drop bm                             37933
+  Output queue 1 statistics:
+    enq desc                        873234663
+    enq dec to ddr                  539458084
+    enq buf to ddr                  873234663
+    deq desc                        873234663
+  Output queue 2 statistics:
+    enq desc                                2
+    enq buf to ddr                          2
+    deq desc                                2
+mv-ppio-1/0                        2     up   mv-ppio-1/0
+  Link speed: unknown
+  Ethernet address 00:51:82:11:21:01
+  Interface statistics:
+    rx packets                      873234770
+    tx packets                      789905279
+  Input queue 0 statistics:
+    enq desc                        873234770
+  Output queue 0 statistics:
+    enq desc                                1
+    enq buf to ddr                          1
+    deq desc                                1
+  Output queue 2 statistics:
+    enq desc                        789905278
+    enq dec to ddr                  518120255
+    enq buf to ddr                  789905278
+    deq desc                        789905278
+
+root@m1:~# vppctl show thread
+ID     Name                Type        LWP     Sched Policy (Priority)  lcore  Core   Socket State
+0      vpp_main                        3166    other (0)                3      0      0
+1      vpp_wk_0            workers     3167    other (0)                0      0      0
+2      vpp_wk_1            workers     3168    other (0)                1      1      0
+3      vpp_wk_2            workers     3169    other (0)                2      0      1
+
+** m2
+default-numa-0         0     0   2432     2048    17240  11640   1256    4344
+root@m2:~# vppctl show buffers
+Pool Name            Index NUMA  Size  Data Size  Total  Avail  Cached   Used
+default-numa-0         0     0   2432     2048    17240  11640   1256    4344
+root@m2:~# vppctl show run
+Thread 0 vpp_main (lcore 3)
+Time 21782.1, average vectors/node 100, last 128 main loops 0.00 per node 0.00
+  vector rates in 0.0000e0, out 4.5909e-5, drop 0.0000e0, punt 0.0000e0
+             Name                 State         Calls          Vectors        Suspends         Clocks       Vectors/Call
+acl-plugin-fa-cleaner-process  event wait                0               0               1          4.60e2            0.00
+api-rx-from-ring                any wait                 0               0            1100          2.28e2            0.00
+avf-process                    event wait                0               0               1          1.52e2            0.00
+bfd-process                    event wait                0               0               1          1.88e2            0.00
+bond-process                   event wait                0               0               1          4.50e1            0.00
+dhcp-client-process             any wait                 0               0             218          5.92e1            0.00
+dhcp6-client-cp-process         any wait                 0               0               1          4.70e1            0.00
+dhcp6-pd-client-cp-process      any wait                 0               0               1           300e1            0.00
+dhcp6-pd-reply-publisher-proce event wait                0               0               1          2.90e1            0.00
+dhcp6-reply-publisher-process  event wait                0               0               1          2.20e1            0.00
+fib-walk                        any wait                 0               0           10891          2.63e1            0.00
+flow-report-process             any wait                 0               0               1          5.40e1            0.00
+flowprobe-timer-process         any wait                 0               0               1          1.23e2            0.00
+gbp-scanner                    event wait                0               0               1          1.76e2            0.00
+igmp-timer-process             event wait                0               0               1          2.14e2            0.00
+ikev2-manager-process           any wait                 0               0           21780          1.91e1            0.00
+ioam-export-process             any wait                 0               0               1          2.05e2            0.00
+ip-neighbor-scan-process        any wait                 0               0             364          4.17e1            0.00
+ip-route-resolver-process       any wait                 0               0             218          4.02e1            0.00
+ip4-reassembly-expire-walk      any wait                 0               0            2179          3.64e1            0.00
+ip6-icmp-neighbor-discovery-ev  any wait                 0               0           21780          1.29e1            0.00
+ip6-reassembly-expire-walk      any wait                 0               0            2179          3.37e1            0.00
+iptfs-output                    any wait                 0               0            2179          2.75e1            0.00
+l2fib-mac-age-scanner-process  event wait                0               0               1          4.79e1            0.00
+lldp-process                   event wait                0               0               1          1.14e5            0.00
+memif-process                  event wait                0               0               1          2.49e2            0.00
+mrvl-pp2-input                   polling      127054965601               0               0          1.40e0            0.00
+mv-ppio-1/0-output               active                  1               1               0          2.44e2             100
+mv-ppio-1/0-tx                   active                  1               1               0          1.03e3             100
+nat-det-expire-walk               done                   1               0               0          6.50e1            0.00
+nat-ha-process                 event wait                0               0               1          1.53e2            0.00
+nat64-expire-walk              event wait                0               0               1          7.29e1            0.00
+nsh-md2-ioam-export-process     any wait                 0               0               1          1.04e5            0.00
+rd-cp-process                   any wait                 0               0               1          3.70e1            0.00
+send-dhcp6-client-message-proc  any wait                 0               0               1          3.30e1            0.00
+send-dhcp6-pd-client-message-p  any wait                 0               0               1          3.40e1            0.00
+send-rs-process                 any wait                 0               0               1          3.79e1            0.00
+startup-config-process            done                   1               0               1          5.41e7            0.00
+statseg-collector-process       time wait                0               0            2179          2.32e2            0.00
+udp-ping-process                any wait                 0               0               1          1.55e2            0.00
+unix-cli-local:6                 active                  6               0              13         4.31e11            0.00
+unix-cli-new-session            any wait                 0               0              20          1.21e8            0.00
+unix-epoll-input                 polling         123956065               0               0          2.79e1            0.00
+vhost-user-process              any wait                 0               0               1          5.09e1            0.00
+vhost-user-send-interrupt-proc  any wait                 0               0               1           300e1            0.00
+vpe-link-state-process         event wait                0               0               2          7.50e1            0.00
+vxlan-gpe-ioam-export-process   any wait                 0               0               1          4.90e1            0.00
+wildcard-ip4-arp-publisher-pro event wait                0               0               1          3.59e1            0.00
+---------------
+Thread 1 vpp_wk_0 (lcore 0)
+Time 21782.1, average vectors/node 20.05, last 128 main loops 0.00 per node 0.00
+  vector rates in 3.6264e4, out 3.6264e4, drop 8.7962e-2, punt 0.0000e0
+             Name                 State         Calls          Vectors        Suspends         Clocks       Vectors/Call
+arp-input                        active                  1               1               0          5.89e1             100
+arp-reply                        active                  1               1               0          6.33e2             100
+drop                             active               1913            1916               0          6.93e1            1.00
+error-drop                       active               1913            1916               0          5.53e1            1.00
+ethernet-input                   active                  1               1               0          1.25e2             100
+interface-output                 active                  1               1               0          4.29e1             100
+ip4-glean                        active                  1               2               0          5.55e1            2.00
+ip4-input-no-checksum            active           39386746       789903170               0          2.02e0           20.06
+ip4-lookup                       active           39386746       789903170               0          1.32e0           20.06
+ip4-rewrite                      active           39386745       789903168               0          1.29e0           20.06
+mrvl-pp2-input                   polling        6476385619       789905085               0          6.65e2             .12
+mv-ppio-0/0-output               active           39386746       789903169               0         6.09e-1           20.06
+mv-ppio-0/0-tx                   active           39386746       789903169               0          2.89e0           20.06
+mv-ppio-1/0-output               active                  1               1               0          4.50e1             100
+mv-ppio-1/0-tx                   active                  1               1               0          8.10e1             100
+unix-epoll-input                 polling           6318433               0               0          1.05e1            0.00
+---------------
+Thread 2 vpp_wk_1 (lcore 1)
+Time 21782.1, average vectors/node 30.15, last 128 main loops 0.00 per node 0.00
+  vector rates in 4.4119e4, out 4.0089e4, drop 4.0293e3, punt 0.0000e0
+             Name                 State         Calls          Vectors        Suspends         Clocks       Vectors/Call
+arp-input                        active                  6               7               0          3.99e1            1.17
+arp-reply                        active                  6               7               0          3.12e2            1.17
+drop                             active            8062631        87765796               0          1.94e0           10.89
+error-drop                       active            8062631        87765796               0         8.76e-1           10.89
+ethernet-input                   active                  6               7               0          8.51e1            1.17
+interface-output                 active                  1               1               0          6.40e1             100
+ip4-drop                         active            8062622        87765786               0         4.99e-1           10.89
+ip4-input-no-checksum            active           31874090       961000565               0          1.67e0           30.15
+ip4-load-balance                 active           23811468       873234779               0         7.19e-1           36.67
+ip4-lookup                       active           31874090       961000565               0          1.16e0           30.15
+ip4-rewrite                      active           23811468       873234779               0          1.23e0           36.67
+ip6-input                        active                  4               4               0          1.14e2             100
+ip6-not-enabled                  active                  4               4               0          2.75e1             100
+mrvl-pp2-input                   polling        7411082680       961000576               0          5.44e2             .13
+mv-ppio-0/0-output               active                  1               1               0          7.50e1             100
+mv-ppio-0/0-tx                   active                  1               1               0          9.69e1             100
+mv-ppio-1/0-output               active           23811468       873234779               0         4.48e-1           36.67
+mv-ppio-1/0-tx                   active           23811468       873234779               0          2.14e0           36.67
+unix-epoll-input                 polling           7230330               0               0          1.05e1            0.00
+---------------
+Thread 3 vpp_wk_2 (lcore 2)
+Time 21782.1, average vectors/node 0.00, last 128 main loops 0.00 per node 0.00
+  vector rates in 0.0000e0, out 0.0000e0, drop 0.0000e0, punt 0.0000e0
+             Name                 State         Calls          Vectors        Suspends         Clocks       Vectors/Call
+mrvl-pp2-input                   polling      153405119862               0               0          1.55e0            0.00
+unix-epoll-input                 polling         149663537               0               0          8.59e0            0.00
+
+
+root@m2:~# vppctl show node counters
+   Count                    Node                  Reason
+      1914             mrvl-pp2-input             MAC error (CRC error)
+         1                arp-reply               ARP replies sent
+         1                ip4-glean               ARP requests throttled
+         1                ip4-glean               ARP requests sent
+  87765790                null-node               blackholed packets
+         1                arp-reply               ARP replies sent
+         4                arp-reply               ARP request IP4 source address learned
+         2             ethernet-input             no error
+root@m2:~#
+
+root@m2:~# vppctl show interface
+              Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
+local0                            0     down          0/0/0/0
+mv-ppio-0/0                       1      up          9000/0/0/0     rx packets             961000576
+                                                                    rx bytes            256139185888
+                                                                    tx packets             789903170
+                                                                    tx bytes            294623522332
+                                                                    drops                   87765796
+                                                                    ip4                    961000565
+                                                                    ip6                            4
+mv-ppio-1/0                       2      up          9000/0/0/0     rx packets             789905085
+                                                                    rx bytes            294625348770
+                                                                    tx packets             873234781
+                                                                    tx bytes            224733650814
+                                                                    drops                       1916
+                                                                    ip4                    789903170
+
+root@m2:~# vppctl show hardware
+              Name                Idx   Link  Hardware
+local0                             0    down  local0
+  Link speed: unknown
+  local
+mv-ppio-0/0                        1     up   mv-ppio-0/0
+  Link speed: unknown
+  Ethernet address 00:51:82:11:22:00
+  Interface statistics:
+    rx packets                      961000576
+    rx fullq dropped                     1694
+    rx bm dropped                       11899
+    tx packets                      789903170
+  Input queue 0 statistics:
+    enq desc                        961000576
+    drop fullq                           1694
+    drop bm                             11899
+  Output queue 1 statistics:
+    enq desc                        789903169
+    enq dec to ddr                  392307668
+    enq buf to ddr                  789903169
+    deq desc                        789903169
+  Output queue 2 statistics:
+    enq desc                                1
+    enq buf to ddr                          1
+    deq desc                                1
+mv-ppio-1/0                        2     up   mv-ppio-1/0
+  Link speed: unknown
+  Ethernet address 00:51:82:11:22:01
+  Interface statistics:
+    rx packets                      789905085
+    rx cls dropped                         58
+    tx packets                      873234781
+  Input queue 0 statistics:
+    enq desc                        789905085
+  Output queue 0 statistics:
+    enq desc                                1
+    enq buf to ddr                          1
+    deq desc                                1
+  Output queue 1 statistics:
+    enq desc                                1
+    enq buf to ddr                          1
+    deq desc                                1
+  Output queue 2 statistics:
+    enq desc                        873234779
+    enq dec to ddr                  670204859
+    enq buf to ddr                  873234779
+    deq desc                        873234779
+
+root@m2:~# vppctl show thread
+ID     Name                Type        LWP     Sched Policy (Priority)  lcore  Core   Socket State
+0      vpp_main                        4254    other (0)                3      0      0
+1      vpp_wk_0            workers     4255    other (0)                0      0      0
+2      vpp_wk_1            workers     4256    other (0)                1      1      0
+3      vpp_wk_2            workers     4257    other (0)                2      0      1
+
+* Combined Subtree Repository
+
+A shared repository utilizing git subtree is provided that has both vpp and
+strongswan as subtrees that are known to work together.
+
+Checking this repository out and performing the following build command will
+build both vpp and strongswan. Following this the automation tools under
+~vpp/automation~ can be used by specifying ~testbed=docker~ to run tests or
+launch a configuration for interactive use.
+
+For more information on IPTFS in vpp see ~vpp/src/plugins/iptfs/README.org~
+
+#+begin_src bash
+  git clone https://github.com/LabNConsulting/vpp-strongswan-iptfs.git
+  cd vpp-strongswan-iptfs/vpp/docker
+  make build+swan+autoconf
+#+end_src
+
+And example of running a test then would be:
+
+#+begin_src bash
+  cd vpp-strongswan-iptfs/vpp
+  ./automation/runtests.py -U 576 -w 5 -d 120 -r 100M --testbed=docker \
+        -v -p 100  test_verify_nodrop.py --native-crypto
+#+end_src

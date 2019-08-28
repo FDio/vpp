@@ -549,6 +549,8 @@ ipsecmb
 ipset
 ipsets
 iptables
+iptfs
+Iptfs
 ipv
 iPv
 IPv
