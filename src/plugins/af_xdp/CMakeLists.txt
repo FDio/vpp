@@ -21,4 +21,10 @@ add_vpp_plugin(af_xdp
 
   MULTIARCH_SOURCES
   input.c
+
+  # TODO make this plugin build conditional (maybe as rdma/CMakeLists.txt)
+  # depending on presence of following libraries
+  LINK_LIBRARIES
+  bpf
+  elf
 )
