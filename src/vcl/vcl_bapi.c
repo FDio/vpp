@@ -387,7 +387,7 @@ vppcom_app_send_attach (void)
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     vcm->cfg.preallocated_fifo_pairs;
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = vcm->cfg.event_queue_size;
-  bmp->options[APP_OPTIONS_TLS_ENGINE] = TLS_ENGINE_OPENSSL;
+  bmp->options[APP_OPTIONS_TLS_ENGINE] = vcm->crypto_engine;
   if (nsid_len)
     {
       bmp->namespace_id_len = nsid_len;

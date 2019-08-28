@@ -183,6 +183,26 @@ char vcl_test_key_rsa[] =
   "oEjPLVNtx8SOj/M4rhaPT3I=\r\n" "-----END PRIVATE KEY-----\r\n";
 uint32_t vcl_test_key_rsa_len = sizeof (vcl_test_key_rsa);
 
+int
+vcl_proto_needs_crypto (uint32_t proto)
+{
+  return proto == VPPCOM_PROTO_QUIC || proto == VPPCOM_PROTO_TLS;
+}
+
+int
+vcl_proto_crypto_engine (uint32_t proto)
+{
+  switch (proto)
+    {
+    case VPPCOM_PROTO_QUIC:
+      return VPPCOM_CRYPTO_ENGINE_VPP;
+    case VPPCOM_PROTO_TLS:
+      return VPPCOM_CRYPTO_ENGINE_OPENSSL;
+    default:
+      return VPPCOM_CRYPTO_ENGINE_NONE;
+    }
+}
+
 static inline void
 vcl_test_stats_accumulate (vcl_test_stats_t * accum, vcl_test_stats_t * incr)
 {

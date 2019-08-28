@@ -3621,6 +3621,12 @@ vppcom_session_n_accepted (uint32_t session_handle)
   return session->n_accepted_sessions;
 }
 
+void
+vppcom_set_crypto_engine (uint32_t crypto_engine)
+{
+  vcm->crypto_engine = crypto_engine;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

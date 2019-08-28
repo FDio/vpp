@@ -1210,7 +1210,7 @@ http_static_server_attach ()
     hsm->fifo_size ? hsm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hsm->prealloc_fifos;
-  a->options[APP_OPTIONS_TLS_ENGINE] = TLS_ENGINE_OPENSSL;
+  a->options[APP_OPTIONS_TLS_ENGINE] = CRYPTO_ENGINE_OPENSSL;
 
   if (vnet_application_attach (a))
     {
