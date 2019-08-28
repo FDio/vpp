@@ -332,6 +332,26 @@ class VppPGInterface(VppInterface):
             )
         return output
 
+    def get_capture_any_count(self, remark=None, timeout=1,
+                    filter_out_fn=is_ipv6_misc):
+        """ Get captured packets
+
+        :param remark: remark printed into debug logs
+        :param timeout: how long to wait for packets
+        :param filter_out_fn: filter applied to each packet, packets for which
+                              the filter returns True are removed from capture
+        :returns: iterable packets
+        """
+        name = self.name if remark is None else "%s (%s)" % (self.name, remark)
+        time.sleep(timeout)
+        self.test.logger.debug("Waiting %ds to capture packets on %s" % (
+            timeout, name))
+        capture = self._get_capture(filter_out_fn)
+        if not capture:
+            self.generate_debug_aid("count-mismatch")
+            raise Exception("No packets captured on %s" % name)
+        return capture
+
     def get_capture(
         self, expected_count=None, remark=None, timeout=None, filter_out_fn=is_ipv6_misc
     ):
