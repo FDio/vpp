@@ -39,8 +39,15 @@ enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 ifindex;
+  u8 *ifname;
+  struct xsk_socket_info *xsk;
+
   u32 flags;
   u32 per_interface_next_index;
+  u32 clib_file_index;
+  u8 is_admin_up;
+  u8 custom_xdp;
 
   u32 dev_instance;
   u32 sw_if_index;
@@ -54,7 +61,13 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   af_xdp_device_t *devices;
+  /* bitmap of pending rx interfaces */
+  uword *pending_input_bitmap;
+  /* rx buffer cache */
+  u32 **rx_buffers;
   vlib_log_class_t log_class;
 } af_xdp_main_t;
 
@@ -63,6 +76,12 @@ extern af_xdp_main_t af_xdp_main;
 typedef struct
 {
   u8 *ifname;
+  u32 key;
+  u8 custom_xdp;
+  u32 queue_id;
+  u8 force_zerocopy_bind;
+  u8 force_copy_bind;
+
   /* return */
   int rv;
   u32 sw_if_index;
@@ -86,18 +105,7 @@ typedef struct
   u32 hw_if_index;
 } af_xdp_input_trace_t;
 
-#define foreach_af_xdp_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")
-
-typedef enum
-{
-#define _(f,s) AVF_TX_ERROR_##f,
-  foreach_af_xdp_tx_func_error
-#undef _
-    AVF_TX_N_ERROR,
-} af_xdp_tx_func_error_t;
-
-#endif /* AVF_H */
+#endif /* _AF_XDP_H_ */
 
 /*
  * fd.io coding-style-patch-verification: ON
