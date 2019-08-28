@@ -11,6 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+find_path(IF_XDP_INCLUDE_DIR NAMES linux/if_xdp.h)
+find_path(BPF_INCLUDE_DIR NAMES bpf/bpf.h)
+find_path(LIBBPF_INCLUDE_DIR NAMES bpf/libbpf.h)
+
+if (NOT IF_XDP_INCLUDE_DIR OR NOT BPF_INCLUDE_DIR OR NOT LIBBPF_INCLUDE_DIR)
+  message(WARNING "-- af_xdp headers not found - af_xdp plugin disabled")
+  return()
+endif()
+
+vpp_plugin_find_library(af_xdp LIBELF_SHLIB "libelf.so")
+vpp_plugin_find_library(af_xdp LIBBPF_SHLIB "libbpf.so")
+
 add_vpp_plugin(af_xdp
   SOURCES
   cli.c
@@ -21,4 +33,8 @@ add_vpp_plugin(af_xdp
 
   MULTIARCH_SOURCES
   input.c
+
+  LINK_LIBRARIES
+  bpf
+  elf
 )
