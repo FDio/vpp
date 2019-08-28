@@ -221,6 +221,8 @@ class VppIpsecSA(VppObject):
         udp_dst=None,
         hop_limit=None,
         anti_replay_window_size=0,
+        tfs_type=None,
+        tfs_config=None,
     ):
         e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
@@ -233,6 +235,13 @@ class VppIpsecSA(VppObject):
         self.proto = proto
         self.salt = salt
         self.anti_replay_window_size = anti_replay_window_size
+        if tfs_type:
+            self.tfs_type = tfs_type
+        else:
+            self.tfs_type = (
+                VppEnum.vl_api_ipsec_sad_tfs_type_t.IPSEC_API_SAD_TFS_TYPE_NONE
+            )
+        self.tfs_config = tfs_config
 
         self.table_id = 0
         self.tun_src = tun_src
@@ -289,13 +298,16 @@ class VppIpsecSA(VppObject):
             "flags": self.flags,
             "salt": self.salt,
             "anti_replay_window_size": self.anti_replay_window_size,
+            "tfs_type": self.tfs_type,
+            "tfs_config_len": len(self.tfs_config) if self.tfs_config else 0,
+            "tfs_config": self.tfs_config,
         }
         # don't explicitly send the defaults, let papi fill them in
         if self.udp_src:
             entry["udp_src_port"] = self.udp_src
         if self.udp_dst:
             entry["udp_dst_port"] = self.udp_dst
-        r = self.test.vapi.ipsec_sad_entry_add_v2(entry=entry)
+        r = self.test.vapi.ipsec_sad_entry_add_v3(entry=entry)
         self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
         return self
@@ -329,7 +341,7 @@ class VppIpsecSA(VppObject):
     def query_vpp_config(self):
         e = VppEnum.vl_api_ipsec_sad_flags_t
 
-        bs = self.test.vapi.ipsec_sa_v5_dump()
+        bs = self.test.vapi.ipsec_sa_v6_dump()
         for b in bs:
             if b.entry.sad_id == self.id:
                 # if udp encap is configured then the ports should match
