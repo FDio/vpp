@@ -1086,6 +1086,7 @@ class VppPapiProvider(object):
         renumber=0,
         udp_encap=0,
         show_instance=0xFFFFFFFF,
+        tfs_config=b"",
     ):
         return self.api(
             self.papi.ipsec_tunnel_if_add_del,
@@ -1111,6 +1112,8 @@ class VppPapiProvider(object):
                 "show_instance": show_instance,
                 "udp_encap": udp_encap,
                 "salt": salt,
+                "tfs_config_len": len(tfs_config) if tfs_config else 0,
+                "tfs_config": tfs_config,
             },
         )
 
