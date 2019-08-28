@@ -311,7 +311,7 @@ session_mq_reset_reply_handler (void *data)
   app_wrk = app_worker_get (s->app_wrk_index);
   if (!app_wrk || app_wrk->app_index != app->app_index)
     {
-      clib_warning ("App % does not own handle 0x%lx!", app->app_index,
+      clib_warning ("App %u does not own handle 0x%lx!", app->app_index,
 		    mp->handle);
       return;
     }
