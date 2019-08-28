@@ -73,8 +73,8 @@ else
 TEST_RUN_DIR:=$(VENV_PATH)/run
 endif
 
-ifeq ($(PYTHON),)
-PYTHON_INTERP=python2.7
+ifeq ($(PYTHON),python2)
+PYTHON_INTERP=$(PYTHON)
 else
 PYTHON_INTERP=$(PYTHON)
 endif
