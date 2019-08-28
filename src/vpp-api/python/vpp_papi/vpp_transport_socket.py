@@ -125,7 +125,7 @@ class VppTransport(object):
         r, length = sockclnt_create_reply.unpack(msg)
         self.socket_index = r.index
         for m in r.message_table:
-            n = m.name.rstrip(b'\x00\x13')
+            n = m.name
             self.message_table[n] = m.index
 
         self.message_thread.daemon = True

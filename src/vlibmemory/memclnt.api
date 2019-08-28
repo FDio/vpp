@@ -34,7 +34,7 @@ define memclnt_create {
     u32 context;                /* opaque value to be returned in the reply */
     i32 ctx_quota;              /* requested punt context quota */
     u64 input_queue;            /* client's queue */
-    u8 name[64];                /* for show, find by name, whatever */
+    string name[64];            /* for show, find by name, whatever */
     u32 api_versions[8];        /* client-server pairs use as desired */
 };
 
@@ -102,7 +102,7 @@ autoreply define rpc_call {
 define get_first_msg_id {
     u32 client_index;
     u32 context;
-    u8 name[64];
+    string name[64];
 };
 
 define get_first_msg_id_reply {
@@ -118,7 +118,7 @@ typedef module_version {
   u32 major;
   u32 minor;
   u32 patch;
-  u8 name[64];
+  string name[64];
 };
 define api_versions {
   u32 client_index;
@@ -141,7 +141,7 @@ manual_print define trace_plugin_msg_ids
 {
     u32 client_index;
     u32 context;
-    u8 plugin_name[128];
+    string plugin_name[128];
     u16 first_msg_id;
     u16 last_msg_id;
 };
@@ -149,7 +149,7 @@ manual_print define trace_plugin_msg_ids
 typedef message_table_entry
 {
   u16 index;
-  u8 name[64];
+  string name[64];
 };
 
 /*
@@ -157,7 +157,7 @@ typedef message_table_entry
  */
 define sockclnt_create {
     u32 context;                /* opaque value to be returned in the reply */
-    u8 name[64];                /* for show, find by name, whatever */
+    string name[64];                /* for show, find by name, whatever */
 };
 
 define sockclnt_create_reply {

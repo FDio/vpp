@@ -83,7 +83,7 @@ class VppTransport(object):
         self.connected = True
         if not pfx:
             pfx = ffi.NULL
-        return vpp_api.vac_connect(name, pfx, msg_handler, rx_qlen)
+        return vpp_api.vac_connect(name.encode('ascii'), pfx, msg_handler, rx_qlen)
 
     def disconnect(self):
         self.connected = False
@@ -99,7 +99,7 @@ class VppTransport(object):
         return vac_callback_sync if not do_async else vac_callback_async
 
     def get_msg_index(self, name):
-        return vpp_api.vac_get_msg_index(name)
+        return vpp_api.vac_get_msg_index(name.encode('ascii'))
 
     def msg_table_max_index(self):
         return vpp_api.vac_msg_table_max_index()
