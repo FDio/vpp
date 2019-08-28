@@ -432,6 +432,7 @@ session_bound_handler (session_bound_msg_t * mp)
   /* Allocate local session and set it up */
   listen_session = echo_session_new (em);
   listen_session->session_type = ECHO_SESSION_TYPE_LISTEN;
+  listen_session->vpp_session_handle = mp->handle;
   echo_session_handle_add_del (em, mp->handle, listen_session->session_index);
   em->state = STATE_LISTEN;
   em->listen_session_index = listen_session->session_index;
