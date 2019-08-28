@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d05b3105_3626ac56",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-08-28T19:48:08Z",
+      "side": 1,
+      "message": "What\u0027s the purpose of all this OO malarkey? ;-)",
+      "range": {
+        "startLine": 249,
+        "startChar": 3,
+        "endLine": 253,
+        "endChar": 44
+      },
+      "revId": "4d9abb35d51659eb4777ae89840d485a83ed3e9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d12a4510_417f3a55",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-08-28T19:48:08Z",
+      "side": 1,
+      "message": "vppapigen is Python3 only.",
+      "range": {
+        "startLine": 270,
+        "startChar": 10,
+        "endLine": 271,
+        "endChar": 35
+      },
+      "revId": "4d9abb35d51659eb4777ae89840d485a83ed3e9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
