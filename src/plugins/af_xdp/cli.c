@@ -43,11 +43,26 @@ af_xdp_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "name %s", &args.ifname))
 	;
+      else if (unformat (line_input, "queue %d", &args.queue_id))
+	;
+      else if (unformat (line_input, "bind zerocopy"))
+	args.force_zerocopy_bind = 1;
+      else if (unformat (line_input, "bind copy"))
+	args.force_copy_bind = 1;
+      else if (unformat (line_input, "custom-xdp key %d", &args.key))
+	args.custom_xdp = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
   unformat_free (line_input);
+
+  if (NULL == args.ifname)
+    return clib_error_return (0, "missing xdp interface name");
+
+  if (args.force_zerocopy_bind && args.force_copy_bind)
+    return clib_error_return (0, "zerocopy and copy bind are mutually "
+			      "exclusive");
 
   af_xdp_create_if (vm, &args);
 
@@ -59,7 +74,8 @@ af_xdp_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_xdp_create_command, static) = {
   .path = "create interface af_xdp",
-  .short_help = "create interface af_xdp <name ifname>",
+  .short_help = "create interface af_xdp name <ifname> [queue <rx-qid>] "
+		"[bind <zerocopy|copy>] [custom-xdp key <xskmap-key>]",
   .function = af_xdp_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -98,7 +114,7 @@ af_xdp_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == NULL || af_xdp_device_class.index != hw->dev_class_index)
-    return clib_error_return (0, "not an AVF interface");
+    return clib_error_return (0, "not an AF_XDP interface");
 
   ad = pool_elt_at_index (am->devices, hw->dev_instance);
 
