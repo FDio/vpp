@@ -435,7 +435,7 @@ class VPPApiClient(object):
         self._api = VppApiDynamicMethodHolder()
         for name, msg in vpp_iterator(self.messages):
             n = name + '_' + msg.crc[2:]
-            i = self.transport.get_msg_index(n.encode('utf-8'))
+            i = self.transport.get_msg_index(n)
             if i > 0:
                 self.id_msgdef[i] = msg
                 self.id_names[i] = name
@@ -457,7 +457,7 @@ class VPPApiClient(object):
                          do_async):
         pfx = chroot_prefix.encode('utf-8') if chroot_prefix else None
 
-        rv = self.transport.connect(name.encode('utf-8'), pfx,
+        rv = self.transport.connect(name, pfx,
                                     msg_handler, rx_qlen)
         if rv != 0:
             raise VPPIOError(2, 'Connect failed')
@@ -467,7 +467,7 @@ class VPPApiClient(object):
         # Initialise control ping
         crc = self.messages['control_ping'].crc
         self.control_ping_index = self.transport.get_msg_index(
-            ('control_ping' + '_' + crc[2:]).encode('utf-8'))
+            ('control_ping' + '_' + crc[2:]))
         self.control_ping_msgdef = self.messages['control_ping']
         if self.async_thread:
             self.event_thread = threading.Thread(
