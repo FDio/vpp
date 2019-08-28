@@ -42,6 +42,7 @@ typedef struct _transport_proto_vft
   void (*reset) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
   clib_error_t *(*enable) (vlib_main_t * vm, u8 is_en);
+  void (*crypto_ctx_cleanup) (u32 cr_index);
 
   /*
    * Transmission

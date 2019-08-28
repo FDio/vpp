@@ -111,21 +111,6 @@ typedef struct application_
   /** Pool of listeners for the app */
   app_listener_t *listeners;
 
-  /*
-   * TLS & QUIC Specific
-   */
-
-  /** Certificate to be used for listen sessions */
-  u8 *tls_cert;
-
-  /** PEM encoded key */
-  u8 *tls_key;
-
-  /** Preferred tls engine */
-  u8 tls_engine;
-
-  u64 *quicly_ctx;
-
 } application_t;
 
 typedef struct app_main_
@@ -144,6 +129,11 @@ typedef struct app_main_
    * Hash table of builtin apps by name
    */
   uword *app_by_name;
+
+  /**
+   * Pool from which we allocate crypto contexts
+   */
+  crypto_ctx_t *crypto_ctx_pool;
 } app_main_t;
 
 typedef struct app_init_args_
@@ -284,6 +274,13 @@ int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
+crypto_ctx_t *crypto_ctx_get (u32 index);
+crypto_ctx_t *crypto_ctx_get_if_valid (u32 index);
+crypto_ctx_t *crypto_ctx_get_default ();
+int vnet_del_crypto_ctx (crypto_ctx_t * crctx);
+void crypto_ctx_subscribe_transport (u32 crypto_ctx_index,
+				     transport_proto_t tp);
+void crypto_ctx_unsubscribe_transport (u32 crypto_ctx_index);
 
 /* Needed while we support both bapi and mq ctrl messages */
 int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
@@ -292,6 +289,8 @@ int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 				  session_t * s, u8 is_fail);
 void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 			     u32 context, int rv);
+void mq_send_add_crypto_ctx_reply_evt (app_worker_t * app_wrk,
+				       u32 crypto_ctx_index, u32 context);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

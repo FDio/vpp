@@ -59,6 +59,8 @@ _(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
 _(SESSION_RULES_DUMP, session_rules_dump)				\
 _(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
 _(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
+_(ADD_CRYPTO_CTX, add_crypto_ctx)					\
+_(DEL_CRYPTO_CTX, del_crypto_ctx)					\
 _(APP_WORKER_ADD_DEL, app_worker_add_del)				\
 
 static int
@@ -1356,12 +1358,80 @@ vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 }
 
 static void
+vl_api_add_crypto_ctx_t_handler (vl_api_add_crypto_ctx_t * mp)
+{
+  vl_api_add_crypto_ctx_reply_t *rmp;
+  vnet_add_crypto_ctx_args_t _a, *a = &_a;
+  u32 key_len, cert_len;
+  int rv = 0;
+  if (!session_main_is_enabled ())
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  cert_len = clib_net_to_host_u16 (mp->cert_len);
+  if (cert_len > 10000)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  key_len = clib_net_to_host_u16 (mp->key_len);
+  if (key_len > 10000)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  clib_memset (a, 0, sizeof (*a));
+  a->engine = mp->engine;
+  vec_validate (a->cert, cert_len);
+  vec_validate (a->key, key_len);
+  clib_memcpy_fast (a->cert, mp->certkey, cert_len);
+  clib_memcpy_fast (a->key, mp->certkey + cert_len, key_len);
+  rv = vnet_add_crypto_ctx (a);
+  vec_free (a->cert);
+  vec_free (a->key);
+
+done:
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_ADD_CRYPTO_CTX_REPLY, ({
+    if (!rv)
+      rmp->ctx_index = a->index;
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_del_crypto_ctx_t_handler (vl_api_del_crypto_ctx_t * mp)
+{
+  vl_api_del_crypto_ctx_reply_t *rmp;
+  crypto_ctx_t *crctx;
+  int rv = 0;
+  if (!session_main_is_enabled ())
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+  if (!(crctx = crypto_ctx_get_if_valid (mp->ctx_index)))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+  rv = vnet_del_crypto_ctx (crctx);
+
+done:
+  REPLY_MACRO (VL_API_ADD_CRYPTO_CTX_REPLY);
+}
+
+/* ### WILL BE DEPRECATED POST 20.01 ### */
+static void
 vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
 					   mp)
 {
-  vl_api_app_namespace_add_del_reply_t *rmp;
-  vnet_app_add_tls_cert_args_t _a, *a = &_a;
-  clib_error_t *error;
+  vl_api_application_tls_cert_add_reply_t *rmp;
+  crypto_ctx_t *crctx;
   application_t *app;
   u32 cert_len;
   int rv = 0;
@@ -1375,33 +1445,27 @@ vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
       rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
       goto done;
     }
-  clib_memset (a, 0, sizeof (*a));
-  a->app_index = app->app_index;
   cert_len = clib_net_to_host_u16 (mp->cert_len);
   if (cert_len > 10000)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto done;
     }
-  vec_validate (a->cert, cert_len);
-  clib_memcpy_fast (a->cert, mp->cert, cert_len);
-  if ((error = vnet_app_add_tls_cert (a)))
-    {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
-    }
-  vec_free (a->cert);
+  crctx = crypto_ctx_get_default ();
+  vec_validate (crctx->cert, cert_len);
+  clib_memcpy_fast (crctx->cert, mp->cert, cert_len);
+
 done:
   REPLY_MACRO (VL_API_APPLICATION_TLS_CERT_ADD_REPLY);
 }
 
+/* ### WILL BE DEPRECATED POST 20.01 ### */
 static void
 vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
 					  mp)
 {
-  vl_api_app_namespace_add_del_reply_t *rmp;
-  vnet_app_add_tls_key_args_t _a, *a = &_a;
-  clib_error_t *error;
+  vl_api_application_tls_key_add_reply_t *rmp;
+  crypto_ctx_t *crctx;
   application_t *app;
   u32 key_len;
   int rv = 0;
@@ -1415,22 +1479,16 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
       rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
       goto done;
     }
-  clib_memset (a, 0, sizeof (*a));
-  a->app_index = app->app_index;
   key_len = clib_net_to_host_u16 (mp->key_len);
   if (key_len > 10000)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto done;
     }
-  vec_validate (a->key, key_len);
-  clib_memcpy_fast (a->key, mp->key, key_len);
-  if ((error = vnet_app_add_tls_key (a)))
-    {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
-    }
-  vec_free (a->key);
+  crctx = crypto_ctx_get_default ();
+  vec_validate (crctx->key, key_len);
+  clib_memcpy_fast (crctx->key, mp->key, key_len);
+
 done:
   REPLY_MACRO (VL_API_APPLICATION_TLS_KEY_ADD_REPLY);
 }

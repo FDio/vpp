@@ -1115,6 +1115,7 @@ main (int argc, char **argv)
   vtc_process_opts (vcm, argc, argv);
 
   vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
+  vppcom_set_crypto_engine (vcl_proto_crypto_engine (vcm->proto));
   rv = vppcom_app_create ("vcl_test_client");
   if (rv < 0)
     vtfail ("vppcom_app_create()", rv);
@@ -1123,7 +1124,7 @@ main (int argc, char **argv)
   if (ctrl->fd < 0)
     vtfail ("vppcom_session_create()", ctrl->fd);
 
-  if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_QUIC)
+  if (vcl_proto_needs_crypto (vcm->proto))
     {
       vtinf ("Adding tls certs ...");
       vppcom_session_tls_add_cert (ctrl->fd, vcl_test_crt_rsa,

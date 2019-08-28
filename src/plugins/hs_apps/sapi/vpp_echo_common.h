@@ -215,6 +215,7 @@ typedef struct
   u8 output_json;		/* Output stats as JSON */
   u8 log_lvl;			/* Verbosity of the logging */
   int max_test_msg;		/* Limit the number of incorrect data messages */
+  u32 crypto_engine;		/* crypto engine used (QUIC, TLS) */
 
   u8 *appns_id;
   u64 appns_flags;
@@ -289,6 +290,8 @@ uword unformat_transport_proto (unformat_input_t * input, va_list * args);
 u8 *format_transport_proto (u8 * s, va_list * args);
 uword unformat_ip4_address (unformat_input_t * input, va_list * args);
 uword unformat_ip6_address (unformat_input_t * input, va_list * args);
+uword echo_unformat_crypto_engine (unformat_input_t * input, va_list * args);
+u8 *echo_format_crypto_engine (u8 * s, va_list * args);
 
 void echo_session_handle_add_del (echo_main_t * em, u64 handle, u32 sid);
 echo_session_t *echo_session_new (echo_main_t * em);

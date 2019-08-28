@@ -458,6 +458,7 @@ quic_echo_set_defaults_after_opts_cb ()
 	      eqm->n_stream_clients) * em->n_clients + eqm->n_stream_clients +
     1;
   em->n_clients = eqm->n_stream_clients * em->n_clients;
+  em->crypto_engine = CRYPTO_ENGINE_VPP;
 
   if (em->i_am_master)
     default_f_active =

@@ -471,7 +471,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   esm->prealloc_fifos = 0;
   esm->private_segment_count = 0;
   esm->private_segment_size = 0;
-  esm->tls_engine = TLS_ENGINE_OPENSSL;
+  esm->tls_engine = CRYPTO_ENGINE_NONE;
   vec_free (esm->server_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -545,6 +545,12 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "Uri parse error: %d", rv);
   esm->transport_proto = sep.transport_proto;
   esm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
+
+  if (esm->transport_proto == TRANSPORT_PROTO_QUIC)
+    esm->tls_engine = CRYPTO_ENGINE_VPP;
+  else if (esm->transport_proto == TRANSPORT_PROTO_TLS)
+    esm->tls_engine = CRYPTO_ENGINE_OPENSSL;
+
 
   rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
   vec_free (appns_id);

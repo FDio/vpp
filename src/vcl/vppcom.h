@@ -56,6 +56,16 @@ typedef enum
   VPPCOM_PROTO_QUIC,
 } vppcom_proto_t;
 
+typedef enum
+{
+  VPPCOM_CRYPTO_ENGINE_NONE,
+  VPPCOM_CRYPTO_ENGINE_MBEDTLS,
+  VPPCOM_CRYPTO_ENGINE_OPENSSL,
+  VPPCOM_CRYPTO_ENGINE_PICOTLS,
+  VPPCOM_CRYPTO_ENGINE_VPP,
+  VPPCOM_CRYPTO_N_ENGINES
+} vppcom_crypto_engine_type_t;
+
 static inline char *
 vppcom_proto_str (vppcom_proto_t proto)
 {
@@ -313,6 +323,7 @@ extern int vppcom_unformat_proto (uint8_t * proto, char *proto_str);
 extern int vppcom_session_is_connectable_listener (uint32_t session_handle);
 extern int vppcom_session_listener (uint32_t session_handle);
 extern int vppcom_session_n_accepted (uint32_t session_handle);
+extern void vppcom_set_crypto_engine (uint32_t crypto_engine);
 
 /**
  * Request from application to register a new worker

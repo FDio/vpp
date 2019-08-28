@@ -478,6 +478,7 @@ application_alloc_and_init (app_init_args_t * a)
   segment_manager_props_t *props;
   vl_api_registration_t *reg;
   application_t *app;
+  crypto_ctx_t *crctx;
   u64 *options;
 
   app = application_alloc ();
@@ -541,7 +542,11 @@ application_alloc_and_init (app_init_args_t * a)
   if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
     props->use_mq_eventfd = 1;
   if (options[APP_OPTIONS_TLS_ENGINE])
-    app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
+    {
+      /* legacy option support */
+      crctx = crypto_ctx_get_default ();
+      crctx->engine = options[APP_OPTIONS_TLS_ENGINE];
+    }
   props->segment_type = seg_type;
 
   /* Add app to lookup by api_client_index table */
@@ -591,8 +596,6 @@ application_free (application_t * app)
   if (application_is_builtin (app))
     application_name_table_del (app);
   vec_free (app->name);
-  vec_free (app->tls_cert);
-  vec_free (app->tls_key);
   pool_put (app_main.app_pool, app);
 }
 
@@ -1305,24 +1308,20 @@ application_get_segment_manager_properties (u32 app_index)
 clib_error_t *
 vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a)
 {
-  application_t *app;
-  app = application_get (a->app_index);
-  if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
-				   0, "app %u doesn't exist", a->app_index);
-  app->tls_cert = vec_dup (a->cert);
+  /* Deprected, will be remove after 20.01 */
+  crypto_ctx_t *crctx;
+  crctx = crypto_ctx_get_default ();
+  crctx->cert = vec_dup (a->cert);
   return 0;
 }
 
 clib_error_t *
 vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a)
 {
-  application_t *app;
-  app = application_get (a->app_index);
-  if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
-				   0, "app %u doesn't exist", a->app_index);
-  app->tls_key = vec_dup (a->key);
+  /* Deprected, will be remove after 20.01 */
+  crypto_ctx_t *crctx;
+  crctx = crypto_ctx_get_default ();
+  crctx->key = vec_dup (a->key);
   return 0;
 }
 
@@ -1373,6 +1372,37 @@ application_format_connects (application_t * app, int verbose)
     app_worker_format_connects (app_wrk, verbose);
   }));
   /* *INDENT-ON* */
+}
+
+u8 *
+format_crypto_engine (u8 * s, va_list * args)
+{
+  u32 engine = va_arg (*args, u32);
+  switch (engine)
+    {
+    case CRYPTO_ENGINE_NONE:
+      return format (s, "CRYPTO_ENGINE_NONE");
+    case CRYPTO_ENGINE_MBEDTLS:
+      return format (s, "CRYPTO_ENGINE_MBEDTLS");
+    case CRYPTO_ENGINE_OPENSSL:
+      return format (s, "CRYPTO_ENGINE_OPENSSL");
+    case CRYPTO_ENGINE_PICOTLS:
+      return format (s, "CRYPTO_ENGINE_PICOTLS");
+    case CRYPTO_ENGINE_VPP:
+      return format (s, "CRYPTO_ENGINE_VPP");
+    default:
+      return format (s, "unknown engine");
+    }
+}
+
+u8 *
+format_crypto_ctx (u8 * s, va_list * args)
+{
+  crypto_ctx_t *crctx = va_arg (*args, crypto_ctx_t *);
+  s =
+    format (s, "%x (%U)", crctx->cr_index, format_crypto_engine,
+	    crctx->engine);
+  return s;
 }
 
 u8 *
@@ -1460,6 +1490,21 @@ application_format_all_clients (vlib_main_t * vm, int verbose)
 }
 
 static clib_error_t *
+show_crypto_ctx_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  crypto_ctx_t *crctx;
+  session_cli_return_if_not_enabled ();
+
+  /* *INDENT-OFF* */
+  pool_foreach (crctx, app_main.crypto_ctx_pool, ({
+    vlib_cli_output (vm, "%U", format_crypto_ctx, crctx);
+  }));
+  /* *INDENT-ON* */
+  return 0;
+}
+
+static clib_error_t *
 show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
@@ -1521,12 +1566,119 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+static crypto_ctx_t *
+crypto_ctx_alloc ()
+{
+  crypto_ctx_t *crctx;
+  pool_get (app_main.crypto_ctx_pool, crctx);
+  clib_memset (crctx, 0, sizeof (*crctx));
+  crctx->cr_index = crctx - app_main.crypto_ctx_pool;
+  return crctx;
+}
+
+static void
+crypto_ctx_delete_notify_transport (crypto_ctx_t * crctx)
+{
+  int i;
+  u32 proto_bit;
+  for (i = 0; i < TRANSPORT_N_PROTO; i++)
+    {
+      proto_bit = 1 << (i + 1);
+      if ((crctx->subscriber_protos & proto_bit)
+	  && tp_vfts[i].crypto_ctx_cleanup)
+	tp_vfts[i].crypto_ctx_cleanup (crctx->cr_index);
+    }
+  vec_free (crctx->cert);
+  vec_free (crctx->key);
+  pool_put (app_main.crypto_ctx_pool, crctx);
+}
+
+void
+crypto_ctx_subscribe_transport (u32 crypto_ctx_index, transport_proto_t tp)
+{
+  crypto_ctx_t *crctx = crypto_ctx_get (crypto_ctx_index);
+  u32 proto_bit = 1 << (tp + 1);
+  crctx->subscriber_protos &= proto_bit;
+  clib_atomic_fetch_add (&crctx->n_sessions, 1);
+}
+
+void
+crypto_ctx_unsubscribe_transport (u32 crypto_ctx_index)
+{
+  crypto_ctx_t *crctx = crypto_ctx_get (crypto_ctx_index);
+  if (!clib_atomic_sub_fetch (&crctx->n_sessions, 1) && crctx->deleted)
+    crypto_ctx_delete_notify_transport (crctx);
+}
+
+int
+vnet_del_crypto_ctx (crypto_ctx_t * crctx)
+{
+  crctx->deleted = 1;
+  if (!crctx->n_sessions)
+    crypto_ctx_delete_notify_transport (crctx);
+  return 0;
+}
+
+crypto_ctx_t *
+crypto_ctx_get_if_valid (u32 index)
+{
+  if (pool_is_free_index (app_main.crypto_ctx_pool, index))
+    return 0;
+  return crypto_ctx_get (index);
+}
+
+crypto_ctx_t *
+crypto_ctx_get (u32 index)
+{
+  crypto_ctx_t *crctx = pool_elt_at_index (app_main.crypto_ctx_pool, index);
+  return crctx;
+}
+
+crypto_ctx_t *
+crypto_ctx_get_default ()
+{
+  /* To maintain legacy bapi */
+  return crypto_ctx_get (0);
+}
+
+int
+vnet_add_crypto_ctx (vnet_add_crypto_ctx_args_t * a)
+{
+  crypto_ctx_t *crctx = crypto_ctx_alloc ();
+  crctx->cert = vec_dup (a->cert);
+  crctx->key = vec_dup (a->key);
+  crctx->engine = a->engine;
+  a->index = crctx->cr_index;
+  return 0;
+}
+
+clib_error_t *
+crypto_context_init (vlib_main_t * vm)
+{
+  vnet_add_crypto_ctx_args_t _a, *a = &_a;
+  a->engine = CRYPTO_ENGINE_NONE;
+  vnet_add_crypto_ctx (a);
+  return 0;
+}
+
 /* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (crypto_context_init) =
+{
+  .runs_after = VLIB_INITS("unix_physmem_init"),
+};
+
 VLIB_CLI_COMMAND (show_app_command, static) =
 {
   .path = "show app",
   .short_help = "show app [server|client] [verbose]",
   .function = show_app_command_fn,
+};
+
+VLIB_CLI_COMMAND (show_crypto_ctx_command, static) =
+{
+  .path = "show crypto ctx",
+  .short_help = "show crypto ctx",
+  .function = show_crypto_ctx_command_fn,
 };
 /* *INDENT-ON* */
 

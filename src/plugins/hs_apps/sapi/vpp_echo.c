@@ -727,6 +727,7 @@ print_usage_and_exit (void)
 	   "                       exit        - Exiting of the app\n"
 	   "  json                Output global stats in json\n"
 	   "  log=N               Set the log level to [0: no output, 1:errors, 2:log]\n"
+	   "  crypto [engine]     Set the crypto engine [openssl, vpp, picotls, mbedtls]\n"
 	   "\n"
 	   "  nclients N          Open N clients sending data\n"
 	   "  nthreads N          Use N busy loop threads for data [in addition to main & msg queue]\n"
@@ -814,6 +815,10 @@ echo_process_opts (int argc, char **argv)
 	  em->n_connects = em->n_clients;
 	}
       else if (unformat (a, "nthreads %d", &em->n_rx_threads))
+	;
+      else
+	if (unformat (a, "crypto %U",
+		      echo_unformat_crypto_engine, &em->crypto_engine))
 	;
       else if (unformat (a, "appns %_%v%_", &em->appns_id))
 	;
@@ -941,6 +946,7 @@ main (int argc, char **argv)
   em->tx_buf_size = 1 << 20;
   em->data_source = ECHO_INVALID_DATA_SOURCE;
   em->uri = format (0, "%s%c", "tcp://0.0.0.0/1234", 0);
+  em->crypto_engine = CRYPTO_ENGINE_NONE;
   echo_set_each_proto_defaults_before_opts (em);
   echo_process_opts (argc, argv);
   echo_process_uri (em);

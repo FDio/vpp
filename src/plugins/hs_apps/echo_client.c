@@ -771,7 +771,7 @@ echo_clients_command_fn (vlib_main_t * vm,
   ecm->test_bytes = 0;
   ecm->test_failed = 0;
   ecm->vlib_main = vm;
-  ecm->tls_engine = TLS_ENGINE_OPENSSL;
+  ecm->tls_engine = CRYPTO_ENGINE_NONE;
   ecm->no_copy = 0;
   ecm->run_test = ECHO_CLIENTS_STARTING;
 
@@ -851,7 +851,6 @@ echo_clients_command_fn (vlib_main_t * vm,
 	return clib_error_return (0, "failed init");
     }
 
-
   ecm->ready_connections = 0;
   ecm->expected_connections = n_clients * ecm->quic_streams;
   ecm->rx_total = 0;
@@ -867,6 +866,11 @@ echo_clients_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "Uri parse error: %d", rv);
   ecm->transport_proto = sep.transport_proto;
   ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
+
+  if (ecm->transport_proto == TRANSPORT_PROTO_QUIC)
+    ecm->tls_engine = CRYPTO_ENGINE_VPP;
+  else if (ecm->transport_proto == TRANSPORT_PROTO_TLS)
+    ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
 
 #if ECHO_CLIENT_PTHREAD
   echo_clients_start_tx_pthread ();
