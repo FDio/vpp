@@ -29,7 +29,7 @@ format_af_xdp_device_name (u8 * s, va_list * args)
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad = vec_elt_at_index (am->devices, i);
 
-  s = format (s, "af_xdp-%u", ad->dev_instance);
+  s = format (s, "xdp-%s/q%d", ad->ifname, ad->queue_id);
   return s;
 }
 
