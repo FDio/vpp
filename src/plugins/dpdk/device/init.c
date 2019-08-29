@@ -462,6 +462,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBEVF:
 	    case VNET_DPDK_PMD_I40EVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+	      if (dm->conf->no_tx_checksum_offload == 0)
+		{
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |=
+		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
+		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+		}
 	      break;
 
 	    case VNET_DPDK_PMD_THUNDERX:
