@@ -651,14 +651,6 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 		       errno_val);
 	      return tsock->fd;
 	    }
-	  if (fcntl (tsock->fd, F_SETFL, O_NONBLOCK) < 0)
-	    {
-	      errno_val = errno;
-	      perror ("ERROR in sock_test_connect_test_sockets()");
-	      fprintf (stderr, "CLIENT: ERROR: fcntl failed (errno = %d)!\n",
-		       errno_val);
-	      return -1;
-	    }
 
 #ifdef VCL_TEST
 	  rv = vppcom_session_connect (tsock->fd, &scm->server_endpt);
@@ -668,9 +660,8 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	      rv = -1;
 	    }
 #else
-	  rv =
-	    connect (tsock->fd, (struct sockaddr *) &scm->server_addr,
-		     scm->server_addr_size);
+	  rv = connect (tsock->fd, (struct sockaddr *) &scm->server_addr,
+			scm->server_addr_size);
 #endif
 	  if (rv < 0)
 	    {
@@ -678,6 +669,14 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	      perror ("ERROR in sock_test_connect_test_sockets()");
 	      fprintf (stderr, "CLIENT: ERROR: connect failed "
 		       "(errno = %d)!\n", errno_val);
+	      return -1;
+	    }
+	  if (fcntl (tsock->fd, F_SETFL, O_NONBLOCK) < 0)
+	    {
+	      errno_val = errno;
+	      perror ("ERROR in sock_test_connect_test_sockets()");
+	      fprintf (stderr, "CLIENT: ERROR: fcntl failed (errno = %d)!\n",
+		       errno_val);
 	      return -1;
 	    }
 	  tsock->cfg = ctrl->cfg;
