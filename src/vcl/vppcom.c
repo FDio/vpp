@@ -1590,12 +1590,17 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 	clib_net_to_host_u16 (session->transport.rmt_port),
 	vppcom_proto_str (session->session_type));
 
-  /*
-   * Send connect request and wait for reply from vpp
-   */
+
   vcl_send_session_connect (wrk, session);
-  rv = vppcom_wait_for_session_state_change (session_index, STATE_CONNECT,
-					     vcm->cfg.session_timeout);
+
+  /*
+   * Wait for reply from vpp if blocking
+   */
+  if (!VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK))
+    rv = vppcom_wait_for_session_state_change (session_index, STATE_CONNECT,
+					       vcm->cfg.session_timeout);
+  else
+    rv = VPPCOM_EINPROGRESS;
 
   session = vcl_session_get (wrk, session_index);
   VDBG (0, "session %u [0x%llx]: connect %s!", session->session_index,
@@ -2033,7 +2038,14 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_CONNECTED:
       connected_msg = (session_connected_msg_t *) e->data;
-      vcl_session_connected_handler (wrk, connected_msg);
+      sid = vcl_session_connected_handler (wrk, connected_msg);
+      if (sid == VCL_INVALID_SESSION_INDEX)
+	break;
+      if (sid < n_bits && write_map)
+	{
+	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
+	  *bits_set += 1;
+	}
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
