@@ -63,6 +63,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       break;
     case SESSION_IO_EVT_BUILTIN_TX:
     case SESSION_CTRL_EVT_CLOSE:
+    case SESSION_CTRL_EVT_RESET:
       evt->session_handle = session_handle ((session_t *) data);
       break;
     default:
@@ -125,6 +126,7 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 
   s = session_get (tc->s_index, tc->thread_index);
   ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (s->session_state < SESSION_STATE_TRANSPORT_DELETED);
   if (!(s->flags & SESSION_F_CUSTOM_TX))
     {
       s->flags |= SESSION_F_CUSTOM_TX;
