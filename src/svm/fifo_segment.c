@@ -233,6 +233,10 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_t * fs, u32 data_bytes)
 	return 0;
       memset (f, 0, sizeof (*f));
     }
+  else
+    {
+      fsh->free_fifos = f->next;
+    }
 
   fl_index = fs_freelist_for_size (data_bytes) - 1;
   vec_validate_init_empty (fsh->free_chunks, fl_index, 0);
