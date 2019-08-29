@@ -18,6 +18,7 @@
 
 #include <netdb.h>
 #include <errno.h>
+#include <sys/fcntl.h>
 #include <sys/poll.h>
 #include <sys/epoll.h>
 
@@ -115,6 +116,7 @@ typedef enum
   VPPCOM_OK = 0,
   VPPCOM_EAGAIN = -EAGAIN,
   VPPCOM_EWOULDBLOCK = -EWOULDBLOCK,
+  VPPCOM_EINPROGRESS = -EINPROGRESS,
   VPPCOM_EFAULT = -EFAULT,
   VPPCOM_ENOMEM = -ENOMEM,
   VPPCOM_EINVAL = -EINVAL,
