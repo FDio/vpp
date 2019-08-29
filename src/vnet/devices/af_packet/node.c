@@ -195,9 +195,6 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
 
-  if (apif->per_interface_next_index != ~0)
-    next_index = apif->per_interface_next_index;
-
   n_free_bufs = vec_len (apm->rx_buffers[thread_index]);
   if (PREDICT_FALSE (n_free_bufs < VLIB_FRAME_SIZE))
     {
@@ -302,6 +299,10 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    {
 	      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+
+	      if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
+		next0 = apif->per_interface_next_index;
+
 	      /* redirect if feature path enabled */
 	      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next0,
 						  first_b0);
