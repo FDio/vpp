@@ -148,6 +148,7 @@ typedef struct vlib_main_t
   /* Pcap dispatch trace main */
   pcap_main_t dispatch_pcap_main;
   uword dispatch_pcap_enable;
+  u32 *dispatch_buffer_trace_nodes;
   u8 *pcap_buffer;
 
   /* pcap rx / tx tracing */
@@ -402,6 +403,18 @@ extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
 
 #define VLIB_PCAP_MAJOR_VERSION 1
 #define VLIB_PCAP_MINOR_VERSION 0
+
+typedef struct
+{
+  u8 *filename;
+  int enable;
+  int status;
+  u32 packets_to_capture;
+  u32 buffer_trace_node_index;
+  u32 buffer_traces_to_capture;
+} vlib_pcap_dispatch_trace_args_t;
+
+int vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *);
 
 #endif /* included_vlib_main_h */
 
