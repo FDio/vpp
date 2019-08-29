@@ -26,9 +26,9 @@ class TestSparseVec(VppTestCase):
     def test_string_unittest(self):
         """ SparseVec unit tests """
         error = self.vapi.cli("test sparse_vec")
-        if error.find("failed") != -1:
+        if error.find(b"failed") != -1:
             self.logger.critical("FAILURE in the sparse_vec test")
-        self.assertNotIn("failed", error)
+        self.assertNotIn(b"failed", error)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
