@@ -400,7 +400,7 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
   f->segment_index = SVM_FIFO_INVALID_INDEX;
   f->refcnt = 1;
-  f->flags = 0;
+  f->head = f->tail = f->flags = 0;
   f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = f->start_chunk;
 }
 
