@@ -608,6 +608,8 @@ session_dequeue_notify (session_t * s)
   if (PREDICT_FALSE (!app_wrk))
     return -1;
 
+  svm_fifo_clear_deq_ntf (s->tx_fifo);
+
   if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
 						     SESSION_IO_EVT_TX)))
     return -1;
@@ -615,8 +617,6 @@ session_dequeue_notify (session_t * s)
   if (PREDICT_FALSE (s->tx_fifo->n_subscribers))
     return session_notify_subscribers (app_wrk->app_index, s,
 				       s->tx_fifo, SESSION_IO_EVT_TX);
-
-  svm_fifo_clear_deq_ntf (s->tx_fifo);
 
   return 0;
 }
