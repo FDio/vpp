@@ -9,7 +9,11 @@ from pickle import dumps
 import six
 from six import moves
 import sys
-from aenum import IntEnum, IntFlag
+
+if sys.version_info < (3,):
+    from aenum import IntEnum, IntFlag
+else:
+    from enum import IntEnum, IntFlag
 
 
 class SerializableClassCopy(object):
