@@ -715,8 +715,8 @@ statseg_init (vlib_main_t * vm)
 
   /* set default socket file name when statseg config stanza is empty. */
   if (!vec_len (sm->socket_name))
-    sm->socket_name = format (0, "%s/%s", vlib_unix_get_runtime_dir (),
-			      STAT_SEGMENT_SOCKET_FILENAME);
+    sm->socket_name = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
+			      STAT_SEGMENT_SOCKET_FILENAME, 0);
   return stats_segment_socket_init ();
 }
 
