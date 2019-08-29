@@ -290,7 +290,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  ASSERT (!(rxd->flags & VMXNET3_RXF_BTYPE));
 	  /* start segment */
-	  if ((vd->lro_enable) &&
+	  if (vd->gso_enable &&
 	      (rx_comp->flags & VMXNET3_RXCF_CT) == VMXNET3_RXCOMP_TYPE_LRO)
 	    {
 	      vmxnet3_rx_comp_ext *lro = (vmxnet3_rx_comp_ext *) rx_comp;

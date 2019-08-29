@@ -78,6 +78,7 @@ vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t * mp)
   args.txq_num = ntohs (mp->txq_num);
   args.rxq_num = ntohs (mp->rxq_num);
   args.bind = mp->bind;
+  args.enable_gso = mp->enable_gso;
 
   vmxnet3_create_if (vm, &args);
   rv = args.rv;
@@ -102,6 +103,8 @@ vl_api_vmxnet3_create_t_print (vl_api_vmxnet3_create_t * mp, void *handle)
     s = format (s, "elog ");
   if (mp->bind)
     s = format (s, "bind ");
+  if (mp->enable_gso)
+    s = format (s, "gso ");
   if (mp->rxq_size)
     s = format (s, "rx-queue-size %u ", ntohs (mp->rxq_size));
   if (mp->txq_size)
