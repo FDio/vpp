@@ -29,7 +29,7 @@ class TestMactime(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertNotIn('FAILED', error)
+        self.assertNotIn(b'FAILED', error)
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_mactime_unittest(self):
