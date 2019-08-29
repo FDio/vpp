@@ -19,6 +19,7 @@ from threading import Thread, Event
 from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
+import six
 
 import scapy.compat
 from scapy.packet import Raw
@@ -631,21 +632,23 @@ class VppTestCase(unittest.TestCase):
             stdout_log(single_line_delim)
             stdout_log('VPP output to stdout while running %s:', cls.__name__)
             stdout_log(single_line_delim)
-            vpp_output = "".join(cls.vpp_stdout_deque)
-            with open(cls.tempdir + '/vpp_stdout.txt', 'w') as f:
-                f.write(vpp_output)
-            stdout_log('\n%s', vpp_output)
-            stdout_log(single_line_delim)
+            if isinstance(cls.vpp_stdout_deque, six.string_types):
+                vpp_output = "".join(cls.vpp_stdout_deque)
+                with open(cls.tempdir + '/vpp_stdout.txt', 'w') as f:
+                    f.write(vpp_output)
+                stdout_log('\n%s', vpp_output)
+                stdout_log(single_line_delim)
 
         if hasattr(cls, 'vpp_stderr_deque'):
             stderr_log(single_line_delim)
             stderr_log('VPP output to stderr while running %s:', cls.__name__)
             stderr_log(single_line_delim)
-            vpp_output = "".join(cls.vpp_stderr_deque)
-            with open(cls.tempdir + '/vpp_stderr.txt', 'w') as f:
-                f.write(vpp_output)
-            stderr_log('\n%s', vpp_output)
-            stderr_log(single_line_delim)
+            if isinstance(cls.vpp_stdout_deque, six.string_types): 
+                vpp_output = "".join(cls.vpp_stderr_deque)
+                with open(cls.tempdir + '/vpp_stderr.txt', 'w') as f:
+                    f.write(vpp_output)
+                stderr_log('\n%s', vpp_output)
+                stderr_log(single_line_delim)
 
     @classmethod
     def tearDownClass(cls):
