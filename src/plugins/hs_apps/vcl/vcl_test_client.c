@@ -123,7 +123,7 @@ vtc_quic_connect_test_sessions (vcl_test_client_worker_t * wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ts, *tq;
-  uint32_t i;
+  uint32_t i, flags, flen;
   int rv;
 
   if (wrk->cfg.num_test_sessions < 1 || wrk->cfg.num_test_sessions_perq < 1)
@@ -155,7 +155,7 @@ vtc_quic_connect_test_sessions (vcl_test_client_worker_t * wrk)
   for (i = 0; i < wrk->cfg.num_test_qsessions; i++)
     {
       tq = &wrk->qsessions[i];
-      tq->fd = vppcom_session_create (vcm->proto, 1 /* is_nonblocking */ );
+      tq->fd = vppcom_session_create (vcm->proto, 0 /* is_nonblocking */ );
       tq->session_index = i;
       if (tq->fd < 0)
 	{
@@ -163,12 +163,16 @@ vtc_quic_connect_test_sessions (vcl_test_client_worker_t * wrk)
 	  return tq->fd;
 	}
 
+      /* Connect is blocking */
       rv = vppcom_session_connect (tq->fd, &vcm->server_endpt);
       if (rv < 0)
 	{
 	  vterr ("vppcom_session_connect()", rv);
 	  return rv;
 	}
+      flags = O_NONBLOCK;
+      flen = sizeof (flags);
+      vppcom_session_attr (tq->fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
       vtinf ("Test Qsession %d (fd %d) connected.", i, tq->fd);
     }
   wrk->n_qsessions = wrk->cfg.num_test_qsessions;
@@ -223,6 +227,7 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ts;
   uint32_t n_test_sessions;
+  uint32_t flags, flen;
   int i, rv;
 
   if (vcm->proto == VPPCOM_PROTO_QUIC)
@@ -253,19 +258,23 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
   for (i = 0; i < n_test_sessions; i++)
     {
       ts = &wrk->sessions[i];
-      ts->fd = vppcom_session_create (vcm->proto, 1 /* is_nonblocking */ );
+      ts->fd = vppcom_session_create (vcm->proto, 0 /* is_nonblocking */ );
       if (ts->fd < 0)
 	{
 	  vterr ("vppcom_session_create()", ts->fd);
 	  return ts->fd;
 	}
 
+      /* Connect is blocking */
       rv = vppcom_session_connect (ts->fd, &vcm->server_endpt);
       if (rv < 0)
 	{
 	  vterr ("vppcom_session_connect()", rv);
 	  return rv;
 	}
+      flags = O_NONBLOCK;
+      flen = sizeof (flags);
+      vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
       vtinf ("Test session %d (fd %d) connected.", i, ts->fd);
     }
   wrk->n_sessions = n_test_sessions;
