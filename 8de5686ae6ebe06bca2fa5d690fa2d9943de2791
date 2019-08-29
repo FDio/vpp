@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9593b855_62f55829",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 818,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-08-29T12:41:07Z",
+      "side": 1,
+      "message": "This will hurt performance in case when there is no secondary mac. I suggest hat you move whole if (dmac_check) {} into new inline function called eth_input_process_frame_dmac_check, and do:\n\nif (vec_len (ei-\u003esecondary_addrs))\n  eth_input_process_frame_dmac_check (...., /* have_sec_dmac */ 1);\nelse\n  eth_input_process_frame_dmac_check (...., /* have_sec_dmac */ 0);\n\nand then this If statement and the one above can be optimised out by\ndoing \n\nif (have_sec_dmac \u0026\u0026 ((r0 !\u003d 0) || (r1 !\u003d 0) || (r2 !\u003d 0) || (r3 !\u003d 0)))",
+      "range": {
+        "startLine": 818,
+        "startChar": 3,
+        "endLine": 818,
+        "endChar": 56
+      },
+      "revId": "8de5686ae6ebe06bca2fa5d690fa2d9943de2791",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
