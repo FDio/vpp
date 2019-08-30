@@ -93,6 +93,38 @@ void BV (clib_bihash_init)
 #endif
 }
 
+void BV (clib_bihash_init2)
+  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
+{
+  nbuckets = 1 << (max_log2 (nbuckets));
+
+  h->name = (u8 *) name;
+  h->nbuckets = nbuckets;
+  h->log2_nbuckets = max_log2 (nbuckets);
+  h->memory_size = memory_size;
+  h->instantiated = 0;
+  alloc_arena (h) = 0;
+
+  /*
+   * Make sure the requested size is rational. The max table
+   * size without playing the alignment card is 64 Gbytes.
+   * If someone starts complaining that's not enough, we can shift
+   * the offset by CLIB_LOG2_CACHE_LINE_BYTES...
+   */
+  ASSERT (memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
+  h->fmt_fn = NULL;
+
+  /*
+   * Set up the lock now, so we can use it to make the first add
+   * thread-safe
+   */
+  h->alloc_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+					  CLIB_CACHE_LINE_BYTES);
+  h->alloc_lock[0] = 0;
+
+  BV (clib_bihash_instantiate) (h);
+}
+
 #if BIHASH_32_64_SVM
 #if !defined (MFD_ALLOW_SEALING)
 #define MFD_ALLOW_SEALING 0x0002U
