@@ -1185,19 +1185,19 @@ tcp_timer_delack_handler (u32 index)
 }
 
 /**
- * Send Window Update ACK,
- * ensuring that it will be sent once, if RWND became non-zero,
- * after zero RWND has been advertised in ACK before
+ * Send window update ack
+ *
+ * Ensures that it will be sent only once, after a zero rwnd has been
+ * advertised in a previous ack, and only if rwnd has grown beyond a
+ * configurable value.
  */
 void
 tcp_send_window_update_ack (tcp_connection_t * tc)
 {
-  u32 win;
-
   if (tcp_zero_rwnd_sent (tc))
     {
-      win = tcp_window_to_advertise (tc, tc->state);
-      if (win > 0)
+      tcp_update_rcv_wnd (tc);
+      if (tc->rcv_wnd >= tcp_cfg.rwnd_min_update_ack * tc->snd_mss)
 	{
 	  tcp_zero_rwnd_sent_off (tc);
 	  tcp_program_ack (tc);
