@@ -52,7 +52,7 @@ class TestDHCPv6DataPlane(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        address_bin = '\00\01\00\02\00\03' + '\00' * 8 + '\00\05'
+        address_bin = b'\00\01\00\02\00\03' + b'\00' * 8 + b'\00\05'
         address = {'address': address_bin,
                    'preferred_time': 60,
                    'valid_time': 120}
