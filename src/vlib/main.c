@@ -2170,6 +2170,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
   u32 max = 1000;
   int enabled = 0;
   int is_error = 0;
+  int is_status = 0;
   clib_error_t *error = 0;
   u32 node_index, add;
   vlib_trace_main_t *tm;
@@ -2257,6 +2258,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	    {
 	      vlib_cli_output (vm, "pcap dispatch capture is off...");
 	    }
+          is_status = 1;
 	  break;
 	}
       else if (unformat (line_input, "buffer-trace %U %d",
@@ -2291,7 +2293,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
     }
   unformat_free (line_input);
 
-  if (is_error == 0)
+  if (is_error == 0 && is_status == 0)
     {
       /* Clean up from previous run */
       vec_free (pm->file_name);
