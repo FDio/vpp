@@ -221,6 +221,8 @@ typedef struct
       u8 ttl;
       u8 exp;
       u8 first;
+      u8 pyld_proto:3; /* ipv4:0, ipv6:1*/
+      u8 rsvd:5;
       /* Rewrite length */
       u32 save_rewrite_length;
       /*

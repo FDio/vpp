@@ -166,6 +166,21 @@ VNET_FEATURE_INIT (mpls_interface_output, static) = {
   .runs_before = 0, /* not before any other features */
 };
 
+VNET_FEATURE_ARC_INIT (mpls_output_post_frag, static) =
+{
+  .arc_name  = "mpls-output-post-frag",
+  .start_nodes = VNET_FEATURES ("mpls-output-post-frag", "mpls-midchain"),
+  .last_in_arc = "interface-output",
+  .arc_index_ptr = &mpls_main.output_feature_arc_index,
+};
+
+/* Built-in ip4 tx feature path definition */
+VNET_FEATURE_INIT (mpls_post_frag_interface_output, static) = {
+  .arc_name = "mpls-output-post-frag",
+  .node_name = "interface-output",
+  .runs_before = 0, /* not before any other features */
+};
+
 static clib_error_t *
 mpls_sw_interface_add_del (vnet_main_t * vnm,
                            u32 sw_if_index,
