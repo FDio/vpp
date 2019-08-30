@@ -1060,11 +1060,7 @@ vlib_worker_thread_node_refork (void)
     clib_mem_alloc_no_fail (vec_len (nm->nodes) * sizeof (*new_n_clone));
   for (j = 0; j < vec_len (nm->nodes); j++)
     {
-      vlib_node_t *old_n_clone;
-      vlib_node_t *new_n;
-
-      new_n = nm->nodes[j];
-      old_n_clone = old_nodes_clone[j];
+      vlib_node_t *new_n = nm->nodes[j];
 
       clib_memcpy_fast (new_n_clone, new_n, sizeof (*new_n));
       /* none of the copied nodes have enqueue rights given out */
@@ -1080,6 +1076,7 @@ vlib_worker_thread_node_refork (void)
 	}
       else
 	{
+	  vlib_node_t *old_n_clone = old_nodes_clone[j];
 	  /* Copy stats if the old data is valid */
 	  clib_memcpy_fast (&new_n_clone->stats_total,
 			    &old_n_clone->stats_total,
