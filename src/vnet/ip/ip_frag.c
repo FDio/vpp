@@ -38,8 +38,8 @@ format_ip_frag_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip_frag_trace_t *t = va_arg (*args, ip_frag_trace_t *);
-  s = format (s, "IPv%s mtu: %u fragments: %u",
-	      t->ipv6 ? "6" : "4", t->mtu, t->n_fragments);
+  s = format (s, "IPv%s mtu: %u fragments: %u next: %d",
+	      t->ipv6 ? "6" : "4", t->mtu, t->n_fragments, t->next);
   return s;
 }
 
@@ -519,6 +519,7 @@ VLIB_REGISTER_NODE (ip4_frag_node) = {
     [IP4_FRAG_NEXT_IP4_REWRITE] = "ip4-rewrite",
     [IP4_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP4_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [IP4_FRAG_NEXT_MPLS_OUTPUT_POST_FRAG] = "mpls-output-post-frag",
     [IP4_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [IP4_FRAG_NEXT_DROP] = "ip4-drop"
   },
@@ -541,6 +542,7 @@ VLIB_REGISTER_NODE (ip6_frag_node) = {
     [IP6_FRAG_NEXT_IP6_REWRITE] = "ip6-rewrite",
     [IP6_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP6_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [IP6_FRAG_NEXT_MPLS_OUTPUT_POST_FRAG] = "mpls-output-post-frag",
     [IP6_FRAG_NEXT_DROP] = "ip6-drop"
   },
 };
