@@ -163,7 +163,7 @@ def pump_output(testclass):
                 split = read.splitlines(True)
                 if len(stdout_fragment) > 0:
                     split[0] = "%s%s" % (stdout_fragment, split[0])
-                if len(split) > 0 and split[-1].endswith("\n"):
+                if len(split) > 0 and split[-1].endswith(b"\n"):
                     limit = None
                 else:
                     limit = -1
