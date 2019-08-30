@@ -365,6 +365,13 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 
       *error0 = TCP_ERROR_RCV_WND;
 
+      /* If we advertised a zero rcv_wnd and the segment is in the past or the
+       * next one that we expect, it is probably a window probe */
+      if ((tc0->flags & TCP_CONN_ZERO_RWND_SENT)
+	  && seq_lt (vnet_buffer (b0)->tcp.seq_end,
+		     tc0->rcv_las + tc0->rcv_opts.mss))
+	*error0 = TCP_ERROR_ZERO_RWND;
+
       tc0->errors.below_data_wnd += seq_lt (vnet_buffer (b0)->tcp.seq_end,
 					    tc0->rcv_las);
 
