@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aa7a79d7_535b4f25",
+        "filename": "src/vnet/adj/adj_midchain.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "don\u0027t need these.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "245c6bc6_9ad74427",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "comment is wrong. this is a dpo_proto_t.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "267a6cdd_65298e4b",
+        "filename": "src/vnet/mpls/mpls_features.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": ".... add mpls-output-post-frag to this list.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bb7e0bc0_b9d66967",
+        "filename": "src/vnet/mpls/mpls_features.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "We don\u0027t want a separate feature arc for post-frag and pre-frag packets. instead we want the post-frag node to be a starting point for the existing MPLS feature arc. so add is to the list of start nodes above ....",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3d63eed8_8631654e",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "you can\u0027t assume that this is the same FIB that the original lookup occurred it.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "743f4f4c_a691eb6b",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "there could be a long chain of mpls_label_dpos here. And all sorts of other DPOs to navigate too.\n\nyou can\u0027t take this approach. instead, the packet you get in mpls-output has \u0027current\u0027 pointing to the bottom of the label stack. walk up the stack to find the label with the EOS bit set. this is the stack that needs to be copied onto each fragment.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7cdf7ed3_d989ae81",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "this is mpls_output_mode_t not int.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "75e93aa2_d03fdd6b",
+        "filename": "src/vnet/qos/qos_mark.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "you don\u0027t need this when the post-frag node doesn\u0027t have its own arc.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a0029776_ed861f6e",
+        "filename": "src/vnet/qos/qos_mark_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "remove this too.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c097137e_03c96c2e",
+        "filename": "src/vnet/qos/qos_mark_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-08-30T07:45:27Z",
+      "side": 1,
+      "message": "remove this too.",
+      "revId": "9449f5dcf9e22a1cf006cf41dba131bf97b49f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
