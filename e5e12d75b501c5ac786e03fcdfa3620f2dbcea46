@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6aeb4dd6_b9044172",
+        "filename": "test/test_dhcp6.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-08-30T10:26:20Z",
+      "side": 0,
+      "message": "Could you just fix the DHCP api to take a vl_api_ip6_address_t instead?",
+      "revId": "e5e12d75b501c5ac786e03fcdfa3620f2dbcea46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
