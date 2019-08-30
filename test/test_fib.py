@@ -22,7 +22,7 @@ class TestFIB(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertNotIn("Failed", error)
+        self.assertNotIn(b"Failed", error)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

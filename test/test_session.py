@@ -79,7 +79,7 @@ class TestSession(VppTestCase):
                               "private-segment-size 1m uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertNotIn("failed", error)
+            self.assertNotIn(b"failed", error)
 
         if self.vpp_dead:
             self.assert_equal(0)
@@ -110,7 +110,7 @@ class TestSessionUnitTests(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertNotIn("failed", error)
+        self.assertNotIn(b"failed", error)
 
     def tearDown(self):
         super(TestSessionUnitTests, self).tearDown()
