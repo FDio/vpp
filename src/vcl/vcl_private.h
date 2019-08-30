@@ -333,6 +333,9 @@ typedef struct vppcom_main_t_
   /** Mapped segments table */
   uword *segment_table;
 
+  /** Control mq obtained from attach */
+  svm_msg_q_t *ctrl_mq;
+
   fifo_segment_main_t segment_main;
 
 #ifdef VCL_ELOG
