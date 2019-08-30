@@ -357,7 +357,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
 				   + VNET_INTERFACE_COUNTER_RX, thread_index,
-				   vif->hw_if_index, n_rx_packets,
+				   vif->sw_if_index, n_rx_packets,
 				   n_rx_bytes);
 
 refill:
