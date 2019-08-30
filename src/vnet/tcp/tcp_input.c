@@ -363,7 +363,8 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 		      tc0->rcv_nxt + tc0->rcv_wnd))
 	goto check_reset;
 
-      *error0 = TCP_ERROR_RCV_WND;
+      *error0 = (tc0->flags & TCP_CONN_ZERO_RWND_SENT) ?
+	TCP_ERROR_ZERO_RWND : TCP_ERROR_RCV_WND;
 
       tc0->errors.below_data_wnd += seq_lt (vnet_buffer (b0)->tcp.seq_end,
 					    tc0->rcv_las);
