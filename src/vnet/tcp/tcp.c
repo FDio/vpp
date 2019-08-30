@@ -1587,6 +1587,7 @@ tcp_configuration_init (void)
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
   tcp_cfg.cc_algo = TCP_CC_NEWRENO;
+  tcp_cfg.rwnd_min_update_ack = 1460;
 
   /* Time constants defined as timer tick (100ms) multiples */
   tcp_cfg.delack_time = 1;	/* 0.1s */
@@ -1698,6 +1699,9 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.min_rx_fifo = memory_size;
       else if (unformat (input, "mtu %u", &tcp_cfg.default_mtu))
 	;
+      else if (unformat (input, "rwnd-min-update-ack %U",
+			 unformat_memory_size, &memory_size))
+	tcp_cfg.rwnd_min_update_ack = memory_size;
       else if (unformat (input, "initial-cwnd-multiplier %u",
 			 &tcp_cfg.initial_cwnd_multiplier))
 	;
