@@ -1587,6 +1587,7 @@ tcp_configuration_init (void)
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
   tcp_cfg.cc_algo = TCP_CC_NEWRENO;
+  tcp_cfg.rwnd_min_update_ack = 1460;
 
   /* Time constants defined as timer tick (100ms) multiples */
   tcp_cfg.delack_time = 1;	/* 0.1s */
