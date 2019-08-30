@@ -290,6 +290,9 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size);
+void BV (clib_bihash_init2) (BVT (clib_bihash) * h, char *name, u32 nbuckets,
+			     uword memory_size);
+void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h);
 
 #if BIHASH_32_64_SVM
 void BV (clib_bihash_master_init_svm)
