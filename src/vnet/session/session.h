@@ -598,8 +598,8 @@ session_main_is_enabled ()
 
 #define session_cli_return_if_not_enabled()				\
 do {									\
-    if (!session_main.is_enabled)				\
-      return clib_error_return(0, "session layer is not enabled");	\
+    if (!session_main.is_enabled)					\
+      return clib_error_return (0, "session layer is not enabled");	\
 } while (0)
 
 int session_main_flush_enqueue_events (u8 proto, u32 thread_index);
