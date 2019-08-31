@@ -1678,6 +1678,7 @@ unformat_tcp_cc_algo_cfg (unformat_input_t * input, va_list * va)
 static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
+  uword memory_size;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "preallocated-connections %d",
@@ -1690,14 +1691,14 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 			 &tcp_cfg.buffer_fail_fraction))
 	;
       else if (unformat (input, "max-rx-fifo %U", unformat_memory_size,
-			 &tcp_cfg.max_rx_fifo))
-	;
+			 &memory_size))
+	tcp_cfg.max_rx_fifo = memory_size;
       else if (unformat (input, "min-rx-fifo %U", unformat_memory_size,
-			 &tcp_cfg.min_rx_fifo))
+			 &memory_size))
+	tcp_cfg.min_rx_fifo = memory_size;
+      else if (unformat (input, "mtu %u", &tcp_cfg.default_mtu))
 	;
-      else if (unformat (input, "mtu %d", &tcp_cfg.default_mtu))
-	;
-      else if (unformat (input, "initial-cwnd-multiplier %d",
+      else if (unformat (input, "initial-cwnd-multiplier %u",
 			 &tcp_cfg.initial_cwnd_multiplier))
 	;
       else if (unformat (input, "no-tx-pacing"))
@@ -1707,19 +1708,19 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "%U", unformat_tcp_cc_algo_cfg))
 	;
-      else if (unformat (input, "closewait-time %d", &tcp_cfg.closewait_time))
+      else if (unformat (input, "closewait-time %u", &tcp_cfg.closewait_time))
 	tcp_cfg.closewait_time /= TCP_TIMER_TICK;
-      else if (unformat (input, "timewait-time %d", &tcp_cfg.timewait_time))
+      else if (unformat (input, "timewait-time %u", &tcp_cfg.timewait_time))
 	tcp_cfg.timewait_time /= TCP_TIMER_TICK;
-      else if (unformat (input, "finwait1-time %d", &tcp_cfg.finwait1_time))
+      else if (unformat (input, "finwait1-time %u", &tcp_cfg.finwait1_time))
 	tcp_cfg.finwait1_time /= TCP_TIMER_TICK;
-      else if (unformat (input, "finwait2-time %d", &tcp_cfg.finwait2_time))
+      else if (unformat (input, "finwait2-time %u", &tcp_cfg.finwait2_time))
 	tcp_cfg.finwait2_time /= TCP_TIMER_TICK;
-      else if (unformat (input, "lastack-time %d", &tcp_cfg.lastack_time))
+      else if (unformat (input, "lastack-time %u", &tcp_cfg.lastack_time))
 	tcp_cfg.lastack_time /= TCP_TIMER_TICK;
-      else if (unformat (input, "closing-time %d", &tcp_cfg.closing_time))
+      else if (unformat (input, "closing-time %u", &tcp_cfg.closing_time))
 	tcp_cfg.closing_time /= TCP_TIMER_TICK;
-      else if (unformat (input, "cleanup-time %d", &tcp_cfg.cleanup_time))
+      else if (unformat (input, "cleanup-time %u", &tcp_cfg.cleanup_time))
 	tcp_cfg.cleanup_time /= TCP_TIMER_TICK;
       else
 	return clib_error_return (0, "unknown input `%U'",
