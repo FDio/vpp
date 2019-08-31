@@ -1165,6 +1165,8 @@ static transport_connection_t *
 tcp_session_get_transport (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc = tcp_connection_get (conn_index, thread_index);
+  if (PREDICT_FALSE (!tc))
+    return 0;
   return &tc->connection;
 }
 
