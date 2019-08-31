@@ -162,6 +162,26 @@ unformat_stream_session_id (unformat_input_t * input, va_list * args)
 }
 
 uword
+unformat_session_state (unformat_input_t * input, va_list * args)
+{
+  session_state_t *state = va_arg (*args, session_state_t *);
+  u8 *state_vec = 0;
+
+  if (!unformat (input, "%_%v%_", *state_vec))
+    return 0;
+
+#define _(sym, str)					\
+  if (clib_strcmp (str, (char *) state_vec))		\
+    {							\
+      *state = SESSION_STATE_ ## sym;			\
+      return 1;						\
+    }
+  foreach_session_state
+#undef _
+  return 0;
+}
+
+uword
 unformat_session (unformat_input_t * input, va_list * args)
 {
   session_t **result = va_arg (*args, session_t **);
@@ -227,23 +247,122 @@ unformat_transport_connection (unformat_input_t * input, va_list * args)
   return 0;
 }
 
+static void
+session_cli_show_worker_pool (vlib_main_t * vm, u32 thread_index, int verbose)
+{
+  session_main_t *smm = &session_main;
+  session_t *pool, *s;
+  u32 n_closed = 0;
+
+  pool = smm->wrk[thread_index].sessions;
+
+  if (!pool_elts (pool))
+    {
+      vlib_cli_output (vm, "Thread %d: no sessions", thread_index);
+      continue;
+    }
+
+  if (!verbose)
+    {
+      vlib_cli_output (vm, "Thread %d: %d sessions", thread_index,
+                       pool_elts (pool));
+      continue;
+    }
+
+  if (pool_elts (pool) > 50)
+    {
+      vlib_cli_output (vm, "Thread %u: %d sessions. Verbose output "
+                       "suppressed", thread_index, pool_elts (pool));
+      continue;
+    }
+
+  if (verbose == 1)
+      vlib_cli_output (vm, "%s%-50s%-15s%-10s%-10s", thread_index ? "\n" : "",
+	               "Connection", "State", "Rx-f", "Tx-f");
+
+  /* *INDENT-OFF* */
+  pool_foreach (s, pool, ({
+    if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+      {
+        n_closed += 1;
+        continue;
+      }
+    vlib_cli_output (vm, "%U", format_session, s, verbose);
+  }));
+  /* *INDENT-ON* */
+
+  if (!n_closed)
+    vlib_cli_output (vm, "Thread %d: active sessions %u", thread_index,
+	             pool_elts (pool) - n_closed);
+  else
+    vlib_cli_output (vm, "Thread %d: active sessions %u closed %u",
+                     thread_index, pool_elts (pool) - n_closed, n_closed);
+}
+
+static int
+session_cli_filter_check (session_t *s, session_state_t state,
+                          transport_proto_t tp)
+{
+  if (state == SESSION_N_STATES)
+    return 1;
+  return (s->session_state == state && session_get_transport_proto (s) == tp);
+}
+
+static void
+session_cli_show_session_filter (vlib_main_t *vm, u32 thread_index, u32 start,
+                                 u32 end, session_state_t state, int verbose)
+{
+  session_main_t *smm = &session_main;
+  session_t *pool, *s;
+  u32 count = 0;
+
+  pool = smm->wrk[thread_index].sessions;
+
+  for (i = start; i < end; i++)
+    {
+      if (pool_is_free_index (pool, i))
+	continue;
+
+      s = pool_elt_at_index (pool, i);
+
+      if (session_cli_filter_check (s, state))
+	{
+	  count += 1;
+	  if (verbose)
+	    {
+	      if (count > 50 || (verbose > 1 && count > 10))
+		continue;
+	      vlib_cli_output (vm, "%U", format_session, s, verbose);
+	    }
+	}
+    }
+  vlib_cli_output (vm, "Thread %d: sessions that matched filter %u",
+                   thread_index, count);
+}
+
 static clib_error_t *
 show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
-  u8 one_session = 0, do_listeners = 0, sst, do_elog = 0;
+  u8 one_session = 0, do_listeners = 0, sst, do_elog = 0, do_filter = 0;
+  u32 track_index, thread_index = 0, start = 0, end = 100, session_index;
+  unformat_input_t _line_input, *line_input = &_line_input;
   session_main_t *smm = &session_main;
-  u32 transport_proto = ~0, track_index;
-  session_t *pool, *s;
-  transport_connection_t *tc;
+  clib_error_t *error = 0;
+  session_t *s;
   app_worker_t *app_wrk;
   int verbose = 0, i;
   const u8 *app_name;
+  transport_proto_t transport_proto = TRANSPORT_N_PROTO;
+  session_state_t state = SESSION_N_STATES;
 
   if (!smm->is_enabled)
     {
       return clib_error_return (0, "session layer is not enabled");
     }
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -258,11 +377,45 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  one_session = 1;
 	}
+      else if (unformat (input, "worker %u index %u", &thread_index,
+                         &session_index))
+	{
+	  s = session_get_if_valid (smm->wrk[thread_index].sessions,
+	                            session_index);
+	  if (!s)
+	    {
+	      vlib_cli_output ("session is not in not allocated");
+	      goto done;
+	    }
+	  one_session = 1;
+	}
+      else if (unformat (input, "state %U", unformat_session_state, &state))
+	do_filter = 1;
+      else if (unformat (input, "proto %U", unformat_transport_proto,
+                         &transport_proto))
+	do_filter = 1;
+      else if (unformat (input, "thread %u range %u %u", &thread_index, &start,
+                         &end))
+	do_filter = 1;
+      else if (unformat (input, "thread %u range %u", &thread_index, &start))
+	{
+	  end = start + 100;
+	  do_filter = 1;
+	}
+      else if (unformat (input, "worker %u", &thread_index))
+	{
+	  start = 0;
+	  end = 100;
+	  do_filter = 1;
+	}
       else if (unformat (input, "elog"))
 	do_elog = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
+	  goto done;
+	}
     }
 
   if (one_session)
@@ -271,6 +424,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (do_elog && s->session_state != SESSION_STATE_LISTENING)
 	{
 	  elog_main_t *em = &vm->elog_main;
+	  transport_connection_t *tc;
 	  f64 dt;
 
 	  tc = session_get_transport (s);
@@ -283,7 +437,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       vlib_cli_output (vm, "%v", str);
       vec_free (str);
-      return 0;
+      goto done;
     }
 
   if (do_listeners)
@@ -301,52 +455,21 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 app_name);
       }));
       /* *INDENT-ON* */
-      return 0;
+      goto done;
     }
 
+  if (do_filter)
+    session_cli_show_session_filter (vm, thread_index, start, end, state,
+                                     transport_proto, verbose );
+
+  /*
+   * Dump worker session pools
+   */
   for (i = 0; i < vec_len (smm->wrk); i++)
-    {
-      u32 once_per_pool = 1, n_closed = 0;
+    session_cli_show_worker_pool (vm, i, verbose);
 
-      pool = smm->wrk[i].sessions;
-      if (!pool_elts (pool))
-	{
-	  vlib_cli_output (vm, "Thread %d: no sessions", i);
-	  continue;
-	}
-
-      if (!verbose)
-	{
-	  vlib_cli_output (vm, "Thread %d: %d sessions", i, pool_elts (pool));
-	  continue;
-	}
-
-      if (once_per_pool && verbose == 1)
-	{
-	  vlib_cli_output (vm, "%s%-50s%-15s%-10s%-10s", i ? "\n" : "",
-			   "Connection", "State", "Rx-f", "Tx-f");
-	  once_per_pool = 0;
-	}
-
-      /* *INDENT-OFF* */
-      pool_foreach (s, pool, ({
-        if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
-          {
-            n_closed += 1;
-            continue;
-          }
-        vlib_cli_output (vm, "%U", format_session, s, verbose);
-      }));
-      /* *INDENT-ON* */
-
-      if (!n_closed)
-	vlib_cli_output (vm, "Thread %d: active sessions %u", i,
-			 pool_elts (pool) - n_closed);
-      else
-	vlib_cli_output (vm, "Thread %d: active sessions %u closed %u", i,
-			 pool_elts (pool) - n_closed, n_closed);
-    }
-
+done:
+  unformat_free (line_input);
   return 0;
 }
 
