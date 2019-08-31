@@ -584,6 +584,14 @@ session_main_get_worker (u32 thread_index)
   return &session_main.wrk[thread_index];
 }
 
+static inline session_worker_t *
+session_main_get_worker_if_valid (u32 thread_index)
+{
+  if (pool_is_free_index (session_main.wrk, thread_index))
+    return 0;
+  return &session_main.wrk[thread_index];
+}
+
 always_inline svm_msg_q_t *
 session_main_get_vpp_event_queue (u32 thread_index)
 {
@@ -598,8 +606,8 @@ session_main_is_enabled ()
 
 #define session_cli_return_if_not_enabled()				\
 do {									\
-    if (!session_main.is_enabled)				\
-      return clib_error_return(0, "session layer is not enabled");	\
+    if (!session_main.is_enabled)					\
+      return clib_error_return (0, "session layer is not enabled");	\
 } while (0)
 
 int session_main_flush_enqueue_events (u8 proto, u32 thread_index);
