@@ -121,21 +121,26 @@ typedef enum
 /*
  * Session states
  */
+#define foreach_session_state				\
+  _(CREATED, "created")					\
+  _(LISTENING, "listening")				\
+  _(CONNECTING, "connecting")				\
+  _(ACCEPTING, "accepting")				\
+  _(READY, "ready")					\
+  _(OPENED, "opened")					\
+  _(TRANSPORT_CLOSING, "transport-closing")		\
+  _(CLOSING, "closing")					\
+  _(APP_CLOSED, "app-closed")				\
+  _(TRANSPORT_CLOSED, "transport-closed")		\
+  _(TRANSPORT_DELETED, "transport-deleted")		\
+  _(CLOSED, "closed")					\
+
 typedef enum
 {
-  SESSION_STATE_CREATED,
-  SESSION_STATE_LISTENING,
-  SESSION_STATE_CONNECTING,
-  SESSION_STATE_ACCEPTING,
-  SESSION_STATE_READY,
-  SESSION_STATE_OPENED,
-  SESSION_STATE_TRANSPORT_CLOSING,
-  SESSION_STATE_CLOSING,
-  SESSION_STATE_APP_CLOSED,
-  SESSION_STATE_TRANSPORT_CLOSED,
-  SESSION_STATE_TRANSPORT_DELETED,
-  SESSION_STATE_CLOSED,
-  SESSION_STATE_N_STATES,
+#define _(sym, str) SESSION_STATE_ ## sym,
+  foreach_session_state
+#undef _
+    SESSION_N_STATES,
 } session_state_t;
 
 typedef enum session_flags_
