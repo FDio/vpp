@@ -57,27 +57,12 @@ format_transport_proto (u8 * s, va_list * args)
   u32 transport_proto = va_arg (*args, u32);
   switch (transport_proto)
     {
-    case TRANSPORT_PROTO_TCP:
-      s = format (s, "TCP");
+#define _(sym, str, sstr) 			\
+    case TRANSPORT_PROTO_ ## sym:		\
+      s = format (s, str);			\
       break;
-    case TRANSPORT_PROTO_UDP:
-      s = format (s, "UDP");
-      break;
-    case TRANSPORT_PROTO_SCTP:
-      s = format (s, "SCTP");
-      break;
-    case TRANSPORT_PROTO_NONE:
-      s = format (s, "NONE");
-      break;
-    case TRANSPORT_PROTO_TLS:
-      s = format (s, "TLS");
-      break;
-    case TRANSPORT_PROTO_UDPC:
-      s = format (s, "UDPC");
-      break;
-    case TRANSPORT_PROTO_QUIC:
-      s = format (s, "QUIC");
-      break;
+      foreach_transport_proto
+#undef _
     default:
       s = format (s, "UNKNOWN");
       break;
@@ -91,27 +76,12 @@ format_transport_proto_short (u8 * s, va_list * args)
   u32 transport_proto = va_arg (*args, u32);
   switch (transport_proto)
     {
-    case TRANSPORT_PROTO_TCP:
-      s = format (s, "T");
+#define _(sym, str, sstr) 			\
+    case TRANSPORT_PROTO_ ## sym:		\
+      s = format (s, sstr);			\
       break;
-    case TRANSPORT_PROTO_UDP:
-      s = format (s, "U");
-      break;
-    case TRANSPORT_PROTO_SCTP:
-      s = format (s, "S");
-      break;
-    case TRANSPORT_PROTO_NONE:
-      s = format (s, "N");
-      break;
-    case TRANSPORT_PROTO_TLS:
-      s = format (s, "J");
-      break;
-    case TRANSPORT_PROTO_UDPC:
-      s = format (s, "U");
-      break;
-    case TRANSPORT_PROTO_QUIC:
-      s = format (s, "Q");
-      break;
+      foreach_transport_proto
+#undef _
     default:
       s = format (s, "?");
       break;
@@ -179,33 +149,16 @@ uword
 unformat_transport_proto (unformat_input_t * input, va_list * args)
 {
   u32 *proto = va_arg (*args, u32 *);
-  if (unformat (input, "tcp"))
-    *proto = TRANSPORT_PROTO_TCP;
-  else if (unformat (input, "TCP"))
-    *proto = TRANSPORT_PROTO_TCP;
-  else if (unformat (input, "udpc"))
-    *proto = TRANSPORT_PROTO_UDPC;
-  else if (unformat (input, "UDPC"))
-    *proto = TRANSPORT_PROTO_UDPC;
-  else if (unformat (input, "udp"))
-    *proto = TRANSPORT_PROTO_UDP;
-  else if (unformat (input, "UDP"))
-    *proto = TRANSPORT_PROTO_UDP;
-  else if (unformat (input, "sctp"))
-    *proto = TRANSPORT_PROTO_SCTP;
-  else if (unformat (input, "SCTP"))
-    *proto = TRANSPORT_PROTO_SCTP;
-  else if (unformat (input, "tls"))
-    *proto = TRANSPORT_PROTO_TLS;
-  else if (unformat (input, "TLS"))
-    *proto = TRANSPORT_PROTO_TLS;
-  else if (unformat (input, "quic"))
-    *proto = TRANSPORT_PROTO_QUIC;
-  else if (unformat (input, "QUIC"))
-    *proto = TRANSPORT_PROTO_QUIC;
-  else
+
+#define _(sym, str, sstr)						\
+  if (unformat (input, str))						\
+    {									\
+      *proto = TRANSPORT_PROTO_ ## sym;					\
+      return 1;								\
+    }
+  foreach_transport_proto
+#undef _
     return 0;
-  return 1;
 }
 
 u32
