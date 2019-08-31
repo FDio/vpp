@@ -54,7 +54,7 @@ quic_echo_on_connected_connect (session_connected_msg_t * mp,
 {
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
-  u8 *uri = format (0, "QUIC://session/%lu", mp->handle);
+  u8 *uri = format (0, "quic://session/%lu", mp->handle);
   u64 i;
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
@@ -107,7 +107,7 @@ quic_echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
   ECHO_LOG (1, "Accept on QSession 0x%lx %u", mp->handle);
-  u8 *uri = format (0, "QUIC://session/%lu", mp->handle);
+  u8 *uri = format (0, "quic://session/%lu", mp->handle);
   u32 i;
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
@@ -303,7 +303,7 @@ quic_echo_retry_connect (u32 session_index)
   else
     {
       session = pool_elt_at_index (em->sessions, session_index);
-      uri = format (0, "QUIC://session/%lu", session->vpp_session_handle);
+      uri = format (0, "quic://session/%lu", session->vpp_session_handle);
       ECHO_LOG (1, "Retrying connect %s", uri);
       echo_send_rpc (em, echo_send_connect, (void *) uri, session_index);
     }
