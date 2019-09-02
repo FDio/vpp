@@ -27,6 +27,10 @@ defaultmapping = {
     'acl_interface_list_dump': {'sw_if_index': 4294967295, },
     'app_namespace_add_del': {'sw_if_index': 4294967295, },
     'bd_ip_mac_add_del': {'is_add': 1, },
+    'bfd_udp_add': {'is_authenticated': False, 'bfd_key_id': None,
+                    'conf_key_id': None},
+    'bfd_udp_auth_activate': {'bfd_key_id': None, 'conf_key_id': None,
+                              'is_delayed': False},
     'bier_disp_entry_add_del': {'next_hop_rpf_id': -1, 'next_hop_is_ip4': 1,
                                 'is_add': 1, },
     'bier_disp_table_add_del': {'is_add': 1, },
@@ -272,7 +276,7 @@ class VppPapiProvider(object):
             for i, o in enumerate(fields[3:]):
                 try:
                     d[o] = a[i]
-                except:
+                except BaseException:
                     break
 
             # Default override
@@ -761,86 +765,6 @@ class VppPapiProvider(object):
                  'mt_n_paths': len(paths),
                  'mt_paths': paths,
              }})
-
-    def bfd_udp_add(self, sw_if_index, desired_min_tx, required_min_rx,
-                    detect_mult, local_addr, peer_addr, is_ipv6=0,
-                    bfd_key_id=None, conf_key_id=None):
-        if bfd_key_id is None:
-            return self.api(self.papi.bfd_udp_add,
-                            {
-                                'sw_if_index': sw_if_index,
-                                'desired_min_tx': desired_min_tx,
-                                'required_min_rx': required_min_rx,
-                                'local_addr': local_addr,
-                                'peer_addr': peer_addr,
-                                'is_ipv6': is_ipv6,
-                                'detect_mult': detect_mult,
-                            })
-        else:
-            return self.api(self.papi.bfd_udp_add,
-                            {
-                                'sw_if_index': sw_if_index,
-                                'desired_min_tx': desired_min_tx,
-                                'required_min_rx': required_min_rx,
-                                'local_addr': local_addr,
-                                'peer_addr': peer_addr,
-                                'is_ipv6': is_ipv6,
-                                'detect_mult': detect_mult,
-                                'is_authenticated': 1,
-                                'bfd_key_id': bfd_key_id,
-                                'conf_key_id': conf_key_id,
-                            })
-
-    def bfd_udp_mod(self, sw_if_index, desired_min_tx, required_min_rx,
-                    detect_mult, local_addr, peer_addr, is_ipv6=0):
-        return self.api(self.papi.bfd_udp_mod,
-                        {
-                            'sw_if_index': sw_if_index,
-                            'desired_min_tx': desired_min_tx,
-                            'required_min_rx': required_min_rx,
-                            'local_addr': local_addr,
-                            'peer_addr': peer_addr,
-                            'is_ipv6': is_ipv6,
-                            'detect_mult': detect_mult,
-                        })
-
-    def bfd_udp_auth_activate(self, sw_if_index, local_addr, peer_addr,
-                              is_ipv6=0, bfd_key_id=None, conf_key_id=None,
-                              is_delayed=False):
-        return self.api(self.papi.bfd_udp_auth_activate,
-                        {
-                            'sw_if_index': sw_if_index,
-                            'local_addr': local_addr,
-                            'peer_addr': peer_addr,
-                            'is_ipv6': is_ipv6,
-                            'is_delayed': 1 if is_delayed else 0,
-                            'bfd_key_id': bfd_key_id,
-                            'conf_key_id': conf_key_id,
-                        })
-
-    def bfd_udp_session_set_flags(self, admin_up_down, sw_if_index, local_addr,
-                                  peer_addr, is_ipv6=0):
-        return self.api(self.papi.bfd_udp_session_set_flags, {
-            'admin_up_down': admin_up_down,
-            'sw_if_index': sw_if_index,
-            'local_addr': local_addr,
-            'peer_addr': peer_addr,
-            'is_ipv6': is_ipv6,
-        })
-
-    def want_bfd_events(self, enable_disable=1):
-        return self.api(self.papi.want_bfd_events, {
-            'enable_disable': enable_disable,
-            'pid': os.getpid(),
-        })
-
-    def bfd_auth_set_key(self, conf_key_id, auth_type, key):
-        return self.api(self.papi.bfd_auth_set_key, {
-            'conf_key_id': conf_key_id,
-            'auth_type': auth_type,
-            'key': key,
-            'key_len': len(key),
-        })
 
     def classify_add_del_table(
             self,
