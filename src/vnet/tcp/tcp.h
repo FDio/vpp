@@ -31,6 +31,7 @@
 #define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
 #define TCP_CC_DATA_SZ 24
+#define TCP_MAX_GSO_SZ 65536
 
 #define TCP_DUPACK_THRESHOLD 	3
 #define TCP_IW_N_SEGMENTS 	10
@@ -304,6 +305,7 @@ typedef struct _tcp_connection
   transport_connection_t connection;  /**< Common transport data. First! */
 
   u8 state;			/**< TCP state as per tcp_state_t */
+  u8 is_tso;	  /** is connection could use tso */
   u16 flags;			/**< Connection flags (see tcp_conn_flags_e) */
   u32 timers[TCP_N_TIMERS];	/**< Timer handles into timer wheel */
 

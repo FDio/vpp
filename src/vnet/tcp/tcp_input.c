@@ -14,6 +14,8 @@
  */
 
 #include <vppinfra/sparse_vec.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/session/session.h>
@@ -2303,6 +2305,37 @@ tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
   return tc;
 }
 
+always_inline void
+tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  const dpo_id_t *dpo;
+  const load_balance_t *lb;
+  vnet_hw_interface_t *hw_if;
+  u32 sw_if_idx, lb_idx;
+
+  if (is_ipv4)
+    {
+      ip4_address_t *dst_addr = &(tc->c_rmt_ip.ip4);
+      lb_idx = ip4_fib_forwarding_lookup (tc->c_fib_index, dst_addr);
+    }
+  else
+    {
+      ip6_address_t *dst_addr = &(tc->c_rmt_ip.ip6);
+      lb_idx = ip6_fib_table_fwding_lookup (tc->c_fib_index, dst_addr);
+    }
+
+  lb = load_balance_get (lb_idx);
+  dpo = load_balance_get_bucket_i (lb, 0);
+
+  sw_if_idx = dpo->dpoi_index;
+  hw_if = vnet_get_sup_hw_interface (vnm, sw_if_idx);
+
+  tc->is_tso =
+    ((hw_if->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0) ? 0 : 1;
+}
+
+
 always_inline uword
 tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame, int is_ip4)
@@ -2519,6 +2552,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto drop;
 	}
 
+      tcp_check_tx_offload (new_tc0, is_ip4);
+
       /* Read data, if any */
       if (PREDICT_FALSE (vnet_buffer (b0)->tcp.data_len))
 	{
@@ -2704,6 +2739,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Switch state to ESTABLISHED */
 	  tc0->state = TCP_STATE_ESTABLISHED;
 	  TCP_EVT (TCP_EVT_STATE_CHANGE, tc0);
+
+	  tcp_check_tx_offload (tc0, is_ip4);
 
 	  /* Initialize session variables */
 	  tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
