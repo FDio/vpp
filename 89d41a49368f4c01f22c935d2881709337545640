@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "80fe4a7a_88650844",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 9
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T13:02:59Z",
+      "side": 1,
+      "message": "Is it made available in this Change?\n\nIf yes, change the grammar to make it obvious (and probably add a unit test).\n\nIf no, do not mention it here. Perhaps open Jira ticket for such new feature (with the example code), and add a comment near the code to be edited (mentioning the ticket).",
+      "range": {
+        "startLine": 21,
+        "startChar": 20,
+        "endLine": 21,
+        "endChar": 43
+      },
+      "revId": "89d41a49368f4c01f22c935d2881709337545640",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
