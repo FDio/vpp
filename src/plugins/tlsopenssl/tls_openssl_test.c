@@ -134,7 +134,7 @@ api_tls_openssl_set_engine (vat_main_t * vam)
 
   /* Construct the API message */
   M (TLS_OPENSSL_SET_ENGINE, mp);
-  mp->async = async;
+  mp->async_mode = async;
 
   clib_memcpy_fast (mp->engine, engine_name,
 		    strnlen ((const char *) engine_name, 64));

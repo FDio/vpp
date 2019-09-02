@@ -10,7 +10,7 @@ define tls_openssl_set_engine {
     u32 context;
 
     /* if async is enabled */
-    u32 async;
+    u32 async_mode;
 
     /* engine name */
     u8 engine[64];

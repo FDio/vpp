@@ -66,7 +66,7 @@ vl_api_tls_openssl_set_engine_t_handler (vl_api_tls_openssl_set_engine_t *mp)
   alg = (char *)&mp->algorithm;
   ciphers = (char *)&mp->ciphers;
 
-  if (mp->async)
+  if (mp->async_mode)
     {
       om->async = 1;
       openssl_async_node_enable_disable (1);
