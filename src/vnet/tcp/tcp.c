@@ -1175,6 +1175,17 @@ tcp_half_open_session_get_transport (u32 conn_index)
   return &tc->connection;
 }
 
+static u16
+tcp_session_cal_goal_size (tcp_connection_t * tc)
+{
+  u16 goal_size = tc->snd_mss;
+
+  goal_size = TCP_MAX_GSO_SZ - tc->snd_mss % TCP_MAX_GSO_SZ;
+  goal_size = clib_min (goal_size, tc->snd_wnd / 2);
+
+  return goal_size;
+}
+
 /**
  * Compute maximum segment size for session layer.
  *
@@ -1191,6 +1202,11 @@ tcp_session_send_mss (transport_connection_t * trans_conn)
    * in a segment. This also makes sure that options are updated according to
    * the current state of the connection. */
   tcp_update_burst_snd_vars (tc);
+
+  if (PREDICT_FALSE (tc->is_tso))
+    {
+      return tcp_session_cal_goal_size (tc);
+    }
 
   return tc->snd_mss;
 }
