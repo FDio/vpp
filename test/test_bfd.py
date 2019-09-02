@@ -25,9 +25,11 @@ from util import ppp
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_lo_interface import VppLoInterface
-from vpp_papi_provider import UnexpectedApiReturnValueError
+from vpp_papi_provider import UnexpectedApiReturnValueError, \
+    CliFailedCommandError
 from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_gre_interface import VppGreInterface
+from vpp_papi import VppEnum
 
 USEC_IN_SEC = 1000000
 
@@ -273,7 +275,8 @@ class BFDAPITestCase(VppTestCase):
         self.assertFalse(echo_source.have_usable_ip4)
         self.assertFalse(echo_source.have_usable_ip6)
 
-        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.vapi.bfd_udp_set_echo_source(
+            sw_if_index=self.loopback0.sw_if_index)
         echo_source = self.vapi.bfd_udp_get_echo_source()
         self.assertTrue(echo_source.is_set)
         self.assertEqual(echo_source.sw_if_index, self.loopback0.sw_if_index)
@@ -287,7 +290,7 @@ class BFDAPITestCase(VppTestCase):
         self.assertTrue(echo_source.is_set)
         self.assertEqual(echo_source.sw_if_index, self.loopback0.sw_if_index)
         self.assertTrue(echo_source.have_usable_ip4)
-        self.assertEqual(echo_source.ip4_addr, echo_ip4)
+        self.assertEqual(echo_source.ip4_addr.packed, echo_ip4)
         self.assertFalse(echo_source.have_usable_ip6)
 
         self.loopback0.config_ip6()
@@ -298,9 +301,9 @@ class BFDAPITestCase(VppTestCase):
         self.assertTrue(echo_source.is_set)
         self.assertEqual(echo_source.sw_if_index, self.loopback0.sw_if_index)
         self.assertTrue(echo_source.have_usable_ip4)
-        self.assertEqual(echo_source.ip4_addr, echo_ip4)
+        self.assertEqual(echo_source.ip4_addr.packed, echo_ip4)
         self.assertTrue(echo_source.have_usable_ip6)
-        self.assertEqual(echo_source.ip6_addr, echo_ip6)
+        self.assertEqual(echo_source.ip6_addr.packed, echo_ip6)
 
         self.vapi.bfd_udp_del_echo_source()
         echo_source = self.vapi.bfd_udp_get_echo_source()
@@ -625,20 +628,11 @@ def verify_event(test, event, expected_state):
     test.assert_equal(e.sw_if_index,
                       test.vpp_session.interface.sw_if_index,
                       "BFD interface index")
-    is_ipv6 = 0
-    if test.vpp_session.af == AF_INET6:
-        is_ipv6 = 1
-    test.assert_equal(e.is_ipv6, is_ipv6, "is_ipv6")
-    if test.vpp_session.af == AF_INET:
-        test.assert_equal(e.local_addr[:4], test.vpp_session.local_addr_n,
-                          "Local IPv4 address")
-        test.assert_equal(e.peer_addr[:4], test.vpp_session.peer_addr_n,
-                          "Peer IPv4 address")
-    else:
-        test.assert_equal(e.local_addr, test.vpp_session.local_addr_n,
-                          "Local IPv6 address")
-        test.assert_equal(e.peer_addr, test.vpp_session.peer_addr_n,
-                          "Peer IPv6 address")
+
+    test.assert_equal(str(e.local_addr), test.vpp_session.local_addr,
+                      "Local IPv6 address")
+    test.assert_equal(str(e.peer_addr), test.vpp_session.peer_addr,
+                      "Peer IPv6 address")
     test.assert_equal(e.state, expected_state, BFDState)
 
 
@@ -726,7 +720,7 @@ class BFD4TestCase(VppTestCase):
             self.vpp_session.add_vpp_config()
             self.vpp_session.admin_up()
             self.test_session = BFDTestSession(self, self.pg0, AF_INET)
-        except:
+        except BaseException:
             self.vapi.want_bfd_events(enable_disable=0)
             raise
 
@@ -1158,7 +1152,8 @@ class BFD4TestCase(VppTestCase):
                           self.vpp_session.required_min_rx,
                           "BFD required min rx interval")
         self.test_session.send_packet()
-        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.vapi.bfd_udp_set_echo_source(
+            sw_if_index=self.loopback0.sw_if_index)
         echo_seen = False
         # should be turned on - loopback echo packets
         for dummy in range(3):
@@ -1203,7 +1198,8 @@ class BFD4TestCase(VppTestCase):
         self.test_session.send_packet()
         detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
-        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.vapi.bfd_udp_set_echo_source(
+            sw_if_index=self.loopback0.sw_if_index)
         # echo function should be used now, but we will drop the echo packets
         verified_diag = False
         for dummy in range(3):
@@ -1241,7 +1237,8 @@ class BFD4TestCase(VppTestCase):
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
-        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.vapi.bfd_udp_set_echo_source(
+            sw_if_index=self.loopback0.sw_if_index)
         # wait for first echo packet
         while True:
             p = self.pg0.wait_for_packet(1)
@@ -1273,7 +1270,8 @@ class BFD4TestCase(VppTestCase):
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
-        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.vapi.bfd_udp_set_echo_source(
+            sw_if_index=self.loopback0.sw_if_index)
         # wait for first echo packet
         while True:
             p = self.pg0.wait_for_packet(1)
@@ -1304,7 +1302,8 @@ class BFD4TestCase(VppTestCase):
         """ stale echo packets don't keep a session up """
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
-        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.vapi.bfd_udp_set_echo_source(
+            sw_if_index=self.loopback0.sw_if_index)
         self.test_session.send_packet()
         # should be turned on - loopback echo packets
         echo_packet = None
@@ -1357,7 +1356,8 @@ class BFD4TestCase(VppTestCase):
         """ echo packets with invalid checksum don't keep a session up """
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
-        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.vapi.bfd_udp_set_echo_source(
+            sw_if_index=self.loopback0.sw_if_index)
         self.test_session.send_packet()
         # should be turned on - loopback echo packets
         timeout_at = None
@@ -1538,7 +1538,7 @@ class BFD6TestCase(VppTestCase):
             self.vpp_session.admin_up()
             self.test_session = BFDTestSession(self, self.pg0, AF_INET6)
             self.logger.debug(self.vapi.cli("show adj nbr"))
-        except:
+        except BaseException:
             self.vapi.want_bfd_events(enable_disable=0)
             raise
 
@@ -1654,7 +1654,8 @@ class BFD6TestCase(VppTestCase):
                           self.vpp_session.required_min_rx,
                           "BFD required min rx interval")
         self.test_session.send_packet()
-        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.vapi.bfd_udp_set_echo_source(
+            sw_if_index=self.loopback0.sw_if_index)
         echo_seen = False
         # should be turned on - loopback echo packets
         for dummy in range(3):
@@ -1736,7 +1737,7 @@ class BFDFIBTestCase(VppTestCase):
 
     def tearDown(self):
         if not self.vpp_dead:
-            self.vapi.want_bfd_events(enable_disable=0)
+            self.vapi.want_bfd_events(enable_disable=False)
 
         super(BFDFIBTestCase, self).tearDown()
 
@@ -1929,7 +1930,7 @@ class BFDSHA1TestCase(VppTestCase):
 
     def tearDown(self):
         if not self.vpp_dead:
-            self.vapi.want_bfd_events(enable_disable=0)
+            self.vapi.want_bfd_events(enable_disable=False)
         self.vapi.collect_events()  # clear the event queue
         super(BFDSHA1TestCase, self).tearDown()
 
@@ -2166,7 +2167,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
 
     def tearDown(self):
         if not self.vpp_dead:
-            self.vapi.want_bfd_events(enable_disable=0)
+            self.vapi.want_bfd_events(enable_disable=False)
         self.vapi.collect_events()  # clear the event queue
         super(BFDAuthOnOffTestCase, self).tearDown()
 
@@ -2376,7 +2377,7 @@ class BFDCLITestCase(VppTestCase):
 
     def tearDown(self):
         try:
-            self.vapi.want_bfd_events(enable_disable=0)
+            self.vapi.want_bfd_events(enable_disable=False)
         except UnexpectedApiReturnValueError:
             # some tests aren't subscribed, so this is not an issue
             pass
@@ -2391,7 +2392,11 @@ class BFDCLITestCase(VppTestCase):
 
     def cli_verify_response(self, cli, expected):
         """ execute a CLI, asserting that the response matches expectation """
-        self.assert_equal(self.vapi.cli(cli).strip(),
+        try:
+            reply = self.vapi.cli(cli)
+        except CliFailedCommandError as cli_error:
+            reply = str(cli_error)
+        self.assert_equal(reply.strip(),
                           expected,
                           "CLI command response")
 
@@ -2764,6 +2769,7 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_no_response(cli_del)
         self.cli_verify_response("show bfd echo-source",
                                  "UDP echo source is not set.")
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
