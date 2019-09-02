@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "14782d9d_bdab7569",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 11
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T14:23:05Z",
+      "side": 1,
+      "message": "Ascii encoding is also required (making it \"u7\" array)?",
+      "range": {
+        "startLine": 17,
+        "startChar": 36,
+        "endLine": 17,
+        "endChar": 37
+      },
+      "revId": "a6c000606b335f900c5331c15125dc058d394759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4c50a4af_ddf56d00",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T14:23:05Z",
+      "side": 1,
+      "message": "A person with Chinese locale set was complaining to me (few weeks ago) that show_version API command does not work for locally built VPP images. This will make it even harder to fix.",
+      "range": {
+        "startLine": 130,
+        "startChar": 31,
+        "endLine": 130,
+        "endChar": 38
+      },
+      "revId": "a6c000606b335f900c5331c15125dc058d394759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
