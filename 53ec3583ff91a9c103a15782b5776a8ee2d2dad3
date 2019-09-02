@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5d0f70e9_09e7ed10",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 8
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-02T11:14:24Z",
+      "side": 1,
+      "message": "That was the intention. string name[64] must be nul-terminated. Essentially a C-string.",
+      "parentUuid": "6e8ab507_3dccd655",
+      "range": {
+        "startLine": 17,
+        "startChar": 22,
+        "endLine": 17,
+        "endChar": 45
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7547f69b_98324490",
         "filename": "src/plugins/map/map_api.c",
         "patchSetId": 8
@@ -36,6 +60,30 @@
       "writtenOn": "2019-09-02T09:00:31Z",
       "side": 1,
       "message": "How do you know the destination already has NULL at the last character? Was there a memset making sure of that?",
+      "range": {
+        "startLine": 142,
+        "startChar": 50,
+        "endLine": 142,
+        "endChar": 71
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d3198d6_6ec342a6",
+        "filename": "src/plugins/map/map_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-02T11:14:24Z",
+      "side": 1,
+      "message": "https://en.cppreference.com/w/c/string/byte/strncpy\n\nstrncpy(_s) adds nul terminator.",
+      "parentUuid": "7547f69b_98324490",
       "range": {
         "startLine": 142,
         "startChar": 50,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "b55096ec_d085a9c7",
+        "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_serializer.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-02T11:14:24Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c58f997c_04340d83",
+      "range": {
+        "startLine": 28,
+        "startChar": 40,
+        "endLine": 28,
+        "endChar": 41
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4888ea73_16ce107e",
         "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
         "patchSetId": 8
@@ -91,6 +163,30 @@
       "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "838e45d7_8aaeec69",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-02T11:14:24Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4888ea73_16ce107e",
+      "range": {
+        "startLine": 130,
+        "startChar": 20,
+        "endLine": 130,
+        "endChar": 26
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -137,6 +233,30 @@
       "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "64270913_61c76f06",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-02T11:14:24Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1af36474_a2be51af",
+      "range": {
+        "startLine": 22,
+        "startChar": 18,
+        "endLine": 22,
+        "endChar": 23
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
