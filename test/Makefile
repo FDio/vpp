@@ -191,9 +191,7 @@ sanity: verify-no-running-vpp
 
 .PHONY: ext
 ext:
-	@if [ "$(EXTENDED_TESTS)" = "yes" ]; then\
-		make -C ext;\
-	fi
+	make -C ext
 
 test-dep: verify-test-dir $(PAPI_INSTALL_DONE)
 
