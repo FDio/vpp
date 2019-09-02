@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "13c343a9_3f8a5696",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "Isn\u0027t this GSO?",
+      "range": {
+        "startLine": 7,
+        "startChar": 12,
+        "endLine": 7,
+        "endChar": 15
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b7db0bec_e53f51f5",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1209,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "if (PREDICT_FALSE (tc-\u003eis_tso))\n  return tcp_gso_mss (tc);\n\nreturn tc-\u003esnd_mss;",
+      "range": {
+        "startLine": 1209,
+        "startChar": 9,
+        "endLine": 1209,
+        "endChar": 39
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a798633f_4cddaed6",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "Move it above flags to at least have a u8 pair before the u16.",
+      "range": {
+        "startLine": 309,
+        "startChar": 5,
+        "endLine": 309,
+        "endChar": 11
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76b246dd_f5fb8ab3",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "Move to the end, this is not critical.",
+      "range": {
+        "startLine": 325,
+        "startChar": 2,
+        "endLine": 325,
+        "endChar": 19
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87fdfd38_4605829b",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2309,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "You can drop the \"46\" from the name",
+      "range": {
+        "startLine": 2309,
+        "startChar": 0,
+        "endLine": 2309,
+        "endChar": 22
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d628cdb4_2193b546",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2741,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "You\u0027re missing the same check on syn-sent branch",
+      "range": {
+        "startLine": 2741,
+        "startChar": 3,
+        "endLine": 2741,
+        "endChar": 25
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fcc8493d_4ecd5b72",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2138,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "Probably you can check for VLIB_BUFFER_TOTAL_LENGTH_VALID flag on the buffer and if not set you can return.",
+      "range": {
+        "startLine": 2138,
+        "startChar": 16,
+        "endLine": 2138,
+        "endChar": 18
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "645df409_cc369e3e",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2148,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "Is this debug could? Could you remove it?",
+      "range": {
+        "startLine": 2148,
+        "startChar": 6,
+        "endLine": 2148,
+        "endChar": 13
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5cef154b_4bc92494",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2152,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be b-\u003ecurrent_length + b-\u003etotal_length_not_including_first_buffer?",
+      "range": {
+        "startLine": 2152,
+        "startChar": 35,
+        "endLine": 2152,
+        "endChar": 46
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

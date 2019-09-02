@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c43a7e39_113b3542",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 706,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-02T16:50:21Z",
+      "side": 0,
+      "message": "We want to make max_paced_burst 0 if it\u0027s less than a minimum sized packet. Use TRANSPORT_PACER_MIN_BURST in this comparison instead of mss.",
+      "range": {
+        "startLine": 706,
+        "startChar": 6,
+        "endLine": 706,
+        "endChar": 70
+      },
+      "revId": "ddf625d6035d9e472bcb1a2b0197f6fd30278583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
