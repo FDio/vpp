@@ -2126,7 +2126,29 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
       b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
       vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
       vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+      b0->flags |=
+	VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
       th0->checksum = 0;
+    }
+}
+
+always_inline void
+tcp46_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
+{
+  if (!(b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+    return;
+  u16 data_len =
+    b->current_length + b->total_length_not_including_first_buffer -
+    sizeof (tcp_header_t) - tc->snd_opts_len;
+
+  if (data_len > tc->snd_mss)
+    {
+      ASSERT ((b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID) != 0);
+      ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
+      b->flags |= VNET_BUFFER_F_GSO;
+      vnet_buffer2 (b)->gso_l4_hdr_sz =
+	sizeof (tcp_header_t) + tc->snd_opts_len;
+      vnet_buffer2 (b)->gso_size = tc->snd_mss;
     }
 }
 
@@ -2209,6 +2231,9 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       tcp_output_push_ip (vm, b[0], tc0, is_ip4);
       tcp_output_push_ip (vm, b[1], tc1, is_ip4);
 
+      tcp46_check_if_gso (tc0, b[0]);
+      tcp46_check_if_gso (tc1, b[1]);
+
       tcp_output_handle_packet (tc0, b[0], error_node, &next[0], is_ip4);
       tcp_output_handle_packet (tc1, b[1], error_node, &next[1], is_ip4);
 
@@ -2231,6 +2256,7 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				thread_index);
 
       tcp_output_push_ip (vm, b[0], tc0, is_ip4);
+      tcp46_check_if_gso (tc0, b[0]);
       tcp_output_handle_packet (tc0, b[0], error_node, &next[0], is_ip4);
 
       b += 1;
