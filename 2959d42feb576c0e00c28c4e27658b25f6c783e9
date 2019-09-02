@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6ce8ff65_cfd817dc",
+        "filename": "src/vlibmemory/memclnt.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T12:30:21Z",
+      "side": 1,
+      "message": "The current computation of CRC apparently considers the two types fully equivalent.\nNot sure I agree in principle, but this time it happens to work.",
+      "range": {
+        "startLine": 37,
+        "startChar": 4,
+        "endLine": 37,
+        "endChar": 26
+      },
+      "revId": "2959d42feb576c0e00c28c4e27658b25f6c783e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
