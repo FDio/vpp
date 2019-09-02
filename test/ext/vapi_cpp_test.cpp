@@ -148,7 +148,7 @@ START_TEST (test_loopbacks_1)
     Sw_interface_dump d (con);
     auto &p = d.get_request ().get_payload ();
     p.name_filter_valid = 0;
-    memset (p.name_filter, 0, sizeof (p.name_filter));
+    memset (&p.name_filter, 0, sizeof (p.name_filter));
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
@@ -190,7 +190,7 @@ START_TEST (test_loopbacks_1)
     Sw_interface_dump d (con);
     auto &p = d.get_request ().get_payload ();
     p.name_filter_valid = 0;
-    memset (p.name_filter, 0, sizeof (p.name_filter));
+    memset (&p.name_filter, 0, sizeof (p.name_filter));
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
@@ -308,7 +308,7 @@ START_TEST (test_loopbacks_2)
   Sw_interface_dump d (con, std::ref (swdcb));
   auto &p = d.get_request ().get_payload ();
   p.name_filter_valid = 0;
-  memset (p.name_filter, 0, sizeof (p.name_filter));
+  memset (&p.name_filter, 0, sizeof (p.name_filter));
   auto rv = d.execute ();
   ck_assert_int_eq (VAPI_OK, rv);
   WAIT_FOR_RESPONSE (d, rv);
@@ -337,7 +337,7 @@ START_TEST (test_loopbacks_2)
     Sw_interface_dump d (con);
     auto &p = d.get_request ().get_payload ();
     p.name_filter_valid = 0;
-    memset (p.name_filter, 0, sizeof (p.name_filter));
+    memset (&p.name_filter, 0, sizeof (p.name_filter));
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);

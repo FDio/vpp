@@ -574,7 +574,7 @@ START_TEST (test_loopbacks_1)
       clib_memset (&seen, 0, sizeof (seen));
       dump = vapi_alloc_sw_interface_dump (ctx);
       dump->payload.name_filter_valid = 0;
-      clib_memset (dump->payload.name_filter, 0,
+      clib_memset (&dump->payload.name_filter, 0,
 		   sizeof (dump->payload.name_filter));
       while (VAPI_EAGAIN ==
 	     (rv =
@@ -606,7 +606,7 @@ START_TEST (test_loopbacks_1)
   clib_memset (&seen, 0, sizeof (seen));
   dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  clib_memset (dump->payload.name_filter, 0,
+  clib_memset (&dump->payload.name_filter, 0,
 	       sizeof (dump->payload.name_filter));
   while (VAPI_EAGAIN ==
 	 (rv =
@@ -731,7 +731,7 @@ START_TEST (test_loopbacks_2)
   sw_interface_dump_ctx dctx = { false, num_ifs, sw_if_indexes, seen, 0 };
   vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  clib_memset (dump->payload.name_filter, 0,
+  clib_memset (&dump->payload.name_filter, 0,
 	       sizeof (dump->payload.name_filter));
   while (VAPI_EAGAIN ==
 	 (rv =
@@ -772,7 +772,7 @@ START_TEST (test_loopbacks_2)
   dctx.last_called = false;
   dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  clib_memset (dump->payload.name_filter, 0,
+  clib_memset (&dump->payload.name_filter, 0,
 	       sizeof (dump->payload.name_filter));
   while (VAPI_EAGAIN ==
 	 (rv =
