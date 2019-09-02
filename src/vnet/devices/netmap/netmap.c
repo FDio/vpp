@@ -148,8 +148,6 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
 
   if (is_pipe)
     req->nr_flags = is_master ? NR_REG_PIPE_MASTER : NR_REG_PIPE_SLAVE;
-  else
-    req->nr_flags = NR_REG_ALL_NIC;
 
   req->nr_flags |= NR_ACCEPT_VNET_HDR;
   snprintf (req->nr_name, IFNAMSIZ, "%s", if_name);
@@ -183,7 +181,7 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
   nif->last_rx_ring = 0;
   nif->first_tx_ring = 0;
   nif->last_tx_ring = 0;
-  nif->host_if_name = if_name;
+  nif->host_if_name = vec_dup (if_name);
   nif->per_interface_next_index = ~0;
 
   if (tm->n_vlib_mains > 1)
