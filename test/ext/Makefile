@@ -8,6 +8,10 @@ ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
 VAPI_CPPBIN=
 endif
 
+ifeq ($(filter yes,$(EXTENDED_TESTS)),$(EXTENDED_TESTS))
+VOM_BIN=
+endif
+
 VAPI_LIBS = \
   -L$(VPP_INSTALL_PATH)/vpp/lib \
   -lvppinfra -lvlibmemoryclient -lsvm -lpthread -lcheck -lrt -lm -lvapiclient
