@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a33c6da9_aacd0a15",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1644,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2019-09-02T19:03:38Z",
+      "side": 1,
+      "message": "Does it make sense to roll this section into the code below? A quick glance suggests it\u0027s doing the same work with no-op\u0027s for the memmove and subsequent output; meaning I think it may work without change other than eliminating this side of the conditional.",
+      "range": {
+        "startLine": 1633,
+        "startChar": 0,
+        "endLine": 1644,
+        "endChar": 3
+      },
+      "revId": "26a777c171510e709ae52a721def814c29e4ca0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
