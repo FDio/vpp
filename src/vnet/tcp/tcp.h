@@ -31,6 +31,7 @@
 #define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
 #define TCP_CC_DATA_SZ 24
+#define TCP_MAX_GSO_SZ 65536
 
 #define TCP_DUPACK_THRESHOLD 	3
 #define TCP_IW_N_SEGMENTS 	10
@@ -305,6 +306,7 @@ typedef struct _tcp_connection
 
   u8 state;			/**< TCP state as per tcp_state_t */
   u16 flags;			/**< Connection flags (see tcp_conn_flags_e) */
+  u8 is_tso;	  /** is connection could use tso */
   u32 timers[TCP_N_TIMERS];	/**< Timer handles into timer wheel */
 
   u64 segs_in;		/** RFC4022/4898 tcpHCInSegs/tcpEStatsPerfSegsIn */
@@ -320,6 +322,7 @@ typedef struct _tcp_connection
   u32 snd_wl2;		/**< ack number used for last snd.wnd update */
   u32 snd_nxt;		/**< next seq number to be sent */
   u16 snd_mss;		/**< Effective send max seg (data) size */
+  u16 snd_goal_size;
 
   u64 data_segs_in;	/** RFC4898 tcpEStatsPerfDataSegsIn */
   u64 data_segs_out;	/** RFC4898 tcpEStatsPerfDataSegsOut */
