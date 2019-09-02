@@ -49,7 +49,7 @@ static double transport_pacer_period;
 
 #define TRANSPORT_PACER_MIN_MSS 	1460
 #define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
-#define TRANSPORT_PACER_MAX_BURST	(32 * TRANSPORT_PACER_MIN_MSS)
+#define TRANSPORT_PACER_MAX_BURST	(43 * TRANSPORT_PACER_MIN_MSS)
 
 u8 *
 format_transport_proto (u8 * s, va_list * args)
@@ -656,9 +656,10 @@ transport_connection_snd_space (transport_connection_t * tc, u64 time_now,
     {
       time_now >>= SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
       max_paced_burst = spacer_max_burst (&tc->pacer, time_now);
-      max_paced_burst = (max_paced_burst < mss) ? 0 : max_paced_burst;
+      max_paced_burst =
+	(max_paced_burst < TRANSPORT_PACER_MIN_BURST) ? 0 : max_paced_burst;
       snd_space = clib_min (snd_space, max_paced_burst);
-      snd_space = snd_space - snd_space % mss;
+      return snd_space >= mss ? snd_space - snd_space % mss : snd_space;
     }
   return snd_space;
 }
