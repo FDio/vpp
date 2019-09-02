@@ -4,11 +4,9 @@
 import unittest
 import os
 import signal
-from framework import VppTestCase, running_extended_tests, \
-    running_on_centos, VppTestRunner, Worker
+from framework import VppTestCase, running_on_centos, VppTestRunner, Worker
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class VAPITestCase(VppTestCase):
     """ VAPI test """
 
