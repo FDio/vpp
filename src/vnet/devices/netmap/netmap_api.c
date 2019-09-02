@@ -54,7 +54,7 @@ vl_api_netmap_create_t_handler (vl_api_netmap_create_t * mp)
   int rv = 0;
   u8 *if_name = NULL;
 
-  if_name = format (0, "%s", mp->netmap_if_name);
+  if_name = format (0, "%s", vl_api_from_api_string_c (&mp->netmap_if_name));
   vec_add1 (if_name, 0);
 
   rv =
@@ -74,7 +74,7 @@ vl_api_netmap_delete_t_handler (vl_api_netmap_delete_t * mp)
   int rv = 0;
   u8 *if_name = NULL;
 
-  if_name = format (0, "%s", mp->netmap_if_name);
+  if_name = format (0, "%s", vl_api_from_api_string_c (&mp->netmap_if_name));
   vec_add1 (if_name, 0);
 
   rv = netmap_delete_if (vm, if_name);
