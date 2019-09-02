@@ -37,6 +37,10 @@ class QUICAppWorker(Worker):
 
 class QUICTestCase(VppTestCase):
     """ QUIC Test Case """
+    @classmethod
+    def setUpClass(cls):
+        cls.extra_vpp_plugin_config.append("plugin quic_plugin.so { enable }")
+        super(QUICTestCase, cls).setUpClass()
 
     def setUp(self):
         super(QUICTestCase, self).setUp()
