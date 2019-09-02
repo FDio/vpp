@@ -9,6 +9,8 @@ from scapy.fields import BitField, BitEnumField, XByteField, FlagsField,\
     ConditionalField, StrField
 from vpp_object import VppObject
 from util import NumericConstant
+from vpp_ip import VppIpAddress
+from vpp_papi import VppEnum
 
 
 class BFDDiagCode(NumericConstant):
@@ -202,7 +204,8 @@ class VppBFDAuthKey(VppObject):
 
     def add_vpp_config(self):
         self.test.vapi.bfd_auth_set_key(
-            self._conf_key_id, self._auth_type, self._key)
+            conf_key_id=self._conf_key_id, auth_type=self._auth_type,
+            key=self._key, key_len=len(self._key))
         self._test.registry.register(self, self.test.logger)
 
     def get_bfd_auth_keys_dump_entry(self):
@@ -217,7 +220,7 @@ class VppBFDAuthKey(VppObject):
         return self.get_bfd_auth_keys_dump_entry() is not None
 
     def remove_vpp_config(self):
-        self.test.vapi.bfd_auth_del_key(self._conf_key_id)
+        self.test.vapi.bfd_auth_del_key(conf_key_id=self._conf_key_id)
 
     def object_id(self):
         return "bfd-auth-key-%s" % self._conf_key_id
@@ -232,13 +235,11 @@ class VppBFDUDPSession(VppObject):
         self._test = test
         self._interface = interface
         self._af = af
-        self._local_addr = local_addr
-        if local_addr is not None:
-            self._local_addr_n = inet_pton(af, local_addr)
+        if local_addr:
+            self._local_addr = VppIpAddress(local_addr)
         else:
-            self._local_addr_n = None
-        self._peer_addr = peer_addr
-        self._peer_addr_n = inet_pton(af, peer_addr)
+            self._local_addr = None
+        self._peer_addr = VppIpAddress(peer_addr)
         self._desired_min_tx = desired_min_tx
         self._required_min_rx = required_min_rx
         self._detect_mult = detect_mult
@@ -274,29 +275,12 @@ class VppBFDUDPSession(VppObject):
                 return self._interface.local_ip6
             else:
                 raise Exception("Unexpected af '%s'" % self.af)
-        return self._local_addr
-
-    @property
-    def local_addr_n(self):
-        """ BFD session local address (VPP address) - raw, suitable for API """
-        if self._local_addr is None:
-            if self.af == AF_INET:
-                return self._interface.local_ip4n
-            elif self.af == AF_INET6:
-                return self._interface.local_ip6n
-            else:
-                raise Exception("Unexpected af '%s'" % self.af)
-        return self._local_addr_n
+        return self._local_addr.address
 
     @property
     def peer_addr(self):
         """ BFD session peer address """
-        return self._peer_addr
-
-    @property
-    def peer_addr_n(self):
-        """ BFD session peer address - raw, suitable for API """
-        return self._peer_addr_n
+        return self._peer_addr.address
 
     def get_bfd_udp_session_dump_entry(self):
         """ get the namedtuple entry from bfd udp session dump """
@@ -305,14 +289,12 @@ class VppBFDUDPSession(VppObject):
             self.test.logger.debug("session entry: %s" % str(s))
             if s.sw_if_index == self.interface.sw_if_index:
                 if self.af == AF_INET \
-                        and s.is_ipv6 == 0 \
-                        and self.interface.local_ip4n == s.local_addr[:4] \
-                        and self.interface.remote_ip4n == s.peer_addr[:4]:
+                        and self.interface.local_ip4 == str(s.local_addr) \
+                        and self.interface.remote_ip4 == str(s.peer_addr):
                     return s
                 if self.af == AF_INET6 \
-                        and s.is_ipv6 == 1 \
-                        and self.interface.local_ip6n == s.local_addr \
-                        and self.interface.remote_ip6n == s.peer_addr:
+                        and self.interface.local_ip6 == str(s.local_addr) \
+                        and self.interface.remote_ip6 == str(s.peer_addr):
                     return s
         return None
 
@@ -357,28 +339,26 @@ class VppBFDUDPSession(VppObject):
         """ activate authentication for this session """
         self._bfd_key_id = bfd_key_id if bfd_key_id else randint(0, 255)
         self._sha1_key = key
-        is_ipv6 = 1 if AF_INET6 == self.af else 0
         conf_key_id = self._sha1_key.conf_key_id
         is_delayed = 1 if delayed else 0
-        self.test.vapi.bfd_udp_auth_activate(self._interface.sw_if_index,
-                                             self.local_addr_n,
-                                             self.peer_addr_n,
-                                             is_ipv6=is_ipv6,
-                                             bfd_key_id=self._bfd_key_id,
-                                             conf_key_id=conf_key_id,
-                                             is_delayed=is_delayed)
+        self.test.vapi.bfd_udp_auth_activate(
+            sw_if_index=self._interface.sw_if_index,
+            local_addr=self.local_addr.encode(),
+            peer_addr=self.peer_addr.encode(),
+            bfd_key_id=self._bfd_key_id,
+            conf_key_id=conf_key_id,
+            is_delayed=is_delayed)
 
     def deactivate_auth(self, delayed=False):
         """ deactivate authentication """
         self._bfd_key_id = None
         self._sha1_key = None
         is_delayed = 1 if delayed else 0
-        is_ipv6 = 1 if AF_INET6 == self.af else 0
-        self.test.vapi.bfd_udp_auth_deactivate(self._interface.sw_if_index,
-                                               self.local_addr_n,
-                                               self.peer_addr_n,
-                                               is_ipv6=is_ipv6,
-                                               is_delayed=is_delayed)
+        self.test.vapi.bfd_udp_auth_deactivate(
+            sw_if_index=self._interface.sw_if_index,
+            local_addr=self.local_addr.encode(),
+            peer_addr=self.peer_addr.encode(),
+            is_delayed=is_delayed)
 
     def modify_parameters(self,
                           detect_mult=None,
@@ -391,28 +371,26 @@ class VppBFDUDPSession(VppObject):
             self._desired_min_tx = desired_min_tx
         if required_min_rx:
             self._required_min_rx = required_min_rx
-        is_ipv6 = 1 if AF_INET6 == self.af else 0
-        self.test.vapi.bfd_udp_mod(self._interface.sw_if_index,
-                                   self.desired_min_tx,
-                                   self.required_min_rx,
-                                   self.detect_mult,
-                                   self.local_addr_n,
-                                   self.peer_addr_n,
-                                   is_ipv6=is_ipv6)
+        self.test.vapi.bfd_udp_mod(sw_if_index=self._interface.sw_if_index,
+                                   desired_min_tx=self.desired_min_tx,
+                                   required_min_rx=self.required_min_rx,
+                                   detect_mult=self.detect_mult,
+                                   local_addr=self.local_addr.encode(),
+                                   peer_addr=self.peer_addr.encode())
 
     def add_vpp_config(self):
-        is_ipv6 = 1 if AF_INET6 == self.af else 0
         bfd_key_id = self._bfd_key_id if self._sha1_key else None
         conf_key_id = self._sha1_key.conf_key_id if self._sha1_key else None
-        self.test.vapi.bfd_udp_add(self._interface.sw_if_index,
-                                   self.desired_min_tx,
-                                   self.required_min_rx,
-                                   self.detect_mult,
-                                   self.local_addr_n,
-                                   self.peer_addr_n,
-                                   is_ipv6=is_ipv6,
+        is_authenticated = True if self._sha1_key else False
+        self.test.vapi.bfd_udp_add(sw_if_index=self._interface.sw_if_index,
+                                   desired_min_tx=self.desired_min_tx,
+                                   required_min_rx=self.required_min_rx,
+                                   detect_mult=self.detect_mult,
+                                   local_addr=self.local_addr.encode(),
+                                   peer_addr=self.peer_addr.encode(),
                                    bfd_key_id=bfd_key_id,
-                                   conf_key_id=conf_key_id)
+                                   conf_key_id=conf_key_id,
+                                   is_authenticated=is_authenticated)
         self._test.registry.register(self, self.test.logger)
 
     def query_vpp_config(self):
@@ -420,11 +398,9 @@ class VppBFDUDPSession(VppObject):
         return session is not None
 
     def remove_vpp_config(self):
-        is_ipv6 = 1 if AF_INET6 == self._af else 0
         self.test.vapi.bfd_udp_del(self._interface.sw_if_index,
-                                   self.local_addr_n,
-                                   self.peer_addr_n,
-                                   is_ipv6=is_ipv6)
+                                   local_addr=self.local_addr.encode(),
+                                   peer_addr=self.peer_addr.encode())
 
     def object_id(self):
         return "bfd-udp-%s-%s-%s-%s" % (self._interface.sw_if_index,
@@ -434,18 +410,15 @@ class VppBFDUDPSession(VppObject):
 
     def admin_up(self):
         """ set bfd session admin-up """
-        is_ipv6 = 1 if AF_INET6 == self._af else 0
-        self.test.vapi.bfd_udp_session_set_flags(1,
-                                                 self._interface.sw_if_index,
-                                                 self.local_addr_n,
-                                                 self.peer_addr_n,
-                                                 is_ipv6=is_ipv6)
+        self.test.vapi.bfd_udp_session_set_flags(
+            flags=VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_ADMIN_UP,
+            sw_if_index=self._interface.sw_if_index,
+            local_addr=self.local_addr.encode(),
+            peer_addr=self.peer_addr.encode())
 
     def admin_down(self):
         """ set bfd session admin-down """
-        is_ipv6 = 1 if AF_INET6 == self._af else 0
-        self.test.vapi.bfd_udp_session_set_flags(0,
-                                                 self._interface.sw_if_index,
-                                                 self.local_addr_n,
-                                                 self.peer_addr_n,
-                                                 is_ipv6=is_ipv6)
+        self.test.vapi.bfd_udp_session_set_flags(
+            flags=0, sw_if_index=self._interface.sw_if_index,
+            local_addr=self.local_addr.encode(),
+            peer_addr=self.peer_addr.encode())
