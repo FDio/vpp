@@ -285,6 +285,30 @@
     },
     {
       "key": {
+        "uuid": "886ff44d_950229f2",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T13:49:25Z",
+      "side": 1,
+      "message": "\u003e That\u0027s checked just above.\n\nThat depends on the type of \"list\" argument. My point is, .encode() can change the length. Example:\n\n$ python\nPython 2.7.16 (default, Apr  6 2019, 01:42:57) \n[GCC 8.3.0] on linux2\nType \"help\", \"copyright\", \"credits\" or \"license\" for more information.\n\u003e\u003e\u003e s \u003d \u0027€\u0027\n\u003e\u003e\u003e len(s)\n3\n\u003e\u003e\u003e s \u003d u\u0027€\u0027\n\u003e\u003e\u003e len(s)\n1\n\u003e\u003e\u003e s \u003d s.encode(\u0027utf-8\u0027)\n\u003e\u003e\u003e len(s)\n3",
+      "parentUuid": "9ed7017e_a9fffd82",
+      "range": {
+        "startLine": 131,
+        "startChar": 19,
+        "endLine": 131,
+        "endChar": 38
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1af36474_a2be51af",
         "filename": "src/vpp/api/vpe.api",
         "patchSetId": 8
