@@ -218,7 +218,7 @@ def _running_on_centos():
     return True if "centos" in os_id.lower() else False
 
 
-running_on_centos = _running_on_centos
+running_on_centos = _running_on_centos()
 
 
 class KeepAliveReporter(object):
