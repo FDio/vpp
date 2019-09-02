@@ -144,6 +144,30 @@
     },
     {
       "key": {
+        "uuid": "d3435a2b_cd4dc3fd",
+        "filename": "src/plugins/map/map_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T16:06:11Z",
+      "side": 1,
+      "message": "\u003e https://en.cppreference.com/w/c/string/byte/strncpy\n\nIt also says:\n\n  If the first count characters were non-null, dest will not contain a null terminated string!\n\nIn this case, count includes that \"- 1\", so no automatic adding of nul.",
+      "parentUuid": "7d3198d6_6ec342a6",
+      "range": {
+        "startLine": 142,
+        "startChar": 50,
+        "endLine": 142,
+        "endChar": 71
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c58f997c_04340d83",
         "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_serializer.py",
         "patchSetId": 8
