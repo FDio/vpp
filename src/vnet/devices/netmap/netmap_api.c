@@ -24,6 +24,9 @@
 #include <vnet/api_errno.h>
 #include <vnet/devices/netmap/netmap.h>
 
+#include <net/if.h>
+#include <vnet/devices/netmap/net_netmap.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -45,6 +48,7 @@
 #define foreach_vpe_api_msg                             \
 _(NETMAP_CREATE, netmap_create)                                         \
 _(NETMAP_DELETE, netmap_delete)                                         \
+_(NETMAP_DUMP, netmap_dump)                                             \
 
 static void
 vl_api_netmap_create_t_handler (vl_api_netmap_create_t * mp)
@@ -53,17 +57,23 @@ vl_api_netmap_create_t_handler (vl_api_netmap_create_t * mp)
   vl_api_netmap_create_reply_t *rmp;
   int rv = 0;
   u8 *if_name = NULL;
+  u32 sw_if_index;
 
   if_name = format (0, "%s", mp->netmap_if_name);
   vec_add1 (if_name, 0);
 
   rv =
     netmap_create_if (vm, if_name, mp->use_random_hw_addr ? 0 : mp->hw_addr,
-		      mp->is_pipe, mp->is_master, 0);
+		      mp->is_pipe, mp->is_master, &sw_if_index);
 
   vec_free (if_name);
 
-  REPLY_MACRO (VL_API_NETMAP_CREATE_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_NETMAP_CREATE_REPLY,
+  ({
+    rmp->sw_if_index = clib_host_to_net_u32(sw_if_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -82,6 +92,47 @@ vl_api_netmap_delete_t_handler (vl_api_netmap_delete_t * mp)
   vec_free (if_name);
 
   REPLY_MACRO (VL_API_NETMAP_DELETE_REPLY);
+}
+
+static void
+send_netmap_details (vl_api_registration_t *reg, netmap_if_t *nif, u32 context)
+{
+        vl_api_netmap_details_t *mp;
+        u32 len;
+        u32 nr_reg = nif->req->nr_flags & NR_REG_MASK;
+
+        mp = vl_msg_api_alloc (sizeof (*mp));
+        clib_memset (mp, 0, sizeof (*mp));
+        mp->_vl_msg_id = htons (VL_API_NETMAP_DETAILS);
+        mp->sw_if_index = htonl (nif->sw_if_index);
+
+        mp->is_pipe = ((nr_reg == NR_REG_PIPE_MASTER) || (nr_reg == NR_REG_PIPE_SLAVE)) ? true : false;
+        mp->is_master = (nr_reg == NR_REG_PIPE_MASTER) ? true : false;
+
+        len = ((ARRAY_LEN (mp->netmap_if_name) - 1) < strlen ((const char *) nif->host_if_name)) ? (ARRAY_LEN (mp->netmap_if_name) - 1) : strlen ((const char *) nif->host_if_name);
+        clib_memcpy (mp->netmap_if_name, nif->host_if_name, len);
+
+        mp->context = context;
+        vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_netmap_dump_t_handler (vl_api_netmap_dump_t * mp)
+{
+        netmap_main_t *nm = &netmap_main;
+        netmap_if_t *nif;
+        vl_api_registration_t *reg;
+
+        reg = vl_api_client_index_to_registration (mp->client_index);
+        if (!reg)
+          return;
+
+        /* *INDENT-OFF* */
+        pool_foreach (nif, nm->interfaces,
+          ({
+            send_netmap_details (reg, nif, mp->context);
+          }));
+        /* *INDENT-ON* */
 }
 
 /*
