@@ -46,6 +46,30 @@
       "revId": "89d41a49368f4c01f22c935d2881709337545640",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ffb242b6_a45c4d80",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 9
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T14:11:35Z",
+      "side": 1,
+      "message": "I agree with the possibility, I am just saying there are better (less transient) places to put it than commit message.",
+      "parentUuid": "97cd11c3_903f04e2",
+      "range": {
+        "startLine": 21,
+        "startChar": 20,
+        "endLine": 21,
+        "endChar": 43
+      },
+      "revId": "89d41a49368f4c01f22c935d2881709337545640",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
