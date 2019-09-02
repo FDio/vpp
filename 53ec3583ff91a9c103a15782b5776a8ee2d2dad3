@@ -237,6 +237,30 @@
     },
     {
       "key": {
+        "uuid": "9ed7017e_a9fffd82",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-02T13:39:15Z",
+      "side": 1,
+      "message": "That\u0027s checked just above.\n     if self.limit and len(list) \u003e self.limit - 1:\n            raise VPPSerializerValueError(\n                \"Invalid argument length for: {}, {} maximum {}\".\n                format(list, len(list), self.limit - 1))",
+      "parentUuid": "1c832693_3e4fbdd1",
+      "range": {
+        "startLine": 131,
+        "startChar": 19,
+        "endLine": 131,
+        "endChar": 38
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1af36474_a2be51af",
         "filename": "src/vpp/api/vpe.api",
         "patchSetId": 8
