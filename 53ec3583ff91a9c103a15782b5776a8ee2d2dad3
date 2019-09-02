@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "e95746a7_011c0c58",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 8
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T13:02:59Z",
+      "side": 1,
+      "message": "\u003e string name[64] must be nul-terminated\n\nI wonder which field could be used for unit-testing this claim.\nPerhaps we can add an API to insert arbitrary message into log, and than see what log_dump emits?",
+      "parentUuid": "5d0f70e9_09e7ed10",
+      "range": {
+        "startLine": 17,
+        "startChar": 22,
+        "endLine": 17,
+        "endChar": 45
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7547f69b_98324490",
         "filename": "src/plugins/map/map_api.c",
         "patchSetId": 8
