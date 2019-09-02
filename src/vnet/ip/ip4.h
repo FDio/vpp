@@ -412,6 +412,8 @@ vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
       vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
       vnet_buffer (b)->l4_hdr_offset = vnet_buffer (b)->l3_hdr_offset +
 	sizeof (*ih);
+      b->flags |=
+	VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
     }
   else
     ih->checksum = ip4_header_checksum (ih);
