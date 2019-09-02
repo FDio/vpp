@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b55e3be5_90ef136e",
+        "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_serializer.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-02T14:09:40Z",
+      "side": 1,
+      "message": "Alright, but if the name value is exactly 16 (non-nul) bytes long, it will not be terminated. Not sure whether we want to test that.\n\nNote that this test does not check processing between VPP and packed data (just between packed data and Python client).",
+      "range": {
+        "startLine": 22,
+        "startChar": 42,
+        "endLine": 22,
+        "endChar": 45
+      },
+      "revId": "a3353a1686b839325c06ff95f790040a2124ed15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
