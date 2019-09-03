@@ -527,7 +527,10 @@ update_node_counters (stat_segment_main_t * sm)
 	  c[n->index] =
 	    n->stats_total.suspends - n->stats_last_clear.suspends;
 	}
+      vec_free (node_dups[j]);
     }
+  vec_free (node_dups);
+  vec_free (stat_vms);
 }
 
 static void
