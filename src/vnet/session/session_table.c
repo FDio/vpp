@@ -86,21 +86,47 @@ session_table_init (session_table_t * slt, u8 fib_proto)
 
   if (fib_proto == FIB_PROTOCOL_IP4 || all)
     {
-      clib_bihash_init_16_8 (&slt->v4_session_hash, "v4 session table",
-			     configured_v4_session_table_buckets,
-			     configured_v4_session_table_memory);
-      clib_bihash_init_16_8 (&slt->v4_half_open_hash, "v4 half-open table",
-			     configured_v4_halfopen_table_buckets,
-			     configured_v4_halfopen_table_memory);
+      clib_bihash_init2_args_16_8_t _a, *a = &_a;
+
+      memset (a, 0, sizeof (*a));
+      a->h = &slt->v4_session_hash;
+      a->name = "v4 session table";
+      a->nbuckets = configured_v4_session_table_buckets;
+      a->memory_size = configured_v4_session_table_memory;
+      a->dont_add_to_all_bihash_list = 1;
+      a->instantiate_immediately = 1;
+      clib_bihash_init2_16_8 (a);
+
+      memset (a, 0, sizeof (*a));
+      a->h = &slt->v4_half_open_hash;
+      a->name = "v4 half-open table";
+      a->nbuckets = configured_v4_halfopen_table_buckets;
+      a->memory_size = configured_v4_halfopen_table_memory;
+      a->dont_add_to_all_bihash_list = 1;
+      a->instantiate_immediately = 1;
+      clib_bihash_init2_16_8 (a);
     }
   if (fib_proto == FIB_PROTOCOL_IP6 || all)
     {
-      clib_bihash_init_48_8 (&slt->v6_session_hash, "v6 session table",
-			     configured_v6_session_table_buckets,
-			     configured_v6_session_table_memory);
-      clib_bihash_init_48_8 (&slt->v6_half_open_hash, "v6 half-open table",
-			     configured_v6_halfopen_table_buckets,
-			     configured_v6_halfopen_table_memory);
+      clib_bihash_init2_args_48_8_t _a, *a = &_a;
+
+      memset (a, 0, sizeof (*a));
+      a->h = &slt->v6_session_hash;
+      a->name = "v6 session table";
+      a->nbuckets = configured_v6_session_table_buckets;
+      a->memory_size = configured_v6_session_table_memory;
+      a->dont_add_to_all_bihash_list = 1;
+      a->instantiate_immediately = 1;
+      clib_bihash_init2_48_8 (a);
+
+      memset (a, 0, sizeof (*a));
+      a->h = &slt->v6_half_open_hash;
+      a->name = "v6 half-open table";
+      a->nbuckets = configured_v6_halfopen_table_buckets;
+      a->memory_size = configured_v6_halfopen_table_memory;
+      a->dont_add_to_all_bihash_list = 1;
+      a->instantiate_immediately = 1;
+      clib_bihash_init2_48_8 (a);
     }
 
   for (i = 0; i < TRANSPORT_N_PROTO; i++)
