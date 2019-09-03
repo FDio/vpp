@@ -717,7 +717,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
       u64x4 igbit4 = u64x4_splat (igbit);
       u64x4 mask4 = u64x4_splat (mask);
       u64x4 hwaddr4 = u64x4_splat (hwaddr);
-      while (n_left >= 0)
+      while (n_left > 0)
 	{
 	  u64x4 r0, r1;
 	  r0 = u64x4_load_unaligned (dmac + 0) & mask4;
