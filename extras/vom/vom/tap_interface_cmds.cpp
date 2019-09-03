@@ -40,19 +40,20 @@ tapv2_create_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  memset(payload.host_if_name, 0, sizeof(payload.host_if_name));
-  memcpy(payload.host_if_name, m_name.c_str(),
-         std::min(m_name.length(), sizeof(payload.host_if_name)));
+  payload.host_if_name.length = m_name.length();
+  memcpy(payload.host_if_name.buf, m_name.c_str(), payload.host_if_name.length);
   payload.host_if_name_set = 1;
 
   if (m_prefix != route::prefix_t::ZERO) {
     if (m_prefix.address().is_v6()) {
-      m_prefix.to_vpp(&payload.host_ip6_addr_set, payload.host_ip6_addr,
-                      &payload.host_ip6_prefix_len);
+      m_prefix.to_vpp((uint8_t*)&payload.host_ip6_prefix_set,
+                      payload.host_ip6_prefix.address,
+                      &payload.host_ip6_prefix.len);
     } else {
-      m_prefix.to_vpp(&payload.host_ip4_addr_set, payload.host_ip4_addr,
-                      &payload.host_ip4_prefix_len);
-      payload.host_ip4_addr_set = 1;
+      m_prefix.to_vpp((uint8_t*)&payload.host_ip4_prefix_set,
+                      payload.host_ip4_prefix.address,
+                      &payload.host_ip4_prefix.len);
+      payload.host_ip4_prefix_set = 1;
     }
   }
 

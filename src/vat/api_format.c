@@ -7498,8 +7498,8 @@ api_tap_create_v2 (vat_main_t * vam)
   mp->id = ntohl (id);
   mp->host_namespace_set = host_ns != 0;
   mp->host_bridge_set = host_bridge != 0;
-  mp->host_ip4_addr_set = host_ip4_prefix_len != 0;
-  mp->host_ip6_addr_set = host_ip6_prefix_len != 0;
+  mp->host_ip4_prefix_set = host_ip4_prefix_len != 0;
+  mp->host_ip6_prefix_set = host_ip6_prefix_len != 0;
   mp->rx_ring_sz = ntohs (rx_ring_sz);
   mp->tx_ring_sz = ntohs (tx_ring_sz);
   mp->host_mtu_set = host_mtu_set;
@@ -7511,15 +7511,15 @@ api_tap_create_v2 (vat_main_t * vam)
   if (host_mac_addr_set)
     clib_memcpy (mp->host_mac_addr, host_mac_addr, 6);
   if (host_if_name)
-    clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
+    clib_memcpy (mp->host_if_name.buf, host_if_name, vec_len (host_if_name));
   if (host_ns)
-    clib_memcpy (mp->host_namespace, host_ns, vec_len (host_ns));
+    clib_memcpy (mp->host_namespace.buf, host_ns, vec_len (host_ns));
   if (host_bridge)
-    clib_memcpy (mp->host_bridge, host_bridge, vec_len (host_bridge));
+    clib_memcpy (mp->host_bridge.buf, host_bridge, vec_len (host_bridge));
   if (host_ip4_prefix_len)
-    clib_memcpy (mp->host_ip4_addr, &host_ip4_addr, 4);
+    clib_memcpy (mp->host_ip4_prefix.address, &host_ip4_addr, 4);
   if (host_ip6_prefix_len)
-    clib_memcpy (mp->host_ip6_addr, &host_ip6_addr, 16);
+    clib_memcpy (mp->host_ip6_prefix.address, &host_ip6_addr, 16);
   if (host_ip4_gw_set)
     clib_memcpy (mp->host_ip4_gw, &host_ip4_gw, 4);
   if (host_ip6_gw_set)
@@ -12183,17 +12183,19 @@ static void vl_api_sw_interface_tap_v2_details_t_handler
 {
   vat_main_t *vam = &vat_main;
 
-  u8 *ip4 = format (0, "%U/%d", format_ip4_address, mp->host_ip4_addr,
-		    mp->host_ip4_prefix_len);
-  u8 *ip6 = format (0, "%U/%d", format_ip6_address, mp->host_ip6_addr,
-		    mp->host_ip6_prefix_len);
+  u8 *ip4 =
+    format (0, "%U/%d", format_ip4_address, mp->host_ip4_prefix.address,
+	    mp->host_ip4_prefix.len);
+  u8 *ip6 =
+    format (0, "%U/%d", format_ip6_address, mp->host_ip6_prefix.address,
+	    mp->host_ip6_prefix.len);
 
   print (vam->ofp,
 	 "\n%-16s %-12d %-5d %-12d %-12d %-14U %-30s %-20s %-20s %-30s 0x%-08x",
 	 mp->dev_name, ntohl (mp->sw_if_index), ntohl (mp->id),
 	 ntohs (mp->rx_ring_sz), ntohs (mp->tx_ring_sz),
-	 format_ethernet_address, mp->host_mac_addr, mp->host_namespace,
-	 mp->host_bridge, ip4, ip6, ntohl (mp->tap_flags));
+	 format_ethernet_address, mp->host_mac_addr, mp->host_namespace.buf,
+	 mp->host_bridge.buf, ip4, ip6, ntohl (mp->tap_flags));
 
   vec_free (ip4);
   vec_free (ip6);
@@ -12216,23 +12218,23 @@ static void vl_api_sw_interface_tap_v2_details_t_handler_json
   vat_json_object_add_uint (node, "id", ntohl (mp->id));
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   vat_json_object_add_uint (node, "tap_flags", ntohl (mp->tap_flags));
-  vat_json_object_add_string_copy (node, "dev_name", mp->dev_name);
+  vat_json_object_add_string_copy (node, "dev_name", mp->dev_name.buf);
   vat_json_object_add_uint (node, "rx_ring_sz", ntohs (mp->rx_ring_sz));
   vat_json_object_add_uint (node, "tx_ring_sz", ntohs (mp->tx_ring_sz));
   vat_json_object_add_string_copy (node, "host_mac_addr",
 				   format (0, "%U", format_ethernet_address,
 					   &mp->host_mac_addr));
   vat_json_object_add_string_copy (node, "host_namespace",
-				   mp->host_namespace);
-  vat_json_object_add_string_copy (node, "host_bridge", mp->host_bridge);
-  vat_json_object_add_string_copy (node, "host_ip4_addr",
+				   mp->host_namespace.buf);
+  vat_json_object_add_string_copy (node, "host_bridge", mp->host_bridge.buf);
+  vat_json_object_add_string_copy (node, "host_ip4_prefix",
 				   format (0, "%U/%d", format_ip4_address,
-					   mp->host_ip4_addr,
-					   mp->host_ip4_prefix_len));
-  vat_json_object_add_string_copy (node, "host_ip6_addr",
+					   mp->host_ip4_prefix.address,
+					   mp->host_ip4_prefix.len));
+  vat_json_object_add_string_copy (node, "host_ip6_prefix",
 				   format (0, "%U/%d", format_ip6_address,
-					   mp->host_ip6_addr,
-					   mp->host_ip6_prefix_len));
+					   mp->host_ip6_prefix.address,
+					   mp->host_ip6_prefix.len));
 
 }
 
