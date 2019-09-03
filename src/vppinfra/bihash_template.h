@@ -159,6 +159,17 @@ BVS (clib_bihash)
 
 } BVT (clib_bihash);
 
+typedef struct
+{
+  BVT (clib_bihash) * h;
+  char *name;
+  u32 nbuckets;
+  uword memory_size;
+  format_function_t *fmt_fn;
+  u8 instantiate_immediately;
+  u8 dont_add_to_all_bihash_list;
+} BVT (clib_bihash_init2_args);
+
 extern void **clib_all_bihashes;
 
 #if BIHASH_32_64_SVM
@@ -290,6 +301,8 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size);
+
+void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a);
 
 #if BIHASH_32_64_SVM
 void BV (clib_bihash_master_init_svm)
