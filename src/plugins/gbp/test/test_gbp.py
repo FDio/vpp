@@ -872,9 +872,7 @@ class TestGBP(VppTestCase):
             if epg != epgs[1] and epg != epgs[4]:
                 VppIpInterfaceBind(self, epg.bvi, epg.rd.t4).add_vpp_config()
                 VppIpInterfaceBind(self, epg.bvi, epg.rd.t6).add_vpp_config()
-                self.vapi.sw_interface_set_mac_address(
-                    epg.bvi.sw_if_index,
-                    self.router_mac.packed)
+                epg.bvi.set_mac(self.router_mac)
 
                 # The BVIs are NAT inside interfaces
                 flags = self.config_flags.NAT_IS_INSIDE
@@ -2261,9 +2259,7 @@ class TestGBP(VppTestCase):
             if epg != epgs[1]:
                 VppIpInterfaceBind(self, epg.bvi, epg.rd.t4).add_vpp_config()
                 VppIpInterfaceBind(self, epg.bvi, epg.rd.t6).add_vpp_config()
-                self.vapi.sw_interface_set_mac_address(
-                    epg.bvi.sw_if_index,
-                    self.router_mac.packed)
+                epg.bvi.set_mac(self.router_mac)
 
             if_ip4 = VppIpInterfaceAddress(self, epg.bvi, epg.bvi_ip4, 32)
             if_ip6 = VppIpInterfaceAddress(self, epg.bvi, epg.bvi_ip6, 128)
