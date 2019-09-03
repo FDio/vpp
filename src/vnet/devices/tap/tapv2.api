@@ -19,7 +19,15 @@
     the Linux kernel TAP device driver
 */
 
-option version = "2.1.0";
+option version = "3.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/ip/ip_types.api";
+
+enum tap_flags {
+        TAP_FLAG_GSO = 1,
+};
 
 /** \brief Initialize a new tap interface with the given parameters
     @param client_index - opaque cookie to identify the sender
@@ -31,18 +39,10 @@ option version = "2.1.0";
     @param rx_ring_sz - the number of entries of RX ring
     @param host_mac_addr_set - host side interface mac address should be set
     @param host_mac_addr - host side interface mac address
-    @param host_if_name_set - host side interface name should be set
-    @param host_if_name - host side interface name
-    @param host_namespace_set - host namespace should be set
-    @param host_namespace - host namespace to attach interface to
-    @param host_bridge_set - host bridge should be set
-    @param host_bridge - host bridge to attach interface to
-    @param host_ip4_addr_set - host IPv4 ip address should be set
-    @param host_ip4_addr - host IPv4 ip address
-    @param host_ip4_prefix_len - host IPv4 ip address prefix length
-    @param host_ip6_addr_set - host IPv6 ip address should be set
-    @param host_ip6_addr - host IPv6 ip address
-    @param host_ip6_prefix_len - host IPv6 ip address prefix length
+    @param host_ip4_prefix_set - host IPv4 ip address should be set
+    @param host_ip4_prefix - host IPv4 ip address
+    @param host_ip6_prefix_set - host IPv6 ip address should be set
+    @param host_ip6_prefix - host IPv6 ip address
     @param host_ip4_gw_set - host IPv4 default gateway should be set
     @param host_ip4_gw - host IPv4 default gateway
     @param host_ip6_gw_set - host IPv6 default gateway should be set
@@ -50,38 +50,42 @@ option version = "2.1.0";
     @param host_mtu_set - host MTU should be set
     @param host_mtu_size - host MTU size
     @param tap_flags - flags for the TAP interface creation
+    @param host_if_name_set - host side interface name should be set
+    @param host_if_name - host side interface name
+    @param host_namespace_set - host namespece should be set
+    @param host_namespace - host namespace to attach interface to
+    @param host_bridge_set - host bridge should be set
+    @param host_bridge - host bridge to attach interface to
 */
 define tap_create_v2
 {
   u32 client_index;
   u32 context;
-  u32 id;
-  u8 use_random_mac;
-  u8 mac_address[6];
+  u32 id [default=0xffffffff];
+  bool use_random_mac [default=true];
+  vl_api_mac_address_t mac_address;
   u16 tx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
   u16 rx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
-  u8 host_namespace_set;
-  u8 host_namespace[64];
-  u8 host_mac_addr_set;
-  u8 host_mac_addr[6];
-  u8 host_if_name_set;
-  u8 host_if_name[64];
-  u8 host_bridge_set;
-  u8 host_bridge[64];
-  u8 host_ip4_addr_set;
-  u8 host_ip4_addr[4];
-  u8 host_ip4_prefix_len;
-  u8 host_ip6_addr_set;
-  u8 host_ip6_addr[16];
-  u8 host_ip6_prefix_len;
-  u8 host_ip4_gw_set;
-  u8 host_ip4_gw[4];
-  u8 host_ip6_gw_set;
-  u8 host_ip6_gw[16];
-  u8 host_mtu_set;
+  bool host_mtu_set;
   u32 host_mtu_size;
-  u8 tag[64];
-  u32 tap_flags;
+  bool host_mac_addr_set;
+  vl_api_mac_address_t host_mac_addr;
+  bool host_ip4_prefix_set;
+  vl_api_ip4_address_with_prefix_t host_ip4_prefix;
+  bool host_ip6_prefix_set;
+  vl_api_ip6_address_with_prefix_t host_ip6_prefix;
+  bool host_ip4_gw_set;
+  vl_api_ip4_address_t host_ip4_gw;
+  bool host_ip6_gw_set;
+  vl_api_ip6_address_t host_ip6_gw;
+  vl_api_tap_flags_t tap_flags;
+  bool host_namespace_set;
+  string host_namespace[64];
+  bool host_if_name_set;
+  string host_if_name[64];
+  bool host_bridge_set;
+  string host_bridge[64];
+  string tag[];
 };
 
 /** \brief Reply for tap create reply
@@ -93,7 +97,7 @@ define tap_create_v2_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Delete tap interface
@@ -105,7 +109,7 @@ autoreply define tap_delete_v2
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump tap interfaces request */
@@ -118,37 +122,33 @@ define sw_interface_tap_v2_dump
 /** \brief Reply for tap dump request
     @param sw_if_index - software index of tap interface
     @param id - interface id
-    @param dev_name - Linux tap device name
     @param tx_ring_sz - the number of entries of TX ring
     @param rx_ring_sz - the number of entries of RX ring
+    @param host_bridge - host bridge the interface is attached into
+    @param host_ip4_prefix - host IPv4 ip address
+    @param host_ip6_prefix - host IPv6 ip address
+    @param host_mtu_size - host mtu size
+    @param dev_name - Linux tap device name
     @param host_mac_addr - mac address assigned to the host side of the interface
     @param host_if_name - host side interface name
     @param host_namespace - host namespace the interface is attached into
-    @param host_bridge - host bridge the interface is attached into
-    @param host_ip4_addr - host IPv4 ip address
-    @param host_ip4_prefix_len - host IPv4 ip address prefix length; 0 if unset
-    @param host_ip6_addr - host IPv6 ip address
-    @param host_ip6_prefix_len - host IPv6 ip address prefix length; 0 if unset
-    @param host_mtu_size - host mtu size
 */
 define sw_interface_tap_v2_details
 {
   u32 context;
   u32 sw_if_index;
   u32 id;
-  u8 dev_name[64];
   u16 tx_ring_sz;
   u16 rx_ring_sz;
-  u8 host_mac_addr[6];
-  u8 host_if_name[64];
-  u8 host_namespace[64];
-  u8 host_bridge[64];
-  u8 host_ip4_addr[4];
-  u8 host_ip4_prefix_len;
-  u8 host_ip6_addr[16];
-  u8 host_ip6_prefix_len;
   u32 host_mtu_size;
-  u32 tap_flags;
+  vl_api_mac_address_t host_mac_addr;
+  vl_api_ip4_address_with_prefix_t host_ip4_prefix;
+  vl_api_ip6_address_with_prefix_t host_ip6_prefix;
+  vl_api_tap_flags_t tap_flags;
+  string dev_name[64];
+  string host_if_name[64];
+  string host_namespace[64];
+  string host_bridge[64];
 };
 
 /*
