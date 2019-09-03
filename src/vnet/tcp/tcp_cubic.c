@@ -103,6 +103,10 @@ cubic_congestion (tcp_connection_t * tc)
 
   cd->w_max = w_max;
   tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
+
+  tc->cwnd = tc->ssthresh;
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
+    tc->cwnd += 3 * tc->snd_mss;
 }
 
 static void

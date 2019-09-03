@@ -1367,20 +1367,9 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	    }
 
 	  tcp_cc_init_congestion (tc);
-	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 
 	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	    {
-	      tc->cwnd = tc->ssthresh;
-	      scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
-	    }
-	  else
-	    {
-	      /* Post retransmit update cwnd to ssthresh and account for the
-	       * three segments that have left the network and should've been
-	       * buffered at the receiver XXX */
-	      tc->cwnd = tc->ssthresh + 3 * tc->snd_mss;
-	    }
+	    scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
 
 	  /* Constrain rate until we get a partial ack */
 	  pacer_wnd = clib_max (0.1 * tc->cwnd, 2 * tc->snd_mss);
