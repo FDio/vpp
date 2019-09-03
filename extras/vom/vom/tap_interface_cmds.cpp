@@ -47,12 +47,14 @@ tapv2_create_cmd::issue(connection& con)
 
   if (m_prefix != route::prefix_t::ZERO) {
     if (m_prefix.address().is_v6()) {
-      m_prefix.to_vpp(&payload.host_ip6_addr_set, payload.host_ip6_addr,
-                      &payload.host_ip6_prefix_len);
+      m_prefix.to_vpp((uint8_t*)&payload.host_ip6_prefix_set,
+                      payload.host_ip6_prefix.address,
+                      &payload.host_ip6_prefix.len);
     } else {
-      m_prefix.to_vpp(&payload.host_ip4_addr_set, payload.host_ip4_addr,
-                      &payload.host_ip4_prefix_len);
-      payload.host_ip4_addr_set = 1;
+      m_prefix.to_vpp((uint8_t*)&payload.host_ip4_prefix_set,
+                      payload.host_ip4_prefix.address,
+                      &payload.host_ip4_prefix.len);
+      payload.host_ip4_prefix_set = 1;
     }
   }
 
