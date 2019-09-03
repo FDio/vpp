@@ -652,6 +652,9 @@ class TestGBP(VppTestCase):
         for i in self.pg_interfaces:
             i.admin_down()
         super(TestGBP, self).tearDown()
+        for i in self.lo_interfaces:
+            i.remove_vpp_config()
+        self.lo_interfaces = []
         self.vlan_102.remove_vpp_config()
         self.vlan_101.remove_vpp_config()
         self.vlan_100.remove_vpp_config()
