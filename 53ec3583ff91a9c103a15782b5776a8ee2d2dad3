@@ -168,6 +168,30 @@
     },
     {
       "key": {
+        "uuid": "1666c259_61ed1e5e",
+        "filename": "src/plugins/map/map_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-03T08:15:01Z",
+      "side": 1,
+      "message": "Sorry, for some reason I was convinced that the safe string functions were used.\nFixed in upcoming patch to use strncpy_s.",
+      "parentUuid": "d3435a2b_cd4dc3fd",
+      "range": {
+        "startLine": 142,
+        "startChar": 50,
+        "endLine": 142,
+        "endChar": 71
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c58f997c_04340d83",
         "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_serializer.py",
         "patchSetId": 8
@@ -321,6 +345,30 @@
       "side": 1,
       "message": "\u003e That\u0027s checked just above.\n\nThat depends on the type of \"list\" argument. My point is, .encode() can change the length. Example:\n\n$ python\nPython 2.7.16 (default, Apr  6 2019, 01:42:57) \n[GCC 8.3.0] on linux2\nType \"help\", \"copyright\", \"credits\" or \"license\" for more information.\n\u003e\u003e\u003e s \u003d \u0027€\u0027\n\u003e\u003e\u003e len(s)\n3\n\u003e\u003e\u003e s \u003d u\u0027€\u0027\n\u003e\u003e\u003e len(s)\n1\n\u003e\u003e\u003e s \u003d s.encode(\u0027utf-8\u0027)\n\u003e\u003e\u003e len(s)\n3",
       "parentUuid": "9ed7017e_a9fffd82",
+      "range": {
+        "startLine": 131,
+        "startChar": 19,
+        "endLine": 131,
+        "endChar": 38
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a397ebc1_dc39caa0",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-03T08:15:01Z",
+      "side": 1,
+      "message": "Thanks, good point. Changed to \u0027ascii\u0027 which enforces 7-bit only...",
+      "parentUuid": "886ff44d_950229f2",
       "range": {
         "startLine": 131,
         "startChar": 19,
