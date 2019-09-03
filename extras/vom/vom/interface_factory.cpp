@@ -173,12 +173,12 @@ interface_factory::new_tap_interface(
   route::prefix_t pfx(route::prefix_t::ZERO);
   boost::asio::ip::address addr;
 
-  if (vd.host_ip4_prefix_len)
-    pfx =
-      route::prefix_t(0, (uint8_t*)vd.host_ip4_addr, vd.host_ip4_prefix_len);
-  else if (vd.host_ip6_prefix_len)
-    pfx =
-      route::prefix_t(1, (uint8_t*)vd.host_ip6_addr, vd.host_ip6_prefix_len);
+  if (vd.host_ip4_prefix.len)
+    pfx = route::prefix_t(0, (uint8_t*)vd.host_ip4_prefix.address,
+                          vd.host_ip4_prefix.len);
+  else if (vd.host_ip6_prefix.len)
+    pfx = route::prefix_t(1, (uint8_t*)vd.host_ip6_prefix.address,
+                          vd.host_ip6_prefix.len);
 
   l2_address_t l2_address(vd.host_mac_addr, 6);
   sp = tap_interface(name, interface::admin_state_t::UP, pfx, l2_address)
