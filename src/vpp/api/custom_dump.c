@@ -557,16 +557,20 @@ static void *vl_api_tap_create_v2_t_print
     s = format (s, "host-ns %s ", mp->host_namespace);
   if (mp->host_bridge_set)
     s = format (s, "host-bridge %s ", mp->host_bridge);
-  if (mp->host_ip4_addr_set)
+  if (mp->host_ip4_prefix_set)
     s = format (s, "host-ip4-addr %U/%d ", format_ip4_address,
-		mp->host_ip4_addr, mp->host_ip4_prefix_len);
-  if (mp->host_ip6_addr_set)
+		mp->host_ip4_prefix.address, mp->host_ip4_prefix.len);
+  if (mp->host_ip6_prefix_set)
     s = format (s, "host-ip6-addr %U/%d ", format_ip6_address,
-		mp->host_ip6_addr, mp->host_ip6_prefix_len);
+		mp->host_ip6_prefix.address, mp->host_ip6_prefix.len);
   if (mp->host_ip4_gw_set)
-    s = format (s, "host-ip4-gw %U ", format_ip4_address, mp->host_ip4_addr);
+    s =
+      format (s, "host-ip4-gw %U ", format_ip4_address,
+	      mp->host_ip4_prefix.address);
   if (mp->host_ip6_gw_set)
-    s = format (s, "host-ip6-gw %U ", format_ip6_address, mp->host_ip6_addr);
+    s =
+      format (s, "host-ip6-gw %U ", format_ip6_address,
+	      mp->host_ip6_prefix.address);
   if (mp->tx_ring_sz)
     s = format (s, "tx-ring-size %u ", (mp->tx_ring_sz));
   if (mp->rx_ring_sz)
