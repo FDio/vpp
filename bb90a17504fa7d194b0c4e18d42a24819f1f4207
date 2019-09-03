@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "79526f6f_45ec111b",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 620,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-09-03T20:18:07Z",
+      "side": 1,
+      "message": "please avoid cosmetic changes, it just makes code review harder",
+      "range": {
+        "startLine": 610,
+        "startChar": 0,
+        "endLine": 620,
+        "endChar": 56
+      },
+      "revId": "bb90a17504fa7d194b0c4e18d42a24819f1f4207",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
