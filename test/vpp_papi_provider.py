@@ -132,6 +132,8 @@ defaultmapping = {
     'sw_interface_set_mtu': {'mtu': [0, 0, 0, 0], },
     'sw_interface_set_unnumbered': {'is_add': 1, },
     'sw_interface_span_enable_disable': {'state': 1, },
+    'tap_create_v2': {'id': 0xffffffff, 'use_random_mac': True,
+                      'mac_address': None},
     'vxlan_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                              'decap_next_index': 4294967295,
                              'instance': 4294967295, },
