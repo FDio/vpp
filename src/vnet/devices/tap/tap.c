@@ -255,10 +255,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
-  if (!ethernet_mac_address_is_zero (args->host_mac_addr))
+  if (!ethernet_mac_address_is_zero (args->host_mac_addr.bytes))
     {
       args->error = vnet_netlink_set_link_addr (vif->ifindex,
-						args->host_mac_addr);
+						args->host_mac_addr.bytes);
       if (args->error)
 	{
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
@@ -392,15 +392,15 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->num_txqs = 1;
 
   if (!args->mac_addr_set)
-    ethernet_mac_address_generate (args->mac_addr);
+    ethernet_mac_address_generate ((u8 *) & args->mac_addr);
 
-  clib_memcpy (vif->mac_addr, args->mac_addr, 6);
+  clib_memcpy (vif->mac_addr, &args->mac_addr, 6);
 
   vif->host_if_name = format (0, "%s%c", host_if_name, 0);
   vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
   vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
   vif->host_mtu_size = args->host_mtu_size;
-  clib_memcpy (vif->host_mac_addr, args->host_mac_addr, 6);
+  clib_memcpy (vif->host_mac_addr, &args->host_mac_addr, 6);
   vif->host_ip4_prefix_len = args->host_ip4_prefix_len;
   vif->host_ip6_prefix_len = args->host_ip6_prefix_len;
   if (args->host_ip4_prefix_len)
@@ -609,7 +609,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     tapid->rx_ring_sz = vring->size;
     vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS(0));
     tapid->tx_ring_sz = vring->size;
-    clib_memcpy(tapid->host_mac_addr, vif->host_mac_addr, 6);
+    clib_memcpy(&tapid->host_mac_addr, vif->host_mac_addr, 6);
     if (vif->host_if_name)
       {
         clib_memcpy(tapid->host_if_name, vif->host_if_name,
@@ -629,10 +629,10 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
                     strlen ((const char *) vif->host_bridge)));
       }
     if (vif->host_ip4_prefix_len)
-      clib_memcpy(tapid->host_ip4_addr, &vif->host_ip4_addr, 4);
+      clib_memcpy(tapid->host_ip4_addr.as_u8, &vif->host_ip4_addr, 4);
     tapid->host_ip4_prefix_len = vif->host_ip4_prefix_len;
     if (vif->host_ip6_prefix_len)
-      clib_memcpy(tapid->host_ip6_addr, &vif->host_ip6_addr, 16);
+      clib_memcpy(tapid->host_ip6_addr.as_u8, &vif->host_ip6_addr, 16);
     tapid->host_ip6_prefix_len = vif->host_ip6_prefix_len;
     tapid->host_mtu_size = vif->host_mtu_size;
   );
