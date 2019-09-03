@@ -46,18 +46,21 @@ void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
   h->instantiated = 1;
 }
 
-void BV (clib_bihash_init)
-  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
+void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
 {
   int i;
   void *oldheap;
-  nbuckets = 1 << (max_log2 (nbuckets));
+  BVT (clib_bihash) * h = a->h;
 
-  h->name = (u8 *) name;
-  h->nbuckets = nbuckets;
-  h->log2_nbuckets = max_log2 (nbuckets);
-  h->memory_size = memory_size;
+  a->nbuckets = 1 << (max_log2 (a->nbuckets));
+
+  h->name = (u8 *) a->name;
+  h->nbuckets = a->nbuckets;
+  h->log2_nbuckets = max_log2 (a->nbuckets);
+  h->memory_size = a->memory_size;
   h->instantiated = 0;
+  h->fmt_fn = a->fmt_fn;
+
   alloc_arena (h) = 0;
 
   /*
@@ -66,19 +69,22 @@ void BV (clib_bihash_init)
    * If someone starts complaining that's not enough, we can shift
    * the offset by CLIB_LOG2_CACHE_LINE_BYTES...
    */
-  ASSERT (memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
-  h->fmt_fn = NULL;
+  ASSERT (h->memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
 
   /* Add this hash table to the list */
-  for (i = 0; i < vec_len (clib_all_bihashes); i++)
-    if (clib_all_bihashes[i] == h)
-      return;
+  if (a->dont_add_to_all_bihash_list == 0)
+    {
+      for (i = 0; i < vec_len (clib_all_bihashes); i++)
+	if (clib_all_bihashes[i] == h)
+	  goto do_lock;
+      oldheap = clib_all_bihash_set_heap ();
+      vec_add1 (clib_all_bihashes, (void *) h);
+      clib_mem_set_heap (oldheap);
+    }
 
-  /* Unfortunately, the heap push/pop is required.... */
-  oldheap = clib_all_bihash_set_heap ();
-  vec_add1 (clib_all_bihashes, (void *) h);
-  clib_mem_set_heap (oldheap);
-
+do_lock:
+  if (h->alloc_lock)
+    clib_mem_free ((void *) h->alloc_lock);
 
   /*
    * Set up the lock now, so we can use it to make the first add
@@ -88,9 +94,23 @@ void BV (clib_bihash_init)
 					  CLIB_CACHE_LINE_BYTES);
   h->alloc_lock[0] = 0;
 
-#if BIHASH_INSTANTIATE_IMMEDIATELY
-  BV (clib_bihash_instantiate) (h);
-#endif
+  if (a->instantiate_immediately)
+    BV (clib_bihash_instantiate) (h);
+}
+
+void BV (clib_bihash_init)
+  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
+{
+  BVT (clib_bihash_init2_args) _a, *a = &_a;
+
+  memset (a, 0, sizeof (*a));
+
+  a->h = h;
+  a->name = name;
+  a->nbuckets = nbuckets;
+  a->memory_size = memory_size;
+
+  BV (clib_bihash_init2) (a);
 }
 
 #if BIHASH_32_64_SVM
