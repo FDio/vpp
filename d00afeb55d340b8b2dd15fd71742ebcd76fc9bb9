@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a77c153_f67652e8",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 830,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-09-03T15:53:59Z",
+      "side": 1,
+      "message": "If you want compiler to optimize code for both cases, you need to pass constant value, i.e.\n\nif (vec_len (ei-\u003esecondary_addrs))\n  eth_input_process_frame_dmac_check (hi, ei, dmacs, dmacs_bad, n_packets, 1);\nelse\n  eth_input_process_frame_dmac_check (hi, ei, dmacs, dmacs_bad, n_packets, 0);",
+      "range": {
+        "startLine": 829,
+        "startChar": 4,
+        "endLine": 830,
+        "endChar": 36
+      },
+      "revId": "d00afeb55d340b8b2dd15fd71742ebcd76fc9bb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
