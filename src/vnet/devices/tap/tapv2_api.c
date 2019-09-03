@@ -25,6 +25,9 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
 
+#include <vnet/ethernet/ethernet_types_api.h>
+#include <vnet/ip/ip_types_api.h>
+
 #include <vnet/vnet_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -63,7 +66,7 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   ap->id = ntohl (mp->id);
   if (!mp->use_random_mac)
     {
-      clib_memcpy (ap->mac_addr, mp->mac_address, 6);
+      mac_address_decode (mp->mac_address, &ap->mac_addr);
       ap->mac_addr_set = 1;
     }
   ap->rx_ring_sz = ntohs (mp->rx_ring_sz);
@@ -71,41 +74,41 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   ap->sw_if_index = (u32) ~ 0;
 
   if (mp->host_if_name_set)
-    ap->host_if_name = mp->host_if_name;
+    ap->host_if_name = vl_api_from_api_string (&mp->host_if_name);
 
   if (mp->host_mac_addr_set)
     {
-      clib_memcpy (ap->host_mac_addr, mp->host_mac_addr, 6);
+      mac_address_decode (mp->host_mac_addr, &ap->host_mac_addr);
       ap->mac_addr_set = 1;
     }
 
   if (mp->host_namespace_set)
-    ap->host_namespace = mp->host_namespace;
+    ap->host_namespace = vl_api_from_api_string (&mp->host_namespace);
 
   if (mp->host_bridge_set)
-    ap->host_bridge = mp->host_bridge;
+    ap->host_bridge = vl_api_from_api_string (&mp->host_bridge);
 
-  if (mp->host_ip4_addr_set)
+  if (mp->host_ip4_prefix_set)
     {
-      clib_memcpy (&ap->host_ip4_addr.as_u8, mp->host_ip4_addr, 4);
-      ap->host_ip4_prefix_len = mp->host_ip4_prefix_len;
+      ip4_address_decode (mp->host_ip4_prefix.address, &ap->host_ip4_addr);
+      ap->host_ip4_prefix_len = mp->host_ip4_prefix.len;
     }
 
-  if (mp->host_ip6_addr_set)
+  if (mp->host_ip6_prefix_set)
     {
-      clib_memcpy (&ap->host_ip6_addr, mp->host_ip6_addr, 16);
-      ap->host_ip6_prefix_len = mp->host_ip6_prefix_len;
+      ip6_address_decode (mp->host_ip6_prefix.address, &ap->host_ip6_addr);
+      ap->host_ip6_prefix_len = mp->host_ip6_prefix.len;
     }
 
   if (mp->host_ip4_gw_set)
     {
-      clib_memcpy (&ap->host_ip4_gw, mp->host_ip4_gw, 4);
+      ip4_address_decode (mp->host_ip4_gw, &ap->host_ip4_gw);
       ap->host_ip4_gw_set = 1;
     }
 
   if (mp->host_ip6_gw_set)
     {
-      clib_memcpy (&ap->host_ip6_gw, mp->host_ip6_gw, 16);
+      ip6_address_decode (mp->host_ip6_gw, &ap->host_ip6_gw);
       ap->host_ip6_gw_set = 1;
     }
 
@@ -124,11 +127,9 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
     return;;
 
   /* If a tag was supplied... */
-  if (mp->tag[0])
+  if (vl_api_string_len (&mp->tag))
     {
-      /* Make sure it's a proper C-string */
-      mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
-      u8 *tag = format (0, "%s%c", mp->tag, 0);
+      u8 *tag = format (0, "%s%c", vl_api_from_api_string (&mp->tag), 0);
       vnet_set_sw_interface_tag (vnm, tag, ap->sw_if_index);
     }
 
@@ -143,11 +144,29 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 }
 
 static void
+tap_send_sw_interface_event_deleted (vpe_api_main_t * am,
+				     vl_api_registration_t * reg,
+				     u32 sw_if_index)
+{
+  vl_api_sw_interface_event_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  mp->flags = 0;
+  mp->deleted = 1;
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
 vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   int rv;
+  vpe_api_main_t *vam = &vpe_api_main;
   vl_api_tap_delete_v2_reply_t *rmp;
   vl_api_registration_t *reg;
   u32 sw_if_index = ntohl (mp->sw_if_index);
@@ -166,7 +185,10 @@ vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 
   if (!rv)
-    vnet_clear_sw_interface_tag (vnm, sw_if_index);
+    {
+      vnet_clear_sw_interface_tag (vnm, sw_if_index);
+      tap_send_sw_interface_event_deleted (vam, reg, sw_if_index);
+    }
 }
 
 static void
@@ -175,34 +197,45 @@ tap_send_sw_interface_details (vpe_api_main_t * am,
 			       tap_interface_details_t * tap_if, u32 context)
 {
   vl_api_sw_interface_tap_v2_details_t *mp;
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  char *p;
+  u32 dev_name_len = strlen ((const char *) tap_if->dev_name);
+  u32 host_if_name_len = strlen ((const char *) tap_if->host_if_name);
+  u32 host_namespace_len = strlen ((const char *) tap_if->host_namespace);
+  u32 host_bridge_len = strlen ((const char *) tap_if->host_bridge);
+
+  mp = vl_msg_api_alloc (sizeof (*mp) + dev_name_len + host_if_name_len +
+			 host_namespace_len + host_bridge_len);
+  clib_memset (mp, 0, sizeof (*mp) + dev_name_len + host_if_name_len +
+	       host_namespace_len + host_bridge_len);
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_TAP_V2_DETAILS);
   mp->id = htonl (tap_if->id);
   mp->sw_if_index = htonl (tap_if->sw_if_index);
   mp->tap_flags = htonl (tap_if->tap_flags);
-  clib_memcpy (mp->dev_name, tap_if->dev_name,
-	       MIN (ARRAY_LEN (mp->dev_name) - 1,
-		    strlen ((const char *) tap_if->dev_name)));
+
   mp->rx_ring_sz = htons (tap_if->rx_ring_sz);
   mp->tx_ring_sz = htons (tap_if->tx_ring_sz);
-  clib_memcpy (mp->host_mac_addr, tap_if->host_mac_addr, 6);
-  clib_memcpy (mp->host_if_name, tap_if->host_if_name,
-	       MIN (ARRAY_LEN (mp->host_if_name) - 1,
-		    strlen ((const char *) tap_if->host_if_name)));
-  clib_memcpy (mp->host_namespace, tap_if->host_namespace,
-	       MIN (ARRAY_LEN (mp->host_namespace) - 1,
-		    strlen ((const char *) tap_if->host_namespace)));
-  clib_memcpy (mp->host_bridge, tap_if->host_bridge,
-	       MIN (ARRAY_LEN (mp->host_bridge) - 1,
-		    strlen ((const char *) tap_if->host_bridge)));
-  mp->host_mtu_size = htonl (tap_if->host_mtu_size);
+  mac_address_encode (&tap_if->host_mac_addr, mp->host_mac_addr);
+
   if (tap_if->host_ip4_prefix_len)
-    clib_memcpy (&mp->host_ip4_addr, &tap_if->host_ip4_addr, 4);
-  mp->host_ip4_prefix_len = tap_if->host_ip4_prefix_len;
+    ip4_address_encode (&tap_if->host_ip4_addr, mp->host_ip4_prefix.address);
+  mp->host_ip4_prefix.len = tap_if->host_ip4_prefix_len;
   if (tap_if->host_ip6_prefix_len)
-    clib_memcpy (&mp->host_ip6_addr, &tap_if->host_ip6_addr, 16);
-  mp->host_ip6_prefix_len = tap_if->host_ip6_prefix_len;
+    ip6_address_encode (&tap_if->host_ip6_addr, mp->host_ip6_prefix.address);
+  mp->host_ip6_prefix.len = tap_if->host_ip6_prefix_len;
+
+  p = (char *) &mp->dev_name;
+  p +=
+    vl_api_to_api_string (dev_name_len, (char *) tap_if->dev_name,
+			  &mp->dev_name);
+  p +=
+    vl_api_to_api_string (host_if_name_len, (char *) tap_if->host_if_name,
+			  (vl_api_string_t *) p);
+  p +=
+    vl_api_to_api_string (host_namespace_len, (char *) tap_if->host_namespace,
+			  (vl_api_string_t *) p);
+  p +=
+    vl_api_to_api_string (host_bridge_len, (char *) tap_if->host_bridge,
+			  (vl_api_string_t *) p);
 
   mp->context = context;
   vl_api_send_msg (reg, (u8 *) mp);
