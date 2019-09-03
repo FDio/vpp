@@ -90,7 +90,7 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  else if (unformat (line_input, "gso"))
 	    args.tap_flags |= TAP_FLAG_GSO;
 	  else if (unformat (line_input, "hw-addr %U",
-			     unformat_ethernet_address, args.mac_addr))
+			     unformat_ethernet_address, args.mac_addr.bytes))
 	    args.mac_addr_set = 1;
 	  else
 	    {
