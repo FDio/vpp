@@ -216,6 +216,30 @@
     },
     {
       "key": {
+        "uuid": "fcae2ac2_eb3722c1",
+        "filename": "src/plugins/map/map_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-03T10:16:58Z",
+      "side": 1,
+      "message": "For strncpy, \"dest size\" is the value of the third argument. Due to \"- 1\", it is one less than the fixed size, so the last byte of fixed size dest array is never nulled (as it is outside \"dest buffer\" as understood by strncpy).\nIn other words, there is no easy way to make strncpy do what strncpy_s was designed to do.",
+      "parentUuid": "8e019a02_2a2e287a",
+      "range": {
+        "startLine": 142,
+        "startChar": 50,
+        "endLine": 142,
+        "endChar": 71
+      },
+      "revId": "53ec3583ff91a9c103a15782b5776a8ee2d2dad3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c58f997c_04340d83",
         "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_serializer.py",
         "patchSetId": 8
