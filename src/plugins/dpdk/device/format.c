@@ -668,7 +668,7 @@ format_dpdk_device (u8 * s, va_list * args)
   vec_validate (xstat_names, len - 1);
   int ret = rte_eth_xstats_get_names (xd->port_id, xstat_names, len);
 
-  if (ret < 0 || ret > len)
+  if (ret >= 0 && ret <= len)
     {
       /* *INDENT-OFF* */
       vec_foreach_index(i, xd->xstats)
