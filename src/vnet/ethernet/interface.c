@@ -892,6 +892,53 @@ ethernet_get_interface (ethernet_main_t * em, u32 hw_if_index)
 	  index ? pool_elt_at_index (em->interfaces, i->hw_instance) : 0);
 }
 
+mac_address_t *
+ethernet_interface_add_del_address (ethernet_main_t * em,
+				    u32 hw_if_index, const u8 * address,
+				    u8 is_add)
+{
+  ethernet_interface_t *ei = ethernet_get_interface (em, hw_if_index);
+  mac_address_t *if_addr = 0;
+
+  /* return if there is not an ethernet interface for this hw interface */
+  if (!ei)
+    return 0;
+
+  /* determine whether the address is configured on the interface */
+  vec_foreach (if_addr, ei->secondary_addrs)
+  {
+    if (!ethernet_mac_address_equal (if_addr->bytes, address))
+      continue;
+
+    break;
+  }
+
+  if (if_addr && vec_is_member (ei->secondary_addrs, if_addr))
+    {
+      /* delete found address */
+      if (!is_add)
+	{
+	  vec_delete (ei->secondary_addrs, 1, if_addr - ei->secondary_addrs);
+	  if_addr = 0;
+	}
+      /* address already found, so nothing needs to be done if adding */
+    }
+  else
+    {
+      /* if_addr could be 0 or past the end of the vector. reset to 0 */
+      if_addr = 0;
+
+      /* add new address */
+      if (is_add)
+	{
+	  vec_add2 (ei->secondary_addrs, if_addr, 1);
+	  clib_memcpy (&if_addr->bytes, address, sizeof (if_addr->bytes));
+	}
+    }
+
+  return if_addr;
+}
+
 int
 vnet_delete_loopback_interface (u32 sw_if_index)
 {
