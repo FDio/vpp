@@ -84,6 +84,7 @@ typedef enum {
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
+#include <vnet/format_fns.h>
 #include <lb/lb.api.h>
 #undef vl_printfun
 

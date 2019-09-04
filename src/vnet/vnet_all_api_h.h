@@ -29,6 +29,10 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #endif /* included_from_layer_3 */
 
+#ifdef vl_printfun
+#include <vnet/format_fns.h>
+#endif
+
 #include <vnet/bonding/bond.api.h>
 #include <vnet/devices/af_packet/af_packet.api.h>
 #include <vnet/devices/netmap/netmap.api.h>

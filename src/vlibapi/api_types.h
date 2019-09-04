@@ -21,7 +21,7 @@
 #define included_api_types_h
 
 #include <stdbool.h>
-
+#include <stdarg.h>
 #include <vppinfra/types.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -43,6 +43,7 @@ extern int vl_api_vec_to_api_string (const u8 *vec, vl_api_string_t * str);
 extern u8 * vl_api_from_api_string (vl_api_string_t * astr);
 extern u32 vl_api_string_len (vl_api_string_t * astr);
 extern u8 * vl_api_from_api_to_vec (vl_api_string_t *astr);
+extern u8 *vl_api_format_string (u8 *s, va_list *args);
 
 #ifdef __cplusplus
 }
