@@ -1017,7 +1017,8 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   u16 sum16, payload_length_host_byte_order;
   u32 i, n_this_buffer, n_bytes_left;
   u32 headers_size = sizeof (ip0[0]);
-  void *data_this_buffer;
+  u8 *data_this_buffer;
+  u8 need_odd_next_buffer;
 
   ASSERT (bogus_lengthp);
   *bogus_lengthp = 0;
@@ -1025,7 +1026,7 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   /* Initialize checksum with ip header. */
   sum0 = ip0->payload_length + clib_host_to_net_u16 (ip0->protocol);
   payload_length_host_byte_order = clib_net_to_host_u16 (ip0->payload_length);
-  data_this_buffer = (void *) (ip0 + 1);
+  data_this_buffer = (u8 *) (ip0 + 1);
 
   for (i = 0; i < ARRAY_LEN (ip0->src_address.as_uword); i++)
     {
@@ -1078,14 +1079,33 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       if (n_bytes_left == 0)
 	break;
 
+      ASSERT (p0->flags & VLIB_BUFFER_NEXT_PRESENT);
       if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
 	  *bogus_lengthp = 1;
 	  return 0xfefe;
 	}
+      /*
+       * If this buffer address is odd or its length is odd, we need
+       * to make sure checksum function for any chained buffer is
+       * called with an odd address.
+       */
+      need_odd_next_buffer =
+	((uword) data_this_buffer & 1) | (n_this_buffer & 1);
+
       p0 = vlib_get_buffer (vm, p0->next_buffer);
       data_this_buffer = vlib_buffer_get_current (p0);
       n_this_buffer = clib_min (p0->current_length, n_bytes_left);
+
+      if (PREDICT_FALSE (need_odd_next_buffer &&
+			 ((uword) data_this_buffer & 1) == 0))
+	{
+	  /* Prepend dummy byte of 0 to make odd address */
+	  data_this_buffer--;
+	  n_this_buffer++;
+	  n_bytes_left++;
+	  data_this_buffer[0] = 0;
+	}
     }
 
   sum16 = ~ip_csum_fold (sum0);

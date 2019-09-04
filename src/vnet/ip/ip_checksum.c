@@ -174,6 +174,56 @@ VLIB_CLI_COMMAND (test_checksum, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+test_ip_checksum_fn2 (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  ip_csum_t sum0;
+  u8 *chunk1 = 0, *chunk2 = 0, *chunk3 = 0;
+
+  vec_validate (chunk1, 1);
+
+  chunk1[0] = 1;
+  chunk1[1] = 2;
+
+  vec_validate (chunk2, 1);
+  chunk2[0] = 0;
+  chunk2[1] = 2;
+
+  vec_validate (chunk3, 0);
+  chunk3[0] = 2;
+
+  sum0 = 0;
+  sum0 = _ip_incremental_checksum (sum0, chunk1, 2);
+  vlib_cli_output (vm, "unified sum is %llx", sum0);
+
+  sum0 = 0;
+  sum0 = _ip_incremental_checksum (sum0, chunk1, 1);
+  vlib_cli_output (vm, "partial sum #1 is %llx", sum0);
+  sum0 = _ip_incremental_checksum (sum0, chunk2, 2);
+  vlib_cli_output (vm, "final sum is %llx", sum0);
+
+  sum0 = 0;
+  sum0 = _ip_incremental_checksum (sum0, chunk1, 1);
+  vlib_cli_output (vm, "partial sum #2 is %llx", sum0);
+  sum0 = _ip_incremental_checksum (sum0, chunk3, 1);
+  vlib_cli_output (vm, "final sum is %llx", sum0);
+
+  vec_free (chunk1);
+  vec_free (chunk2);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_c2, static) =
+{
+  .path = "test ip c2",
+  .short_help = "test ip c2",
+  .function = test_ip_checksum_fn2,
+};
+/* *INDENT-ON* */
+
 #endif /* CLIB_DEBUG */
 
 /*
