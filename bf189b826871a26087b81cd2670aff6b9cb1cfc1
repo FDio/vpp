@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "431212a1_f08add9d",
+        "filename": "src/vnet/bonding/bond.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-04T11:49:14Z",
+      "side": 1,
+      "message": "Add @param lines for the added fields.",
+      "range": {
+        "startLine": 157,
+        "startChar": 0,
+        "endLine": 157,
+        "endChar": 2
+      },
+      "revId": "bf189b826871a26087b81cd2670aff6b9cb1cfc1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
