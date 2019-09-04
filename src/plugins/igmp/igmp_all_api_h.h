@@ -15,6 +15,10 @@
  *------------------------------------------------------------------
  */
 
+#ifdef vl_printfun
+#include <vnet/format_fns.h>
+#endif
+
 #include <igmp/igmp.api.h>
 
 /*

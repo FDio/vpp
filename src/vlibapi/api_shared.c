@@ -249,7 +249,6 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
   fh.wrapped = tp->wrapped;
   fh.nitems = clib_host_to_net_u32 (vec_len (tp->traces));
   u8 *m = vl_api_serialize_message_table (am, 0);
-  clib_warning ("Message table length %d", vec_len (m));
   fh.msgtbl_size = clib_host_to_net_u32 (vec_len (m));
 
   if (fwrite (&fh, sizeof (fh), 1, fp) != 1)
@@ -1059,7 +1058,8 @@ vl_msg_pop_heap (void *oldheap)
 int
 vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
 {
-  clib_memcpy_fast (str->buf, buf, len);
+  if (len)
+    clib_memcpy_fast (str->buf, buf, len);
   str->length = htonl (len);
   return len + sizeof (u32);
 }
@@ -1084,6 +1084,14 @@ u32
 vl_api_string_len (vl_api_string_t * astr)
 {
   return clib_net_to_host_u32 (astr->length);
+}
+
+u8 *
+vl_api_format_string (u8 * s, va_list * args)
+{
+  vl_api_string_t *a = va_arg (*args, vl_api_string_t *);
+  vec_add (s, a->buf, clib_net_to_host_u32 (a->length));
+  return s;
 }
 
 /*
