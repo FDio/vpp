@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-typedef u8 ip4_address[4];
-typedef u8 ip6_address[16];
+option version = "3.0.0";
+manual_print typedef u8 ip4_address[4];
+manual_print typedef u8 ip6_address[16];
 
 enum address_family {
   ADDRESS_IP4 = 0,
@@ -80,12 +81,12 @@ union address_union {
   vl_api_ip6_address_t ip6;
 };
 
-typedef address {
+manual_print typedef address {
   vl_api_address_family_t af;
   vl_api_address_union_t un;
 };
 
-typedef prefix {
+manual_print typedef prefix {
   vl_api_address_t address;
   u8 len;
 };
@@ -97,12 +98,12 @@ typedef mprefix {
   vl_api_address_union_t src_address;
 };
 
-typedef ip6_prefix {
+manual_print typedef ip6_prefix {
   vl_api_ip6_address_t address;
   u8 len;
 };
 
-typedef ip4_prefix {
+manual_print typedef ip4_prefix {
   vl_api_ip4_address_t address;
   u8 len;
 };

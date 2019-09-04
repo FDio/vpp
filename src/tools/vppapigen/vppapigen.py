@@ -8,6 +8,7 @@ import keyword
 import logging
 import binascii
 import os
+import sys
 
 log = logging.getLogger('vppapigen')
 
@@ -77,6 +78,16 @@ class VPPAPILexer(object):
               'ID', 'NUM'] + list(reserved.values())
 
     t_ignore_LINE_COMMENT = '//.*'
+
+    def t_FALSE(self, t):
+        r'false'
+        t.value = False
+        return t
+
+    def t_TRUE(self, t):
+        r'false'
+        t.value = True
+        return t
 
     def t_NUM(self, t):
         r'0[xX][0-9a-fA-F]+|-?\d+\.?\d*'
@@ -150,6 +161,14 @@ class Typedef():
                 self.manual_print = True
             elif f == 'manual_endian':
                 self.manual_endian = True
+        for b in block:
+            # Tag length field of a VLA
+            if isinstance(b, Array):
+                if b.lengthfield:
+                    for b2 in block:
+                        if b2.fieldname == b.lengthfield:
+                            b2.vla_len = True
+
         global_type_add(name, self)
 
         self.vla = False
@@ -176,9 +195,17 @@ class Typedef():
 
 
 class Using():
-    def __init__(self, name, alias):
+    def __init__(self, name, flags, alias):
         self.name = name
         self.vla = False
+
+        self.manual_print = False
+        self.manual_endian = False
+        for f in flags:
+            if f == 'manual_print':
+                self.manual_print = True
+            elif f == 'manual_endian':
+                self.manual_endian = True
 
         if isinstance(alias, Array):
             a = {'type': alias.fieldtype,
@@ -194,11 +221,20 @@ class Using():
 
 
 class Union():
-    def __init__(self, name, block):
+    def __init__(self, name, flags, block):
         self.type = 'Union'
         self.manual_print = False
         self.manual_endian = False
         self.name = name
+
+        self.manual_print = False
+        self.manual_endian = False
+        for f in flags:
+            if f == 'manual_print':
+                self.manual_print = True
+            elif f == 'manual_endian':
+                self.manual_endian = True
+
         self.block = block
         self.crc = str(block).encode()
         global_type_add(name, self)
@@ -250,6 +286,13 @@ class Define():
                         'VLA field "{}" must be the last '
                         'field in message "{}"'
                         .format(b.fieldname, name))
+            # Tag length field of a VLA
+            if isinstance(b, Array):
+                if b.lengthfield:
+                    for b2 in block:
+                        if b2.fieldname == b.lengthfield:
+                            b2.vla_len = True
+
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
@@ -298,8 +341,10 @@ class Import():
 
 
 class Option():
-    def __init__(self, option):
+    def __init__(self, option, value):
+        self.type = 'Option'
         self.option = option
+        self.value = value
         self.crc = str(option).encode()
 
     def __repr__(self):
@@ -524,9 +569,18 @@ class VPPAPIParser(object):
         '''typedef : TYPEDEF ID '{' block_statements_opt '}' ';' '''
         p[0] = Typedef(p[2], [], p[4])
 
+    def p_typedef_flist(self, p):
+        '''typedef : flist TYPEDEF ID '{' block_statements_opt '}' ';' '''
+        p[0] = Typedef(p[3], p[1], p[5])
+
     def p_typedef_alias(self, p):
         '''typedef : TYPEDEF declaration '''
-        p[0] = Using(p[2].fieldname, p[2])
+        p[0] = Using(p[2].fieldname, [], p[2])
+
+    def p_typedef_alias_flist(self, p):
+        '''typedef : flist TYPEDEF declaration '''
+        p[0] = Using(p[3].fieldname, p[1], p[3])
+
 
     def p_block_statements_opt(self, p):
         '''block_statements_opt : block_statements '''
@@ -620,7 +674,7 @@ class VPPAPIParser(object):
 
     def p_option(self, p):
         '''option : OPTION ID '=' assignee ';' '''
-        p[0] = Option([p[1], p[2], p[4]])
+        p[0] = Option(p[2], p[4])
 
     def p_assignee(self, p):
         '''assignee : NUM
@@ -653,7 +707,11 @@ class VPPAPIParser(object):
 
     def p_union(self, p):
         '''union : UNION ID '{' block_statements_opt '}' ';' '''
-        p[0] = Union(p[2], p[4])
+        p[0] = Union(p[2], [], p[4])
+
+    def p_union_flist(self, p):
+        '''union : flist UNION ID '{' block_statements_opt '}' ';' '''
+        p[0] = Union(p[3], p[1], p[5])
 
     # Error rule for syntax errors
     def p_error(self, p):
@@ -716,7 +774,7 @@ class VPPAPI(object):
                   isinstance(o, Union)):
                 s['types'].append(o)
             elif isinstance(o, Using):
-                s['Alias'][o.name] = o.alias
+                s['Alias'][o.name] = o
             else:
                 if tname not in s:
                     raise ValueError('Unknown class type: {} {}'
@@ -802,6 +860,7 @@ class VPPAPI(object):
                                   isinstance(o, Using)):
                 continue
             if isinstance(o, Import):
+                result.append(o)
                 self.process_imports(o.result, True, result)
             else:
                 result.append(o)
@@ -894,8 +953,13 @@ def main():
 
     # Build a list of objects. Hash of lists.
     result = []
-    parser.process_imports(parsed_objects, False, result)
-    s = parser.process(result)
+
+    if args.output_module == 'C':
+        s = parser.process(parsed_objects)
+    else:
+        parser.process_imports(parsed_objects, False, result)
+        s = parser.process(result)
+
 
     # Add msg_id field
     s['Define'] = add_msg_id(s['Define'])
