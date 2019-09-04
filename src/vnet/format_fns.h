@@ -1,6 +1,5 @@
-/* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -14,4 +13,11 @@
  * limitations under the License.
  */
 
-manual_print typedef u8 mac_address[6];
+#ifndef included_format_fns_h
+#define included_format_fns_h
+
+#include <vnet/ip/format.h>
+#include <vnet/ip/ip_format_fns.h>
+#include <vnet/ethernet/ethernet_format_fns.h>
+
+#endif

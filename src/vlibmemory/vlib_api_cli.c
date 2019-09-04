@@ -548,7 +548,8 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
        * Endian swap if needed. All msg data is supposed to be in
        * network byte order.
        */
-      if ((which == DUMP && clib_arch_is_little_endian))
+      if (((which == DUMP || which == CUSTOM_DUMP)
+	   && clib_arch_is_little_endian))
 	{
 	  void (*endian_fp) (void *);
 	  if (msg_id >= vec_len (am->msg_endian_handlers)

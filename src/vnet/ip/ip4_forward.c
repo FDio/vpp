@@ -736,9 +736,11 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
 
                        return
                          clib_error_create
-                         ("failed to add %U which conflicts with %U for interface %U",
+                         ("failed to add %U on %U which conflicts with %U for interface %U",
                           format_ip4_address_and_length, address,
                           address_length,
+			  format_vnet_sw_if_index_name, vnm,
+			  sw_if_index,
                           format_ip4_address_and_length, x,
                           ia->address_length,
                           format_vnet_sw_if_index_name, vnm,
