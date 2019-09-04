@@ -2,6 +2,8 @@
 import datetime
 import os
 import time
+import sys
+from io import StringIO
 
 datestring = datetime.datetime.utcfromtimestamp(
     int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))
@@ -86,16 +88,6 @@ def msg_name_crc_list(s, suffix):
     return output
 
 
-def duplicate_wrapper_head(name):
-    s = "#ifndef _vl_api_defined_%s\n" % name
-    s += "#define _vl_api_defined_%s\n" % name
-    return s
-
-
-def duplicate_wrapper_tail():
-    return '#endif\n\n'
-
-
 def api2c(fieldtype):
     mappingtable = {'string': 'vl_api_string_t', }
     if fieldtype in mappingtable:
@@ -111,22 +103,20 @@ def typedefs(objs, aliases, filename):
 /****** Typedefs ******/
 
 #ifdef vl_typedefs
-#ifndef included_{module}
-#define included_{module}
+#ifndef included_{module}_typedef
+#define included_{module}_typedef
 '''
     output = output.format(module=name)
 
     for k, v in aliases.items():
-        output += duplicate_wrapper_head(k)
-        if 'length' in v:
-            output +=  'typedef %s vl_api_%s_t[%s];\n' % (v['type'], k, v['length'])
+        if 'length' in v.alias:
+            output += ('typedef %s vl_api_%s_t[%s];\n'
+                       % (v.alias['type'], k, v.alias['length']))
         else:
-            output += 'typedef %s vl_api_%s_t;\n' % (v['type'], k)
-        output += duplicate_wrapper_tail()
+            output += 'typedef %s vl_api_%s_t;\n' % (v.alias['type'], k)
 
     for o in objs:
         tname = o.__class__.__name__
-        output += duplicate_wrapper_head(o.name)
         if tname == 'Enum':
             if o.enumtype == 'u32':
                 output += "typedef enum {\n"
@@ -140,33 +130,43 @@ def typedefs(objs, aliases, filename):
                 size1 = 'sizeof(vl_api_%s_t)' % o.name
                 size2 = 'sizeof(%s)' % o.enumtype
                 err_str = 'size of API enum %s is wrong' % o.name
-                output += 'STATIC_ASSERT(%s == %s, "%s");\n' % (size1, size2, err_str)
+                output += ('STATIC_ASSERT(%s == %s, "%s");\n'
+                           % (size1, size2, err_str))
         else:
             if tname == 'Union':
                 output += "typedef VL_API_PACKED(union _vl_api_%s {\n" % o.name
             else:
-                output += "typedef VL_API_PACKED(struct _vl_api_%s {\n" % o.name
+                output += ("typedef VL_API_PACKED(struct _vl_api_%s {\n"
+                           % o.name)
             for b in o.block:
+                if b.type == 'Option':
+                    continue
                 if b.type == 'Field':
-                    output += "    %s %s;\n" % (api2c(b.fieldtype), b.fieldname)
+                    output += "    %s %s;\n" % (api2c(b.fieldtype),
+                                                b.fieldname)
                 elif b.type == 'Array':
                     if b.lengthfield:
-                        output += "    %s %s[0];\n" % (api2c(b.fieldtype), b.fieldname)
+                        output += "    %s %s[0];\n" % (api2c(b.fieldtype),
+                                                       b.fieldname)
                     else:
                         # Fixed length strings decay to nul terminated u8
                         if b.fieldtype == 'string':
                             if b.modern_vla:
-                                output += '    {} {};\n'.format(api2c(b.fieldtype), b.fieldname)
+                                output += ('    {} {};\n'
+                                           .format(api2c(b.fieldtype),
+                                                   b.fieldname))
                             else:
-                                output += '    u8 {}[{}];\n'.format(b.fieldname, b.length)
+                                output += ('    u8 {}[{}];\n'
+                                           .format(b.fieldname, b.length))
                         else:
-                            output += "    %s %s[%s];\n" % (api2c(b.fieldtype), b.fieldname,
-                                                            b.length)
+                            output += ("    %s %s[%s];\n" %
+                                       (api2c(b.fieldtype), b.fieldname,
+                                        b.length))
                 else:
-                    raise ValueError("Error in processing array type %s" % b)
+                    raise ValueError("Error in processing type {} for {}"
+                                     .format(b, o.name))
 
             output += '}) vl_api_%s_t;\n' % o.name
-        output += duplicate_wrapper_tail()
 
     output += "\n#endif"
     output += "\n#endif\n\n"
@@ -175,6 +175,7 @@ def typedefs(objs, aliases, filename):
 
 
 format_strings = {'u8': '%u',
+                  'bool': '%u',
                   'i8': '%d',
                   'u16': '%u',
                   'i16': '%d',
@@ -182,13 +183,130 @@ format_strings = {'u8': '%u',
                   'i32': '%ld',
                   'u64': '%llu',
                   'i64': '%llu',
-                  'f64': '%.2f', }
+                  'f64': '%.2f'}
 
 
-def printfun(objs):
-    output = '''\
+class Printfun():
+    _dispatch = {}
+
+    def __init__(self, stream):
+        self.stream = stream
+
+    def print_string(self, o, stream):
+        write = stream.write
+        if o.modern_vla:
+            write('    if (vl_api_string_len(&a->{f}) > 0) {{\n'
+                  .format(f=o.fieldname))
+            write('        s = format(s, "\\n%U{f}: %.*s", '
+                  'format_white_space, indent, '
+                  'vl_api_string_len(&a->{f}) - 1, '
+                  'vl_api_from_api_string(&a->{f}));\n'.format(f=o.fieldname))
+            write('    } else {\n')
+            write('        s = format(s, "\\n%U{f}:", '
+                  'format_white_space, indent);\n'.format(f=o.fieldname))
+            write('    }\n')
+        else:
+            write('    s = format(s, "\\n%U{f}: %s", '
+                  'format_white_space, indent, a->{f});\n'
+                  .format(f=o.fieldname))
+
+    def print_field(self, o, stream):
+        write = stream.write
+        if o.fieldtype in format_strings:
+            f = format_strings[o.fieldtype]
+            write('   s = format(s, "\\n%U{n}: {f}", '
+                  'format_white_space, indent, a->{n});\n'
+                  .format(n=o.fieldname, f=f))
+        else:
+            write('    s = format(s, "\\n%U{n}: %U", '
+                  'format_white_space, indent, '
+                  'format_{t}, &a->{n}, indent);\n'
+                  .format(n=o.fieldname, t=o.fieldtype))
+
+    _dispatch['Field'] = print_field
+
+    def print_array(self, o, stream):
+        write = stream.write
+
+        forloop = '''\
+    for (i = 0; i < {lfield}; i++) {{
+        s = format(s, "\\n%U{n}: %U",
+                   format_white_space, indent, format_{t}, &a->{n}[i], indent);
+    }}
+'''
+
+        forloop_format = '''\
+    for (i = 0; i < {lfield}; i++) {{
+        s = format(s, "\\n%U{n}: {t}",
+                   format_white_space, indent, &a->{n}[i], indent);
+    }}
+'''
+
+        if o.fieldtype == 'string':
+            return self.print_string(o, stream)
+
+        if o.fieldtype == 'u8':
+            if o.lengthfield:
+                write('    s = format(s, "\\n%U{n}: %U", format_white_space, '
+                      'indent, format_hex_bytes, a->{n}, a->{lfield});\n'
+                      .format(n=o.fieldname, lfield=o.lengthfield))
+            else:
+                write('    s = format(s, "\\n%U{n}: %U", format_white_space, '
+                      'indent, format_hex_bytes, a, {lfield});\n'
+                      .format(n=o.fieldname, lfield=o.length))
+            return
+
+        lfield = 'a->' + o.lengthfield if o.lengthfield else o.length
+        if o.fieldtype in format_strings:
+            write(forloop_format.format(lfield=lfield,
+                                        t=format_strings[o.fieldtype],
+                                        n=o.fieldname))
+        else:
+            write(forloop.format(lfield=lfield, t=o.fieldtype, n=o.fieldname))
+
+    _dispatch['Array'] = print_array
+
+    def print_alias(self, k, v, stream):
+        write = stream.write
+        if ('length' in v.alias and v.alias['length'] and
+                v.alias['type'] == 'u8'):
+            write('    return format(s, "%U", format_hex_bytes, a, {});\n'
+                  .format(v.alias['length']))
+        elif v.alias['type'] in format_strings:
+            write('    return format(s, "{}", *a);\n'
+                  .format(format_strings[v.alias['type']]))
+        else:
+            write('    return format(s, "{} (print not implemented)"'
+                  .format(k))
+
+    def print_enum(self, o, stream):
+        write = stream.write
+        write("    switch(*a) {\n")
+        for b in o:
+            write("    case %s:\n" % b[1])
+            write('        return format(s, "{}");\n'.format(b[0]))
+        write('    }\n')
+
+    _dispatch['Enum'] = print_enum
+
+    def print_obj(self, o, stream):
+        write = stream.write
+
+        if o.type in self._dispatch:
+            self._dispatch[o.type](self, o, stream)
+        else:
+            write('    s = format(s, "\\n{} {} {} (print not implemented");\n'
+                  .format(o.type, o.fieldtype, o.fieldname))
+
+
+def printfun(objs, stream, modulename):
+    write = stream.write
+
+    h = '''\
 /****** Print functions *****/
 #ifdef vl_printfun
+#ifndef included_{module}_printfun
+#define included_{module}_printfun
 
 #ifdef LP64
 #define _uword_fmt \"%lld\"
@@ -199,32 +317,102 @@ def printfun(objs):
 #endif
 
 '''
+
+    signature = '''\
+static inline void *vl_api_{name}_t_print (vl_api_{name}_t *a, void *handle)
+{{
+    u8 *s = 0;
+    u32 indent __attribute__((unused)) = 2;
+    int i __attribute__((unused));
+'''
+
+    h = h.format(module=modulename)
+    write(h)
+
+    pp = Printfun(stream)
+    for t in objs:
+        if t.manual_print:
+            write("/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name)
+            continue
+        write(signature.format(name=t.name))
+        write('    /* Message definition: vl_api_{}_t: */\n'.format(t.name))
+        write("    s = format(s, \"vl_api_%s_t:\");\n" % t.name)
+        for o in t.block:
+            pp.print_obj(o, stream)
+        write('    vl_print (handle, (char *)s);\n')
+        write('    vec_free (s);\n')
+        write('    return handle;\n')
+        write('}\n\n')
+
+    write("\n#endif")
+    write("\n#endif /* vl_printfun */\n")
+
+    return ''
+
+
+def printfun_types(objs, aliases, stream, modulename):
+    write = stream.write
+    pp = Printfun(stream)
+
+    h = '''\
+/****** Print functions *****/
+#ifdef vl_printfun
+#ifndef included_{module}_printfun_types
+#define included_{module}_printfun_types
+
+'''
+    h = h.format(module=modulename)
+    write(h)
+
+    signature = '''\
+static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
+{{
+    vl_api_{name}_t *a = va_arg (*args, vl_api_{name}_t *);
+    u32 indent __attribute__((unused)) = va_arg (*args, u32);
+    int i __attribute__((unused));
+    indent += 2;
+'''
+
+    for k, v in aliases.items():
+        if v.manual_print:
+            write("/***** manual: vl_api_%s_t_print  *****/\n\n" % k)
+            continue
+
+        write(signature.format(name=k))
+        pp.print_alias(k, v, stream)
+        write('}\n\n')
+
     for t in objs:
         if t.__class__.__name__ == 'Enum':
+            write(signature.format(name=t.name))
+            pp.print_enum(t.block, stream)
+            write('    return s;\n')
+            write('}\n\n')
             continue
+
         if t.manual_print:
-            output += "/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name
+            write("/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name)
             continue
-        output += duplicate_wrapper_head(t.name + '_t_print')
-        output += "static inline void *vl_api_%s_t_print (vl_api_%s_t *a," % \
-                  (t.name, t.name)
-        output += "void *handle)\n{\n"
-        output += "    vl_print(handle, \"vl_api_%s_t:\\n\");\n" % t.name
 
+        write(signature.format(name=t.name))
         for o in t.block:
-            if o.type != 'Field':
-                continue
-            if o.fieldtype in format_strings:
-                output += "    vl_print(handle, \"%s: %s\\n\", a->%s);\n" % \
-                          (o.fieldname, format_strings[o.fieldtype],
-                           o.fieldname)
+            pp.print_obj(o, stream)
 
-        output += '    return handle;\n'
-        output += '}\n\n'
-        output += duplicate_wrapper_tail()
+        write('    return s;\n')
+        write('}\n\n')
 
-    output += "\n#endif /* vl_printfun */\n"
+    write("\n#endif")
+    write("\n#endif /* vl_printfun_types */\n")
 
+
+def imports(imports):
+    output = '/* Imported API files */\n'
+    output += '#ifndef vl_api_version\n'
+
+    for i in imports:
+        s = i.filename.replace('plugins/', '')
+        output += '#include <{}.h>\n'.format(s)
+    output += '#endif\n'
     return output
 
 
@@ -239,11 +427,69 @@ endian_strings = {
 }
 
 
-def endianfun(objs):
+def endianfun_array(o):
+    forloop = '''\
+    for (i = 0; i < {length}; i++) {{
+        {format}(a->{name}[i]);
+    }}
+'''
+
+    forloop_format = '''\
+    for (i = 0; i < {length}; i++) {{
+        {type}_endian(&a->{name}[i]);
+    }}
+'''
+
+    output = ''
+    if o.fieldtype == 'u8' or o.fieldtype == 'string':
+        output += '    /* a->{n} = a->{n} (no-op) */\n'.format(n=o.fieldname)
+    else:
+        lfield = 'a->' + o.lengthfield if o.lengthfield else o.length
+        if o.fieldtype in endian_strings:
+            output += (forloop
+                       .format(length=lfield,
+                               format=endian_strings[o.fieldtype],
+                               name=o.fieldname))
+        else:
+            output += (forloop_format
+                       .format(length=lfield, type=o.fieldtype,
+                               name=o.fieldname))
+    return output
+
+
+def endianfun_obj(o):
+    output = ''
+    if o.type == 'Array':
+        return endianfun_array(o)
+    elif o.type != 'Field':
+        output += ('    s = format(s, "\\n{} {} {} (print not implemented");\n'
+                   .format(o.type, o.fieldtype, o.fieldname))
+        return output
+    if o.fieldtype in endian_strings:
+        try:
+            if o.vla_len:
+                return output
+        except AttributeError:
+            pass
+        output += ('    a->{name} = {format}(a->{name});\n'
+                   .format(name=o.fieldname,
+                           format=endian_strings[o.fieldtype]))
+    elif o.fieldtype.startswith('vl_api_'):
+        output += ('    {type}_endian(&a->{name});\n'
+                   .format(type=o.fieldtype, name=o.fieldname))
+    else:
+        output += '    /* a->{n} = a->{n} (no-op) */\n'.format(n=o.fieldname)
+
+    return output
+
+
+def endianfun(objs, aliases, modulename):
     output = '''\
 
 /****** Endian swap functions *****/\n\
 #ifdef vl_endianfun
+#ifndef included_{module}_endianfun
+#define included_{module}_endianfun
 
 #undef clib_net_to_host_uword
 #ifdef LP64
@@ -253,30 +499,55 @@ def endianfun(objs):
 #endif
 
 '''
+    output = output.format(module=modulename)
+
+    signature = '''\
+static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
+{{
+    int i __attribute__((unused));
+'''
+
+    for k, v in aliases.items():
+        if v.manual_endian:
+            output += "/***** manual: vl_api_%s_t_endian  *****/\n\n" % k
+            continue
+
+        output += signature.format(name=k)
+        if ('length' in v.alias and v.alias['length'] and
+                v.alias['type'] == 'u8'):
+            output += ('    /* a->{name} = a->{name} (no-op) */\n'
+                       .format(name=k))
+        elif v.alias['type'] in format_strings:
+            output += ('    *a = {}(*a);\n'
+                       .format(endian_strings[v.alias['type']]))
+        else:
+            output += '    /* Not Implemented yet {} */'.format(k)
+        output += '}\n\n'
 
     for t in objs:
         if t.__class__.__name__ == 'Enum':
+            output += signature.format(name=t.name)
+            if t.enumtype in endian_strings:
+                output += ('    *a = {}(*a);\n'
+                           .format(endian_strings[t.enumtype]))
+            else:
+                output += ('    /* a->{name} = a->{name} (no-op) */\n'
+                           .format(name=t.name))
+
+            output += '}\n\n'
             continue
+
         if t.manual_endian:
             output += "/***** manual: vl_api_%s_t_endian  *****/\n\n" % t.name
             continue
-        output += duplicate_wrapper_head(t.name + '_t_endian')
-        output += "static inline void vl_api_%s_t_endian (vl_api_%s_t *a)" % \
-                  (t.name, t.name)
-        output += "\n{\n"
+
+        output += signature.format(name=t.name)
 
         for o in t.block:
-            if o.type != 'Field':
-                continue
-            if o.fieldtype in endian_strings:
-                output += "    a->%s = %s(a->%s);\n" % \
-                        (o.fieldname, endian_strings[o.fieldtype], o.fieldname)
-            else:
-                output += "    /* a->%s = a->%s (no-op) */\n" % \
-                                          (o.fieldname, o.fieldname)
-
+            output += endianfun_obj(o)
         output += '}\n\n'
-        output += duplicate_wrapper_tail()
+
+    output += "\n#endif"
     output += "\n#endif /* vl_endianfun */\n\n"
 
     return output
@@ -304,16 +575,23 @@ def version_tuple(s, module):
 # Plugin entry point
 #
 def run(input_filename, s):
+    stream = StringIO()
     basename = os.path.basename(input_filename)
     filename, file_extension = os.path.splitext(basename)
+    modulename = filename.replace('.', '_')
+
     output = top_boilerplate.format(datestring=datestring,
                                     input_filename=basename)
+    output += imports(s['Import'])
     output += msg_ids(s)
     output += msg_names(s)
     output += msg_name_crc_list(s, filename)
-    output += typedefs(s['types'] + s['Define'], s['Alias'], filename + file_extension)
-    output += printfun(s['types'] + s['Define'])
-    output += endianfun(s['types'] + s['Define'])
+    output += typedefs(s['types'] + s['Define'], s['Alias'],
+                       filename + file_extension)
+    printfun_types(s['types'], s['Alias'], stream, modulename)
+    printfun(s['Define'], stream, modulename)
+    output += stream.getvalue()
+    output += endianfun(s['types'] + s['Define'], s['Alias'],  modulename)
     output += version_tuple(s, basename)
     output += bottom_boilerplate.format(input_filename=basename,
                                         file_crc=s['file_crc'])
