@@ -1709,6 +1709,23 @@ VLIB_CLI_COMMAND (elog_trace_command, static) =
 /* *INDENT-ON* */
 
 static clib_error_t *
+suspend_command_fn (vlib_main_t * vm,
+		    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vlib_process_suspend (vm, 30e-3);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (suspend_command, static) =
+{
+  .path = "suspend",
+  .short_help = "suspend debug CLI for 30ms",
+  .function = suspend_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 vlib_cli_init (vlib_main_t * vm)
 {
   vlib_cli_main_t *cm = &vm->cli_main;
