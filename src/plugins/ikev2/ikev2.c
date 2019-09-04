@@ -3036,6 +3036,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
     ike0->exchange = IKEV2_EXCHANGE_SA_INIT;
     ike0->ispi = sa.ispi;
+    ike0->rspi = 0;
 
     /* store whole IKE payload - needed for PSK auth */
     vec_free (sa.last_sa_init_req_packet_data);
@@ -3049,12 +3050,6 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     sa.i_auth.method = p->auth.method;
     sa.i_auth.hex = p->auth.hex;
     sa.i_auth.data = vec_dup (p->auth.data);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    clib_memcpy_fast (sa.i_auth.key, p->auth.key,
-		      EVP_PKEY_size (p->auth.key));
-#else
-    sa.i_auth.key = vec_dup (p->auth.key);
-#endif
     vec_add (sa.childs[0].tsi, &p->loc_ts, 1);
     vec_add (sa.childs[0].tsr, &p->rem_ts, 1);
 
