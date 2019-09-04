@@ -66,6 +66,7 @@
 
 #include <vlibapi/api_helper_macros.h>
 
+#include <vnet/format_fns.h>
 
 #define foreach_ip_api_msg                                              \
 _(IP_TABLE_DUMP, ip_table_dump)                                         \

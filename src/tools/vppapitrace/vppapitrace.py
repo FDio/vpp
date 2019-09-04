@@ -102,6 +102,7 @@ def unserialize_msgtbl(data, offset):
 
 def serialize_msgtbl(messages):
     offset = 0
+    # XXX 100K?
     data = bytearray(100000)
     nmsg = len(messages)
     data = struct.pack(">I", nmsg)
@@ -380,8 +381,8 @@ def generate(args):
 
     filename, file_extension = os.path.splitext(args.input)
     input_type = JSON if file_extension == '.json' else APITRACE
-
     filename, file_extension = os.path.splitext(args.output)
+
     if args.todump:
         output_type = DUMP
     else:
@@ -395,7 +396,7 @@ def generate(args):
     if input_type == output_type:
         sys.exit("error: Nothing to convert between")
 
-    if input_type == JSON and output_type == APITRACE:
+    if input_type != JSON and output_type == APITRACE:
         sys.exit("error: Input file must be JSON file: {}".format(args.input))
 
     messages, services = init_api(args.apidir)
@@ -407,11 +408,11 @@ def generate(args):
             i += 1
 
         n, result = json2apitrace(messages, args.input)
-        print('API messages: {}'.format(n))
-        header = struct.pack(">IIB", n, len(messages), 0)
-
-        i = 0
         msgtbl = serialize_msgtbl(messages)
+
+        print('API messages: {}'.format(n))
+        header = struct.pack(">IIB", n, len(msgtbl), 0)
+
         with open(args.output, 'wb') as outfile:
             outfile.write(header)
             outfile.write(msgtbl)

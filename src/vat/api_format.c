@@ -85,6 +85,8 @@
 #define __plugin_msg_base 0
 #include <vlibapi/vat_helper_macros.h>
 
+#include <vnet/format_fns.h>
+
 void vl_api_set_elog_main (elog_main_t * m);
 int vl_api_set_elog_trace_api_messages (int enable);
 
