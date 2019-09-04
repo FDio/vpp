@@ -27,7 +27,7 @@
 #define AVF_MBOX_BUF_SZ 512
 #define AVF_RXQ_SZ 512
 #define AVF_TXQ_SZ 512
-#define AVF_ITR_INT 8160
+#define AVF_ITR_INT 32
 
 #define PCI_VENDOR_ID_INTEL			0x8086
 #define PCI_DEVICE_ID_INTEL_AVF			0x1889
