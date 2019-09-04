@@ -143,8 +143,8 @@ class String(object):
             return '', 0
         p = BaseTypes('u8', length)
         x, size = p.unpack(data, offset + length_field_size)
-        x2 = x.split(b'\0', 1)[0]
-        return (x2.decode('utf8'), size + length_field_size)
+        #x2 = x.split(b'\0', 1)[0]
+        return (x.decode('ascii', errors='replace'), size + length_field_size)
 
 
 types = {'u8': BaseTypes('u8'), 'u16': BaseTypes('u16'),

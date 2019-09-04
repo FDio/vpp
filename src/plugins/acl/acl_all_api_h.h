@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 /* Include the generated file, see BUILT_SOURCES in Makefile.am */
-#include <acl/acl.api.h>
 
 #ifdef vl_printfun
 #include <acl/manual_fns.h>
 #endif
 
+#include <acl/acl.api.h>
