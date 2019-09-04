@@ -608,34 +608,80 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
   l->n_bytes += vlib_buffer_length_in_chain (vm, b);
 }
 
+#define DMAC_MASK clib_net_to_host_u64 (0xFFFFFFFFFFFF0000)
+#define DMAC_IGBIT clib_net_to_host_u64 (0x0100000000000000)
+
+#ifdef CLIB_HAVE_VEC256
+static_always_inline u32
+is_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
+{
+  u64x4 r0 = u64x4_load_unaligned (dmacs) & u64x4_splat (DMAC_MASK);
+  r0 = (r0 != u64x4_splat (hwaddr)) & ((r0 & u64x4_splat (DMAC_IGBIT)) == 0);
+  return u8x32_msb_mask ((u8x32) (r0));
+}
+#else
+static_always_inline u8
+is_dmac_bad (u64 dmac, u64 hwaddr)
+{
+  u64 r0 = dmac & DMAC_MASK;
+  return (r0 != hwaddr) && ((r0 & DMAC_IGBIT) == 0);
+}
+#endif
+
+static_always_inline u8
+is_sec_dmac_bad (u64 dmac, u64 hwaddr)
+{
+  return ((dmac & DMAC_MASK) != hwaddr);
+}
+
+#ifdef CLIB_HAVE_VEC256
+static_always_inline u32
+is_sec_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
+{
+  u64x4 r0 = u64x4_load_unaligned (dmacs) & u64x4_splat (DMAC_MASK);
+  r0 = (r0 != u64x4_splat (hwaddr));
+  return u8x32_msb_mask ((u8x32) (r0));
+}
+#endif
+
+static_always_inline u8
+eth_input_sec_dmac_check_x1 (u64 hwaddr, u64 * dmac, u8 * dmac_bad)
+{
+  dmac_bad[0] &= is_sec_dmac_bad (dmac[0], hwaddr);
+  return dmac_bad[0];
+}
+
+static_always_inline u32
+eth_input_sec_dmac_check_x4 (u64 hwaddr, u64 * dmac, u8 * dmac_bad)
+{
+#ifdef CLIB_HAVE_VEC256
+  *(u32 *) (dmac_bad + 0) &= is_sec_dmac_bad_x4 (dmac + 0, hwaddr);
+#else
+  dmac_bad[0] &= is_sec_dmac_bad (dmac[0], hwaddr);
+  dmac_bad[1] &= is_sec_dmac_bad (dmac[1], hwaddr);
+  dmac_bad[2] &= is_sec_dmac_bad (dmac[2], hwaddr);
+  dmac_bad[3] &= is_sec_dmac_bad (dmac[3], hwaddr);
+#endif
+  return *(u32 *) dmac_bad;
+}
+
 static_always_inline void
 eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 				    u64 * dmacs, u8 * dmacs_bad,
-				    u32 n_packets)
+				    u32 n_packets, ethernet_interface_t * ei,
+				    u8 have_sec_dmac)
 {
-  u64 mask = clib_net_to_host_u64 (0xFFFFFFFFFFFF0000);
-  u64 igbit = clib_net_to_host_u64 (0x0100000000000000);
-  u64 hwaddr = (*(u64 *) hi->hw_address) & mask;
+  u64 hwaddr = (*(u64 *) hi->hw_address) & DMAC_MASK;
   u64 *dmac = dmacs;
   u8 *dmac_bad = dmacs_bad;
-
+  u32 bad = 0;
   i32 n_left = n_packets;
 
 #ifdef CLIB_HAVE_VEC256
-  u64x4 igbit4 = u64x4_splat (igbit);
-  u64x4 mask4 = u64x4_splat (mask);
-  u64x4 hwaddr4 = u64x4_splat (hwaddr);
   while (n_left > 0)
     {
-      u64x4 r0, r1;
-      r0 = u64x4_load_unaligned (dmac + 0) & mask4;
-      r1 = u64x4_load_unaligned (dmac + 4) & mask4;
-
-      r0 = (r0 != hwaddr4) & ((r0 & igbit4) == 0);
-      r1 = (r1 != hwaddr4) & ((r1 & igbit4) == 0);
-
-      *(u32 *) (dmac_bad + 0) = u8x32_msb_mask ((u8x32) (r0));
-      *(u32 *) (dmac_bad + 4) = u8x32_msb_mask ((u8x32) (r1));
+      bad |= *(u32 *) (dmac_bad + 0) = is_dmac_bad_x4 (dmac + 0, hwaddr);
+      bad |= *(u32 *) (dmac_bad + 4) = is_dmac_bad_x4 (dmac + 4, hwaddr);
 
       /* next */
       dmac += 8;
@@ -645,22 +691,10 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 #else
   while (n_left > 0)
     {
-      u64 r0, r1, r2, r3;
-
-      r0 = dmac[0] & mask;
-      r1 = dmac[1] & mask;
-      r2 = dmac[2] & mask;
-      r3 = dmac[3] & mask;
-
-      r0 = (r0 != hwaddr) && ((r0 & igbit) == 0);
-      r1 = (r1 != hwaddr) && ((r1 & igbit) == 0);
-      r2 = (r2 != hwaddr) && ((r2 & igbit) == 0);
-      r3 = (r3 != hwaddr) && ((r3 & igbit) == 0);
-
-      dmac_bad[0] = r0;
-      dmac_bad[1] = r1;
-      dmac_bad[2] = r2;
-      dmac_bad[3] = r3;
+      bad |= dmac_bad[0] = is_dmac_bad (dmac[0], hwaddr);
+      bad |= dmac_bad[1] = is_dmac_bad (dmac[1], hwaddr);
+      bad |= dmac_bad[2] = is_dmac_bad (dmac[2], hwaddr);
+      bad |= dmac_bad[3] = is_dmac_bad (dmac[3], hwaddr);
 
       /* next */
       dmac += 4;
@@ -668,6 +702,62 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
       n_left -= 4;
     }
 #endif
+
+  if (have_sec_dmac && bad)
+    {
+      mac_address_t *addr;
+
+      vec_foreach (addr, ei->secondary_addrs)
+      {
+	u64 hwaddr = ((u64 *) addr)[0] & DMAC_MASK;
+	i32 n_left = n_packets;
+	u64 *dmac = dmacs;
+	u8 *dmac_bad = dmacs_bad;
+
+	bad = 0;
+
+	while (n_left > 0)
+	  {
+	    int adv = 0;
+	    int n_bad;
+
+	    /* skip any that have already matched */
+	    if (!dmac_bad[0])
+	      {
+		dmac += 1;
+		dmac_bad += 1;
+		n_left -= 1;
+		continue;
+	      }
+
+	    n_bad = clib_min (4, n_left);
+
+	    /* If >= 4 left, compare 4 together */
+	    if (n_bad == 4)
+	      {
+		bad |= eth_input_sec_dmac_check_x4 (hwaddr, dmac, dmac_bad);
+		adv = 4;
+		n_bad = 0;
+	      }
+
+	    /* handle individually */
+	    while (n_bad > 0)
+	      {
+		bad |= eth_input_sec_dmac_check_x1 (hwaddr, dmac + adv,
+						    dmac_bad + adv);
+		adv += 1;
+		n_bad -= 1;
+	      }
+
+	    dmac += adv;
+	    dmac_bad += adv;
+	    n_left -= adv;
+	  }
+
+	if (!bad)		/* can stop looping if everything matched */
+	  break;
+      }
+    }
 }
 
 /* process frame of buffers, store ethertype into array and update
@@ -701,6 +791,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   i32 n_left = n_packets;
   vlib_buffer_t *b[20];
   u32 *from;
+  ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
 
   from = buffer_indices;
 
@@ -767,7 +858,14 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   if (dmac_check)
-    eth_input_process_frame_dmac_check (hi, dmacs, dmacs_bad, n_packets);
+    {
+      if (vec_len (ei->secondary_addrs))
+	eth_input_process_frame_dmac_check (hi, dmacs, dmacs_bad, n_packets,
+					    ei, 1 /* have_sec_dmac */ );
+      else
+	eth_input_process_frame_dmac_check (hi, dmacs, dmacs_bad, n_packets,
+					    ei, 0 /* have_sec_dmac */ );
+    }
 
   next_ip4 = em->l3_next.input_next_ip4;
   next_ip6 = em->l3_next.input_next_ip6;
