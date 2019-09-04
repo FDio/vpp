@@ -251,8 +251,8 @@ vlib_buffer_advance (vlib_buffer_t * b, word l)
   b->current_data += l;
   b->current_length -= l;
 
-  ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0 ||
-	  b->current_length >= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
+  /*   ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0 ||
+     b->current_length >= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE); */
 }
 
 /** \brief Check if there is enough space in buffer to advance

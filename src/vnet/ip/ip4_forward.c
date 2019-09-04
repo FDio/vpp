@@ -1303,7 +1303,8 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   u32 ip_header_length, payload_length_host_byte_order;
   u32 n_this_buffer, n_bytes_left, n_ip_bytes_this_buffer;
   u16 sum16;
-  void *data_this_buffer;
+  u8 *data_this_buffer;
+  u8 need_odd_next_buffer;
 
   /* Initialize checksum with ip header. */
   ip_header_length = ip4_header_bytes (ip0);
@@ -1327,7 +1328,7 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       ip_csum_with_carry (sum0, clib_mem_unaligned (&ip0->src_address, u64));
 
   n_bytes_left = n_this_buffer = payload_length_host_byte_order;
-  data_this_buffer = (void *) ip0 + ip_header_length;
+  data_this_buffer = (u8 *) ip0 + ip_header_length;
   n_ip_bytes_this_buffer =
     p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
   if (n_this_buffer + ip_header_length > n_ip_bytes_this_buffer)
@@ -1335,6 +1336,7 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       n_this_buffer = n_ip_bytes_this_buffer > ip_header_length ?
 	n_ip_bytes_this_buffer - ip_header_length : 0;
     }
+
   while (1)
     {
       sum0 = ip_incremental_checksum (sum0, data_this_buffer, n_this_buffer);
@@ -1346,9 +1348,26 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
 	return 0xfefe;
 
+      /*
+       * If this buffer address is odd, or its length is odd, but not
+       * both, we need to make sure checksum function for any chained buffer
+       * is called with an odd address
+       */
+      need_odd_next_buffer =
+	((uword) data_this_buffer & 1) ^ (n_this_buffer & 1);
+
       p0 = vlib_get_buffer (vm, p0->next_buffer);
       data_this_buffer = vlib_buffer_get_current (p0);
       n_this_buffer = clib_min (p0->current_length, n_bytes_left);
+
+      if (PREDICT_FALSE (need_odd_next_buffer))
+	{
+	  /* Prepend dummy byte of 0 to make odd address */
+	  data_this_buffer--;
+	  n_this_buffer++;
+	  n_bytes_left++;
+	  data_this_buffer[0] = 0;
+	}
     }
 
   sum16 = ~ip_csum_fold (sum0);
