@@ -596,7 +596,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       d0 = &ring->desc[s0];
       hb = b0 = vlib_get_buffer (vm, bi0);
       b0->current_data = start_offset;
-      b0->current_length = start_offset + d0->length;
+      b0->current_length = d0->length;
       n_rx_bytes += d0->length;
 
       if (0 && memif_desc_is_invalid (mif, d0, buffer_length))
@@ -619,7 +619,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* current buffer */
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->current_data = start_offset;
-	  b0->current_length = start_offset + d0->length;
+	  b0->current_length = d0->length;
 	  hb->total_length_not_including_first_buffer += d0->length;
 	  n_rx_bytes += d0->length;
 
