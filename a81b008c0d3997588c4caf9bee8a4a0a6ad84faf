@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "a98d5805_6c28d4df",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-05T15:18:00Z",
+      "side": 1,
+      "message": "8",
+      "range": {
+        "startLine": 26,
+        "startChar": 52,
+        "endLine": 26,
+        "endChar": 53
+      },
+      "revId": "a81b008c0d3997588c4caf9bee8a4a0a6ad84faf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d3c41aec_17a56426",
         "filename": "RELEASE.md",
         "patchSetId": 1
