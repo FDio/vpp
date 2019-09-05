@@ -58,38 +58,6 @@ virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
   return 0;
 }
 
-void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-
-static clib_error_t *
-call_tap_read_ready (clib_file_t * uf)
-{
-  /* nothing to do */
-  return 0;
-}
-
-static void
-tap_delete_if_cp (u32 * sw_if_index)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  tap_delete_if (vm, *sw_if_index);
-}
-
-/*
- * Tap clean-up routine:
- * Linux side of tap interface can be deleted i.e. tap is
- * attached to container and if someone will delete this
- * container, will also removes tap interface. While VPP
- * will have other side of tap. This function will RPC
- * main thread to call the tap_delete_if to cleanup tap.
- */
-static clib_error_t *
-call_tap_error_ready (clib_file_t * uf)
-{
-  vl_api_rpc_call_main_thread (tap_delete_if_cp, (u8 *) & uf->private_data,
-			       sizeof (uf->private_data));
-  return 0;
-}
-
 static int
 open_netns_fd (char *netns)
 {
@@ -125,7 +93,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
-  clib_file_t t = { 0 };
   clib_error_t *err = 0;
   int fd = -1;
   char *host_if_name = 0;
@@ -468,14 +435,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
   vif->cxq_vring = NULL;
 
-  t.read_function = call_tap_read_ready;
-  t.error_function = call_tap_error_ready;
-  t.file_descriptor = vif->tap_fd;
-  t.private_data = vif->sw_if_index;
-  t.description = format (0, "tap sw_if_index %u  fd: %u",
-			  vif->sw_if_index, vif->tap_fd);
-  vif->tap_file_index = clib_file_add (&file_main, &t);
-
   goto done;
 
 error:
@@ -535,7 +494,6 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
     vnm->interface_main.gso_interface_count--;
 
-  clib_file_del_by_index (&file_main, vif->tap_file_index);
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0);
