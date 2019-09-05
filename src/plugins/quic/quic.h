@@ -158,7 +158,7 @@ typedef struct quic_main_
   u32 app_index;
   quic_ctx_t **ctx_pool;
   quic_worker_ctx_t *wrk_ctx;
-  clib_bihash_16_8_t connection_hash;	/* quicly connection id -> conn handle */
+  clib_bihash_16_8_t connection_hash;	/* quic connection id -> conn handle */
   f64 tstamp_ticks_per_clock;
 
   ptls_cipher_suite_t ***quic_ciphers;	/* available ciphers by crypto engine */
