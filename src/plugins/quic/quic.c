@@ -33,6 +33,7 @@
 
 static quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
+static int quic_on_client_connected (quic_ctx_t * ctx);
 
 static u32
 quic_ctx_alloc (u32 thread_index)
@@ -595,6 +596,22 @@ quic_accept_stream (void *s)
 
   qctx = quic_get_conn_ctx (stream->conn);
 
+  /* Might need to signal that the connection is ready if the first thing the
+   * server does is open a stream */
+  if (qctx->conn_state == QUIC_CONN_STATE_HANDSHAKE)
+    {
+      if (quicly_connection_is_ready (qctx->conn))
+	{
+	  qctx->conn_state = QUIC_CONN_STATE_READY;
+	  if (quicly_is_client (qctx->conn))
+	    {
+	      quic_on_client_connected (qctx);
+	      /* ctx might be invalidated */
+	      qctx = quic_get_conn_ctx (stream->conn);
+	    }
+	}
+    }
+
   stream_session = session_alloc (qctx->c_thread_index);
   QUIC_DBG (2, "ACCEPTED stream_session 0x%lx ctx %u",
 	    session_handle (stream_session), sctx_id);
@@ -652,9 +669,7 @@ quic_on_stream_open (quicly_stream_open_t * self, quicly_stream_t * stream)
   /* Notify accept on parent qsession, but only if this is not a locally
    * initiated stream */
   if (!quicly_stream_is_self_initiated (stream))
-    {
-      quic_accept_stream (stream);
-    }
+    quic_accept_stream (stream);
   return 0;
 }
 
