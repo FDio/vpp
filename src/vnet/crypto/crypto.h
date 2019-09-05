@@ -46,12 +46,23 @@
   _(SHA384, "sha-384")  \
   _(SHA512, "sha-512")
 
+/* CRYPTO_ID, HMAC_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES*/
+#define foreach_crypto_chain_alg \
+  _ (NONE, NONE, "chain-none-none", 0) \
+  _ (AES_128_CBC, SHA1, "chain-aes-128-cbc-hmac-sha-1", 16) \
+  _ (AES_192_CBC, SHA1, "chain-aes-192-cbc-hmac-sha-1", 24) \
+  _ (AES_256_CBC, SHA1, "chain-aes-256-cbc-hmac-sha-1", 32) \
+  _ (AES_128_CBC, SHA256, "chain-aes-128-cbc-hmac-sha-256", 16) \
+  _ (AES_192_CBC, SHA256, "chain-aes-192-cbc-hmac-sha-256", 24) \
+  _ (AES_256_CBC, SHA256, "chain-aes-256-cbc-hmac-sha-256", 32)
 
 #define foreach_crypto_op_type \
   _(ENCRYPT, "encrypt") \
   _(DECRYPT, "decrypt") \
   _(AEAD_ENCRYPT, "aead-encrypt") \
   _(AEAD_DECRYPT, "aead-decrypt") \
+  _(CHAIN_ENCRYPT, "chain-encrypt") \
+  _(CHAIN_DECRYPT, "chain-decrypt") \
   _(HMAC, "hmac")
 
 typedef enum
@@ -94,13 +105,18 @@ typedef enum
 #define _(n, s) VNET_CRYPTO_ALG_HMAC_##n,
   foreach_crypto_hmac_alg
 #undef _
+#define _(c, h, s, l) VNET_CRYPTO_CHAIN_ALG_##c##_HMAC_##h,
+  foreach_crypto_chain_alg
+#undef _
   VNET_CRYPTO_N_ALGS,
 } vnet_crypto_alg_t;
 
 typedef struct
 {
   u8 *data;
+  u32 len;
   vnet_crypto_alg_t alg:8;
+  vnet_crypto_key_t *next;
 } vnet_crypto_key_t;
 
 typedef enum
@@ -113,7 +129,13 @@ typedef enum
 #define _(n, s) VNET_CRYPTO_OP_##n##_HMAC,
  foreach_crypto_hmac_alg
 #undef _
-    VNET_CRYPTO_N_OP_IDS,
+ VNET_CRYPTO_CHAIN_OP_NONE,
+#define _(c, h, s, l) VNET_CRYPTO_CHAIN_OP_##c##_HMAC_##h##_ENC, \
+  VNET_CRYPTO_CHAIN_OP_##c##_HMAC_##h##_DEC,
+  foreach_crypto_chain_alg
+
+#undef _
+      VNET_CRYPTO_N_OP_IDS,
 } vnet_crypto_op_id_t;
 /* *INDENT-ON* */
 
@@ -142,6 +164,13 @@ typedef struct
   u8 *tag;
   u8 *digest;
   uword user_data;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  /* for chained op */
+  i16 chain_src_integ_offset;
+  u16 integ_len;
+  /* for async op */
+  u16 next_node;
+  u16 next_index;
 } vnet_crypto_op_t;
 
 typedef struct vnet_async_crypto_op_t_
@@ -165,6 +194,7 @@ typedef struct
   u32 head;
   u32 tail;
   u32 size;
+
   vnet_crypto_alg_t alg:8;
   vnet_crypto_op_type_t op:8;
   vnet_async_crypto_op_t *jobs[0];
@@ -243,7 +273,7 @@ vnet_crypto_is_async_mode ()
 
 void vnet_crypto_async_mode_enable_disable (u8 is_enabled);
 
-u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_async_crypto_op_t ** jobs,
+u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t *ops[],
 			    u32 n_jobs);
 
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
@@ -253,7 +283,7 @@ int vnet_crypto_set_handler (char *ops_handler_name, char *engine);
 int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 
 u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
-			 u8 * data, u16 length);
+			 u8 ** data, u16 *length, u16 n);
 void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
 
 format_function_t format_vnet_crypto_alg;
@@ -264,13 +294,16 @@ format_function_t format_vnet_crypto_op_status;
 unformat_function_t unformat_vnet_crypto_alg;
 
 static_always_inline void
-vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
+vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type,
+		     u16 next_node, u16 next_index)
 {
   if (CLIB_DEBUG > 0)
     clib_memset (op, 0xfe, sizeof (*op));
   op->op = type;
   op->flags = 0;
   op->key_index = ~0;
+  op->next_node = next_node;
+  op->next_index = next_index;
 }
 
 static_always_inline vnet_crypto_op_type_t
@@ -309,6 +342,47 @@ vnet_crypto_dequeue_one_job (vnet_crypto_queue_t * q)
       return j;
     }
   return 0;
+}
+
+static_always_inline vnet_crypto_alg_t
+vnet_crypto_convert_chain_alg (vnet_crypto_alg_t crypto_alg,
+			       vnet_crypto_alg_t integ_alg)
+{
+  vnet_crypto_alg_t chain_alg = ~0;
+
+#define _(c, h, s, l) \
+    if (VNET_CRYPTO_ALG_##c == crypto_alg && \
+	VNET_CRYPTO_ALG_HMAC_##h == integ_alg) \
+      return VNET_CRYPTO_CHAIN_ALG_##c##_HMAC_##h;
+
+  foreach_crypto_chain_alg
+#undef _
+
+  return chain_alg;
+}
+
+static_always_inline int
+vnet_crypto_break_chain_alg (vnet_crypto_alg_t chain_alg,
+			     vnet_crypto_alg_t *crypto_alg,
+			     vnet_crypto_alg_t *integ_alg)
+{
+  switch (chain_alg)
+  {
+    case VNET_CRYPTO_CHAIN_ALG_NONE:
+      *crypto_alg = VNET_CRYPTO_ALG_NONE;
+      *integ_alg = VNET_CRYPTO_ALG_NONE;
+      return 0;
+
+#define _(c, h, s, l) case VNET_CRYPTO_CHAIN_ALG_##c##_HMAC_##h: \
+    *crypto_alg = VNET_CRYPTO_ALG_##c; \
+    *integ_alg = VNET_CRYPTO_ALG_HMAC_##h; \
+    return 0;
+
+  foreach_crypto_chain_alg
+#undef _
+  }
+
+  return -1;
 }
 
 #endif /* included_vnet_crypto_crypto_h */

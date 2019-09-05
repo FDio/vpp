@@ -100,8 +100,8 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
   sa->crypto_alg = crypto_alg;
   sa->crypto_iv_size = im->crypto_algs[crypto_alg].iv_size;
   sa->crypto_block_size = im->crypto_algs[crypto_alg].block_size;
-  sa->crypto_enc_op_id = im->crypto_algs[crypto_alg].enc_op_id;
-  sa->crypto_dec_op_id = im->crypto_algs[crypto_alg].dec_op_id;
+  sa->single_op.crypto_enc_op_id = im->crypto_algs[crypto_alg].enc_op_id;
+  sa->single_op.crypto_dec_op_id = im->crypto_algs[crypto_alg].dec_op_id;
   sa->crypto_calg = im->crypto_algs[crypto_alg].alg;
   ASSERT (sa->crypto_iv_size <= ESP_MAX_IV_SIZE);
   ASSERT (sa->crypto_block_size <= ESP_MAX_BLOCK_SIZE);
@@ -118,9 +118,53 @@ ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
   ipsec_main_t *im = &ipsec_main;
   sa->integ_alg = integ_alg;
   sa->integ_icv_size = im->integ_algs[integ_alg].icv_size;
-  sa->integ_op_id = im->integ_algs[integ_alg].op_id;
+  sa->single_op.integ_op_id = im->integ_algs[integ_alg].op_id;
   sa->integ_calg = im->integ_algs[integ_alg].alg;
   ASSERT (sa->integ_icv_size <= ESP_MAX_ICV_SIZE);
+}
+
+static ipsec_chain_alg_t
+ipsec_combine_chain_alg (ipsec_crypto_alg_t crypto_alg,
+			 ipsec_integ_alg_t integ_alg)
+{
+
+#define _(v, c, h, s, d) \
+    if (IPSEC_CRYPTO_ALG_##c == crypto_alg && \
+	IPSEC_INTEG_ALG_##h == integ_alg) \
+      return IPSEC_CHAIN_ALG_##c##_##h;
+
+  foreach_ipsec_chain_alg
+#undef _
+
+  return ~0;
+}
+
+int
+ipsec_sa_set_chain_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg,
+			ipsec_integ_alg_t integ_alg)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_chain_alg_t chain_alg = ipsec_combine_chain_alg (crypto_alg, integ_alg);
+
+  if (chain_alg == ~0)
+    return -1;
+
+  sa->crypto_alg = crypto_alg;
+  sa->crypto_iv_size = im->chain_algs[chain_alg].iv_size;
+  sa->crypto_block_size = im->chain_algs[chain_alg].block_size;
+  sa->crypto_calg = im->chain_algs[chain_alg].alg;
+  ASSERT (sa->crypto_iv_size <= ESP_MAX_IV_SIZE);
+  ASSERT (sa->crypto_block_size <= ESP_MAX_BLOCK_SIZE);
+
+  sa->integ_alg = integ_alg;
+  sa->integ_icv_size = im->integ_algs[integ_alg].icv_size;
+  sa->integ_calg = im->integ_algs[integ_alg].alg;
+  ASSERT (sa->integ_icv_size <= ESP_MAX_ICV_SIZE);
+
+  sa->chain_op.enc_op_id = im->chain_algs[chain_alg].enc_op_id;
+  sa->chain_op.dec_op_id = im->chain_algs[chain_alg].dec_op_id;
+
+  return 0;
 }
 
 int
@@ -163,29 +207,56 @@ ipsec_sa_add_and_lock (u32 id,
   sa->protocol = proto;
   sa->flags = flags;
   sa->salt = salt;
-  ipsec_sa_set_integ_alg (sa, integ_alg);
+
   clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
-  ipsec_sa_set_crypto_alg (sa, crypto_alg);
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
   ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
 
-  sa->crypto_key_index = vnet_crypto_key_add (vm,
-					      im->crypto_algs[crypto_alg].alg,
-					      (u8 *) ck->data, ck->len);
-  if (~0 == sa->crypto_key_index)
+  /* try with chaining mode first */
+  if (ipsec_sa_set_chain_alg(sa, crypto_alg, integ_alg) == 0)
     {
-      pool_put (im->sad, sa);
-      return VNET_API_ERROR_KEY_LENGTH;
+      vnet_crypto_alg_t crypto_chain_alg;
+
+      crypto_chain_alg = vnet_crypto_convert_chain_alg (
+	  im->crypto_algs[crypto_alg].alg, im->integ_algs[integ_alg].alg);
+
+      if (crypto_chain_alg != ~0)
+	{
+	  u8 * key_data[2] = {ck->data, ik->data};
+	  u32 key_len[2] = {ck->len, ik->len};
+	  u32 key_index;
+
+	  key_index = vnet_crypto_key_add (vm, key_data, key_len, 2);
+
+	  if (key_index != ~0)
+	    {
+	      sa->chain_op.chained_key_index = key_index;
+	      ipsec_sa_set_CHAIN_MODE (sa);
+	    }
+	}
     }
 
-  sa->integ_key_index = vnet_crypto_key_add (vm,
-					     im->integ_algs[integ_alg].alg,
-					     (u8 *) ik->data, ik->len);
-  if (~0 == sa->integ_key_index)
+  if (!ipsec_sa_is_set_CHAIN_MODE (sa))
     {
-      pool_put (im->sad, sa);
-      return VNET_API_ERROR_KEY_LENGTH;
+      ipsec_sa_set_integ_alg (sa, integ_alg);
+      ipsec_sa_set_crypto_alg (sa, crypto_alg);
+
+      sa->single_op.crypto_key_index = vnet_crypto_key_add (
+	  vm, im->crypto_algs[crypto_alg].alg, (u8 **) &ck->data, &ck->len, 1);
+      if (~0 == sa->single_op.crypto_key_index)
+	{
+	  pool_put (im->sad, sa);
+	  return VNET_API_ERROR_KEY_LENGTH;
+	}
+
+      sa->single_op.integ_key_index = vnet_crypto_key_add (
+	  vm, im->integ_algs[integ_alg].alg, (u8 **) &ik->data, &ik->len, 1);
+      if (~0 == sa->single_op.integ_key_index)
+	{
+	  pool_put (im->sad, sa);
+	  return VNET_API_ERROR_KEY_LENGTH;
+	}
     }
 
   err = ipsec_check_support_cb (im, sa);

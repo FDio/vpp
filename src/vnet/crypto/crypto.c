@@ -82,8 +82,8 @@ vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
 }
 
 u32
-vnet_crypto_submit_ops (vlib_main_t * vm, vnet_async_crypto_op_t ** jobs,
-			u32 n_jobs)
+vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+			u32 n)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = vec_elt_at_index (cm->threads, vm->thread_index);
@@ -92,10 +92,10 @@ vnet_crypto_submit_ops (vlib_main_t * vm, vnet_async_crypto_op_t ** jobs,
   vnet_crypto_queue_t *q = 0;
   vnet_crypto_op_id_t last_opt = ~0;
 
-  while (n_enq < n_jobs)
+  while (n_enq < n)
     {
-      vnet_async_crypto_op_t *j = jobs[n_enq];
-      vnet_crypto_op_id_t opt = j->data.op;
+      vnet_crypto_op_t *op = ops[n_enq];
+      vnet_crypto_op_id_t opt = op->op;
 
       if (opt != last_opt)
 	{
@@ -116,7 +116,7 @@ vnet_crypto_submit_ops (vlib_main_t * vm, vnet_async_crypto_op_t ** jobs,
 	      ct->queues[opt] = q;
 	      clib_memset_u8 (q, 0, sz);
 	      q->size = VNET_CRYPTO_RING_SIZE;
-	      q->op = j->data.op;
+	      q->op = opt;
 	      clib_bitmap_vec_validate (ct->act_queues, VNET_CRYPTO_N_OP_IDS);
 	    }
 
@@ -126,10 +126,10 @@ vnet_crypto_submit_ops (vlib_main_t * vm, vnet_async_crypto_op_t ** jobs,
 	}
 
       /* job is not taken from the queue if pointer is still set */
-      if (q->jobs[head & mask])
+      if (q->ops[head & mask])
 	continue;
 
-      q->jobs[head & mask] = j;
+      q->ops[head & mask] = op;
       head += 1;
       n_enq += 1;
     }
@@ -303,37 +303,76 @@ vnet_crypto_key_len_check (vnet_crypto_alg_t alg, u16 length)
 }
 
 u32
-vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
-		     u16 length)
+vnet_crypto_key_add (vlib_main_t *vm, vnet_crypto_alg_t alg, u8 **data,
+                         const u16 *length, u32 n)
 {
-  u32 index;
+  u32 index, i;
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key;
 
-  if (!vnet_crypto_key_len_check (alg, length))
-    return ~0;
+  if (alg >= VNET_CRYPTO_CHAIN_ALG_NONE)
+    {
+      /* chain operation */
+      vnet_crypto_alg_t crypto_alg, integ_alg;
+      vnet_crypto_key_t *key_last = NULL;
 
-  pool_get_zero (cm->keys, key);
-  index = key - cm->keys;
-  key->alg = alg;
-  vec_validate_aligned (key->data, length - 1, CLIB_CACHE_LINE_BYTES);
-  clib_memcpy (key->data, data, length);
+      if (n != 2)
+	return ~0;
+
+      if (vnet_crypto_break_chain_alg (alg, &crypto_alg, &integ_alg) < 0)
+	return ~0;
+
+      if (!vnet_crypto_key_len_check (crypto_alg, length[0]))
+	return ~0;
+
+      if (!vnet_crypto_key_len_check (integ_alg, length[1]))
+	return ~0;
+
+      for (i = 0; i < n; i++)
+	{
+	  pool_get_zero (cm->keys, key);
+	  key->alg = (i == 0) ? crypto_alg : integ_alg;
+	  vec_validate_aligned (key->data, length[i] - 1,
+				CLIB_CACHE_LINE_BYTES);
+	  clib_memcpy (key->data, data[i], length[i]);
+
+	  index = (key_last == NULL) ? (key - cm->keys) : index;
+	  if (key_last)
+	    key_last->next = key;
+	  key_last = key;
+	}
+    }
+  else
+    {
+      if (n != 1)
+	return ~0;
+
+      if (!vnet_crypto_key_len_check (alg, length[0]))
+	return ~0;
+
+      /* single operation */
+      pool_get_zero (cm->keys, key);
+      key->alg = alg;
+      vec_validate_aligned (key->data, length[0] - 1, CLIB_CACHE_LINE_BYTES);
+      clib_memcpy (key->data, data[i], length[0]);
+      index = key - cm->keys;
+    }
 
   /* *INDENT-OFF* */
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
+  vec_foreach (engine, cm->engines) if (engine->key_op_handler)
       engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_ADD, index);
   /* *INDENT-ON* */
   return index;
 }
 
 void
-vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
+vnet_crypto_key_del (vlib_main_t *vm, vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key = pool_elt_at_index (cm->keys, index);
+  vnet_crypto_key_t *key_first = key;
 
   /* *INDENT-OFF* */
   vec_foreach (engine, cm->engines)
@@ -341,9 +380,20 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
       engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_DEL, index);
   /* *INDENT-ON* */
 
-  clib_memset (key->data, 0, vec_len (key->data));
-  vec_free (key->data);
-  pool_put (cm->keys, key);
+  while (key->next)
+    {
+      vnet_crypto_key_t *key_next = key->next;
+
+      clib_memset (key->data, 0, vec_len (key->data));
+      vec_free (key->data);
+      pool_put (cm->keys, key);
+
+      key = key_next;
+    }
+
+  clib_memset (key_first->data, 0, vec_len (key_first->data));
+  vec_free (key_first->data);
+  pool_put (cm->keys, key_first);
 }
 
 static void
@@ -386,6 +436,25 @@ vnet_crypto_init_hmac_data (vnet_crypto_alg_t alg,
   hash_set_mem (cm->alg_index_by_name, name, alg);
 }
 
+static void
+vnet_crypto_init_chain_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
+			     vnet_crypto_op_id_t did, char *name)
+{
+  vnet_crypto_op_type_t eopt, dopt;
+  vnet_crypto_main_t *cm = &crypto_main;
+  cm->algs[alg].name = name;
+  cm->opt_data[eid].alg = cm->opt_data[did].alg = alg;
+  cm->opt_data[eid].active_engine_index = ~0;
+  cm->opt_data[did].active_engine_index = ~0;
+  eopt = VNET_CRYPTO_OP_TYPE_CHAIN_ENCRYPT;
+  dopt = VNET_CRYPTO_OP_TYPE_CHAIN_DECRYPT;
+  cm->opt_data[eid].type = eopt;
+  cm->opt_data[did].type = dopt;
+  cm->algs[alg].op_by_type[eopt] = eid;
+  cm->algs[alg].op_by_type[dopt] = did;
+  hash_set_mem (cm->alg_index_by_name, name, alg);
+}
+
 clib_error_t *
 vnet_crypto_init (vlib_main_t * vm)
 {
@@ -412,6 +481,12 @@ vnet_crypto_init (vlib_main_t * vm)
   vnet_crypto_init_hmac_data (VNET_CRYPTO_ALG_HMAC_##n, \
 			      VNET_CRYPTO_OP_##n##_HMAC, "hmac-" s);
   foreach_crypto_hmac_alg;
+#undef _
+#define _(c, h, s, l) \
+  vnet_crypto_init_chain_data (VNET_CRYPTO_CHAIN_ALG_##c##_HMAC_##h, \
+			       VNET_CRYPTO_CHAIN_OP_##c##_HMAC_##h##_ENC, \
+			       VNET_CRYPTO_CHAIN_OP_##c##_HMAC_##h##_DEC, s, 0);
+  foreach_crypto_chain_alg
 #undef _
   return 0;
 }

@@ -87,6 +87,7 @@ typedef struct
 {
   vnet_crypto_op_t *crypto_ops;
   vnet_crypto_op_t *integ_ops;
+  vnet_crypto_op_t *chain_ops;
 } ipsec_per_thread_data_t;
 
 typedef struct
@@ -164,6 +165,9 @@ typedef struct
 
   /* crypto integ data */
   ipsec_main_integ_alg_t *integ_algs;
+
+  /* chain alg data */
+  ipsec_main_crypto_alg_t *chain_algs;
 
   /* next nodes indices for async mode */
   u32 esp4_encrypt_tun_post_node_index;
@@ -250,6 +254,20 @@ ipsec_sa_get (u32 sa_index)
 
 void ipsec_add_feature (const char *arc_name, const char *node_name,
 			u32 * out_feature_index);
+
+always_inline vnet_crypto_op_t *
+ipsec_get_op (vnet_crypto_op_t *sync_ops, vnet_crypto_op_t *async_ops,
+	      u32 is_async)
+{
+  vnet_crypto_op_t *op;
+
+  if (is_async)
+      op = async_ops;
+  else
+    vec_add2_aligned (sync_ops, op, 1, CLIB_CACHE_LINE_BYTES);
+
+  return op;
+}
 
 #endif /* __IPSEC_H__ */
 

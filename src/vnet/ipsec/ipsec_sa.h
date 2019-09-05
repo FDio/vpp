@@ -63,6 +63,23 @@ typedef enum
     IPSEC_INTEG_N_ALG,
 } ipsec_integ_alg_t;
 
+#define foreach_ipsec_chain_alg \
+  _ (0, NONE, NONE, "none", "none") \
+  _ (1, AES_CBC_128, SHA1_96, "aes-128-cbc", "sha1_96") \
+  _ (2, AES_CBC_192, SHA1_96, "aes-192-cbc", "sha1_96") \
+  _ (3, AES_CBC_256, SHA1_96, "aes-256-cbc", "sha1_96") \
+  _ (4, AES_CBC_128, SHA_256_128, "aes-128-cbc", "sha-256-128") \
+  _ (5, AES_CBC_192, SHA_256_128, "aes-192-cbc", "sha-256-128") \
+  _ (6, AES_CBC_256, SHA_256_128, "aes-256-cbc", "sha-256-128")
+
+typedef enum
+{
+#define _(v, c, h, s, d) IPSEC_CHAIN_ALG_##c##_##h = v,
+  foreach_ipsec_chain_alg
+#undef _
+    IPSEC_CHAIN_N_ALG,
+} ipsec_chain_alg_t;
+
 typedef enum
 {
   IPSEC_PROTOCOL_AH = 0,
@@ -94,6 +111,7 @@ typedef struct ipsec_key_t_
   _ (32, IS_PROTECT, "Protect")                           \
   _ (64, IS_INBOUND, "inbound")                           \
   _ (128, IS_AEAD, "aead")                                \
+  _ (256, CHAIN_MODE, "chain-op-mode")                    \
 
 typedef enum ipsec_sad_flags_t_
 {
@@ -122,11 +140,23 @@ typedef struct
   u64 replay_window;
   dpo_id_t dpo;
 
-  vnet_crypto_key_index_t crypto_key_index;
-  vnet_crypto_key_index_t integ_key_index;
-  vnet_crypto_op_id_t crypto_enc_op_id:16;
-  vnet_crypto_op_id_t crypto_dec_op_id:16;
-  vnet_crypto_op_id_t integ_op_id:16;
+  union
+  {
+    struct
+    {
+      vnet_crypto_key_index_t crypto_key_index;
+      vnet_crypto_key_index_t integ_key_index;
+      vnet_crypto_op_id_t crypto_enc_op_id:16;
+      vnet_crypto_op_id_t crypto_dec_op_id:16;
+      vnet_crypto_op_id_t integ_op_id:16;
+    } single_op;
+    struct
+    {
+      vnet_crypto_key_index_t chained_key_index;
+      vnet_crypto_op_id_t enc_op_id:16;
+      vnet_crypto_op_id_t dec_op_id:16;
+    } chain_op;
+  };
 
   /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);

@@ -407,6 +407,58 @@ ipsec_init (vlib_main_t * vm)
   i->alg = VNET_CRYPTO_ALG_HMAC_SHA512;
   i->icv_size = 32;
 
+  vec_validate (im->chain_algs, IPSEC_CHAIN_N_ALG - 1);
+
+  a = im->chain_algs + IPSEC_CHAIN_ALG_NONE_NONE;
+  a->enc_op_id = VNET_CRYPTO_CHAIN_OP_NONE_HMAC_NONE_ENC;
+  a->dec_op_id = VNET_CRYPTO_CHAIN_OP_NONE_HMAC_NONE_DEC;
+  a->alg = VNET_CRYPTO_CHAIN_ALG_NONE_HMAC_NONE;
+  a->iv_size = 0;
+  a->block_size = 1;
+  i->icv_size = 0;
+
+  a = im->chain_algs + IPSEC_CHAIN_ALG_AES_128_CBC_SHA1_96;
+  a->enc_op_id = VNET_CRYPTO_CHAIN_OP_AES_128_CBC_HMAC_SHA1_ENC;
+  a->dec_op_id = VNET_CRYPTO_CHAIN_OP_AES_128_CBC_HMAC_SHA1_DEC;
+  a->alg = VNET_CRYPTO_CHAIN_ALG_AES_128_CBC_HMAC_SHA1;
+  a->iv_size = a->block_size = 16;
+  i->icv_size = 12;
+
+  a = im->chain_algs + IPSEC_CHAIN_ALG_AES_192_CBC_SHA1_96;
+  a->enc_op_id = VNET_CRYPTO_CHAIN_OP_AES_192_CBC_HMAC_SHA1_ENC;
+  a->dec_op_id = VNET_CRYPTO_CHAIN_OP_AES_192_CBC_HMAC_SHA1_DEC;
+  a->alg = VNET_CRYPTO_CHAIN_ALG_AES_192_CBC_HMAC_SHA1;
+  a->iv_size = a->block_size = 16;
+  i->icv_size = 12;
+
+  a = im->chain_algs + IPSEC_CHAIN_ALG_AES_256_CBC_SHA1_96;
+  a->enc_op_id = VNET_CRYPTO_CHAIN_OP_AES_256_CBC_HMAC_SHA1_ENC;
+  a->dec_op_id = VNET_CRYPTO_CHAIN_OP_AES_256_CBC_HMAC_SHA1_DEC;
+  a->alg = VNET_CRYPTO_CHAIN_ALG_AES_256_CBC_HMAC_SHA1;
+  a->iv_size = a->block_size = 16;
+  i->icv_size = 12;
+
+  a = im->chain_algs + IPSEC_CHAIN_ALG_AES_128_CBC_SHA256_128;
+  a->enc_op_id = VNET_CRYPTO_CHAIN_OP_AES_128_CBC_HMAC_SHA256_ENC;
+  a->dec_op_id = VNET_CRYPTO_CHAIN_OP_AES_128_CBC_HMAC_SHA256_DEC;
+  a->alg = VNET_CRYPTO_CHAIN_ALG_AES_128_CBC_HMAC_SHA256;
+  a->iv_size = a->block_size = 16;
+  i->icv_size = 16;
+
+  a = im->chain_algs + IPSEC_CHAIN_ALG_AES_192_CBC_SHA256_128;
+  a->enc_op_id = VNET_CRYPTO_CHAIN_OP_AES_192_CBC_HMAC_SHA256_ENC;
+  a->dec_op_id = VNET_CRYPTO_CHAIN_OP_AES_192_CBC_HMAC_SHA256_DEC;
+  a->alg = VNET_CRYPTO_CHAIN_ALG_AES_192_CBC_HMAC_SHA256;
+  a->iv_size = a->block_size = 16;
+  i->icv_size = 16;
+
+  a = im->chain_algs + IPSEC_CHAIN_ALG_AES_256_CBC_SHA256_128;
+  a->enc_op_id = VNET_CRYPTO_CHAIN_OP_AES_256_CBC_HMAC_SHA256_ENC;
+  a->dec_op_id = VNET_CRYPTO_CHAIN_OP_AES_256_CBC_HMAC_SHA256_DEC;
+  a->alg = VNET_CRYPTO_CHAIN_ALG_AES_256_CBC_HMAC_SHA256;
+  a->iv_size = a->block_size = 16;
+  i->icv_size = 16;
+
   vec_validate_aligned (im->ptd, vlib_num_workers (), CLIB_CACHE_LINE_BYTES);
 
   return 0;
