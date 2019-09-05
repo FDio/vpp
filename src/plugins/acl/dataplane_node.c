@@ -565,11 +565,6 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
   u32 *sw_if_index;
   fa_5tuple_t *fa_5tuple;
   u64 *hash;
-  /* for the delayed counters */
-  u32 saved_matched_acl_index = 0;
-  u32 saved_matched_ace_index = 0;
-  u32 saved_packet_count = 0;
-  u32 saved_byte_count = 0;
 
   from = vlib_frame_vector_args (frame);
   error_node = vlib_node_get_runtime (vm, node->node_index);
@@ -705,22 +700,12 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 	      if (PREDICT_FALSE
 		  (is_match && am->interface_acl_counters_enabled))
 		{
-		  u32 buf_len = vlib_buffer_length_in_chain (vm, b[0]);
+		    u32 buf_len = vlib_buffer_length_in_chain (vm, b[0]);
 		  vlib_increment_combined_counter (am->combined_acl_counters +
-						   saved_matched_acl_index,
+						   match_acl_in_index,
 						   thread_index,
-						   saved_matched_ace_index,
-						   saved_packet_count,
-						   saved_byte_count);
-		  saved_matched_acl_index = match_acl_in_index;
-		  saved_matched_ace_index = match_rule_index;
-		  saved_packet_count = 1;
-		  saved_byte_count = buf_len;
-		  /* prefetch the counter that we are going to increment */
-		  vlib_prefetch_combined_counter (am->combined_acl_counters +
-						  saved_matched_acl_index,
-						  thread_index,
-						  saved_matched_ace_index);
+						   match_rule_index,
+						   1, buf_len);
 		}
 
 	      b[0]->error = error_node->errors[action];
@@ -803,16 +788,6 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
     }
 
   vlib_buffer_enqueue_to_next (vm, node, from, pw->nexts, frame->n_vectors);
-
-  /*
-   * if we were had an acl match then we have a counter to increment.
-   * else it is all zeroes, so this will be harmless.
-   */
-  vlib_increment_combined_counter (am->combined_acl_counters +
-				   saved_matched_acl_index,
-				   thread_index,
-				   saved_matched_ace_index,
-				   saved_packet_count, saved_byte_count);
 
   vlib_node_increment_counter (vm, node->node_index,
 			       ACL_FA_ERROR_ACL_CHECK, frame->n_vectors);
