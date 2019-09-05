@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_19081
 * @subpage release_notes_1908
 * @subpage release_notes_19042
 * @subpage release_notes_19041
@@ -21,6 +22,74 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_19081 Release notes for VPP 19.08.1
+
+Exceptionally, this release has an API-changing fix introduced via
+https://gerrit.fd.io/r/#/c/vpp/+/21762/ - documented in VPP-1767.
+Given the exceptional nature of the change, also including the text here:
+
+Bug: https://gerrit.fd.io/r/c/vpp/+/21492
+
+Variable length strings were committed to VPP in 413f4a5b.
+The VPP server side of the API does not use a wire encoder/decoder. It maps a C struct directly onto on-the-wire API messages.
+The client side C language binding is the same, while other language bindings have their own encoder/decoders.
+
+Multiple strings alone or combined with other variable length types turned out to be error prone to manually implement on the VPP side,
+and not supported by VPP API (VAPI) very well at all.
+
+To avoid having to rewrite VAPI significantly, and to mitigate the risk
+and error prone server side support of multiple variable length fields,
+this patch extends strings to have a fixed size (on the wire) and
+a variable flavour, as well as adding detection in the API compiler
+to detect multiple variable length fields in a message (or type).
+
+Given that this change breaks the commitment to binary API compatibility,
+normally present in point builds, ALL 19.08 build artifacts are being
+deferred.
+
+This means the artifacts for the VPP 19.08.1 will be installed
+in the release repository (packagecloud.io/fdio/release), then
+ALL 19.08 build artifacts will be moved into the deferred repository
+(packagecloud.io/fdio/deferred). The 19.08 artifacts will always be
+available for archive purposes in the deferred repository.
+
+During the further testing by Networking-VPP team, they discovered
+another issue documented in VPP-1769 - which requires a CRC-affecting
+fix in https://gerrit.fd.io/r/#/c/vpp/+/22015/ - so the 19.08.1
+will contain the fixes for both issues.
+
+These two changes have resulted in the following 20 messages changing
+their signatures:
+
+Message Name                                                 | Result
+-------------------------------------------------------------|------------------
+cli_inband                                                   | definition changed
+cli_inband_reply                                             | definition changed
+connect_sock                                                 | definition changed
+http_static_enable                                           | definition changed
+log_details                                                  | definition changed
+map_add_domain                                               | definition changed
+map_domain_details                                           | definition changed
+nat44_add_del_identity_mapping                               | definition changed
+nat44_add_del_lb_static_mapping                              | definition changed
+nat44_add_del_static_mapping                                 | definition changed
+nat44_identity_mapping_details                               | definition changed
+nat44_lb_static_mapping_details                              | definition changed
+nat44_static_mapping_details                                 | definition changed
+nat_worker_details                                           | definition changed
+punt_reason_details                                          | definition changed
+punt_reason_dump                                             | definition changed
+show_version_reply                                           | definition changed
+sw_interface_details                                         | definition changed
+sw_interface_dump                                            | definition changed
+sw_interface_tag_add_del                                     | definition changed
+
+Please accept our apologies for the inconvenience this caused.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1904)
 
 @page release_notes_1908 Release notes for VPP 19.08
 
