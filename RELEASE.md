@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_19081
 * @subpage release_notes_1908
 * @subpage release_notes_19042
 * @subpage release_notes_19041
@@ -21,6 +22,78 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_19081 Release notes for VPP 19.08.1
+
+Exceptionally, this release has an API-changing fix introduced via
+https://gerrit.fd.io/r/#/c/vpp/+/21762/ - documented in VPP-1767.
+Given the exceptional nature of the change, also including the text here:
+
+Bug: https://gerrit.fd.io/r/c/vpp/+/21492
+
+Variable length strings were committed to VPP in 413f4a5b.
+The VPP server side of the API does not use a wire encoder/decoder. It maps a C struct directly onto on-the-wire API messages.
+The client side C language binding is the same, while other language bindings have their own encoder/decoders.
+
+Multiple strings alone or combined with other variable length types turned out to be error prone to manually implement on the VPP side,
+and not supported by VPP API (VAPI) very well at all.
+
+To avoid having to rewrite VAPI significantly, and to mitigate the risk
+and error prone server side support of multiple variable length fields,
+this patch extends strings to have a fixed size (on the wire) and
+a variable flavour, as well as adding detection in the API compiler
+to detect multiple variable length fields in a message (or type).
+
+Given that this change breaks the commitment to binary API compatibility,
+normally present in point builds, ALL 19.08 build artifacts are being
+deferred.
+
+This means the artifacts for the VPP 19.08.1 will be installed
+in the release repository (packagecloud.io/fdio/release), then
+ALL 19.08 build artifacts will be moved into the deferred repository
+(packagecloud.io/fdio/deferred). The 19.08 artifacts will always be
+available for archive purposes in the deferred repository.
+
+During the further testing by Networking-VPP team, they discovered
+another issue documented in VPP-1769 - which requires a CRC-affecting
+fix in https://gerrit.fd.io/r/#/c/vpp/+/22015/ - so the 19.08.1
+will contain the fixes for both issues.
+
+[ To Be Removed Before Merging ]
+------ %< ------
+
+Given the change is potentially intrusive to other projects' workflow,
+we also advise on the schedule of this change:
+
+- Merge the https://gerrit.fd.io/r/#/c/vpp/+/21762/ into stable/1908
+   - 9 September 2019
+- Cut the 19.08.1 release
+   - 12 September 2019
+   
+PTLs, Please add desired release dates below if the proposed dates
+don't work for your project in the following format:
+
+<ptl name> | <project> | <merge date> | <release date>
+
+Dave Wallace (for Maciek) | CSIT | n/a | Monday 16 Sept 2019 [0]
+Andrew Yourtchenko (for Networking-VPP) | networking-vpp | n/a | Wednesday 18 Sept 2019 [1]
+
+
+[0] CSIT 19.08 Performance Verify jobs are running and should complete
+by Friday 13 Sept 2019 Close-Of-Business PDT (barring any LF infra
+emergency maint).  If the 19.08 release artifacts are removed from the
+fdio/1908/release repo prior to completion, the jobs may fail.
+
+[1] the discovery of VPP-1769 requires some more time to ensure it
+is tested.
+
+------ %< ------
+
+Please accept our apologies for the inconvenience this caused.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1904)
 
 @page release_notes_1908 Release notes for VPP 19.08
 
