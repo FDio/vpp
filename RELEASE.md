@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_19081
 * @subpage release_notes_1908
 * @subpage release_notes_19042
 * @subpage release_notes_19041
@@ -21,6 +22,41 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_19081 Release notes for VPP 19.08.1
+
+Exceptionally, this release has an API-changing fix introduced via
+https://gerrit.fd.io/r/#/c/vpp/+/21762/ - documented in VPP-1767.
+Given the exceptional nature of the change, also including the text here:
+
+Bug: https://gerrit.fd.io/r/c/vpp/+/21492
+
+Variable length strings were committed to VPP in 413f4a5b.
+The VPP server side of the API does not use a wire encoder/decoder. It maps a C struct directly onto on-the-wire API messages.
+The client side C language binding is the same, while other language bindings have their own encoder/decoders.
+
+Multiple strings alone or combined with other variable length types turned out to be error prone to manually implement on the VPP side,
+and not supported by VPP API (VAPI) very well at all.
+
+To avoid having to rewrite VAPI significantly, and to mitigate the risk
+and error prone server side support of multiple variable length fields,
+this patch extends strings to have a fixed size (on the wire) and
+a variable flavour, as well as adding detection in the API compiler
+to detect multiple variable length fields in a message (or type).
+
+Given that this change breaks the commitment to binary API compatibility,
+normally present in point builds, the 19.08 build artifacts are being deferred 
+(i.e. removed from the packagecloud.io/fdio/release repository).
+The artifacts for the 19.08.1 will be exceptionally put there instead.
+
+They 19.08 artifacts will be still available for archive purposes from
+packagecloud.io/fdio/deferred
+
+Please accept our apologies for the inconvenience this caused.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1904)
 
 @page release_notes_1908 Release notes for VPP 19.08
 
