@@ -72,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "618defab_9fbbfdc4",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-09-06T14:49:58Z",
+      "side": 1,
+      "message": "in this case i would define more appropriate name for the error counter, like QUEUE_FULL instead of the generic ENGINE_ERROR.\n\nAlso you have to call vlib_buffer_enqueue_to_next for the failed buffers otherwise they will leak.",
+      "parentUuid": "da55011b_3f7c29bf",
+      "range": {
+        "startLine": 250,
+        "startChar": 10,
+        "endLine": 250,
+        "endChar": 55
+      },
+      "revId": "57f854b0ef31367e500ecd22a85111ccc81590f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f2618f1c_0741f515",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 1
