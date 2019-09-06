@@ -27,9 +27,11 @@
 STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,
 	       "VLIB_BUFFER_PRE_DATA_SIZE must be equal to RTE_PKTMBUF_HEADROOM");
 
+extern struct rte_mbuf *dpdk_mbuf_template_by_pool_index;
 #ifndef CLIB_MARCH_VARIANT
 struct rte_mempool **dpdk_mempool_by_buffer_pool_index = 0;
 struct rte_mempool **dpdk_no_cache_mempool_by_buffer_pool_index = 0;
+struct rte_mbuf *dpdk_mbuf_template_by_pool_index = 0;
 
 clib_error_t *
 dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
@@ -116,6 +118,14 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 
   /* call the object initializers */
   rte_mempool_obj_iter (mp, rte_pktmbuf_init, 0);
+
+  /* create mbuf header tempate from the first buffer in the pool */
+  vec_validate_aligned (dpdk_mbuf_template_by_pool_index, bp->index,
+			CLIB_CACHE_LINE_BYTES);
+  clib_memcpy (vec_elt_at_index (dpdk_mbuf_template_by_pool_index, bp->index),
+	       rte_mbuf_from_vlib_buffer (vlib_buffer_ptr_from_index
+					  (buffer_mem_start, *bp->buffers,
+					   0)), sizeof (struct rte_mbuf));
 
   /* *INDENT-OFF* */
   vec_foreach (bi, bp->buffers)
@@ -256,7 +266,6 @@ dpdk_ops_vpp_enqueue_no_cache_one (vlib_main_t * vm, struct rte_mempool *old,
   if (clib_atomic_sub_fetch (&b->ref_count, 1) == 0)
     {
       u32 bi = vlib_get_buffer_index (vm, b);
-      mb->pool = new;
       vlib_buffer_copy_template (b, bt);
       vlib_buffer_pool_put (vm, bt->buffer_pool_index, &bi, 1);
       return;
@@ -298,6 +307,37 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue_no_cache) (struct rte_mempool * cmp,
 
 CLIB_MARCH_FN_REGISTRATION (dpdk_ops_vpp_enqueue_no_cache);
 
+static_always_inline void
+dpdk_mbuf_init_from_template (struct rte_mbuf **mba, struct rte_mbuf *mt,
+			      int count)
+{
+  /* Assumptions about rte_mbuf layout */
+  STATIC_ASSERT_OFFSET_OF (struct rte_mbuf, buf_addr, 0);
+  STATIC_ASSERT_OFFSET_OF (struct rte_mbuf, buf_iova, 8);
+  STATIC_ASSERT_SIZEOF_ELT (struct rte_mbuf, buf_iova, 8);
+  STATIC_ASSERT_SIZEOF_ELT (struct rte_mbuf, buf_iova, 8);
+  STATIC_ASSERT_SIZEOF (struct rte_mbuf, 128);
+
+  while (count--)
+    {
+      struct rte_mbuf *mb = mba[0];
+      int i;
+      /* bytes 0 .. 15 hold buf_addr and buf_iova which we need to preserve */
+      /* copy bytes 16 .. 31 */
+      *((u8x16 *) mb + 1) = *((u8x16 *) mt + 1);
+
+      /* copy bytes 32 .. 127 */
+#ifdef CLIB_HAVE_VEC256
+      for (i = 1; i < 4; i++)
+	*((u8x32 *) mb + i) = *((u8x32 *) mt + i);
+#else
+      for (i = 2; i < 8; i++)
+	*((u8x16 *) mb + i) = *((u8x16 *) mt + i);
+#endif
+      mba++;
+    }
+}
+
 int
 CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
 					  void **obj_table, unsigned n)
@@ -307,6 +347,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
   u32 bufs[batch_size], total = 0, n_alloc = 0;
   u8 buffer_pool_index = mp->pool_id;
   void **obj = obj_table;
+  struct rte_mbuf t = dpdk_mbuf_template_by_pool_index[buffer_pool_index];
 
   while (n >= batch_size)
     {
@@ -317,6 +358,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
 
       vlib_get_buffers_with_offset (vm, bufs, obj, batch_size,
 				    -(i32) sizeof (struct rte_mbuf));
+      dpdk_mbuf_init_from_template ((struct rte_mbuf **) obj, &t, batch_size);
       total += batch_size;
       obj += batch_size;
       n -= batch_size;
@@ -331,6 +373,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
 
       vlib_get_buffers_with_offset (vm, bufs, obj, n,
 				    -(i32) sizeof (struct rte_mbuf));
+      dpdk_mbuf_init_from_template ((struct rte_mbuf **) obj, &t, n);
     }
 
   return 0;
