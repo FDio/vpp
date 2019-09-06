@@ -125,7 +125,6 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((hole->start == 900 && hole->end == 1000),
 	    "last hole start %u end %u", hole->start, hole->end);
   TCP_TEST ((sb->sacked_bytes == 400), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
   TCP_TEST ((sb->last_sacked_bytes == 400),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
   TCP_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
@@ -153,29 +152,35 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((hole->start == 0 && hole->end == 100),
 	    "first hole start %u end %u", hole->start, hole->end);
   TCP_TEST ((sb->sacked_bytes == 900), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
   TCP_TEST ((sb->high_sacked == 1000), "high sacked %u", sb->high_sacked);
   TCP_TEST ((sb->last_sacked_bytes == 500),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
 
   /*
-   *  Ack until byte 100, all bytes are now acked + sacked
+   *  Ack until byte 100 - this is reneging because we should ack until 1000
    */
   tcp_rcv_sacks (tc, 100);
   if (verbose)
     vlib_cli_output (vm, "\nack until byte 100:\n%U", format_tcp_scoreboard,
 		     sb, tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->snd_una_adv == 900),
-	    "snd_una_adv after ack %u", sb->snd_una_adv);
+  TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
+  TCP_TEST ((sb->is_reneging), "is reneging");
+
+  /*
+   * Sack all up to 1000
+   */
+  tc->snd_una = 100;
+  tcp_rcv_sacks (tc, 1000);
   TCP_TEST ((sb->high_sacked == 1000), "max sacked byte %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 0),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((!sb->is_reneging), "is not reneging");
+
 
   /*
    * Add new block
@@ -196,15 +201,11 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nadd [1200, 1300] snd_una_max 1500, snd_una 1000:"
 		     " \n%U", format_tcp_scoreboard, sb, tc);
 
-  TCP_TEST ((sb->snd_una_adv == 0),
-	    "snd_una_adv after ack %u", sb->snd_una_adv);
   TCP_TEST ((pool_elts (sb->holes) == 2),
 	    "scoreboard has %d holes", pool_elts (sb->holes));
   hole = scoreboard_first_hole (sb);
   TCP_TEST ((hole->start == 1000 && hole->end == 1200),
 	    "first hole start %u end %u", hole->start, hole->end);
-  TCP_TEST ((sb->snd_una_adv == 0),
-	    "snd_una_adv after ack %u", sb->snd_una_adv);
   TCP_TEST ((sb->high_sacked == 1300), "max sacked byte %u", sb->high_sacked);
   hole = scoreboard_last_hole (sb);
   TCP_TEST ((hole->start == 1300 && hole->end == 1500),
@@ -217,28 +218,27 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    */
 
   vec_reset_length (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 1200);
+  /* Ack up to 1300 to avoid reneging */
+  tcp_rcv_sacks (tc, 1300);
 
   if (verbose)
-    vlib_cli_output (vm, "\nsb ack up to byte 1200:\n%U",
+    vlib_cli_output (vm, "\nsb ack up to byte 1300:\n%U",
 		     format_tcp_scoreboard, sb, tc);
 
-  TCP_TEST ((sb->snd_una_adv == 100),
-	    "snd_una_adv after ack %u", sb->snd_una_adv);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((pool_elts (sb->holes) == 0),
+  TCP_TEST ((pool_elts (sb->holes) == 1),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
   TCP_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  TCP_TEST ((sb->head != TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  TCP_TEST ((sb->tail != TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
    * Add some more blocks and then remove all
    */
   vec_reset_length (tc->rcv_opts.sacks);
-  tc->snd_una += sb->snd_una_adv;
+  tc->snd_una = 1300;
   tc->snd_nxt = tc->snd_una_max = 1900;
   for (i = 0; i < 5; i++)
     {
@@ -265,6 +265,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = 0;
   tc->snd_una_max = 1000;
   tc->snd_nxt = 1000;
+  vec_reset_length (tc->rcv_opts.sacks);
   for (i = 0; i < 5; i++)
     {
       vec_add1 (tc->rcv_opts.sacks, sacks[i * 2 + 1]);
@@ -272,25 +273,34 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
   tcp_rcv_sacks (tc, 0);
   if (verbose)
-    vlib_cli_output (vm, "\nsb added odd blocks snd_una 0 snd_una_max 1500:"
+    vlib_cli_output (vm, "\nsb added odd blocks snd_una 0 snd_una_max 1000:"
 		     "\n%U", format_tcp_scoreboard, sb, tc);
   TCP_TEST ((pool_elts (sb->holes) == 5),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
   TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
+  hole = scoreboard_last_hole (sb);
+  TCP_TEST ((hole->end == 900), "last hole end %u", hole->end);
+  TCP_TEST ((sb->high_sacked == 1000), "high sacked %u", sb->high_sacked);
 
+  /*
+   * Renege bytes from 950 to 1000
+   */
   tcp_rcv_sacks (tc, 950);
 
   if (verbose)
     vlib_cli_output (vm, "\nack [0, 950]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->snd_una_adv == 50), "snd_una_adv %u", sb->snd_una_adv);
-  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 0),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
+  TCP_TEST ((sb->is_reneging), "is reneging");
+  TCP_TEST ((sb->sacked_bytes == 50), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((sb->high_sacked == 1000), "high sacked %u", sb->high_sacked);
+
+  scoreboard_clear (sb);
 
   /*
    * Inject one block, ack it and overlap hole
@@ -317,17 +327,16 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nsb ack [0, 800]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0),
+  TCP_TEST ((pool_elts (sb->holes) == 1),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
   TCP_TEST ((sb->last_bytes_delivered == 400),
 	    "last bytes delivered %d", sb->last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  TCP_TEST ((sb->head != TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  TCP_TEST ((sb->tail != TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
    * One hole close to head, patch head, split in two and start acking
@@ -370,46 +379,65 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	    sb->last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
+  /*
+   * Ack [100 300] in two steps
+   *
+   * Step 1. Ack [100 200] which delivers 100 of the bytes lost
+   */
   tc->snd_una = 100;
   tcp_rcv_sacks (tc, 200);
+  TCP_TEST ((sb->sacked_bytes == 600), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
+	    sb->last_bytes_delivered);
+  TCP_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
+
+  /*
+   * Step 2. Ack up to 300, although 300 400 is sacked, so this is interpreted
+   * as reneging.
+   */
   tc->snd_una = 200;
   tcp_rcv_sacks (tc, 300);
   if (verbose)
-    vlib_cli_output (vm, "\nacked [0, 300] in two steps:\n%U",
+    vlib_cli_output (vm, "\nacked [100, 300] in two steps:\n%U",
 		     format_tcp_scoreboard, sb, tc);
-  TCP_TEST ((sb->sacked_bytes == 500), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->sacked_bytes == 600), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
+  TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
+  TCP_TEST ((sb->is_reneging), "is reneging");
 
-  tc->snd_una = 400;
+  /*
+   * Ack [300 500]. Delivers reneged segment [300 400] and reneges bytes
+   * above 500
+   */
+  tc->snd_una = 300;
   tcp_rcv_sacks (tc, 500);
   if (verbose)
     vlib_cli_output (vm, "\nacked [400, 500]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
   TCP_TEST ((pool_elts (sb->holes) == 0),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->sacked_bytes == 500), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
-  TCP_TEST ((sb->last_bytes_delivered == 500), "last bytes delivered %d",
+  TCP_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->snd_una_adv == 500), "snd_una_adv %u", sb->snd_una_adv);
+  TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
   TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
-   * Re-ack high sacked, to make sure last_bytes_delivered and
-   * snd_una_adv are 0-ed
+   * Ack up to 1000 to deliver all bytes
    */
+  tc->snd_una = 500;
   tcp_rcv_sacks (tc, 1000);
   if (verbose)
     vlib_cli_output (vm, "\nAck high sacked:\n%U", format_tcp_scoreboard, sb,
 		     tc);
-  TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
+  TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_bytes_delivered == 500), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
 
   /*
    * Add [1200, 1500] and test that [1000, 1200] is lost (bytes condition)
@@ -434,7 +462,6 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
 
   return 0;
 }
