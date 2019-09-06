@@ -165,7 +165,6 @@ typedef struct _sack_scoreboard
   u32 sacked_bytes;			/**< Number of bytes sacked in sb */
   u32 last_sacked_bytes;		/**< Number of bytes last sacked */
   u32 last_bytes_delivered;		/**< Sack bytes delivered to app */
-  u32 snd_una_adv;			/**< Bytes to add to snd_una */
   u32 high_sacked;			/**< Highest byte sacked (fack) */
   u32 high_rxt;				/**< Highest retransmitted sequence */
   u32 rescue_rxt;			/**< Rescue sequence number */
