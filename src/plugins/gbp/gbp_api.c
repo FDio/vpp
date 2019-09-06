@@ -940,6 +940,8 @@ gbp_contract_rules_decode (u8 n_rules,
 
       if (0 != rv)
 	{
+	  index_t *gui;
+	  vec_foreach (gui, guis) gbp_rule_free (*gui);
 	  vec_free (guis);
 	  return (rv);
 	}
