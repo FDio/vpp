@@ -129,6 +129,7 @@ class TestGSO(VppTestCase):
             i.resolve_arp()
             i.resolve_ndp()
 
+        self.vapi.gso_enable_disable(self.pg4.sw_if_index)
         p42 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg4.remote_ip4,
                   flags='DF') /
@@ -186,6 +187,7 @@ class TestGSO(VppTestCase):
             i.resolve_ndp()
 
         self.vapi.sw_interface_set_mtu(self.pg5.sw_if_index, [9000, 0, 0, 0])
+        self.vapi.gso_enable_disable(self.pg1.sw_if_index)
         p44 = (Ether(src=self.pg5.remote_mac, dst=self.pg5.local_mac) /
                IP(src=self.pg5.remote_ip4, dst=self.pg1.remote_ip4) /
                TCP(sport=1234, dport=1234) /

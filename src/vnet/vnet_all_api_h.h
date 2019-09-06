@@ -77,6 +77,7 @@
 #include <vnet/vxlan-gbp/vxlan_gbp.api.h>
 #include <vnet/syslog/syslog.api.h>
 #include <vnet/devices/virtio/virtio.api.h>
+#include <vnet/gso/gso.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
