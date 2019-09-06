@@ -270,12 +270,6 @@ VNET_FEATURE_INIT (mpls_qos_mark_node, static) = {
     .node_name = "mpls-qos-mark",
 };
 
-VNET_FEATURE_INIT (mpls_post_frag_qos_mark_node, static) = {
-    .arc_name = "mpls-output-post-frag",
-    .node_name = "mpls-qos-mark",
-    .runs_before = VNET_FEATURES ("interface-output"),
-};
-
 VLIB_REGISTER_NODE (vlan_ip4_qos_mark_node) = {
   .name = "vlan-ip4-qos-mark",
   .vector_size = sizeof (u32),
@@ -334,13 +328,6 @@ VNET_FEATURE_INIT (vlan_mpls_qos_mark_node, static) = {
     .arc_name = "mpls-output",
     .node_name = "vlan-mpls-qos-mark",
     .runs_after = VNET_FEATURES ("mpls-qos-mark"),
-};
-
-VNET_FEATURE_INIT (vlan_mpls_post_frag_qos_mark_node, static) = {
-    .arc_name = "mpls-output-post-frag",
-    .node_name = "vlan-mpls-qos-mark",
-    .runs_after = VNET_FEATURES ("mpls-qos-mark"),
-    .runs_before = VNET_FEATURES ("interface-output"),
 };
 
 /* *INDENT-ON* */
