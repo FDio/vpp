@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "62b33db1_55b25007",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 1867
+      },
+      "writtenOn": "2019-09-06T13:21:35Z",
+      "side": 1,
+      "message": "Original comment from Neal Rann -\nThere could be a long chain of mpls_label_dpos here. And all sorts of other DPOs to navigate too. You can\u0027t take this approach. instead, the packet you get in mpls-output has \u0027current\u0027 pointing to the bottom of the label stack. walk up the stack to find the label with the EOS bit set. this is the stack that needs to be copied onto each fragment.",
+      "revId": "8dca89354f69f8be9233ccdcf3457559815407e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
