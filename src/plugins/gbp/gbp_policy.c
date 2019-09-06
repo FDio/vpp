@@ -28,9 +28,11 @@ format_gbp_policy_trace (u8 * s, va_list * args)
   gbp_policy_trace_t *t = va_arg (*args, gbp_policy_trace_t *);
 
   s =
-    format (s, "scope:%d sclass:%d, dclass:%d, allowed:%d flags:%U", t->scope,
-	    t->sclass, t->dclass, t->allowed, format_vxlan_gbp_header_gpflags,
-	    t->flags);
+    format (s,
+	    "scope:%d sclass:%d, dclass:%d, action:%U flags:%U acl: %d rule: %d",
+	    t->scope, t->sclass, t->dclass, format_gbp_rule_action, t->action,
+	    format_vxlan_gbp_header_gpflags, t->flags, t->acl_match,
+	    t->rule_match);
 
   return s;
 }

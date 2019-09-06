@@ -27,15 +27,17 @@ typedef struct gbp_policy_trace_t_
   gbp_scope_t scope;
   sclass_t sclass;
   sclass_t dclass;
-  u32 allowed;
+  gbp_rule_action_t action;
   u32 flags;
+  u32 acl_match;
+  u32 rule_match;
 } gbp_policy_trace_t;
 
 /* packet trace format function */
 u8 * format_gbp_policy_trace (u8 * s, va_list * args);
 
 static_always_inline void
-gbp_policy_trace(vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t *b, const gbp_contract_key_t *key, u8 allowed)
+gbp_policy_trace(vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t *b, const gbp_contract_key_t *key, gbp_rule_action_t action, u32 acl_match, u32 rule_match)
 {
   gbp_policy_trace_t *t;
 
@@ -46,8 +48,10 @@ gbp_policy_trace(vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t *b,
   t->sclass = key->gck_src;
   t->dclass = key->gck_dst;
   t->scope = key->gck_scope;
-  t->allowed = allowed;
+  t->action = action;
   t->flags = vnet_buffer2 (b)->gbp.flags;
+  t->acl_match = acl_match;
+  t->rule_match = rule_match;
 }
 
 #endif /* __GBP_POLICY_H__ */
