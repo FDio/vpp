@@ -787,6 +787,9 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                         ttl0 = ip0->ttl;
                         exp0 = ip_dscp_to_mpls_exp(ip0->tos);
                     }
+
+                    /* save the payload proto information in mpls opaque */
+                    vnet_buffer(b0)->mpls.pyld_proto = DPO_PROTO_IP4;
                 }
                 else if (DPO_PROTO_IP6 == dproto)
                 {
@@ -805,6 +808,9 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                         exp0 = ip_dscp_to_mpls_exp(
                             ip6_traffic_class_network_order(ip0));
                     }
+
+                    /* save the payload proto information in mpls opaque */
+                    vnet_buffer(b0)->mpls.pyld_proto = DPO_PROTO_IP6;
                 }
                 else
                 {
