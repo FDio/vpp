@@ -4375,7 +4375,12 @@ class TestGBP(VppTestCase):
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
                 [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
-                                       sep1.ip4, sep1.epg.rd)])],
+                                       sep1.ip4, sep1.epg.rd)]),
+                VppGbpContractRule(
+                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
+                    [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                           sep1.ip6, sep1.epg.rd)])],
             [ETH_P_IP, ETH_P_IPV6])
         c1.add_vpp_config()
 
@@ -4385,7 +4390,12 @@ class TestGBP(VppTestCase):
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
                 [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
-                                       sep1.ip4, sep1.epg.rd)])],
+                                       sep1.ip4, sep1.epg.rd)]),
+                VppGbpContractRule(
+                    VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                    VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
+                    [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                           sep1.ip6, sep1.epg.rd)])],
             [ETH_P_IP, ETH_P_IPV6])
         c2.add_vpp_config()
 
