@@ -669,13 +669,17 @@ class VPPApiClient(object):
         return rl
 
     def _call_vpp_async(self, i, msg, **kwargs):
-        """Given a message, send the message and await a reply.
+        """Given a message, send the message and return the context.
 
         msgdef - the message packing definition
         i - the message type index
         context - context number - chosen at random if not
         supplied.
         The remainder of the kwargs are the arguments to the API call.
+
+        The reply message(s) will be delivered later to the registered callback.
+        The returned context will help with assigning which call
+        the reply belongs to.
         """
         if 'context' not in kwargs:
             context = self.get_context()
@@ -691,6 +695,7 @@ class VPPApiClient(object):
         b = msg.pack(kwargs)
 
         self.transport.write(b)
+        return context
 
     def register_event_callback(self, callback):
         """Register a callback for async messages.
