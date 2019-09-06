@@ -74,13 +74,15 @@ get_ip6_adjacency_index(vlib_buffer_t * p0)
   const load_balance_t *lb0;
   u32 lbi0;
   const dpo_id_t *dpo0;
+  u32 fib_index;
 
   ip0 = vlib_buffer_get_current (p0);
   dst_addr0 = &ip0->dst_address;
 
-  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p0);
+  fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
+                                                   vnet_buffer (p0)->sw_if_index[VLIB_RX]);
   lbi0 = ip6_fib_table_fwding_lookup (im,
-                       vnet_buffer (p0)->ip.fib_index,
+		       fib_index,
                        dst_addr0);
   lb0 = load_balance_get (lbi0);
   ASSERT (lb0->lb_n_buckets > 0);
@@ -100,12 +102,14 @@ get_ip4_adjacency_index(vlib_buffer_t * p0)
   const load_balance_t *lb0;
   u32 lbi0;
   const dpo_id_t *dpo0;
+  int fib_index;
 
   ip0 = vlib_buffer_get_current(p0);
   dst_addr0 = &ip0->dst_address;
 
-  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p0);
-  mtrie0 = &ip4_fib_get (vnet_buffer (p0)->ip.fib_index)->mtrie;
+  fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+                                                   vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+  mtrie0 = &ip4_fib_get (fib_index)->mtrie;
   leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
   leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
   leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
@@ -124,7 +128,7 @@ get_ip4_adjacency_index(vlib_buffer_t * p0)
  * header on these fragments before sending the packet out.
  * otherwise just update the hdr0 with the mpls header info.
  */
-#define IMPOSE_MPLS_HDR(p0, hdr0, mode)                                     \
+#define IMPOSE_MPLS_HDR(p0, hdr0, mode)                               \
 {                                                                     \
   u32 mldi0;                                                          \
   mpls_label_dpo_t *mld0;                                             \
@@ -158,7 +162,7 @@ static inline uword
 mpls_output_inline (vlib_main_t * vm,
                     vlib_node_runtime_t * node,
                     vlib_frame_t * from_frame,
-                    int mode)
+                    mpls_output_mode_t mode)
 {
   u32 n_left_from, next_index, * from, * to_next, thread_index;
   vlib_node_runtime_t * error_node;
@@ -273,10 +277,15 @@ mpls_output_inline (vlib_main_t * vm,
 
               /* advance size of (all) mpls header to ip header before fragmenting */
               vlib_buffer_advance (p0, (rw_len0 - sizeof (ethernet_header_t)));
+
               /* IP fragmentation */
               ip_frag_set_vnet_buffer (p0, adj0[0].rewrite_header.max_l3_packet_bytes,
                                        IP4_FRAG_NEXT_MPLS_OUTPUT_POST_FRAG,
                                        ((vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4) ? IP_FRAG_FLAG_IP4_HEADER:IP_FRAG_FLAG_IP6_HEADER));
+
+	      /* Tell ip_frag to retain certain mpls parameters after fragmentation of mpls packet */
+              vnet_buffer (p0)->ip_frag.flags = (vnet_buffer (p0)->ip_frag.flags | IP_FRAG_FLAG_MPLS_HEADER);
+
               next0 = (vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;
             }
           if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p1) <=
@@ -301,11 +310,16 @@ mpls_output_inline (vlib_main_t * vm,
 
               /* advance size of (all) mpls header to ip header before fragmenting */
               vlib_buffer_advance (p1, (rw_len1 - sizeof (ethernet_header_t)));
+
               /* IP fragmentation */
               ip_frag_set_vnet_buffer (p1, adj0[0].rewrite_header.max_l3_packet_bytes,
                                        IP4_FRAG_NEXT_MPLS_OUTPUT_POST_FRAG,
                                        ((vnet_buffer (p1)->mpls.pyld_proto == DPO_PROTO_IP4) ? IP_FRAG_FLAG_IP4_HEADER:IP_FRAG_FLAG_IP6_HEADER));
-              next1 = (vnet_buffer (p1)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;
+
+	      /* Tell ip_frag to retain certain mpls parameters after fragmentation of mpls packet */
+              vnet_buffer (p1)->ip_frag.flags = (vnet_buffer (p1)->ip_frag.flags | IP_FRAG_FLAG_MPLS_HEADER);
+              
+	      next1 = (vnet_buffer (p1)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;
             }
           if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
           {
@@ -396,11 +410,16 @@ mpls_output_inline (vlib_main_t * vm,
 
               /* advance size of (all) mpls header to ip header before fragmenting */
               vlib_buffer_advance (p0, (rw_len0 - sizeof (ethernet_header_t)));
+              
               /* IP fragmentation */
               ip_frag_set_vnet_buffer (p0, adj0[0].rewrite_header.max_l3_packet_bytes,
                                        IP4_FRAG_NEXT_MPLS_OUTPUT_POST_FRAG,
                                        ((vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4) ? IP_FRAG_FLAG_IP4_HEADER:IP_FRAG_FLAG_IP6_HEADER));
-              next0 = (vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;
+
+              /* Tell ip_frag to retain certain mpls parameters after fragmentation of mpls packet */
+              vnet_buffer (p0)->ip_frag.flags = (vnet_buffer (p0)->ip_frag.flags | IP_FRAG_FLAG_MPLS_HEADER);
+
+	      next0 = (vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;
             }
           if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
           {

@@ -339,18 +339,6 @@ VNET_FEATURE_INIT (adj_midchain_tx_no_count_mpls, static) = {
     .runs_before = VNET_FEATURES ("interface-output"),
     .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_MPLS],
 };
-VNET_FEATURE_INIT (adj_midchain_tx_mpls_post_frag, static) = {
-    .arc_name = "mpls-output-post-frag",
-    .node_name = "adj-midchain-tx",
-    .runs_before = VNET_FEATURES ("interface-output"),
-    .feature_index_ptr = &adj_midchain_tx_feature_node[VNET_LINK_MPLS],
-};
-VNET_FEATURE_INIT (adj_midchain_tx_no_count_mpls_post_frag, static) = {
-    .arc_name = "mpls-output-post-frag",
-    .node_name = "adj-midchain-tx-no-count",
-    .runs_before = VNET_FEATURES ("interface-output"),
-    .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_MPLS],
-};
 VNET_FEATURE_INIT (adj_midchain_tx_ethernet, static) = {
     .arc_name = "ethernet-output",
     .node_name = "adj-midchain-tx",
