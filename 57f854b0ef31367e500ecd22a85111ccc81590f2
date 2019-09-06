@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "da55011b_3f7c29bf",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-09-06T14:13:44Z",
+      "side": 1,
+      "message": "It is incorrect but not where you pointed...\n\nBasically when an array of crypto ops are pushed into the queue(s), the reason not all ops are enqueued are due to either queue creation fail, or queue is full. In case the former the all ops should be freed (n_failed \u003d\u003d n), in case of the latter we don\u0027t have to scan what has been enqueued already, but simply drop all those are not enqueued.\n\nSo what I was wrong here is change the whole block here like:\n\nu32 i;\nfor ( i \u003d n - n_failed; i \u003c n; i ++)\n{\n  op \u003d ops + i;\n  u32 bi \u003d ops-\u003euser_data;\n  b0-\u003eerror \u003d node-\u003eerrors[ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR];\n  nexts[bi] \u003d ESP_ENCRYPT_NEXT_DROP;\n  clib_mem_free (op)\n}",
+      "parentUuid": "fd23dbd1_5fc32a87",
+      "range": {
+        "startLine": 250,
+        "startChar": 10,
+        "endLine": 250,
+        "endChar": 55
+      },
+      "revId": "57f854b0ef31367e500ecd22a85111ccc81590f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f2618f1c_0741f515",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 1
@@ -59,6 +83,30 @@
       "writtenOn": "2019-09-06T12:02:35Z",
       "side": 1,
       "message": "this can leak if a buffer is dropped (line 366)",
+      "range": {
+        "startLine": 297,
+        "startChar": 1,
+        "endLine": 297,
+        "endChar": 10
+      },
+      "revId": "57f854b0ef31367e500ecd22a85111ccc81590f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "91c52312_ca56b12c",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2019-09-06T14:13:44Z",
+      "side": 1,
+      "message": "Hi, you are right. Will allocate async_ops at run time.",
+      "parentUuid": "f2618f1c_0741f515",
       "range": {
         "startLine": 297,
         "startChar": 1,
