@@ -221,8 +221,12 @@ typedef struct
       u8 ttl;
       u8 exp;
       u8 first;
+      u8 pyld_proto:3;		/* dpo_proto_t */
+      u8 rsvd:5;
       /* Rewrite length */
       u32 save_rewrite_length;
+      /* Save the mpls header length including all label stack */
+      u8 mpls_hdr_length;
       /*
        * BIER - the number of bytes in the header.
        *  the len field in the header is not authoritative. It's the
