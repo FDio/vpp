@@ -73,6 +73,12 @@ gbp_rule_alloc (gbp_rule_action_t action,
   return (gu - gbp_rule_pool);
 }
 
+void
+gbp_rule_free (index_t gui)
+{
+  pool_put_index (gbp_rule_pool, gui);
+}
+
 index_t
 gbp_next_hop_alloc (const ip46_address_t * ip,
 		    index_t grd, const mac_address_t * mac, index_t gbd)
@@ -139,6 +145,8 @@ gbp_contract_rules_free (index_t * rules)
 	adj_unlock (gnh->gnh_ai[fproto]);
       }
     }
+
+    gbp_rule_free (*gui);
   }
   vec_free (rules);
 }
@@ -159,7 +167,7 @@ format_gbp_next_hop (u8 * s, va_list * args)
   return (s);
 }
 
-static u8 *
+u8 *
 format_gbp_rule_action (u8 * s, va_list * args)
 {
   gbp_rule_action_t action = va_arg (*args, gbp_rule_action_t);
