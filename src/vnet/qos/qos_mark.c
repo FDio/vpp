@@ -46,8 +46,6 @@ qos_mark_vlan_enable_disable (u32 sw_if_index, u8 enable)
 			       sw_if_index, enable, NULL, 0);
   vnet_feature_enable_disable ("mpls-output", "vlan-mpls-qos-mark",
 			       sw_if_index, enable, NULL, 0);
-  vnet_feature_enable_disable ("mpls-output-post-frag", "vlan-mpls-qos-mark",
-			       sw_if_index, enable, NULL, 0);
 }
 
 void

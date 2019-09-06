@@ -39,6 +39,7 @@
 
 #define IP_FRAG_FLAG_IP4_HEADER 0x01	//Encapsulating IPv4 header
 #define IP_FRAG_FLAG_IP6_HEADER 0x02	//Encapsulating IPv6 header
+#define IP_FRAG_FLAG_MPLS_HEADER 0x03   //Encapsulating MPLS header
 
 #define IP4_FRAG_NODE_NAME "ip4-frag"
 #define IP6_FRAG_NODE_NAME "ip6-frag"

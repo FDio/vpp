@@ -68,6 +68,12 @@ frag_set_sw_if_index (vlib_buffer_t * to, vlib_buffer_t * from)
       vnet_buffer2 (to)->qos = vnet_buffer2 (from)->qos;
       to->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
     }
+
+  /* Copy mpls payload dpo type */
+  if ((vnet_buffer (from)->ip_frag.flags) & IP_FRAG_FLAG_MPLS_HEADER)
+    {
+      vnet_buffer (to)->mpls.pyld_proto = vnet_buffer (from)->mpls.pyld_proto;
+    }
 }
 
 static vlib_buffer_t *
