@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da9601f9_9578620b",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3053,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-06T16:54:40Z",
+      "side": 0,
+      "message": "Filling up this field looks important.\nDo we have a unit test verifying the auth key is still applied?",
+      "range": {
+        "startLine": 3053,
+        "startChar": 22,
+        "endLine": 3053,
+        "endChar": 35
+      },
+      "revId": "a1876b84e5598fcfad1debe5abb51d152e06a66e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
