@@ -53,6 +53,8 @@ qos_mark_mpls_enable_disable (u32 sw_if_index, u8 enable)
 {
   vnet_feature_enable_disable ("mpls-output", "mpls-qos-mark",
 			       sw_if_index, enable, NULL, 0);
+  vnet_feature_enable_disable ("mpls-output-post-frag", "mpls-qos-mark",
+			       sw_if_index, enable, NULL, 0);
 }
 
 static void
