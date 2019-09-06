@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cf8721b8_71646466",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-09-06T10:08:02Z",
+      "side": 1,
+      "message": "this function returns number of ops enqueued. If the return value is less than total number of ops -\u003e queues are full. I think we might want to introduce a new error counter for packets dropped due to full queues.",
+      "range": {
+        "startLine": 238,
+        "startChar": 15,
+        "endLine": 238,
+        "endChar": 37
+      },
+      "revId": "57f854b0ef31367e500ecd22a85111ccc81590f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd23dbd1_5fc32a87",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-09-06T10:08:02Z",
+      "side": 1,
+      "message": "This is incorrect. vnet_crypto_submit_ops() only submits ops to the crypto infra, so there is no guarantee that the ops were completed by now.",
+      "range": {
+        "startLine": 250,
+        "startChar": 10,
+        "endLine": 250,
+        "endChar": 55
+      },
+      "revId": "57f854b0ef31367e500ecd22a85111ccc81590f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
