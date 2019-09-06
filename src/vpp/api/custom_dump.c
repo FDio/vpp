@@ -3543,6 +3543,21 @@ static void *vl_api_feature_enable_disable_t_print
   FINISH;
 }
 
+static void *vl_api_feature_gso_enable_disable_t_print
+  (vl_api_feature_gso_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: feature_gso_enable_disable ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  if (mp->enable_disable)
+    s = format (s, "enable");
+  if (!mp->enable_disable)
+    s = format (s, "disable");
+
+  FINISH;
+}
+
 static void *vl_api_sw_interface_tag_add_del_t_print
   (vl_api_sw_interface_tag_add_del_t * mp, void *handle)
 {
@@ -3937,6 +3952,7 @@ _(IOAM_DISABLE, ioam_disable)                                           \
 _(IP_TABLE_DUMP, ip_table_dump)                                         \
 _(IP_ROUTE_DUMP, ip_route_dump)                                         \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
+_(FEATURE_GSO_ENABLE_DISABLE, feature_gso_enable_disable)		\
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\
 _(HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                           \
 _(P2P_ETHERNET_ADD, p2p_ethernet_add)                                   \

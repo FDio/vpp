@@ -194,6 +194,7 @@ F:	src/vnet/lisp-gpe/
 VNET GSO
 I: gso
 M: Andrew Yourtchenko <ayourtch@gmail.com>
+M: Mohsin Kazmi <sykazmi@cisco.com>
 F: src/vnet/interface_output.c
 
 Plugin - MAP
