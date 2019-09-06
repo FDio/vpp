@@ -268,6 +268,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       tcp_cc_cleanup (tc);
       vec_free (tc->snd_sacks);
       vec_free (tc->snd_sacks_fl);
+      pool_free (tc->sack_sb.holes);
 
       if (tc->flags & TCP_CONN_RATE_SAMPLE)
 	tcp_bt_cleanup (tc);
@@ -1139,9 +1140,9 @@ format_tcp_scoreboard (u8 * s, va_list * args)
 
   s = format (s, "sacked_bytes %u last_sacked_bytes %u lost_bytes %u\n",
 	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes);
-  s = format (s, "%Ulast_bytes_delivered %u high_sacked %u snd_una_adv %u\n",
+  s = format (s, "%Ulast_bytes_delivered %u high_sacked %u is_reneging %u\n",
 	      format_white_space, indent, sb->last_bytes_delivered,
-	      sb->high_sacked - tc->iss, sb->snd_una_adv);
+	      sb->high_sacked - tc->iss, sb->is_reneging);
   s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u",
 	      format_white_space, indent, sb->cur_rxt_hole,
 	      sb->high_rxt - tc->iss, sb->rescue_rxt - tc->iss);
@@ -2127,7 +2128,7 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
       /* Push segments */
       tcp_rcv_sacks (dummy_tc, next_ack);
       if (has_new_ack)
-	dummy_tc->snd_una = next_ack + dummy_tc->sack_sb.snd_una_adv;
+	dummy_tc->snd_una = next_ack;
 
       if (verbose)
 	s = format (s, "result: %U", format_tcp_scoreboard,
