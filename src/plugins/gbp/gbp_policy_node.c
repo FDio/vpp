@@ -116,10 +116,11 @@ gbp_policy_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  gbp_rule_action_t action0 = GBP_RULE_DENY;
 	  const ethernet_header_t *h0;
 	  const gbp_endpoint_t *ge0;
-	  gbp_rule_action_t action0;
 	  gbp_contract_error_t err0;
+	  u32 acl_match = ~0, rule_match = ~0;
 	  gbp_policy_next_t next0;
 	  gbp_contract_key_t key0;
 	  u32 bi0, sw_if_index0;
@@ -220,8 +221,8 @@ gbp_policy_inline (vlib_main_t * vm,
 
 	  action0 =
 	    gbp_contract_apply (vm, gm, &key0, b0, &rule0, &n_allow_intra,
-				&n_allow_sclass_1, &err0,
-				GBP_CONTRACT_APPLY_L2);
+				&n_allow_sclass_1, &acl_match, &rule_match,
+				&err0, GBP_CONTRACT_APPLY_L2);
 	  switch (action0)
 	    {
 	    case GBP_RULE_PERMIT:
@@ -239,8 +240,8 @@ gbp_policy_inline (vlib_main_t * vm,
 	    }
 
 	trace:
-	  gbp_policy_trace (vm, node, b0, &key0,
-			    (next0 != GBP_POLICY_NEXT_DROP));
+	  gbp_policy_trace (vm, node, b0, &key0, action0, acl_match,
+			    rule_match);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

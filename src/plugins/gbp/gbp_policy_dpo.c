@@ -268,13 +268,14 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  gbp_rule_action_t action0 = GBP_RULE_DENY;
+	  u32 acl_match = ~0, rule_match = ~0;
 	  const gbp_policy_dpo_t *gpd0;
-	  gbp_rule_action_t action0;
 	  gbp_contract_error_t err0;
-	  u32 bi0, next0;
 	  gbp_contract_key_t key0;
 	  vlib_buffer_t *b0;
 	  gbp_rule_t *rule0;
+	  u32 bi0, next0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -325,7 +326,8 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 
 	  action0 =
 	    gbp_contract_apply (vm, gm, &key0, b0, &rule0, &n_allow_intra,
-				&n_allow_sclass_1, &err0,
+				&n_allow_sclass_1, &acl_match, &rule_match,
+				&err0,
 				is_ip6 ? GBP_CONTRACT_APPLY_IP6 :
 				GBP_CONTRACT_APPLY_IP4);
 	  switch (action0)
@@ -345,7 +347,8 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	    }
 
 	trace:
-	  gbp_policy_trace (vm, node, b0, &key0, (next0 != GBP_POLICY_DROP));
+	  gbp_policy_trace (vm, node, b0, &key0, action0, acl_match,
+			    rule_match);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
