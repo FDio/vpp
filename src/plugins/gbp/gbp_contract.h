@@ -28,7 +28,8 @@
   _(DROP_CONTRACT,      "drop-contract")                   \
   _(DROP_ETHER_TYPE,    "drop-ether-type")                 \
   _(DROP_NO_CONTRACT,   "drop-no-contract")                \
-  _(DROP_NO_DCLASS,     "drop-no-dclass")
+  _(DROP_NO_DCLASS,     "drop-no-dclass")                  \
+  _(DROP_NO_RULE,       "drop-no-rule")
 
 typedef enum
 {
@@ -173,6 +174,7 @@ extern int gbp_contract_delete (gbp_scope_t scope, sclass_t sclass,
 
 extern index_t gbp_rule_alloc (gbp_rule_action_t action,
 			       gbp_hash_mode_t hash_mode, index_t * nhs);
+extern void gbp_rule_free (index_t gui);
 extern index_t gbp_next_hop_alloc (const ip46_address_t * ip,
 				   index_t grd,
 				   const mac_address_t * mac, index_t gbd);
@@ -180,6 +182,7 @@ extern index_t gbp_next_hop_alloc (const ip46_address_t * ip,
 typedef int (*gbp_contract_cb_t) (gbp_contract_t * gbpe, void *ctx);
 extern void gbp_contract_walk (gbp_contract_cb_t bgpe, void *ctx);
 
+extern u8 *format_gbp_rule_action (u8 * s, va_list * args);
 extern u8 *format_gbp_contract (u8 * s, va_list * args);
 
 /**
@@ -230,13 +233,14 @@ static_always_inline gbp_rule_action_t
 gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
 		    gbp_contract_key_t * key, vlib_buffer_t * b,
 		    gbp_rule_t ** rule, u32 * intra, u32 * sclass1,
+		    u32 * acl_match, u32 * rule_match,
 		    gbp_contract_error_t * err,
 		    gbp_contract_apply_type_t type)
 {
   fa_5tuple_opaque_t fa_5tuple;
   const gbp_contract_t *contract;
   index_t contract_index;
-  u32 acl_pos, acl_match, rule_match, trace_bitmap;
+  u32 acl_pos, trace_bitmap;
   u16 etype;
   u8 ip6, action;
 
@@ -315,12 +319,18 @@ gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
 				 &fa_5tuple);
   acl_plugin_match_5tuple_inline (gm->acl_plugin.p_acl_main,
 				  contract->gc_lc_index, &fa_5tuple, ip6,
-				  &action, &acl_pos, &acl_match, &rule_match,
+				  &action, &acl_pos, acl_match, rule_match,
 				  &trace_bitmap);
   if (action <= 0)
     goto contract_deny;
 
-  *rule = gbp_rule_get (contract->gc_rules[rule_match]);
+  if (PREDICT_FALSE (*rule_match >= vec_len (contract->gc_rules)))
+    {
+      *err = GBP_CONTRACT_ERROR_DROP_NO_RULE;
+      goto contract_deny;
+    }
+
+  *rule = gbp_rule_get (contract->gc_rules[*rule_match]);
   switch ((*rule)->gu_action)
     {
     case GBP_RULE_PERMIT:
