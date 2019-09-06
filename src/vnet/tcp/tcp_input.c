@@ -620,7 +620,7 @@ tcp_program_dequeue (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
       vec_add1 (wrk->pending_deq_acked, tc->c_c_index);
       tc->flags |= TCP_CONN_DEQ_PENDING;
     }
-  tc->burst_acked += tc->bytes_acked + tc->sack_sb.snd_una_adv;
+  tc->burst_acked += tc->bytes_acked;
 }
 
 /**
@@ -922,7 +922,6 @@ scoreboard_clear (sack_scoreboard_t * sb)
   sb->sacked_bytes = 0;
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
-  sb->snd_una_adv = 0;
   sb->high_sacked = 0;
   sb->high_rxt = 0;
   sb->lost_bytes = 0;
@@ -948,6 +947,25 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc)
 
 #ifndef CLIB_MARCH_VARIANT
 
+static void
+tcp_rcv_sacks_reneging (sack_scoreboard_t * sb, tcp_connection_t * tc,
+			u32 ack)
+{
+  sack_scoreboard_hole_t *hole, *last_hole;
+
+  while ((hole = scoreboard_first_hole (sb)))
+    scoreboard_remove_hole (sb, hole);
+
+  last_hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX, ack,
+				      tc->snd_nxt);
+  sb->tail = scoreboard_hole_index (sb, last_hole);
+  sb->high_sacked = tc->rcv_opts.sacks[vec_len (tc->rcv_opts.sacks) - 1].end;
+  sb->high_rxt = ack;
+  sb->lost_bytes += scoreboard_hole_bytes (last_hole);
+  sb->last_lost_bytes += last_hole->end - last_hole->start;
+  scoreboard_init_high_rxt (sb);
+}
+
 void
 tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 {
@@ -959,7 +977,6 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
-  sb->snd_una_adv = 0;
 
   if (!tcp_opts_sack (&tc->rcv_opts)
       && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
@@ -1057,16 +1074,16 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		{
 		  if (next_hole)
 		    {
-		      if (seq_lt (ack, next_hole->start))
-			sb->snd_una_adv = next_hole->start - ack;
 		      sb->last_bytes_delivered +=
 			next_hole->start - hole->end;
+		      if (PREDICT_FALSE (seq_lt (ack, next_hole->start)))
+			tcp_rcv_sacks_reneging (sb, tc, ack);
 		    }
 		  else
 		    {
-		      ASSERT (seq_geq (sb->high_sacked, ack));
-		      sb->snd_una_adv = sb->high_sacked - ack;
 		      sb->last_bytes_delivered += sb->high_sacked - hole->end;
+		      if (PREDICT_FALSE (seq_lt (ack, sb->high_sacked)))
+			tcp_rcv_sacks_reneging (sb, tc, ack);
 		    }
 		}
 	      scoreboard_remove_hole (sb, hole);
@@ -1108,7 +1125,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   if (pool_elts (sb->holes) == 1)
     {
       hole = scoreboard_first_hole (sb);
-      if (hole->start == ack + sb->snd_una_adv && hole->end == tc->snd_nxt)
+      if (hole->start == ack && hole->end == tc->snd_nxt)
 	scoreboard_remove_hole (sb, hole);
     }
 
@@ -1122,7 +1139,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   ASSERT (sb->last_sacked_bytes + sb->lost_bytes <= tc->snd_nxt
 	  - seq_max (tc->snd_una, ack) || tcp_in_recovery (tc));
   ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
-	  || sb->holes[sb->head].start == ack + sb->snd_una_adv);
+	  || sb->holes[sb->head].start == ack);
   ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
 
   TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc);
@@ -1462,16 +1479,14 @@ partial_ack:
   /* Remove retransmitted bytes that have been delivered */
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
-      ASSERT (tc->bytes_acked + tc->sack_sb.snd_una_adv
-	      >= tc->sack_sb.last_bytes_delivered
+      ASSERT (tc->bytes_acked >= tc->sack_sb.last_bytes_delivered
 	      || (tc->flags & TCP_CONN_FINSNT));
 
       /* If we have sacks and we haven't gotten an ack beyond high_rxt,
        * remove sacked bytes delivered */
       if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
 	{
-	  rxt_delivered = tc->bytes_acked + tc->sack_sb.snd_una_adv
-	    - tc->sack_sb.last_bytes_delivered;
+	  rxt_delivered = tc->bytes_acked - tc->sack_sb.last_bytes_delivered;
 	  ASSERT (tc->snd_rxt_bytes >= rxt_delivered);
 	  tc->snd_rxt_bytes -= rxt_delivered;
 	}
@@ -1557,7 +1572,7 @@ process_ack:
 		      vnet_buffer (b)->tcp.ack_number,
 		      clib_net_to_host_u16 (th->window) << tc->snd_wscale);
   tc->bytes_acked = vnet_buffer (b)->tcp.ack_number - tc->snd_una;
-  tc->snd_una = vnet_buffer (b)->tcp.ack_number + tc->sack_sb.snd_una_adv;
+  tc->snd_una = vnet_buffer (b)->tcp.ack_number;
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
   if (tc->bytes_acked)
