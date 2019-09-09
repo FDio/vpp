@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "a15b2936_c6e46414",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-09-09T10:28:37Z",
+      "side": 1,
+      "message": "Use indices instead of pointers as pool_get_zero() can reallocate.",
+      "range": {
+        "startLine": 342,
+        "startChar": 5,
+        "endLine": 342,
+        "endChar": 25
+      },
+      "revId": "57f854b0ef31367e500ecd22a85111ccc81590f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cf8721b8_71646466",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 1
