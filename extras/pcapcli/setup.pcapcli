@@ -1,0 +1,34 @@
+set term pag off
+loop create
+loop create
+set int ip address loop0 192.168.1.1/24
+set int state loop0 up
+
+set int ip address loop1 192.168.2.1/24
+set int state loop1 up
+
+packet-generator new {
+    name pg0
+    limit 1
+    size 300-300
+    interface loop0
+    node ethernet-input
+    data { IP4: 1.2.3 -> 4.5.6
+           UDP: 192.168.1.10 -> 192.168.2.10
+           UDP: 1234 -> 2345
+           incrementing 286
+    }
+}
+
+packet-generator new {
+    name pg1
+    limit 1
+    size 300-300
+    interface loop1
+    node ethernet-input
+    data { IP4: 1.2.3 -> 4.5.6
+           UDP: 192.168.2.10 -> 192.168.1.10
+           UDP: 1234 -> 2345
+           incrementing 286
+    }
+}
