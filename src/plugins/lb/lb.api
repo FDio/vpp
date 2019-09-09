@@ -1,5 +1,6 @@
 option version = "1.0.0";
 import "plugins/lb/lb_types.api";
+import "vnet/interface_types.api";
 
 /** \brief Configure Load-Balancer global parameters (unlike the CLI, both ip4_src_address and ip6_src_address need to be specified.
     @param client_index - opaque cookie to identify the sender
@@ -143,3 +144,28 @@ define lb_as_details {
   u32 in_use_since;
 };
 
+/** \brief Enable/disable NAT4 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param sw_if_index - software index of the interface
+*/
+autoreply define lb_add_del_intf_nat4 {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Enable/disable NAT6 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param sw_if_index - software index of the interface
+*/
+autoreply define lb_add_del_intf_nat6 {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+};
