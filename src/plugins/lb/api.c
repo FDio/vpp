@@ -60,6 +60,8 @@ _(LB_ADD_DEL_AS, lb_add_del_as)              \
 _(LB_VIP_DUMP, lb_vip_dump)                  \
 _(LB_AS_DUMP, lb_as_dump)                    \
 _(LB_FLUSH_VIP, lb_flush_vip)                \
+_(LB_ADD_DEL_INTF_NAT4, lb_add_del_intf_nat4)  \
+_(LB_ADD_DEL_INTF_NAT6, lb_add_del_intf_nat6)  \
 
 
 /* Macro to finish up custom dump fns */
@@ -387,6 +389,46 @@ vl_api_lb_flush_vip_t_handler
   rv = lb_flush_vip_as(vip_index, ~0);
 
  REPLY_MACRO (VL_API_LB_FLUSH_VIP_REPLY);
+}
+
+static void vl_api_lb_add_del_intf_nat4_t_handler
+  (vl_api_lb_add_del_intf_nat4_t * mp)
+{
+  lb_main_t *lbm = &lb_main;
+  vl_api_lb_add_del_intf_nat4_reply_t *rmp;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u8 is_del;
+  int rv = 0;
+
+  is_del = !mp->is_add;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = lb_nat4_interface_add_del(sw_if_index, is_del);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_LB_ADD_DEL_INTF_NAT4_REPLY);
+}
+
+static void vl_api_lb_add_del_intf_nat6_t_handler
+  (vl_api_lb_add_del_intf_nat6_t * mp)
+{
+  lb_main_t *lbm = &lb_main;
+  vl_api_lb_add_del_intf_nat6_reply_t *rmp;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u8 is_del;
+  int rv = 0;
+
+  is_del = !mp->is_add;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = lb_nat6_interface_add_del(sw_if_index, is_del);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_LB_ADD_DEL_INTF_NAT6_REPLY);
 }
 
 static void *vl_api_lb_flush_vip_t_print
