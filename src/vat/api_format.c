@@ -18,6 +18,7 @@
  */
 
 #include <vat/vat.h>
+#include <vlib/pci/pci.h>
 #include <vpp/api/types.h>
 #include <vppinfra/socket.h>
 #include <vlibapi/api.h>
@@ -7577,16 +7578,9 @@ api_tap_delete_v2 (vat_main_t * vam)
 }
 
 uword
-unformat_pci_addr (unformat_input_t * input, va_list * args)
+unformat_vlib_pci_addr (unformat_input_t * input, va_list * args)
 {
-  struct pci_addr_t
-  {
-    u16 domain;
-    u8 bus;
-    u8 slot:5;
-    u8 function:3;
-  } *addr;
-  addr = va_arg (*args, struct pci_addr_t *);
+  vlib_pci_addr_t *addr = va_arg (*args, vlib_pci_addr_t *);
   u32 x[4];
 
   if (!unformat (input, "%x:%x:%x.%x", &x[0], &x[1], &x[2], &x[3]))
@@ -7621,7 +7615,7 @@ api_virtio_pci_create (vat_main_t * vam)
 	{
 	  random_mac = 0;
 	}
-      else if (unformat (i, "pci-addr %U", unformat_pci_addr, &pci_addr))
+      else if (unformat (i, "pci-addr %U", unformat_vlib_pci_addr, &pci_addr))
 	;
       else if (unformat (i, "features 0x%llx", &features))
 	;
