@@ -1231,7 +1231,7 @@ int
 memif_request_connection (memif_conn_handle_t c)
 {
   memif_connection_t *conn = (memif_connection_t *) c;
-  libmemif_main_t *lm = get_libmemif_main (conn->args.socket);
+  libmemif_main_t *lm;
   memif_socket_t *ms;
   int err = MEMIF_ERR_SUCCESS;
   int sockfd = -1;
@@ -1241,6 +1241,8 @@ memif_request_connection (memif_conn_handle_t c)
     return MEMIF_ERR_NOCONN;
 
   ms = (memif_socket_t *) conn->args.socket;
+  lm = get_libmemif_main (ms);
+
 
   if (conn->args.is_master || ms->type == MEMIF_SOCKET_TYPE_LISTENER)
     return MEMIF_ERR_INVAL_ARG;
@@ -1664,7 +1666,7 @@ memif_disconnect_internal (memif_connection_t * c)
   uint16_t num;
   int err = MEMIF_ERR_SUCCESS, i;	/* 0 */
   memif_queue_t *mq;
-  libmemif_main_t *lm = get_libmemif_main (c->args.socket);
+  libmemif_main_t *lm;
   memif_list_elt_t *e;
 
   if (c == NULL)
@@ -1672,6 +1674,8 @@ memif_disconnect_internal (memif_connection_t * c)
       DBG ("no connection");
       return MEMIF_ERR_NOCONN;
     }
+
+  lm = get_libmemif_main (c->args.socket);
 
   c->on_disconnect ((void *) c, c->private_ctx);
 
@@ -1794,11 +1798,13 @@ int
 memif_delete_socket (memif_socket_handle_t * sock)
 {
   memif_socket_t *ms = (memif_socket_t *) * sock;
-  libmemif_main_t *lm = get_libmemif_main (ms);
+  libmemif_main_t *lm;
 
   /* check if socket is in use */
-  if (ms == NULL || ms->type != MEMIF_SOCKET_TYPE_NONE)
+  if (ms == NULL || ms->use_count > 0)
     return MEMIF_ERR_INVAL_ARG;
+
+  lm = get_libmemif_main (ms);
 
   lm->free (ms->interface_list);
   ms->interface_list = NULL;
@@ -1814,7 +1820,7 @@ int
 memif_delete (memif_conn_handle_t * conn)
 {
   memif_connection_t *c = (memif_connection_t *) * conn;
-  libmemif_main_t *lm = get_libmemif_main (c->args.socket);
+  libmemif_main_t *lm;
   memif_socket_t *ms = NULL;
   int err = MEMIF_ERR_SUCCESS;
 
@@ -1831,6 +1837,8 @@ memif_delete (memif_conn_handle_t * conn)
       if (err == MEMIF_ERR_NOCONN)
 	return err;
     }
+
+  lm = get_libmemif_main (c->args.socket);
 
   free_list_elt_ctx (lm->control_list, lm->control_list_len, c);
 
@@ -1875,10 +1883,15 @@ memif_delete (memif_conn_handle_t * conn)
 int
 memif_connect1 (memif_connection_t * c)
 {
-  libmemif_main_t *lm = get_libmemif_main (c->args.socket);
+  libmemif_main_t *lm;
   memif_region_t *mr;
   memif_queue_t *mq;
   int i;
+
+  if (c == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+
+  lm = get_libmemif_main (c->args.socket);
 
   for (i = 0; i < c->regions_num; i++)
     {
@@ -2102,7 +2115,12 @@ int
 memif_init_regions_and_queues (memif_connection_t * conn)
 {
   memif_region_t *r;
-  libmemif_main_t *lm = get_libmemif_main (conn->args.socket);
+  libmemif_main_t *lm;
+
+  if (conn == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+
+  lm = get_libmemif_main (conn->args.socket);
 
   /* region 0. rings */
   memif_add_region (lm, conn, /* has_buffers */ 0);
@@ -2554,7 +2572,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
 		   char *buf, ssize_t buflen)
 {
   memif_connection_t *c = (memif_connection_t *) conn;
-  libmemif_main_t *lm = get_libmemif_main (c->args.socket);
+  libmemif_main_t *lm;
   memif_socket_t *ms;
   int err = MEMIF_ERR_SUCCESS, i;
   ssize_t l0 = 0, l1;
@@ -2563,6 +2581,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
     return MEMIF_ERR_NOCONN;
 
   ms = (memif_socket_t *) c->args.socket;
+  lm = get_libmemif_main (ms);
 
   l1 = strlen ((char *) c->args.interface_name);
   if (l0 + l1 < buflen)
@@ -2736,8 +2755,11 @@ int
 memif_cleanup ()
 {
   libmemif_main_t *lm = &libmemif_main;
+  int err;
 
-  memif_delete_socket ((memif_socket_handle_t *) & lm->default_socket);
+  err = memif_delete_socket ((memif_socket_handle_t *) & lm->default_socket);
+  if (err != MEMIF_ERR_SUCCESS)
+    return err;
 
   if (lm->control_list)
     lm->free (lm->control_list);
