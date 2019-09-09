@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb50b3de_0cd71cf0",
+        "filename": "src/plugins/oddbuf/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-09T10:47:55Z",
+      "side": 1,
+      "message": "Opened https://jira.fd.io/browse/VPP-1768 as many files are affected.",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 50
+      },
+      "revId": "c4abafd83df38051765352785b146277734701f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
