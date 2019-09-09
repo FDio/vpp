@@ -23,6 +23,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vppinfra/error.h>
 #include <nat/nat.h>
+#include <nat/nat_inlines.h>
 
 typedef struct
 {
@@ -313,6 +314,53 @@ VLIB_REGISTER_NODE (snat_out2in_worker_handoff_node) = {
   .next_nodes = {
     [0] = "error-drop",
   },
+};
+/* *INDENT-ON* */
+
+static u8 *
+format_nat_pre_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat_pre_trace_t *t = va_arg (*args, nat_pre_trace_t *);
+  return format (s, "next_index %d", t->next_index);
+}
+
+VLIB_NODE_FN (nat_pre_in2out_handoff_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return nat_pre_node_fn_inline (vm, node, frame,
+				 NAT_NEXT_IN2OUT_HANDOFF);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat_pre_in2out_handoff_node) = {
+  .name = "nat-pre-in2out-handoff",
+  .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
+  .format_trace = format_nat_pre_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = 0,
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (nat_pre_out2in_handoff_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return nat_pre_node_fn_inline (vm, node, frame,
+				 NAT_NEXT_OUT2IN_HANDOFF);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat_pre_out2in_handoff_node) = {
+  .name = "nat-pre-out2in-handoff",
+  .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
+  .format_trace = format_nat_pre_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = 0,
 };
 /* *INDENT-ON* */
 
