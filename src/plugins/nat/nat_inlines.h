@@ -23,6 +23,103 @@
 #include <nat/nat.h>
 #include <nat/nat_ha.h>
 
+static inline void
+nat_debug_node_fn_inline (void)
+{
+}
+
+static inline uword
+nat_pre_node_fn_inline (vlib_main_t * vm,
+			vlib_node_runtime_t * node,
+			vlib_frame_t * frame, u32 def_next)
+{
+  u32 n_left_from, *from;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  next = nexts;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  b = bufs;
+
+  while (n_left_from >= 4)
+    {
+      u32 arc_next0 = 0, arc_next1 = 0, arc_next2 = 0, arc_next3 = 0;
+
+      /* Prefetch next iteration. */
+      if (PREDICT_TRUE (n_left_from >= 8))
+	{
+	  vlib_prefetch_buffer_header (b[4], STORE);
+	  vlib_prefetch_buffer_header (b[5], STORE);
+	  vlib_prefetch_buffer_header (b[6], STORE);
+	  vlib_prefetch_buffer_header (b[7], STORE);
+	  CLIB_PREFETCH (&b[4]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (&b[5]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (&b[6]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (&b[7]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	}
+
+      next[0] = def_next;
+      next[1] = def_next;
+      next[2] = def_next;
+      next[3] = def_next;
+
+      vnet_feature_next (&arc_next0, b[0]);
+      vnet_feature_next (&arc_next1, b[1]);
+      vnet_feature_next (&arc_next2, b[2]);
+      vnet_feature_next (&arc_next3, b[3]);
+
+      nat_buffer_opaque (b[0])->arc_next = arc_next0;
+      nat_buffer_opaque (b[1])->arc_next = arc_next1;
+      nat_buffer_opaque (b[2])->arc_next = arc_next2;
+      nat_buffer_opaque (b[3])->arc_next = arc_next3;
+
+      b += 4;
+      next += 4;
+      n_left_from -= 4;
+    }
+
+  while (n_left_from > 0)
+    {
+      u32 arc_next0 = 0;
+
+      next[0] = def_next;
+      vnet_feature_next (&arc_next0, b[0]);
+      nat_buffer_opaque (b[0])->arc_next = arc_next0;
+
+      b += 1;
+      next += 1;
+      n_left_from -= 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
+			       frame->n_vectors);
+
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    {
+      int i;
+      b = bufs;
+
+      for (i = 0; i < frame->n_vectors; i++)
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      nat_pre_trace_t *t =
+		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->next_index = nat_buffer_opaque (b[0])->arc_next;
+	      b++;
+	    }
+	  else
+	    break;
+	}
+    }
+
+  return frame->n_vectors;
+}
+
 always_inline u32
 ip_proto_to_snat_proto (u8 ip_proto)
 {
@@ -550,13 +647,13 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
 	return 1;
 
       snat_interface_t *i;
-      pool_foreach (i, sm->interfaces, (
-					 {
-					 /* NAT packet aimed at outside interface */
-					 if ((nat_interface_is_outside (i))
-					     && (sw_if_index ==
-						 i->sw_if_index)) return 0;}
-		    ));
+      /* *INDENT-OFF* */
+      pool_foreach (i, sm->interfaces, ({
+        /* NAT packet aimed at outside interface */
+	if ((nat_interface_is_outside (i)) && (sw_if_index == i->sw_if_index))
+          return 0;
+      }));
+      /* *INDENT-ON* */
     }
 
   return 1;
