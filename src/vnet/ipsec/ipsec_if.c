@@ -385,6 +385,8 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 					     t - im->tunnel_interfaces);
 
       hi = vnet_get_hw_interface (vnm, hw_if_index);
+      if (sw_if_index)
+        *sw_if_index = hi->sw_if_index;
 
       t->hw_if_index = hw_if_index;
       t->sw_if_index = hi->sw_if_index;
@@ -420,6 +422,9 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       ti = p[0];
       t = pool_elt_at_index (im->tunnel_interfaces, ti);
       hi = vnet_get_hw_interface (vnm, t->hw_if_index);
+      if (sw_if_index)
+        *sw_if_index = hi->sw_if_index;
+
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0);	/* admin down */
 
       ipsec_tunnel_feature_set (im, t, 0);
@@ -439,9 +444,6 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 
       pool_put (im->tunnel_interfaces, t);
     }
-
-  if (sw_if_index)
-    *sw_if_index = hi->sw_if_index;
 
   return 0;
 }
