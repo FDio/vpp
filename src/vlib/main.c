@@ -2202,7 +2202,7 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t * a)
     return -81;			/* VNET_API_ERROR_VALUE_EXIST */
 
   /* Change number of packets to capture while capturing */
-  if (vm->dispatch_pcap_enable
+  if (vm->dispatch_pcap_enable && a->enable
       && (pm->n_packets_to_capture != a->packets_to_capture))
     return -8;			/* VNET_API_ERROR_INVALID_VALUE_2 */
 
