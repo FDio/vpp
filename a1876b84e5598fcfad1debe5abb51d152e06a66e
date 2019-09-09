@@ -46,6 +46,30 @@
       "revId": "a1876b84e5598fcfad1debe5abb51d152e06a66e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9bf772a2_f3f3f770",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3053,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-09T12:52:32Z",
+      "side": 0,
+      "message": "\u003e I didn\u0027t find any code using this field.\n\nMe neither.\n\nIt seems the data structures (ikev2_sa_t and ikev2_auth_t) were sitting there since (at least) the initial commit [0], prepared for later IKEv2 integration, that did not happened according to the early plans.\n\nUsually, I would recommend to just delete the unused types.\nBut I hear IKEv2 is already integrated into VPP, so somebody should verify it still works (by creating unit tests covering also this branch).\n\n[0] https://gerrit.fd.io/r/c/vpp/+/23/3/vnet/vnet/ipsec/ikev2_priv.h#56",
+      "parentUuid": "fe7f7a34_849fd22a",
+      "range": {
+        "startLine": 3053,
+        "startChar": 22,
+        "endLine": 3053,
+        "endChar": 35
+      },
+      "revId": "a1876b84e5598fcfad1debe5abb51d152e06a66e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
