@@ -39,8 +39,29 @@
 snat_main_t snat_main;
 
 /* *INDENT-OFF* */
-
 /* Hook up input features */
+VNET_FEATURE_INIT (nat_pre_in2out, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat-pre-in2out",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+};
+VNET_FEATURE_INIT (nat_pre_out2in, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat-pre-out2in",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+                               "ip4-dhcp-client-detect"),
+};
+VNET_FEATURE_INIT (snat_in2out_worker_handoff, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-in2out-worker-handoff",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+};
+VNET_FEATURE_INIT (snat_out2in_worker_handoff, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-out2in-worker-handoff",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+                               "ip4-dhcp-client-detect"),
+};
 VNET_FEATURE_INIT (ip4_snat_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-in2out",
@@ -88,17 +109,6 @@ VNET_FEATURE_INIT (ip4_nat44_ed_classify, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-ed-classify",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
-};
-VNET_FEATURE_INIT (ip4_snat_in2out_worker_handoff, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-in2out-worker-handoff",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
-};
-VNET_FEATURE_INIT (ip4_snat_out2in_worker_handoff, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-out2in-worker-handoff",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-                               "ip4-dhcp-client-detect"),
 };
 VNET_FEATURE_INIT (ip4_nat_handoff_classify, static) = {
   .arc_name = "ip4-unicast",
@@ -1775,18 +1785,20 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
       else if (sm->deterministic)
 	feature_name = is_inside ? "nat44-det-in2out" : "nat44-det-out2in";
       else if (sm->endpoint_dependent)
-	feature_name = is_inside ? "nat44-ed-in2out" : "nat44-ed-out2in";
+	{
+	  feature_name = is_inside ? "nat-pre-in2out" : "nat-pre-out2in";
+	}
       else
 	feature_name = is_inside ? "nat44-in2out" : "nat44-out2in";
     }
 
   if (sm->fq_in2out_index == ~0 && !sm->deterministic && sm->num_workers > 1)
-    sm->fq_in2out_index = vlib_frame_queue_main_init (sm->in2out_node_index,
-						      NAT_FQ_NELTS);
+    sm->fq_in2out_index =
+      vlib_frame_queue_main_init (sm->handoff_in2out_index, NAT_FQ_NELTS);
 
   if (sm->fq_out2in_index == ~0 && !sm->deterministic && sm->num_workers > 1)
-    sm->fq_out2in_index = vlib_frame_queue_main_init (sm->out2in_node_index,
-						      NAT_FQ_NELTS);
+    sm->fq_out2in_index =
+      vlib_frame_queue_main_init (sm->handoff_out2in_index, NAT_FQ_NELTS);
 
   if (!is_inside)
     {
@@ -1844,8 +1856,8 @@ feature_set:
                 else if (sm->endpoint_dependent)
                   {
                     del_feature_name = "nat44-ed-classify";
-                    feature_name = !is_inside ?  "nat44-ed-in2out" :
-                                                 "nat44-ed-out2in";
+                    feature_name = !is_inside ?  "nat-pre-in2out" :
+                                                 "nat-pre-out2in";
                   }
                 else
                   {
@@ -1907,8 +1919,9 @@ feature_set:
               }
             else if (sm->endpoint_dependent)
               {
-                del_feature_name = !is_inside ?  "nat44-ed-in2out" :
-                                                 "nat44-ed-out2in";
+                del_feature_name = !is_inside ?  "nat-pre-in2out" :
+                                                 "nat-pre-out2in";
+
                 feature_name = "nat44-ed-classify";
               }
             else
@@ -2074,7 +2087,7 @@ feature_set:
     {
       if (sm->endpoint_dependent)
 	{
-	  vnet_feature_enable_disable ("ip4-unicast", "nat44-ed-out2in",
+	  vnet_feature_enable_disable ("ip4-unicast", "nat-pre-out2in",
 				       sw_if_index, !is_del, 0, 0);
 	  vnet_feature_enable_disable ("ip4-output", "nat44-ed-in2out-output",
 				       sw_if_index, !is_del, 0, 0);
@@ -2091,11 +2104,11 @@ feature_set:
 fq:
   if (sm->fq_in2out_output_index == ~0 && sm->num_workers > 1)
     sm->fq_in2out_output_index =
-      vlib_frame_queue_main_init (sm->in2out_output_node_index, 0);
+      vlib_frame_queue_main_init (sm->handoff_in2out_output_index, 0);
 
   if (sm->fq_out2in_index == ~0 && sm->num_workers > 1)
     sm->fq_out2in_index =
-      vlib_frame_queue_main_init (sm->out2in_node_index, 0);
+      vlib_frame_queue_main_init (sm->handoff_out2in_index, 0);
 
   /* *INDENT-OFF* */
   pool_foreach (i, sm->output_feature_interfaces,
@@ -2315,6 +2328,19 @@ snat_init (vlib_main_t * vm)
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   sm->error_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat-pre-in2out");
+  sm->pre_in2out_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat-pre-out2in");
+  sm->pre_out2in_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat-pre-in2out");
+  sm->pre_in2out_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat-pre-out2in");
+  sm->pre_out2in_node_index = node->index;
+
+  // TODO: output ?? (special node)
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out");
   sm->in2out_node_index = node->index;
@@ -3839,9 +3865,16 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  sm->worker_in2out_cb = nat44_ed_get_worker_in2out_cb;
 	  sm->worker_out2in_cb = nat44_ed_get_worker_out2in_cb;
+
+	  sm->handoff_out2in_index = nat_pre_out2in_node.index;
+	  sm->handoff_in2out_index = nat_pre_in2out_node.index;
+	  // TODO: test
+	  sm->handoff_in2out_output_index = nat44_ed_in2out_output_node.index;
+
 	  sm->in2out_node_index = nat44_ed_in2out_node.index;
 	  sm->in2out_output_node_index = nat44_ed_in2out_output_node.index;
 	  sm->out2in_node_index = nat44_ed_out2in_node.index;
+
 	  sm->icmp_match_in2out_cb = icmp_match_in2out_ed;
 	  sm->icmp_match_out2in_cb = icmp_match_out2in_ed;
 	  nat_affinity_init (vm);
@@ -3852,6 +3885,12 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  sm->worker_in2out_cb = snat_get_worker_in2out_cb;
 	  sm->worker_out2in_cb = snat_get_worker_out2in_cb;
+
+	  sm->handoff_out2in_index = snat_in2out_node.index;
+	  sm->handoff_in2out_index = snat_out2in_node.index;
+	  // TODO: test
+	  sm->handoff_in2out_output_index = snat_in2out_output_node.index;
+
 	  sm->in2out_node_index = snat_in2out_node.index;
 	  sm->in2out_output_node_index = snat_in2out_output_node.index;
 	  sm->out2in_node_index = snat_out2in_node.index;
@@ -4262,6 +4301,38 @@ nat_set_alloc_addr_and_port_default (void)
   sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
 }
+
+VLIB_NODE_FN (nat_default_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
+{
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat_default_node) = {
+  .name = "nat-default",
+  .vector_size = sizeof (u32),
+  .format_trace = 0,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = 0,
+  .n_next_nodes = NAT_N_NEXT,
+  .next_nodes = {
+    [NAT_NEXT_DROP] = "error-drop",
+    [NAT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+    [NAT_NEXT_IN2OUT_PRE] = "nat-pre-in2out",
+    [NAT_NEXT_OUT2IN_PRE] = "nat-pre-out2in",
+    [NAT_NEXT_IN2OUT_ED_FAST_PATH] = "nat44-ed-in2out",
+    [NAT_NEXT_IN2OUT_ED_SLOW_PATH] = "nat44-ed-in2out-slowpath",
+    [NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH] = "nat44-ed-in2out-output-slowpath",
+    [NAT_NEXT_IN2OUT_ED_REASS] = "nat44-ed-in2out-reass",
+    [NAT_NEXT_IN2OUT_ED_OUTPUT_REASS] = "nat44-ed-in2out-reass-output",
+    [NAT_NEXT_OUT2IN_ED_FAST_PATH] = "nat44-ed-out2in",
+    [NAT_NEXT_OUT2IN_ED_SLOW_PATH] = "nat44-ed-out2in-slowpath",
+    [NAT_NEXT_OUT2IN_ED_REASS] = "nat44-ed-out2in-reass",
+  },
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
