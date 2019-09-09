@@ -1,7 +1,7 @@
 /*
- * oddbuf.c - skeleton vpp engine plug-in
+ * oddbuf.c - awkward chained buffer geometry test tool
  *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2019 by Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -147,11 +147,15 @@ static void vl_api_oddbuf_enable_disable_t_handler
 {
   vl_api_oddbuf_enable_disable_reply_t *rmp;
   oddbuf_main_t *omp = &oddbuf_main;
+  u32 sw_if_index;
   int rv;
 
-  rv = oddbuf_enable_disable (omp, ntohl (mp->sw_if_index),
-			      (int) (mp->enable_disable));
+  VALIDATE_SW_IF_INDEX (mp);
 
+  sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
+  rv = oddbuf_enable_disable (omp, sw_if_index, (int) (mp->enable_disable));
+
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_ODDBUF_ENABLE_DISABLE_REPLY);
 }
 

@@ -1,8 +1,8 @@
 
 /*
- * oddbuf.h - skeleton vpp engine plug-in header file
+ * oddbuf.h - awkward chained buffer geometry test tool
  *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2019 by Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
