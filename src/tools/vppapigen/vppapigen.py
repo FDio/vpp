@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import ply.lex as lex
 import ply.yacc as yacc
