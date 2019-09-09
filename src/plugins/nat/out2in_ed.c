@@ -38,17 +38,6 @@ static char *nat_out2in_ed_error_strings[] = {
 #undef _
 };
 
-typedef enum
-{
-  NAT44_ED_OUT2IN_NEXT_DROP,
-  NAT44_ED_OUT2IN_NEXT_LOOKUP,
-  NAT44_ED_OUT2IN_NEXT_ICMP_ERROR,
-  NAT44_ED_OUT2IN_NEXT_IN2OUT,
-  NAT44_ED_OUT2IN_NEXT_SLOW_PATH,
-  NAT44_ED_OUT2IN_NEXT_REASS,
-  NAT44_ED_OUT2IN_N_NEXT,
-} nat44_ed_out2in_next_t;
-
 typedef struct
 {
   u32 sw_if_index;
@@ -85,7 +74,7 @@ icmp_out2in_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   next0 = icmp_out2in (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		       next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
-  if (PREDICT_TRUE (next0 != NAT44_ED_OUT2IN_NEXT_DROP && s0))
+  if (PREDICT_TRUE (next0 != NAT_NEXT_DROP && s0))
     {
       /* Accounting */
       nat44_session_update_counters (s0, now,
@@ -467,7 +456,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
   if (get_icmp_o2i_ed_key (ip, &key))
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_UNSUPPORTED_PROTOCOL];
-      next = NAT44_ED_OUT2IN_NEXT_DROP;
+      next = NAT_NEXT_DROP;
       goto out;
     }
   key.fib_index = rx_fib_index;
@@ -494,7 +483,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 		  goto out;
 		}
 	      b->error = node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
-	      next = NAT44_ED_OUT2IN_NEXT_DROP;
+	      next = NAT_NEXT_DROP;
 	      goto out;
 	    }
 	  else
@@ -503,7 +492,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 	      if (next_src_nat (sm, ip, key.proto, key.l_port, key.r_port,
 				thread_index, rx_fib_index))
 		{
-		  next = NAT44_ED_OUT2IN_NEXT_IN2OUT;
+		  next = NAT_NEXT_IN2OUT_ED_FAST_PATH;
 		  goto out;
 		}
 	      if (sm->num_workers > 1)
@@ -518,7 +507,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 			 (icmp->type != ICMP4_echo_request || !is_addr_only)))
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_BAD_ICMP_TYPE];
-	  next = NAT44_ED_OUT2IN_NEXT_DROP;
+	  next = NAT_NEXT_DROP;
 	  goto out;
 	}
 
@@ -536,7 +525,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 
       if (!s)
 	{
-	  next = NAT44_ED_OUT2IN_NEXT_DROP;
+	  next = NAT_NEXT_DROP;
 	  goto out;
 	}
     }
@@ -547,7 +536,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 			 !icmp_is_error_message (icmp)))
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_BAD_ICMP_TYPE];
-	  next = NAT44_ED_OUT2IN_NEXT_DROP;
+	  next = NAT_NEXT_DROP;
 	  goto out;
 	}
 
@@ -676,7 +665,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 				vlib_frame_t * frame, int is_slow_path)
 {
   u32 n_left_from, *from, *to_next, pkts_processed = 0, stats_node_index;
-  nat44_ed_out2in_next_t next_index;
+  nat_next_t next_index;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
@@ -743,7 +732,9 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  next0 = NAT44_ED_OUT2IN_NEXT_LOOKUP;
+	  next0 = nat_buffer_opaque (b0)->arc_next;
+	  next1 = nat_buffer_opaque (b1)->arc_next;
+
 	  vnet_buffer (b0)->snat.flags = 0;
 	  ip0 = vlib_buffer_get_current (b0);
 
@@ -758,7 +749,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
 					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
 					   0);
-	      next0 = NAT44_ED_OUT2IN_NEXT_ICMP_ERROR;
+	      next0 = NAT_NEXT_ICMP_ERROR;
 	      goto trace00;
 	    }
 
@@ -779,7 +770,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  if (!sm->forwarding_enabled)
 		    {
 		      if (!s0)
-			next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+			next0 = NAT_NEXT_DROP;
 		      goto trace00;
 		    }
 		}
@@ -797,20 +788,20 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (proto0 == ~0))
 		{
-		  next0 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace00;
 		}
 
 	      if (ip4_is_fragment (ip0))
 		{
-		  next0 = NAT44_ED_OUT2IN_NEXT_REASS;
+		  next0 = NAT_NEXT_OUT2IN_ED_REASS;
 		  fragments++;
 		  goto trace00;
 		}
 
 	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 		{
-		  next0 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace00;
 		}
 	    }
@@ -843,7 +834,6 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 					     clib_host_to_net_u16
 					     (UDP_DST_PORT_dhcp_to_client))))
 			{
-			  vnet_feature_next (&next0, b0);
 			  goto trace00;
 			}
 
@@ -851,7 +841,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			{
 			  b0->error =
 			    node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
-			  next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+			  next0 = NAT_NEXT_DROP;
 			}
 		      else
 			{
@@ -859,7 +849,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 					    udp0->src_port, udp0->dst_port,
 					    thread_index, rx_fib_index0))
 			    {
-			      next0 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
+			      next0 = NAT_NEXT_IN2OUT_ED_FAST_PATH;
 			      goto trace00;
 			    }
 			  if (sm->num_workers > 1)
@@ -878,7 +868,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
 		    {
 		      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_NON_SYN];
-		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next0 = NAT_NEXT_DROP;
 		      goto trace00;
 		    }
 
@@ -891,13 +881,13 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 		  if (!s0)
 		    {
-		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next0 = NAT_NEXT_DROP;
 		      goto trace00;
 		    }
 		}
 	      else
 		{
-		  next0 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace00;
 		}
 	    }
@@ -998,9 +988,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s0 - tsm->sessions;
 	    }
 
-	  pkts_processed += next0 == NAT44_ED_OUT2IN_NEXT_LOOKUP;
+	  pkts_processed += next0 == nat_buffer_opaque (b0)->arc_next;
 
-	  next1 = NAT44_ED_OUT2IN_NEXT_LOOKUP;
 	  vnet_buffer (b1)->snat.flags = 0;
 	  ip1 = vlib_buffer_get_current (b1);
 
@@ -1015,7 +1004,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	      icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
 					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
 					   0);
-	      next1 = NAT44_ED_OUT2IN_NEXT_ICMP_ERROR;
+	      next1 = NAT_NEXT_ICMP_ERROR;
 	      goto trace01;
 	    }
 
@@ -1036,7 +1025,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  if (!sm->forwarding_enabled)
 		    {
 		      if (!s1)
-			next1 = NAT44_ED_OUT2IN_NEXT_DROP;
+			next1 = NAT_NEXT_DROP;
 		      goto trace01;
 		    }
 		}
@@ -1054,20 +1043,20 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (proto1 == ~0))
 		{
-		  next1 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next1 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace01;
 		}
 
 	      if (ip4_is_fragment (ip1))
 		{
-		  next1 = NAT44_ED_OUT2IN_NEXT_REASS;
+		  next1 = NAT_NEXT_OUT2IN_ED_REASS;
 		  fragments++;
 		  goto trace01;
 		}
 
 	      if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
 		{
-		  next1 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next1 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace01;
 		}
 	    }
@@ -1100,7 +1089,6 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 					     clib_host_to_net_u16
 					     (UDP_DST_PORT_dhcp_to_client))))
 			{
-			  vnet_feature_next (&next1, b1);
 			  goto trace01;
 			}
 
@@ -1108,7 +1096,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			{
 			  b1->error =
 			    node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
-			  next1 = NAT44_ED_OUT2IN_NEXT_DROP;
+			  next1 = NAT_NEXT_DROP;
 			}
 		      else
 			{
@@ -1116,7 +1104,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 					    udp1->src_port, udp1->dst_port,
 					    thread_index, rx_fib_index1))
 			    {
-			      next1 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
+			      next1 = NAT_NEXT_IN2OUT_ED_FAST_PATH;
 			      goto trace01;
 			    }
 			  if (sm->num_workers > 1)
@@ -1135,7 +1123,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  if ((proto1 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp1))
 		    {
 		      b1->error = node->errors[NAT_OUT2IN_ED_ERROR_NON_SYN];
-		      next1 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next1 = NAT_NEXT_DROP;
 		      goto trace01;
 		    }
 
@@ -1148,13 +1136,13 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 		  if (!s1)
 		    {
-		      next1 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next1 = NAT_NEXT_DROP;
 		      goto trace01;
 		    }
 		}
 	      else
 		{
-		  next1 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next1 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace01;
 		}
 	    }
@@ -1255,7 +1243,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s1 - tsm->sessions;
 	    }
 
-	  pkts_processed += next1 == NAT44_ED_OUT2IN_NEXT_LOOKUP;
+	  pkts_processed += next1 == nat_buffer_opaque (b1)->arc_next;
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -1291,7 +1279,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = NAT44_ED_OUT2IN_NEXT_LOOKUP;
+	  next0 = nat_buffer_opaque (b0)->arc_next;
+
 	  vnet_buffer (b0)->snat.flags = 0;
 	  ip0 = vlib_buffer_get_current (b0);
 
@@ -1306,7 +1295,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
 					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
 					   0);
-	      next0 = NAT44_ED_OUT2IN_NEXT_ICMP_ERROR;
+	      next0 = NAT_NEXT_ICMP_ERROR;
 	      goto trace0;
 	    }
 
@@ -1327,7 +1316,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  if (!sm->forwarding_enabled)
 		    {
 		      if (!s0)
-			next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+			next0 = NAT_NEXT_DROP;
 		      goto trace0;
 		    }
 		}
@@ -1345,20 +1334,20 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (proto0 == ~0))
 		{
-		  next0 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace0;
 		}
 
 	      if (ip4_is_fragment (ip0))
 		{
-		  next0 = NAT44_ED_OUT2IN_NEXT_REASS;
+		  next0 = NAT_NEXT_OUT2IN_ED_REASS;
 		  fragments++;
 		  goto trace0;
 		}
 
 	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 		{
-		  next0 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace0;
 		}
 	    }
@@ -1391,7 +1380,6 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 					     clib_host_to_net_u16
 					     (UDP_DST_PORT_dhcp_to_client))))
 			{
-			  vnet_feature_next (&next0, b0);
 			  goto trace0;
 			}
 
@@ -1399,7 +1387,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			{
 			  b0->error =
 			    node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
-			  next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+			  next0 = NAT_NEXT_DROP;
 			}
 		      else
 			{
@@ -1407,7 +1395,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 					    udp0->src_port, udp0->dst_port,
 					    thread_index, rx_fib_index0))
 			    {
-			      next0 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
+			      next0 = NAT_NEXT_IN2OUT_ED_FAST_PATH;
 			      goto trace0;
 			    }
 			  if (sm->num_workers > 1)
@@ -1426,7 +1414,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
 		    {
 		      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_NON_SYN];
-		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next0 = NAT_NEXT_DROP;
 		      goto trace0;
 		    }
 
@@ -1439,13 +1427,13 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 		  if (!s0)
 		    {
-		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next0 = NAT_NEXT_DROP;
 		      goto trace0;
 		    }
 		}
 	      else
 		{
-		  next0 = NAT44_ED_OUT2IN_NEXT_SLOW_PATH;
+		  next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 		  goto trace0;
 		}
 	    }
@@ -1546,7 +1534,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s0 - tsm->sessions;
 	    }
 
-	  pkts_processed += next0 == NAT44_ED_OUT2IN_NEXT_LOOKUP;
+	  pkts_processed += next0 == nat_buffer_opaque (b0)->arc_next;
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -1574,68 +1562,13 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (nat44_ed_out2in_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
-{
-  return nat44_ed_out2in_node_fn_inline (vm, node, frame, 0);
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (nat44_ed_out2in_node) = {
-  .name = "nat44-ed-out2in",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_ed_out2in_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat_out2in_ed_error_strings),
-  .error_strings = nat_out2in_ed_error_strings,
-  .runtime_data_bytes = sizeof (snat_runtime_t),
-  .n_next_nodes = NAT44_ED_OUT2IN_N_NEXT,
-  .next_nodes = {
-    [NAT44_ED_OUT2IN_NEXT_DROP] = "error-drop",
-    [NAT44_ED_OUT2IN_NEXT_LOOKUP] = "ip4-lookup",
-    [NAT44_ED_OUT2IN_NEXT_SLOW_PATH] = "nat44-ed-out2in-slowpath",
-    [NAT44_ED_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT44_ED_OUT2IN_NEXT_IN2OUT] = "nat44-ed-in2out",
-    [NAT44_ED_OUT2IN_NEXT_REASS] = "nat44-ed-out2in-reass",
-  },
-};
-/* *INDENT-ON* */
-
-VLIB_NODE_FN (nat44_ed_out2in_slowpath_node) (vlib_main_t * vm,
-					      vlib_node_runtime_t * node,
-					      vlib_frame_t * frame)
-{
-  return nat44_ed_out2in_node_fn_inline (vm, node, frame, 1);
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (nat44_ed_out2in_slowpath_node) = {
-  .name = "nat44-ed-out2in-slowpath",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_ed_out2in_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat_out2in_ed_error_strings),
-  .error_strings = nat_out2in_ed_error_strings,
-  .runtime_data_bytes = sizeof (snat_runtime_t),
-  .n_next_nodes = NAT44_ED_OUT2IN_N_NEXT,
-  .next_nodes = {
-    [NAT44_ED_OUT2IN_NEXT_DROP] = "error-drop",
-    [NAT44_ED_OUT2IN_NEXT_LOOKUP] = "ip4-lookup",
-    [NAT44_ED_OUT2IN_NEXT_SLOW_PATH] = "nat44-ed-out2in-slowpath",
-    [NAT44_ED_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT44_ED_OUT2IN_NEXT_IN2OUT] = "nat44-ed-in2out",
-    [NAT44_ED_OUT2IN_NEXT_REASS] = "nat44-ed-out2in-reass",
-  },
-};
-/* *INDENT-ON* */
-
-VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * frame)
+static inline uword
+nat44_ed_out2in_reass_node_fn_inline (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
-  nat44_ed_out2in_next_t next_index;
+  nat_next_t next_index;
   u32 pkts_processed = 0;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
@@ -1684,7 +1617,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = NAT44_ED_OUT2IN_NEXT_LOOKUP;
+	  next0 = nat_buffer_opaque (b0)->arc_next;
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  rx_fib_index0 =
@@ -1693,7 +1626,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (nat_reass_is_drop_frag (0)))
 	    {
-	      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+	      next0 = NAT_NEXT_DROP;
 	      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_DROP_FRAGMENT];
 	      goto trace0;
 	    }
@@ -1712,7 +1645,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (!reass0))
 	    {
-	      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+	      next0 = NAT_NEXT_DROP;
 	      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_REASS];
 	      nat_elog_notice ("maximum reassemblies exceeded");
 	      goto trace0;
@@ -1726,7 +1659,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		     next0, now, thread_index, &s0);
 
-		  if (PREDICT_TRUE (next0 != NAT44_ED_OUT2IN_NEXT_DROP))
+		  if (PREDICT_TRUE (next0 != NAT_NEXT_DROP))
 		    {
 		      if (s0)
 			reass0->sess_index = s0 - per_thread_data->sessions;
@@ -1767,7 +1700,6 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 					     clib_host_to_net_u16
 					     (UDP_DST_PORT_dhcp_to_client))))
 			{
-			  vnet_feature_next (&next0, b0);
 			  goto trace0;
 			}
 
@@ -1775,7 +1707,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 			{
 			  b0->error =
 			    node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
-			  next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+			  next0 = NAT_NEXT_DROP;
 			}
 		      else
 			{
@@ -1783,7 +1715,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 					    udp0->src_port, udp0->dst_port,
 					    thread_index, rx_fib_index0))
 			    {
-			      next0 = NAT44_ED_OUT2IN_NEXT_IN2OUT;
+			      next0 = NAT_NEXT_IN2OUT_ED_FAST_PATH;
 			      goto trace0;
 			    }
 			  if (sm->num_workers > 1)
@@ -1808,7 +1740,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
 		    {
 		      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_NON_SYN];
-		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next0 = NAT_NEXT_DROP;
 		      goto trace0;
 		    }
 
@@ -1822,7 +1754,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 		    {
 		      b0->error =
 			node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
-		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next0 = NAT_NEXT_DROP;
 		      goto trace0;
 		    }
 		  reass0->sess_index = s0 - per_thread_data->sessions;
@@ -1848,7 +1780,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 		      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_FRAG];
 		      nat_elog_notice
 			("maximum fragments per reassembly exceeded");
-		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      next0 = NAT_NEXT_DROP;
 		      goto trace0;
 		    }
 		  cached0 = 1;
@@ -1958,7 +1890,7 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      pkts_processed += next0 != NAT44_ED_OUT2IN_NEXT_DROP;
+	      pkts_processed += next0 != NAT_NEXT_DROP;
 
 	      /* verify speculative enqueue, maybe switch current next frame */
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -1997,31 +1929,98 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 
   nat_send_all_to_node (vm, fragments_to_drop, node,
 			&node->errors[NAT_OUT2IN_ED_ERROR_DROP_FRAGMENT],
-			NAT44_ED_OUT2IN_NEXT_DROP);
+			NAT_NEXT_DROP);
 
   vec_free (fragments_to_drop);
   vec_free (fragments_to_loopback);
   return frame->n_vectors;
 }
 
+VLIB_NODE_FN (nat44_ed_out2in_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
+{
+  return nat44_ed_out2in_node_fn_inline (vm, node, frame, 0);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat44_ed_out2in_node) = {
+  .name = "nat44-ed-out2in",
+  .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
+  .format_trace = format_nat44_ed_out2in_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat_out2in_ed_error_strings),
+  .error_strings = nat_out2in_ed_error_strings,
+  .runtime_data_bytes = sizeof (snat_runtime_t),
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (nat44_ed_out2in_slowpath_node) (vlib_main_t * vm,
+					      vlib_node_runtime_t * node,
+					      vlib_frame_t * frame)
+{
+  return nat44_ed_out2in_node_fn_inline (vm, node, frame, 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat44_ed_out2in_slowpath_node) = {
+  .name = "nat44-ed-out2in-slowpath",
+  .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
+  .format_trace = format_nat44_ed_out2in_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat_out2in_ed_error_strings),
+  .error_strings = nat_out2in_ed_error_strings,
+  .runtime_data_bytes = sizeof (snat_runtime_t),
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
+					   vlib_node_runtime_t * node,
+					   vlib_frame_t * frame)
+{
+  return nat44_ed_out2in_reass_node_fn_inline (vm, node, frame);
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_ed_out2in_reass_node) = {
   .name = "nat44-ed-out2in-reass",
   .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
   .format_trace = format_nat44_reass_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN(nat_out2in_ed_error_strings),
   .error_strings = nat_out2in_ed_error_strings,
-  .n_next_nodes = NAT44_ED_OUT2IN_N_NEXT,
-  .next_nodes = {
-    [NAT44_ED_OUT2IN_NEXT_DROP] = "error-drop",
-    [NAT44_ED_OUT2IN_NEXT_LOOKUP] = "ip4-lookup",
-    [NAT44_ED_OUT2IN_NEXT_SLOW_PATH] = "nat44-ed-out2in-slowpath",
-    [NAT44_ED_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT44_ED_OUT2IN_NEXT_IN2OUT] = "nat44-ed-in2out",
-    [NAT44_ED_OUT2IN_NEXT_REASS] = "nat44-ed-out2in-reass",
-  },
 };
+/* *INDENT-ON* */
+
+static u8 *
+format_nat_pre_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat_pre_trace_t *t = va_arg (*args, nat_pre_trace_t *);
+  return format (s, "out2in next_index %d", t->next_index);
+}
+
+VLIB_NODE_FN (nat_pre_out2in_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return nat_pre_node_fn_inline (vm, node, frame,
+				 NAT_NEXT_OUT2IN_ED_FAST_PATH);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat_pre_out2in_node) = {
+  .name = "nat-pre-out2in",
+  .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
+  .format_trace = format_nat_pre_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = 0,
+ };
 /* *INDENT-ON* */
 
 /*
