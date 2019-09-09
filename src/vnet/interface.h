@@ -893,6 +893,18 @@ void vnet_register_format_buffer_opaque_helper
 void vnet_register_format_buffer_opaque2_helper
   (vnet_buffer_opquae_formatter_t fn);
 
+typedef struct
+{
+  u8 *filename;
+  int enable;
+  int status;
+  u32 packets_to_capture;
+  vlib_rx_or_tx_t rxtx;
+  u32 sw_if_index;
+} vnet_pcap_dispatch_trace_args_t;
+
+int vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t *);
+
 #endif /* included_vnet_interface_h */
 
 /*
