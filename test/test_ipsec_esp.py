@@ -352,24 +352,13 @@ class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests):
     """ Ipsec NAT-T ESP UDP tests """
     pass
 
-
-class TestIpsecEspAll(ConfigIpsecESP,
-                      IpsecTra4, IpsecTra6,
-                      IpsecTun4, IpsecTun6):
-    """ Ipsec ESP all Algos """
-
-    def setUp(self):
-        super(TestIpsecEspAll, self).setUp()
-
-    def tearDown(self):
-        super(TestIpsecEspAll, self).tearDown()
-
-    @parameterized.expand(["ia32", "ipsecmb", "openssl"])
-    def test_crypto_algs(self, engine):
-        """AES-[CBC, GCM]-[128, 192, 256] 3DES-CBC SHA1 MD5 w/ & w/o ESN"""
-
+class MyParameters():
+    def __init__(self):
+        self.engines = ["ia32", "ipsecmb", "openssl"]
+        self.flags = [0, VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_USE_ESN]
         # foreach crypto algorithm
-        algos = [{'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+        self.algos = {
+                'AES-GCM-128/NONE': {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_GCM_128),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_NONE),
@@ -377,7 +366,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-integ': "NULL",
                   'key': "JPjyOWBeVEQiMe7h",
                   'salt': 0},
-                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                 'AES-GCM-192/NONE': {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_GCM_192),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_NONE),
@@ -385,7 +374,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-integ': "NULL",
                   'key': "JPjyOWBeVEQiMe7h01234567",
                   'salt': 1010},
-                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                 'AES-GCM-256/NONE': {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_GCM_256),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_NONE),
@@ -393,7 +382,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-integ': "NULL",
                   'key': "JPjyOWBeVEQiMe7h0123456787654321",
                   'salt': 2020},
-                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                 'AES-CBC-128/MD5-96': {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_128),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_MD5_96),
@@ -401,7 +390,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-integ': "HMAC-MD5-96",
                   'salt': 0,
                   'key': "JPjyOWBeVEQiMe7h"},
-                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                 'AES-CBC-192/SHA1-96': {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_192),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_SHA1_96),
@@ -409,7 +398,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBe"},
-                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                 'AES-CBC-256/SHA1-96': {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_256),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_SHA1_96),
@@ -417,7 +406,7 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
                   'key': "JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"},
-                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                 '3DES-CBC/SHA1-96': {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_3DES_CBC),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_SHA1_96),
@@ -425,29 +414,42 @@ class TestIpsecEspAll(ConfigIpsecESP,
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
                   'key': "JPjyOWBeVEQiMe7h00112233"},
-                 {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                 'NONE/SHA1-96': {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_NONE),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
                                 IPSEC_API_INTEG_ALG_SHA1_96),
                   'scapy-crypto': "NULL",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
-                  'key': "JPjyOWBeVEQiMe7h00112233"}]
+                  'key': "JPjyOWBeVEQiMe7h00112233"} }
 
-        # with and without ESN
-        flags = [0,
-                 VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_USE_ESN]
 
-        self.vapi.cli("set crypto handler all %s" % engine)
-        #
-        # loop through each of the algorithms
-        #
-        for algo in algos:
-            # with self.subTest(algo=algo['scapy']):
-            for flag in flags:
-                #
-                # setup up the config paramters
-                #
+class RunTestIpsecEspAll(ConfigIpsecESP,
+                      IpsecTra4, IpsecTra6,
+                      IpsecTun4, IpsecTun6):
+    """ Ipsec ESP all Algos """
+
+    def setUp(self):
+        super(RunTestIpsecEspAll, self).setUp()
+        test_args = str.split(self.__doc__, " ")
+
+        params = MyParameters()
+        self.engine = test_args[0]
+        self.flag = params.flags[0]
+        if test_args[1] == 'ESN':
+            self.flag = params.flags[1]
+
+        self.algo = params.algos[test_args[2]]
+
+    def tearDown(self):
+        super(RunTestIpsecEspAll, self).tearDown()
+
+    def run_test(self):
+        self.run_a_test(self.engine, self.flag, self.algo)
+
+    def run_a_test(self, engine, flag, algo):
+                self.vapi.cli("set crypto handler all %s" % engine)
+
                 self.ipv4_params = IPsecIPv4Params()
                 self.ipv6_params = IPsecIPv6Params()
 
@@ -496,6 +498,201 @@ class TestIpsecEspAll(ConfigIpsecESP,
                 self.config_network(self.params.values())
                 self.verify_tra_anti_replay()
                 self.unconfig_network()
+
+# for ENG in ia32 ipsecmb openssl; do for FLG in noESN ESN; do for ALG in AES-GCM-128/NONE AES-GCM-192/NONE AES-GCM-256/NONE AES-CBC-128/MD5-96 AES-CBC-192/SHA1-96 AES-CBC-256/SHA1-96 3DES-CBC/SHA1-96 NONE/SHA1-96; do echo -e "class Test_${ENG}_${FLG}_${ALG}(RunTestIpsecEspAll):" | sed -e 's/-/_/g' -e 's#/#_#g' ; echo '    """'$ENG $FLG $ALG IPSec test'"""' ; echo "    def test_ipsec(self):"; echo "        self.run_test()"; done; done; done
+
+class Test_ia32_noESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """ia32 noESN AES-GCM-128/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_noESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
+    """ia32 noESN AES-GCM-192/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_noESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """ia32 noESN AES-GCM-256/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_noESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
+    """ia32 noESN AES-CBC-128/MD5-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_noESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
+    """ia32 noESN AES-CBC-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_noESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """ia32 noESN AES-CBC-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_noESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
+    """ia32 noESN 3DES-CBC/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
+    """ia32 noESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_ESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """ia32 ESN AES-GCM-128/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_ESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
+    """ia32 ESN AES-GCM-192/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_ESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """ia32 ESN AES-GCM-256/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_ESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
+    """ia32 ESN AES-CBC-128/MD5-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_ESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
+    """ia32 ESN AES-CBC-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_ESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """ia32 ESN AES-CBC-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_ESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
+    """ia32 ESN 3DES-CBC/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ia32_ESN_NONE_SHA1_96(RunTestIpsecEspAll):
+    """ia32 ESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_noESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-GCM-128/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_noESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-GCM-192/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_noESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-GCM-256/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_noESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-CBC-128/MD5-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_noESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-CBC-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_noESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-CBC-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_noESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb noESN 3DES-CBC/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb noESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_ESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-GCM-128/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_ESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-GCM-192/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_ESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-GCM-256/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_ESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-CBC-128/MD5-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_ESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-CBC-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_ESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-CBC-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_ESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb ESN 3DES-CBC/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_ipsecmb_ESN_NONE_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb ESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_noESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """openssl noESN AES-GCM-128/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_noESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
+    """openssl noESN AES-GCM-192/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_noESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """openssl noESN AES-GCM-256/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_noESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
+    """openssl noESN AES-CBC-128/MD5-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_noESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
+    """openssl noESN AES-CBC-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_noESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """openssl noESN AES-CBC-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_noESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
+    """openssl noESN 3DES-CBC/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
+    """openssl noESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_ESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """openssl ESN AES-GCM-128/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_ESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
+    """openssl ESN AES-GCM-192/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_ESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """openssl ESN AES-GCM-256/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_ESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
+    """openssl ESN AES-CBC-128/MD5-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_ESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
+    """openssl ESN AES-CBC-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_ESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """openssl ESN AES-CBC-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_ESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
+    """openssl ESN 3DES-CBC/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+class Test_openssl_ESN_NONE_SHA1_96(RunTestIpsecEspAll):
+    """openssl ESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
 
 
 if __name__ == '__main__':
