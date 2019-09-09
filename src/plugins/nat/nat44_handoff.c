@@ -23,6 +23,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vppinfra/error.h>
 #include <nat/nat.h>
+#include <nat/nat_inlines.h>
 
 typedef struct
 {
@@ -260,14 +261,11 @@ VLIB_NODE_FN (snat_in2out_worker_handoff_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (snat_in2out_worker_handoff_node) = {
   .name = "nat44-in2out-worker-handoff",
   .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
   .format_trace = format_nat44_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN(nat44_handoff_error_strings),
   .error_strings = nat44_handoff_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-drop",
-  },
 };
 /* *INDENT-ON* */
 
@@ -283,14 +281,11 @@ VLIB_NODE_FN (snat_in2out_output_worker_handoff_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (snat_in2out_output_worker_handoff_node) = {
   .name = "nat44-in2out-output-worker-handoff",
   .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
   .format_trace = format_nat44_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN(nat44_handoff_error_strings),
   .error_strings = nat44_handoff_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-drop",
-  },
 };
 /* *INDENT-ON* */
 
@@ -305,14 +300,11 @@ VLIB_NODE_FN (snat_out2in_worker_handoff_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (snat_out2in_worker_handoff_node) = {
   .name = "nat44-out2in-worker-handoff",
   .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
   .format_trace = format_nat44_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN(nat44_handoff_error_strings),
   .error_strings = nat44_handoff_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-drop",
-  },
 };
 /* *INDENT-ON* */
 
