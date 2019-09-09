@@ -49,7 +49,7 @@ macro! It's smart about NULL pointers.\]
 Typically, the user header is not present. User headers allow for other
 data structures to be built atop vppinfra vectors. Users may specify the
 alignment for first data element of a vector via the \[vec\]()\*\_aligned
-macros. 
+macros.
 
 Vector elements can be any C type e.g. (int, double, struct bar). This
 is also true for data types built atop vectors (e.g. heap, pool, etc.).
@@ -138,8 +138,8 @@ schemes may be used:
 
 ```c
     vec_add1 (result, 0)
-    or 
-    result = format (result, "<whatever>%c", 0); 
+    or
+    result = format (result, "<whatever>%c", 0);
 ```
 
 Remember to vec\_free() the result if appropriate. Be careful not to
@@ -161,8 +161,8 @@ format specification. For example:
 
 format\_junk() can invoke other user-format functions if desired. The
 programmer shoulders responsibility for argument type-checking. It is
-typical for user format functions to blow up if the va\_arg(va,
-type) macros don't match the caller's idea of reality.
+typical for user format functions to blow up spectaculary if the
+va\_arg(va, type) macros don't match the caller's idea of reality.
 
 Unformat
 --------
@@ -185,20 +185,132 @@ follows:
 Then loop parsing individual elements:
 
 ```c
-    while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT) 
+    while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (&input, "value1 %d", &value1))
         ;/* unformat sets value1 */
       else if (unformat (&input, "value2 %d", &value2)
         ;/* unformat sets value2 */
       else
-        return clib_error_return (0, "unknown input '%U'", 
+        return clib_error_return (0, "unknown input '%U'",
                                   format_unformat_error, input);
     }
 ```
 
 As with format, unformat implements a user-unformat function capability
-via a "%U" user unformat function scheme.
+via a "%U" user unformat function scheme. Generally, one can trivially
+transform "format (s, "foo %d", foo) -> "unformat (input, "foo %d", &foo)".
+
+Unformat implements a couple of handy non-scanf-like format specifiers:
+
+```c
+    unformat (input, "enable %=", &enable, 1 /* defaults to 1 */);
+    unformat (input, "bitzero %|", &mask, (1<<0));
+    unformat (input, "bitone %|", &mask, (1<<1));
+    <etc>
+```
+
+The phrase "enable %=" means "set the supplied variable to the default
+value" if unformat parses the "enable" keyword all by itself. If
+unformat parses "enable 123" set the supplied variable to 123.
+
+We could clean up a number of hand-rolled "verbose" + "verbose %d"
+argument parsing codes using "%=".
+
+The phrase "bitzero %|" means "set the specified bit in the supplied
+bitmask" if unformat parses "bitzero". Although it looks like it could
+be fairly handy, it's very lightly used in the code base.
+
+### How to parse a single input line
+
+Debug CLI command functions MUST NOT accidentally consume input
+belonging to other debug CLI commands. Otherwise, it's impossible to
+script a set of debug CLI commands which "work fine" when issued one
+at a time.
+
+This bit of code is NOT correct:
+
+```c
+  /* Eats script input NOT beloging to it, and chokes! */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, ...))
+	;
+      else if (unformat (input, ...))
+	;
+      else
+        return clib_error_return (0, "parse error: '%U'",
+              			     format_unformat_error, input);
+	}
+    }
+```
+
+When executed as part of a script, such a function will return "parse
+error: '<next-command-text>'" every time, unless it happens to be the
+last command in the script.
+
+Instead, use "unformat_line_input" to consume the rest of a line's
+worth of input - everything past the path specified in the
+VLIB_CLI_COMMAND declaration.
+
+For example, unformat_line_input with "my_command" set up as shown
+below and user input "my path is clear" will produce an
+unformat_input_t that contains "is clear".
+
+```c
+    VLIB_CLI_COMMAND (...) = {
+        .path = "my path",
+    };
+```
+
+Here's a bit of code which shows the required mechanics, in full:
+
+```c
+    static clib_error_t *
+    my_command_fn (vlib_main_t * vm,
+                   unformat_input_t * input,
+                   vlib_cli_command_t * cmd)
+    {
+      unformat_input_t _line_input, *line_input = &_line_input;
+      u32 this, that;
+      clib_error_t *error = 0;
+
+      if (!unformat_user (input, unformat_line_input, line_input))
+        return 0;
+
+      /*
+       * Here, UNFORMAT_END_OF_INPUT is at the end of the line we consumed,
+       * not at the end of the script...
+       */
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+        {
+           if (unformat (line_input, "this %u", &this))
+             ;
+           else if (unformat (line_input, "that %u", &that))
+             ;
+           else
+             {
+               error = clib_error_return (0, "parse error: '%U'",
+              	     		     format_unformat_error, line_input);
+               goto done;
+             }
+          }
+
+    <do something based on "this" and "that", etc>
+
+    done:
+      unformat_free (line_input);
+      return error;
+    }
+   /* *INDENT-OFF* */
+   VLIB_CLI_COMMAND (my_command, static) = {
+     .path = "my path",
+     .function = my_command_fn",
+   };
+   /* *INDENT-ON* */
+
+```
+
 
 Vppinfra errors and warnings
 ----------------------------
