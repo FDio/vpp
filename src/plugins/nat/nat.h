@@ -43,6 +43,43 @@
 /* NAT buffer flags */
 #define SNAT_FLAG_HAIRPINNING (1 << 0)
 
+typedef struct
+{
+  u32 arc_next;
+} nat_buffer_opaque_t;
+
+typedef enum
+{
+  NAT_NEXT_DROP,
+  NAT_NEXT_ICMP_ERROR,
+  NAT_NEXT_IN2OUT_ED_FAST_PATH,
+  NAT_NEXT_IN2OUT_ED_SLOW_PATH,
+  NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH,
+  NAT_NEXT_IN2OUT_ED_REASS,
+  NAT_NEXT_IN2OUT_ED_OUTPUT_REASS,
+  NAT_NEXT_OUT2IN_ED_FAST_PATH,
+  NAT_NEXT_OUT2IN_ED_SLOW_PATH,
+  NAT_NEXT_OUT2IN_ED_REASS,
+  NAT_N_NEXT,
+} nat_next_t;
+
+typedef struct
+{
+  u32 next_index;
+} nat_pre_trace_t;
+
+#define nat_buffer_opaque(b) \
+  ((nat_buffer_opaque_t *)((vnet_buffer_opaque2_t *)b->opaque2)->__unused2)
+
+/*
+STATIC_ASSERT (sizeof (nat_buffer_opaque_t) <=
+               STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
+               "Custom meta-data too large for vnet_buffer_opaque_t");
+
+#define nat_buffer_opaque(b) \
+  ((nat_buffer_opaque_t *)((u8 *)((b)->opaque) + \
+    STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))*/
+
 /* session key (4-tuple) */
 typedef struct
 {
@@ -667,6 +704,12 @@ typedef struct
 } snat_runtime_t;
 
 extern snat_main_t snat_main;
+
+// nat pre ed next_node feature classification
+extern vlib_node_registration_t nat_default_node;
+extern vlib_node_registration_t nat_pre_in2out_node;
+extern vlib_node_registration_t nat_pre_out2in_node;
+
 extern vlib_node_registration_t snat_in2out_node;
 extern vlib_node_registration_t snat_in2out_output_node;
 extern vlib_node_registration_t snat_out2in_node;
