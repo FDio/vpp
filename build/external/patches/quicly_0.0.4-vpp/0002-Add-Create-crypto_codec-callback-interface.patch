@@ -1,0 +1,620 @@
+From 64c7c596a11c1579d5ff14b70ea0ba811666123f Mon Sep 17 00:00:00 2001
+From: Mathias Raoul <mraoul@cisco.com>
+Date: Tue, 20 Aug 2019 14:34:03 +0000
+Subject: [PATCH 1/2] Create quicly_codec_t callback interface. Add default
+ implementation in defaults.c
+
+---
+ include/quicly.h          |  48 ++++++-
+ include/quicly/defaults.h |   2 +
+ lib/defaults.c            |  94 ++++++++++++++
+ lib/quicly.c              | 257 ++++++++++++++++++++------------------
+ 4 files changed, 279 insertions(+), 122 deletions(-)
+
+diff --git a/include/quicly.h b/include/quicly.h
+index 77b1d24..dccf5bc 100644
+--- a/include/quicly.h
++++ b/include/quicly.h
+@@ -54,6 +54,11 @@ extern "C" {
+ #define QUICLY_STATELESS_RESET_TOKEN_LEN 16
+ #define QUICLY_STATELESS_RESET_PACKET_MIN_LEN 39
+ 
++#define QUICLY_MAX_PN_SIZE 4  /* maximum defined by the RFC used for calculating header protection sampling offset */
++#define QUICLY_SEND_PN_SIZE 2 /* size of PN used for sending */
++
++#define QUICLY_KEY_PHASE_BIT 0x4
++
+ typedef struct st_quicly_datagram_t {
+     ptls_iovec_t data;
+     socklen_t salen;
+@@ -191,6 +196,9 @@ typedef struct st_quicly_context_t quicly_context_t;
+ typedef struct st_quicly_conn_t quicly_conn_t;
+ typedef struct st_quicly_stream_t quicly_stream_t;
+ typedef struct st_quicly_send_context_t quicly_send_context_t;
++typedef struct st_quicly_receive_context_t quicly_receive_context_t;
++typedef struct st_quicly_decoded_packet_t quicly_decoded_packet_t;
++typedef struct st_quicly_pn_space_t quicly_pn_space_t; 
+ 
+ #define QUICLY_CALLBACK_TYPE0(ret, name)                                                                                           \
+     typedef struct st_quicly_##name##_t {                                                                                          \
+@@ -210,6 +218,17 @@ typedef struct st_quicly_packet_allocator_t {
+     void (*free_packet)(struct st_quicly_packet_allocator_t *self, quicly_datagram_t *packet);
+ } quicly_packet_allocator_t;
+ 
++typedef struct st_quicly_crypto_codec_t {
++    size_t (*encrypt_packet)(struct st_quicly_crypto_codec_t *self, ptls_aead_context_t *aead, ptls_cipher_context_t *header_protection,
++                             uint8_t *dst, uint8_t *dst_payload_from, uint8_t *first_byte_at, uint64_t packet_number);
++    void (*encrypt_packet_done)(ptls_cipher_context_t *header_protection, uint8_t *first_byte_at, uint8_t *dst_payload_from);
++    int (*decrypt_packet)(struct st_quicly_crypto_codec_t *self, quicly_conn_t *conn, quicly_pn_space_t *space,
++                             ptls_cipher_context_t *header_protection, ptls_aead_context_t **aead, size_t epoch,
++                             uint64_t *next_expected_pn, quicly_decoded_packet_t *packet);
++    int (*decrypt_packet_done)(quicly_conn_t *conn, quicly_decoded_packet_t *packet, quicly_pn_space_t *space, size_t epoch, uint64_t pn,
++                                   size_t aead_off, size_t ptlen);
++} quicly_crypto_codec_t;
++
+ /**
+  * CID encryption
+  */
+@@ -408,6 +427,10 @@ struct st_quicly_context_t {
+          */
+         quicly_event_logger_t *cb;
+     } event_log;
++    /**
++     * quicly crypto codec
++     */
++    quicly_crypto_codec_t *crypto_codec;
+ };
+ 
+ /**
+@@ -416,7 +439,7 @@ struct st_quicly_context_t {
+ typedef enum {
+     /**
+      * before observing the first message from peer
+-     */
++     */ 
+     QUICLY_STATE_FIRSTFLIGHT,
+     /**
+      * while connected
+@@ -662,7 +685,7 @@ struct st_quicly_stream_t {
+     } _recv_aux;
+ };
+ 
+-typedef struct st_quicly_decoded_packet_t {
++struct st_quicly_decoded_packet_t {
+     /**
+      * octets of the entire packet
+      */
+@@ -715,7 +738,26 @@ typedef struct st_quicly_decoded_packet_t {
+         QUICLY__DECODED_PACKET_CACHED_IS_STATELESS_RESET,
+         QUICLY__DECODED_PACKET_CACHED_NOT_STATELESS_RESET
+     } _is_stateless_reset_cached;
+-} quicly_decoded_packet_t;
++};
++
++struct st_quicly_pn_space_t {
++    /**
++     * acks to be sent to peer
++     */
++    quicly_ranges_t ack_queue;
++    /**
++     * time at when the largest pn in the ack_queue has been received (or INT64_MAX if none)
++     */
++    int64_t largest_pn_received_at;
++    /**
++     *
++     */
++    uint64_t next_expected_packet_number;
++    /**
++     * packet count before ack is sent
++     */
++    uint32_t unacked_count;
++};
+ 
+ /**
+  *
+diff --git a/include/quicly/defaults.h b/include/quicly/defaults.h
+index c33074b..f1c5569 100644
+--- a/include/quicly/defaults.h
++++ b/include/quicly/defaults.h
+@@ -40,6 +40,8 @@ extern quicly_packet_allocator_t quicly_default_packet_allocator;
+  */
+ quicly_cid_encryptor_t *quicly_new_default_cid_encryptor(ptls_cipher_algorithm_t *cipher, ptls_hash_algorithm_t *hash,
+                                                          ptls_iovec_t key);
++
++quicly_crypto_codec_t *quicly_new_default_crypto_codec();
+ /**
+  *
+  */
+diff --git a/lib/defaults.c b/lib/defaults.c
+index a833786..14c55b3 100644
+--- a/lib/defaults.c
++++ b/lib/defaults.c
+@@ -240,6 +240,100 @@ void quicly_free_default_cid_encryptor(quicly_cid_encryptor_t *_self)
+     free(self);
+ }
+ 
++struct st_quicly_default_crypto_codec_t {
++    quicly_crypto_codec_t super;
++};
++
++static size_t quicly_default_crypto_codec_packet_encrypt(quicly_crypto_codec_t *_self, ptls_aead_context_t *aead,
++                                                  ptls_cipher_context_t *header_protection, uint8_t *dst, uint8_t *dst_payload_from,
++                                                  uint8_t *first_byte_at, uint64_t packet_number)
++{
++    int ret = ptls_aead_encrypt(aead, dst_payload_from, dst_payload_from, dst - dst_payload_from, packet_number, first_byte_at,
++                                dst_payload_from - first_byte_at);
++
++    { /* apply header protection */
++        _self->encrypt_packet_done(header_protection, first_byte_at, dst_payload_from);
++    }
++    return ret;
++}
++
++static void quicly_default_crypto_codec_packet_encrypt_done(ptls_cipher_context_t *header_protection, uint8_t *first_byte_at, uint8_t *dst_payload_from)
++{
++    uint8_t hpmask[1 + QUICLY_SEND_PN_SIZE] = {0};
++    ptls_cipher_init(header_protection, dst_payload_from - QUICLY_SEND_PN_SIZE + QUICLY_MAX_PN_SIZE);
++    ptls_cipher_encrypt(header_protection, hpmask, hpmask, sizeof(hpmask));
++
++    *first_byte_at ^= hpmask[0] & (QUICLY_PACKET_IS_LONG_HEADER(*first_byte_at) ? 0xf : 0x1f);
++    size_t i;
++    for (i = 0; i != QUICLY_SEND_PN_SIZE; ++i)
++        dst_payload_from[i - QUICLY_SEND_PN_SIZE] ^= hpmask[i + 1];
++}
++
++static int quicly_default_crypto_codec_packet_decrypt(quicly_crypto_codec_t *_self, quicly_conn_t *conn, quicly_pn_space_t *space,
++                                               ptls_cipher_context_t *header_protection, ptls_aead_context_t **aead, size_t epoch,
++                                               uint64_t *next_expected_pn, quicly_decoded_packet_t *packet)
++{
++    size_t encrypted_len = packet->octets.len - packet->encrypted_off;
++    uint8_t hpmask[5] = {0};
++    uint32_t pnbits = 0;
++    size_t pnlen, aead_index, i;
++    size_t ptlen;
++    uint64_t pn;
++
++    struct st_quicly_default_crypto_codec_t *self = (void *)_self;
++
++    /* decipher the header protection, as well as obtaining pnbits, pnlen */
++    if (encrypted_len < header_protection->algo->iv_size + QUICLY_MAX_PN_SIZE)
++        goto Error;
++    ptls_cipher_init(header_protection, packet->octets.base + packet->encrypted_off + QUICLY_MAX_PN_SIZE);
++    ptls_cipher_encrypt(header_protection, hpmask, hpmask, sizeof(hpmask));
++    packet->octets.base[0] ^= hpmask[0] & (QUICLY_PACKET_IS_LONG_HEADER(packet->octets.base[0]) ? 0xf : 0x1f);
++    pnlen = (packet->octets.base[0] & 0x3) + 1;
++    for (i = 0; i != pnlen; ++i) {
++        packet->octets.base[packet->encrypted_off + i] ^= hpmask[i + 1];
++        pnbits = (pnbits << 8) | packet->octets.base[packet->encrypted_off + i];
++    }
++
++    /* determine aead index (FIXME move AEAD key selection and decryption logic to the caller?) */
++    if (QUICLY_PACKET_IS_LONG_HEADER(packet->octets.base[0])) {
++        aead_index = 0;
++    } else {
++        /* note: aead index 0 is used by 0-RTT */
++        aead_index = (packet->octets.base[0] & QUICLY_KEY_PHASE_BIT) == 0;
++        if (aead[aead_index] == NULL)
++            goto Error;
++    }
++
++    /* AEAD */
++    pn = quicly_determine_packet_number(pnbits, pnlen * 8, *next_expected_pn);
++    size_t aead_off = packet->encrypted_off + pnlen;
++    if ((ptlen = ptls_aead_decrypt(aead[aead_index], packet->octets.base + aead_off, packet->octets.base + aead_off,
++                                   packet->octets.len - aead_off, pn, packet->octets.base, aead_off)) == SIZE_MAX) {
++        if (QUICLY_DEBUG)
++            fprintf(stderr, "%s: aead decryption failure (pn: %" PRIu64 ")\n", __FUNCTION__, pn);
++        goto Error;
++    }
++
++    self->super.decrypt_packet_done(conn, packet, space, epoch, pn, aead_off, ptlen);
++
++    return 0;
++
++Error:
++    return 1;
++}
++
++quicly_crypto_codec_t *quicly_new_default_crypto_codec()
++{
++    struct st_quicly_default_crypto_codec_t *self = NULL;
++    if ((self = malloc(sizeof(*self))) == NULL)
++        goto Exit;
++
++    *self = (struct st_quicly_default_crypto_codec_t){{quicly_default_crypto_codec_packet_encrypt, quicly_default_crypto_codec_packet_encrypt_done, quicly_default_crypto_codec_packet_decrypt, NULL}};
++
++Exit:
++    return &self->super;
++}
++
+ /**
+  * See doc-comment of `st_quicly_default_scheduler_state_t` to understand the logic.
+  */
+diff --git a/lib/quicly.c b/lib/quicly.c
+index 7cfb3eb..787e86b 100644
+--- a/lib/quicly.c
++++ b/lib/quicly.c
+@@ -39,7 +39,6 @@
+ #define QUICLY_QUIC_BIT 0x40
+ #define QUICLY_LONG_HEADER_RESERVED_BITS 0xc
+ #define QUICLY_SHORT_HEADER_RESERVED_BITS 0x18
+-#define QUICLY_KEY_PHASE_BIT 0x4
+ 
+ #define QUICLY_PACKET_TYPE_INITIAL (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0)
+ #define QUICLY_PACKET_TYPE_0RTT (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x10)
+@@ -47,9 +46,6 @@
+ #define QUICLY_PACKET_TYPE_RETRY (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x30)
+ #define QUICLY_PACKET_TYPE_BITMASK 0xf0
+ 
+-#define QUICLY_MAX_PN_SIZE 4  /* maximum defined by the RFC used for calculating header protection sampling offset */
+-#define QUICLY_SEND_PN_SIZE 2 /* size of PN used for sending */
+-
+ #define QUICLY_TLS_EXTENSION_TYPE_TRANSPORT_PARAMETERS 0xffa5
+ #define QUICLY_TRANSPORT_PARAMETER_ID_ORIGINAL_CONNECTION_ID 0
+ #define QUICLY_TRANSPORT_PARAMETER_ID_IDLE_TIMEOUT 1
+@@ -114,25 +110,6 @@ struct st_quicly_pending_path_challenge_t {
+     uint8_t data[QUICLY_PATH_CHALLENGE_DATA_LEN];
+ };
+ 
+-struct st_quicly_pn_space_t {
+-    /**
+-     * acks to be sent to peer
+-     */
+-    quicly_ranges_t ack_queue;
+-    /**
+-     * time at when the largest pn in the ack_queue has been received (or INT64_MAX if none)
+-     */
+-    int64_t largest_pn_received_at;
+-    /**
+-     *
+-     */
+-    uint64_t next_expected_packet_number;
+-    /**
+-     * packet count before ack is sent
+-     */
+-    uint32_t unacked_count;
+-};
+-
+ struct st_quicly_handshake_space_t {
+     struct st_quicly_pn_space_t super;
+     struct {
+@@ -169,6 +146,10 @@ struct st_quicly_conn_t {
+      * 0-RTT and 1-RTT context
+      */
+     struct st_quicly_application_space_t *application;
++    /**
++     * default codec
++     */
++    quicly_crypto_codec_t *crypto_codec;
+     /**
+      * hashtable of streams
+      */
+@@ -1471,6 +1452,7 @@ static quicly_conn_t *create_connection(quicly_context_t *ctx, const char *serve
+     memset(conn, 0, sizeof(*conn));
+     conn->_.super.ctx = ctx;
+     conn->_.super.master_id = *new_cid;
++    conn->_.crypto_codec = ctx->crypto_codec;
+     if (ctx->cid_encryptor != NULL) {
+         conn->_.super.master_id.path_id = 0;
+         ctx->cid_encryptor->encrypt_cid(ctx->cid_encryptor, &conn->_.super.host.src_cid, &conn->_.super.host.stateless_reset_token,
+@@ -2081,19 +2063,9 @@ static int commit_send_packet(quicly_conn_t *conn, quicly_send_context_t *s, int
+     }
+     quicly_encode16(s->dst_payload_from - QUICLY_SEND_PN_SIZE, (uint16_t)conn->egress.packet_number);
+ 
+-    s->dst = s->dst_payload_from + ptls_aead_encrypt(s->target.cipher->aead, s->dst_payload_from, s->dst_payload_from,
+-                                                     s->dst - s->dst_payload_from, conn->egress.packet_number,
+-                                                     s->target.first_byte_at, s->dst_payload_from - s->target.first_byte_at);
+-
+-    { /* apply header protection */
+-        uint8_t hpmask[1 + QUICLY_SEND_PN_SIZE] = {0};
+-        ptls_cipher_init(s->target.cipher->header_protection, s->dst_payload_from - QUICLY_SEND_PN_SIZE + QUICLY_MAX_PN_SIZE);
+-        ptls_cipher_encrypt(s->target.cipher->header_protection, hpmask, hpmask, sizeof(hpmask));
+-        *s->target.first_byte_at ^= hpmask[0] & (QUICLY_PACKET_IS_LONG_HEADER(*s->target.first_byte_at) ? 0xf : 0x1f);
+-        size_t i;
+-        for (i = 0; i != QUICLY_SEND_PN_SIZE; ++i)
+-            s->dst_payload_from[i - QUICLY_SEND_PN_SIZE] ^= hpmask[i + 1];
+-    }
++    s->dst = s->dst_payload_from + conn->crypto_codec->encrypt_packet(conn->crypto_codec, s->target.cipher->aead,
++                                                               s->target.cipher->header_protection, s->dst, s->dst_payload_from,
++                                                               s->target.first_byte_at, conn->egress.packet_number);
+ 
+     /* update CC, commit sentmap */
+     if (s->target.ack_eliciting) {
+@@ -3968,15 +3940,133 @@ int quicly_accept(quicly_conn_t **conn, quicly_context_t *ctx, struct sockaddr *
+     return ret;
+ }
+ 
++int commit_receive_packet(quicly_conn_t *conn, quicly_decoded_packet_t *packet, quicly_pn_space_t *space, size_t epoch, uint64_t pn,
++                          size_t aead_off, size_t ptlen)
++{
++    ptls_iovec_t payload;
++    uint64_t offending_frame_type = QUICLY_FRAME_TYPE_PADDING;
++    int is_ack_only;
++    int ret;
++
++    /* check reserved bits after AEAD decryption */
++    if ((packet->octets.base[0] & (QUICLY_PACKET_IS_LONG_HEADER(packet->octets.base[0]) ? QUICLY_LONG_HEADER_RESERVED_BITS
++                                                                                        : QUICLY_SHORT_HEADER_RESERVED_BITS)) !=
++        0) {
++        if (QUICLY_DEBUG)
++            fprintf(stderr, "%s: non-zero reserved bits (pn: %" PRIu64 ")\n", __FUNCTION__, pn);
++        payload = ptls_iovec_init(NULL, 0);
++        ret = QUICLY_ERROR_PACKET_IGNORED;
++        goto Exit;
++    } else if (space->next_expected_packet_number <= pn) {
++        space->next_expected_packet_number = pn + 1;
++        payload = ptls_iovec_init(packet->octets.base + aead_off, ptlen);
++    } else {
++        payload = ptls_iovec_init(NULL, 0);
++        ret = QUICLY_ERROR_PACKET_IGNORED;
++        goto Exit;
++    }
++
++    if (payload.len == 0) {
++        ret = QUICLY_TRANSPORT_ERROR_PROTOCOL_VIOLATION;
++        goto Exit;
++    }
++
++    LOG_CONNECTION_EVENT(conn, QUICLY_EVENT_TYPE_CRYPTO_DECRYPT, INT_EVENT_ATTR(PACKET_NUMBER, pn),
++                         INT_EVENT_ATTR(LENGTH, payload.len));
++    LOG_CONNECTION_EVENT(conn, QUICLY_EVENT_TYPE_QUICTRACE_RECV, INT_EVENT_ATTR(PACKET_NUMBER, pn),
++                         INT_EVENT_ATTR(LENGTH, payload.len), INT_EVENT_ATTR(ENC_LEVEL, epoch));
++
++    if (conn->super.state == QUICLY_STATE_FIRSTFLIGHT)
++        conn->super.state = QUICLY_STATE_CONNECTED;
++    conn->super.stats.num_packets.received += 1;
++    conn->super.stats.num_bytes.received += packet->octets.len;
++
++    /* state updates, that are triggered by the receipt of a packet */
++    if (epoch == QUICLY_EPOCH_HANDSHAKE && conn->initial != NULL) {
++        /* Discard Initial space before processing the payload of the Handshake packet to avoid the chance of an ACK frame included
++         * in the Handshake packet setting a loss timer for the Initial packet. */
++        if ((ret = discard_initial_context(conn)) != 0)
++            goto Exit;
++        update_loss_alarm(conn);
++        conn->super.peer.address_validation.validated = 1;
++    }
++
++    if ((ret = handle_payload(conn, epoch, payload.base, payload.len, &offending_frame_type, &is_ack_only)) != 0)
++        goto Exit;
++    if (space != NULL) {
++        if ((ret = record_receipt(conn, space, pn, is_ack_only, epoch)) != 0)
++            goto Exit;
++    }
++
++    switch (epoch) {
++    case QUICLY_EPOCH_INITIAL:
++        assert(conn->initial != NULL);
++        if (quicly_is_client(conn) && conn->handshake != NULL && conn->handshake->cipher.egress.aead != NULL) {
++            if ((ret = discard_initial_context(conn)) != 0)
++                goto Exit;
++            update_loss_alarm(conn);
++        }
++        break;
++    case QUICLY_EPOCH_HANDSHAKE:
++        /* schedule the timer to discard contexts related to the handshake if we have received all handshake messages and all the
++         * messages we sent have been acked */
++        if (!conn->crypto.handshake_scheduled_for_discard && ptls_handshake_is_complete(conn->crypto.tls)) {
++            quicly_stream_t *stream = quicly_get_stream(conn, -(quicly_stream_id_t)(1 + 2));
++            assert(stream != NULL);
++            quicly_streambuf_t *buf = stream->data;
++            if (buf->egress.vecs.size == 0) {
++                if ((ret = quicly_sentmap_prepare(&conn->egress.sentmap, conn->egress.packet_number, now,
++                                                  QUICLY_EPOCH_HANDSHAKE)) != 0)
++                    goto Exit;
++                if (quicly_sentmap_allocate(&conn->egress.sentmap, discard_handshake_context) == NULL) {
++                    ret = PTLS_ERROR_NO_MEMORY;
++                    goto Exit;
++                }
++                quicly_sentmap_commit(&conn->egress.sentmap, 0);
++                ++conn->egress.packet_number;
++                conn->crypto.handshake_scheduled_for_discard = 1;
++            }
++        }
++        break;
++    case QUICLY_EPOCH_1RTT:
++        if (!is_ack_only && should_send_max_data(conn))
++            conn->egress.send_ack_at = 0;
++        break;
++    default:
++        break;
++    }
++
++    update_idle_timeout(conn, 1);
++
++Exit:
++    switch (ret) {
++    case 0:
++        /* Avoid time in the past being emitted by quicly_get_first_timeout. We hit the condition below when retransmission is
++         * suspended by the 3x limit (in which case we have loss.alarm_at set but return INT64_MAX from quicly_get_first_timeout
++         * until we receive something from the client).
++         */
++        if (conn->egress.loss.alarm_at < now)
++            conn->egress.loss.alarm_at = now;
++        assert_consistency(conn, 0);
++        break;
++    case QUICLY_ERROR_PACKET_IGNORED:
++        break;
++    default: /* close connection */
++        initiate_close(conn, ret, offending_frame_type, "");
++        ret = 0;
++        break;
++    }
++    return ret;
++}
++
+ int quicly_receive(quicly_conn_t *conn, quicly_decoded_packet_t *packet)
+ {
+     ptls_cipher_context_t *header_protection;
+     ptls_aead_context_t **aead;
+-    struct st_quicly_pn_space_t **space;
++    quicly_pn_space_t *space;
+     size_t epoch;
+-    ptls_iovec_t payload;
+-    uint64_t pn, offending_frame_type = QUICLY_FRAME_TYPE_PADDING;
+-    int is_ack_only, ret;
++    uint64_t offending_frame_type = QUICLY_FRAME_TYPE_PADDING;
++    int ret = 0;
+ 
+     update_now(conn->super.ctx);
+ 
+@@ -4066,7 +4156,7 @@ int quicly_receive(quicly_conn_t *conn, quicly_decoded_packet_t *packet)
+                 conn->super.peer.cid.len = packet->cid.src.len;
+             }
+             aead = &conn->initial->cipher.ingress.aead;
+-            space = (void *)&conn->initial;
++            space = (void *)conn->initial;
+             epoch = QUICLY_EPOCH_INITIAL;
+             break;
+         case QUICLY_PACKET_TYPE_HANDSHAKE:
+@@ -4075,7 +4165,7 @@ int quicly_receive(quicly_conn_t *conn, quicly_decoded_packet_t *packet)
+                 goto Exit;
+             }
+             aead = &conn->handshake->cipher.ingress.aead;
+-            space = (void *)&conn->handshake;
++            space = (void *)conn->handshake;
+             epoch = QUICLY_EPOCH_HANDSHAKE;
+             break;
+         case QUICLY_PACKET_TYPE_0RTT:
+@@ -4089,7 +4179,7 @@ int quicly_receive(quicly_conn_t *conn, quicly_decoded_packet_t *packet)
+                 goto Exit;
+             }
+             aead = &conn->application->cipher.ingress.aead[0];
+-            space = (void *)&conn->application;
++            space = (void *)conn->application;
+             epoch = QUICLY_EPOCH_0RTT;
+             break;
+         default:
+@@ -4104,89 +4194,18 @@ int quicly_receive(quicly_conn_t *conn, quicly_decoded_packet_t *packet)
+             goto Exit;
+         }
+         aead = conn->application->cipher.ingress.aead;
+-        space = (void *)&conn->application;
++        space = (void *)conn->application;
+         epoch = QUICLY_EPOCH_1RTT;
+     }
+ 
+-    /* decrypt */
+-    if ((payload = decrypt_packet(header_protection, aead, &(*space)->next_expected_packet_number, packet, &pn)).base == NULL) {
++    conn->crypto_codec->decrypt_packet_done = commit_receive_packet;
++    if (conn->crypto_codec->decrypt_packet(conn->crypto_codec, conn, space, header_protection, aead, epoch,
++                                    &space->next_expected_packet_number, packet)) {
+         ret = QUICLY_ERROR_PACKET_IGNORED;
+         goto Exit;
+     }
+-    if (payload.len == 0) {
+-        ret = QUICLY_TRANSPORT_ERROR_PROTOCOL_VIOLATION;
+-        goto Exit;
+-    }
+-    LOG_CONNECTION_EVENT(conn, QUICLY_EVENT_TYPE_CRYPTO_DECRYPT, INT_EVENT_ATTR(PACKET_NUMBER, pn),
+-                         INT_EVENT_ATTR(LENGTH, payload.len));
+-    LOG_CONNECTION_EVENT(conn, QUICLY_EVENT_TYPE_QUICTRACE_RECV, INT_EVENT_ATTR(PACKET_NUMBER, pn),
+-                         INT_EVENT_ATTR(LENGTH, payload.len), INT_EVENT_ATTR(ENC_LEVEL, epoch));
+-
+-    /* update states */
+-    if (conn->super.state == QUICLY_STATE_FIRSTFLIGHT)
+-        conn->super.state = QUICLY_STATE_CONNECTED;
+-    conn->super.stats.num_packets.received += 1;
+-    conn->super.stats.num_bytes.received += packet->octets.len;
+-
+-    /* state updates, that are triggered by the receipt of a packet */
+-    if (epoch == QUICLY_EPOCH_HANDSHAKE && conn->initial != NULL) {
+-        /* Discard Initial space before processing the payload of the Handshake packet to avoid the chance of an ACK frame included
+-         * in the Handshake packet setting a loss timer for the Initial packet. */
+-        if ((ret = discard_initial_context(conn)) != 0)
+-            goto Exit;
+-        update_loss_alarm(conn);
+-        conn->super.peer.address_validation.validated = 1;
+-    }
+-
+-    /* handle the payload */
+-    if ((ret = handle_payload(conn, epoch, payload.base, payload.len, &offending_frame_type, &is_ack_only)) != 0)
+-        goto Exit;
+-    if (*space != NULL) {
+-        if ((ret = record_receipt(conn, *space, pn, is_ack_only, epoch)) != 0)
+-            goto Exit;
+-    }
+-
+-    /* state updates post payload processing */
+-    switch (epoch) {
+-    case QUICLY_EPOCH_INITIAL:
+-        assert(conn->initial != NULL);
+-        if (quicly_is_client(conn) && conn->handshake != NULL && conn->handshake->cipher.egress.aead != NULL) {
+-            if ((ret = discard_initial_context(conn)) != 0)
+-                goto Exit;
+-            update_loss_alarm(conn);
+-        }
+-        break;
+-    case QUICLY_EPOCH_HANDSHAKE:
+-        /* schedule the timer to discard contexts related to the handshake if we have received all handshake messages and all the
+-         * messages we sent have been acked */
+-        if (!conn->crypto.handshake_scheduled_for_discard && ptls_handshake_is_complete(conn->crypto.tls)) {
+-            quicly_stream_t *stream = quicly_get_stream(conn, -(quicly_stream_id_t)(1 + QUICLY_EPOCH_HANDSHAKE));
+-            assert(stream != NULL);
+-            quicly_streambuf_t *buf = stream->data;
+-            if (buf->egress.vecs.size == 0) {
+-                if ((ret = quicly_sentmap_prepare(&conn->egress.sentmap, conn->egress.packet_number, now,
+-                                                  QUICLY_EPOCH_HANDSHAKE)) != 0)
+-                    goto Exit;
+-                if (quicly_sentmap_allocate(&conn->egress.sentmap, discard_handshake_context) == NULL) {
+-                    ret = PTLS_ERROR_NO_MEMORY;
+-                    goto Exit;
+-                }
+-                quicly_sentmap_commit(&conn->egress.sentmap, 0);
+-                ++conn->egress.packet_number;
+-                conn->crypto.handshake_scheduled_for_discard = 1;
+-            }
+-        }
+-        break;
+-    case QUICLY_EPOCH_1RTT:
+-        if (!is_ack_only && should_send_max_data(conn))
+-            conn->egress.send_ack_at = 0;
+-        break;
+-    default:
+-        break;
+-    }
+-
+-    update_idle_timeout(conn, 1);
+ 
++    return ret;
+ Exit:
+     switch (ret) {
+     case 0:
+
+From fd76e9a49590cc40c3a077dd97f7f2ed6995d8b7 Mon Sep 17 00:00:00 2001
+From: Mathias Raoul <mraoul@cisco.com>
+Date: Wed, 21 Aug 2019 09:41:28 +0000
+Subject: [PATCH 2/2] Update tests and cli with new crypto_codec interface
+
+---
+ src/cli.c | 4 ++++
+ t/test.c  | 1 +
+ 2 files changed, 5 insertions(+)
+
+diff --git a/src/cli.c b/src/cli.c
+index 3ae6283..babd4f8 100644
+--- a/src/cli.c
++++ b/src/cli.c
+@@ -949,6 +949,10 @@ int main(int argc, char **argv)
+     if (key_exchanges[0] == NULL)
+         key_exchanges[0] = &ptls_openssl_secp256r1;
+ 
++
++    ctx.crypto_codec =
++        quicly_new_default_crypto_codec();
++
+     if (ctx.tls->certificates.count != 0 || ctx.tls->sign_certificate != NULL) {
+         /* server */
+         if (ctx.tls->certificates.count == 0 || ctx.tls->sign_certificate == NULL) {
+diff --git a/t/test.c b/t/test.c
+index 228603d..e760456 100644
+--- a/t/test.c
++++ b/t/test.c
+@@ -345,6 +345,7 @@ int main(int argc, char **argv)
+     quic_ctx.transport_params.max_streams_bidi = 10;
+     quic_ctx.stream_open = &stream_open;
+     quic_ctx.now = &get_now;
++    quic_ctx.crypto_codec = quicly_new_default_crypto_codec();
+ 
+     ERR_load_crypto_strings();
+     OpenSSL_add_all_algorithms();
