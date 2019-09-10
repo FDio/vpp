@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "fcee303d_cd50b0d7",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1209,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2019-09-10T04:31:59Z",
+      "side": 1,
+      "message": "tcp_session_cal_goal_size function will predict if is tso",
+      "parentUuid": "b7db0bec_e53f51f5",
+      "range": {
+        "startLine": 1209,
+        "startChar": 9,
+        "endLine": 1209,
+        "endChar": 39
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a798633f_4cddaed6",
         "filename": "src/vnet/tcp/tcp.h",
         "patchSetId": 1
@@ -71,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "a0646599_8b9eef3f",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2019-09-10T04:31:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a798633f_4cddaed6",
+      "range": {
+        "startLine": 309,
+        "startChar": 5,
+        "endLine": 309,
+        "endChar": 11
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "76b246dd_f5fb8ab3",
         "filename": "src/vnet/tcp/tcp.h",
         "patchSetId": 1
@@ -82,6 +130,30 @@
       "writtenOn": "2019-09-02T16:50:21Z",
       "side": 1,
       "message": "Move to the end, this is not critical.",
+      "range": {
+        "startLine": 325,
+        "startChar": 2,
+        "endLine": 325,
+        "endChar": 19
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3091ec79_83411131",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2019-09-10T04:31:59Z",
+      "side": 1,
+      "message": "this is a unused variable, will delete it",
+      "parentUuid": "76b246dd_f5fb8ab3",
       "range": {
         "startLine": 325,
         "startChar": 2,
@@ -117,6 +189,30 @@
     },
     {
       "key": {
+        "uuid": "aae2a93a_4f4edd51",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2309,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2019-09-10T04:31:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "87fdfd38_4605829b",
+      "range": {
+        "startLine": 2309,
+        "startChar": 0,
+        "endLine": 2309,
+        "endChar": 22
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d628cdb4_2193b546",
         "filename": "src/vnet/tcp/tcp_input.c",
         "patchSetId": 1
@@ -137,6 +233,30 @@
       "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c0bff66_1ecf30eb",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2741,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2019-09-10T04:31:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d628cdb4_2193b546",
+      "range": {
+        "startLine": 2741,
+        "startChar": 3,
+        "endLine": 2741,
+        "endChar": 25
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -163,6 +283,30 @@
     },
     {
       "key": {
+        "uuid": "da339b4d_bca99be0",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2138,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2019-09-10T04:31:59Z",
+      "side": 1,
+      "message": "Agreed, this could avoid some operations for non-gso packets.",
+      "parentUuid": "fcc8493d_4ecd5b72",
+      "range": {
+        "startLine": 2138,
+        "startChar": 16,
+        "endLine": 2138,
+        "endChar": 18
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "645df409_cc369e3e",
         "filename": "src/vnet/tcp/tcp_output.c",
         "patchSetId": 1
@@ -186,6 +330,30 @@
     },
     {
       "key": {
+        "uuid": "3c92e2d4_66db4630",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2148,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2019-09-10T04:31:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "645df409_cc369e3e",
+      "range": {
+        "startLine": 2148,
+        "startChar": 6,
+        "endLine": 2148,
+        "endChar": 13
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5cef154b_4bc92494",
         "filename": "src/vnet/tcp/tcp_output.c",
         "patchSetId": 1
@@ -197,6 +365,30 @@
       "writtenOn": "2019-09-02T16:50:21Z",
       "side": 1,
       "message": "Shouldn\u0027t this be b-\u003ecurrent_length + b-\u003etotal_length_not_including_first_buffer?",
+      "range": {
+        "startLine": 2152,
+        "startChar": 35,
+        "endLine": 2152,
+        "endChar": 46
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "df3dcde8_339da7ae",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2152,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2019-09-10T04:31:59Z",
+      "side": 1,
+      "message": "gso_size should be send to NIC later to let it know how long it should do segmentation for each packet, so this variable should equal to a real mss.",
+      "parentUuid": "5cef154b_4bc92494",
       "range": {
         "startLine": 2152,
         "startChar": 35,
