@@ -11,9 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-quicly_version := 0.0.3-vpp
+quicly_version := 0.0.4-vpp
 quicly_tarball := quicly_$(quicly_version).tar.gz
-quicly_tarball_md5sum := fa4be6d9039967b380bbf14c96e34cdc
+quicly_tarball_md5sum := b70ced4c6834d3f5cbad78622231cec8
 quicly_tarball_strip_dirs := 1
 quicly_url := https://github.com/vpp-quic/quicly/releases/download/v$(quicly_version)/quicly_$(quicly_version).tar.gz
 
