@@ -72,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "81f559eb_0a0e65f7",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1209,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-10T04:57:49Z",
+      "side": 1,
+      "message": "The idea was to avoid the function call, unless tso is enabled, especially because this is called for each connection burst. That way, you can keep the function that computes mss for gso as simple as possible and isolated. That\u0027s also why I recommended the change of name to tcp_gso_mss",
+      "parentUuid": "fcee303d_cd50b0d7",
+      "range": {
+        "startLine": 1209,
+        "startChar": 9,
+        "endLine": 1209,
+        "endChar": 39
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a798633f_4cddaed6",
         "filename": "src/vnet/tcp/tcp.h",
         "patchSetId": 1
@@ -154,6 +178,30 @@
       "side": 1,
       "message": "this is a unused variable, will delete it",
       "parentUuid": "76b246dd_f5fb8ab3",
+      "range": {
+        "startLine": 325,
+        "startChar": 2,
+        "endLine": 325,
+        "endChar": 19
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a15c42a3_4b8ddd09",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-10T04:57:49Z",
+      "side": 1,
+      "message": "Perfect!",
+      "parentUuid": "3091ec79_83411131",
       "range": {
         "startLine": 325,
         "startChar": 2,
@@ -389,6 +437,30 @@
       "side": 1,
       "message": "gso_size should be send to NIC later to let it know how long it should do segmentation for each packet, so this variable should equal to a real mss.",
       "parentUuid": "5cef154b_4bc92494",
+      "range": {
+        "startLine": 2152,
+        "startChar": 35,
+        "endLine": 2152,
+        "endChar": 46
+      },
+      "revId": "fb748ad493e8583b25fb6511ccda771676b65c10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f81ae698_02b4fe96",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2152,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-10T04:57:49Z",
+      "side": 1,
+      "message": "Ow, so gso_size is actual mss. Then it looks okay.",
+      "parentUuid": "df3dcde8_339da7ae",
       "range": {
         "startLine": 2152,
         "startChar": 35,
