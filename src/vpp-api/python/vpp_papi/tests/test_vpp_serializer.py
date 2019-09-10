@@ -104,6 +104,10 @@ class TestAddType(unittest.TestCase):
                           [['vl_api_address_family_t', 'af'],
                            ['vl_api_address_union_t', 'un']])
 
+        prefix = VPPType('vl_api_prefix_t',
+                         [['vl_api_address_t', 'address'],
+                          ['u8', 'len']])
+
         va_address_list = VPPType('list_addresses',
                                   [['u8', 'count'],
                                    ['vl_api_address_t', 'addresses',
@@ -150,6 +154,24 @@ class TestAddType(unittest.TestCase):
         self.assertEqual(len(b), 82)
         nt, size = message_with_va_address_list.unpack(b)
         self.assertEqual(nt.is_cool, 100)
+
+        # Prefixes
+        b = prefix.pack({'address': {'af': af.ADDRESS_IP4,
+                                     'un':
+                                     {'ip4': inet_pton(AF_INET, '2.2.2.2')}},
+                         'len': 24})
+        self.assertEqual(len(b), 21)
+        nt, size = prefix.unpack(b)
+        self.assertEqual(str(nt), '2.2.2.2/24')
+
+        b = prefix.pack({'address': {'af': af.ADDRESS_IP6,
+                                     'un':
+                                     {'ip6': inet_pton(AF_INET6,
+                                                       'abcd:1234::1234')}},
+                         'len': 64})
+        self.assertEqual(len(b), 21)
+        nt, size = prefix.unpack(b)
+        self.assertEqual(str(nt), 'abcd:1234::1234/64')
 
     def test_recursive_address(self):
         af = VPPEnumType('vl_api_address_family_t', [["ADDRESS_IP4", 0],

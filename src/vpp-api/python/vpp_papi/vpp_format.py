@@ -30,6 +30,34 @@ ADDRESS_IP6 = 1
 #
 # Type conversion for input arguments and return values
 #
+def vppIPv4Network__init__(self, address, strict=True):
+    if strict:
+        IPv4Networkinit(self, address, strict=True)
+    else:
+        try:
+            IPv4Networkinit(self, address, strict=True)
+        except ValueError:
+            # This assumes that the original init function had done
+            # all it needed to do when throwing the mask exception.
+            pass
+
+
+def vppIPv6Network__init__(self, address, strict=True):
+    if strict:
+        IPv6Networkinit(self, address, strict=True)
+    else:
+        try:
+            IPv6Networkinit(self, address, strict=True)
+        except ValueError:
+            # This assumes that the original init function had done
+            # all it needed to do when throwing the mask exception.
+            pass
+
+
+IPv4Networkinit = ipaddress.IPv4Network.__init__
+ipaddress.IPv4Network.__init__ = vppIPv4Network__init__
+IPv6Networkinit = ipaddress.IPv6Network.__init__
+ipaddress.IPv6Network.__init__ = vppIPv6Network__init__
 
 
 def format_vl_api_address_t(args):
