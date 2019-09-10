@@ -1134,6 +1134,42 @@ ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index)
     clib_warning ("WARNING: replaced next index for protocol %d", protocol);
 }
 
+typedef struct {
+  ip6_hop_by_hop_option_t hdr;
+  u16 mtu1;
+  u16 mtu2;
+} __attribute__ ((packed)) hbh_mtu_t;
+
+int hbh_mtu (vlib_buffer_t * b, ip6_header_t * ip,
+	     ip6_hop_by_hop_option_t * opt)
+{
+  hbh_mtu_t *m = (hbh_mtu_t *)opt;
+  u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
+  ip_adjacency_t *adj = adj_get (adj_index);
+  u16 mtu = adj[0].rewrite_header.max_l3_packet_bytes;
+  if (mtu < m->mtu1)
+    m->mtu1 = clib_host_to_net_u16(mtu);
+  return 0;
+}
+
+u8 * hbh_mtu_trace (u8 * s, ip6_hop_by_hop_option_t * opt)
+{
+  hbh_mtu_t *m = (hbh_mtu_t *)opt;
+  s = format(s, "\n     HBH MTU RECORD MTU1: %d MTU2: %d", clib_net_to_host_u16(m->mtu1),
+	     clib_net_to_host_u16(m->mtu2));
+  return s;
+}
+
+static clib_error_t *
+ip6_hop_by_hop_mtu_init (vlib_main_t * vm)
+{
+  /* Register handling of MTU option */
+  ip6_hbh_register_option (HBH_OPTION_TYPE_MTU_RECORD, hbh_mtu, hbh_mtu_trace);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ip6_hop_by_hop_mtu_init);
+
 int
 ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
 		      int has_pot_option, int has_seqno_option)

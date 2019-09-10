@@ -41,9 +41,11 @@ typedef struct
 } ip6_hop_by_hop_option_t;
 
 /* $$$$ IANA banana constants */
-#define HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST 59	/* Third highest bit set (change en-route) */
-#define HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT 60	/* Third highest bit set (change en-route) */
-#define HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE 29
+
+#define HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST	59	/* Third highest bit set (change en-route) */
+#define HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT	60	/* Third highest bit set (change en-route) */
+#define HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE	29
+#define HBH_OPTION_TYPE_MTU_RECORD		48
 
 #endif /* __included_ip6_hop_by_hop_packet_h__ */
 
