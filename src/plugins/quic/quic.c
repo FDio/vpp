@@ -377,6 +377,8 @@ quic_send_packets (quic_ctx_t * ctx)
       if ((err = quicly_send (conn, packets, &num_packets)))
 	goto quicly_error;
 
+      quic_crypto_process ();
+
       for (i = 0; i != num_packets; ++i)
 	{
 	  if ((err = quic_send_datagram (udp_session, packets[i])))
@@ -896,7 +898,8 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
   ptls_ctx->get_time = &ptls_get_time;
   ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
-  ptls_ctx->cipher_suites = qm->quic_ciphers[qm->default_cipher];
+  //ptls_ctx->cipher_suites = qm->quic_ciphers[qm->default_cipher];
+  ptls_ctx->cipher_suites = vpp_crypto_cipher_suites;
   ptls_ctx->certificates.list = NULL;
   ptls_ctx->certificates.count = 0;
   ptls_ctx->esni = NULL;
@@ -938,6 +941,10 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
   quicly_ctx->cid_encryptor =
     quicly_new_default_cid_encryptor (&ptls_openssl_bfecb,
 				      &ptls_openssl_sha256, key_vec);
+
+  quicly_ctx->crypto_codec = quic_new_crypto_codec ();
+  //quicly_ctx->crypto_codec = quicly_new_default_crypto_codec ();
+
   if (is_client)
     return;
   if (app->tls_key != NULL && app->tls_cert != NULL)
@@ -2062,6 +2069,8 @@ quic_app_rx_callback (session_t * udp_session)
 				      &fifo_offset, &max_packets, i,
 				      &packets_ctx[i]);
 	}
+
+      quic_decrypt_process ();
 
       for (int i = 0; i < max_packets; i++)
 	{
