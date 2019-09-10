@@ -20,6 +20,10 @@
 
 extern ptls_cipher_suite_t *quic_crypto_cipher_suites[];
 
+quicly_crypto_codec_t *quic_new_crypto_codec ();
+void quic_crypto_process ();
+void quic_decrypt_process ();
+
 #endif /* __included_vpp_quic_crypto_h__ */
 
 /*

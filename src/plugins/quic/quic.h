@@ -41,6 +41,9 @@
 #define QUIC_FIFO_SIZE (64 << 10)
 #define QUIC_SEND_PACKET_VEC_SIZE 16
 
+#define QUIC_SEND_MAX_BATCH_PACKETS 16
+#define QUIC_RCV_MAX_BATCH_PACKETS 16
+
 /* Taken from quicly.c */
 #define QUICLY_QUIC_BIT 0x40
 
