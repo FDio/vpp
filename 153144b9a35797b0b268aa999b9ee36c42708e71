@@ -16,6 +16,24 @@
       "revId": "153144b9a35797b0b268aa999b9ee36c42708e71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c2ee98c2_09306ce8",
+        "filename": "src/plugins/memif/memif_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-09-10T22:23:20Z",
+      "side": 1,
+      "message": "You are absolutely right. I corrected the patch by looking at the most recent memif commit which introduced the problem. Good catch!",
+      "parentUuid": "a1cb503b_fd5d8249",
+      "revId": "153144b9a35797b0b268aa999b9ee36c42708e71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
