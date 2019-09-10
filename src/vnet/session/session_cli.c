@@ -353,7 +353,7 @@ session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
       return;
     }
 
-  max_index = pool_elts (pool) ? pool_elts (pool) - 1 : 0;
+  max_index = pool_len (pool) ? pool_len (pool) - 1 : 0;
   for (i = start; i <= clib_min (end, max_index); i++)
     {
       if (pool_is_free_index (pool, i))
