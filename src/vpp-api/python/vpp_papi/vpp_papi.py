@@ -645,10 +645,9 @@ class VPPApiClient(object):
         # Block until we get a reply.
         rl = []
         while (True):
-            msg = self.transport.read()
-            if not msg:
+            r = self.read_blocking(no_type_conversion)
+            if r is None:
                 raise VPPIOError(2, 'VPP API client: read failed')
-            r = self.decode_incoming_msg(msg, no_type_conversion)
             msgname = type(r).__name__
             if context not in r or r.context == 0 or context != r.context:
                 # Message being queued
@@ -699,6 +698,33 @@ class VPPApiClient(object):
 
         self.transport.write(b)
         return context
+
+    def read_blocking(self, no_type_conversion=False):
+        """Get next received message from transport within timeout, decoded.
+
+        Note that noticifations have context zero
+        and are not put into receive queue (at least for socket transport),
+        use async_thread with registered callback for processing them.
+
+        If no message appears in the queue within timeout, return None.
+
+        Optionally, type conversion can be skipped,
+        as some of conversions are into less precise types.
+
+        When r is the return value of this, the caller can get message name as:
+            msgname = type(r).__name__
+        and context number (type long) as:
+            context = r.context
+
+        :param no_type_conversion: If false, type conversions are applied.
+        :type no_type_conversion: bool
+        :returns: Decoded message, or None if no message (within timeout).
+        :rtype: Whatever VPPType.unpack returns, depends on no_type_conversion.
+        """
+        msg = self.transport.read()
+        if not msg:
+            return None
+        return self.decode_incoming_msg(msg, no_type_conversion)
 
     def register_event_callback(self, callback):
         """Register a callback for async messages.
