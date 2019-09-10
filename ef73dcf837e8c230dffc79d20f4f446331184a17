@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0395f5a4_6e236ab3",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2136,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-10T05:04:25Z",
+      "side": 1,
+      "message": "Seems I missed this. Could you remove the 46 from the name? We only used that convention for nodes to make it clear that we support both transports. But afterwards, tcp specific functions have are always assumed to support both network protos.",
+      "range": {
+        "startLine": 2136,
+        "startChar": 0,
+        "endLine": 2136,
+        "endChar": 18
+      },
+      "revId": "ef73dcf837e8c230dffc79d20f4f446331184a17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bfe4b6cf_d8340bd1",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2138,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-10T05:04:25Z",
+      "side": 1,
+      "message": "PREDICT_TRUE(), since this is the expected norm.",
+      "range": {
+        "startLine": 2138,
+        "startChar": 6,
+        "endLine": 2138,
+        "endChar": 50
+      },
+      "revId": "ef73dcf837e8c230dffc79d20f4f446331184a17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
