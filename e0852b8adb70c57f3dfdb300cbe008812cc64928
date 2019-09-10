@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d86922bd_e4669334",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1093,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-09-10T19:01:40Z",
+      "side": 1,
+      "message": "Any reason not to simply vec_add1 (ctx-\u003esrv_hostname, 0) and call it a day?",
+      "revId": "e0852b8adb70c57f3dfdb300cbe008812cc64928",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
