@@ -1085,16 +1085,12 @@ quic_connect_new_connection (session_endpoint_cfg_t * sep)
   ctx->client_opaque = sep->opaque;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   if (sep->hostname)
-    {
-      ctx->srv_hostname = format (0, "%v", sep->hostname);
-      vec_terminate_c_string (ctx->srv_hostname);
-    }
+    ctx->srv_hostname = format (0, "%v", sep->hostname);
   else
-    {
-      /*  needed by quic for crypto + determining client / server */
-      ctx->srv_hostname =
-	format (0, "%U", format_ip46_address, &sep->ip, sep->is_ip4);
-    }
+    /*  needed by quic for crypto + determining client / server */
+    ctx->srv_hostname =
+      format (0, "%U", format_ip46_address, &sep->ip, sep->is_ip4);
+  vec_terminate_c_string (ctx->srv_hostname);
 
   clib_memcpy (&cargs->sep, sep, sizeof (session_endpoint_cfg_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_UDPC;
