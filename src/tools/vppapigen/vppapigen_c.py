@@ -103,7 +103,7 @@ def api2c(fieldtype):
     return fieldtype
 
 
-def typedefs(objs, aliases, filename):
+def typedefs(objs, filename):
     name = filename.replace('.', '_')
     output = '''\
 
@@ -116,18 +116,15 @@ def typedefs(objs, aliases, filename):
 '''
     output = output.format(module=name)
 
-    for k, v in aliases.items():
-        output += duplicate_wrapper_head(k)
-        if 'length' in v:
-            output +=  'typedef %s vl_api_%s_t[%s];\n' % (v['type'], k, v['length'])
-        else:
-            output += 'typedef %s vl_api_%s_t;\n' % (v['type'], k)
-        output += duplicate_wrapper_tail()
-
     for o in objs:
         tname = o.__class__.__name__
         output += duplicate_wrapper_head(o.name)
-        if tname == 'Enum':
+        if tname == 'Using':
+            if 'length' in o.alias:
+                output +=  'typedef %s vl_api_%s_t[%s];\n' % (o.alias['type'], o.name, o.alias['length'])
+            else:
+                output += 'typedef %s vl_api_%s_t;\n' % (o.alias['type'], o.name)
+        elif tname == 'Enum':
             if o.enumtype == 'u32':
                 output += "typedef enum {\n"
             else:
@@ -311,7 +308,7 @@ def run(input_filename, s):
     output += msg_ids(s)
     output += msg_names(s)
     output += msg_name_crc_list(s, filename)
-    output += typedefs(s['types'] + s['Define'], s['Alias'], filename + file_extension)
+    output += typedefs(s['types'] + s['Define'], filename + file_extension)
     output += printfun(s['types'] + s['Define'])
     output += endianfun(s['types'] + s['Define'])
     output += version_tuple(s, basename)
