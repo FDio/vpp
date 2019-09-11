@@ -370,6 +370,7 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
   u8 thread_index = vlib_get_thread_index ();
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   u32 stream_n;
+  session_handle_t handle;
 
   DBG ("QUIC Connection handle %d", session_handle (s));
 
@@ -377,7 +378,7 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
   a->uri = (char *) ecm->connect_uri;
   if (parse_uri (a->uri, &sep))
     return -1;
-  sep.parent_handle = session_handle (s);
+  sep.parent_handle = handle = session_handle (s);
 
   for (stream_n = 0; stream_n < ecm->quic_streams; stream_n++)
     {
@@ -394,8 +395,11 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
 	}
       DBG ("QUIC stream %d connected", stream_n);
     }
-  vec_add1 (ecm->quic_session_index_by_thread[thread_index],
-	    session_handle (s));
+  /*
+   * 's' is no longer valid, its underlying pool could have been moved in
+   * vnet_connect()
+   */
+  vec_add1 (ecm->quic_session_index_by_thread[thread_index], handle);
   vec_free (a);
   return 0;
 }
