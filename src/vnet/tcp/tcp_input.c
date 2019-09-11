@@ -494,14 +494,20 @@ tcp_update_rto (tcp_connection_t * tc)
  * return 1 if valid rtt 0 otherwise
  */
 static int
-tcp_update_rtt (tcp_connection_t * tc, u32 ack)
+tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
 {
   u32 mrtt = 0;
 
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
-  if (tcp_in_cong_recovery (tc) || tc->sack_sb.sacked_bytes)
+  if (tcp_in_cong_recovery (tc))
     {
+      /* Accept rtt estimates for samples that have not been retransmitted */
+      if ((tc->flags & TCP_CONN_RATE_SAMPLE) && !(rs->flags & TCP_BTS_IS_RXT))
+	{
+	  mrtt = rs->rtt_time * THZ;
+	  goto estimate_rtt;
+	}
       if (tcp_in_recovery (tc))
 	return 0;
       goto done;
@@ -523,6 +529,8 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
       u32 now = tcp_tstamp (tc);
       mrtt = clib_max (now - tc->rcv_opts.tsecr, 1);
     }
+
+estimate_rtt:
 
   /* Ignore dubious measurements */
   if (mrtt == 0 || mrtt > TCP_RTT_MAX)
@@ -1594,14 +1602,14 @@ process_ack:
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    tcp_bt_sample_delivery_rate (tc, &rs);
+
   if (tc->bytes_acked)
     {
       tcp_program_dequeue (wrk, tc);
-      tcp_update_rtt (tc, vnet_buffer (b)->tcp.ack_number);
+      tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
     }
-
-  if (tc->flags & TCP_CONN_RATE_SAMPLE)
-    tcp_bt_sample_delivery_rate (tc, &rs);
 
   TCP_EVT (TCP_EVT_ACK_RCVD, tc);
 
