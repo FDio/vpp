@@ -319,6 +319,9 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 	    }
 	}
 
+      /* No dangling references, please */
+      *regpp = 0;
+
       /* For horizontal scaling, add a hash table... */
       for (i = 0; i < vec_len (am->vlib_private_rps); i++)
 	{
@@ -346,9 +349,6 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 	      break;
 	    }
 	}
-
-      /* No dangling references, please */
-      *regpp = 0;
 
       if (private_registration == 0)
 	{
