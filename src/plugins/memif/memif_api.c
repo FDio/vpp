@@ -144,9 +144,6 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   /* mode */
   args.mode = mp->mode;
 
-  /* enable zero-copy */
-  args.is_zero_copy = 1;
-
   /* rx/tx queues */
   if (args.is_master == 0)
     {
