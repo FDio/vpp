@@ -90,6 +90,8 @@ typedef prefix {
   u8 len;
 };
 
+typedef vl_api_prefix_t address_with_prefix;
+
 typedef mprefix {
   vl_api_address_family_t af;
   u16 grp_address_length;
