@@ -104,6 +104,10 @@ class TestAddType(unittest.TestCase):
                           [['vl_api_address_family_t', 'af'],
                            ['vl_api_address_union_t', 'un']])
 
+        prefix = VPPType('vl_api_prefix_t',
+                         [['vl_api_address_t', 'address'],
+                          ['u8', 'len']])
+
         va_address_list = VPPType('list_addresses',
                                   [['u8', 'count'],
                                    ['vl_api_address_t', 'addresses',
@@ -150,6 +154,96 @@ class TestAddType(unittest.TestCase):
         self.assertEqual(len(b), 82)
         nt, size = message_with_va_address_list.unpack(b)
         self.assertEqual(nt.is_cool, 100)
+
+    def test_address_with_prefix(self):
+        af = VPPEnumType('vl_api_address_family_t', [["ADDRESS_IP4", 0],
+                                                     ["ADDRESS_IP6", 1],
+                                                     {"enumtype": "u32"}])
+        ip4 = VPPTypeAlias('vl_api_ip4_address_t', {'type': 'u8',
+                                                    'length': 4})
+        ip6 = VPPTypeAlias('vl_api_ip6_address_t', {'type': 'u8',
+                                                    'length': 16})
+        VPPUnionType('vl_api_address_union_t',
+                     [["vl_api_ip4_address_t", "ip4"],
+                      ["vl_api_ip6_address_t", "ip6"]])
+
+        address = VPPType('vl_api_address_t',
+                          [['vl_api_address_family_t', 'af'],
+                           ['vl_api_address_union_t', 'un']])
+
+
+        prefix = VPPType('vl_api_prefix_t',
+                         [['vl_api_address_t', 'address'],
+                          ['u8', 'len']])
+        prefix4 = VPPType('vl_api_ip4_prefix_t',
+                          [['vl_api_ip4_address_t', 'address'],
+                          ['u8', 'len']])
+        prefix6 = VPPType('vl_api_ip6_prefix_t',
+                          [['vl_api_ip6_address_t', 'address'],
+                          ['u8', 'len']])
+
+        address_with_prefix = VPPTypeAlias('vl_api_address_with_prefix_t', {'type': 'vl_api_prefix_t' })
+        address4_with_prefix = VPPTypeAlias('vl_api_ip4_address_with_prefix_t',
+                                            {'type': 'vl_api_ip4_prefix_t' })
+        address6_with_prefix = VPPTypeAlias('vl_api_ip6_address_with_prefix_t',
+                                            {'type': 'vl_api_ip6_prefix_t' })
+
+        awp_type = VPPType('foobar_t',
+                           [['vl_api_address_with_prefix_t', 'address']])
+
+        # address with prefix
+        b = address_with_prefix.pack(IPv4Interface('2.2.2.2/24'))
+        self.assertEqual(len(b), 21)
+        nt, size = address_with_prefix.unpack(b)
+        self.assertTrue(isinstance(nt, IPv4Interface))
+        self.assertEqual(str(nt), '2.2.2.2/24')
+
+        b = address_with_prefix.pack(IPv6Interface('2::2/64'))
+        self.assertEqual(len(b), 21)
+        nt, size = address_with_prefix.unpack(b)
+        self.assertTrue(isinstance(nt, IPv6Interface))
+        self.assertEqual(str(nt), '2::2/64')
+
+        b = address_with_prefix.pack(IPv4Network('2.2.2.2/24', strict=False))
+        self.assertEqual(len(b), 21)
+        nt, size = address_with_prefix.unpack(b)
+        self.assertTrue(isinstance(nt, IPv4Interface))
+        self.assertEqual(str(nt), '2.2.2.0/24')
+
+        b = address4_with_prefix.pack('2.2.2.2/24')
+        self.assertEqual(len(b), 5)
+        nt, size = address4_with_prefix.unpack(b)
+        self.assertTrue(isinstance(nt, IPv4Interface))
+        self.assertEqual(str(nt), '2.2.2.2/24')
+        b = address4_with_prefix.pack(IPv4Interface('2.2.2.2/24'))
+        self.assertEqual(len(b), 5)
+
+        b = address6_with_prefix.pack('2::2/64')
+        self.assertEqual(len(b), 17)
+        nt, size = address6_with_prefix.unpack(b)
+        self.assertTrue(isinstance(nt, IPv6Interface))
+        self.assertEqual(str(nt), '2::2/64')
+        b = address6_with_prefix.pack(IPv6Interface('2::2/64'))
+        self.assertEqual(len(b), 17)
+
+        b = prefix.pack('192.168.10.0/24')
+        self.assertEqual(len(b), 21)
+        nt, size = prefix.unpack(b)
+        self.assertTrue(isinstance(nt, IPv4Network))
+        self.assertEqual(str(nt), '192.168.10.0/24')
+
+        b = awp_type.pack({'address': '1.2.3.4/24'})
+        self.assertEqual(len(b), 21)
+        nt, size = awp_type.unpack(b)
+        self.assertTrue(isinstance(nt.address, IPv4Interface))
+        self.assertEqual(str(nt.address), '1.2.3.4/24')
+
+        b = awp_type.pack({'address': IPv4Interface('1.2.3.4/24')})
+        self.assertEqual(len(b), 21)
+        nt, size = awp_type.unpack(b)
+        self.assertTrue(isinstance(nt.address, IPv4Interface))
+        self.assertEqual(str(nt.address), '1.2.3.4/24')
+
 
     def test_recursive_address(self):
         af = VPPEnumType('vl_api_address_family_t', [["ADDRESS_IP4", 0],

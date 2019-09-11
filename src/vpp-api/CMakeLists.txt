@@ -29,5 +29,5 @@ add_vpp_headers(vpp-api
   client/stat_client.h
 )
 
-add_subdirectory(vapi)
+#add_subdirectory(vapi)
 add_subdirectory(python)

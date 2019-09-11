@@ -191,7 +191,7 @@ sanity: verify-no-running-vpp
 
 .PHONY: ext
 ext:
-	make -C ext
+	#	make -C ext
 
 test-dep: verify-test-dir $(PAPI_INSTALL_DONE)
 
