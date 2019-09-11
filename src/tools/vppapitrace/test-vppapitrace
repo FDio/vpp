@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#
+# Run the vppapitrace without installing it, from the tree
+#
+
+ROOT_DIR=$(git rev-parse --show-toplevel)
+PYTHONPATH=${ROOT_DIR}/src/vpp-api/python/
+
+API_FILES=$(find /tmp/vpp-unittest-* -name 'vpp_api_trace*.log')
+
+OUT_DIR=$(mktemp -d /tmp/vppapitrace-test-XXXXXXXXXX)
+echo "Converting .api files found from make test-debug into JSON in ${OUT_DIR}:"
+
+for F in ${API_FILES}; do
+    OUT_F="${OUT_DIR}/$(basename $F).json "
+    echo "$F => $OUT_F ..." 
+    python3 ${ROOT_DIR}/src/tools/vppapitrace/vppapitrace.py --apidir ${ROOT_DIR}/build-root/install-vpp_debug-native/vpp/share/vpp/api/ convert $F $OUT_F
+done
+

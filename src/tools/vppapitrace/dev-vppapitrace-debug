@@ -1,0 +1,11 @@
+#!/bin/bash
+
+#
+# Run the vppapitrace without installing it, from the tree
+#
+
+ROOT_DIR=$(git rev-parse --show-toplevel)
+PYTHONPATH=${ROOT_DIR}/src/vpp-api/python/
+
+python3 ${ROOT_DIR}/src/tools/vppapitrace/vppapitrace.py --debug --apidir ${ROOT_DIR}/build-root/install-vpp_debug-native/vpp/share/vpp/api/ $@
+
