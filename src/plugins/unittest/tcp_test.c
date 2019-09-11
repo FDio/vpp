@@ -820,14 +820,6 @@ tbt_seq_lt (u32 a, u32 b)
   return seq_lt (a, b);
 }
 
-static inline int
-approx_equal (u32 a, u32 b)
-{
-  if (b > 0.99 * a && b < 1.01 * a)
-    return 1;
-  return 0;
-}
-
 static int
 tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -894,9 +886,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (rs->interval_time == 1, "ack time should be 1");
   TCP_TEST (rs->delivered == burst, "delivered should be 100");
   TCP_TEST (rs->prior_delivered == 0, "sample delivered should be 0");
-  TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
-	    rs->tx_rate);
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
+  TCP_TEST (tc->first_tx_time == 1, "first_tx_time %u", tc->first_tx_time);
 
   /* 3) track second burst at time 2 */
   tcp_bt_track_tx (tc);
@@ -934,10 +925,9 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (rs->interval_time == 2, "ack time should be 2");
   TCP_TEST (rs->delivered == 2 * burst, "delivered should be 200");
   TCP_TEST (rs->prior_delivered == burst, "delivered should be 100");
-  TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
-	    rs->tx_rate);
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
   TCP_TEST (!(bts->flags & TCP_BTS_IS_APP_LIMITED), "not app limited");
+  TCP_TEST (tc->first_tx_time == 2, "first_tx_time %u", tc->first_tx_time);
 
   /*
    * Track retransmissions
@@ -947,7 +937,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 
   snd_una = tc->snd_una;
 
-  /* 1) track first burst a time 4 */
+  /* 1) track first burst at time 4 */
   tcp_bt_track_tx (tc);
   tc->snd_nxt += burst;
 
@@ -1003,10 +993,11 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (rs->delivered == 30, "delivered should be 30");
   TCP_TEST (rs->prior_delivered == 3 * burst,
 	    "sample delivered should be %u", 3 * burst);
-  TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
-	    rs->tx_rate);
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
   TCP_TEST (!(rs->flags & TCP_BTS_IS_APP_LIMITED), "not app limited");
+  /* All 3 samples have the same delivered number of bytes. The first
+   * sets the first tx time */
+  TCP_TEST (tc->first_tx_time == 4, "first_tx_time %u", tc->first_tx_time);
 
   /* 6) Retransmit and track at time 9
    *
@@ -1079,20 +1070,22 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered_time == 10, "delivered time should be 10");
   TCP_TEST (tc->delivered == 5 * burst + 40, "delivered should be %u is %u",
 	    5 * burst + 40, tc->delivered);
-  /* A rxt was acked and delivered time for it is 8 (last ack time) */
-  TCP_TEST (rs->interval_time == 2, "ack time should be 2 is %.2f",
+  /* A rxt was acked and delivered time for it is 8 (last ack time) so
+   * ack_time is 2 (8 - 10). However, first_tx_time for rxt was 4 and rxt
+   * time 9. Therefore snd_time is 5 (9 - 4)*/
+  TCP_TEST (rs->interval_time == 5, "ack time should be 5 is %.2f",
 	    rs->interval_time);
   /* delivered_now - delivered_rxt ~ 5 * burst + 40 - 3 * burst - 30 */
   TCP_TEST (rs->delivered == 2 * burst + 10, "delivered should be 210 is %u",
 	    rs->delivered);
   TCP_TEST (rs->prior_delivered == 3 * burst + 30,
 	    "sample delivered should be %u", 3 * burst + 30);
-  TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
-	    rs->tx_rate);
   TCP_TEST (rs->flags & TCP_BTS_IS_RXT, "is retransmitted");
   /* Sample is app limited because of the retransmits */
   TCP_TEST (rs->flags & TCP_BTS_IS_APP_LIMITED, "is app limited");
   TCP_TEST (tc->app_limited, "app limited should be set");
+  TCP_TEST (tc->first_tx_time == 9, "first_tx_time %u", tc->first_tx_time);
+
 
   /*
    * 8) check delivery rate at time 11
@@ -1112,8 +1105,10 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered_time == 11, "delivered time should be 11");
   TCP_TEST (tc->delivered == 7 * burst, "delivered should be %u is %u",
 	    7 * burst, tc->delivered);
-  /* Last rxt was at time 8 */
-  TCP_TEST (rs->interval_time == 3, "ack time should be 3 is %.2f",
+  /* Delivered time at retransmit was 8 so ack_time is 11 - 8 = 3. However,
+   * first_tx_time for rxt was 4 and rxt time was 9. Therefore snd_time
+   * is 9 - 4 = 5 */
+  TCP_TEST (rs->interval_time == 5, "ack time should be 5 is %.2f",
 	    rs->interval_time);
   /* delivered_now - delivered_rxt ~ 7 * burst - 3 * burst - 30.
    * That's because we didn't retransmit any new segment. */
@@ -1121,11 +1116,10 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 	    rs->delivered);
   TCP_TEST (rs->prior_delivered == 3 * burst + 30,
 	    "sample delivered should be %u", 3 * burst + 30);
-  TCP_TEST (approx_equal (rate, rs->tx_rate), "rate should be %u is %u", rate,
-	    rs->tx_rate);
   TCP_TEST (rs->flags & TCP_BTS_IS_RXT, "is retransmitted");
   TCP_TEST (rs->flags & TCP_BTS_IS_APP_LIMITED, "is app limited");
   TCP_TEST (tc->app_limited == 0, "app limited should be cleared");
+  TCP_TEST (tc->first_tx_time == 9, "first_tx_time %u", tc->first_tx_time);
 
   /*
    * 9) test flush
