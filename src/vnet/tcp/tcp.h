@@ -240,6 +240,7 @@ typedef struct tcp_bt_sample_
   u64 delivered;		/**< Total delivered bytes for sample */
   f64 delivered_time;		/**< Delivered time when sample taken */
   f64 tx_time;			/**< Transmit time for the burst */
+  f64 first_tx_time;		/**< Connection first tx time at tx */
   u64 tx_rate;			/**< Tx pacing rate */
   tcp_bts_flags_t flags;	/**< Sample flag */
 } tcp_bt_sample_t;
@@ -394,6 +395,7 @@ typedef struct _tcp_connection
   u64 delivered;		/**< Total bytes delivered to peer */
   u64 app_limited;		/**< Delivered when app-limited detected */
   f64 delivered_time;		/**< Time last bytes were acked */
+  f64 first_tx_time;		/**< Send time for recently delivered/sent */
   tcp_byte_tracker_t *bt;	/**< Tx byte tracker */
 
   tcp_errors_t errors;	/**< Soft connection errors */
