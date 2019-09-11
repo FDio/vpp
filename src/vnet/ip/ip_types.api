@@ -107,6 +107,23 @@ typedef ip4_prefix {
   u8 len;
 };
 
+/** \brief
+ *
+ * The vl_api_[ip4|ip6]_address_with_prefix_t types are used as a type to denote
+ * both an IP address and a prefix. I.e. in CIDR notation
+ * '192.168.10.1/24' the address is 192.168.10.1 and the network
+ * prefix is 192.168.10.0/24.
+ *
+ * If only an address is needed use: vl_api_address_t types and if
+ * only a network prefix is needed (i.e. no hosts bits), then use the
+ * vl_api_prefix_t types.
+ *
+ **/
+
+typedef vl_api_prefix_t address_with_prefix;
+typedef vl_api_ip4_prefix_t ip4_address_with_prefix;
+typedef vl_api_ip6_prefix_t ip6_address_with_prefix;
+
 /** \brief A context for matching prefixes against.  (Think ip prefix list.)
     The meaning (exact match / want subnets) of an unset matcher is left to the implementer.
     @param le - le mut be <= to prefix.len. Default: 255 (not set).
