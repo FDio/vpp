@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b2ee760d_c9b2df2a",
+        "filename": "src/vnet/ip/ip_types.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-11T17:01:12Z",
+      "side": 1,
+      "message": "I wonder whether the CRC will be different.\n\nShould we copy lines 89-90 here, in order to avoid CRC change in future (when we add address alignment validation for vl_api_prefix_t),\nor do we intentionally want to create CRC change, so CSIT knows which tests to verify?",
+      "range": {
+        "startLine": 93,
+        "startChar": 24,
+        "endLine": 93,
+        "endChar": 43
+      },
+      "revId": "c04c15dc7c213b4fa74b5d25522f1cc21a07fbb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
