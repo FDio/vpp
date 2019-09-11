@@ -1,0 +1,120 @@
+#!/bin/bash
+set -eu
+
+#
+# this script will print a HTML table with all the commits
+# (in ascending time order) that can be cherrypicked
+# into stable/1908 from master off the 20.01-rc0 tag.
+#
+# It mechanically tries to cherry-pick the commits,
+# and prints the results. If the cherrypick succeeds,
+# it remains in the branch in the ephemeral repository
+# used for building the report, so it is better to cherry-pick
+# the topmost opportunities first.
+#
+# launch as ./check-cpicks <ignored-commits-file> >report.html
+#
+
+cherry_pick () {
+  COMMIT=$1
+  IS_IGNORED=$(echo $IGNORED_COMMITS | grep ${COMMIT} | wc -l)
+  if [ $IS_IGNORED == 1 ]; then
+	  return
+  fi
+  API_CHANGES=$(git diff --name-only ${COMMIT}~1..${COMMIT} | egrep '\.api$' | wc -l)
+  DOCS_COMMIT=$(git --no-pager log ${COMMIT}~1..${COMMIT} | egrep 'Type: docs|^    docs: ' | wc -l)
+  
+  SKIP_COMMIT=0
+  DIFF_LINES=0
+  CHANGE_ID_VALUE=$(git --no-pager log ${COMMIT}~1..${COMMIT} | grep 'Change-Id: ' | sed -e 's/    Change-Id: //g')
+  HAS_CHANGE_ALREADY=$(git --no-pager log | grep "    Change-Id: ${CHANGE_ID_VALUE}" | wc -l)
+
+  if [ $DOCS_COMMIT == 0 ]; then
+    if git cherry-pick $COMMIT 2>/tmp/gitlog.$COMMIT >/tmp/gitlog.$COMMIT ; then
+      CHERRYPICK_OK=1
+    else
+      CHERRYPICK_OK=0
+      DIFF_LINES=$(git diff | wc -l)
+      ALL_DIFF_LINES=$(git diff | sed -e 's/$/XXXXX-ENDOFLINE-XXXXX/g')
+      if [ $DIFF_LINES == 0 ]; then
+        SKIP_COMMIT=1
+      fi
+      git cherry-pick --abort
+    fi
+  else
+    SKIP_COMMIT=1
+  fi
+  if [ -n "${SKIP_NO_ACTION+x}" ]; then
+    if [ $SKIP_COMMIT == 1 ]; then return; fi
+    if [ $HAS_CHANGE_ALREADY == 1 ]; then return; fi
+  fi
+
+  echo -e '<tr>'
+  echo -e '<td>' 
+  # echo "SKIP:$SKIP_COMMIT DIFFLINES:$DIFF_LINES"
+  if [ $DOCS_COMMIT == 0 ]; then
+	  if [ $API_CHANGES != 0 ]; then
+	    echo "<font color='red'>CHERRY-PICK-API-CHANGE $COMMIT - API change - manual analysis of applicability needed</font>"
+	  fi
+	    # no api changes, attempt to chery-pick
+	    echo -e "<pre>"
+	    if [ ${HAS_CHANGE_ALREADY} == 1 ]; then
+	        echo "<font color='blue'>CHERRY-PICK-CHERRY-PICKED $COMMIT - already cherrypicked according to branch history</font>"
+	    fi
+	    cat /tmp/gitlog.$COMMIT
+	    if [ $CHERRYPICK_OK == 1 ]; then
+	      echo "<font color='green'>CHERRY-PICK-READY $COMMIT - can be auto-cherrypicked</font>"
+	      if [ $API_CHANGES != 0 ]; then
+	        echo "<font color='red'>undo cherrypick of $COMMIT - API change</font>"
+		git reset --hard HEAD~1
+	      fi
+	    else
+	      if [ $DIFF_LINES == 0 ]; then
+		 echo "<font color='blue'>CHERRY-PICK-THERE $COMMIT - already there; applying is a no-op</font>"
+	      else
+		 # something went wrong - abort the cherry-pick
+		 echo "<font color='red'>CHERRY-PICK-ERROR $COMMIT - conflict resolution needed</font>"
+		 echo "<pre>"
+		 echo "$ALL_DIFF_LINES" | sed -e 's/XXXXX-ENDOFLINE-XXXXX//g'
+		 echo "</pre>"
+	      fi
+	    fi 
+  else
+	    echo "<font color='blue'>CHERRY-PICK-DOCS $COMMIT - docs - no action needed</font>"
+  fi
+  rm -f /tmp/gitlog.$COMMIT
+  echo -e '</td>'
+  echo -e '<td valign="top"><pre>\n'
+  git --no-pager log --stat ${COMMIT}~1..${COMMIT} | sed -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's$Change-Id: \(\S\+\)$Change-Id: <a href="https://gerrit.fd.io/r/#/q/\1">\1</a>$g'
+  echo -e '</pre></td>\n'
+  echo "</td>"
+  echo "</tr>"
+  
+}
+
+IGNORED_COMMITS_FILE="$1"
+IGNORED_COMMITS=$(cat ${IGNORED_COMMITS_FILE} | egrep -v '^#')
+TMP_ROOT="$(mktemp -d /tmp/check-cpicks-git-XXXXXXXXXXXXXX)"
+cd ${TMP_ROOT}
+git clone https://gerrit.fd.io/r/vpp
+cd vpp
+git checkout stable/1908
+
+git config user.email "ayourtch+cherrypick-test@gmail.com"
+git config user.name "Cherrypick Check Script"
+
+echo "<html><body>"
+echo "<br/>Generated on "
+date
+echo "<br/>"
+git reset --hard origin/stable/1908
+
+echo "<table border=1>"
+for C in $(git rev-list v20.01-rc0..origin/master | tac); do
+   # echo Commit $C
+   cherry_pick $C
+done
+echo "</table></body></html>"
+cd /tmp
+rm -rf ${TMP_ROOT}
+

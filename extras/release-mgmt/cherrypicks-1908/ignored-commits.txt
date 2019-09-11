@@ -1,0 +1,21 @@
+# This file contains the commit IDs from master that the cherry-pick
+# analysis tooling should ignore.
+#
+# This can be the following classes of commits:
+#
+# 1) the commits that are known to have been cherry-picked but
+#    for some reason the tooling can not detect that
+#    (e.g. if someone does a cp file-in-master file-in-stable1908)
+# 2) the commits that are known to not be acceptable for
+#    cherry-picking due to them changing other important external
+#    contracts from VPP to the user, e.g. socket paths,
+# 3) any commit that we explicitly want to
+#    not even show in the tooling for cherrypicking,
+#    for whatever reason
+#
+# changes the path of the API socket
+6595ff7f88be45d4c3f4dae09f7253b8b4ed26af
+71dd9d5ff8f9f629d7d917cc2b3695a910640602
+d991a798ff5eb6d151b6641e61fefc6315bab0ac
+# http_static was synced manually
+12b245e161b69fe64b16880b36324e86030fe305
