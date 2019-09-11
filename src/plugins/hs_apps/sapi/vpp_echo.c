@@ -160,7 +160,7 @@ print_global_stats (echo_main_t * em)
   s = format (0, "%U:%U",
 	      echo_format_timing_event, em->timing.start_event,
 	      echo_format_timing_event, em->timing.end_event);
-  fformat (stdout, "Timing %s\n", s);
+  fformat (stdout, "Timing %v\n", s);
   fformat (stdout, "-------- TX --------\n");
   fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.6f seconds\n",
 	   em->stats.tx_total, em->stats.tx_total / (1ULL << 20),
@@ -220,8 +220,8 @@ echo_free_sessions (echo_main_t * em)
     s = pool_elt_at_index (em->sessions, *session_index);
     echo_session_handle_add_del (em, s->vpp_session_handle,
 				 SESSION_INVALID_INDEX);
-    pool_put (em->sessions, s);
     clib_memset (s, 0xfe, sizeof (*s));
+    pool_put (em->sessions, s);
   }
 }
 
