@@ -67,7 +67,7 @@ enum lb_nat_protocol
 */
 typedef lb_vip
 {
-  vl_api_prefix_t pfx;
+  vl_api_address_with_prefix_t pfx;
   vl_api_ip_proto_t protocol;
   u16 port;
 };

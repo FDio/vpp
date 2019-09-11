@@ -713,12 +713,12 @@ def gen_json_unified_header(parser, logger, j, io, name):
     emitted = []
     for e in parser.enums_by_json[j]:
         emit_definition(parser, j, emitted, e)
-    for a in parser.aliases_by_json[j]:
-        emit_definition(parser, j, emitted, a)
     for u in parser.unions_by_json[j]:
         emit_definition(parser, j, emitted, u)
     for t in parser.types_by_json[j]:
         emit_definition(parser, j, emitted, t)
+    for a in parser.aliases_by_json[j]:
+        emit_definition(parser, j, emitted, a)
     for m in parser.messages_by_json[j].values():
         emit_definition(parser, j, emitted, m)
 
