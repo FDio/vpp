@@ -1766,7 +1766,7 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 	  vlib_cli_output (vm, "Write %d packets to %s, and stop capture...",
 			   pm->n_packets_captured, pm->file_name);
 	  error = pcap_write (pm);
-	  if (pm->file_descriptor >= 0)
+	  if (pm->flags & PCAP_MAIN_INIT_DONE)
 	    pcap_close (pm);
 	  /* Report I/O errors... */
 	  if (error)
