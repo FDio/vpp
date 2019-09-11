@@ -120,9 +120,10 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
   ({
     map_domain_index = d - mm->domains;
     de = vec_elt_at_index(mm->domain_extras, map_domain_index);
+    int tag_len = clib_min(ARRAY_LEN(rmp->tag), vec_len(de->tag) + 1);
 
     /* Make sure every field is initiated (or don't skip the clib_memset()) */
-    rmp = vl_msg_api_alloc (sizeof (*rmp) + vec_len(de->tag));
+    rmp = vl_msg_api_alloc (sizeof (*rmp) + tag_len);
 
     rmp->_vl_msg_id = htons(VL_API_MAP_DOMAIN_DETAILS + mm->msg_id_base);
     rmp->context = mp->context;
@@ -138,8 +139,8 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->psid_length = d->psid_length;
     rmp->flags = d->flags;
     rmp->mtu = htons(d->mtu);
-
-    strncpy ((char *) rmp->tag, (char *) de->tag, ARRAY_LEN(rmp->tag)-1);
+    memcpy(rmp->tag, de->tag, tag_len-1);
+    rmp->tag[tag_len-1] = '\0';
 
     vl_api_send_msg (reg, (u8 *) rmp);
   }));
