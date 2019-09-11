@@ -1404,6 +1404,11 @@ quic_on_client_connected (quic_ctx_t * ctx)
 
   /*  If the app opens a stream in its callback it may invalidate ctx */
   ctx = quic_ctx_get (ctx_id, thread_index);
+  /*
+   * app_worker_connect_notify() might have reallocated pool, reload
+   * quic_session pointer
+   */
+  quic_session = session_get (ctx->c_s_index, thread_index);
   quic_session->session_state = SESSION_STATE_LISTENING;
 
   return 0;
@@ -1997,10 +2002,10 @@ quic_process_one_rx_packet (u64 udp_session_handle,
 	    {
 	      /*  Right ctx found, create conn & remove from pool */
 	      quic_create_connection(*ctx_index_ptr, sa, salen, packet_ctx->packet);
-	      pool_put (opening_ctx_pool, ctx_index_ptr);
 	      *max_packet = packet_n + 1;
 	      packet_ctx->thread_index = thread_index;
 	      packet_ctx->ctx_index = *ctx_index_ptr;
+	      pool_put (opening_ctx_pool, ctx_index_ptr);
 	      goto updateOffset;
 	    }
 	}));
