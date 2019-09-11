@@ -206,6 +206,9 @@ class Using():
     def __init__(self, name, flags, alias):
         self.name = name
         self.vla = False
+        self.block = []
+        self.manual_print = True
+        self.manual_endian = True
 
         self.manual_print = False
         self.manual_endian = False
@@ -750,7 +753,6 @@ class VPPAPI(object):
         s['Service'] = []
         s['types'] = []
         s['Import'] = []
-        s['Alias'] = {}
         crc = 0
         for o in objs:
             tname = o.__class__.__name__
@@ -770,10 +772,9 @@ class VPPAPI(object):
                         s['Service'].append(o2)
             elif (isinstance(o, Enum) or
                   isinstance(o, Typedef) or
+                  isinstance(o, Using) or
                   isinstance(o, Union)):
                 s['types'].append(o)
-            elif isinstance(o, Using):
-                s['Alias'][o.name] = o
             else:
                 if tname not in s:
                     raise ValueError('Unknown class type: {} {}'

@@ -29,7 +29,7 @@ import "vnet/mfib/mfib_types.api";
 /** \brief An IP table
     @param is_ipv6 - V4 or V6 table
     @param table_id - table ID associated with the route
-                      This table ID will apply to both the unicats
+                     This table ID will apply to both the unicats
 		      and mlticast FIBs
     @param name - A client provided name/tag for the table. If this is
                   not set by the client, then VPP will generate something
@@ -496,7 +496,7 @@ define ip_address_details
 {
   u32 context;
   u32 sw_if_index;
-  vl_api_prefix_t prefix;
+  vl_api_address_with_prefix_t prefix;
 };
 
 define ip_address_dump

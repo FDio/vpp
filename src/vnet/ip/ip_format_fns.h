@@ -83,4 +83,10 @@ format_vl_api_prefix_t (u8 * s, va_list * args)
   return format (s, "%U/%u", format_vl_api_address_t, &a->address, indent, a->len);
 }
 
+static inline u8 *
+format_vl_api_address_with_prefix_t (u8 * s, va_list * args)
+{
+  return format_vl_api_prefix_t (s, args);
+}
+
 #endif

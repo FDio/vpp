@@ -414,7 +414,7 @@ class VPPTypeAlias(object):
         self.name = name
         t = vpp_get_type(msgdef['type'])
         if not t:
-            raise ValueError()
+            raise ValueError('No such type: {}'.format(msgdef['type']))
         if 'length' in msgdef:
             if msgdef['length'] == 0:
                 raise ValueError()
@@ -429,6 +429,7 @@ class VPPTypeAlias(object):
             self.size = t.size
 
         types[name] = self
+        self.toplevelconversion = False
 
     def __call__(self, args):
         self.options = args
@@ -445,8 +446,13 @@ class VPPTypeAlias(object):
         return self.packer.pack(data, kwargs)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
+        if ntc == False and self.name in vpp_format.conversion_unpacker_table:
+            # Disable type conversion for dependent types
+            ntc = True
+            self.toplevelconversion = True
         t, size = self.packer.unpack(data, offset, result, ntc=ntc)
-        if not ntc:
+        if self.toplevelconversion:
+            self.toplevelconversion = False
             return conversion_unpacker(t, self.name), size
         return t, size
 
@@ -513,6 +519,7 @@ class VPPType(object):
         self.size = size
         self.tuple = collections.namedtuple(name, self.fields, rename=True)
         types[name] = self
+        self.toplevelconversion = False
 
     def __call__(self, args):
         self.options = args
@@ -551,6 +558,11 @@ class VPPType(object):
         # Return a list of arguments
         result = []
         total = 0
+        if ntc == False and self.name in vpp_format.conversion_unpacker_table:
+            # Disable type conversion for dependent types
+            ntc = True
+            self.toplevelconversion = True
+
         for p in self.packers:
             x, size = p.unpack(data, offset, result, ntc)
             if type(x) is tuple and len(x) == 1:
@@ -559,7 +571,9 @@ class VPPType(object):
             offset += size
             total += size
         t = self.tuple._make(result)
-        if not ntc:
+
+        if self.toplevelconversion:
+            self.toplevelconversion = False
             t = conversion_unpacker(t, self.name)
         return t, total
 
