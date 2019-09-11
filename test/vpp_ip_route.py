@@ -153,7 +153,7 @@ def fib_interface_ip_prefix(test, address, length, sw_if_index):
     # TODO: refactor this to VppIpPrefix.__eq__
     for a in addrs:
         if a.sw_if_index == sw_if_index and \
-           a.prefix == prefix:
+          a.prefix.network == prefix:
             return True
     return False
 
