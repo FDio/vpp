@@ -26,8 +26,7 @@ import "vnet/ip/ip_types.api";
     @param mb_ip_table_id - The IP table-id of the IP prefix to bind to.
     @param mb_is_bind - Bind or unbind
     @param mb_is_ip4 - The prefix to bind to is IPv4
-    @param mb_address_length - Length of IP prefix
-    @param mb_address[16] - IP prefix/
+    @param mb_prefix - IP prefix
 */
 autoreply define mpls_ip_bind_unbind
 {
