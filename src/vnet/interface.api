@@ -223,7 +223,7 @@ autoreply define sw_interface_add_del_address
   bool is_add;
 
   bool del_all;
-  vl_api_prefix_t prefix;
+  vl_api_address_with_prefix_t prefix;
 };
 
 /** \brief Associate the specified interface with a fib table

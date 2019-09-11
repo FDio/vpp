@@ -58,7 +58,6 @@ def walk_defs(s, is_message=False):
         r.append(d)
     return r
 
-
 #
 # Plugin entry point
 #
@@ -74,6 +73,6 @@ def run(filename, s):
                               if o.__class__.__name__ == 'Enum']))
     j['services'] = walk_services(s['Service'])
     j['options'] = s['Option']
-    j['aliases'] = {k: v.alias for k, v in s['Alias'].items()}
+    j['aliases'] = {o.name:o.alias for o in s['types'] if o.__class__.__name__ == 'Using'}
     j['vl_api_version'] = hex(s['file_crc'])
     return json.dumps(j, indent=4, separators=(',', ': '))

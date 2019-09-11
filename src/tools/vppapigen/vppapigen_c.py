@@ -95,7 +95,7 @@ def api2c(fieldtype):
     return fieldtype
 
 
-def typedefs(objs, aliases, filename):
+def typedefs(objs, filename):
     name = filename.replace('.', '_')
     output = '''\
 
@@ -108,16 +108,14 @@ def typedefs(objs, aliases, filename):
 '''
     output = output.format(module=name)
 
-    for k, v in aliases.items():
-        if 'length' in v.alias:
-            output += ('typedef %s vl_api_%s_t[%s];\n'
-                       % (v.alias['type'], k, v.alias['length']))
-        else:
-            output += 'typedef %s vl_api_%s_t;\n' % (v.alias['type'], k)
-
     for o in objs:
         tname = o.__class__.__name__
-        if tname == 'Enum':
+        if tname == 'Using':
+            if 'length' in o.alias:
+                output +=  'typedef %s vl_api_%s_t[%s];\n' % (o.alias['type'], o.name, o.alias['length'])
+            else:
+                output += 'typedef %s vl_api_%s_t;\n' % (o.alias['type'], o.name)
+        elif tname == 'Enum':
             if o.enumtype == 'u32':
                 output += "typedef enum {\n"
             else:
@@ -282,7 +280,7 @@ class Printfun():
             write('    return format(s, "{}", *a);\n'
                   .format(format_strings[v.alias['type']]))
         else:
-            write('    return format(s, "{} (print not implemented)"'
+            write('    return format(s, "{} (print not implemented)");\n'
                   .format(k))
 
     def print_enum(self, o, stream):
@@ -357,7 +355,7 @@ static inline void *vl_api_{name}_t_print (vl_api_{name}_t *a, void *handle)
     return ''
 
 
-def printfun_types(objs, aliases, stream, modulename):
+def printfun_types(objs, stream, modulename):
     write = stream.write
     pp = Printfun(stream)
 
@@ -380,15 +378,6 @@ static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
     indent += 2;
 '''
 
-    for k, v in aliases.items():
-        if v.manual_print:
-            write("/***** manual: vl_api_%s_t_print  *****/\n\n" % k)
-            continue
-
-        write(signature.format(name=k))
-        pp.print_alias(k, v, stream)
-        write('}\n\n')
-
     for t in objs:
         if t.__class__.__name__ == 'Enum':
             write(signature.format(name=t.name))
@@ -399,6 +388,12 @@ static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
 
         if t.manual_print:
             write("/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name)
+            continue
+
+        if t.__class__.__name__ == 'Using':
+            write(signature.format(name=t.name))
+            pp.print_alias(t.name, t, stream)
+            write('}\n\n')
             continue
 
         write(signature.format(name=t.name))
@@ -485,7 +480,7 @@ def endianfun_obj(o):
     return output
 
 
-def endianfun(objs, aliases, modulename):
+def endianfun(objs, modulename):
     output = '''\
 
 /****** Endian swap functions *****/\n\
@@ -509,23 +504,6 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
     int i __attribute__((unused));
 '''
 
-    for k, v in aliases.items():
-        if v.manual_endian:
-            output += "/***** manual: vl_api_%s_t_endian  *****/\n\n" % k
-            continue
-
-        output += signature.format(name=k)
-        if ('length' in v.alias and v.alias['length'] and
-                v.alias['type'] == 'u8'):
-            output += ('    /* a->{name} = a->{name} (no-op) */\n'
-                       .format(name=k))
-        elif v.alias['type'] in format_strings:
-            output += ('    *a = {}(*a);\n'
-                       .format(endian_strings[v.alias['type']]))
-        else:
-            output += '    /* Not Implemented yet {} */'.format(k)
-        output += '}\n\n'
-
     for t in objs:
         if t.__class__.__name__ == 'Enum':
             output += signature.format(name=t.name)
@@ -541,6 +519,21 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
 
         if t.manual_endian:
             output += "/***** manual: vl_api_%s_t_endian  *****/\n\n" % t.name
+            continue
+
+
+        if t.__class__.__name__ == 'Using':
+            output += signature.format(name=t.name)
+            if ('length' in t.alias and t.alias['length'] and
+                    t.alias['type'] == 'u8'):
+                output += ('    /* a->{name} = a->{name} (no-op) */\n'
+                           .format(name=t.name))
+            elif t.alias['type'] in format_strings:
+                output += ('    *a = {}(*a);\n'
+                           .format(endian_strings[t.alias['type']]))
+            else:
+                output += '    /* Not Implemented yet {} */'.format(t.name)
+            output += '}\n\n'
             continue
 
         output += signature.format(name=t.name)
@@ -588,12 +581,11 @@ def run(input_filename, s):
     output += msg_ids(s)
     output += msg_names(s)
     output += msg_name_crc_list(s, filename)
-    output += typedefs(s['types'] + s['Define'], s['Alias'],
-                       filename + file_extension)
-    printfun_types(s['types'], s['Alias'], stream, modulename)
+    output += typedefs(s['types'] + s['Define'], filename + file_extension)
+    printfun_types(s['types'], stream, modulename)
     printfun(s['Define'], stream, modulename)
     output += stream.getvalue()
-    output += endianfun(s['types'] + s['Define'], s['Alias'],  modulename)
+    output += endianfun(s['types'] + s['Define'], modulename)
     output += version_tuple(s, basename)
     output += bottom_boilerplate.format(input_filename=basename,
                                         file_crc=s['file_crc'])

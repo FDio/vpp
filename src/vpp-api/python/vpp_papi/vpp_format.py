@@ -52,6 +52,15 @@ def format_vl_api_prefix_t(args):
     return {'address': format_vl_api_address_t(p),
             'len': int(length)}
 
+def format_vl_api_address_with_prefix_t(args):
+    if isinstance(args, (ipaddress.IPv4Interface, ipaddress.IPv6Interface)):
+        return {'address': format_vl_api_address_t(
+            text_type(args.network_address)),
+                'len': int(args.prefixlen)}
+    p, length = args.split('/')
+    return {'address': format_vl_api_address_t(p),
+            'len': int(length)}
+
 
 def format_vl_api_ip6_prefix_t(args):
     if isinstance(args, ipaddress.IPv6Network):
@@ -61,9 +70,24 @@ def format_vl_api_ip6_prefix_t(args):
     return {'address': inet_pton(AF_INET6, p),
             'len': int(length)}
 
+def format_vl_api_ip6_address_with_prefix_t(args):
+    if isinstance(args, ipaddress.IPv6Interface):
+        return {'address': args.network_address.packed,
+                'len': int(args.prefixlen)}
+    p, length = args.split('/')
+    return {'address': inet_pton(AF_INET6, p),
+            'len': int(length)}
 
 def format_vl_api_ip4_prefix_t(args):
     if isinstance(args, ipaddress.IPv4Network):
+        return {'address': args.network_address.packed,
+                'len': int(args.prefixlen)}
+    p, length = args.split('/')
+    return {'address': inet_pton(AF_INET, p),
+            'len': int(length)}
+
+def format_vl_api_ip4_address_with_prefix_t(args):
+    if isinstance(args, ipaddress.IPv4Interface):
         return {'address': args.network_address.packed,
                 'len': int(args.prefixlen)}
     p, length = args.split('/')
@@ -112,6 +136,30 @@ conversion_table = {
                                   'len': o.prefixlen},
         'str': lambda s: format_vl_api_prefix_t(s)
     },
+    'vl_api_address_with_prefix_t':
+    {
+        'IPv4Interface': lambda o: {'address':
+                                  {'af': ADDRESS_IP4, 'un':
+                                   {'ip4': o.packed}},
+                                  'len': o.network.prefixlen},
+        'IPv6Interface': lambda o: {'address':
+                                  {'af': ADDRESS_IP6, 'un':
+                                   {'ip6': o.packed}},
+                                  'len': o.network.prefixlen},
+        'str': lambda s: format_vl_api_address_with_prefix_t(s)
+    },
+    'vl_api_ip4_address_with_prefix_t':
+    {
+        'IPv4Interface': lambda o: {'address': o.packed,
+                                    'len': o.network.prefixlen},
+        'str': lambda s: format_vl_api_ip4_address_with_prefix_t(s)
+    },
+    'vl_api_ip6_address_with_prefix_t':
+    {
+        'IPv6Interface': lambda o: {'address': o.packed,
+                                  'len': o.network.prefixlen},
+        'str': lambda s: format_vl_api_ip6_address_with_prefix_t(s)
+    },
     'vl_api_mac_address_t':
     {
         'MACAddress': lambda o: o.packed,
@@ -130,14 +178,33 @@ def unformat_api_address_t(o):
         return ipaddress.IPv6Address(o.un.ip6)
     if o.af == 0:
         return ipaddress.IPv4Address(o.un.ip4)
-
+    raise ValueError('Unknown address family {}'.format(o))
 
 def unformat_api_prefix_t(o):
+    if o.address.af == 1:
+        return ipaddress.IPv6Network((o.address.un.ip6, o.len), False)
+    if o.address.af == 0:
+        return ipaddress.IPv4Network((o.address.un.ip4, o.len), False)
+    raise ValueError('Unknown address family {}'.format(o))
+
     if isinstance(o.address, ipaddress.IPv4Address):
         return ipaddress.IPv4Network((o.address, o.len), False)
     if isinstance(o.address, ipaddress.IPv6Address):
         return ipaddress.IPv6Network((o.address, o.len), False)
+    raise ValueError('Unknown instance {}', format(o))
 
+def unformat_api_address_with_prefix_t(o):
+    if o.address.af == 1:
+        return ipaddress.IPv6Interface((o.address.un.ip6, o.len))
+    if o.address.af == 0:
+        return ipaddress.IPv4Interface((o.address.un.ip4, o.len))
+    raise ValueError('Unknown address family {}'.format(o))
+
+def unformat_api_ip4_address_with_prefix_t(o):
+    return ipaddress.IPv4Interface((o.address, o.len))
+
+def unformat_api_ip6_address_with_prefix_t(o):
+    return ipaddress.IPv6Interface((o.address, o.len))
 
 conversion_unpacker_table = {
     'vl_api_ip6_address_t': lambda o: ipaddress.IPv6Address(o),
@@ -146,6 +213,9 @@ conversion_unpacker_table = {
     'vl_api_ip4_prefix_t': lambda o: ipaddress.IPv4Network((o.address, o.len)),
     'vl_api_address_t': lambda o: unformat_api_address_t(o),
     'vl_api_prefix_t': lambda o: unformat_api_prefix_t(o),
+    'vl_api_address_with_prefix_t': lambda o: unformat_api_address_with_prefix_t(o),
+    'vl_api_ip4_address_with_prefix_t': lambda o: unformat_api_ip4_address_with_prefix_t(o),
+    'vl_api_ip6_address_with_prefix_t': lambda o: unformat_api_ip6_address_with_prefix_t(o),
     'vl_api_mac_address_t': lambda o: macaddress.MACAddress(o),
     'vl_api_timestamp_t': lambda o: datetime.datetime.fromtimestamp(o),
     'vl_api_timedelta_t': lambda o: datetime.timedelta(seconds=o),
