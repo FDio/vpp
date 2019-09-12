@@ -16,6 +16,7 @@ add_vpp_plugin(http_static
   SOURCES
   http_static.c
   static_server.c
+  builtin_urls.c
   http_static.h
 
   API_FILES
