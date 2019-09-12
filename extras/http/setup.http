@@ -3,4 +3,4 @@ create tap host-if-name lstack host-ip4-addr 192.168.10.2/24
 set int ip address tap0 192.168.10.1/24
 set int state tap0 up
 
-http static server www-root /scratch/fdio-site-fork/public uri tls://0.0.0.0/1234 cache-size 10m fifo-size 2048
+http static server www-root /home/dbarach/dave-repo/vpp-web/public uri tcp://0.0.0.0/1234 cache-size 10m fifo-size 2048 debug 2
