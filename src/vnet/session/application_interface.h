@@ -156,6 +156,16 @@ typedef enum tls_engine_type_
   TLS_N_ENGINES
 } tls_engine_type_t;
 
+typedef enum crypto_engine_type_
+{
+  CRYPTO_ENGINE_NONE = TLS_ENGINE_NONE,
+  CRYPTO_ENGINE_MBEDTLS = TLS_ENGINE_MBEDTLS,
+  CRYPTO_ENGINE_OPENSSL = TLS_ENGINE_OPENSSL,
+  CRYPTO_ENGINE_PICOTLS,
+  CRYPTO_ENGINE_VPP,
+  CRYPTO_N_ENGINES
+} crypto_engine_type_t;
+
 /* Application attach options */
 typedef enum
 {
@@ -495,14 +505,13 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
   else
     {
       svm_msg_q_lock (mq);
-      while (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING))
+      while (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)
+	     || svm_msg_q_is_full (mq))
 	svm_msg_q_wait (mq);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = session_index;
       evt->event_type = evt_type;
-      if (svm_msg_q_is_full (mq))
-	svm_msg_q_wait (mq);
       svm_msg_q_add_and_unlock (mq, &msg);
       return 0;
     }
