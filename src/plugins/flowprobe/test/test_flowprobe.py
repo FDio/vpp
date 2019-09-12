@@ -6,6 +6,7 @@ import socket
 import unittest
 import time
 import re
+import six
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -438,11 +439,19 @@ class Flowprobe(MethodHolder):
             # packets
             self.assertEqual(int(binascii.hexlify(record[2]), 16), 1)
             # src mac
-            self.assertEqual(':'.join(re.findall('..', record[56].encode(
-                'hex'))), self.pg8.local_mac)
+            if six.PY2:
+                self.assertEqual(':'.join(re.findall('..', record[56].encode(
+                    'hex'))), self.pg8.local_mac)
+            else:
+                self.assertEqual(':'.join(re.findall('..', record[56].hex(
+                         ))), self.pg8.local_mac)
             # dst mac
-            self.assertEqual(':'.join(re.findall('..', record[80].encode(
-                'hex'))), self.pg8.remote_mac)
+            if six.PY2:
+                self.assertEqual(':'.join(re.findall('..', record[80].encode(
+                    'hex'))), self.pg8.remote_mac)
+            else:
+                self.assertEqual(':'.join(re.findall('..', record[80].hex(
+                         ))), self.pg8.remote_mac)
             flowTimestamp = int(binascii.hexlify(record[156]), 16) >> 32
             # flow start timestamp
             self.assertAlmostEqual(flowTimestamp, nowUNIX, delta=1)
@@ -452,14 +461,26 @@ class Flowprobe(MethodHolder):
             # ethernet type
             self.assertEqual(int(binascii.hexlify(record[256]), 16), 8)
             # src ip
-            self.assertEqual('.'.join(re.findall('..', record[8].encode(
+            if six.PY2:
+                self.assertEqual('.'.join(re.findall('..', record[8].encode(
                                       'hex'))),
-                             '.'.join('{:02x}'.format(int(n)) for n in
-                                      self.pg7.remote_ip4.split('.')))
+                                 '.'.join('{:02x}'.format(int(n)) for n in
+                                     self.pg7.remote_ip4.split('.')))
+            else:
+                self.assertEqual('.'.join(re.findall('..', record[8].hex(
+                                         ))),
+                                 '.'.join('{:02x}'.format(int(n)) for n in
+                                     self.pg7.remote_ip4.split('.')))
             # dst ip
-            self.assertEqual('.'.join(re.findall('..', record[12].encode(
+            if six.PY2:
+                self.assertEqual('.'.join(re.findall('..', record[12].encode(
                                       'hex'))),
-                             '.'.join('{:02x}'.format(int(n)) for n in
+                                 '.'.join('{:02x}'.format(int(n)) for n in
+                                      "9.0.0.100".split('.')))
+            else:
+                self.assertEqual('.'.join(re.findall('..', record[12].hex(
+                                         ))),
+                                 '.'.join('{:02x}'.format(int(n)) for n in
                                       "9.0.0.100".split('.')))
             # protocol (TCP)
             self.assertEqual(int(binascii.hexlify(record[4]), 16), 6)
