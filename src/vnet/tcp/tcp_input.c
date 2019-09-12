@@ -614,10 +614,8 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
        * otherwise update. */
       tcp_retransmit_timer_update (tc);
 
-      /* If not congested, update pacer based on our new
-       * cwnd estimate */
-      if (!tcp_in_fastrecovery (tc))
-	tcp_connection_tx_pacer_update (tc);
+      /* Update pacer based on our new cwnd estimate */
+      tcp_connection_tx_pacer_update (tc);
     }
   _vec_len (wrk->pending_deq_acked) = 0;
 }
@@ -1375,34 +1373,46 @@ static void
 tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 		     u32 is_dack)
 {
-  u32 rxt_delivered;
+  u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
-  if (tcp_in_fastrecovery (tc) && tcp_opts_sack_permitted (&tc->rcv_opts))
+  /*
+   * Already in fast recovery. Return if no data acked, partial acks
+   * and accounting for segments that have left the network are done
+   * lower.
+   */
+  if (tcp_in_fastrecovery (tc))
     {
-      if (tc->bytes_acked)
-	goto partial_ack;
-      tcp_program_fastretransmit (tc);
-      return;
+      if (!has_sack)
+	tc->rcv_dupacks++;
+
+      if (!tc->bytes_acked)
+	{
+	  tcp_program_fastretransmit (tc);
+	  if (!has_sack)
+	    tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
+	  return;
+	}
     }
   /*
-   * Duplicate ACK. Check if we should enter fast recovery, or if already in
-   * it account for the bytes that left the network.
+   * In timer triggered recovery
    */
-  else if (is_dack && !tcp_in_recovery (tc))
+  else if (tcp_in_recovery (tc))
+    {
+      /* No fast recovery entry at this point */
+      if (!tc->bytes_acked)
+	return;
+    }
+  /*
+   * Duplicate ACK. Check if we should enter fast recovery
+   */
+  else if (is_dack)
     {
       TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
       ASSERT (tc->snd_una != tc->snd_nxt || tc->sack_sb.last_sacked_bytes);
 
       tc->rcv_dupacks++;
 
-      /* Pure duplicate ack. If some data got acked, it's handled lower */
-      if (tc->rcv_dupacks > TCP_DUPACK_THRESHOLD && !tc->bytes_acked)
-	{
-	  ASSERT (tcp_in_fastrecovery (tc));
-	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
-	  return;
-	}
-      else if (tcp_should_fastrecover (tc))
+      if (tcp_should_fastrecover (tc))
 	{
 	  u32 pacer_wnd;
 
@@ -1419,7 +1429,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 
 	  tcp_cc_init_congestion (tc);
 
-	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	  if (has_sack)
 	    scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
 
 	  /* Constrain rate until we get a partial ack */
@@ -1429,14 +1439,11 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  tcp_program_fastretransmit (tc);
 	  return;
 	}
-      else if (!tc->bytes_acked
-	       || (tc->bytes_acked && !tcp_in_cong_recovery (tc)))
+      else
 	{
 	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 	  return;
 	}
-      else
-	goto partial_ack;
     }
   /* Don't allow entry in fast recovery if still in recovery, for now */
   else if (0 && is_dack && tcp_in_recovery (tc))
@@ -1461,24 +1468,15 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	}
     }
 
-  if (!tc->bytes_acked)
-    return;
-
-partial_ack:
+  ASSERT (tc->bytes_acked);
   TCP_EVT (TCP_EVT_CC_PACK, tc);
 
   /*
    * Legitimate ACK. 1) See if we can exit recovery
    */
 
-  /* Update the pacing rate. For the first partial ack we move from
-   * the artificially constrained rate to the one after congestion */
-  tcp_connection_tx_pacer_update (tc);
-
   if (seq_geq (tc->snd_una, tc->snd_congestion))
     {
-      tcp_retransmit_timer_update (tc);
-
       /* If spurious return, we've already updated everything */
       if (tcp_cc_recover (tc))
 	{
@@ -1495,9 +1493,6 @@ partial_ack:
    * Legitimate ACK. 2) If PARTIAL ACK try to retransmit
    */
 
-  /* XXX limit this only to first partial ack? */
-  tcp_retransmit_timer_update (tc);
-
   /* RFC6675: If the incoming ACK is a cumulative acknowledgment,
    * reset dupacks to 0. Also needed if in congestion recovery */
   tc->rcv_dupacks = 0;
@@ -1511,7 +1506,7 @@ partial_ack:
     }
 
   /* Remove retransmitted bytes that have been delivered */
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+  if (has_sack)
     {
       ASSERT (tc->bytes_acked >= tc->sack_sb.last_bytes_delivered
 	      || (tc->flags & TCP_CONN_FINSNT));
@@ -1520,6 +1515,7 @@ partial_ack:
        * remove sacked bytes delivered */
       if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
 	{
+	  u32 rxt_delivered;
 	  rxt_delivered = tc->bytes_acked - tc->sack_sb.last_bytes_delivered;
 	  ASSERT (tc->snd_rxt_bytes >= rxt_delivered);
 	  tc->snd_rxt_bytes -= rxt_delivered;
