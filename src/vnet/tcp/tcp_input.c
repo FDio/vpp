@@ -1370,12 +1370,30 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 {
   u32 rxt_delivered;
 
-  if (tcp_in_fastrecovery (tc) && tcp_opts_sack_permitted (&tc->rcv_opts))
+  /*
+   * Already in fast recovery. Return if no data acked, partial acks
+   * are processed lower.
+   */
+  if (tcp_in_fastrecovery (tc))
     {
-      if (tc->bytes_acked)
-	goto partial_ack;
-      tcp_program_fastretransmit (tc);
-      return;
+      if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	{
+	  if (!tc->bytes_acked)
+	    {
+	      tcp_program_fastretransmit (tc);
+	      return;
+	    }
+	}
+      else
+	{
+	  tc->rcv_dupacks++;
+	  if (!tc->bytes_acked)
+	    {
+	      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
+	      tcp_program_fastretransmit (tc);
+	      return;
+	    }
+	}
     }
   /*
    * Duplicate ACK. Check if we should enter fast recovery, or if already in
@@ -1388,14 +1406,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 
       tc->rcv_dupacks++;
 
-      /* Pure duplicate ack. If some data got acked, it's handled lower */
-      if (tc->rcv_dupacks > TCP_DUPACK_THRESHOLD && !tc->bytes_acked)
-	{
-	  ASSERT (tcp_in_fastrecovery (tc));
-	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
-	  return;
-	}
-      else if (tcp_should_fastrecover (tc))
+      if (tcp_should_fastrecover (tc))
 	{
 	  u32 pacer_wnd;
 
@@ -1422,14 +1433,11 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  tcp_program_fastretransmit (tc);
 	  return;
 	}
-      else if (!tc->bytes_acked
-	       || (tc->bytes_acked && !tcp_in_cong_recovery (tc)))
+      else
 	{
 	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 	  return;
 	}
-      else
-	goto partial_ack;
     }
   /* Don't allow entry in fast recovery if still in recovery, for now */
   else if (0 && is_dack && tcp_in_recovery (tc))
@@ -1453,11 +1461,18 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  return;
 	}
     }
+  else
+    {
+      if (!tc->bytes_acked)
+	return;
+    }
 
+//  if (!tc->bytes_acked)
+//    return;
+//
+//partial_ack:
   if (!tc->bytes_acked)
-    return;
-
-partial_ack:
+    os_panic ();
   TCP_EVT (TCP_EVT_CC_PACK, tc);
 
   /*
