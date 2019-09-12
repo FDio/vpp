@@ -112,6 +112,7 @@ typedef struct quic_ctx_
   u32 parent_app_wrk_id;
   u32 parent_app_id;
   u8 flags;
+  quicly_context_t *quicly_ctx;
 } quic_ctx_t;
 
 /* Make sure our custom fields don't overlap with the fields we use in
@@ -123,12 +124,6 @@ STATIC_ASSERT (offsetof (quic_ctx_t, _qctx_end_marker) <=
 STATIC_ASSERT (offsetof (quic_ctx_t, _sctx_end_marker) <=
 	       TRANSPORT_CONN_ID_LEN,
 	       "connection data must be less than TRANSPORT_CONN_ID_LEN bytes");
-
-typedef enum quic_crypto_engine_
-{
-  CRYPTO_ENGINE_VPP,
-  CRYPTO_ENGINE_PICOTLS,
-} quic_crypto_engine_t;
 
 /* single-entry session cache */
 typedef struct quic_session_cache_
