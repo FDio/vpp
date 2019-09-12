@@ -454,9 +454,7 @@ quic_echo_set_defaults_after_opts_cb ()
 
   em->n_connects = em->n_clients;
   em->n_sessions =
-    clib_max (1,
-	      eqm->n_stream_clients) * em->n_clients + eqm->n_stream_clients +
-    1;
+    clib_max (1, eqm->n_stream_clients) * em->n_clients + em->n_clients + 1;
   em->n_clients = eqm->n_stream_clients * em->n_clients;
 
   if (em->i_am_master)
