@@ -1388,6 +1388,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       vec_insert (conf->eal_init_args, 2, 3);
       conf->eal_init_args[3] = (u8 *) "-n";
       tmp = format (0, "%d", conf->nchannels);
+      vec_terminate_c_string (tmp);
       conf->eal_init_args[4] = tmp;
     }
 
@@ -1480,6 +1481,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   for (i = 1; i < vec_len (conf->eal_init_args); i++)
     conf->eal_init_args_str = format (conf->eal_init_args_str, "%s ",
 				      conf->eal_init_args[i]);
+
+  vec_terminate_c_string (conf->eal_init_args_str);
 
   dpdk_log_warn ("EAL init args: %s", conf->eal_init_args_str);
   ret = rte_eal_init (vec_len (conf->eal_init_args),
