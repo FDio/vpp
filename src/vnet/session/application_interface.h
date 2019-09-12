@@ -153,6 +153,8 @@ typedef enum tls_engine_type_
   TLS_ENGINE_NONE,
   TLS_ENGINE_MBEDTLS,
   TLS_ENGINE_OPENSSL,
+  CRYPTO_ENGINE_VPP,
+  CRYPTO_ENGINE_PICOTLS,
   TLS_N_ENGINES
 } tls_engine_type_t;
 

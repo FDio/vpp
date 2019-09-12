@@ -174,6 +174,10 @@ echo_format_app_state (u8 * s, va_list * args)
     return format (s, "STATE_START");
   if (state == STATE_ATTACHED)
     return format (s, "STATE_ATTACHED");
+  if (state == STATE_ATTACHED_NO_CERT)
+    return format (s, "STATE_ATTACHED_NO_CERT");
+  if (state == STATE_ATTACHED_ONE_CERT)
+    return format (s, "STATE_ATTACHED_ONE_CERT");
   if (state == STATE_LISTEN)
     return format (s, "STATE_LISTEN");
   if (state == STATE_READY)
@@ -425,6 +429,40 @@ unformat_ip6_address (unformat_input_t * input, va_list * args)
     return 1;
   }
 }
+
+u8 *
+echo_format_crypto_engine (u8 * s, va_list * args)
+{
+  u32 state = va_arg (*args, u32);
+  if (state == TLS_ENGINE_MBEDTLS)
+    return format (s, "mbedtls");
+  if (state == TLS_ENGINE_OPENSSL)
+    return format (s, "openssl");
+  if (state == CRYPTO_ENGINE_PICOTLS)
+    return format (s, "picotls");
+  if (state == CRYPTO_ENGINE_VPP)
+    return format (s, "vpp");
+  else
+    return format (s, "unknown crypto engine");
+}
+
+uword
+echo_unformat_crypto_engine (unformat_input_t * input, va_list * args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  if (unformat (input, "mbedtls"))
+    *a = TLS_ENGINE_MBEDTLS;
+  else if (unformat (input, "openssl"))
+    *a = TLS_ENGINE_OPENSSL;
+  else if (unformat (input, "picotls"))
+    *a = CRYPTO_ENGINE_PICOTLS;
+  else if (unformat (input, "vpp"))
+    *a = CRYPTO_ENGINE_VPP;
+  else
+    return 0;
+  return 1;
+}
+
 
 /*
  *

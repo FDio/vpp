@@ -98,7 +98,7 @@ udp_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
 }
 
 static void
-udp_echo_disconnected_reply_cb (echo_session_t * s)
+udp_echo_sent_disconnect_cb (echo_session_t * s)
 {
   s->session_state = ECHO_SESSION_STATE_CLOSING;
 }
@@ -166,7 +166,7 @@ echo_proto_cb_vft_t echo_udp_proto_cb_vft = {
   .connected_cb = udp_echo_connected_cb,
   .accepted_cb = udp_echo_accepted_cb,
   .reset_cb = udp_echo_reset_cb,
-  .disconnected_reply_cb = udp_echo_disconnected_reply_cb,
+  .sent_disconnect_cb = udp_echo_sent_disconnect_cb,
   .cleanup_cb = udp_echo_cleanup_cb,
   .bound_uri_cb = udp_echo_bound_uri_cb,
 };

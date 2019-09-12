@@ -54,12 +54,11 @@ quic_echo_on_connected_connect (session_connected_msg_t * mp,
 {
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
-  u8 *uri = format (0, "quic://session/%lu", mp->handle);
   u64 i;
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < eqm->n_stream_clients; i++)
-    echo_send_rpc (em, echo_send_connect, (void *) uri, session_index);
+    echo_send_rpc (em, echo_send_connect, (void *) mp->handle, session_index);
 
   ECHO_LOG (0, "Qsession 0x%llx connected to %U:%d",
 	    mp->handle, format_ip46_address, &mp->lcl.ip,
@@ -108,12 +107,11 @@ quic_echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
   ECHO_LOG (1, "Accept on QSession 0x%lx %u", mp->handle);
-  u8 *uri = format (0, "quic://session/%lu", mp->handle);
   u32 i;
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < eqm->n_stream_clients; i++)
-    echo_send_rpc (em, echo_send_connect, (void *) uri, session_index);
+    echo_send_rpc (em, echo_send_connect, (void *) mp->handle, session_index);
 }
 
 static void
@@ -295,19 +293,18 @@ quic_echo_retry_connect (u32 session_index)
   /* retry connect */
   echo_session_t *session;
   echo_main_t *em = &echo_main;
-  u8 *uri;
   if (session_index == SESSION_INVALID_INDEX)
     {
       ECHO_LOG (1, "Retrying connect %s", em->uri);
-      echo_send_rpc (em, echo_send_connect, (void *) em->uri,
+      echo_send_rpc (em, echo_send_connect, (void *) SESSION_INVALID_HANDLE,
 		     SESSION_INVALID_INDEX);
     }
   else
     {
       session = pool_elt_at_index (em->sessions, session_index);
-      uri = format (0, "quic://session/%lu", session->vpp_session_handle);
-      ECHO_LOG (1, "Retrying connect %s", uri);
-      echo_send_rpc (em, echo_send_connect, (void *) uri, session_index);
+      ECHO_LOG (1, "Retrying connect 0x%lx", session->vpp_session_handle);
+      echo_send_rpc (em, echo_send_connect,
+		     (void *) session->vpp_session_handle, session_index);
     }
 }
 
@@ -364,7 +361,7 @@ quic_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
 }
 
 static void
-quic_echo_disconnected_reply_cb (echo_session_t * s)
+quic_echo_sent_disconnect_cb (echo_session_t * s)
 {
   if (s->session_type == ECHO_SESSION_TYPE_STREAM)
     s->session_state = ECHO_SESSION_STATE_CLOSING;
@@ -454,6 +451,8 @@ quic_echo_set_defaults_after_opts_cb ()
   echo_main_t *em = &echo_main;
   u8 default_f_active;
 
+  if (em->crypto_ctx_engine == TLS_ENGINE_NONE)
+    em->crypto_ctx_engine = CRYPTO_ENGINE_PICOTLS;
   em->n_connects = em->n_clients;
   em->n_sessions =
     clib_max (1, eqm->n_stream_clients) * em->n_clients + em->n_clients + 1;
@@ -488,7 +487,7 @@ echo_proto_cb_vft_t quic_echo_proto_cb_vft = {
   .connected_cb = quic_echo_connected_cb,
   .accepted_cb = quic_echo_accepted_cb,
   .reset_cb = quic_echo_reset_cb,
-  .disconnected_reply_cb = quic_echo_disconnected_reply_cb,
+  .sent_disconnect_cb = quic_echo_sent_disconnect_cb,
   .cleanup_cb = quic_echo_cleanup_cb,
   .process_opts_cb = quic_echo_process_opts_cb,
   .print_usage_cb = quic_echo_print_usage_cb,

@@ -27,14 +27,11 @@
 void
 echo_send_attach (echo_main_t * em)
 {
-  vl_api_application_attach_t *bmp;
-  vl_api_application_tls_cert_add_t *cert_mp;
-  vl_api_application_tls_key_add_t *key_mp;
-
+  vl_api_app_attach_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   clib_memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
+  bmp->_vl_msg_id = ntohs (VL_API_APP_ATTACH);
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
@@ -54,6 +51,27 @@ echo_send_attach (echo_main_t * em)
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = em->appns_secret;
     }
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+}
+
+void
+echo_send_detach (echo_main_t * em)
+{
+  vl_api_application_detach_t *bmp;
+  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  clib_memset (bmp, 0, sizeof (*bmp));
+
+  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
+  bmp->client_index = em->my_client_index;
+  bmp->context = ntohl (0xfeedface);
+
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+}
+
+void
+echo_send_add_crypto_ctx (echo_main_t * em)
+{
+  vl_api_application_tls_cert_add_t *cert_mp;
+  vl_api_application_tls_key_add_t *key_mp;
 
   cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + test_srv_crt_rsa_len);
   clib_memset (cert_mp, 0, sizeof (*cert_mp));
@@ -75,72 +93,83 @@ echo_send_attach (echo_main_t * em)
 }
 
 void
-echo_send_detach (echo_main_t * em)
-{
-  vl_api_application_detach_t *bmp;
-  bmp = vl_msg_api_alloc (sizeof (*bmp));
-  clib_memset (bmp, 0, sizeof (*bmp));
-
-  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
-  bmp->client_index = em->my_client_index;
-  bmp->context = ntohl (0xfeedface);
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
-}
-
-void
 echo_send_listen (echo_main_t * em)
 {
-  vl_api_bind_uri_t *bmp;
-  bmp = vl_msg_api_alloc (sizeof (*bmp));
-  clib_memset (bmp, 0, sizeof (*bmp));
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_listen_msg_t *mp;
+  svm_msg_q_t *mq = em->ctrl_mq;
 
-  bmp->_vl_msg_id = ntohs (VL_API_BIND_URI);
-  bmp->client_index = em->my_client_index;
-  bmp->context = ntohl (0xfeedface);
-  memcpy (bmp->uri, em->uri, vec_len (em->uri));
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_LISTEN);
+  mp = (session_listen_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = em->my_client_index;
+  mp->context = ntohl (0xfeedface);
+  mp->wrk_index = 0;
+  mp->is_ip4 = em->uri_elts.is_ip4;
+  clib_memcpy_fast (&mp->ip, &em->uri_elts.ip, sizeof (mp->ip));
+  mp->port = em->uri_elts.port;
+  mp->proto = em->uri_elts.transport_proto;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
 void
-echo_send_unbind (echo_main_t * em)
+echo_send_unbind (echo_main_t * em, echo_session_t * s)
 {
-  vl_api_unbind_uri_t *ump;
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_unlisten_msg_t *mp;
+  svm_msg_q_t *mq = em->ctrl_mq;
 
-  ump = vl_msg_api_alloc (sizeof (*ump));
-  clib_memset (ump, 0, sizeof (*ump));
-
-  ump->_vl_msg_id = ntohs (VL_API_UNBIND_URI);
-  ump->client_index = em->my_client_index;
-  memcpy (ump->uri, em->uri, vec_len (em->uri));
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & ump);
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_UNLISTEN);
+  mp = (session_unlisten_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = em->my_client_index;
+  mp->wrk_index = 0;
+  mp->handle = s->vpp_session_handle;
+  mp->context = 0;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
 void
-echo_send_connect (u8 * uri, u32 opaque)
+echo_send_connect (u64 parent_session_handle, u32 opaque)
 {
   echo_main_t *em = &echo_main;
-  vl_api_connect_uri_t *cmp;
-  cmp = vl_msg_api_alloc (sizeof (*cmp));
-  clib_memset (cmp, 0, sizeof (*cmp));
-  cmp->_vl_msg_id = ntohs (VL_API_CONNECT_URI);
-  cmp->client_index = em->my_client_index;
-  cmp->context = ntohl (opaque);
-  memcpy (cmp->uri, uri, vec_len (uri));
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & cmp);
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_connect_msg_t *mp;
+  svm_msg_q_t *mq = em->ctrl_mq;
+
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_CONNECT);
+  mp = (session_connect_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = em->my_client_index;
+  mp->context = ntohl (opaque);
+  mp->wrk_index = 0;
+  mp->is_ip4 = em->uri_elts.is_ip4;
+  clib_memcpy_fast (&mp->ip, &em->uri_elts.ip, sizeof (mp->ip));
+  mp->port = em->uri_elts.port;
+  mp->proto = em->uri_elts.transport_proto;
+  mp->parent_handle = parent_session_handle;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
 void
 echo_send_disconnect_session (u64 handle, u32 opaque)
 {
   echo_main_t *em = &echo_main;
-  vl_api_disconnect_session_t *dmp;
-  dmp = vl_msg_api_alloc (sizeof (*dmp));
-  clib_memset (dmp, 0, sizeof (*dmp));
-  dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
-  dmp->client_index = em->my_client_index;
-  dmp->handle = handle;
-  ECHO_LOG (1, "Disconnect session 0x%lx", dmp->handle);
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & dmp);
+  echo_session_t *s;
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_disconnect_msg_t *mp;
+  svm_msg_q_t *mq = em->ctrl_mq;
+
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_DISCONNECT);
+  mp = (session_disconnect_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = em->my_client_index;
+  mp->handle = handle;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+
+  if (!(s = echo_get_session_from_handle (em, mp->handle)))
+    return;
+  em->proto_cb_vft->sent_disconnect_cb (s);
 }
 
 /*
@@ -187,8 +216,51 @@ echo_segment_handle_add_del (echo_main_t * em, u64 segment_handle, u8 add)
  */
 
 static void
-vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
-					   mp)
+  vl_api_application_tls_cert_add_reply_t_handler
+  (vl_api_application_tls_cert_add_reply_t * mp)
+{
+  echo_main_t *em = &echo_main;
+  if (mp->retval)
+    {
+      ECHO_FAIL (ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY,
+		 "tls cert add returned %d",
+		 clib_net_to_host_u32 (mp->retval));
+      return;
+    }
+  /* No concurrency here, only bapi thread writes */
+  if (em->state != STATE_ATTACHED_NO_CERT
+      && em->state != STATE_ATTACHED_ONE_CERT)
+    {
+      ECHO_FAIL (ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY, "Wrong state");
+      return;
+    }
+  em->state++;
+}
+
+static void
+  vl_api_application_tls_key_add_reply_t_handler
+  (vl_api_application_tls_key_add_reply_t * mp)
+{
+  echo_main_t *em = &echo_main;
+  if (mp->retval)
+    {
+      ECHO_FAIL (ECHO_FAIL_VL_API_TLS_KEY_ADD_REPLY,
+		 "tls key add returned %d",
+		 clib_net_to_host_u32 (mp->retval));
+      return;
+    }
+  /* No concurrency here, only bapi thread writes */
+  if (em->state != STATE_ATTACHED_NO_CERT
+      && em->state != STATE_ATTACHED_ONE_CERT)
+    {
+      ECHO_FAIL (ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY, "Wrong state");
+      return;
+    }
+  em->state++;
+}
+
+static void
+vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 {
   echo_main_t *em = &echo_main;
   int *fds = 0, i;
@@ -211,9 +283,9 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       return;
     }
 
-  ASSERT (mp->app_event_queue_address);
-  em->our_event_queue = uword_to_pointer (mp->app_event_queue_address,
-					  svm_msg_q_t *);
+  ASSERT (mp->app_mq);
+  em->app_mq = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+  em->ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
 
   if (mp->n_fds)
     {
@@ -243,7 +315,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 	    goto failed;
 	  }
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
-	svm_msg_q_set_consumer_eventfd (em->our_event_queue, fds[n_fds++]);
+	svm_msg_q_set_consumer_eventfd (em->app_mq, fds[n_fds++]);
 
       vec_free (fds);
     }
@@ -261,7 +333,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   echo_segment_handle_add_del (em, segment_handle, 1 /* add */ );
   ECHO_LOG (1, "Mapped segment 0x%lx", segment_handle);
 
-  em->state = STATE_ATTACHED;
+  em->state = STATE_ATTACHED_NO_CERT;
   return;
 failed:
   for (i = clib_max (n_fds - 1, 0); i < vec_len (fds); i++)
@@ -281,7 +353,6 @@ vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
     }
   echo_main.state = STATE_DETACHED;
 }
-
 
 static void
 vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
@@ -344,90 +415,13 @@ failed:
   vec_free (fds);
 }
 
-static void
-vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
-{
-  if (mp->retval)
-    {
-      ECHO_FAIL (ECHO_FAIL_VL_API_BIND_URI_REPLY, "bind failed: %U",
-		 format_api_error, clib_net_to_host_u32 (mp->retval));
-    }
-}
-
-static void
-vl_api_unbind_uri_reply_t_handler (vl_api_unbind_uri_reply_t * mp)
-{
-  echo_session_t *listen_session;
-  echo_main_t *em = &echo_main;
-  if (mp->retval != 0)
-    {
-      ECHO_FAIL (ECHO_FAIL_VL_API_UNBIND_REPLY, "unbind_uri returned %d",
-		 ntohl (mp->retval));
-      return;
-    }
-  listen_session = pool_elt_at_index (em->sessions, em->listen_session_index);
-  em->proto_cb_vft->cleanup_cb (listen_session, 0 /* parent_died */ );
-  em->state = STATE_DISCONNECTED;
-}
-
-static void
-vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
-					   mp)
-{
-  echo_main_t *em = &echo_main;
-  echo_session_t *s;
-
-  if (mp->retval)
-    {
-      ECHO_FAIL (ECHO_FAIL_VL_API_DISCONNECT_SESSION_REPLY,
-		 "vpp complained about disconnect: %d", ntohl (mp->retval));
-      return;
-    }
-
-  ECHO_LOG (1, "Got disonnected reply for session 0x%lx", mp->handle);
-  if (!(s = echo_get_session_from_handle (em, mp->handle)))
-    return;
-  em->proto_cb_vft->disconnected_reply_cb (s);
-}
-
-static void
-  vl_api_application_tls_cert_add_reply_t_handler
-  (vl_api_application_tls_cert_add_reply_t * mp)
-{
-  if (mp->retval)
-    ECHO_FAIL (ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY,
-	       "failed to add application tls cert");
-}
-
-static void
-  vl_api_application_tls_key_add_reply_t_handler
-  (vl_api_application_tls_key_add_reply_t * mp)
-{
-  if (mp->retval)
-    ECHO_FAIL (ECHO_FAIL_VL_API_TLS_KEY_ADD_REPLY,
-	       "failed to add application tls key");
-}
-
-static void
-vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
-{
-  echo_main_t *em = &echo_main;
-  if (mp->retval && (em->proto_cb_vft->connected_cb))
-    em->proto_cb_vft->connected_cb ((session_connected_bundled_msg_t *) mp,
-				    mp->context, 1 /* is_failed */ );
-}
-
-#define foreach_quic_echo_msg                                           \
-_(BIND_URI_REPLY, bind_uri_reply)                                       \
-_(UNBIND_URI_REPLY, unbind_uri_reply)                                   \
-_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)                   \
-_(APPLICATION_ATTACH_REPLY, application_attach_reply)                   \
-_(APPLICATION_DETACH_REPLY, application_detach_reply)                   \
-_(MAP_ANOTHER_SEGMENT, map_another_segment)                             \
-_(UNMAP_SEGMENT, unmap_segment)                                         \
-_(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)       \
-_(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)         \
-_(CONNECT_URI_REPLY, connect_uri_reply)         \
+#define foreach_quic_echo_msg                              \
+_(APP_ATTACH_REPLY, app_attach_reply)                      \
+_(APPLICATION_DETACH_REPLY, application_detach_reply)      \
+_(MAP_ANOTHER_SEGMENT, map_another_segment)                \
+_(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)              \
+_(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)              \
+_(UNMAP_SEGMENT, unmap_segment)
 
 void
 echo_api_hookup (echo_main_t * em)
