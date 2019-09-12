@@ -665,7 +665,10 @@ class VPPApiClient(object):
 
         self.transport.resume()
 
-        self.logger.debug('Return from {!r}'.format(r))
+        s = 'Return value: {!r}'.format(r)
+        if len(s) > 80:
+            s = s[:80] + "..."
+        self.logger.debug(s)
         return rl
 
     def _call_vpp_async(self, i, msg, **kwargs):
