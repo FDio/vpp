@@ -214,11 +214,20 @@ format_vnet_hw_if_index_name (u8 * s, va_list * args)
 
 u8 *
 format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
-				vnet_sw_interface_t * si)
+				vnet_sw_interface_t * si, int json)
 {
   u32 indent, n_printed;
   int j, n_counters;
+  char *x = "";
+  int json_need_comma_nl = 0;
   u8 *n = 0;
+
+  /*
+   * to output a json snippet, stick quotes in lots of places
+   * definitely deserves a one-character variable name.
+   */
+  if (json)
+    x = "\"";
 
   indent = format_get_indent (s);
   n_printed = 0;
@@ -241,6 +250,21 @@ format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
       /* Only display non-zero counters. */
       if (vtotal.packets == 0)
 	continue;
+
+      if (json)
+	{
+	  if (json_need_comma_nl)
+	    {
+	      vec_add1 (s, ',');
+	      vec_add1 (s, '\n');
+	    }
+	  s = format (s, "%s%s_packets%s: %s%Ld%s,\n", x, cm->name, x, x,
+		      vtotal.packets, x);
+	  s = format (s, "%s%s_bytes%s: %s%Ld%s", x, cm->name, x, x,
+		      vtotal.bytes, x);
+	  json_need_comma_nl = 1;
+	  continue;
+	}
 
       if (n_printed > 0)
 	s = format (s, "\n%U", format_white_space, indent);
@@ -276,6 +300,19 @@ format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
 	/* Only display non-zero counters. */
 	if (vtotal == 0)
 	  continue;
+
+	if (json)
+	  {
+	    if (json_need_comma_nl)
+	      {
+		vec_add1 (s, ',');
+		vec_add1 (s, '\n');
+	      }
+	    s = format (s, "%s%s%s: %s%Ld%s", x, cm->name, x, x, vtotal, x);
+	    json_need_comma_nl = 1;
+	    continue;
+	  }
+
 
 	if (n_printed > 0)
 	  s = format (s, "\n%U", format_white_space, indent);
@@ -315,7 +352,7 @@ format_vnet_sw_interface (u8 * s, va_list * args)
 	      format_vnet_sw_interface_flags, si->flags,
 	      format_vnet_sw_interface_mtu, si);
 
-  s = format_vnet_sw_interface_cntrs (s, im, si);
+  s = format_vnet_sw_interface_cntrs (s, im, si, 0 /* want json */ );
 
   return s;
 }
@@ -338,7 +375,7 @@ format_vnet_sw_interface_name_override (u8 * s, va_list * args)
 	      name, si->sw_if_index,
 	      format_vnet_sw_interface_flags, si->flags);
 
-  s = format_vnet_sw_interface_cntrs (s, im, si);
+  s = format_vnet_sw_interface_cntrs (s, im, si, 0 /* want json */ );
 
   return s;
 }
