@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1225f6da_cd424cf2",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Looks ok but pls confirm with the api\u0027s owner.",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "195398ea_4909bd73",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Looks ok but pls confirm with the api\u0027s owner.",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0b0f5ef2_b67c47f0",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Looks ok but pls confirm with the api\u0027s owner.",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f04f2d75_a2ce4d1b",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Looks ok but pls confirm with the api\u0027s owner.",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a97fceeb_d98e5052",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Looks ok but pls confirm with the api\u0027s owner.",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "500bc0c9_391f370d",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "FYI - in 19.08 it is not prefix but address/address_length",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d387c3ef_dfb8bc2e",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 624,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Looks fishy. Pls confirm with the owner of the api.",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cbb3ee76_8ee194b2",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 639,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Looks fishy. Pls confirm with the owner of the api.",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "34de841e_afd09fec",
+        "filename": "src/vnet/ip/ip_types.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Could you please add the following comment:\n\nThe vl_api_prefix_t type can be used to encapsulate/denote an IP address in cidr/prefix notation, for eg, 10.0.0.1/8, and it can also be used to encapsulate/denote a network prefix, for eg, 10.0.0.0/8. It can lead to confusion at the language binding’s encoder/decoder layer. When VPP returns something like 10.195.131.80/27, should it encode/decode it as an IP address in cidr/prefix notation or as a network prefix, ie, 10.195.131.64/27. There’s no way for it to infer that reliably. So, the VPP api definiton MUST indicate that to the language binding. Hence the introduction of the new type, vl_api_address_with_prefix_t.\n\nIn summary:\nvl_api_prefix_t \u003d network prefix\nvl_api_address_with_prefix_t \u003d IP address in cidr/prefix notation",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5c31cbcf_5773a730",
+        "filename": "src/vnet/mpls/mpls.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2019-09-12T10:13:29Z",
+      "side": 1,
+      "message": "Looks ok but pls confirm with the api\u0027s owner.",
+      "revId": "c46779e1cc2198ac8e7cdc70dbe6dce0630e1993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
