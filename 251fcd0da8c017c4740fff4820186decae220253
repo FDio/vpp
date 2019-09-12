@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "77ccf186_dbaccf3e",
+        "filename": "extras/http/setup.http",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-12T16:04:31Z",
+      "side": 1,
+      "message": "You decide if you want to keep that here :-)",
+      "range": {
+        "startLine": 6,
+        "startChar": 28,
+        "endLine": 6,
+        "endChar": 59
+      },
+      "revId": "251fcd0da8c017c4740fff4820186decae220253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8bafd9ec_1107b08e",
+        "filename": "src/plugins/http_static/builtin_urls.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-12T16:04:31Z",
+      "side": 1,
+      "message": "You may want to change this",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "251fcd0da8c017c4740fff4820186decae220253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
