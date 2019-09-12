@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "777d2fda_aef1794f",
+        "filename": "extras/http/sample.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 154
+      },
+      "writtenOn": "2019-09-12T17:00:18Z",
+      "side": 1,
+      "message": "You might want to keep your functions style consistent across your code, so I would suggest converting all functions to arrow functions. So this would become: (obj) \u003d\u003e {}",
+      "revId": "251fcd0da8c017c4740fff4820186decae220253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9bfd0c57_84a1f65b",
+        "filename": "extras/http/sample.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 154
+      },
+      "writtenOn": "2019-09-12T17:00:18Z",
+      "side": 1,
+      "message": "Same comment as the one above. Only for consistency.",
+      "revId": "251fcd0da8c017c4740fff4820186decae220253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "77ccf186_dbaccf3e",
         "filename": "extras/http/setup.http",
         "patchSetId": 3
