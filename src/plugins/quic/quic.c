@@ -132,23 +132,16 @@ quic_sendable_packet_count (session_t * udp_session)
 static quicly_context_t *
 quic_get_quicly_ctx_from_ctx (quic_ctx_t * ctx)
 {
-  app_worker_t *app_wrk;
-  application_t *app;
-  app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_id);
-  if (!app_wrk)
-    return 0;
-  app = application_get (app_wrk->app_index);
-  return (quicly_context_t *) app->quicly_ctx;
+  return ctx->quicly_ctx;
 }
 
 static quicly_context_t *
 quic_get_quicly_ctx_from_udp (u64 udp_session_handle)
 {
-  session_t *udp_session;
-  application_t *app;
-  udp_session = session_get_from_handle (udp_session_handle);
-  app = application_get (udp_session->opaque);
-  return (quicly_context_t *) app->quicly_ctx;
+  session_t *udp_session = session_get_from_handle (udp_session_handle);
+  quic_ctx_t *ctx =
+    quic_ctx_get (udp_session->opaque, udp_session->thread_index);
+  return ctx->quicly_ctx;
 }
 
 static void
@@ -1107,6 +1100,9 @@ quic_connect_new_connection (session_endpoint_cfg_t * sep)
   cargs->sep_ext.ns_index = app->ns_index;
 
   quic_store_quicly_ctx (app, 1 /* is client */ );
+  /* Also store it in ctx for convenience
+   * Waiting for crypto_ctx logic */
+  ctx->quicly_ctx = (quicly_context_t *) app->quicly_ctx;
 
   if ((error = vnet_connect (cargs)))
     return error;
@@ -1213,6 +1209,9 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
 
   lctx = quic_ctx_get (lctx_index, 0);
   lctx->flags |= QUIC_F_IS_LISTENER;
+  /* Also store it in ctx for convenience
+   * Waiting for crypto_ctx logic */
+  lctx->quicly_ctx = (quicly_context_t *) app->quicly_ctx;
 
   clib_memcpy (&lctx->c_rmt_ip, &args->sep.peer.ip, sizeof (ip46_address_t));
   clib_memcpy (&lctx->c_lcl_ip, &args->sep.ip, sizeof (ip46_address_t));
@@ -1522,7 +1521,7 @@ quic_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 	    is_fail, thread_index, (ctx) ? ctx_index : ~0);
 
   ctx->udp_session_handle = session_handle (udp_session);
-  udp_session->opaque = ctx->parent_app_id;
+  udp_session->opaque = ctx_index;
 
   /* Init QUIC lib connection
    * Generate required sockaddr & salen */
@@ -1626,7 +1625,11 @@ quic_session_accepted_callback (session_t * udp_session)
   ctx->conn_state = QUIC_CONN_STATE_OPENED;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
-  udp_session->opaque = ctx->parent_app_id;
+  /* Also store it in ctx for convenience
+   * Waiting for crypto_ctx logic */
+  ctx->quicly_ctx = lctx->quicly_ctx;
+
+  udp_session->opaque = ctx_index;
 
   /* Put this ctx in the "opening" pool */
   pool_get (quic_main.wrk_ctx[ctx->c_thread_index].opening_ctx_pool,
@@ -1903,8 +1906,7 @@ check_quic_client_connected (struct quic_rx_packet_ctx_ *quic_rx_ctx)
 }
 
 static int
-quic_process_one_rx_packet (u64 udp_session_handle,
-			    quicly_context_t * quicly_ctx, svm_fifo_t * f,
+quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 			    u32 * fifo_offset, u32 * max_packet, u32 packet_n,
 			    quic_rx_packet_ctx_t * packet_ctx)
 {
@@ -1921,6 +1923,7 @@ quic_process_one_rx_packet (u64 udp_session_handle,
   u32 thread_index = vlib_get_thread_index ();
   u32 *opening_ctx_pool, *ctx_index_ptr;
   u32 cur_deq = svm_fifo_max_dequeue (f) - *fifo_offset;
+  quicly_context_t *quicly_ctx;
 
   if (cur_deq == 0)
     {
@@ -2025,23 +2028,13 @@ static int
 quic_app_rx_callback (session_t * udp_session)
 {
   /*  Read data from UDP rx_fifo and pass it to the quicly conn. */
-  application_t *app;
   quic_ctx_t *ctx = NULL;
   svm_fifo_t *f;
   u32 max_deq;
-  u32 app_index = udp_session->opaque;
   u64 udp_session_handle = session_handle (udp_session);
   int rv = 0;
-  app = application_get_if_valid (app_index);
   u32 thread_index = vlib_get_thread_index ();
   quic_rx_packet_ctx_t packets_ctx[16];
-
-  if (!app)
-    {
-      QUIC_DBG (1, "Got RX on detached app");
-      /*  TODO: close this session, cleanup state? */
-      return 1;
-    }
 
   do
     {
@@ -2057,8 +2050,7 @@ quic_app_rx_callback (session_t * udp_session)
       u32 max_packets = 16;
       for (int i = 0; i < max_packets; i++)
 	{
-	  quic_process_one_rx_packet (udp_session_handle,
-				      (quicly_context_t *) app->quicly_ctx, f,
+	  quic_process_one_rx_packet (udp_session_handle, f,
 				      &fifo_offset, &max_packets, i,
 				      &packets_ctx[i]);
 	}
@@ -2157,7 +2149,7 @@ static const transport_proto_vft_t quic_proto = {
 /* *INDENT-ON* */
 
 static void
-quic_register_cipher_suite (quic_crypto_engine_t type,
+quic_register_cipher_suite (crypto_engine_type_t type,
 			    ptls_cipher_suite_t ** ciphers)
 {
   quic_main_t *qm = &quic_main;
