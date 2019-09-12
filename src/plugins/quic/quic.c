@@ -2211,7 +2211,7 @@ static const transport_proto_vft_t quic_proto = {
 /* *INDENT-ON* */
 
 static void
-quic_register_cipher_suite (quic_crypto_engine_t type,
+quic_register_cipher_suite (tls_engine_type_t type,
 			    ptls_cipher_suite_t ** ciphers)
 {
   quic_main_t *qm = &quic_main;

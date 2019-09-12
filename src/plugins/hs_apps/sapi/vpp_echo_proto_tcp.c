@@ -97,7 +97,7 @@ tcp_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
 }
 
 static void
-tcp_echo_disconnected_reply_cb (echo_session_t * s)
+tcp_echo_sent_disconnect_cb (echo_session_t * s)
 {
   s->session_state = ECHO_SESSION_STATE_CLOSING;
 }
@@ -122,13 +122,31 @@ tcp_echo_reset_cb (session_reset_msg_t * mp, echo_session_t * s)
   s->session_state = ECHO_SESSION_STATE_CLOSING;
 }
 
+static void
+tls_echo_set_defaults_after_opts_cb ()
+{
+  echo_main_t *em = &echo_main;
+  if (em->crypto_ctx_engine == TLS_ENGINE_NONE)
+    em->crypto_ctx_engine = TLS_ENGINE_OPENSSL;
+}
+
 echo_proto_cb_vft_t echo_tcp_proto_cb_vft = {
   .disconnected_cb = tcp_echo_disconnected_cb,
   .connected_cb = tcp_echo_connected_cb,
   .accepted_cb = tcp_echo_accepted_cb,
   .reset_cb = tcp_echo_reset_cb,
-  .disconnected_reply_cb = tcp_echo_disconnected_reply_cb,
+  .sent_disconnect_cb = tcp_echo_sent_disconnect_cb,
   .cleanup_cb = tcp_echo_cleanup_cb,
+};
+
+echo_proto_cb_vft_t echo_tls_proto_cb_vft = {
+  .disconnected_cb = tcp_echo_disconnected_cb,
+  .connected_cb = tcp_echo_connected_cb,
+  .accepted_cb = tcp_echo_accepted_cb,
+  .reset_cb = tcp_echo_reset_cb,
+  .sent_disconnect_cb = tcp_echo_sent_disconnect_cb,
+  .cleanup_cb = tcp_echo_cleanup_cb,
+  .set_defaults_after_opts_cb = tls_echo_set_defaults_after_opts_cb,
 };
 
 ECHO_REGISTER_PROTO (TRANSPORT_PROTO_TCP, echo_tcp_proto_cb_vft);

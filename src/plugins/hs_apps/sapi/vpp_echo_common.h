@@ -73,8 +73,8 @@
   _(ECHO_FAIL_VL_API_DETACH_REPLY, "ECHO_FAIL_VL_API_DETACH_REPLY")     \
   _(ECHO_FAIL_VL_API_BIND_URI_REPLY, "ECHO_FAIL_VL_API_BIND_URI_REPLY") \
   _(ECHO_FAIL_VL_API_UNBIND_REPLY, "ECHO_FAIL_VL_API_UNBIND_REPLY")     \
-  _(ECHO_FAIL_VL_API_DISCONNECT_SESSION_REPLY,                          \
-    "ECHO_FAIL_VL_API_DISCONNECT_SESSION_REPLY")                        \
+  _(ECHO_FAIL_SESSION_DISCONNECT, "ECHO_FAIL_SESSION_DISCONNECT")       \
+  _(ECHO_FAIL_SESSION_RESET, "ECHO_FAIL_SESSION_RESET")                 \
   _(ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY,                                \
     "ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY")                              \
   _(ECHO_FAIL_VL_API_TLS_KEY_ADD_REPLY,                                 \
@@ -189,6 +189,8 @@ enum quic_session_state_t
 typedef enum
 {
   STATE_START,
+  STATE_ATTACHED_NO_CERT,
+  STATE_ATTACHED_ONE_CERT,
   STATE_ATTACHED,
   STATE_LISTEN,
   STATE_READY,
@@ -221,7 +223,7 @@ typedef struct echo_proto_cb_vft_
   void (*bound_uri_cb) (session_bound_msg_t * mp, echo_session_t * session);	/* Session got bound */
   void (*reset_cb) (session_reset_msg_t * mp, echo_session_t * s);	/* Received RESET on session */
   void (*disconnected_cb) (session_disconnected_msg_t * mp, echo_session_t * s);	/* Received DISCONNECT on session */
-  void (*disconnected_reply_cb) (echo_session_t * s);	/* ACK disconnect we sent to vpp */
+  void (*sent_disconnect_cb) (echo_session_t * s);	/* ACK disconnect we sent to vpp */
   void (*cleanup_cb) (echo_session_t * s, u8 parent_died);	/* Session should be cleaned up (parent listener may be dead) */
   /* Add CLI options */
   int (*process_opts_cb) (unformat_input_t * a);
@@ -249,7 +251,8 @@ typedef struct
   u32 my_client_index;		/* API client handle */
   u8 *uri;			/* The URI we're playing with */
   echo_session_t *sessions;	/* Session pool */
-  svm_msg_q_t *our_event_queue;	/* Our event queue */
+  svm_msg_q_t *app_mq;		/* Our receiveing event queue */
+  svm_msg_q_t *ctrl_mq;		/* Our control queue (towards vpp) */
   clib_time_t clib_time;	/* For deadman timers */
   u8 *socket_name;
   int i_am_master;
@@ -288,6 +291,7 @@ typedef struct
   u8 log_lvl;			/* Verbosity of the logging */
   int max_test_msg;		/* Limit the number of incorrect data messages */
   u32 evt_q_size;		/* Size of the vpp MQ (app<->vpp events) */
+  u32 crypto_ctx_engine;	/* crypto engine used */
 
   u8 *appns_id;
   u64 appns_flags;
@@ -372,16 +376,19 @@ int wait_for_state_change (echo_main_t * em, connection_state_t state,
 			   f64 timeout);
 void echo_notify_event (echo_main_t * em, echo_test_evt_t e);
 void echo_session_print_stats (echo_main_t * em, echo_session_t * session);
+u8 *echo_format_crypto_engine (u8 * s, va_list * args);
+uword echo_unformat_crypto_engine (unformat_input_t * input, va_list * args);
 
 /* Binary API */
 
 void echo_send_attach (echo_main_t * em);
 void echo_send_detach (echo_main_t * em);
 void echo_send_listen (echo_main_t * em);
-void echo_send_unbind (echo_main_t * em);
-void echo_send_connect (u8 * uri, u32 opaque);
+void echo_send_unbind (echo_main_t * em, echo_session_t * s);
+void echo_send_connect (u64 vpp_session_handle, u32 opaque);
 void echo_send_disconnect_session (u64 handle, u32 opaque);
 void echo_api_hookup (echo_main_t * em);
+void echo_send_add_crypto_ctx (echo_main_t * em);
 
 #endif /* __included_vpp_echo_common_h__ */
 

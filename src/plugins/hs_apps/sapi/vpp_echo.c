@@ -450,6 +450,16 @@ echo_data_thread_fn (void *arg)
 }
 
 static void
+session_unlisten_handler (session_unlisten_msg_t * mp)
+{
+  echo_session_t *listen_session;
+  echo_main_t *em = &echo_main;
+  listen_session = pool_elt_at_index (em->sessions, em->listen_session_index);
+  em->proto_cb_vft->cleanup_cb (listen_session, 0 /* parent_died */ );
+  em->state = STATE_DISCONNECTED;
+}
+
+static void
 session_bound_handler (session_bound_msg_t * mp)
 {
   echo_main_t *em = &echo_main;
@@ -542,9 +552,10 @@ session_connected_handler (session_connected_msg_t * mp)
 
   if (mp->retval)
     {
-      ECHO_FAIL (ECHO_FAIL_SESSION_CONNECT,
-		 "connection failed with code: %U", format_api_error,
-		 clib_net_to_host_u32 (mp->retval));
+      if (em->proto_cb_vft->connected_cb)
+	em->
+	  proto_cb_vft->connected_cb ((session_connected_bundled_msg_t *) mp,
+				      listener_index, 1 /* is_failed */ );
       return;
     }
 
@@ -597,7 +608,11 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
   echo_session_t *s;
   ECHO_LOG (1, "passive close session 0x%lx", mp->handle);
   if (!(s = echo_get_session_from_handle (em, mp->handle)))
-    return;
+    {
+      ECHO_FAIL (ECHO_FAIL_SESSION_DISCONNECT, "Session 0x%lx not found",
+		 mp->handle);
+      return;
+    }
   em->proto_cb_vft->disconnected_cb (mp, s);
 
   app_alloc_ctrl_evt_to_vpp (s->vpp_evt_q, app_evt,
@@ -618,7 +633,11 @@ session_reset_handler (session_reset_msg_t * mp)
   echo_session_t *s = 0;
   ECHO_LOG (1, "Reset session 0x%lx", mp->handle);
   if (!(s = echo_get_session_from_handle (em, mp->handle)))
-    return;
+    {
+      ECHO_FAIL (ECHO_FAIL_SESSION_RESET, "Session 0x%lx not found",
+		 mp->handle);
+      return;
+    }
   em->proto_cb_vft->reset_cb (mp, s);
 
   app_alloc_ctrl_evt_to_vpp (s->vpp_evt_q, app_evt,
@@ -635,20 +654,18 @@ handle_mq_event (session_event_t * e)
   switch (e->event_type)
     {
     case SESSION_CTRL_EVT_BOUND:
-      session_bound_handler ((session_bound_msg_t *) e->data);
-      break;
+      return session_bound_handler ((session_bound_msg_t *) e->data);
     case SESSION_CTRL_EVT_ACCEPTED:
-      session_accepted_handler ((session_accepted_msg_t *) e->data);
-      break;
+      return session_accepted_handler ((session_accepted_msg_t *) e->data);
     case SESSION_CTRL_EVT_CONNECTED:
-      session_connected_handler ((session_connected_msg_t *) e->data);
-      break;
+      return session_connected_handler ((session_connected_msg_t *) e->data);
     case SESSION_CTRL_EVT_DISCONNECTED:
-      session_disconnected_handler ((session_disconnected_msg_t *) e->data);
-      break;
+      return session_disconnected_handler ((session_disconnected_msg_t *)
+					   e->data);
     case SESSION_CTRL_EVT_RESET:
-      session_reset_handler ((session_reset_msg_t *) e->data);
-      break;
+      return session_reset_handler ((session_reset_msg_t *) e->data);
+    case SESSION_CTRL_EVT_UNLISTEN_REPLY:
+      return session_unlisten_handler ((session_unlisten_msg_t *) e->data);
     case SESSION_IO_EVT_RX:
       break;
     default:
@@ -710,7 +727,7 @@ echo_mq_thread_fn (void *arg)
   vec_validate (msg_vec, em->evt_q_size);
   vec_reset_length (msg_vec);
   wait_for_state_change (em, STATE_ATTACHED, 0);
-  mq = em->our_event_queue;
+  mq = em->app_mq;
   if (em->state < STATE_ATTACHED || !mq)
     {
       ECHO_FAIL (ECHO_FAIL_APP_ATTACH, "Application failed to attach");
@@ -747,7 +764,7 @@ clients_run (echo_main_t * em)
   u64 i;
   echo_notify_event (em, ECHO_EVT_FIRST_QCONNECT);
   for (i = 0; i < em->n_connects; i++)
-    echo_send_connect (em->uri, SESSION_INVALID_INDEX);
+    echo_send_connect (SESSION_INVALID_HANDLE, SESSION_INVALID_INDEX);
   wait_for_state_change (em, STATE_READY, 0);
   ECHO_LOG (1, "App is ready");
   echo_process_rpcs (em);
@@ -756,12 +773,14 @@ clients_run (echo_main_t * em)
 static void
 server_run (echo_main_t * em)
 {
+  echo_session_t *ls;
   echo_send_listen (em);
   wait_for_state_change (em, STATE_READY, 0);
   ECHO_LOG (1, "App is ready");
   echo_process_rpcs (em);
   /* Cleanup */
-  echo_send_unbind (em);
+  ls = pool_elt_at_index (em->sessions, em->listen_session_index);
+  echo_send_unbind (em, ls);
   if (wait_for_state_change (em, STATE_DISCONNECTED, TIMEOUT))
     {
       ECHO_FAIL (ECHO_FAIL_SERVER_DISCONNECT_TIMEOUT,
@@ -894,6 +913,11 @@ echo_process_opts (int argc, char **argv)
 	}
       else if (unformat (a, "nthreads %d", &em->n_rx_threads))
 	;
+      else
+	if (unformat
+	    (a, "crypto %U", echo_unformat_crypto_engine,
+	     &em->crypto_ctx_engine))
+	;
       else if (unformat (a, "appns %_%v%_", &em->appns_id))
 	;
       else if (unformat (a, "all-scope"))
@@ -1021,6 +1045,7 @@ main (int argc, char **argv)
   em->tx_buf_size = 1 << 20;
   em->data_source = ECHO_INVALID_DATA_SOURCE;
   em->uri = format (0, "%s%c", "tcp://0.0.0.0/1234", 0);
+  em->crypto_ctx_engine = TLS_ENGINE_NONE;
   echo_set_each_proto_defaults_before_opts (em);
   echo_process_opts (argc, argv);
   echo_process_uri (em);
@@ -1074,18 +1099,36 @@ main (int argc, char **argv)
   echo_notify_event (em, ECHO_EVT_START);
 
   echo_send_attach (em);
-  if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
+  if (wait_for_state_change (em, STATE_ATTACHED_NO_CERT, TIMEOUT))
     {
       ECHO_FAIL (ECHO_FAIL_ATTACH_TO_VPP,
 		 "Couldn't attach to vpp, did you run <session enable> ?");
       goto exit_on_error;
     }
+
+  if (em->crypto_ctx_engine == TLS_ENGINE_NONE)
+    /* when no crypto engine specified, dont expect crypto ctx */
+    em->state = STATE_ATTACHED;
+  else
+    {
+      ECHO_LOG (1, "Adding crypto context %U", echo_format_crypto_engine,
+		em->crypto_ctx_engine);
+      echo_send_add_crypto_ctx (em);
+      if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
+	{
+	  ECHO_FAIL (ECHO_FAIL_APP_ATTACH,
+		     "Couldn't add crypto context to vpp\n");
+	  exit (1);
+	}
+    }
+
   if (pthread_create (&em->mq_thread_handle,
 		      NULL /*attr */ , echo_mq_thread_fn, 0))
     {
       ECHO_FAIL (ECHO_FAIL_PTHREAD_CREATE, "pthread create errored");
       goto exit_on_error;
     }
+
   for (i = 0; i < em->n_rx_threads; i++)
     if (pthread_create (&em->data_thread_handles[i],
 			NULL /*attr */ , echo_data_thread_fn, (void *) i))
