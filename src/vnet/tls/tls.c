@@ -412,6 +412,7 @@ tls_session_accept_callback (session_t * tls_session)
   ctx->tls_session_handle = session_handle (tls_session);
   ctx->listener_ctx_index = tls_listener->opaque;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
+  ctx->ckpair_index = lctx->ckpair_index;
 
   /* Preallocate app session. Avoids allocating a session post handshake
    * on tls_session rx and potentially invalidating the session pool */
@@ -625,6 +626,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   lctx->app_session_handle = listen_session_get_handle (app_listener);
   lctx->tcp_is_ip4 = sep->is_ip4;
   lctx->tls_ctx_engine = engine_type;
+  lctx->ckpair_index = sep->ckpair_index;
 
   if (tls_vfts[engine_type].ctx_start_listen (lctx))
     {
