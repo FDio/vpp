@@ -148,19 +148,11 @@ typedef struct _vnet_application_add_tls_key_args_t
   u8 *key;
 } vnet_app_add_tls_key_args_t;
 
-typedef enum tls_engine_type_
-{
-  TLS_ENGINE_NONE,
-  TLS_ENGINE_MBEDTLS,
-  TLS_ENGINE_OPENSSL,
-  TLS_N_ENGINES
-} tls_engine_type_t;
-
 typedef enum crypto_engine_type_
 {
-  CRYPTO_ENGINE_NONE = TLS_ENGINE_NONE,
-  CRYPTO_ENGINE_MBEDTLS = TLS_ENGINE_MBEDTLS,
-  CRYPTO_ENGINE_OPENSSL = TLS_ENGINE_OPENSSL,
+  CRYPTO_ENGINE_NONE,
+  CRYPTO_ENGINE_MBEDTLS,
+  CRYPTO_ENGINE_OPENSSL,
   CRYPTO_ENGINE_PICOTLS,
   CRYPTO_ENGINE_VPP,
   CRYPTO_N_ENGINES

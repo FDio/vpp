@@ -426,9 +426,9 @@ u8 *
 echo_format_crypto_engine (u8 * s, va_list * args)
 {
   u32 state = va_arg (*args, u32);
-  if (state == TLS_ENGINE_MBEDTLS)
+  if (state == CRYPTO_ENGINE_MBEDTLS)
     return format (s, "mbedtls");
-  if (state == TLS_ENGINE_OPENSSL)
+  if (state == CRYPTO_ENGINE_OPENSSL)
     return format (s, "openssl");
   if (state == CRYPTO_ENGINE_PICOTLS)
     return format (s, "picotls");
@@ -443,9 +443,9 @@ echo_unformat_crypto_engine (unformat_input_t * input, va_list * args)
 {
   u8 *a = va_arg (*args, u8 *);
   if (unformat (input, "mbedtls"))
-    *a = TLS_ENGINE_MBEDTLS;
+    *a = CRYPTO_ENGINE_MBEDTLS;
   else if (unformat (input, "openssl"))
-    *a = TLS_ENGINE_OPENSSL;
+    *a = CRYPTO_ENGINE_OPENSSL;
   else if (unformat (input, "picotls"))
     *a = CRYPTO_ENGINE_PICOTLS;
   else if (unformat (input, "vpp"))

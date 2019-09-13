@@ -38,7 +38,7 @@ tls_disconnect_transport (tls_ctx_t * ctx)
     clib_warning ("disconnect returned");
 }
 
-tls_engine_type_t
+crypto_engine_type_t
 tls_get_available_engine (void)
 {
   int i;
@@ -47,7 +47,7 @@ tls_get_available_engine (void)
       if (tls_vfts[i].ctx_alloc)
 	return i;
     }
-  return TLS_ENGINE_NONE;
+  return CRYPTO_ENGINE_NONE;
 }
 
 int
@@ -274,8 +274,8 @@ tls_ctx_parse_handle (u32 ctx_handle, u32 * ctx_index, u32 * engine_type)
   *engine_type = ctx_handle >> TLS_ENGINE_TYPE_SHIFT;
 }
 
-static inline tls_engine_type_t
-tls_get_engine_type (tls_engine_type_t preferred)
+static inline crypto_engine_type_t
+tls_get_engine_type (crypto_engine_type_t preferred)
 {
   if (!tls_vfts[preferred].ctx_alloc)
     return tls_get_available_engine ();
@@ -283,7 +283,7 @@ tls_get_engine_type (tls_engine_type_t preferred)
 }
 
 static inline u32
-tls_ctx_alloc (tls_engine_type_t engine_type)
+tls_ctx_alloc (crypto_engine_type_t engine_type)
 {
   u32 ctx_index;
   ctx_index = tls_vfts[engine_type].ctx_alloc ();
@@ -521,7 +521,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
 {
   vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
   session_endpoint_cfg_t *sep;
-  tls_engine_type_t engine_type;
+  crypto_engine_type_t engine_type;
   tls_main_t *tm = &tls_main;
   app_worker_t *app_wrk;
   application_t *app;
@@ -533,7 +533,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
   engine_type = tls_get_engine_type (app->tls_engine);
-  if (engine_type == TLS_ENGINE_NONE)
+  if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
       return -1;
@@ -587,7 +587,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   session_endpoint_cfg_t *sep;
   session_t *tls_listener;
   session_t *app_listener;
-  tls_engine_type_t engine_type;
+  crypto_engine_type_t engine_type;
   application_t *app;
   app_listener_t *al;
   tls_ctx_t *lctx;
@@ -597,7 +597,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
   engine_type = tls_get_engine_type (app->tls_engine);
-  if (engine_type == TLS_ENGINE_NONE)
+  if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
       return -1;
@@ -647,7 +647,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 u32
 tls_stop_listen (u32 lctx_index)
 {
-  tls_engine_type_t engine_type;
+  crypto_engine_type_t engine_type;
   tls_ctx_t *lctx;
   int rv;
 
@@ -815,7 +815,7 @@ static const transport_proto_vft_t tls_proto = {
 /* *INDENT-ON* */
 
 void
-tls_register_engine (const tls_engine_vft_t * vft, tls_engine_type_t type)
+tls_register_engine (const tls_engine_vft_t * vft, crypto_engine_type_t type)
 {
   vec_validate (tls_vfts, type);
   tls_vfts[type] = *vft;
