@@ -463,12 +463,6 @@ echo_send_rpc (echo_main_t * em, void *fp, void *arg, u32 opaque)
       return -2;
     }
   msg = svm_msg_q_alloc_msg_w_ring (em->rpc_msq_queue, 0);
-  if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
-    {
-      ECHO_LOG (1, "RPC msg is invalid");
-      svm_msg_q_unlock (em->rpc_msq_queue);
-      return -2;
-    }
   evt = (echo_rpc_msg_t *) svm_msg_q_msg_data (em->rpc_msq_queue, &msg);
   evt->arg = arg;
   evt->opaque = opaque;

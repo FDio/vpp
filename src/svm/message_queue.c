@@ -127,11 +127,6 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
 	  return -2;
 	}
       *msg = svm_msg_q_alloc_msg_w_ring (mq, ring_index);
-      if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (msg)))
-	{
-	  svm_msg_q_unlock (mq);
-	  return -2;
-	}
     }
   else
     {
