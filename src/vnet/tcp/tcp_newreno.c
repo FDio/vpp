@@ -31,7 +31,7 @@ static void
 newreno_loss (tcp_connection_t * tc)
 {
   tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
-  tc->cwnd = tcp_loss_wnd (tc);
+//  tc->cwnd = tcp_loss_wnd (tc);
 }
 
 static void
