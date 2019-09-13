@@ -44,6 +44,7 @@
 #include <vnet/devices/pipe/pipe.h>
 #include <vppinfra/sparse_vec.h>
 #include <vnet/l2/l2_bvi.h>
+#include <vnet/classify/trace_classify.h>
 
 #define foreach_ethernet_input_next		\
   _ (PUNT, "error-punt")			\
@@ -1000,15 +1001,29 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (vlib_global_main.pcap[VLIB_RX].pcap_enable))
     {
       u32 bi0;
+      vnet_main_t *vnm = vnet_get_main ();
 
       from = vlib_frame_vector_args (from_frame);
       n_left = from_frame->n_vectors;
       while (n_left > 0)
 	{
+	  int classify_filter_result;
 	  vlib_buffer_t *b0;
 	  bi0 = from[0];
 	  from++;
+	  n_left--;
 	  b0 = vlib_get_buffer (vm, bi0);
+	  if (vec_len (vnm->classify_filter_table_indices))
+	    {
+	      classify_filter_result =
+		vnet_is_packet_traced_inline
+		(b0, vnm->classify_filter_table_indices[0],
+		 0 /* full classify */ );
+	      if (classify_filter_result)
+		pcap_add_buffer (&vlib_global_main.pcap[VLIB_RX].pcap_main,
+				 vm, bi0, 512);
+	      continue;
+	    }
 
 	  if (vlib_global_main.pcap[VLIB_RX].pcap_sw_if_index == 0 ||
 	      vlib_global_main.pcap[VLIB_RX].pcap_sw_if_index
@@ -1017,7 +1032,6 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      pcap_add_buffer (&vlib_global_main.pcap[VLIB_RX].pcap_main, vm,
 			       bi0, 512);
 	    }
-	  n_left--;
 	}
     }
 }
