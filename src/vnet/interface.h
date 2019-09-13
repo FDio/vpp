@@ -901,6 +901,7 @@ typedef struct
   u32 packets_to_capture;
   vlib_rx_or_tx_t rxtx;
   u32 sw_if_index;
+  int filter;
 } vnet_pcap_dispatch_trace_args_t;
 
 int vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t *);

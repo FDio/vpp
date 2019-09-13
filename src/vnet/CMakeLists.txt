@@ -384,6 +384,7 @@ list(APPEND VNET_API_FILES lldp/lldp.api)
 ##############################################################################
 list(APPEND VNET_SOURCES
   classify/vnet_classify.c
+  classify/trace_classify.h
   classify/ip_classify.c
   classify/in_out_acl.c
   classify/policer_classify.c
@@ -400,6 +401,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
 
 list(APPEND VNET_HEADERS
   classify/vnet_classify.h
+  classify/trace_classify.h
   classify/in_out_acl.h
   classify/policer_classify.h
   classify/flow_classify.h

@@ -77,6 +77,9 @@ typedef struct vnet_main_t
    */
   vnet_api_error_t api_errno;
 
+  /* pcap rx/tx, packet tracer filter tables */
+  u32 *classify_filter_table_indices;
+
   vlib_main_t *vlib_main;
 } vnet_main_t;
 
