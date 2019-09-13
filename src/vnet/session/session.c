@@ -41,17 +41,11 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       svm_msg_q_unlock (mq);
       return -2;
     }
-  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
-    {
-      svm_msg_q_unlock (mq);
-      return -2;
-    }
-  evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->event_type = evt_type;
   switch (evt_type)
     {
     case SESSION_CTRL_EVT_RPC:
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->rpc_args.fp = data;
       evt->rpc_args.arg = args;
       break;
@@ -59,11 +53,15 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
     case SESSION_IO_EVT_TX:
     case SESSION_IO_EVT_TX_FLUSH:
     case SESSION_IO_EVT_BUILTIN_RX:
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = *(u32 *) data;
       break;
     case SESSION_IO_EVT_BUILTIN_TX:
     case SESSION_CTRL_EVT_CLOSE:
     case SESSION_CTRL_EVT_RESET:
+      msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+      evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_handle = session_handle ((session_t *) data);
       break;
     default:
@@ -71,6 +69,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       svm_msg_q_unlock (mq);
       return -1;
     }
+  evt->event_type = evt_type;
 
   svm_msg_q_add_and_unlock (mq, &msg);
   return 0;
