@@ -156,6 +156,21 @@ typedef enum tls_engine_type_
   TLS_N_ENGINES
 } tls_engine_type_t;
 
+typedef struct _vnet_add_certificate_args_
+{
+  u8 *cert;
+  u8 *key;
+  u32 index;
+} vnet_add_certificate_args_t;
+
+typedef struct certificate_
+{
+  uword *tp_interests;		/* Transport proto interests (delete cb) */
+  u32 cert_index;		/* index in crypto context pool */
+  u8 *key;
+  u8 *cert;
+} certificate_t;
+
 /* Application attach options */
 typedef enum
 {
@@ -234,6 +249,8 @@ int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
 clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
 clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
+int vnet_add_certificate (vnet_add_certificate_args_t * a);
+int vnet_del_certificate (u32 index);
 
 typedef struct app_session_transport_
 {
@@ -271,13 +288,14 @@ typedef struct session_listen_msg_
   u8 proto;
   u8 is_ip4;
   ip46_address_t ip;
+  u32 certificate_index;
 } __clib_packed session_listen_msg_t;
 
 typedef struct session_listen_uri_msg_
 {
   u32 client_index;
   u32 context;
-  u8 uri[56];
+  u8 uri[60];
 } __clib_packed session_listen_uri_msg_t;
 
 typedef struct session_bound_msg_
@@ -343,13 +361,14 @@ typedef struct session_connect_msg_
   u8 hostname_len;
   u8 hostname[16];
   u64 parent_handle;
+  u32 certificate_index;
 } __clib_packed session_connect_msg_t;
 
 typedef struct session_connect_uri_msg_
 {
   u32 client_index;
   u32 context;
-  u8 uri[56];
+  u8 uri[60];
 } __clib_packed session_connect_uri_msg_t;
 
 typedef struct session_connected_msg_
