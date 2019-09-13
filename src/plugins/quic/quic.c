@@ -880,11 +880,12 @@ typedef struct quicly_ctx_data_
 } quicly_ctx_data_t;
 
 static void
-quic_store_quicly_ctx (application_t * app, u8 is_client)
+quic_store_quicly_ctx (application_t * app, u32 cert_index)
 {
   quic_main_t *qm = &quic_main;
   quicly_context_t *quicly_ctx;
   ptls_iovec_t key_vec;
+  certificate_t *cert;
   if (app->quicly_ctx)
     return;
 
@@ -938,16 +939,15 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
   quicly_ctx->cid_encryptor =
     quicly_new_default_cid_encryptor (&ptls_openssl_bfecb,
 				      &ptls_openssl_sha256, key_vec);
-  if (is_client)
-    return;
-  if (app->tls_key != NULL && app->tls_cert != NULL)
+
+  cert = certificate_get_if_valid (cert_index);
+  if (cert && cert->key != NULL && cert->cert != NULL)
     {
-      if (load_bio_private_key (quicly_ctx->tls, (char *) app->tls_key))
+      if (load_bio_private_key (quicly_ctx->tls, (char *) cert->key))
 	{
 	  QUIC_DBG (1, "failed to read private key from app configuration\n");
 	}
-      if (load_bio_certificate_chain (quicly_ctx->tls,
-				      (char *) app->tls_cert))
+      if (load_bio_certificate_chain (quicly_ctx->tls, (char *) cert->cert))
 	{
 	  QUIC_DBG (1, "failed to load certificate\n");
 	}
@@ -1102,7 +1102,7 @@ quic_connect_new_connection (session_endpoint_cfg_t * sep)
   ctx->parent_app_id = app_wrk->app_index;
   cargs->sep_ext.ns_index = app->ns_index;
 
-  quic_store_quicly_ctx (app, 1 /* is client */ );
+  quic_store_quicly_ctx (app, ctx->certificate_index);
 
   if ((error = vnet_connect (cargs)))
     return error;
@@ -1191,7 +1191,7 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   app = application_get (app_wrk->app_index);
   QUIC_DBG (2, "Called quic_start_listen for app %d", app_wrk->app_index);
 
-  quic_store_quicly_ctx (app, 0 /* is_client */ );
+  quic_store_quicly_ctx (app, sep->certificate_index);
 
   sep->transport_proto = TRANSPORT_PROTO_UDPC;
   memset (args, 0, sizeof (*args));

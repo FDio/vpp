@@ -591,8 +591,6 @@ application_free (application_t * app)
   if (application_is_builtin (app))
     application_name_table_del (app);
   vec_free (app->name);
-  vec_free (app->tls_cert);
-  vec_free (app->tls_key);
   pool_put (app_main.app_pool, app);
 }
 
@@ -1305,24 +1303,20 @@ application_get_segment_manager_properties (u32 app_index)
 clib_error_t *
 vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a)
 {
-  application_t *app;
-  app = application_get (a->app_index);
-  if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
-				   0, "app %u doesn't exist", a->app_index);
-  app->tls_cert = vec_dup (a->cert);
+  /* Deprected, will be remove after 20.01 */
+  certificate_t *cert;
+  cert = certificate_get_default ();
+  cert->cert = vec_dup (a->cert);
   return 0;
 }
 
 clib_error_t *
 vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a)
 {
-  application_t *app;
-  app = application_get (a->app_index);
-  if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
-				   0, "app %u doesn't exist", a->app_index);
-  app->tls_key = vec_dup (a->key);
+  /* Deprected, will be remove after 20.01 */
+  certificate_t *cert;
+  cert = certificate_get_default ();
+  cert->key = vec_dup (a->key);
   return 0;
 }
 
@@ -1373,6 +1367,14 @@ application_format_connects (application_t * app, int verbose)
     app_worker_format_connects (app_wrk, verbose);
   }));
   /* *INDENT-ON* */
+}
+
+u8 *
+format_certificate (u8 * s, va_list * args)
+{
+  certificate_t *cert = va_arg (*args, certificate_t *);
+  s = format (s, "certificate %d", cert->cert_index);
+  return s;
 }
 
 u8 *
@@ -1460,6 +1462,21 @@ application_format_all_clients (vlib_main_t * vm, int verbose)
 }
 
 static clib_error_t *
+show_certificate_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  certificate_t *cert;
+  session_cli_return_if_not_enabled ();
+
+  /* *INDENT-OFF* */
+  pool_foreach (cert, app_main.certificate_store, ({
+    vlib_cli_output (vm, "%U", format_certificate, cert);
+  }));
+  /* *INDENT-ON* */
+  return 0;
+}
+
+static clib_error_t *
 show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
@@ -1521,12 +1538,106 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+static void
+certificate_deletion_cb (transport_proto_t tp, u32 cert_index)
+{
+  /* Dont do anything for now */
+}
+
+/*
+ * Certificate store
+ *
+ */
+
+static certificate_t *
+certificate_alloc ()
+{
+  certificate_t *cert;
+  pool_get (app_main.certificate_store, cert);
+  clib_memset (cert, 0, sizeof (*cert));
+  cert->cert_index = cert - app_main.certificate_store;
+  clib_bitmap_alloc (cert->tp_interests, TRANSPORT_N_PROTO);
+  return cert;
+}
+
+certificate_t *
+certificate_get_if_valid (u32 index)
+{
+  if (pool_is_free_index (app_main.certificate_store, index))
+    return 0;
+  return certificate_get (index);
+}
+
+certificate_t *
+certificate_get (u32 index)
+{
+  return pool_elt_at_index (app_main.certificate_store, index);
+}
+
+certificate_t *
+certificate_get_default ()
+{
+  /* To maintain legacy bapi */
+  return certificate_get (0);
+}
+
+int
+vnet_add_certificate (vnet_add_certificate_args_t * a)
+{
+  certificate_t *cert = certificate_alloc ();
+  cert->cert = vec_dup (a->cert);
+  cert->key = vec_dup (a->key);
+  a->index = cert->cert_index;
+  return 0;
+}
+
+int
+vnet_del_certificate (u32 index)
+{
+  int tp = 0;
+  certificate_t *cert = certificate_get_if_valid (index);
+  if (!cert)
+    return (VNET_API_ERROR_INVALID_VALUE);
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (tp, cert->tp_interests, ({
+    certificate_deletion_cb (tp, cert->cert_index);
+  }));
+  /* *INDENT-ON* */
+
+  vec_free (cert->cert);
+  vec_free (cert->key);
+  pool_put (app_main.certificate_store, cert);
+  return 0;
+}
+
+clib_error_t *
+certificate_store_init (vlib_main_t * vm)
+{
+  /* Add a certificate with index 0 to support legacy apis */
+  vnet_add_certificate_args_t _a, *a = &_a;
+  vnet_add_certificate (a);
+  return 0;
+}
+
 /* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (certificate_store_init) =
+{
+  .runs_after = VLIB_INITS("unix_physmem_init"),
+};
+
 VLIB_CLI_COMMAND (show_app_command, static) =
 {
   .path = "show app",
   .short_help = "show app [server|client] [verbose]",
   .function = show_app_command_fn,
+};
+
+VLIB_CLI_COMMAND (show_certificate_command, static) =
+{
+  .path = "show certificate",
+  .short_help = "show certificate",
+  .function = show_certificate_command_fn,
 };
 /* *INDENT-ON* */
 

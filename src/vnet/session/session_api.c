@@ -59,6 +59,8 @@ _(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
 _(SESSION_RULES_DUMP, session_rules_dump)				\
 _(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
 _(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
+_(ADD_CERTIFICATE, add_certificate)					\
+_(DEL_CERTIFICATE, del_certificate)					\
 _(APP_WORKER_ADD_DEL, app_worker_add_del)				\
 
 static int
@@ -1059,7 +1061,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
   application_t *app;
   u8 fd_flags = 0;
 
-  if (!session_main_is_enabled ())
+  if (session_main_is_enabled () == 0)
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
@@ -1138,7 +1140,7 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
   u32 appns_index = 0;
   u8 *ns_id = 0;
   int rv = 0;
-  if (!session_main_is_enabled ())
+  if (session_main_is_enabled () == 0)
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
@@ -1356,56 +1358,77 @@ vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 }
 
 static void
-vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
-					   mp)
+vl_api_add_certificate_t_handler (vl_api_add_certificate_t * mp)
 {
-  vl_api_app_namespace_add_del_reply_t *rmp;
-  vnet_app_add_tls_cert_args_t _a, *a = &_a;
-  clib_error_t *error;
-  application_t *app;
-  u32 cert_len;
+  vl_api_add_certificate_reply_t *rmp;
+  vnet_add_certificate_args_t _a, *a = &_a;
+  u32 key_len, cert_len;
   int rv = 0;
-  if (!session_main_is_enabled ())
+  if (session_main_is_enabled () == 0)
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
     }
-  if (!(app = application_lookup (mp->client_index)))
-    {
-      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-      goto done;
-    }
-  clib_memset (a, 0, sizeof (*a));
-  a->app_index = app->app_index;
+
   cert_len = clib_net_to_host_u16 (mp->cert_len);
   if (cert_len > 10000)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto done;
     }
-  vec_validate (a->cert, cert_len);
-  clib_memcpy_fast (a->cert, mp->cert, cert_len);
-  if ((error = vnet_app_add_tls_cert (a)))
+
+  key_len = clib_net_to_host_u16 (mp->key_len);
+  if (key_len > 10000)
     {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
     }
+
+  clib_memset (a, 0, sizeof (*a));
+  vec_validate (a->cert, cert_len);
+  vec_validate (a->key, key_len);
+  clib_memcpy_fast (a->cert, mp->certkey, cert_len);
+  clib_memcpy_fast (a->key, mp->certkey + cert_len, key_len);
+  rv = vnet_add_certificate (a);
   vec_free (a->cert);
+  vec_free (a->key);
+
 done:
-  REPLY_MACRO (VL_API_APPLICATION_TLS_CERT_ADD_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_ADD_CERTIFICATE_REPLY, ({
+    if (!rv)
+      rmp->index = a->index;
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
-vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
-					  mp)
+vl_api_del_certificate_t_handler (vl_api_del_certificate_t * mp)
 {
-  vl_api_app_namespace_add_del_reply_t *rmp;
-  vnet_app_add_tls_key_args_t _a, *a = &_a;
-  clib_error_t *error;
-  application_t *app;
-  u32 key_len;
+  vl_api_del_certificate_reply_t *rmp;
   int rv = 0;
-  if (!session_main_is_enabled ())
+  if (session_main_is_enabled () == 0)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+  rv = vnet_del_certificate (mp->index);
+
+done:
+  REPLY_MACRO (VL_API_ADD_CERTIFICATE_REPLY);
+}
+
+/* ### WILL BE DEPRECATED POST 20.01 ### */
+static void
+vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
+					   mp)
+{
+  vl_api_application_tls_cert_add_reply_t *rmp;
+  certificate_t *cert;
+  application_t *app;
+  u32 cert_len;
+  int rv = 0;
+  if (session_main_is_enabled () == 0)
     {
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
@@ -1415,22 +1438,50 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
       rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
       goto done;
     }
-  clib_memset (a, 0, sizeof (*a));
-  a->app_index = app->app_index;
+  cert_len = clib_net_to_host_u16 (mp->cert_len);
+  if (cert_len > 10000)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+  cert = certificate_get_default ();
+  vec_validate (cert->cert, cert_len);
+  clib_memcpy_fast (cert->cert, mp->cert, cert_len);
+
+done:
+  REPLY_MACRO (VL_API_APPLICATION_TLS_CERT_ADD_REPLY);
+}
+
+/* ### WILL BE DEPRECATED POST 20.01 ### */
+static void
+vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
+					  mp)
+{
+  vl_api_application_tls_key_add_reply_t *rmp;
+  certificate_t *cert;
+  application_t *app;
+  u32 key_len;
+  int rv = 0;
+  if (session_main_is_enabled () == 0)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+  if (!(app = application_lookup (mp->client_index)))
+    {
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+      goto done;
+    }
   key_len = clib_net_to_host_u16 (mp->key_len);
   if (key_len > 10000)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto done;
     }
-  vec_validate (a->key, key_len);
-  clib_memcpy_fast (a->key, mp->key, key_len);
-  if ((error = vnet_app_add_tls_key (a)))
-    {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
-    }
-  vec_free (a->key);
+  cert = certificate_get_default ();
+  vec_validate (cert->key, key_len);
+  clib_memcpy_fast (cert->key, mp->key, key_len);
+
 done:
   REPLY_MACRO (VL_API_APPLICATION_TLS_KEY_ADD_REPLY);
 }
