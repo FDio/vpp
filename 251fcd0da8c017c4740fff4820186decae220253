@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "424daa7b_d3052183",
+        "filename": "extras/http/sample.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-09-13T17:11:59Z",
+      "side": 1,
+      "message": "Ack. Is there a standard javascript style guide - and a real language reference somewhere?",
+      "parentUuid": "777d2fda_aef1794f",
+      "revId": "251fcd0da8c017c4740fff4820186decae220253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9bfd0c57_84a1f65b",
         "filename": "extras/http/sample.md",
         "patchSetId": 3
@@ -59,6 +77,30 @@
     },
     {
       "key": {
+        "uuid": "8cd409c0_0fed3e40",
+        "filename": "extras/http/setup.http",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-09-13T17:11:59Z",
+      "side": 1,
+      "message": "Sample config, will sanitize before I publish the patch...",
+      "parentUuid": "77ccf186_dbaccf3e",
+      "range": {
+        "startLine": 6,
+        "startChar": 28,
+        "endLine": 6,
+        "endChar": 59
+      },
+      "revId": "251fcd0da8c017c4740fff4820186decae220253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8bafd9ec_1107b08e",
         "filename": "src/plugins/http_static/builtin_urls.c",
         "patchSetId": 3
@@ -79,6 +121,30 @@
       "revId": "251fcd0da8c017c4740fff4820186decae220253",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa38ae35_87dfccda",
+        "filename": "src/plugins/http_static/builtin_urls.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-09-13T17:11:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8bafd9ec_1107b08e",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "251fcd0da8c017c4740fff4820186decae220253",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
