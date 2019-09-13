@@ -221,6 +221,7 @@ sack_scoreboard_hole_t *scoreboard_first_hole (sack_scoreboard_t * sb);
 sack_scoreboard_hole_t *scoreboard_last_hole (sack_scoreboard_t * sb);
 void scoreboard_clear (sack_scoreboard_t * sb);
 void scoreboard_init (sack_scoreboard_t * sb);
+void scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una);
 u8 *format_tcp_scoreboard (u8 * s, va_list * args);
 
 #define TCP_BTS_INVALID_INDEX	((u32)~0)

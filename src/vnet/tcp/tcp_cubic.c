@@ -115,7 +115,8 @@ cubic_loss (tcp_connection_t * tc)
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
 
   tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
-  tc->cwnd = tcp_loss_wnd (tc);
+//  tc->cwnd = tcp_loss_wnd (tc);
+//  tc->cwnd = tc->ssthresh;
   cd->t_start = cubic_time (tc->c_thread_index);
   cd->K = 0;
   cd->w_max = 0;
