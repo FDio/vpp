@@ -220,6 +220,15 @@ u32 transport_connection_tx_pacer_burst (transport_connection_t * tc,
 u64 transport_connection_tx_pacer_rate (transport_connection_t * tc);
 
 /**
+ * Reset tx pacer bucket
+ *
+ * @param tc		transport connection
+ * @param time_now	current cpu time
+ */
+void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+						 u64 time_now);
+
+/**
  * Initialize period for tx pacers
  *
  * Defines a unit of time with respect to number of cpu cycles that is to
