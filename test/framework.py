@@ -643,7 +643,7 @@ class VppTestCase(unittest.TestCase):
             stderr_log(single_line_delim)
             stderr_log('VPP output to stderr while running %s:', cls.__name__)
             stderr_log(single_line_delim)
-            if isinstance(cls.vpp_stdout_deque, six.string_types): 
+            if isinstance(cls.vpp_stdout_deque, six.string_types):
                 vpp_output = "".join(cls.vpp_stderr_deque)
                 with open(cls.tempdir + '/vpp_stderr.txt', 'w') as f:
                     f.write(vpp_output)
