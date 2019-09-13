@@ -855,11 +855,12 @@ quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
 }
 
 static void
-quic_store_quicly_ctx (application_t * app, u8 is_client)
+quic_store_quicly_ctx (application_t * app, u32 cert_key_index)
 {
   quic_main_t *qm = &quic_main;
   quicly_context_t *quicly_ctx;
   ptls_iovec_t key_vec;
+  app_cert_key_pair_t *ckpair;
   if (app->quicly_ctx)
     return;
 
@@ -910,16 +911,15 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
     quicly_new_default_cid_encryptor (&ptls_openssl_bfecb,
 				      &ptls_openssl_aes128ecb,
 				      &ptls_openssl_sha256, key_vec);
-  if (is_client)
-    return;
-  if (app->tls_key != NULL && app->tls_cert != NULL)
+
+  ckpair = app_cert_key_pair_get_if_valid (cert_key_index);
+  if (ckpair && ckpair->key != NULL && ckpair->cert != NULL)
     {
-      if (load_bio_private_key (quicly_ctx->tls, (char *) app->tls_key))
+      if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
 	{
 	  QUIC_DBG (1, "failed to read private key from app configuration\n");
 	}
-      if (load_bio_certificate_chain (quicly_ctx->tls,
-				      (char *) app->tls_cert))
+      if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
 	{
 	  QUIC_DBG (1, "failed to load certificate\n");
 	}
@@ -1071,7 +1071,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   ctx->parent_app_id = app_wrk->app_index;
   cargs->sep_ext.ns_index = app->ns_index;
 
-  quic_store_quicly_ctx (app, 1 /* is client */ );
+  quic_store_quicly_ctx (app, ctx->ckpair_index);
   /* Also store it in ctx for convenience
    * Waiting for crypto_ctx logic */
   ctx->quicly_ctx = (quicly_context_t *) app->quicly_ctx;
@@ -1163,7 +1163,7 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   app = application_get (app_wrk->app_index);
   QUIC_DBG (2, "Called quic_start_listen for app %d", app_wrk->app_index);
 
-  quic_store_quicly_ctx (app, 0 /* is_client */ );
+  quic_store_quicly_ctx (app, sep->ckpair_index);
 
   sep->transport_proto = TRANSPORT_PROTO_UDPC;
   clib_memset (args, 0, sizeof (*args));
