@@ -775,7 +775,7 @@ echo_clients_command_fn (vlib_main_t * vm,
   ecm->test_bytes = 0;
   ecm->test_failed = 0;
   ecm->vlib_main = vm;
-  ecm->tls_engine = TLS_ENGINE_OPENSSL;
+  ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   ecm->no_copy = 0;
   ecm->run_test = ECHO_CLIENTS_STARTING;
 

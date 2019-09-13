@@ -43,7 +43,7 @@ openssl_ctx_alloc (void)
 
   clib_memset (*ctx, 0, sizeof (openssl_ctx_t));
   (*ctx)->ctx.c_thread_index = thread_index;
-  (*ctx)->ctx.tls_ctx_engine = TLS_ENGINE_OPENSSL;
+  (*ctx)->ctx.tls_ctx_engine = CRYPTO_ENGINE_OPENSSL;
   (*ctx)->ctx.app_session_handle = SESSION_INVALID_HANDLE;
   (*ctx)->openssl_ctx_index = ctx - tm->ctx_pool[thread_index];
   return ((*ctx)->openssl_ctx_index);
@@ -894,7 +894,7 @@ tls_openssl_init (vlib_main_t * vm)
 
   vec_validate (om->ctx_pool, num_threads - 1);
 
-  tls_register_engine (&openssl_engine, TLS_ENGINE_OPENSSL);
+  tls_register_engine (&openssl_engine, CRYPTO_ENGINE_OPENSSL);
 
   om->engine_init = 0;
 

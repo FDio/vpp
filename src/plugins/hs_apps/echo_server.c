@@ -471,7 +471,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   esm->prealloc_fifos = 0;
   esm->private_segment_count = 0;
   esm->private_segment_size = 0;
-  esm->tls_engine = TLS_ENGINE_OPENSSL;
+  esm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   vec_free (esm->server_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
