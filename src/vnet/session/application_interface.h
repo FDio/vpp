@@ -428,11 +428,6 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
 	  return -2;
 	}
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-      if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
-	{
-	  svm_msg_q_unlock (mq);
-	  return -2;
-	}
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = session_index;
       evt->event_type = evt_type;
