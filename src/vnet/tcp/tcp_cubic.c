@@ -103,10 +103,7 @@ cubic_congestion (tcp_connection_t * tc)
 
   cd->w_max = w_max;
   tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
-
   tc->cwnd = tc->ssthresh;
-  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    tc->cwnd += 3 * tc->snd_mss;
 }
 
 static void
@@ -114,11 +111,23 @@ cubic_loss (tcp_connection_t * tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
 
-  tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
-  tc->cwnd = tcp_loss_wnd (tc);
+  /* If we entrered loss without fast recovery, update ssthresh */
+  if (!tcp_in_fastrecovery (tc))
+    {
+      u32 w_max = tc->cwnd / tc->snd_mss;
+      if (cubic_cfg.fast_convergence && w_max < cd->w_max)
+        w_max = w_max * ((1.0 + beta_cubic) / 2.0);
+      cd->w_max = w_max;
+
+      tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
+    }
+
+//  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
+    tc->cwnd = tcp_loss_wnd (tc);
+
   cd->t_start = cubic_time (tc->c_thread_index);
   cd->K = 0;
-  cd->w_max = 0;
+  cd->w_max = tc->cwnd / tc->snd_mss;
 }
 
 static void
@@ -159,7 +168,8 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tcp_in_slowstart (tc))
     {
-      tc->cwnd += clib_min (tc->snd_mss, tc->bytes_acked);
+//      tc->cwnd += clib_min (tc->snd_mss, tc->bytes_acked);
+      tc->cwnd += tc->bytes_acked;
       return;
     }
 
