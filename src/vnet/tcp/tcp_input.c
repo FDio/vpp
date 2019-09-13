@@ -1298,7 +1298,14 @@ tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 static int
 tcp_cc_recover (tcp_connection_t * tc)
 {
+  sack_scoreboard_hole_t *hole;
+
   ASSERT (tcp_in_cong_recovery (tc));
+
+  hole = scoreboard_first_hole (&tc->sack_sb);
+  if (hole && hole->start == tc->snd_una && hole->end == tc->snd_nxt)
+    scoreboard_clear (&tc->sack_sb);
+
   if (tcp_cc_is_spurious_retransmit (tc))
     {
       tcp_cc_congestion_undo (tc);
