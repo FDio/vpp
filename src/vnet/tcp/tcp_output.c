@@ -1159,12 +1159,12 @@ tcp_program_dupack (tcp_connection_t * tc)
 }
 
 void
-tcp_program_fastretransmit (tcp_connection_t * tc)
+tcp_program_retransmit (tcp_connection_t * tc)
 {
-  if (!(tc->flags & TCP_CONN_FRXT_PENDING))
+  if (!(tc->flags & TCP_CONN_RXT_PENDING))
     {
       session_add_self_custom_tx_evt (&tc->connection, 0);
-      tc->flags |= TCP_CONN_FRXT_PENDING;
+      tc->flags |= TCP_CONN_RXT_PENDING;
     }
 }
 
@@ -1369,17 +1369,29 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   if (!n_bytes)
     return 0;
 
-  if (tcp_in_fastrecovery (tc))
-    {
-      tc->snd_rxt_bytes += n_bytes;
-      if (tc->flags & TCP_CONN_RATE_SAMPLE)
-	tcp_bt_track_rxt (tc, start, start + n_bytes);
-    }
+  tc->snd_rxt_bytes += n_bytes;
+
+  if (tc->flags & TCP_CONN_RATE_SAMPLE)
+    tcp_bt_track_rxt (tc, start, start + n_bytes);
 
   tc->bytes_retrans += n_bytes;
   tc->segs_retrans += 1;
   TCP_EVT (TCP_EVT_CC_RTX, tc, offset, n_bytes);
+
   return n_bytes;
+}
+
+static void
+tcp_check_sack_reneging (tcp_connection_t * tc)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_scoreboard_hole_t *hole;
+
+  hole = scoreboard_first_hole (sb);
+  if (!sb->is_reneging && (!hole || hole->start == tc->snd_una))
+    return;
+
+  scoreboard_clear_reneging (sb, tc->snd_una, tc->snd_nxt);
 }
 
 /**
@@ -1389,23 +1401,21 @@ static void
 tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
 {
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
+
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
-  /* Clear fast recovery state if needed */
-  if (tcp_in_fastrecovery (tc))
-    tcp_cc_fastrecovery_clear (tc);
+  /* If we entrered loss without fast recovery, notify cc algo of the
+   * congestion event such that it can update ssthresh and its state */
+  if (!tcp_in_fastrecovery (tc))
+    tcp_cc_congestion (tc);
 
-  /* Let cc algo decide loss cwnd and ssthresh */
+  /* Let cc algo decide loss cwnd and ssthresh post unrecovered loss */
   tcp_cc_loss (tc);
 
-  /* Start again from the beginning */
-  tc->snd_congestion = tc->snd_nxt;
-  tc->rcv_dupacks = 0;
   tc->rtt_ts = 0;
   tc->cwnd_acc_bytes = 0;
   tc->tr_occurences += 1;
-  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 2 * tc->snd_mss);
   tcp_recovery_on (tc);
 }
 
@@ -1476,29 +1486,14 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	  return;
 	}
 
-      /* Increment RTO backoff (also equal to number of retries) and go back
-       * to first un-acked byte  */
-      tc->rto_boff += 1;
+      if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	tcp_check_sack_reneging (tc);
 
-      /* TODO be less aggressive about clearing scoreboard */
-      scoreboard_clear (&tc->sack_sb);
+      /* Update send congestion to make sure that rxt has data to send */
+      tc->snd_congestion = tc->snd_nxt;
 
-      /* First retransmit timeout */
-      if (tc->rto_boff == 1)
-	{
-	  tcp_cc_init_rxt_timeout (tc);
-	  /* Record timestamp. Eifel detection algorithm RFC3522 */
-	  tc->snd_rxt_ts = tcp_tstamp (tc);
-	}
-
-      if (tc->flags & TCP_CONN_RATE_SAMPLE)
-	tcp_bt_flush_samples (tc);
-
-      /* If we've sent beyond snd_congestion, update it */
-      tc->snd_congestion = seq_max (tc->snd_nxt, tc->snd_congestion);
-      tc->snd_nxt = tc->snd_una;
-
-      /* Send one segment. n_bytes may be zero due to buffer shortfall */
+      /* Send the first unacked segment. If we're short on buffers, return
+       * as soon as possible */
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss, &b);
       if (!n_bytes)
 	{
@@ -1511,6 +1506,19 @@ tcp_timer_retransmit_handler (u32 tc_index)
 
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
       tcp_retransmit_timer_force_update (tc);
+
+      tc->rto_boff += 1;
+      if (tc->rto_boff == 1)
+	{
+	  tcp_cc_init_rxt_timeout (tc);
+	  /* Record timestamp. Eifel detection algorithm RFC3522 */
+	  tc->snd_rxt_ts = tcp_tstamp (tc);
+	}
+
+      if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una + tc->snd_mss);
+
+      tcp_program_retransmit (tc);
     }
   /* Retransmit SYN-ACK */
   else if (tc->state == TCP_STATE_SYN_RCVD)
@@ -1728,8 +1736,8 @@ tcp_retransmit_first_unacked (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 }
 
 static int
-tcp_fast_retransmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
-			    u32 burst_size)
+tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+		     u32 burst_size)
 {
   u32 offset, n_segs = 0, n_written, bi, available_wnd;
   vlib_main_t *vm = wrk->vm;
@@ -1758,18 +1766,44 @@ done:
   return n_segs;
 }
 
+/**
+ * Estimate send space using proportional rate reduction (RFC6937)
+ */
+static int
+tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
+{
+  u32 pipe, prr_out;
+  int space;
+
+  pipe = tcp_flight_size (tc);
+  prr_out = tc->snd_rxt_bytes + (tc->snd_nxt - tc->snd_congestion);
+
+  if (pipe > tc->ssthresh)
+    {
+      space = ((int) tc->prr_delivered * ((f64) tc->ssthresh / tc->prev_cwnd))
+	- prr_out;
+    }
+  else
+    {
+      int limit = tc->prr_delivered - prr_out + tc->snd_mss;
+      space = clib_min (tc->ssthresh - pipe, limit);
+    }
+  space = clib_max (space, prr_out ? 0 : tc->snd_mss);
+  return space;
+}
+
 #define scoreboard_rescue_rxt_valid(_sb, _tc)			\
     (seq_geq (_sb->rescue_rxt, _tc->snd_una) 			\
 	&& seq_leq (_sb->rescue_rxt, _tc->snd_congestion))
 
 /**
- * Do fast retransmit with SACKs
+ * Do retransmit with SACKs
  */
-int
-tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
-			  u32 burst_size)
+static int
+tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+		     u32 burst_size)
 {
-  u32 n_written = 0, offset, max_bytes, n_segs = 0, n_segs_now;
+  u32 n_written = 0, offset, max_bytes, n_segs = 0;
   sack_scoreboard_hole_t *hole;
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
@@ -1778,12 +1812,19 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   int snd_space;
   u8 snd_limited = 0, can_rescue = 0;
 
-  ASSERT (tcp_in_fastrecovery (tc));
+  ASSERT (tcp_in_cong_recovery (tc));
 
-  snd_space = tcp_available_cc_snd_space (tc);
+  if (tcp_in_recovery (tc))
+    snd_space = tcp_available_cc_snd_space (tc);
+  else
+    snd_space = tcp_fastrecovery_prr_snd_space (tc);
+
   if (snd_space < tc->snd_mss)
     {
-      tcp_program_fastretransmit (tc);
+      /* We're cc constrained so don't accumulate tokens */
+      transport_connection_tx_pacer_reset_bucket (&tc->connection,
+						  vm->
+						  clib_time.last_cpu_time);
       return 0;
     }
 
@@ -1800,19 +1841,26 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 				       &snd_limited);
       if (!hole)
 	{
+	  /* We are out of lost holes to retransmit so send some new data. */
 	  if (max_deq)
 	    {
+	      u32 n_segs_new, av_window;
+	      av_window = tc->snd_wnd - (tc->snd_nxt - tc->snd_una);
+	      snd_space = clib_min (snd_space, av_window);
 	      snd_space = clib_min (max_deq, snd_space);
 	      burst_size = clib_min (burst_size - n_segs,
 				     snd_space / tc->snd_mss);
-	      n_segs_now = tcp_fast_retransmit_unsent (wrk, tc, burst_size);
-	      if (max_deq > n_segs_now * tc->snd_mss)
-		tcp_program_fastretransmit (tc);
-	      n_segs += n_segs_now;
+	      burst_size = clib_min (burst_size, TCP_RXT_MAX_BURST);
+	      n_segs_new = tcp_transmit_unsent (wrk, tc, burst_size);
+	      if (max_deq > n_segs_new * tc->snd_mss)
+		tcp_program_retransmit (tc);
+
+	      n_segs += n_segs_new;
 	      goto done;
 	    }
 
-	  if (!can_rescue || scoreboard_rescue_rxt_valid (sb, tc))
+	  if (tcp_in_recovery (tc) || !can_rescue
+	      || scoreboard_rescue_rxt_valid (sb, tc))
 	    break;
 
 	  /* If rescue rxt undefined or less than snd_una then one segment of
@@ -1859,18 +1907,19 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     }
 
   if (hole)
-    tcp_program_fastretransmit (tc);
+    tcp_program_retransmit (tc);
 
 done:
+
   return n_segs;
 }
 
 /**
  * Fast retransmit without SACK info
  */
-int
-tcp_fast_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
-			     u32 burst_size)
+static int
+tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+			u32 burst_size)
 {
   u32 n_written = 0, offset = 0, bi, max_deq, n_segs_now;
   vlib_main_t *vm = wrk->vm;
@@ -1918,9 +1967,9 @@ send_unsent:
     {
       snd_space = clib_min (max_deq, snd_space);
       burst_size = clib_min (burst_size - n_segs, snd_space / tc->snd_mss);
-      n_segs_now = tcp_fast_retransmit_unsent (wrk, tc, burst_size);
+      n_segs_now = tcp_transmit_unsent (wrk, tc, burst_size);
       if (max_deq > n_segs_now * tc->snd_mss)
-	tcp_program_fastretransmit (tc);
+	tcp_program_retransmit (tc);
       n_segs += n_segs_now;
     }
 
@@ -1932,14 +1981,13 @@ done:
 /**
  * Do fast retransmit
  */
-int
-tcp_fast_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
-		     u32 burst_size)
+static int
+tcp_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, u32 burst_size)
 {
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    return tcp_fast_retransmit_sack (wrk, tc, burst_size);
+    return tcp_retransmit_sack (wrk, tc, burst_size);
   else
-    return tcp_fast_retransmit_no_sack (wrk, tc, burst_size);
+    return tcp_retransmit_no_sack (wrk, tc, burst_size);
 }
 
 static int
@@ -1991,7 +2039,7 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 }
 
 static int
-tcp_do_fastretransmit (tcp_connection_t * tc, u32 max_burst_size)
+tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
 {
   u32 n_segs = 0, burst_size, sent_bytes, burst_bytes;
   tcp_worker_ctx_t *wrk;
@@ -2003,11 +2051,11 @@ tcp_do_fastretransmit (tcp_connection_t * tc, u32 max_burst_size)
   burst_size = clib_min (max_burst_size, burst_bytes / tc->snd_mss);
   if (!burst_size)
     {
-      tcp_program_fastretransmit (tc);
+      tcp_program_retransmit (tc);
       return 0;
     }
 
-  n_segs = tcp_fast_retransmit (wrk, tc, burst_size);
+  n_segs = tcp_retransmit (wrk, tc, burst_size);
   sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
   transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
   return n_segs;
@@ -2019,10 +2067,10 @@ tcp_session_custom_tx (void *conn, u32 max_burst_size)
   tcp_connection_t *tc = (tcp_connection_t *) conn;
   u32 n_segs = 0;
 
-  if (tcp_in_fastrecovery (tc) && (tc->flags & TCP_CONN_FRXT_PENDING))
+  if (tcp_in_cong_recovery (tc) && (tc->flags & TCP_CONN_RXT_PENDING))
     {
-      tc->flags &= ~TCP_CONN_FRXT_PENDING;
-      n_segs = tcp_do_fastretransmit (tc, max_burst_size);
+      tc->flags &= ~TCP_CONN_RXT_PENDING;
+      n_segs = tcp_do_retransmit (tc, max_burst_size);
       max_burst_size -= n_segs;
     }
 
