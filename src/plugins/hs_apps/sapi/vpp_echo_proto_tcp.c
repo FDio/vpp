@@ -125,8 +125,8 @@ static void
 tls_echo_set_defaults_after_opts_cb ()
 {
   echo_main_t *em = &echo_main;
-  if (em->crypto_ctx_engine == TLS_ENGINE_NONE)
-    em->crypto_ctx_engine = TLS_ENGINE_OPENSSL;
+  if (em->crypto_ctx_engine == CRYPTO_ENGINE_NONE)
+    em->crypto_ctx_engine = CRYPTO_ENGINE_OPENSSL;
 }
 
 echo_proto_cb_vft_t echo_tcp_proto_cb_vft = {

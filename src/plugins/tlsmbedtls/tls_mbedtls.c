@@ -80,7 +80,7 @@ mbedtls_ctx_alloc (void)
 
   clib_memset (*ctx, 0, sizeof (mbedtls_ctx_t));
   (*ctx)->ctx.c_thread_index = thread_index;
-  (*ctx)->ctx.tls_ctx_engine = TLS_ENGINE_MBEDTLS;
+  (*ctx)->ctx.tls_ctx_engine = CRYPTO_ENGINE_MBEDTLS;
   (*ctx)->mbedtls_ctx_index = ctx - tm->ctx_pool[thread_index];
   return ((*ctx)->mbedtls_ctx_index);
 }
@@ -659,7 +659,7 @@ tls_mbedtls_init (vlib_main_t * vm)
   vec_validate (mm->rx_bufs, num_threads - 1);
   vec_validate (mm->tx_bufs, num_threads - 1);
 
-  tls_register_engine (&mbedtls_engine, TLS_ENGINE_MBEDTLS);
+  tls_register_engine (&mbedtls_engine, CRYPTO_ENGINE_MBEDTLS);
   return 0;
 }
 
