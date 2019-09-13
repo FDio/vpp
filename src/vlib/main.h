@@ -63,6 +63,7 @@ typedef struct
   int pcap_enable;
   u32 pcap_sw_if_index;
   pcap_main_t pcap_main;
+  u32 filter_classify_table_index;
 } vnet_pcap_t;
 
 typedef struct vlib_main_t
