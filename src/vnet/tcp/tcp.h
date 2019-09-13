@@ -221,6 +221,7 @@ sack_scoreboard_hole_t *scoreboard_first_hole (sack_scoreboard_t * sb);
 sack_scoreboard_hole_t *scoreboard_last_hole (sack_scoreboard_t * sb);
 void scoreboard_clear (sack_scoreboard_t * sb);
 void scoreboard_init (sack_scoreboard_t * sb);
+void scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una);
 u8 *format_tcp_scoreboard (u8 * s, va_list * args);
 
 #define TCP_BTS_INVALID_INDEX	((u32)~0)
@@ -757,7 +758,7 @@ void tcp_send_window_update_ack (tcp_connection_t * tc);
 
 void tcp_program_ack (tcp_connection_t * tc);
 void tcp_program_dupack (tcp_connection_t * tc);
-void tcp_program_fastretransmit (tcp_connection_t * tc);
+void tcp_program_retransmit (tcp_connection_t * tc);
 
 /*
  * Rate estimation
@@ -957,14 +958,6 @@ tcp_is_lost_fin (tcp_connection_t * tc)
 }
 
 u32 tcp_snd_space (tcp_connection_t * tc);
-int tcp_retransmit_first_unacked (tcp_worker_ctx_t * wrk,
-				  tcp_connection_t * tc);
-int tcp_fast_retransmit_no_sack (tcp_worker_ctx_t * wrk,
-				 tcp_connection_t * tc, u32 burst_size);
-int tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
-			      u32 burst_size);
-int tcp_fast_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
-			 u32 burst_size);
 void tcp_cc_init_congestion (tcp_connection_t * tc);
 void tcp_cc_fastrecovery_clear (tcp_connection_t * tc);
 
