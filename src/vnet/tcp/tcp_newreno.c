@@ -20,17 +20,11 @@ newreno_congestion (tcp_connection_t * tc)
 {
   tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
   tc->cwnd = tc->ssthresh;
-  /* Post retransmit update cwnd to ssthresh and account for the
-   * three segments that have left the network and should've been
-   * buffered at the receiver XXX */
-  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    tc->cwnd += 3 * tc->snd_mss;
 }
 
 static void
 newreno_loss (tcp_connection_t * tc)
 {
-  tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
   tc->cwnd = tcp_loss_wnd (tc);
 }
 
