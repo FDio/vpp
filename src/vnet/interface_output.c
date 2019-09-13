@@ -43,6 +43,7 @@
 #include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/feature/feature.h>
+#include <vnet/classify/trace_classify.h>
 
 typedef struct
 {
@@ -813,23 +814,38 @@ static_always_inline void vnet_interface_pcap_tx_trace
   else
     sw_if_index = ~0;
 
+  vnet_main_t *vnm = vnet_get_main ();
   n_left_from = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
 
   while (n_left_from > 0)
     {
+      int classify_filter_result;
       u32 bi0 = from[0];
       vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
+      from++;
+      n_left_from--;
+
+      if (vec_len (vnm->classify_filter_table_indices))
+	{
+	  classify_filter_result =
+	    vnet_is_packet_traced_inline
+	    (b0, vnm->classify_filter_table_indices[0],
+	     0 /* full classify */ );
+	  if (classify_filter_result)
+	    pcap_add_buffer (&vlib_global_main.pcap[VLIB_TX].pcap_main, vm,
+			     bi0, 512);
+	  continue;
+	}
 
       if (sw_if_index_from_buffer)
 	sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
-      if (vlib_global_main.pcap[VLIB_TX].pcap_sw_if_index == 0 ||
+      if (classify_filter_result ||
+	  vlib_global_main.pcap[VLIB_TX].pcap_sw_if_index == 0 ||
 	  vlib_global_main.pcap[VLIB_TX].pcap_sw_if_index == sw_if_index)
 	pcap_add_buffer (&vlib_global_main.pcap[VLIB_TX].pcap_main, vm, bi0,
 			 512);
-      from++;
-      n_left_from--;
     }
 }
 
