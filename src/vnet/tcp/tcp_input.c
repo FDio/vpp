@@ -508,8 +508,8 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
 	  mrtt = rs->rtt_time * THZ;
 	  goto estimate_rtt;
 	}
-      if (tcp_in_recovery (tc))
-	return 0;
+//      if (tcp_in_recovery (tc))
+//	return 0;
       goto done;
     }
 
@@ -912,9 +912,8 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 
   return hole;
 }
-#endif /* CLIB_MARCH_VARIANT */
 
-static void
+void
 scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
 {
   sack_scoreboard_hole_t *hole;
@@ -928,7 +927,6 @@ scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
   sb->rescue_rxt = snd_una - 1;
 }
 
-#ifndef  CLIB_MARCH_VARIANT
 void
 scoreboard_init (sack_scoreboard_t * sb)
 {
@@ -1290,8 +1288,9 @@ tcp_cc_is_spurious_timeout_rxt (tcp_connection_t * tc)
 static inline u8
 tcp_cc_is_spurious_fast_rxt (tcp_connection_t * tc)
 {
-  return (tcp_in_fastrecovery (tc)
-	  && tc->cwnd > tc->ssthresh + 3 * tc->snd_mss);
+  return 0;
+//  return (tcp_in_fastrecovery (tc)
+//	  && tc->cwnd > tc->ssthresh + 3 * tc->snd_mss);
 }
 
 static u8
@@ -1306,6 +1305,10 @@ tcp_cc_recover (tcp_connection_t * tc)
 {
   sack_scoreboard_hole_t *hole;
 
+  hole = scoreboard_first_hole (&tc->sack_sb);
+  if (hole && hole->start == tc->snd_una && hole->end == tc->snd_nxt)
+    scoreboard_clear (&tc->sack_sb);
+
   ASSERT (tcp_in_cong_recovery (tc));
 
   hole = scoreboard_first_hole (&tc->sack_sb);
@@ -1319,7 +1322,10 @@ tcp_cc_recover (tcp_connection_t * tc)
     }
 
   if (tcp_in_recovery (tc))
-    tcp_cc_recovery_exit (tc);
+    {
+      tcp_cc_recovery_exit (tc);
+      tcp_cc_fastrecovery_clear (tc);
+    }
   else if (tcp_in_fastrecovery (tc))
     {
       tcp_cc_recovered (tc);
@@ -1353,10 +1359,11 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
     tc->snd_congestion = tc->snd_una - 1;
 }
 
-static u8
+static inline u8
 tcp_should_fastrecover_sack (tcp_connection_t * tc)
 {
-  return (TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss < tc->sack_sb.sacked_bytes;
+  return ((TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss < tc->sack_sb.sacked_bytes)
+      || tc->sack_sb.lost_bytes;
 }
 
 static u8
@@ -1380,7 +1387,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    * and accounting for segments that have left the network are done
    * lower.
    */
-  if (tcp_in_fastrecovery (tc))
+  if (tcp_in_cong_recovery (tc))
     {
       if (!has_sack)
 	tc->rcv_dupacks++;
@@ -1420,7 +1427,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 
 	  /* Heuristic to catch potential late dupacks
 	   * after fast retransmit exits */
-	  if (is_dack && tc->snd_una == tc->snd_congestion
+	  if (tc->snd_una == tc->snd_congestion
 	      && timestamp_leq (tc->rcv_opts.tsecr, tc->tsecr_last_ack))
 	    {
 	      tc->rcv_dupacks = 0;
@@ -1497,14 +1504,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    * reset dupacks to 0. Also needed if in congestion recovery */
   tc->rcv_dupacks = 0;
 
-  /* Post RTO timeout don't try anything fancy */
-  if (tcp_in_recovery (tc))
-    {
-      tcp_cc_rcv_ack (tc, rs);
-      transport_add_tx_event (&tc->connection);
-      return;
-    }
-
   /* Remove retransmitted bytes that have been delivered */
   if (has_sack)
     {
@@ -1516,9 +1515,12 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
 	{
 	  u32 rxt_delivered;
-	  rxt_delivered = tc->bytes_acked - tc->sack_sb.last_bytes_delivered;
-	  ASSERT (tc->snd_rxt_bytes >= rxt_delivered);
-	  tc->snd_rxt_bytes -= rxt_delivered;
+	  rxt_delivered = tc->bytes_acked - tc->sack_sb.last_bytes_delivered
+	      + tc->sack_sb.last_sacked_bytes;
+	  if (tc->snd_rxt_bytes > rxt_delivered)
+	    tc->snd_rxt_bytes -= rxt_delivered;
+	  else
+	    tc->snd_rxt_bytes = 0;
 	}
       else
 	{

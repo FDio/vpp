@@ -919,7 +919,7 @@ format_tcp_congestion (u8 * s, va_list * args)
   s = format (s, "%U ", format_tcp_congestion_status, tc);
   s = format (s, "algo %s cwnd %u ssthresh %u bytes_acked %u\n",
 	      tc->cc_algo->name, tc->cwnd, tc->ssthresh, tc->bytes_acked);
-  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u rtx_bytes %u\n",
+  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u rxt_bytes %u\n",
 	      format_white_space, indent, tcp_available_cc_snd_space (tc),
 	      tc->prev_cwnd, tc->prev_ssthresh, tc->snd_rxt_bytes);
   s = format (s, "%Usnd_congestion %u dupack %u limited_transmit %u\n",
@@ -1139,8 +1139,9 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   sack_scoreboard_hole_t *hole;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "sacked_bytes %u last_sacked_bytes %u lost_bytes %u\n",
-	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes);
+  s = format (s, "sacked %u last_sacked %u lost %u last_lost %u\n",
+	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes,
+	      sb->last_lost_bytes);
   s = format (s, "%Ulast_bytes_delivered %u high_sacked %u is_reneging %u\n",
 	      format_white_space, indent, sb->last_bytes_delivered,
 	      sb->high_sacked - tc->iss, sb->is_reneging);
