@@ -111,16 +111,6 @@ typedef struct application_
   /** Pool of listeners for the app */
   app_listener_t *listeners;
 
-  /*
-   * TLS & QUIC Specific
-   */
-
-  /** Certificate to be used for listen sessions */
-  u8 *tls_cert;
-
-  /** PEM encoded key */
-  u8 *tls_key;
-
   /** Preferred tls engine */
   u8 tls_engine;
 
@@ -144,6 +134,11 @@ typedef struct app_main_
    * Hash table of builtin apps by name
    */
   uword *app_by_name;
+
+  /**
+   * Pool from which we allocate certificates (key, cert)
+   */
+  app_certificate_t *certificate_store;
 } app_main_t;
 
 typedef struct app_init_args_
@@ -284,6 +279,9 @@ int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
+app_certificate_t *app_certificate_get (u32 index);
+app_certificate_t *app_certificate_get_if_valid (u32 index);
+app_certificate_t *app_certificate_get_default ();
 
 /* Needed while we support both bapi and mq ctrl messages */
 int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,

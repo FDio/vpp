@@ -44,6 +44,7 @@ typedef struct _session_endpoint_cfg
   u8 original_tp;
   u8 *hostname;
   u64 parent_handle;
+  u32 certificate_index;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\
@@ -83,7 +84,8 @@ typedef struct _session_endpoint_cfg
   .app_wrk_index = ENDPOINT_INVALID_INDEX,	\
   .opaque = ENDPOINT_INVALID_INDEX,		\
   .hostname = 0,				\
-  .parent_handle = SESSION_INVALID_HANDLE	\
+  .parent_handle = SESSION_INVALID_HANDLE,	\
+  .certificate_index = 0			\
 }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)
