@@ -699,17 +699,15 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
   tc->snd_una_max = tc->snd_nxt;
-  tc->srtt = 0;
+  tc->srtt = 100;		/* 100 ms */
 }
 
 void
 tcp_enable_pacing (tcp_connection_t * tc)
 {
-  u32 initial_bucket, byte_rate;
-  initial_bucket = 16 * tc->snd_mss;
-  byte_rate = 2 << 16;
-  transport_connection_tx_pacer_init (&tc->connection, byte_rate,
-				      initial_bucket);
+  u32 byte_rate;
+  byte_rate = tc->cwnd / (tc->srtt * TCP_TICK);
+  transport_connection_tx_pacer_init (&tc->connection, byte_rate, tc->cwnd);
   tc->mrtt_us = (u32) ~ 0;
 }
 
@@ -723,9 +721,10 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_connection_timers_init (tc);
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
-  tcp_cc_init (tc);
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);
+
+  tcp_cc_init (tc);
 
   if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
     tcp_add_del_adjacency (tc, 1);
@@ -919,7 +918,7 @@ format_tcp_congestion (u8 * s, va_list * args)
   s = format (s, "%U ", format_tcp_congestion_status, tc);
   s = format (s, "algo %s cwnd %u ssthresh %u bytes_acked %u\n",
 	      tc->cc_algo->name, tc->cwnd, tc->ssthresh, tc->bytes_acked);
-  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u rtx_bytes %u\n",
+  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u rxt_bytes %u\n",
 	      format_white_space, indent, tcp_available_cc_snd_space (tc),
 	      tc->prev_cwnd, tc->prev_ssthresh, tc->snd_rxt_bytes);
   s = format (s, "%Usnd_congestion %u dupack %u limited_transmit %u\n",
@@ -1139,8 +1138,9 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   sack_scoreboard_hole_t *hole;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "sacked_bytes %u last_sacked_bytes %u lost_bytes %u\n",
-	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes);
+  s = format (s, "sacked %u last_sacked %u lost %u last_lost %u\n",
+	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes,
+	      sb->last_lost_bytes);
   s = format (s, "%Ulast_bytes_delivered %u high_sacked %u is_reneging %u\n",
 	      format_white_space, indent, sb->last_bytes_delivered,
 	      sb->high_sacked - tc->iss, sb->is_reneging);
@@ -1245,7 +1245,7 @@ tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
 static inline u32
 tcp_snd_space_inline (tcp_connection_t * tc)
 {
-  int snd_space, snt_limited;
+  int snd_space;
 
   if (PREDICT_FALSE (tcp_in_fastrecovery (tc)
 		     || tc->state == TCP_STATE_CLOSED))
@@ -1253,18 +1253,21 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 
   snd_space = tcp_available_output_snd_space (tc);
 
-  /* If we haven't gotten dupacks or if we did and have gotten sacked
-   * bytes then we can still send as per Limited Transmit (RFC3042) */
-  if (PREDICT_FALSE (tc->rcv_dupacks != 0
-		     && (tcp_opts_sack_permitted (tc)
-			 && tc->sack_sb.last_sacked_bytes == 0)))
+  /* If we got dupacks or sacked bytes but we're not yet in recovery, try
+   * to force the peer to send enough dupacks to start retransmitting as
+   * per Limited Transmit (RFC3042)
+   */
+  if (PREDICT_FALSE (tc->rcv_dupacks != 0 || tc->sack_sb.sacked_bytes))
     {
-      if (tc->rcv_dupacks == 1 && tc->limited_transmit != tc->snd_nxt)
+      if (tc->limited_transmit != tc->snd_nxt
+	  && (seq_lt (tc->limited_transmit, tc->snd_nxt - 2 * tc->snd_mss)
+	      || seq_gt (tc->limited_transmit, tc->snd_nxt)))
 	tc->limited_transmit = tc->snd_nxt;
+
       ASSERT (seq_leq (tc->limited_transmit, tc->snd_nxt));
 
-      snt_limited = tc->snd_nxt - tc->limited_transmit;
-      snd_space = clib_max (2 * tc->snd_mss - snt_limited, 0);
+      int snt_limited = tc->snd_nxt - tc->limited_transmit;
+      snd_space = clib_max ((int) 2 * tc->snd_mss - snt_limited, 0);
     }
   return tcp_round_snd_space (tc, snd_space);
 }
@@ -1358,9 +1361,9 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 			       u32 start_bucket)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
-  u32 byte_rate = window / ((f64) TCP_TICK * tc->srtt);
+  f64 srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
   u64 last_time = wrk->vm->clib_time.last_cpu_time;
-  transport_connection_tx_pacer_reset (&tc->connection, byte_rate,
+  transport_connection_tx_pacer_reset (&tc->connection, window / srtt,
 				       start_bucket, last_time);
 }
 
