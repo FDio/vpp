@@ -87,19 +87,6 @@ svm_msg_q_t *svm_msg_q_alloc (svm_msg_q_cfg_t * cfg);
 void svm_msg_q_free (svm_msg_q_t * mq);
 
 /**
- * Allocate message buffer
- *
- * Message is allocated on the first available ring capable of holding
- * the requested number of bytes.
- *
- * @param mq		message queue
- * @param nbytes	number of bytes needed for message
- * @return		message structure pointing to the ring and position
- * 			allocated
- */
-svm_msg_q_msg_t svm_msg_q_alloc_msg (svm_msg_q_t * mq, u32 nbytes);
-
-/**
  * Allocate message buffer on ring
  *
  * Message is allocated, on requested ring. The caller MUST check that

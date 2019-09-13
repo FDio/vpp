@@ -42,11 +42,6 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       return -2;
     }
   msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (&msg)))
-    {
-      svm_msg_q_unlock (mq);
-      return -2;
-    }
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
   evt->event_type = evt_type;
   switch (evt_type)
@@ -68,6 +63,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       break;
     default:
       clib_warning ("evt unhandled!");
+      svm_msg_q_free_msg (mq, &msg);
       svm_msg_q_unlock (mq);
       return -1;
     }

@@ -1911,12 +1911,12 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
     rings_ptr += (uword) ring->nitems * ring->elsize;
   }
 
-  msg1 = svm_msg_q_alloc_msg (mq, 8);
+  msg1 = svm_msg_q_alloc_msg_w_ring (mq, 0);
   rv = (mq->rings[0].cursize != 1
 	|| msg1.ring_index != 0 || msg1.elt_index != 0);
   SESSION_TEST (rv == 0, "msg alloc1");
 
-  msg2 = svm_msg_q_alloc_msg (mq, 15);
+  msg2 = svm_msg_q_alloc_msg_w_ring (mq, 1);
   rv = (mq->rings[1].cursize != 1
 	|| msg2.ring_index != 1 || msg2.elt_index != 0);
   SESSION_TEST (rv == 0, "msg alloc2");
@@ -1926,7 +1926,7 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
 
   for (i = 0; i < 12; i++)
     {
-      msg[i] = svm_msg_q_alloc_msg (mq, 7);
+      msg[i] = svm_msg_q_alloc_msg_w_ring (mq, i < 8 ? 0 : 1);
       *(u32 *) svm_msg_q_msg_data (mq, &msg[i]) = i;
     }
 

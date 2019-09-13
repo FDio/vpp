@@ -127,11 +127,6 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
 	  return -2;
 	}
       *msg = svm_msg_q_alloc_msg_w_ring (mq, ring_index);
-      if (PREDICT_FALSE (svm_msg_q_msg_is_invalid (msg)))
-	{
-	  svm_msg_q_unlock (mq);
-	  return -2;
-	}
     }
   else
     {
@@ -142,25 +137,6 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
       *msg = svm_msg_q_alloc_msg_w_ring (mq, ring_index);
     }
   return 0;
-}
-
-svm_msg_q_msg_t
-svm_msg_q_alloc_msg (svm_msg_q_t * mq, u32 nbytes)
-{
-  svm_msg_q_msg_t msg = {.as_u64 = ~0 };
-  svm_msg_q_ring_t *ring;
-
-  vec_foreach (ring, mq->rings)
-  {
-    if (ring->elsize < nbytes || ring->cursize == ring->nitems)
-      continue;
-    msg.ring_index = ring - mq->rings;
-    msg.elt_index = ring->tail;
-    ring->tail = (ring->tail + 1) % ring->nitems;
-    clib_atomic_fetch_add (&ring->cursize, 1);
-    break;
-  }
-  return msg;
 }
 
 void *
