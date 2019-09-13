@@ -939,6 +939,10 @@ unformat_ip4_mask (unformat_input_t * input, va_list * args)
   u8 *mask = 0;
   u8 found_something = 0;
   ip4_header_t *ip;
+  u32 src_prefix_len = 32;
+  u32 src_prefix_mask = ~0;
+  u32 dst_prefix_len = 32;
+  u32 dst_prefix_mask = ~0;
 
 #define _(a) u8 a=0;
   foreach_ip4_proto_field;
@@ -953,6 +957,18 @@ unformat_ip4_mask (unformat_input_t * input, va_list * args)
 	version = 1;
       else if (unformat (input, "hdr_length"))
 	hdr_length = 1;
+      else if (unformat (input, "src/%d", &src_prefix_len))
+	{
+	  src_address = 1;
+	  src_prefix_mask &= ~((1 << (32 - src_prefix_len)) - 1);
+	  src_prefix_mask = clib_host_to_net_u32 (src_prefix_mask);
+	}
+      else if (unformat (input, "dst/%d", &dst_prefix_len))
+	{
+	  dst_address = 1;
+	  dst_prefix_mask &= ~((1 << (32 - dst_prefix_len)) - 1);
+	  dst_prefix_mask = clib_host_to_net_u32 (dst_prefix_mask);
+	}
       else if (unformat (input, "src"))
 	src_address = 1;
       else if (unformat (input, "dst"))
@@ -981,6 +997,12 @@ unformat_ip4_mask (unformat_input_t * input, va_list * args)
 #define _(a) if (a) clib_memset (&ip->a, 0xff, sizeof (ip->a));
   foreach_ip4_proto_field;
 #undef _
+
+  if (src_address)
+    ip->src_address.as_u32 = src_prefix_mask;
+
+  if (dst_address)
+    ip->dst_address.as_u32 = dst_prefix_mask;
 
   ip->ip_version_and_header_length = 0;
 
@@ -1577,7 +1599,7 @@ classify_table_command_fn (vlib_main_t * vm,
   if (!is_add && table_index == ~0)
     return clib_error_return (0, "table index required for delete");
 
-  rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
+  rv = vnet_classify_add_del_table (cm, mask, nbuckets, (u32) memory_size,
 				    skip, match, next_table_index,
 				    miss_next_index, &table_index,
 				    current_data_flag, current_data_offset,
@@ -1595,7 +1617,8 @@ classify_table_command_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (classify_table, static) = {
+VLIB_CLI_COMMAND (classify_table, static) =
+{
   .path = "classify table",
   .short_help =
   "classify table [miss-next|l2-miss_next|acl-miss-next <next_index>]"
@@ -1604,6 +1627,203 @@ VLIB_CLI_COMMAND (classify_table, static) = {
   "\n [memory-size <nn>[M][G]] [next-table <n>]"
   "\n [del] [del-chain]",
   .function = classify_table_command_fn,
+};
+/* *INDENT-ON* */
+
+static int
+filter_table_mask_compare (void *a1, void *a2)
+{
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  u32 *ti1 = a1;
+  u32 *ti2 = a2;
+  u32 n1 = 0, n2 = 0;
+  vnet_classify_table_t *t1, *t2;
+  u8 *m1, *m2;
+  int i;
+
+  t1 = pool_elt_at_index (cm->tables, *ti1);
+  t2 = pool_elt_at_index (cm->tables, *ti2);
+
+  m1 = (u8 *) (t1->mask);
+  m2 = (u8 *) (t2->mask);
+
+  for (i = 0; i < vec_len (t1->mask) * sizeof (u32x4); i++)
+    {
+      n1 += count_set_bits (m1[0]);
+      m1++;
+    }
+
+  for (i = 0; i < vec_len (t2->mask) * sizeof (u32x4); i++)
+    {
+      n2 += count_set_bits (m2[0]);
+      m2++;
+    }
+
+  /* Reverse sort: descending number of set bits */
+  if (n1 < n2)
+    return 1;
+  else if (n1 > n2)
+    return -1;
+  else
+    return 0;
+}
+
+static clib_error_t *
+classify_filter_command_fn (vlib_main_t * vm,
+			    unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  u32 nbuckets = 8;
+  vnet_main_t *vnm = vnet_get_main ();
+  uword memory_size = (uword) (128 << 10);
+  u32 skip = ~0;
+  u32 match = ~0;
+  u8 *match_vector;
+  int is_add = 1;
+  int del_chain = 0;
+  u32 table_index = ~0;
+  u32 next_table_index = ~0;
+  u32 miss_next_index = ~0;
+  u32 current_data_flag = 0;
+  int current_data_offset = 0;
+  int i;
+  vnet_classify_table_t *t;
+  u8 *mask = 0;
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  int rv = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+	is_add = 0;
+      else if (unformat (input, "buckets %d", &nbuckets))
+	;
+      else if (unformat (input, "mask %U", unformat_classify_mask,
+			 &mask, &skip, &match))
+	;
+      else if (unformat (input, "memory-size %U", unformat_memory_size,
+			 &memory_size))
+	;
+      else
+	break;
+    }
+
+  if (is_add && mask == 0 && table_index == ~0)
+    return clib_error_return (0, "Mask required");
+
+  if (is_add && skip == ~0 && table_index == ~0)
+    return clib_error_return (0, "skip count required");
+
+  if (is_add && match == ~0 && table_index == ~0)
+    return clib_error_return (0, "match count required");
+
+  if (!is_add)
+    {
+      if (vec_len (vnm->classify_filter_table_indices) == 0)
+	return clib_error_return (0, "No classify filter set...");
+
+      del_chain = 1;
+      table_index = vnm->classify_filter_table_indices[0];
+      vec_reset_length (vnm->classify_filter_table_indices);
+    }
+
+  /* see if we already have a table for that... */
+
+  if (is_add)
+    {
+      for (i = 0; i < vec_len (vnm->classify_filter_table_indices); i++)
+	{
+	  t = pool_elt_at_index (cm->tables, i);
+	  /* classifier geometry mismatch, can't use this table */
+	  if (t->match_n_vectors != match || t->skip_n_vectors != skip)
+	    continue;
+	  /* Masks aren't congruent, can't use this table */
+	  if (vec_len (t->mask) != vec_len (mask))
+	    continue;
+	  /* Masks aren't bit-for-bit identical, can't use this table */
+	  if (memcmp (t->mask, mask, vec_len (mask)))
+	    continue;
+
+	  /* Winner... */
+	  table_index = i;
+	  goto found_table;
+	}
+    }
+
+  rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
+				    skip, match, next_table_index,
+				    miss_next_index, &table_index,
+				    current_data_flag, current_data_offset,
+				    is_add, del_chain);
+  vec_free (mask);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+
+    default:
+      return clib_error_return (0, "vnet_classify_add_del_table returned %d",
+				rv);
+    }
+
+  if (is_add == 0)
+    return 0;
+
+  /* Remember the table */
+  vec_add1 (vnm->classify_filter_table_indices, table_index);
+
+found_table:
+
+  /* Now try to parse a session */
+  if (unformat (input, "match %U", unformat_classify_match,
+		cm, &match_vector, table_index) == 0)
+    return 0;
+
+
+  /*
+   * We use hit or miss to determine whether to trace or pcap pkts
+   * so the session setup is very limited
+   */
+  rv = vnet_classify_add_del_session (cm, table_index,
+				      match_vector, 0 /* hit_next_index */ ,
+				      0 /* opaque_index */ ,
+				      0 /* advance */ ,
+				      0 /* action */ ,
+				      0 /* metadata */ ,
+				      1 /* is_add */ );
+
+  vec_free (match_vector);
+
+  /* Sort filter tables from most-specific mask to least-specific mask */
+  vec_sort_with_function (vnm->classify_filter_table_indices,
+			  filter_table_mask_compare);
+
+  ASSERT (vec_len (vnm->classify_filter_table_indices));
+
+  /* Setup next_table_index fields */
+  for (i = 0; i < vec_len (vnm->classify_filter_table_indices); i++)
+    {
+      t = pool_elt_at_index (cm->tables,
+			     vnm->classify_filter_table_indices[i]);
+
+      if ((i + 1) < vec_len (vnm->classify_filter_table_indices))
+	t->next_table_index = vnm->classify_filter_table_indices[i + 1];
+      else
+	t->next_table_index = ~0;
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (classify_filter, static) =
+{
+  .path = "classify filter",
+  .short_help =
+  "classify filter mask <mask-value> match <match-value>"
+  "\n   [buckets <nn>] [memory-size <n>][del]",
+  .function = classify_filter_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -2442,7 +2662,7 @@ vnet_classify_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (vnet_classify_init);
 
-#define TEST_CODE 1
+#define TEST_CODE 0
 
 #if TEST_CODE > 0
 

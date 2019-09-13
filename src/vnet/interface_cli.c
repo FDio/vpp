@@ -1699,13 +1699,14 @@ int
 vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 {
   vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
   vlib_rx_or_tx_t rxtx = a->rxtx;
   vnet_pcap_t *pp = &vm->pcap[rxtx];
   pcap_main_t *pm = &pp->pcap_main;
 
   if (a->status)
     {
-      if (pp->pcap_enable == 0)
+      if (pp->pcap_enable)
 	{
 	  vlib_cli_output
 	    (vm, "pcap %s dispatch capture enabled: %d of %d pkts...",
@@ -1734,6 +1735,10 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       && (pm->n_packets_to_capture != a->packets_to_capture))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
+  if (a->enable && a->filter
+      && (vec_len (vnm->classify_filter_table_indices) == 0))
+    return VNET_API_ERROR_NO_SUCH_LABEL;
+
   if (a->enable)
     {
       /* Clean up from previous run, if any */
@@ -1754,6 +1759,11 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       pm->packet_type = PCAP_PACKET_TYPE_ethernet;
       pm->n_packets_to_capture = a->packets_to_capture;
       pp->pcap_sw_if_index = a->sw_if_index;
+      if (a->filter)
+	pp->filter_classify_table_index =
+	  vnm->classify_filter_table_indices[0];
+      else
+	pp->filter_classify_table_index = ~0;
       pp->pcap_enable = 1;
     }
   else
@@ -1796,6 +1806,7 @@ pcap_trace_command_internal (vlib_main_t * vm,
   int rv;
   int enable = 0;
   int status = 0;
+  int filter = 0;
   u32 sw_if_index = 0;
 
   /* Get a line of input. */
@@ -1826,6 +1837,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "intfc any"))
 	sw_if_index = 0;
+      else if (unformat (line_input, "filter"))
+	filter = 1;
       else
 	{
 	  return clib_error_return (0, "unknown input `%U'",
@@ -1842,6 +1855,7 @@ pcap_trace_command_internal (vlib_main_t * vm,
   a->packets_to_capture = max;
   a->rxtx = rxtx;
   a->sw_if_index = sw_if_index;
+  a->filter = filter;
 
   rv = vnet_pcap_dispatch_trace_configure (a);
 
@@ -1865,6 +1879,10 @@ pcap_trace_command_internal (vlib_main_t * vm,
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       return clib_error_return (0, "No packets captured...");
+
+    case VNET_API_ERROR_NO_SUCH_LABEL:
+      return clib_error_return
+	(0, "No classify filter configured, see 'classify filter...'");
 
     default:
       vlib_cli_output (vm, "WARNING: trace configure returned %d", rv);
@@ -1958,7 +1976,6 @@ VLIB_CLI_COMMAND (pcap_rx_trace_command, static) = {
     .function = pcap_rx_trace_command_fn,
 };
 /* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON
