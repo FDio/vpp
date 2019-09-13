@@ -1393,19 +1393,20 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   tc->prev_cwnd = tc->cwnd;
 
   /* Clear fast recovery state if needed */
-  if (tcp_in_fastrecovery (tc))
-    tcp_cc_fastrecovery_clear (tc);
+//  if (tcp_in_fastrecovery (tc))
+//    tcp_cc_fastrecovery_clear (tc);
+//  tcp_fastrecovery_off (tc);
 
   /* Let cc algo decide loss cwnd and ssthresh */
   tcp_cc_loss (tc);
 
   /* Start again from the beginning */
-  tc->snd_congestion = tc->snd_nxt;
-  tc->rcv_dupacks = 0;
+//  tc->snd_congestion = tc->snd_nxt;
+//  tc->rcv_dupacks = 0;
   tc->rtt_ts = 0;
   tc->cwnd_acc_bytes = 0;
   tc->tr_occurences += 1;
-  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 2 * tc->snd_mss);
+//  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 2 * tc->snd_mss);
   tcp_recovery_on (tc);
 }
 
@@ -1419,6 +1420,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
 
+//  clib_warning ("rxt timer timeout hit");
   tc = tcp_connection_get (tc_index, thread_index);
 
   /* Note: the connection may have been closed and pool_put */
@@ -1481,7 +1483,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
       tc->rto_boff += 1;
 
       /* TODO be less aggressive about clearing scoreboard */
-      scoreboard_clear (&tc->sack_sb);
+//      scoreboard_clear (&tc->sack_sb);
 
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
@@ -1491,12 +1493,17 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	  tc->snd_rxt_ts = tcp_tstamp (tc);
 	}
 
-      if (tc->flags & TCP_CONN_RATE_SAMPLE)
-	tcp_bt_flush_samples (tc);
+//      if (tc->flags & TCP_CONN_RATE_SAMPLE)
+//	tcp_bt_flush_samples (tc);
 
       /* If we've sent beyond snd_congestion, update it */
       tc->snd_congestion = seq_max (tc->snd_nxt, tc->snd_congestion);
-      tc->snd_nxt = tc->snd_una;
+//      tc->snd_nxt = tc->snd_una;
+
+      if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
+
+      tcp_program_fastretransmit (tc);
 
       /* Send one segment. n_bytes may be zero due to buffer shortfall */
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss, &b);
@@ -1862,6 +1869,8 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     tcp_program_fastretransmit (tc);
 
 done:
+if (tcp_in_recovery(tc))
+  clib_warning ("%u written segments %u", tc->c_c_index, n_segs);
   return n_segs;
 }
 
