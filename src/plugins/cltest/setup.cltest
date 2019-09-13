@@ -1,0 +1,22 @@
+set term pag off
+loop create
+set int state loop0 up
+cltest enable loop0
+
+packet-generator new {
+    name cltest
+    limit 20
+    size 300-300
+    interface loop0
+    node ethernet-input
+    data { IP4: 1.2.3 -> 4.5.6
+           UDP: 11.22.33.44 -> 11.22.34.44
+           UDP: 1234 -> 2345
+           incrementing 286
+    }
+}
+
+classify table mask l3 ip4 dst
+classify session hit-next drop table-index 0 match l3 ip4 dst 11.22.34.44
+trace add pg-input 40
+pa en
