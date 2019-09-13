@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "72438403_f3445f1f",
+        "filename": "src/vnet/session/application.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-13T15:33:21Z",
+      "side": 1,
+      "message": "app_* ?",
+      "range": {
+        "startLine": 282,
+        "startChar": 15,
+        "endLine": 282,
+        "endChar": 30
+      },
+      "revId": "a2858fae91de10bd25d7ac906852d9dd6d1ade11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2477cc82_64b43137",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-13T15:33:21Z",
+      "side": 1,
+      "message": "vnet_add_app_certificate_args_t?",
+      "range": {
+        "startLine": 164,
+        "startChar": 2,
+        "endLine": 164,
+        "endChar": 29
+      },
+      "revId": "a2858fae91de10bd25d7ac906852d9dd6d1ade11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "913be93a_a2ca4b8b",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-13T15:33:21Z",
+      "side": 1,
+      "message": "app_certificate_t ?",
+      "range": {
+        "startLine": 172,
+        "startChar": 2,
+        "endLine": 172,
+        "endChar": 15
+      },
+      "revId": "a2858fae91de10bd25d7ac906852d9dd6d1ade11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3ecbd629_bd0469ca",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-13T15:33:21Z",
+      "side": 1,
+      "message": "Fallout from the multitude of updates?",
+      "range": {
+        "startLine": 298,
+        "startChar": 9,
+        "endLine": 298,
+        "endChar": 11
+      },
+      "revId": "a2858fae91de10bd25d7ac906852d9dd6d1ade11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2a823449_35984a98",
+        "filename": "src/vnet/session/session.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-13T15:33:21Z",
+      "side": 1,
+      "message": "Maybe qualify these messages as pertaining to session layer? Maybe add app/session as a prefix?",
+      "range": {
+        "startLine": 119,
+        "startChar": 7,
+        "endLine": 119,
+        "endChar": 22
+      },
+      "revId": "a2858fae91de10bd25d7ac906852d9dd6d1ade11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "362f22eb_d7d33577",
+        "filename": "src/vnet/session/session.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-13T15:33:21Z",
+      "side": 1,
+      "message": "Hm, I guess you want to avoid splitting these. What about doing cert_len and certkey_len and then declare u8 certkey[] as u8 certkey[certkey_len]. And then the api functions allocate correctly sized messages.",
+      "range": {
+        "startLine": 122,
+        "startChar": 0,
+        "endLine": 124,
+        "endChar": 17
+      },
+      "revId": "a2858fae91de10bd25d7ac906852d9dd6d1ade11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0204dc4c_2cea2d74",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1143,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-13T15:33:21Z",
+      "side": 1,
+      "message": "Aesthetics or something else?",
+      "range": {
+        "startLine": 1143,
+        "startChar": 2,
+        "endLine": 1143,
+        "endChar": 38
+      },
+      "revId": "a2858fae91de10bd25d7ac906852d9dd6d1ade11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
