@@ -108,7 +108,46 @@ define app_attach_reply {
     u64 segment_handle;
 };
 
+/** \brief Add certificate and key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param engine - crypto engine
+    @param cert_len - cert length
+    @param cert_len - key length
+    @param certkey - cert & key data (due to API limitation)
+*/
+define add_certificate {
+    u32 client_index;
+    u32 context;
+    u16 cert_len;
+    u16 key_len;
+    u8 certkey[];
+};
+
+/** \brief Add certificate and key
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param index - index in certificate store
+*/
+define add_certificate_reply {
+    u32 context;
+    i32 retval;
+    u32 index;
+};
+
+/** \brief Delete certificate and key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param index - index in certificate store
+*/
+autoreply define del_certificate {
+    u32 client_index;
+    u32 context;
+    u32 index;
+};
+
 /** \brief Application add TLS certificate
+ 	### WILL BE DEPRECATED POST 20.01 ###
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param cert_len - certificate length
@@ -123,6 +162,7 @@ autoreply define application_tls_cert_add {
 };
 
 /** \brief Application add TLS key
+ 	### WILL BE DEPRECATED POST 20.01 ###
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param key_len - certificate length

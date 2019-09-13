@@ -79,6 +79,7 @@ typedef struct tls_ctx_
   u8 app_closed;
   u8 no_app_session;
   u8 *srv_hostname;
+  u32 certificate_index;
 } tls_ctx_t;
 
 typedef struct tls_main_

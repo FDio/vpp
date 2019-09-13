@@ -592,7 +592,6 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 static int
 openssl_start_listen (tls_ctx_t * lctx)
 {
-  application_t *app;
   const SSL_METHOD *method;
   SSL_CTX *ssl_ctx;
   int rv;
@@ -601,17 +600,16 @@ openssl_start_listen (tls_ctx_t * lctx)
   EVP_PKEY *pkey;
   u32 olc_index;
   openssl_listen_ctx_t *olc;
-  app_worker_t *app_wrk;
+  certificate_t *cert;
 
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
   openssl_main_t *om = &openssl_main;
 
-  app_wrk = app_worker_get (lctx->parent_app_wrk_index);
-  if (!app_wrk)
+  cert = certificate_get_if_valid (lctx->certificate_index);
+  if (!cert)
     return -1;
 
-  app = application_get (app_wrk->app_index);
-  if (!app->tls_cert || !app->tls_key)
+  if (!cert->cert || !cert->key)
     {
       TLS_DBG (1, "tls cert and/or key not configured %d",
 	       lctx->parent_app_wrk_index);
@@ -646,7 +644,7 @@ openssl_start_listen (tls_ctx_t * lctx)
    * Set the key and cert
    */
   cert_bio = BIO_new (BIO_s_mem ());
-  BIO_write (cert_bio, app->tls_cert, vec_len (app->tls_cert));
+  BIO_write (cert_bio, cert->cert, vec_len (cert->cert));
   srvcert = PEM_read_bio_X509 (cert_bio, NULL, NULL, NULL);
   if (!srvcert)
     {
@@ -657,7 +655,7 @@ openssl_start_listen (tls_ctx_t * lctx)
   BIO_free (cert_bio);
 
   cert_bio = BIO_new (BIO_s_mem ());
-  BIO_write (cert_bio, app->tls_key, vec_len (app->tls_key));
+  BIO_write (cert_bio, cert->key, vec_len (cert->key));
   pkey = PEM_read_bio_PrivateKey (cert_bio, NULL, NULL, NULL);
   if (!pkey)
     {
