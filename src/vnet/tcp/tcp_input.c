@@ -508,8 +508,8 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
 	  mrtt = rs->rtt_time * THZ;
 	  goto estimate_rtt;
 	}
-      if (tcp_in_recovery (tc))
-	return 0;
+//      if (tcp_in_recovery (tc))
+//      return 0;
       goto done;
     }
 
@@ -784,9 +784,17 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 
   return hole;
 }
-#endif /* CLIB_MARCH_VARIANT */
 
-#ifndef CLIB_MARCH_VARIANT
+always_inline void
+scoreboard_update_sacked_rxt (sack_scoreboard_t * sb, u32 start, u32 end,
+			      u8 has_rxt)
+{
+  if (!has_rxt || seq_geq (start, sb->high_rxt))
+    return;
+
+  sb->rxt_sacked +=
+    seq_lt (end, sb->high_rxt) ? end - start : sb->high_rxt - start;
+}
 
 always_inline void
 scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
@@ -837,7 +845,7 @@ scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
   while (right)
     {
       sb->lost_bytes += scoreboard_hole_bytes (right);
-      sb->last_lost_bytes += right->is_lost ? 0 : right->end - right->start;
+      sb->last_lost_bytes += right->is_lost ? 0 : (right->end - right->start);
       right->is_lost = 1;
       left = scoreboard_prev_hole (sb, right);
       if (!left)
@@ -912,9 +920,8 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 
   return hole;
 }
-#endif /* CLIB_MARCH_VARIANT */
 
-static void
+void
 scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
 {
   sack_scoreboard_hole_t *hole;
@@ -928,7 +935,6 @@ scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
   sb->rescue_rxt = snd_una - 1;
 }
 
-#ifndef  CLIB_MARCH_VARIANT
 void
 scoreboard_init (sack_scoreboard_t * sb)
 {
@@ -983,13 +989,17 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, *rcv_sacks;
   u32 blk_index = 0, i, j;
+  u8 has_rxt;
 
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
+  sb->rxt_sacked = 0;
 
   if (!tcp_opts_sack (&tc->rcv_opts)
       && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     return;
+
+  has_rxt = tcp_in_cong_recovery (tc);
 
   /* Remove invalid blocks */
   blk = tc->rcv_opts.sacks;
@@ -1121,6 +1131,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		      sb->is_reneging = 0;
 		    }
 		}
+	      scoreboard_update_sacked_rxt (sb, hole->start, hole->end,
+					    has_rxt);
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
@@ -1129,6 +1141,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      if (seq_gt (blk->end, hole->start))
 		{
+		  scoreboard_update_sacked_rxt (sb, hole->start, blk->end,
+						has_rxt);
 		  hole->start = blk->end;
 		}
 	      blk_index++;
@@ -1145,11 +1159,17 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	      /* Pool might've moved */
 	      hole = scoreboard_get_hole (sb, hole_index);
 	      hole->end = blk->start;
+
+	      scoreboard_update_sacked_rxt (sb, blk->start, blk->end,
+					    has_rxt);
+
 	      blk_index++;
 	      ASSERT (hole->next == scoreboard_hole_index (sb, next_hole));
 	    }
 	  else if (seq_lt (blk->start, hole->end))
 	    {
+	      scoreboard_update_sacked_rxt (sb, blk->start, hole->end,
+					    has_rxt);
 	      hole->end = blk->start;
 	    }
 	  hole = scoreboard_next_hole (sb, hole);
@@ -1166,6 +1186,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
 	  || sb->is_reneging || sb->holes[sb->head].start == ack);
   ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
+  ASSERT ((ack - tc->snd_una) + sb->last_sacked_bytes
+	  - sb->last_bytes_delivered > sb->rxt_sacked);
 
   TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc);
 }
@@ -1236,6 +1258,7 @@ tcp_cc_recovery_exit (tcp_connection_t * tc)
 {
   tc->rto_boff = 0;
   tcp_update_rto (tc);
+  tc->snd_rxt_bytes = 0;
   tc->snd_rxt_ts = 0;
   tc->rtt_ts = 0;
   tcp_recovery_off (tc);
@@ -1252,7 +1275,7 @@ tcp_cc_fastrecovery_clear (tcp_connection_t * tc)
 
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_first_off (tc);
-  tc->flags &= ~TCP_CONN_FRXT_PENDING;
+  tc->flags &= ~TCP_CONN_RXT_PENDING;
 
   TCP_EVT (TCP_EVT_CC_EVT, tc, 3);
 }
@@ -1261,9 +1284,11 @@ tcp_cc_fastrecovery_clear (tcp_connection_t * tc)
 static void
 tcp_cc_congestion_undo (tcp_connection_t * tc)
 {
+  clib_warning ("%u congestion undo", tc->c_c_index);
   tc->cwnd = tc->prev_cwnd;
   tc->ssthresh = tc->prev_ssthresh;
   tc->rcv_dupacks = 0;
+  tc->snd_rxt_bytes = 0;
   if (tcp_in_recovery (tc))
     {
       tcp_cc_recovery_exit (tc);
@@ -1290,15 +1315,31 @@ tcp_cc_is_spurious_timeout_rxt (tcp_connection_t * tc)
 static inline u8
 tcp_cc_is_spurious_fast_rxt (tcp_connection_t * tc)
 {
-  return (tcp_in_fastrecovery (tc)
-	  && tc->cwnd > tc->ssthresh + 3 * tc->snd_mss);
+  return 0;
+//  return (tcp_in_fastrecovery (tc)
+//        && tc->cwnd > tc->ssthresh + 3 * tc->snd_mss);
 }
 
-static u8
+static inline u8
 tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 {
   return (tcp_cc_is_spurious_timeout_rxt (tc)
 	  || tcp_cc_is_spurious_fast_rxt (tc));
+}
+
+static inline u8
+tcp_should_fastrecover_sack (tcp_connection_t * tc)
+{
+  return (tc->sack_sb.lost_bytes
+	  || ((TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
+	      < tc->sack_sb.sacked_bytes));
+}
+
+static inline u8
+tcp_should_fastrecover (tcp_connection_t * tc)
+{
+  return ((tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
+	  || tcp_should_fastrecover_sack (tc));
 }
 
 static int
@@ -1306,11 +1347,25 @@ tcp_cc_recover (tcp_connection_t * tc)
 {
   sack_scoreboard_hole_t *hole;
 
-  ASSERT (tcp_in_cong_recovery (tc));
+  /* Previous recovery left us congested. Continue sending as part
+   * of the current recovery event with an updated snd_congestion */
+  if (tc->sack_sb.sacked_bytes)
+    {
+      clib_warning ("%u exit congested", tc->c_c_index);
+      tc->snd_congestion = tc->snd_nxt;
+      tc->snd_rxt_bytes = 0;
+      tc->snd_rxt_ts = 0;
+      if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
+      tcp_program_retransmit (tc);
+      return 0;
+    }
 
   hole = scoreboard_first_hole (&tc->sack_sb);
   if (hole && hole->start == tc->snd_una && hole->end == tc->snd_nxt)
     scoreboard_clear (&tc->sack_sb);
+
+  ASSERT (tcp_in_cong_recovery (tc));
 
   if (tcp_cc_is_spurious_retransmit (tc))
     {
@@ -1319,7 +1374,10 @@ tcp_cc_recover (tcp_connection_t * tc)
     }
 
   if (tcp_in_recovery (tc))
-    tcp_cc_recovery_exit (tc);
+    {
+      tcp_cc_recovery_exit (tc);
+      tcp_cc_fastrecovery_clear (tc);
+    }
   else if (tcp_in_fastrecovery (tc))
     {
       tcp_cc_recovered (tc);
@@ -1353,17 +1411,37 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
     tc->snd_congestion = tc->snd_una - 1;
 }
 
-static u8
-tcp_should_fastrecover_sack (tcp_connection_t * tc)
+static void
+tcp_update_delivered (tcp_connection_t * tc, u8 has_sack)
 {
-  return (TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss < tc->sack_sb.sacked_bytes;
-}
+  if (has_sack)
+    {
+      ASSERT (tc->bytes_acked >= tc->sack_sb.last_bytes_delivered
+	      || (tc->flags & TCP_CONN_FINSNT));
 
-static u8
-tcp_should_fastrecover (tcp_connection_t * tc)
-{
-  return (tc->rcv_dupacks == TCP_DUPACK_THRESHOLD
-	  || tcp_should_fastrecover_sack (tc));
+      /* If we have sacks and we haven't gotten an ack beyond high_rxt,
+       * remove sacked bytes delivered */
+      if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
+	{
+	  if (tc->sack_sb.rxt_sacked > tc->snd_rxt_bytes)
+	    os_panic ();
+	  tc->snd_rxt_bytes -= tc->sack_sb.rxt_sacked;
+	}
+      else
+	{
+	  /* Apparently all retransmitted holes have been acked */
+	  tc->snd_rxt_bytes = 0;
+	  tc->sack_sb.high_rxt = tc->snd_una;
+	}
+    }
+  else
+    {
+      tcp_fastrecovery_first_on (tc);
+      if (tc->snd_rxt_bytes > tc->bytes_acked)
+	tc->snd_rxt_bytes -= tc->bytes_acked;
+      else
+	tc->snd_rxt_bytes = 0;
+    }
 }
 
 /**
@@ -1380,27 +1458,19 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    * and accounting for segments that have left the network are done
    * lower.
    */
-  if (tcp_in_fastrecovery (tc))
+  if (tcp_in_cong_recovery (tc))
     {
       if (!has_sack)
-	tc->rcv_dupacks++;
+	tc->rcv_dupacks += is_dack;
 
       if (!tc->bytes_acked)
 	{
-	  tcp_program_fastretransmit (tc);
+	  tcp_update_delivered (tc, has_sack);
+	  tcp_program_retransmit (tc);
 	  if (!has_sack)
 	    tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 	  return;
 	}
-    }
-  /*
-   * In timer triggered recovery
-   */
-  else if (tcp_in_recovery (tc))
-    {
-      /* No fast recovery entry at this point */
-      if (!tc->bytes_acked)
-	return;
     }
   /*
    * Duplicate ACK. Check if we should enter fast recovery
@@ -1410,6 +1480,11 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
       ASSERT (tc->snd_una != tc->snd_nxt || tc->sack_sb.last_sacked_bytes);
 
+      /* Heuristic to catch potential late dupacks */
+      if (!tc->sack_sb.sacked_bytes && tc->snd_una == tc->snd_congestion
+	  && timestamp_leq (tc->rcv_opts.tsecr, tc->tsecr_last_ack))
+	  return;
+
       tc->rcv_dupacks++;
 
       if (tcp_should_fastrecover (tc))
@@ -1417,15 +1492,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  u32 pacer_wnd;
 
 	  ASSERT (!tcp_in_fastrecovery (tc));
-
-	  /* Heuristic to catch potential late dupacks
-	   * after fast retransmit exits */
-	  if (is_dack && tc->snd_una == tc->snd_congestion
-	      && timestamp_leq (tc->rcv_opts.tsecr, tc->tsecr_last_ack))
-	    {
-	      tc->rcv_dupacks = 0;
-	      return;
-	    }
 
 	  tcp_cc_init_congestion (tc);
 
@@ -1436,7 +1502,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  pacer_wnd = clib_max (0.1 * tc->cwnd, 2 * tc->snd_mss);
 	  tcp_connection_tx_pacer_reset (tc, pacer_wnd,
 					 0 /* start bucket */ );
-	  tcp_program_fastretransmit (tc);
+	  tcp_program_retransmit (tc);
 	  return;
 	}
       else
@@ -1497,51 +1563,15 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    * reset dupacks to 0. Also needed if in congestion recovery */
   tc->rcv_dupacks = 0;
 
-  /* Post RTO timeout don't try anything fancy */
-  if (tcp_in_recovery (tc))
-    {
-      tcp_cc_rcv_ack (tc, rs);
-      transport_add_tx_event (&tc->connection);
-      return;
-    }
-
   /* Remove retransmitted bytes that have been delivered */
-  if (has_sack)
-    {
-      ASSERT (tc->bytes_acked >= tc->sack_sb.last_bytes_delivered
-	      || (tc->flags & TCP_CONN_FINSNT));
-
-      /* If we have sacks and we haven't gotten an ack beyond high_rxt,
-       * remove sacked bytes delivered */
-      if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
-	{
-	  u32 rxt_delivered;
-	  rxt_delivered = tc->bytes_acked - tc->sack_sb.last_bytes_delivered;
-	  ASSERT (tc->snd_rxt_bytes >= rxt_delivered);
-	  tc->snd_rxt_bytes -= rxt_delivered;
-	}
-      else
-	{
-	  /* Apparently all retransmitted holes have been acked */
-	  tc->snd_rxt_bytes = 0;
-	  tc->sack_sb.high_rxt = tc->snd_una;
-	}
-    }
-  else
-    {
-      tcp_fastrecovery_first_on (tc);
-      if (tc->snd_rxt_bytes > tc->bytes_acked)
-	tc->snd_rxt_bytes -= tc->bytes_acked;
-      else
-	tc->snd_rxt_bytes = 0;
-    }
+  tcp_update_delivered (tc, has_sack);
 
   tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, rs);
 
   /*
    * Since this was a partial ack, try to retransmit some more data
    */
-  tcp_program_fastretransmit (tc);
+  tcp_program_retransmit (tc);
 }
 
 /**
@@ -2767,6 +2797,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Update rtt and rto */
 	  tcp_estimate_initial_rtt (tc0);
+	  tcp_connection_tx_pacer_update (tc0);
 
 	  /* Switch state to ESTABLISHED */
 	  tc0->state = TCP_STATE_ESTABLISHED;
