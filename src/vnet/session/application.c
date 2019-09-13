@@ -591,8 +591,6 @@ application_free (application_t * app)
   if (application_is_builtin (app))
     application_name_table_del (app);
   vec_free (app->name);
-  vec_free (app->tls_cert);
-  vec_free (app->tls_key);
   pool_put (app_main.app_pool, app);
 }
 
@@ -1305,24 +1303,20 @@ application_get_segment_manager_properties (u32 app_index)
 clib_error_t *
 vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a)
 {
-  application_t *app;
-  app = application_get (a->app_index);
-  if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
-				   0, "app %u doesn't exist", a->app_index);
-  app->tls_cert = vec_dup (a->cert);
+  /* Deprected, will be remove after 20.01 */
+  app_cert_key_pair_t *ckpair;
+  ckpair = app_cert_key_pair_get_default ();
+  ckpair->cert = vec_dup (a->cert);
   return 0;
 }
 
 clib_error_t *
 vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a)
 {
-  application_t *app;
-  app = application_get (a->app_index);
-  if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_APPLICATION_NOT_ATTACHED,
-				   0, "app %u doesn't exist", a->app_index);
-  app->tls_key = vec_dup (a->key);
+  /* Deprected, will be remove after 20.01 */
+  app_cert_key_pair_t *ckpair;
+  ckpair = app_cert_key_pair_get_default ();
+  ckpair->key = vec_dup (a->key);
   return 0;
 }
 
@@ -1373,6 +1367,22 @@ application_format_connects (application_t * app, int verbose)
     app_worker_format_connects (app_wrk, verbose);
   }));
   /* *INDENT-ON* */
+}
+
+u8 *
+format_cert_key_pair (u8 * s, va_list * args)
+{
+  app_cert_key_pair_t *ckpair = va_arg (*args, app_cert_key_pair_t *);
+  int key_len = 0, cert_len = 0;
+  cert_len = vec_len (ckpair->cert);
+  key_len = vec_len (ckpair->key);
+  if (ckpair->cert_key_index == 0)
+    s = format (s, "DEFAULT (cert:%d, key:%d)", cert_len, key_len);
+  else
+    s =
+      format (s, "%d (cert:%d, key:%d)", ckpair->cert_key_index, cert_len,
+	      key_len);
+  return s;
 }
 
 u8 *
@@ -1460,6 +1470,21 @@ application_format_all_clients (vlib_main_t * vm, int verbose)
 }
 
 static clib_error_t *
+show_certificate_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  app_cert_key_pair_t *ckpair;
+  session_cli_return_if_not_enabled ();
+
+  /* *INDENT-OFF* */
+  pool_foreach (ckpair, app_main.cert_key_pair_store, ({
+    vlib_cli_output (vm, "%U", format_cert_key_pair, ckpair);
+  }));
+  /* *INDENT-ON* */
+  return 0;
+}
+
+static clib_error_t *
 show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
@@ -1521,12 +1546,111 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*
+ * Certificate store
+ *
+ */
+
+static app_cert_key_pair_t *
+certificate_alloc ()
+{
+  app_cert_key_pair_t *ckpair;
+  pool_get (app_main.cert_key_pair_store, ckpair);
+  clib_memset (ckpair, 0, sizeof (*ckpair));
+  ckpair->cert_key_index = ckpair - app_main.cert_key_pair_store;
+  return ckpair;
+}
+
+app_cert_key_pair_t *
+app_cert_key_pair_get_if_valid (u32 index)
+{
+  if (pool_is_free_index (app_main.cert_key_pair_store, index))
+    return 0;
+  return app_cert_key_pair_get (index);
+}
+
+app_cert_key_pair_t *
+app_cert_key_pair_get (u32 index)
+{
+  return pool_elt_at_index (app_main.cert_key_pair_store, index);
+}
+
+app_cert_key_pair_t *
+app_cert_key_pair_get_default ()
+{
+  /* To maintain legacy bapi */
+  return app_cert_key_pair_get (0);
+}
+
+int
+vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a)
+{
+  app_cert_key_pair_t *ckpair = certificate_alloc ();
+  ckpair->cert = vec_dup (a->cert);
+  ckpair->key = vec_dup (a->key);
+  a->index = ckpair->cert_key_index;
+  return 0;
+}
+
+int
+vent_app_add_cert_key_interest (u32 index, u32 app_index)
+{
+  app_cert_key_pair_t *ckpair;
+  if (!(ckpair = app_cert_key_pair_get_if_valid (index)))
+    return -1;
+  vec_add1 (ckpair->app_interests, app_index);
+  return 0;
+}
+
+int
+vnet_app_del_cert_key_pair (u32 index)
+{
+  app_cert_key_pair_t *ckpair;
+  application_t *app;
+  u32 *app_index;
+
+  if (!(ckpair = app_cert_key_pair_get_if_valid (index)))
+    return (VNET_API_ERROR_INVALID_VALUE);
+
+  vec_foreach (app_index, ckpair->app_interests)
+  {
+    if ((app = application_get_if_valid (*app_index))
+	&& app->cb_fns.app_cert_key_pair_delete_callback)
+      app->cb_fns.app_cert_key_pair_delete_callback (ckpair);
+  }
+
+  vec_free (ckpair->cert);
+  vec_free (ckpair->key);
+  pool_put (app_main.cert_key_pair_store, ckpair);
+  return 0;
+}
+
+clib_error_t *
+cert_key_pair_store_init (vlib_main_t * vm)
+{
+  /* Add a certificate with index 0 to support legacy apis */
+  (void) certificate_alloc ();
+  return 0;
+}
+
 /* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (cert_key_pair_store_init) =
+{
+  .runs_after = VLIB_INITS("unix_physmem_init"),
+};
+
 VLIB_CLI_COMMAND (show_app_command, static) =
 {
   .path = "show app",
   .short_help = "show app [server|client] [verbose]",
   .function = show_app_command_fn,
+};
+
+VLIB_CLI_COMMAND (show_certificate_command, static) =
+{
+  .path = "show certificate",
+  .short_help = "show certificate",
+  .function = show_certificate_command_fn,
 };
 /* *INDENT-ON* */
 

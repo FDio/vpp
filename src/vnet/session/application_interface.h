@@ -21,6 +21,14 @@
 #include <vnet/tls/tls_test.h>
 #include <svm/fifo_segment.h>
 
+typedef struct certificate_
+{
+  u32 *app_interests;		/* vec of application index asking for deletion cb */
+  u32 cert_key_index;		/* index in cert & key pool */
+  u8 *key;
+  u8 *cert;
+} app_cert_key_pair_t;
+
 typedef struct _stream_session_cb_vft
 {
   /** Notify server of new segment */
@@ -56,6 +64,9 @@ typedef struct _stream_session_cb_vft
 
   /** Direct TX callback for built-in application */
   int (*builtin_app_tx_callback) (session_t * session);
+
+  /** Cert and key pair delete notification */
+  int (*app_cert_key_pair_delete_callback) (app_cert_key_pair_t * ckpair);
 
 } session_cb_vft_t;
 
@@ -156,6 +167,13 @@ typedef enum tls_engine_type_
   TLS_N_ENGINES
 } tls_engine_type_t;
 
+typedef struct _vnet_app_add_cert_key_pair_args_
+{
+  u8 *cert;
+  u8 *key;
+  u32 index;
+} vnet_app_add_cert_key_pair_args_t;
+
 /* Application attach options */
 typedef enum
 {
@@ -234,6 +252,9 @@ int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
 clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
 clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
+int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
+int vnet_app_del_cert_key_pair (u32 index);
+int vent_app_add_cert_key_interest (u32 index, u32 app_index);	/* Ask for app cb on pair deletion */
 
 typedef struct app_session_transport_
 {
@@ -271,6 +292,7 @@ typedef struct session_listen_msg_
   u8 proto;
   u8 is_ip4;
   ip46_address_t ip;
+  u32 certificate_index;
 } __clib_packed session_listen_msg_t;
 
 typedef struct session_listen_uri_msg_
@@ -343,6 +365,7 @@ typedef struct session_connect_msg_
   u8 hostname_len;
   u8 hostname[16];
   u64 parent_handle;
+  u32 certificate_index;
 } __clib_packed session_connect_msg_t;
 
 typedef struct session_connect_uri_msg_

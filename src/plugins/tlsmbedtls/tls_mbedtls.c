@@ -276,8 +276,7 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   mbedtls_main_t *mm = &mbedtls_main;
-  app_worker_t *app_wrk;
-  application_t *app;
+  app_cert_key_pair_t *ckpair;
   void *ctx_ptr;
   int rv;
 
@@ -289,12 +288,11 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
   /*
    * 1. Cert
    */
-  app_wrk = app_worker_get (ctx->parent_app_wrk_index);
-  if (!app_wrk)
+  ckpair = app_cert_key_pair_get_if_valid (ctx->certificate_index);
+  if (!ckpair)
     return -1;
 
-  app = application_get (app_wrk->app_index);
-  if (!app->tls_cert || !app->tls_key)
+  if (!ckpair->cert || !ckpair->key)
     {
       TLS_DBG (1, " failed\n  ! tls cert and/or key not configured %d",
 	       ctx->parent_app_wrk_index);
@@ -302,8 +300,8 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
     }
 
   rv = mbedtls_x509_crt_parse (&mc->srvcert,
-			       (const unsigned char *) app->tls_cert,
-			       vec_len (app->tls_cert));
+			       (const unsigned char *) ckpair->cert,
+			       vec_len (ckpair->cert));
   if (rv != 0)
     {
       TLS_DBG (1, " failed\n  !  mbedtls_x509_crt_parse returned %d", rv);
@@ -311,8 +309,8 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
     }
 
   rv = mbedtls_pk_parse_key (&mc->pkey,
-			     (const unsigned char *) app->tls_key,
-			     vec_len (app->tls_key), NULL, 0);
+			     (const unsigned char *) ckpair->key,
+			     vec_len (ckpair->key), NULL, 0);
   if (rv != 0)
     {
       TLS_DBG (1, " failed\n  !  mbedtls_pk_parse_key returned %d", rv);
