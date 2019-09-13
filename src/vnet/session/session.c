@@ -1693,6 +1693,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
 			 &smm->evt_qs_segment_size))
 	;
+      else if (unformat (input, "enable"))
+	vnet_session_enable_disable (vm, 1 /* is_en */ );
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
