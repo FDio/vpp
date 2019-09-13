@@ -462,7 +462,7 @@ quic_echo_set_defaults_after_opts_cb ()
   echo_main_t *em = &echo_main;
   u8 default_f_active;
 
-  if (em->crypto_ctx_engine == TLS_ENGINE_NONE)
+  if (em->crypto_ctx_engine == CRYPTO_ENGINE_NONE)
     em->crypto_ctx_engine = CRYPTO_ENGINE_PICOTLS;
   em->n_connects = em->n_clients;
   em->n_sessions =

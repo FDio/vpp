@@ -1100,7 +1100,7 @@ main (int argc, char **argv)
   em->tx_buf_size = 1 << 20;
   em->data_source = ECHO_INVALID_DATA_SOURCE;
   em->uri = format (0, "%s%c", "tcp://0.0.0.0/1234", 0);
-  em->crypto_ctx_engine = TLS_ENGINE_NONE;
+  em->crypto_ctx_engine = CRYPTO_ENGINE_NONE;
   echo_set_each_proto_defaults_before_opts (em);
   echo_process_opts (argc, argv);
   echo_process_uri (em);
@@ -1161,7 +1161,7 @@ main (int argc, char **argv)
       goto exit_on_error;
     }
 
-  if (em->crypto_ctx_engine == TLS_ENGINE_NONE)
+  if (em->crypto_ctx_engine == CRYPTO_ENGINE_NONE)
     /* when no crypto engine specified, dont expect crypto ctx */
     em->state = STATE_ATTACHED;
   else
