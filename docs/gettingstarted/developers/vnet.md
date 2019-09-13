@@ -469,3 +469,111 @@ metadata changes, header checksum changes, and so forth.
 This should be of significant value when developing new vpp graph
 nodes. If new code mispositions b->current_data, it will be completely
 obvious from looking at the dispatch trace in wireshark.
+
+## pcap rx and tx tracing
+
+vpp also supports rx and tx packet capture in pcap format, through the
+"pcap rx trace" and "pcap tx trace" debug CLI commands
+
+This command is used to start or stop a packet capture, or show
+the status of packet capture. Note that both "pcap rx trace" and
+"pcap tx trace" are implemented. The command syntax is identical,
+simply substitute rx for tx as needed.
+
+These commands have the following optional parameters:
+
+on|off- Used to start or stop a packet capture.
+
+- <b>max _nnnn_</b> - file size, number of packet captures. Once
+  <nnnn> packets have been received, the trace buffer buffer is flushed
+  to the indicated file. Defaults to 1000. Can only be updated if packet
+  capture is off.
+
+- <b>intfc _interface_ | _any_</b> - Used to specify a given interface,
+  or use '<em>any</em>' to run packet capture on all interfaces.
+  '<em>any</em>' is the default if not provided. Settings from a previous
+  packet capture are preserved, so '<em>any</em>' can be used to reset
+  the interface setting.
+
+- <b>file _filename_</b> - Used to specify the output filename. The
+  file will be placed in the '<em>/tmp</em>' directory.  If _filename_
+  already exists, file will be overwritten. If no filename is
+  provided, '<em>/tmp/rx.pcap or tx.pcap</em>' will be used, depending
+  on capture direction. Can only be updated when pcap capture is off.
+
+- <b>status</b> - Displays the current status and configured
+  attributes associated with a packet capture. If packet capture is in
+  progress, '<em>status</em>' also will return the number of packets
+  currently in the buffer. Any additional attributes entered on
+  command line with a '<em>status</em>' request will be ignored.
+
+- <b>filter</b> - Capture packets which match the current packet
+  trace filter set. See next section. Configure the capture filter
+  first.
+
+## packet trace capture filtering
+
+The "classify filter" debug CLI command constructs an arbitrary set of
+  packet classifier tables for use with "pcap rx | tx trace," and
+  (eventually) with the vpp packet tracer
+
+Packets which match a rule in the classifier table chain will be
+traced. The tables are automatically ordered so that matches in the
+most specific table are tried first.
+
+It's reasonably likely that folks will configure a single table with
+one or two matches. As a result, we configure 8 hash buckets and 128K
+of match rule space by default. One can override the defaults by
+specifiying "buckets <nnn>" and "memory-size <xxx>" as desired.
+
+To build up complex filter chains, repeatedly issue the classify
+filter debug CLI command. Each command must specify the desired mask
+and match values. If a classifier table with a suitable mask already
+exists, the CLI command adds a match rule to the existing table.  If
+not, the CLI command add a new table and the indicated mask rule
+
+### Configure a simple classify filter
+
+```
+    classify filter mask l3 ip4 src match l3 ip4 src 192.168.1.11"
+    pcap rx trace on max 100 filter
+```
+
+### Configure another fairly simple filter
+
+```
+   classify filter mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10
+   pcap tx trace on max 100 filter
+```
+
+### Clear all current classifier filters
+
+```
+    classify filter del
+```
+
+### To inspect the classifier tables
+
+```
+   show classify table [verbose]
+```
+
+The verbose form displays all of the match rules, with hit-counters.
+
+### Terse description of the "mask <xxx>" syntax:
+
+```
+    l2 src dst proto tag1 tag2 ignore-tag1 ignore-tag2 cos1 cos2 dot1q dot1ad
+    l3 ip4 <ip4-mask> ip6 <ip6-mask>
+    <ip4-mask> version hdr_length src[/width] dst[/width]
+               tos length fragment_id ttl protocol checksum
+    <ip6-mask> version traffic-class flow-label src dst proto
+               payload_length hop_limit protocol
+    l4 tcp <tcp-mask> udp <udp_mask> src_port dst_port
+    <tcp-mask> src dst  # ports
+    <udp-mask> src_port dst_port
+```
+
+To construct **matches**, add the values to match after the indicated
+keywords in the mask syntax. For example: "... mask l3 ip4 src" ->
+"... match l3 ip4 src 192.168.1.11"
