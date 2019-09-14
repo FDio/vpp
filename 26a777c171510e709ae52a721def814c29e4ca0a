@@ -22,6 +22,30 @@
       "revId": "26a777c171510e709ae52a721def814c29e4ca0a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98b7e9b4_b18a73eb",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1644,
+      "author": {
+        "id": 1861
+      },
+      "writtenOn": "2019-09-14T07:59:09Z",
+      "side": 1,
+      "message": "It looks like these codes are not necessary.\nAs you say, it works without it....\nIt was my mistake, thank you.\n\nI sent new patch-set \u00277\u0027 for deleting these code.\n\n(Also, thank you notice via email. I missed this review.)",
+      "parentUuid": "a33c6da9_aacd0a15",
+      "range": {
+        "startLine": 1633,
+        "startChar": 0,
+        "endLine": 1644,
+        "endChar": 3
+      },
+      "revId": "26a777c171510e709ae52a721def814c29e4ca0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
