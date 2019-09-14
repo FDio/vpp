@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f06c9a39_b7d14707",
+        "filename": "src/svm/message_queue.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-14T16:27:44Z",
+      "side": 1,
+      "message": "If the message is invalid, we shouldn\u0027t have anything that\u0027s free-able. In fact, this whole check might be obsolete now because svm_msg_q_alloc_msg_w_ring cannot return invalid messages.",
+      "range": {
+        "startLine": 132,
+        "startChar": 3,
+        "endLine": 132,
+        "endChar": 21
+      },
+      "revId": "e2f4fc108291da9abfe4d8f968abd58c3d52a8a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
