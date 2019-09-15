@@ -581,7 +581,7 @@ spacer_max_burst (spacer_t * pacer, u64 norm_time_now)
   if (n_periods > 0 && (inc = n_periods * pacer->tokens_per_period) > 10)
     {
       pacer->last_update = norm_time_now;
-      pacer->bucket += inc;
+      pacer->bucket = clib_min (pacer->bucket + inc, pacer->bytes_per_sec);
     }
 
   return clib_min (pacer->bucket, TRANSPORT_PACER_MAX_BURST);
@@ -598,13 +598,14 @@ static inline void
 spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec)
 {
   ASSERT (rate_bytes_per_sec != 0);
+  pacer->bytes_per_sec = rate_bytes_per_sec;
   pacer->tokens_per_period = rate_bytes_per_sec / transport_pacer_period;
 }
 
 static inline u64
 spacer_pace_rate (spacer_t * pacer)
 {
-  return pacer->tokens_per_period * transport_pacer_period;
+  return pacer->bytes_per_sec;
 }
 
 void
