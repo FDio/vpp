@@ -2817,7 +2817,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
       static vlib_node_registration_t r = {
 	.function = unix_cli_process,
 	.type = VLIB_NODE_TYPE_PROCESS,
-	.process_log2_n_stack_bytes = 16,
+	.process_log2_n_stack_bytes = 17,
       };
 
       r.name = name;
@@ -2943,7 +2943,7 @@ unix_cli_listen_read_ready (clib_file_t * uf)
 	  cm->new_session_process_node_index =
 	    vlib_process_create (um->vlib_main, "unix-cli-new-session",
 				 unix_cli_new_session_process,
-				 16 /* log2_n_stack_bytes */ );
+				 17 /* log2_n_stack_bytes */ );
 	}
 
       /* In case the client doesn't negotiate terminal type, register
