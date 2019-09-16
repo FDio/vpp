@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2a100a5e_a60267ef",
+        "filename": "docs/gettingstarted/developers/cross_compile_macos.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2019-09-16T16:27:16Z",
+      "side": 1,
+      "message": "pip3 would be better, some people still have their default as python2 ;-)",
+      "range": {
+        "startLine": 15,
+        "startChar": 2,
+        "endLine": 15,
+        "endChar": 5
+      },
+      "revId": "5345db46ca227329942092b64ba2234763aa85ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "88a28884_df287be7",
+        "filename": "docs/gettingstarted/developers/cross_compile_macos.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2019-09-16T16:27:16Z",
+      "side": 1,
+      "message": "Might be worth mentioning the extra linking required to make this work - brew installs it as gsed, but make checkstyle needs it to be called sed.",
+      "range": {
+        "startLine": 16,
+        "startChar": 25,
+        "endLine": 16,
+        "endChar": 32
+      },
+      "revId": "5345db46ca227329942092b64ba2234763aa85ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
