@@ -46,6 +46,30 @@
       "revId": "26a777c171510e709ae52a721def814c29e4ca0a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "15ef360e_cd960ade",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1644,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2019-09-16T14:51:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "98b7e9b4_b18a73eb",
+      "range": {
+        "startLine": 1633,
+        "startChar": 0,
+        "endLine": 1644,
+        "endChar": 3
+      },
+      "revId": "26a777c171510e709ae52a721def814c29e4ca0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
