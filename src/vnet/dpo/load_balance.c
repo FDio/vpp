@@ -449,7 +449,7 @@ ip_multipath_normalize_next_hops (const load_balance_path_t * raw_next_hops,
                 /*
                  * when the weight skew is high (norm is small) and n == nf.
                  * without this correction the path with a low weight would have
-                 * no represenation in the load-balanace - don't want that.
+                 * no representation in the load-balanace - don't want that.
                  * If the weight skew is high so the load-balance has many buckets
                  * to allow it. pays ya money takes ya choice.
                  */

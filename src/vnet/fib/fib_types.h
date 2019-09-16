@@ -198,7 +198,7 @@ extern fib_forward_chain_type_t fib_forw_chain_type_from_fib_proto(fib_protocol_
 extern dpo_proto_t fib_forw_chain_type_to_dpo_proto(fib_forward_chain_type_t fct);
 
 /**
- * Aggregrate type for a prefix
+ * Aggregate type for a prefix
  */
 typedef struct fib_prefix_t_ {
     /**

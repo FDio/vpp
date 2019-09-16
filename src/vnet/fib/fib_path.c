@@ -676,7 +676,7 @@ static void
 fib_path_attached_next_hop_set (fib_path_t *path)
 {
     /*
-     * resolve directly via the adjacnecy discribed by the
+     * resolve directly via the adjacency discribed by the
      * interface and next-hop
      */
     dpo_set(&path->fp_dpo,

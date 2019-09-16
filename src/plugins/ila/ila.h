@@ -82,7 +82,7 @@ typedef struct {
   u32 next_hop_child_index;
 
   /**
-   * The next DPO in the grpah to follow
+   * The next DPO in the graph to follow
    */
   dpo_id_t ila_dpo;
 } ila_entry_t;

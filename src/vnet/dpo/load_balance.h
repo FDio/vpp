@@ -175,7 +175,7 @@ typedef struct load_balance_t_ {
 } load_balance_t;
 
 STATIC_ASSERT(sizeof(load_balance_t) <= CLIB_CACHE_LINE_BYTES,
-	      "A load_balance object size exceeds one cachline");
+	      "A load_balance object size exceeds one cacheline");
 
 /**
  * Flags controlling load-balance formatting/display

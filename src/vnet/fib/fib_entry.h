@@ -23,7 +23,7 @@
 
 /**
  * The different sources that can create a route.
- * The sources are defined here the thier relative priority order.
+ * The sources are defined here with their relative priority order.
  * The lower the value the higher the priority
  */
 typedef enum fib_source_t_ {
@@ -193,7 +193,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
 
 /**
  * The different sources that can create a route.
- * The sources are defined here the thier relative priority order.
+ * The sources are defined here with their relative priority order.
  * The lower the value the higher the priority
  */
 typedef enum fib_entry_attribute_t_ {

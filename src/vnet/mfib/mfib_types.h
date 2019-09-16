@@ -19,7 +19,7 @@
 #include <vnet/fib/fib_types.h>
 
 /**
- * Aggregrate type for a prefix
+ * Aggregate type for a prefix
  */
 typedef struct mfib_prefix_t_ {
     /**

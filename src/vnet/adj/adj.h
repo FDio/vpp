@@ -216,14 +216,14 @@ extern u8* format_adj_flags(u8 * s, va_list * args);
  * @brief IP unicast adjacency.
  *  @note cache aligned.
  *
- * An adjacency is a represenation of a peer on a particular link.
+ * An adjacency is a representation of a peer on a particular link.
  */
 typedef struct ip_adjacency_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   /**
-   * Linkage into the FIB node grpah. First member since this type
+   * Linkage into the FIB node graph. First member since this type
    * has 8 byte alignment requirements.
    */
   fib_node_t ia_node;
@@ -243,7 +243,7 @@ typedef struct ip_adjacency_t_
 
   /**
    * The protocol of the neighbor/peer. i.e. the protocol with
-   * which to interpret the 'next-hop' attirbutes of the sub-types.
+   * which to interpret the 'next-hop' attributes of the sub-types.
    * 1-btyes
    */
   fib_protocol_t ia_nh_proto;
@@ -329,10 +329,10 @@ typedef struct ip_adjacency_t_
 } ip_adjacency_t;
 
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),
-	       "IP adjacency cachline 0 is not offset");
+	       "IP adjacency cacheline 0 is not offset");
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline1) ==
 		CLIB_CACHE_LINE_BYTES),
-	       "IP adjacency cachline 1 is more than one cachline size offset");
+	       "IP adjacency cacheline 1 is more than one cacheline size offset");
 
 /**
  * @brief
@@ -409,7 +409,7 @@ extern int adj_recursive_loop_detect (adj_index_t ai,
 
 /**
  * @brief
- * The global adjacnecy pool. Exposed for fast/inline data-plane access
+ * The global adjacency pool. Exposed for fast/inline data-plane access
  */
 extern ip_adjacency_t *adj_pool;
 
