@@ -122,7 +122,7 @@ typedef enum ip6_fib_table_instance_type_t_
 {
     /**
      * This table stores the routes that are used to forward traffic.
-     * The key is the prefix, the result the adjacnecy to forward on.
+     * The key is the prefix, the result the adjacency to forward on.
      */
   IP6_FIB_TABLE_FWDING,
     /**
@@ -137,7 +137,7 @@ typedef enum ip6_fib_table_instance_type_t_
 #define IP6_FIB_NUM_TABLES (IP6_FIB_TABLE_NON_FWDING+1)
 
 /**
- * A represenation of a single IP6 table
+ * A representation of a single IP6 table
  */
 typedef struct ip6_fib_table_instance_t_
 {
@@ -151,7 +151,7 @@ typedef struct ip6_fib_table_instance_t_
 } ip6_fib_table_instance_t;
 
 /**
- * A represenation of a single IP6 mfib table
+ * A representation of a single IP6 mfib table
  */
 typedef struct ip6_mfib_table_instance_t_
 {

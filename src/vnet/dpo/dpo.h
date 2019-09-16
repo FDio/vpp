@@ -334,7 +334,7 @@ extern void dpo_stack(dpo_type_t child_type,
  *  VLIB graph arcs are created, from the child_node passed.
  *
  * @param child_node
- *  The VLIB grpah node index to create an arc from to the parent
+ *  The VLIB graph node index to create an arc from to the parent
  *
  * @param dpo
  *  This is the DPO to stack and set.

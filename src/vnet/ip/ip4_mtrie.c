@@ -198,7 +198,7 @@ get_next_ply_for_leaf (ip4_fib_mtrie_t * m, ip4_fib_mtrie_leaf_t l)
 void
 ip4_mtrie_free (ip4_fib_mtrie_t * m)
 {
-  /* the root ply is embedded so the is nothing to do,
+  /* the root ply is embedded so there is nothing to do,
    * the assumption being that the IP4 FIB table has emptied the trie
    * before deletion.
    */

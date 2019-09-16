@@ -96,7 +96,7 @@ typedef struct dhcp_server_t_
 } dhcp_server_t;
 
 /**
- * @brief A DHCP proxy represenation fpr per-client VRF config
+ * @brief A DHCP proxy representation fpr per-client VRF config
  */
 typedef struct dhcp_proxy_t_
 {

@@ -19,7 +19,7 @@
 #include <vnet/ethernet/ethernet.h>
 
 /**
- * represenation of a pipe interface
+ * representation of a pipe interface
  */
 typedef struct pipe_t_
 {
