@@ -107,7 +107,7 @@ typedef struct replicate_t_ {
 } replicate_t;
 
 STATIC_ASSERT(sizeof(replicate_t) <= CLIB_CACHE_LINE_BYTES,
-	      "A replicate object size exceeds one cachline");
+	      "A replicate object size exceeds one cacheline");
 
 /**
  * Flags controlling load-balance formatting/display

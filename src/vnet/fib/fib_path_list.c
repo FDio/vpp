@@ -29,7 +29,7 @@
 
 /**
  * The magic number of child entries that make a path-list popular.
- * There's a trade-off here between convergnece and forwarding speed.
+ * There's a trade-off here between convergence and forwarding speed.
  * Popular path-lists generate load-balance maps for the entries that
  * use them. If the map is present there is a switch path cost to indirect
  * through the map - this indirection provides the fast convergence - so
@@ -512,7 +512,7 @@ fib_path_list_back_walk_notify (fib_node_t *node,
 {
     /*
      * the path-list is not a direct child of any other node type
-     * paths, which do not change thier to-list-mapping, save the
+     * paths, which do not change their to-list-mapping, save the
      * list they are a member of, and invoke the BW function directly.
      */
     ASSERT(0);
