@@ -175,7 +175,7 @@ typedef enum fib_node_bw_flags_t_
 } fib_node_bw_flags_t;
 
 /**
- * Forward eclarations
+ * Forward declarations
  */
 struct fib_node_t_;
 

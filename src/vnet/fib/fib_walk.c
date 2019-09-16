@@ -127,7 +127,7 @@ static const char * const fib_walk_queue_stats_names[] = FIB_WALK_QUEUE_STATS;
 static const char * const fib_node_bw_reason_names[] = FIB_NODE_BW_REASONS;
 
 /**
- * A represenation of one queue of walk
+ * A representation of one queue of walk
  */
 typedef struct fib_walk_queue_t_
 {
@@ -738,7 +738,7 @@ fib_walk_async (fib_node_type_t parent_type,
  * @brief Back walk all the children of a FIB node.
  *
  * note this is a synchronous depth first walk. Children visited may propagate
- * the walk to thier children. Other children node types may not propagate,
+ * the walk to their children. Other children node types may not propagate,
  * synchronously but instead queue the walk for later async completion.
  */
 void
