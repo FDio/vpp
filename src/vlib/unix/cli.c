@@ -2864,7 +2864,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
       static vlib_node_registration_t r = {
 	.function = unix_cli_process,
 	.type = VLIB_NODE_TYPE_PROCESS,
-	.process_log2_n_stack_bytes = 16,
+	.process_log2_n_stack_bytes = 17,
       };
 
       r.name = name;
