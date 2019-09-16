@@ -22,6 +22,30 @@
       "revId": "9416a13b10d557ab2b2500ccb979bbbb89d2ea4f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "41de599c_54a36e42",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-16T10:16:31Z",
+      "side": 1,
+      "message": "Not specifically, I was just searching for branches where we do svm_msg_q_alloc_msg_w_ring without a free. \nThe issue beeing svm_msg_q_alloc_msg_w_ring advances the ring head, and it is only put back in place by svm_msg_q_free_msg. Although, as svm_msg_q_alloc_msg_w_ring cannot return msg \u003d ~0, this check seems unnecessary.",
+      "parentUuid": "3a79e394_53e0e07f",
+      "range": {
+        "startLine": 47,
+        "startChar": 6,
+        "endLine": 47,
+        "endChar": 36
+      },
+      "revId": "9416a13b10d557ab2b2500ccb979bbbb89d2ea4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
