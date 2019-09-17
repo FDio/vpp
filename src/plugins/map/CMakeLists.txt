@@ -25,8 +25,6 @@ add_vpp_plugin(map
   map.api
 
   INSTALL_HEADERS
-  map_all_api_h.h
-  map_msg_enum.h
   map.h
   lpm.h
 )
