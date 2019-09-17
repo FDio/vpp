@@ -4,6 +4,7 @@ import os
 import time
 import sys
 from io import StringIO
+import shutil
 
 datestring = datetime.datetime.utcfromtimestamp(
     int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))
@@ -95,82 +96,15 @@ def api2c(fieldtype):
     return fieldtype
 
 
-def typedefs(objs, aliases, filename):
-    name = filename.replace('.', '_')
+def typedefs(filename):
     output = '''\
-
 
 /****** Typedefs ******/
 
 #ifdef vl_typedefs
-#ifndef included_{module}_typedef
-#define included_{module}_typedef
-'''
-    output = output.format(module=name)
-
-    for k, v in aliases.items():
-        if 'length' in v.alias:
-            output += ('typedef %s vl_api_%s_t[%s];\n'
-                       % (v.alias['type'], k, v.alias['length']))
-        else:
-            output += 'typedef %s vl_api_%s_t;\n' % (v.alias['type'], k)
-
-    for o in objs:
-        tname = o.__class__.__name__
-        if tname == 'Enum':
-            if o.enumtype == 'u32':
-                output += "typedef enum {\n"
-            else:
-                output += "typedef enum __attribute__((__packed__)) {\n"
-
-            for b in o.block:
-                output += "    %s = %s,\n" % (b[0], b[1])
-            output += '} vl_api_%s_t;\n' % o.name
-            if o.enumtype != 'u32':
-                size1 = 'sizeof(vl_api_%s_t)' % o.name
-                size2 = 'sizeof(%s)' % o.enumtype
-                err_str = 'size of API enum %s is wrong' % o.name
-                output += ('STATIC_ASSERT(%s == %s, "%s");\n'
-                           % (size1, size2, err_str))
-        else:
-            if tname == 'Union':
-                output += "typedef VL_API_PACKED(union _vl_api_%s {\n" % o.name
-            else:
-                output += ("typedef VL_API_PACKED(struct _vl_api_%s {\n"
-                           % o.name)
-            for b in o.block:
-                if b.type == 'Option':
-                    continue
-                if b.type == 'Field':
-                    output += "    %s %s;\n" % (api2c(b.fieldtype),
-                                                b.fieldname)
-                elif b.type == 'Array':
-                    if b.lengthfield:
-                        output += "    %s %s[0];\n" % (api2c(b.fieldtype),
-                                                       b.fieldname)
-                    else:
-                        # Fixed length strings decay to nul terminated u8
-                        if b.fieldtype == 'string':
-                            if b.modern_vla:
-                                output += ('    {} {};\n'
-                                           .format(api2c(b.fieldtype),
-                                                   b.fieldname))
-                            else:
-                                output += ('    u8 {}[{}];\n'
-                                           .format(b.fieldname, b.length))
-                        else:
-                            output += ("    %s %s[%s];\n" %
-                                       (api2c(b.fieldtype), b.fieldname,
-                                        b.length))
-                else:
-                    raise ValueError("Error in processing type {} for {}"
-                                     .format(b, o.name))
-
-            output += '}) vl_api_%s_t;\n' % o.name
-
-    output += "\n#endif"
-    output += "\n#endif\n\n"
-
+#include "{include}.api_types.h"
+#endif
+'''.format(include=filename)
     return output
 
 
@@ -573,14 +507,175 @@ def version_tuple(s, module):
     return output
 
 
+def generate_include_enum(s, module, stream):
+    write = stream.write
+
+    if len(s['Define']):
+        write('typedef enum {\n')
+        for t in s['Define']:
+            write('   VL_API_{},\n'.format(t.name.upper()))
+        write('   VL_MSG_FIRST_AVAILABLE\n')
+        write('}} vl_api_{}_enum_t;\n'.format(module))
+
+#
+# Generate separate API _types file.
+#
+def generate_include_types(s, module, stream):
+    write = stream.write
+
+    write('#ifndef included_{module}_api_types_h\n'.format(module=module))
+    write('#define included_{module}_api_types_h\n'.format(module=module))
+
+    if len(s['Import']):
+        write('/* Imported API files */\n')
+        for i in s['Import']:
+            filename = i.filename.replace('plugins/', '')
+            write('#include <{}_types.h>\n'.format(filename))
+
+    for k, v in s['Alias'].items():
+        if 'length' in v.alias:
+            write('typedef %s vl_api_%s_t[%s];\n'
+                  % (v.alias['type'], k, v.alias['length']))
+        else:
+            write('typedef %s vl_api_%s_t;\n' % (v.alias['type'], k))
+
+    for o in s['types'] + s['Define']:
+        tname = o.__class__.__name__
+        if tname == 'Enum':
+            if o.enumtype == 'u32':
+                write("typedef enum {\n")
+            else:
+                write("typedef enum __attribute__((packed)) {\n")
+
+            for b in o.block:
+                write("    %s = %s,\n" % (b[0], b[1]))
+            write('} vl_api_%s_t;\n' % o.name)
+            if o.enumtype != 'u32':
+                size1 = 'sizeof(vl_api_%s_t)' % o.name
+                size2 = 'sizeof(%s)' % o.enumtype
+                err_str = 'size of API enum %s is wrong' % o.name
+                write('STATIC_ASSERT(%s == %s, "%s");\n'
+                      % (size1, size2, err_str))
+        else:
+            if tname == 'Union':
+                write("typedef union __attribute__ ((packed)) _vl_api_%s {\n" % o.name)
+            else:
+                write(("typedef struct __attribute__ ((packed)) _vl_api_%s {\n")
+                           % o.name)
+            for b in o.block:
+                if b.type == 'Option':
+                    continue
+                if b.type == 'Field':
+                      write("    %s %s;\n" % (api2c(b.fieldtype),
+                                              b.fieldname))
+                elif b.type == 'Array':
+                    if b.lengthfield:
+                      write("    %s %s[0];\n" % (api2c(b.fieldtype),
+                                                 b.fieldname))
+                    else:
+                        # Fixed length strings decay to nul terminated u8
+                        if b.fieldtype == 'string':
+                            if b.modern_vla:
+                                write('    {} {};\n'
+                                      .format(api2c(b.fieldtype),
+                                              b.fieldname))
+                            else:
+                                write('    u8 {}[{}];\n'
+                                      .format(b.fieldname, b.length))
+                        else:
+                            write("    %s %s[%s];\n" %
+                                  (api2c(b.fieldtype), b.fieldname,
+                                   b.length))
+                else:
+                    raise ValueError("Error in processing type {} for {}"
+                                     .format(b, o.name))
+
+            write('} vl_api_%s_t;\n' % o.name)
+
+    write("\n#endif\n")
+
+
+def generate_c_boilerplate(services, defines, file_crc, module, stream):
+    write = stream.write
+
+    hdr = '''\
+#define vl_endianfun		/* define message structures */
+#include "{module}.api.h"
+#undef vl_endianfun
+
+/* instantiate all the print functions we know about */
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#define vl_printfun
+#include "{module}.api.h"
+#undef vl_printfun
+
+'''
+
+    write(hdr.format(module=module))
+    write('static u16\n')
+    write('setup_message_id_table (void) {\n')
+    write('   api_main_t *am = &api_main;\n')
+    write('   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", VL_MSG_FIRST_AVAILABLE);\n'
+          .format(module, crc=file_crc))
+
+
+    for d in defines:
+        write('   vl_msg_api_add_msg_name_crc (am, "{n}_{crc:08x}",\n'
+              '                                VL_API_{ID} + msg_id_base);\n'
+              .format(n=d.name, ID=d.name.upper(), crc=d.crc))
+    for s in services:
+        write('   vl_msg_api_set_handlers(VL_API_{ID} + msg_id_base, "{n}",\n'
+              '                           vl_api_{n}_t_handler, vl_noop_handler,\n'
+              '                           vl_api_{n}_t_endian, vl_api_{n}_t_print,\n'
+              '                           sizeof(vl_api_{n}_t), 1);\n'
+              .format(n=s.caller, ID=s.caller.upper()))
+
+    write('   return msg_id_base;\n')
+    write('}\n')
+
+
+
 #
 # Plugin entry point
 #
-def run(input_filename, s):
+def run(args, input_filename, s):
     stream = StringIO()
+
+    if not args.outputdir:
+        sys.write.stderr('Missing --outputdir argument')
+        return None
+
     basename = os.path.basename(input_filename)
     filename, file_extension = os.path.splitext(basename)
     modulename = filename.replace('.', '_')
+    filename_enum = os.path.join(args.outputdir + '/' + basename + '_enum.h')
+    filename_types = os.path.join(args.outputdir + '/' + basename + '_types.h')
+    filename_c = os.path.join(args.outputdir + '/' + basename + '.c')
+
+    # Generate separate types file
+    st = StringIO()
+    generate_include_types(s, modulename, st)
+    with open (filename_types, 'w') as fd:
+        st.seek (0)
+        shutil.copyfileobj (st, fd)
+    st.close()
+
+    # Generate separate enum file
+    st = StringIO()
+    generate_include_enum(s, modulename, st)
+    with open (filename_enum, 'w') as fd:
+        st.seek (0)
+        shutil.copyfileobj (st, fd)
+    st.close()
+
+    # Generate separate C file
+    st = StringIO()
+    generate_c_boilerplate(s['Service'], s['Define'], s['file_crc'],
+                           modulename, st)
+    with open (filename_c, 'w') as fd:
+        st.seek (0)
+        shutil.copyfileobj(st, fd)
+    st.close()
 
     output = top_boilerplate.format(datestring=datestring,
                                     input_filename=basename)
@@ -588,11 +683,11 @@ def run(input_filename, s):
     output += msg_ids(s)
     output += msg_names(s)
     output += msg_name_crc_list(s, filename)
-    output += typedefs(s['types'] + s['Define'], s['Alias'],
-                       filename + file_extension)
+    output += typedefs(modulename)
     printfun_types(s['types'], s['Alias'], stream, modulename)
     printfun(s['Define'], stream, modulename)
     output += stream.getvalue()
+    stream.close()
     output += endianfun(s['types'] + s['Define'], s['Alias'],  modulename)
     output += version_tuple(s, basename)
     output += bottom_boilerplate.format(input_filename=basename,
