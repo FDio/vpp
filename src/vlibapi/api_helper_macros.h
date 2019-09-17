@@ -59,6 +59,21 @@ do {                                                                    \
     vl_api_send_msg (rp, (u8 *)rmp);                                    \
 } while(0);
 
+#define REPLY_MACRO_DETAILS2(t, body)                                   \
+do {                                                                    \
+    vl_api_registration_t *rp;                                          \
+    rv = vl_msg_api_pd_handler (mp, rv);                                \
+    rp = vl_api_client_index_to_registration (mp->client_index);        \
+    if (rp == 0)                                                        \
+      return;                                                           \
+                                                                        \
+    rmp = vl_msg_api_alloc (sizeof (*rmp));                             \
+    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));                   \
+    rmp->context = mp->context;                                         \
+    do {body;} while (0);                                               \
+    vl_api_send_msg (rp, (u8 *)rmp);                                    \
+} while(0);
+
 #define REPLY_MACRO3(t, n, body)                                        \
 do {                                                                    \
     vl_api_registration_t *rp;                                          \

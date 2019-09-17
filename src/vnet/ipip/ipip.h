@@ -111,6 +111,8 @@ typedef struct
 
   bool ip4_protocol_registered;
   bool ip6_protocol_registered;
+
+  u16 msg_id_base;
 } ipip_main_t;
 
 extern ipip_main_t ipip_main;
