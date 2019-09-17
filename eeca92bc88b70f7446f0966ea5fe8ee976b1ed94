@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f76cb3b1_b63afa60",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-09-17T06:16:55Z",
+      "side": 1,
+      "message": "For all APIs in LB, we need an address with prefix length, i.e. hosts bits set, so we need to use vl_api_address_with_prefix_t.",
+      "revId": "eeca92bc88b70f7446f0966ea5fe8ee976b1ed94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9e2d4952_0c82e54d",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-09-17T06:16:55Z",
+      "side": 1,
+      "message": "same above",
+      "revId": "eeca92bc88b70f7446f0966ea5fe8ee976b1ed94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f5a5c673_6286bdf0",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-09-17T06:16:55Z",
+      "side": 1,
+      "message": "same above",
+      "revId": "eeca92bc88b70f7446f0966ea5fe8ee976b1ed94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "de716daf_b2f33532",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-09-17T06:16:55Z",
+      "side": 1,
+      "message": "same above",
+      "revId": "eeca92bc88b70f7446f0966ea5fe8ee976b1ed94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85204f1e_b16ad20c",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-09-17T06:16:55Z",
+      "side": 1,
+      "message": "same above",
+      "revId": "eeca92bc88b70f7446f0966ea5fe8ee976b1ed94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d31df9c4_9e4993da",
+        "filename": "src/plugins/lb/lb_types.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2019-09-17T06:16:55Z",
+      "side": 1,
+      "message": "same above",
+      "revId": "eeca92bc88b70f7446f0966ea5fe8ee976b1ed94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
