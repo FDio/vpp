@@ -1192,8 +1192,19 @@ pcap_drop_trace (vlib_main_t * vm,
 
 	  /*
 	   * Typically, we'll need to rewind the buffer
+	   * if l2_hdr_offset is valid, make sure to rewind to the start of
+	   * the L2 header. This may not be the buffer start in case we pop-ed
+	   * vlan tags.
+	   * Otherwise, rewind to buffer start and hope for the best.
 	   */
-	  if (b0->current_data > 0)
+	  if (b0->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
+	    {
+	      if (b0->current_data > vnet_buffer (b0)->l2_hdr_offset)
+		vlib_buffer_advance (b0,
+				     vnet_buffer (b0)->l2_hdr_offset -
+				     b0->current_data);
+	    }
+	  else if (b0->current_data > 0)
 	    vlib_buffer_advance (b0, (word) - b0->current_data);
 
 	  pcap_add_buffer (&im->pcap_main, vm, bi0, 512);
