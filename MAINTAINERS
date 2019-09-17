@@ -310,6 +310,11 @@ I:	http_static
 M:	Dave Barach <dbarach@cisco.com>
 F:	src/plugins/http_static/
 
+Plugin - builtinurl
+I:	builtinurl
+M:	Dave Barach <dbarach@cisco.com>
+F:	src/plugins/builtinurl/
+
 Plugin - Group Based Policy (GBP)
 I:	gbp
 M:	Neale Ranns <nranns@cisco.com>
