@@ -62,7 +62,7 @@ def walk_defs(s, is_message=False):
 #
 # Plugin entry point
 #
-def run(filename, s):
+def run(args, filename, s):
     j = {}
 
     j['types'] = (walk_defs([o for o in s['types']
