@@ -29,28 +29,23 @@
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* Declare message IDs */
-#include <sample/sample_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <sample/sample_all_api_h.h>
-#undef vl_typedefs
+#include <sample/sample.api_enum.h>
+#include <sample/sample.api_types.h>
 
 /* declare message handlers for each api */
-
 #define vl_endianfun             /* define message structures */
-#include <sample/sample_all_api_h.h>
+#include <sample/sample.api.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <sample/sample_all_api_h.h>
+#include <sample/sample.api.h>
 #undef vl_printfun
 
 /* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <sample/sample_all_api_h.h>
+#include <sample/sample.api.h>
 #undef vl_api_version
 
 
