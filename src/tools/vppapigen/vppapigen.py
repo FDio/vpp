@@ -917,6 +917,7 @@ def main():
     cliparser = argparse.ArgumentParser(description='VPP API generator')
     cliparser.add_argument('--pluginpath', default=""),
     cliparser.add_argument('--includedir', action='append'),
+    cliparser.add_argument('--outputdir', action='store'),
     cliparser.add_argument('--input',
                            type=argparse.FileType('r', encoding='UTF-8'),
                            default=sys.stdin)
@@ -1008,7 +1009,7 @@ def main():
                       .format(module_path, err))
         return 1
 
-    result = plugin.run(filename, s)
+    result = plugin.run(args, filename, s)
     if result:
         print(result, file=args.output)
     else:
