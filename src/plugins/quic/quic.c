@@ -2226,7 +2226,7 @@ quic_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
 			       FIB_PROTOCOL_IP6, ~0);
 
-  quic_register_cipher_suite (CRYPTO_ENGINE_VPP, vpp_crypto_cipher_suites);
+  quic_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_crypto_cipher_suites);
   quic_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 			      ptls_openssl_cipher_suites);
   qm->default_cipher = CRYPTO_ENGINE_PICOTLS;
