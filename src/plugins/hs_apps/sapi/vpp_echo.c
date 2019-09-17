@@ -111,28 +111,36 @@ echo_event_didnt_happen (u8 e)
 {
   echo_main_t *em = &echo_main;
   u8 *s = format (0, "%U", echo_format_timing_event, e);
-  ECHO_LOG (0, "Expected event %s to happend, which did not", s);
+  ECHO_LOG (0, "Expected event %s to happen, but it did not!", s);
   em->has_failed = 1;
 }
 
 static void
 print_global_json_stats (echo_main_t * em)
 {
-  if (!(em->timing.events_sent & em->timing.start_event))
-    return echo_event_didnt_happen (em->timing.start_event);
-  if (!(em->timing.events_sent & em->timing.end_event))
-    return echo_event_didnt_happen (em->timing.end_event);
-  f64 deltat = em->timing.end_time - em->timing.start_time;
   u8 *start_evt =
     format (0, "%U", echo_format_timing_event, em->timing.start_event);
   u8 *end_evt =
     format (0, "%U", echo_format_timing_event, em->timing.end_event);
-  fformat (stdout, "{\n");
+  u8 start_evt_missing = !(em->timing.events_sent & em->timing.start_event);
+  u8 end_evt_missing = !(em->timing.events_sent & em->timing.end_event);
+  f64 deltat = start_evt_missing || end_evt_missing ? 0 :
+    em->timing.end_time - em->timing.start_time;
+
+  if (start_evt_missing)
+    echo_event_didnt_happen (em->timing.start_event);
+  if (end_evt_missing)
+    echo_event_didnt_happen (em->timing.end_event);
+  fformat (stdout, "vpp_echo JSON stats:\n{\n");
   fformat (stdout, "  \"role\": \"%s\",\n",
 	   em->i_am_master ? "server" : "client");
   fformat (stdout, "  \"time\": \"%.9f\",\n", deltat);
   fformat (stdout, "  \"start_evt\": \"%s\",\n", start_evt);
+  fformat (stdout, "  \"start_evt_missing\": \"%s\",\n",
+	   start_evt_missing ? "True" : "False");
   fformat (stdout, "  \"end_evt\": \"%s\",\n", end_evt);
+  fformat (stdout, "  \"end_evt_missing\": \"%s\",\n",
+	   end_evt_missing ? "True" : "False");
   fformat (stdout, "  \"rx_data\": %lld,\n", em->stats.rx_total);
   fformat (stdout, "  \"tx_rx\": %lld,\n", em->stats.tx_total);
   fformat (stdout, "  \"closing\": {\n");
@@ -146,33 +154,46 @@ print_global_json_stats (echo_main_t * em)
 	   em->stats.clean_count.q, em->stats.clean_count.s);
   fformat (stdout, "  }\n");
   fformat (stdout, "}\n");
+  fflush (stdout);
 }
 
 static void
 print_global_stats (echo_main_t * em)
 {
   u8 *s;
-  if (!(em->timing.events_sent & em->timing.start_event))
-    return echo_event_didnt_happen (em->timing.start_event);
-  if (!(em->timing.events_sent & em->timing.end_event))
-    return echo_event_didnt_happen (em->timing.end_event);
-  f64 deltat = em->timing.end_time - em->timing.start_time;
+  u8 start_evt_missing = !(em->timing.events_sent & em->timing.start_event);
+  u8 end_evt_missing = !(em->timing.events_sent & em->timing.end_event);
+  f64 deltat = start_evt_missing || end_evt_missing ? 0 :
+    em->timing.end_time - em->timing.start_time;
+
+  if (start_evt_missing)
+    echo_event_didnt_happen (em->timing.start_event);
+  if (end_evt_missing)
+    echo_event_didnt_happen (em->timing.end_event);
   s = format (0, "%U:%U",
 	      echo_format_timing_event, em->timing.start_event,
 	      echo_format_timing_event, em->timing.end_event);
   fformat (stdout, "Timing %v\n", s);
+  if (start_evt_missing)
+    fformat (stdout, "Missing Start Timing Event (%U)!\n",
+	     echo_format_timing_event, em->timing.start_event);
+  if (end_evt_missing)
+    fformat (stdout, "Missing End Timing Event (%U)!\n",
+	     echo_format_timing_event, em->timing.end_event);
   fformat (stdout, "-------- TX --------\n");
   fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.6f seconds\n",
 	   em->stats.tx_total, em->stats.tx_total / (1ULL << 20),
 	   em->stats.tx_total / (1ULL << 30), deltat);
-  fformat (stdout, "%.4f Gbit/second\n",
-	   (em->stats.tx_total * 8.0) / deltat / 1e9);
+  if (deltat)
+    fformat (stdout, "%.4f Gbit/second\n",
+	     (em->stats.tx_total * 8.0) / deltat / 1e9);
   fformat (stdout, "-------- RX --------\n");
   fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.6f seconds\n",
 	   em->stats.rx_total, em->stats.rx_total / (1ULL << 20),
 	   em->stats.rx_total / (1ULL << 30), deltat);
-  fformat (stdout, "%.4f Gbit/second\n",
-	   (em->stats.rx_total * 8.0) / deltat / 1e9);
+  if (deltat)
+    fformat (stdout, "%.4f Gbit/second\n",
+	     (em->stats.rx_total * 8.0) / deltat / 1e9);
   fformat (stdout, "--------------------\n");
   fformat (stdout, "Received close on %d streams (and %d Quic conn)\n",
 	   em->stats.close_count.s, em->stats.close_count.q);
