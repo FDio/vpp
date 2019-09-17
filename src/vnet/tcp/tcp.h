@@ -1070,7 +1070,8 @@ tcp_cc_get_pacing_rate (tcp_connection_t * tc)
   f64 srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
   /* TODO should constrain to interface's max throughput but
    * we don't have link speeds for sw ifs ..*/
-  return (tc->cwnd / srtt);
+  /* Make sure we can send at least 1 packet per second */
+  return clib_max ((u64) tc->cwnd / srtt, tc->snd_mss);
 }
 
 always_inline void
