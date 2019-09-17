@@ -830,7 +830,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 }
 
 always_inline int
-session_has_more_data (session_tx_context_t *ctx, u32 max_deq, u8 peek_data)
+session_has_more_data (session_tx_context_t * ctx, u32 max_deq, u8 peek_data)
 {
   if (peek_data)
     return ctx->max_deq < max_deq;
@@ -844,11 +844,13 @@ session_has_more_data (session_tx_context_t *ctx, u32 max_deq, u8 peek_data)
 }
 
 always_inline void
-session_event_update (session_worker_t * wrk, session_evt_elt_t *elt,
-                      u8 peek_data, u8 have_deq)
+session_event_update (session_worker_t * wrk, session_evt_elt_t * elt,
+		      u8 peek_data, u8 have_deq)
 {
   session_tx_context_t *ctx = &wrk->ctx;
   u32 max_deq;
+
+  ctx->tc->last_deq = wrk->last_vlib_time;
 
   /* If new, move to old to ensure fairness */
   if (ctx->s->old_evt == CLIB_LLIST_INVALID_INDEX)
@@ -951,6 +953,15 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	  session_evt_add_old (wrk, elt);
 	  return SESSION_TX_OK;
 	}
+    }
+
+  if (ctx->s->old_evt != CLIB_LLIST_INVALID_INDEX
+      && wrk->last_vlib_time > ctx->tc->last_deq + 0.0001)
+    {
+      clib_warning ("session congestion");
+      ctx->transport_vft->session_congestion (ctx->tc);
+      session_event_update (wrk, elt, peek_data, 0);
+      return SESSION_TX_OK;
     }
 
   session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
@@ -1064,7 +1075,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_deq,
-               ctx->max_len_to_snd < ctx->can_deq, wrk->last_vlib_time);
+	       ctx->max_len_to_snd < ctx->can_deq, wrk->last_vlib_time);
 
   if (!peek_data
       && ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
@@ -1385,7 +1396,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   old_ti = clib_llist_prev_index (old_he, evt_list);
 
   while (!clib_llist_is_empty (wrk->event_elts, evt_list, old_he)
-	&& n_tx_packets < VLIB_FRAME_SIZE)
+	 && n_tx_packets < VLIB_FRAME_SIZE)
     {
       clib_llist_index_t ei;
 

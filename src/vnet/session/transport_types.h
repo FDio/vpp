@@ -95,6 +95,7 @@ typedef struct _transport_connection
      dpo_id_t rmt_dpo; */
 
   spacer_t pacer;		/**< Simple transport pacer */
+  f64 last_deq;
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */

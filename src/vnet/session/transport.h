@@ -56,6 +56,8 @@ typedef struct _transport_proto_vft
   int (*custom_tx) (void *session, u32 max_burst_size);
   int (*app_rx_evt) (transport_connection_t *tconn);
 
+  int (*session_congestion) (transport_connection_t *tc);
+
   /*
    * Connection retrieval
    */

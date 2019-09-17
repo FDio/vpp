@@ -1314,6 +1314,14 @@ tcp_session_flush_data (transport_connection_t * tconn)
   tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (tconn) - 1;
 }
 
+static int
+tcp_session_congestion (transport_connection_t * tconn)
+{
+  tcp_connection_t *tc = (tcp_connection_t *) tconn;
+  tc->cc_algo->congestion (tc);
+  return 0;
+}
+
 /* *INDENT-OFF* */
 const static transport_proto_vft_t tcp_proto = {
   .enable = vnet_tcp_enable_disable,
@@ -1329,6 +1337,7 @@ const static transport_proto_vft_t tcp_proto = {
   .reset = tcp_session_reset,
   .send_mss = tcp_session_send_mss,
   .send_space = tcp_session_send_space,
+  .session_congestion = tcp_session_congestion,
   .update_time = tcp_update_time,
   .tx_fifo_offset = tcp_session_tx_fifo_offset,
   .flush_data = tcp_session_flush_data,
