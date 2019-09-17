@@ -18,7 +18,7 @@
 
 #include <quicly.h>
 
-extern ptls_cipher_suite_t *vpp_crypto_cipher_suites[];
+extern ptls_cipher_suite_t *quic_crypto_cipher_suites[];
 
 #endif /* __included_vpp_quic_crypto_h__ */
 
