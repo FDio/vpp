@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from vppapigen import VPPAPI, Option, ParseError
+from vppapigen import VPPAPI, Option, ParseError, Union
 
 # TODO
 # - test parsing of options, typedefs, enums, defines, CRC
@@ -18,6 +18,60 @@ class TestVersion(unittest.TestCase):
         r = self.parser.parse_string(version_string)
         self.assertTrue(isinstance(r[0], Option))
 
+class TestUnion(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.parser = VPPAPI()
+
+    def test_union(self):
+        test_string = '''
+        union foo_union {
+        u32 a;
+        u8 b;
+        };
+        '''
+        r = self.parser.parse_string(test_string)
+        self.assertTrue(isinstance(r[0], Union))
+
+    def test_union_vla(self):
+        test_string = '''
+        union foo_union_vla {
+        u32 a;
+        u8 b[a];
+        };
+        autoreply define foo {
+        vl_api_foo_union_vla_t v;
+        };
+        '''
+        r = self.parser.parse_string(test_string)
+        self.assertTrue(isinstance(r[0], Union))
+        self.assertTrue(r[0].vla)
+        s = self.parser.process(r)
+
+
+        test_string2 = '''
+        union foo_union_vla2 {
+        u32 a;
+        u8 b[a];
+        u32 c;
+        };
+        autoreply define foo2 {
+        vl_api_foo_union_vla2_t v;
+        };
+        '''
+        self.assertRaises(ValueError, self.parser.parse_string, test_string2)
+
+        test_string3 = '''
+        union foo_union_vla3 {
+        u32 a;
+        u8 b[a];
+        };
+        autoreply define foo3 {
+        vl_api_foo_union_vla3_t v;
+        u32 x;
+        };
+        '''
+        self.assertRaises(ValueError, self.parser.parse_string, test_string3)
 
 class TestTypedef(unittest.TestCase):
     @classmethod

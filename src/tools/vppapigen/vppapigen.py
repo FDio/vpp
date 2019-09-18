@@ -145,6 +145,33 @@ def crc_block_combine(block, crc):
     return binascii.crc32(s, crc) & 0xffffffff
 
 
+def vla_is_last_check(name, block):
+    vla = False
+    for i, b in enumerate(block):
+        if isinstance(b, Array) and b.vla:
+            vla = True
+            if i + 1 < len(block):
+                raise ValueError(
+                    'VLA field "{}" must be the last field in message "{}"'
+                    .format(b.fieldname, name))
+        elif b.fieldtype.startswith('vl_api_'):
+            if global_types[b.fieldtype].vla:
+                vla = True
+                if i + 1 < len(block):
+                    raise ValueError(
+                        'VLA field "{}" must be the last '
+                        'field in message "{}"'
+                        .format(b.fieldname, name))
+        elif b.fieldtype == 'string' and b.length == 0:
+            vla = True
+            if i + 1 < len(block):
+                raise ValueError(
+                    'VLA field "{}" must be the last '
+                    'field in message "{}"'
+                    .format(b.fieldname, name))
+    return vla
+
+
 class Service():
     def __init__(self, caller, reply, events=None, stream=False):
         self.caller = caller
@@ -166,34 +193,10 @@ class Typedef():
                 self.manual_print = True
             elif f == 'manual_endian':
                 self.manual_endian = True
-        for b in block:
-            # Tag length field of a VLA
-            if isinstance(b, Array):
-                if b.lengthfield:
-                    for b2 in block:
-                        if b2.fieldname == b.lengthfield:
-                            b2.vla_len = True
 
         global_type_add(name, self)
 
-        self.vla = False
-
-        for i, b in enumerate(block):
-            if isinstance(b, Array):
-                if b.length == 0:
-                    self.vla = True
-                    if i + 1 < len(block):
-                        raise ValueError(
-                            'VLA field "{}" must be the last '
-                            'field in message "{}"'
-                            .format(b.fieldname, name))
-            elif b.fieldtype == 'string':
-                self.vla = True
-                if i + 1 < len(block):
-                    raise ValueError(
-                        'VLA field "{}" must be the last '
-                        'field in message "{}"'
-                        .format(b.fieldname, name))
+        self.vla = vla_is_last_check(name, block)
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
@@ -232,8 +235,6 @@ class Union():
         self.manual_endian = False
         self.name = name
 
-        self.manual_print = False
-        self.manual_endian = False
         for f in flags:
             if f == 'manual_print':
                 self.manual_print = True
@@ -242,6 +243,8 @@ class Union():
 
         self.block = block
         self.crc = str(block).encode()
+        self.vla = vla_is_last_check(name, block)
+
         global_type_add(name, self)
 
     def __repr__(self):
@@ -269,34 +272,12 @@ class Define():
             elif f == 'autoreply':
                 self.autoreply = True
 
-        for i, b in enumerate(block):
+        for b in block:
             if isinstance(b, Option):
                 if b[1] == 'singular' and b[2] == 'true':
                     self.singular = True
                 block.remove(b)
-
-            if isinstance(b, Array) and b.vla and i + 1 < len(block):
-                raise ValueError(
-                    'VLA field "{}" must be the last field in message "{}"'
-                    .format(b.fieldname, name))
-            elif b.fieldtype.startswith('vl_api_'):
-                if (global_types[b.fieldtype].vla and i + 1 < len(block)):
-                    raise ValueError(
-                        'VLA field "{}" must be the last '
-                        'field in message "{}"'
-                        .format(b.fieldname, name))
-            elif b.fieldtype == 'string' and b.length == 0:
-                if i + 1 < len(block):
-                    raise ValueError(
-                        'VLA field "{}" must be the last '
-                        'field in message "{}"'
-                        .format(b.fieldname, name))
-            # Tag length field of a VLA
-            if isinstance(b, Array):
-                if b.lengthfield:
-                    for b2 in block:
-                        if b2.fieldname == b.lengthfield:
-                            b2.vla_len = True
+        self.vla = vla_is_last_check(name, block)
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
