@@ -54,4 +54,7 @@
 #define clib_atomic_fetch_add_rel(a, b) __atomic_fetch_add((a), (b), __ATOMIC_RELEASE)
 #define clib_atomic_fetch_sub_rel(a, b) __atomic_fetch_sub((a), (b), __ATOMIC_RELEASE)
 
+#define clib_atomic_add_fetch_relaxed(a, b) __atomic_add_fetch((a), (b), __ATOMIC_RELAXED)
+#define clib_atomic_sub_fetch_relaxed(a, b) __atomic_sub_fetch((a), (b), __ATOMIC_RELAXED)
+
 #endif /* included_clib_atomics_h */

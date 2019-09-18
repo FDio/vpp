@@ -1,0 +1,3 @@
+create interface avf 0000:61:02.0 name eth0
+set int state eth0 up
+trace interface eth0 count 2
