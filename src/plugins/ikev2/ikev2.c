@@ -1538,6 +1538,26 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	      break;
 	    }
 	}
+      else if (tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM
+	       && tr->key_len)
+	{
+	  switch (tr->key_len)
+	    {
+	    case 16:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_GCM_128;
+	      break;
+	    case 24:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_GCM_192;
+	      break;
+	    case 32:
+	      encr_type = IPSEC_CRYPTO_ALG_AES_GCM_256;
+	      break;
+	    default:
+	      ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
+	      return 1;
+	      break;
+	    }
+	}
       else
 	{
 	  ikev2_set_state (sa, IKEV2_STATE_NO_PROPOSAL_CHOSEN);
