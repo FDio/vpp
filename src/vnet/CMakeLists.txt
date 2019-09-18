@@ -25,6 +25,7 @@ unset(VNET_MULTIARCH_SOURCES)
 list(APPEND VNET_SOURCES
   buffer.c
   config.c
+  devices/cli.c
   devices/devices.c
   devices/netlink.c
   flow/flow.c
