@@ -18,6 +18,7 @@
 
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
+#include <vnet/classify/vnet_classify.h>
 
 typedef enum
 {
@@ -162,6 +163,50 @@ vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
   for (var = (vec); var < vec_end (vec); var++)                 \
     if ((var->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)        \
         || clib_atomic_swap_acq_n (&((var)->interrupt_pending), 0))
+
+static_always_inline int
+vnet_get_device_trace_count (vlib_main_t * vm, u32 hw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw;
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+  return hw->n_trace;
+}
+
+static_always_inline int
+vnet_device_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * r,
+			  u32 next_index, u32 hw_if_index, vlib_buffer_t * b)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw;
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (hw->n_trace == 0)
+    return 0;
+
+  if (hw->trace_classify_table_index != (u32) ~ 0)
+    {
+      vnet_classify_main_t *vcm = &vnet_classify_main;
+      u64 hash;
+      vnet_classify_table_t *t;
+
+      t = pool_elt_at_index (vcm->tables, hw->trace_classify_table_index);
+      hash = vnet_classify_hash_packet (t, vlib_buffer_get_current (b));
+
+      if (!vnet_classify_find_entry (t, vlib_buffer_get_current (b), hash, 0))
+	return 0;
+    }
+
+  if (clib_atomic_sub_fetch_relaxed (&hw->n_trace, 1) < 0)
+    {
+      /* race happend - restore and bail out */
+      clib_atomic_add_fetch_relaxed (&hw->n_trace, 1);
+      return 0;
+    }
+
+  vlib_trace_buffer (vm, r, next_index, b, /* follow_chain */ 0);
+  return 1;
+}
 
 #endif /* included_vnet_vnet_device_h */
 
