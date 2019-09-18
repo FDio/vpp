@@ -557,13 +557,17 @@ do_stat_segment_updates (stat_segment_main_t * sm)
    */
   if (PREDICT_FALSE (num_worker_threads_set == 0))
     {
+      void *oldheap = clib_mem_set_heap (sm->heap);
+      vlib_stat_segment_lock ();
+
       sm->directory_vector[STAT_COUNTER_NUM_WORKER_THREADS].value =
 	vec_len (vlib_mains) > 1 ? vec_len (vlib_mains) - 1 : 1;
 
       stat_validate_counter_vector (&sm->directory_vector
-				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER],
-				    vec_len (vlib_mains));
+				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER], 0);
       num_worker_threads_set = 1;
+      vlib_stat_segment_unlock ();
+      clib_mem_set_heap (oldheap);
     }
 
   /*
@@ -590,7 +594,7 @@ do_stat_segment_updates (stat_segment_main_t * sm)
       vector_rate += this_vector_rate;
 
       /* Set the per-worker rate */
-      counters[i - start][0] = this_vector_rate;
+      counters[0][i - start] = this_vector_rate;
     }
 
   /* And set the system average rate */
