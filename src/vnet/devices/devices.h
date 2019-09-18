@@ -18,6 +18,7 @@
 
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
+#include <vnet/classify/vnet_classify.h>
 
 typedef enum
 {
@@ -162,6 +163,82 @@ vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
   for (var = (vec); var < vec_end (vec); var++)                 \
     if ((var->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)        \
         || clib_atomic_swap_acq_n (&((var)->interrupt_pending), 0))
+
+static_always_inline int
+vnet_get_device_trace_count (vlib_main_t * vm, u32 hw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw;
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+  return hw->n_trace;
+}
+
+static_always_inline int
+vnet_device_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * r,
+			  u32 next_index, u32 hw_if_index, vlib_buffer_t * b)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_classify_main_t *vcm;
+  u64 hash;
+  vnet_classify_table_t *t;
+  vnet_classify_entry_t *e;
+
+  /* No per-device trace count left? */
+  if (hw->n_trace == 0)
+    return 0;
+
+  vcm = &vnet_classify_main;
+
+  /* No classifier table means unconditionally trace the pkt */
+  if (PREDICT_FALSE (hw->trace_classify_table_index == ~0))
+    goto do_trace;
+
+  /* Get classifier table */
+  t = pool_elt_at_index (vcm->tables, hw->trace_classify_table_index);
+
+  /* hash, expensive if t->n_buckets > 1 */
+  hash = vnet_classify_hash_packet (t, vlib_buffer_get_current (b));
+
+  /* Look for a match */
+  e = vnet_classify_find_entry (t, vlib_buffer_get_current (b), hash, 0);
+
+  /* Found one, trace the packet */
+  if (e)
+    goto do_trace;
+
+  /*
+   * Look for a hit in a less-specific table.
+   * Performance hint: don't go there.
+   */
+  while (1)
+    {
+      /* Most likely, we're done right now */
+      if (PREDICT_TRUE (t->next_table_index == ~0))
+	return 0;
+      t = pool_elt_at_index (vcm->tables, t->next_table_index);
+
+      /* Compute hash for this table */
+      hash = vnet_classify_hash_packet (t, vlib_buffer_get_current (b));
+
+      /* See if there's a matching entry */
+      e = vnet_classify_find_entry (t, vlib_buffer_get_current (b),
+				    hash, 0 /* disable hit-counter */ );
+      if (e)
+	goto do_trace;
+    }
+
+do_trace:
+  if (clib_atomic_sub_fetch_relaxed (&hw->n_trace, 1) < 0)
+    {
+      /* race happend - restore and bail out */
+      clib_atomic_add_fetch_relaxed (&hw->n_trace, 1);
+      return 0;
+    }
+
+  vlib_trace_buffer (vm, r, next_index, b, /* follow_chain */ 0);
+  return 1;
+}
 
 #endif /* included_vnet_vnet_device_h */
 

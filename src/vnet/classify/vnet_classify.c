@@ -1523,7 +1523,7 @@ static clib_error_t *
 classify_table_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u32 nbuckets = 2;
+  u32 nbuckets = 1;
   u32 skip = ~0;
   u32 match = ~0;
   int is_add = 1;

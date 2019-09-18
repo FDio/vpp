@@ -241,7 +241,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   avf_per_thread_data_t *ptd =
     vec_elt_at_index (am->per_thread_data, thr_idx);
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
-  u32 n_trace, n_rx_packets = 0, n_rx_bytes = 0;
+  u32 n_rx_packets = 0, n_rx_bytes = 0;
   u16 n_tail_desc = 0;
   u64 or_qw1 = 0;
   u32 *bi, *to_next, n_left_to_next;
@@ -383,32 +383,34 @@ no_more_desc:
     n_rx_bytes = avf_process_rx_burst (vm, node, ptd, n_rx_packets, 0);
 
   /* packet trace if enabled */
-  if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
+  if (PREDICT_FALSE ((vnet_get_device_trace_count (vm, ad->hw_if_index))))
     {
       u32 n_left = n_rx_packets, i = 0, j;
       bi = to_next;
 
-      while (n_trace && n_left)
+      while (n_left)
 	{
 	  vlib_buffer_t *b;
-	  avf_input_trace_t *tr;
 	  b = vlib_get_buffer (vm, bi[0]);
-	  vlib_trace_buffer (vm, node, next_index, b, /* follow_chain */ 0);
-	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-	  tr->next_index = next_index;
-	  tr->qid = qid;
-	  tr->hw_if_index = ad->hw_if_index;
-	  tr->qw1s[0] = ptd->qw1s[i];
-	  for (j = 1; j < AVF_RX_MAX_DESC_IN_CHAIN; j++)
-	    tr->qw1s[j] = ptd->tails[i].qw1s[j - 1];
+
+	  if (vnet_device_trace_buffer (vm, node, next_index,
+					ad->hw_if_index, b))
+	    {
+	      avf_input_trace_t *tr;
+	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
+	      tr->next_index = next_index;
+	      tr->qid = qid;
+	      tr->hw_if_index = ad->hw_if_index;
+	      tr->qw1s[0] = ptd->qw1s[i];
+	      for (j = 1; j < AVF_RX_MAX_DESC_IN_CHAIN; j++)
+		tr->qw1s[j] = ptd->tails[i].qw1s[j - 1];
+	    }
 
 	  /* next */
-	  n_trace--;
 	  n_left--;
 	  bi++;
 	  i++;
 	}
-      vlib_set_trace_count (vm, node, n_trace);
     }
 
   if (PREDICT_TRUE (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT))
