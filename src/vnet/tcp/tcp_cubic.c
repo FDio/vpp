@@ -159,7 +159,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tcp_in_slowstart (tc))
     {
-      tc->cwnd += clib_min (tc->snd_mss, tc->bytes_acked);
+      tc->cwnd += tc->bytes_acked;
       return;
     }
 
