@@ -287,11 +287,12 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id)
 {
   uword n_rx_packets = 0, n_rx_bytes;
-  u32 n_left, n_trace;
+  u32 n_left;
   u32 *buffers;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   struct rte_mbuf **mb;
   vlib_buffer_t *b0;
+  u32 n_dev_trace, n_node_trace;
   u16 *next;
   u16 or_flags;
   u32 n;
@@ -399,8 +400,11 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
     }
 
   /* packet trace if enabled */
-  if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
+  n_dev_trace = vnet_get_device_trace_count (vm, xd->hw_if_index);
+  n_node_trace = vlib_get_trace_count (vm, node);
+  if (PREDICT_FALSE (n_dev_trace + n_node_trace > 0))
     {
+      int do_node_trace = n_node_trace > 0;
       if (single_next)
 	vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs,
 					     ptd->buffers, n_rx_packets,
@@ -411,32 +415,40 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       mb = ptd->mbufs;
       next = ptd->next;
 
-      while (n_trace && n_left)
+      while (n_left)
 	{
 	  b0 = vlib_get_buffer (vm, buffers[0]);
-	  if (single_next == 0)
+	  if (PREDICT_TRUE (single_next == 0))
 	    next_index = next[0];
-	  vlib_trace_buffer (vm, node, next_index, b0, /* follow_chain */ 0);
 
-	  dpdk_rx_trace_t *t0 = vlib_add_trace (vm, node, b0, sizeof t0[0]);
-	  t0->queue_index = queue_id;
-	  t0->device_index = xd->device_index;
-	  t0->buffer_index = vlib_get_buffer_index (vm, b0);
+	  if (n_node_trace || vnet_device_trace_buffer (vm, node, next_index,
+							xd->hw_if_index, b0))
+	    {
+	      vlib_trace_buffer (vm, node, next_index, b0,
+				 /* follow_chain */ 0);
 
-	  clib_memcpy_fast (&t0->mb, mb[0], sizeof t0->mb);
-	  clib_memcpy_fast (&t0->buffer, b0,
-			    sizeof b0[0] - sizeof b0->pre_data);
-	  clib_memcpy_fast (t0->buffer.pre_data, b0->data,
-			    sizeof t0->buffer.pre_data);
-	  clib_memcpy_fast (&t0->data, mb[0]->buf_addr + mb[0]->data_off,
-			    sizeof t0->data);
-	  n_trace--;
+	      dpdk_rx_trace_t *t0 =
+		vlib_add_trace (vm, node, b0, sizeof t0[0]);
+	      t0->queue_index = queue_id;
+	      t0->device_index = xd->device_index;
+	      t0->buffer_index = vlib_get_buffer_index (vm, b0);
+
+	      clib_memcpy_fast (&t0->mb, mb[0], sizeof t0->mb);
+	      clib_memcpy_fast (&t0->buffer, b0,
+				sizeof b0[0] - sizeof b0->pre_data);
+	      clib_memcpy_fast (t0->buffer.pre_data, b0->data,
+				sizeof t0->buffer.pre_data);
+	      clib_memcpy_fast (&t0->data, mb[0]->buf_addr + mb[0]->data_off,
+				sizeof t0->data);
+	    }
+	  n_node_trace = (n_node_trace > 0) ? n_node_trace - 1 : 0;
 	  n_left--;
 	  buffers++;
 	  mb++;
 	  next++;
 	}
-      vlib_set_trace_count (vm, node, n_trace);
+      if (do_node_trace)
+	vlib_set_trace_count (vm, node, n_node_trace);
     }
 
   vlib_increment_combined_counter

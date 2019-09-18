@@ -1,0 +1,7 @@
+create interface avf 0000:61:02.0 name eth0
+set int state eth0 up
+set int ip address eth0 192.168.123.222/24
+
+classify filter eth0 mask l3 ip4 dst match l3 ip4 dst 192.168.123.222
+trace interface eth0 count 2
+
