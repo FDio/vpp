@@ -256,12 +256,12 @@ class Define():
         self.name = name
         self.flags = flags
         self.block = block
-        self.crc = str(block).encode()
         self.dont_trace = False
         self.manual_print = False
         self.manual_endian = False
         self.autoreply = False
         self.singular = False
+        self.options = {}
         for f in flags:
             if f == 'dont_trace':
                 self.dont_trace = True
@@ -276,8 +276,12 @@ class Define():
             if isinstance(b, Option):
                 if b[1] == 'singular' and b[2] == 'true':
                     self.singular = True
+                else:
+                    self.options[b.option] = b.value
                 block.remove(b)
+
         self.vla = vla_is_last_check(name, block)
+        self.crc = str(block).encode()
 
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
@@ -919,6 +923,7 @@ def main():
     cliparser = argparse.ArgumentParser(description='VPP API generator')
     cliparser.add_argument('--pluginpath', default=""),
     cliparser.add_argument('--includedir', action='append'),
+    cliparser.add_argument('--outputdir', action='store'),
     cliparser.add_argument('--input',
                            type=argparse.FileType('r', encoding='UTF-8'),
                            default=sys.stdin)
@@ -1010,7 +1015,7 @@ def main():
                       .format(module_path, err))
         return 1
 
-    result = plugin.run(filename, s)
+    result = plugin.run(args, filename, s)
     if result:
         print(result, file=args.output)
     else:
