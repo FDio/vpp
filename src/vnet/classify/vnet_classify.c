@@ -1523,7 +1523,7 @@ static clib_error_t *
 classify_table_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u32 nbuckets = 2;
+  u32 nbuckets = 8;
   u32 skip = ~0;
   u32 match = ~0;
   int is_add = 1;
@@ -1678,7 +1678,7 @@ classify_filter_command_fn (vlib_main_t * vm,
 			    unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
-  u32 nbuckets = 8;
+  u32 nbuckets = 1;
   vnet_main_t *vnm = vnet_get_main ();
   uword memory_size = (uword) (128 << 10);
   u32 skip = ~0;

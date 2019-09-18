@@ -226,6 +226,10 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
   } xor_sum __attribute__ ((aligned (sizeof (u32x4))));
 
   ASSERT (t);
+
+  if (PREDICT_FALSE (t->nbuckets == 1))
+    return 0;
+
   mask = t->mask;
 #ifdef CLIB_HAVE_VEC128
   u32x4u *data = (u32x4u *) h;
