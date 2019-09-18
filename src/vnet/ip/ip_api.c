@@ -1051,6 +1051,8 @@ vl_api_ip_dump_t_handler (vl_api_ip_dump_t * mp)
 	send_ip_details (am, reg, sw_if_index, mp->is_ipv6, mp->context);
       }
   }
+
+  vec_free (sorted_sis);
 }
 
 static void
