@@ -19,29 +19,11 @@
 
 #include <vnet/ip/ip_types_api.h>
 #include <map/map.h>
-#include <map/map_msg_enum.h>
+#include <map/map.api_enum.h>
+#include <map/map.api_types.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
 #include <vlibmemory/api.h>
-
-#define vl_typedefs		/* define message structures */
-#include <map/map_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <map/map_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <map/map_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <map/map_all_api_h.h>
-#undef vl_api_version
 
 #define REPLY_MSG_ID_BASE mm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -672,65 +654,17 @@ vl_api_map_if_enable_disable_t_handler (vl_api_map_if_enable_disable_t * mp)
   REPLY_MACRO (VL_API_MAP_IF_ENABLE_DISABLE_REPLY);
 }
 
-
-#define foreach_map_plugin_api_msg		\
-_(MAP_ADD_DOMAIN, map_add_domain)		\
-_(MAP_DEL_DOMAIN, map_del_domain)		\
-_(MAP_ADD_DEL_RULE, map_add_del_rule)		\
-_(MAP_DOMAIN_DUMP, map_domain_dump)		\
-_(MAP_RULE_DUMP, map_rule_dump)			\
-_(MAP_IF_ENABLE_DISABLE, map_if_enable_disable)	\
-_(MAP_SUMMARY_STATS, map_summary_stats)		\
-_(MAP_PARAM_SET_FRAGMENTATION, map_param_set_fragmentation)	\
-_(MAP_PARAM_SET_ICMP, map_param_set_icmp)	\
-_(MAP_PARAM_SET_ICMP6, map_param_set_icmp6)	\
-_(MAP_PARAM_ADD_DEL_PRE_RESOLVE, map_param_add_del_pre_resolve)	\
-_(MAP_PARAM_SET_REASSEMBLY, map_param_set_reassembly)		\
-_(MAP_PARAM_SET_SECURITY_CHECK, map_param_set_security_check)	\
-_(MAP_PARAM_SET_TRAFFIC_CLASS, map_param_set_traffic_class)	\
-_(MAP_PARAM_SET_TCP, map_param_set_tcp)	\
-_(MAP_PARAM_GET, map_param_get)
-
-#define vl_msg_name_crc_list
-#include <map/map_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (map_main_t * mm, api_main_t * am)
-{
-#define _(id,n,crc)							\
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + mm->msg_id_base);
-  foreach_vl_msg_name_crc_map;
-#undef _
-}
+/* API definitions */
+#include <vnet/format_fns.h>
+#include <map/map.api.c>
 
 /* Set up the API message handling tables */
 clib_error_t *
 map_plugin_api_hookup (vlib_main_t * vm)
 {
   map_main_t *mm = &map_main;
-  u8 *name = format (0, "map_%08x%c", api_version, 0);
 
-  /* Ask for a correctly-sized block of API message decode slots */
-  mm->msg_id_base =
-    vl_msg_api_get_msg_ids ((char *) name, VL_MSG_FIRST_AVAILABLE);
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + mm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_map_plugin_api_msg;
-#undef _
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (mm, &api_main);
-
-  vec_free (name);
+  mm->msg_id_base = setup_message_id_table ();
   return 0;
 }
 

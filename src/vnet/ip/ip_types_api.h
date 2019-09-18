@@ -24,15 +24,7 @@
 #include <vnet/fib/fib_types.h>
 #include <vnet/mfib/mfib_types.h>
 #include <vlibapi/api_types.h>
-
-/**
- * Forward declarations so we need not #include the API definitions here
- */
-typedef u8 vl_api_ip6_address_t[16];
-typedef u8 vl_api_ip4_address_t[4];
-struct _vl_api_address;
-struct _vl_api_prefix;
-struct _vl_api_mprefix;
+#include <vnet/ip/ip.api_types.h>
 
 /**
  * These enum decode/encodes use 'int' as the type for the enum becuase

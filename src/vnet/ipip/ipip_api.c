@@ -21,35 +21,18 @@
 #include <vnet/interface.h>
 #include <vnet/ipip/ipip.h>
 #include <vnet/vnet.h>
-#include <vnet/vnet_msg_enum.h>
 #include <vnet/ip/ip_types_api.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
+#include <vnet/ipip/ipip.api_enum.h>
+#include <vnet/ipip/ipip.api_types.h>
 
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output(handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE im->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg			\
-  _(IPIP_ADD_TUNNEL, ipip_add_tunnel)		\
-  _(IPIP_DEL_TUNNEL, ipip_del_tunnel)		\
-  _(IPIP_6RD_ADD_TUNNEL, ipip_6rd_add_tunnel)	\
-  _(IPIP_6RD_DEL_TUNNEL, ipip_6rd_del_tunnel)	\
-  _(IPIP_TUNNEL_DUMP, ipip_tunnel_dump)
 
 static void
 vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
 {
+  ipip_main_t *im = &ipip_main;
   vl_api_ipip_add_tunnel_reply_t *rmp;
   int rv = 0;
   u32 fib_index, sw_if_index = ~0;
@@ -99,6 +82,7 @@ out:
 static void
 vl_api_ipip_del_tunnel_t_handler (vl_api_ipip_del_tunnel_t * mp)
 {
+  ipip_main_t *im = &ipip_main;
   vl_api_ipip_del_tunnel_reply_t *rmp;
 
   int rv = ipip_del_tunnel (ntohl (mp->sw_if_index));
@@ -107,51 +91,44 @@ vl_api_ipip_del_tunnel_t_handler (vl_api_ipip_del_tunnel_t * mp)
 }
 
 static void
-send_ipip_tunnel_details (ipip_tunnel_t * t,
-			  vl_api_registration_t * reg, u32 context)
+send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
 {
+  ipip_main_t *im = &ipip_main;
   vl_api_ipip_tunnel_details_t *rmp;
   bool is_ipv6 = t->transport == IPIP_TRANSPORT_IP6 ? true : false;
   fib_table_t *ft;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_IPIP_TUNNEL_DETAILS);
-
-  ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
-  ip_address_encode (&t->tunnel_dst, IP46_TYPE_ANY, &rmp->tunnel.dst);
+  int rv = 0;
 
   ft = fib_table_get (t->fib_index, (is_ipv6 ? FIB_PROTOCOL_IP6 :
 				     FIB_PROTOCOL_IP4));
 
-  rmp->tunnel.table_id = htonl (ft->ft_table_id);
-  rmp->tunnel.instance = htonl (t->user_instance);
-  rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
-  rmp->context = context;
-
-  vl_api_send_msg (reg, (u8 *) rmp);
+  /* *INDENT-OFF* */
+  REPLY_MACRO_DETAILS2(VL_API_IPIP_TUNNEL_DETAILS,
+  ({
+    ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
+    ip_address_encode (&t->tunnel_dst, IP46_TYPE_ANY, &rmp->tunnel.dst);
+    rmp->tunnel.table_id = htonl (ft->ft_table_id);
+    rmp->tunnel.instance = htonl (t->user_instance);
+    rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+  }));
+    /* *INDENT-ON* */
 }
 
 static void
 vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t * mp)
 {
-  vl_api_registration_t *reg;
-  ipip_main_t *gm = &ipip_main;
+  ipip_main_t *im = &ipip_main;
   ipip_tunnel_t *t;
   u32 sw_if_index;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
 
   sw_if_index = ntohl (mp->sw_if_index);
 
   if (sw_if_index == ~0)
     {
     /* *INDENT-OFF* */
-    pool_foreach(t, gm->tunnels,
+    pool_foreach(t, im->tunnels,
     ({
-      send_ipip_tunnel_details(t, reg, mp->context);
+      send_ipip_tunnel_details(t, mp);
     }));
     /* *INDENT-ON* */
     }
@@ -159,13 +136,14 @@ vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t * mp)
     {
       t = ipip_tunnel_db_find_by_sw_if_index (sw_if_index);
       if (t)
-	send_ipip_tunnel_details (t, reg, mp->context);
+	send_ipip_tunnel_details (t, mp);
     }
 }
 
 static void
 vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t * mp)
 {
+  ipip_main_t *im = &ipip_main;
   vl_api_ipip_6rd_add_tunnel_reply_t *rmp;
   u32 sixrd_tunnel_index, ip4_fib_index, ip6_fib_index;
   int rv;
@@ -201,6 +179,7 @@ vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t * mp)
 static void
 vl_api_ipip_6rd_del_tunnel_t_handler (vl_api_ipip_6rd_del_tunnel_t * mp)
 {
+  ipip_main_t *im = &ipip_main;
   vl_api_ipip_6rd_del_tunnel_reply_t *rmp;
 
   int rv = sixrd_del_tunnel (ntohl (mp->sw_if_index));
@@ -215,34 +194,19 @@ vl_api_ipip_6rd_del_tunnel_t_handler (vl_api_ipip_6rd_del_tunnel_t * mp)
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id, n, crc) vl_msg_api_add_msg_name_crc(am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_ipip;
-#undef _
-}
+/* API definitions */
+#include <vnet/format_fns.h>
+#include <vnet/ipip/ipip.api.c>
 
 static clib_error_t *
 ipip_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
-
-#define _(N, n)                                                                \
-  vl_msg_api_set_handlers(VL_API_##N, #n, vl_api_##n##_t_handler,              \
-                          vl_noop_handler, vl_api_##n##_t_endian,              \
-                          vl_api_##n##_t_print, sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
+  ipip_main_t *im = &ipip_main;
 
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  im->msg_id_base = setup_message_id_table ();
 
   return 0;
 }

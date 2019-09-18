@@ -48,6 +48,8 @@ macro(add_vpp_library lib)
       get_filename_component(dir ${file} DIRECTORY)
       install(
 	FILES ${file} ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
+	${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h
+	${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h
 	DESTINATION include/${lib}/${dir}
 	COMPONENT vpp-dev
       )
