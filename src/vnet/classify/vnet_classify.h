@@ -15,17 +15,7 @@
 #ifndef __included_vnet_classify_h__
 #define __included_vnet_classify_h__
 
-#include <stdarg.h>
-
-#include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vlib/cli.h>
 #include <vnet/api_errno.h>	/* for API error numbers */
 
 #include <vppinfra/error.h>

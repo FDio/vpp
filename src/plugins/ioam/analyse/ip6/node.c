@@ -16,6 +16,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
 #include <ioam/export-common/ioam_export.h>
 #include <ioam/encap/ip6_ioam_trace.h>
