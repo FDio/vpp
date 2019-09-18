@@ -28,6 +28,7 @@ autoreply manual_print define flowprobe_tx_interface_add_del
 
   /* Interface handle */
   u32 sw_if_index;
+  option cli = "<intfc> [disable]";
 };
 
 autoreply define flowprobe_params
@@ -39,4 +40,5 @@ autoreply define flowprobe_params
   u8 record_l4;
   u32 active_timer;  /* ~0 is off, 0 is default */
   u32 passive_timer; /* ~0 is off, 0 is default */
+  option cli = "record <[l2] [l3] [l4]> [active <timer> passive <timer>]";
 };
