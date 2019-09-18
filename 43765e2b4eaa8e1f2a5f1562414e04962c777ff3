@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "216f7f6a_12a95c91",
+        "filename": "src/plugins/builtinurl/builtinurl.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-18T15:33:26Z",
+      "side": 1,
+      "message": "https://jira.fd.io/browse/VPP-1768",
+      "range": {
+        "startLine": 4,
+        "startChar": 17,
+        "endLine": 4,
+        "endChar": 31
+      },
+      "revId": "43765e2b4eaa8e1f2a5f1562414e04962c777ff3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "08df340f_725b661b",
+        "filename": "src/plugins/builtinurl/builtinurl.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-18T15:33:26Z",
+      "side": 1,
+      "message": "These two params did not make it into the definition below.\nWill the \"disable\" functionality be supported?",
+      "range": {
+        "startLine": 33,
+        "startChar": 11,
+        "endLine": 33,
+        "endChar": 25
+      },
+      "revId": "43765e2b4eaa8e1f2a5f1562414e04962c777ff3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
