@@ -37,17 +37,88 @@
 
 #define TIMEOUT 10.0
 
-#define CHECK(expected, result, _fmt, _args...)         \
-    if (expected != result)                             \
-      ECHO_FAIL ("expected %d, got %d : " _fmt, expected, result, ##_args);
+#define foreach_echo_fail_code                                          \
+  _(ECHO_FAIL_NONE, "ECHO_FAIL_NONE")                                   \
+  _(ECHO_FAIL_SEND_IO_EVT, "ECHO_FAIL_SEND_IO_EVT")                     \
+  _(ECHO_FAIL_SOCKET_CONNECT, "ECHO_FAIL_SOCKET_CONNECT")               \
+  _(ECHO_FAIL_INIT_SHM_API, "ECHO_FAIL_INIT_SHM_API")                   \
+  _(ECHO_FAIL_SHMEM_CONNECT, "ECHO_FAIL_SHMEM_CONNECT")                 \
+  _(ECHO_FAIL_TEST_BYTES_ERR, "ECHO_FAIL_TEST_BYTES_ERR")               \
+  _(ECHO_FAIL_BIND, "ECHO_FAIL_BIND")                                   \
+  _(ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,                              \
+    "ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC")                            \
+  _(ECHO_FAIL_SESSION_CONNECT, "ECHO_FAIL_SESSION_CONNECT")             \
+  _(ECHO_FAIL_CONNECTED_WAIT_FOR_SEG_ALLOC,                             \
+    "ECHO_FAIL_CONNECTED_WAIT_FOR_SEG_ALLOC")                           \
+  _(ECHO_FAIL_APP_ATTACH, "ECHO_FAIL_APP_ATTACH")                       \
+  _(ECHO_FAIL_SERVER_DISCONNECT_TIMEOUT,                                \
+    "ECHO_FAIL_SERVER_DISCONNECT_TIMEOUT")                              \
+  _(ECHO_FAIL_INVALID_URI, "ECHO_FAIL_INVALID_URI")                     \
+  _(ECHO_FAIL_PROTOCOL_NOT_SUPPORTED,                                   \
+    "ECHO_FAIL_PROTOCOL_NOT_SUPPORTED")                                 \
+  _(ECHO_FAIL_CONNECT_TO_VPP, "ECHO_FAIL_CONNECT_TO_VPP")               \
+  _(ECHO_FAIL_ATTACH_TO_VPP, "ECHO_FAIL_ATTACH_TO_VPP")                 \
+  _(ECHO_FAIL_1ST_PTHREAD_CREATE, "ECHO_FAIL_1ST_PTHREAD_CREATE")       \
+  _(ECHO_FAIL_PTHREAD_CREATE, "ECHO_FAIL_PTHREAD_CREATE")               \
+  _(ECHO_FAIL_DETACH, "ECHO_FAIL_DETACH")                               \
+  _(ECHO_FAIL_MQ_PTHREAD, "ECHO_FAIL_MQ_PTHREAD")                       \
+  _(ECHO_FAIL_VL_API_APP_ATTACH, "ECHO_FAIL_VL_API_APP_ATTACH")         \
+  _(ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME,                              \
+    "ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME")                            \
+  _(ECHO_FAIL_VL_API_RECV_FD_MSG, "ECHO_FAIL_VL_API_RECV_FD_MSG")       \
+  _(ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,                               \
+    "ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH")                             \
+  _(ECHO_FAIL_VL_API_FIFO_SEG_ATTACH,                                   \
+    "ECHO_FAIL_VL_API_FIFO_SEG_ATTACH")                                 \
+  _(ECHO_FAIL_VL_API_DETACH_REPLY, "ECHO_FAIL_VL_API_DETACH_REPLY")     \
+  _(ECHO_FAIL_VL_API_BIND_URI_REPLY, "ECHO_FAIL_VL_API_BIND_URI_REPLY") \
+  _(ECHO_FAIL_VL_API_UNBIND_REPLY, "ECHO_FAIL_VL_API_UNBIND_REPLY")     \
+  _(ECHO_FAIL_VL_API_DISCONNECT_SESSION_REPLY,                          \
+    "ECHO_FAIL_VL_API_DISCONNECT_SESSION_REPLY")                        \
+  _(ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY,                                \
+    "ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY")                              \
+  _(ECHO_FAIL_VL_API_TLS_KEY_ADD_REPLY,                                 \
+    "ECHO_FAIL_VL_API_TLS_KEY_ADD_REPLY")                               \
+  _(ECHO_FAIL_GET_SESSION_FROM_HANDLE,                                  \
+    "ECHO_FAIL_GET_SESSION_FROM_HANDLE")                                \
+  _(ECHO_FAIL_QUIC_WRONG_CONNECT, "ECHO_FAIL_QUIC_WRONG_CONNECT")       \
+  _(ECHO_FAIL_QUIC_WRONG_ACCEPT, "ECHO_FAIL_QUIC_WRONG_ACCEPT")         \
+  _(ECHO_FAIL_TCP_BAPI_CONNECT, "ECHO_FAIL_TCP_BAPI_CONNECT")           \
+  _(ECHO_FAIL_UDP_BAPI_CONNECT, "ECHO_FAIL_UDP_BAPI_CONNECT")           \
+  _(ECHO_FAIL_MISSING_START_EVENT, "ECHO_FAIL_MISSING_START_EVENT")     \
+  _(ECHO_FAIL_MISSING_END_EVENT, "ECHO_FAIL_MISSING_END_EVENT")         \
+  _(ECHO_FAIL_TEST_ASSERT_RX_TOTAL, "ECHO_FAIL_TEST_ASSERT_RX_TOTAL")   \
+  _(ECHO_FAIL_TEST_ASSERT_TX_TOTAL, "ECHO_FAIL_TEST_ASSERT_TX_TOTAL")   \
+  _(ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED,                          \
+    "ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED")
 
-#define ECHO_FAIL(_fmt,_args...)        \
-  {                                     \
-    echo_main_t *em = &echo_main;       \
-    em->has_failed = 1;                 \
-    em->time_to_stop = 1;               \
-    if (em->log_lvl > 0)                \
-         clib_warning ("ECHO-ERROR: "_fmt, ##_args);    \
+typedef enum
+{
+#define _(sym, str) sym,
+  foreach_echo_fail_code
+#undef _
+} echo_fail_t;
+
+extern char *echo_fail_code_str[];
+
+#define CHECK(fail, expected, result, _fmt, _args...)                   \
+    if (expected != result)                                             \
+      ECHO_FAIL (fail, "expected %d, got %d : " _fmt, expected,         \
+                 result, ##_args);                                      \
+
+#define ECHO_FAIL(fail, _fmt, _args...)                                 \
+  {                                                                     \
+    echo_main_t *em = &echo_main;                                       \
+    em->has_failed = fail;                                              \
+    if (vec_len(em->fail_descr))                                        \
+      em->fail_descr = format(em->fail_descr, " | %s (%d): "_fmt,       \
+                              echo_fail_code_str[fail], fail, ##_args); \
+    else                                                                \
+      em->fail_descr = format(0, "%s (%d): "_fmt,                       \
+                              echo_fail_code_str[fail], fail, ##_args); \
+    em->time_to_stop = 1;                                               \
+    if (em->log_lvl > 0)                                                \
+      clib_warning ("%v", em->fail_descr);                              \
   }
 
 #define ECHO_LOG(lvl, _fmt,_args...)    \
@@ -57,12 +128,12 @@
          clib_warning (_fmt, ##_args);  \
   }
 
-#define ECHO_REGISTER_PROTO(proto, vft)                 \
-  static void __clib_constructor                        \
-  vpp_echo_init_##proto ()                              \
-  {                                                     \
-    echo_main_t *em = &echo_main;        \
-    em->available_proto_cb_vft[proto] = &vft;          \
+#define ECHO_REGISTER_PROTO(proto, vft)         \
+  static void __clib_constructor                \
+  vpp_echo_init_##proto ()                      \
+  {                                             \
+    echo_main_t *em = &echo_main;               \
+    em->available_proto_cb_vft[proto] = &vft;   \
   }
 
 typedef struct
@@ -197,6 +268,7 @@ typedef struct
   volatile connection_state_t state;
   volatile u8 time_to_stop;	/* Signal variables */
   u8 has_failed;		/* stores the exit code */
+  u8 *fail_descr;		/* vector containing fail description */
 
   /** Flag that decides if socket, instead of svm, api is used to connect to
    * vpp. If sock api is used, shm binary api is subsequently bootstrapped
