@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "883a986a_adf41442",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-19T12:05:33Z",
+      "side": 1,
+      "message": "The fix does not handle this.",
+      "range": {
+        "startLine": 84,
+        "startChar": 23,
+        "endLine": 84,
+        "endChar": 40
+      },
+      "revId": "dce8edafbd33e77640df7b92ba15e16eeaf4f590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
