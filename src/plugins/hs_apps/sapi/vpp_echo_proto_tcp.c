@@ -48,7 +48,8 @@ tcp_echo_connected_cb (session_connected_bundled_msg_t * mp,
   echo_session_t *session = pool_elt_at_index (em->sessions, session_index);
   if (is_failed)
     {
-      ECHO_FAIL ("Bapi connect errored");
+      ECHO_FAIL (ECHO_FAIL_TCP_BAPI_CONNECT,
+		 "Bapi connect errored on session %u", session_index);
       return;			/* Dont handle bapi connect errors for now */
     }
 
