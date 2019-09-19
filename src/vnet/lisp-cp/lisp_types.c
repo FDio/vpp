@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/lisp-cp/lisp_types.h>
 
 static u16 gid_address_put_no_vni (u8 * b, gid_address_t * gid);
