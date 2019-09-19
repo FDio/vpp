@@ -2535,7 +2535,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       session->vep.vep_sh = ~0;
       session->is_vep_session = 0;
 
-      if (session->tx_fifo)
+      if ((session->session_state & STATE_OPEN) && session->tx_fifo)
 	svm_fifo_del_want_deq_ntf (session->tx_fifo, SVM_FIFO_NO_DEQ_NOTIF);
 
       VDBG (1, "EPOLL_CTL_DEL: vep_idx %u, sh %u!", vep_handle,
