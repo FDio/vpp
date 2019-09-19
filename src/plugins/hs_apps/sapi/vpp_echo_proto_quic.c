@@ -83,7 +83,8 @@ quic_echo_on_connected_send (session_connected_msg_t * mp, u32 session_index)
 static void
 quic_echo_on_connected_error (session_connected_msg_t * mp, u32 session_index)
 {
-  ECHO_FAIL ("Got a wrong connected on session %u [%lx]", session_index,
+  ECHO_FAIL (ECHO_FAIL_QUIC_WRONG_CONNECT,
+	     "Got a wrong connected on session %u [%lx]", session_index,
 	     mp->handle);
 }
 
@@ -118,7 +119,8 @@ quic_echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
 static void
 quic_echo_on_accept_error (session_accepted_msg_t * mp, u32 session_index)
 {
-  ECHO_FAIL ("Got a wrong accept on session %u [%lx]", session_index,
+  ECHO_FAIL (ECHO_FAIL_QUIC_WRONG_ACCEPT,
+	     "Got a wrong accept on session %u [%lx]", session_index,
 	     mp->handle);
 }
 
