@@ -1705,7 +1705,7 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 
   if (a->status)
     {
-      if (pp->pcap_enable == 0)
+      if (pp->pcap_enable)
 	{
 	  vlib_cli_output
 	    (vm, "pcap %s dispatch capture enabled: %d of %d pkts...",
