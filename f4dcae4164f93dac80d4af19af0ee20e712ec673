@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d900ad52_744f1c7f",
+        "filename": "RELEASE.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-19T10:58:09Z",
+      "side": 1,
+      "message": "1908",
+      "range": {
+        "startLine": 92,
+        "startChar": 55,
+        "endLine": 92,
+        "endChar": 59
+      },
+      "revId": "f4dcae4164f93dac80d4af19af0ee20e712ec673",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5b1afeb5_9bed1a72",
+        "filename": "RELEASE.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-19T10:58:09Z",
+      "side": 1,
+      "message": "This link is more useful for 19.08.1 now, but it is still more useful than the broad Jira link in the previous line.",
+      "range": {
+        "startLine": 246,
+        "startChar": 19,
+        "endLine": 246,
+        "endChar": 59
+      },
+      "revId": "f4dcae4164f93dac80d4af19af0ee20e712ec673",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
