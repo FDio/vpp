@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3174addd_08785b1d",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-09-19T14:33:46Z",
+      "side": 1,
+      "message": "It is on my do list. I\u0027ll remove it.",
+      "parentUuid": "f70ca337_986af9e8",
+      "revId": "651aca410d358d5f10c16c7ac634daa9aa9482b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0034b26a_9908db37",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2019-09-18T13:24:19Z",
       "side": 1,
       "message": "Do we need this test? We could either refuse to enable software gso on interfaces supporting GSO or let the user decide (ie if it decided to enable GSO on an interface supporting hw gso, still do sw gso as configured by the user)",
+      "revId": "651aca410d358d5f10c16c7ac634daa9aa9482b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "358c4188_099353a8",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 552,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-09-19T14:33:46Z",
+      "side": 1,
+      "message": "Yes, we need this test. Following are the points to have this test here:\n\n1) It will be highly complex combination to track enable/disable GSO and GSO feature arcs on the interfaces. Historically, user avoid to use such features (i.e. detailed stats) with added complexity. Purpose here is provide a bit of ease to users. For each tap interface, you will have run 4 commands to enable/disable GSO/Feature arc. With only 4 tap interface, it will be 16 commands. Given this conditional check, it will reduce the number of commands to manage.\n\n2) Secondly, we need to calculate the header offsets even interface support GSO. In that case, we will not segment the packet but calculate the header offsets.",
+      "parentUuid": "0034b26a_9908db37",
       "revId": "651aca410d358d5f10c16c7ac634daa9aa9482b9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
