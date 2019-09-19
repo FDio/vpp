@@ -18,6 +18,7 @@
  * @brief LLDP CLI handling
  *
  */
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lldp/lldp.h>
 #include <vnet/lldp/lldp_node.h>

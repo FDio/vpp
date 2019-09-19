@@ -21,6 +21,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/l2/l2_bd.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip.h>
 
