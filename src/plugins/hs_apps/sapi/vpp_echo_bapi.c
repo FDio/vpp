@@ -199,14 +199,15 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   if (mp->retval)
     {
-      ECHO_FAIL ("attach failed: %U", format_api_error,
-		 clib_net_to_host_u32 (mp->retval));
+      ECHO_FAIL (ECHO_FAIL_VL_API_APP_ATTACH, "attach failed: %U",
+		 format_api_error, clib_net_to_host_u32 (mp->retval));
       return;
     }
 
   if (mp->segment_name_length == 0)
     {
-      ECHO_FAIL ("segment_name_length zero");
+      ECHO_FAIL (ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME,
+		 "segment_name_length zero");
       return;
     }
 
@@ -219,14 +220,16 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       vec_validate (fds, mp->n_fds);
       if (vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5))
 	{
-	  ECHO_FAIL ("vl_socket_client_recv_fd_msg failed");
+	  ECHO_FAIL (ECHO_FAIL_VL_API_RECV_FD_MSG,
+		     "vl_socket_client_recv_fd_msg failed");
 	  goto failed;
 	}
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
 	if (ssvm_segment_attach (0, SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  {
-	    ECHO_FAIL ("svm_fifo_segment_attach failed");
+	    ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
+		       "svm_fifo_segment_attach failed on SSVM_SEGMENT_MEMFD");
 	    goto failed;
 	  }
 
@@ -234,8 +237,9 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 	if (ssvm_segment_attach ((char *) mp->segment_name,
 				 SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  {
-	    ECHO_FAIL ("svm_fifo_segment_attach ('%s') failed",
-		       mp->segment_name);
+	    ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
+		       "svm_fifo_segment_attach ('%s') "
+		       "failed on SSVM_SEGMENT_MEMFD", mp->segment_name);
 	    goto failed;
 	  }
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
@@ -248,8 +252,9 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       if (ssvm_segment_attach ((char *) mp->segment_name, SSVM_SEGMENT_SHM,
 			       -1))
 	{
-	  ECHO_FAIL ("svm_fifo_segment_attach ('%s') failed",
-		     mp->segment_name);
+	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
+		     "svm_fifo_segment_attach ('%s') "
+		     "failed on SSVM_SEGMENT_SHM", mp->segment_name);
 	  return;
 	}
     }
@@ -270,7 +275,8 @@ vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
 {
   if (mp->retval)
     {
-      ECHO_FAIL ("detach returned with err: %d", mp->retval);
+      ECHO_FAIL (ECHO_FAIL_VL_API_DETACH_REPLY,
+		 "app detach returned with err: %d", mp->retval);
       return;
     }
   echo_main.state = STATE_DETACHED;
@@ -301,13 +307,15 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
       vec_validate (fds, 1);
       if (vl_socket_client_recv_fd_msg (fds, 1, 5))
 	{
-	  ECHO_FAIL ("vl_socket_client_recv_fd_msg failed");
+	  ECHO_FAIL (ECHO_FAIL_VL_API_RECV_FD_MSG,
+		     "vl_socket_client_recv_fd_msg failed");
 	  goto failed;
 	}
 
       if (ssvm_segment_attach (seg_name, SSVM_SEGMENT_MEMFD, fds[0]))
 	{
-	  ECHO_FAIL ("svm_fifo_segment_attach ('%s')"
+	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
+		     "svm_fifo_segment_attach ('%s') "
 		     "failed on SSVM_SEGMENT_MEMFD", seg_name);
 	  goto failed;
 	}
@@ -321,7 +329,8 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
       /* Attach to the segment vpp created */
       if (fifo_segment_attach (sm, a))
 	{
-	  ECHO_FAIL ("svm_fifo_segment_attach ('%s') failed", seg_name);
+	  ECHO_FAIL (ECHO_FAIL_VL_API_FIFO_SEG_ATTACH,
+		     "fifo_segment_attach ('%s') failed", seg_name);
 	  goto failed;
 	}
     }
@@ -340,8 +349,8 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 {
   if (mp->retval)
     {
-      ECHO_FAIL ("bind failed: %U", format_api_error,
-		 clib_net_to_host_u32 (mp->retval));
+      ECHO_FAIL (ECHO_FAIL_VL_API_BIND_URI_REPLY, "bind failed: %U",
+		 format_api_error, clib_net_to_host_u32 (mp->retval));
     }
 }
 
@@ -352,7 +361,8 @@ vl_api_unbind_uri_reply_t_handler (vl_api_unbind_uri_reply_t * mp)
   echo_main_t *em = &echo_main;
   if (mp->retval != 0)
     {
-      ECHO_FAIL ("returned %d", ntohl (mp->retval));
+      ECHO_FAIL (ECHO_FAIL_VL_API_UNBIND_REPLY, "unbind_uri returned %d",
+		 ntohl (mp->retval));
       return;
     }
   listen_session = pool_elt_at_index (em->sessions, em->listen_session_index);
@@ -369,7 +379,8 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 
   if (mp->retval)
     {
-      ECHO_FAIL ("vpp complained about disconnect: %d", ntohl (mp->retval));
+      ECHO_FAIL (ECHO_FAIL_VL_API_DISCONNECT_SESSION_REPLY,
+		 "vpp complained about disconnect: %d", ntohl (mp->retval));
       return;
     }
 
@@ -384,7 +395,8 @@ static void
   (vl_api_application_tls_cert_add_reply_t * mp)
 {
   if (mp->retval)
-    ECHO_FAIL ("failed to add tls cert");
+    ECHO_FAIL (ECHO_FAIL_VL_API_TLS_CERT_ADD_REPLY,
+	       "failed to add application tls cert");
 }
 
 static void
@@ -392,7 +404,8 @@ static void
   (vl_api_application_tls_key_add_reply_t * mp)
 {
   if (mp->retval)
-    ECHO_FAIL ("failed to add tls key");
+    ECHO_FAIL (ECHO_FAIL_VL_API_TLS_KEY_ADD_REPLY,
+	       "failed to add application tls key");
 }
 
 static void

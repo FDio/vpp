@@ -42,12 +42,15 @@ echo_session_prealloc (echo_main_t * em)
 static void
 echo_assert_test_suceeded (echo_main_t * em)
 {
-  CHECK (em->n_clients * em->bytes_to_receive,
-	 em->stats.rx_total, "Not enough data received");
-  CHECK (em->n_clients * em->bytes_to_send,
-	 em->stats.tx_total, "Not enough data sent");
+  CHECK (ECHO_FAIL_TEST_ASSERT_RX_TOTAL,
+	 em->n_clients * em->bytes_to_receive, em->stats.rx_total,
+	 "Invalid amount of data received");
+  CHECK (ECHO_FAIL_TEST_ASSERT_TX_TOTAL,
+	 em->n_clients * em->bytes_to_send, em->stats.tx_total,
+	 "Invalid amount of data sent");
   clib_spinlock_lock (&em->sid_vpp_handles_lock);
-  CHECK (0, hash_elts (em->session_index_by_vpp_handles),
+  CHECK (ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED,
+	 0, hash_elts (em->session_index_by_vpp_handles),
 	 "Some sessions are still open");
   clib_spinlock_unlock (&em->sid_vpp_handles_lock);
 }
@@ -61,7 +64,8 @@ echo_session_dequeue_notify (echo_session_t * s)
   if ((rv =
        app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
 			       SESSION_IO_EVT_RX, SVM_Q_WAIT)))
-    ECHO_FAIL ("app_send_io_evt_to_vpp errored %d", rv);
+    ECHO_FAIL (ECHO_FAIL_SEND_IO_EVT, "app_send_io_evt_to_vpp errored %d",
+	       rv);
   svm_fifo_clear_deq_ntf (s->rx_fifo);
 }
 
@@ -83,13 +87,13 @@ connect_to_vpp (char *name)
       if (vl_socket_client_connect ((char *) em->socket_name, name,
 				    0 /* default rx, tx buffer */ ))
 	{
-	  ECHO_FAIL ("socket connect failed");
+	  ECHO_FAIL (ECHO_FAIL_SOCKET_CONNECT, "socket connect failed");
 	  return -1;
 	}
 
       if (vl_socket_client_init_shm (0, 1 /* want_pthread */ ))
 	{
-	  ECHO_FAIL ("init shm api failed");
+	  ECHO_FAIL (ECHO_FAIL_INIT_SHM_API, "init shm api failed");
 	  return -1;
 	}
     }
@@ -97,22 +101,13 @@ connect_to_vpp (char *name)
     {
       if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
 	{
-	  ECHO_FAIL ("shmem connect failed");
+	  ECHO_FAIL (ECHO_FAIL_SHMEM_CONNECT, "shmem connect failed");
 	  return -1;
 	}
     }
   em->vl_input_queue = am->shmem_hdr->vl_input_queue;
   em->my_client_index = am->my_client_index;
   return 0;
-}
-
-static void
-echo_event_didnt_happen (u8 e)
-{
-  echo_main_t *em = &echo_main;
-  u8 *s = format (0, "%U", echo_format_timing_event, e);
-  ECHO_LOG (0, "Expected event %s to happen, but it did not!", s);
-  em->has_failed = 1;
 }
 
 static void
@@ -128,9 +123,13 @@ print_global_json_stats (echo_main_t * em)
     em->timing.end_time - em->timing.start_time;
 
   if (start_evt_missing)
-    echo_event_didnt_happen (em->timing.start_event);
+    ECHO_FAIL (ECHO_FAIL_MISSING_START_EVENT,
+	       "Expected event %s to happen, but it did not!", start_evt);
+
   if (end_evt_missing)
-    echo_event_didnt_happen (em->timing.end_event);
+    ECHO_FAIL (ECHO_FAIL_MISSING_END_EVENT,
+	       "Expected event %s to happen, but it did not!", end_evt);
+
   fformat (stdout, "vpp_echo JSON stats:\n{\n");
   fformat (stdout, "  \"role\": \"%s\",\n",
 	   em->i_am_master ? "server" : "client");
@@ -153,33 +152,41 @@ print_global_json_stats (echo_main_t * em)
   fformat (stdout, "    \"clean\": { \"q\": %d, \"s\": %d }\n",
 	   em->stats.clean_count.q, em->stats.clean_count.s);
   fformat (stdout, "  }\n");
+  fformat (stdout, "  \"results\": {\n");
+  fformat (stdout, "    \"has_failed\": \"%d\"\n", em->has_failed);
+  fformat (stdout, "    \"fail_descr\": \"%v\"\n", em->fail_descr);
+  fformat (stdout, "  }\n");
   fformat (stdout, "}\n");
   fflush (stdout);
+  vec_free (start_evt);
+  vec_free (end_evt);
 }
 
 static void
 print_global_stats (echo_main_t * em)
 {
-  u8 *s;
+  u8 *start_evt =
+    format (0, "%U", echo_format_timing_event, em->timing.start_event);
+  u8 *end_evt =
+    format (0, "%U", echo_format_timing_event, em->timing.end_event);
   u8 start_evt_missing = !(em->timing.events_sent & em->timing.start_event);
   u8 end_evt_missing = !(em->timing.events_sent & em->timing.end_event);
   f64 deltat = start_evt_missing || end_evt_missing ? 0 :
     em->timing.end_time - em->timing.start_time;
 
   if (start_evt_missing)
-    echo_event_didnt_happen (em->timing.start_event);
+    ECHO_FAIL (ECHO_FAIL_MISSING_START_EVENT,
+	       "Expected event %s to happen, but it did not!", start_evt);
+
   if (end_evt_missing)
-    echo_event_didnt_happen (em->timing.end_event);
-  s = format (0, "%U:%U",
-	      echo_format_timing_event, em->timing.start_event,
-	      echo_format_timing_event, em->timing.end_event);
-  fformat (stdout, "Timing %v\n", s);
+    ECHO_FAIL (ECHO_FAIL_MISSING_END_EVENT,
+	       "Expected event %s to happen, but it did not!", end_evt);
+
+  fformat (stdout, "Timing %s:%s\n", start_evt, end_evt);
   if (start_evt_missing)
-    fformat (stdout, "Missing Start Timing Event (%U)!\n",
-	     echo_format_timing_event, em->timing.start_event);
+    fformat (stdout, "Missing Start Timing Event (%s)!\n", start_evt);
   if (end_evt_missing)
-    fformat (stdout, "Missing End Timing Event (%U)!\n",
-	     echo_format_timing_event, em->timing.end_event);
+    fformat (stdout, "Missing End Timing Event (%s)!\n", end_evt);
   fformat (stdout, "-------- TX --------\n");
   fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.6f seconds\n",
 	   em->stats.tx_total, em->stats.tx_total / (1ULL << 20),
@@ -203,6 +210,11 @@ print_global_stats (echo_main_t * em)
 	   em->stats.active_count.s, em->stats.active_count.q);
   fformat (stdout, "Discarded         %d streams (and %d Quic conn)\n",
 	   em->stats.clean_count.s, em->stats.clean_count.q);
+  if (em->has_failed)
+    fformat (stdout, "\nFailure Return Status: %d\n%v", em->has_failed,
+	     em->fail_descr);
+  vec_free (start_evt);
+  vec_free (end_evt);
 }
 
 void
@@ -264,7 +276,7 @@ test_recv_bytes (echo_main_t * em, echo_session_t * s, u8 * rx_buf,
       if (em->max_test_msg == 0)
 	ECHO_LOG (0, "Too many errors, hiding next ones");
       if (em->test_return_packets == RETURN_PACKETS_ASSERT)
-	ECHO_FAIL ("test-bytes errored");
+	ECHO_FAIL (ECHO_FAIL_TEST_BYTES_ERR, "test-bytes errored");
     }
 }
 
@@ -444,7 +456,7 @@ session_bound_handler (session_bound_msg_t * mp)
   echo_session_t *listen_session;
   if (mp->retval)
     {
-      ECHO_FAIL ("bind failed: %U", format_api_error,
+      ECHO_FAIL (ECHO_FAIL_BIND, "bind failed: %U", format_api_error,
 		 clib_net_to_host_u32 (mp->retval));
       return;
     }
@@ -476,7 +488,8 @@ session_accepted_handler (session_accepted_msg_t * mp)
 
   if (wait_for_segment_allocation (mp->segment_handle))
     {
-      ECHO_FAIL ("wait_for_segment_allocation errored");
+      ECHO_FAIL (ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,
+		 "accepted wait_for_segment_allocation errored");
       return;
     }
 
@@ -529,7 +542,8 @@ session_connected_handler (session_connected_msg_t * mp)
 
   if (mp->retval)
     {
-      ECHO_FAIL ("connection failed with code: %U", format_api_error,
+      ECHO_FAIL (ECHO_FAIL_SESSION_CONNECT,
+		 "connection failed with code: %U", format_api_error,
 		 clib_net_to_host_u32 (mp->retval));
       return;
     }
@@ -537,7 +551,8 @@ session_connected_handler (session_connected_msg_t * mp)
   session = echo_session_new (em);
   if (wait_for_segment_allocation (mp->segment_handle))
     {
-      ECHO_FAIL ("wait_for_segment_allocation errored");
+      ECHO_FAIL (ECHO_FAIL_CONNECTED_WAIT_FOR_SEG_ALLOC,
+		 "connected wait_for_segment_allocation errored");
       return;
     }
 
@@ -667,7 +682,7 @@ echo_mq_thread_fn (void *arg)
   wait_for_state_change (em, STATE_ATTACHED, 0);
   if (em->state < STATE_ATTACHED || !em->our_event_queue)
     {
-      ECHO_FAIL ("Application failed to attach");
+      ECHO_FAIL (ECHO_FAIL_APP_ATTACH, "Application failed to attach");
       pthread_exit (0);
     }
 
@@ -710,7 +725,8 @@ server_run (echo_main_t * em)
   echo_send_unbind (em);
   if (wait_for_state_change (em, STATE_DISCONNECTED, TIMEOUT))
     {
-      ECHO_FAIL ("Timeout waiting for state disconnected");
+      ECHO_FAIL (ECHO_FAIL_SERVER_DISCONNECT_TIMEOUT,
+		 "Timeout waiting for state disconnected");
       return;
     }
 }
@@ -915,7 +931,7 @@ echo_process_uri (echo_main_t * em)
 	 &em->uri_elts.ip.ip6, &port))
     em->uri_elts.is_ip4 = 0;
   else
-    ECHO_FAIL ("Unable to process uri");
+    ECHO_FAIL (ECHO_FAIL_INVALID_URI, "Unable to process uri");
   em->uri_elts.port = clib_host_to_net_u16 (port);
   unformat_free (input);
 }
@@ -968,9 +984,10 @@ main (int argc, char **argv)
   em->proto_cb_vft = em->available_proto_cb_vft[em->uri_elts.transport_proto];
   if (!em->proto_cb_vft)
     {
-      ECHO_FAIL ("Protocol %U is not supported",
+      ECHO_FAIL (ECHO_FAIL_PROTOCOL_NOT_SUPPORTED,
+		 "Protocol %U is not supported",
 		 format_transport_proto, em->uri_elts.transport_proto);
-      exit (1);
+      goto exit_on_error;
     }
   if (em->proto_cb_vft->set_defaults_after_opts_cb)
     em->proto_cb_vft->set_defaults_after_opts_cb ();
@@ -1006,8 +1023,8 @@ main (int argc, char **argv)
   if (connect_to_vpp (app_name))
     {
       svm_region_exit ();
-      ECHO_FAIL ("Couldn't connect to vpe, exiting...\n");
-      exit (1);
+      ECHO_FAIL (ECHO_FAIL_CONNECT_TO_VPP, "Couldn't connect to vpp");
+      goto exit_on_error;
     }
 
   echo_session_prealloc (em);
@@ -1016,51 +1033,55 @@ main (int argc, char **argv)
   echo_send_attach (em);
   if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
     {
-      ECHO_FAIL ("Couldn't attach to vpp, did you run <session enable> ?\n");
-      exit (1);
+      ECHO_FAIL (ECHO_FAIL_ATTACH_TO_VPP,
+		 "Couldn't attach to vpp, did you run <session enable> ?");
+      goto exit_on_error;
     }
   if (pthread_create (&em->mq_thread_handle,
 		      NULL /*attr */ , echo_mq_thread_fn, 0))
     {
-      ECHO_FAIL ("pthread create errored\n");
-      exit (1);
+      ECHO_FAIL (ECHO_FAIL_PTHREAD_CREATE, "pthread create errored");
+      goto exit_on_error;
     }
   for (i = 0; i < em->n_rx_threads; i++)
     if (pthread_create (&em->data_thread_handles[i],
 			NULL /*attr */ , echo_data_thread_fn, (void *) i))
       {
-	ECHO_FAIL ("pthread create errored\n");
-	exit (1);
+	ECHO_FAIL (ECHO_FAIL_PTHREAD_CREATE,
+		   "pthread create errored (index %d)", i);
+	goto exit_on_error;
       }
   if (em->i_am_master)
     server_run (em);
   else
     clients_run (em);
   echo_notify_event (em, ECHO_EVT_EXIT);
-  if (em->output_json)
-    print_global_json_stats (em);
-  else
-    print_global_stats (em);
   echo_free_sessions (em);
   echo_assert_test_suceeded (em);
   echo_send_detach (em);
   if (wait_for_state_change (em, STATE_DETACHED, TIMEOUT))
     {
-      ECHO_FAIL ("ECHO-ERROR: Couldn't detach from vpp, exiting...\n");
-      exit (1);
+      ECHO_FAIL (ECHO_FAIL_DETACH, "Couldn't detach from vpp");
+      goto exit_on_error;
     }
   int *rv;
   pthread_join (em->mq_thread_handle, (void **) &rv);
   if (rv)
     {
-      ECHO_FAIL ("mq pthread errored %d", rv);
-      exit (1);
+      ECHO_FAIL (ECHO_FAIL_MQ_PTHREAD, "mq pthread errored %d", rv);
+      goto exit_on_error;
     }
   if (em->use_sock_api)
     vl_socket_client_disconnect ();
   else
     vl_client_disconnect_from_vlib ();
+exit_on_error:
   ECHO_LOG (0, "Test complete !\n");
+  if (em->output_json)
+    print_global_json_stats (em);
+  else
+    print_global_stats (em);
+  vec_free (em->fail_descr);
   exit (em->has_failed);
 }
 

@@ -18,6 +18,12 @@
 
 #include <hs_apps/sapi/vpp_echo_common.h>
 
+char *echo_fail_code_str[] = {
+#define _(sym, str) str,
+  foreach_echo_fail_code
+#undef _
+};
+
 /*
  *
  *  Format functions
@@ -481,7 +487,8 @@ echo_get_session_from_handle (echo_main_t * em, u64 handle)
   clib_spinlock_unlock (&em->sid_vpp_handles_lock);
   if (!p)
     {
-      ECHO_FAIL ("unknown handle 0x%lx", handle);
+      ECHO_FAIL (ECHO_FAIL_GET_SESSION_FROM_HANDLE,
+		 "unknown handle 0x%lx", handle);
       return 0;
     }
   return pool_elt_at_index (em->sessions, p[0]);
