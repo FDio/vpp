@@ -17,6 +17,7 @@
  */
 #include <vnet/api_errno.h>
 #include <vppinfra/pool.h>
+#include <vnet/ethernet/ethernet.h>
 #include <ioam/export-common/ioam_export.h>
 
 static vlib_node_registration_t vxlan_gpe_ioam_export_process_node;

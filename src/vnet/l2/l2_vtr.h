@@ -20,6 +20,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/packet.h>
 #include <vnet/l2/l2_vtr.h>
 

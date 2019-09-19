@@ -73,6 +73,11 @@ I:	bfd
 M:	Klement Sekera <ksekera@cisco.com>
 F:	src/vnet/bfd/
 
+VNET Classifier
+I:	classify
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/classify
+
 VNET Device Drivers
 I:	devices
 M:	Damjan Marion <damarion@cisco.com>

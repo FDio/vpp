@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/ethernet/ethernet.h>
 #include <ioam/analyse/ioam_analyse.h>
 #include <ioam/export-common/ioam_export.h>
 #include <ioam/analyse/ip6/ip6_ioam_analyse.h>
