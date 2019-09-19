@@ -86,8 +86,8 @@ vl_api_lb_conf_t_handler
 
   rv = lb_conf((ip4_address_t *)&mp->ip4_src_address,
                (ip6_address_t *)&mp->ip6_src_address,
-               mp->sticky_buckets_per_core,
-               mp->flow_timeout);
+               ntohl(mp->sticky_buckets_per_core),
+               ntohl(mp->flow_timeout));
 
  REPLY_MACRO (VL_API_LB_CONF_REPLY);
 }
