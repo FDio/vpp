@@ -334,9 +334,8 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
   virtio_main_t *nm = &virtio_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
-  vnet_main_t *vnm = vnet_get_main ();
 
-  if (vnm->interface_main.gso_interface_count > 0)
+  if (vif->gso_enabled > 0)
     return virtio_interface_tx_inline (vm, node, frame, vif, 1 /* do_gso */ );
   else
     return virtio_interface_tx_inline (vm, node, frame, vif,

@@ -405,7 +405,6 @@ static clib_error_t *
 vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 		     vmxnet3_create_if_args_t * args)
 {
-  vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
   u32 ret, i, size;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -456,7 +455,6 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
   if (args->enable_gso && (vd->version >= 3))
     {
       vd->gso_enable = 1;
-      vnm->interface_main.gso_interface_count++;
     }
 
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_GET_LINK);
@@ -918,8 +916,6 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   clib_memset (vd, 0, sizeof (*vd));
   pool_put (vmxm->devices, vd);
 
-  if (vd->gso_enable)
-    vnm->interface_main.gso_interface_count--;
 }
 
 /*
