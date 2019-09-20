@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fb280aac_1fe17c0b",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-09-20T12:44:30Z",
+      "side": 1,
+      "message": "All this code blocks is identical for all nodes, I think it would be better if you moved it to an always_inline function so the VLIB_NODE_FN() just become as simple as a single call.\nThis would avoid having duplicated source code.",
+      "revId": "3fbd247a544e454b70784b06f660c878b1f49b5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
