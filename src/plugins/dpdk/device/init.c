@@ -207,7 +207,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   int i;
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
-  vnet_main_t *vnm = vnet_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
   vnet_sw_interface_t *sw;
@@ -756,7 +755,6 @@ dpdk_lib_init (dpdk_main_t * dm)
         if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
         {
           hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
-          vnm->interface_main.gso_interface_count++;
           xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO |
                                    DEV_TX_OFFLOAD_UDP_TSO;
         }
