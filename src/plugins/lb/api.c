@@ -78,16 +78,16 @@ vl_api_lb_conf_t_handler
   int rv = 0;
 
   if (mp->sticky_buckets_per_core == ~0) {
-    mp->sticky_buckets_per_core = lbm->per_cpu_sticky_buckets;
+    mp->sticky_buckets_per_core = htonl(lbm->per_cpu_sticky_buckets);
   }
   if (mp->flow_timeout == ~0) {
-    mp->flow_timeout = lbm->flow_timeout;
+    mp->flow_timeout = htonl(lbm->flow_timeout);
   }
 
   rv = lb_conf((ip4_address_t *)&mp->ip4_src_address,
                (ip6_address_t *)&mp->ip6_src_address,
-               mp->sticky_buckets_per_core,
-               mp->flow_timeout);
+               ntohl(mp->sticky_buckets_per_core),
+               ntohl(mp->flow_timeout));
 
  REPLY_MACRO (VL_API_LB_CONF_REPLY);
 }
