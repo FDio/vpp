@@ -861,9 +861,6 @@ typedef struct
   /* per-thread data */
   vnet_interface_per_thread_data_t *per_thread_data;
 
-  /* enable GSO processing in packet path if this count is > 0 */
-  u32 gso_interface_count;
-
   /* feature_arc_index */
   u8 output_feature_arc_index;
 } vnet_interface_main_t;

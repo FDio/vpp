@@ -2406,8 +2406,7 @@ always_inline uword
 ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 			     vlib_node_runtime_t * node,
 			     vlib_frame_t * frame,
-			     int do_counters, int is_midchain, int is_mcast,
-			     int do_gso)
+			     int do_counters, int is_midchain, int is_mcast)
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
@@ -2489,9 +2488,9 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
       u16 ip1_len = clib_net_to_host_u16 (ip1->length);
 
-      if (do_gso && (b[0]->flags & VNET_BUFFER_F_GSO))
+      if (b[0]->flags & VNET_BUFFER_F_GSO)
 	ip0_len = gso_mtu_sz (b[0]);
-      if (do_gso && (b[1]->flags & VNET_BUFFER_F_GSO))
+      if (b[1]->flags & VNET_BUFFER_F_GSO)
 	ip1_len = gso_mtu_sz (b[1]);
 
       ip4_mtu_check (b[0], ip0_len,
@@ -2659,7 +2658,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       /* Check MTU of outgoing interface. */
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
 
-      if (do_gso && (b[0]->flags & VNET_BUFFER_F_GSO))
+      if (b[0]->flags & VNET_BUFFER_F_GSO)
 	ip0_len = gso_mtu_sz (b[0]);
 
       ip4_mtu_check (b[0], ip0_len,
@@ -2763,7 +2762,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
       /* Check MTU of outgoing interface. */
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
-      if (do_gso && (b[0]->flags & VNET_BUFFER_F_GSO))
+      if (b[0]->flags & VNET_BUFFER_F_GSO)
 	ip0_len = gso_mtu_sz (b[0]);
 
       ip4_mtu_check (b[0], ip0_len,
@@ -2848,15 +2847,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_frame_t * frame,
 		    int do_counters, int is_midchain, int is_mcast)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  if (PREDICT_FALSE (vnm->interface_main.gso_interface_count > 0))
-    return ip4_rewrite_inline_with_gso (vm, node, frame, do_counters,
-					is_midchain, is_mcast,
-					1 /* do_gso */ );
-  else
-    return ip4_rewrite_inline_with_gso (vm, node, frame, do_counters,
-					is_midchain, is_mcast,
-					0 /* no do_gso */ );
+  return ip4_rewrite_inline_with_gso (vm, node, frame, do_counters,
+				      is_midchain, is_mcast);
 }
 
 
