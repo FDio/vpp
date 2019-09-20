@@ -421,7 +421,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   if (args->tap_flags & TAP_FLAG_GSO)
     {
       hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
-      vnm->interface_main.gso_interface_count++;
     }
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
@@ -490,10 +489,6 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   if (vif->type != VIRTIO_IF_TYPE_TAP)
     return VNET_API_ERROR_INVALID_INTERFACE;
 
-  /* decrement if this was a GSO interface */
-  if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
-    vnm->interface_main.gso_interface_count--;
-
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0);
@@ -550,7 +545,6 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
     {
       if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0)
 	{
-	  vnm->interface_main.gso_interface_count++;
 	  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
 	}
     }
@@ -558,7 +552,6 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
     {
       if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) != 0)
 	{
-	  vnm->interface_main.gso_interface_count--;
 	  hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
 	}
     }

@@ -1219,7 +1219,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	    {
 	      vif->gso_enabled = 1;
 	      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
-	      vnm->interface_main.gso_interface_count++;
 	    }
 	}
       if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ))
@@ -1259,9 +1258,6 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
     virtio_pci_legacy_del_queue (vm, vif, vif->max_queue_pairs * 2);
 
   virtio_pci_legacy_reset (vm, vif);
-
-  if (vif->gso_enabled)
-    vnm->interface_main.gso_interface_count--;
 
   if (vif->hw_if_index)
     {
