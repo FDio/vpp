@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1ef0aff1_a425326d",
+        "filename": "src/vnet/ip/ip_frag.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1867
+      },
+      "writtenOn": "2019-09-20T10:40:52Z",
+      "side": 1,
+      "message": "the value changed to 0x04",
+      "revId": "5210882557d94dea03bb0b4bcf0fcebd144b9178",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
