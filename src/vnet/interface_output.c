@@ -802,8 +802,10 @@ static_always_inline void vnet_interface_pcap_tx_trace
 {
   u32 n_left_from, *from;
   u32 sw_if_index;
+  vnet_main_t *vnm;
+  vnet_pcap_t *pp = &vlib_global_main.pcap;
 
-  if (PREDICT_TRUE (vlib_global_main.pcap[VLIB_TX].pcap_enable == 0))
+  if (PREDICT_TRUE (pp->pcap_tx_enable == 0))
     return;
 
   if (sw_if_index_from_buffer == 0)
@@ -814,7 +816,7 @@ static_always_inline void vnet_interface_pcap_tx_trace
   else
     sw_if_index = ~0;
 
-  vnet_main_t *vnm = vnet_get_main ();
+  vnm = vnet_get_main ();
   n_left_from = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
 
@@ -833,18 +835,15 @@ static_always_inline void vnet_interface_pcap_tx_trace
 	    (b0, vnm->classify_filter_table_indices[0],
 	     0 /* full classify */ );
 	  if (classify_filter_result)
-	    pcap_add_buffer (&vlib_global_main.pcap[VLIB_TX].pcap_main, vm,
-			     bi0, 512);
+	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
 	  continue;
 	}
 
       if (sw_if_index_from_buffer)
 	sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
-      if (vlib_global_main.pcap[VLIB_TX].pcap_sw_if_index == 0 ||
-	  vlib_global_main.pcap[VLIB_TX].pcap_sw_if_index == sw_if_index)
-	pcap_add_buffer (&vlib_global_main.pcap[VLIB_TX].pcap_main, vm, bi0,
-			 512);
+      if (pp->pcap_sw_if_index == 0 || pp->pcap_sw_if_index == sw_if_index)
+	pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
     }
 }
 
@@ -1169,7 +1168,8 @@ interface_drop_punt (vlib_main_t * vm,
 
 static inline void
 pcap_drop_trace (vlib_main_t * vm,
-		 vnet_interface_main_t * im, vlib_frame_t * f)
+		 vnet_interface_main_t * im,
+		 vnet_pcap_t * pp, vlib_frame_t * f)
 {
   u32 *from;
   u32 n_left = f->n_vectors;
@@ -1199,8 +1199,8 @@ pcap_drop_trace (vlib_main_t * vm,
 	continue;
 
       /* Trace all drops, or drops received on a specific interface */
-      if (im->pcap_sw_if_index == 0 ||
-	  im->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX])
+      if (pp->pcap_sw_if_index == 0 ||
+	  pp->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX])
 	{
 	  save_current_data = b0->current_data;
 	  save_current_length = b0->current_length;
@@ -1222,7 +1222,7 @@ pcap_drop_trace (vlib_main_t * vm,
 	  else if (b0->current_data > 0)
 	    vlib_buffer_advance (b0, (word) - b0->current_data);
 
-	  pcap_add_buffer (&im->pcap_main, vm, bi0, 512);
+	  pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
 
 	  b0->current_data = save_current_data;
 	  b0->current_length = save_current_length;
@@ -1251,9 +1251,10 @@ VLIB_NODE_FN (interface_drop) (vlib_main_t * vm,
 			       vlib_frame_t * frame)
 {
   vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
+  vnet_pcap_t *pp = &vlib_global_main.pcap;
 
-  if (PREDICT_FALSE (im->drop_pcap_enable))
-    pcap_drop_trace (vm, im, frame);
+  if (PREDICT_FALSE (pp->pcap_drop_enable))
+    pcap_drop_trace (vm, im, pp, frame);
 
   return interface_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_DROP);
 }
@@ -1415,142 +1416,6 @@ vnet_set_interface_output_node (vnet_main_t * vnm,
   hi->output_node_index = node_index;
 }
 #endif /* CLIB_MARCH_VARIANT */
-
-static clib_error_t *
-pcap_drop_trace_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_interface_main_t *im = &vnm->interface_main;
-  u8 *filename;
-  u32 max;
-  int matched = 0;
-  clib_error_t *error = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "on"))
-	{
-	  if (im->drop_pcap_enable == 0)
-	    {
-	      if (im->pcap_filename == 0)
-		im->pcap_filename = format (0, "/tmp/drop.pcap%c", 0);
-
-	      clib_memset (&im->pcap_main, 0, sizeof (im->pcap_main));
-	      im->pcap_main.file_name = (char *) im->pcap_filename;
-	      im->pcap_main.n_packets_to_capture = PCAP_DEF_PKT_TO_CAPTURE;
-	      if (im->pcap_pkts_to_capture)
-		im->pcap_main.n_packets_to_capture = im->pcap_pkts_to_capture;
-
-	      im->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
-	      im->drop_pcap_enable = 1;
-	      matched = 1;
-	      vlib_cli_output (vm, "pcap drop capture on...");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm, "pcap drop capture already on...");
-	    }
-	  matched = 1;
-	}
-      else if (unformat (input, "off"))
-	{
-	  matched = 1;
-
-	  if (im->drop_pcap_enable)
-	    {
-	      vlib_cli_output (vm, "captured %d pkts...",
-			       im->pcap_main.n_packets_captured);
-	      if (im->pcap_main.n_packets_captured)
-		{
-		  im->pcap_main.n_packets_to_capture =
-		    im->pcap_main.n_packets_captured;
-		  error = pcap_write (&im->pcap_main);
-		  if (im->pcap_main.flags & PCAP_MAIN_INIT_DONE)
-		    pcap_close (&im->pcap_main);
-		  if (error)
-		    clib_error_report (error);
-		  else
-		    vlib_cli_output (vm, "saved to %s...", im->pcap_filename);
-		}
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm, "pcap drop capture already off...");
-	    }
-
-	  im->drop_pcap_enable = 0;
-	}
-      else if (unformat (input, "max %d", &max))
-	{
-	  im->pcap_pkts_to_capture = max;
-	  matched = 1;
-	}
-
-      else if (unformat (input, "intfc %U",
-			 unformat_vnet_sw_interface, vnm,
-			 &im->pcap_sw_if_index))
-	matched = 1;
-      else if (unformat (input, "intfc any"))
-	{
-	  im->pcap_sw_if_index = 0;
-	  matched = 1;
-	}
-      else if (unformat (input, "file %s", &filename))
-	{
-	  u8 *chroot_filename;
-	  /* Brain-police user path input */
-	  if (strstr ((char *) filename, "..")
-	      || index ((char *) filename, '/'))
-	    {
-	      vlib_cli_output (vm, "illegal characters in filename '%s'",
-			       filename);
-	      continue;
-	    }
-
-	  chroot_filename = format (0, "/tmp/%s%c", filename, 0);
-	  vec_free (filename);
-
-	  if (im->pcap_filename)
-	    vec_free (im->pcap_filename);
-	  im->pcap_filename = chroot_filename;
-	  im->pcap_main.file_name = (char *) im->pcap_filename;
-	  matched = 1;
-	}
-      else if (unformat (input, "status"))
-	{
-	  if (im->drop_pcap_enable == 0)
-	    {
-	      vlib_cli_output (vm, "pcap drop capture is off...");
-	      continue;
-	    }
-
-	  vlib_cli_output (vm, "pcap drop capture: %d of %d pkts...",
-			   im->pcap_main.n_packets_captured,
-			   im->pcap_main.n_packets_to_capture);
-	  matched = 1;
-	}
-
-      else
-	break;
-    }
-
-  if (matched == 0)
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
-
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (pcap_trace_command, static) = {
-  .path = "pcap drop trace",
-  .short_help =
-  "pcap drop trace on off max <nn> intfc <intfc> file <name> status",
-  .function = pcap_drop_trace_command_fn,
-};
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -470,24 +470,32 @@ This should be of significant value when developing new vpp graph
 nodes. If new code mispositions b->current_data, it will be completely
 obvious from looking at the dispatch trace in wireshark.
 
-## pcap rx and tx tracing
+## pcap rx, tx, and drop tracing
 
-vpp also supports rx and tx packet capture in pcap format, through the
-"pcap rx trace" and "pcap tx trace" debug CLI commands
+vpp also supports rx, tx, and drop packet capture in pcap format,
+through the "pcap trace" debug CLI command.
 
-This command is used to start or stop a packet capture, or show
-the status of packet capture. Note that both "pcap rx trace" and
-"pcap tx trace" are implemented. The command syntax is identical,
-simply substitute rx for tx as needed.
+This command is used to start or stop a packet capture, or show the
+status of packet capture. Each of "pcap trace rx", "pcap trace tx",
+and "pcap trace drop" is implemented.  Supply one or more of "rx",
+"tx", and "drop" to enable multiple simultaneous capture types.
 
 These commands have the following optional parameters:
 
-on|off- Used to start or stop a packet capture.
+- <b>rx</b> - trace received packets.
+
+- <b>tx</b> - trace transmitted packets.
+
+- <b>drop</b> - trace dropped packets.
 
 - <b>max _nnnn_</b> - file size, number of packet captures. Once
   <nnnn> packets have been received, the trace buffer buffer is flushed
   to the indicated file. Defaults to 1000. Can only be updated if packet
   capture is off.
+
+- <b>max-bytes-per-pkt _nnnn_</b> - maximum number of bytes to trace
+  on a per-paket basis. Must be >32 and less than 9000. Default value:
+  512.
 
 - <b>intfc _interface_ | _any_</b> - Used to specify a given interface,
   or use '<em>any</em>' to run packet capture on all interfaces.
