@@ -60,7 +60,14 @@
 
 typedef struct
 {
-  int pcap_enable;
+  /* Trace RX pkts */
+  u8 pcap_rx_enable;
+  /* Trace TX pkts */
+  u8 pcap_tx_enable;
+  /* Trace drop pkts */
+  u8 pcap_drop_enable;
+  u8 pad1;
+  u32 max_bytes_per_pkt;
   u32 pcap_sw_if_index;
   pcap_main_t pcap_main;
   u32 filter_classify_table_index;
@@ -153,7 +160,7 @@ typedef struct vlib_main_t
   u8 *pcap_buffer;
 
   /* pcap rx / tx tracing */
-  vnet_pcap_t pcap[VLIB_N_RX_TX];
+  vnet_pcap_t pcap;
 
   /* Error handling. */
   vlib_error_main_t error_main;
