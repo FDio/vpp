@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "5b592703_f629fa4f",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-09-23T18:54:50Z",
+      "side": 1,
+      "message": "each loop means at least one branch miss, and that costs \u003e 10 clocks.\nBeside that you spend time on checking every single byte of dmac_bad, so all together it is more expensive than to just blindlyi compare 4 dmacs in single instruction and do msb mask.\nas msb mask gives you 4 bytes (u32).\n\nfor example:\n\nstatic_always_inline u32\nis_sec_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)\n{\n  u64x4 r0 \u003d u64x4_load_unaligned (dmacs) \u0026 u64x4_splat (DMAC_MASK);\n  r0 \u003d (r0 !\u003d u64x4_splat (hwaddr));\n  return u8x32_msb_mask ((u8x32) (r0));\n}\n\nWill give you back u32 where each byte is 0xff if there is no sec_dmac match and 0x00 if there is match.\n\nThen, you can simply do \"bitwise and\" between returned value and old dmac_bad for those 4 packets.\n\nLet\u0027s say that packets 0, 1, and 3 have primry dmac, and packet 2 have secondary dmac.\n\ndmac_bad will be \"0x00, 0x00, 0xff, 0x00\"\n\n\nresult of is_sec_dmac_bad_x4 on same 4 packets will be:\n\n\"0xFF, 0xFF, 0x00, 0xFF\"\n\n\nso doing simply \"bitwise and\" between those 2 u32 numbers will give you \"0x00, 0x00, 0x00, 0x00\", or in other words all for are not bad.",
+      "parentUuid": "89f4c1dc_e03892b0",
+      "range": {
+        "startLine": 729,
+        "startChar": 0,
+        "endLine": 730,
+        "endChar": 18
+      },
+      "revId": "d871e4dd17239e0c08d9885f16435e57721bd94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "30a9138f_d93c1980",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 5
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "Do you think I should do this inline instead of calling eth_input_dmac_check_x{1,4,8}()? Or add a u8 check_igbit argument to those functions and is_dmac_bad() and is_dmac_bad_x4() and only perform the ig bit check when that argument is true?",
       "parentUuid": "30a9138f_d93c1980",
+      "range": {
+        "startLine": 737,
+        "startChar": 6,
+        "endLine": 737,
+        "endChar": 29
+      },
+      "revId": "d871e4dd17239e0c08d9885f16435e57721bd94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7678b0c6_20376f11",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 737,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-09-23T18:54:50Z",
+      "side": 1,
+      "message": "See above...",
+      "parentUuid": "380988de_2558e3d3",
       "range": {
         "startLine": 737,
         "startChar": 6,
