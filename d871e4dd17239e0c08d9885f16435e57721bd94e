@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "336bce5b_f0f0bd18",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-09-23T12:39:11Z",
+      "side": 1,
+      "message": "this is expensive, probably it is cheaper just to blindly compare....",
+      "range": {
+        "startLine": 729,
+        "startChar": 0,
+        "endLine": 730,
+        "endChar": 18
+      },
+      "revId": "d871e4dd17239e0c08d9885f16435e57721bd94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "30a9138f_d93c1980",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 737,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-09-23T12:39:11Z",
+      "side": 1,
+      "message": "IGBIT check is already done so this can be done in a simpler way. Just mask and compare u64, if equal set dmac_bad to 0.",
+      "range": {
+        "startLine": 737,
+        "startChar": 6,
+        "endLine": 737,
+        "endChar": 29
+      },
+      "revId": "d871e4dd17239e0c08d9885f16435e57721bd94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
