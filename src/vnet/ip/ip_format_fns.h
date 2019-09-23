@@ -89,4 +89,16 @@ format_vl_api_address_with_prefix_t (u8 * s, va_list * args)
   return format_vl_api_prefix_t (s, args);
 }
 
+static inline u8 *
+format_vl_api_ip4_address_with_prefix_t (u8 * s, va_list * args)
+{
+        return format_vl_api_ip4_prefix_t (s, args);
+}
+
+static inline u8 *
+format_vl_api_ip6_address_with_prefix_t (u8 * s, va_list * args)
+{
+        return format_vl_api_ip6_prefix_t (s, args);
+}
+
 #endif
