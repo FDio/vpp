@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f92f5b50_c2fa63fb",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-09-23T08:25:51Z",
+      "side": 1,
+      "message": "can this be done later in the sequence and update current_data?\nthat way the buffer sent back to mpls-output already points at the MPLS header and there is no need for the extra mpls-oput-post-frag node.",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6d8704d7_f881d368",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-09-23T08:25:51Z",
+      "side": 1,
+      "message": "this can be removed if current_data is updated in the frag node.",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1fb6f38e_49c89ccb",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-09-23T08:25:51Z",
+      "side": 1,
+      "message": "inlines are preferable over macros.",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "12cac82e_3b8e6822",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-09-23T08:25:51Z",
+      "side": 1,
+      "message": "advance the calculated header length, rather than redo the calculation.",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bb707a88_d30a0718",
+        "filename": "src/vnet/qos/qos_mark.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-09-23T08:25:51Z",
+      "side": 1,
+      "message": "remove this",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
