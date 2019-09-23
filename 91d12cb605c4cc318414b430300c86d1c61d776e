@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a54914e8_a57d3258",
+        "filename": "src/plugins/gbp/gbp_contract.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-09-23T09:20:03Z",
+      "side": 1,
+      "message": "this shouldn\u0027t happen, as long as the number of rules in the ACL matches the number of rules in the contract. perhaps this is something we could verify in the CP?",
+      "revId": "91d12cb605c4cc318414b430300c86d1c61d776e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "72d4fa9a_948b355f",
+        "filename": "src/plugins/gbp/gbp_policy_dpo.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-09-23T09:20:03Z",
+      "side": 1,
+      "message": "do we need to init these values, or can we save the cycles?",
+      "revId": "91d12cb605c4cc318414b430300c86d1c61d776e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
