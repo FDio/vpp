@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2527404e_c7ef9ec5",
+        "filename": "src/vnet/devices/tap/tapv2.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-23T12:17:54Z",
+      "side": 1,
+      "message": "Update @param lines:\n*addr* -\u003e *prefix*\nno *_len.\nAlso for sw_interface_tap_v2_details.",
+      "range": {
+        "startLine": 42,
+        "startChar": 20,
+        "endLine": 42,
+        "endChar": 24
+      },
+      "revId": "0f275f4270f79faffcfe54a40a4e55324649f5c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
