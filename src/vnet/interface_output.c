@@ -1177,6 +1177,7 @@ pcap_drop_trace (vlib_main_t * vm,
   u32 bi0;
   i16 save_current_data;
   u16 save_current_length;
+  vlib_error_main_t *em = &vm->error_main;
 
   from = vlib_frame_vector_args (f);
 
@@ -1222,6 +1223,59 @@ pcap_drop_trace (vlib_main_t * vm,
 	  else if (b0->current_data > 0)
 	    vlib_buffer_advance (b0, (word) - b0->current_data);
 
+	  {
+	    vlib_buffer_t *last = b0;
+	    u32 error_node_index;
+	    int drop_string_len;
+	    vlib_node_t *n;
+	    /* Length of the error string */
+	    int error_string_len =
+	      clib_strnlen (em->error_strings_heap[b0->error], 128);
+
+	    /* Dig up the drop node */
+	    error_node_index = vm->node_main.node_by_error[b0->error];
+	    n = vlib_get_node (vm, error_node_index);
+
+	    /* Length of full drop string, w/ "nodename: " prepended */
+	    drop_string_len = error_string_len + vec_len (n->name) + 2;
+
+	    /* Find the last buffer in the chain */
+	    while (last->flags & VLIB_BUFFER_NEXT_PRESENT)
+	      last = vlib_get_buffer (vm, last->next_buffer);
+
+	    /*
+	     * Append <nodename>: <error-string> to the capture,
+	     * only if we can do that without allocating a new buffer.
+	     */
+	    if (PREDICT_TRUE ((last->current_data + last->current_length)
+			      < (VLIB_BUFFER_DEFAULT_DATA_SIZE
+				 - drop_string_len)))
+	      {
+		clib_memcpy_fast (last->data + last->current_data +
+				  last->current_length, n->name,
+				  vec_len (n->name));
+		clib_memcpy_fast (last->data + last->current_data +
+				  last->current_length + vec_len (n->name),
+				  ": ", 2);
+		clib_memcpy_fast (last->data + last->current_data +
+				  last->current_length + vec_len (n->name) +
+				  2, em->error_strings_heap[b0->error],
+				  error_string_len);
+		last->current_length += drop_string_len;
+		b0->flags &= ~(VLIB_BUFFER_TOTAL_LENGTH_VALID);
+		pcap_add_buffer (&pp->pcap_main, vm, bi0,
+				 pp->max_bytes_per_pkt);
+		last->current_length -= drop_string_len;
+		b0->current_data = save_current_data;
+		b0->current_length = save_current_length;
+		continue;
+	      }
+	  }
+
+	  /*
+	   * Didn't have space in the last buffer, here's the dropped
+	   * packet as-is
+	   */
 	  pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
 
 	  b0->current_data = save_current_data;
