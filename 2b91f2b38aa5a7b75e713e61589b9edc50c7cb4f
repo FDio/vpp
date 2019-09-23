@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "80930f15_065038e9",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-23T12:46:59Z",
+      "side": 1,
+      "message": "Agreed, wasn\u0027t conforatble writing cert-\u003ecert \u0026 cert-\u003ekey either",
+      "parentUuid": "201ce825_25da6560",
+      "range": {
+        "startLine": 164,
+        "startChar": 2,
+        "endLine": 164,
+        "endChar": 33
+      },
+      "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e87d2028_bc242d13",
         "filename": "src/vnet/session/application_interface.h",
         "patchSetId": 4
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "ee8d273f_dfd61b8e",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-23T12:46:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e87d2028_bc242d13",
+      "range": {
+        "startLine": 166,
+        "startChar": 15,
+        "endLine": 166,
+        "endChar": 27
+      },
+      "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8684cc19_c2764b01",
         "filename": "src/vnet/session/application_interface.h",
         "patchSetId": 4
@@ -59,6 +107,30 @@
       "writtenOn": "2019-09-16T23:26:50Z",
       "side": 1,
       "message": "I wonder if this should be a vector of app_indices. That is, a vector of all the applications that are using this cert+key pair. Typically, I\u0027d expect those to be 2, i.e., QUIC and TLS, but going forward we may have apps that internal apps that want access to cert and keys. \n\nWe can then requests apps to implement a cb function for this purpose.",
+      "range": {
+        "startLine": 168,
+        "startChar": 9,
+        "endLine": 168,
+        "endChar": 21
+      },
+      "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "86a6dbfd_cb3046f6",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-23T12:46:59Z",
+      "side": 1,
+      "message": "It\u0027s a good idea, in case some non-transport app has a specific usecase for certificates.\nFor now though the vent_app_add_cert_key_interest function is non thread safe (but as it\u0027s application level it *should* be considered ok).\nAlso the callback is in the app \u0027session_cb_vft_t\u0027 without being so much session-related.",
+      "parentUuid": "8684cc19_c2764b01",
       "range": {
         "startLine": 168,
         "startChar": 9,
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "75a66451_8691b4a5",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-23T12:46:59Z",
+      "side": 1,
+      "message": "I thought the cert-key store to be global (as the app store), so that certificate and keys can be shared by multiple transports \u0026 apps. And qalso to have the certificates survive the apps in the event of a detach.\n\nThe app-specific store (for now transport - quic \u0026 tls - specific) will be the crypto context store that has a cert_key_index and specific metadata attached to it.\n\nWe can discuss that further via webex if you want :)",
+      "parentUuid": "1dc2584b_8fad0ac6",
+      "range": {
+        "startLine": 169,
+        "startChar": 6,
+        "endLine": 169,
+        "endChar": 16
+      },
+      "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e328be4d_46c04551",
         "filename": "src/vnet/session/application_interface.h",
         "patchSetId": 4
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "aabf53be_311c85cf",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-23T12:46:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e328be4d_46c04551",
+      "range": {
+        "startLine": 172,
+        "startChar": 2,
+        "endLine": 172,
+        "endChar": 19
+      },
+      "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "45373a2a_f376f27f",
         "filename": "src/vnet/session/application_interface.h",
         "patchSetId": 4
@@ -137,6 +257,30 @@
       "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "16ac5a76_29350c81",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-23T12:46:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "45373a2a_f376f27f",
+      "range": {
+        "startLine": 252,
+        "startChar": 4,
+        "endLine": 252,
+        "endChar": 28
+      },
+      "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -183,6 +327,30 @@
       "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c9f069f_440136bb",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-23T12:46:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "09657158_ddd8fa5e",
+      "range": {
+        "startLine": 62,
+        "startChar": 2,
+        "endLine": 62,
+        "endChar": 21
+      },
+      "revId": "2b91f2b38aa5a7b75e713e61589b9edc50c7cb4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
