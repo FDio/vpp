@@ -728,8 +728,8 @@ print_usage_and_exit (void)
 	   "  use-svm-api         Use SVM API to connect to VPP\n"
 	   "  test-bytes[:assert] Check data correctness when receiving (assert fails on first error)\n"
 	   "  fifo-size N         Use N Kb fifos\n"
-	   "  rx-buf N            Use N Kb RX buffer\n"
-	   "  tx-buf N            Use N Kb TX test buffer\n"
+	   "  rx-buf N[Kb|Mb|GB]  Use N[Kb|Mb|GB] RX buffer\n"
+	   "  tx-buf N[Kb|Mb|GB]  Use N[Kb|Mb|GB] TX test buffer\n"
 	   "  appns NAMESPACE     Use the namespace NAMESPACE\n"
 	   "  all-scope           all-scope option\n"
 	   "  local-scope         local-scope option\n"
@@ -825,10 +825,10 @@ echo_process_opts (int argc, char **argv)
 	em->use_sock_api = 0;
       else if (unformat (a, "fifo-size %d", &tmp))
 	em->fifo_size = tmp << 10;
-      else if (unformat (a, "rx-buf %d", &tmp))
-	em->rx_buf_size = tmp << 10;
-      else if (unformat (a, "tx-buf %d", &tmp))
-	em->rx_buf_size = tmp << 10;
+      else if (unformat (a, "rx-buf %U", unformat_data, &em->rx_buf_size))
+	;
+      else if (unformat (a, "tx-buf %U", unformat_data, &em->tx_buf_size))
+	;
       else if (unformat (a, "nclients %d", &em->n_clients))
 	{
 	  em->n_sessions = em->n_clients + 1;
