@@ -16,6 +16,24 @@
       "revId": "3fbd247a544e454b70784b06f660c878b1f49b5e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7f699114_5bd0f063",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-09-23T09:13:00Z",
+      "side": 1,
+      "message": "I believe that we can use the information to optimize our processing. IP4 and IP6 tells us about protocol. So it will be helpful to optimize GSO node with this information. I\u0027ll do it, once this patch will get merge.",
+      "parentUuid": "fb280aac_1fe17c0b",
+      "revId": "3fbd247a544e454b70784b06f660c878b1f49b5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
