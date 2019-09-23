@@ -368,16 +368,12 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      map_trace_t *tr = vlib_add_trace (vm, node, p0, sizeof (*tr));
-	      tr->map_domain_index = map_domain_index0;
-	      tr->port = port0;
+	      map_add_trace (vm, node, p0, map_domain_index0, port0);
 	    }
 
 	  if (PREDICT_FALSE (p1->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      map_trace_t *tr = vlib_add_trace (vm, node, p1, sizeof (*tr));
-	      tr->map_domain_index = map_domain_index1;
-	      tr->port = port1;
+	      map_add_trace (vm, node, p1, map_domain_index1, port1);
 	    }
 
 	  if (error0 == MAP_ERROR_DECAP_SEC_CHECK && mm->icmp6_enabled)
@@ -523,9 +519,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      map_trace_t *tr = vlib_add_trace (vm, node, p0, sizeof (*tr));
-	      tr->map_domain_index = map_domain_index0;
-	      tr->port = (u16) port0;
+	      map_add_trace (vm, node, p0, map_domain_index0, port0);
 	    }
 
 	  if (mm->icmp6_enabled &&

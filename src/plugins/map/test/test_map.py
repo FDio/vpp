@@ -146,8 +146,6 @@ class TestMAP(VppTestCase):
         for p in rx:
             self.validate(p[1], v4_reply)
 
-        self.logger.debug("show trace")
-
         #
         # Fire in a v4 packet that will be encapped to the BR
         #
@@ -158,7 +156,6 @@ class TestMAP(VppTestCase):
 
         self.send_and_assert_encapped_one(v4, "3000::1", map_translated_addr)
 
-        self.logger.debug("show trace")
         #
         # Verify reordered fragments are able to pass as well
         #
@@ -171,8 +168,6 @@ class TestMAP(VppTestCase):
         frags.reverse()
 
         self.send_and_assert_encapped(frags, "3000::1", map_translated_addr)
-
-        self.logger.debug("show trace")
 
         # Enable MAP on interface.
         self.vapi.map_if_enable_disable(is_enable=1,
@@ -237,8 +232,6 @@ class TestMAP(VppTestCase):
             self.assertEqual(r[IP].src, p[IP].src)
             self.assertEqual(r[IP].dst, p[IP].dst)
 
-        return
-
         #
         # Pre-resolve. No API for this!!
         #
@@ -257,7 +250,7 @@ class TestMAP(VppTestCase):
         pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped_one(v4, "3000::1",
-                                          "2001::c0a8:0:0",
+                                          map_translated_addr,
                                           dmac=self.pg1.remote_hosts[2].mac)
 
         #
@@ -268,7 +261,7 @@ class TestMAP(VppTestCase):
         pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped_one(v4, "3000::1",
-                                          "2001::c0a8:0:0",
+                                          map_translated_addr,
                                           dmac=self.pg1.remote_hosts[3].mac)
 
         #
@@ -447,6 +440,7 @@ class TestMAP(VppTestCase):
         for p in rx:
             pass
             # p.show2()
+
         # reass_pkt = reassemble(rx)
         # p4_reply.ttl -= 1
         # p4_reply.id = 256
