@@ -326,10 +326,6 @@ define map_param_get
     @param icmp6_enable_unreachable - 1 = send ICMP unreachable err msgs
     @param ip4_nh_address - direct IP4 next-hop address
     @param ip6_nh_address - direct IP6 next-hop address
-    @param ip4_lifetime_ms - reassembly valid lifetime, or ~0
-    @param ip4_pool_size - max number of reassemblies, or ~0
-    @param ip4_buffers -  max number of reassembly buffers, or ~0
-    @param ip4_ht_ratio - reassembly valid lifetime, or ~0
     @param ip6_lifetime_ms - max number of reassemblies, or ~0
     @param ip6_pool_size - max number of reassemblies, or ~0
     @param ip6_buffers -  max number of reassembly buffers, or ~0 

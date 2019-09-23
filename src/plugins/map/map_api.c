@@ -385,45 +385,7 @@ map_param_set_reassembly (bool is_ipv6,
     }
   else
     {
-      if (pool_size != (u16) ~ 0)
-	{
-	  if (pool_size > MAP_IP4_REASS_CONF_POOL_SIZE_MAX)
-	    return MAP_ERR_BAD_POOL_SIZE;
-	  if (map_ip4_reass_conf_pool_size
-	      (pool_size, &ps_reass, &ps_packets))
-	    return MAP_ERR_BAD_POOL_SIZE;
-	}
-
-      if (ht_ratio != (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1))
-	{
-	  if (ht_ratio > MAP_IP4_REASS_CONF_HT_RATIO_MAX)
-	    return MAP_ERR_BAD_HT_RATIO;
-	  if (map_ip4_reass_conf_ht_ratio (ht_ratio, &ht_reass, &ht_packets))
-	    return MAP_ERR_BAD_HT_RATIO;
-	}
-
-      if (lifetime_ms != (u16) ~ 0)
-	{
-	  if (lifetime_ms > MAP_IP4_REASS_CONF_LIFETIME_MAX)
-	    return MAP_ERR_BAD_LIFETIME;
-	  if (map_ip4_reass_conf_lifetime (lifetime_ms))
-	    return MAP_ERR_BAD_LIFETIME;
-	}
-
-      if (buffers != ~0)
-	{
-	  if (buffers > MAP_IP4_REASS_CONF_BUFFERS_MAX)
-	    return MAP_ERR_BAD_BUFFERS;
-	  if (map_ip4_reass_conf_buffers (buffers))
-	    return MAP_ERR_BAD_BUFFERS;
-	}
-
-      if (map_main.ip4_reass_conf_buffers >
-	  map_main.ip4_reass_conf_pool_size *
-	  MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY)
-	{
-	  return MAP_ERR_BAD_BUFFERS_TOO_LARGE;
-	}
+      return MAP_ERR_UNSUPPORTED;
     }
 
   if (reass)
@@ -568,12 +530,6 @@ vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
   clib_memset (&rmp->ip4_nh_address, 0, sizeof (rmp->ip4_nh_address));
   clib_memset (&rmp->ip6_nh_address, 0, sizeof (rmp->ip6_nh_address));
 
-  rmp->ip4_lifetime_ms =
-    clib_net_to_host_u16 (mm->ip4_reass_conf_lifetime_ms);
-  rmp->ip4_pool_size = clib_net_to_host_u16 (mm->ip4_reass_conf_pool_size);
-  rmp->ip4_buffers = clib_net_to_host_u32 (mm->ip4_reass_conf_buffers);
-  rmp->ip4_ht_ratio = clib_net_to_host_f64 (mm->ip4_reass_conf_ht_ratio);
-
   rmp->ip6_lifetime_ms =
     clib_net_to_host_u16 (mm->ip6_reass_conf_lifetime_ms);
   rmp->ip6_pool_size = clib_net_to_host_u16 (mm->ip6_reass_conf_pool_size);
@@ -627,6 +583,8 @@ map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
     }
   else
     {
+      ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, is_enable);
+      ip6_sv_reass_enable_disable_with_refcnt (sw_if_index, is_enable);
       vnet_feature_enable_disable ("ip4-unicast", "ip4-map-t", sw_if_index,
 				   is_enable ? 1 : 0, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "ip6-map-t", sw_if_index,

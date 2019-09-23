@@ -32,6 +32,7 @@
 #define MAP_ERR_BAD_LIFETIME		-3
 #define MAP_ERR_BAD_BUFFERS		-4
 #define MAP_ERR_BAD_BUFFERS_TOO_LARGE	-5
+#define MAP_ERR_UNSUPPORTED             -6
 
 int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 		       ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
@@ -49,9 +50,9 @@ int map_param_set_fragmentation (bool inner, bool ignore_df);
 int map_param_set_icmp (ip4_address_t * ip4_err_relay_src);
 int map_param_set_icmp6 (u8 enable_unreachable);
 void map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, bool is_del);
-int map_param_set_reassembly (bool is_ipv6, u16 lifetime_ms,
-			      u16 pool_size, u32 buffers, f64 ht_ratio,
-			      u32 * reass, u32 * packets);
+int map_param_set_reassembly (bool is_ipv6, u16 lifetime_ms, u16 pool_size,
+			      u32 buffers, f64 ht_ratio, u32 * reass,
+			      u32 * packets);
 int map_param_set_security_check (bool enable, bool fragments);
 int map_param_set_traffic_class (bool copy, u8 tc);
 int map_param_set_tcp (u16 tcp_mss);
@@ -64,26 +65,6 @@ typedef enum
   MAP_DOMAIN_RFC6052 = 1 << 2,
 } __attribute__ ((__packed__)) map_domain_flags_e;
 
-/**
- * IP4 reassembly logic:
- * One virtually reassembled flow requires a map_ip4_reass_t structure in order
- * to keep the first-fragment port number and, optionally, cache out of sequence
- * packets.
- * There are up to MAP_IP4_REASS_MAX_REASSEMBLY such structures.
- * When in use, those structures are stored in a hash table of MAP_IP4_REASS_BUCKETS buckets.
- * When a new structure needs to be used, it is allocated from available ones.
- * If there is no structure available, the oldest in use is selected and used if and
- * only if it was first allocated more than MAP_IP4_REASS_LIFETIME seconds ago.
- * In case no structure can be allocated, the fragment is dropped.
- */
-
-#define MAP_IP4_REASS_LIFETIME_DEFAULT (100)	/* ms */
-#define MAP_IP4_REASS_HT_RATIO_DEFAULT (1.0)
-#define MAP_IP4_REASS_POOL_SIZE_DEFAULT 1024	// Number of reassembly structures
-#define MAP_IP4_REASS_BUFFERS_DEFAULT 2048
-
-#define MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY 5	// Number of fragment per reassembly
-
 #define MAP_IP6_REASS_LIFETIME_DEFAULT (100)	/* ms */
 #define MAP_IP6_REASS_HT_RATIO_DEFAULT (1.0)
 #define MAP_IP6_REASS_POOL_SIZE_DEFAULT 1024	// Number of reassembly structures
@@ -92,7 +73,6 @@ typedef enum
 #define MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY 5
 
 #define MAP_IP6_REASS_COUNT_BYTES
-#define MAP_IP4_REASS_COUNT_BYTES
 
 //#define IP6_MAP_T_OVERRIDE_TOS 0
 
@@ -142,38 +122,6 @@ typedef struct
 } map_domain_extra_t;
 
 #define MAP_REASS_INDEX_NONE ((u16)0xffff)
-
-/*
- * Hash key, padded out to 16 bytes for fast compare
- */
-/* *INDENT-OFF* */
-typedef union {
-  CLIB_PACKED (struct {
-    ip4_address_t src;
-    ip4_address_t dst;
-    u16 fragment_id;
-    u8 protocol;
-  });
-  u64 as_u64[2];
-  u32 as_u32[4];
-} map_ip4_reass_key_t;
-/* *INDENT-ON* */
-
-typedef struct
-{
-  map_ip4_reass_key_t key;
-  f64 ts;
-#ifdef MAP_IP4_REASS_COUNT_BYTES
-  u16 expected_total;
-  u16 forwarded;
-#endif
-  i32 port;
-  u16 bucket;
-  u16 bucket_next;
-  u16 fifo_prev;
-  u16 fifo_next;
-  u32 fragments[MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY];
-} map_ip4_reass_t;
 
 /*
  * MAP domain counters
@@ -291,26 +239,6 @@ typedef struct {
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
-  /*
-   * IPv4 encap and decap reassembly
-   */
-  /* Configuration */
-  f32 ip4_reass_conf_ht_ratio; //Size of ht is 2^ceil(log2(ratio*pool_size))
-  u16 ip4_reass_conf_pool_size; //Max number of allocated reass structures
-  u16 ip4_reass_conf_lifetime_ms; //Time a reassembly struct is considered valid in ms
-  u32 ip4_reass_conf_buffers; //Maximum number of buffers used by ip4 reassembly
-
-  /* Runtime */
-  map_ip4_reass_t *ip4_reass_pool;
-  u8 ip4_reass_ht_log2len; //Hash table size is 2^log2len
-  u16 ip4_reass_allocated;
-  u16 *ip4_reass_hash_table;
-  u16 ip4_reass_fifo_last;
-  clib_spinlock_t ip4_reass_lock;
-
-  /* Counters */
-  u32 ip4_reass_buffered_counter;
-
   bool frag_inner;		/* Inner or outer fragmentation */
   bool frag_ignore_df;		/* Fragment (outer) packet even if DF is set */
 
@@ -381,6 +309,15 @@ typedef struct {
   u32 map_domain_index;
   u16 port;
 } map_trace_t;
+
+always_inline void
+map_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+	       u32 map_domain_index, u16 port)
+{
+  map_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));
+  tr->map_domain_index = map_domain_index;
+  tr->port = port;
+}
 
 extern map_main_t map_main;
 
@@ -498,30 +435,7 @@ ip6_map_get_domain (ip6_address_t *addr,
   return pool_elt_at_index(mm->domains, mdi);
 }
 
-map_ip4_reass_t *
-map_ip4_reass_get(u32 src, u32 dst, u16 fragment_id,
-                  u8 protocol, u32 **pi_to_drop);
-void
-map_ip4_reass_free(map_ip4_reass_t *r, u32 **pi_to_drop);
-
-#define map_ip4_reass_lock() clib_spinlock_lock (&map_main.ip4_reass_lock)
-#define map_ip4_reass_unlock() clib_spinlock_unlock (&map_main.ip4_reass_lock)
-
-static_always_inline void
-map_ip4_reass_get_fragments(map_ip4_reass_t *r, u32 **pi)
-{
-  int i;
-  for (i=0; i<MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY; i++)
-    if(r->fragments[i] != ~0) {
-      vec_add1(*pi, r->fragments[i]);
-      r->fragments[i] = ~0;
-      map_main.ip4_reass_buffered_counter--;
-    }
-}
-
 clib_error_t * map_plugin_api_hookup (vlib_main_t * vm);
-
-int map_ip4_reass_add_fragment(map_ip4_reass_t *r, u32 pi);
 
 map_ip6_reass_t *
 map_ip6_reass_get(ip6_address_t *src, ip6_address_t *dst, u32 fragment_id,
@@ -538,15 +452,6 @@ map_ip6_reass_add_fragment(map_ip6_reass_t *r, u32 pi,
                            u8 *data_start, u16 data_len);
 
 void map_ip4_drop_pi(u32 pi);
-
-int map_ip4_reass_conf_ht_ratio(f32 ht_ratio, u32 *trashed_reass, u32 *dropped_packets);
-#define MAP_IP4_REASS_CONF_HT_RATIO_MAX 100
-int map_ip4_reass_conf_pool_size(u16 pool_size, u32 *trashed_reass, u32 *dropped_packets);
-#define MAP_IP4_REASS_CONF_POOL_SIZE_MAX (0xfeff)
-int map_ip4_reass_conf_lifetime(u16 lifetime_ms);
-#define MAP_IP4_REASS_CONF_LIFETIME_MAX 0xffff
-int map_ip4_reass_conf_buffers(u32 buffers);
-#define MAP_IP4_REASS_CONF_BUFFERS_MAX (0xffffffff)
 
 void map_ip6_drop_pi(u32 pi);
 
