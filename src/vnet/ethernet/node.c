@@ -998,10 +998,11 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   /* rx pcap capture if enabled */
-  if (PREDICT_FALSE (vlib_global_main.pcap[VLIB_RX].pcap_enable))
+  if (PREDICT_FALSE (vlib_global_main.pcap.pcap_rx_enable))
     {
       u32 bi0;
       vnet_main_t *vnm = vnet_get_main ();
+      vnet_pcap_t *pp = &vlib_global_main.pcap;
 
       from = vlib_frame_vector_args (from_frame);
       n_left = from_frame->n_vectors;
@@ -1020,17 +1021,16 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 		(b0, vnm->classify_filter_table_indices[0],
 		 0 /* full classify */ );
 	      if (classify_filter_result)
-		pcap_add_buffer (&vlib_global_main.pcap[VLIB_RX].pcap_main,
-				 vm, bi0, 512);
+		pcap_add_buffer (&pp->pcap_main, vm, bi0,
+				 pp->max_bytes_per_pkt);
 	      continue;
 	    }
 
-	  if (vlib_global_main.pcap[VLIB_RX].pcap_sw_if_index == 0 ||
-	      vlib_global_main.pcap[VLIB_RX].pcap_sw_if_index
-	      == vnet_buffer (b0)->sw_if_index[VLIB_RX])
+	  if (pp->pcap_sw_if_index == 0 ||
+	      pp->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX])
 	    {
-	      pcap_add_buffer (&vlib_global_main.pcap[VLIB_RX].pcap_main, vm,
-			       bi0, 512);
+	      pcap_add_buffer (&pp->pcap_main, vm, bi0,
+			       pp->max_bytes_per_pkt);
 	    }
 	}
     }

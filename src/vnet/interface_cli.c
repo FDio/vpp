@@ -1695,52 +1695,94 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
 };
 /* *INDENT-ON* */
 
+static u8 *
+format_vnet_pcap (u8 * s, va_list * args)
+{
+  vnet_pcap_t *pp = va_arg (*args, vnet_pcap_t *);
+  int type = va_arg (*args, int);
+  int printed = 0;
+
+  if (type == 0)
+    {
+      if (pp->pcap_rx_enable)
+	{
+	  s = format (s, "rx");
+	  printed = 1;
+	}
+      if (pp->pcap_tx_enable)
+	{
+	  if (printed)
+	    s = format (s, " and ");
+	  s = format (s, "tx");
+	  printed = 1;
+	}
+      if (pp->pcap_drop_enable)
+	{
+	  if (printed)
+	    s = format (s, " and ");
+	  s = format (s, "drop");
+	  printed = 1;
+	}
+      return s;
+    }
+  s = format (s, "unknown type %d!", type);
+  return s;
+}
+
+
 int
 vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
-  vlib_rx_or_tx_t rxtx = a->rxtx;
-  vnet_pcap_t *pp = &vm->pcap[rxtx];
+  vnet_pcap_t *pp = &vm->pcap;
   pcap_main_t *pm = &pp->pcap_main;
 
   if (a->status)
     {
-      if (pp->pcap_enable)
+      if (pp->pcap_rx_enable || pp->pcap_tx_enable || pp->pcap_drop_enable)
 	{
 	  vlib_cli_output
-	    (vm, "pcap %s dispatch capture enabled: %d of %d pkts...",
-	     (rxtx == VLIB_RX) ? "rx" : "tx",
+	    (vm, "pcap %U dispatch capture enabled: %d of %d pkts...",
+	     format_vnet_pcap, pp, 0 /* print type */ ,
 	     pm->n_packets_captured, pm->n_packets_to_capture);
 	  vlib_cli_output (vm, "capture to file %s", pm->file_name);
 	}
       else
-	vlib_cli_output (vm, "pcap %s dispatch capture disabled",
-			 (rxtx == VLIB_RX) ? "rx" : "tx");
+	vlib_cli_output (vm, "pcap dispatch capture disabled");
+
       return 0;
     }
 
   /* Consistency checks */
 
   /* Enable w/ capture already enabled not allowed */
-  if (pp->pcap_enable && a->enable)
+  if ((pp->pcap_rx_enable + pp->pcap_tx_enable + pp->pcap_drop_enable)
+      && (a->rx_enable + a->tx_enable + a->drop_enable))
     return VNET_API_ERROR_INVALID_VALUE;
 
   /* Disable capture with capture already disabled, not interesting */
-  if (pp->pcap_enable == 0 && a->enable == 0)
+  if (((pp->pcap_rx_enable + pp->pcap_tx_enable + pp->pcap_drop_enable) == 0)
+      && ((a->rx_enable + a->tx_enable + a->drop_enable == 0)))
     return VNET_API_ERROR_VALUE_EXIST;
 
   /* Change number of packets to capture while capturing */
-  if (pp->pcap_enable && a->enable
+  if ((pp->pcap_rx_enable + pp->pcap_tx_enable + pp->pcap_drop_enable)
+      && (a->rx_enable + a->tx_enable + a->drop_enable)
       && (pm->n_packets_to_capture != a->packets_to_capture))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
-  if (a->enable && a->filter
+  /* Classify filter specified, but no classify filter configured */
+  if ((a->rx_enable + a->tx_enable + a->drop_enable) && a->filter
       && (vec_len (vnm->classify_filter_table_indices) == 0))
     return VNET_API_ERROR_NO_SUCH_LABEL;
 
-  if (a->enable)
+  if (a->rx_enable + a->tx_enable + a->drop_enable)
     {
+      /* Sanity check max bytes per pkt */
+      if (a->max_bytes_per_pkt < 32 || a->max_bytes_per_pkt > 9000)
+	return VNET_API_ERROR_INVALID_MEMORY_SIZE;
+
       /* Clean up from previous run, if any */
       vec_free (pm->file_name);
       vec_free (pm->pcap_data);
@@ -1751,8 +1793,18 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 	clib_spinlock_init (&(pm->lock));
 
       if (a->filename == 0)
-	a->filename = format (0, "/tmp/%s.pcap%c",
-			      (rxtx == VLIB_RX) ? "rx" : "tx", 0);
+	{
+          u8 *stem = 0;
+
+	  if (a->rx_enable)
+	    stem = format (stem, "rx");
+	  if (a->tx_enable)
+	    stem = format (stem, "tx");
+	  if (a->drop_enable)
+	    stem = format (stem, "drop");
+          a->filename = format (0, "/tmp/%s.pcap%c", stem, 0);
+          vec_free (stem);
+	}
 
       pm->file_name = (char *) a->filename;
       pm->n_packets_captured = 0;
@@ -1764,11 +1816,16 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 	  vnm->classify_filter_table_indices[0];
       else
 	pp->filter_classify_table_index = ~0;
-      pp->pcap_enable = 1;
+      pp->pcap_rx_enable = a->rx_enable;
+      pp->pcap_tx_enable = a->tx_enable;
+      pp->pcap_drop_enable = a->drop_enable;
+      pp->max_bytes_per_pkt = a->max_bytes_per_pkt;
     }
   else
     {
-      pp->pcap_enable = 0;
+      pp->pcap_rx_enable = 0;
+      pp->pcap_tx_enable = 0;
+      pp->pcap_drop_enable = 0;
       if (pm->n_packets_captured)
 	{
 	  clib_error_t *error;
@@ -1794,17 +1851,19 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 }
 
 static clib_error_t *
-pcap_trace_command_internal (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd, vlib_rx_or_tx_t rxtx)
+pcap_trace_command_fn (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_pcap_dispatch_trace_args_t _a, *a = &_a;
   vnet_main_t *vnm = vnet_get_main ();
   u8 *filename = 0;
   u32 max = 1000;
+  u32 max_bytes_per_pkt = 512;
   int rv;
-  int enable = 0;
+  int rx_enable = 0;
+  int tx_enable = 0;
+  int drop_enable = 0;
   int status = 0;
   int filter = 0;
   u32 sw_if_index = 0;
@@ -1815,13 +1874,16 @@ pcap_trace_command_internal (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "on %=", &enable, 1))
-	;
-      else if (unformat (line_input, "enable %=", &enable, 1))
-	;
-      else if (unformat (line_input, "off %=", &enable, 0))
-	;
-      else if (unformat (line_input, "disable %=", &enable, 0))
+      if (unformat (line_input, "rx"))
+	rx_enable = 1;
+      else if (unformat (line_input, "tx"))
+	tx_enable = 1;
+      else if (unformat (line_input, "drop"))
+	drop_enable = 1;
+      else if (unformat (line_input, "off"))
+	rx_enable = tx_enable = drop_enable = 0;
+      else if (unformat (line_input, "max-bytes-per-pkt %u",
+			 &max_bytes_per_pkt))
 	;
       else if (unformat (line_input, "max %d", &max))
 	;
@@ -1850,12 +1912,14 @@ pcap_trace_command_internal (vlib_main_t * vm,
 
   /* no need for memset (a, 0, sizeof (*a)), set all fields here. */
   a->filename = filename;
-  a->enable = enable;
+  a->rx_enable = rx_enable;
+  a->tx_enable = tx_enable;
+  a->drop_enable = drop_enable;
   a->status = status;
   a->packets_to_capture = max;
-  a->rxtx = rxtx;
   a->sw_if_index = sw_if_index;
   a->filter = filter;
+  a->max_bytes_per_pkt = max_bytes_per_pkt;
 
   rv = vnet_pcap_dispatch_trace_configure (a);
 
@@ -1880,6 +1944,10 @@ pcap_trace_command_internal (vlib_main_t * vm,
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       return clib_error_return (0, "No packets captured...");
 
+    case VNET_API_ERROR_INVALID_MEMORY_SIZE:
+      return clib_error_return (0,
+				"Max bytes per pkt must be > 32, < 9000...");
+
     case VNET_API_ERROR_NO_SUCH_LABEL:
       return clib_error_return
 	(0, "No classify filter configured, see 'classify filter...'");
@@ -1891,30 +1959,20 @@ pcap_trace_command_internal (vlib_main_t * vm,
   return 0;
 }
 
-static clib_error_t *
-pcap_rx_trace_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  return pcap_trace_command_internal (vm, input, cmd, VLIB_RX);
-}
-
-static clib_error_t *
-pcap_tx_trace_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  return pcap_trace_command_internal (vm, input, cmd, VLIB_TX);
-}
-
-
 /*?
  * This command is used to start or stop a packet capture, or show
- * the status of packet capture. Note that both "pcap rx trace" and
- * "pcap tx trace" are implemented. The command syntax is identical,
- * simply substitute rx for tx as needed.
+ * the status of packet capture.
  *
  * This command has the following optional parameters:
  *
- * - <b>on|off</b> - Used to start or stop a packet capture.
+ *
+ * - <b>rx</b> - Capture received packets
+ *
+ * - <b>tx</b> - Capture transmitted packets
+ *
+ * - <b>drop</b> - Capture dropped packets
+ *
+ * - <b>off</b> - Stop capturing packets, write results to the specified file
  *
  * - <b>max <nn></b> - Depth of local buffer. Once '<em>nn</em>' number
  *   of packets have been received, buffer is flushed to file. Once another
@@ -1922,7 +1980,10 @@ pcap_tx_trace_command_fn (vlib_main_t * vm,
  *   to file, overwriting previous write. If not entered, value defaults
  *   to 100. Can only be updated if packet capture is off.
  *
- * - <b>intfc <interface>|any</b> - Used to specify a given interface,
+ * - <b>max-bytes-per-pkt <nnnn></b> - Maximum number of bytes to capture
+ *   for each packet. Must be >= 32, <= 9000.
+ *
+ * - <b>intfc <interface-name>|any</b> - Used to specify a given interface,
  *   or use '<em>any</em>' to run packet capture on all interfaces.
  *   '<em>any</em>' is the default if not provided. Settings from a previous
  *   packet capture are preserved, so '<em>any</em>' can be used to reset
@@ -1931,8 +1992,9 @@ pcap_tx_trace_command_fn (vlib_main_t * vm,
  * - <b>file <name></b> - Used to specify the output filename. The file will
  *   be placed in the '<em>/tmp</em>' directory, so only the filename is
  *   supported. Directory should not be entered. If file already exists, file
- *   will be overwritten. If no filename is provided, '<em>/tmp/vpe.pcap</em>'
- *   will be used. Can only be updated if packet capture is off.
+ *   will be overwritten. If no filename is provided, the file will be
+ *   named "/tmp/rx.pcap", "/tmp/tx.pcap", "/tmp/rxandtx.pcap", etc.
+ *   Can only be updated if packet capture is off.
  *
  * - <b>status</b> - Displays the current status and configured attributes
  *   associated with a packet capture. If packet capture is in progress,
@@ -1942,21 +2004,20 @@ pcap_tx_trace_command_fn (vlib_main_t * vm,
  *
  * @cliexpar
  * Example of how to display the status of a tx packet capture when off:
- * @cliexstart{pcap tx trace status}
+ * @cliexstart{pcap trace status}
  * max is 100, for any interface to file /tmp/vpe.pcap
  * pcap tx capture is off...
  * @cliexend
  * Example of how to start a tx packet capture:
- * @cliexstart{pcap tx trace on max 35 intfc GigabitEthernet0/8/0 file vppTest.pcap}
- * pcap tx capture on...
+ * @cliexstart{pcap trace tx max 35 intfc GigabitEthernet0/8/0 file vppTest.pcap}
  * @cliexend
  * Example of how to display the status of a tx packet capture in progress:
- * @cliexstart{pcap tx trace status}
+ * @cliexstart{pcap trace status}
  * max is 35, for interface GigabitEthernet0/8/0 to file /tmp/vppTest.pcap
  * pcap tx capture is on: 20 of 35 pkts...
  * @cliexend
  * Example of how to stop a tx packet capture:
- * @cliexstart{vppctl pcap tx trace off}
+ * @cliexstart{pcap trace off}
  * captured 21 pkts...
  * saved to /tmp/vppTest.pcap...
  * @cliexend
@@ -1964,16 +2025,10 @@ pcap_tx_trace_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 
 VLIB_CLI_COMMAND (pcap_tx_trace_command, static) = {
-    .path = "pcap tx trace",
+    .path = "pcap trace",
     .short_help =
-    "pcap tx trace [on|off] [max <nn>] [intfc <interface>|any] [file <name>] [status]",
-    .function = pcap_tx_trace_command_fn,
-};
-VLIB_CLI_COMMAND (pcap_rx_trace_command, static) = {
-    .path = "pcap rx trace",
-    .short_help =
-    "pcap rx trace [on|off] [max <nn>] [intfc <interface>|any] [file <name>] [status]",
-    .function = pcap_rx_trace_command_fn,
+    "pcap trace rx tx drop off [max <nn>] [intfc <interface>|any] [file <name>] [status] [max-bytes-per-pkt <nnnn>]",
+    .function = pcap_trace_command_fn,
 };
 /* *INDENT-ON* */
 
