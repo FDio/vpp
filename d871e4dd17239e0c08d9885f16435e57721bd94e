@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "89f4c1dc_e03892b0",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-09-23T17:58:20Z",
+      "side": 1,
+      "message": "I considered this when I was working on the patch but I was not sure if it would result in any gain in performance.\n\nAs dmacs_bad is iterated, any entries which have already matched an interface hw addr (!dmac_bad[0]) are skipped. When a bad (nonzero) entry is found, the dmacs in the next spots in the array may have already matched. If 8 dmacs are blindly compared starting at a bad one that was found, some subset of the last 7 may have already matched an interface address and will fail the comparison with the interface address currently being examined.\n\nSince a dmac only has to match one of the interface hw addresses for it to be valid, dmac_bad should only be updated with results of a comparison against a secondary addr if the dmac_bad entry was nonzero before and would change to 0. An entry that was already 0 because it matched the primary hw addr should not be set to nonzero because it did not match a secondary addr.\n\nBecause of this, it seemed to me that for every comparison between a packet dmac and an interface secondary mac addr, that the current value of the dmac_bad entry would need to be read and checked to see if it was nonzero before being updated. So it seemed like the cost of figuring out which entries had not been matched yet was unavoidable.\n\nThat was my logic for coding it the way I did. Your opinions about what would be most efficient are probably better informed than mine, so I will defer to your judgement if you still think it would be better to compare a batch of dmacs blindly when we find a bad one. Let me know and I\u0027ll submit a patch.",
+      "parentUuid": "336bce5b_f0f0bd18",
+      "range": {
+        "startLine": 729,
+        "startChar": 0,
+        "endLine": 730,
+        "endChar": 18
+      },
+      "revId": "d871e4dd17239e0c08d9885f16435e57721bd94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "30a9138f_d93c1980",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 5
@@ -36,6 +60,30 @@
       "writtenOn": "2019-09-23T12:39:11Z",
       "side": 1,
       "message": "IGBIT check is already done so this can be done in a simpler way. Just mask and compare u64, if equal set dmac_bad to 0.",
+      "range": {
+        "startLine": 737,
+        "startChar": 6,
+        "endLine": 737,
+        "endChar": 29
+      },
+      "revId": "d871e4dd17239e0c08d9885f16435e57721bd94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "380988de_2558e3d3",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 737,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-09-23T17:58:20Z",
+      "side": 1,
+      "message": "Do you think I should do this inline instead of calling eth_input_dmac_check_x{1,4,8}()? Or add a u8 check_igbit argument to those functions and is_dmac_bad() and is_dmac_bad_x4() and only perform the ig bit check when that argument is true?",
+      "parentUuid": "30a9138f_d93c1980",
       "range": {
         "startLine": 737,
         "startChar": 6,
