@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "6b45fae3_485113ad",
+        "filename": "src/plugins/gbp/gbp_contract.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-09-23T09:27:34Z",
+      "side": 1,
+      "message": "True, but if the CP messed up for some reasons, we will not detect the error. This happened during new unit tests writing for example.\nThis could also happen in the field in case of a CP bug. In that case I think it is worthwhile to be cautious (we do not want to accept traffic we should have dropped) and to be able to detect the error (for debugging purpose).",
+      "parentUuid": "a54914e8_a57d3258",
+      "revId": "91d12cb605c4cc318414b430300c86d1c61d776e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "72d4fa9a_948b355f",
         "filename": "src/plugins/gbp/gbp_policy_dpo.c",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2019-09-23T09:20:03Z",
       "side": 1,
       "message": "do we need to init these values, or can we save the cycles?",
+      "revId": "91d12cb605c4cc318414b430300c86d1c61d776e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c9cb6c12_1550d7a3",
+        "filename": "src/plugins/gbp/gbp_policy_dpo.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-09-23T09:27:34Z",
+      "side": 1,
+      "message": "We need it to have accurate traces at least, eg. on line 299, we jump directly to tracing w/o going through acl matching. Moreover, I am not too concern about this cost TBH.",
+      "parentUuid": "72d4fa9a_948b355f",
       "revId": "91d12cb605c4cc318414b430300c86d1c61d776e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
