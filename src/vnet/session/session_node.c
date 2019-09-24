@@ -1339,6 +1339,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 VLIB_REGISTER_NODE (session_queue_node) =
 {
   .function = session_queue_node_fn,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .name = "session-queue",
   .format_trace = format_session_queue_trace,
   .type = VLIB_NODE_TYPE_INPUT,

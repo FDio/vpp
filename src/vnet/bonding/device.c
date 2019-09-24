@@ -790,6 +790,7 @@ bond_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bond_process_node) = {
   .function = bond_process,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "bond-process",
 };

@@ -481,6 +481,7 @@ VLIB_NODE_FN (vmxnet3_input_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (vmxnet3_input_node) = {
   .name = "vmxnet3-input",
   .sibling_of = "device-input",
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .format_trace = format_vmxnet3_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
