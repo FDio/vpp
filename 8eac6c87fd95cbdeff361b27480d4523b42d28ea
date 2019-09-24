@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0268f88e_bfc290f5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 7
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-24T12:54:48Z",
+      "side": 1,
+      "message": "Remove, Gerrit takes into account only the value from line 58.",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 10
+      },
+      "revId": "8eac6c87fd95cbdeff361b27480d4523b42d28ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "82d00c7c_40092aac",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-24T12:54:48Z",
+      "side": 1,
+      "message": "Is this a docstring [0]?\nI like docstrings, but not when they increase confusion.\n\n[0] https://www.python.org/dev/peps/pep-0257/",
+      "range": {
+        "startLine": 88,
+        "startChar": 8,
+        "endLine": 88,
+        "endChar": 16
+      },
+      "revId": "8eac6c87fd95cbdeff361b27480d4523b42d28ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
