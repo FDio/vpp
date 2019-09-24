@@ -303,6 +303,7 @@ VLIB_NODE_FN (dpdk_crypto_input_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (dpdk_crypto_input_node) =
 {
   .name = "dpdk-crypto-input",
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .format_trace = format_dpdk_crypto_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,

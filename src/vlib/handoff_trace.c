@@ -79,6 +79,7 @@ typedef enum
 VLIB_REGISTER_NODE (handoff_trace_node, static) =
 {
   .name = "handoff_trace",
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .function = handoff_trace_node_fn,
   .vector_size = sizeof (u32),
   .format_trace = format_handoff_trace,
