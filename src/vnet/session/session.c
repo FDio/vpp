@@ -1283,8 +1283,9 @@ session_transport_cleanup (session_t * s)
 
   /* Delete from main lookup table before we axe the the transport */
   session_lookup_del_session (s);
-  transport_cleanup (session_get_transport_proto (s), s->connection_index,
-		     s->thread_index);
+  if (s->session_state != SESSION_STATE_TRANSPORT_DELETED)
+    transport_cleanup (session_get_transport_proto (s), s->connection_index,
+		       s->thread_index);
   /* Since we called cleanup, no delete notification will come. So, make
    * sure the session is properly freed. */
   session_free_w_fifos (s);
