@@ -863,12 +863,17 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     }
 
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
+  if (ctx->snd_mss == 0)
+  {
+    session_evt_add_old (wrk, elt);
+    return SESSION_TX_NO_DATA;
+  }
   ctx->snd_space = transport_connection_snd_space (ctx->tc,
 						   vm->clib_time.
 						   last_cpu_time,
 						   ctx->snd_mss);
 
-  if (ctx->snd_space == 0 || ctx->snd_mss == 0)
+  if (ctx->snd_space == 0)
     {
       session_evt_add_old (wrk, elt);
       return SESSION_TX_NO_DATA;
