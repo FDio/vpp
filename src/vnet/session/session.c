@@ -1279,11 +1279,9 @@ session_transport_reset (session_t * s)
 void
 session_transport_cleanup (session_t * s)
 {
-  s->session_state = SESSION_STATE_CLOSED;
-
   /* Delete from main lookup table before we axe the the transport */
   session_lookup_del_session (s);
-  if (s->session_state != SESSION_STATE_TRANSPORT_DELETED)
+  if (s->session_state < SESSION_STATE_TRANSPORT_DELETED)
     transport_cleanup (session_get_transport_proto (s), s->connection_index,
 		       s->thread_index);
   /* Since we called cleanup, no delete notification will come. So, make
