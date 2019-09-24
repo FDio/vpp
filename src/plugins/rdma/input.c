@@ -360,6 +360,7 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (rdma_input_node) = {
   .name = "rdma-input",
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .sibling_of = "device-input",
   .format_trace = format_rdma_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,

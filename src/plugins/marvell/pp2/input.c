@@ -374,6 +374,7 @@ mrvl_pp2_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (mrvl_pp2_input_node) = {
   .function = mrvl_pp2_input_fn,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .name = "mrvl-pp2-input",
   .sibling_of = "device-input",
   .format_trace = format_mrvl_pp2_input_trace,

@@ -398,6 +398,7 @@ static char *tuntap_rx_error_strings[] = {
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
   .function = tuntap_rx,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .name = "tuntap-rx",
   .sibling_of = "device-input",
   .type = VLIB_NODE_TYPE_INPUT,
