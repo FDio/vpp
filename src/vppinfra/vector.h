@@ -76,6 +76,7 @@
 #endif
 
 #define _vector_size(n) __attribute__ ((vector_size (n)))
+#define _vector_size_unaligned(n) __attribute__ ((vector_size (n),  __aligned__ (1)))
 
 #define foreach_vec64i  _(i,8,8)  _(i,16,4)  _(i,32,2)
 #define foreach_vec64u  _(u,8,8)  _(u,16,4)  _(u,32,2)
@@ -111,6 +112,7 @@
 /* Type Definitions */
 #define _(t,s,c) \
 typedef t##s t##s##x##c _vector_size (s/8*c);	\
+typedef t##s t##s##x##c##u _vector_size_unaligned (s/8*c);	\
 typedef union {	  \
   t##s##x##c as_##t##s##x##c;	\
   t##s as_##t##s[c];	  \
