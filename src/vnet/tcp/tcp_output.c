@@ -2261,13 +2261,16 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 always_inline void
 tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
 {
-  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)))
+  if (!tc->is_tso)
     return;
-  u16 data_len =
-    b->current_length + b->total_length_not_including_first_buffer -
-    sizeof (tcp_header_t) - tc->snd_opts_len;
+  u16 data_len = b->current_length - sizeof (tcp_header_t) - tc->snd_opts_len;
 
-  if (data_len > tc->snd_mss)
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+    data_len += b->total_length_not_including_first_buffer;
+
+  if (PREDICT_TRUE (data_len <= tc->snd_mss))
+    return;
+  else
     {
       ASSERT ((b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID) != 0);
       ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
