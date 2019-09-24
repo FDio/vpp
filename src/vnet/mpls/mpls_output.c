@@ -81,23 +81,27 @@ format_mpls_output_trace (u8 * s, va_list * args)
 /*
  * Save the mpls header length and adjust the current to ip header
  */
-#define SET_MPLS_FRAGMENTATION(p0, adj0, next0)                                                                                      \
-{                                                                                                                                    \
-  /* advance size of (all) mpls header to ip header before fragmenting */                                                            \
-  /* save the current pointing to first mpls header. */                                                                              \
-  vnet_buffer (p0)->mpls.mpls_hdr_length = vnet_buffer(p0)->l3_hdr_offset - p0->current_data;                                        \
-  vlib_buffer_advance (p0, vnet_buffer(p0)->l3_hdr_offset-(p0->current_data));                                                       \
-                                                                                                                                     \
-  /* IP fragmentation */                                                                                                             \
-  ip_frag_set_vnet_buffer (p0, adj0[0].rewrite_header.max_l3_packet_bytes,                                                           \
-                           IP4_FRAG_NEXT_MPLS_OUTPUT_POST_FRAG,                                                                      \
-                           ((vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4) ? IP_FRAG_FLAG_IP4_HEADER:IP_FRAG_FLAG_IP6_HEADER));\
-                                                                                                                                     \
-  /* Tell ip_frag to retain certain mpls parameters after fragmentation of mpls packet */                                            \
-  vnet_buffer (p0)->ip_frag.flags = (vnet_buffer (p0)->ip_frag.flags | IP_FRAG_FLAG_MPLS_HEADER);                                    \
-                                                                                                                                     \
-  next0 = (vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;                 \
-}                                                                                                                                    \
+static inline u32
+set_mpls_fragmentation(vlib_buffer_t * p0, ip_adjacency_t * adj0)
+{
+  u32 next0;
+
+  /* advance size of (all) mpls header to ip header before fragmenting */
+  /* save the current pointing to first mpls header. */
+  vnet_buffer (p0)->mpls.mpls_hdr_length = vnet_buffer(p0)->l3_hdr_offset - p0->current_data;
+  vlib_buffer_advance (p0, vnet_buffer (p0)->mpls.mpls_hdr_length);
+
+  /* IP fragmentation */
+  ip_frag_set_vnet_buffer (p0, adj0[0].rewrite_header.max_l3_packet_bytes,
+                           IP4_FRAG_NEXT_MPLS_OUTPUT_POST_FRAG,
+                           ((vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4) ? IP_FRAG_FLAG_IP4_HEADER:IP_FRAG_FLAG_IP6_HEADER));
+
+  /* Tell ip_frag to retain certain mpls parameters after fragmentation of mpls packet */
+  vnet_buffer (p0)->ip_frag.flags = (vnet_buffer (p0)->ip_frag.flags | IP_FRAG_FLAG_MPLS_HEADER);
+  next0 = (vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4)? MPLS_OUTPUT_NEXT_IP4_FRAG:MPLS_OUTPUT_NEXT_IP6_FRAG;
+
+  return next0;
+}
 
 static inline uword
 mpls_output_inline (vlib_main_t * vm,
@@ -213,7 +217,7 @@ mpls_output_inline (vlib_main_t * vm,
           else
             {
 	      error0 = IP4_ERROR_MTU_EXCEEDED;
-              SET_MPLS_FRAGMENTATION(p0, adj0, next0);
+	      next0 = set_mpls_fragmentation (p0, adj0);
               vlib_node_increment_counter (vm, mpls_output_node.index,
                                            MPLS_ERROR_PKTS_NEED_FRAG,
                                            1);
@@ -236,7 +240,7 @@ mpls_output_inline (vlib_main_t * vm,
           else
             {
 	      error1 = IP4_ERROR_MTU_EXCEEDED;
-              SET_MPLS_FRAGMENTATION(p1, adj1, next1);
+	      next1 = set_mpls_fragmentation (p1, adj1);
               vlib_node_increment_counter (vm, mpls_output_node.index,
                                            MPLS_ERROR_PKTS_NEED_FRAG,
                                            1);
@@ -326,7 +330,7 @@ mpls_output_inline (vlib_main_t * vm,
           else
             {
 	      error0 = IP4_ERROR_MTU_EXCEEDED;
-              SET_MPLS_FRAGMENTATION(p0, adj0, next0);
+	      next0 = set_mpls_fragmentation (p0, adj0);
               vlib_node_increment_counter (vm, mpls_output_node.index,
                                            MPLS_ERROR_PKTS_NEED_FRAG,
                                            1);
