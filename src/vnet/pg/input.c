@@ -1797,6 +1797,7 @@ pg_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (pg_input_node) = {
   .function = pg_input,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .name = "pg-input",
   .sibling_of = "device-input",
   .type = VLIB_NODE_TYPE_INPUT,

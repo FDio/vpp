@@ -468,6 +468,7 @@ VLIB_REGISTER_NODE (avf_input_node) = {
   .state = VLIB_NODE_STATE_DISABLED,
   .n_errors = AVF_INPUT_N_ERROR,
   .error_strings = avf_input_error_strings,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 };
 
 /* *INDENT-ON* */

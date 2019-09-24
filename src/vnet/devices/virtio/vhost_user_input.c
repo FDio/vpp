@@ -794,6 +794,7 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "vhost-user-input",
   .sibling_of = "device-input",
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 
   /* Will be enabled if/when hardware is detected. */
   .state = VLIB_NODE_STATE_DISABLED,

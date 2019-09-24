@@ -237,6 +237,7 @@ VLIB_REGISTER_NODE (p2p_ethernet_input_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_p2p_ethernet_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 
   .n_errors = ARRAY_LEN(p2p_ethernet_error_strings),
   .error_strings = p2p_ethernet_error_strings,
