@@ -77,6 +77,8 @@ vl_api_lb_conf_t_handler
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
 
+  vl_api_lb_conf_t_endian(mp);
+
   if (mp->sticky_buckets_per_core == ~0) {
     mp->sticky_buckets_per_core = lbm->per_cpu_sticky_buckets;
   }
@@ -114,6 +116,8 @@ vl_api_lb_add_del_vip_t_handler
   int rv = 0;
   lb_vip_add_args_t args;
 
+  vl_api_lb_add_del_vip_t_endian(mp);
+
   /* if port == 0, it means all-port VIP */
   if (mp->port == 0)
     {
@@ -125,7 +129,7 @@ vl_api_lb_add_del_vip_t_handler
   if (mp->is_del) {
     u32 vip_index;
     if (!(rv = lb_vip_find_index(&(args.prefix), mp->pfx.len,
-                                 mp->protocol, ntohs(mp->port), &vip_index)))
+                                 mp->protocol, mp->port, &vip_index)))
       rv = lb_vip_del(vip_index);
   } else {
     u32 vip_index;
@@ -151,9 +155,9 @@ vl_api_lb_add_del_vip_t_handler
 
     args.plen = mp->pfx.len;
     args.protocol = mp->protocol;
-    args.port = ntohs(mp->port);
+    args.port = mp->port;
     args.type = type;
-    args.new_length = ntohl(mp->new_flows_table_length);
+    args.new_length = mp->new_flows_table_length;
 
     if (mp->encap == LB_API_ENCAP_TYPE_L3DSR) {
         args.encap_args.dscp = (u8)(mp->dscp & 0x3F);
@@ -161,7 +165,7 @@ vl_api_lb_add_del_vip_t_handler
     else if ((mp->encap == LB_API_ENCAP_TYPE_NAT4)
             ||(mp->encap == LB_API_ENCAP_TYPE_NAT6)) {
         args.encap_args.srv_type = mp->type;
-        args.encap_args.target_port = ntohs(mp->target_port);
+        args.encap_args.target_port = mp->target_port;
       }
 
     rv = lb_vip_add(args, &vip_index);
@@ -212,11 +216,13 @@ vl_api_lb_add_del_as_t_handler
   ip46_address_t vip_ip_prefix;
   ip46_address_t as_address;
 
+  vl_api_lb_add_del_as_t_endian(mp);
+
   ip_address_decode (&mp->pfx.address, &vip_ip_prefix);
   ip_address_decode (&mp->as_address, &as_address);
 
   if ((rv = lb_vip_find_index(&vip_ip_prefix, mp->pfx.len,
-                              mp->protocol, ntohs(mp->port), &vip_index)))
+                              mp->protocol, mp->port, &vip_index)))
     goto done;
 
   if (mp->is_del)
@@ -251,7 +257,7 @@ static void
 vl_api_lb_vip_dump_t_handler
 (vl_api_lb_vip_dump_t * mp)
 {
-
+  vl_api_lb_vip_dump_t_endian(mp);
   vl_api_registration_t *reg;
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -286,7 +292,6 @@ vl_api_lb_vip_dump_t_handler
         vl_api_send_msg (reg, (u8 *) rmp);
       }
   });
-
 
 }
 
@@ -325,7 +330,6 @@ static void send_lb_as_details
       }
   });
 
-
 }
 
 static void
@@ -337,6 +341,7 @@ vl_api_lb_as_dump_t_handler
   u8 dump_all = 0;
   ip46_address_t prefix;
 
+  vl_api_lb_as_dump_t_endian(mp);
   vl_api_registration_t *reg;
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -372,6 +377,8 @@ vl_api_lb_flush_vip_t_handler
   u32 vip_index;
   vl_api_lb_flush_vip_reply_t * rmp;
 
+  vl_api_lb_flush_vip_t_endian(mp);
+
   if (mp->port == 0)
     {
       mp->protocol = ~0;
@@ -382,7 +389,7 @@ vl_api_lb_flush_vip_t_handler
   vip_plen = mp->pfx.len;
 
   rv = lb_vip_find_index(&vip_prefix, vip_plen, mp->protocol,
-                         ntohs(mp->port), &vip_index);
+                         mp->port, &vip_index);
 
   rv = lb_flush_vip_as(vip_index, ~0);
 
