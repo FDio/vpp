@@ -225,6 +225,25 @@ quic_connection_delete (quic_ctx_t * ctx)
   quic_ctx_free (ctx);
 }
 
+static u8 *
+quic_format_ctx_stat (u8 * s, va_list * args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  quicly_stats_t quicly_stats;
+
+  quicly_get_stats (ctx->conn, &quicly_stats);
+
+  s = format (s, "\n\rQUIC conn stats \n\r");
+
+  s =
+    format (s, "RTT: min:%d, smoothed:%d, variance:%d, latest:%d \n\r",
+	    quicly_stats.rtt.minimum, quicly_stats.rtt.smoothed,
+	    quicly_stats.rtt.variance, quicly_stats.rtt.latest);
+  s = format (s, "Packet loss:%d \n\r", quicly_stats.num_packets.lost);
+
+  return s;
+}
+
 /**
  * Called when quicly return an error
  * This function interacts tightly with quic_proto_on_close
@@ -232,6 +251,9 @@ quic_connection_delete (quic_ctx_t * ctx)
 static void
 quic_connection_closed (quic_ctx_t * ctx)
 {
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_cli_output (vm, "%U", quic_format_ctx_stat, ctx);
+
   QUIC_DBG (2, "QUIC connection %u/%u closed", ctx->c_thread_index,
 	    ctx->c_c_index);
 
@@ -2264,12 +2286,42 @@ quic_plugin_crypto_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+
+
+static clib_error_t *
+quic_plugin_showstats_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  quic_main_t *qm = &quic_main;
+  quic_ctx_t *ctx = NULL;
+  u32 num_workers = vlib_num_workers ();
+
+  for (int i = 0; i < num_workers + 1; i++)
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (ctx, qm->ctx_pool[i],
+      ({
+        if(!(ctx->flags & QUIC_F_IS_LISTENER) && !(ctx->flags & QUIC_F_IS_STREAM))
+          vlib_cli_output (vm, "%U", quic_format_ctx_stat, ctx);
+      }));
+      /* *INDENT-ON* */
+    }
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(quic_plugin_crypto_command, static)=
 {
   .path = "quic set crypto api",
   .short_help = "quic set crypto api [picotls, vpp]",
   .function = quic_plugin_crypto_command_fn,
+};
+VLIB_CLI_COMMAND(quic_plugin_stats_command, static)=
+{
+  .path = "quic show stats",
+  .short_help = "quic show stats",
+  .function = quic_plugin_showstats_command_fn,
 };
 VLIB_PLUGIN_REGISTER () =
 {
