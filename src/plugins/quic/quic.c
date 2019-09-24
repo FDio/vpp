@@ -225,6 +225,69 @@ quic_connection_delete (quic_ctx_t * ctx)
   quic_ctx_free (ctx);
 }
 
+void
+quic_increment_counter (u8 evt, u8 val)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_increment_counter (vm, quic_input_node.index, evt, val);
+}
+
+struct st_quic_event_log_t
+{
+  quicly_event_logger_t super;
+};
+
+void
+quic_event_log (quicly_event_logger_t * _self, quicly_event_type_t type,
+		const quicly_event_attribute_t * attributes,
+		size_t num_attributes)
+{
+  if (type == QUICLY_EVENT_TYPE_PACKET_LOST)
+    {
+      QUIC_DBG (1, "QUIC packet loss");
+      quic_increment_counter (QUIC_ERROR_PACKET_DROP, 1);
+    }
+}
+
+quicly_event_logger_t *
+quic_new_event_logger ()
+{
+  struct st_quic_event_log_t *self;
+
+  if ((self = malloc (sizeof (*self))) == NULL)
+    return NULL;
+  /* *INDENT-OFF* */
+  *self = (struct st_quic_event_log_t) {{quic_event_log}};
+  /* *INDENT-ON* */
+  return &self->super;
+}
+
+void
+quic_free_event_logger (quicly_event_logger_t * _self)
+{
+  struct st_quicly_default_event_log_t *self = (void *) _self;
+  free (self);
+}
+
+static u8 *
+quic_format_ctx_stat (u8 * s, va_list * args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  quicly_stats_t quicly_stats;
+
+  quicly_get_stats (ctx->conn, &quicly_stats);
+
+  s = format (s, "\n\rQUIC conn stats \n\r");
+
+  s =
+    format (s, "RTT: min:%d, smoothed:%d, variance:%d, latest:%d \n\r",
+	    quicly_stats.rtt.minimum, quicly_stats.rtt.smoothed,
+	    quicly_stats.rtt.variance, quicly_stats.rtt.latest);
+  s = format (s, "Packet loss:%d \n\r", quicly_stats.num_packets.lost);
+
+  return s;
+}
+
 /**
  * Called when quicly return an error
  * This function interacts tightly with quic_proto_on_close
@@ -232,6 +295,7 @@ quic_connection_delete (quic_ctx_t * ctx)
 static void
 quic_connection_closed (quic_ctx_t * ctx)
 {
+
   QUIC_DBG (2, "QUIC connection %u/%u closed", ctx->c_thread_index,
 	    ctx->c_c_index);
 
@@ -326,6 +390,9 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
       QUIC_DBG (1, "Not enough space to enqueue payload");
       return QUIC_ERROR_FULL_FIFO;
     }
+
+  quic_increment_counter (QUIC_ERROR_TX_PACKETS, 1);
+
   return 0;
 }
 
@@ -1966,6 +2033,8 @@ quic_process_one_rx_packet (u64 udp_session_handle,
       return 1;
     }
 
+  quic_increment_counter (QUIC_ERROR_RX_PACKETS, 1);
+
   rv = 0;
   quic_build_sockaddr (sa, &salen, &ph.rmt_ip, ph.rmt_port, ph.is_ip4);
   quicly_ctx = quic_get_quicly_ctx_from_udp (udp_session_handle);
@@ -2264,12 +2333,42 @@ quic_plugin_crypto_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+
+
+static clib_error_t *
+quic_plugin_showstats_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  quic_main_t *qm = &quic_main;
+  quic_ctx_t *ctx = NULL;
+  u32 num_workers = vlib_num_workers ();
+
+  for (int i = 0; i < num_workers + 1; i++)
+    {
+      /* *INDENT-OFF* */
+      pool_foreach (ctx, qm->ctx_pool[i],
+      ({
+        if(!(ctx->flags & QUIC_F_IS_LISTENER) && !(ctx->flags & QUIC_F_IS_STREAM))
+          vlib_cli_output (vm, "%U", quic_format_ctx_stat, ctx);
+      }));
+      /* *INDENT-ON* */
+    }
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(quic_plugin_crypto_command, static)=
 {
   .path = "quic set crypto api",
   .short_help = "quic set crypto api [picotls, vpp]",
   .function = quic_plugin_crypto_command_fn,
+};
+VLIB_CLI_COMMAND(quic_plugin_stats_command, static)=
+{
+  .path = "quic show stats",
+  .short_help = "quic show stats",
+  .function = quic_plugin_showstats_command_fn,
 };
 VLIB_PLUGIN_REGISTER () =
 {
