@@ -1189,7 +1189,7 @@ tcp_session_cal_goal_size (tcp_connection_t * tc)
   goal_size = TCP_MAX_GSO_SZ - tc->snd_mss % TCP_MAX_GSO_SZ;
   goal_size = clib_min (goal_size, tc->snd_wnd / 2);
 
-  return goal_size;
+  return goal_size > tc->snd_mss ? goal_size : tc->snd_mss;
 }
 
 /**
