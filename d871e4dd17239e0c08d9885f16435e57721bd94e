@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "7bcaa94e_13dcea2e",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2019-09-24T22:21:35Z",
+      "side": 1,
+      "message": "Understood. Thanks for taking the time to explain!\n\nThe most recently submitted patchset follows your recommendations. The ig bit is not checked for secondary dmacs and when an unmatched dmac is found, a group of dmacs starting at that one are blindly checked.\n\nOther minor changes included in the patchset:\n\n* The variable \u0027bad\u0027 is reused when looping over secondary hardware addresses. If all dmacs have been matched after comparing to a secondary address, bad will have the value 0 and we will break from the loop instead of continuing to loop through the rest of the secondary addresses.\n\n* Since we blindly compare a group of packets and some of those may not need it, the comparison is performed on at most 4 dmacs at a time instead of comparing up to 8 at a time.\n\nLet me know if you find any additional issues that I should fix.",
+      "parentUuid": "5b592703_f629fa4f",
+      "range": {
+        "startLine": 729,
+        "startChar": 0,
+        "endLine": 730,
+        "endChar": 18
+      },
+      "revId": "d871e4dd17239e0c08d9885f16435e57721bd94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "30a9138f_d93c1980",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 5
