@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ed04eb02_3e8a636c",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 1867
+      },
+      "writtenOn": "2019-09-24T06:48:36Z",
+      "side": 1,
+      "message": "Copying the mpls header later, not giving good results. The second fragment is not correctly setting the header. Copying mpls header before ip header is looking more clean. I can still do it by doing some adjustment, but Iam not finding it clean approach. Is having separate node for mpls fragments handling not good.",
+      "parentUuid": "f92f5b50_c2fa63fb",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6d8704d7_f881d368",
         "filename": "src/vnet/mpls/mpls_output.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2019-09-23T08:25:51Z",
       "side": 1,
       "message": "this can be removed if current_data is updated in the frag node.",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2493b1ad_c1c173b5",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 1867
+      },
+      "writtenOn": "2019-09-24T06:48:36Z",
+      "side": 1,
+      "message": "Same comment as in ip_frag.c. Not getting good results by moving the COPY_MPLS_HDR later.",
+      "parentUuid": "6d8704d7_f881d368",
       "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "f1660927_597c1230",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1867
+      },
+      "writtenOn": "2019-09-24T06:48:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1fb6f38e_49c89ccb",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "12cac82e_3b8e6822",
         "filename": "src/vnet/mpls/mpls_output.c",
         "patchSetId": 4
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "f2987a5c_bcc2ddae",
+        "filename": "src/vnet/mpls/mpls_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 1867
+      },
+      "writtenOn": "2019-09-24T06:48:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "12cac82e_3b8e6822",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bb707a88_d30a0718",
         "filename": "src/vnet/qos/qos_mark.c",
         "patchSetId": 4
@@ -81,6 +153,24 @@
       "writtenOn": "2019-09-23T08:25:51Z",
       "side": 1,
       "message": "remove this",
+      "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76a29b56_e558e08b",
+        "filename": "src/vnet/qos/qos_mark.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1867
+      },
+      "writtenOn": "2019-09-24T06:48:36Z",
+      "side": 1,
+      "message": "Same comment as in ip_frag.c. Not getting good results by moving the COPY_MPLS_HDR later.",
+      "parentUuid": "bb707a88_d30a0718",
       "revId": "51aaeed0d27a3e042966b9a59eed2cb3f876c1b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
