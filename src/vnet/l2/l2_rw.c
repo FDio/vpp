@@ -91,68 +91,26 @@ l2_rw_get_config (u32 sw_if_index)
 static_always_inline void
 l2_rw_rewrite (l2_rw_entry_t * rwe, u8 * h)
 {
-  if (U32X4_ALIGNED (h))
+  u32x4u *d = ((u32x4u *) h) + rwe->skip_n_vectors;
+  switch (rwe->rewrite_n_vectors)
     {
-      u32x4 *d = ((u32x4 *) h) + rwe->skip_n_vectors;
-      switch (rwe->rewrite_n_vectors)
-	{
-	case 5:
-	  d[4] = (d[4] & ~rwe->mask[4]) | rwe->value[4];
-	  /* FALLTHROUGH */
-	case 4:
-	  d[3] = (d[3] & ~rwe->mask[3]) | rwe->value[3];
-	  /* FALLTHROUGH */
-	case 3:
-	  d[2] = (d[2] & ~rwe->mask[2]) | rwe->value[2];
-	  /* FALLTHROUGH */
-	case 2:
-	  d[1] = (d[1] & ~rwe->mask[1]) | rwe->value[1];
-	  /* FALLTHROUGH */
-	case 1:
-	  d[0] = (d[0] & ~rwe->mask[0]) | rwe->value[0];
-	  break;
-	default:
-	  abort ();
-	}
-    }
-  else
-    {
-      u64 *d = ((u64 *) h) + rwe->skip_n_vectors * 2;
-      switch (rwe->rewrite_n_vectors)
-	{
-	case 5:
-	  d[8] =
-	    (d[8] & ~(((u64 *) rwe->mask)[8])) | (((u64 *) rwe->value)[8]);
-	  d[9] =
-	    (d[9] & ~(((u64 *) rwe->mask)[9])) | (((u64 *) rwe->value)[9]);
-	  /* FALLTHROUGH */
-	case 4:
-	  d[6] =
-	    (d[6] & ~(((u64 *) rwe->mask)[6])) | (((u64 *) rwe->value)[6]);
-	  d[7] =
-	    (d[7] & ~(((u64 *) rwe->mask)[7])) | (((u64 *) rwe->value)[7]);
-	  /* FALLTHROUGH */
-	case 3:
-	  d[4] =
-	    (d[4] & ~(((u64 *) rwe->mask)[4])) | (((u64 *) rwe->value)[4]);
-	  d[5] =
-	    (d[5] & ~(((u64 *) rwe->mask)[5])) | (((u64 *) rwe->value)[5]);
-	  /* FALLTHROUGH */
-	case 2:
-	  d[2] =
-	    (d[2] & ~(((u64 *) rwe->mask)[2])) | (((u64 *) rwe->value)[2]);
-	  d[3] =
-	    (d[3] & ~(((u64 *) rwe->mask)[3])) | (((u64 *) rwe->value)[3]);
-	  /* FALLTHROUGH */
-	case 1:
-	  d[0] =
-	    (d[0] & ~(((u64 *) rwe->mask)[0])) | (((u64 *) rwe->value)[0]);
-	  d[1] =
-	    (d[1] & ~(((u64 *) rwe->mask)[1])) | (((u64 *) rwe->value)[1]);
-	  break;
-	default:
-	  abort ();
-	}
+    case 5:
+      d[4] = (d[4] & ~rwe->mask[4]) | rwe->value[4];
+      /* FALLTHROUGH */
+    case 4:
+      d[3] = (d[3] & ~rwe->mask[3]) | rwe->value[3];
+      /* FALLTHROUGH */
+    case 3:
+      d[2] = (d[2] & ~rwe->mask[2]) | rwe->value[2];
+      /* FALLTHROUGH */
+    case 2:
+      d[1] = (d[1] & ~rwe->mask[1]) | rwe->value[1];
+      /* FALLTHROUGH */
+    case 1:
+      d[0] = (d[0] & ~rwe->mask[0]) | rwe->value[0];
+      break;
+    default:
+      abort ();
     }
 }
 
