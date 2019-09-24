@@ -475,6 +475,8 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc;
   tc = tcp_connection_get (conn_index, thread_index);
+  if (!tc)
+    return;
   tcp_connection_set_state (tc, TCP_STATE_CLOSED);
   tcp_connection_cleanup (tc);
 }
