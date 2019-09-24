@@ -30,6 +30,11 @@
 
 #include <quicly/defaults.h>
 
+static char *quic_error_strings[] = {
+#define quic_error(n,s) s,
+#include "quic_error.def"
+#undef quic_error
+};
 
 static quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
@@ -348,6 +353,10 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
       QUIC_DBG (1, "Not enough space to enqueue payload");
       return QUIC_ERROR_FULL_FIFO;
     }
+
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_increment_counter (vm, quic_input_node.index,
+			       QUIC_ERROR_TX_PACKETS, 1);
   return 0;
 }
 
@@ -1988,6 +1997,10 @@ quic_process_one_rx_packet (u64 udp_session_handle,
       return 1;
     }
 
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_increment_counter (vm, quic_input_node.index,
+			       QUIC_ERROR_RX_PACKETS, 1);
+
   rv = 0;
   quic_build_sockaddr (sa, &salen, &ph.rmt_ip, ph.rmt_port, ph.is_ip4);
   quicly_ctx = quic_get_quicly_ctx_from_udp (udp_session_handle);
@@ -2328,6 +2341,24 @@ VLIB_PLUGIN_REGISTER () =
   .version = VPP_BUILD_VER,
   .description = "Quic transport protocol",
   .default_disabled = 1,
+};
+
+static uword
+quic_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+	      vlib_frame_t * frame)
+{
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (quic_input_node) =
+{
+  .function = quic_node_fn,
+  .name = "quic-input",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (quic_error_strings),
+  .error_strings = quic_error_strings,
 };
 /* *INDENT-ON* */
 
