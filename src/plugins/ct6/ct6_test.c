@@ -22,30 +22,8 @@
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* Declare message IDs */
-#include <ct6/ct6_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ct6/ct6_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <ct6/ct6_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <ct6/ct6_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ct6/ct6_all_api_h.h>
-#undef vl_api_version
-
+#include <ct6/ct6.api_enum.h>
+#include <ct6/ct6.api_types.h>
 
 typedef struct
 {
@@ -58,33 +36,6 @@ ct6_test_main_t ct6_test_main;
 
 #define __plugin_msg_base ct6_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
-
-#define foreach_standard_reply_retval_handler   \
-_(ct6_enable_disable_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = ct6_test_main.vat_main;   \
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                                       \
-_(CT6_ENABLE_DISABLE_REPLY, ct6_enable_disable_reply)
-
 
 static int
 api_ct6_enable_disable (vat_main_t * vam)
@@ -139,41 +90,7 @@ api_ct6_enable_disable (vat_main_t * vam)
   return ret;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg \
-_(ct6_enable_disable, "<intfc> [disable]")
-
-static void
-ct6_api_hookup (vat_main_t * vam)
-{
-  ct6_test_main_t *ctmp = &ct6_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + ctmp->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-VAT_PLUGIN_REGISTER (ct6);
+#include <ct6/ct6.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON
