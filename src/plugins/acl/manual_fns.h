@@ -19,6 +19,10 @@
 #include <vnet/ip/format.h>
 #include <vnet/ethernet/ethernet.h>
 
+#define vl_endianfun            /* define message structures */
+#include <acl/acl_types.api.h>
+#undef vl_endianfun
+
 /* Macro to finish up custom dump fns */
 #define PRINT_S \
     vec_add1 (s, 0);                            \
