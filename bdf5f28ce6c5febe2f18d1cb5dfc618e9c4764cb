@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cc506987_8a367710",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2144,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-25T04:20:09Z",
+      "side": 1,
+      "message": "This is too much work at this point to figure out if a packet needs gso. We should probably flag gso packets in the session layer once they\u0027re created and here we should just check the flag. \n\nThat is a bit involved. In the meantime, just ensure that you either generate packets less than 1.5kB or larger than 2kB in tcp_session_cal_goal_size. That way you won\u0027t need to gso one buffer packets.",
+      "range": {
+        "startLine": 2138,
+        "startChar": 0,
+        "endLine": 2144,
+        "endChar": 11
+      },
+      "revId": "bdf5f28ce6c5febe2f18d1cb5dfc618e9c4764cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
