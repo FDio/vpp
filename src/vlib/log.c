@@ -659,6 +659,9 @@ log_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "default-log-level %U",
 			 unformat_vlib_log_level, &lm->default_log_level))
 	;
+      else if (unformat (input, "default-rate-limit %d",
+			 &lm->default_rate_limit))
+	;
       else if (unformat (input, "default-syslog-log-level %U",
 			 unformat_vlib_log_level,
 			 &lm->default_syslog_log_level))
