@@ -179,6 +179,12 @@ typedef struct
 
 } vnet_classify_table_t;
 
+typedef struct
+{
+  int refcnt;
+  u32 *table_indices;
+} vnet_classify_filter_set_t;
+
 struct _vnet_classify_main
 {
   /* Table pool */
@@ -190,6 +196,12 @@ struct _vnet_classify_main
   unformat_function_t **unformat_acl_next_index_fns;
   unformat_function_t **unformat_policer_next_index_fns;
   unformat_function_t **unformat_opaque_index_fns;
+
+  /* Pool of filter sets */
+  vnet_classify_filter_set_t *filter_sets;
+
+  /* Per-interface filter set map. [0] is used for pcap */
+  u32 *filter_set_by_sw_if_index;
 
   /* convenience variables */
   vlib_main_t *vlib_main;
