@@ -60,8 +60,8 @@ quic_echo_on_connected_connect (session_connected_msg_t * mp,
   for (i = 0; i < eqm->n_stream_clients; i++)
     echo_send_rpc (em, echo_send_connect, (void *) mp->handle, session_index);
 
-  ECHO_LOG (0, "Qsession 0x%llx connected to %U:%d",
-	    mp->handle, format_ip46_address, &mp->lcl.ip,
+  ECHO_LOG (0, "Qsession 0x%llx S[%d] connected to %U:%d",
+	    mp->handle, session_index, format_ip46_address, &mp->lcl.ip,
 	    mp->lcl.is_ip4, clib_net_to_host_u16 (mp->lcl.port));
 }
 
@@ -106,7 +106,7 @@ quic_echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
 {
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
-  ECHO_LOG (1, "Accept on QSession 0x%lx %u", mp->handle);
+  ECHO_LOG (1, "Accept on QSession 0x%lx S[%u]", mp->handle, session_index);
   u32 i;
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
@@ -118,8 +118,8 @@ static void
 quic_echo_on_accept_error (session_accepted_msg_t * mp, u32 session_index)
 {
   ECHO_FAIL (ECHO_FAIL_QUIC_WRONG_ACCEPT,
-	     "Got a wrong accept on session %u [%lx]", session_index,
-	     mp->handle);
+	     "Got a wrong accept on session 0x%lx S[%u]", mp->handle,
+	     session_index);
 }
 
 static void
@@ -164,7 +164,12 @@ quic_echo_cleanup_listener (u32 listener_index, echo_main_t * em,
 {
   echo_session_t *ls;
   ls = pool_elt_at_index (em->sessions, listener_index);
-  ASSERT (ls->session_type == ECHO_SESSION_TYPE_QUIC);
+  if (ls->session_type != ECHO_SESSION_TYPE_QUIC)
+    {
+      ECHO_LOG (1, "%U: Invalid listener session type",
+		echo_format_session, ls);
+      return;
+    }
   if (!clib_atomic_sub_fetch (&ls->accepted_session_count, 1))
     {
       if (eqm->send_quic_disconnects == ECHO_CLOSE_F_ACTIVE)
@@ -186,7 +191,12 @@ quic_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
 {
   echo_main_t *em = &echo_main;
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
-  ASSERT (s->session_state < ECHO_SESSION_STATE_CLOSED);
+  if ((em->state == STATE_DATA_DONE) ||
+      !(s->session_state < ECHO_SESSION_STATE_CLOSED))
+    return;
+  ECHO_LOG (2, "%U cleanup (parent_died %d)", echo_format_session, s,
+	    parent_died);
+  s->session_state = ECHO_SESSION_STATE_CLOSED;
   if (s->session_type == ECHO_SESSION_TYPE_QUIC)
     {
       if (parent_died)
@@ -202,12 +212,11 @@ quic_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
 	quic_echo_cleanup_listener (s->listener_index, em, eqm);
       clib_atomic_sub_fetch (&em->n_clients_connected, 1);
     }
-
-  ECHO_LOG (1, "Cleanup sessions (still %uQ %uS)",
-	    eqm->n_quic_clients_connected, em->n_clients_connected);
-  s->session_state = ECHO_SESSION_STATE_CLOSED;
   if (!em->n_clients_connected && !eqm->n_quic_clients_connected)
     em->state = STATE_DATA_DONE;
+  ECHO_LOG (1, "Cleanup sessions (still %uQ %uS): app %U",
+	    eqm->n_quic_clients_connected, em->n_clients_connected,
+	    echo_format_app_state, em->state);
 }
 
 static void
@@ -225,18 +234,19 @@ quic_echo_initiate_qsession_close_no_stream (echo_main_t * em)
       {
         if (eqm->send_quic_disconnects == ECHO_CLOSE_F_ACTIVE)
           {
-            ECHO_LOG (1,"ACTIVE close 0x%lx", s->vpp_session_handle);
-            echo_send_rpc (em, echo_send_disconnect_session, (void *) s->vpp_session_handle, 0);
+            ECHO_LOG (1,"%U: ACTIVE close", echo_format_session, s);
+            echo_send_rpc (em, echo_send_disconnect_session,
+                           (void *) s->vpp_session_handle, 0);
             clib_atomic_fetch_add (&em->stats.active_count.q, 1);
           }
         else if (eqm->send_quic_disconnects == ECHO_CLOSE_F_NONE)
           {
-            ECHO_LOG (1,"Discard close 0x%lx", s->vpp_session_handle);
+            ECHO_LOG (1,"%U: CLEAN close", echo_format_session, s);
             quic_echo_cleanup_cb (s, 0 /* parent_died */);
             clib_atomic_fetch_add (&em->stats.clean_count.q, 1);
           }
         else
-          ECHO_LOG (1,"Passive close 0x%lx", s->vpp_session_handle);
+          ECHO_LOG (1,"%U: PASSIVE close", echo_format_session, s);
       }
   }));
   /* *INDENT-ON* */
@@ -249,10 +259,11 @@ quic_echo_on_connected (session_connected_msg_t * mp, u32 session_index)
   quic_echo_proto_main_t *eqm = &quic_echo_proto_main;
   echo_session_t *listen_session;
   echo_session_t *session = pool_elt_at_index (em->sessions, session_index);
+
   if (session->listener_index == SESSION_INVALID_INDEX)
     {
-      ECHO_LOG (1, "Connected session 0x%lx -> URI", mp->handle);
       session->session_type = ECHO_SESSION_TYPE_QUIC;
+      ECHO_LOG (1, "Connected %U -> URI", echo_format_session, session);
       session->accepted_session_count = 0;
       if (eqm->cb_vft.quic_connected_cb)
 	eqm->cb_vft.quic_connected_cb (mp, session->session_index);
@@ -262,10 +273,10 @@ quic_echo_on_connected (session_connected_msg_t * mp, u32 session_index)
     {
       listen_session =
 	pool_elt_at_index (em->sessions, session->listener_index);
-      ECHO_LOG (1, "Connected session 0x%lx -> 0x%lx", mp->handle,
-		listen_session->vpp_session_handle);
       session->session_type = ECHO_SESSION_TYPE_STREAM;
       clib_atomic_fetch_add (&listen_session->accepted_session_count, 1);
+      ECHO_LOG (1, "Connected %U -> %U", echo_format_session, session,
+		echo_format_session, listen_session);
       if (em->i_am_master && eqm->cb_vft.server_stream_connected_cb)
 	eqm->cb_vft.server_stream_connected_cb (mp, session->session_index);
       if (!em->i_am_master && eqm->cb_vft.client_stream_connected_cb)
@@ -295,14 +306,14 @@ quic_echo_retry_connect (u32 session_index)
   echo_main_t *em = &echo_main;
   if (session_index == SESSION_INVALID_INDEX)
     {
-      ECHO_LOG (1, "Retrying connect %s", em->uri);
+      ECHO_LOG (1, "Retrying Qsession connect");
       echo_send_rpc (em, echo_send_connect, (void *) SESSION_INVALID_HANDLE,
 		     SESSION_INVALID_INDEX);
     }
   else
     {
       session = pool_elt_at_index (em->sessions, session_index);
-      ECHO_LOG (1, "Retrying connect 0x%lx", session->vpp_session_handle);
+      ECHO_LOG (1, "Retrying connect %U", echo_format_session, session);
       echo_send_rpc (em, echo_send_connect,
 		     (void *) session->vpp_session_handle, session_index);
     }
