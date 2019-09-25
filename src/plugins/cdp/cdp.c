@@ -24,36 +24,11 @@
 #include <vpp/app/version.h>
 
 /* define message IDs */
-#include <cdp/cdp_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <cdp/cdp_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <cdp/cdp_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <cdp/cdp_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <cdp/cdp_all_api_h.h>
-#undef vl_api_version
+#include <cdp/cdp.api_enum.h>
+#include <cdp/cdp.api_types.h>
 
 #define REPLY_MSG_ID_BASE cm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-/* List of message types that this plugin understands */
-
-#define foreach_cdp_plugin_api_msg                           \
-_(CDP_ENABLE_DISABLE, cdp_enable_disable)
 
 /* Action function shared between message handler and debug CLI */
 
@@ -133,60 +108,18 @@ static void vl_api_cdp_enable_disable_t_handler
   REPLY_MACRO (VL_API_CDP_ENABLE_DISABLE_REPLY);
 }
 
-/* Set up the API message handling tables */
-static clib_error_t *
-cdp_plugin_api_hookup (vlib_main_t * vm)
-{
-  cdp_main_t *cm = &cdp_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + cm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_cdp_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <cdp/cdp_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (cdp_main_t * cm, api_main_t * am)
-{
-#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + cm->msg_id_base);
-  foreach_vl_msg_name_crc_cdp;
-#undef _
-}
-
+#include <cdp/cdp.api.c>
 static clib_error_t *
 cdp_init (vlib_main_t * vm)
 {
   cdp_main_t *cm = &cdp_main;
-  clib_error_t *error = 0;
-  u8 *name;
 
   cm->vlib_main = vm;
 
-  name = format (0, "cdp_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  cm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+  cm->msg_id_base = setup_message_id_table ();
 
-  error = cdp_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (cm, &api_main);
-
-  vec_free (name);
-
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (cdp_init);
