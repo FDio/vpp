@@ -1691,16 +1691,23 @@ classify_filter_command_fn (vlib_main_t * vm,
   u32 miss_next_index = ~0;
   u32 current_data_flag = 0;
   int current_data_offset = 0;
+  u32 sw_if_index = ~0;
   int i;
   vnet_classify_table_t *t;
   u8 *mask = 0;
   vnet_classify_main_t *cm = &vnet_classify_main;
   int rv = 0;
+  vnet_classify_filter_set_t *set = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "del"))
 	is_add = 0;
+      else if (unformat (input, "pcap %=", &sw_if_index, 0))
+	;
+      else if (unformat (input, "%U",
+			 unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
       else if (unformat (input, "buckets %d", &nbuckets))
 	;
       else if (unformat (input, "mask %U", unformat_classify_mask,
@@ -1722,21 +1729,63 @@ classify_filter_command_fn (vlib_main_t * vm,
   if (is_add && match == ~0 && table_index == ~0)
     return clib_error_return (0, "match count required");
 
+  if (sw_if_index == ~0)
+    return clib_error_return (0, "Must specify pcap or interface...");
+
   if (!is_add)
     {
-      if (vec_len (vnm->classify_filter_table_indices) == 0)
-	return clib_error_return (0, "No classify filter set...");
+      u32 set_index = 0;
 
-      del_chain = 1;
-      table_index = vnm->classify_filter_table_indices[0];
-      vec_reset_length (vnm->classify_filter_table_indices);
+      if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
+	set_index = cm->filter_set_by_sw_if_index[sw_if_index];
+
+      if (set_index == 0)
+	{
+	  if (sw_if_index == 0)
+	    return clib_error_return (0, "No pcap classify filter set...");
+	  else
+	    return clib_error_return (0, "No classify filter set for %U...",
+				      format_vnet_sw_if_index_name, vnm,
+				      sw_if_index);
+	}
+
+      set = pool_elt_at_index (cm->filter_sets, set_index);
+
+      set->refcnt--;
+      ASSERT (set->refcnt >= 0);
+      if (set->refcnt == 0)
+	{
+	  del_chain = 1;
+	  table_index = set->table_indices[0];
+	  vec_reset_length (set->table_indices);
+	  pool_put (cm->filter_sets, set);
+	  cm->filter_set_by_sw_if_index[sw_if_index] = 0;
+	  if (sw_if_index > 0)
+	    {
+	      vnet_hw_interface_t *hi =
+		vnet_get_sup_hw_interface (vnm, sw_if_index);
+	      hi->trace_classify_table_index = ~0;
+	    }
+	}
     }
-
-  /* see if we already have a table for that... */
 
   if (is_add)
     {
-      for (i = 0; i < vec_len (vnm->classify_filter_table_indices); i++)
+      u32 set_index = 0;
+
+      if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
+	set_index = cm->filter_set_by_sw_if_index[sw_if_index];
+
+      /* Do we have a filter set for this intfc / pcap yet? */
+      if (set_index == 0)
+	{
+	  pool_get (cm->filter_sets, set);
+	  set->refcnt = 1;
+	}
+      else
+	set = pool_elt_at_index (cm->filter_sets, set_index);
+
+      for (i = 0; i < vec_len (set->table_indices); i++)
 	{
 	  t = pool_elt_at_index (cm->tables, i);
 	  /* classifier geometry mismatch, can't use this table */
@@ -1776,7 +1825,33 @@ classify_filter_command_fn (vlib_main_t * vm,
     return 0;
 
   /* Remember the table */
-  vec_add1 (vnm->classify_filter_table_indices, table_index);
+  vec_add1 (set->table_indices, table_index);
+  vec_validate_init_empty (cm->filter_set_by_sw_if_index, sw_if_index, 0);
+  cm->filter_set_by_sw_if_index[sw_if_index] = set - cm->filter_sets;
+
+  /* Put top table index where device drivers can find them */
+  if (sw_if_index > 0)
+    {
+      vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+      ASSERT (vec_len (set->table_indices) > 0);
+      hi->trace_classify_table_index = set->table_indices[0];
+    }
+
+  /* Sort filter tables from most-specific mask to least-specific mask */
+  vec_sort_with_function (set->table_indices, filter_table_mask_compare);
+
+  ASSERT (set);
+
+  /* Setup next_table_index fields */
+  for (i = 0; i < vec_len (set->table_indices); i++)
+    {
+      t = pool_elt_at_index (cm->tables, set->table_indices[i]);
+
+      if ((i + 1) < vec_len (set->table_indices))
+	t->next_table_index = set->table_indices[i + 1];
+      else
+	t->next_table_index = ~0;
+    }
 
 found_table:
 
@@ -1784,7 +1859,6 @@ found_table:
   if (unformat (input, "match %U", unformat_classify_match,
 		cm, &match_vector, table_index) == 0)
     return 0;
-
 
   /*
    * We use hit or miss to determine whether to trace or pcap pkts
@@ -1799,24 +1873,6 @@ found_table:
 				      1 /* is_add */ );
 
   vec_free (match_vector);
-
-  /* Sort filter tables from most-specific mask to least-specific mask */
-  vec_sort_with_function (vnm->classify_filter_table_indices,
-			  filter_table_mask_compare);
-
-  ASSERT (vec_len (vnm->classify_filter_table_indices));
-
-  /* Setup next_table_index fields */
-  for (i = 0; i < vec_len (vnm->classify_filter_table_indices); i++)
-    {
-      t = pool_elt_at_index (cm->tables,
-			     vnm->classify_filter_table_indices[i]);
-
-      if ((i + 1) < vec_len (vnm->classify_filter_table_indices))
-	t->next_table_index = vnm->classify_filter_table_indices[i + 1];
-      else
-	t->next_table_index = ~0;
-    }
 
   return 0;
 }
@@ -1891,11 +1947,95 @@ VLIB_CLI_COMMAND (classify_filter, static) =
 {
   .path = "classify filter",
   .short_help =
-  "classify filter mask <mask-value> match <match-value> [del]"
+  "classify filter <intfc> | pcap mask <mask-value> match <match-value> [del]"
   "[buckets <nn>] [memory-size <n>]",
   .function = classify_filter_command_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+show_classify_filter_command_fn (vlib_main_t * vm,
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_classify_filter_set_t *set;
+  u8 *name = 0;
+  u8 *s = 0;
+  u32 set_index;
+  u32 table_index;
+  int verbose = 0;
+  int i, j;
+
+  (void) unformat (input, "verbose %=", &verbose, 1);
+
+  vlib_cli_output (vm, "%-30s%s", "Filter Used By", " Table(s)");
+  vlib_cli_output (vm, "%-30s%s", "--------------", " --------");
+
+  for (i = 0; i < vec_len (cm->filter_set_by_sw_if_index); i++)
+    {
+      set_index = cm->filter_set_by_sw_if_index[i];
+
+      if (set_index == 0 && verbose == 0)
+	continue;
+
+      set = pool_elt_at_index (cm->filter_sets, set_index);
+
+      if (i == 0)
+	name = format (0, "pcap rx/tx/drop:");
+      else
+	name = format (0, "%U:", format_vnet_sw_if_index_name, vnm, i);
+
+      if (verbose)
+	{
+	  u8 *s = 0;
+	  u32 table_index;
+
+	  for (j = 0; j < vec_len (set->table_indices); j++)
+	    {
+	      table_index = set->table_indices[j];
+	      if (table_index != ~0)
+		s = format (s, " %u", table_index);
+	      else
+		s = format (s, " none");
+	    }
+
+	  vlib_cli_output (vm, "%-30s table(s)%s", name, s);
+	  vec_reset_length (s);
+	}
+      else
+	{
+	  u8 *s = 0;
+	  table_index = set->table_indices[0];
+
+	  if (table_index != ~0)
+	    s = format (s, " %u", table_index);
+	  else
+	    s = format (s, " none");
+
+	  vlib_cli_output (vm, "%-30s first table%s", name, s);
+	  vec_reset_length (s);
+	}
+      vec_reset_length (name);
+    }
+  vec_free (s);
+  vec_free (name);
+  return 0;
+}
+
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_classify_filter, static) =
+{
+  .path = "show classify filter",
+  .short_help = "show classify filter [verbose [nn]]",
+  .function = show_classify_filter_command_fn,
+};
+/* *INDENT-ON* */
+
+
+
 
 static u8 *
 format_vnet_classify_table (u8 * s, va_list * args)
@@ -2710,6 +2850,7 @@ static clib_error_t *
 vnet_classify_init (vlib_main_t * vm)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
+  vnet_classify_filter_set_t *set;
 
   cm->vlib_main = vm;
   cm->vnet_main = vnet_get_main ();
@@ -2726,6 +2867,14 @@ vnet_classify_init (vlib_main_t * vm)
     (unformat_l2_output_next_node);
 
   vnet_classify_register_unformat_acl_next_index_fn (unformat_acl_next_node);
+
+  /* Filter set 0 is grounded... */
+  pool_get (cm->filter_sets, set);
+  set->refcnt = 0x7FFFFFFF;
+  vec_validate (set->table_indices, 0);
+  set->table_indices[0] = ~0;
+  /* Initialize the pcap filter set */
+  vec_validate (cm->filter_set_by_sw_if_index, 0);
 
   return 0;
 }

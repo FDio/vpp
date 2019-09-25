@@ -498,6 +498,7 @@ typedef enum vnet_hw_interface_flags_t_
    that packets flow over. */
 typedef struct vnet_hw_interface_t
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Interface name. */
   u8 *name;
 
@@ -579,7 +580,10 @@ typedef struct vnet_hw_interface_t
   /* numa node that hardware device connects to */
   u8 numa_node;
 
-  u8 padding[3];
+  /* trace */
+  i32 n_trace;
+
+  u32 trace_classify_table_index;
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;
