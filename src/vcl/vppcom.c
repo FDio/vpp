@@ -449,19 +449,23 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     {
       VDBG (0, "ERROR: session index %u: connect failed! %U",
 	    session_index, format_api_error, ntohl (mp->retval));
-      session->session_state = STATE_FAILED;
+      session->session_state = STATE_FAILED | STATE_DISCONNECT;
       session->vpp_handle = mp->handle;
       return session_index;
     }
 
+  session->vpp_handle = mp->handle;
+  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+					 svm_msg_q_t *);
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   if (vcl_wait_for_segment (mp->segment_handle))
     {
       VDBG (0, "segment for session %u couldn't be mounted!",
 	    session->session_index);
-      session->session_state = STATE_FAILED;
-      return VCL_INVALID_SESSION_INDEX;
+      session->session_state = STATE_FAILED | STATE_DISCONNECT;
+      vcl_send_session_disconnect (wrk, session);
+      return session_index;
     }
 
   rx_fifo->client_session_index = session_index;
@@ -469,8 +473,6 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   rx_fifo->client_thread_index = vcl_get_worker_index ();
   tx_fifo->client_thread_index = vcl_get_worker_index ();
 
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
   vpp_wrk_index = tx_fifo->master_thread_index;
   vec_validate (wrk->vpp_event_queues, vpp_wrk_index);
   wrk->vpp_event_queues[vpp_wrk_index] = session->vpp_evt_q;
@@ -483,14 +485,14 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 	{
 	  VDBG (0, "ct segment for session %u couldn't be mounted!",
 		session->session_index);
-	  session->session_state = STATE_FAILED;
-	  return VCL_INVALID_SESSION_INDEX;
+	  session->session_state = STATE_FAILED | STATE_DISCONNECT;
+	  vcl_send_session_disconnect (wrk, session);
+	  return session_index;
 	}
     }
 
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
-  session->vpp_handle = mp->handle;
   session->vpp_thread_index = rx_fifo->master_thread_index;
   session->transport.is_ip4 = mp->lcl.is_ip4;
   clib_memcpy_fast (&session->transport.lcl_ip, &mp->lcl.ip,
@@ -2636,6 +2638,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       add_event = 1;
       events[*num_ev].events |= EPOLLOUT;
       session_evt_data = session->vep.ev.data.u64;
+      if (session->session_state & STATE_FAILED)
+	events[*num_ev].events |= EPOLLHUP;
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
