@@ -29,28 +29,9 @@
 #include <vlibmemory/api.h>
 
 /* define message IDs */
-#include <abf/abf_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <abf/abf_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <abf/abf_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <abf/abf_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <abf/abf_all_api_h.h>
-#undef vl_api_version
+#include <vnet/format_fns.h>
+#include <abf/abf.api_enum.h>
+#include <abf/abf.api_types.h>
 
 /**
  * Base message ID fot the plugin
@@ -58,15 +39,6 @@
 static u32 abf_base_msg_id;
 
 #include <vlibapi/api_helper_macros.h>
-
-/* List of message types that this plugin understands */
-
-#define foreach_abf_plugin_api_msg                    \
-_(ABF_PLUGIN_GET_VERSION, abf_plugin_get_version)     \
-_(ABF_POLICY_ADD_DEL, abf_policy_add_del)             \
-_(ABF_POLICY_DUMP, abf_policy_dump)                   \
-_(ABF_ITF_ATTACH_ADD_DEL, abf_itf_attach_add_del)     \
-_(ABF_ITF_ATTACH_DUMP, abf_itf_attach_dump)
 
 static void
 vl_api_abf_plugin_get_version_t_handler (vl_api_abf_plugin_get_version_t * mp)
@@ -260,56 +232,15 @@ vl_api_abf_itf_attach_dump_t_handler (vl_api_abf_itf_attach_dump_t * mp)
   abf_itf_attach_walk (abf_itf_attach_send_details, &ctx);
 }
 
-#define vl_msg_name_crc_list
-#include <abf/abf_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-/* Set up the API message handling tables */
-static clib_error_t *
-abf_plugin_api_hookup (vlib_main_t * vm)
-{
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + abf_base_msg_id),     \
-                            #n,					\
-                            vl_api_##n##_t_handler,             \
-                            vl_noop_handler,                    \
-                            vl_api_##n##_t_endian,              \
-                            vl_api_##n##_t_print,               \
-                            sizeof(vl_api_##n##_t), 1);
-  foreach_abf_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-static void
-setup_message_id_table (api_main_t * apim)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (apim, #n "_" #crc, id + abf_base_msg_id);
-  foreach_vl_msg_name_crc_abf;
-#undef _
-}
+#include <abf/abf.api.c>
 
 static clib_error_t *
 abf_api_init (vlib_main_t * vm)
 {
-  clib_error_t *error = 0;
-
-  u8 *name = format (0, "abf_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  abf_base_msg_id = vl_msg_api_get_msg_ids ((char *) name,
-					    VL_MSG_FIRST_AVAILABLE);
+  abf_base_msg_id = setup_message_id_table ();
 
-  error = abf_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (&api_main);
-
-  vec_free (name);
-
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (abf_api_init);
