@@ -538,6 +538,11 @@ I:	l2e
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/l2e/
 
+IPv6 Connection Tracker
+I:	ct6
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/ct6
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>

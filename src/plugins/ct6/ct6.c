@@ -24,38 +24,13 @@
 #include <vpp/app/version.h>
 
 /* define message IDs */
-#include <ct6/ct6_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <ct6/ct6_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <ct6/ct6_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <ct6/ct6_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ct6/ct6_all_api_h.h>
-#undef vl_api_version
+#include <ct6/ct6.api_enum.h>
+#include <ct6/ct6.api_types.h>
 
 #define REPLY_MSG_ID_BASE cmp->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 ct6_main_t ct6_main;
-
-/* List of message types that this plugin understands */
-
-#define foreach_ct6_plugin_api_msg                           \
-_(CT6_ENABLE_DISABLE, ct6_enable_disable)
 
 /* Action function shared between message handler and debug CLI */
 
@@ -209,59 +184,18 @@ static void vl_api_ct6_enable_disable_t_handler
   REPLY_MACRO (VL_API_CT6_ENABLE_DISABLE_REPLY);
 }
 
-/* Set up the API message handling tables */
-static clib_error_t *
-ct6_plugin_api_hookup (vlib_main_t * vm)
-{
-  ct6_main_t *cmp = &ct6_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + cmp->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_ct6_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <ct6/ct6_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (ct6_main_t * cmp, api_main_t * am)
-{
-#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_"  #crc, id + cmp->msg_id_base);
-  foreach_vl_msg_name_crc_ct6;
-#undef _
-}
-
+#include <ct6/ct6.api.c>
 static clib_error_t *
 ct6_init (vlib_main_t * vm)
 {
   ct6_main_t *cmp = &ct6_main;
   clib_error_t *error = 0;
-  u8 *name;
 
   cmp->vlib_main = vm;
   cmp->vnet_main = vnet_get_main ();
 
-  name = format (0, "ct6_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  cmp->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-  error = ct6_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (cmp, &api_main);
-
-  vec_free (name);
+  cmp->msg_id_base = setup_message_id_table ();
 
   /*
    * Set default parameters...
