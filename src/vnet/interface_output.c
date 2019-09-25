@@ -802,7 +802,6 @@ static_always_inline void vnet_interface_pcap_tx_trace
 {
   u32 n_left_from, *from;
   u32 sw_if_index;
-  vnet_main_t *vnm;
   vnet_pcap_t *pp = &vlib_global_main.pcap;
 
   if (PREDICT_TRUE (pp->pcap_tx_enable == 0))
@@ -816,7 +815,6 @@ static_always_inline void vnet_interface_pcap_tx_trace
   else
     sw_if_index = ~0;
 
-  vnm = vnet_get_main ();
   n_left_from = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
 
@@ -828,12 +826,11 @@ static_always_inline void vnet_interface_pcap_tx_trace
       from++;
       n_left_from--;
 
-      if (vec_len (vnm->classify_filter_table_indices))
+      if (pp->filter_classify_table_index != ~0)
 	{
 	  classify_filter_result =
 	    vnet_is_packet_traced_inline
-	    (b0, vnm->classify_filter_table_indices[0],
-	     0 /* full classify */ );
+	    (b0, pp->filter_classify_table_index, 0 /* full classify */ );
 	  if (classify_filter_result)
 	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
 	  continue;
@@ -1178,6 +1175,8 @@ pcap_drop_trace (vlib_main_t * vm,
   i16 save_current_data;
   u16 save_current_length;
   vlib_error_main_t *em = &vm->error_main;
+  int do_trace = 0;
+
 
   from = vlib_frame_vector_args (f);
 
@@ -1199,9 +1198,18 @@ pcap_drop_trace (vlib_main_t * vm,
 	  && hash_get (im->pcap_drop_filter_hash, b0->error))
 	continue;
 
+      do_trace = (pp->pcap_sw_if_index == 0) ||
+	pp->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+      if (PREDICT_FALSE
+	  (do_trace == 0 && pp->filter_classify_table_index != ~0))
+	{
+	  do_trace = vnet_is_packet_traced_inline
+	    (b0, pp->filter_classify_table_index, 0 /* full classify */ );
+	}
+
       /* Trace all drops, or drops received on a specific interface */
-      if (pp->pcap_sw_if_index == 0 ||
-	  pp->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX])
+      if (do_trace)
 	{
 	  save_current_data = b0->current_data;
 	  save_current_length = b0->current_length;
