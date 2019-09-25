@@ -28,28 +28,11 @@
 #include <vlibmemory/api.h>
 
 /* define message IDs */
-#include <acl/acl_msg_enum.h>
+#include <acl/acl.api_enum.h>
+#include <acl/acl.api_types.h>
 
-/* define message structures */
-#define vl_typedefs
-#include <acl/acl_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <acl/acl_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <acl/acl_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <acl/acl_all_api_h.h>
-#undef vl_api_version
+#include "manual_fns.h"
 
 #include "fa_node.h"
 #include "public_inlines.h"
@@ -65,30 +48,6 @@ acl_main_t acl_main;
 #include <vppinfra/bihash_40_8.h>
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
-
-/* List of message types that this plugin understands */
-
-#define foreach_acl_plugin_api_msg		\
-_(ACL_PLUGIN_GET_VERSION, acl_plugin_get_version) \
-_(ACL_PLUGIN_CONTROL_PING, acl_plugin_control_ping) \
-_(ACL_ADD_REPLACE, acl_add_replace)				\
-_(ACL_DEL, acl_del)				\
-_(ACL_INTERFACE_ADD_DEL, acl_interface_add_del)	\
-_(ACL_INTERFACE_SET_ACL_LIST, acl_interface_set_acl_list)	\
-_(ACL_DUMP, acl_dump)  \
-_(ACL_INTERFACE_LIST_DUMP, acl_interface_list_dump) \
-_(MACIP_ACL_ADD, macip_acl_add) \
-_(MACIP_ACL_ADD_REPLACE, macip_acl_add_replace) \
-_(MACIP_ACL_DEL, macip_acl_del) \
-_(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del) \
-_(MACIP_ACL_DUMP, macip_acl_dump) \
-_(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get) \
-_(MACIP_ACL_INTERFACE_LIST_DUMP, macip_acl_interface_list_dump) \
-_(ACL_INTERFACE_SET_ETYPE_WHITELIST, acl_interface_set_etype_whitelist) \
-_(ACL_INTERFACE_ETYPE_WHITELIST_DUMP, acl_interface_etype_whitelist_dump) \
-_(ACL_PLUGIN_GET_CONN_TABLE_MAX_ENTRIES,acl_plugin_get_conn_table_max_entries) \
-_(ACL_STATS_INTF_COUNTERS_ENABLE, acl_stats_intf_counters_enable)
-
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
@@ -2669,40 +2628,6 @@ static void
     }
 }
 
-
-
-/* Set up the API message handling tables */
-static clib_error_t *
-acl_plugin_api_hookup (vlib_main_t * vm)
-{
-  acl_main_t *am = &acl_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + am->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_acl_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <acl/acl_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (acl_main_t * am, api_main_t * apim)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (apim, #n "_" #crc, id + am->msg_id_base);
-  foreach_vl_msg_name_crc_acl;
-#undef _
-}
-
 static void
 acl_set_timeout_sec (int timeout_type, u32 value)
 {
@@ -3700,6 +3625,10 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (acl_plugin_config, "acl-plugin");
 
+/* Set up the API message handling tables */
+#include <vnet/format_fns.h>
+#include <acl/acl.api.c>
+
 static clib_error_t *
 acl_init (vlib_main_t * vm)
 {
@@ -3710,21 +3639,8 @@ acl_init (vlib_main_t * vm)
   am->vnet_main = vnet_get_main ();
   am->log_default = vlib_log_register_class ("acl_plugin", 0);
 
-  u8 *name = format (0, "acl_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  am->msg_id_base = vl_msg_api_get_msg_ids ((char *) name,
-					    VL_MSG_FIRST_AVAILABLE);
-
-  error = acl_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (am, &api_main);
-
-  vec_free (name);
-
-  if (error)
-    return error;
+  am->msg_id_base = setup_message_id_table ();
 
   error = acl_plugin_exports_init (&acl_plugin);
 
