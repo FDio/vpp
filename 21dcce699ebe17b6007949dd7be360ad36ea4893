@@ -16,6 +16,24 @@
       "revId": "21dcce699ebe17b6007949dd7be360ad36ea4893",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "62177ffe_d0131285",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-09-25T16:16:08Z",
+      "side": 1,
+      "message": "May be, I am missing something. But I don\u0027t buy the idea of having this ASSERT. We have particular packet path i.e. ip4 or ip6. This ASSERT also make sure it. So why do we waste some cycles.",
+      "parentUuid": "37cceebb_7942d9cd",
+      "revId": "21dcce699ebe17b6007949dd7be360ad36ea4893",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
