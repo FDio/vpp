@@ -167,25 +167,77 @@ init_error_string_table ()
 }
 
 u8 *
+echo_format_session (u8 * s, va_list * args)
+{
+  echo_session_t *session = va_arg (*args, echo_session_t *);
+
+  return format (s, "%U 0x%lx S[%u]", echo_format_session_type,
+		 session->session_type, session->vpp_session_handle,
+		 session->session_index);
+}
+
+u8 *
+echo_format_session_type (u8 * s, va_list * args)
+{
+  u32 session_type = va_arg (*args, u32);
+  switch (session_type)
+    {
+    case ECHO_SESSION_TYPE_QUIC:
+      return format (s, "Qsession");
+    case ECHO_SESSION_TYPE_STREAM:
+      return format (s, "Stream");
+    case ECHO_SESSION_TYPE_LISTEN:
+      return format (s, "Lsession");
+    default:
+      break;
+    }
+  return format (s, "BadSession");
+}
+
+u8 *
+echo_format_session_state (u8 * s, va_list * args)
+{
+  u32 session_state = va_arg (*args, u32);
+  switch (session_state)
+    {
+    case ECHO_SESSION_STATE_INITIAL:
+      return format (s, "ECHO_SESSION_STATE_INITIAL (%u)", session_state);
+    case ECHO_SESSION_STATE_READY:
+      return format (s, "ECHO_SESSION_STATE_READY (%u)", session_state);
+    case ECHO_SESSION_STATE_AWAIT_CLOSING:
+      return format (s, "ECHO_SESSION_STATE_AWAIT_CLOSING (%u)", session_state);
+    case ECHO_SESSION_STATE_AWAIT_DATA:
+      return format (s, "ECHO_SESSION_STATE_AWAIT_DATA (%u)", session_state);
+    case ECHO_SESSION_STATE_CLOSING:
+      return format (s, "ECHO_SESSION_STATE_CLOSING (%u)", session_state);
+    case ECHO_SESSION_STATE_CLOSED:
+      return format (s, "ECHO_SESSION_STATE_CLOSED (%u)", session_state);
+    default:
+      break;
+    }
+  return format (s, "unknown session state (%u)", session_state);
+}
+
+u8 *
 echo_format_app_state (u8 * s, va_list * args)
 {
   u32 state = va_arg (*args, u32);
   if (state == STATE_START)
-    return format (s, "STATE_START");
+    return format (s, "STATE_START (%u)", state);
   if (state == STATE_ATTACHED)
-    return format (s, "STATE_ATTACHED");
+    return format (s, "STATE_ATTACHED (%u)", state);
   if (state == STATE_LISTEN)
-    return format (s, "STATE_LISTEN");
+    return format (s, "STATE_LISTEN (%u)", state);
   if (state == STATE_READY)
-    return format (s, "STATE_READY");
+    return format (s, "STATE_READY (%u)", state);
   if (state == STATE_DATA_DONE)
-    return format (s, "STATE_DATA_DONE");
+    return format (s, "STATE_DATA_DONE (%u)", state);
   if (state == STATE_DISCONNECTED)
-    return format (s, "STATE_DISCONNECTED");
+    return format (s, "STATE_DISCONNECTED (%u)", state);
   if (state == STATE_DETACHED)
-    return format (s, "STATE_DETACHED");
+    return format (s, "STATE_DETACHED (%u)", state);
   else
-    return format (s, "unknown state");
+    return format (s, "unknown state (%u)", state);
 }
 
 uword
@@ -437,9 +489,15 @@ echo_session_handle_add_del (echo_main_t * em, u64 handle, u32 sid)
 {
   clib_spinlock_lock (&em->sid_vpp_handles_lock);
   if (sid == SESSION_INVALID_INDEX)
-    hash_unset (em->session_index_by_vpp_handles, handle);
+    {
+      ECHO_LOG (2, "hash_unset(0x%lx)", handle);
+      hash_unset (em->session_index_by_vpp_handles, handle);
+    }
   else
-    hash_set (em->session_index_by_vpp_handles, handle, sid);
+    {
+      ECHO_LOG (2, "hash_set(0x%lx) S[%d]", handle, sid);
+      hash_set (em->session_index_by_vpp_handles, handle, sid);
+    }
   clib_spinlock_unlock (&em->sid_vpp_handles_lock);
 }
 
@@ -487,8 +545,7 @@ echo_get_session_from_handle (echo_main_t * em, u64 handle)
   clib_spinlock_unlock (&em->sid_vpp_handles_lock);
   if (!p)
     {
-      ECHO_FAIL (ECHO_FAIL_GET_SESSION_FROM_HANDLE,
-		 "unknown handle 0x%lx", handle);
+      ECHO_LOG (1, "unknown handle 0x%lx", handle);
       return 0;
     }
   return pool_elt_at_index (em->sessions, p[0]);
