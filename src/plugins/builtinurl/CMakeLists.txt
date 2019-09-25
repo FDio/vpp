@@ -21,10 +21,6 @@ add_vpp_plugin(builtinurl
   API_FILES
   builtinurl.api
 
-  INSTALL_HEADERS
-  builtinurl_all_api_h.h
-  builtinurl_msg_enum.h
-
   API_TEST_SOURCES
   builtinurl_test.c
 )
