@@ -1734,9 +1734,10 @@ int
 vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vnet_main_t *vnm = vnet_get_main ();
   vnet_pcap_t *pp = &vm->pcap;
   pcap_main_t *pm = &pp->pcap_main;
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  vnet_classify_filter_set_t *set = 0;
 
   if (a->status)
     {
@@ -1772,9 +1773,11 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       && (pm->n_packets_to_capture != a->packets_to_capture))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
+  set = pool_elt_at_index (cm->filter_sets, cm->filter_set_by_sw_if_index[0]);
+
   /* Classify filter specified, but no classify filter configured */
-  if ((a->rx_enable + a->tx_enable + a->drop_enable) && a->filter
-      && (vec_len (vnm->classify_filter_table_indices) == 0))
+  if ((a->rx_enable + a->tx_enable + a->drop_enable) && a->filter &&
+      (set->table_indices[0] == ~0))
     return VNET_API_ERROR_NO_SUCH_LABEL;
 
   if (a->rx_enable + a->tx_enable + a->drop_enable)
@@ -1812,8 +1815,7 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       pm->n_packets_to_capture = a->packets_to_capture;
       pp->pcap_sw_if_index = a->sw_if_index;
       if (a->filter)
-	pp->filter_classify_table_index =
-	  vnm->classify_filter_table_indices[0];
+	pp->filter_classify_table_index = set->table_indices[0];
       else
 	pp->filter_classify_table_index = ~0;
       pp->pcap_rx_enable = a->rx_enable;
@@ -1826,6 +1828,7 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       pp->pcap_rx_enable = 0;
       pp->pcap_tx_enable = 0;
       pp->pcap_drop_enable = 0;
+      pp->filter_classify_table_index = ~0;
       if (pm->n_packets_captured)
 	{
 	  clib_error_t *error;
@@ -1866,7 +1869,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
   int drop_enable = 0;
   int status = 0;
   int filter = 0;
-  u32 sw_if_index = 0;
+  u32 sw_if_index = ~0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1989,6 +1992,11 @@ pcap_trace_command_fn (vlib_main_t * vm,
  *   packet capture are preserved, so '<em>any</em>' can be used to reset
  *   the interface setting.
  *
+ * - <b>filter</b> - Use the pcap rx / tx / drop trace filter, which
+ *   must be configured. Use <b>classify filter pcap...</b> to configure the
+ *   filter. The filter will only be executed if the per-interface or
+ *   any-interface tests fail.
+ *
  * - <b>file <name></b> - Used to specify the output filename. The file will
  *   be placed in the '<em>/tmp</em>' directory, so only the filename is
  *   supported. Directory should not be entered. If file already exists, file
@@ -2027,7 +2035,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (pcap_tx_trace_command, static) = {
     .path = "pcap trace",
     .short_help =
-    "pcap trace rx tx drop off [max <nn>] [intfc <interface>|any] [file <name>] [status] [max-bytes-per-pkt <nnnn>]",
+    "pcap trace rx tx drop off [max <nn>] [intfc <interface>|any] [file <name>] [status] [max-bytes-per-pkt <nnnn>][filter]",
     .function = pcap_trace_command_fn,
 };
 /* *INDENT-ON* */
