@@ -42,16 +42,28 @@ echo_session_prealloc (echo_main_t * em)
 static void
 echo_assert_test_suceeded (echo_main_t * em)
 {
-  CHECK (ECHO_FAIL_TEST_ASSERT_RX_TOTAL,
-	 em->n_clients * em->bytes_to_receive, em->stats.rx_total,
-	 "Invalid amount of data received");
-  CHECK (ECHO_FAIL_TEST_ASSERT_TX_TOTAL,
-	 em->n_clients * em->bytes_to_send, em->stats.tx_total,
-	 "Invalid amount of data sent");
+  if (em->rx_results_diff)
+    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_RX_TOTAL,
+		em->n_clients * em->bytes_to_receive, em->stats.rx_total,
+		"Invalid amount of data received");
+  else
+    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_RX_TOTAL,
+		em->n_clients * em->bytes_to_receive, em->stats.rx_total,
+		"Invalid amount of data received");
+
+  if (em->tx_results_diff)
+    CHECK_DIFF (ECHO_FAIL_TEST_ASSERT_TX_TOTAL,
+		em->n_clients * em->bytes_to_send, em->stats.tx_total,
+		"Invalid amount of data sent");
+  else
+    CHECK_SAME (ECHO_FAIL_TEST_ASSERT_TX_TOTAL,
+		em->n_clients * em->bytes_to_send, em->stats.tx_total,
+		"Invalid amount of data sent");
+
   clib_spinlock_lock (&em->sid_vpp_handles_lock);
-  CHECK (ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED,
-	 0, hash_elts (em->session_index_by_vpp_handles),
-	 "Some sessions are still open");
+  CHECK_SAME (ECHO_FAIL_TEST_ASSERT_ALL_SESSIONS_CLOSED,
+	      0, hash_elts (em->session_index_by_vpp_handles),
+	      "Some sessions are still open");
   clib_spinlock_unlock (&em->sid_vpp_handles_lock);
 }
 
@@ -118,7 +130,8 @@ print_global_json_stats (echo_main_t * em)
   u8 *end_evt =
     format (0, "%U", echo_format_timing_event, em->timing.end_event);
   u8 start_evt_missing = !(em->timing.events_sent & em->timing.start_event);
-  u8 end_evt_missing = !(em->timing.events_sent & em->timing.end_event);
+  u8 end_evt_missing = (em->rx_results_diff || em->tx_results_diff) ? 0 :
+    !(em->timing.events_sent & em->timing.end_event);
   f64 deltat = start_evt_missing || end_evt_missing ? 0 :
     em->timing.end_time - em->timing.start_time;
 
@@ -170,7 +183,8 @@ print_global_stats (echo_main_t * em)
   u8 *end_evt =
     format (0, "%U", echo_format_timing_event, em->timing.end_event);
   u8 start_evt_missing = !(em->timing.events_sent & em->timing.start_event);
-  u8 end_evt_missing = !(em->timing.events_sent & em->timing.end_event);
+  u8 end_evt_missing = (em->rx_results_diff || em->tx_results_diff) ? 0 :
+    !(em->timing.events_sent & em->timing.end_event);
   f64 deltat = start_evt_missing || end_evt_missing ? 0 :
     em->timing.end_time - em->timing.start_time;
 
@@ -221,9 +235,9 @@ void
 echo_update_count_on_session_close (echo_main_t * em, echo_session_t * s)
 {
 
-  ECHO_LOG (1, "[%lu/%lu] -> S(%x) -> [%lu/%lu]",
+  ECHO_LOG (1, "[%lu/%lu] -> %U -> [%lu/%lu]",
 	    s->bytes_received, s->bytes_received + s->bytes_to_receive,
-	    s->session_index, s->bytes_sent,
+	    echo_format_session, s, s->bytes_sent,
 	    s->bytes_sent + s->bytes_to_send);
   clib_atomic_fetch_add (&em->stats.tx_total, s->bytes_sent);
   clib_atomic_fetch_add (&em->stats.rx_total, s->bytes_received);
@@ -284,7 +298,8 @@ static int
 recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 {
   int n_read;
-  n_read = app_recv ((app_session_t *) s, rx_buf, vec_len (rx_buf));
+  u32 bytes_to_read = clib_min (s->bytes_to_receive, vec_len (rx_buf));
+  n_read = app_recv ((app_session_t *) s, rx_buf, bytes_to_read);
   if (n_read <= 0)
     return 0;
   if (svm_fifo_needs_deq_ntf (s->rx_fifo, n_read))
@@ -329,12 +344,23 @@ echo_check_closed_listener (echo_main_t * em, echo_session_t * s)
   echo_session_t *ls;
   /* if parent has died, terminate gracefully */
   if (s->listener_index == SESSION_INVALID_INDEX)
-    return;
+    {
+      ECHO_LOG (2, "%U: listener_index == SESSION_INVALID_INDEX",
+		echo_format_session, s);
+      return;
+    }
   ls = pool_elt_at_index (em->sessions, s->listener_index);
   if (ls->session_state < ECHO_SESSION_STATE_CLOSING)
-    return;
-  ECHO_LOG (2, "Session 0%lx died, close child 0x%lx", ls->vpp_session_handle,
-	    s->vpp_session_handle);
+    {
+      ECHO_LOG (3, "%U: ls->session_state (%d) < "
+		"ECHO_SESSION_STATE_CLOSING (%d)",
+		echo_format_session, ls, ls->session_state,
+		ECHO_SESSION_STATE_CLOSING);
+      return;
+    }
+
+  ECHO_LOG (2, "%U died, close child %U", echo_format_session, ls,
+	    echo_format_session, s);
   echo_update_count_on_session_close (em, s);
   em->proto_cb_vft->cleanup_cb (s, 1 /* parent_died */ );
 }
@@ -348,7 +374,7 @@ echo_handle_data (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
   int n_read, n_sent = 0;
 
   n_read = recv_data_chunk (em, s, rx_buf);
-  if (em->data_source == ECHO_TEST_DATA_SOURCE)
+  if ((em->data_source == ECHO_TEST_DATA_SOURCE) && s->bytes_to_send)
     n_sent = send_data_chunk (s, em->connect_test_data,
 			      s->bytes_sent % em->tx_buf_size,
 			      em->tx_buf_size);
@@ -433,19 +459,26 @@ echo_data_thread_fn (void *arg)
 	  echo_check_closed_listener (em, s);
 	  break;
 	case ECHO_SESSION_STATE_AWAIT_CLOSING:
+	  ECHO_LOG (3, "%U: ECHO_SESSION_STATE_AWAIT_CLOSING",
+		    echo_format_session, s);
 	  echo_check_closed_listener (em, s);
 	  break;
 	case ECHO_SESSION_STATE_CLOSING:
+	  ECHO_LOG (2, "%U: ECHO_SESSION_STATE_CLOSING",
+		    echo_format_session, s);
 	  echo_update_count_on_session_close (em, s);
 	  em->proto_cb_vft->cleanup_cb (s, 0 /* parent_died */ );
 	  break;
 	case ECHO_SESSION_STATE_CLOSED:
+	  ECHO_LOG (2, "%U: ECHO_SESSION_STATE_CLOSED",
+		    echo_format_session, s);
 	  n_closed_sessions++;
 	  break;
 	}
       if (n_closed_sessions == thread_n_sessions)
 	break;
     }
+  ECHO_LOG (1, "Mission accomplished!");
   pthread_exit (0);
 }
 
@@ -483,15 +516,23 @@ session_accepted_handler (session_accepted_msg_t * mp)
   svm_fifo_t *rx_fifo, *tx_fifo;
   echo_main_t *em = &echo_main;
   echo_session_t *session, *ls;
-  /* Allocate local session and set it up */
-  session = echo_session_new (em);
 
+  if (!(ls = echo_get_session_from_handle (em, mp->listener_handle)))
+    {
+      ECHO_FAIL (ECHO_FAIL_SESSION_ACCEPTED_BAD_LISTENER,
+		 "Unknown listener handle 0x%lx", mp->listener_handle);
+      return;
+    }
   if (wait_for_segment_allocation (mp->segment_handle))
     {
       ECHO_FAIL (ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,
 		 "accepted wait_for_segment_allocation errored");
       return;
     }
+
+  /* Allocate local session and set it up */
+  session = echo_session_new (em);
+  session->vpp_session_handle = mp->handle;
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session->session_index;
@@ -514,13 +555,12 @@ session_accepted_handler (session_accepted_msg_t * mp)
   session->start = clib_time_now (&em->clib_time);
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					 svm_msg_q_t *);
-  if (!(ls = echo_get_session_from_handle (em, mp->listener_handle)))
-    return;
   session->listener_index = ls->session_index;
 
   /* Add it to lookup table */
-  ECHO_LOG (1, "Accepted session 0x%lx -> 0x%lx", mp->handle,
-	    mp->listener_handle);
+  ECHO_LOG (1, "Accepted session 0x%lx S[%u] -> 0x%lx S[%u]",
+	    mp->handle, session->session_index,
+	    mp->listener_handle, session->listener_index);
   echo_session_handle_add_del (em, mp->handle, session->session_index);
 
   app_alloc_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt,
@@ -595,11 +635,21 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
   session_disconnected_reply_msg_t *rmp;
   echo_main_t *em = &echo_main;
   echo_session_t *s;
-  ECHO_LOG (1, "passive close session 0x%lx", mp->handle);
   if (!(s = echo_get_session_from_handle (em, mp->handle)))
-    return;
-  em->proto_cb_vft->disconnected_cb (mp, s);
-
+    {
+      ECHO_LOG (0, "Invalid vpp_session_handle: 0x%lx", mp->handle);
+      return;
+    }
+  if (s->session_state == ECHO_SESSION_STATE_CLOSED)
+    {
+      ECHO_LOG (1, "%U: already in ECHO_SESSION_STATE_CLOSED",
+		echo_format_session, s);
+    }
+  else
+    {
+      ECHO_LOG (1, "%U: passive close", echo_format_session, s);
+      em->proto_cb_vft->disconnected_cb (mp, s);
+    }
   app_alloc_ctrl_evt_to_vpp (s->vpp_evt_q, app_evt,
 			     SESSION_CTRL_EVT_DISCONNECTED_REPLY);
   rmp = (session_disconnected_reply_msg_t *) app_evt->evt->data;
@@ -616,9 +666,12 @@ session_reset_handler (session_reset_msg_t * mp)
   echo_main_t *em = &echo_main;
   session_reset_reply_msg_t *rmp;
   echo_session_t *s = 0;
-  ECHO_LOG (1, "Reset session 0x%lx", mp->handle);
   if (!(s = echo_get_session_from_handle (em, mp->handle)))
-    return;
+    {
+      ECHO_LOG (0, "Invalid vpp_session_handle: 0x%lx", mp->handle);
+      return;
+    }
+  ECHO_LOG (1, "%U: session reset", echo_format_session, s);
   em->proto_cb_vft->reset_cb (mp, s);
 
   app_alloc_ctrl_evt_to_vpp (s->vpp_evt_q, app_evt,
@@ -761,6 +814,7 @@ server_run (echo_main_t * em)
   ECHO_LOG (1, "App is ready");
   echo_process_rpcs (em);
   /* Cleanup */
+  ECHO_LOG (1, "Unbind listen port");
   echo_send_unbind (em);
   if (wait_for_state_change (em, STATE_DISCONNECTED, TIMEOUT))
     {
@@ -802,6 +856,8 @@ print_usage_and_exit (void)
 	   "                       sconnected  - last Stream got connected\n"
 	   "                       lastbyte    - Last expected byte received\n"
 	   "                       exit        - Exiting of the app\n"
+	   "  rx-results-diff     Rx results different to pass test\n"
+	   "  tx-results-diff     Tx results different to pass test\n"
 	   "  json                Output global stats in json\n"
 	   "  log=N               Set the log level to [0: no output, 1:errors, 2:log]\n"
 	   "\n"
@@ -818,7 +874,7 @@ print_usage_and_exit (void)
   fprintf (stderr, "\nDefault configuration is :\n"
 	   " server nclients 1/1 RX=64Kb TX=RX\n"
 	   " client nclients 1/1 RX=64Kb TX=64Kb\n");
-  exit (1);
+  exit (ECHO_FAIL_USAGE);
 }
 
 static int
@@ -911,6 +967,10 @@ echo_process_opts (int argc, char **argv)
 	;
       else if (unformat (a, "RX=%U", unformat_data, &em->bytes_to_receive))
 	;
+      else if (unformat (a, "rx-results-diff"))
+	em->rx_results_diff = 1;
+      else if (unformat (a, "tx-results-diff"))
+	em->tx_results_diff = 1;
       else if (unformat (a, "json"))
 	em->output_json = 1;
       else if (unformat (a, "log=%d", &em->log_lvl))
@@ -1100,7 +1160,6 @@ main (int argc, char **argv)
     clients_run (em);
   echo_notify_event (em, ECHO_EVT_EXIT);
   echo_free_sessions (em);
-  echo_assert_test_suceeded (em);
   echo_send_detach (em);
   if (wait_for_state_change (em, STATE_DETACHED, TIMEOUT))
     {
@@ -1118,6 +1177,7 @@ main (int argc, char **argv)
     vl_socket_client_disconnect ();
   else
     vl_client_disconnect_from_vlib ();
+  echo_assert_test_suceeded (em);
 exit_on_error:
   ECHO_LOG (0, "Test complete !\n");
   if (em->output_json)
