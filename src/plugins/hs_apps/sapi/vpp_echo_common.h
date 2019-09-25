@@ -39,12 +39,15 @@
 
 #define foreach_echo_fail_code                                          \
   _(ECHO_FAIL_NONE, "ECHO_FAIL_NONE")                                   \
+  _(ECHO_FAIL_USAGE, "ECHO_FAIL_USAGE")                                 \
   _(ECHO_FAIL_SEND_IO_EVT, "ECHO_FAIL_SEND_IO_EVT")                     \
   _(ECHO_FAIL_SOCKET_CONNECT, "ECHO_FAIL_SOCKET_CONNECT")               \
   _(ECHO_FAIL_INIT_SHM_API, "ECHO_FAIL_INIT_SHM_API")                   \
   _(ECHO_FAIL_SHMEM_CONNECT, "ECHO_FAIL_SHMEM_CONNECT")                 \
   _(ECHO_FAIL_TEST_BYTES_ERR, "ECHO_FAIL_TEST_BYTES_ERR")               \
   _(ECHO_FAIL_BIND, "ECHO_FAIL_BIND")                                   \
+  _(ECHO_FAIL_SESSION_ACCEPTED_BAD_LISTENER,                            \
+    "ECHO_FAIL_SESSION_ACCEPTED_BAD_LISTENER")                          \
   _(ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,                              \
     "ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC")                            \
   _(ECHO_FAIL_SESSION_CONNECT, "ECHO_FAIL_SESSION_CONNECT")             \
@@ -65,6 +68,8 @@
   _(ECHO_FAIL_VL_API_APP_ATTACH, "ECHO_FAIL_VL_API_APP_ATTACH")         \
   _(ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME,                              \
     "ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME")                            \
+  _(ECHO_FAIL_VL_API_NULL_APP_EVENT_Q_ADDR,                             \
+    "ECHO_FAIL_VL_API_NULL_APP_EVENT_Q_ADDR")                           \
   _(ECHO_FAIL_VL_API_RECV_FD_MSG, "ECHO_FAIL_VL_API_RECV_FD_MSG")       \
   _(ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,                               \
     "ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH")                             \
@@ -101,15 +106,24 @@ typedef enum
 
 extern char *echo_fail_code_str[];
 
-#define CHECK(fail, expected, result, _fmt, _args...)                   \
-    if (expected != result)                                             \
-      ECHO_FAIL (fail, "expected %d, got %d : " _fmt, expected,         \
-                 result, ##_args);                                      \
+#define CHECK_SAME(fail, expected, result, _fmt, _args...)      \
+do {                                                            \
+  if ((expected) != (result))                                   \
+    ECHO_FAIL ((fail), "expected same (%d, got %d) : "_fmt,     \
+               (expected), (result), ##_args);                  \
+} while (0)
+
+#define CHECK_DIFF(fail, expected, result, _fmt, _args...)      \
+do {                                                            \
+  if ((expected) == (result))                                   \
+    ECHO_FAIL ((fail), "expected different (both %d) : "_fmt,   \
+               (expected), ##_args);                            \
+} while (0)
 
 #define ECHO_FAIL(fail, _fmt, _args...)                                 \
-  {                                                                     \
+do {                                                                    \
     echo_main_t *em = &echo_main;                                       \
-    em->has_failed = fail;                                              \
+    em->has_failed = (fail);                                            \
     if (vec_len(em->fail_descr))                                        \
       em->fail_descr = format(em->fail_descr, " | %s (%d): "_fmt,       \
                               echo_fail_code_str[fail], fail, ##_args); \
@@ -119,7 +133,7 @@ extern char *echo_fail_code_str[];
     em->time_to_stop = 1;                                               \
     if (em->log_lvl > 0)                                                \
       clib_warning ("%v", em->fail_descr);                              \
-  }
+} while (0)
 
 #define ECHO_LOG(lvl, _fmt,_args...)    \
   {                                     \
@@ -267,6 +281,8 @@ typedef struct
   /* State of the connection, shared between msg RX thread and main thread */
   volatile connection_state_t state;
   volatile u8 time_to_stop;	/* Signal variables */
+  u8 rx_results_diff;		/* Rx results will be different than cfg */
+  u8 tx_results_diff;		/* Tx results will be different than cfg */
   u8 has_failed;		/* stores the exit code */
   u8 *fail_descr;		/* vector containing fail description */
 
@@ -355,6 +371,9 @@ u8 *format_ip46_address (u8 * s, va_list * args);
 uword unformat_data (unformat_input_t * input, va_list * args);
 u8 *format_api_error (u8 * s, va_list * args);
 void init_error_string_table ();
+u8 *echo_format_session (u8 * s, va_list * args);
+u8 *echo_format_session_type (u8 * s, va_list * args);
+u8 *echo_format_session_state (u8 * s, va_list * args);
 u8 *echo_format_app_state (u8 * s, va_list * args);
 uword echo_unformat_close (unformat_input_t * input, va_list * args);
 uword echo_unformat_timing_event (unformat_input_t * input, va_list * args);
