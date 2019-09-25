@@ -39,12 +39,15 @@
 
 #define foreach_echo_fail_code                                          \
   _(ECHO_FAIL_NONE, "ECHO_FAIL_NONE")                                   \
+  _(ECHO_FAIL_USAGE, "ECHO_FAIL_USAGE")                                 \
   _(ECHO_FAIL_SEND_IO_EVT, "ECHO_FAIL_SEND_IO_EVT")                     \
   _(ECHO_FAIL_SOCKET_CONNECT, "ECHO_FAIL_SOCKET_CONNECT")               \
   _(ECHO_FAIL_INIT_SHM_API, "ECHO_FAIL_INIT_SHM_API")                   \
   _(ECHO_FAIL_SHMEM_CONNECT, "ECHO_FAIL_SHMEM_CONNECT")                 \
   _(ECHO_FAIL_TEST_BYTES_ERR, "ECHO_FAIL_TEST_BYTES_ERR")               \
   _(ECHO_FAIL_BIND, "ECHO_FAIL_BIND")                                   \
+  _(ECHO_FAIL_SESSION_ACCEPTED_BAD_LISTENER,                            \
+    "ECHO_FAIL_SESSION_ACCEPTED_BAD_LISTENER")                          \
   _(ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,                              \
     "ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC")                            \
   _(ECHO_FAIL_SESSION_CONNECT, "ECHO_FAIL_SESSION_CONNECT")             \
@@ -65,6 +68,8 @@
   _(ECHO_FAIL_VL_API_APP_ATTACH, "ECHO_FAIL_VL_API_APP_ATTACH")         \
   _(ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME,                              \
     "ECHO_FAIL_VL_API_MISSING_SEGMENT_NAME")                            \
+  _(ECHO_FAIL_VL_API_NULL_APP_EVENT_Q_ADDR,                             \
+    "ECHO_FAIL_VL_API_NULL_APP_EVENT_Q_ADDR")                           \
   _(ECHO_FAIL_VL_API_RECV_FD_MSG, "ECHO_FAIL_VL_API_RECV_FD_MSG")       \
   _(ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,                               \
     "ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH")                             \
@@ -354,6 +359,8 @@ u8 *format_ip46_address (u8 * s, va_list * args);
 uword unformat_data (unformat_input_t * input, va_list * args);
 u8 *format_api_error (u8 * s, va_list * args);
 void init_error_string_table ();
+u8 *echo_format_session (u8 * s, va_list * args);
+u8 *echo_format_session_type (u8 * s, va_list * args);
 u8 *echo_format_app_state (u8 * s, va_list * args);
 uword echo_unformat_close (unformat_input_t * input, va_list * args);
 uword echo_unformat_timing_event (unformat_input_t * input, va_list * args);

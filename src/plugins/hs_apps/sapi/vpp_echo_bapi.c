@@ -211,7 +211,13 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       return;
     }
 
-  ASSERT (mp->app_event_queue_address);
+  if (!mp->app_event_queue_address)
+    {
+      ECHO_FAIL (ECHO_FAIL_VL_API_NULL_APP_EVENT_Q_ADDR,
+		 "NULL app_event_queue_address");
+      return;
+    }
+
   em->our_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					  svm_msg_q_t *);
 
@@ -367,6 +373,8 @@ vl_api_unbind_uri_reply_t_handler (vl_api_unbind_uri_reply_t * mp)
     }
   listen_session = pool_elt_at_index (em->sessions, em->listen_session_index);
   em->proto_cb_vft->cleanup_cb (listen_session, 0 /* parent_died */ );
+  echo_session_handle_add_del (em, em->listen_session_index,
+			       SESSION_INVALID_INDEX);
   em->state = STATE_DISCONNECTED;
 }
 
@@ -384,7 +392,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
       return;
     }
 
-  ECHO_LOG (1, "Got disonnected reply for session 0x%lx", mp->handle);
+  ECHO_LOG (1, "Got disconnected reply for session 0x%lx", mp->handle);
   if (!(s = echo_get_session_from_handle (em, mp->handle)))
     return;
   em->proto_cb_vft->disconnected_reply_cb (s);
