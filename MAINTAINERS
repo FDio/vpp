@@ -524,6 +524,10 @@ Plugin - SCTP
 I:	sctp
 F:	src/plugins/sctp/
 
+Cisco Discovery Protocol
+I:	cdp
+F:	src/plugins/cdp/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
