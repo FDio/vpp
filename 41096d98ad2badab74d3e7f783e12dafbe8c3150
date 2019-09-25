@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e8fd9fbb_571f262b",
+        "filename": "src/plugins/map/map_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 638,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-09-25T08:13:27Z",
+      "side": 1,
+      "message": "Why enable IPv6 SVR here?",
+      "revId": "41096d98ad2badab74d3e7f783e12dafbe8c3150",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
