@@ -338,7 +338,7 @@ session_lookup_del_session (session_t * s)
   transport_connection_t *ts;
   ts = transport_get_connection (session_get_transport_proto (s),
 				 s->connection_index, s->thread_index);
-  if (ts->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP)
+  if (!ts || (ts->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
     return 0;
   return session_lookup_del_connection (ts);
 }
