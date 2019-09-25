@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "37cceebb_7942d9cd",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-09-25T15:13:22Z",
+      "side": 1,
+      "message": "Instead of overwritting is_ip6 parameter above, wouldn\u0027t it be better to do something like:\nASSERT((0 \u003d\u003d is_ip6 \u0026\u0026 (sb0-\u003eflags \u0026 VNET_BUFFER_F_IS_IP4)) || (1 \u003d\u003d is_ip6 \u0026\u0026 (sb0-\u003eflags \u0026 VNET_BUFFER_F_IS_IP6)))",
+      "revId": "21dcce699ebe17b6007949dd7be360ad36ea4893",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
