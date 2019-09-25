@@ -34,6 +34,24 @@
       "revId": "21dcce699ebe17b6007949dd7be360ad36ea4893",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dac87739_7784cb3f",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-09-25T16:37:54Z",
+      "side": 1,
+      "message": "I meant instead of doing:\n  int is_ip4 \u003d sb0-\u003eflags \u0026 VNET_BUFFER_F_IS_IP4;\n  int is_ip6 \u003d sb0-\u003eflags \u0026 VNET_BUFFER_F_IS_IP6;\n  ASSERT (is_ip4 || is_ip6);\nI think it would be better to do:\n  ASSERT((0 \u003d\u003d is_ip6 \u0026\u0026 (sb0-\u003eflags \u0026 VNET_BUFFER_F_IS_IP4)) || (1 \u003d\u003d is_ip6 \u0026\u0026 (sb0-\u003eflags \u0026 VNET_BUFFER_F_IS_IP6)))\n\nThe main reason is that \u0027int is_ip6 \u003d sb0-\u003eflags \u0026 VNET_BUFFER_F_IS_IP6;\u0027 shadow the is_ip6 parameter which is passed to the function. I think this is a bad idea.\nThen, I understand you want to use ASSERT() to make sure v4 nodes are called on v4 packets and v6 nodes on v6 packets. This ASSERT does just that: if the is_ip6 parameter is 0, it means we are calling the v4 node and so we need to check for v4 packet.\nRegarding performance, ASSERT() is only enable on DEBUG builds and C does partial boolean evaluation, ie both branches won\u0027t be fully evaluated anyway.",
+      "parentUuid": "62177ffe_d0131285",
+      "revId": "21dcce699ebe17b6007949dd7be360ad36ea4893",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
