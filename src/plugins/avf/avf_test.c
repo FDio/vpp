@@ -31,28 +31,8 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* declare message IDs */
-#include <avf/avf_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <avf/avf_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-#define vl_endianfun
-#include <avf/avf_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <avf/avf_all_api_h.h>
-#undef vl_printfun
-
-/* get API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <avf/avf_all_api_h.h>
-#undef vp_api_version
+#include <avf/avf.api_enum.h>
+#include <avf/avf.api_types.h>
 
 typedef struct
 {
@@ -62,29 +42,6 @@ typedef struct
 } avf_test_main_t;
 
 avf_test_main_t avf_test_main;
-
-#define foreach_standard_reply_retval_handler		\
-_(avf_delete_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = avf_test_main.vat_main;    	\
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-#define foreach_vpe_api_reply_msg			\
-_(AVF_CREATE_REPLY, avf_create_reply)			\
-_(AVF_DELETE_REPLY, avf_delete_reply)
 
 /* avf create API */
 static int
@@ -192,41 +149,7 @@ api_avf_delete (vat_main_t * vam)
   return ret;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg					\
-_(avf_create, "<pci-address> [rx-queue-size <size>] "		\
-              "[tx-queue-size <size>] [num-rx-queues <size>]")	\
-_(avf_delete, "<sw_if_index>")
-
-static void
-avf_api_hookup (vat_main_t * vam)
-{
-  avf_test_main_t *avm __attribute__ ((unused)) = &avf_test_main;
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + avm->msg_id_base),       \
-                          #n,                                   \
-                          vl_api_##n##_t_handler,               \
-                          vl_noop_handler,                      \
-                          vl_api_##n##_t_endian,                \
-                          vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-#define _(n,h)							\
-  hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-VAT_PLUGIN_REGISTER (avf);
+#include <avf/avf.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON
