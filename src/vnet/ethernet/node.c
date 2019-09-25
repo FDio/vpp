@@ -1001,7 +1001,6 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (vlib_global_main.pcap.pcap_rx_enable))
     {
       u32 bi0;
-      vnet_main_t *vnm = vnet_get_main ();
       vnet_pcap_t *pp = &vlib_global_main.pcap;
 
       from = vlib_frame_vector_args (from_frame);
@@ -1014,12 +1013,11 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  from++;
 	  n_left--;
 	  b0 = vlib_get_buffer (vm, bi0);
-	  if (vec_len (vnm->classify_filter_table_indices))
+	  if (pp->filter_classify_table_index != ~0)
 	    {
 	      classify_filter_result =
 		vnet_is_packet_traced_inline
-		(b0, vnm->classify_filter_table_indices[0],
-		 0 /* full classify */ );
+		(b0, pp->filter_classify_table_index, 0 /* full classify */ );
 	      if (classify_filter_result)
 		pcap_add_buffer (&pp->pcap_main, vm, bi0,
 				 pp->max_bytes_per_pkt);

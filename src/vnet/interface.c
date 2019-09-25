@@ -768,6 +768,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
   pool_get (im->hw_interfaces, hw);
   clib_memset (hw, 0, sizeof (*hw));
+  hw->trace_classify_table_index = ~0;
 
   hw_index = hw - im->hw_interfaces;
   hw->hw_if_index = hw_index;
