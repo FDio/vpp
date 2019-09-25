@@ -48,6 +48,7 @@ _ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
   sum0 = 0;
   sum1 = sum;
 
+  //fprintf(stderr,"Entering ::: sum0 = %d , sum1 = %d\ni n_bytes =%d",(u32)sum0,(u32)sum1, (u32)n_bytes);
   /*
    * Align pointer to 64 bits. The ip checksum is a 16-bit
    * one's complememt sum. It's impractical to optimize
@@ -107,6 +108,7 @@ do {									\
 
   /* Combine even and odd sums. */
   sum0 = ip_csum_with_carry (sum0, sum1);
+  //fprintf(stderr,"Exiting :: sum0 = %d , sum1 = %d\n",(u32)sum0,(u32)sum1);
 
   return sum0;
 }

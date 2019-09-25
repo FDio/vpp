@@ -453,7 +453,9 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 {
   tcp_options_t _snd_opts, *snd_opts = &_snd_opts;
   u8 tcp_opts_len, tcp_hdr_opts_len;
-  tcp_header_t *th;
+  tcp_header_t *th = 0;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  vlib_main_t *vm = wrk->vm;
   u16 wnd;
 
   wnd = tcp_window_to_advertise (tc, state);
@@ -466,6 +468,9 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags, wnd);
 
   tcp_options_write ((u8 *) (th + 1), snd_opts);
+
+  th->checksum = ip4_tcp_compute_checksum_custom(vm, b, &tc->c_lcl_ip, &tc->c_rmt_ip);
+
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 
   if (wnd == 0)
@@ -1030,6 +1035,8 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
   u8 tcp_hdr_opts_len, flags = TCP_FLAG_ACK;
   u32 advertise_wnd, data_len;
   tcp_main_t *tm = &tcp_main;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  vlib_main_t *vm = wrk->vm;
   tcp_header_t *th;
 
   data_len = b->current_length;
@@ -1082,6 +1089,9 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
   tc->bytes_out += data_len;
   tc->data_segs_out += 1;
 
+
+  th->checksum = ip4_tcp_compute_checksum_custom(vm, b, &tc->c_lcl_ip, &tc->c_rmt_ip);
+
   TCP_EVT (TCP_EVT_PKTIZE, tc);
 }
 
@@ -1089,6 +1099,9 @@ u32
 tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 {
   tcp_connection_t *tc = (tcp_connection_t *) tconn;
+  //tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  //vlib_main_t *vm = wrk->vm;
+  //tcp_header_t *th;
 
   if (tc->flags & TCP_CONN_TRACK_BURST)
     {
@@ -1099,6 +1112,7 @@ tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0, /* burst */ 1,
 		  /* update_snd_nxt */ 1);
+
 
   tc->snd_una_max = seq_max (tc->snd_nxt, tc->snd_una_max);
   tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
@@ -1316,6 +1330,7 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
 	}
     }
+
 
   ASSERT (n_bytes > 0);
   ASSERT (((*b)->current_data + (*b)->current_length) <= bytes_per_buffer);
@@ -2161,10 +2176,8 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
   if (is_ip4)
     {
       vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
-			    IP_PROTOCOL_TCP, 1);
-      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+			    IP_PROTOCOL_TCP, 0);
       vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
-      th0->checksum = 0;
     }
   else
     {
