@@ -524,6 +524,11 @@ Plugin - SCTP
 I:	sctp
 F:	src/plugins/sctp/
 
+IPv6 Connection Tracker
+I:	ct6
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/ct6
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
