@@ -237,6 +237,43 @@ quic_increment_counter (u8 evt, u8 val)
   vlib_node_increment_counter (vm, quic_input_node.index, evt, val);
 }
 
+struct st_quic_event_log_t
+{
+  quicly_event_logger_t super;
+};
+
+void
+quic_event_log (quicly_event_logger_t * _self, quicly_event_type_t type,
+		const quicly_event_attribute_t * attributes,
+		size_t num_attributes)
+{
+  if (type == QUICLY_EVENT_TYPE_PACKET_LOST)
+    {
+      QUIC_DBG (1, "QUIC packet loss");
+      quic_increment_counter (QUIC_ERROR_PACKET_DROP, 1);
+    }
+}
+
+quicly_event_logger_t *
+quic_new_event_logger ()
+{
+  struct st_quic_event_log_t *self;
+
+  if ((self = clib_mem_alloc (sizeof (*self))) == NULL)
+    return NULL;
+  /* *INDENT-OFF* */
+  *self = (struct st_quic_event_log_t) {{quic_event_log}};
+  /* *INDENT-ON* */
+  return &self->super;
+}
+
+void
+quic_free_event_logger (quicly_event_logger_t * _self)
+{
+  struct st_quicly_default_event_log_t *self = (void *) _self;
+  clib_mem_free (self);
+}
+
 /**
  * Called when quicly return an error
  * This function interacts tightly with quic_proto_on_close
@@ -935,8 +972,8 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
   quicly_ctx->now = &quicly_vpp_now_cb;
   quicly_amend_ptls_context (quicly_ctx->tls);
 
-  quicly_ctx->event_log.mask = 0;	/* logs */
-  quicly_ctx->event_log.cb = quicly_new_default_event_logger (stderr);
+  quicly_ctx->event_log.mask = UINT64_MAX;	/* logs */
+  quicly_ctx->event_log.cb = quic_new_event_logger ();
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
