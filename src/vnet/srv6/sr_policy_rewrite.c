@@ -1097,7 +1097,7 @@ format_sr_policy_rewrite_trace (u8 * s, va_list * args)
   s = format
     (s, "SR-policy-rewrite: src %U dst %U\n\tLocal SID Prefix: %U Node: %U",
      format_ip6_address, &t->src, format_ip6_address, &t->dst,
-         format_ip6_address, t->local_prefix, format_ip6_address, t->node);
+         format_ip6_address, &t->local_prefix, format_ip6_address, &t->node);
     } else {
   s = format
     (s, "SR-policy-rewrite: src %U dst %U",
