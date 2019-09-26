@@ -1042,12 +1042,14 @@ list(APPEND VNET_SOURCES
   devices/virtio/virtio_api.c
   devices/virtio/cli.c
   devices/virtio/pci.c
+  devices/virtio/virtio_types_api.c
 )
 
 list(APPEND VNET_HEADERS
   devices/virtio/pci.h
   devices/virtio/virtio.h
   devices/virtio/vhost_user.h
+  devices/virtio/virtio_types_api.h
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
@@ -1062,6 +1064,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
 list(APPEND VNET_API_FILES
   devices/virtio/vhost_user.api
   devices/virtio/virtio.api
+  devices/virtio/virtio_types.api
 )
 
 ##############################################################################

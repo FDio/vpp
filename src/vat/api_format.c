@@ -13052,11 +13052,18 @@ static void vl_api_sw_interface_vhost_user_details_t_handler
   (vl_api_sw_interface_vhost_user_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
+  u64 features;
+
+  features =
+    clib_net_to_host_u32 (mp->features_first_32) | ((u64)
+						    clib_net_to_host_u32
+						    (mp->features_last_32) <<
+						    32);
 
   print (vam->ofp, "%-25s %3" PRIu32 " %6" PRIu32 " %8x %6d %7d %s",
 	 (char *) mp->interface_name,
 	 ntohl (mp->sw_if_index), ntohl (mp->virtio_net_hdr_sz),
-	 clib_net_to_host_u64 (mp->features), mp->is_server,
+	 features, mp->is_server,
 	 ntohl (mp->num_regions), (char *) mp->sock_filename);
   print (vam->ofp, "    Status: '%s'", strerror (ntohl (mp->sock_errno)));
 }
@@ -13080,8 +13087,10 @@ static void vl_api_sw_interface_vhost_user_details_t_handler_json
 				   mp->interface_name);
   vat_json_object_add_uint (node, "virtio_net_hdr_sz",
 			    ntohl (mp->virtio_net_hdr_sz));
-  vat_json_object_add_uint (node, "features",
-			    clib_net_to_host_u64 (mp->features));
+  vat_json_object_add_uint (node, "features_first_32",
+			    clib_net_to_host_u32 (mp->features_first_32));
+  vat_json_object_add_uint (node, "features_last_32",
+			    clib_net_to_host_u32 (mp->features_last_32));
   vat_json_object_add_uint (node, "is_server", mp->is_server);
   vat_json_object_add_string_copy (node, "sock_filename", mp->sock_filename);
   vat_json_object_add_uint (node, "num_regions", ntohl (mp->num_regions));
