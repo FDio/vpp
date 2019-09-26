@@ -68,6 +68,7 @@ typedef struct
   };
   u8 is_ip6;
   u32 seq;
+  u32 sa_index;
 } ipsec_tun_protect_input_trace_t;
 
 static u8 *
@@ -79,11 +80,11 @@ format_ipsec_tun_protect_input_trace (u8 * s, va_list * args)
     va_arg (*args, ipsec_tun_protect_input_trace_t *);
 
   if (t->is_ip6)
-    s = format (s, "IPSec: %U seq %u",
-		format_ipsec6_tunnel_key, &t->key6, t->seq);
+    s = format (s, "IPSec: %U seq %u sa %d",
+		format_ipsec6_tunnel_key, &t->key6, t->seq, t->sa_index);
   else
-    s = format (s, "IPSec: %U seq %u",
-		format_ipsec4_tunnel_key, &t->key4, t->seq);
+    s = format (s, "IPSec: %U seq %u sa %d",
+		format_ipsec4_tunnel_key, &t->key4, t->seq, t->sa_index);
   return s;
 }
 
@@ -376,9 +377,9 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		clib_memcpy (&tr->key4, &key40, sizeof (tr->key4));
 	      tr->is_ip6 = is_ip6;
-	      tr->seq =
-		len0 >=
-		sizeof (*esp0) ? clib_host_to_net_u32 (esp0->seq) : ~0;
+	      tr->seq = (len0 >= sizeof (*esp0) ?
+			 clib_host_to_net_u32 (esp0->seq) : ~0);
+	      tr->sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	    }
 	}
 
