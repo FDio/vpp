@@ -441,7 +441,9 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   ASSERT (f->refcnt > 0);
 
-  if (--f->refcnt > 0)
+  /* Defend against attempts to free a fifo multiple times in
+   * release images. refcnt should not be zero */
+  if (!f->refcnt || --f->refcnt > 0)
     return;
 
   sh = fs->ssvm.sh;

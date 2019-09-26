@@ -202,6 +202,8 @@ session_free (session_t * s)
       return;
     }
   SESSION_EVT (SESSION_EVT_FREE, s);
+  s->rx_fifo = 0;
+  s->tx_fifo = 0;
   pool_put (session_main.wrk[s->thread_index].sessions, s);
 }
 
