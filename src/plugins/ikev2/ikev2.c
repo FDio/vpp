@@ -22,6 +22,8 @@
 #include <vppinfra/random.h>
 #include <vnet/udp/udp.h>
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipip/ipip.h>
 #include <plugins/ikev2/ikev2.h>
 #include <plugins/ikev2/ikev2_priv.h>
 #include <openssl/sha.h>
@@ -1475,17 +1477,34 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
 }
 
 
+static u32
+ikev2_mk_local_sa_id (u32 ti)
+{
+  return (0x80000000 | ti);
+}
+
+static u32
+ikev2_mk_remote_sa_id (u32 ti)
+{
+  return (0xc0000000 | ti);
+}
+
 static int
 ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 			       ikev2_child_sa_t * child)
 {
   ikev2_main_t *km = &ikev2_main;
-  ikev2_profile_t *p = 0;
-  ipsec_add_del_tunnel_args_t a;
+  ikev2_profile_t *p = NULL;
   ikev2_sa_transform_t *tr;
+  ipsec_key_t loc_ckey, rem_ckey, loc_ikey, rem_ikey;
   ikev2_sa_proposal_t *proposals;
-  u8 encr_type = 0;
-  u8 integ_type = 0;
+  ipsec_sa_flags_t flags;
+  ipsec_crypto_alg_t encr_type;
+  ipsec_integ_alg_t integ_type;
+  u32 local_spi, remote_spi;
+
+  ip46_address_t local_ip, remote_ip;
+  int rv;
 
   if (!child->r_proposals)
     {
@@ -1493,31 +1512,28 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
       return 1;
     }
 
-  clib_memset (&a, 0, sizeof (a));
-  a.is_add = 1;
+  flags = IPSEC_SA_FLAG_USE_ANTI_REPLAY;
+
   if (sa->is_initiator)
     {
-      a.local_ip.ip4.as_u32 = sa->iaddr.as_u32;
-      a.remote_ip.ip4.as_u32 = sa->raddr.as_u32;
+      ip46_address_set_ip4 (&local_ip, &sa->iaddr);
+      ip46_address_set_ip4 (&remote_ip, &sa->raddr);
       proposals = child->i_proposals;
-      a.local_spi = child->r_proposals[0].spi;
-      a.remote_spi = child->i_proposals[0].spi;
+      local_spi = child->r_proposals[0].spi;
+      remote_spi = child->i_proposals[0].spi;
     }
   else
     {
-      a.local_ip.ip4.as_u32 = sa->raddr.as_u32;
-      a.remote_ip.ip4.as_u32 = sa->iaddr.as_u32;
+      ip46_address_set_ip4 (&local_ip, &sa->raddr);
+      ip46_address_set_ip4 (&remote_ip, &sa->iaddr);
       proposals = child->r_proposals;
-      a.local_spi = child->i_proposals[0].spi;
-      a.remote_spi = child->r_proposals[0].spi;
+      local_spi = child->i_proposals[0].spi;
+      remote_spi = child->r_proposals[0].spi;
     }
-  a.anti_replay = 1;
 
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_ESN);
-  if (tr)
-    a.esn = tr->esn_type;
-  else
-    a.esn = 0;
+  if (tr && tr->esn_type)
+    flags = IPSEC_SA_FLAG_USE_ESN;
 
   tr = ikev2_sa_get_td_for_type (proposals, IKEV2_TRANSFORM_TYPE_ENCR);
   if (tr)
@@ -1603,33 +1619,20 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 
   ikev2_calc_child_keys (sa, child);
 
-  u8 *loc_ckey, *rem_ckey, *loc_ikey, *rem_ikey;
   if (sa->is_initiator)
     {
-      loc_ikey = child->sk_ai;
-      rem_ikey = child->sk_ar;
-      loc_ckey = child->sk_ei;
-      rem_ckey = child->sk_er;
+      ipsec_mk_key (&loc_ikey, child->sk_ai, vec_len (child->sk_ai));
+      ipsec_mk_key (&rem_ikey, child->sk_ar, vec_len (child->sk_ar));
+      ipsec_mk_key (&loc_ckey, child->sk_ei, vec_len (child->sk_ei));
+      ipsec_mk_key (&rem_ckey, child->sk_er, vec_len (child->sk_er));
     }
   else
     {
-      loc_ikey = child->sk_ar;
-      rem_ikey = child->sk_ai;
-      loc_ckey = child->sk_er;
-      rem_ckey = child->sk_ei;
+      ipsec_mk_key (&loc_ikey, child->sk_ar, vec_len (child->sk_ar));
+      ipsec_mk_key (&rem_ikey, child->sk_ai, vec_len (child->sk_ai));
+      ipsec_mk_key (&loc_ckey, child->sk_er, vec_len (child->sk_er));
+      ipsec_mk_key (&rem_ckey, child->sk_ei, vec_len (child->sk_ei));
     }
-
-  a.integ_alg = integ_type;
-  a.local_integ_key_len = vec_len (loc_ikey);
-  clib_memcpy_fast (a.local_integ_key, loc_ikey, a.local_integ_key_len);
-  a.remote_integ_key_len = vec_len (rem_ikey);
-  clib_memcpy_fast (a.remote_integ_key, rem_ikey, a.remote_integ_key_len);
-
-  a.crypto_alg = encr_type;
-  a.local_crypto_key_len = vec_len (loc_ckey);
-  clib_memcpy_fast (a.local_crypto_key, loc_ckey, a.local_crypto_key_len);
-  a.remote_crypto_key_len = vec_len (rem_ckey);
-  clib_memcpy_fast (a.remote_crypto_key, rem_ckey, a.remote_crypto_key_len);
 
   if (sa->is_profile_index_set)
     p = pool_elt_at_index (km->profiles, sa->profile_index);
@@ -1652,7 +1655,26 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	}
     }
 
-  ipsec_add_del_tunnel_if (&a);
+  rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0,
+			&local_ip, &remote_ip, 0, 0, &child->sw_if_index);
+
+  child->local_sa = ikev2_mk_local_sa_id (child->sw_if_index);
+  child->remote_sa = ikev2_mk_remote_sa_id (child->sw_if_index);
+
+  rv |= ipsec_sa_add_and_lock (child->local_sa,
+			       local_spi,
+			       IPSEC_PROTOCOL_ESP, encr_type,
+			       &loc_ckey, integ_type, &loc_ikey, flags,
+			       0, 0, &local_ip, &remote_ip, &child->local_sa);
+  rv |= ipsec_sa_add_and_lock (child->remote_sa,
+			       remote_spi,
+			       IPSEC_PROTOCOL_ESP, encr_type,
+			       &rem_ckey, integ_type, &rem_ikey,
+			       (flags | IPSEC_SA_FLAG_IS_INBOUND),
+			       0, 0,
+			       &remote_ip, &local_ip, &child->remote_sa);
+  rv |= ipsec_tun_protect_update_one (child->sw_if_index,
+				      child->local_sa, child->remote_sa);
 
   return 0;
 }
@@ -1661,32 +1683,11 @@ static int
 ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 			       ikev2_child_sa_t * child)
 {
-  ipsec_add_del_tunnel_args_t a;
+  ipsec_tun_protect_del (child->sw_if_index);
+  ipsec_sa_unlock_id (child->remote_sa);
+  ipsec_sa_unlock_id (child->local_sa);
+  ipip_del_tunnel (child->sw_if_index);
 
-  if (sa->is_initiator)
-    {
-      if (!vec_len (child->i_proposals))
-	return 0;
-
-      a.is_add = 0;
-      a.local_ip.ip4.as_u32 = sa->iaddr.as_u32;
-      a.remote_ip.ip4.as_u32 = sa->raddr.as_u32;
-      a.local_spi = child->r_proposals[0].spi;
-      a.remote_spi = child->i_proposals[0].spi;
-    }
-  else
-    {
-      if (!vec_len (child->r_proposals))
-	return 0;
-
-      a.is_add = 0;
-      a.local_ip.ip4.as_u32 = sa->raddr.as_u32;
-      a.remote_ip.ip4.as_u32 = sa->iaddr.as_u32;
-      a.local_spi = child->i_proposals[0].spi;
-      a.remote_spi = child->r_proposals[0].spi;
-    }
-
-  ipsec_add_del_tunnel_if (&a);
   return 0;
 }
 

@@ -221,6 +221,104 @@ ipsec_tun_protect_find (u32 sw_if_index)
 }
 
 int
+ipsec_tun_protect_update_one (u32 sw_if_index, u32 sa_out, u32 sa_in)
+{
+  u32 *sas_in = NULL;
+  int rv;
+
+  vec_add1 (sas_in, sa_in);
+  rv = ipsec_tun_protect_update (sw_if_index, sa_out, sas_in);
+
+  return (rv);
+}
+
+int
+ipsec_tun_protect_update_out (u32 sw_if_index, u32 sa_out)
+{
+  ipsec_tun_protect_t *itp;
+  u32 itpi, *sas_in, sai;
+  ipsec_main_t *im;
+  int rv;
+
+  sas_in = NULL;
+  rv = 0;
+  im = &ipsec_main;
+  vec_validate_init_empty (ipsec_protect_db.tunnels, sw_if_index,
+			   INDEX_INVALID);
+  itpi = ipsec_protect_db.tunnels[sw_if_index];
+
+  if (INDEX_INVALID == itpi)
+    {
+      return (VNET_API_ERROR_INVALID_INTERFACE);
+    }
+
+  itp = pool_elt_at_index (ipsec_protect_pool, itpi);
+
+  /* *INDENT-0FF* */
+  FOR_EACH_IPSEC_PROTECT_INPUT_SAI (itp, sai, (
+						{
+						vec_add1 (sas_in, sai);
+						}
+				    ));
+  /* *INDENT-ON* */
+
+  sa_out = ipsec_sa_find_and_lock (sa_out);
+
+  if (~0 == sa_out)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
+  ipsec_tun_protect_unconfig (im, itp);
+  ipsec_tun_protect_config (im, itp, sa_out, sas_in);
+
+out:
+  vec_free (sas_in);
+  return (rv);
+}
+
+int
+ipsec_tun_protect_update_in (u32 sw_if_index, u32 sa_in)
+{
+  ipsec_tun_protect_t *itp;
+  u32 itpi, *sas_in, sa_out;
+  ipsec_main_t *im;
+  int rv;
+
+  sas_in = NULL;
+  rv = 0;
+  im = &ipsec_main;
+  vec_validate_init_empty (ipsec_protect_db.tunnels, sw_if_index,
+			   INDEX_INVALID);
+  itpi = ipsec_protect_db.tunnels[sw_if_index];
+
+  if (INDEX_INVALID == itpi)
+    {
+      return (VNET_API_ERROR_INVALID_INTERFACE);
+    }
+
+  sa_in = ipsec_sa_find_and_lock (sa_in);
+
+  if (~0 == sa_in)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+  vec_add1 (sas_in, sa_in);
+
+  itp = pool_elt_at_index (ipsec_protect_pool, itpi);
+  sa_out = itp->itp_out_sa;
+
+  ipsec_tun_protect_unconfig (im, itp);
+  ipsec_tun_protect_config (im, itp, sa_out, sas_in);
+
+out:
+  vec_free (sas_in);
+  return (rv);
+}
+
+int
 ipsec_tun_protect_update (u32 sw_if_index, u32 sa_out, u32 * sas_in)
 {
   u32 itpi, ii;
