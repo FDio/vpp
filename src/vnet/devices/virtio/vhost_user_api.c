@@ -23,6 +23,9 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/devices/virtio/vhost_user.h>
+#include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/ethernet_types_api.h>
+#include <vnet/devices/virtio/virtio_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -58,6 +61,8 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   u64 features = (u64) ~ (0ULL);
   u64 disabled_features = (u64) (0ULL);
+  mac_address_t mac;
+  u8 *mac_p = NULL;
 
   if (mp->disable_mrg_rxbuf)
     disabled_features = (1ULL << FEAT_VIRTIO_NET_F_MRG_RXBUF);
@@ -72,11 +77,16 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS;
   features &= ~disabled_features;
 
+  if (mp->use_custom_mac)
+    {
+      mac_address_decode (mp->mac_address, &mac);
+      mac_p = (u8 *) & mac;
+    }
+
   rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
 			     mp->is_server, &sw_if_index, features,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     (mp->use_custom_mac) ? mp->mac_address : NULL,
-			     mp->enable_gso);
+			     mac_p, mp->enable_gso);
 
   /* Remember an interface tag for the new interface */
   if (rv == 0)
@@ -163,7 +173,8 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_VHOST_USER_DETAILS);
   mp->sw_if_index = ntohl (vui->sw_if_index);
   mp->virtio_net_hdr_sz = ntohl (vui->virtio_net_hdr_sz);
-  mp->features = clib_net_to_host_u64 (vui->features);
+  virtio_features_encode (vui->features, (u32 *) & mp->features_first_32,
+			  (u32 *) & mp->features_last_32);
   mp->is_server = vui->is_server;
   mp->num_regions = ntohl (vui->num_regions);
   mp->sock_errno = ntohl (vui->sock_errno);
@@ -188,10 +199,15 @@ static void
   vhost_user_intf_details_t *ifaces = NULL;
   vhost_user_intf_details_t *vuid = NULL;
   vl_api_registration_t *reg;
+  u32 filter_sw_if_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
+
+  filter_sw_if_index = htonl (mp->sw_if_index);
+  if (filter_sw_if_index != ~0)
+    return;			/* UNIMPLEMENTED */
 
   rv = vhost_user_dump_ifs (vnm, vm, &ifaces);
   if (rv)
