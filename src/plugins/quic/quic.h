@@ -38,7 +38,7 @@
 #define QUIC_MAX_PACKET_SIZE 1280
 
 #define QUIC_INT_MAX  0x3FFFFFFFFFFFFFFF
-#define QUIC_FIFO_SIZE (64 << 10)
+#define QUIC_DEFAULT_FIFO_SIZE (64 << 10)
 #define QUIC_SEND_PACKET_VEC_SIZE 16
 
 /* Taken from quicly.c */
