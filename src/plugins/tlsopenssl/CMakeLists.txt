@@ -37,6 +37,7 @@ if(OPENSSL_FOUND)
   set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
   set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_LIBRARIES}")
   check_function_exists(SSL_set_async_callback HAVE_OPENSSL_ASYNC)
+  check_function_exists(memfd_create HAVE_OPENSSL_ASYNC)
 
   if (HAVE_OPENSSL_ASYNC)
     add_definitions(-DHAVE_OPENSSL_ASYNC)
