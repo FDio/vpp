@@ -10,7 +10,8 @@ class VppIpsecTunInterface(VppTunnelInterface):
                  remote_spi, crypto_alg, local_crypto_key, remote_crypto_key,
                  integ_alg, local_integ_key, remote_integ_key, salt=0,
                  udp_encap=False,
-                 is_ip6=False):
+                 is_ip6=False,
+                 dst=None):
         super(VppIpsecTunInterface, self).__init__(test, parent_if)
         self.local_spi = local_spi
         self.remote_spi = remote_spi
@@ -27,6 +28,8 @@ class VppIpsecTunInterface(VppTunnelInterface):
         else:
             self.local_ip = self.parent_if.local_ip4
             self.remote_ip = self.parent_if.remote_ip4
+        if dst:
+            self.remote_ip = dst
         self.udp_encap = udp_encap
 
     def add_vpp_config(self):

@@ -84,7 +84,7 @@ class IPsecIPv6Params(object):
         self.nat_header = None
 
 
-def mk_scapy_crpyt_key(p):
+def mk_scapy_crypt_key(p):
     if p.crypt_algo == "AES-GCM":
         return p.crypt_key + struct.pack("!I", p.salt)
     else:
@@ -95,7 +95,7 @@ def config_tun_params(p, encryption_type, tun_if):
     ip_class_by_addr_type = {socket.AF_INET: IP, socket.AF_INET6: IPv6}
     use_esn = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                               IPSEC_API_SAD_FLAG_USE_ESN))
-    crypt_key = mk_scapy_crpyt_key(p)
+    crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
@@ -121,7 +121,7 @@ def config_tun_params(p, encryption_type, tun_if):
 def config_tra_params(p, encryption_type):
     use_esn = bool(p.flags & (VppEnum.vl_api_ipsec_sad_flags_t.
                               IPSEC_API_SAD_FLAG_USE_ESN))
-    crypt_key = mk_scapy_crpyt_key(p)
+    crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tra_sa = SecurityAssociation(
         encryption_type,
         spi=p.vpp_tra_spi,
@@ -250,7 +250,6 @@ class IpsecTcp(object):
     def verify_tcp_checksum(self):
         self.vapi.cli("test http server")
         p = self.params[socket.AF_INET]
-        config_tun_params(p, self.encryption_type, self.tun_if)
         send = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
                 p.scapy_tun_sa.encrypt(IP(src=p.remote_tun_if_host,
                                           dst=self.tun_if.local_ip4) /
@@ -362,7 +361,7 @@ class IpsecTra4(object):
         bogus_sa = SecurityAssociation(self.encryption_type,
                                        p.vpp_tra_spi,
                                        crypt_algo=p.crypt_algo,
-                                       crypt_key=mk_scapy_crpyt_key(p)[::-1],
+                                       crypt_key=mk_scapy_crypt_key(p)[::-1],
                                        auth_algo=p.auth_algo,
                                        auth_key=p.auth_key[::-1])
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -718,7 +717,6 @@ class IpsecTun4(object):
         if not n_rx:
             n_rx = count
         try:
-            config_tun_params(p, self.encryption_type, self.tun_if)
             send_pkts = self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
                                               src=p.remote_tun_if_host,
                                               dst=self.pg1.remote_ip4,
@@ -745,7 +743,6 @@ class IpsecTun4(object):
             sw_if_index=self.tun_if.sw_if_index, enable_ip4=True)
 
         try:
-            config_tun_params(p, self.encryption_type, self.tun_if)
             send_pkts = self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
                                               src=p.remote_tun_if_host,
                                               dst=self.pg1.remote_ip4,
@@ -773,7 +770,6 @@ class IpsecTun4(object):
     def verify_tun_64(self, p, count=1):
         self.vapi.cli("clear errors")
         try:
-            config_tun_params(p, self.encryption_type, self.tun_if)
             send_pkts = self.gen_encrypt_pkts6(p.scapy_tun_sa, self.tun_if,
                                                src=p.remote_tun_if_host6,
                                                dst=self.pg1.remote_ip6,
@@ -887,7 +883,6 @@ class IpsecTun6(object):
         self.vapi.cli("clear errors")
         self.vapi.cli("clear ipsec sa")
 
-        config_tun_params(p_in, self.encryption_type, self.tun_if)
         send_pkts = self.gen_encrypt_pkts6(p_in.scapy_tun_sa, self.tun_if,
                                            src=p_in.remote_tun_if_host,
                                            dst=self.pg1.remote_ip6,
@@ -901,8 +896,6 @@ class IpsecTun6(object):
         if not p_out:
             p_out = p_in
         try:
-            config_tun_params(p_in, self.encryption_type, self.tun_if)
-            config_tun_params(p_out, self.encryption_type, self.tun_if)
             send_pkts = self.gen_encrypt_pkts6(p_in.scapy_tun_sa, self.tun_if,
                                                src=p_in.remote_tun_if_host,
                                                dst=self.pg1.remote_ip6,
@@ -929,7 +922,6 @@ class IpsecTun6(object):
             sw_if_index=self.tun_if.sw_if_index, enable_ip6=True)
 
         try:
-            config_tun_params(p, self.encryption_type, self.tun_if)
             send_pkts = self.gen_encrypt_pkts6(p.scapy_tun_sa, self.tun_if,
                                                src=p.remote_tun_if_host,
                                                dst=self.pg1.remote_ip6,
@@ -958,7 +950,6 @@ class IpsecTun6(object):
         """ ipsec 4o6 tunnel basic test """
         self.vapi.cli("clear errors")
         try:
-            config_tun_params(p, self.encryption_type, self.tun_if)
             send_pkts = self.gen_encrypt_pkts(p.scapy_tun_sa, self.tun_if,
                                               src=p.remote_tun_if_host4,
                                               dst=self.pg1.remote_ip4,

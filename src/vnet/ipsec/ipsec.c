@@ -206,11 +206,6 @@ ipsec_rsc_in_use (ipsec_main_t * im)
 			      "%d SA entries configured",
 			      pool_elts (im->sad));
 
-  if (pool_elts (im->tunnel_interfaces))
-    return clib_error_return (0,
-			      "%d tunnel-interface entries configured",
-			      pool_elts (im->tunnel_interfaces));
-
   return (NULL);
 }
 
@@ -313,9 +308,6 @@ ipsec_init (vlib_main_t * vm)
   (void) (rv);			// avoid warning
 
   if ((error = vlib_call_init_function (vm, ipsec_cli_init)))
-    return error;
-
-  if ((error = vlib_call_init_function (vm, ipsec_tunnel_if_init)))
     return error;
 
   vec_validate (im->crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
