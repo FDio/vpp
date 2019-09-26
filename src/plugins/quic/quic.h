@@ -38,7 +38,7 @@
 #define QUIC_MAX_PACKET_SIZE 1280
 
 #define QUIC_INT_MAX  0x3FFFFFFFFFFFFFFF
-#define QUIC_FIFO_SIZE (64 << 10)
+#define QUIC_DEFAULT_FIFO_SIZE (64 << 10)
 #define QUIC_SEND_PACKET_VEC_SIZE 16
 
 /* Taken from quicly.c */
@@ -171,6 +171,8 @@ typedef struct quic_main_
   quicly_context_t quicly_ctx;
   ptls_handshake_properties_t hs_properties;
   quicly_cid_plaintext_t next_cid;
+
+  u32 quic_fifo_size;
 } quic_main_t;
 
 #endif /* __included_quic_h__ */
