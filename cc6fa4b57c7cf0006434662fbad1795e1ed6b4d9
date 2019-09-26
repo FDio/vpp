@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2bafb99c_0d16e22c",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1376,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-26T00:49:31Z",
+      "side": 1,
+      "message": "Not sure about the best place for this. But we can think about it once the rest of the patch is ready.",
+      "range": {
+        "startLine": 1376,
+        "startChar": 0,
+        "endLine": 1376,
+        "endChar": 31
+      },
+      "revId": "cc6fa4b57c7cf0006434662fbad1795e1ed6b4d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cde08dc5_c717f7a4",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-26T00:49:31Z",
+      "side": 1,
+      "message": "this needs to be something like:\n\nif (PREDICT_FALSE (!tc-\u003eflags \u0026 TCP_CONN_NO_CSUM_OFFLOAD)))\n{\n  move variables here;\n  compute checksum\n}\n\nObviously, you\u0027ll need to add a new NO_CSUM_OFFLOAD",
+      "range": {
+        "startLine": 472,
+        "startChar": 2,
+        "endLine": 472,
+        "endChar": 15
+      },
+      "revId": "cc6fa4b57c7cf0006434662fbad1795e1ed6b4d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "957b695c_2789f1db",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1093,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-26T00:49:31Z",
+      "side": 1,
+      "message": "Same comment as for tcp_make_ack_i. Might be worth making a tcp_compute_checksum() function not to replicate a lot of code.",
+      "range": {
+        "startLine": 1093,
+        "startChar": 2,
+        "endLine": 1093,
+        "endChar": 16
+      },
+      "revId": "cc6fa4b57c7cf0006434662fbad1795e1ed6b4d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "67aabe25_a658eb5c",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2179,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-26T00:49:31Z",
+      "side": 1,
+      "message": "use the flag here",
+      "range": {
+        "startLine": 2179,
+        "startChar": 24,
+        "endLine": 2179,
+        "endChar": 25
+      },
+      "revId": "cc6fa4b57c7cf0006434662fbad1795e1ed6b4d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "60bcd58f_828ded30",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2165,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-26T00:49:31Z",
+      "side": 0,
+      "message": "This needs to go on the else branches of when the flag is not set",
+      "range": {
+        "startLine": 2165,
+        "startChar": 6,
+        "endLine": 2165,
+        "endChar": 50
+      },
+      "revId": "df40cb5b5084f59ad8699f167192221955433a64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
