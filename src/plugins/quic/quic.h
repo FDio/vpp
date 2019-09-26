@@ -65,6 +65,16 @@
 #define QUIC_DBG(_lvl, _fmt, _args...)
 #endif
 
+extern vlib_node_registration_t quic_input_node;
+
+typedef enum
+{
+#define quic_error(n,s) QUIC_ERROR_##n,
+#include <plugins/quic/quic_error.def>
+#undef quic_error
+  QUIC_N_ERROR,
+} quic_error_t;
+
 typedef enum quic_ctx_conn_state_
 {
   QUIC_CONN_STATE_OPENED,
