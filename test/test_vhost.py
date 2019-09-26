@@ -31,12 +31,12 @@ class TesVhostInterface(VppTestCase):
         self.logger.info("Vhost User add interfaces")
 
         # create interface 1 (VirtualEthernet0/0/0)
-        vhost_if1 = VppVhostInterface(self, sock_filename=b'/tmp/sock1')
+        vhost_if1 = VppVhostInterface(self, sock_filename='/tmp/sock1')
         vhost_if1.add_vpp_config()
         vhost_if1.admin_up()
 
         # create interface 2 (VirtualEthernet0/0/1)
-        vhost_if2 = VppVhostInterface(self, sock_filename=b'/tmp/sock2')
+        vhost_if2 = VppVhostInterface(self, sock_filename='/tmp/sock2')
         vhost_if2.add_vpp_config()
         vhost_if2.admin_up()
 
@@ -93,7 +93,7 @@ class TesVhostInterface(VppTestCase):
         # (like delete interface events from other tests)
         self.vapi.collect_events()
 
-        vhost_if = VppVhostInterface(self, sock_filename=b'/tmp/sock1')
+        vhost_if = VppVhostInterface(self, sock_filename='/tmp/sock1')
 
         # create vhost interface
         vhost_if.add_vpp_config()
