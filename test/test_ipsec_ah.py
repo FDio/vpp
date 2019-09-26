@@ -88,6 +88,7 @@ class ConfigIpsecAH(TemplateIpsec):
             config_tra_params(p, self.encryption_type)
         for p in params:
             self.config_ah_tun(p)
+            config_tun_params(p, self.encryption_type, self.tun_if)
         for p in params:
             d = DpoProto.DPO_PROTO_IP6 if p.is_ipv6 else DpoProto.DPO_PROTO_IP4
             r = VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,

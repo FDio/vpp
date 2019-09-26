@@ -38,3 +38,11 @@ class VppIpIpTunInterface(VppTunnelInterface):
 
     def object_id(self):
         return "ipip-%d" % self._sw_if_index
+
+    @property
+    def remote_ip(self):
+        return self.dst
+
+    @property
+    def local_ip(self):
+        return self.src

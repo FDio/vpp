@@ -317,6 +317,20 @@ ipsec_sa_unlock (index_t sai)
   fib_node_unlock (&sa->node);
 }
 
+void
+ipsec_sa_lock (index_t sai)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_t *sa;
+
+  if (INDEX_INVALID == sai)
+    return;
+
+  sa = pool_elt_at_index (im->sad, sai);
+
+  fib_node_lock (&sa->node);
+}
+
 index_t
 ipsec_sa_find_and_lock (u32 id)
 {

@@ -706,6 +706,7 @@ class TestExceptionPuntSocket(TestPuntSocket):
     def setUp(self):
         super(TestExceptionPuntSocket, self).setUp()
 
+        self.create_pg_interfaces(range(2))
         for i in self.pg_interfaces:
             i.config_ip4()
             i.resolve_arp()
@@ -805,7 +806,7 @@ class TestExceptionPuntSocket(TestPuntSocket):
                               IPSEC_API_INTEG_ALG_SHA1_96),
                              b"0123456701234567",
                              b"0123456701234567").add_vpp_config()
-        VppIpsecTunInterface(self, self.pg0, 1001, 1001,
+        VppIpsecTunInterface(self, self.pg1, 1000, 1000,
                              (VppEnum.vl_api_ipsec_crypto_alg_t.
                               IPSEC_API_CRYPTO_ALG_AES_CBC_128),
                              b"0123456701234567",
@@ -821,8 +822,12 @@ class TestExceptionPuntSocket(TestPuntSocket):
         # adn SPI=0
         #
         cfgs = dict()
-        cfgs['ipsec4-no-such-tunnel'] = {'spi': 99, 'udp': False}
-        cfgs['ipsec4-spi-o-udp-0'] = {'spi': 0, 'udp': True}
+        cfgs['ipsec4-no-such-tunnel'] = {'spi': 99,
+                                         'udp': False,
+                                         'itf': self.pg0}
+        cfgs['ipsec4-spi-o-udp-0'] = {'spi': 0,
+                                      'udp': True,
+                                      'itf': self.pg1}
 
         #
         # find the VPP ID for these punt exception reasin
@@ -850,9 +855,10 @@ class TestExceptionPuntSocket(TestPuntSocket):
         # create packet streams for 'no-such-tunnel' exception
         #
         for cfg in cfgs.values():
-            pkt = (Ether(src=self.pg0.remote_mac,
-                         dst=self.pg0.local_mac) /
-                   IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4))
+            pkt = (Ether(src=cfg['itf'].remote_mac,
+                         dst=cfg['itf'].local_mac) /
+                   IP(src=cfg['itf'].remote_ip4,
+                      dst=cfg['itf'].local_ip4))
             if (cfg['udp']):
                 pkt = pkt / UDP(sport=666, dport=4500)
             pkt = (pkt / ESP(spi=cfg['spi'], seq=3) /
@@ -863,7 +869,7 @@ class TestExceptionPuntSocket(TestPuntSocket):
         # send packets for each SPI we expect to be punted
         #
         for cfg in cfgs.values():
-            self.send_and_assert_no_replies(self.pg0, cfg['pkts'])
+            self.send_and_assert_no_replies(cfg['itf'], cfg['pkts'])
 
         #
         # verify the punted packets arrived on the associated socket

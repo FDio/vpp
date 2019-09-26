@@ -7,7 +7,7 @@ from parameterized import parameterized
 from framework import VppTestRunner
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
-    IPsecIPv4Params, IPsecIPv6Params, \
+    config_tun_params, IPsecIPv4Params, IPsecIPv6Params, \
     IpsecTra4, IpsecTun4, IpsecTra6, IpsecTun6
 from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA,\
     VppIpsecSpdItfBinding
@@ -71,6 +71,7 @@ class ConfigIpsecESP(TemplateIpsec):
             config_tra_params(p, self.encryption_type)
         for p in params:
             self.config_esp_tun(p)
+            config_tun_params(p, self.encryption_type, self.tun_if)
 
         for p in params:
             d = DpoProto.DPO_PROTO_IP6 if p.is_ipv6 else DpoProto.DPO_PROTO_IP4
