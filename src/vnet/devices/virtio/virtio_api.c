@@ -25,6 +25,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/pci.h>
+#include <vnet/pci/pci_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -59,7 +60,7 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
 
   clib_memset (ap, 0, sizeof (*ap));
 
-  ap->addr = ntohl (mp->pci_addr);
+  pci_address_decode (&mp->pci_addr, (vlib_pci_addr_t *) & ap->addr);
   if (!mp->use_random_mac)
     {
       clib_memcpy (ap->mac_addr, mp->mac_address, 6);
@@ -136,7 +137,8 @@ virtio_pci_send_sw_interface_details (vpe_api_main_t * am,
   clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_VIRTIO_PCI_DETAILS);
-  mp->pci_addr = htonl (vif->pci_addr.as_u32);
+  pci_address_encode ((vlib_pci_addr_t *) & vif->pci_addr.as_u32,
+		      &mp->pci_addr);
   mp->sw_if_index = htonl (vif->sw_if_index);
   virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, 0);
   mp->rx_ring_sz = htons (vring->size);

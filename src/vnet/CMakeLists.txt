@@ -1509,6 +1509,20 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES syslog/syslog.api)
 
 ##############################################################################
+# PCI
+##############################################################################
+
+list (APPEND VNET_SOURCES
+  pci/pci_types_api.c
+)
+
+list(APPEND VNET_HEADERS
+  pci/pci_types_api.h
+)
+
+list(APPEND VNET_API_FILES pci/pci_types.api)
+
+##############################################################################
 # NHRP
 ##############################################################################
 

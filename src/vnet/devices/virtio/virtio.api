@@ -13,13 +13,17 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/pci/pci_types.api";
+
 
 /** \brief Initialize a new virtio pci interface with the given parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param pci_addr - pci address as unsigned 32bit integer:
-                      0-15 domain, 16-23 bus, 24-28 slot, 29-31 function
+    @param pci_addr - pci address
     @param use_random_mac - let the system generate a unique mac address
     @param mac_address - mac addr to assign to the interface if use_random not set
     @param gso_enabled - enable gso feature if available, 1 to enable
@@ -29,10 +33,10 @@ define virtio_pci_create
 {
   u32 client_index;
   u32 context;
-  u32 pci_addr;
-  u8 use_random_mac;
-  u8 mac_address[6];
-  u8 gso_enabled;
+  vl_api_pci_address_t pci_addr;
+  bool use_random_mac;
+  vl_api_mac_address_t mac_address;
+  bool gso_enabled;
   u64 features;
 };
 
@@ -45,7 +49,7 @@ define virtio_pci_create_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Delete virtio pci interface
@@ -57,7 +61,7 @@ autoreply define virtio_pci_delete
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump virtio pci interfaces request */
@@ -69,8 +73,7 @@ define sw_interface_virtio_pci_dump
 
 /** \brief Reply for virtio pci interface dump request
     @param sw_if_index - software index of virtio pci interface
-    @param pci_addr - pci address as unsigned 32bit integer:
-                      0-15 domain, 16-23 bus, 24-28 slot, 29-31 function
+    @param pci_addr - pci address
     @param mac_addr - native virtio device mac address
     @param tx_ring_sz - the number of entries of TX ring
     @param rx_ring_sz - the number of entries of RX ring
@@ -79,9 +82,9 @@ define sw_interface_virtio_pci_dump
 define sw_interface_virtio_pci_details
 {
   u32 context;
-  u32 sw_if_index;
-  u32 pci_addr;
-  u8 mac_addr[6];
+  vl_api_interface_index_t sw_if_index;
+  vl_api_pci_address_t pci_addr;
+  vl_api_mac_address_t mac_addr;
   u16 tx_ring_sz;
   u16 rx_ring_sz;
   u64 features;

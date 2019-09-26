@@ -7541,7 +7541,11 @@ api_virtio_pci_create (vat_main_t * vam)
 
   mp->use_random_mac = random_mac;
 
-  mp->pci_addr = htonl (pci_addr);
+  mp->pci_addr.domain = htons (((vlib_pci_addr_t) pci_addr).domain);
+  mp->pci_addr.bus = ((vlib_pci_addr_t) pci_addr).bus;
+  mp->pci_addr.slot = ((vlib_pci_addr_t) pci_addr).slot;
+  mp->pci_addr.function = ((vlib_pci_addr_t) pci_addr).function;
+
   mp->features = clib_host_to_net_u64 (features);
   mp->gso_enabled = gso_enabled;
 
@@ -11401,7 +11405,12 @@ static void vl_api_sw_interface_virtio_pci_details_t_handler
     u32 as_u32;
   } pci_addr_t;
   pci_addr_t addr;
-  addr.as_u32 = ntohl (mp->pci_addr);
+
+  addr.domain = ntohs (mp->pci_addr.domain);
+  addr.bus = mp->pci_addr.bus;
+  addr.slot = mp->pci_addr.slot;
+  addr.function = mp->pci_addr.function;
+
   u8 *pci_addr = format (0, "%04x:%02x:%02x.%x", addr.domain, addr.bus,
 			 addr.slot, addr.function);
 
@@ -11419,6 +11428,7 @@ static void vl_api_sw_interface_virtio_pci_details_t_handler_json
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
+  vlib_pci_addr_t pci_addr;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -11427,8 +11437,13 @@ static void vl_api_sw_interface_virtio_pci_details_t_handler_json
     }
   node = vat_json_array_add (&vam->json_tree);
 
+  pci_addr.domain = ntohs (mp->pci_addr.domain);
+  pci_addr.bus = mp->pci_addr.bus;
+  pci_addr.slot = mp->pci_addr.slot;
+  pci_addr.function = mp->pci_addr.function;
+
   vat_json_init_object (node);
-  vat_json_object_add_uint (node, "pci-addr", ntohl (mp->pci_addr));
+  vat_json_object_add_uint (node, "pci-addr", pci_addr.as_u32);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   vat_json_object_add_uint (node, "rx_ring_sz", ntohs (mp->rx_ring_sz));
   vat_json_object_add_uint (node, "tx_ring_sz", ntohs (mp->tx_ring_sz));
