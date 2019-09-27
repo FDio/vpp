@@ -28,35 +28,9 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* declare message IDs */
-#include <lacp/lacp_msg_enum.h>
-
-/* Get CRC codes of the messages defined outside of this plugin */
-#define vl_msg_name_crc_list
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-/* define message structures */
-#define vl_typedefs
-#include <vpp/api/vpe_all_api_h.h>
-#include <lacp/lacp_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <lacp/lacp_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <lacp/lacp_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <lacp/lacp_all_api_h.h>
-#undef vl_api_version
+#include <lacp/lacp.api_enum.h>
+#include <lacp/lacp.api_types.h>
+#include <vpp/api/vpe.api_types.h>
 
 typedef struct
 {
@@ -67,13 +41,6 @@ typedef struct
 } lacp_test_main_t;
 
 lacp_test_main_t lacp_test_main;
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                       \
-_(SW_INTERFACE_LACP_DETAILS, sw_interface_lacp_details)
 
 /* lacp-dump API */
 static void vl_api_sw_interface_lacp_details_t_handler
@@ -160,69 +127,7 @@ api_sw_interface_lacp_dump (vat_main_t * vam)
   return ret;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg					  \
-_(sw_interface_lacp_dump, "")
-
-static void
-lacp_vat_api_hookup (vat_main_t * vam)
-{
-  lacp_test_main_t *lm __attribute__ ((unused)) = &lacp_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + lm->msg_id_base),       \
-                          #n,                                   \
-                          vl_api_##n##_t_handler,               \
-                          vl_noop_handler,                      \
-                          vl_api_##n##_t_endian,                \
-                          vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h)                                          \
-  hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-clib_error_t *
-vat_plugin_register (vat_main_t * vam)
-{
-  lacp_test_main_t *lm = &lacp_test_main;
-  u8 *name;
-
-  lm->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "lacp_%08x%c", api_version, 0);
-  lm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-  vec_free (name);
-
-  if (lm->msg_id_base == (u16) ~ 0)
-    return clib_error_return (0, "lacp plugin not loaded...");
-
-  /* Get the control ping ID */
-#define _(id,n,crc) \
-  const char *id ## _CRC __attribute__ ((unused)) = #n "_" #crc;
-  foreach_vl_msg_name_crc_vpe;
-#undef _
-  lm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
-
-  if (lm->msg_id_base != (u16) ~ 0)
-    lacp_vat_api_hookup (vam);
-
-  return 0;
-}
+#include <lacp/lacp.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON

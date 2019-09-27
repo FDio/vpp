@@ -35,8 +35,6 @@ add_vpp_plugin(lacp
   mux_machine.h
   ptx_machine.h
   node.h
-  lacp_all_api_h.h
-  lacp_msg_enum.h
 
   API_TEST_SOURCES
   lacp_test.c
