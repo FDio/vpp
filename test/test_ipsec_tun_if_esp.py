@@ -785,11 +785,17 @@ class TemplateIpsec4TunProtect(object):
         p.tun_if.add_vpp_config()
         p.tun_if.admin_up()
         p.tun_if.config_ip4()
+        p.tun_if.config_ip6()
 
         p.route = VppIpRoute(self, p.remote_tun_if_host, 32,
                              [VppRoutePath(p.tun_if.remote_ip4,
                                            0xffffffff)])
         p.route.add_vpp_config()
+        r = VppIpRoute(self, p.remote_tun_if_host6, 128,
+                       [VppRoutePath(p.tun_if.remote_ip6,
+                                     0xffffffff,
+                                     proto=DpoProto.DPO_PROTO_IP6)])
+        r.add_vpp_config()
 
     def unconfig_network(self, p):
         p.route.remove_vpp_config()
@@ -831,6 +837,13 @@ class TestIpsec4TunProtect(TemplateIpsec,
         c = p.tun_if.get_tx_stats()
         self.assertEqual(c['packets'], 127)
 
+        self.vapi.cli("clear ipsec sa")
+        self.verify_tun_64(p, count=127)
+        c = p.tun_if.get_rx_stats()
+        self.assertEqual(c['packets'], 254)
+        c = p.tun_if.get_tx_stats()
+        self.assertEqual(c['packets'], 254)
+
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
         np.crypt_key = 'X' + p.crypt_key[1:]
@@ -847,9 +860,9 @@ class TestIpsec4TunProtect(TemplateIpsec,
 
         self.verify_tun_44(np, count=127)
         c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 254)
+        self.assertEqual(c['packets'], 381)
         c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 254)
+        self.assertEqual(c['packets'], 381)
 
         # teardown
         self.unconfig_protect(np)
@@ -1052,12 +1065,17 @@ class TemplateIpsec6TunProtect(object):
         p.tun_if.add_vpp_config()
         p.tun_if.admin_up()
         p.tun_if.config_ip6()
+        p.tun_if.config_ip4()
 
         p.route = VppIpRoute(self, p.remote_tun_if_host, 128,
                              [VppRoutePath(p.tun_if.remote_ip6,
                                            0xffffffff,
                                            proto=DpoProto.DPO_PROTO_IP6)])
         p.route.add_vpp_config()
+        r = VppIpRoute(self, p.remote_tun_if_host4, 32,
+                       [VppRoutePath(p.tun_if.remote_ip4,
+                                     0xffffffff)])
+        r.add_vpp_config()
 
     def unconfig_network(self, p):
         p.route.remove_vpp_config()
@@ -1165,6 +1183,26 @@ class TestIpsec6TunProtect(TemplateIpsec,
         # teardown
         self.unconfig_protect(np3)
         self.unconfig_sa(np3)
+        self.unconfig_network(p)
+
+    def test_tun_46(self):
+        """IPSEC tunnel protect"""
+
+        p = self.ipv6_params
+
+        self.config_network(p)
+        self.config_sa_tra(p)
+        self.config_protect(p)
+
+        self.verify_tun_46(p, count=127)
+        c = p.tun_if.get_rx_stats()
+        self.assertEqual(c['packets'], 127)
+        c = p.tun_if.get_tx_stats()
+        self.assertEqual(c['packets'], 127)
+
+        # teardown
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
         self.unconfig_network(p)
 
 

@@ -630,6 +630,13 @@ VNET_FEATURE_INIT (esp4_encrypt_tun_feat_node, static) =
   .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
 
+VNET_FEATURE_INIT (esp6o4_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ip6-output",
+  .node_name = "esp4-encrypt-tun",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
+};
+
 VNET_FEATURE_INIT (esp4_ethernet_encrypt_tun_feat_node, static) =
 {
   .arc_name = "ethernet-output",
@@ -667,6 +674,14 @@ VNET_FEATURE_INIT (esp6_encrypt_tun_feat_node, static) =
   .node_name = "esp6-encrypt-tun",
   .runs_before = VNET_FEATURES ("adj-midchain-tx"),
 };
+
+VNET_FEATURE_INIT (esp4o6_encrypt_tun_feat_node, static) =
+{
+  .arc_name = "ip4-output",
+  .node_name = "esp6-encrypt-tun",
+  .runs_before = VNET_FEATURES ("adj-midchain-tx"),
+};
+
 /* *INDENT-ON* */
 
 typedef struct
