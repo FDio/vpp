@@ -144,7 +144,7 @@ vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
-  vnet_crypto_op_data_t *otd = cm->opt_data + opt;
+  vnet_crypto_op_data_t *otd = vec_elt_at_index (cm->opt_data, opt);
   vec_validate_aligned (cm->ops_handlers, VNET_CRYPTO_N_OP_IDS - 1,
 			CLIB_CACHE_LINE_BYTES);
   e->ops_handlers[opt] = fn;
@@ -253,10 +253,12 @@ vnet_crypto_init_cipher_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
 {
   vnet_crypto_op_type_t eopt, dopt;
   vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_op_data_t *eod = vec_elt_at_index (cm->opt_data, eid);
+  vnet_crypto_op_data_t *dod = vec_elt_at_index (cm->opt_data, did);
   cm->algs[alg].name = name;
-  cm->opt_data[eid].alg = cm->opt_data[did].alg = alg;
-  cm->opt_data[eid].active_engine_index = ~0;
-  cm->opt_data[did].active_engine_index = ~0;
+  eod->alg = dod->alg = alg;
+  eod->active_engine_index = ~0;
+  dod->active_engine_index = ~0;
   if (is_aead)
     {
       eopt = VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT;
@@ -267,8 +269,8 @@ vnet_crypto_init_cipher_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
       eopt = VNET_CRYPTO_OP_TYPE_ENCRYPT;
       dopt = VNET_CRYPTO_OP_TYPE_DECRYPT;
     }
-  cm->opt_data[eid].type = eopt;
-  cm->opt_data[did].type = dopt;
+  eod->type = eopt;
+  dod->type = dopt;
   cm->algs[alg].op_by_type[eopt] = eid;
   cm->algs[alg].op_by_type[dopt] = did;
   hash_set_mem (cm->alg_index_by_name, name, alg);
@@ -279,11 +281,12 @@ vnet_crypto_init_hmac_data (vnet_crypto_alg_t alg,
 			    vnet_crypto_op_id_t id, char *name)
 {
   vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_op_data_t *od = vec_elt_at_index (cm->opt_data, id);
   cm->algs[alg].name = name;
   cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_HMAC] = id;
-  cm->opt_data[id].alg = alg;
-  cm->opt_data[id].active_engine_index = ~0;
-  cm->opt_data[id].type = VNET_CRYPTO_OP_TYPE_HMAC;
+  od->alg = alg;
+  od->active_engine_index = ~0;
+  od->type = VNET_CRYPTO_OP_TYPE_HMAC;
   hash_set_mem (cm->alg_index_by_name, name, alg);
 }
 
@@ -297,6 +300,7 @@ vnet_crypto_init (vlib_main_t * vm)
   cm->alg_index_by_name = hash_create_string (0, sizeof (uword));
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);
+  vec_validate (cm->opt_data, VNET_CRYPTO_N_OP_IDS);
 #define _(n, s, l) \
   vnet_crypto_init_cipher_data (VNET_CRYPTO_ALG_##n, \
 				VNET_CRYPTO_OP_##n##_ENC, \

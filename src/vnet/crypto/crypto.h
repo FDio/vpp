@@ -188,7 +188,7 @@ typedef struct
   vnet_crypto_alg_data_t *algs;
   vnet_crypto_thread_t *threads;
   vnet_crypto_ops_handler_t **ops_handlers;
-  vnet_crypto_op_data_t opt_data[VNET_CRYPTO_N_OP_IDS];
+  vnet_crypto_op_data_t *opt_data;
   vnet_crypto_engine_t *engines;
   vnet_crypto_key_t *keys;
   uword *engine_index_by_name;
