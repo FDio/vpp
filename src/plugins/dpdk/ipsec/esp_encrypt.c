@@ -511,7 +511,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  u64 digest_paddr =
 	    mb0->buf_physaddr + digest - ((u8 *) mb0->buf_addr);
 
-	  if (!is_aead && cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
+	  if (!is_aead && (cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC ||
+			   cipher_alg->alg == RTE_CRYPTO_CIPHER_NULL))
 	    {
 	      cipher_off = sizeof (esp_header_t);
 	      cipher_len = iv_size + pad_payload_len;
