@@ -566,9 +566,14 @@ u8 *
 format_transport_pacer (u8 * s, va_list * args)
 {
   spacer_t *pacer = va_arg (*args, spacer_t *);
+  vlib_main_t *vm = vlib_get_main ();
+  u64 now, diff;
 
-  s = format (s, "bucket %u tokens/period %.3f last_update %x",
-	      pacer->bucket, pacer->tokens_per_period, pacer->last_update);
+  now = vm->clib_time.last_cpu_time;
+  diff = now - (pacer->last_update << SPACER_CPU_TICKS_PER_PERIOD_SHIFT);
+  s = format (s, "rate %u bucket %u t/p %.3f last_update %.3f",
+	      pacer->bytes_per_sec, pacer->bucket, pacer->tokens_per_period,
+	      diff * vm->clib_time.seconds_per_clock);
   return s;
 }
 
