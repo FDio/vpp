@@ -25,33 +25,14 @@
 #include <stdbool.h>
 
 /* define message IDs */
-#include <dns/dns_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <dns/dns_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <dns/dns_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <dns/dns_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <dns/dns_all_api_h.h>
-#undef vl_api_version
+#include <dns/dns.api_enum.h>
+#include <dns/dns.api_types.h>
 
 #define REPLY_MSG_ID_BASE dm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 /* Macro to finish up custom dump fns */
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define FINISH                                  \
     vec_add1 (s, 0);                            \
     vl_print (handle, (char *)s);               \
@@ -1576,25 +1557,6 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
   dns_cache_unlock (dm);
 }
 
-#define vl_msg_name_crc_list
-#include <dns/dns_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (dns_main_t * dm)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (dm->api_main, #n "_" #crc, dm->msg_id_base + id);
-  foreach_vl_msg_name_crc_dns;
-#undef _
-}
-
-#define foreach_dns_plugin_api_msg                      \
-_(DNS_ENABLE_DISABLE, dns_enable_disable)               \
-_(DNS_NAME_SERVER_ADD_DEL, dns_name_server_add_del)     \
-_(DNS_RESOLVE_NAME, dns_resolve_name)			\
-_(DNS_RESOLVE_IP, dns_resolve_ip)
-
 static clib_error_t *
 dns_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -3081,40 +3043,11 @@ static void *vl_api_dns_resolve_ip_t_print
   FINISH;
 }
 
-static void
-dns_custom_dump_configure (dns_main_t * dm)
-{
-#define _(n,f) dm->api_main->msg_print_handlers \
-  [VL_API_##n + dm->msg_id_base]                \
-    = (void *) vl_api_##f##_t_print;
-  foreach_dns_plugin_api_msg;
-#undef _
-}
-
-/* Set up the API message handling tables */
-static clib_error_t *
-dns_plugin_api_hookup (vlib_main_t * vm)
-{
-  dns_main_t *dmp = &dns_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + dmp->msg_id_base),    \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_dns_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
+#include <dns/dns.api.c>
 static clib_error_t *
 dns_init (vlib_main_t * vm)
 {
   dns_main_t *dm = &dns_main;
-  u8 *name;
 
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
@@ -3123,20 +3056,8 @@ dns_init (vlib_main_t * vm)
   dm->random_seed = 0xDEADDABE;
   dm->api_main = &api_main;
 
-  name = format (0, "dns_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  dm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-  (void) dns_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (dm);
-
-  dns_custom_dump_configure (dm);
-
-  vec_free (name);
+  dm->msg_id_base = setup_message_id_table ();
 
   return 0;
 }

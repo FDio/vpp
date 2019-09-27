@@ -24,29 +24,8 @@
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* Declare message IDs */
-#include <dns/dns_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <dns/dns_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <dns/dns_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <dns/dns_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <dns/dns_all_api_h.h>
-#undef vl_api_version
+#include <dns/dns.api_enum.h>
+#include <dns/dns.api_types.h>
 
 typedef struct
 {
@@ -59,26 +38,6 @@ dns_test_main_t dns_test_main;
 
 #define __plugin_msg_base dns_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
-
-#define foreach_standard_reply_retval_handler   \
-_(dns_enable_disable_reply)                     \
-_(dns_name_server_add_del_reply)
-
-#define _(n)                                                    \
-    static void vl_api_##n##_t_handler                          \
-    (vl_api_##n##_t * mp)                                       \
-    {                                                           \
-        vat_main_t * vam = dns_test_main.vat_main;              \
-        i32 retval = (i32) clib_net_to_host_u32(mp->retval);    \
-        if (vam->async_mode) {                                  \
-            vam->async_errors += (retval < 0);                  \
-        } else {                                                \
-            vam->retval = retval;                               \
-            vam->result_ready = 1;                              \
-        }                                                       \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
 
 static void vl_api_dns_resolve_name_reply_t_handler
   (vl_api_dns_resolve_name_reply_t * mp)
@@ -117,16 +76,6 @@ static void vl_api_dns_resolve_ip_reply_t_handler
     }
 }
 
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                               \
-_(DNS_ENABLE_DISABLE_REPLY, dns_enable_disable_reply)           \
-_(DNS_NAME_SERVER_ADD_DEL_REPLY, dns_name_server_add_del_reply) \
-_(DNS_RESOLVE_NAME_REPLY, dns_resolve_name_reply)               \
-_(DNS_RESOLVE_IP_REPLY, dns_resolve_ip_reply)
-
 static int
 api_dns_enable_disable (vat_main_t * vam)
 {
@@ -157,18 +106,6 @@ api_dns_enable_disable (vat_main_t * vam)
   W (ret);
   return ret;
 }
-
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg \
-_(dns_enable_disable, "[enable][disable]")				\
-_(dns_name_server_add_del, "<ip-address> [del]")			\
-_(dns_resolve_name, "<hostname>")					\
-_(dns_resolve_ip, "<ip4|ip6>")						\
-_(dns_name_server_add_del, "<ip-address> [del]")			\
-_(dns_resolve_name, "<hostname>")
 
 static int
 api_dns_resolve_name (vat_main_t * vam)
@@ -307,35 +244,7 @@ api_dns_name_server_add_del (vat_main_t * vam)
   return ret;
 }
 
-static void
-dns_api_hookup (vat_main_t * vam)
-{
-  dns_test_main_t *dtmp = &dns_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + dtmp->msg_id_base),   \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-VAT_PLUGIN_REGISTER (dns);
-
+#include <dns/dns.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON

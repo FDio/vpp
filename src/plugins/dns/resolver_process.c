@@ -21,21 +21,8 @@
 #include <vnet/vnet.h>
 
 /* define message IDs */
-#include <dns/dns_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <dns/dns_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <dns/dns_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <dns/dns_all_api_h.h>
-#undef vl_printfun
+#include <dns/dns.api_enum.h>
+#include <dns/dns.api_types.h>
 
 #include <vlibapi/api_helper_macros.h>
 
