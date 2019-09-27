@@ -481,7 +481,11 @@ show_log_details (vl_api_registration_t * reg, u32 context,
   u32 msg_size;
 
   vl_api_log_details_t *rmp;
-  msg_size = sizeof (*rmp) + vec_len (msg_class) + vec_len (message);
+  int class_len =
+    clib_min (vec_len (msg_class) + 1, ARRAY_LEN (rmp->msg_class));
+  int message_len =
+    clib_min (vec_len (message) + 1, ARRAY_LEN (rmp->message));
+  msg_size = sizeof (*rmp) + class_len + message_len;
 
   rmp = vl_msg_api_alloc (msg_size);
   clib_memset (rmp, 0, msg_size);
@@ -491,10 +495,11 @@ show_log_details (vl_api_registration_t * reg, u32 context,
   rmp->timestamp = clib_host_to_net_f64 (timestamp);
   rmp->level = htonl (*level);
 
-  strncpy ((char *) rmp->msg_class, (char *) msg_class,
-	   ARRAY_LEN (rmp->msg_class) - 1);
-  strncpy ((char *) rmp->message, (char *) message,
-	   ARRAY_LEN (rmp->message) - 1);
+  memcpy (rmp->msg_class, msg_class, class_len - 1);
+  memcpy (rmp->message, message, message_len - 1);
+  /* enforced by memset() above */
+  ASSERT (0 == rmp->msg_class[class_len - 1]);
+  ASSERT (0 == rmp->message[message_len - 1]);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
