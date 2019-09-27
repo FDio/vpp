@@ -155,6 +155,9 @@ typedef struct pg_stream_t
      Zero means no packet limit. */
   u64 n_packets_limit;
 
+  /* Only generate up to n_max_frame per frame. */
+  u32 n_max_frame;
+
   /* Rate for this stream in packets/second.
      Zero means unlimited rate. */
   f64 rate_packets_per_second;

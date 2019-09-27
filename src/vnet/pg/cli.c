@@ -336,7 +336,7 @@ new_stream (vlib_main_t * vm,
 {
   clib_error_t *error = 0;
   u8 *tmp = 0;
-  u32 hw_if_index;
+  u32 maxframe, hw_if_index;
   unformat_input_t sub_input = { 0 };
   int sub_input_given = 0;
   vnet_main_t *vnm = vnet_get_main ();
@@ -349,7 +349,9 @@ new_stream (vlib_main_t * vm,
   s.max_packet_bytes = s.min_packet_bytes = 64;
   s.buffer_bytes = vlib_buffer_get_default_data_size (vm);
   s.if_id = 0;
+  s.n_max_frame = VLIB_FRAME_SIZE;
   pcap_file_name = 0;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "name %v", &tmp))
@@ -374,7 +376,8 @@ new_stream (vlib_main_t * vm,
       else if (unformat (input, "node %U",
 			 unformat_vlib_node, vm, &s.node_index))
 	;
-
+      else if (unformat (input, "maxframe %u", &maxframe))
+	s.n_max_frame = s.n_max_frame < maxframe ? s.n_max_frame : maxframe;
       else if (unformat (input, "worker %u", &s.worker_index))
 	;
 
@@ -485,7 +488,9 @@ VLIB_CLI_COMMAND (new_stream_cli, static) = {
   "interface STRING     interface for stream output \n"
   "node NODE-NAME       node for stream output\n"
   "data STRING          specifies packet data\n"
-  "pcap FILENAME        read packet data from pcap file\n",
+  "pcap FILENAME        read packet data from pcap file\n"
+  "rate PPS             rate to transfer packet data\n"
+  "maxframe NPKTS       maximum number of packets per frame\n",
 };
 /* *INDENT-ON* */
 
