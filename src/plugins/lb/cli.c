@@ -542,6 +542,12 @@ lb_flush_vip_command_fn (vlib_main_t * vm,
       }
     else if (unformat(line_input, "port %d", &port))
       ;
+    else
+      {
+        error = clib_error_return (0, "unknown input '%U'",
+          format_unformat_error, line_input);
+        goto done;
+      }
   }
 
   if (port == 0)
