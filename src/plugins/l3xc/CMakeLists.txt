@@ -19,8 +19,4 @@ add_vpp_plugin(l3xc
 
   API_FILES
   l3xc.api
-
-  INSTALL_HEADERS
-  l3xc_all_api_h.h
-  l3xc_msg_enum.h
 )
