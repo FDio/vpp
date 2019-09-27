@@ -16,6 +16,24 @@
       "revId": "e2016024dc621e045f64ed1633e21f4ec24808b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7f65c8e1_c08f63d8",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1983,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2019-09-27T09:56:10Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "68a2b229_33aef291",
+      "revId": "e2016024dc621e045f64ed1633e21f4ec24808b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
