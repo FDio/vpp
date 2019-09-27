@@ -1029,6 +1029,8 @@ static void vl_api_sw_interface_details_t_handler_json
 			     sizeof (mp->l2_address));
   vat_json_object_add_string_copy (node, "interface_name",
 				   mp->interface_name);
+  vat_json_object_add_string_copy (node, "interface_dev_type",
+				   mp->interface_dev_type);
   vat_json_object_add_uint (node, "flags", mp->flags);
   vat_json_object_add_uint (node, "link_duplex", mp->link_duplex);
   vat_json_object_add_uint (node, "link_speed", mp->link_speed);

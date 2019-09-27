@@ -131,6 +131,7 @@ autoreply define want_interface_events
     @param pbb_b_vlanid - B-tag vlanid
     @param pbb_i_sid - I-tag service id
     @param interface_name - name of the interface
+    @param interface_dev_type - device type of the interface
     @param tag - an ascii tag
 */
 define sw_interface_details
@@ -186,6 +187,7 @@ define sw_interface_details
 
   /* Interface name */
   string interface_name[64];
+  string interface_dev_type[64];
   string tag[64];
 };
 

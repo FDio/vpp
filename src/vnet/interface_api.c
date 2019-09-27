@@ -202,6 +202,8 @@ send_sw_interface_details (vpe_api_main_t * am,
 {
   vnet_hw_interface_t *hi =
     vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (am->vnet_main, hi->dev_class_index);
 
   vl_api_sw_interface_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -244,6 +246,10 @@ send_sw_interface_details (vpe_api_main_t * am,
 
   strncpy ((char *) mp->interface_name,
 	   (char *) interface_name, ARRAY_LEN (mp->interface_name) - 1);
+
+  if (dev_class && dev_class->name)
+    strncpy ((char *) mp->interface_dev_type, (char *) dev_class->name,
+	     ARRAY_LEN (mp->interface_dev_type) - 1);
 
   /* Send the L2 address for ethernet physical intfcs */
   if (swif->sup_sw_if_index == swif->sw_if_index

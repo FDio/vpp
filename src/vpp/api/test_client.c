@@ -164,9 +164,10 @@ vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
       speed = "bogus";
       break;
     }
-  fformat (stdout, "details: %s sw_if_index %d sup_sw_if_index %d "
-	   "link_duplex %s link_speed %s",
-	   mp->interface_name, ntohl (mp->sw_if_index),
+  fformat (stdout,
+	   "details: %s device_type %s sw_if_index %d sup_sw_if_index %d "
+	   "link_duplex %s link_speed %s", mp->interface_name,
+	   mp->interface_dev_type, ntohl (mp->sw_if_index),
 	   ntohl (mp->sup_sw_if_index), duplex, speed);
 
   if (mp->l2_address_length)
