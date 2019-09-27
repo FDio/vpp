@@ -21,10 +21,6 @@ add_vpp_plugin(http_static
   API_FILES
   http_static.api
 
-  INSTALL_HEADERS
-  http_static_all_api_h.h
-  http_static_msg_enum.h
-
   API_TEST_SOURCES
   http_static_test.c
 )
