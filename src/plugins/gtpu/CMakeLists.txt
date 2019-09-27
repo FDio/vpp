@@ -25,10 +25,6 @@ add_vpp_plugin(gtpu
   API_FILES
   gtpu.api
 
-  INSTALL_HEADERS
-  gtpu_all_api_h.h
-  gtpu_msg_enum.h
-
   API_TEST_SOURCES
   gtpu_test.c
 )
