@@ -1762,8 +1762,8 @@ pg_input_stream (vlib_node_runtime_t * node, pg_main_t * pg, pg_stream_t * s)
     n_packets = s->n_packets_limit - s->n_packets_generated;
 
   /* Generate up to one frame's worth of packets. */
-  if (n_packets > VLIB_FRAME_SIZE)
-    n_packets = VLIB_FRAME_SIZE;
+  if (n_packets > s->n_max_frame)
+    n_packets = s->n_max_frame;
 
   if (n_packets > 0)
     n_packets = pg_generate_packets (node, pg, s, n_packets);
