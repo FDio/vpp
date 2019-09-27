@@ -25,6 +25,4 @@ add_vpp_plugin(l2e
 
   INSTALL_HEADERS
   l2e.h
-  l2e_all_api_h.h
-  l2e_msg_enum.h
 )

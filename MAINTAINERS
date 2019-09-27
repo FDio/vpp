@@ -528,6 +528,11 @@ Cisco Discovery Protocol
 I:	cdp
 F:	src/plugins/cdp/
 
+LAN Emulation
+I:	l2e
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/l2e/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
