@@ -197,7 +197,9 @@ bond_dump_ifs (bond_interface_details_t ** out_bondifs)
     hi = vnet_get_hw_interface (vnm, bif->hw_if_index);
     clib_memcpy(bondif->interface_name, hi->name,
                 MIN (ARRAY_LEN (bondif->interface_name) - 1,
-                     strlen ((const char *) hi->name)));
+                     vec_len ((const char *) hi->name)));
+    /* enforce by memset() above */
+    ASSERT(0 == bondif->interface_name[ARRAY_LEN (bondif->interface_name) - 1]);
     bondif->mode = bif->mode;
     bondif->lb = bif->lb;
     bondif->numa_only = bif->numa_only;
@@ -239,7 +241,11 @@ bond_dump_slave_ifs (slave_interface_details_t ** out_slaveifs,
 	hi = vnet_get_hw_interface (vnm, sw->hw_if_index);
 	clib_memcpy (slaveif->interface_name, hi->name,
 		     MIN (ARRAY_LEN (slaveif->interface_name) - 1,
-			  strlen ((const char *) hi->name)));
+			  vec_len ((const char *) hi->name)));
+	/* enforce by memset() above */
+	ASSERT (0 ==
+		slaveif->interface_name[ARRAY_LEN (slaveif->interface_name) -
+					1]);
 	slaveif->sw_if_index = sif->sw_if_index;
 	slaveif->is_passive = sif->is_passive;
 	slaveif->is_long_timeout = sif->is_long_timeout;
