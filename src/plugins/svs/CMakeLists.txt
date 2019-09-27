@@ -18,8 +18,4 @@ add_vpp_plugin(svs
 
   API_FILES
   svs.api
-
-  INSTALL_HEADERS
-  svs_all_api_h.h
-  svs_msg_enum.h
 )

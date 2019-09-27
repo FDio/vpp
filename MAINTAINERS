@@ -528,6 +528,11 @@ Cisco Discovery Protocol
 I:	cdp
 F:	src/plugins/cdp/
 
+Source VRF Select
+I:	svs
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/svs/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
