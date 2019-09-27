@@ -314,7 +314,7 @@ ip4_map_t_fragmented (vlib_main_t * vm,
 	  if (map_ip4_to_ip6_fragmented (p0, pheader0))
 	    {
 	      p0->error = error_node->errors[MAP_ERROR_FRAGMENT_DROPPED];
-	      next0 = IP4_MAPT_FRAGMENTED_NEXT_DROP;
+	      next0 = IP4_MAPT_NEXT_MAPT_FRAGMENTED;
 	    }
 	  else
 	    {
@@ -632,6 +632,16 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  pheader0->daddr.as_u64[1] =
 	    map_get_sfx_net (d0, ip40->dst_address.as_u32, (u16) dst_port0);
 
+	  bool df0 =
+	    ip40->flags_and_fragment_offset &
+	    clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
+
+	  if (PREDICT_TRUE (ip4_is_first_fragment (ip40) && df0))
+	    {
+	      p0->error = error_node->errors[MAP_ERROR_FRAGMENT_DROPPED];
+	      next0 = IP4_MAPT_FRAGMENTED_NEXT_DROP;
+	      goto exit;
+	    }
 	  // It is important to cache at this stage because the result
 	  // might be necessary for packets within the same vector.
 	  // Actually, this approach even provides some limited
