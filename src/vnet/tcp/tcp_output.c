@@ -1516,7 +1516,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	}
 
       if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una + tc->snd_mss);
+	scoreboard_init_rxt (&tc->sack_sb, tc->snd_una + tc->snd_mss);
 
       tcp_program_retransmit (tc);
     }
@@ -1884,12 +1884,12 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  break;
 	}
 
-      max_bytes = clib_min (hole->end - sb->high_rxt, snd_space);
+      max_bytes = clib_min (hole->end - sb->cur_rxt, snd_space);
       max_bytes = snd_limited ? clib_min (max_bytes, tc->snd_mss) : max_bytes;
       if (max_bytes == 0)
 	break;
 
-      offset = sb->high_rxt - tc->snd_una;
+      offset = sb->cur_rxt - tc->snd_una;
       n_written = tcp_prepare_retransmit_segment (wrk, tc, offset, max_bytes,
 						  &b);
       ASSERT (n_written <= snd_space);
@@ -1901,7 +1901,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       bi = vlib_get_buffer_index (vm, b);
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
-      sb->high_rxt += n_written;
+      sb->cur_rxt += n_written;
+      sb->high_rxt = seq_max (sb->high_rxt, sb->cur_rxt);
       snd_space -= n_written;
       n_segs += 1;
     }

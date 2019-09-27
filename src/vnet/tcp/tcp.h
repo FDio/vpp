@@ -150,6 +150,12 @@ typedef struct _scoreboard_trace_elt
   u32 group;
 } scoreboard_trace_elt_t;
 
+typedef enum sack_hole_flags_
+{
+  SACK_HOLE_LOST = 1 << 0,
+  SACK_HOLE_RXT = 1 << 1,
+} sack_hole_flags_t;
+
 typedef struct _sack_scoreboard_hole
 {
   u32 next;		/**< Index for next entry in linked list */
@@ -168,8 +174,10 @@ typedef struct _sack_scoreboard
   u32 last_sacked_bytes;		/**< Number of bytes last sacked */
   u32 last_bytes_delivered;		/**< Sack bytes delivered to app */
   u32 rxt_sacked;			/**< Rxt last delivered */
+  u32 rxt_max_sacked;			/**< Max rxt sacked */
   u32 high_sacked;			/**< Highest byte sacked (fack) */
   u32 high_rxt;				/**< Highest retransmitted sequence */
+  u32 cur_rxt;
   u32 rescue_rxt;			/**< Rescue sequence number */
   u32 lost_bytes;			/**< Bytes lost as per RFC6675 */
   u32 last_lost_bytes;			/**< Number of bytes last lost */
@@ -225,7 +233,7 @@ sack_scoreboard_hole_t *scoreboard_last_hole (sack_scoreboard_t * sb);
 void scoreboard_clear (sack_scoreboard_t * sb);
 void scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end);
 void scoreboard_init (sack_scoreboard_t * sb);
-void scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una);
+void scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una);
 u8 *format_tcp_scoreboard (u8 * s, va_list * args);
 
 #define TCP_BTS_INVALID_INDEX	((u32)~0)
@@ -956,8 +964,6 @@ tcp_is_lost_fin (tcp_connection_t * tc)
 }
 
 u32 tcp_snd_space (tcp_connection_t * tc);
-//void tcp_cc_init_congestion (tcp_connection_t * tc);
-//void tcp_cc_fastrecovery_clear (tcp_connection_t * tc);
 
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 
