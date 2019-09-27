@@ -1371,7 +1371,6 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   return sum16;
 }
 
-
 u16
 ip4_tcp_compute_checksum_custom (vlib_main_t * vm, vlib_buffer_t * p0,
                                  ip46_address_t  *src,
@@ -1427,6 +1426,7 @@ ip4_tcp_compute_checksum_custom (vlib_main_t * vm, vlib_buffer_t * p0,
 
   return sum16;
 }
+
 
 
 u32

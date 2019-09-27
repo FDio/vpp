@@ -387,6 +387,12 @@ u16 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 				       ip6_header_t * ip0,
 				       int *bogus_lengthp);
 
+u16
+ip6_tcp_compute_checksum_custom (vlib_main_t * vm, vlib_buffer_t * p0,
+                                 ip46_address_t *src,
+                                 ip46_address_t *dst,
+                                 int *bogus_lengthp);
+
 void ip6_register_protocol (u32 protocol, u32 node_index);
 void ip6_unregister_protocol (u32 protocol);
 void ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index);
