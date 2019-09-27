@@ -117,6 +117,9 @@ VLIB_CLI_COMMAND (mrvl_pp2_delete_command, static) = {
 clib_error_t *
 mrvl_pp2_cli_init (vlib_main_t * vm)
 {
+  /* initialize binary API */
+  mrvl_pp2_plugin_api_hookup (vm);
+
   return 0;
 }
 
