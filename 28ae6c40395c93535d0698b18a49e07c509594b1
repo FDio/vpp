@@ -1,0 +1,124 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "090a5f8d_db2bc7ce",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1431,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-27T01:25:31Z",
+      "side": 1,
+      "message": "No empty lines pls",
+      "revId": "28ae6c40395c93535d0698b18a49e07c509594b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "635add54_a4c85fbc",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-27T01:25:31Z",
+      "side": 1,
+      "message": "I don\u0027t like the fact that we end up with 2 functions that have a lot of overlapping code. \n\nTherefore, make this a \n\nalways_inline u16\nip6_tcp_compute_checksum_inline (all your params) {}\n\nthen call this inline from ip6_tcp_udp_icmp_compute_checksum and from ip6_tcp_compute_checksum_custom\n\nSame for v4.",
+      "range": {
+        "startLine": 1112,
+        "startChar": 0,
+        "endLine": 1112,
+        "endChar": 31
+      },
+      "revId": "28ae6c40395c93535d0698b18a49e07c509594b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a782040f_842b295d",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-27T01:25:31Z",
+      "side": 1,
+      "message": "No",
+      "range": {
+        "startLine": 123,
+        "startChar": 22,
+        "endLine": 123,
+        "endChar": 24
+      },
+      "revId": "28ae6c40395c93535d0698b18a49e07c509594b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6b08d25e_e754a492",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 449,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-27T01:25:31Z",
+      "side": 1,
+      "message": "Looks good. Remember to do a \"make fixstyle\" to reindent",
+      "range": {
+        "startLine": 449,
+        "startChar": 0,
+        "endLine": 449,
+        "endChar": 20
+      },
+      "revId": "28ae6c40395c93535d0698b18a49e07c509594b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4faa9872_136c0d3b",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1093,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-27T01:25:31Z",
+      "side": 1,
+      "message": "Empty line",
+      "revId": "28ae6c40395c93535d0698b18a49e07c509594b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "893aa886_d9462311",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2196,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-27T01:25:31Z",
+      "side": 1,
+      "message": "Revert the line spacing to what it was before",
+      "revId": "28ae6c40395c93535d0698b18a49e07c509594b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

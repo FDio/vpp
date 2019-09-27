@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "67975774_6d1d5f88",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1374,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-27T01:25:31Z",
+      "side": 0,
+      "message": "Seems you\u0027ve chained the patches (the other is https://gerrit.fd.io/r/c/vpp/+/22275). Squash them and publish just one",
+      "range": {
+        "startLine": 1373,
+        "startChar": 0,
+        "endLine": 1374,
+        "endChar": 0
+      },
+      "revId": "cc6fa4b57c7cf0006434662fbad1795e1ed6b4d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
