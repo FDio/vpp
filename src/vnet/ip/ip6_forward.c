@@ -1107,6 +1107,72 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   return sum16;
 }
 
+/* Compute TCP/UDP/ICMP6 checksum in software. */
+u16
+ip6_tcp_compute_checksum_custom(vlib_main_t * vm, vlib_buffer_t * p0,
+                   ip46_address_t *src, ip46_address_t *dst,
+                   int *bogus_lengthp)
+{
+  ip_csum_t sum0;
+  u16 sum16, payload_length_host_byte_order;
+  u32 i, n_this_buffer, n_bytes_left;
+  u32 headers_size = sizeof (ip6_header_t);
+  void *data_this_buffer;
+
+  ASSERT (bogus_lengthp);
+  *bogus_lengthp = 0;
+
+  /* Initialize checksum with ip header. */
+  sum0 = vlib_buffer_length_in_chain (vm, p0) + clib_host_to_net_u16 (IP_PROTOCOL_TCP);
+  payload_length_host_byte_order = vlib_buffer_length_in_chain (vm, p0);
+  data_this_buffer = vlib_buffer_get_current(p0);
+
+  for (i = 0; i < ARRAY_LEN (src->ip6.as_uword); i++)
+    {
+      sum0 = ip_csum_with_carry (sum0,
+                 clib_mem_unaligned (src->ip6.as_uword[i],
+                             uword));
+      sum0 =
+    ip_csum_with_carry (sum0,
+                clib_mem_unaligned (dst->ip6.as_uword[i],
+                        uword));
+    }
+
+  n_bytes_left = n_this_buffer = payload_length_host_byte_order;
+
+  if (p0)
+    {
+      u32 n_ip_bytes_this_buffer = p0->current_length + headers_size;
+      if (n_this_buffer + headers_size > n_ip_bytes_this_buffer)
+    {
+      n_this_buffer = p0->current_length > headers_size ?
+        n_ip_bytes_this_buffer - headers_size : 0;
+    }
+    }
+
+  while (1)
+    {
+      sum0 = ip_incremental_checksum (sum0, data_this_buffer, n_this_buffer);
+      n_bytes_left -= n_this_buffer;
+      if (n_bytes_left == 0)
+    break;
+
+      if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
+    {
+      *bogus_lengthp = 1;
+      return 0xfefe;
+    }
+      p0 = vlib_get_buffer (vm, p0->next_buffer);
+      data_this_buffer = vlib_buffer_get_current (p0);
+      n_this_buffer = clib_min (p0->current_length, n_bytes_left);
+    }
+
+  sum16 = ~ip_csum_fold (sum0);
+
+  return sum16;
+}
+
+
 u32
 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
 {
