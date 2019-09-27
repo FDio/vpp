@@ -173,6 +173,7 @@ typedef enum ipsec_format_flags_t_
 {
   IPSEC_FORMAT_BRIEF = 0,
   IPSEC_FORMAT_DETAIL = (1 << 0),
+  IPSEC_FORMAT_INSECURE = (2 << 0),
 } ipsec_format_flags_t;
 
 extern ipsec_main_t ipsec_main;

@@ -298,12 +298,16 @@ format_ipsec_sa (u8 * s, va_list * args)
 	      format_ipsec_replay_window, sa->replay_window);
   s = format (s, "\n   crypto alg %U",
 	      format_ipsec_crypto_alg, sa->crypto_alg);
-  if (sa->crypto_alg)
+  if (sa->crypto_alg && (flags & IPSEC_FORMAT_INSECURE))
     s = format (s, " key %U", format_ipsec_key, &sa->crypto_key);
+  else
+    s = format (s, " key [redacted]");
   s = format (s, "\n   integrity alg %U",
 	      format_ipsec_integ_alg, sa->integ_alg);
-  if (sa->integ_alg)
+  if (sa->integ_alg && (flags & IPSEC_FORMAT_INSECURE))
     s = format (s, " key %U", format_ipsec_key, &sa->integ_key);
+  else
+    s = format (s, " key [redacted]");
 
   vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
   s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);
