@@ -29,8 +29,6 @@ add_vpp_plugin(sctp
   sctp_input.c
   
   INSTALL_HEADERS
-  sctp_all_api_h.h
-  sctp_msg_enum.h
   sctp_error.def
   sctp_packet.h
   sctp_timer.h
