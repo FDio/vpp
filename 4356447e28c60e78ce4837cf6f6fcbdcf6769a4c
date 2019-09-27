@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b7e11f0f_a04232c8",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2317,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-27T07:16:09Z",
+      "side": 1,
+      "message": "Maybe \u003cshow quic stats\u003e to be vpp-consistent ?",
+      "revId": "4356447e28c60e78ce4837cf6f6fcbdcf6769a4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
