@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "15dce243_8f478ec4",
+        "filename": "src/plugins/avf/avf.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-09-27T12:17:03Z",
+      "side": 1,
+      "message": "\u003e vpp-csit-verify-api-crc-master/902/ : SUCCESS\n\nThat proves options do not currently affect CRC values. Should they?",
+      "range": {
+        "startLine": 41,
+        "startChar": 2,
+        "endLine": 41,
+        "endChar": 17
+      },
+      "revId": "74af6f081f2360eca7578f04c8ecff617e911b53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
