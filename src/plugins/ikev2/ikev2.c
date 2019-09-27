@@ -2575,24 +2575,27 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
     }
 
   /* DH */
-  error = 1;
-  vec_foreach (td, km->supported_transforms)
-  {
-    if (td->type == IKEV2_TRANSFORM_TYPE_DH && td->dh_type == ts->dh_type)
-      {
-	vec_add1 (proposal->transforms, *td);
-	if (is_ike)
-	  {
-	    sa->dh_group = td->dh_type;
-	  }
-	error = 0;
-	break;
-      }
-  }
-  if (error)
+  if (is_ike || ts->dh_type != IKEV2_TRANSFORM_DH_TYPE_NONE)
     {
-      r = clib_error_return (0, "Unsupported algorithm");
-      return r;
+      error = 1;
+      vec_foreach (td, km->supported_transforms)
+      {
+	if (td->type == IKEV2_TRANSFORM_TYPE_DH && td->dh_type == ts->dh_type)
+	  {
+	    vec_add1 (proposal->transforms, *td);
+	    if (is_ike)
+	      {
+		sa->dh_group = td->dh_type;
+	      }
+	    error = 0;
+	    break;
+	  }
+      }
+      if (error)
+	{
+	  r = clib_error_return (0, "Unsupported algorithm");
+	  return r;
+	}
     }
 
   if (!is_ike)
@@ -3057,6 +3060,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     ike0->exchange = IKEV2_EXCHANGE_SA_INIT;
     ike0->ispi = sa.ispi;
     ike0->rspi = 0;
+    ike0->msgid = 0;
 
     /* store whole IKE payload - needed for PSK auth */
     vec_free (sa.last_sa_init_req_packet_data);
