@@ -1419,6 +1419,10 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   tcp_recovery_on (tc);
 }
 
+static inline u8
+tcp_retransmit_should_retry_head (tcp_connection_t * tc,
+				  sack_scoreboard_t * sb);
+
 void
 tcp_timer_retransmit_handler (u32 tc_index)
 {
@@ -1516,7 +1520,7 @@ tcp_timer_retransmit_handler (u32 tc_index)
 	}
 
       if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una + tc->snd_mss);
+	scoreboard_init_rxt (&tc->sack_sb, tc->snd_una + n_bytes);
 
       tcp_program_retransmit (tc);
     }
@@ -1769,7 +1773,7 @@ done:
 /**
  * Estimate send space using proportional rate reduction (RFC6937)
  */
-static int
+int
 tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
 {
   u32 pipe, prr_out;
@@ -1785,11 +1789,22 @@ tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
     }
   else
     {
-      int limit = tc->prr_delivered - prr_out + tc->snd_mss;
+      int limit;
+      limit = clib_max ((int) (tc->prr_delivered - prr_out), 0) + tc->snd_mss;
       space = clib_min (tc->ssthresh - pipe, limit);
     }
   space = clib_max (space, prr_out ? 0 : tc->snd_mss);
   return space;
+}
+
+static inline u8
+tcp_retransmit_should_retry_head (tcp_connection_t * tc,
+				  sack_scoreboard_t * sb)
+{
+  u32 tx_adv_sack = sb->high_sacked - tc->snd_congestion;
+  f64 rr = (f64) tc->ssthresh / tc->prev_cwnd;
+
+  return (tx_adv_sack > (tc->snd_una - tc->prr_start) * rr);
 }
 
 #define scoreboard_rescue_rxt_valid(_sb, _tc)			\
@@ -1828,8 +1843,31 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       return 0;
     }
 
-  TCP_EVT (TCP_EVT_CC_EVT, tc, 0);
   sb = &tc->sack_sb;
+
+  /* Check if snd_una is a lost retransmit */
+  if (seq_gt (sb->high_sacked, tc->snd_congestion)
+      && tc->rxt_head != tc->snd_una
+      && tcp_retransmit_should_retry_head (tc, sb))
+    {
+      n_written = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss,
+						  &b);
+      if (!n_written)
+	{
+	  tcp_program_retransmit (tc);
+	  goto done;
+	}
+      bi = vlib_get_buffer_index (vm, b);
+      tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+      n_segs = 1;
+
+      tc->rxt_head = tc->snd_una;
+      tc->rxt_delivered += n_written;
+      tc->prr_delivered += n_written;
+      ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+    }
+
+  TCP_EVT (TCP_EVT_CC_EVT, tc, 0);
   hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
 
   max_deq = transport_max_tx_dequeue (&tc->connection);
@@ -1842,7 +1880,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       if (!hole)
 	{
 	  /* We are out of lost holes to retransmit so send some new data. */
-	  if (max_deq)
+	  if (max_deq > tc->snd_mss)
 	    {
 	      u32 n_segs_new, av_window;
 	      av_window = tc->snd_wnd - (tc->snd_nxt - tc->snd_una);
