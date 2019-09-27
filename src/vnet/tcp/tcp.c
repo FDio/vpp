@@ -915,17 +915,26 @@ static u8 *
 format_tcp_congestion (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  u32 indent = format_get_indent (s);
+  u32 indent = format_get_indent (s), prr_space = 0;
 
   s = format (s, "%U ", format_tcp_congestion_status, tc);
   s = format (s, "algo %s cwnd %u ssthresh %u bytes_acked %u\n",
 	      tc->cc_algo->name, tc->cwnd, tc->ssthresh, tc->bytes_acked);
-  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u rxt_bytes %u\n",
+  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u\n",
 	      format_white_space, indent, tcp_available_cc_snd_space (tc),
-	      tc->prev_cwnd, tc->prev_ssthresh, tc->snd_rxt_bytes);
-  s = format (s, "%Usnd_congestion %u dupack %u limited_transmit %u\n",
+	      tc->prev_cwnd, tc->prev_ssthresh);
+  s = format (s, "%Usnd_cong %u dupack %u limited_tx %u\n",
 	      format_white_space, indent, tc->snd_congestion - tc->iss,
 	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
+  s = format (s, "%Urxt_bytes %u rxt_delivered %u rxt_head %u rxt_ts %u\n",
+	      format_white_space, indent, tc->snd_rxt_bytes,
+	      tc->rxt_delivered, tc->rxt_head - tc->iss,
+	      tcp_time_now_w_thread (tc->c_thread_index) - tc->snd_rxt_ts);
+  if (tcp_in_fastrecovery (tc))
+    prr_space = tcp_fastrecovery_prr_snd_space (tc);
+  s = format (s, "%Uprr_start %u prr_delivered %u prr space %u\n",
+	      format_white_space, indent, tc->prr_start - tc->iss,
+	      tc->prr_delivered, prr_space);
   return s;
 }
 
@@ -1140,10 +1149,11 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   sack_scoreboard_hole_t *hole;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "sacked %u last_sacked %u lost %u last_lost %u\n",
+  s = format (s, "sacked %u last_sacked %u lost %u last_lost %u"
+	      " rxt_sacked %u\n",
 	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes,
-	      sb->last_lost_bytes);
-  s = format (s, "%Ulast_bytes_delivered %u high_sacked %u is_reneging %u\n",
+	      sb->last_lost_bytes, sb->rxt_sacked);
+  s = format (s, "%Ulast_delivered %u high_sacked %u is_reneging %u\n",
 	      format_white_space, indent, sb->last_bytes_delivered,
 	      sb->high_sacked - tc->iss, sb->is_reneging);
   s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u",
