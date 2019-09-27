@@ -270,6 +270,7 @@ ikev2_calc_prf (ikev2_sa_transform_t * tr, v8 * key, v8 * data)
   HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
   HMAC_Update (ctx, data, vec_len (data));
   HMAC_Final (ctx, prf, &len);
+  HMAC_CTX_free (ctx);
 #else
   HMAC_CTX_init (&ctx);
   HMAC_Init_ex (&ctx, key, vec_len (key), tr->md, NULL);
@@ -354,6 +355,7 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
   HMAC_Init_ex (hctx, key, vec_len (key), tr->md, NULL);
   HMAC_Update (hctx, (const u8 *) data, len);
   HMAC_Final (hctx, r, &l);
+  HMAC_CTX_free (hctx);
 #else
   HMAC_CTX_init (&hctx);
   HMAC_Init_ex (&hctx, key, vec_len (key), tr->md, NULL);
@@ -411,7 +413,9 @@ ikev2_decrypt_data (ikev2_sa_t * sa, u8 * data, int len)
   /* remove padding */
   _vec_len (r) -= r[vec_len (r) - 1] + 1;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_CIPHER_CTX_free (ctx);
+#else
   EVP_CIPHER_CTX_cleanup (&ctx);
 #endif
   return r;
@@ -441,6 +445,7 @@ ikev2_encrypt_data (ikev2_sa_t * sa, v8 * src, u8 * dst)
   ctx = EVP_CIPHER_CTX_new ();
   EVP_EncryptInit_ex (ctx, tr_encr->cipher, NULL, key, dst /* dst */ );
   EVP_EncryptUpdate (ctx, dst + bs, &out_len, src, vec_len (src));
+  EVP_CIPHER_CTX_free (ctx);
 #else
   EVP_CIPHER_CTX_init (&ctx);
   EVP_EncryptInit_ex (&ctx, tr_encr->cipher, NULL, key, dst /* dst */ );
@@ -697,6 +702,7 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 int
 ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data)
 {
+  int verify;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   EVP_MD_CTX *md_ctx = EVP_MD_CTX_new ();
 #else
@@ -713,10 +719,13 @@ ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data)
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  return EVP_VerifyFinal (md_ctx, sigbuf, vec_len (sigbuf), pkey);
+  verify = EVP_VerifyFinal (md_ctx, sigbuf, vec_len (sigbuf), pkey);
+  EVP_MD_CTX_free (md_ctx);
 #else
-  return EVP_VerifyFinal (&md_ctx, sigbuf, vec_len (sigbuf), pkey);
+  verify = EVP_VerifyFinal (&md_ctx, sigbuf, vec_len (sigbuf), pkey);
+  EVP_MD_CTX_cleanup (&md_ctx);
 #endif
+  return verify;
 }
 
 u8 *
@@ -726,6 +735,7 @@ ikev2_calc_sign (EVP_PKEY * pkey, u8 * data)
   EVP_MD_CTX *md_ctx = EVP_MD_CTX_new ();
 #else
   EVP_MD_CTX md_ctx;
+  EVP_MD_CTX_init (&md_ctx);
 #endif
   unsigned int sig_len = 0;
   u8 *sign;
@@ -738,6 +748,7 @@ ikev2_calc_sign (EVP_PKEY * pkey, u8 * data)
   sign = vec_new (u8, sig_len);
   /* calc sign */
   EVP_SignFinal (md_ctx, sign, &sig_len, pkey);
+  EVP_MD_CTX_free (md_ctx);
 #else
   EVP_SignInit (&md_ctx, EVP_sha1 ());
   EVP_SignUpdate (&md_ctx, data, vec_len (data));
@@ -746,6 +757,7 @@ ikev2_calc_sign (EVP_PKEY * pkey, u8 * data)
   sign = vec_new (u8, sig_len);
   /* calc sign */
   EVP_SignFinal (&md_ctx, sign, &sig_len, pkey);
+  EVP_MD_CTX_cleanup (&md_ctx);
 #endif
   return sign;
 }
