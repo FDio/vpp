@@ -27,28 +27,8 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */
-#include <ikev2/ikev2_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <ikev2/ikev2.api.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <ikev2/ikev2.api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <ikev2/ikev2.api.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ikev2/ikev2.api.h>
-#undef vl_api_version
+#include <ikev2/ikev2.api_enum.h>
+#include <ikev2/ikev2.api_types.h>
 
 typedef struct
 {
@@ -87,66 +67,36 @@ unformat_ikev2_id_type (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-/*
- * Generate boilerplate reply handlers, which
- * dig the return value out of the xxx_reply_t API message,
- * stick it into vam->retval, and set vam->result_ready
- *
- * Could also do this by pointing N message decode slots at
- * a single function, but that could break in subtle ways.
- */
+static int
+api_ikev2_plugin_get_version (vat_main_t * vam)
+{
+  ikev2_test_main_t *sm = &ikev2_test_main;
+  vl_api_ikev2_plugin_get_version_t *mp;
+  u32 msg_size = sizeof (*mp);
+  int ret;
 
-#define foreach_standard_reply_retval_handler           \
-_(ikev2_profile_add_del_reply)                          \
-_(ikev2_profile_set_auth_reply)                         \
-_(ikev2_profile_set_id_reply)                           \
-_(ikev2_profile_set_ts_reply)                           \
-_(ikev2_set_local_key_reply)                            \
-_(ikev2_set_responder_reply)                            \
-_(ikev2_set_ike_transforms_reply)                       \
-_(ikev2_set_esp_transforms_reply)                       \
-_(ikev2_set_sa_lifetime_reply)                          \
-_(ikev2_initiate_sa_init_reply)                         \
-_(ikev2_initiate_del_ike_sa_reply)                      \
-_(ikev2_initiate_del_child_sa_reply)                    \
-_(ikev2_initiate_rekey_child_sa_reply)
+  vam->result_ready = 0;
+  mp = vl_msg_api_alloc_as_if_client (msg_size);
+  clib_memset (mp, 0, msg_size);
+  mp->_vl_msg_id = ntohs (VL_API_IKEV2_PLUGIN_GET_VERSION + sm->msg_id_base);
+  mp->client_index = vam->my_client_index;
 
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = ikev2_test_main.vat_main;    \
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
+  /* send it... */
+  S (mp);
 
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
 
-#define foreach_vpe_api_reply_msg                                       \
-_(IKEV2_PROFILE_ADD_DEL_REPLY, ikev2_profile_add_del_reply)             \
-_(IKEV2_PROFILE_SET_AUTH_REPLY, ikev2_profile_set_auth_reply)           \
-_(IKEV2_PROFILE_SET_ID_REPLY, ikev2_profile_set_id_reply)               \
-_(IKEV2_PROFILE_SET_TS_REPLY, ikev2_profile_set_ts_reply)               \
-_(IKEV2_SET_LOCAL_KEY_REPLY, ikev2_set_local_key_reply)                 \
-_(IKEV2_SET_RESPONDER_REPLY, ikev2_set_responder_reply)                 \
-_(IKEV2_SET_IKE_TRANSFORMS_REPLY, ikev2_set_ike_transforms_reply)       \
-_(IKEV2_SET_ESP_TRANSFORMS_REPLY, ikev2_set_esp_transforms_reply)       \
-_(IKEV2_SET_SA_LIFETIME_REPLY, ikev2_set_sa_lifetime_reply)             \
-_(IKEV2_INITIATE_SA_INIT_REPLY, ikev2_initiate_sa_init_reply)           \
-_(IKEV2_INITIATE_DEL_IKE_SA_REPLY, ikev2_initiate_del_ike_sa_reply)     \
-_(IKEV2_INITIATE_DEL_CHILD_SA_REPLY, ikev2_initiate_del_child_sa_reply) \
-_(IKEV2_INITIATE_REKEY_CHILD_SA_REPLY, ikev2_initiate_rekey_child_sa_reply)
-
+static void vl_api_ikev2_plugin_get_version_reply_t_handler
+  (vl_api_ikev2_plugin_get_version_reply_t * mp)
+{
+  vat_main_t *vam = ikev2_test_main.vat_main;
+  clib_warning ("IKEv2 plugin version: %d.%d", ntohl (mp->major),
+		ntohl (mp->minor));
+  vam->result_ready = 1;
+}
 
 static int
 api_ikev2_profile_add_del (vat_main_t * vam)
@@ -785,55 +735,7 @@ api_ikev2_initiate_rekey_child_sa (vat_main_t * vam)
   return ret;
 }
 
-
-/* List of API message constructors, CLI names map to api_xxx */
-#define foreach_vpe_api_msg                                             \
-_(ikev2_profile_add_del, "name <profile_name> [del]")                   \
-_(ikev2_profile_set_auth, "name <profile_name> auth_method <method>\n"  \
-  "(auth_data 0x<data> | auth_data <data>)")                            \
-_(ikev2_profile_set_id, "name <profile_name> id_type <type>\n"          \
-  "(id_data 0x<data> | id_data <data>) (local|remote)")                 \
-_(ikev2_profile_set_ts, "name <profile_name> protocol <proto>\n"        \
-  "start_port <port> end_port <port> start_addr <ip4> end_addr <ip4>\n" \
-  "(local|remote)")                                                     \
-_(ikev2_set_local_key, "file <absolute_file_path>")                     \
-_(ikev2_set_responder, "<profile_name> interface <interface> address <addr>") \
-_(ikev2_set_ike_transforms, "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>") \
-_(ikev2_set_esp_transforms, "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>") \
-_(ikev2_set_sa_lifetime, "<profile_name> <seconds> <jitter> <handover> <max bytes>") \
-_(ikev2_initiate_sa_init, "<profile_name>")                             \
-_(ikev2_initiate_del_ike_sa, "<ispi>")                                  \
-_(ikev2_initiate_del_child_sa, "<ispi>")                                \
-_(ikev2_initiate_rekey_child_sa, "<ispi>")
-
-static void
-ikev2_api_hookup (vat_main_t * vam)
-{
-  ikev2_test_main_t *sm = &ikev2_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-VAT_PLUGIN_REGISTER (ikev2);
+#include <ikev2/ikev2.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON
