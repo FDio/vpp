@@ -665,9 +665,11 @@ echo_process_rpcs (echo_main_t * em)
     {
       if (svm_msg_q_sub (em->rpc_msq_queue, &msg, SVM_Q_TIMEDWAIT, 1))
 	continue;
+      svm_msg_q_lock (em->rpc_msq_queue);
       rpc = svm_msg_q_msg_data (em->rpc_msq_queue, &msg);
       ((echo_rpc_t) rpc->fp) (rpc->arg, rpc->opaque);
       svm_msg_q_free_msg (em->rpc_msq_queue, &msg);
+      svm_msg_q_unlock (em->rpc_msq_queue);
     }
 }
 
@@ -691,9 +693,11 @@ echo_mq_thread_fn (void *arg)
       if (!(rv = svm_msg_q_sub (em->our_event_queue,
 				&msg, SVM_Q_TIMEDWAIT, 1)))
 	{
+	  svm_msg_q_lock (em->our_event_queue);
 	  e = svm_msg_q_msg_data (em->our_event_queue, &msg);
 	  handle_mq_event (e);
 	  svm_msg_q_free_msg (em->our_event_queue, &msg);
+	  svm_msg_q_unlock (em->our_event_queue);
 	}
       if (rv == ETIMEDOUT
 	  && (em->time_to_stop || em->state == STATE_DETACHED))
