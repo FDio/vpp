@@ -180,7 +180,11 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
       /* have to remove SIGABRT to avoid recursive - os_exit calling abort() */
       unsetup_signal_handlers (SIGABRT);
 
-      os_exit (1);
+      /* os_exit(1) causes core generation, do not do this for SIGINT */
+      if (signum == SIGINT)
+	os_exit (0);
+      else
+	os_exit (1);
     }
   else
     clib_warning ("%s", syslog_msg);
