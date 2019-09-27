@@ -629,34 +629,6 @@ tcp_program_dequeue (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
   tc->burst_acked += tc->bytes_acked;
 }
 
-/**
- * Check if duplicate ack as per RFC5681 Sec. 2
- */
-static u8
-tcp_ack_is_dupack (tcp_connection_t * tc, vlib_buffer_t * b, u32 prev_snd_wnd,
-		   u32 prev_snd_una)
-{
-  return ((vnet_buffer (b)->tcp.ack_number == prev_snd_una)
-	  && seq_gt (tc->snd_nxt, tc->snd_una)
-	  && (vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number)
-	  && (prev_snd_wnd == tc->snd_wnd));
-}
-
-/**
- * Checks if ack is a congestion control event.
- */
-static u8
-tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
-		     u32 prev_snd_wnd, u32 prev_snd_una, u8 * is_dack)
-{
-  /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
-   * defined to be 'duplicate' */
-  *is_dack = tc->sack_sb.last_sacked_bytes
-    || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
-
-  return ((*is_dack || tcp_in_cong_recovery (tc)) && !tcp_is_lost_fin (tc));
-}
-
 #ifndef CLIB_MARCH_VARIANT
 static u32
 scoreboard_hole_index (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
@@ -920,7 +892,7 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 }
 
 void
-scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
+scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (sb);
@@ -975,7 +947,7 @@ scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end)
   last_hole->is_lost = 1;
   sb->tail = scoreboard_hole_index (sb, last_hole);
   sb->high_sacked = start;
-  scoreboard_init_high_rxt (sb, start);
+  scoreboard_init_rxt (sb, start);
 }
 
 #endif /* CLIB_MARCH_VARIANT */
@@ -1203,6 +1175,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
   ASSERT ((ack - tc->snd_una) + sb->last_sacked_bytes
 	  - sb->last_bytes_delivered >= sb->rxt_sacked);
+  ASSERT ((ack - tc->snd_una) >= tc->sack_sb.last_bytes_delivered
+          || (tc->flags & TCP_CONN_FINSNT));
 
   TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc);
 }
@@ -1264,6 +1238,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
+  tc->snd_rxt_ts = tcp_tstamp (tc);
   tcp_cc_congestion (tc);
 
   /* Post retransmit update cwnd to ssthresh and account for the
@@ -1310,8 +1285,29 @@ tcp_should_fastrecover_sack (tcp_connection_t * tc)
 }
 
 static inline u8
-tcp_should_fastrecover (tcp_connection_t * tc)
+tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
 {
+  if (!has_sack)
+    {
+      /* If of of the two conditions lower hold, reset dupacks because
+       * we're probably after timeout (RFC6582 heuristics).
+       * If Cumulative ack does not cover more than congestion threshold,
+       * and:
+       * 1) The following doesn't hold: The congestion window is greater
+       *    than SMSS bytes and the difference between highest_ack
+       *    and prev_highest_ack is at most 4*SMSS bytes
+       * 2) Echoed timestamp in the last non-dup ack does not equal the
+       *    stored timestamp
+       */
+      if (seq_leq (tc->snd_una, tc->snd_congestion)
+	  && ((!(tc->cwnd > tc->snd_mss
+		 && tc->bytes_acked <= 4 * tc->snd_mss))
+	      || (tc->rcv_opts.tsecr != tc->tsecr_last_ack)))
+	  {
+	    tc->rcv_dupacks = 0;
+	    return 0;
+	  }
+    }
   return ((tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
 	  || tcp_should_fastrecover_sack (tc));
 }
@@ -1330,6 +1326,7 @@ tcp_cc_recover (tcp_connection_t * tc)
       is_spurious = 1;
     }
 
+  tc->rcv_dupacks = 0;
   tc->prr_delivered = 0;
   tc->rxt_delivered = 0;
   tc->snd_rxt_bytes = 0;
@@ -1341,9 +1338,11 @@ tcp_cc_recover (tcp_connection_t * tc)
    * of the current recovery event with an updated snd_congestion */
   if (tc->sack_sb.sacked_bytes)
     {
+      clib_warning ("%u recovered congested", tc->c_c_index);
       tc->snd_congestion = tc->snd_nxt;
-      if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
+      tc->snd_rxt_ts = tcp_tstamp (tc);
+//      if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
       tcp_program_retransmit (tc);
       return is_spurious;
     }
@@ -1354,6 +1353,8 @@ tcp_cc_recover (tcp_connection_t * tc)
 
   if (!tcp_in_recovery (tc) && !is_spurious)
     tcp_cc_recovered (tc);
+
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
 
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_first_off (tc);
@@ -1387,30 +1388,6 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
     tc->snd_congestion = tc->snd_una - 1;
 }
 
-static void
-tcp_update_delivered (tcp_connection_t * tc, u8 is_dack, u8 has_sack)
-{
-  if (has_sack)
-    {
-      ASSERT (tc->bytes_acked >= tc->sack_sb.last_bytes_delivered
-	      || (tc->flags & TCP_CONN_FINSNT));
-
-      tc->rxt_delivered += tc->sack_sb.rxt_sacked;
-      tc->prr_delivered += tc->bytes_acked + tc->sack_sb.last_sacked_bytes
-	- tc->sack_sb.last_bytes_delivered;
-    }
-  else
-    {
-      tcp_fastrecovery_first_on (tc);
-      tc->rxt_delivered = clib_max (tc->rxt_delivered + tc->bytes_acked,
-				    tc->snd_rxt_bytes);
-      if (is_dack)
-	tc->prr_delivered += is_dack;
-      else
-	tc->prr_delivered += tc->bytes_acked - tc->snd_mss * tc->rcv_dupacks;
-    }
-}
-
 /**
  * One function to rule them all ... and in the darkness bind them
  */
@@ -1421,91 +1398,33 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
   /*
-   * Already in fast recovery. Return if no data acked, partial acks
-   * and accounting for segments that have left the network are done
-   * lower.
+   * If not in recovery, figure out if we should enter
    */
-  if (tcp_in_cong_recovery (tc))
+  if (!tcp_in_cong_recovery (tc))
     {
-      if (!has_sack)
-	tc->rcv_dupacks += is_dack;
-
-      if (!tc->bytes_acked)
-	{
-	  tcp_update_delivered (tc, is_dack, has_sack);
-	  tcp_program_retransmit (tc);
-	  if (!has_sack)
-	    tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
-	  return;
-	}
-    }
-  /*
-   * Duplicate ACK. Check if we should enter fast recovery
-   */
-  else if (is_dack)
-    {
-      TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
-      ASSERT (tc->snd_una != tc->snd_nxt || tc->sack_sb.last_sacked_bytes);
-
-      /* Heuristic to catch potential late dupacks */
-      if (!tc->sack_sb.sacked_bytes && tc->snd_una == tc->snd_congestion
-	  && timestamp_leq (tc->rcv_opts.tsecr, tc->tsecr_last_ack))
-	return;
+      ASSERT (is_dack);
 
       tc->rcv_dupacks++;
+      TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
+      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 
-      if (tcp_should_fastrecover (tc))
+      if (tcp_should_fastrecover (tc, has_sack))
 	{
-	  ASSERT (!tcp_in_fastrecovery (tc));
-
 	  tcp_cc_init_congestion (tc);
 
 	  if (has_sack)
-	    scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
+	    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
 
 	  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
 	  tcp_program_retransmit (tc);
-	  return;
 	}
-      else
-	{
-	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
-	  return;
-	}
-    }
-  /* Don't allow entry in fast recovery if still in recovery, for now */
-  else if (0 && is_dack && tcp_in_recovery (tc))
-    {
-      /* If of of the two conditions lower hold, reset dupacks because
-       * we're probably after timeout (RFC6582 heuristics).
-       * If Cumulative ack does not cover more than congestion threshold,
-       * and:
-       * 1) The following doesn't hold: The congestion window is greater
-       *    than SMSS bytes and the difference between highest_ack
-       *    and prev_highest_ack is at most 4*SMSS bytes
-       * 2) Echoed timestamp in the last non-dup ack does not equal the
-       *    stored timestamp
-       */
-      if (seq_leq (tc->snd_una, tc->snd_congestion)
-	  && ((!(tc->cwnd > tc->snd_mss
-		 && tc->bytes_acked <= 4 * tc->snd_mss))
-	      || (tc->rcv_opts.tsecr != tc->tsecr_last_ack)))
-	{
-	  tc->rcv_dupacks = 0;
-	  return;
-	}
-    }
 
-  ASSERT (tc->bytes_acked);
-  TCP_EVT (TCP_EVT_CC_PACK, tc);
+      return;
+    }
 
   /*
-   * Legitimate ACK. 1) See if we can exit recovery
+   * Already in recovery. See if we can exit and stop retransmitting
    */
-
-  /* RFC6675: If the incoming ACK is a cumulative acknowledgment,
-   * reset dupacks to 0. Also needed if in congestion recovery */
-  tc->rcv_dupacks = 0;
 
   if (seq_geq (tc->snd_una, tc->snd_congestion))
     {
@@ -1521,22 +1440,172 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       return;
     }
 
+  if (has_sack)
+    {
+      sack_scoreboard_t *sb = &tc->sack_sb;
+
+      tc->rxt_delivered += sb->rxt_sacked;
+      tc->prr_delivered += tc->bytes_acked + sb->last_sacked_bytes
+	- sb->last_bytes_delivered;
+
+      tc->rcv_dupacks += is_dack
+			 && !(tc->bytes_acked || sb->last_sacked_bytes);
+
+//      if (0.7 * (tc->bytes_acked + sb->last_sacked_bytes - sb->last_bytes_delivered) > tc->snd_mss
+//	  && tcp_flight_size (tc) > tc->ssthresh
+//	  && tcp_fastrecovery_prr_snd_space (tc) < tc->snd_mss)
+//	os_panic ();
+//      tc->rcv_dupacks += is_dack && !tc->bytes_acked;
+//      tc->rcv_dupacks += is_dack;
+
+      /* WHAT ABOUT recently lost ?? */
+
+//      if (sb->rxt_sacked && seq_gt (sb->rxt_sacked_max, tc->snd_una))
+//      u8 high_sacked = seq_gt (sb->high_sacked, tc->snd_una + 3 * tc->snd_mss);
+//      if (tc->bytes_acked && high_sacked)
+
+//      u8 new_sack = seq_gt (sb->high_sacked, tc->snd_congestion + 2 * tc->snd_mss) || tc->rxt_delivered;
+//      if (new_sack && (sb->last_sacked_bytes || sb->last_sacked_bytes))
+
+//      if (tc->bytes_acked || (new_sack && sb->last_sacked_bytes))
+//      if ((high_sack || tc->rxt_delivered) && (tc->bytes_acked || sb->last_sacked_bytes))
+
+//      if (tc->rcv_dupacks > 30 && timestamp_leq (tc->snd_rxt_ts + 82, tcp_time_now_w_thread (tc->c_c_index)))
+//	os_panic ();
+
+//      if (timestamp_leq (tc->snd_rxt_ts + 0.1 * tc->srtt, tc->rcv_opts.tsecr))
+//	{
+//	  tc->snd_rxt_ts = tcp_tstamp (tc);
+//	  scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+//
+//	  clib_warning ("%u prr diff %u new %u diff2 %u rxt_delivered %u sent %u lost %u",
+//	                tc->c_c_index,
+//	                tc->prr_delivered - tc->snd_rxt_bytes
+//	                + (tc->snd_nxt - tc->snd_congestion),
+//	                tc->snd_nxt - tc->snd_congestion,
+//	                tc->ssthresh - tcp_flight_size (tc),
+//	                tc->rxt_delivered, tc->snd_rxt_bytes, sb->lost_bytes);
+//
+//	  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+//	  tc->prr_delivered += tc->snd_rxt_bytes - tc->rxt_delivered;
+//	  tc->rxt_delivered = tc->snd_rxt_bytes;
+//	}
+
+//      u32 delivered = tc->bytes_acked + sb->last_sacked_bytes
+//		- sb->last_bytes_delivered;
+//      if (seq_gt (sb->high_sacked, tc->snd_congestion + 2 * tc->snd_mss)
+
+//      if (timestamp_leq (tc->snd_rxt_ts, tc->rcv_opts.tsecr)
+//	  && sb->rxt_sacked && sb->rxt_sacked < delivered)
+
+      if (timestamp_lt (tc->snd_rxt_ts, tc->rcv_opts.tsecr)
+	  && (sb->rxt_sacked && !tc->bytes_acked)
+	  && tc->rxt_head != tc->snd_una)
+	{
+	  tcp_fastrecovery_first_on (tc);
+	  clib_warning("%u sack head lost %u dack %u", tc->c_c_index, tc->bytes_acked, tc->rcv_dupacks);
+	  tc->rxt_head = tc->snd_una;
+	  if (seq_lt (tc->snd_una, sb->high_rxt))
+	    {
+	      tc->rxt_delivered += tc->snd_mss;
+	      ASSERT(tc->rxt_delivered <= tc->snd_rxt_bytes);
+	      tc->prr_delivered += tc->snd_mss;
+	    }
+	}
+//      transport_connection_tx_pacer_reset_bucket (&tc->connection,
+//                                                  vlib_get_main ()->clib_time.last_cpu_time);
+
+      /* If have rxt and sack something beyond head is lost?*/
+//      else if (tc->bytes_acked && sb->last_sacked_bytes)
+//	{
+//	  if (tc->rxt_head != tc->snd_una && seq_lt (tc->snd_una, sb->high_rxt))
+//	    {
+//	      tcp_fastrecovery_first_on (tc);
+//	      tc->rxt_head = tc->snd_una;
+//	      /* Assume the lost rxt segment is out of the network */
+////	      if (seq_lt (tc->snd_una, sb->high_rxt))
+////		{
+//		  clib_warning ("%u sack head lost %u", tc->c_c_index, tc->bytes_acked);
+//		  tc->rxt_delivered += tc->snd_mss;
+//		  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+//		  tc->prr_delivered += tc->snd_mss;
+////		}
+//	    }
+//	}
+
+      tcp_program_retransmit (tc);
+    }
+  else
+    {
+      if (is_dack)
+	{
+	  tc->rcv_dupacks += 1;
+	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
+	}
+      tc->rxt_delivered = clib_max (tc->rxt_delivered + tc->bytes_acked,
+				    tc->snd_rxt_bytes);
+      if (is_dack)
+	tc->prr_delivered += 1;
+      else
+	tc->prr_delivered += tc->bytes_acked - tc->snd_mss * tc->rcv_dupacks;
+
+      /* If partial ack, assume that the first un-acked segment was lost */
+      if (tc->bytes_acked || tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
+	tcp_fastrecovery_first_on (tc);
+
+      tcp_program_retransmit (tc);
+    }
+
   /*
-   * Legitimate ACK. 2) If PARTIAL ACK try to retransmit
+   * Notify cc of the event
    */
 
-  /* Remove retransmitted bytes that have been delivered */
-  tcp_update_delivered (tc, is_dack, has_sack);
+  if (!tc->bytes_acked)
+    {
+      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
+      return;
+    }
+
+  /* RFC6675: If the incoming ACK is a cumulative acknowledgment,
+   * reset dupacks to 0. Also needed if in congestion recovery */
+  tc->rcv_dupacks = 0;
 
   if (tcp_in_recovery (tc))
     tcp_cc_rcv_ack (tc, rs);
   else
     tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, rs);
+}
 
-  /*
-   * Since this was a partial ack, try to retransmit some more data
-   */
-  tcp_program_retransmit (tc);
+/**
+ * Check if duplicate ack as per RFC5681 Sec. 2
+ */
+always_inline u8
+tcp_ack_is_dupack (tcp_connection_t * tc, vlib_buffer_t * b, u32 prev_snd_wnd,
+		   u32 prev_snd_una)
+{
+  return ((vnet_buffer (b)->tcp.ack_number == prev_snd_una)
+	  && seq_gt (tc->snd_nxt, tc->snd_una)
+	  && (vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number)
+	  && (prev_snd_wnd == tc->snd_wnd));
+}
+
+/**
+ * Checks if ack is a congestion control event.
+ */
+static u8
+tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
+		     u32 prev_snd_wnd, u32 prev_snd_una, u8 * is_dack)
+{
+  /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
+   * defined to be 'duplicate' as well */
+  *is_dack = tc->sack_sb.last_sacked_bytes
+	      || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
+
+  /* If reneging, wait for timer based retransmits */
+  if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tc->sack_sb.is_reneging))
+    return 0;
+
+  return (*is_dack || tcp_in_cong_recovery (tc));
 }
 
 /**
