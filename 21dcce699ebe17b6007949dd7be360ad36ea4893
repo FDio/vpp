@@ -70,6 +70,24 @@
       "revId": "21dcce699ebe17b6007949dd7be360ad36ea4893",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b50cfc42_b8b5b6fa",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-09-27T14:00:20Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e550c124_f0129b9b",
+      "revId": "21dcce699ebe17b6007949dd7be360ad36ea4893",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
