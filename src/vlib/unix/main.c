@@ -235,7 +235,8 @@ unix_error_handler (void *arg, u8 * msg, int msg_len)
   unix_main_t *um = arg;
 
   /* Echo to stderr when interactive. */
-  if (um->flags & UNIX_FLAG_INTERACTIVE)
+  if ((um->flags & UNIX_FLAG_INTERACTIVE) ||
+      ((um->flags & UNIX_FLAG_NODAEMON) && (um->flags & UNIX_FLAG_NOSYSLOG)))
     {
       CLIB_UNUSED (int r) = write (2, msg, msg_len);
     }
@@ -394,6 +395,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	um->flags |= UNIX_FLAG_INTERACTIVE;
       else if (unformat (input, "nodaemon"))
 	um->flags |= UNIX_FLAG_NODAEMON;
+      else if (unformat (input, "nosyslog"))
+	um->flags |= UNIX_FLAG_NOSYSLOG;
       else if (unformat (input, "cli-prompt %s", &cli_prompt))
 	vlib_unix_cli_set_prompt (cli_prompt);
       else
@@ -523,7 +526,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  if (!(um->flags & UNIX_FLAG_INTERACTIVE))
+  if (!(um->flags & UNIX_FLAG_INTERACTIVE) &&
+      !((um->flags & UNIX_FLAG_NODAEMON) && (um->flags & UNIX_FLAG_NOSYSLOG)))
     {
       openlog (vm->name, LOG_CONS | LOG_PERROR | LOG_PID, LOG_DAEMON);
       clib_error_register_handler (unix_error_handler, um);

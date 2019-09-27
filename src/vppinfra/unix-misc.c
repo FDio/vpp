@@ -42,6 +42,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>		/* writev */
+#include <time.h>
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
 
@@ -194,8 +195,21 @@ os_puts (u8 * string, uword string_length, uword is_error)
   int nthreads = os_get_nthreads ();
   char buf[64];
   int fd = is_error ? 2 : 1;
-  struct iovec iovs[2];
+  struct iovec iovs[3];
   int n_iovs = 0;
+
+  char tsbuf[128];
+  struct timespec ts;
+  if (!clock_gettime (CLOCK_REALTIME, &ts))
+    {
+      int len =
+	strftime (tsbuf, sizeof (tsbuf) - 1, "%F %T", localtime (&ts.tv_sec));
+      iovs[n_iovs].iov_len = len +
+	snprintf (tsbuf + len, sizeof (tsbuf) - len - 1, ".%06ld: ",
+		  ts.tv_nsec / 1000);
+      iovs[n_iovs].iov_base = tsbuf;
+      n_iovs++;
+    }
 
   if (nthreads > 1)
     {
