@@ -549,8 +549,9 @@ unset_leaf (ip4_fib_mtrie_t * m,
 	  old_ply->n_non_empty_leafs -=
 	    ip4_fib_mtrie_leaf_is_non_empty (old_ply, i);
 
-	  old_ply->leaves[i] =
-	    ip4_fib_mtrie_leaf_set_adj_index (a->cover_adj_index);
+	  clib_atomic_store_rel_n (&old_ply->leaves[i],
+				   ip4_fib_mtrie_leaf_set_adj_index
+				   (a->cover_adj_index));
 	  old_ply->dst_address_bits_of_leaves[i] = a->cover_address_length;
 
 	  old_ply->n_non_empty_leafs +=
@@ -620,8 +621,9 @@ unset_root_leaf (ip4_fib_mtrie_t * m,
 	  || (!old_leaf_is_terminal
 	      && unset_leaf (m, a, get_next_ply_for_leaf (m, old_leaf), 2)))
 	{
-	  old_ply->leaves[slot] =
-	    ip4_fib_mtrie_leaf_set_adj_index (a->cover_adj_index);
+	  clib_atomic_store_rel_n (&old_ply->leaves[slot],
+				   ip4_fib_mtrie_leaf_set_adj_index
+				   (a->cover_adj_index));
 	  old_ply->dst_address_bits_of_leaves[slot] = a->cover_address_length;
 	}
     }
