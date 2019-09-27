@@ -39,6 +39,20 @@ format_session_fifos (u8 * s, va_list * args)
       found = session_node_lookup_fifo_event (ss->tx_fifo, e);
       s = format (s, " session node event: %s\n",
 		  found ? "found" : "not found");
+      if (found)
+	{
+	  vlib_main_t *vm = vlib_get_main ();
+	  transport_proto_t tp = session_get_transport_proto (ss);
+	  u32 space;
+	  space = transport_connection_snd_space (transport_get_connection (tp,
+	                                                                    ss->connection_index,
+	                                                                    ss->thread_index),
+	                                          vm->clib_time.last_cpu_time,
+	                                          1448);
+	  s = format (s, "type %u session index %u space %u deq %u",
+	              e->event_type, e->session_index, space,
+	              svm_fifo_max_dequeue_cons (ss->tx_fifo));
+	}
     }
   return s;
 }
