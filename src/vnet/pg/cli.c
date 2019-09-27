@@ -93,7 +93,10 @@ pg_capture (pg_capture_args_t * a)
 
   pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
   vec_free (pi->pcap_file_name);
+  if ((pi->pcap_main.flags & PCAP_MAIN_INIT_DONE))
+    pcap_close (&pi->pcap_main);
   clib_memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+  pi->pcap_main.file_descriptor = -1;
 
   if (a->is_enabled == 0)
     return 0;
