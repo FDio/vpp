@@ -442,7 +442,8 @@ show_ipsec_sa_command_fn (vlib_main_t * vm,
   if (~0 == sai)
     ipsec_sa_show_all (vm, im, detail);
   else
-    vlib_cli_output (vm, "%U", format_ipsec_sa, sai, IPSEC_FORMAT_DETAIL);
+    vlib_cli_output (vm, "%U", format_ipsec_sa, sai,
+		     IPSEC_FORMAT_DETAIL | IPSEC_FORMAT_INSECURE);
 
   return 0;
 }
