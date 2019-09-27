@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a298609a_179fd334",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 466,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-27T07:08:27Z",
+      "side": 1,
+      "message": "^^",
+      "revId": "9759b7c87d99f6b4ebf4c170385e7d8116b7230a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a60fb0bf_6c398bcd",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-27T07:08:27Z",
+      "side": 1,
+      "message": "Nice, I didn\u0027t catch that one :)",
+      "revId": "9759b7c87d99f6b4ebf4c170385e7d8116b7230a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fde48f11_7a0571e5",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-27T07:08:27Z",
+      "side": 1,
+      "message": "Maybe echo_format_session ? Otherwise I\u0027ll personally be tempted to use format(format_session_id, session-\u003esession_id) :)",
+      "revId": "9759b7c87d99f6b4ebf4c170385e7d8116b7230a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "626c8d3b_8bffb0ef",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_proto_quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-27T07:08:27Z",
+      "side": 1,
+      "message": "Not sure on that one, I\u0027ve been using %x for session_index (which might not be super ideal), but we seem to have a mix of %u \u0026 %d (quite a detail though). I\u0027ll vote %u :D",
+      "revId": "9759b7c87d99f6b4ebf4c170385e7d8116b7230a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "94d359f8_aeb5cd3f",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_proto_quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-27T07:08:27Z",
+      "side": 1,
+      "message": "same dilemma",
+      "revId": "9759b7c87d99f6b4ebf4c170385e7d8116b7230a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d626c0b6_c4553fc7",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo_proto_quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-09-27T07:08:27Z",
+      "side": 1,
+      "message": "This should be already done by vpp_echo.c session_connected_handler ?",
+      "revId": "9759b7c87d99f6b4ebf4c170385e7d8116b7230a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
