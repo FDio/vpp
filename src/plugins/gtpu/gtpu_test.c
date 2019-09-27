@@ -22,6 +22,8 @@
 #define __plugin_msg_base gtpu_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
+#include <gtpu/gtpu.api_enum.h>
+#include <gtpu/gtpu.api_types.h>
 
 uword unformat_ip46_address (unformat_input_t * input, va_list * args)
 {
@@ -60,36 +62,6 @@ uword unformat_ip46_prefix (unformat_input_t * input, va_list * args)
 }
 /////////////////////////
 
-#define vl_msg_id(n,h) n,
-typedef enum {
-#include <gtpu/gtpu.api.h>
-    /* We'll want to know how many messages IDs we need... */
-    VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
-
-/* define message structures */
-#define vl_typedefs
-#include <gtpu/gtpu.api.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun             /* define message structures */
-#include <gtpu/gtpu.api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <gtpu/gtpu.api.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <gtpu/gtpu.api.h>
-#undef vl_api_version
-
 typedef struct {
     /* API message ID base */
     u16 msg_id_base;
@@ -114,36 +86,6 @@ static void vl_api_gtpu_add_del_tunnel_reply_t_handler
       vam->result_ready = 1;
     }
 }
-
-
-#define foreach_standard_reply_retval_handler   \
-    _(sw_interface_set_gtpu_bypass_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = gtpu_test_main.vat_main;   \
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-  foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                               \
-  _(SW_INTERFACE_SET_GTPU_BYPASS_REPLY, sw_interface_set_gtpu_bypass_reply) \
-  _(GTPU_ADD_DEL_TUNNEL_REPLY, gtpu_add_del_tunnel_reply)               \
-  _(GTPU_TUNNEL_DETAILS, gtpu_tunnel_details)
-
 
 static uword
 api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
@@ -436,44 +378,4 @@ api_gtpu_tunnel_dump (vat_main_t * vam)
   return ret;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg                                            \
-_(sw_interface_set_gtpu_bypass,                                        \
-      "<intfc> | sw_if_index <id> [ip4 | ip6] [enable | disable]")     \
-_(gtpu_add_del_tunnel,                                                 \
-        "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"      \
-        "{ <intfc> | mcast_sw_if_index <nn> } }\n"                     \
-        "teid <teid> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")  \
-_(gtpu_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
-
-static void
-gtpu_api_hookup (vat_main_t *vam)
-{
-  gtpu_test_main_t * gtm = &gtpu_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + gtm->msg_id_base),       \
-                          #n,                                   \
-                          vl_api_##n##_t_handler,               \
-                          vl_noop_handler,                      \
-                          vl_api_##n##_t_endian,                \
-                          vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-VAT_PLUGIN_REGISTER(gtpu);
+#include <gtpu/gtpu.api_test.c>
