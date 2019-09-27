@@ -21,6 +21,8 @@
 
 #if __x86_64__
 #define CLIB_PAUSE() __builtin_ia32_pause ()
+#elif defined (__aarch64__) || defined (__arm__)
+#define CLIB_PAUSE() __asm__ ("yield")
 #else
 #define CLIB_PAUSE()
 #endif
