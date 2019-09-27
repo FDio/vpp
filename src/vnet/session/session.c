@@ -125,7 +125,7 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 
   s = session_get (tc->s_index, tc->thread_index);
   ASSERT (s->thread_index == vlib_get_thread_index ());
-  ASSERT (s->session_state < SESSION_STATE_TRANSPORT_DELETED);
+  ASSERT (s->session_state != SESSION_STATE_TRANSPORT_DELETED);
   if (!(s->flags & SESSION_F_CUSTOM_TX))
     {
       s->flags |= SESSION_F_CUSTOM_TX;
