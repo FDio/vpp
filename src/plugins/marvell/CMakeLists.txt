@@ -29,6 +29,17 @@ if(MUSDK_INCLUDE_DIR AND MUSDK_LIB)
     pp2/input.c
     pp2/output.c
     pp2/pp2.c
+    pp2/pp2_api.c
+
+    API_FILES
+    pp2/pp2.api
+
+    API_TEST_SOURCES
+    pp2/pp2_test.c
+
+    INSTALL_HEADERS
+    pp2/pp2_all_api_h.h
+    pp2/pp2_msg_enum.h
 
     LINK_FLAGS
     ${MUSDK_LINK_FLAGS}
