@@ -287,6 +287,7 @@ typedef struct
   u8 output_json;		/* Output stats as JSON */
   u8 log_lvl;			/* Verbosity of the logging */
   int max_test_msg;		/* Limit the number of incorrect data messages */
+  u32 evt_q_size;		/* Size of the vpp MQ (app<->vpp events) */
 
   u8 *appns_id;
   u64 appns_flags;
