@@ -31,6 +31,7 @@ mrvl_pp2_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   mrvl_pp2_create_if_args_t args = { 0 };
+  uint val;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -40,6 +41,10 @@ mrvl_pp2_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "name %s", &args.name))
 	;
+      else if (unformat (line_input, "rx-queue-size %u", &val))
+	args.rx_q_sz = val;
+      else if (unformat (line_input, "tx-queue-size %u", &val))
+	args.tx_q_sz = val;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -57,7 +62,7 @@ mrvl_pp2_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mrvl_pp2_create_command, static) = {
   .path = "create interface marvell pp2",
-  .short_help = "create interface marvell pp2 [name <ifname>]",
+  .short_help = "create interface marvell pp2 [name <ifname>] [rxq slots] [txq slots]",
   .function = mrvl_pp2_create_command_fn,
 };
 /* *INDENT-ON* */
