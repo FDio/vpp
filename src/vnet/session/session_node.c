@@ -1418,6 +1418,8 @@ session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
     case SESSION_IO_EVT_RX:
     case SESSION_IO_EVT_TX:
     case SESSION_IO_EVT_BUILTIN_RX:
+    case SESSION_IO_EVT_BUILTIN_TX:
+    case SESSION_IO_EVT_TX_FLUSH:
       if (e->session_index == f->master_session_index)
 	return 1;
       break;
@@ -1467,12 +1469,24 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
       found = session_node_cmp_event (e, f);
       if (found)
 	return 1;
-      if (++index == mq->q->maxsize)
-	index = 0;
+      index = (index + 1) % mq->q->maxsize;
     }
   /*
    * Search pending events vector
    */
+
+  /* *INDENT-OFF* */
+  clib_llist_foreach (wrk->event_elts, evt_list,
+                      pool_elt_at_index (wrk->event_elts, wrk->new_head),
+                      elt, ({
+    found = session_node_cmp_event (&elt->evt, f);
+    if (found)
+      {
+	clib_memcpy_fast (e, &elt->evt, sizeof (*e));
+	goto done;
+      }
+  }));
+  /* *INDENT-ON* */
 
   /* *INDENT-OFF* */
   clib_llist_foreach (wrk->event_elts, evt_list,
@@ -1482,12 +1496,12 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
     if (found)
       {
 	clib_memcpy_fast (e, &elt->evt, sizeof (*e));
-	break;
+	goto done;
       }
-
   }));
   /* *INDENT-ON* */
 
+done:
   return found;
 }
 
