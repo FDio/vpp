@@ -37,53 +37,12 @@
 #include <vlibmemory/api.h>
 
 /* define message IDs */
-#include <gbp/gbp_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <gbp/gbp_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <gbp/gbp_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <gbp/gbp_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <gbp/gbp_all_api_h.h>
-#undef vl_api_version
-
+#include <gbp/gbp.api_enum.h>
+#include <gbp/gbp.api_types.h>
+#include <vnet/format_fns.h>
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_gbp_api_msg                                 \
-  _(GBP_ENDPOINT_ADD, gbp_endpoint_add)                     \
-  _(GBP_ENDPOINT_DEL, gbp_endpoint_del)                     \
-  _(GBP_ENDPOINT_DUMP, gbp_endpoint_dump)                   \
-  _(GBP_SUBNET_ADD_DEL, gbp_subnet_add_del)                 \
-  _(GBP_SUBNET_DUMP, gbp_subnet_dump)                       \
-  _(GBP_ENDPOINT_GROUP_ADD, gbp_endpoint_group_add)         \
-  _(GBP_ENDPOINT_GROUP_DEL, gbp_endpoint_group_del)         \
-  _(GBP_ENDPOINT_GROUP_DUMP, gbp_endpoint_group_dump)       \
-  _(GBP_BRIDGE_DOMAIN_ADD, gbp_bridge_domain_add)           \
-  _(GBP_BRIDGE_DOMAIN_DEL, gbp_bridge_domain_del)           \
-  _(GBP_BRIDGE_DOMAIN_DUMP, gbp_bridge_domain_dump)         \
-  _(GBP_ROUTE_DOMAIN_ADD, gbp_route_domain_add)             \
-  _(GBP_ROUTE_DOMAIN_DEL, gbp_route_domain_del)             \
-  _(GBP_ROUTE_DOMAIN_DUMP, gbp_route_domain_dump)           \
-  _(GBP_RECIRC_ADD_DEL, gbp_recirc_add_del)                 \
-  _(GBP_RECIRC_DUMP, gbp_recirc_dump)                       \
-  _(GBP_EXT_ITF_ADD_DEL, gbp_ext_itf_add_del)               \
-  _(GBP_EXT_ITF_DUMP, gbp_ext_itf_dump)                     \
-  _(GBP_CONTRACT_ADD_DEL, gbp_contract_add_del)             \
-  _(GBP_CONTRACT_DUMP, gbp_contract_dump)                   \
-  _(GBP_VXLAN_TUNNEL_ADD, gbp_vxlan_tunnel_add)             \
-  _(GBP_VXLAN_TUNNEL_DEL, gbp_vxlan_tunnel_del)             \
-  _(GBP_VXLAN_TUNNEL_DUMP, gbp_vxlan_tunnel_dump)
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#include "gbp_api_print.h"
 
 gbp_main_t gbp_main;
 
@@ -1161,59 +1120,17 @@ vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t * mp)
   gbp_vxlan_walk (gbp_vxlan_tunnel_send_details, &ctx);
 }
 
-/*
- * gbp_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <gbp/gbp_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc)                                     \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + GBP_MSG_BASE);
-  foreach_vl_msg_name_crc_gbp;
-#undef _
-}
-
-static void
-gbp_api_hookup (vlib_main_t * vm)
-{
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N + GBP_MSG_BASE,          \
-                            #n,                                 \
-                            vl_api_##n##_t_handler,             \
-                            vl_noop_handler,                    \
-                            vl_api_##n##_t_endian,              \
-                            vl_api_##n##_t_print,               \
-                            sizeof(vl_api_##n##_t), 1);
-  foreach_gbp_api_msg;
-#undef _
-}
-
+#include <gbp/gbp.api.c>
 static clib_error_t *
 gbp_init (vlib_main_t * vm)
 {
-  api_main_t *am = &api_main;
   gbp_main_t *gbpm = &gbp_main;
-  u8 *name = format (0, "gbp_%08x%c", api_version, 0);
 
   gbpm->gbp_acl_user_id = ~0;
 
   /* Ask for a correctly-sized block of API message decode slots */
-  msg_id_base = vl_msg_api_get_msg_ids ((char *) name,
-					VL_MSG_FIRST_AVAILABLE);
-  gbp_api_hookup (vm);
+  msg_id_base = setup_message_id_table ();
 
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (am);
-
-  vec_free (name);
   return (NULL);
 }
 
