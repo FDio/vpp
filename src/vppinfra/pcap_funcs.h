@@ -17,6 +17,7 @@
 #define included_vppinfra_pcap_funcs_h
 
 /** Write out data to output file. */
+clib_error_t *pcap_close (pcap_main_t * pm);
 clib_error_t *pcap_write (pcap_main_t * pm);
 
 /** Read data from file. */
