@@ -39,38 +39,29 @@ static int
 ipsec_tun_protect_feature_set (ipsec_tun_protect_t * itp, u8 enable)
 {
   u32 sai = itp->itp_out_sa;
-  int is_ip4, is_l2, rv;
+  int rv;
 
-  is_ip4 = ip46_address_is_ip4 (&itp->itp_tun.src);
-  is_l2 = itp->itp_flags & IPSEC_PROTECT_L2;
+  const char *enc_node = (ip46_address_is_ip4 (&itp->itp_tun.src) ?
+			  "esp4-encrypt-tun" : "esp6-encrypt-tun");
 
-  if (is_ip4)
+  if (itp->itp_flags & IPSEC_PROTECT_L2)
     {
-      if (is_l2)
-	rv = vnet_feature_enable_disable ("ethernet-output",
-					  "esp4-encrypt-tun",
-					  itp->itp_sw_if_index, enable,
-					  &sai, sizeof (sai));
-      else
-	rv = vnet_feature_enable_disable ("ip4-output",
-					  "esp4-encrypt-tun",
-					  itp->itp_sw_if_index, enable,
-					  &sai, sizeof (sai));
+      rv = vnet_feature_enable_disable ("ethernet-output",
+					enc_node,
+					itp->itp_sw_if_index, enable,
+					&sai, sizeof (sai));
     }
   else
     {
-      if (is_l2)
-	rv = vnet_feature_enable_disable ("ethernet-output",
-					  "esp6-encrypt-tun",
-					  itp->itp_sw_if_index, enable,
-					  &sai, sizeof (sai));
-      else
-	rv = vnet_feature_enable_disable ("ip6-output",
-					  "esp6-encrypt-tun",
-					  itp->itp_sw_if_index, enable,
-					  &sai, sizeof (sai));
+      rv = vnet_feature_enable_disable ("ip4-output",
+					enc_node,
+					itp->itp_sw_if_index, enable,
+					&sai, sizeof (sai));
+      rv = vnet_feature_enable_disable ("ip6-output",
+					enc_node,
+					itp->itp_sw_if_index, enable,
+					&sai, sizeof (sai));
     }
-
   ASSERT (!rv);
   return (rv);
 }
