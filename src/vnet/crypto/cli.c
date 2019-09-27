@@ -71,7 +71,7 @@ format_vnet_crypto_handlers (u8 * s, va_list * args)
       if (id == 0)
 	continue;
 
-      od = vec_elt_at_index (cm->opt_data, id);
+      od = cm->opt_data + id;
       if (first == 0)
         s = format (s, "\n%U", format_white_space, indent);
       s = format (s, "%-20U%-20U", format_vnet_crypto_op_type, od->type,
