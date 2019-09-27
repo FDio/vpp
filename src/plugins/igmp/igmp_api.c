@@ -23,44 +23,13 @@
 #include <igmp/igmp_ssm_range.h>
 
 /* define message IDs */
-#include <igmp/igmp_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <igmp/igmp_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <igmp/igmp_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <igmp/igmp_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <igmp/igmp_all_api_h.h>
-#undef vl_api_version
+#include <igmp/igmp.api_enum.h>
+#include <igmp/igmp.api_types.h>
+#include <vnet/format_fns.h>
 
 #include <vlibapi/api_helper_macros.h>
 
 #define IGMP_MSG_ID(_id) (_id + igmp_main.msg_id_base)
-
-#define foreach_igmp_plugin_api_msg                                            \
-_(IGMP_LISTEN, igmp_listen)                                                    \
-_(IGMP_ENABLE_DISABLE, igmp_enable_disable)                                    \
-_(IGMP_PROXY_DEVICE_ADD_DEL, igmp_proxy_device_add_del)                        \
-_(IGMP_PROXY_DEVICE_ADD_DEL_INTERFACE, igmp_proxy_device_add_del_interface)    \
-_(IGMP_DUMP, igmp_dump)                                                        \
-_(IGMP_CLEAR_INTERFACE, igmp_clear_interface)                                  \
-_(IGMP_CLEAR_INTERFACE, igmp_clear_interface)                                  \
-_(IGMP_GROUP_PREFIX_SET, igmp_group_prefix_set)                                \
-_(IGMP_GROUP_PREFIX_DUMP, igmp_group_prefix_dump)                              \
-_(WANT_IGMP_EVENTS, want_igmp_events)
 
 static void
 vl_api_igmp_listen_t_handler (vl_api_igmp_listen_t * mp)
@@ -443,51 +412,16 @@ igmp_event (igmp_filter_mode_t filter,
   /* *INDENT-ON* */
 }
 
-#define vl_msg_name_crc_list
-#include <igmp/igmp_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (igmp_main_t * im, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + im->msg_id_base);
-  foreach_vl_msg_name_crc_igmp;
-#undef _
-}
-
 /* Set up the API message handling tables */
+#include <igmp/igmp.api.c>
 static clib_error_t *
 igmp_plugin_api_hookup (vlib_main_t * vm)
 {
   igmp_main_t *im = &igmp_main;
-  api_main_t *am = &api_main;
-  u8 *name;
-
-  /* Construct the API name */
-  name = format (0, "igmp_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
-  im->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+  im->msg_id_base = setup_message_id_table ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + im->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_igmp_plugin_api_msg;
-#undef _
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (im, am);
-
-  vec_free (name);
   return 0;
 }
 
