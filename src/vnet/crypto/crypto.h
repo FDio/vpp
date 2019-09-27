@@ -231,7 +231,8 @@ static_always_inline vnet_crypto_op_type_t
 vnet_crypto_get_op_type (vnet_crypto_op_id_t id)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_op_data_t *od = vec_elt_at_index (cm->opt_data, id);
+  ASSERT (id < VNET_CRYPTO_N_OP_IDS);
+  vnet_crypto_op_data_t *od = cm->opt_data + id;
   return od->type;
 }
 
