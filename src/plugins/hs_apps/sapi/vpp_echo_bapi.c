@@ -44,7 +44,7 @@ echo_send_attach (echo_main_t * em)
   bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = em->fifo_size;
   bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[APP_OPTIONS_SEGMENT_SIZE] = 256 << 20;
-  bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = 256;
+  bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = em->evt_q_size;
   if (em->appns_id)
     {
       bmp->namespace_id_len = vec_len (em->appns_id);
