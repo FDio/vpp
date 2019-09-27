@@ -24,40 +24,17 @@
 #include <vpp/app/version.h>
 
 /* define message IDs */
-#include <http_static/http_static_msg_enum.h>
+#include <http_static/http_static.api_enum.h>
+#include <http_static/http_static.api_types.h>
 
 #include <vpp/api/types.h>
 
-/* define message structures */
-#define vl_typedefs
-#include <http_static/http_static_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <http_static/http_static_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <http_static/http_static_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <http_static/http_static_all_api_h.h>
-#undef vl_api_version
 
 #define REPLY_MSG_ID_BASE hmp->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 http_static_main_t http_static_main;
-
-/* List of message types that this plugin understands */
-
-#define foreach_http_static_plugin_api_msg                           \
-_(HTTP_STATIC_ENABLE, http_static_enable)
 
 /* API message handler */
 static void vl_api_http_static_enable_t_handler
@@ -79,61 +56,19 @@ static void vl_api_http_static_enable_t_handler
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_REPLY);
 }
 
-/* Set up the API message handling tables */
-static clib_error_t *
-http_static_plugin_api_hookup (vlib_main_t * vm)
-{
-  http_static_main_t *hmp = &http_static_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + hmp->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_http_static_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <http_static/http_static_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (http_static_main_t * hmp, api_main_t * am)
-{
-#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + hmp->msg_id_base);
-  foreach_vl_msg_name_crc_http_static;
-#undef _
-}
-
+#include <http_static/http_static.api.c>
 static clib_error_t *
 http_static_init (vlib_main_t * vm)
 {
   http_static_main_t *hmp = &http_static_main;
-  clib_error_t *error = 0;
-  u8 *name;
 
   hmp->vlib_main = vm;
   hmp->vnet_main = vnet_get_main ();
 
-  name = format (0, "http_static_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  hmp->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+  hmp->msg_id_base = setup_message_id_table ();
 
-  error = http_static_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (hmp, &api_main);
-
-  vec_free (name);
-
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (http_static_init);
