@@ -9116,7 +9116,7 @@ api_create_vlan_subif (vat_main_t * vam)
       else
 	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
 	sw_if_index_set = 1;
-      else if (unformat (i, "vlan %d", &vlan_id))
+      else if (unformat (i, "vlan_id %d", &vlan_id))
 	vlan_id_set = 1;
       else
 	{
