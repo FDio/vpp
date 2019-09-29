@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "42ae2d30_d1e8760d",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-09-29T15:36:31Z",
+      "side": 1,
+      "message": "Probably no need to barrier sync until after the hash_get (node-\u003enext_slot_by_node, next_node_index) fails... Definitely worth testing that optimization.",
+      "revId": "b51f405cc0aa6a6a72fc5498de6fcc25f302949c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ca0b622_d01dd471",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-09-29T15:36:31Z",
+      "side": 1,
+      "message": "Barrier-sync before the vec_validate_init_empty(...)",
+      "revId": "b51f405cc0aa6a6a72fc5498de6fcc25f302949c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
