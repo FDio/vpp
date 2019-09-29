@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "2302dd74_ab3fd4f8",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-29T18:39:06Z",
+      "side": 1,
+      "message": "TCP should not be able to return an mss of 0, and tcp is the only transport to be paced at this time. So is this needed?\n\nIt\u0027s also debatable what we should be doing with a transport that returns an mss of 0. In theory, such a flow would be stuck in the session layer until the mss finally becomes non-zero.",
+      "range": {
+        "startLine": 866,
+        "startChar": 2,
+        "endLine": 866,
+        "endChar": 24
+      },
+      "revId": "bdf5f28ce6c5febe2f18d1cb5dfc618e9c4764cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cc506987_8a367710",
         "filename": "src/vnet/tcp/tcp_output.c",
         "patchSetId": 2
@@ -13,6 +36,30 @@
       "writtenOn": "2019-09-25T04:20:09Z",
       "side": 1,
       "message": "This is too much work at this point to figure out if a packet needs gso. We should probably flag gso packets in the session layer once they\u0027re created and here we should just check the flag. \n\nThat is a bit involved. In the meantime, just ensure that you either generate packets less than 1.5kB or larger than 2kB in tcp_session_cal_goal_size. That way you won\u0027t need to gso one buffer packets.",
+      "range": {
+        "startLine": 2138,
+        "startChar": 0,
+        "endLine": 2144,
+        "endChar": 11
+      },
+      "revId": "bdf5f28ce6c5febe2f18d1cb5dfc618e9c4764cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1b3b4107_6aaf7dda",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2144,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-29T18:39:06Z",
+      "side": 1,
+      "message": "Since this is turning out to be too difficult, to avoid work in the non tso case, just \n\nPREDICT_TRUE (!tc-\u003eis_tso) return;\n\nIt might also be worth calling this function from tcp_session_push_header, after the header is pushed. Retransmissions are not using gso and I\u0027m not sure we\u0027ll ever want to change that.",
+      "parentUuid": "cc506987_8a367710",
       "range": {
         "startLine": 2138,
         "startChar": 0,
