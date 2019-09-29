@@ -128,10 +128,6 @@ vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
   vlib_pending_frame_t *pf;
   i32 i, j, n_insert;
 
-  ASSERT (vlib_get_thread_index () == 0);
-
-  vlib_worker_thread_barrier_sync (vm);
-
   node = vec_elt (nm->nodes, node_index);
   r = vlib_node_get_runtime (vm, node_index);
 
@@ -176,8 +172,6 @@ vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
   nf->node_runtime_index = next_node->runtime_index;
 
   vlib_worker_thread_node_runtime_update ();
-
-  vlib_worker_thread_barrier_release (vm);
 }
 
 uword
@@ -210,6 +204,10 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
   vlib_node_t *node, *next;
   uword *p;
 
+  ASSERT (vlib_get_thread_index () == 0);
+
+  vlib_worker_thread_barrier_sync (vm);
+
   node = vec_elt (nm->nodes, node_index);
   next = vec_elt (nm->nodes, next_node_index);
 
@@ -221,6 +219,8 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
       /* Next already exists: slot must match. */
       if (slot != ~0)
 	ASSERT (slot == p[0]);
+
+      vlib_worker_thread_barrier_release (vm);
       return p[0];
     }
 
@@ -254,6 +254,7 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
     /* *INDENT-ON* */
   }
 
+  vlib_worker_thread_barrier_release (vm);
   return slot;
 }
 
