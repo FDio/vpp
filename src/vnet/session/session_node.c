@@ -1122,6 +1122,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
   elt = pool_elt_at_index (wrk->event_elts, ei);
   if (!clib_llist_elt_is_linked (elt, evt_list))
     {
+      e = &elt->evt;
       if (e->event_type >= SESSION_CTRL_EVT_BOUND)
 	session_evt_ctrl_data_free (wrk, elt);
       session_evt_elt_free (wrk, elt);
