@@ -1120,6 +1120,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
 
   /* Regrab elements in case pool moved */
   elt = pool_elt_at_index (wrk->event_elts, ei);
+  e = &elt->evt;
   if (!clib_llist_elt_is_linked (elt, evt_list))
     {
       if (e->event_type >= SESSION_CTRL_EVT_BOUND)
