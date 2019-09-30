@@ -437,12 +437,6 @@ class VppPapiProvider(object):
                          'n_prefixes': len(prefixes),
                          'prefixes': prefixes})
 
-    def dhcp6_client_enable_disable(self, sw_if_index, prefix_group='',
-                                    enable=1):
-        return self.api(self.papi.dhcp6_client_enable_disable,
-                        {'sw_if_index': sw_if_index,
-                         'enable': enable})
-
     def dhcp6_pd_client_enable_disable(self, sw_if_index, prefix_group='',
                                        enable=1):
         return self.api(self.papi.dhcp6_pd_client_enable_disable,
