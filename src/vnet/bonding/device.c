@@ -24,7 +24,7 @@
 #include <vnet/bonding/node.h>
 #include <vppinfra/lb_hash_hash.h>
 #include <vnet/ip/ip.h>
-#include <vnet/ethernet/arp_packet.h>
+#include <vnet/ip-neighbor/ip_neighbor.h>
 
 #define foreach_bond_tx_error     \
   _(NONE, "no error")             \
@@ -755,8 +755,7 @@ bond_active_interface_switch_cb (vnet_main_t * vnm, u32 sw_if_index,
 {
   bond_main_t *bm = &bond_main;
 
-  send_ip4_garp (bm->vlib_main, sw_if_index);
-  send_ip6_na (bm->vlib_main, sw_if_index);
+  ip_neighbor_advertise (bm->vlib_main, IP46_TYPE_BOTH, NULL, sw_if_index);
 
   return (WALK_CONTINUE);
 }

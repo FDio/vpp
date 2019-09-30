@@ -17,6 +17,8 @@
 
 #include "vom/ra_config.hpp"
 
+DEFINE_VAPI_MSG_IDS_IP6_ND_API_JSON;
+
 namespace VOM {
 
 /**

@@ -16,7 +16,7 @@
 #ifndef __VOM_RA_CONFIG_H__
 #define __VOM_RA_CONFIG_H__
 
-#include <vapi/ip.api.vapi.hpp>
+#include <vapi/ip6_nd.api.vapi.hpp>
 
 namespace VOM {
 /**

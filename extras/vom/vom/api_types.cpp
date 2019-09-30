@@ -238,6 +238,16 @@ to_api(const nh_proto_t& p)
 
   return FIB_API_PATH_NH_PROTO_IP4;
 }
+
+vapi_enum_address_family
+to_api(const l3_proto_t p)
+{
+  if (p == l3_proto_t::IPV6) {
+    return ADDRESS_IP6;
+  }
+  return ADDRESS_IP4;
+}
+
 const nh_proto_t&
 from_api(vapi_enum_fib_path_nh_proto p)
 {

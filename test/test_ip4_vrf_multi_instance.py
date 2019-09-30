@@ -167,7 +167,7 @@ class TestIp4VrfMultiInst(VppTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show ip fib"))
-        self.logger.info(self.vapi.ppcli("show ip arp"))
+        self.logger.info(self.vapi.ppcli("show ip4 neighbors"))
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """
@@ -202,7 +202,7 @@ class TestIp4VrfMultiInst(VppTestCase):
                 pg_if.config_ip4()
                 pg_if.configure_ipv4_neighbors()
         self.logger.debug(self.vapi.ppcli("show ip fib"))
-        self.logger.debug(self.vapi.ppcli("show ip arp"))
+        self.logger.debug(self.vapi.ppcli("show ip4 neighbors"))
 
     def reset_vrf_and_remove_from_vrf_list(self, vrf_id):
         """
@@ -225,7 +225,7 @@ class TestIp4VrfMultiInst(VppTestCase):
                 self.pg_not_in_vrf.append(pg_if)
         self.logger.info("IPv4 VRF ID %d reset finished" % vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip fib"))
-        self.logger.debug(self.vapi.ppcli("show ip arp"))
+        self.logger.debug(self.vapi.ppcli("show ip neighbors"))
         self.vapi.ip_table_add_del(is_add=0, table_id=vrf_id)
 
     def create_stream(self, src_if, packet_sizes):

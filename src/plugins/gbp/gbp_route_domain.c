@@ -18,7 +18,6 @@
 
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/ip/ip_neighbor.h>
 
 /**
  * A fixed MAC address to use as the source MAC for packets L3 switched
