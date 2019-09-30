@@ -979,7 +979,6 @@ ip6_sv_reass_walk_expired (vlib_main_t * vm,
       uword thread_index = 0;
       int index;
       const uword nthreads = vlib_num_workers () + 1;
-      u32 *vec_icmp_bi = NULL;
       for (thread_index = 0; thread_index < nthreads; ++thread_index)
 	{
 	  ip6_sv_reass_per_thread_t *rt = &rm->per_thread_data[thread_index];
@@ -1007,33 +1006,7 @@ ip6_sv_reass_walk_expired (vlib_main_t * vm,
 	  clib_spinlock_unlock (&rt->lock);
 	}
 
-      while (vec_len (vec_icmp_bi) > 0)
-	{
-	  vlib_frame_t *f =
-	    vlib_get_frame_to_node (vm, rm->ip6_icmp_error_idx);
-	  u32 *to_next = vlib_frame_vector_args (f);
-	  u32 n_left_to_next = VLIB_FRAME_SIZE - f->n_vectors;
-	  int trace_frame = 0;
-	  while (vec_len (vec_icmp_bi) > 0 && n_left_to_next > 0)
-	    {
-	      u32 bi = vec_pop (vec_icmp_bi);
-	      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-	      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-		{
-		  trace_frame = 1;
-		}
-	      b->error = node->errors[IP6_ERROR_REASS_TIMEOUT];
-	      to_next[0] = bi;
-	      ++f->n_vectors;
-	      to_next += 1;
-	      n_left_to_next -= 1;
-	    }
-	  f->frame_flags |= (trace_frame * VLIB_FRAME_TRACE);
-	  vlib_put_frame_to_node (vm, rm->ip6_icmp_error_idx, f);
-	}
-
       vec_free (pool_indexes_to_free);
-      vec_free (vec_icmp_bi);
       if (event_data)
 	{
 	  _vec_len (event_data) = 0;
