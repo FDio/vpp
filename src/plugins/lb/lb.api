@@ -20,6 +20,7 @@ autoreply manual_print define lb_conf
   vl_api_ip6_address_t ip6_src_address;
   u32 sticky_buckets_per_core;
   u32 flow_timeout;
+  option vat_help = "[ip4-src-address <addr>] [ip6-src-address <addr>] [buckets <n>] [timeout <s>]";
 };
 
 /** \brief Add a virtual address (or prefix)
@@ -50,6 +51,7 @@ autoreply manual_print define lb_add_del_vip {
   u16 node_port;
   u32 new_flows_table_length [default=1024];
   bool is_del;
+  option vat_help = "<prefix> [protocol (tcp|udp) port <n>] [encap (gre6|gre4|l3dsr|nat4|nat6)] [dscp <n>] [type (nodeport|clusterip) target_port <n>] [new_len <n>] [del]";
 };
 
 /** \brief Add an application server for a given VIP
@@ -71,6 +73,7 @@ autoreply manual_print define lb_add_del_as {
   vl_api_address_t as_address;
   bool is_del;
   bool is_flush;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>] [<address>] [del] [flush]";
 };
 
 /** \brief Flush a given vip
@@ -130,6 +133,7 @@ define lb_as_dump{
   vl_api_address_with_prefix_t pfx;
   u8 protocol;
   u16 port;
+  option vat_help = "<vip-prefix> [protocol (tcp|udp) port <n>]";
 };
 
 /** \brief lb_as_details
