@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6c514a49_ce71da61",
+        "filename": "src/plugins/marvell/pp2/pp2.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2019-09-30T12:15:03Z",
+      "side": 1,
+      "message": "rx_q_sz and tx_q_sz comments should match.",
+      "revId": "e74557174faf377a42c43eb4416a65acb0e6fef9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
