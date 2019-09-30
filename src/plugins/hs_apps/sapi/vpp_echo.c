@@ -124,20 +124,20 @@ print_global_json_stats (echo_main_t * em)
 
   if (start_evt_missing)
     ECHO_FAIL (ECHO_FAIL_MISSING_START_EVENT,
-	       "Expected event %s to happen, but it did not!", start_evt);
+	       "Expected event %v to happen, but it did not!", start_evt);
 
   if (end_evt_missing)
     ECHO_FAIL (ECHO_FAIL_MISSING_END_EVENT,
-	       "Expected event %s to happen, but it did not!", end_evt);
+	       "Expected event %v to happen, but it did not!", end_evt);
 
   fformat (stdout, "vpp_echo JSON stats:\n{\n");
   fformat (stdout, "  \"role\": \"%s\",\n",
 	   em->i_am_master ? "server" : "client");
   fformat (stdout, "  \"time\": \"%.9f\",\n", deltat);
-  fformat (stdout, "  \"start_evt\": \"%s\",\n", start_evt);
+  fformat (stdout, "  \"start_evt\": \"%v\",\n", start_evt);
   fformat (stdout, "  \"start_evt_missing\": \"%s\",\n",
 	   start_evt_missing ? "True" : "False");
-  fformat (stdout, "  \"end_evt\": \"%s\",\n", end_evt);
+  fformat (stdout, "  \"end_evt\": \"%v\",\n", end_evt);
   fformat (stdout, "  \"end_evt_missing\": \"%s\",\n",
 	   end_evt_missing ? "True" : "False");
   fformat (stdout, "  \"rx_data\": %lld,\n", em->stats.rx_total);
@@ -176,17 +176,17 @@ print_global_stats (echo_main_t * em)
 
   if (start_evt_missing)
     ECHO_FAIL (ECHO_FAIL_MISSING_START_EVENT,
-	       "Expected event %s to happen, but it did not!", start_evt);
+	       "Expected event %v to happen, but it did not!", start_evt);
 
   if (end_evt_missing)
     ECHO_FAIL (ECHO_FAIL_MISSING_END_EVENT,
-	       "Expected event %s to happen, but it did not!", end_evt);
+	       "Expected event %v to happen, but it did not!", end_evt);
 
-  fformat (stdout, "Timing %s:%s\n", start_evt, end_evt);
+  fformat (stdout, "Timing %v:%v\n", start_evt, end_evt);
   if (start_evt_missing)
-    fformat (stdout, "Missing Start Timing Event (%s)!\n", start_evt);
+    fformat (stdout, "Missing Start Timing Event (%v)!\n", start_evt);
   if (end_evt_missing)
-    fformat (stdout, "Missing End Timing Event (%s)!\n", end_evt);
+    fformat (stdout, "Missing End Timing Event (%v)!\n", end_evt);
   fformat (stdout, "-------- TX --------\n");
   fformat (stdout, "%lld bytes (%lld mbytes, %lld gbytes) in %.6f seconds\n",
 	   em->stats.tx_total, em->stats.tx_total / (1ULL << 20),
