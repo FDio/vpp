@@ -250,8 +250,7 @@ _(to_netconf_client)                            \
 _(from_netconf_client)                          \
 _(oam_events)                                   \
 _(bfd_events)                                   \
-_(wc_ip6_nd_events)                             \
-_(wc_ip4_arp_events)                            \
+_(l2_arp_term_events)                           \
 _(ip6_ra_events)                                \
 _(dhcp6_pd_reply_events)                        \
 _(dhcp6_reply_events)
@@ -262,23 +261,15 @@ typedef struct
   u32 client_pid;
 } vpe_client_registration_t;
 
-struct _vl_api_ip4_arp_event;
-struct _vl_api_ip6_nd_event;
-
 typedef struct
 {
-#define _(a) uword *a##_registration_hash;              \
-    vpe_client_registration_t * a##_registrations;
+#define _(a)                                            \
+  uword *a##_registration_hash;                         \
+  vpe_client_registration_t * a##_registrations;
   foreach_registration_hash
 #undef _
     /* notifications happen really early in the game */
   u8 link_state_process_up;
-
-  /* ip4 arp event registration pool */
-  struct _vl_api_ip4_arp_event *arp_events;
-
-  /* ip6 nd event registration pool */
-  struct _vl_api_ip6_nd_event *nd_events;
 
   /* convenience */
   vlib_main_t *vlib_main;
