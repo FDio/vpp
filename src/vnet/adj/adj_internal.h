@@ -98,7 +98,7 @@ adj_proto_to_46 (fib_protocol_t proto)
  * Get a pointer to an adjacency object from its index
  */
 static inline adj_index_t
-adj_get_index (ip_adjacency_t *adj)
+adj_get_index (const ip_adjacency_t *adj)
 {
     return (adj - adj_pool);
 }

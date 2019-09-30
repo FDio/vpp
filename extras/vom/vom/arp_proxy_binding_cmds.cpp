@@ -21,8 +21,7 @@ namespace arp_proxy_binding_cmds {
 bind_cmd::bind_cmd(HW::item<bool>& item, const handle_t& itf)
   : rpc_cmd(item)
   , m_itf(itf)
-{
-}
+{}
 
 bool
 bind_cmd::operator==(const bind_cmd& other) const
@@ -37,7 +36,7 @@ bind_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.sw_if_index = m_itf.value();
-  payload.enable_disable = 1;
+  payload.enable = 1;
 
   VAPI_CALL(req.execute());
 
@@ -57,8 +56,7 @@ bind_cmd::to_string() const
 unbind_cmd::unbind_cmd(HW::item<bool>& item, const handle_t& itf)
   : rpc_cmd(item)
   , m_itf(itf)
-{
-}
+{}
 
 bool
 unbind_cmd::operator==(const unbind_cmd& other) const
@@ -73,7 +71,7 @@ unbind_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.sw_if_index = m_itf.value();
-  payload.enable_disable = 0;
+  payload.enable = 0;
 
   VAPI_CALL(req.execute());
 
