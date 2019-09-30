@@ -44,7 +44,7 @@ class TestMactime(VppTestCase):
                 "bin mactime_enable_disable sw_if_index 1",
                 "set interface state loop0 up",
                 "clear mactime",
-                "set ip arp loop0 192.168.1.1 00:d0:2d:5e:86:85",
+                "set ip neighbor loop0 192.168.1.1 00:d0:2d:5e:86:85",
                 "bin mactime_add_del_range name sallow "
                 "mac 00:d0:2d:5e:86:85 allow-static del",
                 "bin mactime_add_del_range name sallow "

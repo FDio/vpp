@@ -13,28 +13,14 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
-#include <vnet/vnet_msg_enum.h>
+#include <ip6-nd/ip6_ra.h>
+
 #include <vnet/ip/ip6.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip6_neighbor.h>
 #include <vnet/fib/fib_table.h>
 #include <signal.h>
 #include <math.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-#include <vlibapi/api_helper_macros.h>
-
-#define foreach_rd_cp_msg                                                     \
-_(IP6_ND_ADDRESS_AUTOCONFIG, ip6_nd_address_autoconfig)
 
 typedef struct
 {
@@ -68,7 +54,6 @@ typedef struct
 
   /* binary API client */
   u8 api_connected;
-  svm_queue_t *vl_input_queue;
   u32 my_client_index;
 
   /* logging */
@@ -77,7 +62,6 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
-  api_main_t *api_main;
   u32 node_index;
 } rd_cp_main_t;
 
@@ -110,13 +94,13 @@ static void interrupt_process (void);
 
 static int
 add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
-		   ip6_address_t * address, f64 due_time)
+		   const ip6_address_t * address, f64 due_time)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   slaac_address_t *slaac_address;
   clib_error_t *rv = 0;
 
-  pool_get (rm->slaac_address_pool, slaac_address);
+  pool_get_zero (rm->slaac_address_pool, slaac_address);
 
   slaac_address->sw_if_index = sw_if_index;
   slaac_address->address_length = address_length;
@@ -132,12 +116,12 @@ add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
 
 static void
 add_default_route (vlib_main_t * vm, u32 sw_if_index,
-		   ip6_address_t * next_hop_address, f64 due_time)
+		   const ip6_address_t * next_hop_address, f64 due_time)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   default_route_t *default_route;
 
-  pool_get (rm->default_route_pool, default_route);
+  pool_get_zero (rm->default_route_pool, default_route);
 
   default_route->sw_if_index = sw_if_index;
   default_route->router_address = *next_hop_address;
@@ -232,17 +216,6 @@ get_interface_mac_address (u32 sw_if_index, u8 mac[])
   return 0;
 }
 
-static u32
-ip6_enable (u32 sw_if_index)
-{
-  rd_cp_main_t *rm = &rd_cp_main;
-  clib_error_t *rv;
-
-  rv = enable_ip6_interface (rm->vlib_main, sw_if_index);
-
-  return rv != 0;
-}
-
 static u8
 ip6_prefixes_equal (ip6_address_t * prefix1, ip6_address_t * prefix2, u8 len)
 {
@@ -261,13 +234,11 @@ ip6_prefixes_equal (ip6_address_t * prefix1, ip6_address_t * prefix2, u8 len)
 #define PREFIX_FLAG_A (1 << 6)
 #define PREFIX_FLAG_L (1 << 7)
 
-static clib_error_t *
-ip6_ra_report_handler (void *data)
+static void
+ip6_ra_report_handler (const ip6_ra_report_t * r)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   vlib_main_t *vm = rm->vlib_main;
-  clib_error_t *error = 0;
-  ra_report_t *r = data;
   interface_config_t *if_config;
   default_route_t *default_route;
   slaac_address_t *slaac_address;
@@ -284,7 +255,7 @@ ip6_ra_report_handler (void *data)
   sw_if_index = r->sw_if_index;
 
   if (sw_if_index >= vec_len (rm->config_by_sw_if_index))
-    return 0;
+    return;
   if_config = &rm->config_by_sw_if_index[sw_if_index];
 
   if (if_config->install_default_routes)
@@ -326,11 +297,11 @@ ip6_ra_report_handler (void *data)
   if (get_interface_mac_address (sw_if_index, mac) != 0)
     {
       vlib_log_warn (rm->log_class, "Error getting MAC address");
-      return clib_error_return (0, "Error getting MAC address");
+      return;
     }
 
   if (!if_config->enabled)
-    return 0;
+    return;
 
   n_prefixes = vec_len (r->prefixes);
   for (i = 0; i < n_prefixes; i++)
@@ -413,10 +384,8 @@ ip6_ra_report_handler (void *data)
 
   interrupt_process ();
 
-  return error;
+  return;
 }
-
-VNET_IP6_NEIGHBOR_RA_FUNCTION (ip6_ra_report_handler);
 
 static uword
 rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -459,7 +428,7 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
                 u32 sw_if_index = slaac_address->sw_if_index;
                 remove_slaac_address (vm, slaac_address);
                 /* make sure ip6 stays enabled */
-                ip6_enable (sw_if_index);
+                ip6_link_enable (sw_if_index);
               }
           }));
           pool_foreach_index (index, rm->default_route_pool,
@@ -502,8 +471,9 @@ interrupt_process (void)
 			     RD_CP_EVENT_INTERRUPT, 0);
 }
 
-static int
-set_address_autoconfig (u32 sw_if_index, u8 enable, u8 install_default_routes)
+int
+rd_cp_set_address_autoconfig (u32 sw_if_index,
+			      u8 enable, u8 install_default_routes)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   vlib_main_t *vm = rm->vlib_main;
@@ -534,7 +504,7 @@ set_address_autoconfig (u32 sw_if_index, u8 enable, u8 install_default_routes)
   if_config = &rm->config_by_sw_if_index[sw_if_index];
 
   if (!if_config->enabled && enable)
-    ip6_enable (sw_if_index);
+    ip6_link_enable (sw_if_index);
 
   if ((!if_config->enabled && enable)
       || (!if_config->install_default_routes && install_default_routes))
@@ -593,7 +563,8 @@ ip6_nd_address_autoconfig (vlib_main_t * vm,
 
   if (sw_if_index != ~0)
     {
-      if (set_address_autoconfig (sw_if_index, enable, default_route) != 0)
+      if (rd_cp_set_address_autoconfig (sw_if_index, enable, default_route) !=
+	  0)
 	error = clib_error_return (0, "Invalid sw_if_index");
     }
   else
@@ -625,68 +596,20 @@ VLIB_CLI_COMMAND (ip6_nd_address_autoconfig_command, static) = {
 };
 /* *INDENT-ON* */
 
-static void
-vl_api_ip6_nd_address_autoconfig_t_handler (vl_api_ip6_nd_address_autoconfig_t
-					    * mp)
-{
-  vl_api_ip6_nd_address_autoconfig_reply_t *rmp;
-  u32 sw_if_index;
-  int rv = 0;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  sw_if_index = ntohl (mp->sw_if_index);
-
-  rv =
-    set_address_autoconfig (sw_if_index, mp->enable,
-			    mp->install_default_routes);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_IP6_ND_ADDRESS_AUTOCONFIG_REPLY);
-}
-
-#define vl_msg_name_crc_list
-#include <vnet/ip/rd_cp.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_rd_cp;
-#undef _
-}
-
 static clib_error_t *
 rd_cp_init (vlib_main_t * vm)
 {
   rd_cp_main_t *rm = &rd_cp_main;
-  api_main_t *am = &api_main;
 
   rm->vlib_main = vm;
   rm->vnet_main = vnet_get_main ();
-  rm->api_main = am;
   rm->node_index = rd_cp_process_node.index;
 
   rm->log_class = vlib_log_register_class ("rd_cp", 0);
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 0/* do NOT trace! */);
-  foreach_rd_cp_msg;
-#undef _
+  ip6_ra_report_register (ip6_ra_report_handler);
 
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (am);
-
-  return 0;
+  return (NULL);
 }
 
 VLIB_INIT_FUNCTION (rd_cp_init);
