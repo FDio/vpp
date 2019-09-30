@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "21688981_6c3cbfb1",
+        "filename": "test/test_tls.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-09-30T13:49:59Z",
+      "side": 1,
+      "message": "please use api call.",
+      "range": {
+        "startLine": 70,
+        "startChar": 8,
+        "endLine": 72,
+        "endChar": 50
+      },
+      "revId": "136239f3572c8139c981189344af6b1b9efe06e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
