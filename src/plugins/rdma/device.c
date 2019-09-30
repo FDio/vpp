@@ -324,7 +324,7 @@ rdma_async_event_init (rdma_device_t * rd)
   t.file_descriptor = rd->ctx->async_fd;
   t.error_function = rdma_async_event_error_ready;
   t.private_data = rd->dev_instance;
-  t.description = format (0, "%s async event", rd->name);
+  t.description = format (0, "%v async event", rd->name);
 
   rd->async_event_clib_file_index = clib_file_add (&file_main, &t);
   return 0;
