@@ -128,6 +128,7 @@ list(APPEND VNET_API_FILES cop/cop.api)
 # Layer 2 protocol: Ethernet
 ##############################################################################
 list(APPEND VNET_SOURCES
+  ethernet/arp_packet.c
   ethernet/ethernet_types_api.c
   ethernet/format.c
   ethernet/init.c
@@ -154,6 +155,7 @@ list(APPEND VNET_HEADERS
   ethernet/types.def
   ethernet/sfp.h
   ethernet/p2p_ethernet.h
+  ethernet/arp_packet.h
 )
 
 list(APPEND VNET_API_FILES
@@ -166,6 +168,7 @@ list(APPEND VNET_API_FILES
 list(APPEND VNET_SOURCES
   l2/feat_bitmap.c
   l2/l2_api.c
+  l2/l2_arp_term.c
   l2/l2_bd.c
   l2/l2_bvi.c
   l2/l2_bvi_node.c
@@ -422,6 +425,7 @@ list(APPEND VNET_SOURCES
   ip/icmp6.c
   ip/ip46_cli.c
   ip/ip_types_api.c
+  ip/ip46_address.c
   ip/ip4_format.c
   ip/ip4_forward.c
   ip/ip4_punt_drop.c
@@ -440,12 +444,10 @@ list(APPEND VNET_SOURCES
   ip/ip6_punt_drop.c
   ip/ip6_hop_by_hop.c
   ip/ip6_input.c
-  ip/ip6_neighbor.c
+  ip/ip6_link.c
   ip/ip6_pg.c
   ip/reass/ip6_full_reass.c
   ip/reass/ip6_sv_reass.c
-  ip/rd_cp.c
-  ip/ip_neighbor.c
   ip/ip_api.c
   ip/ip_checksum.c
   ip/ip_frag.c
@@ -485,16 +487,15 @@ list(APPEND VNET_HEADERS
   ip/ip4.h
   ip/ip4_mtrie.h
   ip/ip4_packet.h
+  ip/ip46_address.h
   ip/ip6_error.h
   ip/ip6.h
   ip/ip6_hop_by_hop.h
   ip/ip6_hop_by_hop_packet.h
   ip/ip6_packet.h
-  ip/ip6_neighbor.h
   ip/ip.h
   ip/ip_packet.h
   ip/ip_source_and_port_range_check.h
-  ip/ip_neighbor.h
   ip/lookup.h
   ip/ports.def
   ip/protocols.def
@@ -504,7 +505,6 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_API_FILES
   ip/ip.api
-  ip/rd_cp.api
   ip/punt.api
 )
 
@@ -515,15 +515,25 @@ list(APPEND VNET_MULTIARCH_SOURCES
 )
 
 ##############################################################################
-# Layer 2/3 ARP
+# Layer 3 neighbours
 ##############################################################################
 list(APPEND VNET_SOURCES
-  ethernet/arp.c
+  ip-neighbor/ip_neighbor.c
+  ip-neighbor/ip_neighbor_api.c
+  ip-neighbor/ip_neighbor_dp.c
+  ip-neighbor/ip_neighbor_types.c
+  ip-neighbor/ip_neighbor_watch.c
+  ip-neighbor/ip4_neighbor.c
+  ip-neighbor/ip6_neighbor.c
 )
 
 list(APPEND VNET_HEADERS
-  ethernet/arp_packet.h
-  ethernet/arp.h
+  ip-neighbor/ip_neighbor.h
+  ip-neighbor/ip_neighbor_types.h
+)
+
+list(APPEND VNET_API_FILES
+  ip-neighbor/ip_neighbor.api
 )
 
 ##############################################################################

@@ -19,7 +19,8 @@
 #include <dhcp/dhcp6_pd_client_dp.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
-#include <vnet/ip/ip6_neighbor.h>
+#include <vnet/ip/ip6_link.h>
+#include <plugins/ip6-nd/ip6_ra.h>
 #include <float.h>
 #include <math.h>
 #include <string.h>
@@ -98,6 +99,14 @@ enum
   DHCPV6_PD_EVENT_INTERRUPT,
   DHCPV6_PD_EVENT_DISABLE,
 };
+
+
+static int (*ip6_ra_prefix_fn) (vlib_main_t * vm, u32 sw_if_index,
+				ip6_address_t * prefix_addr, u8 prefix_len,
+				u8 use_default, u32 val_lifetime,
+				u32 pref_lifetime, u8 no_advertise,
+				u8 off_link, u8 no_autoconfig,
+				u8 no_onlink, u8 is_no);
 
 static_always_inline u32
 active_prefix_index_by_prefix_group_index_get (u32 prefix_group_index)
@@ -242,17 +251,6 @@ send_client_message_start_stop (u32 sw_if_index, u32 server_index,
 }
 
 static void interrupt_process (void);
-
-static u32
-ip6_enable (u32 sw_if_index)
-{
-  dhcp6_pd_client_cp_main_t *rm = &dhcp6_pd_client_cp_main;
-  clib_error_t *rv;
-
-  rv = enable_ip6_interface (rm->vlib_main, sw_if_index);
-
-  return rv != 0;
-}
 
 static u8
 ip6_prefixes_equal (ip6_address_t * prefix1, ip6_address_t * prefix2, u8 len)
@@ -807,16 +805,15 @@ cp_ip6_advertise_prefix (prefix_info_t * prefix_info,
   addr.as_u64[0] &= im->fib_masks[address_info->prefix_length].as_u64[0];
   addr.as_u64[1] &= im->fib_masks[address_info->prefix_length].as_u64[1];
 
-  rv = ip6_neighbor_ra_prefix (vm, address_info->sw_if_index,
-			       &addr, address_info->prefix_length,
-			       0 /* use_default */ ,
-			       prefix_info->valid_lt,
-			       prefix_info->preferred_lt,
-			       0 /* no_advertise */ ,
-			       0 /* off_link */ ,
-			       0 /* no_autoconfig */ ,
-			       0 /* no_onlink */ ,
-			       enable == 0 /* is_no */ );
+  rv = ip6_ra_prefix_fn (vm, address_info->sw_if_index,
+			 &addr, address_info->prefix_length,
+			 0 /* use_default */ ,
+			 prefix_info->valid_lt,
+			 prefix_info->preferred_lt, 0 /* no_advertise */ ,
+			 0 /* off_link */ ,
+			 0 /* no_autoconfig */ ,
+			 0 /* no_onlink */ ,
+			 enable == 0 /* is_no */ );
   if (rv != 0)
     {
       clib_warning ("ip6_neighbor_ra_prefix returned %d", rv);
@@ -1268,7 +1265,7 @@ dhcp6_pd_client_enable_disable (u32 sw_if_index,
 	  dhcp6_clients_enable_disable (1);
 	}
 
-      ip6_enable (sw_if_index);
+      ip6_link_enable (sw_if_index);
       send_client_message_start_stop (sw_if_index, ~0, DHCPV6_MSG_SOLICIT,
 				      0, 1);
     }
@@ -1387,6 +1384,8 @@ VLIB_CLI_COMMAND (dhcp6_pd_client_enable_disable_command, static) = {
 };
 /* *INDENT-ON* */
 
+#include <vlib/unix/plugin.h>
+
 static clib_error_t *
 dhcp_pd_client_cp_init (vlib_main_t * vm)
 {
@@ -1396,6 +1395,8 @@ dhcp_pd_client_cp_init (vlib_main_t * vm)
   rm->vnet_main = vnet_get_main ();
   rm->api_main = &api_main;
   rm->node_index = dhcp6_pd_client_cp_process_node.index;
+
+  ip6_ra_prefix_fn = vlib_get_plugin_symbol ("ip6_nd.so", "ip6_ra_refix");
 
   return (NULL);
 }

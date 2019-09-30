@@ -20,10 +20,10 @@
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/fib/fib.h>
 #include <vnet/adj/adj_mcast.h>
-#include <vnet/ip/ip6_neighbor.h>
 #include <dhcp/dhcp6_pd_client_dp.h>
 #include <dhcp/dhcp6_client_common_dp.h>
 #include <vnet/ip/ip_types_api.h>
+#include <vnet/ip/ip6_link.h>
 
 dhcp6_pd_client_main_t dhcp6_pd_client_main;
 dhcp6_pd_client_public_main_t dhcp6_pd_client_public_main;
@@ -90,7 +90,7 @@ create_buffer_for_client_message (vlib_main_t * vm,
   ip6_header_t *ip;
   udp_header_t *udp;
   dhcpv6_header_t *dhcp;
-  ip6_address_t src_addr;
+  const ip6_address_t *src_addr;
   u32 dhcp_opt_len = 0;
   client_state->transaction_start = vlib_time_now (vm);
   u32 n_prefixes;
@@ -102,9 +102,9 @@ create_buffer_for_client_message (vlib_main_t * vm,
    */
 
   /* Get a link-local address */
-  src_addr = ip6_neighbor_get_link_local_address (sw_if_index);
+  src_addr = ip6_get_link_local_address (sw_if_index);
 
-  if (src_addr.as_u8[0] != 0xfe)
+  if (src_addr->as_u8[0] != 0xfe)
     {
       clib_warning ("Could not find source address to send DHCPv6 packet");
       return NULL;
@@ -129,7 +129,7 @@ create_buffer_for_client_message (vlib_main_t * vm,
   udp = (udp_header_t *) (ip + 1);
   dhcp = (dhcpv6_header_t *) (udp + 1);
 
-  ip->src_address = src_addr;
+  ip->src_address = *src_addr;
   ip->hop_limit = 255;
   ip->ip_version_traffic_class_and_flow_label =
     clib_host_to_net_u32 (0x6 << 28);

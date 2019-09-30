@@ -90,7 +90,7 @@ class TestIPv4(VppTestCase):
         super(TestIPv4, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show ip arp"))
+        self.logger.info(self.vapi.cli("show ip4 neighbors"))
         # info(self.vapi.cli("show ip fib"))  # many entries
 
     def modify_packet(self, src_if, packet_size, pkt):

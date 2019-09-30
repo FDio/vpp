@@ -20,6 +20,7 @@
 #include <dhcp/dhcp6_ia_na_client_dp.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
+#include <vnet/ip/ip6_link.h>
 #include <float.h>
 #include <math.h>
 
@@ -143,17 +144,6 @@ send_client_message_start_stop (u32 sw_if_index, u32 server_index,
 }
 
 static void interrupt_process (void);
-
-static u32
-ip6_enable (u32 sw_if_index)
-{
-  dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
-  clib_error_t *rv;
-
-  rv = enable_ip6_interface (rm->vlib_main, sw_if_index);
-
-  return rv != 0;
-}
 
 static u8
 ip6_addresses_equal (ip6_address_t * address1, ip6_address_t * address2)
@@ -422,7 +412,7 @@ dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                     clib_warning ("Failed to delete interface address");
                 pool_put (rm->address_pool, address_info);
                 /* make sure ip6 stays enabled */
-                ip6_enable (sw_if_index);
+                ip6_link_enable (sw_if_index);
                 client_state = &rm->client_state_by_sw_if_index[sw_if_index];
                 if (--client_state->address_count == 0)
                   {
@@ -650,7 +640,7 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 	  dhcp6_clients_enable_disable (1);
 	}
 
-      ip6_enable (sw_if_index);
+      ip6_link_enable (sw_if_index);
       send_client_message_start_stop (sw_if_index, ~0, DHCPV6_MSG_SOLICIT,
 				      0, 1);
     }
