@@ -60,7 +60,6 @@ class TestUdpEncap(VppTestCase):
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.unconfig_ip6()
-            i.ip6_disable()
             i.set_table_ip4(0)
             i.set_table_ip6(0)
             i.admin_down()

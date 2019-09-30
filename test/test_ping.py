@@ -51,7 +51,7 @@ class TestPing(VppTestCase):
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.logger.info(self.vapi.cli("show ip arp"))
+            self.logger.info(self.vapi.cli("show ip4 neighbors"))
             self.logger.info(self.vapi.cli("show ip6 neighbors"))
 
             remote_ip4 = self.pg1.remote_ip4
@@ -87,8 +87,7 @@ class TestPing(VppTestCase):
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.logger.info(self.vapi.cli("show ip arp"))
-            self.logger.info(self.vapi.cli("show ip6 neighbors"))
+            self.logger.info(self.vapi.cli("show ip neighbors"))
 
             remote_ip4 = self.pg1.remote_ip4
             ping_cmd = "ping " + remote_ip4 + " interval 0.01 burst 3"
