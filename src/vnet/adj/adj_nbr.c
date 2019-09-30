@@ -461,6 +461,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
     vlib_worker_thread_barrier_sync(vm);
 
     adj->lookup_next_index = adj_next_index;
+    adj->ia_node_index = this_node;
 
     if (NULL != rewrite)
     {
@@ -660,15 +661,17 @@ adj_nbr_walk_nh (u32 sw_if_index,
     if (!ADJ_NBR_ITF_OK(adj_nh_proto, sw_if_index))
 	return;
 
-    vnet_link_t linkt;
-    adj_index_t ai;
-
-    FOR_EACH_VNET_LINK(linkt)
+    switch (adj_nh_proto)
     {
-        ai = adj_nbr_find (FIB_PROTOCOL_IP4, linkt, nh, sw_if_index);
-
-        if (INDEX_INVALID != ai)
-            cb(ai, ctx);
+    case FIB_PROTOCOL_IP4:
+        adj_nbr_walk_nh4(sw_if_index, &nh->ip4, cb, ctx);
+        break; 
+    case FIB_PROTOCOL_IP6:
+        adj_nbr_walk_nh6(sw_if_index, &nh->ip6, cb, ctx);
+        break;
+    case FIB_PROTOCOL_MPLS:
+        ASSERT(0);
+        break;
     }
 }
 

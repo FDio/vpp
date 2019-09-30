@@ -1576,8 +1576,8 @@ fib_path_cmp_i (const fib_path_t *path1,
                    path2->attached.fp_interface);
 	    break;
 	case FIB_PATH_TYPE_RECURSIVE:
-	    res = ip46_address_cmp(&path1->recursive.fp_nh,
-				   &path2->recursive.fp_nh);
+	    res = ip46_address_cmp(&path1->recursive.fp_nh.fp_ip,
+				   &path2->recursive.fp_nh.fp_ip);
  
 	    if (0 == res)
 	    {

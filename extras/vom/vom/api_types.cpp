@@ -47,8 +47,7 @@ from_api(vapi_enum_ip_neighbor_flags f)
 
 invalid_decode::invalid_decode(const std::string reason)
   : reason(reason)
-{
-}
+{}
 
 void
 to_api(const boost::asio::ip::address_v4& a, vapi_type_ip4_address& v)
@@ -208,7 +207,8 @@ route::mprefix_t
 from_api(const vapi_type_mprefix& v)
 {
   return route::mprefix_t(from_api(v.src_address, v.af),
-                          from_api(v.grp_address, v.af), v.grp_address_length);
+                          from_api(v.grp_address, v.af),
+                          v.grp_address_length);
 }
 
 vapi_type_mprefix
@@ -238,6 +238,16 @@ to_api(const nh_proto_t& p)
 
   return FIB_API_PATH_NH_PROTO_IP4;
 }
+
+vapi_enum_address_family
+to_api(const l3_proto_t p)
+{
+  if (p == l3_proto_t::IPV6) {
+    return ADDRESS_IP6;
+  }
+  return ADDRESS_IP4;
+}
+
 const nh_proto_t&
 from_api(vapi_enum_fib_path_nh_proto p)
 {
