@@ -294,7 +294,7 @@ u32 set_int_l2_mode (vlib_main_t * vm,
 		     u32 bd_index, l2_bd_port_type_t port_type,
 		     u32 shg, u32 xc_sw_if_index);
 
-static inline void
+static inline u16
 vnet_update_l2_len (vlib_buffer_t * b)
 {
   ethernet_header_t *eth;
@@ -326,6 +326,8 @@ vnet_update_l2_len (vlib_buffer_t * b)
 	}
     }
   ethernet_buffer_set_vlan_count (b, vlan_count);
+
+  return (ethertype);
 }
 
 /*
