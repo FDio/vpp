@@ -805,66 +805,66 @@ get_unformat_vnet_sw_interface (void)
   return (void *) &unformat_vnet_sw_interface;
 }
 
-static u8 *
-format_arp_event (u8 * s, va_list * args)
-{
-  vl_api_ip4_arp_event_t *event = va_arg (*args, vl_api_ip4_arp_event_t *);
+/* static u8 * */
+/* format_arp_event (u8 * s, va_list * args) */
+/* { */
+/*   vl_api_ip4_arp_event_t *event = va_arg (*args, vl_api_ip4_arp_event_t *); */
 
-  s = format (s, "pid %d: ", ntohl (event->pid));
-  s = format (s, "resolution for %U", format_vl_api_ip4_address, event->ip);
-  return s;
-}
+/*   s = format (s, "pid %d: ", ntohl (event->pid)); */
+/*   s = format (s, "resolution for %U", format_vl_api_ip4_address, event->ip); */
+/*   return s; */
+/* } */
 
-static u8 *
-format_nd_event (u8 * s, va_list * args)
-{
-  vl_api_ip6_nd_event_t *event = va_arg (*args, vl_api_ip6_nd_event_t *);
+/* static u8 * */
+/* format_nd_event (u8 * s, va_list * args) */
+/* { */
+/*   vl_api_ip6_nd_event_t *event = va_arg (*args, vl_api_ip6_nd_event_t *); */
 
-  s = format (s, "pid %d: ", ntohl (event->pid));
-  s = format (s, "resolution for %U", format_vl_api_ip6_address, event->ip);
-  return s;
-}
+/*   s = format (s, "pid %d: ", ntohl (event->pid)); */
+/*   s = format (s, "resolution for %U", format_vl_api_ip6_address, event->ip); */
+/*   return s; */
+/* } */
 
 static clib_error_t *
 show_ip_arp_nd_events_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vpe_api_main_t *am = &vpe_api_main;
-  vl_api_ip4_arp_event_t *arp_event;
-  vl_api_ip6_nd_event_t *nd_event;
+  /* vpe_api_main_t *am = &vpe_api_main; */
+  /* vl_api_ip4_arp_event_t *arp_event; */
+  /* vl_api_ip6_nd_event_t *nd_event; */
 
-  if (pool_elts (am->arp_events) == 0 && pool_elts (am->nd_events) == 0 &&
-      pool_elts (am->wc_ip4_arp_events_registrations) == 0 &&
-      pool_elts (am->wc_ip6_nd_events_registrations) == 0)
-    {
-      vlib_cli_output (vm, "No active arp or nd event registrations");
-      return 0;
-    }
+  /* if (pool_elts (am->arp_events) == 0 && pool_elts (am->nd_events) == 0 && */
+  /*     pool_elts (am->wc_ip4_arp_events_registrations) == 0 && */
+  /*     pool_elts (am->wc_ip6_nd_events_registrations) == 0) */
+  /*   { */
+  /*     vlib_cli_output (vm, "No active arp or nd event registrations"); */
+  /*     return 0; */
+  /*   } */
 
-  /* *INDENT-OFF* */
-  pool_foreach (arp_event, am->arp_events,
-  ({
-    vlib_cli_output (vm, "%U", format_arp_event, arp_event);
-  }));
+  /* /\* *INDENT-OFF* *\/ */
+  /* pool_foreach (arp_event, am->arp_events, */
+  /* ({ */
+  /*   vlib_cli_output (vm, "%U", format_arp_event, arp_event); */
+  /* })); */
 
-  vpe_client_registration_t *reg;
-  pool_foreach(reg, am->wc_ip4_arp_events_registrations,
-  ({
-    vlib_cli_output (vm, "pid %d: bd mac/ip4 binding events",
-                     ntohl (reg->client_pid));
-  }));
+  /* vpe_client_registration_t *reg; */
+  /* pool_foreach(reg, am->wc_ip4_arp_events_registrations, */
+  /* ({ */
+  /*   vlib_cli_output (vm, "pid %d: bd mac/ip4 binding events", */
+  /*                    ntohl (reg->client_pid)); */
+  /* })); */
 
-  pool_foreach (nd_event, am->nd_events,
-  ({
-    vlib_cli_output (vm, "%U", format_nd_event, nd_event);
-  }));
+  /* pool_foreach (nd_event, am->nd_events, */
+  /* ({ */
+  /*   vlib_cli_output (vm, "%U", format_nd_event, nd_event); */
+  /* })); */
 
-  pool_foreach(reg, am->wc_ip6_nd_events_registrations,
-  ({
-    vlib_cli_output (vm, "pid %d: bd mac/ip6 binding events",
-                     ntohl (reg->client_pid));
-  }));
-  /* *INDENT-ON* */
+  /* pool_foreach(reg, am->wc_ip6_nd_events_registrations, */
+  /* ({ */
+  /*   vlib_cli_output (vm, "pid %d: bd mac/ip6 binding events", */
+  /*                    ntohl (reg->client_pid)); */
+  /* })); */
+  /* /\* *INDENT-ON* *\/ */
 
   return 0;
 }

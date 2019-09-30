@@ -1713,6 +1713,29 @@ fib_entry_pool_size (void)
     return (pool_elts(fib_entry_pool));
 }
 
+#ifdef CLIB_DEBUG
+void
+fib_table_assert_empty (const fib_table_t *fib_table)
+{
+    fib_node_index_t *fei, *feis = NULL;
+    fib_entry_t *fib_entry;
+
+    pool_foreach (fib_entry, fib_entry_pool,
+    ({
+        if (fib_entry->fe_fib_index == fib_table->ft_index)
+            vec_add1 (feis, fib_entry_get_index(fib_entry));
+    }));
+
+    if (vec_len(feis))
+    {
+        vec_foreach (fei, feis)
+            clib_error ("%U", format_fib_entry, *fei, FIB_ENTRY_FORMAT_DETAIL);
+    }
+
+    ASSERT(0);
+}
+#endif
+
 static clib_error_t *
 show_fib_entry_command (vlib_main_t * vm,
 			unformat_input_t * input,

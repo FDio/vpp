@@ -2117,9 +2117,8 @@ VLIB_REGISTER_NODE (ip4_arp_node) =
   .n_errors = ARRAY_LEN (ip4_arp_error_strings),
   .error_strings = ip4_arp_error_strings,
   .n_next_nodes = IP4_ARP_N_NEXT,
-  .next_nodes =
-  {
-    [IP4_ARP_NEXT_DROP] = "error-drop",
+  .next_nodes = {
+    [IP4_ARP_NEXT_DROP] = "ip4-drop",
   },
 };
 
@@ -2132,7 +2131,7 @@ VLIB_REGISTER_NODE (ip4_glean_node) =
   .error_strings = ip4_arp_error_strings,
   .n_next_nodes = IP4_ARP_N_NEXT,
   .next_nodes = {
-  [IP4_ARP_NEXT_DROP] = "error-drop",
+    [IP4_ARP_NEXT_DROP] = "ip4-drop",
   },
 };
 /* *INDENT-ON* */
@@ -2161,117 +2160,6 @@ arp_notrace_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (arp_notrace_init);
-
-
-#ifndef CLIB_MARCH_VARIANT
-/* Send an ARP request to see if given destination is reachable on given interface. */
-clib_error_t *
-ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index,
-		    u8 refresh)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  ip4_main_t *im = &ip4_main;
-  ethernet_arp_header_t *h;
-  ip4_address_t *src;
-  ip_interface_address_t *ia;
-  ip_adjacency_t *adj;
-  vnet_hw_interface_t *hi;
-  vnet_sw_interface_t *si;
-  vlib_buffer_t *b;
-  adj_index_t ai;
-  u32 bi = 0;
-  u8 unicast_rewrite = 0;
-
-  si = vnet_get_sw_interface (vnm, sw_if_index);
-
-  if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-    {
-      return clib_error_return (0, "%U: interface %U down",
-				format_ip4_address, dst,
-				format_vnet_sw_if_index_name, vnm,
-				sw_if_index);
-    }
-
-  src =
-    ip4_interface_address_matching_destination (im, dst, sw_if_index, &ia);
-  if (!src)
-    {
-      vnm->api_errno = VNET_API_ERROR_NO_MATCHING_INTERFACE;
-      return clib_error_return
-	(0,
-	 "no matching interface address for destination %U (interface %U)",
-	 format_ip4_address, dst, format_vnet_sw_if_index_name, vnm,
-	 sw_if_index);
-    }
-
-  h = vlib_packet_template_get_packet (vm,
-				       &im->ip4_arp_request_packet_template,
-				       &bi);
-
-  if (!h)
-    return clib_error_return (0, "ARP request packet allocation failed");
-
-  hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  if (PREDICT_FALSE (!hi->hw_address))
-    {
-      return clib_error_return (0, "%U: interface %U do not support ip probe",
-				format_ip4_address, dst,
-				format_vnet_sw_if_index_name, vnm,
-				sw_if_index);
-    }
-
-  mac_address_from_bytes (&h->ip4_over_ethernet[0].mac, hi->hw_address);
-
-  h->ip4_over_ethernet[0].ip4 = src[0];
-  h->ip4_over_ethernet[1].ip4 = dst[0];
-
-  b = vlib_get_buffer (vm, bi);
-  vnet_buffer (b)->sw_if_index[VLIB_RX] =
-    vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
-
-  ip46_address_t nh = {
-    .ip4 = *dst,
-  };
-
-  ai = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
-			    VNET_LINK_IP4, &nh, sw_if_index);
-  adj = adj_get (ai);
-
-  /* Peer has been previously resolved, retrieve glean adj instead */
-  if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
-    {
-      if (refresh)
-	unicast_rewrite = 1;
-      else
-	{
-	  adj_unlock (ai);
-	  ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP4,
-				      VNET_LINK_IP4, sw_if_index, &nh);
-	  adj = adj_get (ai);
-	}
-    }
-
-  /* Add encapsulation string for software interface (e.g. ethernet header). */
-  vnet_rewrite_one_header (adj[0], h, sizeof (ethernet_header_t));
-  if (unicast_rewrite)
-    {
-      u16 *etype = vlib_buffer_get_current (b) - 2;
-      etype[0] = clib_host_to_net_u16 (ETHERNET_TYPE_ARP);
-    }
-  vlib_buffer_advance (b, -adj->rewrite_header.data_bytes);
-
-  {
-    vlib_frame_t *f = vlib_get_frame_to_node (vm, hi->output_node_index);
-    u32 *to_next = vlib_frame_vector_args (f);
-    to_next[0] = bi;
-    f->n_vectors = 1;
-    vlib_put_frame_to_node (vm, hi->output_node_index, f);
-  }
-
-  adj_unlock (ai);
-  return /* no error */ 0;
-}
-#endif
 
 typedef enum
 {

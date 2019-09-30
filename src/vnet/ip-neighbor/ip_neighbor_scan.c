@@ -1,5 +1,6 @@
+
 /*
- * src/vnet/ip/ip_neighboor.c: ip neighbor generic handling
+ * ip_neighboor_scan.c: ip neighbor scan handling
  *
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +16,7 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip6_neighbor.h>
-#include <vnet/ip/ip_neighbor.h>
-#include <vnet/ethernet/arp.h>
+#include <vnet/ip-neighbor/ip_neighbor_types.h>
 
 /*
  * IP neighbor scan parameter defaults are as follows:
@@ -47,87 +44,11 @@ typedef struct
 
 static ip_neighbor_scan_config_t ip_neighbor_scan_conf;
 
-u8 *
-format_ip_neighbor_flags (u8 * s, va_list * args)
+static u32
+ip_neighbor_scan (vlib_main_t * vm, f64 start_time, u32 start_idx,
+		  u8 is_ip6, u8 delete_stale, u8 * update_count)
 {
-  const ip_neighbor_flags_t flags = va_arg (*args, int);
-
-  if (flags & IP_NEIGHBOR_FLAG_STATIC)
-    s = format (s, "S");
-
-  if (flags & IP_NEIGHBOR_FLAG_DYNAMIC)
-    s = format (s, "D");
-
-  if (flags & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY)
-    s = format (s, "N");
-
-  return s;
-}
-
-int
-ip_neighbor_add (const ip46_address_t * ip,
-		 ip46_type_t type,
-		 const mac_address_t * mac,
-		 u32 sw_if_index,
-		 ip_neighbor_flags_t flags, u32 * stats_index)
-{
-  fib_protocol_t fproto;
-  vnet_link_t linkt;
-  int rv;
-
-  /*
-   * there's no validation here of the ND/ARP entry being added.
-   * The expectation is that the FIB will ensure that nothing bad
-   * will come of adding bogus entries.
-   */
-  if (IP46_TYPE_IP6 == type)
-    {
-      rv = vnet_set_ip6_ethernet_neighbor (vlib_get_main (),
-					   sw_if_index, &ip->ip6, mac, flags);
-      fproto = FIB_PROTOCOL_IP6;
-      linkt = VNET_LINK_IP6;
-    }
-  else
-    {
-      ethernet_arp_ip4_over_ethernet_address_t a = {
-	.ip4 = ip->ip4,
-	.mac = *mac,
-      };
-
-      rv =
-	vnet_arp_set_ip4_over_ethernet (vnet_get_main (), sw_if_index, &a,
-					flags);
-      fproto = FIB_PROTOCOL_IP4;
-      linkt = VNET_LINK_IP4;
-    }
-
-  if (0 == rv && stats_index)
-    *stats_index = adj_nbr_find (fproto, linkt, ip, sw_if_index);
-
-  return (rv);
-}
-
-int
-ip_neighbor_del (const ip46_address_t * ip, ip46_type_t type, u32 sw_if_index)
-{
-  int rv;
-
-  if (IP46_TYPE_IP6 == type)
-    {
-      rv = vnet_unset_ip6_ethernet_neighbor (vlib_get_main (),
-					     sw_if_index, &ip->ip6);
-    }
-  else
-    {
-      ethernet_arp_ip4_over_ethernet_address_t a = {
-	.ip4 = ip->ip4,
-      };
-
-      rv =
-	vnet_arp_unset_ip4_over_ethernet (vnet_get_main (), sw_if_index, &a);
-    }
-
-  return (rv);
+  return 0;
 }
 
 void
@@ -154,96 +75,6 @@ ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg)
     cfg->scan_interval = IP_NEIGHBOR_DEF_SCAN_INTERVAL;
 }
 
-static_always_inline u32
-ip_neighbor_scan (vlib_main_t * vm, f64 start_time, u32 start_idx,
-		  u8 is_ip6, u8 delete_stale, u8 * update_count)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  ip_neighbor_scan_config_t *cfg = &ip_neighbor_scan_conf;
-  ethernet_arp_ip4_entry_t *np4 = ip4_neighbors_pool ();
-  ip6_neighbor_t *np6 = ip6_neighbors_pool ();
-  ethernet_arp_ip4_entry_t *n4;
-  ip6_neighbor_t *n6;
-  u32 curr_idx = start_idx;
-  u32 loop_count = 0;
-  f64 delta, update_time;
-
-  if (!is_ip6)
-    {
-      if (pool_is_free_index (np4, start_idx))
-	curr_idx = pool_next_index (np4, start_idx);
-    }
-  else
-    {
-      if (pool_is_free_index (np6, start_idx))
-	curr_idx = pool_next_index (np6, start_idx);
-    }
-
-  while (curr_idx != ~0)
-    {
-      /* allow no more than 10 neighbor updates or 20 usec of scan */
-      if ((update_count[0] >= cfg->max_update) ||
-	  (((loop_count % 100) == 0) &&
-	   ((vlib_time_now (vm) - start_time) > cfg->max_proc_time)))
-	break;
-
-      if (!is_ip6)
-	{
-	  n4 = pool_elt_at_index (np4, curr_idx);
-	  if (n4->flags & IP_NEIGHBOR_FLAG_STATIC)
-	    goto next_neighbor;
-	  update_time = n4->time_last_updated;
-	}
-      else
-	{
-	  n6 = pool_elt_at_index (np6, curr_idx);
-	  if (n6->flags & IP_NEIGHBOR_FLAG_STATIC)
-	    goto next_neighbor;
-	  update_time = n6->time_last_updated;
-	}
-
-      delta = start_time - update_time;
-      if (delete_stale && (delta >= cfg->stale_threshold))
-	{
-	  update_count[0]++;
-	  /* delete stale neighbor */
-	  if (!is_ip6)
-	    {
-	      ethernet_arp_ip4_over_ethernet_address_t delme = {
-		.ip4.as_u32 = n4->ip4_address.as_u32,
-		.mac = n4->mac,
-	      };
-
-	      vnet_arp_unset_ip4_over_ethernet (vnm, n4->sw_if_index, &delme);
-	    }
-	  else
-	    {
-	      vnet_unset_ip6_ethernet_neighbor
-		(vm, n6->key.sw_if_index, &n6->key.ip6_address);
-	    }
-	}
-      else if (delta >= cfg->scan_interval)
-	{
-	  update_count[0]++;
-	  /* probe neighbor */
-	  if (!is_ip6)
-	    ip4_probe_neighbor (vm, &n4->ip4_address, n4->sw_if_index, 1);
-	  else
-	    ip6_probe_neighbor (vm, &n6->key.ip6_address,
-				n6->key.sw_if_index, 1);
-	}
-
-    next_neighbor:
-      loop_count++;
-
-      if (!is_ip6)
-	curr_idx = pool_next_index (np4, curr_idx);
-      else
-	curr_idx = pool_next_index (np6, curr_idx);
-    }
-
-  return curr_idx;
-}
 
 static uword
 neighbor_scan_process (vlib_main_t * vm,
@@ -419,7 +250,7 @@ done:
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_scan_neighbor_command, static) = {
-  .path = "ip scan-neighbor",
+  .path = "ip neighbor scan",
   .function = ip_neighbor_scan_cli,
   .short_help = "ip scan-neighbor [ip4|ip6|both|disable] [interval <n-min>] [max-time <n-usec>] [max-update <n>] [delay <n-msec>] [stale <n-min>]",
   .is_mp_safe = 1,
@@ -476,12 +307,13 @@ show_ip_neighbor_scan (vlib_main_t * vm, unformat_input_t * input,
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_scan_neighbor_command, static) = {
-  .path = "show ip scan-neighbor",
+  .path = "show ip neighbor scan",
   .function = show_ip_neighbor_scan,
-  .short_help = "show ip scan-neighbor",
+  .short_help = "show ip neighbor scan",
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON

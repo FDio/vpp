@@ -187,13 +187,15 @@ typedef enum
 #undef _
 } icmp6_code_t;
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
-		     {
-		     u8 type;
-		     u8 code;
-		     /* IP checksum of icmp header plus data which follows. */
-		     u16 checksum;
-		     }) icmp46_header_t;
+{
+    u8 type;
+    u8 code;
+    /* IP checksum of icmp header plus data which follows. */
+    u16 checksum;
+}) icmp46_header_t;
+/* *INDENT-ON* */
 
 /* ip6 neighbor discovery */
 #define foreach_icmp6_neighbor_discovery_option	\
@@ -236,164 +238,125 @@ typedef enum icmp6_neighbor_discovery_option_type
 #undef _
 } icmp6_neighbor_discovery_option_type_t;
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
-		     {
-		     /* Option type. */
-		     u8 type;
-		     /* Length of this header plus option data in 8 byte units. */
-		     u8 n_data_u64s;
-		     /* Option data follows. */
-		     u8 data[0];
-		     }) icmp6_neighbor_discovery_option_header_t;
+{
+    /* Option type. */
+    u8 type;
+    /* Length of this header plus option data in 8 byte units. */
+    u8 n_data_u64s;
+    /* Option data follows. */
+    u8 data[0];
+}) icmp6_neighbor_discovery_option_header_t;
 
 typedef CLIB_PACKED (struct
-		     {
-		     icmp6_neighbor_discovery_option_header_t header;
-		     u8 dst_address_length;
-		     u8 flags;
+{
+    icmp6_neighbor_discovery_option_header_t header;
+    u8 dst_address_length;
+    u8 flags;
 #define ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_FLAG_ON_LINK (1 << 7)
 #define ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_AUTO (1 << 6)
-		     u32 valid_time;
-		     u32 preferred_time;
-		     u32 unused; ip6_address_t dst_address;
-		     }) icmp6_neighbor_discovery_prefix_information_option_t;
+    u32 valid_time;
+    u32 preferred_time;
+    u32 unused; ip6_address_t dst_address;
+}) icmp6_neighbor_discovery_prefix_information_option_t;
 
 typedef CLIB_PACKED (struct
-		     {
-		     u8 type;
-		     u8 aux_data_len_u32s;
-		     u16 num_sources;
-		     ip6_address_t mcast_addr; ip6_address_t source_addr[0];
-		     }) icmp6_multicast_address_record_t;
+{
+    u8 type;
+    u8 aux_data_len_u32s;
+    u16 num_sources;
+    ip6_address_t mcast_addr; ip6_address_t source_addr[0];
+}) icmp6_multicast_address_record_t;
 
 typedef CLIB_PACKED (struct
-		     {
-		     ip6_hop_by_hop_ext_t ext_hdr;
-		     ip6_router_alert_option_t alert;
-		     ip6_padN_option_t pad;
-		     icmp46_header_t icmp;
-		     u16 rsvd;
-		     u16 num_addr_records;
-		     icmp6_multicast_address_record_t records[0];
-		     }) icmp6_multicast_listener_report_header_t;
+{
+    icmp6_neighbor_discovery_option_header_t header;
+    u8 reserved[6];
+    /* IP6 header plus payload follows. */
+    u8 data[0];
+}) icmp6_neighbor_discovery_redirected_header_option_t;
 
 typedef CLIB_PACKED (struct
-		     {
-		     icmp6_neighbor_discovery_option_header_t header;
-		     u8 reserved[6];
-		     /* IP6 header plus payload follows. */
-		     u8 data[0];
-		     }) icmp6_neighbor_discovery_redirected_header_option_t;
+{
+    icmp6_neighbor_discovery_option_header_t header;
+    u16 unused; u32 mtu;
+}) icmp6_neighbor_discovery_mtu_option_t;
 
 typedef CLIB_PACKED (struct
-		     {
-		     icmp6_neighbor_discovery_option_header_t header;
-		     u16 unused; u32 mtu;
-		     }) icmp6_neighbor_discovery_mtu_option_t;
+{
+    icmp6_neighbor_discovery_option_header_t header;
+    u8 ethernet_address[6];
+}) icmp6_neighbor_discovery_ethernet_link_layer_address_option_t;
 
 typedef CLIB_PACKED (struct
-		     {
-		     icmp6_neighbor_discovery_option_header_t header;
-		     u8 ethernet_address[6];
-		     })
-  icmp6_neighbor_discovery_ethernet_link_layer_address_option_t;
-
-typedef CLIB_PACKED (struct
-		     {
-		     icmp6_neighbor_discovery_option_header_t header;
-		     u8 max_l2_address[6 + 8];
-		     })
-  icmp6_neighbor_discovery_max_link_layer_address_option_t;
+{
+    icmp6_neighbor_discovery_option_header_t header;
+    u8 max_l2_address[6 + 8];
+}) icmp6_neighbor_discovery_max_link_layer_address_option_t;
 
 /* Generic neighbor discover header.  Used for router solicitations,
    etc. */
 typedef CLIB_PACKED (struct
-		     {
-		     icmp46_header_t icmp; u32 reserved_must_be_zero;
-		     }) icmp6_neighbor_discovery_header_t;
+{
+    icmp46_header_t icmp; u32 reserved_must_be_zero;
+}) icmp6_neighbor_discovery_header_t;
 
 /* Router advertisement packet formats. */
 typedef CLIB_PACKED (struct
-		     {
-		     icmp46_header_t icmp;
-		     /* Current hop limit to use for outgoing packets. */
-		     u8 current_hop_limit;
-		     u8 flags;
+{
+    icmp46_header_t icmp;
+    /* Current hop limit to use for outgoing packets. */
+    u8 current_hop_limit;
+    u8 flags;
 #define ICMP6_ROUTER_DISCOVERY_FLAG_ADDRESS_CONFIG_VIA_DHCP (1 << 7)
 #define ICMP6_ROUTER_DISCOVERY_FLAG_OTHER_CONFIG_VIA_DHCP (1 << 6)
-		     /* Zero means unspecified. */
-		     u16 router_lifetime_in_sec;
-		     /* Zero means unspecified. */
-		     u32 neighbor_reachable_time_in_msec;
-		     /* Zero means unspecified. */
-		     u32
-		     time_in_msec_between_retransmitted_neighbor_solicitations;
-		     /* Options that may follow: source_link_layer_address, mtu, prefix_information. */
-		     }) icmp6_router_advertisement_header_t;
+    /* Zero means unspecified. */
+    u16 router_lifetime_in_sec;
+    /* Zero means unspecified. */
+    u32 neighbor_reachable_time_in_msec;
+    /* Zero means unspecified. */
+    u32
+    time_in_msec_between_retransmitted_neighbor_solicitations;
+    /* Options that may follow: source_link_layer_address, mtu, prefix_information. */
+}) icmp6_router_advertisement_header_t;
 
 /* Neighbor solicitation/advertisement header. */
 typedef CLIB_PACKED (struct
-		     {
-		     icmp46_header_t icmp;
-		     /* Zero for solicitation; flags for advertisement. */
-		     u32 advertisement_flags;
-		     /* Set when sent by a router. */
+{
+    icmp46_header_t icmp;
+    /* Zero for solicitation; flags for advertisement. */
+    u32 advertisement_flags;
+    /* Set when sent by a router. */
 #define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER (1 << 31)
-		     /* Set when response to solicitation. */
+    /* Set when response to solicitation. */
 #define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED (1 << 30)
 #define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE (1 << 29)
-		     ip6_address_t target_address;
-		     /* Options that may follow: source_link_layer_address
-		        (for solicitation) target_link_layer_address (for advertisement). */
-		     }) icmp6_neighbor_solicitation_or_advertisement_header_t;
+    ip6_address_t target_address;
+    /* Options that may follow: source_link_layer_address
+       (for solicitation) target_link_layer_address (for advertisement). */
+}) icmp6_neighbor_solicitation_or_advertisement_header_t;
 
 typedef CLIB_PACKED (struct
-		     {
-		     icmp46_header_t icmp;
-		     u32 reserved_must_be_zero;
-		     /* Better next hop to use for given destination. */
-		     ip6_address_t better_next_hop_address;
-		     ip6_address_t dst_address;
-		     /* Options that may follow: target_link_layer_address,
-		        redirected_header. */
-		     }) icmp6_redirect_header_t;
+{
+    icmp46_header_t icmp;
+    u32 reserved_must_be_zero;
+    /* Better next hop to use for given destination. */
+    ip6_address_t better_next_hop_address;
+    ip6_address_t dst_address;
+    /* Options that may follow: target_link_layer_address,
+       redirected_header. */
+}) icmp6_redirect_header_t;
 
 /* Solicitation/advertisement packet format for ethernet. */
 typedef CLIB_PACKED (struct
-		     {
-		     ip6_header_t ip;
-		     icmp6_neighbor_solicitation_or_advertisement_header_t
-		     neighbor;
-		     icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
-		     link_layer_option;
-		     }) icmp6_neighbor_solicitation_header_t;
-
-/* Router solicitation packet format for ethernet. */
-typedef CLIB_PACKED (struct
-		     {
-		     ip6_header_t ip;
-		     icmp6_neighbor_discovery_header_t neighbor;
-		     icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
-		     link_layer_option;
-		     }) icmp6_router_solicitation_header_t;
-
-/* router advertisement packet format for ethernet. */
-typedef CLIB_PACKED (struct
-		     {
-		     ip6_header_t ip;
-		     icmp6_router_advertisement_header_t router;
-		     icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
-		     link_layer_option;
-		     icmp6_neighbor_discovery_mtu_option_t mtu_option;
-		     icmp6_neighbor_discovery_prefix_information_option_t
-		     prefix[0];
-		     }) icmp6_router_advertisement_packet_t;
-
-/* multicast listener report packet format for ethernet. */
-typedef CLIB_PACKED (struct
-		     {
-		     ip6_header_t ip;
-		     icmp6_multicast_listener_report_header_t report_hdr;
-		     }) icmp6_multicast_listener_report_packet_t;
+{
+    ip6_header_t ip;
+    icmp6_neighbor_solicitation_or_advertisement_header_t
+    neighbor;
+    icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
+    link_layer_option;
+}) icmp6_neighbor_solicitation_header_t;
+/* *INDENT-ON* */
 
 #endif /* included_vnet_icmp46_packet_h */

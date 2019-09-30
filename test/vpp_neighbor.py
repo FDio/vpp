@@ -16,8 +16,11 @@ except NameError:
 def find_nbr(test, sw_if_index, nbr_addr, is_static=0, mac=None):
     ip_addr = ip_address(text_type(nbr_addr))
     e = VppEnum.vl_api_ip_neighbor_flags_t
-    nbrs = test.vapi.ip_neighbor_dump(sw_if_index,
-                                      is_ipv6=(6 == ip_addr.version))
+    if 6 == ip_addr.version:
+        af = VppEnum.vl_api_address_family_t.ADDRESS_IP6
+    else:
+        af = VppEnum.vl_api_address_family_t.ADDRESS_IP4
+    nbrs = test.vapi.ip_neighbor_dump(sw_if_index=sw_if_index, af=af)
 
     for n in nbrs:
         if ip_addr == n.neighbor.ip_address and \
