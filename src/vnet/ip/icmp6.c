@@ -794,14 +794,16 @@ icmp6_init (vlib_main_t * vm)
 
   clib_memset (cm->min_valid_hop_limit_by_type, 0,
 	       sizeof (cm->min_valid_hop_limit_by_type));
+  cm->min_valid_hop_limit_by_type[ICMP6_redirect] = 255;
   cm->min_valid_hop_limit_by_type[ICMP6_router_solicitation] = 255;
   cm->min_valid_hop_limit_by_type[ICMP6_router_advertisement] = 255;
   cm->min_valid_hop_limit_by_type[ICMP6_neighbor_solicitation] = 255;
   cm->min_valid_hop_limit_by_type[ICMP6_neighbor_advertisement] = 255;
-  cm->min_valid_hop_limit_by_type[ICMP6_redirect] = 255;
 
   clib_memset (cm->min_valid_length_by_type, sizeof (icmp46_header_t),
 	       sizeof (cm->min_valid_length_by_type));
+  cm->min_valid_length_by_type[ICMP6_redirect] =
+    sizeof (icmp6_redirect_header_t);
   cm->min_valid_length_by_type[ICMP6_router_solicitation] =
     sizeof (icmp6_neighbor_discovery_header_t);
   cm->min_valid_length_by_type[ICMP6_router_advertisement] =
@@ -810,13 +812,11 @@ icmp6_init (vlib_main_t * vm)
     sizeof (icmp6_neighbor_solicitation_or_advertisement_header_t);
   cm->min_valid_length_by_type[ICMP6_neighbor_advertisement] =
     sizeof (icmp6_neighbor_solicitation_or_advertisement_header_t);
-  cm->min_valid_length_by_type[ICMP6_redirect] =
-    sizeof (icmp6_redirect_header_t);
 
   icmp6_register_type (vm, ICMP6_echo_request,
 		       ip6_icmp_echo_request_node.index);
 
-  return vlib_call_init_function (vm, ip6_neighbor_init);
+  return (NULL);
 }
 
 VLIB_INIT_FUNCTION (icmp6_init);

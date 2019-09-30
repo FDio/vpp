@@ -15,8 +15,12 @@
  * limitations under the License.
  */
 
-#ifndef included_ip_neighbor_h
-#define included_ip_neighbor_h
+#ifndef __INCLUDE_IP_NEIGHBOR_TYPES_H__
+#define __INCLUDE_IP_NEIGHBOR_TYPES_H__
+
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ethernet/mac_address.h>
+#include <vnet/fib/fib_types.h>
 
 #define IP_SCAN_DISABLED	0
 #define IP_SCAN_V4_NEIGHBORS	(1 << 0)
@@ -33,28 +37,64 @@ typedef struct
   u8 stale_threshold;		/* Threashold in minutes to delete nei entry */
 } ip_neighbor_scan_arg_t;
 
-void ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg);
-
 typedef enum ip_neighbor_flags_t_
 {
   IP_NEIGHBOR_FLAG_NONE = 0,
   IP_NEIGHBOR_FLAG_STATIC = (1 << 0),
   IP_NEIGHBOR_FLAG_DYNAMIC = (1 << 1),
   IP_NEIGHBOR_FLAG_NO_FIB_ENTRY = (1 << 2),
+  IP_NEIGHBOR_FLAG_PENDING = (1 << 3),
 } __attribute__ ((packed)) ip_neighbor_flags_t;
 
+typedef struct ip_neighbor_watcher_t_
+{
+  u32 ipw_pid;
+  u32 ipw_client;
+} ip_neighbor_watcher_t;
+
+extern u8 *format_ip_neighbor_watcher (u8 * s, va_list * args);
+
+typedef ip_neighbor_watcher_t *ip_neighbor_watch_list_t;
+
+typedef struct ip_neighbor_key_t_
+{
+  ip46_address_t ipnk_ip;
+  ip46_type_t ipnk_type;
+  u32 ipnk_sw_if_index;
+} ip_neighbor_key_t;
+
+typedef struct ip_neighbor_t_
+{
+  ip_neighbor_key_t *ipn_key;
+  mac_address_t ipn_mac;
+  ip_neighbor_flags_t ipn_flags;
+
+  ip_neighbor_watch_list_t ipn_watchers;
+  f64 ipn_time_last_updated;
+  fib_node_index_t ipn_fib_entry_index;
+} ip_neighbor_t;
+
 extern u8 *format_ip_neighbor_flags (u8 * s, va_list * args);
+extern u8 *format_ip_neighbor_key (u8 * s, va_list * args);
+extern u8 *format_ip_neighbor (u8 * s, va_list * args);
 
-extern int ip_neighbor_add (const ip46_address_t * ip,
-			    ip46_type_t type,
-			    const mac_address_t * mac,
-			    u32 sw_if_index,
-			    ip_neighbor_flags_t flags, u32 * stats_index);
+extern ip_neighbor_t *ip_neighbor_get (index_t ipni);
 
-extern int ip_neighbor_del (const ip46_address_t * ip,
-			    ip46_type_t type, u32 sw_if_index);
+typedef struct ip_neighbor_learn_t_
+{
+  ip46_address_t ip;
+  ip46_type_t type;
+  mac_address_t mac;
+  u32 sw_if_index;
+} ip_neighbor_learn_t;
 
-#endif /* included_ip_neighbor_h */
+typedef struct ip_neighbor_event_t_
+{
+  ip_neighbor_watcher_t ipne_watch;
+  index_t ipne_index;
+} ip_neighbor_event_t;
+
+#endif /* __INCLUDE_IP_NEIGHBOR_H__ */
 
 /*
  * fd.io coding-style-patch-verification: ON

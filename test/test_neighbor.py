@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+import os
 from socket import AF_INET, AF_INET6, inet_pton
 
 from framework import VppTestCase, VppTestRunner
@@ -156,6 +157,24 @@ class ARPTestCase(VppTestCase):
         self.pg1.generate_remote_hosts(11)
 
         #
+        # watch for:
+        #  - all neighbour events
+        #  - all neighbor events on pg1
+        #  - neighbor events for host[1] on pg1
+        #
+        self.vapi.want_ip_neighbor_events(enable=1,
+                                          pid=os.getpid())
+        self.vapi.want_ip_neighbor_events(enable=1,
+                                          pid=os.getpid(),
+                                          sw_if_index=self.pg1.sw_if_index)
+        self.vapi.want_ip_neighbor_events(enable=1,
+                                          pid=os.getpid(),
+                                          sw_if_index=self.pg1.sw_if_index,
+                                          ip=self.pg1.remote_hosts[1].ip4)
+
+        self.logger.info(self.vapi.cli("sh ip neighbor-watcher"))
+
+        #
         # Send IP traffic to one of these unresolved hosts.
         #  expect the generation of an ARP request
         #
@@ -183,6 +202,14 @@ class ARPTestCase(VppTestCase):
                               self.pg1.remote_hosts[1].mac,
                               self.pg1.remote_hosts[1].ip4)
         dyn_arp.add_vpp_config()
+        self.assertTrue(dyn_arp.query_vpp_config())
+
+        # this matches all of the listnerers
+        es = [self.vapi.wait_for_event(1, "ip_neighbor_event")
+              for i in range(3)]
+        for e in es:
+            self.assertEqual(str(e.neighbor.ip_address),
+                             self.pg1.remote_hosts[1].ip4)
 
         #
         # now we expect IP traffic forwarded
@@ -214,6 +241,11 @@ class ARPTestCase(VppTestCase):
                                  self.pg1.remote_hosts[2].ip4,
                                  is_static=1)
         static_arp.add_vpp_config()
+        es = [self.vapi.wait_for_event(1, "ip_neighbor_event")
+              for i in range(2)]
+        for e in es:
+            self.assertEqual(str(e.neighbor.ip_address),
+                             self.pg1.remote_hosts[2].ip4)
 
         static_p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                     IP(src=self.pg0.remote_ip4,
@@ -232,6 +264,19 @@ class ARPTestCase(VppTestCase):
                        self.pg1.remote_hosts[2].mac,
                        self.pg0.remote_ip4,
                        self.pg1._remote_hosts[2].ip4)
+
+        #
+        # remove all the listeners
+        #
+        self.vapi.want_ip_neighbor_events(enable=0,
+                                          pid=os.getpid())
+        self.vapi.want_ip_neighbor_events(enable=0,
+                                          pid=os.getpid(),
+                                          sw_if_index=self.pg1.sw_if_index)
+        self.vapi.want_ip_neighbor_events(enable=0,
+                                          pid=os.getpid(),
+                                          sw_if_index=self.pg1.sw_if_index,
+                                          ip=self.pg1.remote_hosts[1].ip4)
 
         #
         # flap the link. dynamic ARPs get flush, statics don't
@@ -260,6 +305,8 @@ class ARPTestCase(VppTestCase):
                             self.pg1.local_ip4,
                             self.pg1._remote_hosts[1].ip4)
 
+        self.assertFalse(dyn_arp.query_vpp_config())
+        self.assertTrue(static_arp.query_vpp_config())
         #
         # Send an ARP request from one of the so-far unlearned remote hosts
         #
@@ -684,7 +731,6 @@ class ARPTestCase(VppTestCase):
         #
         # cleanup
         #
-        dyn_arp.remove_vpp_config()
         static_arp.remove_vpp_config()
         self.pg2.unset_unnumbered(self.pg1.sw_if_index)
 
@@ -1160,6 +1206,7 @@ class ARPTestCase(VppTestCase):
         # clean-up
         #
         self.pg2.unconfig_ip4()
+        static_arp.remove_vpp_config()
         self.pg2.set_table_ip4(0)
 
     def test_arp_incomplete(self):

@@ -67,75 +67,6 @@ typedef CLIB_PACKED (struct {
 }) ip6_address_fib_t;
 /* *INDENT-ON* */
 
-typedef enum
-{
-  IP46_TYPE_ANY,
-  IP46_TYPE_IP4,
-  IP46_TYPE_IP6
-} ip46_type_t;
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (union ip46_address_t_ {
-  struct {
-    u32 pad[3];
-    ip4_address_t ip4;
-  };
-  ip6_address_t ip6;
-  u8 as_u8[16];
-  u64 as_u64[2];
-}) ip46_address_t;
-/* *INDENT-ON* */
-#define ip46_address_is_ip4(ip46)	(((ip46)->pad[0] | (ip46)->pad[1] | (ip46)->pad[2]) == 0)
-#define ip46_address_mask_ip4(ip46)	((ip46)->pad[0] = (ip46)->pad[1] = (ip46)->pad[2] = 0)
-#define ip46_address_set_ip4(ip46, ip)	(ip46_address_mask_ip4(ip46), (ip46)->ip4 = (ip)[0])
-#define ip46_address_reset(ip46)	((ip46)->as_u64[0] = (ip46)->as_u64[1] = 0)
-#define ip46_address_cmp(ip46_1, ip46_2) (memcmp(ip46_1, ip46_2, sizeof(*ip46_1)))
-#define ip46_address_is_zero(ip46)	(((ip46)->as_u64[0] == 0) && ((ip46)->as_u64[1] == 0))
-#define ip46_address_is_equal(a1, a2)	(((a1)->as_u64[0] == (a2)->as_u64[0]) \
-                                         && ((a1)->as_u64[1] == (a2)->as_u64[1]))
-#define ip46_address_initializer {{{ 0 }}}
-
-static_always_inline int
-ip46_address_is_equal_v4 (const ip46_address_t * ip46,
-			  const ip4_address_t * ip4)
-{
-  return (ip46->ip4.as_u32 == ip4->as_u32);
-}
-
-static_always_inline int
-ip46_address_is_equal_v6 (const ip46_address_t * ip46,
-			  const ip6_address_t * ip6)
-{
-  return ((ip46->ip6.as_u64[0] == ip6->as_u64[0]) &&
-	  (ip46->ip6.as_u64[1] == ip6->as_u64[1]));
-}
-
-static_always_inline void
-ip46_address_copy (ip46_address_t * dst, const ip46_address_t * src)
-{
-  dst->as_u64[0] = src->as_u64[0];
-  dst->as_u64[1] = src->as_u64[1];
-}
-
-static_always_inline void
-ip46_address_set_ip6 (ip46_address_t * dst, const ip6_address_t * src)
-{
-  dst->as_u64[0] = src->as_u64[0];
-  dst->as_u64[1] = src->as_u64[1];
-}
-
-always_inline ip46_address_t
-to_ip46 (u32 is_ipv6, u8 * buf)
-{
-  ip46_address_t ip;
-  if (is_ipv6)
-    ip.ip6 = *((ip6_address_t *) buf);
-  else
-    ip46_address_set_ip4 (&ip, (ip4_address_t *) buf);
-  return ip;
-}
-
-
 always_inline void
 ip6_addr_fib_init (ip6_address_fib_t * addr_fib,
 		   const ip6_address_t * address, u32 fib_index)
@@ -187,13 +118,6 @@ always_inline uword
 ip6_address_is_multicast (const ip6_address_t * a)
 {
   return a->as_u8[0] == 0xff;
-}
-
-always_inline uword
-ip46_address_is_multicast (const ip46_address_t * a)
-{
-  return ip46_address_is_ip4 (a) ? ip4_address_is_multicast (&a->ip4) :
-    ip6_address_is_multicast (&a->ip6);
 }
 
 always_inline void

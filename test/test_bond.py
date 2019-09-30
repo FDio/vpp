@@ -82,7 +82,7 @@ class TestBondInterface(VppTestCase):
 
         self.logger.info(self.vapi.cli("show interface"))
         self.logger.info(self.vapi.cli("show interface address"))
-        self.logger.info(self.vapi.cli("show ip arp"))
+        self.logger.info(self.vapi.cli("show ip neighbors"))
 
         # enslave pg0 and pg1 to BondEthernet0
         self.logger.info("bond enslave interface pg0 to BondEthernet0")
@@ -117,9 +117,9 @@ class TestBondInterface(VppTestCase):
         # set up the static arp entries pointing to the BondEthernet0 interface
         # so that it does not try to resolve the ip address
         self.logger.info(self.vapi.cli(
-            "set ip arp static BondEthernet0 10.10.10.12 abcd.abcd.0002"))
+            "set ip neighbor static BondEthernet0 10.10.10.12 abcd.abcd.0002"))
         self.logger.info(self.vapi.cli(
-            "set ip arp static BondEthernet0 10.10.10.11 abcd.abcd.0004"))
+            "set ip neighbor static BondEthernet0 10.10.10.11 abcd.abcd.0004"))
 
         # clear the interface counters
         self.logger.info(self.vapi.cli("clear interfaces"))
