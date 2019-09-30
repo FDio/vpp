@@ -23,34 +23,9 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */
-#include <stn/stn_msg_enum.h>
-
-/* Get CRC codes of the messages defined outside of this plugin */
-#define vl_msg_name_crc_list
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-/* define message structures */
-#define vl_typedefs
-#include <vpp/api/vpe_all_api_h.h>
-#include <stn/stn_all_api_h.h>
-#undef vl_typedefs
-
-/* define message structures */
-#define vl_endianfun
-#include <stn/stn_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <stn/stn_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <stn/stn_all_api_h.h>
-#undef vl_api_version
+#include <vpp/api/vpe.api_types.h>
+#include <stn/stn.api_enum.h>
+#include <stn/stn.api_types.h>
 
 typedef struct
 {
@@ -62,12 +37,12 @@ typedef struct
 
 stn_test_main_t stn_test_main;
 
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_stn_api_reply_msg                       \
-_(STN_RULES_DETAILS, stn_rules_details)
+static int
+api_stn_add_del_rule (vat_main_t * vam)
+{
+  // Not yet implemented
+  return -99;
+}
 
 static int
 api_stn_rules_dump (vat_main_t * vam)
@@ -110,67 +85,7 @@ vl_api_stn_rules_details_t_handler (vl_api_stn_rules_details_t * mp)
 	   mp->ip_address, clib_net_to_host_u32 (mp->sw_if_index));
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_stn_api_msg 				\
-_(stn_rules_dump, "")					\
-
-static void
-stn_vat_api_hookup (vat_main_t * vam)
-{
-  stn_test_main_t *sm = &stn_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_stn_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_stn_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_stn_api_msg;
-#undef _
-}
-
-clib_error_t *
-vat_plugin_register (vat_main_t * vam)
-{
-  stn_test_main_t *sm = &stn_test_main;
-  u8 *name;
-
-  sm->vat_main = vam;
-
-  name = format (0, "stn_%08x%c", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-  vec_free (name);
-
-  if (sm->msg_id_base == (u16) ~ 0)
-    return clib_error_return (0, "stn plugin not loaded...");
-
-  /* Get the control ping ID */
-#define _(id,n,crc) \
-  const char *id ## _CRC __attribute__ ((unused)) = #n "_" #crc;
-  foreach_vl_msg_name_crc_vpe;
-#undef _
-  sm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
-
-  if (sm->msg_id_base != (u16) ~ 0)
-    stn_vat_api_hookup (vam);
-
-  return 0;
-}
+#include <stn/stn.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON
