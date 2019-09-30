@@ -20,7 +20,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip46_address.h>
 #include <vnet/ethernet/mac_address.h>
 
 typedef enum l2_bd_port_type_t_

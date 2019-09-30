@@ -18,6 +18,7 @@ option version = "2.2.2";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
+import "vnet/interface_types.api";
 
 /** \brief Reply to l2_xconnect_dump 
     @param context - sender context which was passed in the request
@@ -154,7 +155,7 @@ autoreply define want_l2_macs_events
   u32 learn_limit;
   u8  scan_delay;
   u8  max_macs_in_event;
-  u8  enable_disable;
+  bool enable_disable;
   u32 pid;
 };
 
@@ -596,6 +597,43 @@ autoreply define bvi_delete
   u32 client_index;
   u32 context;
   u32 sw_if_index;
+};
+
+/** \brief Register for IP4 ARP resolution event on receing ARP reply or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_l2_arp_term_events
+{
+  u32 client_index;
+  u32 context;
+  bool enable;
+  u32 pid;
+};
+
+/** \brief Tell client about an IP4 ARP resolution event or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param ip - IP address of new ARP term entry
+    @param sw_if_index - interface of new ARP term entry
+    @param mac - MAC address of new ARP term entry
+*/
+define l2_arp_term_event
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_address_t ip;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_mac_address_t mac;
+};
+
+service {
+  rpc want_l2_arp_term_events returns want_l2_arp_term_events_reply
+    events l2_arp_term_event;
 };
 
 /*

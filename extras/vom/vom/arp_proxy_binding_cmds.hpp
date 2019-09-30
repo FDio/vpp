@@ -19,7 +19,7 @@
 #include "vom/arp_proxy_binding.hpp"
 #include "vom/dump_cmd.hpp"
 
-#include <vapi/ip.api.vapi.hpp>
+#include <vapi/arp.api.vapi.hpp>
 
 namespace VOM {
 namespace arp_proxy_binding_cmds {
