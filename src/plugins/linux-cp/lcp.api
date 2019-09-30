@@ -1,0 +1,119 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Linux Control Plane API
+ *
+ * Copyright 2020 Rubicon Communications, LLC.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/interface_types.api";
+
+/** \brief Set the default Linux Control Plane namespace
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param namespace - the new default namespace; namespace[0] == 0 iff none
+*/
+autoreply define lcp_default_ns_set
+{
+  u32 client_index;
+  u32 context;
+  string namespace[32];		/* LCP_NS_LEN */
+};
+
+/** \brief get the default Linux Control Plane namespace
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lcp_default_ns_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief get the default Linux Control Plane namespace
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param namespace - the default namespace; namespace[0] == 0 iff none
+*/
+define lcp_default_ns_get_reply
+{
+  u32 context;
+  string namespace[32];		/* LCP_NS_LEN */
+};
+
+enum lcp_itf_host_type : u8
+{
+  LCP_API_ITF_HOST_TAP = 0,
+  LCP_API_ITF_HOST_TUN = 1,
+};
+
+/** \brief Add or delete a Linux Conrol Plane interface pair
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 0 if deleting, != 0 if adding
+    @param sw_if_index - index of VPP PHY SW interface
+    @param host_if_name - host tap interface name
+    @param host_if_type - the type of host interface to create (tun, tap)
+    @param namespace - optional tap namespace; namespace[0] == 0 iff none
+*/
+autoreply define lcp_itf_pair_add_del
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+  string host_if_name[16];		/* IFNAMSIZ */
+  vl_api_lcp_itf_host_type_t host_if_type;
+  string namespace[32];			/* LCP_NS_LEN */
+};
+
+/** \brief Dump Linux Control Plane interface pair data
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to use as filter (~0 == "all")
+*/
+define lcp_itf_pair_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Linux Control Plane interface pair dump response
+    @param context - sender context which was passed in the request
+    @param phy_sw_if_index - VPP's sw_if_index for the PHY
+    @param host_sw_if_index - VPP's sw_if_index for the host tap
+    @param vif_index - tap linux index
+    @param host_if_name - host interface name
+    @param host_if_type - host interface type (tun, tap)
+    @param namespace - host interface namespace
+*/
+define lcp_itf_pair_details
+{
+  u32 context;
+  vl_api_interface_index_t phy_sw_if_index;
+  vl_api_interface_index_t host_sw_if_index;
+  u32 vif_index;
+  string host_if_name[16];	/* IFNAMSIZ */
+  vl_api_lcp_itf_host_type_t host_if_type;
+  string namespace[32];		/* LCP_NS_LEN */
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
