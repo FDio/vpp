@@ -30,7 +30,7 @@ format_rdma_device_name (u8 * s, va_list * args)
   rdma_device_t *rd = vec_elt_at_index (rm->devices, i);
 
   if (rd->name)
-    return format (s, "%s", rd->name);
+    return format (s, "%v", rd->name);
 
   s = format (s, "rdma-%u", rd->dev_instance);
   return s;
@@ -59,7 +59,7 @@ format_rdma_device (u8 * s, va_list * args)
   rdma_device_t *rd = vec_elt_at_index (rm->devices, i);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "netdev: %s\n", rd->linux_ifname);
+  s = format (s, "netdev: %v\n", rd->linux_ifname);
   s = format (s, "%Uflags: %U", format_white_space, indent,
 	      format_rdma_device_flags, rd);
   if (rd->error)
