@@ -19,6 +19,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 
@@ -730,19 +731,16 @@ ip46_set_src_address (u32 sw_if_index, vlib_buffer_t * b0, int is_ip6)
   int res;
   if (is_ip6)
     {
-      ip6_main_t *im = &ip6_main;
       ip6_header_t *ip6 = vlib_buffer_get_current (b0);
-      res =
-	ip6_src_address_for_packet (&im->lookup_main, sw_if_index,
-				    &ip6->dst_address, &ip6->src_address);
+      res = ip6_src_address_for_packet (sw_if_index,
+					&ip6->dst_address, &ip6->src_address);
     }
   else
     {
       ip4_main_t *im = &ip4_main;
       ip4_header_t *ip4 = vlib_buffer_get_current (b0);
-      res =
-	ip4_src_address_for_packet (&im->lookup_main, sw_if_index,
-				    &ip4->src_address);
+      res = ip4_src_address_for_packet (&im->lookup_main,
+					sw_if_index, &ip4->src_address);
       /* IP4 and IP6 paths have the inverse logic. Harmonize. */
       res = !res;
     }

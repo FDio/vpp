@@ -149,6 +149,7 @@ mac_address_set_zero (mac_address_t * mac)
   mac->u.last_2 = 0;
 }
 
+extern void mac_address_increment (mac_address_t * mac);
 extern uword unformat_mac_address_t (unformat_input_t * input,
 				     va_list * args);
 extern u8 *format_mac_address_t (u8 * s, va_list * args);
