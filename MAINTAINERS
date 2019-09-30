@@ -110,7 +110,6 @@ VNET Ethernet
 I:	ethernet
 M:	Dave Barach <dave@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
-M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/ethernet/
 
 VNET Feature Arcs
@@ -131,6 +130,11 @@ VNET IPv4 and IPv6 LPM
 I:	ip
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/ip/
+
+VNET IP Neighbors
+I:	ip-neighbor
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/ip-neighbor
 
 VNET QoS
 I:	qos
@@ -279,6 +283,18 @@ I:	dhcp
 M:	Dave Barach <dave@barachs.net>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/dhcp/
+
+Plugin - ARP
+I:	arp
+M:	Dave Barach <dave@barachs.net>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/arp/
+
+Plugin - IP6 Neighbor Discovery
+I:	ip6-nd
+M:	Dave Barach <dave@barachs.net>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/ip6-nd/
 
 VNET GENEVE
 I:	geneve

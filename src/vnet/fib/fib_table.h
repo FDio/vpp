@@ -909,4 +909,12 @@ extern void fib_table_sub_tree_walk(u32 fib_index,
  */
 extern u8 *format_fib_table_memory(u8 *s, va_list *args);
 
+/**
+ * Debug function
+ */
+#ifdef CLIB_DEBUG
+extern void fib_table_assert_empty(const fib_table_t *fib_table);
+#endif
+
+
 #endif

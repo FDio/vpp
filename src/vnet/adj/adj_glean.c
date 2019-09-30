@@ -24,19 +24,19 @@
  */
 static adj_index_t *adj_gleans[FIB_PROTOCOL_MAX];
 
-static inline vlib_node_registration_t*
+static inline u32
 adj_get_glean_node (fib_protocol_t proto)
 {
     switch (proto) {
     case FIB_PROTOCOL_IP4:
-	return (&ip4_glean_node);
+	return (ip4_glean_node.index);
     case FIB_PROTOCOL_IP6:
-	return (&ip6_glean_node);
+	return (ip6_glean_node.index);
     case FIB_PROTOCOL_MPLS:
 	break;
     }
     ASSERT(0);
-    return (NULL);
+    return (~0);
 }
 
 /*
@@ -63,6 +63,7 @@ adj_glean_add_or_lock (fib_protocol_t proto,
 	adj->lookup_next_index = IP_LOOKUP_NEXT_GLEAN;
 	adj->ia_nh_proto = proto;
         adj->ia_link = linkt;
+        adj->ia_node_index = adj_get_glean_node(proto);
 	adj_gleans[proto][sw_if_index] = adj_get_index(adj);
 
 	if (NULL != nh_addr)
@@ -109,7 +110,7 @@ adj_glean_update_rewrite (adj_index_t adj_index)
     vnet_rewrite_for_sw_interface(vnet_get_main(),
                                   adj_fib_proto_2_nd(adj->ia_nh_proto),
                                   adj->rewrite_header.sw_if_index,
-                                  adj_get_glean_node(adj->ia_nh_proto)->index,
+                                  adj->ia_node_index,
                                   VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST,
                                   &adj->rewrite_header,
                                   sizeof (adj->rewrite_data));

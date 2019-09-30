@@ -32,6 +32,8 @@
 #define REPLY_MSG_ID_BASE mm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
+#include <vnet/ip-neighbor/ip_neighbor.h>
+
 mactime_main_t mactime_main;
 
 /** \file time-base src-mac filter device-input feature arc implementation
@@ -424,7 +426,12 @@ mactime_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (mactime_init);
+/* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (mactime_init) =
+{
+  .runs_after = VLIB_INITS("ip_neighbor_init"),
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 mactime_config (vlib_main_t * vm, unformat_input_t * input)
@@ -518,6 +525,16 @@ format_bytes_with_width (u8 * s, va_list * va)
   return s;
 }
 
+static walk_rc_t
+mactime_ip_neighbor_copy (index_t ipni, void *ctx)
+{
+  mactime_main_t *mm = ctx;
+
+  vec_add1 (mm->arp_cache_copy, ipni);
+
+  return (WALK_CONTINUE);
+}
+
 static clib_error_t *
 show_mactime_command_fn (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -532,17 +549,11 @@ show_mactime_command_fn (vlib_main_t * vm,
   int i, j;
   f64 now;
   vlib_counter_t allow, drop;
-  ethernet_arp_ip4_entry_t *n, *pool;
+  ip_neighbor_t *ipn;
 
   vec_reset_length (mm->arp_cache_copy);
-  pool = ip4_neighbors_pool ();
-
-  /* *INDENT-OFF* */
-  pool_foreach (n, pool,
-  ({
-    vec_add1 (mm->arp_cache_copy, n[0]);
-  }));
-  /* *INDENT-ON* */
+  /* Walk all ip4 neighbours on all interfaces */
+  ip_neighbor_walk (IP46_TYPE_IP4, ~0, mactime_ip_neighbor_copy, mm);
 
   now = clib_timebase_now (&mm->timebase);
 
@@ -659,11 +670,12 @@ show_mactime_command_fn (vlib_main_t * vm,
       /* This is really only good for small N... */
       for (j = 0; j < vec_len (mm->arp_cache_copy); j++)
 	{
-	  n = mm->arp_cache_copy + j;
-	  if (!memcmp (dp->mac_address, n->mac.bytes, sizeof (n->mac)))
+	  ipn = ip_neighbor_get (mm->arp_cache_copy[j]);
+	  if (!memcmp
+	      (dp->mac_address, ipn->ipn_mac.bytes, sizeof (ipn->ipn_mac)))
 	    {
-	      vlib_cli_output (vm, "%17s%U", " ", format_ip4_address,
-			       &n->ip4_address);
+	      vlib_cli_output (vm, "%17s%U", " ", format_ip46_address,
+			       ip_neighbor_get_ip (ipn), IP46_TYPE_IP4);
 	    }
 	}
     }

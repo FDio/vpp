@@ -96,7 +96,7 @@ class TestIpIrb(VppTestCase):
     def tearDown(self):
         """Run standard test teardown and log ``show l2patch``,
         ``show l2fib verbose``,``show bridge-domain <bd_id> detail``,
-        ``show ip arp``.
+        ``show ip neighbors``.
         """
         super(TestIpIrb, self).tearDown()
 
@@ -105,7 +105,7 @@ class TestIpIrb(VppTestCase):
         self.logger.info(self.vapi.cli("show l2fib verbose"))
         self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
                                        self.bd_id))
-        self.logger.info(self.vapi.cli("show ip arp"))
+        self.logger.info(self.vapi.cli("show ip neighbors"))
 
     def create_stream(self, src_ip_if, dst_ip_if, packet_sizes):
         pkts = []

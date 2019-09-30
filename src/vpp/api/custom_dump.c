@@ -19,7 +19,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/ip/ip_neighbor.h>
+#include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/unix/tuntap.h>
@@ -818,39 +818,6 @@ static void *vl_api_mpls_table_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_proxy_arp_add_del_t_print
-  (vl_api_proxy_arp_add_del_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: proxy_arp_add_del ");
-
-  s = format (s, "%U - %U ",
-	      format_vl_api_ip4_address, mp->proxy.low,
-	      format_vl_api_ip4_address, mp->proxy.hi);
-
-  s = format (s, "table %d ", (mp->proxy.table_id));
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_proxy_arp_intfc_enable_disable_t_print
-  (vl_api_proxy_arp_intfc_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: proxy_arp_intfc_enable_disable ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-
-  s = format (s, "enable %d ", mp->enable_disable);
-
-  FINISH;
-}
-
 static void *vl_api_mpls_tunnel_add_del_t_print
   (vl_api_mpls_tunnel_add_del_t * mp, void *handle)
 {
@@ -931,33 +898,6 @@ static void *vl_api_sw_interface_set_unnumbered_t_print
 
   FINISH;
 }
-
-static void *vl_api_ip_neighbor_add_del_t_print
-  (vl_api_ip_neighbor_add_del_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: ip_neighbor_add_del ");
-
-  s = format (s, "sw_if_index %d ", (mp->neighbor.sw_if_index));
-
-  if (IP_API_NEIGHBOR_FLAG_STATIC & (mp->neighbor.flags))
-    s = format (s, "is_static ");
-
-  if (IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY & (mp->neighbor.flags))
-    s = format (s, "is_no_fib_entry ");
-
-  s = format (s, "mac %U ", format_vl_api_mac_address,
-	      &mp->neighbor.mac_address);
-
-  s = format (s, "dst %U ", format_vl_api_address, &mp->neighbor.ip_address);
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
 
 static void *vl_api_create_vlan_subif_t_print
   (vl_api_create_vlan_subif_t * mp, void *handle)
@@ -1069,102 +1009,6 @@ static void *vl_api_set_ip_flow_hash_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_ip6nd_ra_prefix_t_print
-  (vl_api_sw_interface_ip6nd_ra_prefix_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_ip6nd_ra_prefix ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-
-  s = format (s, "%U ", format_vl_api_prefix, &mp->prefix);
-
-  s = format (s, "val_life %d ", (mp->val_lifetime));
-
-  s = format (s, "pref_life %d ", (mp->pref_lifetime));
-
-  if (mp->use_default)
-    s = format (s, "def ");
-
-  if (mp->no_advertise)
-    s = format (s, "noadv ");
-
-  if (mp->off_link)
-    s = format (s, "offl ");
-
-  if (mp->no_autoconfig)
-    s = format (s, "noauto ");
-
-  if (mp->no_onlink)
-    s = format (s, "nolink ");
-
-  if (mp->is_no)
-    s = format (s, "isno ");
-
-  FINISH;
-}
-
-static void *vl_api_sw_interface_ip6nd_ra_config_t_print
-  (vl_api_sw_interface_ip6nd_ra_config_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_ip6nd_ra_config ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-
-  s = format (s, "maxint %d ", (mp->max_interval));
-
-  s = format (s, "minint %d ", (mp->min_interval));
-
-  s = format (s, "life %d ", (mp->lifetime));
-
-  s = format (s, "count %d ", (mp->initial_count));
-
-  s = format (s, "interval %d ", (mp->initial_interval));
-
-  if (mp->suppress)
-    s = format (s, "suppress ");
-
-  if (mp->managed)
-    s = format (s, "managed ");
-
-  if (mp->other)
-    s = format (s, "other ");
-
-  if (mp->ll_option)
-    s = format (s, "ll ");
-
-  if (mp->send_unicast)
-    s = format (s, "send ");
-
-  if (mp->cease)
-    s = format (s, "cease ");
-
-  if (mp->is_no)
-    s = format (s, "isno ");
-
-  if (mp->default_router)
-    s = format (s, "def ");
-
-  FINISH;
-}
-
-static void *vl_api_set_arp_neighbor_limit_t_print
-  (vl_api_set_arp_neighbor_limit_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: set_arp_neighbor_limit ");
-
-  s = format (s, "arp_nbr_limit %d ", (mp->arp_neighbor_limit));
-
-  if (mp->is_ipv6 != 0)
-    s = format (s, "ipv6 ");
-
-  FINISH;
-}
 
 static void *vl_api_l2_patch_add_del_t_print
   (vl_api_l2_patch_add_del_t * mp, void *handle)
@@ -2070,76 +1914,6 @@ static void *vl_api_interface_name_renumber_t_print
   s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
   s = format (s, "new_show_dev_instance %d ", (mp->new_show_dev_instance));
-
-  FINISH;
-}
-
-static void *vl_api_ip_probe_neighbor_t_print
-  (vl_api_ip_probe_neighbor_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: ip_probe_neighbor ");
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-  s = format (s, "address %U ", format_vl_api_address, &mp->dst);
-
-  FINISH;
-}
-
-static void *vl_api_ip_scan_neighbor_enable_disable_t_print
-  (vl_api_ip_scan_neighbor_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: ip_scan_neighbor_enable_disable ");
-
-  switch (mp->mode)
-    {
-    case IP_SCAN_V4_NEIGHBORS:
-      s = format (s, "ip4 ");
-      break;
-    case IP_SCAN_V6_NEIGHBORS:
-      s = format (s, "ip6 ");
-      break;
-    case IP_SCAN_V46_NEIGHBORS:
-      s = format (s, "both ");
-      break;
-    default:
-      s = format (s, "disable ");
-    }
-
-  s = format (s, "interval %d ", mp->scan_interval);
-  s = format (s, "max-time %d ", mp->max_proc_time);
-  s = format (s, "max-update %d ", mp->max_update);
-  s = format (s, "delay %d ", mp->scan_int_delay);
-  s = format (s, "stale %d ", mp->stale_threshold);
-
-  FINISH;
-}
-
-static void *vl_api_want_ip4_arp_events_t_print
-  (vl_api_want_ip4_arp_events_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: want_ip4_arp_events ");
-  s = format (s, "pid %d address %U ", (mp->pid), format_ip4_address, mp->ip);
-  if (mp->enable_disable == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_want_ip6_nd_events_t_print
-  (vl_api_want_ip6_nd_events_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: want_ip6_nd_events ");
-  s = format (s, "pid %d address %U ", (mp->pid),
-	      format_vl_api_ip6_address, mp->ip);
-  if (mp->enable_disable == 0)
-    s = format (s, "del ");
 
   FINISH;
 }
@@ -3552,14 +3326,9 @@ static void *vl_api_tcp_configure_src_addresses_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: tcp_configure_src_addresses ");
-  if (mp->is_ipv6)
-    s = format (s, "%U - %U ",
-		format_ip6_address, (ip6_address_t *) mp->first_address,
-		format_ip6_address, (ip6_address_t *) mp->last_address);
-  else
-    s = format (s, "%U - %U ",
-		format_ip4_address, (ip4_address_t *) mp->first_address,
-		format_ip4_address, (ip4_address_t *) mp->last_address);
+  s = format (s, "%U - %U ",
+	      format_vl_api_address, &mp->first_address,
+	      format_vl_api_address, &mp->last_address);
 
   if (mp->vrf_id)
     s = format (s, "vrf %d ", (mp->vrf_id));
@@ -3728,20 +3497,14 @@ _(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
 _(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                               \
 _(MPLS_TABLE_ADD_DEL, mpls_table_add_del)                               \
 _(IP_ROUTE_ADD_DEL, ip_route_add_del)                                   \
-_(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
-_(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)		                \
 _(SR_MPLS_POLICY_ADD, sr_mpls_policy_add)		                \
 _(SR_MPLS_POLICY_DEL, sr_mpls_policy_del)		                \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)             \
-_(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
 _(CREATE_SUBIF, create_subif)                                           \
 _(RESET_FIB, reset_fib)                                                 \
 _(SET_IP_FLOW_HASH, set_ip_flow_hash)                                   \
-_(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
-_(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
-_(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)                       \
 _(L2_PATCH_ADD_DEL, l2_patch_add_del)                                   \
 _(SR_LOCALSID_ADD_DEL, sr_localsid_add_del)                             \
 _(SR_STEERING_ADD_DEL, sr_steering_add_del)                             \
@@ -3798,10 +3561,6 @@ _(VXLAN_GBP_TUNNEL_ADD_DEL, vxlan_gbp_tunnel_add_del) 			\
 _(VXLAN_GBP_TUNNEL_DUMP, vxlan_gbp_tunnel_dump)                         \
 _(SW_INTERFACE_SET_VXLAN_GBP_BYPASS, sw_interface_set_vxlan_gbp_bypass) \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
-_(IP_PROBE_NEIGHBOR, ip_probe_neighbor)                                 \
-_(IP_SCAN_NEIGHBOR_ENABLE_DISABLE, ip_scan_neighbor_enable_disable)     \
-_(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
-_(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(WANT_L2_MACS_EVENTS, want_l2_macs_events)                             \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
 _(IP_ADDRESS_DUMP, ip_address_dump)                                     \

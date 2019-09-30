@@ -453,13 +453,13 @@ unk_proto_st_walk (nat64_db_st_entry_t * ste, void *arg)
   ip46_address_t saddr, daddr;
   nat64_db_t *db = &nm->db[ctx->thread_index];
 
-  if (ip46_address_is_equal (&ste->in_r_addr, &ctx->dst_addr))
+  if (ip6_address_is_equal (&ste->in_r_addr, &ctx->dst_addr))
     {
       bibe = nat64_db_bib_entry_by_index (db, ste->proto, ste->bibe_index);
       if (!bibe)
 	return -1;
 
-      if (ip46_address_is_equal (&bibe->in_addr, &ctx->src_addr)
+      if (ip6_address_is_equal (&bibe->in_addr, &ctx->src_addr)
 	  && bibe->fib_index == ctx->fib_index)
 	{
 	  clib_memset (&saddr, 0, sizeof (saddr));

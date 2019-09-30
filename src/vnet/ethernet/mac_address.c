@@ -61,6 +61,16 @@ unformat_mac_address_t (unformat_input_t * input, va_list * args)
   return (0);
 }
 
+void
+mac_address_increment (mac_address_t * mac)
+{
+  u64 a;
+
+  a = mac_address_as_u64 (mac);
+  a++;
+  mac_address_from_u64 (mac, a);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
