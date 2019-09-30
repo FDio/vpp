@@ -1,0 +1,20 @@
+
+create packet-generator interface pg0
+create packet-generator interface pg1
+create packet-generator interface pg2
+create packet-generator interface pg3
+
+
+trace add pg-input 100
+
+packet-generator new {
+  name arp1
+  limit 1
+  rate 1e4
+  interface pg0
+  node ethernet-input
+  size 98-98
+  data { hex 0xffffffffffff001122334455080645006402b46b96000100096978676265000500bf436973636f20494f5320536f6674776172652c2040160011000000010101cc000400000000001a00100000000100000000ffffffff }
+}
+
+set term pager off
