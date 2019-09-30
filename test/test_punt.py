@@ -1051,7 +1051,6 @@ class TestPunt(VppTestCase):
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.unconfig_ip6()
-            i.ip6_disable()
             i.admin_down()
         super(TestPunt, self).tearDown()
 

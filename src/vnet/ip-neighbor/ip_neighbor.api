@@ -1,0 +1,167 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines vpp IP neighbor control-plane API messages which are generally
+    called through a shared memory interface. 
+*/
+
+option version = "1.0.0";
+
+import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
+
+/** \brief IP neighbor flags
+    @param is_static - A static neighbor Entry - there are not flushed
+                       If the interface goes down.
+    @param is_no_fib_entry - Do not create a corresponding entry in the FIB
+                           table for the neighbor.
+*/
+enum ip_neighbor_flags: u8
+{
+  IP_API_NEIGHBOR_FLAG_NONE = 0,
+  IP_API_NEIGHBOR_FLAG_STATIC = 0x1,
+  IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY = 0x2,
+};
+
+/** \brief IP neighbor
+    @param sw_if_index - interface used to reach neighbor
+    @param flags - flags for the nieghbor
+    @param mac_address - l2 address of the neighbor
+    @param ip_address - ip4 or ip6 address of the neighbor
+*/
+typedef ip_neighbor {
+  u32 sw_if_index;
+  vl_api_ip_neighbor_flags_t flags;
+  vl_api_mac_address_t mac_address;
+  vl_api_address_t ip_address;
+};
+
+/** \brief IP neighbor add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 to add neighbor, 0 to delete
+    @param neighbor - the neighor to add/remove
+*/
+define ip_neighbor_add_del
+{
+  u32 client_index;
+  u32 context;
+  /* 1 = add, 0 = delete */
+  bool is_add;
+  vl_api_ip_neighbor_t neighbor;
+};
+/** \brief IP neighbor add / del reply
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return value
+    @param stats_index - the index to use for this neighbor in the stats segement
+*/
+define ip_neighbor_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
+};
+
+/** \brief Dump IP neighboors
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface to dump neighboors, ~0 == all
+    @param af - address family is ipv[6|4]
+*/
+define ip_neighbor_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  vl_api_address_family_t af;
+};
+
+/** \brief IP neighboors dump response
+    @param context - sender context which was passed in the request
+    @param neighbour - the neighbor
+*/
+define ip_neighbor_details {
+  u32 context;
+  vl_api_ip_neighbor_t neighbor;
+};
+
+/** \brief Enable/disable periodic IP neighbor scan
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param af - Address family v4/v6
+    @param max_number - The maximum number of neighbours that will be created.
+                         default 50k
+    @param max_age - The maximum age (in seconds) before an inactive neighbour
+                     is flushed
+                         default 0 => never
+    @param recycle - If max_number of neighbours is reached and new ones need
+                      to be created should the oldest neighbour be 'recycled'.
+*/
+autoreply define ip_neighbor_config
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_family_t af;
+  u32 max_number;
+  u32 max_age;
+  bool recycle;
+};
+
+/** \brief Register for IP4 ARP resolution event on receing ARP reply or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+    @param ip - exact IP address of interested neighbor resolution event
+    @param sw_if_index - interface on which the IP address is present.
+*/
+autoreply define want_ip_neighbor_events
+{
+  u32 client_index;
+  u32 context;
+  bool enable;
+  u32 pid;
+  vl_api_address_t ip;
+  u32 sw_if_index;
+};
+
+/** \brief Tell client about an IP4 ARP resolution event or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param neighbor - new neighbor created
+*/
+define ip_neighbor_event
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_ip_neighbor_t neighbor;
+};
+
+service {
+  rpc want_ip_neighbor_events returns want_ip_neighbor_events_reply
+    events ip_neighbor_event;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -816,7 +816,7 @@ icmp6_init (vlib_main_t * vm)
   icmp6_register_type (vm, ICMP6_echo_request,
 		       ip6_icmp_echo_request_node.index);
 
-  return vlib_call_init_function (vm, ip6_neighbor_init);
+  return (NULL);
 }
 
 VLIB_INIT_FUNCTION (icmp6_init);

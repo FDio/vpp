@@ -152,7 +152,8 @@ _(KEY_LENGTH, -156, "invalid Key Length")                               \
 _(FIB_PATH_UNSUPPORTED_NH_PROTO, -157, "Unsupported FIB Path protocol") \
 _(API_ENDIAN_FAILED, -159, "Endian mismatch detected")			\
 _(NO_CHANGE, -160, "No change in table")				\
-_(MISSING_CERT_KEY, -161, "Missing certifcate or key")
+_(MISSING_CERT_KEY, -161, "Missing certifcate or key")                  \
+_(LIMIT_EXCEEDED, -162, "limit exceeded")
 
 typedef enum
 {

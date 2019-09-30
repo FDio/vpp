@@ -1,0 +1,284 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines vpp IP control-plane API messages which are generally
+    called through a shared memory interface.
+*/
+
+option version = "1.0.0";
+
+import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
+
+/** \brief Get the plugin version
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define ip6_nd_plugin_get_version
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the plugin version
+    @param context - returned sender context, to match reply w/ request
+    @param major - Incremented every time a known breaking behavior change is introduced
+    @param minor - Incremented with small changes, may be used to avoid buggy versions
+*/
+
+define ip6_nd_plugin_get_version_reply
+{
+  u32 context;
+  u32 major;
+  u32 minor;
+};
+
+/** \brief Control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ip6_nd_plugin_control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+define ip6_nd_plugin_control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
+/** \brief IPv6 router advertisement config request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param suppress -
+    @param managed -
+    @param other -
+    @param ll_option -
+    @param send_unicast -
+    @param cease -
+    @param is_no -
+    @param default_router -
+    @param max_interval -
+    @param min_interval -
+    @param lifetime -
+    @param initial_count -
+    @param initial_interval -
+*/
+autoreply define sw_interface_ip6nd_ra_config
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 suppress;
+  u8 managed;
+  u8 other;
+  u8 ll_option;
+  u8 send_unicast;
+  u8 cease;
+  u8 is_no;
+  u8 default_router;
+  u32 max_interval;
+  u32 min_interval;
+  u32 lifetime;
+  u32 initial_count;
+  u32 initial_interval;
+};
+
+/** \brief IPv6 router advertisement prefix config request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface the RA prefix information is for
+    @param prefix - The prefix to advertise
+    @param use_default - Revert to default settings
+    @param no_advertise - Do not advertise this prefix
+    @param off_link - The prefix is off link (it is not configured on the interface)
+                      Configures the L-flag, When set, indicates that this
+		      prefix can be used for on-link determination.
+    @param no_autoconfig - Setting for the A-flag. When
+                           set indicates that this prefix can be used for
+                          stateless address configuration.
+    @param no_onlink - The prefix is not on link. Make sure this is consistent
+                       with the off_link parameter else YMMV
+    @param is_no - add/delete
+    @param val_lifetime - The length of time in
+                     seconds (relative to the time the packet is sent)
+                     that the prefix is valid for the purpose of on-link
+                     determination.  A value of all one bits
+                     (0xffffffff) represents infinity
+    @param pref_lifetime - The length of time in
+                     seconds (relative to the time the packet is sent)
+                     that addresses generated from the prefix via
+                     stateless address autoconfiguration remain
+                     preferred [ADDRCONF].  A value of all one bits
+                     (0xffffffff) represents infinity.
+*/
+autoreply define sw_interface_ip6nd_ra_prefix
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  vl_api_prefix_t prefix;
+  u8 use_default;
+  u8 no_advertise;
+  u8 off_link;
+  u8 no_autoconfig;
+  u8 no_onlink;
+  u8 is_no;
+  u32 val_lifetime;
+  u32 pref_lifetime;
+};
+
+/** \brief IPv6 ND proxy config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface the host is on
+    @param ip - The address of the host for which to proxy for
+    @param is_add - Adding or deleting
+*/
+autoreply define ip6nd_proxy_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  bool is_add;
+  vl_api_ip6_address_t ip;
+};
+
+/** \brief IPv6 ND proxy details returned after request
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface the host is on
+    @param ip - The address of the host for which to proxy for
+*/
+define ip6nd_proxy_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_ip6_address_t ip;
+};
+
+/** \brief IPv6 ND proxy dump request
+    @param context - sender context, to match reply w/ request
+*/
+define ip6nd_proxy_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Start / stop sending router solicitation
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param irt - initial retransmission time
+    @param mrt - maximum retransmission time
+    @param mrc - maximum retransmission count
+    @param mrd - maximum retransmission duration
+    @param sw_if_index - software interface index of interface
+                         for sending router solicitation
+    @param stop - if non-zero then stop sending router solicitation,
+                  otherwise start sending router solicitation
+*/
+autoreply define ip6nd_send_router_solicitation
+{
+  u32 client_index;
+  u32 context;
+  u32 irt;
+  u32 mrt;
+  u32 mrc;
+  u32 mrd;
+  u32 sw_if_index;
+  bool stop;
+};
+
+service {
+  rpc want_ip6_ra_events returns want_ip6_ra_events_reply
+    events ip6_ra_event;
+};
+
+/** \brief Register for ip6 router advertisement events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_ip6_ra_events
+{
+  u32 client_index;
+  u32 context;
+  bool enable;
+  u32 pid;
+};
+
+/** \brief Struct representing RA prefix info
+    @param prefix - RA prefix info destination address
+    @param flags - RA prefix info flags
+    @param valid_time - RA prefix info valid time
+    @param preferred_time - RA prefix info preferred time
+*/
+typedef ip6_ra_prefix_info
+{
+  vl_api_prefix_t prefix;
+  u8 flags;
+  u32 valid_time;
+  u32 preferred_time;
+};
+
+/** \brief Tell client about a router advertisement event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param current_hop_limit - RA current hop limit
+    @param flags - RA flags
+    @param router_lifetime_in_sec - RA lifetime in seconds
+    @param router_addr - The router's address
+    @param neighbor_reachable_time_in_msec - RA neighbor reachable time in msec
+    @param time_in_msec_between_retransmitted_neighbor_solicitations -
+               time in msec between retransmitted neighbor solicitations
+    @param n_prefixes -
+    @param prefixes -
+*/
+define ip6_ra_event
+{
+  u32 client_index;
+  u32 pid;
+  u32 sw_if_index;
+  vl_api_ip6_address_t router_addr;
+  u8 current_hop_limit;
+  u8 flags;
+  u16 router_lifetime_in_sec;
+  u32 neighbor_reachable_time_in_msec;
+  u32 time_in_msec_between_retransmitted_neighbor_solicitations;
+  u32 n_prefixes;
+  vl_api_ip6_ra_prefix_info_t prefixes[n_prefixes];
+};
+
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
