@@ -138,6 +138,7 @@ class TestIPv6ND(VppTestCase):
 
     def send_and_expect_ns(self, tx_intf, rx_intf, pkts, tgt_ip,
                            filter_out_fn=is_ipv6_misc):
+        self.vapi.cli("clear trace")
         tx_intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -222,7 +223,6 @@ class TestIPv6(TestIPv6ND):
         """Run standard test teardown and log ``show ip6 neighbors``."""
         for i in self.interfaces:
             i.unconfig_ip6()
-            i.ip6_disable()
             i.admin_down()
         for i in self.sub_interfaces:
             i.remove_vpp_config()
@@ -578,9 +578,12 @@ class TestIPv6(TestIPv6ND):
                        self.pg0.remote_ip6,
                        self.pg1.remote_hosts[1].ip6)
 
-    def validate_ra(self, intf, rx, dst_ip=None, mtu=9000, pi_opt=None):
+    def validate_ra(self, intf, rx, dst_ip=None, src_ip=None,
+                    mtu=9000, pi_opt=None):
         if not dst_ip:
             dst_ip = intf.remote_ip6
+        if not src_ip:
+            src_ip = mk_ll_addr(intf.local_mac)
 
         # unicasted packets must come to the unicast mac
         self.assertEqual(rx[Ether].dst, intf.remote_mac)
@@ -595,8 +598,7 @@ class TestIPv6(TestIPv6ND):
 
         # and come from the router's link local
         self.assertTrue(in6_islladdr(rx[IPv6].src))
-        self.assertEqual(in6_ptop(rx[IPv6].src),
-                         in6_ptop(mk_ll_addr(intf.local_mac)))
+        self.assertEqual(in6_ptop(rx[IPv6].src), in6_ptop(src_ip))
 
         # it should contain the links MTU
         ra = rx[ICMPv6ND_RA]
@@ -635,7 +637,9 @@ class TestIPv6(TestIPv6ND):
 
     def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
                            filter_out_fn=is_ipv6_misc,
-                           opt=None):
+                           opt=None,
+                           src_ip=None):
+        self.vapi.cli("clear trace")
         intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -643,7 +647,7 @@ class TestIPv6(TestIPv6ND):
 
         self.assertEqual(len(rx), 1)
         rx = rx[0]
-        self.validate_ra(intf, rx, dst_ip, pi_opt=opt)
+        self.validate_ra(intf, rx, dst_ip, src_ip=src_ip, pi_opt=opt)
 
     def test_rs(self):
         """ IPv6 Router Solicitation Exceptions
@@ -666,8 +670,7 @@ class TestIPv6(TestIPv6ND):
         #  - expect an RA in return
         #
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(
-                 dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
+             IPv6(dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
              ICMPv6ND_RS())
         pkts = [p]
         self.send_and_expect_ra(self.pg0, pkts, "Genuine RS")
@@ -925,10 +928,18 @@ class TestIPv6(TestIPv6ND):
                                self.pg1.local_ip6_prefix_len),
                                is_no=1)
 
+        #
+        # change the link's link local, so we know that works too.
+        #
+        self.vapi.sw_interface_ip6_set_link_local_address(
+            sw_if_index=self.pg0.sw_if_index,
+            ip="fe80::88")
+
         self.pg0.ip6_ra_config(send_unicast=1)
         self.send_and_expect_ra(self.pg0, p,
                                 "RA with Prefix reverted to defaults",
-                                dst_ip=ll)
+                                dst_ip=ll,
+                                src_ip="fe80::88")
 
         #
         # Reset the periodic advertisements back to default values
@@ -1036,7 +1047,6 @@ class TestICMPv6Echo(VppTestCase):
         super(TestICMPv6Echo, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip6()
-            i.ip6_disable()
             i.admin_down()
 
     def test_icmpv6_echo(self):

@@ -18,6 +18,7 @@
 #ifndef included_ethernet_arp_packet_h
 #define included_ethernet_arp_packet_h
 
+#include <vnet/ip/ip4_packet.h>
 #include <vnet/ethernet/mac_address.h>
 
 #define foreach_ethernet_arp_hardware_type	\
@@ -145,9 +146,9 @@ typedef struct
   };
 } ethernet_arp_header_t;
 
-void send_ip4_garp (vlib_main_t * vm, u32 sw_if_index);
-void send_ip4_garp_w_addr (vlib_main_t * vm,
-			   const ip4_address_t * ip4_addr, u32 sw_if_index);
+extern u8 *format_ethernet_arp_header (u8 * s, va_list * va);
+extern u8 *format_ethernet_arp_opcode (u8 * s, va_list * va);
+extern u8 *format_ethernet_arp_hardware_type (u8 * s, va_list * va);
 
 #endif /* included_ethernet_arp_packet_h */
 

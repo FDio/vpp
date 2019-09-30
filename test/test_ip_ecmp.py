@@ -75,7 +75,7 @@ class TestECMP(VppTestCase):
         super(TestECMP, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show ip arp"))
+        self.logger.info(self.vapi.ppcli("show ip4 neighbors"))
         self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
 
     def get_ip_address(self, ip_addr_start, ip_prefix_len):
