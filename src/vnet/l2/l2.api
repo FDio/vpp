@@ -598,6 +598,43 @@ autoreply define bvi_delete
   u32 sw_if_index;
 };
 
+/** \brief Register for IP4 ARP resolution event on receing ARP reply or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+    @param ip - exact IP address of interested neighbor resolution event
+    @param sw_if_index - interface on which the IP address is present.
+*/
+autoreply define want_l2_arp_term_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable;
+  u32 pid;
+};
+
+/** \brief Tell client about an IP4 ARP resolution event or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param neighbor - new neighbor created
+*/
+define l2_arp_term_event
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_address_t ip;
+  u32 sw_if_index;
+  vl_api_mac_address_t mac;
+};
+
+service {
+  rpc want_l2_arp_term_events returns want_l2_arp_term_events_reply
+    events l2_arp_term_event;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

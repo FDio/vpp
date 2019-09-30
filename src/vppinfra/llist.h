@@ -218,6 +218,22 @@ do {									\
   clib_llist_remove (LP,name,E);					\
 } while (0)
 /**
+ * Removes and returns the last element in the list.
+ *
+ * The element is not freed. It's the responsability of the caller to
+ * free it.
+ *
+ * @param LP	linked list pool
+ * @param name	list anchor name
+ * @param E	storage the first entry
+ * @param H	list head entry
+ */
+#define clib_llist_pop_last(LP,name,E,H)				\
+do {									\
+  E = clib_llist_prev (LP,name,H);					\
+  clib_llist_remove (LP,name,E);					\
+} while (0)
+/**
  * Splice two lists at a given position
  *
  * List spliced into destination list is left with 0 entries, i.e., head

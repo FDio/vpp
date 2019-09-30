@@ -16,6 +16,8 @@
 #include "vom/neighbour_cmds.hpp"
 #include "vom/api_types.hpp"
 
+DEFINE_VAPI_MSG_IDS_IP_NEIGHBOR_API_JSON;
+
 namespace VOM {
 namespace neighbour_cmds {
 create_cmd::create_cmd(HW::item<handle_t>& item,
@@ -144,7 +146,7 @@ dump_cmd::issue(connection& con)
 
   auto& payload = m_dump->get_request().get_payload();
   payload.sw_if_index = m_itf.value();
-  payload.is_ipv6 = m_proto.is_ipv6();
+  payload.af = to_api(m_proto);
 
   VAPI_CALL(m_dump->execute());
 

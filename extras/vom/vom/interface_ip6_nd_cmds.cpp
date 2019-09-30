@@ -15,7 +15,7 @@
 
 #include "vom/interface_ip6_nd.hpp"
 
-#include <vapi/vpe.api.vapi.hpp>
+#include <vapi/ip6_nd.api.vapi.hpp>
 
 namespace VOM {
 template <>

@@ -16,6 +16,8 @@
 #include "vom/arp_proxy_config_cmds.hpp"
 #include "vom/api_types.hpp"
 
+DEFINE_VAPI_MSG_IDS_ARP_API_JSON;
+
 namespace VOM {
 namespace arp_proxy_config_cmds {
 
