@@ -543,6 +543,10 @@ I:	ct6
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/ct6
 
+Steal The NIC
+I:	stn
+F:	src/plugins/stn
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
