@@ -24,28 +24,10 @@
 #include <vpp/app/version.h>
 
 /* define message IDs */
-#include <mactime/mactime_msg_enum.h>
+#include <mactime/mactime.api_enum.h>
+#include <mactime/mactime.api_types.h>
 
-/* define message structures */
-#define vl_typedefs
-#include <mactime/mactime_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <mactime/mactime_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <mactime/mactime_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <mactime/mactime_all_api_h.h>
-#undef vl_api_version
 
 #define REPLY_MSG_ID_BASE mm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -54,12 +36,6 @@ mactime_main_t mactime_main;
 
 /** \file time-base src-mac filter device-input feature arc implementation
  */
-
-/* List of message types that this plugin understands */
-
-#define foreach_mactime_plugin_api_msg                  \
-_(MACTIME_ENABLE_DISABLE, mactime_enable_disable)       \
-_(MACTIME_ADD_DEL_RANGE, mactime_add_del_range)
 
 static void
 feature_init (mactime_main_t * mm)
@@ -343,64 +319,22 @@ reply:
   REPLY_MACRO (VL_API_MACTIME_ADD_DEL_RANGE_REPLY);
 }
 
-/* Set up the API message handling tables */
-static clib_error_t *
-mactime_plugin_api_hookup (vlib_main_t * vm)
-{
-  mactime_main_t *mm = &mactime_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + mm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_mactime_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <mactime/mactime_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (mactime_main_t * mm, api_main_t * am)
-{
-#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + mm->msg_id_base);
-  foreach_vl_msg_name_crc_mactime;
-#undef _
-}
-
+#include <mactime/mactime.api.c>
 static clib_error_t *
 mactime_init (vlib_main_t * vm)
 {
   mactime_main_t *mm = &mactime_main;
-  clib_error_t *error = 0;
-  u8 *name;
 
   mm->vlib_main = vm;
   mm->vnet_main = vnet_get_main ();
 
-  name = format (0, "mactime_%08x%c", api_version, 0);
-
   /* Ask for a correctly-sized block of API message decode slots */
-  mm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-  error = mactime_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (mm, &api_main);
-
-  vec_free (name);
+  mm->msg_id_base = setup_message_id_table ();
 
   mm->lookup_table_num_buckets = MACTIME_NUM_BUCKETS;
   mm->lookup_table_memory_size = MACTIME_MEMORY_SIZE;
   mm->timezone_offset = -5;	/* US EST / EDT */
-  return error;
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (mactime_init);
