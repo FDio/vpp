@@ -31,7 +31,8 @@ ADD=$(echo ${vstring} | cut -s -d- -f2)
 
 git rev-parse 2> /dev/null
 if [ $? == 0 ]; then
-    CMT=$(git describe --dirty --match 'v*'| cut -s -d- -f3,4)
+    # replace dirty to X to keep string shorter
+    CMT=$(git describe --dirty --match 'v*'| cut -s -d- -f3,4 | sed -e 's/dirty/X/g')
 else
     CMT=$(echo ${vstring} | cut -s -d- -f3,4)
 fi
