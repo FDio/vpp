@@ -56,6 +56,13 @@ extern void ip4_mfib_table_entry_insert(ip4_mfib_t *fib,
 extern void ip4_mfib_table_destroy(ip4_mfib_t *fib);
 
 /**
+ * @brief
+ *  Add/remove the interface from the accepting list of the special MFIB entries
+ */
+extern void ip4_mfib_interface_enable_disable(u32 sw_if_index,
+                                              int is_enable);
+
+/**
  * @brief Get the FIB at the given index
  */
 static inline ip4_mfib_t *
