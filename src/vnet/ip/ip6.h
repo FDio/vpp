@@ -44,6 +44,7 @@
 #include <vnet/ethernet/packet.h>
 #include <vnet/ethernet/mac_address.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip46_address.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
 #include <stdbool.h>
@@ -217,9 +218,6 @@ typedef struct ip6_main_t
   /** Functions to call when interface to table biding changes. */
   ip6_table_bind_callback_t *table_bind_callbacks;
 
-  /* Template used to generate IP6 neighbor solicitation packets. */
-  vlib_packet_template_t discover_neighbor_packet_template;
-
   /* ip6 lookup table config parameters */
   u32 lookup_table_nbuckets;
   uword lookup_table_size;
@@ -302,42 +300,10 @@ ip6_unaligned_destination_matches_route (ip6_main_t * im,
   return 1;
 }
 
-extern int ip6_get_ll_address (u32 sw_if_index, ip6_address_t * addr);
-
-always_inline int
-ip6_src_address_for_packet (ip_lookup_main_t * lm,
-			    u32 sw_if_index,
-			    const ip6_address_t * dst, ip6_address_t * src)
-{
-  if (ip6_address_is_link_local_unicast (dst))
-    {
-      return ip6_get_ll_address (sw_if_index, src);
-    }
-  else
-    {
-      u32 if_add_index =
-	lm->if_address_pool_index_by_sw_if_index[sw_if_index];
-      if (PREDICT_TRUE (if_add_index != ~0))
-	{
-	  ip_interface_address_t *if_add =
-	    pool_elt_at_index (lm->if_address_pool, if_add_index);
-	  ip6_address_t *if_ip =
-	    ip_interface_address_get_address (lm, if_add);
-	  *src = *if_ip;
-	  return (!0);
-	}
-    }
-
-  src->as_u64[0] = 0;
-  src->as_u64[1] = 0;
-
-  return (0);
-}
-
 /* Find interface address which matches destination. */
 always_inline ip6_address_t *
 ip6_interface_address_matching_destination (ip6_main_t * im,
-					    ip6_address_t * dst,
+					    const ip6_address_t * dst,
 					    u32 sw_if_index,
 					    ip_interface_address_t **
 					    result_ia)
@@ -376,9 +342,6 @@ ip6_address_t *ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index);
 
 int ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2);
 
-clib_error_t *ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst,
-				  u32 sw_if_index, u8 refresh);
-
 uword
 ip6_udp_register_listener (vlib_main_t * vm,
 			   u16 dst_port, u32 next_node_index);
@@ -393,73 +356,8 @@ void ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index);
 
 serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 
-void ip6_ethernet_update_adjacency (vnet_main_t * vnm,
-				    u32 sw_if_index, u32 ai);
-
-always_inline void
-ip6_link_local_address_from_ethernet_mac_address (ip6_address_t * ip,
-						  u8 * mac)
-{
-  ip->as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
-  /* Invert the "u" bit */
-  ip->as_u8[8] = mac[0] ^ (1 << 1);
-  ip->as_u8[9] = mac[1];
-  ip->as_u8[10] = mac[2];
-  ip->as_u8[11] = 0xFF;
-  ip->as_u8[12] = 0xFE;
-  ip->as_u8[13] = mac[3];
-  ip->as_u8[14] = mac[4];
-  ip->as_u8[15] = mac[5];
-}
-
-always_inline void
-ip6_ethernet_mac_address_from_link_local_address (u8 * mac,
-						  ip6_address_t * ip)
-{
-  /* Invert the previously inverted "u" bit */
-  mac[0] = ip->as_u8[8] ^ (1 << 1);
-  mac[1] = ip->as_u8[9];
-  mac[2] = ip->as_u8[10];
-  mac[3] = ip->as_u8[13];
-  mac[4] = ip->as_u8[14];
-  mac[5] = ip->as_u8[15];
-}
-
 int vnet_set_ip6_flow_hash (u32 table_id,
 			    flow_hash_config_t flow_hash_config);
-
-clib_error_t *enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index);
-
-clib_error_t *disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index);
-
-int ip6_interface_enabled (vlib_main_t * vm, u32 sw_if_index);
-
-clib_error_t *set_ip6_link_local_address (vlib_main_t * vm,
-					  u32 sw_if_index,
-					  ip6_address_t * address);
-
-typedef int (*ip6_nd_change_event_cb_t) (u32 pool_index,
-					 const mac_address_t * new_mac,
-					 u32 sw_if_index,
-					 const ip6_address_t * address);
-
-int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
-				      ip6_nd_change_event_cb_t data_callback,
-				      u32 pid,
-				      void *address_arg,
-				      uword node_index,
-				      uword type_opaque,
-				      uword data, int is_add);
-
-int vnet_ip6_nd_term (vlib_main_t * vm,
-		      vlib_node_runtime_t * node,
-		      vlib_buffer_t * p0,
-		      ethernet_header_t * eth,
-		      ip6_header_t * ip, u32 sw_if_index, u16 bd_index);
-
-void send_ip6_na (vlib_main_t * vm, u32 sw_if_index);
-void send_ip6_na_w_addr (vlib_main_t * vm,
-			 const ip6_address_t * addr, u32 sw_if_index);
 
 u8 *format_ip6_forward_next_trace (u8 * s, va_list * args);
 

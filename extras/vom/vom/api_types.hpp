@@ -19,6 +19,7 @@
 #include <vom/types.hpp>
 
 #include <vapi/ip.api.vapi.hpp>
+#include <vapi/ip_neighbor.api.vapi.hpp>
 
 namespace VOM {
 
@@ -40,6 +41,7 @@ void to_api(const boost::asio::ip::address& a,
             vapi_union_address_union& u,
             vapi_enum_address_family& af);
 void to_api(const boost::asio::ip::address& a, vapi_union_address_union& u);
+vapi_enum_address_family to_api(const l3_proto_t p);
 
 boost::asio::ip::address_v4 from_api(const vapi_type_ip4_address& v);
 boost::asio::ip::address_v6 from_api(const vapi_type_ip6_address& v);

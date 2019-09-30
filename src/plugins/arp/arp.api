@@ -1,0 +1,122 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines the vpp control-plane API messages
+    used to control the ABF plugin
+*/
+
+option version = "1.0.0";
+
+import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/interface_types.api";
+
+/** \brief Get the plugin version
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define arp_plugin_get_version
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the plugin version
+    @param context - returned sender context, to match reply w/ request
+    @param major - Incremented every time a known breaking behavior change is introduced
+    @param minor - Incremented with small changes, may be used to avoid buggy versions
+*/
+define arp_plugin_get_version_reply
+{
+  u32 context;
+  u32 major;
+  u32 minor;
+};
+
+/** \brief Proxy ARP configuration type
+    @param table_id - VRF / Fib table ID
+    @param low - Low address of the Proxy ARP range
+    @param hi - High address of the Proxy ARP range
+*/
+typedef proxy_arp
+{
+  u32 table_id;
+  vl_api_ip4_address_t low;
+  vl_api_ip4_address_t hi;
+};
+
+/** \brief Proxy ARP add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if adding the Proxy ARP range, 0 if deleting
+    @param proxy - Proxy configuration
+*/
+autoreply define proxy_arp_add_del
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_proxy_arp_t proxy;
+};
+
+/** \brief Proxy ARP dump request
+ */
+define proxy_arp_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Proxy ARP dump details reply
+ * @param proxy - Same data as used to configure
+ */
+define proxy_arp_details
+{
+  u32 context;
+  vl_api_proxy_arp_t proxy;
+};
+
+/** \brief Proxy ARP add / del interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - Which interface to enable / disable Proxy Arp on
+    @param enable - 1 to enable Proxy ARP on interface, 0 to disable
+*/
+autoreply define proxy_arp_intfc_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool enable;
+};
+
+/** \brief Proxy ARP interface dump request
+ */
+define proxy_arp_intfc_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Proxy ARP interface dump details reply
+ * @param sw_if_index The interface on which ARP proxy is enabled.
+ */
+define proxy_arp_intfc_details
+{
+  u32 context;
+  u32 sw_if_index;
+};
