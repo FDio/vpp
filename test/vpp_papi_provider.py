@@ -437,23 +437,6 @@ class VppPapiProvider(object):
                          'n_prefixes': len(prefixes),
                          'prefixes': prefixes})
 
-    def dhcp6_pd_client_enable_disable(self, sw_if_index, prefix_group='',
-                                       enable=1):
-        return self.api(self.papi.dhcp6_pd_client_enable_disable,
-                        {'sw_if_index': sw_if_index,
-                         'prefix_group': prefix_group,
-                         'enable': enable})
-
-    def ip6_add_del_address_using_prefix(self, sw_if_index, address,
-                                         prefix_length, prefix_group,
-                                         is_add=1):
-        return self.api(self.papi.ip6_add_del_address_using_prefix,
-                        {'sw_if_index': sw_if_index,
-                         'prefix_group': prefix_group,
-                         'address': address,
-                         'prefix_length': prefix_length,
-                         'is_add': is_add})
-
     def sw_interface_set_mac_address(self, sw_if_index, mac):
         return self.api(self.papi.sw_interface_set_mac_address,
                         {'sw_if_index': sw_if_index,
