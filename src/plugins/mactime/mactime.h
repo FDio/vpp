@@ -21,7 +21,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/arp.h>
+//#include <vnet/ethernet/arp.h>
 #include <vlib/counter.h>
 
 #include <vppinfra/hash.h>
@@ -71,7 +71,7 @@ typedef struct
   int feature_initialized;
 
   /* arp cache copy, for "show mactime" */
-  ethernet_arp_ip4_entry_t *arp_cache_copy;
+  index_t *arp_cache_copy;
 
   /* convenience */
   vlib_main_t *vlib_main;

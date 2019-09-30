@@ -1297,12 +1297,6 @@ class TestDHCP(VppTestCase):
         self.assertTrue(find_route(self, self.pg3.local_ip4, 24))
         self.assertTrue(find_route(self, self.pg3.local_ip4, 32))
 
-        # remove the left over ARP entry
-        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      self.pg3.remote_mac,
-                                      self.pg3.remote_ip4,
-                                      is_add=0)
-
         #
         # remove the DHCP config
         #

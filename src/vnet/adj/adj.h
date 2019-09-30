@@ -326,6 +326,10 @@ typedef struct ip_adjacency_t_
    */
   struct adj_delegate_t_ *ia_delegates;
 
+  /**
+   * The VLIB node in which this adj is used to forward packets
+   */
+  u32 ia_node_index;
 } ip_adjacency_t;
 
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),

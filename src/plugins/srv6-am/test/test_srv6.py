@@ -116,7 +116,7 @@ class TestSRv6(VppTestCase):
         if any(ipv6):
             self.logger.debug(self.vapi.cli("show ip6 neighbors"))
         if any(ipv4):
-            self.logger.debug(self.vapi.cli("show ip arp"))
+            self.logger.debug(self.vapi.cli("show ip4 neighbors"))
         self.logger.debug(self.vapi.cli("show interface"))
         self.logger.debug(self.vapi.cli("show hardware"))
 

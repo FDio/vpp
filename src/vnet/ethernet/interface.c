@@ -41,10 +41,12 @@
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/arp.h>
+//#include <vnet/ethernet/arp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_bd.h>
 #include <vnet/adj/adj.h>
+#include <vnet/adj/adj_mcast.h>
+#include <vnet/ip-neighbor/ip_neighbor.h>
 
 /**
  * @file
@@ -53,7 +55,7 @@
  * This file contains code to manage loopback interfaces.
  */
 
-const u8 *
+static const u8 *
 ethernet_ip4_mcast_dst_addr (void)
 {
   const static u8 ethernet_mcast_dst_mac[] = {
@@ -63,7 +65,7 @@ ethernet_ip4_mcast_dst_addr (void)
   return (ethernet_mcast_dst_mac);
 }
 
-const u8 *
+static const u8 *
 ethernet_ip6_mcast_dst_addr (void)
 {
   const static u8 ethernet_mcast_dst_mac[] = {
@@ -195,27 +197,74 @@ ethernet_build_rewrite (vnet_main_t * vnm,
 void
 ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 {
-  ip_adjacency_t *adj;
-
-  adj = adj_get (ai);
-
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+
   if ((si->type == VNET_SW_INTERFACE_TYPE_P2P) ||
       (si->type == VNET_SW_INTERFACE_TYPE_PIPE))
     {
       default_update_adjacency (vnm, sw_if_index, ai);
     }
-  else if (FIB_PROTOCOL_IP4 == adj->ia_nh_proto)
-    {
-      arp_update_adjacency (vnm, sw_if_index, ai);
-    }
-  else if (FIB_PROTOCOL_IP6 == adj->ia_nh_proto)
-    {
-      ip6_ethernet_update_adjacency (vnm, sw_if_index, ai);
-    }
   else
     {
-      ASSERT (0);
+      ip_adjacency_t *adj;
+
+      adj = adj_get (ai);
+
+      switch (adj->lookup_next_index)
+	{
+	case IP_LOOKUP_NEXT_GLEAN:
+	  adj_glean_update_rewrite (ai);
+	  break;
+	case IP_LOOKUP_NEXT_ARP:
+	  ip_neighbor_update (vnm, ai);
+	  break;
+	case IP_LOOKUP_NEXT_BCAST:
+	  adj_nbr_update_rewrite (ai,
+				  ADJ_NBR_REWRITE_FLAG_COMPLETE,
+				  ethernet_build_rewrite
+				  (vnm,
+				   adj->rewrite_header.sw_if_index,
+				   adj->ia_link,
+				   VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
+	  break;
+	case IP_LOOKUP_NEXT_MCAST:
+	  {
+	    /*
+	     * Construct a partial rewrite from the known ethernet mcast dest MAC
+	     */
+	    u8 *rewrite;
+	    u8 offset;
+
+	    rewrite = ethernet_build_rewrite
+	      (vnm,
+	       sw_if_index,
+	       adj->ia_link,
+	       (adj->ia_nh_proto == FIB_PROTOCOL_IP6 ?
+		ethernet_ip6_mcast_dst_addr () :
+		ethernet_ip4_mcast_dst_addr ()));
+
+	    /*
+	     * Complete the remaining fields of the adj's rewrite to direct the
+	     * complete of the rewrite at switch time by copying in the IP
+	     * dst address's bytes.
+	     * Ofset is 2 bytes into the destintation address.
+	     */
+	    offset = vec_len (rewrite) - 2;
+	    adj_mcast_update_rewrite (ai, rewrite, offset);
+
+	    break;
+	  }
+	case IP_LOOKUP_NEXT_DROP:
+	case IP_LOOKUP_NEXT_PUNT:
+	case IP_LOOKUP_NEXT_LOCAL:
+	case IP_LOOKUP_NEXT_REWRITE:
+	case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+	case IP_LOOKUP_NEXT_MIDCHAIN:
+	case IP_LOOKUP_NEXT_ICMP_ERROR:
+	case IP_LOOKUP_N_NEXT:
+	  ASSERT (0);
+	  break;
+	}
     }
 }
 
@@ -234,8 +283,12 @@ ethernet_mac_change (vnet_hw_interface_t * hi,
   clib_memcpy (hi->hw_address, mac_address, vec_len (hi->hw_address));
 
   clib_memcpy (ei->address, (u8 *) mac_address, sizeof (ei->address));
-  ethernet_arp_change_mac (hi->sw_if_index);
-  ethernet_ndp_change_mac (hi->sw_if_index);
+
+  {
+    ethernet_address_change_ctx_t *cb;
+    vec_foreach (cb, em->address_change_callbacks)
+      cb->function (em, hi->sw_if_index, cb->function_opaque);
+  }
 
   return (NULL);
 }
