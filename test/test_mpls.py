@@ -108,7 +108,6 @@ class TestMPLS(VppTestCase):
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.unconfig_ip6()
-            i.ip6_disable()
             i.set_table_ip4(0)
             i.set_table_ip6(0)
             i.disable_mpls()
@@ -2045,6 +2044,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # put the connected routes back
         #
+        print(self.vapi.cli("sh log"))
         self.pg2.admin_up()
         self.pg2.config_ip6()
         self.pg2.resolve_ndp()
