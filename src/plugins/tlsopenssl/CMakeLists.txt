@@ -23,10 +23,6 @@ if(OPENSSL_FOUND)
     API_FILES
     tls_openssl.api
 
-    INSTALL_HEADERS
-    tls_openssl_all_api_h.h
-    tls_openssl_msg_enum.h
-
     API_TEST_SOURCES
     tls_openssl_test.c
 

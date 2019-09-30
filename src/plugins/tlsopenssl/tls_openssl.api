@@ -20,4 +20,5 @@ autoreply define tls_openssl_set_engine {
 
     /* cipher */
     u8 ciphers[64];
+    option vat_help = "tls openssl set [engine <engine name>] [alg [algorithm] [async]";
 };
