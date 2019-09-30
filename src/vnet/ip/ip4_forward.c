@@ -877,6 +877,7 @@ ip4_directed_broadcast (u32 sw_if_index, u8 enable)
      }));
   /* *INDENT-ON* */
 }
+
 #endif
 
 static clib_error_t *
