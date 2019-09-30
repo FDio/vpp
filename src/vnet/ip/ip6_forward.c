@@ -40,7 +40,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_frag.h>
-#include <vnet/ip/ip6_neighbor.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vppinfra/cache.h>
@@ -297,7 +297,7 @@ ip6_add_del_interface_address (vlib_main_t * vm,
   clib_error_t *error;
   u32 if_address_index;
   ip6_address_fib_t ip6_af, *addr_fib = 0;
-  ip6_address_t ll_addr;
+  const ip6_address_t *ll_addr;
 
   /* local0 interface doesn't support IP addressing */
   if (sw_if_index == 0)
@@ -317,13 +317,20 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 	}
       if (!is_del)
 	{
-	  return ip6_neighbor_set_link_local_address (vm, sw_if_index,
-						      address);
+	  int rv;
+
+	  rv = ip6_set_link_local_address (sw_if_index, address);
+
+	  if (rv)
+	    {
+	      vnm->api_errno = rv;
+	      return clib_error_create ("address not assignable");
+	    }
 	}
       else
 	{
-	  ll_addr = ip6_neighbor_get_link_local_address (sw_if_index);
-	  if (ip6_address_is_equal (&ll_addr, address))
+	  ll_addr = ip6_get_link_local_address (sw_if_index);
+	  if (ip6_address_is_equal (ll_addr, address))
 	    {
 	      vnm->api_errno = VNET_API_ERROR_ADDRESS_NOT_DELETABLE;
 	      return clib_error_create ("address not deletable");
@@ -620,7 +627,6 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       ip6_address_t *address;
       vlib_main_t *vm = vlib_get_main ();
 
-      ip6_neighbor_sw_interface_add_del (vnm, sw_if_index, 0 /* is_add */ );
       vnet_sw_interface_update_unnumbered (sw_if_index, ~0, 0);
       /* *INDENT-OFF* */
       foreach_ip_interface_address (lm6, ia, sw_if_index, 0,
@@ -1501,9 +1507,7 @@ VNET_FEATURE_INIT (ip6_local_end_of_arc, static) = {
 
 #ifdef CLIB_MARCH_VARIANT
 extern vlib_node_registration_t ip6_local_node;
-
 #else
-
 void
 ip6_register_protocol (u32 protocol, u32 node_index)
 {
@@ -1524,114 +1528,6 @@ ip6_unregister_protocol (u32 protocol)
 
   ASSERT (protocol < ARRAY_LEN (lm->local_next_by_ip_protocol));
   lm->local_next_by_ip_protocol[protocol] = IP_LOCAL_NEXT_PUNT;
-}
-
-clib_error_t *
-ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index,
-		    u8 refresh)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  ip6_main_t *im = &ip6_main;
-  icmp6_neighbor_solicitation_header_t *h;
-  ip6_address_t *src;
-  ip_interface_address_t *ia;
-  ip_adjacency_t *adj;
-  vnet_hw_interface_t *hi;
-  vnet_sw_interface_t *si;
-  vlib_buffer_t *b;
-  adj_index_t ai;
-  u32 bi = 0;
-  int bogus_length;
-
-  si = vnet_get_sw_interface (vnm, sw_if_index);
-
-  if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-    {
-      return clib_error_return (0, "%U: interface %U down",
-				format_ip6_address, dst,
-				format_vnet_sw_if_index_name, vnm,
-				sw_if_index);
-    }
-
-  src =
-    ip6_interface_address_matching_destination (im, dst, sw_if_index, &ia);
-  if (!src)
-    {
-      vnm->api_errno = VNET_API_ERROR_NO_MATCHING_INTERFACE;
-      return clib_error_return
-	(0, "no matching interface address for destination %U (interface %U)",
-	 format_ip6_address, dst,
-	 format_vnet_sw_if_index_name, vnm, sw_if_index);
-    }
-
-  h =
-    vlib_packet_template_get_packet (vm,
-				     &im->discover_neighbor_packet_template,
-				     &bi);
-  if (!h)
-    return clib_error_return (0, "ICMP6 NS packet allocation failed");
-
-  hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
-
-  /* Destination address is a solicited node multicast address.  We need to fill in
-     the low 24 bits with low 24 bits of target's address. */
-  h->ip.dst_address.as_u8[13] = dst->as_u8[13];
-  h->ip.dst_address.as_u8[14] = dst->as_u8[14];
-  h->ip.dst_address.as_u8[15] = dst->as_u8[15];
-
-  h->ip.src_address = src[0];
-  h->neighbor.target_address = dst[0];
-
-  if (PREDICT_FALSE (!hi->hw_address))
-    {
-      return clib_error_return (0, "%U: interface %U do not support ip probe",
-				format_ip6_address, dst,
-				format_vnet_sw_if_index_name, vnm,
-				sw_if_index);
-    }
-
-  clib_memcpy_fast (h->link_layer_option.ethernet_address, hi->hw_address,
-		    vec_len (hi->hw_address));
-
-  h->neighbor.icmp.checksum =
-    ip6_tcp_udp_icmp_compute_checksum (vm, 0, &h->ip, &bogus_length);
-  ASSERT (bogus_length == 0);
-
-  b = vlib_get_buffer (vm, bi);
-  vnet_buffer (b)->sw_if_index[VLIB_RX] =
-    vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
-
-  /* Add encapsulation string for software interface (e.g. ethernet header). */
-  ip46_address_t nh = {
-    .ip6 = *dst,
-  };
-
-  ai = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
-			    VNET_LINK_IP6, &nh, sw_if_index);
-  adj = adj_get (ai);
-
-  /* Peer has been previously resolved, retrieve glean adj instead */
-  if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE && refresh == 0)
-    {
-      adj_unlock (ai);
-      ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP6,
-				  VNET_LINK_IP6, sw_if_index, &nh);
-      adj = adj_get (ai);
-    }
-
-  vnet_rewrite_one_header (adj[0], h, sizeof (ethernet_header_t));
-  vlib_buffer_advance (b, -adj->rewrite_header.data_bytes);
-
-  {
-    vlib_frame_t *f = vlib_get_frame_to_node (vm, hi->output_node_index);
-    u32 *to_next = vlib_frame_vector_args (f);
-    to_next[0] = bi;
-    f->n_vectors = 1;
-    vlib_put_frame_to_node (vm, hi->output_node_index, f);
-  }
-
-  adj_unlock (ai);
-  return /* no error */ 0;
 }
 #endif
 
@@ -2797,78 +2693,10 @@ ip6_lookup_init (vlib_main_t * vm)
   /* Unless explicitly configured, don't process HBH options */
   im->hbh_enabled = 0;
 
-  {
-    icmp6_neighbor_solicitation_header_t p;
-
-    clib_memset (&p, 0, sizeof (p));
-
-    p.ip.ip_version_traffic_class_and_flow_label =
-      clib_host_to_net_u32 (0x6 << 28);
-    p.ip.payload_length =
-      clib_host_to_net_u16 (sizeof (p) -
-			    STRUCT_OFFSET_OF
-			    (icmp6_neighbor_solicitation_header_t, neighbor));
-    p.ip.protocol = IP_PROTOCOL_ICMP6;
-    p.ip.hop_limit = 255;
-    ip6_set_solicited_node_multicast_address (&p.ip.dst_address, 0);
-
-    p.neighbor.icmp.type = ICMP6_neighbor_solicitation;
-
-    p.link_layer_option.header.type =
-      ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address;
-    p.link_layer_option.header.n_data_u64s =
-      sizeof (p.link_layer_option) / sizeof (u64);
-
-    vlib_packet_template_init (vm,
-			       &im->discover_neighbor_packet_template,
-			       &p, sizeof (p),
-			       /* alloc chunk size */ 8,
-			       "ip6 neighbor discovery");
-  }
-
   return error;
 }
 
 VLIB_INIT_FUNCTION (ip6_lookup_init);
-
-static clib_error_t *
-test_ip6_link_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  u8 mac[6];
-  ip6_address_t _a, *a = &_a;
-
-  if (unformat (input, "%U", unformat_ethernet_address, mac))
-    {
-      ip6_link_local_address_from_ethernet_mac_address (a, mac);
-      vlib_cli_output (vm, "Link local address: %U", format_ip6_address, a);
-      ip6_ethernet_mac_address_from_link_local_address (mac, a);
-      vlib_cli_output (vm, "Original MAC address: %U",
-		       format_ethernet_address, mac);
-    }
-
-  return 0;
-}
-
-/*?
- * This command converts the given MAC Address into an IPv6 link-local
- * address.
- *
- * @cliexpar
- * Example of how to create an IPv6 link-local address:
- * @cliexstart{test ip6 link 16:d9:e0:91:79:86}
- * Link local address: fe80::14d9:e0ff:fe91:7986
- * Original MAC address: 16:d9:e0:91:79:86
- * @cliexend
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_link_command, static) =
-{
-  .path = "test ip6 link",
-  .function = test_ip6_link_command_fn,
-  .short_help = "test ip6 link <mac-address>",
-};
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 int

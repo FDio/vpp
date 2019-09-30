@@ -134,9 +134,6 @@ defaultmapping = {
     'want_bfd_events': {'enable_disable': 1, },
     'want_igmp_events': {'enable': 1, },
     'want_interface_events': {'enable_disable': 1, },
-    'want_ip4_arp_events': {'enable_disable': 1, 'ip': '0.0.0.0', },
-    'want_ip6_nd_events': {'enable_disable': 1, 'ip': '::', },
-    'want_ip6_ra_events': {'enable_disable': 1, },
     'want_l2_macs_events': {'enable_disable': 1, },
 }
 
@@ -371,23 +368,6 @@ class VppPapiProvider(object):
         """
         return cli + "\n" + self.cli(cli)
 
-    def want_ip4_arp_events(self, enable_disable=1, ip="0.0.0.0"):
-        return self.api(self.papi.want_ip4_arp_events,
-                        {'enable_disable': enable_disable,
-                         'ip': ip,
-                         'pid': os.getpid(), })
-
-    def want_ip6_nd_events(self, enable_disable=1, ip="::"):
-        return self.api(self.papi.want_ip6_nd_events,
-                        {'enable_disable': enable_disable,
-                         'ip': ip,
-                         'pid': os.getpid(), })
-
-    def want_ip6_ra_events(self, enable_disable=1):
-        return self.api(self.papi.want_ip6_ra_events,
-                        {'enable_disable': enable_disable,
-                         'pid': os.getpid(), })
-
     def ip6nd_send_router_solicitation(self, sw_if_index, irt=1, mrt=120,
                                        mrc=0, mrd=0):
         return self.api(self.papi.ip6nd_send_router_solicitation,
@@ -552,7 +532,7 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.proxy_arp_intfc_enable_disable,
             {'sw_if_index': sw_if_index,
-             'enable_disable': is_enable
+             'enable': is_enable
              }
         )
 
