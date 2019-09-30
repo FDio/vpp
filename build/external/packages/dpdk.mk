@@ -288,6 +288,7 @@ dpdk-config: $(B)/.dpdk-config.ok
 
 $(B)/.dpdk-build.ok: dpdk-config $(DPDK_BUILD_DEPS)
 	@if [ ! -e $(B)/.dpdk-config.ok ] ; then echo 'Please run "make config" first' && false ; fi
+	@rm -f $(B)/.*.install.ok #deals with build-root/Makefile line 709
 	@make $(DPDK_MAKE_ARGS) install
 	@touch $@
 
