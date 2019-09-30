@@ -412,16 +412,6 @@ class VppPapiProvider(object):
                          'learn_limit': learn_limit,
                          'pid': os.getpid(), })
 
-    def ip6_add_del_address_using_prefix(self, sw_if_index, address,
-                                         prefix_length, prefix_group,
-                                         is_add=1):
-        return self.api(self.papi.ip6_add_del_address_using_prefix,
-                        {'sw_if_index': sw_if_index,
-                         'prefix_group': prefix_group,
-                         'address': address,
-                         'prefix_length': prefix_length,
-                         'is_add': is_add})
-
     def sw_interface_set_mac_address(self, sw_if_index, mac):
         return self.api(self.papi.sw_interface_set_mac_address,
                         {'sw_if_index': sw_if_index,

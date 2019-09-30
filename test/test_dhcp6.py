@@ -629,15 +629,13 @@ class TestDHCPv6PDControlPlane(VppTestCase):
     def test_prefixes(self):
         """ Test handling of prefixes """
 
-        address_bin_1 = None
-        address_bin_2 = None
+        address1 = '::2:0:0:0:405/60'
+        address2 = '::76:0:0:0:406/62'
         try:
-            address_bin_1 = '\x00' * 6 + '\x00\x02' + '\x00' * 6 + '\x04\x05'
-            address_prefix_length_1 = 60
-            self.vapi.ip6_add_del_address_using_prefix(self.pg1.sw_if_index,
-                                                       address_bin_1,
-                                                       address_prefix_length_1,
-                                                       self.prefix_group)
+            self.vapi.ip6_add_del_address_using_prefix(
+                sw_if_index=self.pg1.sw_if_index,
+                address_with_prefix=address1,
+                prefix_group=self.prefix_group)
 
             ia_pd_opts = DHCP6OptIAPrefix(prefix='7:8::', plen=56, preflft=2,
                                           validlft=3)
@@ -656,12 +654,10 @@ class TestDHCPv6PDControlPlane(VppTestCase):
 
             self.sleep(1)
 
-            address_bin_2 = '\x00' * 6 + '\x00\x76' + '\x00' * 6 + '\x04\x06'
-            address_prefix_length_2 = 62
-            self.vapi.ip6_add_del_address_using_prefix(self.pg1.sw_if_index,
-                                                       address_bin_2,
-                                                       address_prefix_length_2,
-                                                       self.prefix_group)
+            self.vapi.ip6_add_del_address_using_prefix(
+                sw_if_index=self.pg1.sw_if_index,
+                address_with_prefix=address2,
+                prefix_group=self.prefix_group)
 
             self.sleep(1)
 
@@ -686,14 +682,16 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.assertEqual(len(new_addresses), 0)
 
         finally:
-            if address_bin_1 is not None:
+            if address1 is not None:
                 self.vapi.ip6_add_del_address_using_prefix(
-                    self.pg1.sw_if_index, address_bin_1,
-                    address_prefix_length_1, self.prefix_group, is_add=0)
-            if address_bin_2 is not None:
+                    sw_if_index=self.pg1.sw_if_index,
+                    address_with_prefix=address1,
+                    prefix_group=self.prefix_group, is_add=0)
+            if address2 is not None:
                 self.vapi.ip6_add_del_address_using_prefix(
-                    self.pg1.sw_if_index, address_bin_2,
-                    address_prefix_length_2, self.prefix_group, is_add=0)
+                    sw_if_index=self.pg1.sw_if_index,
+                    address_with_prefix=address2,
+                    prefix_group=self.prefix_group, is_add=0)
 
     def test_sending_client_messages_solicit(self):
         """ VPP receives messages from DHCPv6 client """
@@ -730,13 +728,12 @@ class TestDHCPv6PDControlPlane(VppTestCase):
     def test_preferred_greater_than_valid_lifetime(self):
         """ Preferred lifetime is greater than valid lifetime """
 
+        address1 = '::2:0:0:0:405/60'
         try:
-            address_bin = '\x00' * 6 + '\x00\x02' + '\x00' * 6 + '\x04\x05'
-            address_prefix_length = 60
-            self.vapi.ip6_add_del_address_using_prefix(self.pg1.sw_if_index,
-                                                       address_bin,
-                                                       address_prefix_length,
-                                                       self.prefix_group)
+            self.vapi.ip6_add_del_address_using_prefix(
+                sw_if_index=self.pg1.sw_if_index,
+                address_with_prefix=address1,
+                prefix_group=self.prefix_group)
 
             self.wait_for_solicit()
             self.send_advertise()
@@ -754,22 +751,21 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.assertEqual(len(new_addresses), 0)
 
         finally:
-            self.vapi.ip6_add_del_address_using_prefix(self.pg1.sw_if_index,
-                                                       address_bin,
-                                                       address_prefix_length,
-                                                       self.prefix_group,
-                                                       is_add=0)
+            self.vapi.ip6_add_del_address_using_prefix(
+                sw_if_index=self.pg1.sw_if_index,
+                address_with_prefix=address1,
+                prefix_group=self.prefix_group,
+                is_add=0)
 
     def test_T1_greater_than_T2(self):
         """ T1 is greater than T2 """
 
+        address1 = '::2:0:0:0:405/60'
         try:
-            address_bin = '\x00' * 6 + '\x00\x02' + '\x00' * 6 + '\x04\x05'
-            address_prefix_length = 60
-            self.vapi.ip6_add_del_address_using_prefix(self.pg1.sw_if_index,
-                                                       address_bin,
-                                                       address_prefix_length,
-                                                       self.prefix_group)
+            self.vapi.ip6_add_del_address_using_prefix(
+                sw_if_index=self.pg1.sw_if_index,
+                address_with_prefix=address1,
+                prefix_group=self.prefix_group)
 
             self.wait_for_solicit()
             self.send_advertise()
@@ -787,8 +783,8 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.assertEqual(len(new_addresses), 0)
 
         finally:
-            self.vapi.ip6_add_del_address_using_prefix(self.pg1.sw_if_index,
-                                                       address_bin,
-                                                       address_prefix_length,
-                                                       self.prefix_group,
-                                                       is_add=0)
+            self.vapi.ip6_add_del_address_using_prefix(
+                sw_if_index=self.pg1.sw_if_index,
+                prefix_group=self.prefix_group,
+                address_with_prefix=address1,
+                is_add=False)
