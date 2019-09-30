@@ -49,6 +49,7 @@
 #include <vnet/fib/fib_entry.h>	/* for FIB table and entry creation */
 #include <vnet/fib/fib_urpf_list.h>	/* for FIB uRPF check */
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/mfib/ip4_mfib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/classify_dpo.h>
@@ -760,6 +761,7 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
     goto done;
 
   ip4_sw_interface_enable_disable (sw_if_index, !is_del);
+  ip4_mfib_interface_enable_disable (sw_if_index, !is_del);
 
   /* intf addr routes are added/deleted on admin up/down */
   if (vnet_sw_interface_is_admin_up (vnm, sw_if_index))
@@ -1060,6 +1062,7 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
         ip4_add_del_interface_address(vm, sw_if_index, address, ia->address_length, 1);
       }));
       /* *INDENT-ON* */
+      ip4_mfib_interface_enable_disable (sw_if_index, 0);
     }
 
   vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,

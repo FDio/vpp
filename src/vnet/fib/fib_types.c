@@ -91,6 +91,68 @@ fib_prefix_from_ip46_addr (const ip46_address_t *addr,
     pfx->fp_addr = *addr;
 }
 
+u8 *
+format_fib_route_path_flags (u8 *s, va_list *ap)
+{
+    fib_route_path_flags_t flags = va_arg (*ap, fib_route_path_flags_t);
+
+    if (flags & FIB_ROUTE_PATH_RESOLVE_VIA_HOST)
+        s = format (s, "via-host");
+    if (flags & FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED)
+        s = format (s, "via-attached,");
+    if (flags & FIB_ROUTE_PATH_LOCAL)
+        s = format (s, "local,");
+    if (flags & FIB_ROUTE_PATH_ATTACHED)
+        s = format (s, "attached,");
+    if (flags & FIB_ROUTE_PATH_DROP)
+         s = format (s, "drop,");
+   if (flags & FIB_ROUTE_PATH_EXCLUSIVE)
+        s = format (s, "exclusive,");
+    if (flags & FIB_ROUTE_PATH_INTF_RX)
+        s = format (s, "intf-rx,");
+    if (flags & FIB_ROUTE_PATH_RPF_ID)
+        s = format (s, "rpf-id,");
+    if (flags & FIB_ROUTE_PATH_SOURCE_LOOKUP)
+        s = format (s, "src-lkup,");
+    if (flags & FIB_ROUTE_PATH_UDP_ENCAP)
+        s = format (s, "udp-encap,");
+    if (flags & FIB_ROUTE_PATH_BIER_FMASK)
+        s = format (s, "bier-fmask,");
+    if (flags & FIB_ROUTE_PATH_BIER_TABLE)
+        s = format (s, "bier-table,");
+    if (flags & FIB_ROUTE_PATH_BIER_IMP)
+        s = format (s, "bier-imp,");
+    if (flags & FIB_ROUTE_PATH_DEAG)
+        s = format (s, "deag,");
+    if (flags & FIB_ROUTE_PATH_DVR)
+        s = format (s, "dvr,");
+    if (flags & FIB_ROUTE_PATH_ICMP_UNREACH)
+        s = format (s, "imcp-unreach,");
+    if (flags & FIB_ROUTE_PATH_ICMP_PROHIBIT)
+        s = format (s, "icmp-prohibit,");
+    if (flags & FIB_ROUTE_PATH_CLASSIFY)
+        s = format (s, "classify,");
+    if (flags & FIB_ROUTE_PATH_POP_PW_CW)
+        s = format (s, "pop-pw-cw,");
+
+    return (s);
+}
+
+u8 *
+format_fib_route_path (u8 *s, va_list *ap)
+{
+    fib_route_path_t *rpath = va_arg (*ap, fib_route_path_t*);
+
+    s = format (s, "%U %U, %U, [%U]",
+                format_dpo_proto, rpath->frp_proto,
+                format_ip46_address, &rpath->frp_addr, IP46_TYPE_ANY,
+                format_vnet_sw_if_index_name, vnet_get_main (),
+                rpath->frp_sw_if_index,
+                format_fib_route_path_flags, rpath->frp_flags);
+
+    return (s);
+}
+
 void
 fib_prefix_from_mpls_label (mpls_label_t label,
                             mpls_eos_bit_t eos,
