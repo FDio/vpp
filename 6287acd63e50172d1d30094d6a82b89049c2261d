@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "056db409_83a3f591",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1125,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-30T14:41:07Z",
+      "side": 1,
+      "message": "Hm, did you actually hit this? Or how did you find it?",
+      "range": {
+        "startLine": 1125,
+        "startChar": 6,
+        "endLine": 1125,
+        "endChar": 20
+      },
+      "revId": "6287acd63e50172d1d30094d6a82b89049c2261d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
