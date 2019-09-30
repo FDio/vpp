@@ -926,7 +926,6 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (rs->delivered == 2 * burst, "delivered should be 200");
   TCP_TEST (rs->prior_delivered == burst, "delivered should be 100");
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
-  TCP_TEST (!(bts->flags & TCP_BTS_IS_APP_LIMITED), "not app limited");
   TCP_TEST (tc->first_tx_time == 2, "first_tx_time %u", tc->first_tx_time);
 
   /*
