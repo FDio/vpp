@@ -44,7 +44,6 @@
 #include <vnet/l2tp/l2tp.api.h>
 #include <vnet/span/span.api.h>
 #include <vnet/ip/ip.api.h>
-#include <vnet/ip/rd_cp.api.h>
 #include <vnet/vxlan/vxlan.api.h>
 #include <vnet/geneve/geneve.api.h>
 #include <vnet/lldp/lldp.api.h>
