@@ -119,7 +119,6 @@ api_ip6nd_proxy_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  /* Use a control ping for synchronization */
   mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
   mp_ping->_vl_msg_id = htons (ip6_nd_test_main.ping_id);
   mp_ping->client_index = vam->my_client_index;
