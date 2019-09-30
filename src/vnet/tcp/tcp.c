@@ -23,9 +23,8 @@
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/receive_dpo.h>
-#include <vnet/ip/ip6_neighbor.h>
+#include <vnet/ip-neighbor/ip_neighbor.h>
 #include <math.h>
-#include <vnet/ethernet/arp.h>
 
 tcp_main_t tcp_main;
 
@@ -1834,7 +1833,6 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
 				       ip4_address_t * start,
 				       ip4_address_t * end, u32 table_id)
 {
-  vnet_main_t *vnm = vnet_get_main ();
   u32 start_host_byte_order, end_host_byte_order;
   fib_prefix_t prefix;
   fib_node_index_t fei;
@@ -1870,12 +1868,12 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
   sw_if_index = fib_entry_get_resolving_interface (fei);
 
   /* Configure proxy arp across the range */
-  rv = vnet_proxy_arp_add_del (start, end, fib_index, 0 /* is_del */ );
+  rv = ip4_neighbor_proxy_add (fib_index, start, end);
 
   if (rv)
     return rv;
 
-  rv = vnet_proxy_arp_enable_disable (vnm, sw_if_index, 1);
+  rv = ip4_neighbor_proxy_enable (sw_if_index);
 
   if (rv)
     return rv;
@@ -1960,7 +1958,7 @@ tcp_configure_v6_source_address_range (vlib_main_t * vm,
 	return VNET_API_ERROR_NO_MATCHING_INTERFACE;
 
       /* Add a proxy neighbor discovery entry for this address */
-      ip6_neighbor_proxy_add_del (sw_if_index, start, 0 /* is_del */ );
+      ip6_neighbor_proxy_add (sw_if_index, start);
 
       /* Add a receive adjacency for this address */
       receive_dpo_add_or_lock (DPO_PROTO_IP6, ~0 /* sw_if_index */ ,
