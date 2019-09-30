@@ -15,6 +15,7 @@
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <dhcp/dhcp6_pd_client_dp.h>
 
@@ -65,8 +66,8 @@ static void
 
   sw_if_index = ntohl (mp->sw_if_index);
 
-  memcpy (address.as_u8, mp->address, 16);
-  prefix_length = mp->prefix_length;
+  ip6_address_decode (mp->address_with_prefix.address, &address);
+  prefix_length = mp->address_with_prefix.len;
 
   rv = dhcp6_cp_ip6_address_add_del (sw_if_index, mp->prefix_group, address,
 				     prefix_length, mp->is_add);
