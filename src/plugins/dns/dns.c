@@ -797,6 +797,8 @@ dns_add_static_entry (dns_main_t * dm, u8 * name, u8 * dns_reply_data)
 
   /* Note: consumes the name vector */
   ep->name = name;
+  /* make sure it NULL-terminated as hash_set_mem will use strlen() */
+  vec_terminate_c_string (ep->name);
   hash_set_mem (dm->cache_entry_by_name, ep->name, ep - dm->entries);
   ep->flags = DNS_CACHE_ENTRY_FLAG_VALID | DNS_CACHE_ENTRY_FLAG_STATIC;
   ep->dns_response = dns_reply_data;
