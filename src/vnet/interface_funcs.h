@@ -342,6 +342,14 @@ vnet_sw_interface_is_up (vnet_main_t * vnm, u32 sw_if_index)
 	  vnet_sw_interface_is_link_up (vnm, sw_if_index));
 }
 
+always_inline uword
+vnet_sw_interface_is_sub (vnet_main_t * vnm, u32 sw_if_index)
+{
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
+
+  return (sw->sw_if_index != sw->sup_sw_if_index);
+}
+
 always_inline vlib_frame_t *
 vnet_get_frame_to_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 {
