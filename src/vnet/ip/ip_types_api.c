@@ -132,7 +132,6 @@ ip_feature_location_encode (ip_feature_location_t loc)
   return ((vl_api_ip_feature_location_t) (loc));
 }
 
-
 void
 ip6_address_encode (const ip6_address_t * in, vl_api_ip6_address_t out)
 {

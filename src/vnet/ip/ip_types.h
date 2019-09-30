@@ -99,7 +99,8 @@ extern int ip_address_cmp (const ip_address_t * ip1,
 			   const ip_address_t * ip2);
 extern void ip_address_copy (ip_address_t * dst, const ip_address_t * src);
 extern void ip_address_copy_addr (void *dst, const ip_address_t * src);
-extern void ip_address_set (ip_address_t * dst, const void *src, u8 version);
+extern void ip_address_set (ip_address_t * dst, const void *src,
+			    ip_address_family_t version);
 extern u16 ip_address_size (const ip_address_t * a);
 extern u16 ip_version_to_size (ip_address_family_t af);
 extern u8 *format_ip_address (u8 * s, va_list * args);

@@ -2866,7 +2866,6 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
 	  vec_validate_acl_rules (rules, rule_idx);
 	  ip_address_encode (&src, IP46_TYPE_ANY,
 			     &rules[rule_idx].src_prefix.address);
-	  rules[rule_idx].src_prefix.address.af = ADDRESS_IP4;
 	  rules[rule_idx].src_prefix.len = src_prefix_length;
 	}
       else if (unformat (line_input, "dst %U/%d",
@@ -2876,7 +2875,6 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
 	  vec_validate_acl_rules (rules, rule_idx);
 	  ip_address_encode (&dst, IP46_TYPE_ANY,
 			     &rules[rule_idx].dst_prefix.address);
-	  rules[rule_idx].dst_prefix.address.af = ADDRESS_IP4;
 	  rules[rule_idx].dst_prefix.len = dst_prefix_length;
 	}
       else if (unformat (line_input, "sport %d-%d", &port1, &port2))
