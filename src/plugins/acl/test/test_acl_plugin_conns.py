@@ -152,7 +152,7 @@ class ACLPluginConnTestCase(VppTestCase):
         super(ACLPluginConnTestCase, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show ip arp"))
+        self.logger.info(self.vapi.cli("show ip neighbors"))
         self.logger.info(self.vapi.cli("show ip6 neighbors"))
         self.logger.info(self.vapi.cli("show acl-plugin sessions"))
         self.logger.info(self.vapi.cli("show acl-plugin acl"))

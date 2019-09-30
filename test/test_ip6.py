@@ -138,6 +138,7 @@ class TestIPv6ND(VppTestCase):
 
     def send_and_expect_ns(self, tx_intf, rx_intf, pkts, tgt_ip,
                            filter_out_fn=is_ipv6_misc):
+        self.vapi.cli("clear trace")
         tx_intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -222,7 +223,6 @@ class TestIPv6(TestIPv6ND):
         """Run standard test teardown and log ``show ip6 neighbors``."""
         for i in self.interfaces:
             i.unconfig_ip6()
-            i.ip6_disable()
             i.admin_down()
         for i in self.sub_interfaces:
             i.remove_vpp_config()
@@ -636,6 +636,7 @@ class TestIPv6(TestIPv6ND):
     def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
                            filter_out_fn=is_ipv6_misc,
                            opt=None):
+        self.vapi.cli("clear trace")
         intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -666,8 +667,7 @@ class TestIPv6(TestIPv6ND):
         #  - expect an RA in return
         #
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(
-                 dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
+             IPv6(dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
              ICMPv6ND_RS())
         pkts = [p]
         self.send_and_expect_ra(self.pg0, pkts, "Genuine RS")
@@ -1036,7 +1036,6 @@ class TestICMPv6Echo(VppTestCase):
         super(TestICMPv6Echo, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip6()
-            i.ip6_disable()
             i.admin_down()
 
     def test_icmpv6_echo(self):

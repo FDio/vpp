@@ -113,7 +113,7 @@ class TestACLpluginL2L3(VppTestCase):
     def tearDown(self):
         """Run standard test teardown and log ``show l2patch``,
         ``show l2fib verbose``,``show bridge-domain <bd_id> detail``,
-        ``show ip arp``.
+        ``show ip neighbors``.
         """
         super(TestACLpluginL2L3, self).tearDown()
 
@@ -123,8 +123,7 @@ class TestACLpluginL2L3(VppTestCase):
         self.logger.info(self.vapi.cli("show l2fib verbose"))
         self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
                                        self.bd_id))
-        self.logger.info(self.vapi.cli("show ip arp"))
-        self.logger.info(self.vapi.cli("show ip6 neighbors"))
+        self.logger.info(self.vapi.cli("show ip neighbors"))
         cmd = "show acl-plugin sessions verbose 1"
         self.logger.info(self.vapi.cli(cmd))
         self.logger.info(self.vapi.cli("show acl-plugin acl"))

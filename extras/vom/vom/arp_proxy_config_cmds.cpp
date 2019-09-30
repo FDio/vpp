@@ -16,6 +16,8 @@
 #include "vom/arp_proxy_config_cmds.hpp"
 #include "vom/api_types.hpp"
 
+DEFINE_VAPI_MSG_IDS_ARP_API_JSON;
+
 namespace VOM {
 namespace arp_proxy_config_cmds {
 
@@ -25,8 +27,7 @@ config_cmd::config_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_low(low)
   , m_high(high)
-{
-}
+{}
 
 bool
 config_cmd::operator==(const config_cmd& o) const
@@ -68,8 +69,7 @@ unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_low(low)
   , m_high(high)
-{
-}
+{}
 
 bool
 unconfig_cmd::operator==(const unconfig_cmd& o) const
