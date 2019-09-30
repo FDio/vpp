@@ -28,6 +28,7 @@ autoreply define mactime_enable_disable
   u32 context;                  /**< application context */
   u8 enable_disable;            /**< enable=1, disable=0 */
   u32 sw_if_index;              /**< the interface handle  */
+  option vat_help = "<intfc> [disable]";
 };
 
 /** \brief a time range structure
@@ -82,6 +83,7 @@ autoreply define mactime_add_del_range
   u32 count;                    /**< number of time ranges to follow */
   /** time ranges, in seconds since Sunday began */
   vl_api_time_range_t ranges[count];
+  option vat_help = "name <devname> mac <mac-addr> allow drop allow-range Mon - Fri 9:00 - 17:00";
 };
 
 /*

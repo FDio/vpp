@@ -19,10 +19,6 @@ add_vpp_plugin(mactime
   API_FILES
   mactime.api
 
-  INSTALL_HEADERS
-  mactime_all_api_h.h
-  mactime_msg_enum.h
-
   API_TEST_SOURCES
   mactime_test.c
 )
