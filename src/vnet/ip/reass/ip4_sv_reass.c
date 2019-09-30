@@ -148,8 +148,8 @@ typedef struct
   u32 fq_index;
   u32 fq_feature_index;
 
-  // reference count for enabling/disabling feature
-  u32 feature_use_refcount;
+  // reference count for enabling/disabling feature - per interface
+  u32 *feature_use_refcount_per_intf;
 
 } ip4_sv_reass_main_t;
 
@@ -822,6 +822,8 @@ ip4_sv_reass_init_function (vlib_main_t * vm)
   rm->fq_feature_index =
     vlib_frame_queue_main_init (ip4_sv_reass_node_feature.index, 0);
 
+  rm->feature_use_refcount_per_intf = NULL;
+
   return error;
 }
 
@@ -1160,21 +1162,22 @@ int
 ip4_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
 {
   ip4_sv_reass_main_t *rm = &ip4_sv_reass_main;
+  vec_validate (rm->feature_use_refcount_per_intf, sw_if_index);
   if (is_enable)
     {
-      if (!rm->feature_use_refcount)
+      if (!rm->feature_use_refcount_per_intf[sw_if_index])
 	{
-	  ++rm->feature_use_refcount;
+	  ++rm->feature_use_refcount_per_intf[sw_if_index];
 	  return vnet_feature_enable_disable ("ip4-unicast",
 					      "ip4-sv-reassembly-feature",
 					      sw_if_index, 1, 0, 0);
 	}
-      ++rm->feature_use_refcount;
+      ++rm->feature_use_refcount_per_intf[sw_if_index];
     }
   else
     {
-      --rm->feature_use_refcount;
-      if (!rm->feature_use_refcount)
+      --rm->feature_use_refcount_per_intf[sw_if_index];
+      if (!rm->feature_use_refcount_per_intf[sw_if_index])
 	return vnet_feature_enable_disable ("ip4-unicast",
 					    "ip4-sv-reassembly-feature",
 					    sw_if_index, 0, 0, 0);
