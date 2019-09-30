@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f290fb2d_41ec5a7f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-30T15:21:27Z",
+      "side": 1,
+      "message": "I\u0027d say this is related to session",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 3
+      },
+      "revId": "b266bc01f6a190a08961b07da7f09d22d7aafcda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ea193d07_bb73cd9c",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-09-30T15:21:27Z",
+      "side": 1,
+      "message": "Could you just use two branches instead of saving the index? Same comment for udp",
+      "range": {
+        "startLine": 196,
+        "startChar": 2,
+        "endLine": 196,
+        "endChar": 24
+      },
+      "revId": "b266bc01f6a190a08961b07da7f09d22d7aafcda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
