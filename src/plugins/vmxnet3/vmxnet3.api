@@ -46,6 +46,7 @@ define vmxnet3_create
   u16 txq_num;
   u8 bind;
   u8 enable_gso;
+  option vat_help = "<pci-address> [rx-queue-size <size>] [tx-queue-size <size>] [num-tx-queues <num>] [num-rx-queues <num>] [bind] [gso]";
 };
 
 /** \brief
@@ -73,6 +74,7 @@ autoreply define vmxnet3_delete
   u32 context;
 
   u32 sw_if_index;
+  option vat_help = "sw_if_index <sw_if_index>";
 };
 
 /** \brief vmxnet3_tx_list structure

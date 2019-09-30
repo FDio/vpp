@@ -30,8 +30,4 @@ add_vpp_plugin(vmxnet3
 
   API_TEST_SOURCES
   vmxnet3_test.c
-
-  INSTALL_HEADERS
-  vmxnet3_all_api_h.h
-  vmxnet3_msg_enum.h
 )
