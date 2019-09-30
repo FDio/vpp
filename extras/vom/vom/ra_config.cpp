@@ -17,6 +17,8 @@
 
 #include "vom/ra_config.hpp"
 
+DEFINE_VAPI_MSG_IDS_IP6_ND_API_JSON;
+
 namespace VOM {
 
 /**
@@ -38,8 +40,7 @@ ra_config::ra_config(uint8_t suppress,
   , m_lifetime(600)
   , m_initial_count(3)
   , m_initial_interval(16)
-{
-}
+{}
 
 void
 ra_config::to_vpp(vapi_payload_sw_interface_ip6nd_ra_config& ra_config) const

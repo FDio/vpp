@@ -16,7 +16,7 @@
 #ifndef __VOM_RA_CONFIG_H__
 #define __VOM_RA_CONFIG_H__
 
-#include <vapi/ip.api.vapi.hpp>
+#include <vapi/ip6_nd.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -67,7 +67,7 @@ private:
   /**
    * Advertises in ICMPv6 router-advertisement messages to use
    * stateful address auto-configuration to obtain address information.
- */
+   */
   uint8_t m_managed;
 
   /**

@@ -15,10 +15,10 @@
 
 #include "vom/interface_ip6_nd.hpp"
 
-#include <vapi/vpe.api.vapi.hpp>
+#include <vapi/ip6_nd.api.vapi.hpp>
 
 namespace VOM {
-template <>
+template<>
 rc_t
 ip6nd_ra_config::config_cmd::issue(connection& con)
 {
@@ -34,7 +34,7 @@ ip6nd_ra_config::config_cmd::issue(connection& con)
   return (wait());
 }
 
-template <>
+template<>
 rc_t
 ip6nd_ra_config::unconfig_cmd::issue(connection& con)
 {
@@ -53,7 +53,7 @@ ip6nd_ra_config::unconfig_cmd::issue(connection& con)
   return rc_t::OK;
 }
 
-template <>
+template<>
 rc_t
 ip6nd_ra_prefix::config_cmd::issue(connection& con)
 {
@@ -69,7 +69,7 @@ ip6nd_ra_prefix::config_cmd::issue(connection& con)
   return (wait());
 }
 
-template <>
+template<>
 rc_t
 ip6nd_ra_prefix::unconfig_cmd::issue(connection& con)
 {
