@@ -16,6 +16,8 @@
 #include "vom/neighbour_cmds.hpp"
 #include "vom/api_types.hpp"
 
+DEFINE_VAPI_MSG_IDS_IP_NEIGHBOR_API_JSON;
+
 namespace VOM {
 namespace neighbour_cmds {
 create_cmd::create_cmd(HW::item<handle_t>& item,
@@ -28,8 +30,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
   , m_mac(mac)
   , m_ip_addr(ip_addr)
   , m_flags(flags)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -77,8 +78,7 @@ delete_cmd::delete_cmd(HW::item<handle_t>& item,
   , m_mac(mac)
   , m_ip_addr(ip_addr)
   , m_flags(flags)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -122,14 +122,12 @@ delete_cmd::to_string() const
 dump_cmd::dump_cmd(const handle_t& hdl, const l3_proto_t& proto)
   : m_itf(hdl)
   , m_proto(proto)
-{
-}
+{}
 
 dump_cmd::dump_cmd(const dump_cmd& d)
   : m_itf(d.m_itf)
   , m_proto(d.m_proto)
-{
-}
+{}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const
@@ -144,7 +142,7 @@ dump_cmd::issue(connection& con)
 
   auto& payload = m_dump->get_request().get_payload();
   payload.sw_if_index = m_itf.value();
-  payload.is_ipv6 = m_proto.is_ipv6();
+  payload.af = to_api(m_proto);
 
   VAPI_CALL(m_dump->execute());
 

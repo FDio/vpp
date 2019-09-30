@@ -3,6 +3,17 @@
 #include <http_static/http_static.h>
 #include <mactime/mactime.h>
 #include <vlib/unix/plugin.h>
+#include <vnet/ip-neighbor/ip_neighbor.h>
+
+static walk_rc_t
+mactime_ip_neighbor_copy (index_t ipni, void *ctx)
+{
+  mactime_main_t *mm = ctx;
+
+  vec_add1 (mm->arp_cache_copy, ipni);
+
+  return (WALK_CONTINUE);
+}
 
 static int
 handle_get_mactime (http_builtin_method_type_t reqtype,
@@ -17,17 +28,14 @@ handle_get_mactime (http_builtin_method_type_t reqtype,
   int i, j;
   f64 now;
   vlib_counter_t allow, drop;
-  ethernet_arp_ip4_entry_t *n, *pool;
+  ip_neighbor_t *n;
   char *q = "\"";
   u8 *s = 0;
   int need_comma = 0;
 
+  /* Walk all ip4 neighbours on all interfaces */
   vec_reset_length (mm->arp_cache_copy);
-  pool = ip4_neighbors_pool ();
-
-  /* *INDENT-OFF* */
-  pool_foreach (n, pool, ({ vec_add1 (mm->arp_cache_copy, n[0]);}));
-  /* *INDENT-ON* */
+  ip_neighbor_walk (IP46_TYPE_IP4, ~0, mactime_ip_neighbor_copy, mm);
 
   now = clib_timebase_now (&mm->timebase);
 
@@ -124,11 +132,13 @@ handle_get_mactime (http_builtin_method_type_t reqtype,
 
       for (j = 0; j < vec_len (mm->arp_cache_copy); j++)
 	{
-	  n = mm->arp_cache_copy + j;
-	  if (!memcmp (dp->mac_address, n->mac.bytes, sizeof (n->mac)))
+	  n = ip_neighbor_get (mm->arp_cache_copy[j]);
+	  if (!memcmp (dp->mac_address,
+		       ip_neighbor_get_mac (n), sizeof (mac_address_t)))
 	    {
 	      s = format (s, ", %sip4_address%s: %s%U%s", q, q,
-			  q, format_ip4_address, &n->ip4_address, q);
+			  q, format_ip46_address,
+			  ip_neighbor_get_ip (n), IP46_TYPE_IP4, q);
 	      break;
 	    }
 	}

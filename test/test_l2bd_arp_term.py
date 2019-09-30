@@ -392,7 +392,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_09(self):
         """ L2BD arp term - send garps, verify arp event reports
         """
-        self.vapi.want_ip4_arp_events()
+        self.vapi.want_l2_arp_term_events(enable=1)
         self.bd_add_del(1, is_add=1)
         self.set_bd_flags(1, arp_term=True, flood=False,
                           uu_flood=False, learn=False)
@@ -404,7 +404,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(1, "ip4_arp_event")
+        evs = [self.vapi.wait_for_event(1, "l2_arp_term_event")
                for i in range(len(hosts))]
         ev_hosts = self.arp_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -422,7 +422,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(1, "ip4_arp_event")
+        evs = [self.vapi.wait_for_event(1, "l2_arp_term_event")
                for i in range(len(hosts))]
         ev_hosts = self.arp_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -430,7 +430,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_11(self):
         """ L2BD arp term - disable ip4 arp events,send garps, verify no events
         """
-        self.vapi.want_ip4_arp_events(enable_disable=0)
+        self.vapi.want_l2_arp_term_events(enable=0)
         macs = self.mac_list(range(90, 95))
         hosts = self.ip4_hosts(5, 1, macs)
 
@@ -446,7 +446,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_12(self):
         """ L2BD ND term - send NS packets verify reports
         """
-        self.vapi.want_ip6_nd_events(ip="::")
+        self.vapi.want_l2_arp_term_events(enable=1)
         dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
         self.bd_add_del(1, is_add=1)
         self.set_bd_flags(1, arp_term=True, flood=False,
@@ -458,7 +458,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(2, "ip6_nd_event")
+        evs = [self.vapi.wait_for_event(2, "l2_arp_term_event")
                for i in range(len(hosts))]
         ev_hosts = self.nd_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -474,7 +474,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(2, "ip6_nd_event")
+        evs = [self.vapi.wait_for_event(2, "l2_arp_term_event")
                for i in range(len(hosts))]
         ev_hosts = self.nd_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -482,7 +482,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_14(self):
         """ L2BD ND term - disable ip4 arp events,send ns, verify no events
         """
-        self.vapi.want_ip6_nd_events(enable_disable=0, ip="::")
+        self.vapi.want_l2_arp_term_events(enable=0)
         dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
         macs = self.mac_list(range(10, 15))
         hosts = self.ip6_hosts(5, 1, macs)

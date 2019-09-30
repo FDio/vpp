@@ -20,7 +20,7 @@
 #include "vom/srpc_cmd.hpp"
 #include "neighbour.hpp"
 
-#include <vapi/ip.api.vapi.hpp>
+#include <vapi/ip_neighbor.api.vapi.hpp>
 
 namespace VOM {
 namespace neighbour_cmds {
