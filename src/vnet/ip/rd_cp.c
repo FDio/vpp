@@ -440,9 +440,15 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       do
 	{
 	  due_time = current_time + 1e9;
+	  u32 index;
+	  /*
+	   * we do not use pool_foreach() to iterate over pool elements here
+	   * as we are removing elements inside the loop body
+	   */
           /* *INDENT-OFF* */
-          pool_foreach (slaac_address, rm->slaac_address_pool,
+          pool_foreach_index (index, rm->slaac_address_pool,
           ({
+            slaac_address = pool_elt_at_index(rm->slaac_address_pool, index);
             if (slaac_address->due_time > current_time)
               {
                 if (slaac_address->due_time < due_time)
@@ -450,13 +456,15 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
               }
             else
               {
+                u32 sw_if_index = slaac_address->sw_if_index;
                 remove_slaac_address (vm, slaac_address);
                 /* make sure ip6 stays enabled */
-                ip6_enable (slaac_address->sw_if_index);
+                ip6_enable (sw_if_index);
               }
           }));
-          pool_foreach (default_route, rm->default_route_pool,
+          pool_foreach_index (index, rm->default_route_pool,
           ({
+            default_route = pool_elt_at_index(rm->default_route_pool, index);
             if (default_route->due_time > current_time)
               {
                 if (default_route->due_time < due_time)
