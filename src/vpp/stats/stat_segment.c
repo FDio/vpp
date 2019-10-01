@@ -591,7 +591,9 @@ do_stat_segment_updates (stat_segment_main_t * sm)
 
       this_vlib_main = vlib_mains[i];
 
-      this_vector_rate = vlib_last_vector_length_per_node (this_vlib_main);
+      this_vector_rate = vlib_internal_node_vector_rate (this_vlib_main);
+      vlib_clear_internal_node_vector_rate (this_vlib_main);
+
       vector_rate += this_vector_rate;
 
       /* Set the per-worker rate */
@@ -703,19 +705,23 @@ stats_segment_socket_exit (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_EXIT_FUNCTION (stats_segment_socket_exit);
 
+/* Overrides weak reference in vlib:node_cli.c */
+f64
+vlib_get_stat_segment_update_rate (void)
+{
+  return stat_segment_main.update_interval;
+}
+
 static uword
 stat_segment_collector_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 				vlib_frame_t * f)
 {
   stat_segment_main_t *sm = &stat_segment_main;
 
-  /* Wait for Godot... */
-  f64 sleep_duration = 10;
-
   while (1)
     {
       do_stat_segment_updates (sm);
-      vlib_process_suspend (vm, sleep_duration);
+      vlib_process_suspend (vm, sm->update_interval);
     }
   return 0;			/* or not */
 }
@@ -853,6 +859,7 @@ static clib_error_t *
 statseg_config (vlib_main_t * vm, unformat_input_t * input)
 {
   stat_segment_main_t *sm = &stat_segment_main;
+  sm->update_interval = 10.0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -868,6 +875,8 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 	sm->node_counters_enabled = 1;
       else if (unformat (input, "per-node-counters off"))
 	sm->node_counters_enabled = 0;
+      else if (unformat (input, "update-interval %f", &sm->update_interval))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -882,6 +891,8 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 
   return 0;
 }
+
+VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
 
 static clib_error_t *
 statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
@@ -951,7 +962,6 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   return 0;
 }
 
-VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (statseg_sw_interface_add_del);
 
 /* *INDENT-OFF* */
