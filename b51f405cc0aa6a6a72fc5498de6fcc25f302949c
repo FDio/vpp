@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8a51a820_e87ecfba",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2019-10-01T13:56:09Z",
+      "side": 1,
+      "message": "So when I considered this, my take was that this function is only called in rather exceptional cases. It could be that the hash is never (currently) read outside of the main thread; however, that seemed like a fairly subtle point (if it\u0027s correct) to be counting on here. The hash is used in the function vlib_get_node_next, and nothing about that functions name flagged \"only to be used by main thread\" to me - so I considered that an easy vector for future bugs. Also, when I looked at the current use of vlib_get_node_next, it was from dpo_stack_from_node() which then was called in many places in the code. Further, if you look at the use in dpo_stack_from_node() it specifically seems to be counting on accessing this data *outside* the barrier which to me says don\u0027t modifiy the data outside the barrier -- and reading data outside the barrier that is modified outside the barrier is exactly the bug I\u0027m fixing here with the next nodes array. :)\n\nSo, rather than actually examine each one of the use cases to make sure they all were main thread only uses, and trust future uses would also conform, and given the seeming exceptional-ness of the function itself it just made more sense to me to stick with KISS here, and wrap the function and what it manipulates in the barrier.\n\nThis code is still new for mew though so if you still think it\u0027s worth moving, I can do that.",
+      "parentUuid": "42ae2d30_d1e8760d",
+      "revId": "b51f405cc0aa6a6a72fc5498de6fcc25f302949c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7ca0b622_d01dd471",
         "filename": "src/vlib/node.c",
         "patchSetId": 1
@@ -33,6 +51,24 @@
       "revId": "b51f405cc0aa6a6a72fc5498de6fcc25f302949c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bba51f00_ade08288",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2019-10-01T13:56:09Z",
+      "side": 1,
+      "message": "I agree, if you don\u0027t like my logic on keeping the hash modifications inside the barrier this is where we should move it to.",
+      "parentUuid": "7ca0b622_d01dd471",
+      "revId": "b51f405cc0aa6a6a72fc5498de6fcc25f302949c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
