@@ -341,8 +341,8 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
       for (i = 0; i < n_prefixes; i++)
 	{
 	  api_prefix = &mp->prefixes[i];
-	  prefix = (ip6_address_t *) api_prefix->prefix;
-	  prefix_length = api_prefix->prefix_length;
+	  prefix = (ip6_address_t *) api_prefix->prefix.address;
+	  prefix_length = api_prefix->prefix.len;
 
 	  prefix_info = &prefix_list[i];
 	  prefix_info->prefix = *prefix;
@@ -398,15 +398,15 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
 
       api_prefix = &mp->prefixes[i];
 
-      prefix = (ip6_address_t *) api_prefix->prefix;
-      prefix_length = api_prefix->prefix_length;
+      prefix = (ip6_address_t *) api_prefix->prefix.address;
+      prefix_length = api_prefix->prefix.len;
 
       if (ip6_address_is_link_local_unicast (prefix))
 	continue;
 
       valid_time = ntohl (api_prefix->valid_time);
       preferred_time = ntohl (api_prefix->preferred_time);
-      prefix_length = api_prefix->prefix_length;
+      prefix_length = api_prefix->prefix.len;
 
       if (preferred_time > valid_time)
 	continue;

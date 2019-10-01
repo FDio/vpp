@@ -50,7 +50,8 @@ defaultmapping = {
     'dhcp6_clients_enable_disable': {'enable': 1, },
     'dhcp6_pd_client_enable_disable': {'enable': 1, },
     'dhcp6_send_client_message': {'server_index': 4294967295, 'mrc': 1, },
-    'dhcp_client_config': {'is_add': 1, 'set_broadcast_flag': 1, },
+    'dhcp6_pd_send_client_message': {'server_index': 0xFFFFFFFF, 'mrc': 1},
+    'dhcp_client_config': {'is_add': 1, 'client': {'set_broadcast_flag': 1}, },
     'dhcp_proxy_config': {'is_add': 1, },
     'dhcp_proxy_set_vss': {'vss_type': 255, 'is_add': 1, },
     'gbp_subnet_add_del': {'sw_if_index': 4294967295, 'epg_id': 65535, },
@@ -147,6 +148,8 @@ defaultmapping = {
     'want_ip6_nd_events': {'enable_disable': 1, 'ip': '::', },
     'want_ip6_ra_events': {'enable_disable': 1, },
     'want_l2_macs_events': {'enable_disable': 1, },
+    'want_dhcp6_reply_events': {'enable_disable': 1, 'pid': os.getpid(), },
+    'want_dhcp6_pd_reply_events': {'enable_disable': 1, 'pid': os.getpid(), },
 }
 
 
@@ -408,41 +411,6 @@ class VppPapiProvider(object):
                          'max_macs_in_event': max_macs_in_event,
                          'learn_limit': learn_limit,
                          'pid': os.getpid(), })
-
-    def want_dhcp6_reply_events(self, enable_disable=1):
-        return self.api(self.papi.want_dhcp6_reply_events,
-                        {'enable_disable': enable_disable,
-                         'pid': os.getpid()})
-
-    def want_dhcp6_pd_reply_events(self, enable_disable=1):
-        return self.api(self.papi.want_dhcp6_pd_reply_events,
-                        {'enable_disable': enable_disable,
-                         'pid': os.getpid()})
-
-    def dhcp6_pd_send_client_message(self, msg_type, sw_if_index, T1, T2,
-                                     prefixes, server_index=0xFFFFFFFF,
-                                     irt=0, mrt=0, mrc=1, mrd=0, stop=0,
-                                     ):
-        return self.api(self.papi.dhcp6_pd_send_client_message,
-                        {'sw_if_index': sw_if_index,
-                         'server_index': server_index,
-                         'irt': irt,
-                         'mrt': mrt,
-                         'mrc': mrc,
-                         'mrd': mrd,
-                         'stop': stop,
-                         'msg_type': msg_type,
-                         'T1': T1,
-                         'T2': T2,
-                         'n_prefixes': len(prefixes),
-                         'prefixes': prefixes})
-
-    def dhcp6_pd_client_enable_disable(self, sw_if_index, prefix_group='',
-                                       enable=1):
-        return self.api(self.papi.dhcp6_pd_client_enable_disable,
-                        {'sw_if_index': sw_if_index,
-                         'prefix_group': prefix_group,
-                         'enable': enable})
 
     def ip6_add_del_address_using_prefix(self, sw_if_index, address,
                                          prefix_length, prefix_group,
@@ -905,66 +873,6 @@ class VppPapiProvider(object):
                 'path_mtu': path_mtu,
                 'template_interval': template_interval,
                 'udp_checksum': udp_checksum,
-            })
-
-    def dhcp_proxy_config(self,
-                          dhcp_server,
-                          dhcp_src_address,
-                          rx_table_id=0,
-                          server_table_id=0,
-                          is_add=1,
-                          is_ipv6=0):
-        return self.api(
-            self.papi.dhcp_proxy_config,
-            {
-                'rx_vrf_id': rx_table_id,
-                'server_vrf_id': server_table_id,
-                'is_ipv6': is_ipv6,
-                'is_add': is_add,
-                'dhcp_server': dhcp_server,
-                'dhcp_src_address': dhcp_src_address,
-            })
-
-    def dhcp_proxy_set_vss(self,
-                           table_id,
-                           vss_type=255,
-                           vpn_ascii_id="",
-                           oui=0,
-                           vpn_index=0,
-                           is_add=1,
-                           is_ip6=0):
-        return self.api(
-            self.papi.dhcp_proxy_set_vss,
-            {
-                'tbl_id': table_id,
-                'vss_type': vss_type,
-                'vpn_ascii_id': vpn_ascii_id,
-                'oui': oui,
-                'vpn_index': vpn_index,
-                'is_add': is_add,
-                'is_ipv6': is_ip6,
-            })
-
-    def dhcp_client_config(self,
-                           sw_if_index,
-                           hostname,
-                           client_id='',
-                           is_add=1,
-                           set_broadcast_flag=1,
-                           want_dhcp_events=0,
-                           dscp=0):
-        return self.api(
-            self.papi.dhcp_client_config,
-            {
-                'is_add': is_add,
-                'client': {
-                    'sw_if_index': sw_if_index,
-                    'hostname': hostname,
-                    'id': client_id,
-                    'want_dhcp_event': want_dhcp_events,
-                    'set_broadcast_flag': set_broadcast_flag,
-                    'dscp': dscp,
-                    'pid': os.getpid()}
             })
 
     def ip_mroute_add_del(self,

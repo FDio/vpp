@@ -52,8 +52,7 @@ class TestDHCPv6DataPlane(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        address_bin = '\00\01\00\02\00\03' + '\00' * 8 + '\00\05'
-        address = {'address': address_bin,
+        address = {'address': '1:2:3::5',
                    'preferred_time': 60,
                    'valid_time': 120}
         self.vapi.dhcp6_send_client_message(msg_type=1,
@@ -112,8 +111,8 @@ class TestDHCPv6DataPlane(VppTestCase):
             self.assert_equal(ev.T2, 40)
 
             reported_address = ev.addresses[0]
-            address = inet_pton(AF_INET6, ia_na_opts.getfieldval("addr"))
-            self.assert_equal(reported_address.address, address)
+            address = ia_na_opts.getfieldval("addr")
+            self.assert_equal(str(reported_address.address), address)
             self.assert_equal(reported_address.preferred_time,
                               ia_na_opts.getfieldval("preflft"))
             self.assert_equal(reported_address.valid_time,
@@ -129,13 +128,18 @@ class TestDHCPv6DataPlane(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        prefix_bin = '\00\01\00\02\00\03' + '\00' * 10
-        prefix = {'prefix': prefix_bin,
-                  'prefix_length': 50,
+
+        prefix = {'prefix': {'address': '1:2:3::', 'len': 50},
                   'preferred_time': 60,
                   'valid_time': 120}
-        self.vapi.dhcp6_pd_send_client_message(1, self.pg0.sw_if_index,
-                                               T1=20, T2=40, prefixes=[prefix])
+        prefixes = [prefix]
+        self.vapi.dhcp6_pd_send_client_message(
+            msg_type=1,
+            sw_if_index=self.pg0.sw_if_index,
+            T1=20,
+            T2=40,
+            prefixes=prefixes,
+            n_prefixes=len(prefixes))
         rx_list = self.pg0.get_capture(1)
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]
@@ -189,9 +193,10 @@ class TestDHCPv6DataPlane(VppTestCase):
             self.assert_equal(ev.T2, 40)
 
             reported_prefix = ev.prefixes[0]
-            prefix = inet_pton(AF_INET6, ia_pd_opts.getfieldval("prefix"))
-            self.assert_equal(reported_prefix.prefix, prefix)
-            self.assert_equal(reported_prefix.prefix_length,
+            prefix = ia_pd_opts.getfieldval("prefix")
+            self.assert_equal(
+                str(reported_prefix.prefix).split('/')[0], prefix)
+            self.assert_equal(int(str(reported_prefix.prefix).split('/')[1]),
                               ia_pd_opts.getfieldval("plen"))
             self.assert_equal(reported_prefix.preferred_time,
                               ia_pd_opts.getfieldval("preflft"))
@@ -288,7 +293,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
                 self.assertNotEqual(elapsed_time.elapsedtime, 0)
             else:
                 self.assertEqual(elapsed_time.elapsedtime, 0)
-        except:
+        except BaseException:
             packet.show()
             raise
 
@@ -544,7 +549,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
                 self.assertNotEqual(elapsed_time.elapsedtime, 0)
             else:
                 self.assertEqual(elapsed_time.elapsedtime, 0)
-        except:
+        except BaseException:
             packet.show()
             raise
 
