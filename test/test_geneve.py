@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import socket
-from util import ip4n_range, ip4_range
+from util import ip4_range, ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
@@ -90,15 +90,14 @@ class TestGeneve(BridgeDomain, VppTestCase):
         next_hop_address = cls.pg0.remote_ip4
         for dest_ip4 in ip4_range(next_hop_address, ip_range_start,
                                   ip_range_end):
-            # add host route so dest_ip4n will not be resolved
+            # add host route so dest_ip4 will not be resolved
             rip = VppIpRoute(cls, dest_ip4, 32,
                              [VppRoutePath(next_hop_address,
                                            INVALID_INDEX)],
                              register=False)
             rip.add_vpp_config()
-            dest_ip4n = socket.inet_pton(socket.AF_INET, dest_ip4)
             r = cls.vapi.geneve_add_del_tunnel(
-                local_address=cls.pg0.local_ip4n, remote_address=dest_ip4n,
+                local_address=cls.pg0.local_ip4, remote_address=dest_ip4,
                 vni=vni)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=vni)
@@ -114,8 +113,8 @@ class TestGeneve(BridgeDomain, VppTestCase):
         vni_end = vni_start + n_shared_dst_tunnels
         for vni in range(vni_start, vni_end):
             r = cls.vapi.geneve_add_del_tunnel(
-                local_address=cls.pg0.local_ip4n,
-                remote_address=cls.mcast_ip4n, mcast_sw_if_index=1,
+                local_address=cls.pg0.local_ip4,
+                remote_address=cls.mcast_ip4, mcast_sw_if_index=1,
                 is_add=is_add, vni=vni)
             if r.sw_if_index == 0xffffffff:
                 raise ValueError("bad sw_if_index: ~0")
@@ -136,11 +135,11 @@ class TestGeneve(BridgeDomain, VppTestCase):
         n_distinct_dst_tunnels = 10
         ip_range_start = 10
         ip_range_end = ip_range_start + n_distinct_dst_tunnels
-        for dest_ip4n in ip4n_range(cls.mcast_ip4n, ip_range_start,
-                                    ip_range_end):
-            vni = bytearray(dest_ip4n)[3]
-            cls.vapi.geneve_add_del_tunnel(local_address=cls.pg0.local_ip4n,
-                                           remote_address=dest_ip4n,
+        for dest_ip4 in ip4_range(cls.mcast_ip4, ip_range_start,
+                                  ip_range_end):
+            vni = bytearray(dest_ip4)[3]
+            cls.vapi.geneve_add_del_tunnel(local_address=cls.pg0.local_ip4,
+                                           remote_address=dest_ip4,
                                            mcast_sw_if_index=1, is_add=is_add,
                                            vni=vni)
 
@@ -177,7 +176,6 @@ class TestGeneve(BridgeDomain, VppTestCase):
 
             # Our Multicast address
             cls.mcast_ip4 = '239.1.1.1'
-            cls.mcast_ip4n = socket.inet_pton(socket.AF_INET, cls.mcast_ip4)
             iplong = atol(cls.mcast_ip4)
             cls.mcast_mac = "01:00:5e:%02x:%02x:%02x" % (
                 (iplong >> 16) & 0x7F, (iplong >> 8) & 0xFF, iplong & 0xFF)
@@ -186,8 +184,8 @@ class TestGeneve(BridgeDomain, VppTestCase):
             #  into BD.
             cls.single_tunnel_bd = 1
             r = cls.vapi.geneve_add_del_tunnel(
-                local_address=cls.pg0.local_ip4n,
-                remote_address=cls.pg0.remote_ip4n, vni=cls.single_tunnel_bd)
+                local_address=cls.pg0.local_ip4,
+                remote_address=cls.pg0.remote_ip4, vni=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
@@ -199,8 +197,8 @@ class TestGeneve(BridgeDomain, VppTestCase):
             cls.create_geneve_flood_test_bd(cls.mcast_flood_bd,
                                             cls.n_ucast_tunnels)
             r = cls.vapi.geneve_add_del_tunnel(
-                local_address=cls.pg0.local_ip4n,
-                remote_address=cls.mcast_ip4n, mcast_sw_if_index=1,
+                local_address=cls.pg0.local_ip4,
+                remote_address=cls.mcast_ip4, mcast_sw_if_index=1,
                 vni=cls.mcast_flood_bd)
             cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
                                                 bd_id=cls.mcast_flood_bd)
