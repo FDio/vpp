@@ -43,6 +43,9 @@ vnet_api_error_t ip4_full_reass_get (u32 * timeout_ms, u32 * max_reassemblies,
 vnet_api_error_t ip4_full_reass_enable_disable (u32 sw_if_index,
 						u8 enable_disable);
 
+int ip4_full_reass_enable_disable_with_refcnt (u32 sw_if_index,
+					       int is_enable);
+
 #endif /* __included_ip4_full_reass_h__ */
 
 /*

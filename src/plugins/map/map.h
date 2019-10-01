@@ -50,9 +50,6 @@ int map_param_set_fragmentation (bool inner, bool ignore_df);
 int map_param_set_icmp (ip4_address_t * ip4_err_relay_src);
 int map_param_set_icmp6 (u8 enable_unreachable);
 void map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, bool is_del);
-int map_param_set_reassembly (bool is_ipv6, u16 lifetime_ms, u16 pool_size,
-			      u32 buffers, f64 ht_ratio, u32 * reass,
-			      u32 * packets);
 int map_param_set_security_check (bool enable, bool fragments);
 int map_param_set_traffic_class (bool copy, u8 tc);
 int map_param_set_tcp (u16 tcp_mss);
@@ -64,15 +61,6 @@ typedef enum
   MAP_DOMAIN_TRANSLATION = 1 << 1,	// The domain uses MAP-T
   MAP_DOMAIN_RFC6052 = 1 << 2,
 } __attribute__ ((__packed__)) map_domain_flags_e;
-
-#define MAP_IP6_REASS_LIFETIME_DEFAULT (100)	/* ms */
-#define MAP_IP6_REASS_HT_RATIO_DEFAULT (1.0)
-#define MAP_IP6_REASS_POOL_SIZE_DEFAULT 1024	// Number of reassembly structures
-#define MAP_IP6_REASS_BUFFERS_DEFAULT 2048
-
-#define MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY 5
-
-#define MAP_IP6_REASS_COUNT_BYTES
 
 //#define IP6_MAP_T_OVERRIDE_TOS 0
 
@@ -135,46 +123,6 @@ typedef enum
   MAP_DOMAIN_COUNTER_TX,
   MAP_N_DOMAIN_COUNTER
 } map_domain_counter_t;
-
-/*
- * main_main_t
- */
-/* *INDENT-OFF* */
-typedef union {
-  CLIB_PACKED (struct {
-    ip6_address_t src;
-    ip6_address_t dst;
-    u32 fragment_id;
-    u8 protocol;
-  });
-  u64 as_u64[5];
-  u32 as_u32[10];
-} map_ip6_reass_key_t;
-/* *INDENT-ON* */
-
-typedef struct
-{
-  u32 pi;			//Cached packet or ~0
-  u16 next_data_offset;		//The data offset of the additional 20 bytes or ~0
-  u8 next_data_len;		//Number of bytes ready to be copied (20 if not last fragment)
-  u8 next_data[20];		//The 20 additional bytes
-} map_ip6_fragment_t;
-
-typedef struct
-{
-  map_ip6_reass_key_t key;
-  f64 ts;
-#ifdef MAP_IP6_REASS_COUNT_BYTES
-  u16 expected_total;
-  u16 forwarded;
-#endif
-  u16 bucket;			//What hash bucket this element is linked in
-  u16 bucket_next;
-  u16 fifo_prev;
-  u16 fifo_next;
-  ip4_header_t ip4_header;
-  map_ip6_fragment_t fragments[MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY];
-} map_ip6_reass_t;
 
 #ifdef MAP_SKIP_IP6_LOOKUP
 /**
@@ -244,26 +192,6 @@ typedef struct
 
   bool frag_inner;		/* Inner or outer fragmentation */
   bool frag_ignore_df;		/* Fragment (outer) packet even if DF is set */
-
-  /*
-   * IPv6 decap reassembly
-   */
-  /* Configuration */
-  f32 ip6_reass_conf_ht_ratio;	//Size of ht is 2^ceil(log2(ratio*pool_size))
-  u16 ip6_reass_conf_pool_size;	//Max number of allocated reass structures
-  u16 ip6_reass_conf_lifetime_ms;	//Time a reassembly struct is considered valid in ms
-  u32 ip6_reass_conf_buffers;	//Maximum number of buffers used by ip6 reassembly
-
-  /* Runtime */
-  map_ip6_reass_t *ip6_reass_pool;
-  u8 ip6_reass_ht_log2len;	//Hash table size is 2^log2len
-  u16 ip6_reass_allocated;
-  u16 *ip6_reass_hash_table;
-  u16 ip6_reass_fifo_last;
-  clib_spinlock_t ip6_reass_lock;
-
-  /* Counters */
-  u32 ip6_reass_buffered_counter;
 
   /* Graph node state */
   uword *bm_trans_enabled_by_sw_if;
@@ -445,34 +373,7 @@ ip6_map_get_domain (ip6_address_t * addr, u32 * map_domain_index, u8 * error)
 
 clib_error_t *map_plugin_api_hookup (vlib_main_t * vm);
 
-map_ip6_reass_t *map_ip6_reass_get (ip6_address_t * src, ip6_address_t * dst,
-				    u32 fragment_id, u8 protocol,
-				    u32 ** pi_to_drop);
-void map_ip6_reass_free (map_ip6_reass_t * r, u32 ** pi_to_drop);
-
-#define map_ip6_reass_lock() clib_spinlock_lock (&map_main.ip6_reass_lock)
-#define map_ip6_reass_unlock() clib_spinlock_unlock (&map_main.ip6_reass_lock)
-
-int
-map_ip6_reass_add_fragment (map_ip6_reass_t * r, u32 pi,
-			    u16 data_offset, u16 next_data_offset,
-			    u8 * data_start, u16 data_len);
-
-void map_ip4_drop_pi (u32 pi);
-
 void map_ip6_drop_pi (u32 pi);
-
-
-int map_ip6_reass_conf_ht_ratio (f32 ht_ratio, u32 * trashed_reass,
-				 u32 * dropped_packets);
-#define MAP_IP6_REASS_CONF_HT_RATIO_MAX 100
-int map_ip6_reass_conf_pool_size (u16 pool_size, u32 * trashed_reass,
-				  u32 * dropped_packets);
-#define MAP_IP6_REASS_CONF_POOL_SIZE_MAX (0xfeff)
-int map_ip6_reass_conf_lifetime (u16 lifetime_ms);
-#define MAP_IP6_REASS_CONF_LIFETIME_MAX 0xffff
-int map_ip6_reass_conf_buffers (u32 buffers);
-#define MAP_IP6_REASS_CONF_BUFFERS_MAX (0xffffffff)
 
 /*
  * Supports prefix of 96 or 64 (with u-octet)
