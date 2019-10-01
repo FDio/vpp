@@ -241,28 +241,6 @@ autoreply define map_param_add_del_pre_resolve
   vl_api_ip6_address_t ip6_nh_address;
 };
 
-
-/** \brief Set MAP reassembly parameters
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_ip6 - 1 = params apply to IPv6, 0 = params apply to IPv4
-    @param lifetime_ms - reassembly valid lifetime, or ~0
-    @param pool_size - max number of reassemblies, or ~0
-    @param buffers -  max number of reassembly buffers, or ~0 
-    @param ht_ratio - hash-table size factor, or ~0
-*/
-autoreply define map_param_set_reassembly
-{
-  u32 client_index;
-  u32 context;
-  bool is_ip6;
-  u16 lifetime_ms;
-  u16 pool_size;
-  u32 buffers;
-  f64 ht_ratio;
-};
-
-
 /** \brief Set MAP security-check parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -326,10 +304,6 @@ define map_param_get
     @param icmp6_enable_unreachable - 1 = send ICMP unreachable err msgs
     @param ip4_nh_address - direct IP4 next-hop address
     @param ip6_nh_address - direct IP6 next-hop address
-    @param ip6_lifetime_ms - max number of reassemblies, or ~0
-    @param ip6_pool_size - max number of reassemblies, or ~0
-    @param ip6_buffers -  max number of reassembly buffers, or ~0 
-    @param ip6_ht_ratio - hash-table size factor, or ~0
     @param sec_check_enable - 1=enable security check on first inbound packet
     @param sec_check_fragments - 1=enable check on (subsequent) fragments too
     @param tc_copy - 1 = copy packet class/TOS field, 0 = use class instead
@@ -349,10 +323,6 @@ define map_param_get_reply
   u16 ip4_pool_size;
   u32 ip4_buffers;
   f64 ip4_ht_ratio;
-  u16 ip6_lifetime_ms;
-  u16 ip6_pool_size;
-  u32 ip6_buffers;
-  f64 ip6_ht_ratio;
   bool sec_check_enable;
   bool sec_check_fragments;
   bool tc_copy;

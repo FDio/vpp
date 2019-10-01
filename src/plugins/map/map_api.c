@@ -24,6 +24,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vnet/ip/reass/ip6_sv_reass.h>
+#include <vnet/ip/reass/ip6_full_reass.h>
 #include <vnet/fib/fib_table.h>
 #include <vlibmemory/api.h>
 
@@ -330,102 +331,6 @@ static void
   REPLY_MACRO (VL_API_MAP_PARAM_ADD_DEL_PRE_RESOLVE_REPLY);
 }
 
-
-int
-map_param_set_reassembly (bool is_ipv6,
-			  u16 lifetime_ms,
-			  u16 pool_size,
-			  u32 buffers,
-			  f64 ht_ratio, u32 * reass, u32 * packets)
-{
-  u32 ps_reass = 0, ps_packets = 0;
-  u32 ht_reass = 0, ht_packets = 0;
-
-  if (is_ipv6)
-    {
-      if (pool_size != (u16) ~ 0)
-	{
-	  if (pool_size > MAP_IP6_REASS_CONF_POOL_SIZE_MAX)
-	    return MAP_ERR_BAD_POOL_SIZE;
-	  if (map_ip6_reass_conf_pool_size
-	      (pool_size, &ps_reass, &ps_packets))
-	    return MAP_ERR_BAD_POOL_SIZE;
-	}
-
-      if (ht_ratio != (MAP_IP6_REASS_CONF_HT_RATIO_MAX + 1))
-	{
-	  if (ht_ratio > MAP_IP6_REASS_CONF_HT_RATIO_MAX)
-	    return MAP_ERR_BAD_HT_RATIO;
-	  if (map_ip6_reass_conf_ht_ratio (ht_ratio, &ht_reass, &ht_packets))
-	    return MAP_ERR_BAD_HT_RATIO;
-	}
-
-      if (lifetime_ms != (u16) ~ 0)
-	{
-	  if (lifetime_ms > MAP_IP6_REASS_CONF_LIFETIME_MAX)
-	    return MAP_ERR_BAD_LIFETIME;
-	  if (map_ip6_reass_conf_lifetime (lifetime_ms))
-	    return MAP_ERR_BAD_LIFETIME;
-	}
-
-      if (buffers != ~0)
-	{
-	  if (buffers > MAP_IP6_REASS_CONF_BUFFERS_MAX)
-	    return MAP_ERR_BAD_BUFFERS;
-	  if (map_ip6_reass_conf_buffers (buffers))
-	    return MAP_ERR_BAD_BUFFERS;
-	}
-
-      if (map_main.ip6_reass_conf_buffers >
-	  map_main.ip6_reass_conf_pool_size *
-	  MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY)
-	{
-	  return MAP_ERR_BAD_BUFFERS_TOO_LARGE;
-	}
-    }
-  else
-    {
-      return MAP_ERR_UNSUPPORTED;
-    }
-
-  if (reass)
-    *reass = ps_reass + ht_reass;
-
-  if (packets)
-    *packets = ps_packets + ht_packets;
-
-  return 0;
-}
-
-
-static void
-  vl_api_map_param_set_reassembly_t_handler
-  (vl_api_map_param_set_reassembly_t * mp)
-{
-  map_main_t *mm = &map_main;
-  vl_api_map_param_set_reassembly_reply_t *rmp;
-  u32 reass = 0, packets = 0;
-  int rv;
-  f64 ht_ratio;
-
-  ht_ratio = (f64) clib_net_to_host_f64 (mp->ht_ratio);
-  if (ht_ratio == ~0)
-    ht_ratio = MAP_IP6_REASS_CONF_HT_RATIO_MAX + 1;
-
-  rv = map_param_set_reassembly (mp->is_ip6,
-				 clib_net_to_host_u16 (mp->lifetime_ms),
-				 clib_net_to_host_u16 (mp->pool_size),
-				 clib_net_to_host_u32 (mp->buffers),
-				 ht_ratio, &reass, &packets);
-
-  /*
-   * FIXME: Should the lost reass and packet counts be returned in the API?
-   */
-
-  REPLY_MACRO (VL_API_MAP_PARAM_SET_REASSEMBLY_REPLY);
-}
-
-
 int
 map_param_set_security_check (bool enable, bool fragments)
 {
@@ -530,12 +435,6 @@ vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
   clib_memset (&rmp->ip4_nh_address, 0, sizeof (rmp->ip4_nh_address));
   clib_memset (&rmp->ip6_nh_address, 0, sizeof (rmp->ip6_nh_address));
 
-  rmp->ip6_lifetime_ms =
-    clib_net_to_host_u16 (mm->ip6_reass_conf_lifetime_ms);
-  rmp->ip6_pool_size = clib_net_to_host_u16 (mm->ip6_reass_conf_pool_size);
-  rmp->ip6_buffers = clib_net_to_host_u32 (mm->ip6_reass_conf_buffers);
-  rmp->ip6_ht_ratio = clib_net_to_host_f64 (mm->ip6_reass_conf_ht_ratio);
-
   rmp->sec_check_enable = mm->sec_check;
   rmp->sec_check_fragments = mm->sec_check_frag;
 
@@ -573,6 +472,7 @@ map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
   if (is_translation == false)
     {
       ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, is_enable);
+      ip6_full_reass_enable_disable_with_refcnt (sw_if_index, is_enable);
       vnet_feature_enable_disable ("ip4-unicast", "ip4-map", sw_if_index,
 				   is_enable ? 1 : 0, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "ip6-map", sw_if_index,

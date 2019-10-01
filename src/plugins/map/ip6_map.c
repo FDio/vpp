@@ -25,7 +25,6 @@ enum ip6_map_next_e
 #ifdef MAP_SKIP_IP6_LOOKUP
   IP6_MAP_NEXT_IP4_REWRITE,
 #endif
-  IP6_MAP_NEXT_IP6_REASS,
   IP6_MAP_NEXT_IP4_REASS,
   IP6_MAP_NEXT_IP4_FRAGMENT,
   IP6_MAP_NEXT_IP6_ICMP_RELAY,
@@ -267,7 +266,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	    {
-	      next0 = IP6_MAP_NEXT_IP6_REASS;
+	      error0 = MAP_ERROR_FRAGMENTED;
 	    }
 	  else
 	    {
@@ -294,7 +293,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    }
 	  else if (ip61->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	    {
-	      next1 = IP6_MAP_NEXT_IP6_REASS;
+	      error1 = MAP_ERROR_FRAGMENTED;
 	    }
 	  else
 	    {
@@ -474,7 +473,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		   (((ip6_frag_hdr_t *) (ip60 + 1))->next_hdr ==
 		    IP_PROTOCOL_IP_IN_IP))
 	    {
-	      next0 = IP6_MAP_NEXT_IP6_REASS;
+	      error0 = MAP_ERROR_FRAGMENTED;
 	    }
 	  else
 	    {
@@ -553,102 +552,6 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 }
 
 
-static_always_inline void
-ip6_map_ip6_reass_prepare (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   map_ip6_reass_t * r, u32 ** fragments_ready,
-			   u32 ** fragments_to_drop)
-{
-  ip4_header_t *ip40;
-  ip6_header_t *ip60;
-  ip6_frag_hdr_t *frag0;
-  vlib_buffer_t *p0;
-
-  if (!r->ip4_header.ip_version_and_header_length)
-    return;
-
-  //The IP header is here, we need to check for packets
-  //that can be forwarded
-  int i;
-  for (i = 0; i < MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY; i++)
-    {
-      if (r->fragments[i].pi == ~0 ||
-	  ((!r->fragments[i].next_data_len)
-	   && (r->fragments[i].next_data_offset != (0xffff))))
-	continue;
-
-      p0 = vlib_get_buffer (vm, r->fragments[i].pi);
-      ip60 = vlib_buffer_get_current (p0);
-      frag0 = (ip6_frag_hdr_t *) (ip60 + 1);
-      ip40 = (ip4_header_t *) (frag0 + 1);
-
-      if (ip6_frag_hdr_offset (frag0))
-	{
-	  //Not first fragment, add the IPv4 header
-	  clib_memcpy_fast (ip40, &r->ip4_header, 20);
-	}
-
-#ifdef MAP_IP6_REASS_COUNT_BYTES
-      r->forwarded +=
-	clib_net_to_host_u16 (ip60->payload_length) - sizeof (*frag0);
-#endif
-
-      if (ip6_frag_hdr_more (frag0))
-	{
-	  //Not last fragment, we copy end of next
-	  clib_memcpy_fast (u8_ptr_add (ip60, p0->current_length),
-			    r->fragments[i].next_data, 20);
-	  p0->current_length += 20;
-	  ip60->payload_length = u16_net_add (ip60->payload_length, 20);
-	}
-
-      if (!ip4_is_fragment (ip40))
-	{
-	  ip40->fragment_id = frag_id_6to4 (frag0->identification);
-	  ip40->flags_and_fragment_offset =
-	    clib_host_to_net_u16 (ip6_frag_hdr_offset (frag0));
-	}
-      else
-	{
-	  ip40->flags_and_fragment_offset =
-	    clib_host_to_net_u16 (ip4_get_fragment_offset (ip40) +
-				  ip6_frag_hdr_offset (frag0));
-	}
-
-      if (ip6_frag_hdr_more (frag0))
-	ip40->flags_and_fragment_offset |=
-	  clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS);
-
-      ip40->length =
-	clib_host_to_net_u16 (p0->current_length - sizeof (*ip60) -
-			      sizeof (*frag0));
-      ip40->checksum = ip4_header_checksum (ip40);
-
-      if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  map_ip6_map_ip6_reass_trace_t *tr =
-	    vlib_add_trace (vm, node, p0, sizeof (*tr));
-	  tr->offset = ip4_get_fragment_offset (ip40);
-	  tr->frag_len = clib_net_to_host_u16 (ip40->length) - sizeof (*ip40);
-	  tr->out = 1;
-	}
-
-      vec_add1 (*fragments_ready, r->fragments[i].pi);
-      r->fragments[i].pi = ~0;
-      r->fragments[i].next_data_len = 0;
-      r->fragments[i].next_data_offset = 0;
-      map_main.ip6_reass_buffered_counter--;
-
-      //TODO: Best solution would be that ip6_map handles extension headers
-      // and ignores atomic fragment. But in the meantime, let's just copy the header.
-
-      u8 protocol = frag0->next_hdr;
-      memmove (u8_ptr_add (ip40, -sizeof (*ip60)), ip60, sizeof (*ip60));
-      ((ip6_header_t *) u8_ptr_add (ip40, -sizeof (*ip60)))->protocol =
-	protocol;
-      vlib_buffer_advance (p0, sizeof (*frag0));
-    }
-}
-
 void
 map_ip6_drop_pi (u32 pi)
 {
@@ -656,150 +559,6 @@ map_ip6_drop_pi (u32 pi)
   vlib_node_runtime_t *n =
     vlib_node_get_runtime (vm, ip6_map_ip6_reass_node.index);
   vlib_set_next_frame_buffer (vm, n, IP6_MAP_IP6_REASS_NEXT_DROP, pi);
-}
-
-/*
- * ip6_reass
- * TODO: We should count the number of successfully
- * transmitted fragment bytes and compare that to the last fragment
- * offset such that we can free the reassembly structure when all fragments
- * have been forwarded.
- */
-static uword
-ip6_map_ip6_reass (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
-  vlib_node_runtime_t *error_node =
-    vlib_node_get_runtime (vm, ip6_map_ip6_reass_node.index);
-  u32 *fragments_to_drop = NULL;
-  u32 *fragments_ready = NULL;
-
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
-  while (n_left_from > 0)
-    {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      /* Single loop */
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 pi0;
-	  vlib_buffer_t *p0;
-	  u8 error0 = MAP_ERROR_NONE;
-	  ip6_header_t *ip60;
-	  ip6_frag_hdr_t *frag0;
-	  u16 offset;
-	  u16 next_offset;
-	  u16 frag_len;
-
-	  pi0 = to_next[0] = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-
-	  p0 = vlib_get_buffer (vm, pi0);
-	  ip60 = vlib_buffer_get_current (p0);
-	  frag0 = (ip6_frag_hdr_t *) (ip60 + 1);
-	  offset =
-	    clib_host_to_net_u16 (frag0->fragment_offset_and_more) & (~7);
-	  frag_len =
-	    clib_net_to_host_u16 (ip60->payload_length) - sizeof (*frag0);
-	  next_offset =
-	    ip6_frag_hdr_more (frag0) ? (offset + frag_len) : (0xffff);
-
-	  //FIXME: Support other extension headers, maybe
-
-	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      map_ip6_map_ip6_reass_trace_t *tr =
-		vlib_add_trace (vm, node, p0, sizeof (*tr));
-	      tr->offset = offset;
-	      tr->frag_len = frag_len;
-	      tr->out = 0;
-	    }
-
-	  map_ip6_reass_lock ();
-	  map_ip6_reass_t *r =
-	    map_ip6_reass_get (&ip60->src_address, &ip60->dst_address,
-			       frag0->identification, frag0->next_hdr,
-			       &fragments_to_drop);
-	  //FIXME: Use better error codes
-	  if (PREDICT_FALSE (!r))
-	    {
-	      // Could not create a caching entry
-	      error0 = MAP_ERROR_FRAGMENT_MEMORY;
-	    }
-	  else if (PREDICT_FALSE ((frag_len <= 20 &&
-				   (ip6_frag_hdr_more (frag0) || (!offset)))))
-	    {
-	      //Very small fragment are restricted to the last one and
-	      //can't be the first one
-	      error0 = MAP_ERROR_FRAGMENT_MALFORMED;
-	    }
-	  else
-	    if (map_ip6_reass_add_fragment
-		(r, pi0, offset, next_offset, (u8 *) (frag0 + 1), frag_len))
-	    {
-	      map_ip6_reass_free (r, &fragments_to_drop);
-	      error0 = MAP_ERROR_FRAGMENT_MEMORY;
-	    }
-	  else
-	    {
-#ifdef MAP_IP6_REASS_COUNT_BYTES
-	      if (!ip6_frag_hdr_more (frag0))
-		r->expected_total = offset + frag_len;
-#endif
-	      ip6_map_ip6_reass_prepare (vm, node, r, &fragments_ready,
-					 &fragments_to_drop);
-#ifdef MAP_IP6_REASS_COUNT_BYTES
-	      if (r->forwarded >= r->expected_total)
-		map_ip6_reass_free (r, &fragments_to_drop);
-#endif
-	    }
-	  map_ip6_reass_unlock ();
-
-	  if (error0 == MAP_ERROR_NONE)
-	    {
-	      if (frag_len > 20)
-		{
-		  //Dequeue the packet
-		  n_left_to_next++;
-		  to_next--;
-		}
-	      else
-		{
-		  //All data from that packet was copied no need to keep it, but this is not an error
-		  p0->error = error_node->errors[MAP_ERROR_NONE];
-		  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-						   to_next, n_left_to_next,
-						   pi0,
-						   IP6_MAP_IP6_REASS_NEXT_DROP);
-		}
-	    }
-	  else
-	    {
-	      p0->error = error_node->errors[error0];
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					       n_left_to_next, pi0,
-					       IP6_MAP_IP6_REASS_NEXT_DROP);
-	    }
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-
-  map_send_all_to_node (vm, fragments_ready, node,
-			&error_node->errors[MAP_ERROR_NONE],
-			IP6_MAP_IP6_REASS_NEXT_IP6_MAP);
-  map_send_all_to_node (vm, fragments_to_drop, node,
-			&error_node->errors[MAP_ERROR_FRAGMENT_DROPPED],
-			IP6_MAP_IP6_REASS_NEXT_DROP);
-
-  vec_free (fragments_to_drop);
-  vec_free (fragments_ready);
-  return frame->n_vectors;
 }
 
 /*
@@ -1070,6 +829,7 @@ VNET_FEATURE_INIT (ip6_map_feature, static) =
   .arc_name = "ip6-unicast",
   .node_name = "ip6-map",
   .runs_before = VNET_FEATURES ("ip6-flow-classify"),
+  .runs_after = VNET_FEATURES ("ip6-full-reassembly-feature"),
 };
 
 VLIB_REGISTER_NODE(ip6_map_node) = {
@@ -1088,30 +848,12 @@ VLIB_REGISTER_NODE(ip6_map_node) = {
 #ifdef MAP_SKIP_IP6_LOOKUP
     [IP6_MAP_NEXT_IP4_REWRITE] = "ip4-load-balance",
 #endif
-    [IP6_MAP_NEXT_IP6_REASS] = "ip6-map-ip6-reass",
     [IP6_MAP_NEXT_IP4_REASS] = "ip4-sv-reassembly-custom-next",
     [IP6_MAP_NEXT_IP4_FRAGMENT] = "ip4-frag",
     [IP6_MAP_NEXT_IP6_ICMP_RELAY] = "ip6-map-icmp-relay",
     [IP6_MAP_NEXT_IP6_LOCAL] = "ip6-local",
     [IP6_MAP_NEXT_DROP] = "error-drop",
     [IP6_MAP_NEXT_ICMP] = "ip6-icmp-error",
-  },
-};
-/* *INDENT-ON* */
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE(ip6_map_ip6_reass_node) = {
-  .function = ip6_map_ip6_reass,
-  .name = "ip6-map-ip6-reass",
-  .vector_size = sizeof(u32),
-  .format_trace = format_ip6_map_ip6_reass_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = MAP_N_ERROR,
-  .error_strings = map_error_strings,
-  .n_next_nodes = IP6_MAP_IP6_REASS_N_NEXT,
-  .next_nodes = {
-    [IP6_MAP_IP6_REASS_NEXT_IP6_MAP] = "ip6-map",
-    [IP6_MAP_IP6_REASS_NEXT_DROP] = "error-drop",
   },
 };
 /* *INDENT-ON* */

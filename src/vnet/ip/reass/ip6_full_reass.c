@@ -164,6 +164,8 @@ typedef struct
   u32 fq_index;
   u32 fq_feature_index;
 
+  // reference count for enabling/disabling feature - per interface
+  u32 *feature_use_refcount_per_intf;
 } ip6_full_reass_main_t;
 
 extern ip6_full_reass_main_t ip6_full_reass_main;
@@ -1427,6 +1429,7 @@ ip6_full_reass_init_function (vlib_main_t * vm)
   rm->fq_feature_index =
     vlib_frame_queue_main_init (ip6_full_reass_node_feature.index, 0);
 
+  rm->feature_use_refcount_per_intf = NULL;
   return error;
 }
 
@@ -1789,6 +1792,35 @@ VLIB_REGISTER_NODE (ip6_full_reassembly_feature_handoff_node) = {
   },
 };
 /* *INDENT-ON* */
+
+#ifndef CLIB_MARCH_VARIANT
+int
+ip6_full_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
+{
+  ip6_full_reass_main_t *rm = &ip6_full_reass_main;
+  vec_validate (rm->feature_use_refcount_per_intf, sw_if_index);
+  if (is_enable)
+    {
+      if (!rm->feature_use_refcount_per_intf[sw_if_index])
+	{
+	  ++rm->feature_use_refcount_per_intf[sw_if_index];
+	  return vnet_feature_enable_disable ("ip6-unicast",
+					      "ip6-full-reassembly-feature",
+					      sw_if_index, 1, 0, 0);
+	}
+      ++rm->feature_use_refcount_per_intf[sw_if_index];
+    }
+  else
+    {
+      --rm->feature_use_refcount_per_intf[sw_if_index];
+      if (!rm->feature_use_refcount_per_intf[sw_if_index])
+	return vnet_feature_enable_disable ("ip6-unicast",
+					    "ip6-full-reassembly-feature",
+					    sw_if_index, 0, 0, 0);
+    }
+  return -1;
+}
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
