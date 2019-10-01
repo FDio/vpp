@@ -299,6 +299,13 @@ format_vlib_node_stats (u8 * s, va_list * va)
   return s;
 }
 
+f64 vlib_get_stat_segment_update_rate (void) __attribute__ ((weak));
+f64
+vlib_get_stat_segment_update_rate (void)
+{
+  return 1e70;
+}
+
 static clib_error_t *
 show_node_runtime (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -308,8 +315,7 @@ show_node_runtime (vlib_main_t * vm,
   f64 time_now;
   u32 node_index;
   vlib_node_t ***node_dups = 0;
-  f64 *vectors_per_main_loop = 0;
-  f64 *last_vector_length_per_node = 0;
+  f64 *internal_node_vector_rates = 0;
 
   time_now = vlib_time_now (vm);
 
@@ -367,10 +373,8 @@ show_node_runtime (vlib_main_t * vm,
 	  nodes = vec_dup (nm->nodes);
 
 	  vec_add1 (node_dups, nodes);
-	  vec_add1 (vectors_per_main_loop,
-		    vlib_last_vectors_per_main_loop_as_f64 (stat_vm));
-	  vec_add1 (last_vector_length_per_node,
-		    vlib_last_vector_length_per_node (stat_vm));
+	  vec_add1 (internal_node_vector_rates,
+		    vlib_internal_node_vector_rate (stat_vm));
 	}
       vlib_worker_thread_barrier_release (vm);
 
@@ -434,15 +438,11 @@ show_node_runtime (vlib_main_t * vm,
 	  dt = time_now - nm->time_last_runtime_stats_clear;
 	  vlib_cli_output
 	    (vm,
-	     "Time %.1f, average vectors/node %.2f, last %d main loops %.2f per node %.2f"
-	     "\n  vector rates in %.4e, out %.4e, drop %.4e, punt %.4e",
+	     "Time %.1f, %f sec internal node vector rate %.2f \n"
+	     "  vector rates in %.4e, out %.4e, drop %.4e, punt %.4e",
 	     dt,
-	     (n_internal_calls > 0
-	      ? (f64) n_internal_vectors / (f64) n_internal_calls
-	      : 0),
-	     1 << VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE,
-	     vectors_per_main_loop[j],
-	     last_vector_length_per_node[j],
+	     vlib_get_stat_segment_update_rate (),
+	     internal_node_vector_rates[j],
 	     (f64) n_input / dt,
 	     (f64) n_output / dt, (f64) n_drop / dt, (f64) n_punt / dt);
 
@@ -465,8 +465,7 @@ show_node_runtime (vlib_main_t * vm,
 	}
       vec_free (stat_vms);
       vec_free (node_dups);
-      vec_free (vectors_per_main_loop);
-      vec_free (last_vector_length_per_node);
+      vec_free (internal_node_vector_rates);
     }
 
   return 0;

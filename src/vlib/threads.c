@@ -1429,7 +1429,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   for (i = 1; i < vec_len (vlib_mains); i++)
     max_vector_rate =
       clib_max (max_vector_rate,
-		vlib_last_vectors_per_main_loop_as_f64 (vlib_mains[i]));
+		(f64) vlib_last_vectors_per_main_loop (vlib_mains[i]));
 
   vlib_worker_threads[0].barrier_sync_count++;
 
