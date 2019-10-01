@@ -231,7 +231,7 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
       for (i = 0; i < n_addresses; i++)
 	{
 	  api_address = &mp->addresses[i];
-	  address = (ip6_address_t *) api_address->address;
+	  address = (ip6_address_t *) & api_address->address.un;
 
 	  address_info = &address_list[i];
 	  address_info->address = *address;
@@ -285,7 +285,7 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
 
       api_address = &mp->addresses[i];
 
-      address = (ip6_address_t *) api_address->address;
+      address = (ip6_address_t *) & api_address->address.un;
 
       if (ip6_address_is_link_local_unicast (address))
 	continue;

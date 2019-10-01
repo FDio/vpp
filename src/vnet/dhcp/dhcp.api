@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-option version = "2.0.1";
+option version = "3.0.1";
 
+import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
 
 /** \brief DHCP Proxy config add / del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param rx_vrf_id - Rx/interface vrf id
     @param server_vrf_id - server vrf id
-    @param if_ipv6 - ipv6 if non-zero, else ipv4
     @param is_add - add the config if non-zero, else delete
     @param insert_circuit_id - option82 suboption 1 fib number
     @param dhcp_server[] - server address
@@ -34,10 +35,9 @@ autoreply define dhcp_proxy_config
   u32 context;
   u32 rx_vrf_id;
   u32 server_vrf_id;
-  u8 is_ipv6;
-  u8 is_add;
-  u8 dhcp_server[16];
-  u8 dhcp_src_address[16];
+  bool is_add;
+  vl_api_address_t dhcp_server;
+  vl_api_address_t dhcp_src_address;
 };
 
 /** \brief DHCP Proxy set / unset vss request
@@ -46,7 +46,7 @@ autoreply define dhcp_proxy_config
     @param tbl_id - table id
     @vss_type - 0: use ASCI vpn_id; 1: use oui/vpn_index; 255: global vpn
     @vpn_ascii - null terminated ASCII VPN ID up to 128 characters
-    @param oui - first part of rfc2685 vpn id, 3 bytes oui 
+    @param oui - first part of rfc2685 vpn id, 3 bytes oui
     @param vpn_index - second part of rfc2685 vpn id, 4 bytes vpn index
     @param is_ipv6 - ip6 if non-zero, else ip4
     @param is_add - set vss if non-zero, else delete
@@ -56,12 +56,13 @@ autoreply define dhcp_proxy_set_vss
   u32 client_index;
   u32 context;
   u32 tbl_id;
+  /* FIXME: enum vss_type */
   u8 vss_type;
-  u8 vpn_ascii_id[129];
+  string vpn_ascii_id[129];
   u32 oui;
   u32 vpn_index;
-  u8 is_ipv6;
-  u8 is_add;
+  bool is_ipv6;
+  bool is_add;
 };
 
 /** \brief DHCP Client config data
@@ -77,11 +78,11 @@ autoreply define dhcp_proxy_set_vss
 */
 typedef dhcp_client
 {
-  u32 sw_if_index;
-  u8 hostname[64];
+  vl_api_interface_index_t sw_if_index;
+  string hostname[64];
   u8 id[64];
-  u8 want_dhcp_event;
-  u8 set_broadcast_flag;
+  bool want_dhcp_event;
+  bool set_broadcast_flag;
   vl_api_ip_dscp_t dscp;
   u32 pid;
 };
@@ -96,7 +97,7 @@ autoreply define dhcp_client_config
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  bool is_add;
   vl_api_dhcp_client_t client;
 };
 
@@ -105,7 +106,7 @@ autoreply define dhcp_client_config
 */
 typedef domain_server
 {
-  u8 address[16];
+  vl_api_address_t address;
 };
 
 /** \brief Data learned by the client during the DHCP process
@@ -119,14 +120,15 @@ typedef domain_server
 */
 typedef dhcp_lease
 {
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
+  /* FIXME: enum dhcp_client_state */
   u8 state;
-  u8 hostname[64];
-  u8 is_ipv6;
+  bool is_ipv6;
+  string hostname[64];
   u8 mask_width;
-  u8 host_address[16];
-  u8 router_address[16];
-  u8 host_mac[6];
+  vl_api_address_t host_address;
+  vl_api_address_t router_address;
+  vl_api_mac_address_t host_mac;
   u8 count;
   vl_api_domain_server_t domain_server[count];
 };
@@ -174,13 +176,13 @@ define dhcp_proxy_dump
 {
   u32 client_index;
   u32 context;
-  u8  is_ip6;
+  bool  is_ip6;
 };
 
 typedef dhcp_server
 {
   u32 server_vrf_id;
-  u8 dhcp_server[16];
+  vl_api_address_t dhcp_server;
 };
 
 /** \brief Tell client about a DHCP completion event
@@ -193,9 +195,9 @@ manual_endian manual_print define dhcp_proxy_details
   u32 vss_oui;
   u32 vss_fib_id;
   u8 vss_type;
-  u8 vss_vpn_ascii_id[129];
-  u8 is_ipv6;
-  u8 dhcp_src_address[16];
+  bool is_ipv6;
+  string vss_vpn_ascii_id[129];
+  vl_api_address_t dhcp_src_address;
   u8 count;
   vl_api_dhcp_server_t servers[count];
 };
@@ -220,7 +222,7 @@ autoreply define dhcp6_clients_enable_disable
 {
   u32 client_index;
   u32 context;
-  u8 enable;
+  bool enable;
 };
 
 /** \brief Struct representing DHCPv6 address
@@ -230,7 +232,7 @@ autoreply define dhcp6_clients_enable_disable
 */
 typedef dhcp6_address_info
 {
-  u8 address[16];
+  vl_api_address_t address;
   u32 valid_time;
   u32 preferred_time;
 };
@@ -243,8 +245,7 @@ typedef dhcp6_address_info
 */
 typedef dhcp6_pd_prefix_info
 {
-  u8 prefix[16];
-  u8 prefix_length;
+  vl_api_prefix_t prefix;
   u32 valid_time;
   u32 preferred_time;
 };
@@ -274,13 +275,14 @@ autoreply define dhcp6_send_client_message
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 server_index;
   u32 irt;
   u32 mrt;
   u32 mrc;
   u32 mrd;
-  u8 stop;
+  bool stop;
+  /* FIXME: enum msg_type */
   u8 msg_type;
   u32 T1;
   u32 T2;
@@ -313,13 +315,13 @@ autoreply define dhcp6_pd_send_client_message
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 server_index;
   u32 irt;
   u32 mrt;
   u32 mrc;
   u32 mrd;
-  u8 stop;
+  bool stop;
   u8 msg_type;
   u32 T1;
   u32 T2;
@@ -361,7 +363,7 @@ autoreply define want_dhcp6_pd_reply_events
 {
   u32 client_index;
   u32 context;
-  u8 enable_disable;
+  bool enable_disable;
   u32 pid;
 };
 
@@ -384,13 +386,14 @@ define dhcp6_reply_event
 {
   u32 client_index;
   u32 pid;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 server_index;
   u8 msg_type;
   u32 T1;
   u32 T2;
   u16 inner_status_code;
   u16 status_code;
+  /* FIXME: enum preference */
   u8 preference;
   u32 n_addresses;
   vl_api_dhcp6_address_info_t addresses[n_addresses];
@@ -415,7 +418,7 @@ define dhcp6_pd_reply_event
 {
   u32 client_index;
   u32 pid;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 server_index;
   u8 msg_type;
   u32 T1;

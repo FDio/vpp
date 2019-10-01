@@ -467,7 +467,7 @@ void
       dhcp6_send_client_message_params_address_t *addr = &params.addresses[i];
       addr->preferred_lt = ntohl (ai->preferred_time);
       addr->valid_lt = ntohl (ai->valid_time);
-      memcpy (addr->address.as_u8, ai->address, 16);
+      memcpy (addr->address.as_u8, &ai->address.un, 16);
     }
 
   dhcp6_send_client_message (vm, ntohl (mp->sw_if_index), mp->stop, &params);
@@ -535,7 +535,7 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      for (j = 0; j < vec_len (events[i].addresses); j++)
 		{
 		  dhcp6_address_info_t *info = &events[i].addresses[j];
-		  memcpy (address->address, &info->address, 16);
+		  memcpy (&address->address.un, &info->address, 16);
 		  address->valid_time = htonl (info->valid_time);
 		  address->preferred_time = htonl (info->preferred_time);
 		  address++;

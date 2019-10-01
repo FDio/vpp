@@ -278,7 +278,8 @@ dhcp_client::event_handler::handle_populate(const client_db::key_t& key)
 
     const dhcp_client::state_t& s =
       dhcp_client::state_t::from_vpp(payload.lease.state);
-    route::prefix_t pfx(payload.lease.is_ipv6, payload.lease.host_address,
+    route::prefix_t pfx(payload.lease.is_ipv6,
+                        (uint8_t *)&payload.lease.host_address.un,
                         payload.lease.mask_width);
     std::string hostname =
       reinterpret_cast<const char*>(payload.lease.hostname);
@@ -286,8 +287,8 @@ dhcp_client::event_handler::handle_populate(const client_db::key_t& key)
     dhcp_client dc(*itf, hostname, l2, payload.client.set_broadcast_flag,
                    from_api(payload.client.dscp));
     dc.lease(std::make_shared<dhcp_client::lease_t>(
-      s, itf, from_bytes(0, payload.lease.router_address), pfx, hostname,
-      mac_address_t(payload.lease.host_mac)));
+      s, itf, from_bytes(0, (uint8_t *)&payload.lease.router_address.un), pfx,
+      hostname, mac_address_t(payload.lease.host_mac)));
     OM::commit(key, dc);
   }
 }
