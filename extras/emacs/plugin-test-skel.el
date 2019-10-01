@@ -24,7 +24,7 @@ nil
 '(setq capital-oh-en "ON")
 '(setq main-p (concat (substring plugin-name 0 1) "tmp"))
 "/*
- * " plugin-name ".c - skeleton vpp-api-test plug-in
+ * " plugin-name ".c - " plugin-name " vpp-api-test plug-in
  *
  * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -45,33 +45,14 @@ nil
 #include <vppinfra/error.h>
 #include <stdbool.h>
 
+#define __plugin_msg_base " plugin-name"_test_main.msg_id_base
+#include <vlibapi/vat_helper_macros.h>
+
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* Declare message IDs */
-#include <" plugin-name "/" plugin-name "_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <" plugin-name "/" plugin-name "_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun             /* define message structures */
-#include <" plugin-name "/" plugin-name "_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <" plugin-name "/" plugin-name "_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <" plugin-name "/" plugin-name "_all_api_h.h>
-#undef vl_api_version
-
+#include <" plugin-name "/" plugin-name ".api_enum.h>
+#include <" plugin-name "/" plugin-name ".api_types.h>
 
 typedef struct
 {
@@ -81,36 +62,6 @@ typedef struct
 } " plugin-name "_test_main_t;
 
 " plugin-name "_test_main_t " plugin-name "_test_main;
-
-#define __plugin_msg_base " plugin-name"_test_main.msg_id_base
-#include <vlibapi/vat_helper_macros.h>
-
-#define foreach_standard_reply_retval_handler   \\
-_(" plugin-name "_enable_disable_reply)
-
-#define _(n)                                            \\
-    static void vl_api_##n##_t_handler                  \\
-    (vl_api_##n##_t * mp)                               \\
-    {                                                   \\
-        vat_main_t * vam = " plugin-name "_test_main.vat_main;   \\
-        i32 retval = ntohl(mp->retval);                 \\
-        if (vam->async_mode) {                          \\
-            vam->async_errors += (retval < 0);          \\
-        } else {                                        \\
-            vam->retval = retval;                       \\
-            vam->result_ready = 1;                      \\
-        }                                               \\
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                                       \\
-_(" PLUGIN-NAME "_ENABLE_DISABLE_REPLY, " plugin-name "_enable_disable_reply)
-
 
 static int api_" plugin-name "_enable_disable (vat_main_t * vam)
 {
@@ -153,39 +104,10 @@ static int api_" plugin-name "_enable_disable (vat_main_t * vam)
 }
 
 /*
- * List of messages that the api test plugin sends,
+ * List of messages that the " plugin-name" test plugin sends,
  * and that the data plane plugin processes
  */
-#define foreach_vpe_api_msg \\
-_(" plugin-name "_enable_disable, \"<intfc> [disable]\")
-
-static void " plugin-name "_api_hookup (vat_main_t *vam)
-{
-    " plugin-name "_test_main_t * " main-p " = &" plugin-name "_test_main;
-    /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \\
-    vl_msg_api_set_handlers((VL_API_##N + " main-p "->msg_id_base),     \\
-                           #n,                                  \\
-                           vl_api_##n##_t_handler,              \\
-                           vl_noop_handler,                     \\
-                           vl_api_##n##_t_endian,               \\
-                           vl_api_##n##_t_print,                \\
-                           sizeof(vl_api_##n##_t), 1);
-    foreach_vpe_api_reply_msg;
-#undef _
-
-    /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-    foreach_vpe_api_msg;
-#undef _
-
-    /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-    foreach_vpe_api_msg;
-#undef _
-}
-
-VAT_PLUGIN_REGISTER(" plugin-name");
+#include <" plugin-name "/" plugin-name ".api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: " capital-oh-en "
