@@ -2671,10 +2671,9 @@ vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp)
 {
   u8 *s, i;
 
-  s = format (0, "DHCP compl event: pid %d %s hostname %s host_addr %U "
+  s = format (0, "DHCP compl event: pid %d hostname %s host_addr %U "
 	      "host_mac %U router_addr %U",
-	      ntohl (mp->pid), mp->lease.is_ipv6 ? "ipv6" : "ipv4",
-	      mp->lease.hostname,
+	      ntohl (mp->pid), mp->lease.hostname,
 	      format_ip4_address, mp->lease.host_address,
 	      format_ethernet_address, mp->lease.host_mac,
 	      format_ip4_address, mp->lease.router_address);
@@ -9355,14 +9354,15 @@ api_dhcp_proxy_config (vat_main_t * vam)
   mp->server_vrf_id = ntohl (server_vrf_id);
   if (v6_address_set)
     {
-      mp->is_ipv6 = 1;
-      clib_memcpy (mp->dhcp_server, &v6address, sizeof (v6address));
-      clib_memcpy (mp->dhcp_src_address, &v6srcaddress, sizeof (v6address));
+      clib_memcpy (&mp->dhcp_server.un, &v6address, sizeof (v6address));
+      clib_memcpy (&mp->dhcp_src_address.un, &v6srcaddress,
+		   sizeof (v6address));
     }
   else
     {
-      clib_memcpy (mp->dhcp_server, &v4address, sizeof (v4address));
-      clib_memcpy (mp->dhcp_src_address, &v4srcaddress, sizeof (v4address));
+      clib_memcpy (&mp->dhcp_server.un, &v4address, sizeof (v4address));
+      clib_memcpy (&mp->dhcp_src_address.un, &v4srcaddress,
+		   sizeof (v4address));
     }
 
   /* send it... */
@@ -9434,8 +9434,7 @@ static void vl_api_dhcp_proxy_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "rx-table-id", ntohl (mp->rx_vrf_id));
-  vat_json_object_add_bytes (node, "vss-type", &mp->vss_type,
-			     sizeof (mp->vss_type));
+  vat_json_object_add_uint (node, "vss-type", ntohl (mp->vss_type));
   vat_json_object_add_string_copy (node, "vss-vpn-ascii-id",
 				   mp->vss_vpn_ascii_id);
   vat_json_object_add_uint (node, "vss-fib-id", ntohl (mp->vss_fib_id));

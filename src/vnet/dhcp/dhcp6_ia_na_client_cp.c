@@ -214,7 +214,7 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
   inner_status_code = ntohs (mp->inner_status_code);
   status_code = ntohs (mp->status_code);
 
-  if (mp->msg_type == DHCPV6_MSG_ADVERTISE
+  if (mp->msg_type == DHCPV6_MSG_API_ADVERTISE
       && client_state->server_index == ~0)
     {
       address_info_t *address_list = 0, *address_info;
@@ -246,7 +246,7 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
       vec_free (address_list);
     }
 
-  if (mp->msg_type != DHCPV6_MSG_REPLY)
+  if (mp->msg_type != DHCPV6_MSG_API_REPLY)
     return 0;
 
   if (!client_state->rebinding && client_state->server_index != server_index)

@@ -1047,20 +1047,11 @@ static void *vl_api_dhcp_proxy_config_t_print
   s = format (s, "rx_vrf_id %d ", (mp->rx_vrf_id));
   s = format (s, "server_vrf_id %d ", (mp->server_vrf_id));
 
-  if (mp->is_ipv6)
-    {
-      s = format (s, "svr %U ", format_ip6_address,
-		  (ip6_address_t *) mp->dhcp_server);
-      s = format (s, "src %U ", format_ip6_address,
-		  (ip6_address_t *) mp->dhcp_src_address);
-    }
-  else
-    {
-      s = format (s, "svr %U ", format_ip4_address,
-		  (ip4_address_t *) mp->dhcp_server);
-      s = format (s, "src %U ", format_ip4_address,
-		  (ip4_address_t *) mp->dhcp_src_address);
-    }
+  s = format (s, "svr %U ", format_ip46_address,
+	      (ip46_address_t *) & mp->dhcp_server.un);
+  s = format (s, "src %U ", format_ip46_address,
+	      (ip46_address_t *) & mp->dhcp_src_address.un);
+
   if (mp->is_add == 0)
     s = format (s, "del ");
 
