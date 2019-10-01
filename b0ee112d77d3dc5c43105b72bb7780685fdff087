@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a5f06e2c_cc5bf3b2",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-01T21:14:38Z",
+      "side": 1,
+      "message": "Please include this global in quic_main.",
+      "range": {
+        "startLine": 42,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 51
+      },
+      "revId": "b0ee112d77d3dc5c43105b72bb7780685fdff087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0396e742_2640254c",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2333,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-01T21:14:38Z",
+      "side": 1,
+      "message": "set_fifo_size",
+      "range": {
+        "startLine": 2333,
+        "startChar": 12,
+        "endLine": 2333,
+        "endChar": 23
+      },
+      "revId": "b0ee112d77d3dc5c43105b72bb7780685fdff087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f8dc637d_599b7740",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2403,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-01T21:14:38Z",
+      "side": 1,
+      "message": "Gb",
+      "range": {
+        "startLine": 2403,
+        "startChar": 44,
+        "endLine": 2403,
+        "endChar": 46
+      },
+      "revId": "b0ee112d77d3dc5c43105b72bb7780685fdff087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f9337d68_c133b5fc",
+        "filename": "src/vppinfra/unformat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1086,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-01T21:14:38Z",
+      "side": 1,
+      "message": "Please add the gigabytes variants as well (e.g. 10GB)",
+      "range": {
+        "startLine": 1085,
+        "startChar": 1,
+        "endLine": 1086,
+        "endChar": 1
+      },
+      "revId": "b0ee112d77d3dc5c43105b72bb7780685fdff087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "adba5190_9d14c4d2",
+        "filename": "src/vppinfra/unformat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1089,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-01T21:14:38Z",
+      "side": 1,
+      "message": "Same here",
+      "range": {
+        "startLine": 1089,
+        "startChar": 0,
+        "endLine": 1089,
+        "endChar": 43
+      },
+      "revId": "b0ee112d77d3dc5c43105b72bb7780685fdff087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d935c98_5d958c05",
+        "filename": "src/vppinfra/unformat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1093,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-01T21:14:38Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 1093,
+        "startChar": 0,
+        "endLine": 1093,
+        "endChar": 43
+      },
+      "revId": "b0ee112d77d3dc5c43105b72bb7780685fdff087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
