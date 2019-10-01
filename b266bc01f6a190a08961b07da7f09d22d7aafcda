@@ -93,6 +93,30 @@
       "revId": "b266bc01f6a190a08961b07da7f09d22d7aafcda",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "197bb79c_d3c6a700",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-10-01T07:16:56Z",
+      "side": 1,
+      "message": "if (CLIB_DEBUG)\n clib_memset (tc, 0xfa, sizeof(*tc));\n\npool_put (tm-\u003ehalf_open_connections, tc);\n\nWith the goal of doing as little as possible on the the non-debug branch.",
+      "parentUuid": "dd5e181a_f3dfd8a1",
+      "range": {
+        "startLine": 196,
+        "startChar": 2,
+        "endLine": 196,
+        "endChar": 24
+      },
+      "revId": "b266bc01f6a190a08961b07da7f09d22d7aafcda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
