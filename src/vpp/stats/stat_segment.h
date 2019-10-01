@@ -90,6 +90,9 @@ typedef struct
   u8 **interfaces;
   u8 **nodes;
 
+  /* Update interval */
+  f64 update_interval;
+
   clib_spinlock_t *stat_segment_lockp;
   clib_socket_t *socket;
   u8 *socket_name;

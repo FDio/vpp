@@ -216,6 +216,21 @@ stat_validate_counter_vector (stat_segment_directory_entry_t * ep, u32 max)
   ep->offset_vector = stat_segment_offset (shared_header, offset_vector);
 }
 
+always_inline void
+stat_set_simple_counter (stat_segment_directory_entry_t * ep,
+			 u32 thread_index, u32 index, u64 value)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+
+  ASSERT (shared_header);
+  counter_t *offset_vector =
+    stat_segment_pointer (sm->shared_header, ep->offset_vector);
+  counter_t *cb =
+    stat_segment_pointer (sm->shared_header, offset_vector[thread_index]);
+  cb[index] = value;
+}
+
 void
 vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap,
 		      int lock)
@@ -540,14 +555,12 @@ update_node_counters (stat_segment_main_t * sm)
 static void
 do_stat_segment_updates (stat_segment_main_t * sm)
 {
-  stat_segment_shared_header_t *shared_header = sm->shared_header;
   vlib_main_t *vm = vlib_mains[0];
   f64 vector_rate;
   u64 input_packets;
   f64 dt, now;
   vlib_main_t *this_vlib_main;
-  int i, start;
-  counter_t **counters;
+  int i;
   static int num_worker_threads_set;
 
   /*
@@ -558,14 +571,10 @@ do_stat_segment_updates (stat_segment_main_t * sm)
   if (PREDICT_FALSE (num_worker_threads_set == 0))
     {
       void *oldheap = clib_mem_set_heap (sm->heap);
-      int workers = clib_max (1, vec_len (vlib_mains) - 1);
       vlib_stat_segment_lock ();
 
-      sm->directory_vector[STAT_COUNTER_NUM_WORKER_THREADS].value = workers;
-
       stat_validate_counter_vector (&sm->directory_vector
-				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER],
-				    workers);
+				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER], 0);
       num_worker_threads_set = 1;
       vlib_stat_segment_unlock ();
       clib_mem_set_heap (oldheap);
@@ -577,29 +586,26 @@ do_stat_segment_updates (stat_segment_main_t * sm)
    */
   vector_rate = 0.0;
 
-  counters =
-    stat_segment_pointer (shared_header,
-			  sm->directory_vector
-			  [STAT_COUNTER_VECTOR_RATE_PER_WORKER].offset);
-
-  start = vec_len (vlib_mains) > 1 ? 1 : 0;
-
-  for (i = start; i < vec_len (vlib_mains); i++)
+  for (i = 0; i < vec_len (vlib_mains); i++)
     {
 
       f64 this_vector_rate;
 
       this_vlib_main = vlib_mains[i];
 
-      this_vector_rate = vlib_last_vector_length_per_node (this_vlib_main);
+      this_vector_rate = vlib_internal_node_vector_rate (this_vlib_main);
+      vlib_clear_internal_node_vector_rate (this_vlib_main);
+
       vector_rate += this_vector_rate;
 
       /* Set the per-worker rate */
-      counters[0][i - start] = this_vector_rate;
+      stat_set_simple_counter (&sm->directory_vector
+			       [STAT_COUNTER_VECTOR_RATE_PER_WORKER], i, 0,
+			       this_vector_rate);
     }
 
   /* And set the system average rate */
-  vector_rate /= (f64) (i - start);
+  vector_rate /= (f64) (i > 1 ? i - 1 : 1);
 
   sm->directory_vector[STAT_COUNTER_VECTOR_RATE].value = vector_rate;
 
@@ -704,19 +710,23 @@ stats_segment_socket_exit (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_EXIT_FUNCTION (stats_segment_socket_exit);
 
+/* Overrides weak reference in vlib:node_cli.c */
+f64
+vlib_get_stat_segment_update_rate (void)
+{
+  return stat_segment_main.update_interval;
+}
+
 static uword
 stat_segment_collector_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 				vlib_frame_t * f)
 {
   stat_segment_main_t *sm = &stat_segment_main;
 
-  /* Wait for Godot... */
-  f64 sleep_duration = 10;
-
   while (1)
     {
       do_stat_segment_updates (sm);
-      vlib_process_suspend (vm, sleep_duration);
+      vlib_process_suspend (vm, sm->update_interval);
     }
   return 0;			/* or not */
 }
@@ -853,6 +863,7 @@ static clib_error_t *
 statseg_config (vlib_main_t * vm, unformat_input_t * input)
 {
   stat_segment_main_t *sm = &stat_segment_main;
+  sm->update_interval = 10.0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -871,6 +882,8 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 	sm->node_counters_enabled = 1;
       else if (unformat (input, "per-node-counters off"))
 	sm->node_counters_enabled = 0;
+      else if (unformat (input, "update-interval %f", &sm->update_interval))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -888,6 +901,8 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
 
   return 0;
 }
+
+VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
 
 static clib_error_t *
 statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
@@ -957,7 +972,6 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   return 0;
 }
 
-VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (statseg_sw_interface_add_del);
 
 /* *INDENT-OFF* */
