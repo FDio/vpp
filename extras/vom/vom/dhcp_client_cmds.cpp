@@ -173,15 +173,16 @@ events_cmd::notify()
 
     const dhcp_client::state_t& s =
       dhcp_client::state_t::from_vpp(payload.lease.state);
-    route::prefix_t pfx(payload.lease.is_ipv6, payload.lease.host_address,
+    route::prefix_t pfx(payload.lease.is_ipv6,
+                        (uint8_t*)&payload.lease.host_address.un,
                         payload.lease.mask_width);
     std::shared_ptr<interface> itf = interface::find(payload.lease.sw_if_index);
 
     if (itf) {
       std::shared_ptr<dhcp_client::lease_t> ev =
         std::make_shared<dhcp_client::lease_t>(
-          s, itf, from_bytes(0, payload.lease.router_address), pfx,
-          reinterpret_cast<const char*>(payload.lease.hostname),
+          s, itf, from_bytes(0, (uint8_t*)&payload.lease.router_address.un),
+          pfx, reinterpret_cast<const char*>(payload.lease.hostname),
           mac_address_t(payload.lease.host_mac));
       m_listener.handle_dhcp_event(ev);
 

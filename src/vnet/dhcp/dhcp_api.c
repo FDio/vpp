@@ -73,8 +73,8 @@ vl_api_dhcp_proxy_set_vss_t_handler (vl_api_dhcp_proxy_set_vss_t * mp)
   vpn_ascii_id = format (0, "%s", mp->vpn_ascii_id);
   rv =
     dhcp_proxy_set_vss ((mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
-			ntohl (mp->tbl_id), mp->vss_type, vpn_ascii_id,
-			ntohl (mp->oui), ntohl (mp->vpn_index),
+			ntohl (mp->tbl_id), ntohl (mp->vss_type),
+			vpn_ascii_id, ntohl (mp->oui), ntohl (mp->vpn_index),
 			mp->is_add == 0);
 
   REPLY_MACRO (VL_API_DHCP_PROXY_SET_VSS_REPLY);
@@ -88,12 +88,18 @@ static void vl_api_dhcp_proxy_config_t_handler
   ip46_address_t src, server;
   int rv = -1;
 
-  if (mp->is_ipv6)
+  if (mp->dhcp_src_address.af != mp->dhcp_server.af)
     {
-      clib_memcpy (&src.ip6, mp->dhcp_src_address, sizeof (src.ip6));
-      clib_memcpy (&server.ip6, mp->dhcp_server, sizeof (server.ip6));
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      goto reply;
+    }
 
-      rv = dhcp6_proxy_set_server (&server,
+  ip_address_decode (&mp->dhcp_src_address, &src);
+  ip_address_decode (&mp->dhcp_server, &server);
+
+  if (mp->dhcp_src_address.af == ADDRESS_IP4)
+    {
+      rv = dhcp4_proxy_set_server (&server,
 				   &src,
 				   (u32) ntohl (mp->rx_vrf_id),
 				   (u32) ntohl (mp->server_vrf_id),
@@ -101,20 +107,14 @@ static void vl_api_dhcp_proxy_config_t_handler
     }
   else
     {
-      ip46_address_reset (&src);
-      ip46_address_reset (&server);
-
-      clib_memcpy (&src.ip4, mp->dhcp_src_address, sizeof (src.ip4));
-      clib_memcpy (&server.ip4, mp->dhcp_server, sizeof (server.ip4));
-
-      rv = dhcp4_proxy_set_server (&server,
+      rv = dhcp6_proxy_set_server (&server,
 				   &src,
 				   (u32) ntohl (mp->rx_vrf_id),
 				   (u32) ntohl (mp->server_vrf_id),
 				   (int) (mp->is_add == 0));
     }
 
-
+reply:
   REPLY_MACRO (VL_API_DHCP_PROXY_CONFIG_REPLY);
 }
 
@@ -162,7 +162,7 @@ dhcp_send_details (fib_protocol_t proto,
 
   if (vss)
     {
-      mp->vss_type = vss->vss_type;
+      mp->vss_type = ntohl (vss->vss_type);
       if (vss->vss_type == VSS_TYPE_ASCII)
 	{
 	  u32 id_len = vec_len (vss->vpn_ascii_id);
@@ -193,23 +193,23 @@ dhcp_send_details (fib_protocol_t proto,
 
     if (mp->is_ipv6)
       {
-	memcpy (v_server->dhcp_server, &server->dhcp_server.ip6, 16);
+	memcpy (&v_server->dhcp_server.un, &server->dhcp_server.ip6, 16);
       }
     else
       {
 	/* put the address in the first bytes */
-	memcpy (v_server->dhcp_server, &server->dhcp_server.ip4, 4);
+	memcpy (&v_server->dhcp_server.un, &server->dhcp_server.ip4, 4);
       }
   }
 
   if (mp->is_ipv6)
     {
-      memcpy (mp->dhcp_src_address, &proxy->dhcp_src_address.ip6, 16);
+      memcpy (&mp->dhcp_src_address.un, &proxy->dhcp_src_address.ip6, 16);
     }
   else
     {
       /* put the address in the first bytes */
-      memcpy (mp->dhcp_src_address, &proxy->dhcp_src_address.ip4, 4);
+      memcpy (&mp->dhcp_src_address.un, &proxy->dhcp_src_address.ip4, 4);
     }
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -223,15 +223,15 @@ dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
 
   lease->is_ipv6 = 0;		// only support IPv6 clients
   lease->sw_if_index = ntohl (client->sw_if_index);
-  lease->state = client->state;
+  lease->state = ntohl (client->state);
   len = clib_min (sizeof (lease->hostname) - 1, vec_len (client->hostname));
   clib_memcpy (&lease->hostname, client->hostname, len);
   lease->hostname[len] = 0;
 
   lease->mask_width = client->subnet_mask_width;
-  clib_memcpy (&lease->host_address[0], (u8 *) & client->leased_address,
+  clib_memcpy (&lease->host_address.un, (u8 *) & client->leased_address,
 	       sizeof (ip4_address_t));
-  clib_memcpy (&lease->router_address[0], (u8 *) & client->router_address,
+  clib_memcpy (&lease->router_address.un, (u8 *) & client->router_address,
 	       sizeof (ip4_address_t));
 
   lease->count = vec_len (client->domain_server_address);
