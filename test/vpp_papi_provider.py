@@ -367,7 +367,8 @@ class VppPapiProvider(object):
         :param cli: CLI to execute
         :returns: CLI output
         """
-        return cli + "\n" + str(self.cli(cli))
+        return cli + "\n" + self.cli(cli).encode('ascii',
+                                                 errors='backslashreplace')
 
     def want_ip4_arp_events(self, enable_disable=1, ip="0.0.0.0"):
         return self.api(self.papi.want_ip4_arp_events,
