@@ -153,6 +153,21 @@ typedef struct quic_worker_ctx_
   u32 *opening_ctx_pool;
 } quic_worker_ctx_t;
 
+typedef struct quic_rx_packet_ctx_
+{
+  quicly_decoded_packet_t packet;
+  u8 data[QUIC_MAX_PACKET_SIZE];
+  u32 ctx_index;
+  u32 thread_index;
+} quic_rx_packet_ctx_t;
+
+typedef struct quicly_ctx_data_
+{
+  quicly_context_t quicly_ctx;
+  char cid_key[17];
+  ptls_context_t ptls_ctx;
+} quicly_ctx_data_t;
+
 typedef struct quic_main_
 {
   u32 app_index;
