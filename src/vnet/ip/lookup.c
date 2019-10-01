@@ -896,6 +896,8 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	   */
 	  rpath.frp_proto = fib_proto_to_dpo (pfx.fp_proto);
 	  rpath.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD;
+
+	  vec_add1 (rpaths, rpath);
 	}
       else if (unformat (line_input, "via %U",
 			 unformat_fib_route_path, &rpath, &payload_proto))
