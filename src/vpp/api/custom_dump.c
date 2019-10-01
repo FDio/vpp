@@ -1787,8 +1787,10 @@ static void *vl_api_geneve_add_del_tunnel_t_print
   u8 *s;
   s = format (0, "SCRIPT: geneve_add_del_tunnel ");
 
-  ip46_address_t local = to_ip46 (mp->is_ipv6, mp->local_address);
-  ip46_address_t remote = to_ip46 (mp->is_ipv6, mp->remote_address);
+  ip46_address_t local;
+  ip46_address_t remote;
+  ip_address_decode (&mp->remote_address, &remote);
+  ip_address_decode (&mp->local_address, &local);
 
   u8 is_grp = ip46_address_is_multicast (&remote);
   char *remote_name = is_grp ? "group" : "dst";

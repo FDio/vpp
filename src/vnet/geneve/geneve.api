@@ -13,17 +13,20 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/ip/ip_types.api";
 
 define geneve_add_del_tunnel
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 is_ipv6;
-  u8 local_address[16];
-  u8 remote_address[16];
-  u32 mcast_sw_if_index;
+  bool is_add;
+  vl_api_address_t local_address;
+  vl_api_address_t remote_address;
+  vl_api_interface_index_t mcast_sw_if_index;
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
@@ -33,27 +36,26 @@ define geneve_add_del_tunnel_reply
 {
   u32 context;
   i32 retval;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 define geneve_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 define geneve_tunnel_details
 {
   u32 context;
-  u32 sw_if_index;
-  u8 src_address[16];
-  u8 dst_address[16];
-  u32 mcast_sw_if_index;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t src_address;
+  vl_api_address_t dst_address;
+  vl_api_interface_index_t mcast_sw_if_index;
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
-  u8 is_ipv6;
 };
 
 /** \brief Interface set geneve-bypass request
@@ -67,7 +69,7 @@ autoreply define sw_interface_set_geneve_bypass
 {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
-  u8 is_ipv6;
-  u8 enable;
+  vl_api_interface_index_t sw_if_index;
+  bool is_ipv6;
+  bool enable;
 };
