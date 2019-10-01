@@ -7,7 +7,7 @@ from ipaddress import IPv6Network, IPv4Network
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from util import fragment_rfc791
+from util import fragment_rfc791, fragment_rfc8200
 
 import scapy.compat
 from scapy.layers.l2 import Ether, Raw
@@ -221,6 +221,29 @@ class TestMAP(VppTestCase):
                   x for x in frags)
 
         self.pg1.add_stream(stream)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture(len(frags))
+
+        for r in rx:
+            self.assertFalse(r.haslayer(IPv6))
+            self.assertEqual(r[IP].src, p[IP].src)
+            self.assertEqual(r[IP].dst, p[IP].dst)
+
+        # Verify that fragments pass even if ipv6 layer is fragmented
+        stream = (IPv6(dst='3000::1', src=map_translated_addr) / x
+                  for x in frags)
+
+        v6_stream = [
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) / x
+            for i in range(len(frags))
+            for x in fragment_rfc8200(
+                IPv6(dst='3000::1', src=map_translated_addr) / frags[i],
+                i, 200)]
+
+        self.pg1.add_stream(v6_stream)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
