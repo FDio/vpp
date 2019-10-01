@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "dd190f45_a2d580fa",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-10-01T06:58:42Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f290fb2d_41ec5a7f",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 3
+      },
+      "revId": "b266bc01f6a190a08961b07da7f09d22d7aafcda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ea193d07_bb73cd9c",
         "filename": "src/vnet/tcp/tcp.c",
         "patchSetId": 3
@@ -36,6 +60,30 @@
       "writtenOn": "2019-09-30T15:21:27Z",
       "side": 1,
       "message": "Could you just use two branches instead of saving the index? Same comment for udp",
+      "range": {
+        "startLine": 196,
+        "startChar": 2,
+        "endLine": 196,
+        "endChar": 24
+      },
+      "revId": "b266bc01f6a190a08961b07da7f09d22d7aafcda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dd5e181a_f3dfd8a1",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-10-01T06:58:42Z",
+      "side": 1,
+      "message": "Not sure what you have in mind here?\nThe issue is writing (memset) a structure we already freed through pool_put, so we need to do the pool_put *after* the memset. However, memset() will overwrite the index, hence the copy.",
+      "parentUuid": "ea193d07_bb73cd9c",
       "range": {
         "startLine": 196,
         "startChar": 2,
