@@ -52,8 +52,6 @@ CJ_GLOBAL_LOG_PROTOTYPE;
    speculative vector enqueues which overflow vector data in next frame. */
 #define VLIB_FRAME_SIZE_ALLOC (VLIB_FRAME_SIZE + 4)
 
-u32 wraps;
-
 always_inline u32
 vlib_frame_bytes (u32 n_scalar_bytes, u32 n_vector_bytes)
 {
@@ -1376,6 +1374,12 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
 				   VLIB_NODE_TYPE_INTERNAL,
 				   VLIB_NODE_STATE_POLLING,
 				   f, last_time_stamp);
+  /* Internal node vector-rate accounting, for summary stats */
+  vm->internal_node_vectors += f->n_vectors;
+  vm->internal_node_calls++;
+  vm->internal_node_last_vectors_per_main_loop =
+    (f->n_vectors > vm->internal_node_last_vectors_per_main_loop) ?
+    f->n_vectors : vm->internal_node_last_vectors_per_main_loop;
 
   f->frame_flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_NO_APPEND);
 
@@ -1915,7 +1919,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	    }
 	}
       vlib_increment_main_loop_counter (vm);
-
       /* Record time stamp in case there are no enabled nodes and above
          calls do not update time stamp. */
       cpu_time_now = clib_cpu_time_now ();

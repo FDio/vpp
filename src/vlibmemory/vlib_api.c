@@ -319,7 +319,7 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
        * of the application to process the request, the client will
        * sit and wait for Godot...
        */
-      vector_rate = vlib_last_vector_length_per_node (vm);
+      vector_rate = (f64) vlib_last_vectors_per_main_loop (vm);
       start_time = vlib_time_now (vm);
       while (1)
 	{
