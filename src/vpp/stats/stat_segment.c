@@ -591,7 +591,9 @@ do_stat_segment_updates (stat_segment_main_t * sm)
 
       this_vlib_main = vlib_mains[i];
 
-      this_vector_rate = vlib_last_vector_length_per_node (this_vlib_main);
+      this_vector_rate = vlib_internal_node_vector_rate (this_vlib_main);
+      vlib_clear_internal_node_vector_rate (this_vlib_main);
+
       vector_rate += this_vector_rate;
 
       /* Set the per-worker rate */

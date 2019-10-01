@@ -1376,6 +1376,9 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
 				   VLIB_NODE_TYPE_INTERNAL,
 				   VLIB_NODE_STATE_POLLING,
 				   f, last_time_stamp);
+  /* Internal node vector-rate accounting, for summary stats */
+  vm->internal_node_vectors += f->n_vectors;
+  vm->internal_node_calls++;
 
   f->frame_flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_NO_APPEND);
 

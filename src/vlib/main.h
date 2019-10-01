@@ -101,6 +101,12 @@ typedef struct vlib_main_t
   u32 vector_counts_per_main_loop[2];
   u32 node_counts_per_main_loop[2];
 
+  /* Internal node vectors, calls */
+  u64 internal_node_vectors;
+  u64 internal_node_calls;
+  u64 internal_node_vectors_last_clear;
+  u64 internal_node_calls_last_clear;
+
   /* Main loop hw / sw performance counters */
   void (**vlib_node_runtime_perf_counter_cbs) (struct vlib_main_t *,
 					       u64 *, u64 *,
@@ -360,6 +366,29 @@ vlib_last_vector_length_per_node (vlib_main_t * vm)
   u32 v = vm->vector_counts_per_main_loop[i];
   u32 n = vm->node_counts_per_main_loop[i];
   return n == 0 ? 0 : (f64) v / (f64) n;
+}
+
+always_inline f64
+vlib_internal_node_vector_rate (vlib_main_t * vm)
+{
+  u64 vectors;
+  u64 calls;
+
+  calls = vm->internal_node_calls - vm->internal_node_calls_last_clear;
+
+  if (PREDICT_FALSE (calls == 0))
+    return 0.0;
+
+  vectors = vm->internal_node_vectors - vm->internal_node_vectors_last_clear;
+
+  return (f64) vectors / (f64) calls;
+}
+
+always_inline void
+vlib_clear_internal_node_vector_rate (vlib_main_t * vm)
+{
+  vm->internal_node_calls_last_clear = vm->internal_node_calls;
+  vm->internal_node_vectors_last_clear = vm->internal_node_vectors;
 }
 
 extern u32 wraps;
