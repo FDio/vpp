@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "026382f6_1f913db7",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-01T22:10:48Z",
+      "side": 1,
+      "message": "I\u0027m not a huge fan of \u0027banner\u0027 comments which are not typically used in VPP.\n\nAt the very least this should be reduced to a single line.",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 79
+      },
+      "revId": "3d7d3a2046aa2ab20c8b62b9a67adc0dae2a127a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cc9ba9e2_62aa3026",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-10-01T22:10:48Z",
+      "side": 1,
+      "message": "Same here",
+      "range": {
+        "startLine": 171,
+        "startChar": 0,
+        "endLine": 175,
+        "endChar": 79
+      },
+      "revId": "3d7d3a2046aa2ab20c8b62b9a67adc0dae2a127a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
