@@ -28,56 +28,11 @@
 
 #include <pppoe/pppoe.h>
 
-
-#define vl_msg_id(n,h) n,
-typedef enum
-{
-#include <pppoe/pppoe.api.h>
-  /* We'll want to know how many messages IDs we need... */
-  VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
-
-/* define message structures */
-#define vl_typedefs
-#include <pppoe/pppoe.api.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <pppoe/pppoe.api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <pppoe/pppoe.api.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <pppoe/pppoe.api.h>
-#undef vl_api_version
-
-#define vl_msg_name_crc_list
-#include <pppoe/pppoe.api.h>
-#undef vl_msg_name_crc_list
+#include <pppoe/pppoe.api_enum.h>
+#include <pppoe/pppoe.api_types.h>
 
 #define REPLY_MSG_ID_BASE pem->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-static void
-setup_message_id_table (pppoe_main_t * pem, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + pem->msg_id_base);
-  foreach_vl_msg_name_crc_pppoe;
-#undef _
-}
-
-#define foreach_pppoe_plugin_api_msg                             \
-_(PPPOE_ADD_DEL_SESSION, pppoe_add_del_session)                           \
-_(PPPOE_SESSION_DUMP, pppoe_session_dump)
 
 static void vl_api_pppoe_add_del_session_t_handler
   (vl_api_pppoe_add_del_session_t * mp)
@@ -184,30 +139,13 @@ vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
     }
 }
 
-
+#include <pppoe/pppoe.api.c>
 static clib_error_t *
 pppoe_api_hookup (vlib_main_t * vm)
 {
   pppoe_main_t *pem = &pppoe_main;
 
-  u8 *name = format (0, "pppoe_%08x%c", api_version, 0);
-  pem->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + pem->msg_id_base),     \
-                           #n,                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_pppoe_plugin_api_msg;
-#undef _
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (pem, &api_main);
-
+  pem->msg_id_base = setup_message_id_table ();
   return 0;
 }
 
