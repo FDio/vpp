@@ -1,0 +1,33 @@
+diff --git a/deps/picotls/include/picotls.h b/deps/picotls/include/picotls.h
+index 06d62f9..de33b86 100644
+--- a/deps/picotls/include/picotls.h
++++ b/deps/picotls/include/picotls.h
+@@ -276,6 +276,8 @@ typedef struct st_ptls_aead_context_t {
+     size_t (*do_encrypt_final)(struct st_ptls_aead_context_t *ctx, void *output);
+     size_t (*do_decrypt)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, const void *iv,
+                          const void *aad, size_t aadlen);
++    size_t (*do_encrypt)(struct st_ptls_aead_context_t *ctx, void *output, const void *input, size_t inlen, uint64_t seq,
++                         const void *iv, const void *aad, size_t aadlen);
+ } ptls_aead_context_t;
+ 
+ /**
+diff --git a/deps/picotls/lib/picotls.c b/deps/picotls/lib/picotls.c
+index 70d2fef..f98f7b4 100644
+--- a/deps/picotls/lib/picotls.c
++++ b/deps/picotls/lib/picotls.c
+@@ -4890,6 +4890,13 @@ size_t ptls_aead_encrypt(ptls_aead_context_t *ctx, void *output, const void *inp
+ {
+     size_t off = 0;
+ 
++    if(ctx->do_encrypt)
++    {
++        uint8_t iv[PTLS_MAX_IV_SIZE];
++        ptls_aead__build_iv(ctx, iv, seq);
++        return ctx->do_encrypt(ctx, output, input, inlen, seq, iv, aad, aadlen);
++    }
++
+     ptls_aead_encrypt_init(ctx, seq, aad, aadlen);
+     off += ptls_aead_encrypt_update(ctx, ((uint8_t *)output) + off, input, inlen);
+     off += ptls_aead_encrypt_final(ctx, ((uint8_t *)output) + off);
+
+
