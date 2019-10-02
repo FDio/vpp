@@ -30,6 +30,7 @@ autoreply define sw_interface_set_dpdk_hqos_pipe {
     u32 subport;
     u32 pipe;
     u32 profile;
+    option vat_help = "rx sw_if_index <id> subport <subport-id> pipe <pipe-id> profile <profile-id>";
 };
 
 /** \brief DPDK interface HQoS subport parameters set request
@@ -51,6 +52,7 @@ autoreply define sw_interface_set_dpdk_hqos_subport {
     u32 tb_size;
     u32 tc_rate[4];
     u32 tc_period;
+    option vat_help = "rx sw_if_index <id> subport <subport-id> [rate <n>] [bktsize <n>] [tc0 <n>] [tc1 <n>] [tc2 <n>] [tc3 <n>] [period <n>]\n";
 };
 
 /** \brief DPDK interface HQoS tctbl entry set request
@@ -68,6 +70,7 @@ autoreply define sw_interface_set_dpdk_hqos_tctbl {
     u32 entry;
     u32 tc;
     u32 queue;
+    option vat_help = "rx sw_if_index <id> entry <n> tc <n> queue <n>";
 };
 
 /*

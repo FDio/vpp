@@ -24,29 +24,8 @@
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* Declare message IDs */
-#include <dpdk/api/dpdk_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <dpdk/api/dpdk.api.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun             /* define message structures */
-#include <dpdk/api/dpdk.api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <dpdk/api/dpdk.api.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <dpdk/api/dpdk.api.h>
-#undef vl_api_version
+#include <dpdk/api/dpdk.api_enum.h>
+#include <dpdk/api/dpdk.api_types.h>
 
 typedef struct {
     /* API message ID base */
@@ -55,39 +34,6 @@ typedef struct {
 } dpdk_test_main_t;
 
 dpdk_test_main_t dpdk_test_main;
-
-#define foreach_standard_reply_retval_handler         \
-_(sw_interface_set_dpdk_hqos_pipe_reply)              \
-_(sw_interface_set_dpdk_hqos_subport_reply)           \
-_(sw_interface_set_dpdk_hqos_tctbl_reply)
-
-#define _(n)                                          \
-    static void vl_api_##n##_t_handler                \
-    (vl_api_##n##_t * mp)                             \
-    {                                                 \
-        vat_main_t * vam = dpdk_test_main.vat_main;  \
-        i32 retval = ntohl(mp->retval);               \
-        if (vam->async_mode) {                        \
-            vam->async_errors += (retval < 0);        \
-        } else {                                      \
-            vam->retval = retval;                     \
-            vam->result_ready = 1;                    \
-        }                                             \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg                               \
-_(SW_INTERFACE_SET_DPDK_HQOS_PIPE_REPLY,                        \
-  sw_interface_set_dpdk_hqos_pipe_reply)                        \
-_(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT_REPLY,                     \
-  sw_interface_set_dpdk_hqos_subport_reply)                     \
-_(SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY,                       \
-  sw_interface_set_dpdk_hqos_tctbl_reply)
 
 /* M: construct, but don't yet send a message */
 #define M(T,t)                                                  \
@@ -336,44 +282,4 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
   return 0;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg                                               \
-_(sw_interface_set_dpdk_hqos_pipe,                                        \
-  "rx sw_if_index <id> subport <subport-id> pipe <pipe-id>\n"   \
-  "profile <profile-id>\n")                                               \
-_(sw_interface_set_dpdk_hqos_subport,                                     \
-  "rx sw_if_index <id> subport <subport-id> [rate <n>]\n"       \
-  "[bktsize <n>] [tc0 <n>] [tc1 <n>] [tc2 <n>] [tc3 <n>] [period <n>]\n") \
-_(sw_interface_set_dpdk_hqos_tctbl,                                       \
-  "rx sw_if_index <id> entry <n> tc <n> queue <n>\n")
-
-static void dpdk_api_hookup (vat_main_t *vam)
-{
-  dpdk_test_main_t * dm __attribute__((unused)) = &dpdk_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + dm->msg_id_base),       \
-                          #n,                                   \
-                          vl_api_##n##_t_handler,               \
-                          vl_noop_handler,                      \
-                          vl_api_##n##_t_endian,                \
-                          vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-VAT_PLUGIN_REGISTER(dpdk);
+#include <dpdk/api/dpdk.api_test.c>
