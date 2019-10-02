@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c5c02aa5_0c0ebe65",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-10-02T10:53:55Z",
+      "side": 1,
+      "message": "This function is already implemented by unformat_pg_stream_parameter(...). It\u0027s probably more clear to do it here; please remove the redundant code.",
+      "revId": "089d1d1fc4339d68b723da035c692580530ca750",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d95bcdf3_869278f0",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-10-02T10:53:55Z",
+      "side": 1,
+      "message": "This is OK, although the traditional way to debug single vs. dual vs. quad loop issues is to set limit \u003d desired frame size, then use \"packet-generator enable\" to send one such frame.",
+      "revId": "089d1d1fc4339d68b723da035c692580530ca750",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
