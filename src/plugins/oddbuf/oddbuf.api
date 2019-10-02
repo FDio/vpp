@@ -48,4 +48,5 @@ autoreply define oddbuf_enable_disable {
 
     /* Interface handle */
     vl_api_interface_index_t sw_if_index;
+    option vat_help = "<intfc> [disable]";
 };

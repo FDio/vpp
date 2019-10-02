@@ -547,6 +547,10 @@ Steal The NIC
 I:	stn
 F:	src/plugins/stn
 
+Awkward chained buffer geometry tool
+I:	oddbuf
+F:	src/plugins/oddbuf
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
