@@ -859,7 +859,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (dmac_check)
     {
-      if (vec_len (ei->secondary_addrs))
+      if (ei && vec_len (ei->secondary_addrs))
 	eth_input_process_frame_dmac_check (hi, dmacs, dmacs_bad, n_packets,
 					    ei, 1 /* have_sec_dmac */ );
       else
