@@ -237,6 +237,9 @@ typedef struct
   vring_desc_t *desc;
   vring_avail_t *avail;
   vring_used_t *used;
+  uword desc_user_addr;
+  uword used_user_addr;
+  uword avail_user_addr;
   f64 int_deadline;
   u8 started;
   u8 enabled;

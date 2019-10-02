@@ -557,6 +557,24 @@ vhost_user_socket_read (clib_file_t * uf)
 
 	  vui->nregions++;
 	}
+
+      /*
+       * Re-compute desc, used, and avail descriptor table if vring address
+       * is set.
+       */
+      for (q = 0; q < VHOST_VRING_MAX_N; q++)
+	{
+	  if (vui->vrings[q].desc_user_addr &&
+	      vui->vrings[q].used_user_addr && vui->vrings[q].avail_user_addr)
+	    {
+	      vui->vrings[q].desc =
+		map_user_mem (vui, vui->vrings[q].desc_user_addr);
+	      vui->vrings[q].used =
+		map_user_mem (vui, vui->vrings[q].used_user_addr);
+	      vui->vrings[q].avail =
+		map_user_mem (vui, vui->vrings[q].avail_user_addr);
+	    }
+	}
       vlib_worker_thread_barrier_release (vm);
       break;
 
@@ -599,6 +617,10 @@ vhost_user_socket_read (clib_file_t * uf)
 			vui->hw_if_index);
 	  goto close_socket;
 	}
+
+      vui->vrings[msg.state.index].desc_user_addr = msg.addr.desc_user_addr;
+      vui->vrings[msg.state.index].used_user_addr = msg.addr.used_user_addr;
+      vui->vrings[msg.state.index].avail_user_addr = msg.addr.avail_user_addr;
 
       vlib_worker_thread_barrier_sync (vm);
       vui->vrings[msg.state.index].desc = desc;
