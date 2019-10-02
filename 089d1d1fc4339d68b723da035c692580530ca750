@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ff0139fa_eb0a896e",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2019-10-02T12:31:40Z",
+      "side": 1,
+      "message": "Will do and resubmit. I\u0027ll admit to missing the \"packet-generator configure\" cli as my exposure was through writing some UT and I just saw this command being used there. :)",
+      "parentUuid": "c5c02aa5_0c0ebe65",
+      "revId": "089d1d1fc4339d68b723da035c692580530ca750",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d95bcdf3_869278f0",
         "filename": "src/vnet/pg/cli.c",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2019-10-02T10:53:55Z",
       "side": 1,
       "message": "This is OK, although the traditional way to debug single vs. dual vs. quad loop issues is to set limit \u003d desired frame size, then use \"packet-generator enable\" to send one such frame.",
+      "revId": "089d1d1fc4339d68b723da035c692580530ca750",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "062f3e27_6ceb96bb",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2019-10-02T12:31:40Z",
+      "side": 1,
+      "message": "FWIW, We use this to test something different from dual/quad loop code. Our case is testing packet re-ordering. We need to test multiple trips through a node where previous trips through have buffered packets for re-ordering (e.g. missing earlier packets). We actually need multiple frames to do this (we provide packet data that has mis-ordered IP packets in it). In our case the re-ordering code is implemented using a window size (rather than just a timer). So we test the combination of ways packets can be reordered in (or just outside) this window as well as the packets arriving in different \"clumps\" based on the \"maxframe\" size.",
+      "parentUuid": "d95bcdf3_869278f0",
       "revId": "089d1d1fc4339d68b723da035c692580530ca750",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
