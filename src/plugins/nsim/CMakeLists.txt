@@ -24,10 +24,6 @@ add_vpp_plugin(nsim
   API_FILES
   nsim.api
 
-  INSTALL_HEADERS
-  nsim_all_api_h.h
-  nsim_msg_enum.h
-
   API_TEST_SOURCES
   nsim_test.c
 )

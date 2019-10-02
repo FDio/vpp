@@ -22,30 +22,8 @@
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* Declare message IDs */
-#include <nsim/nsim_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <nsim/nsim_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <nsim/nsim_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <nsim/nsim_all_api_h.h>
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <nsim/nsim_all_api_h.h>
-#undef vl_api_version
-
+#include <nsim/nsim.api_enum.h>
+#include <nsim/nsim.api_types.h>
 
 typedef struct
 {
@@ -58,38 +36,6 @@ nsim_test_main_t nsim_test_main;
 
 #define __plugin_msg_base nsim_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
-
-#define foreach_standard_reply_retval_handler   \
-_(nsim_cross_connect_enable_disable_reply)      \
-_(nsim_output_feature_enable_disable_reply)     \
-_(nsim_configure_reply)
-
-#define _(n)                                            \
-    static void vl_api_##n##_t_handler                  \
-    (vl_api_##n##_t * mp)                               \
-    {                                                   \
-        vat_main_t * vam = nsim_test_main.vat_main;   \
-        i32 retval = ntohl(mp->retval);                 \
-        if (vam->async_mode) {                          \
-            vam->async_errors += (retval < 0);          \
-        } else {                                        \
-            vam->retval = retval;                       \
-            vam->result_ready = 1;                      \
-        }                                               \
-    }
-foreach_standard_reply_retval_handler;
-#undef _
-
-/*
- * Table of message reply handlers, must include boilerplate handlers
- * we just generated
- */
-#define foreach_vpe_api_reply_msg               \
-_(NSIM_CROSS_CONNECT_ENABLE_DISABLE_REPLY,      \
-nsim_cross_connect_enable_disable_reply)        \
-_(NSIM_OUTPUT_FEATURE_ENABLE_DISABLE_REPLY,     \
-nsim_output_feature_enable_disable_reply)       \
-_(NSIM_CONFIGURE_REPLY, nsim_configure_reply)
 
 static int
 api_nsim_cross_connect_enable_disable (vat_main_t * vam)
@@ -268,45 +214,7 @@ api_nsim_configure (vat_main_t * vam)
   return ret;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg                                             \
-_(nsim_cross_connect_enable_disable,                                    \
-"[<intfc0> | sw_if_index <swif0>] [<intfc1> | sw_if_index <swif1>] [disable]") \
-_(nsim_output_feature_enable_disable,"[<intfc> | sw_if_index <nnn> [disable]") \
-_(nsim_configure, "delay <time> bandwidth <bw> [packet-size <nn>]"      \
-"[packets-per-drop <nnnn>]")
-
-static void
-nsim_api_hookup (vat_main_t * vam)
-{
-  nsim_test_main_t *sm = &nsim_test_main;
-  /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_reply_msg;
-#undef _
-
-  /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_api_msg;
-#undef _
-
-  /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_api_msg;
-#undef _
-}
-
-VAT_PLUGIN_REGISTER (nsim);
+#include <nsim/nsim.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON
