@@ -250,7 +250,8 @@ typedef struct
 
   u8 is_initiator;
   u32 last_init_msg_id;
-  ikev2_profile_t *profile;
+  u8 is_profile_index_set;
+  u32 profile_index;
 
   ikev2_child_sa_t *childs;
 } ikev2_sa_t;

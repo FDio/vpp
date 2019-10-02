@@ -389,8 +389,9 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->iaddr.as_u32 = sai->iaddr.as_u32;
   sa->raddr.as_u32 = sai->raddr.as_u32;
   sa->is_initiator = sai->is_initiator;
-  sa->profile = sai->profile;
   sa->i_id.type = sai->i_id.type;
+  sa->profile_index = sai->profile_index;
+  sa->is_profile_index_set = sai->is_profile_index_set;
   sa->i_id.data = _(sai->i_id.data);
   sa->i_auth.method = sai->i_auth.method;
   sa->i_auth.hex = sai->i_auth.hex;
@@ -1478,6 +1479,8 @@ static int
 ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 			       ikev2_child_sa_t * child)
 {
+  ikev2_main_t *km = &ikev2_main;
+  ikev2_profile_t *p = 0;
   ipsec_add_del_tunnel_args_t a;
   ikev2_sa_transform_t *tr;
   ikev2_sa_proposal_t *proposals;
@@ -1628,11 +1631,13 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
   a.remote_crypto_key_len = vec_len (rem_ckey);
   clib_memcpy_fast (a.remote_crypto_key, rem_ckey, a.remote_crypto_key_len);
 
-  if (sa->profile && sa->profile->lifetime)
+  if (sa->is_profile_index_set)
+    p = pool_elt_at_index (km->profiles, sa->profile_index);
+
+  if (p && p->lifetime)
     {
-      child->time_to_expiration = vlib_time_now (vnm->vlib_main)
-	+ sa->profile->lifetime;
-      if (sa->profile->lifetime_jitter)
+      child->time_to_expiration = vlib_time_now (vnm->vlib_main) + p->lifetime;
+      if (p->lifetime_jitter)
 	{
 	  // This is not much better than rand(3), which Coverity warns
 	  // is unsuitable for security applications; random_u32 is
@@ -1643,7 +1648,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	  rnd = random_u32 (&rnd);
 
 	  child->time_to_expiration +=
-	    1 + (rnd % sa->profile->lifetime_jitter);
+	    1 + (rnd % p->lifetime_jitter);
 	}
     }
 
@@ -2996,7 +3001,8 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     ikev2_sa_free_proposal_vector (&proposals);
 
     sa.is_initiator = 1;
-    sa.profile = p;
+    sa.profile_index = km->profiles - p;
+    sa.is_profile_index_set = 1;
     sa.state = IKEV2_STATE_SA_INIT;
     ikev2_generate_sa_init_data (&sa);
     ikev2_payload_add_ke (chain, sa.dh_group, sa.i_dh_data);
@@ -3353,17 +3359,21 @@ static u8
 ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)
 {
   ikev2_main_t *km = &ikev2_main;
+  ikev2_profile_t *p = 0;
   vlib_main_t *vm = km->vlib_main;
   f64 now = vlib_time_now (vm);
   u8 res = 0;
 
-  if (sa->is_initiator && sa->profile && csa->time_to_expiration
+  if (sa->is_profile_index_set)
+    p = pool_elt_at_index (km->profiles, sa->profile_index);
+
+  if (sa->is_initiator && p && csa->time_to_expiration
       && now > csa->time_to_expiration)
     {
       if (!csa->is_expired || csa->rekey_retries > 0)
 	{
 	  ikev2_rekey_child_sa_internal (vm, sa, csa);
-	  csa->time_to_expiration = now + sa->profile->handover;
+	  csa->time_to_expiration = now + p->handover;
 	  csa->is_expired = 1;
 	  if (csa->rekey_retries == 0)
 	    {
@@ -3399,6 +3409,7 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
   vlib_main_t *vm = km->vlib_main;
   ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *fsa = 0;
+  ikev2_profile_t *p = 0;
   ikev2_child_sa_t *fchild = 0;
   f64 now = vlib_time_now (vm);
   vlib_counter_t counts;
@@ -3423,10 +3434,13 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
   vlib_get_combined_counter (&ipsec_sa_counters,
 			     ipsec_sa->stat_index, &counts);
 
-  if (fchild && fsa && fsa->profile && fsa->profile->lifetime_maxdata)
+  if (fsa && fsa->is_profile_index_set)
+    p = pool_elt_at_index (km->profiles, fsa->profile_index);
+
+  if (fchild && p && p->lifetime_maxdata)
     {
       if (!fchild->is_expired
-	  && counts.bytes > fsa->profile->lifetime_maxdata)
+	  && counts.bytes > p->lifetime_maxdata)
 	{
 	  fchild->time_to_expiration = now;
 	}
