@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0520ae2d_a16b0fe6",
+        "filename": "src/plugins/map/ip4_map.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-02T11:30:22Z",
+      "side": 1,
+      "message": "port1",
+      "range": {
+        "startLine": 340,
+        "startChar": 55,
+        "endLine": 340,
+        "endChar": 60
+      },
+      "revId": "640edcd9016f2381ea1efeaab78e834068c0e862",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

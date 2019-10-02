@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "534393c9_f5d025c5",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-02T11:30:22Z",
+      "side": 0,
+      "message": "These fields are still there, new line numbers 348-351.",
+      "range": {
+        "startLine": 329,
+        "startChar": 11,
+        "endLine": 329,
+        "endChar": 14
+      },
+      "revId": "839a7bce3872f992f4807ee6d6a76f9b361151dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
