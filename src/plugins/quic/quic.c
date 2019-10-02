@@ -237,42 +237,7 @@ quic_increment_counter (u8 evt, u8 val)
   vlib_node_increment_counter (vm, quic_input_node.index, evt, val);
 }
 
-struct st_quic_event_log_t
-{
-  quicly_event_logger_t super;
-};
 
-void
-quic_event_log (quicly_event_logger_t * _self, quicly_event_type_t type,
-		const quicly_event_attribute_t * attributes,
-		size_t num_attributes)
-{
-  if (type == QUICLY_EVENT_TYPE_PACKET_LOST)
-    {
-      QUIC_DBG (1, "QUIC packet loss");
-      quic_increment_counter (QUIC_ERROR_PACKET_DROP, 1);
-    }
-}
-
-quicly_event_logger_t *
-quic_new_event_logger ()
-{
-  struct st_quic_event_log_t *self;
-
-  if ((self = clib_mem_alloc (sizeof (*self))) == NULL)
-    return NULL;
-  /* *INDENT-OFF* */
-  *self = (struct st_quic_event_log_t) {{quic_event_log}};
-  /* *INDENT-ON* */
-  return &self->super;
-}
-
-void
-quic_free_event_logger (quicly_event_logger_t * _self)
-{
-  struct st_quicly_default_event_log_t *self = (void *) _self;
-  clib_mem_free (self);
-}
 
 /**
  * Called when quicly return an error
@@ -350,15 +315,15 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   /*  Read dest address from quicly-provided sockaddr */
   if (hdr.is_ip4)
     {
-      ASSERT (packet->sa.sa_family == AF_INET);
-      struct sockaddr_in *sa4 = (struct sockaddr_in *) &packet->sa;
+      ASSERT (packet->dest.sa.sa_family == AF_INET);
+      struct sockaddr_in *sa4 = (struct sockaddr_in *) &packet->dest.sa;
       hdr.rmt_port = sa4->sin_port;
       hdr.rmt_ip.ip4.as_u32 = sa4->sin_addr.s_addr;
     }
   else
     {
-      ASSERT (packet->sa.sa_family == AF_INET6);
-      struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) &packet->sa;
+      ASSERT (packet->dest.sa.sa_family == AF_INET6);
+      struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) &packet->dest.sa;
       hdr.rmt_port = sa6->sin6_port;
       clib_memcpy (&hdr.rmt_ip.ip6, &sa6->sin6_addr, 16);
     }
@@ -972,9 +937,6 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
   quicly_ctx->now = &quicly_vpp_now_cb;
   quicly_amend_ptls_context (quicly_ctx->tls);
 
-  quicly_ctx->event_log.mask = UINT64_MAX;	/* logs */
-  quicly_ctx->event_log.cb = quic_new_event_logger ();
-
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
@@ -989,6 +951,7 @@ quic_store_quicly_ctx (application_t * app, u8 is_client)
 		     strlen (quicly_ctx_data->cid_key));
   quicly_ctx->cid_encryptor =
     quicly_new_default_cid_encryptor (&ptls_openssl_bfecb,
+				      &ptls_openssl_aes128ecb,
 				      &ptls_openssl_sha256, key_vec);
   if (is_client)
     return;
@@ -1584,7 +1547,8 @@ quic_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 
   quicly_ctx = quic_get_quicly_ctx_from_ctx (ctx);
   ret = quicly_connect (&ctx->conn, quicly_ctx, (char *) ctx->srv_hostname,
-			sa, salen, &quic_main.next_cid,
+			sa, NULL, &quic_main.next_cid, ptls_iovec_init (NULL,
+									0),
 			&quic_main.hs_properties, NULL);
   ++quic_main.next_cid.master_id;
   /*  Save context handle in quicly connection */
@@ -1801,7 +1765,7 @@ quic_find_packet_ctx (u32 * ctx_thread, u32 * ctx_index,
 	}
       ctx_ = quic_ctx_get (index, vlib_get_thread_index ());
       conn_ = ctx_->conn;
-      if (conn_ && quicly_is_destination (conn_, sa, salen, packet))
+      if (conn_ && quicly_is_destination (conn_, NULL, sa, packet))
 	{
 	  QUIC_DBG (3, "Connection found");
 	  *ctx_index = index;
@@ -1867,9 +1831,8 @@ quic_create_connection (u32 ctx_index, struct sockaddr *sa,
    * TODO: check if socket is actually listening? */
   ctx = quic_ctx_get (ctx_index, thread_index);
   quicly_ctx = quic_get_quicly_ctx_from_ctx (ctx);
-  if ((rv = quicly_accept (&conn, quicly_ctx, sa, salen,
-			   &packet, ptls_iovec_init (NULL, 0),
-			   &quic_main.next_cid, NULL)))
+  if ((rv = quicly_accept (&conn, quicly_ctx, NULL, sa,
+			   &packet, NULL, &quic_main.next_cid, NULL)))
     {
       /* Invalid packet, pass */
       assert (conn == NULL);
@@ -1915,7 +1878,7 @@ quic_reset_connection (u64 udp_session_handle,
       || packet.cid.dest.plaintext.thread_id != 0)
     return 0;
   quicly_ctx = quic_get_quicly_ctx_from_udp (udp_session_handle);
-  dgram = quicly_send_stateless_reset (quicly_ctx, sa, salen,
+  dgram = quicly_send_stateless_reset (quicly_ctx, sa, NULL,
 				       &packet.cid.dest.plaintext);
   if (dgram == NULL)
     return 1;
@@ -2031,7 +1994,7 @@ quic_process_one_rx_packet (u64 udp_session_handle,
   if (err == 0)
     {
       ctx = quic_ctx_get (packet_ctx->ctx_index, thread_index);
-      rv = quicly_receive (ctx->conn, &packet_ctx->packet);
+      rv = quicly_receive (ctx->conn, NULL, sa, &packet_ctx->packet);
       if (rv)
 	QUIC_DBG (1, "quicly_receive return error %d", rv);
     }
