@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf47ea64_036addd8",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-10-02T10:40:24Z",
+      "side": 1,
+      "message": "If hi-\u003ename is already a vector, conversion to char* is confusing and not needed.",
+      "range": {
+        "startLine": 200,
+        "startChar": 30,
+        "endLine": 200,
+        "endChar": 44
+      },
+      "revId": "5c828bc1f24fb5222d6bb634d8e5228ed8b138f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
