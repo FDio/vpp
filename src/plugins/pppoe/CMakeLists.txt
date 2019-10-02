@@ -26,10 +26,6 @@ add_vpp_plugin(pppoe
   API_FILES
   pppoe.api
 
-  INSTALL_HEADERS
-  pppoe_all_api_h.h
-  pppoe_msg_enum.h
-
   API_TEST_SOURCES
   pppoe_test.c
 )
