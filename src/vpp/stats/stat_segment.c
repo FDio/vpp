@@ -547,8 +547,8 @@ do_stat_segment_updates (stat_segment_main_t * sm)
   f64 dt, now;
   vlib_main_t *this_vlib_main;
   int i, start;
-  counter_t **counters;
   static int num_worker_threads_set;
+  u64 *offset_vector;
 
   /*
    * Set once at the beginning of time.
@@ -558,14 +558,13 @@ do_stat_segment_updates (stat_segment_main_t * sm)
   if (PREDICT_FALSE (num_worker_threads_set == 0))
     {
       void *oldheap = clib_mem_set_heap (sm->heap);
-      int workers = clib_max (1, vec_len (vlib_mains) - 1);
       vlib_stat_segment_lock ();
 
-      sm->directory_vector[STAT_COUNTER_NUM_WORKER_THREADS].value = workers;
+      sm->directory_vector[STAT_COUNTER_NUM_WORKER_THREADS].value =
+	vec_len (vlib_mains) > 1 ? vec_len (vlib_mains) - 1 : 1;
 
       stat_validate_counter_vector (&sm->directory_vector
-				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER],
-				    workers);
+				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER], 0);
       num_worker_threads_set = 1;
       vlib_stat_segment_unlock ();
       clib_mem_set_heap (oldheap);
@@ -577,15 +576,16 @@ do_stat_segment_updates (stat_segment_main_t * sm)
    */
   vector_rate = 0.0;
 
-  counters =
-    stat_segment_pointer (shared_header,
-			  sm->directory_vector
-			  [STAT_COUNTER_VECTOR_RATE_PER_WORKER].offset);
+  offset_vector = stat_segment_pointer (shared_header,
+					sm->directory_vector
+					[STAT_COUNTER_VECTOR_RATE_PER_WORKER].offset_vector);
 
   start = vec_len (vlib_mains) > 1 ? 1 : 0;
 
   for (i = start; i < vec_len (vlib_mains); i++)
     {
+      counter_t *counter = stat_segment_pointer (shared_header,
+						 offset_vector[i]);
 
       f64 this_vector_rate;
 
@@ -597,7 +597,7 @@ do_stat_segment_updates (stat_segment_main_t * sm)
       vector_rate += this_vector_rate;
 
       /* Set the per-worker rate */
-      counters[0][i - start] = this_vector_rate;
+      *counter = this_vector_rate;
     }
 
   /* And set the system average rate */
