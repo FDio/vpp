@@ -24,10 +24,6 @@ add_vpp_plugin(oddbuf
   API_FILES
   oddbuf.api
 
-  INSTALL_HEADERS
-  oddbuf_all_api_h.h
-  oddbuf_msg_enum.h
-
   API_TEST_SOURCES
   oddbuf_test.c
 )
