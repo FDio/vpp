@@ -120,7 +120,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(RATE_SAMPLE, "Conn does rate sampling")	\
   _(TRACK_BURST, "Track burst")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
-  _(NO_CSUM_OFFLOAD, "NO Checksum Offload") \
+  _(NO_CSUM_OFFLOAD, "No Checksum Offload")     \
 
 typedef enum _tcp_connection_flag_bits
 {

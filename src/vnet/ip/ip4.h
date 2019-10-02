@@ -287,11 +287,6 @@ ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type, u32 node_index);
 u16 ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 				  ip4_header_t * ip0);
 
-u16
-ip4_tcp_compute_checksum_custom (vlib_main_t * vm, vlib_buffer_t * p0,
-                                 ip46_address_t *src,
-                                 ip46_address_t *dst);
-
 void ip4_register_protocol (u32 protocol, u32 node_index);
 void ip4_unregister_protocol (u32 protocolx);
 

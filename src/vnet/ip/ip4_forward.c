@@ -1371,64 +1371,6 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   return sum16;
 }
 
-u16
-ip4_tcp_compute_checksum_custom (vlib_main_t * vm, vlib_buffer_t * p0,
-                                 ip46_address_t  *src,
-                                 ip46_address_t *dst)
-{
-  ip_csum_t sum0;
-  u32 ip_header_length, payload_length_host_byte_order;
-  u32 n_this_buffer, n_bytes_left, n_ip_bytes_this_buffer;
-  u16 sum16;
-  void *data_this_buffer;
-
-  /* Initialize checksum with ip header. */
-  ip_header_length = 20;
-
-  payload_length_host_byte_order = vlib_buffer_length_in_chain (vm, p0);
-  sum0 =
-    clib_host_to_net_u32 (payload_length_host_byte_order +
-                          ( IP_PROTOCOL_TCP << 16));
-
-     sum0 =
-   ip_csum_with_carry (sum0,
-               clib_mem_unaligned (&src->ip4, u32));
-     sum0 =
-   ip_csum_with_carry (sum0,
-               clib_mem_unaligned (&dst->ip4, u32));
-
-  n_bytes_left = n_this_buffer = payload_length_host_byte_order;
-  data_this_buffer = vlib_buffer_get_current(p0);
-  n_ip_bytes_this_buffer = p0->current_length + ip_header_length;
-  if (n_this_buffer + ip_header_length > n_ip_bytes_this_buffer)
-    {
-      n_this_buffer = n_ip_bytes_this_buffer > ip_header_length ?
-    n_ip_bytes_this_buffer - ip_header_length : 0;
-    }
-  while (1)
-    {
-
-      sum0 = ip_incremental_checksum (sum0, data_this_buffer, n_this_buffer);
-      n_bytes_left -= n_this_buffer;
-      if (n_bytes_left == 0)
-    break;
-
-      ASSERT (p0->flags & VLIB_BUFFER_NEXT_PRESENT);
-      if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
-    return 0xfefe;
-
-      p0 = vlib_get_buffer (vm, p0->next_buffer);
-      data_this_buffer = vlib_buffer_get_current (p0);
-      n_this_buffer = clib_min (p0->current_length, n_bytes_left);
-    }
-
-  sum16 = ~ip_csum_fold (sum0);
-
-  return sum16;
-}
-
-
-
 u32
 ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
 {
