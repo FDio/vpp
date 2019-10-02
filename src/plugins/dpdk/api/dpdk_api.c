@@ -36,29 +36,8 @@
 #include <vlibmemory/api.h>
 
 /* define message IDs */
-#include <dpdk/api/dpdk_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <dpdk/api/dpdk_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <dpdk/api/dpdk_all_api_h.h>
-#undef vl_endianfun
-
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <dpdk/api/dpdk_all_api_h.h>
-#undef vl_api_version
-
-/* Macro to finish up custom dump fns */
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#include <dpdk/api/dpdk.api_enum.h>
+#include <dpdk/api/dpdk.api_types.h>
 
 #include <vlibapi/api_helper_macros.h>
 
@@ -242,78 +221,16 @@ static void *vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print
   FINISH;
 }
 
-#define foreach_dpdk_plugin_api_msg                                       \
-_(SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe)       \
-_(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, sw_interface_set_dpdk_hqos_subport) \
-_(SW_INTERFACE_SET_DPDK_HQOS_TCTBL, sw_interface_set_dpdk_hqos_tctbl)
-
-/* Set up the API message handling tables */
-static clib_error_t *
-dpdk_plugin_api_hookup (vlib_main_t * vm)
-{
-  dpdk_main_t *dm __attribute__ ((unused)) = &dpdk_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + dm->msg_id_base),     \
-                           #n,          \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_dpdk_plugin_api_msg;
-#undef _
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <dpdk/api/dpdk_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (dpdk_main_t * dm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + dm->msg_id_base);
-  foreach_vl_msg_name_crc_dpdk;
-#undef _
-}
-
-//  TODO
-/*
-static void plugin_custom_dump_configure (dpdk_main_t * dm)
-{
-#define _(n,f) dm->api_main->msg_print_handlers \
-  [VL_API_##n + dm->msg_id_base]                \
-    = (void *) vl_api_##f##_t_print;
-  foreach_dpdk_plugin_api_msg;
-#undef _
-}
-*/
-/* force linker to link functions used by vlib and declared weak */
-
+#include <dpdk/api/dpdk.api.c>
 static clib_error_t *
 dpdk_api_init (vlib_main_t * vm)
 {
   dpdk_main_t *dm = &dpdk_main;
-  clib_error_t *error = 0;
-
-  u8 *name;
-  name = format (0, "dpdk_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
-  dm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-  vec_free (name);
+  dm->msg_id_base = setup_message_id_table ();
 
-  error = dpdk_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (dm, &api_main);
-
-//  TODO
-//  plugin_custom_dump_configure (dm);
-
-  return error;
+  return 0;
 }
 
 /* *INDENT-OFF* */
