@@ -4,6 +4,7 @@ import abc
 
 import six
 from six import moves
+import sys
 
 from util import Host, mk_ll_addr
 from vpp_papi import mac_ntop, VppEnum
@@ -260,9 +261,14 @@ class VppInterface(object):
         r = self.test.vapi.sw_interface_dump(sw_if_index=self.sw_if_index)
         for intf in r:
             if intf.sw_if_index == self.sw_if_index:
-                self._name = intf.interface_name.split(b'\0',
-                                                       1)[0].decode('utf8')
-                self._local_mac = bytes(intf.l2_address)
+                if sys.version_info[0] < 3:
+                    self._name = intf.interface_name.split(b'\0',
+                                                           1)[0].decode('utf8')
+                    self._local_mac = bytes(intf.l2_address)
+                else:
+                    self._name = intf.interface_name
+                    self._local_mac = str(intf.l2_address)
+
                 self._dump = intf
                 break
         else:
