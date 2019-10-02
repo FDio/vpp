@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "ea7e7067_206eb530",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-10-02T08:58:10Z",
+      "side": 1,
+      "message": "Right, this had gotten a bit out of hand with all caps begin \u0026 end of sections. Reduced it to one-liners \u0026 lower case",
+      "parentUuid": "026382f6_1f913db7",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 79
+      },
+      "revId": "3d7d3a2046aa2ab20c8b62b9a67adc0dae2a127a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cc9ba9e2_62aa3026",
         "filename": "src/plugins/quic/quic.c",
         "patchSetId": 1
@@ -45,6 +69,30 @@
       "revId": "3d7d3a2046aa2ab20c8b62b9a67adc0dae2a127a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "653d6116_82d48e14",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2019-10-02T08:58:10Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cc9ba9e2_62aa3026",
+      "range": {
+        "startLine": 171,
+        "startChar": 0,
+        "endLine": 175,
+        "endChar": 79
+      },
+      "revId": "3d7d3a2046aa2ab20c8b62b9a67adc0dae2a127a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
