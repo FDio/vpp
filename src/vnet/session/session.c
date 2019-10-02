@@ -799,6 +799,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
   new_s->rx_fifo->master_session_index = new_s->session_index;
   new_s->rx_fifo->master_thread_index = new_s->thread_index;
   new_s->session_state = SESSION_STATE_READY;
+  new_s->flags |= SESSION_F_IS_MIGRATING;
   session_lookup_add_connection (tc, session_handle (new_s));
 
   /*

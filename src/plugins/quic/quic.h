@@ -122,6 +122,7 @@ typedef struct quic_ctx_
   u32 parent_app_wrk_id;
   u32 parent_app_id;
   u8 flags;
+  quicly_context_t *quicly_ctx;
 } quic_ctx_t;
 
 /* Make sure our custom fields don't overlap with the fields we use in
