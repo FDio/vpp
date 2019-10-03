@@ -444,6 +444,78 @@ tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
 
+
+/* Compute TCP checksum in software when offloading is disabled for a connection */
+u16
+ip6_tcp_compute_checksum_custom (vlib_main_t * vm, vlib_buffer_t * p0,
+				 ip46_address_t * src, ip46_address_t * dst)
+{
+  ip_csum_t sum0;
+  u16 payload_length_host_byte_order;
+  u32 i;
+
+  /* Initialize checksum with ip header. */
+  sum0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p0)) +
+    clib_host_to_net_u16 (IP_PROTOCOL_TCP);
+  payload_length_host_byte_order = vlib_buffer_length_in_chain (vm, p0);
+
+  for (i = 0; i < ARRAY_LEN (src->ip6.as_uword); i++)
+    {
+      sum0 = ip_csum_with_carry
+	(sum0, clib_mem_unaligned (&src->ip6.as_uword[i], uword));
+      sum0 = ip_csum_with_carry
+	(sum0, clib_mem_unaligned (&dst->ip6.as_uword[i], uword));
+    }
+
+  return ip_calculate_l4_checksum (vm, p0, sum0,
+				   payload_length_host_byte_order, NULL, 0,
+				   NULL);
+}
+
+u16
+ip4_tcp_compute_checksum_custom (vlib_main_t * vm, vlib_buffer_t * p0,
+				 ip46_address_t * src, ip46_address_t * dst)
+{
+  ip_csum_t sum0;
+  u32 payload_length_host_byte_order;
+
+  payload_length_host_byte_order = vlib_buffer_length_in_chain (vm, p0);
+  sum0 =
+    clib_host_to_net_u32 (payload_length_host_byte_order +
+			  (IP_PROTOCOL_TCP << 16));
+
+  sum0 = ip_csum_with_carry (sum0, clib_mem_unaligned (&src->ip4, u32));
+  sum0 = ip_csum_with_carry (sum0, clib_mem_unaligned (&dst->ip4, u32));
+
+  return ip_calculate_l4_checksum (vm, p0, sum0,
+				   payload_length_host_byte_order, NULL, 0,
+				   NULL);
+}
+
+static inline u16
+tcp_compute_checksum (tcp_connection_t * tc, vlib_buffer_t * b)
+{
+  u16 checksum = 0;
+  if (PREDICT_FALSE (tc->flags & TCP_CONN_NO_CSUM_OFFLOAD))
+    {
+      tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+      vlib_main_t *vm = wrk->vm;
+
+      if (tc->c_is_ip4)
+	checksum = ip4_tcp_compute_checksum_custom
+	  (vm, b, &tc->c_lcl_ip, &tc->c_rmt_ip);
+      else
+	checksum = ip6_tcp_compute_checksum_custom
+	  (vm, b, &tc->c_lcl_ip, &tc->c_rmt_ip);
+    }
+  else
+    {
+      b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+    }
+  return checksum;
+}
+
+
 /**
  * Prepare ACK
  */
@@ -466,6 +538,9 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags, wnd);
 
   tcp_options_write ((u8 *) (th + 1), snd_opts);
+
+  th->checksum = tcp_compute_checksum (tc, b);
+
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 
   if (wnd == 0)
@@ -517,6 +592,7 @@ tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
 			     initial_wnd);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
   tcp_options_write ((u8 *) (th + 1), &snd_opts);
+  th->checksum = tcp_compute_checksum (tc, b);
 }
 
 /**
@@ -541,6 +617,7 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   tcp_options_write ((u8 *) (th + 1), snd_opts);
 
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+  th->checksum = tcp_compute_checksum (tc, b);
 }
 
 always_inline void
@@ -786,7 +863,8 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
     {
       ASSERT ((pkt_ih4->ip_version_and_header_length & 0xF0) == 0x40);
       ih4 = vlib_buffer_push_ip4 (vm, b, &pkt_ih4->dst_address,
-				  &pkt_ih4->src_address, IP_PROTOCOL_TCP, 1);
+				  &pkt_ih4->src_address, IP_PROTOCOL_TCP,
+				  (!(tc->flags & TCP_CONN_NO_CSUM_OFFLOAD)));
       th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih4);
     }
   else
@@ -833,6 +911,7 @@ tcp_send_reset (tcp_connection_t * tc)
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
 			     advertise_wnd);
   opts_write_len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
+  th->checksum = tcp_compute_checksum (tc, b);
   ASSERT (opts_write_len == tc->snd_opts_len);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
@@ -851,7 +930,8 @@ tcp_push_ip_hdr (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     {
       ip4_header_t *ih;
       ih = vlib_buffer_push_ip4 (vm, b, &tc->c_lcl_ip4,
-				 &tc->c_rmt_ip4, IP_PROTOCOL_TCP, 1);
+				 &tc->c_rmt_ip4, IP_PROTOCOL_TCP,
+				 (!(tc->flags & TCP_CONN_NO_CSUM_OFFLOAD)));
       th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih);
     }
   else
@@ -1081,6 +1161,9 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
 
   tc->bytes_out += data_len;
   tc->data_segs_out += 1;
+
+
+  th->checksum = tcp_compute_checksum (tc, b);
 
   TCP_EVT (TCP_EVT_PKTIZE, tc);
 }
@@ -2160,30 +2243,19 @@ always_inline void
 tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 		    tcp_connection_t * tc0, u8 is_ip4)
 {
-  tcp_header_t *th0 = 0;
+  u8 __clib_unused *ih0;
+  tcp_header_t __clib_unused *th0 = vlib_buffer_get_current (b0);
 
-  th0 = vlib_buffer_get_current (b0);
   TCP_EVT (TCP_EVT_OUTPUT, tc0, th0->flags, b0->current_length);
+
   if (is_ip4)
-    {
-      vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
-			    IP_PROTOCOL_TCP, 1);
-      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
-      th0->checksum = 0;
-    }
+    ih0 = vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4, &tc0->c_rmt_ip4,
+				IP_PROTOCOL_TCP,
+				(!(tc0->flags & TCP_CONN_NO_CSUM_OFFLOAD)));
   else
-    {
-      ip6_header_t *ih0;
-      ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6,
-				  &tc0->c_rmt_ip6, IP_PROTOCOL_TCP);
-      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
-      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
-      b0->flags |=
-	VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
-      th0->checksum = 0;
-    }
+    ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6, &tc0->c_rmt_ip6,
+				IP_PROTOCOL_TCP);
+
 }
 
 always_inline void
