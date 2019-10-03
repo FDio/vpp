@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ddd750b8_9548efa0",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 12853,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-10-03T10:24:29Z",
+      "side": 1,
+      "message": "Why isn\u0027t this un.ip4?",
+      "range": {
+        "startLine": 12852,
+        "startChar": 2,
+        "endLine": 12853,
+        "endChar": 67
+      },
+      "revId": "f1687cdd8940cc36ba779a57c7a4abccf7d575fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
