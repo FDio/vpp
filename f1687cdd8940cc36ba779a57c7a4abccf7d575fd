@@ -22,6 +22,30 @@
       "revId": "f1687cdd8940cc36ba779a57c7a4abccf7d575fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ae119094_d72414f9",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 12853,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2019-10-03T11:06:52Z",
+      "side": 1,
+      "message": "isn\u0027t that the same address?",
+      "parentUuid": "ddd750b8_9548efa0",
+      "range": {
+        "startLine": 12852,
+        "startChar": 2,
+        "endLine": 12853,
+        "endChar": 67
+      },
+      "revId": "f1687cdd8940cc36ba779a57c7a4abccf7d575fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
