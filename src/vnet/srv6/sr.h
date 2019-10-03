@@ -54,6 +54,9 @@
 
 #define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
+#define GTPU_EXTHDR_FLAG		0x04
+#define GTPU_EXTHDR_PDU_SESSION		0x85
+
 /* *INDENT-OFF* */
 typedef struct
 {
@@ -65,12 +68,55 @@ typedef struct
 /* *INDENT-OFF* */
 typedef struct
 {
+  u16 seq;
+  u8 npdu_num;
+  u8 nextexthdr;
+} __attribute__ ((packed)) gtpu_exthdr_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef struct
+{
   u8 ver_flags;
   u8 type;
   u16 length;     /* length in octets of the payload */
   u32 teid;
+  gtpu_exthdr_t ext[0];
 } __attribute__ ((packed)) gtpu_header_t;
 /* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  u8 ppi:3;
+  u8 spare:5;
+  u8 padding[3];
+} __attribute__ ((packed)) gtpu_paging_policy_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  u8 exthdrlen;
+  u8 type:4;
+  u8 spare:4;
+  union {
+    struct gtpu_qfi_bits {
+      u8 p:1;
+      u8 r:1;
+      u8 qfi:6;
+    } bits;
+
+    u8 val;
+  } u;
+  gtpu_paging_policy_t	paging[0];
+  u8 nextexthdr;
+} __attribute__ ((packed)) gtpu_pdu_session_t;
+/* *INDENT-ON* */
+
+#define GTPU_PDU_SESSION_P_BIT_MASK	0x80
+#define GTPU_PDU_SESSION_R_BIT_MASK	0x40
+#define GTPU_PDU_SESSION_QFI_MASK	0x3f
 
 /* *INDENT-OFF* */
 typedef struct
