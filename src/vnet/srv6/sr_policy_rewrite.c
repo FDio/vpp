@@ -107,6 +107,7 @@ static dpo_type_t sr_pr_bsid_insert_dpo_type;
  * @brief IPv6 SA for encapsulated packets
  */
 static ip6_address_t sr_pr_encaps_src;
+static u8 sr_pr_encaps_hop_limit = IPv6_DEFAULT_HOP_LIMIT;
 
 /******************* SR rewrite set encaps IPv6 source addr *******************/
 /* Note:  This is temporal. We don't know whether to follow this path or
@@ -138,6 +139,44 @@ VLIB_CLI_COMMAND (set_sr_src_command, static) = {
   .path = "set sr encaps source",
   .short_help = "set sr encaps source addr <ip6_addr>",
   .function = set_sr_src_command_fn,
+};
+/* *INDENT-ON* */
+
+/******************** SR rewrite set encaps IPv6 hop-limit ********************/
+
+void
+sr_set_hop_limit (u8 hop_limit)
+{
+  sr_pr_encaps_hop_limit = hop_limit;
+}
+
+u8
+sr_get_hop_limit (void)
+{
+  return sr_pr_encaps_hop_limit;
+}
+
+static clib_error_t *
+set_sr_hop_limit_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  int hop_limit = sr_get_hop_limit ();
+
+  if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "No value specified");
+  if (!unformat (input, "%d", &hop_limit))
+    return clib_error_return (0, "Invalid value");
+  if (hop_limit < 0 || hop_limit > 255)
+    return clib_error_return (0, "Value out of range [0-255]");
+  sr_pr_encaps_hop_limit = (u8) hop_limit;
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_sr_hop_limit_command, static) = {
+  .path = "set sr encaps hop-limit",
+  .short_help = "set sr encaps hop-limit <value>",
+  .function = set_sr_hop_limit_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -175,7 +214,7 @@ compute_rewrite_encaps (ip6_address_t * sl)
   iph->src_address.as_u64[1] = sr_pr_encaps_src.as_u64[1];
   iph->payload_length = header_length - IPv6_DEFAULT_HEADER_LENGTH;
   iph->protocol = IP_PROTOCOL_IPV6;
-  iph->hop_limit = IPv6_DEFAULT_HOP_LIMIT;
+  iph->hop_limit = sr_pr_encaps_hop_limit;
 
   if (vec_len (sl) > 1)
     {
